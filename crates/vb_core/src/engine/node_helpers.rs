@@ -76,9 +76,7 @@ mod tests {
     use super::*;
     use crate::ids::{ConstIdx, RunId, SlotIdx, StepIdx, WorkflowDigest};
     use crate::value::{ConstValue, SlotValue, Taint};
-    use crate::workflow::{
-        CompiledNode, CompiledNodeKind, CompiledWorkflow, WorkflowParts,
-    };
+    use crate::workflow::{CompiledNode, CompiledNodeKind, CompiledWorkflow, WorkflowParts};
 
     fn ensure_equal<T>(actual: T, expected: T) -> Result<(), String>
     where
@@ -192,7 +190,10 @@ mod tests {
         run.write_slot_with_taint(SlotIdx::new(1), SlotValue::I64(55), Taint::Clean)
             .map_err(|e| e.to_string())?;
         let result = finish_run(&mut run, SlotIdx::new(1)).map_err(|e| e.to_string())?;
-        ensure_equal(result, EngineSignal::Finished(SlotValue::I64(55), Taint::Clean))?;
+        ensure_equal(
+            result,
+            EngineSignal::Finished(SlotValue::I64(55), Taint::Clean),
+        )?;
         ensure_equal(run.executed(), 1)
     }
 
@@ -202,7 +203,10 @@ mod tests {
         run.write_slot_with_taint(SlotIdx::new(0), SlotValue::Bool(true), Taint::Secret)
             .map_err(|e| e.to_string())?;
         let result = finish_run(&mut run, SlotIdx::new(0)).map_err(|e| e.to_string())?;
-        ensure_equal(result, EngineSignal::Finished(SlotValue::Bool(true), Taint::Secret))
+        ensure_equal(
+            result,
+            EngineSignal::Finished(SlotValue::Bool(true), Taint::Secret),
+        )
     }
 
     #[test]
@@ -231,9 +235,13 @@ mod tests {
                 value: ConstIdx::new(0),
             },
         };
-        let result = set_const(&plan, &mut run, &node, ConstIdx::new(0)).map_err(|e| e.to_string())?;
+        let result =
+            set_const(&plan, &mut run, &node, ConstIdx::new(0)).map_err(|e| e.to_string())?;
         ensure_equal(result, EngineSignal::Continue)?;
-        ensure_equal(*run.read_slot(SlotIdx::new(0)).map_err(|e| e.to_string())?, SlotValue::I64(99))
+        ensure_equal(
+            *run.read_slot(SlotIdx::new(0)).map_err(|e| e.to_string())?,
+            SlotValue::I64(99),
+        )
     }
 
     #[test]
@@ -262,8 +270,12 @@ mod tests {
     #[test]
     fn copy_slot_copies_value_and_taint() -> Result<(), String> {
         let mut run = test_frame(3, 3)?;
-        run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(77), Taint::DerivedFromSecret)
-            .map_err(|e| e.to_string())?;
+        run.write_slot_with_taint(
+            SlotIdx::new(0),
+            SlotValue::I64(77),
+            Taint::DerivedFromSecret,
+        )
+        .map_err(|e| e.to_string())?;
         let node = CompiledNode {
             id: StepIdx::new(0),
             output: Some(SlotIdx::new(1)),
@@ -276,7 +288,10 @@ mod tests {
         };
         let result = copy_slot(&mut run, &node, SlotIdx::new(0)).map_err(|e| e.to_string())?;
         ensure_equal(result, EngineSignal::Continue)?;
-        ensure_equal(*run.read_slot(SlotIdx::new(1)).map_err(|e| e.to_string())?, SlotValue::I64(77))?;
+        ensure_equal(
+            *run.read_slot(SlotIdx::new(1)).map_err(|e| e.to_string())?,
+            SlotValue::I64(77),
+        )?;
         ensure_equal(
             run.read_taint(SlotIdx::new(1)).map_err(|e| e.to_string())?,
             Taint::DerivedFromSecret,

@@ -113,7 +113,9 @@ pub fn suggest_repairs(incident: &Incident) -> Vec<RepairSuggestion> {
                 description: "Increase the action timeout to accommodate slower responses".into(),
                 confidence: 0.9,
                 confidence_level: RepairConfidence::High,
-                rationale: String::from("Timeout failures are typically resolved by allowing more time"),
+                rationale: String::from(
+                    "Timeout failures are typically resolved by allowing more time",
+                ),
             });
             suggestions.push(RepairSuggestion {
                 kind: RepairKind::AddRetryBackoff,
@@ -135,7 +137,9 @@ pub fn suggest_repairs(incident: &Incident) -> Vec<RepairSuggestion> {
                 } else {
                     RepairConfidence::Low
                 },
-                rationale: String::from("Action failure may be transient; replay safety determines retry viability"),
+                rationale: String::from(
+                    "Action failure may be transient; replay safety determines retry viability",
+                ),
             });
         }
         FailureCode::BudgetExceeded => {
@@ -145,7 +149,9 @@ pub fn suggest_repairs(incident: &Incident) -> Vec<RepairSuggestion> {
                 description: "Increase the step budget in the resource contract".into(),
                 confidence: 0.8,
                 confidence_level: RepairConfidence::Medium,
-                rationale: String::from("Budget exhaustion indicates the step needs more resource headroom"),
+                rationale: String::from(
+                    "Budget exhaustion indicates the step needs more resource headroom",
+                ),
             });
         }
         FailureCode::StepPanicked => {
@@ -175,7 +181,9 @@ pub fn suggest_repairs(incident: &Incident) -> Vec<RepairSuggestion> {
                 description: "Secret data reached a public result - add taint barrier".into(),
                 confidence: 0.85,
                 confidence_level: RepairConfidence::High,
-                rationale: String::from("Taint leaks require blocking data flow from secret to public outputs"),
+                rationale: String::from(
+                    "Taint leaks require blocking data flow from secret to public outputs",
+                ),
             });
         }
         FailureCode::ReplayDivergence => {
@@ -185,7 +193,9 @@ pub fn suggest_repairs(incident: &Incident) -> Vec<RepairSuggestion> {
                 description: "Replay diverged from original execution - investigate journal".into(),
                 confidence: 0.3,
                 confidence_level: RepairConfidence::Low,
-                rationale: String::from("Replay divergence indicates non-deterministic behavior that must be traced"),
+                rationale: String::from(
+                    "Replay divergence indicates non-deterministic behavior that must be traced",
+                ),
             });
         }
         FailureCode::Unknown(_) => {
@@ -206,7 +216,9 @@ pub fn suggest_repairs(incident: &Incident) -> Vec<RepairSuggestion> {
             description: "Side effect certainty unknown - pin idempotency key before retry".into(),
             confidence: 0.6,
             confidence_level: RepairConfidence::Medium,
-            rationale: String::from("Unknown side effects require pinning to ensure idempotent retries"),
+            rationale: String::from(
+                "Unknown side effects require pinning to ensure idempotent retries",
+            ),
         });
     }
     suggestions
@@ -602,25 +614,56 @@ mod tests {
     fn test_action_timeout_suggests_increase_timeout() {
         let incident = make_incident(FailureCode::ActionTimeout, SideEffectCertainty::Certain);
         let suggestions = suggest_repairs(&incident);
-        assert!(suggestions.iter().any(|s| s.action == RepairAction::IncreaseTimeout));
-        assert!(suggestions.iter().any(|s| s.kind == RepairKind::IncreaseTimeout));
+        assert!(
+            suggestions
+                .iter()
+                .any(|s| s.action == RepairAction::IncreaseTimeout)
+        );
+        assert!(
+            suggestions
+                .iter()
+                .any(|s| s.kind == RepairKind::IncreaseTimeout)
+        );
     }
 
     #[test]
     fn test_taint_leak_suggests_fix_secret_leak() {
         let incident = make_incident(FailureCode::TaintLeak, SideEffectCertainty::Certain);
         let suggestions = suggest_repairs(&incident);
-        assert!(suggestions.iter().any(|s| s.action == RepairAction::FixSecretLeak));
-        assert!(suggestions.iter().any(|s| s.kind == RepairKind::FixSecretLeak));
+        assert!(
+            suggestions
+                .iter()
+                .any(|s| s.action == RepairAction::FixSecretLeak)
+        );
+        assert!(
+            suggestions
+                .iter()
+                .any(|s| s.kind == RepairKind::FixSecretLeak)
+        );
     }
 
     #[test]
     fn test_unknown_certainty_adds_pin_idempotency() {
-        let incident = make_incident(FailureCode::Unknown("x".into()), SideEffectCertainty::Unknown);
+        let incident = make_incident(
+            FailureCode::Unknown("x".into()),
+            SideEffectCertainty::Unknown,
+        );
         let suggestions = suggest_repairs(&incident);
-        assert!(suggestions.iter().any(|s| s.action == RepairAction::PinIdempotency));
-        assert!(suggestions.iter().any(|s| s.action == RepairAction::ManualIntervention));
-        assert!(suggestions.iter().any(|s| s.kind == RepairKind::PinIdempotency));
+        assert!(
+            suggestions
+                .iter()
+                .any(|s| s.action == RepairAction::PinIdempotency)
+        );
+        assert!(
+            suggestions
+                .iter()
+                .any(|s| s.action == RepairAction::ManualIntervention)
+        );
+        assert!(
+            suggestions
+                .iter()
+                .any(|s| s.kind == RepairKind::PinIdempotency)
+        );
     }
 
     // -- RepairConfidence tests --
@@ -735,7 +778,12 @@ mod tests {
 
     #[test]
     fn test_record_unsafe_replay_adds_idempotency_suggestion() {
-        let record = make_record(900, 2, FailureCode::ActionTimeout, ReplaySafety::UnsafeSideEffect);
+        let record = make_record(
+            900,
+            2,
+            FailureCode::ActionTimeout,
+            ReplaySafety::UnsafeSideEffect,
+        );
         let suggestions = suggest_repairs_for_record(&record);
         assert_eq!(suggestions.len(), 2);
         let idempotency = suggestions
@@ -754,9 +802,11 @@ mod tests {
         let record = make_record(950, 3, FailureCode::TaintLeak, ReplaySafety::Unknown);
         let suggestions = suggest_repairs_for_record(&record);
         assert_eq!(suggestions.len(), 2);
-        assert!(suggestions
-            .iter()
-            .any(|s| s.kind == RepairKind::PinIdempotency));
+        assert!(
+            suggestions
+                .iter()
+                .any(|s| s.kind == RepairKind::PinIdempotency)
+        );
     }
 
     #[test]
@@ -773,7 +823,11 @@ mod tests {
         let suggestions = suggest_repairs(&incident);
         assert!(!suggestions.is_empty());
         assert!(suggestions.iter().all(|s| !s.rationale.is_empty()));
-        assert!(suggestions.iter().all(|s| !s.confidence_level.display_str().is_empty()));
+        assert!(
+            suggestions
+                .iter()
+                .all(|s| !s.confidence_level.display_str().is_empty())
+        );
     }
 
     // ---------------------------------------------------------------------------
@@ -787,38 +841,73 @@ mod tests {
         assert_eq!(RepairKind::ReducePayload.as_str(), "ReducePayload");
         assert_eq!(RepairKind::PinIdempotency.as_str(), "PinIdempotency");
         assert_eq!(RepairKind::FixSecretLeak.as_str(), "FixSecretLeak");
-        assert_eq!(RepairKind::ManualInvestigation.as_str(), "ManualInvestigation");
+        assert_eq!(
+            RepairKind::ManualInvestigation.as_str(),
+            "ManualInvestigation"
+        );
     }
 
     #[test]
     fn test_suggest_repairs_budget_exceeded() {
         let incident = make_incident(FailureCode::BudgetExceeded, SideEffectCertainty::Certain);
         let suggestions = suggest_repairs(&incident);
-        assert!(suggestions.iter().any(|s| s.kind == RepairKind::IncreaseTimeout));
-        assert!(suggestions.iter().any(|s| s.action == RepairAction::AdjustBudget));
+        assert!(
+            suggestions
+                .iter()
+                .any(|s| s.kind == RepairKind::IncreaseTimeout)
+        );
+        assert!(
+            suggestions
+                .iter()
+                .any(|s| s.action == RepairAction::AdjustBudget)
+        );
     }
 
     #[test]
     fn test_suggest_repairs_step_panicked() {
         let incident = make_incident(FailureCode::StepPanicked, SideEffectCertainty::Unknown);
         let suggestions = suggest_repairs(&incident);
-        assert!(suggestions.iter().any(|s| s.kind == RepairKind::ManualInvestigation));
-        assert!(suggestions.iter().any(|s| s.action == RepairAction::ManualIntervention));
+        assert!(
+            suggestions
+                .iter()
+                .any(|s| s.kind == RepairKind::ManualInvestigation)
+        );
+        assert!(
+            suggestions
+                .iter()
+                .any(|s| s.action == RepairAction::ManualIntervention)
+        );
         // StepPanicked maps to Unknown certainty, so PinIdempotency should also appear
-        assert!(suggestions.iter().any(|s| s.action == RepairAction::PinIdempotency));
+        assert!(
+            suggestions
+                .iter()
+                .any(|s| s.action == RepairAction::PinIdempotency)
+        );
     }
 
     #[test]
     fn test_suggest_repairs_replay_divergence() {
         let incident = make_incident(FailureCode::ReplayDivergence, SideEffectCertainty::Certain);
         let suggestions = suggest_repairs(&incident);
-        assert!(suggestions.iter().any(|s| s.kind == RepairKind::PinIdempotency));
-        assert!(suggestions.iter().any(|s| s.action == RepairAction::ManualIntervention));
+        assert!(
+            suggestions
+                .iter()
+                .any(|s| s.kind == RepairKind::PinIdempotency)
+        );
+        assert!(
+            suggestions
+                .iter()
+                .any(|s| s.action == RepairAction::ManualIntervention)
+        );
     }
 
     #[test]
     fn test_repair_confidence_all_variants_are_distinct() {
-        let variants = [RepairConfidence::High, RepairConfidence::Medium, RepairConfidence::Low];
+        let variants = [
+            RepairConfidence::High,
+            RepairConfidence::Medium,
+            RepairConfidence::Low,
+        ];
         for i in 0..variants.len() {
             for j in (i + 1)..variants.len() {
                 assert_ne!(variants[i], variants[j]);
@@ -841,7 +930,10 @@ mod tests {
         assert_eq!(suggestions[0].action, RepairAction::RestartRun);
         assert_eq!(suggestions[0].kind, RepairKind::AddRetryBackoff);
         let diff = (suggestions[0].confidence - 0.95_f32).abs();
-        assert!(diff < f32::EPSILON, "expected 0.95 confidence for replay-safe failure");
+        assert!(
+            diff < f32::EPSILON,
+            "expected 0.95 confidence for replay-safe failure"
+        );
         assert_eq!(suggestions[0].confidence_level, RepairConfidence::High);
     }
 
@@ -855,7 +947,10 @@ mod tests {
         let suggestions = suggest_repairs(&incident);
         assert_eq!(suggestions.len(), 1);
         let diff = (suggestions[0].confidence - 0.3_f32).abs();
-        assert!(diff < f32::EPSILON, "expected 0.3 confidence for replay-unsafe failure");
+        assert!(
+            diff < f32::EPSILON,
+            "expected 0.3 confidence for replay-unsafe failure"
+        );
         assert_eq!(suggestions[0].confidence_level, RepairConfidence::Low);
     }
 
@@ -908,18 +1003,32 @@ mod tests {
         let incident = make_incident(FailureCode::ActionTimeout, SideEffectCertainty::None);
         let suggestions = suggest_repairs(&incident);
         assert!(
-            !suggestions.iter().any(|s| s.action == RepairAction::PinIdempotency),
+            !suggestions
+                .iter()
+                .any(|s| s.action == RepairAction::PinIdempotency),
             "PinIdempotency should only be added for Unknown certainty, not None"
         );
-        assert!(suggestions.iter().any(|s| s.kind == RepairKind::IncreaseTimeout));
+        assert!(
+            suggestions
+                .iter()
+                .any(|s| s.kind == RepairKind::IncreaseTimeout)
+        );
     }
 
     #[test]
     fn test_suggest_repairs_side_effect_certainty_unknown_adds_pin() {
         let incident = make_incident(FailureCode::ActionTimeout, SideEffectCertainty::Unknown);
         let suggestions = suggest_repairs(&incident);
-        assert!(suggestions.iter().any(|s| s.action == RepairAction::PinIdempotency));
-        assert!(suggestions.iter().any(|s| s.kind == RepairKind::PinIdempotency));
+        assert!(
+            suggestions
+                .iter()
+                .any(|s| s.action == RepairAction::PinIdempotency)
+        );
+        assert!(
+            suggestions
+                .iter()
+                .any(|s| s.kind == RepairKind::PinIdempotency)
+        );
     }
 
     #[test]
@@ -927,7 +1036,9 @@ mod tests {
         let incident = make_incident(FailureCode::TaintLeak, SideEffectCertainty::Certain);
         let suggestions = suggest_repairs(&incident);
         assert!(
-            !suggestions.iter().any(|s| s.action == RepairAction::PinIdempotency),
+            !suggestions
+                .iter()
+                .any(|s| s.action == RepairAction::PinIdempotency),
             "Certain certainty should not add PinIdempotency"
         );
     }
@@ -937,8 +1048,16 @@ mod tests {
         let incident = make_incident(FailureCode::ActionTimeout, SideEffectCertainty::Certain);
         let suggestions = suggest_repairs(&incident);
         assert_eq!(suggestions.len(), 2);
-        assert!(suggestions.iter().any(|s| s.kind == RepairKind::IncreaseTimeout));
-        assert!(suggestions.iter().any(|s| s.kind == RepairKind::AddRetryBackoff));
+        assert!(
+            suggestions
+                .iter()
+                .any(|s| s.kind == RepairKind::IncreaseTimeout)
+        );
+        assert!(
+            suggestions
+                .iter()
+                .any(|s| s.kind == RepairKind::AddRetryBackoff)
+        );
     }
 
     // ---------------------------------------------------------------------------
@@ -982,7 +1101,10 @@ mod tests {
         assert_eq!(RepairAction::FixSecretLeak.as_str(), "FixSecretLeak");
         assert_eq!(RepairAction::AdjustBudget.as_str(), "AdjustBudget");
         assert_eq!(RepairAction::RestartRun.as_str(), "RestartRun");
-        assert_eq!(RepairAction::ManualIntervention.as_str(), "ManualIntervention");
+        assert_eq!(
+            RepairAction::ManualIntervention.as_str(),
+            "ManualIntervention"
+        );
     }
 
     // ---------------------------------------------------------------------------
@@ -1003,7 +1125,10 @@ mod tests {
         ];
         for i in 0..variants.len() {
             for j in (i + 1)..variants.len() {
-                assert_ne!(variants[i], variants[j], "RepairAction variants must be distinct");
+                assert_ne!(
+                    variants[i], variants[j],
+                    "RepairAction variants must be distinct"
+                );
             }
         }
     }
@@ -1057,7 +1182,12 @@ mod tests {
         for code in &failure_codes {
             let record = make_record(1, 1, code.clone(), ReplaySafety::Safe);
             let suggestions = suggest_repairs_for_record(&record);
-            assert_eq!(suggestions.len(), 1, "safe replay should yield exactly 1 suggestion for {:?}", code);
+            assert_eq!(
+                suggestions.len(),
+                1,
+                "safe replay should yield exactly 1 suggestion for {:?}",
+                code
+            );
             assert!(
                 (0.0_f32..=1.0_f32).contains(&suggestions[0].confidence),
                 "confidence {} out of range for record with {:?}",
@@ -1076,8 +1206,14 @@ mod tests {
         let record = make_record(4242, 13, FailureCode::TaintLeak, ReplaySafety::Safe);
         let suggestions = suggest_repairs_for_record(&record);
         assert_eq!(suggestions.len(), 1);
-        assert!(suggestions[0].rationale.contains("4242"), "rationale must contain run_id");
-        assert!(suggestions[0].rationale.contains("13"), "rationale must contain step");
+        assert!(
+            suggestions[0].rationale.contains("4242"),
+            "rationale must contain run_id"
+        );
+        assert!(
+            suggestions[0].rationale.contains("13"),
+            "rationale must contain step"
+        );
     }
 
     // ---------------------------------------------------------------------------
@@ -1099,9 +1235,17 @@ mod tests {
         for code in &failure_codes {
             let record = make_record(1, 1, code.clone(), ReplaySafety::Safe);
             let suggestions = suggest_repairs_for_record(&record);
-            assert!(!suggestions.is_empty(), "must produce suggestions for {:?}", code);
+            assert!(
+                !suggestions.is_empty(),
+                "must produce suggestions for {:?}",
+                code
+            );
             for s in &suggestions {
-                assert!(!s.description.is_empty(), "description empty for {:?}", code);
+                assert!(
+                    !s.description.is_empty(),
+                    "description empty for {:?}",
+                    code
+                );
                 assert!(!s.rationale.is_empty(), "rationale empty for {:?}", code);
             }
         }
@@ -1119,9 +1263,18 @@ mod tests {
             (FailureCode::ReplayDivergence, RepairKind::PinIdempotency),
             (FailureCode::ActionTimeout, RepairKind::IncreaseTimeout),
             (FailureCode::StepPanicked, RepairKind::ManualInvestigation),
-            (FailureCode::ActionFailed(String::from("x")), RepairKind::AddRetryBackoff),
-            (FailureCode::ValidationError(String::from("x")), RepairKind::ReducePayload),
-            (FailureCode::Unknown(String::from("x")), RepairKind::PinIdempotency),
+            (
+                FailureCode::ActionFailed(String::from("x")),
+                RepairKind::AddRetryBackoff,
+            ),
+            (
+                FailureCode::ValidationError(String::from("x")),
+                RepairKind::ReducePayload,
+            ),
+            (
+                FailureCode::Unknown(String::from("x")),
+                RepairKind::PinIdempotency,
+            ),
         ];
         for (code, expected_kind) in mappings {
             let record = make_record(1, 1, code.clone(), ReplaySafety::Safe);
@@ -1144,12 +1297,24 @@ mod tests {
         let mappings: &[(FailureCode, RepairAction)] = &[
             (FailureCode::TaintLeak, RepairAction::FixSecretLeak),
             (FailureCode::BudgetExceeded, RepairAction::AdjustBudget),
-            (FailureCode::ReplayDivergence, RepairAction::ManualIntervention),
+            (
+                FailureCode::ReplayDivergence,
+                RepairAction::ManualIntervention,
+            ),
             (FailureCode::ActionTimeout, RepairAction::IncreaseTimeout),
             (FailureCode::StepPanicked, RepairAction::ManualIntervention),
-            (FailureCode::ActionFailed(String::from("x")), RepairAction::RestartRun),
-            (FailureCode::ValidationError(String::from("x")), RepairAction::ManualIntervention),
-            (FailureCode::Unknown(String::from("x")), RepairAction::ManualIntervention),
+            (
+                FailureCode::ActionFailed(String::from("x")),
+                RepairAction::RestartRun,
+            ),
+            (
+                FailureCode::ValidationError(String::from("x")),
+                RepairAction::ManualIntervention,
+            ),
+            (
+                FailureCode::Unknown(String::from("x")),
+                RepairAction::ManualIntervention,
+            ),
         ];
         for (code, expected_action) in mappings {
             let record = make_record(1, 1, code.clone(), ReplaySafety::Safe);
@@ -1189,7 +1354,9 @@ mod tests {
                 code
             );
             assert!(
-                suggestions.iter().any(|s| s.kind == RepairKind::PinIdempotency),
+                suggestions
+                    .iter()
+                    .any(|s| s.kind == RepairKind::PinIdempotency),
                 "second suggestion should be PinIdempotency for {:?}",
                 code
             );
@@ -1237,9 +1404,17 @@ mod tests {
         for code in &failure_codes {
             let incident = make_incident(code.clone(), SideEffectCertainty::Certain);
             let suggestions = suggest_repairs(&incident);
-            assert!(!suggestions.is_empty(), "must produce suggestions for {:?}", code);
+            assert!(
+                !suggestions.is_empty(),
+                "must produce suggestions for {:?}",
+                code
+            );
             for s in &suggestions {
-                assert!(!s.description.is_empty(), "description empty for {:?}", code);
+                assert!(
+                    !s.description.is_empty(),
+                    "description empty for {:?}",
+                    code
+                );
                 assert!(!s.rationale.is_empty(), "rationale empty for {:?}", code);
             }
         }
@@ -1265,7 +1440,10 @@ mod tests {
         let suggestions = suggest_repairs(&incident);
         assert_eq!(suggestions.len(), 1);
         let diff = (suggestions[0].confidence - 0.8_f32).abs();
-        assert!(diff < f32::EPSILON, "BudgetExceeded confidence should be 0.8");
+        assert!(
+            diff < f32::EPSILON,
+            "BudgetExceeded confidence should be 0.8"
+        );
         assert_eq!(suggestions[0].confidence_level, RepairConfidence::Medium);
     }
 
@@ -1285,7 +1463,10 @@ mod tests {
         let suggestions = suggest_repairs(&incident);
         assert_eq!(suggestions.len(), 1);
         let diff = (suggestions[0].confidence - 0.3_f32).abs();
-        assert!(diff < f32::EPSILON, "ReplayDivergence confidence should be 0.3");
+        assert!(
+            diff < f32::EPSILON,
+            "ReplayDivergence confidence should be 0.3"
+        );
         assert_eq!(suggestions[0].confidence_level, RepairConfidence::Low);
     }
 
@@ -1294,14 +1475,18 @@ mod tests {
         let incident = make_incident(FailureCode::ActionTimeout, SideEffectCertainty::Certain);
         let suggestions = suggest_repairs(&incident);
         assert_eq!(suggestions.len(), 2);
-        let increase_timeout = suggestions.iter().find(|s| s.kind == RepairKind::IncreaseTimeout);
+        let increase_timeout = suggestions
+            .iter()
+            .find(|s| s.kind == RepairKind::IncreaseTimeout);
         assert!(increase_timeout.is_some());
         let inc = increase_timeout.map_or(false, |s| {
             let diff = (s.confidence - 0.9_f32).abs();
             diff < f32::EPSILON
         });
         assert!(inc, "IncreaseTimeout confidence should be 0.9");
-        let add_backoff = suggestions.iter().find(|s| s.kind == RepairKind::AddRetryBackoff);
+        let add_backoff = suggestions
+            .iter()
+            .find(|s| s.kind == RepairKind::AddRetryBackoff);
         assert!(add_backoff.is_some());
         let backoff = add_backoff.map_or(false, |s| {
             let diff = (s.confidence - 0.7_f32).abs();
@@ -1364,7 +1549,10 @@ mod tests {
         );
         let suggestions = suggest_repairs_for_record(&record);
         assert_eq!(suggestions.len(), 1);
-        assert!(suggestions[0].rationale.contains("300"), "must contain run_id");
+        assert!(
+            suggestions[0].rationale.contains("300"),
+            "must contain run_id"
+        );
         assert!(suggestions[0].rationale.contains("7"), "must contain step");
     }
 
@@ -1404,7 +1592,10 @@ mod tests {
         let incident = make_incident(FailureCode::ActionTimeout, SideEffectCertainty::Unknown);
         let suggestions = suggest_repairs(&incident);
         assert_eq!(suggestions.len(), 3);
-        let pin_count = suggestions.iter().filter(|s| s.action == RepairAction::PinIdempotency).count();
+        let pin_count = suggestions
+            .iter()
+            .filter(|s| s.action == RepairAction::PinIdempotency)
+            .count();
         assert_eq!(pin_count, 1, "exactly one PinIdempotency suggestion");
     }
 
@@ -1423,7 +1614,9 @@ mod tests {
         let incident = make_incident(FailureCode::ActionTimeout, SideEffectCertainty::Unknown);
         let legacy_suggestions = suggest_repairs(&incident);
         assert!(
-            legacy_suggestions.iter().any(|s| s.kind == RepairKind::PinIdempotency),
+            legacy_suggestions
+                .iter()
+                .any(|s| s.kind == RepairKind::PinIdempotency),
             "legacy adds PinIdempotency for Unknown certainty"
         );
 
@@ -1432,7 +1625,9 @@ mod tests {
         let record = make_record(1, 1, FailureCode::ActionTimeout, ReplaySafety::Safe);
         let record_suggestions = suggest_repairs_for_record(&record);
         assert!(
-            !record_suggestions.iter().any(|s| s.kind == RepairKind::PinIdempotency),
+            !record_suggestions
+                .iter()
+                .any(|s| s.kind == RepairKind::PinIdempotency),
             "record-based suggestions miss the side_effect_certainty check"
         );
     }
@@ -1447,12 +1642,21 @@ mod tests {
         let val = 0.85_f32;
         // It should be very close but may not be exact
         let diff = (val - 0.85_f32).abs();
-        assert!(diff < 0.001_f32, "f32 precision for 0.85 is acceptable but not exact");
+        assert!(
+            diff < 0.001_f32,
+            "f32 precision for 0.85 is acceptable but not exact"
+        );
 
         // Verify all hardcoded confidence values are in [0.0, 1.0]
-        let hardcoded_values = [0.9_f32, 0.7_f32, 0.95_f32, 0.3_f32, 0.8_f32, 0.5_f32, 0.4_f32, 0.85_f32, 0.6_f32, 0.1_f32];
+        let hardcoded_values = [
+            0.9_f32, 0.7_f32, 0.95_f32, 0.3_f32, 0.8_f32, 0.5_f32, 0.4_f32, 0.85_f32, 0.6_f32,
+            0.1_f32,
+        ];
         for v in &hardcoded_values {
-            assert!((0.0_f32..=1.0_f32).contains(v), "confidence {v} out of [0,1] range");
+            assert!(
+                (0.0_f32..=1.0_f32).contains(v),
+                "confidence {v} out of [0,1] range"
+            );
         }
     }
 
@@ -1462,17 +1666,29 @@ mod tests {
     /// simplistic heuristic that could mislead operators.
     #[test]
     fn blackhat_action_failed_confidence_binary_based_on_replay_safe() {
-        let incident_safe = make_incident(FailureCode::ActionFailed("err".into()), SideEffectCertainty::Certain);
+        let incident_safe = make_incident(
+            FailureCode::ActionFailed("err".into()),
+            SideEffectCertainty::Certain,
+        );
         assert!(incident_safe.replay_safe);
         let suggestions_safe = suggest_repairs(&incident_safe);
         let safe_diff = (suggestions_safe[0].confidence - 0.95_f32).abs();
-        assert!(safe_diff < f32::EPSILON, "replay_safe=true gives 0.95 confidence");
+        assert!(
+            safe_diff < f32::EPSILON,
+            "replay_safe=true gives 0.95 confidence"
+        );
 
-        let mut incident_unsafe = make_incident(FailureCode::ActionFailed("err".into()), SideEffectCertainty::Certain);
+        let mut incident_unsafe = make_incident(
+            FailureCode::ActionFailed("err".into()),
+            SideEffectCertainty::Certain,
+        );
         incident_unsafe.replay_safe = false;
         let suggestions_unsafe = suggest_repairs(&incident_unsafe);
         let unsafe_diff = (suggestions_unsafe[0].confidence - 0.3_f32).abs();
-        assert!(unsafe_diff < f32::EPSILON, "replay_safe=false gives 0.3 confidence");
+        assert!(
+            unsafe_diff < f32::EPSILON,
+            "replay_safe=false gives 0.3 confidence"
+        );
     }
 
     /// FINDING: RepairKind has no Unknown/Default variant. If a new FailureCode
@@ -1495,11 +1711,18 @@ mod tests {
         for code in &failure_codes {
             let incident = make_incident(code.clone(), SideEffectCertainty::Certain);
             let suggestions = suggest_repairs(&incident);
-            assert!(!suggestions.is_empty(), "every FailureCode must produce at least one suggestion");
+            assert!(
+                !suggestions.is_empty(),
+                "every FailureCode must produce at least one suggestion"
+            );
             // Every suggestion must have a valid kind
             for s in &suggestions {
                 let label = s.kind.as_str();
-                assert!(!label.is_empty(), "RepairKind.as_str() must return non-empty for {:?}", s.kind);
+                assert!(
+                    !label.is_empty(),
+                    "RepairKind.as_str() must return non-empty for {:?}",
+                    s.kind
+                );
             }
         }
     }
@@ -1510,15 +1733,22 @@ mod tests {
     #[test]
     fn blackhat_validation_error_rationale_includes_raw_message() {
         let record = make_record(
-            1, 1,
-            FailureCode::ValidationError(String::from("field 'name' contains <script>alert(1)</script>")),
+            1,
+            1,
+            FailureCode::ValidationError(String::from(
+                "field 'name' contains <script>alert(1)</script>",
+            )),
             ReplaySafety::Safe,
         );
         let suggestions = suggest_repairs_for_record(&record);
         assert_eq!(suggestions.len(), 1);
         // The raw message is included verbatim in the rationale
-        assert!(suggestions[0].rationale.contains("<script>alert(1)</script>"),
-            "raw user message included in rationale without sanitization");
+        assert!(
+            suggestions[0]
+                .rationale
+                .contains("<script>alert(1)</script>"),
+            "raw user message included in rationale without sanitization"
+        );
     }
 
     /// FINDING: suggest_repairs_for_record for Unknown includes the inner string
@@ -1526,13 +1756,16 @@ mod tests {
     #[test]
     fn blackhat_unknown_failure_inner_string_in_rationale() {
         let record = make_record(
-            1, 1,
+            1,
+            1,
             FailureCode::Unknown(String::from("error\nwith\nnewlines")),
             ReplaySafety::Safe,
         );
         let suggestions = suggest_repairs_for_record(&record);
-        assert!(suggestions[0].rationale.contains("error\nwith\nnewlines"),
-            "raw inner string with newlines included in rationale");
+        assert!(
+            suggestions[0].rationale.contains("error\nwith\nnewlines"),
+            "raw inner string with newlines included in rationale"
+        );
     }
 
     /// FINDING: RepairAction has both PinIdempotency and ManualIntervention
@@ -1542,8 +1775,16 @@ mod tests {
     fn blackhat_replay_divergence_kind_vs_action_mismatch() {
         let record = make_record(1, 1, FailureCode::ReplayDivergence, ReplaySafety::Safe);
         let suggestions = suggest_repairs_for_record(&record);
-        assert_eq!(suggestions[0].kind, RepairKind::PinIdempotency, "kind is PinIdempotency");
-        assert_eq!(suggestions[0].action, RepairAction::ManualIntervention, "action is ManualIntervention");
+        assert_eq!(
+            suggestions[0].kind,
+            RepairKind::PinIdempotency,
+            "kind is PinIdempotency"
+        );
+        assert_eq!(
+            suggestions[0].action,
+            RepairAction::ManualIntervention,
+            "action is ManualIntervention"
+        );
         // The kind says "pin idempotency" but the action says "manual intervention"
         // This is semantically inconsistent
     }
@@ -1556,8 +1797,16 @@ mod tests {
     fn blackhat_budget_exceeded_kind_increase_timeout_vs_action_adjust_budget() {
         let record = make_record(1, 1, FailureCode::BudgetExceeded, ReplaySafety::Safe);
         let suggestions = suggest_repairs_for_record(&record);
-        assert_eq!(suggestions[0].kind, RepairKind::IncreaseTimeout, "kind says IncreaseTimeout");
-        assert_eq!(suggestions[0].action, RepairAction::AdjustBudget, "action says AdjustBudget");
+        assert_eq!(
+            suggestions[0].kind,
+            RepairKind::IncreaseTimeout,
+            "kind says IncreaseTimeout"
+        );
+        assert_eq!(
+            suggestions[0].action,
+            RepairAction::AdjustBudget,
+            "action says AdjustBudget"
+        );
         // Kind and action disagree on the repair strategy
     }
 
@@ -1569,8 +1818,16 @@ mod tests {
     fn blackhat_step_panicked_unknown_certainty_adds_contradictory_pin_idempotency() {
         let incident = make_incident(FailureCode::StepPanicked, SideEffectCertainty::Unknown);
         let suggestions = suggest_repairs(&incident);
-        assert!(suggestions.iter().any(|s| s.kind == RepairKind::ManualInvestigation));
-        assert!(suggestions.iter().any(|s| s.kind == RepairKind::PinIdempotency));
+        assert!(
+            suggestions
+                .iter()
+                .any(|s| s.kind == RepairKind::ManualInvestigation)
+        );
+        assert!(
+            suggestions
+                .iter()
+                .any(|s| s.kind == RepairKind::PinIdempotency)
+        );
         // Both suggestions are present, which may be contradictory if the panic
         // occurred in the idempotency pinning logic itself
     }
@@ -1582,7 +1839,12 @@ mod tests {
     #[test]
     fn blackhat_record_unknown_and_unsafe_replay_safety_same_extra_suggestion() {
         let record_unknown = make_record(1, 1, FailureCode::ActionTimeout, ReplaySafety::Unknown);
-        let record_unsafe = make_record(1, 1, FailureCode::ActionTimeout, ReplaySafety::UnsafeSideEffect);
+        let record_unsafe = make_record(
+            1,
+            1,
+            FailureCode::ActionTimeout,
+            ReplaySafety::UnsafeSideEffect,
+        );
 
         let suggestions_unknown = suggest_repairs_for_record(&record_unknown);
         let suggestions_unsafe = suggest_repairs_for_record(&record_unsafe);
@@ -1592,11 +1854,18 @@ mod tests {
         assert_eq!(suggestions_unsafe.len(), 2);
 
         // The extra PinIdempotency suggestion has the same confidence and level for both
-        let pin_unknown = suggestions_unknown.iter().find(|s| s.kind == RepairKind::PinIdempotency);
-        let pin_unsafe = suggestions_unsafe.iter().find(|s| s.kind == RepairKind::PinIdempotency);
+        let pin_unknown = suggestions_unknown
+            .iter()
+            .find(|s| s.kind == RepairKind::PinIdempotency);
+        let pin_unsafe = suggestions_unsafe
+            .iter()
+            .find(|s| s.kind == RepairKind::PinIdempotency);
         assert!(pin_unknown.is_some());
         assert!(pin_unsafe.is_some());
-        assert_eq!(pin_unknown.map(|s| s.confidence), pin_unsafe.map(|s| s.confidence));
+        assert_eq!(
+            pin_unknown.map(|s| s.confidence),
+            pin_unsafe.map(|s| s.confidence)
+        );
     }
 
     // =========================================================================
@@ -1708,7 +1977,10 @@ mod tests {
         let colors = [NEON_CYAN, NEON_GREEN, NEON_RED, NEON_YELLOW, NEON_ORANGE];
         for (i, color) in colors.iter().enumerate() {
             let diff = (color[3] - 1.0_f32).abs();
-            assert!(diff < f32::EPSILON, "color at index {i} must have alpha=1.0");
+            assert!(
+                diff < f32::EPSILON,
+                "color at index {i} must have alpha=1.0"
+            );
         }
     }
 
@@ -1736,7 +2008,10 @@ mod tests {
         assert_eq!(panel.applied_count(), 0);
         assert_eq!(panel.dismissed_count(), 0);
         assert!(panel.entries().is_empty());
-        assert!(panel.is_resolved(), "empty panel should be considered resolved");
+        assert!(
+            panel.is_resolved(),
+            "empty panel should be considered resolved"
+        );
     }
 
     #[test]
@@ -1801,7 +2076,11 @@ mod tests {
             RepairAction::IncreaseTimeout,
         ));
         assert!(!panel.dismiss(5));
-        assert_eq!(panel.pending_count(), 1, "out-of-bounds dismiss should not change state");
+        assert_eq!(
+            panel.pending_count(),
+            1,
+            "out-of-bounds dismiss should not change state"
+        );
     }
 
     #[test]
@@ -1812,7 +2091,10 @@ mod tests {
             RepairAction::IncreaseTimeout,
         ));
         assert!(panel.apply(0));
-        assert!(!panel.dismiss(0), "cannot dismiss an already-applied suggestion");
+        assert!(
+            !panel.dismiss(0),
+            "cannot dismiss an already-applied suggestion"
+        );
         assert_eq!(panel.applied_count(), 1);
         assert_eq!(panel.dismissed_count(), 0);
     }
@@ -1825,7 +2107,10 @@ mod tests {
             RepairAction::IncreaseTimeout,
         ));
         assert!(panel.dismiss(0));
-        assert!(!panel.dismiss(0), "cannot dismiss an already-dismissed suggestion");
+        assert!(
+            !panel.dismiss(0),
+            "cannot dismiss an already-dismissed suggestion"
+        );
     }
 
     #[test]
@@ -1860,7 +2145,10 @@ mod tests {
             RepairAction::ReducePayload,
         ));
         assert!(panel.apply(0));
-        assert!(!panel.apply(0), "cannot apply an already-applied suggestion");
+        assert!(
+            !panel.apply(0),
+            "cannot apply an already-applied suggestion"
+        );
     }
 
     #[test]
@@ -1959,7 +2247,12 @@ mod tests {
         // ActionTimeout produces 2 suggestions
         assert_eq!(panel.len(), 2);
         assert_eq!(panel.pending_count(), 2);
-        assert!(panel.entries().iter().all(|e| e.state == RepairActionState::Pending));
+        assert!(
+            panel
+                .entries()
+                .iter()
+                .all(|e| e.state == RepairActionState::Pending)
+        );
     }
 
     #[test]
@@ -1976,7 +2269,12 @@ mod tests {
 
     #[test]
     fn test_repair_panel_from_record_unsafe_replay() {
-        let record = make_record(1, 1, FailureCode::ActionTimeout, ReplaySafety::UnsafeSideEffect);
+        let record = make_record(
+            1,
+            1,
+            FailureCode::ActionTimeout,
+            ReplaySafety::UnsafeSideEffect,
+        );
         let panel = RepairPanel::from_record(&record);
         assert_eq!(panel.len(), 2, "unsafe replay adds PinIdempotency");
         assert_eq!(panel.pending_count(), 2);
@@ -2009,7 +2307,10 @@ mod tests {
         ));
         let entry = panel.get(0);
         assert!(entry.is_some());
-        assert_eq!(entry.map(|e| e.suggestion.kind), Some(RepairKind::IncreaseTimeout));
+        assert_eq!(
+            entry.map(|e| e.suggestion.kind),
+            Some(RepairKind::IncreaseTimeout)
+        );
     }
 
     #[test]

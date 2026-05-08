@@ -58,14 +58,34 @@ mod tests {
     // ---- color validity helpers ----
 
     fn assert_valid_color(c: [f32; 4], name: &str) {
-        assert!(c[0] >= 0.0 && c[0] <= 1.0, "{name} red out of range: {}", c[0]);
-        assert!(c[1] >= 0.0 && c[1] <= 1.0, "{name} green out of range: {}", c[1]);
-        assert!(c[2] >= 0.0 && c[2] <= 1.0, "{name} blue out of range: {}", c[2]);
-        assert!(c[3] >= 0.0 && c[3] <= 1.0, "{name} alpha out of range: {}", c[3]);
+        assert!(
+            c[0] >= 0.0 && c[0] <= 1.0,
+            "{name} red out of range: {}",
+            c[0]
+        );
+        assert!(
+            c[1] >= 0.0 && c[1] <= 1.0,
+            "{name} green out of range: {}",
+            c[1]
+        );
+        assert!(
+            c[2] >= 0.0 && c[2] <= 1.0,
+            "{name} blue out of range: {}",
+            c[2]
+        );
+        assert!(
+            c[3] >= 0.0 && c[3] <= 1.0,
+            "{name} alpha out of range: {}",
+            c[3]
+        );
     }
 
     fn assert_opaque(c: [f32; 4], name: &str) {
-        assert!((c[3] - 1.0).abs() < f32::EPSILON, "{name} should be opaque, alpha = {}", c[3]);
+        assert!(
+            (c[3] - 1.0).abs() < f32::EPSILON,
+            "{name} should be opaque, alpha = {}",
+            c[3]
+        );
     }
 
     // ---- background layer colors ----

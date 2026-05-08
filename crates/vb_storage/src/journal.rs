@@ -20,12 +20,8 @@ use crate::{
     },
     error::JournalError,
     events::JournalEvent,
+    keys::{compiled_ir_key, run_event_key, workflow_source_key},
     process_lock::ProcessLock,
-    keys::{
-        compiled_ir_key,
-        run_event_key, workflow_source_key,
-    },
-
     records::{CompiledIrRecord, RecordKind, WorkflowSourceRecord},
     types::{EventSeq, FjallConfig, KeyspaceProfile},
 };
@@ -343,10 +339,8 @@ impl Drop for FjallJournal {
 mod tests {
     use super::*;
     use crate::{
-        BlobRecord, EventSeq, JournalEvent, RunHeaderRecord,
-        WorkflowSourceRecord, CompiledIrRecord,
-        constants::*,
-        recovery::RunSnapshot,
+        BlobRecord, CompiledIrRecord, EventSeq, JournalEvent, RunHeaderRecord,
+        WorkflowSourceRecord, constants::*, recovery::RunSnapshot,
     };
     use vb_core::{RunId, SlotIdx, StepIdx, WorkflowDigest, WorkflowId};
 
@@ -385,7 +379,9 @@ mod tests {
             digest,
             source: source.clone(),
         };
-        journal.put_workflow_source(&record).expect("put should succeed");
+        journal
+            .put_workflow_source(&record)
+            .expect("put should succeed");
         let loaded = journal.workflow_source(digest).expect("get should succeed");
         let Some(found) = loaded else {
             panic!("workflow source should be found");
@@ -398,7 +394,9 @@ mod tests {
     fn workflow_source_returns_none_for_missing_digest() {
         let (_temp, journal) = temp_journal();
         let missing = WorkflowDigest::from_bytes([0xFF; DIGEST_BYTES]);
-        let result = journal.workflow_source(missing).expect("lookup should succeed");
+        let result = journal
+            .workflow_source(missing)
+            .expect("lookup should succeed");
         assert_eq!(result, None, "missing digest should return None");
     }
 
@@ -407,8 +405,13 @@ mod tests {
         let (_temp, journal) = temp_journal();
         let ir = b"compiled-artifact-bytes".to_vec();
         let digest = WorkflowDigest::from_bytes(blake3::hash(&ir).into());
-        let record = CompiledIrRecord { digest, ir: ir.clone() };
-        journal.put_compiled_ir(&record).expect("put should succeed");
+        let record = CompiledIrRecord {
+            digest,
+            ir: ir.clone(),
+        };
+        journal
+            .put_compiled_ir(&record)
+            .expect("put should succeed");
         let loaded = journal.compiled_ir(digest).expect("get should succeed");
         let Some(found) = loaded else {
             panic!("compiled IR should be found");
@@ -450,7 +453,9 @@ mod tests {
     #[test]
     fn run_header_returns_none_for_missing_run() {
         let (_temp, journal) = temp_journal();
-        let result = journal.run_header(RunId::new(999)).expect("lookup should succeed");
+        let result = journal
+            .run_header(RunId::new(999))
+            .expect("lookup should succeed");
         assert_eq!(result, None, "missing run should return None");
     }
 
@@ -467,7 +472,9 @@ mod tests {
             taint: vec![0u8, 0u8],
         };
         journal.put_snapshot(&snapshot).expect("put should succeed");
-        let loaded = journal.snapshot(run, EventSeq::new(10)).expect("get should succeed");
+        let loaded = journal
+            .snapshot(run, EventSeq::new(10))
+            .expect("get should succeed");
         let Some(found) = loaded else {
             panic!("snapshot should be found");
         };
@@ -482,7 +489,10 @@ mod tests {
         let (_temp, journal) = temp_journal();
         let payload = vec![0xCA, 0xFE, 0xBA, 0xBE];
         let digest: [u8; DIGEST_BYTES] = blake3::hash(&payload).into();
-        let record = BlobRecord { digest, bytes: payload.clone() };
+        let record = BlobRecord {
+            digest,
+            bytes: payload.clone(),
+        };
         journal.put_blob(&record).expect("put should succeed");
         let loaded = journal.blob(digest).expect("get should succeed");
         let Some(found) = loaded else {
@@ -494,7 +504,9 @@ mod tests {
     #[test]
     fn blob_returns_none_for_missing_digest() {
         let (_temp, journal) = temp_journal();
-        let result = journal.blob([0; DIGEST_BYTES]).expect("lookup should succeed");
+        let result = journal
+            .blob([0; DIGEST_BYTES])
+            .expect("lookup should succeed");
         assert_eq!(result, None, "missing blob should return None");
     }
 
@@ -503,7 +515,10 @@ mod tests {
         let (_temp, journal) = temp_journal();
         let payload = vec![1, 2, 3];
         let wrong_digest: [u8; DIGEST_BYTES] = [0xFF; DIGEST_BYTES];
-        let record = BlobRecord { digest: wrong_digest, bytes: payload };
+        let record = BlobRecord {
+            digest: wrong_digest,
+            bytes: payload,
+        };
         let result = journal.put_blob(&record);
         assert!(
             matches!(result, Err(JournalError::PayloadDigestMismatch)),
@@ -523,11 +538,10 @@ mod tests {
         let run_b = RunId::new(200);
 
         // Write events for run A
-        let events_a = [
-            make_event(run_a, 0),
-            make_step_started(run_a, 1, 0),
-        ];
-        journal.append_strict_batch(&events_a).expect("batch A should succeed");
+        let events_a = [make_event(run_a, 0), make_step_started(run_a, 1, 0)];
+        journal
+            .append_strict_batch(&events_a)
+            .expect("batch A should succeed");
 
         // Write events for run B
         let events_b = [
@@ -535,17 +549,23 @@ mod tests {
             make_step_started(run_b, 1, 0),
             make_step_started(run_b, 2, 1),
         ];
-        journal.append_strict_batch(&events_b).expect("batch B should succeed");
+        journal
+            .append_strict_batch(&events_b)
+            .expect("batch B should succeed");
 
         // Replay run A: should only get run A events
-        let replayed_a = journal.events_for_run(run_a).expect("replay A should succeed");
+        let replayed_a = journal
+            .events_for_run(run_a)
+            .expect("replay A should succeed");
         assert_eq!(replayed_a.len(), 2, "run A should have exactly 2 events");
         for event in &replayed_a {
             assert_eq!(event.run_id(), run_a, "replayed event must belong to run A");
         }
 
         // Replay run B: should only get run B events
-        let replayed_b = journal.events_for_run(run_b).expect("replay B should succeed");
+        let replayed_b = journal
+            .events_for_run(run_b)
+            .expect("replay B should succeed");
         assert_eq!(replayed_b.len(), 3, "run B should have exactly 3 events");
         for event in &replayed_b {
             assert_eq!(event.run_id(), run_b, "replayed event must belong to run B");
@@ -559,24 +579,34 @@ mod tests {
         let run_b = RunId::new(20);
         let digest = WorkflowDigest::from_bytes([0; DIGEST_BYTES]);
 
-        journal.put_run_header(&RunHeaderRecord {
-            run: run_a,
-            workflow_id: WorkflowId::new(1),
-            compiled_digest: digest,
-            status: 1,
-            accepted_at_ms: 100,
-        }).expect("put A should succeed");
+        journal
+            .put_run_header(&RunHeaderRecord {
+                run: run_a,
+                workflow_id: WorkflowId::new(1),
+                compiled_digest: digest,
+                status: 1,
+                accepted_at_ms: 100,
+            })
+            .expect("put A should succeed");
 
-        journal.put_run_header(&RunHeaderRecord {
-            run: run_b,
-            workflow_id: WorkflowId::new(2),
-            compiled_digest: digest,
-            status: 2,
-            accepted_at_ms: 200,
-        }).expect("put B should succeed");
+        journal
+            .put_run_header(&RunHeaderRecord {
+                run: run_b,
+                workflow_id: WorkflowId::new(2),
+                compiled_digest: digest,
+                status: 2,
+                accepted_at_ms: 200,
+            })
+            .expect("put B should succeed");
 
-        let header_a = journal.run_header(run_a).expect("get A should succeed").expect("A present");
-        let header_b = journal.run_header(run_b).expect("get B should succeed").expect("B present");
+        let header_a = journal
+            .run_header(run_a)
+            .expect("get A should succeed")
+            .expect("A present");
+        let header_b = journal
+            .run_header(run_b)
+            .expect("get B should succeed")
+            .expect("B present");
 
         assert_eq!(header_a.workflow_id, WorkflowId::new(1));
         assert_eq!(header_a.status, 1);
@@ -591,24 +621,34 @@ mod tests {
         let run_b = RunId::new(60);
         let workflow = WorkflowDigest::from_bytes([0; DIGEST_BYTES]);
 
-        journal.put_snapshot(&RunSnapshot {
-            run: run_a,
-            seq: EventSeq::new(1),
-            workflow,
-            slots: vec![0u8],
-            taint: vec![],
-        }).expect("put A should succeed");
+        journal
+            .put_snapshot(&RunSnapshot {
+                run: run_a,
+                seq: EventSeq::new(1),
+                workflow,
+                slots: vec![0u8],
+                taint: vec![],
+            })
+            .expect("put A should succeed");
 
-        journal.put_snapshot(&RunSnapshot {
-            run: run_b,
-            seq: EventSeq::new(1),
-            workflow,
-            slots: vec![1u8, 2u8, 3u8],
-            taint: vec![0u8],
-        }).expect("put B should succeed");
+        journal
+            .put_snapshot(&RunSnapshot {
+                run: run_b,
+                seq: EventSeq::new(1),
+                workflow,
+                slots: vec![1u8, 2u8, 3u8],
+                taint: vec![0u8],
+            })
+            .expect("put B should succeed");
 
-        let snap_a = journal.snapshot(run_a, EventSeq::new(1)).expect("get A").expect("present");
-        let snap_b = journal.snapshot(run_b, EventSeq::new(1)).expect("get B").expect("present");
+        let snap_a = journal
+            .snapshot(run_a, EventSeq::new(1))
+            .expect("get A")
+            .expect("present");
+        let snap_b = journal
+            .snapshot(run_b, EventSeq::new(1))
+            .expect("get B")
+            .expect("present");
 
         assert_eq!(snap_a.run, run_a);
         assert_eq!(snap_a.slots.len(), 1);
@@ -625,19 +665,27 @@ mod tests {
         let (_temp, journal) = temp_journal();
         let run = RunId::new(300);
 
-        let events: Vec<JournalEvent> = (0..5).map(|i| {
-            JournalEvent::StepStarted {
+        let events: Vec<JournalEvent> = (0..5)
+            .map(|i| JournalEvent::StepStarted {
                 run,
                 seq: EventSeq::new(i),
                 step: StepIdx::new(i as u16),
-            }
-        }).collect();
-        journal.append_strict_batch(&events).expect("batch should succeed");
+            })
+            .collect();
+        journal
+            .append_strict_batch(&events)
+            .expect("batch should succeed");
 
         let replayed = journal.events_for_run(run).expect("replay should succeed");
         assert_eq!(replayed.len(), 5);
         for (i, event) in replayed.iter().enumerate() {
-            assert_eq!(event.seq().get(), i as u64, "event at index {} should have seq {}", i, i);
+            assert_eq!(
+                event.seq().get(),
+                i as u64,
+                "event at index {} should have seq {}",
+                i,
+                i
+            );
         }
     }
 
@@ -663,7 +711,9 @@ mod tests {
     #[test]
     fn events_for_run_returns_empty_for_unknown_run() {
         let (_temp, journal) = temp_journal();
-        let result = journal.events_for_run(RunId::new(99999)).expect("replay should succeed");
+        let result = journal
+            .events_for_run(RunId::new(99999))
+            .expect("replay should succeed");
         assert_eq!(result.len(), 0, "unknown run should have zero events");
     }
 
@@ -677,7 +727,9 @@ mod tests {
         let run = RunId::new(500);
         let event = make_event(run, 0);
 
-        journal.append_strict(&event).expect("first append should succeed");
+        journal
+            .append_strict(&event)
+            .expect("first append should succeed");
         let result = journal.append_strict(&event);
         assert!(
             matches!(result, Err(JournalError::DuplicateEvent { .. })),
@@ -692,7 +744,9 @@ mod tests {
         let run = RunId::new(600);
         let event = make_event(run, 0);
 
-        journal.append_journaled(&event).expect("append_journaled should succeed");
+        journal
+            .append_journaled(&event)
+            .expect("append_journaled should succeed");
         let replayed = journal.events_for_run(run).expect("replay should succeed");
         assert_eq!(replayed.len(), 1);
         assert_eq!(replayed[0], event);
@@ -711,7 +765,9 @@ mod tests {
                 result: SlotIdx::new(0),
             },
         ];
-        journal.append_strict_batch(&events).expect("batch should succeed");
+        journal
+            .append_strict_batch(&events)
+            .expect("batch should succeed");
         let replayed = journal.events_for_run(run).expect("replay should succeed");
         assert_eq!(replayed.len(), 3);
         assert_eq!(replayed[0], events[0]);
@@ -772,20 +828,69 @@ mod tests {
         let digest = WorkflowDigest::from_bytes([0xBB; DIGEST_BYTES]);
 
         let events = [
-            JournalEvent::RunAccepted { run, seq: EventSeq::new(0), workflow: digest },
-            JournalEvent::StepStarted { run, seq: EventSeq::new(1), step: StepIdx::new(0) },
-            JournalEvent::ActionScheduled { run, seq: EventSeq::new(2), step: StepIdx::new(0), action: vb_core::ActionId::new(1) },
-            JournalEvent::SlotWrittenEvent { run, seq: EventSeq::new(3), slot: SlotIdx::new(0), value: None },
-            JournalEvent::ActionCompletedEvent { run, seq: EventSeq::new(4), step: StepIdx::new(0), action: vb_core::ActionId::new(1) },
-            JournalEvent::ActionFailedEvent { run, seq: EventSeq::new(5), step: StepIdx::new(1), action: vb_core::ActionId::new(2) },
-            JournalEvent::WaitScheduledEvent { run, seq: EventSeq::new(6), step: StepIdx::new(1) },
-            JournalEvent::AskScheduledEvent { run, seq: EventSeq::new(7), step: StepIdx::new(2) },
-            JournalEvent::AskAnsweredEvent { run, seq: EventSeq::new(8), step: StepIdx::new(2) },
-            JournalEvent::RetryScheduledEvent { run, seq: EventSeq::new(9), step: StepIdx::new(1) },
-            JournalEvent::RunCancelled { run, seq: EventSeq::new(10) },
+            JournalEvent::RunAccepted {
+                run,
+                seq: EventSeq::new(0),
+                workflow: digest,
+            },
+            JournalEvent::StepStarted {
+                run,
+                seq: EventSeq::new(1),
+                step: StepIdx::new(0),
+            },
+            JournalEvent::ActionScheduled {
+                run,
+                seq: EventSeq::new(2),
+                step: StepIdx::new(0),
+                action: vb_core::ActionId::new(1),
+            },
+            JournalEvent::SlotWrittenEvent {
+                run,
+                seq: EventSeq::new(3),
+                slot: SlotIdx::new(0),
+                value: None,
+            },
+            JournalEvent::ActionCompletedEvent {
+                run,
+                seq: EventSeq::new(4),
+                step: StepIdx::new(0),
+                action: vb_core::ActionId::new(1),
+            },
+            JournalEvent::ActionFailedEvent {
+                run,
+                seq: EventSeq::new(5),
+                step: StepIdx::new(1),
+                action: vb_core::ActionId::new(2),
+            },
+            JournalEvent::WaitScheduledEvent {
+                run,
+                seq: EventSeq::new(6),
+                step: StepIdx::new(1),
+            },
+            JournalEvent::AskScheduledEvent {
+                run,
+                seq: EventSeq::new(7),
+                step: StepIdx::new(2),
+            },
+            JournalEvent::AskAnsweredEvent {
+                run,
+                seq: EventSeq::new(8),
+                step: StepIdx::new(2),
+            },
+            JournalEvent::RetryScheduledEvent {
+                run,
+                seq: EventSeq::new(9),
+                step: StepIdx::new(1),
+            },
+            JournalEvent::RunCancelled {
+                run,
+                seq: EventSeq::new(10),
+            },
         ];
 
-        journal.append_strict_batch(&events).expect("batch should succeed");
+        journal
+            .append_strict_batch(&events)
+            .expect("batch should succeed");
         let replayed = journal.events_for_run(run).expect("replay should succeed");
         assert_eq!(replayed.len(), events.len());
         for (i, (original, replayed_event)) in events.iter().zip(replayed.iter()).enumerate() {
@@ -824,7 +929,9 @@ mod tests {
             digest,
             source: source.clone(),
         };
-        journal.put_workflow_source(&record).expect("put should succeed for large valid payload");
+        journal
+            .put_workflow_source(&record)
+            .expect("put should succeed for large valid payload");
         let loaded = journal.workflow_source(digest).expect("get should succeed");
         let Some(found) = loaded else {
             panic!("large workflow source should be found");
@@ -840,12 +947,28 @@ mod tests {
         let source_b = b"workflow: b".to_vec();
         let digest_a = WorkflowDigest::from_bytes(blake3::hash(&source_a).into());
         let digest_b = WorkflowDigest::from_bytes(blake3::hash(&source_b).into());
-        let record_a = WorkflowSourceRecord { digest: digest_a, source: source_a.clone() };
-        let record_b = WorkflowSourceRecord { digest: digest_b, source: source_b.clone() };
-        journal.put_workflow_source(&record_a).expect("put A should succeed");
-        journal.put_workflow_source(&record_b).expect("put B should succeed");
-        let loaded_a = journal.workflow_source(digest_a).expect("get A should succeed").expect("A present");
-        let loaded_b = journal.workflow_source(digest_b).expect("get B should succeed").expect("B present");
+        let record_a = WorkflowSourceRecord {
+            digest: digest_a,
+            source: source_a.clone(),
+        };
+        let record_b = WorkflowSourceRecord {
+            digest: digest_b,
+            source: source_b.clone(),
+        };
+        journal
+            .put_workflow_source(&record_a)
+            .expect("put A should succeed");
+        journal
+            .put_workflow_source(&record_b)
+            .expect("put B should succeed");
+        let loaded_a = journal
+            .workflow_source(digest_a)
+            .expect("get A should succeed")
+            .expect("A present");
+        let loaded_b = journal
+            .workflow_source(digest_b)
+            .expect("get B should succeed")
+            .expect("B present");
         assert_eq!(loaded_a.source, source_a);
         assert_eq!(loaded_b.source, source_b);
     }
@@ -871,7 +994,8 @@ mod tests {
         }
         // Each snapshot should be retrievable independently
         for seq_val in 0u64..5 {
-            let loaded = journal.snapshot(run, EventSeq::new(seq_val))
+            let loaded = journal
+                .snapshot(run, EventSeq::new(seq_val))
                 .expect("get should succeed")
                 .expect("should be present");
             assert_eq!(loaded.seq, EventSeq::new(seq_val));
@@ -885,16 +1009,40 @@ mod tests {
         let run = RunId::new(101);
         let workflow = WorkflowDigest::from_bytes([0; DIGEST_BYTES]);
         // Write seq 0 and seq 5
-        let snap0 = RunSnapshot { run, seq: EventSeq::new(0), workflow, slots: vec![], taint: vec![] };
-        let snap5 = RunSnapshot { run, seq: EventSeq::new(5), workflow, slots: vec![5u8], taint: vec![] };
+        let snap0 = RunSnapshot {
+            run,
+            seq: EventSeq::new(0),
+            workflow,
+            slots: vec![],
+            taint: vec![],
+        };
+        let snap5 = RunSnapshot {
+            run,
+            seq: EventSeq::new(5),
+            workflow,
+            slots: vec![5u8],
+            taint: vec![],
+        };
         journal.put_snapshot(&snap0).expect("put 0");
         journal.put_snapshot(&snap5).expect("put 5");
         // seq 3 should be missing
-        let result = journal.snapshot(run, EventSeq::new(3)).expect("get should succeed");
+        let result = journal
+            .snapshot(run, EventSeq::new(3))
+            .expect("get should succeed");
         assert_eq!(result, None, "missing snapshot seq should return None");
         // but seq 0 and 5 are present
-        assert!(journal.snapshot(run, EventSeq::new(0)).expect("get 0").is_some());
-        assert!(journal.snapshot(run, EventSeq::new(5)).expect("get 5").is_some());
+        assert!(
+            journal
+                .snapshot(run, EventSeq::new(0))
+                .expect("get 0")
+                .is_some()
+        );
+        assert!(
+            journal
+                .snapshot(run, EventSeq::new(5))
+                .expect("get 5")
+                .is_some()
+        );
     }
 
     #[test]
@@ -904,9 +1052,18 @@ mod tests {
         let workflow = WorkflowDigest::from_bytes([0x55; DIGEST_BYTES]);
         let slots = vec![0xAB_u8; 4096];
         let taint = vec![0x01_u8; 4096];
-        let snapshot = RunSnapshot { run, seq: EventSeq::new(0), workflow, slots: slots.clone(), taint: taint.clone() };
+        let snapshot = RunSnapshot {
+            run,
+            seq: EventSeq::new(0),
+            workflow,
+            slots: slots.clone(),
+            taint: taint.clone(),
+        };
         journal.put_snapshot(&snapshot).expect("put should succeed");
-        let loaded = journal.snapshot(run, EventSeq::new(0)).expect("get should succeed").expect("present");
+        let loaded = journal
+            .snapshot(run, EventSeq::new(0))
+            .expect("get should succeed")
+            .expect("present");
         assert_eq!(loaded.slots, slots);
         assert_eq!(loaded.taint, taint);
     }
@@ -936,7 +1093,10 @@ mod tests {
             accepted_at_ms: 100,
         };
         journal.put_run_header(&updated).expect("put updated");
-        let loaded = journal.run_header(run).expect("get should succeed").expect("present");
+        let loaded = journal
+            .run_header(run)
+            .expect("get should succeed")
+            .expect("present");
         assert_eq!(loaded.status, 3, "status should be updated to 3");
         assert_eq!(loaded.run, run);
     }
@@ -974,9 +1134,15 @@ mod tests {
         let (_temp, journal) = temp_journal();
         let run = RunId::new(1100);
         let event = make_event(run, 0);
-        journal.append_queued_unpersisted(&event).expect("first append should succeed");
+        journal
+            .append_queued_unpersisted(&event)
+            .expect("first append should succeed");
         let result = journal.append_queued_unpersisted(&event);
-        assert!(result.is_ok(), "idempotent duplicate of same event should succeed, got {:?}", result);
+        assert!(
+            result.is_ok(),
+            "idempotent duplicate of same event should succeed, got {:?}",
+            result
+        );
     }
 
     #[test]
@@ -986,10 +1152,15 @@ mod tests {
         let event_a = make_event(run, 0);
         let mut event_b = make_event(run, 0);
         // Change the workflow digest so event_b differs
-        if let JournalEvent::RunAccepted { ref mut workflow, .. } = event_b {
+        if let JournalEvent::RunAccepted {
+            ref mut workflow, ..
+        } = event_b
+        {
             *workflow = WorkflowDigest::from_bytes([0xFF; DIGEST_BYTES]);
         }
-        journal.append_queued_unpersisted(&event_a).expect("first append should succeed");
+        journal
+            .append_queued_unpersisted(&event_a)
+            .expect("first append should succeed");
         let result = journal.append_queued_unpersisted(&event_b);
         assert!(
             matches!(result, Err(JournalError::DuplicateEvent { .. })),
@@ -1003,14 +1174,16 @@ mod tests {
         let (_temp, journal) = temp_journal();
         let run = RunId::new(1200);
         let count: u64 = 100;
-        let events: Vec<JournalEvent> = (0..count).map(|i| {
-            JournalEvent::StepStarted {
+        let events: Vec<JournalEvent> = (0..count)
+            .map(|i| JournalEvent::StepStarted {
                 run,
                 seq: EventSeq::new(i),
                 step: StepIdx::new(i as u16),
-            }
-        }).collect();
-        journal.append_strict_batch(&events).expect("batch should succeed");
+            })
+            .collect();
+        journal
+            .append_strict_batch(&events)
+            .expect("batch should succeed");
         let replayed = journal.events_for_run(run).expect("replay should succeed");
         assert_eq!(replayed.len(), count as usize);
         for (i, event) in replayed.iter().enumerate() {
@@ -1071,9 +1244,15 @@ mod tests {
         let run = RunId::new(4000);
         let step_a = StepIdx::new(1);
         let step_b = StepIdx::new(2);
-        journal.put_action_index(action1, run, step_a).expect("action idx A");
-        journal.put_action_index(action1, run, step_b).expect("action idx B");
-        journal.put_action_index(action2, run, step_a).expect("action idx C");
+        journal
+            .put_action_index(action1, run, step_a)
+            .expect("action idx A");
+        journal
+            .put_action_index(action1, run, step_b)
+            .expect("action idx B");
+        journal
+            .put_action_index(action2, run, step_a)
+            .expect("action idx C");
         let mut count = 0usize;
         for item in journal.index_action.iter() {
             let _ = item.key();
@@ -1094,11 +1273,17 @@ mod tests {
 
         let source = b"batch workflow".to_vec();
         let source_digest = WorkflowDigest::from_bytes(blake3::hash(&source).into());
-        let workflow_record = WorkflowSourceRecord { digest: source_digest, source };
+        let workflow_record = WorkflowSourceRecord {
+            digest: source_digest,
+            source,
+        };
 
         let ir = b"batch ir".to_vec();
         let ir_digest = WorkflowDigest::from_bytes(blake3::hash(&ir).into());
-        let ir_record = CompiledIrRecord { digest: ir_digest, ir };
+        let ir_record = CompiledIrRecord {
+            digest: ir_digest,
+            ir,
+        };
 
         let header = RunHeaderRecord {
             run,
@@ -1116,25 +1301,43 @@ mod tests {
 
         let payload = vec![0xBB];
         let blob_digest: [u8; DIGEST_BYTES] = blake3::hash(&payload).into();
-        let blob_record = BlobRecord { digest: blob_digest, bytes: payload };
+        let blob_record = BlobRecord {
+            digest: blob_digest,
+            bytes: payload,
+        };
 
         {
             let mut batch = journal.batch();
-            batch.put_workflow_source(&workflow_record).expect("batch workflow source");
-            batch.put_compiled_ir(&ir_record).expect("batch compiled ir");
+            batch
+                .put_workflow_source(&workflow_record)
+                .expect("batch workflow source");
+            batch
+                .put_compiled_ir(&ir_record)
+                .expect("batch compiled ir");
             batch.put_run_header(&header).expect("batch run header");
             batch.append_event(&event).expect("batch event");
             batch.put_blob(&blob_record).expect("batch blob");
-            batch.put_status_index(1, 100, run).expect("batch status idx");
-            batch.put_workflow_index(WorkflowId::new(42), run).expect("batch workflow idx");
-            batch.put_action_index(vb_core::ActionId::new(1), run, StepIdx::new(0)).expect("batch action idx");
+            batch
+                .put_status_index(1, 100, run)
+                .expect("batch status idx");
+            batch
+                .put_workflow_index(WorkflowId::new(42), run)
+                .expect("batch workflow idx");
+            batch
+                .put_action_index(vb_core::ActionId::new(1), run, StepIdx::new(0))
+                .expect("batch action idx");
             assert_eq!(batch.len(), 8, "batch should contain 8 operations");
             assert!(!batch.is_empty(), "batch should not be empty");
             batch.commit().expect("batch commit should succeed");
         }
 
         // Verify all keyspaces have the data
-        assert!(journal.workflow_source(source_digest).expect("get ws").is_some());
+        assert!(
+            journal
+                .workflow_source(source_digest)
+                .expect("get ws")
+                .is_some()
+        );
         assert!(journal.compiled_ir(ir_digest).expect("get ir").is_some());
         assert!(journal.run_header(run).expect("get header").is_some());
         let replayed = journal.events_for_run(run).expect("get events");
@@ -1147,7 +1350,10 @@ mod tests {
         let (_temp, journal) = temp_journal();
         let source = b"real content".to_vec();
         let wrong_digest = WorkflowDigest::from_bytes([0xFF; DIGEST_BYTES]);
-        let record = WorkflowSourceRecord { digest: wrong_digest, source };
+        let record = WorkflowSourceRecord {
+            digest: wrong_digest,
+            source,
+        };
         let mut batch = journal.batch();
         let result = batch.put_workflow_source(&record);
         assert!(
@@ -1162,7 +1368,10 @@ mod tests {
         let (_temp, journal) = temp_journal();
         let payload = vec![1, 2, 3];
         let wrong_digest: [u8; DIGEST_BYTES] = [0xFF; DIGEST_BYTES];
-        let record = BlobRecord { digest: wrong_digest, bytes: payload };
+        let record = BlobRecord {
+            digest: wrong_digest,
+            bytes: payload,
+        };
         let mut batch = journal.batch();
         let result = batch.put_blob(&record);
         assert!(
@@ -1194,7 +1403,9 @@ mod tests {
         };
         let batch = journal.batch();
         let mut batch = batch.strict();
-        batch.put_run_header(&header).expect("batch put should succeed");
+        batch
+            .put_run_header(&header)
+            .expect("batch put should succeed");
         batch.commit().expect("strict batch commit should succeed");
         assert!(journal.run_header(run).expect("get").is_some());
     }
@@ -1214,14 +1425,18 @@ mod tests {
     #[test]
     fn snapshot_returns_none_for_missing_run() {
         let (_temp, journal) = temp_journal();
-        let result = journal.snapshot(RunId::new(99999), EventSeq::new(0)).expect("lookup should succeed");
+        let result = journal
+            .snapshot(RunId::new(99999), EventSeq::new(0))
+            .expect("lookup should succeed");
         assert_eq!(result, None, "missing snapshot should return None");
     }
 
     #[test]
     fn blob_returns_none_for_unwritten_digest() {
         let (_temp, journal) = temp_journal();
-        let result = journal.blob([0x99; DIGEST_BYTES]).expect("lookup should succeed");
+        let result = journal
+            .blob([0x99; DIGEST_BYTES])
+            .expect("lookup should succeed");
         assert_eq!(result, None, "missing blob should return None");
     }
 
@@ -1234,9 +1449,17 @@ mod tests {
         let (_temp, journal) = temp_journal();
         let ir = vec![0x42u8; 65536];
         let digest = WorkflowDigest::from_bytes(blake3::hash(&ir).into());
-        let record = CompiledIrRecord { digest, ir: ir.clone() };
-        journal.put_compiled_ir(&record).expect("put should succeed");
-        let loaded = journal.compiled_ir(digest).expect("get should succeed").expect("present");
+        let record = CompiledIrRecord {
+            digest,
+            ir: ir.clone(),
+        };
+        journal
+            .put_compiled_ir(&record)
+            .expect("put should succeed");
+        let loaded = journal
+            .compiled_ir(digest)
+            .expect("get should succeed")
+            .expect("present");
         assert_eq!(loaded.ir, ir);
     }
 
@@ -1247,7 +1470,9 @@ mod tests {
     #[test]
     fn persist_strict_succeeds_without_prior_writes() {
         let (_temp, journal) = temp_journal();
-        journal.persist_strict().expect("persist_strict on idle journal should succeed");
+        journal
+            .persist_strict()
+            .expect("persist_strict on idle journal should succeed");
     }
 
     // =========================================================================
@@ -1264,7 +1489,9 @@ mod tests {
             seq: EventSeq::new(0),
             workflow: digest,
         };
-        journal.append_strict(&event).expect("append should succeed");
+        journal
+            .append_strict(&event)
+            .expect("append should succeed");
         let replayed = journal.events_for_run(run).expect("replay should succeed");
         assert_eq!(replayed.len(), 1, "should have exactly one event");
         assert_eq!(replayed[0], event, "replayed event should match original");
@@ -1333,7 +1560,10 @@ mod tests {
         let source = journal
             .workflow_source(WorkflowDigest::from_bytes([0; DIGEST_BYTES]))
             .expect("workflow_source on empty journal should succeed");
-        assert_eq!(source, None, "empty journal should return None for workflow source");
+        assert_eq!(
+            source, None,
+            "empty journal should return None for workflow source"
+        );
 
         let ir = journal
             .compiled_ir(WorkflowDigest::from_bytes([0; DIGEST_BYTES]))
@@ -1343,7 +1573,10 @@ mod tests {
         let header = journal
             .run_header(RunId::new(1))
             .expect("run_header on empty journal should succeed");
-        assert_eq!(header, None, "empty journal should return None for run header");
+        assert_eq!(
+            header, None,
+            "empty journal should return None for run header"
+        );
 
         let snap = journal
             .snapshot(RunId::new(1), EventSeq::new(0))
@@ -1478,7 +1711,9 @@ mod tests {
             taint: taint.clone(),
         };
 
-        journal.put_snapshot(&snapshot).expect("put_snapshot should succeed");
+        journal
+            .put_snapshot(&snapshot)
+            .expect("put_snapshot should succeed");
         let loaded = journal
             .snapshot(run, EventSeq::new(42))
             .expect("snapshot get should succeed")
@@ -1504,7 +1739,9 @@ mod tests {
             taint: vec![],
         };
 
-        journal.put_snapshot(&snapshot).expect("put_snapshot should succeed");
+        journal
+            .put_snapshot(&snapshot)
+            .expect("put_snapshot should succeed");
         let loaded = journal
             .snapshot(run, EventSeq::new(0))
             .expect("snapshot get should succeed")
@@ -1596,13 +1833,35 @@ mod tests {
         let digest = WorkflowDigest::from_bytes([0x11; DIGEST_BYTES]);
 
         let events = [
-            JournalEvent::RunAccepted { run: run_a, seq: EventSeq::new(0), workflow: digest },
-            JournalEvent::RunAccepted { run: run_b, seq: EventSeq::new(0), workflow: digest },
-            JournalEvent::StepStarted { run: run_a, seq: EventSeq::new(1), step: StepIdx::new(0) },
-            JournalEvent::StepStarted { run: run_b, seq: EventSeq::new(1), step: StepIdx::new(0) },
-            JournalEvent::StepStarted { run: run_a, seq: EventSeq::new(2), step: StepIdx::new(1) },
+            JournalEvent::RunAccepted {
+                run: run_a,
+                seq: EventSeq::new(0),
+                workflow: digest,
+            },
+            JournalEvent::RunAccepted {
+                run: run_b,
+                seq: EventSeq::new(0),
+                workflow: digest,
+            },
+            JournalEvent::StepStarted {
+                run: run_a,
+                seq: EventSeq::new(1),
+                step: StepIdx::new(0),
+            },
+            JournalEvent::StepStarted {
+                run: run_b,
+                seq: EventSeq::new(1),
+                step: StepIdx::new(0),
+            },
+            JournalEvent::StepStarted {
+                run: run_a,
+                seq: EventSeq::new(2),
+                step: StepIdx::new(1),
+            },
         ];
-        journal.append_strict_batch(&events).expect("batch should succeed");
+        journal
+            .append_strict_batch(&events)
+            .expect("batch should succeed");
 
         let replayed_a = journal.events_for_run(run_a).expect("replay A");
         let replayed_b = journal.events_for_run(run_b).expect("replay B");
@@ -1625,7 +1884,9 @@ mod tests {
         let (_temp, journal) = temp_journal();
         let run = RunId::new(10100);
         let event = make_event(run, 0);
-        journal.append_strict_batch(&[event.clone()]).expect("single-element batch");
+        journal
+            .append_strict_batch(&[event.clone()])
+            .expect("single-element batch");
         let replayed = journal.events_for_run(run).expect("replay");
         assert_eq!(replayed.len(), 1);
         assert_eq!(replayed[0], event);
@@ -1640,7 +1901,9 @@ mod tests {
         let (_temp, journal) = temp_journal();
         let run = RunId::new(10200);
         let event = make_event(run, 0);
-        journal.append_strict_batch(&[event.clone()]).expect("batch commit");
+        journal
+            .append_strict_batch(&[event.clone()])
+            .expect("batch commit");
         let result = journal.append_strict(&event);
         assert!(
             matches!(result, Err(JournalError::DuplicateEvent { .. })),
@@ -1676,11 +1939,17 @@ mod tests {
                 seq: EventSeq::new(seq),
                 step: StepIdx::new(seq as u16),
             };
-            journal.append_unpersisted(&event).expect("append should succeed");
+            journal
+                .append_unpersisted(&event)
+                .expect("append should succeed");
         }
 
         let replayed = journal.events_for_run(run).expect("replay");
-        assert_eq!(replayed.len(), 3, "should replay 3 events starting from snapshot seq");
+        assert_eq!(
+            replayed.len(),
+            3,
+            "should replay 3 events starting from snapshot seq"
+        );
         assert_eq!(replayed[0].seq().get(), 2);
         assert_eq!(replayed[1].seq().get(), 3);
         assert_eq!(replayed[2].seq().get(), 4);
@@ -1695,16 +1964,28 @@ mod tests {
         let (_temp, journal) = temp_journal();
         let ir_v1 = b"compiled-v1".to_vec();
         let digest_v1 = WorkflowDigest::from_bytes(blake3::hash(&ir_v1).into());
-        let record_v1 = CompiledIrRecord { digest: digest_v1, ir: ir_v1.clone() };
+        let record_v1 = CompiledIrRecord {
+            digest: digest_v1,
+            ir: ir_v1.clone(),
+        };
         journal.put_compiled_ir(&record_v1).expect("put v1");
 
         let ir_v2 = b"compiled-v2".to_vec();
         let digest_v2 = WorkflowDigest::from_bytes(blake3::hash(&ir_v2).into());
-        let record_v2 = CompiledIrRecord { digest: digest_v2, ir: ir_v2.clone() };
+        let record_v2 = CompiledIrRecord {
+            digest: digest_v2,
+            ir: ir_v2.clone(),
+        };
         journal.put_compiled_ir(&record_v2).expect("put v2");
 
-        let loaded_v1 = journal.compiled_ir(digest_v1).expect("get v1").expect("present");
-        let loaded_v2 = journal.compiled_ir(digest_v2).expect("get v2").expect("present");
+        let loaded_v1 = journal
+            .compiled_ir(digest_v1)
+            .expect("get v1")
+            .expect("present");
+        let loaded_v2 = journal
+            .compiled_ir(digest_v2)
+            .expect("get v2")
+            .expect("present");
         assert_eq!(loaded_v1.ir, ir_v1);
         assert_eq!(loaded_v2.ir, ir_v2);
     }
@@ -1720,7 +2001,9 @@ mod tests {
         for i in 0u64..count {
             let run = RunId::new(11000_u64.saturating_add(i));
             let event = make_event(run, 0);
-            journal.append_unpersisted(&event).expect("append should succeed");
+            journal
+                .append_unpersisted(&event)
+                .expect("append should succeed");
         }
 
         for i in 0u64..count {
@@ -1749,7 +2032,9 @@ mod tests {
             })
             .collect();
 
-        journal.append_strict_batch(&events).expect("batch should succeed");
+        journal
+            .append_strict_batch(&events)
+            .expect("batch should succeed");
         let replayed = journal.events_for_run(run).expect("replay should succeed");
         assert_eq!(replayed.len(), count as usize);
         for (i, event) in replayed.iter().enumerate() {
@@ -1767,10 +2052,18 @@ mod tests {
         let run = RunId::new(13000);
         let digest = WorkflowDigest::from_bytes([0x44; DIGEST_BYTES]);
 
-        let e0 = JournalEvent::RunAccepted { run, seq: EventSeq::new(0), workflow: digest };
+        let e0 = JournalEvent::RunAccepted {
+            run,
+            seq: EventSeq::new(0),
+            workflow: digest,
+        };
         journal.append_unpersisted(&e0).expect("append seq 0");
 
-        let e1 = JournalEvent::StepStarted { run, seq: EventSeq::new(1), step: StepIdx::new(0) };
+        let e1 = JournalEvent::StepStarted {
+            run,
+            seq: EventSeq::new(1),
+            step: StepIdx::new(0),
+        };
         journal.append_unpersisted(&e1).expect("append seq 1");
 
         let replayed = journal.events_for_run(run).expect("replay");
@@ -1788,9 +2081,15 @@ mod tests {
         let (_temp, journal) = temp_journal();
         let payload = vec![0xFE_u8; 16384];
         let digest: [u8; DIGEST_BYTES] = blake3::hash(&payload).into();
-        let record = BlobRecord { digest, bytes: payload.clone() };
+        let record = BlobRecord {
+            digest,
+            bytes: payload.clone(),
+        };
         journal.put_blob(&record).expect("put should succeed");
-        let loaded = journal.blob(digest).expect("get should succeed").expect("present");
+        let loaded = journal
+            .blob(digest)
+            .expect("get should succeed")
+            .expect("present");
         assert_eq!(loaded.bytes, payload);
     }
 
@@ -1806,11 +2105,17 @@ mod tests {
 
         let mut batch = journal.batch();
         batch.append_event(&event).expect("first batch append");
-        batch.append_event(&event).expect("second batch append in same batch");
+        batch
+            .append_event(&event)
+            .expect("second batch append in same batch");
         batch.commit().expect("commit should succeed");
 
         let replayed = journal.events_for_run(run).expect("replay");
-        assert_eq!(replayed.len(), 1, "duplicate in batch should result in single event");
+        assert_eq!(
+            replayed.len(),
+            1,
+            "duplicate in batch should result in single event"
+        );
     }
 
     // =========================================================================
@@ -1836,7 +2141,10 @@ mod tests {
         batch.append_event(&event).expect("batch event");
         batch.commit().expect("commit");
 
-        let loaded_snap = journal.snapshot(run, EventSeq::new(0)).expect("get snapshot").expect("present");
+        let loaded_snap = journal
+            .snapshot(run, EventSeq::new(0))
+            .expect("get snapshot")
+            .expect("present");
         assert_eq!(loaded_snap.slots, vec![1, 2, 3]);
         let replayed = journal.events_for_run(run).expect("replay");
         assert_eq!(replayed.len(), 1);
@@ -1851,9 +2159,17 @@ mod tests {
         let (_temp, journal) = temp_journal();
         let source = vec![0x42u8; 131072];
         let digest = WorkflowDigest::from_bytes(blake3::hash(&source).into());
-        let record = WorkflowSourceRecord { digest, source: source.clone() };
-        journal.put_workflow_source(&record).expect("put should succeed for 128 KiB");
-        let loaded = journal.workflow_source(digest).expect("get").expect("present");
+        let record = WorkflowSourceRecord {
+            digest,
+            source: source.clone(),
+        };
+        journal
+            .put_workflow_source(&record)
+            .expect("put should succeed for 128 KiB");
+        let loaded = journal
+            .workflow_source(digest)
+            .expect("get")
+            .expect("present");
         assert_eq!(loaded.source.len(), source.len());
     }
 
@@ -1902,9 +2218,18 @@ mod tests {
         let run = RunId::new(16000);
         let workflow = WorkflowDigest::from_bytes([0x66; DIGEST_BYTES]);
         let slots = vec![0x01_u8; 256];
-        let snapshot = RunSnapshot { run, seq: EventSeq::new(10), workflow, slots: slots.clone(), taint: vec![] };
+        let snapshot = RunSnapshot {
+            run,
+            seq: EventSeq::new(10),
+            workflow,
+            slots: slots.clone(),
+            taint: vec![],
+        };
         journal.put_snapshot(&snapshot).expect("put");
-        let loaded = journal.snapshot(run, EventSeq::new(10)).expect("get").expect("present");
+        let loaded = journal
+            .snapshot(run, EventSeq::new(10))
+            .expect("get")
+            .expect("present");
         assert_eq!(loaded.slots, slots);
         assert!(loaded.taint.is_empty());
     }
@@ -1919,9 +2244,18 @@ mod tests {
         let run = RunId::new(16001);
         let workflow = WorkflowDigest::from_bytes([0x77; DIGEST_BYTES]);
         let taint = vec![0xFF_u8; 128];
-        let snapshot = RunSnapshot { run, seq: EventSeq::new(5), workflow, slots: vec![], taint: taint.clone() };
+        let snapshot = RunSnapshot {
+            run,
+            seq: EventSeq::new(5),
+            workflow,
+            slots: vec![],
+            taint: taint.clone(),
+        };
         journal.put_snapshot(&snapshot).expect("put");
-        let loaded = journal.snapshot(run, EventSeq::new(5)).expect("get").expect("present");
+        let loaded = journal
+            .snapshot(run, EventSeq::new(5))
+            .expect("get")
+            .expect("present");
         assert!(loaded.slots.is_empty());
         assert_eq!(loaded.taint, taint);
     }
@@ -1935,7 +2269,9 @@ mod tests {
         let (_temp, journal) = temp_journal();
         let run = RunId::new(17000);
         let event = make_event(run, 0);
-        journal.append_queued_unpersisted(&event).expect("append should succeed");
+        journal
+            .append_queued_unpersisted(&event)
+            .expect("append should succeed");
         let replayed = journal.events_for_run(run).expect("replay");
         assert_eq!(replayed.len(), 1);
         assert_eq!(replayed[0], event);
@@ -1956,7 +2292,9 @@ mod tests {
                 seq: EventSeq::new(seq),
                 step: StepIdx::new(seq as u16),
             };
-            journal.append_journaled(&event).expect("append_journaled should succeed");
+            journal
+                .append_journaled(&event)
+                .expect("append_journaled should succeed");
         }
 
         let replayed = journal.events_for_run(run).expect("replay");
@@ -1976,13 +2314,25 @@ mod tests {
         let run = RunId::new(19000);
         let digest = WorkflowDigest::from_bytes([0x88; DIGEST_BYTES]);
 
-        let e0 = JournalEvent::RunAccepted { run, seq: EventSeq::new(0), workflow: digest };
+        let e0 = JournalEvent::RunAccepted {
+            run,
+            seq: EventSeq::new(0),
+            workflow: digest,
+        };
         journal.append_strict(&e0).expect("strict append");
 
-        let e1 = JournalEvent::StepStarted { run, seq: EventSeq::new(1), step: StepIdx::new(0) };
+        let e1 = JournalEvent::StepStarted {
+            run,
+            seq: EventSeq::new(1),
+            step: StepIdx::new(0),
+        };
         journal.append_journaled(&e1).expect("journaled append");
 
-        let e2 = JournalEvent::StepStarted { run, seq: EventSeq::new(2), step: StepIdx::new(1) };
+        let e2 = JournalEvent::StepStarted {
+            run,
+            seq: EventSeq::new(2),
+            step: StepIdx::new(1),
+        };
         journal.append_strict(&e2).expect("strict append 2");
 
         let replayed = journal.events_for_run(run).expect("replay");

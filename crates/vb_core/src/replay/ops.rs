@@ -355,9 +355,7 @@ mod tests {
             ReplayError::NonDeterministicStep { step, .. } => {
                 CoreError::InvalidProgramCounter { step }
             }
-            ReplayError::Internal { reason } => {
-                CoreError::InternalInvariantViolation { reason }
-            }
+            ReplayError::Internal { reason } => CoreError::InternalInvariantViolation { reason },
         }
     }
 
@@ -367,7 +365,9 @@ mod tests {
     fn expr_stack_push_pop_roundtrip() -> Result<(), CoreError> {
         let mut stack = ReplayExprStack::new(3).map_err(replay_err_to_core)?;
         stack.push(SlotValue::I64(42)).map_err(replay_err_to_core)?;
-        stack.push(SlotValue::Bool(true)).map_err(replay_err_to_core)?;
+        stack
+            .push(SlotValue::Bool(true))
+            .map_err(replay_err_to_core)?;
 
         let second = stack.pop().map_err(replay_err_to_core)?;
         let first = stack.pop().map_err(replay_err_to_core)?;
@@ -389,10 +389,7 @@ mod tests {
     fn expr_stack_pop_empty_returns_error() -> Result<(), CoreError> {
         let mut stack = ReplayExprStack::new(4).map_err(replay_err_to_core)?;
         let result = stack.pop();
-        assert!(
-            result.is_err(),
-            "popping from empty stack must fail"
-        );
+        assert!(result.is_err(), "popping from empty stack must fail");
         Ok(())
     }
 
@@ -406,15 +403,14 @@ mod tests {
 
     #[test]
     fn expr_stack_max_capacity_boundary() -> Result<(), CoreError> {
-        let mut stack =
-            ReplayExprStack::new(MAX_EXPRESSION_STACK).map_err(replay_err_to_core)?;
+        let mut stack = ReplayExprStack::new(MAX_EXPRESSION_STACK).map_err(replay_err_to_core)?;
         for i in 0..64u64 {
             stack
-                .push(SlotValue::I64(
-                    i64::try_from(i).map_err(|_| CoreError::InternalInvariantViolation {
+                .push(SlotValue::I64(i64::try_from(i).map_err(|_| {
+                    CoreError::InternalInvariantViolation {
                         reason: "conversion failed",
-                    })?,
-                ))
+                    }
+                })?))
                 .map_err(replay_err_to_core)?;
         }
         assert!(stack.push(SlotValue::Null).is_err());
@@ -456,7 +452,9 @@ mod tests {
     #[test]
     fn pop_i64_pair_rejects_non_i64_left() -> Result<(), CoreError> {
         let mut stack = ReplayExprStack::new(4).map_err(replay_err_to_core)?;
-        stack.push(SlotValue::Bool(true)).map_err(replay_err_to_core)?;
+        stack
+            .push(SlotValue::Bool(true))
+            .map_err(replay_err_to_core)?;
         stack.push(SlotValue::I64(3)).map_err(replay_err_to_core)?;
 
         let result = pop_i64_pair(&mut stack);
@@ -471,7 +469,9 @@ mod tests {
     fn pop_i64_pair_rejects_non_i64_right() -> Result<(), CoreError> {
         let mut stack = ReplayExprStack::new(4).map_err(replay_err_to_core)?;
         stack.push(SlotValue::I64(3)).map_err(replay_err_to_core)?;
-        stack.push(SlotValue::Bool(false)).map_err(replay_err_to_core)?;
+        stack
+            .push(SlotValue::Bool(false))
+            .map_err(replay_err_to_core)?;
 
         let result = pop_i64_pair(&mut stack);
         assert!(
@@ -528,8 +528,7 @@ mod tests {
         stack
             .push(SlotValue::I64(i64::MAX))
             .map_err(replay_err_to_core)?;
-        let result =
-            eval_replay_op(&plan, &run, &mut store, ExprOp::Add, &mut stack, &mut taint);
+        let result = eval_replay_op(&plan, &run, &mut store, ExprOp::Add, &mut stack, &mut taint);
         assert!(
             matches!(result, Err(ReplayError::ExpressionEvalFailed { .. })),
             "i64::MAX + i64::MAX must overflow"
@@ -545,7 +544,9 @@ mod tests {
         let mut stack = ReplayExprStack::new(4).map_err(replay_err_to_core)?;
         let mut taint = Taint::Clean;
 
-        stack.push(SlotValue::I64(100)).map_err(replay_err_to_core)?;
+        stack
+            .push(SlotValue::I64(100))
+            .map_err(replay_err_to_core)?;
         stack.push(SlotValue::I64(37)).map_err(replay_err_to_core)?;
         eval_replay_op(&plan, &run, &mut store, ExprOp::Sub, &mut stack, &mut taint)
             .map_err(replay_err_to_core)?;
@@ -571,8 +572,7 @@ mod tests {
             .push(SlotValue::I64(i64::MIN))
             .map_err(replay_err_to_core)?;
         stack.push(SlotValue::I64(1)).map_err(replay_err_to_core)?;
-        let result =
-            eval_replay_op(&plan, &run, &mut store, ExprOp::Sub, &mut stack, &mut taint);
+        let result = eval_replay_op(&plan, &run, &mut store, ExprOp::Sub, &mut stack, &mut taint);
         assert!(
             matches!(result, Err(ReplayError::ExpressionEvalFailed { .. })),
             "i64::MIN - 1 must underflow"
@@ -614,8 +614,7 @@ mod tests {
             .push(SlotValue::I64(i64::MAX))
             .map_err(replay_err_to_core)?;
         stack.push(SlotValue::I64(2)).map_err(replay_err_to_core)?;
-        let result =
-            eval_replay_op(&plan, &run, &mut store, ExprOp::Mul, &mut stack, &mut taint);
+        let result = eval_replay_op(&plan, &run, &mut store, ExprOp::Mul, &mut stack, &mut taint);
         assert!(
             matches!(result, Err(ReplayError::ExpressionEvalFailed { .. })),
             "i64::MAX * 2 must overflow"
@@ -655,8 +654,7 @@ mod tests {
 
         stack.push(SlotValue::I64(10)).map_err(replay_err_to_core)?;
         stack.push(SlotValue::I64(0)).map_err(replay_err_to_core)?;
-        let result =
-            eval_replay_op(&plan, &run, &mut store, ExprOp::Div, &mut stack, &mut taint);
+        let result = eval_replay_op(&plan, &run, &mut store, ExprOp::Div, &mut stack, &mut taint);
         assert!(
             matches!(result, Err(ReplayError::ExpressionEvalFailed { .. })),
             "division by zero must fail"
@@ -675,11 +673,8 @@ mod tests {
         stack
             .push(SlotValue::I64(i64::MIN))
             .map_err(replay_err_to_core)?;
-        stack
-            .push(SlotValue::I64(-1))
-            .map_err(replay_err_to_core)?;
-        let result =
-            eval_replay_op(&plan, &run, &mut store, ExprOp::Add, &mut stack, &mut taint);
+        stack.push(SlotValue::I64(-1)).map_err(replay_err_to_core)?;
+        let result = eval_replay_op(&plan, &run, &mut store, ExprOp::Add, &mut stack, &mut taint);
         assert!(
             matches!(result, Err(ReplayError::ExpressionEvalFailed { .. })),
             "i64::MIN + (-1) must overflow"
@@ -1015,8 +1010,15 @@ mod tests {
 
         stack.push(SlotValue::I64(1)).map_err(replay_err_to_core)?;
         stack.push(SlotValue::I64(2)).map_err(replay_err_to_core)?;
-        eval_replay_op(&plan, &run, &mut store, ExprOp::NotEq, &mut stack, &mut taint)
-            .map_err(replay_err_to_core)?;
+        eval_replay_op(
+            &plan,
+            &run,
+            &mut store,
+            ExprOp::NotEq,
+            &mut stack,
+            &mut taint,
+        )
+        .map_err(replay_err_to_core)?;
 
         let result = stack.pop().map_err(replay_err_to_core)?;
         if result != SlotValue::Bool(true) {
@@ -1189,8 +1191,7 @@ mod tests {
         stack
             .push(SlotValue::Bool(true))
             .map_err(replay_err_to_core)?;
-        let result =
-            eval_replay_op(&plan, &run, &mut store, ExprOp::And, &mut stack, &mut taint);
+        let result = eval_replay_op(&plan, &run, &mut store, ExprOp::And, &mut stack, &mut taint);
         assert!(
             matches!(result, Err(ReplayError::ExpressionEvalFailed { .. })),
             "And with non-bool left must fail"
@@ -1210,8 +1211,7 @@ mod tests {
             .push(SlotValue::Bool(true))
             .map_err(replay_err_to_core)?;
         stack.push(SlotValue::I64(1)).map_err(replay_err_to_core)?;
-        let result =
-            eval_replay_op(&plan, &run, &mut store, ExprOp::Or, &mut stack, &mut taint);
+        let result = eval_replay_op(&plan, &run, &mut store, ExprOp::Or, &mut stack, &mut taint);
         assert!(
             matches!(result, Err(ReplayError::ExpressionEvalFailed { .. })),
             "Or with non-bool right must fail"
@@ -1228,8 +1228,7 @@ mod tests {
         let mut taint = Taint::Clean;
 
         stack.push(SlotValue::I64(1)).map_err(replay_err_to_core)?;
-        let result =
-            eval_replay_op(&plan, &run, &mut store, ExprOp::Not, &mut stack, &mut taint);
+        let result = eval_replay_op(&plan, &run, &mut store, ExprOp::Not, &mut stack, &mut taint);
         assert!(
             matches!(result, Err(ReplayError::ExpressionEvalFailed { .. })),
             "Not on non-bool must fail"
@@ -1427,8 +1426,10 @@ mod tests {
     fn eval_load_accessor_object_field() -> Result<(), CoreError> {
         let field_sym = SymbolId::new(0);
         let mut store = ValueStore::new();
-        let fields =
-            vec![crate::value_store::ObjectField::clean(field_sym, SlotValue::I64(42))];
+        let fields = vec![crate::value_store::ObjectField::clean(
+            field_sym,
+            SlotValue::I64(42),
+        )];
         let obj_handle = store.insert_object(fields.into_boxed_slice())?;
 
         let plan = make_plan(
@@ -1693,9 +1694,8 @@ mod tests {
         run.write_slot(SlotIdx::new(1), SlotValue::I64(27))?;
         let mut store = ValueStore::new();
 
-        let (value, _taint) =
-            eval_expr_for_replay(&plan, &run, &mut store, ExprIdx::new(0))
-                .map_err(replay_err_to_core)?;
+        let (value, _taint) = eval_expr_for_replay(&plan, &run, &mut store, ExprIdx::new(0))
+            .map_err(replay_err_to_core)?;
 
         if value != SlotValue::I64(42) {
             return Err(CoreError::InternalInvariantViolation {
@@ -1751,9 +1751,8 @@ mod tests {
         let run = make_frame(2)?;
         let mut store = ValueStore::new();
 
-        let (value, _taint) =
-            eval_expr_for_replay(&plan, &run, &mut store, ExprIdx::new(0))
-                .map_err(replay_err_to_core)?;
+        let (value, _taint) = eval_expr_for_replay(&plan, &run, &mut store, ExprIdx::new(0))
+            .map_err(replay_err_to_core)?;
 
         if value != SlotValue::Bool(true) {
             return Err(CoreError::InternalInvariantViolation {
@@ -1840,11 +1839,8 @@ mod tests {
         stack
             .push(SlotValue::I64(i64::MIN))
             .map_err(replay_err_to_core)?;
-        stack
-            .push(SlotValue::I64(-1))
-            .map_err(replay_err_to_core)?;
-        let result =
-            eval_replay_op(&plan, &run, &mut store, ExprOp::Div, &mut stack, &mut taint);
+        stack.push(SlotValue::I64(-1)).map_err(replay_err_to_core)?;
+        let result = eval_replay_op(&plan, &run, &mut store, ExprOp::Div, &mut stack, &mut taint);
         assert!(
             matches!(result, Err(ReplayError::ExpressionEvalFailed { .. })),
             "BLACKHAT BH-OPS-01: i64::MIN / -1 must overflow"
@@ -1865,11 +1861,8 @@ mod tests {
         stack
             .push(SlotValue::I64(i64::MIN))
             .map_err(replay_err_to_core)?;
-        stack
-            .push(SlotValue::I64(1))
-            .map_err(replay_err_to_core)?;
-        let result =
-            eval_replay_op(&plan, &run, &mut store, ExprOp::Sub, &mut stack, &mut taint);
+        stack.push(SlotValue::I64(1)).map_err(replay_err_to_core)?;
+        let result = eval_replay_op(&plan, &run, &mut store, ExprOp::Sub, &mut stack, &mut taint);
         assert!(
             matches!(result, Err(ReplayError::ExpressionEvalFailed { .. })),
             "BLACKHAT BH-OPS-02: i64::MIN - 1 must underflow"
@@ -1890,11 +1883,8 @@ mod tests {
         stack
             .push(SlotValue::I64(i64::MAX))
             .map_err(replay_err_to_core)?;
-        stack
-            .push(SlotValue::I64(1))
-            .map_err(replay_err_to_core)?;
-        let result =
-            eval_replay_op(&plan, &run, &mut store, ExprOp::Add, &mut stack, &mut taint);
+        stack.push(SlotValue::I64(1)).map_err(replay_err_to_core)?;
+        let result = eval_replay_op(&plan, &run, &mut store, ExprOp::Add, &mut stack, &mut taint);
         assert!(
             matches!(result, Err(ReplayError::ExpressionEvalFailed { .. })),
             "BLACKHAT BH-OPS-03: i64::MAX + 1 must overflow"
@@ -1915,11 +1905,8 @@ mod tests {
         stack
             .push(SlotValue::I64(i64::MIN))
             .map_err(replay_err_to_core)?;
-        stack
-            .push(SlotValue::I64(2))
-            .map_err(replay_err_to_core)?;
-        let result =
-            eval_replay_op(&plan, &run, &mut store, ExprOp::Mul, &mut stack, &mut taint);
+        stack.push(SlotValue::I64(2)).map_err(replay_err_to_core)?;
+        let result = eval_replay_op(&plan, &run, &mut store, ExprOp::Mul, &mut stack, &mut taint);
         assert!(
             matches!(result, Err(ReplayError::ExpressionEvalFailed { .. })),
             "BLACKHAT BH-OPS-04: i64::MIN * 2 must overflow"
@@ -1971,13 +1958,17 @@ mod tests {
         run.write_slot_with_taint(SlotIdx::new(1), SlotValue::I64(20), Taint::Secret)?;
         let mut store = ValueStore::new();
 
-        let (value, taint) =
-            eval_expr_for_replay(&plan, &run, &mut store, ExprIdx::new(0))
-                .map_err(replay_err_to_core)?;
+        let (value, taint) = eval_expr_for_replay(&plan, &run, &mut store, ExprIdx::new(0))
+            .map_err(replay_err_to_core)?;
 
-        assert_eq!(value, SlotValue::I64(30), "BLACKHAT BH-OPS-05: value must be 30");
         assert_eq!(
-            taint, Taint::Secret,
+            value,
+            SlotValue::I64(30),
+            "BLACKHAT BH-OPS-05: value must be 30"
+        );
+        assert_eq!(
+            taint,
+            Taint::Secret,
             "BLACKHAT BH-OPS-05: taint must be Secret when one operand is Secret"
         );
         Ok(())

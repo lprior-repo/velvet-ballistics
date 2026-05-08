@@ -2,8 +2,8 @@
 
 #![allow(dead_code, unused_imports)]
 
-use crate::lexer::{lex_expr, SpannedToken, Token, TokenSpan};
 use crate::ExprError;
+use crate::lexer::{SpannedToken, Token, TokenSpan, lex_expr};
 
 #[test]
 fn lex_expr_rejects_empty_string_as_only_end_token() -> crate::ExprResult<()> {
@@ -56,7 +56,10 @@ fn lex_expr_rejects_unexpected_at_sign() -> crate::ExprResult<()> {
 #[test]
 fn lex_expr_handles_max_i64_literal() -> crate::ExprResult<()> {
     let tokens = lex_expr("9223372036854775807")?;
-    let expected = vec![Token::Literal(crate::lexer::LiteralToken::I64(i64::MAX)), Token::End];
+    let expected = vec![
+        Token::Literal(crate::lexer::LiteralToken::I64(i64::MAX)),
+        Token::End,
+    ];
     assert_eq!(tokens, expected);
     Ok(())
 }
@@ -191,7 +194,10 @@ fn blackhat_lx_004_source_length_boundary_accepted() -> crate::ExprResult<()> {
     // 256 tokens * 2 bytes ("1 ") = 512 bytes, well under 4096.
     let source = "1 ".repeat(255); // 255 tokens of "1" + final End
     let r = lex_expr(&source.trim_end());
-    assert!(r.is_ok(), "BH-LX-004: source within limits should be accepted");
+    assert!(
+        r.is_ok(),
+        "BH-LX-004: source within limits should be accepted"
+    );
     Ok(())
 }
 
@@ -242,7 +248,10 @@ fn blackhat_lx_008_bare_exclamation_rejected() -> crate::ExprResult<()> {
 #[test]
 fn blackhat_lx_009_i64_max_accepted() -> crate::ExprResult<()> {
     let tokens = lex_expr("9223372036854775807")?;
-    assert_eq!(tokens.first(), Some(&Token::Literal(crate::lexer::LiteralToken::I64(i64::MAX))));
+    assert_eq!(
+        tokens.first(),
+        Some(&Token::Literal(crate::lexer::LiteralToken::I64(i64::MAX)))
+    );
     Ok(())
 }
 
@@ -254,7 +263,13 @@ fn blackhat_lx_009_i64_max_accepted() -> crate::ExprResult<()> {
 #[test]
 fn blackhat_lx_010_negative_literal_is_unary_op() -> crate::ExprResult<()> {
     let tokens = lex_expr("-5")?;
-    assert_eq!(tokens.first(), Some(&Token::Operator(crate::lexer::BinaryOp::Sub)));
-    assert_eq!(tokens.get(1), Some(&Token::Literal(crate::lexer::LiteralToken::I64(5))));
+    assert_eq!(
+        tokens.first(),
+        Some(&Token::Operator(crate::lexer::BinaryOp::Sub))
+    );
+    assert_eq!(
+        tokens.get(1),
+        Some(&Token::Literal(crate::lexer::LiteralToken::I64(5)))
+    );
     Ok(())
 }

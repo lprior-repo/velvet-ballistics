@@ -555,10 +555,9 @@ mod tests {
                 comment: None,
                 timeout_seconds: Some(val),
             };
-            let json = serde_json::to_string(&meta)
-                .unwrap_or_else(|e| panic!("serialize: {e}"));
-            let back: StepMachineMeta = serde_json::from_str(&json)
-                .unwrap_or_else(|e| panic!("deserialize: {e}"));
+            let json = serde_json::to_string(&meta).unwrap_or_else(|e| panic!("serialize: {e}"));
+            let back: StepMachineMeta =
+                serde_json::from_str(&json).unwrap_or_else(|e| panic!("deserialize: {e}"));
             // BUG: u32::MAX seconds is ~136 years. This is accepted as a
             // valid timeout, effectively disabling the timeout safeguard.
             assert_eq!(back.timeout_seconds, Some(val));
@@ -572,8 +571,8 @@ mod tests {
                 next: None,
                 end: true,
             };
-            let task_json = serde_json::to_string(&task)
-                .unwrap_or_else(|e| panic!("serialize task: {e}"));
+            let task_json =
+                serde_json::to_string(&task).unwrap_or_else(|e| panic!("serialize task: {e}"));
             let task_back: TaskStateData = serde_json::from_str(&task_json)
                 .unwrap_or_else(|e| panic!("deserialize task: {e}"));
             assert_eq!(task_back.timeout_seconds, Some(val));
@@ -599,10 +598,9 @@ mod tests {
             next: Some(SmolStr::from("NextState")),
             end: true,
         };
-        let json = serde_json::to_string(&ambiguous)
-            .unwrap_or_else(|e| panic!("serialize: {e}"));
-        let back: TaskStateData = serde_json::from_str(&json)
-            .unwrap_or_else(|e| panic!("deserialize: {e}"));
+        let json = serde_json::to_string(&ambiguous).unwrap_or_else(|e| panic!("serialize: {e}"));
+        let back: TaskStateData =
+            serde_json::from_str(&json).unwrap_or_else(|e| panic!("deserialize: {e}"));
         // BUG: This deserializes successfully, but semantically the state
         // both terminates AND transitions -- ambiguous control flow.
         assert!(back.next.is_some());
@@ -618,10 +616,9 @@ mod tests {
             next: None,
             end: false,
         };
-        let json2 = serde_json::to_string(&dead_end)
-            .unwrap_or_else(|e| panic!("serialize: {e}"));
-        let back2: TaskStateData = serde_json::from_str(&json2)
-            .unwrap_or_else(|e| panic!("deserialize: {e}"));
+        let json2 = serde_json::to_string(&dead_end).unwrap_or_else(|e| panic!("serialize: {e}"));
+        let back2: TaskStateData =
+            serde_json::from_str(&json2).unwrap_or_else(|e| panic!("deserialize: {e}"));
         // BUG: No validation error. State has no exit path.
         assert!(back2.next.is_none());
         assert!(!back2.end);
@@ -643,10 +640,9 @@ mod tests {
             next: None,
             end: true,
         };
-        let json = serde_json::to_string(&map)
-            .unwrap_or_else(|e| panic!("serialize: {e}"));
-        let back: MapStateData = serde_json::from_str(&json)
-            .unwrap_or_else(|e| panic!("deserialize: {e}"));
+        let json = serde_json::to_string(&map).unwrap_or_else(|e| panic!("serialize: {e}"));
+        let back: MapStateData =
+            serde_json::from_str(&json).unwrap_or_else(|e| panic!("deserialize: {e}"));
         // BUG: u32::MAX concurrent executions accepted without validation.
         // This enables denial-of-service through resource exhaustion.
         assert_eq!(back.max_concurrency, Some(u32::MAX));
@@ -678,10 +674,9 @@ mod tests {
                 next: None,
                 end: true,
             };
-            let json = serde_json::to_string(&task)
-                .unwrap_or_else(|e| panic!("serialize: {e}"));
-            let back: TaskStateData = serde_json::from_str(&json)
-                .unwrap_or_else(|e| panic!("deserialize: {e}"));
+            let json = serde_json::to_string(&task).unwrap_or_else(|e| panic!("serialize: {e}"));
+            let back: TaskStateData =
+                serde_json::from_str(&json).unwrap_or_else(|e| panic!("deserialize: {e}"));
             // BUG: All malicious resource strings are accepted without
             // ARN format validation, enabling SSRF and injection attacks.
             assert_eq!(back.resource, *resource);
@@ -700,10 +695,9 @@ mod tests {
             next: SmolStr::from("Target"),
             condition: None,
         };
-        let json = serde_json::to_string(&rule)
-            .unwrap_or_else(|e| panic!("serialize: {e}"));
-        let back: ChoiceRule = serde_json::from_str(&json)
-            .unwrap_or_else(|e| panic!("deserialize: {e}"));
+        let json = serde_json::to_string(&rule).unwrap_or_else(|e| panic!("serialize: {e}"));
+        let back: ChoiceRule =
+            serde_json::from_str(&json).unwrap_or_else(|e| panic!("deserialize: {e}"));
         // BUG: A choice rule without a variable and without a condition
         // cannot be evaluated. This should fail validation.
         assert!(back.variable.is_none());
@@ -724,10 +718,9 @@ mod tests {
                 error: Some(error_str.clone()),
                 cause: Some(error_str.clone()),
             };
-            let json = serde_json::to_string(&fail)
-                .unwrap_or_else(|e| panic!("serialize: {e}"));
-            let back: FailStateData = serde_json::from_str(&json)
-                .unwrap_or_else(|e| panic!("deserialize: {e}"));
+            let json = serde_json::to_string(&fail).unwrap_or_else(|e| panic!("serialize: {e}"));
+            let back: FailStateData =
+                serde_json::from_str(&json).unwrap_or_else(|e| panic!("deserialize: {e}"));
             // BUG: No length or content validation on error/cause fields.
             assert_eq!(back.error.as_deref(), Some(error_str.as_str()));
         }
@@ -749,10 +742,9 @@ mod tests {
             next: None,
             end: true,
         };
-        let json = serde_json::to_string(&parallel)
-            .unwrap_or_else(|e| panic!("serialize: {e}"));
-        let back: ParallelStateData = serde_json::from_str(&json)
-            .unwrap_or_else(|e| panic!("deserialize: {e}"));
+        let json = serde_json::to_string(&parallel).unwrap_or_else(|e| panic!("serialize: {e}"));
+        let back: ParallelStateData =
+            serde_json::from_str(&json).unwrap_or_else(|e| panic!("deserialize: {e}"));
         // BUG: No maximum size enforced on branches vec.
         assert_eq!(back.branches.len(), 100);
     }
@@ -771,10 +763,9 @@ mod tests {
             next: None,
             end: true,
         };
-        let json = serde_json::to_string(&conflicting)
-            .unwrap_or_else(|e| panic!("serialize: {e}"));
-        let back: WaitStateData = serde_json::from_str(&json)
-            .unwrap_or_else(|e| panic!("deserialize: {e}"));
+        let json = serde_json::to_string(&conflicting).unwrap_or_else(|e| panic!("serialize: {e}"));
+        let back: WaitStateData =
+            serde_json::from_str(&json).unwrap_or_else(|e| panic!("deserialize: {e}"));
         // BUG: Both seconds and timestamp are set -- which one takes effect?
         assert!(back.seconds.is_some());
         assert!(back.timestamp.is_some());
@@ -791,10 +782,9 @@ mod tests {
             comment: None,
             timeout_seconds: None,
         };
-        let json = serde_json::to_string(&meta)
-            .unwrap_or_else(|e| panic!("serialize: {e}"));
-        let back: StepMachineMeta = serde_json::from_str(&json)
-            .unwrap_or_else(|e| panic!("deserialize: {e}"));
+        let json = serde_json::to_string(&meta).unwrap_or_else(|e| panic!("serialize: {e}"));
+        let back: StepMachineMeta =
+            serde_json::from_str(&json).unwrap_or_else(|e| panic!("deserialize: {e}"));
         // BUG: Empty start_at accepted -- state machine has no entry point.
         assert_eq!(back.start_at.as_str(), "");
     }
@@ -821,10 +811,9 @@ mod tests {
             next: SmolStr::from("Go"),
             condition: Some(expr),
         };
-        let json = serde_json::to_string(&rule)
-            .unwrap_or_else(|e| panic!("serialize: {e}"));
-        let back: ChoiceRule = serde_json::from_str(&json)
-            .unwrap_or_else(|e| panic!("deserialize: {e}"));
+        let json = serde_json::to_string(&rule).unwrap_or_else(|e| panic!("serialize: {e}"));
+        let back: ChoiceRule =
+            serde_json::from_str(&json).unwrap_or_else(|e| panic!("deserialize: {e}"));
         assert!(back.condition.is_some());
     }
 }

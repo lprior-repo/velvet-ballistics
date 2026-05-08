@@ -308,9 +308,7 @@ mod tests {
     fn stub_inspector(node: &FlowNodeRecord) -> InspectorData {
         InspectorData {
             title: node.title.to_string(),
-            fields: vec![
-                (String::from("kind"), node.kind.to_string()),
-            ],
+            fields: vec![(String::from("kind"), node.kind.to_string())],
         }
     }
 
@@ -327,13 +325,11 @@ mod tests {
     }
 
     fn error_validator(_doc: &FlowDocument) -> Vec<ValidationFinding> {
-        vec![
-            ValidationFinding {
-                level: ValidationLevel::Error,
-                message: String::from("stub error"),
-                node_id: Some(SmolStr::from("n1")),
-            },
-        ]
+        vec![ValidationFinding {
+            level: ValidationLevel::Error,
+            message: String::from("stub error"),
+            node_id: Some(SmolStr::from("n1")),
+        }]
     }
 
     // ---- Stub plugin ----
@@ -411,12 +407,18 @@ mod tests {
     fn register_multiple_plugins_adds_all_entries() {
         struct PluginA;
         impl FlowPlugin for PluginA {
-            fn name(&self) -> &str { "plugin-a" }
+            fn name(&self) -> &str {
+                "plugin-a"
+            }
             fn node_renderers(&self) -> Vec<(&str, NodeRendererFn)> {
                 vec![("kind-a", stub_node_renderer)]
             }
-            fn edge_renderers(&self) -> Vec<(&str, EdgeRendererFn)> { vec![] }
-            fn inspectors(&self) -> Vec<(&str, InspectorFn)> { vec![] }
+            fn edge_renderers(&self) -> Vec<(&str, EdgeRendererFn)> {
+                vec![]
+            }
+            fn inspectors(&self) -> Vec<(&str, InspectorFn)> {
+                vec![]
+            }
             fn validators(&self) -> Vec<(&str, ValidatorFn)> {
                 vec![("validator-a", empty_validator)]
             }
@@ -424,12 +426,18 @@ mod tests {
 
         struct PluginB;
         impl FlowPlugin for PluginB {
-            fn name(&self) -> &str { "plugin-b" }
+            fn name(&self) -> &str {
+                "plugin-b"
+            }
             fn node_renderers(&self) -> Vec<(&str, NodeRendererFn)> {
                 vec![("kind-b", stub_node_renderer)]
             }
-            fn edge_renderers(&self) -> Vec<(&str, EdgeRendererFn)> { vec![] }
-            fn inspectors(&self) -> Vec<(&str, InspectorFn)> { vec![] }
+            fn edge_renderers(&self) -> Vec<(&str, EdgeRendererFn)> {
+                vec![]
+            }
+            fn inspectors(&self) -> Vec<(&str, InspectorFn)> {
+                vec![]
+            }
             fn validators(&self) -> Vec<(&str, ValidatorFn)> {
                 vec![("validator-b", empty_validator)]
             }
@@ -449,24 +457,40 @@ mod tests {
     fn later_plugin_overwrites_same_key() {
         struct PluginFirst;
         impl FlowPlugin for PluginFirst {
-            fn name(&self) -> &str { "first" }
+            fn name(&self) -> &str {
+                "first"
+            }
             fn node_renderers(&self) -> Vec<(&str, NodeRendererFn)> {
                 vec![("shared", stub_node_renderer)]
             }
-            fn edge_renderers(&self) -> Vec<(&str, EdgeRendererFn)> { vec![] }
-            fn inspectors(&self) -> Vec<(&str, InspectorFn)> { vec![] }
-            fn validators(&self) -> Vec<(&str, ValidatorFn)> { vec![] }
+            fn edge_renderers(&self) -> Vec<(&str, EdgeRendererFn)> {
+                vec![]
+            }
+            fn inspectors(&self) -> Vec<(&str, InspectorFn)> {
+                vec![]
+            }
+            fn validators(&self) -> Vec<(&str, ValidatorFn)> {
+                vec![]
+            }
         }
 
         struct PluginSecond;
         impl FlowPlugin for PluginSecond {
-            fn name(&self) -> &str { "second" }
+            fn name(&self) -> &str {
+                "second"
+            }
             fn node_renderers(&self) -> Vec<(&str, NodeRendererFn)> {
                 vec![("shared", stub_node_renderer)]
             }
-            fn edge_renderers(&self) -> Vec<(&str, EdgeRendererFn)> { vec![] }
-            fn inspectors(&self) -> Vec<(&str, InspectorFn)> { vec![] }
-            fn validators(&self) -> Vec<(&str, ValidatorFn)> { vec![] }
+            fn edge_renderers(&self) -> Vec<(&str, EdgeRendererFn)> {
+                vec![]
+            }
+            fn inspectors(&self) -> Vec<(&str, InspectorFn)> {
+                vec![]
+            }
+            fn validators(&self) -> Vec<(&str, ValidatorFn)> {
+                vec![]
+            }
         }
 
         let mut reg = PluginRegistry::new();
@@ -594,10 +618,18 @@ mod tests {
     fn run_all_validators_from_multiple_plugins() {
         struct PluginA;
         impl FlowPlugin for PluginA {
-            fn name(&self) -> &str { "a" }
-            fn node_renderers(&self) -> Vec<(&str, NodeRendererFn)> { vec![] }
-            fn edge_renderers(&self) -> Vec<(&str, EdgeRendererFn)> { vec![] }
-            fn inspectors(&self) -> Vec<(&str, InspectorFn)> { vec![] }
+            fn name(&self) -> &str {
+                "a"
+            }
+            fn node_renderers(&self) -> Vec<(&str, NodeRendererFn)> {
+                vec![]
+            }
+            fn edge_renderers(&self) -> Vec<(&str, EdgeRendererFn)> {
+                vec![]
+            }
+            fn inspectors(&self) -> Vec<(&str, InspectorFn)> {
+                vec![]
+            }
             fn validators(&self) -> Vec<(&str, ValidatorFn)> {
                 vec![("validator-a", error_validator)]
             }
@@ -605,10 +637,18 @@ mod tests {
 
         struct PluginB;
         impl FlowPlugin for PluginB {
-            fn name(&self) -> &str { "b" }
-            fn node_renderers(&self) -> Vec<(&str, NodeRendererFn)> { vec![] }
-            fn edge_renderers(&self) -> Vec<(&str, EdgeRendererFn)> { vec![] }
-            fn inspectors(&self) -> Vec<(&str, InspectorFn)> { vec![] }
+            fn name(&self) -> &str {
+                "b"
+            }
+            fn node_renderers(&self) -> Vec<(&str, NodeRendererFn)> {
+                vec![]
+            }
+            fn edge_renderers(&self) -> Vec<(&str, EdgeRendererFn)> {
+                vec![]
+            }
+            fn inspectors(&self) -> Vec<(&str, InspectorFn)> {
+                vec![]
+            }
             fn validators(&self) -> Vec<(&str, ValidatorFn)> {
                 vec![("validator-b", stub_validator)]
             }
@@ -633,10 +673,18 @@ mod tests {
         // Register a second plugin with error_validator
         struct ErrorPlugin;
         impl FlowPlugin for ErrorPlugin {
-            fn name(&self) -> &str { "error-plugin" }
-            fn node_renderers(&self) -> Vec<(&str, NodeRendererFn)> { vec![] }
-            fn edge_renderers(&self) -> Vec<(&str, EdgeRendererFn)> { vec![] }
-            fn inspectors(&self) -> Vec<(&str, InspectorFn)> { vec![] }
+            fn name(&self) -> &str {
+                "error-plugin"
+            }
+            fn node_renderers(&self) -> Vec<(&str, NodeRendererFn)> {
+                vec![]
+            }
+            fn edge_renderers(&self) -> Vec<(&str, EdgeRendererFn)> {
+                vec![]
+            }
+            fn inspectors(&self) -> Vec<(&str, InspectorFn)> {
+                vec![]
+            }
             fn validators(&self) -> Vec<(&str, ValidatorFn)> {
                 vec![("error-validator", error_validator)]
             }
@@ -785,7 +833,9 @@ mod tests {
     fn plugin_with_multiple_node_renderers() {
         struct MultiPlugin;
         impl FlowPlugin for MultiPlugin {
-            fn name(&self) -> &str { "multi" }
+            fn name(&self) -> &str {
+                "multi"
+            }
             fn node_renderers(&self) -> Vec<(&str, NodeRendererFn)> {
                 vec![
                     ("type-a", stub_node_renderer),
@@ -793,9 +843,15 @@ mod tests {
                     ("type-c", stub_node_renderer),
                 ]
             }
-            fn edge_renderers(&self) -> Vec<(&str, EdgeRendererFn)> { vec![] }
-            fn inspectors(&self) -> Vec<(&str, InspectorFn)> { vec![] }
-            fn validators(&self) -> Vec<(&str, ValidatorFn)> { vec![] }
+            fn edge_renderers(&self) -> Vec<(&str, EdgeRendererFn)> {
+                vec![]
+            }
+            fn inspectors(&self) -> Vec<(&str, InspectorFn)> {
+                vec![]
+            }
+            fn validators(&self) -> Vec<(&str, ValidatorFn)> {
+                vec![]
+            }
         }
 
         let mut reg = PluginRegistry::new();
@@ -810,7 +866,9 @@ mod tests {
     fn plugin_with_no_entries_returns_empty() {
         struct EmptyPlugin;
         impl FlowPlugin for EmptyPlugin {
-            fn name(&self) -> &str { "empty" }
+            fn name(&self) -> &str {
+                "empty"
+            }
         }
 
         let mut reg = PluginRegistry::new();

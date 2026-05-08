@@ -21,7 +21,12 @@ pub fn validate_gate_11_loop_body_graph(parts: &WorkflowParts) -> ValidationResu
             }
             CompiledNodeKind::TogetherStart { branches, join } => {
                 for (bi, branch) in branches.iter().enumerate() {
-                    check_step_in_range(*branch, node_count, index, &format!("together branch {bi}"))?;
+                    check_step_in_range(
+                        *branch,
+                        node_count,
+                        index,
+                        &format!("together branch {bi}"),
+                    )?;
                 }
                 check_step_in_range(*join, node_count, index, "together join")?;
                 check_together_span(index, branches, *join, node_count)?;
@@ -65,11 +70,17 @@ pub fn validate_gate_11_loop_body_graph(parts: &WorkflowParts) -> ValidationResu
             CompiledNodeKind::RepeatCheck { done, .. } => {
                 check_step_in_range(*done, node_count, index, "repeat_check done")?;
             }
-            CompiledNodeKind::RetryCheck { body, exhausted, .. } => {
+            CompiledNodeKind::RetryCheck {
+                body, exhausted, ..
+            } => {
                 check_step_in_range(*body, node_count, index, "retry_check body")?;
                 check_step_in_range(*exhausted, node_count, index, "retry_check exhausted")?;
             }
-            CompiledNodeKind::ErrorHandler { body, handler, error_slot: _ } => {
+            CompiledNodeKind::ErrorHandler {
+                body,
+                handler,
+                error_slot: _,
+            } => {
                 check_step_in_range(*body, node_count, index, "error_handler body")?;
                 check_step_in_range(*handler, node_count, index, "error_handler handler")?;
             }
@@ -79,7 +90,12 @@ pub fn validate_gate_11_loop_body_graph(parts: &WorkflowParts) -> ValidationResu
     Ok(())
 }
 
-fn check_step_in_range(step: StepIdx, node_count: usize, source_index: usize, label: &str) -> ValidationResult<()> {
+fn check_step_in_range(
+    step: StepIdx,
+    node_count: usize,
+    source_index: usize,
+    label: &str,
+) -> ValidationResult<()> {
     if step.as_usize() >= node_count {
         return Err(ValidationError::LoopBodyStepOutOfRange {
             step: step.as_usize(),
@@ -91,37 +107,55 @@ fn check_step_in_range(step: StepIdx, node_count: usize, source_index: usize, la
     Ok(())
 }
 
-fn check_loop_span(start_index: usize, body: StepIdx, done: StepIdx, node_count: usize) -> ValidationResult<()> {
+fn check_loop_span(
+    start_index: usize,
+    body: StepIdx,
+    done: StepIdx,
+    node_count: usize,
+) -> ValidationResult<()> {
     let body_usize = body.as_usize();
     let done_usize = done.as_usize();
     if body_usize <= start_index {
         return Err(ValidationError::LoopBodyStepOutOfRange {
-            step: body_usize, node_count, source_node: start_index,
+            step: body_usize,
+            node_count,
+            source_node: start_index,
             label: "loop body must be after loop start".to_owned(),
         });
     }
     if done_usize <= body_usize {
         return Err(ValidationError::LoopBodyStepOutOfRange {
-            step: done_usize, node_count, source_node: start_index,
+            step: done_usize,
+            node_count,
+            source_node: start_index,
             label: "loop done must be after loop body".to_owned(),
         });
     }
     Ok(())
 }
 
-fn check_together_span(start_index: usize, branches: &[StepIdx], join: StepIdx, node_count: usize) -> ValidationResult<()> {
+fn check_together_span(
+    start_index: usize,
+    branches: &[StepIdx],
+    join: StepIdx,
+    node_count: usize,
+) -> ValidationResult<()> {
     let join_usize = join.as_usize();
     for (bi, branch) in branches.iter().enumerate() {
         let bu = branch.as_usize();
         if bu <= start_index {
             return Err(ValidationError::LoopBodyStepOutOfRange {
-                step: bu, node_count, source_node: start_index,
+                step: bu,
+                node_count,
+                source_node: start_index,
                 label: format!("together branch {bi} must be after start"),
             });
         }
         if join_usize <= bu {
             return Err(ValidationError::LoopBodyStepOutOfRange {
-                step: join_usize, node_count, source_node: start_index,
+                step: join_usize,
+                node_count,
+                source_node: start_index,
                 label: format!("together join must be after branch {bi}"),
             });
         }

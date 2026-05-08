@@ -227,8 +227,8 @@ mod tests {
     use crate::limits::MAX_EXPRESSION_STACK;
     use crate::value::{ConstValue, SlotValue, Taint};
     use crate::workflow::{
-        CompiledNode, CompiledNodeKind, CompiledWorkflow, ExprOp, ExprProgram,
-        ResourceContract, WorkflowParts, check_expr_stack_bound,
+        CompiledNode, CompiledNodeKind, CompiledWorkflow, ExprOp, ExprProgram, ResourceContract,
+        WorkflowParts, check_expr_stack_bound,
     };
 
     fn ensure_equal<T>(actual: T, expected: T) -> Result<(), String>
@@ -256,11 +256,15 @@ mod tests {
         constants: Vec<ConstValue>,
         store: &mut ValueStore,
     ) -> Result<SlotValue, String> {
-        let max_stack = check_expr_stack_bound(&ops, MAX_EXPRESSION_STACK)
-            .map_err(|e| e.to_string())?;
+        let max_stack =
+            check_expr_stack_bound(&ops, MAX_EXPRESSION_STACK).map_err(|e| e.to_string())?;
         let expr = ExprProgram::try_from_parts(ops.into_boxed_slice(), max_stack)
             .map_err(|e| e.to_string())?;
-        let slot_count = if slots.is_empty() { 1u16 } else { slots.len() as u16 };
+        let slot_count = if slots.is_empty() {
+            1u16
+        } else {
+            slots.len() as u16
+        };
         let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
             name: Box::<str>::from("text_list_test"),
             digest: WorkflowDigest::from_bytes([0xFB; 32]),
@@ -289,13 +293,9 @@ mod tests {
             run.write_slot(SlotIdx::new(i as u16), *value)
                 .map_err(|e| e.to_string())?;
         }
-        let (value, _taint) = crate::engine::expr_eval::eval_expr_with_store(
-            &workflow,
-            &run,
-            store,
-            ExprIdx::new(0),
-        )
-        .map_err(|e| e.to_string())?;
+        let (value, _taint) =
+            crate::engine::expr_eval::eval_expr_with_store(&workflow, &run, store, ExprIdx::new(0))
+                .map_err(|e| e.to_string())?;
         Ok(value)
     }
 
@@ -304,7 +304,9 @@ mod tests {
     #[test]
     fn contains_matches_substring() -> Result<(), String> {
         let mut store = ValueStore::new();
-        let hay = store.insert_symbol("hello world").map_err(|e| e.to_string())?;
+        let hay = store
+            .insert_symbol("hello world")
+            .map_err(|e| e.to_string())?;
         let needle = store.insert_symbol("world").map_err(|e| e.to_string())?;
         let result = eval_ops(
             vec![
@@ -338,7 +340,9 @@ mod tests {
     #[test]
     fn starts_with_matches_prefix() -> Result<(), String> {
         let mut store = ValueStore::new();
-        let text = store.insert_symbol("hello world").map_err(|e| e.to_string())?;
+        let text = store
+            .insert_symbol("hello world")
+            .map_err(|e| e.to_string())?;
         let prefix = store.insert_symbol("hello").map_err(|e| e.to_string())?;
         let result = eval_ops(
             vec![
@@ -355,7 +359,9 @@ mod tests {
     #[test]
     fn starts_with_rejects_non_prefix() -> Result<(), String> {
         let mut store = ValueStore::new();
-        let text = store.insert_symbol("hello world").map_err(|e| e.to_string())?;
+        let text = store
+            .insert_symbol("hello world")
+            .map_err(|e| e.to_string())?;
         let prefix = store.insert_symbol("world").map_err(|e| e.to_string())?;
         let result = eval_ops(
             vec![
@@ -372,7 +378,9 @@ mod tests {
     #[test]
     fn ends_with_matches_suffix() -> Result<(), String> {
         let mut store = ValueStore::new();
-        let text = store.insert_symbol("hello world").map_err(|e| e.to_string())?;
+        let text = store
+            .insert_symbol("hello world")
+            .map_err(|e| e.to_string())?;
         let suffix = store.insert_symbol("world").map_err(|e| e.to_string())?;
         let result = eval_ops(
             vec![
@@ -389,7 +397,9 @@ mod tests {
     #[test]
     fn ends_with_rejects_non_suffix() -> Result<(), String> {
         let mut store = ValueStore::new();
-        let text = store.insert_symbol("hello world").map_err(|e| e.to_string())?;
+        let text = store
+            .insert_symbol("hello world")
+            .map_err(|e| e.to_string())?;
         let suffix = store.insert_symbol("hello").map_err(|e| e.to_string())?;
         let result = eval_ops(
             vec![

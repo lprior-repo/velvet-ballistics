@@ -158,14 +158,23 @@ mod tests {
 
     #[test]
     fn accepts_within_bounds() {
-        let wf = make_workflow(vec![finish_step("done", TypedValue::Literal(ValueType::Number))]);
-        assert_eq!(validate_resource_limits(&wf, &ResourceLimits::default()), Ok(()));
+        let wf = make_workflow(vec![finish_step(
+            "done",
+            TypedValue::Literal(ValueType::Number),
+        )]);
+        assert_eq!(
+            validate_resource_limits(&wf, &ResourceLimits::default()),
+            Ok(())
+        );
     }
 
     #[test]
     fn accepts_empty_workflow() {
         let wf = make_workflow(vec![]);
-        assert_eq!(validate_resource_limits(&wf, &ResourceLimits::default()), Ok(()));
+        assert_eq!(
+            validate_resource_limits(&wf, &ResourceLimits::default()),
+            Ok(())
+        );
     }
 
     #[test]
@@ -177,7 +186,10 @@ mod tests {
             steps: vec![],
             resource_contract: ResourceLimits::default(),
         };
-        assert_eq!(validate_resource_limits(&wf, &ResourceLimits::default()), Ok(()));
+        assert_eq!(
+            validate_resource_limits(&wf, &ResourceLimits::default()),
+            Ok(())
+        );
     }
 
     #[test]
@@ -192,7 +204,10 @@ mod tests {
                 ..ResourceLimits::default()
             },
         };
-        assert_eq!(validate_resource_limits(&wf, &ResourceLimits::default()), Ok(()));
+        assert_eq!(
+            validate_resource_limits(&wf, &ResourceLimits::default()),
+            Ok(())
+        );
     }
 
     // -- Fail cases --

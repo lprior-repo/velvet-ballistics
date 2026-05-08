@@ -131,8 +131,8 @@ pub fn handle_drain_trace(payload: &[u8], runtime: &mut Runtime) -> IpcResponse 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use vb_core::ids::{SlotIdx, StepIdx};
     use vb_core::RunId;
+    use vb_core::ids::{SlotIdx, StepIdx};
 
     fn run_id(val: u64) -> RunId {
         RunId::new(val)
@@ -343,13 +343,14 @@ mod tests {
 
     #[test]
     fn typed_events_response_filters_all_when_from_sequence_exceeds_count() {
-        let events = vec![
-            TraceEvent::RunSubmitted { run: run_id(1) },
-        ];
+        let events = vec![TraceEvent::RunSubmitted { run: run_id(1) }];
         let response = typed_events_response(&events, 10);
         match response {
             IpcResponse::Events { events: evts } => {
-                assert!(evts.is_empty(), "from_sequence beyond count should yield empty");
+                assert!(
+                    evts.is_empty(),
+                    "from_sequence beyond count should yield empty"
+                );
             }
             other => {
                 assert!(false, "expected Events, got {other:?}");
@@ -359,12 +360,10 @@ mod tests {
 
     #[test]
     fn typed_events_response_preserves_event_kind_mapping() {
-        let events = vec![
-            TraceEvent::StepStarted {
-                run: run_id(1),
-                step: StepIdx::new(0),
-            },
-        ];
+        let events = vec![TraceEvent::StepStarted {
+            run: run_id(1),
+            step: StepIdx::new(0),
+        }];
         let response = typed_events_response(&events, 0);
         match response {
             IpcResponse::Events { events: evts } => {

@@ -614,9 +614,11 @@ fn blackhat_replay_taint_propagates_through_expression_chain() -> Result<(), Cor
 
     // Execute SetConst steps
     for idx in 0u16..2 {
-        let node = plan.node(StepIdx::new(idx)).ok_or(CoreError::InternalInvariantViolation {
-            reason: "node missing",
-        })?;
+        let node = plan
+            .node(StepIdx::new(idx))
+            .ok_or(CoreError::InternalInvariantViolation {
+                reason: "node missing",
+            })?;
         super::step::replay_step(node, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
     }
 
@@ -624,9 +626,11 @@ fn blackhat_replay_taint_propagates_through_expression_chain() -> Result<(), Cor
     run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(10), Taint::Secret)?;
 
     // Execute EvalExpr
-    let node2 = plan.node(StepIdx::new(2)).ok_or(CoreError::InternalInvariantViolation {
-        reason: "node 2 missing",
-    })?;
+    let node2 = plan
+        .node(StepIdx::new(2))
+        .ok_or(CoreError::InternalInvariantViolation {
+            reason: "node 2 missing",
+        })?;
     super::step::replay_step(node2, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
 
     let output_taint = run.read_taint(SlotIdx::new(2))?;
@@ -808,18 +812,22 @@ fn blackhat_replay_taint_matches_engine_after_copy() -> Result<(), CoreError> {
     let mut replay_store = ValueStore::new();
     let mut replay_run = RunFrame::new(RunId::new(0), StepIdx::new(0), step_count, slot_count)?;
 
-    let node0 = plan.node(StepIdx::new(0)).ok_or(CoreError::InternalInvariantViolation {
-        reason: "node 0 missing",
-    })?;
+    let node0 = plan
+        .node(StepIdx::new(0))
+        .ok_or(CoreError::InternalInvariantViolation {
+            reason: "node 0 missing",
+        })?;
     super::step::replay_step(node0, &mut replay_run, &mut replay_store, &plan)
         .map_err(replay_err_to_core)?;
 
     // Manually taint slot 0 (simulating external secret injection)
     replay_run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(100), Taint::Secret)?;
 
-    let node1 = plan.node(StepIdx::new(1)).ok_or(CoreError::InternalInvariantViolation {
-        reason: "node 1 missing",
-    })?;
+    let node1 = plan
+        .node(StepIdx::new(1))
+        .ok_or(CoreError::InternalInvariantViolation {
+            reason: "node 1 missing",
+        })?;
     super::step::replay_step(node1, &mut replay_run, &mut replay_store, &plan)
         .map_err(replay_err_to_core)?;
 

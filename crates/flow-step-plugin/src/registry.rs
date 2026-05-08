@@ -961,7 +961,10 @@ mod tests {
             is_container: false,
         };
         let debug = format!("{desc:?}");
-        assert!(debug.contains("custom"), "debug should contain kind: {debug}");
+        assert!(
+            debug.contains("custom"),
+            "debug should contain kind: {debug}"
+        );
         assert!(
             debug.contains("experimental"),
             "debug should contain category: {debug}"
@@ -1309,5 +1312,4 @@ mod tests {
         assert_eq!(d.default_ports.outputs.len(), 1);
         assert_eq!(d.default_ports.outputs[0].id.as_str(), "resume");
     }
-
 }

@@ -180,12 +180,12 @@ pub(super) fn eval_expr_operator(
 mod tests {
     use super::*;
     use crate::ids::{ConstIdx, ExprIdx, RunId, SlotIdx, StepIdx, SymbolId, WorkflowDigest};
+    use crate::limits::MAX_EXPRESSION_STACK;
     use crate::value::{ConstValue, SlotValue, Taint};
     use crate::workflow::{
-        CompiledNode, CompiledNodeKind, CompiledWorkflow, ExprOp, ExprProgram,
-        ResourceContract, WorkflowParts, check_expr_stack_bound,
+        CompiledNode, CompiledNodeKind, CompiledWorkflow, ExprOp, ExprProgram, ResourceContract,
+        WorkflowParts, check_expr_stack_bound,
     };
-    use crate::limits::MAX_EXPRESSION_STACK;
     fn ensure_equal<T>(actual: T, expected: T) -> Result<(), String>
     where
         T: core::fmt::Debug + PartialEq,
@@ -213,11 +213,15 @@ mod tests {
         constants: Vec<ConstValue>,
         store: &mut ValueStore,
     ) -> Result<SlotValue, String> {
-        let max_stack = check_expr_stack_bound(&ops, MAX_EXPRESSION_STACK)
-            .map_err(|e| e.to_string())?;
+        let max_stack =
+            check_expr_stack_bound(&ops, MAX_EXPRESSION_STACK).map_err(|e| e.to_string())?;
         let expr = ExprProgram::try_from_parts(ops.into_boxed_slice(), max_stack)
             .map_err(|e| e.to_string())?;
-        let slot_count = if slots.is_empty() { 1 } else { slots.len() as u16 };
+        let slot_count = if slots.is_empty() {
+            1
+        } else {
+            slots.len() as u16
+        };
         let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
             name: Box::<str>::from("ops_test"),
             digest: WorkflowDigest::from_bytes([0xFA; 32]),
@@ -246,13 +250,9 @@ mod tests {
             run.write_slot(SlotIdx::new(i as u16), *value)
                 .map_err(|e| e.to_string())?;
         }
-        let (value, _taint) = crate::engine::expr_eval::eval_expr_with_store(
-            &workflow,
-            &run,
-            store,
-            ExprIdx::new(0),
-        )
-        .map_err(|e| e.to_string())?;
+        let (value, _taint) =
+            crate::engine::expr_eval::eval_expr_with_store(&workflow, &run, store, ExprIdx::new(0))
+                .map_err(|e| e.to_string())?;
         Ok(value)
     }
 
@@ -564,15 +564,16 @@ mod tests {
     #[test]
     fn exists_non_empty_object_produces_true() -> Result<(), String> {
         let mut store = ValueStore::new();
-        let obj = store.insert_object(
-            vec![crate::value_store::ObjectField {
-                key: SymbolId::new(0),
-                value: SlotValue::I64(1),
-                taint: Taint::Clean,
-            }]
-            .into_boxed_slice(),
-        )
-        .map_err(|e| e.to_string())?;
+        let obj = store
+            .insert_object(
+                vec![crate::value_store::ObjectField {
+                    key: SymbolId::new(0),
+                    value: SlotValue::I64(1),
+                    taint: Taint::Clean,
+                }]
+                .into_boxed_slice(),
+            )
+            .map_err(|e| e.to_string())?;
         let result = eval_ops_with_slots(
             vec![ExprOp::LoadSlot(SlotIdx::new(0)), ExprOp::Exists],
             vec![SlotValue::Object(obj)],
@@ -650,14 +651,13 @@ mod tests {
     fn eval_expr_operator_rejects_load_slot_op() -> Result<(), String> {
         let mut stack = ExprStack::new(4).map_err(|e| e.to_string())?;
         let mut store = ValueStore::new();
-        let result = eval_expr_operator(
-            ExprOp::LoadSlot(SlotIdx::new(0)),
-            &mut stack,
-            &mut store,
-        );
+        let result = eval_expr_operator(ExprOp::LoadSlot(SlotIdx::new(0)), &mut stack, &mut store);
         match result {
             Err(EngineError::InternalInvariantViolation { reason })
-                if reason.contains("load ops") => Ok(()),
+                if reason.contains("load ops") =>
+            {
+                Ok(())
+            }
             other => Err(format!("unexpected result: {other:?}")),
         }
     }

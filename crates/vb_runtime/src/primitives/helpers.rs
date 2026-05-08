@@ -95,8 +95,11 @@ mod tests {
     fn expect_list_returns_list_id_for_list_value() -> Result<(), String> {
         let mut store = ValueStore::new();
         let items: Box<[SlotValue]> = vec![SlotValue::I64(1), SlotValue::I64(2)].into_boxed_slice();
-        let id = store.insert_list(items).map_err(|e| format!("insert_list failed: {e:?}"))?;
-        let result = expect_list(SlotValue::List(id)).map_err(|e| format!("expect_list failed: {e:?}"))?;
+        let id = store
+            .insert_list(items)
+            .map_err(|e| format!("insert_list failed: {e:?}"))?;
+        let result =
+            expect_list(SlotValue::List(id)).map_err(|e| format!("expect_list failed: {e:?}"))?;
         ensure(result == id, "expected list id to match")
     }
 
@@ -105,8 +108,14 @@ mod tests {
         let result = expect_list(SlotValue::I64(42));
         match result {
             Err(EngineError::TypeMismatch { expected, found }) => {
-                ensure(expected == "list", format!("expected 'list', got '{expected}'"))?;
-                ensure(found == "number", format!("expected 'number', got '{found}'"))
+                ensure(
+                    expected == "list",
+                    format!("expected 'list', got '{expected}'"),
+                )?;
+                ensure(
+                    found == "number",
+                    format!("expected 'number', got '{found}'"),
+                )
             }
             other => Err(format!("expected TypeMismatch, got {other:?}")),
         }
@@ -117,8 +126,14 @@ mod tests {
         let result = expect_list(SlotValue::Bool(true));
         match result {
             Err(EngineError::TypeMismatch { expected, found }) => {
-                ensure(expected == "list", format!("expected 'list', got '{expected}'"))?;
-                ensure(found == "boolean", format!("expected 'boolean', got '{found}'"))
+                ensure(
+                    expected == "list",
+                    format!("expected 'list', got '{expected}'"),
+                )?;
+                ensure(
+                    found == "boolean",
+                    format!("expected 'boolean', got '{found}'"),
+                )
             }
             other => Err(format!("expected TypeMismatch, got {other:?}")),
         }
@@ -129,7 +144,10 @@ mod tests {
         let result = expect_list(SlotValue::Null);
         match result {
             Err(EngineError::TypeMismatch { expected, found }) => {
-                ensure(expected == "list", format!("expected 'list', got '{expected}'"))?;
+                ensure(
+                    expected == "list",
+                    format!("expected 'list', got '{expected}'"),
+                )?;
                 ensure(found == "null", format!("expected 'null', got '{found}'"))
             }
             other => Err(format!("expected TypeMismatch, got {other:?}")),
@@ -141,8 +159,14 @@ mod tests {
         let result = expect_list(SlotValue::Symbol(vb_core::ids::SymbolId::new(1)));
         match result {
             Err(EngineError::TypeMismatch { expected, found }) => {
-                ensure(expected == "list", format!("expected 'list', got '{expected}'"))?;
-                ensure(found == "symbol", format!("expected 'symbol', got '{found}'"))
+                ensure(
+                    expected == "list",
+                    format!("expected 'list', got '{expected}'"),
+                )?;
+                ensure(
+                    found == "symbol",
+                    format!("expected 'symbol', got '{found}'"),
+                )
             }
             other => Err(format!("expected TypeMismatch, got {other:?}")),
         }
@@ -154,8 +178,14 @@ mod tests {
         let result = expect_list(SlotValue::F64(f64_val));
         match result {
             Err(EngineError::TypeMismatch { expected, found }) => {
-                ensure(expected == "list", format!("expected 'list', got '{expected}'"))?;
-                ensure(found == "number", format!("expected 'number', got '{found}'"))
+                ensure(
+                    expected == "list",
+                    format!("expected 'list', got '{expected}'"),
+                )?;
+                ensure(
+                    found == "number",
+                    format!("expected 'number', got '{found}'"),
+                )
             }
             other => Err(format!("expected TypeMismatch, got {other:?}")),
         }
@@ -166,7 +196,10 @@ mod tests {
     #[test]
     fn empty_list_produces_zero_length_slice() -> Result<(), String> {
         let list = empty_list();
-        ensure(list.len() == 0, format!("expected empty, got len {}", list.len()))
+        ensure(
+            list.len() == 0,
+            format!("expected empty, got len {}", list.len()),
+        )
     }
 
     #[test]
@@ -193,9 +226,13 @@ mod tests {
 
     #[test]
     fn tail_items_two_items_returns_second() -> Result<(), String> {
-        let items: Box<[SlotValue]> = vec![SlotValue::I64(10), SlotValue::I64(20)].into_boxed_slice();
+        let items: Box<[SlotValue]> =
+            vec![SlotValue::I64(10), SlotValue::I64(20)].into_boxed_slice();
         let tail = tail_items(&items).map_err(|e| format!("tail_items failed: {e:?}"))?;
-        ensure(tail.len() == 1, format!("expected len 1, got {}", tail.len()))?;
+        ensure(
+            tail.len() == 1,
+            format!("expected len 1, got {}", tail.len()),
+        )?;
         ensure(
             tail.get(0) == Some(&SlotValue::I64(20)),
             format!("expected I64(20), got {:?}", tail.get(0)),
@@ -204,14 +241,13 @@ mod tests {
 
     #[test]
     fn tail_items_three_items_returns_last_two() -> Result<(), String> {
-        let items: Box<[SlotValue]> = vec![
-            SlotValue::I64(1),
-            SlotValue::I64(2),
-            SlotValue::I64(3),
-        ]
-        .into_boxed_slice();
+        let items: Box<[SlotValue]> =
+            vec![SlotValue::I64(1), SlotValue::I64(2), SlotValue::I64(3)].into_boxed_slice();
         let tail = tail_items(&items).map_err(|e| format!("tail_items failed: {e:?}"))?;
-        ensure(tail.len() == 2, format!("expected len 2, got {}", tail.len()))?;
+        ensure(
+            tail.len() == 2,
+            format!("expected len 2, got {}", tail.len()),
+        )?;
         ensure(
             tail.get(0) == Some(&SlotValue::I64(2)),
             "first tail item mismatch",
@@ -224,14 +260,13 @@ mod tests {
 
     #[test]
     fn tail_items_preserves_mixed_types() -> Result<(), String> {
-        let items: Box<[SlotValue]> = vec![
-            SlotValue::I64(1),
-            SlotValue::Bool(true),
-            SlotValue::Null,
-        ]
-        .into_boxed_slice();
+        let items: Box<[SlotValue]> =
+            vec![SlotValue::I64(1), SlotValue::Bool(true), SlotValue::Null].into_boxed_slice();
         let tail = tail_items(&items).map_err(|e| format!("tail_items failed: {e:?}"))?;
-        ensure(tail.len() == 2, format!("expected len 2, got {}", tail.len()))?;
+        ensure(
+            tail.len() == 2,
+            format!("expected len 2, got {}", tail.len()),
+        )?;
         ensure(
             tail.get(0) == Some(&SlotValue::Bool(true)),
             "expected Bool(true) as first tail item",
@@ -253,7 +288,10 @@ mod tests {
             signal == vb_core::EngineSignal::Continue,
             "expected Continue signal",
         )?;
-        ensure(run.pc() == target, format!("expected pc={target:?}, got {:?}", run.pc()))
+        ensure(
+            run.pc() == target,
+            format!("expected pc={target:?}, got {:?}", run.pc()),
+        )
     }
 
     #[test]
@@ -263,14 +301,19 @@ mod tests {
         jump_to(&mut run, StepIdx::new(1)).map_err(|e| format!("jump_to failed: {e:?}"))?;
         ensure(
             run.executed() == before.saturating_add(1),
-            format!("expected {}, got {}", before.saturating_add(1), run.executed()),
+            format!(
+                "expected {}, got {}",
+                before.saturating_add(1),
+                run.executed()
+            ),
         )
     }
 
     #[test]
     fn jump_to_returns_continue_signal() -> Result<(), String> {
         let mut run = fresh_frame();
-        let signal = jump_to(&mut run, StepIdx::new(1)).map_err(|e| format!("jump_to failed: {e:?}"))?;
+        let signal =
+            jump_to(&mut run, StepIdx::new(1)).map_err(|e| format!("jump_to failed: {e:?}"))?;
         ensure(
             matches!(signal, vb_core::EngineSignal::Continue),
             "expected Continue",
@@ -283,9 +326,12 @@ mod tests {
     fn jump_to_next_with_valid_next_succeeds() -> Result<(), String> {
         let mut run = fresh_frame();
         let next = StepIdx::new(2);
-        let signal =
-            jump_to_next(&mut run, Some(next), StepIdx::ZERO).map_err(|e| format!("jump_to_next failed: {e:?}"))?;
-        ensure(run.pc() == next, format!("expected pc={next:?}, got {:?}", run.pc()))?;
+        let signal = jump_to_next(&mut run, Some(next), StepIdx::ZERO)
+            .map_err(|e| format!("jump_to_next failed: {e:?}"))?;
+        ensure(
+            run.pc() == next,
+            format!("expected pc={next:?}, got {:?}", run.pc()),
+        )?;
         ensure(
             signal == vb_core::EngineSignal::Continue,
             "expected Continue signal",
@@ -297,9 +343,10 @@ mod tests {
         let mut run = fresh_frame();
         let result = jump_to_next(&mut run, None, StepIdx::ZERO);
         match result {
-            Err(EngineError::MissingNextStep { step }) => {
-                ensure(step == StepIdx::ZERO, format!("expected ZERO, got {step:?}"))
-            }
+            Err(EngineError::MissingNextStep { step }) => ensure(
+                step == StepIdx::ZERO,
+                format!("expected ZERO, got {step:?}"),
+            ),
             other => Err(format!("expected MissingNextStep, got {other:?}")),
         }
     }
@@ -312,7 +359,11 @@ mod tests {
             .map_err(|e| format!("jump_to_next failed: {e:?}"))?;
         ensure(
             run.executed() == before.saturating_add(1),
-            format!("expected {}, got {}", before.saturating_add(1), run.executed()),
+            format!(
+                "expected {}, got {}",
+                before.saturating_add(1),
+                run.executed()
+            ),
         )
     }
 

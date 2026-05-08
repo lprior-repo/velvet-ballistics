@@ -263,10 +263,7 @@ mod tests {
         let alpha = cfg.evaluate(period * 0.5);
         // sin(pi) is approximately 0
         let mid = cfg.min_alpha + (cfg.max_alpha - cfg.min_alpha) * 0.5;
-        assert!(
-            (alpha - mid).abs() < 0.01,
-            "expected ~{mid}, got {alpha}",
-        );
+        assert!((alpha - mid).abs() < 0.01, "expected ~{mid}, got {alpha}",);
     }
 
     #[test]

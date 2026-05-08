@@ -234,7 +234,10 @@ mod tests {
         let mut buf = encoded.to_vec();
         buf.extend_from_slice(&[0xFF; 100]); // extra payload bytes
         let result = read_buffer_header(&buf);
-        assert!(result.is_ok(), "extra bytes after header should still succeed");
+        assert!(
+            result.is_ok(),
+            "extra bytes after header should still succeed"
+        );
     }
 
     // ── frame_total_len tests ──
@@ -304,7 +307,11 @@ mod tests {
 
         let result = extract_payload(&mut read_buffer, total_len);
         assert!(result.is_ok());
-        assert_eq!(read_buffer.as_slice(), b"extra", "remaining bytes should stay in buffer");
+        assert_eq!(
+            read_buffer.as_slice(),
+            b"extra",
+            "remaining bytes should stay in buffer"
+        );
     }
 
     #[test]
@@ -342,8 +349,14 @@ mod tests {
         let IpcResponse::FrameError { message } = response else {
             return;
         };
-        assert!(message.contains("999"), "expected actual value in '{message}'");
-        assert!(message.contains("10"), "expected limit value in '{message}'");
+        assert!(
+            message.contains("999"),
+            "expected actual value in '{message}'"
+        );
+        assert!(
+            message.contains("10"),
+            "expected limit value in '{message}'"
+        );
     }
 
     // ── borrow_workflow_resolver tests ──

@@ -774,7 +774,10 @@ mod tests {
     #[test]
     fn slot_value_null_debug_format() {
         let val = SlotValue::Null;
-        assert!(format!("{val:?}").contains("Null"), "Debug for Null must contain 'Null'");
+        assert!(
+            format!("{val:?}").contains("Null"),
+            "Debug for Null must contain 'Null'"
+        );
     }
 
     #[test]
@@ -925,7 +928,10 @@ mod tests {
     fn finite_f64_display_matches_inner() -> Result<(), String> {
         let val = FiniteF64::new(3.14).map_err(|e| e.to_string())?;
         let display = format!("{val}");
-        assert!(display.contains("3.14"), "display must contain the value, got: {display}");
+        assert!(
+            display.contains("3.14"),
+            "display must contain the value, got: {display}"
+        );
         Ok(())
     }
 
@@ -965,17 +971,32 @@ mod tests {
     #[test]
     fn const_value_debug_format() {
         let debug = format!("{:?}", ConstValue::I64(42));
-        assert!(debug.contains("I64"), "Debug for ConstValue::I64 must contain 'I64'");
+        assert!(
+            debug.contains("I64"),
+            "Debug for ConstValue::I64 must contain 'I64'"
+        );
         let debug = format!("{:?}", ConstValue::Null);
-        assert!(debug.contains("Null"), "Debug for ConstValue::Null must contain 'Null'");
+        assert!(
+            debug.contains("Null"),
+            "Debug for ConstValue::Null must contain 'Null'"
+        );
     }
 
     #[test]
     fn slot_value_all_variants_distinct_type_names() {
         // Ensure each handle variant has a distinct type name
-        assert_ne!(SlotValue::Symbol(SymbolId::new(0)).type_name(), SlotValue::List(ListId::new(0)).type_name());
-        assert_ne!(SlotValue::List(ListId::new(0)).type_name(), SlotValue::Object(ObjectId::new(0)).type_name());
-        assert_ne!(SlotValue::Object(ObjectId::new(0)).type_name(), SlotValue::Blob(BlobId::new(0)).type_name());
+        assert_ne!(
+            SlotValue::Symbol(SymbolId::new(0)).type_name(),
+            SlotValue::List(ListId::new(0)).type_name()
+        );
+        assert_ne!(
+            SlotValue::List(ListId::new(0)).type_name(),
+            SlotValue::Object(ObjectId::new(0)).type_name()
+        );
+        assert_ne!(
+            SlotValue::Object(ObjectId::new(0)).type_name(),
+            SlotValue::Blob(BlobId::new(0)).type_name()
+        );
     }
 }
 

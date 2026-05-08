@@ -25,7 +25,9 @@ pub use object_list::build_object;
 pub use object_list::build_object as build_object_impl;
 pub use run_loop::{drive_deterministic, run_until_blocked};
 pub use signals::{EngineSignal, StepBudget};
-pub use step::{journal_action_suspended, resume_action_completion, resume_action_failure, step_once};
+pub use step::{
+    journal_action_suspended, resume_action_completion, resume_action_failure, step_once,
+};
 pub use validate::{
     validate_compiled_workflow, validate_node_bounds, validate_resource_contract,
     validate_transition_target,

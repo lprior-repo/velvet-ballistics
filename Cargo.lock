@@ -2320,6 +2320,7 @@ dependencies = [
  "thiserror",
  "trybuild",
  "vb_core",
+ "vb_runtime",
 ]
 
 [[package]]

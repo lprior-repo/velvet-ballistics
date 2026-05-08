@@ -294,10 +294,7 @@ mod tests {
 
     #[test]
     fn from_shards_mixed_status_active_without_overloaded() {
-        let snap = TopologySnapshot::from_shards(vec![
-            idle_node(0),
-            active_node(1, 3, 10),
-        ]);
+        let snap = TopologySnapshot::from_shards(vec![idle_node(0), active_node(1, 3, 10)]);
         assert_eq!(snap.worst_status, ShardStatus::Active);
         assert!(snap.is_healthy());
     }
@@ -525,9 +522,7 @@ mod tests {
     fn blackhat_from_shards_triple_iteration_on_input() {
         // Verify that from_shards produces consistent results despite
         // the triple iteration.
-        let nodes: Vec<ShardNode> = (0..100)
-            .map(|i| ShardNode::new(i, 1, 10, i, i))
-            .collect();
+        let nodes: Vec<ShardNode> = (0..100).map(|i| ShardNode::new(i, 1, 10, i, i)).collect();
         let snap = TopologySnapshot::from_shards(nodes);
         // shards display should match topology shards in count.
         assert_eq!(snap.shards.len(), snap.topology.shards.len());
@@ -599,9 +594,7 @@ mod tests {
     /// will allocate accordingly. Not a real concern in practice.
     #[test]
     fn blackhat_summary_text_with_many_shards() {
-        let nodes: Vec<ShardNode> = (0..1000)
-            .map(|i| ShardNode::new(i, 1, 10, 0, 0))
-            .collect();
+        let nodes: Vec<ShardNode> = (0..1000).map(|i| ShardNode::new(i, 1, 10, 0, 0)).collect();
         let snap = TopologySnapshot::from_shards(nodes);
         let text = snap.summary_text();
         assert!(text.contains("shards=1000"));

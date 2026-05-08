@@ -7,8 +7,8 @@
 use std::collections::HashSet;
 use std::time::Instant;
 
-use vb_core::ids::StepIdx;
 use vb_core::WorkflowDigest;
+use vb_core::ids::StepIdx;
 use vb_core::ids::{ActionId, RunId, SlotIdx};
 use vb_ipc::server::IpcResponse;
 use vb_ipc::{IpcTraceEvent, IpcTraceEventKind};
@@ -1257,7 +1257,10 @@ mod tests {
 
         // Start playing.
         ctrl.play();
-        assert!(matches!(ctrl.playback_state(), PlaybackState::Playing { .. }));
+        assert!(matches!(
+            ctrl.playback_state(),
+            PlaybackState::Playing { .. }
+        ));
 
         // Step forward while playing.
         ctrl.step_forward();
@@ -1284,7 +1287,10 @@ mod tests {
         ctrl.current_position = 2;
 
         ctrl.play();
-        assert!(matches!(ctrl.playback_state(), PlaybackState::Playing { .. }));
+        assert!(matches!(
+            ctrl.playback_state(),
+            PlaybackState::Playing { .. }
+        ));
 
         ctrl.step_backward();
         assert!(
@@ -1329,7 +1335,9 @@ mod tests {
         // First poll immediately after play() -- delay has not elapsed.
         let events = ctrl.poll();
         assert!(
-            !events.iter().any(|e| matches!(e, ControllerEvent::PlaybackFinished)),
+            !events
+                .iter()
+                .any(|e| matches!(e, ControllerEvent::PlaybackFinished)),
             "BUG: empty run should emit PlaybackFinished immediately but does not on first poll"
         );
         // Still Playing, not Paused.
@@ -1344,7 +1352,9 @@ mod tests {
 
         // NOW it finishes because the delay check passes.
         assert!(
-            events2.iter().any(|e| matches!(e, ControllerEvent::PlaybackFinished)),
+            events2
+                .iter()
+                .any(|e| matches!(e, ControllerEvent::PlaybackFinished)),
             "empty run should finish once delay elapses"
         );
         assert!(
@@ -1535,7 +1545,10 @@ mod tests {
         ctrl.state = PlaybackState::Paused { position: 1 };
 
         ctrl.play();
-        assert!(matches!(ctrl.playback_state(), PlaybackState::Playing { .. }));
+        assert!(matches!(
+            ctrl.playback_state(),
+            PlaybackState::Playing { .. }
+        ));
 
         // Documenting: poll does NOT immediately emit PlaybackFinished
         // because auto-advance is tick-based, not immediate.
@@ -1544,7 +1557,10 @@ mod tests {
             .iter()
             .any(|e| matches!(e, ControllerEvent::PlaybackFinished));
         // This assertion documents the current (limited) behavior.
-        assert!(!finished, "play-at-end does not immediately finish — tick-based limitation");
+        assert!(
+            !finished,
+            "play-at-end does not immediately finish — tick-based limitation"
+        );
     }
 
     // -- FINDING 12: IPC race - load_phase guards prevent stale replies (HIGH) --
@@ -1564,7 +1580,9 @@ mod tests {
 
         // Should NOT emit RunLoaded (load_phase was Idle).
         assert!(
-            !events.iter().any(|e| matches!(e, ControllerEvent::RunLoaded { .. })),
+            !events
+                .iter()
+                .any(|e| matches!(e, ControllerEvent::RunLoaded { .. })),
             "stale Inspected reply must not produce RunLoaded"
         );
         // Should NOT transition load_phase.
@@ -1590,17 +1608,25 @@ mod tests {
         let reply = IpcReply::Events(IpcResponse::Events {
             events: vec![IpcTraceEvent {
                 sequence: 99,
-                kind: IpcTraceEventKind::RunSubmitted { run: RunId::new(999) },
+                kind: IpcTraceEventKind::RunSubmitted {
+                    run: RunId::new(999),
+                },
             }],
         });
         let mut events = Vec::new();
         ctrl.handle_reply(reply, &mut events);
 
         // The existing engine must NOT be overwritten.
-        assert_eq!(ctrl.total_events(), 1, "stale Events reply must not overwrite engine");
+        assert_eq!(
+            ctrl.total_events(),
+            1,
+            "stale Events reply must not overwrite engine"
+        );
         // No RunLoaded event should be emitted.
         assert!(
-            !events.iter().any(|e| matches!(e, ControllerEvent::RunLoaded { .. })),
+            !events
+                .iter()
+                .any(|e| matches!(e, ControllerEvent::RunLoaded { .. })),
             "stale Events reply must not emit RunLoaded"
         );
     }
@@ -1683,7 +1709,9 @@ mod tests {
         ctrl.play();
         assert!(matches!(
             ctrl.playback_state(),
-            PlaybackState::Playing { speed: PlaybackSpeed::Normal }
+            PlaybackState::Playing {
+                speed: PlaybackSpeed::Normal
+            }
         ));
     }
 
@@ -1696,13 +1724,17 @@ mod tests {
         ctrl.play();
         assert!(matches!(
             ctrl.playback_state(),
-            PlaybackState::Playing { speed: PlaybackSpeed::Normal }
+            PlaybackState::Playing {
+                speed: PlaybackSpeed::Normal
+            }
         ));
 
         ctrl.set_speed(PlaybackSpeed::Quad);
         assert!(matches!(
             ctrl.playback_state(),
-            PlaybackState::Playing { speed: PlaybackSpeed::Quad }
+            PlaybackState::Playing {
+                speed: PlaybackSpeed::Quad
+            }
         ));
     }
 

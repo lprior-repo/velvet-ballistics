@@ -7,7 +7,7 @@
 
 use crate::ValidationResult;
 
-use crate::fact_table::{resolve_value, require_boolean, write_slot, Facts};
+use crate::fact_table::{Facts, require_boolean, resolve_value, write_slot};
 use crate::type_sigs::{StepKind, ValueFact, WorkflowTypes};
 
 /// Validates types and taint for an entire workflow.
@@ -41,8 +41,8 @@ fn validate_step_types(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::type_sigs::{StepTypes, TypedValue, ValueType};
     use crate::ValidationError;
+    use crate::type_sigs::{StepTypes, TypedValue, ValueType};
 
     fn make_workflow(steps: Vec<StepTypes>) -> WorkflowTypes {
         WorkflowTypes {
@@ -72,7 +72,10 @@ mod tests {
 
     #[test]
     fn accepts_boolean_choose_literal() {
-        let wf = make_workflow(vec![choose_step("route", TypedValue::Literal(ValueType::Boolean))]);
+        let wf = make_workflow(vec![choose_step(
+            "route",
+            TypedValue::Literal(ValueType::Boolean),
+        )]);
         assert_eq!(validate_types(&wf), Ok(()));
     }
 
@@ -102,9 +105,10 @@ mod tests {
 
     #[test]
     fn accepts_save_and_finish_no_choose() {
-        let wf = make_workflow(vec![
-            save_step("val", TypedValue::Literal(ValueType::Number)),
-        ]);
+        let wf = make_workflow(vec![save_step(
+            "val",
+            TypedValue::Literal(ValueType::Number),
+        )]);
         assert_eq!(validate_types(&wf), Ok(()));
     }
 
@@ -124,7 +128,10 @@ mod tests {
 
     #[test]
     fn rejects_text_choose() {
-        let wf = make_workflow(vec![choose_step("route", TypedValue::Literal(ValueType::Text))]);
+        let wf = make_workflow(vec![choose_step(
+            "route",
+            TypedValue::Literal(ValueType::Text),
+        )]);
         assert_eq!(
             validate_types(&wf),
             Err(ValidationError::TypeMismatch {
@@ -148,7 +155,10 @@ mod tests {
 
     #[test]
     fn rejects_object_choose() {
-        let wf = make_workflow(vec![choose_step("route", TypedValue::Literal(ValueType::Object))]);
+        let wf = make_workflow(vec![choose_step(
+            "route",
+            TypedValue::Literal(ValueType::Object),
+        )]);
         assert_eq!(
             validate_types(&wf),
             Err(ValidationError::TypeMismatch {
@@ -160,7 +170,10 @@ mod tests {
 
     #[test]
     fn rejects_list_choose() {
-        let wf = make_workflow(vec![choose_step("route", TypedValue::Literal(ValueType::List))]);
+        let wf = make_workflow(vec![choose_step(
+            "route",
+            TypedValue::Literal(ValueType::List),
+        )]);
         assert_eq!(
             validate_types(&wf),
             Err(ValidationError::TypeMismatch {

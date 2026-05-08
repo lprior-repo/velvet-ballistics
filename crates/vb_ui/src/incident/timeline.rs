@@ -46,10 +46,7 @@ impl TimelineEntry {
         let total_mins = total_secs / 60;
         let mins = total_mins % 60;
         let hours = total_mins / 60;
-        format!(
-            "{:02}:{:02}:{:02}.{:03}",
-            hours, mins, secs, ms,
-        )
+        format!("{:02}:{:02}:{:02}.{:03}", hours, mins, secs, ms,)
     }
 }
 
@@ -64,10 +61,8 @@ pub struct IncidentTimeline {
 impl IncidentTimeline {
     /// Build a timeline from a slice of incident records, sorted by timestamp.
     pub fn from_records(records: &[IncidentRecord]) -> Self {
-        let mut entries: Vec<TimelineEntry> = records
-            .iter()
-            .map(TimelineEntry::from_record)
-            .collect();
+        let mut entries: Vec<TimelineEntry> =
+            records.iter().map(TimelineEntry::from_record).collect();
         entries.sort_by_key(|e| e.timestamp_us);
 
         let (earliest_us, latest_us) = if entries.is_empty() {
@@ -348,9 +343,30 @@ mod tests {
     #[test]
     fn test_from_records_sorted_by_timestamp() {
         let records = vec![
-            make_record(1, 0, IncidentSeverity::Info, FailureCode::ActionTimeout, ReplaySafety::Safe, 3_000_000),
-            make_record(2, 0, IncidentSeverity::Info, FailureCode::ActionTimeout, ReplaySafety::Safe, 1_000_000),
-            make_record(3, 0, IncidentSeverity::Info, FailureCode::ActionTimeout, ReplaySafety::Safe, 2_000_000),
+            make_record(
+                1,
+                0,
+                IncidentSeverity::Info,
+                FailureCode::ActionTimeout,
+                ReplaySafety::Safe,
+                3_000_000,
+            ),
+            make_record(
+                2,
+                0,
+                IncidentSeverity::Info,
+                FailureCode::ActionTimeout,
+                ReplaySafety::Safe,
+                1_000_000,
+            ),
+            make_record(
+                3,
+                0,
+                IncidentSeverity::Info,
+                FailureCode::ActionTimeout,
+                ReplaySafety::Safe,
+                2_000_000,
+            ),
         ];
         let timeline = IncidentTimeline::from_records(&records);
         assert_eq!(timeline.entries.len(), 3);
@@ -366,9 +382,30 @@ mod tests {
     #[test]
     fn test_filter_by_run() {
         let records = vec![
-            make_record(10, 0, IncidentSeverity::Critical, FailureCode::TaintLeak, ReplaySafety::Safe, 1_000_000),
-            make_record(20, 0, IncidentSeverity::Warning, FailureCode::ActionTimeout, ReplaySafety::Safe, 2_000_000),
-            make_record(10, 1, IncidentSeverity::Major, FailureCode::BudgetExceeded, ReplaySafety::Safe, 3_000_000),
+            make_record(
+                10,
+                0,
+                IncidentSeverity::Critical,
+                FailureCode::TaintLeak,
+                ReplaySafety::Safe,
+                1_000_000,
+            ),
+            make_record(
+                20,
+                0,
+                IncidentSeverity::Warning,
+                FailureCode::ActionTimeout,
+                ReplaySafety::Safe,
+                2_000_000,
+            ),
+            make_record(
+                10,
+                1,
+                IncidentSeverity::Major,
+                FailureCode::BudgetExceeded,
+                ReplaySafety::Safe,
+                3_000_000,
+            ),
         ];
         let timeline = IncidentTimeline::from_records(&records);
         let filtered = timeline.filter_by_run(10);
@@ -381,23 +418,77 @@ mod tests {
     #[test]
     fn test_filter_by_severity() {
         let records = vec![
-            make_record(1, 0, IncidentSeverity::Critical, FailureCode::TaintLeak, ReplaySafety::Safe, 1_000_000),
-            make_record(2, 0, IncidentSeverity::Warning, FailureCode::ActionTimeout, ReplaySafety::Safe, 2_000_000),
-            make_record(3, 0, IncidentSeverity::Critical, FailureCode::StepPanicked, ReplaySafety::UnsafeSideEffect, 3_000_000),
+            make_record(
+                1,
+                0,
+                IncidentSeverity::Critical,
+                FailureCode::TaintLeak,
+                ReplaySafety::Safe,
+                1_000_000,
+            ),
+            make_record(
+                2,
+                0,
+                IncidentSeverity::Warning,
+                FailureCode::ActionTimeout,
+                ReplaySafety::Safe,
+                2_000_000,
+            ),
+            make_record(
+                3,
+                0,
+                IncidentSeverity::Critical,
+                FailureCode::StepPanicked,
+                ReplaySafety::UnsafeSideEffect,
+                3_000_000,
+            ),
         ];
         let timeline = IncidentTimeline::from_records(&records);
         let criticals = timeline.filter_by_severity(IncidentSeverity::Critical);
         assert_eq!(criticals.entries.len(), 2);
-        assert!(criticals.entries.iter().all(|e| e.severity == IncidentSeverity::Critical));
+        assert!(
+            criticals
+                .entries
+                .iter()
+                .all(|e| e.severity == IncidentSeverity::Critical)
+        );
     }
 
     #[test]
     fn test_critical_count() {
         let records = vec![
-            make_record(1, 0, IncidentSeverity::Critical, FailureCode::TaintLeak, ReplaySafety::Safe, 1_000_000),
-            make_record(2, 0, IncidentSeverity::Warning, FailureCode::ActionTimeout, ReplaySafety::Safe, 2_000_000),
-            make_record(3, 0, IncidentSeverity::Critical, FailureCode::StepPanicked, ReplaySafety::Safe, 3_000_000),
-            make_record(4, 0, IncidentSeverity::Info, FailureCode::ActionTimeout, ReplaySafety::Safe, 4_000_000),
+            make_record(
+                1,
+                0,
+                IncidentSeverity::Critical,
+                FailureCode::TaintLeak,
+                ReplaySafety::Safe,
+                1_000_000,
+            ),
+            make_record(
+                2,
+                0,
+                IncidentSeverity::Warning,
+                FailureCode::ActionTimeout,
+                ReplaySafety::Safe,
+                2_000_000,
+            ),
+            make_record(
+                3,
+                0,
+                IncidentSeverity::Critical,
+                FailureCode::StepPanicked,
+                ReplaySafety::Safe,
+                3_000_000,
+            ),
+            make_record(
+                4,
+                0,
+                IncidentSeverity::Info,
+                FailureCode::ActionTimeout,
+                ReplaySafety::Safe,
+                4_000_000,
+            ),
         ];
         let timeline = IncidentTimeline::from_records(&records);
         assert_eq!(timeline.critical_count(), 2);
@@ -406,8 +497,22 @@ mod tests {
     #[test]
     fn test_has_unsafe_replay_true() {
         let records = vec![
-            make_record(1, 0, IncidentSeverity::Warning, FailureCode::ActionTimeout, ReplaySafety::Safe, 1_000_000),
-            make_record(2, 0, IncidentSeverity::Info, FailureCode::ActionTimeout, ReplaySafety::UnsafeSideEffect, 2_000_000),
+            make_record(
+                1,
+                0,
+                IncidentSeverity::Warning,
+                FailureCode::ActionTimeout,
+                ReplaySafety::Safe,
+                1_000_000,
+            ),
+            make_record(
+                2,
+                0,
+                IncidentSeverity::Info,
+                FailureCode::ActionTimeout,
+                ReplaySafety::UnsafeSideEffect,
+                2_000_000,
+            ),
         ];
         let timeline = IncidentTimeline::from_records(&records);
         assert!(timeline.has_unsafe_replay());
@@ -416,8 +521,22 @@ mod tests {
     #[test]
     fn test_has_unsafe_replay_false_all_safe() {
         let records = vec![
-            make_record(1, 0, IncidentSeverity::Critical, FailureCode::TaintLeak, ReplaySafety::Safe, 1_000_000),
-            make_record(2, 0, IncidentSeverity::Warning, FailureCode::ActionTimeout, ReplaySafety::Safe, 2_000_000),
+            make_record(
+                1,
+                0,
+                IncidentSeverity::Critical,
+                FailureCode::TaintLeak,
+                ReplaySafety::Safe,
+                1_000_000,
+            ),
+            make_record(
+                2,
+                0,
+                IncidentSeverity::Warning,
+                FailureCode::ActionTimeout,
+                ReplaySafety::Safe,
+                2_000_000,
+            ),
         ];
         let timeline = IncidentTimeline::from_records(&records);
         assert!(!timeline.has_unsafe_replay());
@@ -426,8 +545,22 @@ mod tests {
     #[test]
     fn test_duration_ms_calculation() {
         let records = vec![
-            make_record(1, 0, IncidentSeverity::Info, FailureCode::ActionTimeout, ReplaySafety::Safe, 1_500_000),
-            make_record(2, 0, IncidentSeverity::Info, FailureCode::ActionTimeout, ReplaySafety::Safe, 4_500_000),
+            make_record(
+                1,
+                0,
+                IncidentSeverity::Info,
+                FailureCode::ActionTimeout,
+                ReplaySafety::Safe,
+                1_500_000,
+            ),
+            make_record(
+                2,
+                0,
+                IncidentSeverity::Info,
+                FailureCode::ActionTimeout,
+                ReplaySafety::Safe,
+                4_500_000,
+            ),
         ];
         let timeline = IncidentTimeline::from_records(&records);
         // 4.5M us - 1.5M us = 3M us = 3000 ms
@@ -436,9 +569,14 @@ mod tests {
 
     #[test]
     fn test_filter_by_run_empty_result() {
-        let records = vec![
-            make_record(1, 0, IncidentSeverity::Info, FailureCode::ActionTimeout, ReplaySafety::Safe, 1_000_000),
-        ];
+        let records = vec![make_record(
+            1,
+            0,
+            IncidentSeverity::Info,
+            FailureCode::ActionTimeout,
+            ReplaySafety::Safe,
+            1_000_000,
+        )];
         let timeline = IncidentTimeline::from_records(&records);
         let filtered = timeline.filter_by_run(999);
         assert!(filtered.entries.is_empty());
@@ -448,9 +586,14 @@ mod tests {
 
     #[test]
     fn test_filter_by_severity_no_match() {
-        let records = vec![
-            make_record(1, 0, IncidentSeverity::Info, FailureCode::ActionTimeout, ReplaySafety::Safe, 1_000_000),
-        ];
+        let records = vec![make_record(
+            1,
+            0,
+            IncidentSeverity::Info,
+            FailureCode::ActionTimeout,
+            ReplaySafety::Safe,
+            1_000_000,
+        )];
         let timeline = IncidentTimeline::from_records(&records);
         let criticals = timeline.filter_by_severity(IncidentSeverity::Critical);
         assert!(criticals.entries.is_empty());
@@ -520,11 +663,26 @@ mod tests {
     #[test]
     fn test_from_record_inherits_correct_color_for_each_severity() {
         for (severity, expected_color) in [
-            (IncidentSeverity::Critical, IncidentSeverity::Critical.severity_color()),
-            (IncidentSeverity::Major, IncidentSeverity::Major.severity_color()),
-            (IncidentSeverity::Minor, IncidentSeverity::Minor.severity_color()),
-            (IncidentSeverity::Warning, IncidentSeverity::Warning.severity_color()),
-            (IncidentSeverity::Info, IncidentSeverity::Info.severity_color()),
+            (
+                IncidentSeverity::Critical,
+                IncidentSeverity::Critical.severity_color(),
+            ),
+            (
+                IncidentSeverity::Major,
+                IncidentSeverity::Major.severity_color(),
+            ),
+            (
+                IncidentSeverity::Minor,
+                IncidentSeverity::Minor.severity_color(),
+            ),
+            (
+                IncidentSeverity::Warning,
+                IncidentSeverity::Warning.severity_color(),
+            ),
+            (
+                IncidentSeverity::Info,
+                IncidentSeverity::Info.severity_color(),
+            ),
         ] {
             let record = make_record(
                 1,
@@ -535,7 +693,10 @@ mod tests {
                 1_000,
             );
             let entry = TimelineEntry::from_record(&record);
-            assert_eq!(entry.color, expected_color, "color mismatch for {severity:?}");
+            assert_eq!(
+                entry.color, expected_color,
+                "color mismatch for {severity:?}"
+            );
         }
     }
 
@@ -613,7 +774,8 @@ mod tests {
             assert_eq!(entry.run_id, expected_run, "wrong order at index {idx}");
         }
         assert_eq!(timeline.earliest_us, 0);
-        let expected_latest = u64::try_from(count - 1).unwrap_or(u64::MAX)
+        let expected_latest = u64::try_from(count - 1)
+            .unwrap_or(u64::MAX)
             .checked_mul(1_000)
             .unwrap_or(u64::MAX);
         assert_eq!(timeline.latest_us, expected_latest);
@@ -677,32 +839,89 @@ mod tests {
     #[test]
     fn test_filter_by_run_then_severity() {
         let records = vec![
-            make_record(1, 0, IncidentSeverity::Critical, FailureCode::TaintLeak, ReplaySafety::Safe, 1_000_000),
-            make_record(1, 1, IncidentSeverity::Warning, FailureCode::ActionTimeout, ReplaySafety::Safe, 2_000_000),
-            make_record(2, 0, IncidentSeverity::Critical, FailureCode::StepPanicked, ReplaySafety::Safe, 3_000_000),
-            make_record(1, 2, IncidentSeverity::Critical, FailureCode::BudgetExceeded, ReplaySafety::Safe, 4_000_000),
+            make_record(
+                1,
+                0,
+                IncidentSeverity::Critical,
+                FailureCode::TaintLeak,
+                ReplaySafety::Safe,
+                1_000_000,
+            ),
+            make_record(
+                1,
+                1,
+                IncidentSeverity::Warning,
+                FailureCode::ActionTimeout,
+                ReplaySafety::Safe,
+                2_000_000,
+            ),
+            make_record(
+                2,
+                0,
+                IncidentSeverity::Critical,
+                FailureCode::StepPanicked,
+                ReplaySafety::Safe,
+                3_000_000,
+            ),
+            make_record(
+                1,
+                2,
+                IncidentSeverity::Critical,
+                FailureCode::BudgetExceeded,
+                ReplaySafety::Safe,
+                4_000_000,
+            ),
         ];
         let timeline = IncidentTimeline::from_records(&records);
         let run1 = timeline.filter_by_run(1);
         let run1_criticals = run1.filter_by_severity(IncidentSeverity::Critical);
         assert_eq!(run1_criticals.entries.len(), 2);
         assert!(run1_criticals.entries.iter().all(|e| e.run_id == 1));
-        assert!(run1_criticals.entries.iter().all(|e| e.severity == IncidentSeverity::Critical));
+        assert!(
+            run1_criticals
+                .entries
+                .iter()
+                .all(|e| e.severity == IncidentSeverity::Critical)
+        );
     }
 
     #[test]
     fn test_filter_by_severity_then_run() {
         let records = vec![
-            make_record(1, 0, IncidentSeverity::Critical, FailureCode::TaintLeak, ReplaySafety::Safe, 1_000_000),
-            make_record(2, 0, IncidentSeverity::Critical, FailureCode::StepPanicked, ReplaySafety::Safe, 2_000_000),
-            make_record(1, 1, IncidentSeverity::Warning, FailureCode::ActionTimeout, ReplaySafety::Safe, 3_000_000),
+            make_record(
+                1,
+                0,
+                IncidentSeverity::Critical,
+                FailureCode::TaintLeak,
+                ReplaySafety::Safe,
+                1_000_000,
+            ),
+            make_record(
+                2,
+                0,
+                IncidentSeverity::Critical,
+                FailureCode::StepPanicked,
+                ReplaySafety::Safe,
+                2_000_000,
+            ),
+            make_record(
+                1,
+                1,
+                IncidentSeverity::Warning,
+                FailureCode::ActionTimeout,
+                ReplaySafety::Safe,
+                3_000_000,
+            ),
         ];
         let timeline = IncidentTimeline::from_records(&records);
         let criticals = timeline.filter_by_severity(IncidentSeverity::Critical);
         let run1_criticals = criticals.filter_by_run(1);
         assert_eq!(run1_criticals.entries.len(), 1);
         assert_eq!(run1_criticals.entries[0].run_id, 1);
-        assert_eq!(run1_criticals.entries[0].failure_code, FailureCode::TaintLeak);
+        assert_eq!(
+            run1_criticals.entries[0].failure_code,
+            FailureCode::TaintLeak
+        );
     }
 
     // -- Edge cases: all same severity --
@@ -732,8 +951,22 @@ mod tests {
     #[test]
     fn test_has_unsafe_replay_unknown_variant() {
         let records = vec![
-            make_record(1, 0, IncidentSeverity::Warning, FailureCode::ActionTimeout, ReplaySafety::Safe, 1_000_000),
-            make_record(2, 0, IncidentSeverity::Info, FailureCode::ActionTimeout, ReplaySafety::Unknown, 2_000_000),
+            make_record(
+                1,
+                0,
+                IncidentSeverity::Warning,
+                FailureCode::ActionTimeout,
+                ReplaySafety::Safe,
+                1_000_000,
+            ),
+            make_record(
+                2,
+                0,
+                IncidentSeverity::Info,
+                FailureCode::ActionTimeout,
+                ReplaySafety::Unknown,
+                2_000_000,
+            ),
         ];
         let timeline = IncidentTimeline::from_records(&records);
         // Unknown is not Safe, so has_unsafe_replay should be true
@@ -822,10 +1055,38 @@ mod tests {
     #[test]
     fn test_critical_count_after_filter() {
         let records = vec![
-            make_record(1, 0, IncidentSeverity::Critical, FailureCode::TaintLeak, ReplaySafety::Safe, 1_000_000),
-            make_record(1, 1, IncidentSeverity::Warning, FailureCode::ActionTimeout, ReplaySafety::Safe, 2_000_000),
-            make_record(2, 0, IncidentSeverity::Critical, FailureCode::StepPanicked, ReplaySafety::Safe, 3_000_000),
-            make_record(2, 1, IncidentSeverity::Critical, FailureCode::BudgetExceeded, ReplaySafety::UnsafeSideEffect, 4_000_000),
+            make_record(
+                1,
+                0,
+                IncidentSeverity::Critical,
+                FailureCode::TaintLeak,
+                ReplaySafety::Safe,
+                1_000_000,
+            ),
+            make_record(
+                1,
+                1,
+                IncidentSeverity::Warning,
+                FailureCode::ActionTimeout,
+                ReplaySafety::Safe,
+                2_000_000,
+            ),
+            make_record(
+                2,
+                0,
+                IncidentSeverity::Critical,
+                FailureCode::StepPanicked,
+                ReplaySafety::Safe,
+                3_000_000,
+            ),
+            make_record(
+                2,
+                1,
+                IncidentSeverity::Critical,
+                FailureCode::BudgetExceeded,
+                ReplaySafety::UnsafeSideEffect,
+                4_000_000,
+            ),
         ];
         let timeline = IncidentTimeline::from_records(&records);
         let run2 = timeline.filter_by_run(2);
@@ -838,8 +1099,22 @@ mod tests {
     #[test]
     fn test_timeline_clone_is_identical() {
         let records = vec![
-            make_record(1, 0, IncidentSeverity::Critical, FailureCode::TaintLeak, ReplaySafety::Safe, 1_000_000),
-            make_record(2, 0, IncidentSeverity::Warning, FailureCode::ActionTimeout, ReplaySafety::Safe, 2_000_000),
+            make_record(
+                1,
+                0,
+                IncidentSeverity::Critical,
+                FailureCode::TaintLeak,
+                ReplaySafety::Safe,
+                1_000_000,
+            ),
+            make_record(
+                2,
+                0,
+                IncidentSeverity::Warning,
+                FailureCode::ActionTimeout,
+                ReplaySafety::Safe,
+                2_000_000,
+            ),
         ];
         let timeline = IncidentTimeline::from_records(&records);
         let cloned = timeline.clone();
@@ -886,33 +1161,75 @@ mod tests {
         // Construct entries with non-monotonic timestamps
         let _entries = vec![
             TimelineEntry {
-                timestamp_us: 5_000_000, run_id: 1, step: 0,
-                severity: IncidentSeverity::Critical, failure_code: FailureCode::TaintLeak,
-                label: String::from("late"), color: [0.0; 4], replay_safe: true,
+                timestamp_us: 5_000_000,
+                run_id: 1,
+                step: 0,
+                severity: IncidentSeverity::Critical,
+                failure_code: FailureCode::TaintLeak,
+                label: String::from("late"),
+                color: [0.0; 4],
+                replay_safe: true,
             },
             TimelineEntry {
-                timestamp_us: 1_000_000, run_id: 2, step: 0,
-                severity: IncidentSeverity::Info, failure_code: FailureCode::ActionTimeout,
-                label: String::from("early"), color: [0.0; 4], replay_safe: true,
+                timestamp_us: 1_000_000,
+                run_id: 2,
+                step: 0,
+                severity: IncidentSeverity::Info,
+                failure_code: FailureCode::ActionTimeout,
+                label: String::from("early"),
+                color: [0.0; 4],
+                replay_safe: true,
             },
             TimelineEntry {
-                timestamp_us: 3_000_000, run_id: 3, step: 0,
-                severity: IncidentSeverity::Warning, failure_code: FailureCode::ActionTimeout,
-                label: String::from("middle"), color: [0.0; 4], replay_safe: true,
+                timestamp_us: 3_000_000,
+                run_id: 3,
+                step: 0,
+                severity: IncidentSeverity::Warning,
+                failure_code: FailureCode::ActionTimeout,
+                label: String::from("middle"),
+                color: [0.0; 4],
+                replay_safe: true,
             },
         ];
         // from_entries is private, but we can test via from_records + filter
         // which calls from_entries. The sort order from from_records is preserved
         // through filtering, so in practice this is safe. But we verify:
         let records = vec![
-            make_record(1, 0, IncidentSeverity::Critical, FailureCode::TaintLeak, ReplaySafety::Safe, 5_000_000),
-            make_record(2, 0, IncidentSeverity::Info, FailureCode::ActionTimeout, ReplaySafety::Safe, 1_000_000),
-            make_record(3, 0, IncidentSeverity::Warning, FailureCode::ActionTimeout, ReplaySafety::Safe, 3_000_000),
+            make_record(
+                1,
+                0,
+                IncidentSeverity::Critical,
+                FailureCode::TaintLeak,
+                ReplaySafety::Safe,
+                5_000_000,
+            ),
+            make_record(
+                2,
+                0,
+                IncidentSeverity::Info,
+                FailureCode::ActionTimeout,
+                ReplaySafety::Safe,
+                1_000_000,
+            ),
+            make_record(
+                3,
+                0,
+                IncidentSeverity::Warning,
+                FailureCode::ActionTimeout,
+                ReplaySafety::Safe,
+                3_000_000,
+            ),
         ];
         let timeline = IncidentTimeline::from_records(&records);
         // from_records sorts, so entries are in timestamp order
-        assert_eq!(timeline.earliest_us, 1_000_000, "earliest is the smallest timestamp");
-        assert_eq!(timeline.latest_us, 5_000_000, "latest is the largest timestamp");
+        assert_eq!(
+            timeline.earliest_us, 1_000_000,
+            "earliest is the smallest timestamp"
+        );
+        assert_eq!(
+            timeline.latest_us, 5_000_000,
+            "latest is the largest timestamp"
+        );
         // filter preserves sort order, so from_entries is safe here
         let filtered = timeline.filter_by_severity(IncidentSeverity::Info);
         assert_eq!(filtered.earliest_us, 1_000_000);
@@ -925,12 +1242,30 @@ mod tests {
     #[test]
     fn blackhat_duration_ms_truncates_sub_millisecond_precision() {
         let records = vec![
-            make_record(1, 0, IncidentSeverity::Info, FailureCode::ActionTimeout, ReplaySafety::Safe, 100),
-            make_record(2, 0, IncidentSeverity::Info, FailureCode::ActionTimeout, ReplaySafety::Safe, 999),
+            make_record(
+                1,
+                0,
+                IncidentSeverity::Info,
+                FailureCode::ActionTimeout,
+                ReplaySafety::Safe,
+                100,
+            ),
+            make_record(
+                2,
+                0,
+                IncidentSeverity::Info,
+                FailureCode::ActionTimeout,
+                ReplaySafety::Safe,
+                999,
+            ),
         ];
         let timeline = IncidentTimeline::from_records(&records);
         // Difference is 899us = 0.899ms, truncated to 0
-        assert_eq!(timeline.duration_ms(), 0, "sub-millisecond duration truncated to 0");
+        assert_eq!(
+            timeline.duration_ms(),
+            0,
+            "sub-millisecond duration truncated to 0"
+        );
         // The actual span is 899 microseconds, lost in the ms conversion
     }
 
@@ -942,18 +1277,27 @@ mod tests {
     fn blackhat_time_label_very_large_timestamp_hours_unbounded() {
         let entry = TimelineEntry {
             timestamp_us: u64::MAX,
-            run_id: 0, step: 0,
+            run_id: 0,
+            step: 0,
             severity: IncidentSeverity::Info,
             failure_code: FailureCode::ActionTimeout,
-            label: String::new(), color: [0.0; 4], replay_safe: true,
+            label: String::new(),
+            color: [0.0; 4],
+            replay_safe: true,
         };
         let label = entry.time_label();
         // u64::MAX microseconds = ~1.8446744e19 us
         // hours = (u64::MAX / 1000) / 1000 / 60 / 60 = ~5,124,095,770,322 hours
         // The format "{:02}" only guarantees minimum width, not maximum
-        assert!(!label.is_empty(), "time_label should produce output for u64::MAX");
+        assert!(
+            !label.is_empty(),
+            "time_label should produce output for u64::MAX"
+        );
         // Hours will be a very large number, not limited to 2 digits
-        assert!(label.len() > 8, "hours field is unbounded for very large timestamps");
+        assert!(
+            label.len() > 8,
+            "hours field is unbounded for very large timestamps"
+        );
     }
 
     /// FINDING: time_label() integer arithmetic: total_ms = timestamp_us / 1000.
@@ -964,14 +1308,20 @@ mod tests {
     fn blackhat_time_label_loses_microseconds_below_millisecond() {
         let entry = TimelineEntry {
             timestamp_us: 999, // 0.999ms
-            run_id: 0, step: 0,
+            run_id: 0,
+            step: 0,
             severity: IncidentSeverity::Info,
             failure_code: FailureCode::ActionTimeout,
-            label: String::new(), color: [0.0; 4], replay_safe: true,
+            label: String::new(),
+            color: [0.0; 4],
+            replay_safe: true,
         };
         let label = entry.time_label();
         // 999us / 1000 = 0ms, so ms portion shows 000
-        assert_eq!(label, "00:00:00.000", "999us is truncated to 0ms in time_label");
+        assert_eq!(
+            label, "00:00:00.000",
+            "999us is truncated to 0ms in time_label"
+        );
     }
 
     /// FINDING: filter_by_run and filter_by_severity clone all filtered entries.
@@ -980,14 +1330,20 @@ mod tests {
     #[test]
     fn blackhat_filter_clones_all_entries() {
         let records: Vec<IncidentRecord> = (0..1000)
-            .map(|i| make_record(
-                u64::try_from(i).unwrap_or(u64::MAX),
-                0,
-                if i % 2 == 0 { IncidentSeverity::Critical } else { IncidentSeverity::Info },
-                FailureCode::ActionTimeout,
-                ReplaySafety::Safe,
-                u64::try_from(i * 1_000).unwrap_or(u64::MAX),
-            ))
+            .map(|i| {
+                make_record(
+                    u64::try_from(i).unwrap_or(u64::MAX),
+                    0,
+                    if i % 2 == 0 {
+                        IncidentSeverity::Critical
+                    } else {
+                        IncidentSeverity::Info
+                    },
+                    FailureCode::ActionTimeout,
+                    ReplaySafety::Safe,
+                    u64::try_from(i * 1_000).unwrap_or(u64::MAX),
+                )
+            })
             .collect();
         let timeline = IncidentTimeline::from_records(&records);
         // Filter to half the entries
@@ -1002,9 +1358,14 @@ mod tests {
     /// first() on a non-empty Vec always returns Some. This is a minor code smell.
     #[test]
     fn blackhat_from_records_unwrap_or_is_dead_code_for_non_empty() {
-        let records = vec![
-            make_record(1, 0, IncidentSeverity::Critical, FailureCode::TaintLeak, ReplaySafety::Safe, 5_000_000),
-        ];
+        let records = vec![make_record(
+            1,
+            0,
+            IncidentSeverity::Critical,
+            FailureCode::TaintLeak,
+            ReplaySafety::Safe,
+            5_000_000,
+        )];
         let timeline = IncidentTimeline::from_records(&records);
         // entries.is_empty() is false, so unwrap_or(0) never fires
         assert_eq!(timeline.earliest_us, 5_000_000);
@@ -1017,14 +1378,16 @@ mod tests {
     fn blackhat_timeline_has_no_capacity_limit() {
         // Build a timeline with 10,000 records (moderate size for test speed)
         let records: Vec<IncidentRecord> = (0..10_000)
-            .map(|i| make_record(
-                u64::try_from(i).unwrap_or(u64::MAX),
-                0,
-                IncidentSeverity::Info,
-                FailureCode::ActionTimeout,
-                ReplaySafety::Safe,
-                u64::try_from(i * 100).unwrap_or(u64::MAX),
-            ))
+            .map(|i| {
+                make_record(
+                    u64::try_from(i).unwrap_or(u64::MAX),
+                    0,
+                    IncidentSeverity::Info,
+                    FailureCode::ActionTimeout,
+                    ReplaySafety::Safe,
+                    u64::try_from(i * 100).unwrap_or(u64::MAX),
+                )
+            })
             .collect();
         let timeline = IncidentTimeline::from_records(&records);
         assert_eq!(timeline.entries.len(), 10_000);
@@ -1038,8 +1401,22 @@ mod tests {
     #[test]
     fn blackhat_earliest_latest_not_auto_updated_when_entries_mutated() {
         let records = vec![
-            make_record(1, 0, IncidentSeverity::Info, FailureCode::ActionTimeout, ReplaySafety::Safe, 1_000_000),
-            make_record(2, 0, IncidentSeverity::Info, FailureCode::ActionTimeout, ReplaySafety::Safe, 5_000_000),
+            make_record(
+                1,
+                0,
+                IncidentSeverity::Info,
+                FailureCode::ActionTimeout,
+                ReplaySafety::Safe,
+                1_000_000,
+            ),
+            make_record(
+                2,
+                0,
+                IncidentSeverity::Info,
+                FailureCode::ActionTimeout,
+                ReplaySafety::Safe,
+                5_000_000,
+            ),
         ];
         let mut timeline = IncidentTimeline::from_records(&records);
         assert_eq!(timeline.earliest_us, 1_000_000);
@@ -1047,12 +1424,20 @@ mod tests {
 
         // Mutate entries directly (fields are pub)
         timeline.entries.push(TimelineEntry {
-            timestamp_us: 10_000_000, run_id: 3, step: 0,
-            severity: IncidentSeverity::Info, failure_code: FailureCode::ActionTimeout,
-            label: String::new(), color: [0.0; 4], replay_safe: true,
+            timestamp_us: 10_000_000,
+            run_id: 3,
+            step: 0,
+            severity: IncidentSeverity::Info,
+            failure_code: FailureCode::ActionTimeout,
+            label: String::new(),
+            color: [0.0; 4],
+            replay_safe: true,
         });
         // latest_us is now stale - still 5_000_000 instead of 10_000_000
-        assert_eq!(timeline.latest_us, 5_000_000, "latest_us is stale after direct mutation");
+        assert_eq!(
+            timeline.latest_us, 5_000_000,
+            "latest_us is stale after direct mutation"
+        );
         assert_eq!(timeline.entries.len(), 3, "but entries has 3 items");
     }
 
@@ -1062,7 +1447,9 @@ mod tests {
     #[test]
     fn blackhat_timeline_entry_allows_invalid_color_values() {
         let entry = TimelineEntry {
-            timestamp_us: 0, run_id: 0, step: 0,
+            timestamp_us: 0,
+            run_id: 0,
+            step: 0,
             severity: IncidentSeverity::Info,
             failure_code: FailureCode::ActionTimeout,
             label: String::new(),
@@ -1073,7 +1460,10 @@ mod tests {
         assert!(entry.color[0] < 0.0_f32, "negative color value accepted");
         assert!(entry.color[1] > 1.0_f32, "color value > 1.0 accepted");
         assert!(entry.color[2].is_nan(), "NaN color value accepted");
-        assert!(entry.color[3].is_infinite(), "infinite color value accepted");
+        assert!(
+            entry.color[3].is_infinite(),
+            "infinite color value accepted"
+        );
     }
 
     /// FINDING: TimelineEntry::from_record allocates a String for the label
@@ -1081,7 +1471,14 @@ mod tests {
     /// significant allocation pressure.
     #[test]
     fn blackhat_from_record_allocates_label_string() {
-        let record = make_record(1, 0, IncidentSeverity::Critical, FailureCode::TaintLeak, ReplaySafety::Safe, 1_000);
+        let record = make_record(
+            1,
+            0,
+            IncidentSeverity::Critical,
+            FailureCode::TaintLeak,
+            ReplaySafety::Safe,
+            1_000,
+        );
         let entry = TimelineEntry::from_record(&record);
         // Verify the label was created (it's always non-empty for valid records)
         assert!(!entry.label.is_empty());
@@ -1094,10 +1491,18 @@ mod tests {
     /// but worth documenting - Unknown is treated as unsafe.
     #[test]
     fn blackhat_has_unsafe_replay_treats_unknown_as_unsafe() {
-        let records = vec![
-            make_record(1, 0, IncidentSeverity::Info, FailureCode::ActionTimeout, ReplaySafety::Unknown, 1_000_000),
-        ];
+        let records = vec![make_record(
+            1,
+            0,
+            IncidentSeverity::Info,
+            FailureCode::ActionTimeout,
+            ReplaySafety::Unknown,
+            1_000_000,
+        )];
         let timeline = IncidentTimeline::from_records(&records);
-        assert!(timeline.has_unsafe_replay(), "Unknown replay safety is treated as unsafe");
+        assert!(
+            timeline.has_unsafe_replay(),
+            "Unknown replay safety is treated as unsafe"
+        );
     }
 }

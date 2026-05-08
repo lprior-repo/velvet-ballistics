@@ -290,8 +290,7 @@ impl<'a> SystemFrameBuilder<'a> {
             });
 
             if alert.severity == AlertSeverity::Critical {
-                unacknowledged_critical_count =
-                    unacknowledged_critical_count.saturating_add(1);
+                unacknowledged_critical_count = unacknowledged_critical_count.saturating_add(1);
             }
         }
 
@@ -345,7 +344,9 @@ impl<'a> SystemFrameBuilder<'a> {
         let mut worst_status = QueueStatus::Normal;
 
         for (idx, shard) in metrics.shards.iter().enumerate() {
-            let combined = shard.ready_queue_depth.saturating_add(shard.action_queue_depth);
+            let combined = shard
+                .ready_queue_depth
+                .saturating_add(shard.action_queue_depth);
             let fill_ratio: f32 = if NOMINAL_QUEUE_CAPACITY > 0 {
                 // Both values are <= u32::MAX (4_294_967_295) which exceeds f32 precision,
                 // but queue depths are always <= 256 here, so u32 fits losslessly.

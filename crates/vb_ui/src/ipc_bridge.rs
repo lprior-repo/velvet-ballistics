@@ -10,7 +10,6 @@ use std::sync::mpsc::{self, Receiver, Sender};
 use std::thread::{self, JoinHandle};
 use std::time::Duration;
 
-
 use vb_core::WorkflowDigest;
 use vb_core::ids::RunId;
 use vb_ipc::client::IpcClient;

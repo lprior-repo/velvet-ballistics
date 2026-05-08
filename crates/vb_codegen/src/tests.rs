@@ -10,8 +10,12 @@ mod tests {
     use vb_core::{
         AccessorProgram, ActionId, CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx,
         ConstValue, EngineSignal, ExprProgram, PathSegment, ResourceContract, RunId, SlotIdx,
-        SlotValue, StepBudget, StepIdx, ValueStore, WorkflowDigest, WorkflowParts, new_run_frame,
-        run_until_blocked, step_once,
+        SlotValue, StepBudget, StepIdx, ValueStore, WorkflowDigest, WorkflowParts,
+        capability::CapabilitySet, new_run_frame, run_until_blocked, step_once,
+    };
+    use vb_runtime::{
+        engine::{EvidenceCollector, RetryPolicy, RuntimeSignal, drive_deterministic_full},
+        primitives::collect::CollectStates,
     };
 
     // --- Workflow helpers ---
@@ -403,6 +407,52 @@ mod tests {
         match signal {
             EngineSignal::Finished(value, _) => Ok(value),
             other => Err(format!("expected finished signal, got {other:?}")),
+        }
+    }
+
+    fn runtime_drive_finished_value(workflow: &CompiledWorkflow) -> Result<SlotValue, String> {
+        let mut run = new_run_frame(RunId::new(4), workflow).map_err(|e| e.to_string())?;
+        let mut budget = StepBudget::MAX;
+        let mut store = ValueStore::new();
+        let mut evidence = EvidenceCollector::new();
+        let mut collect_states = CollectStates::new();
+        let signal = drive_deterministic_full(
+            workflow,
+            &mut run,
+            &mut budget,
+            &mut store,
+            &[],
+            RetryPolicy::NEVER,
+            &mut evidence,
+            &mut collect_states,
+            &CapabilitySet::empty(),
+        )
+        .map_err(|e| e.to_string())?;
+        match signal {
+            RuntimeSignal::Finished(value) => Ok(value),
+            other => Err(format!("expected runtime finished signal, got {other:?}")),
+        }
+    }
+
+    fn runtime_drive_error_string(workflow: &CompiledWorkflow) -> Result<String, String> {
+        let mut run = new_run_frame(RunId::new(5), workflow).map_err(|e| e.to_string())?;
+        let mut budget = StepBudget::MAX;
+        let mut store = ValueStore::new();
+        let mut evidence = EvidenceCollector::new();
+        let mut collect_states = CollectStates::new();
+        match drive_deterministic_full(
+            workflow,
+            &mut run,
+            &mut budget,
+            &mut store,
+            &[],
+            RetryPolicy::NEVER,
+            &mut evidence,
+            &mut collect_states,
+            &CapabilitySet::empty(),
+        ) {
+            Ok(signal) => Err(format!("expected runtime error, got {signal:?}")),
+            Err(error) => Ok(error.to_string()),
         }
     }
 
@@ -1318,20 +1368,20 @@ mod tests {
 
     #[test]
     fn emit_step_match_produces_correct_arm_for_for_each_start_node() -> Result<(), String> {
-        // Given a ForEachStart node (unsupported in codegen)
+        // Given a ForEachStart node supported by generated mode
         let workflow = for_each_workflow()?;
         let node = workflow.node(StepIdx::new(0)).ok_or("node 0 missing")?;
         // When emit_step_function generates code
         let mut out = String::new();
         emit_step_function(&mut out, node, &workflow).map_err(|e| e.to_string())?;
-        // Then the output reports unsupported primitive
+        // Then the output emits concrete iterator setup and branching code.
         assert!(
-            out.contains("UnsupportedPrimitive"),
-            "ForEachStart must emit UnsupportedPrimitive, got: {out}"
+            !out.contains("UnsupportedPrimitive"),
+            "ForEachStart must not emit UnsupportedPrimitive, got: {out}"
         );
         assert!(
-            out.contains("ForEachStart"),
-            "UnsupportedPrimitive must name ForEachStart, got: {out}"
+            out.contains("list_item_count") && out.contains("tail_list_handle"),
+            "ForEachStart must count items and store iterator tail, got: {out}"
         );
         Ok(())
     }
@@ -1946,6 +1996,340 @@ mod tests {
         Ok(())
     }
 
+    fn foreach_empty_generated_workflow() -> Result<CompiledWorkflow, String> {
+        let parts = WorkflowParts {
+            name: Box::<str>::from("test_generated_foreach_empty"),
+            digest: WorkflowDigest::from_bytes([0xA1; 32]),
+            nodes: vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: Some(SlotIdx::new(0)),
+                    next: Some(StepIdx::new(1)),
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::BuildList {
+                        items: Box::new([]),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: Some(SlotIdx::new(2)),
+                    next: None,
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::ForEachStart {
+                        input: SlotIdx::new(0),
+                        item_slot: SlotIdx::new(1),
+                        limit: 0,
+                        body: StepIdx::new(2),
+                        done: StepIdx::new(2),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(2),
+                    output: None,
+                    next: None,
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(2),
+                    },
+                },
+            ]
+            .into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: Box::new([]),
+            slot_count: 3,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+            step_names: Box::new([]),
+        };
+        CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())
+    }
+
+    fn foreach_single_generated_workflow() -> Result<CompiledWorkflow, String> {
+        let parts = WorkflowParts {
+            name: Box::<str>::from("test_generated_foreach_single"),
+            digest: WorkflowDigest::from_bytes([0xA2; 32]),
+            nodes: vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: Some(SlotIdx::new(0)),
+                    next: Some(StepIdx::new(1)),
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::SetConst {
+                        value: ConstIdx::new(0),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: Some(SlotIdx::new(1)),
+                    next: Some(StepIdx::new(2)),
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::BuildList {
+                        items: Box::new([SlotIdx::new(0)]),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(2),
+                    output: Some(SlotIdx::new(2)),
+                    next: None,
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::ForEachStart {
+                        input: SlotIdx::new(1),
+                        item_slot: SlotIdx::new(0),
+                        limit: 1,
+                        body: StepIdx::new(3),
+                        done: StepIdx::new(3),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(3),
+                    output: None,
+                    next: None,
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(0),
+                    },
+                },
+            ]
+            .into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: vec![ConstValue::I64(7)].into_boxed_slice(),
+            slot_count: 3,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+            step_names: Box::new([]),
+        };
+        CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())
+    }
+
+    fn foreach_multi_generated_workflow() -> Result<CompiledWorkflow, String> {
+        let parts = WorkflowParts {
+            name: Box::<str>::from("test_generated_foreach_multi"),
+            digest: WorkflowDigest::from_bytes([0xA3; 32]),
+            nodes: vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: Some(SlotIdx::new(0)),
+                    next: Some(StepIdx::new(1)),
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::SetConst {
+                        value: ConstIdx::new(0),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: Some(SlotIdx::new(1)),
+                    next: Some(StepIdx::new(2)),
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::SetConst {
+                        value: ConstIdx::new(1),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(2),
+                    output: Some(SlotIdx::new(2)),
+                    next: Some(StepIdx::new(3)),
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::SetConst {
+                        value: ConstIdx::new(2),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(3),
+                    output: Some(SlotIdx::new(3)),
+                    next: Some(StepIdx::new(4)),
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::BuildList {
+                        items: Box::new([SlotIdx::new(0), SlotIdx::new(1), SlotIdx::new(2)]),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(4),
+                    output: Some(SlotIdx::new(5)),
+                    next: None,
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::ForEachStart {
+                        input: SlotIdx::new(3),
+                        item_slot: SlotIdx::new(4),
+                        limit: 3,
+                        body: StepIdx::new(5),
+                        done: StepIdx::new(6),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(5),
+                    output: Some(SlotIdx::new(4)),
+                    next: None,
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::ForEachNext {
+                        iterator_slot: SlotIdx::new(5),
+                        body: StepIdx::new(6),
+                        done: StepIdx::new(6),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(6),
+                    output: None,
+                    next: None,
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(4),
+                    },
+                },
+            ]
+            .into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: vec![ConstValue::I64(1), ConstValue::I64(2), ConstValue::I64(3)]
+                .into_boxed_slice(),
+            slot_count: 6,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+            step_names: Box::new([]),
+        };
+        CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())
+    }
+
+    fn foreach_limit_generated_workflow() -> Result<CompiledWorkflow, String> {
+        let parts = WorkflowParts {
+            name: Box::<str>::from("test_generated_foreach_limit"),
+            digest: WorkflowDigest::from_bytes([0xA4; 32]),
+            nodes: vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: Some(SlotIdx::new(0)),
+                    next: Some(StepIdx::new(1)),
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::SetConst {
+                        value: ConstIdx::new(0),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: Some(SlotIdx::new(1)),
+                    next: Some(StepIdx::new(2)),
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::BuildList {
+                        items: Box::new([SlotIdx::new(0)]),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(2),
+                    output: Some(SlotIdx::new(2)),
+                    next: None,
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::ForEachStart {
+                        input: SlotIdx::new(1),
+                        item_slot: SlotIdx::new(0),
+                        limit: 0,
+                        body: StepIdx::new(3),
+                        done: StepIdx::new(3),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(3),
+                    output: None,
+                    next: None,
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(0),
+                    },
+                },
+            ]
+            .into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: vec![ConstValue::I64(7)].into_boxed_slice(),
+            slot_count: 3,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+            step_names: Box::new([]),
+        };
+        CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())
+    }
+
+    #[test]
+    fn generated_for_each_empty_list_matches_interpreter_tail_result() -> Result<(), String> {
+        let workflow = foreach_empty_generated_workflow()?;
+        let runtime_value = runtime_drive_finished_value(&workflow)?;
+        match runtime_value {
+            SlotValue::List(id) => {
+                assert_eq!(id.get(), 1, "runtime must return inserted empty tail")
+            }
+            other => return Err(format!("expected runtime list result, got {other:?}")),
+        }
+
+        let generated_stdout = generated_drive_stdout(&workflow, "foreach_empty", "")?;
+        assert_eq!(
+            generated_stdout, "ok:List(1)\n",
+            "generated ForEach empty-list tail must match interpreter handle"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn generated_for_each_single_item_matches_interpreter_binding() -> Result<(), String> {
+        let workflow = foreach_single_generated_workflow()?;
+        let runtime_value = runtime_drive_finished_value(&workflow)?;
+        assert_eq!(runtime_value, SlotValue::I64(7));
+
+        let generated_stdout = generated_drive_stdout(&workflow, "foreach_single", "")?;
+        assert_eq!(generated_stdout, "ok:I64(7)\n");
+        Ok(())
+    }
+
+    #[test]
+    fn generated_for_each_next_matches_interpreter_tail_binding() -> Result<(), String> {
+        let workflow = foreach_multi_generated_workflow()?;
+        let runtime_value = runtime_drive_finished_value(&workflow)?;
+        assert_eq!(runtime_value, SlotValue::I64(2));
+
+        let generated_stdout = generated_drive_stdout(&workflow, "foreach_multi", "")?;
+        assert_eq!(generated_stdout, "ok:I64(2)\n");
+        Ok(())
+    }
+
+    #[test]
+    fn generated_for_each_limit_exceeded_matches_interpreter_error() -> Result<(), String> {
+        let workflow = foreach_limit_generated_workflow()?;
+        let ir_error = runtime_drive_error_string(&workflow)?;
+        assert!(
+            ir_error.contains("for_each_limit"),
+            "IR limit error must name for_each_limit, got: {ir_error}"
+        );
+
+        let generated_stdout = generated_drive_stdout(&workflow, "foreach_limit", "")?;
+        assert!(
+            generated_stdout
+                .contains("err:IterationLimitExceeded { resource: \"for_each_limit\" }"),
+            "generated limit error must match typed resource, got: {generated_stdout}"
+        );
+        Ok(())
+    }
+
     #[test]
     fn emit_trybuild_fixture_writes_file_to_disk() -> Result<(), String> {
         // Given a minimal workflow and a temp fixture path
@@ -2303,7 +2687,7 @@ mod tests {
             expressions: Box::new([]),
             accessors: Box::new([]),
             constants: Box::new([]),
-            slot_count: 2,
+            slot_count: 3,
             symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: ResourceContract::DEFAULT,
@@ -2319,7 +2703,7 @@ mod tests {
             nodes: vec![
                 CompiledNode {
                     id: StepIdx::new(0),
-                    output: None,
+                    output: Some(SlotIdx::new(2)),
                     next: None,
                     on_error: None,
                     error_slot: None,
@@ -2338,7 +2722,7 @@ mod tests {
                     on_error: None,
                     error_slot: None,
                     kind: CompiledNodeKind::Finish {
-                        result: SlotIdx::new(0),
+                        result: SlotIdx::new(1),
                     },
                 },
             ]
@@ -2346,7 +2730,7 @@ mod tests {
             expressions: Box::new([]),
             accessors: Box::new([]),
             constants: Box::new([]),
-            slot_count: 2,
+            slot_count: 3,
             symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: ResourceContract::DEFAULT,
@@ -3335,7 +3719,7 @@ mod tests {
         emit_step_function(&mut out, node, &workflow).map_err(|e| e.to_string())?;
         // Then the generated code calls the body step and routes to the handler on error
         assert!(
-            out.contains("step_1(slots)"),
+            out.contains("step_1(slots, list_store)"),
             "ErrorHandler must call body step 1, got: {out}"
         );
         // The handler must appear in executable code (not just a comment).
@@ -4421,7 +4805,7 @@ mod tests {
             nodes: vec![
                 CompiledNode {
                     id: StepIdx::new(0),
-                    output: None,
+                    output: Some(SlotIdx::new(1)),
                     next: None,
                     on_error: None,
                     error_slot: None,
@@ -4433,7 +4817,7 @@ mod tests {
                 },
                 CompiledNode {
                     id: StepIdx::new(1),
-                    output: None,
+                    output: Some(SlotIdx::new(1)),
                     next: None,
                     on_error: None,
                     error_slot: None,
@@ -4462,7 +4846,7 @@ mod tests {
             nodes: vec![
                 CompiledNode {
                     id: StepIdx::new(0),
-                    output: None,
+                    output: Some(SlotIdx::new(1)),
                     next: Some(StepIdx::new(1)),
                     on_error: None,
                     error_slot: None,
@@ -4472,12 +4856,12 @@ mod tests {
                 },
                 CompiledNode {
                     id: StepIdx::new(1),
-                    output: None,
+                    output: Some(SlotIdx::new(1)),
                     next: None,
                     on_error: None,
                     error_slot: None,
                     kind: CompiledNodeKind::Finish {
-                        result: SlotIdx::new(0),
+                        result: SlotIdx::new(1),
                     },
                 },
             ]
@@ -4835,72 +5219,53 @@ mod tests {
         CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())
     }
 
-    // --- ForEach validation rejection tests ---
+    // --- ForEach generated-mode acceptance tests ---
 
     #[test]
-    fn for_each_start_codegen_is_typed_error() -> Result<(), String> {
+    fn for_each_start_codegen_is_supported() -> Result<(), String> {
         let workflow = for_each_workflow()?;
-        assert_unsupported_ir(
-            validate_generated_subset(&workflow),
-            "ForEachStart",
-            "unsupported generated Rust IR feature: ForEachStart",
-        )?;
-        assert_unsupported_ir(
-            emit_rust_workflow(&workflow),
-            "ForEachStart",
-            "unsupported generated Rust IR feature: ForEachStart",
-        )?;
+        validate_generated_subset(&workflow).map_err(|e| e.to_string())?;
+        let code = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
+        assert!(
+            code.contains("tail_list_handle")
+                && !code.contains("UnsupportedPrimitive { primitive: \"ForEachStart\" }"),
+            "ForEachStart must emit concrete generated support, got: {code}"
+        );
         Ok(())
     }
 
     #[test]
-    fn for_each_next_codegen_is_typed_error() -> Result<(), String> {
+    fn for_each_next_codegen_is_supported() -> Result<(), String> {
         let workflow = for_each_next_workflow()?;
-        assert_unsupported_ir(
-            validate_generated_subset(&workflow),
-            "ForEachNext",
-            "unsupported generated Rust IR feature: ForEachNext",
-        )?;
-        assert_unsupported_ir(
-            emit_rust_workflow(&workflow),
-            "ForEachNext",
-            "unsupported generated Rust IR feature: ForEachNext",
-        )?;
+        validate_generated_subset(&workflow).map_err(|e| e.to_string())?;
+        let code = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
+        assert!(
+            code.contains("first_list_item")
+                && !code.contains("UnsupportedPrimitive { primitive: \"ForEachNext\" }"),
+            "ForEachNext must emit concrete generated support, got: {code}"
+        );
         Ok(())
     }
 
     #[test]
-    fn for_each_join_codegen_is_typed_error() -> Result<(), String> {
+    fn for_each_join_codegen_is_supported() -> Result<(), String> {
         let workflow = for_each_join_workflow()?;
-        assert_unsupported_ir(
-            validate_generated_subset(&workflow),
-            "ForEachJoin",
-            "unsupported generated Rust IR feature: ForEachJoin",
-        )?;
-        assert_unsupported_ir(
-            emit_rust_workflow(&workflow),
-            "ForEachJoin",
-            "unsupported generated Rust IR feature: ForEachJoin",
-        )?;
+        validate_generated_subset(&workflow).map_err(|e| e.to_string())?;
+        let code = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
+        assert!(
+            code.contains("list_item_count")
+                && !code.contains("UnsupportedPrimitive { primitive: \"ForEachJoin\" }"),
+            "ForEachJoin must emit concrete generated support, got: {code}"
+        );
         Ok(())
     }
 
     #[test]
-    fn for_each_sum_workflow_is_rejected_by_codegen() -> Result<(), String> {
+    fn for_each_sum_workflow_is_accepted_by_codegen() -> Result<(), String> {
         // Given a complete ForEach sum workflow with ForEachStart, ForEachNext, and ForEachJoin
         let workflow = for_each_sum_workflow()?;
-        // When validate_generated_subset checks it
-        // Then it rejects with ForEachStart (first unsupported node encountered)
-        assert_unsupported_ir(
-            validate_generated_subset(&workflow),
-            "ForEachStart",
-            "unsupported generated Rust IR feature: ForEachStart",
-        )?;
-        assert_unsupported_ir(
-            emit_rust_workflow(&workflow),
-            "ForEachStart",
-            "unsupported generated Rust IR feature: ForEachStart",
-        )?;
+        validate_generated_subset(&workflow).map_err(|e| e.to_string())?;
+        emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
         Ok(())
     }
 
@@ -4973,24 +5338,14 @@ mod tests {
         Ok(())
     }
 
-    // --- Nested ForEach validation rejection test ---
+    // --- Nested ForEach validation acceptance test ---
 
     #[test]
-    fn nested_for_each_workflow_is_rejected_by_codegen() -> Result<(), String> {
+    fn nested_for_each_workflow_is_accepted_by_codegen() -> Result<(), String> {
         // Given a workflow with a ForEachStart inside a ForEachStart (nested loops)
         let workflow = nested_for_each_workflow()?;
-        // When validate_generated_subset checks it
-        // Then it rejects with ForEachStart (outer loop is first unsupported node)
-        assert_unsupported_ir(
-            validate_generated_subset(&workflow),
-            "ForEachStart",
-            "unsupported generated Rust IR feature: ForEachStart",
-        )?;
-        assert_unsupported_ir(
-            emit_rust_workflow(&workflow),
-            "ForEachStart",
-            "unsupported generated Rust IR feature: ForEachStart",
-        )?;
+        validate_generated_subset(&workflow).map_err(|e| e.to_string())?;
+        emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
         Ok(())
     }
 
@@ -4998,40 +5353,40 @@ mod tests {
 
     #[test]
     fn emit_step_match_produces_correct_arm_for_for_each_next_node() -> Result<(), String> {
-        // Given a ForEachNext node (unsupported in codegen)
+        // Given a ForEachNext node supported by generated mode
         let workflow = for_each_next_workflow()?;
         let node = workflow.node(StepIdx::new(0)).ok_or("node 0 missing")?;
         // When emit_step_function generates code
         let mut out = String::new();
         emit_step_function(&mut out, node, &workflow).map_err(|e| e.to_string())?;
-        // Then the output reports unsupported primitive
+        // Then the output emits concrete iterator advancement.
         assert!(
-            out.contains("UnsupportedPrimitive"),
-            "ForEachNext must emit UnsupportedPrimitive, got: {out}"
+            !out.contains("UnsupportedPrimitive"),
+            "ForEachNext must not emit UnsupportedPrimitive, got: {out}"
         );
         assert!(
-            out.contains("ForEachNext"),
-            "UnsupportedPrimitive must name ForEachNext, got: {out}"
+            out.contains("first_list_item") && out.contains("tail_list_handle"),
+            "ForEachNext must bind item and update iterator tail, got: {out}"
         );
         Ok(())
     }
 
     #[test]
     fn emit_step_match_produces_correct_arm_for_for_each_join_node() -> Result<(), String> {
-        // Given a ForEachJoin node (unsupported in codegen)
+        // Given a ForEachJoin node supported by generated mode
         let workflow = for_each_join_workflow()?;
         let node = workflow.node(StepIdx::new(0)).ok_or("node 0 missing")?;
         // When emit_step_function generates code
         let mut out = String::new();
         emit_step_function(&mut out, node, &workflow).map_err(|e| e.to_string())?;
-        // Then the output reports unsupported primitive
+        // Then the output validates list materialization and writes output.
         assert!(
-            out.contains("UnsupportedPrimitive"),
-            "ForEachJoin must emit UnsupportedPrimitive, got: {out}"
+            !out.contains("UnsupportedPrimitive"),
+            "ForEachJoin must not emit UnsupportedPrimitive, got: {out}"
         );
         assert!(
-            out.contains("ForEachJoin"),
-            "UnsupportedPrimitive must name ForEachJoin, got: {out}"
+            out.contains("expect_list_value") && out.contains("write_slot"),
+            "ForEachJoin must validate and copy materialized list, got: {out}"
         );
         Ok(())
     }
@@ -5849,8 +6204,12 @@ mod tests {
         let workflow = length_expression_workflow()?;
         let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
         assert!(
-            source.contains("SlotValue::List(n)"),
-            "Length must match SlotValue::List with count"
+            source.contains("SlotValue::List(handle)"),
+            "Length must match SlotValue::List with handle"
+        );
+        assert!(
+            source.contains("list_item_count(list_store, handle)?"),
+            "Length must resolve generated list payload length"
         );
         assert!(
             source.contains("SlotValue::Object(n)"),
@@ -5921,12 +6280,12 @@ mod tests {
         let workflow = empty_expression_workflow()?;
         let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
         assert!(
-            source.contains("SlotValue::List(n)"),
-            "Empty must match SlotValue::List"
+            source.contains("SlotValue::List(handle)"),
+            "Empty must match SlotValue::List with handle"
         );
         assert!(
-            source.contains("n == 0"),
-            "Empty must check count == 0"
+            source.contains("list_item_count(list_store, handle)? == 0"),
+            "Empty must check generated list payload length == 0"
         );
         assert!(
             source.contains("SlotValue::Null => true"),
@@ -6165,14 +6524,22 @@ mod tests {
             vb_core::ExprOp::Count,
         ];
 
-        let expr_contains = ExprProgram::try_from_ops(ops_contains.into_boxed_slice()).map_err(|e| e.to_string())?;
-        let expr_starts = ExprProgram::try_from_ops(ops_starts.into_boxed_slice()).map_err(|e| e.to_string())?;
-        let expr_ends = ExprProgram::try_from_ops(ops_ends.into_boxed_slice()).map_err(|e| e.to_string())?;
-        let expr_has = ExprProgram::try_from_ops(ops_has.into_boxed_slice()).map_err(|e| e.to_string())?;
-        let expr_exists = ExprProgram::try_from_ops(ops_exists.into_boxed_slice()).map_err(|e| e.to_string())?;
-        let expr_length = ExprProgram::try_from_ops(ops_length.into_boxed_slice()).map_err(|e| e.to_string())?;
-        let expr_empty = ExprProgram::try_from_ops(ops_empty.into_boxed_slice()).map_err(|e| e.to_string())?;
-        let expr_count = ExprProgram::try_from_ops(ops_count.into_boxed_slice()).map_err(|e| e.to_string())?;
+        let expr_contains = ExprProgram::try_from_ops(ops_contains.into_boxed_slice())
+            .map_err(|e| e.to_string())?;
+        let expr_starts =
+            ExprProgram::try_from_ops(ops_starts.into_boxed_slice()).map_err(|e| e.to_string())?;
+        let expr_ends =
+            ExprProgram::try_from_ops(ops_ends.into_boxed_slice()).map_err(|e| e.to_string())?;
+        let expr_has =
+            ExprProgram::try_from_ops(ops_has.into_boxed_slice()).map_err(|e| e.to_string())?;
+        let expr_exists =
+            ExprProgram::try_from_ops(ops_exists.into_boxed_slice()).map_err(|e| e.to_string())?;
+        let expr_length =
+            ExprProgram::try_from_ops(ops_length.into_boxed_slice()).map_err(|e| e.to_string())?;
+        let expr_empty =
+            ExprProgram::try_from_ops(ops_empty.into_boxed_slice()).map_err(|e| e.to_string())?;
+        let expr_count =
+            ExprProgram::try_from_ops(ops_count.into_boxed_slice()).map_err(|e| e.to_string())?;
 
         // 8 EvalExpr nodes + 1 Finish node = 9 nodes
         let mut nodes = Vec::new();
@@ -6215,11 +6582,7 @@ mod tests {
             ]
             .into_boxed_slice(),
             accessors: Box::new([]),
-            constants: vec![
-                ConstValue::I64(0),
-                ConstValue::I64(1),
-            ]
-            .into_boxed_slice(),
+            constants: vec![ConstValue::I64(0), ConstValue::I64(1)].into_boxed_slice(),
             slot_count: 1,
             symbols_count: 0,
             entry: StepIdx::new(0),
@@ -6284,7 +6647,9 @@ mod tests {
             next: None,
             on_error: None,
             error_slot: None,
-            kind: CompiledNodeKind::Finish { result: SlotIdx::new(0) },
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
         }
     }
 
@@ -6294,7 +6659,8 @@ mod tests {
         let nodes = vec![node, finish_node(finish_idx)];
         let wf = make_step_workflow(nodes, slot_count);
         let mut out = String::new();
-        emit_step_function(&mut out, wf.node(node_id).expect("node must exist"), &wf).expect("emit should succeed");
+        emit_step_function(&mut out, wf.node(node_id).expect("node must exist"), &wf)
+            .expect("emit should succeed");
         out
     }
 
@@ -6306,10 +6672,24 @@ mod tests {
     }
 
     fn make_step_workflow(nodes: Vec<CompiledNode>, slot_count: u16) -> CompiledWorkflow {
-        make_step_workflow_with_symbols(nodes, slot_count, 0, Box::new([]), Box::new([]), Box::new([]))
+        make_step_workflow_with_symbols(
+            nodes,
+            slot_count,
+            0,
+            Box::new([]),
+            Box::new([]),
+            Box::new([]),
+        )
     }
 
-    fn make_step_workflow_with_symbols(nodes: Vec<CompiledNode>, slot_count: u16, symbols_count: u32, constants: Box<[ConstValue]>, expressions: Box<[ExprProgram]>, accessors: Box<[AccessorProgram]>) -> CompiledWorkflow {
+    fn make_step_workflow_with_symbols(
+        nodes: Vec<CompiledNode>,
+        slot_count: u16,
+        symbols_count: u32,
+        constants: Box<[ConstValue]>,
+        expressions: Box<[ExprProgram]>,
+        accessors: Box<[AccessorProgram]>,
+    ) -> CompiledWorkflow {
         let step_count = u16::try_from(nodes.len()).unwrap_or(u16::MAX);
         let parts = WorkflowParts {
             name: Box::from("test_step_wf"),
@@ -6327,12 +6707,34 @@ mod tests {
         CompiledWorkflow::try_from_parts(parts).expect("step test workflow should validate")
     }
 
-    fn make_step_workflow_with_const(nodes: Vec<CompiledNode>, slot_count: u16, constants: Vec<ConstValue>) -> CompiledWorkflow {
-        make_step_workflow_with_symbols(nodes, slot_count, 0, constants.into_boxed_slice(), Box::new([]), Box::new([]))
+    fn make_step_workflow_with_const(
+        nodes: Vec<CompiledNode>,
+        slot_count: u16,
+        constants: Vec<ConstValue>,
+    ) -> CompiledWorkflow {
+        make_step_workflow_with_symbols(
+            nodes,
+            slot_count,
+            0,
+            constants.into_boxed_slice(),
+            Box::new([]),
+            Box::new([]),
+        )
     }
 
-    fn make_step_workflow_with_expr(nodes: Vec<CompiledNode>, slot_count: u16, expressions: Vec<ExprProgram>) -> CompiledWorkflow {
-        make_step_workflow_with_symbols(nodes, slot_count, 0, Box::new([]), expressions.into_boxed_slice(), Box::new([]))
+    fn make_step_workflow_with_expr(
+        nodes: Vec<CompiledNode>,
+        slot_count: u16,
+        expressions: Vec<ExprProgram>,
+    ) -> CompiledWorkflow {
+        make_step_workflow_with_symbols(
+            nodes,
+            slot_count,
+            0,
+            Box::new([]),
+            expressions.into_boxed_slice(),
+            Box::new([]),
+        )
     }
 
     #[test]
@@ -6346,8 +6748,14 @@ mod tests {
             kind: CompiledNodeKind::Nop,
         };
         let code = emit_first_node(node, 2);
-        assert!(code.contains("fn step_0("), "should emit step_0 function: {code}");
-        assert!(code.contains("StepOutcome::Continue(1)"), "nop with next should continue: {code}");
+        assert!(
+            code.contains("fn step_0("),
+            "should emit step_0 function: {code}"
+        );
+        assert!(
+            code.contains("StepOutcome::Continue(1)"),
+            "nop with next should continue: {code}"
+        );
     }
 
     #[test]
@@ -6359,15 +6767,26 @@ mod tests {
                 next: Some(StepIdx::new(1)),
                 on_error: None,
                 error_slot: None,
-                kind: CompiledNodeKind::SetConst { value: ConstIdx::new(0) },
+                kind: CompiledNodeKind::SetConst {
+                    value: ConstIdx::new(0),
+                },
             },
             finish_node(1),
         ];
         let wf = make_step_workflow_with_const(nodes, 3, vec![ConstValue::I64(42)]);
         let code = emit_node_in_wf(StepIdx::new(0), &wf);
-        assert!(code.contains("write_slot"), "SetConst should emit write_slot: {code}");
-        assert!(code.contains("read_const(0)"), "SetConst should read const 0: {code}");
-        assert!(code.contains("StepOutcome::Continue(1)"), "should continue to step 1: {code}");
+        assert!(
+            code.contains("write_slot"),
+            "SetConst should emit write_slot: {code}"
+        );
+        assert!(
+            code.contains("read_const(0)"),
+            "SetConst should read const 0: {code}"
+        );
+        assert!(
+            code.contains("StepOutcome::Continue(1)"),
+            "should continue to step 1: {code}"
+        );
     }
 
     #[test]
@@ -6379,14 +6798,22 @@ mod tests {
                 next: Some(StepIdx::new(1)),
                 on_error: None,
                 error_slot: None,
-                kind: CompiledNodeKind::SetConst { value: ConstIdx::new(0) },
+                kind: CompiledNodeKind::SetConst {
+                    value: ConstIdx::new(0),
+                },
             },
             finish_node(1),
         ];
         let wf = make_step_workflow_with_const(nodes, 2, vec![ConstValue::I64(7)]);
         let code = emit_node_in_wf(StepIdx::new(0), &wf);
-        assert!(!code.contains("write_slot"), "SetConst without output should not write: {code}");
-        assert!(code.contains("StepOutcome::Continue(1)"), "should continue: {code}");
+        assert!(
+            !code.contains("write_slot"),
+            "SetConst without output should not write: {code}"
+        );
+        assert!(
+            code.contains("StepOutcome::Continue(1)"),
+            "should continue: {code}"
+        );
     }
 
     #[test]
@@ -6397,12 +6824,23 @@ mod tests {
             next: Some(StepIdx::new(1)),
             on_error: None,
             error_slot: None,
-            kind: CompiledNodeKind::Copy { source: SlotIdx::new(0) },
+            kind: CompiledNodeKind::Copy {
+                source: SlotIdx::new(0),
+            },
         };
         let code = emit_first_node(node, 4);
-        assert!(code.contains("read_slot_optional"), "Copy should use read_slot_optional: {code}");
-        assert!(code.contains("write_slot"), "Copy should write slot: {code}");
-        assert!(code.contains("StepOutcome::Continue(1)"), "should continue: {code}");
+        assert!(
+            code.contains("read_slot_optional"),
+            "Copy should use read_slot_optional: {code}"
+        );
+        assert!(
+            code.contains("write_slot"),
+            "Copy should write slot: {code}"
+        );
+        assert!(
+            code.contains("StepOutcome::Continue(1)"),
+            "should continue: {code}"
+        );
     }
 
     #[test]
@@ -6413,18 +6851,26 @@ mod tests {
             next: Some(StepIdx::new(1)),
             on_error: None,
             error_slot: None,
-            kind: CompiledNodeKind::Copy { source: SlotIdx::new(0) },
+            kind: CompiledNodeKind::Copy {
+                source: SlotIdx::new(0),
+            },
         };
         let code = emit_first_node(node, 2);
-        assert!(!code.contains("read_slot_optional"), "Copy without output should not read: {code}");
-        assert!(!code.contains("write_slot"), "Copy without output should not write: {code}");
+        assert!(
+            !code.contains("read_slot_optional"),
+            "Copy without output should not read: {code}"
+        );
+        assert!(
+            !code.contains("write_slot"),
+            "Copy without output should not write: {code}"
+        );
     }
 
     #[test]
     fn step_eval_expr_with_output_emits_write() {
-        let expr_prog = ExprProgram::try_from_ops(
-            Box::new([vb_core::ExprOp::LoadSlot(SlotIdx::new(0))]),
-        ).expect("valid expr");
+        let expr_prog =
+            ExprProgram::try_from_ops(Box::new([vb_core::ExprOp::LoadSlot(SlotIdx::new(0))]))
+                .expect("valid expr");
         let nodes = vec![
             CompiledNode {
                 id: StepIdx::new(0),
@@ -6432,21 +6878,26 @@ mod tests {
                 next: Some(StepIdx::new(1)),
                 on_error: None,
                 error_slot: None,
-                kind: CompiledNodeKind::EvalExpr { expr: vb_core::ExprIdx::new(0) },
+                kind: CompiledNodeKind::EvalExpr {
+                    expr: vb_core::ExprIdx::new(0),
+                },
             },
             finish_node(1),
         ];
         let wf = make_step_workflow_with_expr(nodes, 3, vec![expr_prog]);
         let code = emit_node_in_wf(StepIdx::new(0), &wf);
-        assert!(code.contains("eval_expr_0"), "should call eval_expr_0: {code}");
+        assert!(
+            code.contains("eval_expr_0"),
+            "should call eval_expr_0: {code}"
+        );
         assert!(code.contains("write_slot"), "should write slot: {code}");
     }
 
     #[test]
     fn step_eval_expr_without_output_skips_write() {
-        let expr_prog = ExprProgram::try_from_ops(
-            Box::new([vb_core::ExprOp::LoadSlot(SlotIdx::new(0))]),
-        ).expect("valid expr");
+        let expr_prog =
+            ExprProgram::try_from_ops(Box::new([vb_core::ExprOp::LoadSlot(SlotIdx::new(0))]))
+                .expect("valid expr");
         let nodes = vec![
             CompiledNode {
                 id: StepIdx::new(0),
@@ -6454,13 +6905,18 @@ mod tests {
                 next: Some(StepIdx::new(1)),
                 on_error: None,
                 error_slot: None,
-                kind: CompiledNodeKind::EvalExpr { expr: vb_core::ExprIdx::new(0) },
+                kind: CompiledNodeKind::EvalExpr {
+                    expr: vb_core::ExprIdx::new(0),
+                },
             },
             finish_node(1),
         ];
         let wf = make_step_workflow_with_expr(nodes, 2, vec![expr_prog]);
         let code = emit_node_in_wf(StepIdx::new(0), &wf);
-        assert!(!code.contains("eval_expr_0"), "no output should skip eval: {code}");
+        assert!(
+            !code.contains("eval_expr_0"),
+            "no output should skip eval: {code}"
+        );
     }
 
     #[test]
@@ -6471,13 +6927,21 @@ mod tests {
             next: None,
             on_error: None,
             error_slot: None,
-            kind: CompiledNodeKind::Finish { result: SlotIdx::new(0) },
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
         }];
         let wf = make_step_workflow(nodes, 2);
         let mut out = String::new();
         emit_step_function(&mut out, wf.node(StepIdx::new(0)).unwrap(), &wf).unwrap();
-        assert!(out.contains("read_slot(slots, 0)"), "should read result slot: {out}");
-        assert!(out.contains("StepOutcome::Finished"), "should emit Finished: {out}");
+        assert!(
+            out.contains("read_slot(slots, 0)"),
+            "should read result slot: {out}"
+        );
+        assert!(
+            out.contains("StepOutcome::Finished"),
+            "should emit Finished: {out}"
+        );
     }
 
     #[test]
@@ -6489,20 +6953,25 @@ mod tests {
                 next: None,
                 on_error: None,
                 error_slot: None,
-                kind: CompiledNodeKind::Jump { target: StepIdx::new(1) },
+                kind: CompiledNodeKind::Jump {
+                    target: StepIdx::new(1),
+                },
             },
             finish_node(1),
         ];
         let wf = make_step_workflow(nodes, 1);
         let code = emit_node_in_wf(StepIdx::new(0), &wf);
-        assert!(code.contains("StepOutcome::Continue(1)"), "jump should emit continue to target: {code}");
+        assert!(
+            code.contains("StepOutcome::Continue(1)"),
+            "jump should emit continue to target: {code}"
+        );
     }
 
     #[test]
     fn step_choose_with_branch_emits_if() {
-        let expr_prog = ExprProgram::try_from_ops(
-            Box::new([vb_core::ExprOp::LoadSlot(SlotIdx::new(0))]),
-        ).expect("valid expr");
+        let expr_prog =
+            ExprProgram::try_from_ops(Box::new([vb_core::ExprOp::LoadSlot(SlotIdx::new(0))]))
+                .expect("valid expr");
         let nodes = vec![
             CompiledNode {
                 id: StepIdx::new(0),
@@ -6514,7 +6983,8 @@ mod tests {
                     branches: vec![vb_core::ExprBranch {
                         condition: vb_core::ExprIdx::new(0),
                         target: StepIdx::new(2),
-                    }].into_boxed_slice(),
+                    }]
+                    .into_boxed_slice(),
                     otherwise: Some(StepIdx::new(1)),
                 },
             },
@@ -6523,17 +6993,29 @@ mod tests {
         ];
         let wf = make_step_workflow_with_expr(nodes, 2, vec![expr_prog]);
         let code = emit_node_in_wf(StepIdx::new(0), &wf);
-        assert!(code.contains("eval_expr_0"), "choose should eval expr: {code}");
-        assert!(code.contains("is_true()"), "choose should check is_true: {code}");
-        assert!(code.contains("StepOutcome::Continue(2)"), "branch should target step 2: {code}");
-        assert!(code.contains("StepOutcome::Continue(1)"), "otherwise should target step 1: {code}");
+        assert!(
+            code.contains("eval_expr_0"),
+            "choose should eval expr: {code}"
+        );
+        assert!(
+            code.contains("is_true()"),
+            "choose should check is_true: {code}"
+        );
+        assert!(
+            code.contains("StepOutcome::Continue(2)"),
+            "branch should target step 2: {code}"
+        );
+        assert!(
+            code.contains("StepOutcome::Continue(1)"),
+            "otherwise should target step 1: {code}"
+        );
     }
 
     #[test]
     fn step_choose_without_otherwise_emits_error() {
-        let expr_prog = ExprProgram::try_from_ops(
-            Box::new([vb_core::ExprOp::LoadSlot(SlotIdx::new(0))]),
-        ).expect("valid expr");
+        let expr_prog =
+            ExprProgram::try_from_ops(Box::new([vb_core::ExprOp::LoadSlot(SlotIdx::new(0))]))
+                .expect("valid expr");
         let nodes = vec![
             CompiledNode {
                 id: StepIdx::new(0),
@@ -6545,7 +7027,8 @@ mod tests {
                     branches: vec![vb_core::ExprBranch {
                         condition: vb_core::ExprIdx::new(0),
                         target: StepIdx::new(1),
-                    }].into_boxed_slice(),
+                    }]
+                    .into_boxed_slice(),
                     otherwise: None,
                 },
             },
@@ -6553,7 +7036,10 @@ mod tests {
         ];
         let wf = make_step_workflow_with_expr(nodes, 2, vec![expr_prog]);
         let code = emit_node_in_wf(StepIdx::new(0), &wf);
-        assert!(code.contains("NoBranchMatched"), "no otherwise should emit NoBranchMatched: {code}");
+        assert!(
+            code.contains("NoBranchMatched"),
+            "no otherwise should emit NoBranchMatched: {code}"
+        );
     }
 
     #[test]
@@ -6569,7 +7055,8 @@ mod tests {
                     branches: vec![vb_core::SlotBranch {
                         condition: SlotIdx::new(0),
                         target: StepIdx::new(2),
-                    }].into_boxed_slice(),
+                    }]
+                    .into_boxed_slice(),
                     otherwise: Some(StepIdx::new(1)),
                 },
             },
@@ -6578,9 +7065,15 @@ mod tests {
         ];
         let wf = make_step_workflow(nodes, 3);
         let code = emit_node_in_wf(StepIdx::new(0), &wf);
-        assert!(code.contains("read_slot"), "choose_slot should read slot: {code}");
+        assert!(
+            code.contains("read_slot"),
+            "choose_slot should read slot: {code}"
+        );
         assert!(code.contains("is_true()"), "should check is_true: {code}");
-        assert!(code.contains("StepOutcome::Continue(2)"), "branch should target step 2: {code}");
+        assert!(
+            code.contains("StepOutcome::Continue(2)"),
+            "branch should target step 2: {code}"
+        );
     }
 
     #[test]
@@ -6598,11 +7091,18 @@ mod tests {
             },
             finish_node(1),
         ];
-        let wf = make_step_workflow_with_symbols(nodes, 3, 1, Box::new([]), Box::new([]), Box::new([]));
+        let wf =
+            make_step_workflow_with_symbols(nodes, 3, 1, Box::new([]), Box::new([]), Box::new([]));
         let code = emit_node_in_wf(StepIdx::new(0), &wf);
-        assert!(code.contains("BuildObject"), "should contain BuildObject comment: {code}");
+        assert!(
+            code.contains("BuildObject"),
+            "should contain BuildObject comment: {code}"
+        );
         assert!(code.contains("write_slot"), "should write slot: {code}");
-        assert!(code.contains("SlotValue::Object"), "should create Object: {code}");
+        assert!(
+            code.contains("SlotValue::Object"),
+            "should create Object: {code}"
+        );
     }
 
     #[test]
@@ -6642,10 +7142,16 @@ mod tests {
         ];
         let wf = make_step_workflow(nodes, 3);
         let code = emit_node_in_wf(StepIdx::new(0), &wf);
-        assert!(code.contains("BuildList"), "should mention BuildList: {code}");
+        assert!(
+            code.contains("BuildList"),
+            "should mention BuildList: {code}"
+        );
         assert!(code.contains("_item0"), "should read item 0: {code}");
         assert!(code.contains("_item1"), "should read item 1: {code}");
-        assert!(code.contains("SlotValue::List"), "should create List: {code}");
+        assert!(
+            code.contains("SlotValue::List"),
+            "should create List: {code}"
+        );
     }
 
     #[test]
@@ -6665,7 +7171,10 @@ mod tests {
         ];
         let wf = make_step_workflow(nodes, 3);
         let code = emit_node_in_wf(StepIdx::new(0), &wf);
-        assert!(code.contains("0 item(s)"), "empty build list should show 0 items: {code}");
+        assert!(
+            code.contains("0 item(s)"),
+            "empty build list should show 0 items: {code}"
+        );
     }
 
     #[test]
@@ -6683,8 +7192,14 @@ mod tests {
         }];
         let wf = make_step_workflow(nodes, 2);
         let code = emit_node_in_wf(StepIdx::new(0), &wf);
-        assert!(code.contains("ActionSuspend"), "Do should emit ActionSuspend: {code}");
-        assert!(code.contains("action_id: 5"), "should mention action_id 5: {code}");
+        assert!(
+            code.contains("ActionSuspend"),
+            "Do should emit ActionSuspend: {code}"
+        );
+        assert!(
+            code.contains("action_id: 5"),
+            "should mention action_id 5: {code}"
+        );
     }
 
     #[test]
@@ -6695,11 +7210,16 @@ mod tests {
             next: Some(StepIdx::new(1)),
             on_error: None,
             error_slot: None,
-            kind: CompiledNodeKind::WaitUntil { deadline_slot: SlotIdx::new(0) },
+            kind: CompiledNodeKind::WaitUntil {
+                deadline_slot: SlotIdx::new(0),
+            },
         };
         let code = emit_first_node(node, 2);
         assert!(code.contains("_deadline"), "should read deadline: {code}");
-        assert!(code.contains("StepOutcome::Continue(1)"), "should continue: {code}");
+        assert!(
+            code.contains("StepOutcome::Continue(1)"),
+            "should continue: {code}"
+        );
     }
 
     #[test]
@@ -6710,13 +7230,18 @@ mod tests {
             next: None,
             on_error: None,
             error_slot: None,
-            kind: CompiledNodeKind::WaitUntil { deadline_slot: SlotIdx::new(0) },
+            kind: CompiledNodeKind::WaitUntil {
+                deadline_slot: SlotIdx::new(0),
+            },
         }];
         let wf = make_step_workflow(nodes, 2);
         let mut out = String::new();
         emit_step_function(&mut out, wf.node(StepIdx::new(0)).unwrap(), &wf).unwrap();
         assert!(out.contains("_deadline"), "should read deadline: {out}");
-        assert!(out.contains("MissingNextStep"), "should emit MissingNextStep when no next: {out}");
+        assert!(
+            out.contains("MissingNextStep"),
+            "should emit MissingNextStep when no next: {out}"
+        );
     }
 
     #[test]
@@ -6735,7 +7260,10 @@ mod tests {
         let code = emit_first_node(node, 3);
         assert!(code.contains("_event"), "should read event: {code}");
         assert!(code.contains("_timeout"), "should read timeout: {code}");
-        assert!(code.contains("StepOutcome::Continue(1)"), "should continue: {code}");
+        assert!(
+            code.contains("StepOutcome::Continue(1)"),
+            "should continue: {code}"
+        );
     }
 
     #[test]
@@ -6753,7 +7281,10 @@ mod tests {
         };
         let code = emit_first_node(node, 2);
         assert!(code.contains("_event"), "should read event: {code}");
-        assert!(!code.contains("_timeout"), "no timeout should skip timeout read: {code}");
+        assert!(
+            !code.contains("_timeout"),
+            "no timeout should skip timeout read: {code}"
+        );
     }
 
     #[test]
@@ -6773,7 +7304,10 @@ mod tests {
         let mut out = String::new();
         emit_step_function(&mut out, wf.node(StepIdx::new(0)).unwrap(), &wf).unwrap();
         assert!(out.contains("_event"), "should read event: {out}");
-        assert!(out.contains("MissingNextStep"), "should emit MissingNextStep when no next: {out}");
+        assert!(
+            out.contains("MissingNextStep"),
+            "should emit MissingNextStep when no next: {out}"
+        );
     }
 
     #[test]
@@ -6829,7 +7363,10 @@ mod tests {
         let mut out = String::new();
         emit_step_function(&mut out, wf.node(StepIdx::new(0)).unwrap(), &wf).unwrap();
         assert!(out.contains("_prompt"), "should read prompt: {out}");
-        assert!(out.contains("MissingNextStep"), "should emit MissingNextStep when no next: {out}");
+        assert!(
+            out.contains("MissingNextStep"),
+            "should emit MissingNextStep when no next: {out}"
+        );
     }
 
     #[test]
@@ -6840,10 +7377,15 @@ mod tests {
             next: Some(StepIdx::new(1)),
             on_error: None,
             error_slot: None,
-            kind: CompiledNodeKind::AskResume { answer: SlotIdx::new(3) },
+            kind: CompiledNodeKind::AskResume {
+                answer: SlotIdx::new(3),
+            },
         };
         let code = emit_first_node(node, 5);
-        assert!(code.contains("_answer_slot"), "should declare answer_slot: {code}");
+        assert!(
+            code.contains("_answer_slot"),
+            "should declare answer_slot: {code}"
+        );
         assert!(code.contains("3"), "should contain slot index 3: {code}");
     }
 
@@ -6867,9 +7409,15 @@ mod tests {
         ];
         let wf = make_step_workflow(nodes, 2);
         let code = emit_node_in_wf(StepIdx::new(0), &wf);
-        assert!(code.contains("ErrorHandler"), "should mention ErrorHandler: {code}");
+        assert!(
+            code.contains("ErrorHandler"),
+            "should mention ErrorHandler: {code}"
+        );
         assert!(code.contains("step_1"), "should call body step_1: {code}");
-        assert!(code.contains("Continue(2)"), "should continue to handler on error: {code}");
+        assert!(
+            code.contains("Continue(2)"),
+            "should continue to handler on error: {code}"
+        );
     }
 
     #[test]
@@ -6892,8 +7440,14 @@ mod tests {
         ];
         let wf = make_step_workflow(nodes, 2);
         let code = emit_node_in_wf(StepIdx::new(0), &wf);
-        assert!(code.contains("match step_1"), "should match on body step result: {code}");
-        assert!(code.contains("Ok(outcome) => Ok(outcome)"), "should pass through ok: {code}");
+        assert!(
+            code.contains("match step_1"),
+            "should match on body step result: {code}"
+        );
+        assert!(
+            code.contains("Ok(outcome) => Ok(outcome)"),
+            "should pass through ok: {code}"
+        );
         assert!(code.contains("Err(_)"), "should catch errors: {code}");
     }
 
@@ -6918,9 +7472,18 @@ mod tests {
         let wf = make_step_workflow(nodes, 2);
         let code = emit_node_in_wf(StepIdx::new(0), &wf);
         assert!(code.contains("_policy"), "should read policy slot: {code}");
-        assert!(code.contains("CONTRACT_MAX_RETRY_ATTEMPTS"), "should check retry limit: {code}");
-        assert!(code.contains("Continue(1)"), "should continue to body: {code}");
-        assert!(code.contains("Continue(2)"), "should continue to exhausted: {code}");
+        assert!(
+            code.contains("CONTRACT_MAX_RETRY_ATTEMPTS"),
+            "should check retry limit: {code}"
+        );
+        assert!(
+            code.contains("Continue(1)"),
+            "should continue to body: {code}"
+        );
+        assert!(
+            code.contains("Continue(2)"),
+            "should continue to exhausted: {code}"
+        );
     }
 
     #[test]
@@ -6943,7 +7506,10 @@ mod tests {
         ];
         let wf = make_step_workflow(nodes, 2);
         let code = emit_node_in_wf(StepIdx::new(0), &wf);
-        assert!(code.contains("_retry_count"), "should extract retry_count: {code}");
+        assert!(
+            code.contains("_retry_count"),
+            "should extract retry_count: {code}"
+        );
         assert!(code.contains("_limit"), "should define limit: {code}");
     }
 
@@ -6969,8 +7535,14 @@ mod tests {
         ];
         let wf = make_step_workflow(nodes, 2);
         let code = emit_node_in_wf(StepIdx::new(0), &wf);
-        assert!(code.contains("UnsupportedPrimitive"), "CollectStart should emit unsupported: {code}");
-        assert!(code.contains("CollectStart"), "should name CollectStart: {code}");
+        assert!(
+            code.contains("UnsupportedPrimitive"),
+            "CollectStart should emit unsupported: {code}"
+        );
+        assert!(
+            code.contains("CollectStart"),
+            "should name CollectStart: {code}"
+        );
     }
 
     #[test]
@@ -6993,8 +7565,14 @@ mod tests {
         ];
         let wf = make_step_workflow(nodes, 2);
         let code = emit_node_in_wf(StepIdx::new(0), &wf);
-        assert!(code.contains("UnsupportedPrimitive"), "CollectPage should emit unsupported: {code}");
-        assert!(code.contains("CollectPage"), "should name CollectPage: {code}");
+        assert!(
+            code.contains("UnsupportedPrimitive"),
+            "CollectPage should emit unsupported: {code}"
+        );
+        assert!(
+            code.contains("CollectPage"),
+            "should name CollectPage: {code}"
+        );
     }
 
     #[test]
@@ -7017,8 +7595,14 @@ mod tests {
         ];
         let wf = make_step_workflow(nodes, 2);
         let code = emit_node_in_wf(StepIdx::new(0), &wf);
-        assert!(code.contains("UnsupportedPrimitive"), "CollectNext should emit unsupported: {code}");
-        assert!(code.contains("CollectNext"), "should name CollectNext: {code}");
+        assert!(
+            code.contains("UnsupportedPrimitive"),
+            "CollectNext should emit unsupported: {code}"
+        );
+        assert!(
+            code.contains("CollectNext"),
+            "should name CollectNext: {code}"
+        );
     }
 
     #[test]
@@ -7030,22 +7614,30 @@ mod tests {
                 next: Some(StepIdx::new(1)),
                 on_error: None,
                 error_slot: None,
-                kind: CompiledNodeKind::CollectFinish { collector_slot: SlotIdx::new(0) },
+                kind: CompiledNodeKind::CollectFinish {
+                    collector_slot: SlotIdx::new(0),
+                },
             },
             finish_node(1),
         ];
         let wf = make_step_workflow(nodes, 2);
         let code = emit_node_in_wf(StepIdx::new(0), &wf);
-        assert!(code.contains("UnsupportedPrimitive"), "CollectFinish should emit unsupported: {code}");
-        assert!(code.contains("CollectFinish"), "should name CollectFinish: {code}");
+        assert!(
+            code.contains("UnsupportedPrimitive"),
+            "CollectFinish should emit unsupported: {code}"
+        );
+        assert!(
+            code.contains("CollectFinish"),
+            "should name CollectFinish: {code}"
+        );
     }
 
     #[test]
-    fn step_for_each_start_emits_unsupported() {
+    fn step_for_each_start_emits_iterator_support() {
         let nodes = vec![
             CompiledNode {
                 id: StepIdx::new(0),
-                output: None,
+                output: Some(SlotIdx::new(2)),
                 next: None,
                 on_error: None,
                 error_slot: None,
@@ -7062,16 +7654,22 @@ mod tests {
         ];
         let wf = make_step_workflow(nodes, 3);
         let code = emit_node_in_wf(StepIdx::new(0), &wf);
-        assert!(code.contains("UnsupportedPrimitive"), "ForEachStart should emit unsupported: {code}");
-        assert!(code.contains("ForEachStart"), "should name ForEachStart: {code}");
+        assert!(
+            !code.contains("UnsupportedPrimitive"),
+            "ForEachStart should emit concrete support: {code}"
+        );
+        assert!(
+            code.contains("list_item_count") && code.contains("tail_list_handle"),
+            "should count list items and store tail: {code}"
+        );
     }
 
     #[test]
-    fn step_for_each_next_emits_unsupported() {
+    fn step_for_each_next_emits_iterator_support() {
         let nodes = vec![
             CompiledNode {
                 id: StepIdx::new(0),
-                output: None,
+                output: Some(SlotIdx::new(1)),
                 next: None,
                 on_error: None,
                 error_slot: None,
@@ -7086,27 +7684,41 @@ mod tests {
         ];
         let wf = make_step_workflow(nodes, 2);
         let code = emit_node_in_wf(StepIdx::new(0), &wf);
-        assert!(code.contains("UnsupportedPrimitive"), "ForEachNext should emit unsupported: {code}");
-        assert!(code.contains("ForEachNext"), "should name ForEachNext: {code}");
+        assert!(
+            !code.contains("UnsupportedPrimitive"),
+            "ForEachNext should emit concrete support: {code}"
+        );
+        assert!(
+            code.contains("first_list_item") && code.contains("tail_list_handle"),
+            "should bind item and shrink iterator: {code}"
+        );
     }
 
     #[test]
-    fn step_for_each_join_emits_unsupported() {
+    fn step_for_each_join_emits_materialization_support() {
         let nodes = vec![
             CompiledNode {
                 id: StepIdx::new(0),
-                output: None,
+                output: Some(SlotIdx::new(1)),
                 next: Some(StepIdx::new(1)),
                 on_error: None,
                 error_slot: None,
-                kind: CompiledNodeKind::ForEachJoin { output: SlotIdx::new(0) },
+                kind: CompiledNodeKind::ForEachJoin {
+                    output: SlotIdx::new(0),
+                },
             },
             finish_node(1),
         ];
         let wf = make_step_workflow(nodes, 2);
         let code = emit_node_in_wf(StepIdx::new(0), &wf);
-        assert!(code.contains("UnsupportedPrimitive"), "ForEachJoin should emit unsupported: {code}");
-        assert!(code.contains("ForEachJoin"), "should name ForEachJoin: {code}");
+        assert!(
+            !code.contains("UnsupportedPrimitive"),
+            "ForEachJoin should emit concrete support: {code}"
+        );
+        assert!(
+            code.contains("expect_list_value") && code.contains("write_slot"),
+            "should validate and copy materialized list: {code}"
+        );
     }
 
     #[test]
@@ -7128,8 +7740,14 @@ mod tests {
         ];
         let wf = make_step_workflow(nodes, 2);
         let code = emit_node_in_wf(StepIdx::new(0), &wf);
-        assert!(code.contains("UnsupportedPrimitive"), "TogetherStart should emit unsupported: {code}");
-        assert!(code.contains("TogetherStart"), "should name TogetherStart: {code}");
+        assert!(
+            code.contains("UnsupportedPrimitive"),
+            "TogetherStart should emit unsupported: {code}"
+        );
+        assert!(
+            code.contains("TogetherStart"),
+            "should name TogetherStart: {code}"
+        );
     }
 
     #[test]
@@ -7153,8 +7771,14 @@ mod tests {
         ];
         let wf = make_step_workflow(nodes, 2);
         let code = emit_node_in_wf(StepIdx::new(0), &wf);
-        assert!(code.contains("UnsupportedPrimitive"), "TogetherBranch should emit unsupported: {code}");
-        assert!(code.contains("TogetherBranch"), "should name TogetherBranch: {code}");
+        assert!(
+            code.contains("UnsupportedPrimitive"),
+            "TogetherBranch should emit unsupported: {code}"
+        );
+        assert!(
+            code.contains("TogetherBranch"),
+            "should name TogetherBranch: {code}"
+        );
     }
 
     #[test]
@@ -7175,8 +7799,14 @@ mod tests {
         ];
         let wf = make_step_workflow(nodes, 2);
         let code = emit_node_in_wf(StepIdx::new(0), &wf);
-        assert!(code.contains("UnsupportedPrimitive"), "TogetherJoin should emit unsupported: {code}");
-        assert!(code.contains("TogetherJoin"), "should name TogetherJoin: {code}");
+        assert!(
+            code.contains("UnsupportedPrimitive"),
+            "TogetherJoin should emit unsupported: {code}"
+        );
+        assert!(
+            code.contains("TogetherJoin"),
+            "should name TogetherJoin: {code}"
+        );
     }
 
     #[test]
@@ -7201,8 +7831,14 @@ mod tests {
         ];
         let wf = make_step_workflow_with_const(nodes, 3, vec![ConstValue::I64(0)]);
         let code = emit_node_in_wf(StepIdx::new(0), &wf);
-        assert!(code.contains("UnsupportedPrimitive"), "ReduceStart should emit unsupported: {code}");
-        assert!(code.contains("ReduceStart"), "should name ReduceStart: {code}");
+        assert!(
+            code.contains("UnsupportedPrimitive"),
+            "ReduceStart should emit unsupported: {code}"
+        );
+        assert!(
+            code.contains("ReduceStart"),
+            "should name ReduceStart: {code}"
+        );
     }
 
     #[test]
@@ -7226,8 +7862,14 @@ mod tests {
         ];
         let wf = make_step_workflow(nodes, 3);
         let code = emit_node_in_wf(StepIdx::new(0), &wf);
-        assert!(code.contains("UnsupportedPrimitive"), "ReduceNext should emit unsupported: {code}");
-        assert!(code.contains("ReduceNext"), "should name ReduceNext: {code}");
+        assert!(
+            code.contains("UnsupportedPrimitive"),
+            "ReduceNext should emit unsupported: {code}"
+        );
+        assert!(
+            code.contains("ReduceNext"),
+            "should name ReduceNext: {code}"
+        );
     }
 
     #[test]
@@ -7239,14 +7881,22 @@ mod tests {
                 next: Some(StepIdx::new(1)),
                 on_error: None,
                 error_slot: None,
-                kind: CompiledNodeKind::ReduceFinish { accumulator: SlotIdx::new(0) },
+                kind: CompiledNodeKind::ReduceFinish {
+                    accumulator: SlotIdx::new(0),
+                },
             },
             finish_node(1),
         ];
         let wf = make_step_workflow(nodes, 2);
         let code = emit_node_in_wf(StepIdx::new(0), &wf);
-        assert!(code.contains("UnsupportedPrimitive"), "ReduceFinish should emit unsupported: {code}");
-        assert!(code.contains("ReduceFinish"), "should name ReduceFinish: {code}");
+        assert!(
+            code.contains("UnsupportedPrimitive"),
+            "ReduceFinish should emit unsupported: {code}"
+        );
+        assert!(
+            code.contains("ReduceFinish"),
+            "should name ReduceFinish: {code}"
+        );
     }
 
     #[test]
@@ -7269,8 +7919,14 @@ mod tests {
         ];
         let wf = make_step_workflow(nodes, 2);
         let code = emit_node_in_wf(StepIdx::new(0), &wf);
-        assert!(code.contains("UnsupportedPrimitive"), "RepeatStart should emit unsupported: {code}");
-        assert!(code.contains("RepeatStart"), "should name RepeatStart: {code}");
+        assert!(
+            code.contains("UnsupportedPrimitive"),
+            "RepeatStart should emit unsupported: {code}"
+        );
+        assert!(
+            code.contains("RepeatStart"),
+            "should name RepeatStart: {code}"
+        );
     }
 
     #[test]
@@ -7293,8 +7949,14 @@ mod tests {
         ];
         let wf = make_step_workflow(nodes, 2);
         let code = emit_node_in_wf(StepIdx::new(0), &wf);
-        assert!(code.contains("UnsupportedPrimitive"), "RepeatAttempt should emit unsupported: {code}");
-        assert!(code.contains("RepeatAttempt"), "should name RepeatAttempt: {code}");
+        assert!(
+            code.contains("UnsupportedPrimitive"),
+            "RepeatAttempt should emit unsupported: {code}"
+        );
+        assert!(
+            code.contains("RepeatAttempt"),
+            "should name RepeatAttempt: {code}"
+        );
     }
 
     #[test]
@@ -7315,8 +7977,14 @@ mod tests {
         ];
         let wf = make_step_workflow(nodes, 2);
         let code = emit_node_in_wf(StepIdx::new(0), &wf);
-        assert!(code.contains("UnsupportedPrimitive"), "RepeatCheck should emit unsupported: {code}");
-        assert!(code.contains("RepeatCheck"), "should name RepeatCheck: {code}");
+        assert!(
+            code.contains("UnsupportedPrimitive"),
+            "RepeatCheck should emit unsupported: {code}"
+        );
+        assert!(
+            code.contains("RepeatCheck"),
+            "should name RepeatCheck: {code}"
+        );
     }
 
     #[test]
@@ -7328,14 +7996,22 @@ mod tests {
                 next: Some(StepIdx::new(1)),
                 on_error: None,
                 error_slot: None,
-                kind: CompiledNodeKind::RepeatFinish { result: SlotIdx::new(0) },
+                kind: CompiledNodeKind::RepeatFinish {
+                    result: SlotIdx::new(0),
+                },
             },
             finish_node(1),
         ];
         let wf = make_step_workflow(nodes, 2);
         let code = emit_node_in_wf(StepIdx::new(0), &wf);
-        assert!(code.contains("UnsupportedPrimitive"), "RepeatFinish should emit unsupported: {code}");
-        assert!(code.contains("RepeatFinish"), "should name RepeatFinish: {code}");
+        assert!(
+            code.contains("UnsupportedPrimitive"),
+            "RepeatFinish should emit unsupported: {code}"
+        );
+        assert!(
+            code.contains("RepeatFinish"),
+            "should name RepeatFinish: {code}"
+        );
     }
 
     #[test]
@@ -7351,7 +8027,10 @@ mod tests {
         let code = emit_first_node(node, 2);
         let open_count = code.chars().filter(|c| *c == '{').count();
         let close_count = code.chars().filter(|c| *c == '}').count();
-        assert_eq!(open_count, close_count, "braces should be balanced in emitted code: {code}");
+        assert_eq!(
+            open_count, close_count,
+            "braces should be balanced in emitted code: {code}"
+        );
     }
 
     #[test]
@@ -7365,9 +8044,18 @@ mod tests {
             kind: CompiledNodeKind::Nop,
         };
         let code = emit_first_node(node, 2);
-        assert!(code.contains("fn step_0(slots:"), "should have step function signature: {code}");
-        assert!(code.contains("StepOutcome"), "should return StepOutcome: {code}");
-        assert!(code.contains("DriveError"), "should return Result with DriveError: {code}");
+        assert!(
+            code.contains("fn step_0(slots:"),
+            "should have step function signature: {code}"
+        );
+        assert!(
+            code.contains("StepOutcome"),
+            "should return StepOutcome: {code}"
+        );
+        assert!(
+            code.contains("DriveError"),
+            "should return Result with DriveError: {code}"
+        );
     }
 
     #[test]
@@ -7386,7 +8074,10 @@ mod tests {
         nodes.push(finish_node(5));
         let wf = make_step_workflow(nodes, 2);
         let code = emit_node_in_wf(StepIdx::new(4), &wf);
-        assert!(code.contains("fn step_4("), "should emit step_4 function: {code}");
+        assert!(
+            code.contains("fn step_4("),
+            "should emit step_4 function: {code}"
+        );
     }
 
     #[test]
@@ -7400,9 +8091,16 @@ mod tests {
                 error_slot: None,
                 kind: CompiledNodeKind::ChooseSlot {
                     branches: vec![
-                        vb_core::SlotBranch { condition: SlotIdx::new(0), target: StepIdx::new(1) },
-                        vb_core::SlotBranch { condition: SlotIdx::new(1), target: StepIdx::new(2) },
-                    ].into_boxed_slice(),
+                        vb_core::SlotBranch {
+                            condition: SlotIdx::new(0),
+                            target: StepIdx::new(1),
+                        },
+                        vb_core::SlotBranch {
+                            condition: SlotIdx::new(1),
+                            target: StepIdx::new(2),
+                        },
+                    ]
+                    .into_boxed_slice(),
                     otherwise: Some(StepIdx::new(3)),
                 },
             },
@@ -7412,11 +8110,26 @@ mod tests {
         ];
         let wf = make_step_workflow(nodes, 3);
         let code = emit_node_in_wf(StepIdx::new(0), &wf);
-        assert!(code.contains("read_slot(slots, 0)"), "first branch should check slot 0: {code}");
-        assert!(code.contains("read_slot(slots, 1)"), "second branch should check slot 1: {code}");
-        assert!(code.contains("Continue(1)"), "first branch targets step 1: {code}");
-        assert!(code.contains("Continue(2)"), "second branch targets step 2: {code}");
-        assert!(code.contains("Continue(3)"), "otherwise targets step 3: {code}");
+        assert!(
+            code.contains("read_slot(slots, 0)"),
+            "first branch should check slot 0: {code}"
+        );
+        assert!(
+            code.contains("read_slot(slots, 1)"),
+            "second branch should check slot 1: {code}"
+        );
+        assert!(
+            code.contains("Continue(1)"),
+            "first branch targets step 1: {code}"
+        );
+        assert!(
+            code.contains("Continue(2)"),
+            "second branch targets step 2: {code}"
+        );
+        assert!(
+            code.contains("Continue(3)"),
+            "otherwise targets step 3: {code}"
+        );
     }
 
     #[test]
@@ -7432,12 +8145,14 @@ mod tests {
                     fields: vec![
                         (vb_core::SymbolId::new(0), SlotIdx::new(0)),
                         (vb_core::SymbolId::new(1), SlotIdx::new(1)),
-                    ].into_boxed_slice(),
+                    ]
+                    .into_boxed_slice(),
                 },
             },
             finish_node(1),
         ];
-        let wf = make_step_workflow_with_symbols(nodes, 4, 2, Box::new([]), Box::new([]), Box::new([]));
+        let wf =
+            make_step_workflow_with_symbols(nodes, 4, 2, Box::new([]), Box::new([]), Box::new([]));
         let code = emit_node_in_wf(StepIdx::new(0), &wf);
         assert!(code.contains("2 field(s)"), "should show 2 fields: {code}");
         assert!(code.contains("_f0"), "should emit field 0: {code}");
@@ -7458,8 +8173,14 @@ mod tests {
         };
         let code = emit_first_node(node, 2);
         let lines: Vec<&str> = code.lines().collect();
-        assert!(lines.len() >= 3, "emitted code should have at least 3 lines: {code}");
-        assert!(lines[0].starts_with("fn step_0("), "first line should be function decl: {code}");
+        assert!(
+            lines.len() >= 3,
+            "emitted code should have at least 3 lines: {code}"
+        );
+        assert!(
+            lines[0].starts_with("fn step_0("),
+            "first line should be function decl: {code}"
+        );
     }
 
     // ========================================================================
@@ -7472,8 +8193,7 @@ mod tests {
     #[test]
     fn write_next_or_error_with_target() -> Result<(), String> {
         let mut out = String::new();
-        crate::write_next_or_error(&mut out, Some(StepIdx::new(7)))
-            .map_err(|e| e.to_string())?;
+        crate::write_next_or_error(&mut out, Some(StepIdx::new(7))).map_err(|e| e.to_string())?;
         assert!(
             out.contains("StepOutcome::Continue(7)"),
             "should emit Continue(7), got: {out}"
@@ -7489,8 +8209,7 @@ mod tests {
     #[test]
     fn write_next_or_error_without_target() -> Result<(), String> {
         let mut out = String::new();
-        crate::write_next_or_error(&mut out, None)
-            .map_err(|e| e.to_string())?;
+        crate::write_next_or_error(&mut out, None).map_err(|e| e.to_string())?;
         assert!(
             out.contains("MissingNextStep"),
             "should emit MissingNextStep, got: {out}"
@@ -7506,8 +8225,7 @@ mod tests {
     #[test]
     fn emit_unsupported_step_contains_primitive_name() -> Result<(), String> {
         let mut out = String::new();
-        crate::emit_unsupported_step(&mut out, "ForEachStart")
-            .map_err(|e| e.to_string())?;
+        crate::emit_unsupported_step(&mut out, "ForEachStart").map_err(|e| e.to_string())?;
         assert!(
             out.contains("UnsupportedPrimitive"),
             "should emit UnsupportedPrimitive, got: {out}"
@@ -7523,8 +8241,7 @@ mod tests {
     #[test]
     fn emit_unsupported_step_different_primitive() -> Result<(), String> {
         let mut out = String::new();
-        crate::emit_unsupported_step(&mut out, "RepeatCheck")
-            .map_err(|e| e.to_string())?;
+        crate::emit_unsupported_step(&mut out, "RepeatCheck").map_err(|e| e.to_string())?;
         assert!(
             out.contains("RepeatCheck"),
             "should embed RepeatCheck, got: {out}"
@@ -7541,16 +8258,12 @@ mod tests {
     #[test]
     fn emit_unsupported_expr_contains_op_name() -> Result<(), String> {
         let mut out = String::new();
-        crate::emit_unsupported_expr(&mut out, "append")
-            .map_err(|e| e.to_string())?;
+        crate::emit_unsupported_expr(&mut out, "append").map_err(|e| e.to_string())?;
         assert!(
             out.contains("UnsupportedExpressionOp"),
             "should emit UnsupportedExpressionOp, got: {out}"
         );
-        assert!(
-            out.contains("append"),
-            "should embed op name, got: {out}"
-        );
+        assert!(out.contains("append"), "should embed op name, got: {out}");
         assert!(
             out.contains("return"),
             "should include return statement, got: {out}"
@@ -7562,12 +8275,8 @@ mod tests {
     #[test]
     fn emit_unsupported_expr_different_op() -> Result<(), String> {
         let mut out = String::new();
-        crate::emit_unsupported_expr(&mut out, "merge")
-            .map_err(|e| e.to_string())?;
-        assert!(
-            out.contains("merge"),
-            "should embed merge, got: {out}"
-        );
+        crate::emit_unsupported_expr(&mut out, "merge").map_err(|e| e.to_string())?;
+        assert!(out.contains("merge"), "should embed merge, got: {out}");
         assert!(
             !out.contains("append"),
             "should not contain wrong op, got: {out}"
@@ -7598,7 +8307,9 @@ mod tests {
             "should define SlotValue enum, got first 200 chars: {}",
             &out.chars().take(200).collect::<String>()
         );
-        for variant in &["Null", "Bool", "I64", "F64", "Symbol", "List", "Object", "Blob"] {
+        for variant in &[
+            "Null", "Bool", "I64", "F64", "Symbol", "List", "Object", "Blob",
+        ] {
             assert!(
                 out.contains(variant),
                 "SlotValue should have variant {variant}"
@@ -7715,8 +8426,7 @@ mod tests {
     #[test]
     fn emit_resource_contract_default() -> Result<(), String> {
         let mut out = String::new();
-        emit_resource_contract(&mut out, ResourceContract::DEFAULT)
-            .map_err(|e| e.to_string())?;
+        emit_resource_contract(&mut out, ResourceContract::DEFAULT).map_err(|e| e.to_string())?;
 
         assert!(
             out.contains("// --- Resource contract ---"),
@@ -7743,10 +8453,7 @@ mod tests {
         ];
 
         for (name, value) in expected_constants {
-            assert!(
-                out.contains(name),
-                "should emit constant {name}"
-            );
+            assert!(out.contains(name), "should emit constant {name}");
             assert!(
                 out.contains(&format!("{name}: ")) || out.contains(&format!("const {name}: ")),
                 "should define constant {name}"
@@ -7787,8 +8494,7 @@ mod tests {
             max_journal_batch_bytes: 2048,
         };
         let mut out = String::new();
-        emit_resource_contract(&mut out, custom)
-            .map_err(|e| e.to_string())?;
+        emit_resource_contract(&mut out, custom).map_err(|e| e.to_string())?;
 
         assert!(
             out.contains("CONTRACT_MAX_STEPS: u16 = 500;"),
@@ -7831,8 +8537,7 @@ mod tests {
             max_journal_batch_bytes: 0,
         };
         let mut out = String::new();
-        emit_resource_contract(&mut out, zero)
-            .map_err(|e| e.to_string())?;
+        emit_resource_contract(&mut out, zero).map_err(|e| e.to_string())?;
 
         assert!(
             out.contains("CONTRACT_MAX_STEPS: u16 = 0;"),
@@ -7872,8 +8577,7 @@ mod tests {
         let mut out = String::new();
         let action = ActionId::new(42);
         let input = SlotIdx::new(7);
-        emit_action_boundary(&mut out, action, input)
-            .map_err(|e| e.to_string())?;
+        emit_action_boundary(&mut out, action, input).map_err(|e| e.to_string())?;
 
         assert!(
             out.contains("Action boundary: action_id=42, input_slot=7"),
@@ -7940,8 +8644,7 @@ mod tests {
     fn emit_action_match_dispatch_no_actions() -> Result<(), String> {
         let workflow = minimal_workflow()?;
         let mut out = String::new();
-        emit_action_match_dispatch(&mut out, &workflow)
-            .map_err(|e| e.to_string())?;
+        emit_action_match_dispatch(&mut out, &workflow).map_err(|e| e.to_string())?;
 
         assert!(
             out.contains("pub fn dispatch_action(action_id: u16)"),
@@ -7965,8 +8668,7 @@ mod tests {
     fn emit_action_match_dispatch_with_do_node() -> Result<(), String> {
         let workflow = do_action_workflow()?;
         let mut out = String::new();
-        emit_action_match_dispatch(&mut out, &workflow)
-            .map_err(|e| e.to_string())?;
+        emit_action_match_dispatch(&mut out, &workflow).map_err(|e| e.to_string())?;
 
         assert!(
             out.contains("5 => Ok(()),"),
@@ -8028,8 +8730,7 @@ mod tests {
             kind: CompiledNodeKind::Nop,
         };
         let mut out = String::new();
-        emit_step_function(&mut out, &node, &minimal_workflow()?)
-            .map_err(|e| e.to_string())?;
+        emit_step_function(&mut out, &node, &minimal_workflow()?).map_err(|e| e.to_string())?;
         assert!(
             out.contains("MissingNextStep"),
             "Nop with no next should emit MissingNextStep, got: {out}"
@@ -8051,8 +8752,7 @@ mod tests {
             },
         };
         let mut out = String::new();
-        emit_step_function(&mut out, &node, &minimal_workflow()?)
-            .map_err(|e| e.to_string())?;
+        emit_step_function(&mut out, &node, &minimal_workflow()?).map_err(|e| e.to_string())?;
         assert!(
             out.contains("MissingNextStep"),
             "SetConst with no next should emit MissingNextStep, got: {out}"
@@ -8074,8 +8774,7 @@ mod tests {
             },
         };
         let mut out = String::new();
-        emit_step_function(&mut out, &node, &minimal_workflow()?)
-            .map_err(|e| e.to_string())?;
+        emit_step_function(&mut out, &node, &minimal_workflow()?).map_err(|e| e.to_string())?;
         assert!(
             out.contains("MissingNextStep"),
             "Copy with no next should emit MissingNextStep, got: {out}"
@@ -8099,8 +8798,7 @@ mod tests {
             },
         };
         let mut out = String::new();
-        emit_step_function(&mut out, &node, &minimal_workflow()?)
-            .map_err(|e| e.to_string())?;
+        emit_step_function(&mut out, &node, &minimal_workflow()?).map_err(|e| e.to_string())?;
         assert!(
             out.contains("NoBranchMatched"),
             "Choose with no branches and no fallback should emit NoBranchMatched, got: {out}"
@@ -8124,8 +8822,7 @@ mod tests {
             },
         };
         let mut out = String::new();
-        emit_step_function(&mut out, &node, &minimal_workflow()?)
-            .map_err(|e| e.to_string())?;
+        emit_step_function(&mut out, &node, &minimal_workflow()?).map_err(|e| e.to_string())?;
         assert!(
             out.contains("NoBranchMatched"),
             "ChooseSlot with no branches and no fallback should emit NoBranchMatched, got: {out}"
@@ -8133,13 +8830,13 @@ mod tests {
         Ok(())
     }
 
-    /// A ForEachStart node must emit UnsupportedPrimitive through
+    /// A ForEachStart node must emit concrete iterator support through
     /// emit_step_function.
     #[test]
-    fn for_each_start_emits_unsupported() -> Result<(), String> {
+    fn for_each_start_emits_iterator_support() -> Result<(), String> {
         let node = CompiledNode {
             id: StepIdx::new(0),
-            output: None,
+            output: Some(SlotIdx::new(2)),
             next: None,
             on_error: None,
             error_slot: None,
@@ -8152,15 +8849,14 @@ mod tests {
             },
         };
         let mut out = String::new();
-        emit_step_function(&mut out, &node, &minimal_workflow()?)
-            .map_err(|e| e.to_string())?;
+        emit_step_function(&mut out, &node, &minimal_workflow()?).map_err(|e| e.to_string())?;
         assert!(
-            out.contains("UnsupportedPrimitive"),
-            "ForEachStart should emit UnsupportedPrimitive, got: {out}"
+            !out.contains("UnsupportedPrimitive"),
+            "ForEachStart should emit concrete support, got: {out}"
         );
         assert!(
-            out.contains("ForEachStart"),
-            "primitive name should be ForEachStart, got: {out}"
+            out.contains("list_item_count") && out.contains("tail_list_handle"),
+            "ForEachStart should count items and store tail, got: {out}"
         );
         Ok(())
     }
@@ -8183,8 +8879,7 @@ mod tests {
             },
         };
         let mut out = String::new();
-        emit_step_function(&mut out, &node, &minimal_workflow()?)
-            .map_err(|e| e.to_string())?;
+        emit_step_function(&mut out, &node, &minimal_workflow()?).map_err(|e| e.to_string())?;
         assert!(
             out.contains("UnsupportedPrimitive"),
             "CollectStart should emit UnsupportedPrimitive, got: {out}"
@@ -8212,8 +8907,7 @@ mod tests {
             },
         };
         let mut out = String::new();
-        emit_step_function(&mut out, &node, &minimal_workflow()?)
-            .map_err(|e| e.to_string())?;
+        emit_step_function(&mut out, &node, &minimal_workflow()?).map_err(|e| e.to_string())?;
         assert!(
             out.contains("UnsupportedPrimitive"),
             "RepeatStart should emit UnsupportedPrimitive, got: {out}"
@@ -8240,8 +8934,7 @@ mod tests {
             },
         };
         let mut out = String::new();
-        emit_step_function(&mut out, &node, &minimal_workflow()?)
-            .map_err(|e| e.to_string())?;
+        emit_step_function(&mut out, &node, &minimal_workflow()?).map_err(|e| e.to_string())?;
         assert!(
             out.contains("UnsupportedPrimitive"),
             "TogetherStart should emit UnsupportedPrimitive, got: {out}"
@@ -8271,8 +8964,7 @@ mod tests {
             },
         };
         let mut out = String::new();
-        emit_step_function(&mut out, &node, &minimal_workflow()?)
-            .map_err(|e| e.to_string())?;
+        emit_step_function(&mut out, &node, &minimal_workflow()?).map_err(|e| e.to_string())?;
         assert!(
             out.contains("UnsupportedPrimitive"),
             "ReduceStart should emit UnsupportedPrimitive, got: {out}"
@@ -8298,8 +8990,7 @@ mod tests {
             },
         };
         let mut out = String::new();
-        emit_step_function(&mut out, &node, &minimal_workflow()?)
-            .map_err(|e| e.to_string())?;
+        emit_step_function(&mut out, &node, &minimal_workflow()?).map_err(|e| e.to_string())?;
         assert!(
             out.contains("MissingNextStep"),
             "WaitUntil with no next should emit MissingNextStep, got: {out}"
@@ -8322,8 +9013,7 @@ mod tests {
             },
         };
         let mut out = String::new();
-        emit_step_function(&mut out, &node, &minimal_workflow()?)
-            .map_err(|e| e.to_string())?;
+        emit_step_function(&mut out, &node, &minimal_workflow()?).map_err(|e| e.to_string())?;
         assert!(
             out.contains("MissingNextStep"),
             "WaitEvent with no next should emit MissingNextStep, got: {out}"
@@ -8346,8 +9036,7 @@ mod tests {
             },
         };
         let mut out = String::new();
-        emit_step_function(&mut out, &node, &minimal_workflow()?)
-            .map_err(|e| e.to_string())?;
+        emit_step_function(&mut out, &node, &minimal_workflow()?).map_err(|e| e.to_string())?;
         assert!(
             out.contains("MissingNextStep"),
             "Ask with no next should emit MissingNextStep, got: {out}"
@@ -8369,8 +9058,7 @@ mod tests {
             },
         };
         let mut out = String::new();
-        emit_step_function(&mut out, &node, &minimal_workflow()?)
-            .map_err(|e| e.to_string())?;
+        emit_step_function(&mut out, &node, &minimal_workflow()?).map_err(|e| e.to_string())?;
         assert!(
             out.contains("MissingNextStep"),
             "AskResume with no next should emit MissingNextStep, got: {out}"
@@ -8792,8 +9480,12 @@ mod tests {
             .into_boxed_slice(),
             expressions: Box::new([]),
             accessors: Box::new([]),
-            constants: vec![ConstValue::Bool(true), ConstValue::I64(1), ConstValue::I64(2)]
-                .into_boxed_slice(),
+            constants: vec![
+                ConstValue::Bool(true),
+                ConstValue::I64(1),
+                ConstValue::I64(2),
+            ]
+            .into_boxed_slice(),
             slot_count: 2,
             symbols_count: 0,
             entry: StepIdx::new(0),
@@ -8884,7 +9576,10 @@ mod tests {
         let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
 
         // The generated source must contain exactly one step function (the Finish node)
-        let step_count = source.lines().filter(|l| l.trim().starts_with("fn step_")).count();
+        let step_count = source
+            .lines()
+            .filter(|l| l.trim().starts_with("fn step_"))
+            .count();
         assert_eq!(
             step_count, 1,
             "empty workflow should produce exactly 1 step function, got {step_count}"
@@ -8915,17 +9610,17 @@ mod tests {
         let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
 
         // Must produce exactly 2 step functions (SetConst + Finish)
-        let step_count = source.lines().filter(|l| l.trim().starts_with("fn step_")).count();
+        let step_count = source
+            .lines()
+            .filter(|l| l.trim().starts_with("fn step_"))
+            .count();
         assert_eq!(
             step_count, 2,
             "single step workflow should produce exactly 2 step functions, got {step_count}"
         );
 
         // The first step must write a constant
-        assert!(
-            source.contains("fn step_0"),
-            "first step must be step_0"
-        );
+        assert!(source.contains("fn step_0"), "first step must be step_0");
         assert!(
             source.contains("write_slot") && source.contains("read_const(0)"),
             "step_0 must write constant 0 to a slot"
@@ -8942,26 +9637,16 @@ mod tests {
         Ok(())
     }
 
-    // --- Test 3: ForEach loop is rejected by generated mode ---
+    // --- Test 3: ForEach loop is accepted by generated mode ---
 
     #[test]
-    fn edge_case_foreach_loop_rejected_by_generated_mode() -> Result<(), String> {
+    fn edge_case_foreach_loop_accepted_by_generated_mode() -> Result<(), String> {
         let workflow = foreach_workflow()?;
-        let result = emit_rust_workflow(&workflow);
-
+        validate_generated_subset(&workflow).map_err(|e| e.to_string())?;
+        let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
         assert!(
-            result.is_err(),
-            "ForEach workflows must be rejected by generated mode"
-        );
-        let err = result.err().ok_or("expected an error but got none")?;
-        let msg = err.to_string();
-        assert!(
-            msg.contains("unsupported") || msg.contains("UnsupportedIr"),
-            "ForEach rejection must mention unsupported IR, got: {msg}"
-        );
-        assert!(
-            msg.contains("ForEachStart"),
-            "ForEach rejection must identify ForEachStart as the unsupported feature, got: {msg}"
+            source.contains("tail_list_handle") && source.contains("first_list_item"),
+            "ForEach generated code must include iterator support, got: {source}"
         );
         Ok(())
     }
@@ -9154,5 +9839,4 @@ mod tests {
         compare_generated_to_ir(&source, &workflow).map_err(|e| e.to_string())?;
         Ok(())
     }
-
 }

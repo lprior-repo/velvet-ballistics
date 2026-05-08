@@ -129,7 +129,7 @@ fn dispatch_generic(input: &ActionInput, contract: &ActionContract) -> ActionRes
         action: input.action,
         attempt: input.ticket.attempt,
         idempotency_key: input.ticket.idempotency_key,
-            capacity: 1,
+        capacity: 1,
     };
     Ok(ActionOutcome::Suspended(ticket))
 }
@@ -181,7 +181,7 @@ mod tests {
                 action: ActionId::new(action),
                 attempt: 1,
                 idempotency_key: 0,
-            capacity: 1,
+                capacity: 1,
             },
         }
     }
@@ -232,7 +232,7 @@ mod tests {
                     action: ActionId::new(5),
                     attempt: 1,
                     idempotency_key: 0,
-            capacity: 1,
+                    capacity: 1,
                 }))
             ),
         }
@@ -459,7 +459,7 @@ mod tests {
                         action: ActionId::new(0),
                         attempt: 1,
                         idempotency_key: 0,
-            capacity: 1,
+                        capacity: 1,
                     }))
                 );
             }
@@ -664,7 +664,7 @@ mod tests {
                 action: ActionId::new(2),
                 attempt: 1,
                 idempotency_key: 0,
-            capacity: 1,
+                capacity: 1,
             },
         };
         let contract = match registry.resolve_compile_time(ActionId::new(2)) {
@@ -686,7 +686,7 @@ mod tests {
                         action: ActionId::new(2),
                         attempt: 1,
                         idempotency_key: 0,
-            capacity: 1,
+                        capacity: 1,
                     }))
                 );
             }
@@ -732,7 +732,7 @@ mod tests {
                 action: ActionId::new(3),
                 attempt: 2,
                 idempotency_key: 99,
-            capacity: 1,
+                capacity: 1,
             },
         };
         let contract = match registry.resolve_compile_time(ActionId::new(3)) {
@@ -761,7 +761,7 @@ mod tests {
                         action: ActionId::new(0),
                         attempt: 0,
                         idempotency_key: 0,
-            capacity: 1,
+                        capacity: 1,
                     }))
                 );
             }

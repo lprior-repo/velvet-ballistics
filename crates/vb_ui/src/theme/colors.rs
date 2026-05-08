@@ -263,10 +263,7 @@ mod tests {
         // despite being visually intense.
         for (name, rgba) in all_bg_colors() {
             let lum = luminance(rgba);
-            assert!(
-                lum < 0.3,
-                "bg::{name} luminance ({lum}) should be < 0.3"
-            );
+            assert!(lum < 0.3, "bg::{name} luminance ({lum}) should be < 0.3");
         }
     }
 
@@ -295,7 +292,11 @@ mod tests {
     fn neon_magenta_matches_hex_spec() {
         // #ff00ff => R=255, G=0, B=255
         let expected: [f32; 4] = [1.0, 0.0, 1.0, 1.0];
-        assert_eq!(neon::MAGENTA, expected, "neon::MAGENTA should be pure magenta");
+        assert_eq!(
+            neon::MAGENTA,
+            expected,
+            "neon::MAGENTA should be pure magenta"
+        );
     }
 
     // --- Test 9: Neon red matches its documented hex code ---
@@ -363,7 +364,8 @@ mod tests {
     #[test]
     fn text_accent_is_neon_cyan() {
         assert_eq!(
-            text::ACCENT, neon::CYAN,
+            text::ACCENT,
+            neon::CYAN,
             "text::ACCENT should alias neon::CYAN"
         );
     }
@@ -373,7 +375,8 @@ mod tests {
     #[test]
     fn text_success_is_neon_green() {
         assert_eq!(
-            text::SUCCESS, neon::GREEN,
+            text::SUCCESS,
+            neon::GREEN,
             "text::SUCCESS should alias neon::GREEN"
         );
     }
@@ -382,10 +385,7 @@ mod tests {
 
     #[test]
     fn text_error_is_neon_red() {
-        assert_eq!(
-            text::ERROR, neon::RED,
-            "text::ERROR should alias neon::RED"
-        );
+        assert_eq!(text::ERROR, neon::RED, "text::ERROR should alias neon::RED");
     }
 
     // --- Test 15: text::WARNING is neon::YELLOW ---
@@ -393,7 +393,8 @@ mod tests {
     #[test]
     fn text_warning_is_neon_yellow() {
         assert_eq!(
-            text::WARNING, neon::YELLOW,
+            text::WARNING,
+            neon::YELLOW,
             "text::WARNING should alias neon::YELLOW"
         );
     }

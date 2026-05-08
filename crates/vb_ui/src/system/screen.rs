@@ -120,7 +120,8 @@ impl SystemScreen {
             .position(|s| s.shard_id == m.shard_id);
         if let Some(idx) = monitor_idx {
             if idx >= self.queue_monitors.len() {
-                self.queue_monitors.resize_with(idx.saturating_add(1), QueueMonitor::new);
+                self.queue_monitors
+                    .resize_with(idx.saturating_add(1), QueueMonitor::new);
             }
             if let Some(monitor) = self.queue_monitors.get_mut(idx) {
                 monitor.update_from_metrics(m);
@@ -155,14 +156,8 @@ impl SystemScreen {
                 HealthStatus::Degraded => "Degraded".to_string(),
                 HealthStatus::Critical => "Critical".to_string(),
             };
-            let queue_label = format!(
-                "{}/{}",
-                shard.ready_queue_depth, shard.action_queue_depth
-            );
-            let frame_label = format!(
-                "{}/{}",
-                shard.frame_pool_free, shard.frame_pool_total
-            );
+            let queue_label = format!("{}/{}", shard.ready_queue_depth, shard.action_queue_depth);
+            let frame_label = format!("{}/{}", shard.frame_pool_free, shard.frame_pool_total);
             let trace_label = format!("{:.0}%", shard.trace_ring_fill_pct);
 
             let queue_status = self
@@ -252,13 +247,15 @@ impl SystemScreen {
             self.metrics
                 .shards
                 .iter()
-                .map(|s| ShardNode::new(
-                    s.shard_id,
-                    s.active_runs,
-                    0,
-                    s.ready_queue_depth,
-                    s.action_queue_depth,
-                ))
+                .map(|s| {
+                    ShardNode::new(
+                        s.shard_id,
+                        s.active_runs,
+                        0,
+                        s.ready_queue_depth,
+                        s.action_queue_depth,
+                    )
+                })
                 .collect(),
         );
     }
@@ -586,8 +583,7 @@ fn build_segments(shard_id: u32, count: u32) -> Vec<ActivitySegment> {
         return Vec::new();
     }
     let count_f = f64::from(count);
-    let base_id = 80_000_u64
-        .saturating_add(u64::from(shard_id).saturating_mul(10_000));
+    let base_id = 80_000_u64.saturating_add(u64::from(shard_id).saturating_mul(10_000));
 
     let capacity = match usize::try_from(count) {
         Ok(c) => c,
@@ -1404,7 +1400,10 @@ mod tests {
         assert_eq!(from_new.shard_row_count(), from_default.shard_row_count());
         assert_eq!(from_new.lane_count(), from_default.lane_count());
         assert_eq!(from_new.queue_bar_count(), from_default.queue_bar_count());
-        assert_eq!(from_new.ticker_chip_count(), from_default.ticker_chip_count());
+        assert_eq!(
+            from_new.ticker_chip_count(),
+            from_default.ticker_chip_count()
+        );
         assert_eq!(from_new.alert_count(), from_default.alert_count());
         assert_eq!(
             from_new.latency_segment_count(),
@@ -1482,11 +1481,7 @@ mod tests {
     #[test]
     fn overview_topology_first_shard_is_active() {
         let screen = SystemOverviewScreen::new();
-        let row = screen
-            .topology_panel
-            .shard_rows
-            .first()
-            .expect("first row");
+        let row = screen.topology_panel.shard_rows.first().expect("first row");
         assert_eq!(row.shard_id, 0);
         assert_eq!(row.status_label, "Active");
         assert_eq!(row.status_color, SYS_NEON_CYAN);
@@ -1496,11 +1491,7 @@ mod tests {
     #[test]
     fn overview_topology_second_shard_is_idle() {
         let screen = SystemOverviewScreen::new();
-        let row = screen
-            .topology_panel
-            .shard_rows
-            .get(1)
-            .expect("second row");
+        let row = screen.topology_panel.shard_rows.get(1).expect("second row");
         assert_eq!(row.shard_id, 1);
         assert_eq!(row.status_label, "Idle");
         assert_eq!(row.status_color, SYS_NEON_GREEN);
@@ -1510,11 +1501,7 @@ mod tests {
     #[test]
     fn overview_topology_third_shard_is_overloaded() {
         let screen = SystemOverviewScreen::new();
-        let row = screen
-            .topology_panel
-            .shard_rows
-            .get(2)
-            .expect("third row");
+        let row = screen.topology_panel.shard_rows.get(2).expect("third row");
         assert_eq!(row.shard_id, 2);
         assert_eq!(row.status_label, "Overloaded");
         assert_eq!(row.status_color, SYS_NEON_RED);
@@ -1524,11 +1511,7 @@ mod tests {
     #[test]
     fn overview_topology_fourth_shard_is_active() {
         let screen = SystemOverviewScreen::new();
-        let row = screen
-            .topology_panel
-            .shard_rows
-            .get(3)
-            .expect("fourth row");
+        let row = screen.topology_panel.shard_rows.get(3).expect("fourth row");
         assert_eq!(row.shard_id, 3);
         assert_eq!(row.status_label, "Active");
         assert_eq!(row.active_runs, 5);
@@ -1664,21 +1647,14 @@ mod tests {
             .iter()
             .map(|b| b.label.as_str())
             .collect();
-        assert_eq!(
-            labels,
-            vec!["Ready", "Action", "Journal", "Trace", "Frame"]
-        );
+        assert_eq!(labels, vec!["Ready", "Action", "Journal", "Trace", "Frame"]);
     }
 
     #[test]
     fn overview_queue_monitor_all_bars_normal() {
         let screen = SystemOverviewScreen::new();
         for (i, bar) in screen.queue_monitor.bars.iter().enumerate() {
-            assert_eq!(
-                bar.status,
-                QueueStatus::Normal,
-                "bar {i} should be Normal"
-            );
+            assert_eq!(bar.status, QueueStatus::Normal, "bar {i} should be Normal");
         }
     }
 
@@ -1757,10 +1733,7 @@ mod tests {
         let screen = SystemOverviewScreen::new();
         for (i, chip) in screen.event_ticker.chips.iter().enumerate() {
             assert!(!chip.bg_color.is_empty(), "chip {i} has empty bg_color");
-            assert!(
-                !chip.text_color.is_empty(),
-                "chip {i} has empty text_color"
-            );
+            assert!(!chip.text_color.is_empty(), "chip {i} has empty text_color");
         }
     }
 
@@ -1865,11 +1838,7 @@ mod tests {
     #[test]
     fn overview_latency_last_segment_is_completed_to_finish() {
         let screen = SystemOverviewScreen::new();
-        let seg = screen
-            .latency_breakdown
-            .segments
-            .last()
-            .expect("last seg");
+        let seg = screen.latency_breakdown.segments.last().expect("last seg");
         assert_eq!(seg.label, "completed -> finish");
         assert_eq!(seg.avg_us, 225);
         assert_eq!(seg.display, "225us");

@@ -531,7 +531,11 @@ mod tests {
     #[test]
     fn all_variants_produce_valid_visuals() {
         let kinds = all_kinds();
-        assert_eq!(kinds.len(), 34, "must exercise all CompiledNodeKind variants");
+        assert_eq!(
+            kinds.len(),
+            34,
+            "must exercise all CompiledNodeKind variants"
+        );
 
         for kind in &kinds {
             let v = node_kind_to_visual(kind);
@@ -1040,8 +1044,18 @@ mod tests {
     #[test]
     fn colour_constants_rgb_in_unit_range() {
         let colours: [[f32; 4]; 12] = [
-            NEON_CYAN, NEON_GREEN, NEON_RED, NEON_YELLOW, NEON_ORANGE, NEON_PURPLE,
-            NEON_BLUE, NEON_TEAL, NEON_MAGENTA, NEON_PINK, GRAY, AMBER,
+            NEON_CYAN,
+            NEON_GREEN,
+            NEON_RED,
+            NEON_YELLOW,
+            NEON_ORANGE,
+            NEON_PURPLE,
+            NEON_BLUE,
+            NEON_TEAL,
+            NEON_MAGENTA,
+            NEON_PINK,
+            GRAY,
+            AMBER,
         ];
         for colour in &colours {
             for ch in 0..3 {
@@ -1061,7 +1075,10 @@ mod tests {
         let kinds = all_kinds();
         for kind in &kinds {
             let v = node_kind_to_visual(kind);
-            assert!(!v.label.is_empty(), "label should not be empty for {kind:?}");
+            assert!(
+                !v.label.is_empty(),
+                "label should not be empty for {kind:?}"
+            );
             // Label should be the variant name (no spaces, ASCII).
             assert!(
                 v.label.chars().all(|c| c.is_ascii_alphanumeric()),
@@ -1077,14 +1094,28 @@ mod tests {
     fn data_and_construct_use_gray() {
         let gray_kinds: Vec<CompiledNodeKind> = vec![
             CompiledNodeKind::Nop,
-            CompiledNodeKind::SetConst { value: ConstIdx::new(0) },
-            CompiledNodeKind::Copy { source: SlotIdx::new(0) },
-            CompiledNodeKind::EvalExpr { expr: ExprIdx::new(0) },
-            CompiledNodeKind::BuildObject { fields: Box::new([]) },
-            CompiledNodeKind::BuildList { items: Box::new([]) },
+            CompiledNodeKind::SetConst {
+                value: ConstIdx::new(0),
+            },
+            CompiledNodeKind::Copy {
+                source: SlotIdx::new(0),
+            },
+            CompiledNodeKind::EvalExpr {
+                expr: ExprIdx::new(0),
+            },
+            CompiledNodeKind::BuildObject {
+                fields: Box::new([]),
+            },
+            CompiledNodeKind::BuildList {
+                items: Box::new([]),
+            },
         ];
         for kind in &gray_kinds {
-            assert_eq!(node_kind_to_visual(kind).color, GRAY, "expected GRAY for {kind:?}");
+            assert_eq!(
+                node_kind_to_visual(kind).color,
+                GRAY,
+                "expected GRAY for {kind:?}"
+            );
         }
     }
 
@@ -1094,11 +1125,20 @@ mod tests {
     fn every_shape_is_used_by_at_least_one_variant() {
         let kinds = all_kinds();
         let shapes: Vec<NodeShape> = kinds.iter().map(|k| node_kind_to_visual(k).shape).collect();
-        assert!(shapes.contains(&NodeShape::RoundedRect), "RoundedRect should appear");
-        assert!(shapes.contains(&NodeShape::Diamond), "Diamond should appear");
+        assert!(
+            shapes.contains(&NodeShape::RoundedRect),
+            "RoundedRect should appear"
+        );
+        assert!(
+            shapes.contains(&NodeShape::Diamond),
+            "Diamond should appear"
+        );
         assert!(shapes.contains(&NodeShape::Round), "Round should appear");
         assert!(shapes.contains(&NodeShape::Pill), "Pill should appear");
-        assert!(shapes.contains(&NodeShape::Container), "Container should appear");
+        assert!(
+            shapes.contains(&NodeShape::Container),
+            "Container should appear"
+        );
     }
 
     // -- Test 41: NodeCategory enum covers all 13 categories ----------------
@@ -1106,20 +1146,62 @@ mod tests {
     #[test]
     fn every_category_is_used_by_at_least_one_variant() {
         let kinds = all_kinds();
-        let categories: Vec<NodeCategory> = kinds.iter().map(|k| node_kind_to_visual(k).category).collect();
-        assert!(categories.contains(&NodeCategory::Data), "Data should appear");
-        assert!(categories.contains(&NodeCategory::Construct), "Construct should appear");
-        assert!(categories.contains(&NodeCategory::External), "External should appear");
-        assert!(categories.contains(&NodeCategory::Branch), "Branch should appear");
-        assert!(categories.contains(&NodeCategory::Loop), "Loop should appear");
-        assert!(categories.contains(&NodeCategory::Parallel), "Parallel should appear");
-        assert!(categories.contains(&NodeCategory::Collect), "Collect should appear");
-        assert!(categories.contains(&NodeCategory::Reduce), "Reduce should appear");
-        assert!(categories.contains(&NodeCategory::Retry), "Retry should appear");
-        assert!(categories.contains(&NodeCategory::Suspend), "Suspend should appear");
-        assert!(categories.contains(&NodeCategory::Error), "Error should appear");
-        assert!(categories.contains(&NodeCategory::Control), "Control should appear");
-        assert!(categories.contains(&NodeCategory::Terminal), "Terminal should appear");
+        let categories: Vec<NodeCategory> = kinds
+            .iter()
+            .map(|k| node_kind_to_visual(k).category)
+            .collect();
+        assert!(
+            categories.contains(&NodeCategory::Data),
+            "Data should appear"
+        );
+        assert!(
+            categories.contains(&NodeCategory::Construct),
+            "Construct should appear"
+        );
+        assert!(
+            categories.contains(&NodeCategory::External),
+            "External should appear"
+        );
+        assert!(
+            categories.contains(&NodeCategory::Branch),
+            "Branch should appear"
+        );
+        assert!(
+            categories.contains(&NodeCategory::Loop),
+            "Loop should appear"
+        );
+        assert!(
+            categories.contains(&NodeCategory::Parallel),
+            "Parallel should appear"
+        );
+        assert!(
+            categories.contains(&NodeCategory::Collect),
+            "Collect should appear"
+        );
+        assert!(
+            categories.contains(&NodeCategory::Reduce),
+            "Reduce should appear"
+        );
+        assert!(
+            categories.contains(&NodeCategory::Retry),
+            "Retry should appear"
+        );
+        assert!(
+            categories.contains(&NodeCategory::Suspend),
+            "Suspend should appear"
+        );
+        assert!(
+            categories.contains(&NodeCategory::Error),
+            "Error should appear"
+        );
+        assert!(
+            categories.contains(&NodeCategory::Control),
+            "Control should appear"
+        );
+        assert!(
+            categories.contains(&NodeCategory::Terminal),
+            "Terminal should appear"
+        );
     }
 
     // -- Test 42: WaitEvent with timeout still maps to same visual -----------

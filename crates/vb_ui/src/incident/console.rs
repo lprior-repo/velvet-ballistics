@@ -92,7 +92,8 @@ impl IncidentConsole {
             suggestions
                 .into_iter()
                 .map(|s| {
-                    let confidence_pct = (s.confidence * 100.0_f32).round().clamp(0.0_f32, 100.0_f32);
+                    let confidence_pct =
+                        (s.confidence * 100.0_f32).round().clamp(0.0_f32, 100.0_f32);
                     format!(
                         "[{}] ({}%) {}",
                         s.kind.as_str(),
@@ -280,7 +281,11 @@ mod tests {
         console.select(0);
         let suggestions = console.selected_suggestions();
         assert!(!suggestions.is_empty());
-        assert!(suggestions.iter().any(|s| s.action == RepairAction::IncreaseTimeout));
+        assert!(
+            suggestions
+                .iter()
+                .any(|s| s.action == RepairAction::IncreaseTimeout)
+        );
     }
 
     // -- Phase 5A tests --
@@ -288,7 +293,12 @@ mod tests {
     #[test]
     fn test_push_incident_adds_record() {
         let mut console = IncidentConsole::new();
-        let record = make_record(1, IncidentSeverity::Critical, FailureCode::TaintLeak, ReplaySafety::Safe);
+        let record = make_record(
+            1,
+            IncidentSeverity::Critical,
+            FailureCode::TaintLeak,
+            ReplaySafety::Safe,
+        );
         console.push_incident(record);
         assert_eq!(console.active_incidents().len(), 1);
         assert_eq!(console.active_incidents()[0].run_id, 1);
@@ -334,7 +344,11 @@ mod tests {
         ));
         let criticals = console.incidents_by_severity(IncidentSeverity::Critical);
         assert_eq!(criticals.len(), 2);
-        assert!(criticals.iter().all(|r| r.severity == IncidentSeverity::Critical));
+        assert!(
+            criticals
+                .iter()
+                .all(|r| r.severity == IncidentSeverity::Critical)
+        );
         let warnings = console.incidents_by_severity(IncidentSeverity::Warning);
         assert_eq!(warnings.len(), 1);
         let infos = console.incidents_by_severity(IncidentSeverity::Info);
@@ -476,7 +490,10 @@ mod tests {
     #[test]
     fn test_failure_code_as_str() {
         assert_eq!(FailureCode::ActionTimeout.as_str(), "ActionTimeout");
-        assert_eq!(FailureCode::ActionFailed(String::new()).as_str(), "ActionFailed");
+        assert_eq!(
+            FailureCode::ActionFailed(String::new()).as_str(),
+            "ActionFailed"
+        );
         assert_eq!(FailureCode::BudgetExceeded.as_str(), "StepBudgetExhausted");
         assert_eq!(FailureCode::StepPanicked.as_str(), "StepPanicked");
         assert_eq!(
@@ -485,7 +502,10 @@ mod tests {
         );
         assert_eq!(FailureCode::TaintLeak.as_str(), "TaintViolation");
         assert_eq!(FailureCode::ReplayDivergence.as_str(), "ReplayDivergence");
-        assert_eq!(FailureCode::Unknown(String::new()).as_str(), "InternalError");
+        assert_eq!(
+            FailureCode::Unknown(String::new()).as_str(),
+            "InternalError"
+        );
     }
 
     #[test]
@@ -546,7 +566,12 @@ mod tests {
         assert_eq!(console.active_incidents().len(), 3);
         assert_eq!(console.critical_count(), 1);
         assert!(console.has_unsafe_replay());
-        assert_eq!(console.incidents_by_severity(IncidentSeverity::Warning).len(), 1);
+        assert_eq!(
+            console
+                .incidents_by_severity(IncidentSeverity::Warning)
+                .len(),
+            1
+        );
     }
 
     // ---------------------------------------------------------------------------
@@ -556,9 +581,21 @@ mod tests {
     #[test]
     fn test_dismiss_before_selected_adjusts_index() {
         let mut console = IncidentConsole::new();
-        console.add_incident(make_incident(1, IncidentSeverity::Minor, FailureCode::ActionTimeout));
-        console.add_incident(make_incident(2, IncidentSeverity::Major, FailureCode::TaintLeak));
-        console.add_incident(make_incident(3, IncidentSeverity::Critical, FailureCode::StepPanicked));
+        console.add_incident(make_incident(
+            1,
+            IncidentSeverity::Minor,
+            FailureCode::ActionTimeout,
+        ));
+        console.add_incident(make_incident(
+            2,
+            IncidentSeverity::Major,
+            FailureCode::TaintLeak,
+        ));
+        console.add_incident(make_incident(
+            3,
+            IncidentSeverity::Critical,
+            FailureCode::StepPanicked,
+        ));
         // Select index 2 (the third incident)
         console.select(2);
         assert_eq!(console.selected().map(|i| i.id), Some(3));
@@ -571,9 +608,21 @@ mod tests {
     #[test]
     fn test_dismiss_after_selected_keeps_index() {
         let mut console = IncidentConsole::new();
-        console.add_incident(make_incident(1, IncidentSeverity::Minor, FailureCode::ActionTimeout));
-        console.add_incident(make_incident(2, IncidentSeverity::Major, FailureCode::TaintLeak));
-        console.add_incident(make_incident(3, IncidentSeverity::Critical, FailureCode::StepPanicked));
+        console.add_incident(make_incident(
+            1,
+            IncidentSeverity::Minor,
+            FailureCode::ActionTimeout,
+        ));
+        console.add_incident(make_incident(
+            2,
+            IncidentSeverity::Major,
+            FailureCode::TaintLeak,
+        ));
+        console.add_incident(make_incident(
+            3,
+            IncidentSeverity::Critical,
+            FailureCode::StepPanicked,
+        ));
         // Select index 0
         console.select(0);
         assert_eq!(console.selected().map(|i| i.id), Some(1));
@@ -586,9 +635,16 @@ mod tests {
     #[test]
     fn test_select_out_of_bounds_is_noop() {
         let mut console = IncidentConsole::new();
-        console.add_incident(make_incident(1, IncidentSeverity::Minor, FailureCode::ActionTimeout));
+        console.add_incident(make_incident(
+            1,
+            IncidentSeverity::Minor,
+            FailureCode::ActionTimeout,
+        ));
         console.select(5);
-        assert!(console.selected().is_none(), "selecting out of bounds should not set selection");
+        assert!(
+            console.selected().is_none(),
+            "selecting out of bounds should not set selection"
+        );
     }
 
     #[test]
@@ -610,9 +666,21 @@ mod tests {
     #[test]
     fn test_add_incident_returns_sequential_indices() {
         let mut console = IncidentConsole::new();
-        let i0 = console.add_incident(make_incident(1, IncidentSeverity::Minor, FailureCode::ActionTimeout));
-        let i1 = console.add_incident(make_incident(2, IncidentSeverity::Major, FailureCode::BudgetExceeded));
-        let i2 = console.add_incident(make_incident(3, IncidentSeverity::Critical, FailureCode::TaintLeak));
+        let i0 = console.add_incident(make_incident(
+            1,
+            IncidentSeverity::Minor,
+            FailureCode::ActionTimeout,
+        ));
+        let i1 = console.add_incident(make_incident(
+            2,
+            IncidentSeverity::Major,
+            FailureCode::BudgetExceeded,
+        ));
+        let i2 = console.add_incident(make_incident(
+            3,
+            IncidentSeverity::Critical,
+            FailureCode::TaintLeak,
+        ));
         assert_eq!(i0, 0);
         assert_eq!(i1, 1);
         assert_eq!(i2, 2);
@@ -621,10 +689,26 @@ mod tests {
     #[test]
     fn test_legacy_critical_count_mixed() {
         let mut console = IncidentConsole::new();
-        console.add_incident(make_incident(1, IncidentSeverity::Minor, FailureCode::ActionTimeout));
-        console.add_incident(make_incident(2, IncidentSeverity::Critical, FailureCode::TaintLeak));
-        console.add_incident(make_incident(3, IncidentSeverity::Major, FailureCode::BudgetExceeded));
-        console.add_incident(make_incident(4, IncidentSeverity::Critical, FailureCode::StepPanicked));
+        console.add_incident(make_incident(
+            1,
+            IncidentSeverity::Minor,
+            FailureCode::ActionTimeout,
+        ));
+        console.add_incident(make_incident(
+            2,
+            IncidentSeverity::Critical,
+            FailureCode::TaintLeak,
+        ));
+        console.add_incident(make_incident(
+            3,
+            IncidentSeverity::Major,
+            FailureCode::BudgetExceeded,
+        ));
+        console.add_incident(make_incident(
+            4,
+            IncidentSeverity::Critical,
+            FailureCode::StepPanicked,
+        ));
         assert_eq!(console.legacy_critical_count(), 2);
     }
 
@@ -635,7 +719,11 @@ mod tests {
     #[test]
     fn test_dismiss_out_of_bounds_is_noop() {
         let mut console = IncidentConsole::new();
-        console.add_incident(make_incident(1, IncidentSeverity::Minor, FailureCode::ActionTimeout));
+        console.add_incident(make_incident(
+            1,
+            IncidentSeverity::Minor,
+            FailureCode::ActionTimeout,
+        ));
         console.dismiss(5);
         assert_eq!(console.active_count(), 1);
     }
@@ -643,7 +731,11 @@ mod tests {
     #[test]
     fn test_dismiss_only_incident_clears_all() {
         let mut console = IncidentConsole::new();
-        console.add_incident(make_incident(1, IncidentSeverity::Critical, FailureCode::TaintLeak));
+        console.add_incident(make_incident(
+            1,
+            IncidentSeverity::Critical,
+            FailureCode::TaintLeak,
+        ));
         console.select(0);
         assert!(console.selected().is_some());
         console.dismiss(0);
@@ -654,7 +746,11 @@ mod tests {
     #[test]
     fn test_dismiss_with_no_selection_set() {
         let mut console = IncidentConsole::new();
-        console.add_incident(make_incident(1, IncidentSeverity::Minor, FailureCode::ActionTimeout));
+        console.add_incident(make_incident(
+            1,
+            IncidentSeverity::Minor,
+            FailureCode::ActionTimeout,
+        ));
         console.dismiss(0);
         assert_eq!(console.active_count(), 0);
     }
@@ -670,10 +766,18 @@ mod tests {
     #[test]
     fn test_dismiss_add_dismiss_add() {
         let mut console = IncidentConsole::new();
-        console.add_incident(make_incident(1, IncidentSeverity::Minor, FailureCode::ActionTimeout));
+        console.add_incident(make_incident(
+            1,
+            IncidentSeverity::Minor,
+            FailureCode::ActionTimeout,
+        ));
         console.dismiss(0);
         assert_eq!(console.active_count(), 0);
-        let idx = console.add_incident(make_incident(2, IncidentSeverity::Major, FailureCode::TaintLeak));
+        let idx = console.add_incident(make_incident(
+            2,
+            IncidentSeverity::Major,
+            FailureCode::TaintLeak,
+        ));
         assert_eq!(idx, 0);
         assert_eq!(console.active_count(), 1);
     }
@@ -692,8 +796,16 @@ mod tests {
     #[test]
     fn test_select_then_replace_selection() {
         let mut console = IncidentConsole::new();
-        console.add_incident(make_incident(1, IncidentSeverity::Minor, FailureCode::ActionTimeout));
-        console.add_incident(make_incident(2, IncidentSeverity::Major, FailureCode::TaintLeak));
+        console.add_incident(make_incident(
+            1,
+            IncidentSeverity::Minor,
+            FailureCode::ActionTimeout,
+        ));
+        console.add_incident(make_incident(
+            2,
+            IncidentSeverity::Major,
+            FailureCode::TaintLeak,
+        ));
         console.select(0);
         assert_eq!(console.selected().map(|i| i.id), Some(1));
         console.select(1);
@@ -703,7 +815,11 @@ mod tests {
     #[test]
     fn test_selected_suggestions_when_nothing_selected() {
         let mut console = IncidentConsole::new();
-        console.add_incident(make_incident(1, IncidentSeverity::Minor, FailureCode::ActionTimeout));
+        console.add_incident(make_incident(
+            1,
+            IncidentSeverity::Minor,
+            FailureCode::ActionTimeout,
+        ));
         assert!(console.selected_suggestions().is_empty());
     }
 
@@ -754,7 +870,11 @@ mod tests {
     #[test]
     fn test_legacy_and_record_apis_are_independent() {
         let mut console = IncidentConsole::new();
-        console.add_incident(make_incident(1, IncidentSeverity::Critical, FailureCode::TaintLeak));
+        console.add_incident(make_incident(
+            1,
+            IncidentSeverity::Critical,
+            FailureCode::TaintLeak,
+        ));
         console.push_incident(make_record(
             10,
             IncidentSeverity::Warning,
@@ -763,9 +883,17 @@ mod tests {
         ));
         assert_eq!(console.active_count(), 1, "legacy count should be 1");
         assert_eq!(console.legacy_incidents().len(), 1);
-        assert_eq!(console.active_incidents().len(), 1, "record count should be 1");
+        assert_eq!(
+            console.active_incidents().len(),
+            1,
+            "record count should be 1"
+        );
         assert_eq!(console.legacy_critical_count(), 1);
-        assert_eq!(console.critical_count(), 0, "record has Warning, not Critical");
+        assert_eq!(
+            console.critical_count(),
+            0,
+            "record has Warning, not Critical"
+        );
     }
 
     // ---------------------------------------------------------------------------
@@ -858,9 +986,21 @@ mod tests {
     #[test]
     fn test_dismiss_first_of_three_shifts_indices() {
         let mut console = IncidentConsole::new();
-        console.add_incident(make_incident(10, IncidentSeverity::Minor, FailureCode::ActionTimeout));
-        console.add_incident(make_incident(20, IncidentSeverity::Major, FailureCode::TaintLeak));
-        console.add_incident(make_incident(30, IncidentSeverity::Critical, FailureCode::StepPanicked));
+        console.add_incident(make_incident(
+            10,
+            IncidentSeverity::Minor,
+            FailureCode::ActionTimeout,
+        ));
+        console.add_incident(make_incident(
+            20,
+            IncidentSeverity::Major,
+            FailureCode::TaintLeak,
+        ));
+        console.add_incident(make_incident(
+            30,
+            IncidentSeverity::Critical,
+            FailureCode::StepPanicked,
+        ));
         console.select(2);
         assert_eq!(console.selected().map(|i| i.id), Some(30));
         console.dismiss(0);
@@ -871,9 +1011,21 @@ mod tests {
     #[test]
     fn test_dismiss_middle_of_three_adjusts_selected_after() {
         let mut console = IncidentConsole::new();
-        console.add_incident(make_incident(10, IncidentSeverity::Minor, FailureCode::ActionTimeout));
-        console.add_incident(make_incident(20, IncidentSeverity::Major, FailureCode::TaintLeak));
-        console.add_incident(make_incident(30, IncidentSeverity::Critical, FailureCode::StepPanicked));
+        console.add_incident(make_incident(
+            10,
+            IncidentSeverity::Minor,
+            FailureCode::ActionTimeout,
+        ));
+        console.add_incident(make_incident(
+            20,
+            IncidentSeverity::Major,
+            FailureCode::TaintLeak,
+        ));
+        console.add_incident(make_incident(
+            30,
+            IncidentSeverity::Critical,
+            FailureCode::StepPanicked,
+        ));
         console.select(2);
         console.dismiss(1);
         assert_eq!(console.active_count(), 2);
@@ -883,8 +1035,16 @@ mod tests {
     #[test]
     fn test_dismiss_all_incidents_one_by_one() {
         let mut console = IncidentConsole::new();
-        console.add_incident(make_incident(1, IncidentSeverity::Minor, FailureCode::ActionTimeout));
-        console.add_incident(make_incident(2, IncidentSeverity::Major, FailureCode::TaintLeak));
+        console.add_incident(make_incident(
+            1,
+            IncidentSeverity::Minor,
+            FailureCode::ActionTimeout,
+        ));
+        console.add_incident(make_incident(
+            2,
+            IncidentSeverity::Major,
+            FailureCode::TaintLeak,
+        ));
         console.dismiss(1);
         assert_eq!(console.active_count(), 1);
         console.dismiss(0);
@@ -899,8 +1059,16 @@ mod tests {
     #[test]
     fn test_incidents_by_severity_empty() {
         let console = IncidentConsole::new();
-        assert!(console.incidents_by_severity(IncidentSeverity::Critical).is_empty());
-        assert!(console.incidents_by_severity(IncidentSeverity::Info).is_empty());
+        assert!(
+            console
+                .incidents_by_severity(IncidentSeverity::Critical)
+                .is_empty()
+        );
+        assert!(
+            console
+                .incidents_by_severity(IncidentSeverity::Info)
+                .is_empty()
+        );
     }
 
     // ---------------------------------------------------------------------------
@@ -930,10 +1098,22 @@ mod tests {
     #[test]
     fn test_add_incident_index_after_dismiss() {
         let mut console = IncidentConsole::new();
-        console.add_incident(make_incident(1, IncidentSeverity::Minor, FailureCode::ActionTimeout));
-        console.add_incident(make_incident(2, IncidentSeverity::Major, FailureCode::TaintLeak));
+        console.add_incident(make_incident(
+            1,
+            IncidentSeverity::Minor,
+            FailureCode::ActionTimeout,
+        ));
+        console.add_incident(make_incident(
+            2,
+            IncidentSeverity::Major,
+            FailureCode::TaintLeak,
+        ));
         console.dismiss(0);
-        let idx = console.add_incident(make_incident(3, IncidentSeverity::Critical, FailureCode::StepPanicked));
+        let idx = console.add_incident(make_incident(
+            3,
+            IncidentSeverity::Critical,
+            FailureCode::StepPanicked,
+        ));
         assert_eq!(idx, 1);
         assert_eq!(console.active_count(), 2);
     }
@@ -945,21 +1125,37 @@ mod tests {
     #[test]
     fn test_selected_suggestions_for_taint_leak() {
         let mut console = IncidentConsole::new();
-        console.add_incident(make_incident(1, IncidentSeverity::Critical, FailureCode::TaintLeak));
+        console.add_incident(make_incident(
+            1,
+            IncidentSeverity::Critical,
+            FailureCode::TaintLeak,
+        ));
         console.select(0);
         let suggestions = console.selected_suggestions();
         assert!(!suggestions.is_empty());
-        assert!(suggestions.iter().any(|s| s.action == RepairAction::FixSecretLeak));
+        assert!(
+            suggestions
+                .iter()
+                .any(|s| s.action == RepairAction::FixSecretLeak)
+        );
     }
 
     #[test]
     fn test_selected_suggestions_for_budget_exceeded() {
         let mut console = IncidentConsole::new();
-        console.add_incident(make_incident(1, IncidentSeverity::Major, FailureCode::BudgetExceeded));
+        console.add_incident(make_incident(
+            1,
+            IncidentSeverity::Major,
+            FailureCode::BudgetExceeded,
+        ));
         console.select(0);
         let suggestions = console.selected_suggestions();
         assert!(!suggestions.is_empty());
-        assert!(suggestions.iter().any(|s| s.action == RepairAction::AdjustBudget));
+        assert!(
+            suggestions
+                .iter()
+                .any(|s| s.action == RepairAction::AdjustBudget)
+        );
     }
 
     // ---------------------------------------------------------------------------
@@ -975,7 +1171,11 @@ mod tests {
     #[test]
     fn test_suggestion_display_items_returns_strings_for_selected() {
         let mut console = IncidentConsole::new();
-        console.add_incident(make_incident(1, IncidentSeverity::Major, FailureCode::ActionTimeout));
+        console.add_incident(make_incident(
+            1,
+            IncidentSeverity::Major,
+            FailureCode::ActionTimeout,
+        ));
         console.select(0);
         let items = console.suggestion_display_items();
         assert!(!items.is_empty());
@@ -986,7 +1186,11 @@ mod tests {
     #[test]
     fn test_suggestion_display_items_taint_leak() {
         let mut console = IncidentConsole::new();
-        console.add_incident(make_incident(1, IncidentSeverity::Critical, FailureCode::TaintLeak));
+        console.add_incident(make_incident(
+            1,
+            IncidentSeverity::Critical,
+            FailureCode::TaintLeak,
+        ));
         console.select(0);
         let items = console.suggestion_display_items();
         assert!(!items.is_empty());
@@ -996,7 +1200,11 @@ mod tests {
     #[test]
     fn test_suggestion_display_items_clears_after_dismiss() {
         let mut console = IncidentConsole::new();
-        console.add_incident(make_incident(1, IncidentSeverity::Minor, FailureCode::ActionTimeout));
+        console.add_incident(make_incident(
+            1,
+            IncidentSeverity::Minor,
+            FailureCode::ActionTimeout,
+        ));
         console.select(0);
         assert!(!console.suggestion_display_items().is_empty());
         console.dismiss(0);
@@ -1006,7 +1214,11 @@ mod tests {
     #[test]
     fn test_apply_suggestion_returns_true_when_selected() {
         let mut console = IncidentConsole::new();
-        console.add_incident(make_incident(1, IncidentSeverity::Minor, FailureCode::ActionTimeout));
+        console.add_incident(make_incident(
+            1,
+            IncidentSeverity::Minor,
+            FailureCode::ActionTimeout,
+        ));
         console.select(0);
         assert!(console.apply_suggestion(0));
     }
@@ -1047,7 +1259,11 @@ mod tests {
     #[test]
     fn test_clear_resolved_does_not_affect_legacy() {
         let mut console = IncidentConsole::new();
-        console.add_incident(make_incident(1, IncidentSeverity::Minor, FailureCode::ActionTimeout));
+        console.add_incident(make_incident(
+            1,
+            IncidentSeverity::Minor,
+            FailureCode::ActionTimeout,
+        ));
         console.push_incident(make_record(
             1,
             IncidentSeverity::Critical,
@@ -1055,7 +1271,11 @@ mod tests {
             ReplaySafety::Safe,
         ));
         console.clear_resolved(1);
-        assert_eq!(console.active_count(), 1, "legacy incidents should not be cleared by clear_resolved");
+        assert_eq!(
+            console.active_count(),
+            1,
+            "legacy incidents should not be cleared by clear_resolved"
+        );
         assert!(console.active_incidents().is_empty());
     }
 
@@ -1079,7 +1299,10 @@ mod tests {
             FailureCode::ActionTimeout,
             ReplaySafety::UnsafeSideEffect,
         ));
-        assert!(console.has_unsafe_replay(), "one unsafe record should make has_unsafe_replay true");
+        assert!(
+            console.has_unsafe_replay(),
+            "one unsafe record should make has_unsafe_replay true"
+        );
     }
 
     // ---------------------------------------------------------------------------
@@ -1089,8 +1312,16 @@ mod tests {
     #[test]
     fn test_critical_counts_are_independent() {
         let mut console = IncidentConsole::new();
-        console.add_incident(make_incident(1, IncidentSeverity::Critical, FailureCode::TaintLeak));
-        console.add_incident(make_incident(2, IncidentSeverity::Critical, FailureCode::StepPanicked));
+        console.add_incident(make_incident(
+            1,
+            IncidentSeverity::Critical,
+            FailureCode::TaintLeak,
+        ));
+        console.add_incident(make_incident(
+            2,
+            IncidentSeverity::Critical,
+            FailureCode::StepPanicked,
+        ));
         console.push_incident(make_record(
             10,
             IncidentSeverity::Critical,
@@ -1103,7 +1334,11 @@ mod tests {
             FailureCode::ActionTimeout,
             ReplaySafety::Safe,
         ));
-        assert_eq!(console.legacy_critical_count(), 2, "two legacy critical incidents");
+        assert_eq!(
+            console.legacy_critical_count(),
+            2,
+            "two legacy critical incidents"
+        );
         assert_eq!(console.critical_count(), 1, "one record critical incident");
     }
 
@@ -1132,8 +1367,16 @@ mod tests {
     #[test]
     fn test_dismiss_then_select_new_index() {
         let mut console = IncidentConsole::new();
-        console.add_incident(make_incident(1, IncidentSeverity::Minor, FailureCode::ActionTimeout));
-        console.add_incident(make_incident(2, IncidentSeverity::Major, FailureCode::TaintLeak));
+        console.add_incident(make_incident(
+            1,
+            IncidentSeverity::Minor,
+            FailureCode::ActionTimeout,
+        ));
+        console.add_incident(make_incident(
+            2,
+            IncidentSeverity::Major,
+            FailureCode::TaintLeak,
+        ));
         console.dismiss(0);
         console.select(0);
         assert_eq!(console.selected().map(|i| i.id), Some(2));
@@ -1167,13 +1410,22 @@ mod tests {
     #[test]
     fn test_failure_code_as_str_covers_all_variants() {
         assert_eq!(FailureCode::ActionTimeout.as_str(), "ActionTimeout");
-        assert_eq!(FailureCode::ActionFailed(String::new()).as_str(), "ActionFailed");
+        assert_eq!(
+            FailureCode::ActionFailed(String::new()).as_str(),
+            "ActionFailed"
+        );
         assert_eq!(FailureCode::BudgetExceeded.as_str(), "StepBudgetExhausted");
         assert_eq!(FailureCode::StepPanicked.as_str(), "StepPanicked");
-        assert_eq!(FailureCode::ValidationError(String::new()).as_str(), "ValidationError");
+        assert_eq!(
+            FailureCode::ValidationError(String::new()).as_str(),
+            "ValidationError"
+        );
         assert_eq!(FailureCode::TaintLeak.as_str(), "TaintViolation");
         assert_eq!(FailureCode::ReplayDivergence.as_str(), "ReplayDivergence");
-        assert_eq!(FailureCode::Unknown(String::new()).as_str(), "InternalError");
+        assert_eq!(
+            FailureCode::Unknown(String::new()).as_str(),
+            "InternalError"
+        );
     }
 
     // ---------------------------------------------------------------------------
@@ -1183,9 +1435,21 @@ mod tests {
     #[test]
     fn test_legacy_critical_count_none() {
         let mut console = IncidentConsole::new();
-        console.add_incident(make_incident(1, IncidentSeverity::Minor, FailureCode::ActionTimeout));
-        console.add_incident(make_incident(2, IncidentSeverity::Major, FailureCode::TaintLeak));
-        console.add_incident(make_incident(3, IncidentSeverity::Info, FailureCode::BudgetExceeded));
+        console.add_incident(make_incident(
+            1,
+            IncidentSeverity::Minor,
+            FailureCode::ActionTimeout,
+        ));
+        console.add_incident(make_incident(
+            2,
+            IncidentSeverity::Major,
+            FailureCode::TaintLeak,
+        ));
+        console.add_incident(make_incident(
+            3,
+            IncidentSeverity::Info,
+            FailureCode::BudgetExceeded,
+        ));
         assert_eq!(console.legacy_critical_count(), 0);
     }
 
@@ -1206,12 +1470,23 @@ mod tests {
     #[test]
     fn test_dismiss_selected_clears_selection() {
         let mut console = IncidentConsole::new();
-        console.add_incident(make_incident(1, IncidentSeverity::Minor, FailureCode::ActionTimeout));
-        console.add_incident(make_incident(2, IncidentSeverity::Major, FailureCode::TaintLeak));
+        console.add_incident(make_incident(
+            1,
+            IncidentSeverity::Minor,
+            FailureCode::ActionTimeout,
+        ));
+        console.add_incident(make_incident(
+            2,
+            IncidentSeverity::Major,
+            FailureCode::TaintLeak,
+        ));
         console.select(0);
         assert_eq!(console.selected().map(|i| i.id), Some(1));
         console.dismiss(0);
-        assert!(console.selected().is_none(), "selection should be cleared when selected incident is dismissed");
+        assert!(
+            console.selected().is_none(),
+            "selection should be cleared when selected incident is dismissed"
+        );
     }
 
     // ---------------------------------------------------------------------------
@@ -1221,9 +1496,21 @@ mod tests {
     #[test]
     fn test_legacy_incidents_preserves_add_order() {
         let mut console = IncidentConsole::new();
-        console.add_incident(make_incident(10, IncidentSeverity::Minor, FailureCode::ActionTimeout));
-        console.add_incident(make_incident(20, IncidentSeverity::Major, FailureCode::TaintLeak));
-        console.add_incident(make_incident(30, IncidentSeverity::Critical, FailureCode::StepPanicked));
+        console.add_incident(make_incident(
+            10,
+            IncidentSeverity::Minor,
+            FailureCode::ActionTimeout,
+        ));
+        console.add_incident(make_incident(
+            20,
+            IncidentSeverity::Major,
+            FailureCode::TaintLeak,
+        ));
+        console.add_incident(make_incident(
+            30,
+            IncidentSeverity::Critical,
+            FailureCode::StepPanicked,
+        ));
         let incidents = console.legacy_incidents();
         assert_eq!(incidents[0].id, 10);
         assert_eq!(incidents[1].id, 20);
@@ -1274,14 +1561,25 @@ mod tests {
     #[test]
     fn blackhat_dismiss_selected_index_clears_instead_of_shifting() {
         let mut console = IncidentConsole::new();
-        console.add_incident(make_incident(1, IncidentSeverity::Minor, FailureCode::ActionTimeout));
-        console.add_incident(make_incident(2, IncidentSeverity::Major, FailureCode::TaintLeak));
+        console.add_incident(make_incident(
+            1,
+            IncidentSeverity::Minor,
+            FailureCode::ActionTimeout,
+        ));
+        console.add_incident(make_incident(
+            2,
+            IncidentSeverity::Major,
+            FailureCode::TaintLeak,
+        ));
         console.select(1);
         assert_eq!(console.selected().map(|i| i.id), Some(2));
         // Dismissing the selected incident clears selection entirely
         // rather than shifting to the remaining valid index
         console.dismiss(1);
-        assert!(console.selected().is_none(), "selection cleared even though index 0 remains valid");
+        assert!(
+            console.selected().is_none(),
+            "selection cleared even though index 0 remains valid"
+        );
         assert_eq!(console.active_count(), 1);
     }
 
@@ -1296,7 +1594,11 @@ mod tests {
         // add, select, dismiss. After dismiss of a different index, the selected
         // index may point to a different incident. This is correct behavior.
         let mut console = IncidentConsole::new();
-        console.add_incident(make_incident(1, IncidentSeverity::Minor, FailureCode::ActionTimeout));
+        console.add_incident(make_incident(
+            1,
+            IncidentSeverity::Minor,
+            FailureCode::ActionTimeout,
+        ));
         console.select(0);
         assert_eq!(console.selected().map(|i| i.id), Some(1));
         // Dismiss the only incident; selection should be cleared
@@ -1320,21 +1622,41 @@ mod tests {
     #[test]
     fn blackhat_dismiss_does_not_affect_records_and_clear_resolved_does_not_affect_legacy() {
         let mut console = IncidentConsole::new();
-        console.add_incident(make_incident(1, IncidentSeverity::Minor, FailureCode::ActionTimeout));
-        console.push_incident(make_record(10, IncidentSeverity::Critical, FailureCode::TaintLeak, ReplaySafety::Safe));
+        console.add_incident(make_incident(
+            1,
+            IncidentSeverity::Minor,
+            FailureCode::ActionTimeout,
+        ));
+        console.push_incident(make_record(
+            10,
+            IncidentSeverity::Critical,
+            FailureCode::TaintLeak,
+            ReplaySafety::Safe,
+        ));
 
         // dismiss only affects legacy
         console.dismiss(0);
         assert_eq!(console.active_count(), 0, "legacy should be empty");
-        assert_eq!(console.active_incidents().len(), 1, "records should be untouched");
+        assert_eq!(
+            console.active_incidents().len(),
+            1,
+            "records should be untouched"
+        );
 
         // Add back a legacy incident
-        console.add_incident(make_incident(2, IncidentSeverity::Major, FailureCode::TaintLeak));
+        console.add_incident(make_incident(
+            2,
+            IncidentSeverity::Major,
+            FailureCode::TaintLeak,
+        ));
 
         // clear_resolved only affects records
         console.clear_resolved(10);
         assert_eq!(console.active_count(), 1, "legacy should still have 1");
-        assert!(console.active_incidents().is_empty(), "records should be cleared");
+        assert!(
+            console.active_incidents().is_empty(),
+            "records should be cleared"
+        );
     }
 
     /// FINDING: The max_display field is only used for push_incident trimming.
@@ -1345,15 +1667,32 @@ mod tests {
         let mut console = IncidentConsole::with_max_display(2);
         // Legacy API ignores max_display
         for i in 0u64..10 {
-            console.add_incident(make_incident(i, IncidentSeverity::Minor, FailureCode::ActionTimeout));
+            console.add_incident(make_incident(
+                i,
+                IncidentSeverity::Minor,
+                FailureCode::ActionTimeout,
+            ));
         }
-        assert_eq!(console.active_count(), 10, "legacy API bypasses max_display");
+        assert_eq!(
+            console.active_count(),
+            10,
+            "legacy API bypasses max_display"
+        );
 
         // Record API respects max_display
         for i in 0u64..10 {
-            console.push_incident(make_record(i, IncidentSeverity::Info, FailureCode::ActionTimeout, ReplaySafety::Safe));
+            console.push_incident(make_record(
+                i,
+                IncidentSeverity::Info,
+                FailureCode::ActionTimeout,
+                ReplaySafety::Safe,
+            ));
         }
-        assert_eq!(console.active_incidents().len(), 2, "record API respects max_display");
+        assert_eq!(
+            console.active_incidents().len(),
+            2,
+            "record API respects max_display"
+        );
     }
 
     /// FINDING: critical_count() and legacy_critical_count() count severity
@@ -1362,8 +1701,17 @@ mod tests {
     #[test]
     fn blackhat_both_critical_counts_are_zero_when_only_records_have_critical() {
         let mut console = IncidentConsole::new();
-        console.add_incident(make_incident(1, IncidentSeverity::Minor, FailureCode::ActionTimeout));
-        console.push_incident(make_record(10, IncidentSeverity::Critical, FailureCode::TaintLeak, ReplaySafety::Safe));
+        console.add_incident(make_incident(
+            1,
+            IncidentSeverity::Minor,
+            FailureCode::ActionTimeout,
+        ));
+        console.push_incident(make_record(
+            10,
+            IncidentSeverity::Critical,
+            FailureCode::TaintLeak,
+            ReplaySafety::Safe,
+        ));
         assert_eq!(console.legacy_critical_count(), 0, "legacy has no critical");
         assert_eq!(console.critical_count(), 1, "records have one critical");
     }
@@ -1375,9 +1723,24 @@ mod tests {
     #[test]
     fn blackhat_incidents_by_severity_returns_correct_references() {
         let mut console = IncidentConsole::new();
-        console.push_incident(make_record(1, IncidentSeverity::Critical, FailureCode::TaintLeak, ReplaySafety::Safe));
-        console.push_incident(make_record(2, IncidentSeverity::Warning, FailureCode::ActionTimeout, ReplaySafety::Safe));
-        console.push_incident(make_record(3, IncidentSeverity::Critical, FailureCode::StepPanicked, ReplaySafety::UnsafeSideEffect));
+        console.push_incident(make_record(
+            1,
+            IncidentSeverity::Critical,
+            FailureCode::TaintLeak,
+            ReplaySafety::Safe,
+        ));
+        console.push_incident(make_record(
+            2,
+            IncidentSeverity::Warning,
+            FailureCode::ActionTimeout,
+            ReplaySafety::Safe,
+        ));
+        console.push_incident(make_record(
+            3,
+            IncidentSeverity::Critical,
+            FailureCode::StepPanicked,
+            ReplaySafety::UnsafeSideEffect,
+        ));
         let criticals = console.incidents_by_severity(IncidentSeverity::Critical);
         assert_eq!(criticals.len(), 2);
         // Verify references point to actual records

@@ -199,7 +199,10 @@ mod tests {
     fn source_map_debug_format() {
         let map = SourceMap::new();
         let debug = format!("{map:?}");
-        assert!(debug.contains("SourceMap"), "Debug must contain 'SourceMap'");
+        assert!(
+            debug.contains("SourceMap"),
+            "Debug must contain 'SourceMap'"
+        );
     }
 
     #[test]

@@ -84,7 +84,10 @@ mod tests {
             source: io_error(io::ErrorKind::AddrInUse, "addr in use"),
         };
         let msg = err.to_string();
-        assert!(msg.contains("bind failed"), "expected 'bind failed' in '{msg}'");
+        assert!(
+            msg.contains("bind failed"),
+            "expected 'bind failed' in '{msg}'"
+        );
     }
 
     #[test]
@@ -93,7 +96,10 @@ mod tests {
             source: io_error(io::ErrorKind::Interrupted, "interrupted"),
         };
         let msg = err.to_string();
-        assert!(msg.contains("poll failed"), "expected 'poll failed' in '{msg}'");
+        assert!(
+            msg.contains("poll failed"),
+            "expected 'poll failed' in '{msg}'"
+        );
     }
 
     #[test]
@@ -102,14 +108,20 @@ mod tests {
             source: io_error(io::ErrorKind::ConnectionRefused, "refused"),
         };
         let msg = err.to_string();
-        assert!(msg.contains("accept failed"), "expected 'accept failed' in '{msg}'");
+        assert!(
+            msg.contains("accept failed"),
+            "expected 'accept failed' in '{msg}'"
+        );
     }
 
     #[test]
     fn too_many_clients_display() {
         let err = IpcServerError::TooManyClients;
         let msg = err.to_string();
-        assert!(msg.contains("too many clients"), "expected 'too many clients' in '{msg}'");
+        assert!(
+            msg.contains("too many clients"),
+            "expected 'too many clients' in '{msg}'"
+        );
     }
 
     #[test]
@@ -160,8 +172,14 @@ mod tests {
             source: IpcError::InvalidMagic { actual: 0xDEAD },
         };
         let msg = err.to_string();
-        assert!(msg.contains("invalid IPC frame"), "expected 'invalid IPC frame' in '{msg}'");
-        assert!(msg.contains("magic"), "expected inner error detail in '{msg}'");
+        assert!(
+            msg.contains("invalid IPC frame"),
+            "expected 'invalid IPC frame' in '{msg}'"
+        );
+        assert!(
+            msg.contains("magic"),
+            "expected inner error detail in '{msg}'"
+        );
     }
 
     // ── Runtime code mapping tests ──

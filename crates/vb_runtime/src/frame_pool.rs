@@ -779,7 +779,11 @@ mod tests {
             Err(_) => return,
         };
         // Then executed count must be zero
-        assert_eq!(reused.executed(), 0, "reused frame must have clean executed counter");
+        assert_eq!(
+            reused.executed(),
+            0,
+            "reused frame must have clean executed counter"
+        );
     }
 
     #[test]

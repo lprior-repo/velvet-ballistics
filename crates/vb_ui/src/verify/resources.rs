@@ -99,8 +99,7 @@ pub fn compute_resource_bounds(parts: &WorkflowParts) -> ResourceBounds {
         peak_frames = peak_frames.saturating_add(foreach_frames);
     }
 
-    let retry_budget = do_node_count
-        .saturating_mul(u32::from(contract.max_retry_attempts));
+    let retry_budget = do_node_count.saturating_mul(u32::from(contract.max_retry_attempts));
 
     ResourceBounds {
         slot_count: parts.slot_count,
@@ -580,10 +579,7 @@ mod tests {
             assert!(false, "metric missing");
             return;
         };
-        assert_eq!(
-            node_metric.status,
-            ResourceStatus::ExceedsLimit
-        );
+        assert_eq!(node_metric.status, ResourceStatus::ExceedsLimit);
 
         let slot_metric = panel
             .metrics()
@@ -594,10 +590,7 @@ mod tests {
             assert!(false, "metric missing");
             return;
         };
-        assert_eq!(
-            slot_metric.status,
-            ResourceStatus::ExceedsLimit
-        );
+        assert_eq!(slot_metric.status, ResourceStatus::ExceedsLimit);
     }
 
     #[test]
@@ -853,7 +846,9 @@ mod tests {
         let worst = panel.worst_case_metrics();
         assert!(!worst.is_empty());
         // At least the fanout metric should be ExceedsLimit.
-        let fanout_metric = worst.iter().find(|m| m.label == "do_node_count / max_fanout");
+        let fanout_metric = worst
+            .iter()
+            .find(|m| m.label == "do_node_count / max_fanout");
         assert!(fanout_metric.is_some());
         let fm = fanout_metric.ok_or("missing").ok();
         if let Some(m) = fm {
@@ -1179,9 +1174,7 @@ mod tests {
             .count();
         assert_eq!(exceeds_count, 0, "no metric should exceed the limit");
 
-        let slot_metric = worst
-            .iter()
-            .find(|m| m.label == "slot_count / max_slots");
+        let slot_metric = worst.iter().find(|m| m.label == "slot_count / max_slots");
         let Some(sm) = slot_metric else {
             return;
         };
@@ -1266,10 +1259,7 @@ mod tests {
             metric.computed_value, 1024,
             "computed should be 1 * 1024 = 1024"
         );
-        assert_eq!(
-            metric.contract_value, 1024,
-            "contract limit is 1024"
-        );
+        assert_eq!(metric.contract_value, 1024, "contract limit is 1024");
         assert_eq!(
             metric.status,
             ResourceStatus::AtLimit,
@@ -1281,7 +1271,9 @@ mod tests {
             .metrics()
             .iter()
             .find(|m| m.label == "estimated_result_size / max_output_bytes");
-        let Some(result_m) = result_metric else { return };
+        let Some(result_m) = result_metric else {
+            return;
+        };
         assert_eq!(
             result_m.status,
             ResourceStatus::AtLimit,
@@ -1316,16 +1308,14 @@ mod tests {
 
         // The retry_budget saturates at u32::MAX.
         assert_eq!(
-            bounds.retry_budget, u32::MAX,
+            bounds.retry_budget,
+            u32::MAX,
             "BLACK HAT [MEDIUM]: retry_budget saturates silently at u32::MAX"
         );
 
         // The panel comparison still works but the value is not accurate.
         let panel = ResourceBoundsPanel::new(&contract, &bounds);
-        let retry_metric = panel
-            .metrics()
-            .iter()
-            .find(|m| m.label == "retry_budget");
+        let retry_metric = panel.metrics().iter().find(|m| m.label == "retry_budget");
         let Some(metric) = retry_metric else { return };
 
         // The saturated u32::MAX as u64 vs u64::MAX => WithinBounds,
@@ -1335,11 +1325,7 @@ mod tests {
             u64::from(u32::MAX),
             "saturated value is u32::MAX as u64"
         );
-        assert_eq!(
-            metric.contract_value,
-            u64::MAX,
-            "contract allows u64::MAX"
-        );
+        assert_eq!(metric.contract_value, u64::MAX, "contract allows u64::MAX");
         assert_eq!(
             metric.status,
             ResourceStatus::WithinBounds,
@@ -1550,11 +1536,7 @@ mod tests {
     fn blackhat_resources_slot_count_conversion_safe() {
         let max_slot: u16 = u16::MAX;
         let converted: u64 = u64::from(max_slot);
-        assert_eq!(
-            converted,
-            65535u64,
-            "u16 to u64 conversion is always safe"
-        );
+        assert_eq!(converted, 65535u64, "u16 to u64 conversion is always safe");
     }
 
     /// BLACKHAT_resources_zero_do_nodes_zero_payload [CONFIRMED-SAFE]:

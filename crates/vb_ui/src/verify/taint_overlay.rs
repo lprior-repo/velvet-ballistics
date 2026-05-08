@@ -274,10 +274,7 @@ fn is_secret_taint(taint_map: &HashMap<SlotIdx, String>, slot: SlotIdx) -> bool 
 
 /// Find source steps: either nodes identified by the taint map as writing
 /// to secret-labelled slots, or nodes that are WaitEvent/Ask (legacy).
-fn find_sources(
-    parts: &WorkflowParts,
-    taint_map: &HashMap<SlotIdx, String>,
-) -> Vec<StepIdx> {
+fn find_sources(parts: &WorkflowParts, taint_map: &HashMap<SlotIdx, String>) -> Vec<StepIdx> {
     let mut sources = Vec::new();
     let mut seen = HashSet::new();
 
@@ -373,7 +370,14 @@ fn build_path_nodes(
 
     // Seed with successors of source.
     if let Some(node) = parts.nodes.get(source.as_usize()) {
-        seed_successors(node, node_count, &mut visited, &mut queue, source, &mut parent);
+        seed_successors(
+            node,
+            node_count,
+            &mut visited,
+            &mut queue,
+            source,
+            &mut parent,
+        );
     }
 
     let mut found = false;
@@ -384,7 +388,14 @@ fn build_path_nodes(
         }
 
         if let Some(node) = parts.nodes.get(current.as_usize()) {
-            seed_successors(node, node_count, &mut visited, &mut queue, current, &mut parent);
+            seed_successors(
+                node,
+                node_count,
+                &mut visited,
+                &mut queue,
+                current,
+                &mut parent,
+            );
         }
     }
 
@@ -443,14 +454,14 @@ fn collect_input_slots(kind: &CompiledNodeKind) -> Vec<SlotIdx> {
         CompiledNodeKind::SetConst { .. } => Vec::new(),
         CompiledNodeKind::Copy { source } => vec![*source],
         CompiledNodeKind::EvalExpr { .. } => Vec::new(),
-        CompiledNodeKind::BuildObject { fields } => {
-            fields.iter().map(|(_, slot)| *slot).collect()
-        }
+        CompiledNodeKind::BuildObject { fields } => fields.iter().map(|(_, slot)| *slot).collect(),
         CompiledNodeKind::BuildList { items } => items.clone().into_iter().collect(),
         CompiledNodeKind::Do { input, .. } => vec![*input],
         CompiledNodeKind::Choose { .. } => Vec::new(),
         CompiledNodeKind::ChooseSlot { .. } => Vec::new(),
-        CompiledNodeKind::ForEachStart { input, item_slot, .. } => vec![*input, *item_slot],
+        CompiledNodeKind::ForEachStart {
+            input, item_slot, ..
+        } => vec![*input, *item_slot],
         CompiledNodeKind::ForEachNext { iterator_slot, .. } => vec![*iterator_slot],
         CompiledNodeKind::ForEachJoin { output } => vec![*output],
         CompiledNodeKind::TogetherStart { .. } => Vec::new(),
@@ -460,8 +471,14 @@ fn collect_input_slots(kind: &CompiledNodeKind) -> Vec<SlotIdx> {
         CompiledNodeKind::CollectPage { collector_slot, .. } => vec![*collector_slot],
         CompiledNodeKind::CollectNext { collector_slot, .. } => vec![*collector_slot],
         CompiledNodeKind::CollectFinish { collector_slot } => vec![*collector_slot],
-        CompiledNodeKind::ReduceStart { input, accumulator, .. } => vec![*input, *accumulator],
-        CompiledNodeKind::ReduceNext { iterator_slot, accumulator, .. } => {
+        CompiledNodeKind::ReduceStart {
+            input, accumulator, ..
+        } => vec![*input, *accumulator],
+        CompiledNodeKind::ReduceNext {
+            iterator_slot,
+            accumulator,
+            ..
+        } => {
             vec![*iterator_slot, *accumulator]
         }
         CompiledNodeKind::ReduceFinish { accumulator } => vec![*accumulator],
@@ -470,14 +487,20 @@ fn collect_input_slots(kind: &CompiledNodeKind) -> Vec<SlotIdx> {
         CompiledNodeKind::RepeatCheck { attempt_slot, .. } => vec![*attempt_slot],
         CompiledNodeKind::RepeatFinish { result } => vec![*result],
         CompiledNodeKind::WaitUntil { deadline_slot } => vec![*deadline_slot],
-        CompiledNodeKind::WaitEvent { event, timeout_slot } => {
+        CompiledNodeKind::WaitEvent {
+            event,
+            timeout_slot,
+        } => {
             let mut slots = vec![*event];
             if let Some(ts) = timeout_slot {
                 slots.push(*ts);
             }
             slots
         }
-        CompiledNodeKind::Ask { prompt, timeout_slot } => {
+        CompiledNodeKind::Ask {
+            prompt,
+            timeout_slot,
+        } => {
             let mut slots = vec![*prompt];
             if let Some(ts) = timeout_slot {
                 slots.push(*ts);
@@ -1222,9 +1245,7 @@ mod tests {
             (SymbolId::new(1), SlotIdx::new(2)),
             (SymbolId::new(2), SlotIdx::new(3)),
         ]);
-        let slots = collect_input_slots(&CompiledNodeKind::BuildObject {
-            fields,
-        });
+        let slots = collect_input_slots(&CompiledNodeKind::BuildObject { fields });
         assert_eq!(slots.len(), 3);
         assert!(slots.contains(&SlotIdx::new(1)));
         assert!(slots.contains(&SlotIdx::new(2)));
@@ -1401,7 +1422,11 @@ mod tests {
         let reachable = walk_forward(&parts, StepIdx::new(0));
 
         // All three successors must be present.
-        assert_eq!(reachable.len(), 3, "all three successors should be reachable");
+        assert_eq!(
+            reachable.len(),
+            3,
+            "all three successors should be reachable"
+        );
         assert!(
             reachable.contains(&StepIdx::new(1)),
             "node 1 must be reachable from node 0"
@@ -1421,15 +1446,18 @@ mod tests {
         //   then processing 1 pushes 2, pop 2, processing 2 pushes 3, pop 3.
         // So result order is [1, 2, 3].
         assert_eq!(
-            reachable[0], StepIdx::new(1),
+            reachable[0],
+            StepIdx::new(1),
             "first visited node should be 1 (direct successor)"
         );
         assert_eq!(
-            reachable[1], StepIdx::new(2),
+            reachable[1],
+            StepIdx::new(2),
             "second visited node should be 2"
         );
         assert_eq!(
-            reachable[2], StepIdx::new(3),
+            reachable[2],
+            StepIdx::new(3),
             "third visited node should be 3"
         );
     }
@@ -1555,7 +1583,11 @@ mod tests {
 
         // Exactly one source.
         assert_eq!(result.sources.len(), 1, "should have exactly one source");
-        assert_eq!(result.sources[0], StepIdx::new(0), "source should be node 0");
+        assert_eq!(
+            result.sources[0],
+            StepIdx::new(0),
+            "source should be node 0"
+        );
 
         // Exactly one sink.
         assert_eq!(result.sinks.len(), 1, "should have exactly one sink");
@@ -1573,11 +1605,23 @@ mod tests {
             .iter()
             .filter(|p| p.is_forbidden)
             .collect();
-        assert_eq!(forbidden.len(), 1, "should have exactly one forbidden flow path");
+        assert_eq!(
+            forbidden.len(),
+            1,
+            "should have exactly one forbidden flow path"
+        );
 
         let path = forbidden[0];
-        assert_eq!(path.source_step, StepIdx::new(0), "path source should be node 0");
-        assert_eq!(path.sink_step, StepIdx::new(2), "path sink should be node 2");
+        assert_eq!(
+            path.source_step,
+            StepIdx::new(0),
+            "path source should be node 0"
+        );
+        assert_eq!(
+            path.sink_step,
+            StepIdx::new(2),
+            "path sink should be node 2"
+        );
         assert!(
             path.path_nodes.contains(&StepIdx::new(0)),
             "path must contain source node 0"
@@ -1610,11 +1654,7 @@ mod tests {
                 Some(SlotIdx::new(0)),
             ),
             // Node 1: secret source, no connection to Finish (allowed path)
-            (
-                CompiledNodeKind::Nop,
-                None,
-                Some(SlotIdx::new(1)),
-            ),
+            (CompiledNodeKind::Nop, None, Some(SlotIdx::new(1))),
             // Node 2: Finish sink
             (
                 CompiledNodeKind::Finish {
@@ -1861,11 +1901,7 @@ mod tests {
                 Some(StepIdx::new(1)),
                 Some(SlotIdx::new(0)),
             ),
-            (
-                CompiledNodeKind::Nop,
-                Some(StepIdx::new(2)),
-                None,
-            ),
+            (CompiledNodeKind::Nop, Some(StepIdx::new(2)), None),
             (
                 CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
@@ -1965,16 +2001,14 @@ mod tests {
         // With u16::MAX clamping, this maps to StepIdx::new(65535) which does
         // not match any source/sink, so it returns COLOR_CLEAN.
         assert_eq!(
-            color_65535,
-            COLOR_CLEAN,
+            color_65535, COLOR_CLEAN,
             "BLACKHAT [HIGH]: step index 65535 is clamped to u16::MAX via try_from"
         );
 
         // An extremely large step index also clamps.
         let color_huge = step_color(70000, &result);
         assert_eq!(
-            color_huge,
-            COLOR_CLEAN,
+            color_huge, COLOR_CLEAN,
             "BLACKHAT [HIGH]: step index 70000 overflows to u16::MAX and returns CLEAN"
         );
     }
@@ -2065,10 +2099,7 @@ mod tests {
         let result = compute_taint_overlay(&parts, &taint_map);
 
         // Source at step 0 reaches step 1 but step 1 is not a Finish.
-        assert!(
-            result.finish_safe,
-            "source should not reach any Finish"
-        );
+        assert!(result.finish_safe, "source should not reach any Finish");
         // Check non-forbidden flow path exists.
         let non_forbidden: Vec<&TaintFlowPath> = result
             .flow_paths

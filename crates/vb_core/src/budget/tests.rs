@@ -333,7 +333,6 @@ fn budget_together_start_fanout() {
     assert!(budget.is_some(), "together start fanout mismatch");
 }
 
-
 #[test]
 fn budget_single_node_workflow() {
     let nodes = vec![CompiledNode {
@@ -849,7 +848,11 @@ fn blackhat_steps_executable_saturates_on_large_total() {
     };
 
     let saturated = u32::try_from(budget.max_total_steps).unwrap_or(u32::MAX);
-    assert_eq!(saturated, u32::MAX, "BLACKHAT BH-BUD-01: u32 saturation hides overflow");
+    assert_eq!(
+        saturated,
+        u32::MAX,
+        "BLACKHAT BH-BUD-01: u32 saturation hides overflow"
+    );
     assert!(
         budget.max_total_steps > u64::from(saturated),
         "BLACKHAT BH-BUD-01: true count exceeds reported executable steps"
@@ -875,20 +878,31 @@ fn blackhat_run_time_seconds_always_zero_in_computed_budget() {
         .ok()
         .filter(|b| b.max_run_time_seconds == 0);
 
-    assert!(budget.is_some(), "BLACKHAT BH-BUD-02: max_run_time_seconds is hardcoded to 0");
+    assert!(
+        budget.is_some(),
+        "BLACKHAT BH-BUD-02: max_run_time_seconds is hardcoded to 0"
+    );
 }
 
 // --- FINDING BH-BUD-03: From<WorkflowError> for BudgetError loses information ---
 
 #[test]
 fn blackhat_workflow_error_to_budget_error_produces_equal_actual_and_limit() {
-    let workflow_err = WorkflowError::EntryOutOfBounds { entry: StepIdx::new(5) };
+    let workflow_err = WorkflowError::EntryOutOfBounds {
+        entry: StepIdx::new(5),
+    };
     let budget_err: BudgetError = workflow_err.into();
 
     match budget_err {
         BudgetError::TotalStepsExceeded { actual, limit } => {
-            assert_eq!(actual, limit, "BLACKHAT BH-BUD-03: actual == limit is self-contradictory");
-            assert!(!(actual > limit), "BLACKHAT BH-BUD-03: would not be caught by > comparison");
+            assert_eq!(
+                actual, limit,
+                "BLACKHAT BH-BUD-03: actual == limit is self-contradictory"
+            );
+            assert!(
+                !(actual > limit),
+                "BLACKHAT BH-BUD-03: would not be caught by > comparison"
+            );
         }
         other => panic!("BLACKHAT BH-BUD-03: unexpected variant: {other:?}"),
     }
@@ -927,7 +941,9 @@ fn blackhat_foreach_limit_zero_still_counts_as_one_iteration() {
             next: None,
             on_error: None,
             error_slot: None,
-            kind: CompiledNodeKind::Finish { result: SlotIdx::new(0) },
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
         },
     ];
     let contract = test_contract(3, 3);
@@ -935,19 +951,28 @@ fn blackhat_foreach_limit_zero_still_counts_as_one_iteration() {
         .ok()
         .filter(|b| b.max_total_steps == 3);
 
-    assert!(budget.is_some(), "BLACKHAT BH-BUD-04: limit=0 counts as 1 iteration");
+    assert!(
+        budget.is_some(),
+        "BLACKHAT BH-BUD-04: limit=0 counts as 1 iteration"
+    );
 }
 
 // --- FINDING BH-BUD-05: Step count overflow uses misleading error variant ---
 
 #[test]
 fn blackhat_step_count_overflow_uses_misleading_error_variant() {
-    let workflow_err = WorkflowError::StepOutOfBounds { step: StepIdx::new(0) };
+    let workflow_err = WorkflowError::StepOutOfBounds {
+        step: StepIdx::new(0),
+    };
     let converted: BudgetError = workflow_err.into();
     match converted {
         BudgetError::TotalStepsExceeded { actual, limit } => {
             assert_eq!(actual, u64::MAX, "BLACKHAT BH-BUD-05: actual is u64::MAX");
-            assert_eq!(limit, u64::MAX, "BLACKHAT BH-BUD-05: limit is u64::MAX (information loss)");
+            assert_eq!(
+                limit,
+                u64::MAX,
+                "BLACKHAT BH-BUD-05: limit is u64::MAX (information loss)"
+            );
         }
         other => panic!("unexpected variant: {other:?}"),
     }
@@ -959,7 +984,11 @@ fn blackhat_step_count_overflow_uses_misleading_error_variant() {
 fn blackhat_action_tickets_saturating_add_under_reports() {
     let mut max_action_tickets: u32 = u32::MAX;
     max_action_tickets = max_action_tickets.saturating_add(1);
-    assert_eq!(max_action_tickets, u32::MAX, "BLACKHAT BH-BUD-06: saturating_add hides overflow");
+    assert_eq!(
+        max_action_tickets,
+        u32::MAX,
+        "BLACKHAT BH-BUD-06: saturating_add hides overflow"
+    );
 }
 
 // --- FINDING BH-BUD-07: gather_items saturating_add accumulation ---
@@ -968,7 +997,11 @@ fn blackhat_action_tickets_saturating_add_under_reports() {
 fn blackhat_gather_items_accumulation_saturates() {
     let mut max_gather_items: u32 = u32::MAX - 10;
     max_gather_items = max_gather_items.saturating_add(20);
-    assert_eq!(max_gather_items, u32::MAX, "BLACKHAT BH-BUD-07: gather items saturates at u32::MAX");
+    assert_eq!(
+        max_gather_items,
+        u32::MAX,
+        "BLACKHAT BH-BUD-07: gather items saturates at u32::MAX"
+    );
 }
 
 // --- FINDING BH-BUD-08: retries_per_action copied from contract not computed ---
@@ -985,13 +1018,18 @@ fn blackhat_retries_per_action_copied_from_contract_not_computed() {
         next: None,
         on_error: None,
         error_slot: None,
-        kind: CompiledNodeKind::Finish { result: SlotIdx::new(0) },
+        kind: CompiledNodeKind::Finish {
+            result: SlotIdx::new(0),
+        },
     }];
     let budget = WholeWorkflowBudget::compute(&nodes, StepIdx::new(0), &contract)
         .ok()
         .filter(|b| b.max_retries_per_action == 42);
 
-    assert!(budget.is_some(), "BLACKHAT BH-BUD-08: retries copied from contract, not computed from IR");
+    assert!(
+        budget.is_some(),
+        "BLACKHAT BH-BUD-08: retries copied from contract, not computed from IR"
+    );
 }
 
 // --- FINDING BH-BUD-09: forward jump does not trigger cycle detection ---
@@ -1005,7 +1043,9 @@ fn blackhat_jump_cycle_detection_relies_on_forward_edge_validation() {
             next: None,
             on_error: None,
             error_slot: None,
-            kind: CompiledNodeKind::Jump { target: StepIdx::new(1) },
+            kind: CompiledNodeKind::Jump {
+                target: StepIdx::new(1),
+            },
         },
         CompiledNode {
             id: StepIdx::new(1),
@@ -1013,7 +1053,9 @@ fn blackhat_jump_cycle_detection_relies_on_forward_edge_validation() {
             next: None,
             on_error: None,
             error_slot: None,
-            kind: CompiledNodeKind::Finish { result: SlotIdx::new(0) },
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
         },
     ];
     let contract = test_contract(2, 1);
@@ -1021,7 +1063,10 @@ fn blackhat_jump_cycle_detection_relies_on_forward_edge_validation() {
 
     match result {
         Ok(budget) => {
-            assert_eq!(budget.max_total_steps, 2, "forward jump should count as 2 steps");
+            assert_eq!(
+                budget.max_total_steps, 2,
+                "forward jump should count as 2 steps"
+            );
         }
         Err(_) => {
             panic!("BLACKHAT BH-BUD-09: forward jump incorrectly detected as cycle");
@@ -1035,14 +1080,21 @@ fn blackhat_jump_cycle_detection_relies_on_forward_edge_validation() {
 fn blackhat_policy_allows_exact_limit() {
     let budget = test_budget(1_000_000, 65_535, 64, 8);
     let result = BoundednessPolicy::DEFAULT.validate(&budget);
-    assert_eq!(result, Ok(()), "BLACKHAT BH-BUD-10: budget at exact limits should pass");
+    assert_eq!(
+        result,
+        Ok(()),
+        "BLACKHAT BH-BUD-10: budget at exact limits should pass"
+    );
 }
 
 #[test]
 fn blackhat_policy_rejects_one_over_limit() {
     let budget = test_budget(1_000_001, 65_535, 64, 8);
     let result = BoundednessPolicy::DEFAULT.validate(&budget);
-    assert!(result.is_err(), "BLACKHAT BH-BUD-10: budget one over limit must be rejected");
+    assert!(
+        result.is_err(),
+        "BLACKHAT BH-BUD-10: budget one over limit must be rejected"
+    );
 }
 
 // --- FINDING BH-BUD-11: StepBudget clamping is silent ---
@@ -1082,7 +1134,9 @@ fn blackhat_self_referencing_loop_body_gracefully_handled() {
             next: None,
             on_error: None,
             error_slot: None,
-            kind: CompiledNodeKind::Finish { result: SlotIdx::new(0) },
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
         },
     ];
     let contract = test_contract(2, 3);
@@ -1126,7 +1180,9 @@ fn blackhat_reduce_start_uses_max_list_items_as_iteration_count() {
             next: None,
             on_error: None,
             error_slot: None,
-            kind: CompiledNodeKind::Finish { result: SlotIdx::new(0) },
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
         },
     ];
     let contract = test_contract(3, 3);
@@ -1135,7 +1191,10 @@ fn blackhat_reduce_start_uses_max_list_items_as_iteration_count() {
     let expected_iters = u64::try_from(crate::limits::MAX_LIST_ITEMS_PER_VALUE).unwrap_or(u64::MAX);
     let expected = 1 + expected_iters + 1;
 
-    assert!(budget.is_some(), "BLACKHAT BH-BUD-13: ReduceStart should compute with MAX_LIST_ITEMS iterations");
+    assert!(
+        budget.is_some(),
+        "BLACKHAT BH-BUD-13: ReduceStart should compute with MAX_LIST_ITEMS iterations"
+    );
     assert_eq!(
         budget.as_ref().map(|b| b.max_total_steps),
         Some(expected),
@@ -1293,8 +1352,8 @@ fn step_budget_consumption_returns_true_each_time_until_exhausted() -> Result<()
     let mut b = StepBudget::new(4);
     for i in 0..4 {
         let taken = b.try_take().map_err(|e| e.to_string())?;
-        ensure_equal(taken, true,)?;
-        ensure_equal(b.remaining(), 3 - i,)?;
+        ensure_equal(taken, true)?;
+        ensure_equal(b.remaining(), 3 - i)?;
     }
     let final_take = b.try_take().map_err(|e| e.to_string())?;
     ensure_equal(final_take, false)
@@ -1530,8 +1589,7 @@ fn reduce_start_body_accounting() -> Result<(), String> {
     let contract = test_contract(3, 3);
     let budget = WholeWorkflowBudget::compute(&nodes, StepIdx::new(0), &contract)
         .map_err(|e| e.to_string())?;
-    let expected_iters =
-        u64::try_from(crate::limits::MAX_LIST_ITEMS_PER_VALUE).unwrap_or(u64::MAX);
+    let expected_iters = u64::try_from(crate::limits::MAX_LIST_ITEMS_PER_VALUE).unwrap_or(u64::MAX);
     ensure_equal(budget.max_total_steps, 1 + expected_iters + 1)
 }
 
@@ -1799,8 +1857,7 @@ fn together_start_tracks_max_parallel_in_flight() -> Result<(), String> {
             on_error: None,
             error_slot: None,
             kind: CompiledNodeKind::TogetherStart {
-                branches: vec![StepIdx::new(1), StepIdx::new(2)]
-                    .into_boxed_slice(),
+                branches: vec![StepIdx::new(1), StepIdx::new(2)].into_boxed_slice(),
                 join: StepIdx::new(3),
             },
         },
@@ -1851,8 +1908,7 @@ fn larger_together_start_dominates_fanout() -> Result<(), String> {
             on_error: None,
             error_slot: None,
             kind: CompiledNodeKind::TogetherStart {
-                branches: vec![StepIdx::new(1), StepIdx::new(2)]
-                    .into_boxed_slice(),
+                branches: vec![StepIdx::new(1), StepIdx::new(2)].into_boxed_slice(),
                 join: StepIdx::new(3),
             },
         },
@@ -2333,7 +2389,10 @@ fn budget_error_total_slots_display() -> Result<(), String> {
         actual: 100,
         limit: 50,
     };
-    ensure_equal(format!("{err}"), "total slots exceeded: 100 > 50".to_string())
+    ensure_equal(
+        format!("{err}"),
+        "total slots exceeded: 100 > 50".to_string(),
+    )
 }
 
 #[test]
@@ -2755,8 +2814,7 @@ fn max_steps_executable_equals_total_steps_when_under_u32_max() -> Result<(), St
     let contract = test_contract(2, 1);
     let budget = WholeWorkflowBudget::compute(&nodes, StepIdx::new(0), &contract)
         .map_err(|e| e.to_string())?;
-    let expected_executable =
-        u32::try_from(budget.max_total_steps).unwrap_or(u32::MAX);
+    let expected_executable = u32::try_from(budget.max_total_steps).unwrap_or(u32::MAX);
     ensure_equal(budget.max_steps_executable, expected_executable)?;
     ensure_equal(budget.max_steps_executable, 2)
 }
@@ -2830,7 +2888,9 @@ fn policy_check_order_total_steps_before_slots() -> Result<(), String> {
     let result = BoundednessPolicy::DEFAULT.validate(&budget);
     match result {
         Err(BudgetError::TotalStepsExceeded { .. }) => Ok(()),
-        other => Err(format!("expected TotalStepsExceeded (first check), got {other:?}")),
+        other => Err(format!(
+            "expected TotalStepsExceeded (first check), got {other:?}"
+        )),
     }
 }
 
@@ -2840,7 +2900,9 @@ fn policy_check_order_slots_before_fanout() -> Result<(), String> {
     let result = BoundednessPolicy::DEFAULT.validate(&budget);
     match result {
         Err(BudgetError::TotalSlotsExceeded { .. }) => Ok(()),
-        other => Err(format!("expected TotalSlotsExceeded (second check), got {other:?}")),
+        other => Err(format!(
+            "expected TotalSlotsExceeded (second check), got {other:?}"
+        )),
     }
 }
 
@@ -3012,15 +3074,42 @@ fn boundedness_policy_default_values_are_sensible() -> Result<(), String> {
 #[test]
 fn budget_error_all_variants_display_non_empty() -> Result<(), String> {
     let errors = [
-        BudgetError::TotalStepsExceeded { actual: 1, limit: 0 },
-        BudgetError::TotalSlotsExceeded { actual: 1, limit: 0 },
-        BudgetError::FanoutExceeded { actual: 1, limit: 0 },
-        BudgetError::NestingDepthExceeded { actual: 1, limit: 0 },
-        BudgetError::ParallelExceeded { actual: 1, limit: 0 },
-        BudgetError::ActionTicketsExceeded { actual: 1, limit: 0 },
-        BudgetError::RunTimeExceeded { actual: 1, limit: 0 },
-        BudgetError::ResultBytesExceeded { actual: 1, limit: 0 },
-        BudgetError::StepsExecutableExceeded { actual: 1, limit: 0 },
+        BudgetError::TotalStepsExceeded {
+            actual: 1,
+            limit: 0,
+        },
+        BudgetError::TotalSlotsExceeded {
+            actual: 1,
+            limit: 0,
+        },
+        BudgetError::FanoutExceeded {
+            actual: 1,
+            limit: 0,
+        },
+        BudgetError::NestingDepthExceeded {
+            actual: 1,
+            limit: 0,
+        },
+        BudgetError::ParallelExceeded {
+            actual: 1,
+            limit: 0,
+        },
+        BudgetError::ActionTicketsExceeded {
+            actual: 1,
+            limit: 0,
+        },
+        BudgetError::RunTimeExceeded {
+            actual: 1,
+            limit: 0,
+        },
+        BudgetError::ResultBytesExceeded {
+            actual: 1,
+            limit: 0,
+        },
+        BudgetError::StepsExecutableExceeded {
+            actual: 1,
+            limit: 0,
+        },
     ];
     for err in &errors {
         let display = format!("{err}");
@@ -3033,29 +3122,46 @@ fn budget_error_all_variants_display_non_empty() -> Result<(), String> {
 
 #[test]
 fn budget_error_equality_same_variants() -> Result<(), String> {
-    let a = BudgetError::TotalStepsExceeded { actual: 5, limit: 3 };
-    let b = BudgetError::TotalStepsExceeded { actual: 5, limit: 3 };
+    let a = BudgetError::TotalStepsExceeded {
+        actual: 5,
+        limit: 3,
+    };
+    let b = BudgetError::TotalStepsExceeded {
+        actual: 5,
+        limit: 3,
+    };
     ensure_equal(a, b)
 }
 
 #[test]
 fn budget_error_inequality_different_actual() -> Result<(), String> {
-    let a = BudgetError::TotalStepsExceeded { actual: 5, limit: 3 };
-    let b = BudgetError::TotalStepsExceeded { actual: 6, limit: 3 };
+    let a = BudgetError::TotalStepsExceeded {
+        actual: 5,
+        limit: 3,
+    };
+    let b = BudgetError::TotalStepsExceeded {
+        actual: 6,
+        limit: 3,
+    };
     assert_ne!(a, b);
     Ok(())
 }
 
 #[test]
 fn budget_error_clone_preserves_equality() -> Result<(), String> {
-    let a = BudgetError::FanoutExceeded { actual: 10, limit: 5 };
+    let a = BudgetError::FanoutExceeded {
+        actual: 10,
+        limit: 5,
+    };
     let b = a.clone();
     ensure_equal(a, b)
 }
 
 #[test]
 fn budget_error_from_workflow_error_preserves_variant() -> Result<(), String> {
-    let wf_err = WorkflowError::EntryOutOfBounds { entry: StepIdx::new(0) };
+    let wf_err = WorkflowError::EntryOutOfBounds {
+        entry: StepIdx::new(0),
+    };
     let budget_err: BudgetError = wf_err.into();
     match budget_err {
         BudgetError::TotalStepsExceeded { actual, limit } => {
@@ -3122,7 +3228,10 @@ fn boundedness_policy_custom_zero_limits_reject_nonzero() -> Result<(), String> 
     };
     let budget = test_budget(1, 0, 0, 0);
     match policy.validate(&budget) {
-        Err(BudgetError::TotalStepsExceeded { actual: 1, limit: 0 }) => Ok(()),
+        Err(BudgetError::TotalStepsExceeded {
+            actual: 1,
+            limit: 0,
+        }) => Ok(()),
         other => Err(format!("expected TotalStepsExceeded, got {other:?}")),
     }
 }

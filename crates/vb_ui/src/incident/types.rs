@@ -501,7 +501,10 @@ mod tests {
     #[test]
     fn incident_context_construction() {
         let ctx = IncidentContext {
-            slot_values_before: vec![(1_u16, String::from("alpha")), (2_u16, String::from("beta"))],
+            slot_values_before: vec![
+                (1_u16, String::from("alpha")),
+                (2_u16, String::from("beta")),
+            ],
             taint_changes: vec![(3_u16, String::from("gamma"))],
             action_attempts: 7_u32,
             last_action_idempotency_key: Some(String::from("key-42")),
@@ -686,7 +689,10 @@ mod tests {
 
     #[test]
     fn category_action_failed() {
-        assert_eq!(FailureCode::ActionFailed(String::from("boom")).category(), "action");
+        assert_eq!(
+            FailureCode::ActionFailed(String::from("boom")).category(),
+            "action"
+        );
     }
 
     #[test]
@@ -701,7 +707,10 @@ mod tests {
 
     #[test]
     fn category_validation_error() {
-        assert_eq!(FailureCode::ValidationError(String::from("bad")).category(), "validation");
+        assert_eq!(
+            FailureCode::ValidationError(String::from("bad")).category(),
+            "validation"
+        );
     }
 
     #[test]
@@ -716,7 +725,10 @@ mod tests {
 
     #[test]
     fn category_unknown() {
-        assert_eq!(FailureCode::Unknown(String::from("?")).category(), "internal");
+        assert_eq!(
+            FailureCode::Unknown(String::from("?")).category(),
+            "internal"
+        );
     }
 
     // ---------------------------------------------------------------------------
@@ -734,10 +746,22 @@ mod tests {
         let [minor_r, ..] = IncidentSeverity::Minor.severity_color();
         let [info_r, ..] = IncidentSeverity::Info.severity_color();
         // All severity colors should have red >= 0, and Critical should dominate
-        assert!(critical_r >= major_r, "Critical red ({critical_r}) should be >= Major red ({major_r})");
-        assert!(major_r >= warning_r, "Major red ({major_r}) should be >= Warning red ({warning_r})");
-        assert!(warning_r > minor_r, "Warning red ({warning_r}) should be > Minor red ({minor_r})");
-        assert!(minor_r > info_r, "Minor red ({minor_r}) should be > Info red ({info_r})");
+        assert!(
+            critical_r >= major_r,
+            "Critical red ({critical_r}) should be >= Major red ({major_r})"
+        );
+        assert!(
+            major_r >= warning_r,
+            "Major red ({major_r}) should be >= Warning red ({warning_r})"
+        );
+        assert!(
+            warning_r > minor_r,
+            "Warning red ({warning_r}) should be > Minor red ({minor_r})"
+        );
+        assert!(
+            minor_r > info_r,
+            "Minor red ({minor_r}) should be > Info red ({info_r})"
+        );
     }
 
     #[test]
@@ -769,7 +793,10 @@ mod tests {
     fn severity_color_major_is_orange_range() {
         let [r, g, b, ..] = IncidentSeverity::Major.severity_color();
         assert!(r > 0.9_f32, "Major red should be strong");
-        assert!(g > 0.3_f32 && g < 0.7_f32, "Major green should be moderate (orange)");
+        assert!(
+            g > 0.3_f32 && g < 0.7_f32,
+            "Major green should be moderate (orange)"
+        );
         assert!(b < 0.1_f32, "Major blue should be near zero");
     }
 
@@ -779,17 +806,26 @@ mod tests {
 
     #[test]
     fn failure_code_action_failed_empty_string_label() {
-        assert_eq!(FailureCode::ActionFailed(String::new()).as_str(), "ActionFailed");
+        assert_eq!(
+            FailureCode::ActionFailed(String::new()).as_str(),
+            "ActionFailed"
+        );
     }
 
     #[test]
     fn failure_code_validation_error_empty_string_label() {
-        assert_eq!(FailureCode::ValidationError(String::new()).as_str(), "ValidationError");
+        assert_eq!(
+            FailureCode::ValidationError(String::new()).as_str(),
+            "ValidationError"
+        );
     }
 
     #[test]
     fn failure_code_unknown_empty_string_label() {
-        assert_eq!(FailureCode::Unknown(String::new()).as_str(), "InternalError");
+        assert_eq!(
+            FailureCode::Unknown(String::new()).as_str(),
+            "InternalError"
+        );
     }
 
     // ---------------------------------------------------------------------------
@@ -798,10 +834,17 @@ mod tests {
 
     #[test]
     fn replay_safety_only_safe_variant_passes_is_safe() {
-        let all_variants = [ReplaySafety::Safe, ReplaySafety::UnsafeSideEffect, ReplaySafety::Unknown];
+        let all_variants = [
+            ReplaySafety::Safe,
+            ReplaySafety::UnsafeSideEffect,
+            ReplaySafety::Unknown,
+        ];
         let safe_count = all_variants.iter().filter(|v| v.is_safe()).count();
         assert_eq!(safe_count, 1, "exactly one variant should be safe");
-        assert!(ReplaySafety::Safe.is_safe(), "the Safe variant must be the one that is safe");
+        assert!(
+            ReplaySafety::Safe.is_safe(),
+            "the Safe variant must be the one that is safe"
+        );
     }
 
     // ---------------------------------------------------------------------------
@@ -862,18 +905,24 @@ mod tests {
         // The bool can only represent safe/unsafe, losing the distinction between
         // UnsafeSideEffect and Unknown.
         let record_unsafe = IncidentRecord {
-            run_id: 1, shard_id: 0, step: 0,
+            run_id: 1,
+            shard_id: 0,
+            step: 0,
             failure_code: FailureCode::ActionTimeout,
             severity: IncidentSeverity::Critical,
             replay_safety: ReplaySafety::UnsafeSideEffect,
-            timestamp_us: 0, detail: String::new(),
+            timestamp_us: 0,
+            detail: String::new(),
         };
         let record_unknown = IncidentRecord {
-            run_id: 2, shard_id: 0, step: 0,
+            run_id: 2,
+            shard_id: 0,
+            step: 0,
             failure_code: FailureCode::ActionTimeout,
             severity: IncidentSeverity::Critical,
             replay_safety: ReplaySafety::Unknown,
-            timestamp_us: 0, detail: String::new(),
+            timestamp_us: 0,
+            detail: String::new(),
         };
         // Both map to the same boolean: not safe
         assert!(!record_unsafe.replay_safety.is_safe());
@@ -889,11 +938,14 @@ mod tests {
     #[test]
     fn blackhat_incident_record_timestamp_no_overflow_risk() {
         let record = IncidentRecord {
-            run_id: 1, shard_id: 0, step: 0,
+            run_id: 1,
+            shard_id: 0,
+            step: 0,
             failure_code: FailureCode::ActionTimeout,
             severity: IncidentSeverity::Info,
             replay_safety: ReplaySafety::Safe,
-            timestamp_us: u64::MAX, detail: String::new(),
+            timestamp_us: u64::MAX,
+            detail: String::new(),
         };
         assert_eq!(record.timestamp_us, u64::MAX);
         // Duration calculation with saturating_sub handles u64::MAX correctly
@@ -907,7 +959,8 @@ mod tests {
     /// must pattern-match on the enum rather than using as_str().
     #[test]
     fn blackhat_failure_code_as_str_loses_inner_message_for_string_variants() {
-        let code_with_message = FailureCode::ActionFailed(String::from("database connection refused"));
+        let code_with_message =
+            FailureCode::ActionFailed(String::from("database connection refused"));
         assert_eq!(code_with_message.as_str(), "ActionFailed");
         // The inner message "database connection refused" is not accessible via as_str()
         // Callers must destructure the enum to get the message
@@ -1004,7 +1057,10 @@ mod tests {
             replay_safe: false,
             side_effect_certainty: SideEffectCertainty::None,
         };
-        assert!(!sections.replay_safe, "default replay_safe is false even with no incident");
+        assert!(
+            !sections.replay_safe,
+            "default replay_safe is false even with no incident"
+        );
         assert_eq!(sections.side_effect_certainty, SideEffectCertainty::None);
     }
 
@@ -1046,6 +1102,9 @@ mod tests {
     /// This is the correct defensive posture for replay safety.
     #[test]
     fn blackhat_replay_safety_unknown_is_conservatively_unsafe() {
-        assert!(!ReplaySafety::Unknown.is_safe(), "Unknown should be treated as unsafe");
+        assert!(
+            !ReplaySafety::Unknown.is_safe(),
+            "Unknown should be treated as unsafe"
+        );
     }
 }

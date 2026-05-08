@@ -354,7 +354,11 @@ fn parse_ipc_serve(args: &[OsString]) -> Result<Command, ParseError> {
 
 fn parse_inspect(args: &[OsString]) -> Result<Command, ParseError> {
     let a = parse_run_db_args(args)?;
-    Ok(Command::Inspect { run_id: a.run_id, db: a.db, output: a.output })
+    Ok(Command::Inspect {
+        run_id: a.run_id,
+        db: a.db,
+        output: a.output,
+    })
 }
 
 /// Common arguments for commands that operate on a run database entry.
@@ -377,27 +381,47 @@ fn parse_run_db_args(args: &[OsString]) -> Result<RunDbArgs, ParseError> {
 
 fn parse_events(args: &[OsString]) -> Result<Command, ParseError> {
     let a = parse_run_db_args(args)?;
-    Ok(Command::Events { run_id: a.run_id, db: a.db, output: a.output })
+    Ok(Command::Events {
+        run_id: a.run_id,
+        db: a.db,
+        output: a.output,
+    })
 }
 
 fn parse_replay(args: &[OsString]) -> Result<Command, ParseError> {
     let a = parse_run_db_args(args)?;
-    Ok(Command::Replay { run_id: a.run_id, db: a.db, output: a.output })
+    Ok(Command::Replay {
+        run_id: a.run_id,
+        db: a.db,
+        output: a.output,
+    })
 }
 
 fn parse_trace(args: &[OsString]) -> Result<Command, ParseError> {
     let a = parse_run_db_args(args)?;
-    Ok(Command::Trace { run_id: a.run_id, db: a.db, output: a.output })
+    Ok(Command::Trace {
+        run_id: a.run_id,
+        db: a.db,
+        output: a.output,
+    })
 }
 
 fn parse_retry(args: &[OsString]) -> Result<Command, ParseError> {
     let a = parse_run_db_args(args)?;
-    Ok(Command::Retry { run_id: a.run_id, db: a.db, output: a.output })
+    Ok(Command::Retry {
+        run_id: a.run_id,
+        db: a.db,
+        output: a.output,
+    })
 }
 
 fn parse_resume(args: &[OsString]) -> Result<Command, ParseError> {
     let a = parse_run_db_args(args)?;
-    Ok(Command::Resume { run_id: a.run_id, db: a.db, output: a.output })
+    Ok(Command::Resume {
+        run_id: a.run_id,
+        db: a.db,
+        output: a.output,
+    })
 }
 
 fn parse_bench_run(args: &[OsString]) -> Result<Command, ParseError> {
@@ -455,7 +479,11 @@ fn parse_diff(args: &[OsString]) -> Result<Command, ParseError> {
 
 fn parse_incident(args: &[OsString]) -> Result<Command, ParseError> {
     let a = parse_run_db_args(args)?;
-    Ok(Command::Incident { run_id: a.run_id, db: a.db, output: a.output })
+    Ok(Command::Incident {
+        run_id: a.run_id,
+        db: a.db,
+        output: a.output,
+    })
 }
 
 fn parse_simulate(args: &[OsString]) -> Result<Command, ParseError> {
@@ -543,7 +571,10 @@ impl std::fmt::Display for ParseError {
         match self {
             Self::MissingArgument(name) => write!(formatter, "missing argument: {name}"),
             Self::UnknownEmitTarget(target) => {
-                write!(formatter, "unknown emit target: {target} (expected: ir, rust, yaml, postcard)")
+                write!(
+                    formatter,
+                    "unknown emit target: {target} (expected: ir, rust, yaml, postcard)"
+                )
             }
             Self::UnknownDurability(mode) => {
                 write!(
@@ -566,7 +597,10 @@ impl std::fmt::Display for ParseError {
 
 #[cfg(test)]
 mod tests {
-    use super::{parse_args, Command, DurabilityMode, EmitTarget, OutputFormat, ParseError, StepTarget, VerifyProfile};
+    use super::{
+        Command, DurabilityMode, EmitTarget, OutputFormat, ParseError, StepTarget, VerifyProfile,
+        parse_args,
+    };
     use std::ffi::OsString;
     use std::path::PathBuf;
 
@@ -886,7 +920,10 @@ mod tests {
             matches!(parsed, Ok(Command::Verify { .. })),
             "unexpected parse result: {parsed:?}"
         );
-        if let Ok(Command::Verify { profile, output, .. }) = parsed {
+        if let Ok(Command::Verify {
+            profile, output, ..
+        }) = parsed
+        {
             assert_eq!(profile, VerifyProfile::Full);
             assert_eq!(output, OutputFormat::Json);
         }
@@ -940,13 +977,24 @@ mod tests {
     #[test]
     fn parse_diff_requires_both_run_ids_and_db() {
         let parsed = parse_args(&args(&[
-            "velvet-ballastics", "diff", "1", "2", "--db", "test-db",
+            "velvet-ballastics",
+            "diff",
+            "1",
+            "2",
+            "--db",
+            "test-db",
         ]));
         assert!(
             matches!(parsed, Ok(Command::Diff { .. })),
             "unexpected: {parsed:?}"
         );
-        if let Ok(Command::Diff { run_a, run_b, db, output }) = parsed {
+        if let Ok(Command::Diff {
+            run_a,
+            run_b,
+            db,
+            output,
+        }) = parsed
+        {
             assert_eq!(run_a, "1");
             assert_eq!(run_b, "2");
             assert_eq!(db, PathBuf::from("test-db"));
@@ -957,7 +1005,13 @@ mod tests {
     #[test]
     fn parse_diff_accepts_json_flag() {
         let parsed = parse_args(&args(&[
-            "velvet-ballastics", "diff", "10", "20", "--db", "test-db", "--json",
+            "velvet-ballastics",
+            "diff",
+            "10",
+            "20",
+            "--db",
+            "test-db",
+            "--json",
         ]));
         assert!(
             matches!(parsed, Ok(Command::Diff { .. })),

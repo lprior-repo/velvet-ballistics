@@ -22,7 +22,11 @@ fn read_object_fields(
                 reason: "build_object field index checked by loop bound",
             })?;
         let value = *run.read_slot(*slot)?;
-        entries.push(ObjectField { key: *key, value, taint: Taint::Clean });
+        entries.push(ObjectField {
+            key: *key,
+            value,
+            taint: Taint::Clean,
+        });
         index = index
             .checked_add(1)
             .ok_or(EngineError::InternalInvariantViolation {
@@ -63,7 +67,11 @@ pub(crate) fn build_object_with_taint(
         let value = *run.read_slot(*slot)?;
         let slot_taint = run.read_taint(*slot)?;
         accumulated_taint = join_taint(accumulated_taint, slot_taint);
-        entries.push(ObjectField { key: *key, value, taint: slot_taint });
+        entries.push(ObjectField {
+            key: *key,
+            value,
+            taint: slot_taint,
+        });
         index = index
             .checked_add(1)
             .ok_or(EngineError::InternalInvariantViolation {
@@ -180,12 +188,8 @@ mod tests {
         let mut run = test_frame(2)?;
         run.write_slot(SlotIdx::new(0), SlotValue::I64(10))
             .map_err(|e| e.to_string())?;
-        let obj = build_object(
-            &mut store,
-            &run,
-            &[(SymbolId::new(5), SlotIdx::new(0))],
-        )
-        .map_err(|e| e.to_string())?;
+        let obj = build_object(&mut store, &run, &[(SymbolId::new(5), SlotIdx::new(0))])
+            .map_err(|e| e.to_string())?;
         let fields = store.object(obj).map_err(|e| e.to_string())?;
         ensure_equal(fields.len(), 1)?;
         ensure_equal(fields[0].key, SymbolId::new(5))?;
@@ -218,7 +222,10 @@ mod tests {
         let (obj, taint) = build_object_with_taint(
             &mut store,
             &run,
-            &[(SymbolId::new(0), SlotIdx::new(0)), (SymbolId::new(1), SlotIdx::new(1))],
+            &[
+                (SymbolId::new(0), SlotIdx::new(0)),
+                (SymbolId::new(1), SlotIdx::new(1)),
+            ],
         )
         .map_err(|e| e.to_string())?;
         ensure_equal(taint, Taint::Clean)?;
@@ -237,7 +244,10 @@ mod tests {
         let (_obj, taint) = build_object_with_taint(
             &mut store,
             &run,
-            &[(SymbolId::new(0), SlotIdx::new(0)), (SymbolId::new(1), SlotIdx::new(1))],
+            &[
+                (SymbolId::new(0), SlotIdx::new(0)),
+                (SymbolId::new(1), SlotIdx::new(1)),
+            ],
         )
         .map_err(|e| e.to_string())?;
         ensure_equal(taint, Taint::Secret)
@@ -254,7 +264,10 @@ mod tests {
         let (_obj, taint) = build_object_with_taint(
             &mut store,
             &run,
-            &[(SymbolId::new(0), SlotIdx::new(0)), (SymbolId::new(1), SlotIdx::new(1))],
+            &[
+                (SymbolId::new(0), SlotIdx::new(0)),
+                (SymbolId::new(1), SlotIdx::new(1)),
+            ],
         )
         .map_err(|e| e.to_string())?;
         ensure_equal(taint, Taint::DerivedFromSecret)
@@ -328,12 +341,9 @@ mod tests {
             .map_err(|e| e.to_string())?;
         run.write_slot(SlotIdx::new(1), SlotValue::I64(2))
             .map_err(|e| e.to_string())?;
-        let (_list, taint) = build_list_with_taint(
-            &mut store,
-            &run,
-            &[SlotIdx::new(0), SlotIdx::new(1)],
-        )
-        .map_err(|e| e.to_string())?;
+        let (_list, taint) =
+            build_list_with_taint(&mut store, &run, &[SlotIdx::new(0), SlotIdx::new(1)])
+                .map_err(|e| e.to_string())?;
         ensure_equal(taint, Taint::Clean)
     }
 
@@ -345,12 +355,9 @@ mod tests {
             .map_err(|e| e.to_string())?;
         run.write_slot_with_taint(SlotIdx::new(1), SlotValue::I64(2), Taint::Secret)
             .map_err(|e| e.to_string())?;
-        let (_list, taint) = build_list_with_taint(
-            &mut store,
-            &run,
-            &[SlotIdx::new(0), SlotIdx::new(1)],
-        )
-        .map_err(|e| e.to_string())?;
+        let (_list, taint) =
+            build_list_with_taint(&mut store, &run, &[SlotIdx::new(0), SlotIdx::new(1)])
+                .map_err(|e| e.to_string())?;
         ensure_equal(taint, Taint::Secret)
     }
 
@@ -362,12 +369,9 @@ mod tests {
             .map_err(|e| e.to_string())?;
         run.write_slot_with_taint(SlotIdx::new(1), SlotValue::I64(2), Taint::Clean)
             .map_err(|e| e.to_string())?;
-        let (_list, taint) = build_list_with_taint(
-            &mut store,
-            &run,
-            &[SlotIdx::new(0), SlotIdx::new(1)],
-        )
-        .map_err(|e| e.to_string())?;
+        let (_list, taint) =
+            build_list_with_taint(&mut store, &run, &[SlotIdx::new(0), SlotIdx::new(1)])
+                .map_err(|e| e.to_string())?;
         ensure_equal(taint, Taint::DerivedFromSecret)
     }
 }

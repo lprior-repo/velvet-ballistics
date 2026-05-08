@@ -100,7 +100,11 @@ impl IpcAppWiring {
     }
 
     /// Requests taint analysis for the given run's associated workflow.
-    pub fn request_taint_report(&self, run_id: RunId, digest: vb_core::WorkflowDigest) -> Result<(), String> {
+    pub fn request_taint_report(
+        &self,
+        run_id: RunId,
+        digest: vb_core::WorkflowDigest,
+    ) -> Result<(), String> {
         self.bridge
             .send(IpcRequest::RequestTaintReport { run_id, digest })
             .map_err(|e| format!("IPC taint-report request failed: {e}"))
@@ -142,7 +146,12 @@ impl IpcAppWiring {
 
     // -- Internal routing ---------------------------------------------------
 
-    pub fn route_reply(&mut self, reply: IpcReply, app_state: &mut AppState, events: &mut WiringEvents) {
+    pub fn route_reply(
+        &mut self,
+        reply: IpcReply,
+        app_state: &mut AppState,
+        events: &mut WiringEvents,
+    ) {
         match reply {
             IpcReply::Connected => {
                 app_state.connected = true;
@@ -248,41 +257,40 @@ impl IpcAppWiring {
 
                 // Determine health: degraded if any shard has high queue
                 // pressure, critical if any shard is severely overloaded.
-                let worst_health = metrics.shards.iter().fold(
-                    HealthLevel::Healthy,
-                    |current, shard| {
-                        let frame_pct = frame_pool_used_pct(shard);
-                        if shard.ready_queue_depth > 50 || frame_pct > 90 {
-                            HealthLevel::Critical
-                        } else if shard.ready_queue_depth > 20 || frame_pct > 75 {
-                            match current {
-                                HealthLevel::Critical => HealthLevel::Critical,
-                                _ => HealthLevel::Degraded,
+                let worst_health =
+                    metrics
+                        .shards
+                        .iter()
+                        .fold(HealthLevel::Healthy, |current, shard| {
+                            let frame_pct = frame_pool_used_pct(shard);
+                            if shard.ready_queue_depth > 50 || frame_pct > 90 {
+                                HealthLevel::Critical
+                            } else if shard.ready_queue_depth > 20 || frame_pct > 75 {
+                                match current {
+                                    HealthLevel::Critical => HealthLevel::Critical,
+                                    _ => HealthLevel::Degraded,
+                                }
+                            } else {
+                                current
                             }
-                        } else {
-                            current
-                        }
-                    },
-                );
+                        });
                 app_state.system.overall_health = worst_health;
                 events.metrics_updated = true;
             }
             vb_ipc::server::IpcResponse::VerifyWorkflow { result } => {
-                app_state.verification.populate_cert_cards(&result.certificates);
+                app_state
+                    .verification
+                    .populate_cert_cards(&result.certificates);
                 events.verification_updated = true;
             }
-            vb_ipc::server::IpcResponse::TaintReport {
-                finish_safe,
-                ..
-            } => {
+            vb_ipc::server::IpcResponse::TaintReport { finish_safe, .. } => {
                 if finish_safe {
                     app_state.verification.all_clean = true;
                 }
                 events.taint_report_updated = true;
             }
             vb_ipc::server::IpcResponse::WorkflowGraph { nodes, .. } => {
-                app_state.workflow.node_count =
-                    u32::try_from(nodes.len()).unwrap_or(u32::MAX);
+                app_state.workflow.node_count = u32::try_from(nodes.len()).unwrap_or(u32::MAX);
                 events.workflow_graph_updated = true;
             }
             _ => {
@@ -545,9 +553,9 @@ mod tests {
     #[test]
     fn drain_events_clears_buffer_after_drain() {
         let mut wiring = IpcAppWiring::new();
-        wiring.events_buffer.push(vb_ipc::server::IpcResponse::Events {
-            events: Vec::new(),
-        });
+        wiring
+            .events_buffer
+            .push(vb_ipc::server::IpcResponse::Events { events: Vec::new() });
         let first = wiring.drain_events();
         assert_eq!(first.len(), 1);
         let second = wiring.drain_events();
@@ -869,13 +877,11 @@ mod tests {
         let mut wiring = IpcAppWiring::new();
         let mut state = AppState::new();
         let mut events = WiringEvents::default();
-        let certs = vec![
-            vb_ipc::CertificateWire {
-                kind: "gate_13_taint_check".into(),
-                status: "Fail".into(),
-                details: "taint path found".into(),
-            },
-        ];
+        let certs = vec![vb_ipc::CertificateWire {
+            kind: "gate_13_taint_check".into(),
+            status: "Fail".into(),
+            details: "taint path found".into(),
+        }];
         let result = vb_ipc::VerificationResult {
             certificates: certs,
             total_checks: 1,
@@ -1240,20 +1246,34 @@ mod tests {
     fn drain_events_fifo_after_partial_drain() {
         let mut wiring = IpcAppWiring::new();
 
-        wiring.events_buffer.push(vb_ipc::server::IpcResponse::TraceCount { count: 1 });
-        wiring.events_buffer.push(vb_ipc::server::IpcResponse::TraceCount { count: 2 });
+        wiring
+            .events_buffer
+            .push(vb_ipc::server::IpcResponse::TraceCount { count: 1 });
+        wiring
+            .events_buffer
+            .push(vb_ipc::server::IpcResponse::TraceCount { count: 2 });
 
         let first_drain = wiring.drain_events();
         assert_eq!(first_drain.len(), 2);
 
         // After drain, push more and verify FIFO again.
-        wiring.events_buffer.push(vb_ipc::server::IpcResponse::TraceCount { count: 3 });
-        wiring.events_buffer.push(vb_ipc::server::IpcResponse::TraceCount { count: 4 });
+        wiring
+            .events_buffer
+            .push(vb_ipc::server::IpcResponse::TraceCount { count: 3 });
+        wiring
+            .events_buffer
+            .push(vb_ipc::server::IpcResponse::TraceCount { count: 4 });
 
         let second_drain = wiring.drain_events();
         assert_eq!(second_drain.len(), 2);
-        assert_eq!(second_drain[0], vb_ipc::server::IpcResponse::TraceCount { count: 3 });
-        assert_eq!(second_drain[1], vb_ipc::server::IpcResponse::TraceCount { count: 4 });
+        assert_eq!(
+            second_drain[0],
+            vb_ipc::server::IpcResponse::TraceCount { count: 3 }
+        );
+        assert_eq!(
+            second_drain[1],
+            vb_ipc::server::IpcResponse::TraceCount { count: 4 }
+        );
     }
 
     // ===================================================================
@@ -1269,7 +1289,10 @@ mod tests {
         let wiring = IpcAppWiring::new();
         let digest = vb_core::WorkflowDigest::from_bytes([0xAB; 32]);
         let result = wiring.verify_workflow(digest);
-        assert!(result.is_ok(), "verify_workflow should succeed when bridge is alive");
+        assert!(
+            result.is_ok(),
+            "verify_workflow should succeed when bridge is alive"
+        );
     }
 
     // -----------------------------------------------------------------------
@@ -1282,7 +1305,10 @@ mod tests {
         let run_id = RunId::new(42);
         let digest = vb_core::WorkflowDigest::from_bytes([0xCD; 32]);
         let result = wiring.request_taint_report(run_id, digest);
-        assert!(result.is_ok(), "request_taint_report should succeed when bridge is alive");
+        assert!(
+            result.is_ok(),
+            "request_taint_report should succeed when bridge is alive"
+        );
     }
 
     // -----------------------------------------------------------------------
@@ -1294,7 +1320,10 @@ mod tests {
         let wiring = IpcAppWiring::new();
         let digest = vb_core::WorkflowDigest::from_bytes([0xEF; 32]);
         let result = wiring.request_workflow_graph(digest);
-        assert!(result.is_ok(), "request_workflow_graph should succeed when bridge is alive");
+        assert!(
+            result.is_ok(),
+            "request_workflow_graph should succeed when bridge is alive"
+        );
     }
 
     // -----------------------------------------------------------------------
@@ -1473,7 +1502,10 @@ mod tests {
         let found = replies
             .iter()
             .any(|r| matches!(r, IpcReply::Error(e) if e.contains("Not connected")));
-        assert!(found, "expected 'Not connected' error for RequestTaintReport");
+        assert!(
+            found,
+            "expected 'Not connected' error for RequestTaintReport"
+        );
     }
 
     // -----------------------------------------------------------------------
@@ -1502,7 +1534,10 @@ mod tests {
         let found = replies
             .iter()
             .any(|r| matches!(r, IpcReply::Error(e) if e.contains("Not connected")));
-        assert!(found, "expected 'Not connected' error for RequestWorkflowGraph");
+        assert!(
+            found,
+            "expected 'Not connected' error for RequestWorkflowGraph"
+        );
     }
 
     // -----------------------------------------------------------------------
@@ -1514,13 +1549,11 @@ mod tests {
         let mut wiring = IpcAppWiring::new();
         let mut state = AppState::new();
         let mut events = WiringEvents::default();
-        let certs = vec![
-            vb_ipc::CertificateWire {
-                kind: "gate_13_taint_check".into(),
-                status: "Fail".into(),
-                details: "taint path found".into(),
-            },
-        ];
+        let certs = vec![vb_ipc::CertificateWire {
+            kind: "gate_13_taint_check".into(),
+            status: "Fail".into(),
+            details: "taint path found".into(),
+        }];
         let result = vb_ipc::VerificationResult {
             certificates: certs,
             total_checks: 1,

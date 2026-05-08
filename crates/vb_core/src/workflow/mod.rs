@@ -164,7 +164,6 @@ impl CompiledWorkflow {
             matches!(node.kind, CompiledNodeKind::ErrorHandler { body, .. } if body == body_step)
         })
     }
-
 }
 
 /// Explicit compiled resource bounds accepted at run admission.
@@ -394,7 +393,9 @@ pub enum WorkflowError {
         max: usize,
     },
     /// A jump creates a cycle that would cause infinite execution.
-    #[error("jump cycle detected: {step:?} jumps to {target:?} which is already in the current traversal path")]
+    #[error(
+        "jump cycle detected: {step:?} jumps to {target:?} which is already in the current traversal path"
+    )]
     JumpCycle {
         /// Step issuing the jump.
         step: StepIdx,
@@ -1494,11 +1495,7 @@ fn collect_choose_expr_targets(
     }
 }
 
-fn collect_together_start_targets(
-    branches: &[StepIdx],
-    join: StepIdx,
-    targets: &mut Vec<StepIdx>,
-) {
+fn collect_together_start_targets(branches: &[StepIdx], join: StepIdx, targets: &mut Vec<StepIdx>) {
     for branch in branches {
         targets.push(*branch);
     }
@@ -1778,6 +1775,5 @@ const fn expr_stack_effect(op: ExprOp) -> StackEffect {
 const fn effect(pop: u8, push: u8) -> StackEffect {
     StackEffect { pop, push }
 }
-
 
 mod tests;

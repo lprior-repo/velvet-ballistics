@@ -189,29 +189,22 @@ pub enum NodeCategory {
 #[must_use]
 pub fn classify_kind(kind: &str) -> NodeCategory {
     match kind {
-        "SetConst" | "set_const" | "Copy" | "copy" | "EvalExpr" | "eval_expr"
-        | "BuildObject" | "build_object" | "BuildList" | "build_list" | "data" => {
-            NodeCategory::Data
-        }
+        "SetConst" | "set_const" | "Copy" | "copy" | "EvalExpr" | "eval_expr" | "BuildObject"
+        | "build_object" | "BuildList" | "build_list" | "data" => NodeCategory::Data,
         "Do" | "do" => NodeCategory::External,
-        "Choose" | "choose" | "ChooseSlot" | "choose_slot" | "branch" => {
-            NodeCategory::Branch
-        }
-        "ForEachStart" | "foreach_start" | "ForEachNext" | "foreach_next"
-        | "ForEachJoin" | "foreach_join" | "CollectStart" | "collect_start"
-        | "CollectPage" | "collect_page" | "CollectNext" | "collect_next"
-        | "CollectFinish" | "collect_finish" | "ReduceStart" | "reduce_start"
-        | "ReduceNext" | "reduce_next" | "ReduceFinish" | "reduce_finish"
+        "Choose" | "choose" | "ChooseSlot" | "choose_slot" | "branch" => NodeCategory::Branch,
+        "ForEachStart" | "foreach_start" | "ForEachNext" | "foreach_next" | "ForEachJoin"
+        | "foreach_join" | "CollectStart" | "collect_start" | "CollectPage" | "collect_page"
+        | "CollectNext" | "collect_next" | "CollectFinish" | "collect_finish" | "ReduceStart"
+        | "reduce_start" | "ReduceNext" | "reduce_next" | "ReduceFinish" | "reduce_finish"
         | "loop" => NodeCategory::Loop,
         "TogetherStart" | "together_start" | "TogetherBranch" | "together_branch"
         | "TogetherJoin" | "together_join" | "parallel" => NodeCategory::Parallel,
-        "WaitUntil" | "wait_until" | "WaitEvent" | "wait_event" | "Ask" | "ask"
-        | "AskResume" | "ask_resume" | "suspend" | "wait" => NodeCategory::Suspend,
+        "WaitUntil" | "wait_until" | "WaitEvent" | "wait_event" | "Ask" | "ask" | "AskResume"
+        | "ask_resume" | "suspend" | "wait" => NodeCategory::Suspend,
         "ErrorHandler" | "error_handler" | "error" | "RetryCheck" | "retry_check"
-        | "RepeatStart" | "repeat_start" | "RepeatAttempt" | "repeat_attempt"
-        | "RepeatCheck" | "repeat_check" | "RepeatFinish" | "repeat_finish" => {
-            NodeCategory::Error
-        }
+        | "RepeatStart" | "repeat_start" | "RepeatAttempt" | "repeat_attempt" | "RepeatCheck"
+        | "repeat_check" | "RepeatFinish" | "repeat_finish" => NodeCategory::Error,
         "Finish" | "finish" | "terminal" => NodeCategory::Terminal,
         "Jump" | "jump" | "Nop" | "nop" | "control" => NodeCategory::Control,
         _ => NodeCategory::Unknown,
@@ -274,9 +267,7 @@ impl NodeRenderer {
     /// Create a renderer that applies the given step-state overlay.
     #[must_use]
     pub fn with_state(state: StepState) -> Self {
-        Self {
-            state: Some(state),
-        }
+        Self { state: Some(state) }
     }
 
     /// Set or clear the state overlay for subsequent renders.
@@ -342,9 +333,7 @@ impl NodeRenderer {
 
     // ---- Color resolution ----
 
-    fn resolve_colors(
-        cat: &NodeCategory,
-    ) -> ([f32; 4], [f32; 4], [f32; 4], [f32; 4]) {
+    fn resolve_colors(cat: &NodeCategory) -> ([f32; 4], [f32; 4], [f32; 4], [f32; 4]) {
         match cat {
             NodeCategory::Data => (
                 theme::colors::TEXT_SECONDARY,
@@ -475,9 +464,7 @@ impl NodeRenderer {
 
     /// Check whether the node data indicates a timeout is configured.
     fn has_timeout(node: &FlowNodeRecord) -> bool {
-        node.data
-            .get("timeout_slot")
-            .is_some_and(|v| !v.is_null())
+        node.data.get("timeout_slot").is_some_and(|v| !v.is_null())
             || node
                 .data
                 .get("has_timeout")
@@ -524,10 +511,8 @@ impl NodeRenderer {
                 + f64::from(port.order) * port_height
                 + port_height / 2.0;
 
-            let is_input = port.role == PortRole::Target
-                || port.role == PortRole::Bidirectional;
-            let is_output = port.role == PortRole::Source
-                || port.role == PortRole::Bidirectional;
+            let is_input = port.role == PortRole::Target || port.role == PortRole::Bidirectional;
+            let is_output = port.role == PortRole::Source || port.role == PortRole::Bidirectional;
 
             // Use port.side to determine horizontal placement, defaulting to
             // role-based placement if side is ambiguous.
@@ -623,11 +608,7 @@ mod tests {
         }
     }
 
-    fn make_node_with_data(
-        id: &str,
-        kind: &str,
-        data: serde_json::Value,
-    ) -> FlowNodeRecord {
+    fn make_node_with_data(id: &str, kind: &str, data: serde_json::Value) -> FlowNodeRecord {
         FlowNodeRecord {
             data,
             ..make_node(id, kind)
@@ -646,11 +627,7 @@ mod tests {
         }
     }
 
-    fn make_node_with_ports(
-        id: &str,
-        kind: &str,
-        ports: Vec<FlowPortRecord>,
-    ) -> FlowNodeRecord {
+    fn make_node_with_ports(id: &str, kind: &str, ports: Vec<FlowPortRecord>) -> FlowNodeRecord {
         FlowNodeRecord {
             ports,
             ..make_node(id, kind)
@@ -1442,7 +1419,11 @@ mod tests {
         ];
         for shape in &shapes {
             let debug = format!("{shape:?}");
-            assert!(!debug.is_empty(), "NodeShape {:?} debug should not be empty", shape);
+            assert!(
+                !debug.is_empty(),
+                "NodeShape {:?} debug should not be empty",
+                shape
+            );
         }
     }
 
@@ -1564,22 +1545,26 @@ mod tests {
             assert!(
                 c[0] >= 0.0 && c[0] <= 1.0,
                 "step state {:?} red out of range: {}",
-                state, c[0]
+                state,
+                c[0]
             );
             assert!(
                 c[1] >= 0.0 && c[1] <= 1.0,
                 "step state {:?} green out of range: {}",
-                state, c[1]
+                state,
+                c[1]
             );
             assert!(
                 c[2] >= 0.0 && c[2] <= 1.0,
                 "step state {:?} blue out of range: {}",
-                state, c[2]
+                state,
+                c[2]
             );
             assert!(
                 c[3] > 0.0 && c[3] <= 1.0,
                 "step state {:?} alpha out of range: {}",
-                state, c[3]
+                state,
+                c[3]
             );
         }
     }
@@ -2596,10 +2581,7 @@ mod tests {
             // Aspect ratio should not be extreme (width:height <= 10:1)
             let ratio = *w / *h;
             if ratio > 10.0 || ratio < 0.1 {
-                return Err(format!(
-                    "{} aspect ratio {} is extreme",
-                    name, ratio
-                ));
+                return Err(format!("{} aspect ratio {} is extreme", name, ratio));
             }
         }
         Ok(())
@@ -2967,10 +2949,7 @@ mod tests {
                     }
                 }
                 None => {
-                    return Err(format!(
-                        "Kind '{}' should have state overlay",
-                        kind
-                    ));
+                    return Err(format!("Kind '{}' should have state overlay", kind));
                 }
             }
         }
@@ -2985,7 +2964,9 @@ mod tests {
         let from_renderer = NodeRenderer::new().render(&node);
         let from_fn = render_node(&node);
         if from_renderer != from_fn {
-            return Err("render_node() should produce same result as NodeRenderer::new().render()".into());
+            return Err(
+                "render_node() should produce same result as NodeRenderer::new().render()".into(),
+            );
         }
         Ok(())
     }

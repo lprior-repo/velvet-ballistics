@@ -11,8 +11,7 @@
 )]
 mod tests {
     use crate::recovery::{
-        ActionReplayTracker, DigestCheck, RecoveredStepState, RecoveryError,
-        RecoveryHydration,
+        ActionReplayTracker, DigestCheck, RecoveredStepState, RecoveryError, RecoveryHydration,
         RecoveryTerminalState, RunSnapshot, UnsupportedRecoveryState, check_compiled_ir_digest,
         check_workflow_source_digest, extract_terminal, is_terminal_event,
         recover_all_incomplete_runs, recover_full_journal, recover_runtime_frame_seed,
@@ -1197,7 +1196,10 @@ mod tests {
 
         let result = summarize_recovery_events(&events);
         let Err(RecoveryError::ReplayDivergence { step, detail }) = result else {
-            panic!("expected ReplayDivergence for multi-run events, got {:?}", result);
+            panic!(
+                "expected ReplayDivergence for multi-run events, got {:?}",
+                result
+            );
         };
         assert_eq!(step, StepIdx::ZERO);
         assert!(detail.contains("multiple runs"));
@@ -1230,7 +1232,10 @@ mod tests {
 
         let result = recover_runtime_frame_seed_from_events(&events);
         let Err(RecoveryError::ReplayDivergence { step, detail }) = result else {
-            panic!("expected ReplayDivergence for mixed-run frame seed, got {:?}", result);
+            panic!(
+                "expected ReplayDivergence for mixed-run frame seed, got {:?}",
+                result
+            );
         };
         assert_eq!(step, StepIdx::ZERO);
         assert!(detail.contains("multiple runs"));

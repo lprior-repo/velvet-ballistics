@@ -140,9 +140,9 @@ pub(super) fn expect_object(value: SlotValue) -> Result<crate::ids::ObjectId, En
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::errors::EngineError;
     use crate::ids::{ListId, ObjectId, SymbolId};
     use crate::value::SlotValue;
-    use crate::errors::EngineError;
 
     fn ensure_equal<T>(actual: T, expected: T) -> Result<(), String>
     where
@@ -290,8 +290,14 @@ mod tests {
 
     #[test]
     fn expect_bool_accepts_bool() -> Result<(), String> {
-        ensure_equal(expect_bool(SlotValue::Bool(true)).map_err(|e| e.to_string())?, true)?;
-        ensure_equal(expect_bool(SlotValue::Bool(false)).map_err(|e| e.to_string())?, false)
+        ensure_equal(
+            expect_bool(SlotValue::Bool(true)).map_err(|e| e.to_string())?,
+            true,
+        )?;
+        ensure_equal(
+            expect_bool(SlotValue::Bool(false)).map_err(|e| e.to_string())?,
+            false,
+        )
     }
 
     #[test]
@@ -308,7 +314,10 @@ mod tests {
 
     #[test]
     fn expect_i64_accepts_number() -> Result<(), String> {
-        ensure_equal(expect_i64(SlotValue::I64(42)).map_err(|e| e.to_string())?, 42)
+        ensure_equal(
+            expect_i64(SlotValue::I64(42)).map_err(|e| e.to_string())?,
+            42,
+        )
     }
 
     #[test]
@@ -325,7 +334,10 @@ mod tests {
 
     #[test]
     fn expect_symbol_accepts_symbol() -> Result<(), String> {
-        ensure_equal(expect_symbol(SlotValue::Symbol(SymbolId::new(5))).map_err(|e| e.to_string())?, SymbolId::new(5))
+        ensure_equal(
+            expect_symbol(SlotValue::Symbol(SymbolId::new(5))).map_err(|e| e.to_string())?,
+            SymbolId::new(5),
+        )
     }
 
     #[test]
@@ -342,7 +354,10 @@ mod tests {
 
     #[test]
     fn expect_list_accepts_list() -> Result<(), String> {
-        ensure_equal(expect_list(SlotValue::List(ListId::new(3))).map_err(|e| e.to_string())?, ListId::new(3))
+        ensure_equal(
+            expect_list(SlotValue::List(ListId::new(3))).map_err(|e| e.to_string())?,
+            ListId::new(3),
+        )
     }
 
     #[test]

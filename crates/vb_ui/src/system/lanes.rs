@@ -44,9 +44,7 @@ impl ActivityLanes {
     /// Create an empty set of activity lanes.
     #[must_use]
     pub fn new() -> Self {
-        Self {
-            lanes: Vec::new(),
-        }
+        Self { lanes: Vec::new() }
     }
 
     /// Update an existing lane for the given shard, or append a new one.
@@ -118,12 +116,9 @@ impl ActivityLanes {
         if self.lanes.is_empty() {
             return 0.0;
         }
-        let (sum, count) = self
-            .lanes
-            .iter()
-            .fold((0.0_f32, 0.0_f32), |(s, c), l| {
-                (s + l.trace_ring_fill_pct, c + 1.0)
-            });
+        let (sum, count) = self.lanes.iter().fold((0.0_f32, 0.0_f32), |(s, c), l| {
+            (s + l.trace_ring_fill_pct, c + 1.0)
+        });
         sum / count
     }
 }
@@ -464,9 +459,7 @@ impl ShardLaneSummary {
     /// - **Green**: everything else.
     #[must_use]
     pub fn health(&self) -> LaneHealth {
-        if self.failed_runs > 0
-            && (self.throughput_per_sec <= 1.0 || self.avg_latency_ms > 2000)
-        {
+        if self.failed_runs > 0 && (self.throughput_per_sec <= 1.0 || self.avg_latency_ms > 2000) {
             return LaneHealth::Red;
         }
         if (self.throughput_per_sec <= 10.0 && self.active_runs > 0) || self.avg_latency_ms > 500 {
@@ -683,11 +676,7 @@ mod tests {
             actions_total: 0,
         });
         let avg = lanes.avg_trace_fill();
-        assert!(
-            (avg - 50.0).abs() < 0.01,
-            "expected ~50.0, got {}",
-            avg
-        );
+        assert!((avg - 50.0).abs() < 0.01, "expected ~50.0, got {}", avg);
     }
 
     #[test]
@@ -1003,9 +992,15 @@ mod tests {
         let all_lanes = lanes.lanes();
         assert_eq!(all_lanes.len(), 3);
         // Order must be 5, 2, 8 (insertion order), not 2, 5, 8 (sorted).
-        let Some(first) = all_lanes.get(0) else { return };
-        let Some(second) = all_lanes.get(1) else { return };
-        let Some(third) = all_lanes.get(2) else { return };
+        let Some(first) = all_lanes.get(0) else {
+            return;
+        };
+        let Some(second) = all_lanes.get(1) else {
+            return;
+        };
+        let Some(third) = all_lanes.get(2) else {
+            return;
+        };
         assert_eq!(first.shard_id, 5);
         assert_eq!(second.shard_id, 2);
         assert_eq!(third.shard_id, 8);
@@ -1065,9 +1060,15 @@ mod tests {
         });
         let all_lanes = lanes.lanes();
         assert_eq!(all_lanes.len(), 3);
-        let Some(lane_0) = all_lanes.get(0) else { return };
-        let Some(lane_1) = all_lanes.get(1) else { return };
-        let Some(lane_2) = all_lanes.get(2) else { return };
+        let Some(lane_0) = all_lanes.get(0) else {
+            return;
+        };
+        let Some(lane_1) = all_lanes.get(1) else {
+            return;
+        };
+        let Some(lane_2) = all_lanes.get(2) else {
+            return;
+        };
         assert_eq!(lane_0.shard_id, 10);
         assert_eq!(lane_1.shard_id, 20);
         assert_eq!(lane_2.shard_id, 30);
@@ -1090,7 +1091,9 @@ mod tests {
             steps_total: 0,
             actions_total: 0,
         });
-        let Some(lane) = lanes.lanes().get(0) else { return };
+        let Some(lane) = lanes.lanes().get(0) else {
+            return;
+        };
         assert_eq!(lane.timer_count, 42);
     }
 
@@ -1143,7 +1146,9 @@ mod tests {
             steps_total: 0,
             actions_total: 0,
         });
-        let Some(lane) = lanes.lanes().get(0) else { return };
+        let Some(lane) = lanes.lanes().get(0) else {
+            return;
+        };
         assert_eq!(lane.shard_id, 0);
         assert_eq!(lane.active_runs, 0);
         assert_eq!(lane.ready_queue_depth, 0);
@@ -1230,8 +1235,12 @@ mod tests {
         let avg = lanes.avg_trace_fill();
         assert!((avg - 50.0).abs() < 0.01, "expected ~50.0, got {}", avg);
 
-        let Some(lane_0) = lanes.lanes().get(0) else { return };
-        let Some(lane_1) = lanes.lanes().get(1) else { return };
+        let Some(lane_0) = lanes.lanes().get(0) else {
+            return;
+        };
+        let Some(lane_1) = lanes.lanes().get(1) else {
+            return;
+        };
         assert_eq!(lane_0.trace_ring_fill_pct, 0.0);
         assert_eq!(lane_1.trace_ring_fill_pct, 100.0);
         // Frame pool at boundary: fully free vs fully consumed.
@@ -1732,17 +1741,11 @@ mod tests {
         };
         let segments = LaneSegmentBuilder::build(&m);
         assert_eq!(segments.len(), 3);
-        let expected_base = SYNTHETIC_RUN_ID_OFFSET
-            .saturating_add(u64::from(2u32).saturating_mul(10_000));
+        let expected_base =
+            SYNTHETIC_RUN_ID_OFFSET.saturating_add(u64::from(2u32).saturating_mul(10_000));
         assert_eq!(segments[0].run_id, expected_base);
-        assert_eq!(
-            segments[1].run_id,
-            expected_base.saturating_add(1)
-        );
-        assert_eq!(
-            segments[2].run_id,
-            expected_base.saturating_add(2)
-        );
+        assert_eq!(segments[1].run_id, expected_base.saturating_add(1));
+        assert_eq!(segments[2].run_id, expected_base.saturating_add(2));
     }
 
     #[test]
@@ -1980,8 +1983,8 @@ mod tests {
         };
         let segments = LaneSegmentBuilder::build(&m);
         assert_eq!(segments.len(), 2);
-        let expected_base = SYNTHETIC_RUN_ID_OFFSET
-            .saturating_add(u64::from(255u32).saturating_mul(10_000));
+        let expected_base =
+            SYNTHETIC_RUN_ID_OFFSET.saturating_add(u64::from(255u32).saturating_mul(10_000));
         assert_eq!(segments[0].run_id, expected_base);
     }
 
@@ -2037,7 +2040,9 @@ mod tests {
             steps_total: 0,
             actions_total: 0,
         });
-        let Some(lane) = lanes.lanes().get(0) else { return };
+        let Some(lane) = lanes.lanes().get(0) else {
+            return;
+        };
         assert!((lane.trace_ring_fill_pct - 67.8).abs() < 0.01);
     }
 

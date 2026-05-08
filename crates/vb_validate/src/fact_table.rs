@@ -8,9 +8,7 @@ use std::collections::HashMap;
 
 use crate::ValidationResult;
 
-use crate::type_sigs::{
-    InputDecl, Taint, TypedValue, ValueFact, ValueType, WorkflowTypes,
-};
+use crate::type_sigs::{InputDecl, Taint, TypedValue, ValueFact, ValueType, WorkflowTypes};
 
 /// Requires a value type to be boolean (or Any).
 pub(crate) fn require_boolean(actual: ValueType) -> ValidationResult<()> {
@@ -172,8 +170,16 @@ mod tests {
     fn sample_workflow() -> WorkflowTypes {
         WorkflowTypes {
             inputs: vec![
-                InputDecl { name: "user".to_owned(), schema_type: ValueType::Text, is_secret: false },
-                InputDecl { name: "token".to_owned(), schema_type: ValueType::Text, is_secret: true },
+                InputDecl {
+                    name: "user".to_owned(),
+                    schema_type: ValueType::Text,
+                    is_secret: false,
+                },
+                InputDecl {
+                    name: "token".to_owned(),
+                    schema_type: ValueType::Text,
+                    is_secret: true,
+                },
             ],
             vars: vec![
                 ("count".to_owned(), ValueType::Number),
@@ -324,7 +330,11 @@ mod tests {
     fn resolve_value_reference_resolves_input() {
         let facts = Facts::build(&sample_workflow());
         let slots = vec![];
-        let fact = resolve_value(&TypedValue::Reference("$input.user".to_owned()), &facts, &slots);
+        let fact = resolve_value(
+            &TypedValue::Reference("$input.user".to_owned()),
+            &facts,
+            &slots,
+        );
         assert_eq!(fact.value_type, ValueType::Text);
         assert_eq!(fact.taint, Taint::Clean);
     }
@@ -333,7 +343,11 @@ mod tests {
     fn resolve_value_reference_resolves_secret() {
         let facts = Facts::build(&sample_workflow());
         let slots = vec![];
-        let fact = resolve_value(&TypedValue::Reference("$input.token".to_owned()), &facts, &slots);
+        let fact = resolve_value(
+            &TypedValue::Reference("$input.token".to_owned()),
+            &facts,
+            &slots,
+        );
         assert_eq!(fact.value_type, ValueType::Text);
         assert_eq!(fact.taint, Taint::Secret);
     }
@@ -403,7 +417,9 @@ mod tests {
     fn write_slot_writes_to_valid_index() {
         let mut slots = vec![None, None];
         write_slot(&mut slots, 0, ValueFact::clean(ValueType::Boolean));
-        let Some(fact) = slots.first() else { return; };
+        let Some(fact) = slots.first() else {
+            return;
+        };
         assert_eq!(*fact, Some(ValueFact::clean(ValueType::Boolean)));
     }
 
@@ -411,7 +427,9 @@ mod tests {
     fn write_slot_out_of_bounds_is_noop() {
         let mut slots = vec![None];
         write_slot(&mut slots, 5, ValueFact::clean(ValueType::Number));
-        let Some(fact) = slots.first() else { return; };
+        let Some(fact) = slots.first() else {
+            return;
+        };
         assert_eq!(*fact, None);
     }
 
@@ -431,8 +449,16 @@ mod tests {
     fn facts_build_duplicate_input_last_wins() {
         let workflow = WorkflowTypes {
             inputs: vec![
-                InputDecl { name: "x".to_owned(), schema_type: ValueType::Text, is_secret: false },
-                InputDecl { name: "x".to_owned(), schema_type: ValueType::Number, is_secret: true },
+                InputDecl {
+                    name: "x".to_owned(),
+                    schema_type: ValueType::Text,
+                    is_secret: false,
+                },
+                InputDecl {
+                    name: "x".to_owned(),
+                    schema_type: ValueType::Number,
+                    is_secret: true,
+                },
             ],
             ..WorkflowTypes::default()
         };

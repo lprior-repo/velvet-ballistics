@@ -308,10 +308,22 @@ impl ReplayTheaterScreen {
 
         // -- Transport bar --
         let buttons = vec![
-            TransportButton { label: String::from("|<"), enabled: true },
-            TransportButton { label: String::from("<"), enabled: true },
-            TransportButton { label: String::from(">"), enabled: true },
-            TransportButton { label: String::from(">|"), enabled: true },
+            TransportButton {
+                label: String::from("|<"),
+                enabled: true,
+            },
+            TransportButton {
+                label: String::from("<"),
+                enabled: true,
+            },
+            TransportButton {
+                label: String::from(">"),
+                enabled: true,
+            },
+            TransportButton {
+                label: String::from(">|"),
+                enabled: true,
+            },
         ];
 
         let jump_chips = vec![
@@ -705,11 +717,7 @@ mod tests {
     #[test]
     fn jump_chip_done_is_green() {
         let screen = ReplayTheaterScreen::new();
-        let chip = screen
-            .transport_bar()
-            .jump_chips
-            .get(2)
-            .expect("done chip");
+        let chip = screen.transport_bar().jump_chips.get(2).expect("done chip");
         assert_eq!(chip.label, "done");
         assert_eq!(chip.color, NEON_GREEN);
     }
@@ -751,11 +759,7 @@ mod tests {
     #[test]
     fn only_first_chip_is_cursor() {
         let screen = ReplayTheaterScreen::new();
-        let cursor_count = screen
-            .timeline_chips
-            .iter()
-            .filter(|c| c.is_cursor)
-            .count();
+        let cursor_count = screen.timeline_chips.iter().filter(|c| c.is_cursor).count();
         assert_eq!(cursor_count, 1);
     }
 
@@ -789,7 +793,10 @@ mod tests {
         for (i, node) in screen.graph_nodes().iter().enumerate() {
             assert!(!node.bg_color.is_empty(), "empty bg_color at index {i}");
             assert!(!node.name_color.is_empty(), "empty name_color at index {i}");
-            assert!(!node.state_color.is_empty(), "empty state_color at index {i}");
+            assert!(
+                !node.state_color.is_empty(),
+                "empty state_color at index {i}"
+            );
         }
     }
 
@@ -799,7 +806,10 @@ mod tests {
     fn inspector_card_fields_have_nonempty_colors() {
         let screen = ReplayTheaterScreen::new();
         for (i, card) in screen.inspector_cards().iter().enumerate() {
-            assert!(!card.title_color.is_empty(), "empty title_color for card {i}");
+            assert!(
+                !card.title_color.is_empty(),
+                "empty title_color for card {i}"
+            );
             for (j, field) in card.fields.iter().enumerate() {
                 assert!(
                     !field.value_color.is_empty(),
@@ -824,10 +834,7 @@ mod tests {
     #[test]
     fn timeline_strip_events_count_matches_chips() {
         let screen = ReplayTheaterScreen::new();
-        assert_eq!(
-            screen.timeline_strip().events().len(),
-            screen.chip_count()
-        );
+        assert_eq!(screen.timeline_strip().events().len(), screen.chip_count());
     }
 
     // -- InspectorField clone --
@@ -914,6 +921,9 @@ mod tests {
         let cloned = screen.transport_bar.clone();
         assert_eq!(cloned.buttons.len(), screen.transport_bar.buttons.len());
         assert_eq!(cloned.speed_label, screen.transport_bar.speed_label);
-        assert_eq!(cloned.jump_chips.len(), screen.transport_bar.jump_chips.len());
+        assert_eq!(
+            cloned.jump_chips.len(),
+            screen.transport_bar.jump_chips.len()
+        );
     }
 }

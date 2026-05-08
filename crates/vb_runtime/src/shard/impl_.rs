@@ -341,13 +341,11 @@ mod tests {
     use vb_core::capability::CapabilitySet;
     use vb_core::ids::{ConstIdx, RunId, SlotIdx, StepIdx, WorkflowDigest};
     use vb_core::value::ConstValue;
-    use vb_core::workflow::{
-        CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts,
-    };
+    use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
 
     use crate::RuntimeError;
 
-    use super::{Shard, ShardCommand, ShardConfig, MAX_COMMAND_QUEUE_CAPACITY};
+    use super::{MAX_COMMAND_QUEUE_CAPACITY, Shard, ShardCommand, ShardConfig};
 
     fn finished_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
         let set_const = CompiledNode {
@@ -510,7 +508,10 @@ mod tests {
         assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
         assert_eq!(shard.is_queue_full(), true);
         assert_eq!(shard.remaining_capacity(), 0);
-        assert_eq!(shard.enqueue(ShardCommand::Shutdown), Err(RuntimeError::QueueFull));
+        assert_eq!(
+            shard.enqueue(ShardCommand::Shutdown),
+            Err(RuntimeError::QueueFull)
+        );
     }
 
     // =======================================================================
@@ -580,7 +581,10 @@ mod tests {
             policy: vb_core::policy::RuntimePolicy::Relaxed,
         };
         let mut shard = Shard::new(config);
-        assert_eq!(shard.drain_for_shutdown(), Err(RuntimeError::ShutdownInProgress));
+        assert_eq!(
+            shard.drain_for_shutdown(),
+            Err(RuntimeError::ShutdownInProgress)
+        );
     }
 
     // =======================================================================

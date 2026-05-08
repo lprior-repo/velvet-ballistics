@@ -10,8 +10,8 @@ mod tests {
 
     // Explicit imports from parent graph_builder module
     use crate::graph_builder::{
+        Cardinality, EdgeStyle, FlowPortRecord, GroupKind, PortRole, PortSide, SmolStr,
         build_document, build_ports, classify_node_kind, collect_span, compute_node_size,
-        EdgeStyle, Cardinality, FlowPortRecord, GroupKind, PortRole, PortSide, SmolStr,
     };
     use crate::verify::certificates::verify_workflow;
 
@@ -566,7 +566,11 @@ mod tests {
         let (inputs, outputs) = build_ports(&kind, None);
 
         // Event port + timeout port = 2 input ports.
-        assert_eq!(inputs.len(), 2, "WaitEvent with timeout should have 2 inputs");
+        assert_eq!(
+            inputs.len(),
+            2,
+            "WaitEvent with timeout should have 2 inputs"
+        );
         assert_eq!(inputs[0].id.as_str(), "event");
         assert_eq!(inputs[1].id.as_str(), "timeout");
 
@@ -576,7 +580,10 @@ mod tests {
         }
 
         // No output slot provided, so no output ports.
-        assert!(outputs.is_empty(), "WaitEvent has no output ports when output is None");
+        assert!(
+            outputs.is_empty(),
+            "WaitEvent has no output ports when output is None"
+        );
     }
 
     #[test]
@@ -588,7 +595,11 @@ mod tests {
         let (inputs, outputs) = build_ports(&kind, None);
 
         // Only event port; no timeout port.
-        assert_eq!(inputs.len(), 1, "WaitEvent without timeout should have 1 input");
+        assert_eq!(
+            inputs.len(),
+            1,
+            "WaitEvent without timeout should have 1 input"
+        );
         assert_eq!(inputs[0].id.as_str(), "event");
         assert_eq!(inputs[0].side, PortSide::Input);
         assert_eq!(inputs[0].role, PortRole::Data);
@@ -734,7 +745,11 @@ mod tests {
         // CollectStart emits body + done edges (2). CollectFinish emits no
         // kind-specific edges. Nop (n1) has no next so no next edge.
         // Total = 2.
-        assert_eq!(doc.graph.edges.len(), 2, "expected 2 edges from CollectStart only");
+        assert_eq!(
+            doc.graph.edges.len(),
+            2,
+            "expected 2 edges from CollectStart only"
+        );
 
         // Verify the body edge targets step-1 and done edge targets step-2.
         let mut found_body = false;
@@ -804,7 +819,11 @@ mod tests {
         // ReduceStart: body + done (2 edges)
         // ReduceNext: body + done (2 edges)
         // Total kind-specific edges = 4.
-        assert_eq!(doc.graph.edges.len(), 4, "expected 4 edges from ReduceStart + ReduceNext");
+        assert_eq!(
+            doc.graph.edges.len(),
+            4,
+            "expected 4 edges from ReduceStart + ReduceNext"
+        );
 
         // Verify the done edges both target step-3.
         let mut done_count = 0usize;
@@ -853,7 +872,11 @@ mod tests {
         let doc = build_document(&parts);
 
         // 3 branch edges + 1 otherwise edge = 4 total.
-        assert_eq!(doc.graph.edges.len(), 4, "expected 3 branch + 1 otherwise edges");
+        assert_eq!(
+            doc.graph.edges.len(),
+            4,
+            "expected 3 branch + 1 otherwise edges"
+        );
 
         let mut branch_count = 0usize;
         let mut otherwise_count = 0usize;
@@ -944,13 +967,17 @@ mod tests {
             if e.source_port.as_str() == "join" {
                 join_edge_count = join_edge_count.saturating_add(1);
                 assert_eq!(
-                    e.target.as_str(), "step-3",
+                    e.target.as_str(),
+                    "step-3",
                     "all join edges should target TogetherJoin at step-3"
                 );
                 assert!(e.style.dashed, "join edges should be dashed");
             }
         }
-        assert_eq!(join_edge_count, 3, "expected 3 join edges (1 from start, 2 from branches)");
+        assert_eq!(
+            join_edge_count, 3,
+            "expected 3 join edges (1 from start, 2 from branches)"
+        );
     }
 
     /// RepeatAttempt creates a body edge that loops back to an earlier step,
@@ -1020,13 +1047,17 @@ mod tests {
             if e.source.as_str() == "step-1" && e.source_port.as_str() == "body" {
                 found_loop_back = true;
                 assert_eq!(
-                    e.target.as_str(), "step-1",
+                    e.target.as_str(),
+                    "step-1",
                     "RepeatAttempt body should loop back to itself"
                 );
                 assert!(!e.style.dashed, "body loop-back edge should be solid");
             }
         }
-        assert!(found_loop_back, "should find a loop-back body edge from RepeatAttempt");
+        assert!(
+            found_loop_back,
+            "should find a loop-back body edge from RepeatAttempt"
+        );
 
         // Verify RepeatAttempt's done edge exits to step-2.
         let mut found_done_exit = false;
@@ -1037,7 +1068,10 @@ mod tests {
                 assert!(e.style.dashed, "done edge should be dashed");
             }
         }
-        assert!(found_done_exit, "should find a done exit edge from RepeatAttempt");
+        assert!(
+            found_done_exit,
+            "should find a done exit edge from RepeatAttempt"
+        );
 
         // Verify group was created for the repeat loop.
         let group = match doc.graph.groups.get("group-repeat-0") {
@@ -1045,7 +1079,11 @@ mod tests {
             None => return,
         };
         assert_eq!(group.kind, GroupKind::BranchContainer);
-        assert_eq!(group.children.len(), 4, "repeat group should span steps 0-3");
+        assert_eq!(
+            group.children.len(),
+            4,
+            "repeat group should span steps 0-3"
+        );
     }
 
     /// Nested structure: a RepeatStart loop containing a TogetherStart/TogetherJoin
@@ -1157,7 +1195,11 @@ mod tests {
         // TogetherJoin (n4): 0
         // RepeatFinish (n5): 0
         // Total = 9
-        assert_eq!(doc.graph.edges.len(), 9, "expected 9 edges from nested structure");
+        assert_eq!(
+            doc.graph.edges.len(),
+            9,
+            "expected 9 edges from nested structure"
+        );
 
         // Verify RepeatStart body edge targets step-1 (TogetherStart).
         let mut found_repeat_body = false;
@@ -1167,7 +1209,10 @@ mod tests {
                 assert_eq!(e.target.as_str(), "step-1");
             }
         }
-        assert!(found_repeat_body, "should find RepeatStart body edge targeting TogetherStart");
+        assert!(
+            found_repeat_body,
+            "should find RepeatStart body edge targeting TogetherStart"
+        );
     }
 
     /// A workflow consisting only of a single Finish node produces exactly one
@@ -1180,13 +1225,24 @@ mod tests {
         let doc = build_document(&parts);
 
         // Exactly one node.
-        assert_eq!(doc.graph.nodes.len(), 1, "single Finish should produce exactly 1 node");
+        assert_eq!(
+            doc.graph.nodes.len(),
+            1,
+            "single Finish should produce exactly 1 node"
+        );
 
         // Zero edges (Finish has no next or kind-specific edges).
-        assert_eq!(doc.graph.edges.len(), 0, "single Finish should produce 0 edges");
+        assert_eq!(
+            doc.graph.edges.len(),
+            0,
+            "single Finish should produce 0 edges"
+        );
 
         // Zero groups (no loops or parallel constructs).
-        assert!(doc.graph.groups.is_empty(), "single Finish should produce 0 groups");
+        assert!(
+            doc.graph.groups.is_empty(),
+            "single Finish should produce 0 groups"
+        );
 
         // The single node should be both terminal and entry.
         let node_rec = match doc.graph.nodes.get("step-0") {
@@ -1288,9 +1344,14 @@ mod tests {
             Some(e) => e,
             None => return,
         };
-        assert_eq!(je.source.as_str(), "step-0", "jump should originate from step-0");
         assert_eq!(
-            je.target.as_str(), "step-3",
+            je.source.as_str(),
+            "step-0",
+            "jump should originate from step-0"
+        );
+        assert_eq!(
+            je.target.as_str(),
+            "step-3",
             "jump should target step-3, skipping steps 1 and 2"
         );
         assert!(!je.style.dashed, "jump edge should be solid");
@@ -1310,7 +1371,11 @@ mod tests {
             Some(e) => e,
             None => return,
         };
-        assert_eq!(ce.target.as_str(), "step-2", "intermediate chain should connect step-1 to step-2");
+        assert_eq!(
+            ce.target.as_str(),
+            "step-2",
+            "intermediate chain should connect step-1 to step-2"
+        );
     }
 
     /// ErrorHandler creates both a body `next` edge (solid) and a handler edge
@@ -1340,7 +1405,8 @@ mod tests {
         // n2: next -> step-3 = 1 edge
         // Total: 4 edges.
         assert_eq!(
-            doc.graph.edges.len(), 4,
+            doc.graph.edges.len(),
+            4,
             "error handler workflow should produce 4 edges"
         );
 
@@ -1349,16 +1415,27 @@ mod tests {
         for (_id, e) in &doc.graph.edges {
             if e.source.as_str() == "step-0" && e.source_port.as_str() == "handler" {
                 found_handler = true;
-                assert_eq!(e.target.as_str(), "step-2", "handler edge should target step-2");
+                assert_eq!(
+                    e.target.as_str(),
+                    "step-2",
+                    "handler edge should target step-2"
+                );
                 assert!(e.style.dashed, "handler edge should be dashed");
             }
             if e.source.as_str() == "step-0" && e.source_port.as_str() == "next" {
                 found_next_from_0 = true;
-                assert_eq!(e.target.as_str(), "step-1", "body next edge should target step-1");
+                assert_eq!(
+                    e.target.as_str(),
+                    "step-1",
+                    "body next edge should target step-1"
+                );
                 assert!(!e.style.dashed, "body next edge should be solid");
             }
         }
-        assert!(found_handler, "should find a dashed handler edge from step-0");
+        assert!(
+            found_handler,
+            "should find a dashed handler edge from step-0"
+        );
         assert!(
             found_next_from_0,
             "should find a solid next edge from step-0 to body step"
@@ -1529,7 +1606,10 @@ mod tests {
         };
         let (inputs, outputs) = build_ports(&kind, Some(SlotIdx::new(0)));
 
-        assert!(inputs.is_empty(), "zero fields should produce no input ports");
+        assert!(
+            inputs.is_empty(),
+            "zero fields should produce no input ports"
+        );
         assert_eq!(outputs.len(), 1, "output slot port should still exist");
     }
 
@@ -1543,7 +1623,10 @@ mod tests {
         };
         let (inputs, outputs) = build_ports(&kind, Some(SlotIdx::new(0)));
 
-        assert!(inputs.is_empty(), "zero items should produce no input ports");
+        assert!(
+            inputs.is_empty(),
+            "zero items should produce no input ports"
+        );
         assert_eq!(outputs.len(), 1, "output slot port should still exist");
     }
 
@@ -1660,7 +1743,11 @@ mod tests {
             Some(g) => g,
             None => return,
         };
-        assert_eq!(group.children.len(), 1, "self-referencing loop should produce 1-child group");
+        assert_eq!(
+            group.children.len(),
+            1,
+            "self-referencing loop should produce 1-child group"
+        );
     }
 
     /// LOW: WorkflowParts with mismatched StepIdx IDs. CompiledNode.id
@@ -1790,7 +1877,11 @@ mod tests {
         let parts = make_simple_parts(vec![n0, n1, n2], 0);
         let doc = build_document(&parts);
 
-        assert_eq!(doc.graph.edges.len(), 2, "RetryCheck should produce 2 edges");
+        assert_eq!(
+            doc.graph.edges.len(),
+            2,
+            "RetryCheck should produce 2 edges"
+        );
 
         let mut found_retry = false;
         let mut found_exhausted = false;

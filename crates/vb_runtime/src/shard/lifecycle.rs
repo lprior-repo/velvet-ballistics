@@ -1,5 +1,6 @@
 //! Run lifecycle management: submit, resume, cancel, action completion, timers.
 
+use vb_core::ValueStore;
 use vb_core::action::{
     ActionFailure, ActionOutputReady, ActionTicket, RetryPolicy as VbCoreRetryPolicy,
 };
@@ -7,7 +8,6 @@ use vb_core::capability::CapabilitySet;
 use vb_core::ids::{RunId, SlotIdx, StepIdx};
 use vb_core::value::SlotValue;
 use vb_core::workflow::CompiledWorkflow;
-use vb_core::ValueStore;
 
 use crate::engine::{
     EvidenceCollector, RetryPolicy, RuntimeEngineResult, RuntimeSignal, drive_deterministic_full,
@@ -405,15 +405,15 @@ mod tests {
     use vb_core::capability::CapabilitySet;
     use vb_core::ids::{ActionId, ConstIdx, RunId, SeqNo, SlotIdx, StepIdx, WorkflowDigest};
     use vb_core::value::{ConstValue, SlotValue, Taint};
-    use vb_core::workflow::{
-        CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts,
-    };
+    use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
 
+    use crate::RuntimeError;
     use crate::journal::{RuntimeJournalEvent, SharedRuntimeJournal};
     use crate::trace::TraceEvent;
-    use crate::RuntimeError;
 
-    use super::super::types::{AskAnswer, AskTicket, InspectResponse, Shard, ShardCommand, ShardConfig};
+    use super::super::types::{
+        AskAnswer, AskTicket, InspectResponse, Shard, ShardCommand, ShardConfig,
+    };
 
     fn suspended_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
         let node = CompiledNode {
@@ -1078,10 +1078,7 @@ mod tests {
             value: SlotValue::I64(77),
             taint: Taint::Clean,
         };
-        assert_eq!(
-            shard.enqueue(ShardCommand::AskAnswered { answer }),
-            Ok(())
-        );
+        assert_eq!(shard.enqueue(ShardCommand::AskAnswered { answer }), Ok(()));
         assert_eq!(shard.tick(), Ok(true));
         assert_eq!(shard.counters().snapshot().runs_completed, 1);
     }
@@ -1099,10 +1096,7 @@ mod tests {
             value: SlotValue::I64(0),
             taint: Taint::Clean,
         };
-        assert_eq!(
-            shard.enqueue(ShardCommand::AskAnswered { answer }),
-            Ok(())
-        );
+        assert_eq!(shard.enqueue(ShardCommand::AskAnswered { answer }), Ok(()));
         assert_eq!(shard.tick(), Err(RuntimeError::RunNotFound));
     }
 
@@ -1327,8 +1321,7 @@ mod tests {
 
     #[test]
     fn cancel_emits_run_cancelled_journal_event() {
-        let journal =
-            std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
+        let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
         let shared: SharedRuntimeJournal = journal.clone();
         let mut shard = Shard::new_with_journal(small_config(), shared);
         let Some(wf) = suspended_workflow() else {
@@ -1347,7 +1340,9 @@ mod tests {
         assert_eq!(shard.enqueue(ShardCommand::Cancel { run }), Ok(()));
         assert_eq!(shard.tick(), Ok(true));
         let events = journal.snapshot().ok();
-        assert!(matches!(events, Some(e) if e.contains(&RuntimeJournalEvent::RunCancelled { run })));
+        assert!(
+            matches!(events, Some(e) if e.contains(&RuntimeJournalEvent::RunCancelled { run }))
+        );
     }
 
     #[test]

@@ -751,8 +751,7 @@ fn resume_action_outcome_retryable_failure_propagates_original_ticket_fields() {
                 "action must match original ticket"
             );
             assert_eq!(
-                retry_ticket.attempt,
-                4,
+                retry_ticket.attempt, 4,
                 "attempt must be incremented from original"
             );
             let expected_key =
@@ -835,7 +834,7 @@ fn drive_deterministic_budget_zero_returns_step_budget_exhausted() {
         RetryPolicy::NEVER,
         &mut evidence,
         &mut collect_states,
-    &vb_core::capability::CapabilitySet::empty(),
+        &vb_core::capability::CapabilitySet::empty(),
     );
     assert_eq!(result, Ok(RuntimeSignal::StepBudgetExhausted));
 }
@@ -865,8 +864,10 @@ fn bh_idempotency_key_overflow_fallback_is_deterministic() {
 fn bh_idempotency_key_overflow_preserves_run_uniqueness() {
     // Even in overflow, different run IDs must produce different keys
     // (the fallback is run_part, which differs when run IDs differ).
-    let key_a = compute_idempotency_key(RunId::new(100), SeqNo::new(u64::MAX), ActionId::new(65535));
-    let key_b = compute_idempotency_key(RunId::new(200), SeqNo::new(u64::MAX), ActionId::new(65535));
+    let key_a =
+        compute_idempotency_key(RunId::new(100), SeqNo::new(u64::MAX), ActionId::new(65535));
+    let key_b =
+        compute_idempotency_key(RunId::new(200), SeqNo::new(u64::MAX), ActionId::new(65535));
     assert_ne!(
         key_a, key_b,
         "different runs must produce different keys even under overflow"
@@ -897,7 +898,10 @@ fn bh_idempotency_key_all_three_components_contribute() {
 fn bh_idempotency_key_overflow_does_not_produce_zero_for_nonzero_run() {
     // A non-zero run ID must never collapse to zero key even under overflow.
     let key = compute_idempotency_key(RunId::new(1), SeqNo::new(u64::MAX), ActionId::new(65535));
-    assert_ne!(key, 0, "non-zero run must not produce zero key under overflow");
+    assert_ne!(
+        key, 0,
+        "non-zero run must not produce zero key under overflow"
+    );
 }
 
 // =====================================================================
@@ -910,7 +914,8 @@ fn bh_retry_check_never_routes_to_body_at_attempt_zero() {
     // This is the one allowed attempt before the first execution.
     let target = execute_retry_check(0, RetryPolicy::NEVER, StepIdx::new(5), StepIdx::new(10));
     assert_eq!(
-        target, StepIdx::new(5),
+        target,
+        StepIdx::new(5),
         "attempt 0 with NEVER should route to body"
     );
 }
@@ -925,7 +930,8 @@ fn bh_retry_check_never_routes_to_exhausted_at_attempt_zero_for_zero_max() {
     };
     let target = execute_retry_check(0, policy, StepIdx::new(5), StepIdx::new(10));
     assert_eq!(
-        target, StepIdx::new(10),
+        target,
+        StepIdx::new(10),
         "attempt 0 with max_attempts=0 should exhaust"
     );
 }
@@ -941,7 +947,8 @@ fn bh_retry_check_default_allows_body_for_all_attempts_below_max() {
             StepIdx::new(99),
         );
         assert_eq!(
-            target, StepIdx::new(1),
+            target,
+            StepIdx::new(1),
             "DEFAULT attempt {attempt} should route to body"
         );
     }
@@ -1021,7 +1028,7 @@ fn bh_drive_budget_exhausted_does_not_emit_step_succeeded_in_evidence() {
         RetryPolicy::NEVER,
         &mut evidence,
         &mut collect_states,
-    &vb_core::capability::CapabilitySet::empty(),
+        &vb_core::capability::CapabilitySet::empty(),
     );
     assert_eq!(result, Ok(RuntimeSignal::StepBudgetExhausted));
 
@@ -1090,7 +1097,7 @@ fn bh_drive_single_nop_emits_started_then_succeeded() {
         RetryPolicy::NEVER,
         &mut evidence,
         &mut collect_states,
-    &vb_core::capability::CapabilitySet::empty(),
+        &vb_core::capability::CapabilitySet::empty(),
     );
     // The drive loop should have progressed (either Continue after Nop, or Finished after Finish).
     assert!(result.is_ok(), "drive should succeed, got {result:?}");
@@ -1167,7 +1174,7 @@ fn bh_drive_evidence_step_succeeded_not_emitted_for_awaiting_action() {
         RetryPolicy::NEVER,
         &mut evidence,
         &mut collect_states,
-    &vb_core::capability::CapabilitySet::empty(),
+        &vb_core::capability::CapabilitySet::empty(),
     );
     match result {
         Ok(RuntimeSignal::AwaitingAction(_)) => {}
@@ -1220,7 +1227,19 @@ fn bh_resume_action_outcome_ready_preserves_secret_taint() {
         encoded_len: 8,
     };
     let outcome = ActionOutcome::Ready(ready);
-    let result = resume_action_outcome(&mut run, &outcome, &ActionTicket { run: RunId::new(1), step: StepIdx::new(0), seq: SeqNo::new(0), action: ActionId::new(0), attempt: 1, idempotency_key: 0, capacity: 1 });
+    let result = resume_action_outcome(
+        &mut run,
+        &outcome,
+        &ActionTicket {
+            run: RunId::new(1),
+            step: StepIdx::new(0),
+            seq: SeqNo::new(0),
+            action: ActionId::new(0),
+            attempt: 1,
+            idempotency_key: 0,
+            capacity: 1,
+        },
+    );
     assert_eq!(result, Ok(RuntimeSignal::Continue));
 
     // Verify the taint was preserved in the frame.
@@ -1247,13 +1266,26 @@ fn bh_resume_action_outcome_ready_preserves_derived_taint() {
         encoded_len: 8,
     };
     let outcome = ActionOutcome::Ready(ready);
-    let result = resume_action_outcome(&mut run, &outcome, &ActionTicket { run: RunId::new(1), step: StepIdx::new(0), seq: SeqNo::new(0), action: ActionId::new(0), attempt: 1, idempotency_key: 0, capacity: 1 });
+    let result = resume_action_outcome(
+        &mut run,
+        &outcome,
+        &ActionTicket {
+            run: RunId::new(1),
+            step: StepIdx::new(0),
+            seq: SeqNo::new(0),
+            action: ActionId::new(0),
+            attempt: 1,
+            idempotency_key: 0,
+            capacity: 1,
+        },
+    );
     assert_eq!(result, Ok(RuntimeSignal::Continue));
 
     let stored_taint = run.read_taint(SlotIdx::new(0));
     match stored_taint {
         Ok(t) => assert_eq!(
-            t, Taint::DerivedFromSecret,
+            t,
+            Taint::DerivedFromSecret,
             "taint must be preserved as DerivedFromSecret"
         ),
         Err(e) => {
@@ -1276,7 +1308,19 @@ fn bh_resume_action_outcome_ready_clean_taint_preserved() {
         encoded_len: 8,
     };
     let outcome = ActionOutcome::Ready(ready);
-    let result = resume_action_outcome(&mut run, &outcome, &ActionTicket { run: RunId::new(1), step: StepIdx::new(0), seq: SeqNo::new(0), action: ActionId::new(0), attempt: 1, idempotency_key: 0, capacity: 1 });
+    let result = resume_action_outcome(
+        &mut run,
+        &outcome,
+        &ActionTicket {
+            run: RunId::new(1),
+            step: StepIdx::new(0),
+            seq: SeqNo::new(0),
+            action: ActionId::new(0),
+            attempt: 1,
+            idempotency_key: 0,
+            capacity: 1,
+        },
+    );
     assert_eq!(result, Ok(RuntimeSignal::Continue));
 
     let stored_taint = run.read_taint(SlotIdx::new(0));
@@ -1306,7 +1350,19 @@ fn bh_resume_action_outcome_suspended_preserves_ticket_fields() {
         capacity: 1,
     };
     let outcome = ActionOutcome::Suspended(original_ticket);
-    let result = resume_action_outcome(&mut run, &outcome, &ActionTicket { run: RunId::new(1), step: StepIdx::new(0), seq: SeqNo::new(0), action: ActionId::new(0), attempt: 1, idempotency_key: 0, capacity: 1 });
+    let result = resume_action_outcome(
+        &mut run,
+        &outcome,
+        &ActionTicket {
+            run: RunId::new(1),
+            step: StepIdx::new(0),
+            seq: SeqNo::new(0),
+            action: ActionId::new(0),
+            attempt: 1,
+            idempotency_key: 0,
+            capacity: 1,
+        },
+    );
     match result {
         Ok(RuntimeSignal::AwaitingAction(returned_ticket)) => {
             assert_eq!(returned_ticket.run, RunId::new(7));
@@ -1353,10 +1409,25 @@ fn bh_resume_action_outcome_failed_retryable_preserves_signal_structure() {
         Ok(RuntimeSignal::AwaitingAction(ticket)) => {
             // The retry ticket uses the run's ID, original step, incremented seq and attempt.
             assert_eq!(ticket.run, RunId::new(1));
-            assert_eq!(ticket.step, StepIdx::new(2), "step must come from original ticket");
-            assert_eq!(ticket.seq, SeqNo::new(6), "seq must be incremented from original");
-            assert_eq!(ticket.action, ActionId::new(3), "action must come from original");
-            assert_eq!(ticket.attempt, 3, "attempt must be incremented from original");
+            assert_eq!(
+                ticket.step,
+                StepIdx::new(2),
+                "step must come from original ticket"
+            );
+            assert_eq!(
+                ticket.seq,
+                SeqNo::new(6),
+                "seq must be incremented from original"
+            );
+            assert_eq!(
+                ticket.action,
+                ActionId::new(3),
+                "action must come from original"
+            );
+            assert_eq!(
+                ticket.attempt, 3,
+                "attempt must be incremented from original"
+            );
         }
         other => {
             let msg = format!("expected AwaitingAction for retryable failure, got {other:?}");
@@ -1528,22 +1599,22 @@ mod proptests {
 mod blackhat_engine {
 
     use vb_core::action::{
-        ActionContract, ActionFailure, ActionFailureCode, ActionOutcome, ActionTicket,
-        Idempotency, RetryPolicy as VbRetryPolicy, RetrySafety, SideEffect,
+        ActionContract, ActionFailure, ActionFailureCode, ActionOutcome, ActionTicket, Idempotency,
+        RetryPolicy as VbRetryPolicy, RetrySafety, SideEffect,
     };
     use vb_core::capability::CapabilitySet;
     use vb_core::engine::EngineSignal;
     use vb_core::frame::RunFrame;
     use vb_core::ids::{ActionId, ConstIdx, RunId, SeqNo, SlotIdx, StepIdx};
     use vb_core::value::{SlotValue, Taint};
-    use vb_core::workflow::{CompiledNode, CompiledNodeKind, CompiledWorkflow, WorkflowParts};
     use vb_core::value_store::ValueStore;
+    use vb_core::workflow::{CompiledNode, CompiledNodeKind, CompiledWorkflow, WorkflowParts};
 
     use crate::engine::{
         EvidenceCollector, EvidenceEvent, RetryPolicy, RuntimeEngineError, RuntimeSignal,
-        compute_idempotency_key, drive_deterministic_full, drive_with_actions,
-        execute_do, execute_do_without_contract, execute_error_handler,
-        execute_node_full, execute_retry_check, resume_action_outcome, runtime_from_core,
+        compute_idempotency_key, drive_deterministic_full, drive_with_actions, execute_do,
+        execute_do_without_contract, execute_error_handler, execute_node_full, execute_retry_check,
+        resume_action_outcome, runtime_from_core,
     };
     use crate::primitives::collect::CollectStates;
 
@@ -1642,18 +1713,31 @@ mod blackhat_engine {
             next: Some(StepIdx::new(1)),
             on_error: None,
             error_slot: None,
-            kind: CompiledNodeKind::SetConst { value: ConstIdx::new(0) },
+            kind: CompiledNodeKind::SetConst {
+                value: ConstIdx::new(0),
+            },
         };
         let finish = finish_node(1, 0);
-        let wf = make_workflow_with_constants(vec![set_const, finish], 4, Box::from([vb_core::value::ConstValue::I64(1)]));
+        let wf = make_workflow_with_constants(
+            vec![set_const, finish],
+            4,
+            Box::from([vb_core::value::ConstValue::I64(1)]),
+        );
         let mut run = make_run(4, 4);
         let mut store = ValueStore::new();
         let mut budget = vb_core::engine::StepBudget::new(10);
         let mut evidence = EvidenceCollector::new();
         let mut cs = CollectStates::new();
         let result = drive_deterministic_full(
-            &wf, &mut run, &mut budget, &mut store, &[], RetryPolicy::NEVER,
-            &mut evidence, &mut cs, &CapabilitySet::empty(),
+            &wf,
+            &mut run,
+            &mut budget,
+            &mut store,
+            &[],
+            RetryPolicy::NEVER,
+            &mut evidence,
+            &mut cs,
+            &CapabilitySet::empty(),
         );
         assert!(result.is_ok(), "drive should succeed: {result:?}");
         let events = evidence.drain();
@@ -1702,8 +1786,15 @@ mod blackhat_engine {
         let mut evidence = EvidenceCollector::new();
         let mut cs = CollectStates::new();
         let result = drive_deterministic_full(
-            &wf, &mut run, &mut budget, &mut store, &[], RetryPolicy::NEVER,
-            &mut evidence, &mut cs, &CapabilitySet::empty(),
+            &wf,
+            &mut run,
+            &mut budget,
+            &mut store,
+            &[],
+            RetryPolicy::NEVER,
+            &mut evidence,
+            &mut cs,
+            &CapabilitySet::empty(),
         );
         assert_eq!(result, Ok(RuntimeSignal::StepBudgetExhausted));
         // BH-ENG-02: Step 0 was marked Running but StepBudgetExhausted
@@ -1722,12 +1813,10 @@ mod blackhat_engine {
 
     #[test]
     fn bh_eng_04_runtime_from_core_discards_taint_from_finished() {
-        let clean_signal = runtime_from_core(EngineSignal::Finished(
-            SlotValue::I64(42), Taint::Clean,
-        ));
-        let secret_signal = runtime_from_core(EngineSignal::Finished(
-            SlotValue::I64(42), Taint::Secret,
-        ));
+        let clean_signal =
+            runtime_from_core(EngineSignal::Finished(SlotValue::I64(42), Taint::Clean));
+        let secret_signal =
+            runtime_from_core(EngineSignal::Finished(SlotValue::I64(42), Taint::Secret));
         assert_eq!(
             clean_signal, secret_signal,
             "BH-ENG-04: taint is discarded in runtime_from_core, both signals are equal"
@@ -1767,12 +1856,19 @@ mod blackhat_engine {
             None => return,
         };
         let result = execute_node_full(
-            &wf, &mut run, &mut store, n, &[], RetryPolicy::NEVER,
-            &mut cs, &CapabilitySet::empty(),
+            &wf,
+            &mut run,
+            &mut store,
+            n,
+            &[],
+            RetryPolicy::NEVER,
+            &mut cs,
+            &CapabilitySet::empty(),
         );
         assert!(result.is_ok(), "expected Ok, got {result:?}");
         assert_eq!(
-            run.pc(), StepIdx::new(1),
+            run.pc(),
+            StepIdx::new(1),
             "BH-ENG-05: ErrorHandler routes to body=1, not handler=2"
         );
     }
@@ -1787,10 +1883,15 @@ mod blackhat_engine {
 
     #[test]
     fn bh_eng_06_zero_max_attempts_policy_exhausts_immediately() {
-        let policy = RetryPolicy { max_attempts: 0, base_delay_ms: 0, exponential_backoff: false };
+        let policy = RetryPolicy {
+            max_attempts: 0,
+            base_delay_ms: 0,
+            exponential_backoff: false,
+        };
         let target = execute_retry_check(0, policy, StepIdx::new(1), StepIdx::new(9));
         assert_eq!(
-            target, StepIdx::new(9),
+            target,
+            StepIdx::new(9),
             "BH-ENG-06: max_attempts=0 should exhaust at attempt 0"
         );
     }
@@ -1826,8 +1927,14 @@ mod blackhat_engine {
             None => return,
         };
         let result = execute_node_full(
-            &wf, &mut run, &mut store, n, &[], RetryPolicy::NEVER,
-            &mut cs, &CapabilitySet::empty(),
+            &wf,
+            &mut run,
+            &mut store,
+            n,
+            &[],
+            RetryPolicy::NEVER,
+            &mut cs,
+            &CapabilitySet::empty(),
         );
         // BH-FIX: TaintViolation is now raised even without contracts.
         assert!(
@@ -1859,8 +1966,14 @@ mod blackhat_engine {
             None => return,
         };
         let result = execute_node_full(
-            &wf, &mut run, &mut store, n, &[], RetryPolicy::NEVER,
-            &mut cs, &CapabilitySet::empty(),
+            &wf,
+            &mut run,
+            &mut store,
+            n,
+            &[],
+            RetryPolicy::NEVER,
+            &mut cs,
+            &CapabilitySet::empty(),
         );
         // Clean input should succeed even without contracts.
         match result {
@@ -1909,8 +2022,14 @@ mod blackhat_engine {
             required_capabilities: Box::new([]),
         }];
         let result = execute_node_full(
-            &wf, &mut run, &mut store, n, &contracts, RetryPolicy::NEVER,
-            &mut cs, &CapabilitySet::empty(),
+            &wf,
+            &mut run,
+            &mut store,
+            n,
+            &contracts,
+            RetryPolicy::NEVER,
+            &mut cs,
+            &CapabilitySet::empty(),
         );
         assert!(
             matches!(result, Err(RuntimeEngineError::TaintViolation { step }) if step == StepIdx::ZERO),
@@ -1951,12 +2070,19 @@ mod blackhat_engine {
         };
         let executed_before = run.executed();
         let result = execute_node_full(
-            &wf, &mut run, &mut store, n, &[], RetryPolicy::NEVER,
-            &mut cs, &CapabilitySet::empty(),
+            &wf,
+            &mut run,
+            &mut store,
+            n,
+            &[],
+            RetryPolicy::NEVER,
+            &mut cs,
+            &CapabilitySet::empty(),
         );
         assert!(result.is_ok());
         assert_eq!(
-            run.executed(), executed_before + 1,
+            run.executed(),
+            executed_before + 1,
             "BH-ENG-08: RetryCheck increments executed counter"
         );
     }
@@ -2003,12 +2129,22 @@ mod blackhat_engine {
         let mut evidence = EvidenceCollector::new();
         let mut cs = CollectStates::new();
         let result = drive_deterministic_full(
-            &workflow, &mut run, &mut budget, &mut store, &[], RetryPolicy::NEVER,
-            &mut evidence, &mut cs, &CapabilitySet::empty(),
+            &workflow,
+            &mut run,
+            &mut budget,
+            &mut store,
+            &[],
+            RetryPolicy::NEVER,
+            &mut evidence,
+            &mut cs,
+            &CapabilitySet::empty(),
         );
         match result {
             Ok(RuntimeSignal::AwaitingAction(_)) => {}
-            other => { let _ = other; return; }
+            other => {
+                let _ = other;
+                return;
+            }
         }
         let events = evidence.drain();
         let slot_written_count = events
@@ -2033,7 +2169,9 @@ mod blackhat_engine {
             for seq in 0u64..50 {
                 for action in 0u16..20 {
                     let key = compute_idempotency_key(
-                        RunId::new(run), SeqNo::new(seq), ActionId::new(action)
+                        RunId::new(run),
+                        SeqNo::new(seq),
+                        ActionId::new(action),
                     );
                     if !keys.insert(key) {
                         collisions = collisions.saturating_add(1);
@@ -2057,12 +2195,20 @@ mod blackhat_engine {
             .ok()
             .unwrap_or_else(|| panic!("RunFrame::new failed"));
         let original = ActionTicket {
-            run: RunId::new(99), step: StepIdx::ZERO, seq: SeqNo::new(1),
-            action: ActionId::new(5), attempt: 1, idempotency_key: 0, capacity: 3,
+            run: RunId::new(99),
+            step: StepIdx::ZERO,
+            seq: SeqNo::new(1),
+            action: ActionId::new(5),
+            attempt: 1,
+            idempotency_key: 0,
+            capacity: 3,
         };
         let failure = ActionFailure {
-            code: ActionFailureCode::Timeout, retry_policy: VbRetryPolicy::Retryable,
-            taint: Taint::Clean, detail: None, encoded_len: 0,
+            code: ActionFailureCode::Timeout,
+            retry_policy: VbRetryPolicy::Retryable,
+            taint: Taint::Clean,
+            detail: None,
+            encoded_len: 0,
         };
         let outcome = ActionOutcome::Failed(failure);
         let result = resume_action_outcome(&mut run, &outcome, &original);
@@ -2093,14 +2239,23 @@ mod blackhat_engine {
             next: Some(StepIdx::new(1)),
             on_error: None,
             error_slot: None,
-            kind: CompiledNodeKind::SetConst { value: ConstIdx::new(0) },
+            kind: CompiledNodeKind::SetConst {
+                value: ConstIdx::new(0),
+            },
         };
         let finish = finish_node(1, 0);
-        let wf = make_workflow_with_constants(vec![set_const, finish], 4, Box::from([vb_core::value::ConstValue::I64(1)]));
+        let wf = make_workflow_with_constants(
+            vec![set_const, finish],
+            4,
+            Box::from([vb_core::value::ConstValue::I64(1)]),
+        );
         let mut run = make_run(4, 4);
         let mut budget = vb_core::engine::StepBudget::new(10);
         let result = drive_with_actions(&wf, &mut run, &mut budget, &[], RetryPolicy::NEVER);
-        assert!(result.is_ok(), "drive_with_actions should succeed: {result:?}");
+        assert!(
+            result.is_ok(),
+            "drive_with_actions should succeed: {result:?}"
+        );
     }
 
     // =====================================================================
@@ -2118,12 +2273,22 @@ mod blackhat_engine {
             .ok()
             .unwrap_or_else(|| panic!("RunFrame::new failed"));
         let suspended_ticket = ActionTicket {
-            run: RunId::new(999), step: StepIdx::new(50), seq: SeqNo::new(5),
-            action: ActionId::new(99), attempt: 3, idempotency_key: 99999, capacity: 1,
+            run: RunId::new(999),
+            step: StepIdx::new(50),
+            seq: SeqNo::new(5),
+            action: ActionId::new(99),
+            attempt: 3,
+            idempotency_key: 99999,
+            capacity: 1,
         };
         let original = ActionTicket {
-            run: RunId::new(1), step: StepIdx::ZERO, seq: SeqNo::new(1),
-            action: ActionId::new(0), attempt: 1, idempotency_key: 0, capacity: 1,
+            run: RunId::new(1),
+            step: StepIdx::ZERO,
+            seq: SeqNo::new(1),
+            action: ActionId::new(0),
+            attempt: 1,
+            idempotency_key: 0,
+            capacity: 1,
         };
         let outcome = ActionOutcome::Suspended(suspended_ticket);
         let result = resume_action_outcome(&mut run, &outcome, &original);
@@ -2152,15 +2317,28 @@ mod blackhat_engine {
             .unwrap_or_else(|| panic!("RunFrame::new failed"));
         let _ = run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(1), Taint::Secret);
         let contract = ActionContract {
-            id: ActionId::new(0), input_slot_count: 1, output_slot_count: 1,
-            max_input_bytes: 1024, max_output_bytes: 1024, timeout_ms: 5000,
-            idempotency: Idempotency::DeterministicPure, side_effect: SideEffect::None,
-            retry_safety: RetrySafety::Safe, required_capabilities: Box::new([]),
+            id: ActionId::new(0),
+            input_slot_count: 1,
+            output_slot_count: 1,
+            max_input_bytes: 1024,
+            max_output_bytes: 1024,
+            timeout_ms: 5000,
+            idempotency: Idempotency::DeterministicPure,
+            side_effect: SideEffect::None,
+            retry_safety: RetrySafety::Safe,
+            required_capabilities: Box::new([]),
         };
         let registry = vec![contract.clone()];
         let result = execute_do(
-            &run, StepIdx::ZERO, ActionId::new(0), SlotIdx::new(0), SeqNo::new(1),
-            &contract, &registry, &CapabilitySet::empty(), RetryPolicy::NEVER,
+            &run,
+            StepIdx::ZERO,
+            ActionId::new(0),
+            SlotIdx::new(0),
+            SeqNo::new(1),
+            &contract,
+            &registry,
+            &CapabilitySet::empty(),
+            RetryPolicy::NEVER,
         );
         assert!(
             matches!(result, Err(RuntimeEngineError::TaintViolation { .. })),
@@ -2212,8 +2390,13 @@ mod blackhat_engine {
             .unwrap_or_else(|| panic!("RunFrame::new failed"));
         let _ = run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(42), Taint::Secret);
         let result = execute_do_without_contract(
-            &run, StepIdx::ZERO, ActionId::new(0), SlotIdx::new(0),
-            SeqNo::new(1), &CapabilitySet::empty(), RetryPolicy::NEVER,
+            &run,
+            StepIdx::ZERO,
+            ActionId::new(0),
+            SlotIdx::new(0),
+            SeqNo::new(1),
+            &CapabilitySet::empty(),
+            RetryPolicy::NEVER,
         );
         assert!(
             matches!(result, Err(RuntimeEngineError::TaintViolation { step }) if step == StepIdx::ZERO),
@@ -2228,8 +2411,13 @@ mod blackhat_engine {
             .unwrap_or_else(|| panic!("RunFrame::new failed"));
         // Slot 0 is never written -- uninitialized is treated as Clean.
         let result = execute_do_without_contract(
-            &run, StepIdx::ZERO, ActionId::new(0), SlotIdx::new(0),
-            SeqNo::new(1), &CapabilitySet::empty(), RetryPolicy::NEVER,
+            &run,
+            StepIdx::ZERO,
+            ActionId::new(0),
+            SlotIdx::new(0),
+            SeqNo::new(1),
+            &CapabilitySet::empty(),
+            RetryPolicy::NEVER,
         );
         match result {
             Ok(RuntimeSignal::AwaitingAction(ticket)) => {
@@ -2249,8 +2437,13 @@ mod blackhat_engine {
             .unwrap_or_else(|| panic!("RunFrame::new failed"));
         let _ = run.write_slot(SlotIdx::new(0), SlotValue::I64(42));
         let result = execute_do_without_contract(
-            &run, StepIdx::ZERO, ActionId::new(0), SlotIdx::new(0),
-            SeqNo::new(1), &CapabilitySet::empty(), RetryPolicy::NEVER,
+            &run,
+            StepIdx::ZERO,
+            ActionId::new(0),
+            SlotIdx::new(0),
+            SeqNo::new(1),
+            &CapabilitySet::empty(),
+            RetryPolicy::NEVER,
         );
         match result {
             Ok(RuntimeSignal::AwaitingAction(ticket)) => {
@@ -2323,8 +2516,15 @@ mod blackhat_engine {
         let mut evidence = EvidenceCollector::new();
         let mut cs = CollectStates::new();
         let result = drive_deterministic_full(
-            &wf, &mut run, &mut budget, &mut store, &[], RetryPolicy::NEVER,
-            &mut evidence, &mut cs, &CapabilitySet::empty(),
+            &wf,
+            &mut run,
+            &mut budget,
+            &mut store,
+            &[],
+            RetryPolicy::NEVER,
+            &mut evidence,
+            &mut cs,
+            &CapabilitySet::empty(),
         );
         let _ = result;
     }
@@ -2362,11 +2562,22 @@ mod blackhat_engine {
         let mut evidence = EvidenceCollector::new();
         let mut cs = CollectStates::new();
         let result = drive_deterministic_full(
-            &wf, &mut run, &mut budget, &mut store, &[], RetryPolicy::NEVER,
-            &mut evidence, &mut cs, &CapabilitySet::empty(),
+            &wf,
+            &mut run,
+            &mut budget,
+            &mut store,
+            &[],
+            RetryPolicy::NEVER,
+            &mut evidence,
+            &mut cs,
+            &CapabilitySet::empty(),
         );
         assert_eq!(result, Ok(RuntimeSignal::StepBudgetExhausted));
         // PC should have advanced past step 0 (the executed step).
-        assert_ne!(run.pc(), StepIdx::ZERO, "PC must advance after step execution");
+        assert_ne!(
+            run.pc(),
+            StepIdx::ZERO,
+            "PC must advance after step execution"
+        );
     }
 }

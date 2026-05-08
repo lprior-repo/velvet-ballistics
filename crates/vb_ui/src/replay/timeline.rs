@@ -98,10 +98,7 @@ impl TimelineStrip {
         for je in events {
             let seq = u32::try_from(je.seq().get()).unwrap_or(u32::MAX);
             // Binary search: events are sorted by seq, so use partition_point.
-            let already_present = self
-                .events
-                .binary_search_by(|e| e.seq.cmp(&seq))
-                .is_ok();
+            let already_present = self.events.binary_search_by(|e| e.seq.cmp(&seq)).is_ok();
             if already_present {
                 continue;
             }
@@ -115,9 +112,7 @@ impl TimelineStrip {
                 color,
             };
             // Insert in sorted position to maintain seq ordering.
-            let insert_at = self
-                .events
-                .partition_point(|e| e.seq < seq);
+            let insert_at = self.events.partition_point(|e| e.seq < seq);
             self.events.insert(insert_at, event);
         }
     }
@@ -274,14 +269,26 @@ fn journal_event_info(je: &JournalEvent) -> (String, Option<u16>) {
         JournalEvent::RunAccepted { .. } => ("RunAccepted".to_owned(), None),
         JournalEvent::StepStarted { step, .. } => ("StepStarted".to_owned(), Some(step.get())),
         JournalEvent::StepSucceeded { step, .. } => ("StepSucceeded".to_owned(), Some(step.get())),
-        JournalEvent::ActionScheduled { step, .. } => ("ActionScheduled".to_owned(), Some(step.get())),
-        JournalEvent::ActionCompletedEvent { step, .. } => ("ActionCompleted".to_owned(), Some(step.get())),
-        JournalEvent::ActionFailedEvent { step, .. } => ("ActionFailed".to_owned(), Some(step.get())),
+        JournalEvent::ActionScheduled { step, .. } => {
+            ("ActionScheduled".to_owned(), Some(step.get()))
+        }
+        JournalEvent::ActionCompletedEvent { step, .. } => {
+            ("ActionCompleted".to_owned(), Some(step.get()))
+        }
+        JournalEvent::ActionFailedEvent { step, .. } => {
+            ("ActionFailed".to_owned(), Some(step.get()))
+        }
         JournalEvent::SlotWrittenEvent { .. } => ("SlotWritten".to_owned(), None),
-        JournalEvent::WaitScheduledEvent { step, .. } => ("WaitScheduled".to_owned(), Some(step.get())),
-        JournalEvent::AskScheduledEvent { step, .. } => ("AskScheduled".to_owned(), Some(step.get())),
+        JournalEvent::WaitScheduledEvent { step, .. } => {
+            ("WaitScheduled".to_owned(), Some(step.get()))
+        }
+        JournalEvent::AskScheduledEvent { step, .. } => {
+            ("AskScheduled".to_owned(), Some(step.get()))
+        }
         JournalEvent::AskAnsweredEvent { step, .. } => ("AskAnswered".to_owned(), Some(step.get())),
-        JournalEvent::RetryScheduledEvent { step, .. } => ("RetryScheduled".to_owned(), Some(step.get())),
+        JournalEvent::RetryScheduledEvent { step, .. } => {
+            ("RetryScheduled".to_owned(), Some(step.get()))
+        }
         JournalEvent::RunCancelled { .. } => ("RunCancelled".to_owned(), None),
         JournalEvent::RunFinished { .. } => ("RunFinished".to_owned(), None),
         JournalEvent::RunFailedEvent { .. } => ("RunFailed".to_owned(), None),
@@ -297,56 +304,129 @@ mod tests {
     use vb_core::ids::{ActionId, RunId, StepIdx};
     use vb_storage::EventSeq;
 
-    fn make_run_id() -> RunId { RunId::new(1) }
-    fn make_event_seq(val: u64) -> EventSeq { EventSeq::new(val) }
-    fn make_step(val: u16) -> StepIdx { StepIdx::new(val) }
-    fn make_action(val: u16) -> ActionId { ActionId::new(val) }
+    fn make_run_id() -> RunId {
+        RunId::new(1)
+    }
+    fn make_event_seq(val: u64) -> EventSeq {
+        EventSeq::new(val)
+    }
+    fn make_step(val: u16) -> StepIdx {
+        StepIdx::new(val)
+    }
+    fn make_action(val: u16) -> ActionId {
+        ActionId::new(val)
+    }
 
     fn make_timeline_event(seq: u32, kind: &str, step: Option<u16>, ts: u64) -> TimelineEvent {
-        TimelineEvent { seq, event_kind: kind.to_owned(), step_id: step, timestamp_micros: ts, color: TimelineStrip::event_color(kind) }
+        TimelineEvent {
+            seq,
+            event_kind: kind.to_owned(),
+            step_id: step,
+            timestamp_micros: ts,
+            color: TimelineStrip::event_color(kind),
+        }
     }
 
     fn je_run_accepted(seq: u64) -> JournalEvent {
-        JournalEvent::RunAccepted { run: make_run_id(), seq: make_event_seq(seq), workflow: vb_core::WorkflowDigest::from_bytes([0u8; 32]) }
+        JournalEvent::RunAccepted {
+            run: make_run_id(),
+            seq: make_event_seq(seq),
+            workflow: vb_core::WorkflowDigest::from_bytes([0u8; 32]),
+        }
     }
     fn je_step_started(seq: u64, step: u16) -> JournalEvent {
-        JournalEvent::StepStarted { run: make_run_id(), seq: make_event_seq(seq), step: make_step(step) }
+        JournalEvent::StepStarted {
+            run: make_run_id(),
+            seq: make_event_seq(seq),
+            step: make_step(step),
+        }
     }
     fn je_step_succeeded(seq: u64, step: u16) -> JournalEvent {
-        JournalEvent::StepSucceeded { run: make_run_id(), seq: make_event_seq(seq), step: make_step(step), output: vb_core::SlotIdx::new(0) }
+        JournalEvent::StepSucceeded {
+            run: make_run_id(),
+            seq: make_event_seq(seq),
+            step: make_step(step),
+            output: vb_core::SlotIdx::new(0),
+        }
     }
     fn je_action_scheduled(seq: u64, step: u16) -> JournalEvent {
-        JournalEvent::ActionScheduled { run: make_run_id(), seq: make_event_seq(seq), step: make_step(step), action: make_action(0) }
+        JournalEvent::ActionScheduled {
+            run: make_run_id(),
+            seq: make_event_seq(seq),
+            step: make_step(step),
+            action: make_action(0),
+        }
     }
     fn je_action_completed(seq: u64, step: u16) -> JournalEvent {
-        JournalEvent::ActionCompletedEvent { run: make_run_id(), seq: make_event_seq(seq), step: make_step(step), action: make_action(0) }
+        JournalEvent::ActionCompletedEvent {
+            run: make_run_id(),
+            seq: make_event_seq(seq),
+            step: make_step(step),
+            action: make_action(0),
+        }
     }
     fn je_action_failed(seq: u64, step: u16) -> JournalEvent {
-        JournalEvent::ActionFailedEvent { run: make_run_id(), seq: make_event_seq(seq), step: make_step(step), action: make_action(0) }
+        JournalEvent::ActionFailedEvent {
+            run: make_run_id(),
+            seq: make_event_seq(seq),
+            step: make_step(step),
+            action: make_action(0),
+        }
     }
     fn je_slot_written(seq: u64) -> JournalEvent {
-        JournalEvent::SlotWrittenEvent { run: make_run_id(), seq: make_event_seq(seq), slot: vb_core::SlotIdx::new(0), value: None }
+        JournalEvent::SlotWrittenEvent {
+            run: make_run_id(),
+            seq: make_event_seq(seq),
+            slot: vb_core::SlotIdx::new(0),
+            value: None,
+        }
     }
     fn je_wait_scheduled(seq: u64, step: u16) -> JournalEvent {
-        JournalEvent::WaitScheduledEvent { run: make_run_id(), seq: make_event_seq(seq), step: make_step(step) }
+        JournalEvent::WaitScheduledEvent {
+            run: make_run_id(),
+            seq: make_event_seq(seq),
+            step: make_step(step),
+        }
     }
     fn je_ask_scheduled(seq: u64, step: u16) -> JournalEvent {
-        JournalEvent::AskScheduledEvent { run: make_run_id(), seq: make_event_seq(seq), step: make_step(step) }
+        JournalEvent::AskScheduledEvent {
+            run: make_run_id(),
+            seq: make_event_seq(seq),
+            step: make_step(step),
+        }
     }
     fn je_ask_answered(seq: u64, step: u16) -> JournalEvent {
-        JournalEvent::AskAnsweredEvent { run: make_run_id(), seq: make_event_seq(seq), step: make_step(step) }
+        JournalEvent::AskAnsweredEvent {
+            run: make_run_id(),
+            seq: make_event_seq(seq),
+            step: make_step(step),
+        }
     }
     fn je_retry_scheduled(seq: u64, step: u16) -> JournalEvent {
-        JournalEvent::RetryScheduledEvent { run: make_run_id(), seq: make_event_seq(seq), step: make_step(step) }
+        JournalEvent::RetryScheduledEvent {
+            run: make_run_id(),
+            seq: make_event_seq(seq),
+            step: make_step(step),
+        }
     }
     fn je_run_cancelled(seq: u64) -> JournalEvent {
-        JournalEvent::RunCancelled { run: make_run_id(), seq: make_event_seq(seq) }
+        JournalEvent::RunCancelled {
+            run: make_run_id(),
+            seq: make_event_seq(seq),
+        }
     }
     fn je_run_finished(seq: u64) -> JournalEvent {
-        JournalEvent::RunFinished { run: make_run_id(), seq: make_event_seq(seq), result: vb_core::SlotIdx::new(0) }
+        JournalEvent::RunFinished {
+            run: make_run_id(),
+            seq: make_event_seq(seq),
+            result: vb_core::SlotIdx::new(0),
+        }
     }
     fn je_run_failed(seq: u64) -> JournalEvent {
-        JournalEvent::RunFailedEvent { run: make_run_id(), seq: make_event_seq(seq) }
+        JournalEvent::RunFailedEvent {
+            run: make_run_id(),
+            seq: make_event_seq(seq),
+        }
     }
 
     // -- Construction --
@@ -378,14 +458,35 @@ mod tests {
 
     #[test]
     fn from_journal_events_converts_multiple_variants() {
-        let journal = vec![je_run_accepted(1), je_step_started(2, 0), je_action_scheduled(3, 0), je_action_failed(4, 0), je_run_failed(5)];
+        let journal = vec![
+            je_run_accepted(1),
+            je_step_started(2, 0),
+            je_action_scheduled(3, 0),
+            je_action_failed(4, 0),
+            je_run_failed(5),
+        ];
         let strip = TimelineStrip::from_journal_events(&journal);
         assert_eq!(strip.events().len(), 5);
-        assert_eq!(strip.events().get(0).map(|e| e.event_kind.as_str()), Some("RunAccepted"));
-        assert_eq!(strip.events().get(1).map(|e| e.event_kind.as_str()), Some("StepStarted"));
-        assert_eq!(strip.events().get(2).map(|e| e.event_kind.as_str()), Some("ActionScheduled"));
-        assert_eq!(strip.events().get(3).map(|e| e.event_kind.as_str()), Some("ActionFailed"));
-        assert_eq!(strip.events().get(4).map(|e| e.event_kind.as_str()), Some("RunFailed"));
+        assert_eq!(
+            strip.events().get(0).map(|e| e.event_kind.as_str()),
+            Some("RunAccepted")
+        );
+        assert_eq!(
+            strip.events().get(1).map(|e| e.event_kind.as_str()),
+            Some("StepStarted")
+        );
+        assert_eq!(
+            strip.events().get(2).map(|e| e.event_kind.as_str()),
+            Some("ActionScheduled")
+        );
+        assert_eq!(
+            strip.events().get(3).map(|e| e.event_kind.as_str()),
+            Some("ActionFailed")
+        );
+        assert_eq!(
+            strip.events().get(4).map(|e| e.event_kind.as_str()),
+            Some("RunFailed")
+        );
     }
 
     #[test]
@@ -405,16 +506,29 @@ mod tests {
 
     #[test]
     fn set_cursor_to_valid_index() {
-        let events = vec![make_timeline_event(1, "RunAccepted", None, 0), make_timeline_event(2, "StepStarted", Some(0), 100), make_timeline_event(3, "StepSucceeded", Some(0), 200)];
-        let mut strip = TimelineStrip { events, cursor_index: None };
+        let events = vec![
+            make_timeline_event(1, "RunAccepted", None, 0),
+            make_timeline_event(2, "StepStarted", Some(0), 100),
+            make_timeline_event(3, "StepSucceeded", Some(0), 200),
+        ];
+        let mut strip = TimelineStrip {
+            events,
+            cursor_index: None,
+        };
         strip.set_cursor(1);
         assert_eq!(strip.cursor(), Some(1));
     }
 
     #[test]
     fn set_cursor_clamps_to_last_index() {
-        let events = vec![make_timeline_event(1, "RunAccepted", None, 0), make_timeline_event(2, "StepStarted", Some(0), 100)];
-        let mut strip = TimelineStrip { events, cursor_index: None };
+        let events = vec![
+            make_timeline_event(1, "RunAccepted", None, 0),
+            make_timeline_event(2, "StepStarted", Some(0), 100),
+        ];
+        let mut strip = TimelineStrip {
+            events,
+            cursor_index: None,
+        };
         strip.set_cursor(999);
         assert_eq!(strip.cursor(), Some(1));
     }
@@ -422,7 +536,10 @@ mod tests {
     #[test]
     fn set_cursor_to_zero_on_single_event() {
         let events = vec![make_timeline_event(1, "RunAccepted", None, 0)];
-        let mut strip = TimelineStrip { events, cursor_index: None };
+        let mut strip = TimelineStrip {
+            events,
+            cursor_index: None,
+        };
         strip.set_cursor(0);
         assert_eq!(strip.cursor(), Some(0));
     }
@@ -430,15 +547,26 @@ mod tests {
     // -- filter_by_step --
     #[test]
     fn filter_by_step_returns_matching_indices() {
-        let events = vec![make_timeline_event(1, "RunAccepted", None, 0), make_timeline_event(2, "StepStarted", Some(0), 100), make_timeline_event(3, "StepStarted", Some(1), 200), make_timeline_event(4, "StepSucceeded", Some(0), 300)];
-        let strip = TimelineStrip { events, cursor_index: None };
+        let events = vec![
+            make_timeline_event(1, "RunAccepted", None, 0),
+            make_timeline_event(2, "StepStarted", Some(0), 100),
+            make_timeline_event(3, "StepStarted", Some(1), 200),
+            make_timeline_event(4, "StepSucceeded", Some(0), 300),
+        ];
+        let strip = TimelineStrip {
+            events,
+            cursor_index: None,
+        };
         assert_eq!(strip.filter_by_step(0), vec![1, 3]);
     }
 
     #[test]
     fn filter_by_step_no_match_returns_empty() {
         let events = vec![make_timeline_event(1, "RunAccepted", None, 0)];
-        let strip = TimelineStrip { events, cursor_index: None };
+        let strip = TimelineStrip {
+            events,
+            cursor_index: None,
+        };
         assert!(strip.filter_by_step(99).is_empty());
     }
 
@@ -451,22 +579,39 @@ mod tests {
     // -- filter_by_kind --
     #[test]
     fn filter_by_kind_returns_matching_prefix() {
-        let events = vec![make_timeline_event(1, "RunAccepted", None, 0), make_timeline_event(2, "ActionScheduled", Some(0), 100), make_timeline_event(3, "ActionCompleted", Some(0), 200), make_timeline_event(4, "ActionFailed", Some(1), 300)];
-        let strip = TimelineStrip { events, cursor_index: None };
+        let events = vec![
+            make_timeline_event(1, "RunAccepted", None, 0),
+            make_timeline_event(2, "ActionScheduled", Some(0), 100),
+            make_timeline_event(3, "ActionCompleted", Some(0), 200),
+            make_timeline_event(4, "ActionFailed", Some(1), 300),
+        ];
+        let strip = TimelineStrip {
+            events,
+            cursor_index: None,
+        };
         assert_eq!(strip.filter_by_kind("Action"), vec![1, 2, 3]);
     }
 
     #[test]
     fn filter_by_kind_exact_match() {
-        let events = vec![make_timeline_event(1, "RunAccepted", None, 0), make_timeline_event(2, "RunFailed", None, 100)];
-        let strip = TimelineStrip { events, cursor_index: None };
+        let events = vec![
+            make_timeline_event(1, "RunAccepted", None, 0),
+            make_timeline_event(2, "RunFailed", None, 100),
+        ];
+        let strip = TimelineStrip {
+            events,
+            cursor_index: None,
+        };
         assert_eq!(strip.filter_by_kind("RunFailed"), vec![1]);
     }
 
     #[test]
     fn filter_by_kind_no_match_returns_empty() {
         let events = vec![make_timeline_event(1, "RunAccepted", None, 0)];
-        let strip = TimelineStrip { events, cursor_index: None };
+        let strip = TimelineStrip {
+            events,
+            cursor_index: None,
+        };
         assert!(strip.filter_by_kind("NoSuchKind").is_empty());
     }
 
@@ -479,29 +624,54 @@ mod tests {
     // -- jump_to_failure --
     #[test]
     fn jump_to_failure_finds_action_failed() {
-        let events = vec![make_timeline_event(1, "RunAccepted", None, 0), make_timeline_event(2, "ActionFailed", Some(0), 100)];
-        let strip = TimelineStrip { events, cursor_index: None };
+        let events = vec![
+            make_timeline_event(1, "RunAccepted", None, 0),
+            make_timeline_event(2, "ActionFailed", Some(0), 100),
+        ];
+        let strip = TimelineStrip {
+            events,
+            cursor_index: None,
+        };
         assert_eq!(strip.jump_to_failure(), Some(1));
     }
 
     #[test]
     fn jump_to_failure_finds_run_failed() {
-        let events = vec![make_timeline_event(1, "RunAccepted", None, 0), make_timeline_event(2, "RunFailed", None, 100)];
-        let strip = TimelineStrip { events, cursor_index: None };
+        let events = vec![
+            make_timeline_event(1, "RunAccepted", None, 0),
+            make_timeline_event(2, "RunFailed", None, 100),
+        ];
+        let strip = TimelineStrip {
+            events,
+            cursor_index: None,
+        };
         assert_eq!(strip.jump_to_failure(), Some(1));
     }
 
     #[test]
     fn jump_to_failure_returns_first_failure() {
-        let events = vec![make_timeline_event(1, "RunAccepted", None, 0), make_timeline_event(2, "ActionFailed", Some(0), 100), make_timeline_event(3, "RunFailed", None, 200)];
-        let strip = TimelineStrip { events, cursor_index: None };
+        let events = vec![
+            make_timeline_event(1, "RunAccepted", None, 0),
+            make_timeline_event(2, "ActionFailed", Some(0), 100),
+            make_timeline_event(3, "RunFailed", None, 200),
+        ];
+        let strip = TimelineStrip {
+            events,
+            cursor_index: None,
+        };
         assert_eq!(strip.jump_to_failure(), Some(1));
     }
 
     #[test]
     fn jump_to_failure_returns_none_when_no_failures() {
-        let events = vec![make_timeline_event(1, "RunAccepted", None, 0), make_timeline_event(2, "RunFinished", None, 100)];
-        let strip = TimelineStrip { events, cursor_index: None };
+        let events = vec![
+            make_timeline_event(1, "RunAccepted", None, 0),
+            make_timeline_event(2, "RunFinished", None, 100),
+        ];
+        let strip = TimelineStrip {
+            events,
+            cursor_index: None,
+        };
         assert_eq!(strip.jump_to_failure(), None);
     }
 
@@ -514,16 +684,29 @@ mod tests {
     // -- jump_to_action --
     #[test]
     fn jump_to_action_finds_scheduled_for_step() {
-        let events = vec![make_timeline_event(1, "RunAccepted", None, 0), make_timeline_event(2, "ActionScheduled", Some(3), 100), make_timeline_event(3, "ActionScheduled", Some(5), 200)];
-        let strip = TimelineStrip { events, cursor_index: None };
+        let events = vec![
+            make_timeline_event(1, "RunAccepted", None, 0),
+            make_timeline_event(2, "ActionScheduled", Some(3), 100),
+            make_timeline_event(3, "ActionScheduled", Some(5), 200),
+        ];
+        let strip = TimelineStrip {
+            events,
+            cursor_index: None,
+        };
         assert_eq!(strip.jump_to_action(3), Some(1));
         assert_eq!(strip.jump_to_action(5), Some(2));
     }
 
     #[test]
     fn jump_to_action_returns_none_for_wrong_step() {
-        let events = vec![make_timeline_event(1, "RunAccepted", None, 0), make_timeline_event(2, "ActionScheduled", Some(3), 100)];
-        let strip = TimelineStrip { events, cursor_index: None };
+        let events = vec![
+            make_timeline_event(1, "RunAccepted", None, 0),
+            make_timeline_event(2, "ActionScheduled", Some(3), 100),
+        ];
+        let strip = TimelineStrip {
+            events,
+            cursor_index: None,
+        };
         assert_eq!(strip.jump_to_action(99), None);
     }
 
@@ -535,41 +718,74 @@ mod tests {
 
     // -- event_color --
     #[test]
-    fn event_color_run_accepted_is_cyan() { assert_eq!(TimelineStrip::event_color("RunAccepted"), NEON_CYAN); }
+    fn event_color_run_accepted_is_cyan() {
+        assert_eq!(TimelineStrip::event_color("RunAccepted"), NEON_CYAN);
+    }
     #[test]
-    fn event_color_step_started_is_cyan() { assert_eq!(TimelineStrip::event_color("StepStarted"), NEON_CYAN); }
+    fn event_color_step_started_is_cyan() {
+        assert_eq!(TimelineStrip::event_color("StepStarted"), NEON_CYAN);
+    }
     #[test]
-    fn event_color_ask_answered_is_cyan() { assert_eq!(TimelineStrip::event_color("AskAnswered"), NEON_CYAN); }
+    fn event_color_ask_answered_is_cyan() {
+        assert_eq!(TimelineStrip::event_color("AskAnswered"), NEON_CYAN);
+    }
     #[test]
-    fn event_color_step_succeeded_is_green() { assert_eq!(TimelineStrip::event_color("StepSucceeded"), NEON_GREEN); }
+    fn event_color_step_succeeded_is_green() {
+        assert_eq!(TimelineStrip::event_color("StepSucceeded"), NEON_GREEN);
+    }
     #[test]
-    fn event_color_action_completed_is_green() { assert_eq!(TimelineStrip::event_color("ActionCompleted"), NEON_GREEN); }
+    fn event_color_action_completed_is_green() {
+        assert_eq!(TimelineStrip::event_color("ActionCompleted"), NEON_GREEN);
+    }
     #[test]
-    fn event_color_action_failed_is_red() { assert_eq!(TimelineStrip::event_color("ActionFailed"), NEON_RED); }
+    fn event_color_action_failed_is_red() {
+        assert_eq!(TimelineStrip::event_color("ActionFailed"), NEON_RED);
+    }
     #[test]
-    fn event_color_run_failed_is_red() { assert_eq!(TimelineStrip::event_color("RunFailed"), NEON_RED); }
+    fn event_color_run_failed_is_red() {
+        assert_eq!(TimelineStrip::event_color("RunFailed"), NEON_RED);
+    }
     #[test]
-    fn event_color_slot_written_is_teal() { assert_eq!(TimelineStrip::event_color("SlotWritten"), NEON_TEAL); }
+    fn event_color_slot_written_is_teal() {
+        assert_eq!(TimelineStrip::event_color("SlotWritten"), NEON_TEAL);
+    }
     #[test]
-    fn event_color_run_finished_is_teal() { assert_eq!(TimelineStrip::event_color("RunFinished"), NEON_TEAL); }
+    fn event_color_run_finished_is_teal() {
+        assert_eq!(TimelineStrip::event_color("RunFinished"), NEON_TEAL);
+    }
     #[test]
-    fn event_color_action_scheduled_is_orange() { assert_eq!(TimelineStrip::event_color("ActionScheduled"), NEON_ORANGE); }
+    fn event_color_action_scheduled_is_orange() {
+        assert_eq!(TimelineStrip::event_color("ActionScheduled"), NEON_ORANGE);
+    }
     #[test]
-    fn event_color_retry_scheduled_is_orange() { assert_eq!(TimelineStrip::event_color("RetryScheduled"), NEON_ORANGE); }
+    fn event_color_retry_scheduled_is_orange() {
+        assert_eq!(TimelineStrip::event_color("RetryScheduled"), NEON_ORANGE);
+    }
     #[test]
-    fn event_color_wait_scheduled_is_blue() { assert_eq!(TimelineStrip::event_color("WaitScheduled"), NEON_BLUE); }
+    fn event_color_wait_scheduled_is_blue() {
+        assert_eq!(TimelineStrip::event_color("WaitScheduled"), NEON_BLUE);
+    }
     #[test]
-    fn event_color_ask_scheduled_is_yellow() { assert_eq!(TimelineStrip::event_color("AskScheduled"), NEON_YELLOW); }
+    fn event_color_ask_scheduled_is_yellow() {
+        assert_eq!(TimelineStrip::event_color("AskScheduled"), NEON_YELLOW);
+    }
     #[test]
-    fn event_color_run_cancelled_is_dim() { assert_eq!(TimelineStrip::event_color("RunCancelled"), DIM); }
+    fn event_color_run_cancelled_is_dim() {
+        assert_eq!(TimelineStrip::event_color("RunCancelled"), DIM);
+    }
     #[test]
-    fn event_color_unknown_is_magenta() { assert_eq!(TimelineStrip::event_color("UnknownEvent"), NEON_MAGENTA); }
+    fn event_color_unknown_is_magenta() {
+        assert_eq!(TimelineStrip::event_color("UnknownEvent"), NEON_MAGENTA);
+    }
 
     // -- Boundary and multi-failure --
     #[test]
     fn boundary_single_event_strip() {
         let events = vec![make_timeline_event(1, "RunAccepted", None, 0)];
-        let strip = TimelineStrip { events, cursor_index: None };
+        let strip = TimelineStrip {
+            events,
+            cursor_index: None,
+        };
         assert_eq!(strip.events().len(), 1);
         let mut s = strip.clone();
         s.set_cursor(0);
@@ -587,21 +803,43 @@ mod tests {
             make_timeline_event(4, "ActionFailed", Some(2), 300),
             make_timeline_event(5, "RunFailed", None, 400),
         ];
-        let strip = TimelineStrip { events, cursor_index: None };
+        let strip = TimelineStrip {
+            events,
+            cursor_index: None,
+        };
         assert_eq!(strip.jump_to_failure(), Some(1));
     }
 
     #[test]
     fn full_journal_round_trip() {
         let journal = vec![
-            je_run_accepted(1), je_step_started(2, 0), je_action_scheduled(3, 0),
-            je_action_completed(4, 0), je_slot_written(5), je_step_succeeded(6, 0),
-            je_wait_scheduled(7, 1), je_ask_scheduled(8, 2), je_ask_answered(9, 2),
-            je_retry_scheduled(10, 0), je_run_finished(11),
+            je_run_accepted(1),
+            je_step_started(2, 0),
+            je_action_scheduled(3, 0),
+            je_action_completed(4, 0),
+            je_slot_written(5),
+            je_step_succeeded(6, 0),
+            je_wait_scheduled(7, 1),
+            je_ask_scheduled(8, 2),
+            je_ask_answered(9, 2),
+            je_retry_scheduled(10, 0),
+            je_run_finished(11),
         ];
         let strip = TimelineStrip::from_journal_events(&journal);
         assert_eq!(strip.events().len(), 11);
-        let expected = ["RunAccepted", "StepStarted", "ActionScheduled", "ActionCompleted", "SlotWritten", "StepSucceeded", "WaitScheduled", "AskScheduled", "AskAnswered", "RetryScheduled", "RunFinished"];
+        let expected = [
+            "RunAccepted",
+            "StepStarted",
+            "ActionScheduled",
+            "ActionCompleted",
+            "SlotWritten",
+            "StepSucceeded",
+            "WaitScheduled",
+            "AskScheduled",
+            "AskAnswered",
+            "RetryScheduled",
+            "RunFinished",
+        ];
         for (i, exp) in expected.iter().enumerate() {
             let ev = strip.events().get(i).expect("event exists");
             assert_eq!(ev.event_kind, *exp, "mismatch at index {i}");
@@ -610,7 +848,12 @@ mod tests {
 
     #[test]
     fn from_journal_events_step_ids_preserved() {
-        let journal = vec![je_run_accepted(1), je_step_started(2, 0), je_action_scheduled(3, 5), je_step_succeeded(4, 10)];
+        let journal = vec![
+            je_run_accepted(1),
+            je_step_started(2, 0),
+            je_action_scheduled(3, 5),
+            je_step_succeeded(4, 10),
+        ];
         let strip = TimelineStrip::from_journal_events(&journal);
         assert_eq!(strip.events().get(0).and_then(|e| e.step_id), None);
         assert_eq!(strip.events().get(1).and_then(|e| e.step_id), Some(0));
@@ -622,33 +865,59 @@ mod tests {
     fn cancelled_and_failed_journal_events() {
         let journal = vec![je_run_accepted(1), je_run_cancelled(2)];
         let strip = TimelineStrip::from_journal_events(&journal);
-        assert_eq!(strip.events().get(1).map(|e| e.event_kind.as_str()), Some("RunCancelled"));
+        assert_eq!(
+            strip.events().get(1).map(|e| e.event_kind.as_str()),
+            Some("RunCancelled")
+        );
         assert_eq!(strip.events().get(1).map(|e| e.color), Some(DIM));
 
         let journal2 = vec![je_run_accepted(1), je_run_failed(2)];
         let strip2 = TimelineStrip::from_journal_events(&journal2);
-        assert_eq!(strip2.events().get(1).map(|e| e.event_kind.as_str()), Some("RunFailed"));
+        assert_eq!(
+            strip2.events().get(1).map(|e| e.event_kind.as_str()),
+            Some("RunFailed")
+        );
         assert_eq!(strip2.events().get(1).map(|e| e.color), Some(NEON_RED));
     }
 
     #[test]
     fn filter_by_kind_partial_prefix_match() {
-        let events = vec![make_timeline_event(1, "RunAccepted", None, 0), make_timeline_event(2, "RunFailed", None, 100), make_timeline_event(3, "RunFinished", None, 200), make_timeline_event(4, "RunCancelled", None, 300)];
-        let strip = TimelineStrip { events, cursor_index: None };
+        let events = vec![
+            make_timeline_event(1, "RunAccepted", None, 0),
+            make_timeline_event(2, "RunFailed", None, 100),
+            make_timeline_event(3, "RunFinished", None, 200),
+            make_timeline_event(4, "RunCancelled", None, 300),
+        ];
+        let strip = TimelineStrip {
+            events,
+            cursor_index: None,
+        };
         assert_eq!(strip.filter_by_kind("Run"), vec![0, 1, 2, 3]);
     }
 
     #[test]
     fn jump_to_action_does_not_match_action_completed() {
-        let events = vec![make_timeline_event(1, "RunAccepted", None, 0), make_timeline_event(2, "ActionCompleted", Some(0), 100)];
-        let strip = TimelineStrip { events, cursor_index: None };
+        let events = vec![
+            make_timeline_event(1, "RunAccepted", None, 0),
+            make_timeline_event(2, "ActionCompleted", Some(0), 100),
+        ];
+        let strip = TimelineStrip {
+            events,
+            cursor_index: None,
+        };
         assert_eq!(strip.jump_to_action(0), None);
     }
 
     #[test]
     fn events_returns_correct_slice() {
-        let events = vec![make_timeline_event(1, "RunAccepted", None, 0), make_timeline_event(2, "StepStarted", Some(0), 100)];
-        let strip = TimelineStrip { events, cursor_index: None };
+        let events = vec![
+            make_timeline_event(1, "RunAccepted", None, 0),
+            make_timeline_event(2, "StepStarted", Some(0), 100),
+        ];
+        let strip = TimelineStrip {
+            events,
+            cursor_index: None,
+        };
         let slice = strip.events();
         assert_eq!(slice.len(), 2);
         assert_eq!(slice.get(0).map(|e| e.seq), Some(1));
@@ -657,7 +926,11 @@ mod tests {
 
     #[test]
     fn from_journal_events_seq_numbers() {
-        let journal = vec![je_run_accepted(42), je_step_started(99, 0), je_run_failed(255)];
+        let journal = vec![
+            je_run_accepted(42),
+            je_step_started(99, 0),
+            je_run_failed(255),
+        ];
         let strip = TimelineStrip::from_journal_events(&journal);
         assert_eq!(strip.events().get(0).map(|e| e.seq), Some(42));
         assert_eq!(strip.events().get(1).map(|e| e.seq), Some(99));
@@ -693,8 +966,12 @@ mod tests {
         strip.extend_from_journal(&journal);
         assert_eq!(strip.events().len(), 6);
         let expected_kinds = [
-            "RunAccepted", "StepStarted", "ActionScheduled",
-            "ActionCompleted", "StepSucceeded", "RunFinished",
+            "RunAccepted",
+            "StepStarted",
+            "ActionScheduled",
+            "ActionCompleted",
+            "StepSucceeded",
+            "RunFinished",
         ];
         for (i, expected) in expected_kinds.iter().enumerate() {
             let ev = strip.events().get(i).expect("event exists");
@@ -715,11 +992,23 @@ mod tests {
         strip.extend_from_journal(&[je_action_scheduled(3, 0), je_action_completed(4, 0)]);
         assert_eq!(strip.events().len(), 4);
         // Original events remain intact.
-        assert_eq!(strip.events().get(0).map(|e| e.event_kind.as_str()), Some("RunAccepted"));
-        assert_eq!(strip.events().get(1).map(|e| e.event_kind.as_str()), Some("StepStarted"));
+        assert_eq!(
+            strip.events().get(0).map(|e| e.event_kind.as_str()),
+            Some("RunAccepted")
+        );
+        assert_eq!(
+            strip.events().get(1).map(|e| e.event_kind.as_str()),
+            Some("StepStarted")
+        );
         // New events appended after originals.
-        assert_eq!(strip.events().get(2).map(|e| e.event_kind.as_str()), Some("ActionScheduled"));
-        assert_eq!(strip.events().get(3).map(|e| e.event_kind.as_str()), Some("ActionCompleted"));
+        assert_eq!(
+            strip.events().get(2).map(|e| e.event_kind.as_str()),
+            Some("ActionScheduled")
+        );
+        assert_eq!(
+            strip.events().get(3).map(|e| e.event_kind.as_str()),
+            Some("ActionCompleted")
+        );
     }
 
     #[test]
@@ -734,7 +1023,11 @@ mod tests {
         };
         strip.set_cursor(1);
         assert_eq!(strip.cursor(), Some(1));
-        strip.extend_from_journal(&[je_action_scheduled(3, 0), je_action_failed(4, 0), je_run_failed(5)]);
+        strip.extend_from_journal(&[
+            je_action_scheduled(3, 0),
+            je_action_failed(4, 0),
+            je_run_failed(5),
+        ]);
         // Cursor must remain at its previous position (index 1), not shift.
         assert_eq!(strip.cursor(), Some(1));
         assert_eq!(strip.events().len(), 5);
@@ -747,7 +1040,11 @@ mod tests {
         assert_eq!(strip.events().len(), 1);
         strip.extend_from_journal(&[je_step_started(2, 0), je_action_scheduled(3, 0)]);
         assert_eq!(strip.events().len(), 3);
-        strip.extend_from_journal(&[je_action_completed(4, 0), je_step_succeeded(5, 0), je_run_finished(6)]);
+        strip.extend_from_journal(&[
+            je_action_completed(4, 0),
+            je_step_succeeded(5, 0),
+            je_run_finished(6),
+        ]);
         assert_eq!(strip.events().len(), 6);
         // Verify ordering: events from each call appear in sequence.
         assert_eq!(strip.events().get(0).map(|e| e.seq), Some(1));
@@ -762,20 +1059,20 @@ mod tests {
     fn extend_from_journal_assigns_correct_colors_via_event_color() {
         let mut strip = TimelineStrip::new();
         let journal = vec![
-            je_run_accepted(1),           // RunAccepted -> NEON_CYAN
-            je_step_started(2, 0),        // StepStarted -> NEON_CYAN
-            je_step_succeeded(3, 0),      // StepSucceeded -> NEON_GREEN
-            je_action_scheduled(4, 0),    // ActionScheduled -> NEON_ORANGE
-            je_action_completed(5, 0),    // ActionCompleted -> NEON_GREEN
-            je_action_failed(6, 0),       // ActionFailed -> NEON_RED
-            je_slot_written(7),           // SlotWritten -> NEON_TEAL
-            je_wait_scheduled(8, 1),      // WaitScheduled -> NEON_BLUE
-            je_ask_scheduled(9, 2),       // AskScheduled -> NEON_YELLOW
-            je_ask_answered(10, 2),       // AskAnswered -> NEON_CYAN
-            je_retry_scheduled(11, 0),    // RetryScheduled -> NEON_ORANGE
-            je_run_cancelled(12),         // RunCancelled -> DIM
-            je_run_finished(13),          // RunFinished -> NEON_TEAL
-            je_run_failed(14),            // RunFailed -> NEON_RED
+            je_run_accepted(1),        // RunAccepted -> NEON_CYAN
+            je_step_started(2, 0),     // StepStarted -> NEON_CYAN
+            je_step_succeeded(3, 0),   // StepSucceeded -> NEON_GREEN
+            je_action_scheduled(4, 0), // ActionScheduled -> NEON_ORANGE
+            je_action_completed(5, 0), // ActionCompleted -> NEON_GREEN
+            je_action_failed(6, 0),    // ActionFailed -> NEON_RED
+            je_slot_written(7),        // SlotWritten -> NEON_TEAL
+            je_wait_scheduled(8, 1),   // WaitScheduled -> NEON_BLUE
+            je_ask_scheduled(9, 2),    // AskScheduled -> NEON_YELLOW
+            je_ask_answered(10, 2),    // AskAnswered -> NEON_CYAN
+            je_retry_scheduled(11, 0), // RetryScheduled -> NEON_ORANGE
+            je_run_cancelled(12),      // RunCancelled -> DIM
+            je_run_finished(13),       // RunFinished -> NEON_TEAL
+            je_run_failed(14),         // RunFailed -> NEON_RED
         ];
         strip.extend_from_journal(&journal);
         let expected_colors: &[([f32; 4], &str)] = &[
@@ -796,9 +1093,16 @@ mod tests {
         ];
         for (i, (expected_color, kind)) in expected_colors.iter().enumerate() {
             let ev = strip.events().get(i).expect("event exists");
-            assert_eq!(ev.color, *expected_color, "color mismatch at index {i} ({kind})");
+            assert_eq!(
+                ev.color, *expected_color,
+                "color mismatch at index {i} ({kind})"
+            );
             // Also verify it matches what event_color would return.
-            assert_eq!(ev.color, TimelineStrip::event_color(*kind), "event_color mismatch at index {i} ({kind})");
+            assert_eq!(
+                ev.color,
+                TimelineStrip::event_color(*kind),
+                "event_color mismatch at index {i} ({kind})"
+            );
         }
     }
 
@@ -806,26 +1110,37 @@ mod tests {
     fn extend_from_journal_step_ids_extracted_correctly() {
         let mut strip = TimelineStrip::new();
         let journal = vec![
-            je_run_accepted(1),           // no step
-            je_step_started(2, 0),        // step 0
-            je_step_succeeded(3, 0),      // step 0
-            je_action_scheduled(4, 5),    // step 5
-            je_action_completed(5, 5),    // step 5
-            je_action_failed(6, 10),      // step 10
-            je_slot_written(7),           // no step
-            je_wait_scheduled(8, 3),      // step 3
-            je_ask_scheduled(9, 7),       // step 7
-            je_ask_answered(10, 7),       // step 7
-            je_retry_scheduled(11, 0),    // step 0
-            je_run_cancelled(12),         // no step
-            je_run_finished(13),          // no step
-            je_run_failed(14),            // no step
+            je_run_accepted(1),        // no step
+            je_step_started(2, 0),     // step 0
+            je_step_succeeded(3, 0),   // step 0
+            je_action_scheduled(4, 5), // step 5
+            je_action_completed(5, 5), // step 5
+            je_action_failed(6, 10),   // step 10
+            je_slot_written(7),        // no step
+            je_wait_scheduled(8, 3),   // step 3
+            je_ask_scheduled(9, 7),    // step 7
+            je_ask_answered(10, 7),    // step 7
+            je_retry_scheduled(11, 0), // step 0
+            je_run_cancelled(12),      // no step
+            je_run_finished(13),       // no step
+            je_run_failed(14),         // no step
         ];
         strip.extend_from_journal(&journal);
         let expected_steps: &[Option<u16>] = &[
-            None, Some(0), Some(0), Some(5), Some(5),
-            Some(10), None, Some(3), Some(7), Some(7),
-            Some(0), None, None, None,
+            None,
+            Some(0),
+            Some(0),
+            Some(5),
+            Some(5),
+            Some(10),
+            None,
+            Some(3),
+            Some(7),
+            Some(7),
+            Some(0),
+            None,
+            None,
+            None,
         ];
         for (i, expected_step) in expected_steps.iter().enumerate() {
             let ev = strip.events().get(i).expect("event exists");
@@ -997,7 +1312,10 @@ mod tests {
             assert_eq!(chip.color, *exp_color, "color mismatch at {i}");
             assert_eq!(chip.seq, *exp_seq, "seq mismatch at {i}");
             assert_eq!(chip.step, *exp_step, "step mismatch at {i}");
-            assert!(!chip.is_cursor, "no cursor set, but chip {i} says is_cursor");
+            assert!(
+                !chip.is_cursor,
+                "no cursor set, but chip {i} says is_cursor"
+            );
         }
     }
 
@@ -1066,11 +1384,7 @@ mod tests {
         strip.extend_from_journal(&[je_run_accepted(1), je_step_started(2, 0)]);
         // Re-send same events.
         strip.extend_from_journal(&[je_run_accepted(1), je_step_started(2, 0)]);
-        assert_eq!(
-            strip.events().len(),
-            2,
-            "all duplicates must be dropped"
-        );
+        assert_eq!(strip.events().len(), 2, "all duplicates must be dropped");
     }
 
     #[test]
@@ -1185,7 +1499,11 @@ mod tests {
     /// and temporal ordering validation.
     #[test]
     fn blackhat_timestamp_always_zero_prevents_temporal_analysis() {
-        let journal = vec![je_run_accepted(1), je_step_started(2, 0), je_run_finished(3)];
+        let journal = vec![
+            je_run_accepted(1),
+            je_step_started(2, 0),
+            je_run_finished(3),
+        ];
         let strip = TimelineStrip::from_journal_events(&journal);
         for (i, ev) in strip.events().iter().enumerate() {
             assert_eq!(
@@ -1211,7 +1529,7 @@ mod tests {
 
         // Now use extend_from_timeline_events to append events out of order.
         let out_of_order = vec![
-            make_timeline_event(5, "RunAccepted", None, 0),  // seq < existing
+            make_timeline_event(5, "RunAccepted", None, 0), // seq < existing
             make_timeline_event(20, "StepStarted", Some(0), 0), // between existing
         ];
         strip.extend_from_timeline_events(&out_of_order);
@@ -1266,7 +1584,10 @@ mod tests {
             make_timeline_event(1, "RunAccepted", None, 0),
             make_timeline_event(2, "RunCancelled", None, 0),
         ];
-        let strip = TimelineStrip { events, cursor_index: None };
+        let strip = TimelineStrip {
+            events,
+            cursor_index: None,
+        };
         // "Run" matches both RunAccepted and RunCancelled.
         let run_indices = strip.filter_by_kind("Run");
         assert_eq!(run_indices.len(), 2);
@@ -1313,7 +1634,10 @@ mod tests {
     #[test]
     fn blackhat_set_cursor_usize_max_clamps_correctly() {
         let events = vec![make_timeline_event(1, "RunAccepted", None, 0)];
-        let mut strip = TimelineStrip { events, cursor_index: None };
+        let mut strip = TimelineStrip {
+            events,
+            cursor_index: None,
+        };
         strip.set_cursor(usize::MAX);
         assert_eq!(
             strip.cursor(),

@@ -56,16 +56,16 @@ impl NodeOverlayState {
     #[must_use]
     pub fn color(self) -> [f32; 4] {
         match self {
-            Self::Succeeded => colors::neon::GREEN,        // #39ff14
-            Self::Waiting => colors::neon::BLUE,            // #2d6bff
-            Self::Retrying => colors::neon::YELLOW,         // #ffe600 (amber)
-            Self::Failed => colors::neon::RED,              // #ff073a
-            Self::NotExecuted => colors::text::DIM,         // #555577 (grey)
-            Self::SecretTainted => colors::neon::MAGENTA,   // #ff00ff (purple)
-            Self::VerificationSafe => colors::neon::CYAN,   // #00f5ff (teal)
-            Self::Running => colors::neon::CYAN,            // #00f5ff (teal/in-progress)
-            Self::Skipped => colors::text::DIM,             // #555577 (grey)
-            Self::Cancelled => colors::text::DIM,           // #555577 (grey)
+            Self::Succeeded => colors::neon::GREEN,       // #39ff14
+            Self::Waiting => colors::neon::BLUE,          // #2d6bff
+            Self::Retrying => colors::neon::YELLOW,       // #ffe600 (amber)
+            Self::Failed => colors::neon::RED,            // #ff073a
+            Self::NotExecuted => colors::text::DIM,       // #555577 (grey)
+            Self::SecretTainted => colors::neon::MAGENTA, // #ff00ff (purple)
+            Self::VerificationSafe => colors::neon::CYAN, // #00f5ff (teal)
+            Self::Running => colors::neon::CYAN,          // #00f5ff (teal/in-progress)
+            Self::Skipped => colors::text::DIM,           // #555577 (grey)
+            Self::Cancelled => colors::text::DIM,         // #555577 (grey)
         }
     }
 
@@ -393,9 +393,7 @@ fn build_badges(
     }
 
     // Add a taint badge if the node is secret-tainted.
-    if tainted_steps.contains(&step)
-        || *state == NodeOverlayState::SecretTainted
-    {
+    if tainted_steps.contains(&step) || *state == NodeOverlayState::SecretTainted {
         // Avoid duplicate "S" badge if graph_renderer already added one.
         let has_secret_badge = badges.iter().any(|b| b.label == "S");
         if !has_secret_badge {
@@ -435,8 +433,8 @@ fn build_badges(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use vb_core::ids::{ActionId, RunId, SlotIdx};
     use vb_core::ids::WorkflowDigest;
+    use vb_core::ids::{ActionId, RunId, SlotIdx};
     use vb_storage::EventSeq;
     use vb_storage::JournalEvent;
 
@@ -497,9 +495,7 @@ mod tests {
         }
     }
 
-    fn make_kinds(
-        pairs: Vec<(StepIdx, CompiledNodeKind)>,
-    ) -> HashMap<StepIdx, CompiledNodeKind> {
+    fn make_kinds(pairs: Vec<(StepIdx, CompiledNodeKind)>) -> HashMap<StepIdx, CompiledNodeKind> {
         pairs.into_iter().collect()
     }
 
@@ -574,12 +570,18 @@ mod tests {
 
     #[test]
     fn secret_tainted_colour_is_purple() {
-        assert_eq!(NodeOverlayState::SecretTainted.color(), colors::neon::MAGENTA);
+        assert_eq!(
+            NodeOverlayState::SecretTainted.color(),
+            colors::neon::MAGENTA
+        );
     }
 
     #[test]
     fn verification_safe_colour_is_teal() {
-        assert_eq!(NodeOverlayState::VerificationSafe.color(), colors::neon::CYAN);
+        assert_eq!(
+            NodeOverlayState::VerificationSafe.color(),
+            colors::neon::CYAN
+        );
     }
 
     #[test]
@@ -708,8 +710,7 @@ mod tests {
     fn overlay_empty_snapshot_and_no_kinds_yields_empty() {
         let state = ReplayState::initial();
         let kinds = HashMap::new();
-        let overlay =
-            GraphOverlay::compute(&state, &kinds, None, &OverlayConfig::default());
+        let overlay = GraphOverlay::compute(&state, &kinds, None, &OverlayConfig::default());
         assert!(overlay.is_empty());
     }
 
@@ -718,8 +719,7 @@ mod tests {
         let step = StepIdx::new(0);
         let state = ReplayState::initial();
         let kinds = make_kinds(vec![(step, nop_kind())]);
-        let overlay =
-            GraphOverlay::compute(&state, &kinds, None, &OverlayConfig::default());
+        let overlay = GraphOverlay::compute(&state, &kinds, None, &OverlayConfig::default());
 
         let node = overlay.get(step);
         assert!(node.is_some());
@@ -736,8 +736,7 @@ mod tests {
             make_step_succeeded(run, 3, step, SlotIdx::new(0)),
         ]);
         let kinds = make_kinds(vec![(step, nop_kind())]);
-        let overlay =
-            GraphOverlay::compute(&state, &kinds, None, &OverlayConfig::default());
+        let overlay = GraphOverlay::compute(&state, &kinds, None, &OverlayConfig::default());
 
         let node = overlay.get(step);
         assert!(node.is_some());
@@ -754,8 +753,7 @@ mod tests {
             make_wait_scheduled(run, 2, step),
         ]);
         let kinds = make_kinds(vec![(step, nop_kind())]);
-        let overlay =
-            GraphOverlay::compute(&state, &kinds, None, &OverlayConfig::default());
+        let overlay = GraphOverlay::compute(&state, &kinds, None, &OverlayConfig::default());
 
         let node = overlay.get(step);
         assert!(node.is_some());
@@ -766,17 +764,13 @@ mod tests {
     #[test]
     fn overlay_with_failed_step_is_red() {
         let run = RunId::new(1);
-        let state = build_state(vec![
-            make_run_accepted(run, 1),
-            make_run_failed(run, 2),
-        ]);
+        let state = build_state(vec![make_run_accepted(run, 1), make_run_failed(run, 2)]);
         // The run-failed event increments steps_failed but does not insert a
         // step_states entry, so we add one manually via kinds to ensure it
         // appears in the overlay.
         let step = StepIdx::new(0);
         let kinds = make_kinds(vec![(step, nop_kind())]);
-        let overlay =
-            GraphOverlay::compute(&state, &kinds, None, &OverlayConfig::default());
+        let overlay = GraphOverlay::compute(&state, &kinds, None, &OverlayConfig::default());
 
         // Without a step_states entry the step defaults to Pending -> NotExecuted.
         let node = overlay.get(step);
@@ -793,8 +787,7 @@ mod tests {
             make_step_started(run, 2, step),
         ]);
         let kinds = make_kinds(vec![(step, retry_check_kind())]);
-        let overlay =
-            GraphOverlay::compute(&state, &kinds, None, &OverlayConfig::default());
+        let overlay = GraphOverlay::compute(&state, &kinds, None, &OverlayConfig::default());
 
         let node = overlay.get(step);
         assert!(node.is_some());
@@ -831,8 +824,7 @@ mod tests {
             make_step_started(run, 2, step),
         ]);
         let kinds = make_kinds(vec![(step, repeat_attempt_kind())]);
-        let overlay =
-            GraphOverlay::compute(&state, &kinds, None, &OverlayConfig::default());
+        let overlay = GraphOverlay::compute(&state, &kinds, None, &OverlayConfig::default());
 
         let node = overlay.get(step);
         assert!(node.is_some());
@@ -852,8 +844,7 @@ mod tests {
         state.taint.insert(SlotIdx::new(0), String::from("Secret"));
 
         let kinds = make_kinds(vec![(step, nop_kind())]);
-        let overlay =
-            GraphOverlay::compute(&state, &kinds, None, &OverlayConfig::default());
+        let overlay = GraphOverlay::compute(&state, &kinds, None, &OverlayConfig::default());
 
         let node = overlay.get(step);
         assert!(node.is_some());
@@ -917,7 +908,10 @@ mod tests {
 
         let node = overlay.get(step);
         assert!(node.is_some());
-        assert_eq!(node.map(|n| n.state), Some(NodeOverlayState::VerificationSafe));
+        assert_eq!(
+            node.map(|n| n.state),
+            Some(NodeOverlayState::VerificationSafe)
+        );
         assert_eq!(node.map(|n| n.glow_color), Some(colors::neon::CYAN));
     }
 
@@ -977,8 +971,7 @@ mod tests {
             ..OverlayConfig::default()
         };
 
-        let overlay =
-            GraphOverlay::compute(&state, &kinds, None, &config);
+        let overlay = GraphOverlay::compute(&state, &kinds, None, &config);
 
         let node = overlay.get(step);
         assert!(node.is_some());
@@ -996,8 +989,7 @@ mod tests {
             make_step_started(run, 2, step),
         ]);
         let kinds = make_kinds(vec![(step, do_kind())]);
-        let overlay =
-            GraphOverlay::compute(&state, &kinds, None, &OverlayConfig::default());
+        let overlay = GraphOverlay::compute(&state, &kinds, None, &OverlayConfig::default());
 
         let node = overlay.get(step);
         assert!(node.is_some());
@@ -1017,8 +1009,7 @@ mod tests {
             make_step_started(run, 2, step),
         ]);
         let kinds = make_kinds(vec![(step, retry_check_kind())]);
-        let overlay =
-            GraphOverlay::compute(&state, &kinds, None, &OverlayConfig::default());
+        let overlay = GraphOverlay::compute(&state, &kinds, None, &OverlayConfig::default());
 
         let node = overlay.get(step);
         assert!(node.is_some());
@@ -1074,8 +1065,7 @@ mod tests {
             make_step_started(run, 2, step),
         ]);
         let kinds = make_kinds(vec![(step, nop_kind())]);
-        let overlay =
-            GraphOverlay::compute(&state, &kinds, None, &OverlayConfig::default());
+        let overlay = GraphOverlay::compute(&state, &kinds, None, &OverlayConfig::default());
 
         let node = overlay.get(step);
         assert!(node.is_some());
@@ -1129,7 +1119,10 @@ mod tests {
         // step0: Succeeded -> VerificationSafe (finish is safe)
         let n0 = overlay.get(step0);
         assert!(n0.is_some());
-        assert_eq!(n0.map(|n| n.state), Some(NodeOverlayState::VerificationSafe));
+        assert_eq!(
+            n0.map(|n| n.state),
+            Some(NodeOverlayState::VerificationSafe)
+        );
 
         // step1: Running
         let n1 = overlay.get(step1);
@@ -1153,8 +1146,7 @@ mod tests {
         ]);
 
         let kinds = make_kinds(vec![(step, nop_kind())]);
-        let overlay =
-            GraphOverlay::compute(&state, &kinds, None, &OverlayConfig::default());
+        let overlay = GraphOverlay::compute(&state, &kinds, None, &OverlayConfig::default());
 
         // The step should still be Running (the cancellation event does not
         // change per-step state in ReplayState).
@@ -1178,8 +1170,7 @@ mod tests {
         ]);
 
         let kinds = make_kinds(vec![(step0, nop_kind()), (step1, nop_kind())]);
-        let overlay =
-            GraphOverlay::compute(&state, &kinds, None, &OverlayConfig::default());
+        let overlay = GraphOverlay::compute(&state, &kinds, None, &OverlayConfig::default());
 
         assert_eq!(overlay.len(), 2);
         assert!(!overlay.is_empty());
@@ -1193,8 +1184,7 @@ mod tests {
     fn overlay_get_missing_step_returns_none() {
         let state = ReplayState::initial();
         let kinds = HashMap::new();
-        let overlay =
-            GraphOverlay::compute(&state, &kinds, None, &OverlayConfig::default());
+        let overlay = GraphOverlay::compute(&state, &kinds, None, &OverlayConfig::default());
 
         assert!(overlay.get(StepIdx::new(99)).is_none());
     }

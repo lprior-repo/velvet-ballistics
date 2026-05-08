@@ -12,13 +12,14 @@
 //! lint gates as first-party code and preserves identical observable semantics.
 //!
 //! Generated Rust is a deliberately supported subset of the final workflow IR.
-//! The current subset accepts scalar constants, slot copies, expression math and
-//! boolean comparisons, action dispatch, waits, asks, jumps, choices, handlers,
-//! and finish nodes. Empty/root accessors are emitted as checked root-slot reads.
-//! Collection/object construction, fan-out/fan-in primitives,
-//! retry/repeat/collect/reduce internals, collection expression helpers, and
-//! nested accessor traversal are rejected by [`validate_generated_subset`] before
-//! [`emit_rust_workflow`] writes any generated source.
+//! The current subset accepts scalar constants, slot copies, generated list
+//! payloads, bounded for-each loops, expression math and boolean comparisons,
+//! action dispatch, waits, asks, jumps, choices, handlers, and finish nodes.
+//! Empty/root accessors are emitted as checked root-slot reads. Fan-in/fan-out
+//! families beyond ForEach, retry/repeat/collect/reduce internals, collection
+//! expression helpers, and nested accessor traversal are rejected by
+//! [`validate_generated_subset`] before [`emit_rust_workflow`] writes any
+//! generated source.
 
 use std::fmt::Write;
 use std::process::Command;
@@ -84,6 +85,7 @@ pub fn emit_rust_workflow(workflow: &CompiledWorkflow) -> CodegenResult<String> 
     write_header(&mut out)?;
     emit_ids(&mut out, workflow)?;
     emit_resource_contract(&mut out, workflow.resource_contract())?;
+    emit_list_store_contract(&mut out, workflow)?;
     emit_constants(&mut out, workflow)?;
     emit_drive_function(&mut out, workflow)?;
     for step_idx in 0..workflow.node_count() {
@@ -172,9 +174,9 @@ fn validate_generated_accessors(workflow: &CompiledWorkflow) -> CodegenResult<()
 
 fn unsupported_node_feature(kind: &CompiledNodeKind) -> Option<&'static str> {
     match kind {
-        CompiledNodeKind::ForEachStart { .. } => Some("ForEachStart"),
-        CompiledNodeKind::ForEachNext { .. } => Some("ForEachNext"),
-        CompiledNodeKind::ForEachJoin { .. } => Some("ForEachJoin"),
+        CompiledNodeKind::ForEachStart { .. }
+        | CompiledNodeKind::ForEachNext { .. }
+        | CompiledNodeKind::ForEachJoin { .. } => None,
         CompiledNodeKind::TogetherStart { .. } => Some("TogetherStart"),
         CompiledNodeKind::TogetherBranch { .. } => Some("TogetherBranch"),
         CompiledNodeKind::TogetherJoin { .. } => Some("TogetherJoin"),
@@ -272,12 +274,13 @@ pub fn emit_drive_function(out: &mut String, workflow: &CompiledWorkflow) -> Cod
     )
     .map_err(fmt_err)?;
     writeln!(out, "    let mut pc: u16 = {};", workflow.entry().get()).map_err(fmt_err)?;
+    writeln!(out, "    let mut list_store = ListStore::new();").map_err(fmt_err)?;
     writeln!(out, "    loop {{").map_err(fmt_err)?;
     writeln!(out, "        let outcome = match pc {{").map_err(fmt_err)?;
     for step_idx in 0..workflow.node_count() {
         writeln!(
             out,
-            "            {step_idx} => step_{step_idx}(&mut slots)?,"
+            "            {step_idx} => step_{step_idx}(&mut slots, &mut list_store)?,"
         )
         .map_err(fmt_err)?;
     }
@@ -310,10 +313,11 @@ pub fn emit_step_function(
     let step_id = node.id.get();
     writeln!(
         out,
-        "fn step_{step_id}(slots: &mut [Option<SlotValue>; WORKFLOW_SLOT_COUNT]) -> Result<StepOutcome, DriveError> {{"
+        "fn step_{step_id}(slots: &mut [Option<SlotValue>; WORKFLOW_SLOT_COUNT], list_store: &mut ListStore) -> Result<StepOutcome, DriveError> {{"
     )
     .map_err(fmt_err)?;
 
+    writeln!(out, "    let _ = &list_store;").map_err(fmt_err)?;
     emit_step_body(out, node)?;
 
     writeln!(out, "}}").map_err(fmt_err)?;
@@ -335,6 +339,9 @@ fn emit_step_body(out: &mut String, node: &CompiledNode) -> CodegenResult<()> {
         CompiledNodeKind::BuildObject { .. } | CompiledNodeKind::BuildList { .. } => {
             emit_construct_step_body(out, node)
         }
+        CompiledNodeKind::ForEachStart { .. }
+        | CompiledNodeKind::ForEachNext { .. }
+        | CompiledNodeKind::ForEachJoin { .. } => emit_for_each_step_body(out, node),
         CompiledNodeKind::Do { .. }
         | CompiledNodeKind::WaitUntil { .. }
         | CompiledNodeKind::WaitEvent { .. }
@@ -450,7 +457,7 @@ fn emit_eval_expr_step(
     if let Some(output_slot) = output {
         writeln!(
             out,
-            "    write_slot(slots, {}, Some(eval_expr_{}(slots)?))?;",
+            "    write_slot(slots, {}, Some(eval_expr_{}(slots, list_store)?))?;",
             output_slot.get(),
             expr.get()
         )
@@ -476,7 +483,7 @@ fn emit_choose_step(
     for branch in branches {
         writeln!(
             out,
-            "    if eval_expr_{}(slots)?.is_true() {{ return Ok(StepOutcome::Continue({})); }}",
+            "    if eval_expr_{}(slots, list_store)?.is_true() {{ return Ok(StepOutcome::Continue({})); }}",
             branch.condition.get(),
             branch.target.get()
         )
@@ -582,7 +589,7 @@ fn emit_error_handler_step(out: &mut String, body: StepIdx, handler: StepIdx) ->
         handler.get()
     )
     .map_err(fmt_err)?;
-    writeln!(out, "    match step_{}(slots) {{", body.get()).map_err(fmt_err)?;
+    writeln!(out, "    match step_{}(slots, list_store) {{", body.get()).map_err(fmt_err)?;
     writeln!(out, "        Ok(outcome) => Ok(outcome),").map_err(fmt_err)?;
     writeln!(
         out,
@@ -623,7 +630,11 @@ fn emit_build_object_step(
         .map_err(fmt_err)?;
     }
     if let Some(output_slot) = output {
-        let handle = u32::try_from(fields.len().saturating_add(1)).unwrap_or(u32::MAX);
+        let handle = u32::try_from(fields.len().saturating_add(1)).map_err(|_| {
+            CodegenError::SemanticMismatch {
+                detail: "object field count exceeds generated handle range".into(),
+            }
+        })?;
         writeln!(
             out,
             "    write_slot(slots, {}, Some(SlotValue::Object({})))?;",
@@ -652,15 +663,192 @@ fn emit_build_list_step(
         .map_err(fmt_err)?;
     }
     if let Some(output_slot) = output {
-        let handle = u32::try_from(items.len().saturating_add(1)).unwrap_or(u32::MAX);
+        let joined_items = list_item_bindings(items.len());
         writeln!(
             out,
-            "    write_slot(slots, {}, Some(SlotValue::List({})))?;",
+            "    let _list_handle = list_store.insert_items(&[{joined_items}])?;"
+        )
+        .map_err(fmt_err)?;
+        writeln!(
+            out,
+            "    write_slot(slots, {}, Some(SlotValue::List(_list_handle)))?;",
             output_slot.get(),
-            handle
         )
         .map_err(fmt_err)?;
     }
+    write_next_or_error(out, next)
+}
+
+fn list_item_bindings(len: usize) -> String {
+    (0..len)
+        .map(|index| format!("_item{index}"))
+        .collect::<Vec<_>>()
+        .join(", ")
+}
+
+fn emit_for_each_step_body(out: &mut String, node: &CompiledNode) -> CodegenResult<()> {
+    match &node.kind {
+        CompiledNodeKind::ForEachStart {
+            input,
+            item_slot,
+            limit,
+            body,
+            done,
+        } => emit_for_each_start_step(out, *input, *item_slot, *limit, *body, *done, node.output),
+        CompiledNodeKind::ForEachNext {
+            iterator_slot,
+            body,
+            done,
+        } => emit_for_each_next_step(out, *iterator_slot, *body, *done, node.output),
+        CompiledNodeKind::ForEachJoin { output } => {
+            emit_for_each_join_step(out, *output, node.output, node.next)
+        }
+        _ => emit_unsupported_step(out, "UnsupportedStep"),
+    }
+}
+
+fn emit_for_each_start_step(
+    out: &mut String,
+    input: SlotIdx,
+    item_slot: SlotIdx,
+    limit: u32,
+    body: StepIdx,
+    done: StepIdx,
+    output: Option<SlotIdx>,
+) -> CodegenResult<()> {
+    let Some(iterator_slot) = output else {
+        return writeln!(out, "    Err(DriveError::MissingOutputSlot)").map_err(fmt_err);
+    };
+    writeln!(out, "    let _input = read_slot(slots, {})?;", input.get()).map_err(fmt_err)?;
+    writeln!(out, "    let _list = expect_list_value(_input)?;").map_err(fmt_err)?;
+    writeln!(
+        out,
+        "    let _item_count = list_item_count(list_store, _list)?;"
+    )
+    .map_err(fmt_err)?;
+    writeln!(
+        out,
+        "    if _item_count > {limit} {{ return Err(DriveError::IterationLimitExceeded {{ resource: \"for_each_limit\" }}); }}"
+    )
+    .map_err(fmt_err)?;
+    writeln!(out, "    if _item_count == 0 {{").map_err(fmt_err)?;
+    writeln!(
+        out,
+        "        let _tail = tail_list_handle(list_store, _list)?;"
+    )
+    .map_err(fmt_err)?;
+    writeln!(
+        out,
+        "        write_slot(slots, {}, Some(SlotValue::List(_tail)))?;",
+        iterator_slot.get()
+    )
+    .map_err(fmt_err)?;
+    writeln!(
+        out,
+        "        return Ok(StepOutcome::Continue({}));",
+        done.get()
+    )
+    .map_err(fmt_err)?;
+    writeln!(out, "    }}").map_err(fmt_err)?;
+    writeln!(
+        out,
+        "    let _first = first_list_item(list_store, _list, _item_count)?;"
+    )
+    .map_err(fmt_err)?;
+    writeln!(
+        out,
+        "    write_slot(slots, {}, Some(_first))?;",
+        item_slot.get()
+    )
+    .map_err(fmt_err)?;
+    writeln!(out, "    let _tail = tail_list_handle(list_store, _list)?;").map_err(fmt_err)?;
+    writeln!(
+        out,
+        "    write_slot(slots, {}, Some(SlotValue::List(_tail)))?;",
+        iterator_slot.get()
+    )
+    .map_err(fmt_err)?;
+    emit_continue_step(out, body)
+}
+
+fn emit_for_each_next_step(
+    out: &mut String,
+    iterator_slot: SlotIdx,
+    body: StepIdx,
+    done: StepIdx,
+    output: Option<SlotIdx>,
+) -> CodegenResult<()> {
+    let Some(item_output) = output else {
+        return writeln!(out, "    Err(DriveError::MissingOutputSlot)").map_err(fmt_err);
+    };
+    writeln!(
+        out,
+        "    let _iterator = read_slot(slots, {})?;",
+        iterator_slot.get()
+    )
+    .map_err(fmt_err)?;
+    writeln!(out, "    let _list = expect_list_value(_iterator)?;").map_err(fmt_err)?;
+    writeln!(
+        out,
+        "    let _item_count = list_item_count(list_store, _list)?;"
+    )
+    .map_err(fmt_err)?;
+    writeln!(out, "    if _item_count == 0 {{").map_err(fmt_err)?;
+    writeln!(
+        out,
+        "        return Ok(StepOutcome::Continue({}));",
+        done.get()
+    )
+    .map_err(fmt_err)?;
+    writeln!(out, "    }}").map_err(fmt_err)?;
+    writeln!(
+        out,
+        "    let _first = first_list_item(list_store, _list, _item_count)?;"
+    )
+    .map_err(fmt_err)?;
+    writeln!(
+        out,
+        "    write_slot(slots, {}, Some(_first))?;",
+        item_output.get()
+    )
+    .map_err(fmt_err)?;
+    writeln!(out, "    let _tail = tail_list_handle(list_store, _list)?;").map_err(fmt_err)?;
+    writeln!(
+        out,
+        "    write_slot(slots, {}, Some(SlotValue::List(_tail)))?;",
+        iterator_slot.get()
+    )
+    .map_err(fmt_err)?;
+    emit_continue_step(out, body)
+}
+
+fn emit_for_each_join_step(
+    out: &mut String,
+    materialized: SlotIdx,
+    output: Option<SlotIdx>,
+    next: Option<StepIdx>,
+) -> CodegenResult<()> {
+    let Some(output_slot) = output else {
+        return writeln!(out, "    Err(DriveError::MissingOutputSlot)").map_err(fmt_err);
+    };
+    writeln!(
+        out,
+        "    let _materialized = read_slot(slots, {})?;",
+        materialized.get()
+    )
+    .map_err(fmt_err)?;
+    writeln!(out, "    let _list = expect_list_value(_materialized)?;").map_err(fmt_err)?;
+    writeln!(
+        out,
+        "    let _item_count = list_item_count(list_store, _list)?;"
+    )
+    .map_err(fmt_err)?;
+    writeln!(
+        out,
+        "    write_slot(slots, {}, Some(_materialized))?;",
+        output_slot.get()
+    )
+    .map_err(fmt_err)?;
     write_next_or_error(out, next)
 }
 
@@ -743,11 +931,13 @@ pub fn emit_expr_function(
 
     writeln!(
         out,
-        "fn eval_expr_{}(slots: &[Option<SlotValue>; WORKFLOW_SLOT_COUNT]) -> Result<SlotValue, DriveError> {{",
+        "fn eval_expr_{}(slots: &[Option<SlotValue>; WORKFLOW_SLOT_COUNT], list_store: &ListStore) -> Result<SlotValue, DriveError> {{",
         expr_idx.get()
     )
     .map_err(fmt_err)?;
 
+    writeln!(out, "    let _ = &slots;").map_err(fmt_err)?;
+    writeln!(out, "    let _ = &list_store;").map_err(fmt_err)?;
     writeln!(
         out,
         "    let mut stack = ExprStack::new({})?;",
@@ -841,11 +1031,11 @@ pub fn emit_expr_function(
                     .map_err(fmt_err)?;
             }
             ExprOp::Length => {
-                writeln!(out, "    {{ let _v = stack.pop().ok_or(DriveError::ExpressionStackUnderflow)?; let _len = match _v {{ SlotValue::List(n) => i64::from(n), SlotValue::Object(n) => i64::from(n), _ => 0i64 }}; stack.push(SlotValue::I64(_len))?; }}")
+                writeln!(out, "    {{ let _v = stack.pop().ok_or(DriveError::ExpressionStackUnderflow)?; let _len = match _v {{ SlotValue::List(handle) => i64::from(list_item_count(list_store, handle)?), SlotValue::Object(n) => i64::from(n), _ => 0i64 }}; stack.push(SlotValue::I64(_len))?; }}")
                     .map_err(fmt_err)?;
             }
             ExprOp::Empty => {
-                writeln!(out, "    {{ let _v = stack.pop().ok_or(DriveError::ExpressionStackUnderflow)?; let _is_empty = match _v {{ SlotValue::List(n) => n == 0, SlotValue::Object(n) => n == 0, SlotValue::Null => true, _ => false }}; stack.push(SlotValue::Bool(_is_empty))?; }}")
+                writeln!(out, "    {{ let _v = stack.pop().ok_or(DriveError::ExpressionStackUnderflow)?; let _is_empty = match _v {{ SlotValue::List(handle) => list_item_count(list_store, handle)? == 0, SlotValue::Object(n) => n == 0, SlotValue::Null => true, _ => false }}; stack.push(SlotValue::Bool(_is_empty))?; }}")
                     .map_err(fmt_err)?;
             }
             ExprOp::Append => emit_unsupported_expr(out, "append")?,
@@ -853,7 +1043,7 @@ pub fn emit_expr_function(
             ExprOp::Merge => emit_unsupported_expr(out, "merge")?,
             ExprOp::Sum => emit_unsupported_expr(out, "sum")?,
             ExprOp::Count => {
-                writeln!(out, "    {{ let _v = stack.pop().ok_or(DriveError::ExpressionStackUnderflow)?; let _result = match _v {{ SlotValue::List(n) => i64::from(n), SlotValue::Object(n) => i64::from(n), _ => 0i64 }}; stack.push(SlotValue::I64(_result))?; }}")
+                writeln!(out, "    {{ let _v = stack.pop().ok_or(DriveError::ExpressionStackUnderflow)?; let _result = match _v {{ SlotValue::List(handle) => i64::from(list_item_count(list_store, handle)?), SlotValue::Object(n) => i64::from(n), _ => 0i64 }}; stack.push(SlotValue::I64(_result))?; }}")
                     .map_err(fmt_err)?;
             }
             ExprOp::Unique => emit_unsupported_expr(out, "unique")?,
@@ -1034,6 +1224,76 @@ pub fn emit_resource_contract(out: &mut String, contract: ResourceContract) -> C
     .map_err(fmt_err)?;
     writeln!(out).map_err(fmt_err)?;
     Ok(())
+}
+
+/// Emit fixed-capacity list arena bounds for generated workflows.
+pub fn emit_list_store_contract(
+    out: &mut String,
+    workflow: &CompiledWorkflow,
+) -> CodegenResult<()> {
+    writeln!(out, "// --- Generated list arena contract ---").map_err(fmt_err)?;
+    writeln!(
+        out,
+        "const LIST_STORE_RECORD_CAPACITY: usize = {};",
+        list_store_record_capacity(workflow)
+    )
+    .map_err(fmt_err)?;
+    writeln!(
+        out,
+        "const LIST_STORE_VALUE_CAPACITY: usize = {};",
+        list_store_value_capacity(workflow)
+    )
+    .map_err(fmt_err)?;
+    writeln!(out).map_err(fmt_err)?;
+    Ok(())
+}
+
+fn list_store_record_capacity(workflow: &CompiledWorkflow) -> usize {
+    let metrics = list_store_metrics(workflow);
+    let foreach_tail_capacity = metrics
+        .for_each_steps
+        .saturating_mul(metrics.total_build_list_items.max(1));
+    metrics
+        .build_list_count
+        .saturating_add(foreach_tail_capacity)
+        .saturating_add(1)
+        .max(1)
+}
+
+fn list_store_value_capacity(workflow: &CompiledWorkflow) -> usize {
+    list_store_metrics(workflow).total_build_list_items.max(1)
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+struct ListStoreMetrics {
+    build_list_count: usize,
+    total_build_list_items: usize,
+    for_each_steps: usize,
+}
+
+fn list_store_metrics(workflow: &CompiledWorkflow) -> ListStoreMetrics {
+    let mut metrics = ListStoreMetrics::default();
+    for step_idx in 0..workflow.node_count() {
+        let step = StepIdx::new(step_idx);
+        if let Some(node) = workflow.node(step) {
+            update_list_store_metrics(&mut metrics, &node.kind);
+        }
+    }
+    metrics
+}
+
+fn update_list_store_metrics(metrics: &mut ListStoreMetrics, kind: &CompiledNodeKind) {
+    match kind {
+        CompiledNodeKind::BuildList { items } => {
+            metrics.build_list_count = metrics.build_list_count.saturating_add(1);
+            metrics.total_build_list_items =
+                metrics.total_build_list_items.saturating_add(items.len());
+        }
+        CompiledNodeKind::ForEachStart { .. } | CompiledNodeKind::ForEachNext { .. } => {
+            metrics.for_each_steps = metrics.for_each_steps.saturating_add(1);
+        }
+        _ => {}
+    }
 }
 
 /// Emit a trybuild compile-fail test fixture for the generated code.
@@ -1285,6 +1545,7 @@ fn write_header(out: &mut String) -> CodegenResult<()> {
     writeln!(out, "pub enum DriveError {{").map_err(fmt_err)?;
     writeln!(out, "    InvalidProgramCounter,").map_err(fmt_err)?;
     writeln!(out, "    MissingNextStep,").map_err(fmt_err)?;
+    writeln!(out, "    MissingOutputSlot,").map_err(fmt_err)?;
     writeln!(out, "    SlotNull,").map_err(fmt_err)?;
     writeln!(out, "    NoBranchMatched,").map_err(fmt_err)?;
     writeln!(out, "    ExpressionStackOverflow {{ max: u8 }},").map_err(fmt_err)?;
@@ -1296,6 +1557,13 @@ fn write_header(out: &mut String) -> CodegenResult<()> {
     writeln!(out, "    DivisionByZero,").map_err(fmt_err)?;
     writeln!(out, "    IntegerOverflow,").map_err(fmt_err)?;
     writeln!(out, "    ExpressionStackUnderflow,").map_err(fmt_err)?;
+    writeln!(
+        out,
+        "    IterationLimitExceeded {{ resource: &'static str }},"
+    )
+    .map_err(fmt_err)?;
+    writeln!(out, "    ListStoreOverflow,").map_err(fmt_err)?;
+    writeln!(out, "    InvalidListHandle,").map_err(fmt_err)?;
     writeln!(
         out,
         "    ActionSuspend {{ action_id: u16, input_slot: u16 }},"
@@ -1333,10 +1601,30 @@ fn write_header(out: &mut String) -> CodegenResult<()> {
     writeln!(out, "    fn pop(&mut self) -> Option<SlotValue> {{ if self.len == 0 {{ return None; }} self.len = self.len.checked_sub(1)?; self.values.get(usize::from(self.len)).copied() }}").map_err(fmt_err)?;
     writeln!(out, "}}").map_err(fmt_err)?;
     writeln!(out).map_err(fmt_err)?;
+
+    writeln!(out, "#[derive(Debug, Clone, Copy)]").map_err(fmt_err)?;
+    writeln!(out, "struct ListRecord {{ start: u32, len: u32 }}").map_err(fmt_err)?;
+    writeln!(out, "struct ListStore {{ records: [Option<ListRecord>; LIST_STORE_RECORD_CAPACITY], values: [SlotValue; LIST_STORE_VALUE_CAPACITY], record_len: u32, value_len: u32 }}").map_err(fmt_err)?;
+    writeln!(out, "impl ListStore {{").map_err(fmt_err)?;
+    writeln!(out, "    fn new() -> Self {{ Self {{ records: [None; LIST_STORE_RECORD_CAPACITY], values: [SlotValue::Null; LIST_STORE_VALUE_CAPACITY], record_len: 0, value_len: 0 }} }}").map_err(fmt_err)?;
+    writeln!(out, "    fn insert_items(&mut self, items: &[SlotValue]) -> Result<u32, DriveError> {{ let start = self.value_len; let item_count = u32::try_from(items.len()).map_err(|_| DriveError::ListStoreOverflow)?; let end = start.checked_add(item_count).ok_or(DriveError::ListStoreOverflow)?; let end_index = usize::try_from(end).map_err(|_| DriveError::ListStoreOverflow)?; if end_index > LIST_STORE_VALUE_CAPACITY {{ return Err(DriveError::ListStoreOverflow); }} self.copy_items(start, items)?; self.value_len = end; self.insert_record(start, item_count) }}").map_err(fmt_err)?;
+    writeln!(out, "    fn copy_items(&mut self, start: u32, items: &[SlotValue]) -> Result<(), DriveError> {{ let mut cursor = 0usize; while cursor < items.len() {{ let cursor_u32 = u32::try_from(cursor).map_err(|_| DriveError::ListStoreOverflow)?; let target_offset = start.checked_add(cursor_u32).ok_or(DriveError::ListStoreOverflow)?; let target_index = usize::try_from(target_offset).map_err(|_| DriveError::ListStoreOverflow)?; let value = items.get(cursor).copied().ok_or(DriveError::ListStoreOverflow)?; match self.values.get_mut(target_index) {{ Some(target) => *target = value, None => return Err(DriveError::ListStoreOverflow), }} cursor = cursor.checked_add(1).ok_or(DriveError::ListStoreOverflow)?; }} Ok(()) }}").map_err(fmt_err)?;
+    writeln!(out, "    fn insert_record(&mut self, start: u32, len: u32) -> Result<u32, DriveError> {{ let handle = self.record_len; let index = usize::try_from(handle).map_err(|_| DriveError::ListStoreOverflow)?; match self.records.get_mut(index) {{ Some(slot) => *slot = Some(ListRecord {{ start, len }}), None => return Err(DriveError::ListStoreOverflow), }} self.record_len = self.record_len.checked_add(1).ok_or(DriveError::ListStoreOverflow)?; Ok(handle) }}").map_err(fmt_err)?;
+    writeln!(out, "    fn record(&self, handle: u32) -> Result<Option<ListRecord>, DriveError> {{ if handle >= self.record_len {{ return Ok(None); }} let index = usize::try_from(handle).map_err(|_| DriveError::InvalidListHandle)?; match self.records.get(index).copied() {{ Some(Some(record)) => Ok(Some(record)), Some(None) | None => Err(DriveError::InvalidListHandle), }} }}").map_err(fmt_err)?;
+    writeln!(out, "    fn len(&self, handle: u32) -> Result<Option<u32>, DriveError> {{ match self.record(handle)? {{ Some(record) => Ok(Some(record.len)), None => Ok(None), }} }}").map_err(fmt_err)?;
+    writeln!(out, "    fn first(&self, handle: u32) -> Result<Option<SlotValue>, DriveError> {{ let Some(record) = self.record(handle)? else {{ return Ok(None); }}; if record.len == 0 {{ return Ok(None); }} let index = usize::try_from(record.start).map_err(|_| DriveError::InvalidListHandle)?; self.values.get(index).copied().map(Some).ok_or(DriveError::InvalidListHandle) }}").map_err(fmt_err)?;
+    writeln!(out, "    fn tail(&mut self, handle: u32) -> Result<Option<u32>, DriveError> {{ let Some(record) = self.record(handle)? else {{ return Ok(None); }}; let (start, len) = if record.len == 0 {{ (record.start, 0) }} else {{ let next_start = record.start.checked_add(1).ok_or(DriveError::ListStoreOverflow)?; let next_len = record.len.checked_sub(1).ok_or(DriveError::ListStoreOverflow)?; (next_start, next_len) }}; self.insert_record(start, len).map(Some) }}").map_err(fmt_err)?;
+    writeln!(out, "}}").map_err(fmt_err)?;
+    writeln!(out).map_err(fmt_err)?;
+
     writeln!(out, "fn read_slot(slots: &[Option<SlotValue>; WORKFLOW_SLOT_COUNT], slot: u16) -> Result<SlotValue, DriveError> {{ read_slot_optional(slots, slot).ok_or(DriveError::SlotNull) }}").map_err(fmt_err)?;
     writeln!(out, "fn read_slot_optional(slots: &[Option<SlotValue>; WORKFLOW_SLOT_COUNT], slot: u16) -> Option<SlotValue> {{ slots.get(usize::from(slot)).copied().flatten() }}").map_err(fmt_err)?;
     writeln!(out, "fn write_slot(slots: &mut [Option<SlotValue>; WORKFLOW_SLOT_COUNT], slot: u16, value: Option<SlotValue>) -> Result<(), DriveError> {{ match slots.get_mut(usize::from(slot)) {{ Some(target) => {{ *target = value; Ok(()) }}, None => Err(DriveError::InvalidCompiledWorkflow {{ reason: \"slot index out of bounds\" }}), }} }}").map_err(fmt_err)?;
     writeln!(out, "fn read_const(index: u16) -> Result<SlotValue, DriveError> {{ CONSTANTS.get(usize::from(index)).copied().ok_or(DriveError::InvalidCompiledWorkflow {{ reason: \"constant index out of bounds\" }}) }}").map_err(fmt_err)?;
+    writeln!(out, "fn expect_list_value(value: SlotValue) -> Result<u32, DriveError> {{ match value {{ SlotValue::List(handle) => Ok(handle), other => Err(DriveError::TypeMismatch {{ expected: \"list\", found: other.type_name() }}), }} }}").map_err(fmt_err)?;
+    writeln!(out, "fn list_item_count(list_store: &ListStore, handle: u32) -> Result<u32, DriveError> {{ match list_store.len(handle)? {{ Some(len) => Ok(len), None => Err(DriveError::InvalidListHandle), }} }}").map_err(fmt_err)?;
+    writeln!(out, "fn first_list_item(list_store: &ListStore, handle: u32, count: u32) -> Result<SlotValue, DriveError> {{ if count == 0 {{ return Err(DriveError::InvalidListHandle); }} match list_store.first(handle)? {{ Some(value) => Ok(value), None => Err(DriveError::InvalidListHandle), }} }}").map_err(fmt_err)?;
+    writeln!(out, "fn tail_list_handle(list_store: &mut ListStore, handle: u32) -> Result<u32, DriveError> {{ match list_store.tail(handle)? {{ Some(tail) => Ok(tail), None => Err(DriveError::InvalidListHandle), }} }}").map_err(fmt_err)?;
     writeln!(out).map_err(fmt_err)?;
     writeln!(
         out,

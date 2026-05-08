@@ -441,7 +441,9 @@ fn check_preflight_action_idempotency(parts: &WorkflowParts) -> CertificateCheck
         };
     }
 
-    let unguarded = all_action_ids.len().saturating_sub(actions_with_retry.len());
+    let unguarded = all_action_ids
+        .len()
+        .saturating_sub(actions_with_retry.len());
 
     if unguarded > 0 && retry_count == 0 {
         return CertificateCheck {
@@ -544,7 +546,10 @@ fn check_preflight_max_transitions(parts: &WorkflowParts) -> CertificateCheck {
     CertificateCheck {
         name: "max_transitions",
         status: CheckStatus::Pass,
-        detail: format!("IR step count {} within max_steps {}", step_count, contract_limit),
+        detail: format!(
+            "IR step count {} within max_steps {}",
+            step_count, contract_limit
+        ),
     }
 }
 

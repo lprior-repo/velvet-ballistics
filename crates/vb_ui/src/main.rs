@@ -1566,33 +1566,32 @@ impl MatchEvent for VbApp {
 
         // Screen navigation — switches PageFlip active_page
         if self.ui.button(cx, ids!(nav_replay)).clicked(actions) {
-            self.app_state
-                .switch_screen(Screen::RunReplay);
+            self.app_state.switch_screen(Screen::RunReplay);
             self.sync_nav(cx, String::from("Replay Theater"), String::from("#00f5ff"));
             self.sync_replay_state(cx);
         }
         if self.ui.button(cx, ids!(nav_verify)).clicked(actions) {
-            self.app_state
-                .switch_screen(Screen::Verification);
+            self.app_state.switch_screen(Screen::Verification);
             self.sync_nav(cx, String::from("Verification"), String::from("#39ff14"));
             self.sync_verify_state(cx);
         }
         if self.ui.button(cx, ids!(nav_system)).clicked(actions) {
-            self.app_state
-                .switch_screen(Screen::SystemOverview);
+            self.app_state.switch_screen(Screen::SystemOverview);
             self.sync_nav(cx, String::from("System Overview"), String::from("#2d6bff"));
             self.sync_system_state(cx);
         }
         if self.ui.button(cx, ids!(nav_workflow)).clicked(actions) {
-            self.app_state
-                .switch_screen(Screen::WorkflowGraph);
+            self.app_state.switch_screen(Screen::WorkflowGraph);
             self.sync_nav(cx, String::from("Workflow Graph"), String::from("#b14dff"));
             self.sync_workflow_state(cx);
         }
         if self.ui.button(cx, ids!(nav_incident)).clicked(actions) {
-            self.app_state
-                .switch_screen(Screen::IncidentConsole);
-            self.sync_nav(cx, String::from("Incident Console"), String::from("#ff073a"));
+            self.app_state.switch_screen(Screen::IncidentConsole);
+            self.sync_nav(
+                cx,
+                String::from("Incident Console"),
+                String::from("#ff073a"),
+            );
             self.sync_incident_state(cx);
         }
 
@@ -1849,8 +1848,7 @@ impl VbApp {
             .extend_from_journal(&journal_events);
 
         self.app_state.replay.total_events =
-            u32::try_from(self.app_state.replay.timeline_strip.events().len())
-                .unwrap_or(u32::MAX);
+            u32::try_from(self.app_state.replay.timeline_strip.events().len()).unwrap_or(u32::MAX);
     }
 
     /// Pushes chip labels and colours from the timeline strip into the 10
@@ -2202,16 +2200,12 @@ impl VbApp {
             if let (Some(shard), Some(_)) = (summary, _topo_shard) {
                 let name_text = format!("Shard {}", shard.shard_id);
                 let status_text = shard.health_label.to_uppercase();
-                let status_color = status_badge_hex(
-                    match shard.health_label.as_str() {
-                        "Critical" => StatusBadge::Critical,
-                        "Degraded" => StatusBadge::Degraded,
-                        _ => StatusBadge::Healthy,
-                    },
-                );
-                let active_runs = metrics_shards
-                    .get(idx)
-                    .map_or(0, |s| s.active_runs);
+                let status_color = status_badge_hex(match shard.health_label.as_str() {
+                    "Critical" => StatusBadge::Critical,
+                    "Degraded" => StatusBadge::Degraded,
+                    _ => StatusBadge::Healthy,
+                });
+                let active_runs = metrics_shards.get(idx).map_or(0, |s| s.active_runs);
                 let fields_line = format!(
                     "active: {active_runs} runs  queue: {}  frame: {}",
                     shard.queue_label, shard.frame_label,
@@ -2222,8 +2216,7 @@ impl VbApp {
                     == vb_ui::system::queue_monitor::QueueStatus::Critical
                 {
                     " (CRITICAL)"
-                } else if shard.queue_status
-                    == vb_ui::system::queue_monitor::QueueStatus::Pressured
+                } else if shard.queue_status == vb_ui::system::queue_monitor::QueueStatus::Pressured
                 {
                     " (PRESSURED)"
                 } else {
@@ -2400,14 +2393,22 @@ impl VbApp {
             let ready_fill = if bar.capacity > 0 {
                 let ratio = f32_from_ratio(bar.ready_depth, bar.capacity);
                 let scaled = ratio * max_bar_width;
-                if scaled > max_bar_width { max_bar_width } else { scaled }
+                if scaled > max_bar_width {
+                    max_bar_width
+                } else {
+                    scaled
+                }
             } else {
                 0.0
             };
             let action_fill = if bar.capacity > 0 {
                 let ratio = f32_from_ratio(bar.action_depth, bar.capacity);
                 let scaled = ratio * max_bar_width;
-                if scaled > max_bar_width { max_bar_width } else { scaled }
+                if scaled > max_bar_width {
+                    max_bar_width
+                } else {
+                    scaled
+                }
             } else {
                 0.0
             };
@@ -2456,9 +2457,7 @@ impl VbApp {
         // -- Queue summary: update alerts panel header with aggregate queue status --
         let queue_summary = format!(
             "QUEUE  ready:{} action:{} worst:{:?}",
-            queue_panel.total_ready,
-            queue_panel.total_action,
-            queue_panel.worst_status,
+            queue_panel.total_ready, queue_panel.total_action, queue_panel.worst_status,
         );
         let queue_header_color = rgba_to_hex(queue_panel.worst_status.color());
         script_apply_eval!(cx, self.ui, {
@@ -2520,8 +2519,8 @@ impl AppMain for VbApp {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use vb_ui::ipc_wiring::WiringEvents;
     use vb_ui::ipc_bridge::IpcReply;
+    use vb_ui::ipc_wiring::WiringEvents;
 
     // -- f32_to_u8_color tests -----------------------------------------------
 
@@ -2718,8 +2717,14 @@ mod tests {
             &mut state,
             &mut events,
         );
-        assert!(events.verification_updated, "VerifyWorkflowResult should set verification_updated");
-        assert!(!state.verification.all_clean, "failing bounded check should clear all_clean");
+        assert!(
+            events.verification_updated,
+            "VerifyWorkflowResult should set verification_updated"
+        );
+        assert!(
+            !state.verification.all_clean,
+            "failing bounded check should clear all_clean"
+        );
         assert_eq!(state.verification.cert_structure.badge_text, "PASS");
         assert_eq!(state.verification.cert_bounded.badge_text, "FAIL");
     }
@@ -2745,8 +2750,14 @@ mod tests {
             &mut state,
             &mut events,
         );
-        assert!(events.taint_report_updated, "TaintReportReceived should set taint_report_updated");
-        assert!(state.verification.all_clean, "finish_safe=true should set all_clean");
+        assert!(
+            events.taint_report_updated,
+            "TaintReportReceived should set taint_report_updated"
+        );
+        assert!(
+            state.verification.all_clean,
+            "finish_safe=true should set all_clean"
+        );
     }
 
     // -----------------------------------------------------------------------
@@ -2787,11 +2798,17 @@ mod tests {
             edge_type: "fallthrough".into(),
         }];
         wiring.route_reply(
-            IpcReply::WorkflowGraphReceived(vb_ipc::server::IpcResponse::WorkflowGraph { nodes, edges }),
+            IpcReply::WorkflowGraphReceived(vb_ipc::server::IpcResponse::WorkflowGraph {
+                nodes,
+                edges,
+            }),
             &mut state,
             &mut events,
         );
-        assert!(events.workflow_graph_updated, "WorkflowGraphReceived should set workflow_graph_updated");
+        assert!(
+            events.workflow_graph_updated,
+            "WorkflowGraphReceived should set workflow_graph_updated"
+        );
         assert_eq!(state.workflow.node_count, 3);
     }
 
@@ -2810,7 +2827,10 @@ mod tests {
             &mut state,
             &mut events,
         );
-        assert!(events.inspected, "Inspected reply should set inspected flag");
+        assert!(
+            events.inspected,
+            "Inspected reply should set inspected flag"
+        );
         assert_eq!(state.selected_run_id, Some(42));
     }
 
@@ -2849,7 +2869,10 @@ mod tests {
             &mut state,
             &mut events,
         );
-        assert!(events.run_list_updated, "RunList response should set run_list_updated");
+        assert!(
+            events.run_list_updated,
+            "RunList response should set run_list_updated"
+        );
         assert_eq!(state.system.total_active_runs, 2);
     }
 }

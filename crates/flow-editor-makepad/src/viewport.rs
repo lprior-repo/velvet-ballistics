@@ -45,7 +45,13 @@ impl ViewportTransform {
 
     /// Convert a world point to screen (pixel) coordinates.
     #[allow(clippy::arithmetic_side_effects)]
-    pub fn world_to_screen(&self, wx: f64, wy: f64, rect_origin_x: f64, rect_origin_y: f64) -> (f64, f64) {
+    pub fn world_to_screen(
+        &self,
+        wx: f64,
+        wy: f64,
+        rect_origin_x: f64,
+        rect_origin_y: f64,
+    ) -> (f64, f64) {
         let sx = (wx - self.pan_x) * self.zoom + rect_origin_x;
         let sy = (wy - self.pan_y) * self.zoom + rect_origin_y;
         (sx, sy)
@@ -53,7 +59,13 @@ impl ViewportTransform {
 
     /// Convert a screen (pixel) point to world coordinates.
     #[allow(clippy::arithmetic_side_effects)]
-    pub fn screen_to_world(&self, sx: f64, sy: f64, rect_origin_x: f64, rect_origin_y: f64) -> (f64, f64) {
+    pub fn screen_to_world(
+        &self,
+        sx: f64,
+        sy: f64,
+        rect_origin_x: f64,
+        rect_origin_y: f64,
+    ) -> (f64, f64) {
         let wx = (sx - rect_origin_x) / self.zoom + self.pan_x;
         let wy = (sy - rect_origin_y) / self.zoom + self.pan_y;
         (wx, wy)
@@ -96,11 +108,7 @@ pub fn fit_view(
     let pan_x = center_x - canvas_w / (2.0 * zoom);
     let pan_y = center_y - canvas_h / (2.0 * zoom);
 
-    Some(ViewportTransform {
-        pan_x,
-        pan_y,
-        zoom,
-    })
+    Some(ViewportTransform { pan_x, pan_y, zoom })
 }
 
 /// Computes the bounding rectangle enclosing all non-hidden nodes in the graph.
@@ -179,11 +187,8 @@ pub enum HitResult {
 /// Returns the first (topmost by z_index) node ID hit, or `HitResult::Nothing`.
 pub fn hit_test_nodes(graph: &FlowGraph, world_x: f64, world_y: f64) -> HitResult {
     // Sort nodes by z_index descending so we check the topmost first.
-    let mut candidates: Vec<&FlowNodeRecord> = graph
-        .nodes
-        .values()
-        .filter(|n| !n.flags.hidden)
-        .collect();
+    let mut candidates: Vec<&FlowNodeRecord> =
+        graph.nodes.values().filter(|n| !n.flags.hidden).collect();
 
     candidates.sort_by_key(|b| std::cmp::Reverse(b.z_index));
 
@@ -232,7 +237,10 @@ pub fn hit_test_edges(
         return HitResult::Nothing;
     }
 
-    let pt = Point { x: world_x, y: world_y };
+    let pt = Point {
+        x: world_x,
+        y: world_y,
+    };
     let tol_sq = tolerance * tolerance;
     let mut best: Option<(f64, EdgeId)> = None;
 
@@ -254,8 +262,14 @@ pub fn hit_test_edges(
 
         let curve = CubicBezier {
             p0: Point { x: x1, y: y1 },
-            p1: Point { x: x1 + cp_offset, y: y1 },
-            p2: Point { x: x2 - cp_offset, y: y2 },
+            p1: Point {
+                x: x1 + cp_offset,
+                y: y1,
+            },
+            p2: Point {
+                x: x2 - cp_offset,
+                y: y2,
+            },
             p3: Point { x: x2, y: y2 },
         };
 
@@ -297,7 +311,8 @@ fn compute_port_world_pos(
         .map(|p| p.order)
         .unwrap_or(0);
 
-    let py = node.position[1] + header_h + padding + f64::from(order) * port_height + port_height / 2.0;
+    let py =
+        node.position[1] + header_h + padding + f64::from(order) * port_height + port_height / 2.0;
     let px = if is_output {
         node.position[0] + node.size[0]
     } else {
@@ -310,11 +325,7 @@ fn compute_port_world_pos(
 /// Returns the minimum squared distance from point `pt` to a cubic bezier
 /// curve sampled at `num_samples` evenly spaced `t` values.
 #[allow(clippy::arithmetic_side_effects)]
-fn min_distance_to_cubic_bezier(
-    pt: Point,
-    curve: &CubicBezier,
-    num_samples: usize,
-) -> f64 {
+fn min_distance_to_cubic_bezier(pt: Point, curve: &CubicBezier, num_samples: usize) -> f64 {
     let mut min_sq = f64::MAX;
 
     for i in 0..=num_samples {
@@ -351,8 +362,14 @@ fn cubic_bezier_point(t: f64, curve: &CubicBezier) -> Point {
     let ttt = tt * t;
 
     Point {
-        x: uuu * curve.p0.x + 3.0 * uu * t * curve.p1.x + 3.0 * u * tt * curve.p2.x + ttt * curve.p3.x,
-        y: uuu * curve.p0.y + 3.0 * uu * t * curve.p1.y + 3.0 * u * tt * curve.p2.y + ttt * curve.p3.y,
+        x: uuu * curve.p0.x
+            + 3.0 * uu * t * curve.p1.x
+            + 3.0 * u * tt * curve.p2.x
+            + ttt * curve.p3.x,
+        y: uuu * curve.p0.y
+            + 3.0 * uu * t * curve.p1.y
+            + 3.0 * u * tt * curve.p2.y
+            + ttt * curve.p3.y,
     }
 }
 
@@ -915,7 +932,9 @@ mod tests {
     fn graph_bounds_multiple_nodes() {
         let mut graph = FlowGraph::default();
         graph.nodes.insert(nid("a"), make_node_at("a", 0.0, 0.0));
-        graph.nodes.insert(nid("b"), make_node_at("b", 200.0, 100.0));
+        graph
+            .nodes
+            .insert(nid("b"), make_node_at("b", 200.0, 100.0));
         let bounds = compute_graph_bounds(&graph).unwrap();
         assert!((bounds.x - 0.0).abs() < f64::EPSILON);
         assert!((bounds.y - 0.0).abs() < f64::EPSILON);
@@ -928,7 +947,9 @@ mod tests {
     fn graph_bounds_skips_hidden_nodes() {
         let mut graph = FlowGraph::default();
         graph.nodes.insert(nid("a"), make_node_at("a", 0.0, 0.0));
-        graph.nodes.insert(nid("b"), make_hidden_node("b", 500.0, 500.0));
+        graph
+            .nodes
+            .insert(nid("b"), make_hidden_node("b", 500.0, 500.0));
         let bounds = compute_graph_bounds(&graph).unwrap();
         // Only visible node is at (0,0) with size (100,50)
         assert!((bounds.w - 100.0).abs() < f64::EPSILON);
@@ -938,7 +959,9 @@ mod tests {
     #[test]
     fn graph_bounds_only_hidden_nodes() {
         let mut graph = FlowGraph::default();
-        graph.nodes.insert(nid("a"), make_hidden_node("a", 0.0, 0.0));
+        graph
+            .nodes
+            .insert(nid("a"), make_hidden_node("a", 0.0, 0.0));
         assert!(compute_graph_bounds(&graph).is_none());
     }
 
@@ -979,7 +1002,9 @@ mod tests {
     #[test]
     fn hit_test_nodes_skips_hidden() {
         let mut graph = FlowGraph::default();
-        graph.nodes.insert(nid("a"), make_hidden_node("a", 0.0, 0.0));
+        graph
+            .nodes
+            .insert(nid("a"), make_hidden_node("a", 0.0, 0.0));
         let result = hit_test_nodes(&graph, 50.0, 25.0);
         assert!(matches!(result, HitResult::Nothing));
     }
@@ -987,8 +1012,12 @@ mod tests {
     #[test]
     fn hit_test_nodes_topmost_z_index() {
         let mut graph = FlowGraph::default();
-        graph.nodes.insert(nid("bottom"), make_node_at_z("bottom", 0.0, 0.0, 0));
-        graph.nodes.insert(nid("top"), make_node_at_z("top", 0.0, 0.0, 5));
+        graph
+            .nodes
+            .insert(nid("bottom"), make_node_at_z("bottom", 0.0, 0.0, 0));
+        graph
+            .nodes
+            .insert(nid("top"), make_node_at_z("top", 0.0, 0.0, 5));
         let result = hit_test_nodes(&graph, 50.0, 25.0);
         // Topmost (z=5) should be hit first
         assert!(matches!(result, HitResult::Node(ref id) if id == &nid("top")));
@@ -1229,13 +1258,21 @@ mod tests {
     #[test]
     fn patch_update_node_position() {
         let mut doc = FlowDocument::default();
-        doc.graph.nodes.insert(nid("n1"), make_node_at("n1", 0.0, 0.0));
+        doc.graph
+            .nodes
+            .insert(nid("n1"), make_node_at("n1", 0.0, 0.0));
 
         let changes = flow_core::patch::NodeChangeSet {
             position: Some([100.0, 200.0]),
             ..flow_core::patch::NodeChangeSet::default()
         };
-        let changed = apply_patch(&mut doc, FlowPatch::UpdateNode { id: nid("n1"), changes });
+        let changed = apply_patch(
+            &mut doc,
+            FlowPatch::UpdateNode {
+                id: nid("n1"),
+                changes,
+            },
+        );
         assert!(changed);
         let node = doc.graph.nodes.get(&nid("n1")).unwrap();
         assert!((node.position[0] - 100.0).abs() < f64::EPSILON);
@@ -1245,13 +1282,21 @@ mod tests {
     #[test]
     fn patch_update_node_title() {
         let mut doc = FlowDocument::default();
-        doc.graph.nodes.insert(nid("n1"), make_node_at("n1", 0.0, 0.0));
+        doc.graph
+            .nodes
+            .insert(nid("n1"), make_node_at("n1", 0.0, 0.0));
 
         let changes = flow_core::patch::NodeChangeSet {
             title: Some(SmolStr::from("new-title")),
             ..flow_core::patch::NodeChangeSet::default()
         };
-        let changed = apply_patch(&mut doc, FlowPatch::UpdateNode { id: nid("n1"), changes });
+        let changed = apply_patch(
+            &mut doc,
+            FlowPatch::UpdateNode {
+                id: nid("n1"),
+                changes,
+            },
+        );
         assert!(changed);
         assert_eq!(
             doc.graph.nodes.get(&nid("n1")).unwrap().title.as_str(),
@@ -1266,14 +1311,22 @@ mod tests {
             position: Some([100.0, 200.0]),
             ..flow_core::patch::NodeChangeSet::default()
         };
-        let changed = apply_patch(&mut doc, FlowPatch::UpdateNode { id: nid("ghost"), changes });
+        let changed = apply_patch(
+            &mut doc,
+            FlowPatch::UpdateNode {
+                id: nid("ghost"),
+                changes,
+            },
+        );
         assert!(!changed);
     }
 
     #[test]
     fn patch_remove_node() {
         let mut doc = FlowDocument::default();
-        doc.graph.nodes.insert(nid("n1"), make_node_at("n1", 0.0, 0.0));
+        doc.graph
+            .nodes
+            .insert(nid("n1"), make_node_at("n1", 0.0, 0.0));
         let changed = apply_patch(&mut doc, FlowPatch::RemoveNode { id: nid("n1") });
         assert!(changed);
         assert!(!doc.graph.nodes.contains_key(&nid("n1")));
@@ -1282,8 +1335,12 @@ mod tests {
     #[test]
     fn patch_remove_node_cascades_edges() {
         let mut doc = FlowDocument::default();
-        doc.graph.nodes.insert(nid("a"), make_node_at("a", 0.0, 0.0));
-        doc.graph.nodes.insert(nid("b"), make_node_at("b", 200.0, 0.0));
+        doc.graph
+            .nodes
+            .insert(nid("a"), make_node_at("a", 0.0, 0.0));
+        doc.graph
+            .nodes
+            .insert(nid("b"), make_node_at("b", 200.0, 0.0));
         doc.graph.edges.insert(eid("e1"), make_edge("e1", "a", "b"));
 
         apply_patch(&mut doc, FlowPatch::RemoveNode { id: nid("a") });
@@ -1302,8 +1359,12 @@ mod tests {
     #[test]
     fn patch_insert_edge() {
         let mut doc = FlowDocument::default();
-        doc.graph.nodes.insert(nid("a"), make_node_at("a", 0.0, 0.0));
-        doc.graph.nodes.insert(nid("b"), make_node_at("b", 200.0, 0.0));
+        doc.graph
+            .nodes
+            .insert(nid("a"), make_node_at("a", 0.0, 0.0));
+        doc.graph
+            .nodes
+            .insert(nid("b"), make_node_at("b", 200.0, 0.0));
 
         let edge = make_edge("e1", "a", "b");
         let changed = apply_patch(&mut doc, FlowPatch::InsertEdge { edge });
@@ -1320,10 +1381,22 @@ mod tests {
             label: Some(Some(SmolStr::from("data"))),
             ..flow_core::patch::EdgeChangeSet::default()
         };
-        let changed = apply_patch(&mut doc, FlowPatch::UpdateEdge { id: eid("e1"), changes });
+        let changed = apply_patch(
+            &mut doc,
+            FlowPatch::UpdateEdge {
+                id: eid("e1"),
+                changes,
+            },
+        );
         assert!(changed);
         assert_eq!(
-            doc.graph.edges.get(&eid("e1")).unwrap().label.as_ref().map(|s| s.as_str()),
+            doc.graph
+                .edges
+                .get(&eid("e1"))
+                .unwrap()
+                .label
+                .as_ref()
+                .map(|s| s.as_str()),
             Some("data")
         );
     }
@@ -1339,7 +1412,13 @@ mod tests {
             label: Some(None),
             ..flow_core::patch::EdgeChangeSet::default()
         };
-        apply_patch(&mut doc, FlowPatch::UpdateEdge { id: eid("e1"), changes });
+        apply_patch(
+            &mut doc,
+            FlowPatch::UpdateEdge {
+                id: eid("e1"),
+                changes,
+            },
+        );
         assert!(doc.graph.edges.get(&eid("e1")).unwrap().label.is_none());
     }
 
@@ -1370,7 +1449,13 @@ mod tests {
             title: Some(SmolStr::from("renamed")),
             ..flow_core::patch::GroupChangeSet::default()
         };
-        let changed = apply_patch(&mut doc, FlowPatch::UpdateGroup { id: gid("g1"), changes });
+        let changed = apply_patch(
+            &mut doc,
+            FlowPatch::UpdateGroup {
+                id: gid("g1"),
+                changes,
+            },
+        );
         assert!(changed);
         assert_eq!(
             doc.graph.groups.get(&gid("g1")).unwrap().title.as_str(),
@@ -1400,7 +1485,12 @@ mod tests {
             pan_y: 20.0,
             zoom: 2.0,
         };
-        let changed = apply_patch(&mut doc, FlowPatch::SetViewport { viewport: vp.clone() });
+        let changed = apply_patch(
+            &mut doc,
+            FlowPatch::SetViewport {
+                viewport: vp.clone(),
+            },
+        );
         assert!(changed);
         assert!((doc.editor.viewport.pan_x - 10.0).abs() < f64::EPSILON);
         assert!((doc.editor.viewport.zoom - 2.0).abs() < f64::EPSILON);
@@ -1409,7 +1499,9 @@ mod tests {
     #[test]
     fn patch_set_entry_node() {
         let mut doc = FlowDocument::default();
-        doc.graph.nodes.insert(nid("n1"), make_node_at("n1", 0.0, 0.0));
+        doc.graph
+            .nodes
+            .insert(nid("n1"), make_node_at("n1", 0.0, 0.0));
 
         let changed = apply_patch(
             &mut doc,
@@ -1437,8 +1529,12 @@ mod tests {
     #[test]
     fn patch_reparent_nodes() {
         let mut doc = FlowDocument::default();
-        doc.graph.nodes.insert(nid("n1"), make_node_at("n1", 0.0, 0.0));
-        doc.graph.nodes.insert(nid("n2"), make_node_at("n2", 100.0, 0.0));
+        doc.graph
+            .nodes
+            .insert(nid("n1"), make_node_at("n1", 0.0, 0.0));
+        doc.graph
+            .nodes
+            .insert(nid("n2"), make_node_at("n2", 100.0, 0.0));
         doc.graph.groups.insert(gid("g1"), make_group("g1"));
 
         let changed = apply_patch(
@@ -1555,7 +1651,9 @@ mod tests {
     #[test]
     fn patch_update_node_empty_changes() {
         let mut doc = FlowDocument::default();
-        doc.graph.nodes.insert(nid("n1"), make_node_at("n1", 0.0, 0.0));
+        doc.graph
+            .nodes
+            .insert(nid("n1"), make_node_at("n1", 0.0, 0.0));
 
         let changes = flow_core::patch::NodeChangeSet::default();
         let changed = apply_patch(
@@ -1573,7 +1671,9 @@ mod tests {
     #[test]
     fn patch_update_node_all_fields() {
         let mut doc = FlowDocument::default();
-        doc.graph.nodes.insert(nid("n1"), make_node_at("n1", 0.0, 0.0));
+        doc.graph
+            .nodes
+            .insert(nid("n1"), make_node_at("n1", 0.0, 0.0));
 
         let changes = flow_core::patch::NodeChangeSet {
             position: Some([10.0, 20.0]),
@@ -1686,14 +1786,24 @@ mod tests {
 
     #[test]
     fn world_rect_debug_format() {
-        let r = WorldRect { x: 1.0, y: 2.0, w: 3.0, h: 4.0 };
+        let r = WorldRect {
+            x: 1.0,
+            y: 2.0,
+            w: 3.0,
+            h: 4.0,
+        };
         let debug = format!("{r:?}");
         assert!(debug.contains("WorldRect"));
     }
 
     #[test]
     fn world_rect_clone_copy() {
-        let r = WorldRect { x: 1.0, y: 2.0, w: 3.0, h: 4.0 };
+        let r = WorldRect {
+            x: 1.0,
+            y: 2.0,
+            w: 3.0,
+            h: 4.0,
+        };
         let r2 = r; // Copy
         let r3 = r; // Copy again
         assert!((r2.x - 1.0).abs() < f64::EPSILON);
@@ -1711,7 +1821,11 @@ mod tests {
 
     #[test]
     fn transform_clone_copy() {
-        let vt = ViewportTransform { pan_x: 1.0, pan_y: 2.0, zoom: 3.0 };
+        let vt = ViewportTransform {
+            pan_x: 1.0,
+            pan_y: 2.0,
+            zoom: 3.0,
+        };
         let vt2 = vt; // Copy
         let vt3 = vt; // Copy again
         assert!((vt2.pan_x - 1.0).abs() < f64::EPSILON);
@@ -1883,7 +1997,9 @@ mod tests {
     #[test]
     fn graph_bounds_negative_coordinates() {
         let mut graph = FlowGraph::default();
-        graph.nodes.insert(nid("a"), make_node_at("a", -200.0, -100.0));
+        graph
+            .nodes
+            .insert(nid("a"), make_node_at("a", -200.0, -100.0));
         let bounds = compute_graph_bounds(&graph).unwrap();
         assert!((bounds.x - (-200.0)).abs() < f64::EPSILON);
         assert!((bounds.y - (-100.0)).abs() < f64::EPSILON);
@@ -1925,8 +2041,12 @@ mod tests {
     #[test]
     fn hit_test_nodes_multiple_same_z() {
         let mut graph = FlowGraph::default();
-        graph.nodes.insert(nid("a"), make_node_at_z("a", 0.0, 0.0, 0));
-        graph.nodes.insert(nid("b"), make_node_at_z("b", 0.0, 0.0, 0));
+        graph
+            .nodes
+            .insert(nid("a"), make_node_at_z("a", 0.0, 0.0, 0));
+        graph
+            .nodes
+            .insert(nid("b"), make_node_at_z("b", 0.0, 0.0, 0));
         let result = hit_test_nodes(&graph, 50.0, 25.0);
         // Should hit one of them (both at same z-index, overlapping)
         assert!(matches!(result, HitResult::Node(ref id) if id == &nid("a") || id == &nid("b")));
@@ -1935,7 +2055,9 @@ mod tests {
     #[test]
     fn hit_test_nodes_negative_coords() {
         let mut graph = FlowGraph::default();
-        graph.nodes.insert(nid("a"), make_node_at("a", -200.0, -100.0));
+        graph
+            .nodes
+            .insert(nid("a"), make_node_at("a", -200.0, -100.0));
         let result = hit_test_nodes(&graph, -150.0, -75.0);
         assert!(matches!(result, HitResult::Node(ref id) if id == &nid("a")));
     }
@@ -2188,7 +2310,13 @@ mod tests {
             }),
             ..flow_core::patch::EdgeChangeSet::default()
         };
-        let changed = apply_patch(&mut doc, FlowPatch::UpdateEdge { id: eid("e1"), changes });
+        let changed = apply_patch(
+            &mut doc,
+            FlowPatch::UpdateEdge {
+                id: eid("e1"),
+                changes,
+            },
+        );
         assert!(changed);
         assert_eq!(
             doc.graph.edges.get(&eid("e1")).unwrap().style.line_style,
@@ -2204,7 +2332,13 @@ mod tests {
             data: Some(serde_json::json!({"key": "value"})),
             ..flow_core::patch::EdgeChangeSet::default()
         };
-        let changed = apply_patch(&mut doc, FlowPatch::UpdateEdge { id: eid("e1"), changes });
+        let changed = apply_patch(
+            &mut doc,
+            FlowPatch::UpdateEdge {
+                id: eid("e1"),
+                changes,
+            },
+        );
         assert!(changed);
         assert_eq!(
             doc.graph.edges.get(&eid("e1")).unwrap().data["key"],
@@ -2219,7 +2353,13 @@ mod tests {
             label: Some(Some(SmolStr::from("test"))),
             ..flow_core::patch::EdgeChangeSet::default()
         };
-        let changed = apply_patch(&mut doc, FlowPatch::UpdateEdge { id: eid("ghost"), changes });
+        let changed = apply_patch(
+            &mut doc,
+            FlowPatch::UpdateEdge {
+                id: eid("ghost"),
+                changes,
+            },
+        );
         assert!(!changed);
     }
 
@@ -2237,7 +2377,13 @@ mod tests {
             title: Some(SmolStr::from("test")),
             ..flow_core::patch::GroupChangeSet::default()
         };
-        let changed = apply_patch(&mut doc, FlowPatch::UpdateGroup { id: gid("ghost"), changes });
+        let changed = apply_patch(
+            &mut doc,
+            FlowPatch::UpdateGroup {
+                id: gid("ghost"),
+                changes,
+            },
+        );
         assert!(!changed);
     }
 
@@ -2251,9 +2397,15 @@ mod tests {
     #[test]
     fn patch_remove_node_cascades_multiple_edges() {
         let mut doc = FlowDocument::default();
-        doc.graph.nodes.insert(nid("a"), make_node_at("a", 0.0, 0.0));
-        doc.graph.nodes.insert(nid("b"), make_node_at("b", 200.0, 0.0));
-        doc.graph.nodes.insert(nid("c"), make_node_at("c", 400.0, 0.0));
+        doc.graph
+            .nodes
+            .insert(nid("a"), make_node_at("a", 0.0, 0.0));
+        doc.graph
+            .nodes
+            .insert(nid("b"), make_node_at("b", 200.0, 0.0));
+        doc.graph
+            .nodes
+            .insert(nid("c"), make_node_at("c", 400.0, 0.0));
         doc.graph.edges.insert(eid("e1"), make_edge("e1", "a", "b"));
         doc.graph.edges.insert(eid("e2"), make_edge("e2", "a", "c"));
         doc.graph.edges.insert(eid("e3"), make_edge("e3", "b", "c"));
@@ -2269,10 +2421,7 @@ mod tests {
     fn patch_set_entry_node_to_none() {
         let mut doc = FlowDocument::default();
         doc.graph.entry_node = Some(nid("n1"));
-        let changed = apply_patch(
-            &mut doc,
-            FlowPatch::SetEntryNode { node: None },
-        );
+        let changed = apply_patch(&mut doc, FlowPatch::SetEntryNode { node: None });
         assert!(changed);
         assert!(doc.graph.entry_node.is_none());
     }
@@ -2280,12 +2429,20 @@ mod tests {
     #[test]
     fn patch_update_node_kind() {
         let mut doc = FlowDocument::default();
-        doc.graph.nodes.insert(nid("n1"), make_node_at("n1", 0.0, 0.0));
+        doc.graph
+            .nodes
+            .insert(nid("n1"), make_node_at("n1", 0.0, 0.0));
         let changes = flow_core::patch::NodeChangeSet {
             kind: Some(SmolStr::from("Choose")),
             ..flow_core::patch::NodeChangeSet::default()
         };
-        let changed = apply_patch(&mut doc, FlowPatch::UpdateNode { id: nid("n1"), changes });
+        let changed = apply_patch(
+            &mut doc,
+            FlowPatch::UpdateNode {
+                id: nid("n1"),
+                changes,
+            },
+        );
         assert!(changed);
         assert_eq!(
             doc.graph.nodes.get(&nid("n1")).unwrap().kind.as_str(),
@@ -2296,12 +2453,20 @@ mod tests {
     #[test]
     fn patch_update_node_size() {
         let mut doc = FlowDocument::default();
-        doc.graph.nodes.insert(nid("n1"), make_node_at("n1", 0.0, 0.0));
+        doc.graph
+            .nodes
+            .insert(nid("n1"), make_node_at("n1", 0.0, 0.0));
         let changes = flow_core::patch::NodeChangeSet {
             size: Some([200.0, 150.0]),
             ..flow_core::patch::NodeChangeSet::default()
         };
-        let changed = apply_patch(&mut doc, FlowPatch::UpdateNode { id: nid("n1"), changes });
+        let changed = apply_patch(
+            &mut doc,
+            FlowPatch::UpdateNode {
+                id: nid("n1"),
+                changes,
+            },
+        );
         assert!(changed);
         let node = doc.graph.nodes.get(&nid("n1")).unwrap();
         assert!((node.size[0] - 200.0).abs() < f64::EPSILON);
@@ -2321,8 +2486,12 @@ mod tests {
     fn apply_patches_all_succeed() {
         let mut doc = FlowDocument::default();
         let patches = vec![
-            FlowPatch::InsertNode { node: make_node_at("a", 0.0, 0.0) },
-            FlowPatch::InsertNode { node: make_node_at("b", 100.0, 0.0) },
+            FlowPatch::InsertNode {
+                node: make_node_at("a", 0.0, 0.0),
+            },
+            FlowPatch::InsertNode {
+                node: make_node_at("b", 100.0, 0.0),
+            },
         ];
         let count = apply_patches(&mut doc, patches);
         assert_eq!(count, 2);
@@ -2360,11 +2529,7 @@ mod tests {
             p2: Point { x: 50.0, y: 100.0 },
             p3: Point { x: 100.0, y: 100.0 },
         };
-        let d = min_distance_to_cubic_bezier(
-            Point { x: 100.0, y: 100.0 },
-            &curve,
-            100,
-        );
+        let d = min_distance_to_cubic_bezier(Point { x: 100.0, y: 100.0 }, &curve, 100);
         assert!(d < 1e-10);
     }
 
@@ -2377,11 +2542,7 @@ mod tests {
             p3: Point { x: 100.0, y: 0.0 },
         };
         // Linear curve, midpoint at (50, 0)
-        let d = min_distance_to_cubic_bezier(
-            Point { x: 50.0, y: 0.0 },
-            &curve,
-            100,
-        );
+        let d = min_distance_to_cubic_bezier(Point { x: 50.0, y: 0.0 }, &curve, 100);
         assert!(d < 1e-10);
     }
 
@@ -2393,16 +2554,8 @@ mod tests {
             p2: Point { x: 50.0, y: 0.0 },
             p3: Point { x: 100.0, y: 0.0 },
         };
-        let d5 = min_distance_to_cubic_bezier(
-            Point { x: 50.0, y: 5.0 },
-            &curve,
-            100,
-        );
-        let d10 = min_distance_to_cubic_bezier(
-            Point { x: 50.0, y: 10.0 },
-            &curve,
-            100,
-        );
+        let d5 = min_distance_to_cubic_bezier(Point { x: 50.0, y: 5.0 }, &curve, 100);
+        let d10 = min_distance_to_cubic_bezier(Point { x: 50.0, y: 10.0 }, &curve, 100);
         assert!(d10 > d5);
     }
 
@@ -2480,7 +2633,9 @@ mod tests {
         graph.nodes.insert(nid("a"), make_node_at("a", 0.0, 0.0));
         graph.nodes.insert(nid("b"), make_node_at("b", 200.0, 0.0));
         graph.nodes.insert(nid("c"), make_node_at("c", 0.0, 200.0));
-        graph.nodes.insert(nid("d"), make_node_at("d", 200.0, 200.0));
+        graph
+            .nodes
+            .insert(nid("d"), make_node_at("d", 200.0, 200.0));
         graph.edges.insert(eid("e1"), make_edge("e1", "a", "b"));
         graph.edges.insert(eid("e2"), make_edge("e2", "c", "d"));
         // Hit near e1 (y~=54) with small tolerance
@@ -2507,12 +2662,20 @@ mod tests {
     #[test]
     fn patch_update_node_data_only() {
         let mut doc = FlowDocument::default();
-        doc.graph.nodes.insert(nid("n1"), make_node_at("n1", 0.0, 0.0));
+        doc.graph
+            .nodes
+            .insert(nid("n1"), make_node_at("n1", 0.0, 0.0));
         let changes = flow_core::patch::NodeChangeSet {
             data: Some(serde_json::json!({"payload": "test"})),
             ..flow_core::patch::NodeChangeSet::default()
         };
-        let changed = apply_patch(&mut doc, FlowPatch::UpdateNode { id: nid("n1"), changes });
+        let changed = apply_patch(
+            &mut doc,
+            FlowPatch::UpdateNode {
+                id: nid("n1"),
+                changes,
+            },
+        );
         assert!(changed);
         assert_eq!(
             doc.graph.nodes.get(&nid("n1")).unwrap().data["payload"],
@@ -2525,7 +2688,9 @@ mod tests {
     #[test]
     fn patch_update_node_flags_only() {
         let mut doc = FlowDocument::default();
-        doc.graph.nodes.insert(nid("n1"), make_node_at("n1", 0.0, 0.0));
+        doc.graph
+            .nodes
+            .insert(nid("n1"), make_node_at("n1", 0.0, 0.0));
         let changes = flow_core::patch::NodeChangeSet {
             flags: Some(NodeFlags {
                 hidden: true,
@@ -2534,7 +2699,13 @@ mod tests {
             }),
             ..flow_core::patch::NodeChangeSet::default()
         };
-        let changed = apply_patch(&mut doc, FlowPatch::UpdateNode { id: nid("n1"), changes });
+        let changed = apply_patch(
+            &mut doc,
+            FlowPatch::UpdateNode {
+                id: nid("n1"),
+                changes,
+            },
+        );
         assert!(changed);
         let node = doc.graph.nodes.get(&nid("n1")).unwrap();
         assert!(node.flags.hidden);
@@ -2546,7 +2717,9 @@ mod tests {
     #[test]
     fn patch_update_node_ui_only() {
         let mut doc = FlowDocument::default();
-        doc.graph.nodes.insert(nid("n1"), make_node_at("n1", 0.0, 0.0));
+        doc.graph
+            .nodes
+            .insert(nid("n1"), make_node_at("n1", 0.0, 0.0));
         let changes = flow_core::patch::NodeChangeSet {
             ui: Some(NodeUiState {
                 collapsed: true,
@@ -2554,7 +2727,13 @@ mod tests {
             }),
             ..flow_core::patch::NodeChangeSet::default()
         };
-        let changed = apply_patch(&mut doc, FlowPatch::UpdateNode { id: nid("n1"), changes });
+        let changed = apply_patch(
+            &mut doc,
+            FlowPatch::UpdateNode {
+                id: nid("n1"),
+                changes,
+            },
+        );
         assert!(changed);
         let node = doc.graph.nodes.get(&nid("n1")).unwrap();
         assert!(node.ui.collapsed);
@@ -2575,7 +2754,13 @@ mod tests {
             }),
             data: Some(serde_json::json!({"key": "value"})),
         };
-        let changed = apply_patch(&mut doc, FlowPatch::UpdateEdge { id: eid("e1"), changes });
+        let changed = apply_patch(
+            &mut doc,
+            FlowPatch::UpdateEdge {
+                id: eid("e1"),
+                changes,
+            },
+        );
         assert!(changed);
         let edge = doc.graph.edges.get(&eid("e1")).unwrap();
         assert_eq!(edge.label.as_ref().map(|s| s.as_str()), Some("new-label"));
@@ -2593,7 +2778,13 @@ mod tests {
             data: Some(serde_json::json!({"meta": 42})),
             ..flow_core::patch::GroupChangeSet::default()
         };
-        let changed = apply_patch(&mut doc, FlowPatch::UpdateGroup { id: gid("g1"), changes });
+        let changed = apply_patch(
+            &mut doc,
+            FlowPatch::UpdateGroup {
+                id: gid("g1"),
+                changes,
+            },
+        );
         assert!(changed);
         assert_eq!(doc.graph.groups.get(&gid("g1")).unwrap().data["meta"], 42);
     }
@@ -2608,7 +2799,13 @@ mod tests {
             bounds: Some([10.0, 20.0, 300.0, 400.0]),
             ..flow_core::patch::GroupChangeSet::default()
         };
-        let changed = apply_patch(&mut doc, FlowPatch::UpdateGroup { id: gid("g1"), changes });
+        let changed = apply_patch(
+            &mut doc,
+            FlowPatch::UpdateGroup {
+                id: gid("g1"),
+                changes,
+            },
+        );
         assert!(changed);
         let group = doc.graph.groups.get(&gid("g1")).unwrap();
         assert!((group.bounds[0] - 10.0).abs() < f64::EPSILON);
@@ -2730,7 +2927,9 @@ mod tests {
     fn apply_patches_insert_then_update() {
         let mut doc = FlowDocument::default();
         let patches = vec![
-            FlowPatch::InsertNode { node: make_node_at("n1", 10.0, 20.0) },
+            FlowPatch::InsertNode {
+                node: make_node_at("n1", 10.0, 20.0),
+            },
             FlowPatch::UpdateNode {
                 id: nid("n1"),
                 changes: flow_core::patch::NodeChangeSet {
@@ -2753,7 +2952,9 @@ mod tests {
     fn apply_patches_insert_then_remove_same_node() {
         let mut doc = FlowDocument::default();
         let patches = vec![
-            FlowPatch::InsertNode { node: make_node_at("n1", 0.0, 0.0) },
+            FlowPatch::InsertNode {
+                node: make_node_at("n1", 0.0, 0.0),
+            },
             FlowPatch::RemoveNode { id: nid("n1") },
         ];
         let count = apply_patches(&mut doc, patches);
@@ -2791,7 +2992,12 @@ mod tests {
         for i in 0..=10 {
             let t = i_to_f64(10, i);
             let pt = cubic_bezier_point(t, &curve);
-            assert!(pt.x >= prev_x, "x should be monotonically increasing: {} >= {}", pt.x, prev_x);
+            assert!(
+                pt.x >= prev_x,
+                "x should be monotonically increasing: {} >= {}",
+                pt.x,
+                prev_x
+            );
             prev_x = pt.x;
         }
     }
@@ -2838,8 +3044,12 @@ mod tests {
     fn graph_bounds_mix_hidden_visible() {
         let mut graph = FlowGraph::default();
         graph.nodes.insert(nid("a"), make_node_at("a", 0.0, 0.0));
-        graph.nodes.insert(nid("b"), make_hidden_node("b", 500.0, 500.0));
-        graph.nodes.insert(nid("c"), make_node_at("c", 300.0, 200.0));
+        graph
+            .nodes
+            .insert(nid("b"), make_hidden_node("b", 500.0, 500.0));
+        graph
+            .nodes
+            .insert(nid("c"), make_node_at("c", 300.0, 200.0));
         let bounds = compute_graph_bounds(&graph).unwrap();
         // Should include "a" and "c" but not hidden "b"
         assert!((bounds.x).abs() < f64::EPSILON);
@@ -3048,8 +3258,14 @@ mod tests {
         };
         let (sx, sy) = t.world_to_screen(0.0, 0.0, 0.0, 0.0);
         let (wx, wy) = t.screen_to_world(sx, sy, 0.0, 0.0);
-        assert!((wx - 0.0).abs() < 1e-3, "world x roundtrip near origin failed");
-        assert!((wy - 0.0).abs() < 1e-3, "world y roundtrip near origin failed");
+        assert!(
+            (wx - 0.0).abs() < 1e-3,
+            "world x roundtrip near origin failed"
+        );
+        assert!(
+            (wy - 0.0).abs() < 1e-3,
+            "world y roundtrip near origin failed"
+        );
     }
 
     #[test]

@@ -69,10 +69,7 @@ impl SlotDiffPanel {
     /// [`SlotDiff::Modified`] (slot present with a different value).
     /// All other event variants produce an empty panel.
     #[must_use]
-    pub fn from_event(
-        event: &JournalEvent,
-        current_slots: &HashMap<SlotIdx, SlotValue>,
-    ) -> Self {
+    pub fn from_event(event: &JournalEvent, current_slots: &HashMap<SlotIdx, SlotValue>) -> Self {
         match event {
             JournalEvent::SlotWrittenEvent {
                 seq, slot, value, ..
@@ -111,10 +108,7 @@ impl SlotDiffPanel {
 
                 let seq_u32 = u32::try_from(seq_val).unwrap_or(u32::MAX);
                 Self {
-                    entries: vec![DiffEntry {
-                        slot: *slot,
-                        diff,
-                    }],
+                    entries: vec![DiffEntry { slot: *slot, diff }],
                     event_seq: seq_u32,
                 }
             }
@@ -589,11 +583,7 @@ mod tests {
         assert!(panel.has_changes());
         assert_eq!(panel.entries().len(), 3);
 
-        let slots: Vec<u16> = panel
-            .entries()
-            .iter()
-            .map(|e| e.slot.get())
-            .collect();
+        let slots: Vec<u16> = panel.entries().iter().map(|e| e.slot.get()).collect();
 
         // Slot 1 modified, slot 5 deleted, slot 7 created
         assert!(slots.contains(&1));
@@ -777,7 +767,10 @@ mod tests {
         // Demonstrate the alternative: direct equality.
         let v1 = SlotValue::I64(42);
         let v2 = SlotValue::I64(42);
-        assert_eq!(v1, v2, "SlotValue PartialEq should be used instead of Debug");
+        assert_eq!(
+            v1, v2,
+            "SlotValue PartialEq should be used instead of Debug"
+        );
     }
 
     /// FINDING 2 — MEDIUM: TaintChanged variant is dead code.
@@ -850,7 +843,8 @@ mod tests {
         // But the event_seq is still set, making it look like a valid empty
         // event rather than a failure.
         assert_eq!(
-            panel.event_seq(), 99,
+            panel.event_seq(),
+            99,
             "event_seq is set even though data was lost"
         );
     }
@@ -907,7 +901,8 @@ mod tests {
         assert_eq!(panel_b.event_seq(), u32::MAX);
         // They are indistinguishable by event_seq.
         assert_eq!(
-            panel_a.event_seq(), panel_b.event_seq(),
+            panel_a.event_seq(),
+            panel_b.event_seq(),
             "distinct sequences collapse to the same u32::MAX"
         );
     }
@@ -1075,7 +1070,12 @@ mod tests {
             "FINDING 11: taint-only changes are invisible to diff_between"
         );
         // No TaintChanged entries can ever appear.
-        assert!(panel.entries.iter().all(|e| !matches!(e.diff, SlotDiff::TaintChanged { .. })));
+        assert!(
+            panel
+                .entries
+                .iter()
+                .all(|e| !matches!(e.diff, SlotDiff::TaintChanged { .. }))
+        );
     }
 
     /// FINDING 12 -- MEDIUM: from_event silently swallows deserialization
@@ -1150,11 +1150,8 @@ mod tests {
         // All entries present.
         assert_eq!(panel.entries().len(), 8);
         // Check set of slot indices.
-        let slots: std::collections::HashSet<u16> = panel
-            .entries()
-            .iter()
-            .map(|e| e.slot.get())
-            .collect();
+        let slots: std::collections::HashSet<u16> =
+            panel.entries().iter().map(|e| e.slot.get()).collect();
         assert_eq!(slots.len(), 8);
         // FINDING 14: The order is undefined (HashMap iteration order).
     }
@@ -1180,7 +1177,8 @@ mod tests {
         assert_eq!(panel_a.event_seq(), u32::MAX);
         assert_eq!(panel_b.event_seq(), u32::MAX);
         assert_eq!(
-            panel_a.event_seq(), panel_b.event_seq(),
+            panel_a.event_seq(),
+            panel_b.event_seq(),
             "FINDING 15: distinct u64 seqs collapse to same u32::MAX"
         );
     }
@@ -1236,7 +1234,8 @@ mod tests {
         let event = make_step_started_event(42);
         let panel = SlotDiffPanel::from_event(&event, &HashMap::new());
         assert_eq!(
-            panel.event_seq(), 0,
+            panel.event_seq(),
+            0,
             "FINDING 17: non-slot event seq (42) is lost, reported as 0"
         );
     }

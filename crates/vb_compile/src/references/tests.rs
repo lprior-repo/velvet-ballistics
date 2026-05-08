@@ -1001,7 +1001,9 @@ steps:
         return Err("expected parse_ast to fail".to_owned());
     };
     adv_ensure(
-        errors.0.iter().any(|e| matches!(e, CompileError::UnknownReferenceName { kind, .. } if *kind == "input")),
+        errors.0.iter().any(
+            |e| matches!(e, CompileError::UnknownReferenceName { kind, .. } if *kind == "input"),
+        ),
         "sequence with bad reference should produce input error",
     )
 }
@@ -1101,7 +1103,12 @@ steps:
 "#;
     let error = adv_ref_parse_error(source)?;
     adv_ensure(
-        matches!(error, CompileError::UnknownReferenceRoot { .. } | CompileError::UnknownReferenceName { .. } | CompileError::IllegalReference { .. }),
+        matches!(
+            error,
+            CompileError::UnknownReferenceRoot { .. }
+                | CompileError::UnknownReferenceName { .. }
+                | CompileError::IllegalReference { .. }
+        ),
         "$inputs.user should be rejected (inputs is not a recognized root in reference validation)",
     )
 }
@@ -1129,7 +1136,9 @@ steps:
         return Err("expected parse_ast to fail for bad var reference in nested save".to_owned());
     };
     adv_ensure(
-        errors.0.iter().any(|e| matches!(e, CompileError::UnknownReferenceName { kind, .. } if *kind == "var")),
+        errors.0.iter().any(
+            |e| matches!(e, CompileError::UnknownReferenceName { kind, .. } if *kind == "var"),
+        ),
         "nested save mapping should validate var references",
     )
 }

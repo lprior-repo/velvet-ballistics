@@ -4,14 +4,17 @@
 #[cfg(test)]
 #[allow(clippy::panic_in_result_fn)]
 mod tests {
-    use vb_core::value_store::ValueStore;
-    use vb_core::{ConstIdx, ConstValue, ExprOp, ExprProgram, SlotIdx, SlotValue};
-    use vb_core::value::Taint;
+    use crate::eval::{
+        eval_binary_op, eval_expr_program, eval_expr_program_with_store, eval_helper,
+        eval_helper_with_store, eval_unary_op,
+    };
+    use crate::lexer::{BinaryOp, UnaryOp};
     use crate::parser::ExprHelper;
     use crate::{ExprError, ExprResult};
-    use crate::eval::{eval_binary_op, eval_expr_program, eval_expr_program_with_store, eval_helper, eval_helper_with_store, eval_unary_op};
-    use crate::lexer::{BinaryOp, UnaryOp};
     use vb_core::limits::MAX_EXPRESSION_STACK;
+    use vb_core::value::Taint;
+    use vb_core::value_store::ValueStore;
+    use vb_core::{ConstIdx, ConstValue, ExprOp, ExprProgram, SlotIdx, SlotValue};
 
     fn make_program(ops: Vec<ExprOp>) -> ExprResult<ExprProgram> {
         ExprProgram::try_from_ops(ops.into_boxed_slice()).map_err(|_| ExprError::StackOverflow {
@@ -1384,8 +1387,7 @@ mod tests {
     /// silent coercion.
     #[test]
     fn edge_f64_rejected_by_integer_addition() -> ExprResult<()> {
-        let f64_val = vb_core::value::FiniteF64::new(3.14)
-            .map_err(|_| ExprError::UnexpectedEof)?;
+        let f64_val = vb_core::value::FiniteF64::new(3.14).map_err(|_| ExprError::UnexpectedEof)?;
         let result = eval_binary_op(BinaryOp::Add, SlotValue::F64(f64_val), SlotValue::I64(1));
         let Err(ExprError::TypeMismatch { expected, found }) = result else {
             return Err(ExprError::UnexpectedToken {
@@ -1402,8 +1404,7 @@ mod tests {
     /// Comparison operators expect I64 operands. Supplying F64 must fail.
     #[test]
     fn edge_f64_rejected_by_comparison() -> ExprResult<()> {
-        let f64_val = vb_core::value::FiniteF64::new(1.0)
-            .map_err(|_| ExprError::UnexpectedEof)?;
+        let f64_val = vb_core::value::FiniteF64::new(1.0).map_err(|_| ExprError::UnexpectedEof)?;
         let result = eval_binary_op(BinaryOp::Lt, SlotValue::F64(f64_val), SlotValue::I64(2));
         let Err(ExprError::TypeMismatch { expected, found }) = result else {
             return Err(ExprError::UnexpectedToken {
@@ -1507,7 +1508,11 @@ mod tests {
     /// and `true or false`, but these three combinations are untested.
     #[test]
     fn edge_logical_and_or_all_combinations() -> ExprResult<()> {
-        let result = eval_binary_op(BinaryOp::And, SlotValue::Bool(false), SlotValue::Bool(false))?;
+        let result = eval_binary_op(
+            BinaryOp::And,
+            SlotValue::Bool(false),
+            SlotValue::Bool(false),
+        )?;
         assert_eq!(result, SlotValue::Bool(false), "false and false");
 
         let result = eval_binary_op(BinaryOp::Or, SlotValue::Bool(true), SlotValue::Bool(true))?;
@@ -1570,7 +1575,11 @@ mod tests {
         let mut constants = Vec::new();
         let program = crate::bytecode::compile_expr_with_pool(&ast, &mut constants)?;
         let result = eval_expr_program(&program, &[], &constants)?;
-        assert_eq!(result, SlotValue::Bool(true), "not true or true should be true");
+        assert_eq!(
+            result,
+            SlotValue::Bool(true),
+            "not true or true should be true"
+        );
         Ok(())
     }
 

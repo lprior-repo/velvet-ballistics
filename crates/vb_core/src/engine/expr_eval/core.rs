@@ -123,15 +123,13 @@ pub fn eval_expr(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ids::{
-        AccessorIdx, ConstIdx, ExprIdx, RunId, SlotIdx, StepIdx, WorkflowDigest,
-    };
+    use crate::ids::{AccessorIdx, ConstIdx, ExprIdx, RunId, SlotIdx, StepIdx, WorkflowDigest};
     use crate::value::{ConstValue, SlotValue, Taint};
+    use crate::value_store::ValueStore;
     use crate::workflow::{
         AccessorProgram, CompiledNode, CompiledNodeKind, CompiledWorkflow, ExprOp, ExprProgram,
         ResourceContract, WorkflowParts,
     };
-    use crate::value_store::ValueStore;
 
     fn ensure_equal<T>(actual: T, expected: T) -> Result<(), String>
     where
@@ -152,8 +150,8 @@ mod tests {
         use crate::limits::MAX_EXPRESSION_STACK;
         use crate::workflow::check_expr_stack_bound;
 
-        let max_stack = check_expr_stack_bound(&expr_ops, MAX_EXPRESSION_STACK)
-            .map_err(|e| e.to_string())?;
+        let max_stack =
+            check_expr_stack_bound(&expr_ops, MAX_EXPRESSION_STACK).map_err(|e| e.to_string())?;
         let expr = ExprProgram::try_from_parts(expr_ops.into_boxed_slice(), max_stack)
             .map_err(|e| e.to_string())?;
         CompiledWorkflow::try_from_parts(WorkflowParts {
@@ -196,9 +194,8 @@ mod tests {
         )?;
         let run = make_run(1)?;
         let mut store = ValueStore::new();
-        let (value, taint) =
-            eval_expr_with_store(&workflow, &run, &mut store, ExprIdx::new(0))
-                .map_err(|e| e.to_string())?;
+        let (value, taint) = eval_expr_with_store(&workflow, &run, &mut store, ExprIdx::new(0))
+            .map_err(|e| e.to_string())?;
         ensure_equal(value, SlotValue::I64(42))?;
         ensure_equal(taint, Taint::Clean)
     }
@@ -223,35 +220,25 @@ mod tests {
 
     #[test]
     fn eval_load_slot_reads_slot_value() -> Result<(), String> {
-        let workflow = make_workflow(
-            vec![ExprOp::LoadSlot(SlotIdx::new(0))],
-            vec![],
-            2,
-        )?;
+        let workflow = make_workflow(vec![ExprOp::LoadSlot(SlotIdx::new(0))], vec![], 2)?;
         let mut run = make_run(2)?;
         run.write_slot(SlotIdx::new(0), SlotValue::Bool(true))
             .map_err(|e| e.to_string())?;
         let mut store = ValueStore::new();
-        let (value, _taint) =
-            eval_expr_with_store(&workflow, &run, &mut store, ExprIdx::new(0))
-                .map_err(|e| e.to_string())?;
+        let (value, _taint) = eval_expr_with_store(&workflow, &run, &mut store, ExprIdx::new(0))
+            .map_err(|e| e.to_string())?;
         ensure_equal(value, SlotValue::Bool(true))
     }
 
     #[test]
     fn eval_load_slot_propagates_secret_taint() -> Result<(), String> {
-        let workflow = make_workflow(
-            vec![ExprOp::LoadSlot(SlotIdx::new(0))],
-            vec![],
-            2,
-        )?;
+        let workflow = make_workflow(vec![ExprOp::LoadSlot(SlotIdx::new(0))], vec![], 2)?;
         let mut run = make_run(2)?;
         run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(99), Taint::Secret)
             .map_err(|e| e.to_string())?;
         let mut store = ValueStore::new();
-        let (_value, taint) =
-            eval_expr_with_store(&workflow, &run, &mut store, ExprIdx::new(0))
-                .map_err(|e| e.to_string())?;
+        let (_value, taint) = eval_expr_with_store(&workflow, &run, &mut store, ExprIdx::new(0))
+            .map_err(|e| e.to_string())?;
         ensure_equal(taint, Taint::Secret)
     }
 
@@ -269,12 +256,15 @@ mod tests {
         let mut run = make_run(2)?;
         run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(10), Taint::Clean)
             .map_err(|e| e.to_string())?;
-        run.write_slot_with_taint(SlotIdx::new(1), SlotValue::I64(20), Taint::DerivedFromSecret)
-            .map_err(|e| e.to_string())?;
+        run.write_slot_with_taint(
+            SlotIdx::new(1),
+            SlotValue::I64(20),
+            Taint::DerivedFromSecret,
+        )
+        .map_err(|e| e.to_string())?;
         let mut store = ValueStore::new();
-        let (value, taint) =
-            eval_expr_with_store(&workflow, &run, &mut store, ExprIdx::new(0))
-                .map_err(|e| e.to_string())?;
+        let (value, taint) = eval_expr_with_store(&workflow, &run, &mut store, ExprIdx::new(0))
+            .map_err(|e| e.to_string())?;
         ensure_equal(value, SlotValue::I64(30))?;
         ensure_equal(taint, Taint::DerivedFromSecret)
     }
@@ -319,8 +309,8 @@ mod tests {
         use crate::workflow::check_expr_stack_bound;
 
         let ops = vec![ExprOp::LoadAccessor(AccessorIdx::new(0))];
-        let max_stack = check_expr_stack_bound(&ops, MAX_EXPRESSION_STACK)
-            .map_err(|e| e.to_string())?;
+        let max_stack =
+            check_expr_stack_bound(&ops, MAX_EXPRESSION_STACK).map_err(|e| e.to_string())?;
         let expr = ExprProgram::try_from_parts(ops.into_boxed_slice(), max_stack)
             .map_err(|e| e.to_string())?;
 
@@ -356,9 +346,8 @@ mod tests {
             .map_err(|e| e.to_string())?;
         let mut store = ValueStore::new();
 
-        let (value, _taint) =
-            eval_expr_with_store(&workflow, &run, &mut store, ExprIdx::new(0))
-                .map_err(|e| e.to_string())?;
+        let (value, _taint) = eval_expr_with_store(&workflow, &run, &mut store, ExprIdx::new(0))
+            .map_err(|e| e.to_string())?;
         ensure_equal(value, SlotValue::I64(77))
     }
 
@@ -396,9 +385,8 @@ mod tests {
         )?;
         let run = make_run(1)?;
         let mut store = ValueStore::new();
-        let (value, _taint) =
-            eval_expr_with_store(&workflow, &run, &mut store, ExprIdx::new(0))
-                .map_err(|e| e.to_string())?;
+        let (value, _taint) = eval_expr_with_store(&workflow, &run, &mut store, ExprIdx::new(0))
+            .map_err(|e| e.to_string())?;
         ensure_equal(value, SlotValue::I64(90))
     }
 }

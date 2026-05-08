@@ -417,5 +417,4 @@ mod tests {
         assert!(matches!(fields[0].field_type, FieldType::Text));
         assert!(matches!(fields[1].field_type, FieldType::Number));
     }
-
 }

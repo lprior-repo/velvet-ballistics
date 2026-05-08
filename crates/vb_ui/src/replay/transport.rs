@@ -17,16 +17,12 @@ pub enum TransportState {
     Idle,
     /// Auto-advancing.  `next_tick_at` is the wall-clock millisecond at
     /// which the next event should fire.
-    Playing {
-        next_tick_at: u64,
-    },
+    Playing { next_tick_at: u64 },
     /// Paused at the current position.
     Paused,
     /// Seeking to a target position.  Transient -- resolved immediately
     /// by the method that creates it.
-    Seeking {
-        target: u64,
-    },
+    Seeking { target: u64 },
 }
 
 impl TransportState {
@@ -57,9 +53,7 @@ impl TransportState {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TransportAction {
     /// Seek the playback cursor to the given event position.
-    SeekTo {
-        position: u64,
-    },
+    SeekTo { position: u64 },
     /// The UI should redraw (state changed but position did not).
     Redraw,
     /// No action needed.
@@ -278,9 +272,7 @@ impl TransportController {
     /// transitions to `Paused`.
     pub fn tick(&mut self, now_ms: u64) -> Option<TransportAction> {
         match self.state {
-            TransportState::Playing {
-                next_tick_at,
-            } => {
+            TransportState::Playing { next_tick_at } => {
                 if now_ms < next_tick_at {
                     return None;
                 }
@@ -291,16 +283,12 @@ impl TransportController {
                 }
                 self.current_position = saturating_inc(self.current_position, self.total_events);
                 let next = now_ms.saturating_add(self.speed.event_delay_ms());
-                self.state = TransportState::Playing {
-                    next_tick_at: next,
-                };
+                self.state = TransportState::Playing { next_tick_at: next };
                 Some(TransportAction::SeekTo {
                     position: self.current_position,
                 })
             }
-            TransportState::Idle
-            | TransportState::Paused
-            | TransportState::Seeking { .. } => None,
+            TransportState::Idle | TransportState::Paused | TransportState::Seeking { .. } => None,
         }
     }
 
@@ -339,11 +327,7 @@ fn clamp_position(position: u64, total: u64) -> u64 {
         return 0;
     }
     let max = total.saturating_sub(1);
-    if position > max {
-        max
-    } else {
-        position
-    }
+    if position > max { max } else { position }
 }
 
 /// Increment `pos` by 1, saturating at `total - 1`.
@@ -354,11 +338,7 @@ fn saturating_inc(pos: u64, total: u64) -> u64 {
                 return 0;
             }
             let max = total.saturating_sub(1);
-            if next > max {
-                max
-            } else {
-                next
-            }
+            if next > max { max } else { next }
         }
         None => pos,
     }
@@ -447,10 +427,7 @@ mod tests {
         let mut tc = TransportController::new(10);
         let action = tc.step_forward();
         assert_eq!(tc.current_position(), 1);
-        assert_eq!(
-            action,
-            TransportAction::SeekTo { position: 1 }
-        );
+        assert_eq!(action, TransportAction::SeekTo { position: 1 });
     }
 
     #[test]
@@ -480,10 +457,7 @@ mod tests {
         tc.current_position = 5;
         let action = tc.step_backward();
         assert_eq!(tc.current_position(), 4);
-        assert_eq!(
-            action,
-            TransportAction::SeekTo { position: 4 }
-        );
+        assert_eq!(action, TransportAction::SeekTo { position: 4 });
     }
 
     #[test]
@@ -511,10 +485,7 @@ mod tests {
         let action = tc.jump_to(42);
         assert_eq!(tc.current_position(), 42);
         assert!(tc.state().is_idle());
-        assert_eq!(
-            action,
-            TransportAction::SeekTo { position: 42 }
-        );
+        assert_eq!(action, TransportAction::SeekTo { position: 42 });
     }
 
     #[test]
@@ -523,10 +494,7 @@ mod tests {
         let action = tc.jump_to(200);
         // Max valid index is 49.
         assert_eq!(tc.current_position(), 49);
-        assert_eq!(
-            action,
-            TransportAction::SeekTo { position: 49 }
-        );
+        assert_eq!(action, TransportAction::SeekTo { position: 49 });
     }
 
     #[test]
@@ -534,10 +502,7 @@ mod tests {
         let mut tc = TransportController::new(10);
         let action = tc.jump_to(0);
         assert_eq!(tc.current_position(), 0);
-        assert_eq!(
-            action,
-            TransportAction::SeekTo { position: 0 }
-        );
+        assert_eq!(action, TransportAction::SeekTo { position: 0 });
     }
 
     #[test]
@@ -563,10 +528,7 @@ mod tests {
         let mut tc = TransportController::new(100);
         let action = tc.jump_to_failure(37);
         assert_eq!(tc.current_position(), 37);
-        assert_eq!(
-            action,
-            TransportAction::SeekTo { position: 37 }
-        );
+        assert_eq!(action, TransportAction::SeekTo { position: 37 });
     }
 
     #[test]
@@ -574,10 +536,7 @@ mod tests {
         let mut tc = TransportController::new(50);
         let action = tc.jump_to_failure(999);
         assert_eq!(tc.current_position(), 49);
-        assert_eq!(
-            action,
-            TransportAction::SeekTo { position: 49 }
-        );
+        assert_eq!(action, TransportAction::SeekTo { position: 49 });
     }
 
     #[test]
@@ -638,18 +597,12 @@ mod tests {
         tc.play();
         // First play sets next_tick_at=0, so tick at 0 fires immediately.
         let action = tc.tick(0);
-        assert_eq!(
-            action,
-            Some(TransportAction::SeekTo { position: 1 })
-        );
+        assert_eq!(action, Some(TransportAction::SeekTo { position: 1 }));
         // Next tick fires at 1000ms.
         assert!(tc.tick(500).is_none());
         assert!(tc.tick(999).is_none());
         let action2 = tc.tick(1000);
-        assert_eq!(
-            action2,
-            Some(TransportAction::SeekTo { position: 2 })
-        );
+        assert_eq!(action2, Some(TransportAction::SeekTo { position: 2 }));
     }
 
     #[test]
@@ -658,17 +611,11 @@ mod tests {
         tc.set_speed(PlaybackSpeed::Double);
         tc.play();
         let action = tc.tick(0);
-        assert_eq!(
-            action,
-            Some(TransportAction::SeekTo { position: 1 })
-        );
+        assert_eq!(action, Some(TransportAction::SeekTo { position: 1 }));
         // Double speed = 500ms per event.
         assert!(tc.tick(400).is_none());
         let action2 = tc.tick(500);
-        assert_eq!(
-            action2,
-            Some(TransportAction::SeekTo { position: 2 })
-        );
+        assert_eq!(action2, Some(TransportAction::SeekTo { position: 2 }));
     }
 
     #[test]

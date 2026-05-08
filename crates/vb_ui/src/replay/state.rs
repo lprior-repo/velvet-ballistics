@@ -254,10 +254,7 @@ impl ReplaySessionState {
     /// Removes the first bookmark at exactly `position`.  Returns `true` if a
     /// bookmark was removed.
     pub fn remove_bookmark(&mut self, position: u64) -> bool {
-        let idx = self
-            .bookmarks
-            .iter()
-            .position(|b| b.position == position);
+        let idx = self.bookmarks.iter().position(|b| b.position == position);
         match idx {
             Some(i) => {
                 self.bookmarks.remove(i);
@@ -290,7 +287,11 @@ impl ReplaySessionState {
             return;
         }
         let clamped = if speed < MIN_SPEED { MIN_SPEED } else { speed };
-        let clamped = if clamped > MAX_SPEED { MAX_SPEED } else { clamped };
+        let clamped = if clamped > MAX_SPEED {
+            MAX_SPEED
+        } else {
+            clamped
+        };
         self.playback_speed = clamped;
     }
 
@@ -675,10 +676,7 @@ mod tests {
             assert!(false, "slot 5 must be present");
             return;
         };
-        assert_eq!(
-            v, "custom",
-            "SlotWritten must not overwrite existing value"
-        );
+        assert_eq!(v, "custom", "SlotWritten must not overwrite existing value");
     }
 
     // =====================================================================
@@ -739,7 +737,8 @@ mod tests {
         assert_eq!(next.actions_dispatched, 0);
         assert!(next.step_states.is_empty());
         assert_eq!(
-            next.at_seq.get(), 9,
+            next.at_seq.get(),
+            9,
             "seq must still update even for informational events"
         );
     }
@@ -964,7 +963,8 @@ mod tests {
         assert_eq!(s1.at_seq.get(), 100);
         let s2 = s1.apply_event(&step_started(0, 5));
         assert_eq!(
-            s2.at_seq.get(), 5,
+            s2.at_seq.get(),
+            5,
             "at_seq must reflect the event's seq even if lower"
         );
     }
@@ -1025,10 +1025,22 @@ mod tests {
         let s3 = s2.apply_event(&action_completed(0, 0, 3));
         let s4 = s3.apply_event(&action_failed(0, 1, 4));
         let s5 = s4.apply_event(&run_cancelled(5));
-        assert_eq!(s5.steps_completed, 1, "cancelled must preserve steps_completed");
-        assert_eq!(s5.actions_dispatched, 1, "cancelled must preserve actions_dispatched");
-        assert_eq!(s5.actions_completed, 1, "cancelled must preserve actions_completed");
-        assert_eq!(s5.actions_failed, 1, "cancelled must preserve actions_failed");
+        assert_eq!(
+            s5.steps_completed, 1,
+            "cancelled must preserve steps_completed"
+        );
+        assert_eq!(
+            s5.actions_dispatched, 1,
+            "cancelled must preserve actions_dispatched"
+        );
+        assert_eq!(
+            s5.actions_completed, 1,
+            "cancelled must preserve actions_completed"
+        );
+        assert_eq!(
+            s5.actions_failed, 1,
+            "cancelled must preserve actions_failed"
+        );
     }
 
     // =====================================================================
@@ -1042,7 +1054,8 @@ mod tests {
         assert_eq!(s1.step_states.len(), 1);
         let s2 = s1.apply_event(&run_cancelled(2));
         assert_eq!(
-            s2.step_states.len(), 1,
+            s2.step_states.len(),
+            1,
             "RunCancelled must not clear step_states"
         );
     }
@@ -1118,7 +1131,10 @@ mod tests {
             seq: seq(2),
             workflow: TEST_WORKFLOW,
         });
-        assert_eq!(s2.run_id, OTHER_RUN, "second RunAccepted must overwrite run_id");
+        assert_eq!(
+            s2.run_id, OTHER_RUN,
+            "second RunAccepted must overwrite run_id"
+        );
     }
 
     // =====================================================================
@@ -1197,7 +1213,10 @@ mod tests {
     fn action_scheduled_does_not_affect_step_counters() {
         let init = ReplayState::initial();
         let next = init.apply_event(&action_scheduled(0, 0, 1));
-        assert_eq!(next.steps_completed, 0, "actions must not touch steps_completed");
+        assert_eq!(
+            next.steps_completed, 0,
+            "actions must not touch steps_completed"
+        );
         assert_eq!(next.steps_failed, 0, "actions must not touch steps_failed");
     }
 
@@ -1267,7 +1286,10 @@ mod tests {
         let init = ReplayState::initial();
         let next = init.apply_event(&run_accepted(1));
         assert!(!next.is_terminal, "RunAccepted must not set is_terminal");
-        assert!(next.terminal_kind.is_none(), "RunAccepted must not set terminal_kind");
+        assert!(
+            next.terminal_kind.is_none(),
+            "RunAccepted must not set terminal_kind"
+        );
     }
 
     // -- ReplaySessionState construction ------------------------------------
@@ -1452,10 +1474,7 @@ mod tests {
             after.actions_dispatched, 0,
             "late ActionScheduled must not increment actions_dispatched"
         );
-        assert_eq!(
-            after.at_seq.get(), 1,
-            "late event must not update at_seq"
-        );
+        assert_eq!(after.at_seq.get(), 1, "late event must not update at_seq");
     }
 
     #[test]
@@ -1467,10 +1486,7 @@ mod tests {
             after.steps_completed, 0,
             "late StepSucceeded must not increment steps_completed"
         );
-        assert_eq!(
-            after.at_seq.get(), 1,
-            "late event must not update at_seq"
-        );
+        assert_eq!(after.at_seq.get(), 1, "late event must not update at_seq");
     }
 
     #[test]
@@ -1527,7 +1543,8 @@ mod tests {
         state.steps_completed = u32::MAX;
         let next = state.apply_event(&step_succeeded(0, 0, 1));
         assert_eq!(
-            next.steps_completed, u32::MAX,
+            next.steps_completed,
+            u32::MAX,
             "steps_completed must saturate at u32::MAX"
         );
     }
@@ -1582,8 +1599,15 @@ mod tests {
 
         // Second terminal event is ignored due to terminal guard.
         let s2 = s1.apply_event(&run_failed(2));
-        assert_eq!(s2.steps_failed, 1, "second RunFailed must not increment steps_failed");
-        assert_eq!(s2.at_seq.get(), 1, "second RunFailed must not update at_seq");
+        assert_eq!(
+            s2.steps_failed, 1,
+            "second RunFailed must not increment steps_failed"
+        );
+        assert_eq!(
+            s2.at_seq.get(),
+            1,
+            "second RunFailed must not update at_seq"
+        );
     }
 
     // -- STATE BH-6: SlotWritten with entry API does not overwrite (MEDIUM) --
@@ -1594,7 +1618,9 @@ mod tests {
     #[test]
     fn blackhat_slot_written_does_not_overwrite_existing_value() {
         let mut state = ReplayState::initial();
-        state.slot_values.insert(SlotIdx::new(5), String::from("original"));
+        state
+            .slot_values
+            .insert(SlotIdx::new(5), String::from("original"));
         let next = state.apply_event(&slot_written(5, 1));
         assert_eq!(
             next.slot_values.get(&SlotIdx::new(5)),
@@ -1611,7 +1637,9 @@ mod tests {
     #[test]
     fn blackhat_step_succeeded_overwrites_slot_value() {
         let mut state = ReplayState::initial();
-        state.slot_values.insert(SlotIdx::new(0), String::from("custom"));
+        state
+            .slot_values
+            .insert(SlotIdx::new(0), String::from("custom"));
         let next = state.apply_event(&step_succeeded(0, 0, 1));
         // Output slot 0 should be overwritten to "<written>".
         assert_eq!(

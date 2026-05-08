@@ -802,6 +802,91 @@ fn expression_workflow() -> Option<CompiledWorkflow> {
     compiled_from_nodes("bench_expr", nodes, constants.into_boxed_slice())
 }
 
+fn for_each_workflow() -> Option<CompiledWorkflow> {
+    let nodes = vec![
+        CompiledNode {
+            id: StepIdx::new(0),
+            output: Some(SlotIdx::new(0)),
+            next: Some(StepIdx::new(1)),
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::SetConst {
+                value: ConstIdx::new(0),
+            },
+        },
+        CompiledNode {
+            id: StepIdx::new(1),
+            output: Some(SlotIdx::new(1)),
+            next: Some(StepIdx::new(2)),
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::SetConst {
+                value: ConstIdx::new(1),
+            },
+        },
+        CompiledNode {
+            id: StepIdx::new(2),
+            output: Some(SlotIdx::new(2)),
+            next: Some(StepIdx::new(3)),
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::BuildList {
+                items: Box::new([SlotIdx::new(0), SlotIdx::new(1)]),
+            },
+        },
+        CompiledNode {
+            id: StepIdx::new(3),
+            output: Some(SlotIdx::new(4)),
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::ForEachStart {
+                input: SlotIdx::new(2),
+                item_slot: SlotIdx::new(3),
+                limit: 2,
+                body: StepIdx::new(4),
+                done: StepIdx::new(5),
+            },
+        },
+        CompiledNode {
+            id: StepIdx::new(4),
+            output: Some(SlotIdx::new(3)),
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::ForEachNext {
+                iterator_slot: SlotIdx::new(4),
+                body: StepIdx::new(5),
+                done: StepIdx::new(5),
+            },
+        },
+        CompiledNode {
+            id: StepIdx::new(5),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::new(3),
+            },
+        },
+    ];
+    CompiledWorkflow::try_from_parts(WorkflowParts {
+        name: Box::from("bench_for_each"),
+        digest: WorkflowDigest::from_bytes([0x44; 32]),
+        nodes: nodes.into_boxed_slice(),
+        expressions: Box::from([]),
+        accessors: Box::from([]),
+        constants: Box::from([vb_core::ConstValue::I64(1), vb_core::ConstValue::I64(2)]),
+        slot_count: 5,
+        entry: StepIdx::new(0),
+        resource_contract: ResourceContract::DEFAULT,
+        step_names: Box::default(),
+        symbols_count: 0,
+    })
+    .ok()
+}
+
 fn compiled_from_nodes(
     name: &str,
     nodes: Vec<CompiledNode>,
@@ -847,6 +932,10 @@ fn generated_benches(c: &mut Criterion) {
         Ok(plan) => vb_codegen::emit_rust_workflow(plan).ok(),
         Err(_) => None,
     };
+    let for_each = for_each_workflow();
+    let for_each_source = for_each
+        .as_ref()
+        .and_then(|plan| vb_codegen::emit_rust_workflow(plan).ok());
     let mut group = c.benchmark_group("generated_mode");
     group.bench_function(
         metadata(
@@ -873,6 +962,36 @@ fn generated_benches(c: &mut Criterion) {
         |b| {
             b.iter(|| match (workflow.as_ref(), generated_source.as_ref()) {
                 (Ok(plan), Some(source)) => Some(vb_codegen::compare_generated_to_ir(
+                    black_box(source.as_str()),
+                    black_box(plan),
+                )),
+                _ => None,
+            })
+        },
+    );
+    group.bench_function(
+        metadata(
+            "codegen_emit_for_each_workflow",
+            b"for_each_workflow",
+            "fixture=for_each_workflow;surface=codegen_emit",
+        ),
+        |b| {
+            b.iter(|| {
+                for_each
+                    .as_ref()
+                    .map(|plan| vb_codegen::emit_rust_workflow(black_box(plan)))
+            })
+        },
+    );
+    group.bench_function(
+        metadata(
+            "codegen_compare_generated_to_ir_for_each",
+            b"for_each_workflow",
+            "fixture=for_each_workflow;surface=codegen_compare",
+        ),
+        |b| {
+            b.iter(|| match (for_each.as_ref(), for_each_source.as_ref()) {
+                (Some(plan), Some(source)) => Some(vb_codegen::compare_generated_to_ir(
                     black_box(source.as_str()),
                     black_box(plan),
                 )),

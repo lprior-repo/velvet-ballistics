@@ -72,10 +72,7 @@ mod tests {
 
     #[test]
     fn from_cli_exit_code_to_exit_code() {
-        assert_eq!(
-            ExitCode::from(CliExitCode::Success),
-            ExitCode::SUCCESS
-        );
+        assert_eq!(ExitCode::from(CliExitCode::Success), ExitCode::SUCCESS);
         assert_eq!(
             ExitCode::from(CliExitCode::ValidationFailed),
             ExitCode::from(1u8)
@@ -96,10 +93,7 @@ mod tests {
             ExitCode::from(CliExitCode::StorageError),
             ExitCode::from(5u8)
         );
-        assert_eq!(
-            ExitCode::from(CliExitCode::IpcError),
-            ExitCode::from(6u8)
-        );
+        assert_eq!(ExitCode::from(CliExitCode::IpcError), ExitCode::from(6u8));
         assert_eq!(
             ExitCode::from(CliExitCode::ActionPolicyError),
             ExitCode::from(7u8)

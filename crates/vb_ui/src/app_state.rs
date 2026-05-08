@@ -203,8 +203,7 @@ impl AppState {
     /// fresh metrics so that the summary struct stays consistent.
     pub fn sync_system_from_screen(&mut self) {
         let metrics = self.system_screen.metrics();
-        self.system.shard_count =
-            u32::try_from(metrics.shards.len()).unwrap_or(u32::MAX);
+        self.system.shard_count = u32::try_from(metrics.shards.len()).unwrap_or(u32::MAX);
         self.system.total_active_runs = metrics.total_active_runs;
         self.system.total_queue_depth = metrics
             .total_ready_queue_depth
@@ -393,7 +392,9 @@ impl VerificationData {
             String::from("PASS (all panels clean)")
         } else if self.fail_count > 0 {
             let total = self.total_checks;
-            let clean = total.saturating_sub(self.fail_count).saturating_sub(self.warn_count);
+            let clean = total
+                .saturating_sub(self.fail_count)
+                .saturating_sub(self.warn_count);
             format!("FAIL ({clean}/{total} panels clean)")
         } else {
             let total = self.total_checks;
@@ -682,7 +683,10 @@ mod tests {
 
     #[test]
     fn replay_data_run_id_text_large_value() {
-        assert_eq!(ReplayData::run_id_text(Some(u64::MAX)), u64::MAX.to_string());
+        assert_eq!(
+            ReplayData::run_id_text(Some(u64::MAX)),
+            u64::MAX.to_string()
+        );
     }
 
     // -----------------------------------------------------------------------
@@ -1179,13 +1183,11 @@ mod tests {
     #[test]
     fn populate_cert_cards_unrelated_gates_ignored() {
         let mut vd = VerificationData::new();
-        let certs = vec![
-            vb_ipc::CertificateWire {
-                kind: "gate_99_unknown".into(),
-                status: "Pass".into(),
-                details: String::new(),
-            },
-        ];
+        let certs = vec![vb_ipc::CertificateWire {
+            kind: "gate_99_unknown".into(),
+            status: "Pass".into(),
+            details: String::new(),
+        }];
         vd.populate_cert_cards(&certs);
         // Unknown gate does not match any panel prefix
         assert_eq!(vd.cert_structure.badge_text, "--");
@@ -1229,13 +1231,11 @@ mod tests {
     #[test]
     fn verification_data_status_badge_all_clean_from_certs() {
         let mut vd = VerificationData::new();
-        let certs = vec![
-            vb_ipc::CertificateWire {
-                kind: "gate_09_structure".into(),
-                status: "Pass".into(),
-                details: String::new(),
-            },
-        ];
+        let certs = vec![vb_ipc::CertificateWire {
+            kind: "gate_09_structure".into(),
+            status: "Pass".into(),
+            details: String::new(),
+        }];
         vd.populate_cert_cards(&certs);
         assert_eq!(vd.status_badge_text(), "PASS (all panels clean)");
     }
@@ -1271,13 +1271,11 @@ mod tests {
     #[test]
     fn verification_data_worst_risk_from_certs() {
         let mut vd = VerificationData::new();
-        let certs = vec![
-            vb_ipc::CertificateWire {
-                kind: "gate_09_check".into(),
-                status: "Fail".into(),
-                details: "bad".into(),
-            },
-        ];
+        let certs = vec![vb_ipc::CertificateWire {
+            kind: "gate_09_check".into(),
+            status: "Fail".into(),
+            details: "bad".into(),
+        }];
         vd.populate_cert_cards(&certs);
         assert_eq!(vd.worst_risk_text(), "HIGH RISK");
     }
@@ -1285,13 +1283,11 @@ mod tests {
     #[test]
     fn verification_data_worst_risk_clean_from_certs() {
         let mut vd = VerificationData::new();
-        let certs = vec![
-            vb_ipc::CertificateWire {
-                kind: "gate_09_check".into(),
-                status: "Pass".into(),
-                details: String::new(),
-            },
-        ];
+        let certs = vec![vb_ipc::CertificateWire {
+            kind: "gate_09_check".into(),
+            status: "Pass".into(),
+            details: String::new(),
+        }];
         vd.populate_cert_cards(&certs);
         assert_eq!(vd.worst_risk_text(), "CLEAN");
     }
@@ -1532,13 +1528,11 @@ mod tests {
     #[test]
     fn blackhat_build_card_treats_warn_as_fail_in_panel() {
         let mut vd = VerificationData::new();
-        let certs = vec![
-            vb_ipc::CertificateWire {
-                kind: "gate_09_warn".into(),
-                status: "Warn".into(),
-                details: String::new(),
-            },
-        ];
+        let certs = vec![vb_ipc::CertificateWire {
+            kind: "gate_09_warn".into(),
+            status: "Warn".into(),
+            details: String::new(),
+        }];
         vd.populate_cert_cards(&certs);
         // cert_structure matches gate_09 prefix. The "Warn" status is
         // not "Pass", so the panel badge is FAIL.
@@ -1556,13 +1550,11 @@ mod tests {
     #[test]
     fn blackhat_unrelated_gates_taint_all_clean_via_fail_counter() {
         let mut vd = VerificationData::new();
-        let certs = vec![
-            vb_ipc::CertificateWire {
-                kind: "gate_99_unknown".into(),
-                status: "Fail".into(),
-                details: "unknown".into(),
-            },
-        ];
+        let certs = vec![vb_ipc::CertificateWire {
+            kind: "gate_99_unknown".into(),
+            status: "Fail".into(),
+            details: "unknown".into(),
+        }];
         vd.populate_cert_cards(&certs);
         // All panel badges are "--" (no matching prefixes), but fail_count=1.
         assert_eq!(vd.cert_structure.badge_text, "--");
@@ -1597,7 +1589,10 @@ mod tests {
         let mut state = AppState::new();
         state.replay.playback_speed = 9.95;
         let text = state.replay.speed_text();
-        assert_eq!(text, "9.9x", "9.95 rounds down in .1f format (bankers rounding)");
+        assert_eq!(
+            text, "9.9x",
+            "9.95 rounds down in .1f format (bankers rounding)"
+        );
     }
 
     /// LOW: Negative playback_speed produces "-1.0x". No validation

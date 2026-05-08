@@ -169,22 +169,24 @@ pub fn resume_action_outcome(
             if failure.retry_policy == vb_core::action::RetryPolicy::Retryable
                 && original_ticket.attempt < original_ticket.capacity
             {
-                let next_seq = original_ticket
-                    .seq
-                    .checked_add(1)
-                    .ok_or(RuntimeEngineError::Core(
-                        EngineError::InternalInvariantViolation {
-                            reason: "seq_overflow_on_retry",
-                        },
-                    ))?;
-                let next_attempt = original_ticket
-                    .attempt
-                    .checked_add(1)
-                    .ok_or(RuntimeEngineError::Core(
-                        EngineError::InternalInvariantViolation {
-                            reason: "attempt_overflow_on_retry",
-                        },
-                    ))?;
+                let next_seq =
+                    original_ticket
+                        .seq
+                        .checked_add(1)
+                        .ok_or(RuntimeEngineError::Core(
+                            EngineError::InternalInvariantViolation {
+                                reason: "seq_overflow_on_retry",
+                            },
+                        ))?;
+                let next_attempt =
+                    original_ticket
+                        .attempt
+                        .checked_add(1)
+                        .ok_or(RuntimeEngineError::Core(
+                            EngineError::InternalInvariantViolation {
+                                reason: "attempt_overflow_on_retry",
+                            },
+                        ))?;
                 let idempotency_key =
                     compute_idempotency_key(run.run_id(), next_seq, original_ticket.action);
                 Ok(RuntimeSignal::AwaitingAction(ActionTicket {
@@ -295,15 +297,24 @@ mod tests {
         // seq=0x100 action=0 and seq=0 action=0x100 produced the same key.
         let key1 = compute_idempotency_key(RunId::new(1), SeqNo::new(0x100), ActionId::new(0));
         let key2 = compute_idempotency_key(RunId::new(1), SeqNo::new(0), ActionId::new(0x100));
-        assert_ne!(key1, key2, "hash-based key must distinguish overlapping bit patterns");
+        assert_ne!(
+            key1, key2,
+            "hash-based key must distinguish overlapping bit patterns"
+        );
     }
 
     #[test]
     fn idempotency_key_with_large_values() {
-        let key1 =
-            compute_idempotency_key(RunId::new(u64::MAX), SeqNo::new(u64::MAX), ActionId::new(65535));
-        let key2 =
-            compute_idempotency_key(RunId::new(u64::MAX), SeqNo::new(u64::MAX), ActionId::new(65535));
+        let key1 = compute_idempotency_key(
+            RunId::new(u64::MAX),
+            SeqNo::new(u64::MAX),
+            ActionId::new(65535),
+        );
+        let key2 = compute_idempotency_key(
+            RunId::new(u64::MAX),
+            SeqNo::new(u64::MAX),
+            ActionId::new(65535),
+        );
         assert_eq!(key1, key2);
     }
 
@@ -552,7 +563,10 @@ mod tests {
 
         assert!(result.is_err());
         let err = result.unwrap_err();
-        assert!(matches!(err, RuntimeEngineError::Core(vb_core::errors::EngineError::CapabilityDenied { .. })));
+        assert!(matches!(
+            err,
+            RuntimeEngineError::Core(vb_core::errors::EngineError::CapabilityDenied { .. })
+        ));
     }
 
     #[test]
@@ -562,7 +576,8 @@ mod tests {
         let action = ActionId::new(0);
         let required_cap = Capability::new("secrets".into(), action);
         let contract = make_contract_with_capability(action, required_cap);
-        let granted = CapabilitySet::from_grants(Box::new([Capability::new("secrets".into(), action)]));
+        let granted =
+            CapabilitySet::from_grants(Box::new([Capability::new("secrets".into(), action)]));
 
         let result = execute_do(
             &run,

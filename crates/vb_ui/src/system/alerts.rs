@@ -458,10 +458,7 @@ mod tests {
 
     #[test]
     fn critical_routes_to_pager() {
-        assert_eq!(
-            AlertSeverity::Critical.default_route(),
-            AlertRoute::Pager
-        );
+        assert_eq!(AlertSeverity::Critical.default_route(), AlertRoute::Pager);
     }
 
     // -- AlertRoute channel membership tests --
@@ -1439,7 +1436,11 @@ mod tests {
         let router = AlertRouter::new(10);
         assert!(router.alerts_by_severity(AlertSeverity::Info).is_empty());
         assert!(router.alerts_by_severity(AlertSeverity::Warning).is_empty());
-        assert!(router.alerts_by_severity(AlertSeverity::Critical).is_empty());
+        assert!(
+            router
+                .alerts_by_severity(AlertSeverity::Critical)
+                .is_empty()
+        );
     }
 
     #[test]
@@ -1462,9 +1463,27 @@ mod tests {
     #[test]
     fn router_acknowledge_marks_correct_alert_only() {
         let mut router = AlertRouter::new(10);
-        router.route_alert(AlertSeverity::Info, "a".to_string(), "s".to_string(), 1, 100);
-        router.route_alert(AlertSeverity::Info, "b".to_string(), "s".to_string(), 2, 200);
-        router.route_alert(AlertSeverity::Info, "c".to_string(), "s".to_string(), 3, 300);
+        router.route_alert(
+            AlertSeverity::Info,
+            "a".to_string(),
+            "s".to_string(),
+            1,
+            100,
+        );
+        router.route_alert(
+            AlertSeverity::Info,
+            "b".to_string(),
+            "s".to_string(),
+            2,
+            200,
+        );
+        router.route_alert(
+            AlertSeverity::Info,
+            "c".to_string(),
+            "s".to_string(),
+            3,
+            300,
+        );
 
         // Acknowledge only id=2.
         assert!(router.acknowledge(2));
@@ -1518,8 +1537,20 @@ mod tests {
     #[test]
     fn router_unacknowledged_criticals_all_are_criticals() {
         let mut router = AlertRouter::new(10);
-        router.route_alert(AlertSeverity::Critical, "c1".to_string(), "a".to_string(), 1, 100);
-        router.route_alert(AlertSeverity::Critical, "c2".to_string(), "b".to_string(), 2, 200);
+        router.route_alert(
+            AlertSeverity::Critical,
+            "c1".to_string(),
+            "a".to_string(),
+            1,
+            100,
+        );
+        router.route_alert(
+            AlertSeverity::Critical,
+            "c2".to_string(),
+            "b".to_string(),
+            2,
+            200,
+        );
         let unacked = router.unacknowledged_criticals();
         assert_eq!(unacked.len(), 2);
         for alert in unacked {
@@ -1579,12 +1610,30 @@ mod tests {
     #[test]
     fn router_dedup_after_trim_allows_reroute() {
         let mut router = AlertRouter::new(2);
-        router.route_alert(AlertSeverity::Info, "msg".to_string(), "src".to_string(), 42, 100);
+        router.route_alert(
+            AlertSeverity::Info,
+            "msg".to_string(),
+            "src".to_string(),
+            42,
+            100,
+        );
         router.acknowledge(1);
 
         // Exceed capacity so trim will evict.
-        router.route_alert(AlertSeverity::Warning, "w1".to_string(), "s2".to_string(), 10, 200);
-        router.route_alert(AlertSeverity::Critical, "c1".to_string(), "s3".to_string(), 11, 300);
+        router.route_alert(
+            AlertSeverity::Warning,
+            "w1".to_string(),
+            "s2".to_string(),
+            10,
+            200,
+        );
+        router.route_alert(
+            AlertSeverity::Critical,
+            "c1".to_string(),
+            "s3".to_string(),
+            11,
+            300,
+        );
 
         router.trim();
         // The acknowledged alert should be trimmed, removing its dedup key.
@@ -1605,7 +1654,13 @@ mod tests {
         assert!(router.is_empty());
         assert_eq!(router.len(), 0);
 
-        router.route_alert(AlertSeverity::Info, "msg".to_string(), "s".to_string(), 1, 100);
+        router.route_alert(
+            AlertSeverity::Info,
+            "msg".to_string(),
+            "s".to_string(),
+            1,
+            100,
+        );
         assert!(!router.is_empty());
         assert_eq!(router.len(), 1);
     }

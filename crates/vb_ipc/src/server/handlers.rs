@@ -75,10 +75,7 @@ fn sanitize_runtime_error(e: &dyn std::fmt::Display) -> String {
     if full.len() <= MAX_RUNTIME_ERROR_LEN {
         return full;
     }
-    let mut truncated: String = full
-        .chars()
-        .take(MAX_RUNTIME_ERROR_LEN)
-        .collect();
+    let mut truncated: String = full.chars().take(MAX_RUNTIME_ERROR_LEN).collect();
     truncated.push_str("...");
     truncated
 }
@@ -90,10 +87,7 @@ fn sanitize_validation_detail(detail: String) -> String {
     let truncated = if detail.len() <= MAX_VALIDATION_DETAIL_LEN {
         detail
     } else {
-        let mut s: String = detail
-            .chars()
-            .take(MAX_VALIDATION_DETAIL_LEN)
-            .collect();
+        let mut s: String = detail.chars().take(MAX_VALIDATION_DETAIL_LEN).collect();
         s.push_str("...");
         s
     };
@@ -216,14 +210,19 @@ pub fn handle_list_events(payload: &[u8], runtime: &mut Runtime) -> IpcResponse 
 
 /// Handles answer-ask.
 pub fn handle_answer_ask(payload: &[u8], runtime: &mut Runtime) -> IpcResponse {
-    let Ok(crate::IpcPayload::AnswerAsk { run_id, ticket, answer }) =
-        decode_payload::<crate::IpcPayload>(payload)
+    let Ok(crate::IpcPayload::AnswerAsk {
+        run_id,
+        ticket,
+        answer,
+    }) = decode_payload::<crate::IpcPayload>(payload)
     else {
         return IpcResponse::BadRequest;
     };
     if answer.len() > MAX_ANSWER_ASK_BYTES {
         return IpcResponse::PayloadError {
-            diagnostic: crate::IpcError::PayloadDecodeFailed.diagnostic_code().code(),
+            diagnostic: crate::IpcError::PayloadDecodeFailed
+                .diagnostic_code()
+                .code(),
             message: String::from("answer payload exceeds maximum allowed size"),
         };
     }
@@ -268,7 +267,9 @@ pub fn handle_complete_action(payload: &[u8], runtime: &mut Runtime) -> IpcRespo
     };
     if output.len() > MAX_ACTION_OUTPUT_LEN {
         return IpcResponse::PayloadError {
-            diagnostic: crate::IpcError::PayloadDecodeFailed.diagnostic_code().code(),
+            diagnostic: crate::IpcError::PayloadDecodeFailed
+                .diagnostic_code()
+                .code(),
             message: String::from("action output exceeds maximum allowed size"),
         };
     }
@@ -305,7 +306,9 @@ pub fn handle_fail_action(payload: &[u8], runtime: &mut Runtime) -> IpcResponse 
     };
     if error.len() > MAX_ACTION_ERROR_LEN {
         return IpcResponse::PayloadError {
-            diagnostic: crate::IpcError::PayloadDecodeFailed.diagnostic_code().code(),
+            diagnostic: crate::IpcError::PayloadDecodeFailed
+                .diagnostic_code()
+                .code(),
             message: String::from("action error payload exceeds maximum allowed size"),
         };
     }
@@ -335,7 +338,9 @@ pub fn submit_resolved_workflow(
 ) -> IpcResponse {
     if submit.input.len() > MAX_SUBMIT_INPUT_LEN {
         return IpcResponse::PayloadError {
-            diagnostic: crate::IpcError::PayloadDecodeFailed.diagnostic_code().code(),
+            diagnostic: crate::IpcError::PayloadDecodeFailed
+                .diagnostic_code()
+                .code(),
             message: String::from("submit input exceeds maximum allowed size"),
         };
     }
@@ -461,15 +466,42 @@ pub fn handle_verify_workflow(
     }
     let parts = workflow.to_parts();
     let gate_results: Vec<(&str, Result<(), vb_validate::ValidationError>)> = vec![
-        ("gate_07_expression_stack_depth", vb_validate::gates::validate_gate_07_expression_stack_depth(&parts)),
-        ("gate_08_accessor_path_segments", vb_validate::gates::validate_gate_08_accessor_path_segments(&parts)),
-        ("gate_09_slot_references", vb_validate::gates::validate_gate_09_slot_references(&parts)),
-        ("gate_10_node_kind_specific", vb_validate::gates::validate_gate_10_node_kind_specific(&parts)),
-        ("gate_11_loop_body_graph", vb_validate::gates::validate_gate_11_loop_body_graph(&parts)),
-        ("gate_12_action_contract_completeness", vb_validate::gates::validate_gate_12_action_contract_completeness(&parts, &[])),
-        ("gate_13_no_slot_cycles", vb_validate::gates::validate_gate_13_no_slot_cycles(&parts)),
-        ("gate_14_slot_type_consistency", vb_validate::gates::validate_gate_14_slot_type_consistency(&parts)),
-        ("gate_15_determinism_proof", vb_validate::gates::validate_gate_15_determinism_proof(&parts)),
+        (
+            "gate_07_expression_stack_depth",
+            vb_validate::gates::validate_gate_07_expression_stack_depth(&parts),
+        ),
+        (
+            "gate_08_accessor_path_segments",
+            vb_validate::gates::validate_gate_08_accessor_path_segments(&parts),
+        ),
+        (
+            "gate_09_slot_references",
+            vb_validate::gates::validate_gate_09_slot_references(&parts),
+        ),
+        (
+            "gate_10_node_kind_specific",
+            vb_validate::gates::validate_gate_10_node_kind_specific(&parts),
+        ),
+        (
+            "gate_11_loop_body_graph",
+            vb_validate::gates::validate_gate_11_loop_body_graph(&parts),
+        ),
+        (
+            "gate_12_action_contract_completeness",
+            vb_validate::gates::validate_gate_12_action_contract_completeness(&parts, &[]),
+        ),
+        (
+            "gate_13_no_slot_cycles",
+            vb_validate::gates::validate_gate_13_no_slot_cycles(&parts),
+        ),
+        (
+            "gate_14_slot_type_consistency",
+            vb_validate::gates::validate_gate_14_slot_type_consistency(&parts),
+        ),
+        (
+            "gate_15_determinism_proof",
+            vb_validate::gates::validate_gate_15_determinism_proof(&parts),
+        ),
     ];
     let total_checks = u32::try_from(gate_results.len()).unwrap_or(u32::MAX);
     let mut pass_count: u32 = 0;
@@ -552,7 +584,10 @@ fn collect_edges_from_node(
     edges: &mut Vec<crate::EdgeDescriptor>,
 ) {
     match kind {
-        vb_core::workflow::CompiledNodeKind::Choose { branches, otherwise } => {
+        vb_core::workflow::CompiledNodeKind::Choose {
+            branches,
+            otherwise,
+        } => {
             for (i, branch) in branches.iter().enumerate() {
                 edges.push(crate::EdgeDescriptor {
                     from: step,
@@ -570,7 +605,10 @@ fn collect_edges_from_node(
                 });
             }
         }
-        vb_core::workflow::CompiledNodeKind::ChooseSlot { branches, otherwise } => {
+        vb_core::workflow::CompiledNodeKind::ChooseSlot {
+            branches,
+            otherwise,
+        } => {
             for (i, branch) in branches.iter().enumerate() {
                 edges.push(crate::EdgeDescriptor {
                     from: step,
@@ -746,9 +784,8 @@ pub fn handle_get_workflow_graph(
     }
 
     let node_count = workflow.node_count();
-    let capped_node_count = node_count.min(
-        u16::try_from(MAX_WORKFLOW_GRAPH_NODES).unwrap_or(u16::MAX),
-    );
+    let capped_node_count =
+        node_count.min(u16::try_from(MAX_WORKFLOW_GRAPH_NODES).unwrap_or(u16::MAX));
     let mut nodes = Vec::new();
     let mut edges = Vec::new();
 
@@ -937,7 +974,10 @@ fn bfs_forward(
 fn all_successors(kind: &vb_core::workflow::CompiledNodeKind) -> Vec<u16> {
     let mut succs = Vec::new();
     match kind {
-        vb_core::workflow::CompiledNodeKind::Choose { branches, otherwise } => {
+        vb_core::workflow::CompiledNodeKind::Choose {
+            branches,
+            otherwise,
+        } => {
             for branch in branches {
                 succs.push(branch.target.get());
             }
@@ -945,7 +985,10 @@ fn all_successors(kind: &vb_core::workflow::CompiledNodeKind) -> Vec<u16> {
                 succs.push(fallback.get());
             }
         }
-        vb_core::workflow::CompiledNodeKind::ChooseSlot { branches, otherwise } => {
+        vb_core::workflow::CompiledNodeKind::ChooseSlot {
+            branches,
+            otherwise,
+        } => {
             for branch in branches {
                 succs.push(branch.target.get());
             }
@@ -1057,7 +1100,10 @@ mod tests {
         match result {
             Ok(decoded) => assert_eq!(decoded, crate::IpcPayload::Health),
             Err(_) => {
-                assert!(false, "decode_payload should succeed for valid Health payload");
+                assert!(
+                    false,
+                    "decode_payload should succeed for valid Health payload"
+                );
             }
         }
     }
@@ -1067,7 +1113,10 @@ mod tests {
         let garbage: &[u8] = &[0xFF, 0xFE, 0xFD, 0xFC];
         let result = decode_payload::<crate::IpcPayload>(garbage);
         match result {
-            Err(IpcResponse::PayloadError { diagnostic, message }) => {
+            Err(IpcResponse::PayloadError {
+                diagnostic,
+                message,
+            }) => {
                 assert!(!message.is_empty(), "error message should not be empty");
                 assert_eq!(diagnostic, 0x300D);
             }
@@ -1083,7 +1132,10 @@ mod tests {
         match result {
             Err(IpcResponse::PayloadError { .. }) => {}
             other => {
-                assert!(false, "expected PayloadError for empty bytes, got {other:?}");
+                assert!(
+                    false,
+                    "expected PayloadError for empty bytes, got {other:?}"
+                );
             }
         }
     }
@@ -1093,7 +1145,9 @@ mod tests {
         let payload = crate::IpcPayload::CancelRun {
             run_id: vb_core::RunId::new(42),
         };
-        let Ok(encoded) = postcard::to_allocvec(&payload) else { return };
+        let Ok(encoded) = postcard::to_allocvec(&payload) else {
+            return;
+        };
         let result = decode_payload::<crate::IpcPayload>(&encoded);
         let Ok(decoded) = result else {
             assert!(false, "should decode CancelRun");
@@ -1108,7 +1162,9 @@ mod tests {
             run_id: vb_core::RunId::new(7),
             max_records: 500,
         };
-        let Ok(encoded) = postcard::to_allocvec(&payload) else { return };
+        let Ok(encoded) = postcard::to_allocvec(&payload) else {
+            return;
+        };
         let result = decode_payload::<crate::IpcPayload>(&encoded);
         let Ok(decoded) = result else {
             assert!(false, "should decode DrainTrace");
@@ -1120,7 +1176,9 @@ mod tests {
     #[test]
     fn decode_payload_roundtrips_shutdown() {
         let payload = crate::IpcPayload::Shutdown;
-        let Ok(encoded) = postcard::to_allocvec(&payload) else { return };
+        let Ok(encoded) = postcard::to_allocvec(&payload) else {
+            return;
+        };
         let result = decode_payload::<crate::IpcPayload>(&encoded);
         let Ok(decoded) = result else {
             assert!(false, "should decode Shutdown");
@@ -1135,7 +1193,9 @@ mod tests {
             run_id: vb_core::RunId::new(33),
             from_sequence: 100,
         };
-        let Ok(encoded) = postcard::to_allocvec(&payload) else { return };
+        let Ok(encoded) = postcard::to_allocvec(&payload) else {
+            return;
+        };
         let result = decode_payload::<crate::IpcPayload>(&encoded);
         let Ok(decoded) = result else {
             assert!(false, "should decode ListEvents");
@@ -1149,7 +1209,9 @@ mod tests {
         let payload = crate::IpcPayload::InspectRun {
             run_id: vb_core::RunId::new(55),
         };
-        let Ok(encoded) = postcard::to_allocvec(&payload) else { return };
+        let Ok(encoded) = postcard::to_allocvec(&payload) else {
+            return;
+        };
         let result = decode_payload::<crate::IpcPayload>(&encoded);
         let Ok(decoded) = result else {
             assert!(false, "should decode InspectRun");
@@ -1165,7 +1227,9 @@ mod tests {
             ticket: 42,
             answer: Vec::from(&b"yes"[..]),
         };
-        let Ok(encoded) = postcard::to_allocvec(&payload) else { return };
+        let Ok(encoded) = postcard::to_allocvec(&payload) else {
+            return;
+        };
         let result = decode_payload::<crate::IpcPayload>(&encoded);
         let Ok(decoded) = result else {
             assert!(false, "should decode AnswerAsk");
@@ -1181,7 +1245,9 @@ mod tests {
             ticket: 7,
             output: Vec::from(&b"result"[..]),
         };
-        let Ok(encoded) = postcard::to_allocvec(&payload) else { return };
+        let Ok(encoded) = postcard::to_allocvec(&payload) else {
+            return;
+        };
         let result = decode_payload::<crate::IpcPayload>(&encoded);
         let Ok(decoded) = result else {
             assert!(false, "should decode CompleteAction");
@@ -1197,7 +1263,9 @@ mod tests {
             ticket: 3,
             error: Vec::from(&b"failure"[..]),
         };
-        let Ok(encoded) = postcard::to_allocvec(&payload) else { return };
+        let Ok(encoded) = postcard::to_allocvec(&payload) else {
+            return;
+        };
         let result = decode_payload::<crate::IpcPayload>(&encoded);
         let Ok(decoded) = result else {
             assert!(false, "should decode FailAction");
@@ -1209,7 +1277,9 @@ mod tests {
     #[test]
     fn decode_payload_roundtrips_get_metrics() {
         let payload = crate::IpcPayload::GetMetrics;
-        let Ok(encoded) = postcard::to_allocvec(&payload) else { return };
+        let Ok(encoded) = postcard::to_allocvec(&payload) else {
+            return;
+        };
         let result = decode_payload::<crate::IpcPayload>(&encoded);
         let Ok(decoded) = result else {
             assert!(false, "should decode GetMetrics");
@@ -1224,7 +1294,9 @@ mod tests {
             limit: 50,
             workflow: None,
         };
-        let Ok(encoded) = postcard::to_allocvec(&payload) else { return };
+        let Ok(encoded) = postcard::to_allocvec(&payload) else {
+            return;
+        };
         let result = decode_payload::<crate::IpcPayload>(&encoded);
         let Ok(decoded) = result else {
             assert!(false, "should decode ListRuns");
@@ -1240,7 +1312,9 @@ mod tests {
             workflow: vb_core::WorkflowDigest::from_bytes([0xAA; 32]),
             input: Vec::from(&b"input"[..]),
         });
-        let Ok(encoded) = postcard::to_allocvec(&payload) else { return };
+        let Ok(encoded) = postcard::to_allocvec(&payload) else {
+            return;
+        };
         let result = decode_payload::<crate::IpcPayload>(&encoded);
         let Ok(decoded) = result else {
             assert!(false, "should decode SubmitRun");
@@ -1267,7 +1341,10 @@ mod tests {
     fn ipc_error_response_maps_full_to_payload_error() {
         let response = ipc_error_response(crate::IpcError::Full);
         match response {
-            IpcResponse::PayloadError { diagnostic, message } => {
+            IpcResponse::PayloadError {
+                diagnostic,
+                message,
+            } => {
                 assert_eq!(diagnostic, 0x3001);
                 assert!(message.contains("full"), "expected 'full' in '{message}'");
             }
@@ -1281,9 +1358,15 @@ mod tests {
     fn ipc_error_response_maps_decode_failed_to_payload_error() {
         let response = ipc_error_response(crate::IpcError::PayloadDecodeFailed);
         match response {
-            IpcResponse::PayloadError { diagnostic, message } => {
+            IpcResponse::PayloadError {
+                diagnostic,
+                message,
+            } => {
                 assert_eq!(diagnostic, 0x300D);
-                assert!(message.contains("decode"), "expected 'decode' in '{message}'");
+                assert!(
+                    message.contains("decode"),
+                    "expected 'decode' in '{message}'"
+                );
             }
             other => {
                 assert!(false, "expected PayloadError, got {other:?}");
@@ -1295,7 +1378,10 @@ mod tests {
     fn ipc_error_response_maps_invalid_magic_to_payload_error() {
         let response = ipc_error_response(crate::IpcError::InvalidMagic { actual: 0xBAD });
         match response {
-            IpcResponse::PayloadError { diagnostic, message } => {
+            IpcResponse::PayloadError {
+                diagnostic,
+                message,
+            } => {
                 assert_eq!(diagnostic, 0x3004);
                 assert!(message.contains("magic"), "expected 'magic' in '{message}'");
             }
@@ -1309,7 +1395,10 @@ mod tests {
     fn ipc_error_response_maps_unknown_command_to_payload_error() {
         let response = ipc_error_response(crate::IpcError::UnknownCommand(200));
         match response {
-            IpcResponse::PayloadError { diagnostic, message } => {
+            IpcResponse::PayloadError {
+                diagnostic,
+                message,
+            } => {
                 assert_eq!(diagnostic, 0x3006);
                 assert!(message.contains("200"), "expected '200' in '{message}'");
             }
@@ -1401,11 +1490,8 @@ mod tests {
     #[test]
     fn all_successors_includes_parallel_branches_for_together_start() {
         let kind = vb_core::workflow::CompiledNodeKind::TogetherStart {
-            branches: vec![
-                vb_core::ids::StepIdx::new(2),
-                vb_core::ids::StepIdx::new(4),
-            ]
-            .into_boxed_slice(),
+            branches: vec![vb_core::ids::StepIdx::new(2), vb_core::ids::StepIdx::new(4)]
+                .into_boxed_slice(),
             join: vb_core::ids::StepIdx::new(6),
         };
         let succs = all_successors(&kind);
@@ -1726,9 +1812,7 @@ mod tests {
     /// FINDING 5 (LOW): sanitize_validation_detail strips path separators.
     #[test]
     fn sanitize_validation_detail_strips_paths() {
-        let detail = String::from(
-            "error in /home/user/project/src/main.rs: module not found",
-        );
+        let detail = String::from("error in /home/user/project/src/main.rs: module not found");
         let sanitized = sanitize_validation_detail(detail);
         assert!(
             !sanitized.contains("/home/"),
@@ -1761,7 +1845,10 @@ mod tests {
     fn sanitize_validation_detail_preserves_short_input() {
         let short = String::from("slot reference out of bounds");
         let sanitized = sanitize_validation_detail(short.clone());
-        assert_eq!(sanitized, short, "short detail should pass through unchanged");
+        assert_eq!(
+            sanitized, short,
+            "short detail should pass through unchanged"
+        );
     }
 
     // -- Black-hat security regression tests (round 6) --
@@ -1838,10 +1925,7 @@ mod tests {
             MAX_LIST_RUNS_LIMIT <= 4096,
             "list runs cap should not exceed 4096"
         );
-        assert!(
-            MAX_LIST_RUNS_LIMIT > 0,
-            "list runs cap should be non-zero"
-        );
+        assert!(MAX_LIST_RUNS_LIMIT > 0, "list runs cap should be non-zero");
     }
 
     /// FINDING 7 (MEDIUM): Verifies that a ListRuns payload with u32::MAX limit
@@ -1889,18 +1973,14 @@ mod tests {
     /// When node_count exceeds MAX_WORKFLOW_GRAPH_NODES, it should be capped.
     #[test]
     fn workflow_graph_node_count_capping_logic() {
-        let capped = u16::MAX.min(
-            u16::try_from(MAX_WORKFLOW_GRAPH_NODES).unwrap_or(u16::MAX),
-        );
+        let capped = u16::MAX.min(u16::try_from(MAX_WORKFLOW_GRAPH_NODES).unwrap_or(u16::MAX));
         assert_eq!(
             capped,
             u16::try_from(MAX_WORKFLOW_GRAPH_NODES).unwrap_or(u16::MAX),
             "u16::MAX should be capped to MAX_WORKFLOW_GRAPH_NODES"
         );
         // A small count should not be changed
-        let small_capped = 100u16.min(
-            u16::try_from(MAX_WORKFLOW_GRAPH_NODES).unwrap_or(u16::MAX),
-        );
+        let small_capped = 100u16.min(u16::try_from(MAX_WORKFLOW_GRAPH_NODES).unwrap_or(u16::MAX));
         assert_eq!(small_capped, 100, "small node count should pass through");
     }
 }

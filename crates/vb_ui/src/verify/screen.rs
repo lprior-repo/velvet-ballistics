@@ -674,11 +674,7 @@ pub fn cert_status_to_card_status(status: &CertificateStatus) -> CardStatus {
 #[must_use]
 pub fn certificate_to_card(cert: &Certificate) -> CertificateCard {
     let status = cert_status_to_card_status(&cert.status);
-    CertificateCard::new(
-        &format!("{:?}", cert.kind),
-        status,
-        &cert.details,
-    )
+    CertificateCard::new(&format!("{:?}", cert.kind), status, &cert.details)
 }
 
 /// Converts a `VerificationResult` into a `Vec<CertificateCard>`.
@@ -722,9 +718,7 @@ pub fn taint_overlay_to_display(result: &TaintOverlayResult) -> TaintFlowOverlay
             let intermediate: Vec<u16> = path
                 .path_nodes
                 .iter()
-                .filter(|&&s| {
-                    s != path.source_step && s != path.sink_step
-                })
+                .filter(|&&s| s != path.source_step && s != path.sink_step)
                 .map(|s| s.get())
                 .collect();
             TaintSinkPath {
@@ -740,7 +734,13 @@ pub fn taint_overlay_to_display(result: &TaintOverlayResult) -> TaintFlowOverlay
 
     let source_count = sources.len();
     let leak_count = sink_paths.iter().filter(|p| p.is_forbidden).count();
-    let summary = format!("{} source{}, {} leak{}", source_count, if source_count == 1 { "" } else { "s" }, leak_count, if leak_count == 1 { "" } else { "s" });
+    let summary = format!(
+        "{} source{}, {} leak{}",
+        source_count,
+        if source_count == 1 { "" } else { "s" },
+        leak_count,
+        if leak_count == 1 { "" } else { "s" }
+    );
 
     TaintFlowOverlay {
         sources,
@@ -772,7 +772,10 @@ pub fn resource_panel_to_display(panel: &ResourceBoundsPanel) -> ResourceBoundsD
         })
         .collect();
 
-    let ok_count = rows.iter().filter(|r| r.status == ResourceRowStatus::Ok).count();
+    let ok_count = rows
+        .iter()
+        .filter(|r| r.status == ResourceRowStatus::Ok)
+        .count();
     let total = rows.len();
     let all_ok = ok_count == total;
     let summary = format!("{}/{} metrics within bounds", ok_count, total);
@@ -797,9 +800,7 @@ pub fn action_reports_to_display(reports: &[ActionPolicyReport]) -> ActionPolicy
                 IdempotencyClass::AtLeastOnce => {
                     (String::from("AtLeastOnce"), String::from(NEON_ORANGE))
                 }
-                IdempotencyClass::Unknown => {
-                    (String::from("Unknown"), String::from(NEON_RED))
-                }
+                IdempotencyClass::Unknown => (String::from("Unknown"), String::from(NEON_RED)),
             };
 
             let strict_color = if r.strict_eligible {
@@ -816,11 +817,7 @@ pub fn action_reports_to_display(reports: &[ActionPolicyReport]) -> ActionPolicy
                 String::from(NEON_RED)
             };
 
-            let issues: Vec<String> = r
-                .issues
-                .iter()
-                .map(|i| format!("{:?}", i))
-                .collect();
+            let issues: Vec<String> = r.issues.iter().map(|i| format!("{:?}", i)).collect();
 
             ActionPolicyCard {
                 action_id: r.action_id,
@@ -981,7 +978,11 @@ mod tests {
     fn certificate_card_details_not_empty() {
         let panel = VerificationPanel::new();
         for (i, card) in panel.certificate_cards().iter().enumerate() {
-            assert!(!card.detail.is_empty(), "card {} detail should not be empty", i);
+            assert!(
+                !card.detail.is_empty(),
+                "card {} detail should not be empty",
+                i
+            );
         }
     }
 
@@ -989,7 +990,11 @@ mod tests {
     fn certificate_card_default_not_expanded() {
         let panel = VerificationPanel::new();
         for (i, card) in panel.certificate_cards().iter().enumerate() {
-            assert!(!card.expanded, "card {} should not be expanded by default", i);
+            assert!(
+                !card.expanded,
+                "card {} should not be expanded by default",
+                i
+            );
         }
     }
 
@@ -1314,9 +1319,17 @@ mod tests {
     fn certificate_cards_have_nonempty_colors() {
         let panel = VerificationPanel::new();
         for (i, card) in panel.certificate_cards().iter().enumerate() {
-            assert!(!card.title_color.is_empty(), "empty title_color for card {}", i);
+            assert!(
+                !card.title_color.is_empty(),
+                "empty title_color for card {}",
+                i
+            );
             assert!(!card.bg_color.is_empty(), "empty bg_color for card {}", i);
-            assert!(!card.border_color.is_empty(), "empty border_color for card {}", i);
+            assert!(
+                !card.border_color.is_empty(),
+                "empty border_color for card {}",
+                i
+            );
         }
     }
 

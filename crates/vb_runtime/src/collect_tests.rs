@@ -1184,8 +1184,12 @@ fn ensure(condition: bool, message: impl Into<String>) -> Result<(), String> {
 #[test]
 fn collect_states_new_is_empty() -> Result<(), String> {
     let states = CollectStates::new();
-    ensure(states.find(RunId::new(1), SlotIdx::new(0), ListId::new(0)).is_none(),
-        "new states should be empty")
+    ensure(
+        states
+            .find(RunId::new(1), SlotIdx::new(0), ListId::new(0))
+            .is_none(),
+        "new states should be empty",
+    )
 }
 
 #[test]
@@ -1203,12 +1207,24 @@ fn collect_states_upsert_and_find_roundtrip() -> Result<(), String> {
         time_limit_ms: None,
         start_millis: 0,
     };
-    states.upsert(state).map_err(|e| format!("upsert failed: {e:?}"))?;
-    let found = states.find(RunId::new(1), SlotIdx::new(0), ListId::new(20))
+    states
+        .upsert(state)
+        .map_err(|e| format!("upsert failed: {e:?}"))?;
+    let found = states
+        .find(RunId::new(1), SlotIdx::new(0), ListId::new(20))
         .ok_or("state not found after upsert")?;
-    ensure(found.cursor == 5, format!("expected cursor 5, got {}", found.cursor))?;
-    ensure(found.page_size == 10, format!("expected page_size 10, got {}", found.page_size))?;
-    ensure(found.item_count == 30, format!("expected item_count 30, got {}", found.item_count))
+    ensure(
+        found.cursor == 5,
+        format!("expected cursor 5, got {}", found.cursor),
+    )?;
+    ensure(
+        found.page_size == 10,
+        format!("expected page_size 10, got {}", found.page_size),
+    )?;
+    ensure(
+        found.item_count == 30,
+        format!("expected item_count 30, got {}", found.item_count),
+    )
 }
 
 #[test]
@@ -1226,7 +1242,9 @@ fn collect_states_find_returns_none_for_wrong_page() -> Result<(), String> {
         time_limit_ms: None,
         start_millis: 0,
     };
-    states.upsert(state).map_err(|e| format!("upsert failed: {e:?}"))?;
+    states
+        .upsert(state)
+        .map_err(|e| format!("upsert failed: {e:?}"))?;
     let found = states.find(RunId::new(1), SlotIdx::new(0), ListId::new(99));
     ensure(found.is_none(), "find should return None for wrong page id")
 }
@@ -1246,7 +1264,9 @@ fn collect_states_find_returns_none_for_wrong_run_id() -> Result<(), String> {
         time_limit_ms: None,
         start_millis: 0,
     };
-    states.upsert(state).map_err(|e| format!("upsert failed: {e:?}"))?;
+    states
+        .upsert(state)
+        .map_err(|e| format!("upsert failed: {e:?}"))?;
     let found = states.find(RunId::new(999), SlotIdx::new(0), ListId::new(20));
     ensure(found.is_none(), "find should return None for wrong run_id")
 }
@@ -1266,10 +1286,14 @@ fn collect_states_remove_clears_entry() -> Result<(), String> {
         time_limit_ms: None,
         start_millis: 0,
     };
-    states.upsert(state).map_err(|e| format!("upsert failed: {e:?}"))?;
+    states
+        .upsert(state)
+        .map_err(|e| format!("upsert failed: {e:?}"))?;
     states.remove(RunId::new(1), SlotIdx::new(0));
     ensure(
-        states.find(RunId::new(1), SlotIdx::new(0), ListId::new(20)).is_none(),
+        states
+            .find(RunId::new(1), SlotIdx::new(0), ListId::new(20))
+            .is_none(),
         "state should be gone after remove",
     )
 }
@@ -1289,7 +1313,9 @@ fn collect_states_upsert_replaces_existing() -> Result<(), String> {
         time_limit_ms: None,
         start_millis: 0,
     };
-    states.upsert(state_v1).map_err(|e| format!("upsert v1 failed: {e:?}"))?;
+    states
+        .upsert(state_v1)
+        .map_err(|e| format!("upsert v1 failed: {e:?}"))?;
     let state_v2 = CollectPaginationState {
         run_id: RunId::new(1),
         collector_slot: SlotIdx::new(0),
@@ -1302,17 +1328,25 @@ fn collect_states_upsert_replaces_existing() -> Result<(), String> {
         time_limit_ms: None,
         start_millis: 0,
     };
-    states.upsert(state_v2).map_err(|e| format!("upsert v2 failed: {e:?}"))?;
-    let found = states.find(RunId::new(1), SlotIdx::new(0), ListId::new(30))
+    states
+        .upsert(state_v2)
+        .map_err(|e| format!("upsert v2 failed: {e:?}"))?;
+    let found = states
+        .find(RunId::new(1), SlotIdx::new(0), ListId::new(30))
         .ok_or("state v2 not found")?;
-    ensure(found.cursor == 10, format!("expected cursor 10, got {}", found.cursor))
+    ensure(
+        found.cursor == 10,
+        format!("expected cursor 10, got {}", found.cursor),
+    )
 }
 
 #[test]
 fn collect_states_default_is_empty() -> Result<(), String> {
     let states = CollectStates::default();
     ensure(
-        states.find(RunId::new(0), SlotIdx::new(0), ListId::new(0)).is_none(),
+        states
+            .find(RunId::new(0), SlotIdx::new(0), ListId::new(0))
+            .is_none(),
         "default states should be empty",
     )
 }
@@ -1368,9 +1402,10 @@ fn collect_pagination_state_inequality() -> Result<(), String> {
 fn page_size_from_rejects_zero() -> Result<(), String> {
     let result = page_size_from(0);
     match result {
-        Err(EngineError::InvalidCompiledWorkflow { reason }) => {
-            ensure(reason == "collect page_size must be nonzero", format!("unexpected reason: {reason}"))
-        }
+        Err(EngineError::InvalidCompiledWorkflow { reason }) => ensure(
+            reason == "collect page_size must be nonzero",
+            format!("unexpected reason: {reason}"),
+        ),
         other => Err(format!("expected InvalidCompiledWorkflow, got {other:?}")),
     }
 }
@@ -1434,7 +1469,10 @@ fn copy_prefix_returns_first_page_size_items() -> Result<(), String> {
     ]
     .into_boxed_slice();
     let prefix = copy_prefix(&items, 3).map_err(|e| format!("{e:?}"))?;
-    ensure(prefix.len() == 3, format!("expected len 3, got {}", prefix.len()))?;
+    ensure(
+        prefix.len() == 3,
+        format!("expected len 3, got {}", prefix.len()),
+    )?;
     ensure(prefix.get(0) == Some(&SlotValue::I64(1)), "item 0 mismatch")?;
     ensure(prefix.get(1) == Some(&SlotValue::I64(2)), "item 1 mismatch")?;
     ensure(prefix.get(2) == Some(&SlotValue::I64(3)), "item 2 mismatch")
@@ -1444,7 +1482,10 @@ fn copy_prefix_returns_first_page_size_items() -> Result<(), String> {
 fn copy_prefix_clamps_to_item_count() -> Result<(), String> {
     let items: Box<[SlotValue]> = vec![SlotValue::I64(1), SlotValue::I64(2)].into_boxed_slice();
     let prefix = copy_prefix(&items, 100).map_err(|e| format!("{e:?}"))?;
-    ensure(prefix.len() == 2, format!("expected len 2, got {}", prefix.len()))
+    ensure(
+        prefix.len() == 2,
+        format!("expected len 2, got {}", prefix.len()),
+    )
 }
 
 #[test]
@@ -1458,21 +1499,23 @@ fn copy_page_range_returns_correct_slice() -> Result<(), String> {
     ]
     .into_boxed_slice();
     let page = copy_page_range(&items, 2, 2).map_err(|e| format!("{e:?}"))?;
-    ensure(page.len() == 2, format!("expected len 2, got {}", page.len()))?;
+    ensure(
+        page.len() == 2,
+        format!("expected len 2, got {}", page.len()),
+    )?;
     ensure(page.get(0) == Some(&SlotValue::I64(2)), "item 0 mismatch")?;
     ensure(page.get(1) == Some(&SlotValue::I64(3)), "item 1 mismatch")
 }
 
 #[test]
 fn copy_page_range_clamps_at_end() -> Result<(), String> {
-    let items: Box<[SlotValue]> = vec![
-        SlotValue::I64(0),
-        SlotValue::I64(1),
-        SlotValue::I64(2),
-    ]
-    .into_boxed_slice();
+    let items: Box<[SlotValue]> =
+        vec![SlotValue::I64(0), SlotValue::I64(1), SlotValue::I64(2)].into_boxed_slice();
     let page = copy_page_range(&items, 2, 10).map_err(|e| format!("{e:?}"))?;
-    ensure(page.len() == 1, format!("expected len 1, got {}", page.len()))?;
+    ensure(
+        page.len() == 1,
+        format!("expected len 1, got {}", page.len()),
+    )?;
     ensure(page.get(0) == Some(&SlotValue::I64(2)), "item 0 mismatch")
 }
 
@@ -1534,9 +1577,10 @@ fn validate_collect_state_rejects_source_length_change() -> Result<(), String> {
     };
     let result = validate_collect_state(&state, 20);
     match result {
-        Err(EngineError::InvalidCompiledWorkflow { reason }) => {
-            ensure(reason == "collect source length changed", format!("unexpected reason: {reason}"))
-        }
+        Err(EngineError::InvalidCompiledWorkflow { reason }) => ensure(
+            reason == "collect source length changed",
+            format!("unexpected reason: {reason}"),
+        ),
         other => Err(format!("expected InvalidCompiledWorkflow, got {other:?}")),
     }
 }
@@ -1569,15 +1613,19 @@ fn checked_add_usize_succeeds_for_valid_addition() -> Result<(), String> {
 fn checked_add_usize_fails_on_overflow() -> Result<(), String> {
     let result = checked_add_usize(usize::MAX, 1, "overflow test");
     match result {
-        Err(EngineError::InternalInvariantViolation { reason }) => {
-            ensure(reason == "overflow test", format!("unexpected reason: {reason}"))
-        }
-        other => Err(format!("expected InternalInvariantViolation, got {other:?}")),
+        Err(EngineError::InternalInvariantViolation { reason }) => ensure(
+            reason == "overflow test",
+            format!("unexpected reason: {reason}"),
+        ),
+        other => Err(format!(
+            "expected InternalInvariantViolation, got {other:?}"
+        )),
     }
 }
 
 #[test]
-fn collect_start_uses_source_as_collector_when_output_is_none_for_non_empty() -> Result<(), String> {
+fn collect_start_uses_source_as_collector_when_output_is_none_for_non_empty() -> Result<(), String>
+{
     let mut run = fresh_frame();
     let mut store = ValueStore::new();
     let mut states = fresh_states();
@@ -1593,17 +1641,34 @@ fn collect_start_uses_source_as_collector_when_output_is_none_for_non_empty() ->
     // When output is None, source slot is used as the collector.
     // This means the source slot is overwritten with the first page.
     let result = collect_start(
-        &mut run, &mut store, &mut states,
-        source, 100, 2, body, done, None, None,
+        &mut run,
+        &mut store,
+        &mut states,
+        source,
+        100,
+        2,
+        body,
+        done,
+        None,
+        None,
     );
     let signal = result.map_err(|e| format!("collect_start failed: {e:?}"))?;
-    ensure(signal == vb_core::EngineSignal::Continue, "expected Continue")?;
-    ensure(run.pc() == body, format!("expected pc={body:?}, got {:?}", run.pc()))?;
+    ensure(
+        signal == vb_core::EngineSignal::Continue,
+        "expected Continue",
+    )?;
+    ensure(
+        run.pc() == body,
+        format!("expected pc={body:?}, got {:?}", run.pc()),
+    )?;
     // The source slot should now hold the first page (a list of 2 items)
     match *run.read_slot(source).map_err(|e| format!("{e:?}"))? {
         SlotValue::List(id) => {
             let items = store.list(id).map_err(|e| format!("{e:?}"))?;
-            ensure(items.len() == 2, format!("expected 2 items in page, got {}", items.len()))
+            ensure(
+                items.len() == 2,
+                format!("expected 2 items in page, got {}", items.len()),
+            )
         }
         other => return Err(format!("expected List, got {other:?}")),
     }
@@ -1633,19 +1698,30 @@ fn collect_next_validates_state_consistency() -> Result<(), String> {
     );
     // Start collect with page_size=2
     collect_start(
-        &mut run, &mut store, &mut states,
-        source, 100, 2, body, done, Some(collector), None,
+        &mut run,
+        &mut store,
+        &mut states,
+        source,
+        100,
+        2,
+        body,
+        done,
+        Some(collector),
+        None,
     )
     .map_err(|e| format!("collect_start failed: {e:?}"))?;
     // Now modify the source list to have a different length (simulating mutation)
     let new_items: Vec<SlotValue> = (0..10).map(SlotValue::I64).collect();
-    let new_id = store.insert_list(new_items.into_boxed_slice()).map_err(|e| format!("{e:?}"))?;
+    let new_id = store
+        .insert_list(new_items.into_boxed_slice())
+        .map_err(|e| format!("{e:?}"))?;
     // Find the state and get the source ListId
     let current_page = match *run.read_slot(collector).map_err(|e| format!("{e:?}"))? {
         SlotValue::List(id) => id,
         other => return Err(format!("expected List, got {other:?}")),
     };
-    let state = states.find(run.run_id(), collector, current_page)
+    let state = states
+        .find(run.run_id(), collector, current_page)
         .ok_or("state not found")?;
     // Replace source with a different-length list
     let mut modified_state = state;
@@ -1658,13 +1734,16 @@ fn collect_next_validates_state_consistency() -> Result<(), String> {
     // tracks the original source ListId. Let's insert a new list into the store
     // and update the pagination state to point to it.
     modified_state.source = new_id;
-    states.upsert(modified_state).map_err(|e| format!("{e:?}"))?;
+    states
+        .upsert(modified_state)
+        .map_err(|e| format!("{e:?}"))?;
     // Now collect_next should fail because source length changed
     let result = collect_next(&mut run, &mut store, &mut states, collector, body, done);
     match result {
-        Err(EngineError::InvalidCompiledWorkflow { reason }) => {
-            ensure(reason == "collect source length changed", format!("unexpected: {reason}"))
-        }
+        Err(EngineError::InvalidCompiledWorkflow { reason }) => ensure(
+            reason == "collect source length changed",
+            format!("unexpected: {reason}"),
+        ),
         other => Err(format!("expected InvalidCompiledWorkflow, got {other:?}")),
     }
 }
@@ -1676,7 +1755,8 @@ fn collect_finish_removes_state_after_writing_output() -> Result<(), String> {
     let collector = SlotIdx::new(0);
     let output = SlotIdx::new(1);
     let next = StepIdx::new(3);
-    run.write_slot(collector, SlotValue::I64(77)).map_err(|e| format!("{e:?}"))?;
+    run.write_slot(collector, SlotValue::I64(77))
+        .map_err(|e| format!("{e:?}"))?;
     // Insert a state to verify it's removed
     let state = CollectPaginationState {
         run_id: run.run_id(),
@@ -1692,12 +1772,18 @@ fn collect_finish_removes_state_after_writing_output() -> Result<(), String> {
     };
     states.upsert(state).map_err(|e| format!("{e:?}"))?;
     collect_finish(
-        &mut run, &mut states, collector,
-        Some(output), Some(next), StepIdx::ZERO,
+        &mut run,
+        &mut states,
+        collector,
+        Some(output),
+        Some(next),
+        StepIdx::ZERO,
     )
     .map_err(|e| format!("collect_finish failed: {e:?}"))?;
     ensure(
-        states.find(run.run_id(), collector, ListId::new(0)).is_none(),
+        states
+            .find(run.run_id(), collector, ListId::new(0))
+            .is_none(),
         "state should be removed after collect_finish",
     )
 }
@@ -1705,8 +1791,14 @@ fn collect_finish_removes_state_after_writing_output() -> Result<(), String> {
 #[test]
 fn millis_since_epoch_returns_reasonable_value() -> Result<(), String> {
     let ms = millis_since_epoch().map_err(|e| format!("{e:?}"))?;
-    ensure(ms > 946_684_800_000, format!("millis should be post-2000, got {ms}"))?;
-    ensure(ms < 32_503_680_000_000, format!("millis should be pre-3000, got {ms}"))
+    ensure(
+        ms > 946_684_800_000,
+        format!("millis should be post-2000, got {ms}"),
+    )?;
+    ensure(
+        ms < 32_503_680_000_000,
+        format!("millis should be pre-3000, got {ms}"),
+    )
 }
 
 // =========================================================================
@@ -1738,11 +1830,22 @@ fn collect_full_lifecycle_single_item_pages() -> Result<(), String> {
     );
 
     collect_start(
-        &mut run, &mut store, &mut states,
-        source, 100, 1, body, done, Some(collector), None,
+        &mut run,
+        &mut store,
+        &mut states,
+        source,
+        100,
+        1,
+        body,
+        done,
+        Some(collector),
+        None,
     )
     .map_err(|e| format!("collect_start: {e:?}"))?;
-    ensure(run.pc() == body, format!("expected pc={body:?}, got {:?}", run.pc()))?;
+    ensure(
+        run.pc() == body,
+        format!("expected pc={body:?}, got {:?}", run.pc()),
+    )?;
     assert_slot_list_items(&run, &store, collector, &[SlotValue::I64(10)]);
 
     collect_next(&mut run, &mut store, &mut states, collector, body, done)
@@ -1786,8 +1889,12 @@ fn collect_finish_propagates_list_to_output() -> Result<(), String> {
         .map_err(|e| format!("{e:?}"))?;
 
     collect_finish(
-        &mut run, &mut states, collector,
-        Some(output), Some(next), StepIdx::ZERO,
+        &mut run,
+        &mut states,
+        collector,
+        Some(output),
+        Some(next),
+        StepIdx::ZERO,
     )
     .map_err(|e| format!("collect_finish: {e:?}"))?;
 
@@ -1797,7 +1904,10 @@ fn collect_finish_propagates_list_to_output() -> Result<(), String> {
         }
         other => return Err(format!("expected List, got {other:?}")),
     }
-    ensure(run.pc() == next, format!("expected pc={next:?}, got {:?}", run.pc()))?;
+    ensure(
+        run.pc() == next,
+        format!("expected pc={next:?}, got {:?}", run.pc()),
+    )?;
     ensure(
         states.find(run.run_id(), collector, list_id).is_none(),
         "state should be removed after finish",
@@ -1813,15 +1923,30 @@ fn collect_page_with_nonempty_collector_advances_to_body() -> Result<(), String>
     let collector = SlotIdx::new(0);
     let body = StepIdx::new(5);
 
-    list_in_slot(&mut run, &mut store, collector, vec![SlotValue::I64(1), SlotValue::I64(2)]);
+    list_in_slot(
+        &mut run,
+        &mut store,
+        collector,
+        vec![SlotValue::I64(1), SlotValue::I64(2)],
+    );
 
     let result = collect_page(
-        &mut run, &mut store, &mut states,
-        collector, body, StepIdx::new(6),
+        &mut run,
+        &mut store,
+        &mut states,
+        collector,
+        body,
+        StepIdx::new(6),
     );
     let signal = result.map_err(|e| format!("{e:?}"))?;
-    ensure(signal == vb_core::EngineSignal::Continue, "expected Continue")?;
-    ensure(run.pc() == body, format!("expected pc={body:?}, got {:?}", run.pc()))
+    ensure(
+        signal == vb_core::EngineSignal::Continue,
+        "expected Continue",
+    )?;
+    ensure(
+        run.pc() == body,
+        format!("expected pc={body:?}, got {:?}", run.pc()),
+    )
 }
 
 /// Limit boundary: exact match succeeds, one over fails.
@@ -1833,13 +1958,28 @@ fn collect_start_limit_boundary_exact_vs_one_over() -> Result<(), String> {
     let source = SlotIdx::new(0);
     let output = SlotIdx::new(1);
     list_in_slot(
-        &mut run1, &mut store1, source,
-        vec![SlotValue::I64(1), SlotValue::I64(2), SlotValue::I64(3),
-             SlotValue::I64(4), SlotValue::I64(5)],
+        &mut run1,
+        &mut store1,
+        source,
+        vec![
+            SlotValue::I64(1),
+            SlotValue::I64(2),
+            SlotValue::I64(3),
+            SlotValue::I64(4),
+            SlotValue::I64(5),
+        ],
     );
     let r1 = collect_start(
-        &mut run1, &mut store1, &mut states1,
-        source, 5, 2, StepIdx::new(1), StepIdx::new(2), Some(output), None,
+        &mut run1,
+        &mut store1,
+        &mut states1,
+        source,
+        5,
+        2,
+        StepIdx::new(1),
+        StepIdx::new(2),
+        Some(output),
+        None,
     );
     ensure(r1.is_ok(), format!("exact limit should succeed: {r1:?}"))?;
 
@@ -1847,13 +1987,28 @@ fn collect_start_limit_boundary_exact_vs_one_over() -> Result<(), String> {
     let mut store2 = ValueStore::new();
     let mut states2 = fresh_states();
     list_in_slot(
-        &mut run2, &mut store2, source,
-        vec![SlotValue::I64(1), SlotValue::I64(2), SlotValue::I64(3),
-             SlotValue::I64(4), SlotValue::I64(5)],
+        &mut run2,
+        &mut store2,
+        source,
+        vec![
+            SlotValue::I64(1),
+            SlotValue::I64(2),
+            SlotValue::I64(3),
+            SlotValue::I64(4),
+            SlotValue::I64(5),
+        ],
     );
     let r2 = collect_start(
-        &mut run2, &mut store2, &mut states2,
-        source, 4, 2, StepIdx::new(1), StepIdx::new(2), Some(output), None,
+        &mut run2,
+        &mut store2,
+        &mut states2,
+        source,
+        4,
+        2,
+        StepIdx::new(1),
+        StepIdx::new(2),
+        Some(output),
+        None,
     );
     match r2 {
         Err(EngineError::CollectItemLimitExceeded) => Ok(()),
@@ -1873,12 +2028,22 @@ fn collect_next_time_limit_exceeded_returns_error() -> Result<(), String> {
     let done = StepIdx::new(2);
 
     list_in_slot(
-        &mut run, &mut store, source,
+        &mut run,
+        &mut store,
+        source,
         vec![SlotValue::I64(1), SlotValue::I64(2)],
     );
     collect_start(
-        &mut run, &mut store, &mut states,
-        source, 100, 1, body, done, Some(collector), Some(1),
+        &mut run,
+        &mut store,
+        &mut states,
+        source,
+        100,
+        1,
+        body,
+        done,
+        Some(collector),
+        Some(1),
     )
     .map_err(|e| format!("collect_start: {e:?}"))?;
 
@@ -1891,7 +2056,10 @@ fn collect_next_time_limit_exceeded_returns_error() -> Result<(), String> {
         .find(run.run_id(), collector, current_page)
         .ok_or("state not found")?;
     states
-        .upsert(CollectPaginationState { start_millis: 0, ..state })
+        .upsert(CollectPaginationState {
+            start_millis: 0,
+            ..state
+        })
         .map_err(|e| format!("{e:?}"))?;
 
     let result = collect_next(&mut run, &mut store, &mut states, collector, body, done);
@@ -1906,25 +2074,45 @@ fn collect_next_time_limit_exceeded_returns_error() -> Result<(), String> {
 fn collect_states_independent_entries_per_run() -> Result<(), String> {
     let mut states = CollectStates::new();
     let s1 = CollectPaginationState {
-        run_id: RunId::new(1), collector_slot: SlotIdx::new(0),
-        source: ListId::new(10), current_page: ListId::new(20),
-        cursor: 3, page_size: 5, item_count: 10, limit: 50,
-        time_limit_ms: None, start_millis: 0,
+        run_id: RunId::new(1),
+        collector_slot: SlotIdx::new(0),
+        source: ListId::new(10),
+        current_page: ListId::new(20),
+        cursor: 3,
+        page_size: 5,
+        item_count: 10,
+        limit: 50,
+        time_limit_ms: None,
+        start_millis: 0,
     };
     let s2 = CollectPaginationState {
-        run_id: RunId::new(2), collector_slot: SlotIdx::new(0),
-        source: ListId::new(11), current_page: ListId::new(21),
-        cursor: 7, page_size: 5, item_count: 15, limit: 50,
-        time_limit_ms: None, start_millis: 0,
+        run_id: RunId::new(2),
+        collector_slot: SlotIdx::new(0),
+        source: ListId::new(11),
+        current_page: ListId::new(21),
+        cursor: 7,
+        page_size: 5,
+        item_count: 15,
+        limit: 50,
+        time_limit_ms: None,
+        start_millis: 0,
     };
     states.upsert(s1).map_err(|e| format!("{e:?}"))?;
     states.upsert(s2).map_err(|e| format!("{e:?}"))?;
-    let f1 = states.find(RunId::new(1), SlotIdx::new(0), ListId::new(20))
+    let f1 = states
+        .find(RunId::new(1), SlotIdx::new(0), ListId::new(20))
         .ok_or("run 1 state missing")?;
-    let f2 = states.find(RunId::new(2), SlotIdx::new(0), ListId::new(21))
+    let f2 = states
+        .find(RunId::new(2), SlotIdx::new(0), ListId::new(21))
         .ok_or("run 2 state missing")?;
-    ensure(f1.cursor == 3, format!("cursor 1 should be 3, got {}", f1.cursor))?;
-    ensure(f2.cursor == 7, format!("cursor 2 should be 7, got {}", f2.cursor))
+    ensure(
+        f1.cursor == 3,
+        format!("cursor 1 should be 3, got {}", f1.cursor),
+    )?;
+    ensure(
+        f2.cursor == 7,
+        format!("cursor 2 should be 7, got {}", f2.cursor),
+    )
 }
 
 /// Remove on a non-existent key is a silent no-op.
@@ -1932,7 +2120,10 @@ fn collect_states_independent_entries_per_run() -> Result<(), String> {
 fn collect_states_remove_nonexistent_is_noop() -> Result<(), String> {
     let mut states = CollectStates::new();
     states.remove(RunId::new(999), SlotIdx::new(99));
-    ensure(states.entries.is_empty(), "removing nonexistent key should not add entries")
+    ensure(
+        states.entries.is_empty(),
+        "removing nonexistent key should not add entries",
+    )
 }
 
 /// copy_page_range with start at end of items returns empty page.
@@ -1940,7 +2131,10 @@ fn collect_states_remove_nonexistent_is_noop() -> Result<(), String> {
 fn copy_page_range_at_end_returns_empty() -> Result<(), String> {
     let items: Box<[SlotValue]> = vec![SlotValue::I64(1), SlotValue::I64(2)].into_boxed_slice();
     let page = copy_page_range(&items, 2, 5).map_err(|e| format!("{e:?}"))?;
-    ensure(page.is_empty(), format!("expected empty page, got {} items", page.len()))
+    ensure(
+        page.is_empty(),
+        format!("expected empty page, got {} items", page.len()),
+    )
 }
 
 /// copy_page_range with start beyond length returns error.
@@ -1949,10 +2143,13 @@ fn copy_page_range_start_beyond_length_returns_error() -> Result<(), String> {
     let items: Box<[SlotValue]> = vec![SlotValue::I64(1)].into_boxed_slice();
     let result = copy_page_range(&items, 5, 1);
     match result {
-        Err(EngineError::InternalInvariantViolation { reason }) => {
-            ensure(reason == "collect cursor beyond item count", format!("unexpected: {reason}"))
-        }
-        other => Err(format!("expected InternalInvariantViolation, got {other:?}")),
+        Err(EngineError::InternalInvariantViolation { reason }) => ensure(
+            reason == "collect cursor beyond item count",
+            format!("unexpected: {reason}"),
+        ),
+        other => Err(format!(
+            "expected InternalInvariantViolation, got {other:?}"
+        )),
     }
 }
 
@@ -1976,13 +2173,20 @@ fn collect_finish_propagates_taint() -> Result<(), String> {
     run.write_slot_with_taint(collector, SlotValue::I64(42), Taint::Secret)
         .map_err(|e| format!("{e:?}"))?;
     collect_finish(
-        &mut run, &mut states, collector,
-        Some(output), Some(next), StepIdx::ZERO,
+        &mut run,
+        &mut states,
+        collector,
+        Some(output),
+        Some(next),
+        StepIdx::ZERO,
     )
     .map_err(|e| format!("{e:?}"))?;
 
     let taint = run.read_taint(output).map_err(|e| format!("{e:?}"))?;
-    ensure(taint == Taint::Secret, format!("expected Secret, got {taint:?}"))
+    ensure(
+        taint == Taint::Secret,
+        format!("expected Secret, got {taint:?}"),
+    )
 }
 
 /// CollectNext where cursor exactly equals item_count goes to done.
@@ -1996,27 +2200,52 @@ fn collect_next_cursor_at_item_count_goes_to_done() -> Result<(), String> {
     let body = StepIdx::new(1);
     let done = StepIdx::new(2);
 
-    list_in_slot(&mut run, &mut store, source, vec![SlotValue::I64(1), SlotValue::I64(2)]);
+    list_in_slot(
+        &mut run,
+        &mut store,
+        source,
+        vec![SlotValue::I64(1), SlotValue::I64(2)],
+    );
     collect_start(
-        &mut run, &mut store, &mut states,
-        source, 100, 2, body, done, Some(collector), None,
+        &mut run,
+        &mut store,
+        &mut states,
+        source,
+        100,
+        2,
+        body,
+        done,
+        Some(collector),
+        None,
     )
     .map_err(|e| format!("{e:?}"))?;
 
     let result = collect_next(&mut run, &mut store, &mut states, collector, body, done);
     let signal = result.map_err(|e| format!("{e:?}"))?;
-    ensure(signal == vb_core::EngineSignal::Continue, "expected Continue")?;
-    ensure(run.pc() == done, format!("expected pc={done:?}, got {:?}", run.pc()))
+    ensure(
+        signal == vb_core::EngineSignal::Continue,
+        "expected Continue",
+    )?;
+    ensure(
+        run.pc() == done,
+        format!("expected pc={done:?}, got {:?}", run.pc()),
+    )
 }
 
 /// validate_collect_state accepts when page_size == limit.
 #[test]
 fn validate_collect_state_accepts_page_size_at_limit() -> Result<(), String> {
     let state = CollectPaginationState {
-        run_id: RunId::new(1), collector_slot: SlotIdx::new(0),
-        source: ListId::new(0), current_page: ListId::new(0),
-        cursor: 0, page_size: 10, item_count: 5, limit: 10,
-        time_limit_ms: None, start_millis: 0,
+        run_id: RunId::new(1),
+        collector_slot: SlotIdx::new(0),
+        source: ListId::new(0),
+        current_page: ListId::new(0),
+        cursor: 0,
+        page_size: 10,
+        item_count: 5,
+        limit: 10,
+        time_limit_ms: None,
+        start_millis: 0,
     };
     validate_collect_state(&state, 5).map_err(|e| format!("{e:?}"))?;
     Ok(())
@@ -2026,10 +2255,16 @@ fn validate_collect_state_accepts_page_size_at_limit() -> Result<(), String> {
 #[test]
 fn validate_collect_state_accepts_item_count_at_limit() -> Result<(), String> {
     let state = CollectPaginationState {
-        run_id: RunId::new(1), collector_slot: SlotIdx::new(0),
-        source: ListId::new(0), current_page: ListId::new(0),
-        cursor: 0, page_size: 5, item_count: 10, limit: 10,
-        time_limit_ms: None, start_millis: 0,
+        run_id: RunId::new(1),
+        collector_slot: SlotIdx::new(0),
+        source: ListId::new(0),
+        current_page: ListId::new(0),
+        cursor: 0,
+        page_size: 5,
+        item_count: 10,
+        limit: 10,
+        time_limit_ms: None,
+        start_millis: 0,
     };
     validate_collect_state(&state, 10).map_err(|e| format!("{e:?}"))?;
     Ok(())
@@ -2047,14 +2282,23 @@ fn checked_add_usize_zero_plus_zero() -> Result<(), String> {
 fn collect_states_find_returns_none_for_wrong_slot() -> Result<(), String> {
     let mut states = CollectStates::new();
     let state = CollectPaginationState {
-        run_id: RunId::new(1), collector_slot: SlotIdx::new(0),
-        source: ListId::new(10), current_page: ListId::new(20),
-        cursor: 0, page_size: 10, item_count: 10, limit: 100,
-        time_limit_ms: None, start_millis: 0,
+        run_id: RunId::new(1),
+        collector_slot: SlotIdx::new(0),
+        source: ListId::new(10),
+        current_page: ListId::new(20),
+        cursor: 0,
+        page_size: 10,
+        item_count: 10,
+        limit: 100,
+        time_limit_ms: None,
+        start_millis: 0,
     };
     states.upsert(state).map_err(|e| format!("{e:?}"))?;
     let found = states.find(RunId::new(1), SlotIdx::new(5), ListId::new(20));
-    ensure(found.is_none(), "find should return None for wrong collector_slot")
+    ensure(
+        found.is_none(),
+        "find should return None for wrong collector_slot",
+    )
 }
 
 /// Multiple rounds of start -> next produce independent state.
@@ -2069,12 +2313,22 @@ fn collect_repeated_start_next_cycles() -> Result<(), String> {
     let done = StepIdx::new(2);
 
     list_in_slot(
-        &mut run, &mut store, source,
+        &mut run,
+        &mut store,
+        source,
         vec![SlotValue::I64(1), SlotValue::I64(2), SlotValue::I64(3)],
     );
     collect_start(
-        &mut run, &mut store, &mut states,
-        source, 100, 3, body, done, Some(collector), None,
+        &mut run,
+        &mut store,
+        &mut states,
+        source,
+        100,
+        3,
+        body,
+        done,
+        Some(collector),
+        None,
     )
     .map_err(|e| format!("start 1: {e:?}"))?;
 
@@ -2083,12 +2337,22 @@ fn collect_repeated_start_next_cycles() -> Result<(), String> {
     ensure(run.pc() == done, "first cycle should reach done")?;
 
     list_in_slot(
-        &mut run, &mut store, source,
+        &mut run,
+        &mut store,
+        source,
         vec![SlotValue::I64(10), SlotValue::I64(20)],
     );
     collect_start(
-        &mut run, &mut store, &mut states,
-        source, 100, 1, body, done, Some(collector), None,
+        &mut run,
+        &mut store,
+        &mut states,
+        source,
+        100,
+        1,
+        body,
+        done,
+        Some(collector),
+        None,
     )
     .map_err(|e| format!("start 2: {e:?}"))?;
     ensure(run.pc() == body, "second cycle should start at body")?;

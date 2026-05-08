@@ -30,9 +30,8 @@ mod tests {
         },
         constants::{
             CRC_OFFSET, CURRENT_SCHEMA_VERSION, MAGIC_BLOB, MAGIC_COMPILED_ARTIFACT,
-            MAGIC_INDEX_RECORD, MAGIC_JOURNAL_EVENT, MAGIC_SNAPSHOT,
-            MAX_BLOB_BYTES, MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
-            MAX_WORKFLOW_SOURCE_BYTES, RECORD_HEADER_BYTES,
+            MAGIC_INDEX_RECORD, MAGIC_JOURNAL_EVENT, MAGIC_SNAPSHOT, MAX_BLOB_BYTES,
+            MAX_JOURNAL_EVENT_PAYLOAD_BYTES, MAX_WORKFLOW_SOURCE_BYTES, RECORD_HEADER_BYTES,
         },
         events::JournalEvent,
         records::RecordKind,
@@ -134,10 +133,7 @@ mod tests {
         let (_temp, journal) = temp_journal();
         let source = b"valid content".to_vec();
         let digest = WorkflowDigest::from_bytes(blake3::hash(&source).into());
-        let record = WorkflowSourceRecord {
-            digest,
-            source,
-        };
+        let record = WorkflowSourceRecord { digest, source };
         journal
             .put_workflow_source(&record)
             .expect("correct digest must be accepted");
@@ -149,11 +145,10 @@ mod tests {
         let (_temp, journal) = temp_journal();
         let bytes = b"valid blob content".to_vec();
         let digest: [u8; DIGEST_BYTES] = blake3::hash(&bytes).into();
-        let record = BlobRecord {
-            digest,
-            bytes,
-        };
-        journal.put_blob(&record).expect("correct digest must be accepted");
+        let record = BlobRecord { digest, bytes };
+        journal
+            .put_blob(&record)
+            .expect("correct digest must be accepted");
     }
 
     /// SECURITY: batch put_workflow_source accepts correct digest.
@@ -164,10 +159,7 @@ mod tests {
         let digest = WorkflowDigest::from_bytes(blake3::hash(&source).into());
         let mut batch = journal.batch();
         batch
-            .put_workflow_source(&WorkflowSourceRecord {
-                digest,
-                source,
-            })
+            .put_workflow_source(&WorkflowSourceRecord { digest, source })
             .expect("correct digest in batch must be accepted");
     }
 
@@ -179,10 +171,7 @@ mod tests {
         let digest: [u8; DIGEST_BYTES] = blake3::hash(&bytes).into();
         let mut batch = journal.batch();
         batch
-            .put_blob(&BlobRecord {
-                digest,
-                bytes,
-            })
+            .put_blob(&BlobRecord { digest, bytes })
             .expect("correct digest in batch must be accepted");
     }
 
@@ -200,7 +189,11 @@ mod tests {
     #[test]
     fn decode_rejects_all_zero_bytes() {
         let zeros = [0u8; RECORD_HEADER_BYTES + 64];
-        let result = decode_record::<JournalEvent>(&zeros, MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES);
+        let result = decode_record::<JournalEvent>(
+            &zeros,
+            MAGIC_JOURNAL_EVENT,
+            MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+        );
         assert!(
             result.is_err(),
             "all-zero bytes must be rejected, got {:?}",
@@ -212,7 +205,11 @@ mod tests {
     #[test]
     fn decode_rejects_all_ff_bytes() {
         let ff = [0xFFu8; RECORD_HEADER_BYTES + 64];
-        let result = decode_record::<JournalEvent>(&ff, MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES);
+        let result = decode_record::<JournalEvent>(
+            &ff,
+            MAGIC_JOURNAL_EVENT,
+            MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+        );
         assert!(
             result.is_err(),
             "all-0xFF bytes must be rejected, got {:?}",
@@ -241,7 +238,11 @@ mod tests {
         for byte in corrupt.iter_mut().skip(RECORD_HEADER_BYTES) {
             *byte = byte.wrapping_add(1);
         }
-        let result = decode_record::<JournalEvent>(&corrupt, MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES);
+        let result = decode_record::<JournalEvent>(
+            &corrupt,
+            MAGIC_JOURNAL_EVENT,
+            MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+        );
         assert!(
             matches!(result, Err(JournalError::PayloadDigestMismatch)),
             "corrupt payload must yield PayloadDigestMismatch, got {:?}",
@@ -266,7 +267,8 @@ mod tests {
         )
         .expect("encode should succeed");
 
-        let result = decode_record::<JournalEvent>(&bytes, MAGIC_BLOB, MAX_JOURNAL_EVENT_PAYLOAD_BYTES);
+        let result =
+            decode_record::<JournalEvent>(&bytes, MAGIC_BLOB, MAX_JOURNAL_EVENT_PAYLOAD_BYTES);
         assert!(
             matches!(result, Err(JournalError::BadMagic { .. })),
             "wrong magic must fail at BadMagic before postcard decode, got {:?}",
@@ -297,13 +299,7 @@ mod tests {
             run: RunId::new(1),
             seq: EventSeq::new(0),
         };
-        let result = encode_record(
-            MAGIC_JOURNAL_EVENT,
-            RecordKind::RunCancelled,
-            0,
-            &event,
-            0,
-        );
+        let result = encode_record(MAGIC_JOURNAL_EVENT, RecordKind::RunCancelled, 0, &event, 0);
         assert!(
             matches!(result, Err(JournalError::PayloadTooLarge { .. })),
             "non-empty payload with max=0 must yield PayloadTooLarge, got {:?}",
@@ -400,7 +396,11 @@ mod tests {
         .expect("encode should succeed");
 
         let truncated = &full[..RECORD_HEADER_BYTES];
-        let result = decode_record::<JournalEvent>(truncated, MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES);
+        let result = decode_record::<JournalEvent>(
+            truncated,
+            MAGIC_JOURNAL_EVENT,
+            MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+        );
         assert!(
             matches!(result, Err(JournalError::UnexpectedEof)),
             "truncated record must yield UnexpectedEof, got {:?}",
@@ -412,7 +412,11 @@ mod tests {
     #[test]
     fn decode_rejects_one_byte_short_of_header() {
         let short = [0xAAu8; RECORD_HEADER_BYTES - 1];
-        let result = decode_record::<JournalEvent>(&short, MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES);
+        let result = decode_record::<JournalEvent>(
+            &short,
+            MAGIC_JOURNAL_EVENT,
+            MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+        );
         assert!(
             matches!(result, Err(JournalError::UnexpectedEof)),
             "one byte short must yield UnexpectedEof, got {:?}",
@@ -436,9 +440,13 @@ mod tests {
             seq: EventSeq::new(0),
             workflow: WorkflowDigest::from_bytes([0; DIGEST_BYTES]),
         };
-        journal.append_strict(&event).expect("append should succeed");
+        journal
+            .append_strict(&event)
+            .expect("append should succeed");
 
-        let events_b = journal.events_for_run(run_b).expect("replay should succeed");
+        let events_b = journal
+            .events_for_run(run_b)
+            .expect("replay should succeed");
         assert!(
             events_b.is_empty(),
             "run B should have zero events from run A"
@@ -457,7 +465,9 @@ mod tests {
             seq: EventSeq::new(0),
             workflow: WorkflowDigest::from_bytes([0; DIGEST_BYTES]),
         };
-        journal.append_strict(&event_a).expect("first append should succeed");
+        journal
+            .append_strict(&event_a)
+            .expect("first append should succeed");
 
         let event_b = JournalEvent::RunAccepted {
             run: run_b,
@@ -506,7 +516,11 @@ mod tests {
             .expect("crc field")
             .copy_from_slice(&crc_bytes);
 
-        let result = decode_record::<JournalEvent>(&bytes, MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES);
+        let result = decode_record::<JournalEvent>(
+            &bytes,
+            MAGIC_JOURNAL_EVENT,
+            MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+        );
         assert!(
             matches!(result, Err(JournalError::UnsupportedSchemaVersion { .. })),
             "future schema must yield UnsupportedSchemaVersion, got {:?}",
@@ -545,13 +559,7 @@ mod tests {
             run: RunId::new(1),
             seq: EventSeq::new(0),
         };
-        let result = encode_record(
-            MAGIC_SNAPSHOT,
-            RecordKind::Blob,
-            0,
-            &event,
-            MAX_BLOB_BYTES,
-        );
+        let result = encode_record(MAGIC_SNAPSHOT, RecordKind::Blob, 0, &event, MAX_BLOB_BYTES);
         assert!(
             matches!(result, Err(JournalError::RecordKindFamilyMismatch { .. })),
             "blob kind in snapshot magic must be rejected, got {result:?}"
@@ -582,7 +590,11 @@ mod tests {
         if let Some(byte) = bytes.get_mut(CRC_OFFSET) {
             *byte ^= 0x01;
         }
-        let result = decode_record::<JournalEvent>(&bytes, MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES);
+        let result = decode_record::<JournalEvent>(
+            &bytes,
+            MAGIC_JOURNAL_EVENT,
+            MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+        );
         assert!(
             matches!(result, Err(JournalError::HeaderChecksumMismatch)),
             "CRC bit flip must yield HeaderChecksumMismatch, got {:?}",
@@ -610,7 +622,11 @@ mod tests {
         if let Some(byte) = bytes.get_mut(0) {
             *byte ^= 0x01;
         }
-        let result = decode_record::<JournalEvent>(&bytes, MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES);
+        let result = decode_record::<JournalEvent>(
+            &bytes,
+            MAGIC_JOURNAL_EVENT,
+            MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+        );
         assert!(
             matches!(
                 result,
@@ -631,10 +647,7 @@ mod tests {
         let payload = b"hello world";
         let digest: [u8; DIGEST_BYTES] = blake3::hash(payload).into();
         let result = verify_digest_match(payload, digest);
-        assert!(
-            result.is_ok(),
-            "correct digest should pass verification"
-        );
+        assert!(result.is_ok(), "correct digest should pass verification");
     }
 
     /// SECURITY: verify_digest_match rejects wrong digest.
@@ -761,9 +774,12 @@ mod tests {
         )
         .expect("encode should succeed");
 
-        let (envelope, decoded) =
-            decode_record::<JournalEvent>(&original, MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES)
-                .expect("decode should succeed");
+        let (envelope, decoded) = decode_record::<JournalEvent>(
+            &original,
+            MAGIC_JOURNAL_EVENT,
+            MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+        )
+        .expect("decode should succeed");
 
         let reencoded = encode_record(
             envelope.magic,
@@ -812,7 +828,11 @@ mod tests {
             .expect("crc field")
             .copy_from_slice(&checksum.to_le_bytes());
 
-        let result = decode_record::<JournalEvent>(&bytes, MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES);
+        let result = decode_record::<JournalEvent>(
+            &bytes,
+            MAGIC_JOURNAL_EVENT,
+            MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+        );
         assert!(
             matches!(result, Err(JournalError::PayloadDigestMismatch)),
             "zero payload_len with non-empty digest must fail, got {:?}",

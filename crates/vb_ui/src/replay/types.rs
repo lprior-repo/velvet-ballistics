@@ -330,7 +330,10 @@ mod tests {
 
     #[test]
     fn event_type_display_label_step_completed() {
-        assert_eq!(ReplayEventType::StepCompleted.display_label(), "Step Completed");
+        assert_eq!(
+            ReplayEventType::StepCompleted.display_label(),
+            "Step Completed"
+        );
     }
 
     #[test]
@@ -340,17 +343,26 @@ mod tests {
 
     #[test]
     fn event_type_display_label_action_invoked() {
-        assert_eq!(ReplayEventType::ActionInvoked.display_label(), "Action Invoked");
+        assert_eq!(
+            ReplayEventType::ActionInvoked.display_label(),
+            "Action Invoked"
+        );
     }
 
     #[test]
     fn event_type_display_label_action_completed() {
-        assert_eq!(ReplayEventType::ActionCompleted.display_label(), "Action Completed");
+        assert_eq!(
+            ReplayEventType::ActionCompleted.display_label(),
+            "Action Completed"
+        );
     }
 
     #[test]
     fn event_type_display_label_taint_propagated() {
-        assert_eq!(ReplayEventType::TaintPropagated.display_label(), "Taint Propagated");
+        assert_eq!(
+            ReplayEventType::TaintPropagated.display_label(),
+            "Taint Propagated"
+        );
     }
 
     #[test]
@@ -365,7 +377,10 @@ mod tests {
 
     #[test]
     fn event_type_display_label_checkpoint_created() {
-        assert_eq!(ReplayEventType::CheckpointCreated.display_label(), "Checkpoint Created");
+        assert_eq!(
+            ReplayEventType::CheckpointCreated.display_label(),
+            "Checkpoint Created"
+        );
     }
 
     // -- ReplayEventType::color --

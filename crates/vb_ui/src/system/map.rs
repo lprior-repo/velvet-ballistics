@@ -14,7 +14,11 @@ fn int_to_f32(v: usize) -> f32 {
 
 /// Convert a non-negative f32 to u32, clamping to [0, u32::MAX].
 /// Isolated for auditability.
-#[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss, clippy::as_conversions)]
+#[allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::as_conversions
+)]
 fn f32_to_u32(v: f32) -> u32 {
     if v <= 0.0 {
         0
@@ -128,15 +132,13 @@ impl SystemTopology {
     /// Returns `Idle` for an empty topology (no shards means nothing is wrong).
     #[must_use]
     pub fn worst_status(&self) -> ShardStatus {
-        self.shards
-            .iter()
-            .fold(ShardStatus::Idle, |worst, shard| {
-                if shard.status.is_worse_than(worst) {
-                    shard.status
-                } else {
-                    worst
-                }
-            })
+        self.shards.iter().fold(ShardStatus::Idle, |worst, shard| {
+            if shard.status.is_worse_than(worst) {
+                shard.status
+            } else {
+                worst
+            }
+        })
     }
 
     /// Sums `active_runs` across all shards.
@@ -380,17 +382,13 @@ mod tests {
 
     #[test]
     fn topology_worst_status_idle_when_empty() {
-        let topo = SystemTopology {
-            shards: Vec::new(),
-        };
+        let topo = SystemTopology { shards: Vec::new() };
         assert_eq!(topo.worst_status(), ShardStatus::Idle);
     }
 
     #[test]
     fn topology_totals_zero_when_empty() {
-        let topo = SystemTopology {
-            shards: Vec::new(),
-        };
+        let topo = SystemTopology { shards: Vec::new() };
         assert_eq!(topo.total_active_runs(), 0);
         assert_eq!(topo.total_pending_actions(), 0);
     }
@@ -399,9 +397,7 @@ mod tests {
 
     #[test]
     fn layout_returns_empty_for_zero_shards() {
-        let topo = SystemTopology {
-            shards: Vec::new(),
-        };
+        let topo = SystemTopology { shards: Vec::new() };
         let rects = SystemMapLayout::compute_layout(&topo, 800.0, 600.0);
         assert!(rects.is_empty());
     }
@@ -769,10 +765,10 @@ mod tests {
     fn layout_preserves_shard_ordering() {
         let topo = SystemTopology {
             shards: vec![
-                ShardNode::new(10, 0, 5, 0, 0),  // Idle
-                ShardNode::new(20, 2, 5, 0, 0),  // Active
-                ShardNode::new(30, 5, 5, 0, 0),  // Overloaded
-                ShardNode::new(40, 0, 5, 0, 0),  // Idle
+                ShardNode::new(10, 0, 5, 0, 0), // Idle
+                ShardNode::new(20, 2, 5, 0, 0), // Active
+                ShardNode::new(30, 5, 5, 0, 0), // Overloaded
+                ShardNode::new(40, 0, 5, 0, 0), // Idle
             ],
         };
         let rects = SystemMapLayout::compute_layout(&topo, 400.0, 300.0);
@@ -794,12 +790,15 @@ mod tests {
         // All cells should have the same width.
         assert!((rects[0].w - rects[1].w).abs() < f32::EPSILON);
         // Total covered width equals viewport width.
-        let _covered = rects[0].x + rects[0].w + (rects[1].x - rects[0].x - rects[0].w) + rects[1].w;
+        let _covered =
+            rects[0].x + rects[0].w + (rects[1].x - rects[0].x - rects[0].w) + rects[1].w;
         // Due to grid layout: covered = cols * cell_w = width
         let total_cell_width = rects[0].w + (width - rects[0].w - rects[1].w) + rects[1].w;
         let _ = total_cell_width; // Just verify cells are consistent.
-        assert!((rects[0].w + rects[1].x - rects[0].x).abs() < f32::EPSILON
-            || (rects[0].w * 2.0 - width).abs() < 1.0);
+        assert!(
+            (rects[0].w + rects[1].x - rects[0].x).abs() < f32::EPSILON
+                || (rects[0].w * 2.0 - width).abs() < 1.0
+        );
     }
 
     #[test]

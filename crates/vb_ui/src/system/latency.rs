@@ -73,11 +73,7 @@ impl SampleRing {
 
     fn as_sorted_slice<'a>(&self, scratch: &'a mut Vec<u64>) -> &'a [u64] {
         scratch.clear();
-        scratch.extend_from_slice(
-            self.buf
-                .get(..self.len.min(self.buf.len()))
-                .unwrap_or(&[]),
-        );
+        scratch.extend_from_slice(self.buf.get(..self.len.min(self.buf.len())).unwrap_or(&[]));
         scratch.sort_unstable();
         scratch
     }
@@ -260,7 +256,10 @@ mod tests {
 
     #[test]
     fn default_matches_new() {
-        assert_eq!(LatencyProfile::default().segments(), LatencyProfile::new().segments());
+        assert_eq!(
+            LatencyProfile::default().segments(),
+            LatencyProfile::new().segments()
+        );
     }
 
     #[test]
@@ -323,8 +322,14 @@ mod tests {
         p.record("alpha", 30);
         let segs = p.segments();
         assert_eq!(segs.len(), 2);
-        let alpha = segs.iter().find(|s| s.label == "alpha").expect("alpha segment");
-        let beta = segs.iter().find(|s| s.label == "beta").expect("beta segment");
+        let alpha = segs
+            .iter()
+            .find(|s| s.label == "alpha")
+            .expect("alpha segment");
+        let beta = segs
+            .iter()
+            .find(|s| s.label == "beta")
+            .expect("beta segment");
         assert_eq!(alpha.sample_count, 2);
         assert_eq!(beta.sample_count, 1);
         // avg alpha = (10+30)/2 = 20
@@ -515,16 +520,8 @@ mod tests {
         // sorted: [500k, 1000k, 1500k, 2000k, 2500k, 3000k, 3500k, 4000k, 4500k, 5000k]
         // p50: rank = 50*10/100 = 5, idx = 4 -> sorted[4] = 2_500_000
         for v in [
-            1_000_000,
-            500_000,
-            1_500_000,
-            2_000_000,
-            2_500_000,
-            3_000_000,
-            3_500_000,
-            4_000_000,
-            4_500_000,
-            5_000_000,
+            1_000_000, 500_000, 1_500_000, 2_000_000, 2_500_000, 3_000_000, 3_500_000, 4_000_000,
+            4_500_000, 5_000_000,
         ] {
             p.record("action scheduled -> completed", v);
         }
@@ -736,7 +733,10 @@ mod tests {
         // But p50 reflects only the window 11..=1034.
         // p50 of 1024 values: ceil(50/100 * 1024) - 1 = 511
         // sorted[511] = 11 + 511 = 522
-        assert_eq!(s.p50_us, 522, "p50 should reflect windowed data, not global");
+        assert_eq!(
+            s.p50_us, 522,
+            "p50 should reflect windowed data, not global"
+        );
     }
 
     /// SEVERITY: Low
@@ -764,6 +764,9 @@ mod tests {
         // Call segments twice -- each allocates its own scratch.
         let segs1 = p.segments();
         let segs2 = p.segments();
-        assert_eq!(segs1, segs2, "repeated calls should produce identical results");
+        assert_eq!(
+            segs1, segs2,
+            "repeated calls should produce identical results"
+        );
     }
 }

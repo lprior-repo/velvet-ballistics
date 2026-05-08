@@ -440,7 +440,12 @@ mod tests {
         ]);
         let contracts = vec![
             make_contract(1, 1000, Idempotency::DeterministicPure, RetrySafety::Safe),
-            make_contract(2, 2000, Idempotency::AtLeastOnceExternal, RetrySafety::KeyRequired),
+            make_contract(
+                2,
+                2000,
+                Idempotency::AtLeastOnceExternal,
+                RetrySafety::KeyRequired,
+            ),
         ];
         let reports = analyze_action_policies(&parts, &contracts);
         assert_eq!(reports.len(), 2);
@@ -477,7 +482,12 @@ mod tests {
     fn find_contract_uses_action_id_not_index() {
         let contracts = vec![
             make_contract(100, 1000, Idempotency::DeterministicPure, RetrySafety::Safe),
-            make_contract(200, 2000, Idempotency::AtLeastOnceExternal, RetrySafety::KeyRequired),
+            make_contract(
+                200,
+                2000,
+                Idempotency::AtLeastOnceExternal,
+                RetrySafety::KeyRequired,
+            ),
         ];
         // Action 200 is at index 1, not 200.
         let found = find_contract(ActionId::new(200), &contracts);
@@ -502,8 +512,12 @@ mod tests {
                 result: SlotIdx::new(0),
             },
         ]);
-        let mut contract =
-            make_contract(60, u64::from(u32::MAX) + 1, Idempotency::DeterministicPure, RetrySafety::Safe);
+        let mut contract = make_contract(
+            60,
+            u64::from(u32::MAX) + 1,
+            Idempotency::DeterministicPure,
+            RetrySafety::Safe,
+        );
         contract.timeout_ms = u64::from(u32::MAX) + 1;
         let contracts = vec![contract];
         let reports = analyze_action_policies(&parts, &contracts);
@@ -516,19 +530,26 @@ mod tests {
     // Test 13: classify_idempotency for all variants.
     #[test]
     fn classify_idempotency_all_variants() {
-        let pure_contract = make_contract(1, 1000, Idempotency::DeterministicPure, RetrySafety::Safe);
+        let pure_contract =
+            make_contract(1, 1000, Idempotency::DeterministicPure, RetrySafety::Safe);
         assert_eq!(
             classify_idempotency(&pure_contract),
             IdempotencyClass::DeterministicPure
         );
 
-        let at_least_once = make_contract(2, 1000, Idempotency::AtLeastOnceExternal, RetrySafety::KeyRequired);
+        let at_least_once = make_contract(
+            2,
+            1000,
+            Idempotency::AtLeastOnceExternal,
+            RetrySafety::KeyRequired,
+        );
         assert_eq!(
             classify_idempotency(&at_least_once),
             IdempotencyClass::AtLeastOnce
         );
 
-        let idempotent_ext = make_contract(3, 1000, Idempotency::IdempotentExternal, RetrySafety::Safe);
+        let idempotent_ext =
+            make_contract(3, 1000, Idempotency::IdempotentExternal, RetrySafety::Safe);
         assert_eq!(
             classify_idempotency(&idempotent_ext),
             IdempotencyClass::AtLeastOnce
@@ -577,7 +598,12 @@ mod tests {
     // Test 15: find_contract returns None for unknown action.
     #[test]
     fn find_contract_returns_none_for_unknown() {
-        let contracts = vec![make_contract(1, 1000, Idempotency::DeterministicPure, RetrySafety::Safe)];
+        let contracts = vec![make_contract(
+            1,
+            1000,
+            Idempotency::DeterministicPure,
+            RetrySafety::Safe,
+        )];
         assert!(find_contract(ActionId::new(999), &contracts).is_none());
     }
 
@@ -599,11 +625,19 @@ mod tests {
                 result: SlotIdx::new(0),
             },
         ]);
-        let contracts = vec![make_contract(42, 3000, Idempotency::DeterministicPure, RetrySafety::Safe)];
+        let contracts = vec![make_contract(
+            42,
+            3000,
+            Idempotency::DeterministicPure,
+            RetrySafety::Safe,
+        )];
         let reports = analyze_action_policies(&parts, &contracts);
         assert_eq!(reports.len(), 1);
         assert_eq!(reports[0].action_id, 42);
-        assert_eq!(reports[0].idempotency_class, IdempotencyClass::DeterministicPure);
+        assert_eq!(
+            reports[0].idempotency_class,
+            IdempotencyClass::DeterministicPure
+        );
         assert!(reports[0].has_timeout);
         assert_eq!(reports[0].timeout_ms, Some(3000));
         assert!(reports[0].strict_eligible);
@@ -622,7 +656,12 @@ mod tests {
                 result: SlotIdx::new(0),
             },
         ]);
-        let contracts = vec![make_contract(1, 0, Idempotency::DeterministicPure, RetrySafety::Safe)];
+        let contracts = vec![make_contract(
+            1,
+            0,
+            Idempotency::DeterministicPure,
+            RetrySafety::Safe,
+        )];
         let reports = analyze_action_policies(&parts, &contracts);
         assert_eq!(reports.len(), 1);
         assert!(!reports[0].has_timeout);
@@ -652,10 +691,16 @@ mod tests {
     // Test 20: IdempotencyClass derive traits.
     #[test]
     fn idempotency_class_equality() {
-        assert_eq!(IdempotencyClass::DeterministicPure, IdempotencyClass::DeterministicPure);
+        assert_eq!(
+            IdempotencyClass::DeterministicPure,
+            IdempotencyClass::DeterministicPure
+        );
         assert_eq!(IdempotencyClass::AtLeastOnce, IdempotencyClass::AtLeastOnce);
         assert_eq!(IdempotencyClass::Unknown, IdempotencyClass::Unknown);
-        assert_ne!(IdempotencyClass::DeterministicPure, IdempotencyClass::AtLeastOnce);
+        assert_ne!(
+            IdempotencyClass::DeterministicPure,
+            IdempotencyClass::AtLeastOnce
+        );
     }
 
     // Test 21: PolicyIssue derive traits.
@@ -899,8 +944,18 @@ mod tests {
         ]);
         let contracts = vec![
             make_contract(1, 1000, Idempotency::DeterministicPure, RetrySafety::Safe),
-            make_contract(2, 2000, Idempotency::IdempotentExternal, RetrySafety::KeyRequired),
-            make_contract(3, 3000, Idempotency::AtLeastOnceExternal, RetrySafety::Unsafe),
+            make_contract(
+                2,
+                2000,
+                Idempotency::IdempotentExternal,
+                RetrySafety::KeyRequired,
+            ),
+            make_contract(
+                3,
+                3000,
+                Idempotency::AtLeastOnceExternal,
+                RetrySafety::Unsafe,
+            ),
         ];
         let reports = analyze_action_policies(&parts, &contracts);
         assert_eq!(reports.len(), 3);
@@ -1099,7 +1154,12 @@ mod tests {
     fn find_contract_returns_first_match_with_duplicate_ids() {
         let contracts = vec![
             make_contract(5, 1000, Idempotency::DeterministicPure, RetrySafety::Safe),
-            make_contract(5, 2000, Idempotency::AtLeastOnceExternal, RetrySafety::KeyRequired),
+            make_contract(
+                5,
+                2000,
+                Idempotency::AtLeastOnceExternal,
+                RetrySafety::KeyRequired,
+            ),
         ];
         let found = find_contract(ActionId::new(5), &contracts);
         assert!(found.is_some());
@@ -1242,7 +1302,12 @@ mod tests {
     fn blackhat_policy_duplicate_contracts_first_wins() {
         let contracts = vec![
             make_contract(1, 1000, Idempotency::DeterministicPure, RetrySafety::Safe),
-            make_contract(1, 5000, Idempotency::AtLeastOnceExternal, RetrySafety::Unsafe),
+            make_contract(
+                1,
+                5000,
+                Idempotency::AtLeastOnceExternal,
+                RetrySafety::Unsafe,
+            ),
         ];
         let found = find_contract(ActionId::new(1), &contracts);
         assert!(found.is_some());

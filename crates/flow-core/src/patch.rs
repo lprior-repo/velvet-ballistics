@@ -348,13 +348,9 @@ fn apply_single(
         }
 
         FlowPatch::RemoveNode { id } => {
-            let removed = doc
-                .graph
-                .nodes
-                .shift_remove(id)
-                .ok_or_else(|| PatchError {
-                    message: format!("node '{}' not found for removal", id),
-                })?;
+            let removed = doc.graph.nodes.shift_remove(id).ok_or_else(|| PatchError {
+                message: format!("node '{}' not found for removal", id),
+            })?;
             let connected: Vec<EdgeId> = doc
                 .graph
                 .edges
@@ -394,13 +390,9 @@ fn apply_single(
         }
 
         FlowPatch::RemoveEdge { id } => {
-            let removed = doc
-                .graph
-                .edges
-                .shift_remove(id)
-                .ok_or_else(|| PatchError {
-                    message: format!("edge '{}' not found for removal", id),
-                })?;
+            let removed = doc.graph.edges.shift_remove(id).ok_or_else(|| PatchError {
+                message: format!("edge '{}' not found for removal", id),
+            })?;
             Ok(Some(FlowPatch::InsertEdge { edge: removed }))
         }
 
@@ -1185,7 +1177,9 @@ mod tests {
                 }
                 Ok(())
             }
-            other => Err(format!("expected InsertNode after roundtrip, got {other:?}")),
+            other => Err(format!(
+                "expected InsertNode after roundtrip, got {other:?}"
+            )),
         }
     }
 
@@ -1328,10 +1322,7 @@ mod tests {
         doc.graph.nodes.insert(nid("n1"), make_node("n1"));
         let mut engine = PatchEngine::new();
         engine.begin_undo_frame();
-        let result = engine.apply_patch(
-            &mut doc,
-            FlowPatch::RemoveNode { id: nid("n1") },
-        );
+        let result = engine.apply_patch(&mut doc, FlowPatch::RemoveNode { id: nid("n1") });
         assert!(result.is_ok());
         assert!(!doc.graph.nodes.contains_key(&nid("n1")));
     }
@@ -1341,10 +1332,7 @@ mod tests {
         let mut doc = FlowDocument::default();
         let mut engine = PatchEngine::new();
         engine.begin_undo_frame();
-        let result = engine.apply_patch(
-            &mut doc,
-            FlowPatch::RemoveNode { id: nid("ghost") },
-        );
+        let result = engine.apply_patch(&mut doc, FlowPatch::RemoveNode { id: nid("ghost") });
         assert!(result.is_err());
     }
 
@@ -1353,14 +1341,15 @@ mod tests {
         let mut doc = FlowDocument::default();
         doc.graph.nodes.insert(nid("n1"), make_node("n1"));
         doc.graph.nodes.insert(nid("n2"), make_node("n2"));
-        doc.graph.edges.insert(eid("e1"), make_edge("e1", "n1", "n2"));
-        doc.graph.edges.insert(eid("e2"), make_edge("e2", "n2", "n1"));
+        doc.graph
+            .edges
+            .insert(eid("e1"), make_edge("e1", "n1", "n2"));
+        doc.graph
+            .edges
+            .insert(eid("e2"), make_edge("e2", "n2", "n1"));
         let mut engine = PatchEngine::new();
         engine.begin_undo_frame();
-        let _ = engine.apply_patch(
-            &mut doc,
-            FlowPatch::RemoveNode { id: nid("n1") },
-        );
+        let _ = engine.apply_patch(&mut doc, FlowPatch::RemoveNode { id: nid("n1") });
         assert!(!doc.graph.edges.contains_key(&eid("e1")));
         assert!(!doc.graph.edges.contains_key(&eid("e2")));
         assert_eq!(doc.graph.edges.len(), 0);
@@ -1501,7 +1490,9 @@ mod tests {
         let mut doc = FlowDocument::default();
         doc.graph.nodes.insert(nid("n1"), make_node("n1"));
         doc.graph.nodes.insert(nid("n2"), make_node("n2"));
-        doc.graph.edges.insert(eid("e1"), make_edge("e1", "n1", "n2"));
+        doc.graph
+            .edges
+            .insert(eid("e1"), make_edge("e1", "n1", "n2"));
         let mut engine = PatchEngine::new();
         engine.begin_undo_frame();
         let result = engine.apply_patch(
@@ -1520,13 +1511,12 @@ mod tests {
         let mut doc = FlowDocument::default();
         doc.graph.nodes.insert(nid("n1"), make_node("n1"));
         doc.graph.nodes.insert(nid("n2"), make_node("n2"));
-        doc.graph.edges.insert(eid("e1"), make_edge("e1", "n1", "n2"));
+        doc.graph
+            .edges
+            .insert(eid("e1"), make_edge("e1", "n1", "n2"));
         let mut engine = PatchEngine::new();
         engine.begin_undo_frame();
-        let result = engine.apply_patch(
-            &mut doc,
-            FlowPatch::RemoveEdge { id: eid("e1") },
-        );
+        let result = engine.apply_patch(&mut doc, FlowPatch::RemoveEdge { id: eid("e1") });
         assert!(result.is_ok());
         assert!(!doc.graph.edges.contains_key(&eid("e1")));
     }
@@ -1536,10 +1526,7 @@ mod tests {
         let mut doc = FlowDocument::default();
         let mut engine = PatchEngine::new();
         engine.begin_undo_frame();
-        let result = engine.apply_patch(
-            &mut doc,
-            FlowPatch::RemoveEdge { id: eid("ghost") },
-        );
+        let result = engine.apply_patch(&mut doc, FlowPatch::RemoveEdge { id: eid("ghost") });
         assert!(result.is_err());
     }
 
@@ -1550,7 +1537,9 @@ mod tests {
         let mut doc = FlowDocument::default();
         doc.graph.nodes.insert(nid("n1"), make_node("n1"));
         doc.graph.nodes.insert(nid("n2"), make_node("n2"));
-        doc.graph.edges.insert(eid("e1"), make_edge("e1", "n1", "n2"));
+        doc.graph
+            .edges
+            .insert(eid("e1"), make_edge("e1", "n1", "n2"));
         let mut engine = PatchEngine::new();
         engine.begin_undo_frame();
         let result = engine.apply_patch(
@@ -1565,12 +1554,7 @@ mod tests {
         );
         assert!(result.is_ok());
         let edge = doc.graph.edges.get(&eid("e1"));
-        assert!(
-            edge.is_some_and(|e| e
-                .label
-                .as_ref()
-                .is_some_and(|l| l.as_str() == "new-label"))
-        );
+        assert!(edge.is_some_and(|e| e.label.as_ref().is_some_and(|l| l.as_str() == "new-label")));
     }
 
     #[test]
@@ -1653,10 +1637,7 @@ mod tests {
         doc.graph.groups.insert(gid("g1"), make_group("g1"));
         let mut engine = PatchEngine::new();
         engine.begin_undo_frame();
-        let result = engine.apply_patch(
-            &mut doc,
-            FlowPatch::RemoveGroup { id: gid("g1") },
-        );
+        let result = engine.apply_patch(&mut doc, FlowPatch::RemoveGroup { id: gid("g1") });
         assert!(result.is_ok());
         assert!(!doc.graph.groups.contains_key(&gid("g1")));
     }
@@ -1670,10 +1651,7 @@ mod tests {
         doc.graph.nodes.insert(nid("n1"), n1);
         let mut engine = PatchEngine::new();
         engine.begin_undo_frame();
-        let _ = engine.apply_patch(
-            &mut doc,
-            FlowPatch::RemoveGroup { id: gid("g1") },
-        );
+        let _ = engine.apply_patch(&mut doc, FlowPatch::RemoveGroup { id: gid("g1") });
         let node = doc.graph.nodes.get(&nid("n1"));
         assert!(node.is_some_and(|n| n.parent.is_none()));
     }
@@ -1735,12 +1713,7 @@ mod tests {
             pan_y: -25.0,
             zoom: 3.0,
         };
-        let result = engine.apply_patch(
-            &mut doc,
-            FlowPatch::SetViewport {
-                viewport: new_vp,
-            },
-        );
+        let result = engine.apply_patch(&mut doc, FlowPatch::SetViewport { viewport: new_vp });
         assert!(result.is_ok());
         assert!((doc.editor.viewport.pan_x - 50.0).abs() < f64::EPSILON);
         assert!((doc.editor.viewport.zoom - 3.0).abs() < f64::EPSILON);
@@ -1775,10 +1748,7 @@ mod tests {
         doc.graph.entry_node = Some(nid("old"));
         let mut engine = PatchEngine::new();
         engine.begin_undo_frame();
-        let result = engine.apply_patch(
-            &mut doc,
-            FlowPatch::SetEntryNode { node: None },
-        );
+        let result = engine.apply_patch(&mut doc, FlowPatch::SetEntryNode { node: None });
         assert!(result.is_ok());
         assert!(doc.graph.entry_node.is_none());
     }
@@ -1943,10 +1913,7 @@ mod tests {
         doc.graph.nodes.insert(nid("n1"), make_node("n1"));
         let mut engine = PatchEngine::new();
         engine.begin_undo_frame();
-        let _ = engine.apply_patch(
-            &mut doc,
-            FlowPatch::RemoveNode { id: nid("n1") },
-        );
+        let _ = engine.apply_patch(&mut doc, FlowPatch::RemoveNode { id: nid("n1") });
         assert!(!doc.graph.nodes.contains_key(&nid("n1")));
 
         let _ = engine.undo(&mut doc);
@@ -2088,7 +2055,9 @@ mod tests {
         let mut doc = FlowDocument::default();
         doc.graph.nodes.insert(nid("n1"), make_node("n1"));
         doc.graph.nodes.insert(nid("n2"), make_node("n2"));
-        doc.graph.edges.insert(eid("e1"), make_edge("e1", "n1", "n2"));
+        doc.graph
+            .edges
+            .insert(eid("e1"), make_edge("e1", "n1", "n2"));
         let mut engine = PatchEngine::new();
         engine.begin_undo_frame();
         let new_style = EdgeStyle {
@@ -2354,7 +2323,9 @@ mod tests {
         let mut doc = FlowDocument::default();
         doc.graph.nodes.insert(nid("n1"), make_node("n1"));
         doc.graph.nodes.insert(nid("n2"), make_node("n2"));
-        doc.graph.edges.insert(eid("e1"), make_edge("e1", "n1", "n2"));
+        doc.graph
+            .edges
+            .insert(eid("e1"), make_edge("e1", "n1", "n2"));
         let mut engine = PatchEngine::new();
         engine.begin_undo_frame();
         let _ = engine.apply_patch(&mut doc, FlowPatch::RemoveNode { id: nid("n1") });
@@ -2380,7 +2351,12 @@ mod tests {
         engine.begin_undo_frame();
         let _ = engine.apply_patch(&mut doc, FlowPatch::RemoveGroup { id: gid("g1") });
         assert!(!doc.graph.groups.contains_key(&gid("g1")));
-        assert!(doc.graph.nodes.get(&nid("n1")).is_some_and(|n| n.parent.is_none()));
+        assert!(
+            doc.graph
+                .nodes
+                .get(&nid("n1"))
+                .is_some_and(|n| n.parent.is_none())
+        );
         let _ = engine.undo(&mut doc);
         assert!(doc.graph.groups.contains_key(&gid("g1")));
     }
@@ -2390,7 +2366,9 @@ mod tests {
         let mut doc = FlowDocument::default();
         doc.graph.nodes.insert(nid("n1"), make_node("n1"));
         doc.graph.nodes.insert(nid("n2"), make_node("n2"));
-        doc.graph.edges.insert(eid("e1"), make_edge("e1", "n1", "n2"));
+        doc.graph
+            .edges
+            .insert(eid("e1"), make_edge("e1", "n1", "n2"));
         let mut engine = PatchEngine::new();
         engine.begin_undo_frame();
         let _ = engine.apply_patch(&mut doc, FlowPatch::RemoveEdge { id: eid("e1") });
@@ -2404,7 +2382,9 @@ mod tests {
         let mut doc = FlowDocument::default();
         doc.graph.nodes.insert(nid("n1"), make_node("n1"));
         doc.graph.nodes.insert(nid("n2"), make_node("n2"));
-        doc.graph.edges.insert(eid("e1"), make_edge("e1", "n1", "n2"));
+        doc.graph
+            .edges
+            .insert(eid("e1"), make_edge("e1", "n1", "n2"));
         let mut engine = PatchEngine::new();
         engine.begin_undo_frame();
         let result = engine.apply_patch(
@@ -2481,10 +2461,7 @@ mod tests {
         let mut doc = FlowDocument::default();
         let mut engine = PatchEngine::new();
         engine.begin_undo_frame();
-        let result = engine.apply_patch(
-            &mut doc,
-            FlowPatch::RemoveGroup { id: gid("ghost") },
-        );
+        let result = engine.apply_patch(&mut doc, FlowPatch::RemoveGroup { id: gid("ghost") });
         assert!(result.is_err());
     }
 
@@ -2510,11 +2487,21 @@ mod tests {
 
         // Frame 1: add n1
         engine.begin_undo_frame();
-        let _ = engine.apply_patch(&mut doc, FlowPatch::InsertNode { node: make_node("n1") });
+        let _ = engine.apply_patch(
+            &mut doc,
+            FlowPatch::InsertNode {
+                node: make_node("n1"),
+            },
+        );
 
         // Frame 2: add n2
         engine.begin_undo_frame();
-        let _ = engine.apply_patch(&mut doc, FlowPatch::InsertNode { node: make_node("n2") });
+        let _ = engine.apply_patch(
+            &mut doc,
+            FlowPatch::InsertNode {
+                node: make_node("n2"),
+            },
+        );
 
         // Undo frame 2
         let _ = engine.undo(&mut doc);
@@ -2546,8 +2533,12 @@ mod tests {
             id: 1,
             label: SmolStr::from("mixed-ops"),
             patches: vec![
-                FlowPatch::InsertNode { node: make_node("n2") },
-                FlowPatch::InsertNode { node: make_node("n3") },
+                FlowPatch::InsertNode {
+                    node: make_node("n2"),
+                },
+                FlowPatch::InsertNode {
+                    node: make_node("n3"),
+                },
                 FlowPatch::UpdateNode {
                     id: nid("n1"),
                     changes: NodeChangeSet {
@@ -2555,14 +2546,22 @@ mod tests {
                         ..NodeChangeSet::default()
                     },
                 },
-                FlowPatch::InsertEdge { edge: make_edge("e1", "n1", "n2") },
-                FlowPatch::InsertEdge { edge: make_edge("e2", "n2", "n3") },
-                FlowPatch::SetEntryNode { node: Some(nid("n1")) },
+                FlowPatch::InsertEdge {
+                    edge: make_edge("e1", "n1", "n2"),
+                },
+                FlowPatch::InsertEdge {
+                    edge: make_edge("e2", "n2", "n3"),
+                },
+                FlowPatch::SetEntryNode {
+                    node: Some(nid("n1")),
+                },
             ],
             origin: ChangeOrigin::Plugin,
             merge_key: Some(SmolStr::from("batch-1")),
         };
-        let summary = engine.apply_transaction(&mut doc, &txn).map_err(|e| e.message)?;
+        let summary = engine
+            .apply_transaction(&mut doc, &txn)
+            .map_err(|e| e.message)?;
         assert_eq!(summary.nodes_added, 2);
         assert_eq!(summary.nodes_updated, 1);
         assert_eq!(summary.edges_added, 2);
@@ -2579,7 +2578,12 @@ mod tests {
         let mut doc = FlowDocument::default();
         let mut engine = PatchEngine::new();
         // Apply without begin_undo_frame -- the inverse is generated but not stored
-        let result = engine.apply_patch(&mut doc, FlowPatch::InsertNode { node: make_node("n1") });
+        let result = engine.apply_patch(
+            &mut doc,
+            FlowPatch::InsertNode {
+                node: make_node("n1"),
+            },
+        );
         assert!(result.is_ok());
         assert!(doc.graph.nodes.contains_key(&nid("n1")));
         // No undo frame was created, so nothing to undo
@@ -2591,7 +2595,12 @@ mod tests {
         let mut doc = FlowDocument::default();
         let mut engine = PatchEngine::new();
         engine.begin_undo_frame();
-        let _ = engine.apply_patch(&mut doc, FlowPatch::InsertNode { node: make_node("n1") });
+        let _ = engine.apply_patch(
+            &mut doc,
+            FlowPatch::InsertNode {
+                node: make_node("n1"),
+            },
+        );
         let _ = engine.undo(&mut doc);
         assert!(engine.can_redo());
         engine.begin_undo_frame();
@@ -2606,7 +2615,9 @@ mod tests {
         engine.begin_undo_frame();
         let result = engine.apply_patch(
             &mut doc,
-            FlowPatch::InsertEdge { edge: make_edge("e1", "ghost1", "ghost2") },
+            FlowPatch::InsertEdge {
+                edge: make_edge("e1", "ghost1", "ghost2"),
+            },
         );
         assert!(result.is_ok());
         assert!(doc.graph.edges.contains_key(&eid("e1")));
@@ -2617,7 +2628,9 @@ mod tests {
         let mut doc = FlowDocument::default();
         doc.graph.nodes.insert(nid("n1"), make_node("n1"));
         doc.graph.nodes.insert(nid("n2"), make_node("n2"));
-        doc.graph.edges.insert(eid("e1"), make_edge("e1", "n1", "n2"));
+        doc.graph
+            .edges
+            .insert(eid("e1"), make_edge("e1", "n1", "n2"));
         let mut engine = PatchEngine::new();
         engine.begin_undo_frame();
         let _ = engine.apply_patch(&mut doc, FlowPatch::RemoveEdge { id: eid("e1") });
@@ -2633,7 +2646,12 @@ mod tests {
         let mut doc = FlowDocument::default();
         let mut engine = PatchEngine::new();
         engine.begin_undo_frame();
-        let _ = engine.apply_patch(&mut doc, FlowPatch::InsertGroup { group: make_group("g1") });
+        let _ = engine.apply_patch(
+            &mut doc,
+            FlowPatch::InsertGroup {
+                group: make_group("g1"),
+            },
+        );
         assert!(doc.graph.groups.contains_key(&gid("g1")));
         let _ = engine.undo(&mut doc);
         assert!(!doc.graph.groups.contains_key(&gid("g1")));
@@ -2657,12 +2675,27 @@ mod tests {
                 },
             },
         );
-        assert!(doc.graph.nodes.get(&nid("n1")).is_some_and(|n| n.title.as_str() == "new-title"));
+        assert!(
+            doc.graph
+                .nodes
+                .get(&nid("n1"))
+                .is_some_and(|n| n.title.as_str() == "new-title")
+        );
         // UpdateNode now returns an inverse patch so undo/redo should work
         let _ = engine.undo(&mut doc);
-        assert!(doc.graph.nodes.get(&nid("n1")).is_some_and(|n| n.title.as_str() == "n1"));
+        assert!(
+            doc.graph
+                .nodes
+                .get(&nid("n1"))
+                .is_some_and(|n| n.title.as_str() == "n1")
+        );
         let _ = engine.redo(&mut doc);
-        assert!(doc.graph.nodes.get(&nid("n1")).is_some_and(|n| n.title.as_str() == "new-title"));
+        assert!(
+            doc.graph
+                .nodes
+                .get(&nid("n1"))
+                .is_some_and(|n| n.title.as_str() == "new-title")
+        );
     }
 
     #[test]
@@ -2670,7 +2703,11 @@ mod tests {
         let mut doc = FlowDocument::default();
         let mut engine = PatchEngine::new();
         engine.begin_undo_frame();
-        let new_vp = ViewportState { pan_x: 42.0, pan_y: 99.0, zoom: 0.5 };
+        let new_vp = ViewportState {
+            pan_x: 42.0,
+            pan_y: 99.0,
+            zoom: 0.5,
+        };
         let _ = engine.apply_patch(&mut doc, FlowPatch::SetViewport { viewport: new_vp });
         assert!((doc.editor.viewport.pan_x - 42.0).abs() < f64::EPSILON);
         let _ = engine.undo(&mut doc);
@@ -2687,13 +2724,19 @@ mod tests {
             id: 10,
             label: SmolStr::from("init"),
             patches: vec![
-                FlowPatch::InsertNode { node: make_node("start") },
-                FlowPatch::SetEntryNode { node: Some(nid("start")) },
+                FlowPatch::InsertNode {
+                    node: make_node("start"),
+                },
+                FlowPatch::SetEntryNode {
+                    node: Some(nid("start")),
+                },
             ],
             origin: ChangeOrigin::Import,
             merge_key: None,
         };
-        let _summary = engine.apply_transaction(&mut doc, &txn).map_err(|e| e.message)?;
+        let _summary = engine
+            .apply_transaction(&mut doc, &txn)
+            .map_err(|e| e.message)?;
         assert!(doc.graph.nodes.contains_key(&nid("start")));
         assert!(doc.graph.entry_node.is_some());
         Ok(())
@@ -2713,8 +2756,18 @@ mod tests {
         let mut engine = PatchEngine::new();
         engine.begin_undo_frame();
         let _ = engine.apply_patch(&mut doc, FlowPatch::RemoveGroup { id: gid("g1") });
-        assert!(doc.graph.nodes.get(&nid("n1")).is_some_and(|n| n.parent.is_none()));
-        assert!(doc.graph.nodes.get(&nid("n2")).is_some_and(|n| n.parent == Some(gid("g2"))));
+        assert!(
+            doc.graph
+                .nodes
+                .get(&nid("n1"))
+                .is_some_and(|n| n.parent.is_none())
+        );
+        assert!(
+            doc.graph
+                .nodes
+                .get(&nid("n2"))
+                .is_some_and(|n| n.parent == Some(gid("g2")))
+        );
     }
 
     // =========================================================================
@@ -2757,9 +2810,19 @@ mod tests {
                 },
             },
         );
-        assert!(doc.graph.nodes.get(&nid("n1")).is_some_and(|n| (n.position[0] - 99.0).abs() < f64::EPSILON));
+        assert!(
+            doc.graph
+                .nodes
+                .get(&nid("n1"))
+                .is_some_and(|n| (n.position[0] - 99.0).abs() < f64::EPSILON)
+        );
         let _ = engine.undo(&mut doc);
-        assert!(doc.graph.nodes.get(&nid("n1")).is_some_and(|n| (n.position[0]).abs() < f64::EPSILON));
+        assert!(
+            doc.graph
+                .nodes
+                .get(&nid("n1"))
+                .is_some_and(|n| (n.position[0]).abs() < f64::EPSILON)
+        );
     }
 
     #[test]
@@ -2767,7 +2830,9 @@ mod tests {
         let mut doc = FlowDocument::default();
         doc.graph.nodes.insert(nid("n1"), make_node("n1"));
         doc.graph.nodes.insert(nid("n2"), make_node("n2"));
-        doc.graph.edges.insert(eid("e1"), make_edge("e1", "n1", "n2"));
+        doc.graph
+            .edges
+            .insert(eid("e1"), make_edge("e1", "n1", "n2"));
         let mut engine = PatchEngine::new();
         engine.begin_undo_frame();
         let _ = engine.apply_patch(
@@ -2781,7 +2846,12 @@ mod tests {
             },
         );
         let _ = engine.undo(&mut doc);
-        assert!(doc.graph.edges.get(&eid("e1")).is_some_and(|e| e.label.is_none()));
+        assert!(
+            doc.graph
+                .edges
+                .get(&eid("e1"))
+                .is_some_and(|e| e.label.is_none())
+        );
     }
 
     #[test]
@@ -2801,7 +2871,12 @@ mod tests {
             },
         );
         let _ = engine.undo(&mut doc);
-        assert!(doc.graph.groups.get(&gid("g1")).is_some_and(|g| g.title.as_str() == "g1"));
+        assert!(
+            doc.graph
+                .groups
+                .get(&gid("g1"))
+                .is_some_and(|g| g.title.as_str() == "g1")
+        );
     }
 
     #[test]
@@ -2818,9 +2893,19 @@ mod tests {
                 new_parent: Some(gid("g1")),
             },
         );
-        assert!(doc.graph.nodes.get(&nid("n1")).is_some_and(|n| n.parent == Some(gid("g1"))));
+        assert!(
+            doc.graph
+                .nodes
+                .get(&nid("n1"))
+                .is_some_and(|n| n.parent == Some(gid("g1")))
+        );
         let _ = engine.undo(&mut doc);
-        assert!(doc.graph.nodes.get(&nid("n1")).is_some_and(|n| n.parent.is_none()));
+        assert!(
+            doc.graph
+                .nodes
+                .get(&nid("n1"))
+                .is_some_and(|n| n.parent.is_none())
+        );
     }
 
     #[test]
@@ -2836,7 +2921,10 @@ mod tests {
                 changes: NodeChangeSet {
                     position: Some([10.0, 20.0]),
                     title: Some(SmolStr::from("new-title")),
-                    flags: Some(NodeFlags { locked: true, ..NodeFlags::default() }),
+                    flags: Some(NodeFlags {
+                        locked: true,
+                        ..NodeFlags::default()
+                    }),
                     ..NodeChangeSet::default()
                 },
             },
@@ -2867,9 +2955,24 @@ mod tests {
                 },
             },
         );
-        assert!(doc.graph.nodes.get(&nid("n1")).is_some_and(|n| (n.position[0] - 10.0).abs() < f64::EPSILON));
+        assert!(
+            doc.graph
+                .nodes
+                .get(&nid("n1"))
+                .is_some_and(|n| (n.position[0] - 10.0).abs() < f64::EPSILON)
+        );
         let _ = engine.undo(&mut doc);
-        assert!(doc.graph.nodes.get(&nid("n1")).is_some_and(|n| n.title.as_str() == "original"));
-        assert!(doc.graph.nodes.get(&nid("n1")).is_some_and(|n| (n.position[0] - 10.0).abs() < f64::EPSILON));
+        assert!(
+            doc.graph
+                .nodes
+                .get(&nid("n1"))
+                .is_some_and(|n| n.title.as_str() == "original")
+        );
+        assert!(
+            doc.graph
+                .nodes
+                .get(&nid("n1"))
+                .is_some_and(|n| (n.position[0] - 10.0).abs() < f64::EPSILON)
+        );
     }
 }

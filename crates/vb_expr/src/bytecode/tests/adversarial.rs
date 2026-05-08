@@ -4,9 +4,11 @@
 
 use vb_core::{ConstIdx, ConstValue, ExprOp};
 
-use crate::bytecode::{check_expr_stack_bound, compile_expr, compile_expr_with_pool, const_fold_expr, push_constant};
-use crate::parser::parse_expr;
+use crate::bytecode::{
+    check_expr_stack_bound, compile_expr, compile_expr_with_pool, const_fold_expr, push_constant,
+};
 use crate::lexer::lex_expr;
+use crate::parser::parse_expr;
 
 fn resolve_test_reference(reference: &str) -> Option<vb_core::SlotIdx> {
     match reference {
@@ -231,7 +233,10 @@ fn blackhat_bc_006_constant_pool_overflow() -> crate::ExprResult<()> {
 fn blackhat_bc_007_stack_bound_rejects_empty() -> crate::ExprResult<()> {
     let ops: Vec<ExprOp> = vec![];
     let r = check_expr_stack_bound(&ops);
-    assert!(r.is_err(), "BH-BC-007: empty ops should fail stack validation");
+    assert!(
+        r.is_err(),
+        "BH-BC-007: empty ops should fail stack validation"
+    );
     Ok(())
 }
 
@@ -278,8 +283,9 @@ fn blackhat_bc_009_text_literal_rejected() -> crate::ExprResult<()> {
 /// calling checked_div, so the overflow correctly maps to IntegerOverflow.
 #[test]
 fn blackhat_ev_001_i64_min_div_neg_one_is_overflow() -> crate::ExprResult<()> {
-    use crate::eval::eval_binary_op; use crate::lexer::{BinaryOp, UnaryOp};
     use crate::ExprError;
+    use crate::eval::eval_binary_op;
+    use crate::lexer::{BinaryOp, UnaryOp};
     use vb_core::SlotValue;
 
     let result = eval_binary_op(BinaryOp::Div, SlotValue::I64(i64::MIN), SlotValue::I64(-1));
@@ -294,10 +300,10 @@ fn blackhat_ev_001_i64_min_div_neg_one_is_overflow() -> crate::ExprResult<()> {
 /// BH-EV-001b: End-to-end bytecode program with i64::MIN / -1.
 #[test]
 fn blackhat_ev_001b_program_i64_min_div_neg_one() -> crate::ExprResult<()> {
-    use crate::eval::eval_expr_program;
     use crate::ExprError;
-    use vb_core::{ExprProgram, SlotValue};
+    use crate::eval::eval_expr_program;
     use vb_core::limits::MAX_EXPRESSION_STACK;
+    use vb_core::{ExprProgram, SlotValue};
 
     let program = ExprProgram {
         ops: vec![
@@ -321,8 +327,9 @@ fn blackhat_ev_001b_program_i64_min_div_neg_one() -> crate::ExprResult<()> {
 /// BH-EV-002: Addition overflow at boundary values.
 #[test]
 fn blackhat_ev_002_add_overflow_boundary() -> crate::ExprResult<()> {
-    use crate::eval::eval_binary_op; use crate::lexer::BinaryOp;
     use crate::ExprError;
+    use crate::eval::eval_binary_op;
+    use crate::lexer::BinaryOp;
     use vb_core::SlotValue;
 
     let r = eval_binary_op(BinaryOp::Add, SlotValue::I64(i64::MAX), SlotValue::I64(1));
@@ -335,8 +342,9 @@ fn blackhat_ev_002_add_overflow_boundary() -> crate::ExprResult<()> {
 /// BH-EV-003: Subtraction overflow at boundary values.
 #[test]
 fn blackhat_ev_003_sub_overflow_boundary() -> crate::ExprResult<()> {
-    use crate::eval::eval_binary_op; use crate::lexer::BinaryOp;
     use crate::ExprError;
+    use crate::eval::eval_binary_op;
+    use crate::lexer::BinaryOp;
     use vb_core::SlotValue;
 
     let r = eval_binary_op(BinaryOp::Sub, SlotValue::I64(i64::MIN), SlotValue::I64(1));
@@ -349,8 +357,9 @@ fn blackhat_ev_003_sub_overflow_boundary() -> crate::ExprResult<()> {
 /// BH-EV-004: Multiplication overflow at boundary values.
 #[test]
 fn blackhat_ev_004_mul_overflow_boundary() -> crate::ExprResult<()> {
-    use crate::eval::eval_binary_op; use crate::lexer::BinaryOp;
     use crate::ExprError;
+    use crate::eval::eval_binary_op;
+    use crate::lexer::BinaryOp;
     use vb_core::SlotValue;
 
     let r = eval_binary_op(BinaryOp::Mul, SlotValue::I64(i64::MAX), SlotValue::I64(2));
@@ -365,8 +374,9 @@ fn blackhat_ev_004_mul_overflow_boundary() -> crate::ExprResult<()> {
 /// BH-EV-005: Negation overflow for i64::MIN.
 #[test]
 fn blackhat_ev_005_neg_overflow_i64_min() -> crate::ExprResult<()> {
-    use crate::eval::eval_unary_op; use crate::lexer::UnaryOp;
     use crate::ExprError;
+    use crate::eval::eval_unary_op;
+    use crate::lexer::UnaryOp;
     use vb_core::SlotValue;
 
     let r = eval_unary_op(UnaryOp::Neg, SlotValue::I64(i64::MIN));
@@ -377,8 +387,9 @@ fn blackhat_ev_005_neg_overflow_i64_min() -> crate::ExprResult<()> {
 /// BH-EV-006: Division by zero returns correct error variant.
 #[test]
 fn blackhat_ev_006_div_by_zero_returns_division_by_zero() -> crate::ExprResult<()> {
-    use crate::eval::eval_binary_op; use crate::lexer::BinaryOp;
     use crate::ExprError;
+    use crate::eval::eval_binary_op;
+    use crate::lexer::BinaryOp;
     use vb_core::SlotValue;
 
     let r = eval_binary_op(BinaryOp::Div, SlotValue::I64(1), SlotValue::I64(0));
@@ -393,8 +404,9 @@ fn blackhat_ev_006_div_by_zero_returns_division_by_zero() -> crate::ExprResult<(
 /// BH-EV-007: Type confusion rejected for all cross-type operations.
 #[test]
 fn blackhat_ev_007_type_confusion_rejected() -> crate::ExprResult<()> {
-    use crate::eval::{eval_binary_op, eval_unary_op}; use crate::lexer::{BinaryOp, UnaryOp};
     use crate::ExprError;
+    use crate::eval::{eval_binary_op, eval_unary_op};
+    use crate::lexer::{BinaryOp, UnaryOp};
     use vb_core::SlotValue;
 
     assert!(matches!(
@@ -419,8 +431,8 @@ fn blackhat_ev_007_type_confusion_rejected() -> crate::ExprResult<()> {
 /// BH-EV-008: Stack underflow returns error, not panic.
 #[test]
 fn blackhat_ev_008_stack_underflow_no_panic() -> crate::ExprResult<()> {
-    use crate::eval::eval_expr_program;
     use crate::ExprError;
+    use crate::eval::eval_expr_program;
     use vb_core::ExprProgram;
 
     let program = ExprProgram {
@@ -460,7 +472,8 @@ fn blackhat_ev_009_oob_access_no_panic() -> crate::ExprResult<()> {
 /// BH-EV-010: Division truncation toward zero is correct.
 #[test]
 fn blackhat_ev_010_division_truncation() -> crate::ExprResult<()> {
-    use crate::eval::eval_binary_op; use crate::lexer::BinaryOp;
+    use crate::eval::eval_binary_op;
+    use crate::lexer::BinaryOp;
     use vb_core::SlotValue;
 
     let r = eval_binary_op(BinaryOp::Div, SlotValue::I64(7), SlotValue::I64(2))?;
@@ -477,8 +490,8 @@ fn blackhat_ev_010_division_truncation() -> crate::ExprResult<()> {
 /// BH-EV-011: End-to-end overflow in nested multiplication.
 #[test]
 fn blackhat_ev_011_e2e_overflow_nested() -> crate::ExprResult<()> {
-    use crate::eval::eval_expr_program;
     use crate::ExprError;
+    use crate::eval::eval_expr_program;
 
     let source = "1000000 * 1000000 * 1000000 * 10";
     let tokens = lex_expr(source)?;
@@ -512,7 +525,8 @@ fn blackhat_ev_012_e2e_large_value_no_wrap() -> crate::ExprResult<()> {
 /// BH-EV-013: Cross-type equality does not panic.
 #[test]
 fn blackhat_ev_013_cross_type_equality_no_panic() -> crate::ExprResult<()> {
-    use crate::eval::eval_binary_op; use crate::lexer::BinaryOp;
+    use crate::eval::eval_binary_op;
+    use crate::lexer::BinaryOp;
     use vb_core::SlotValue;
 
     let r = eval_binary_op(BinaryOp::Eq, SlotValue::Null, SlotValue::I64(1))?;
@@ -527,7 +541,8 @@ fn blackhat_ev_013_cross_type_equality_no_panic() -> crate::ExprResult<()> {
 /// BH-EV-014: Negation of zero and positive values does not overflow.
 #[test]
 fn blackhat_ev_014_neg_zero_no_overflow() -> crate::ExprResult<()> {
-    use crate::eval::eval_unary_op; use crate::lexer::UnaryOp;
+    use crate::eval::eval_unary_op;
+    use crate::lexer::UnaryOp;
     use vb_core::SlotValue;
 
     let r = eval_unary_op(UnaryOp::Neg, SlotValue::I64(0))?;

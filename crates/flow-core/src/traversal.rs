@@ -906,7 +906,8 @@ mod tests {
             let src = format!("n{i}");
             let tgt = format!("n{}", i.saturating_add(1));
             let eid_label = format!("e{i}");
-            g.edges.insert(eid(&eid_label), make_edge(&eid_label, &src, &tgt));
+            g.edges
+                .insert(eid(&eid_label), make_edge(&eid_label, &src, &tgt));
         }
         let result = g.topological_sort();
         assert!(result.is_some());
@@ -960,7 +961,8 @@ mod tests {
             let leaf = format!("leaf{i}");
             g.nodes.insert(nid(&leaf), make_node(&leaf));
             let eid_label = format!("e{i}");
-            g.edges.insert(eid(&eid_label), make_edge(&eid_label, "root", &leaf));
+            g.edges
+                .insert(eid(&eid_label), make_edge(&eid_label, "root", &leaf));
         }
         let result = g.topological_sort();
         assert!(result.is_some());

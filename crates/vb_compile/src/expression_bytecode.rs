@@ -493,9 +493,11 @@ mod tests {
         let mut constants = Vec::new();
 
         match compile_expr_to_bytecode(&expr, &mut constants) {
-            Err(CompileError::ExpressionLoweringUnsupported {
-                ref feature,
-            }) if feature.as_ref() == "accessor references" => Ok(()),
+            Err(CompileError::ExpressionLoweringUnsupported { ref feature })
+                if feature.as_ref() == "accessor references" =>
+            {
+                Ok(())
+            }
             other => Err(format!("unexpected lowering result: {other:?}")),
         }
     }
@@ -939,7 +941,10 @@ mod tests {
             constants == vec![ConstValue::Bool(true), ConstValue::Bool(false)],
             "true == false should produce two boolean constants",
         )?;
-        adv_ensure(ops.len() == 3, "should have 3 ops (LoadConst, LoadConst, Eq)")?;
+        adv_ensure(
+            ops.len() == 3,
+            "should have 3 ops (LoadConst, LoadConst, Eq)",
+        )?;
         let last = ops.last().ok_or("missing last op")?;
         adv_ensure(matches!(last, ExprOp::Eq), "should end with Eq op")?;
         Ok(())
@@ -1039,7 +1044,10 @@ mod tests {
             "nested negation and arithmetic should need stack >= 3",
         )?;
         // Verify the expression compiles without error and has reasonable ops
-        adv_ensure(ops.len() >= 7, "complex nested expression should have many ops")?;
+        adv_ensure(
+            ops.len() >= 7,
+            "complex nested expression should have many ops",
+        )?;
         Ok(())
     }
 
@@ -1048,7 +1056,10 @@ mod tests {
     #[test]
     fn division_lowers_to_div_op() -> Result<(), String> {
         let (ops, _constants, _max_stack) = lower("10 / 2")?;
-        adv_ensure(ops.len() == 3, "division should be 3 ops (LoadConst, LoadConst, Div)")?;
+        adv_ensure(
+            ops.len() == 3,
+            "division should be 3 ops (LoadConst, LoadConst, Div)",
+        )?;
         let last = ops.last().ok_or("missing last op")?;
         adv_ensure(matches!(last, ExprOp::Div), "should end with Div op")?;
         Ok(())
@@ -1634,7 +1645,10 @@ mod tests {
         adv_ensure(ops.len() == 15, "should have 15 ops")?;
         let add_count = ops.iter().filter(|op| matches!(op, ExprOp::Add)).count();
         adv_ensure(add_count == 7, "should have 7 Add ops")?;
-        adv_ensure(max_stack >= 4, "max_stack should be at least 4 for balanced tree")?;
+        adv_ensure(
+            max_stack >= 4,
+            "max_stack should be at least 4 for balanced tree",
+        )?;
         Ok(())
     }
 
@@ -1647,7 +1661,10 @@ mod tests {
         adv_ensure(constants.len() == 20, "should have 20 constants")?;
         // 20 loads + 19 adds = 39 ops
         adv_ensure(ops.len() == 39, "should have 39 ops")?;
-        adv_ensure(max_stack >= 2, "left-deep chain should need at least 2 stack slots")?;
+        adv_ensure(
+            max_stack >= 2,
+            "left-deep chain should need at least 2 stack slots",
+        )?;
         Ok(())
     }
 
@@ -1693,8 +1710,14 @@ mod tests {
         adv_ensure(constants.len() == 3, "should have 3 constants")?;
         adv_ensure(ops.len() == 5, "should have 5 ops")?;
         // Mul should come before Add
-        let mul_pos = ops.iter().position(|op| matches!(op, ExprOp::Mul)).ok_or("no Mul")?;
-        let add_pos = ops.iter().position(|op| matches!(op, ExprOp::Add)).ok_or("no Add")?;
+        let mul_pos = ops
+            .iter()
+            .position(|op| matches!(op, ExprOp::Mul))
+            .ok_or("no Mul")?;
+        let add_pos = ops
+            .iter()
+            .position(|op| matches!(op, ExprOp::Add))
+            .ok_or("no Add")?;
         adv_ensure(mul_pos < add_pos, "Mul should come before Add in postfix")?;
         Ok(())
     }
@@ -1704,8 +1727,14 @@ mod tests {
         // 10 - 6 / 2 => 10, 6, 2, Div, Sub
         let (ops, _constants, _max_stack) = lower("10 - 6 / 2")?;
         adv_ensure(ops.len() == 5, "should have 5 ops")?;
-        let div_pos = ops.iter().position(|op| matches!(op, ExprOp::Div)).ok_or("no Div")?;
-        let sub_pos = ops.iter().position(|op| matches!(op, ExprOp::Sub)).ok_or("no Sub")?;
+        let div_pos = ops
+            .iter()
+            .position(|op| matches!(op, ExprOp::Div))
+            .ok_or("no Div")?;
+        let sub_pos = ops
+            .iter()
+            .position(|op| matches!(op, ExprOp::Sub))
+            .ok_or("no Sub")?;
         adv_ensure(div_pos < sub_pos, "Div should come before Sub in postfix")?;
         Ok(())
     }
@@ -1715,8 +1744,14 @@ mod tests {
         // true or false and true => true, false, true, And, Or
         let (ops, _constants, _max_stack) = lower("true or false and true")?;
         adv_ensure(ops.len() == 5, "should have 5 ops")?;
-        let and_pos = ops.iter().position(|op| matches!(op, ExprOp::And)).ok_or("no And")?;
-        let or_pos = ops.iter().position(|op| matches!(op, ExprOp::Or)).ok_or("no Or")?;
+        let and_pos = ops
+            .iter()
+            .position(|op| matches!(op, ExprOp::And))
+            .ok_or("no And")?;
+        let or_pos = ops
+            .iter()
+            .position(|op| matches!(op, ExprOp::Or))
+            .ok_or("no Or")?;
         adv_ensure(and_pos < or_pos, "And should come before Or in postfix")?;
         Ok(())
     }
@@ -1725,9 +1760,18 @@ mod tests {
     fn comparison_has_higher_precedence_than_and() -> Result<(), String> {
         // 1 < 2 and 3 > 0 => 1, 2, Lt, 3, 0, Gt, And
         let (ops, _constants, _max_stack) = lower("1 < 2 and 3 > 0")?;
-        let lt_pos = ops.iter().position(|op| matches!(op, ExprOp::Lt)).ok_or("no Lt")?;
-        let gt_pos = ops.iter().position(|op| matches!(op, ExprOp::Gt)).ok_or("no Gt")?;
-        let and_pos = ops.iter().position(|op| matches!(op, ExprOp::And)).ok_or("no And")?;
+        let lt_pos = ops
+            .iter()
+            .position(|op| matches!(op, ExprOp::Lt))
+            .ok_or("no Lt")?;
+        let gt_pos = ops
+            .iter()
+            .position(|op| matches!(op, ExprOp::Gt))
+            .ok_or("no Gt")?;
+        let and_pos = ops
+            .iter()
+            .position(|op| matches!(op, ExprOp::And))
+            .ok_or("no And")?;
         adv_ensure(lt_pos < and_pos, "Lt should come before And")?;
         adv_ensure(gt_pos < and_pos, "Gt should come before And")?;
         Ok(())
@@ -1738,9 +1782,18 @@ mod tests {
         // a == b and c != d => a, b, Eq, c, d, NotEq, And
         let (ops, _constants, _max_stack) = lower("1 == 2 and 3 != 4")?;
         adv_ensure(ops.len() == 7, "should have 7 ops")?;
-        let eq_pos = ops.iter().position(|op| matches!(op, ExprOp::Eq)).ok_or("no Eq")?;
-        let noteq_pos = ops.iter().position(|op| matches!(op, ExprOp::NotEq)).ok_or("no NotEq")?;
-        let and_pos = ops.iter().position(|op| matches!(op, ExprOp::And)).ok_or("no And")?;
+        let eq_pos = ops
+            .iter()
+            .position(|op| matches!(op, ExprOp::Eq))
+            .ok_or("no Eq")?;
+        let noteq_pos = ops
+            .iter()
+            .position(|op| matches!(op, ExprOp::NotEq))
+            .ok_or("no NotEq")?;
+        let and_pos = ops
+            .iter()
+            .position(|op| matches!(op, ExprOp::And))
+            .ok_or("no And")?;
         adv_ensure(eq_pos < and_pos, "Eq should come before And")?;
         adv_ensure(noteq_pos < and_pos, "NotEq should come before And")?;
         Ok(())
@@ -1752,8 +1805,14 @@ mod tests {
         let (ops, constants, _max_stack) = lower("(1 + 2) * 3")?;
         adv_ensure(constants.len() == 3, "should have 3 constants")?;
         adv_ensure(ops.len() == 5, "should have 5 ops")?;
-        let add_pos = ops.iter().position(|op| matches!(op, ExprOp::Add)).ok_or("no Add")?;
-        let mul_pos = ops.iter().position(|op| matches!(op, ExprOp::Mul)).ok_or("no Mul")?;
+        let add_pos = ops
+            .iter()
+            .position(|op| matches!(op, ExprOp::Add))
+            .ok_or("no Add")?;
+        let mul_pos = ops
+            .iter()
+            .position(|op| matches!(op, ExprOp::Mul))
+            .ok_or("no Mul")?;
         adv_ensure(add_pos < mul_pos, "Add should come before Mul with parens")?;
         Ok(())
     }
@@ -1764,10 +1823,22 @@ mod tests {
         let (ops, constants, _max_stack) = lower("((1 + 2) * (3 - 4)) / 5")?;
         adv_ensure(constants.len() == 5, "should have 5 constants")?;
         // Add, Sub should come before Mul, Mul before Div
-        let add_pos = ops.iter().position(|op| matches!(op, ExprOp::Add)).ok_or("no Add")?;
-        let sub_pos = ops.iter().position(|op| matches!(op, ExprOp::Sub)).ok_or("no Sub")?;
-        let mul_pos = ops.iter().position(|op| matches!(op, ExprOp::Mul)).ok_or("no Mul")?;
-        let div_pos = ops.iter().position(|op| matches!(op, ExprOp::Div)).ok_or("no Div")?;
+        let add_pos = ops
+            .iter()
+            .position(|op| matches!(op, ExprOp::Add))
+            .ok_or("no Add")?;
+        let sub_pos = ops
+            .iter()
+            .position(|op| matches!(op, ExprOp::Sub))
+            .ok_or("no Sub")?;
+        let mul_pos = ops
+            .iter()
+            .position(|op| matches!(op, ExprOp::Mul))
+            .ok_or("no Mul")?;
+        let div_pos = ops
+            .iter()
+            .position(|op| matches!(op, ExprOp::Div))
+            .ok_or("no Div")?;
         adv_ensure(add_pos < mul_pos, "Add should come before Mul")?;
         adv_ensure(sub_pos < mul_pos, "Sub should come before Mul")?;
         adv_ensure(mul_pos < div_pos, "Mul should come before Div")?;
@@ -1779,10 +1850,18 @@ mod tests {
         // -1 + 2 => the negation is applied to 1 first
         let (ops, constants, _max_stack) = lower("-1 + 2")?;
         // Const 0, Const 1, Sub, Const 2, Add
-        adv_ensure(constants == vec![ConstValue::I64(0), ConstValue::I64(1), ConstValue::I64(2)],
-            "negation constants should be 0, 1, 2")?;
-        let sub_pos = ops.iter().position(|op| matches!(op, ExprOp::Sub)).ok_or("no Sub")?;
-        let add_pos = ops.iter().position(|op| matches!(op, ExprOp::Add)).ok_or("no Add")?;
+        adv_ensure(
+            constants == vec![ConstValue::I64(0), ConstValue::I64(1), ConstValue::I64(2)],
+            "negation constants should be 0, 1, 2",
+        )?;
+        let sub_pos = ops
+            .iter()
+            .position(|op| matches!(op, ExprOp::Sub))
+            .ok_or("no Sub")?;
+        let add_pos = ops
+            .iter()
+            .position(|op| matches!(op, ExprOp::Add))
+            .ok_or("no Add")?;
         adv_ensure(sub_pos < add_pos, "Sub (negation) should come before Add")?;
         Ok(())
     }
@@ -1791,8 +1870,14 @@ mod tests {
     fn not_has_higher_precedence_than_comparison() -> Result<(), String> {
         // not true == false => (not true) == false
         let (ops, _constants, _max_stack) = lower("not true == false")?;
-        let not_pos = ops.iter().position(|op| matches!(op, ExprOp::Not)).ok_or("no Not")?;
-        let eq_pos = ops.iter().position(|op| matches!(op, ExprOp::Eq)).ok_or("no Eq")?;
+        let not_pos = ops
+            .iter()
+            .position(|op| matches!(op, ExprOp::Not))
+            .ok_or("no Not")?;
+        let eq_pos = ops
+            .iter()
+            .position(|op| matches!(op, ExprOp::Eq))
+            .ok_or("no Eq")?;
         adv_ensure(not_pos < eq_pos, "Not should come before Eq")?;
         Ok(())
     }
@@ -1808,8 +1893,14 @@ mod tests {
         let has_exists = ops.iter().any(|op| matches!(op, ExprOp::Exists));
         adv_ensure(has_sub, "should contain Sub for negation")?;
         adv_ensure(has_exists, "should contain Exists")?;
-        let exists_pos = ops.iter().position(|op| matches!(op, ExprOp::Exists)).ok_or("no Exists")?;
-        let sub_pos = ops.iter().position(|op| matches!(op, ExprOp::Sub)).ok_or("no Sub")?;
+        let exists_pos = ops
+            .iter()
+            .position(|op| matches!(op, ExprOp::Exists))
+            .ok_or("no Exists")?;
+        let sub_pos = ops
+            .iter()
+            .position(|op| matches!(op, ExprOp::Sub))
+            .ok_or("no Sub")?;
         adv_ensure(sub_pos < exists_pos, "Sub should come before Exists")?;
         Ok(())
     }
@@ -1818,11 +1909,19 @@ mod tests {
     fn helper_with_binary_expression_argument() -> Result<(), String> {
         let (ops, constants, _max_stack) = lower("sum(1 + 2)")?;
         // Const 1, Const 2, Add, Sum
-        adv_ensure(constants == vec![ConstValue::I64(1), ConstValue::I64(2)],
-            "should have constants 1 and 2")?;
+        adv_ensure(
+            constants == vec![ConstValue::I64(1), ConstValue::I64(2)],
+            "should have constants 1 and 2",
+        )?;
         adv_ensure(ops.len() == 4, "should have 4 ops (2 loads, add, sum)")?;
-        let add_pos = ops.iter().position(|op| matches!(op, ExprOp::Add)).ok_or("no Add")?;
-        let sum_pos = ops.iter().position(|op| matches!(op, ExprOp::Sum)).ok_or("no Sum")?;
+        let add_pos = ops
+            .iter()
+            .position(|op| matches!(op, ExprOp::Add))
+            .ok_or("no Add")?;
+        let sum_pos = ops
+            .iter()
+            .position(|op| matches!(op, ExprOp::Sum))
+            .ok_or("no Sum")?;
         adv_ensure(add_pos < sum_pos, "Add should come before Sum")?;
         Ok(())
     }
@@ -1847,9 +1946,18 @@ mod tests {
         adv_ensure(has_exists, "should contain Exists")?;
         adv_ensure(has_empty, "should contain Empty")?;
         adv_ensure(has_eq, "should contain Eq")?;
-        let eq_pos = ops.iter().position(|op| matches!(op, ExprOp::Eq)).ok_or("no Eq")?;
-        let exists_pos = ops.iter().position(|op| matches!(op, ExprOp::Exists)).ok_or("no Exists")?;
-        let empty_pos = ops.iter().position(|op| matches!(op, ExprOp::Empty)).ok_or("no Empty")?;
+        let eq_pos = ops
+            .iter()
+            .position(|op| matches!(op, ExprOp::Eq))
+            .ok_or("no Eq")?;
+        let exists_pos = ops
+            .iter()
+            .position(|op| matches!(op, ExprOp::Exists))
+            .ok_or("no Exists")?;
+        let empty_pos = ops
+            .iter()
+            .position(|op| matches!(op, ExprOp::Empty))
+            .ok_or("no Empty")?;
         adv_ensure(exists_pos < eq_pos, "Exists should come before Eq")?;
         adv_ensure(empty_pos < eq_pos, "Empty should come before Eq")?;
         Ok(())
@@ -1875,8 +1983,14 @@ mod tests {
         adv_ensure(ops.len() == 3, "should have 3 ops (Load, Empty, Not)")?;
         let last = ops.last().ok_or("missing last op")?;
         adv_ensure(matches!(last, ExprOp::Not), "should end with Not")?;
-        let empty_pos = ops.iter().position(|op| matches!(op, ExprOp::Empty)).ok_or("no Empty")?;
-        let not_pos = ops.iter().position(|op| matches!(op, ExprOp::Not)).ok_or("no Not")?;
+        let empty_pos = ops
+            .iter()
+            .position(|op| matches!(op, ExprOp::Empty))
+            .ok_or("no Empty")?;
+        let not_pos = ops
+            .iter()
+            .position(|op| matches!(op, ExprOp::Not))
+            .ok_or("no Not")?;
         adv_ensure(empty_pos < not_pos, "Empty should come before Not")?;
         Ok(())
     }
@@ -1894,7 +2008,10 @@ mod tests {
     #[test]
     fn helper_with_null_argument() -> Result<(), String> {
         let (ops, constants, _max_stack) = lower("exists(null)")?;
-        adv_ensure(constants == vec![ConstValue::Null], "should have Null constant")?;
+        adv_ensure(
+            constants == vec![ConstValue::Null],
+            "should have Null constant",
+        )?;
         adv_ensure(ops.len() == 2, "should be 2 ops (Load + Exists)")?;
         let last = ops.last().ok_or("missing last op")?;
         adv_ensure(matches!(last, ExprOp::Exists), "should end with Exists")?;
@@ -1904,7 +2021,10 @@ mod tests {
     #[test]
     fn helper_with_boolean_argument() -> Result<(), String> {
         let (ops, constants, _max_stack) = lower("length(true)")?;
-        adv_ensure(constants == vec![ConstValue::Bool(true)], "should have Bool(true)")?;
+        adv_ensure(
+            constants == vec![ConstValue::Bool(true)],
+            "should have Bool(true)",
+        )?;
         let last = ops.last().ok_or("missing last op")?;
         adv_ensure(matches!(last, ExprOp::Length), "should end with Length")?;
         Ok(())
@@ -1939,7 +2059,10 @@ mod tests {
         adv_ensure(ops.len() == 3, "should have 3 ops")?;
         adv_ensure(accessors.len() == 1, "should have 1 accessor entry")?;
         let accessor = accessors.first().ok_or("missing accessor")?;
-        adv_ensure(accessor.root == SlotIdx::new(1), "accessor root should be slot 1")?;
+        adv_ensure(
+            accessor.root == SlotIdx::new(1),
+            "accessor root should be slot 1",
+        )?;
         adv_ensure(accessor.path.len() == 1, "should have 1 path segment")?;
         Ok(())
     }
@@ -1966,11 +2089,23 @@ mod tests {
         let expr2 = parse_expression("3 + 4").map_err(|e| e.to_string())?;
         let mut constants = Vec::new();
         let _prog1 = compile_expr_to_bytecode(&expr1, &mut constants).map_err(|e| e.to_string())?;
-        adv_ensure(constants.len() == 2, "first expression should add 2 constants")?;
-        let _prog2 = compile_expr_to_bytecode(&expr2, &mut constants).map_err(|e| e.to_string())?;
-        adv_ensure(constants.len() == 4, "second expression should add 2 more constants")?;
         adv_ensure(
-            constants == vec![ConstValue::I64(1), ConstValue::I64(2), ConstValue::I64(3), ConstValue::I64(4)],
+            constants.len() == 2,
+            "first expression should add 2 constants",
+        )?;
+        let _prog2 = compile_expr_to_bytecode(&expr2, &mut constants).map_err(|e| e.to_string())?;
+        adv_ensure(
+            constants.len() == 4,
+            "second expression should add 2 more constants",
+        )?;
+        adv_ensure(
+            constants
+                == vec![
+                    ConstValue::I64(1),
+                    ConstValue::I64(2),
+                    ConstValue::I64(3),
+                    ConstValue::I64(4),
+                ],
             "constants should be [1, 2, 3, 4]",
         )?;
         Ok(())
@@ -1988,8 +2123,14 @@ mod tests {
         }
         // constants has 65534 entries; pushing one more should succeed (65535 < 65536)
         let result = compile_expr_to_bytecode(&expr, &mut constants);
-        adv_ensure(result.is_ok(), "should succeed with u16::MAX - 1 existing constants")?;
-        adv_ensure(constants.len() == fill_count + 1, "should have one more constant")?;
+        adv_ensure(
+            result.is_ok(),
+            "should succeed with u16::MAX - 1 existing constants",
+        )?;
+        adv_ensure(
+            constants.len() == fill_count + 1,
+            "should have one more constant",
+        )?;
         Ok(())
     }
 
@@ -2022,9 +2163,14 @@ mod tests {
         let (ops, _constants, _max_stack) = lower("1 + 2 - 3")?;
         adv_ensure(ops.len() == 5, "should have 5 ops")?;
         // First binary op should be Add, second should be Sub
-        let first_bin = ops.iter().find(|op| matches!(op, ExprOp::Add | ExprOp::Sub))
+        let first_bin = ops
+            .iter()
+            .find(|op| matches!(op, ExprOp::Add | ExprOp::Sub))
             .ok_or("missing first binary op")?;
-        adv_ensure(matches!(first_bin, ExprOp::Add), "first binary op should be Add")?;
+        adv_ensure(
+            matches!(first_bin, ExprOp::Add),
+            "first binary op should be Add",
+        )?;
         Ok(())
     }
 
@@ -2042,8 +2188,14 @@ mod tests {
         let has_sub = ops.iter().any(|op| matches!(op, ExprOp::Sub));
         adv_ensure(has_length, "should contain Length")?;
         adv_ensure(has_sub, "should contain Sub for negation")?;
-        let sub_pos = ops.iter().position(|op| matches!(op, ExprOp::Sub)).ok_or("no Sub")?;
-        let length_pos = ops.iter().position(|op| matches!(op, ExprOp::Length)).ok_or("no Length")?;
+        let sub_pos = ops
+            .iter()
+            .position(|op| matches!(op, ExprOp::Sub))
+            .ok_or("no Sub")?;
+        let length_pos = ops
+            .iter()
+            .position(|op| matches!(op, ExprOp::Length))
+            .ok_or("no Length")?;
         adv_ensure(length_pos < sub_pos, "Length should come before Sub")?;
         Ok(())
     }
@@ -2052,7 +2204,10 @@ mod tests {
     fn not_of_not_of_boolean() -> Result<(), String> {
         // not not false => LoadConst(false), Not, Not
         let (ops, constants, _max_stack) = lower("not not false")?;
-        adv_ensure(constants == vec![ConstValue::Bool(false)], "should have Bool(false)")?;
+        adv_ensure(
+            constants == vec![ConstValue::Bool(false)],
+            "should have Bool(false)",
+        )?;
         adv_ensure(ops.len() == 3, "should have 3 ops")?;
         let not_count = ops.iter().filter(|op| matches!(op, ExprOp::Not)).count();
         adv_ensure(not_count == 2, "should have 2 Not ops")?;

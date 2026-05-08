@@ -286,8 +286,18 @@ mod tests {
     #[test]
     fn clear_filters_resets_all() {
         let mut ticker = EventTicker::new(10);
-        ticker.push(make_event_with_run(1, 0, Some(999), TickerEventKind::RunAccepted));
-        ticker.push(make_event_with_run(2, 1, Some(100), TickerEventKind::RunFailed));
+        ticker.push(make_event_with_run(
+            1,
+            0,
+            Some(999),
+            TickerEventKind::RunAccepted,
+        ));
+        ticker.push(make_event_with_run(
+            2,
+            1,
+            Some(100),
+            TickerEventKind::RunFailed,
+        ));
 
         ticker.set_shard_filter(Some(0));
         ticker.set_run_filter(Some(999));
@@ -394,11 +404,36 @@ mod tests {
     #[test]
     fn filter_by_run_id_with_multiple_run_ids() {
         let mut ticker = EventTicker::new(20);
-        ticker.push(make_event_with_run(1, 0, Some(10), TickerEventKind::RunAccepted));
-        ticker.push(make_event_with_run(2, 0, Some(20), TickerEventKind::StepStarted));
-        ticker.push(make_event_with_run(3, 0, Some(10), TickerEventKind::StepSucceeded));
-        ticker.push(make_event_with_run(4, 0, Some(30), TickerEventKind::ActionCompleted));
-        ticker.push(make_event_with_run(5, 0, Some(10), TickerEventKind::RunFinished));
+        ticker.push(make_event_with_run(
+            1,
+            0,
+            Some(10),
+            TickerEventKind::RunAccepted,
+        ));
+        ticker.push(make_event_with_run(
+            2,
+            0,
+            Some(20),
+            TickerEventKind::StepStarted,
+        ));
+        ticker.push(make_event_with_run(
+            3,
+            0,
+            Some(10),
+            TickerEventKind::StepSucceeded,
+        ));
+        ticker.push(make_event_with_run(
+            4,
+            0,
+            Some(30),
+            TickerEventKind::ActionCompleted,
+        ));
+        ticker.push(make_event_with_run(
+            5,
+            0,
+            Some(10),
+            TickerEventKind::RunFinished,
+        ));
 
         ticker.set_run_filter(Some(10));
         let filtered = ticker.filtered_events();
@@ -420,7 +455,11 @@ mod tests {
 
         let filtered = ticker.filtered_events();
         assert_eq!(filtered.len(), 2);
-        assert!(filtered.iter().all(|e| e.kind == TickerEventKind::RunAccepted));
+        assert!(
+            filtered
+                .iter()
+                .all(|e| e.kind == TickerEventKind::RunAccepted)
+        );
     }
 
     #[test]
@@ -600,7 +639,11 @@ mod tests {
     fn blackhat_filtered_events_allocates_each_call() {
         let mut ticker = EventTicker::new(100);
         for i in 0..50 {
-            ticker.push(make_event(i, u32::try_from(i % 3).unwrap_or(u32::MAX), TickerEventKind::StepStarted));
+            ticker.push(make_event(
+                i,
+                u32::try_from(i % 3).unwrap_or(u32::MAX),
+                TickerEventKind::StepStarted,
+            ));
         }
         // Call filtered_events multiple times -- each allocates a new Vec.
         let f1 = ticker.filtered_events();
@@ -705,8 +748,18 @@ mod tests {
     #[test]
     fn set_run_filter_none_removes_filter() {
         let mut ticker = EventTicker::new(10);
-        ticker.push(make_event_with_run(1, 0, Some(100), TickerEventKind::RunAccepted));
-        ticker.push(make_event_with_run(2, 0, Some(200), TickerEventKind::StepStarted));
+        ticker.push(make_event_with_run(
+            1,
+            0,
+            Some(100),
+            TickerEventKind::RunAccepted,
+        ));
+        ticker.push(make_event_with_run(
+            2,
+            0,
+            Some(200),
+            TickerEventKind::StepStarted,
+        ));
 
         ticker.set_run_filter(Some(100));
         assert_eq!(ticker.filtered_events().len(), 1);
@@ -733,11 +786,36 @@ mod tests {
     #[test]
     fn combined_filters_all_three_simultaneously() {
         let mut ticker = EventTicker::new(20);
-        ticker.push(make_event_with_run(1, 0, Some(10), TickerEventKind::RunAccepted));
-        ticker.push(make_event_with_run(2, 0, Some(10), TickerEventKind::StepStarted));
-        ticker.push(make_event_with_run(3, 1, Some(10), TickerEventKind::RunAccepted));
-        ticker.push(make_event_with_run(4, 0, Some(20), TickerEventKind::RunAccepted));
-        ticker.push(make_event_with_run(5, 0, Some(10), TickerEventKind::ActionFailed));
+        ticker.push(make_event_with_run(
+            1,
+            0,
+            Some(10),
+            TickerEventKind::RunAccepted,
+        ));
+        ticker.push(make_event_with_run(
+            2,
+            0,
+            Some(10),
+            TickerEventKind::StepStarted,
+        ));
+        ticker.push(make_event_with_run(
+            3,
+            1,
+            Some(10),
+            TickerEventKind::RunAccepted,
+        ));
+        ticker.push(make_event_with_run(
+            4,
+            0,
+            Some(20),
+            TickerEventKind::RunAccepted,
+        ));
+        ticker.push(make_event_with_run(
+            5,
+            0,
+            Some(10),
+            TickerEventKind::ActionFailed,
+        ));
 
         // Shard 0, run 10, kind RunAccepted -> only event 1
         ticker.set_shard_filter(Some(0));
@@ -766,10 +844,7 @@ mod tests {
         ];
         for kind in all_kinds {
             let color = EventTicker::event_color(kind);
-            assert!(
-                color[3] > 0.0,
-                "alpha for {kind:?} must be nonzero"
-            );
+            assert!(color[3] > 0.0, "alpha for {kind:?} must be nonzero");
         }
     }
 
@@ -821,11 +896,7 @@ mod tests {
     fn repeated_push_and_filter_cycle() {
         let mut ticker = EventTicker::new(5);
         for round in 0u64..3 {
-            ticker.push(make_event(
-                round,
-                0,
-                TickerEventKind::RunAccepted,
-            ));
+            ticker.push(make_event(round, 0, TickerEventKind::RunAccepted));
         }
         ticker.set_shard_filter(Some(0));
         let filtered = ticker.filtered_events();

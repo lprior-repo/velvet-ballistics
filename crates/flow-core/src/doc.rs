@@ -699,10 +699,7 @@ mod tests {
             assert_eq!(b.graph.nodes.len(), 2);
             assert_eq!(b.graph.edges.len(), 1);
             assert_eq!(b.graph.groups.len(), 1);
-            assert_eq!(
-                b.graph.entry_node.as_ref().map(|s| s.as_str()),
-                Some("n1")
-            );
+            assert_eq!(b.graph.entry_node.as_ref().map(|s| s.as_str()), Some("n1"));
         }
     }
 
@@ -864,7 +861,9 @@ mod tests {
     #[test]
     fn empty_group_has_no_members() {
         let mut graph = FlowGraph::default();
-        graph.groups.insert(SmolStr::from("g_empty"), make_group("g_empty"));
+        graph
+            .groups
+            .insert(SmolStr::from("g_empty"), make_group("g_empty"));
         graph.nodes.insert(SmolStr::from("n1"), make_node("n1"));
         assert_eq!(graph.groups.len(), 1);
         let member_count = graph
@@ -1000,19 +999,31 @@ mod tests {
                 marker: EdgeMarker::Circle,
             },
         ];
-        assert!(styles.get(0).is_some_and(|s| s.line_style == LineStyle::Solid));
+        assert!(
+            styles
+                .get(0)
+                .is_some_and(|s| s.line_style == LineStyle::Solid)
+        );
         assert!(styles.get(1).is_some_and(|s| s.animated));
-        assert!(styles.get(2).is_some_and(|s| s.marker == EdgeMarker::Circle));
+        assert!(
+            styles
+                .get(2)
+                .is_some_and(|s| s.marker == EdgeMarker::Circle)
+        );
     }
 
     /// 16. Node with multiple ports and different port roles/sides.
     #[test]
     fn node_with_mixed_ports() {
         let mut node = make_node("multi-port");
-        node.ports.push(make_port("in-0", PortSide::Left, PortRole::Target));
-        node.ports.push(make_port("in-1", PortSide::Left, PortRole::Target));
-        node.ports.push(make_port("out-0", PortSide::Right, PortRole::Source));
-        node.ports.push(make_port("bidir", PortSide::Top, PortRole::Bidirectional));
+        node.ports
+            .push(make_port("in-0", PortSide::Left, PortRole::Target));
+        node.ports
+            .push(make_port("in-1", PortSide::Left, PortRole::Target));
+        node.ports
+            .push(make_port("out-0", PortSide::Right, PortRole::Source));
+        node.ports
+            .push(make_port("bidir", PortSide::Top, PortRole::Bidirectional));
         assert_eq!(node.ports.len(), 4);
         let target_count = node
             .ports
@@ -1038,10 +1049,14 @@ mod tests {
     #[test]
     fn document_plugin_state_insert_and_lookup() {
         let mut doc = FlowDocument::default();
-        doc.plugin_state
-            .insert(SmolStr::from("renderer"), serde_json::json!({"enabled": true}));
-        doc.plugin_state
-            .insert(SmolStr::from("analytics"), serde_json::json!({"version": 2}));
+        doc.plugin_state.insert(
+            SmolStr::from("renderer"),
+            serde_json::json!({"enabled": true}),
+        );
+        doc.plugin_state.insert(
+            SmolStr::from("analytics"),
+            serde_json::json!({"version": 2}),
+        );
         assert_eq!(doc.plugin_state.len(), 2);
         assert!(
             doc.plugin_state
@@ -1053,7 +1068,11 @@ mod tests {
                 .get(&SmolStr::from("analytics"))
                 .is_some_and(|v| v.is_object())
         );
-        assert!(doc.plugin_state.get(&SmolStr::from("nonexistent")).is_none());
+        assert!(
+            doc.plugin_state
+                .get(&SmolStr::from("nonexistent"))
+                .is_none()
+        );
     }
 
     /// 18. Edge with label and custom data.

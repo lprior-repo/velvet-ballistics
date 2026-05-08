@@ -139,8 +139,7 @@ pub(super) fn eval_accessor_with_taint_inner(
                 reason: "accessor path index checked by loop bound",
             }
         })?;
-        let (value, segment_taint) =
-            traverse_accessor_segment_with_taint(store, current, segment)?;
+        let (value, segment_taint) = traverse_accessor_segment_with_taint(store, current, segment)?;
         accumulated_taint = crate::value::join_taint(accumulated_taint, segment_taint);
         current = value;
         index = index
@@ -190,7 +189,7 @@ pub fn eval_accessor_with_store(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ids::{ObjectId, RunId, SlotIdx, StepIdx, SymbolId, ListId, WorkflowDigest};
+    use crate::ids::{ListId, ObjectId, RunId, SlotIdx, StepIdx, SymbolId, WorkflowDigest};
     use crate::value::{SlotValue, Taint};
     use crate::value_store::{ObjectField, ValueStore};
     use crate::workflow::{
@@ -209,9 +208,7 @@ mod tests {
         }
     }
 
-    fn accessor_workflow(
-        path: Box<[PathSegment]>,
-    ) -> Result<CompiledWorkflow, String> {
+    fn accessor_workflow(path: Box<[PathSegment]>) -> Result<CompiledWorkflow, String> {
         accessor_workflow_with_symbols(path, 10)
     }
 
@@ -248,8 +245,7 @@ mod tests {
     }
 
     fn test_frame() -> Result<crate::frame::RunFrame, String> {
-        crate::frame::RunFrame::new(RunId::new(1), StepIdx::new(0), 1, 2)
-            .map_err(|e| e.to_string())
+        crate::frame::RunFrame::new(RunId::new(1), StepIdx::new(0), 1, 2).map_err(|e| e.to_string())
     }
 
     // ===== Empty path returns root value =====
@@ -262,13 +258,8 @@ mod tests {
             .map_err(|e| e.to_string())?;
         let mut store = ValueStore::new();
 
-        let value = eval_accessor_with_store(
-            &workflow,
-            &run,
-            &mut store,
-            AccessorIdx::new(0),
-        )
-        .map_err(|e| e.to_string())?;
+        let value = eval_accessor_with_store(&workflow, &run, &mut store, AccessorIdx::new(0))
+            .map_err(|e| e.to_string())?;
         ensure_equal(value, SlotValue::I64(42))
     }
 
@@ -279,8 +270,8 @@ mod tests {
         run.write_slot(SlotIdx::new(0), SlotValue::Bool(true))
             .map_err(|e| e.to_string())?;
 
-        let value = eval_accessor(&workflow, &run, AccessorIdx::new(0))
-            .map_err(|e| e.to_string())?;
+        let value =
+            eval_accessor(&workflow, &run, AccessorIdx::new(0)).map_err(|e| e.to_string())?;
         ensure_equal(value, SlotValue::Bool(true))
     }
 
@@ -288,9 +279,8 @@ mod tests {
 
     #[test]
     fn eval_accessor_object_field_traversal() -> Result<(), String> {
-        let workflow = accessor_workflow(
-            vec![PathSegment::Field(SymbolId::new(3))].into_boxed_slice(),
-        )?;
+        let workflow =
+            accessor_workflow(vec![PathSegment::Field(SymbolId::new(3))].into_boxed_slice())?;
         let mut run = test_frame()?;
         let mut store = ValueStore::new();
         let obj = store
@@ -306,13 +296,8 @@ mod tests {
         run.write_slot(SlotIdx::new(0), SlotValue::Object(obj))
             .map_err(|e| e.to_string())?;
 
-        let value = eval_accessor_with_store(
-            &workflow,
-            &run,
-            &mut store,
-            AccessorIdx::new(0),
-        )
-        .map_err(|e| e.to_string())?;
+        let value = eval_accessor_with_store(&workflow, &run, &mut store, AccessorIdx::new(0))
+            .map_err(|e| e.to_string())?;
         ensure_equal(value, SlotValue::I64(123))
     }
 
@@ -320,51 +305,33 @@ mod tests {
 
     #[test]
     fn eval_accessor_list_index_traversal() -> Result<(), String> {
-        let workflow = accessor_workflow(
-            vec![PathSegment::Index(0)].into_boxed_slice(),
-        )?;
+        let workflow = accessor_workflow(vec![PathSegment::Index(0)].into_boxed_slice())?;
         let mut run = test_frame()?;
         let mut store = ValueStore::new();
         let list = store
-            .insert_list(
-                vec![SlotValue::I64(10), SlotValue::I64(20)].into_boxed_slice(),
-            )
+            .insert_list(vec![SlotValue::I64(10), SlotValue::I64(20)].into_boxed_slice())
             .map_err(|e| e.to_string())?;
         run.write_slot(SlotIdx::new(0), SlotValue::List(list))
             .map_err(|e| e.to_string())?;
 
-        let value = eval_accessor_with_store(
-            &workflow,
-            &run,
-            &mut store,
-            AccessorIdx::new(0),
-        )
-        .map_err(|e| e.to_string())?;
+        let value = eval_accessor_with_store(&workflow, &run, &mut store, AccessorIdx::new(0))
+            .map_err(|e| e.to_string())?;
         ensure_equal(value, SlotValue::I64(10))
     }
 
     #[test]
     fn eval_accessor_list_second_index() -> Result<(), String> {
-        let workflow = accessor_workflow(
-            vec![PathSegment::Index(1)].into_boxed_slice(),
-        )?;
+        let workflow = accessor_workflow(vec![PathSegment::Index(1)].into_boxed_slice())?;
         let mut run = test_frame()?;
         let mut store = ValueStore::new();
         let list = store
-            .insert_list(
-                vec![SlotValue::Bool(false), SlotValue::Bool(true)].into_boxed_slice(),
-            )
+            .insert_list(vec![SlotValue::Bool(false), SlotValue::Bool(true)].into_boxed_slice())
             .map_err(|e| e.to_string())?;
         run.write_slot(SlotIdx::new(0), SlotValue::List(list))
             .map_err(|e| e.to_string())?;
 
-        let value = eval_accessor_with_store(
-            &workflow,
-            &run,
-            &mut store,
-            AccessorIdx::new(0),
-        )
-        .map_err(|e| e.to_string())?;
+        let value = eval_accessor_with_store(&workflow, &run, &mut store, AccessorIdx::new(0))
+            .map_err(|e| e.to_string())?;
         ensure_equal(value, SlotValue::Bool(true))
     }
 
@@ -374,11 +341,7 @@ mod tests {
     fn eval_accessor_multi_segment_path() -> Result<(), String> {
         // Object with field -> list at index 0
         let workflow = accessor_workflow(
-            vec![
-                PathSegment::Field(SymbolId::new(5)),
-                PathSegment::Index(0),
-            ]
-            .into_boxed_slice(),
+            vec![PathSegment::Field(SymbolId::new(5)), PathSegment::Index(0)].into_boxed_slice(),
         )?;
         let mut run = test_frame()?;
         let mut store = ValueStore::new();
@@ -398,13 +361,8 @@ mod tests {
         run.write_slot(SlotIdx::new(0), SlotValue::Object(obj))
             .map_err(|e| e.to_string())?;
 
-        let value = eval_accessor_with_store(
-            &workflow,
-            &run,
-            &mut store,
-            AccessorIdx::new(0),
-        )
-        .map_err(|e| e.to_string())?;
+        let value = eval_accessor_with_store(&workflow, &run, &mut store, AccessorIdx::new(0))
+            .map_err(|e| e.to_string())?;
         ensure_equal(value, SlotValue::I64(777))
     }
 
@@ -412,20 +370,14 @@ mod tests {
 
     #[test]
     fn eval_accessor_rejects_field_on_scalar() -> Result<(), String> {
-        let workflow = accessor_workflow(
-            vec![PathSegment::Field(SymbolId::new(1))].into_boxed_slice(),
-        )?;
+        let workflow =
+            accessor_workflow(vec![PathSegment::Field(SymbolId::new(1))].into_boxed_slice())?;
         let mut run = test_frame()?;
         let mut store = ValueStore::new();
         run.write_slot(SlotIdx::new(0), SlotValue::I64(42))
             .map_err(|e| e.to_string())?;
 
-        let result = eval_accessor_with_store(
-            &workflow,
-            &run,
-            &mut store,
-            AccessorIdx::new(0),
-        );
+        let result = eval_accessor_with_store(&workflow, &run, &mut store, AccessorIdx::new(0));
         match result {
             Err(EngineError::UnsupportedAccessorTraversal {
                 segment: "field",
@@ -437,20 +389,13 @@ mod tests {
 
     #[test]
     fn eval_accessor_rejects_index_on_scalar() -> Result<(), String> {
-        let workflow = accessor_workflow(
-            vec![PathSegment::Index(0)].into_boxed_slice(),
-        )?;
+        let workflow = accessor_workflow(vec![PathSegment::Index(0)].into_boxed_slice())?;
         let mut run = test_frame()?;
         let mut store = ValueStore::new();
         run.write_slot(SlotIdx::new(0), SlotValue::Bool(true))
             .map_err(|e| e.to_string())?;
 
-        let result = eval_accessor_with_store(
-            &workflow,
-            &run,
-            &mut store,
-            AccessorIdx::new(0),
-        );
+        let result = eval_accessor_with_store(&workflow, &run, &mut store, AccessorIdx::new(0));
         match result {
             Err(EngineError::UnsupportedAccessorTraversal {
                 segment: "index",
@@ -462,9 +407,8 @@ mod tests {
 
     #[test]
     fn eval_accessor_rejects_field_on_list() -> Result<(), String> {
-        let workflow = accessor_workflow(
-            vec![PathSegment::Field(SymbolId::new(0))].into_boxed_slice(),
-        )?;
+        let workflow =
+            accessor_workflow(vec![PathSegment::Field(SymbolId::new(0))].into_boxed_slice())?;
         let mut run = test_frame()?;
         let mut store = ValueStore::new();
         let list = store
@@ -473,12 +417,7 @@ mod tests {
         run.write_slot(SlotIdx::new(0), SlotValue::List(list))
             .map_err(|e| e.to_string())?;
 
-        let result = eval_accessor_with_store(
-            &workflow,
-            &run,
-            &mut store,
-            AccessorIdx::new(0),
-        );
+        let result = eval_accessor_with_store(&workflow, &run, &mut store, AccessorIdx::new(0));
         match result {
             Err(EngineError::UnsupportedAccessorTraversal {
                 segment: "field",
@@ -490,9 +429,7 @@ mod tests {
 
     #[test]
     fn eval_accessor_rejects_index_on_object() -> Result<(), String> {
-        let workflow = accessor_workflow(
-            vec![PathSegment::Index(0)].into_boxed_slice(),
-        )?;
+        let workflow = accessor_workflow(vec![PathSegment::Index(0)].into_boxed_slice())?;
         let mut run = test_frame()?;
         let mut store = ValueStore::new();
         let obj = store
@@ -508,12 +445,7 @@ mod tests {
         run.write_slot(SlotIdx::new(0), SlotValue::Object(obj))
             .map_err(|e| e.to_string())?;
 
-        let result = eval_accessor_with_store(
-            &workflow,
-            &run,
-            &mut store,
-            AccessorIdx::new(0),
-        );
+        let result = eval_accessor_with_store(&workflow, &run, &mut store, AccessorIdx::new(0));
         match result {
             Err(EngineError::UnsupportedAccessorTraversal {
                 segment: "index",
@@ -538,12 +470,7 @@ mod tests {
         run.write_slot(SlotIdx::new(0), SlotValue::Object(obj))
             .map_err(|e| e.to_string())?;
 
-        let result = eval_accessor_with_store(
-            &workflow,
-            &run,
-            &mut store,
-            AccessorIdx::new(0),
-        );
+        let result = eval_accessor_with_store(&workflow, &run, &mut store, AccessorIdx::new(0));
         match result {
             Err(EngineError::ObjectFieldNotFound { field }) if field == SymbolId::new(7) => Ok(()),
             other => Err(format!("unexpected result: {other:?}")),
@@ -552,9 +479,7 @@ mod tests {
 
     #[test]
     fn eval_accessor_list_index_out_of_bounds_returns_error() -> Result<(), String> {
-        let workflow = accessor_workflow(
-            vec![PathSegment::Index(5)].into_boxed_slice(),
-        )?;
+        let workflow = accessor_workflow(vec![PathSegment::Index(5)].into_boxed_slice())?;
         let mut run = test_frame()?;
         let mut store = ValueStore::new();
         let list = store
@@ -563,12 +488,7 @@ mod tests {
         run.write_slot(SlotIdx::new(0), SlotValue::List(list))
             .map_err(|e| e.to_string())?;
 
-        let result = eval_accessor_with_store(
-            &workflow,
-            &run,
-            &mut store,
-            AccessorIdx::new(0),
-        );
+        let result = eval_accessor_with_store(&workflow, &run, &mut store, AccessorIdx::new(0));
         match result {
             Err(EngineError::ListIndexOutOfBounds { index: 5 }) => Ok(()),
             other => Err(format!("unexpected result: {other:?}")),
@@ -577,20 +497,14 @@ mod tests {
 
     #[test]
     fn eval_accessor_invalid_index_returns_error() -> Result<(), String> {
-        let workflow = accessor_workflow(
-            vec![PathSegment::Field(SymbolId::new(3))].into_boxed_slice(),
-        )?;
+        let workflow =
+            accessor_workflow(vec![PathSegment::Field(SymbolId::new(3))].into_boxed_slice())?;
         let mut run = test_frame()?;
         let mut store = ValueStore::new();
         run.write_slot(SlotIdx::new(0), SlotValue::Object(ObjectId::new(99)))
             .map_err(|e| e.to_string())?;
 
-        let result = eval_accessor_with_store(
-            &workflow,
-            &run,
-            &mut store,
-            AccessorIdx::new(0),
-        );
+        let result = eval_accessor_with_store(&workflow, &run, &mut store, AccessorIdx::new(0));
         match result {
             Err(EngineError::ObjectOutOfBounds { object }) if object == ObjectId::new(99) => Ok(()),
             other => Err(format!("unexpected result: {other:?}")),
@@ -599,20 +513,13 @@ mod tests {
 
     #[test]
     fn eval_accessor_invalid_list_handle_returns_error() -> Result<(), String> {
-        let workflow = accessor_workflow(
-            vec![PathSegment::Index(0)].into_boxed_slice(),
-        )?;
+        let workflow = accessor_workflow(vec![PathSegment::Index(0)].into_boxed_slice())?;
         let mut run = test_frame()?;
         let mut store = ValueStore::new();
         run.write_slot(SlotIdx::new(0), SlotValue::List(ListId::new(88)))
             .map_err(|e| e.to_string())?;
 
-        let result = eval_accessor_with_store(
-            &workflow,
-            &run,
-            &mut store,
-            AccessorIdx::new(0),
-        );
+        let result = eval_accessor_with_store(&workflow, &run, &mut store, AccessorIdx::new(0));
         match result {
             Err(EngineError::ListOutOfBounds { list }) if list == ListId::new(88) => Ok(()),
             other => Err(format!("unexpected result: {other:?}")),
@@ -627,7 +534,10 @@ mod tests {
         let result = eval_accessor(&workflow, &run, AccessorIdx::new(1));
         match result {
             Err(EngineError::InvalidCompiledWorkflow { reason })
-                if reason.contains("accessor index out of bounds") => Ok(()),
+                if reason.contains("accessor index out of bounds") =>
+            {
+                Ok(())
+            }
             other => Err(format!("unexpected result: {other:?}")),
         }
     }
@@ -636,9 +546,8 @@ mod tests {
 
     #[test]
     fn eval_accessor_without_store_non_empty_path_returns_traversal_error() -> Result<(), String> {
-        let workflow = accessor_workflow(
-            vec![PathSegment::Field(SymbolId::new(0))].into_boxed_slice(),
-        )?;
+        let workflow =
+            accessor_workflow(vec![PathSegment::Field(SymbolId::new(0))].into_boxed_slice())?;
         let mut run = test_frame()?;
         run.write_slot(SlotIdx::new(0), SlotValue::I64(42))
             .map_err(|e| e.to_string())?;

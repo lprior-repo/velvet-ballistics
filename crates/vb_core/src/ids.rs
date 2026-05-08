@@ -701,7 +701,9 @@ mod tests {
 
     #[test]
     fn from_str_parses_max_u32() -> Result<(), String> {
-        let id: WorkflowId = "4294967295".parse().map_err(|_| String::from("parse failed"))?;
+        let id: WorkflowId = "4294967295"
+            .parse()
+            .map_err(|_| String::from("parse failed"))?;
         if id.get() != u32::MAX {
             return Err(String::from("expected u32::MAX"));
         }
@@ -710,7 +712,9 @@ mod tests {
 
     #[test]
     fn from_str_parses_max_u64() -> Result<(), String> {
-        let id: RunId = "18446744073709551615".parse().map_err(|_| String::from("parse failed"))?;
+        let id: RunId = "18446744073709551615"
+            .parse()
+            .map_err(|_| String::from("parse failed"))?;
         if id.get() != u64::MAX {
             return Err(String::from("expected u64::MAX"));
         }
@@ -1052,9 +1056,7 @@ mod tests {
     #[test]
     fn from_str_parses_max_u16_for_action_id() -> Result<(), String> {
         use super::ActionId;
-        let id: ActionId = "65535"
-            .parse()
-            .map_err(|_| String::from("parse failed"))?;
+        let id: ActionId = "65535".parse().map_err(|_| String::from("parse failed"))?;
         if id.get() != u16::MAX {
             return Err(String::from("expected u16::MAX"));
         }

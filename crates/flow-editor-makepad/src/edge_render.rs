@@ -194,11 +194,7 @@ pub fn compute_control_points(source: Point, target: Point) -> CubicBezier {
 /// Compute the world-space position of a port on a node.
 /// If `is_output`, uses the right side; otherwise the left side.
 #[allow(clippy::arithmetic_side_effects)]
-pub fn compute_port_world_pos(
-    node: &FlowNodeRecord,
-    port_id: &PortId,
-    is_output: bool,
-) -> Point {
+pub fn compute_port_world_pos(node: &FlowNodeRecord, port_id: &PortId, is_output: bool) -> Point {
     let header_h: f64 = draw::node::HEADER_HEIGHT;
     let padding: f64 = draw::node::PADDING;
     let port_height: f64 = draw::port::HEIGHT;
@@ -210,7 +206,8 @@ pub fn compute_port_world_pos(
         .map(|p| p.order)
         .unwrap_or(0);
 
-    let py = node.position[1] + header_h + padding + f64::from(order) * port_height + port_height / 2.0;
+    let py =
+        node.position[1] + header_h + padding + f64::from(order) * port_height + port_height / 2.0;
     let px = if is_output {
         node.position[0] + node.size[0]
     } else {
@@ -383,11 +380,7 @@ impl EdgeRenderer {
     }
 
     /// Render all visible edges in the graph.
-    pub fn render_edges(
-        &self,
-        graph: &FlowGraph,
-        elapsed: Duration,
-    ) -> Vec<EdgeRenderData> {
+    pub fn render_edges(&self, graph: &FlowGraph, elapsed: Duration) -> Vec<EdgeRenderData> {
         let mut results = Vec::new();
         for edge in graph.edges.values() {
             if let Some(data) = self.render_edge(graph, edge, elapsed) {
@@ -977,7 +970,9 @@ mod tests {
         let mut graph = build_two_node_graph();
         let mut style = EdgeStyle::default();
         style.marker = EdgeMarker::None;
-        graph.edges.insert(eid("e1"), make_edge_with_style("e1", "a", "b", style));
+        graph
+            .edges
+            .insert(eid("e1"), make_edge_with_style("e1", "a", "b", style));
 
         let renderer = EdgeRenderer::new();
         let results = renderer.render_edges(&graph, Duration::ZERO);
@@ -987,7 +982,9 @@ mod tests {
     #[test]
     fn renderer_animated_edge_has_particles() {
         let mut graph = build_two_node_graph();
-        graph.edges.insert(eid("e1"), make_animated_edge("e1", "a", "b"));
+        graph
+            .edges
+            .insert(eid("e1"), make_animated_edge("e1", "a", "b"));
 
         let renderer = EdgeRenderer::new();
         let results = renderer.render_edges(&graph, Duration::from_millis(500));
@@ -1024,7 +1021,9 @@ mod tests {
         let new_renderer = EdgeRenderer::new();
         let default_renderer = EdgeRenderer::default();
         assert!((new_renderer.arrow_size - default_renderer.arrow_size).abs() < f64::EPSILON);
-        assert!((new_renderer.particle_speed - default_renderer.particle_speed).abs() < f64::EPSILON);
+        assert!(
+            (new_renderer.particle_speed - default_renderer.particle_speed).abs() < f64::EPSILON
+        );
         assert_eq!(new_renderer.particle_count, default_renderer.particle_count);
         assert_eq!(new_renderer.arc_samples, default_renderer.arc_samples);
     }
@@ -1034,7 +1033,9 @@ mod tests {
         let mut graph = build_two_node_graph();
         let mut style = EdgeStyle::default();
         style.marker = EdgeMarker::Circle;
-        graph.edges.insert(eid("e1"), make_edge_with_style("e1", "a", "b", style));
+        graph
+            .edges
+            .insert(eid("e1"), make_edge_with_style("e1", "a", "b", style));
 
         let renderer = EdgeRenderer::new();
         let results = renderer.render_edges(&graph, Duration::ZERO);
@@ -1253,12 +1254,10 @@ mod tests {
         // Arrow should be computed with the custom size (20.0)
         let arrow = results[0].arrow_head.unwrap();
         // Distance from tip to base center should be proportional to size
-        let dist = arrow.tip.distance_to(
-            Point::new(
-                (arrow.left.x + arrow.right.x) / 2.0,
-                (arrow.left.y + arrow.right.y) / 2.0,
-            ),
-        );
+        let dist = arrow.tip.distance_to(Point::new(
+            (arrow.left.x + arrow.right.x) / 2.0,
+            (arrow.left.y + arrow.right.y) / 2.0,
+        ));
         assert!((dist - 20.0).abs() < 1.0);
     }
 
@@ -1267,7 +1266,9 @@ mod tests {
         let mut renderer = EdgeRenderer::new();
         renderer.particle_count = 7;
         let mut graph = build_two_node_graph();
-        graph.edges.insert(eid("e1"), make_animated_edge("e1", "a", "b"));
+        graph
+            .edges
+            .insert(eid("e1"), make_animated_edge("e1", "a", "b"));
         let results = renderer.render_edges(&graph, Duration::from_millis(100));
         assert_eq!(results[0].particles.len(), 7);
     }
@@ -1355,7 +1356,10 @@ mod tests {
         assert!(len_256 > 0.0);
         // Higher resolution should be close to lower resolution
         let diff = (len_256 - len_64).abs();
-        assert!(diff < (len_64 * 0.1), "arc length should converge: diff={diff}");
+        assert!(
+            diff < (len_64 * 0.1),
+            "arc length should converge: diff={diff}"
+        );
     }
 
     // ---- compute_port_world_pos with default port order ----

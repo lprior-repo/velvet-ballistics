@@ -253,9 +253,7 @@ mod tests {
             b.try_take().map_err(|e| e.to_string())?;
             let cur = b.remaining();
             if cur > prev {
-                return Err(format!(
-                    "remaining increased from {prev} to {cur}"
-                ));
+                return Err(format!("remaining increased from {prev} to {cur}"));
             }
             prev = cur;
         }
@@ -332,11 +330,26 @@ mod tests {
 
     #[test]
     fn engine_signal_debug_format_all_variants() -> Result<(), String> {
-        ensure_equal(format!("{:?}", EngineSignal::Continue).contains("Continue"), true)?;
-        ensure_equal(format!("{:?}", EngineSignal::StepBudgetExhausted).contains("StepBudgetExhausted"), true)?;
-        ensure_equal(format!("{:?}", EngineSignal::AwaitingWait).contains("AwaitingWait"), true)?;
-        ensure_equal(format!("{:?}", EngineSignal::AwaitingAsk).contains("AwaitingAsk"), true)?;
-        let finished_debug = format!("{:?}", EngineSignal::Finished(SlotValue::I64(1), Taint::Clean));
+        ensure_equal(
+            format!("{:?}", EngineSignal::Continue).contains("Continue"),
+            true,
+        )?;
+        ensure_equal(
+            format!("{:?}", EngineSignal::StepBudgetExhausted).contains("StepBudgetExhausted"),
+            true,
+        )?;
+        ensure_equal(
+            format!("{:?}", EngineSignal::AwaitingWait).contains("AwaitingWait"),
+            true,
+        )?;
+        ensure_equal(
+            format!("{:?}", EngineSignal::AwaitingAsk).contains("AwaitingAsk"),
+            true,
+        )?;
+        let finished_debug = format!(
+            "{:?}",
+            EngineSignal::Finished(SlotValue::I64(1), Taint::Clean)
+        );
         ensure_equal(finished_debug.contains("Finished"), true)
     }
 

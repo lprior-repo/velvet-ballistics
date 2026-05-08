@@ -36,12 +36,10 @@ pub fn drive_deterministic(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::EngineSignal;
     use crate::ids::{ConstIdx, RunId, SlotIdx, StepIdx, WorkflowDigest};
     use crate::value::{ConstValue, SlotValue, Taint};
-    use crate::workflow::{
-        CompiledNode, CompiledNodeKind, CompiledWorkflow, WorkflowParts,
-    };
-    use crate::EngineSignal;
+    use crate::workflow::{CompiledNode, CompiledNodeKind, CompiledWorkflow, WorkflowParts};
 
     fn ensure_equal<T>(actual: T, expected: T) -> Result<(), String>
     where
@@ -109,7 +107,8 @@ mod tests {
         let mut run = test_frame(&workflow)?;
         let mut store = ValueStore::new();
 
-        let result = run_until_blocked(&workflow, &mut run, StepBudget::MAX, &mut store).map_err(|e| e.to_string())?;
+        let result = run_until_blocked(&workflow, &mut run, StepBudget::MAX, &mut store)
+            .map_err(|e| e.to_string())?;
 
         ensure_equal(
             result,
@@ -124,7 +123,8 @@ mod tests {
         let mut run = test_frame(&workflow)?;
         let mut store = ValueStore::new();
 
-        let result = run_until_blocked(&workflow, &mut run, StepBudget::new(0), &mut store).map_err(|e| e.to_string())?;
+        let result = run_until_blocked(&workflow, &mut run, StepBudget::new(0), &mut store)
+            .map_err(|e| e.to_string())?;
 
         ensure_equal(result, EngineSignal::StepBudgetExhausted)?;
         ensure_equal(run.executed(), 0)
@@ -137,7 +137,8 @@ mod tests {
         let mut store = ValueStore::new();
         let mut budget = StepBudget::new(1);
 
-        let result = drive_deterministic(&workflow, &mut run, &mut budget, &mut store).map_err(|e| e.to_string())?;
+        let result = drive_deterministic(&workflow, &mut run, &mut budget, &mut store)
+            .map_err(|e| e.to_string())?;
 
         ensure_equal(result, EngineSignal::StepBudgetExhausted)?;
         ensure_equal(run.executed(), 1)?;
@@ -151,7 +152,8 @@ mod tests {
         let mut store = ValueStore::new();
         let mut budget = StepBudget::new(2);
 
-        let result = drive_deterministic(&workflow, &mut run, &mut budget, &mut store).map_err(|e| e.to_string())?;
+        let result = drive_deterministic(&workflow, &mut run, &mut budget, &mut store)
+            .map_err(|e| e.to_string())?;
 
         ensure_equal(
             result,
@@ -191,13 +193,8 @@ mod tests {
         let mut store = ValueStore::new();
 
         let mut budget = StepBudget::MAX;
-        let result = drive_deterministic(
-            &workflow,
-            &mut run,
-            &mut budget,
-            &mut store,
-        )
-        .map_err(|e| e.to_string())?;
+        let result = drive_deterministic(&workflow, &mut run, &mut budget, &mut store)
+            .map_err(|e| e.to_string())?;
 
         ensure_equal(result, EngineSignal::AwaitingAction)
     }

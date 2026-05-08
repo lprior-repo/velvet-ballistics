@@ -204,16 +204,15 @@ impl<'j> JournalWriteBatch<'j> {
 mod tests {
     use super::*;
     use crate::{
-        BlobRecord, CompiledIrRecord, EventSeq, JournalEvent, RunHeaderRecord, WorkflowSourceRecord,
-        constants::DIGEST_BYTES,
-        recovery::RunSnapshot,
+        BlobRecord, CompiledIrRecord, EventSeq, JournalEvent, RunHeaderRecord,
+        WorkflowSourceRecord, constants::DIGEST_BYTES, recovery::RunSnapshot,
     };
     use vb_core::{RunId, SlotIdx, StepIdx, WorkflowDigest, WorkflowId};
 
     fn temp_journal() -> (tempfile::TempDir, crate::FjallJournal) {
         let temp = tempfile::tempdir().expect("tempdir creation should succeed");
-        let journal = crate::FjallJournal::open(temp.path(), None)
-            .expect("journal open should succeed");
+        let journal =
+            crate::FjallJournal::open(temp.path(), None).expect("journal open should succeed");
         (temp, journal)
     }
 
@@ -243,10 +242,7 @@ mod tests {
     fn new_batch_is_empty_with_zero_length() {
         let (_temp, journal) = temp_journal();
         let batch = JournalWriteBatch::new(&journal);
-        assert!(
-            batch.is_empty(),
-            "newly constructed batch must be empty"
-        );
+        assert!(batch.is_empty(), "newly constructed batch must be empty");
         assert_eq!(
             batch.len(),
             0,
@@ -287,7 +283,9 @@ mod tests {
     fn len_increments_after_put_run_header() {
         let (_temp, journal) = temp_journal();
         let mut batch = JournalWriteBatch::new(&journal);
-        batch.put_run_header(&make_run_header(RunId::new(10))).expect("put header");
+        batch
+            .put_run_header(&make_run_header(RunId::new(10)))
+            .expect("put header");
         assert_eq!(batch.len(), 1);
         assert!(!batch.is_empty());
     }
@@ -297,7 +295,9 @@ mod tests {
         let (_temp, journal) = temp_journal();
         let run = RunId::new(20);
         let mut batch = JournalWriteBatch::new(&journal);
-        batch.put_status_index(1, 12345, run).expect("put status index");
+        batch
+            .put_status_index(1, 12345, run)
+            .expect("put status index");
         assert_eq!(batch.len(), 1);
     }
 
@@ -307,7 +307,9 @@ mod tests {
         let wf = WorkflowId::new(5);
         let run = RunId::new(30);
         let mut batch = JournalWriteBatch::new(&journal);
-        batch.put_workflow_index(wf, run).expect("put workflow index");
+        batch
+            .put_workflow_index(wf, run)
+            .expect("put workflow index");
         assert_eq!(batch.len(), 1);
     }
 
@@ -318,7 +320,9 @@ mod tests {
         let run = RunId::new(40);
         let step = StepIdx::new(0);
         let mut batch = JournalWriteBatch::new(&journal);
-        batch.put_action_index(action, run, step).expect("put action index");
+        batch
+            .put_action_index(action, run, step)
+            .expect("put action index");
         assert_eq!(batch.len(), 1);
     }
 
@@ -354,7 +358,11 @@ mod tests {
         batch.commit().expect("commit should succeed");
 
         let events = journal.events_for_run(run).expect("replay should succeed");
-        assert_eq!(events.len(), 1, "should find 1 event after single-event batch commit");
+        assert_eq!(
+            events.len(),
+            1,
+            "should find 1 event after single-event batch commit"
+        );
         assert_eq!(events[0], event);
     }
 
@@ -390,7 +398,11 @@ mod tests {
         batch.commit().expect("commit should succeed");
 
         let events = journal.events_for_run(run).expect("replay should succeed");
-        assert_eq!(events.len(), 3, "should find 3 events after multi-event batch");
+        assert_eq!(
+            events.len(),
+            3,
+            "should find 3 events after multi-event batch"
+        );
         assert_eq!(events[0], e0);
         assert_eq!(events[1], e1);
         assert_eq!(events[2], e2);
@@ -411,7 +423,9 @@ mod tests {
         };
 
         let mut batch = JournalWriteBatch::new(&journal);
-        batch.put_workflow_source(&record).expect("put workflow source");
+        batch
+            .put_workflow_source(&record)
+            .expect("put workflow source");
         assert_eq!(batch.len(), 1);
         batch.commit().expect("commit should succeed");
 
@@ -581,13 +595,18 @@ mod tests {
         let event = make_event(run, 0);
 
         let mut batch = JournalWriteBatch::new(&journal);
-        batch.put_workflow_source(&workflow_record).expect("workflow source");
+        batch
+            .put_workflow_source(&workflow_record)
+            .expect("workflow source");
         batch.put_compiled_ir(&ir_record).expect("compiled ir");
         batch.put_run_header(&header).expect("run header");
         batch.append_event(&event).expect("event");
         batch.put_status_index(1, 100, run).expect("status index");
-        batch.put_workflow_index(WorkflowId::new(42), run).expect("workflow index");
-        batch.put_action_index(vb_core::ActionId::new(1), run, StepIdx::new(0))
+        batch
+            .put_workflow_index(WorkflowId::new(42), run)
+            .expect("workflow index");
+        batch
+            .put_action_index(vb_core::ActionId::new(1), run, StepIdx::new(0))
             .expect("action index");
 
         assert_eq!(batch.len(), 7, "batch should track 7 operations");
@@ -595,21 +614,18 @@ mod tests {
 
         // Verify all keyspaces were written
         assert!(
-            journal.workflow_source(source_digest)
+            journal
+                .workflow_source(source_digest)
                 .expect("get ws")
                 .is_some(),
             "workflow source should exist"
         );
         assert!(
-            journal.compiled_ir(ir_digest)
-                .expect("get ir")
-                .is_some(),
+            journal.compiled_ir(ir_digest).expect("get ir").is_some(),
             "compiled IR should exist"
         );
         assert!(
-            journal.run_header(run)
-                .expect("get header")
-                .is_some(),
+            journal.run_header(run).expect("get header").is_some(),
             "run header should exist"
         );
         let events = journal.events_for_run(run).expect("replay should succeed");
@@ -676,7 +692,9 @@ mod tests {
         let batch = batch.strict();
         assert!(batch.is_empty());
         assert_eq!(batch.len(), 0);
-        batch.commit().expect("empty strict batch commit should succeed");
+        batch
+            .commit()
+            .expect("empty strict batch commit should succeed");
     }
 
     // =========================================================================
@@ -694,7 +712,9 @@ mod tests {
         let mut batch = JournalWriteBatch::new(&journal);
         batch.put_status_index(2, 5000, run).expect("status idx");
         batch.put_workflow_index(wf, run).expect("workflow idx");
-        batch.put_action_index(action, run, step).expect("action idx");
+        batch
+            .put_action_index(action, run, step)
+            .expect("action idx");
         assert_eq!(batch.len(), 3, "three index operations should yield len 3");
         assert!(!batch.is_empty());
         batch.commit().expect("index batch commit should succeed");

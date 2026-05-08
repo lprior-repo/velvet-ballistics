@@ -2,9 +2,9 @@
 
 #![allow(dead_code, unused_imports)]
 
-use crate::lexer::{lex_expr, BinaryOp, UnaryOp};
-use crate::parser::{parse_expr, ExprAst, ExprHelper, ExprLiteral};
 use crate::ExprError;
+use crate::lexer::{BinaryOp, UnaryOp, lex_expr};
+use crate::parser::{ExprAst, ExprHelper, ExprLiteral, parse_expr};
 
 fn parse(source: &str) -> crate::ExprResult<ExprAst> {
     let tokens = lex_expr(source)?;
@@ -175,7 +175,12 @@ fn blackhat_pa_002_unknown_identifier_rejected() -> crate::ExprResult<()> {
 #[test]
 fn blackhat_pa_003_helper_arity_mismatch() -> crate::ExprResult<()> {
     let result = parse("contains(1)");
-    let Err(ExprError::HelperArityMismatch { helper, expected, actual }) = result else {
+    let Err(ExprError::HelperArityMismatch {
+        helper,
+        expected,
+        actual,
+    }) = result
+    else {
         return Err(ExprError::UnexpectedToken {
             token: "expected HelperArityMismatch".into(),
         });

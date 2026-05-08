@@ -139,7 +139,8 @@ impl Widget for FlowEditor {
                 } else {
                     1.0 / draw::viewport::ZOOM_STEP
                 };
-                self.zoom = (self.zoom * factor).clamp(draw::viewport::ZOOM_MIN, draw::viewport::ZOOM_MAX);
+                self.zoom =
+                    (self.zoom * factor).clamp(draw::viewport::ZOOM_MIN, draw::viewport::ZOOM_MAX);
                 // Zoom toward cursor position
                 #[allow(clippy::arithmetic_side_effects)]
                 let cursor_local_x = fs.abs.x - self.rect.pos.x;
@@ -340,12 +341,8 @@ impl FlowEditor {
         let border_color = Self::resolve_node_border_color(node);
 
         // Draw node body (rounded rect fill)
-        self.draw_vector.set_color(
-            node_color[0],
-            node_color[1],
-            node_color[2],
-            node_color[3],
-        );
+        self.draw_vector
+            .set_color(node_color[0], node_color[1], node_color[2], node_color[3]);
         self.draw_vector.rounded_rect(sx, sy, nw, nh, radius);
         self.draw_vector.fill();
 
@@ -409,7 +406,8 @@ impl FlowEditor {
         let port_height = f64_to_f32(draw::port::HEIGHT * self.zoom);
 
         for port in &node.ports {
-            let py = sy + header_h + padding + f32::from(port.order) * port_height + port_height / 2.0;
+            let py =
+                sy + header_h + padding + f32::from(port.order) * port_height + port_height / 2.0;
 
             // Only draw if within node bounds
             if py + port_r > sy + nh || py - port_r < sy + header_h {
@@ -429,12 +427,8 @@ impl FlowEditor {
                 theme::colors::NEON_ORANGE
             };
 
-            self.draw_vector.set_color(
-                port_color[0],
-                port_color[1],
-                port_color[2],
-                port_color[3],
-            );
+            self.draw_vector
+                .set_color(port_color[0], port_color[1], port_color[2], port_color[3]);
 
             if is_input {
                 self.draw_vector.circle(sx - port_r, py, port_r);
@@ -459,9 +453,7 @@ impl FlowEditor {
         match kind {
             "Do" | "do" => theme::colors::STATE_RUNNING,
             "Choose" | "choose" | "branch" => theme::colors::STATE_ASKING,
-            "ForEach" | "foreach" | "Collect" | "collect" | "loop" => {
-                theme::colors::STATE_WAITING
-            }
+            "ForEach" | "foreach" | "Collect" | "collect" | "loop" => theme::colors::STATE_WAITING,
             "Together" | "together" | "parallel" => theme::colors::STATE_WAITING,
             "Wait" | "wait" | "Ask" | "ask" | "suspend" => theme::colors::STATE_SUCCEEDED,
             "ErrorHandler" | "error_handler" | "error" => theme::colors::STATE_FAILED,
@@ -506,12 +498,8 @@ impl FlowEditor {
             Self::resolve_edge_color(edge)
         };
 
-        self.draw_vector.set_color(
-            edge_color[0],
-            edge_color[1],
-            edge_color[2],
-            edge_color[3],
-        );
+        self.draw_vector
+            .set_color(edge_color[0], edge_color[1], edge_color[2], edge_color[3]);
 
         // Draw bezier curve from output to input
         let dx = (x2 - x1).abs();
@@ -523,8 +511,7 @@ impl FlowEditor {
         let cp2y = y2;
 
         self.draw_vector.move_to(x1, y1);
-        self.draw_vector
-            .bezier_to(cp1x, cp1y, cp2x, cp2y, x2, y2);
+        self.draw_vector.bezier_to(cp1x, cp1y, cp2x, cp2y, x2, y2);
 
         let width = edge.style.width * f64_to_f32(self.zoom);
         self.draw_vector.stroke(width);
@@ -553,11 +540,7 @@ impl FlowEditor {
 
         let py = sy + header_h + padding + f32::from(order) * port_height + port_height / 2.0;
 
-        if is_output {
-            (sx + nw, py)
-        } else {
-            (sx, py)
-        }
+        if is_output { (sx + nw, py) } else { (sx, py) }
     }
 
     fn resolve_edge_color(edge: &flow_core::doc::FlowEdgeRecord) -> [f32; 4] {
@@ -758,7 +741,10 @@ mod tests {
     #[test]
     fn resolve_node_color_default_returns_card_bg() {
         let node = make_node_record("n1", "Do");
-        assert_eq!(FlowEditor::resolve_node_color(&node), theme::colors::CARD_BG);
+        assert_eq!(
+            FlowEditor::resolve_node_color(&node),
+            theme::colors::CARD_BG
+        );
     }
 
     #[test]
@@ -1141,10 +1127,7 @@ mod tests {
         for (kind, expected) in &kinds {
             let node = make_node_record("n", kind);
             let result = FlowEditor::resolve_node_border_color(&node);
-            assert_eq!(
-                result, *expected,
-                "border color mismatch for kind '{kind}'"
-            );
+            assert_eq!(result, *expected, "border color mismatch for kind '{kind}'");
         }
     }
 
@@ -1289,7 +1272,10 @@ mod tests {
     #[test]
     fn resolve_node_color_override_with_neon_color() {
         let node = make_node_with_color_override("n1", "Do", theme::colors::NEON_CYAN);
-        assert_eq!(FlowEditor::resolve_node_color(&node), theme::colors::NEON_CYAN);
+        assert_eq!(
+            FlowEditor::resolve_node_color(&node),
+            theme::colors::NEON_CYAN
+        );
     }
 
     // ---- resolve_node_border_color: consistent with flow_editor mapping ----
@@ -1309,8 +1295,14 @@ mod tests {
     fn edge_color_all_line_styles_covered() {
         let styles = [
             (flow_core::doc::LineStyle::Solid, theme::colors::NEON_CYAN),
-            (flow_core::doc::LineStyle::Dashed, theme::colors::STATE_FAILED),
-            (flow_core::doc::LineStyle::Dotted, theme::colors::STATE_ASKING),
+            (
+                flow_core::doc::LineStyle::Dashed,
+                theme::colors::STATE_FAILED,
+            ),
+            (
+                flow_core::doc::LineStyle::Dotted,
+                theme::colors::STATE_ASKING,
+            ),
         ];
         for (style, expected) in &styles {
             let edge = make_edge_record(*style);

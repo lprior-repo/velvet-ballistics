@@ -17,7 +17,11 @@ mod tests {
 
     #[test]
     fn policy_variants_are_distinct() {
-        let variants = [RuntimePolicy::Strict, RuntimePolicy::Journaled, RuntimePolicy::Relaxed];
+        let variants = [
+            RuntimePolicy::Strict,
+            RuntimePolicy::Journaled,
+            RuntimePolicy::Relaxed,
+        ];
         for (i, a) in variants.iter().enumerate() {
             for (j, b) in variants.iter().enumerate() {
                 if i == j {

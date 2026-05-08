@@ -290,8 +290,14 @@ mod tests {
         let written = &buf[24..56];
         assert_eq!(written, &digest);
         // Bytes outside the digest range should be zero
-        assert!(buf.iter().take(24).all(|&b| b == 0), "prefix must be zeroed");
-        assert!(buf.iter().skip(56).all(|&b| b == 0), "suffix must be zeroed");
+        assert!(
+            buf.iter().take(24).all(|&b| b == 0),
+            "prefix must be zeroed"
+        );
+        assert!(
+            buf.iter().skip(56).all(|&b| b == 0),
+            "suffix must be zeroed"
+        );
         Ok(())
     }
 
@@ -300,7 +306,10 @@ mod tests {
         let mut buf = [0u8; 60];
         let digest = [0x00; DIGEST_BYTES];
         write_digest(&mut buf, &digest)?;
-        assert!(buf.iter().all(|&b| b == 0), "all-zero digest into all-zero buffer");
+        assert!(
+            buf.iter().all(|&b| b == 0),
+            "all-zero digest into all-zero buffer"
+        );
         Ok(())
     }
 

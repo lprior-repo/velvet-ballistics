@@ -2,7 +2,10 @@
 
 use crate::errors::EngineError;
 use crate::frame::StepState;
-use crate::ids::{ActionId, ConstIdx, ExprIdx, ListId, ObjectId, RunId, SlotIdx, StepIdx, SymbolId, WorkflowDigest};
+use crate::ids::{
+    ActionId, ConstIdx, ExprIdx, ListId, ObjectId, RunId, SlotIdx, StepIdx, SymbolId,
+    WorkflowDigest,
+};
 use crate::value::{ConstValue, SlotValue, Taint, join_taint};
 use crate::value_store::{ObjectField, ValueStore};
 use crate::workflow::{
@@ -10,8 +13,10 @@ use crate::workflow::{
     ExprProgram, PathSegment, ResourceContract, SlotBranch, WorkflowParts,
 };
 
-use crate::engine::{EngineSignal, StepBudget, eval_accessor, eval_accessor_with_store, eval_expr,
-    new_run_frame, run_until_blocked, step_once};
+use crate::engine::{
+    EngineSignal, StepBudget, eval_accessor, eval_accessor_with_store, eval_expr, new_run_frame,
+    run_until_blocked, step_once,
+};
 
 fn test_store() -> ValueStore {
     ValueStore::new()
@@ -70,8 +75,7 @@ fn nop_without_next_returns_missing_next_step() -> Result<(), String> {
         resource_contract: crate::ResourceContract::DEFAULT,
         step_names: Box::new([]),
     };
-    let workflow =
-        CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
+    let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
     let mut run = test_frame(RunId::new(104), &workflow)?;
     let mut store = test_store();
 
@@ -120,8 +124,7 @@ fn set_const_without_output_slot_returns_missing_output_slot() -> Result<(), Str
         resource_contract: crate::ResourceContract::DEFAULT,
         step_names: Box::new([]),
     };
-    let workflow =
-        CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
+    let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
     let mut run = test_frame(RunId::new(105), &workflow)?;
     let mut store = test_store();
 
@@ -161,8 +164,7 @@ fn finish_with_uninitialized_result_slot_returns_slot_uninitialized() -> Result<
         resource_contract: crate::ResourceContract::DEFAULT,
         step_names: Box::new([]),
     };
-    let workflow =
-        CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
+    let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
     let mut run = test_frame(RunId::new(106), &workflow)?;
     let mut store = test_store();
 
@@ -198,8 +200,7 @@ fn failed_step_is_marked_failed_in_frame_after_engine_error() -> Result<(), Stri
 }
 
 #[test]
-fn set_pc_to_out_of_bounds_target_returns_invalid_program_counter()
--> Result<(), String> {
+fn set_pc_to_out_of_bounds_target_returns_invalid_program_counter() -> Result<(), String> {
     let workflow = tiny_workflow(ConstValue::I64(1)).map_err(|error| error.to_string())?;
     let mut run = test_frame(RunId::new(108), &workflow)?;
 
@@ -256,8 +257,7 @@ fn drive_deterministic_stops_on_awaiting_action_signal() -> Result<(), String> {
         resource_contract: crate::ResourceContract::DEFAULT,
         step_names: Box::new([]),
     };
-    let workflow =
-        CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
+    let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
     let mut run = test_frame(RunId::new(110), &workflow)?;
     let mut store = test_store();
 
@@ -293,8 +293,7 @@ fn drive_deterministic_stops_on_awaiting_wait_signal() -> Result<(), String> {
         resource_contract: crate::ResourceContract::DEFAULT,
         step_names: Box::new([]),
     };
-    let workflow =
-        CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
+    let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
     let mut run = test_frame(RunId::new(111), &workflow)?;
     let mut store = test_store();
 
@@ -331,8 +330,7 @@ fn drive_deterministic_stops_on_awaiting_ask_signal() -> Result<(), String> {
         resource_contract: crate::ResourceContract::DEFAULT,
         step_names: Box::new([]),
     };
-    let workflow =
-        CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
+    let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
     let mut run = test_frame(RunId::new(112), &workflow)?;
     let mut store = test_store();
 
@@ -347,8 +345,9 @@ fn drive_deterministic_stops_on_awaiting_ask_signal() -> Result<(), String> {
 
 #[test]
 fn eval_expr_with_secret_tainted_slot_produces_derived_from_secret_taint() -> Result<(), String> {
-    let expression = ExprProgram::try_from_ops(vec![ExprOp::LoadSlot(SlotIdx::new(0))].into_boxed_slice())
-        .map_err(|error| error.to_string())?;
+    let expression =
+        ExprProgram::try_from_ops(vec![ExprOp::LoadSlot(SlotIdx::new(0))].into_boxed_slice())
+            .map_err(|error| error.to_string())?;
     let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
         name: Box::<str>::from("taint_eval_expr"),
         digest: WorkflowDigest::from_bytes([0x43; 32]),
@@ -400,8 +399,9 @@ fn eval_expr_with_secret_tainted_slot_produces_derived_from_secret_taint() -> Re
 
 #[test]
 fn eval_expr_with_clean_slot_produces_clean_taint() -> Result<(), String> {
-    let expression = ExprProgram::try_from_ops(vec![ExprOp::LoadSlot(SlotIdx::new(0))].into_boxed_slice())
-        .map_err(|error| error.to_string())?;
+    let expression =
+        ExprProgram::try_from_ops(vec![ExprOp::LoadSlot(SlotIdx::new(0))].into_boxed_slice())
+            .map_err(|error| error.to_string())?;
     let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
         name: Box::<str>::from("taint_eval_clean"),
         digest: WorkflowDigest::from_bytes([0x43; 32]),
@@ -533,7 +533,9 @@ fn build_object_joins_taint_from_all_field_slots() -> Result<(), String> {
         Ok(EngineSignal::Continue) => {}
         other => return Err(format!("expected Continue from step 2, got {other:?}")),
     }
-    let slot2_taint = run.read_taint(SlotIdx::new(2)).map_err(|error| error.to_string())?;
+    let slot2_taint = run
+        .read_taint(SlotIdx::new(2))
+        .map_err(|error| error.to_string())?;
     ensure_equal(slot2_taint, Taint::Secret)?;
     let s3 = step_once(&workflow, &mut run, &mut store);
     match s3 {
@@ -684,8 +686,12 @@ fn build_list_joins_taint_from_all_item_slots() -> Result<(), String> {
         Ok(EngineSignal::Continue) => {}
         other => return Err(format!("expected Continue from step 0, got {other:?}")),
     }
-    run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(11), Taint::DerivedFromSecret)
-        .map_err(|error| error.to_string())?;
+    run.write_slot_with_taint(
+        SlotIdx::new(0),
+        SlotValue::I64(11),
+        Taint::DerivedFromSecret,
+    )
+    .map_err(|error| error.to_string())?;
     let s1 = step_once(&workflow, &mut run, &mut store);
     match s1 {
         Ok(EngineSignal::Continue) => {}
@@ -696,14 +702,16 @@ fn build_list_joins_taint_from_all_item_slots() -> Result<(), String> {
         Ok(EngineSignal::Continue) => {}
         other => return Err(format!("expected Continue from step 2, got {other:?}")),
     }
-    let slot2_taint = run.read_taint(SlotIdx::new(2)).map_err(|error| error.to_string())?;
+    let slot2_taint = run
+        .read_taint(SlotIdx::new(2))
+        .map_err(|error| error.to_string())?;
     ensure_equal(slot2_taint, Taint::DerivedFromSecret)?;
     let s3 = step_once(&workflow, &mut run, &mut store);
     match s3 {
         Ok(EngineSignal::Finished(SlotValue::List(_), Taint::DerivedFromSecret)) => Ok(()),
-        Ok(EngineSignal::Finished(_, other_taint)) => {
-            Err(format!("expected DerivedFromSecret taint, got {other_taint:?}"))
-        }
+        Ok(EngineSignal::Finished(_, other_taint)) => Err(format!(
+            "expected DerivedFromSecret taint, got {other_taint:?}"
+        )),
         other => Err(format!("unexpected result: {other:?}")),
     }
 }
@@ -788,7 +796,9 @@ fn build_list_with_all_secret_slots_produces_secret_taint() -> Result<(), String
         Ok(EngineSignal::Continue) => {}
         other => return Err(format!("expected Continue from step 2, got {other:?}")),
     }
-    let slot2_taint = run.read_taint(SlotIdx::new(2)).map_err(|error| error.to_string())?;
+    let slot2_taint = run
+        .read_taint(SlotIdx::new(2))
+        .map_err(|error| error.to_string())?;
     ensure_equal(slot2_taint, Taint::Secret)?;
     let s3 = step_once(&workflow, &mut run, &mut store);
     match s3 {
@@ -817,9 +827,9 @@ fn engine_signal_finished_carries_correct_secret_taint() -> Result<(), String> {
     let second = step_once(&workflow, &mut run, &mut store);
     match second {
         Ok(EngineSignal::Finished(SlotValue::I64(77), Taint::Secret)) => Ok(()),
-        Ok(EngineSignal::Finished(value, taint)) => {
-            Err(format!("expected Finished(I64(77), Secret), got ({value:?}, {taint:?})"))
-        }
+        Ok(EngineSignal::Finished(value, taint)) => Err(format!(
+            "expected Finished(I64(77), Secret), got ({value:?}, {taint:?})"
+        )),
         other => Err(format!("expected Finished, got {other:?}")),
     }
 }
@@ -835,15 +845,19 @@ fn engine_signal_finished_carries_correct_derived_from_secret_taint() -> Result<
         Ok(EngineSignal::Continue) => {}
         other => return Err(format!("expected Continue from first step, got {other:?}")),
     }
-    run.write_slot_with_taint(SlotIdx::new(0), SlotValue::Bool(true), Taint::DerivedFromSecret)
-        .map_err(|error| error.to_string())?;
+    run.write_slot_with_taint(
+        SlotIdx::new(0),
+        SlotValue::Bool(true),
+        Taint::DerivedFromSecret,
+    )
+    .map_err(|error| error.to_string())?;
 
     let second = step_once(&workflow, &mut run, &mut store);
     match second {
         Ok(EngineSignal::Finished(SlotValue::Bool(true), Taint::DerivedFromSecret)) => Ok(()),
-        Ok(EngineSignal::Finished(value, taint)) => {
-            Err(format!("expected Finished(Bool(true), DerivedFromSecret), got ({value:?}, {taint:?})"))
-        }
+        Ok(EngineSignal::Finished(value, taint)) => Err(format!(
+            "expected Finished(Bool(true), DerivedFromSecret), got ({value:?}, {taint:?})"
+        )),
         other => Err(format!("expected Finished, got {other:?}")),
     }
 }

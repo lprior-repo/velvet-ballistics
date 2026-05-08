@@ -1893,7 +1893,11 @@ mod tests {
             .object_field_with_taint(obj_id, key)
             .map_err(|e| e.to_string())?;
         assert_eq!(value, SlotValue::I64(100));
-        assert_eq!(taint, Taint::Secret, "first-wins must apply to taint index too");
+        assert_eq!(
+            taint,
+            Taint::Secret,
+            "first-wins must apply to taint index too"
+        );
 
         Ok(())
     }

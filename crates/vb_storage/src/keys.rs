@@ -256,7 +256,11 @@ mod tests {
         let run = RunId::new(0x0102_0304_0506_0708);
         let key = run_header_key(run)?;
         let expected = run.get().to_be_bytes();
-        assert_eq!(&key[1..9], &expected, "run id must be big-endian after prefix");
+        assert_eq!(
+            &key[1..9],
+            &expected,
+            "run id must be big-endian after prefix"
+        );
         Ok(())
     }
 
@@ -303,7 +307,10 @@ mod tests {
         let seq = EventSeq::new(7);
         let a = run_event_key(run, seq)?;
         let b = journal_key(run, seq)?;
-        assert_eq!(a, b, "journal_key and run_event_key must produce identical bytes");
+        assert_eq!(
+            a, b,
+            "journal_key and run_event_key must produce identical bytes"
+        );
         Ok(())
     }
 
@@ -369,7 +376,11 @@ mod tests {
         let key = index_status_key(state, timestamp, run)?;
         assert_eq!(key[0], PREFIX_INDEX_STATUS, "prefix");
         assert_eq!(key[1], state, "state byte");
-        assert_eq!(&key[2..10], &timestamp.to_be_bytes(), "timestamp big-endian");
+        assert_eq!(
+            &key[2..10],
+            &timestamp.to_be_bytes(),
+            "timestamp big-endian"
+        );
         assert_eq!(&key[10..18], &run.get().to_be_bytes(), "run id big-endian");
         Ok(())
     }
@@ -397,7 +408,11 @@ mod tests {
         let workflow = WorkflowId::new(0x12345678);
         let run = RunId::new(0xAABBCCDD_EEFF0011);
         let key = index_workflow_key(workflow, run)?;
-        assert_eq!(&key[1..5], &workflow.get().to_be_bytes(), "workflow u32 big-endian");
+        assert_eq!(
+            &key[1..5],
+            &workflow.get().to_be_bytes(),
+            "workflow u32 big-endian"
+        );
         assert_eq!(&key[5..13], &run.get().to_be_bytes(), "run u64 big-endian");
         Ok(())
     }
@@ -426,9 +441,17 @@ mod tests {
         let run = RunId::new(0xDEAD_BEEF_CAFE_BABE);
         let step = vb_core::StepIdx::new(0x5678);
         let key = index_action_key(action, run, step)?;
-        assert_eq!(&key[1..3], &action.get().to_be_bytes(), "action u16 big-endian");
+        assert_eq!(
+            &key[1..3],
+            &action.get().to_be_bytes(),
+            "action u16 big-endian"
+        );
         assert_eq!(&key[3..11], &run.get().to_be_bytes(), "run u64 big-endian");
-        assert_eq!(&key[11..13], &step.get().to_be_bytes(), "step u16 big-endian");
+        assert_eq!(
+            &key[11..13],
+            &step.get().to_be_bytes(),
+            "step u16 big-endian"
+        );
         Ok(())
     }
 
@@ -505,7 +528,11 @@ mod tests {
         let timestamp = 12345u64;
         let run = RunId::new(67);
         let typed = index_status_key(state, timestamp, run)?;
-        let generic = encode_key(StorageKey::IndexStatus { state, timestamp, run })?;
+        let generic = encode_key(StorageKey::IndexStatus {
+            state,
+            timestamp,
+            run,
+        })?;
         assert_eq!(generic, typed.to_vec());
         Ok(())
     }
@@ -542,8 +569,14 @@ mod tests {
         let ci = compiled_ir_key(digest)?;
         let bl = blob_key(digest)?;
         // All three digest-key types must have different prefixes.
-        assert_ne!(ws[0], ci[0], "workflow_source and compiled_ir prefixes must differ");
-        assert_ne!(ws[0], bl[0], "workflow_source and blob prefixes must differ");
+        assert_ne!(
+            ws[0], ci[0],
+            "workflow_source and compiled_ir prefixes must differ"
+        );
+        assert_ne!(
+            ws[0], bl[0],
+            "workflow_source and blob prefixes must differ"
+        );
         assert_ne!(ci[0], bl[0], "compiled_ir and blob prefixes must differ");
         Ok(())
     }
@@ -555,9 +588,18 @@ mod tests {
         let header = run_header_key(run)?;
         let event = run_event_key(run, seq)?;
         let snapshot = run_snapshot_key(run, seq)?;
-        assert_ne!(header[0], event[0], "run_header and run_event prefixes must differ");
-        assert_ne!(header[0], snapshot[0], "run_header and run_snapshot prefixes must differ");
-        assert_ne!(event[0], snapshot[0], "run_event and run_snapshot prefixes must differ");
+        assert_ne!(
+            header[0], event[0],
+            "run_header and run_event prefixes must differ"
+        );
+        assert_ne!(
+            header[0], snapshot[0],
+            "run_header and run_snapshot prefixes must differ"
+        );
+        assert_ne!(
+            event[0], snapshot[0],
+            "run_event and run_snapshot prefixes must differ"
+        );
         Ok(())
     }
 
@@ -693,7 +735,10 @@ mod tests {
     fn run_prefix_key_has_run_event_prefix() -> Result<(), JournalError> {
         let run = RunId::new(42);
         let prefix = run_prefix_key(run)?;
-        assert_eq!(prefix[0], PREFIX_RUN_EVENT, "run_prefix must use PREFIX_RUN_EVENT");
+        assert_eq!(
+            prefix[0], PREFIX_RUN_EVENT,
+            "run_prefix must use PREFIX_RUN_EVENT"
+        );
         Ok(())
     }
 

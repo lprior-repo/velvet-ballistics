@@ -17,10 +17,7 @@ pub struct DiffResult {
 }
 
 /// Compare two event streams and produce a structured diff.
-pub fn compute_diff(
-    events_a: &[JournalEvent],
-    events_b: &[JournalEvent],
-) -> DiffResult {
+pub fn compute_diff(events_a: &[JournalEvent], events_b: &[JournalEvent]) -> DiffResult {
     let len_a = events_a.len();
     let len_b = events_b.len();
     let max_len = len_a.max(len_b);
@@ -228,28 +225,68 @@ pub fn event_name(event: &JournalEvent) -> &'static str {
 pub fn events_differ(a: &JournalEvent, b: &JournalEvent) -> bool {
     match (a, b) {
         (
-            JournalEvent::StepSucceeded { step: sa, output: oa, .. },
-            JournalEvent::StepSucceeded { step: sb, output: ob, .. },
+            JournalEvent::StepSucceeded {
+                step: sa,
+                output: oa,
+                ..
+            },
+            JournalEvent::StepSucceeded {
+                step: sb,
+                output: ob,
+                ..
+            },
         ) => sa != sb || oa != ob,
         (
             JournalEvent::StepStarted { step: sa, .. },
             JournalEvent::StepStarted { step: sb, .. },
         ) => sa != sb,
         (
-            JournalEvent::ActionScheduled { step: sa, action: aa, .. },
-            JournalEvent::ActionScheduled { step: sb, action: ab, .. },
+            JournalEvent::ActionScheduled {
+                step: sa,
+                action: aa,
+                ..
+            },
+            JournalEvent::ActionScheduled {
+                step: sb,
+                action: ab,
+                ..
+            },
         ) => sa != sb || aa != ab,
         (
-            JournalEvent::ActionCompletedEvent { step: sa, action: aa, .. },
-            JournalEvent::ActionCompletedEvent { step: sb, action: ab, .. },
+            JournalEvent::ActionCompletedEvent {
+                step: sa,
+                action: aa,
+                ..
+            },
+            JournalEvent::ActionCompletedEvent {
+                step: sb,
+                action: ab,
+                ..
+            },
         ) => sa != sb || aa != ab,
         (
-            JournalEvent::ActionFailedEvent { step: sa, action: aa, .. },
-            JournalEvent::ActionFailedEvent { step: sb, action: ab, .. },
+            JournalEvent::ActionFailedEvent {
+                step: sa,
+                action: aa,
+                ..
+            },
+            JournalEvent::ActionFailedEvent {
+                step: sb,
+                action: ab,
+                ..
+            },
         ) => sa != sb || aa != ab,
         (
-            JournalEvent::SlotWrittenEvent { slot: sa, value: va, .. },
-            JournalEvent::SlotWrittenEvent { slot: sb, value: vb, .. },
+            JournalEvent::SlotWrittenEvent {
+                slot: sa,
+                value: va,
+                ..
+            },
+            JournalEvent::SlotWrittenEvent {
+                slot: sb,
+                value: vb,
+                ..
+            },
         ) => sa != sb || va != vb,
         (
             JournalEvent::RunFinished { result: ra, .. },
@@ -289,8 +326,7 @@ pub fn collect_slot_values(events: &[JournalEvent]) -> HashMap<u16, String> {
         if let JournalEvent::SlotWrittenEvent { slot, value, .. } = event {
             let display = match value {
                 Some(bytes) => {
-                    let decoded: Option<SlotValue> =
-                        postcard::from_bytes(bytes).ok();
+                    let decoded: Option<SlotValue> = postcard::from_bytes(bytes).ok();
                     match decoded {
                         Some(v) => format!("{v}"),
                         None => format!("[{} bytes]", bytes.len()),

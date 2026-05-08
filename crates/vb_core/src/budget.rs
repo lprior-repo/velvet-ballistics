@@ -339,8 +339,7 @@ fn count_total_steps(
     node_count: usize,
 ) -> Result<u64, WorkflowError> {
     let mut visited: Vec<bool> = vec![false; node_count];
-    let mut jump_edges: std::collections::HashSet<(u16, u16)> =
-        std::collections::HashSet::new();
+    let mut jump_edges: std::collections::HashSet<(u16, u16)> = std::collections::HashSet::new();
     let mut in_path: std::collections::HashSet<u16> = std::collections::HashSet::new();
     let mut total: u64 = 0;
 
@@ -817,11 +816,7 @@ fn push_repeat_check_successors(done: StepIdx, stack: &mut Vec<StepIdx>) {
 }
 
 /// Push TogetherStart successors: all branch targets + join.
-fn push_together_start_successors(
-    branches: &[StepIdx],
-    join: StepIdx,
-    stack: &mut Vec<StepIdx>,
-) {
+fn push_together_start_successors(branches: &[StepIdx], join: StepIdx, stack: &mut Vec<StepIdx>) {
     for branch in branches {
         stack.push(*branch);
     }
@@ -1034,4 +1029,3 @@ fn update_workflow_metrics(
 
 #[cfg(test)]
 mod tests;
-

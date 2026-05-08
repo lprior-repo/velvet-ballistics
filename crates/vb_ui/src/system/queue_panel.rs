@@ -150,12 +150,8 @@ impl SystemQueuePanelBuilder {
         for (idx, shard) in metrics.shards.iter().enumerate() {
             let monitor = monitors.get(idx);
 
-            let ready_status = monitor
-                .map(|m| m.ready)
-                .unwrap_or(QueueStatus::Normal);
-            let action_status = monitor
-                .map(|m| m.action)
-                .unwrap_or(QueueStatus::Normal);
+            let ready_status = monitor.map(|m| m.ready).unwrap_or(QueueStatus::Normal);
+            let action_status = monitor.map(|m| m.action).unwrap_or(QueueStatus::Normal);
             let shard_worst = monitor
                 .map(|m| m.worst_status())
                 .unwrap_or(QueueStatus::Normal);
@@ -340,7 +336,10 @@ mod tests {
 
     #[test]
     fn health_label_pressured() {
-        assert_eq!(health_label_from_status(QueueStatus::Pressured), "Pressured");
+        assert_eq!(
+            health_label_from_status(QueueStatus::Pressured),
+            "Pressured"
+        );
     }
 
     #[test]

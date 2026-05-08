@@ -5,9 +5,8 @@
 use super::{
     Command, DurabilityMode, INPUT_MAPPING_DECODE_FAILED_MESSAGE,
     INPUT_MAPPING_SLOT_COUNT_EXCEEDED_MESSAGE, ParseError, StepTarget, StorageWorkflowResolver,
-    build_step_frame, decode_step_inputs, execute_step_isolated,
-    map_runtime_inputs, node_kind_name, parse_args, run_compiled_workflow, signal_name,
-    write_step_inputs,
+    build_step_frame, decode_step_inputs, execute_step_isolated, map_runtime_inputs,
+    node_kind_name, parse_args, run_compiled_workflow, signal_name, write_step_inputs,
 };
 use std::ffi::OsString;
 use std::path::PathBuf;
@@ -250,10 +249,8 @@ fn ipc_storage_resolver_loads_compiled_ir_from_journal() {
             journal: Arc::new(journal),
         };
 
-        let resolved = vb_ipc::server::WorkflowResolver::resolve_workflow(
-            &mut resolver,
-            compiled.digest(),
-        );
+        let resolved =
+            vb_ipc::server::WorkflowResolver::resolve_workflow(&mut resolver, compiled.digest());
 
         assert!(resolved.is_ok(), "resolver should load compiled IR");
         let Ok(resolved) = resolved else {

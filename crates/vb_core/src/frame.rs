@@ -164,12 +164,11 @@ impl RunFrame {
     /// Adds to the parallel in-flight counter and updates max_parallel_in_flight
     /// if the new total exceeds the previous maximum.
     pub fn add_parallel_in_flight(&mut self, count: u16) -> CoreResult<()> {
-        self.parallel_in_flight = self
-            .parallel_in_flight
-            .checked_add(count)
-            .ok_or(CoreError::InternalInvariantViolation {
+        self.parallel_in_flight = self.parallel_in_flight.checked_add(count).ok_or(
+            CoreError::InternalInvariantViolation {
                 reason: "parallel_in_flight overflow",
-            })?;
+            },
+        )?;
         if self.parallel_in_flight > self.max_parallel_in_flight {
             self.max_parallel_in_flight = self.parallel_in_flight;
         }
@@ -178,12 +177,11 @@ impl RunFrame {
 
     /// Subtracts from the parallel in-flight counter.
     pub fn sub_parallel_in_flight(&mut self, count: u16) -> CoreResult<()> {
-        self.parallel_in_flight = self
-            .parallel_in_flight
-            .checked_sub(count)
-            .ok_or(CoreError::InternalInvariantViolation {
+        self.parallel_in_flight = self.parallel_in_flight.checked_sub(count).ok_or(
+            CoreError::InternalInvariantViolation {
                 reason: "parallel_in_flight underflow",
-            })?;
+            },
+        )?;
         Ok(())
     }
 

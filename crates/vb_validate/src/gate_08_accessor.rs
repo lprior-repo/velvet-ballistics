@@ -26,7 +26,11 @@ pub fn validate_gate_08_accessor_path_segments(parts: &WorkflowParts) -> Validat
     Ok(())
 }
 
-fn validate_accessor_root(acc_index: usize, accessor: &AccessorProgram, slot_count: u16) -> ValidationResult<()> {
+fn validate_accessor_root(
+    acc_index: usize,
+    accessor: &AccessorProgram,
+    slot_count: u16,
+) -> ValidationResult<()> {
     if accessor.root.as_usize() >= usize::from(slot_count) {
         return Err(ValidationError::AccessorSlotOutOfRange {
             accessor_index: acc_index,
@@ -114,11 +118,14 @@ mod tests {
     #[test]
     fn accepts_multiple_field_segments() {
         let mut parts = make_parts(1);
-        parts.accessors = Box::new([accessor(0, vec![
-            PathSegment::Field(SymbolId::new(1)),
-            PathSegment::Field(SymbolId::new(2)),
-            PathSegment::Index(5),
-        ])]);
+        parts.accessors = Box::new([accessor(
+            0,
+            vec![
+                PathSegment::Field(SymbolId::new(1)),
+                PathSegment::Field(SymbolId::new(2)),
+                PathSegment::Index(5),
+            ],
+        )]);
         assert_eq!(validate_gate_08_accessor_path_segments(&parts), Ok(()));
     }
 

@@ -231,10 +231,7 @@ fn find_slot_bytes(slot_values: &[(u32, Vec<u8>)], target: u32) -> Option<&[u8]>
 
 /// Classifies each slot across two snapshots and produces a `SlotChange`
 /// for every slot present in either snapshot.
-fn compute_slot_changes(
-    before: &[(u32, Vec<u8>)],
-    after: &[(u32, Vec<u8>)],
-) -> Vec<SlotChange> {
+fn compute_slot_changes(before: &[(u32, Vec<u8>)], after: &[(u32, Vec<u8>)]) -> Vec<SlotChange> {
     let all_ids = collect_all_slot_ids(before, after);
     let mut changes = Vec::with_capacity(all_ids.len());
 
@@ -243,31 +240,17 @@ fn compute_slot_changes(
         let after_bytes = find_slot_bytes(after, slot);
 
         let (change_type, before_vec, after_vec) = match (before_bytes, after_bytes) {
-            (None, Some(a)) => (
-                ChangeType::Added,
-                Vec::new(),
-                a.to_vec(),
-            ),
+            (None, Some(a)) => (ChangeType::Added, Vec::new(), a.to_vec()),
             (Some(_), None) => (
                 ChangeType::Removed,
-                before_bytes
-                    .map(|b| b.to_vec())
-                    .unwrap_or_default(),
+                before_bytes.map(|b| b.to_vec()).unwrap_or_default(),
                 Vec::new(),
             ),
             (Some(b), Some(a)) => {
                 if b == a {
-                    (
-                        ChangeType::Unchanged,
-                        b.to_vec(),
-                        a.to_vec(),
-                    )
+                    (ChangeType::Unchanged, b.to_vec(), a.to_vec())
                 } else {
-                    (
-                        ChangeType::Modified,
-                        b.to_vec(),
-                        a.to_vec(),
-                    )
+                    (ChangeType::Modified, b.to_vec(), a.to_vec())
                 }
             }
             (None, None) => continue,
@@ -502,11 +485,7 @@ mod tests {
         let engine = ReplayDiffEngine::new();
         let before = make_snapshot(
             0,
-            vec![
-                (1u32, vec![10u8]),
-                (2u32, vec![20u8]),
-                (3u32, vec![30u8]),
-            ],
+            vec![(1u32, vec![10u8]), (2u32, vec![20u8]), (3u32, vec![30u8])],
             Vec::new(),
         );
         let after = make_snapshot(
@@ -832,10 +811,7 @@ mod tests {
 
         let before = make_snapshot(
             0,
-            vec![
-                (1u32, vec![0x10u8]),
-                (2u32, vec![0x20u8]),
-            ],
+            vec![(1u32, vec![0x10u8]), (2u32, vec![0x20u8])],
             vec![0x00u8],
         );
         let after = make_snapshot(
@@ -900,11 +876,7 @@ mod tests {
         let engine = ReplayDiffEngine::new();
 
         let before = make_snapshot(0, vec![(3u32, vec![0u8])], Vec::new());
-        let after = make_snapshot(
-            1,
-            vec![(3u32, vec![0u8, 0, 0, 0, 0, 0, 0, 0])],
-            Vec::new(),
-        );
+        let after = make_snapshot(1, vec![(3u32, vec![0u8, 0, 0, 0, 0, 0, 0, 0])], Vec::new());
 
         let diff = engine.diff_snapshots(&before, &after);
         let Some(change) = diff.changes.first() else {
@@ -1102,11 +1074,7 @@ mod tests {
         // Add 3 slots.
         let snap_1 = make_snapshot(
             1,
-            vec![
-                (10u32, vec![1u8]),
-                (20u32, vec![2u8]),
-                (30u32, vec![3u8]),
-            ],
+            vec![(10u32, vec![1u8]), (20u32, vec![2u8]), (30u32, vec![3u8])],
             vec![0u8],
         );
         // Modify all 3 slots.
@@ -1122,9 +1090,7 @@ mod tests {
         // Remove all slots (back to empty).
         let snap_3 = make_snapshot(3, Vec::new(), vec![0u8, 1]);
 
-        let diffs = engine.diff_events(&events_from_snapshots(&[
-            snap_0, snap_1, snap_2, snap_3,
-        ]));
+        let diffs = engine.diff_events(&events_from_snapshots(&[snap_0, snap_1, snap_2, snap_3]));
 
         assert_eq!(diffs.len(), 3);
 
@@ -1216,8 +1182,7 @@ mod tests {
         let delta = diff.taint_deltas.first().expect("delta");
         // The description says "2 bytes -> 2 bytes" -- misleading.
         assert_eq!(
-            delta.kind_change,
-            "taint_state changed (2 bytes -> 2 bytes)",
+            delta.kind_change, "taint_state changed (2 bytes -> 2 bytes)",
             "FINDING 2: same-length taint change has misleading description"
         );
         // The delta IS reported, but the message looks like no-op.
@@ -1256,7 +1221,8 @@ mod tests {
         assert_eq!(change.slot, 5);
         // find_slot_bytes returns the FIRST match, so before = [1], not [2].
         assert_eq!(
-            change.before, vec![1u8],
+            change.before,
+            vec![1u8],
             "FINDING 3: duplicate slot ID uses first match, second value is silently lost"
         );
     }
@@ -1413,7 +1379,8 @@ mod tests {
         let after = make_snapshot(u16::MAX, vec![(1u32, vec![1u8])], Vec::new());
         let diff = engine.diff_snapshots(&before, &after);
         assert_eq!(
-            diff.step, u16::MAX,
+            diff.step,
+            u16::MAX,
             "FINDING 9: step u16::MAX should work correctly"
         );
         assert_eq!(diff.change_count(), 1);
@@ -1435,14 +1402,12 @@ mod tests {
             ReplayEventType::StepStarted,
             make_snapshot(1, vec![(1u32, vec![1u8])], Vec::new()),
         );
-        let events = vec![
-            make_event_with_snapshot(snap_a),
-            event_mismatched,
-        ];
+        let events = vec![make_event_with_snapshot(snap_a), event_mismatched];
         let diffs = engine.diff_events(&events);
         // The mismatched event is included because it has a snapshot.
         assert_eq!(
-            diffs.len(), 1,
+            diffs.len(),
+            1,
             "FINDING 10: mismatched event type with snapshot is included in diff chain"
         );
     }

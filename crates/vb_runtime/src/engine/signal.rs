@@ -100,15 +100,16 @@ mod tests {
 
     #[test]
     fn finished_i64_extracts_value_ignores_derived_taint() {
-        let result =
-            runtime_from_core(EngineSignal::Finished(SlotValue::I64(99), Taint::DerivedFromSecret));
+        let result = runtime_from_core(EngineSignal::Finished(
+            SlotValue::I64(99),
+            Taint::DerivedFromSecret,
+        ));
         assert_eq!(result, RuntimeSignal::Finished(SlotValue::I64(99)));
     }
 
     #[test]
     fn finished_bool_extracts_value() {
-        let result =
-            runtime_from_core(EngineSignal::Finished(SlotValue::Bool(true), Taint::Clean));
+        let result = runtime_from_core(EngineSignal::Finished(SlotValue::Bool(true), Taint::Clean));
         assert_eq!(result, RuntimeSignal::Finished(SlotValue::Bool(true)));
     }
 
@@ -149,10 +150,8 @@ mod tests {
 
     #[test]
     fn finished_same_value_different_taint_produces_equal_signal() {
-        let clean =
-            runtime_from_core(EngineSignal::Finished(SlotValue::I64(7), Taint::Clean));
-        let secret =
-            runtime_from_core(EngineSignal::Finished(SlotValue::I64(7), Taint::Secret));
+        let clean = runtime_from_core(EngineSignal::Finished(SlotValue::I64(7), Taint::Clean));
+        let secret = runtime_from_core(EngineSignal::Finished(SlotValue::I64(7), Taint::Secret));
         assert_eq!(clean, secret);
     }
 

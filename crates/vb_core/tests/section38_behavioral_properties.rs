@@ -6,8 +6,8 @@ use vb_core::ids::{ConstIdx, RunId, SlotIdx, StepIdx, WorkflowDigest};
 use vb_core::value::{ConstValue, SlotValue, Taint};
 use vb_core::value_store::ValueStore;
 use vb_core::workflow::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow,
-    ResourceContract, WorkflowError, WorkflowParts,
+    CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowError,
+    WorkflowParts,
 };
 use vb_core::{EngineSignal, StepBudget, run_until_blocked, step_once};
 
@@ -84,11 +84,13 @@ fn terminal_state_finished_run_rejects_new_steps() -> Result<(), String> {
     let mut store = ValueStore::new();
 
     // Run the full workflow to completion
-    let result =
-        run_until_blocked(&workflow, &mut frame, StepBudget::MAX, &mut store)
-            .map_err(|e| e.to_string())?;
+    let result = run_until_blocked(&workflow, &mut frame, StepBudget::MAX, &mut store)
+        .map_err(|e| e.to_string())?;
     ensure(
-        matches!(result, EngineSignal::Finished(SlotValue::I64(42), Taint::Clean)),
+        matches!(
+            result,
+            EngineSignal::Finished(SlotValue::I64(42), Taint::Clean)
+        ),
         "workflow must finish with I64(42)",
     )?;
 
@@ -103,41 +105,47 @@ fn terminal_state_finished_run_rejects_new_steps() -> Result<(), String> {
 
 #[test]
 fn terminal_state_succeeded_rejects_mark_running() -> Result<(), String> {
-    let mut frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 3, 1).map_err(|e| e.to_string())?;
-    frame.mark_running(StepIdx::new(0)).map_err(|e| e.to_string())?;
-    frame.mark_succeeded(StepIdx::new(0)).map_err(|e| e.to_string())?;
+    let mut frame =
+        RunFrame::new(RunId::new(1), StepIdx::new(0), 3, 1).map_err(|e| e.to_string())?;
+    frame
+        .mark_running(StepIdx::new(0))
+        .map_err(|e| e.to_string())?;
+    frame
+        .mark_succeeded(StepIdx::new(0))
+        .map_err(|e| e.to_string())?;
     // Succeeded -> Running is forbidden
     let result = frame.mark_running(StepIdx::new(0));
-    ensure(
-        result.is_err(),
-        "succeeded step must reject mark_running",
-    )
+    ensure(result.is_err(), "succeeded step must reject mark_running")
 }
 
 #[test]
 fn terminal_state_failed_rejects_mark_succeeded() -> Result<(), String> {
-    let mut frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 3, 1).map_err(|e| e.to_string())?;
-    frame.mark_running(StepIdx::new(0)).map_err(|e| e.to_string())?;
-    frame.mark_failed(StepIdx::new(0)).map_err(|e| e.to_string())?;
+    let mut frame =
+        RunFrame::new(RunId::new(1), StepIdx::new(0), 3, 1).map_err(|e| e.to_string())?;
+    frame
+        .mark_running(StepIdx::new(0))
+        .map_err(|e| e.to_string())?;
+    frame
+        .mark_failed(StepIdx::new(0))
+        .map_err(|e| e.to_string())?;
     // Failed -> Succeeded is forbidden
     let result = frame.mark_succeeded(StepIdx::new(0));
-    ensure(
-        result.is_err(),
-        "failed step must reject mark_succeeded",
-    )
+    ensure(result.is_err(), "failed step must reject mark_succeeded")
 }
 
 #[test]
 fn terminal_state_cancelled_rejects_mark_running() -> Result<(), String> {
-    let mut frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 3, 1).map_err(|e| e.to_string())?;
-    frame.mark_running(StepIdx::new(0)).map_err(|e| e.to_string())?;
-    frame.mark_cancelled(StepIdx::new(0)).map_err(|e| e.to_string())?;
+    let mut frame =
+        RunFrame::new(RunId::new(1), StepIdx::new(0), 3, 1).map_err(|e| e.to_string())?;
+    frame
+        .mark_running(StepIdx::new(0))
+        .map_err(|e| e.to_string())?;
+    frame
+        .mark_cancelled(StepIdx::new(0))
+        .map_err(|e| e.to_string())?;
     // Cancelled -> Running is forbidden
     let result = frame.mark_running(StepIdx::new(0));
-    ensure(
-        result.is_err(),
-        "cancelled step must reject mark_running",
-    )
+    ensure(result.is_err(), "cancelled step must reject mark_running")
 }
 
 // =========================================================================
@@ -163,9 +171,15 @@ fn step_budget_exhaustion_zero_budget_rejects_all_steps() -> Result<(), String> 
         result == EngineSignal::StepBudgetExhausted,
         "zero budget must exhaust immediately",
     )?;
-    ensure(frame.executed() == 0, "no steps should execute on zero budget")?;
     ensure(
-        frame.step_state(StepIdx::new(0)).map_err(|e| e.to_string())? == StepState::Pending,
+        frame.executed() == 0,
+        "no steps should execute on zero budget",
+    )?;
+    ensure(
+        frame
+            .step_state(StepIdx::new(0))
+            .map_err(|e| e.to_string())?
+            == StepState::Pending,
         "step 0 must still be pending after zero-budget run",
     )
 }
@@ -292,7 +306,10 @@ fn taint_safety_secret_taint_propagates_to_finish_signal() -> Result<(), String>
     let result = run_until_blocked(&workflow, &mut frame, StepBudget::MAX, &mut store)
         .map_err(|e| e.to_string())?;
     ensure(
-        matches!(result, EngineSignal::Finished(SlotValue::I64(42), Taint::Secret)),
+        matches!(
+            result,
+            EngineSignal::Finished(SlotValue::I64(42), Taint::Secret)
+        ),
         "finish signal must carry Secret taint when result slot is secret-tainted",
     )
 }
@@ -350,13 +367,26 @@ fn replay_determinism_same_run_produces_identical_slot_state() -> Result<(), Str
         .map_err(|e| e.to_string())?;
 
     // Both must finish with the same result
-    ensure(result_a == result_b, "replay must produce identical engine signal")?;
-    ensure(frame_a.executed() == frame_b.executed(), "replay must execute same step count")?;
+    ensure(
+        result_a == result_b,
+        "replay must produce identical engine signal",
+    )?;
+    ensure(
+        frame_a.executed() == frame_b.executed(),
+        "replay must execute same step count",
+    )?;
 
     // Slot 0 must have the same value in both
-    let slot_a = frame_a.read_slot(SlotIdx::new(0)).map_err(|e| e.to_string())?;
-    let slot_b = frame_b.read_slot(SlotIdx::new(0)).map_err(|e| e.to_string())?;
-    ensure(slot_a == slot_b, "replay must produce identical slot values")
+    let slot_a = frame_a
+        .read_slot(SlotIdx::new(0))
+        .map_err(|e| e.to_string())?;
+    let slot_b = frame_b
+        .read_slot(SlotIdx::new(0))
+        .map_err(|e| e.to_string())?;
+    ensure(
+        slot_a == slot_b,
+        "replay must produce identical slot values",
+    )
 }
 
 #[test]
@@ -379,16 +409,25 @@ fn replay_determinism_step_by_step_produces_identical_pc_sequence() -> Result<()
     // Step 1: SetConst
     let _ = step_once(&workflow, &mut frame, &mut store).map_err(|e| e.to_string())?;
     let after_step1 = frame.pc();
-    ensure(after_step1 == StepIdx::new(1), "after SetConst, PC must be 1")?;
     ensure(
-        frame.step_state(StepIdx::new(0)).map_err(|e| e.to_string())? == StepState::Succeeded,
+        after_step1 == StepIdx::new(1),
+        "after SetConst, PC must be 1",
+    )?;
+    ensure(
+        frame
+            .step_state(StepIdx::new(0))
+            .map_err(|e| e.to_string())?
+            == StepState::Succeeded,
         "step 0 must be succeeded",
     )?;
 
     // Step 2: Finish
     let result = step_once(&workflow, &mut frame, &mut store).map_err(|e| e.to_string())?;
     ensure(
-        matches!(result, EngineSignal::Finished(SlotValue::I64(42), Taint::Clean)),
+        matches!(
+            result,
+            EngineSignal::Finished(SlotValue::I64(42), Taint::Clean)
+        ),
         "step 2 must finish with I64(42)",
     )
 }
@@ -401,55 +440,92 @@ fn replay_determinism_step_by_step_produces_identical_pc_sequence() -> Result<()
 fn ordering_invariants_step_states_follow_valid_lifecycle() -> Result<(), String> {
     // Verify that step states follow the required lifecycle:
     // Pending -> Running -> (Succeeded | Failed | Cancelled | Waiting | Asking)
-    let mut frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 5, 1).map_err(|e| e.to_string())?;
+    let mut frame =
+        RunFrame::new(RunId::new(1), StepIdx::new(0), 5, 1).map_err(|e| e.to_string())?;
 
     // Initially pending
     ensure(
-        frame.step_state(StepIdx::new(0)).map_err(|e| e.to_string())? == StepState::Pending,
+        frame
+            .step_state(StepIdx::new(0))
+            .map_err(|e| e.to_string())?
+            == StepState::Pending,
         "step must start pending",
     )?;
 
     // Running
-    frame.mark_running(StepIdx::new(0)).map_err(|e| e.to_string())?;
+    frame
+        .mark_running(StepIdx::new(0))
+        .map_err(|e| e.to_string())?;
     ensure(
-        frame.step_state(StepIdx::new(0)).map_err(|e| e.to_string())? == StepState::Running,
+        frame
+            .step_state(StepIdx::new(0))
+            .map_err(|e| e.to_string())?
+            == StepState::Running,
         "step must be running after mark_running",
     )?;
 
     // Succeeded (terminal)
-    frame.mark_succeeded(StepIdx::new(0)).map_err(|e| e.to_string())?;
+    frame
+        .mark_succeeded(StepIdx::new(0))
+        .map_err(|e| e.to_string())?;
     ensure(
-        frame.step_state(StepIdx::new(0)).map_err(|e| e.to_string())? == StepState::Succeeded,
+        frame
+            .step_state(StepIdx::new(0))
+            .map_err(|e| e.to_string())?
+            == StepState::Succeeded,
         "step must be succeeded after mark_succeeded",
     )
 }
 
 #[test]
 fn ordering_invariants_resumable_states_can_return_to_running() -> Result<(), String> {
-    let mut frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 5, 1).map_err(|e| e.to_string())?;
+    let mut frame =
+        RunFrame::new(RunId::new(1), StepIdx::new(0), 5, 1).map_err(|e| e.to_string())?;
 
     // Waiting is resumable
-    frame.mark_running(StepIdx::new(0)).map_err(|e| e.to_string())?;
-    frame.mark_waiting(StepIdx::new(0)).map_err(|e| e.to_string())?;
+    frame
+        .mark_running(StepIdx::new(0))
+        .map_err(|e| e.to_string())?;
+    frame
+        .mark_waiting(StepIdx::new(0))
+        .map_err(|e| e.to_string())?;
     ensure(
-        frame.step_state(StepIdx::new(0)).map_err(|e| e.to_string())? == StepState::Waiting,
+        frame
+            .step_state(StepIdx::new(0))
+            .map_err(|e| e.to_string())?
+            == StepState::Waiting,
         "must be waiting",
     )?;
-    frame.mark_running(StepIdx::new(0)).map_err(|e| e.to_string())?;
+    frame
+        .mark_running(StepIdx::new(0))
+        .map_err(|e| e.to_string())?;
     ensure(
-        frame.step_state(StepIdx::new(0)).map_err(|e| e.to_string())? == StepState::Running,
+        frame
+            .step_state(StepIdx::new(0))
+            .map_err(|e| e.to_string())?
+            == StepState::Running,
         "waiting must be resumable to running",
     )?;
 
     // Asking is resumable
-    frame.mark_asking(StepIdx::new(0)).map_err(|e| e.to_string())?;
+    frame
+        .mark_asking(StepIdx::new(0))
+        .map_err(|e| e.to_string())?;
     ensure(
-        frame.step_state(StepIdx::new(0)).map_err(|e| e.to_string())? == StepState::Asking,
+        frame
+            .step_state(StepIdx::new(0))
+            .map_err(|e| e.to_string())?
+            == StepState::Asking,
         "must be asking",
     )?;
-    frame.mark_running(StepIdx::new(0)).map_err(|e| e.to_string())?;
+    frame
+        .mark_running(StepIdx::new(0))
+        .map_err(|e| e.to_string())?;
     ensure(
-        frame.step_state(StepIdx::new(0)).map_err(|e| e.to_string())? == StepState::Running,
+        frame
+            .step_state(StepIdx::new(0))
+            .map_err(|e| e.to_string())?
+            == StepState::Running,
         "asking must be resumable to running",
     )
 }
@@ -475,7 +551,10 @@ fn ordering_invariants_pc_advances_monotonically_in_linear_workflow() -> Result<
         next_pc.get() > prev_pc.get(),
         "PC must advance monotonically",
     )?;
-    ensure(next_pc == StepIdx::new(1), "PC must be at step 1 after first step")
+    ensure(
+        next_pc == StepIdx::new(1),
+        "PC must be at step 1 after first step",
+    )
 }
 
 // =========================================================================
@@ -498,13 +577,18 @@ fn snapshot_equivalence_frame_slots_match_value_store() -> Result<(), String> {
     let result = run_until_blocked(&workflow, &mut frame, StepBudget::MAX, &mut store)
         .map_err(|e| e.to_string())?;
     ensure(
-        matches!(result, EngineSignal::Finished(SlotValue::I64(42), Taint::Clean)),
+        matches!(
+            result,
+            EngineSignal::Finished(SlotValue::I64(42), Taint::Clean)
+        ),
         "must finish with I64(42)",
     )?;
 
     // The slot state in the frame must be consistent with the finished signal.
     // Reading slot 0 should produce the same value the engine reported.
-    let slot_value = frame.read_slot(SlotIdx::new(0)).map_err(|e| e.to_string())?;
+    let slot_value = frame
+        .read_slot(SlotIdx::new(0))
+        .map_err(|e| e.to_string())?;
     ensure(
         *slot_value == SlotValue::I64(42),
         "frame slot must contain the same value as the finish signal",
@@ -527,14 +611,20 @@ fn snapshot_equivalence_executed_count_matches_actual_steps() -> Result<(), Stri
 
     let result = run_until_blocked(&workflow, &mut frame, StepBudget::new(1), &mut store)
         .map_err(|e| e.to_string())?;
-    ensure(result == EngineSignal::StepBudgetExhausted, "must exhaust after 1 step")?;
+    ensure(
+        result == EngineSignal::StepBudgetExhausted,
+        "must exhaust after 1 step",
+    )?;
     ensure(frame.executed() == 1, "executed count must be exactly 1")?;
 
     // Resume and finish
     let result = run_until_blocked(&workflow, &mut frame, StepBudget::MAX, &mut store)
         .map_err(|e| e.to_string())?;
     ensure(
-        matches!(result, EngineSignal::Finished(SlotValue::I64(42), Taint::Clean)),
+        matches!(
+            result,
+            EngineSignal::Finished(SlotValue::I64(42), Taint::Clean)
+        ),
         "must finish on resume",
     )?;
     ensure(frame.executed() == 2, "total executed must be 2")
@@ -556,8 +646,12 @@ fn snapshot_equivalence_step_states_consistent_after_completion() -> Result<(), 
         .map_err(|e| e.to_string())?;
 
     // Both steps must be in terminal (succeeded) state
-    let step0 = frame.step_state(StepIdx::new(0)).map_err(|e| e.to_string())?;
-    let step1 = frame.step_state(StepIdx::new(1)).map_err(|e| e.to_string())?;
+    let step0 = frame
+        .step_state(StepIdx::new(0))
+        .map_err(|e| e.to_string())?;
+    let step1 = frame
+        .step_state(StepIdx::new(1))
+        .map_err(|e| e.to_string())?;
     ensure(step0 == StepState::Succeeded, "step 0 must be succeeded")?;
     ensure(step1 == StepState::Succeeded, "step 1 must be succeeded")
 }

@@ -188,7 +188,11 @@ fn replay_build_object(
         })?;
         let slot_taint = run.read_taint(*slot).map_err(slot_to_replay_err)?;
         accumulated_taint = join_taint(accumulated_taint, slot_taint);
-        entries.push(ObjectField { key: *key, value, taint: slot_taint });
+        entries.push(ObjectField {
+            key: *key,
+            value,
+            taint: slot_taint,
+        });
         index = index.checked_add(1).ok_or(ReplayError::Internal {
             reason: "build_object field index overflow",
         })?;
@@ -343,9 +347,7 @@ mod tests {
             ReplayError::NonDeterministicStep { step, .. } => {
                 CoreError::InvalidProgramCounter { step }
             }
-            ReplayError::Internal { reason } => {
-                CoreError::InternalInvariantViolation { reason }
-            }
+            ReplayError::Internal { reason } => CoreError::InternalInvariantViolation { reason },
         }
     }
 
@@ -384,9 +386,11 @@ mod tests {
         let mut store = ValueStore::new();
         run.write_slot(SlotIdx::new(0), SlotValue::I64(0))?;
 
-        let node = plan.node(StepIdx::new(0)).ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 0 missing",
-        })?;
+        let node = plan
+            .node(StepIdx::new(0))
+            .ok_or(CoreError::InternalInvariantViolation {
+                reason: "node 0 missing",
+            })?;
         let action = replay_step(node, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
 
         match action {
@@ -430,12 +434,19 @@ mod tests {
         let mut run = RunFrame::new(RunId::new(0), StepIdx::new(0), step_count, slot_count)?;
         let mut store = ValueStore::new();
 
-        let node = plan.node(StepIdx::new(0)).ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 0 missing",
-        })?;
+        let node = plan
+            .node(StepIdx::new(0))
+            .ok_or(CoreError::InternalInvariantViolation {
+                reason: "node 0 missing",
+            })?;
         let result = replay_step(node, &mut run, &mut store, &plan);
         assert!(
-            matches!(result, Err(ReplayError::Internal { reason: "Nop node missing next step" })),
+            matches!(
+                result,
+                Err(ReplayError::Internal {
+                    reason: "Nop node missing next step"
+                })
+            ),
             "Nop without next must fail"
         );
         Ok(())
@@ -477,9 +488,11 @@ mod tests {
         let mut run = RunFrame::new(RunId::new(0), StepIdx::new(0), step_count, slot_count)?;
         let mut store = ValueStore::new();
 
-        let node = plan.node(StepIdx::new(0)).ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 0 missing",
-        })?;
+        let node = plan
+            .node(StepIdx::new(0))
+            .ok_or(CoreError::InternalInvariantViolation {
+                reason: "node 0 missing",
+            })?;
         replay_step(node, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
 
         if *run.read_slot(SlotIdx::new(0))? != SlotValue::I64(42) {
@@ -524,9 +537,11 @@ mod tests {
         let mut run = RunFrame::new(RunId::new(0), StepIdx::new(0), step_count, slot_count)?;
         let mut store = ValueStore::new();
 
-        let node = plan.node(StepIdx::new(0)).ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 0 missing",
-        })?;
+        let node = plan
+            .node(StepIdx::new(0))
+            .ok_or(CoreError::InternalInvariantViolation {
+                reason: "node 0 missing",
+            })?;
         replay_step(node, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
 
         if *run.read_slot(SlotIdx::new(0))? != SlotValue::Bool(true) {
@@ -571,9 +586,11 @@ mod tests {
         let mut run = RunFrame::new(RunId::new(0), StepIdx::new(0), step_count, slot_count)?;
         let mut store = ValueStore::new();
 
-        let node = plan.node(StepIdx::new(0)).ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 0 missing",
-        })?;
+        let node = plan
+            .node(StepIdx::new(0))
+            .ok_or(CoreError::InternalInvariantViolation {
+                reason: "node 0 missing",
+            })?;
         replay_step(node, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
 
         if *run.read_slot(SlotIdx::new(0))? != SlotValue::Null {
@@ -587,26 +604,28 @@ mod tests {
     #[test]
     fn replay_set_const_missing_output_returns_error() -> Result<(), CoreError> {
         let plan = make_plan(
-            vec![CompiledNode {
-                id: StepIdx::new(0),
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::SetConst {
-                    value: ConstIdx::new(0),
+            vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::SetConst {
+                        value: ConstIdx::new(0),
+                    },
+                    output: None,
+                    next: Some(StepIdx::new(1)),
                 },
-                output: None,
-                next: Some(StepIdx::new(1)),
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::Finish {
-                    result: SlotIdx::new(0),
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(0),
+                    },
+                    output: None,
+                    next: None,
                 },
-                output: None,
-                next: None,
-            }],
+            ],
             vec![ConstValue::I64(1)],
             vec![],
         )?;
@@ -619,9 +638,11 @@ mod tests {
         )?;
         let mut store = ValueStore::new();
 
-        let node = plan.node(StepIdx::new(0)).ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 0 missing",
-        })?;
+        let node = plan
+            .node(StepIdx::new(0))
+            .ok_or(CoreError::InternalInvariantViolation {
+                reason: "node 0 missing",
+            })?;
         let result = replay_step(node, &mut run, &mut store, &plan);
         assert!(
             matches!(
@@ -681,15 +702,19 @@ mod tests {
         let mut run = RunFrame::new(RunId::new(0), StepIdx::new(0), step_count, slot_count)?;
         let mut store = ValueStore::new();
 
-        let node0 = plan.node(StepIdx::new(0)).ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 0 missing",
-        })?;
+        let node0 = plan
+            .node(StepIdx::new(0))
+            .ok_or(CoreError::InternalInvariantViolation {
+                reason: "node 0 missing",
+            })?;
         replay_step(node0, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
         run.write_taint(SlotIdx::new(0), Taint::Secret)?;
 
-        let node1 = plan.node(StepIdx::new(1)).ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 1 missing",
-        })?;
+        let node1 = plan
+            .node(StepIdx::new(1))
+            .ok_or(CoreError::InternalInvariantViolation {
+                reason: "node 1 missing",
+            })?;
         replay_step(node1, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
 
         if *run.read_slot(SlotIdx::new(1))? != SlotValue::I64(100) {
@@ -749,14 +774,18 @@ mod tests {
         let mut run = RunFrame::new(RunId::new(0), StepIdx::new(0), step_count, slot_count)?;
         let mut store = ValueStore::new();
 
-        let node0 = plan.node(StepIdx::new(0)).ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 0 missing",
-        })?;
+        let node0 = plan
+            .node(StepIdx::new(0))
+            .ok_or(CoreError::InternalInvariantViolation {
+                reason: "node 0 missing",
+            })?;
         replay_step(node0, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
 
-        let node1 = plan.node(StepIdx::new(1)).ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 1 missing",
-        })?;
+        let node1 = plan
+            .node(StepIdx::new(1))
+            .ok_or(CoreError::InternalInvariantViolation {
+                reason: "node 1 missing",
+            })?;
         replay_step(node1, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
 
         if run.read_taint(SlotIdx::new(1))? != Taint::Clean {
@@ -804,14 +833,13 @@ mod tests {
         )?;
         let mut store = ValueStore::new();
 
-        let node = plan.node(StepIdx::new(0)).ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 0 missing",
-        })?;
+        let node = plan
+            .node(StepIdx::new(0))
+            .ok_or(CoreError::InternalInvariantViolation {
+                reason: "node 0 missing",
+            })?;
         let result = replay_step(node, &mut run, &mut store, &plan);
-        assert!(
-            result.is_err(),
-            "Copy from uninitialized slot must fail"
-        );
+        assert!(result.is_err(), "Copy from uninitialized slot must fail");
         Ok(())
     }
 
@@ -859,14 +887,18 @@ mod tests {
         let mut run = RunFrame::new(RunId::new(0), StepIdx::new(0), step_count, slot_count)?;
         let mut store = ValueStore::new();
 
-        let node0 = plan.node(StepIdx::new(0)).ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 0 missing",
-        })?;
+        let node0 = plan
+            .node(StepIdx::new(0))
+            .ok_or(CoreError::InternalInvariantViolation {
+                reason: "node 0 missing",
+            })?;
         replay_step(node0, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
 
-        let node1 = plan.node(StepIdx::new(1)).ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 1 missing",
-        })?;
+        let node1 = plan
+            .node(StepIdx::new(1))
+            .ok_or(CoreError::InternalInvariantViolation {
+                reason: "node 1 missing",
+            })?;
         let result = replay_step(node1, &mut run, &mut store, &plan);
         assert!(
             matches!(
@@ -943,15 +975,19 @@ mod tests {
         let mut store = ValueStore::new();
 
         for idx in 0u16..2 {
-            let node = plan.node(StepIdx::new(idx)).ok_or(CoreError::InternalInvariantViolation {
-                reason: "node missing",
-            })?;
+            let node =
+                plan.node(StepIdx::new(idx))
+                    .ok_or(CoreError::InternalInvariantViolation {
+                        reason: "node missing",
+                    })?;
             replay_step(node, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
         }
 
-        let node2 = plan.node(StepIdx::new(2)).ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 2 missing",
-        })?;
+        let node2 = plan
+            .node(StepIdx::new(2))
+            .ok_or(CoreError::InternalInvariantViolation {
+                reason: "node 2 missing",
+            })?;
         replay_step(node2, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
 
         if *run.read_slot(SlotIdx::new(2))? != SlotValue::I64(42) {
@@ -1009,14 +1045,18 @@ mod tests {
         let mut run = RunFrame::new(RunId::new(0), StepIdx::new(0), step_count, slot_count)?;
         let mut store = ValueStore::new();
 
-        let node0 = plan.node(StepIdx::new(0)).ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 0 missing",
-        })?;
+        let node0 = plan
+            .node(StepIdx::new(0))
+            .ok_or(CoreError::InternalInvariantViolation {
+                reason: "node 0 missing",
+            })?;
         replay_step(node0, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
 
-        let node1 = plan.node(StepIdx::new(1)).ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 1 missing",
-        })?;
+        let node1 = plan
+            .node(StepIdx::new(1))
+            .ok_or(CoreError::InternalInvariantViolation {
+                reason: "node 1 missing",
+            })?;
         replay_step(node1, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
 
         match *run.read_slot(SlotIdx::new(1))? {
@@ -1074,9 +1114,11 @@ mod tests {
         let mut run = RunFrame::new(RunId::new(0), StepIdx::new(0), step_count, slot_count)?;
         let mut store = ValueStore::new();
 
-        let node = plan.node(StepIdx::new(0)).ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 0 missing",
-        })?;
+        let node = plan
+            .node(StepIdx::new(0))
+            .ok_or(CoreError::InternalInvariantViolation {
+                reason: "node 0 missing",
+            })?;
         replay_step(node, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
 
         match *run.read_slot(SlotIdx::new(0))? {
@@ -1101,26 +1143,28 @@ mod tests {
     fn replay_build_object_uninitialized_field_returns_error() -> Result<(), CoreError> {
         let field_sym = SymbolId::new(0);
         let plan = make_plan(
-            vec![CompiledNode {
-                id: StepIdx::new(0),
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::BuildObject {
-                    fields: vec![(field_sym, SlotIdx::new(5))].into(),
+            vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::BuildObject {
+                        fields: vec![(field_sym, SlotIdx::new(5))].into(),
+                    },
+                    output: Some(SlotIdx::new(0)),
+                    next: Some(StepIdx::new(1)),
                 },
-                output: Some(SlotIdx::new(0)),
-                next: Some(StepIdx::new(1)),
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::Finish {
-                    result: SlotIdx::new(0),
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(0),
+                    },
+                    output: None,
+                    next: None,
                 },
-                output: None,
-                next: None,
-            }],
+            ],
             vec![],
             vec![],
         )?;
@@ -1133,9 +1177,11 @@ mod tests {
         )?;
         let mut store = ValueStore::new();
 
-        let node = plan.node(StepIdx::new(0)).ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 0 missing",
-        })?;
+        let node = plan
+            .node(StepIdx::new(0))
+            .ok_or(CoreError::InternalInvariantViolation {
+                reason: "node 0 missing",
+            })?;
         let result = replay_step(node, &mut run, &mut store, &plan);
         assert!(
             result.is_err(),
@@ -1189,15 +1235,19 @@ mod tests {
         let mut run = RunFrame::new(RunId::new(0), StepIdx::new(0), step_count, slot_count)?;
         let mut store = ValueStore::new();
 
-        let node0 = plan.node(StepIdx::new(0)).ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 0 missing",
-        })?;
+        let node0 = plan
+            .node(StepIdx::new(0))
+            .ok_or(CoreError::InternalInvariantViolation {
+                reason: "node 0 missing",
+            })?;
         replay_step(node0, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
         run.write_taint(SlotIdx::new(0), Taint::DerivedFromSecret)?;
 
-        let node1 = plan.node(StepIdx::new(1)).ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 1 missing",
-        })?;
+        let node1 = plan
+            .node(StepIdx::new(1))
+            .ok_or(CoreError::InternalInvariantViolation {
+                reason: "node 1 missing",
+            })?;
         replay_step(node1, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
 
         if run.read_taint(SlotIdx::new(1))? != Taint::DerivedFromSecret {
@@ -1265,15 +1315,19 @@ mod tests {
         let mut store = ValueStore::new();
 
         for idx in 0u16..2 {
-            let node = plan.node(StepIdx::new(idx)).ok_or(CoreError::InternalInvariantViolation {
-                reason: "node missing",
-            })?;
+            let node =
+                plan.node(StepIdx::new(idx))
+                    .ok_or(CoreError::InternalInvariantViolation {
+                        reason: "node missing",
+                    })?;
             replay_step(node, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
         }
 
-        let node2 = plan.node(StepIdx::new(2)).ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 2 missing",
-        })?;
+        let node2 = plan
+            .node(StepIdx::new(2))
+            .ok_or(CoreError::InternalInvariantViolation {
+                reason: "node 2 missing",
+            })?;
         replay_step(node2, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
 
         match *run.read_slot(SlotIdx::new(2))? {
@@ -1333,9 +1387,11 @@ mod tests {
         let mut run = RunFrame::new(RunId::new(0), StepIdx::new(0), step_count, slot_count)?;
         let mut store = ValueStore::new();
 
-        let node = plan.node(StepIdx::new(0)).ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 0 missing",
-        })?;
+        let node = plan
+            .node(StepIdx::new(0))
+            .ok_or(CoreError::InternalInvariantViolation {
+                reason: "node 0 missing",
+            })?;
         replay_step(node, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
 
         match *run.read_slot(SlotIdx::new(0))? {
@@ -1359,26 +1415,28 @@ mod tests {
     #[test]
     fn replay_build_list_uninitialized_item_returns_error() -> Result<(), CoreError> {
         let plan = make_plan(
-            vec![CompiledNode {
-                id: StepIdx::new(0),
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::BuildList {
-                    items: vec![SlotIdx::new(5)].into(),
+            vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::BuildList {
+                        items: vec![SlotIdx::new(5)].into(),
+                    },
+                    output: Some(SlotIdx::new(0)),
+                    next: Some(StepIdx::new(1)),
                 },
-                output: Some(SlotIdx::new(0)),
-                next: Some(StepIdx::new(1)),
-            },
-            CompiledNode {
-                id: StepIdx::new(1),
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::Finish {
-                    result: SlotIdx::new(0),
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(0),
+                    },
+                    output: None,
+                    next: None,
                 },
-                output: None,
-                next: None,
-            }],
+            ],
             vec![],
             vec![],
         )?;
@@ -1391,9 +1449,11 @@ mod tests {
         )?;
         let mut store = ValueStore::new();
 
-        let node = plan.node(StepIdx::new(0)).ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 0 missing",
-        })?;
+        let node = plan
+            .node(StepIdx::new(0))
+            .ok_or(CoreError::InternalInvariantViolation {
+                reason: "node 0 missing",
+            })?;
         let result = replay_step(node, &mut run, &mut store, &plan);
         assert!(
             result.is_err(),
@@ -1446,15 +1506,19 @@ mod tests {
         let mut run = RunFrame::new(RunId::new(0), StepIdx::new(0), step_count, slot_count)?;
         let mut store = ValueStore::new();
 
-        let node0 = plan.node(StepIdx::new(0)).ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 0 missing",
-        })?;
+        let node0 = plan
+            .node(StepIdx::new(0))
+            .ok_or(CoreError::InternalInvariantViolation {
+                reason: "node 0 missing",
+            })?;
         replay_step(node0, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
         run.write_taint(SlotIdx::new(0), Taint::Secret)?;
 
-        let node1 = plan.node(StepIdx::new(1)).ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 1 missing",
-        })?;
+        let node1 = plan
+            .node(StepIdx::new(1))
+            .ok_or(CoreError::InternalInvariantViolation {
+                reason: "node 1 missing",
+            })?;
         replay_step(node1, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
 
         if run.read_taint(SlotIdx::new(1))? != Taint::Secret {
@@ -1501,16 +1565,19 @@ mod tests {
         let mut run = RunFrame::new(RunId::new(0), StepIdx::new(0), step_count, slot_count)?;
         let mut store = ValueStore::new();
 
-        let node0 = plan.node(StepIdx::new(0)).ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 0 missing",
-        })?;
+        let node0 = plan
+            .node(StepIdx::new(0))
+            .ok_or(CoreError::InternalInvariantViolation {
+                reason: "node 0 missing",
+            })?;
         replay_step(node0, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
 
-        let node1 = plan.node(StepIdx::new(1)).ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 1 missing",
-        })?;
-        let action =
-            replay_step(node1, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
+        let node1 = plan
+            .node(StepIdx::new(1))
+            .ok_or(CoreError::InternalInvariantViolation {
+                reason: "node 1 missing",
+            })?;
+        let action = replay_step(node1, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
 
         match action {
             ReplayAction::Finished => {}
@@ -1553,9 +1620,11 @@ mod tests {
         )?;
         let mut store = ValueStore::new();
 
-        let node = plan.node(StepIdx::new(0)).ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 0 missing",
-        })?;
+        let node = plan
+            .node(StepIdx::new(0))
+            .ok_or(CoreError::InternalInvariantViolation {
+                reason: "node 0 missing",
+            })?;
         let result = replay_step(node, &mut run, &mut store, &plan);
         assert!(
             result.is_err(),
@@ -1601,9 +1670,11 @@ mod tests {
         run.write_slot(SlotIdx::new(0), SlotValue::I64(0))?;
         let mut store = ValueStore::new();
 
-        let node = plan.node(StepIdx::new(0)).ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 0 missing",
-        })?;
+        let node = plan
+            .node(StepIdx::new(0))
+            .ok_or(CoreError::InternalInvariantViolation {
+                reason: "node 0 missing",
+            })?;
         let action = replay_step(node, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
 
         match action {
@@ -1650,14 +1721,15 @@ mod tests {
         )?;
         let mut store = ValueStore::new();
 
-        let node = plan.node(StepIdx::new(0)).ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 0 missing",
-        })?;
+        let node = plan
+            .node(StepIdx::new(0))
+            .ok_or(CoreError::InternalInvariantViolation {
+                reason: "node 0 missing",
+            })?;
         let action = replay_step(node, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
 
         match action {
-            ReplayAction::Suspended { step, kind }
-                if step == StepIdx::new(0) && kind == "Do" => {}
+            ReplayAction::Suspended { step, kind } if step == StepIdx::new(0) && kind == "Do" => {}
             _ => {
                 return Err(CoreError::InternalInvariantViolation {
                     reason: "Do should return Suspended(0, Do)",
@@ -1693,14 +1765,15 @@ mod tests {
         )?;
         let mut store = ValueStore::new();
 
-        let node = plan.node(StepIdx::new(0)).ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 0 missing",
-        })?;
+        let node = plan
+            .node(StepIdx::new(0))
+            .ok_or(CoreError::InternalInvariantViolation {
+                reason: "node 0 missing",
+            })?;
         let action = replay_step(node, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
 
         match action {
-            ReplayAction::Suspended { step, kind }
-                if step == StepIdx::new(0) && kind == "Ask" => {}
+            ReplayAction::Suspended { step, kind } if step == StepIdx::new(0) && kind == "Ask" => {}
             _ => {
                 return Err(CoreError::InternalInvariantViolation {
                     reason: "Ask should return Suspended(0, Ask)",
@@ -1735,9 +1808,11 @@ mod tests {
         )?;
         let mut store = ValueStore::new();
 
-        let node = plan.node(StepIdx::new(0)).ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 0 missing",
-        })?;
+        let node = plan
+            .node(StepIdx::new(0))
+            .ok_or(CoreError::InternalInvariantViolation {
+                reason: "node 0 missing",
+            })?;
         let action = replay_step(node, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
 
         match action {
@@ -1778,9 +1853,11 @@ mod tests {
         )?;
         let mut store = ValueStore::new();
 
-        let node = plan.node(StepIdx::new(0)).ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 0 missing",
-        })?;
+        let node = plan
+            .node(StepIdx::new(0))
+            .ok_or(CoreError::InternalInvariantViolation {
+                reason: "node 0 missing",
+            })?;
         let action = replay_step(node, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
 
         match action {
@@ -1856,16 +1933,19 @@ mod tests {
         let mut run = RunFrame::new(RunId::new(0), StepIdx::new(0), step_count, slot_count)?;
         let mut store = ValueStore::new();
 
-        let node0 = plan.node(StepIdx::new(0)).ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 0 missing",
-        })?;
+        let node0 = plan
+            .node(StepIdx::new(0))
+            .ok_or(CoreError::InternalInvariantViolation {
+                reason: "node 0 missing",
+            })?;
         replay_step(node0, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
 
-        let node1 = plan.node(StepIdx::new(1)).ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 1 missing",
-        })?;
-        let action =
-            replay_step(node1, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
+        let node1 = plan
+            .node(StepIdx::new(1))
+            .ok_or(CoreError::InternalInvariantViolation {
+                reason: "node 1 missing",
+            })?;
+        let action = replay_step(node1, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
 
         match action {
             ReplayAction::Continue(next) if next == StepIdx::new(2) => {}
@@ -1937,16 +2017,19 @@ mod tests {
         let mut run = RunFrame::new(RunId::new(0), StepIdx::new(0), step_count, slot_count)?;
         let mut store = ValueStore::new();
 
-        let node0 = plan.node(StepIdx::new(0)).ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 0 missing",
-        })?;
+        let node0 = plan
+            .node(StepIdx::new(0))
+            .ok_or(CoreError::InternalInvariantViolation {
+                reason: "node 0 missing",
+            })?;
         replay_step(node0, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
 
-        let node1 = plan.node(StepIdx::new(1)).ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 1 missing",
-        })?;
-        let action =
-            replay_step(node1, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
+        let node1 = plan
+            .node(StepIdx::new(1))
+            .ok_or(CoreError::InternalInvariantViolation {
+                reason: "node 1 missing",
+            })?;
+        let action = replay_step(node1, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
 
         match action {
             ReplayAction::Continue(next) if next == StepIdx::new(3) => {}
@@ -2011,9 +2094,11 @@ mod tests {
         let mut store = ValueStore::new();
 
         for idx in 0u16..4 {
-            let node = plan.node(StepIdx::new(idx)).ok_or(CoreError::InternalInvariantViolation {
-                reason: "node missing",
-            })?;
+            let node =
+                plan.node(StepIdx::new(idx))
+                    .ok_or(CoreError::InternalInvariantViolation {
+                        reason: "node missing",
+                    })?;
             replay_step(node, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
         }
 
@@ -2085,15 +2170,19 @@ mod tests {
         let mut store = ValueStore::new();
 
         for idx in 0u16..2 {
-            let node = plan.node(StepIdx::new(idx)).ok_or(CoreError::InternalInvariantViolation {
-                reason: "node missing",
-            })?;
+            let node =
+                plan.node(StepIdx::new(idx))
+                    .ok_or(CoreError::InternalInvariantViolation {
+                        reason: "node missing",
+                    })?;
             replay_step(node, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
         }
 
-        let node2 = plan.node(StepIdx::new(2)).ok_or(CoreError::InternalInvariantViolation {
-            reason: "node 2 missing",
-        })?;
+        let node2 = plan
+            .node(StepIdx::new(2))
+            .ok_or(CoreError::InternalInvariantViolation {
+                reason: "node 2 missing",
+            })?;
         replay_step(node2, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
 
         match *run.read_slot(SlotIdx::new(2))? {

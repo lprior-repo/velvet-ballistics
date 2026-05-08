@@ -3,9 +3,9 @@
 use vb_core::{DiagnosticCode, RunId, WorkflowDigest};
 
 use crate::{
-    decode_frame, decode_payload, encode_payload, BoundedPayload, IngressFrame, IpcCommand,
-    IpcError, IpcFrameHeader, IpcPayload, MaxPayloadBytes, MemoryIngress, QueueCapacity,
-    SubmitRunPayload, IPC_HEADER_LEN, IPC_MAGIC, IPC_VERSION,
+    BoundedPayload, IPC_HEADER_LEN, IPC_MAGIC, IPC_VERSION, IngressFrame, IpcCommand, IpcError,
+    IpcFrameHeader, IpcPayload, MaxPayloadBytes, MemoryIngress, QueueCapacity, SubmitRunPayload,
+    decode_frame, decode_payload, encode_payload,
 };
 use bytes::Bytes;
 
@@ -59,8 +59,7 @@ fn header_bytes(
     bytes.extend_from_slice(&correlation.to_le_bytes());
     bytes.extend_from_slice(&payload_len.to_le_bytes());
 
-    <[u8; IPC_HEADER_LEN]>::try_from(bytes.as_slice())
-        .map_err(|_| IpcError::HeaderEncodeFailed)
+    <[u8; IPC_HEADER_LEN]>::try_from(bytes.as_slice()).map_err(|_| IpcError::HeaderEncodeFailed)
 }
 
 #[test]
@@ -119,10 +118,7 @@ fn command_ids_cover_required_surface() {
     assert_eq!(IpcCommand::from_u16(14), Ok(IpcCommand::GetWorkflowGraph));
     assert_eq!(IpcCommand::from_u16(15), Ok(IpcCommand::GetTaintReport));
     assert_eq!(IpcCommand::from_u16(16), Ok(IpcCommand::VerifyWorkflow));
-    assert_eq!(
-        IpcCommand::from_u16(17),
-        Err(IpcError::UnknownCommand(17))
-    );
+    assert_eq!(IpcCommand::from_u16(17), Err(IpcError::UnknownCommand(17)));
 }
 
 #[test]
@@ -201,7 +197,11 @@ fn frame_decode_requires_payload_length_match() {
     assert_ok!(encoded, "header should encode to fixed width");
     let Ok(encoded) = encoded else { return };
 
-    let decoded = decode_frame(&encoded, Bytes::from_static(b"abc"), MaxPayloadBytes::DEFAULT);
+    let decoded = decode_frame(
+        &encoded,
+        Bytes::from_static(b"abc"),
+        MaxPayloadBytes::DEFAULT,
+    );
 
     assert_eq!(
         decoded,
@@ -334,7 +334,12 @@ fn ingress_frame_rejects_payload_exceeding_max() {
         std::num::NonZeroUsize::new(50).unwrap_or(std::num::NonZeroUsize::MIN),
     );
 
-    let result = IngressFrame::new(RunId::new(1), WorkflowDigest::from_bytes([0; 32]), data, max);
+    let result = IngressFrame::new(
+        RunId::new(1),
+        WorkflowDigest::from_bytes([0; 32]),
+        data,
+        max,
+    );
 
     assert_eq!(
         result,
@@ -470,9 +475,8 @@ fn frame_decode_succeeds_when_payload_length_matches() {
 
 #[test]
 fn memory_ingress_len_reflects_queue_depth() {
-    let capacity = QueueCapacity::new(
-        std::num::NonZeroUsize::new(4).unwrap_or(std::num::NonZeroUsize::MIN),
-    );
+    let capacity =
+        QueueCapacity::new(std::num::NonZeroUsize::new(4).unwrap_or(std::num::NonZeroUsize::MIN));
     let queue = MemoryIngress::bounded(capacity);
 
     let frame_zero = IngressFrame::new(
@@ -511,9 +515,8 @@ fn memory_ingress_len_reflects_queue_depth() {
 
 #[test]
 fn memory_ingress_try_recv_returns_frames_in_fifo_order() {
-    let capacity = QueueCapacity::new(
-        std::num::NonZeroUsize::new(4).unwrap_or(std::num::NonZeroUsize::MIN),
-    );
+    let capacity =
+        QueueCapacity::new(std::num::NonZeroUsize::new(4).unwrap_or(std::num::NonZeroUsize::MIN));
     let queue = MemoryIngress::bounded(capacity);
     let frame1 = IngressFrame::new(
         RunId::new(1),
@@ -547,9 +550,8 @@ fn memory_ingress_try_recv_returns_frames_in_fifo_order() {
 
 #[test]
 fn memory_ingress_is_empty_after_draining_all_frames() {
-    let capacity = QueueCapacity::new(
-        std::num::NonZeroUsize::new(4).unwrap_or(std::num::NonZeroUsize::MIN),
-    );
+    let capacity =
+        QueueCapacity::new(std::num::NonZeroUsize::new(4).unwrap_or(std::num::NonZeroUsize::MIN));
     let queue = MemoryIngress::bounded(capacity);
     let frame = IngressFrame::new(
         RunId::new(99),
@@ -570,7 +572,9 @@ fn memory_ingress_is_empty_after_draining_all_frames() {
 
 #[test]
 fn payload_roundtrip_preserves_cancel_run_variant() {
-    let payload = IpcPayload::CancelRun { run_id: RunId::new(42) };
+    let payload = IpcPayload::CancelRun {
+        run_id: RunId::new(42),
+    };
 
     let encoded = encode_payload(&payload, MaxPayloadBytes::DEFAULT);
     assert_ok!(encoded, "payload should encode");
@@ -684,7 +688,9 @@ fn payload_roundtrip_preserves_shutdown_variant() {
 
 #[test]
 fn payload_roundtrip_preserves_inspect_run_variant() {
-    let payload = IpcPayload::InspectRun { run_id: RunId::new(333) };
+    let payload = IpcPayload::InspectRun {
+        run_id: RunId::new(333),
+    };
 
     let encoded = encode_payload(&payload, MaxPayloadBytes::DEFAULT);
     assert_ok!(encoded, "payload should encode");
@@ -823,9 +829,8 @@ fn max_payload_bytes_default_is_one_mib() {
 
 #[test]
 fn queue_capacity_returns_inner_value() {
-    let cap = QueueCapacity::new(
-        std::num::NonZeroUsize::new(42).unwrap_or(std::num::NonZeroUsize::MIN),
-    );
+    let cap =
+        QueueCapacity::new(std::num::NonZeroUsize::new(42).unwrap_or(std::num::NonZeroUsize::MIN));
     assert_eq!(cap.get(), 42);
 }
 
@@ -939,21 +944,24 @@ fn header_encode_decode_roundtrip_preserves_payload_len() {
 
 #[test]
 fn ingress_frame_rejects_empty_payload_with_min_max() {
-    let max = MaxPayloadBytes::new(
-        std::num::NonZeroUsize::new(1).unwrap_or(std::num::NonZeroUsize::MIN),
-    );
+    let max =
+        MaxPayloadBytes::new(std::num::NonZeroUsize::new(1).unwrap_or(std::num::NonZeroUsize::MIN));
     let data = Bytes::new();
 
-    let result = IngressFrame::new(RunId::new(1), WorkflowDigest::from_bytes([0; 32]), data, max);
+    let result = IngressFrame::new(
+        RunId::new(1),
+        WorkflowDigest::from_bytes([0; 32]),
+        data,
+        max,
+    );
 
     assert_ok!(result, "empty payload should fit within any non-zero max");
 }
 
 #[test]
 fn memory_ingress_submit_and_recv_single_frame() {
-    let capacity = QueueCapacity::new(
-        std::num::NonZeroUsize::new(2).unwrap_or(std::num::NonZeroUsize::MIN),
-    );
+    let capacity =
+        QueueCapacity::new(std::num::NonZeroUsize::new(2).unwrap_or(std::num::NonZeroUsize::MIN));
     let queue = MemoryIngress::bounded(capacity);
     let frame = IngressFrame::new(
         RunId::new(42),
@@ -1011,14 +1019,20 @@ fn ipc_error_full_display_message() {
 fn ipc_error_header_encode_failed_display() {
     let error = IpcError::HeaderEncodeFailed;
     let message = error.to_string();
-    assert!(message.contains("encode"), "expected 'encode' in '{message}'");
+    assert!(
+        message.contains("encode"),
+        "expected 'encode' in '{message}'"
+    );
 }
 
 #[test]
 fn ipc_error_header_decode_failed_display() {
     let error = IpcError::HeaderDecodeFailed;
     let message = error.to_string();
-    assert!(message.contains("decode"), "expected 'decode' in '{message}'");
+    assert!(
+        message.contains("decode"),
+        "expected 'decode' in '{message}'"
+    );
 }
 
 #[test]
@@ -1032,7 +1046,10 @@ fn ipc_error_payload_length_out_of_range_display() {
 fn ipc_error_payload_encode_failed_display() {
     let error = IpcError::PayloadEncodeFailed;
     let message = error.to_string();
-    assert!(message.contains("encode"), "expected 'encode' in '{message}'");
+    assert!(
+        message.contains("encode"),
+        "expected 'encode' in '{message}'"
+    );
 }
 
 #[test]
@@ -1069,7 +1086,11 @@ fn ipc_error_runtime_codes_cover_ipc_mappings() {
         Some("IPC_FRAME_INVALID")
     );
     assert_eq!(
-        IpcError::PayloadLengthMismatch { header: 4, actual: 3 }.runtime_code(),
+        IpcError::PayloadLengthMismatch {
+            header: 4,
+            actual: 3
+        }
+        .runtime_code(),
         Some("IPC_FRAME_INVALID")
     );
     assert_eq!(
@@ -1085,7 +1106,11 @@ fn ipc_error_runtime_codes_cover_ipc_mappings() {
         Some("IPC_FRAME_INVALID")
     );
     assert_eq!(
-        IpcError::PayloadTooLarge { actual: 9, limit: 8 }.runtime_code(),
+        IpcError::PayloadTooLarge {
+            actual: 9,
+            limit: 8
+        }
+        .runtime_code(),
         Some("IPC_PAYLOAD_TOO_LARGE")
     );
     assert_eq!(
@@ -1103,7 +1128,11 @@ fn ipc_error_runtime_codes_are_unique() {
     ];
     assert_eq!(codes.len(), 3);
     assert_eq!(
-        codes.iter().copied().collect::<std::collections::BTreeSet<_>>().len(),
+        codes
+            .iter()
+            .copied()
+            .collect::<std::collections::BTreeSet<_>>()
+            .len(),
         3
     );
 }
@@ -1117,18 +1146,28 @@ fn ipc_error_runtime_code_is_absent_without_direct_mapping() {
 
 #[test]
 fn ipc_error_diagnostic_code_full() {
-    assert_eq!(IpcError::Full.diagnostic_code(), DiagnosticCode::new(0x3001));
+    assert_eq!(
+        IpcError::Full.diagnostic_code(),
+        DiagnosticCode::new(0x3001)
+    );
 }
 
 #[test]
 fn ipc_error_diagnostic_code_disconnected() {
-    assert_eq!(IpcError::Disconnected.diagnostic_code(), DiagnosticCode::new(0x3002));
+    assert_eq!(
+        IpcError::Disconnected.diagnostic_code(),
+        DiagnosticCode::new(0x3002)
+    );
 }
 
 #[test]
 fn ipc_error_diagnostic_code_payload_too_large() {
     assert_eq!(
-        IpcError::PayloadTooLarge { actual: 100, limit: 10 }.diagnostic_code(),
+        IpcError::PayloadTooLarge {
+            actual: 100,
+            limit: 10
+        }
+        .diagnostic_code(),
         DiagnosticCode::new(0x3003)
     );
 }
@@ -1136,7 +1175,10 @@ fn ipc_error_diagnostic_code_payload_too_large() {
 #[test]
 fn ipc_error_diagnostic_code_invalid_magic() {
     assert_eq!(
-        IpcError::InvalidMagic { actual: 0xDEAD_BEEF }.diagnostic_code(),
+        IpcError::InvalidMagic {
+            actual: 0xDEAD_BEEF
+        }
+        .diagnostic_code(),
         DiagnosticCode::new(0x3004)
     );
 }
@@ -1168,7 +1210,11 @@ fn ipc_error_diagnostic_code_reserved_non_zero() {
 #[test]
 fn ipc_error_diagnostic_code_payload_length_mismatch() {
     assert_eq!(
-        IpcError::PayloadLengthMismatch { header: 4, actual: 3 }.diagnostic_code(),
+        IpcError::PayloadLengthMismatch {
+            header: 4,
+            actual: 3
+        }
+        .diagnostic_code(),
         DiagnosticCode::new(0x3008)
     );
 }
@@ -1225,7 +1271,9 @@ fn ipc_error_diagnostic_code_response_decode_failed() {
 
 #[test]
 fn adversarial_cancel_run_with_run_id_zero_encoded_rejected_by_runtime() {
-    let payload = IpcPayload::CancelRun { run_id: RunId::new(0) };
+    let payload = IpcPayload::CancelRun {
+        run_id: RunId::new(0),
+    };
     let encoded = encode_payload(&payload, MaxPayloadBytes::DEFAULT);
     assert_ok!(encoded);
     let Ok(encoded) = encoded else { return };
@@ -1234,12 +1282,19 @@ fn adversarial_cancel_run_with_run_id_zero_encoded_rejected_by_runtime() {
 
     assert_ok!(decoded, "CancelRun with run_id=0 should decode");
     let Ok(decoded) = decoded else { return };
-    assert_eq!(decoded, IpcPayload::CancelRun { run_id: RunId::new(0) });
+    assert_eq!(
+        decoded,
+        IpcPayload::CancelRun {
+            run_id: RunId::new(0)
+        }
+    );
 }
 
 #[test]
 fn adversarial_cancel_run_with_run_id_max_encoded_roundtrips() {
-    let payload = IpcPayload::CancelRun { run_id: RunId::new(u64::MAX) };
+    let payload = IpcPayload::CancelRun {
+        run_id: RunId::new(u64::MAX),
+    };
     let encoded = encode_payload(&payload, MaxPayloadBytes::DEFAULT);
     assert_ok!(encoded);
     let Ok(encoded) = encoded else { return };
@@ -1670,7 +1725,9 @@ fn frame_validation_header_claims_more_data_than_available_returns_error() {
 
     let decoded_header = crate::frame::read_frame_header(&mut cursor);
     assert_ok!(decoded_header, "header read should succeed");
-    let Ok(decoded_header) = decoded_header else { return };
+    let Ok(decoded_header) = decoded_header else {
+        return;
+    };
 
     let short_data = vec![0u8; 5];
     let mut payload_cursor = std::io::Cursor::new(short_data.as_slice());

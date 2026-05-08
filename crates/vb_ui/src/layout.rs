@@ -797,16 +797,15 @@ mod tests {
     fn all_nodes_receive_position() {
         // Every input node must appear in the positions map, even if
         // disconnected or referenced by no edges.
-        let nodes = vec![
-            node("entry"),
-            node("mid"),
-            node("leaf"),
-            node("island"),
-        ];
+        let nodes = vec![node("entry"), node("mid"), node("leaf"), node("island")];
         let edges = vec![edge("entry", "mid"), edge("mid", "leaf")];
         let result = compute_layout(&nodes, &edges, "entry");
 
-        assert_eq!(result.positions.len(), 4, "every input node must have a position");
+        assert_eq!(
+            result.positions.len(),
+            4,
+            "every input node must have a position"
+        );
         for id in &["entry", "mid", "leaf", "island"] {
             let pos = match result.positions.get(*id) {
                 Some(p) => p,
@@ -1013,8 +1012,10 @@ mod tests {
         // as potentially containing NaN.
         if let Some(b) = bounds {
             // If present, at least verify we can observe the NaN corruption.
-            let has_nan = !b.x.is_finite() || !b.y.is_finite()
-                || !b.width.is_finite() || !b.height.is_finite();
+            let has_nan = !b.x.is_finite()
+                || !b.y.is_finite()
+                || !b.width.is_finite()
+                || !b.height.is_finite();
             assert!(
                 has_nan,
                 "NaN dimensions should produce NaN bounds or absent group, \
@@ -1039,13 +1040,11 @@ mod tests {
         let result_many = compute_layout(&nodes, &edges_many, "a");
 
         assert_eq!(
-            result_single.positions["a"],
-            result_many.positions["a"],
+            result_single.positions["a"], result_many.positions["a"],
             "duplicate edges should not affect layout",
         );
         assert_eq!(
-            result_single.positions["b"],
-            result_many.positions["b"],
+            result_single.positions["b"], result_many.positions["b"],
             "duplicate edges should not affect layout",
         );
     }
@@ -1113,7 +1112,10 @@ mod tests {
 
         // All nodes should have finite positions.
         for (id, pos) in &result.positions {
-            assert!(pos[0].is_finite() && pos[1].is_finite(), "{id} must be finite");
+            assert!(
+                pos[0].is_finite() && pos[1].is_finite(),
+                "{id} must be finite"
+            );
         }
     }
 
@@ -1230,7 +1232,8 @@ mod tests {
         assert!(
             x_d > x_a + 2.0 * COLUMN_SPACING,
             "d should be at column 3 via longest path, x_a={}, x_d={}",
-            x_a, x_d,
+            x_a,
+            x_d,
         );
     }
 
@@ -1345,10 +1348,7 @@ mod tests {
         // Create nodes where one is in a group but we don't call
         // compute_layout directly. Instead verify the guard by testing
         // with a valid setup and checking groups are present.
-        let nodes = vec![
-            node_in_group("a", "g1"),
-            node("b"),
-        ];
+        let nodes = vec![node_in_group("a", "g1"), node("b")];
         let edges = vec![edge("a", "b")];
         let result = compute_layout(&nodes, &edges, "a");
 

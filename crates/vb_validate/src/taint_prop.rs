@@ -7,7 +7,7 @@
 
 use crate::ValidationResult;
 
-use crate::fact_table::{resolve_value, write_slot, Facts};
+use crate::fact_table::{Facts, resolve_value, write_slot};
 use crate::type_sigs::{StepKind, Taint, ValueFact, WorkflowTypes};
 
 /// Validates secret taint tracking; rejects secret data leaking into results.
@@ -48,8 +48,8 @@ fn validate_step_taint(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::type_sigs::{InputDecl, StepTypes, TypedValue, ValueType};
     use crate::ValidationError;
+    use crate::type_sigs::{InputDecl, StepTypes, TypedValue, ValueType};
 
     fn make_workflow(steps: Vec<StepTypes>) -> WorkflowTypes {
         WorkflowTypes {
@@ -86,7 +86,10 @@ mod tests {
 
     #[test]
     fn accepts_clean_finish() {
-        let wf = make_workflow(vec![finish_step("done", TypedValue::Literal(ValueType::Number))]);
+        let wf = make_workflow(vec![finish_step(
+            "done",
+            TypedValue::Literal(ValueType::Number),
+        )]);
         assert_eq!(validate_taint(&wf), Ok(()));
     }
 

@@ -45,15 +45,19 @@ pub fn compute_stack_depth(ops: &[ExprOp]) -> ValidationResult<u8> {
     let mut max_depth: u8 = 0;
     for op in ops {
         let pop_amount = pop_count(op);
-        depth = depth.checked_sub(pop_amount).ok_or(ValidationError::ExpressionStackExceeded {
-            declared: 0,
-            limit: usize::from(MAX_EXPR_STACK_DEPTH),
-        })?;
+        depth = depth
+            .checked_sub(pop_amount)
+            .ok_or(ValidationError::ExpressionStackExceeded {
+                declared: 0,
+                limit: usize::from(MAX_EXPR_STACK_DEPTH),
+            })?;
         let push_amount = push_count(op);
-        depth = depth.checked_add(push_amount).ok_or(ValidationError::ExpressionStackExceeded {
-            declared: usize::from(depth) + usize::from(push_amount),
-            limit: usize::from(MAX_EXPR_STACK_DEPTH),
-        })?;
+        depth = depth
+            .checked_add(push_amount)
+            .ok_or(ValidationError::ExpressionStackExceeded {
+                declared: usize::from(depth) + usize::from(push_amount),
+                limit: usize::from(MAX_EXPR_STACK_DEPTH),
+            })?;
         if depth > max_depth {
             max_depth = depth;
         }
@@ -64,7 +68,13 @@ pub fn compute_stack_depth(ops: &[ExprOp]) -> ValidationResult<u8> {
 fn pop_count(op: &ExprOp) -> u8 {
     match op {
         ExprOp::LoadSlot(_) | ExprOp::LoadConst(_) | ExprOp::LoadAccessor(_) => 0,
-        ExprOp::Not | ExprOp::Exists | ExprOp::Length | ExprOp::Empty | ExprOp::Sum | ExprOp::Count | ExprOp::Unique => 1,
+        ExprOp::Not
+        | ExprOp::Exists
+        | ExprOp::Length
+        | ExprOp::Empty
+        | ExprOp::Sum
+        | ExprOp::Count
+        | ExprOp::Unique => 1,
         ExprOp::AppendIf => 3,
         _ => 2,
     }
@@ -78,9 +88,7 @@ fn push_count(_op: &ExprOp) -> u8 {
 mod tests {
     use super::*;
     use vb_core::ids::{SlotIdx, StepIdx};
-    use vb_core::workflow::{
-        CompiledNode, CompiledNodeKind, ExprProgram, ResourceContract,
-    };
+    use vb_core::workflow::{CompiledNode, CompiledNodeKind, ExprProgram, ResourceContract};
 
     fn make_parts(nodes: Vec<CompiledNode>, slot_count: u16) -> WorkflowParts {
         WorkflowParts {
@@ -163,10 +171,7 @@ mod tests {
     fn accepts_unary_op_after_load() {
         let mut parts = make_parts(vec![finish_node(0, 0)], 1);
         parts.expressions = Box::new([ExprProgram {
-            ops: Box::new([
-                ExprOp::LoadSlot(SlotIdx::new(0)),
-                ExprOp::Not,
-            ]),
+            ops: Box::new([ExprOp::LoadSlot(SlotIdx::new(0)), ExprOp::Not]),
             max_stack: 1,
         }]);
         assert_eq!(validate_gate_07_expression_stack_depth(&parts), Ok(()));

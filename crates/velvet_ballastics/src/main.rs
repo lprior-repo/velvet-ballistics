@@ -18,8 +18,10 @@ use std::process::ExitCode;
 use std::sync::Arc;
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
-use args::{Command, DurabilityMode, EmitTarget, OutputFormat, ParseError, StepTarget, VerifyProfile};
 use args::parse_args;
+use args::{
+    Command, DurabilityMode, EmitTarget, OutputFormat, ParseError, StepTarget, VerifyProfile,
+};
 use exit_code::CliExitCode;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -152,7 +154,10 @@ fn main() -> ExitCode {
             output,
         }) => cmd_submit(&workflow, &input_bin, &db, durability, output),
         Ok(Command::Simulate { workflow, output }) => cmd_simulate(&workflow, output),
-        Err(e) => exit_from_io(&write_error_stderr(&e), CliExitCode::ValidationFailed.into()),
+        Err(e) => exit_from_io(
+            &write_error_stderr(&e),
+            CliExitCode::ValidationFailed.into(),
+        ),
     }
 }
 
@@ -178,7 +183,11 @@ fn parse_run_id(raw: &str) -> Result<vb_core::RunId, ExitCode> {
     }
 }
 
-fn report_storage_open_error(e: &vb_storage::JournalError, db: &std::path::Path, output: OutputFormat) {
+fn report_storage_open_error(
+    e: &vb_storage::JournalError,
+    db: &std::path::Path,
+    output: OutputFormat,
+) {
     if output != OutputFormat::Text {
         json_error(
             &serde_json::json!({
@@ -198,8 +207,10 @@ fn read_journal_events(
     output: OutputFormat,
 ) -> Result<Vec<vb_storage::JournalEvent>, ExitCode> {
     let rid = parse_run_id(run_id)?;
-    let journal = vb_storage::FjallJournal::open(db, None)
-        .map_err(|e| -> ExitCode { report_storage_open_error(&e, db, output); CliExitCode::StorageError.into() })?;
+    let journal = vb_storage::FjallJournal::open(db, None).map_err(|e| -> ExitCode {
+        report_storage_open_error(&e, db, output);
+        CliExitCode::StorageError.into()
+    })?;
     journal.events_for_run(rid).map_err(|e| {
         if output != OutputFormat::Text {
             json_error(&serde_json::json!({ "success": false, "error": format!("error reading run {run_id}: {e}") }), output);
@@ -694,7 +705,11 @@ fn cmd_submit(
     };
 
     let digest = compiled.digest();
-    let digest_hex: String = digest.as_bytes().iter().map(|b| format!("{b:02x}")).collect();
+    let digest_hex: String = digest
+        .as_bytes()
+        .iter()
+        .map(|b| format!("{b:02x}"))
+        .collect();
     let step_count = compiled.node_count();
 
     // Generate run_id from timestamp
@@ -1799,8 +1814,8 @@ fn cmd_replay(run_id: &str, db: &std::path::Path, output: OutputFormat) -> ExitC
     let mut tracker = vb_storage::recovery::ActionReplayTracker::new();
     match vb_storage::recovery::recover_full_journal(&journal, rid, &mut tracker) {
         Ok(events) => {
-            let terminal_name =
-                vb_storage::recovery::extract_terminal(&events).map(|e| commands_diff::event_name(e).to_string());
+            let terminal_name = vb_storage::recovery::extract_terminal(&events)
+                .map(|e| commands_diff::event_name(e).to_string());
 
             match output {
                 OutputFormat::Json => {
@@ -1862,7 +1877,6 @@ fn cmd_replay(run_id: &str, db: &std::path::Path, output: OutputFormat) -> ExitC
     ExitCode::SUCCESS
 }
 
-
 fn cmd_trace(run_id: &str, db: &std::path::Path, output: OutputFormat) -> ExitCode {
     let events = match read_journal_events(run_id, db, output) {
         Ok(ev) => ev,
@@ -1871,17 +1885,30 @@ fn cmd_trace(run_id: &str, db: &std::path::Path, output: OutputFormat) -> ExitCo
     let trace = commands_journal::build_trace(&events);
     if trace.is_empty() {
         if output != OutputFormat::Text {
-            json_out(&serde_json::json!({ "run_id": run_id, "trace": [], "total": 0 }), output);
-        } else { outln!("no events found for run {run_id}"); }
+            json_out(
+                &serde_json::json!({ "run_id": run_id, "trace": [], "total": 0 }),
+                output,
+            );
+        } else {
+            outln!("no events found for run {run_id}");
+        }
         return CliExitCode::Success.into();
     }
     match output {
         OutputFormat::Json => {
             let entries: Vec<serde_json::Value> = trace.iter().map(trace_entry_to_json).collect();
-            json_out(&serde_json::json!({ "run_id": run_id, "trace": entries, "total": trace.len() }), output);
+            json_out(
+                &serde_json::json!({ "run_id": run_id, "trace": entries, "total": trace.len() }),
+                output,
+            );
         }
         OutputFormat::Jsonl => {
-            for entry in &trace { outln!("{}", serde_json::to_string(&trace_entry_to_json(entry)).unwrap_or_default()); }
+            for entry in &trace {
+                outln!(
+                    "{}",
+                    serde_json::to_string(&trace_entry_to_json(entry)).unwrap_or_default()
+                );
+            }
             outln!("{{\"total\": {}}}", trace.len());
         }
         OutputFormat::Text => {
@@ -1901,8 +1928,12 @@ fn trace_entry_to_json(entry: &commands_journal::TraceEntry) -> serde_json::Valu
     let mut map = serde_json::Map::new();
     map.insert("seq".into(), serde_json::Value::from(entry.seq));
     map.insert("type".into(), serde_json::Value::from(entry.event_type));
-    if let Some(step) = entry.step { map.insert("step".into(), serde_json::Value::from(step)); }
-    for (k, v) in &entry.extra_json { map.insert((*k).into(), v.clone()); }
+    if let Some(step) = entry.step {
+        map.insert("step".into(), serde_json::Value::from(step));
+    }
+    for (k, v) in &entry.extra_json {
+        map.insert((*k).into(), v.clone());
+    }
     serde_json::Value::Object(map)
 }
 
@@ -1913,28 +1944,45 @@ fn cmd_retry(run_id: &str, db: &std::path::Path, output: OutputFormat) -> ExitCo
     };
     if events.is_empty() {
         if output != OutputFormat::Text {
-            json_error(&serde_json::json!({ "success": false, "error": format!("run {run_id} not found") }), output);
-        } else { errln!("run {run_id}: no events found"); }
+            json_error(
+                &serde_json::json!({ "success": false, "error": format!("run {run_id} not found") }),
+                output,
+            );
+        } else {
+            errln!("run {run_id}: no events found");
+        }
         return CliExitCode::StorageError.into();
     }
     let analysis = commands_journal::analyze_retry(&events);
     if !analysis.can_retry {
         if output != OutputFormat::Text {
-            json_error(&serde_json::json!({ "success": false, "error": format!("run {run_id} {}", analysis.reason) }), output);
-        } else { errln!("run {run_id} {}", analysis.reason); }
+            json_error(
+                &serde_json::json!({ "success": false, "error": format!("run {run_id} {}", analysis.reason) }),
+                output,
+            );
+        } else {
+            errln!("run {run_id} {}", analysis.reason);
+        }
         return CliExitCode::ValidationFailed.into();
     }
     let resume_step = analysis.last_successful_step.map(|s| s.saturating_add(1));
     if output != OutputFormat::Text {
-        json_out(&serde_json::json!({
-            "run_id": run_id, "failed_at_step": analysis.failed_at_step,
-            "last_successful_step": analysis.last_successful_step,
-            "resume_from_step": resume_step, "events": events.len()
-        }), output);
+        json_out(
+            &serde_json::json!({
+                "run_id": run_id, "failed_at_step": analysis.failed_at_step,
+                "last_successful_step": analysis.last_successful_step,
+                "resume_from_step": resume_step, "events": events.len()
+            }),
+            output,
+        );
     } else {
         match (analysis.failed_at_step, analysis.last_successful_step) {
-            (Some(fail), Some(last)) => outln!("Run {run_id} failed at step {fail}. Last successful: step {last}."),
-            (Some(fail), None) => outln!("Run {run_id} failed at step {fail}. No successful steps recorded."),
+            (Some(fail), Some(last)) => {
+                outln!("Run {run_id} failed at step {fail}. Last successful: step {last}.")
+            }
+            (Some(fail), None) => {
+                outln!("Run {run_id} failed at step {fail}. No successful steps recorded.")
+            }
             (None, Some(last)) => outln!("Run {run_id} failed. Last successful: step {last}."),
             (None, None) => outln!("Run {run_id} failed. No step progress recorded."),
         }
@@ -1953,27 +2001,44 @@ fn cmd_resume(run_id: &str, db: &std::path::Path, output: OutputFormat) -> ExitC
     };
     if events.is_empty() {
         if output != OutputFormat::Text {
-            json_error(&serde_json::json!({ "success": false, "error": format!("run {run_id} not found") }), output);
-        } else { errln!("run {run_id}: no events found"); }
+            json_error(
+                &serde_json::json!({ "success": false, "error": format!("run {run_id} not found") }),
+                output,
+            );
+        } else {
+            errln!("run {run_id}: no events found");
+        }
         return CliExitCode::StorageError.into();
     }
     let analysis = commands_journal::analyze_resume(&events);
     if !analysis.can_resume {
         if output != OutputFormat::Text {
-            json_error(&serde_json::json!({ "success": false, "error": format!("run {run_id} {}", analysis.reason) }), output);
-        } else { errln!("run {run_id} {}", analysis.reason); }
+            json_error(
+                &serde_json::json!({ "success": false, "error": format!("run {run_id} {}", analysis.reason) }),
+                output,
+            );
+        } else {
+            errln!("run {run_id} {}", analysis.reason);
+        }
         return CliExitCode::ValidationFailed.into();
     }
     let resume_step = analysis.suspended_at_step;
     if output != OutputFormat::Text {
-        json_out(&serde_json::json!({
-            "run_id": run_id, "suspended_at_step": analysis.suspended_at_step,
-            "status": "suspended", "resume_from_step": resume_step, "events": events.len()
-        }), output);
+        json_out(
+            &serde_json::json!({
+                "run_id": run_id, "suspended_at_step": analysis.suspended_at_step,
+                "status": "suspended", "resume_from_step": resume_step, "events": events.len()
+            }),
+            output,
+        );
     } else {
         match resume_step {
-            Some(step) => outln!("Run {run_id} suspended at step {step}. Resume would continue from step {step} with recovered state."),
-            None => outln!("Run {run_id} is active but no explicit suspension point found. Resume would continue from current state."),
+            Some(step) => outln!(
+                "Run {run_id} suspended at step {step}. Resume would continue from step {step} with recovered state."
+            ),
+            None => outln!(
+                "Run {run_id} is active but no explicit suspension point found. Resume would continue from current state."
+            ),
         }
     }
     ExitCode::SUCCESS
@@ -2058,7 +2123,8 @@ fn cmd_incident(run_id: &str, db: &std::path::Path, output: OutputFormat) -> Exi
     }
 
     let report = commands_incident::build_incident_report(run_id, &events);
-    let failed_step_val = report.failed_at_step
+    let failed_step_val = report
+        .failed_at_step
         .map(|s| serde_json::Value::Number(serde_json::Number::from(s)))
         .unwrap_or(serde_json::Value::Null);
 
@@ -2198,7 +2264,10 @@ fn cmd_diff(run_a: &str, run_b: &str, db: &std::path::Path, output: OutputFormat
             for diff in &result.diffs {
                 outln!("{}", serde_json::to_string(diff).unwrap_or_default());
             }
-            outln!("{}", format!("{{\"total_differences\": {}}}", result.diffs.len()));
+            outln!(
+                "{}",
+                format!("{{\"total_differences\": {}}}", result.diffs.len())
+            );
         }
         OutputFormat::Text => {
             outln!("diff: run {run_a} vs run {run_b}");
@@ -2264,14 +2333,8 @@ fn print_diff_entry(diff: &serde_json::Value) {
         }
         "slot_value_differs" => {
             let s = diff.get("slot").and_then(|v| v.as_u64()).unwrap_or(0);
-            let va = diff
-                .get("value_a")
-                .and_then(|v| v.as_str())
-                .unwrap_or("?");
-            let vb = diff
-                .get("value_b")
-                .and_then(|v| v.as_str())
-                .unwrap_or("?");
+            let va = diff.get("value_a").and_then(|v| v.as_str()).unwrap_or("?");
+            let vb = diff.get("value_b").and_then(|v| v.as_str()).unwrap_or("?");
             outln!("  slot {s}: ~ {va} vs {vb}");
         }
         _ => {
@@ -2416,7 +2479,10 @@ fn explain_error(err: &vb_compile::CompileError) {
             outln!("Unknown Trigger Kind");
             outln!("  Trigger kind '{trigger}' is not recognized.");
         }
-        CompileError::TriggerShape { trigger, expected: _ } => {
+        CompileError::TriggerShape {
+            trigger,
+            expected: _,
+        } => {
             outln!("Invalid Trigger Shape");
             outln!("  Trigger '{trigger}' has the wrong structure.");
         }
@@ -2428,7 +2494,11 @@ fn explain_error(err: &vb_compile::CompileError) {
             outln!("Missing Trigger Field");
             outln!("  Trigger '{trigger}' is missing required field '{field}'.");
         }
-        CompileError::InvalidTriggerField { trigger, field, expected: _ } => {
+        CompileError::InvalidTriggerField {
+            trigger,
+            field,
+            expected: _,
+        } => {
             outln!("Invalid Trigger Field");
             outln!("  Trigger '{trigger}' field '{field}' is invalid.");
         }
@@ -2472,7 +2542,11 @@ fn explain_error(err: &vb_compile::CompileError) {
             outln!("Unknown Step Field");
             outln!("  Step {step} has unknown field '{field}'.");
         }
-        CompileError::UnknownStepPrimitiveField { step, primitive, field } => {
+        CompileError::UnknownStepPrimitiveField {
+            step,
+            primitive,
+            field,
+        } => {
             outln!("Unknown Primitive Field");
             outln!("  Step {step} primitive '{primitive}' has unknown field '{field}'.");
         }
@@ -2496,7 +2570,11 @@ fn explain_error(err: &vb_compile::CompileError) {
             outln!("Missing Step Field");
             outln!("  Step {step} is missing required field '{field}'.");
         }
-        CompileError::StepFieldShape { step, field, expected: _ } => {
+        CompileError::StepFieldShape {
+            step,
+            field,
+            expected: _,
+        } => {
             outln!("Invalid Step Field Shape");
             outln!("  Step {step} field '{field}' has wrong structure.");
         }
@@ -2516,9 +2594,16 @@ fn explain_error(err: &vb_compile::CompileError) {
             outln!("Backward Branch Target");
             outln!("  Step {step} branches to {target}, but forward branches are required.");
         }
-        CompileError::PrimitiveLoweringLimitExceeded { primitive, field, value, limit } => {
+        CompileError::PrimitiveLoweringLimitExceeded {
+            primitive,
+            field,
+            value,
+            limit,
+        } => {
             outln!("Primitive Limit Exceeded");
-            outln!("  Primitive '{primitive}' field '{field}' value {value} exceeds limit {limit}.");
+            outln!(
+                "  Primitive '{primitive}' field '{field}' value {value} exceeds limit {limit}."
+            );
         }
         CompileError::LastStepMustFinish => {
             outln!("Last Step Must Finish");
@@ -2536,13 +2621,23 @@ fn explain_error(err: &vb_compile::CompileError) {
             outln!("Illegal Reference");
             outln!("  Reference '{reference}' is not allowed in deterministic workflows.");
         }
-        CompileError::UnknownReferenceName { kind, reference, name } => {
+        CompileError::UnknownReferenceName {
+            kind,
+            reference,
+            name,
+        } => {
             outln!("Unknown Reference");
             outln!("  Reference '{reference}' refers to unknown {kind} '{name}'.");
         }
-        CompileError::UnsupportedAccessorReference { reference, root, path } => {
+        CompileError::UnsupportedAccessorReference {
+            reference,
+            root,
+            path,
+        } => {
             outln!("Unsupported Accessor Reference");
-            outln!("  Accessor reference '{reference}' (root: {root}, path: {path}) is not supported.");
+            outln!(
+                "  Accessor reference '{reference}' (root: {root}, path: {path}) is not supported."
+            );
         }
         CompileError::UnknownStepTarget { step, target } => {
             outln!("Unknown Step Target");
@@ -2552,7 +2647,11 @@ fn explain_error(err: &vb_compile::CompileError) {
             outln!("Unreachable Step");
             outln!("  Step {step} cannot be reached from the workflow entry point.");
         }
-        CompileError::TypeMismatch { field, expected, found } => {
+        CompileError::TypeMismatch {
+            field,
+            expected,
+            found,
+        } => {
             outln!("Type Mismatch");
             outln!("  Field '{field}': expected {expected}, but found {found}.");
         }
@@ -2722,25 +2821,53 @@ fn explain_validation_error(err: &vb_validate::ValidationError) {
             outln!("Expression Stack Exceeded");
             outln!("  Expression stack depth {declared} exceeds limit {limit}.");
         }
-        ValidationError::ExpressionStackMismatch { expr_index, declared, computed } => {
+        ValidationError::ExpressionStackMismatch {
+            expr_index,
+            declared,
+            computed,
+        } => {
             outln!("Expression Stack Mismatch");
-            outln!("  Expression {expr_index}: declared {declared} stack slots, computed {computed}.");
+            outln!(
+                "  Expression {expr_index}: declared {declared} stack slots, computed {computed}."
+            );
         }
-        ValidationError::AccessorSlotOutOfRange { accessor_index, slot, slot_count } => {
+        ValidationError::AccessorSlotOutOfRange {
+            accessor_index,
+            slot,
+            slot_count,
+        } => {
             outln!("Accessor Slot Out of Range");
-            outln!("  Accessor {accessor_index} references slot {slot}, but slot_count is {slot_count}.");
+            outln!(
+                "  Accessor {accessor_index} references slot {slot}, but slot_count is {slot_count}."
+            );
         }
-        ValidationError::AccessorPathInvalid { accessor_index, segment_index } => {
+        ValidationError::AccessorPathInvalid {
+            accessor_index,
+            segment_index,
+        } => {
             outln!("Accessor Path Invalid");
             outln!("  Accessor {accessor_index} has invalid segment at index {segment_index}.");
         }
-        ValidationError::SlotReferenceOutOfRange { slot, slot_count, context } => {
+        ValidationError::SlotReferenceOutOfRange {
+            slot,
+            slot_count,
+            context,
+        } => {
             outln!("Slot Reference Out of Range");
-            outln!("  Slot {slot} is out of range (slot_count={slot_count}) in context: {context}.");
+            outln!(
+                "  Slot {slot} is out of range (slot_count={slot_count}) in context: {context}."
+            );
         }
-        ValidationError::LoopBodyStepOutOfRange { step, node_count, source_node, label: _ } => {
+        ValidationError::LoopBodyStepOutOfRange {
+            step,
+            node_count,
+            source_node,
+            label: _,
+        } => {
             outln!("Loop Body Step Out of Range");
-            outln!("  Step {step}: loop body step out of range (node_count={node_count}, source_node={source_node}).");
+            outln!(
+                "  Step {step}: loop body step out of range (node_count={node_count}, source_node={source_node})."
+            );
         }
         ValidationError::SlotDependencyCycle { slot, chain } => {
             outln!("Slot Dependency Cycle");
@@ -2750,9 +2877,14 @@ fn explain_validation_error(err: &vb_validate::ValidationError) {
             outln!("Node Kind Constraint Violation");
             outln!("  Node {node_index}: {detail}.");
         }
-        ValidationError::ActionContractMissing { action_id, node_index } => {
+        ValidationError::ActionContractMissing {
+            action_id,
+            node_index,
+        } => {
             outln!("Action Contract Missing");
-            outln!("  Do node {node_index} references action_id {action_id}, which has no contract.");
+            outln!(
+                "  Do node {node_index} references action_id {action_id}, which has no contract."
+            );
         }
         ValidationError::ActionContractOrphan { action_id } => {
             outln!("Action Contract Orphan");
@@ -2768,7 +2900,6 @@ fn explain_validation_error(err: &vb_validate::ValidationError) {
         }
     }
 }
-
 
 fn cmd_graph(workflow: &std::path::Path, output: OutputFormat) -> ExitCode {
     let bytes = match read_file(workflow) {

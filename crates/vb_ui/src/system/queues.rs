@@ -113,7 +113,8 @@ impl QueueSnapshot {
         ];
         let mut worst = PressureLevel::Normal;
         for level in candidates {
-            if matches!(worst, PressureLevel::Normal) && matches!(level, PressureLevel::Warning | PressureLevel::Critical)
+            if matches!(worst, PressureLevel::Normal)
+                && matches!(level, PressureLevel::Warning | PressureLevel::Critical)
             {
                 worst = level;
             }
@@ -470,7 +471,7 @@ mod tests {
             journal_depth: 0,
             journal_capacity: 100,
             trace_fill_pct: 10.0,
-            frame_pool_free: 200,  // corrupt: free > total
+            frame_pool_free: 200, // corrupt: free > total
             frame_pool_total: 100,
         };
         // used = 100.saturating_sub(200) = 0

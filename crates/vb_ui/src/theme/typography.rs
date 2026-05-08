@@ -82,9 +82,7 @@ impl TextStyle {
     }
 
     /// Per-role defaults: (size_px, weight, color, letter_spacing).
-    const fn role_defaults(
-        role: FontRole,
-    ) -> (f32, FontWeight, [f32; 4], f32) {
+    const fn role_defaults(role: FontRole) -> (f32, FontWeight, [f32; 4], f32) {
         match role {
             FontRole::Display => (
                 FontRole::Display.default_size_px(),
@@ -216,7 +214,10 @@ mod tests {
             FontRole::Badge,
         ];
         for role in roles {
-            assert!(role.default_size_px() > 0.0, "size must be positive for {role:?}");
+            assert!(
+                role.default_size_px() > 0.0,
+                "size must be positive for {role:?}"
+            );
         }
     }
 

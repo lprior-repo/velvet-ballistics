@@ -985,10 +985,7 @@ mod tests {
                 "radius must be positive for {v:?}, got {radius}"
             );
             // Alpha channel of glow color must also be positive.
-            assert!(
-                color[3] > 0.0,
-                "glow alpha must be positive for {v:?}"
-            );
+            assert!(color[3] > 0.0, "glow alpha must be positive for {v:?}");
         }
     }
 
@@ -1157,14 +1154,8 @@ mod tests {
         for cat in &categories {
             let hdr = node_header_color(*cat);
             let body = node_body_color(*cat);
-            assert!(
-                hdr[3] > 0.0,
-                "header alpha must be positive for {cat:?}"
-            );
-            assert!(
-                body[3] > 0.0,
-                "body alpha must be positive for {cat:?}"
-            );
+            assert!(hdr[3] > 0.0, "header alpha must be positive for {cat:?}");
+            assert!(body[3] > 0.0, "body alpha must be positive for {cat:?}");
         }
     }
 }

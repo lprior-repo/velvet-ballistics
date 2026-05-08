@@ -297,9 +297,7 @@ fn collect_kind_edges(node_idx: u16, kind: &CompiledNodeKind) -> Vec<(u16, u16, 
             edges.push((node_idx, done.get(), "done".to_string()));
         }
         CompiledNodeKind::RepeatFinish { .. } => {}
-        CompiledNodeKind::ErrorHandler {
-            body, handler, ..
-        } => {
+        CompiledNodeKind::ErrorHandler { body, handler, .. } => {
             edges.push((node_idx, body.get(), "body".to_string()));
             edges.push((node_idx, handler.get(), "handler".to_string()));
         }

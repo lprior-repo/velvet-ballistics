@@ -212,7 +212,10 @@ fn validate_workflow_schema_returns_unknown_top_level_field_for_invalid_field() 
         ),
         ("bogus_field", FieldValue::Empty),
     ]);
-    assert_eq!(validate_workflow_schema(&doc), Err(ValidationError::UnknownTopLevelField));
+    assert_eq!(
+        validate_workflow_schema(&doc),
+        Err(ValidationError::UnknownTopLevelField)
+    );
 }
 
 #[test]
@@ -236,7 +239,10 @@ fn validate_workflow_schema_returns_duplicate_key_for_duplicate_top_level_field(
             ])]),
         ),
     ]);
-    assert_eq!(validate_workflow_schema(&doc), Err(ValidationError::DuplicateKey));
+    assert_eq!(
+        validate_workflow_schema(&doc),
+        Err(ValidationError::DuplicateKey)
+    );
 }
 
 #[test]
@@ -260,7 +266,10 @@ fn validate_workflow_schema_returns_duplicate_key_for_duplicate_step_field() {
             ])]),
         ),
     ]);
-    assert_eq!(validate_workflow_schema(&doc), Err(ValidationError::DuplicateKey));
+    assert_eq!(
+        validate_workflow_schema(&doc),
+        Err(ValidationError::DuplicateKey)
+    );
 }
 
 #[test]
@@ -284,7 +293,10 @@ fn validate_workflow_schema_returns_unknown_step_field_for_invalid_step_field() 
             ])]),
         ),
     ]);
-    assert_eq!(validate_step_fields(&doc), Err(ValidationError::UnknownStepField));
+    assert_eq!(
+        validate_step_fields(&doc),
+        Err(ValidationError::UnknownStepField)
+    );
 }
 
 #[test]
@@ -465,7 +477,10 @@ fn validate_single_primitive_returns_multiple_step_primitives_for_two_primitives
         ("set", FieldValue::Empty),
         ("finish", FieldValue::Empty),
     ]);
-    assert_eq!(validate_single_primitive(&step), Err(ValidationError::MultipleStepPrimitives));
+    assert_eq!(
+        validate_single_primitive(&step),
+        Err(ValidationError::MultipleStepPrimitives)
+    );
 }
 
 #[test]
@@ -675,7 +690,10 @@ fn validate_step_fields_rejects_legacy_save_field() {
             ("save", FieldValue::Empty),
         ])]),
     )]);
-    assert_eq!(validate_step_fields(&doc), Err(ValidationError::UnknownStepField));
+    assert_eq!(
+        validate_step_fields(&doc),
+        Err(ValidationError::UnknownStepField)
+    );
 }
 
 #[test]
@@ -699,7 +717,10 @@ fn validate_step_fields_rejects_step_without_kind() {
             FieldValue::String("s1".to_owned()),
         )])]),
     )]);
-    assert_eq!(validate_step_fields(&doc), Err(ValidationError::MissingStepPrimitive));
+    assert_eq!(
+        validate_step_fields(&doc),
+        Err(ValidationError::MissingStepPrimitive)
+    );
 }
 
 #[test]
@@ -1118,7 +1139,10 @@ fn adversarial_step_with_set_and_do_primitives_is_rejected() {
         ("set", FieldValue::Empty),
         ("do", FieldValue::Empty),
     ]);
-    assert_eq!(validate_single_primitive(&step), Err(ValidationError::MultipleStepPrimitives));
+    assert_eq!(
+        validate_single_primitive(&step),
+        Err(ValidationError::MultipleStepPrimitives)
+    );
 }
 
 #[test]
@@ -1128,7 +1152,10 @@ fn adversarial_step_with_choose_and_finish_primitives_is_rejected() {
         ("choose", FieldValue::Empty),
         ("finish", FieldValue::Empty),
     ]);
-    assert_eq!(validate_single_primitive(&step), Err(ValidationError::MultipleStepPrimitives));
+    assert_eq!(
+        validate_single_primitive(&step),
+        Err(ValidationError::MultipleStepPrimitives)
+    );
 }
 
 #[test]
@@ -1147,7 +1174,10 @@ fn adversarial_step_with_all_primitives_is_rejected() {
         ("finish", FieldValue::Empty),
         ("do", FieldValue::Empty),
     ]);
-    assert_eq!(validate_single_primitive(&step), Err(ValidationError::MultipleStepPrimitives));
+    assert_eq!(
+        validate_single_primitive(&step),
+        Err(ValidationError::MultipleStepPrimitives)
+    );
 }
 
 #[test]
@@ -1159,7 +1189,10 @@ fn adversarial_step_with_only_non_primitive_fields_is_rejected() {
         ("on_error", FieldValue::Empty),
         ("retry", FieldValue::Empty),
     ]);
-    assert_eq!(validate_single_primitive(&step), Err(ValidationError::MissingStepPrimitive));
+    assert_eq!(
+        validate_single_primitive(&step),
+        Err(ValidationError::MissingStepPrimitive)
+    );
 }
 
 #[test]
@@ -1168,7 +1201,10 @@ fn adversarial_http_trigger_is_rejected_as_out_of_core() {
         "when",
         FieldValue::Mapping(vec![("http".to_owned(), FieldValue::Empty)]),
     )]);
-    assert_eq!(validate_trigger(&doc), Err(ValidationError::HttpTriggerOutOfCore));
+    assert_eq!(
+        validate_trigger(&doc),
+        Err(ValidationError::HttpTriggerOutOfCore)
+    );
 }
 
 #[test]
@@ -1317,7 +1353,10 @@ fn adversarial_unknown_top_level_field_webhook_is_rejected() {
         ),
         ("webhook", FieldValue::Empty),
     ]);
-    assert_eq!(validate_workflow_schema(&doc), Err(ValidationError::UnknownTopLevelField));
+    assert_eq!(
+        validate_workflow_schema(&doc),
+        Err(ValidationError::UnknownTopLevelField)
+    );
 }
 
 #[test]
@@ -1330,7 +1369,10 @@ fn adversarial_unknown_step_field_payload_is_rejected() {
             ("payload", FieldValue::Empty),
         ])]),
     )]);
-    assert_eq!(validate_step_fields(&doc), Err(ValidationError::UnknownStepField));
+    assert_eq!(
+        validate_step_fields(&doc),
+        Err(ValidationError::UnknownStepField)
+    );
 }
 
 #[test]

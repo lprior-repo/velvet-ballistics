@@ -125,7 +125,7 @@ mod tests {
     use crate::errors::EngineError;
     use crate::ids::{RunId, SlotIdx, StepIdx};
     use crate::value::SlotValue;
-    use crate::workflow::{SlotBranch, ExprBranch};
+    use crate::workflow::{ExprBranch, SlotBranch};
 
     fn ensure_equal<T>(actual: T, expected: T) -> Result<(), String>
     where
@@ -163,7 +163,8 @@ mod tests {
                 target: StepIdx::new(7),
             },
         ];
-        let result = choose_slot_branch(&mut run, &branches, Some(StepIdx::new(9))).map_err(|e| e.to_string())?;
+        let result = choose_slot_branch(&mut run, &branches, Some(StepIdx::new(9)))
+            .map_err(|e| e.to_string())?;
 
         ensure_equal(result, crate::EngineSignal::Continue)?;
         ensure_equal(run.pc(), StepIdx::new(5))
@@ -187,7 +188,8 @@ mod tests {
                 target: StepIdx::new(7),
             },
         ];
-        let result = choose_slot_branch(&mut run, &branches, Some(StepIdx::new(9))).map_err(|e| e.to_string())?;
+        let result = choose_slot_branch(&mut run, &branches, Some(StepIdx::new(9)))
+            .map_err(|e| e.to_string())?;
 
         ensure_equal(result, crate::EngineSignal::Continue)?;
         ensure_equal(run.pc(), StepIdx::new(7))
@@ -211,7 +213,8 @@ mod tests {
                 target: StepIdx::new(7),
             },
         ];
-        let _result = choose_slot_branch(&mut run, &branches, Some(StepIdx::new(3))).map_err(|e| e.to_string())?;
+        let _result = choose_slot_branch(&mut run, &branches, Some(StepIdx::new(3)))
+            .map_err(|e| e.to_string())?;
 
         ensure_equal(run.pc(), StepIdx::new(3))
     }
@@ -259,7 +262,8 @@ mod tests {
     fn choose_slot_empty_branches_takes_otherwise() -> Result<(), String> {
         let mut run = test_frame(1)?;
         let branches: Vec<SlotBranch> = vec![];
-        let _result = choose_slot_branch(&mut run, &branches, Some(StepIdx::new(2))).map_err(|e| e.to_string())?;
+        let _result = choose_slot_branch(&mut run, &branches, Some(StepIdx::new(2)))
+            .map_err(|e| e.to_string())?;
 
         ensure_equal(run.pc(), StepIdx::new(2))
     }
@@ -273,16 +277,14 @@ mod tests {
             CompiledNode, CompiledNodeKind, CompiledWorkflow, ExprOp, ExprProgram, WorkflowParts,
         };
 
-        let expr_true = ExprProgram::try_from_ops(
-            vec![ExprOp::LoadConst(ConstIdx::new(0))].into_boxed_slice(),
-        )
-        .map_err(|e| crate::WorkflowError::Expression(e))
-        .map_err(|e| e.to_string())?;
-        let expr_false = ExprProgram::try_from_ops(
-            vec![ExprOp::LoadConst(ConstIdx::new(1))].into_boxed_slice(),
-        )
-        .map_err(|e| crate::WorkflowError::Expression(e))
-        .map_err(|e| e.to_string())?;
+        let expr_true =
+            ExprProgram::try_from_ops(vec![ExprOp::LoadConst(ConstIdx::new(0))].into_boxed_slice())
+                .map_err(|e| crate::WorkflowError::Expression(e))
+                .map_err(|e| e.to_string())?;
+        let expr_false =
+            ExprProgram::try_from_ops(vec![ExprOp::LoadConst(ConstIdx::new(1))].into_boxed_slice())
+                .map_err(|e| crate::WorkflowError::Expression(e))
+                .map_err(|e| e.to_string())?;
 
         CompiledWorkflow::try_from_parts(WorkflowParts {
             name: Box::<str>::from("choose_expr_test"),

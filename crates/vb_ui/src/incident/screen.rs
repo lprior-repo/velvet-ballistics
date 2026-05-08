@@ -1,7 +1,7 @@
 use std::time::Instant;
 
 use super::console::IncidentConsole;
-use super::repair::{suggest_repairs, RepairSuggestion};
+use super::repair::{RepairSuggestion, suggest_repairs};
 use super::types::{
     FailureCode, FailureDetail, Incident, IncidentCauseView, IncidentContext,
     IncidentDetailSections, IncidentSeverity, IncidentSlotDiff, IncidentTimelineEntry,
@@ -220,10 +220,26 @@ impl TimelinePanel {
     pub fn placeholder() -> Self {
         Self {
             events: vec![
-                TimelineChip { seq: 12, kind: String::from("StepStarted"), step_idx: 3 },
-                TimelineChip { seq: 13, kind: String::from("ActionScheduled"), step_idx: 3 },
-                TimelineChip { seq: 14, kind: String::from("ActionFailed"), step_idx: 3 },
-                TimelineChip { seq: 14, kind: String::from("RunFailed"), step_idx: 3 },
+                TimelineChip {
+                    seq: 12,
+                    kind: String::from("StepStarted"),
+                    step_idx: 3,
+                },
+                TimelineChip {
+                    seq: 13,
+                    kind: String::from("ActionScheduled"),
+                    step_idx: 3,
+                },
+                TimelineChip {
+                    seq: 14,
+                    kind: String::from("ActionFailed"),
+                    step_idx: 3,
+                },
+                TimelineChip {
+                    seq: 14,
+                    kind: String::from("RunFailed"),
+                    step_idx: 3,
+                },
             ],
         }
     }
@@ -255,9 +271,15 @@ impl SlotDiff {
     #[must_use]
     pub fn display_label(&self) -> String {
         if self.taint_changed {
-            format!("Taint(SlotIdx({})): {} -> {}", self.slot_idx, self.before, self.after)
+            format!(
+                "Taint(SlotIdx({})): {} -> {}",
+                self.slot_idx, self.before, self.after
+            )
         } else {
-            format!("SlotIdx({}): {} -> {}", self.slot_idx, self.before, self.after)
+            format!(
+                "SlotIdx({}): {} -> {}",
+                self.slot_idx, self.before, self.after
+            )
         }
     }
 
@@ -368,7 +390,10 @@ impl SuggestionItem {
 
     /// Return true if this suggestion has high confidence.
     pub fn is_high_confidence(&self) -> bool {
-        matches!(self.suggestion.confidence_level, super::repair::RepairConfidence::High)
+        matches!(
+            self.suggestion.confidence_level,
+            super::repair::RepairConfidence::High
+        )
     }
 }
 
@@ -494,16 +519,23 @@ impl IncidentScreen {
 
     fn severity_for_code(code: &FailureCode) -> IncidentSeverity {
         match code {
-            FailureCode::TaintLeak | FailureCode::StepPanicked | FailureCode::ReplayDivergence => IncidentSeverity::Critical,
-            FailureCode::ActionTimeout | FailureCode::ActionFailed(_) | FailureCode::BudgetExceeded => IncidentSeverity::Major,
+            FailureCode::TaintLeak | FailureCode::StepPanicked | FailureCode::ReplayDivergence => {
+                IncidentSeverity::Critical
+            }
+            FailureCode::ActionTimeout
+            | FailureCode::ActionFailed(_)
+            | FailureCode::BudgetExceeded => IncidentSeverity::Major,
             FailureCode::ValidationError(_) | FailureCode::Unknown(_) => IncidentSeverity::Minor,
         }
     }
 
     fn incident_type_for_code(code: &FailureCode) -> IncidentType {
         match code {
-            FailureCode::ActionTimeout | FailureCode::ActionFailed(_) | FailureCode::BudgetExceeded
-            | FailureCode::StepPanicked | FailureCode::ValidationError(_) => IncidentType::ActionFailure,
+            FailureCode::ActionTimeout
+            | FailureCode::ActionFailed(_)
+            | FailureCode::BudgetExceeded
+            | FailureCode::StepPanicked
+            | FailureCode::ValidationError(_) => IncidentType::ActionFailure,
             FailureCode::ReplayDivergence => IncidentType::ReplayDivergence,
             FailureCode::TaintLeak => IncidentType::SecretLeak,
             FailureCode::Unknown(_) => IncidentType::BlockedReconciliation,
@@ -512,20 +544,35 @@ impl IncidentScreen {
 
     fn certainty_for_code(code: &FailureCode) -> SideEffectCertainty {
         match code {
-            FailureCode::ActionFailed(_) | FailureCode::StepPanicked => SideEffectCertainty::Unknown,
+            FailureCode::ActionFailed(_) | FailureCode::StepPanicked => {
+                SideEffectCertainty::Unknown
+            }
             FailureCode::TaintLeak => SideEffectCertainty::Certain,
             _ => SideEffectCertainty::None,
         }
     }
 
     fn replay_safe_for_code(code: &FailureCode) -> bool {
-        matches!(code, FailureCode::ActionTimeout | FailureCode::ValidationError(_) | FailureCode::BudgetExceeded)
+        matches!(
+            code,
+            FailureCode::ActionTimeout
+                | FailureCode::ValidationError(_)
+                | FailureCode::BudgetExceeded
+        )
     }
 
-    fn initial_timeline(code: &FailureCode, error_context: &str, timestamp: Instant) -> Vec<TimelineEntry> {
+    fn initial_timeline(
+        code: &FailureCode,
+        error_context: &str,
+        timestamp: Instant,
+    ) -> Vec<TimelineEntry> {
         vec![TimelineEntry {
             seq: 0,
-            description: format!("Failure observed: {} - {}", format_failure_code(code), error_context),
+            description: format!(
+                "Failure observed: {} - {}",
+                format_failure_code(code),
+                error_context
+            ),
             timestamp_micros: Self::instant_to_micros(timestamp),
             event_kind: TimelineEventKind::FailureObserved,
             timestamp,
@@ -536,14 +583,26 @@ impl IncidentScreen {
     /// if it represents a failure (ActionFailedEvent or RunFailedEvent).
     pub fn process_failure(event: &vb_storage::JournalEvent) -> Option<Incident> {
         match event {
-            vb_storage::JournalEvent::ActionFailedEvent { run, seq, step, action } => {
+            vb_storage::JournalEvent::ActionFailedEvent {
+                run,
+                seq,
+                step,
+                action,
+            } => {
                 let now = Instant::now();
                 let failure_code = FailureCode::ActionFailed(format!(
-                    "action {} failed in step {}", action.get(), step.get()
+                    "action {} failed in step {}",
+                    action.get(),
+                    step.get()
                 ));
                 let timeline = vec![TimelineEntry {
                     seq: 0,
-                    description: format!("ActionFailed: action {} in step {} at seq {}", action.get(), step.get(), seq.get()),
+                    description: format!(
+                        "ActionFailed: action {} in step {} at seq {}",
+                        action.get(),
+                        step.get(),
+                        seq.get()
+                    ),
                     timestamp_micros: Self::instant_to_micros(now),
                     event_kind: TimelineEventKind::FailureObserved,
                     timestamp: now,
@@ -557,20 +616,28 @@ impl IncidentScreen {
                     workflow_name: String::new(),
                     step_id: Some(step.get()),
                     step_name: None,
-                    error_message: format!("Action {} failed in step {} for run {}", action.get(), step.get(), run.get()),
+                    error_message: format!(
+                        "Action {} failed in step {} for run {}",
+                        action.get(),
+                        step.get(),
+                        run.get()
+                    ),
                     replay_safe: false,
                     side_effect_certainty: SideEffectCertainty::Unknown,
                     timestamp: now,
                     context: IncidentContext {
-                        slot_values_before: Vec::new(), taint_changes: Vec::new(),
-                        action_attempts: 0, last_action_idempotency_key: None,
+                        slot_values_before: Vec::new(),
+                        taint_changes: Vec::new(),
+                        action_attempts: 0,
+                        last_action_idempotency_key: None,
                     },
                     timeline,
                 })
             }
             vb_storage::JournalEvent::RunFailedEvent { run, seq } => {
                 let now = Instant::now();
-                let failure_code = FailureCode::Unknown(format!("Run {} failed at seq {}", run.get(), seq.get()));
+                let failure_code =
+                    FailureCode::Unknown(format!("Run {} failed at seq {}", run.get(), seq.get()));
                 let timeline = vec![TimelineEntry {
                     seq: 0,
                     description: format!("RunFailed: run {} at seq {}", run.get(), seq.get()),
@@ -585,14 +652,17 @@ impl IncidentScreen {
                     failure_code,
                     run_id: run.get(),
                     workflow_name: String::new(),
-                    step_id: None, step_name: None,
+                    step_id: None,
+                    step_name: None,
                     error_message: format!("Run {} failed", run.get()),
                     replay_safe: false,
                     side_effect_certainty: SideEffectCertainty::Unknown,
                     timestamp: now,
                     context: IncidentContext {
-                        slot_values_before: Vec::new(), taint_changes: Vec::new(),
-                        action_attempts: 0, last_action_idempotency_key: None,
+                        slot_values_before: Vec::new(),
+                        taint_changes: Vec::new(),
+                        action_attempts: 0,
+                        last_action_idempotency_key: None,
                     },
                     timeline,
                 })
@@ -608,39 +678,91 @@ impl IncidentScreen {
     }
 
     /// Process a run failure and register it as an incident.
-    pub fn process_run_failure(&mut self, run_id: u64, step: Option<&str>, error_code: FailureCode, error_context: &str) -> usize {
+    pub fn process_run_failure(
+        &mut self,
+        run_id: u64,
+        step: Option<&str>,
+        error_code: FailureCode,
+        error_context: &str,
+    ) -> usize {
         let id = self.allocate_id();
         let now = Instant::now();
         let timeline = Self::initial_timeline(&error_code, error_context, now);
         let incident = Incident {
-            id, incident_type: Self::incident_type_for_code(&error_code),
-            severity: Self::severity_for_code(&error_code), failure_code: error_code.clone(),
-            run_id, workflow_name: String::new(), step_id: None,
-            step_name: step.map(String::from), error_message: String::from(error_context),
+            id,
+            incident_type: Self::incident_type_for_code(&error_code),
+            severity: Self::severity_for_code(&error_code),
+            failure_code: error_code.clone(),
+            run_id,
+            workflow_name: String::new(),
+            step_id: None,
+            step_name: step.map(String::from),
+            error_message: String::from(error_context),
             replay_safe: Self::replay_safe_for_code(&error_code),
             side_effect_certainty: Self::certainty_for_code(&error_code),
             timestamp: now,
-            context: IncidentContext { slot_values_before: Vec::new(), taint_changes: Vec::new(), action_attempts: 0, last_action_idempotency_key: None },
+            context: IncidentContext {
+                slot_values_before: Vec::new(),
+                taint_changes: Vec::new(),
+                action_attempts: 0,
+                last_action_idempotency_key: None,
+            },
             timeline,
         };
         self.console.add_incident(incident)
     }
 
     /// Process a replay divergence and register it as a critical incident.
-    pub fn process_replay_divergence(&mut self, run_id: u64, expected: &str, actual: &str) -> usize {
+    pub fn process_replay_divergence(
+        &mut self,
+        run_id: u64,
+        expected: &str,
+        actual: &str,
+    ) -> usize {
         let id = self.allocate_id();
         let now = Instant::now();
-        let description = format!("Replay divergence: expected {}, actual {}", expected, actual);
+        let description = format!(
+            "Replay divergence: expected {}, actual {}",
+            expected, actual
+        );
         let timeline = vec![
-            TimelineEntry { seq: 0, description: description.clone(), timestamp_micros: Self::instant_to_micros(now), event_kind: TimelineEventKind::FailureObserved, timestamp: now },
-            TimelineEntry { seq: 1, description: format!("Divergence detail - expected: {}, actual: {}", expected, actual), timestamp_micros: Self::instant_to_micros(now), event_kind: TimelineEventKind::ReplayDivergence, timestamp: now },
+            TimelineEntry {
+                seq: 0,
+                description: description.clone(),
+                timestamp_micros: Self::instant_to_micros(now),
+                event_kind: TimelineEventKind::FailureObserved,
+                timestamp: now,
+            },
+            TimelineEntry {
+                seq: 1,
+                description: format!(
+                    "Divergence detail - expected: {}, actual: {}",
+                    expected, actual
+                ),
+                timestamp_micros: Self::instant_to_micros(now),
+                event_kind: TimelineEventKind::ReplayDivergence,
+                timestamp: now,
+            },
         ];
         let incident = Incident {
-            id, incident_type: IncidentType::ReplayDivergence, severity: IncidentSeverity::Critical,
-            failure_code: FailureCode::ReplayDivergence, run_id, workflow_name: String::new(),
-            step_id: None, step_name: None, error_message: description, replay_safe: false,
-            side_effect_certainty: SideEffectCertainty::Unknown, timestamp: now,
-            context: IncidentContext { slot_values_before: Vec::new(), taint_changes: Vec::new(), action_attempts: 0, last_action_idempotency_key: None },
+            id,
+            incident_type: IncidentType::ReplayDivergence,
+            severity: IncidentSeverity::Critical,
+            failure_code: FailureCode::ReplayDivergence,
+            run_id,
+            workflow_name: String::new(),
+            step_id: None,
+            step_name: None,
+            error_message: description,
+            replay_safe: false,
+            side_effect_certainty: SideEffectCertainty::Unknown,
+            timestamp: now,
+            context: IncidentContext {
+                slot_values_before: Vec::new(),
+                taint_changes: Vec::new(),
+                action_attempts: 0,
+                last_action_idempotency_key: None,
+            },
             timeline,
         };
         self.console.add_incident(incident)
@@ -652,10 +774,14 @@ impl IncidentScreen {
         let incident = incidents.get(incident_index)?;
         Some(FailureDetail {
             error_code: format_failure_code(&incident.failure_code),
-            step_id: incident.step_id, run_id: incident.run_id,
-            workflow_name: incident.workflow_name.clone(), replay_safe: incident.replay_safe,
-            timeline: incident.timeline.clone(), failure_code: incident.failure_code.clone(),
-            step_name: incident.step_name.clone(), side_effect_certainty: incident.side_effect_certainty,
+            step_id: incident.step_id,
+            run_id: incident.run_id,
+            workflow_name: incident.workflow_name.clone(),
+            replay_safe: incident.replay_safe,
+            timeline: incident.timeline.clone(),
+            failure_code: incident.failure_code.clone(),
+            step_name: incident.step_name.clone(),
+            side_effect_certainty: incident.side_effect_certainty,
             error_context: incident.context.clone(),
         })
     }
@@ -670,25 +796,39 @@ impl IncidentScreen {
     }
 
     /// Return the list of all active incidents.
-    pub fn incidents(&self) -> &[Incident] { self.console.legacy_incidents() }
+    pub fn incidents(&self) -> &[Incident] {
+        self.console.legacy_incidents()
+    }
 
     /// Select an incident by index.
-    pub fn select(&mut self, index: usize) { self.console.select(index); }
+    pub fn select(&mut self, index: usize) {
+        self.console.select(index);
+    }
 
     /// Dismiss an incident by index.
-    pub fn dismiss(&mut self, index: usize) { self.console.dismiss(index); }
+    pub fn dismiss(&mut self, index: usize) {
+        self.console.dismiss(index);
+    }
 
     /// Return the number of active incidents.
-    pub fn active_count(&self) -> usize { self.console.active_count() }
+    pub fn active_count(&self) -> usize {
+        self.console.active_count()
+    }
 
     /// Return the number of critical incidents.
-    pub fn critical_count(&self) -> usize { self.console.legacy_critical_count() }
+    pub fn critical_count(&self) -> usize {
+        self.console.legacy_critical_count()
+    }
 
     /// Return the currently selected incident, if any.
-    pub fn selected(&self) -> Option<&Incident> { self.console.selected() }
+    pub fn selected(&self) -> Option<&Incident> {
+        self.console.selected()
+    }
 
     /// Return repair suggestions for the currently selected incident.
-    pub fn selected_suggestions(&self) -> Vec<RepairSuggestion> { self.console.selected_suggestions() }
+    pub fn selected_suggestions(&self) -> Vec<RepairSuggestion> {
+        self.console.selected_suggestions()
+    }
 
     /// Return clickable [`SuggestionItem`] entries for the currently selected
     /// incident. Returns an empty vec if no incident is selected.
@@ -751,14 +891,16 @@ impl IncidentScreen {
 
     /// Return true if any incident has Critical severity.
     pub fn has_critical(&self) -> bool {
-        self.console.legacy_incidents()
+        self.console
+            .legacy_incidents()
             .iter()
             .any(|inc| inc.severity == IncidentSeverity::Critical)
     }
 
     /// Return references to all incidents matching the given severity.
     pub fn filter_by_severity(&self, severity: IncidentSeverity) -> Vec<&Incident> {
-        self.console.legacy_incidents()
+        self.console
+            .legacy_incidents()
             .iter()
             .filter(|inc| inc.severity == severity)
             .collect()
@@ -848,9 +990,7 @@ impl IncidentScreen {
                     .taint_changes
                     .iter()
                     .find(|(idx, _)| *idx == *slot_index);
-                let value_after = matching_taint
-                    .map(|(_, v)| v.clone())
-                    .unwrap_or_default();
+                let value_after = matching_taint.map(|(_, v)| v.clone()).unwrap_or_default();
                 let change_label = if value_before == &value_after {
                     String::from("unchanged")
                 } else {
@@ -900,7 +1040,12 @@ mod tests {
     fn test_process_failure_action_failed_event() {
         use vb_core::{ActionId, RunId, StepIdx};
         use vb_storage::EventSeq;
-        let event = vb_storage::JournalEvent::ActionFailedEvent { run: RunId::new(42), seq: EventSeq::new(5), step: StepIdx::new(3), action: ActionId::new(10) };
+        let event = vb_storage::JournalEvent::ActionFailedEvent {
+            run: RunId::new(42),
+            seq: EventSeq::new(5),
+            step: StepIdx::new(3),
+            action: ActionId::new(10),
+        };
         let inc = IncidentScreen::process_failure(&event).unwrap();
         assert_eq!(inc.run_id, 42);
         assert_eq!(inc.step_id, Some(3));
@@ -909,7 +1054,10 @@ mod tests {
         assert!(!inc.replay_safe);
         assert_eq!(inc.side_effect_certainty, SideEffectCertainty::Unknown);
         assert_eq!(inc.timeline.len(), 1);
-        assert_eq!(inc.timeline.first().map(|t| t.event_kind), Some(TimelineEventKind::FailureObserved));
+        assert_eq!(
+            inc.timeline.first().map(|t| t.event_kind),
+            Some(TimelineEventKind::FailureObserved)
+        );
         assert_eq!(inc.timeline.first().map(|t| t.seq), Some(0));
         assert!(inc.error_message.contains("Action 10"));
     }
@@ -918,7 +1066,10 @@ mod tests {
     fn test_process_failure_run_failed_event() {
         use vb_core::RunId;
         use vb_storage::EventSeq;
-        let event = vb_storage::JournalEvent::RunFailedEvent { run: RunId::new(99), seq: EventSeq::new(7) };
+        let event = vb_storage::JournalEvent::RunFailedEvent {
+            run: RunId::new(99),
+            seq: EventSeq::new(7),
+        };
         let inc = IncidentScreen::process_failure(&event).unwrap();
         assert_eq!(inc.run_id, 99);
         assert!(inc.step_id.is_none());
@@ -933,7 +1084,11 @@ mod tests {
     fn test_process_failure_non_failure_event_returns_none() {
         use vb_core::{RunId, WorkflowDigest};
         use vb_storage::EventSeq;
-        let event = vb_storage::JournalEvent::RunAccepted { run: RunId::new(1), seq: EventSeq::new(0), workflow: WorkflowDigest::from_bytes([0u8; 32]) };
+        let event = vb_storage::JournalEvent::RunAccepted {
+            run: RunId::new(1),
+            seq: EventSeq::new(0),
+            workflow: WorkflowDigest::from_bytes([0u8; 32]),
+        };
         assert!(IncidentScreen::process_failure(&event).is_none());
     }
 
@@ -941,7 +1096,11 @@ mod tests {
     fn test_process_failure_step_started_returns_none() {
         use vb_core::{RunId, StepIdx};
         use vb_storage::EventSeq;
-        let event = vb_storage::JournalEvent::StepStarted { run: RunId::new(1), seq: EventSeq::new(1), step: StepIdx::new(0) };
+        let event = vb_storage::JournalEvent::StepStarted {
+            run: RunId::new(1),
+            seq: EventSeq::new(1),
+            step: StepIdx::new(0),
+        };
         assert!(IncidentScreen::process_failure(&event).is_none());
     }
 
@@ -949,7 +1108,11 @@ mod tests {
     fn test_process_failure_run_finished_returns_none() {
         use vb_core::{RunId, SlotIdx};
         use vb_storage::EventSeq;
-        let event = vb_storage::JournalEvent::RunFinished { run: RunId::new(1), seq: EventSeq::new(10), result: SlotIdx::new(0) };
+        let event = vb_storage::JournalEvent::RunFinished {
+            run: RunId::new(1),
+            seq: EventSeq::new(10),
+            result: SlotIdx::new(0),
+        };
         assert!(IncidentScreen::process_failure(&event).is_none());
     }
 
@@ -957,14 +1120,24 @@ mod tests {
     fn test_process_failure_action_completed_returns_none() {
         use vb_core::{ActionId, RunId, StepIdx};
         use vb_storage::EventSeq;
-        let event = vb_storage::JournalEvent::ActionCompletedEvent { run: RunId::new(1), seq: EventSeq::new(2), step: StepIdx::new(0), action: ActionId::new(5) };
+        let event = vb_storage::JournalEvent::ActionCompletedEvent {
+            run: RunId::new(1),
+            seq: EventSeq::new(2),
+            step: StepIdx::new(0),
+            action: ActionId::new(5),
+        };
         assert!(IncidentScreen::process_failure(&event).is_none());
     }
 
     #[test]
     fn test_process_run_failure_creates_incident() {
         let mut screen = IncidentScreen::new();
-        let idx = screen.process_run_failure(42, Some("step-fetch"), FailureCode::ActionTimeout, "timed out after 30s");
+        let idx = screen.process_run_failure(
+            42,
+            Some("step-fetch"),
+            FailureCode::ActionTimeout,
+            "timed out after 30s",
+        );
         assert_eq!(idx, 0);
         assert_eq!(screen.active_count(), 1);
         let detail = screen.get_failure_detail(0).unwrap();
@@ -973,7 +1146,10 @@ mod tests {
         assert!(detail.replay_safe);
         assert_eq!(detail.side_effect_certainty, SideEffectCertainty::None);
         assert_eq!(detail.timeline.len(), 1);
-        assert_eq!(detail.timeline.first().map(|t| t.event_kind), Some(TimelineEventKind::FailureObserved));
+        assert_eq!(
+            detail.timeline.first().map(|t| t.event_kind),
+            Some(TimelineEventKind::FailureObserved)
+        );
         assert_eq!(detail.timeline.first().map(|t| t.seq), Some(0));
     }
 
@@ -994,7 +1170,10 @@ mod tests {
         let mut screen = IncidentScreen::new();
         screen.process_run_failure(10, None, FailureCode::TaintLeak, "secret leaked");
         assert_eq!(screen.critical_count(), 1);
-        assert_eq!(screen.incidents().first().unwrap().incident_type, IncidentType::SecretLeak);
+        assert_eq!(
+            screen.incidents().first().unwrap().incident_type,
+            IncidentType::SecretLeak
+        );
     }
 
     #[test]
@@ -1008,15 +1187,26 @@ mod tests {
     fn test_process_run_failure_action_failed_is_unknown_certainty() {
         let mut screen = IncidentScreen::new();
         screen.process_run_failure(12, None, FailureCode::ActionFailed("db".into()), "db error");
-        assert_eq!(screen.get_failure_detail(0).unwrap().side_effect_certainty, SideEffectCertainty::Unknown);
+        assert_eq!(
+            screen.get_failure_detail(0).unwrap().side_effect_certainty,
+            SideEffectCertainty::Unknown
+        );
     }
 
     #[test]
     fn test_process_run_failure_validation_error_is_minor() {
         let mut screen = IncidentScreen::new();
-        screen.process_run_failure(13, None, FailureCode::ValidationError("bad input".into()), "bad input");
+        screen.process_run_failure(
+            13,
+            None,
+            FailureCode::ValidationError("bad input".into()),
+            "bad input",
+        );
         assert_eq!(screen.critical_count(), 0);
-        assert_eq!(screen.get_failure_detail(0).unwrap().side_effect_certainty, SideEffectCertainty::None);
+        assert_eq!(
+            screen.get_failure_detail(0).unwrap().side_effect_certainty,
+            SideEffectCertainty::None
+        );
     }
 
     #[test]
@@ -1033,7 +1223,10 @@ mod tests {
         assert_eq!(idx, 0);
         assert_eq!(screen.active_count(), 1);
         assert_eq!(screen.critical_count(), 1);
-        assert_eq!(screen.incidents().first().unwrap().incident_type, IncidentType::ReplayDivergence);
+        assert_eq!(
+            screen.incidents().first().unwrap().incident_type,
+            IncidentType::ReplayDivergence
+        );
     }
 
     #[test]
@@ -1042,8 +1235,14 @@ mod tests {
         screen.process_replay_divergence(100, "value-A", "value-B");
         let detail = screen.get_failure_detail(0).unwrap();
         assert_eq!(detail.timeline.len(), 2);
-        assert_eq!(detail.timeline.first().map(|t| t.event_kind), Some(TimelineEventKind::FailureObserved));
-        assert_eq!(detail.timeline.get(1).map(|t| t.event_kind), Some(TimelineEventKind::ReplayDivergence));
+        assert_eq!(
+            detail.timeline.first().map(|t| t.event_kind),
+            Some(TimelineEventKind::FailureObserved)
+        );
+        assert_eq!(
+            detail.timeline.get(1).map(|t| t.event_kind),
+            Some(TimelineEventKind::ReplayDivergence)
+        );
         assert_eq!(detail.timeline.first().map(|t| t.seq), Some(0));
         assert_eq!(detail.timeline.get(1).map(|t| t.seq), Some(1));
     }
@@ -1100,8 +1299,16 @@ mod tests {
         screen.process_run_failure(1, None, FailureCode::ActionTimeout, "timeout");
         let suggestions = screen.repair_suggestions(0);
         assert!(!suggestions.is_empty());
-        assert!(suggestions.iter().any(|s| s.action == RepairAction::IncreaseTimeout));
-        assert!(suggestions.iter().any(|s| s.kind == RepairKind::IncreaseTimeout));
+        assert!(
+            suggestions
+                .iter()
+                .any(|s| s.action == RepairAction::IncreaseTimeout)
+        );
+        assert!(
+            suggestions
+                .iter()
+                .any(|s| s.kind == RepairKind::IncreaseTimeout)
+        );
     }
 
     #[test]
@@ -1115,8 +1322,16 @@ mod tests {
         let mut screen = IncidentScreen::new();
         screen.process_run_failure(1, None, FailureCode::TaintLeak, "leak");
         let suggestions = screen.repair_suggestions(0);
-        assert!(suggestions.iter().any(|s| s.action == RepairAction::FixSecretLeak));
-        assert!(suggestions.iter().any(|s| s.kind == RepairKind::FixSecretLeak));
+        assert!(
+            suggestions
+                .iter()
+                .any(|s| s.action == RepairAction::FixSecretLeak)
+        );
+        assert!(
+            suggestions
+                .iter()
+                .any(|s| s.kind == RepairKind::FixSecretLeak)
+        );
     }
 
     #[test]
@@ -1211,35 +1426,65 @@ mod tests {
 
     #[test]
     fn test_format_failure_code_variants() {
-        assert_eq!(format_failure_code(&FailureCode::ActionTimeout), "ActionTimeout");
-        assert_eq!(format_failure_code(&FailureCode::ActionFailed(String::from("db"))), "ActionFailed(db)");
-        assert_eq!(format_failure_code(&FailureCode::BudgetExceeded), "BudgetExceeded");
-        assert_eq!(format_failure_code(&FailureCode::StepPanicked), "StepPanicked");
-        assert_eq!(format_failure_code(&FailureCode::ValidationError(String::from("bad"))), "ValidationError(bad)");
+        assert_eq!(
+            format_failure_code(&FailureCode::ActionTimeout),
+            "ActionTimeout"
+        );
+        assert_eq!(
+            format_failure_code(&FailureCode::ActionFailed(String::from("db"))),
+            "ActionFailed(db)"
+        );
+        assert_eq!(
+            format_failure_code(&FailureCode::BudgetExceeded),
+            "BudgetExceeded"
+        );
+        assert_eq!(
+            format_failure_code(&FailureCode::StepPanicked),
+            "StepPanicked"
+        );
+        assert_eq!(
+            format_failure_code(&FailureCode::ValidationError(String::from("bad"))),
+            "ValidationError(bad)"
+        );
         assert_eq!(format_failure_code(&FailureCode::TaintLeak), "TaintLeak");
-        assert_eq!(format_failure_code(&FailureCode::ReplayDivergence), "ReplayDivergence");
-        assert_eq!(format_failure_code(&FailureCode::Unknown(String::from("x"))), "Unknown(x)");
+        assert_eq!(
+            format_failure_code(&FailureCode::ReplayDivergence),
+            "ReplayDivergence"
+        );
+        assert_eq!(
+            format_failure_code(&FailureCode::Unknown(String::from("x"))),
+            "Unknown(x)"
+        );
     }
 
     #[test]
     fn test_incident_type_action_failure_for_timeout() {
         let mut screen = IncidentScreen::new();
         screen.process_run_failure(1, None, FailureCode::ActionTimeout, "t");
-        assert_eq!(screen.incidents().first().unwrap().incident_type, IncidentType::ActionFailure);
+        assert_eq!(
+            screen.incidents().first().unwrap().incident_type,
+            IncidentType::ActionFailure
+        );
     }
 
     #[test]
     fn test_incident_type_secret_leak_for_taint() {
         let mut screen = IncidentScreen::new();
         screen.process_run_failure(1, None, FailureCode::TaintLeak, "leak");
-        assert_eq!(screen.incidents().first().unwrap().incident_type, IncidentType::SecretLeak);
+        assert_eq!(
+            screen.incidents().first().unwrap().incident_type,
+            IncidentType::SecretLeak
+        );
     }
 
     #[test]
     fn test_incident_type_blocked_reconciliation_for_unknown() {
         let mut screen = IncidentScreen::new();
         screen.process_run_failure(1, None, FailureCode::Unknown("err".into()), "err");
-        assert_eq!(screen.incidents().first().unwrap().incident_type, IncidentType::BlockedReconciliation);
+        assert_eq!(
+            screen.incidents().first().unwrap().incident_type,
+            IncidentType::BlockedReconciliation
+        );
     }
 
     #[test]
@@ -1259,21 +1504,36 @@ mod tests {
     fn test_repair_kind_add_retry_backoff_for_action_failed() {
         let mut screen = IncidentScreen::new();
         screen.process_run_failure(1, None, FailureCode::ActionFailed("x".into()), "fail");
-        assert!(screen.repair_suggestions(0).iter().any(|s| s.kind == RepairKind::AddRetryBackoff));
+        assert!(
+            screen
+                .repair_suggestions(0)
+                .iter()
+                .any(|s| s.kind == RepairKind::AddRetryBackoff)
+        );
     }
 
     #[test]
     fn test_repair_kind_reduce_payload_for_validation_error() {
         let mut screen = IncidentScreen::new();
         screen.process_run_failure(1, None, FailureCode::ValidationError("v".into()), "v");
-        assert!(screen.repair_suggestions(0).iter().any(|s| s.kind == RepairKind::ReducePayload));
+        assert!(
+            screen
+                .repair_suggestions(0)
+                .iter()
+                .any(|s| s.kind == RepairKind::ReducePayload)
+        );
     }
 
     #[test]
     fn test_repair_kind_pin_idempotency_for_replay_divergence() {
         let mut screen = IncidentScreen::new();
         screen.process_replay_divergence(1, "a", "b");
-        assert!(screen.repair_suggestions(0).iter().any(|s| s.kind == RepairKind::PinIdempotency));
+        assert!(
+            screen
+                .repair_suggestions(0)
+                .iter()
+                .any(|s| s.kind == RepairKind::PinIdempotency)
+        );
     }
 
     #[test]
@@ -1281,7 +1541,12 @@ mod tests {
         use vb_core::{ActionId, RunId, StepIdx};
         use vb_storage::EventSeq;
         let mut screen = IncidentScreen::new();
-        let event = vb_storage::JournalEvent::ActionFailedEvent { run: RunId::new(42), seq: EventSeq::new(1), step: StepIdx::new(0), action: ActionId::new(1) };
+        let event = vb_storage::JournalEvent::ActionFailedEvent {
+            run: RunId::new(42),
+            seq: EventSeq::new(1),
+            step: StepIdx::new(0),
+            action: ActionId::new(1),
+        };
         let incident = IncidentScreen::process_failure(&event).unwrap();
         assert_eq!(incident.id, 0);
         let idx = screen.register_incident(incident);
@@ -1295,8 +1560,16 @@ mod tests {
         use vb_core::{ActionId, RunId, StepIdx};
         use vb_storage::EventSeq;
         let mut screen = IncidentScreen::new();
-        let e1 = vb_storage::JournalEvent::ActionFailedEvent { run: RunId::new(1), seq: EventSeq::new(1), step: StepIdx::new(0), action: ActionId::new(1) };
-        let e2 = vb_storage::JournalEvent::RunFailedEvent { run: RunId::new(2), seq: EventSeq::new(2) };
+        let e1 = vb_storage::JournalEvent::ActionFailedEvent {
+            run: RunId::new(1),
+            seq: EventSeq::new(1),
+            step: StepIdx::new(0),
+            action: ActionId::new(1),
+        };
+        let e2 = vb_storage::JournalEvent::RunFailedEvent {
+            run: RunId::new(2),
+            seq: EventSeq::new(2),
+        };
         let inc1 = IncidentScreen::process_failure(&e1).unwrap();
         let inc2 = IncidentScreen::process_failure(&e2).unwrap();
         screen.register_incident(inc1);
@@ -1455,11 +1728,20 @@ mod tests {
     #[test]
     fn test_new_defaults_empty_and_no_selection() {
         let screen = IncidentScreen::new();
-        assert!(screen.incidents().is_empty(), "new screen should have no incidents");
+        assert!(
+            screen.incidents().is_empty(),
+            "new screen should have no incidents"
+        );
         assert_eq!(screen.active_count(), 0, "active_count should be 0");
         assert_eq!(screen.critical_count(), 0, "critical_count should be 0");
-        assert!(screen.selected().is_none(), "no incident should be selected");
-        assert!(screen.selected_suggestions().is_empty(), "no suggestions without selection");
+        assert!(
+            screen.selected().is_none(),
+            "no incident should be selected"
+        );
+        assert!(
+            screen.selected_suggestions().is_empty(),
+            "no suggestions without selection"
+        );
     }
 
     #[test]
@@ -1518,7 +1800,11 @@ mod tests {
         screen.process_run_failure(30, None, FailureCode::BudgetExceeded, "c");
 
         let run_ids: Vec<u64> = screen.incidents().iter().map(|i| i.run_id).collect();
-        assert_eq!(run_ids, vec![10, 20, 30], "incidents should maintain insertion order");
+        assert_eq!(
+            run_ids,
+            vec![10, 20, 30],
+            "incidents should maintain insertion order"
+        );
     }
 
     // =========================================================================
@@ -1618,7 +1904,10 @@ mod tests {
         let selected = screen.selected_incident();
         assert!(selected.is_some());
         assert_eq!(selected.map(|i| i.run_id), Some(7));
-        assert_eq!(selected.map(|i| i.failure_code.clone()), Some(FailureCode::TaintLeak));
+        assert_eq!(
+            selected.map(|i| i.failure_code.clone()),
+            Some(FailureCode::TaintLeak)
+        );
     }
 
     #[test]
@@ -1700,7 +1989,10 @@ mod tests {
         screen.process_run_failure(1, None, FailureCode::ActionTimeout, "t");
         screen.select_incident(0);
         assert!(screen.dismiss_selected());
-        assert!(!screen.dismiss_selected(), "second dismiss with no selection should return false");
+        assert!(
+            !screen.dismiss_selected(),
+            "second dismiss with no selection should return false"
+        );
     }
 
     #[test]
@@ -1757,7 +2049,12 @@ mod tests {
     #[test]
     fn test_detail_sections_with_selected_incident_has_cause() {
         let mut screen = IncidentScreen::new();
-        screen.process_run_failure(42, Some("step-fetch"), FailureCode::ActionTimeout, "timed out");
+        screen.process_run_failure(
+            42,
+            Some("step-fetch"),
+            FailureCode::ActionTimeout,
+            "timed out",
+        );
         screen.select_incident(0);
         let sections = screen.detail_sections();
         let cause = sections.cause.as_ref();
@@ -1785,7 +2082,12 @@ mod tests {
             sections.timeline.first().map(|e| e.event_kind),
             Some(TimelineEventKind::FailureObserved)
         );
-        assert!(sections.timeline.first().map_or(false, |e| !e.description.is_empty()));
+        assert!(
+            sections
+                .timeline
+                .first()
+                .map_or(false, |e| !e.description.is_empty())
+        );
     }
 
     #[test]
@@ -1795,8 +2097,14 @@ mod tests {
         screen.select_incident(0);
         let sections = screen.detail_sections();
         assert_eq!(sections.timeline.len(), 2);
-        assert_eq!(sections.timeline.first().map(|e| e.event_kind), Some(TimelineEventKind::FailureObserved));
-        assert_eq!(sections.timeline.get(1).map(|e| e.event_kind), Some(TimelineEventKind::ReplayDivergence));
+        assert_eq!(
+            sections.timeline.first().map(|e| e.event_kind),
+            Some(TimelineEventKind::FailureObserved)
+        );
+        assert_eq!(
+            sections.timeline.get(1).map(|e| e.event_kind),
+            Some(TimelineEventKind::ReplayDivergence)
+        );
     }
 
     #[test]
@@ -1829,13 +2137,19 @@ mod tests {
         screen.process_run_failure(2, None, FailureCode::ActionFailed("db".into()), "db error");
         screen.select_incident(1);
         let sections2 = screen.detail_sections();
-        assert_eq!(sections2.side_effect_certainty, SideEffectCertainty::Unknown);
+        assert_eq!(
+            sections2.side_effect_certainty,
+            SideEffectCertainty::Unknown
+        );
 
         // TaintLeak => SideEffectCertainty::Certain
         screen.process_run_failure(3, None, FailureCode::TaintLeak, "leak");
         screen.select_incident(2);
         let sections3 = screen.detail_sections();
-        assert_eq!(sections3.side_effect_certainty, SideEffectCertainty::Certain);
+        assert_eq!(
+            sections3.side_effect_certainty,
+            SideEffectCertainty::Certain
+        );
     }
 
     #[test]
@@ -1845,7 +2159,12 @@ mod tests {
         screen.select_incident(0);
         let sections = screen.detail_sections();
         assert!(!sections.repair_suggestions.is_empty());
-        assert!(sections.repair_suggestions.iter().any(|s| s.kind == RepairKind::IncreaseTimeout));
+        assert!(
+            sections
+                .repair_suggestions
+                .iter()
+                .any(|s| s.kind == RepairKind::IncreaseTimeout)
+        );
     }
 
     #[test]
@@ -1854,7 +2173,12 @@ mod tests {
         screen.process_run_failure(1, None, FailureCode::TaintLeak, "leak");
         screen.select_incident(0);
         let sections = screen.detail_sections();
-        assert!(sections.repair_suggestions.iter().any(|s| s.kind == RepairKind::FixSecretLeak));
+        assert!(
+            sections
+                .repair_suggestions
+                .iter()
+                .any(|s| s.kind == RepairKind::FixSecretLeak)
+        );
     }
 
     #[test]
@@ -1972,12 +2296,20 @@ mod tests {
     #[test]
     fn test_detail_sections_incident_with_step_name() {
         let mut screen = IncidentScreen::new();
-        screen.process_run_failure(1, Some("deploy-step"), FailureCode::BudgetExceeded, "budget");
+        screen.process_run_failure(
+            1,
+            Some("deploy-step"),
+            FailureCode::BudgetExceeded,
+            "budget",
+        );
         screen.select_incident(0);
         let sections = screen.detail_sections();
         let cause = sections.cause.as_ref();
         assert!(cause.is_some());
-        assert_eq!(cause.map(|c| c.step_name.as_deref()), Some(Some("deploy-step")));
+        assert_eq!(
+            cause.map(|c| c.step_name.as_deref()),
+            Some(Some("deploy-step"))
+        );
     }
 
     // =========================================================================
@@ -2196,7 +2528,12 @@ mod tests {
     #[test]
     fn test_detail_sections_with_mixed_incidents() {
         let mut screen = IncidentScreen::new();
-        screen.process_run_failure(1, Some("deploy"), FailureCode::ActionFailed("net".into()), "network error");
+        screen.process_run_failure(
+            1,
+            Some("deploy"),
+            FailureCode::ActionFailed("net".into()),
+            "network error",
+        );
         screen.process_run_failure(2, None, FailureCode::BudgetExceeded, "budget");
         screen.process_replay_divergence(3, "expected", "actual");
 
@@ -2240,13 +2577,24 @@ mod tests {
     fn blackhat_process_failure_returns_zero_id_violating_uniqueness() {
         use vb_core::{ActionId, RunId, StepIdx};
         use vb_storage::EventSeq;
-        let e1 = vb_storage::JournalEvent::ActionFailedEvent { run: RunId::new(1), seq: EventSeq::new(1), step: StepIdx::new(0), action: ActionId::new(1) };
-        let e2 = vb_storage::JournalEvent::RunFailedEvent { run: RunId::new(2), seq: EventSeq::new(2) };
+        let e1 = vb_storage::JournalEvent::ActionFailedEvent {
+            run: RunId::new(1),
+            seq: EventSeq::new(1),
+            step: StepIdx::new(0),
+            action: ActionId::new(1),
+        };
+        let e2 = vb_storage::JournalEvent::RunFailedEvent {
+            run: RunId::new(2),
+            seq: EventSeq::new(2),
+        };
         let inc1 = IncidentScreen::process_failure(&e1).unwrap();
         let inc2 = IncidentScreen::process_failure(&e2).unwrap();
         // Both have id=0, violating the uniqueness contract
         assert_eq!(inc1.id, 0, "process_failure always assigns id=0");
-        assert_eq!(inc2.id, 0, "second incident also gets id=0 - uniqueness violated");
+        assert_eq!(
+            inc2.id, 0,
+            "second incident also gets id=0 - uniqueness violated"
+        );
     }
 
     /// FINDING: register_incident() properly assigns IDs via allocate_id().
@@ -2257,12 +2605,21 @@ mod tests {
         use vb_core::{ActionId, RunId, StepIdx};
         use vb_storage::EventSeq;
         let mut screen = IncidentScreen::new();
-        let event = vb_storage::JournalEvent::ActionFailedEvent { run: RunId::new(1), seq: EventSeq::new(1), step: StepIdx::new(0), action: ActionId::new(1) };
+        let event = vb_storage::JournalEvent::ActionFailedEvent {
+            run: RunId::new(1),
+            seq: EventSeq::new(1),
+            step: StepIdx::new(0),
+            action: ActionId::new(1),
+        };
         let incident = IncidentScreen::process_failure(&event).unwrap();
         assert_eq!(incident.id, 0, "process_failure gives id=0");
         let _idx = screen.register_incident(incident);
         // register_incident overwrites id to 1
-        assert_eq!(screen.incidents().first().map(|i| i.id), Some(1), "register_incident reassigns id starting from 1");
+        assert_eq!(
+            screen.incidents().first().map(|i| i.id),
+            Some(1),
+            "register_incident reassigns id starting from 1"
+        );
     }
 
     /// FINDING: instant_to_micros uses instant.elapsed() which measures time
@@ -2275,7 +2632,10 @@ mod tests {
         let now = std::time::Instant::now();
         let micros = IncidentScreen::instant_to_micros(now);
         // elapsed() from a just-created Instant is ~0 microseconds
-        assert!(micros < 1_000_000, "instant_to_micros returns near-zero for just-created Instant: {micros}");
+        assert!(
+            micros < 1_000_000,
+            "instant_to_micros returns near-zero for just-created Instant: {micros}"
+        );
     }
 
     /// FINDING: allocate_id uses saturating_add which means after u64::MAX
@@ -2293,7 +2653,11 @@ mod tests {
         };
         // After saturation, next_incident_id stays at u64::MAX
         assert_eq!(id1, u64::MAX);
-        assert_eq!(screen.next_incident_id, u64::MAX, "saturating_add causes ID reuse at u64::MAX");
+        assert_eq!(
+            screen.next_incident_id,
+            u64::MAX,
+            "saturating_add causes ID reuse at u64::MAX"
+        );
     }
 
     /// FINDING: severity_for_code maps BudgetExceeded to Major but the actual
@@ -2302,7 +2666,11 @@ mod tests {
     #[test]
     fn blackhat_severity_for_budget_exceeded_is_major_not_critical() {
         let severity = IncidentScreen::severity_for_code(&FailureCode::BudgetExceeded);
-        assert_eq!(severity, IncidentSeverity::Major, "BudgetExceeded is Major, not Critical");
+        assert_eq!(
+            severity,
+            IncidentSeverity::Major,
+            "BudgetExceeded is Major, not Critical"
+        );
     }
 
     /// FINDING: replay_safe_for_code maps only ActionTimeout, ValidationError,
@@ -2324,11 +2692,14 @@ mod tests {
         // Create an incident with a taint change for a slot not in slot_values_before
         let now = std::time::Instant::now();
         let incident = Incident {
-            id: 1, incident_type: IncidentType::ActionFailure,
+            id: 1,
+            incident_type: IncidentType::ActionFailure,
             severity: IncidentSeverity::Major,
             failure_code: FailureCode::ActionTimeout,
-            run_id: 1, workflow_name: String::new(),
-            step_id: None, step_name: None,
+            run_id: 1,
+            workflow_name: String::new(),
+            step_id: None,
+            step_name: None,
             error_message: String::from("test"),
             replay_safe: true,
             side_effect_certainty: SideEffectCertainty::None,
@@ -2348,7 +2719,11 @@ mod tests {
         screen.select_incident(0);
         let sections = screen.detail_sections();
         // Only slot 1 should appear in state_diff; slot 2's taint is silently dropped
-        assert_eq!(sections.state_diff.len(), 1, "only slot_values_before slots appear in diff");
+        assert_eq!(
+            sections.state_diff.len(),
+            1,
+            "only slot_values_before slots appear in diff"
+        );
         assert_eq!(sections.state_diff[0].slot_index, 1);
         // The orphan taint for slot 2 is not visible in the diff
     }
@@ -2362,8 +2737,15 @@ mod tests {
         let mut screen = IncidentScreen::new();
         screen.process_run_failure(1, Some("step-name"), FailureCode::ActionTimeout, "t");
         let detail = screen.get_failure_detail(0).unwrap();
-        assert!(detail.step_id.is_none(), "step_id is always None from process_run_failure");
-        assert_eq!(detail.step_name.as_deref(), Some("step-name"), "step_name is populated from the step param");
+        assert!(
+            detail.step_id.is_none(),
+            "step_id is always None from process_run_failure"
+        );
+        assert_eq!(
+            detail.step_name.as_deref(),
+            Some("step-name"),
+            "step_name is populated from the step param"
+        );
     }
 
     /// FINDING: process_replay_divergence sets side_effect_certainty to Unknown
@@ -2383,7 +2765,10 @@ mod tests {
     /// could confuse consumers of the error information.
     #[test]
     fn blackhat_format_failure_code_disagrees_with_as_str() {
-        assert_eq!(format_failure_code(&FailureCode::BudgetExceeded), "BudgetExceeded");
+        assert_eq!(
+            format_failure_code(&FailureCode::BudgetExceeded),
+            "BudgetExceeded"
+        );
         assert_eq!(FailureCode::BudgetExceeded.as_str(), "StepBudgetExhausted");
         // These disagree! format_failure_code and as_str() return different strings.
 
@@ -2418,7 +2803,10 @@ mod tests {
         screen.dismiss(0);
         // Now dismiss_selected tries to use the stale selected_index
         let result = screen.dismiss_selected();
-        assert!(!result, "dismiss_selected returns false when incident already gone");
+        assert!(
+            !result,
+            "dismiss_selected returns false when incident already gone"
+        );
     }
 
     // =========================================================================
@@ -2781,7 +3169,10 @@ mod tests {
         assert!(first.is_some());
         assert_eq!(first.map(|d| d.slot_idx), Some(12));
         assert_eq!(first.map(|d| d.before.as_str()), Some("null"));
-        assert_eq!(first.map(|d| d.after.as_str()), Some("ObjectId(\"issue-8472\")"));
+        assert_eq!(
+            first.map(|d| d.after.as_str()),
+            Some("ObjectId(\"issue-8472\")")
+        );
         assert_eq!(first.map(|d| d.taint_changed), Some(false));
     }
 
@@ -2878,8 +3269,14 @@ mod tests {
         assert_eq!(failure_kind_color(&FailureKind::ActionTimeout), NEON_ORANGE);
         assert_eq!(failure_kind_color(&FailureKind::ActionFailed), NEON_RED);
         assert_eq!(failure_kind_color(&FailureKind::RunFailed), NEON_RED);
-        assert_eq!(failure_kind_color(&FailureKind::RetryExhausted), NEON_YELLOW);
-        assert_eq!(failure_kind_color(&FailureKind::TaintViolation), NEON_MAGENTA);
+        assert_eq!(
+            failure_kind_color(&FailureKind::RetryExhausted),
+            NEON_YELLOW
+        );
+        assert_eq!(
+            failure_kind_color(&FailureKind::TaintViolation),
+            NEON_MAGENTA
+        );
         assert_eq!(failure_kind_color(&FailureKind::InternalError), TEXT_DIM);
     }
 
@@ -2960,7 +3357,10 @@ mod tests {
             }],
         };
         assert!(panel.has_taint_changes());
-        assert!(!panel.has_value_changes(), "values are same but taint changed");
+        assert!(
+            !panel.has_value_changes(),
+            "values are same but taint changed"
+        );
     }
 
     // =========================================================================
@@ -3003,7 +3403,11 @@ mod tests {
         ];
         for kind in &variants {
             let suggestion = suggest_repairs_for_failure_kind(kind);
-            assert!(!suggestion.is_empty(), "suggestion must be non-empty for {:?}", kind);
+            assert!(
+                !suggestion.is_empty(),
+                "suggestion must be non-empty for {:?}",
+                kind
+            );
         }
     }
 
@@ -3105,7 +3509,10 @@ mod tests {
         }];
         let items = build_suggestion_items(&FailureKind::ActionTimeout, suggestions);
         assert_eq!(items.len(), 1);
-        assert_eq!(items[0].summary, "Increase timeout or check downstream service");
+        assert_eq!(
+            items[0].summary,
+            "Increase timeout or check downstream service"
+        );
         assert_eq!(items[0].badge_color, NEON_ORANGE);
     }
 

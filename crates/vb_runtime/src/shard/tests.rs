@@ -113,7 +113,7 @@ fn action_ticket(run: super::RunId, step: vb_core::ids::StepIdx) -> vb_core::act
         action: ActionId::new(0),
         attempt: 1,
         idempotency_key: 0,
-            capacity: 1,
+        capacity: 1,
     }
 }
 
@@ -156,7 +156,7 @@ fn retry_attempt_counter_increments_until_policy_exhaustion() {
         action: ActionId::new(0),
         attempt: 1,
         idempotency_key: 0,
-            capacity: 1,
+        capacity: 1,
     };
     let policy = crate::engine::RetryPolicy {
         max_attempts: 2,
@@ -1818,7 +1818,7 @@ fn adversarial_shard_action_failed_for_unknown_run_returns_run_not_found() {
         action: ActionId::new(0),
         attempt: 1,
         idempotency_key: 0,
-            capacity: 1,
+        capacity: 1,
     };
     let failure = vb_core::action::ActionFailure {
         code: ActionFailureCode::Timeout,
@@ -2161,7 +2161,7 @@ fn shard_action_completed_with_wrong_action_id_returns_invalid_completion() {
         action: ActionId::new(99),
         attempt: 1,
         idempotency_key: 0,
-            capacity: 1,
+        capacity: 1,
     };
     let output = vb_core::action::ActionOutputReady {
         output_slot: SlotIdx::new(0),
@@ -2654,7 +2654,7 @@ fn shard_action_failed_for_unknown_run_returns_run_not_found() {
         action: ActionId::new(1),
         attempt: 1,
         idempotency_key: 0,
-            capacity: 1,
+        capacity: 1,
     };
     let failure = vb_core::action::ActionFailure {
         code: vb_core::action::ActionFailureCode::Unknown,
@@ -3404,7 +3404,7 @@ fn shard_action_completed_full_writes_slot_and_advances() {
         action: ActionId::new(0),
         attempt: 1,
         idempotency_key: 0,
-            capacity: 1,
+        capacity: 1,
     };
     let output = vb_core::action::ActionOutputReady {
         output_slot: SlotIdx::new(0),
@@ -3426,12 +3426,12 @@ fn shard_action_completed_full_writes_slot_and_advances() {
             step: vb_core::ids::StepIdx::ZERO,
         }
     });
-    let found_slot = events
-        .iter()
-        .any(|e| matches!(e,
+    let found_slot = events.iter().any(|e| {
+        matches!(e,
             TraceEvent::SlotWritten { run: r, slot, .. }
             if *r == run && *slot == SlotIdx::new(0)
-        ));
+        )
+    });
     assert_eq!(found_action, true);
     assert_eq!(found_slot, true);
 }
@@ -3462,7 +3462,7 @@ fn shard_action_completed_full_with_wrong_step_returns_invalid_completion() {
         action: ActionId::new(0),
         attempt: 1,
         idempotency_key: 0,
-            capacity: 1,
+        capacity: 1,
     };
     let output = vb_core::action::ActionOutputReady {
         output_slot: SlotIdx::new(0),
@@ -3565,7 +3565,7 @@ fn shard_action_failure_retryable_exhaustion_fails_run() {
         action: ActionId::new(0),
         attempt: 1,
         idempotency_key: 0,
-            capacity: 1,
+        capacity: 1,
     };
     assert_eq!(
         shard.enqueue(ShardCommand::ActionFailed {
@@ -3584,7 +3584,7 @@ fn shard_action_failure_retryable_exhaustion_fails_run() {
         action: ActionId::new(0),
         attempt: 2,
         idempotency_key: 0,
-            capacity: 1,
+        capacity: 1,
     };
     assert_eq!(
         shard.enqueue(ShardCommand::ActionFailed {
@@ -4137,7 +4137,9 @@ fn shard_resume_after_cancel_returns_run_not_found() {
 fn bh_shd_01_shard_drive_state_uses_empty_contracts() {
     let config = small_config();
     let mut shard = Shard::new(config);
-    let Some(workflow) = suspended_workflow() else { return };
+    let Some(workflow) = suspended_workflow() else {
+        return;
+    };
     let run = super::RunId::new(801);
     assert_eq!(
         shard.enqueue(ShardCommand::SubmitWithInputs {
@@ -4150,7 +4152,10 @@ fn bh_shd_01_shard_drive_state_uses_empty_contracts() {
     );
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(
-        shard.enqueue(ShardCommand::Inspect { run, correlation: 1 }),
+        shard.enqueue(ShardCommand::Inspect {
+            run,
+            correlation: 1
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
@@ -4170,7 +4175,9 @@ fn bh_shd_01_shard_drive_state_uses_empty_contracts() {
 fn bh_shd_02_run_removed_from_map_during_drive() {
     let config = small_config();
     let mut shard = Shard::new(config);
-    let Some(workflow) = suspended_workflow() else { return };
+    let Some(workflow) = suspended_workflow() else {
+        return;
+    };
     let run = super::RunId::new(802);
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
@@ -4193,7 +4200,9 @@ fn bh_shd_02_run_removed_from_map_during_drive() {
 fn bh_shd_03_action_failure_trace_events_count() {
     let config = small_config();
     let mut shard = Shard::new(config);
-    let Some(workflow) = suspended_workflow() else { return };
+    let Some(workflow) = suspended_workflow() else {
+        return;
+    };
     let run = super::RunId::new(803);
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
@@ -4256,7 +4265,9 @@ fn bh_shd_04_find_error_handler_linear_scan_fallback() {
         next: None,
         on_error: None,
         error_slot: None,
-        kind: CompiledNodeKind::SetConst { value: ConstIdx::new(0) },
+        kind: CompiledNodeKind::SetConst {
+            value: ConstIdx::new(0),
+        },
     });
     let parts = WorkflowParts {
         name: Box::from("bh_large_wf"),
@@ -4278,12 +4289,14 @@ fn bh_shd_04_find_error_handler_linear_scan_fallback() {
     let result = super::helpers::find_error_handler_for_failure(
         // The body step (step 1) is protected by the ErrorHandler at step 0.
         // Steps 2..N-1 are NOT protected since they are not the body.
-        &workflow, vb_core::ids::StepIdx::new(1)
+        &workflow,
+        vb_core::ids::StepIdx::new(1),
     );
     match result {
         Some((handler, _error_slot)) => {
             assert_eq!(
-                handler, vb_core::ids::StepIdx::new(handler_idx),
+                handler,
+                vb_core::ids::StepIdx::new(handler_idx),
                 "BH-SHD-04: linear scan should find handler at end of workflow"
             );
         }
@@ -4317,7 +4330,9 @@ fn bh_shd_05_drain_for_shutdown_processes_all_queued_commands() {
 fn bh_shd_06_submit_with_inputs_writes_slots_before_validation() {
     let config = small_config();
     let mut shard = Shard::new(config);
-    let Some(workflow) = suspended_workflow() else { return };
+    let Some(workflow) = suspended_workflow() else {
+        return;
+    };
     let run = super::RunId::new(806);
     assert_eq!(
         shard.enqueue(ShardCommand::SubmitWithInputs {
@@ -4330,7 +4345,10 @@ fn bh_shd_06_submit_with_inputs_writes_slots_before_validation() {
     );
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(
-        shard.enqueue(ShardCommand::Inspect { run, correlation: 1 }),
+        shard.enqueue(ShardCommand::Inspect {
+            run,
+            correlation: 1
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
@@ -4355,7 +4373,10 @@ fn bh_shd_07_frame_pool_allocates_beyond_pool_capacity() {
     let f3 = pool.take(super::RunId::new(3), vb_core::ids::StepIdx::ZERO);
     assert!(f1.is_ok(), "BH-SHD-07: f1 should succeed");
     assert!(f2.is_ok(), "BH-SHD-07: f2 should succeed");
-    assert!(f3.is_ok(), "BH-SHD-07: f3 should succeed beyond pool capacity");
+    assert!(
+        f3.is_ok(),
+        "BH-SHD-07: f3 should succeed beyond pool capacity"
+    );
 }
 
 // BH-SHD-08: pending_timers allows only one timer per run (last wins).
@@ -4364,7 +4385,9 @@ fn bh_shd_07_frame_pool_allocates_beyond_pool_capacity() {
 fn bh_shd_08_pending_timers_last_wins_per_run() {
     let config = small_config();
     let mut shard = Shard::new(config);
-    let Some(workflow) = timed_wait_then_finish_workflow() else { return };
+    let Some(workflow) = timed_wait_then_finish_workflow() else {
+        return;
+    };
     let run = super::RunId::new(808);
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
@@ -4424,9 +4447,10 @@ fn bh_shd_10_cancel_nonexistent_run_no_journal_event() {
     assert_eq!(shard.enqueue(ShardCommand::Cancel { run }), Ok(()));
     assert_eq!(shard.tick(), Ok(true));
     let events = journal.snapshot().unwrap_or_default();
-    let cancelled_count = events.iter().filter(|e| {
-        matches!(e, RuntimeJournalEvent::RunCancelled { run: r } if *r == run)
-    }).count();
+    let cancelled_count = events
+        .iter()
+        .filter(|e| matches!(e, RuntimeJournalEvent::RunCancelled { run: r } if *r == run))
+        .count();
     assert_eq!(
         cancelled_count, 0,
         "BH-SHD-10: no RunCancelled journal event for non-existent run"
@@ -4447,7 +4471,9 @@ fn bh_shd_11_zero_step_budget_never_executes() {
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
     let mut shard = Shard::new(config);
-    let Some(workflow) = finished_workflow() else { return };
+    let Some(workflow) = finished_workflow() else {
+        return;
+    };
     let run = super::RunId::new(811);
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
@@ -4472,7 +4498,9 @@ fn bh_shd_11_zero_step_budget_never_executes() {
 fn bh_shd_12_legacy_completion_on_finished_run_errors() {
     let config = small_config();
     let mut shard = Shard::new(config);
-    let Some(workflow) = finished_workflow() else { return };
+    let Some(workflow) = finished_workflow() else {
+        return;
+    };
     let run = super::RunId::new(812);
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
@@ -4499,7 +4527,9 @@ fn bh_shd_12_legacy_completion_on_finished_run_errors() {
 fn bh_shd_13_timer_fire_after_cancel_returns_run_not_found() {
     let config = small_config();
     let mut shard = Shard::new(config);
-    let Some(workflow) = timed_wait_then_finish_workflow() else { return };
+    let Some(workflow) = timed_wait_then_finish_workflow() else {
+        return;
+    };
     let run = super::RunId::new(813);
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
@@ -4523,7 +4553,9 @@ fn bh_shd_13_timer_fire_after_cancel_returns_run_not_found() {
 fn bh_shd_14_inspect_after_immediate_completion_returns_not_found() {
     let config = small_config();
     let mut shard = Shard::new(config);
-    let Some(workflow) = finished_workflow() else { return };
+    let Some(workflow) = finished_workflow() else {
+        return;
+    };
     let run = super::RunId::new(814);
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
@@ -4536,7 +4568,10 @@ fn bh_shd_14_inspect_after_immediate_completion_returns_not_found() {
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(shard.counters().snapshot().runs_completed, 1);
     assert_eq!(
-        shard.enqueue(ShardCommand::Inspect { run, correlation: 1 }),
+        shard.enqueue(ShardCommand::Inspect {
+            run,
+            correlation: 1
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
@@ -4567,8 +4602,12 @@ fn shard_submit_cancel_inspect_mixed_lifecycle() {
         policy: vb_core::policy::RuntimePolicy::Relaxed,
     };
     let mut shard = Shard::new(config);
-    let Some(wf_suspend) = suspended_workflow() else { return };
-    let Some(wf_finish) = finished_workflow() else { return };
+    let Some(wf_suspend) = suspended_workflow() else {
+        return;
+    };
+    let Some(wf_finish) = finished_workflow() else {
+        return;
+    };
 
     // Submit a finishing run (completes immediately)
     assert_eq!(
@@ -4629,7 +4668,9 @@ fn shard_submit_cancel_inspect_mixed_lifecycle() {
 fn shard_submit_with_empty_inputs_matches_submit() {
     let config = small_config();
     let mut shard = Shard::new(config);
-    let Some(workflow) = finished_workflow() else { return };
+    let Some(workflow) = finished_workflow() else {
+        return;
+    };
     let run = super::RunId::new(910);
 
     assert_eq!(
@@ -4654,7 +4695,9 @@ fn shard_active_run_count_across_lifecycle() {
     assert_eq!(shard.active_run_count(), 0);
 
     // Submit a suspended run -> count = 1
-    let Some(wf) = suspended_workflow() else { return };
+    let Some(wf) = suspended_workflow() else {
+        return;
+    };
     let run_a = super::RunId::new(920);
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
@@ -4668,7 +4711,9 @@ fn shard_active_run_count_across_lifecycle() {
     assert_eq!(shard.active_run_count(), 1);
 
     // Submit another suspended run -> count = 2
-    let Some(wf2) = suspended_workflow() else { return };
+    let Some(wf2) = suspended_workflow() else {
+        return;
+    };
     let run_b = super::RunId::new(921);
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
@@ -4705,7 +4750,9 @@ fn shard_submit_after_full_cancel_resets_capacity() {
     let mut shard = Shard::new(config);
 
     // Fill to capacity
-    let Some(wf1) = suspended_workflow() else { return };
+    let Some(wf1) = suspended_workflow() else {
+        return;
+    };
     let run1 = super::RunId::new(930);
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
@@ -4718,7 +4765,9 @@ fn shard_submit_after_full_cancel_resets_capacity() {
     assert_eq!(shard.tick(), Ok(true));
 
     // Over capacity should fail
-    let Some(wf2) = suspended_workflow() else { return };
+    let Some(wf2) = suspended_workflow() else {
+        return;
+    };
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
             run: super::RunId::new(931),
@@ -4736,7 +4785,9 @@ fn shard_submit_after_full_cancel_resets_capacity() {
     assert_eq!(shard.enqueue(ShardCommand::Cancel { run: run1 }), Ok(()));
     assert_eq!(shard.tick(), Ok(true));
 
-    let Some(wf3) = finished_workflow() else { return };
+    let Some(wf3) = finished_workflow() else {
+        return;
+    };
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
             run: super::RunId::new(932),
@@ -4755,7 +4806,9 @@ fn shard_submit_after_full_cancel_resets_capacity() {
 fn shard_inspect_active_run_returns_correct_state() {
     let config = small_config();
     let mut shard = Shard::new(config);
-    let Some(workflow) = suspended_workflow() else { return };
+    let Some(workflow) = suspended_workflow() else {
+        return;
+    };
     let run = super::RunId::new(940);
 
     assert_eq!(
@@ -4795,7 +4848,9 @@ fn shard_inspect_active_run_returns_correct_state() {
 fn shard_submit_with_inputs_after_cancel() {
     let config = small_config();
     let mut shard = Shard::new(config);
-    let Some(workflow) = suspended_workflow() else { return };
+    let Some(workflow) = suspended_workflow() else {
+        return;
+    };
     let run = super::RunId::new(950);
 
     assert_eq!(
@@ -4831,7 +4886,9 @@ fn shard_submit_with_inputs_after_cancel() {
 fn shard_repeated_inspect_same_run() {
     let config = small_config();
     let mut shard = Shard::new(config);
-    let Some(workflow) = suspended_workflow() else { return };
+    let Some(workflow) = suspended_workflow() else {
+        return;
+    };
     let run = super::RunId::new(960);
 
     assert_eq!(
@@ -4879,7 +4936,9 @@ fn shard_repeated_inspect_same_run() {
 fn shard_commands_for_pending_but_unprocessed_run() {
     let config = small_config();
     let mut shard = Shard::new(config);
-    let Some(workflow) = suspended_workflow() else { return };
+    let Some(workflow) = suspended_workflow() else {
+        return;
+    };
     let run = super::RunId::new(970);
 
     // Enqueue Submit + Resume without ticking in between
@@ -4912,7 +4971,9 @@ fn shard_frame_pool_metrics_after_submit_and_finish() {
     assert_eq!(total, 0);
 
     // Submit a finished workflow -> pool created and frame returned
-    let Some(wf) = finished_workflow() else { return };
+    let Some(wf) = finished_workflow() else {
+        return;
+    };
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
             run: super::RunId::new(980),
@@ -4925,8 +4986,14 @@ fn shard_frame_pool_metrics_after_submit_and_finish() {
     assert_eq!(shard.counters().snapshot().runs_completed, 1);
 
     let (free_after, total_after) = shard.frame_pool_metrics();
-    assert!(free_after >= 1, "expected at least 1 free frame, got {free_after}");
-    assert!(total_after >= 1, "expected at least 1 total capacity, got {total_after}");
+    assert!(
+        free_after >= 1,
+        "expected at least 1 free frame, got {free_after}"
+    );
+    assert!(
+        total_after >= 1,
+        "expected at least 1 total capacity, got {total_after}"
+    );
 }
 
 /// Verify that snapshot_run returns NotFound after a run finishes via
@@ -4935,7 +5002,9 @@ fn shard_frame_pool_metrics_after_submit_and_finish() {
 fn shard_snapshot_after_error_handler_finish() {
     let config = small_config();
     let mut shard = Shard::new(config);
-    let Some(wf) = action_with_error_handler_workflow() else { return };
+    let Some(wf) = action_with_error_handler_workflow() else {
+        return;
+    };
     let run = super::RunId::new(990);
 
     assert_eq!(
@@ -4988,7 +5057,9 @@ fn shard_capacity_one_submit_cancel_submit_sequence() {
     let mut shard = Shard::new(config);
 
     // Submit + tick -> suspended
-    let Some(wf1) = suspended_workflow() else { return };
+    let Some(wf1) = suspended_workflow() else {
+        return;
+    };
     let run1 = super::RunId::new(1000);
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
@@ -5005,7 +5076,9 @@ fn shard_capacity_one_submit_cancel_submit_sequence() {
     assert_eq!(shard.tick(), Ok(true));
 
     // New submit should succeed (capacity freed)
-    let Some(wf2) = finished_workflow() else { return };
+    let Some(wf2) = finished_workflow() else {
+        return;
+    };
     let run2 = super::RunId::new(1001);
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
@@ -5026,7 +5099,9 @@ fn shard_capacity_one_submit_cancel_submit_sequence() {
 fn shard_pending_timer_fields_are_correct() {
     let config = small_config();
     let mut shard = Shard::new(config);
-    let Some(workflow) = timed_wait_then_finish_workflow() else { return };
+    let Some(workflow) = timed_wait_then_finish_workflow() else {
+        return;
+    };
     let run = super::RunId::new(1010);
 
     assert_eq!(
@@ -5054,7 +5129,9 @@ fn shard_pending_timer_fields_are_correct() {
 fn shard_ask_answered_with_i64_value() {
     let config = small_config();
     let mut shard = Shard::new(config);
-    let Some(workflow) = ask_then_finish_workflow() else { return };
+    let Some(workflow) = ask_then_finish_workflow() else {
+        return;
+    };
     let run = super::RunId::new(1020);
 
     assert_eq!(
@@ -5116,7 +5193,9 @@ fn shard_config_new_at_minimum_capacity() {
 fn shard_submit_finish_then_inspect_counters() {
     let config = small_config();
     let mut shard = Shard::new(config);
-    let Some(wf) = finished_workflow() else { return };
+    let Some(wf) = finished_workflow() else {
+        return;
+    };
     let run = super::RunId::new(1030);
 
     assert_eq!(
@@ -5141,7 +5220,10 @@ fn shard_submit_finish_then_inspect_counters() {
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(
         shard.take_inspect_response(),
-        Some(InspectResponse::NotFound { run, correlation: 5 })
+        Some(InspectResponse::NotFound {
+            run,
+            correlation: 5
+        })
     );
 }
 
@@ -5376,7 +5458,9 @@ fn max_command_queue_capacity_is_65536() {
 
 #[test]
 fn shard_command_submit_inequality_different_run_id() {
-    let Some(wf) = suspended_workflow() else { return };
+    let Some(wf) = suspended_workflow() else {
+        return;
+    };
     let a = ShardCommand::Submit {
         run: super::RunId::new(10),
         workflow: wf.clone(),
@@ -5392,8 +5476,11 @@ fn shard_command_submit_inequality_different_run_id() {
 
 #[test]
 fn shard_command_submit_with_inputs_equality() {
-    let Some(wf) = finished_workflow() else { return };
-    let inputs: Box<[(SlotIdx, vb_core::value::SlotValue)]> = Box::from([(SlotIdx::new(0), vb_core::value::SlotValue::I64(7))]);
+    let Some(wf) = finished_workflow() else {
+        return;
+    };
+    let inputs: Box<[(SlotIdx, vb_core::value::SlotValue)]> =
+        Box::from([(SlotIdx::new(0), vb_core::value::SlotValue::I64(7))]);
     let a = ShardCommand::SubmitWithInputs {
         run: super::RunId::new(5),
         workflow: wf.clone(),
@@ -5411,7 +5498,9 @@ fn shard_command_submit_with_inputs_equality() {
 
 #[test]
 fn shard_command_submit_with_inputs_inequality_different_inputs() {
-    let Some(wf) = finished_workflow() else { return };
+    let Some(wf) = finished_workflow() else {
+        return;
+    };
     let a = ShardCommand::SubmitWithInputs {
         run: super::RunId::new(5),
         workflow: wf.clone(),
@@ -5623,7 +5712,9 @@ fn ask_answer_debug_format() {
 fn shard_submit_with_run_id_zero_accepted() {
     let config = small_config();
     let mut shard = Shard::new(config);
-    let Some(workflow) = finished_workflow() else { return };
+    let Some(workflow) = finished_workflow() else {
+        return;
+    };
     let run = super::RunId::new(0);
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
@@ -5642,7 +5733,9 @@ fn shard_submit_with_run_id_zero_accepted() {
 fn shard_submit_with_run_id_one_accepted() {
     let config = small_config();
     let mut shard = Shard::new(config);
-    let Some(workflow) = finished_workflow() else { return };
+    let Some(workflow) = finished_workflow() else {
+        return;
+    };
     let run = super::RunId::new(1);
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
@@ -5668,43 +5761,71 @@ fn shard_config_default_has_expected_values() {
 
 #[test]
 fn shard_command_timer_fired_equality() {
-    let a = ShardCommand::TimerFired { run: super::RunId::new(1) };
-    let b = ShardCommand::TimerFired { run: super::RunId::new(1) };
+    let a = ShardCommand::TimerFired {
+        run: super::RunId::new(1),
+    };
+    let b = ShardCommand::TimerFired {
+        run: super::RunId::new(1),
+    };
     assert_eq!(a, b);
 }
 
 #[test]
 fn shard_command_timer_fired_inequality() {
-    let a = ShardCommand::TimerFired { run: super::RunId::new(1) };
-    let b = ShardCommand::TimerFired { run: super::RunId::new(2) };
+    let a = ShardCommand::TimerFired {
+        run: super::RunId::new(1),
+    };
+    let b = ShardCommand::TimerFired {
+        run: super::RunId::new(2),
+    };
     assert_ne!(a, b);
 }
 
 #[test]
 fn shard_command_resume_equality() {
-    let a = ShardCommand::Resume { run: super::RunId::new(5) };
-    let b = ShardCommand::Resume { run: super::RunId::new(5) };
+    let a = ShardCommand::Resume {
+        run: super::RunId::new(5),
+    };
+    let b = ShardCommand::Resume {
+        run: super::RunId::new(5),
+    };
     assert_eq!(a, b);
 }
 
 #[test]
 fn shard_command_resume_inequality() {
-    let a = ShardCommand::Resume { run: super::RunId::new(1) };
-    let b = ShardCommand::Resume { run: super::RunId::new(2) };
+    let a = ShardCommand::Resume {
+        run: super::RunId::new(1),
+    };
+    let b = ShardCommand::Resume {
+        run: super::RunId::new(2),
+    };
     assert_ne!(a, b);
 }
 
 #[test]
 fn shard_command_inspect_equality() {
-    let a = ShardCommand::Inspect { run: super::RunId::new(3), correlation: 42 };
-    let b = ShardCommand::Inspect { run: super::RunId::new(3), correlation: 42 };
+    let a = ShardCommand::Inspect {
+        run: super::RunId::new(3),
+        correlation: 42,
+    };
+    let b = ShardCommand::Inspect {
+        run: super::RunId::new(3),
+        correlation: 42,
+    };
     assert_eq!(a, b);
 }
 
 #[test]
 fn shard_command_inspect_inequality_different_correlation() {
-    let a = ShardCommand::Inspect { run: super::RunId::new(3), correlation: 1 };
-    let b = ShardCommand::Inspect { run: super::RunId::new(3), correlation: 2 };
+    let a = ShardCommand::Inspect {
+        run: super::RunId::new(3),
+        correlation: 1,
+    };
+    let b = ShardCommand::Inspect {
+        run: super::RunId::new(3),
+        correlation: 2,
+    };
     assert_ne!(a, b);
 }
 
@@ -5741,15 +5862,27 @@ fn shard_command_action_completed_legacy_inequality() {
 
 #[test]
 fn inspect_response_not_found_equality_same_run_correlation() {
-    let a = InspectResponse::NotFound { run: super::RunId::new(5), correlation: 10 };
-    let b = InspectResponse::NotFound { run: super::RunId::new(5), correlation: 10 };
+    let a = InspectResponse::NotFound {
+        run: super::RunId::new(5),
+        correlation: 10,
+    };
+    let b = InspectResponse::NotFound {
+        run: super::RunId::new(5),
+        correlation: 10,
+    };
     assert_eq!(a, b);
 }
 
 #[test]
 fn inspect_response_not_found_inequality_different_correlation() {
-    let a = InspectResponse::NotFound { run: super::RunId::new(5), correlation: 10 };
-    let b = InspectResponse::NotFound { run: super::RunId::new(5), correlation: 20 };
+    let a = InspectResponse::NotFound {
+        run: super::RunId::new(5),
+        correlation: 10,
+    };
+    let b = InspectResponse::NotFound {
+        run: super::RunId::new(5),
+        correlation: 20,
+    };
     assert_ne!(a, b);
 }
 
@@ -5768,7 +5901,9 @@ fn shard_tick_counts_zero_initially() {
 fn shard_submit_with_inputs_completes_finished_workflow() {
     let config = small_config();
     let mut shard = Shard::new(config);
-    let Some(workflow) = finished_workflow() else { return };
+    let Some(workflow) = finished_workflow() else {
+        return;
+    };
     let inputs = Box::from([(SlotIdx::new(0), vb_core::value::SlotValue::I64(99))]);
     assert_eq!(
         shard.enqueue(ShardCommand::SubmitWithInputs {
@@ -5789,7 +5924,9 @@ fn shard_multiple_submits_complete() {
     let config = small_config();
     let mut shard = Shard::new(config);
     for i in 0u64..3 {
-        let Some(workflow) = finished_workflow() else { return };
+        let Some(workflow) = finished_workflow() else {
+            return;
+        };
         assert_eq!(
             shard.enqueue(ShardCommand::Submit {
                 run: super::RunId::new(i),
@@ -5806,9 +5943,15 @@ fn shard_multiple_submits_complete() {
 
 #[test]
 fn shard_command_variants_cross_inequality() {
-    let cancel = ShardCommand::Cancel { run: super::RunId::new(1) };
-    let resume = ShardCommand::Resume { run: super::RunId::new(1) };
-    let timer = ShardCommand::TimerFired { run: super::RunId::new(1) };
+    let cancel = ShardCommand::Cancel {
+        run: super::RunId::new(1),
+    };
+    let resume = ShardCommand::Resume {
+        run: super::RunId::new(1),
+    };
+    let timer = ShardCommand::TimerFired {
+        run: super::RunId::new(1),
+    };
     let shutdown = ShardCommand::Shutdown;
     assert_ne!(cancel, resume);
     assert_ne!(cancel, timer);
@@ -5838,5 +5981,8 @@ fn inspect_snapshot_debug_format() {
         executed: 0,
     };
     let debug = format!("{snap:?}");
-    assert!(debug.contains("InspectSnapshot"), "Debug should contain InspectSnapshot: {debug}");
+    assert!(
+        debug.contains("InspectSnapshot"),
+        "Debug should contain InspectSnapshot: {debug}"
+    );
 }

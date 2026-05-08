@@ -19,12 +19,12 @@ use vb_runtime::shard::ShardConfig;
 
 use super::error::IpcServerError;
 use super::{IpcResponse, IpcServer, serve_ipc};
-use crate::IpcCommand;
-use crate::IpcFrameHeader;
-use crate::IpcPayload;
 use crate::IPC_HEADER_LEN;
 use crate::IPC_MAGIC;
 use crate::IPC_VERSION;
+use crate::IpcCommand;
+use crate::IpcFrameHeader;
+use crate::IpcPayload;
 use vb_core::{RunId, WorkflowDigest};
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
@@ -64,7 +64,12 @@ fn read_exact_timeout(stream: &mut dyn Read, n: usize) -> Result<Vec<u8>, std::i
     let mut read_total = 0usize;
     while read_total < n {
         match stream.read(&mut buf[read_total..]) {
-            Ok(0) => return Err(std::io::Error::new(std::io::ErrorKind::UnexpectedEof, "eof")),
+            Ok(0) => {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::UnexpectedEof,
+                    "eof",
+                ));
+            }
             Ok(count) => read_total = read_total.saturating_add(count),
             Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
                 std::thread::sleep(Duration::from_millis(1));
@@ -98,12 +103,17 @@ fn bind_removes_existing_socket_file() {
 
     let result = IpcServer::bind(&path);
 
-    assert!(result.is_ok(), "bind should remove stale socket and succeed");
+    assert!(
+        result.is_ok(),
+        "bind should remove stale socket and succeed"
+    );
 }
 
 #[test]
 fn bind_to_nested_directory_fails() {
-    let path = std::env::temp_dir().join("vb_ipc_nonexistent_dir_test").join("sock");
+    let path = std::env::temp_dir()
+        .join("vb_ipc_nonexistent_dir_test")
+        .join("sock");
     let result = IpcServer::bind(&path);
 
     assert!(result.is_err(), "bind to nonexistent directory should fail");
@@ -138,7 +148,10 @@ fn poll_once_accepts_client_connection() {
     // Poll to accept the client.
     let result = server.poll_once(&mut runtime, Some(Duration::from_millis(100)));
 
-    assert!(result.is_ok(), "poll_once should succeed after client connects");
+    assert!(
+        result.is_ok(),
+        "poll_once should succeed after client connects"
+    );
 }
 
 #[test]
@@ -148,13 +161,12 @@ fn poll_once_with_resolver_returns_ok_without_resolver() {
     let mut server = IpcServer::bind(&path).expect("bind should succeed");
     let mut runtime = make_runtime();
 
-    let result = server.poll_once_with_resolver(
-        &mut runtime,
-        Some(Duration::ZERO),
-        None,
-    );
+    let result = server.poll_once_with_resolver(&mut runtime, Some(Duration::ZERO), None);
 
-    assert!(result.is_ok(), "poll_once_with_resolver with None resolver should succeed");
+    assert!(
+        result.is_ok(),
+        "poll_once_with_resolver with None resolver should succeed"
+    );
 }
 
 // ── serve_ipc dispatch function tests ───────────────────────────────────────
@@ -189,7 +201,9 @@ fn server_processes_health_command_from_client() {
 
     // Send a Health frame.
     let frame = build_frame(IpcCommand::Health, 1, &[]);
-    client.write_all(&frame).expect("client should write health frame");
+    client
+        .write_all(&frame)
+        .expect("client should write health frame");
     client.flush().expect("client should flush");
 
     // Server processes the readable event.
@@ -263,7 +277,10 @@ fn server_handles_client_disconnect_gracefully() {
 
     // Poll again to detect the disconnect.
     let result = server.poll_once(&mut runtime, Some(Duration::from_millis(100)));
-    assert!(result.is_ok(), "poll after client disconnect should succeed");
+    assert!(
+        result.is_ok(),
+        "poll after client disconnect should succeed"
+    );
 }
 
 // ── invalid frame header handling ───────────────────────────────────────────
@@ -287,7 +304,9 @@ fn server_responds_with_error_for_invalid_magic() {
     bad_header[..4].copy_from_slice(&0u32.to_le_bytes());
     bad_header[4..6].copy_from_slice(&IPC_VERSION.to_le_bytes());
     bad_header[6..8].copy_from_slice(&IpcCommand::Health.as_u16().to_le_bytes());
-    client.write_all(&bad_header).expect("client should write bad frame");
+    client
+        .write_all(&bad_header)
+        .expect("client should write bad frame");
     client.flush().expect("client should flush");
 
     // Server processes the readable event.
@@ -297,7 +316,10 @@ fn server_responds_with_error_for_invalid_magic() {
 
     // Read response header.
     let response_header_bytes = read_exact_timeout(&mut client, IPC_HEADER_LEN);
-    assert!(response_header_bytes.is_ok(), "should read error response header");
+    assert!(
+        response_header_bytes.is_ok(),
+        "should read error response header"
+    );
 
     // Read response payload.
     let response_header = response_header_bytes.expect("header");
@@ -314,7 +336,10 @@ fn server_responds_with_error_for_invalid_magic() {
     };
     if payload_len_usize > 0 {
         let response_payload = read_exact_timeout(&mut client, payload_len_usize);
-        assert!(response_payload.is_ok(), "should read error response payload");
+        assert!(
+            response_payload.is_ok(),
+            "should read error response payload"
+        );
         let payload = response_payload.expect("read payload");
         let decoded: Result<IpcResponse, _> = postcard::from_bytes(&payload);
         match decoded {
@@ -355,7 +380,9 @@ fn server_responds_with_error_for_unsupported_version() {
     bad_header[..4].copy_from_slice(&IPC_MAGIC.to_le_bytes());
     bad_header[4..6].copy_from_slice(&99u16.to_le_bytes());
     bad_header[6..8].copy_from_slice(&IpcCommand::Health.as_u16().to_le_bytes());
-    client.write_all(&bad_header).expect("client should write bad version frame");
+    client
+        .write_all(&bad_header)
+        .expect("client should write bad version frame");
     client.flush().expect("client should flush");
 
     // Server processes the readable event.
@@ -365,7 +392,10 @@ fn server_responds_with_error_for_unsupported_version() {
 
     // Read response header.
     let response_header_bytes = read_exact_timeout(&mut client, IPC_HEADER_LEN);
-    assert!(response_header_bytes.is_ok(), "should read error response header");
+    assert!(
+        response_header_bytes.is_ok(),
+        "should read error response header"
+    );
 
     // Read response payload.
     let response_header = response_header_bytes.expect("header");
@@ -382,7 +412,10 @@ fn server_responds_with_error_for_unsupported_version() {
     };
     if payload_len_usize > 0 {
         let response_payload = read_exact_timeout(&mut client, payload_len_usize);
-        assert!(response_payload.is_ok(), "should read error response payload");
+        assert!(
+            response_payload.is_ok(),
+            "should read error response payload"
+        );
         let payload = response_payload.expect("read payload");
         let decoded: Result<IpcResponse, _> = postcard::from_bytes(&payload);
         match decoded {
@@ -450,7 +483,9 @@ fn server_waits_for_complete_frame_when_partial_sent() {
 
     // Send only partial header (fewer bytes than IPC_HEADER_LEN).
     let partial = &[0x56, 0x42, 0x4C]; // 3 bytes of magic
-    client.write_all(partial).expect("client should write partial frame");
+    client
+        .write_all(partial)
+        .expect("client should write partial frame");
     client.flush().expect("client should flush");
 
     // Server should handle the partial read without error.
@@ -477,7 +512,9 @@ fn server_responds_with_error_for_garbage_payload() {
     // Send a valid Health header with a garbage payload.
     let garbage = vec![0xFF_u8; 10];
     let frame = build_frame(IpcCommand::Health, 42, &garbage);
-    client.write_all(&frame).expect("client should write garbage frame");
+    client
+        .write_all(&frame)
+        .expect("client should write garbage frame");
     client.flush().expect("client should flush");
 
     // Server processes the readable event.
@@ -530,7 +567,9 @@ fn server_processes_multiple_commands_from_same_client() {
     let mut pipeline = Vec::new();
     pipeline.extend_from_slice(&frame1);
     pipeline.extend_from_slice(&frame2);
-    client.write_all(&pipeline).expect("client should write pipelined frames");
+    client
+        .write_all(&pipeline)
+        .expect("client should write pipelined frames");
     client.flush().expect("client should flush");
 
     // Server processes both commands.
@@ -559,10 +598,7 @@ fn server_processes_multiple_commands_from_same_client() {
         };
         if payload_len_usize > 0 {
             let response_payload = read_exact_timeout(&mut client, payload_len_usize);
-            assert!(
-                response_payload.is_ok(),
-                "should read response payload {i}"
-            );
+            assert!(response_payload.is_ok(), "should read response payload {i}");
         }
     }
 }
@@ -592,7 +628,9 @@ fn server_responds_with_error_for_nonzero_reserved_field() {
     header_bytes[10..12].copy_from_slice(&1u16.to_le_bytes()); // reserved != 0
     header_bytes[12..20].copy_from_slice(&1u64.to_le_bytes()); // correlation
     header_bytes[20..24].copy_from_slice(&0u32.to_le_bytes()); // payload_len
-    client.write_all(&header_bytes).expect("client should write nonzero reserved");
+    client
+        .write_all(&header_bytes)
+        .expect("client should write nonzero reserved");
     client.flush().expect("client should flush");
 
     // Server processes the readable event.
@@ -647,7 +685,10 @@ fn ipc_server_error_bind_failed_display() {
         source: std::io::Error::new(std::io::ErrorKind::AddrInUse, "addr in use"),
     };
     let msg = err.to_string();
-    assert!(msg.contains("bind failed"), "expected 'bind failed' in '{msg}'");
+    assert!(
+        msg.contains("bind failed"),
+        "expected 'bind failed' in '{msg}'"
+    );
 }
 
 #[test]
@@ -656,14 +697,20 @@ fn ipc_server_error_poll_failed_display() {
         source: std::io::Error::new(std::io::ErrorKind::Interrupted, "interrupted"),
     };
     let msg = err.to_string();
-    assert!(msg.contains("poll failed"), "expected 'poll failed' in '{msg}'");
+    assert!(
+        msg.contains("poll failed"),
+        "expected 'poll failed' in '{msg}'"
+    );
 }
 
 #[test]
 fn ipc_server_error_too_many_clients_display() {
     let err = IpcServerError::TooManyClients;
     let msg = err.to_string();
-    assert!(msg.contains("too many clients"), "expected 'too many clients' in '{msg}'");
+    assert!(
+        msg.contains("too many clients"),
+        "expected 'too many clients' in '{msg}'"
+    );
 }
 
 // ── cleanup helper ──────────────────────────────────────────────────────────
@@ -785,10 +832,7 @@ impl WorkflowResolver for NotFoundResolver {
 fn workflow_resolver_not_found_error_message() {
     let err = WorkflowResolutionError::NotFound;
     let msg = err.to_string();
-    assert!(
-        msg.contains("not found"),
-        "expected 'not found' in '{msg}'"
-    );
+    assert!(msg.contains("not found"), "expected 'not found' in '{msg}'");
 }
 
 #[test]
@@ -814,7 +858,9 @@ fn workflow_resolver_not_found_is_rejected_by_dispatch() {
     let ipc_payload = crate::IpcPayload::SubmitRun(submit);
     let payload_bytes = postcard::to_allocvec(&ipc_payload).expect("encode payload");
     let frame = build_frame(IpcCommand::SubmitRun, 99, &payload_bytes);
-    client.write_all(&frame).expect("client should write submit frame");
+    client
+        .write_all(&frame)
+        .expect("client should write submit frame");
     client.flush().expect("client should flush");
 
     // Process with a resolver that always returns NotFound.
@@ -931,10 +977,7 @@ fn workflow_resolution_error_required_display() {
 fn workflow_resolution_error_invalid_artifact_display() {
     let err = WorkflowResolutionError::InvalidArtifact;
     let msg = err.to_string();
-    assert!(
-        msg.contains("invalid"),
-        "expected 'invalid' in '{msg}'"
-    );
+    assert!(msg.contains("invalid"), "expected 'invalid' in '{msg}'");
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -957,7 +1000,11 @@ fn bind_succeeds_after_previous_server_dropped() {
     // The socket file may or may not be cleaned up by mio on drop.
     // IpcServer::bind handles a stale file, so re-binding must succeed.
     let result = IpcServer::bind(&path);
-    assert!(result.is_ok(), "re-binding after server drop should succeed, got {:?}", result.err());
+    assert!(
+        result.is_ok(),
+        "re-binding after server drop should succeed, got {:?}",
+        result.err()
+    );
 }
 
 // ── 2. bind: path is a directory, not a file ─────────────────────────────────
@@ -998,7 +1045,10 @@ fn client_can_reconnect_after_disconnect_on_same_server() {
 
         // Read response header.
         let response_header = read_exact_timeout(&mut client, IPC_HEADER_LEN);
-        assert!(response_header.is_ok(), "should read response header from first client");
+        assert!(
+            response_header.is_ok(),
+            "should read response header from first client"
+        );
 
         // Client drops here.
     }
@@ -1023,7 +1073,10 @@ fn client_can_reconnect_after_disconnect_on_same_server() {
         .expect("process health 2");
 
     let response_header = read_exact_timeout(&mut client2, IPC_HEADER_LEN);
-    assert!(response_header.is_ok(), "should read response header from second client");
+    assert!(
+        response_header.is_ok(),
+        "should read response header from second client"
+    );
 }
 
 // ── 4. error handling: server survives client_drop_mid_frame ──────────────────
@@ -1055,12 +1108,18 @@ fn server_survives_client_drop_mid_frame() {
 
     // Poll to detect the disconnect and verify the server does not panic.
     let result = server.poll_once(&mut runtime, Some(Duration::from_millis(100)));
-    assert!(result.is_ok(), "server should survive mid-frame client drop");
+    assert!(
+        result.is_ok(),
+        "server should survive mid-frame client drop"
+    );
 
     // Server should still accept new clients.
     let _new_client = make_client(&path);
     let result = server.poll_once(&mut runtime, Some(Duration::from_millis(100)));
-    assert!(result.is_ok(), "server should accept new client after mid-frame drop");
+    assert!(
+        result.is_ok(),
+        "server should accept new client after mid-frame drop"
+    );
 }
 
 // ── 5. frame encoding edge case: zero-length correlation round-trips ─────────
@@ -1106,8 +1165,12 @@ fn health_command_with_zero_correlation_round_trips() {
 fn ipc_response_roundtrip_command_payload_mismatch() {
     let original = IpcResponse::CommandPayloadMismatch;
     let encoded = postcard::to_allocvec(&original).expect("encode CommandPayloadMismatch");
-    let decoded: IpcResponse = postcard::from_bytes(&encoded).expect("decode CommandPayloadMismatch");
-    assert_eq!(decoded, original, "CommandPayloadMismatch roundtrip should be equal");
+    let decoded: IpcResponse =
+        postcard::from_bytes(&encoded).expect("decode CommandPayloadMismatch");
+    assert_eq!(
+        decoded, original,
+        "CommandPayloadMismatch roundtrip should be equal"
+    );
 }
 
 // ── 7. IpcResponse variant: WorkflowResolutionRequired round-trips ────────────
@@ -1116,18 +1179,28 @@ fn ipc_response_roundtrip_command_payload_mismatch() {
 fn ipc_response_roundtrip_workflow_resolution_required() {
     let original = IpcResponse::WorkflowResolutionRequired;
     let encoded = postcard::to_allocvec(&original).expect("encode WorkflowResolutionRequired");
-    let decoded: IpcResponse = postcard::from_bytes(&encoded).expect("decode WorkflowResolutionRequired");
-    assert_eq!(decoded, original, "WorkflowResolutionRequired roundtrip should be equal");
+    let decoded: IpcResponse =
+        postcard::from_bytes(&encoded).expect("decode WorkflowResolutionRequired");
+    assert_eq!(
+        decoded, original,
+        "WorkflowResolutionRequired roundtrip should be equal"
+    );
 }
 
 // ── 8. IpcResponse variant: CountOutOfRange round-trips ──────────────────────
 
 #[test]
 fn ipc_response_roundtrip_count_out_of_range() {
-    let original = IpcResponse::CountOutOfRange { actual: 65536, limit: 1000 };
+    let original = IpcResponse::CountOutOfRange {
+        actual: 65536,
+        limit: 1000,
+    };
     let encoded = postcard::to_allocvec(&original).expect("encode CountOutOfRange");
     let decoded: IpcResponse = postcard::from_bytes(&encoded).expect("decode CountOutOfRange");
-    assert_eq!(decoded, original, "CountOutOfRange roundtrip should be equal");
+    assert_eq!(
+        decoded, original,
+        "CountOutOfRange roundtrip should be equal"
+    );
 }
 
 // ── 9. IpcResponse variant: PayloadError round-trips ─────────────────────────
@@ -1212,7 +1285,10 @@ fn sequential_clients_each_get_health_response() {
                 .and_then(|s| <[u8; 4]>::try_from(s).ok())
                 .unwrap_or([0; 4]),
         );
-        assert_eq!(magic, IPC_MAGIC, "response magic should be valid for client {i}");
+        assert_eq!(
+            magic, IPC_MAGIC,
+            "response magic should be valid for client {i}"
+        );
 
         // Read and verify payload.
         let payload_len = u32::from_le_bytes(
@@ -1264,7 +1340,11 @@ fn ipc_payload_health_roundtrip_via_frame() {
     let payload = IpcPayload::Health;
     let encoded = postcard::to_allocvec(&payload).expect("encode Health payload");
     let decoded: IpcPayload = postcard::from_bytes(&encoded).expect("decode Health payload");
-    assert_eq!(decoded, IpcPayload::Health, "Health payload should round-trip");
+    assert_eq!(
+        decoded,
+        IpcPayload::Health,
+        "Health payload should round-trip"
+    );
 }
 
 // ── IpcResponse serialization roundtrip: AcceptedRun ─────────────────────────
@@ -1313,11 +1393,15 @@ fn ipc_response_roundtrip_events_with_items() {
         events: vec![
             crate::IpcTraceEvent {
                 sequence: 1,
-                kind: crate::IpcTraceEventKind::RunSubmitted { run: RunId::new(10) },
+                kind: crate::IpcTraceEventKind::RunSubmitted {
+                    run: RunId::new(10),
+                },
             },
             crate::IpcTraceEvent {
                 sequence: 2,
-                kind: crate::IpcTraceEventKind::RunFinished { run: RunId::new(10) },
+                kind: crate::IpcTraceEventKind::RunFinished {
+                    run: RunId::new(10),
+                },
             },
         ],
     };
@@ -1438,7 +1522,10 @@ fn ipc_response_roundtrip_verify_workflow() {
     };
     let encoded = postcard::to_allocvec(&original).expect("encode VerifyWorkflow");
     let decoded: IpcResponse = postcard::from_bytes(&encoded).expect("decode VerifyWorkflow");
-    assert_eq!(decoded, original, "VerifyWorkflow roundtrip should be equal");
+    assert_eq!(
+        decoded, original,
+        "VerifyWorkflow roundtrip should be equal"
+    );
 }
 
 // ── IpcResponse serialization roundtrip: TaintReport ─────────────────────────
@@ -1499,14 +1586,12 @@ fn ipc_response_roundtrip_workflow_graph() {
                 title: String::from("end"),
             },
         ],
-        edges: vec![
-            crate::EdgeDescriptor {
-                from: 0,
-                to: 1,
-                label: None,
-                edge_type: String::from("fallthrough"),
-            },
-        ],
+        edges: vec![crate::EdgeDescriptor {
+            from: 0,
+            to: 1,
+            label: None,
+            edge_type: String::from("fallthrough"),
+        }],
     };
     let encoded = postcard::to_allocvec(&original).expect("encode WorkflowGraph");
     let decoded: IpcResponse = postcard::from_bytes(&encoded).expect("decode WorkflowGraph");
@@ -1519,8 +1604,12 @@ fn ipc_response_roundtrip_workflow_graph() {
 fn ipc_response_roundtrip_workflow_resolution_unsupported() {
     let original = IpcResponse::WorkflowResolutionUnsupported;
     let encoded = postcard::to_allocvec(&original).expect("encode WorkflowResolutionUnsupported");
-    let decoded: IpcResponse = postcard::from_bytes(&encoded).expect("decode WorkflowResolutionUnsupported");
-    assert_eq!(decoded, original, "WorkflowResolutionUnsupported roundtrip should be equal");
+    let decoded: IpcResponse =
+        postcard::from_bytes(&encoded).expect("decode WorkflowResolutionUnsupported");
+    assert_eq!(
+        decoded, original,
+        "WorkflowResolutionUnsupported roundtrip should be equal"
+    );
 }
 
 // ── IpcResponse serialization roundtrip: WorkflowDigestMismatch ──────────────
@@ -1529,8 +1618,12 @@ fn ipc_response_roundtrip_workflow_resolution_unsupported() {
 fn ipc_response_roundtrip_workflow_digest_mismatch() {
     let original = IpcResponse::WorkflowDigestMismatch;
     let encoded = postcard::to_allocvec(&original).expect("encode WorkflowDigestMismatch");
-    let decoded: IpcResponse = postcard::from_bytes(&encoded).expect("decode WorkflowDigestMismatch");
-    assert_eq!(decoded, original, "WorkflowDigestMismatch roundtrip should be equal");
+    let decoded: IpcResponse =
+        postcard::from_bytes(&encoded).expect("decode WorkflowDigestMismatch");
+    assert_eq!(
+        decoded, original,
+        "WorkflowDigestMismatch roundtrip should be equal"
+    );
 }
 
 // ── RunListState serialization roundtrip ─────────────────────────────────────

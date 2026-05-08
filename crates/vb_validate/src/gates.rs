@@ -2204,7 +2204,10 @@ mod tests {
         parts.constants = Box::new([vb_core::value::ConstValue::Null]);
         let result = validate_gate_10_node_kind_specific(&parts);
         assert!(
-            matches!(result, Err(ValidationError::NodeKindConstraintViolation { .. })),
+            matches!(
+                result,
+                Err(ValidationError::NodeKindConstraintViolation { .. })
+            ),
             "blackhat: sentinel action_id must be rejected"
         );
     }
@@ -2246,7 +2249,10 @@ mod tests {
         ]);
         let result = validate_gate_14_slot_type_consistency(&parts);
         assert!(
-            matches!(result, Err(ValidationError::SlotTypeInconsistency { slot: 0 })),
+            matches!(
+                result,
+                Err(ValidationError::SlotTypeInconsistency { slot: 0 })
+            ),
             "blackhat: I64 and Bool writers to same slot must be rejected"
         );
     }
@@ -2287,7 +2293,13 @@ mod tests {
         let parts = make_parts(nodes, 2);
         let result = validate_gate_15_determinism_proof(&parts);
         assert!(
-            matches!(result, Err(ValidationError::NonDeterministicPath { from_node: 0, to_node: 1 })),
+            matches!(
+                result,
+                Err(ValidationError::NonDeterministicPath {
+                    from_node: 0,
+                    to_node: 1
+                })
+            ),
             "blackhat: consecutive Do nodes must be rejected as non-deterministic path"
         );
     }
@@ -2314,7 +2326,10 @@ mod tests {
         }];
         let result = validate_gate_12_action_contract_completeness(&parts, &contracts);
         assert!(
-            matches!(result, Err(ValidationError::ActionContractOrphan { action_id: 99 })),
+            matches!(
+                result,
+                Err(ValidationError::ActionContractOrphan { action_id: 99 })
+            ),
             "blackhat: orphan contract with no Do node must be rejected"
         );
     }

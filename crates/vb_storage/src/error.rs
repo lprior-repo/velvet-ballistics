@@ -12,7 +12,9 @@ use vb_core::{DiagnosticCode, RunId, WorkflowDigest};
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error, serde::Serialize, serde::Deserialize)]
 pub enum VerificationWarning {
     /// Record schema version is older than current but still compatible.
-    #[error("record schema version {found} is older than current {current} — migration may be required")]
+    #[error(
+        "record schema version {found} is older than current {current} — migration may be required"
+    )]
     SchemaVersionMismatch {
         /// Found schema version.
         found: u16,
@@ -22,8 +24,7 @@ pub enum VerificationWarning {
 }
 
 /// Diagnostic code for schema version mismatch warning.
-pub const VERIFICATION_WARNING_SCHEMA_MISMATCH_CODE: DiagnosticCode =
-    DiagnosticCode::new(0x5001);
+pub const VERIFICATION_WARNING_SCHEMA_MISMATCH_CODE: DiagnosticCode = DiagnosticCode::new(0x5001);
 
 impl VerificationWarning {
     /// Returns the stable diagnostic code for this warning.

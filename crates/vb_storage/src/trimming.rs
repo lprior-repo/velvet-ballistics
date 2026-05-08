@@ -17,7 +17,9 @@ pub struct TrimPolicy {
 
 impl Default for TrimPolicy {
     fn default() -> Self {
-        Self { skip_noop_runs: true }
+        Self {
+            skip_noop_runs: true,
+        }
     }
 }
 
@@ -45,10 +47,8 @@ pub enum TrimError {
 }
 
 impl TrimError {
-    pub const NO_SNAPSHOT_CODE: vb_core::DiagnosticCode =
-        vb_core::DiagnosticCode::new(0x4101);
-    pub const INCOMPLETE_TRIM_CODE: vb_core::DiagnosticCode =
-        vb_core::DiagnosticCode::new(0x4102);
+    pub const NO_SNAPSHOT_CODE: vb_core::DiagnosticCode = vb_core::DiagnosticCode::new(0x4101);
+    pub const INCOMPLETE_TRIM_CODE: vb_core::DiagnosticCode = vb_core::DiagnosticCode::new(0x4102);
 
     #[must_use]
     pub const fn diagnostic_code(&self) -> vb_core::DiagnosticCode {
@@ -78,8 +78,12 @@ impl FjallJournal {
             if key.len() < 17 {
                 continue;
             }
-            let slice = key.get(9..17).ok_or(TrimError::IncompleteTrim { deleted_count: 0 })?;
-            let seq_bytes: [u8; 8] = slice.try_into().map_err(|_| TrimError::IncompleteTrim { deleted_count: 0 })?;
+            let slice = key
+                .get(9..17)
+                .ok_or(TrimError::IncompleteTrim { deleted_count: 0 })?;
+            let seq_bytes: [u8; 8] = slice
+                .try_into()
+                .map_err(|_| TrimError::IncompleteTrim { deleted_count: 0 })?;
             let seq_u64 = u64::from_be_bytes(seq_bytes);
             let seq = EventSeq::new(seq_u64);
             latest = Some(match latest {
@@ -116,8 +120,12 @@ impl FjallJournal {
             if key.len() < 17 {
                 continue;
             }
-            let slice = key.get(9..17).ok_or(TrimError::IncompleteTrim { deleted_count: 0 })?;
-            let seq_bytes: [u8; 8] = slice.try_into().map_err(|_| TrimError::IncompleteTrim { deleted_count: 0 })?;
+            let slice = key
+                .get(9..17)
+                .ok_or(TrimError::IncompleteTrim { deleted_count: 0 })?;
+            let seq_bytes: [u8; 8] = slice
+                .try_into()
+                .map_err(|_| TrimError::IncompleteTrim { deleted_count: 0 })?;
             let seq_u64 = u64::from_be_bytes(seq_bytes);
 
             if seq_u64 < cutoff_seq.get() {
@@ -149,10 +157,7 @@ impl FjallJournal {
     ///
     /// Iterates over all run headers and trims events for each run that
     /// has a confirmed snapshot. Runs without snapshots are skipped.
-    pub fn trim_all_eligible_runs(
-        &self,
-        policy: TrimPolicy,
-    ) -> TrimResult<Vec<TrimmedRunResult>> {
+    pub fn trim_all_eligible_runs(&self, policy: TrimPolicy) -> TrimResult<Vec<TrimmedRunResult>> {
         let headers = self.run_headers()?;
         let mut results = Vec::new();
 
@@ -216,10 +221,7 @@ fn snapshot_prefix_key(run: RunId) -> [u8; 9] {
 )]
 mod tests {
     use super::*;
-    use crate::{
-        EventSeq, JournalEvent, RunHeaderRecord, RunSnapshot,
-        constants::DIGEST_BYTES,
-    };
+    use crate::{EventSeq, JournalEvent, RunHeaderRecord, RunSnapshot, constants::DIGEST_BYTES};
     use vb_core::{RunId, StepIdx, WorkflowDigest, WorkflowId};
 
     fn temp_journal() -> (tempfile::TempDir, FjallJournal) {
@@ -252,7 +254,9 @@ mod tests {
             status: 0,
             accepted_at_ms: 0,
         };
-        journal.put_run_header(&header).expect("header write should succeed");
+        journal
+            .put_run_header(&header)
+            .expect("header write should succeed");
     }
 
     #[test]
@@ -270,7 +274,9 @@ mod tests {
                 }
             })
             .collect();
-        journal.append_strict_batch(&events).expect("batch should succeed");
+        journal
+            .append_strict_batch(&events)
+            .expect("batch should succeed");
 
         let snapshot = RunSnapshot {
             run,
@@ -279,7 +285,9 @@ mod tests {
             slots: vec![0u8],
             taint: vec![],
         };
-        journal.put_snapshot(&snapshot).expect("snapshot should succeed");
+        journal
+            .put_snapshot(&snapshot)
+            .expect("snapshot should succeed");
 
         let result = journal
             .trim_events_for_run(run, TrimPolicy::default())
@@ -316,7 +324,9 @@ mod tests {
                 }
             })
             .collect();
-        journal.append_strict_batch(&events).expect("batch should succeed");
+        journal
+            .append_strict_batch(&events)
+            .expect("batch should succeed");
 
         let snapshot = RunSnapshot {
             run,
@@ -325,7 +335,9 @@ mod tests {
             slots: vec![0u8],
             taint: vec![],
         };
-        journal.put_snapshot(&snapshot).expect("snapshot should succeed");
+        journal
+            .put_snapshot(&snapshot)
+            .expect("snapshot should succeed");
 
         let result1 = journal
             .trim_events_for_run(run, TrimPolicy::default())
@@ -346,7 +358,9 @@ mod tests {
         let run = RunId::new(300);
 
         let events = [make_event(run, 0), make_step_started(run, 1, 0)];
-        journal.append_strict_batch(&events).expect("batch should succeed");
+        journal
+            .append_strict_batch(&events)
+            .expect("batch should succeed");
 
         let result = journal.trim_events_for_run(run, TrimPolicy::default());
         assert!(
@@ -371,7 +385,9 @@ mod tests {
                 }
             })
             .collect();
-        journal.append_strict_batch(&events).expect("batch should succeed");
+        journal
+            .append_strict_batch(&events)
+            .expect("batch should succeed");
         write_header(&journal, run, digest);
 
         let snapshot = RunSnapshot {
@@ -381,16 +397,22 @@ mod tests {
             slots: vec![0u8],
             taint: vec![],
         };
-        journal.put_snapshot(&snapshot).expect("snapshot should succeed");
+        journal
+            .put_snapshot(&snapshot)
+            .expect("snapshot should succeed");
 
         journal
             .trim_events_for_run(run, TrimPolicy::default())
             .expect("trim should succeed");
 
-        let header = journal.run_header(run).expect("header lookup should succeed");
+        let header = journal
+            .run_header(run)
+            .expect("header lookup should succeed");
         assert!(header.is_some(), "run header should be preserved");
 
-        let snap = journal.snapshot(run, EventSeq::new(2)).expect("snapshot lookup should succeed");
+        let snap = journal
+            .snapshot(run, EventSeq::new(2))
+            .expect("snapshot lookup should succeed");
         assert!(snap.is_some(), "snapshot should be preserved");
     }
 
@@ -402,11 +424,15 @@ mod tests {
         let digest = WorkflowDigest::from_bytes([0x11; DIGEST_BYTES]);
 
         let events_a = [make_event(run_a, 0), make_step_started(run_a, 1, 0)];
-        journal.append_strict_batch(&events_a).expect("batch A should succeed");
+        journal
+            .append_strict_batch(&events_a)
+            .expect("batch A should succeed");
         write_header(&journal, run_a, digest);
 
         let events_b = [make_event(run_b, 0), make_step_started(run_b, 1, 0)];
-        journal.append_strict_batch(&events_b).expect("batch B should succeed");
+        journal
+            .append_strict_batch(&events_b)
+            .expect("batch B should succeed");
         write_header(&journal, run_b, digest);
 
         let snapshot_a = RunSnapshot {
@@ -416,7 +442,9 @@ mod tests {
             slots: vec![],
             taint: vec![],
         };
-        journal.put_snapshot(&snapshot_a).expect("snapshot A should succeed");
+        journal
+            .put_snapshot(&snapshot_a)
+            .expect("snapshot A should succeed");
 
         let results = journal
             .trim_all_eligible_runs(TrimPolicy::default())
@@ -426,10 +454,14 @@ mod tests {
         assert_eq!(results[0].run, run_a);
         assert_eq!(results[0].deleted_count, 1);
 
-        let remaining_a = journal.events_for_run(run_a).expect("replay A should succeed");
+        let remaining_a = journal
+            .events_for_run(run_a)
+            .expect("replay A should succeed");
         assert_eq!(remaining_a.len(), 1);
 
-        let remaining_b = journal.events_for_run(run_b).expect("replay B should succeed");
+        let remaining_b = journal
+            .events_for_run(run_b)
+            .expect("replay B should succeed");
         assert_eq!(remaining_b.len(), 2, "run B should be untouched");
     }
 
@@ -440,9 +472,27 @@ mod tests {
         let digest = WorkflowDigest::from_bytes([0x22; DIGEST_BYTES]);
 
         let snapshots = [
-            RunSnapshot { run, seq: EventSeq::new(3), workflow: digest, slots: vec![], taint: vec![] },
-            RunSnapshot { run, seq: EventSeq::new(1), workflow: digest, slots: vec![], taint: vec![] },
-            RunSnapshot { run, seq: EventSeq::new(5), workflow: digest, slots: vec![], taint: vec![] },
+            RunSnapshot {
+                run,
+                seq: EventSeq::new(3),
+                workflow: digest,
+                slots: vec![],
+                taint: vec![],
+            },
+            RunSnapshot {
+                run,
+                seq: EventSeq::new(1),
+                workflow: digest,
+                slots: vec![],
+                taint: vec![],
+            },
+            RunSnapshot {
+                run,
+                seq: EventSeq::new(5),
+                workflow: digest,
+                slots: vec![],
+                taint: vec![],
+            },
         ];
 
         for snap in &snapshots {

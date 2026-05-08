@@ -9,8 +9,10 @@ use crate::workflow::{
     PathSegment, ResourceContract, WorkflowParts,
 };
 
-use crate::engine::{EngineSignal, StepBudget, eval_accessor, eval_accessor_with_store, eval_expr,
-    new_run_frame, run_until_blocked, step_once};
+use crate::engine::{
+    EngineSignal, StepBudget, eval_accessor, eval_accessor_with_store, eval_expr, new_run_frame,
+    run_until_blocked, step_once,
+};
 
 fn test_store() -> crate::value_store::ValueStore {
     crate::value_store::ValueStore::new()
@@ -104,8 +106,7 @@ fn eval_expr_division_by_zero_returns_division_by_zero_error() -> Result<(), Str
         resource_contract: crate::ResourceContract::DEFAULT,
         step_names: Box::new([]),
     };
-    let workflow =
-        CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
+    let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
     let mut run = test_frame(RunId::new(113), &workflow)?;
     let mut store = test_store();
 
@@ -154,8 +155,7 @@ fn eval_expr_integer_overflow_returns_invalid_compiled_workflow() -> Result<(), 
         resource_contract: crate::ResourceContract::DEFAULT,
         step_names: Box::new([]),
     };
-    let workflow =
-        CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
+    let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
     let mut run = test_frame(RunId::new(114), &workflow)?;
     let mut store = test_store();
 
@@ -201,8 +201,7 @@ fn eval_expr_not_on_non_bool_returns_type_mismatch() -> Result<(), String> {
         resource_contract: crate::ResourceContract::DEFAULT,
         step_names: Box::new([]),
     };
-    let workflow =
-        CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
+    let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())?;
     let mut run = test_frame(RunId::new(115), &workflow)?;
     let mut store = test_store();
 

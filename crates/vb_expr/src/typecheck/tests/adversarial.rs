@@ -2,10 +2,10 @@
 
 #![allow(dead_code, unused_imports)]
 
+use crate::ExprError;
 use crate::lexer::lex_expr;
 use crate::parser::parse_expr;
-use crate::typecheck::{typecheck_expr, TypeContext};
-use crate::ExprError;
+use crate::typecheck::{TypeContext, typecheck_expr};
 
 fn check(source: &str) -> crate::ExprResult<crate::typecheck::ExprType> {
     let tokens = lex_expr(source)?;
@@ -163,8 +163,8 @@ fn blackhat_tc_003_non_bool_rejected_in_logical() -> crate::ExprResult<()> {
 
 /// BH-TC-004: Equality operators allow mixed types (by design).
 ///
-    /// `==` and `!=` are polymorphic -- they can compare any two types.
-    /// This is by design for null-safety checks.
+/// `==` and `!=` are polymorphic -- they can compare any two types.
+/// This is by design for null-safety checks.
 #[test]
 fn blackhat_tc_004_equality_allows_mixed_types() -> crate::ExprResult<()> {
     assert_eq!(check("null == 1")?, crate::typecheck::ExprType::Bool);
@@ -207,8 +207,8 @@ fn blackhat_tc_006_not_rejects_non_bool() -> crate::ExprResult<()> {
 
 /// BH-TC-007: Unknown type allowed through (deferred to runtime).
 ///
-    /// Unresolved references produce `Unknown` type which passes through all
-    /// operators. This is by design -- the eval layer catches type errors.
+/// Unresolved references produce `Unknown` type which passes through all
+/// operators. This is by design -- the eval layer catches type errors.
 #[test]
 fn blackhat_tc_007_unknown_deferred_to_runtime() -> crate::ExprResult<()> {
     assert_eq!(check("$x + 1")?, crate::typecheck::ExprType::I64);

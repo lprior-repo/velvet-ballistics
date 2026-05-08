@@ -317,7 +317,15 @@ pub fn execute_node_full(
         CompiledNodeKind::Do { action, input } => {
             let seq = SeqNo::new(run.executed());
             if contracts.is_empty() {
-                execute_do_without_contract(run, node.id, *action, *input, seq, granted, retry_policy)
+                execute_do_without_contract(
+                    run,
+                    node.id,
+                    *action,
+                    *input,
+                    seq,
+                    granted,
+                    retry_policy,
+                )
             } else {
                 execute_do(
                     run,
@@ -346,8 +354,7 @@ pub fn execute_node_full(
         }
 
         CompiledNodeKind::ErrorHandler {
-            body: handler_body,
-            ..
+            body: handler_body, ..
         } => {
             run.set_pc(*handler_body)
                 .map_err(RuntimeEngineError::Core)?;
@@ -366,13 +373,13 @@ pub fn execute_node_full(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::primitives::collect::CollectStates;
     use vb_core::action::{ActionContract, Idempotency, RetrySafety, SideEffect};
     use vb_core::frame::RunFrame;
     use vb_core::ids::{ActionId, ConstIdx, RunId, SlotIdx, StepIdx};
     use vb_core::value::{SlotValue, Taint};
-    use vb_core::workflow::{CompiledNode, CompiledNodeKind, CompiledWorkflow, WorkflowParts};
     use vb_core::value_store::ValueStore;
-    use crate::primitives::collect::CollectStates;
+    use vb_core::workflow::{CompiledNode, CompiledNodeKind, CompiledWorkflow, WorkflowParts};
 
     /// Terminal Finish node. Valid sink for any workflow path.
     fn finish_node(id: u16, slot: u16) -> CompiledNode {
@@ -461,7 +468,16 @@ mod tests {
             Some(n) => n,
             None => return,
         };
-        let result = execute_node_full(&wf, &mut run, &mut store, n, &[], RetryPolicy::NEVER, &mut cs, &CapabilitySet::empty());
+        let result = execute_node_full(
+            &wf,
+            &mut run,
+            &mut store,
+            n,
+            &[],
+            RetryPolicy::NEVER,
+            &mut cs,
+            &CapabilitySet::empty(),
+        );
         match result {
             Ok(RuntimeSignal::Continue) => {}
             other => {
@@ -497,7 +513,16 @@ mod tests {
             Some(n) => n,
             None => return,
         };
-        let result = execute_node_full(&wf, &mut run, &mut store, n, &[], RetryPolicy::NEVER, &mut cs, &CapabilitySet::empty());
+        let result = execute_node_full(
+            &wf,
+            &mut run,
+            &mut store,
+            n,
+            &[],
+            RetryPolicy::NEVER,
+            &mut cs,
+            &CapabilitySet::empty(),
+        );
         match result {
             Ok(RuntimeSignal::Continue) => {}
             other => {
@@ -536,7 +561,16 @@ mod tests {
             Some(n) => n,
             None => return,
         };
-        let result = execute_node_full(&wf, &mut run, &mut store, n, &[], RetryPolicy::NEVER, &mut cs, &CapabilitySet::empty());
+        let result = execute_node_full(
+            &wf,
+            &mut run,
+            &mut store,
+            n,
+            &[],
+            RetryPolicy::NEVER,
+            &mut cs,
+            &CapabilitySet::empty(),
+        );
         match result {
             Ok(RuntimeSignal::AwaitingAction(ticket)) => {
                 assert_eq!(ticket.action, ActionId::new(5));
@@ -602,7 +636,16 @@ mod tests {
                 required_capabilities: Box::new([]),
             },
         ];
-        let result = execute_node_full(&wf, &mut run, &mut store, n, &contracts, RetryPolicy::NEVER, &mut cs, &CapabilitySet::empty());
+        let result = execute_node_full(
+            &wf,
+            &mut run,
+            &mut store,
+            n,
+            &contracts,
+            RetryPolicy::NEVER,
+            &mut cs,
+            &CapabilitySet::empty(),
+        );
         match result {
             Ok(RuntimeSignal::AwaitingAction(ticket)) => {
                 assert_eq!(ticket.action, ActionId::new(1));
@@ -652,11 +695,20 @@ mod tests {
             retry_safety: RetrySafety::Safe,
             required_capabilities: Box::new([]),
         }];
-        let result = execute_node_full(&wf, &mut run, &mut store, n, &contracts, RetryPolicy::NEVER, &mut cs, &CapabilitySet::empty());
+        let result = execute_node_full(
+            &wf,
+            &mut run,
+            &mut store,
+            n,
+            &contracts,
+            RetryPolicy::NEVER,
+            &mut cs,
+            &CapabilitySet::empty(),
+        );
         match result {
-            Err(RuntimeEngineError::Action(
-                vb_core::action::ActionError::UnknownAction { action },
-            )) => {
+            Err(RuntimeEngineError::Action(vb_core::action::ActionError::UnknownAction {
+                action,
+            })) => {
                 assert_eq!(action, ActionId::new(99));
             }
             other => {
@@ -704,7 +756,16 @@ mod tests {
             retry_safety: RetrySafety::Safe,
             required_capabilities: Box::new([]),
         }];
-        let result = execute_node_full(&wf, &mut run, &mut store, n, &contracts, RetryPolicy::NEVER, &mut cs, &CapabilitySet::empty());
+        let result = execute_node_full(
+            &wf,
+            &mut run,
+            &mut store,
+            n,
+            &contracts,
+            RetryPolicy::NEVER,
+            &mut cs,
+            &CapabilitySet::empty(),
+        );
         match result {
             Err(RuntimeEngineError::TaintViolation { step }) => {
                 assert_eq!(step, StepIdx::ZERO);
@@ -745,7 +806,16 @@ mod tests {
             Some(n) => n,
             None => return,
         };
-        let result = execute_node_full(&wf, &mut run, &mut store, n, &[], RetryPolicy::NEVER, &mut cs, &CapabilitySet::empty());
+        let result = execute_node_full(
+            &wf,
+            &mut run,
+            &mut store,
+            n,
+            &[],
+            RetryPolicy::NEVER,
+            &mut cs,
+            &CapabilitySet::empty(),
+        );
         assert!(result.is_ok(), "expected Ok, got {result:?}");
         // NEVER policy: max_attempts=1, attempt=0 < 1, routes to body=step0
         let pc = run.pc();
@@ -781,11 +851,24 @@ mod tests {
             Some(n) => n,
             None => return,
         };
-        let result = execute_node_full(&wf, &mut run, &mut store, n, &[], RetryPolicy::NEVER, &mut cs, &CapabilitySet::empty());
+        let result = execute_node_full(
+            &wf,
+            &mut run,
+            &mut store,
+            n,
+            &[],
+            RetryPolicy::NEVER,
+            &mut cs,
+            &CapabilitySet::empty(),
+        );
         assert!(result.is_ok(), "expected Ok, got {result:?}");
         // NEVER policy: max_attempts=1, attempt=1 >= 1, routes to exhausted=step1
         let pc = run.pc();
-        assert_eq!(pc, StepIdx::new(1), "expected PC routed to exhausted step 1");
+        assert_eq!(
+            pc,
+            StepIdx::new(1),
+            "expected PC routed to exhausted step 1"
+        );
     }
 
     // =====================================================================
@@ -816,7 +899,16 @@ mod tests {
             Some(n) => n,
             None => return,
         };
-        let result = execute_node_full(&wf, &mut run, &mut store, n, &[], RetryPolicy::DEFAULT, &mut cs, &CapabilitySet::empty());
+        let result = execute_node_full(
+            &wf,
+            &mut run,
+            &mut store,
+            n,
+            &[],
+            RetryPolicy::DEFAULT,
+            &mut cs,
+            &CapabilitySet::empty(),
+        );
         assert!(result.is_ok(), "expected Ok, got {result:?}");
         // DEFAULT policy: max_attempts=3, attempt=1 < 3, routes to body=step0
         let pc = run.pc();
@@ -851,11 +943,24 @@ mod tests {
             Some(n) => n,
             None => return,
         };
-        let result = execute_node_full(&wf, &mut run, &mut store, n, &[], RetryPolicy::DEFAULT, &mut cs, &CapabilitySet::empty());
+        let result = execute_node_full(
+            &wf,
+            &mut run,
+            &mut store,
+            n,
+            &[],
+            RetryPolicy::DEFAULT,
+            &mut cs,
+            &CapabilitySet::empty(),
+        );
         assert!(result.is_ok(), "expected Ok, got {result:?}");
         // DEFAULT policy: max_attempts=3, attempt=3 >= 3, routes to exhausted=step1
         let pc = run.pc();
-        assert_eq!(pc, StepIdx::new(1), "expected PC routed to exhausted step 1");
+        assert_eq!(
+            pc,
+            StepIdx::new(1),
+            "expected PC routed to exhausted step 1"
+        );
     }
 
     // =====================================================================
@@ -886,7 +991,16 @@ mod tests {
             Some(n) => n,
             None => return,
         };
-        let result = execute_node_full(&wf, &mut run, &mut store, n, &[], RetryPolicy::NEVER, &mut cs, &CapabilitySet::empty());
+        let result = execute_node_full(
+            &wf,
+            &mut run,
+            &mut store,
+            n,
+            &[],
+            RetryPolicy::NEVER,
+            &mut cs,
+            &CapabilitySet::empty(),
+        );
         assert!(result.is_ok(), "expected Ok, got {result:?}");
         let pc = run.pc();
         assert_eq!(pc, StepIdx::new(1), "expected PC routed to body step 1");
@@ -916,7 +1030,16 @@ mod tests {
             Some(n) => n,
             None => return,
         };
-        let result = execute_node_full(&wf, &mut run, &mut store, n, &[], RetryPolicy::NEVER, &mut cs, &CapabilitySet::empty());
+        let result = execute_node_full(
+            &wf,
+            &mut run,
+            &mut store,
+            n,
+            &[],
+            RetryPolicy::NEVER,
+            &mut cs,
+            &CapabilitySet::empty(),
+        );
         assert!(result.is_ok(), "expected Ok, got {result:?}");
         let pc = run.pc();
         assert_eq!(pc, StepIdx::new(1), "expected PC routed to body step 1");
@@ -953,8 +1076,20 @@ mod tests {
             Some(n) => n,
             None => return,
         };
-        let result = execute_node_full(&wf, &mut run, &mut store, n, &[], RetryPolicy::NEVER, &mut cs, &CapabilitySet::empty());
-        assert!(result.is_err(), "expected error for uninitialized input, got {result:?}");
+        let result = execute_node_full(
+            &wf,
+            &mut run,
+            &mut store,
+            n,
+            &[],
+            RetryPolicy::NEVER,
+            &mut cs,
+            &CapabilitySet::empty(),
+        );
+        assert!(
+            result.is_err(),
+            "expected error for uninitialized input, got {result:?}"
+        );
     }
 
     // =====================================================================
@@ -981,8 +1116,20 @@ mod tests {
             Some(n) => n,
             None => return,
         };
-        let result = execute_node_full(&wf, &mut run, &mut store, n, &[], RetryPolicy::NEVER, &mut cs, &CapabilitySet::empty());
-        assert!(result.is_err(), "expected error for missing step state, got {result:?}");
+        let result = execute_node_full(
+            &wf,
+            &mut run,
+            &mut store,
+            n,
+            &[],
+            RetryPolicy::NEVER,
+            &mut cs,
+            &CapabilitySet::empty(),
+        );
+        assert!(
+            result.is_err(),
+            "expected error for missing step state, got {result:?}"
+        );
     }
 
     // =====================================================================
@@ -1013,8 +1160,20 @@ mod tests {
             Some(n) => n,
             None => return,
         };
-        let result = execute_node_full(&wf, &mut run, &mut store, n, &[], RetryPolicy::NEVER, &mut cs, &CapabilitySet::empty());
-        assert!(result.is_err(), "expected error for uninitialized iterator, got {result:?}");
+        let result = execute_node_full(
+            &wf,
+            &mut run,
+            &mut store,
+            n,
+            &[],
+            RetryPolicy::NEVER,
+            &mut cs,
+            &CapabilitySet::empty(),
+        );
+        assert!(
+            result.is_err(),
+            "expected error for uninitialized iterator, got {result:?}"
+        );
     }
 
     // =====================================================================
@@ -1044,7 +1203,16 @@ mod tests {
             Some(n) => n,
             None => return,
         };
-        let result = execute_node_full(&wf, &mut run, &mut store, n, &[], RetryPolicy::NEVER, &mut cs, &CapabilitySet::empty());
+        let result = execute_node_full(
+            &wf,
+            &mut run,
+            &mut store,
+            n,
+            &[],
+            RetryPolicy::NEVER,
+            &mut cs,
+            &CapabilitySet::empty(),
+        );
         // May succeed or error, but must not panic
         let _ = result;
     }
@@ -1074,8 +1242,20 @@ mod tests {
             Some(n) => n,
             None => return,
         };
-        let result = execute_node_full(&wf, &mut run, &mut store, n, &[], RetryPolicy::NEVER, &mut cs, &CapabilitySet::empty());
-        assert!(result.is_err(), "expected error for missing step state, got {result:?}");
+        let result = execute_node_full(
+            &wf,
+            &mut run,
+            &mut store,
+            n,
+            &[],
+            RetryPolicy::NEVER,
+            &mut cs,
+            &CapabilitySet::empty(),
+        );
+        assert!(
+            result.is_err(),
+            "expected error for missing step state, got {result:?}"
+        );
     }
 
     // =====================================================================
@@ -1108,8 +1288,20 @@ mod tests {
             Some(n) => n,
             None => return,
         };
-        let result = execute_node_full(&wf, &mut run, &mut store, n, &[], RetryPolicy::NEVER, &mut cs, &CapabilitySet::empty());
-        assert!(result.is_err(), "expected error for uninitialized source, got {result:?}");
+        let result = execute_node_full(
+            &wf,
+            &mut run,
+            &mut store,
+            n,
+            &[],
+            RetryPolicy::NEVER,
+            &mut cs,
+            &CapabilitySet::empty(),
+        );
+        assert!(
+            result.is_err(),
+            "expected error for uninitialized source, got {result:?}"
+        );
     }
 
     // =====================================================================
@@ -1140,8 +1332,20 @@ mod tests {
             Some(n) => n,
             None => return,
         };
-        let result = execute_node_full(&wf, &mut run, &mut store, n, &[], RetryPolicy::NEVER, &mut cs, &CapabilitySet::empty());
-        assert!(result.is_err(), "expected error for uninitialized collector, got {result:?}");
+        let result = execute_node_full(
+            &wf,
+            &mut run,
+            &mut store,
+            n,
+            &[],
+            RetryPolicy::NEVER,
+            &mut cs,
+            &CapabilitySet::empty(),
+        );
+        assert!(
+            result.is_err(),
+            "expected error for uninitialized collector, got {result:?}"
+        );
     }
 
     // =====================================================================
@@ -1172,8 +1376,20 @@ mod tests {
             Some(n) => n,
             None => return,
         };
-        let result = execute_node_full(&wf, &mut run, &mut store, n, &[], RetryPolicy::NEVER, &mut cs, &CapabilitySet::empty());
-        assert!(result.is_err(), "expected error for uninitialized collector, got {result:?}");
+        let result = execute_node_full(
+            &wf,
+            &mut run,
+            &mut store,
+            n,
+            &[],
+            RetryPolicy::NEVER,
+            &mut cs,
+            &CapabilitySet::empty(),
+        );
+        assert!(
+            result.is_err(),
+            "expected error for uninitialized collector, got {result:?}"
+        );
     }
 
     // =====================================================================
@@ -1200,8 +1416,20 @@ mod tests {
             Some(n) => n,
             None => return,
         };
-        let result = execute_node_full(&wf, &mut run, &mut store, n, &[], RetryPolicy::NEVER, &mut cs, &CapabilitySet::empty());
-        assert!(result.is_err(), "expected error for uninitialized collector, got {result:?}");
+        let result = execute_node_full(
+            &wf,
+            &mut run,
+            &mut store,
+            n,
+            &[],
+            RetryPolicy::NEVER,
+            &mut cs,
+            &CapabilitySet::empty(),
+        );
+        assert!(
+            result.is_err(),
+            "expected error for uninitialized collector, got {result:?}"
+        );
     }
 
     // =====================================================================
@@ -1235,8 +1463,20 @@ mod tests {
             Some(n) => n,
             None => return,
         };
-        let result = execute_node_full(&wf, &mut run, &mut store, n, &[], RetryPolicy::NEVER, &mut cs, &CapabilitySet::empty());
-        assert!(result.is_err(), "expected error for uninitialized input, got {result:?}");
+        let result = execute_node_full(
+            &wf,
+            &mut run,
+            &mut store,
+            n,
+            &[],
+            RetryPolicy::NEVER,
+            &mut cs,
+            &CapabilitySet::empty(),
+        );
+        assert!(
+            result.is_err(),
+            "expected error for uninitialized input, got {result:?}"
+        );
     }
 
     // =====================================================================
@@ -1267,8 +1507,20 @@ mod tests {
             Some(n) => n,
             None => return,
         };
-        let result = execute_node_full(&wf, &mut run, &mut store, n, &[], RetryPolicy::NEVER, &mut cs, &CapabilitySet::empty());
-        assert!(result.is_err(), "expected error for uninitialized iterator, got {result:?}");
+        let result = execute_node_full(
+            &wf,
+            &mut run,
+            &mut store,
+            n,
+            &[],
+            RetryPolicy::NEVER,
+            &mut cs,
+            &CapabilitySet::empty(),
+        );
+        assert!(
+            result.is_err(),
+            "expected error for uninitialized iterator, got {result:?}"
+        );
     }
 
     // =====================================================================
@@ -1295,8 +1547,20 @@ mod tests {
             Some(n) => n,
             None => return,
         };
-        let result = execute_node_full(&wf, &mut run, &mut store, n, &[], RetryPolicy::NEVER, &mut cs, &CapabilitySet::empty());
-        assert!(result.is_err(), "expected error for missing step state, got {result:?}");
+        let result = execute_node_full(
+            &wf,
+            &mut run,
+            &mut store,
+            n,
+            &[],
+            RetryPolicy::NEVER,
+            &mut cs,
+            &CapabilitySet::empty(),
+        );
+        assert!(
+            result.is_err(),
+            "expected error for missing step state, got {result:?}"
+        );
     }
 
     // =====================================================================
@@ -1326,7 +1590,16 @@ mod tests {
             Some(n) => n,
             None => return,
         };
-        let result = execute_node_full(&wf, &mut run, &mut store, n, &[], RetryPolicy::NEVER, &mut cs, &CapabilitySet::empty());
+        let result = execute_node_full(
+            &wf,
+            &mut run,
+            &mut store,
+            n,
+            &[],
+            RetryPolicy::NEVER,
+            &mut cs,
+            &CapabilitySet::empty(),
+        );
         // Zero attempts may succeed or error, but must not panic
         let _ = result;
     }
@@ -1358,8 +1631,20 @@ mod tests {
             Some(n) => n,
             None => return,
         };
-        let result = execute_node_full(&wf, &mut run, &mut store, n, &[], RetryPolicy::NEVER, &mut cs, &CapabilitySet::empty());
-        assert!(result.is_err(), "expected error for uninitialized attempt slot, got {result:?}");
+        let result = execute_node_full(
+            &wf,
+            &mut run,
+            &mut store,
+            n,
+            &[],
+            RetryPolicy::NEVER,
+            &mut cs,
+            &CapabilitySet::empty(),
+        );
+        assert!(
+            result.is_err(),
+            "expected error for uninitialized attempt slot, got {result:?}"
+        );
     }
 
     // =====================================================================
@@ -1386,8 +1671,20 @@ mod tests {
             Some(n) => n,
             None => return,
         };
-        let result = execute_node_full(&wf, &mut run, &mut store, n, &[], RetryPolicy::NEVER, &mut cs, &CapabilitySet::empty());
-        assert!(result.is_err(), "expected error for uninitialized result slot, got {result:?}");
+        let result = execute_node_full(
+            &wf,
+            &mut run,
+            &mut store,
+            n,
+            &[],
+            RetryPolicy::NEVER,
+            &mut cs,
+            &CapabilitySet::empty(),
+        );
+        assert!(
+            result.is_err(),
+            "expected error for uninitialized result slot, got {result:?}"
+        );
     }
 
     // =====================================================================
@@ -1414,8 +1711,20 @@ mod tests {
             Some(n) => n,
             None => return,
         };
-        let result = execute_node_full(&wf, &mut run, &mut store, n, &[], RetryPolicy::NEVER, &mut cs, &CapabilitySet::empty());
-        assert!(result.is_err(), "expected error for uninitialized deadline, got {result:?}");
+        let result = execute_node_full(
+            &wf,
+            &mut run,
+            &mut store,
+            n,
+            &[],
+            RetryPolicy::NEVER,
+            &mut cs,
+            &CapabilitySet::empty(),
+        );
+        assert!(
+            result.is_err(),
+            "expected error for uninitialized deadline, got {result:?}"
+        );
     }
 
     // =====================================================================
@@ -1443,8 +1752,20 @@ mod tests {
             Some(n) => n,
             None => return,
         };
-        let result = execute_node_full(&wf, &mut run, &mut store, n, &[], RetryPolicy::NEVER, &mut cs, &CapabilitySet::empty());
-        assert!(result.is_err(), "expected error for uninitialized event, got {result:?}");
+        let result = execute_node_full(
+            &wf,
+            &mut run,
+            &mut store,
+            n,
+            &[],
+            RetryPolicy::NEVER,
+            &mut cs,
+            &CapabilitySet::empty(),
+        );
+        assert!(
+            result.is_err(),
+            "expected error for uninitialized event, got {result:?}"
+        );
     }
 
     // =====================================================================
@@ -1472,8 +1793,20 @@ mod tests {
             Some(n) => n,
             None => return,
         };
-        let result = execute_node_full(&wf, &mut run, &mut store, n, &[], RetryPolicy::NEVER, &mut cs, &CapabilitySet::empty());
-        assert!(result.is_err(), "expected error for uninitialized prompt, got {result:?}");
+        let result = execute_node_full(
+            &wf,
+            &mut run,
+            &mut store,
+            n,
+            &[],
+            RetryPolicy::NEVER,
+            &mut cs,
+            &CapabilitySet::empty(),
+        );
+        assert!(
+            result.is_err(),
+            "expected error for uninitialized prompt, got {result:?}"
+        );
     }
 
     // =====================================================================
@@ -1500,8 +1833,20 @@ mod tests {
             Some(n) => n,
             None => return,
         };
-        let result = execute_node_full(&wf, &mut run, &mut store, n, &[], RetryPolicy::NEVER, &mut cs, &CapabilitySet::empty());
-        assert!(result.is_err(), "expected error for uninitialized answer, got {result:?}");
+        let result = execute_node_full(
+            &wf,
+            &mut run,
+            &mut store,
+            n,
+            &[],
+            RetryPolicy::NEVER,
+            &mut cs,
+            &CapabilitySet::empty(),
+        );
+        assert!(
+            result.is_err(),
+            "expected error for uninitialized answer, got {result:?}"
+        );
     }
 
     // =====================================================================
@@ -1530,8 +1875,20 @@ mod tests {
             Some(n) => n,
             None => return,
         };
-        let result = execute_node_full(&wf, &mut run, &mut store, n, &[], RetryPolicy::NEVER, &mut cs, &CapabilitySet::empty());
+        let result = execute_node_full(
+            &wf,
+            &mut run,
+            &mut store,
+            n,
+            &[],
+            RetryPolicy::NEVER,
+            &mut cs,
+            &CapabilitySet::empty(),
+        );
         // RepeatCheck reads attempt_slot, but since it is uninitialized we expect an error
-        assert!(result.is_err(), "expected error for uninitialized attempt slot, got {result:?}");
+        assert!(
+            result.is_err(),
+            "expected error for uninitialized attempt slot, got {result:?}"
+        );
     }
 }

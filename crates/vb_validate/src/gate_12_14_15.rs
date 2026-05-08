@@ -8,7 +8,8 @@ use vb_core::action::ActionContract;
 use vb_core::workflow::{CompiledNodeKind, WorkflowParts};
 
 pub fn validate_gate_12_action_contract_completeness(
-    parts: &WorkflowParts, action_contracts: &[ActionContract],
+    parts: &WorkflowParts,
+    action_contracts: &[ActionContract],
 ) -> ValidationResult<()> {
     let mut do_action_ids: Vec<u16> = Vec::new();
     for (node_index, node) in parts.nodes.iter().enumerate() {
@@ -16,20 +17,35 @@ pub fn validate_gate_12_action_contract_completeness(
             let action_val = action.get();
             let mut found = false;
             for contract in action_contracts {
-                if contract.id.get() == action_val { found = true; break; }
+                if contract.id.get() == action_val {
+                    found = true;
+                    break;
+                }
             }
             if !found {
-                return Err(ValidationError::ActionContractMissing { action_id: usize::from(action_val), node_index });
+                return Err(ValidationError::ActionContractMissing {
+                    action_id: usize::from(action_val),
+                    node_index,
+                });
             }
-            if !do_action_ids.contains(&action_val) { do_action_ids.push(action_val); }
+            if !do_action_ids.contains(&action_val) {
+                do_action_ids.push(action_val);
+            }
         }
     }
     for contract in action_contracts {
         let cid = contract.id.get();
         let mut found = false;
-        for do_id in &do_action_ids { if *do_id == cid { found = true; break; } }
+        for do_id in &do_action_ids {
+            if *do_id == cid {
+                found = true;
+                break;
+            }
+        }
         if !found {
-            return Err(ValidationError::ActionContractOrphan { action_id: usize::from(cid) });
+            return Err(ValidationError::ActionContractOrphan {
+                action_id: usize::from(cid),
+            });
         }
     }
     Ok(())
@@ -37,20 +53,29 @@ pub fn validate_gate_12_action_contract_completeness(
 
 pub fn validate_gate_14_slot_type_consistency(parts: &WorkflowParts) -> ValidationResult<()> {
     let slot_count = usize::from(parts.slot_count);
-    if slot_count == 0 { return Ok(()); }
+    if slot_count == 0 {
+        return Ok(());
+    }
     let mut slot_const_kind: Vec<u8> = vec![0; slot_count];
     for node in parts.nodes.iter() {
         if let CompiledNodeKind::SetConst { value } = &node.kind {
             let cidx = value.as_usize();
-            if cidx >= parts.constants.len() { continue; }
+            if cidx >= parts.constants.len() {
+                continue;
+            }
             if let Some(constant) = parts.constants.get(cidx) {
                 let kind = const_value_discriminant(constant);
                 if let Some(slot) = node.output {
                     let su = slot.as_usize();
                     if su < slot_count {
-                        let existing = slot_const_kind.get(su).copied().ok_or(ValidationError::SlotTypeInconsistency { slot: su })?;
+                        let existing = slot_const_kind
+                            .get(su)
+                            .copied()
+                            .ok_or(ValidationError::SlotTypeInconsistency { slot: su })?;
                         if existing == 0 {
-                            if let Some(e) = slot_const_kind.get_mut(su) { *e = kind; }
+                            if let Some(e) = slot_const_kind.get_mut(su) {
+                                *e = kind;
+                            }
                         } else if existing != kind {
                             return Err(ValidationError::SlotTypeInconsistency { slot: su });
                         }
@@ -75,13 +100,18 @@ fn const_value_discriminant(value: &vb_core::value::ConstValue) -> u8 {
 pub fn validate_gate_15_determinism_proof(parts: &WorkflowParts) -> ValidationResult<()> {
     let node_count = parts.nodes.len();
     for (node_index, node) in parts.nodes.iter().enumerate() {
-        if !is_non_deterministic(&node.kind) { continue; }
+        if !is_non_deterministic(&node.kind) {
+            continue;
+        }
         if let Some(next_step) = node.next {
             let nu = next_step.as_usize();
             if nu < node_count {
                 if let Some(next_node) = parts.nodes.get(nu) {
                     if is_non_deterministic(&next_node.kind) {
-                        return Err(ValidationError::NonDeterministicPath { from_node: node_index, to_node: nu });
+                        return Err(ValidationError::NonDeterministicPath {
+                            from_node: node_index,
+                            to_node: nu,
+                        });
                     }
                 }
             }
@@ -91,7 +121,10 @@ pub fn validate_gate_15_determinism_proof(parts: &WorkflowParts) -> ValidationRe
 }
 
 fn is_non_deterministic(kind: &CompiledNodeKind) -> bool {
-    matches!(kind, CompiledNodeKind::Do { .. } | CompiledNodeKind::Ask { .. })
+    matches!(
+        kind,
+        CompiledNodeKind::Do { .. } | CompiledNodeKind::Ask { .. }
+    )
 }
 
 #[cfg(test)]
@@ -99,8 +132,8 @@ mod tests {
     use super::*;
     use vb_core::action::{ActionContract, Idempotency, RetrySafety, SideEffect};
     use vb_core::ids::{ActionId, ConstIdx, SlotIdx, StepIdx};
-    use vb_core::workflow::{CompiledNode, ResourceContract};
     use vb_core::value::ConstValue;
+    use vb_core::workflow::{CompiledNode, ResourceContract};
 
     fn make_parts(nodes: Vec<CompiledNode>, slot_count: u16) -> WorkflowParts {
         WorkflowParts {
@@ -207,11 +240,10 @@ mod tests {
 
     #[test]
     fn gate_12_accepts_multiple_do_nodes_with_contracts() {
-        let parts = make_parts(vec![
-            do_node(0, 1, 0),
-            do_node(1, 2, 0),
-            finish_node(2, 0),
-        ], 1);
+        let parts = make_parts(
+            vec![do_node(0, 1, 0), do_node(1, 2, 0), finish_node(2, 0)],
+            1,
+        );
         let contracts = [make_contract(1), make_contract(2)];
         assert_eq!(
             validate_gate_12_action_contract_completeness(&parts, &contracts),
@@ -252,11 +284,10 @@ mod tests {
     #[test]
     fn gate_12_accepts_two_do_nodes_one_contract() {
         // Two Do nodes using the same action_id, one contract covers both.
-        let parts = make_parts(vec![
-            do_node(0, 1, 0),
-            do_node(1, 1, 0),
-            finish_node(2, 0),
-        ], 1);
+        let parts = make_parts(
+            vec![do_node(0, 1, 0), do_node(1, 1, 0), finish_node(2, 0)],
+            1,
+        );
         let contracts = [make_contract(1)];
         assert_eq!(
             validate_gate_12_action_contract_completeness(&parts, &contracts),
@@ -340,11 +371,10 @@ mod tests {
 
     #[test]
     fn gate_15_rejects_do_followed_by_do() {
-        let parts = make_parts(vec![
-            do_node(0, 1, 0),
-            do_node(1, 2, 0),
-            finish_node(2, 0),
-        ], 1);
+        let parts = make_parts(
+            vec![do_node(0, 1, 0), do_node(1, 2, 0), finish_node(2, 0)],
+            1,
+        );
         assert!(matches!(
             validate_gate_15_determinism_proof(&parts),
             Err(ValidationError::NonDeterministicPath { .. })
@@ -397,12 +427,15 @@ mod tests {
     #[test]
     fn gate_15_accepts_do_followed_by_nop_then_do() {
         // Do -> Nop -> Do is OK because the Nop separates them
-        let parts = make_parts(vec![
-            do_node(0, 1, 0),
-            nop_node(1),
-            do_node(2, 2, 0),
-            finish_node(3, 0),
-        ], 1);
+        let parts = make_parts(
+            vec![
+                do_node(0, 1, 0),
+                nop_node(1),
+                do_node(2, 2, 0),
+                finish_node(3, 0),
+            ],
+            1,
+        );
         assert_eq!(validate_gate_15_determinism_proof(&parts), Ok(()));
     }
 }

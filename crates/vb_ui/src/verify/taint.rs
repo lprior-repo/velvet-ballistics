@@ -205,16 +205,12 @@ impl TaintGraph {
     /// Returns an empty vec if `slot` is not tainted or is only a source.
     #[must_use]
     pub fn propagation_path_to(&self, slot: u32) -> Vec<TaintPropagation> {
-        let source_slots: HashSet<u32> =
-            self.sources.iter().map(|s| s.slot).collect();
+        let source_slots: HashSet<u32> = self.sources.iter().map(|s| s.slot).collect();
 
         // Build reverse adjacency: to_slot -> list of propagations leading to it.
         let mut incoming: HashMap<u32, Vec<&TaintPropagation>> = HashMap::new();
         for prop in &self.propagations {
-            incoming
-                .entry(prop.to_slot)
-                .or_default()
-                .push(prop);
+            incoming.entry(prop.to_slot).or_default().push(prop);
         }
 
         // If the slot is a source and has no incoming edges, return empty.
@@ -223,12 +219,7 @@ impl TaintGraph {
         }
 
         // If the slot is not tainted at all, return empty.
-        if !source_slots.contains(&slot)
-            && !self
-                .propagations
-                .iter()
-                .any(|p| p.to_slot == slot)
-        {
+        if !source_slots.contains(&slot) && !self.propagations.iter().any(|p| p.to_slot == slot) {
             return Vec::new();
         }
 
@@ -368,11 +359,10 @@ mod tests {
     fn test_taint_kind_severity_ordering() {
         assert!(TaintKind::Secret.severity_rank() > TaintKind::Pii.severity_rank());
         assert!(TaintKind::Pii.severity_rank() > TaintKind::Financial.severity_rank());
+        assert!(TaintKind::Financial.severity_rank() > TaintKind::Authentication.severity_rank());
         assert!(
-            TaintKind::Financial.severity_rank() > TaintKind::Authentication.severity_rank()
-        );
-        assert!(
-            TaintKind::Authentication.severity_rank() > TaintKind::Custom(String::new()).severity_rank()
+            TaintKind::Authentication.severity_rank()
+                > TaintKind::Custom(String::new()).severity_rank()
         );
     }
 
@@ -615,8 +605,8 @@ mod tests {
     // Legacy find_secret_sources tests
     // ========================================================================
 
-    use vb_core::ids::WorkflowDigest;
     use vb_core::ids::SlotIdx;
+    use vb_core::ids::WorkflowDigest;
     use vb_core::workflow::{CompiledNode, ResourceContract};
 
     fn make_parts(kinds: Vec<CompiledNodeKind>) -> WorkflowParts {
@@ -624,9 +614,7 @@ mod tests {
             .into_iter()
             .enumerate()
             .map(|(i, kind)| CompiledNode {
-                id: StepIdx::new(
-                    u16::try_from(i).unwrap_or(u16::MAX),
-                ),
+                id: StepIdx::new(u16::try_from(i).unwrap_or(u16::MAX)),
                 output: None,
                 next: None,
                 on_error: None,

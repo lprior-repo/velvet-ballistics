@@ -4,7 +4,9 @@
 
 use crate::capability::{Capability, CapabilitySet};
 use crate::diagnostic::DiagnosticCode;
-use crate::ids::{ActionId, BlobId, ConstIdx, ExprIdx, ListId, ObjectId, SlotIdx, StepIdx, SymbolId};
+use crate::ids::{
+    ActionId, BlobId, ConstIdx, ExprIdx, ListId, ObjectId, SlotIdx, StepIdx, SymbolId,
+};
 use thiserror::Error;
 
 /// Result alias for core operations.
@@ -416,7 +418,9 @@ impl CoreError {
 #[cfg(test)]
 mod tests {
     use super::{CoreError, DiagnosticCode, EngineError};
-    use crate::ids::{ActionId, BlobId, ConstIdx, ExprIdx, ListId, ObjectId, SlotIdx, StepIdx, SymbolId};
+    use crate::ids::{
+        ActionId, BlobId, ConstIdx, ExprIdx, ListId, ObjectId, SlotIdx, StepIdx, SymbolId,
+    };
 
     // -- diagnostic_code is correct for every variant --
 

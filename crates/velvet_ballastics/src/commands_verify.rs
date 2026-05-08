@@ -55,7 +55,11 @@ pub(crate) fn run_verification(
     };
 
     let digest = compiled.digest();
-    let digest_hex: String = digest.as_bytes().iter().map(|b| format!("{b:02x}")).collect();
+    let digest_hex: String = digest
+        .as_bytes()
+        .iter()
+        .map(|b| format!("{b:02x}"))
+        .collect();
     let mut checks: Vec<&'static str> = Vec::new();
     let mut warnings: Vec<String> = Vec::new();
 
@@ -69,7 +73,9 @@ pub(crate) fn run_verification(
             checks.push("ir_validation");
         }
         Err(e) => {
-            return Err(VerifyError::IrValidation(format!("IR validation failed: {e}")));
+            return Err(VerifyError::IrValidation(format!(
+                "IR validation failed: {e}"
+            )));
         }
     }
 

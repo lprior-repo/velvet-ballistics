@@ -270,11 +270,13 @@ mod tests {
     use super::*;
     use crate::action::{ActionFailureCode, ActionTicket};
     use crate::frame::StepState;
-    use crate::ids::{ActionId, ConstIdx, ExprIdx, RunId, SeqNo, SlotIdx, StepIdx, SymbolId, WorkflowDigest};
+    use crate::ids::{
+        ActionId, ConstIdx, ExprIdx, RunId, SeqNo, SlotIdx, StepIdx, SymbolId, WorkflowDigest,
+    };
     use crate::value::{ConstValue, SlotValue, Taint};
     use crate::workflow::{
-        CompiledNode, CompiledNodeKind, CompiledWorkflow, ExprOp, ExprProgram,
-        ResourceContract, WorkflowParts,
+        CompiledNode, CompiledNodeKind, CompiledWorkflow, ExprOp, ExprProgram, ResourceContract,
+        WorkflowParts,
     };
 
     fn ensure_equal<T>(actual: T, expected: T) -> Result<(), String>

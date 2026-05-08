@@ -376,9 +376,9 @@ mod tests {
         if tickets.is_empty() {
             return true;
         }
-        tickets.iter().all(|t| {
-            t.replay_safe && t.side_effect_certainty != SideEffectCertainty::Certain
-        })
+        tickets
+            .iter()
+            .all(|t| t.replay_safe && t.side_effect_certainty != SideEffectCertainty::Certain)
     }
 
     /// Helper: detect whether any ticket in the list has `duplicate_completion`
@@ -390,9 +390,7 @@ mod tests {
     /// Helper: score side-effect certainty across a list of tickets.
     /// Returns the worst (most concerning) certainty found:
     ///   Certain > Unknown > None
-    fn worst_side_effect_certainty(
-        tickets: &[ActionTicketDisplay],
-    ) -> Option<SideEffectCertainty> {
+    fn worst_side_effect_certainty(tickets: &[ActionTicketDisplay]) -> Option<SideEffectCertainty> {
         let mut worst = None;
         for t in tickets {
             let current = match worst {
@@ -544,20 +542,18 @@ mod tests {
 
     #[test]
     fn no_duplicate_completion_when_all_false() {
-        let tickets = vec![
-            ActionTicketDisplay::new(
-                RunId::new(1),
-                StepIdx::new(0),
-                ActionId::new(1),
-                SeqNo::new(1),
-                1,
-                0xEEEE_0001,
-                true,
-                SideEffectCertainty::None,
-                Taint::Clean,
-                false,
-            ),
-        ];
+        let tickets = vec![ActionTicketDisplay::new(
+            RunId::new(1),
+            StepIdx::new(0),
+            ActionId::new(1),
+            SeqNo::new(1),
+            1,
+            0xEEEE_0001,
+            true,
+            SideEffectCertainty::None,
+            Taint::Clean,
+            false,
+        )];
         assert!(
             !has_duplicate_completion(&tickets),
             "no tickets have duplicate_completion=true"
@@ -907,8 +903,8 @@ mod tests {
             SeqNo::new(1),
             1,
             0,
-            false,                          // replay_safe = false
-            SideEffectCertainty::None,      // no known side effects
+            false,                     // replay_safe = false
+            SideEffectCertainty::None, // no known side effects
             Taint::Clean,
             false,
         );
@@ -938,7 +934,7 @@ mod tests {
             StepIdx::new(0),
             ActionId::new(1),
             SeqNo::new(1),
-            0,                              // attempt = 0, violates "1-based"
+            0, // attempt = 0, violates "1-based"
             0,
             true,
             SideEffectCertainty::None,
@@ -973,9 +969,9 @@ mod tests {
             SeqNo::new(1),
             1,
             0,
-            true,                           // replay_safe
+            true, // replay_safe
             SideEffectCertainty::None,
-            Taint::Secret,                  // HIGH taint
+            Taint::Secret, // HIGH taint
             false,
         );
         let verdict = classify_replay_safety(&ticket);
@@ -1011,7 +1007,7 @@ mod tests {
             ActionId::new(1),
             SeqNo::new(2),
             1,
-            0xBBBB,                         // different key
+            0xBBBB, // different key
             true,
             SideEffectCertainty::None,
             Taint::Clean,
@@ -1022,7 +1018,10 @@ mod tests {
         assert_ne!(ticket_a.idempotency_key, ticket_b.idempotency_key);
         assert_eq!(ticket_a.action, ticket_b.action);
         // Both classified as safe.
-        assert!(is_replay_safe_aggregate(&[ticket_a.clone(), ticket_b.clone()]));
+        assert!(is_replay_safe_aggregate(&[
+            ticket_a.clone(),
+            ticket_b.clone()
+        ]));
     }
 
     /// FINDING 5 -- LOW: summary_line only shows action ID, hiding all other
@@ -1048,9 +1047,18 @@ mod tests {
         let summary = secret_ticket.summary_line();
         // The summary does not mention Taint::Secret, Certain side effects,
         // or duplicate_completion.
-        assert!(!summary.contains("Secret"), "FINDING 5: summary hides taint");
-        assert!(!summary.contains("Certain"), "FINDING 5: summary hides side-effect certainty");
-        assert!(!summary.contains("duplicate"), "FINDING 5: summary hides duplicate status");
+        assert!(
+            !summary.contains("Secret"),
+            "FINDING 5: summary hides taint"
+        );
+        assert!(
+            !summary.contains("Certain"),
+            "FINDING 5: summary hides side-effect certainty"
+        );
+        assert!(
+            !summary.contains("duplicate"),
+            "FINDING 5: summary hides duplicate status"
+        );
     }
 
     /// FINDING 6 -- MEDIUM: worst_side_effect_certainty helper uses verbose
@@ -1084,10 +1092,10 @@ mod tests {
             SeqNo::new(1),
             1,
             0,
-            true,                           // replay_safe
+            true, // replay_safe
             SideEffectCertainty::None,
             Taint::Clean,
-            true,                           // duplicate_completion -- contradictory?
+            true, // duplicate_completion -- contradictory?
         );
         // Both flags can be true simultaneously -- no validation.
         assert!(ticket.replay_safe);
@@ -1114,7 +1122,9 @@ mod tests {
         let idem_line = lines.iter().find(|l| l.contains("Idempotency key:"));
         assert!(idem_line.is_some());
         assert!(
-            idem_line.unwrap().contains("00000000000000000000000000000000"),
+            idem_line
+                .unwrap()
+                .contains("00000000000000000000000000000000"),
             "FINDING 8: zero key should format as 32 zeros"
         );
 
@@ -1134,7 +1144,9 @@ mod tests {
         let idem_line_max = lines_max.iter().find(|l| l.contains("Idempotency key:"));
         assert!(idem_line_max.is_some());
         assert!(
-            idem_line_max.unwrap().contains("ffffffffffffffffffffffffffffffff"),
+            idem_line_max
+                .unwrap()
+                .contains("ffffffffffffffffffffffffffffffff"),
             "FINDING 8: max key should format as 32 f's"
         );
     }

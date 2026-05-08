@@ -1,16 +1,20 @@
 //! Integration tests for accessor evaluation.
 
 use crate::errors::EngineError;
-use crate::ids::{AccessorIdx, ExprIdx, ListId, ObjectId, RunId, SlotIdx, StepIdx, SymbolId, WorkflowDigest};
+use crate::ids::{
+    AccessorIdx, ExprIdx, ListId, ObjectId, RunId, SlotIdx, StepIdx, SymbolId, WorkflowDigest,
+};
 use crate::value::{SlotValue, Taint};
 use crate::value_store::{ObjectField, ValueStore};
 use crate::workflow::{
-    AccessorProgram, CompiledNode, CompiledNodeKind, CompiledWorkflow, ExprOp,
-    ExprProgram, PathSegment, ResourceContract, WorkflowParts,
+    AccessorProgram, CompiledNode, CompiledNodeKind, CompiledWorkflow, ExprOp, ExprProgram,
+    PathSegment, ResourceContract, WorkflowParts,
 };
 
-use crate::engine::{EngineSignal, StepBudget, eval_accessor, eval_accessor_with_store,
-    new_run_frame, run_until_blocked};
+use crate::engine::{
+    EngineSignal, StepBudget, eval_accessor, eval_accessor_with_store, new_run_frame,
+    run_until_blocked,
+};
 
 fn test_store() -> ValueStore {
     ValueStore::new()
@@ -38,8 +42,8 @@ fn public_eval_accessor_loads_root_value() -> Result<(), String> {
     run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(77), Taint::Clean)
         .map_err(|error| error.to_string())?;
 
-    let value = eval_accessor(&workflow, &run, AccessorIdx::new(0))
-        .map_err(|error| error.to_string())?;
+    let value =
+        eval_accessor(&workflow, &run, AccessorIdx::new(0)).map_err(|error| error.to_string())?;
 
     ensure_equal(value, SlotValue::I64(77))?;
     Ok(())
@@ -56,8 +60,8 @@ fn eval_accessor_identity_path_returns_root_handle_without_store() -> Result<(),
     )
     .map_err(|error| error.to_string())?;
 
-    let value = eval_accessor(&workflow, &run, AccessorIdx::new(0))
-        .map_err(|error| error.to_string())?;
+    let value =
+        eval_accessor(&workflow, &run, AccessorIdx::new(0)).map_err(|error| error.to_string())?;
 
     ensure_equal(value, SlotValue::Object(ObjectId::new(42)))?;
     Ok(())
@@ -96,9 +100,8 @@ fn load_accessor_with_empty_path_loads_root_slot() -> Result<(), String> {
 
 #[test]
 fn public_eval_accessor_reports_typed_error_without_store() -> Result<(), String> {
-    let workflow =
-        accessor_workflow(vec![PathSegment::Field(SymbolId::new(0))].into_boxed_slice())
-            .map_err(|error| error.to_string())?;
+    let workflow = accessor_workflow(vec![PathSegment::Field(SymbolId::new(0))].into_boxed_slice())
+        .map_err(|error| error.to_string())?;
     let mut run = test_frame(RunId::new(16), &workflow)?;
     run.write_slot_with_taint(
         SlotIdx::new(0),
@@ -118,9 +121,8 @@ fn public_eval_accessor_reports_typed_error_without_store() -> Result<(), String
 
 #[test]
 fn load_accessor_reads_object_field_through_store() -> Result<(), String> {
-    let workflow =
-        accessor_workflow(vec![PathSegment::Field(SymbolId::new(7))].into_boxed_slice())
-            .map_err(|error| error.to_string())?;
+    let workflow = accessor_workflow(vec![PathSegment::Field(SymbolId::new(7))].into_boxed_slice())
+        .map_err(|error| error.to_string())?;
     let mut run = test_frame(RunId::new(28), &workflow)?;
     let mut store = test_store();
     let object = store
@@ -167,9 +169,8 @@ fn eval_accessor_reads_list_item_through_store() -> Result<(), String> {
 
 #[test]
 fn eval_accessor_reports_missing_field_precisely() -> Result<(), String> {
-    let workflow =
-        accessor_workflow(vec![PathSegment::Field(SymbolId::new(9))].into_boxed_slice())
-            .map_err(|error| error.to_string())?;
+    let workflow = accessor_workflow(vec![PathSegment::Field(SymbolId::new(9))].into_boxed_slice())
+        .map_err(|error| error.to_string())?;
     let mut run = test_frame(RunId::new(30), &workflow)?;
     let mut store = test_store();
     let object = store
@@ -204,9 +205,8 @@ fn eval_accessor_reports_list_index_precisely() -> Result<(), String> {
 
 #[test]
 fn eval_accessor_rejects_field_traversal_on_scalar_value() -> Result<(), String> {
-    let workflow =
-        accessor_workflow(vec![PathSegment::Field(SymbolId::new(7))].into_boxed_slice())
-            .map_err(|error| error.to_string())?;
+    let workflow = accessor_workflow(vec![PathSegment::Field(SymbolId::new(7))].into_boxed_slice())
+        .map_err(|error| error.to_string())?;
     let mut run = test_frame(RunId::new(121), &workflow)?;
     let mut store = test_store();
     run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(11), Taint::Clean)
@@ -223,9 +223,8 @@ fn eval_accessor_rejects_field_traversal_on_scalar_value() -> Result<(), String>
 
 #[test]
 fn eval_accessor_reports_object_handle_bounds() -> Result<(), String> {
-    let workflow =
-        accessor_workflow(vec![PathSegment::Field(SymbolId::new(3))].into_boxed_slice())
-            .map_err(|error| error.to_string())?;
+    let workflow = accessor_workflow(vec![PathSegment::Field(SymbolId::new(3))].into_boxed_slice())
+        .map_err(|error| error.to_string())?;
     let mut run = test_frame(RunId::new(122), &workflow)?;
     let mut store = test_store();
     run.write_slot_with_taint(
@@ -260,9 +259,7 @@ fn eval_accessor_reports_list_handle_bounds() -> Result<(), String> {
     }
 }
 
-fn accessor_workflow(
-    path: Box<[PathSegment]>,
-) -> Result<CompiledWorkflow, crate::WorkflowError> {
+fn accessor_workflow(path: Box<[PathSegment]>) -> Result<CompiledWorkflow, crate::WorkflowError> {
     let expression = ExprProgram::try_from_ops(
         vec![ExprOp::LoadAccessor(AccessorIdx::new(0))].into_boxed_slice(),
     )

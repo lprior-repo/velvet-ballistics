@@ -3,8 +3,8 @@
 use crate::errors::EngineError;
 use crate::frame::StepState;
 use crate::ids::{
-    AccessorIdx, ActionId, ConstIdx, ExprIdx, ListId, ObjectId, RunId, SlotIdx, StepIdx,
-    SymbolId, WorkflowDigest,
+    AccessorIdx, ActionId, ConstIdx, ExprIdx, ListId, ObjectId, RunId, SlotIdx, StepIdx, SymbolId,
+    WorkflowDigest,
 };
 use crate::value::{ConstValue, SlotValue, Taint, join_taint};
 use crate::value_store::{ObjectField, ValueStore};
@@ -13,8 +13,10 @@ use crate::workflow::{
     ExprProgram, PathSegment, ResourceContract, SlotBranch, WorkflowParts,
 };
 
-use crate::engine::{EngineSignal, StepBudget, build_list_impl, build_object_impl, eval_accessor,
-    eval_accessor_with_store, eval_expr, new_run_frame, run_until_blocked, step_once};
+use crate::engine::{
+    EngineSignal, StepBudget, build_list_impl, build_object_impl, eval_accessor,
+    eval_accessor_with_store, eval_expr, new_run_frame, run_until_blocked, step_once,
+};
 
 fn test_store() -> ValueStore {
     ValueStore::new()
@@ -112,8 +114,7 @@ fn copy_preserves_value_and_taint() -> Result<(), String> {
     .map_err(|error| error.to_string())?;
 
     let mut store = test_store();
-    let signal =
-        step_once(&workflow, &mut run, &mut store).map_err(|error| error.to_string())?;
+    let signal = step_once(&workflow, &mut run, &mut store).map_err(|error| error.to_string())?;
 
     ensure_equal(signal, EngineSignal::Continue)?;
     ensure_equal(run.read_slot(SlotIdx::new(1)), Ok(&SlotValue::I64(77)))?;
@@ -310,9 +311,7 @@ fn tiny_workflow_parts(value: ConstValue) -> WorkflowParts {
     }
 }
 
-fn missing_constant_workflow(
-    constant: ConstIdx,
-) -> Result<CompiledWorkflow, crate::WorkflowError> {
+fn missing_constant_workflow(constant: ConstIdx) -> Result<CompiledWorkflow, crate::WorkflowError> {
     let mut parts = tiny_workflow_parts(ConstValue::Null);
     parts.nodes = vec![
         CompiledNode {

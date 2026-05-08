@@ -110,8 +110,7 @@ impl QueueMonitor {
         // Journal: use action queue depth as a proxy for journal pressure,
         // with a smaller 64-slot nominal capacity.
         let journal_capacity: u32 = 64;
-        self.journal =
-            QueueStatus::from_depth_capacity(m.action_queue_depth, journal_capacity);
+        self.journal = QueueStatus::from_depth_capacity(m.action_queue_depth, journal_capacity);
 
         // Trace ring: fill percentage is already 0.0-100.0.
         self.trace = if m.trace_ring_fill_pct >= 80.0 {
@@ -133,7 +132,13 @@ impl QueueMonitor {
     /// Precedence: `Critical > Pressured > Normal`.
     #[must_use]
     pub fn worst_status(&self) -> QueueStatus {
-        let pools = [self.ready, self.action, self.journal, self.trace, self.frame];
+        let pools = [
+            self.ready,
+            self.action,
+            self.journal,
+            self.trace,
+            self.frame,
+        ];
         let mut worst = QueueStatus::Normal;
         for status in pools {
             match (worst, status) {

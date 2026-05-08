@@ -1,11 +1,10 @@
 //! Tests for type_taint module (extracted from type_taint.rs)
 
-use crate::{ValidationError, ValidationResult};
 use crate::type_taint::{
-    InputDecl, ResourceLimits, StepKind, StepTypes, Taint, TypedValue,
-    ValueFact, ValueType, WorkflowTypes, validate_resource_limits,
-    validate_taint, validate_types,
+    InputDecl, ResourceLimits, StepKind, StepTypes, Taint, TypedValue, ValueFact, ValueType,
+    WorkflowTypes, validate_resource_limits, validate_taint, validate_types,
 };
+use crate::{ValidationError, ValidationResult};
 
 fn make_workflow(steps: Vec<StepTypes>) -> WorkflowTypes {
     WorkflowTypes {
@@ -936,10 +935,7 @@ fn taint_finish_composite_with_secret_rejected() {
 fn taint_finish_composite_with_tainted_slot_rejected() {
     let mut wf = make_workflow(vec![
         save_step("cap", TypedValue::Reference("$secrets.bearer".into())),
-        finish_step(
-            "done",
-            TypedValue::Composite(vec![TypedValue::Slot(0)]),
-        ),
+        finish_step("done", TypedValue::Composite(vec![TypedValue::Slot(0)])),
     ]);
     wf.secrets.push("bearer".to_owned());
     assert_eq!(validate_taint(&wf), Err(ValidationError::SecretResultLeak));
@@ -1114,10 +1110,7 @@ fn taint_expression_composite_with_relayed_taint() {
     let mut wf = make_workflow(vec![
         save_step("s0", TypedValue::Reference("$secrets.nonce".into())),
         save_step("s1", TypedValue::Slot(0)),
-        save_step(
-            "expr",
-            TypedValue::Composite(vec![TypedValue::Slot(1)]),
-        ),
+        save_step("expr", TypedValue::Composite(vec![TypedValue::Slot(1)])),
         finish_step("done", TypedValue::Slot(2)),
     ]);
     wf.secrets.push("nonce".to_owned());
@@ -1305,7 +1298,11 @@ fn blackhat_resource_limits_max_slots_uses_step_count_not_slot_count() {
         Err(ValidationError::LimitRequired { .. }) => {}
         other => {
             assert!(
-                matches!(other, Err(ValidationError::LimitExceeded { .. } | ValidationError::LimitRequired { .. })),
+                matches!(
+                    other,
+                    Err(ValidationError::LimitExceeded { .. }
+                        | ValidationError::LimitRequired { .. })
+                ),
                 "blackhat: expected LimitExceeded or LimitRequired for max_slots, got {other:?}"
             );
         }
@@ -1466,7 +1463,9 @@ fn taint_propagates_through_arithmetic_style_composite() -> Result<(), String> {
     });
     let result = validate_taint(&wf);
     if result != Err(ValidationError::SecretResultLeak) {
-        return Err(format!("expected SecretResultLeak for arithmetic composite, got {result:?}"));
+        return Err(format!(
+            "expected SecretResultLeak for arithmetic composite, got {result:?}"
+        ));
     }
     Ok(())
 }
@@ -1490,7 +1489,9 @@ fn taint_propagates_through_comparison_style_composite() -> Result<(), String> {
     wf.secrets.push("compare_key".to_owned());
     let result = validate_taint(&wf);
     if result != Err(ValidationError::SecretResultLeak) {
-        return Err(format!("expected SecretResultLeak for comparison composite, got {result:?}"));
+        return Err(format!(
+            "expected SecretResultLeak for comparison composite, got {result:?}"
+        ));
     }
     Ok(())
 }
@@ -1510,7 +1511,9 @@ fn taint_propagates_through_logic_style_composite() -> Result<(), String> {
     wf.secrets.push("logic_val".to_owned());
     let result = validate_taint(&wf);
     if result != Err(ValidationError::SecretResultLeak) {
-        return Err(format!("expected SecretResultLeak for logic composite, got {result:?}"));
+        return Err(format!(
+            "expected SecretResultLeak for logic composite, got {result:?}"
+        ));
     }
     Ok(())
 }
@@ -1539,7 +1542,9 @@ fn clean_composite_stays_clean() -> Result<(), String> {
     });
     let result = validate_taint(&wf);
     if result != Ok(()) {
-        return Err(format!("expected Ok for clean composite expression, got {result:?}"));
+        return Err(format!(
+            "expected Ok for clean composite expression, got {result:?}"
+        ));
     }
     Ok(())
 }
@@ -1570,7 +1575,10 @@ fn secret_origin_propagates_through_all_downstream_paths() -> Result<(), String>
         save_step("s1", TypedValue::Slot(0)),
         save_step(
             "s2",
-            TypedValue::Composite(vec![TypedValue::Slot(1), TypedValue::Literal(ValueType::Text)]),
+            TypedValue::Composite(vec![
+                TypedValue::Slot(1),
+                TypedValue::Literal(ValueType::Text),
+            ]),
         ),
         save_step("s3", TypedValue::Slot(2)),
         finish_step("done", TypedValue::Slot(3)),
@@ -1582,7 +1590,9 @@ fn secret_origin_propagates_through_all_downstream_paths() -> Result<(), String>
     });
     let result = validate_taint(&wf);
     if result != Err(ValidationError::SecretResultLeak) {
-        return Err(format!("expected SecretResultLeak for secret origin chain, got {result:?}"));
+        return Err(format!(
+            "expected SecretResultLeak for secret origin chain, got {result:?}"
+        ));
     }
     Ok(())
 }
@@ -1600,7 +1610,9 @@ fn secret_origin_relay_slot_is_tainted() -> Result<(), String> {
     });
     let result = validate_taint(&wf);
     if result != Err(ValidationError::SecretResultLeak) {
-        return Err(format!("expected SecretResultLeak for relay of secret input, got {result:?}"));
+        return Err(format!(
+            "expected SecretResultLeak for relay of secret input, got {result:?}"
+        ));
     }
     Ok(())
 }
@@ -1608,10 +1620,7 @@ fn secret_origin_relay_slot_is_tainted() -> Result<(), String> {
 fn secret_origin_composite_slot_is_tainted() -> Result<(), String> {
     let mut wf = make_workflow(vec![
         save_step("s0", TypedValue::Reference("$input.secret_val".into())),
-        save_step(
-            "s1",
-            TypedValue::Composite(vec![TypedValue::Slot(0)]),
-        ),
+        save_step("s1", TypedValue::Composite(vec![TypedValue::Slot(0)])),
         finish_step("done", TypedValue::Slot(1)),
     ]);
     wf.inputs.push(InputDecl {
@@ -1621,7 +1630,9 @@ fn secret_origin_composite_slot_is_tainted() -> Result<(), String> {
     });
     let result = validate_taint(&wf);
     if result != Err(ValidationError::SecretResultLeak) {
-        return Err(format!("expected SecretResultLeak for composite of secret input, got {result:?}"));
+        return Err(format!(
+            "expected SecretResultLeak for composite of secret input, got {result:?}"
+        ));
     }
     Ok(())
 }
@@ -1650,7 +1661,9 @@ fn slot_to_slot_single_relay_propagates_taint() -> Result<(), String> {
     wf.secrets.push("db_url".to_owned());
     let result = validate_taint(&wf);
     if result != Err(ValidationError::SecretResultLeak) {
-        return Err(format!("expected SecretResultLeak for single slot relay, got {result:?}"));
+        return Err(format!(
+            "expected SecretResultLeak for single slot relay, got {result:?}"
+        ));
     }
     Ok(())
 }
@@ -1670,7 +1683,10 @@ fn slot_to_slot_clean_relay_stays_clean() -> Result<(), String> {
 
 fn slot_to_slot_branching_relays_both_tainted() -> Result<(), String> {
     let mut wf = make_workflow(vec![
-        save_step("origin", TypedValue::Reference("$secrets.master_key".into())),
+        save_step(
+            "origin",
+            TypedValue::Reference("$secrets.master_key".into()),
+        ),
         save_step("branch_a", TypedValue::Slot(0)),
         save_step("branch_b", TypedValue::Slot(0)),
         finish_step("done", TypedValue::Slot(2)),
@@ -1678,7 +1694,9 @@ fn slot_to_slot_branching_relays_both_tainted() -> Result<(), String> {
     wf.secrets.push("master_key".to_owned());
     let result = validate_taint(&wf);
     if result != Err(ValidationError::SecretResultLeak) {
-        return Err(format!("expected SecretResultLeak for branching relay, got {result:?}"));
+        return Err(format!(
+            "expected SecretResultLeak for branching relay, got {result:?}"
+        ));
     }
     Ok(())
 }
@@ -1693,7 +1711,9 @@ fn slot_to_slot_two_hop_relay_carries_taint() -> Result<(), String> {
     wf.secrets.push("cred".to_owned());
     let result = validate_taint(&wf);
     if result != Err(ValidationError::SecretResultLeak) {
-        return Err(format!("expected SecretResultLeak for two-hop relay, got {result:?}"));
+        return Err(format!(
+            "expected SecretResultLeak for two-hop relay, got {result:?}"
+        ));
     }
     Ok(())
 }
@@ -1720,7 +1740,10 @@ fn run_slot_to_slot_two_hop_relay_carries_taint() {
 
 fn conditional_taint_choose_does_not_taint_downstream() -> Result<(), String> {
     let mut wf = make_workflow(vec![
-        save_step("tainted_flag", TypedValue::Reference("$secrets.branch_sel".into())),
+        save_step(
+            "tainted_flag",
+            TypedValue::Reference("$secrets.branch_sel".into()),
+        ),
         save_step("clean_data", TypedValue::Literal(ValueType::Number)),
         choose_step("branch", TypedValue::Slot(0)),
         finish_step("done", TypedValue::Slot(1)),
@@ -1728,7 +1751,9 @@ fn conditional_taint_choose_does_not_taint_downstream() -> Result<(), String> {
     wf.secrets.push("branch_sel".to_owned());
     let result = validate_taint(&wf);
     if result != Ok(()) {
-        return Err(format!("expected Ok: choose does not propagate taint to downstream finish, got {result:?}"));
+        return Err(format!(
+            "expected Ok: choose does not propagate taint to downstream finish, got {result:?}"
+        ));
     }
     Ok(())
 }
@@ -1736,14 +1761,19 @@ fn conditional_taint_choose_does_not_taint_downstream() -> Result<(), String> {
 fn conditional_taint_finish_after_choose_reads_tainted() -> Result<(), String> {
     let mut wf = make_workflow(vec![
         save_step("clean_flag", TypedValue::Literal(ValueType::Boolean)),
-        save_step("tainted_data", TypedValue::Reference("$secrets.payload".into())),
+        save_step(
+            "tainted_data",
+            TypedValue::Reference("$secrets.payload".into()),
+        ),
         choose_step("branch", TypedValue::Slot(0)),
         finish_step("done", TypedValue::Slot(1)),
     ]);
     wf.secrets.push("payload".to_owned());
     let result = validate_taint(&wf);
     if result != Err(ValidationError::SecretResultLeak) {
-        return Err(format!("expected SecretResultLeak: finishing tainted slot after choose, got {result:?}"));
+        return Err(format!(
+            "expected SecretResultLeak: finishing tainted slot after choose, got {result:?}"
+        ));
     }
     Ok(())
 }
@@ -1752,7 +1782,10 @@ fn conditional_taint_multiple_chooses_interleaved() -> Result<(), String> {
     let mut wf = make_workflow(vec![
         save_step("flag1", TypedValue::Literal(ValueType::Boolean)),
         choose_step("branch1", TypedValue::Slot(0)),
-        save_step("flag2", TypedValue::Reference("$secrets.secret_flag".into())),
+        save_step(
+            "flag2",
+            TypedValue::Reference("$secrets.secret_flag".into()),
+        ),
         choose_step("branch2", TypedValue::Slot(2)),
         save_step("clean_result", TypedValue::Literal(ValueType::Number)),
         finish_step("done", TypedValue::Slot(4)),
@@ -1760,7 +1793,9 @@ fn conditional_taint_multiple_chooses_interleaved() -> Result<(), String> {
     wf.secrets.push("secret_flag".to_owned());
     let result = validate_taint(&wf);
     if result != Ok(()) {
-        return Err(format!("expected Ok: choose conditions do not taint downstream, got {result:?}"));
+        return Err(format!(
+            "expected Ok: choose conditions do not taint downstream, got {result:?}"
+        ));
     }
     Ok(())
 }
@@ -1778,11 +1813,15 @@ fn conditional_taint_clean_boolean_choose_passes_both_validators() -> Result<(),
     });
     let type_result = validate_types(&wf);
     if type_result != Ok(()) {
-        return Err(format!("expected Ok for type check with boolean input, got {type_result:?}"));
+        return Err(format!(
+            "expected Ok for type check with boolean input, got {type_result:?}"
+        ));
     }
     let taint_result = validate_taint(&wf);
     if taint_result != Ok(()) {
-        return Err(format!("expected Ok for taint check with clean input, got {taint_result:?}"));
+        return Err(format!(
+            "expected Ok for taint check with clean input, got {taint_result:?}"
+        ));
     }
     Ok(())
 }
@@ -1809,7 +1848,10 @@ fn run_conditional_taint_clean_boolean_choose_passes_both_validators() {
 
 fn accessor_secret_input_field_carries_taint() -> Result<(), String> {
     let mut wf = make_workflow(vec![
-        save_step("field_read", TypedValue::Reference("$input.credential.token".into())),
+        save_step(
+            "field_read",
+            TypedValue::Reference("$input.credential.token".into()),
+        ),
         finish_step("done", TypedValue::Slot(0)),
     ]);
     wf.inputs.push(InputDecl {
@@ -1819,14 +1861,19 @@ fn accessor_secret_input_field_carries_taint() -> Result<(), String> {
     });
     let result = validate_taint(&wf);
     if result != Err(ValidationError::SecretResultLeak) {
-        return Err(format!("expected SecretResultLeak for secret field access, got {result:?}"));
+        return Err(format!(
+            "expected SecretResultLeak for secret field access, got {result:?}"
+        ));
     }
     Ok(())
 }
 
 fn accessor_clean_input_nested_field_stays_clean() -> Result<(), String> {
     let mut wf = make_workflow(vec![
-        save_step("field_read", TypedValue::Reference("$input.user.profile.name".into())),
+        save_step(
+            "field_read",
+            TypedValue::Reference("$input.user.profile.name".into()),
+        ),
         finish_step("done", TypedValue::Slot(0)),
     ]);
     wf.inputs.push(InputDecl {
@@ -1836,27 +1883,37 @@ fn accessor_clean_input_nested_field_stays_clean() -> Result<(), String> {
     });
     let result = validate_taint(&wf);
     if result != Ok(()) {
-        return Err(format!("expected Ok for clean nested field access, got {result:?}"));
+        return Err(format!(
+            "expected Ok for clean nested field access, got {result:?}"
+        ));
     }
     Ok(())
 }
 
 fn accessor_secret_field_via_secrets_namespace() -> Result<(), String> {
     let mut wf = make_workflow(vec![
-        save_step("val", TypedValue::Reference("$secrets.db.connection_string".into())),
+        save_step(
+            "val",
+            TypedValue::Reference("$secrets.db.connection_string".into()),
+        ),
         finish_step("done", TypedValue::Slot(0)),
     ]);
     wf.secrets.push("db".to_owned());
     let result = validate_taint(&wf);
     if result != Err(ValidationError::SecretResultLeak) {
-        return Err(format!("expected SecretResultLeak for secret accessor, got {result:?}"));
+        return Err(format!(
+            "expected SecretResultLeak for secret accessor, got {result:?}"
+        ));
     }
     Ok(())
 }
 
 fn accessor_var_field_is_clean() -> Result<(), String> {
     let mut wf = make_workflow(vec![
-        save_step("val", TypedValue::Reference("$vars.config.threshold".into())),
+        save_step(
+            "val",
+            TypedValue::Reference("$vars.config.threshold".into()),
+        ),
         finish_step("done", TypedValue::Slot(0)),
     ]);
     wf.vars.push(("config".to_owned(), ValueType::Object));
@@ -1881,7 +1938,9 @@ fn accessor_secret_in_composite_propagates_taint() -> Result<(), String> {
     wf.secrets.push("key".to_owned());
     let result = validate_taint(&wf);
     if result != Err(ValidationError::SecretResultLeak) {
-        return Err(format!("expected SecretResultLeak for secret accessor in composite, got {result:?}"));
+        return Err(format!(
+            "expected SecretResultLeak for secret accessor in composite, got {result:?}"
+        ));
     }
     Ok(())
 }
@@ -1905,7 +1964,9 @@ fn accessor_composite_of_clean_accessors_stays_clean() -> Result<(), String> {
     wf.vars.push(("settings".to_owned(), ValueType::Object));
     let result = validate_taint(&wf);
     if result != Ok(()) {
-        return Err(format!("expected Ok for composite of clean accessors, got {result:?}"));
+        return Err(format!(
+            "expected Ok for composite of clean accessors, got {result:?}"
+        ));
     }
     Ok(())
 }
@@ -1956,11 +2017,15 @@ fn fully_clean_workflow_passes_both_validators() -> Result<(), String> {
     wf.vars.push(("limit".to_owned(), ValueType::Number));
     let type_result = validate_types(&wf);
     if type_result != Ok(()) {
-        return Err(format!("expected Ok for type validation, got {type_result:?}"));
+        return Err(format!(
+            "expected Ok for type validation, got {type_result:?}"
+        ));
     }
     let taint_result = validate_taint(&wf);
     if taint_result != Ok(()) {
-        return Err(format!("expected Ok for taint validation, got {taint_result:?}"));
+        return Err(format!(
+            "expected Ok for taint validation, got {taint_result:?}"
+        ));
     }
     Ok(())
 }
@@ -1995,14 +2060,19 @@ fn clean_composite_in_finish_passes() -> Result<(), String> {
     )]);
     let result = validate_taint(&wf);
     if result != Ok(()) {
-        return Err(format!("expected Ok for clean composite finish, got {result:?}"));
+        return Err(format!(
+            "expected Ok for clean composite finish, got {result:?}"
+        ));
     }
     Ok(())
 }
 
 fn clean_finish_with_secrets_in_other_paths() -> Result<(), String> {
     let mut wf = make_workflow(vec![
-        save_step("secret_slot", TypedValue::Reference("$secrets.unused".into())),
+        save_step(
+            "secret_slot",
+            TypedValue::Reference("$secrets.unused".into()),
+        ),
         save_step("clean_slot", TypedValue::Literal(ValueType::Text)),
         choose_step("route", TypedValue::Literal(ValueType::Boolean)),
         finish_step("done", TypedValue::Slot(1)),
@@ -2010,7 +2080,9 @@ fn clean_finish_with_secrets_in_other_paths() -> Result<(), String> {
     wf.secrets.push("unused".to_owned());
     let taint_result = validate_taint(&wf);
     if taint_result != Ok(()) {
-        return Err(format!("expected Ok: secrets in non-finish path should not cause leak, got {taint_result:?}"));
+        return Err(format!(
+            "expected Ok: secrets in non-finish path should not cause leak, got {taint_result:?}"
+        ));
     }
     Ok(())
 }
@@ -2055,10 +2127,14 @@ fn taint_merge_secret_plus_clean_directions() -> Result<(), String> {
     let forward = Taint::Secret.merge(Taint::Clean);
     let backward = Taint::Clean.merge(Taint::Secret);
     if forward != Taint::Secret {
-        return Err(format!("expected Taint::Secret for Secret.merge(Clean), got {forward:?}"));
+        return Err(format!(
+            "expected Taint::Secret for Secret.merge(Clean), got {forward:?}"
+        ));
     }
     if backward != Taint::Secret {
-        return Err(format!("expected Taint::Secret for Clean.merge(Secret), got {backward:?}"));
+        return Err(format!(
+            "expected Taint::Secret for Clean.merge(Secret), got {backward:?}"
+        ));
     }
     Ok(())
 }
@@ -2083,7 +2159,9 @@ fn taint_merge_composite_of_two_secret_sources() -> Result<(), String> {
     });
     let result = validate_taint(&wf);
     if result != Err(ValidationError::SecretResultLeak) {
-        return Err(format!("expected SecretResultLeak for merged secrets, got {result:?}"));
+        return Err(format!(
+            "expected SecretResultLeak for merged secrets, got {result:?}"
+        ));
     }
     Ok(())
 }
@@ -2108,7 +2186,9 @@ fn taint_merge_secret_dominates_over_clean() -> Result<(), String> {
     });
     let result = validate_taint(&wf);
     if result != Err(ValidationError::SecretResultLeak) {
-        return Err(format!("expected SecretResultLeak: secret taint dominates, got {result:?}"));
+        return Err(format!(
+            "expected SecretResultLeak: secret taint dominates, got {result:?}"
+        ));
     }
     Ok(())
 }
@@ -2136,7 +2216,9 @@ fn taint_merge_three_distinct_secret_sources() -> Result<(), String> {
     });
     let result = validate_taint(&wf);
     if result != Err(ValidationError::SecretResultLeak) {
-        return Err(format!("expected SecretResultLeak for three merged secrets, got {result:?}"));
+        return Err(format!(
+            "expected SecretResultLeak for three merged secrets, got {result:?}"
+        ));
     }
     Ok(())
 }
@@ -2175,11 +2257,15 @@ fn boundary_empty_workflow_passes() -> Result<(), String> {
     let wf = make_workflow(vec![]);
     let type_result = validate_types(&wf);
     if type_result != Ok(()) {
-        return Err(format!("expected Ok for empty workflow types, got {type_result:?}"));
+        return Err(format!(
+            "expected Ok for empty workflow types, got {type_result:?}"
+        ));
     }
     let taint_result = validate_taint(&wf);
     if taint_result != Ok(()) {
-        return Err(format!("expected Ok for empty workflow taint, got {taint_result:?}"));
+        return Err(format!(
+            "expected Ok for empty workflow taint, got {taint_result:?}"
+        ));
     }
     Ok(())
 }
@@ -2206,7 +2292,9 @@ fn boundary_no_secrets_at_all() -> Result<(), String> {
     wf.vars.push(("y".to_owned(), ValueType::Number));
     let result = validate_taint(&wf);
     if result != Ok(()) {
-        return Err(format!("expected Ok for all-clean workflow, got {result:?}"));
+        return Err(format!(
+            "expected Ok for all-clean workflow, got {result:?}"
+        ));
     }
     Ok(())
 }
@@ -2216,10 +2304,10 @@ fn boundary_all_slots_tainted() -> Result<(), String> {
         save_step("s0", TypedValue::Reference("$secrets.a".into())),
         save_step("s1", TypedValue::Reference("$input.b".into())),
         save_step("s2", TypedValue::Slot(0)),
-        save_step("s3", TypedValue::Composite(vec![
-            TypedValue::Slot(0),
-            TypedValue::Slot(1),
-        ])),
+        save_step(
+            "s3",
+            TypedValue::Composite(vec![TypedValue::Slot(0), TypedValue::Slot(1)]),
+        ),
         finish_step("done", TypedValue::Slot(3)),
     ]);
     wf.secrets.push("a".to_owned());
@@ -2230,7 +2318,9 @@ fn boundary_all_slots_tainted() -> Result<(), String> {
     });
     let result = validate_taint(&wf);
     if result != Err(ValidationError::SecretResultLeak) {
-        return Err(format!("expected SecretResultLeak when all slots tainted, got {result:?}"));
+        return Err(format!(
+            "expected SecretResultLeak when all slots tainted, got {result:?}"
+        ));
     }
     Ok(())
 }
@@ -2244,7 +2334,9 @@ fn boundary_all_slots_tainted_finish_uses_literal() -> Result<(), String> {
     wf.secrets.push("x".to_owned());
     let result = validate_taint(&wf);
     if result != Ok(()) {
-        return Err(format!("expected Ok: finish uses literal even though all slots tainted, got {result:?}"));
+        return Err(format!(
+            "expected Ok: finish uses literal even though all slots tainted, got {result:?}"
+        ));
     }
     Ok(())
 }
@@ -2256,7 +2348,9 @@ fn boundary_forward_slot_reference_is_clean() -> Result<(), String> {
     ]);
     let result = validate_taint(&wf);
     if result != Ok(()) {
-        return Err(format!("expected Ok: out-of-bounds slot resolves clean, got {result:?}"));
+        return Err(format!(
+            "expected Ok: out-of-bounds slot resolves clean, got {result:?}"
+        ));
     }
     Ok(())
 }
@@ -2268,7 +2362,9 @@ fn boundary_self_referential_slot_is_clean() -> Result<(), String> {
     ]);
     let result = validate_taint(&wf);
     if result != Ok(()) {
-        return Err(format!("expected Ok: self-referential slot resolves clean, got {result:?}"));
+        return Err(format!(
+            "expected Ok: self-referential slot resolves clean, got {result:?}"
+        ));
     }
     Ok(())
 }
@@ -2282,7 +2378,9 @@ fn boundary_cycle_like_pattern_all_clean() -> Result<(), String> {
     ]);
     let result = validate_taint(&wf);
     if result != Ok(()) {
-        return Err(format!("expected Ok for cycle-like pattern, got {result:?}"));
+        return Err(format!(
+            "expected Ok for cycle-like pattern, got {result:?}"
+        ));
     }
     Ok(())
 }
@@ -2297,11 +2395,15 @@ fn boundary_bare_finish_literal() -> Result<(), String> {
     };
     let type_result = validate_types(&wf);
     if type_result != Ok(()) {
-        return Err(format!("expected Ok for bare finish types, got {type_result:?}"));
+        return Err(format!(
+            "expected Ok for bare finish types, got {type_result:?}"
+        ));
     }
     let taint_result = validate_taint(&wf);
     if taint_result != Ok(()) {
-        return Err(format!("expected Ok for bare finish taint, got {taint_result:?}"));
+        return Err(format!(
+            "expected Ok for bare finish taint, got {taint_result:?}"
+        ));
     }
     Ok(())
 }
@@ -2315,7 +2417,9 @@ fn boundary_slot_overwrite_second_write_clean() -> Result<(), String> {
     wf.secrets.push("x".to_owned());
     let result = validate_taint(&wf);
     if result != Err(ValidationError::SecretResultLeak) {
-        return Err(format!("expected SecretResultLeak: slot[0] still has tainted value, got {result:?}"));
+        return Err(format!(
+            "expected SecretResultLeak: slot[0] still has tainted value, got {result:?}"
+        ));
     }
     Ok(())
 }
@@ -2329,7 +2433,9 @@ fn boundary_slot_index_overwritten_to_clean() -> Result<(), String> {
     wf.secrets.push("y".to_owned());
     let result = validate_taint(&wf);
     if result != Ok(()) {
-        return Err(format!("expected Ok: finish from clean slot, got {result:?}"));
+        return Err(format!(
+            "expected Ok: finish from clean slot, got {result:?}"
+        ));
     }
     Ok(())
 }
@@ -2460,7 +2566,9 @@ fn type_check_any_from_unresolved_ref_accepted() -> Result<(), String> {
     ]);
     let result = validate_types(&wf);
     if result != Ok(()) {
-        return Err(format!("expected Ok: unresolved ref resolves as Any, got {result:?}"));
+        return Err(format!(
+            "expected Ok: unresolved ref resolves as Any, got {result:?}"
+        ));
     }
     Ok(())
 }
@@ -2478,7 +2586,9 @@ fn type_check_save_composite_passes() -> Result<(), String> {
     ]);
     let result = validate_types(&wf);
     if result != Ok(()) {
-        return Err(format!("expected Ok for save with composite, got {result:?}"));
+        return Err(format!(
+            "expected Ok for save with composite, got {result:?}"
+        ));
     }
     Ok(())
 }
@@ -2492,7 +2602,9 @@ fn type_check_multiple_finishes_first_tainted() -> Result<(), String> {
     wf.secrets.push("early".to_owned());
     let result = validate_taint(&wf);
     if result != Err(ValidationError::SecretResultLeak) {
-        return Err(format!("expected SecretResultLeak from first tainted finish, got {result:?}"));
+        return Err(format!(
+            "expected SecretResultLeak from first tainted finish, got {result:?}"
+        ));
     }
     Ok(())
 }
@@ -2541,7 +2653,9 @@ fn resource_limits_zero_constant_pool_rejected() -> Result<(), String> {
     let hard = ResourceLimits::default();
     let result = validate_resource_limits(&wf, &hard);
     if !matches!(result, Err(ValidationError::LimitRequired { .. })) {
-        return Err(format!("expected LimitRequired for zero max_constants, got {result:?}"));
+        return Err(format!(
+            "expected LimitRequired for zero max_constants, got {result:?}"
+        ));
     }
     Ok(())
 }
@@ -2566,7 +2680,9 @@ fn resource_limits_collect_items_exceeding_hard_rejected() -> Result<(), String>
         resource: "max_collect_items".to_owned(),
     });
     if result != expected {
-        return Err(format!("expected LimitExceeded for max_collect_items, got {result:?}"));
+        return Err(format!(
+            "expected LimitExceeded for max_collect_items, got {result:?}"
+        ));
     }
     Ok(())
 }
@@ -2591,7 +2707,9 @@ fn resource_limits_retry_attempts_exceeding_hard_rejected() -> Result<(), String
         resource: "max_retry_attempts".to_owned(),
     });
     if result != expected {
-        return Err(format!("expected LimitExceeded for max_retry_attempts, got {result:?}"));
+        return Err(format!(
+            "expected LimitExceeded for max_retry_attempts, got {result:?}"
+        ));
     }
     Ok(())
 }
@@ -2613,7 +2731,9 @@ fn resource_limits_zero_queue_depth_rejected() -> Result<(), String> {
         resource: "max_queue_depth".to_owned(),
     });
     if result != expected {
-        return Err(format!("expected LimitRequired for zero max_queue_depth, got {result:?}"));
+        return Err(format!(
+            "expected LimitRequired for zero max_queue_depth, got {result:?}"
+        ));
     }
     Ok(())
 }
@@ -2650,9 +2770,7 @@ fn run_resource_limits_zero_queue_depth_rejected() {
 fn blackhat_composite_finish_directly_with_secret_reference() {
     let mut wf = make_workflow(vec![finish_step(
         "done",
-        TypedValue::Composite(vec![
-            TypedValue::Reference("$secrets.password".into()),
-        ]),
+        TypedValue::Composite(vec![TypedValue::Reference("$secrets.password".into())]),
     )]);
     wf.secrets.push("password".to_owned());
     assert_eq!(
@@ -2687,11 +2805,9 @@ fn blackhat_composite_of_composites_carries_secret_taint() {
     let mut wf = make_workflow(vec![
         save_step(
             "outer",
-            TypedValue::Composite(vec![
-                TypedValue::Composite(vec![
-                    TypedValue::Reference("$secrets.innermost".into()),
-                ]),
-            ]),
+            TypedValue::Composite(vec![TypedValue::Composite(vec![TypedValue::Reference(
+                "$secrets.innermost".into(),
+            )])]),
         ),
         finish_step("done", TypedValue::Slot(0)),
     ]);
@@ -2773,9 +2889,7 @@ fn blackhat_secret_in_composite_saved_to_slot_then_relayed() {
     let mut wf = make_workflow(vec![
         save_step(
             "s0",
-            TypedValue::Composite(vec![
-                TypedValue::Reference("$secrets.key".into()),
-            ]),
+            TypedValue::Composite(vec![TypedValue::Reference("$secrets.key".into())]),
         ),
         save_step("s1", TypedValue::Slot(0)),
         finish_step("done", TypedValue::Slot(1)),
@@ -3728,7 +3842,10 @@ fn blackhat_workflow_with_only_saves_and_no_finish_passes() {
 #[test]
 fn blackhat_save_secret_then_clean_save_then_clean_finish_passes() {
     let mut wf = make_workflow(vec![
-        save_step("secret_slot", TypedValue::Reference("$secrets.ignored".into())),
+        save_step(
+            "secret_slot",
+            TypedValue::Reference("$secrets.ignored".into()),
+        ),
         save_step("clean_slot", TypedValue::Literal(ValueType::Text)),
         finish_step("done", TypedValue::Slot(1)),
     ]);
@@ -3791,10 +3908,7 @@ fn blackhat_taint_does_not_propagate_through_choose() {
 
 #[test]
 fn blackhat_composite_of_empty_vec_is_clean() {
-    let wf = make_workflow(vec![finish_step(
-        "done",
-        TypedValue::Composite(vec![]),
-    )]);
+    let wf = make_workflow(vec![finish_step("done", TypedValue::Composite(vec![]))]);
     assert_eq!(
         validate_taint(&wf),
         Ok(()),

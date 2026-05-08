@@ -11,8 +11,8 @@ mod tests {
 
     // Certificate types from the parent module
     use crate::verify::certificates::{
-        Certificate, CertificateKind, CertificateStatus, CheckStatus,
-        VerificationResult, collect_successors, verify_workflow,
+        Certificate, CertificateKind, CertificateStatus, CheckStatus, VerificationResult,
+        collect_successors, verify_workflow,
     };
     // EdgeStyle and GroupKind from graph_builder
     use crate::graph_builder::{EdgeStyle, GroupKind};
@@ -91,10 +91,7 @@ mod tests {
             assert!(false, "cert missing");
             return;
         };
-        assert!(matches!(
-            structural.status,
-            CertificateStatus::Pass
-        ));
+        assert!(matches!(structural.status, CertificateStatus::Pass));
 
         // Strict durability should warn (Finish node present but no error handlers).
         let durability = result
@@ -127,10 +124,7 @@ mod tests {
             assert!(false, "cert missing");
             return;
         };
-        assert!(matches!(
-            reachability.status,
-            CertificateStatus::Pass
-        ));
+        assert!(matches!(reachability.status, CertificateStatus::Pass));
     }
 
     #[test]
@@ -180,10 +174,7 @@ mod tests {
             assert!(false, "cert missing");
             return;
         };
-        assert!(matches!(
-            reachability.status,
-            CertificateStatus::Fail(_)
-        ));
+        assert!(matches!(reachability.status, CertificateStatus::Fail(_)));
     }
 
     #[test]
@@ -389,7 +380,11 @@ mod tests {
             nodes.push(CompiledNode {
                 id: StepIdx::new(i),
                 output: None,
-                next: if i < 4 { Some(StepIdx::new(i.saturating_add(1))) } else { None },
+                next: if i < 4 {
+                    Some(StepIdx::new(i.saturating_add(1)))
+                } else {
+                    None
+                },
                 on_error: None,
                 error_slot: None,
                 kind: CompiledNodeKind::Nop,
@@ -725,10 +720,7 @@ mod tests {
     #[test]
     fn preflight_max_transitions_passes_within_limit() {
         let report = verify_workflow(&preflight_minimal_parts());
-        let check = report
-            .checks
-            .iter()
-            .find(|c| c.name == "max_transitions");
+        let check = report.checks.iter().find(|c| c.name == "max_transitions");
         assert!(check.is_some());
         let Some(c) = check else {
             assert!(false, "check missing");
@@ -748,7 +740,11 @@ mod tests {
             nodes.push(CompiledNode {
                 id: StepIdx::new(i),
                 output: None,
-                next: if i < 2 { Some(StepIdx::new(i.saturating_add(1))) } else { None },
+                next: if i < 2 {
+                    Some(StepIdx::new(i.saturating_add(1)))
+                } else {
+                    None
+                },
                 on_error: None,
                 error_slot: None,
                 kind: if i < 2 {
@@ -762,10 +758,7 @@ mod tests {
         }
         parts.nodes = nodes.into_boxed_slice();
         let report = verify_workflow(&parts);
-        let check = report
-            .checks
-            .iter()
-            .find(|c| c.name == "max_transitions");
+        let check = report.checks.iter().find(|c| c.name == "max_transitions");
         assert!(check.is_some());
         let Some(c) = check else {
             assert!(false, "check missing");
@@ -784,10 +777,7 @@ mod tests {
     #[test]
     fn preflight_max_action_calls_passes_within_ceiling() {
         let report = verify_workflow(&preflight_minimal_parts());
-        let check = report
-            .checks
-            .iter()
-            .find(|c| c.name == "max_action_calls");
+        let check = report.checks.iter().find(|c| c.name == "max_action_calls");
         assert!(check.is_some());
         let Some(c) = check else {
             assert!(false, "check missing");
@@ -840,10 +830,7 @@ mod tests {
         // Default max_retry_attempts is 3, so 5 Do nodes will exceed it.
         parts.resource_contract.max_retry_attempts = 3;
         let report = verify_workflow(&parts);
-        let check = report
-            .checks
-            .iter()
-            .find(|c| c.name == "max_action_calls");
+        let check = report.checks.iter().find(|c| c.name == "max_action_calls");
         assert!(check.is_some());
         let Some(c) = check else {
             assert!(false, "check missing");
@@ -866,7 +853,11 @@ mod tests {
         let report = verify_workflow(&preflight_minimal_parts());
         // For a minimal Finish-only workflow with default contract, we expect
         // no failures (some checks may warn, but none should fail).
-        assert!(report.all_pass, "all_pass should be true for minimal valid workflow, worst_risk={:?}", report.worst_risk);
+        assert!(
+            report.all_pass,
+            "all_pass should be true for minimal valid workflow, worst_risk={:?}",
+            report.worst_risk
+        );
         assert!(matches!(
             report.worst_risk,
             CheckStatus::Pass | CheckStatus::Warn
@@ -884,21 +875,42 @@ mod tests {
 
     #[test]
     fn check_status_merge_worst_fail_dominates() {
-        assert_eq!(CheckStatus::Fail.merge_worst(CheckStatus::Pass), CheckStatus::Fail);
-        assert_eq!(CheckStatus::Fail.merge_worst(CheckStatus::Warn), CheckStatus::Fail);
-        assert_eq!(CheckStatus::Fail.merge_worst(CheckStatus::Fail), CheckStatus::Fail);
-        assert_eq!(CheckStatus::Pass.merge_worst(CheckStatus::Fail), CheckStatus::Fail);
+        assert_eq!(
+            CheckStatus::Fail.merge_worst(CheckStatus::Pass),
+            CheckStatus::Fail
+        );
+        assert_eq!(
+            CheckStatus::Fail.merge_worst(CheckStatus::Warn),
+            CheckStatus::Fail
+        );
+        assert_eq!(
+            CheckStatus::Fail.merge_worst(CheckStatus::Fail),
+            CheckStatus::Fail
+        );
+        assert_eq!(
+            CheckStatus::Pass.merge_worst(CheckStatus::Fail),
+            CheckStatus::Fail
+        );
     }
 
     #[test]
     fn check_status_merge_worst_warn_dominates_pass() {
-        assert_eq!(CheckStatus::Warn.merge_worst(CheckStatus::Pass), CheckStatus::Warn);
-        assert_eq!(CheckStatus::Pass.merge_worst(CheckStatus::Warn), CheckStatus::Warn);
+        assert_eq!(
+            CheckStatus::Warn.merge_worst(CheckStatus::Pass),
+            CheckStatus::Warn
+        );
+        assert_eq!(
+            CheckStatus::Pass.merge_worst(CheckStatus::Warn),
+            CheckStatus::Warn
+        );
     }
 
     #[test]
     fn check_status_merge_worst_pass_pass() {
-        assert_eq!(CheckStatus::Pass.merge_worst(CheckStatus::Pass), CheckStatus::Pass);
+        assert_eq!(
+            CheckStatus::Pass.merge_worst(CheckStatus::Pass),
+            CheckStatus::Pass
+        );
     }
 
     // ========================================================================
@@ -991,7 +1003,11 @@ mod tests {
             nodes.push(CompiledNode {
                 id: StepIdx::new(i),
                 output: None,
-                next: if i < 4 { Some(StepIdx::new(i.saturating_add(1))) } else { None },
+                next: if i < 4 {
+                    Some(StepIdx::new(i.saturating_add(1)))
+                } else {
+                    None
+                },
                 on_error: None,
                 error_slot: None,
                 kind: CompiledNodeKind::Nop,
@@ -1043,7 +1059,11 @@ mod tests {
             nodes.push(CompiledNode {
                 id: StepIdx::new(i),
                 output: None,
-                next: if i < 2 { Some(StepIdx::new(i.saturating_add(1))) } else { None },
+                next: if i < 2 {
+                    Some(StepIdx::new(i.saturating_add(1)))
+                } else {
+                    None
+                },
                 on_error: None,
                 error_slot: None,
                 kind: CompiledNodeKind::Nop,
@@ -1437,10 +1457,7 @@ mod tests {
         let mut parts = preflight_minimal_parts();
         parts.resource_contract.max_steps = 0;
         let report = verify_workflow(&parts);
-        let check = report
-            .checks
-            .iter()
-            .find(|c| c.name == "max_transitions");
+        let check = report.checks.iter().find(|c| c.name == "max_transitions");
         assert!(check.is_some());
         let c = check.ok_or("missing").ok();
         if let Some(ch) = c {
@@ -1776,10 +1793,7 @@ mod tests {
             step_names: Vec::new().into_boxed_slice(),
         };
         let report = verify_workflow(&parts);
-        let check = report
-            .checks
-            .iter()
-            .find(|c| c.name == "max_transitions");
+        let check = report.checks.iter().find(|c| c.name == "max_transitions");
         let Some(c) = check else {
             return;
         };
@@ -1888,7 +1902,10 @@ mod tests {
             return;
         };
         assert!(
-            matches!(d.status, CertificateStatus::Pass | CertificateStatus::Warn(_)),
+            matches!(
+                d.status,
+                CertificateStatus::Pass | CertificateStatus::Warn(_)
+            ),
             "strict durability should Pass or Warn for single Finish, got {:?}",
             d.status,
         );
@@ -1914,27 +1931,15 @@ mod tests {
                 body: StepIdx::new(5),
                 done: StepIdx::new(20),
             },
-            Some(StepIdx::new(99)),  // next
-            Some(StepIdx::new(50)),  // on_error
+            Some(StepIdx::new(99)), // next
+            Some(StepIdx::new(50)), // on_error
         );
 
         // Should contain: next(99), on_error(50), body(5), done(20).
-        assert!(
-            succs.contains(&StepIdx::new(99)),
-            "expected next=99"
-        );
-        assert!(
-            succs.contains(&StepIdx::new(50)),
-            "expected on_error=50"
-        );
-        assert!(
-            succs.contains(&StepIdx::new(5)),
-            "expected body=5"
-        );
-        assert!(
-            succs.contains(&StepIdx::new(20)),
-            "expected done=20"
-        );
+        assert!(succs.contains(&StepIdx::new(99)), "expected next=99");
+        assert!(succs.contains(&StepIdx::new(50)), "expected on_error=50");
+        assert!(succs.contains(&StepIdx::new(5)), "expected body=5");
+        assert!(succs.contains(&StepIdx::new(20)), "expected done=20");
         assert_eq!(
             succs.len(),
             4,
@@ -2166,10 +2171,7 @@ mod tests {
         });
         parts.nodes = nodes.into_boxed_slice();
         let report = verify_workflow(&parts);
-        let check = report
-            .checks
-            .iter()
-            .find(|c| c.name == "max_action_calls");
+        let check = report.checks.iter().find(|c| c.name == "max_action_calls");
         let Some(c) = check else { return };
         assert_eq!(
             c.status,

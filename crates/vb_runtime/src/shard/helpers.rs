@@ -287,21 +287,19 @@ mod tests {
     use vb_core::frame::RunFrame;
     use vb_core::ids::{ActionId, ConstIdx, RunId, SeqNo, SlotIdx, StepIdx, WorkflowDigest};
     use vb_core::value::{ConstValue, SlotValue, Taint};
-    use vb_core::workflow::{
-        CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts,
-    };
     use vb_core::value_store::ValueStore;
+    use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
 
-    use crate::primitives::collect::CollectStates;
     use crate::RuntimeError;
+    use crate::primitives::collect::CollectStates;
 
     use super::super::types::RunState;
     use super::{
-        advance_after_action_completion, advance_after_timer_fire, find_error_handler_for_failure,
-        new_action_attempts, record_retry_attempt, record_scheduled_attempt,
-        result_slot_for_finished_run, retry_metadata_exists, retry_policy_after_action,
-        seed_input_slots, snapshot_from_state, timer_registration_required,
-        validate_action_completion, PendingTimer, PendingTimerKind,
+        PendingTimer, PendingTimerKind, advance_after_action_completion, advance_after_timer_fire,
+        find_error_handler_for_failure, new_action_attempts, record_retry_attempt,
+        record_scheduled_attempt, result_slot_for_finished_run, retry_metadata_exists,
+        retry_policy_after_action, seed_input_slots, snapshot_from_state,
+        timer_registration_required, validate_action_completion,
     };
 
     // ---- Workflow factories ----
@@ -926,10 +924,12 @@ mod tests {
         assert!(state.frame.mark_running(StepIdx::ZERO).is_ok());
         assert!(state.frame.mark_succeeded(StepIdx::ZERO).is_ok());
         assert!(state.frame.set_pc(StepIdx::new(1)).is_ok());
-        assert!(state
-            .frame
-            .write_slot_with_taint(SlotIdx::new(1), SlotValue::I64(3), Taint::Clean)
-            .is_ok());
+        assert!(
+            state
+                .frame
+                .write_slot_with_taint(SlotIdx::new(1), SlotValue::I64(3), Taint::Clean)
+                .is_ok()
+        );
 
         let policy = retry_policy_after_action(&state, StepIdx::new(1));
         match policy {
@@ -1646,10 +1646,12 @@ mod tests {
         assert!(state.frame.mark_running(StepIdx::ZERO).is_ok());
         assert!(state.frame.mark_succeeded(StepIdx::ZERO).is_ok());
         assert!(state.frame.set_pc(StepIdx::new(1)).is_ok());
-        assert!(state
-            .frame
-            .write_slot_with_taint(SlotIdx::new(1), SlotValue::Bool(true), Taint::Clean)
-            .is_ok());
+        assert!(
+            state
+                .frame
+                .write_slot_with_taint(SlotIdx::new(1), SlotValue::Bool(true), Taint::Clean)
+                .is_ok()
+        );
 
         let result = retry_policy_after_action(&state, StepIdx::new(1));
         assert_eq!(
@@ -1749,10 +1751,12 @@ mod tests {
         assert!(state.frame.mark_running(StepIdx::ZERO).is_ok());
         assert!(state.frame.mark_succeeded(StepIdx::ZERO).is_ok());
         assert!(state.frame.set_pc(StepIdx::new(1)).is_ok());
-        assert!(state
-            .frame
-            .write_slot_with_taint(SlotIdx::new(1), SlotValue::I64(-1), Taint::Clean)
-            .is_ok());
+        assert!(
+            state
+                .frame
+                .write_slot_with_taint(SlotIdx::new(1), SlotValue::I64(-1), Taint::Clean)
+                .is_ok()
+        );
 
         let result = retry_policy_after_action(&state, StepIdx::new(1));
         assert_eq!(
@@ -1832,10 +1836,12 @@ mod tests {
         assert!(state.frame.mark_running(StepIdx::ZERO).is_ok());
         assert!(state.frame.mark_succeeded(StepIdx::ZERO).is_ok());
         assert!(state.frame.set_pc(StepIdx::new(1)).is_ok());
-        assert!(state
-            .frame
-            .write_slot_with_taint(SlotIdx::new(1), SlotValue::I64(0), Taint::Clean)
-            .is_ok());
+        assert!(
+            state
+                .frame
+                .write_slot_with_taint(SlotIdx::new(1), SlotValue::I64(0), Taint::Clean)
+                .is_ok()
+        );
 
         let result = retry_policy_after_action(&state, StepIdx::new(1));
         assert_eq!(
