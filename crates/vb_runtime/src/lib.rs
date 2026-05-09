@@ -49,76 +49,70 @@ pub use shard::{AskAnswer, AskTicket};
 #[cfg(test)]
 mod test_harness;
 
-use thiserror::Error;
+use std::sync::Arc;
 use vb_core::DiagnosticCode;
 
 /// Runtime error type.
-#[derive(Debug, Error, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub enum RuntimeError {
     /// Bounded queue is full.
-    #[error("queue full")]
     QueueFull,
 
     /// Run identifier not found.
-    #[error("run not found")]
     RunNotFound,
 
     /// Active run capacity for a shard has been exhausted.
-    #[error("active run capacity exceeded: {capacity}")]
     ActiveRunCapacityExceeded {
         /// Configured active-run capacity.
         capacity: usize,
     },
 
     /// Run identifier is already active on the shard.
-    #[error("run already exists")]
     RunAlreadyExists,
 
     /// Runtime API exists, but the durable path is not implemented yet.
-    #[error("unsupported runtime operation: {operation}")]
     UnsupportedOperation {
         /// Static operation code.
         operation: &'static str,
     },
 
     /// Shutdown is in progress.
-    #[error("shutdown in progress")]
     ShutdownInProgress,
 
     /// Runtime journal mutex was poisoned.
-    #[error("runtime journal lock poisoned")]
     JournalPoisoned,
 
-    /// Durable storage journal append failed.
-    #[error("storage journal append failed")]
-    StorageJournalAppendFailed,
+    /// Core execution failure propagated through the runtime boundary.
+    Core {
+        /// Preserved core error source.
+        source: Box<vb_core::errors::CoreError>,
+    },
+
+    /// Durable storage journal failure propagated through the runtime boundary.
+    StorageJournalAppend {
+        /// Preserved storage journal source.
+        source: Arc<vb_storage::JournalError>,
+    },
 
     /// Queued strict mode cannot acknowledge before persistence.
-    #[error("queued strict journal ack is unsupported without persisted-before-ack proof")]
     UnsupportedAsyncStrictAck,
 
     /// A run frame could not be taken from or returned to the frame pool.
-    #[error("frame pool unavailable")]
     FramePoolUnavailable,
 
     /// Action completion did not match the suspended Do step.
-    #[error("invalid action completion")]
     InvalidActionCompletion,
 
     /// Timer fired for a run that is not suspended on a registered timer.
-    #[error("invalid timer fire")]
     InvalidTimerFire,
 
     /// Durable recovery can expose a summary, but cannot yet rebuild a live frame.
-    #[error("full run frame recovery hydration is unsupported")]
     UnsupportedFullRecoveryHydration,
 
     /// Durable recovery frame seed was internally inconsistent.
-    #[error("invalid recovery frame hydration")]
     InvalidRecoveryHydration,
 
     /// Command queue capacity exceeds the maximum allowed.
-    #[error("command queue capacity {capacity} exceeds maximum {max}")]
     CommandQueueCapacityExceeded {
         /// Requested capacity.
         capacity: usize,
@@ -127,18 +121,15 @@ pub enum RuntimeError {
     },
 
     /// Active run capacity cannot be zero.
-    #[error("active run capacity cannot be zero")]
     ActiveRunCapacityZero,
 
     /// Admission gate rejected the run because the compiled artifact was not found.
-    #[error("admission rejected: artifact not found")]
     AdmissionArtifactNotFound {
         /// Digest of the artifact that was expected but not found.
         digest: vb_core::ids::WorkflowDigest,
     },
 
     /// Admission gate rejected the run because the required capability was not granted.
-    #[error("admission rejected: capability denied")]
     AdmissionCapabilityDenied {
         /// Action that required the capability.
         action: vb_core::ids::ActionId,
@@ -149,9 +140,168 @@ pub enum RuntimeError {
     },
 
     /// Failed to encode a slot value for journal persistence.
-    #[error("slot value encoding failed")]
     EncodeFailed,
 }
+
+impl std::fmt::Display for RuntimeError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if let Some(message) = runtime_error_static_message(self) {
+            f.write_str(message)
+        } else {
+            write_runtime_error_dynamic(self, f)
+        }
+    }
+}
+
+fn runtime_error_static_message(error: &RuntimeError) -> Option<&'static str> {
+    match error {
+        RuntimeError::QueueFull => Some("queue full"),
+        RuntimeError::RunNotFound => Some("run not found"),
+        RuntimeError::RunAlreadyExists => Some("run already exists"),
+        RuntimeError::ShutdownInProgress => Some("shutdown in progress"),
+        RuntimeError::JournalPoisoned => Some("runtime journal lock poisoned"),
+        RuntimeError::UnsupportedAsyncStrictAck => {
+            Some("queued strict journal ack is unsupported without persisted-before-ack proof")
+        }
+        RuntimeError::FramePoolUnavailable => Some("frame pool unavailable"),
+        RuntimeError::InvalidActionCompletion => Some("invalid action completion"),
+        RuntimeError::InvalidTimerFire => Some("invalid timer fire"),
+        RuntimeError::UnsupportedFullRecoveryHydration => {
+            Some("full run frame recovery hydration is unsupported")
+        }
+        RuntimeError::InvalidRecoveryHydration => Some("invalid recovery frame hydration"),
+        RuntimeError::ActiveRunCapacityZero => Some("active run capacity cannot be zero"),
+        RuntimeError::AdmissionArtifactNotFound { .. } => {
+            Some("admission rejected: artifact not found")
+        }
+        RuntimeError::AdmissionCapabilityDenied { .. } => {
+            Some("admission rejected: capability denied")
+        }
+        RuntimeError::EncodeFailed => Some("slot value encoding failed"),
+        _ => None,
+    }
+}
+
+fn write_runtime_error_dynamic(
+    error: &RuntimeError,
+    f: &mut std::fmt::Formatter<'_>,
+) -> std::fmt::Result {
+    match error {
+        RuntimeError::ActiveRunCapacityExceeded { capacity } => {
+            write!(f, "active run capacity exceeded: {capacity}")
+        }
+        RuntimeError::UnsupportedOperation { operation } => {
+            write!(f, "unsupported runtime operation: {operation}")
+        }
+        RuntimeError::Core { source } => write!(f, "runtime core error: {source}"),
+        RuntimeError::StorageJournalAppend { source } => {
+            write!(f, "storage journal append failed: {source}")
+        }
+        RuntimeError::CommandQueueCapacityExceeded { capacity, max } => {
+            write!(f, "command queue capacity {capacity} exceeds maximum {max}")
+        }
+        _ => Ok(()),
+    }
+}
+
+impl std::error::Error for RuntimeError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Self::Core { source } => Some(source.as_ref()),
+            Self::StorageJournalAppend { source } => Some(source.as_ref()),
+            _ => None,
+        }
+    }
+}
+
+impl PartialEq for RuntimeError {
+    fn eq(&self, other: &Self) -> bool {
+        runtime_error_unit_eq(self, other) || runtime_error_field_eq(self, other)
+    }
+}
+
+fn runtime_error_unit_eq(left: &RuntimeError, right: &RuntimeError) -> bool {
+    match runtime_error_unit_tag(left) {
+        Some(tag) => runtime_error_unit_tag(right) == Some(tag),
+        None => false,
+    }
+}
+
+fn runtime_error_unit_tag(error: &RuntimeError) -> Option<u8> {
+    match error {
+        RuntimeError::QueueFull => Some(0),
+        RuntimeError::RunNotFound => Some(1),
+        RuntimeError::RunAlreadyExists => Some(2),
+        RuntimeError::ShutdownInProgress => Some(3),
+        RuntimeError::JournalPoisoned => Some(4),
+        RuntimeError::UnsupportedAsyncStrictAck => Some(5),
+        RuntimeError::FramePoolUnavailable => Some(6),
+        RuntimeError::InvalidActionCompletion => Some(7),
+        RuntimeError::InvalidTimerFire => Some(8),
+        RuntimeError::UnsupportedFullRecoveryHydration => Some(9),
+        RuntimeError::InvalidRecoveryHydration => Some(10),
+        RuntimeError::ActiveRunCapacityZero => Some(11),
+        RuntimeError::EncodeFailed => Some(12),
+        _ => None,
+    }
+}
+
+fn runtime_error_field_eq(left: &RuntimeError, right: &RuntimeError) -> bool {
+    runtime_error_core_field_eq(left, right) || runtime_error_admission_field_eq(left, right)
+}
+
+fn runtime_error_core_field_eq(left: &RuntimeError, right: &RuntimeError) -> bool {
+    match (left, right) {
+        (
+            RuntimeError::ActiveRunCapacityExceeded { capacity: a },
+            RuntimeError::ActiveRunCapacityExceeded { capacity: b },
+        ) => a == b,
+        (
+            RuntimeError::UnsupportedOperation { operation: a },
+            RuntimeError::UnsupportedOperation { operation: b },
+        ) => a == b,
+        (RuntimeError::Core { source: a }, RuntimeError::Core { source: b }) => a == b,
+        (
+            RuntimeError::StorageJournalAppend { source: a },
+            RuntimeError::StorageJournalAppend { source: b },
+        ) => a.diagnostic_code() == b.diagnostic_code(),
+        (
+            RuntimeError::CommandQueueCapacityExceeded {
+                capacity: a,
+                max: b,
+            },
+            RuntimeError::CommandQueueCapacityExceeded {
+                capacity: c,
+                max: d,
+            },
+        ) => a == c && b == d,
+        _ => false,
+    }
+}
+
+fn runtime_error_admission_field_eq(left: &RuntimeError, right: &RuntimeError) -> bool {
+    match (left, right) {
+        (
+            RuntimeError::AdmissionArtifactNotFound { digest: a },
+            RuntimeError::AdmissionArtifactNotFound { digest: b },
+        ) => a == b,
+        (
+            RuntimeError::AdmissionCapabilityDenied {
+                action: a,
+                required: b,
+                granted: c,
+            },
+            RuntimeError::AdmissionCapabilityDenied {
+                action: d,
+                required: e,
+                granted: f,
+            },
+        ) => a == d && b == e && c == f,
+        _ => false,
+    }
+}
+
+impl Eq for RuntimeError {}
 
 /// Result alias for runtime operations.
 pub type RuntimeResult<T> = Result<T, RuntimeError>;
@@ -206,7 +356,7 @@ impl RuntimeError {
 
     /// Returns the stable diagnostic code for this error.
     #[must_use]
-    pub const fn diagnostic_code(&self) -> DiagnosticCode {
+    pub fn diagnostic_code(&self) -> DiagnosticCode {
         match self {
             Self::QueueFull => Self::QUEUE_FULL_CODE,
             Self::RunNotFound => Self::RUN_NOT_FOUND_CODE,
@@ -215,7 +365,11 @@ impl RuntimeError {
             Self::UnsupportedOperation { .. } => Self::UNSUPPORTED_OPERATION_CODE,
             Self::ShutdownInProgress => Self::SHUTDOWN_IN_PROGRESS_CODE,
             Self::JournalPoisoned => Self::JOURNAL_POISONED_CODE,
-            Self::StorageJournalAppendFailed => Self::STORAGE_JOURNAL_APPEND_FAILED_CODE,
+            Self::StorageJournalAppend { .. } => Self::STORAGE_JOURNAL_APPEND_FAILED_CODE,
+            Self::Core { source } => match source.as_ref() {
+                vb_core::errors::CoreError::QueueFull => Self::QUEUE_FULL_CODE,
+                _ => Self::STORAGE_JOURNAL_APPEND_FAILED_CODE,
+            },
             Self::UnsupportedAsyncStrictAck => Self::UNSUPPORTED_ASYNC_STRICT_ACK_CODE,
             Self::FramePoolUnavailable => Self::FRAME_POOL_UNAVAILABLE_CODE,
             Self::InvalidActionCompletion => Self::INVALID_ACTION_COMPLETION_CODE,
@@ -234,16 +388,38 @@ impl RuntimeError {
 
     /// Returns the stable section 17 runtime code when this error has a direct mapping.
     #[must_use]
-    pub const fn runtime_code(&self) -> Option<&'static str> {
+    pub fn runtime_code(&self) -> Option<&'static str> {
         match self {
             Self::QueueFull | Self::ActiveRunCapacityExceeded { .. } => {
                 Some(Self::QUEUE_FULL_RUNTIME_CODE)
             }
             Self::JournalPoisoned
-            | Self::StorageJournalAppendFailed
+            | Self::StorageJournalAppend { .. }
             | Self::UnsupportedAsyncStrictAck => Some(Self::STORAGE_ERROR_RUNTIME_CODE),
+            Self::Core { source } => match source.as_ref() {
+                vb_core::errors::CoreError::QueueFull => Some(Self::QUEUE_FULL_RUNTIME_CODE),
+                _ => Some(Self::STORAGE_ERROR_RUNTIME_CODE),
+            },
             Self::InvalidActionCompletion => Some(Self::ACTION_FAILED_RUNTIME_CODE),
             _ => None,
+        }
+    }
+}
+
+// Error conversion impls for cross-crate ? propagation.
+
+impl From<vb_core::errors::CoreError> for RuntimeError {
+    fn from(error: vb_core::errors::CoreError) -> Self {
+        Self::Core {
+            source: Box::new(error),
+        }
+    }
+}
+
+impl From<vb_storage::JournalError> for RuntimeError {
+    fn from(error: vb_storage::JournalError) -> Self {
+        Self::StorageJournalAppend {
+            source: Arc::new(error),
         }
     }
 }
@@ -520,7 +696,7 @@ mod bdd_runtime_error {
             Some("STORAGE_ERROR")
         );
         assert_eq!(
-            RuntimeError::StorageJournalAppendFailed.runtime_code(),
+            RuntimeError::from(vb_storage::JournalError::QueueFull).runtime_code(),
             Some("STORAGE_ERROR")
         );
         assert_eq!(
@@ -563,7 +739,7 @@ mod bdd_runtime_error {
             RuntimeError::UnsupportedOperation { operation: "x" }.diagnostic_code(),
             RuntimeError::ShutdownInProgress.diagnostic_code(),
             RuntimeError::JournalPoisoned.diagnostic_code(),
-            RuntimeError::StorageJournalAppendFailed.diagnostic_code(),
+            RuntimeError::from(vb_storage::JournalError::QueueFull).diagnostic_code(),
             RuntimeError::UnsupportedAsyncStrictAck.diagnostic_code(),
             RuntimeError::FramePoolUnavailable.diagnostic_code(),
             RuntimeError::InvalidActionCompletion.diagnostic_code(),
@@ -572,10 +748,7 @@ mod bdd_runtime_error {
             RuntimeError::InvalidRecoveryHydration.diagnostic_code(),
         ];
         assert_eq!(codes.len(), 14);
-        let mut seen = std::collections::BTreeSet::new();
-        for code in codes {
-            assert!(seen.insert(code), "duplicate diagnostic code: {code}");
-        }
+        let seen = std::collections::BTreeSet::from(codes);
         assert_eq!(seen.len(), 14);
     }
 
@@ -638,7 +811,7 @@ mod bdd_runtime_error {
     #[test]
     fn runtime_error_diagnostic_code_storage_journal_append_failed() {
         assert_eq!(
-            RuntimeError::StorageJournalAppendFailed.diagnostic_code(),
+            RuntimeError::from(vb_storage::JournalError::QueueFull).diagnostic_code(),
             DiagnosticCode::new(0x2008)
         );
     }
@@ -689,22 +862,5 @@ mod bdd_runtime_error {
             RuntimeError::InvalidRecoveryHydration.diagnostic_code(),
             DiagnosticCode::new(0x200E)
         );
-    }
-}
-
-// Error conversion impls for cross-crate ? propagation.
-
-impl From<vb_core::errors::CoreError> for RuntimeError {
-    fn from(error: vb_core::errors::CoreError) -> Self {
-        match error {
-            vb_core::errors::CoreError::QueueFull => Self::QueueFull,
-            _ => Self::StorageJournalAppendFailed,
-        }
-    }
-}
-
-impl From<vb_storage::JournalError> for RuntimeError {
-    fn from(_error: vb_storage::JournalError) -> Self {
-        Self::StorageJournalAppendFailed
     }
 }

@@ -5,35 +5,46 @@
 
 use std::error::Error;
 
+fn source_as<'a, T>(error: &'a (dyn Error + 'static)) -> &'a T
+where
+    T: Error + 'static,
+{
+    match error.source().and_then(<dyn Error>::downcast_ref::<T>) {
+        Some(source) => source,
+        None => panic!("expected source type {}", std::any::type_name::<T>()),
+    }
+}
+
 /// Compile error propagates to CLI with proper Display and source chain.
 #[test]
 fn compile_error_propagates_to_cli() {
     let source = b"version: velvet-ballastics/v1\nname: test\nwhen:\n  manual: {}\nsteps: []\n";
-    let result = vb_compile::compile_workflow(source);
-    let Err(errors) = result else {
-        panic!("expected compile error for empty steps");
+    let errors = match vb_compile::compile_workflow(source) {
+        Ok(_) => panic!("expected compile error for empty steps"),
+        Err(errors) => errors,
     };
 
     // CompileErrors implements Display
     let display = format!("{errors}");
-    assert!(
-        display.contains("steps must not be empty"),
-        "CompileErrors Display should mention empty steps, got: {display}"
+    assert_eq!(
+        display, "[0] workflow steps must not be empty",
+        "CompileErrors Display should render the exact empty-steps diagnostic"
     );
+    assert_eq!(errors.len(), 1, "expected exactly one compile error");
 
     // The first error implements Display
-    let first = errors
-        .first()
-        .cloned()
-        .ok_or_else(|| String::from("expected at least one error"))
-        .ok();
-    let Some(first_error) = first else {
-        panic!("CompileErrors should contain at least one CompileError");
+    let first_error = match errors.first() {
+        Some(error) => error,
+        None => panic!("CompileErrors should contain at least one CompileError"),
     };
     let first_display = format!("{first_error}");
+    assert_eq!(
+        first_display, "workflow steps must not be empty",
+        "CompileError Display must render the exact empty-steps diagnostic"
+    );
     assert!(
-        !first_display.is_empty(),
-        "CompileError Display must not be empty"
+        matches!(first_error, vb_compile::CompileError::EmptySteps),
+        "CompileErrors should preserve the exact EmptySteps variant"
     );
 }
 
@@ -43,9 +54,16 @@ fn validation_error_propagates_into_compile_error() {
     let validation = vb_validate::ValidationError::DuplicateKey;
     let compile_error: vb_compile::CompileError = validation.into();
     let display = format!("{compile_error}");
+    assert_eq!(
+        display, "validation gate failure: DUPLICATE_KEY",
+        "CompileError from ValidationError should display the exact validation chain"
+    );
     assert!(
-        display.contains("validation gate failure"),
-        "CompileError from ValidationError should display validation gate failure, got: {display}"
+        matches!(
+            &compile_error,
+            &vb_compile::CompileError::Validation(vb_validate::ValidationError::DuplicateKey)
+        ),
+        "CompileError should preserve the exact ValidationError::DuplicateKey source"
     );
     assert_eq!(
         compile_error.diagnostic_code(),
@@ -60,9 +78,17 @@ fn workflow_error_propagates_into_compile_error() {
     let workflow_error = vb_core::workflow::WorkflowError::EmptyNodes;
     let compile_error: vb_compile::CompileError = workflow_error.into();
     let display = format!("{compile_error}");
+    assert_eq!(
+        display,
+        "compiled workflow IR failed validation: compiled workflow must contain at least one node",
+        "CompileError from WorkflowError should display the exact IR validation chain"
+    );
     assert!(
-        display.contains("compiled workflow IR failed validation"),
-        "CompileError from WorkflowError should display IR validation failure, got: {display}"
+        matches!(
+            source_as::<vb_core::workflow::WorkflowError>(&compile_error),
+            vb_core::workflow::WorkflowError::EmptyNodes
+        ),
+        "CompileError should expose exact WorkflowError::EmptyNodes source"
     );
 }
 
@@ -74,9 +100,20 @@ fn runtime_error_includes_cause_from_core_error() {
 
     // CoreError::QueueFull maps to RuntimeError::QueueFull
     let display = format!("{runtime_error}");
+    assert_eq!(
+        display, "runtime core error: queue full",
+        "RuntimeError from CoreError::QueueFull should display the exact core chain"
+    );
     assert!(
-        display.contains("queue full"),
-        "RuntimeError from CoreError::QueueFull should display queue full, got: {display}"
+        matches!(&runtime_error, &vb_runtime::RuntimeError::Core { .. }),
+        "RuntimeError should preserve CoreError in RuntimeError::Core"
+    );
+    assert!(
+        matches!(
+            source_as::<vb_core::errors::CoreError>(&runtime_error),
+            vb_core::errors::CoreError::QueueFull
+        ),
+        "RuntimeError should expose the exact CoreError::QueueFull source"
     );
 }
 
@@ -87,9 +124,43 @@ fn storage_error_propagates_up_through_runtime() {
     let runtime_error: vb_runtime::RuntimeError = journal_error.into();
 
     let display = format!("{runtime_error}");
+    assert_eq!(
+        display, "storage journal append failed: journal write lock is poisoned",
+        "RuntimeError from JournalError should display the exact storage append chain"
+    );
     assert!(
-        display.contains("storage journal append failed"),
-        "RuntimeError from JournalError should map to StorageJournalAppendFailed, got: {display}"
+        matches!(
+            &runtime_error,
+            &vb_runtime::RuntimeError::StorageJournalAppend { .. }
+        ),
+        "RuntimeError should preserve JournalError in StorageJournalAppend"
+    );
+    assert!(
+        matches!(
+            source_as::<vb_storage::JournalError>(&runtime_error),
+            vb_storage::JournalError::WriteLockPoisoned
+        ),
+        "RuntimeError should expose the exact JournalError::WriteLockPoisoned source"
+    );
+}
+
+/// RuntimeError converted from non-queue CoreError keeps CoreError in the source chain.
+#[test]
+fn core_error_propagates_up_through_runtime_with_source() {
+    let core_error = vb_core::errors::CoreError::ExpressionStackOverflow { max: 16 };
+    let runtime_error: vb_runtime::RuntimeError = core_error.into();
+
+    let display = format!("{runtime_error}");
+    assert_eq!(
+        display, "runtime core error: expression stack overflow: max 16",
+        "RuntimeError from CoreError should display the exact runtime core chain"
+    );
+    assert!(
+        matches!(
+            source_as::<vb_core::errors::CoreError>(&runtime_error),
+            vb_core::errors::CoreError::ExpressionStackOverflow { max: 16 }
+        ),
+        "RuntimeError should expose exact CoreError source"
     );
 }
 
@@ -104,9 +175,9 @@ fn single_compile_error_into_compile_errors() {
         "CompileErrors from single error should have exactly one error"
     );
     let display = format!("{errors}");
-    assert!(
-        display.contains("must contain exactly one"),
-        "CompileErrors Display should contain the inner error text, got: {display}"
+    assert_eq!(
+        display, "[0] YAML source must contain exactly one non-empty document",
+        "CompileErrors Display should render the exact inner error text"
     );
 }
 
@@ -118,16 +189,42 @@ fn error_chain_three_levels_deep() {
     let compile_error = vb_compile::CompileError::from(workflow_error);
 
     let display = format!("{compile_error}");
-    assert!(
-        display.contains("compiled workflow IR failed validation"),
-        "three-level chain top should show IR validation, got: {display}"
+    assert_eq!(
+        display,
+        "compiled workflow IR failed validation: expression program is invalid: expression stack overflow: max 64",
+        "three-level chain top should render the exact IR validation chain"
     );
 
-    // Verify source chain: CompileError -> WorkflowError -> CoreError
-    let workflow_src = compile_error.source();
     assert!(
-        workflow_src.is_some(),
-        "CompileError::Workflow should expose WorkflowError via source()"
+        matches!(
+            source_as::<vb_core::workflow::WorkflowError>(&compile_error),
+            vb_core::workflow::WorkflowError::Expression(
+                vb_core::errors::CoreError::ExpressionStackOverflow { max: 64 }
+            )
+        ),
+        "CompileError should expose exact WorkflowError source"
+    );
+
+    let workflow_src = source_as::<vb_core::workflow::WorkflowError>(&compile_error);
+    assert!(
+        matches!(
+            source_as::<vb_core::errors::CoreError>(workflow_src),
+            vb_core::errors::CoreError::ExpressionStackOverflow { max: 64 }
+        ),
+        "WorkflowError should expose exact nested CoreError source"
+    );
+}
+
+/// CompileErrors exposes its first CompileError as source for aggregate chains.
+#[test]
+fn compile_errors_collection_exposes_first_source() {
+    let errors = vb_compile::CompileErrors(vec![vb_compile::CompileError::EmptySource]);
+    assert!(
+        matches!(
+            source_as::<vb_compile::CompileError>(&errors),
+            vb_compile::CompileError::EmptySource
+        ),
+        "CompileErrors should expose the exact first CompileError source"
     );
 }
 
@@ -138,47 +235,83 @@ fn recovery_error_wraps_journal_error() {
     let recovery_error: vb_storage::recovery::RecoveryError = journal_error.into();
 
     let display = format!("{recovery_error}");
+    assert_eq!(
+        display, "journal error during recovery: journal writer queue is full",
+        "RecoveryError::Journal Display should render the exact journal chain"
+    );
     assert!(
-        display.contains("journal error during recovery"),
-        "RecoveryError::Journal Display should mention recovery context, got: {display}"
+        matches!(
+            &recovery_error,
+            &vb_storage::recovery::RecoveryError::Journal(vb_storage::JournalError::QueueFull)
+        ),
+        "RecoveryError should preserve JournalError in the exact Journal variant"
     );
 
-    // RecoveryError has source chain: RecoveryError -> JournalError
-    let source = recovery_error.source();
     assert!(
-        source.is_some(),
-        "RecoveryError::Journal should expose JournalError via source()"
+        matches!(
+            source_as::<vb_storage::JournalError>(&recovery_error),
+            vb_storage::JournalError::QueueFull
+        ),
+        "RecoveryError::Journal should expose exact JournalError source"
     );
 }
 
 /// Every error variant produces a non-empty Display string.
 #[test]
 fn all_runtime_error_variants_have_display() {
-    let errors = vec![
+    assert_eq!(
         format!("{}", vb_runtime::RuntimeError::QueueFull),
+        "queue full"
+    );
+    assert_eq!(
         format!("{}", vb_runtime::RuntimeError::RunNotFound),
+        "run not found"
+    );
+    assert_eq!(
         format!("{}", vb_runtime::RuntimeError::RunAlreadyExists),
+        "run already exists"
+    );
+    assert_eq!(
         format!("{}", vb_runtime::RuntimeError::ShutdownInProgress),
+        "shutdown in progress"
+    );
+    assert_eq!(
         format!("{}", vb_runtime::RuntimeError::JournalPoisoned),
-        format!("{}", vb_runtime::RuntimeError::StorageJournalAppendFailed),
+        "runtime journal lock poisoned"
+    );
+    assert_eq!(
+        format!(
+            "{}",
+            vb_runtime::RuntimeError::from(vb_storage::JournalError::QueueFull)
+        ),
+        "storage journal append failed: journal writer queue is full"
+    );
+    assert_eq!(
         format!("{}", vb_runtime::RuntimeError::FramePoolUnavailable),
+        "frame pool unavailable"
+    );
+    assert_eq!(
         format!("{}", vb_runtime::RuntimeError::InvalidActionCompletion),
+        "invalid action completion"
+    );
+    assert_eq!(
         format!("{}", vb_runtime::RuntimeError::InvalidTimerFire),
+        "invalid timer fire"
+    );
+    assert_eq!(
         format!(
             "{}",
             vb_runtime::RuntimeError::ActiveRunCapacityExceeded { capacity: 8 }
         ),
+        "active run capacity exceeded: 8"
+    );
+    assert_eq!(
         format!(
             "{}",
             vb_runtime::RuntimeError::UnsupportedOperation {
                 operation: "test_op"
             }
         ),
-    ];
-    for (i, display) in errors.iter().enumerate() {
-        assert!(
-            !display.is_empty(),
-            "RuntimeError variant at index {i} should have non-empty Display"
-        );
-    }
+        "unsupported runtime operation: test_op"
+    );
 }

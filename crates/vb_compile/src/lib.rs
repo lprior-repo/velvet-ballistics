@@ -1603,7 +1603,7 @@ fn unknown_reference_code(kind: &str) -> &'static str {
 }
 
 /// Multiple compilation errors collected in one pass (railway programming).
-#[derive(Debug, Error)]
+#[derive(Debug)]
 pub struct CompileErrors(pub Vec<CompileError>);
 
 impl CompileErrors {
@@ -1652,6 +1652,15 @@ impl std::fmt::Display for CompileErrors {
             write!(f, "[{i}] {error}")?;
         }
         Ok(())
+    }
+}
+
+impl std::error::Error for CompileErrors {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self.first() {
+            Some(error) => Some(error),
+            None => None,
+        }
     }
 }
 

@@ -303,7 +303,7 @@ impl StorageRuntimeJournal {
         } else {
             self.journal.append_journaled(event)
         };
-        result.map_err(|_| RuntimeError::StorageJournalAppendFailed)
+        result.map_err(RuntimeError::from)
     }
 
     fn run_storage_event(event: RuntimeJournalEvent, seq: EventSeq) -> Option<JournalEvent> {
@@ -502,14 +502,14 @@ impl QueuedStorageRuntimeJournal {
     pub fn flush_batch(&self) -> RuntimeResult<JournalWriterFlushReport> {
         self.queue
             .flush_batch(&self.journal)
-            .map_err(|_| RuntimeError::StorageJournalAppendFailed)
+            .map_err(RuntimeError::from)
     }
 
     /// Drains all queued journal writes into Fjall.
     pub fn drain_all(&self) -> RuntimeResult<JournalWriterFlushReport> {
         self.queue
             .drain_all(&self.journal)
-            .map_err(|_| RuntimeError::StorageJournalAppendFailed)
+            .map_err(RuntimeError::from)
     }
 }
 
@@ -527,7 +527,7 @@ impl RuntimeJournal for QueuedStorageRuntimeJournal {
         let next = next_seq(seq)?;
         let storage_event = StorageRuntimeJournal::storage_event(event, seq);
         let result = self.queue.enqueue_journaled(storage_event);
-        result.map_err(|_| RuntimeError::StorageJournalAppendFailed)?;
+        result.map_err(RuntimeError::from)?;
         sequences.insert(run_id, next);
         Ok(())
     }
@@ -548,7 +548,7 @@ fn next_seq(seq: EventSeq) -> RuntimeResult<EventSeq> {
     seq.get()
         .checked_add(1)
         .map(EventSeq::new)
-        .ok_or(RuntimeError::StorageJournalAppendFailed)
+        .ok_or_else(|| RuntimeError::from(vb_storage::JournalError::SequenceOverflow))
 }
 
 #[cfg(test)]
@@ -1078,7 +1078,8 @@ mod tests {
         );
         assert!(matches!(
             adapter.append(RuntimeJournalEvent::RunFailed { run }),
-            Err(crate::RuntimeError::StorageJournalAppendFailed)
+            Err(crate::RuntimeError::StorageJournalAppend { source })
+                if matches!(source.as_ref(), vb_storage::JournalError::QueueFull)
         ));
         assert!(
             matches!(adapter.flush_batch(), Ok(report) if report.drained == 1 && report.written == 1)
