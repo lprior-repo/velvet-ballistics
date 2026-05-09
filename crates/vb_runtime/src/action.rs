@@ -4,7 +4,6 @@
 
 use vb_core::action::{
     ActionContract, ActionError, ActionInput, ActionOutcome, ActionResult, ActionTicket,
-    Idempotency, RetrySafety, SideEffect,
 };
 use vb_core::ids::ActionId;
 
@@ -14,16 +13,20 @@ const MAX_REGISTERED_ACTIONS: usize = 65_535;
 /// Registry mapping numeric action identifiers to their contracts.
 #[derive(Debug, Clone)]
 pub struct ActionRegistry {
-    contracts: Vec<ActionContract>,
+    slots: Vec<ActionSlot>,
+}
+
+#[derive(Debug, Clone)]
+enum ActionSlot {
+    Empty,
+    Registered(ActionContract),
 }
 
 impl ActionRegistry {
     /// Creates an empty action registry.
     #[must_use]
     pub fn new() -> Self {
-        Self {
-            contracts: Vec::new(),
-        }
+        Self { slots: Vec::new() }
     }
 
     /// Registers an action contract. Returns an error if the action id is
@@ -36,47 +39,35 @@ impl ActionRegistry {
                 action: contract.id,
             });
         }
-        if slot < self.contracts.len() {
-            if self.contracts.get(slot).is_some()
-                && self
-                    .contracts
-                    .get(slot)
-                    .is_some_and(|existing| existing.id == contract.id)
-            {
-                return Err(ActionError::DispatchFailed);
-            }
-            *self
-                .contracts
-                .get_mut(slot)
-                .ok_or(ActionError::DispatchFailed)? = contract;
-            return Ok(());
-        }
-        // Extend to fill up to the target slot.
+        self.ensure_slot_capacity(slot)?;
+        self.write_empty_slot(slot, contract)
+    }
+
+    fn ensure_slot_capacity(&mut self, slot: usize) -> ActionResult<()> {
         let needed = slot.checked_add(1).ok_or(ActionError::DispatchFailed)?;
-        self.contracts.resize_with(needed, || ActionContract {
-            id: ActionId::new(0),
-            input_slot_count: 0,
-            output_slot_count: 0,
-            max_input_bytes: 0,
-            max_output_bytes: 0,
-            timeout_ms: 0,
-            idempotency: Idempotency::DeterministicPure,
-            side_effect: SideEffect::None,
-            retry_safety: RetrySafety::Safe,
-            required_capabilities: Box::new([]),
-        });
-        *self
-            .contracts
-            .get_mut(slot)
-            .ok_or(ActionError::DispatchFailed)? = contract;
+        if needed > self.slots.len() {
+            self.slots.resize_with(needed, || ActionSlot::Empty);
+        }
         Ok(())
+    }
+
+    fn write_empty_slot(&mut self, slot: usize, contract: ActionContract) -> ActionResult<()> {
+        match self.slots.get_mut(slot) {
+            Some(empty_slot @ ActionSlot::Empty) => {
+                *empty_slot = ActionSlot::Registered(contract);
+                Ok(())
+            }
+            Some(ActionSlot::Registered(_)) => Err(ActionError::DispatchFailed),
+            None => Err(ActionError::DispatchFailed),
+        }
     }
 
     /// Resolves a compile-time action id to its contract.
     pub fn resolve_compile_time(&self, action: ActionId) -> ActionResult<&ActionContract> {
         let index = usize::from(action.get());
-        self.contracts
+        self.slots
             .get(index)
+            .and_then(ActionSlot::registered_contract)
             .filter(|contract| contract.id == action)
             .ok_or(ActionError::UnknownAction { action })
     }
@@ -103,13 +94,37 @@ impl ActionRegistry {
     /// Returns the number of registered actions.
     #[must_use]
     pub fn len(&self) -> usize {
-        self.contracts.len()
+        self.slots.len()
     }
 
     /// Returns true when no actions are registered.
     #[must_use]
     pub fn is_empty(&self) -> bool {
-        self.contracts.is_empty()
+        self.slots
+            .iter()
+            .all(|slot| matches!(slot, ActionSlot::Empty))
+    }
+
+    /// Returns registered action contracts in deterministic [`ActionId`] order.
+    ///
+    /// The registry stores contracts in action-id slots, so iteration is already
+    /// sorted by id. The returned references are read-only and do not mutate the
+    /// registry.
+    #[must_use]
+    pub fn registered_contracts(&self) -> Vec<&ActionContract> {
+        self.slots
+            .iter()
+            .filter_map(ActionSlot::registered_contract)
+            .collect()
+    }
+}
+
+impl ActionSlot {
+    fn registered_contract(&self) -> Option<&ActionContract> {
+        match self {
+            Self::Empty => None,
+            Self::Registered(contract) => Some(contract),
+        }
     }
 }
 
@@ -151,9 +166,10 @@ fn validate_input_bytes(_input: &ActionInput, contract: &ActionContract) -> Acti
 #[cfg(test)]
 mod tests {
     use super::*;
+    use vb_core::action::{Idempotency, RetrySafety, SideEffect};
     use vb_core::ids::{RunId, SeqNo, SlotIdx, StepIdx};
 
-    fn test_contract(id: u16) -> ActionContract {
+    fn contract_fixture(id: u16) -> ActionContract {
         ActionContract {
             id: ActionId::new(id),
             input_slot_count: 1,
@@ -168,7 +184,7 @@ mod tests {
         }
     }
 
-    fn test_input(action: u16) -> ActionInput {
+    fn input_fixture(action: u16) -> ActionInput {
         ActionInput {
             run: RunId::new(1),
             step: StepIdx::new(0),
@@ -189,7 +205,7 @@ mod tests {
     #[test]
     fn register_and_resolve_action() {
         let mut registry = ActionRegistry::new();
-        let contract = test_contract(10);
+        let contract = contract_fixture(10);
         assert_eq!(registry.register(contract), Ok(()));
         let resolved = registry.resolve_compile_time(ActionId::new(10));
         assert_eq!(resolved.map(|c| c.id), Ok(ActionId::new(10)));
@@ -210,9 +226,9 @@ mod tests {
     #[test]
     fn dispatch_produces_suspended_outcome() {
         let mut registry = ActionRegistry::new();
-        let contract = test_contract(5);
+        let contract = contract_fixture(5);
         assert_eq!(registry.register(contract), Ok(()));
-        let input = test_input(5);
+        let input = input_fixture(5);
         let resolved = registry.resolve_compile_time(ActionId::new(5));
         assert_eq!(resolved.as_ref().map(|c| c.id), Ok(ActionId::new(5)));
         let contract = resolved.ok().cloned();
@@ -241,9 +257,9 @@ mod tests {
     #[test]
     fn register_duplicate_returns_error() {
         let mut registry = ActionRegistry::new();
-        let contract = test_contract(3);
+        let contract = contract_fixture(3);
         assert_eq!(registry.register(contract), Ok(()));
-        let duplicate = test_contract(3);
+        let duplicate = contract_fixture(3);
         assert_eq!(
             registry.register(duplicate),
             Err(ActionError::DispatchFailed)
@@ -266,8 +282,8 @@ mod tests {
     fn len_increases_after_register() {
         let mut registry = ActionRegistry::new();
         assert_eq!(registry.len(), 0);
-        assert_eq!(registry.register(test_contract(1)), Ok(()));
-        assert_eq!(registry.register(test_contract(5)), Ok(()));
+        assert_eq!(registry.register(contract_fixture(1)), Ok(()));
+        assert_eq!(registry.register(contract_fixture(5)), Ok(()));
         assert_eq!(registry.len(), 6);
     }
 
@@ -287,7 +303,7 @@ mod tests {
             required_capabilities: Box::new([]),
         };
         assert_eq!(registry.register(contract), Ok(()));
-        let input = test_input(1);
+        let input = input_fixture(1);
         let resolved = registry.resolve_compile_time(ActionId::new(1));
         assert_eq!(resolved.as_ref().map(|c| c.id), Ok(ActionId::new(1)));
         let contract = resolved.ok().cloned();
@@ -306,7 +322,7 @@ mod tests {
     fn action_registry_resolve_returns_correct_contract() {
         // Given a registry with one contract
         let mut registry = ActionRegistry::new();
-        let contract = test_contract(5);
+        let contract = contract_fixture(5);
         assert_eq!(registry.register(contract), Ok(()));
         // When resolving the action
         let result = registry.resolve_compile_time(ActionId::new(5));
@@ -329,7 +345,7 @@ mod tests {
     fn action_registry_register_fills_gaps() {
         // Given a registry where action 10 is registered first
         let mut registry = ActionRegistry::new();
-        assert_eq!(registry.register(test_contract(10)), Ok(()));
+        assert_eq!(registry.register(contract_fixture(10)), Ok(()));
         // Then len is 11 (slots 0..10)
         assert_eq!(registry.len(), 11);
         // And action 10 resolves correctly
@@ -341,9 +357,9 @@ mod tests {
     fn action_registry_dispatch_rejects_mismatched_contract() {
         // Given a registry with action 5
         let mut registry = ActionRegistry::new();
-        assert_eq!(registry.register(test_contract(5)), Ok(()));
+        assert_eq!(registry.register(contract_fixture(5)), Ok(()));
         // When dispatching with input for action 5 but a different contract
-        let input = test_input(5);
+        let input = input_fixture(5);
         let wrong_contract = ActionContract {
             id: ActionId::new(3),
             input_slot_count: 1,
@@ -370,7 +386,7 @@ mod tests {
     fn action_registry_is_not_empty_after_register() {
         // Given a registry with one action
         let mut registry = ActionRegistry::new();
-        assert_eq!(registry.register(test_contract(1)), Ok(()));
+        assert_eq!(registry.register(contract_fixture(1)), Ok(()));
         // When checking is_empty
         // Then it is not empty
         assert_eq!(registry.is_empty(), false);
@@ -394,9 +410,9 @@ mod tests {
         // Given a registry
         let mut registry = ActionRegistry::new();
         // When registering actions 0, 1, 2
-        assert_eq!(registry.register(test_contract(0)), Ok(()));
-        assert_eq!(registry.register(test_contract(1)), Ok(()));
-        assert_eq!(registry.register(test_contract(2)), Ok(()));
+        assert_eq!(registry.register(contract_fixture(0)), Ok(()));
+        assert_eq!(registry.register(contract_fixture(1)), Ok(()));
+        assert_eq!(registry.register(contract_fixture(2)), Ok(()));
         // Then all resolve correctly
         assert_eq!(
             registry
@@ -423,7 +439,7 @@ mod tests {
     fn action_registry_resolve_unregistered_action_fails() {
         // Given a registry with action 0
         let mut registry = ActionRegistry::new();
-        assert_eq!(registry.register(test_contract(0)), Ok(()));
+        assert_eq!(registry.register(contract_fixture(0)), Ok(()));
         // When resolving unregistered action 5
         let result = registry.resolve_compile_time(ActionId::new(5));
         // Then it returns UnknownAction
@@ -439,9 +455,9 @@ mod tests {
     fn action_registry_dispatch_with_correct_contract_succeeds() {
         // Given a registry with action 0
         let mut registry = ActionRegistry::new();
-        assert_eq!(registry.register(test_contract(0)), Ok(()));
-        let input = test_input(0);
-        let contract = test_contract(0);
+        assert_eq!(registry.register(contract_fixture(0)), Ok(()));
+        let input = input_fixture(0);
+        let contract = contract_fixture(0);
         // When dispatching with matching contract
         let result = registry.dispatch(&input, &contract);
         // Then it succeeds with Suspended outcome
@@ -506,34 +522,32 @@ mod tests {
     fn action_registry_len_increases_with_gap() {
         // Given a registry with action 5
         let mut registry = ActionRegistry::new();
-        assert_eq!(registry.register(test_contract(5)), Ok(()));
+        assert_eq!(registry.register(contract_fixture(5)), Ok(()));
         // Then len is 6 (slots 0..5)
         assert_eq!(registry.len(), 6);
     }
 
     #[test]
-    fn action_registry_gap_slot_resolves_for_default_id() {
+    fn action_registry_gap_slot_rejects_default_placeholder_id() {
         // Given a registry with action 5
         let mut registry = ActionRegistry::new();
-        assert_eq!(registry.register(test_contract(5)), Ok(()));
-        // When resolving action 0 (gap slot filled with default ActionId(0))
+        assert_eq!(registry.register(contract_fixture(5)), Ok(()));
+        // When resolving action 0 (gap slot filled with an internal placeholder)
         let result = registry.resolve_compile_time(ActionId::new(0));
-        // Then it resolves because gap slots have ActionId(0) which matches
-        match result {
-            Ok(c) => {
-                assert_eq!(c.id, ActionId::new(0));
-            }
-            Err(_) => {
-                assert!(false);
-            }
-        }
+        // Then the placeholder is not exposed as a registered action.
+        assert_eq!(
+            result,
+            Err(ActionError::UnknownAction {
+                action: ActionId::new(0)
+            })
+        );
     }
 
     #[test]
     fn action_registry_gap_slot_nondefault_id_fails() {
         // Given a registry with action 5
         let mut registry = ActionRegistry::new();
-        assert_eq!(registry.register(test_contract(5)), Ok(()));
+        assert_eq!(registry.register(contract_fixture(5)), Ok(()));
         // When resolving action 3 (gap slot with default id, not matching 3)
         let result = registry.resolve_compile_time(ActionId::new(3));
         // Then it returns UnknownAction
@@ -553,8 +567,8 @@ mod tests {
     fn action_registry_dispatch_unknown_action_returns_exact_error_variant() {
         // Given an empty registry
         let registry = ActionRegistry::new();
-        let input = test_input(99);
-        let contract = test_contract(99);
+        let input = input_fixture(99);
+        let contract = contract_fixture(99);
         // When dispatching an unknown action
         let result = registry.dispatch(&input, &contract);
         // Then it returns UnknownAction with the exact action id
@@ -570,9 +584,9 @@ mod tests {
     fn action_registry_register_then_reregister_same_id_returns_dispatch_failed() {
         // Given a registry with action 1
         let mut registry = ActionRegistry::new();
-        assert_eq!(registry.register(test_contract(1)), Ok(()));
+        assert_eq!(registry.register(contract_fixture(1)), Ok(()));
         // When registering the same action id again
-        let result = registry.register(test_contract(1));
+        let result = registry.register(contract_fixture(1));
         // Then it returns DispatchFailed (duplicate rejection)
         assert_eq!(result, Err(ActionError::DispatchFailed));
     }
@@ -617,7 +631,7 @@ mod tests {
             required_capabilities: Box::new([]),
         };
         assert_eq!(registry.register(contract), Ok(()));
-        let input = test_input(1);
+        let input = input_fixture(1);
         let resolved = registry.resolve_compile_time(ActionId::new(1));
         let contract = match resolved {
             Ok(c) => c.clone(),
@@ -697,10 +711,10 @@ mod tests {
     fn action_registry_resolve_after_many_registrations_finds_correct_action() {
         // Given a registry with actions 0, 5, 10, 20
         let mut registry = ActionRegistry::new();
-        assert_eq!(registry.register(test_contract(0)), Ok(()));
-        assert_eq!(registry.register(test_contract(5)), Ok(()));
-        assert_eq!(registry.register(test_contract(10)), Ok(()));
-        assert_eq!(registry.register(test_contract(20)), Ok(()));
+        assert_eq!(registry.register(contract_fixture(0)), Ok(()));
+        assert_eq!(registry.register(contract_fixture(5)), Ok(()));
+        assert_eq!(registry.register(contract_fixture(10)), Ok(()));
+        assert_eq!(registry.register(contract_fixture(20)), Ok(()));
         // When resolving action 10
         let result = registry.resolve_compile_time(ActionId::new(10));
         // Then it returns the correct contract
@@ -716,10 +730,30 @@ mod tests {
     }
 
     #[test]
+    fn registered_contracts_returns_only_real_contracts_sorted_by_action_id() {
+        let mut registry = ActionRegistry::new();
+        assert_eq!(registry.register(contract_fixture(10)), Ok(()));
+        assert_eq!(registry.register(contract_fixture(2)), Ok(()));
+        assert_eq!(registry.register(contract_fixture(5)), Ok(()));
+
+        let listed: Vec<ActionId> = registry
+            .registered_contracts()
+            .iter()
+            .map(|contract| contract.id)
+            .collect();
+
+        assert_eq!(
+            listed,
+            vec![ActionId::new(2), ActionId::new(5), ActionId::new(10)]
+        );
+        assert_eq!(registry.len(), 11);
+    }
+
+    #[test]
     fn action_registry_dispatch_returns_ticket_with_correct_action_from_input() {
         // Given a registry with action 3
         let mut registry = ActionRegistry::new();
-        assert_eq!(registry.register(test_contract(3)), Ok(()));
+        assert_eq!(registry.register(contract_fixture(3)), Ok(()));
         let input = ActionInput {
             run: RunId::new(77),
             step: StepIdx::new(5),
