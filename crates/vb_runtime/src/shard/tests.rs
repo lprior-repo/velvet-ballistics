@@ -16,6 +16,7 @@ use super::{
     AskAnswer, AskTicket, InspectResponse, InspectSnapshot, MAX_COMMAND_QUEUE_CAPACITY, RunState,
     Shard, ShardCommand, ShardConfig,
 };
+use crate::shard::types::{PendingTimer, PendingTimerKind};
 
 fn suspended_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
     let node = CompiledNode {
@@ -6786,4 +6787,188 @@ fn vb1u88_bdd_cancel_run_removes_from_runs_emits_events() {
     );
     assert_eq!(shard.runs.get(&run), None);
     assert_eq!(shard.counters().snapshot().runs_failed, 1);
+}
+
+// =========================================================================
+// vb-p5so: Forcefully clear pending suspended timers on drain_for_shutdown
+// RED PHASE — These tests compile but fail until pending_timers.clear()
+// is added to drain_for_shutdown().
+// =========================================================================
+
+#[test]
+fn test_drain_for_shutdown_removes_all_pending_timers_and_returns_them() {
+    // Given: a shard with a run that has a pending Wait timer
+    let config = small_config();
+    let mut shard = Shard::new(config);
+    let Some(workflow) = timed_wait_then_finish_workflow() else {
+        return;
+    };
+    let run = super::RunId::new(9001);
+    assert_eq!(
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    assert_eq!(shard.pending_timers.len(), 1);
+
+    // When: drain_for_shutdown processes Shutdown
+    assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
+    assert_eq!(shard.drain_for_shutdown(), Ok(()));
+
+    // Then: pending timers are cleared and shard is shutting down
+    assert_eq!(shard.pending_timers.len(), 0);
+    assert_eq!(shard.is_shutting_down(), true);
+}
+
+#[test]
+fn test_shutdown_is_processed_successfully_even_when_timer_queue_is_full() {
+    // Given: a shard with pending timers and a full command queue (no Shutdown)
+    let config = small_config();
+    let mut shard = Shard::new(config);
+    let Some(workflow) = timed_wait_then_finish_workflow() else {
+        return;
+    };
+    let run = super::RunId::new(9002);
+    assert_eq!(
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    assert_eq!(shard.pending_timers.len(), 1);
+
+    // Fill the command queue with Inspect commands (no Shutdown)
+    for i in 0..config.command_queue_capacity {
+        assert_eq!(
+            shard.enqueue(ShardCommand::Inspect {
+                run: super::RunId::new(9999),
+                correlation: i as u64,
+            }),
+            Ok(())
+        );
+    }
+
+    // When: drain_for_shutdown hits capacity before seeing Shutdown
+    assert_eq!(
+        shard.drain_for_shutdown(),
+        Err(RuntimeError::ShutdownInProgress)
+    );
+
+    // Then: pending timers are unchanged
+    assert_eq!(shard.pending_timers.len(), 1);
+    assert_eq!(shard.is_shutting_down(), false);
+}
+
+#[test]
+fn test_calling_drain_for_shutdown_repeatedly_is_idempotent() {
+    // Given: a shard that has already shut down
+    let config = small_config();
+    let mut shard = Shard::new(config);
+    assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
+    assert_eq!(shard.drain_for_shutdown(), Ok(()));
+    assert_eq!(shard.is_shutting_down(), true);
+    assert_eq!(shard.pending_timers.len(), 0);
+
+    // When: drain_for_shutdown is called again
+    assert_eq!(shard.drain_for_shutdown(), Ok(()));
+
+    // Then: state remains unchanged
+    assert_eq!(shard.pending_timers.len(), 0);
+    assert_eq!(shard.is_shutting_down(), true);
+}
+
+#[test]
+fn test_drain_for_shutdown_handles_empty_timer_state() {
+    // Given: a shard with no pending timers
+    let config = small_config();
+    let mut shard = Shard::new(config);
+    assert_eq!(shard.pending_timers.len(), 0);
+
+    // When: drain_for_shutdown processes Shutdown
+    assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
+    assert_eq!(shard.drain_for_shutdown(), Ok(()));
+
+    // Then: timers remain empty and shard is shutting down
+    assert_eq!(shard.pending_timers.len(), 0);
+    assert_eq!(shard.is_shutting_down(), true);
+}
+
+#[test]
+fn test_drain_for_shutdown_handles_timers_without_valid_backing_runs_gracefully() {
+    // Given: a shard with an orphaned pending timer entry (no corresponding run)
+    let config = small_config();
+    let mut shard = Shard::new(config);
+    let orphaned_run = super::RunId::new(9003);
+    shard.pending_timers.insert(
+        orphaned_run,
+        PendingTimer {
+            step: vb_core::ids::StepIdx::new(1),
+            kind: PendingTimerKind::Wait,
+        },
+    );
+    assert_eq!(shard.pending_timers.len(), 1);
+
+    // When: drain_for_shutdown processes Shutdown
+    assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
+    assert_eq!(shard.drain_for_shutdown(), Ok(()));
+
+    // Then: orphaned timer is cleared without panic
+    assert_eq!(shard.pending_timers.len(), 0);
+    assert_eq!(shard.is_shutting_down(), true);
+}
+
+#[test]
+fn test_drain_for_shutdown_clears_mixed_wait_and_ask_timers() {
+    // Given: a shard with runs suspended on both Wait and Ask timers
+    let config = small_config();
+    let mut shard = Shard::new(config);
+
+    let Some(wait_workflow) = timed_wait_then_finish_workflow() else {
+        return;
+    };
+    let Some(ask_workflow) = timed_ask_without_answer_workflow() else {
+        return;
+    };
+
+    let run_wait = super::RunId::new(9004);
+    let run_ask = super::RunId::new(9005);
+
+    // Submit wait workflow
+    assert_eq!(
+        shard.enqueue(ShardCommand::Submit {
+            run: run_wait,
+            workflow: wait_workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+
+    // Submit ask workflow
+    assert_eq!(
+        shard.enqueue(ShardCommand::Submit {
+            run: run_ask,
+            workflow: ask_workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+
+    assert_eq!(shard.pending_timers.len(), 2);
+
+    // When: drain_for_shutdown processes Shutdown
+    assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
+    assert_eq!(shard.drain_for_shutdown(), Ok(()));
+
+    // Then: all pending timers are cleared regardless of kind
+    assert_eq!(shard.pending_timers.len(), 0);
+    assert_eq!(shard.is_shutting_down(), true);
 }

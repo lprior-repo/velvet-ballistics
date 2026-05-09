@@ -333,6 +333,7 @@ impl Shard {
         let mut processed = 0usize;
         while processed < limit {
             if !self.tick()? {
+                self.pending_timers.clear();
                 return Ok(());
             }
             processed = processed.saturating_add(1);
