@@ -5250,6 +5250,10 @@ fn shard_config_new_at_max_capacity_boundary() {
             policy: vb_core::policy::RuntimePolicy::Relaxed,
         })
     );
+    assert_eq!(
+        result.map(|config| config.command_queue_capacity),
+        Ok(MAX_COMMAND_QUEUE_CAPACITY)
+    );
 }
 
 /// ShardConfig::new at the minimum valid capacity (1) succeeds.

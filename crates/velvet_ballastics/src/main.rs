@@ -9,6 +9,7 @@ mod commands_ai_context;
 mod commands_diff;
 mod commands_incident;
 mod commands_journal;
+mod commands_status;
 mod commands_verify;
 mod commands_workflow;
 mod exit_code;
@@ -78,6 +79,7 @@ commands:
   help                                                Print this message
   version                                             Print version
   agent-context                                      Emit versioned AI-agent CLI schema
+  status     [--active-runs <N>] [--queue-depth <N>] [--trace-dropped <N>] [--json|--jsonl]  Report runtime shard status
 
 options:
   --json      Output structured JSON
@@ -96,6 +98,7 @@ fn main() -> ExitCode {
         Ok(Command::AiContext { run_id, db, output }) => {
             commands_ai_context::handle(&run_id, &db, output)
         }
+        Ok(Command::Status { options, output }) => cmd_status(options, output),
         Ok(Command::Verify {
             workflow,
             profile,
@@ -235,6 +238,12 @@ fn read_journal_events(
 fn cmd_agent_context() -> ExitCode {
     let context = agent_context::build(VERSION);
     json_out(&context, OutputFormat::Json);
+    ExitCode::SUCCESS
+}
+
+fn cmd_status(options: args::StatusOptions, output: OutputFormat) -> ExitCode {
+    let status = commands_status::build_status(options);
+    commands_status::print_status(&status, output);
     ExitCode::SUCCESS
 }
 
@@ -1684,6 +1693,9 @@ fn print_event(event: &vb_storage::JournalEvent) {
         vb_storage::JournalEvent::RunAccepted { seq, .. } => {
             outln!("  seq={}: RunAccepted", seq.get());
         }
+        vb_storage::JournalEvent::RunAdmission { seq, policy, .. } => {
+            outln!("  seq={}: RunAdmission policy={policy:?}", seq.get());
+        }
         vb_storage::JournalEvent::StepStarted { seq, step, .. } => {
             outln!("  seq={}: StepStarted step={}", seq.get(), step.get());
         }
@@ -1763,6 +1775,22 @@ fn event_to_json(event: &vb_storage::JournalEvent) -> serde_json::Value {
                 "type": "RunAccepted",
                 "run": run.get(),
                 "workflow": format!("{:?}", workflow)
+            })
+        }
+        vb_storage::JournalEvent::RunAdmission {
+            seq,
+            run,
+            artifact_digest,
+            granted_capabilities,
+            policy,
+        } => {
+            serde_json::json!({
+                "seq": seq.get(),
+                "type": "RunAdmission",
+                "run": run.get(),
+                "artifact_digest": format!("{artifact_digest:?}"),
+                "granted_capabilities": format!("{granted_capabilities:?}"),
+                "policy": format!("{policy:?}")
             })
         }
         vb_storage::JournalEvent::StepStarted { seq, step, .. } => {
@@ -3406,6 +3434,9 @@ fn write_error_stderr(error: &ParseError) -> io::Result<()> {
                 handle,
                 "unknown command: {cmd} (expected one of: {VALID_COMMANDS})\n\n{HELP}"
             )
+        }
+        ParseError::InvalidStatusArgument(reason) => {
+            writeln!(handle, "invalid status argument: {reason}\n\n{HELP}")
         }
         ParseError::NoCommand => {
             writeln!(handle, "{HELP}")

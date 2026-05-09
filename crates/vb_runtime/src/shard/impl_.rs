@@ -14,7 +14,8 @@ use crate::trace::{TraceEvent, TraceRing};
 use crate::{RuntimeError, RuntimeResult};
 
 use crate::shard::types::{
-    InspectResponse, MAX_COMMAND_QUEUE_CAPACITY, Shard, ShardCommand, ShardConfig,
+    InspectResponse, MAX_COMMAND_QUEUE_CAPACITY, Shard, ShardCommand, ShardConfig, ShardHealth,
+    ShardStatus,
 };
 
 impl Shard {
@@ -200,6 +201,29 @@ impl Shard {
         self.shutting_down
     }
 
+    /// Returns a read-only status snapshot without draining queues or mutating shard state.
+    #[must_use]
+    pub fn status(&self) -> ShardStatus {
+        let shutting_down = self.shutting_down;
+        ShardStatus {
+            health: if shutting_down {
+                ShardHealth::ShuttingDown
+            } else {
+                ShardHealth::Running
+            },
+            running: !shutting_down,
+            shutting_down,
+            command_queue_depth: self.command_queue.len(),
+            command_queue_capacity: self.command_queue.capacity(),
+            active_runs: self.runs.len(),
+            max_active_runs: self.max_active_runs,
+            trace_capacity: self.trace_ring.capacity(),
+            trace_dropped: self.trace_ring.dropped(),
+            step_budget_per_tick: self.step_budget_per_tick,
+            runtime_policy: self.policy,
+        }
+    }
+
     /// Drains evidence events from the collector and emits them to the
     /// journal and trace ring. This satisfies the Phase 40/44 evidence
     /// chain requirement: StepStarted before SlotWritten for every step,
@@ -354,7 +378,7 @@ mod tests {
 
     use crate::RuntimeError;
 
-    use super::{MAX_COMMAND_QUEUE_CAPACITY, Shard, ShardCommand, ShardConfig};
+    use super::{MAX_COMMAND_QUEUE_CAPACITY, Shard, ShardCommand, ShardConfig, ShardHealth};
 
     fn finished_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
         let set_const = CompiledNode {
@@ -715,5 +739,43 @@ mod tests {
     fn take_inspect_response_returns_none_when_none_pending() {
         let mut shard = Shard::new(small_config());
         assert_eq!(shard.take_inspect_response(), None);
+    }
+
+    #[test]
+    fn status_reports_shard_health_and_capacity_without_mutation() {
+        let shard = Shard::new(small_config());
+        assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
+        let before_len = shard.command_queue_len();
+
+        let status = shard.status();
+
+        assert_eq!(status.health, ShardHealth::Running);
+        assert_eq!(status.running, true);
+        assert_eq!(status.shutting_down, false);
+        assert_eq!(status.command_queue_depth, 1);
+        assert_eq!(status.command_queue_capacity, 16);
+        assert_eq!(status.active_runs, 0);
+        assert_eq!(status.max_active_runs, 4);
+        assert_eq!(status.trace_capacity, 16);
+        assert_eq!(status.trace_dropped, 0);
+        assert_eq!(status.step_budget_per_tick, 4);
+        assert_eq!(
+            status.runtime_policy,
+            vb_core::policy::RuntimePolicy::Relaxed
+        );
+        assert_eq!(shard.command_queue_len(), before_len);
+    }
+
+    #[test]
+    fn status_reports_shutting_down_after_shutdown_tick() {
+        let mut shard = Shard::new(small_config());
+        assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
+        assert_eq!(shard.tick(), Ok(false));
+
+        let status = shard.status();
+
+        assert_eq!(status.health, ShardHealth::ShuttingDown);
+        assert_eq!(status.running, false);
+        assert_eq!(status.shutting_down, true);
     }
 }

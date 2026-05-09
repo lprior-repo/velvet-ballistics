@@ -49,6 +49,10 @@ pub(crate) enum Command {
         db: PathBuf,
         output: OutputFormat,
     },
+    Status {
+        options: StatusOptions,
+        output: OutputFormat,
+    },
     Verify {
         workflow: PathBuf,
         profile: VerifyProfile,
@@ -162,7 +166,15 @@ pub(crate) enum Command {
     },
 }
 
-pub(crate) const VALID_COMMANDS: &str = "help, version, agent-context, ai-context, validate, verify, explain, compile, run, run-compiled, ipc-serve, inspect, events, replay, trace, retry, resume, bench-run, doctor, answer, graph, diff, incident, submit, simulate";
+pub(crate) const VALID_COMMANDS: &str = "help, version, agent-context, ai-context, status, validate, verify, explain, compile, run, run-compiled, ipc-serve, inspect, events, replay, trace, retry, resume, bench-run, doctor, answer, graph, diff, incident, submit, simulate";
+
+/// Optional diagnostic status values used when no live runtime handle exists.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub(crate) struct StatusOptions {
+    pub(crate) active_runs: Option<usize>,
+    pub(crate) queue_depth: Option<usize>,
+    pub(crate) trace_dropped: Option<u64>,
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum EmitTarget {
@@ -194,6 +206,7 @@ pub(crate) enum ParseError {
     UnknownDurability(String),
     UnknownProfile(String),
     UnknownCommand(String),
+    InvalidStatusArgument(String),
     NoCommand,
     InvalidStep(String),
 }
@@ -209,6 +222,7 @@ pub(crate) fn parse_args(args: &[OsString]) -> Result<Command, ParseError> {
         "version" | "--version" | "-V" => Ok(Command::Version),
         "agent-context" => Ok(Command::AgentContext),
         "ai-context" => parse_ai_context(args),
+        "status" => parse_status(args),
         "verify" => parse_verify(args),
         "validate" => parse_validate(args),
         "explain" => parse_explain(args),
@@ -241,6 +255,141 @@ fn parse_ai_context(args: &[OsString]) -> Result<Command, ParseError> {
         db: a.db,
         output: a.output,
     })
+}
+
+fn parse_status(args: &[OsString]) -> Result<Command, ParseError> {
+    let tokens = args.get(2..).ok_or(ParseError::NoCommand)?;
+    let options = parse_status_options(tokens, StatusOptions::default())?;
+    let output = parse_output_format(args);
+    Ok(Command::Status { options, output })
+}
+
+fn parse_status_options(
+    args: &[OsString],
+    options: StatusOptions,
+) -> Result<StatusOptions, ParseError> {
+    match args.split_first() {
+        None => validate_status_options(options),
+        Some((flag, rest)) => match flag.to_str() {
+            Some("--json" | "--jsonl") => parse_status_options(rest, options),
+            Some("--active-runs") => {
+                let parsed = parse_status_usize_value(rest, "--active-runs")?;
+                parse_status_options(
+                    parsed.remaining,
+                    StatusOptions {
+                        active_runs: Some(parsed.value),
+                        ..options
+                    },
+                )
+            }
+            Some("--queue-depth") => {
+                let parsed = parse_status_usize_value(rest, "--queue-depth")?;
+                parse_status_options(
+                    parsed.remaining,
+                    StatusOptions {
+                        queue_depth: Some(parsed.value),
+                        ..options
+                    },
+                )
+            }
+            Some("--trace-dropped") => {
+                let parsed = parse_status_u64_value(rest, "--trace-dropped")?;
+                parse_status_options(
+                    parsed.remaining,
+                    StatusOptions {
+                        trace_dropped: Some(parsed.value),
+                        ..options
+                    },
+                )
+            }
+            Some(other) if other.starts_with('-') => Err(ParseError::InvalidStatusArgument(
+                format!("unknown flag {other}"),
+            )),
+            Some(other) => Err(ParseError::InvalidStatusArgument(format!(
+                "unexpected positional argument {other}"
+            ))),
+            None => Err(ParseError::InvalidStatusArgument(
+                "argument is not valid UTF-8".into(),
+            )),
+        },
+    }
+}
+
+struct ParsedStatusValue<'a, T> {
+    value: T,
+    remaining: &'a [OsString],
+}
+
+fn parse_status_usize_value<'a>(
+    args: &'a [OsString],
+    flag: &'static str,
+) -> Result<ParsedStatusValue<'a, usize>, ParseError> {
+    parse_status_value(args, flag).and_then(|parsed| {
+        parsed
+            .value
+            .parse::<usize>()
+            .map(|value| ParsedStatusValue {
+                value,
+                remaining: parsed.remaining,
+            })
+            .map_err(|_| ParseError::InvalidStatusArgument(format!("{flag} must be a usize")))
+    })
+}
+
+fn parse_status_u64_value<'a>(
+    args: &'a [OsString],
+    flag: &'static str,
+) -> Result<ParsedStatusValue<'a, u64>, ParseError> {
+    parse_status_value(args, flag).and_then(|parsed| {
+        parsed
+            .value
+            .parse::<u64>()
+            .map(|value| ParsedStatusValue {
+                value,
+                remaining: parsed.remaining,
+            })
+            .map_err(|_| ParseError::InvalidStatusArgument(format!("{flag} must be a u64")))
+    })
+}
+
+fn parse_status_value<'a>(
+    args: &'a [OsString],
+    flag: &'static str,
+) -> Result<ParsedStatusValue<'a, &'a str>, ParseError> {
+    match args.split_first() {
+        Some((raw, remaining)) => match raw.to_str() {
+            Some(value) if value.starts_with("--") => Err(ParseError::MissingArgument(flag)),
+            Some(value) => Ok(ParsedStatusValue { value, remaining }),
+            None => Err(ParseError::InvalidStatusArgument(format!(
+                "{flag} value is not valid UTF-8"
+            ))),
+        },
+        None => Err(ParseError::MissingArgument(flag)),
+    }
+}
+
+fn validate_status_options(options: StatusOptions) -> Result<StatusOptions, ParseError> {
+    let config = vb_runtime::shard::ShardConfig::default();
+    validate_status_usize_limit(
+        options.queue_depth,
+        config.command_queue_capacity,
+        "--queue-depth",
+    )?;
+    validate_status_usize_limit(options.active_runs, config.max_active_runs, "--active-runs")?;
+    Ok(options)
+}
+
+fn validate_status_usize_limit(
+    value: Option<usize>,
+    max: usize,
+    flag: &'static str,
+) -> Result<(), ParseError> {
+    match value {
+        Some(actual) if actual > max => Err(ParseError::InvalidStatusArgument(format!(
+            "{flag} must be <= {max}"
+        ))),
+        Some(_) | None => Ok(()),
+    }
 }
 
 fn parse_verify(args: &[OsString]) -> Result<Command, ParseError> {
@@ -613,6 +762,9 @@ impl std::fmt::Display for ParseError {
                     "unknown command: {cmd} (expected one of: {VALID_COMMANDS})"
                 )
             }
+            Self::InvalidStatusArgument(reason) => {
+                write!(formatter, "invalid status argument: {reason}")
+            }
             Self::NoCommand => write!(formatter, "no command provided"),
             Self::InvalidStep(step) => write!(formatter, "invalid step: {step}"),
         }
@@ -847,6 +999,62 @@ mod tests {
     }
 
     #[test]
+    fn parse_compile_rejects_unknown_emit_target_with_exact_variant() {
+        let parsed = parse_args(&args(&[
+            "velvet-ballastics",
+            "compile",
+            "workflow.yaml",
+            "--emit",
+            "wasm",
+            "--out",
+            "output.vbir",
+        ]));
+
+        assert!(
+            matches!(parsed, Err(ParseError::UnknownEmitTarget(ref t)) if t == "wasm"),
+            "expected UnknownEmitTarget(wasm), got {parsed:?}"
+        );
+    }
+
+    #[test]
+    fn parse_run_rejects_unknown_durability_with_exact_variant() {
+        let parsed = parse_args(&args(&[
+            "velvet-ballastics",
+            "run",
+            "workflow.yaml",
+            "--input-bin",
+            "input.bin",
+            "--durability",
+            "ephemeral",
+        ]));
+
+        assert!(
+            matches!(parsed, Err(ParseError::UnknownDurability(ref m)) if m == "ephemeral"),
+            "expected UnknownDurability(ephemeral), got {parsed:?}"
+        );
+    }
+
+    #[test]
+    fn parse_answer_rejects_invalid_step_with_exact_variant() {
+        let parsed = parse_args(&args(&[
+            "velvet-ballastics",
+            "answer",
+            "run-1",
+            "--step",
+            "not-a-step",
+            "--value-file",
+            "value.bin",
+            "--db",
+            "test-db",
+        ]));
+
+        assert!(
+            matches!(parsed, Err(ParseError::InvalidStep(ref s)) if s == "not-a-step"),
+            "expected InvalidStep(not-a-step), got {parsed:?}"
+        );
+    }
+
+    #[test]
     fn parse_inspect_includes_output_format() {
         let parsed = parse_args(&args(&[
             "velvet-ballastics",
@@ -886,6 +1094,137 @@ mod tests {
     fn parse_agent_context_command() {
         let parsed = parse_args(&args(&["velvet-ballastics", "agent-context"]));
         assert!(matches!(parsed, Ok(Command::AgentContext)));
+    }
+
+    #[test]
+    fn parse_status_accepts_no_runtime_defaults() {
+        let parsed = parse_args(&args(&["velvet-ballastics", "status", "--json"]));
+        assert!(matches!(parsed, Ok(Command::Status { .. })));
+        if let Ok(Command::Status { options, output }) = parsed {
+            assert_eq!(options.active_runs, None);
+            assert_eq!(options.queue_depth, None);
+            assert_eq!(options.trace_dropped, None);
+            assert_eq!(output, OutputFormat::Json);
+        }
+    }
+
+    #[test]
+    fn parse_status_accepts_diagnostic_counters() {
+        let parsed = parse_args(&args(&[
+            "velvet-ballastics",
+            "status",
+            "--active-runs",
+            "5",
+            "--queue-depth",
+            "3",
+            "--trace-dropped",
+            "0",
+        ]));
+        assert!(matches!(parsed, Ok(Command::Status { .. })));
+        if let Ok(Command::Status { options, output }) = parsed {
+            assert_eq!(options.active_runs, Some(5));
+            assert_eq!(options.queue_depth, Some(3));
+            assert_eq!(options.trace_dropped, Some(0));
+            assert_eq!(output, OutputFormat::Text);
+        }
+    }
+
+    #[test]
+    fn parse_status_rejects_invalid_numeric_argument() {
+        let parsed = parse_args(&args(&[
+            "velvet-ballastics",
+            "status",
+            "--queue-depth",
+            "many",
+        ]));
+        assert!(
+            matches!(parsed, Err(ParseError::InvalidStatusArgument(ref s)) if s == "--queue-depth must be a usize"),
+            "expected InvalidStatusArgument(--queue-depth must be a usize), got {parsed:?}"
+        );
+    }
+
+    #[test]
+    fn parse_status_rejects_missing_queue_depth_value() {
+        let parsed = parse_args(&args(&["velvet-ballastics", "status", "--queue-depth"]));
+        assert!(matches!(
+            parsed,
+            Err(ParseError::MissingArgument("--queue-depth"))
+        ));
+    }
+
+    #[test]
+    fn parse_status_rejects_missing_active_runs_value() {
+        let parsed = parse_args(&args(&[
+            "velvet-ballastics",
+            "status",
+            "--active-runs",
+            "--json",
+        ]));
+        assert!(matches!(
+            parsed,
+            Err(ParseError::MissingArgument("--active-runs"))
+        ));
+    }
+
+    #[test]
+    fn parse_status_rejects_missing_trace_dropped_value() {
+        let parsed = parse_args(&args(&[
+            "velvet-ballastics",
+            "status",
+            "--trace-dropped",
+            "--queue-depth",
+            "1",
+        ]));
+        assert!(matches!(
+            parsed,
+            Err(ParseError::MissingArgument("--trace-dropped"))
+        ));
+    }
+
+    #[test]
+    fn parse_status_rejects_unknown_flag() {
+        let parsed = parse_args(&args(&["velvet-ballastics", "status", "--bogus"]));
+        assert!(
+            matches!(parsed, Err(ParseError::InvalidStatusArgument(ref s)) if s == "unknown flag --bogus"),
+            "expected InvalidStatusArgument(unknown flag --bogus), got {parsed:?}"
+        );
+    }
+
+    #[test]
+    fn parse_status_rejects_extra_positional_argument() {
+        let parsed = parse_args(&args(&["velvet-ballastics", "status", "extra"]));
+        assert!(
+            matches!(parsed, Err(ParseError::InvalidStatusArgument(ref s)) if s == "unexpected positional argument extra"),
+            "expected InvalidStatusArgument(unexpected positional argument extra), got {parsed:?}"
+        );
+    }
+
+    #[test]
+    fn parse_status_rejects_out_of_range_queue_depth() {
+        let parsed = parse_args(&args(&[
+            "velvet-ballastics",
+            "status",
+            "--queue-depth",
+            "1025",
+        ]));
+        assert!(
+            matches!(parsed, Err(ParseError::InvalidStatusArgument(ref s)) if s == "--queue-depth must be <= 1024"),
+            "expected InvalidStatusArgument(--queue-depth must be <= 1024), got {parsed:?}"
+        );
+    }
+
+    #[test]
+    fn parse_status_rejects_out_of_range_active_runs() {
+        let parsed = parse_args(&args(&[
+            "velvet-ballastics",
+            "status",
+            "--active-runs",
+            "1025",
+        ]));
+        assert!(
+            matches!(parsed, Err(ParseError::InvalidStatusArgument(ref s)) if s == "--active-runs must be <= 1024"),
+            "expected InvalidStatusArgument(--active-runs must be <= 1024), got {parsed:?}"
+        );
     }
 
     #[test]

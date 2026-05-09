@@ -497,6 +497,19 @@ fn event_to_json(event: &vb_storage::JournalEvent) -> Value {
         vb_storage::JournalEvent::RunAccepted { seq, run, workflow } => {
             serde_json::json!({"seq": seq.get(), "type": "RunAccepted", "run": run.get(), "workflow": format!("{:?}", workflow)})
         }
+        vb_storage::JournalEvent::RunAdmission {
+            seq,
+            artifact_digest,
+            granted_capabilities,
+            policy,
+            ..
+        } => serde_json::json!({
+            "seq": seq.get(),
+            "type": "RunAdmission",
+            "artifact_digest": format!("{artifact_digest:?}"),
+            "granted_capabilities": format!("{granted_capabilities:?}"),
+            "policy": format!("{policy:?}")
+        }),
         vb_storage::JournalEvent::StepStarted { seq, step, .. } => {
             serde_json::json!({"seq": seq.get(), "type": "StepStarted", "step": step.get()})
         }

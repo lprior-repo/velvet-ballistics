@@ -124,6 +124,144 @@ fn assert_cli_success(output: &std::process::Output, command: &str) {
     );
 }
 
+fn assert_cli_failure_contains(output: &std::process::Output, command: &str, diagnostic: &str) {
+    assert!(
+        !output.status.success(),
+        "{command} should fail: stdout={} stderr={}",
+        output_stdout(output),
+        output_stderr(output)
+    );
+    let stderr = output_stderr(output);
+    assert!(
+        stderr.contains(diagnostic),
+        "{command} stderr should contain {diagnostic:?}: {stderr}"
+    );
+}
+
+#[test]
+fn cli_status_default_succeeds() {
+    let output = run_cli(&[std::ffi::OsStr::new("status")]);
+    if let Some(output) = output {
+        assert_cli_success(&output, "status");
+        assert!(output_stdout(&output).contains("status: running"));
+    }
+}
+
+#[test]
+fn cli_status_json_succeeds() {
+    let output = run_cli(&[
+        std::ffi::OsStr::new("status"),
+        std::ffi::OsStr::new("--json"),
+    ]);
+    if let Some(output) = output {
+        assert_cli_success(&output, "status --json");
+        assert!(output_stdout(&output).contains("\"status\": \"running\""));
+    }
+}
+
+#[test]
+fn cli_status_jsonl_succeeds() {
+    let output = run_cli(&[
+        std::ffi::OsStr::new("status"),
+        std::ffi::OsStr::new("--jsonl"),
+    ]);
+    if let Some(output) = output {
+        assert_cli_success(&output, "status --jsonl");
+        assert!(output_stdout(&output).contains("\"status\":\"running\""));
+    }
+}
+
+#[test]
+fn cli_status_rejects_missing_queue_depth_value() {
+    let output = run_cli(&[
+        std::ffi::OsStr::new("status"),
+        std::ffi::OsStr::new("--queue-depth"),
+    ]);
+    if let Some(output) = output {
+        assert_cli_failure_contains(
+            &output,
+            "status --queue-depth",
+            "missing argument: --queue-depth",
+        );
+    }
+}
+
+#[test]
+fn cli_status_rejects_missing_active_runs_value() {
+    let output = run_cli(&[
+        std::ffi::OsStr::new("status"),
+        std::ffi::OsStr::new("--active-runs"),
+    ]);
+    if let Some(output) = output {
+        assert_cli_failure_contains(
+            &output,
+            "status --active-runs",
+            "missing argument: --active-runs",
+        );
+    }
+}
+
+#[test]
+fn cli_status_rejects_missing_trace_dropped_value() {
+    let output = run_cli(&[
+        std::ffi::OsStr::new("status"),
+        std::ffi::OsStr::new("--trace-dropped"),
+    ]);
+    if let Some(output) = output {
+        assert_cli_failure_contains(
+            &output,
+            "status --trace-dropped",
+            "missing argument: --trace-dropped",
+        );
+    }
+}
+
+#[test]
+fn cli_status_rejects_unknown_flag() {
+    let output = run_cli(&[
+        std::ffi::OsStr::new("status"),
+        std::ffi::OsStr::new("--bogus"),
+    ]);
+    if let Some(output) = output {
+        assert_cli_failure_contains(
+            &output,
+            "status --bogus",
+            "invalid status argument: unknown flag --bogus",
+        );
+    }
+}
+
+#[test]
+fn cli_status_rejects_extra_positional_argument() {
+    let output = run_cli(&[
+        std::ffi::OsStr::new("status"),
+        std::ffi::OsStr::new("extra"),
+    ]);
+    if let Some(output) = output {
+        assert_cli_failure_contains(
+            &output,
+            "status extra",
+            "invalid status argument: unexpected positional argument extra",
+        );
+    }
+}
+
+#[test]
+fn cli_status_rejects_nonnumeric_known_flag() {
+    let output = run_cli(&[
+        std::ffi::OsStr::new("status"),
+        std::ffi::OsStr::new("--queue-depth"),
+        std::ffi::OsStr::new("many"),
+    ]);
+    if let Some(output) = output {
+        assert_cli_failure_contains(
+            &output,
+            "status --queue-depth many",
+            "invalid status argument: --queue-depth must be a usize",
+        );
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Phase 1: YAML parsing — vb_yaml
 // ---------------------------------------------------------------------------

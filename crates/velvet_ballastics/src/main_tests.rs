@@ -4,10 +4,11 @@
 
 use super::{
     Command, DurabilityMode, INPUT_MAPPING_DECODE_FAILED_MESSAGE,
-    INPUT_MAPPING_SLOT_COUNT_EXCEEDED_MESSAGE, InputMappingError, ParseError, RunStatus,
-    StepTarget, StorageWorkflowResolver, build_step_frame, decode_step_inputs,
-    execute_step_isolated, map_runtime_inputs, node_kind_name, parse_args, redacted_slot_value,
-    run_compiled_workflow, signal_name, suggested_ai_commands, write_step_inputs,
+    INPUT_MAPPING_SLOT_COUNT_EXCEEDED_MESSAGE, INPUT_MAPPING_SLOT_INDEX_OUT_OF_RANGE_MESSAGE,
+    InputMappingError, ParseError, RunStatus, StepTarget, StorageWorkflowResolver,
+    build_step_frame, decode_step_inputs, execute_step_isolated, map_runtime_inputs,
+    node_kind_name, parse_args, redacted_slot_value, run_compiled_workflow, signal_name,
+    suggested_ai_commands, write_step_inputs,
 };
 use std::ffi::OsString;
 use std::path::PathBuf;
@@ -200,6 +201,26 @@ fn input_mapping_failure_message_uses_stable_code() {
         INPUT_MAPPING_SLOT_COUNT_EXCEEDED_MESSAGE,
         "INPUT_MAPPING_FAILED: input slot count exceeds workflow slot count"
     );
+    assert_eq!(
+        INPUT_MAPPING_SLOT_INDEX_OUT_OF_RANGE_MESSAGE,
+        "INPUT_MAPPING_FAILED: input slot index out of range"
+    );
+}
+
+#[test]
+fn input_mapping_errors_render_exact_variant_messages() {
+    assert_eq!(
+        InputMappingError::DecodeFailed.to_string(),
+        INPUT_MAPPING_DECODE_FAILED_MESSAGE
+    );
+    assert_eq!(
+        InputMappingError::SlotCountExceeded.to_string(),
+        INPUT_MAPPING_SLOT_COUNT_EXCEEDED_MESSAGE
+    );
+    assert_eq!(
+        InputMappingError::SlotIndexOutOfRange.to_string(),
+        INPUT_MAPPING_SLOT_INDEX_OUT_OF_RANGE_MESSAGE
+    );
 }
 
 #[test]
@@ -209,7 +230,7 @@ fn map_runtime_inputs_decodes_slot_values() {
     if let Some(compiled) = compiled {
         let values: Box<[vb_core::SlotValue]> = Box::from([vb_core::SlotValue::Bool(true)]);
         let payload = postcard::to_allocvec(&values);
-        assert!(payload.is_ok(), "test payload should encode: {payload:?}");
+        assert_eq!(payload.as_ref().map(|_| ()), Ok(()));
         let Ok(payload) = payload else {
             return;
         };
@@ -231,6 +252,28 @@ fn map_runtime_inputs_rejects_malformed_input_bin() {
     if let Some(compiled) = compiled {
         let mapped = map_runtime_inputs(&compiled, b"not-postcard");
         assert_eq!(mapped, Err(InputMappingError::DecodeFailed));
+    }
+}
+
+#[test]
+fn map_runtime_inputs_rejects_excess_slots_with_exact_variant() {
+    let compiled = finish_workflow();
+    assert!(compiled.is_some(), "test workflow should compile");
+    if let Some(compiled) = compiled {
+        let values: Box<[vb_core::SlotValue]> = Box::from([
+            vb_core::SlotValue::Bool(true),
+            vb_core::SlotValue::Bool(false),
+        ]);
+        let payload = postcard::to_allocvec(&values);
+        assert_eq!(payload.as_ref().map(|_| ()), Ok(()));
+        let Ok(payload) = payload else {
+            return;
+        };
+        let mapped = map_runtime_inputs(&compiled, &payload);
+        assert!(
+            matches!(mapped, Err(InputMappingError::SlotCountExceeded)),
+            "excess slots should return SlotCountExceeded: {mapped:?}"
+        );
     }
 }
 
@@ -631,6 +674,6 @@ fn build_step_frame_out_of_range_returns_error() {
     assert!(compiled.is_some(), "test workflow should compile");
     if let Some(compiled) = compiled {
         let result = build_step_frame(&compiled, StepIdx::new(99));
-        assert!(result.is_err());
+        assert_ne!(result.as_ref().map(|_| ()), Ok(()));
     }
 }

@@ -134,6 +134,9 @@ pub fn diff_event_summary(event: &JournalEvent) -> serde_json::Value {
         JournalEvent::RunAccepted { seq, .. } => {
             serde_json::json!({"type": "RunAccepted", "seq": seq.get()})
         }
+        JournalEvent::RunAdmission { seq, policy, .. } => {
+            serde_json::json!({"type": "RunAdmission", "seq": seq.get(), "policy": format!("{policy:?}")})
+        }
         JournalEvent::StepStarted { seq, step, .. } => {
             serde_json::json!({"type": "StepStarted", "seq": seq.get(), "step": step.get()})
         }
@@ -205,6 +208,7 @@ pub fn diff_event_summary(event: &JournalEvent) -> serde_json::Value {
 pub fn event_name(event: &JournalEvent) -> &'static str {
     match event {
         JournalEvent::RunAccepted { .. } => "RunAccepted",
+        JournalEvent::RunAdmission { .. } => "RunAdmission",
         JournalEvent::StepStarted { .. } => "StepStarted",
         JournalEvent::StepSucceeded { .. } => "StepSucceeded",
         JournalEvent::ActionScheduled { .. } => "ActionScheduled",

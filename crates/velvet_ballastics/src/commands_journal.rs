@@ -41,6 +41,29 @@ fn trace_one(idx: usize, event: &JournalEvent) -> TraceEntry {
                 ("workflow", serde_json::Value::from(format!("{workflow:?}"))),
             ],
         },
+        JournalEvent::RunAdmission {
+            seq,
+            artifact_digest,
+            granted_capabilities,
+            policy,
+            ..
+        } => TraceEntry {
+            index: idx,
+            event_type: "RunAdmission",
+            step: None,
+            seq: seq.get(),
+            extra_json: vec![
+                (
+                    "artifact_digest",
+                    serde_json::Value::from(format!("{artifact_digest:?}")),
+                ),
+                (
+                    "granted_capabilities",
+                    serde_json::Value::from(format!("{granted_capabilities:?}")),
+                ),
+                ("policy", serde_json::Value::from(format!("{policy:?}"))),
+            ],
+        },
         JournalEvent::StepStarted { seq, step, .. } => TraceEntry {
             index: idx,
             event_type: "StepStarted",

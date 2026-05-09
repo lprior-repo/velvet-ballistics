@@ -192,6 +192,42 @@ pub struct Shard {
     pub(crate) journal: SharedRuntimeJournal,
 }
 
+/// Read-only shard health snapshot for operator status reporting.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ShardStatus {
+    /// Human-readable health label.
+    pub health: ShardHealth,
+    /// True when the shard can continue processing ticks.
+    pub running: bool,
+    /// True after graceful shutdown begins.
+    pub shutting_down: bool,
+    /// Current command queue depth.
+    pub command_queue_depth: usize,
+    /// Total command queue capacity.
+    pub command_queue_capacity: usize,
+    /// Number of active runs owned by the shard.
+    pub active_runs: usize,
+    /// Configured active-run ceiling.
+    pub max_active_runs: usize,
+    /// Configured trace ring capacity.
+    pub trace_capacity: usize,
+    /// Count of trace events dropped due to ring overflow.
+    pub trace_dropped: u64,
+    /// Maximum execution steps attempted per tick.
+    pub step_budget_per_tick: u64,
+    /// Runtime admission policy.
+    pub runtime_policy: vb_core::policy::RuntimePolicy,
+}
+
+/// Coarse health label for a shard.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ShardHealth {
+    /// Shard is accepting ticks.
+    Running,
+    /// Shard has begun graceful shutdown.
+    ShuttingDown,
+}
+
 /// Shard configuration.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ShardConfig {
