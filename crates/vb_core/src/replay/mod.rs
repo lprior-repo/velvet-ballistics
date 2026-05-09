@@ -128,6 +128,7 @@ impl ReplayExprStack {
 fn slot_to_replay_err(e: EngineError) -> ReplayError {
     match e {
         EngineError::SlotOutOfBounds { slot } => ReplayError::SlotNotAvailable { slot },
+        EngineError::SlotUninitialized { slot } => ReplayError::SlotNotAvailable { slot },
         _ => ReplayError::Internal {
             reason: "unexpected engine error during replay",
         },
@@ -168,52 +169,131 @@ impl<'a> ReplayEngine<'a> {
         target_step: StepIdx,
         store: &mut ValueStore,
     ) -> Result<StepIdx, ReplayError> {
-        if self.plan.node(target_step).is_none() {
-            return Err(ReplayError::StepNotFound { step: target_step });
-        }
+        self.replay_frame_up_to(target_step, store)
+            .map(|frame| frame.pc())
+    }
 
-        let entry = self.plan.entry();
-        let step_count = self.plan.node_count();
-        let slot_count = self.plan.slot_count();
+    /// Replays deterministic steps from entry until `target_step` is reached.
+    pub fn replay_frame_up_to(
+        &self,
+        target_step: StepIdx,
+        store: &mut ValueStore,
+    ) -> Result<RunFrame, ReplayError> {
+        self.ensure_step_exists(target_step)?;
+        let run = self.new_replay_frame()?;
+        self.replay_until(target_step, store, run, ReplayTargetMode::Before)
+    }
 
-        let mut run =
-            RunFrame::new(RunId::new(0), entry, step_count, slot_count).map_err(|_| {
-                ReplayError::Internal {
-                    reason: "failed to create run frame",
+    /// Replays deterministic steps through and including `target_step`.
+    pub fn replay_frame_through(
+        &self,
+        target_step: StepIdx,
+        store: &mut ValueStore,
+    ) -> Result<RunFrame, ReplayError> {
+        self.ensure_step_exists(target_step)?;
+        let run = self.new_replay_frame()?;
+        self.replay_until(target_step, store, run, ReplayTargetMode::Through)
+    }
+
+    fn ensure_step_exists(&self, step: StepIdx) -> Result<(), ReplayError> {
+        self.plan
+            .node(step)
+            .map(|_| ())
+            .ok_or(ReplayError::StepNotFound { step })
+    }
+
+    fn new_replay_frame(&self) -> Result<RunFrame, ReplayError> {
+        RunFrame::new(
+            RunId::new(0),
+            self.plan.entry(),
+            self.plan.node_count(),
+            self.plan.slot_count(),
+        )
+        .map_err(|_| ReplayError::Internal {
+            reason: "failed to create run frame",
+        })
+    }
+
+    fn replay_until(
+        &self,
+        target_step: StepIdx,
+        store: &mut ValueStore,
+        run: RunFrame,
+        mode: ReplayTargetMode,
+    ) -> Result<RunFrame, ReplayError> {
+        std::iter::successors(Some(self.plan.entry()), |step| Some(*step))
+            .take(replay_step_budget_len())
+            .try_fold((run, self.plan.entry()), |(mut frame, current), _| {
+                if mode == ReplayTargetMode::Before && current == target_step {
+                    return Err(ReplayFoldStop::Done(frame));
                 }
-            })?;
+                let next = self.replay_one(current, &mut frame, store)?;
+                if mode == ReplayTargetMode::Through && current == target_step {
+                    Err(ReplayFoldStop::Done(frame))
+                } else {
+                    match next {
+                        Some(step) => Ok((frame, step)),
+                        None => Err(ReplayFoldStop::Done(frame)),
+                    }
+                }
+            })
+            .map_or_else(ReplayFoldStop::into_result, |_| {
+                Err(ReplayError::Internal {
+                    reason: "replay step budget exhausted",
+                })
+            })
+    }
 
-        let mut current = entry;
-        let mut remaining = crate::limits::MAX_STEP_BUDGET;
-        loop {
-            if current == target_step {
-                return Ok(current);
+    fn replay_one(
+        &self,
+        current: StepIdx,
+        run: &mut RunFrame,
+        store: &mut ValueStore,
+    ) -> Result<Option<StepIdx>, ReplayFoldStop> {
+        let node =
+            self.plan
+                .node(current)
+                .ok_or(ReplayFoldStop::Error(ReplayError::StepNotFound {
+                    step: current,
+                }))?;
+        match step::replay_step(node, run, store, self.plan) {
+            Ok(step::ReplayAction::Continue(next)) => Ok(Some(next)),
+            Ok(step::ReplayAction::Finished) => Ok(None),
+            Ok(step::ReplayAction::Suspended { step, kind }) => {
+                Err(ReplayFoldStop::Error(ReplayError::NonDeterministicStep {
+                    step,
+                    kind,
+                }))
             }
-
-            // Decrement the budget on every iteration to prevent infinite loops
-            // from Jump cycles or corrupted workflow graphs.
-            remaining = remaining.checked_sub(1).ok_or(ReplayError::Internal {
-                reason: "replay step budget exhausted",
-            })?;
-
-            let node = match self.plan.node(current) {
-                Some(n) => n,
-                None => return Err(ReplayError::StepNotFound { step: current }),
-            };
-
-            match step::replay_step(node, &mut run, store, self.plan) {
-                Ok(step::ReplayAction::Continue(next)) => {
-                    current = next;
-                }
-                Ok(step::ReplayAction::Finished) => {
-                    return Ok(current);
-                }
-                Ok(step::ReplayAction::Suspended { step, kind }) => {
-                    return Err(ReplayError::NonDeterministicStep { step, kind });
-                }
-                Err(e) => return Err(e),
-            }
+            Err(error) => Err(ReplayFoldStop::Error(error)),
         }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ReplayTargetMode {
+    Before,
+    Through,
+}
+
+enum ReplayFoldStop {
+    Done(RunFrame),
+    Error(ReplayError),
+}
+
+impl ReplayFoldStop {
+    fn into_result(self) -> Result<RunFrame, ReplayError> {
+        match self {
+            Self::Done(frame) => Ok(frame),
+            Self::Error(error) => Err(error),
+        }
+    }
+}
+
+fn replay_step_budget_len() -> usize {
+    match usize::try_from(crate::limits::MAX_STEP_BUDGET) {
+        Ok(value) => value,
+        Err(_) => usize::MAX,
     }
 }
 

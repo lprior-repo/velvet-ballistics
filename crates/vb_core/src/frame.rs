@@ -244,6 +244,16 @@ impl RunFrame {
         Ok(())
     }
 
+    /// Returns a compact copy of initialized slot values and taint markers.
+    pub fn initialized_slots(&self) -> CoreResult<Vec<(SlotIdx, SlotValue, Taint)>> {
+        self.slots
+            .iter()
+            .zip(self.taint.iter())
+            .enumerate()
+            .filter_map(initialized_slot_entry)
+            .collect()
+    }
+
     /// Reads a slot taint marker.
     ///
     /// Returns `SlotOutOfBounds` when the index is outside the slot array,
@@ -419,6 +429,18 @@ impl RunFrame {
             })
         }
     }
+}
+
+fn initialized_slot_entry(
+    (index, (value, taint)): (usize, (&Option<SlotValue>, &Taint)),
+) -> Option<CoreResult<(SlotIdx, SlotValue, Taint)>> {
+    value.as_ref().map(|slot_value| {
+        u16::try_from(index)
+            .map_err(|_| CoreError::InternalInvariantViolation {
+                reason: "slot index exceeds SlotIdx range",
+            })
+            .map(|raw| (SlotIdx::new(raw), *slot_value, *taint))
+    })
 }
 
 #[cfg(test)]
@@ -713,9 +735,7 @@ mod tests {
         // and the one after that overflows. Since iterating u64::MAX times is impractical,
         // we test the checked_add logic by calling increment many times and verifying
         // the counter advances.
-        for _ in 0..100 {
-            frame.increment_executed()?;
-        }
+        (0..100).try_for_each(|_| frame.increment_executed())?;
         assert_eq!(frame.executed(), 100);
 
         // The overflow path uses checked_add, so it will return Err when overflow occurs.

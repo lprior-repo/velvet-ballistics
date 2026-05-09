@@ -20,6 +20,7 @@ pub fn replay_choose_slot(
         })?;
         let value = run.read_slot(branch.condition).map_err(|e| match e {
             EngineError::SlotOutOfBounds { slot } => ReplayError::SlotNotAvailable { slot },
+            EngineError::SlotUninitialized { slot } => ReplayError::SlotNotAvailable { slot },
             _ => ReplayError::Internal {
                 reason: "unexpected error reading choose_slot condition",
             },

@@ -2515,18 +2515,24 @@ mod blackhat_engine {
         let mut budget = vb_core::engine::StepBudget::new(10);
         let mut evidence = EvidenceCollector::new();
         let mut cs = CollectStates::new();
-        let result = drive_deterministic_full(
-            &wf,
-            &mut run,
-            &mut budget,
-            &mut store,
-            &[],
-            RetryPolicy::NEVER,
-            &mut evidence,
-            &mut cs,
-            &CapabilitySet::empty(),
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            drive_deterministic_full(
+                &wf,
+                &mut run,
+                &mut budget,
+                &mut store,
+                &[],
+                RetryPolicy::NEVER,
+                &mut evidence,
+                &mut cs,
+                &CapabilitySet::empty(),
+            )
+        }));
+        assert!(
+            result.is_ok(),
+            "drive_deterministic_full must not panic on multi-branch TogetherStart"
         );
-        let _ = result;
+        // Note: Actual saturation at u16::MAX cannot be tested due to memory constraints.
     }
 
     // =====================================================================

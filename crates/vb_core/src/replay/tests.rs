@@ -429,6 +429,61 @@ fn replay_step_not_found() -> Result<(), CoreError> {
     }
 }
 
+#[test]
+fn replay_copy_missing_source_maps_to_slot_not_available() -> Result<(), CoreError> {
+    let plan = make_plan(
+        vec![CompiledNode {
+            id: StepIdx::new(0),
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Copy {
+                source: SlotIdx::new(7),
+            },
+            output: Some(SlotIdx::new(0)),
+            next: None,
+        }],
+        vec![],
+        vec![],
+    )?;
+    let mut store = ValueStore::new();
+    let engine = ReplayEngine::new(&plan);
+
+    match engine.replay_frame_through(StepIdx::new(0), &mut store) {
+        Err(ReplayError::SlotNotAvailable { slot }) => {
+            assert_eq!(slot, SlotIdx::new(7));
+            Ok(())
+        }
+        Err(other) => Err(replay_err_to_core(other)),
+        Ok(_) => Err(CoreError::InternalInvariantViolation {
+            reason: "expected SlotNotAvailable",
+        }),
+    }
+}
+
+#[test]
+fn replay_invalid_expression_maps_to_expression_eval_failed() -> Result<(), CoreError> {
+    let too_large = replay_stack_capacity_over_limit()?;
+
+    match super::ReplayExprStack::new(too_large) {
+        Err(ReplayError::ExpressionEvalFailed { step }) => {
+            assert_eq!(step, StepIdx::ZERO);
+            Ok(())
+        }
+        Err(other) => Err(replay_err_to_core(other)),
+        Ok(_) => Err(CoreError::InternalInvariantViolation {
+            reason: "expected ExpressionEvalFailed",
+        }),
+    }
+}
+
+fn replay_stack_capacity_over_limit() -> Result<u8, CoreError> {
+    u8::try_from(crate::limits::MAX_EXPRESSION_STACK_USIZE + 1).map_err(|_| {
+        CoreError::InternalInvariantViolation {
+            reason: "test expression stack limit exceeds u8",
+        }
+    })
+}
+
 // =========================================================================
 // BLACKHAT security regression tests
 // =========================================================================
@@ -613,14 +668,16 @@ fn blackhat_replay_taint_propagates_through_expression_chain() -> Result<(), Cor
     let mut run = RunFrame::new(RunId::new(0), StepIdx::new(0), step_count, slot_count)?;
 
     // Execute SetConst steps
-    for idx in 0u16..2 {
+    [0u16, 1u16].into_iter().try_for_each(|idx| {
         let node = plan
             .node(StepIdx::new(idx))
             .ok_or(CoreError::InternalInvariantViolation {
                 reason: "node missing",
             })?;
-        super::step::replay_step(node, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
-    }
+        super::step::replay_step(node, &mut run, &mut store, &plan)
+            .map(|_| ())
+            .map_err(replay_err_to_core)
+    })?;
 
     // Taint slot 0 as Secret
     run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(10), Taint::Secret)?;

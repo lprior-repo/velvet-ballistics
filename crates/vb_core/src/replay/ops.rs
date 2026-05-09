@@ -50,6 +50,7 @@ fn eval_load_slot(
 ) -> Result<(), ReplayError> {
     let value = *run.read_slot(slot).map_err(|e| match e {
         EngineError::SlotOutOfBounds { slot: s } => ReplayError::SlotNotAvailable { slot: s },
+        EngineError::SlotUninitialized { slot: s } => ReplayError::SlotNotAvailable { slot: s },
         _ => ReplayError::Internal {
             reason: "unexpected error reading expression load slot",
         },
@@ -196,6 +197,7 @@ fn eval_accessor_for_replay(
 ) -> Result<SlotValue, ReplayError> {
     let mut current = *run.read_slot(program.root).map_err(|e| match e {
         EngineError::SlotOutOfBounds { slot } => ReplayError::SlotNotAvailable { slot },
+        EngineError::SlotUninitialized { slot } => ReplayError::SlotNotAvailable { slot },
         _ => ReplayError::Internal {
             reason: "unexpected error reading accessor root",
         },
@@ -267,6 +269,7 @@ fn expect_i64_replay(value: SlotValue) -> Result<i64, ReplayError> {
 }
 
 #[cfg(test)]
+#[allow(clippy::panic_in_result_fn)]
 mod tests {
     use crate::errors::CoreError;
     use crate::frame::RunFrame;
@@ -389,7 +392,10 @@ mod tests {
     fn expr_stack_pop_empty_returns_error() -> Result<(), CoreError> {
         let mut stack = ReplayExprStack::new(4).map_err(replay_err_to_core)?;
         let result = stack.pop();
-        assert!(result.is_err(), "popping from empty stack must fail");
+        assert!(
+            matches!(result, Err(ReplayError::ExpressionEvalFailed { step }) if step == StepIdx::ZERO),
+            "popping from empty stack must fail with ExpressionEvalFailed"
+        );
         Ok(())
     }
 
@@ -397,23 +403,30 @@ mod tests {
     fn expr_stack_push_overflow_returns_error() -> Result<(), CoreError> {
         let mut stack = ReplayExprStack::new(1).map_err(replay_err_to_core)?;
         stack.push(SlotValue::Null).map_err(replay_err_to_core)?;
-        assert!(stack.push(SlotValue::Null).is_err());
+        let overflow_result = stack.push(SlotValue::Null);
+        assert!(
+            matches!(overflow_result, Err(ReplayError::ExpressionEvalFailed { step }) if step == StepIdx::ZERO),
+            "push overflow must fail with ExpressionEvalFailed"
+        );
         Ok(())
     }
 
     #[test]
     fn expr_stack_max_capacity_boundary() -> Result<(), CoreError> {
         let mut stack = ReplayExprStack::new(MAX_EXPRESSION_STACK).map_err(replay_err_to_core)?;
-        for i in 0..64u64 {
-            stack
-                .push(SlotValue::I64(i64::try_from(i).map_err(|_| {
-                    CoreError::InternalInvariantViolation {
-                        reason: "conversion failed",
-                    }
-                })?))
-                .map_err(replay_err_to_core)?;
-        }
-        assert!(stack.push(SlotValue::Null).is_err());
+        let values: [i64; 64] = [
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
+            24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45,
+            46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63,
+        ];
+        values
+            .iter()
+            .try_for_each(|&i| stack.push(SlotValue::I64(i)).map_err(replay_err_to_core))?;
+        let overflow_result = stack.push(SlotValue::Null);
+        assert!(
+            matches!(overflow_result, Err(ReplayError::ExpressionEvalFailed { step }) if step == StepIdx::ZERO),
+            "push beyond capacity must fail with ExpressionEvalFailed"
+        );
         Ok(())
     }
 
@@ -486,7 +499,12 @@ mod tests {
         let mut stack = ReplayExprStack::new(4).map_err(replay_err_to_core)?;
         stack.push(SlotValue::I64(1)).map_err(replay_err_to_core)?;
         let result = pop_pair(&mut stack);
-        assert!(result.is_err());
+        assert_eq!(
+            result,
+            Err(ReplayError::ExpressionEvalFailed {
+                step: StepIdx::ZERO
+            })
+        );
         Ok(())
     }
 
@@ -2001,37 +2019,82 @@ mod tests {
 
     // --- FINDING BH-OPS-07: Unsupported ops return error, not panic ---
 
-    #[test]
-    fn blackhat_unsupported_ops_return_error_not_panic() -> Result<(), CoreError> {
+    fn check_unsupported_op_returns_error(op: ExprOp) -> Result<(), CoreError> {
         let plan = make_minimal_plan_with_constants(vec![])?;
         let run = make_frame(4)?;
         let mut store = ValueStore::new();
-
-        let unsupported_ops = [
-            ExprOp::Contains,
-            ExprOp::StartsWith,
-            ExprOp::EndsWith,
-            ExprOp::Has,
-            ExprOp::Exists,
-            ExprOp::Length,
-            ExprOp::Empty,
-            ExprOp::Append,
-            ExprOp::AppendIf,
-            ExprOp::Merge,
-            ExprOp::Sum,
-            ExprOp::Count,
-            ExprOp::Unique,
-        ];
-
-        for op in unsupported_ops {
-            let mut stack = ReplayExprStack::new(4).map_err(replay_err_to_core)?;
-            let mut taint = Taint::Clean;
-            let result = eval_replay_op(&plan, &run, &mut store, op, &mut stack, &mut taint);
-            assert!(
-                matches!(result, Err(ReplayError::Internal { .. })),
-                "BLACKHAT BH-OPS-07: unsupported op {op:?} must return error, not panic"
-            );
-        }
+        let mut stack = ReplayExprStack::new(4).map_err(replay_err_to_core)?;
+        let mut taint = Taint::Clean;
+        let result = eval_replay_op(&plan, &run, &mut store, op, &mut stack, &mut taint);
+        assert!(
+            matches!(result, Err(ReplayError::Internal { .. })),
+            "BLACKHAT BH-OPS-07: unsupported op {op:?} must return error, not panic"
+        );
         Ok(())
+    }
+
+    #[test]
+    fn blackhat_unsupported_op_contains_returns_error() -> Result<(), CoreError> {
+        check_unsupported_op_returns_error(ExprOp::Contains)
+    }
+
+    #[test]
+    fn blackhat_unsupported_op_starts_with_returns_error() -> Result<(), CoreError> {
+        check_unsupported_op_returns_error(ExprOp::StartsWith)
+    }
+
+    #[test]
+    fn blackhat_unsupported_op_ends_with_returns_error() -> Result<(), CoreError> {
+        check_unsupported_op_returns_error(ExprOp::EndsWith)
+    }
+
+    #[test]
+    fn blackhat_unsupported_op_has_returns_error() -> Result<(), CoreError> {
+        check_unsupported_op_returns_error(ExprOp::Has)
+    }
+
+    #[test]
+    fn blackhat_unsupported_op_exists_returns_error() -> Result<(), CoreError> {
+        check_unsupported_op_returns_error(ExprOp::Exists)
+    }
+
+    #[test]
+    fn blackhat_unsupported_op_length_returns_error() -> Result<(), CoreError> {
+        check_unsupported_op_returns_error(ExprOp::Length)
+    }
+
+    #[test]
+    fn blackhat_unsupported_op_empty_returns_error() -> Result<(), CoreError> {
+        check_unsupported_op_returns_error(ExprOp::Empty)
+    }
+
+    #[test]
+    fn blackhat_unsupported_op_append_returns_error() -> Result<(), CoreError> {
+        check_unsupported_op_returns_error(ExprOp::Append)
+    }
+
+    #[test]
+    fn blackhat_unsupported_op_append_if_returns_error() -> Result<(), CoreError> {
+        check_unsupported_op_returns_error(ExprOp::AppendIf)
+    }
+
+    #[test]
+    fn blackhat_unsupported_op_merge_returns_error() -> Result<(), CoreError> {
+        check_unsupported_op_returns_error(ExprOp::Merge)
+    }
+
+    #[test]
+    fn blackhat_unsupported_op_sum_returns_error() -> Result<(), CoreError> {
+        check_unsupported_op_returns_error(ExprOp::Sum)
+    }
+
+    #[test]
+    fn blackhat_unsupported_op_count_returns_error() -> Result<(), CoreError> {
+        check_unsupported_op_returns_error(ExprOp::Count)
+    }
+
+    #[test]
+    fn blackhat_unsupported_op_unique_returns_error() -> Result<(), CoreError> {
+        check_unsupported_op_returns_error(ExprOp::Unique)
     }
 }
