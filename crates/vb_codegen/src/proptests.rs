@@ -1,4 +1,5 @@
 #[cfg(test)]
+#[allow(clippy::module_inception)]
 mod proptests {
     use crate::{
         CodegenError, compare_generated_to_ir, emit_action_boundary, emit_resource_contract,
@@ -7,8 +8,258 @@ mod proptests {
     use proptest::prelude::*;
     use vb_core::{
         ActionId, CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, ConstValue,
-        ExprProgram, ResourceContract, SlotIdx, StepIdx, WorkflowDigest, WorkflowParts,
+        EngineSignal, ExprProgram, ResourceContract, RunId, SlotIdx, StepBudget, StepIdx, Taint,
+        WorkflowDigest, WorkflowParts, engine::new_run_frame, engine::run_until_blocked,
     };
+
+    struct GeneratedHarness {
+        temp_dir: tempfile::TempDir,
+        source_path: std::path::PathBuf,
+        binary_path: std::path::PathBuf,
+    }
+
+    fn generated_equivalence_stdout(
+        workflow: &CompiledWorkflow,
+        name: &str,
+    ) -> Result<String, String> {
+        let generated = emit_rust_workflow(workflow).map_err(|e| e.to_string())?;
+        let harness = equivalence_harness_source(workflow, &generated);
+        let paths = generated_harness_paths(name)?;
+        std::fs::write(&paths.source_path, harness).map_err(|e| e.to_string())?;
+        compile_and_run_generated(&paths)
+    }
+
+    fn generated_harness_paths(name: &str) -> Result<GeneratedHarness, String> {
+        let temp_dir = tempfile::Builder::new()
+            .prefix(&format!("vb_codegen_prop_equiv_{name}_"))
+            .tempdir()
+            .map_err(|e| e.to_string())?;
+        let source_path = temp_dir.path().join("generated_equivalence.rs");
+        let binary_path = temp_dir.path().join("generated_equivalence_bin");
+        Ok(GeneratedHarness {
+            temp_dir,
+            source_path,
+            binary_path,
+        })
+    }
+
+    fn compile_and_run_generated(paths: &GeneratedHarness) -> Result<String, String> {
+        if !paths.temp_dir.path().exists() {
+            return Err(String::from("generated harness tempdir missing"));
+        }
+        let compile = std::process::Command::new("rustc")
+            .arg("--edition")
+            .arg("2024")
+            .arg("-o")
+            .arg(&paths.binary_path)
+            .arg(&paths.source_path)
+            .output()
+            .map_err(|e| e.to_string())?;
+        if !compile.status.success() {
+            return Err(String::from_utf8_lossy(&compile.stderr).into_owned());
+        }
+
+        let run = std::process::Command::new(&paths.binary_path)
+            .output()
+            .map_err(|e| e.to_string())?;
+        let stdout = String::from_utf8_lossy(&run.stdout).into_owned();
+        if !run.status.success() {
+            let stderr = String::from_utf8_lossy(&run.stderr);
+            return Err(format!("generated run failed: {stdout}{stderr}"));
+        }
+        Ok(stdout)
+    }
+
+    fn equivalence_harness_source(workflow: &CompiledWorkflow, generated: &str) -> String {
+        format!(
+            "{generated}\n{}\n{}\n",
+            slot_text_function_source(),
+            equivalence_main_source(workflow)
+        )
+    }
+
+    fn slot_text_function_source() -> &'static str {
+        "fn slot_text(slots: &[Option<SlotValue>; WORKFLOW_SLOT_COUNT], index: u16) -> String {\n    match slots.get(usize::from(index)) {\n        Some(value) => format!(\"{value:?}\"),\n        None => String::from(\"slot-out-of-bounds\"),\n    }\n}"
+    }
+
+    fn equivalence_main_source(workflow: &CompiledWorkflow) -> String {
+        format!(
+            "fn main() {{\n    let mut slots = [None; WORKFLOW_SLOT_COUNT];\n    let mut list_store = ListStore::new();\n    let value = drive_equivalence_trace(&mut slots, &mut list_store);\n    println!(\"{{value}}|slots:{{}}|{{}}|{{}}\", slot_text(&slots, 0), slot_text(&slots, 1), slot_text(&slots, 2));\n}}\n{}",
+            drive_trace_function_source(workflow)
+        )
+    }
+
+    fn drive_trace_function_source(workflow: &CompiledWorkflow) -> String {
+        format!(
+            "fn drive_equivalence_trace(slots: &mut [Option<SlotValue>; WORKFLOW_SLOT_COUNT], list_store: &mut ListStore) -> String {{\n    let mut pc: u16 = 0;\n    loop {{\n        let outcome = match pc {{\n{}            _ => Err(DriveError::InvalidProgramCounter),\n        }};\n        match outcome {{\n            Ok(StepOutcome::Continue(next)) => pc = next,\n            Ok(StepOutcome::Finished(done)) => break format!(\"finished:{{done:?}}\"),\n            Err(error) => break format!(\"err:{{error:?}}\"),\n        }}\n    }}\n}}",
+            dynamic_step_arms(workflow)
+        )
+    }
+
+    fn dynamic_step_arms(workflow: &CompiledWorkflow) -> String {
+        (0..workflow.node_count())
+            .map(|idx| format!("            {idx} => step_{idx}(slots, list_store),\n"))
+            .collect()
+    }
+
+    fn ir_equivalence_trace(workflow: &CompiledWorkflow) -> Result<String, String> {
+        let mut run = new_run_frame(RunId::new(46), workflow).map_err(|e| e.to_string())?;
+        let mut store = vb_core::ValueStore::new();
+        let signal = run_until_blocked(workflow, &mut run, StepBudget::MAX, &mut store)
+            .map_err(|e| e.to_string())?;
+        let head = match signal {
+            EngineSignal::Finished(value, Taint::Clean) => format!("finished:{value:?}"),
+            EngineSignal::Finished(value, taint) => format!("finished:{value:?}:{taint:?}"),
+            other => format!("signal:{other:?}"),
+        };
+        let slot0 = slot_trace(&run, SlotIdx::new(0));
+        let slot1 = slot_trace(&run, SlotIdx::new(1));
+        let slot2 = slot_trace(&run, SlotIdx::new(2));
+        Ok(format!("{head}|slots:{slot0}|{slot1}|{slot2}\n"))
+    }
+
+    fn slot_trace(run: &vb_core::RunFrame, slot: SlotIdx) -> String {
+        match run.read_slot(slot) {
+            Ok(value) => format!("Some({value:?})"),
+            Err(_) => String::from("None"),
+        }
+    }
+
+    fn arb_small_i64() -> impl Strategy<Value = i64> {
+        -1_000_000i64..1_000_000i64
+    }
+
+    fn fixed_six_step_equivalence_workflow(
+        take_branch: bool,
+        branch_value: i64,
+        left: i64,
+        right: i64,
+    ) -> Result<CompiledWorkflow, String> {
+        let parts = WorkflowParts {
+            name: Box::<str>::from("fixed_six_step_prop_equivalence"),
+            digest: WorkflowDigest::from_bytes([0x46; 32]),
+            nodes: fixed_six_step_equivalence_nodes(),
+            expressions: fixed_six_step_equivalence_expressions()?,
+            accessors: Box::new([]),
+            constants: fixed_six_step_equivalence_constants(take_branch, branch_value, left, right),
+            slot_count: 3,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+            step_names: Box::new([]),
+        };
+        CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())
+    }
+
+    fn fixed_six_step_equivalence_expressions() -> Result<Box<[ExprProgram]>, String> {
+        ExprProgram::try_from_ops(
+            vec![
+                vb_core::ExprOp::LoadConst(ConstIdx::new(2)),
+                vb_core::ExprOp::LoadConst(ConstIdx::new(3)),
+                vb_core::ExprOp::Add,
+            ]
+            .into_boxed_slice(),
+        )
+        .map(|expr| vec![expr].into_boxed_slice())
+        .map_err(|e| e.to_string())
+    }
+
+    fn fixed_six_step_equivalence_constants(
+        take_branch: bool,
+        branch_value: i64,
+        left: i64,
+        right: i64,
+    ) -> Box<[ConstValue]> {
+        vec![
+            ConstValue::Bool(take_branch),
+            ConstValue::I64(branch_value),
+            ConstValue::I64(left),
+            ConstValue::I64(right),
+        ]
+        .into_boxed_slice()
+    }
+
+    fn fixed_six_step_equivalence_nodes() -> Box<[CompiledNode]> {
+        vec![
+            set_const_node(0, 0, 1, 0),
+            set_const_node(1, 1, 2, 1),
+            choose_slot_node(),
+            copy_node(3, 2, 5, 1),
+            eval_expr_node(),
+            finish_node(),
+        ]
+        .into_boxed_slice()
+    }
+
+    fn set_const_node(id: u16, output: u16, next: u16, value: u16) -> CompiledNode {
+        CompiledNode {
+            id: StepIdx::new(id),
+            output: Some(SlotIdx::new(output)),
+            next: Some(StepIdx::new(next)),
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::SetConst {
+                value: ConstIdx::new(value),
+            },
+        }
+    }
+
+    fn choose_slot_node() -> CompiledNode {
+        CompiledNode {
+            id: StepIdx::new(2),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::ChooseSlot {
+                branches: vec![vb_core::SlotBranch {
+                    condition: SlotIdx::new(0),
+                    target: StepIdx::new(3),
+                }]
+                .into_boxed_slice(),
+                otherwise: Some(StepIdx::new(4)),
+            },
+        }
+    }
+
+    fn copy_node(id: u16, output: u16, next: u16, source: u16) -> CompiledNode {
+        CompiledNode {
+            id: StepIdx::new(id),
+            output: Some(SlotIdx::new(output)),
+            next: Some(StepIdx::new(next)),
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Copy {
+                source: SlotIdx::new(source),
+            },
+        }
+    }
+
+    fn eval_expr_node() -> CompiledNode {
+        CompiledNode {
+            id: StepIdx::new(4),
+            output: Some(SlotIdx::new(2)),
+            next: Some(StepIdx::new(5)),
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::EvalExpr {
+                expr: vb_core::ExprIdx::new(0),
+            },
+        }
+    }
+
+    fn finish_node() -> CompiledNode {
+        CompiledNode {
+            id: StepIdx::new(5),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::new(2),
+            },
+        }
+    }
 
     fn arb_resource_contract() -> impl Strategy<Value = ResourceContract> {
         (
@@ -55,13 +306,35 @@ mod proptests {
     }
 
     proptest! {
+        #![proptest_config(ProptestConfig::with_cases(16))]
+
+        #[test]
+        fn fixed_six_step_emitted_rust_and_ir_match_finished_signal_and_slots(
+            take_branch in any::<bool>(),
+            branch_value in arb_small_i64(),
+            left in arb_small_i64(),
+            right in arb_small_i64(),
+        ) {
+            let workflow = fixed_six_step_equivalence_workflow(take_branch, branch_value, left, right)
+                .map_err(TestCaseError::fail)?;
+            let source = emit_rust_workflow(&workflow).map_err(|e| TestCaseError::fail(e.to_string()))?;
+            compare_generated_to_ir(&source, &workflow).map_err(|e| TestCaseError::fail(e.to_string()))?;
+
+            let generated = generated_equivalence_stdout(
+                &workflow,
+                &format!("{}_{}_{}_{}", take_branch, branch_value, left, right),
+            ).map_err(TestCaseError::fail)?;
+            let interpreted = ir_equivalence_trace(&workflow).map_err(TestCaseError::fail)?;
+
+            prop_assert_eq!(generated, interpreted);
+        }
+
         #[test]
         fn emit_resource_contract_output_contains_all_fields(contract in arb_resource_contract()) {
             let mut out = String::new();
-            let result = emit_resource_contract(&mut out, contract);
-            prop_assert!(result.is_ok(), "encoding valid resource contract must succeed");
+            emit_resource_contract(&mut out, contract).map_err(|e| TestCaseError::fail(e.to_string()))?;
+            prop_assert_eq!(out.contains("CONTRACT_MAX_STEPS"), true);
             prop_assert!(!out.is_empty());
-            prop_assert!(out.contains("CONTRACT_MAX_STEPS"));
             prop_assert!(out.contains("CONTRACT_MAX_SLOTS"));
             prop_assert!(out.contains("CONTRACT_MAX_CONSTANTS"));
             prop_assert!(out.contains("CONTRACT_MAX_ACCESSORS"));
@@ -215,16 +488,18 @@ mod proptests {
         let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())?;
         let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
         let result = compare_generated_to_ir(&source, &workflow);
-        assert!(
-            result.is_ok(),
-            "compare_generated_to_ir must accept Do workflow with action boundary markers, got: {result:?}"
-        );
-        // Verify the source actually contains the action boundary marker
-        assert!(
-            source.contains("Action boundary:"),
-            "generated source must contain 'Action boundary:' marker for Do nodes"
-        );
-        Ok(())
+        result.map_err(|e| {
+            format!(
+                "compare_generated_to_ir must accept Do workflow with action boundary markers, got: {e}"
+            )
+        })?;
+        if source.contains("Action boundary:") {
+            Ok(())
+        } else {
+            Err(String::from(
+                "generated source must contain 'Action boundary:' marker for Do nodes",
+            ))
+        }
     }
 
     /// Verify that the action boundary comment includes the correct action and slot IDs.
@@ -233,10 +508,12 @@ mod proptests {
         let mut out = String::new();
         emit_action_boundary(&mut out, ActionId::new(5), SlotIdx::new(2))
             .map_err(|e| e.to_string())?;
-        assert!(
-            out.contains("Action boundary: action_id=5, input_slot=2"),
-            "action boundary must include action_id and input_slot in comment, got: {out}"
-        );
-        Ok(())
+        if out.contains("Action boundary: action_id=5, input_slot=2") {
+            Ok(())
+        } else {
+            Err(format!(
+                "action boundary must include action_id and input_slot in comment, got: {out}"
+            ))
+        }
     }
 }

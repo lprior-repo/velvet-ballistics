@@ -311,18 +311,39 @@ pub fn emit_step_function(
     _workflow: &CompiledWorkflow,
 ) -> CodegenResult<()> {
     let step_id = node.id.get();
+    let slots_param = step_slots_param(node);
+    let list_store_param = step_list_store_param(node);
     writeln!(
         out,
-        "fn step_{step_id}(slots: &mut [Option<SlotValue>; WORKFLOW_SLOT_COUNT], list_store: &mut ListStore) -> Result<StepOutcome, DriveError> {{"
+        "fn step_{step_id}({slots_param}: &mut [Option<SlotValue>; WORKFLOW_SLOT_COUNT], {list_store_param}: &mut ListStore) -> Result<StepOutcome, DriveError> {{"
     )
     .map_err(fmt_err)?;
 
-    writeln!(out, "    let _ = &list_store;").map_err(fmt_err)?;
     emit_step_body(out, node)?;
 
     writeln!(out, "}}").map_err(fmt_err)?;
     writeln!(out).map_err(fmt_err)?;
     Ok(())
+}
+
+fn step_slots_param(node: &CompiledNode) -> &'static str {
+    match &node.kind {
+        CompiledNodeKind::Nop | CompiledNodeKind::Jump { .. } => "_slots",
+        _ => "slots",
+    }
+}
+
+fn step_list_store_param(node: &CompiledNode) -> &'static str {
+    match &node.kind {
+        CompiledNodeKind::EvalExpr { .. }
+        | CompiledNodeKind::Choose { .. }
+        | CompiledNodeKind::BuildList { .. }
+        | CompiledNodeKind::ForEachStart { .. }
+        | CompiledNodeKind::ForEachNext { .. }
+        | CompiledNodeKind::ForEachJoin { .. }
+        | CompiledNodeKind::ErrorHandler { .. } => "list_store",
+        _ => "_list_store",
+    }
 }
 
 fn emit_step_body(out: &mut String, node: &CompiledNode) -> CodegenResult<()> {
@@ -483,7 +504,7 @@ fn emit_choose_step(
     for branch in branches {
         writeln!(
             out,
-            "    if eval_expr_{}(slots, list_store)?.is_true() {{ return Ok(StepOutcome::Continue({})); }}",
+            "    let _condition = eval_expr_{}(slots, list_store)?;\n    match _condition {{ SlotValue::Bool(true) => return Ok(StepOutcome::Continue({})), SlotValue::Bool(false) => {{}}, other => return Err(DriveError::TypeMismatch {{ expected: \"boolean\", found: other.type_name() }}), }}",
             branch.condition.get(),
             branch.target.get()
         )
@@ -500,7 +521,7 @@ fn emit_choose_slot_step(
     for branch in branches {
         writeln!(
             out,
-            "    if read_slot(slots, {})?.is_true() {{ return Ok(StepOutcome::Continue({})); }}",
+            "    let _condition = read_slot(slots, {})?;\n    match _condition {{ SlotValue::Bool(true) => return Ok(StepOutcome::Continue({})), SlotValue::Bool(false) => {{}}, other => return Err(DriveError::TypeMismatch {{ expected: \"boolean\", found: other.type_name() }}), }}",
             branch.condition.get(),
             branch.target.get()
         )
@@ -929,15 +950,14 @@ pub fn emit_expr_function(
         return Ok(());
     };
 
+    let slots_param = expr_slots_param(program);
+    let list_store_param = expr_list_store_param(program);
     writeln!(
         out,
-        "fn eval_expr_{}(slots: &[Option<SlotValue>; WORKFLOW_SLOT_COUNT], list_store: &ListStore) -> Result<SlotValue, DriveError> {{",
+        "fn eval_expr_{}({slots_param}: &[Option<SlotValue>; WORKFLOW_SLOT_COUNT], {list_store_param}: &ListStore) -> Result<SlotValue, DriveError> {{",
         expr_idx.get()
     )
     .map_err(fmt_err)?;
-
-    writeln!(out, "    let _ = &slots;").map_err(fmt_err)?;
-    writeln!(out, "    let _ = &list_store;").map_err(fmt_err)?;
     writeln!(
         out,
         "    let mut stack = ExprStack::new({})?;",
@@ -1058,6 +1078,32 @@ pub fn emit_expr_function(
     writeln!(out, "}}").map_err(fmt_err)?;
     writeln!(out).map_err(fmt_err)?;
     Ok(())
+}
+
+fn expr_slots_param(program: &vb_core::ExprProgram) -> &'static str {
+    if program
+        .ops
+        .as_ref()
+        .iter()
+        .any(|op| matches!(op, ExprOp::LoadSlot(_) | ExprOp::LoadAccessor(_)))
+    {
+        "slots"
+    } else {
+        "_slots"
+    }
+}
+
+fn expr_list_store_param(program: &vb_core::ExprProgram) -> &'static str {
+    if program
+        .ops
+        .as_ref()
+        .iter()
+        .any(|op| matches!(op, ExprOp::Length | ExprOp::Empty | ExprOp::Count))
+    {
+        "list_store"
+    } else {
+        "_list_store"
+    }
 }
 
 /// Generate action dispatch boundaries for external action nodes.

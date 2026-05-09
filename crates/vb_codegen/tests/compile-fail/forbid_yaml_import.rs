@@ -9,5 +9,6 @@
 extern crate yaml_rust;
 
 fn main() {
-    let _ = "yaml must not appear in generated code";
+    let marker = "yaml must not appear in generated code";
+    std::process::exit(i32::from(marker.is_empty()));
 }

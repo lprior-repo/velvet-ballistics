@@ -10,13 +10,13 @@ fn fixtures_dir() -> PathBuf {
 }
 
 #[test]
-fn generate_minimal_workflow_fixture() {
+fn generate_minimal_workflow_fixture() -> Result<(), String> {
     let fixture_path = fixtures_dir().join("minimal_workflow.rs");
 
     // Create a minimal workflow
     let ops = vec![vb_core::ExprOp::LoadConst(vb_core::ConstIdx::new(0))];
-    let expr = vb_core::ExprProgram::try_from_ops(ops.into_boxed_slice())
-        .expect("expression must compile");
+    let expr =
+        vb_core::ExprProgram::try_from_ops(ops.into_boxed_slice()).map_err(|e| e.to_string())?;
 
     let parts = vb_core::WorkflowParts {
         name: Box::<str>::from("test_codegen"),
@@ -54,21 +54,24 @@ fn generate_minimal_workflow_fixture() {
         step_names: Box::new([]),
     };
 
-    let workflow = vb_core::CompiledWorkflow::try_from_parts(parts).expect("workflow must compile");
+    let workflow = vb_core::CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())?;
 
     // Emit generated Rust
-    let source = vb_codegen::emit_rust_workflow(&workflow)
-        .expect("codegen must succeed for minimal workflow");
+    let source = vb_codegen::emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
 
     // Append a main function so trybuild can compile it as a binary
     let mut source = source;
     source.push_str("\nfn main() {\n");
     source.push_str("    let slots = [None; WORKFLOW_SLOT_COUNT];\n");
-    source.push_str("    let _result = drive(slots);\n");
+    source.push_str("    if let Err(error) = drive(slots) {\n");
+    source.push_str("        eprintln!(\"{error:?}\");\n");
+    source.push_str("        std::process::exit(1);\n");
+    source.push_str("    }\n");
     source.push_str("}\n");
 
-    std::fs::create_dir_all(fixtures_dir()).expect("must create fixtures dir");
-    std::fs::write(&fixture_path, source).expect("must write fixture");
+    std::fs::create_dir_all(fixtures_dir()).map_err(|e| e.to_string())?;
+    std::fs::write(&fixture_path, source).map_err(|e| e.to_string())?;
 
     println!("Generated fixture: {}", fixture_path.display());
+    Ok(())
 }

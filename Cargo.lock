@@ -2317,6 +2317,7 @@ name = "vb_codegen"
 version = "0.1.0"
 dependencies = [
  "proptest",
+ "tempfile",
  "thiserror",
  "trybuild",
  "vb_core",

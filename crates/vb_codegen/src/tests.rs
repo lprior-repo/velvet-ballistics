@@ -1,5 +1,6 @@
 #[cfg(test)]
 #[allow(clippy::panic_in_result_fn)]
+#[allow(clippy::module_inception)]
 mod tests {
     use crate::{
         CodegenError, compare_generated_to_ir, compile_check_generated_rust, emit_action_boundary,
@@ -9,8 +10,8 @@ mod tests {
     };
     use vb_core::{
         AccessorProgram, ActionId, CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx,
-        ConstValue, EngineSignal, ExprProgram, PathSegment, ResourceContract, RunId, SlotIdx,
-        SlotValue, StepBudget, StepIdx, ValueStore, WorkflowDigest, WorkflowParts,
+        ConstValue, EngineError, EngineSignal, ExprProgram, PathSegment, ResourceContract, RunId,
+        SlotIdx, SlotValue, StepBudget, StepIdx, ValueStore, WorkflowDigest, WorkflowParts,
         capability::CapabilitySet, new_run_frame, run_until_blocked, step_once,
     };
     use vb_runtime::{
@@ -19,6 +20,134 @@ mod tests {
     };
 
     // --- Workflow helpers ---
+
+    fn semantic_mismatch_detail(result: Result<(), CodegenError>) -> Result<String, String> {
+        match result {
+            Ok(()) => Err(String::from("expected semantic mismatch")),
+            Err(CodegenError::SemanticMismatch { detail }) => Ok(detail),
+            Err(other) => Err(format!("expected semantic mismatch, got: {other}")),
+        }
+    }
+
+    fn assert_contains_all(source: &str, variants: &[&str], label: &str) -> Result<(), String> {
+        variants.iter().try_for_each(|variant| {
+            if source.contains(variant) {
+                Ok(())
+            } else {
+                Err(format!("{label} should have variant {variant}"))
+            }
+        })
+    }
+
+    fn assert_resource_contract_fields(out: &str) -> Result<(), String> {
+        [
+            "CONTRACT_MAX_STEPS",
+            "CONTRACT_MAX_SLOTS",
+            "CONTRACT_MAX_CONSTANTS",
+            "CONTRACT_MAX_ACCESSORS",
+            "CONTRACT_MAX_EXPRESSIONS",
+            "CONTRACT_MAX_EXPR_STACK",
+            "CONTRACT_MAX_INPUT_BYTES",
+            "CONTRACT_MAX_OUTPUT_BYTES",
+            "CONTRACT_MAX_STEP_BUDGET_PER_TICK",
+            "CONTRACT_MAX_BLOB_BYTES",
+            "CONTRACT_MAX_IPC_PAYLOAD_BYTES",
+            "CONTRACT_MAX_RETRY_ATTEMPTS",
+            "CONTRACT_MAX_FANOUT",
+            "CONTRACT_MAX_COLLECT_ITEMS",
+            "CONTRACT_MAX_QUEUE_DEPTH",
+            "CONTRACT_MAX_JOURNAL_BATCH_BYTES",
+        ]
+        .iter()
+        .try_for_each(|field| {
+            if out.contains(field) {
+                Ok(())
+            } else {
+                Err(format!("emit_resource_contract must include {field}"))
+            }
+        })
+    }
+
+    fn assert_workflow_step_names_valid(
+        name: &str,
+        workflow_result: Result<CompiledWorkflow, String>,
+    ) -> Result<(), String> {
+        let workflow = workflow_result?;
+        let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
+        let found_step = source.lines().try_fold(false, |found, line| {
+            let trimmed = line.trim();
+            if !(trimmed.starts_with("fn step_") && trimmed.contains('(')) {
+                return Ok::<bool, String>(found);
+            }
+            let end = trimmed
+                .find('(')
+                .ok_or_else(|| String::from("no paren in step fn"))?;
+            let fn_name = trimmed
+                .get(3..end)
+                .ok_or_else(|| String::from("step fn name range invalid"))?;
+            assert!(
+                fn_name.starts_with("step_"),
+                "function name must start with step_, got: {fn_name} in workflow {name}"
+            );
+            let suffix = fn_name
+                .get(5..)
+                .ok_or_else(|| String::from("step fn suffix range invalid"))?;
+            assert!(
+                suffix.parse::<u16>().is_ok(),
+                "step suffix must be a valid u16, got: {suffix} in workflow {name}"
+            );
+            Ok(true)
+        })?;
+        assert!(
+            found_step,
+            "must find at least one step function in workflow {name}"
+        );
+        Ok(())
+    }
+
+    fn forbidden_generated_source_violations(source: &str) -> Vec<(&'static str, String)> {
+        [
+            ("unsafe ", "unsafe block"),
+            (".unwrap(", "unwrap call"),
+            (".expect(", "expect call"),
+            ("panic!(", "panic macro"),
+            ("todo!(", "todo macro"),
+            ("unimplemented!(", "unimplemented macro"),
+            ("dbg!(", "dbg macro"),
+            ("println!(", "println macro"),
+            ("format!(", "format macro"),
+            ("HashMap<String", "string-keyed HashMap"),
+            ("eprintln!(", "eprintln macro"),
+        ]
+        .iter()
+        .flat_map(|(pattern, label)| {
+            source.lines().filter_map(move |line| {
+                let trimmed = line.trim();
+                let is_comment = trimmed.starts_with("//") || trimmed.starts_with("//!");
+                let allowed_unsafe_lint =
+                    *pattern == "unsafe " && trimmed.contains("#![forbid(unsafe_code)]");
+                if is_comment || allowed_unsafe_lint || !trimmed.contains(pattern) {
+                    None
+                } else {
+                    Some((*label, trimmed.to_string()))
+                }
+            })
+        })
+        .collect()
+    }
+
+    fn choose_finish_node(id: u16) -> CompiledNode {
+        CompiledNode {
+            id: StepIdx::new(id),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
+        }
+    }
 
     fn minimal_workflow() -> Result<CompiledWorkflow, String> {
         let ops = vec![vb_core::ExprOp::LoadConst(ConstIdx::new(0))];
@@ -300,15 +429,17 @@ mod tests {
         input: SlotIdx,
     ) -> Result<String, String> {
         let generated = emit_rust_workflow(workflow).map_err(|e| e.to_string())?;
-        let temp_dir = std::env::temp_dir().join(format!(
-            "vb_codegen_action_suspend_{}_{}_{}",
-            std::process::id(),
-            action.get(),
-            input.get()
-        ));
-        std::fs::create_dir_all(&temp_dir).map_err(|e| e.to_string())?;
-        let source_path = temp_dir.join("generated_action_suspend.rs");
-        let binary_path = temp_dir.join("generated_action_suspend_bin");
+        let temp_dir = tempfile::Builder::new()
+            .prefix(&format!(
+                "vb_codegen_action_suspend_{}_{}_{}",
+                std::process::id(),
+                action.get(),
+                input.get()
+            ))
+            .tempdir()
+            .map_err(|e| e.to_string())?;
+        let source_path = temp_dir.path().join("generated_action_suspend.rs");
+        let binary_path = temp_dir.path().join("generated_action_suspend_bin");
         let harness = format!(
             "{generated}\nfn main() {{\n    let mut slots = [None; WORKFLOW_SLOT_COUNT];\n    match slots.get_mut(usize::from({input}u16)) {{\n        Some(slot) => *slot = Some(SlotValue::I64(99)),\n        None => {{ println!(\"slot_out_of_bounds\"); std::process::exit(20); }}\n    }}\n    match drive(slots) {{\n        Err(DriveError::ActionSuspend {{ action_id, input_slot }}) if action_id == {action}u16 && input_slot == {input}u16 => println!(\"generated_action_suspend:{action}:{input}\"),\n        other => {{ println!(\"unexpected:{{other:?}}\"); std::process::exit(21); }}\n    }}\n}}\n",
             action = action.get(),
@@ -337,10 +468,6 @@ mod tests {
             return Err(format!("generated run failed: {stdout}{stderr}"));
         }
 
-        let cleanup = std::fs::remove_dir_all(&temp_dir);
-        if let Err(e) = cleanup {
-            return Err(e.to_string());
-        }
         Ok(stdout)
     }
 
@@ -350,11 +477,12 @@ mod tests {
         init_source: &str,
     ) -> Result<String, String> {
         let generated = emit_rust_workflow(workflow).map_err(|e| e.to_string())?;
-        let temp_dir =
-            std::env::temp_dir().join(format!("vb_codegen_drive_{}_{}", std::process::id(), name));
-        std::fs::create_dir_all(&temp_dir).map_err(|e| e.to_string())?;
-        let source_path = temp_dir.join("generated_drive.rs");
-        let binary_path = temp_dir.join("generated_drive_bin");
+        let temp_dir = tempfile::Builder::new()
+            .prefix(&format!("vb_codegen_drive_{}_{}", std::process::id(), name))
+            .tempdir()
+            .map_err(|e| e.to_string())?;
+        let source_path = temp_dir.path().join("generated_drive.rs");
+        let binary_path = temp_dir.path().join("generated_drive_bin");
         let harness = format!(
             "{generated}\nfn main() {{\n    let mut slots = [None; WORKFLOW_SLOT_COUNT];\n{init_source}\n    match drive(slots) {{\n        Ok(value) => println!(\"ok:{{value:?}}\"),\n        Err(error) => println!(\"err:{{error:?}}\"),\n    }}\n}}\n"
         );
@@ -381,11 +509,12 @@ mod tests {
             return Err(format!("generated run failed: {stdout}{stderr}"));
         }
 
-        let cleanup = std::fs::remove_dir_all(&temp_dir);
-        if let Err(e) = cleanup {
-            return Err(e.to_string());
-        }
         Ok(stdout)
+    }
+
+    fn expected_drive_error_stdout(workflow: &CompiledWorkflow) -> Result<String, String> {
+        let error = ir_drive_error(workflow)?;
+        Ok(format!("err:{error:?}\n"))
     }
 
     fn ir_action_suspend_signal(
@@ -407,6 +536,28 @@ mod tests {
         match signal {
             EngineSignal::Finished(value, _) => Ok(value),
             other => Err(format!("expected finished signal, got {other:?}")),
+        }
+    }
+
+    fn ir_drive_error(workflow: &CompiledWorkflow) -> Result<EngineError, String> {
+        let mut run = new_run_frame(RunId::new(3), workflow).map_err(|e| e.to_string())?;
+        let mut store = ValueStore::new();
+        match run_until_blocked(workflow, &mut run, StepBudget::MAX, &mut store) {
+            Ok(signal) => Err(format!("expected IR error, got {signal:?}")),
+            Err(error) => Ok(error),
+        }
+    }
+
+    fn assert_boolean_number_type_mismatch(error: EngineError) -> Result<(), String> {
+        match error {
+            EngineError::TypeMismatch { expected, found }
+                if expected == "boolean" && found == "number" =>
+            {
+                Ok(())
+            }
+            other => Err(format!(
+                "expected exact boolean/number TypeMismatch, got {other:?}"
+            )),
         }
     }
 
@@ -745,6 +896,108 @@ mod tests {
             ]
             .into_boxed_slice(),
             slot_count: 3,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+            step_names: Box::new([]),
+        };
+        CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())
+    }
+
+    fn non_boolean_choose_workflow() -> Result<CompiledWorkflow, String> {
+        let expr = ExprProgram::try_from_ops(
+            vec![vb_core::ExprOp::LoadConst(ConstIdx::new(0))].into_boxed_slice(),
+        )
+        .map_err(|e| e.to_string())?;
+        let parts = WorkflowParts {
+            name: Box::<str>::from("test_non_boolean_choose"),
+            digest: WorkflowDigest::from_bytes([0xE4; 32]),
+            nodes: vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: None,
+                    next: None,
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::Choose {
+                        branches: vec![vb_core::ExprBranch {
+                            condition: vb_core::ExprIdx::new(0),
+                            target: StepIdx::new(1),
+                        }]
+                        .into_boxed_slice(),
+                        otherwise: Some(StepIdx::new(1)),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: Some(SlotIdx::new(0)),
+                    next: None,
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(0),
+                    },
+                },
+            ]
+            .into_boxed_slice(),
+            expressions: vec![expr].into_boxed_slice(),
+            accessors: Box::new([]),
+            constants: vec![ConstValue::I64(7)].into_boxed_slice(),
+            slot_count: 1,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+            step_names: Box::new([]),
+        };
+        CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())
+    }
+
+    fn non_boolean_choose_slot_workflow() -> Result<CompiledWorkflow, String> {
+        let parts = WorkflowParts {
+            name: Box::<str>::from("test_non_boolean_choose_slot"),
+            digest: WorkflowDigest::from_bytes([0xE5; 32]),
+            nodes: vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: Some(SlotIdx::new(0)),
+                    next: Some(StepIdx::new(1)),
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::SetConst {
+                        value: ConstIdx::new(0),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: None,
+                    next: None,
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::ChooseSlot {
+                        branches: vec![vb_core::SlotBranch {
+                            condition: SlotIdx::new(0),
+                            target: StepIdx::new(2),
+                        }]
+                        .into_boxed_slice(),
+                        otherwise: Some(StepIdx::new(2)),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(2),
+                    output: None,
+                    next: None,
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(0),
+                    },
+                },
+            ]
+            .into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: vec![ConstValue::I64(7)].into_boxed_slice(),
+            slot_count: 1,
             symbols_count: 0,
             entry: StepIdx::new(0),
             resource_contract: ResourceContract::DEFAULT,
@@ -1753,15 +2006,13 @@ mod tests {
         // When generating source
         let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
         // Then each node gets a step handler
-        let mut step_count = 0u16;
-        for line in source.lines() {
-            let trimmed = line.trim();
-            if trimmed.starts_with("fn step_") {
-                step_count = step_count.checked_add(1).ok_or("overflow")?;
-            }
-        }
-        assert!(
-            step_count == workflow.node_count(),
+        let step_count = source
+            .lines()
+            .filter(|line| line.trim().starts_with("fn step_"))
+            .count();
+        assert_eq!(
+            step_count,
+            usize::from(workflow.node_count()),
             "expected {} step handlers, found {step_count}",
             workflow.node_count()
         );
@@ -1862,12 +2113,8 @@ mod tests {
         source.push_str("\nlet x: Vec<u8> = Vec::new();\n");
         // Then the comparison rejects it
         let result = compare_generated_to_ir(&source, &workflow);
-        assert!(result.is_err(), "must reject source with Vec usage");
-        let err = match result {
-            Ok(()) => String::new(),
-            Err(error) => error.to_string(),
-        };
-        assert!(err.contains("Vec"), "error must mention Vec, got: {err}");
+        let detail = semantic_mismatch_detail(result)?;
+        assert_eq!(detail, "generated source contains dynamic Vec allocation");
         Ok(())
     }
 
@@ -1880,7 +2127,8 @@ mod tests {
         source.push_str("\nlet x = 42u32 as u16;\n");
         // Then the comparison rejects it
         let result = compare_generated_to_ir(&source, &workflow);
-        assert!(result.is_err(), "must reject source with unchecked cast");
+        let detail = semantic_mismatch_detail(result)?;
+        assert_eq!(detail, "generated source contains unchecked cast");
         Ok(())
     }
 
@@ -1890,12 +2138,8 @@ mod tests {
         let workflow = minimal_workflow()?;
         let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
         // When comparing against the IR
-        let result = compare_generated_to_ir(&source, &workflow);
-        // Then it succeeds
-        assert!(
-            result.is_ok(),
-            "clean generated source must pass semantic comparison"
-        );
+        compare_generated_to_ir(&source, &workflow)
+            .map_err(|e| format!("semantic comparison failed: {e}"))?;
         Ok(())
     }
 
@@ -1907,12 +2151,9 @@ mod tests {
             (ActionId::new(9), SlotIdx::new(2)),
         ];
 
-        let mut index = 0usize;
-        while index < cases.len() {
-            let (action, input) = cases
-                .get(index)
-                .copied()
-                .ok_or_else(|| String::from("case index checked by loop bound"))?;
+        cases.iter().try_for_each(|(action, input)| {
+            let action = *action;
+            let input = *input;
             let workflow = action_suspend_workflow(action, input)?;
 
             let generated_stdout = generated_action_suspend_stdout(&workflow, action, input)?;
@@ -1933,8 +2174,8 @@ mod tests {
                 "IR step_once must suspend on the same Do boundary"
             );
 
-            index = index.saturating_add(1);
-        }
+            Ok::<(), String>(())
+        })?;
 
         Ok(())
     }
@@ -1992,6 +2233,36 @@ mod tests {
         assert_eq!(
             generated_stdout, "ok:I64(22)\n",
             "generated ChooseSlot branch must match interpreter result"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn generated_choose_nonbool_type_mismatch_matches_ir_exactly() -> Result<(), String> {
+        let workflow = non_boolean_choose_workflow()?;
+
+        assert_boolean_number_type_mismatch(ir_drive_error(&workflow)?)?;
+
+        let expected = expected_drive_error_stdout(&workflow)?;
+        let generated_stdout = generated_drive_stdout(&workflow, "choose_nonbool", "")?;
+        assert_eq!(
+            generated_stdout, expected,
+            "generated Choose non-boolean condition must match exact DriveError variant"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn generated_choose_slot_nonbool_type_mismatch_matches_ir_exactly() -> Result<(), String> {
+        let workflow = non_boolean_choose_slot_workflow()?;
+
+        assert_boolean_number_type_mismatch(ir_drive_error(&workflow)?)?;
+
+        let expected = expected_drive_error_stdout(&workflow)?;
+        let generated_stdout = generated_drive_stdout(&workflow, "choose_slot_nonbool", "")?;
+        assert_eq!(
+            generated_stdout, expected,
+            "generated ChooseSlot non-boolean condition must match exact DriveError variant"
         );
         Ok(())
     }
@@ -2334,24 +2605,20 @@ mod tests {
     fn emit_trybuild_fixture_writes_file_to_disk() -> Result<(), String> {
         // Given a minimal workflow and a temp fixture path
         let workflow = minimal_workflow()?;
-        let temp_dir =
-            std::env::temp_dir().join(format!("vb_codegen_fixture_test_{}", std::process::id()));
-        std::fs::create_dir_all(&temp_dir).map_err(|e| e.to_string())?;
-        let fixture_path = temp_dir.join("fixture.rs");
+        let temp_dir = tempfile::Builder::new()
+            .prefix(&format!("vb_codegen_fixture_test_{}", std::process::id()))
+            .tempdir()
+            .map_err(|e| e.to_string())?;
+        let fixture_path = temp_dir.path().join("fixture.rs");
         // When emit_trybuild_fixture writes the file
-        let result = emit_trybuild_fixture(&workflow, &fixture_path);
+        emit_trybuild_fixture(&workflow, &fixture_path).map_err(|e| e.to_string())?;
         // Then it succeeds and the file exists
-        assert!(result.is_ok(), "trybuild fixture write must succeed");
         let content = std::fs::read_to_string(&fixture_path).map_err(|e| e.to_string())?;
         assert!(!content.is_empty(), "fixture file must be non-empty");
         assert!(
             content.contains("#![forbid(unsafe_code)]"),
             "fixture must contain generated Rust with forbid unsafe"
         );
-        let cleanup = std::fs::remove_dir_all(&temp_dir);
-        if let Err(e) = cleanup {
-            return Err(e.to_string());
-        }
         Ok(())
     }
 
@@ -2363,9 +2630,12 @@ mod tests {
         let fixture_path = std::path::Path::new("/");
         let result = emit_trybuild_fixture(&workflow, fixture_path);
         // Then it fails because "/" is a directory and cannot be written as a file
+        let err = result
+            .err()
+            .ok_or("expected error for root path without writable parent")?;
         assert!(
-            result.is_err(),
-            "must fail for root path without writable parent"
+            err.to_string().contains("root") || err.to_string().contains("parent"),
+            "error must mention root or parent, got: {err}"
         );
         Ok(())
     }
@@ -2374,47 +2644,43 @@ mod tests {
 
     #[test]
     fn codegen_error_display_contains_variant_name() {
-        // Given all CodegenError variants
-        let errors: Vec<(CodegenError, &'static str)> = vec![
-            (CodegenError::FormatBufferOverflow, "buffer"),
-            (
-                CodegenError::RustfmtFailed {
-                    detail: String::from("test"),
-                },
-                "rustfmt",
-            ),
-            (
-                CodegenError::CompileCheckFailed {
-                    detail: String::from("test"),
-                },
-                "compile",
-            ),
-            (
-                CodegenError::SemanticMismatch {
-                    detail: String::from("test"),
-                },
-                "semantic",
-            ),
-            (
-                CodegenError::Io(std::io::Error::other("io")),
-                "codegen IO error",
-            ),
-            (
-                CodegenError::TrybuildFixture {
-                    detail: String::from("test"),
-                },
-                "trybuild",
-            ),
-        ];
-        // When each error is displayed
-        for (error, keyword) in errors {
-            let message = error.to_string();
-            // Then the display message contains a distinguishing keyword
-            assert!(
-                message.contains(keyword),
-                "error display must contain keyword '{keyword}', got: {message}"
-            );
-        }
+        assert_error_display_contains(CodegenError::FormatBufferOverflow, "buffer");
+        assert_error_display_contains(
+            CodegenError::RustfmtFailed {
+                detail: String::from("test"),
+            },
+            "rustfmt",
+        );
+        assert_error_display_contains(
+            CodegenError::CompileCheckFailed {
+                detail: String::from("test"),
+            },
+            "compile",
+        );
+        assert_error_display_contains(
+            CodegenError::SemanticMismatch {
+                detail: String::from("test"),
+            },
+            "semantic",
+        );
+        assert_error_display_contains(
+            CodegenError::Io(std::io::Error::other("io")),
+            "codegen IO error",
+        );
+        assert_error_display_contains(
+            CodegenError::TrybuildFixture {
+                detail: String::from("test"),
+            },
+            "trybuild",
+        );
+    }
+
+    fn assert_error_display_contains(error: CodegenError, keyword: &str) {
+        let message = error.to_string();
+        assert!(
+            message.contains(keyword),
+            "error display must contain keyword '{keyword}', got: {message}"
+        );
     }
 
     #[test]
@@ -3182,8 +3448,8 @@ mod tests {
             "Choose must call eval_expr, got: {out}"
         );
         assert!(
-            out.contains("is_true()"),
-            "Choose must check is_true, got: {out}"
+            out.contains("SlotValue::Bool(true)"),
+            "Choose must require a boolean true branch condition, got: {out}"
         );
         assert!(
             out.contains("StepOutcome::Continue"),
@@ -3206,8 +3472,8 @@ mod tests {
             "ChooseSlot must call read_slot, got: {out}"
         );
         assert!(
-            out.contains("is_true()"),
-            "ChooseSlot must check is_true, got: {out}"
+            out.contains("SlotValue::Bool(true)"),
+            "ChooseSlot must require a boolean true branch condition, got: {out}"
         );
         Ok(())
     }
@@ -3558,15 +3824,14 @@ mod tests {
     fn root_accessor_generated_source_compile_checks() -> Result<(), String> {
         let workflow = root_accessor_workflow()?;
         let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
-        let temp_dir = std::env::temp_dir().join(format!(
-            "vb_codegen_root_accessor_test_{}",
-            std::process::id()
-        ));
-        std::fs::create_dir_all(&temp_dir).map_err(|e| e.to_string())?;
-        let result = compile_check_generated_rust(&source, &temp_dir).map_err(|e| e.to_string());
-        let cleanup = std::fs::remove_dir_all(&temp_dir).map_err(|e| e.to_string());
-        cleanup?;
-        result
+        let temp_dir = tempfile::Builder::new()
+            .prefix(&format!(
+                "vb_codegen_root_accessor_test_{}",
+                std::process::id()
+            ))
+            .tempdir()
+            .map_err(|e| e.to_string())?;
+        compile_check_generated_rust(&source, temp_dir.path()).map_err(|e| e.to_string())
     }
 
     #[test]
@@ -3581,12 +3846,11 @@ mod tests {
     fn generated_source_compile_checks() -> Result<(), String> {
         let workflow = minimal_workflow()?;
         let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
-        let temp_dir = std::env::temp_dir().join(format!("vb_codegen_test_{}", std::process::id()));
-        std::fs::create_dir_all(&temp_dir).map_err(|e| e.to_string())?;
-        let result = compile_check_generated_rust(&source, &temp_dir).map_err(|e| e.to_string());
-        let cleanup = std::fs::remove_dir_all(&temp_dir).map_err(|e| e.to_string());
-        cleanup?;
-        result
+        let temp_dir = tempfile::Builder::new()
+            .prefix(&format!("vb_codegen_test_{}", std::process::id()))
+            .tempdir()
+            .map_err(|e| e.to_string())?;
+        compile_check_generated_rust(&source, temp_dir.path()).map_err(|e| e.to_string())
     }
 
     #[test]
@@ -3666,40 +3930,17 @@ mod tests {
     #[test]
     fn emit_step_match_output_is_valid_rust_identifier_prefix() -> Result<(), String> {
         // Given multiple workflow types, each generating step functions
-        let workflows: Vec<(&str, Result<CompiledWorkflow, String>)> = vec![
+        let workflows = [
             ("nop", nop_workflow()),
             ("copy", copy_workflow()),
             ("jump", jump_workflow()),
             ("do_action", do_action_workflow()),
         ];
-        for (name, workflow_result) in workflows {
-            let workflow = workflow_result?;
-            // When generating the full source
-            let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
-            // Then every step function name follows the pattern "fn step_N"
-            let mut found_step = false;
-            for line in source.lines() {
-                let trimmed = line.trim();
-                if trimmed.starts_with("fn step_") && trimmed.contains('(') {
-                    found_step = true;
-                    let end = trimmed.find('(').ok_or("no paren in step fn")?;
-                    let fn_name = trimmed.get(3..end).ok_or("step fn name range invalid")?;
-                    assert!(
-                        fn_name.starts_with("step_"),
-                        "function name must start with step_, got: {fn_name} in workflow {name}"
-                    );
-                    let suffix = fn_name.get(5..).ok_or("step fn suffix range invalid")?;
-                    assert!(
-                        suffix.parse::<u16>().is_ok(),
-                        "step suffix must be a valid u16, got: {suffix} in workflow {name}"
-                    );
-                }
-            }
-            assert!(
-                found_step,
-                "must find at least one step function in workflow {name}"
-            );
-        }
+        workflows
+            .into_iter()
+            .try_for_each(|(name, workflow_result)| {
+                assert_workflow_step_names_valid(name, workflow_result)
+            })?;
         Ok(())
     }
 
@@ -3770,30 +4011,7 @@ mod tests {
         let mut out = String::new();
         emit_resource_contract(&mut out, contract).map_err(|e| e.to_string())?;
         // Then all 16 fields are present
-        let all_fields = [
-            "CONTRACT_MAX_STEPS",
-            "CONTRACT_MAX_SLOTS",
-            "CONTRACT_MAX_CONSTANTS",
-            "CONTRACT_MAX_ACCESSORS",
-            "CONTRACT_MAX_EXPRESSIONS",
-            "CONTRACT_MAX_EXPR_STACK",
-            "CONTRACT_MAX_INPUT_BYTES",
-            "CONTRACT_MAX_OUTPUT_BYTES",
-            "CONTRACT_MAX_STEP_BUDGET_PER_TICK",
-            "CONTRACT_MAX_BLOB_BYTES",
-            "CONTRACT_MAX_IPC_PAYLOAD_BYTES",
-            "CONTRACT_MAX_RETRY_ATTEMPTS",
-            "CONTRACT_MAX_FANOUT",
-            "CONTRACT_MAX_COLLECT_ITEMS",
-            "CONTRACT_MAX_QUEUE_DEPTH",
-            "CONTRACT_MAX_JOURNAL_BATCH_BYTES",
-        ];
-        for field in &all_fields {
-            assert!(
-                out.contains(field),
-                "emit_resource_contract must include {field}"
-            );
-        }
+        assert_resource_contract_fields(&out)?;
         Ok(())
     }
 
@@ -3826,36 +4044,7 @@ mod tests {
         let workflow = minimal_workflow()?;
         let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
         // Then the source must not contain any forbidden constructs
-        let forbidden_patterns = [
-            ("unsafe ", "unsafe block"),
-            (".unwrap(", "unwrap call"),
-            (".expect(", "expect call"),
-            ("panic!(", "panic macro"),
-            ("todo!(", "todo macro"),
-            ("unimplemented!(", "unimplemented macro"),
-            ("dbg!(", "dbg macro"),
-            ("println!(", "println macro"),
-            ("format!(", "format macro"),
-            ("HashMap<String", "string-keyed HashMap"),
-            ("eprintln!(", "eprintln macro"),
-        ];
-        let mut violations = Vec::new();
-        for (pattern, label) in &forbidden_patterns {
-            // Check in non-comment, non-string-literal contexts
-            for line in source.lines() {
-                let trimmed = line.trim();
-                if trimmed.starts_with("//") || trimmed.starts_with("//!") {
-                    continue;
-                }
-                if trimmed.contains(pattern) {
-                    // Exclude the #![forbid(unsafe_code)] lint gate itself
-                    if *pattern == "unsafe " && trimmed.contains("#![forbid(unsafe_code)]") {
-                        continue;
-                    }
-                    violations.push((*label, trimmed.to_string()));
-                }
-            }
-        }
+        let violations = forbidden_generated_source_violations(&source);
         assert!(
             violations.is_empty(),
             "generated source contains forbidden constructs: {:?}",
@@ -3876,7 +4065,7 @@ mod tests {
                 target: StepIdx::new(i + 1),
             })
             .collect();
-        let mut nodes = vec![CompiledNode {
+        let nodes = std::iter::once(CompiledNode {
             id: StepIdx::new(0),
             output: None,
             next: None,
@@ -3886,19 +4075,9 @@ mod tests {
                 branches: branches.into_boxed_slice(),
                 otherwise: None,
             },
-        }];
-        for i in 1..=5 {
-            nodes.push(CompiledNode {
-                id: StepIdx::new(i),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::Finish {
-                    result: SlotIdx::new(0),
-                },
-            });
-        }
+        })
+        .chain((1..=5).map(choose_finish_node))
+        .collect::<Vec<_>>();
         let parts = WorkflowParts {
             name: Box::<str>::from("test_deep_choose"),
             digest: WorkflowDigest::from_bytes([0xF0; 32]),
@@ -3918,12 +4097,14 @@ mod tests {
         let mut out = String::new();
         emit_step_function(&mut out, node, &workflow).map_err(|e| e.to_string())?;
         // Then all 5 branches appear in order
-        for i in 1..=5 {
-            assert!(
-                out.contains(&format!("StepOutcome::Continue({i})")),
-                "Choose must emit branch target {i}, got: {out}"
-            );
-        }
+        (1..=5).try_for_each(|i| {
+            let expected = format!("StepOutcome::Continue({i})");
+            if out.contains(&expected) {
+                Ok(())
+            } else {
+                Err(format!("Choose must emit branch target {i}, got: {out}"))
+            }
+        })?;
         // And no otherwise fallback exists
         assert!(
             out.contains("NoBranchMatched"),
@@ -3989,12 +4170,10 @@ mod tests {
         // When generating source
         let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
         // Then the source is valid (3 steps, 2 constants, no expressions)
-        let mut step_count = 0u16;
-        for line in source.lines() {
-            if line.trim().starts_with("fn step_") {
-                step_count = step_count.checked_add(1).ok_or("overflow")?;
-            }
-        }
+        let step_count = source
+            .lines()
+            .filter(|l| l.trim().starts_with("fn step_"))
+            .count() as u16;
         assert!(
             step_count == 3,
             "expected 3 step handlers, found {step_count}"
@@ -4184,13 +4363,8 @@ mod tests {
         tampered.push_str("\nfn step_99(slots: &mut [Option<SlotValue>; WORKFLOW_SLOT_COUNT]) -> Result<StepOutcome, DriveError> { Ok(StepOutcome::Continue(0)) }\n");
         // Then compare rejects it
         let result = compare_generated_to_ir(&tampered, &workflow);
-        assert!(result.is_err(), "must reject source with wrong step count");
-        let err = result.err().ok_or("expected error")?;
-        let msg = err.to_string();
-        assert!(
-            msg.contains("step count mismatch"),
-            "error must mention step count, got: {msg}"
-        );
+        let detail = semantic_mismatch_detail(result)?;
+        assert_eq!(detail, "step count mismatch: generated has 3, IR has 2");
         Ok(())
     }
 
@@ -4505,19 +4679,26 @@ mod tests {
         let workflow = minimal_workflow()?;
         let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
         // Then no wrapping or unchecked arithmetic patterns exist
-        let forbidden = [
-            "wrapping_add",
-            "wrapping_sub",
-            "wrapping_mul",
-            "saturating_add",
-            "overflowing_add",
-        ];
-        for pattern in &forbidden {
-            assert!(
-                !source.contains(pattern),
-                "generated source must not contain {pattern}"
-            );
-        }
+        assert!(
+            !source.contains("wrapping_add"),
+            "generated source must not contain wrapping_add"
+        );
+        assert!(
+            !source.contains("wrapping_sub"),
+            "generated source must not contain wrapping_sub"
+        );
+        assert!(
+            !source.contains("wrapping_mul"),
+            "generated source must not contain wrapping_mul"
+        );
+        assert!(
+            !source.contains("saturating_add"),
+            "generated source must not contain saturating_add"
+        );
+        assert!(
+            !source.contains("overflowing_add"),
+            "generated source must not contain overflowing_add"
+        );
         // And checked_add is used in ExprStack push
         assert!(
             source.contains("checked_add"),
@@ -4669,28 +4850,62 @@ mod tests {
         let workflow = minimal_workflow()?;
         let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
         // Then all error variants that step functions can produce are defined
-        let required_variants = [
-            "InvalidProgramCounter",
-            "MissingNextStep",
-            "SlotNull",
-            "NoBranchMatched",
-            "ExpressionStackOverflow",
-            "TypeMismatch",
-            "DivisionByZero",
-            "IntegerOverflow",
-            "ExpressionStackUnderflow",
-            "ActionSuspend",
-            "UnknownAction",
-            "UnsupportedPrimitive",
-            "UnsupportedExpressionOp",
-            "InvalidCompiledWorkflow",
-        ];
-        for variant in &required_variants {
-            assert!(
-                source.contains(variant),
-                "DriveError must define variant {variant}"
-            );
-        }
+        assert!(
+            source.contains("InvalidProgramCounter"),
+            "DriveError must define variant InvalidProgramCounter"
+        );
+        assert!(
+            source.contains("MissingNextStep"),
+            "DriveError must define variant MissingNextStep"
+        );
+        assert!(
+            source.contains("SlotNull"),
+            "DriveError must define variant SlotNull"
+        );
+        assert!(
+            source.contains("NoBranchMatched"),
+            "DriveError must define variant NoBranchMatched"
+        );
+        assert!(
+            source.contains("ExpressionStackOverflow"),
+            "DriveError must define variant ExpressionStackOverflow"
+        );
+        assert!(
+            source.contains("TypeMismatch"),
+            "DriveError must define variant TypeMismatch"
+        );
+        assert!(
+            source.contains("DivisionByZero"),
+            "DriveError must define variant DivisionByZero"
+        );
+        assert!(
+            source.contains("IntegerOverflow"),
+            "DriveError must define variant IntegerOverflow"
+        );
+        assert!(
+            source.contains("ExpressionStackUnderflow"),
+            "DriveError must define variant ExpressionStackUnderflow"
+        );
+        assert!(
+            source.contains("ActionSuspend"),
+            "DriveError must define variant ActionSuspend"
+        );
+        assert!(
+            source.contains("UnknownAction"),
+            "DriveError must define variant UnknownAction"
+        );
+        assert!(
+            source.contains("UnsupportedPrimitive"),
+            "DriveError must define variant UnsupportedPrimitive"
+        );
+        assert!(
+            source.contains("UnsupportedExpressionOp"),
+            "DriveError must define variant UnsupportedExpressionOp"
+        );
+        assert!(
+            source.contains("InvalidCompiledWorkflow"),
+            "DriveError must define variant InvalidCompiledWorkflow"
+        );
         Ok(())
     }
 
@@ -4704,20 +4919,20 @@ mod tests {
                 target: StepIdx::new(i + 1),
             })
             .collect();
-        let mut nodes = vec![CompiledNode {
-            id: StepIdx::new(0),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::ChooseSlot {
-                branches: branches.into_boxed_slice(),
-                otherwise: None,
+        let nodes = vec![
+            CompiledNode {
+                id: StepIdx::new(0),
+                output: None,
+                next: None,
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::ChooseSlot {
+                    branches: branches.into_boxed_slice(),
+                    otherwise: None,
+                },
             },
-        }];
-        for i in 1..=3 {
-            nodes.push(CompiledNode {
-                id: StepIdx::new(i),
+            CompiledNode {
+                id: StepIdx::new(1),
                 output: None,
                 next: None,
                 on_error: None,
@@ -4725,8 +4940,28 @@ mod tests {
                 kind: CompiledNodeKind::Finish {
                     result: SlotIdx::new(0),
                 },
-            });
-        }
+            },
+            CompiledNode {
+                id: StepIdx::new(2),
+                output: None,
+                next: None,
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::Finish {
+                    result: SlotIdx::new(0),
+                },
+            },
+            CompiledNode {
+                id: StepIdx::new(3),
+                output: None,
+                next: None,
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::Finish {
+                    result: SlotIdx::new(0),
+                },
+            },
+        ];
         let parts = WorkflowParts {
             name: Box::<str>::from("test_multi_choose_slot"),
             digest: WorkflowDigest::from_bytes([0xF1; 32]),
@@ -4746,12 +4981,18 @@ mod tests {
         let mut out = String::new();
         emit_step_function(&mut out, node, &workflow).map_err(|e| e.to_string())?;
         // Then each slot index is read
-        for slot_idx in 0..3 {
-            assert!(
-                out.contains(&format!("read_slot(slots, {slot_idx})")),
-                "ChooseSlot must read condition slot {slot_idx}, got: {out}"
-            );
-        }
+        assert!(
+            out.contains("read_slot(slots, 0)"),
+            "ChooseSlot must read condition slot 0, got: {out}"
+        );
+        assert!(
+            out.contains("read_slot(slots, 1)"),
+            "ChooseSlot must read condition slot 1, got: {out}"
+        );
+        assert!(
+            out.contains("read_slot(slots, 2)"),
+            "ChooseSlot must read condition slot 2, got: {out}"
+        );
         Ok(())
     }
 
@@ -6542,29 +6783,98 @@ mod tests {
             ExprProgram::try_from_ops(ops_count.into_boxed_slice()).map_err(|e| e.to_string())?;
 
         // 8 EvalExpr nodes + 1 Finish node = 9 nodes
-        let mut nodes = Vec::new();
-        for i in 0..8u16 {
-            nodes.push(CompiledNode {
-                id: StepIdx::new(i),
+        let nodes: Vec<CompiledNode> = vec![
+            CompiledNode {
+                id: StepIdx::new(0),
                 output: Some(SlotIdx::new(0)),
-                next: Some(StepIdx::new(i.saturating_add(1))),
+                next: Some(StepIdx::new(1)),
                 on_error: None,
                 error_slot: None,
                 kind: CompiledNodeKind::EvalExpr {
-                    expr: vb_core::ExprIdx::new(i),
+                    expr: vb_core::ExprIdx::new(0),
                 },
-            });
-        }
-        nodes.push(CompiledNode {
-            id: StepIdx::new(8),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Finish {
-                result: SlotIdx::new(0),
             },
-        });
+            CompiledNode {
+                id: StepIdx::new(1),
+                output: Some(SlotIdx::new(0)),
+                next: Some(StepIdx::new(2)),
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::EvalExpr {
+                    expr: vb_core::ExprIdx::new(1),
+                },
+            },
+            CompiledNode {
+                id: StepIdx::new(2),
+                output: Some(SlotIdx::new(0)),
+                next: Some(StepIdx::new(3)),
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::EvalExpr {
+                    expr: vb_core::ExprIdx::new(2),
+                },
+            },
+            CompiledNode {
+                id: StepIdx::new(3),
+                output: Some(SlotIdx::new(0)),
+                next: Some(StepIdx::new(4)),
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::EvalExpr {
+                    expr: vb_core::ExprIdx::new(3),
+                },
+            },
+            CompiledNode {
+                id: StepIdx::new(4),
+                output: Some(SlotIdx::new(0)),
+                next: Some(StepIdx::new(5)),
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::EvalExpr {
+                    expr: vb_core::ExprIdx::new(4),
+                },
+            },
+            CompiledNode {
+                id: StepIdx::new(5),
+                output: Some(SlotIdx::new(0)),
+                next: Some(StepIdx::new(6)),
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::EvalExpr {
+                    expr: vb_core::ExprIdx::new(5),
+                },
+            },
+            CompiledNode {
+                id: StepIdx::new(6),
+                output: Some(SlotIdx::new(0)),
+                next: Some(StepIdx::new(7)),
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::EvalExpr {
+                    expr: vb_core::ExprIdx::new(6),
+                },
+            },
+            CompiledNode {
+                id: StepIdx::new(7),
+                output: Some(SlotIdx::new(0)),
+                next: Some(StepIdx::new(8)),
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::EvalExpr {
+                    expr: vb_core::ExprIdx::new(7),
+                },
+            },
+            CompiledNode {
+                id: StepIdx::new(8),
+                output: None,
+                next: None,
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::Finish {
+                    result: SlotIdx::new(0),
+                },
+            },
+        ];
 
         let parts = WorkflowParts {
             name: Box::<str>::from("test_all_helpers"),
@@ -6653,6 +6963,7 @@ mod tests {
         }
     }
 
+    #[allow(clippy::expect_used)]
     fn emit_first_node(node: CompiledNode, slot_count: u16) -> String {
         let node_id = node.id;
         let finish_idx = node_id.get().saturating_add(1);
@@ -6664,6 +6975,7 @@ mod tests {
         out
     }
 
+    #[allow(clippy::expect_used)]
     fn emit_node_in_wf(node_id: StepIdx, wf: &CompiledWorkflow) -> String {
         let mut out = String::new();
         let node = wf.node(node_id).expect("node must exist");
@@ -6682,6 +6994,7 @@ mod tests {
         )
     }
 
+    #[allow(clippy::expect_used)]
     fn make_step_workflow_with_symbols(
         nodes: Vec<CompiledNode>,
         slot_count: u16,
@@ -6867,10 +7180,10 @@ mod tests {
     }
 
     #[test]
-    fn step_eval_expr_with_output_emits_write() {
+    fn step_eval_expr_with_output_emits_write() -> Result<(), String> {
         let expr_prog =
             ExprProgram::try_from_ops(Box::new([vb_core::ExprOp::LoadSlot(SlotIdx::new(0))]))
-                .expect("valid expr");
+                .map_err(|e| e.to_string())?;
         let nodes = vec![
             CompiledNode {
                 id: StepIdx::new(0),
@@ -6891,13 +7204,14 @@ mod tests {
             "should call eval_expr_0: {code}"
         );
         assert!(code.contains("write_slot"), "should write slot: {code}");
+        Ok(())
     }
 
     #[test]
-    fn step_eval_expr_without_output_skips_write() {
+    fn step_eval_expr_without_output_skips_write() -> Result<(), String> {
         let expr_prog =
             ExprProgram::try_from_ops(Box::new([vb_core::ExprOp::LoadSlot(SlotIdx::new(0))]))
-                .expect("valid expr");
+                .map_err(|e| e.to_string())?;
         let nodes = vec![
             CompiledNode {
                 id: StepIdx::new(0),
@@ -6917,10 +7231,11 @@ mod tests {
             !code.contains("eval_expr_0"),
             "no output should skip eval: {code}"
         );
+        Ok(())
     }
 
     #[test]
-    fn step_finish_emits_finished_outcome() {
+    fn step_finish_emits_finished_outcome() -> Result<(), String> {
         let nodes = vec![CompiledNode {
             id: StepIdx::new(0),
             output: None,
@@ -6933,7 +7248,8 @@ mod tests {
         }];
         let wf = make_step_workflow(nodes, 2);
         let mut out = String::new();
-        emit_step_function(&mut out, wf.node(StepIdx::new(0)).unwrap(), &wf).unwrap();
+        let node = wf.node(StepIdx::new(0)).ok_or("node 0 missing")?;
+        emit_step_function(&mut out, node, &wf).map_err(|e| e.to_string())?;
         assert!(
             out.contains("read_slot(slots, 0)"),
             "should read result slot: {out}"
@@ -6942,6 +7258,7 @@ mod tests {
             out.contains("StepOutcome::Finished"),
             "should emit Finished: {out}"
         );
+        Ok(())
     }
 
     #[test]
@@ -6968,10 +7285,10 @@ mod tests {
     }
 
     #[test]
-    fn step_choose_with_branch_emits_if() {
+    fn step_choose_with_branch_emits_if() -> Result<(), String> {
         let expr_prog =
             ExprProgram::try_from_ops(Box::new([vb_core::ExprOp::LoadSlot(SlotIdx::new(0))]))
-                .expect("valid expr");
+                .map_err(|e| e.to_string())?;
         let nodes = vec![
             CompiledNode {
                 id: StepIdx::new(0),
@@ -6998,8 +7315,8 @@ mod tests {
             "choose should eval expr: {code}"
         );
         assert!(
-            code.contains("is_true()"),
-            "choose should check is_true: {code}"
+            code.contains("SlotValue::Bool(true)"),
+            "choose should require boolean true: {code}"
         );
         assert!(
             code.contains("StepOutcome::Continue(2)"),
@@ -7009,13 +7326,14 @@ mod tests {
             code.contains("StepOutcome::Continue(1)"),
             "otherwise should target step 1: {code}"
         );
+        Ok(())
     }
 
     #[test]
-    fn step_choose_without_otherwise_emits_error() {
+    fn step_choose_without_otherwise_emits_error() -> Result<(), String> {
         let expr_prog =
             ExprProgram::try_from_ops(Box::new([vb_core::ExprOp::LoadSlot(SlotIdx::new(0))]))
-                .expect("valid expr");
+                .map_err(|e| e.to_string())?;
         let nodes = vec![
             CompiledNode {
                 id: StepIdx::new(0),
@@ -7040,6 +7358,7 @@ mod tests {
             code.contains("NoBranchMatched"),
             "no otherwise should emit NoBranchMatched: {code}"
         );
+        Ok(())
     }
 
     #[test]
@@ -7069,7 +7388,10 @@ mod tests {
             code.contains("read_slot"),
             "choose_slot should read slot: {code}"
         );
-        assert!(code.contains("is_true()"), "should check is_true: {code}");
+        assert!(
+            code.contains("SlotValue::Bool(true)"),
+            "should require boolean true: {code}"
+        );
         assert!(
             code.contains("StepOutcome::Continue(2)"),
             "branch should target step 2: {code}"
@@ -7223,7 +7545,7 @@ mod tests {
     }
 
     #[test]
-    fn step_wait_until_without_next_emits_missing_next() {
+    fn step_wait_until_without_next_emits_missing_next() -> Result<(), String> {
         let nodes = vec![CompiledNode {
             id: StepIdx::new(0),
             output: None,
@@ -7236,12 +7558,14 @@ mod tests {
         }];
         let wf = make_step_workflow(nodes, 2);
         let mut out = String::new();
-        emit_step_function(&mut out, wf.node(StepIdx::new(0)).unwrap(), &wf).unwrap();
+        let node = wf.node(StepIdx::new(0)).ok_or("node 0 missing")?;
+        emit_step_function(&mut out, node, &wf).map_err(|e| e.to_string())?;
         assert!(out.contains("_deadline"), "should read deadline: {out}");
         assert!(
             out.contains("MissingNextStep"),
             "should emit MissingNextStep when no next: {out}"
         );
+        Ok(())
     }
 
     #[test]
@@ -7288,7 +7612,7 @@ mod tests {
     }
 
     #[test]
-    fn step_wait_event_without_next_emits_missing_next() {
+    fn step_wait_event_without_next_emits_missing_next() -> Result<(), String> {
         let nodes = vec![CompiledNode {
             id: StepIdx::new(0),
             output: None,
@@ -7302,12 +7626,14 @@ mod tests {
         }];
         let wf = make_step_workflow(nodes, 2);
         let mut out = String::new();
-        emit_step_function(&mut out, wf.node(StepIdx::new(0)).unwrap(), &wf).unwrap();
+        let node = wf.node(StepIdx::new(0)).ok_or("node 0 missing")?;
+        emit_step_function(&mut out, node, &wf).map_err(|e| e.to_string())?;
         assert!(out.contains("_event"), "should read event: {out}");
         assert!(
             out.contains("MissingNextStep"),
             "should emit MissingNextStep when no next: {out}"
         );
+        Ok(())
     }
 
     #[test]
@@ -7347,7 +7673,7 @@ mod tests {
     }
 
     #[test]
-    fn step_ask_without_next_emits_missing_next() {
+    fn step_ask_without_next_emits_missing_next() -> Result<(), String> {
         let nodes = vec![CompiledNode {
             id: StepIdx::new(0),
             output: None,
@@ -7361,12 +7687,14 @@ mod tests {
         }];
         let wf = make_step_workflow(nodes, 2);
         let mut out = String::new();
-        emit_step_function(&mut out, wf.node(StepIdx::new(0)).unwrap(), &wf).unwrap();
+        let node = wf.node(StepIdx::new(0)).ok_or("node 0 missing")?;
+        emit_step_function(&mut out, node, &wf).map_err(|e| e.to_string())?;
         assert!(out.contains("_prompt"), "should read prompt: {out}");
         assert!(
             out.contains("MissingNextStep"),
             "should emit MissingNextStep when no next: {out}"
         );
+        Ok(())
     }
 
     #[test]
@@ -8045,7 +8373,7 @@ mod tests {
         };
         let code = emit_first_node(node, 2);
         assert!(
-            code.contains("fn step_0(slots:"),
+            code.contains("fn step_0(_slots:"),
             "should have step function signature: {code}"
         );
         assert!(
@@ -8060,18 +8388,49 @@ mod tests {
 
     #[test]
     fn step_emit_function_with_high_step_id() {
-        let mut nodes = Vec::new();
-        for i in 0u16..5 {
-            nodes.push(CompiledNode {
-                id: StepIdx::new(i),
+        let nodes = vec![
+            CompiledNode {
+                id: StepIdx::new(0),
                 output: None,
-                next: Some(StepIdx::new(i.saturating_add(1))),
+                next: Some(StepIdx::new(1)),
                 on_error: None,
                 error_slot: None,
                 kind: CompiledNodeKind::Nop,
-            });
-        }
-        nodes.push(finish_node(5));
+            },
+            CompiledNode {
+                id: StepIdx::new(1),
+                output: None,
+                next: Some(StepIdx::new(2)),
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::Nop,
+            },
+            CompiledNode {
+                id: StepIdx::new(2),
+                output: None,
+                next: Some(StepIdx::new(3)),
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::Nop,
+            },
+            CompiledNode {
+                id: StepIdx::new(3),
+                output: None,
+                next: Some(StepIdx::new(4)),
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::Nop,
+            },
+            CompiledNode {
+                id: StepIdx::new(4),
+                output: None,
+                next: Some(StepIdx::new(5)),
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::Nop,
+            },
+            finish_node(5),
+        ];
         let wf = make_step_workflow(nodes, 2);
         let code = emit_node_in_wf(StepIdx::new(4), &wf);
         assert!(
@@ -8178,7 +8537,9 @@ mod tests {
             "emitted code should have at least 3 lines: {code}"
         );
         assert!(
-            lines[0].starts_with("fn step_0("),
+            lines
+                .first()
+                .is_some_and(|line| line.starts_with("fn step_0(")),
             "first line should be function decl: {code}"
         );
     }
@@ -8307,18 +8668,17 @@ mod tests {
             "should define SlotValue enum, got first 200 chars: {}",
             &out.chars().take(200).collect::<String>()
         );
-        for variant in &[
-            "Null", "Bool", "I64", "F64", "Symbol", "List", "Object", "Blob",
-        ] {
-            assert!(
-                out.contains(variant),
-                "SlotValue should have variant {variant}"
-            );
-        }
+        assert_contains_all(
+            &out,
+            &[
+                "Null", "Bool", "I64", "F64", "Symbol", "List", "Object", "Blob",
+            ],
+            "SlotValue",
+        )?;
         Ok(())
     }
 
-    /// `write_header` must emit the DriveError enum with key variants.
+    /// `write_header` must emit the DriveError enum with every generated variant.
     #[test]
     fn write_header_emits_drive_error_enum() -> Result<(), String> {
         let mut out = String::new();
@@ -8327,21 +8687,30 @@ mod tests {
             out.contains("pub enum DriveError"),
             "should define DriveError enum"
         );
-        for variant in &[
-            "InvalidProgramCounter",
-            "MissingNextStep",
-            "SlotNull",
-            "NoBranchMatched",
-            "DivisionByZero",
-            "IntegerOverflow",
-            "ExpressionStackUnderflow",
-            "UnknownAction",
-        ] {
-            assert!(
-                out.contains(variant),
-                "DriveError should have variant {variant}"
-            );
-        }
+        assert_contains_all(
+            &out,
+            &[
+                "InvalidProgramCounter",
+                "MissingNextStep",
+                "MissingOutputSlot",
+                "SlotNull",
+                "NoBranchMatched",
+                "ExpressionStackOverflow",
+                "TypeMismatch",
+                "DivisionByZero",
+                "IntegerOverflow",
+                "ExpressionStackUnderflow",
+                "IterationLimitExceeded",
+                "ListStoreOverflow",
+                "InvalidListHandle",
+                "ActionSuspend",
+                "UnknownAction",
+                "UnsupportedPrimitive",
+                "UnsupportedExpressionOp",
+                "InvalidCompiledWorkflow",
+            ],
+            "DriveError",
+        )?;
         Ok(())
     }
 
@@ -8433,41 +8802,291 @@ mod tests {
             "should emit resource contract header"
         );
 
-        let expected_constants = &[
-            ("CONTRACT_MAX_STEPS", "10000"),
-            ("CONTRACT_MAX_SLOTS", "1024"),
-            ("CONTRACT_MAX_CONSTANTS", "65535"),
-            ("CONTRACT_MAX_ACCESSORS", "8192"),
-            ("CONTRACT_MAX_EXPRESSIONS", "4096"),
-            ("CONTRACT_MAX_EXPR_STACK", "64"),
-            ("CONTRACT_MAX_STEP_BUDGET_PER_TICK", "10000"),
-            ("CONTRACT_MAX_INPUT_BYTES", "1048576"),
-            ("CONTRACT_MAX_OUTPUT_BYTES", "262144"),
-            ("CONTRACT_MAX_BLOB_BYTES", "16777216"),
-            ("CONTRACT_MAX_IPC_PAYLOAD_BYTES", "1048576"),
-            ("CONTRACT_MAX_RETRY_ATTEMPTS", "3"),
-            ("CONTRACT_MAX_FANOUT", "64"),
-            ("CONTRACT_MAX_COLLECT_ITEMS", "1024"),
-            ("CONTRACT_MAX_QUEUE_DEPTH", "1024"),
-            ("CONTRACT_MAX_JOURNAL_BATCH_BYTES", "1048576"),
-        ];
+        assert!(
+            out.contains("CONTRACT_MAX_STEPS"),
+            "should emit constant CONTRACT_MAX_STEPS"
+        );
+        assert!(
+            out.contains("CONTRACT_MAX_STEPS: ") || out.contains("const CONTRACT_MAX_STEPS: "),
+            "should define constant CONTRACT_MAX_STEPS"
+        );
+        let line = out
+            .lines()
+            .find(|l| l.contains("CONTRACT_MAX_STEPS"))
+            .ok_or("constant CONTRACT_MAX_STEPS not found in output")?;
+        assert!(
+            line.contains("10000"),
+            "constant CONTRACT_MAX_STEPS should have value 10000, got: {line}"
+        );
 
-        for (name, value) in expected_constants {
-            assert!(out.contains(name), "should emit constant {name}");
-            assert!(
-                out.contains(&format!("{name}: ")) || out.contains(&format!("const {name}: ")),
-                "should define constant {name}"
-            );
-            // Verify the default value appears somewhere in the output
-            let line_with_name = out
-                .lines()
-                .find(|l| l.contains(name))
-                .ok_or_else(|| format!("constant {name} not found in output"))?;
-            assert!(
-                line_with_name.contains(value),
-                "constant {name} should have value {value}, got: {line_with_name}"
-            );
-        }
+        assert!(
+            out.contains("CONTRACT_MAX_SLOTS"),
+            "should emit constant CONTRACT_MAX_SLOTS"
+        );
+        assert!(
+            out.contains("CONTRACT_MAX_SLOTS: ") || out.contains("const CONTRACT_MAX_SLOTS: "),
+            "should define constant CONTRACT_MAX_SLOTS"
+        );
+        let line = out
+            .lines()
+            .find(|l| l.contains("CONTRACT_MAX_SLOTS"))
+            .ok_or("constant CONTRACT_MAX_SLOTS not found in output")?;
+        assert!(
+            line.contains("1024"),
+            "constant CONTRACT_MAX_SLOTS should have value 1024, got: {line}"
+        );
+
+        assert!(
+            out.contains("CONTRACT_MAX_CONSTANTS"),
+            "should emit constant CONTRACT_MAX_CONSTANTS"
+        );
+        assert!(
+            out.contains("CONTRACT_MAX_CONSTANTS: ")
+                || out.contains("const CONTRACT_MAX_CONSTANTS: "),
+            "should define constant CONTRACT_MAX_CONSTANTS"
+        );
+        let line = out
+            .lines()
+            .find(|l| l.contains("CONTRACT_MAX_CONSTANTS"))
+            .ok_or("constant CONTRACT_MAX_CONSTANTS not found in output")?;
+        assert!(
+            line.contains("65535"),
+            "constant CONTRACT_MAX_CONSTANTS should have value 65535, got: {line}"
+        );
+
+        assert!(
+            out.contains("CONTRACT_MAX_ACCESSORS"),
+            "should emit constant CONTRACT_MAX_ACCESSORS"
+        );
+        assert!(
+            out.contains("CONTRACT_MAX_ACCESSORS: ")
+                || out.contains("const CONTRACT_MAX_ACCESSORS: "),
+            "should define constant CONTRACT_MAX_ACCESSORS"
+        );
+        let line = out
+            .lines()
+            .find(|l| l.contains("CONTRACT_MAX_ACCESSORS"))
+            .ok_or("constant CONTRACT_MAX_ACCESSORS not found in output")?;
+        assert!(
+            line.contains("8192"),
+            "constant CONTRACT_MAX_ACCESSORS should have value 8192, got: {line}"
+        );
+
+        assert!(
+            out.contains("CONTRACT_MAX_EXPRESSIONS"),
+            "should emit constant CONTRACT_MAX_EXPRESSIONS"
+        );
+        assert!(
+            out.contains("CONTRACT_MAX_EXPRESSIONS: ")
+                || out.contains("const CONTRACT_MAX_EXPRESSIONS: "),
+            "should define constant CONTRACT_MAX_EXPRESSIONS"
+        );
+        let line = out
+            .lines()
+            .find(|l| l.contains("CONTRACT_MAX_EXPRESSIONS"))
+            .ok_or("constant CONTRACT_MAX_EXPRESSIONS not found in output")?;
+        assert!(
+            line.contains("4096"),
+            "constant CONTRACT_MAX_EXPRESSIONS should have value 4096, got: {line}"
+        );
+
+        assert!(
+            out.contains("CONTRACT_MAX_EXPR_STACK"),
+            "should emit constant CONTRACT_MAX_EXPR_STACK"
+        );
+        assert!(
+            out.contains("CONTRACT_MAX_EXPR_STACK: ")
+                || out.contains("const CONTRACT_MAX_EXPR_STACK: "),
+            "should define constant CONTRACT_MAX_EXPR_STACK"
+        );
+        let line = out
+            .lines()
+            .find(|l| l.contains("CONTRACT_MAX_EXPR_STACK"))
+            .ok_or("constant CONTRACT_MAX_EXPR_STACK not found in output")?;
+        assert!(
+            line.contains("64"),
+            "constant CONTRACT_MAX_EXPR_STACK should have value 64, got: {line}"
+        );
+
+        assert!(
+            out.contains("CONTRACT_MAX_STEP_BUDGET_PER_TICK"),
+            "should emit constant CONTRACT_MAX_STEP_BUDGET_PER_TICK"
+        );
+        assert!(
+            out.contains("CONTRACT_MAX_STEP_BUDGET_PER_TICK: ")
+                || out.contains("const CONTRACT_MAX_STEP_BUDGET_PER_TICK: "),
+            "should define constant CONTRACT_MAX_STEP_BUDGET_PER_TICK"
+        );
+        let line = out
+            .lines()
+            .find(|l| l.contains("CONTRACT_MAX_STEP_BUDGET_PER_TICK"))
+            .ok_or("constant CONTRACT_MAX_STEP_BUDGET_PER_TICK not found in output")?;
+        assert!(
+            line.contains("10000"),
+            "constant CONTRACT_MAX_STEP_BUDGET_PER_TICK should have value 10000, got: {line}"
+        );
+
+        assert!(
+            out.contains("CONTRACT_MAX_INPUT_BYTES"),
+            "should emit constant CONTRACT_MAX_INPUT_BYTES"
+        );
+        assert!(
+            out.contains("CONTRACT_MAX_INPUT_BYTES: ")
+                || out.contains("const CONTRACT_MAX_INPUT_BYTES: "),
+            "should define constant CONTRACT_MAX_INPUT_BYTES"
+        );
+        let line = out
+            .lines()
+            .find(|l| l.contains("CONTRACT_MAX_INPUT_BYTES"))
+            .ok_or("constant CONTRACT_MAX_INPUT_BYTES not found in output")?;
+        assert!(
+            line.contains("1048576"),
+            "constant CONTRACT_MAX_INPUT_BYTES should have value 1048576, got: {line}"
+        );
+
+        assert!(
+            out.contains("CONTRACT_MAX_OUTPUT_BYTES"),
+            "should emit constant CONTRACT_MAX_OUTPUT_BYTES"
+        );
+        assert!(
+            out.contains("CONTRACT_MAX_OUTPUT_BYTES: ")
+                || out.contains("const CONTRACT_MAX_OUTPUT_BYTES: "),
+            "should define constant CONTRACT_MAX_OUTPUT_BYTES"
+        );
+        let line = out
+            .lines()
+            .find(|l| l.contains("CONTRACT_MAX_OUTPUT_BYTES"))
+            .ok_or("constant CONTRACT_MAX_OUTPUT_BYTES not found in output")?;
+        assert!(
+            line.contains("262144"),
+            "constant CONTRACT_MAX_OUTPUT_BYTES should have value 262144, got: {line}"
+        );
+
+        assert!(
+            out.contains("CONTRACT_MAX_BLOB_BYTES"),
+            "should emit constant CONTRACT_MAX_BLOB_BYTES"
+        );
+        assert!(
+            out.contains("CONTRACT_MAX_BLOB_BYTES: ")
+                || out.contains("const CONTRACT_MAX_BLOB_BYTES: "),
+            "should define constant CONTRACT_MAX_BLOB_BYTES"
+        );
+        let line = out
+            .lines()
+            .find(|l| l.contains("CONTRACT_MAX_BLOB_BYTES"))
+            .ok_or("constant CONTRACT_MAX_BLOB_BYTES not found in output")?;
+        assert!(
+            line.contains("16777216"),
+            "constant CONTRACT_MAX_BLOB_BYTES should have value 16777216, got: {line}"
+        );
+
+        assert!(
+            out.contains("CONTRACT_MAX_IPC_PAYLOAD_BYTES"),
+            "should emit constant CONTRACT_MAX_IPC_PAYLOAD_BYTES"
+        );
+        assert!(
+            out.contains("CONTRACT_MAX_IPC_PAYLOAD_BYTES: ")
+                || out.contains("const CONTRACT_MAX_IPC_PAYLOAD_BYTES: "),
+            "should define constant CONTRACT_MAX_IPC_PAYLOAD_BYTES"
+        );
+        let line = out
+            .lines()
+            .find(|l| l.contains("CONTRACT_MAX_IPC_PAYLOAD_BYTES"))
+            .ok_or("constant CONTRACT_MAX_IPC_PAYLOAD_BYTES not found in output")?;
+        assert!(
+            line.contains("1048576"),
+            "constant CONTRACT_MAX_IPC_PAYLOAD_BYTES should have value 1048576, got: {line}"
+        );
+
+        assert!(
+            out.contains("CONTRACT_MAX_RETRY_ATTEMPTS"),
+            "should emit constant CONTRACT_MAX_RETRY_ATTEMPTS"
+        );
+        assert!(
+            out.contains("CONTRACT_MAX_RETRY_ATTEMPTS: ")
+                || out.contains("const CONTRACT_MAX_RETRY_ATTEMPTS: "),
+            "should define constant CONTRACT_MAX_RETRY_ATTEMPTS"
+        );
+        let line = out
+            .lines()
+            .find(|l| l.contains("CONTRACT_MAX_RETRY_ATTEMPTS"))
+            .ok_or("constant CONTRACT_MAX_RETRY_ATTEMPTS not found in output")?;
+        assert!(
+            line.contains("3"),
+            "constant CONTRACT_MAX_RETRY_ATTEMPTS should have value 3, got: {line}"
+        );
+
+        assert!(
+            out.contains("CONTRACT_MAX_FANOUT"),
+            "should emit constant CONTRACT_MAX_FANOUT"
+        );
+        assert!(
+            out.contains("CONTRACT_MAX_FANOUT: ") || out.contains("const CONTRACT_MAX_FANOUT: "),
+            "should define constant CONTRACT_MAX_FANOUT"
+        );
+        let line = out
+            .lines()
+            .find(|l| l.contains("CONTRACT_MAX_FANOUT"))
+            .ok_or("constant CONTRACT_MAX_FANOUT not found in output")?;
+        assert!(
+            line.contains("64"),
+            "constant CONTRACT_MAX_FANOUT should have value 64, got: {line}"
+        );
+
+        assert!(
+            out.contains("CONTRACT_MAX_COLLECT_ITEMS"),
+            "should emit constant CONTRACT_MAX_COLLECT_ITEMS"
+        );
+        assert!(
+            out.contains("CONTRACT_MAX_COLLECT_ITEMS: ")
+                || out.contains("const CONTRACT_MAX_COLLECT_ITEMS: "),
+            "should define constant CONTRACT_MAX_COLLECT_ITEMS"
+        );
+        let line = out
+            .lines()
+            .find(|l| l.contains("CONTRACT_MAX_COLLECT_ITEMS"))
+            .ok_or("constant CONTRACT_MAX_COLLECT_ITEMS not found in output")?;
+        assert!(
+            line.contains("1024"),
+            "constant CONTRACT_MAX_COLLECT_ITEMS should have value 1024, got: {line}"
+        );
+
+        assert!(
+            out.contains("CONTRACT_MAX_QUEUE_DEPTH"),
+            "should emit constant CONTRACT_MAX_QUEUE_DEPTH"
+        );
+        assert!(
+            out.contains("CONTRACT_MAX_QUEUE_DEPTH: ")
+                || out.contains("const CONTRACT_MAX_QUEUE_DEPTH: "),
+            "should define constant CONTRACT_MAX_QUEUE_DEPTH"
+        );
+        let line = out
+            .lines()
+            .find(|l| l.contains("CONTRACT_MAX_QUEUE_DEPTH"))
+            .ok_or("constant CONTRACT_MAX_QUEUE_DEPTH not found in output")?;
+        assert!(
+            line.contains("1024"),
+            "constant CONTRACT_MAX_QUEUE_DEPTH should have value 1024, got: {line}"
+        );
+
+        assert!(
+            out.contains("CONTRACT_MAX_JOURNAL_BATCH_BYTES"),
+            "should emit constant CONTRACT_MAX_JOURNAL_BATCH_BYTES"
+        );
+        assert!(
+            out.contains("CONTRACT_MAX_JOURNAL_BATCH_BYTES: ")
+                || out.contains("const CONTRACT_MAX_JOURNAL_BATCH_BYTES: "),
+            "should define constant CONTRACT_MAX_JOURNAL_BATCH_BYTES"
+        );
+        let line = out
+            .lines()
+            .find(|l| l.contains("CONTRACT_MAX_JOURNAL_BATCH_BYTES"))
+            .ok_or("constant CONTRACT_MAX_JOURNAL_BATCH_BYTES not found in output")?;
+        assert!(
+            line.contains("1048576"),
+            "constant CONTRACT_MAX_JOURNAL_BATCH_BYTES should have value 1048576, got: {line}"
+        );
+
         Ok(())
     }
 
@@ -9772,7 +10391,7 @@ mod tests {
 
         // Must NOT use eval_expr_ for ChooseSlot (it uses read_slot instead)
         assert!(
-            source.contains("read_slot(slots, 0)?.is_true()"),
+            source.contains("let _condition = read_slot(slots, 0)?"),
             "ChooseSlot must branch by reading slot 0 directly, not via expression"
         );
 

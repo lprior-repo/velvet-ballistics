@@ -10,15 +10,15 @@ fn fixtures_dir() -> PathBuf {
 }
 
 #[test]
-fn trybuild_compile_fail_tests() {
+fn trybuild_compile_fail_tests() -> Result<(), String> {
     let t = trybuild::TestCases::new();
     let fixtures = fixtures_dir();
 
     // Check that compile-fail fixtures exist and are loadable
     let fixture_files: Vec<_> = std::fs::read_dir(&fixtures)
-        .expect("compile-fail fixtures directory must exist")
+        .map_err(|e| e.to_string())?
         .filter_map(|entry| entry.ok())
-        .filter(|entry| entry.path().extension().map_or(false, |ext| ext == "rs"))
+        .filter(|entry| entry.path().extension().is_some_and(|ext| ext == "rs"))
         .map(|entry| entry.path())
         .collect();
 
@@ -29,16 +29,17 @@ fn trybuild_compile_fail_tests() {
             fixtures.display()
         );
         eprintln!("      This is expected until unsupported-primitive fixtures are added.");
-        return;
+        return Ok(());
     }
 
     for fixture in fixture_files {
         t.compile_fail(&fixture);
     }
+    Ok(())
 }
 
 #[test]
-fn trybuild_pass_tests() {
+fn trybuild_pass_tests() -> Result<(), String> {
     let t = trybuild::TestCases::new();
     let fixtures = fixtures_dir().join("pass");
 
@@ -47,22 +48,23 @@ fn trybuild_pass_tests() {
             "NOTE: No pass fixtures directory found at {}",
             fixtures.display()
         );
-        return;
+        return Ok(());
     }
 
     let fixture_files: Vec<_> = std::fs::read_dir(&fixtures)
-        .expect("pass fixtures directory must exist")
+        .map_err(|e| e.to_string())?
         .filter_map(|entry| entry.ok())
-        .filter(|entry| entry.path().extension().map_or(false, |ext| ext == "rs"))
+        .filter(|entry| entry.path().extension().is_some_and(|ext| ext == "rs"))
         .map(|entry| entry.path())
         .collect();
 
     if fixture_files.is_empty() {
         eprintln!("NOTE: No pass fixtures found in {}", fixtures.display());
-        return;
+        return Ok(());
     }
 
     for fixture in fixture_files {
         t.pass(&fixture);
     }
+    Ok(())
 }

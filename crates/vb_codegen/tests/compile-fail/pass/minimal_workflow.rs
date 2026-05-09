@@ -121,21 +121,17 @@ pub fn drive(mut slots: [Option<SlotValue>; 1]) -> Result<SlotValue, DriveError>
     }
 }
 
-fn step_0(slots: &mut [Option<SlotValue>; WORKFLOW_SLOT_COUNT], list_store: &mut ListStore) -> Result<StepOutcome, DriveError> {
-    let _ = &list_store;
+fn step_0(slots: &mut [Option<SlotValue>; WORKFLOW_SLOT_COUNT], _list_store: &mut ListStore) -> Result<StepOutcome, DriveError> {
     write_slot(slots, 0, Some(read_const(0)?))?;
     Ok(StepOutcome::Continue(1))
 }
 
-fn step_1(slots: &mut [Option<SlotValue>; WORKFLOW_SLOT_COUNT], list_store: &mut ListStore) -> Result<StepOutcome, DriveError> {
-    let _ = &list_store;
+fn step_1(slots: &mut [Option<SlotValue>; WORKFLOW_SLOT_COUNT], _list_store: &mut ListStore) -> Result<StepOutcome, DriveError> {
     let value = read_slot(slots, 0)?;
     Ok(StepOutcome::Finished(value))
 }
 
-fn eval_expr_0(slots: &[Option<SlotValue>; WORKFLOW_SLOT_COUNT], list_store: &ListStore) -> Result<SlotValue, DriveError> {
-    let _ = &slots;
-    let _ = &list_store;
+fn eval_expr_0(_slots: &[Option<SlotValue>; WORKFLOW_SLOT_COUNT], _list_store: &ListStore) -> Result<SlotValue, DriveError> {
     let mut stack = ExprStack::new(1)?;
     stack.push(read_const(0)?)?;
     stack.pop().ok_or(DriveError::ExpressionStackUnderflow)
@@ -153,5 +149,8 @@ pub fn dispatch_action(action_id: u16) -> Result<(), DriveError> {
 
 fn main() {
     let slots = [None; WORKFLOW_SLOT_COUNT];
-    let _result = drive(slots);
+    if let Err(error) = drive(slots) {
+        eprintln!("{error:?}");
+        std::process::exit(1);
+    }
 }
