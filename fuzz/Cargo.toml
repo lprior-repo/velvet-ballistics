@@ -138,3 +138,24 @@ path = "src/bin/admission_fuzz.rs"
 test = false
 doc = false
 bench = false
+
+[[bin]]
+name = "replay_events"
+path = "src/bin/replay_events.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "extract_terminal"
+path = "src/bin/extract_terminal.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "action_tracker"
+path = "src/bin/action_tracker.rs"
+test = false
+doc = false
+bench = false

@@ -35,17 +35,17 @@ fn make_test_frame(run_id: RunId, input_taint: Taint) -> RunFrame {
     frame
 }
 
-fn execute_do_test<'a>(
+fn execute_do_test(
     run: &RunFrame,
     step: StepIdx,
     action: ActionId,
     input: SlotIdx,
     seq: SeqNo,
-    registry_contracts: &'a [&ActionContract],
+    registry_contracts: &[ActionContract],
     granted: &CapabilitySet,
 ) -> vb_runtime::engine::types::RuntimeEngineResult<RuntimeSignal> {
     let contract = match registry_contracts.get(usize::from(action.get())) {
-        Some(c) if c.id == action => *c,
+        Some(c) if c.id == action => c,
         _ => {
             return Err(vb_runtime::engine::types::RuntimeEngineError::Action(
                 vb_core::action::ActionError::UnknownAction { action },
@@ -62,7 +62,7 @@ fn execute_do_test<'a>(
 #[test]
 fn test_execute_do_registered_deterministic_pure_with_clean_input() {
     use vb_runtime::action::ActionRegistry;
-    let registry = ActionRegistry::new();
+    let mut registry = ActionRegistry::new();
     let contract = make_contract(ActionId::new(1), Idempotency::DeterministicPure);
     registry.register(contract.clone()).expect("register should succeed");
     let run_id = RunId::new(1);
@@ -89,7 +89,7 @@ fn test_execute_do_registered_deterministic_pure_with_clean_input() {
 #[test]
 fn test_execute_do_at_least_once_with_secret_input_propagates_taint() {
     use vb_runtime::action::ActionRegistry;
-    let registry = ActionRegistry::new();
+    let mut registry = ActionRegistry::new();
     let contract = make_contract(ActionId::new(2), Idempotency::AtLeastOnceExternal);
     registry.register(contract.clone()).expect("register should succeed");
     let run_id = RunId::new(1);
@@ -107,7 +107,7 @@ fn test_execute_do_at_least_once_with_secret_input_propagates_taint() {
 #[test]
 fn test_execute_do_idempotency_key_matches_compute() {
     use vb_runtime::action::ActionRegistry;
-    let registry = ActionRegistry::new();
+    let mut registry = ActionRegistry::new();
     let contract = make_contract(ActionId::new(3), Idempotency::DeterministicPure);
     registry.register(contract.clone()).expect("register should succeed");
     let run_id = RunId::new(5);
@@ -133,7 +133,7 @@ fn test_execute_do_idempotency_key_matches_compute() {
 #[test]
 fn test_execute_do_unregistered_action_returns_unknown_action_error() {
     use vb_runtime::action::ActionRegistry;
-    let registry = ActionRegistry::new();
+    let mut registry = ActionRegistry::new();
     let run_id = RunId::new(1);
     let step = StepIdx::new(0);
     let seq = SeqNo::new(1);
@@ -149,7 +149,7 @@ fn test_execute_do_unregistered_action_returns_unknown_action_error() {
 #[test]
 fn test_execute_do_deterministic_pure_with_secret_input_fails_taint() {
     use vb_runtime::action::ActionRegistry;
-    let registry = ActionRegistry::new();
+    let mut registry = ActionRegistry::new();
     let contract = make_contract(ActionId::new(4), Idempotency::DeterministicPure);
     registry.register(contract.clone()).expect("register should succeed");
     let run_id = RunId::new(1);
@@ -167,7 +167,7 @@ fn test_execute_do_deterministic_pure_with_secret_input_fails_taint() {
 #[test]
 fn test_execute_do_deterministic_pure_with_derived_secret_fails_taint() {
     use vb_runtime::action::ActionRegistry;
-    let registry = ActionRegistry::new();
+    let mut registry = ActionRegistry::new();
     let contract = make_contract(ActionId::new(5), Idempotency::DeterministicPure);
     registry.register(contract.clone()).expect("register should succeed");
     let run_id = RunId::new(1);
@@ -186,7 +186,7 @@ fn test_execute_do_deterministic_pure_with_derived_secret_fails_taint() {
 fn test_execute_do_missing_capability_returns_capability_denied() {
     use vb_core::capability::{Capability, CapabilitySet};
     use vb_runtime::action::ActionRegistry;
-    let registry = ActionRegistry::new();
+    let mut registry = ActionRegistry::new();
     let required_cap = Capability::new("Network".into(), ActionId::new(6));
     let contract = ActionContract {
         id: ActionId::new(6),
@@ -217,7 +217,7 @@ fn test_execute_do_missing_capability_returns_capability_denied() {
 #[test]
 fn test_resume_ready_writes_output_slot() {
     use vb_runtime::action::ActionRegistry;
-    let registry = ActionRegistry::new();
+    let mut registry = ActionRegistry::new();
     let contract = make_contract(ActionId::new(7), Idempotency::DeterministicPure);
     registry.register(contract.clone()).expect("register should succeed");
     let run_id = RunId::new(1);
@@ -227,7 +227,7 @@ fn test_resume_ready_writes_output_slot() {
     let input_taint = Taint::Clean;
     let frame = make_test_frame(run_id, input_taint);
     let granted = CapabilitySet::empty();
-    let registry_contracts: Vec<_> = registry.registered_contracts();
+    let registry_contracts: Vec<ActionContract> = registry.registered_contracts().into_iter().cloned().collect();
     let exec_result = execute_do_test(&frame, step, action, SlotIdx::new(0), seq, &registry_contracts, &granted);
     let ticket = match exec_result.unwrap() {
         RuntimeSignal::AwaitingAction(t) => t,
@@ -248,7 +248,7 @@ fn test_resume_ready_writes_output_slot() {
 #[test]
 fn test_resume_ready_output_in_bounds() {
     use vb_runtime::action::ActionRegistry;
-    let registry = ActionRegistry::new();
+    let mut registry = ActionRegistry::new();
     let contract = ActionContract {
         id: ActionId::new(8),
         input_slot_count: 1,
@@ -261,7 +261,7 @@ fn test_resume_ready_output_in_bounds() {
         retry_safety: RetrySafety::Safe,
         required_capabilities: Box::new([]),
     };
-    registry.register(contract).expect("register should succeed");
+    registry.register(contract.clone()).expect("register should succeed");
     let ticket = ActionTicket {
         run: RunId::new(1),
         step: StepIdx::new(0),

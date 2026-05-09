@@ -99,7 +99,7 @@ impl Runtime {
     /// Cancels a run.
     pub fn cancel_run(&self, run: RunId) -> RuntimeResult<()> {
         let shard = self.shard_for(run)?;
-        shard.enqueue(ShardCommand::Cancel { run })
+        shard.enqueue(ShardCommand::Cancel { run, reason: None })
     }
 
     /// Resumes a suspended run from its current program counter.
@@ -559,6 +559,7 @@ mod tests {
                     run,
                     step: StepIdx::new(0),
                     output: SlotIdx::new(0),
+                    attempt: 1,
                 },
                 RuntimeJournalEvent::StepStarted {
                     run,
@@ -568,6 +569,7 @@ mod tests {
                     run,
                     step: StepIdx::new(1),
                     output: SlotIdx::ZERO,
+                    attempt: 1,
                 },
                 RuntimeJournalEvent::RunFinished {
                     run,

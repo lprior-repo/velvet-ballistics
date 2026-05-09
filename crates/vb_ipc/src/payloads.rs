@@ -26,6 +26,8 @@ pub enum IpcPayload {
     CancelRun {
         /// Target run identifier.
         run_id: RunId,
+        /// Optional cancellation reason.
+        reason: Option<String>,
     },
     /// Inspect a run.
     InspectRun {

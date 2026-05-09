@@ -119,7 +119,7 @@ fn recover_full_journal_filters_to_latest_attempt() {
         tracker.is_resolved(ActionId::new(2), StepIdx::ZERO),
         "action 2 from attempt 2 (latest) should be resolved"
     );
-    assert(
+    assert!(
         !tracker.is_resolved(ActionId::new(1), StepIdx::ZERO),
         "action 1 from attempt 1 (stale) should NOT be resolved"
     );
@@ -173,7 +173,10 @@ fn stale_terminal_does_not_win_over_failed() {
     let terminal = extract_terminal(&replayed);
 
     // Latest-attempt terminal (RunFailedEvent attempt 2) should win
-    assert!(terminal.is_some(), "extract_terminal should find a terminal");
+    assert!(
+        terminal.is_some(),
+        "extract_terminal should find a terminal"
+    );
     match terminal {
         Some(JournalEvent::RunFailedEvent { attempt, .. }) => {
             assert_eq!(*attempt, 2, "latest-attempt terminal should win");
@@ -416,11 +419,11 @@ fn tracker_only_records_from_max_attempt() {
     );
 
     // Actions from attempt 1 should NOT be resolved
-    assert(
+    assert!(
         !tracker.is_resolved(ActionId::new(1), StepIdx::ZERO),
         "action 1 from attempt 1 (stale) should NOT be resolved"
     );
-    assert(
+    assert!(
         !tracker.is_resolved(ActionId::new(3), StepIdx::new(1)),
         "action 3 from attempt 1 (stale) should NOT be resolved"
     );

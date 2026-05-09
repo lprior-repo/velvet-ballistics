@@ -80,6 +80,9 @@ impl EventSeq {
     pub const fn get(self) -> u64 {
         self.0
     }
+
+    /// Zero event sequence.
+    pub const ZERO: Self = Self(0);
 }
 
 /// Counts queued journal writes by durability profile.

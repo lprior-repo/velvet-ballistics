@@ -68,6 +68,7 @@ commands:
   trace      <run_id> --db <path> [--json|--jsonl]     Show step-by-step execution trace
   retry      <run_id> --db <path> [--json|--jsonl]     Retry a failed run from last successful step
   resume     <run_id> --db <path> [--json|--jsonl]     Resume a suspended run
+  cancel     <run_id> --db <path> [--reason <text>] [--json|--jsonl]  Cancel a run
   bench-run  <workflow.yaml> [--json|--jsonl]          Benchmark a workflow
   doctor     --db <path> [--json|--jsonl]              Run diagnostic checks
   answer     <run_id> --step <N> --value-file <file> --db <path> [--json|--jsonl]  Answer a suspended step
@@ -177,6 +178,12 @@ fn main() -> ExitCode {
             output,
         }) => cmd_submit(&workflow, &input_bin, &db, durability, output),
         Ok(Command::Simulate { workflow, output }) => cmd_simulate(&workflow, output),
+        Ok(Command::Cancel {
+            run_id,
+            db,
+            reason,
+            output,
+        }) => cmd_cancel(&run_id, &db, reason, output),
         Err(e) => exit_from_io(
             &write_error_stderr(&e),
             CliExitCode::ValidationFailed.into(),
@@ -777,6 +784,34 @@ fn cmd_verify(
                     }
                 }
                 commands_verify::VerifyError::BudgetPolicy(msg) => {
+                    if output != OutputFormat::Text {
+                        json_error(
+                            &serde_json::json!({
+                                "success": false,
+                                "profile": profile.as_str(),
+                                "error": msg
+                            }),
+                            output,
+                        );
+                    } else {
+                        errln!("{msg}");
+                    }
+                }
+                commands_verify::VerifyError::StorageError(msg) => {
+                    if output != OutputFormat::Text {
+                        json_error(
+                            &serde_json::json!({
+                                "success": false,
+                                "profile": profile.as_str(),
+                                "error": msg
+                            }),
+                            output,
+                        );
+                    } else {
+                        errln!("{msg}");
+                    }
+                }
+                commands_verify::VerifyError::ReplayDivergence(msg) => {
                     if output != OutputFormat::Text {
                         json_error(
                             &serde_json::json!({
@@ -2606,6 +2641,130 @@ fn cmd_answer(
     CliExitCode::RuntimeFailed.into()
 }
 
+fn run_is_terminal(events: &[vb_storage::JournalEvent]) -> bool {
+    events.iter().any(|e| {
+        matches!(
+            e,
+            vb_storage::JournalEvent::RunFinished { .. }
+                | vb_storage::JournalEvent::RunFailedEvent { .. }
+                | vb_storage::JournalEvent::RunCancelled { .. }
+        )
+    })
+}
+
+fn format_cancel_output(
+    run_id: &str,
+    reason: Option<&str>,
+    note: &str,
+    output: OutputFormat,
+) {
+    if output != OutputFormat::Text {
+        json_out(
+            &serde_json::json!({
+                "success": true,
+                "run_id": run_id,
+                "status": "cancelled",
+                "reason": reason,
+                "note": note,
+            }),
+            output,
+        );
+    } else {
+        let detail = match reason {
+            Some(r) => format!(" (reason: {r})"),
+            None => String::new(),
+        };
+        outln!("Run {run_id} cancelled{detail} ({note})");
+    }
+}
+
+fn write_cancel_event(
+    journal: &vb_storage::FjallJournal,
+    rid: vb_core::RunId,
+    reason: Option<String>,
+    events: &[vb_storage::JournalEvent],
+) -> Result<(), vb_storage::JournalError> {
+    let next_seq = events
+        .last()
+        .map(|e| e.seq().get().saturating_add(1))
+        .unwrap_or(0);
+    let event = vb_storage::JournalEvent::RunCancelled {
+        run: rid,
+        seq: vb_storage::EventSeq::new(next_seq),
+        attempt: 1,
+        reason,
+    };
+    journal.append_journaled(&event)
+}
+
+fn cmd_cancel(
+    run_id: &str,
+    db: &std::path::Path,
+    reason: Option<String>,
+    output: OutputFormat,
+) -> ExitCode {
+    let rid = match parse_run_id(run_id) {
+        Ok(id) => id,
+        Err(code) => return code,
+    };
+
+    let journal = match vb_storage::FjallJournal::open(db, None) {
+        Ok(j) => j,
+        Err(e) => {
+            report_storage_open_error(&e, db, output);
+            return CliExitCode::StorageError.into();
+        }
+    };
+
+    let events = match journal.events_for_run(rid) {
+        Ok(ev) => ev,
+        Err(e) => {
+            if output != OutputFormat::Text {
+                json_error(
+                    &serde_json::json!({
+                        "success": false,
+                        "error": format!("error reading run {run_id}: {e}")
+                    }),
+                    output,
+                );
+            } else {
+                errln!("error reading run {run_id}: {e}");
+            }
+            return CliExitCode::StorageError.into();
+        }
+    };
+
+    // Idempotent: no events means run never existed.
+    if events.is_empty() {
+        format_cancel_output(run_id, reason.as_deref(), "run not found, idempotent", output);
+        return ExitCode::SUCCESS;
+    }
+
+    // Idempotent: already terminal.
+    if run_is_terminal(&events) {
+        format_cancel_output(run_id, reason.as_deref(), "already terminal, idempotent", output);
+        return ExitCode::SUCCESS;
+    }
+
+    if let Err(e) = write_cancel_event(&journal, rid, reason.clone(), &events) {
+        if output != OutputFormat::Text {
+            json_error(
+                &serde_json::json!({
+                    "success": false,
+                    "error": format!("error writing cancel event: {e}")
+                }),
+                output,
+            );
+        } else {
+            errln!("error writing cancel event: {e}");
+        }
+        return CliExitCode::StorageError.into();
+    }
+
+    format_cancel_output(run_id, reason.as_deref(), "cancelled", output);
+    ExitCode::SUCCESS
+}
+
 fn cmd_incident(run_id: &str, db: &std::path::Path, output: OutputFormat) -> ExitCode {
     let rid = match parse_run_id(run_id) {
         Ok(id) => id,
@@ -3997,6 +4156,12 @@ fn write_error_stderr(error: &ParseError) -> io::Result<()> {
                 "unknown verify profile: {profile} (expected: quick, standard, full)\n\n{HELP}"
             )
         }
+        ParseError::ReasonTooLong => {
+            writeln!(
+                handle,
+                "reason exceeds maximum length of 256 characters\n\n{HELP}"
+            )
+        }
     }
 }
 
@@ -4056,6 +4221,12 @@ fn json_error(value: &serde_json::Value, format: OutputFormat) {
     }
 }
 
+mod mode_error;
+
 #[cfg(test)]
 #[path = "main_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "mode_activation_tests.rs"]
+mod mode_activation_tests;

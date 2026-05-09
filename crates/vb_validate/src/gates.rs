@@ -6,6 +6,7 @@
 //! cold-path checks for the accepted-artifact pipeline.
 
 use crate::{ValidationError, ValidationResult};
+use vb_core::limits::MAX_PATH_DEPTH;
 
 // Re-export the core types we need so callers only depend on vb_validate.
 pub use vb_core::ids::{AccessorIdx, ActionId, ConstIdx, ExprIdx, SlotIdx, StepIdx, SymbolId};
@@ -143,10 +144,25 @@ fn stack_effect(_op: &ExprOp) -> i8 {
 pub fn validate_gate_08_accessor_path_segments(parts: &WorkflowParts) -> ValidationResult<()> {
     for (acc_index, accessor) in parts.accessors.iter().enumerate() {
         validate_accessor_root(acc_index, accessor, parts.slot_count)?;
+        let path_len = accessor.path.len();
+        if path_len > MAX_PATH_DEPTH {
+            return Err(ValidationError::AccessorPathTooDeep {
+                accessor_index: acc_index,
+                depth: path_len,
+                max: MAX_PATH_DEPTH,
+            });
+        }
         for (seg_index, segment) in accessor.path.iter().enumerate() {
             match segment {
-                PathSegment::Field(_sym_id) => {
-                    // Symbol IDs are interned; any non-sentinel value is valid.
+                PathSegment::Field(sym_id) => {
+                    if sym_id.get() >= parts.symbols_count {
+                        return Err(ValidationError::AccessorSymbolOutOfBounds {
+                            accessor_index: acc_index,
+                            segment_index: seg_index,
+                            symbol: sym_id.get(),
+                            symbols_count: parts.symbols_count,
+                        });
+                    }
                 }
                 PathSegment::Index(idx) => {
                     if *idx == u32::MAX {
@@ -1210,7 +1226,7 @@ mod tests {
     use vb_core::workflow::ResourceContract;
 
     // Helper: build minimal WorkflowParts with just nodes and slot_count.
-    fn make_parts(nodes: Vec<CompiledNode>, slot_count: u16) -> WorkflowParts {
+    fn make_parts(nodes: Vec<CompiledNode>, slot_count: u16, symbols_count: u32) -> WorkflowParts {
         WorkflowParts {
             name: Box::from("test"),
             digest: vb_core::ids::WorkflowDigest::from_bytes([0u8; 32]),
@@ -1219,7 +1235,7 @@ mod tests {
             accessors: Box::new([]),
             constants: Box::new([]),
             slot_count,
-            symbols_count: 0,
+            symbols_count,
             entry: StepIdx::new(0),
             resource_contract: ResourceContract::DEFAULT,
             step_names: Box::new([]),
@@ -1267,13 +1283,13 @@ mod tests {
 
     #[test]
     fn gate_07_accepts_empty_expressions() {
-        let parts = make_parts(vec![finish_node(0, 0)], 1);
+        let parts = make_parts(vec![finish_node(0, 0)], 1, 0);
         assert_eq!(validate_gate_07_expression_stack_depth(&parts), Ok(()));
     }
 
     #[test]
     fn gate_07_accepts_valid_expression() {
-        let mut parts = make_parts(vec![finish_node(0, 0)], 1);
+        let mut parts = make_parts(vec![finish_node(0, 0)], 1, 0);
         parts.expressions = Box::new([ExprProgram {
             ops: Box::new([ExprOp::LoadSlot(SlotIdx::new(0))]),
             max_stack: 1,
@@ -1283,7 +1299,7 @@ mod tests {
 
     #[test]
     fn gate_07_rejects_stack_mismatch() {
-        let mut parts = make_parts(vec![finish_node(0, 0)], 1);
+        let mut parts = make_parts(vec![finish_node(0, 0)], 1, 0);
         parts.expressions = Box::new([ExprProgram {
             ops: Box::new([ExprOp::LoadSlot(SlotIdx::new(0))]),
             max_stack: 2, // wrong: actual max is 1
@@ -1296,7 +1312,7 @@ mod tests {
 
     #[test]
     fn gate_07_rejects_stack_exceeding_contract() {
-        let mut parts = make_parts(vec![finish_node(0, 0)], 1);
+        let mut parts = make_parts(vec![finish_node(0, 0)], 1, 0);
         parts.resource_contract = ResourceContract {
             max_expr_stack: 2,
             ..ResourceContract::DEFAULT
@@ -1313,7 +1329,7 @@ mod tests {
 
     #[test]
     fn gate_07_rejects_contract_exceeding_protocol_limit() {
-        let mut parts = make_parts(vec![finish_node(0, 0)], 1);
+        let mut parts = make_parts(vec![finish_node(0, 0)], 1, 0);
         parts.resource_contract = ResourceContract {
             max_expr_stack: 128, // exceeds protocol limit of 64
             ..ResourceContract::DEFAULT
@@ -1328,13 +1344,13 @@ mod tests {
 
     #[test]
     fn gate_08_accepts_empty_accessors() {
-        let parts = make_parts(vec![finish_node(0, 0)], 1);
+        let parts = make_parts(vec![finish_node(0, 0)], 1, 0);
         assert_eq!(validate_gate_08_accessor_path_segments(&parts), Ok(()));
     }
 
     #[test]
     fn gate_08_accepts_valid_accessor() {
-        let mut parts = make_parts(vec![finish_node(0, 0)], 2);
+        let mut parts = make_parts(vec![finish_node(0, 0)], 2, 2);
         parts.accessors = Box::new([AccessorProgram {
             root: SlotIdx::new(0),
             path: Box::new([PathSegment::Field(SymbolId::new(1))]),
@@ -1344,7 +1360,7 @@ mod tests {
 
     #[test]
     fn gate_08_rejects_accessor_root_out_of_range() {
-        let mut parts = make_parts(vec![finish_node(0, 0)], 1);
+        let mut parts = make_parts(vec![finish_node(0, 0)], 1, 0);
         parts.accessors = Box::new([AccessorProgram {
             root: SlotIdx::new(5), // out of range for slot_count=1
             path: Box::new([]),
@@ -1357,7 +1373,7 @@ mod tests {
 
     #[test]
     fn gate_08_rejects_sentinel_index_segment() {
-        let mut parts = make_parts(vec![finish_node(0, 0)], 1);
+        let mut parts = make_parts(vec![finish_node(0, 0)], 1, 0);
         parts.accessors = Box::new([AccessorProgram {
             root: SlotIdx::new(0),
             path: Box::new([PathSegment::Index(u32::MAX)]),
@@ -1372,7 +1388,7 @@ mod tests {
 
     #[test]
     fn gate_09_accepts_valid_slot_references() {
-        let parts = make_parts(vec![finish_node(0, 0)], 1);
+        let parts = make_parts(vec![finish_node(0, 0)], 1, 0);
         assert_eq!(validate_gate_09_slot_references(&parts), Ok(()));
     }
 
@@ -1386,7 +1402,7 @@ mod tests {
             error_slot: None,
             kind: CompiledNodeKind::Nop,
         };
-        let parts = make_parts(vec![node], 1);
+        let parts = make_parts(vec![node], 1, 0);
         assert!(matches!(
             validate_gate_09_slot_references(&parts),
             Err(ValidationError::SlotReferenceOutOfRange { .. })
@@ -1396,7 +1412,7 @@ mod tests {
     #[test]
     fn gate_09_rejects_copy_source_out_of_range() {
         let node = copy_node(0, 50, 0); // source=50 out of range for slot_count=1
-        let parts = make_parts(vec![node], 1);
+        let parts = make_parts(vec![node], 1, 0);
         assert!(matches!(
             validate_gate_09_slot_references(&parts),
             Err(ValidationError::SlotReferenceOutOfRange { .. })
@@ -1405,7 +1421,7 @@ mod tests {
 
     #[test]
     fn gate_09_rejects_expr_load_slot_out_of_range() {
-        let mut parts = make_parts(vec![finish_node(0, 0)], 1);
+        let mut parts = make_parts(vec![finish_node(0, 0)], 1, 0);
         parts.expressions = Box::new([ExprProgram {
             ops: Box::new([ExprOp::LoadSlot(SlotIdx::new(99))]),
             max_stack: 1,
@@ -1418,7 +1434,7 @@ mod tests {
 
     #[test]
     fn gate_09_accepts_single_node_workflow() {
-        let parts = make_parts(vec![finish_node(0, 0)], 1);
+        let parts = make_parts(vec![finish_node(0, 0)], 1, 0);
         assert_eq!(validate_gate_09_slot_references(&parts), Ok(()));
     }
 
@@ -1426,7 +1442,7 @@ mod tests {
 
     #[test]
     fn gate_11_accepts_nop_workflow() {
-        let parts = make_parts(vec![nop_node(0), finish_node(1, 0)], 1);
+        let parts = make_parts(vec![nop_node(0), finish_node(1, 0)], 1, 0);
         assert_eq!(validate_gate_11_loop_body_graph(&parts), Ok(()));
     }
 
@@ -1461,7 +1477,7 @@ mod tests {
             },
             finish_node(2, 0),
         ];
-        let parts = make_parts(nodes, 2);
+        let parts = make_parts(nodes, 2, 0);
         assert_eq!(validate_gate_11_loop_body_graph(&parts), Ok(()));
     }
 
@@ -1481,7 +1497,7 @@ mod tests {
                 done: StepIdx::new(2),
             },
         }];
-        let parts = make_parts(nodes, 2);
+        let parts = make_parts(nodes, 2, 0);
         assert!(matches!(
             validate_gate_11_loop_body_graph(&parts),
             Err(ValidationError::LoopBodyStepOutOfRange { .. })
@@ -1504,7 +1520,7 @@ mod tests {
                 done: StepIdx::new(99), // out of range
             },
         }];
-        let parts = make_parts(nodes, 2);
+        let parts = make_parts(nodes, 2, 0);
         assert!(matches!(
             validate_gate_11_loop_body_graph(&parts),
             Err(ValidationError::LoopBodyStepOutOfRange { .. })
@@ -1529,7 +1545,7 @@ mod tests {
             nop_node(2),
             finish_node(3, 0),
         ];
-        let parts = make_parts(nodes, 1);
+        let parts = make_parts(nodes, 1, 0);
         assert_eq!(validate_gate_11_loop_body_graph(&parts), Ok(()));
     }
 
@@ -1546,7 +1562,7 @@ mod tests {
                 join: StepIdx::new(1),
             },
         }];
-        let parts = make_parts(nodes, 1);
+        let parts = make_parts(nodes, 1, 0);
         assert!(matches!(
             validate_gate_11_loop_body_graph(&parts),
             Err(ValidationError::LoopBodyStepOutOfRange { .. })
@@ -1570,7 +1586,7 @@ mod tests {
                 done: StepIdx::new(1),
             },
         }];
-        let parts = make_parts(nodes, 2);
+        let parts = make_parts(nodes, 2, 0);
         assert!(matches!(
             validate_gate_11_loop_body_graph(&parts),
             Err(ValidationError::LoopBodyStepOutOfRange { .. })
@@ -1617,7 +1633,7 @@ mod tests {
             },
             finish_node(3, 0),
         ];
-        let parts = make_parts(nodes, 1);
+        let parts = make_parts(nodes, 1, 0);
         assert_eq!(validate_gate_11_loop_body_graph(&parts), Ok(()));
     }
 
@@ -1625,7 +1641,7 @@ mod tests {
 
     #[test]
     fn gate_13_accepts_empty_slots() {
-        let parts = make_parts(vec![nop_node(0)], 0);
+        let parts = make_parts(vec![nop_node(0)], 0, 0);
         assert_eq!(validate_gate_13_no_slot_cycles(&parts), Ok(()));
     }
 
@@ -1655,7 +1671,7 @@ mod tests {
                 },
             },
         ];
-        let parts = make_parts(nodes, 3);
+        let parts = make_parts(nodes, 3, 0);
         assert_eq!(validate_gate_13_no_slot_cycles(&parts), Ok(()));
     }
 
@@ -1684,7 +1700,7 @@ mod tests {
                 },
             },
         ];
-        let parts = make_parts(nodes, 2);
+        let parts = make_parts(nodes, 2, 0);
         assert_eq!(
             validate_gate_13_no_slot_cycles(&parts),
             Err(ValidationError::SlotDependencyCycle {
@@ -1707,7 +1723,7 @@ mod tests {
                 source: SlotIdx::new(0),
             },
         }];
-        let parts = make_parts(nodes, 1);
+        let parts = make_parts(nodes, 1, 0);
         assert_eq!(
             validate_gate_13_no_slot_cycles(&parts),
             Err(ValidationError::SlotDependencyCycle {
@@ -1720,7 +1736,7 @@ mod tests {
     #[test]
     fn gate13_rejects_direct_self_dependency() {
         // Given an expression node that writes slot 0.
-        let mut parts = make_parts(vec![finish_node(1, 0)], 1);
+        let mut parts = make_parts(vec![finish_node(1, 0)], 1, 0);
         parts.expressions = Box::new([ExprProgram {
             ops: Box::new([ExprOp::LoadSlot(SlotIdx::new(0))]),
             max_stack: 1,
@@ -1783,7 +1799,7 @@ mod tests {
                 },
             },
         ];
-        let parts = make_parts(nodes, 3);
+        let parts = make_parts(nodes, 3, 0);
         assert!(matches!(
             validate_gate_13_no_slot_cycles(&parts),
             Err(ValidationError::SlotDependencyCycle { .. })
@@ -1827,7 +1843,7 @@ mod tests {
                 },
             },
         ];
-        let parts = make_parts(nodes, 4);
+        let parts = make_parts(nodes, 4, 0);
         assert_eq!(validate_gate_13_no_slot_cycles(&parts), Ok(()));
     }
 
@@ -1886,6 +1902,7 @@ mod tests {
                 },
             ],
             2,
+            0,
         );
         parts.expressions = Box::new([ExprProgram {
             ops: Box::new([ExprOp::LoadSlot(SlotIdx::new(1))]),
@@ -1927,6 +1944,7 @@ mod tests {
                 },
             ],
             2,
+            0,
         );
         parts.expressions = Box::new([ExprProgram {
             ops: Box::new([ExprOp::LoadSlot(SlotIdx::new(0))]),
@@ -1972,6 +1990,7 @@ mod tests {
                 },
             ],
             3,
+            0,
         );
         parts.expressions = Box::new([ExprProgram {
             ops: Box::new([ExprOp::LoadSlot(SlotIdx::new(2))]),
@@ -1990,7 +2009,7 @@ mod tests {
 
     #[test]
     fn gate_07_rejects_underflow_binary_op_on_empty_stack() {
-        let mut parts = make_parts(vec![finish_node(0, 0)], 1);
+        let mut parts = make_parts(vec![finish_node(0, 0)], 1, 0);
         parts.expressions = Box::new([ExprProgram {
             ops: Box::new([ExprOp::Eq]), // pops 2 from empty stack => underflow
             max_stack: 0,
@@ -2006,7 +2025,7 @@ mod tests {
 
     #[test]
     fn gate_07_accepts_single_node_workflow_with_no_expressions() {
-        let parts = make_parts(vec![finish_node(0, 0)], 1);
+        let parts = make_parts(vec![finish_node(0, 0)], 1, 0);
         assert_eq!(validate_gate_07_expression_stack_depth(&parts), Ok(()));
     }
 
@@ -2014,7 +2033,7 @@ mod tests {
 
     #[test]
     fn gate_08_accepts_accessor_with_empty_path() {
-        let mut parts = make_parts(vec![finish_node(0, 0)], 1);
+        let mut parts = make_parts(vec![finish_node(0, 0)], 1, 0);
         parts.accessors = Box::new([AccessorProgram {
             root: SlotIdx::new(0),
             path: Box::new([]),
@@ -2024,7 +2043,7 @@ mod tests {
 
     #[test]
     fn gate_08_rejects_max_value_index_segment() {
-        let mut parts = make_parts(vec![finish_node(0, 0)], 1);
+        let mut parts = make_parts(vec![finish_node(0, 0)], 1, 0);
         parts.accessors = Box::new([AccessorProgram {
             root: SlotIdx::new(0),
             path: Box::new([PathSegment::Index(u32::MAX)]),
@@ -2040,7 +2059,7 @@ mod tests {
 
     #[test]
     fn gate_08_accepts_zero_index_segment() {
-        let mut parts = make_parts(vec![finish_node(0, 0)], 1);
+        let mut parts = make_parts(vec![finish_node(0, 0)], 1, 0);
         parts.accessors = Box::new([AccessorProgram {
             root: SlotIdx::new(0),
             path: Box::new([PathSegment::Index(0)]),
@@ -2052,7 +2071,7 @@ mod tests {
 
     #[test]
     fn gate_09_accepts_slot_at_boundary_slot_count_minus_one() {
-        let parts = make_parts(vec![finish_node(0, 0)], 1);
+        let parts = make_parts(vec![finish_node(0, 0)], 1, 0);
         assert_eq!(validate_gate_09_slot_references(&parts), Ok(()));
     }
 
@@ -2068,7 +2087,7 @@ mod tests {
                 fields: Box::new([(SymbolId::new(1), SlotIdx::new(99))]),
             },
         };
-        let parts = make_parts(vec![node], 1);
+        let parts = make_parts(vec![node], 1, 0);
         assert!(
             matches!(
                 validate_gate_09_slot_references(&parts),
@@ -2090,7 +2109,7 @@ mod tests {
                 items: Box::new([SlotIdx::new(50)]),
             },
         };
-        let parts = make_parts(vec![node], 1);
+        let parts = make_parts(vec![node], 1, 0);
         assert!(
             matches!(
                 validate_gate_09_slot_references(&parts),
@@ -2118,7 +2137,7 @@ mod tests {
             },
             finish_node(1, 0),
         ];
-        let parts = make_parts(nodes, 1);
+        let parts = make_parts(nodes, 1, 0);
         // Empty branches is structurally valid per gate 11 (no out-of-range steps)
         assert_eq!(validate_gate_11_loop_body_graph(&parts), Ok(()));
     }
@@ -2139,7 +2158,7 @@ mod tests {
                 done: StepIdx::new(1), // done < body => invalid span
             },
         }];
-        let parts = make_parts(nodes, 2);
+        let parts = make_parts(nodes, 2, 0);
         assert!(
             matches!(
                 validate_gate_11_loop_body_graph(&parts),
@@ -2151,7 +2170,7 @@ mod tests {
 
     #[test]
     fn gate_11_accepts_single_node_workflow() {
-        let parts = make_parts(vec![finish_node(0, 0)], 1);
+        let parts = make_parts(vec![finish_node(0, 0)], 1, 0);
         assert_eq!(validate_gate_11_loop_body_graph(&parts), Ok(()));
     }
 
@@ -2261,7 +2280,7 @@ mod tests {
                 input: SlotIdx::new(0),
             },
         };
-        let mut parts = make_parts(vec![node], 1);
+        let mut parts = make_parts(vec![node], 1, 0);
         parts.constants = Box::new([vb_core::value::ConstValue::Null]);
         let result = validate_gate_10_node_kind_specific(&parts);
         assert!(
@@ -2303,7 +2322,7 @@ mod tests {
                 },
             },
         ];
-        let mut parts = make_parts(nodes, 1);
+        let mut parts = make_parts(nodes, 1, 0);
         parts.constants = Box::new([
             vb_core::value::ConstValue::I64(42),
             vb_core::value::ConstValue::Bool(true),
@@ -2351,7 +2370,7 @@ mod tests {
             },
             finish_node(2, 1),
         ];
-        let parts = make_parts(nodes, 2);
+        let parts = make_parts(nodes, 2, 0);
         let result = validate_gate_15_determinism_proof(&parts);
         assert!(
             matches!(
@@ -2372,7 +2391,7 @@ mod tests {
     #[test]
     fn blackhat_gate_12_rejects_orphan_contract() {
         let nodes = vec![finish_node(0, 0)];
-        let parts = make_parts(nodes, 1);
+        let parts = make_parts(nodes, 1, 0);
         let contracts = vec![vb_core::action::ActionContract {
             id: ActionId::new(99),
             input_slot_count: 1,

@@ -94,7 +94,8 @@ impl WholeWorkflowBudget {
             max_total_slots,
             max_fanout,
             max_nesting_depth,
-            max_steps_executable: u32::try_from(max_total_steps).unwrap_or(u32::MAX),
+            max_steps_executable: u32::try_from(max_total_steps)
+                .map_err(|_| WorkflowError::StepCountOverflow { actual: max_total_steps })?,
             max_action_tickets,
             max_parallel_in_flight,
             max_retries_per_action: contract.max_retry_attempts,
@@ -274,6 +275,16 @@ pub enum BudgetError {
         /// Policy limit.
         limit: u32,
     },
+    /// Arithmetic overflow in budget computation.
+    Overflow {
+        /// Resource that overflowed.
+        resource: &'static str,
+    },
+    /// Arithmetic underflow in budget computation.
+    Underflow {
+        /// Resource that underflowed.
+        resource: &'static str,
+    },
 }
 
 impl fmt::Display for BudgetError {
@@ -306,6 +317,12 @@ impl fmt::Display for BudgetError {
             Self::StepsExecutableExceeded { actual, limit } => {
                 write!(f, "steps executable exceeded: {actual} > {limit}")
             }
+            Self::Overflow { resource } => {
+                write!(f, "budget overflow: {resource}")
+            }
+            Self::Underflow { resource } => {
+                write!(f, "budget underflow: {resource}")
+            }
         }
     }
 }
@@ -313,10 +330,15 @@ impl fmt::Display for BudgetError {
 impl std::error::Error for BudgetError {}
 
 impl From<WorkflowError> for BudgetError {
-    fn from(_err: WorkflowError) -> Self {
-        BudgetError::TotalStepsExceeded {
-            actual: u64::MAX,
-            limit: u64::MAX,
+    fn from(err: WorkflowError) -> Self {
+        match err {
+            WorkflowError::StepCountOverflow { actual: _ } => {
+                BudgetError::Overflow { resource: "step_count" }
+            }
+            WorkflowError::ResourceContractExceeded { resource } => {
+                BudgetError::Overflow { resource }
+            }
+            _ => BudgetError::Overflow { resource: "workflow" },
         }
     }
 }
@@ -441,8 +463,10 @@ fn visit_node_for_total_steps(
             })?;
         }
         CompiledNodeKind::ReduceStart { body, done, .. } => {
-            let iter_count =
-                u64::try_from(crate::limits::MAX_LIST_ITEMS_PER_VALUE).unwrap_or(u64::MAX);
+            let iter_count = u64::try_from(crate::limits::MAX_LIST_ITEMS_PER_VALUE)
+                .map_err(|_| WorkflowError::StepCountOverflow {
+                    actual: u64::MAX,
+                })?;
             total = count_and_push_loop_body(
                 nodes, *body, *done, iter_count, visited, node_count, total, stack,
             )
@@ -639,7 +663,8 @@ fn visit_body_region_node(
             )?;
         }
         CompiledNodeKind::ReduceStart { body, done, .. } => {
-            let iter = u64::try_from(crate::limits::MAX_LIST_ITEMS_PER_VALUE).unwrap_or(u64::MAX);
+            let iter = u64::try_from(crate::limits::MAX_LIST_ITEMS_PER_VALUE)
+                .map_err(|_| BudgetError::Overflow { resource: "reduce_iterations" })?;
             count = count_nested_for_region(
                 nodes,
                 *body,
@@ -835,9 +860,11 @@ fn push_error_handler_successors(body: StepIdx, handler: StepIdx, stack: &mut Ve
     stack.push(handler);
 }
 
-/// Converts a usize branch count to u16, saturating at u16::MAX on overflow.
-fn branch_count_to_u16(count: usize) -> u16 {
-    u16::try_from(count).unwrap_or(u16::MAX)
+/// Converts a usize branch count to u16, returning error on overflow.
+fn branch_count_to_u16(count: usize) -> Result<u16, WorkflowError> {
+    u16::try_from(count).map_err(|_| WorkflowError::StepCountOverflow {
+        actual: u64::try_from(count).unwrap_or(u64::MAX),
+    })
 }
 
 /// Computes max fanout and max nesting depth via a DFS walk.
@@ -890,8 +917,8 @@ fn compute_fanout_and_depth(
         }
     }
 
-    let child_depth = compute_child_depth(&node.kind, current_depth, max_nesting_depth);
-    update_fanout(&node.kind, max_fanout);
+    let child_depth = compute_child_depth(&node.kind, current_depth, max_nesting_depth)?;
+    update_fanout(&node.kind, max_fanout)?;
     update_workflow_metrics(
         &node.kind,
         max_action_tickets,
@@ -901,7 +928,7 @@ fn compute_fanout_and_depth(
         max_for_each_iterations,
         max_together_branches,
         max_repeat_attempts,
-    );
+    )?;
 
     let mut targets: Vec<StepIdx> = Vec::new();
     push_successor_targets(&node.kind, &mut targets);
@@ -941,7 +968,7 @@ fn compute_child_depth(
     kind: &CompiledNodeKind,
     current_depth: u16,
     max_nesting_depth: &mut u16,
-) -> u16 {
+) -> Result<u16, WorkflowError> {
     match kind {
         CompiledNodeKind::ForEachStart { .. }
         | CompiledNodeKind::ForEachNext { .. }
@@ -954,39 +981,44 @@ fn compute_child_depth(
         | CompiledNodeKind::RepeatAttempt { .. }
         | CompiledNodeKind::TogetherStart { .. }
         | CompiledNodeKind::TogetherBranch { .. } => {
-            let new_depth = current_depth.saturating_add(1);
+            let new_depth = current_depth
+                .checked_add(1)
+                .ok_or(WorkflowError::StepCountOverflow {
+                    actual: u64::from(current_depth) + 1,
+                })?;
             if new_depth > *max_nesting_depth {
                 *max_nesting_depth = new_depth;
             }
-            new_depth
+            Ok(new_depth)
         }
-        _ => current_depth,
+        _ => Ok(current_depth),
     }
 }
 
 /// Updates max_fanout based on branching node kinds.
-fn update_fanout(kind: &CompiledNodeKind, max_fanout: &mut u16) {
+fn update_fanout(kind: &CompiledNodeKind, max_fanout: &mut u16) -> Result<(), WorkflowError> {
     match kind {
         CompiledNodeKind::TogetherStart { branches, .. } => {
-            let branch_count = branch_count_to_u16(branches.len());
+            let branch_count = branch_count_to_u16(branches.len())?;
             if branch_count > *max_fanout {
                 *max_fanout = branch_count;
             }
         }
         CompiledNodeKind::ChooseSlot { branches, .. } => {
-            let branch_count = branch_count_to_u16(branches.len());
+            let branch_count = branch_count_to_u16(branches.len())?;
             if branch_count > *max_fanout {
                 *max_fanout = branch_count;
             }
         }
         CompiledNodeKind::Choose { branches, .. } => {
-            let branch_count = branch_count_to_u16(branches.len());
+            let branch_count = branch_count_to_u16(branches.len())?;
             if branch_count > *max_fanout {
                 *max_fanout = branch_count;
             }
         }
         _ => {}
     }
+    Ok(())
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -999,13 +1031,17 @@ fn update_workflow_metrics(
     max_for_each_iterations: &mut u32,
     max_together_branches: &mut u16,
     max_repeat_attempts: &mut u16,
-) {
+) -> Result<(), WorkflowError> {
     match kind {
         CompiledNodeKind::Do { .. } => {
-            *max_action_tickets = max_action_tickets.saturating_add(1);
+            *max_action_tickets = max_action_tickets
+                .checked_add(1)
+                .ok_or(WorkflowError::StepCountOverflow {
+                    actual: u64::from(*max_action_tickets) + 1,
+                })?;
         }
         CompiledNodeKind::TogetherStart { branches, .. } => {
-            let branch_count = branch_count_to_u16(branches.len());
+            let branch_count = branch_count_to_u16(branches.len())?;
             if branch_count > *max_parallel_in_flight {
                 *max_parallel_in_flight = branch_count;
             }
@@ -1014,17 +1050,30 @@ fn update_workflow_metrics(
             }
         }
         CompiledNodeKind::CollectStart { limit, .. } => {
-            *max_gather_pages = max_gather_pages.saturating_add(1);
-            *max_gather_items = max_gather_items.saturating_add(*limit);
+            *max_gather_pages = max_gather_pages
+                .checked_add(1)
+                .ok_or(WorkflowError::StepCountOverflow {
+                    actual: u64::MAX,
+                })?;
+            *max_gather_items = max_gather_items
+                .checked_add(*limit)
+                .ok_or(WorkflowError::StepCountOverflow {
+                    actual: u64::MAX,
+                })?;
         }
         CompiledNodeKind::ForEachStart { limit, .. } => {
-            *max_for_each_iterations = max_for_each_iterations.saturating_add(*limit);
+            *max_for_each_iterations = max_for_each_iterations
+                .checked_add(*limit)
+                .ok_or(WorkflowError::StepCountOverflow {
+                    actual: u64::MAX,
+                })?;
         }
         CompiledNodeKind::RepeatStart { max_attempts, .. } => {
             *max_repeat_attempts = (*max_repeat_attempts).max(*max_attempts);
         }
         _ => {}
     }
+    Ok(())
 }
 
 #[cfg(test)]

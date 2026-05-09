@@ -120,7 +120,7 @@ fn test_action_policy_report_strict_eligible_false_when_issues_present() {
 #[test]
 fn test_analyze_policies_on_fully_covered_workflow() {
     use vb_runtime::action::ActionRegistry;
-    let registry = ActionRegistry::new();
+    let mut registry = ActionRegistry::new();
     let contract1 = ActionContract {
         id: ActionId::new(10),
         input_slot_count: 1,
@@ -162,7 +162,7 @@ fn test_analyze_policies_on_fully_covered_workflow() {
 #[test]
 fn test_analyze_policies_reports_missing_contracts() {
     use vb_runtime::action::ActionRegistry;
-    let registry = ActionRegistry::new();
+    let mut registry = ActionRegistry::new();
     let workflow = vec![ActionId::new(999)];
     let registry_contracts: Vec<ActionContract> = registry.registered_contracts().into_iter().cloned().collect();
     let reports = analyze_actions(&workflow, &registry_contracts[..]);
@@ -177,7 +177,7 @@ fn test_analyze_policies_reports_missing_contracts() {
 #[test]
 fn test_analyze_policies_reports_unsafe_retry() {
     use vb_runtime::action::ActionRegistry;
-    let registry = ActionRegistry::new();
+    let mut registry = ActionRegistry::new();
     let contract = ActionContract {
         id: ActionId::new(20),
         input_slot_count: 1,

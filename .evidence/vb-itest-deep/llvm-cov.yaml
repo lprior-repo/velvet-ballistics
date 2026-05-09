@@ -1,0 +1,11 @@
+kind: llvm-cov
+gate_name: llvm-cov
+command: cargo llvm-cov
+exit_code: 101
+log: .evidence/vb-itest-deep/llvm-cov.log
+status:
+  status: Fail
+why_failed:
+  gate_name: llvm-cov
+  hint: Code coverage is below threshold
+  repair_command: cargo llvm-cov

@@ -200,6 +200,27 @@ fn error_diagnostic_parts(error: &ValidationError) -> (DiagnosticCode, String) {
             DiagnosticCode::new(CODE_ACCESSOR_PATH_INVALID),
             format!("accessor path invalid: accessor {accessor_index}, segment {segment_index}"),
         ),
+        ValidationError::AccessorPathTooDeep {
+            accessor_index,
+            depth,
+            max,
+        } => (
+            DiagnosticCode::new(CODE_ACCESSOR_PATH_TOO_DEEP),
+            format!(
+                "accessor path too deep: accessor {accessor_index}, depth {depth}, max {max}"
+            ),
+        ),
+        ValidationError::AccessorSymbolOutOfBounds {
+            accessor_index,
+            segment_index,
+            symbol,
+            symbols_count,
+        } => (
+            DiagnosticCode::new(CODE_ACCESSOR_SYMBOL_OUT_OF_BOUNDS),
+            format!(
+                "accessor symbol out of bounds: accessor {accessor_index}, segment {segment_index}, symbol {symbol}, symbols_count {symbols_count}"
+            ),
+        ),
         ValidationError::SlotReferenceOutOfRange {
             slot,
             slot_count,

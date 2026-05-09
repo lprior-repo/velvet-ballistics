@@ -752,6 +752,8 @@ fn budget_error_detail(error: &crate::budget::BudgetError) -> &'static str {
         crate::budget::BudgetError::RunTimeExceeded { .. } => "max_run_time_seconds",
         crate::budget::BudgetError::ResultBytesExceeded { .. } => "max_result_bytes",
         crate::budget::BudgetError::StepsExecutableExceeded { .. } => "max_steps_executable",
+        crate::budget::BudgetError::Overflow { resource } => resource,
+        crate::budget::BudgetError::Underflow { resource } => resource,
     }
 }
 

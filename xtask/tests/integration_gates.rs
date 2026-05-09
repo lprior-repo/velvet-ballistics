@@ -9,12 +9,11 @@ use std::process::{Command, Output};
 
 /// Test helper: run cargo xtask with given args and return output.
 fn run_xtask(args: &[&str]) -> Output {
-    Command::new("cargo")
-        .args(["xtask", "--"])
-        .args(args)
-        .current_dir("/home/lewis/src/Velvet-ballistics")
-        .output()
-        .expect("Failed to execute cargo xtask")
+    let mut cmd = Command::new("cargo");
+    cmd.arg("xtask");
+    cmd.args(args);
+    cmd.current_dir("/home/lewis/src/Velvet-ballistics");
+    cmd.output().expect("Failed to execute cargo xtask")
 }
 
 /// Test helper: clean up evidence directory for a bead.
@@ -127,10 +126,9 @@ fn test_evidence_file_contains_all_required_fields() {
     let evidence_path = PathBuf::from(".evidence")
         .join(bead_id)
         .join("ai-fast.yaml");
-    
+
     if evidence_path.exists() {
-        let content = fs::read_to_string(&evidence_path)
-            .expect("Failed to read evidence file");
+        let content = fs::read_to_string(&evidence_path).expect("Failed to read evidence file");
 
         // Then: YAML contains all required fields per gate entry
         // Each gate should have: kind, gate_name, command, exit_code, log, status
@@ -258,11 +256,17 @@ fn test_ai_fast_aggregates_all_6_gates() {
         .join("ai-fast.yaml");
 
     if evidence_path.exists() {
-        let content = fs::read_to_string(&evidence_path)
-            .expect("Failed to read evidence file");
+        let content = fs::read_to_string(&evidence_path).expect("Failed to read evidence file");
 
         // Then: contains entries for all 6 ai-fast gates
-        let expected_gates = ["fmt", "check", "clippy", "nextest", "forbidden-scan", "hotpath-scan"];
+        let expected_gates = [
+            "fmt",
+            "check",
+            "clippy",
+            "nextest",
+            "forbidden-scan",
+            "hotpath-scan",
+        ];
         for gate in expected_gates {
             assert!(
                 content.contains(gate),
@@ -289,8 +293,7 @@ fn test_ai_deep_aggregates_all_4_gates() {
         .join("ai-deep.yaml");
 
     if evidence_path.exists() {
-        let content = fs::read_to_string(&evidence_path)
-            .expect("Failed to read evidence file");
+        let content = fs::read_to_string(&evidence_path).expect("Failed to read evidence file");
 
         // Then: contains entries for all 4 ai-deep gates
         let expected_gates = ["miri", "mutants", "llvm-cov", "fuzz-build"];
@@ -320,14 +323,21 @@ fn test_ai_release_aggregates_all_11_gates() {
         .join("ai-release.yaml");
 
     if evidence_path.exists() {
-        let content = fs::read_to_string(&evidence_path)
-            .expect("Failed to read evidence file");
+        let content = fs::read_to_string(&evidence_path).expect("Failed to read evidence file");
 
         // Then: contains entries for all 11 ai-release gates
         let expected_gates = [
-            "check", "test", "supply-chain", "miri", "fuzz-smoke",
-            "coverage", "mutants-smoke", "bench-build",
-            "feature-powerset", "source-length", "maxperf",
+            "check",
+            "test",
+            "supply-chain",
+            "miri",
+            "fuzz-smoke",
+            "coverage",
+            "mutants-smoke",
+            "bench-build",
+            "feature-powerset",
+            "source-length",
+            "maxperf",
         ];
         for gate in expected_gates {
             assert!(
@@ -353,6 +363,7 @@ fn test_bead_flag_creates_evidence_directory() {
 
     // When: ai-fast is run with --bead flag
     let output = run_xtask(&["ai-fast", "--bead", bead_id]);
+    let _ = &output; // suppress unused warning
 
     // Then: .evidence/<bead-id>/ directory is created
     let evidence_dir = PathBuf::from(".evidence").join(bead_id);
@@ -372,8 +383,8 @@ fn test_no_bead_flag_outputs_to_stdout() {
     let output = run_xtask(&["ai-fast"]);
 
     // Then: stdout is valid YAML (no .evidence/ directory created)
-    let evidence_dir = PathBuf::from(".evidence");
-    
+    let _evidence_dir = PathBuf::from(".evidence");
+
     // If the command succeeded, check stdout is YAML
     if output.status.success() {
         let stdout = String::from_utf8_lossy(&output.stdout);
@@ -418,15 +429,14 @@ fn test_unknown_subcommand_returns_error() {
     let output = run_xtask(&["unknown-gate-name"]);
 
     // Then: exit code is 1
-    assert!(
-        !output.status.success(),
-        "Unknown subcommand should fail"
-    );
+    assert!(!output.status.success(), "Unknown subcommand should fail");
 
     // And: error message mentions the unknown command
     let stderr = String::from_utf8_lossy(&output.stderr);
     assert!(
-        stderr.contains("unknown-gate-name") || stderr.contains("not found") || stderr.contains("Subcommand"),
+        stderr.contains("unknown-gate-name")
+            || stderr.contains("not found")
+            || stderr.contains("Subcommand"),
         "Error should mention the unknown subcommand, got: {}",
         stderr
     );
@@ -439,7 +449,7 @@ fn test_invalid_bead_id_rejected() {
     cleanup_evidence(bead_id);
 
     // When: ai-fast is run with invalid bead_id
-    let output = run_xtask(&["ai-fast", "--bead", bead_id]);
+    let _output = run_xtask(&["ai-fast", "--bead", bead_id]);
 
     // Then: command fails gracefully
     // (具体行为取决于实现，但应该不会 panic 或创建奇怪的目录)
@@ -462,7 +472,7 @@ fn test_no_raw_tool_output_on_stdout() {
     // Then: stdout is valid YAML (INV-005: structured output only)
     // Raw tool output (fmt diffs, clippy warnings) should be in log files only
     let stdout = String::from_utf8_lossy(&output.stdout);
-    
+
     if !stdout.is_empty() {
         // stdout should be YAML (starts with --- or contains YAML structure)
         // It should NOT contain raw cargo fmt/clippy output
@@ -519,7 +529,7 @@ fn test_why_failed_hint_and_repair_command_present() {
 
     // When: evidence files are inspected
     let evidence_dir = PathBuf::from(".evidence").join(bead_id);
-    
+
     if evidence_dir.exists() {
         // Read any evidence file and check structure
         if let Ok(entries) = fs::read_dir(&evidence_dir) {
@@ -531,7 +541,9 @@ fn test_why_failed_hint_and_repair_command_present() {
                         if yaml.contains("status: Fail") || yaml.contains("status: Fail\n") {
                             // The why_failed block should exist for failed gates
                             assert!(
-                                yaml.contains("why_failed:") || yaml.contains("hint:") || yaml.contains("repair_command:"),
+                                yaml.contains("why_failed:")
+                                    || yaml.contains("hint:")
+                                    || yaml.contains("repair_command:"),
                                 "Failed gate should have why_failed diagnostic"
                             );
                         }

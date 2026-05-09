@@ -524,3 +524,83 @@ fn check_overlap_for_screen(base_dir: &Path, name: &str) -> anyhow::Result<bool>
         Ok(false)
     }
 }
+
+// ============================================================================
+// Section 77 Command-Center Gate Implementations (POST-001/002/003/007)
+// ============================================================================
+
+use crate::evidence::{GateProfile, run_profile};
+
+/// Runs the ai-fast profile: fmt, check, clippy, nextest, forbidden-scan, hotpath-scan.
+///
+/// # Arguments
+/// * `bead_id` - Optional bead ID to scope evidence output to .evidence/<bead-id>/
+///
+/// # Returns
+/// Exit code 0 if all gates pass, 1 if any gate fails or evidence is missing.
+fn cmd_ai_fast(bead_id: Option<&str>) -> anyhow::Result<()> {
+    let output_dir = PathBuf::from(".");
+
+    // RED_PHASE: run_profile currently returns Error::SubcommandNotFound
+    match run_profile(GateProfile::Fast, bead_id, &output_dir) {
+        Ok(evidence) => {
+            let yaml = serde_yaml::to_string(&evidence)
+                .context("Failed to serialize profile evidence to YAML")?;
+            write_stdout(format_args!("{}", yaml))?;
+            Ok(())
+        }
+        Err(e) => {
+            // Return error to indicate failure
+            anyhow::bail!("ai-fast profile failed: {}", e);
+        }
+    }
+}
+
+/// Runs the ai-deep profile: miri, mutants, llvm-cov, fuzz-build.
+///
+/// # Arguments
+/// * `bead_id` - Optional bead ID to scope evidence output to .evidence/<bead-id>/
+///
+/// # Returns
+/// Exit code 0 if all gates pass, 1 if any gate fails or evidence is missing.
+fn cmd_ai_deep(bead_id: Option<&str>) -> anyhow::Result<()> {
+    let output_dir = PathBuf::from(".");
+
+    // RED_PHASE: run_profile currently returns Error::SubcommandNotFound
+    match run_profile(GateProfile::Deep, bead_id, &output_dir) {
+        Ok(evidence) => {
+            let yaml = serde_yaml::to_string(&evidence)
+                .context("Failed to serialize profile evidence to YAML")?;
+            write_stdout(format_args!("{}", yaml))?;
+            Ok(())
+        }
+        Err(e) => {
+            anyhow::bail!("ai-deep profile failed: {}", e);
+        }
+    }
+}
+
+/// Runs the ai-release profile: check, test, supply-chain, miri, fuzz-smoke,
+/// coverage, mutants-smoke, bench-build, feature-powerset, source-length, maxperf.
+///
+/// # Arguments
+/// * `bead_id` - Optional bead ID to scope evidence output to .evidence/<bead-id>/
+///
+/// # Returns
+/// Exit code 0 if all gates pass, 1 if any gate fails or evidence is missing.
+fn cmd_ai_release(bead_id: Option<&str>) -> anyhow::Result<()> {
+    let output_dir = PathBuf::from(".");
+
+    // RED_PHASE: run_profile currently returns Error::SubcommandNotFound
+    match run_profile(GateProfile::Release, bead_id, &output_dir) {
+        Ok(evidence) => {
+            let yaml = serde_yaml::to_string(&evidence)
+                .context("Failed to serialize profile evidence to YAML")?;
+            write_stdout(format_args!("{}", yaml))?;
+            Ok(())
+        }
+        Err(e) => {
+            anyhow::bail!("ai-release profile failed: {}", e);
+        }
+    }
+}

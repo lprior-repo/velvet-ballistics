@@ -173,9 +173,15 @@ pub(crate) enum Command {
         durability: DurabilityMode,
         output: OutputFormat,
     },
+    Cancel {
+        run_id: String,
+        db: PathBuf,
+        reason: Option<String>,
+        output: OutputFormat,
+    },
 }
 
-pub(crate) const VALID_COMMANDS: &str = "help, version, agent-context, ai-context, status, action, validate, verify, explain, compile, run, run-compiled, ipc-serve, inspect, events, replay, trace, retry, resume, bench-run, doctor, answer, graph, diff, incident, submit, simulate";
+pub(crate) const VALID_COMMANDS: &str = "help, version, agent-context, ai-context, status, action, validate, verify, explain, compile, run, run-compiled, ipc-serve, inspect, events, replay, trace, retry, resume, bench-run, doctor, answer, graph, diff, incident, submit, simulate, cancel";
 
 /// Optional diagnostic status values used when no live runtime handle exists.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -234,6 +240,7 @@ pub(crate) enum ParseError {
     InvalidActionId(String),
     NoCommand,
     InvalidStep(String),
+    ReasonTooLong,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -282,6 +289,7 @@ pub(crate) fn parse_args(args: &[OsString]) -> Result<Command, ParseError> {
         "incident" => parse_incident(args),
         "simulate" => parse_simulate(args),
         "submit" => parse_submit(args),
+        "cancel" => parse_cancel(args),
         other => Err(ParseError::UnknownCommand(other.into())),
     }
 }
@@ -786,6 +794,24 @@ fn parse_resume(args: &[OsString]) -> Result<Command, ParseError> {
     })
 }
 
+fn parse_cancel(args: &[OsString]) -> Result<Command, ParseError> {
+    let run_id = positional_str(args, 2, "run_id")?;
+    let db = named_flag(args, "--db").ok_or(ParseError::MissingArgument("--db"))?;
+    let reason = named_flag(args, "--reason");
+    if let Some(ref r) = reason {
+        if r.len() > 256 {
+            return Err(ParseError::ReasonTooLong);
+        }
+    }
+    let output = parse_output_format(args);
+    Ok(Command::Cancel {
+        run_id,
+        db: PathBuf::from(db),
+        reason,
+        output,
+    })
+}
+
 fn parse_bench_run(args: &[OsString]) -> Result<Command, ParseError> {
     let workflow = positional(args, 2, "workflow.yaml")?;
     let output = parse_output_format(args);
@@ -992,6 +1018,9 @@ impl std::fmt::Display for ParseError {
             }
             Self::NoCommand => write!(formatter, "no command provided"),
             Self::InvalidStep(step) => write!(formatter, "invalid step: {step}"),
+            Self::ReasonTooLong => {
+                write!(formatter, "reason exceeds maximum length of 256 characters")
+            }
         }
     }
 }
@@ -1693,5 +1722,116 @@ mod tests {
             assert_eq!(output, OutputFormat::Jsonl);
             assert_eq!(registry, ActionRegistryMode::Registered);
         }
+    }
+
+    // --- Cancel command parsing tests ---
+
+    #[test]
+    fn parse_cancel_accepts_run_id_and_db() {
+        let parsed = parse_args(&args(&[
+            "velvet-ballastics",
+            "cancel",
+            "42",
+            "--db",
+            "journal-db",
+        ]));
+        assert!(
+            matches!(parsed, Ok(Command::Cancel { .. })),
+            "unexpected parse result: {parsed:?}"
+        );
+        if let Ok(Command::Cancel {
+            run_id,
+            db,
+            reason,
+            output,
+        }) = parsed
+        {
+            assert_eq!(run_id, "42");
+            assert_eq!(db, PathBuf::from("journal-db"));
+            assert_eq!(reason, None);
+            assert_eq!(output, OutputFormat::Text);
+        }
+    }
+
+    #[test]
+    fn parse_cancel_accepts_reason() {
+        let parsed = parse_args(&args(&[
+            "velvet-ballastics",
+            "cancel",
+            "42",
+            "--db",
+            "journal-db",
+            "--reason",
+            "user request",
+        ]));
+        assert!(
+            matches!(parsed, Ok(Command::Cancel { .. })),
+            "unexpected parse result: {parsed:?}"
+        );
+        if let Ok(Command::Cancel { reason, .. }) = parsed {
+            assert_eq!(reason, Some("user request".to_string()));
+        }
+    }
+
+    #[test]
+    fn parse_cancel_accepts_json_output() {
+        let parsed = parse_args(&args(&[
+            "velvet-ballastics",
+            "cancel",
+            "42",
+            "--db",
+            "journal-db",
+            "--json",
+        ]));
+        if let Ok(Command::Cancel { output, .. }) = parsed {
+            assert_eq!(output, OutputFormat::Json);
+        } else {
+            panic!("expected Ok, got {parsed:?}");
+        }
+    }
+
+    #[test]
+    fn parse_cancel_rejects_missing_db() {
+        let parsed = parse_args(&args(&["velvet-ballastics", "cancel", "42"]));
+        assert!(
+            matches!(parsed, Err(ParseError::MissingArgument("--db"))),
+            "unexpected: {parsed:?}"
+        );
+    }
+
+    #[test]
+    fn parse_cancel_rejects_reason_longer_than_256_bytes() {
+        let long_reason = "a".repeat(257);
+        let parsed = parse_args(&args(&[
+            "velvet-ballastics",
+            "cancel",
+            "42",
+            "--db",
+            "journal-db",
+            "--reason",
+            &long_reason,
+        ]));
+        assert!(
+            matches!(parsed, Err(ParseError::ReasonTooLong)),
+            "unexpected: {parsed:?}"
+        );
+    }
+
+    #[test]
+    fn parse_cancel_accepts_reason_exactly_256_bytes() {
+        let reason = "a".repeat(256);
+        let parsed = parse_args(&args(&[
+            "velvet-ballastics",
+            "cancel",
+            "42",
+            "--db",
+            "journal-db",
+            "--reason",
+            &reason,
+        ]));
+        assert!(
+            matches!(parsed, Ok(Command::Cancel { .. })),
+            "unexpected: {parsed:?}"
+        );
     }
 }

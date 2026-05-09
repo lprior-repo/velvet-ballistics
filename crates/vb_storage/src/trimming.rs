@@ -113,6 +113,11 @@ impl FjallJournal {
         Ok(latest)
     }
 
+    /// Returns the latest confirmed snapshot sequence for a run.
+    pub fn latest_snapshot_seq(&self, run: RunId) -> TrimResult<Option<EventSeq>> {
+        self.latest_durable_snapshot_seq(run)
+    }
+
     /// Trims journal events for a specific run.
     ///
     /// Removes events with sequence numbers less than the latest durable
@@ -632,7 +637,7 @@ mod tests {
         let result = journal.trim_events_for_run(run, TrimPolicy::default());
         assert!(
             matches!(result, Err(TrimError::NoDurableSnapshot { .. })),
-            "should error when no durable snapshot exists, got {:?}",
+            "should error when no snapshot exists, got {:?}",
             result
         );
     }
@@ -733,7 +738,7 @@ mod tests {
     }
 
     #[test]
-    fn latest_durable_snapshot_seq_returns_highest_seq() {
+    fn latest_snapshot_seq_returns_highest_seq() {
         let (_temp, journal) = temp_journal();
         let run = RunId::new(700);
         let digest = WorkflowDigest::from_bytes([0x22; DIGEST_BYTES]);
@@ -766,20 +771,16 @@ mod tests {
             journal.put_snapshot(snap).expect("snapshot should succeed");
         }
 
-        let latest = journal
-            .latest_durable_snapshot_seq(run)
-            .expect("should succeed");
+        let latest = journal.latest_snapshot_seq(run).expect("should succeed");
         assert_eq!(latest, Some(EventSeq::new(5)), "latest should be seq 5");
     }
 
     #[test]
-    fn latest_durable_snapshot_seq_returns_none_for_no_snapshots() {
+    fn latest_snapshot_seq_returns_none_for_no_snapshots() {
         let (_temp, journal) = temp_journal();
         let run = RunId::new(800);
 
-        let latest = journal
-            .latest_durable_snapshot_seq(run)
-            .expect("should succeed");
+        let latest = journal.latest_snapshot_seq(run).expect("should succeed");
         assert_eq!(latest, None);
     }
     #[test]

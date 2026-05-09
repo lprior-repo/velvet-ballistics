@@ -12,6 +12,7 @@ use vb_core::workflow::{AccessorProgram, CompiledNode, CompiledNodeKind, ExprOp,
 fn make_parts(
     nodes: Vec<CompiledNode>,
     slot_count: u16,
+    symbols_count: u32,
 ) -> WorkflowParts {
     WorkflowParts {
         name: Box::from("test"),
@@ -21,7 +22,7 @@ fn make_parts(
         accessors: Box::new([]),
         constants: Box::new([]),
         slot_count,
-        symbols_count: 0,
+        symbols_count,
         entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
     }
@@ -186,7 +187,7 @@ fn gate_08_accepts_empty_accessors() {
 
 #[test]
 fn gate_08_accepts_valid_accessor() {
-    let mut parts = make_parts(vec![finish_node(0, 0)], 2);
+    let mut parts = make_parts(vec![finish_node(0, 0)], 2, 2);
     parts.accessors = Box::new([AccessorProgram {
         root: SlotIdx::new(0),
         path: Box::new([PathSegment::Field(SymbolId::new(1))]),

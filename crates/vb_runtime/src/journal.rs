@@ -12,7 +12,7 @@ use vb_storage::{
 use crate::{RuntimeError, RuntimeResult};
 
 /// Minimal lifecycle event emitted by the runtime before a durable store is wired.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum RuntimeJournalEvent {
     /// Run was accepted by the runtime.
     RunSubmitted {
@@ -42,6 +42,8 @@ pub enum RuntimeJournalEvent {
     RunCancelled {
         /// Run identifier.
         run: RunId,
+        /// Optional cancellation reason.
+        reason: Option<String>,
     },
     /// Action was scheduled and handed to the external action boundary.
     ActionScheduled {
@@ -69,6 +71,8 @@ pub enum RuntimeJournalEvent {
         step: StepIdx,
         /// Action identifier.
         action: ActionId,
+        /// Execution attempt number for this action.
+        attempt: u16,
     },
     /// Wait was scheduled and the run suspended.
     WaitScheduled {
@@ -126,6 +130,8 @@ pub enum RuntimeJournalEvent {
         step: StepIdx,
         /// Output slot index.
         output: SlotIdx,
+        /// Execution attempt number for this step.
+        attempt: u16,
     },
 }
 
@@ -137,7 +143,7 @@ impl RuntimeJournalEvent {
             Self::RunSubmitted { run, .. }
             | Self::RunFinished { run, .. }
             | Self::RunFailed { run }
-            | Self::RunCancelled { run }
+            | Self::RunCancelled { run, .. }
             | Self::ActionScheduled { run, .. }
             | Self::ActionCompleted { run, .. }
             | Self::ActionFailed { run, .. }
@@ -327,26 +333,37 @@ impl StorageRuntimeJournal {
                 granted_capabilities: admission.granted_capabilities().clone(),
                 policy: admission.policy(),
             }),
-            RuntimeJournalEvent::RunFinished { run, result } => {
-                Some(JournalEvent::RunFinished { run, seq, result })
-            }
-            RuntimeJournalEvent::RunFailed { run } => {
-                Some(JournalEvent::RunFailedEvent { run, seq })
-            }
-            RuntimeJournalEvent::RunCancelled { run } => {
-                Some(JournalEvent::RunCancelled { run, seq })
-            }
-            RuntimeJournalEvent::StepStarted { run, step } => {
-                Some(JournalEvent::StepStarted { run, seq, step })
-            }
-            RuntimeJournalEvent::StepSucceeded { run, step, output } => {
-                Some(JournalEvent::StepSucceeded {
-                    run,
-                    seq,
-                    step,
-                    output,
-                })
-            }
+            RuntimeJournalEvent::RunFinished { run, result } => Some(JournalEvent::RunFinished {
+                run,
+                seq,
+                attempt: 1,
+                result,
+            }),
+            RuntimeJournalEvent::RunFailed { run } => Some(JournalEvent::RunFailedEvent {
+                run,
+                seq,
+                attempt: 1,
+            }),
+            RuntimeJournalEvent::RunCancelled { run, reason } => Some(JournalEvent::RunCancelled {
+                run,
+                seq,
+                attempt: 1,
+                reason,
+            }),
+            RuntimeJournalEvent::StepStarted { run, step } => Some(JournalEvent::StepStarted {
+                run,
+                seq,
+                attempt: 1,
+                step,
+            }),
+            RuntimeJournalEvent::StepSucceeded {
+                run, step, output, ..
+            } => Some(JournalEvent::StepSucceeded {
+                run,
+                seq,
+                step,
+                output,
+            }),
             RuntimeJournalEvent::ActionScheduled { .. }
             | RuntimeJournalEvent::ActionCompleted { .. }
             | RuntimeJournalEvent::ActionFailed { .. }
@@ -364,6 +381,7 @@ impl StorageRuntimeJournal {
                 Some(JournalEvent::ActionScheduled {
                     run,
                     seq,
+                    attempt: 1,
                     step,
                     action,
                 })
@@ -372,18 +390,23 @@ impl StorageRuntimeJournal {
                 Some(JournalEvent::ActionCompletedEvent {
                     run,
                     seq,
+                    attempt: 1,
                     step,
                     action,
                 })
             }
-            RuntimeJournalEvent::ActionFailed { run, step, action } => {
-                Some(JournalEvent::ActionFailedEvent {
-                    run,
-                    seq,
-                    step,
-                    action,
-                })
-            }
+            RuntimeJournalEvent::ActionFailed {
+                run,
+                step,
+                action,
+                attempt,
+            } => Some(JournalEvent::ActionFailedEvent {
+                run,
+                seq,
+                attempt,
+                step,
+                action,
+            }),
             RuntimeJournalEvent::RunSubmitted { .. }
             | RuntimeJournalEvent::RunAdmission { .. }
             | RuntimeJournalEvent::RunFinished { .. }
@@ -402,16 +425,36 @@ impl StorageRuntimeJournal {
     fn boundary_storage_event(event: RuntimeJournalEvent, seq: EventSeq) -> Option<JournalEvent> {
         match event {
             RuntimeJournalEvent::WaitScheduled { run, step } => {
-                Some(JournalEvent::WaitScheduledEvent { run, seq, step })
+                Some(JournalEvent::WaitScheduledEvent {
+                    run,
+                    seq,
+                    attempt: 1,
+                    step,
+                })
             }
             RuntimeJournalEvent::WaitResolved { run, step } => {
-                Some(JournalEvent::RetryScheduledEvent { run, seq, step })
+                Some(JournalEvent::RetryScheduledEvent {
+                    run,
+                    seq,
+                    attempt: 1,
+                    step,
+                })
             }
             RuntimeJournalEvent::AskScheduled { run, step } => {
-                Some(JournalEvent::AskScheduledEvent { run, seq, step })
+                Some(JournalEvent::AskScheduledEvent {
+                    run,
+                    seq,
+                    attempt: 1,
+                    step,
+                })
             }
             RuntimeJournalEvent::AskAnswered { run, step, .. } => {
-                Some(JournalEvent::AskAnsweredEvent { run, seq, step })
+                Some(JournalEvent::AskAnsweredEvent {
+                    run,
+                    seq,
+                    attempt: 1,
+                    step,
+                })
             }
             RuntimeJournalEvent::SlotWritten {
                 run,
@@ -421,6 +464,7 @@ impl StorageRuntimeJournal {
             } => Some(JournalEvent::SlotWrittenEvent {
                 run,
                 seq,
+                attempt: 1,
                 slot,
                 value: Some(value),
                 extra,
@@ -450,6 +494,7 @@ impl StorageRuntimeJournal {
             None => JournalEvent::RunFailedEvent {
                 run: event.run_id(),
                 seq,
+                attempt: 1,
             },
         }
     }
@@ -683,6 +728,7 @@ mod tests {
                 JournalEvent::RunFinished {
                     run,
                     seq: EventSeq::new(1),
+                    attempt: 1,
                     result: SlotIdx::new(3),
                 },
             ]
@@ -743,7 +789,7 @@ mod tests {
             Ok(())
         );
         assert_eq!(
-            adapter.append(RuntimeJournalEvent::RunCancelled { run }),
+            adapter.append(RuntimeJournalEvent::RunCancelled { run, reason: None }),
             Ok(())
         );
 
@@ -766,6 +812,8 @@ mod tests {
                 JournalEvent::RunCancelled {
                     run,
                     seq: EventSeq::new(1),
+                    attempt: 1,
+                    reason: None,
                 },
             ]
         );
@@ -788,6 +836,7 @@ mod tests {
             vec![JournalEvent::RunFailedEvent {
                 run: failed_run,
                 seq: EventSeq::new(0),
+                attempt: 1,
             }]
         );
     }
@@ -869,38 +918,45 @@ mod tests {
                 JournalEvent::ActionScheduled {
                     run,
                     seq: EventSeq::new(0),
+                    attempt: 1,
                     step: StepIdx::new(1),
                     action: ActionId::new(2),
                 },
                 JournalEvent::ActionCompletedEvent {
                     run,
                     seq: EventSeq::new(1),
+                    attempt: 1,
                     step: StepIdx::new(1),
                     action: ActionId::new(2),
                 },
                 JournalEvent::WaitScheduledEvent {
                     run,
                     seq: EventSeq::new(2),
+                    attempt: 1,
                     step: StepIdx::new(3),
                 },
                 JournalEvent::RetryScheduledEvent {
                     run,
                     seq: EventSeq::new(3),
+                    attempt: 1,
                     step: StepIdx::new(3),
                 },
                 JournalEvent::AskScheduledEvent {
                     run,
                     seq: EventSeq::new(4),
+                    attempt: 1,
                     step: StepIdx::new(4),
                 },
                 JournalEvent::AskAnsweredEvent {
                     run,
                     seq: EventSeq::new(5),
+                    attempt: 1,
                     step: StepIdx::new(4),
                 },
                 JournalEvent::SlotWrittenEvent {
                     run,
                     seq: EventSeq::new(6),
+                    attempt: 1,
                     slot: SlotIdx::new(5),
                     value: Some(Vec::new()),
                     extra: None,
@@ -968,12 +1024,14 @@ mod tests {
                 JournalEvent::ActionScheduled {
                     run,
                     seq: EventSeq::new(1),
+                    attempt: 1,
                     step: StepIdx::new(1),
                     action: ActionId::new(2),
                 },
                 JournalEvent::RunFinished {
                     run,
                     seq: EventSeq::new(2),
+                    attempt: 1,
                     result: SlotIdx::new(3),
                 },
             ]
@@ -1009,7 +1067,7 @@ mod tests {
         let journaled = RuntimeJournalConfig::new(DurabilityProfile::Journaled)
             .shared_journal(journal.clone(), journaled_queue.clone());
         assert_eq!(
-            journaled.append(RuntimeJournalEvent::RunCancelled { run }),
+            journaled.append(RuntimeJournalEvent::RunCancelled { run, reason: None }),
             Ok(())
         );
         assert!(matches!(
@@ -1054,7 +1112,7 @@ mod tests {
             Ok(())
         );
         assert_eq!(
-            adapter.append(RuntimeJournalEvent::RunCancelled { run }),
+            adapter.append(RuntimeJournalEvent::RunCancelled { run, reason: None }),
             Ok(())
         );
         assert_eq!(
@@ -1137,7 +1195,7 @@ mod tests {
         let run = RunId::new(46);
 
         assert_eq!(
-            adapter.append(RuntimeJournalEvent::RunCancelled { run }),
+            adapter.append(RuntimeJournalEvent::RunCancelled { run, reason: None }),
             Ok(())
         );
         assert!(matches!(
@@ -1170,10 +1228,13 @@ mod tests {
                 JournalEvent::RunCancelled {
                     run,
                     seq: EventSeq::new(0),
+                    attempt: 1,
+                    reason: None,
                 },
                 JournalEvent::RunFailedEvent {
                     run,
                     seq: EventSeq::new(1),
+                    attempt: 1,
                 },
             ]
         );

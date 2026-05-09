@@ -65,6 +65,106 @@ steps:
       result: 0
 "#;
 
+    // ---------------------------------------------------------------------------
+    // vb-yd5x RED PHASE: Shared IR parity test constants
+    // ---------------------------------------------------------------------------
+
+    /// YAML source for a minimal valid workflow.
+    const MINIMAL_VALID_WORKFLOW: &[u8] = br#"
+version: velvet-ballastics/v1
+name: minimal_valid
+when:
+  manual: {}
+steps:
+  - id: done
+    finish:
+      result: 0
+"#;
+
+    /// Workflow with an out-of-range slot reference in the IR.
+    /// This triggers Gate 9 (SLOT_REFERENCE_OUT_OF_RANGE) in the shared validation.
+    const MALFORMED_SLOT_REF_WORKFLOW: &[u8] = br#"
+version: velvet-ballastics/v1
+name: bad_slot_ref
+when:
+  manual: {}
+steps:
+  - id: step0
+    save:
+      value: 1
+  - id: done
+    finish:
+      result: 99
+"#;
+
+    /// Workflow whose compiled IR has a loop body step out of range.
+    /// This triggers Gate 11 (LOOP_BODY_STEP_OUT_OF_RANGE).
+    const MALFORMED_LOOP_BODY_WORKFLOW: &[u8] = br#"
+version: velvet-ballastics/v1
+name: bad_loop_body
+when:
+  manual: {}
+steps:
+  - id: fanout
+    together:
+      branches: [2]
+  - id: join
+    finish:
+      result: 0
+  - id: unreachable
+    save:
+      value: 1
+"#;
+
+    /// Workflow with a step that references a future step (backward branch).
+    const MALFORMED_BACKWARD_BRANCH: &[u8] = br#"
+version: velvet-ballastics/v1
+name: backward_branch
+when:
+  manual: {}
+steps:
+  - id: route
+    choose:
+      condition: true
+      on_true: 0
+      on_false: 1
+  - id: done
+    finish:
+      result: true
+"#;
+
+    /// Workflow with a duplicate step ID.
+    const MALFORMED_DUPLICATE_ID: &[u8] = br#"
+version: velvet-ballastics/v1
+name: duplicate_ids
+when:
+  manual: {}
+steps:
+  - id: build
+    save:
+      value: 1
+  - id: build
+    finish:
+      result: 0
+"#;
+
+    /// Workflow with an unknown reference.
+    const MALFORMED_UNKNOWN_REF: &[u8] = br#"
+version: velvet-ballastics/v1
+name: unknown_ref
+when:
+  manual: {}
+steps:
+  - id: route
+    choose:
+      condition: $input.missing == true
+      on_true: 1
+      on_false: 1
+  - id: done
+    finish:
+      result: true
+"#;
+
     fn compile_with_inputs(inputs: &str) -> Result<CompiledWorkflow, CompileErrors> {
         let source = format!(
             "version: velvet-ballastics/v1\nname: schema_case\nwhen:\n  manual: {{}}\ninputs:\n{inputs}steps:\n  - id: build_result\n    save:\n      value: 1\n  - id: done\n    finish:\n      result: 0\n"
@@ -3571,6 +3671,327 @@ steps:
             Ok(_) => Err(String::from(
                 "SECURITY: compile_workflow_with_contracts accepted orphan contract (gate 12 not run)",
             )),
+        }
+    }
+
+    // ---------------------------------------------------------------------------
+    // RED PHASE: vb-yd5x shared IR parity tests
+    // ---------------------------------------------------------------------------
+
+    /// Verifies that compile_workflow_with_contracts uses the same shared
+    /// validation pipeline as vb_validate::shared::validate_with_contracts.
+    #[test]
+    fn test_shared_ir_parity_via_validate_and_compile_with_contracts() -> Result<(), String> {
+        use vb_compile::compile_workflow_with_contracts;
+        use vb_core::action::ActionContract;
+
+        // A minimal valid workflow
+        let source = MINIMAL_VALID_WORKFLOW;
+
+        // Empty action contracts
+        let contracts: &[ActionContract] = &[];
+
+        // Both paths should accept this workflow
+        let compile_result = compile_workflow_with_contracts(source, contracts);
+        let validate_result = validate_via_compile_parts(source);
+
+        // Assert parity: both succeed or both fail with same code
+        match (compile_result, validate_result) {
+            (Ok(_), Ok(_)) => Ok(()),
+            (Err(compile_errs), Err(_)) => {
+                let compile_code = compile_errs
+                    .first()
+                    .map(|e| e.code())
+                    .ok_or("compile errors empty but expected failure")?;
+                let validate_code = validate_result
+                    .unwrap_err()
+                    .first()
+                    .map(|e| e.code())
+                    .ok_or("validate errors empty but expected failure")?;
+                if compile_code == validate_code {
+                    Ok(())
+                } else {
+                    Err(format!(
+                        "error code mismatch: compile={}, validate={}",
+                        compile_code, validate_code
+                    ))
+                }
+            }
+            (Ok(_), Err(_)) => Err("compile succeeded but validate failed - parity broken".to_owned()),
+            (Err(_), Ok(_)) => Err("validate succeeded but compile failed - parity broken".to_owned()),
+        }
+    }
+
+    /// Validates the same workflow through both paths and compares diagnostic codes.
+    fn validate_via_compile_parts(source: &[u8]) -> Result<(), CompileErrors> {
+        let compiled = YamlCompiler::default().compile(source)?;
+        let parts = compiled.to_parts();
+        vb_validate::shared::validate(&parts).map_err(|e| CompileErrors(vec![e.into()]))
+    }
+
+    /// Tests that a malformed workflow fails CONSISTENTLY in both validate and
+    /// compile paths with the SAME error code.
+    #[test]
+    fn test_malformed_workflow_fails_consistently_in_validate_and_compile() -> Result<(), String> {
+        let test_cases = [
+            (
+                MALFORMED_SLOT_REF_WORKFLOW,
+                "SLOT_REFERENCE_OUT_OF_RANGE",
+                "slot reference out of range",
+            ),
+            (
+                MALFORMED_LOOP_BODY_WORKFLOW,
+                "LOOP_BODY_STEP_OUT_OF_RANGE",
+                "loop body step out of range",
+            ),
+            (
+                MALFORMED_DUPLICATE_ID,
+                "DUPLICATE_ID",
+                "duplicate step id",
+            ),
+            (
+                MALFORMED_UNKNOWN_REF,
+                "UNKNOWN_REFERENCE",
+                "unknown reference",
+            ),
+        ];
+
+        for (source, expected_code, description) in test_cases {
+            // Compile path
+            let compile_result = YamlCompiler::default().compile(source);
+            let compile_err_code = compile_result
+                .as_ref()
+                .err()
+                .and_then(|e| e.first())
+                .map(|e| e.code());
+
+            // Direct validation path via shared pipeline
+            let validate_result = validate_via_compile_parts(source);
+            let validate_err_code = validate_result
+                .as_ref()
+                .err()
+                .and_then(|e| e.first())
+                .map(|e| e.code());
+
+            match (compile_err_code, validate_err_code) {
+                (Some(cc), Some(vc)) if cc == vc && cc == expected_code => {
+                    // Expected: both fail with same code
+                    continue;
+                }
+                (Some(cc), Some(vc)) => {
+                    return Err(format!(
+                        "[{}] compile={}, validate={} (expected {})",
+                        description, cc, vc, expected_code
+                    ));
+                }
+                (Some(cc), None) => {
+                    return Err(format!(
+                        "[{}] compile failed with {} but validate succeeded - BYPASS DETECTED",
+                        description, cc
+                    ));
+                }
+                (None, Some(vc)) => {
+                    return Err(format!(
+                        "[{}] validate failed with {} but compile succeeded - BYPASS DETECTED",
+                        description, vc
+                    ));
+                }
+                (None, None) => {
+                    return Err(format!(
+                        "[{}] NEITHER path failed - expected validation failure",
+                        description
+                    ));
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// Verifies that the existing public validate API remains stable.
+    #[test]
+    fn test_existing_public_validate_api_remains_stable() -> Result<(), String> {
+        let source = MINIMAL_VALID_WORKFLOW;
+        let compiled = YamlCompiler::default()
+            .compile(source)
+            .map_err(|e| format!("compile failed: {e}"))?;
+        let parts = compiled.to_parts();
+
+        let result = vb_validate::shared::validate(&parts);
+        assert!(
+            result.is_ok(),
+            "valid workflow must pass shared validation: {result:?}"
+        );
+
+        // Test with malformed input
+        let result2 = validate_via_compile_parts(MALFORMED_SLOT_REF_WORKFLOW);
+        assert!(
+            result2.is_err(),
+            "malformed workflow must fail shared validation"
+        );
+
+        Ok(())
+    }
+
+    /// Verifies that diagnostic codes remain stable after deduplication.
+    #[test]
+    fn test_diagnostic_codes_remain_stable_after_dedupe() -> Result<(), String> {
+        let test_cases = [
+            (MALFORMED_SLOT_REF_WORKFLOW, "SLOT_REFERENCE_OUT_OF_RANGE"),
+            (MALFORMED_LOOP_BODY_WORKFLOW, "LOOP_BODY_STEP_OUT_OF_RANGE"),
+            (MALFORMED_DUPLICATE_ID, "DUPLICATE_ID"),
+            (MALFORMED_UNKNOWN_REF, "UNKNOWN_REFERENCE"),
+        ];
+
+        for (source, expected_code) in test_cases {
+            let compile_result = YamlCompiler::default().compile(source);
+            let validate_result = validate_via_compile_parts(source);
+
+            let compile_code = compile_result
+                .as_ref()
+                .err()
+                .and_then(|e| e.first())
+                .map(|e| e.code());
+
+            let validate_code = validate_result
+                .as_ref()
+                .err()
+                .and_then(|e| e.first())
+                .map(|e| e.code());
+
+            if compile_code != validate_code {
+                return Err(format!(
+                    "code mismatch: compile={:?}, validate={:?} (expected {})",
+                    compile_code, validate_code, expected_code
+                ));
+            }
+
+            if compile_code != Some(expected_code) {
+                return Err(format!(
+                    "wrong code: got {:?}, expected {}",
+                    compile_code, expected_code
+                ));
+            }
+        }
+        Ok(())
+    }
+
+    /// Proves that a valid workflow validates and compiles through the shared IR.
+    #[test]
+    fn test_valid_workflow_validates_and_compiles_through_shared_ir() -> Result<(), String> {
+        let source = MINIMAL_VALID_WORKFLOW;
+
+        let compile_result = YamlCompiler::default().compile(source);
+        assert!(
+            compile_result.is_ok(),
+            "valid workflow must compile: {compile_result:?}"
+        );
+
+        let validate_result = validate_via_compile_parts(source);
+        assert!(
+            validate_result.is_ok(),
+            "valid workflow must pass shared validation: {validate_result:?}"
+        );
+
+        if compile_result.is_ok() && validate_result.is_ok() {
+            Ok(())
+        } else {
+            Err("valid workflow did not pass both paths".to_owned())
+        }
+    }
+
+    /// Proves that compile_workflow_with_contracts and validate_with_contracts
+    /// produce consistent results.
+    #[test]
+    fn test_validate_with_contracts_parity() -> Result<(), String> {
+        use vb_compile::compile_workflow_with_contracts;
+        use vb_core::action::ActionContract;
+
+        let source = MINIMAL_VALID_WORKFLOW;
+        let contracts: &[ActionContract] = &[];
+
+        let compile_result = compile_workflow_with_contracts(source, contracts);
+        assert!(
+            compile_result.is_ok(),
+            "compile_workflow_with_contracts failed: {compile_result:?}"
+        );
+
+        let validate_result = validate_via_compile_parts_with_contracts(source, contracts);
+        assert!(
+            validate_result.is_ok(),
+            "validate_with_contracts failed: {validate_result:?}"
+        );
+
+        Ok(())
+    }
+
+    fn validate_via_compile_parts_with_contracts(
+        source: &[u8],
+        contracts: &[ActionContract],
+    ) -> Result<(), CompileErrors> {
+        let compiled = YamlCompiler::default().compile(source)
+            .map_err(|e| CompileErrors(vec![e.first().cloned().unwrap_or(CompileError::Workflow(WorkflowError::Internal { message: "compile failed".into() }))]))?;
+        let parts = compiled.to_parts();
+        vb_validate::shared::validate_with_contracts(&parts, contracts)
+            .map_err(|e| CompileErrors(vec![e.into()]))
+    }
+
+    /// Proves that gate 9 (slot references) is enforced consistently.
+    #[test]
+    fn test_gate_09_slot_reference_enforcement_parity() -> Result<(), String> {
+        let source = MALFORMED_SLOT_REF_WORKFLOW;
+
+        let compile_result = YamlCompiler::default().compile(source);
+        let validate_result = validate_via_compile_parts(source);
+
+        let compile_err = compile_result.err().and_then(|e| e.first());
+        let validate_err = validate_result.err().and_then(|e| e.first());
+
+        match (compile_err, validate_err) {
+            (Some(ce), Some(ve)) => {
+                let cc = ce.code();
+                let vc = ve.code();
+                if cc == vc && cc == "SLOT_REFERENCE_OUT_OF_RANGE" {
+                    Ok(())
+                } else {
+                    Err(format!(
+                        "gate 9 parity broken: compile={}, validate={}",
+                        cc, vc
+                    ))
+                }
+            }
+            (None, Some(_)) => Err("compile bypassed gate 9".to_owned()),
+            (Some(_), None) => Err("validate bypassed gate 9".to_owned()),
+            (None, None) => Err("gate 9 was not enforced by either path".to_owned()),
+        }
+    }
+
+    /// Proves that gate 11 (loop body graph) is enforced consistently.
+    #[test]
+    fn test_gate_11_loop_body_enforcement_parity() -> Result<(), String> {
+        let source = MALFORMED_LOOP_BODY_WORKFLOW;
+
+        let compile_result = YamlCompiler::default().compile(source);
+        let validate_result = validate_via_compile_parts(source);
+
+        let compile_err = compile_result.err().and_then(|e| e.first());
+        let validate_err = validate_result.err().and_then(|e| e.first());
+
+        match (compile_err, validate_err) {
+            (Some(ce), Some(ve)) => {
+                let cc = ce.code();
+                let vc = ve.code();
+                if cc == vc && cc == "LOOP_BODY_STEP_OUT_OF_RANGE" {
+                    Ok(())
+                } else {
+                    Err(format!(
+                        "gate 11 parity broken: compile={}, validate={}",
+                        cc, vc
+                    ))
+                }
+            }
+            (None, Some(_)) => Err("compile bypassed gate 11".to_owned()),
+            (Some(_), None) => Err("validate bypassed gate 11".to_owned()),
+            (None, None) => Err("gate 11 was not enforced by either path".to_owned()),
         }
     }
 }

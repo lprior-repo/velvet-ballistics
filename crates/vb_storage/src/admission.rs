@@ -71,6 +71,8 @@ impl VerificationProof {
 /// Accepted artifact record produced by the admission flow.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct AcceptedArtifact {
+    /// Schema version for forward compatibility.
+    pub version: u8,
     /// The artifact's content hash.
     pub digest: vb_core::WorkflowDigest,
     /// Serialized compiled IR (postcard).
@@ -85,6 +87,9 @@ pub struct AcceptedArtifact {
 
 /// Number of verification gates in the admission flow.
 const ADMISSION_GATE_COUNT: u8 = 2;
+
+/// Schema version for the AcceptedArtifact envelope.
+const ACCEPTED_ARTIFACT_VERSION: u8 = 1;
 
 /// Validates, verifies, and persists a compiled workflow artifact with policy-controlled durability.
 ///
@@ -130,8 +135,13 @@ pub fn submit_artifact(
         }
     };
 
+    if gate_count == 0 && !matches!(policy, vb_core::RuntimePolicy::Relaxed) {
+        return Err(JournalError::ArtifactMalformed);
+    }
+
     let proof = VerificationProof::new(workflow.digest(), gate_count, durable);
     let artifact = AcceptedArtifact {
+        version: ACCEPTED_ARTIFACT_VERSION,
         digest: workflow.digest(),
         ir: ir_bytes.clone(),
         verification: proof,

@@ -65,6 +65,11 @@ numeric_id!(BlobId, u64, get);
 numeric_id!(RunId, u64, get);
 numeric_id!(SeqNo, u64, get);
 
+impl ActionId {
+    /// Zero action identifier.
+    pub const ZERO: Self = Self(0);
+}
+
 checked_index!(StepIdx);
 checked_index!(SlotIdx);
 checked_index!(ExprIdx);

@@ -60,7 +60,7 @@ pub enum RetryPolicy {
 }
 
 /// Verification error when an action's idempotency contract is violated.
-#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, thiserror::Error)]
 pub enum IdempotencyViolation {
     /// Action has side-effects but no idempotency key was provided.
     #[error("action has side-effect {0:?} but no idempotency key")]
@@ -200,7 +200,7 @@ pub enum ActionFailureCode {
 }
 
 /// Typed errors from the action subsystem.
-#[derive(Debug, Clone, PartialEq, Eq, Error)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Error)]
 pub enum ActionError {
     /// The requested action is not registered.
     #[error("unknown action: {action:?}")]

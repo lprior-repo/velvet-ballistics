@@ -239,7 +239,7 @@ impl<'j> JournalWriteBatch<'j> {
     }
 
     /// Commits the batch atomically.
-    pub fn commit(mut self) -> Result<(), JournalError> {
+    pub fn commit(self) -> Result<(), JournalError> {
         if self.aborted {
             return Ok(());
         }
@@ -440,11 +440,13 @@ mod tests {
             run,
             seq: EventSeq::new(1),
             step: StepIdx::new(0),
+            attempt: 1,
         };
         let e2 = JournalEvent::RunFinished {
             run,
             seq: EventSeq::new(2),
             result: SlotIdx::new(0),
+            attempt: 1,
         };
 
         let mut batch = JournalWriteBatch::new(&journal);

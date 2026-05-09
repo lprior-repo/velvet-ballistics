@@ -424,13 +424,15 @@ fn cancel_persists_before_ack() {
 
     let _ = journal.snapshot().unwrap();
 
-    shard.enqueue(ShardCommand::Cancel { run }).unwrap();
+    shard
+        .enqueue(ShardCommand::Cancel { run, reason: None })
+        .unwrap();
     shard.tick().unwrap();
 
     let events = journal.snapshot().unwrap();
     let has_run_cancelled = events
         .iter()
-        .any(|e| matches!(e, RuntimeJournalEvent::RunCancelled { run: r } if *r == run));
+        .any(|e| matches!(e, RuntimeJournalEvent::RunCancelled { run: r, reason: _ } if *r == run));
     assert!(
         has_run_cancelled,
         "RunCancelled must be persisted before ack"

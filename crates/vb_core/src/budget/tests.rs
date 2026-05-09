@@ -894,14 +894,10 @@ fn blackhat_workflow_error_to_budget_error_produces_equal_actual_and_limit() {
     let budget_err: BudgetError = workflow_err.into();
 
     match budget_err {
-        BudgetError::TotalStepsExceeded { actual, limit } => {
+        BudgetError::Overflow { resource } => {
             assert_eq!(
-                actual, limit,
-                "BLACKHAT BH-BUD-03: actual == limit is self-contradictory"
-            );
-            assert!(
-                !(actual > limit),
-                "BLACKHAT BH-BUD-03: would not be caught by > comparison"
+                resource, "workflow",
+                "BLACKHAT BH-BUD-03: EntryOutOfBounds should map to workflow resource"
             );
         }
         other => panic!("BLACKHAT BH-BUD-03: unexpected variant: {other:?}"),
@@ -966,12 +962,10 @@ fn blackhat_step_count_overflow_uses_misleading_error_variant() {
     };
     let converted: BudgetError = workflow_err.into();
     match converted {
-        BudgetError::TotalStepsExceeded { actual, limit } => {
-            assert_eq!(actual, u64::MAX, "BLACKHAT BH-BUD-05: actual is u64::MAX");
+        BudgetError::Overflow { resource } => {
             assert_eq!(
-                limit,
-                u64::MAX,
-                "BLACKHAT BH-BUD-05: limit is u64::MAX (information loss)"
+                resource, "workflow",
+                "BLACKHAT BH-BUD-05: StepOutOfBounds maps to workflow resource"
             );
         }
         other => panic!("unexpected variant: {other:?}"),
@@ -3164,11 +3158,10 @@ fn budget_error_from_workflow_error_preserves_variant() -> Result<(), String> {
     };
     let budget_err: BudgetError = wf_err.into();
     match budget_err {
-        BudgetError::TotalStepsExceeded { actual, limit } => {
-            ensure_equal(actual, u64::MAX)?;
-            ensure_equal(limit, u64::MAX)
+        BudgetError::Overflow { resource } => {
+            ensure_equal(resource, "workflow")
         }
-        other => Err(format!("expected TotalStepsExceeded, got {other:?}")),
+        other => Err(format!("expected Overflow {{ resource: \"workflow\" }}, got {other:?}")),
     }
 }
 

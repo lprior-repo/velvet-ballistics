@@ -50,6 +50,7 @@ fn slot_written_extra(run: RunId, slot: SlotIdx, extra: Vec<u8>) -> JournalEvent
     JournalEvent::SlotWrittenEvent {
         run,
         seq: EventSeq::new(0),
+        attempt: 1,
         slot,
         value: None,
         extra: Some(extra),

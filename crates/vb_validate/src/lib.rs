@@ -79,6 +79,10 @@ mod schema_id;
 #[cfg(test)]
 mod schema_tests;
 
+// RED PHASE proptest invariants for symbol bounds and pipeline validation.
+#[cfg(test)]
+mod red_phase_proptest;
+
 /// Validation error codes matching the master contract (Section 16).
 #[derive(Debug, Error, Clone, PartialEq, Eq)]
 pub enum ValidationError {
@@ -217,6 +221,21 @@ pub enum ValidationError {
     AccessorPathInvalid {
         accessor_index: usize,
         segment_index: usize,
+    },
+
+    #[error("ACCESSOR_PATH_TOO_DEEP: accessor {accessor_index}, depth {depth}, max {max}")]
+    AccessorPathTooDeep {
+        accessor_index: usize,
+        depth: usize,
+        max: usize,
+    },
+
+    #[error("ACCESSOR_SYMBOL_OUT_OF_BOUNDS: accessor {accessor_index}, segment {segment_index}, symbol {symbol}, symbols_count {symbols_count}")]
+    AccessorSymbolOutOfBounds {
+        accessor_index: usize,
+        segment_index: usize,
+        symbol: u32,
+        symbols_count: u32,
     },
 
     // Gate 9: Slot references within bounds

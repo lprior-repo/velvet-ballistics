@@ -2589,3 +2589,164 @@ fn cli_doctor_returns_storage_error_for_unreadable_path() {
         "doctor should fail for unreadable path"
     );
 }
+
+// ---------------------------------------------------------------------------
+// Cancel command integration tests (vb-qi37.1.3)
+// ---------------------------------------------------------------------------
+
+#[test]
+fn cli_cancel_nonexistent_run_returns_success_idempotent() {
+    let dir = match tempfile::tempdir() {
+        Ok(dir) => dir,
+        Err(err) => {
+            assert!(forced_assertion_failure(), "tempdir failed: {err}");
+            return;
+        }
+    };
+    let db_path = dir.path().join("cancel-db");
+
+    // Create journal so the path exists.
+    let journal = match vb_storage::FjallJournal::open(&db_path, None) {
+        Ok(j) => j,
+        Err(err) => {
+            assert!(forced_assertion_failure(), "failed to open journal: {err}");
+            return;
+        }
+    };
+    drop(journal);
+
+    let cancel_output = match run_cli(&[
+        std::ffi::OsStr::new("cancel"),
+        std::ffi::OsStr::new("999"),
+        std::ffi::OsStr::new("--db"),
+        db_path.as_os_str(),
+    ]) {
+        Some(output) => output,
+        None => return,
+    };
+
+    // RED PHASE: stub returns failure; after implementation this should pass.
+    assert_cli_success(
+        &cancel_output,
+        "cancel nonexistent run should succeed idempotently",
+    );
+}
+
+#[test]
+fn cli_cancel_with_reason_persists_to_journal() {
+    let dir = match tempfile::tempdir() {
+        Ok(dir) => dir,
+        Err(err) => {
+            assert!(forced_assertion_failure(), "tempdir failed: {err}");
+            return;
+        }
+    };
+    let db_path = dir.path().join("cancel-reason-db");
+
+    // Seed the journal with a run event so the run exists.
+    let run = vb_core::RunId::new(1);
+    let journal = match vb_storage::FjallJournal::open(&db_path, None) {
+        Ok(j) => j,
+        Err(err) => {
+            assert!(forced_assertion_failure(), "failed to open journal: {err}");
+            return;
+        }
+    };
+    let seed_event = vb_storage::JournalEvent::RunAccepted {
+        run,
+        seq: vb_storage::EventSeq::new(0),
+        workflow: vb_core::WorkflowDigest::from_bytes([1u8; 32]),
+    };
+    if let Err(err) = journal.append_journaled(&seed_event) {
+        assert!(forced_assertion_failure(), "failed to seed journal: {err}");
+        return;
+    }
+    drop(journal);
+
+    let cancel_output = match run_cli(&[
+        std::ffi::OsStr::new("cancel"),
+        std::ffi::OsStr::new("1"),
+        std::ffi::OsStr::new("--db"),
+        db_path.as_os_str(),
+        std::ffi::OsStr::new("--reason"),
+        std::ffi::OsStr::new("user request"),
+    ]) {
+        Some(output) => output,
+        None => return,
+    };
+
+    assert_cli_success(&cancel_output, "cancel with reason should succeed");
+
+    // Verify journal contains RunCancelled with reason.
+    let journal = match vb_storage::FjallJournal::open(&db_path, None) {
+        Ok(j) => j,
+        Err(err) => {
+            assert!(forced_assertion_failure(), "failed to open journal: {err}");
+            return;
+        }
+    };
+    let events = match journal.events_for_run(run) {
+        Ok(ev) => ev,
+        Err(err) => {
+            assert!(forced_assertion_failure(), "failed to read events: {err}");
+            return;
+        }
+    };
+    let has_cancelled_with_reason = events.iter().any(|e| {
+        matches!(e, vb_storage::JournalEvent::RunCancelled { reason: Some(r), .. } if r == "user request")
+    });
+    assert!(
+        has_cancelled_with_reason,
+        "journal should contain RunCancelled with reason 'user request'"
+    );
+}
+
+#[test]
+fn cli_cancel_json_output_contains_success_and_status() {
+    let dir = match tempfile::tempdir() {
+        Ok(dir) => dir,
+        Err(err) => {
+            assert!(forced_assertion_failure(), "tempdir failed: {err}");
+            return;
+        }
+    };
+    let db_path = dir.path().join("cancel-json-db");
+
+    let journal = match vb_storage::FjallJournal::open(&db_path, None) {
+        Ok(j) => j,
+        Err(err) => {
+            assert!(forced_assertion_failure(), "failed to open journal: {err}");
+            return;
+        }
+    };
+    drop(journal);
+
+    let cancel_output = match run_cli(&[
+        std::ffi::OsStr::new("cancel"),
+        std::ffi::OsStr::new("1"),
+        std::ffi::OsStr::new("--db"),
+        db_path.as_os_str(),
+        std::ffi::OsStr::new("--json"),
+    ]) {
+        Some(output) => output,
+        None => return,
+    };
+
+    // RED PHASE: stub returns failure; after implementation this should pass.
+    assert_cli_success(&cancel_output, "cancel with --json should succeed");
+
+    let stdout = output_stdout(&cancel_output);
+    let json: serde_json::Value = match serde_json::from_str(&stdout) {
+        Ok(v) => v,
+        Err(err) => {
+            assert!(
+                forced_assertion_failure(),
+                "invalid JSON: {err} stdout={stdout}"
+            );
+            return;
+        }
+    };
+    assert_eq!(json.get("success"), Some(&serde_json::Value::Bool(true)));
+    assert_eq!(json.get("status"), Some(&serde_json::json!("cancelled")));
+    assert_eq!(json.get("run_id"), Some(&serde_json::json!("1")));
+}

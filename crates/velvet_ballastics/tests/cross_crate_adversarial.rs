@@ -570,6 +570,7 @@ fn runtime_to_storage_run_finished_event_carries_correct_kind() {
         run: RunId::new(7),
         seq: vb_storage::EventSeq::new(3),
         result: SlotIdx::new(0),
+        attempt: 1,
     };
     // When: querying the record kind
     let kind = event.record_kind();
