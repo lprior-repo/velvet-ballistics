@@ -220,6 +220,7 @@ pub struct WorkflowCanvas {
     selected: Option<usize>,
     /// Ordered node IDs from the document (cached for fast lookup).
     node_ids: Vec<String>,
+    collapsed_groups: HashSet<String>,
 }
 
 impl WorkflowCanvas {
@@ -250,6 +251,7 @@ impl WorkflowCanvas {
             zoom: DEFAULT_ZOOM,
             selected: None,
             node_ids,
+            collapsed_groups: HashSet::new(),
         }
     }
 
@@ -299,6 +301,66 @@ impl WorkflowCanvas {
         self.selected = step;
     }
 
+    /// Returns a reference to the ordered node IDs.
+    #[must_use]
+    pub fn node_ids_slice(&self) -> &[String] {
+        &self.node_ids
+    }
+
+    /// Check if a node is a group node (has children in the document).
+    #[must_use]
+    pub fn is_group_node(&self, node_id: &str) -> bool {
+        if let Some(_node) = self.document.graph.nodes.get(node_id) {
+            for group in self.document.graph.groups.values() {
+                if group.children.iter().any(|c| c.as_str() == node_id) {
+                    return true;
+                }
+            }
+        }
+        false
+    }
+
+    /// Get the number of children in a group node.
+    #[must_use]
+    pub fn get_group_children_count(&self, node_id: &str) -> usize {
+        if let Some(group) = self.document.graph.groups.get(node_id) {
+            return group.children.len();
+        }
+        0
+    }
+
+    /// Check if a group node is currently collapsed.
+    #[must_use]
+    pub fn is_collapsed(&self, node_id: &str) -> bool {
+        self.collapsed_groups.contains(node_id)
+    }
+
+    /// Toggle the collapsed state of a group node.
+    pub fn toggle_collapse(&mut self, node_id: &str) {
+        if !self.collapsed_groups.remove(node_id) {
+            self.collapsed_groups.insert(node_id.to_string());
+        }
+    }
+
+    /// Check if a node is hidden because its parent group is collapsed.
+    #[must_use]
+    pub fn is_hidden_by_collapse(&self, node_id: &str) -> bool {
+        for group_id in &self.collapsed_groups {
+            if let Some(group) = self.document.graph.groups.get(group_id.as_str()) {
+                if group.children.iter().any(|c| c.as_str() == node_id) {
+                    return true;
+                }
+            }
+        }
+        false
+    }
+
+    /// Returns the set of collapsed group IDs.
+    #[must_use]
+    pub fn collapsed_groups_set(&self) -> &HashSet<String> {
+        &self.collapsed_groups
+    }
+
     /// Compute the visible viewport rectangle in world coordinates.
     ///
     /// The viewport is derived from pan offset, zoom level, and the given
@@ -326,6 +388,9 @@ impl WorkflowCanvas {
     pub fn visible_nodes(&self, viewport: &ViewportRect) -> Vec<(usize, f64, f64, f64, f64)> {
         let mut result = Vec::new();
         for (idx, node_id) in self.node_ids.iter().enumerate() {
+            if self.is_hidden_by_collapse(node_id.as_str()) {
+                continue;
+            }
             let pos = match self.layout.positions.get(node_id.as_str()) {
                 Some(&p) => p,
                 None => continue,
