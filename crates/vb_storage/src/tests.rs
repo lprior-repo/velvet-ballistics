@@ -7242,4 +7242,75 @@ mod tests {
         assert!(journal.compiled_ir(digest).expect("g2").is_some());
         assert!(journal.run_header(run).expect("g3").is_some());
     }
+
+    // =====================================================================
+    // vb-apn5: Single-server database lock enforcement tests
+    // =====================================================================
+
+    #[test]
+    fn test_first_open_succeeds_and_creates_lock_file() {
+        let temp = tempfile::tempdir().expect("tempdir creation should succeed");
+        let journal = FjallJournal::open(temp.path(), None);
+        assert!(journal.is_ok(), "first open on empty path should succeed");
+        let lock_path = temp.path().join(".process.lock");
+        assert!(
+            lock_path.exists(),
+            ".process.lock file should be created after open"
+        );
+    }
+
+    #[test]
+    fn test_lock_releases_on_journal_drop() {
+        let temp = tempfile::tempdir().expect("tempdir creation should succeed");
+        {
+            let _journal = FjallJournal::open(temp.path(), None).expect("first open should succeed");
+        } // journal dropped here, lock released
+        let result = FjallJournal::open(temp.path(), None);
+        assert!(result.is_ok(), "re-open after drop must succeed");
+    }
+
+    #[test]
+    fn test_second_open_fails_in_same_process() {
+        let temp = tempfile::tempdir().expect("tempdir creation should succeed");
+        let _journal = FjallJournal::open(temp.path(), None).expect("first open should succeed");
+        let result = FjallJournal::open(temp.path(), None);
+        // Same-process: flock allows it, but Fjall detects the open database.
+        // Cross-process: ProcessLockHeld would be returned first.
+        assert!(
+            result.is_err(),
+            "second open in same process must fail (Fjall detects open DB)"
+        );
+    }
+
+    #[test]
+    fn test_lock_file_contains_holder_pid() {
+        let temp = tempfile::tempdir().expect("tempdir creation should succeed");
+        let _journal = FjallJournal::open(temp.path(), None).expect("first open should succeed");
+        let lock_path = temp.path().join(".process.lock");
+        let contents = std::fs::read_to_string(&lock_path).expect("read lock file");
+        let pid: u32 = contents.trim().parse().expect("lock file should contain valid PID");
+        assert_eq!(pid, std::process::id(), "lock file should contain current process PID");
+    }
+
+    #[test]
+    fn test_no_keyspace_created_when_lock_fails() {
+        let temp = tempfile::tempdir().expect("tempdir creation should succeed");
+        let _journal = FjallJournal::open(temp.path(), None).expect("first open should succeed");
+
+        let before_count = std::fs::read_dir(temp.path())
+            .expect("read_dir")
+            .count();
+
+        let result = FjallJournal::open(temp.path(), None);
+        assert!(result.is_err(), "second open must fail");
+
+        let after_count = std::fs::read_dir(temp.path())
+            .expect("read_dir")
+            .count();
+
+        assert_eq!(
+            before_count, after_count,
+            "no new files should appear when lock fails"
+        );
+    }
 }
