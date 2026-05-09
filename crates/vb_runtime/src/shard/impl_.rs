@@ -3,7 +3,7 @@
 use crossbeam_queue::ArrayQueue;
 use indexmap::IndexMap;
 use vb_core::frame::RunFrame;
-use vb_core::ids::{RunId, SlotIdx};
+use vb_core::ids::{RunId, SlotIdx, StepIdx};
 use vb_core::workflow::CompiledWorkflow;
 
 use crate::counters::ShardCounters;
@@ -209,43 +209,69 @@ impl Shard {
         run: RunId,
         evidence: &mut EvidenceCollector,
     ) -> RuntimeResult<()> {
-        let events = evidence.drain();
-        for ev in events {
-            match ev {
-                EvidenceEvent::StepStarted { step } => {
-                    self.trace_ring.push(TraceEvent::StepStarted { run, step });
-                    self.journal
-                        .append(RuntimeJournalEvent::StepStarted { run, step })?;
-                }
-                EvidenceEvent::StepSucceeded { step, output } => {
-                    self.journal.append(RuntimeJournalEvent::StepSucceeded {
-                        run,
-                        step,
-                        output: output.unwrap_or(SlotIdx::ZERO),
-                    })?;
-                }
-                EvidenceEvent::SlotWritten { slot, value, extra } => {
-                    let encoded =
-                        postcard::to_allocvec(&value).map_err(|_| RuntimeError::EncodeFailed)?;
-                    let encoded_extra = extra
-                        .map(|state| postcard::to_allocvec(&state))
-                        .transpose()
-                        .map_err(|_| RuntimeError::EncodeFailed)?;
-                    self.trace_ring.push(TraceEvent::SlotWritten {
-                        run,
-                        slot,
-                        value: encoded.clone(),
-                    });
-                    self.journal.append(RuntimeJournalEvent::SlotWritten {
-                        run,
-                        slot,
-                        value: encoded,
-                        extra: encoded_extra,
-                    })?;
-                }
+        evidence
+            .drain()
+            .into_iter()
+            .try_for_each(|event| self.flush_evidence_event(run, event))
+    }
+
+    fn flush_evidence_event(&mut self, run: RunId, event: EvidenceEvent) -> RuntimeResult<()> {
+        match event {
+            EvidenceEvent::StepStarted { step } => self.flush_step_started(run, step),
+            EvidenceEvent::StepSucceeded { step, output } => {
+                self.flush_step_succeeded(run, step, output)
+            }
+            EvidenceEvent::SlotWritten { slot, value, extra } => {
+                self.flush_slot_written(run, slot, value, extra)
             }
         }
-        Ok(())
+    }
+
+    fn flush_step_started(&mut self, run: RunId, step: StepIdx) -> RuntimeResult<()> {
+        self.trace_ring.push(TraceEvent::StepStarted { run, step });
+        self.journal
+            .append(RuntimeJournalEvent::StepStarted { run, step })
+    }
+
+    fn flush_step_succeeded(
+        &mut self,
+        run: RunId,
+        step: StepIdx,
+        output: Option<SlotIdx>,
+    ) -> RuntimeResult<()> {
+        self.journal.append(RuntimeJournalEvent::StepSucceeded {
+            run,
+            step,
+            output: match output {
+                Some(slot) => slot,
+                None => SlotIdx::ZERO,
+            },
+        })
+    }
+
+    fn flush_slot_written(
+        &mut self,
+        run: RunId,
+        slot: SlotIdx,
+        value: vb_core::value::SlotValue,
+        extra: Option<crate::primitives::collect::CollectPaginationState>,
+    ) -> RuntimeResult<()> {
+        let encoded = postcard::to_allocvec(&value).map_err(|_| RuntimeError::EncodeFailed)?;
+        let encoded_extra = extra
+            .map(|state| postcard::to_allocvec(&state))
+            .transpose()
+            .map_err(|_| RuntimeError::EncodeFailed)?;
+        self.trace_ring.push(TraceEvent::SlotWritten {
+            run,
+            slot,
+            value: encoded.clone(),
+        });
+        self.journal.append(RuntimeJournalEvent::SlotWritten {
+            run,
+            slot,
+            value: encoded,
+            extra: encoded_extra,
+        })
     }
 
     pub(crate) fn take_frame_for(
@@ -383,10 +409,11 @@ mod tests {
 
     #[test]
     fn config_new_accepts_min_valid_capacity() {
-        let result = ShardConfig::new(1, 1, 1, 1, vb_core::policy::RuntimePolicy::Relaxed);
-        assert!(result.is_ok());
-        let config = result.ok();
-        assert_eq!(config.map(|c| c.command_queue_capacity), Some(1));
+        assert_eq!(
+            ShardConfig::new(1, 1, 1, 1, vb_core::policy::RuntimePolicy::Relaxed)
+                .map(|config| config.command_queue_capacity),
+            Ok(1)
+        );
     }
 
     #[test]
@@ -422,24 +449,34 @@ mod tests {
 
     #[test]
     fn config_new_accepts_max_command_queue_capacity() {
-        let result = ShardConfig::new(
-            MAX_COMMAND_QUEUE_CAPACITY,
-            1,
-            1,
-            1,
-            vb_core::policy::RuntimePolicy::Relaxed,
+        assert_eq!(
+            ShardConfig::new(
+                MAX_COMMAND_QUEUE_CAPACITY,
+                1,
+                1,
+                1,
+                vb_core::policy::RuntimePolicy::Relaxed,
+            )
+            .map(|config| config.command_queue_capacity),
+            Ok(MAX_COMMAND_QUEUE_CAPACITY)
         );
-        assert!(result.is_ok());
     }
 
     #[test]
     fn config_new_preserves_all_fields() {
-        let config =
-            ShardConfig::new(64, 128, 256, 32, vb_core::policy::RuntimePolicy::Relaxed).ok();
-        assert_eq!(config.map(|c| c.command_queue_capacity), Some(64));
-        assert_eq!(config.map(|c| c.trace_capacity), Some(128));
-        assert_eq!(config.map(|c| c.step_budget_per_tick), Some(256));
-        assert_eq!(config.map(|c| c.max_active_runs), Some(32));
+        assert_eq!(
+            ShardConfig::new(64, 128, 256, 32, vb_core::policy::RuntimePolicy::Relaxed).map(
+                |config| {
+                    (
+                        config.command_queue_capacity,
+                        config.trace_capacity,
+                        config.step_budget_per_tick,
+                        config.max_active_runs,
+                    )
+                }
+            ),
+            Ok((64, 128, 256, 32))
+        );
     }
 
     // =======================================================================
@@ -584,11 +621,31 @@ mod tests {
                 assert_eq!(correlation, 42);
             }
             other => {
-                // Wrong variant
-                let _ = other;
-                assert!(false);
+                assert_eq!(
+                    other,
+                    super::InspectResponse::NotFound {
+                        run: RunId::new(999),
+                        correlation: 42,
+                    }
+                );
             }
         }
+    }
+
+    fn submit_finished_run(shard: &mut Shard, run: RunId) {
+        let Some(wf) = finished_workflow() else {
+            assert_eq!(None::<()>, Some(()));
+            return;
+        };
+        assert_eq!(
+            shard.enqueue(ShardCommand::Submit {
+                run,
+                workflow: wf,
+                caps: CapabilitySet::empty(),
+            }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Ok(true));
     }
 
     // =======================================================================
@@ -646,20 +703,10 @@ mod tests {
     #[test]
     fn shard_handles_multiple_sequential_finished_runs() {
         let mut shard = Shard::new(small_config());
-        for i in 0u64..4 {
-            let Some(wf) = finished_workflow() else {
-                return;
-            };
-            assert_eq!(
-                shard.enqueue(ShardCommand::Submit {
-                    run: RunId::new(i),
-                    workflow: wf,
-                    caps: CapabilitySet::empty(),
-                }),
-                Ok(())
-            );
-            assert_eq!(shard.tick(), Ok(true));
-        }
+        submit_finished_run(&mut shard, RunId::new(0));
+        submit_finished_run(&mut shard, RunId::new(1));
+        submit_finished_run(&mut shard, RunId::new(2));
+        submit_finished_run(&mut shard, RunId::new(3));
         assert_eq!(shard.counters().snapshot().runs_completed, 4);
         assert_eq!(shard.counters().snapshot().runs_submitted, 4);
     }

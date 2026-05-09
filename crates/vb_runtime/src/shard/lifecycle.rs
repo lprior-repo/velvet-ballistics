@@ -19,6 +19,14 @@ use crate::{RuntimeError, RuntimeResult};
 use crate::primitives::collect::CollectStates;
 use crate::shard::types::{AskAnswer, PendingTimerKind, RunState, Shard};
 
+enum ActionFailureTransition {
+    Retry { max_attempts: u16 },
+    RetryExhaustedRouteToHandler { max_attempts: u16 },
+    RetryExhaustedFailRun { max_attempts: u16 },
+    RouteToHandler,
+    FailRun,
+}
+
 impl Shard {
     pub(crate) fn handle_submit(
         &mut self,
@@ -175,76 +183,141 @@ impl Shard {
         failure: ActionFailure,
     ) -> RuntimeResult<()> {
         let run = ticket.run;
-        let mut retry_now = false;
-        let mut fail_without_handler = false;
-        {
+        let outcome = {
             let state = self.runs.get_mut(&run).ok_or(RuntimeError::RunNotFound)?;
-            crate::shard::helpers::validate_action_completion(state, ticket)?;
-            if failure.retry_policy == VbCoreRetryPolicy::Retryable
-                && crate::shard::helpers::retry_metadata_exists(state, ticket.step)
-            {
-                let policy = crate::shard::helpers::retry_policy_after_action(state, ticket.step)?;
-                self.trace_ring.push(TraceEvent::ActionFailed {
-                    run,
-                    step: ticket.step,
-                    code: failure.code,
-                });
-                if crate::shard::helpers::record_retry_attempt(state, ticket, policy)? {
-                    state
-                        .frame
-                        .set_pc(ticket.step)
-                        .map_err(|_| RuntimeError::InvalidActionCompletion)?;
-                    retry_now = true;
+            Self::action_failure_outcome(state, ticket, &failure)?
+        };
+        self.append_action_failed(ticket, failure)?;
+        self.apply_action_failure_outcome(run, outcome)
+    }
+
+    fn action_failure_outcome(
+        state: &mut RunState,
+        ticket: ActionTicket,
+        failure: &ActionFailure,
+    ) -> RuntimeResult<ActionFailureTransition> {
+        crate::shard::helpers::validate_action_completion(state, ticket)?;
+        match Self::retry_failure_outcome(state, ticket, failure)? {
+            Some(outcome) => Ok(outcome),
+            None => Self::handler_failure_outcome(state, ticket).map(|routed| {
+                if routed {
+                    ActionFailureTransition::RouteToHandler
+                } else {
+                    ActionFailureTransition::FailRun
                 }
-            }
-            if !retry_now {
-                match crate::shard::helpers::find_error_handler_for_failure(
-                    &state.workflow,
-                    ticket.step,
-                ) {
-                    Some((handler, error_slot)) => {
-                        state
-                            .frame
-                            .mark_failed(ticket.step)
-                            .map_err(|_| RuntimeError::InvalidActionCompletion)?;
-                        // Write failed step index to error slot if configured.
-                        if let Some(slot) = error_slot {
-                            let failed_step_i64 = i64::from(ticket.step.get());
-                            let slot_value = vb_core::value::SlotValue::I64(failed_step_i64);
-                            if state.frame.write_slot(slot, slot_value).is_err() {
-                                // Slot write failure - continue without error slot
-                            }
-                        }
-                        state
-                            .frame
-                            .set_pc(handler)
-                            .map_err(|_| RuntimeError::InvalidActionCompletion)?;
+            }),
+        }
+    }
+
+    fn retry_failure_outcome(
+        state: &mut RunState,
+        ticket: ActionTicket,
+        failure: &ActionFailure,
+    ) -> RuntimeResult<Option<ActionFailureTransition>> {
+        if failure.retry_policy != VbCoreRetryPolicy::Retryable
+            || !crate::shard::helpers::retry_metadata_exists(state, ticket.step)
+        {
+            return Ok(None);
+        }
+        let policy = crate::shard::helpers::retry_policy_after_action(state, ticket.step)?;
+        if crate::shard::helpers::record_retry_attempt(state, ticket, policy)? {
+            state
+                .frame
+                .set_pc(ticket.step)
+                .map_err(|_| RuntimeError::InvalidActionCompletion)?;
+            Ok(Some(ActionFailureTransition::Retry {
+                max_attempts: policy.max_attempts,
+            }))
+        } else {
+            Self::handler_failure_outcome(state, ticket).map(|routed| {
+                Some(if routed {
+                    ActionFailureTransition::RetryExhaustedRouteToHandler {
+                        max_attempts: policy.max_attempts,
                     }
-                    None => {
-                        fail_without_handler = true;
+                } else {
+                    ActionFailureTransition::RetryExhaustedFailRun {
+                        max_attempts: policy.max_attempts,
                     }
-                }
+                })
+            })
+        }
+    }
+
+    fn handler_failure_outcome(state: &mut RunState, ticket: ActionTicket) -> RuntimeResult<bool> {
+        match crate::shard::helpers::find_error_handler_for_failure(&state.workflow, ticket.step) {
+            Some((handler, error_slot)) => {
+                Self::route_failed_action_to_handler(state, ticket.step, handler, error_slot)?;
+                Ok(true)
             }
+            None => Ok(false),
         }
-        if retry_now {
-            return self.drive_run(run);
+    }
+
+    fn route_failed_action_to_handler(
+        state: &mut RunState,
+        failed: StepIdx,
+        handler: StepIdx,
+        error_slot: Option<SlotIdx>,
+    ) -> RuntimeResult<()> {
+        state
+            .frame
+            .mark_failed(failed)
+            .map_err(|_| RuntimeError::InvalidActionCompletion)?;
+        if let Some(slot) = error_slot {
+            state
+                .frame
+                .write_slot(
+                    slot,
+                    vb_core::value::SlotValue::I64(i64::from(failed.get())),
+                )
+                .map_err(|_| RuntimeError::InvalidActionCompletion)?;
         }
-        if fail_without_handler {
-            self.trace_ring.push(TraceEvent::ActionFailed {
-                run,
-                step: ticket.step,
-                code: failure.code,
-            });
-            let state = self.take_run_state(run)?;
-            self.fail_run_state(run, state)?;
-            return Ok(());
-        }
+        state
+            .frame
+            .set_pc(handler)
+            .map_err(|_| RuntimeError::InvalidActionCompletion)
+    }
+
+    fn append_action_failed(
+        &mut self,
+        ticket: ActionTicket,
+        failure: ActionFailure,
+    ) -> RuntimeResult<()> {
         self.trace_ring.push(TraceEvent::ActionFailed {
-            run,
+            run: ticket.run,
             step: ticket.step,
             code: failure.code,
         });
-        self.drive_run(run)
+        self.journal.append(RuntimeJournalEvent::ActionFailed {
+            run: ticket.run,
+            step: ticket.step,
+            action: ticket.action,
+        })
+    }
+
+    fn apply_action_failure_outcome(
+        &mut self,
+        run: RunId,
+        outcome: ActionFailureTransition,
+    ) -> RuntimeResult<()> {
+        match outcome {
+            ActionFailureTransition::Retry { max_attempts }
+            | ActionFailureTransition::RetryExhaustedRouteToHandler { max_attempts } => {
+                debug_assert!(max_attempts > 0);
+                self.drive_run(run)
+            }
+            ActionFailureTransition::RetryExhaustedFailRun { max_attempts } => {
+                debug_assert!(max_attempts > 0);
+                self.fail_active_run(run)
+            }
+            ActionFailureTransition::RouteToHandler => self.drive_run(run),
+            ActionFailureTransition::FailRun => self.fail_active_run(run),
+        }
+    }
+
+    fn fail_active_run(&mut self, run: RunId) -> RuntimeResult<()> {
+        let state = self.take_run_state(run)?;
+        self.fail_run_state(run, state)
     }
 
     pub(crate) fn handle_ask_answer(&mut self, answer: AskAnswer) -> RuntimeResult<()> {
@@ -407,7 +480,9 @@ mod tests {
     use vb_core::capability::CapabilitySet;
     use vb_core::ids::{ActionId, ConstIdx, RunId, SeqNo, SlotIdx, StepIdx, WorkflowDigest};
     use vb_core::value::{ConstValue, SlotValue, Taint};
-    use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
+    use vb_core::workflow::{
+        CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
+    };
 
     use crate::RuntimeError;
     use crate::journal::{RuntimeJournalEvent, SharedRuntimeJournal};
@@ -692,6 +767,161 @@ mod tests {
         }
     }
 
+    fn retryable_failure() -> ActionFailure {
+        ActionFailure {
+            retry_policy: VbRetryPolicy::Retryable,
+            ..non_retryable_failure()
+        }
+    }
+
+    fn require_workflow(
+        name: &str,
+        workflow: Option<vb_core::workflow::CompiledWorkflow>,
+    ) -> Result<vb_core::workflow::CompiledWorkflow, String> {
+        match workflow {
+            Some(wf) => Ok(wf),
+            None => Err(format!("{name} fixture workflow must compile")),
+        }
+    }
+
+    fn require_snapshot(
+        journal: &crate::journal::VolatileRuntimeJournal,
+    ) -> Result<Vec<RuntimeJournalEvent>, String> {
+        journal
+            .snapshot()
+            .map_err(|error| format!("journal snapshot failed: {error:?}"))
+    }
+
+    fn action_failed_count(events: &[RuntimeJournalEvent], run: RunId, step: StepIdx) -> usize {
+        events
+            .iter()
+            .filter(|event| {
+                matches!(
+                    event,
+                    RuntimeJournalEvent::ActionFailed { run: event_run, step: event_step, .. }
+                        if *event_run == run && *event_step == step
+                )
+            })
+            .count()
+    }
+
+    fn retry_workflow() -> Result<vb_core::workflow::CompiledWorkflow, String> {
+        let set_policy = CompiledNode {
+            id: StepIdx::ZERO,
+            output: Some(SlotIdx::new(1)),
+            next: Some(StepIdx::new(1)),
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::SetConst {
+                value: ConstIdx::new(0),
+            },
+        };
+        let action = CompiledNode {
+            id: StepIdx::new(1),
+            output: None,
+            next: Some(StepIdx::new(2)),
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Do {
+                action: ActionId::new(0),
+                input: SlotIdx::ZERO,
+            },
+        };
+        let retry = CompiledNode {
+            id: StepIdx::new(2),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::RetryCheck {
+                policy_slot: SlotIdx::new(1),
+                body: StepIdx::new(1),
+                exhausted: StepIdx::new(3),
+            },
+        };
+        let finish = CompiledNode {
+            id: StepIdx::new(3),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::ZERO,
+            },
+        };
+        let workflow = vb_core::workflow::CompiledWorkflow::try_from_parts(WorkflowParts {
+            name: Box::from("retry"),
+            digest: WorkflowDigest::from_bytes([8; 32]),
+            nodes: Box::from([set_policy, action, retry, finish]),
+            expressions: Box::from([]),
+            accessors: Box::from([]),
+            constants: Box::from([ConstValue::I64(2)]),
+            slot_count: 2,
+            symbols_count: 0,
+            entry: StepIdx::ZERO,
+            step_names: Box::from([]),
+            resource_contract: ResourceContract::DEFAULT,
+        });
+        workflow.map_err(|error| format!("retry fixture workflow must compile: {error:?}"))
+    }
+
+    fn submit_run(shard: &mut Shard, run: RunId, workflow: CompiledWorkflow) {
+        assert_eq!(
+            shard.enqueue(ShardCommand::Submit {
+                run,
+                workflow,
+                caps: CapabilitySet::empty(),
+            }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Ok(true));
+    }
+
+    fn enqueue_action_failure(shard: &mut Shard, run: RunId, step: StepIdx, attempt: u16) {
+        let ticket = make_ticket(run, step, attempt);
+        assert_eq!(
+            shard.enqueue(ShardCommand::ActionFailed {
+                ticket,
+                failure: retryable_failure(),
+            }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Ok(true));
+    }
+
+    fn event_position(
+        events: &[RuntimeJournalEvent],
+        expected: &RuntimeJournalEvent,
+    ) -> Option<usize> {
+        events.iter().position(|event| event == expected)
+    }
+
+    fn assert_event_order(
+        events: &[RuntimeJournalEvent],
+        first: RuntimeJournalEvent,
+        second: RuntimeJournalEvent,
+    ) {
+        let first_position = event_position(events, &first);
+        let second_position = event_position(events, &second);
+        assert!(
+            matches!((first_position, second_position), (Some(a), Some(b)) if a < b),
+            "events out of order: {events:?}"
+        );
+    }
+
+    fn assert_retry_exhaustion_journal(events: &[RuntimeJournalEvent], run: RunId) {
+        assert_eq!(action_failed_count(events, run, StepIdx::new(1)), 2);
+        assert_event_order(
+            events,
+            RuntimeJournalEvent::ActionFailed {
+                run,
+                step: StepIdx::new(1),
+                action: ActionId::new(0),
+            },
+            RuntimeJournalEvent::RunFailed { run },
+        );
+    }
+
     #[test]
     fn submit_finished_workflow_completes_immediately() {
         let mut shard = Shard::new(small_config());
@@ -714,11 +944,9 @@ mod tests {
     }
 
     #[test]
-    fn submit_suspended_workflow_suspends_on_action() {
+    fn submit_suspended_workflow_suspends_on_action() -> Result<(), String> {
         let mut shard = Shard::new(small_config());
-        let Some(wf) = suspended_workflow() else {
-            return;
-        };
+        let wf = require_workflow("suspended", suspended_workflow())?;
         let run = RunId::new(2);
         assert_eq!(
             shard.enqueue(ShardCommand::Submit {
@@ -731,14 +959,13 @@ mod tests {
         assert_eq!(shard.tick(), Ok(true));
         assert_eq!(shard.active_run_count(), 1);
         assert_eq!(shard.counters().snapshot().runs_submitted, 1);
+        Ok(())
     }
 
     #[test]
-    fn submit_duplicate_run_returns_run_already_exists() {
+    fn submit_duplicate_run_returns_run_already_exists() -> Result<(), String> {
         let mut shard = Shard::new(small_config());
-        let Some(wf) = suspended_workflow() else {
-            return;
-        };
+        let wf = require_workflow("suspended", suspended_workflow())?;
         let run = RunId::new(10);
         assert_eq!(
             shard.enqueue(ShardCommand::Submit {
@@ -758,6 +985,7 @@ mod tests {
             Ok(())
         );
         assert_eq!(shard.tick(), Err(RuntimeError::RunAlreadyExists));
+        Ok(())
     }
 
     #[test]
@@ -800,11 +1028,9 @@ mod tests {
     }
 
     #[test]
-    fn submit_with_inputs_seeds_slots_before_driving() {
+    fn submit_with_inputs_seeds_slots_before_driving() -> Result<(), String> {
         let mut shard = Shard::new(small_config());
-        let Some(wf) = suspended_workflow() else {
-            return;
-        };
+        let wf = require_workflow("suspended", suspended_workflow())?;
         let run = RunId::new(20);
         assert_eq!(
             shard.enqueue(ShardCommand::SubmitWithInputs {
@@ -817,14 +1043,13 @@ mod tests {
         );
         assert_eq!(shard.tick(), Ok(true));
         assert_eq!(shard.active_run_count(), 1);
+        Ok(())
     }
 
     #[test]
-    fn submit_with_inputs_rejects_duplicate() {
+    fn submit_with_inputs_rejects_duplicate() -> Result<(), String> {
         let mut shard = Shard::new(small_config());
-        let Some(wf) = suspended_workflow() else {
-            return;
-        };
+        let wf = require_workflow("suspended", suspended_workflow())?;
         let run = RunId::new(21);
         assert_eq!(
             shard.enqueue(ShardCommand::Submit {
@@ -845,6 +1070,7 @@ mod tests {
             Ok(())
         );
         assert_eq!(shard.tick(), Err(RuntimeError::RunAlreadyExists));
+        Ok(())
     }
 
     #[test]
@@ -982,21 +1208,11 @@ mod tests {
     }
 
     #[test]
-    fn action_failure_without_handler_fails_run() {
+    fn action_failure_without_handler_fails_run() -> Result<(), String> {
         let mut shard = Shard::new(small_config());
-        let Some(wf) = suspended_workflow() else {
-            return;
-        };
+        let wf = require_workflow("suspended", suspended_workflow())?;
         let run = RunId::new(60);
-        assert_eq!(
-            shard.enqueue(ShardCommand::Submit {
-                run,
-                workflow: wf,
-                caps: CapabilitySet::empty(),
-            }),
-            Ok(())
-        );
-        assert_eq!(shard.tick(), Ok(true));
+        submit_run(&mut shard, run, wf);
         let ticket = make_ticket(run, StepIdx::ZERO, 1);
         assert_eq!(
             shard.enqueue(ShardCommand::ActionFailed {
@@ -1008,14 +1224,45 @@ mod tests {
         assert_eq!(shard.tick(), Ok(true));
         assert_eq!(shard.counters().snapshot().runs_failed, 1);
         assert_eq!(shard.active_run_count(), 0);
+        Ok(())
     }
 
     #[test]
-    fn action_failure_routes_to_error_handler() {
+    fn action_failure_without_handler_emits_action_failed_before_run_failed() -> Result<(), String>
+    {
+        let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
+        let shared: SharedRuntimeJournal = journal.clone();
+        let mut shard = Shard::new_with_journal(small_config(), shared);
+        let wf = require_workflow("suspended", suspended_workflow())?;
+        let run = RunId::new(600);
+        submit_run(&mut shard, run, wf);
+        let ticket = make_ticket(run, StepIdx::ZERO, 1);
+        assert_eq!(
+            shard.enqueue(ShardCommand::ActionFailed {
+                ticket,
+                failure: non_retryable_failure(),
+            }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Ok(true));
+
+        let events = require_snapshot(&journal)?;
+        assert_event_order(
+            &events,
+            RuntimeJournalEvent::ActionFailed {
+                run,
+                step: StepIdx::ZERO,
+                action: ActionId::new(0),
+            },
+            RuntimeJournalEvent::RunFailed { run },
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn action_failure_routes_to_error_handler() -> Result<(), String> {
         let mut shard = Shard::new(small_config());
-        let Some(wf) = error_handler_workflow() else {
-            return;
-        };
+        let wf = require_workflow("error_handler", error_handler_workflow())?;
         let run = RunId::new(61);
         assert_eq!(
             shard.enqueue(ShardCommand::Submit {
@@ -1037,6 +1284,42 @@ mod tests {
         assert_eq!(shard.tick(), Ok(true));
         assert_eq!(shard.counters().snapshot().runs_completed, 1);
         assert_eq!(shard.counters().snapshot().runs_failed, 0);
+        Ok(())
+    }
+
+    #[test]
+    fn action_failure_routed_to_handler_emits_action_failed_before_handler_step()
+    -> Result<(), String> {
+        let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
+        let shared: SharedRuntimeJournal = journal.clone();
+        let mut shard = Shard::new_with_journal(small_config(), shared);
+        let wf = require_workflow("error_handler", error_handler_workflow())?;
+        let run = RunId::new(610);
+        submit_run(&mut shard, run, wf);
+        let ticket = make_ticket(run, StepIdx::new(1), 1);
+        assert_eq!(
+            shard.enqueue(ShardCommand::ActionFailed {
+                ticket,
+                failure: non_retryable_failure(),
+            }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Ok(true));
+
+        let events = require_snapshot(&journal)?;
+        assert_event_order(
+            &events,
+            RuntimeJournalEvent::ActionFailed {
+                run,
+                step: StepIdx::new(1),
+                action: ActionId::new(0),
+            },
+            RuntimeJournalEvent::StepStarted {
+                run,
+                step: StepIdx::new(2),
+            },
+        );
+        Ok(())
     }
 
     #[test]
@@ -1051,6 +1334,20 @@ mod tests {
             Ok(())
         );
         assert_eq!(shard.tick(), Err(RuntimeError::RunNotFound));
+    }
+
+    #[test]
+    fn retry_exhaustion_emits_single_action_failed() -> Result<(), String> {
+        let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
+        let shared: SharedRuntimeJournal = journal.clone();
+        let mut shard = Shard::new_with_journal(small_config(), shared);
+        let run = RunId::new(620);
+        submit_run(&mut shard, run, retry_workflow()?);
+        enqueue_action_failure(&mut shard, run, StepIdx::new(1), 1);
+        enqueue_action_failure(&mut shard, run, StepIdx::new(1), 2);
+        let events = require_snapshot(&journal)?;
+        assert_retry_exhaustion_journal(&events, run);
+        Ok(())
     }
 
     #[test]
@@ -1245,8 +1542,10 @@ mod tests {
                 assert_eq!(snap.correlation, 42);
             }
             other => {
-                let _ = other;
-                assert!(false);
+                assert_eq!(
+                    format!("{other:?}"),
+                    "Some(Found(InspectSnapshot { run: RunId(100), correlation: 42 }))"
+                );
             }
         }
     }
@@ -1322,13 +1621,11 @@ mod tests {
     }
 
     #[test]
-    fn cancel_emits_run_cancelled_journal_event() {
+    fn cancel_emits_run_cancelled_journal_event() -> Result<(), String> {
         let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
         let shared: SharedRuntimeJournal = journal.clone();
         let mut shard = Shard::new_with_journal(small_config(), shared);
-        let Some(wf) = suspended_workflow() else {
-            return;
-        };
+        let wf = require_workflow("suspended", suspended_workflow())?;
         let run = RunId::new(112);
         assert_eq!(
             shard.enqueue(ShardCommand::Submit {
@@ -1341,18 +1638,18 @@ mod tests {
         assert_eq!(shard.tick(), Ok(true));
         assert_eq!(shard.enqueue(ShardCommand::Cancel { run }), Ok(()));
         assert_eq!(shard.tick(), Ok(true));
-        let events = journal.snapshot().ok();
+        let events = require_snapshot(&journal)?;
         assert!(
-            matches!(events, Some(e) if e.contains(&RuntimeJournalEvent::RunCancelled { run }))
+            events.contains(&RuntimeJournalEvent::RunCancelled { run }),
+            "journal events should contain RunCancelled: {events:?}"
         );
+        Ok(())
     }
 
     #[test]
-    fn finish_produces_run_finished_trace() {
+    fn finish_produces_run_finished_trace() -> Result<(), String> {
         let mut shard = Shard::new(small_config());
-        let Some(wf) = finished_workflow() else {
-            return;
-        };
+        let wf = require_workflow("finished", finished_workflow())?;
         let run = RunId::new(113);
         assert_eq!(
             shard.enqueue(ShardCommand::Submit {
@@ -1369,6 +1666,34 @@ mod tests {
             .iter()
             .any(|e| *e == TraceEvent::RunFinished { run });
         assert_eq!(found, true);
+        Ok(())
+    }
+
+    #[test]
+    fn finished_workflow_emits_one_slot_written_for_one_output_write() -> Result<(), String> {
+        let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
+        let shared: SharedRuntimeJournal = journal.clone();
+        let mut shard = Shard::new_with_journal(small_config(), shared);
+        let wf = require_workflow("finished", finished_workflow())?;
+        let run = RunId::new(1130);
+        submit_run(&mut shard, run, wf);
+
+        let events = require_snapshot(&journal)?;
+        let slot_written_count = events
+            .iter()
+            .filter(|event| {
+                matches!(
+                    event,
+                    RuntimeJournalEvent::SlotWritten {
+                        run: event_run,
+                        slot: SlotIdx::ZERO,
+                        ..
+                    } if *event_run == run
+                )
+            })
+            .count();
+        assert_eq!(slot_written_count, 1, "events: {events:?}");
+        Ok(())
     }
 
     #[test]
@@ -1448,7 +1773,7 @@ mod tests {
     }
 
     #[test]
-    fn multiple_submits_fill_to_capacity_then_reject() {
+    fn multiple_submits_fill_to_capacity_then_reject() -> Result<(), String> {
         let config = ShardConfig {
             command_queue_capacity: 16,
             trace_capacity: 16,
@@ -1457,24 +1782,18 @@ mod tests {
             policy: vb_core::policy::RuntimePolicy::Relaxed,
         };
         let mut shard = Shard::new(config);
-        for i in 0u64..2 {
-            let Some(wf) = suspended_workflow() else {
-                return;
-            };
-            assert_eq!(
-                shard.enqueue(ShardCommand::Submit {
-                    run: RunId::new(i),
-                    workflow: wf,
-                    caps: CapabilitySet::empty(),
-                }),
-                Ok(())
-            );
-            assert_eq!(shard.tick(), Ok(true));
-        }
+        submit_run(
+            &mut shard,
+            RunId::new(0),
+            require_workflow("suspended", suspended_workflow())?,
+        );
+        submit_run(
+            &mut shard,
+            RunId::new(1),
+            require_workflow("suspended", suspended_workflow())?,
+        );
         assert_eq!(shard.active_run_count(), 2);
-        let Some(wf) = suspended_workflow() else {
-            return;
-        };
+        let wf = require_workflow("suspended", suspended_workflow())?;
         assert_eq!(
             shard.enqueue(ShardCommand::Submit {
                 run: RunId::new(99),
@@ -1487,5 +1806,6 @@ mod tests {
             shard.tick(),
             Err(RuntimeError::ActiveRunCapacityExceeded { capacity: 2 })
         );
+        Ok(())
     }
 }

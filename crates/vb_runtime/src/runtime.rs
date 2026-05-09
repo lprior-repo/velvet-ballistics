@@ -445,7 +445,7 @@ mod tests {
         CompiledWorkflow::try_from_parts(parts).ok()
     }
 
-    fn test_config() -> ShardConfig {
+    fn runtime_config() -> ShardConfig {
         ShardConfig {
             command_queue_capacity: 16,
             trace_capacity: 16,
@@ -495,7 +495,7 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(3) else {
             return;
         };
-        let mut runtime = Runtime::new(shard_count, test_config());
+        let mut runtime = Runtime::new(shard_count, runtime_config());
         assert_eq!(runtime.shutdown_graceful(), Ok(()));
         assert_eq!(runtime.tick_all(), Ok(false));
     }
@@ -505,25 +505,27 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(2) else {
             return;
         };
-        let mut runtime = Runtime::new(shard_count, test_config());
+        let mut runtime = Runtime::new(shard_count, runtime_config());
         assert_eq!(runtime.shutdown_graceful(), Ok(()));
         assert_eq!(runtime.tick_all(), Ok(false));
     }
 
     #[test]
-    fn shutdown_graceful_processes_shards_before_journal_drain() {
+    fn shutdown_graceful_processes_shards_before_journal_drain() -> Result<(), String> {
         let Some(shard_count) = NonZeroUsize::new(1) else {
-            return;
+            return Err(String::from("expected non-zero shard count"));
         };
         let journal = Arc::new(VolatileRuntimeJournal::new());
-        let mut runtime = Runtime::new_with_journal(shard_count, test_config(), journal.clone());
+        let mut runtime = Runtime::new_with_journal(shard_count, runtime_config(), journal.clone());
         let Some(wf) = finished_workflow() else {
-            return;
+            return Err(String::from("expected finished workflow fixture"));
         };
         let run = RunId::new(31);
         assert_eq!(runtime.submit_direct(run, wf), Ok(()));
 
         assert_eq!(runtime.shutdown_graceful(), Ok(()));
+        let encoded_bool = postcard::to_allocvec(&SlotValue::Bool(true))
+            .map_err(|err| format!("bool slot serialization failed: {err:?}"))?;
 
         assert_eq!(
             journal.snapshot(),
@@ -532,7 +534,6 @@ mod tests {
                     run,
                     workflow: WorkflowDigest::from_bytes([2; 32]),
                 },
-                // Evidence chain: step 0 (SetConst)
                 RuntimeJournalEvent::StepStarted {
                     run,
                     step: StepIdx::new(0),
@@ -540,7 +541,7 @@ mod tests {
                 RuntimeJournalEvent::SlotWritten {
                     run,
                     slot: SlotIdx::new(0),
-                    value: postcard::to_allocvec(&SlotValue::Bool(true)).unwrap(),
+                    value: encoded_bool,
                     extra: None,
                 },
                 RuntimeJournalEvent::StepSucceeded {
@@ -548,7 +549,6 @@ mod tests {
                     step: StepIdx::new(0),
                     output: SlotIdx::new(0),
                 },
-                // Evidence chain: step 1 (Finish)
                 RuntimeJournalEvent::StepStarted {
                     run,
                     step: StepIdx::new(1),
@@ -564,6 +564,7 @@ mod tests {
                 },
             ])
         );
+        Ok(())
     }
 
     #[test]
@@ -571,7 +572,7 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(2) else {
             return;
         };
-        let mut runtime = Runtime::new(shard_count, test_config());
+        let mut runtime = Runtime::new(shard_count, runtime_config());
         let Some(wf1) = suspended_workflow() else {
             return;
         };
@@ -590,7 +591,7 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(2) else {
             return;
         };
-        let mut runtime = Runtime::new(shard_count, test_config());
+        let mut runtime = Runtime::new(shard_count, runtime_config());
         let Some(wf1) = suspended_workflow() else {
             return;
         };
@@ -649,7 +650,7 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(2) else {
             return;
         };
-        let mut runtime = Runtime::new(shard_count, test_config());
+        let mut runtime = Runtime::new(shard_count, runtime_config());
         let Some(wf) = suspended_workflow() else {
             return;
         };
@@ -668,7 +669,7 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(2) else {
             return;
         };
-        let mut runtime = Runtime::new(shard_count, test_config());
+        let mut runtime = Runtime::new(shard_count, runtime_config());
         let Some(wf) = suspended_workflow() else {
             return;
         };
@@ -689,7 +690,7 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(2) else {
             return;
         };
-        let mut runtime = Runtime::new(shard_count, test_config());
+        let mut runtime = Runtime::new(shard_count, runtime_config());
         let Some(wf) = suspended_workflow() else {
             return;
         };
@@ -711,9 +712,8 @@ mod tests {
                 });
                 assert_eq!(found, true);
             }
-            Err(_) => {
-                // Should not happen
-                assert!(false);
+            Err(error) => {
+                assert_eq!(Err(error), Ok(Vec::<TraceEvent>::new()));
             }
         }
     }
@@ -724,7 +724,7 @@ mod tests {
             return;
         };
         let journal = Arc::new(VolatileRuntimeJournal::new());
-        let mut runtime = Runtime::new_with_journal(shard_count, test_config(), journal.clone());
+        let mut runtime = Runtime::new_with_journal(shard_count, runtime_config(), journal.clone());
         let Some(wf) = action_then_finish_workflow() else {
             return;
         };
@@ -795,7 +795,7 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let mut runtime = Runtime::new(shard_count, test_config());
+        let mut runtime = Runtime::new(shard_count, runtime_config());
         let Some(wf) = action_then_finish_workflow() else {
             return;
         };
@@ -830,7 +830,7 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(2) else {
             return;
         };
-        let mut runtime = Runtime::new(shard_count, test_config());
+        let mut runtime = Runtime::new(shard_count, runtime_config());
         let Some(wf) = suspended_workflow() else {
             return;
         };
@@ -860,7 +860,7 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(2) else {
             return;
         };
-        let mut runtime = Runtime::new(shard_count, test_config());
+        let mut runtime = Runtime::new(shard_count, runtime_config());
         // When shutting down only one shard
         // Use shutdown_graceful which enqueues to all shards
         assert_eq!(runtime.shutdown_graceful(), Ok(()));
@@ -874,7 +874,7 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(2) else {
             return;
         };
-        let mut runtime = Runtime::new(shard_count, test_config());
+        let mut runtime = Runtime::new(shard_count, runtime_config());
         // When ticking with empty queues
         let result = runtime.tick_all();
         // Then result is true
@@ -887,7 +887,7 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(2) else {
             return;
         };
-        let mut runtime = Runtime::new(shard_count, test_config());
+        let mut runtime = Runtime::new(shard_count, runtime_config());
         let Some(wf1) = suspended_workflow() else {
             return;
         };
@@ -918,7 +918,7 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let mut runtime = Runtime::new(shard_count, test_config());
+        let mut runtime = Runtime::new(shard_count, runtime_config());
         // When taking inspect response without any inspect command
         let run = RunId::new(1);
         let response = runtime.take_inspect_response(run);
@@ -932,7 +932,7 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(3) else {
             return;
         };
-        let runtime = Runtime::new(shard_count, test_config());
+        let runtime = Runtime::new(shard_count, runtime_config());
         // When taking counters snapshot
         let snap = runtime.counters_snapshot();
         // Then all counters are zero
@@ -948,7 +948,7 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let mut runtime = Runtime::new(shard_count, test_config());
+        let mut runtime = Runtime::new(shard_count, runtime_config());
         let Some(wf) = finished_workflow() else {
             return;
         };
@@ -968,7 +968,7 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let runtime = Runtime::new(shard_count, test_config());
+        let runtime = Runtime::new(shard_count, runtime_config());
         let ticket = ActionTicket {
             run: RunId::new(1),
             step: StepIdx::ZERO,
@@ -995,7 +995,7 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let runtime = Runtime::new(shard_count, test_config());
+        let runtime = Runtime::new(shard_count, runtime_config());
         let answer = AskAnswer {
             ticket: AskTicket {
                 run: RunId::new(1),
@@ -1016,7 +1016,7 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(2) else {
             return;
         };
-        let mut runtime = Runtime::new(shard_count, test_config());
+        let mut runtime = Runtime::new(shard_count, runtime_config());
         // When draining trace
         let events = runtime.drain_trace();
         // Then result is empty
@@ -1029,7 +1029,7 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let mut runtime = Runtime::new(shard_count, test_config());
+        let mut runtime = Runtime::new(shard_count, runtime_config());
         let Some(wf) = suspended_workflow() else {
             return;
         };
@@ -1051,7 +1051,7 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let mut runtime = Runtime::new(shard_count, test_config());
+        let mut runtime = Runtime::new(shard_count, runtime_config());
         let Some(wf) = suspended_workflow() else {
             return;
         };
@@ -1081,7 +1081,7 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(3) else {
             return;
         };
-        let mut runtime = Runtime::new(shard_count, test_config());
+        let mut runtime = Runtime::new(shard_count, runtime_config());
         // When shutting down gracefully
         assert_eq!(runtime.shutdown_graceful(), Ok(()));
         // Then tick_all returns false
@@ -1094,7 +1094,7 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let mut runtime = Runtime::new(shard_count, test_config());
+        let mut runtime = Runtime::new(shard_count, runtime_config());
         assert_eq!(runtime.shutdown_graceful(), Ok(()));
         assert_eq!(runtime.tick_all(), Ok(false));
         // When ticking again
@@ -1135,7 +1135,7 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let runtime = Runtime::new(shard_count, test_config());
+        let runtime = Runtime::new(shard_count, runtime_config());
         // When listing events for a run on a nonexistent shard (can't happen with valid shard_index)
         // Use a valid run that maps to shard 0
         let events = runtime.list_events(RunId::new(1));
@@ -1144,8 +1144,8 @@ mod tests {
             Ok(evts) => {
                 assert_eq!(evts.len(), 0);
             }
-            Err(_) => {
-                assert!(false);
+            Err(error) => {
+                assert_eq!(Err(error), Ok(Vec::<TraceEvent>::new()));
             }
         }
     }
@@ -1156,7 +1156,7 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(2) else {
             return;
         };
-        let mut runtime = Runtime::new(shard_count, test_config());
+        let mut runtime = Runtime::new(shard_count, runtime_config());
         let Some(wf1) = finished_workflow() else {
             return;
         };
@@ -1179,7 +1179,7 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let mut runtime = Runtime::new(shard_count, test_config());
+        let mut runtime = Runtime::new(shard_count, runtime_config());
         let Some(wf) = finished_workflow() else {
             return;
         };
@@ -1199,7 +1199,7 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(4) else {
             return;
         };
-        let mut runtime = Runtime::new(shard_count, test_config());
+        let mut runtime = Runtime::new(shard_count, runtime_config());
         // When shutting down
         assert_eq!(runtime.shutdown_graceful(), Ok(()));
         // Then tick_all returns false (all shards shut down)
@@ -1212,7 +1212,7 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let mut runtime = Runtime::new(shard_count, test_config());
+        let mut runtime = Runtime::new(shard_count, runtime_config());
         // When inspecting a non-existent run
         let run = RunId::new(999);
         assert_eq!(runtime.inspect_run(run, 1), Ok(()));
@@ -1234,7 +1234,7 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let mut runtime = Runtime::new(shard_count, test_config());
+        let mut runtime = Runtime::new(shard_count, runtime_config());
         let Some(wf) = suspended_workflow() else {
             return;
         };
@@ -1259,7 +1259,7 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let mut runtime = Runtime::new(shard_count, test_config());
+        let mut runtime = Runtime::new(shard_count, runtime_config());
         let Some(wf) = suspended_workflow() else {
             return;
         };
@@ -1278,7 +1278,7 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(2) else {
             return;
         };
-        let mut runtime = Runtime::new(shard_count, test_config());
+        let mut runtime = Runtime::new(shard_count, runtime_config());
         let Some(wf) = suspended_workflow() else {
             return;
         };
@@ -1308,7 +1308,7 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let mut runtime = Runtime::new(shard_count, test_config());
+        let mut runtime = Runtime::new(shard_count, runtime_config());
         // When completing an action for a run that was never submitted
         let run = RunId::new(999);
         assert_eq!(runtime.complete_action(run, StepIdx::new(0)), Ok(()));
@@ -1322,7 +1322,7 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let runtime = Runtime::new(shard_count, test_config());
+        let runtime = Runtime::new(shard_count, runtime_config());
         // When failing an action for a run that was never submitted
         let ticket = ActionTicket {
             run: RunId::new(998),
@@ -1376,7 +1376,7 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let mut runtime = Runtime::new(shard_count, test_config());
+        let mut runtime = Runtime::new(shard_count, runtime_config());
         let Some(wf) = suspended_workflow() else {
             return;
         };
@@ -1427,7 +1427,7 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let runtime = Runtime::new(shard_count, test_config());
+        let runtime = Runtime::new(shard_count, runtime_config());
         // When snapshotting a non-existent run
         let result = runtime.snapshot_run(RunId::new(9999), 42);
         // Then it returns NotFound
@@ -1446,7 +1446,7 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let mut runtime = Runtime::new(shard_count, test_config());
+        let mut runtime = Runtime::new(shard_count, runtime_config());
         let Some(wf) = suspended_workflow() else {
             return;
         };
@@ -1466,7 +1466,7 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let mut runtime = Runtime::new(shard_count, test_config());
+        let mut runtime = Runtime::new(shard_count, runtime_config());
         let Some(wf) = finished_workflow() else {
             return;
         };
@@ -1490,7 +1490,7 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(4) else {
             return;
         };
-        let runtime = Runtime::new(shard_count, test_config());
+        let runtime = Runtime::new(shard_count, runtime_config());
         // When computing shard index for run 1 twice
         let idx1 = runtime.shard_index(RunId::new(1));
         let idx2 = runtime.shard_index(RunId::new(1));
@@ -1505,7 +1505,7 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(4) else {
             return;
         };
-        let runtime = Runtime::new(shard_count, test_config());
+        let runtime = Runtime::new(shard_count, runtime_config());
         // When computing shard indices for different runs
         let idx1 = runtime.shard_index(RunId::new(1));
         let idx2 = runtime.shard_index(RunId::new(2));
@@ -1521,7 +1521,7 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let mut runtime = Runtime::new(shard_count, test_config());
+        let mut runtime = Runtime::new(shard_count, runtime_config());
         let Some(wf) = suspended_workflow() else {
             return;
         };
@@ -1545,7 +1545,7 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let mut runtime = Runtime::new(shard_count, test_config());
+        let mut runtime = Runtime::new(shard_count, runtime_config());
         let Some(wf) = suspended_workflow() else {
             return;
         };
@@ -1582,7 +1582,7 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let mut runtime = Runtime::new(shard_count, test_config());
+        let mut runtime = Runtime::new(shard_count, runtime_config());
         let Some(wf) = suspended_workflow() else {
             return;
         };
@@ -1602,7 +1602,7 @@ mod tests {
             return;
         };
         let journal = Arc::new(VolatileRuntimeJournal::new());
-        let mut runtime = Runtime::new_with_journal(shard_count, test_config(), journal.clone());
+        let mut runtime = Runtime::new_with_journal(shard_count, runtime_config(), journal.clone());
         let Some(wf) = finished_workflow() else {
             return;
         };
@@ -1626,8 +1626,8 @@ mod tests {
                 assert_eq!(found_submitted, true);
                 assert_eq!(found_finished, true);
             }
-            Err(_) => {
-                assert!(false);
+            Err(error) => {
+                assert_eq!(Err(error), Ok(Vec::<RuntimeJournalEvent>::new()));
             }
         }
     }
@@ -1723,7 +1723,7 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(4) else {
             return;
         };
-        let mut runtime = Runtime::new(shard_count, test_config());
+        let mut runtime = Runtime::new(shard_count, runtime_config());
         let Some(wf) = suspended_workflow() else {
             return;
         };
@@ -1759,7 +1759,7 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let mut runtime = Runtime::new(shard_count, test_config());
+        let mut runtime = Runtime::new(shard_count, runtime_config());
         let Some(wf) = suspended_workflow() else {
             return;
         };
@@ -1798,7 +1798,7 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let mut runtime = Runtime::new(shard_count, test_config());
+        let mut runtime = Runtime::new(shard_count, runtime_config());
         let Some(wf) = wait_then_finish_workflow() else {
             return;
         };
@@ -1853,7 +1853,7 @@ mod tests {
             return;
         };
         let journal = Arc::new(VolatileRuntimeJournal::new());
-        let mut runtime = Runtime::new_with_journal(shard_count, test_config(), journal.clone());
+        let mut runtime = Runtime::new_with_journal(shard_count, runtime_config(), journal.clone());
         let Some(wf) = suspended_workflow() else {
             return;
         };
@@ -1875,8 +1875,8 @@ mod tests {
                 );
                 assert_eq!(found_submitted, true);
             }
-            Err(_) => {
-                assert!(false);
+            Err(error) => {
+                assert_eq!(Err(error), Ok(Vec::<RuntimeJournalEvent>::new()));
             }
         }
     }
@@ -1888,7 +1888,7 @@ mod tests {
             return;
         };
         let journal = Arc::new(VolatileRuntimeJournal::new());
-        let mut runtime = Runtime::new_with_journal(shard_count, test_config(), journal.clone());
+        let mut runtime = Runtime::new_with_journal(shard_count, runtime_config(), journal.clone());
         let Some(wf) = finished_workflow() else {
             return;
         };
@@ -1913,8 +1913,8 @@ mod tests {
                 );
                 assert_eq!(found_finished, true);
             }
-            Err(_) => {
-                assert!(false);
+            Err(error) => {
+                assert_eq!(Err(error), Ok(Vec::<RuntimeJournalEvent>::new()));
             }
         }
     }
@@ -1927,7 +1927,7 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let mut runtime = Runtime::new(shard_count, test_config());
+        let mut runtime = Runtime::new(shard_count, runtime_config());
         let Some(wf1) = wait_then_finish_workflow() else {
             return;
         };
@@ -1982,7 +1982,7 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let mut runtime = Runtime::new(shard_count, test_config());
+        let mut runtime = Runtime::new(shard_count, runtime_config());
         let Some(wf1) = action_then_finish_workflow() else {
             return;
         };
@@ -2028,23 +2028,8 @@ mod tests {
         assert_eq!(snap.runs_completed, 1);
 
         // run1 and run3 are still present and suspended
-        for run in [run1, run3] {
-            let inspect = runtime.snapshot_run(run, 6);
-            match inspect {
-                Ok(InspectResponse::Found(s)) => {
-                    assert_eq!(s.run, run);
-                }
-                other => {
-                    assert_eq!(
-                        other,
-                        Ok(InspectResponse::NotFound {
-                            run,
-                            correlation: 6
-                        })
-                    );
-                }
-            }
-        }
+        assert_suspended_run_is_found(&runtime, run1, 6);
+        assert_suspended_run_is_found(&runtime, run3, 6);
 
         // Verify the completed run's trace shows the finish
         let trace = runtime.list_events(run2);
@@ -2055,8 +2040,19 @@ mod tests {
                     .any(|e| *e == TraceEvent::RunFinished { run: run2 });
                 assert_eq!(found_finished, true);
             }
-            Err(_) => {
-                assert!(false);
+            Err(error) => {
+                assert_eq!(Err(error), Ok(Vec::<TraceEvent>::new()));
+            }
+        }
+    }
+
+    fn assert_suspended_run_is_found(runtime: &Runtime, run: RunId, correlation: u64) {
+        match runtime.snapshot_run(run, correlation) {
+            Ok(InspectResponse::Found(s)) => {
+                assert_eq!(s.run, run);
+            }
+            other => {
+                assert_eq!(other, Ok(InspectResponse::NotFound { run, correlation }));
             }
         }
     }
@@ -2104,7 +2100,7 @@ mod tests {
         let Some(shard_count) = NonZeroUsize::new(1) else {
             return;
         };
-        let mut runtime = Runtime::new(shard_count, test_config());
+        let mut runtime = Runtime::new(shard_count, runtime_config());
         let Some(wf) = suspended_workflow() else {
             return;
         };
