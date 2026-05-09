@@ -3727,3 +3727,462 @@ fn object_slot_value(
 ) -> Result<ConstValue, CompileError> {
     Err(CompileError::UnsupportedConstantValue { step })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn make_parts_for_lower(
+        nodes: Vec<CompiledNode>,
+        expressions: Vec<ExprProgram>,
+        slot_count: u16,
+    ) -> WorkflowParts {
+        WorkflowParts {
+            name: Box::from("test_lower_steps"),
+            digest: WorkflowDigest::from_bytes([0u8; 32]),
+            nodes: nodes.into_boxed_slice(),
+            expressions: expressions.into_boxed_slice(),
+            accessors: Box::new([]),
+            constants: Box::new([ConstValue::I64(0)]),
+            slot_count,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+            step_names: Box::new([]),
+        }
+    }
+
+    fn finish_node(index: u16, result_slot: u16) -> CompiledNode {
+        CompiledNode {
+            id: StepIdx::new(index),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::new(result_slot),
+            },
+        }
+    }
+
+    fn do_node(index: u16, action: ActionId, input: SlotIdx) -> CompiledNode {
+        CompiledNode {
+            id: StepIdx::new(index),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Do { action, input },
+        }
+    }
+
+    /// RED-PHASE: lower_steps_to_ir bypasses Gate 9 (slot reference validation).
+    #[test]
+    fn lower_steps_to_ir_bypasses_gate_9_slot_reference_validation() {
+        let nodes = vec![do_node(0, ActionId::new(7), SlotIdx::new(1))];
+        let parts = make_parts_for_lower(nodes, vec![], 1);
+
+        let result = lower_steps_to_ir(
+            parts.nodes.into_vec(),
+            vec![],
+            vec![],
+            parts.constants.into_vec(),
+            parts.slot_count,
+            parts.symbols_count,
+            &parts.name,
+            parts.digest,
+        );
+
+        // Check that result is Err with exactly one ValidationError::SlotReferenceOutOfRange
+        match result {
+            Err(CompileErrors(ref errors)) => {
+                assert_eq!(errors.len(), 1, "Expected exactly 1 error, got {}", errors.len());
+                let err = errors.first().expect("should have first error");
+                match err {
+                    CompileError::Validation(vb_validate::ValidationError::SlotReferenceOutOfRange {
+                        slot,
+                        slot_count: sc,
+                        context,
+                    }) => {
+                        assert_eq!(*slot, 1);
+                        assert_eq!(*sc, 1);
+                        assert!(
+                            context.contains("Do.input"),
+                            "context should contain 'Do.input', got: {}",
+                            context
+                        );
+                    }
+                    other => panic!(
+                        "Expected ValidationError::SlotReferenceOutOfRange, got: {:?}",
+                        other
+                    ),
+                }
+            }
+            Ok(_) => panic!(
+                "Expected error but lower_steps_to_ir succeeded. \
+                 This FAILS before fix because lower_steps_to_ir bypasses Gate 9."
+            ),
+            other => panic!("Expected CompileErrors, got: {:?}", other),
+        }
+    }
+
+    /// RED-PHASE: validate_ir correctly orders shared validation BEFORE core.
+    #[test]
+    fn validate_ir_orders_shared_validation_before_core() {
+        let nodes = vec![do_node(0, ActionId::new(7), SlotIdx::new(1))];
+        let parts = make_parts_for_lower(nodes, vec![], 1);
+
+        let result = validate_ir(parts);
+
+        match result {
+            Err(CompileErrors(ref errors)) => {
+                assert_eq!(errors.len(), 1, "Expected exactly 1 error, got {}", errors.len());
+                let err = errors.first().expect("should have first error");
+                match err {
+                    CompileError::Validation(vb_validate::ValidationError::SlotReferenceOutOfRange {
+                        slot,
+                        slot_count: sc,
+                        context,
+                    }) => {
+                        assert_eq!(*slot, 1);
+                        assert_eq!(*sc, 1);
+                        assert!(
+                            context.contains("node 0"),
+                            "context should contain 'node 0', got: {}",
+                            context
+                        );
+                    }
+                    other => panic!(
+                        "Expected ValidationError::SlotReferenceOutOfRange, got: {:?}",
+                        other
+                    ),
+                }
+            }
+            Ok(_) => panic!("Expected error from validate_ir, got Ok"),
+            other => panic!("Expected CompileErrors, got: {:?}", other),
+        }
+    }
+
+    /// RED-PHASE: lower_steps_to_ir output passes shared validation.
+    #[test]
+    fn lower_steps_to_ir_output_passes_shared_validation() {
+        let nodes = vec![finish_node(0, 0)];
+        let parts = make_parts_for_lower(nodes, vec![], 1);
+
+        let result = lower_steps_to_ir(
+            parts.nodes.into_vec(),
+            vec![],
+            vec![],
+            parts.constants.into_vec(),
+            parts.slot_count,
+            parts.symbols_count,
+            &parts.name,
+            parts.digest,
+        );
+
+        assert!(result.is_ok(), "lower_steps_to_ir should succeed for valid parts");
+
+        let workflow = result.unwrap();
+        let output_parts = workflow.to_parts();
+        let validate_result = vb_validate::shared::validate(&output_parts);
+        assert!(
+            validate_result.is_ok(),
+            "lower_steps_to_ir output should pass shared validation, got: {:?}",
+            validate_result
+        );
+    }
+
+    /// RED-PHASE: validate_ir output passes shared validation.
+    #[test]
+    fn validate_ir_output_passes_shared_validation() {
+        let nodes = vec![finish_node(0, 0)];
+        let parts = make_parts_for_lower(nodes, vec![], 1);
+
+        let result = validate_ir(parts);
+        assert!(result.is_ok(), "validate_ir should succeed for valid parts");
+
+        let workflow = result.unwrap();
+        let output_parts = workflow.to_parts();
+
+        let validate_result = vb_validate::shared::validate(&output_parts);
+        assert!(
+            validate_result.is_ok(),
+            "validate_ir output should pass shared validation, got: {:?}",
+            validate_result
+        );
+    }
+
+    /// RED-PHASE: lower_steps_to_ir preserves WorkflowError for empty nodes.
+    #[test]
+    fn lower_steps_to_ir_returns_workflow_error_for_empty_nodes() {
+        let parts = make_parts_for_lower(vec![], vec![], 0);
+
+        let result = lower_steps_to_ir(
+            vec![],
+            vec![],
+            vec![],
+            parts.constants.into_vec(),
+            0,
+            0,
+            &parts.name,
+            parts.digest,
+        );
+
+        match result {
+            Err(CompileErrors(ref errors)) => {
+                assert_eq!(errors.len(), 1, "Expected exactly 1 error, got {}", errors.len());
+                let err = errors.first().expect("should have first error");
+                match err {
+                    CompileError::Workflow(WorkflowError::EmptyNodes) => {}
+                    other => panic!("Expected WorkflowError::EmptyNodes, got: {:?}", other),
+                }
+            }
+            Ok(_) => panic!("Expected error, got Ok"),
+            other => panic!("Expected CompileErrors, got: {:?}", other),
+        }
+    }
+
+    /// RED-PHASE: lower_steps_to_ir preserves WorkflowError for node ID mismatch.
+    #[test]
+    fn lower_steps_to_ir_returns_workflow_error_for_node_id_mismatch() {
+        let mut node = do_node(1, ActionId::new(7), SlotIdx::new(0));
+        node.id = StepIdx::new(1);
+        let parts = make_parts_for_lower(vec![node], vec![], 1);
+
+        let result = lower_steps_to_ir(
+            parts.nodes.into_vec(),
+            vec![],
+            vec![],
+            parts.constants.into_vec(),
+            parts.slot_count,
+            parts.symbols_count,
+            &parts.name,
+            parts.digest,
+        );
+
+        match result {
+            Err(CompileErrors(ref errors)) => {
+                assert_eq!(errors.len(), 1, "Expected exactly 1 error, got {}", errors.len());
+                let err = errors.first().expect("should have first error");
+                match err {
+                    CompileError::Workflow(WorkflowError::NodeIdMismatch { expected, actual }) => {
+                        assert_eq!(expected.as_usize(), 0);
+                        assert_eq!(actual.as_usize(), 1);
+                    }
+                    other => panic!("Expected WorkflowError::NodeIdMismatch, got: {:?}", other),
+                }
+            }
+            Ok(_) => panic!("Expected error, got Ok"),
+            other => panic!("Expected CompileErrors, got: {:?}", other),
+        }
+    }
+
+    /// RED-PHASE: validate_ir returns Workflow error when core fails after shared passes.
+    #[test]
+    fn validate_ir_returns_workflow_error_when_core_fails_after_shared_passes() {
+        let parts = make_parts_for_lower(vec![], vec![], 0);
+
+        let result = validate_ir(parts);
+
+        match result {
+            Err(CompileErrors(ref errors)) => {
+                assert_eq!(errors.len(), 1, "Expected exactly 1 error, got {}", errors.len());
+                let err = errors.first().expect("should have first error");
+                match err {
+                    CompileError::Workflow(WorkflowError::EmptyNodes) => {}
+                    other => panic!("Expected WorkflowError::EmptyNodes, got: {:?}", other),
+                }
+            }
+            Ok(_) => panic!("Expected error, got Ok"),
+            other => panic!("Expected CompileErrors, got: {:?}", other),
+        }
+    }
+
+    /// RED-PHASE: compile_workflow_with_contracts rejects missing action contract.
+    #[test]
+    fn compile_workflow_with_contracts_rejects_missing_action_contract() {
+        let source = br#"version: velvet-ballastics/v1
+name: test_do
+when:
+  manual: {}
+steps:
+  - id: do_it
+    do:
+      action: 7
+      input: 0
+  - id: done
+    finish:
+      result: 0
+"#;
+
+        let result = compile_workflow_with_contracts(source, &[]);
+
+        match result {
+            Err(CompileErrors(ref errors)) => {
+                assert_eq!(errors.len(), 1, "Expected exactly 1 error, got {}", errors.len());
+                let err = errors.first().expect("should have first error");
+                match err {
+                    CompileError::Validation(vb_validate::ValidationError::ActionContractMissing {
+                        action_id,
+                        node_index,
+                    }) => {
+                        assert_eq!(*action_id, 7);
+                        assert_eq!(*node_index, 0);
+                    }
+                    other => panic!(
+                        "Expected ValidationError::ActionContractMissing, got: {:?}",
+                        other
+                    ),
+                }
+            }
+            Ok(_) => panic!("Expected error, got Ok"),
+            other => panic!("Expected CompileErrors, got: {:?}", other),
+        }
+    }
+
+    /// RED-PHASE: compile_workflow_with_contracts rejects orphan action contract.
+    #[test]
+    fn compile_workflow_with_contracts_rejects_orphan_action_contract() {
+        let source = br#"version: velvet-ballastics/v1
+name: test_no_do
+when:
+  manual: {}
+steps:
+  - id: done
+    finish:
+      result: 0
+"#;
+
+        let orphan_contract = ActionContract {
+            id: ActionId::new(99),
+            input_slot_count: 0,
+            output_slot_count: 0,
+            max_input_bytes: 0,
+            max_output_bytes: 0,
+            timeout_ms: 0,
+            idempotency: Idempotency::DeterministicPure,
+            side_effect: SideEffect::None,
+            retry_safety: RetrySafety::Safe,
+            required_capabilities: Box::new([]),
+        };
+
+        let result = compile_workflow_with_contracts(source, &[orphan_contract]);
+
+        match result {
+            Err(CompileErrors(ref errors)) => {
+                assert_eq!(errors.len(), 1, "Expected exactly 1 error, got {}", errors.len());
+                let err = errors.first().expect("should have first error");
+                match err {
+                    CompileError::Validation(vb_validate::ValidationError::ActionContractOrphan {
+                        action_id,
+                    }) => {
+                        assert_eq!(*action_id, 99);
+                    }
+                    other => panic!(
+                        "Expected ValidationError::ActionContractOrphan, got: {:?}",
+                        other
+                    ),
+                }
+            }
+            Ok(_) => panic!("Expected error, got Ok"),
+            other => panic!("Expected CompileErrors, got: {:?}", other),
+        }
+    }
+
+    /// RED-PHASE: plain vb_validate::shared::validate does NOT claim gate 12.
+    #[test]
+    fn plain_validate_does_not_claim_gate_12() {
+        let nodes = vec![do_node(0, ActionId::new(7), SlotIdx::new(0))];
+        let parts = make_parts_for_lower(nodes, vec![], 1);
+
+        let result = vb_validate::shared::validate(&parts);
+
+        assert!(
+            result.is_ok(),
+            "plain validate should NOT check gate 12 for Do with action 7, got: {:?}",
+            result
+        );
+    }
+
+    /// RED-PHASE: validate_with_contracts catches missing contracts.
+    #[test]
+    fn validate_with_contracts_catches_missing_contracts() {
+        let nodes = vec![do_node(0, ActionId::new(7), SlotIdx::new(0))];
+        let parts = make_parts_for_lower(nodes, vec![], 1);
+
+        let result = vb_validate::shared::validate_with_contracts(&parts, &[]);
+
+        match result {
+            Err(vb_validate::ValidationError::ActionContractMissing {
+                action_id,
+                node_index,
+            }) => {
+                assert_eq!(action_id, 7);
+                assert_eq!(node_index, 0);
+            }
+            Ok(_) => panic!("Expected error, got Ok"),
+            other => panic!("Expected ValidationError::ActionContractMissing, got: {:?}", other),
+        }
+    }
+
+    /// RED-PHASE: validate_with_contracts catches orphan contracts.
+    #[test]
+    fn validate_with_contracts_catches_orphan_contracts() {
+        let nodes = vec![finish_node(0, 0)];
+        let parts = make_parts_for_lower(nodes, vec![], 1);
+
+        let orphan_contract = ActionContract {
+            id: ActionId::new(99),
+            input_slot_count: 0,
+            output_slot_count: 0,
+            max_input_bytes: 0,
+            max_output_bytes: 0,
+            timeout_ms: 0,
+            idempotency: Idempotency::DeterministicPure,
+            side_effect: SideEffect::None,
+            retry_safety: RetrySafety::Safe,
+            required_capabilities: Box::new([]),
+        };
+
+        let result = vb_validate::shared::validate_with_contracts(&parts, &[orphan_contract]);
+
+        match result {
+            Err(vb_validate::ValidationError::ActionContractOrphan { action_id }) => {
+                assert_eq!(action_id, 99);
+            }
+            Ok(_) => panic!("Expected error, got Ok"),
+            other => panic!("Expected ValidationError::ActionContractOrphan, got: {:?}", other),
+        }
+    }
+
+    /// RED-PHASE: CompileErrors contains exactly one error for isolated failures.
+    #[test]
+    fn compile_errors_contains_one_error_for_isolated_validation_failure() {
+        let nodes = vec![do_node(0, ActionId::new(7), SlotIdx::new(1))];
+        let parts = make_parts_for_lower(nodes, vec![], 1);
+
+        let result = lower_steps_to_ir(
+            parts.nodes.into_vec(),
+            vec![],
+            vec![],
+            parts.constants.into_vec(),
+            parts.slot_count,
+            parts.symbols_count,
+            &parts.name,
+            parts.digest,
+        );
+
+        match result {
+            Err(CompileErrors(ref errors)) => {
+                assert_eq!(
+                    errors.len(),
+                    1,
+                    "Expected exactly 1 error, got {}",
+                    errors.len()
+                );
+            }
+            Ok(_) => panic!("Expected error, got Ok"),
+            other => panic!("Expected CompileErrors, got: {:?}", other),
+        }
+    }
+}

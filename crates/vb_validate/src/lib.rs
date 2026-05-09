@@ -28,6 +28,7 @@ use thiserror::Error;
 pub mod control_flow;
 pub mod diagnostic;
 pub mod gates;
+pub mod idempotency_contract;
 pub mod references;
 pub mod schema;
 pub mod shared;
@@ -256,6 +257,50 @@ pub enum ValidationError {
         "ACTION_CONTRACT_ORPHAN: action_id {action_id} in contract has no corresponding Do node"
     )]
     ActionContractOrphan { action_id: usize },
+
+    #[error("CAPABILITY_NAME_EMPTY: action_id {action_id}, capability_index {capability_index}")]
+    CapabilityNameEmpty {
+        action_id: usize,
+        capability_index: usize,
+    },
+
+    #[error(
+        "CAPABILITY_NAME_TOO_LONG: action_id {action_id}, capability_index {capability_index}, len {len}, max {max}"
+    )]
+    CapabilityNameTooLong {
+        action_id: usize,
+        capability_index: usize,
+        len: usize,
+        max: usize,
+    },
+
+    #[error(
+        "CAPABILITY_NAME_INVALID: action_id {action_id}, capability_index {capability_index}, name {name}"
+    )]
+    CapabilityNameInvalid {
+        action_id: usize,
+        capability_index: usize,
+        name: String,
+    },
+
+    #[error(
+        "CAPABILITY_ACTION_MISMATCH: contract_action_id {contract_action_id}, capability_action_id {capability_action_id}, capability_index {capability_index}"
+    )]
+    CapabilityActionMismatch {
+        contract_action_id: usize,
+        capability_action_id: usize,
+        capability_index: usize,
+    },
+
+    #[error(
+        "CAPABILITY_DUPLICATE: action_id {action_id}, first_index {first_index}, duplicate_index {duplicate_index}, name {name}"
+    )]
+    CapabilityDuplicate {
+        action_id: usize,
+        first_index: usize,
+        duplicate_index: usize,
+        name: String,
+    },
 
     // Gate 14: Slot type consistency
     #[error("SLOT_TYPE_INCONSISTENCY: slot {slot}, writers have incompatible kinds")]

@@ -138,3 +138,38 @@ path = "src/bin/admission_fuzz.rs"
 test = false
 doc = false
 bench = false
+
+[[bin]]
+name = "capability_name_schema"
+path = "src/bin/capability_name_schema.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "capability_contract_schema"
+path = "src/bin/capability_contract_schema.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "aggregate_workflow_budget"
+path = "src/bin/aggregate_workflow_budget.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "aggregate_artifact_budget"
+path = "src/bin/aggregate_artifact_budget.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "recover_runtime_frame_seed_contract"
+path = "src/bin/recover_runtime_frame_seed_contract.rs"
+test = false
+doc = false
+bench = false

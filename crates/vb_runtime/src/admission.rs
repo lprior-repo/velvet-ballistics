@@ -7,6 +7,7 @@
 
 use std::sync::Arc;
 use thiserror::Error;
+use vb_core::budget::{AggregateResourceBudget, AggregateResourceCapacity, AggregateResourceUsage};
 use vb_core::capability::{Capability, CapabilitySet};
 use vb_core::ids::{ActionId, RunId, WorkflowDigest};
 use vb_core::policy::RuntimePolicy;
@@ -22,6 +23,8 @@ pub struct RunAdmission {
     granted_capabilities: CapabilitySet,
     /// Admission policy that governed this admission decision.
     policy: RuntimePolicy,
+    /// Aggregate budget admitted for this run, when budget admission is used.
+    budget: Option<AggregateResourceBudget>,
 }
 
 impl RunAdmission {
@@ -37,6 +40,24 @@ impl RunAdmission {
             run_id,
             granted_capabilities: caps,
             policy,
+            budget: None,
+        }
+    }
+
+    /// Creates a new admission record carrying an aggregate resource budget.
+    pub fn with_budget(
+        digest: WorkflowDigest,
+        run_id: RunId,
+        caps: CapabilitySet,
+        policy: RuntimePolicy,
+        budget: AggregateResourceBudget,
+    ) -> Self {
+        Self {
+            artifact_digest: digest,
+            run_id,
+            granted_capabilities: caps,
+            policy,
+            budget: Some(budget),
         }
     }
 
@@ -63,6 +84,12 @@ impl RunAdmission {
     pub fn policy(&self) -> RuntimePolicy {
         self.policy
     }
+
+    /// Returns the admitted aggregate budget when budget admission was used.
+    #[must_use]
+    pub const fn budget(&self) -> Option<AggregateResourceBudget> {
+        self.budget
+    }
 }
 
 /// Errors that can occur during run admission.
@@ -83,6 +110,18 @@ pub enum AdmissionError {
         required: Capability,
         /// Capabilities that were granted at admission time.
         granted: CapabilitySet,
+    },
+    /// The requested aggregate budget exceeds shard capacity.
+    #[error(
+        "admission rejected: resource capacity exceeded for {resource}: {requested} > {available}"
+    )]
+    ResourceCapacityExceeded {
+        /// Resource dimension that failed comparison.
+        resource: &'static str,
+        /// Requested aggregate amount.
+        requested: u64,
+        /// Available aggregate amount.
+        available: u64,
     },
 }
 
@@ -164,6 +203,65 @@ pub fn admit_run(
         RuntimePolicy::Relaxed => {}
     }
     Ok(RunAdmission::new(digest, run_id, caps, policy))
+}
+
+/// Performs artifact admission plus aggregate resource capacity admission.
+pub fn admit_run_with_budget(
+    store: &dyn ArtifactStore,
+    policy: RuntimePolicy,
+    digest: WorkflowDigest,
+    run_id: RunId,
+    caps: CapabilitySet,
+    requested: AggregateResourceBudget,
+    available: AggregateResourceCapacity,
+) -> Result<RunAdmission, AdmissionError> {
+    let requested_usage = AggregateResourceUsage::default()
+        .try_add_budget(&requested)
+        .map_err(|error| map_budget_error(error, requested, available))?;
+    requested_usage
+        .fits_within(&available)
+        .map_err(|error| map_budget_error(error, requested, available))?;
+    match policy {
+        RuntimePolicy::Strict | RuntimePolicy::Journaled => {
+            if !store.compiled_ir_exists(digest) {
+                return Err(AdmissionError::ArtifactNotFound { digest });
+            }
+        }
+        RuntimePolicy::Relaxed => {}
+    }
+    Ok(RunAdmission::with_budget(
+        digest, run_id, caps, policy, requested,
+    ))
+}
+
+fn map_budget_error(
+    error: vb_core::budget::AggregateBudgetError,
+    _requested_budget: AggregateResourceBudget,
+    _available_capacity: AggregateResourceCapacity,
+) -> AdmissionError {
+    match error {
+        vb_core::budget::AggregateBudgetError::CapacityExceeded {
+            resource,
+            requested,
+            available,
+        } => AdmissionError::ResourceCapacityExceeded {
+            resource,
+            requested,
+            available,
+        },
+        vb_core::budget::AggregateBudgetError::Overflow { resource } => {
+            AdmissionError::ResourceCapacityExceeded {
+                resource,
+                requested: u64::MAX,
+                available: u64::MAX,
+            }
+        }
+        _ => AdmissionError::ResourceCapacityExceeded {
+            resource: "aggregate_resource_budget",
+            requested: u64::MAX,
+            available: 0,
+        },
+    }
 }
 
 /// Checks whether a capability is granted for an action.
@@ -276,7 +374,7 @@ mod tests {
     #[test]
     fn admission_check_capability_hierarchical_grants_subname() {
         let action = ActionId::new(99);
-        let required = Capability::new("network.http".into(), action);
+        let required = Capability::new("network.rpc".into(), action);
         let granted =
             CapabilitySet::from_grants(Box::new([Capability::new("network".into(), action)]));
         assert_eq!(check_capability(action, &required, &granted), Ok(()));
@@ -286,7 +384,7 @@ mod tests {
     fn admission_check_capability_rejects_partial_prefix_grant() {
         // Given a required capability under the network hierarchy.
         let action = ActionId::new(99);
-        let required = Capability::new("network.http".into(), action);
+        let required = Capability::new("network.rpc".into(), action);
         let granted = CapabilitySet::from_grants(Box::new([Capability::new("net".into(), action)]));
 
         // When admission checks a lexical-only prefix grant.

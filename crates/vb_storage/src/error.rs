@@ -209,12 +209,68 @@ pub enum JournalError {
     /// Artifact digest checksum mismatch.
     #[error("artifact checksum mismatch")]
     ArtifactChecksumMismatch,
+    /// Invalid verification gate count.
+    #[error("invalid gate count: {found}")]
+    InvalidGateCount {
+        /// Found gate count.
+        found: u8,
+    },
+    /// A required proof flag is false.
+    #[error("missing required proof flag: {flag}")]
+    MissingRequiredProofFlag {
+        /// The flag that is missing.
+        flag: &'static str,
+    },
     /// Requested artifact digest was not found in storage.
     #[error("artifact not found: {digest:?}")]
     ArtifactNotFound {
         /// Digest of the missing artifact.
         digest: WorkflowDigest,
     },
+    /// Raw admission was attempted while accepted artifacts are required.
+    #[error("accepted artifact admission is required")]
+    AdmissionRequired,
+    /// Stored artifact failed accepted-artifact validation.
+    #[error("artifact invalid: {source:?}")]
+    ArtifactInvalid {
+        /// Validation failure source.
+        source: ArtifactInvalidSource,
+    },
+    /// Runtime input exceeded the bounded admission payload limit.
+    #[error("runtime input too large: {len} > {max}")]
+    InputTooLarge {
+        /// Observed input length.
+        len: u32,
+        /// Maximum accepted input length.
+        max: u32,
+    },
+    /// Runtime input does not match the accepted artifact schema.
+    #[error("runtime input schema mismatch")]
+    InputSchemaMismatch,
+    /// Runtime capability grant does not cover artifact requirements.
+    #[error("runtime capability denied")]
+    CapabilityDenied,
+    /// Required secret identifier is unavailable.
+    #[error("runtime secret unavailable")]
+    SecretUnavailable,
+    /// Run identifier is already active or durably accepted.
+    #[error("run already exists")]
+    RunAlreadyExists,
+    /// Runtime active run capacity is exhausted.
+    #[error("active run capacity exceeded")]
+    ActiveRunCapacityExceeded,
+    /// Runtime frame allocation failed.
+    #[error("frame allocation failed")]
+    FrameAllocationFailed,
+    /// Runtime admission journal append failed.
+    #[error("admission journal failed")]
+    AdmissionJournalFailed,
+    /// Strict durability barrier failed.
+    #[error("strict durability failed")]
+    StrictDurabilityFailed,
+    /// Admission clock could not provide a timestamp.
+    #[error("admission clock unavailable")]
+    ClockUnavailable,
     /// Another process holds the exclusive storage lock.
     #[error("process lock held by another process (pid: {holder_pid:?}) at {path}")]
     ProcessLockHeld {
@@ -236,6 +292,85 @@ pub enum JournalError {
     /// Journal trim operation error.
     #[error("trim operation failed: {0}")]
     Trim(Box<crate::TrimError>),
+}
+
+/// Accepted artifact validation failure source used at admission boundaries.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
+pub enum ArtifactInvalidSource {
+    /// Payload digest validation failed.
+    #[error("payload digest mismatch")]
+    PayloadDigestMismatch,
+}
+
+/// Artifact envelope validation errors for accepted artifact v1.
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+pub enum ArtifactEnvelopeError {
+    /// Record magic did not match the expected family.
+    #[error("bad record magic: {found:#010x}")]
+    BadMagic {
+        /// Found magic value.
+        found: u32,
+    },
+    /// Record schema version is not supported.
+    #[error("unsupported record schema version: {version}")]
+    UnsupportedSchemaVersion {
+        /// Found schema version.
+        version: u16,
+    },
+    /// Record schema requires explicit migration.
+    #[error("record schema migration required from {from} to {to}")]
+    MigrationRequired {
+        /// Found schema version.
+        from: u16,
+        /// Current schema version.
+        to: u16,
+    },
+    /// Record kind is not valid for this magic family.
+    #[error("record kind {kind} does not belong to magic {magic:#010x}")]
+    RecordKindFamilyMismatch {
+        /// Magic value.
+        magic: u32,
+        /// Record kind.
+        kind: u16,
+    },
+    /// Header length was not the contract value.
+    #[error("record header length mismatch: {found}")]
+    HeaderLengthMismatch {
+        /// Found header length.
+        found: u32,
+    },
+    /// Payload length exceeded the configured maximum.
+    #[error("record payload too large: {len} > {max}")]
+    PayloadTooLarge {
+        /// Payload length.
+        len: u32,
+        /// Maximum allowed length.
+        max: u32,
+    },
+    /// Header CRC32C did not match.
+    #[error("record header checksum mismatch")]
+    HeaderChecksumMismatch,
+    /// Payload BLAKE3 digest did not match.
+    #[error("record payload digest mismatch")]
+    PayloadDigestMismatch,
+    /// Record ended before the declared header or payload length.
+    #[error("unexpected end of record")]
+    UnexpectedEof,
+    /// Postcard payload decode failed.
+    #[error("postcard payload decode failed")]
+    PostcardDecodeFailed,
+    /// Verification gate count is not 15.
+    #[error("invalid gate count: {found}")]
+    InvalidGateCount {
+        /// Found gate count.
+        found: u8,
+    },
+    /// A required proof flag is false.
+    #[error("missing required proof flag: {flag:?}")]
+    MissingRequiredProofFlag {
+        /// The flag that is missing.
+        flag: super::admission::ProofFlag,
+    },
 }
 
 impl JournalError {
@@ -287,6 +422,10 @@ impl JournalError {
     pub const ARTIFACT_MALFORMED_CODE: DiagnosticCode = DiagnosticCode::new(0x4017);
     /// Diagnostic code for artifact checksum mismatch.
     pub const ARTIFACT_CHECKSUM_MISMATCH_CODE: DiagnosticCode = DiagnosticCode::new(0x4018);
+    /// Diagnostic code for invalid gate count.
+    pub const INVALID_GATE_COUNT_CODE: DiagnosticCode = DiagnosticCode::new(0x401C);
+    /// Diagnostic code for missing required proof flag.
+    pub const MISSING_REQUIRED_PROOF_FLAG_CODE: DiagnosticCode = DiagnosticCode::new(0x401D);
     /// Diagnostic code for artifact not found.
     pub const ARTIFACT_NOT_FOUND_CODE: DiagnosticCode = DiagnosticCode::new(0x4019);
     /// Diagnostic code for process lock held by another process.
@@ -322,7 +461,21 @@ impl JournalError {
             Self::PostcardDecodeFailed => Self::POSTCARD_DECODE_FAILED_CODE,
             Self::ArtifactMalformed => Self::ARTIFACT_MALFORMED_CODE,
             Self::ArtifactChecksumMismatch => Self::ARTIFACT_CHECKSUM_MISMATCH_CODE,
+            Self::InvalidGateCount { .. } => Self::INVALID_GATE_COUNT_CODE,
+            Self::MissingRequiredProofFlag { .. } => Self::MISSING_REQUIRED_PROOF_FLAG_CODE,
             Self::ArtifactNotFound { .. } => Self::ARTIFACT_NOT_FOUND_CODE,
+            Self::AdmissionRequired
+            | Self::ArtifactInvalid { .. }
+            | Self::InputTooLarge { .. }
+            | Self::InputSchemaMismatch
+            | Self::CapabilityDenied
+            | Self::SecretUnavailable
+            | Self::RunAlreadyExists
+            | Self::ActiveRunCapacityExceeded
+            | Self::FrameAllocationFailed
+            | Self::AdmissionJournalFailed
+            | Self::StrictDurabilityFailed
+            | Self::ClockUnavailable => Self::ARTIFACT_MALFORMED_CODE,
             Self::ProcessLockHeld { .. } => Self::PROCESS_LOCK_HELD_CODE,
             Self::ProcessLockIo { .. } => Self::PROCESS_LOCK_IO_CODE,
             Self::Trim(_) => Self::FJALL_CODE, // Map trim errors to a generic code

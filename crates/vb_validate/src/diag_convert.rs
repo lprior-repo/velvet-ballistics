@@ -108,6 +108,32 @@ pub(super) fn all_variants() -> Vec<ValidationError> {
             node_index: 0,
         },
         ValidationError::ActionContractOrphan { action_id: 2 },
+        ValidationError::CapabilityNameEmpty {
+            action_id: 1,
+            capability_index: 0,
+        },
+        ValidationError::CapabilityNameTooLong {
+            action_id: 1,
+            capability_index: 0,
+            len: 129,
+            max: 128,
+        },
+        ValidationError::CapabilityNameInvalid {
+            action_id: 1,
+            capability_index: 0,
+            name: "network:github".into(),
+        },
+        ValidationError::CapabilityActionMismatch {
+            contract_action_id: 1,
+            capability_action_id: 2,
+            capability_index: 0,
+        },
+        ValidationError::CapabilityDuplicate {
+            action_id: 1,
+            first_index: 0,
+            duplicate_index: 1,
+            name: "network".into(),
+        },
         ValidationError::SlotTypeInconsistency { slot: 0 },
         ValidationError::NonDeterministicPath {
             from_node: 0,

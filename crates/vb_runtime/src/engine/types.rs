@@ -7,7 +7,7 @@
 use vb_core::action::{ActionError, ActionTicket};
 use vb_core::errors::EngineError;
 use vb_core::ids::{ActionId, SlotIdx, StepIdx};
-use vb_core::value::SlotValue;
+use vb_core::value::{SlotValue, Taint};
 
 use crate::primitives::collect::CollectPaginationState;
 
@@ -37,6 +37,8 @@ pub enum EvidenceEvent {
         slot: SlotIdx,
         /// Value written to the slot.
         value: SlotValue,
+        /// Taint written to the slot.
+        taint: Taint,
         /// Optional frame extra data captured with the slot write.
         extra: Option<CollectPaginationState>,
     },
@@ -107,10 +109,17 @@ impl EvidenceCollector {
     /// Records a SlotWritten event.
     /// Silently drops the event if the collector is at capacity.
     pub fn push_slot_written(&mut self, slot: SlotIdx, value: SlotValue) {
+        self.push_slot_written_with_taint(slot, value, Taint::Clean);
+    }
+
+    /// Records a SlotWritten event with explicit taint.
+    /// Silently drops the event if the collector is at capacity.
+    pub fn push_slot_written_with_taint(&mut self, slot: SlotIdx, value: SlotValue, taint: Taint) {
         if self.events.len() < self.capacity {
             self.events.push(EvidenceEvent::SlotWritten {
                 slot,
                 value,
+                taint,
                 extra: None,
             });
         } else {
@@ -123,11 +132,16 @@ impl EvidenceCollector {
         &mut self,
         slot: SlotIdx,
         value: SlotValue,
+        taint: Taint,
         extra: Option<CollectPaginationState>,
     ) {
         if self.events.len() < self.capacity {
-            self.events
-                .push(EvidenceEvent::SlotWritten { slot, value, extra });
+            self.events.push(EvidenceEvent::SlotWritten {
+                slot,
+                value,
+                taint,
+                extra,
+            });
         } else {
             self.dropped = self.dropped.saturating_add(1);
         }

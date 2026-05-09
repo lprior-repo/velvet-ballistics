@@ -246,9 +246,12 @@ impl Shard {
             EvidenceEvent::StepSucceeded { step, output } => {
                 self.flush_step_succeeded(run, step, output)
             }
-            EvidenceEvent::SlotWritten { slot, value, extra } => {
-                self.flush_slot_written(run, slot, value, extra)
-            }
+            EvidenceEvent::SlotWritten {
+                slot,
+                value,
+                taint,
+                extra,
+            } => self.flush_slot_written(run, slot, value, taint, extra),
         }
     }
 
@@ -279,6 +282,7 @@ impl Shard {
         run: RunId,
         slot: SlotIdx,
         value: vb_core::value::SlotValue,
+        taint: vb_core::Taint,
         extra: Option<crate::primitives::collect::CollectPaginationState>,
     ) -> RuntimeResult<()> {
         let encoded = postcard::to_allocvec(&value).map_err(|_| RuntimeError::EncodeFailed)?;
@@ -295,6 +299,7 @@ impl Shard {
             run,
             slot,
             value: encoded,
+            taint,
             extra: encoded_extra,
         })
     }

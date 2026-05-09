@@ -11,7 +11,7 @@ use crate::journal::FjallJournal;
 
 /// A soft verification failure that does not block admission but should be reported.
 ///
-/// Each warning is associated with a specific verification gate (1-13 range) and
+/// Each warning is associated with a specific verification gate (1-15 range) and
 /// carries a numeric code and human-readable message.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct VerificationWarning {
@@ -19,7 +19,7 @@ pub struct VerificationWarning {
     pub code: u32,
     /// Human-readable description of the warning.
     pub message: Box<str>,
-    /// Which verification gate produced this warning (1-13 range).
+    /// Which verification gate produced this warning (1-15 range).
     pub gate: u8,
 }
 
@@ -27,9 +27,9 @@ impl VerificationWarning {
     /// Minimum valid gate value (inclusive).
     pub const MIN_GATE: u8 = 1;
     /// Maximum valid gate value (inclusive).
-    pub const MAX_GATE: u8 = 13;
+    pub const MAX_GATE: u8 = 15;
 
-    /// Returns `true` if the `gate` field falls within the valid 1-13 range.
+    /// Returns `true` if the `gate` field falls within the valid 1-15 range.
     #[must_use]
     pub fn is_valid(&self) -> bool {
         self.gate >= Self::MIN_GATE && self.gate <= Self::MAX_GATE
@@ -42,6 +42,19 @@ impl fmt::Display for VerificationWarning {
     }
 }
 
+/// Proof flag that must be true for an accepted artifact.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub enum ProofFlag {
+    /// Artifact IR is size-bounded.
+    Bounded,
+    /// Artifact does not propagate taint.
+    TaintSafe,
+    /// Artifact actions are safe to retry.
+    RetrySafe,
+    /// Artifact can be replayed.
+    Replayable,
+}
+
 /// Proof that artifact verification passed at admission time.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct VerificationProof {
@@ -51,18 +64,36 @@ pub struct VerificationProof {
     pub gate_count: u8,
     /// Whether the proof was durably persisted (SyncAll).
     pub durable: bool,
+    /// Artifact IR is size-bounded.
+    pub bounded: bool,
+    /// Artifact does not propagate taint.
+    pub taint_safe: bool,
+    /// Artifact actions are safe to retry.
+    pub retry_safe: bool,
+    /// Artifact can be replayed.
+    pub replayable: bool,
+    /// Actions keyed by idempotency key.
+    pub idempotency_keyed: Box<[vb_core::ActionId]>,
+    /// Actions with idempotency attested.
+    pub idempotency_attested: Box<[vb_core::ActionId]>,
     /// Soft verification failures encountered during admission.
     pub warnings: Vec<VerificationWarning>,
 }
 
 impl VerificationProof {
-    /// Creates a new verification proof.
+    /// Creates a new verification proof with all proof flags set to true.
     #[must_use]
     pub fn new(digest: vb_core::WorkflowDigest, gate_count: u8, durable: bool) -> Self {
         Self {
             digest,
             gate_count,
             durable,
+            bounded: true,
+            taint_safe: true,
+            retry_safe: true,
+            replayable: true,
+            idempotency_keyed: Box::new([]),
+            idempotency_attested: Box::new([]),
             warnings: Vec::new(),
         }
     }
@@ -83,16 +114,17 @@ pub struct AcceptedArtifact {
     pub required_capabilities: Box<[vb_core::capability::Capability]>,
 }
 
-/// Number of verification gates in the admission flow.
-const ADMISSION_GATE_COUNT: u8 = 2;
+/// Number of verification gates in the accepted artifact v1 admission flow.
+const ADMISSION_GATE_COUNT: u8 = 15;
 
 /// Validates, verifies, and persists a compiled workflow artifact with policy-controlled durability.
 ///
 /// This is the full admission flow. It performs:
 /// 1. Structure validation: re-parse the workflow from serialized parts.
 /// 2. Checksum validation: serialized bytes must hash to the claimed digest.
-/// 3. Persistence: store the artifact in the `compiled_ir` keyspace.
-/// 4. Durability: under `Strict` policy, calls SyncAll before returning.
+/// 3. Proof validation: gate count must be 15 and all proof flags must be true.
+/// 4. Persistence: store the artifact in the `compiled_ir` keyspace.
+/// 5. Durability: under `Strict` policy, calls SyncAll before returning.
 ///
 /// Returns the `AcceptedArtifact` on success.
 pub fn submit_artifact(

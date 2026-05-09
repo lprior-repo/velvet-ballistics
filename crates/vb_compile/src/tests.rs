@@ -3573,4 +3573,455 @@ steps:
             )),
         }
     }
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // RED-PHASE TESTS: vb-yd5x shared validated IR usage
+    // These tests compile but fail before implementation, demonstrating the gap
+    // between compile and validate paths for lower_steps_to_ir.
+    // ─────────────────────────────────────────────────────────────────────────────
+
+    fn make_parts_for_lower(
+        nodes: Vec<CompiledNode>,
+        expressions: Vec<ExprProgram>,
+        slot_count: u16,
+    ) -> WorkflowParts {
+        WorkflowParts {
+            name: Box::from("test_lower_steps"),
+            digest: WorkflowDigest::from_bytes([0u8; 32]),
+            nodes: nodes.into_boxed_slice(),
+            expressions: expressions.into_boxed_slice(),
+            accessors: Box::new([]),
+            constants: Box::new([ConstValue::I64(0)]),
+            slot_count,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+            step_names: Box::new([]),
+        }
+    }
+
+    fn finish_node(index: u16, result_slot: u16) -> CompiledNode {
+        CompiledNode {
+            id: StepIdx::new(index),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::new(result_slot),
+            },
+        }
+    }
+
+    fn do_node(index: u16, action: ActionId, input: SlotIdx) -> CompiledNode {
+        CompiledNode {
+            id: StepIdx::new(index),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Do { action, input },
+        }
+    }
+
+    /// RED-PHASE: lower_steps_to_ir bypasses Gate 9 (slot reference validation).
+    ///
+    /// BUG: lower_steps_to_ir directly calls CompiledWorkflow::try_from_parts
+    /// without first calling vb_validate::shared::validate.
+    ///
+    /// When Do.input >= slot_count, Gate 9 should return SlotReferenceOutOfRange,
+    /// but lower_steps_to_ir bypasses this check.
+    ///
+    /// AFTER FIX: lower_steps_to_ir should call validate_ir or vb_validate::shared::validate
+    /// before core construction, returning CompileError::Validation(SlotReferenceOutOfRange).
+    #[test]
+    fn lower_steps_to_ir_bypasses_gate_9_slot_reference_validation() {
+        let nodes = vec![do_node(0, ActionId::new(7), SlotIdx::new(1))];
+        let parts = make_parts_for_lower(nodes, vec![], 1);
+
+        // lower_steps_to_ir takes owned vectors
+        let result = lower_steps_to_ir(
+            parts.nodes.into_vec(),
+            vec![],
+            vec![],
+            parts.constants.into_vec(),
+            parts.slot_count,
+            parts.symbols_count,
+            &parts.name,
+            parts.digest,
+        );
+
+        // BEFORE FIX: This assertion FAILS because lower_steps_to_ir returns Ok(...)
+        // The bug: it bypasses Gate 9 and goes straight to core validation,
+        // which doesn't catch Do.input >= slot_count.
+        //
+        // AFTER FIX: This assertion PASSES because lower_steps_to_ir calls
+        // shared validation first, which catches SlotReferenceOutOfRange.
+        assert!(
+            matches!(
+                result,
+                Err(CompileErrors(ref errors))
+                if errors.len() == 1
+                && matches!(
+                    errors.first(),
+                    Some(CompileError::Validation(vb_validate::ValidationError::SlotReferenceOutOfRange {
+                        slot: 1,
+                        slot_count: 1,
+                        context
+                    }) if context.contains("Do.input"))
+                )
+            ),
+            "lower_steps_to_ir should return SlotReferenceOutOfRange for Do.input >= slot_count, \
+             but got: {:?}. This FAILS before fix because lower_steps_to_ir bypasses Gate 9.",
+            result
+        );
+    }
+
+    /// RED-PHASE: validate_ir correctly orders shared validation BEFORE core construction.
+    #[test]
+    fn validate_ir_orders_shared_validation_before_core() {
+        let nodes = vec![do_node(0, ActionId::new(7), SlotIdx::new(1))];
+        let parts = make_parts_for_lower(nodes, vec![], 1);
+
+        // validate_ir should call vb_validate::shared::validate FIRST,
+        // then CompiledWorkflow::try_from_parts SECOND.
+        // So SlotReferenceOutOfRange should be caught by shared validation.
+        let result = validate_ir(parts);
+
+        assert!(
+            matches!(
+                result,
+                Err(CompileErrors(ref errors))
+                if errors.len() == 1
+                && matches!(
+                    errors.first(),
+                    Some(CompileError::Validation(vb_validate::ValidationError::SlotReferenceOutOfRange {
+                        slot: 1,
+                        slot_count: 1,
+                        context
+                    }) if context.contains("Do.input"))
+                )
+            ),
+            "validate_ir should return SlotReferenceOutOfRange before core acceptance, got: {:?}",
+            result
+        );
+    }
+
+    /// RED-PHASE: lower_steps_to_ir output should pass shared validation.
+    ///
+    /// AFTER FIX: lower_steps_to_ir returns a workflow whose to_parts() passes
+    /// vb_validate::shared::validate.
+    #[test]
+    fn lower_steps_to_ir_output_passes_shared_validation() {
+        let nodes = vec![finish_node(0, 0)];
+        let parts = make_parts_for_lower(nodes, vec![], 1);
+
+        let result = lower_steps_to_ir(
+            parts.nodes.into_vec(),
+            vec![],
+            vec![],
+            parts.constants.into_vec(),
+            parts.slot_count,
+            parts.symbols_count,
+            &parts.name,
+            parts.digest,
+        );
+
+        assert!(result.is_ok(), "lower_steps_to_ir should succeed for valid parts");
+
+        let workflow = result.unwrap();
+        let output_parts = workflow.to_parts();
+        let validate_result = vb_validate::shared::validate(&output_parts);
+        assert!(
+            validate_result.is_ok(),
+            "lower_steps_to_ir output should pass shared validation, got: {:?}",
+            validate_result
+        );
+    }
+
+    /// RED-PHASE: validate_ir output passes shared validation (round-trip proof).
+    #[test]
+    fn validate_ir_output_passes_shared_validation() {
+        let nodes = vec![finish_node(0, 0)];
+        let parts = make_parts_for_lower(nodes, vec![], 1);
+
+        let result = validate_ir(parts);
+        assert!(result.is_ok(), "validate_ir should succeed for valid parts");
+
+        let workflow = result.unwrap();
+        let output_parts = workflow.to_parts();
+
+        let validate_result = vb_validate::shared::validate(&output_parts);
+        assert!(
+            validate_result.is_ok(),
+            "validate_ir output should pass shared validation, got: {:?}",
+            validate_result
+        );
+    }
+
+    /// RED-PHASE: lower_steps_to_ir preserves WorkflowError for empty nodes.
+    ///
+    /// This is a core construction error, not a shared validation error.
+    /// It should be typed as CompileError::Workflow, not CompileError::Validation.
+    #[test]
+    fn lower_steps_to_ir_returns_workflow_error_for_empty_nodes() {
+        let parts = make_parts_for_lower(vec![], vec![], 0);
+
+        let result = lower_steps_to_ir(
+            vec![],
+            vec![],
+            vec![],
+            parts.constants.into_vec(),
+            0,
+            0,
+            &parts.name,
+            parts.digest,
+        );
+
+        assert!(
+            matches!(
+                result,
+                Err(CompileErrors(ref errors))
+                if errors.len() == 1
+                && matches!(
+                    errors.first(),
+                    Some(CompileError::Workflow(vb_core::WorkflowError::EmptyNodes))
+                )
+            ),
+            "lower_steps_to_ir should return WorkflowError::EmptyNodes for empty node vector, got: {:?}",
+            result
+        );
+    }
+
+    /// RED-PHASE: lower_steps_to_ir preserves WorkflowError for node ID mismatch.
+    #[test]
+    fn lower_steps_to_ir_returns_workflow_error_for_node_id_mismatch() {
+        let mut node = do_node(1, ActionId::new(7), SlotIdx::new(0));
+        node.id = StepIdx::new(1);
+        let parts = make_parts_for_lower(vec![node], vec![], 1);
+
+        let result = lower_steps_to_ir(
+            parts.nodes.into_vec(),
+            vec![],
+            vec![],
+            parts.constants.into_vec(),
+            parts.slot_count,
+            parts.symbols_count,
+            &parts.name,
+            parts.digest,
+        );
+
+        assert!(
+            matches!(
+                result,
+                Err(CompileErrors(ref errors))
+                if errors.len() == 1
+                && matches!(
+                    errors.first(),
+                    Some(CompileError::Workflow(vb_core::WorkflowError::NodeIdMismatch {
+                        expected: StepIdx::new(0),
+                        actual: StepIdx::new(1)
+                    }))
+                )
+            ),
+            "lower_steps_to_ir should return NodeIdMismatch, got: {:?}",
+            result
+        );
+    }
+
+    /// RED-PHASE: validate_ir preserves WorkflowError when shared validation passes
+    /// but core construction fails.
+    #[test]
+    fn validate_ir_returns_workflow_error_when_core_fails_after_shared_passes() {
+        let parts = make_parts_for_lower(vec![], vec![], 0);
+
+        let result = validate_ir(parts);
+
+        assert!(
+            matches!(
+                result,
+                Err(CompileErrors(ref errors))
+                if errors.len() == 1
+                && matches!(
+                    errors.first(),
+                    Some(CompileError::Workflow(vb_core::WorkflowError::EmptyNodes))
+                )
+            ),
+            "validate_ir should return Workflow error when core fails after shared validation, got: {:?}",
+            result
+        );
+    }
+
+    /// RED-PHASE: compile_workflow_with_contracts rejects missing action contract.
+    #[test]
+    fn compile_workflow_with_contracts_rejects_missing_action_contract() {
+        let source = br#"version: velvet-ballastics/v1
+name: test_do
+when:
+  manual: {}
+steps:
+  - id: do_it
+    do:
+      action: 7
+      input: {}
+  - id: done
+    finish:
+      result: 0
+"#;
+
+        let result = compile_workflow_with_contracts(source, &[]);
+
+        assert!(
+            matches!(
+                result,
+                Err(CompileErrors(ref errors))
+                if errors.len() == 1
+                && matches!(
+                    errors.first(),
+                    Some(CompileError::Validation(vb_validate::ValidationError::ActionContractMissing {
+                        action_id,
+                        node_index: 0
+                    }) if action_id.get() == 7)
+                )
+            ),
+            "compile_workflow_with_contracts should reject missing action contract, got: {:?}",
+            result
+        );
+    }
+
+    /// RED-PHASE: compile_workflow_with_contracts rejects orphan action contract.
+    #[test]
+    fn compile_workflow_with_contracts_rejects_orphan_action_contract() {
+        let source = br#"version: velvet-ballastics/v1
+name: test_no_do
+when:
+  manual: {}
+steps:
+  - id: done
+    finish:
+      result: 0
+"#;
+
+        let orphan_contract = vb_core::ActionContract {
+            id: ActionId::new(99),
+            side_effect: SideEffect::None,
+            retry_safety: RetrySafety::Safe,
+            idempotency: Idempotency::DeterministicPure,
+        };
+
+        let result = compile_workflow_with_contracts(source, &[orphan_contract]);
+
+        assert!(
+            matches!(
+                result,
+                Err(CompileErrors(ref errors))
+                if errors.len() == 1
+                && matches!(
+                    errors.first(),
+                    Some(CompileError::Validation(vb_validate::ValidationError::ActionContractOrphan {
+                        action_id
+                    }) if action_id.get() == 99)
+                )
+            ),
+            "compile_workflow_with_contracts should reject orphan action contract, got: {:?}",
+            result
+        );
+    }
+
+    /// RED-PHASE: plain vb_validate::shared::validate does NOT claim gate 12.
+    ///
+    /// Even when action contracts are missing, plain validation should succeed
+    /// because gate 12 (action contract completeness) requires explicit contracts.
+    #[test]
+    fn plain_validate_does_not_claim_gate_12() {
+        let nodes = vec![do_node(0, ActionId::new(7), SlotIdx::new(0))];
+        let parts = make_parts_for_lower(nodes, vec![], 1);
+
+        let result = vb_validate::shared::validate(&parts);
+
+        assert!(
+            result.is_ok(),
+            "plain validate should NOT check gate 12 for Do with action 7, got: {:?}",
+            result
+        );
+    }
+
+    /// RED-PHASE: validate_with_contracts catches missing contracts.
+    #[test]
+    fn validate_with_contracts_catches_missing_contracts() {
+        let nodes = vec![do_node(0, ActionId::new(7), SlotIdx::new(0))];
+        let parts = make_parts_for_lower(nodes, vec![], 1);
+
+        let result = vb_validate::shared::validate_with_contracts(&parts, &[]);
+
+        assert!(
+            matches!(
+                result,
+                Err(vb_validate::ValidationError::ActionContractMissing {
+                    action_id,
+                    node_index: 0
+                }) if action_id.get() == 7
+            ),
+            "validate_with_contracts should return ActionContractMissing, got: {:?}",
+            result
+        );
+    }
+
+    /// RED-PHASE: validate_with_contracts catches orphan contracts.
+    #[test]
+    fn validate_with_contracts_catches_orphan_contracts() {
+        let nodes = vec![finish_node(0, 0)];
+        let parts = make_parts_for_lower(nodes, vec![], 1);
+
+        let orphan_contract = vb_core::ActionContract {
+            id: ActionId::new(99),
+            side_effect: SideEffect::None,
+            retry_safety: RetrySafety::Safe,
+            idempotency: Idempotency::DeterministicPure,
+        };
+
+        let result = vb_validate::shared::validate_with_contracts(&parts, &[orphan_contract]);
+
+        assert!(
+            matches!(
+                result,
+                Err(vb_validate::ValidationError::ActionContractOrphan {
+                    action_id
+                }) if action_id.get() == 99
+            ),
+            "validate_with_contracts should return ActionContractOrphan, got: {:?}",
+            result
+        );
+    }
+
+    /// RED-PHASE: CompileErrors contains exactly one error for isolated failures.
+    #[test]
+    fn compile_errors_contains_one_error_for_isolated_validation_failure() {
+        let nodes = vec![do_node(0, ActionId::new(7), SlotIdx::new(1))];
+        let parts = make_parts_for_lower(nodes, vec![], 1);
+
+        let result = lower_steps_to_ir(
+            parts.nodes.into_vec(),
+            vec![],
+            vec![],
+            parts.constants.into_vec(),
+            parts.slot_count,
+            parts.symbols_count,
+            &parts.name,
+            parts.digest,
+        );
+
+        match result {
+            Err(CompileErrors(ref errors)) => {
+                assert_eq!(
+                    errors.len(),
+                    1,
+                    "Expected exactly 1 error for isolated validation failure, got {}",
+                    errors.len()
+                );
+            }
+            Ok(_) => panic!("Expected error, got Ok"),
+            other => panic!("Expected CompileErrors, got: {:?}", other),
+        }
+    }
 }

@@ -41,6 +41,7 @@ blake3.workspace = true
 bytes.workspace = true
 criterion.workspace = true
 postcard.workspace = true
+proptest.workspace = true
 saphyr.workspace = true
 tempfile.workspace = true
 toml.workspace = true
@@ -56,6 +57,10 @@ vb_yaml = { path = "crates/vb_yaml" }
 
 [[bench]]
 name = "velvet_ballastics"
+harness = false
+
+[[bench]]
+name = "vb_qi37_1_1_recovery"
 harness = false
 
 [workspace.package]

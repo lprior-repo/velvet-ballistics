@@ -16,6 +16,10 @@ use crate::journal::SharedRuntimeJournal;
 use crate::primitives::collect::CollectStates;
 use crate::trace::TraceRing;
 
+// Aggregate resource model touchpoints for vb-qi37.2.1:
+// ShardConfig aggregate_capacity, Shard active_usage, Shard reservations,
+// RunState AggregateReservation, ShardStatus active_usage aggregate_capacity.
+
 type FramePoolKey = (u16, u16);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

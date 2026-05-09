@@ -8,6 +8,10 @@
 #![allow(clippy::doc_markdown)]
 
 use vb_core::WorkflowParts;
+use vb_core::action::{ActionContract, Idempotency, RetrySafety, SideEffect};
+use vb_core::capability::Capability;
+use vb_core::ids::{ActionId, SlotIdx, StepIdx, WorkflowDigest};
+use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract};
 
 const MAX_FUZZ_PAYLOAD: u32 = 4096;
 const MAX_FUZZ_PAYLOAD_USIZE: usize = 4096;
@@ -21,6 +25,104 @@ const SMALL_WORKFLOW_B: &[u8] = b"version: velvet-ballastics/v1\nname: fuzz_b\nw
 const FUZZ_MAX_EXPR_OPS: usize = 64;
 /// Maximum slot count for fuzz workflows.
 const FUZZ_SLOT_COUNT: u16 = 16;
+
+/// Exercises capability-name schema validation through the public verifier path.
+pub fn fuzz_capability_name_schema(data: &[u8]) {
+    let Ok(name) = std::str::from_utf8(data) else {
+        return;
+    };
+    let bounded_name = bounded_capability_name(name);
+    let parts = fuzz_parts_with_actions(&[1]);
+    let contracts = [fuzz_action_contract(
+        1,
+        Box::new([Capability::new(Box::from(bounded_name), ActionId::new(1))]),
+    )];
+    let _result = vb_validate::shared::validate_with_contracts(&parts, &contracts);
+}
+
+/// Exercises action-contract capability schema validation over bounded inputs.
+pub fn fuzz_capability_contract_schema(data: &[u8]) {
+    let first = data.first().copied().map_or(1, u16::from);
+    let second = data.get(1).copied().map_or(first, u16::from);
+    let tail = match data.get(2..) {
+        Some(bytes) => bytes,
+        None => &[],
+    };
+    let name = std::str::from_utf8(tail).map_or("network", bounded_capability_name);
+    let parts = fuzz_parts_with_actions(&[first]);
+    let contracts = [fuzz_action_contract(
+        first,
+        Box::new([
+            Capability::new(Box::from(name), ActionId::new(second)),
+            Capability::new(Box::from(name), ActionId::new(second)),
+        ]),
+    )];
+    let _result = vb_validate::shared::validate_with_contracts(&parts, &contracts);
+}
+
+fn bounded_capability_name(name: &str) -> &str {
+    match name.get(..name.len().min(256)) {
+        Some(prefix) => prefix,
+        None => name,
+    }
+}
+
+fn fuzz_action_contract(action: u16, required_capabilities: Box<[Capability]>) -> ActionContract {
+    ActionContract {
+        id: ActionId::new(action),
+        input_slot_count: 1,
+        output_slot_count: 1,
+        max_input_bytes: 1024,
+        max_output_bytes: 1024,
+        timeout_ms: 1000,
+        idempotency: Idempotency::IdempotentExternal,
+        side_effect: SideEffect::Writes,
+        retry_safety: RetrySafety::KeyRequired,
+        required_capabilities,
+    }
+}
+
+fn fuzz_parts_with_actions(actions: &[u16]) -> WorkflowParts {
+    let mut nodes = Vec::new();
+    let mut index = 0u16;
+    for action in actions {
+        nodes.push(CompiledNode {
+            id: StepIdx::new(index),
+            output: None,
+            next: Some(StepIdx::new(index.saturating_add(1))),
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Do {
+                action: ActionId::new(*action),
+                input: SlotIdx::new(0),
+            },
+        });
+        index = index.saturating_add(1);
+    }
+    nodes.push(CompiledNode {
+        id: StepIdx::new(index),
+        output: None,
+        next: None,
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::Finish {
+            result: SlotIdx::new(0),
+        },
+    });
+    WorkflowParts {
+        name: Box::from("capability-schema-fuzz"),
+        digest: WorkflowDigest::from_bytes([0; 32]),
+        nodes: nodes.into_boxed_slice(),
+        expressions: Box::new([]),
+        accessors: Box::new([]),
+        constants: Box::new([]),
+        slot_count: 1,
+        symbols_count: 0,
+        entry: StepIdx::new(0),
+        resource_contract: ResourceContract::DEFAULT,
+        step_names: Box::new([]),
+    }
+}
 
 /// Exercises the YAML event parser on arbitrary UTF-8 input.
 pub fn fuzz_yaml_events(data: &[u8]) {

@@ -3146,6 +3146,7 @@ name = "vb_core"
 version = "0.1.0"
 dependencies = [
  "bytes",
+ "criterion",
  "indexmap",
  "postcard",
  "proptest",
@@ -3244,6 +3245,7 @@ name = "vb_ui_model"
 version = "0.1.0"
 dependencies = [
  "serde",
+ "serde_json",
  "vb_core",
 ]
 
@@ -3268,6 +3270,8 @@ dependencies = [
 name = "vb_validate"
 version = "0.1.0"
 dependencies = [
+ "criterion",
+ "proptest",
  "thiserror",
  "vb_core",
 ]
@@ -3304,6 +3308,7 @@ dependencies = [
  "bytes",
  "criterion",
  "postcard",
+ "proptest",
  "saphyr",
  "tempfile",
  "toml 0.9.12+spec-1.1.0",

@@ -6,6 +6,8 @@
 //! cold-path checks for the accepted-artifact pipeline.
 
 use crate::{ValidationError, ValidationResult};
+use vb_core::action::ActionContract;
+use vb_core::capability::Capability;
 
 // Re-export the core types we need so callers only depend on vb_validate.
 pub use vb_core::ids::{AccessorIdx, ActionId, ConstIdx, ExprIdx, SlotIdx, StepIdx, SymbolId};
@@ -13,6 +15,9 @@ pub use vb_core::workflow::{
     AccessorProgram, CompiledNode, CompiledNodeKind, ExprOp, ExprProgram, PathSegment,
     WorkflowParts,
 };
+
+/// Maximum byte length for a compiled action capability requirement name.
+pub const MAX_CAPABILITY_NAME_BYTES: usize = 128;
 
 // ---------------------------------------------------------------------------
 // Gate 7: Expression stack depth bounded
@@ -145,21 +150,41 @@ pub fn validate_gate_08_accessor_path_segments(parts: &WorkflowParts) -> Validat
         validate_accessor_root(acc_index, accessor, parts.slot_count)?;
         for (seg_index, segment) in accessor.path.iter().enumerate() {
             match segment {
-                PathSegment::Field(_sym_id) => {
-                    // Symbol IDs are interned; any non-sentinel value is valid.
+                PathSegment::Field(sym_id) => {
+                    validate_field_symbol(acc_index, seg_index, *sym_id, parts.symbols_count)?;
                 }
-                PathSegment::Index(idx) => {
-                    if *idx == u32::MAX {
-                        return Err(ValidationError::AccessorPathInvalid {
-                            accessor_index: acc_index,
-                            segment_index: seg_index,
-                        });
-                    }
-                }
+                PathSegment::Index(idx) => validate_index_segment(acc_index, seg_index, *idx)?,
             }
         }
     }
     Ok(())
+}
+
+fn validate_field_symbol(
+    acc_index: usize,
+    seg_index: usize,
+    symbol: SymbolId,
+    symbols_count: u32,
+) -> ValidationResult<()> {
+    if symbol.get() < symbols_count {
+        Ok(())
+    } else {
+        Err(ValidationError::AccessorPathInvalid {
+            accessor_index: acc_index,
+            segment_index: seg_index,
+        })
+    }
+}
+
+fn validate_index_segment(acc_index: usize, seg_index: usize, idx: u32) -> ValidationResult<()> {
+    if idx == u32::MAX {
+        Err(ValidationError::AccessorPathInvalid {
+            accessor_index: acc_index,
+            segment_index: seg_index,
+        })
+    } else {
+        Ok(())
+    }
 }
 
 fn validate_accessor_root(
@@ -1024,7 +1049,7 @@ pub fn validate_gate_10_node_kind_specific(parts: &WorkflowParts) -> ValidationR
 /// every contracted action must be used by at least one Do node.
 pub fn validate_gate_12_action_contract_completeness(
     parts: &WorkflowParts,
-    action_contracts: &[vb_core::action::ActionContract],
+    action_contracts: &[ActionContract],
 ) -> ValidationResult<()> {
     // Collect all action IDs referenced by Do nodes.
     let mut do_action_ids: Vec<u16> = Vec::new();
@@ -1051,6 +1076,10 @@ pub fn validate_gate_12_action_contract_completeness(
         }
     }
 
+    for contract in action_contracts {
+        validate_action_contract_capability_schema(contract)?;
+    }
+
     // Check that every contract has at least one Do node referencing it.
     for contract in action_contracts {
         let contract_id = contract.id.get();
@@ -1069,6 +1098,96 @@ pub fn validate_gate_12_action_contract_completeness(
     }
 
     Ok(())
+}
+
+fn validate_action_contract_capability_schema(contract: &ActionContract) -> ValidationResult<()> {
+    for (capability_index, capability) in contract.required_capabilities.iter().enumerate() {
+        validate_required_capability(contract.id, capability_index, capability)?;
+    }
+    validate_no_duplicate_capability_requirements(contract)
+}
+
+fn validate_required_capability(
+    contract_action: ActionId,
+    capability_index: usize,
+    capability: &Capability,
+) -> ValidationResult<()> {
+    validate_capability_name(contract_action, capability_index, capability.name())?;
+    if capability.action_id() != contract_action {
+        return Err(ValidationError::CapabilityActionMismatch {
+            contract_action_id: usize::from(contract_action.get()),
+            capability_action_id: usize::from(capability.action_id().get()),
+            capability_index,
+        });
+    }
+    Ok(())
+}
+
+fn validate_capability_name(
+    action_id: ActionId,
+    capability_index: usize,
+    name: &str,
+) -> ValidationResult<()> {
+    let len = name.len();
+    if len == 0 {
+        return Err(ValidationError::CapabilityNameEmpty {
+            action_id: usize::from(action_id.get()),
+            capability_index,
+        });
+    }
+    if len > MAX_CAPABILITY_NAME_BYTES {
+        return Err(ValidationError::CapabilityNameTooLong {
+            action_id: usize::from(action_id.get()),
+            capability_index,
+            len,
+            max: MAX_CAPABILITY_NAME_BYTES,
+        });
+    }
+    if !is_capability_name_grammar_valid(name) {
+        return Err(ValidationError::CapabilityNameInvalid {
+            action_id: usize::from(action_id.get()),
+            capability_index,
+            name: name.to_owned(),
+        });
+    }
+    Ok(())
+}
+
+fn is_capability_name_grammar_valid(name: &str) -> bool {
+    name.bytes()
+        .try_fold(true, |segment_start, byte| match byte {
+            b'.' => (!segment_start).then_some(true),
+            b'a'..=b'z' => Some(false),
+            b'0'..=b'9' | b'_' => (!segment_start).then_some(false),
+            _ => None,
+        })
+        == Some(false)
+}
+
+fn validate_no_duplicate_capability_requirements(
+    contract: &ActionContract,
+) -> ValidationResult<()> {
+    contract
+        .required_capabilities
+        .iter()
+        .enumerate()
+        .find_map(|(duplicate_index, duplicate)| {
+            contract
+                .required_capabilities
+                .iter()
+                .take(duplicate_index)
+                .enumerate()
+                .find(|(_, first)| {
+                    first.action_id() == duplicate.action_id() && first.name() == duplicate.name()
+                })
+                .map(|(first_index, _)| ValidationError::CapabilityDuplicate {
+                    action_id: usize::from(contract.id.get()),
+                    first_index,
+                    duplicate_index,
+                    name: duplicate.name().to_owned(),
+                })
+        })
+        .map_or(Ok(()), Err)
 }
 
 // ---------------------------------------------------------------------------
