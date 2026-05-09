@@ -23,12 +23,13 @@ use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
 use args::parse_args;
 use args::{
-    Command, DurabilityMode, EmitTarget, OutputFormat, ParseError, StepTarget, VALID_COMMANDS,
-    VerifyProfile,
+    ActionRegistryMode, Command, DurabilityMode, EmitTarget, OutputFormat, ParseError, StepTarget,
+    VALID_COMMANDS, VerifyProfile,
 };
 #[cfg(test)]
 pub(crate) use commands_ai_context::{RunStatus, redacted_slot_value, suggested_ai_commands};
 use exit_code::CliExitCode;
+use vb_runtime::action::ActionRegistry;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 const INPUT_MAPPING_DECODE_FAILED_MESSAGE: &str = "INPUT_MAPPING_FAILED: input-bin decode failed";
@@ -80,6 +81,7 @@ commands:
   version                                             Print version
   agent-context                                      Emit versioned AI-agent CLI schema
   status     [--active-runs <N>] [--queue-depth <N>] [--trace-dropped <N>] [--json|--jsonl]  Report runtime shard status
+  action list [--json|--jsonl]                       List registered action contracts
 
 options:
   --json      Output structured JSON
@@ -99,6 +101,7 @@ fn main() -> ExitCode {
             commands_ai_context::handle(&run_id, &db, output)
         }
         Ok(Command::Status { options, output }) => cmd_status(options, output),
+        Ok(Command::ActionList { output, registry }) => cmd_action_list(output, registry),
         Ok(Command::Verify {
             workflow,
             profile,
@@ -245,6 +248,245 @@ fn cmd_status(options: args::StatusOptions, output: OutputFormat) -> ExitCode {
     let status = commands_status::build_status(options);
     commands_status::print_status(&status, output);
     ExitCode::SUCCESS
+}
+
+fn cmd_action_list(output: OutputFormat, registry_mode: ActionRegistryMode) -> ExitCode {
+    match registry_mode {
+        ActionRegistryMode::Registered => match registered_cli_actions() {
+            Ok(registry) => write_action_registry(&registry, output),
+            Err(error) => write_action_registry_error(&error, output),
+        },
+        ActionRegistryMode::Empty => {
+            let registry = ActionRegistry::new();
+            write_action_registry(&registry, output)
+        }
+        ActionRegistryMode::Uninitialized => {
+            write_action_registry_uninitialized(output);
+            CliExitCode::ValidationFailed.into()
+        }
+    }
+}
+
+fn write_action_registry_error(
+    error: &vb_core::action::ActionError,
+    output: OutputFormat,
+) -> ExitCode {
+    let message = format!("failed to register CLI action contracts: {error}");
+    if output == OutputFormat::Text {
+        errln!("{message}");
+    } else {
+        json_error(
+            &serde_json::json!({
+                "success": false,
+                "error": message,
+            }),
+            output,
+        );
+    }
+    CliExitCode::ValidationFailed.into()
+}
+
+fn write_action_registry_uninitialized(output: OutputFormat) {
+    let message = "action registry is not initialized";
+    if output == OutputFormat::Text {
+        errln!("{message}");
+    } else {
+        json_error(
+            &serde_json::json!({
+                "success": false,
+                "error": message,
+            }),
+            output,
+        );
+    }
+}
+
+fn write_action_registry(registry: &ActionRegistry, output: OutputFormat) -> ExitCode {
+    let rows = action_table_rows(registry);
+    if rows.is_empty() {
+        write_no_registered_actions(output);
+        return ExitCode::SUCCESS;
+    }
+
+    if output == OutputFormat::Text {
+        write_action_table_rows(&rows);
+        return ExitCode::SUCCESS;
+    }
+
+    let actions: Vec<serde_json::Value> = rows
+        .iter()
+        .map(|row| {
+            serde_json::json!({
+                "id": row.id,
+                "idempotency": row.idempotency,
+                "retry_safety": row.retry_safety,
+                "side_effect": row.side_effect,
+                "input_slot_count": row.input_slot_count,
+                "output_slot_count": row.output_slot_count,
+                "timeout_ms": row.timeout_ms,
+            })
+        })
+        .collect();
+    json_out(
+        &serde_json::json!({
+            "success": true,
+            "actions": actions,
+        }),
+        output,
+    );
+    ExitCode::SUCCESS
+}
+
+#[derive(Debug, Clone, Copy)]
+struct ActionTableRow {
+    id: u16,
+    idempotency: &'static str,
+    retry_safety: &'static str,
+    side_effect: &'static str,
+    input_slot_count: u16,
+    output_slot_count: u16,
+    timeout_ms: u64,
+}
+
+fn action_table_rows(registry: &ActionRegistry) -> Vec<ActionTableRow> {
+    registry
+        .registered_contracts()
+        .iter()
+        .map(|contract| ActionTableRow {
+            id: contract.id.get(),
+            idempotency: action_idempotency_name(contract.idempotency),
+            retry_safety: action_retry_safety_name(contract.retry_safety),
+            side_effect: action_side_effect_name(contract.side_effect),
+            input_slot_count: contract.input_slot_count,
+            output_slot_count: contract.output_slot_count,
+            timeout_ms: contract.timeout_ms,
+        })
+        .collect()
+}
+
+fn write_action_table_rows(rows: &[ActionTableRow]) {
+    outln!("id\tidempotency\tretry_safety\tside_effect\tinput_slots\toutput_slots\ttimeout_ms");
+    rows.iter().for_each(|row| {
+        outln!(
+            "{}\t{}\t{}\t{}\t{}\t{}\t{}",
+            row.id,
+            row.idempotency,
+            row.retry_safety,
+            row.side_effect,
+            row.input_slot_count,
+            row.output_slot_count,
+            row.timeout_ms
+        );
+    });
+}
+
+fn write_no_registered_actions(output: OutputFormat) {
+    let message = "no registered actions";
+    if output == OutputFormat::Text {
+        outln!("{message}");
+    } else {
+        json_out(
+            &serde_json::json!({
+                "success": true,
+                "actions": [],
+                "message": message,
+            }),
+            output,
+        );
+    }
+}
+
+fn registered_cli_actions() -> vb_core::action::ActionResult<ActionRegistry> {
+    cli_action_specs()
+        .iter()
+        .try_fold(ActionRegistry::new(), |mut registry, spec| {
+            registry.register(action_contract(*spec))?;
+            Ok(registry)
+        })
+}
+
+#[derive(Debug, Clone, Copy)]
+struct CliActionSpec {
+    id: u16,
+    idempotency: vb_core::action::Idempotency,
+    retry_safety: vb_core::action::RetrySafety,
+    side_effect: vb_core::action::SideEffect,
+    input_slot_count: u16,
+    output_slot_count: u16,
+    timeout_ms: u64,
+}
+
+fn cli_action_specs() -> &'static [CliActionSpec] {
+    &[
+        CliActionSpec {
+            id: 1,
+            idempotency: vb_core::action::Idempotency::DeterministicPure,
+            retry_safety: vb_core::action::RetrySafety::Safe,
+            side_effect: vb_core::action::SideEffect::None,
+            input_slot_count: 1,
+            output_slot_count: 1,
+            timeout_ms: 1_000,
+        },
+        CliActionSpec {
+            id: 2,
+            idempotency: vb_core::action::Idempotency::IdempotentExternal,
+            retry_safety: vb_core::action::RetrySafety::KeyRequired,
+            side_effect: vb_core::action::SideEffect::Writes,
+            input_slot_count: 2,
+            output_slot_count: 1,
+            timeout_ms: 5_000,
+        },
+        CliActionSpec {
+            id: 3,
+            idempotency: vb_core::action::Idempotency::AtLeastOnceExternal,
+            retry_safety: vb_core::action::RetrySafety::Unsafe,
+            side_effect: vb_core::action::SideEffect::Sends,
+            input_slot_count: 1,
+            output_slot_count: 0,
+            timeout_ms: 10_000,
+        },
+    ]
+}
+
+fn action_contract(spec: CliActionSpec) -> vb_core::action::ActionContract {
+    vb_core::action::ActionContract {
+        id: vb_core::ActionId::new(spec.id),
+        input_slot_count: spec.input_slot_count,
+        output_slot_count: spec.output_slot_count,
+        max_input_bytes: 65_536,
+        max_output_bytes: 65_536,
+        timeout_ms: spec.timeout_ms,
+        idempotency: spec.idempotency,
+        side_effect: spec.side_effect,
+        retry_safety: spec.retry_safety,
+        required_capabilities: Box::new([]),
+    }
+}
+
+fn action_idempotency_name(value: vb_core::action::Idempotency) -> &'static str {
+    match value {
+        vb_core::action::Idempotency::DeterministicPure => "deterministic_pure",
+        vb_core::action::Idempotency::IdempotentExternal => "idempotent_external",
+        vb_core::action::Idempotency::AtLeastOnceExternal => "at_least_once_external",
+    }
+}
+
+fn action_retry_safety_name(value: vb_core::action::RetrySafety) -> &'static str {
+    match value {
+        vb_core::action::RetrySafety::Safe => "safe",
+        vb_core::action::RetrySafety::KeyRequired => "key_required",
+        vb_core::action::RetrySafety::Unsafe => "unsafe",
+    }
+}
+
+fn action_side_effect_name(value: vb_core::action::SideEffect) -> &'static str {
+    match value {
+        vb_core::action::SideEffect::None => "none",
+        vb_core::action::SideEffect::Writes => "writes",
+        vb_core::action::SideEffect::Sends => "sends",
+        vb_core::action::SideEffect::Creates => "creates",
+        vb_core::action::SideEffect::Destroys => "destroys",
+    }
 }
 
 fn cmd_verify(
@@ -3438,6 +3680,29 @@ fn write_error_stderr(error: &ParseError) -> io::Result<()> {
         ParseError::InvalidStatusArgument(reason) => {
             writeln!(handle, "invalid status argument: {reason}\n\n{HELP}")
         }
+        ParseError::UnknownActionCommand(cmd) => {
+            writeln!(
+                handle,
+                "unknown action command: {cmd} (expected: list)\n\n{HELP}"
+            )
+        }
+        ParseError::UnknownActionRegistry(registry) => {
+            writeln!(
+                handle,
+                "unknown action registry: {registry} (expected: registered, empty, uninitialized)\n\n{HELP}"
+            )
+        }
+        ParseError::MissingActionRegistryValue => writeln!(
+            handle,
+            "missing action-args value for --registry (expected: registered, empty, uninitialized)\n\n{HELP}"
+        ),
+        ParseError::UnknownActionListFlag(flag) => {
+            writeln!(handle, "unknown action list flag: {flag}\n\n{HELP}")
+        }
+        ParseError::UnexpectedActionListArgument(argument) => writeln!(
+            handle,
+            "unexpected action list argument: {argument}\n\n{HELP}"
+        ),
         ParseError::NoCommand => {
             writeln!(handle, "{HELP}")
         }

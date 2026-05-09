@@ -115,6 +115,14 @@ fn output_stderr(output: &std::process::Output) -> String {
     String::from_utf8_lossy(&output.stderr).into_owned()
 }
 
+fn first_stderr_line(output: &std::process::Output) -> String {
+    let stderr = output_stderr(output);
+    match stderr.lines().next() {
+        Some(line) => line.into(),
+        None => String::new(),
+    }
+}
+
 fn assert_cli_success(output: &std::process::Output, command: &str) {
     assert!(
         output.status.success(),
@@ -260,6 +268,301 @@ fn cli_status_rejects_nonnumeric_known_flag() {
             "invalid status argument: --queue-depth must be a usize",
         );
     }
+}
+
+#[test]
+fn cli_action_list_table_output_has_exact_fields() {
+    let output = run_cli(&[std::ffi::OsStr::new("action"), std::ffi::OsStr::new("list")]);
+    let output = match output {
+        Some(output) => output,
+        None => {
+            assert!(
+                forced_assertion_failure(),
+                "failed to execute velvet_ballastics CLI for action list"
+            );
+            return;
+        }
+    };
+
+    assert_cli_success(&output, "action list");
+    assert_eq!(
+        output_stdout(&output),
+        "id\tidempotency\tretry_safety\tside_effect\tinput_slots\toutput_slots\ttimeout_ms\n1\tdeterministic_pure\tsafe\tnone\t1\t1\t1000\n2\tidempotent_external\tkey_required\twrites\t2\t1\t5000\n3\tat_least_once_external\tunsafe\tsends\t1\t0\t10000\n"
+    );
+    assert_eq!(output_stderr(&output), "");
+}
+
+#[test]
+fn cli_action_list_json_output_has_exact_actions() {
+    let output = run_cli(&[
+        std::ffi::OsStr::new("action"),
+        std::ffi::OsStr::new("list"),
+        std::ffi::OsStr::new("--json"),
+    ]);
+    let output = match output {
+        Some(output) => output,
+        None => {
+            assert!(
+                forced_assertion_failure(),
+                "failed to execute velvet_ballastics CLI for action list --json"
+            );
+            return;
+        }
+    };
+
+    assert_cli_success(&output, "action list --json");
+    let parsed = match serde_json::from_str::<serde_json::Value>(&output_stdout(&output)) {
+        Ok(value) => value,
+        Err(error) => {
+            assert!(
+                forced_assertion_failure(),
+                "action list JSON should parse: {error}; stdout={}",
+                output_stdout(&output)
+            );
+            return;
+        }
+    };
+    assert_eq!(
+        parsed,
+        serde_json::json!({
+            "success": true,
+            "actions": [
+                {"id": 1, "idempotency": "deterministic_pure", "retry_safety": "safe", "side_effect": "none", "input_slot_count": 1, "output_slot_count": 1, "timeout_ms": 1000},
+                {"id": 2, "idempotency": "idempotent_external", "retry_safety": "key_required", "side_effect": "writes", "input_slot_count": 2, "output_slot_count": 1, "timeout_ms": 5000},
+                {"id": 3, "idempotency": "at_least_once_external", "retry_safety": "unsafe", "side_effect": "sends", "input_slot_count": 1, "output_slot_count": 0, "timeout_ms": 10000}
+            ]
+        })
+    );
+}
+
+#[test]
+fn cli_action_list_empty_registry_reports_no_actions() {
+    let output = run_cli(&[
+        std::ffi::OsStr::new("action"),
+        std::ffi::OsStr::new("list"),
+        std::ffi::OsStr::new("--registry"),
+        std::ffi::OsStr::new("empty"),
+    ]);
+    let output = match output {
+        Some(output) => output,
+        None => {
+            assert!(
+                forced_assertion_failure(),
+                "failed to execute velvet_ballastics CLI for action list --registry empty"
+            );
+            return;
+        }
+    };
+
+    assert_cli_success(&output, "action list --registry empty");
+    assert_eq!(output_stdout(&output), "no registered actions\n");
+}
+
+#[test]
+fn cli_action_list_uninitialized_registry_fails() {
+    let output = run_cli(&[
+        std::ffi::OsStr::new("action"),
+        std::ffi::OsStr::new("list"),
+        std::ffi::OsStr::new("--registry"),
+        std::ffi::OsStr::new("uninitialized"),
+    ]);
+    let output = match output {
+        Some(output) => output,
+        None => {
+            assert!(
+                forced_assertion_failure(),
+                "failed to execute velvet_ballastics CLI for action list --registry uninitialized"
+            );
+            return;
+        }
+    };
+
+    assert!(
+        !output.status.success(),
+        "uninitialized registry should fail"
+    );
+    assert_eq!(output_stdout(&output), "");
+    assert_eq!(
+        output_stderr(&output),
+        "action registry is not initialized\n"
+    );
+}
+
+#[test]
+fn cli_action_list_missing_registry_value_fails_with_action_args_diagnostic() {
+    let output = run_cli(&[
+        std::ffi::OsStr::new("action"),
+        std::ffi::OsStr::new("list"),
+        std::ffi::OsStr::new("--registry"),
+    ]);
+    let output = match output {
+        Some(output) => output,
+        None => {
+            assert!(
+                forced_assertion_failure(),
+                "failed to execute velvet_ballastics CLI for action list --registry (missing value)"
+            );
+            return;
+        }
+    };
+
+    assert!(
+        !output.status.success(),
+        "missing registry value should fail"
+    );
+    assert_eq!(output.status.code(), Some(1));
+    assert_eq!(output_stdout(&output), "");
+    assert_eq!(
+        first_stderr_line(&output),
+        "missing action-args value for --registry (expected: registered, empty, uninitialized)"
+    );
+}
+
+#[test]
+fn cli_action_list_unknown_flag_fails_with_exact_diagnostic() {
+    let output = run_cli(&[
+        std::ffi::OsStr::new("action"),
+        std::ffi::OsStr::new("list"),
+        std::ffi::OsStr::new("--bogus"),
+    ]);
+    let output = match output {
+        Some(output) => output,
+        None => {
+            assert!(
+                forced_assertion_failure(),
+                "failed to execute velvet_ballastics CLI for action list --bogus"
+            );
+            return;
+        }
+    };
+
+    assert!(!output.status.success(), "unknown flag should fail");
+    assert_eq!(output.status.code(), Some(1));
+    assert_eq!(output_stdout(&output), "");
+    assert_eq!(
+        first_stderr_line(&output),
+        "unknown action list flag: --bogus"
+    );
+}
+
+#[test]
+fn cli_action_list_unknown_registry_fails_with_exact_diagnostic() {
+    let output = run_cli(&[
+        std::ffi::OsStr::new("action"),
+        std::ffi::OsStr::new("list"),
+        std::ffi::OsStr::new("--registry"),
+        std::ffi::OsStr::new("bogus"),
+    ]);
+    let output = match output {
+        Some(output) => output,
+        None => {
+            assert!(
+                forced_assertion_failure(),
+                "failed to execute velvet_ballastics CLI for action list --registry bogus"
+            );
+            return;
+        }
+    };
+
+    assert!(!output.status.success(), "unknown registry should fail");
+    assert_eq!(output.status.code(), Some(1));
+    assert_eq!(output_stdout(&output), "");
+    assert_eq!(
+        first_stderr_line(&output),
+        "unknown action registry: bogus (expected: registered, empty, uninitialized)"
+    );
+}
+
+#[test]
+fn cli_action_list_trailing_argument_fails() {
+    let output = run_cli(&[
+        std::ffi::OsStr::new("action"),
+        std::ffi::OsStr::new("list"),
+        std::ffi::OsStr::new("junk"),
+    ]);
+    let output = match output {
+        Some(output) => output,
+        None => {
+            assert!(
+                forced_assertion_failure(),
+                "failed to execute velvet_ballastics CLI for action list junk"
+            );
+            return;
+        }
+    };
+
+    assert!(!output.status.success(), "trailing arg should fail");
+    assert_eq!(output.status.code(), Some(1));
+    assert_eq!(output_stdout(&output), "");
+    assert_eq!(
+        first_stderr_line(&output),
+        "unexpected action list argument: junk"
+    );
+}
+
+#[test]
+fn cli_action_list_jsonl_output_has_exact_lines() {
+    let output = run_cli(&[
+        std::ffi::OsStr::new("action"),
+        std::ffi::OsStr::new("list"),
+        std::ffi::OsStr::new("--jsonl"),
+    ]);
+    let output = match output {
+        Some(output) => output,
+        None => {
+            assert!(
+                forced_assertion_failure(),
+                "failed to execute velvet_ballastics CLI for action list --jsonl"
+            );
+            return;
+        }
+    };
+
+    assert_cli_success(&output, "action list --jsonl");
+    let stdout = output_stdout(&output);
+    let lines: Vec<_> = stdout.lines().collect();
+    assert_eq!(lines.len(), 1, "JSONL output should be exactly one line");
+
+    let parsed = match serde_json::from_str::<serde_json::Value>(lines[0]) {
+        Ok(value) => value,
+        Err(error) => {
+            assert!(
+                forced_assertion_failure(),
+                "action list JSONL should parse: {error}; line={}",
+                lines[0]
+            );
+            return;
+        }
+    };
+    assert_eq!(parsed.get("success"), Some(&serde_json::json!(true)));
+    let actions = match parsed.get("actions") {
+        Some(serde_json::Value::Array(actions)) => actions,
+        other => {
+            assert!(
+                forced_assertion_failure(),
+                "actions should be an array: {other:?}"
+            );
+            return;
+        }
+    };
+    assert_eq!(
+        actions.len(),
+        3,
+        "registered registry should have 3 actions"
+    );
+
+    // Verify first action structure
+    let first = &actions[0];
+    assert_eq!(first.get("id"), Some(&serde_json::json!(1)));
+    assert_eq!(
+        first.get("idempotency"),
+        Some(&serde_json::json!("deterministic_pure"))
+    );
+    assert_eq!(first.get("retry_safety"), Some(&serde_json::json!("safe")));
+    assert_eq!(first.get("side_effect"), Some(&serde_json::json!("none")));
+    assert_eq!(first.get("input_slot_count"), Some(&serde_json::json!(1)));
+    assert_eq!(first.get("output_slot_count"), Some(&serde_json::json!(1)));
+    assert_eq!(first.get("timeout_ms"), Some(&serde_json::json!(1000)));
 }
 
 // ---------------------------------------------------------------------------

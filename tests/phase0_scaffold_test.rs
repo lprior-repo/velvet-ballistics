@@ -58,7 +58,7 @@ fn require_valid_yaml_file(relative: &str, reason: &str) -> Result<(), String> {
     use saphyr::LoadableYamlNode;
 
     let contents = read_workspace_file(relative)?;
-    let _ = saphyr::Yaml::load_from_str(&contents)
+    saphyr::Yaml::load_from_str(&contents)
         .map_err(|error| format!("{} must be valid YAML for {}: {}", relative, reason, error))?;
     Ok(())
 }
@@ -474,7 +474,7 @@ fn pgo_workload_fixtures_compile() -> Result<(), String> {
     ] {
         let bytes = fs::read(workspace_path(relative))
             .map_err(|error| format!("{} must be readable: {}", relative, error))?;
-        let _ = vb_compile::compile_workflow(&bytes).map_err(|errors| {
+        vb_compile::compile_workflow(&bytes).map_err(|errors| {
             let details = errors
                 .0
                 .iter()

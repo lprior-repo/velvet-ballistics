@@ -39,7 +39,7 @@ impl VerifyProfile {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub(crate) enum Command {
     Help,
     Version,
@@ -52,6 +52,10 @@ pub(crate) enum Command {
     Status {
         options: StatusOptions,
         output: OutputFormat,
+    },
+    ActionList {
+        output: OutputFormat,
+        registry: ActionRegistryMode,
     },
     Verify {
         workflow: PathBuf,
@@ -166,7 +170,7 @@ pub(crate) enum Command {
     },
 }
 
-pub(crate) const VALID_COMMANDS: &str = "help, version, agent-context, ai-context, status, validate, verify, explain, compile, run, run-compiled, ipc-serve, inspect, events, replay, trace, retry, resume, bench-run, doctor, answer, graph, diff, incident, submit, simulate";
+pub(crate) const VALID_COMMANDS: &str = "help, version, agent-context, ai-context, status, action, validate, verify, explain, compile, run, run-compiled, ipc-serve, inspect, events, replay, trace, retry, resume, bench-run, doctor, answer, graph, diff, incident, submit, simulate";
 
 /// Optional diagnostic status values used when no live runtime handle exists.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -174,6 +178,14 @@ pub(crate) struct StatusOptions {
     pub(crate) active_runs: Option<usize>,
     pub(crate) queue_depth: Option<usize>,
     pub(crate) trace_dropped: Option<u64>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub(crate) enum ActionRegistryMode {
+    #[default]
+    Registered,
+    Empty,
+    Uninitialized,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -207,8 +219,19 @@ pub(crate) enum ParseError {
     UnknownProfile(String),
     UnknownCommand(String),
     InvalidStatusArgument(String),
+    UnknownActionCommand(String),
+    UnknownActionRegistry(String),
+    MissingActionRegistryValue,
+    UnknownActionListFlag(String),
+    UnexpectedActionListArgument(String),
     NoCommand,
     InvalidStep(String),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct ActionListParseState {
+    output: OutputFormat,
+    registry: ActionRegistryMode,
 }
 
 pub(crate) fn parse_args(args: &[OsString]) -> Result<Command, ParseError> {
@@ -223,6 +246,7 @@ pub(crate) fn parse_args(args: &[OsString]) -> Result<Command, ParseError> {
         "agent-context" => Ok(Command::AgentContext),
         "ai-context" => parse_ai_context(args),
         "status" => parse_status(args),
+        "action" => parse_action(args),
         "verify" => parse_verify(args),
         "validate" => parse_validate(args),
         "explain" => parse_explain(args),
@@ -315,6 +339,62 @@ fn parse_status_options(
     }
 }
 
+fn parse_action(args: &[OsString]) -> Result<Command, ParseError> {
+    let action_command = args
+        .get(2)
+        .and_then(|s| s.to_str())
+        .ok_or(ParseError::MissingArgument("action subcommand"))?;
+    if action_command != "list" {
+        return Err(ParseError::UnknownActionCommand(action_command.into()));
+    }
+    let action_args = match args.get(3..) {
+        Some(values) => values,
+        None => &[],
+    };
+    let parsed = parse_action_list_args(
+        action_args,
+        ActionListParseState {
+            output: OutputFormat::Text,
+            registry: ActionRegistryMode::Registered,
+        },
+    )?;
+    Ok(Command::ActionList {
+        output: parsed.output,
+        registry: parsed.registry,
+    })
+}
+
+fn parse_action_list_args(
+    args: &[OsString],
+    state: ActionListParseState,
+) -> Result<ActionListParseState, ParseError> {
+    match args.split_first() {
+        None => Ok(state),
+        Some((raw, rest)) => match raw.to_str() {
+            Some("--json") => parse_action_list_args(
+                rest,
+                ActionListParseState {
+                    output: OutputFormat::Json,
+                    ..state
+                },
+            ),
+            Some("--jsonl") => parse_action_list_args(
+                rest,
+                ActionListParseState {
+                    output: OutputFormat::Jsonl,
+                    ..state
+                },
+            ),
+            Some("--registry") => parse_action_registry_arg(rest, state),
+            Some(flag) if flag.starts_with("--") => {
+                Err(ParseError::UnknownActionListFlag(flag.into()))
+            }
+            Some(arg) => Err(ParseError::UnexpectedActionListArgument(arg.into())),
+            None => Err(ParseError::UnexpectedActionListArgument(format!("{raw:?}"))),
+        },
+    }
+}
+
 struct ParsedStatusValue<'a, T> {
     value: T,
     remaining: &'a [OsString],
@@ -389,6 +469,31 @@ fn validate_status_usize_limit(
             "{flag} must be <= {max}"
         ))),
         Some(_) | None => Ok(()),
+    }
+}
+
+fn parse_action_registry_arg(
+    args: &[OsString],
+    state: ActionListParseState,
+) -> Result<ActionListParseState, ParseError> {
+    match args.split_first() {
+        Some((raw, rest)) => match raw.to_str() {
+            Some(value) if value.starts_with("--") => Err(ParseError::MissingActionRegistryValue),
+            Some(value) => parse_action_registry_mode(value).and_then(|registry| {
+                parse_action_list_args(rest, ActionListParseState { registry, ..state })
+            }),
+            None => Err(ParseError::MissingActionRegistryValue),
+        },
+        None => Err(ParseError::MissingActionRegistryValue),
+    }
+}
+
+fn parse_action_registry_mode(value: &str) -> Result<ActionRegistryMode, ParseError> {
+    match value {
+        "registered" => Ok(ActionRegistryMode::Registered),
+        "empty" => Ok(ActionRegistryMode::Empty),
+        "uninitialized" => Ok(ActionRegistryMode::Uninitialized),
+        other => Err(ParseError::UnknownActionRegistry(other.into())),
     }
 }
 
@@ -765,6 +870,25 @@ impl std::fmt::Display for ParseError {
             Self::InvalidStatusArgument(reason) => {
                 write!(formatter, "invalid status argument: {reason}")
             }
+            Self::UnknownActionCommand(cmd) => {
+                write!(formatter, "unknown action command: {cmd} (expected: list)")
+            }
+            Self::UnknownActionRegistry(registry) => {
+                write!(
+                    formatter,
+                    "unknown action registry: {registry} (expected: registered, empty, uninitialized)"
+                )
+            }
+            Self::MissingActionRegistryValue => write!(
+                formatter,
+                "missing action-args value for --registry (expected: registered, empty, uninitialized)"
+            ),
+            Self::UnknownActionListFlag(flag) => {
+                write!(formatter, "unknown action list flag: {flag}")
+            }
+            Self::UnexpectedActionListArgument(argument) => {
+                write!(formatter, "unexpected action list argument: {argument}")
+            }
             Self::NoCommand => write!(formatter, "no command provided"),
             Self::InvalidStep(step) => write!(formatter, "invalid step: {step}"),
         }
@@ -774,8 +898,8 @@ impl std::fmt::Display for ParseError {
 #[cfg(test)]
 mod tests {
     use super::{
-        Command, DurabilityMode, EmitTarget, OutputFormat, ParseError, StepTarget, VerifyProfile,
-        parse_args,
+        ActionRegistryMode, Command, DurabilityMode, EmitTarget, OutputFormat, ParseError,
+        StepTarget, VerifyProfile, parse_args,
     };
     use std::ffi::OsString;
     use std::path::PathBuf;
@@ -1454,6 +1578,19 @@ mod tests {
         );
         if let Ok(Command::Simulate { output, .. }) = parsed {
             assert_eq!(output, OutputFormat::Jsonl);
+        }
+    }
+
+    #[test]
+    fn parse_action_list_accepts_jsonl_output() {
+        let parsed = parse_args(&args(&["velvet-ballastics", "action", "list", "--jsonl"]));
+        assert!(
+            matches!(parsed, Ok(Command::ActionList { .. })),
+            "unexpected parse result: {parsed:?}"
+        );
+        if let Ok(Command::ActionList { output, registry }) = parsed {
+            assert_eq!(output, OutputFormat::Jsonl);
+            assert_eq!(registry, ActionRegistryMode::Registered);
         }
     }
 }

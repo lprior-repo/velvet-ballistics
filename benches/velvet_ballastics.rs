@@ -2365,6 +2365,7 @@ fn evidence_chain_benches(c: &mut Criterion) {
                             run,
                             slot: SlotIdx::new(0),
                             value: vec![],
+                            extra: None,
                         }
                     } else if i % 5 == 3 {
                         vb_runtime::journal::RuntimeJournalEvent::StepSucceeded {
@@ -2414,6 +2415,7 @@ fn evidence_chain_benches(c: &mut Criterion) {
                             run,
                             slot: SlotIdx::new(0),
                             value: vec![],
+                            extra: None,
                         }
                     } else if i % 5 == 3 {
                         vb_runtime::journal::RuntimeJournalEvent::StepSucceeded {

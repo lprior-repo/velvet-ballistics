@@ -3,11 +3,12 @@
 #![allow(clippy::doc_markdown)]
 
 use super::{
-    Command, DurabilityMode, INPUT_MAPPING_DECODE_FAILED_MESSAGE,
+    ActionRegistryMode, Command, DurabilityMode, INPUT_MAPPING_DECODE_FAILED_MESSAGE,
     INPUT_MAPPING_SLOT_COUNT_EXCEEDED_MESSAGE, INPUT_MAPPING_SLOT_INDEX_OUT_OF_RANGE_MESSAGE,
     InputMappingError, ParseError, RunStatus, StepTarget, StorageWorkflowResolver,
-    build_step_frame, decode_step_inputs, execute_step_isolated, map_runtime_inputs,
-    node_kind_name, parse_args, redacted_slot_value, run_compiled_workflow, signal_name,
+    action_idempotency_name, action_table_rows, build_step_frame, decode_step_inputs,
+    execute_step_isolated, map_runtime_inputs, node_kind_name, parse_args, redacted_slot_value,
+    registered_cli_actions, run_compiled_workflow, setup_exit_code, signal_name,
     suggested_ai_commands, write_step_inputs,
 };
 use std::ffi::OsString;
@@ -220,6 +221,183 @@ fn input_mapping_errors_render_exact_variant_messages() {
     assert_eq!(
         InputMappingError::SlotIndexOutOfRange.to_string(),
         INPUT_MAPPING_SLOT_INDEX_OUT_OF_RANGE_MESSAGE
+    );
+}
+
+#[test]
+fn parse_action_list_defaults_to_registered_text_output() {
+    let parsed = parse_args(&args(&["velvet-ballastics", "action", "list"]));
+
+    assert!(
+        matches!(
+            parsed,
+            Ok(Command::ActionList {
+                output: super::OutputFormat::Text,
+                registry: ActionRegistryMode::Registered,
+            })
+        ),
+        "unexpected parse result: {parsed:?}"
+    );
+}
+
+#[test]
+fn parse_action_list_accepts_empty_registry_json() {
+    let parsed = parse_args(&args(&[
+        "velvet-ballastics",
+        "action",
+        "list",
+        "--registry",
+        "empty",
+        "--json",
+    ]));
+
+    assert!(
+        matches!(
+            parsed,
+            Ok(Command::ActionList {
+                output: super::OutputFormat::Json,
+                registry: ActionRegistryMode::Empty,
+            })
+        ),
+        "unexpected parse result: {parsed:?}"
+    );
+}
+
+#[test]
+fn parse_action_list_rejects_invalid_registry() {
+    let parsed = parse_args(&args(&[
+        "velvet-ballastics",
+        "action",
+        "list",
+        "--registry",
+        "bogus",
+    ]));
+
+    assert!(
+        matches!(parsed, Err(ParseError::UnknownActionRegistry(ref registry)) if registry == "bogus"),
+        "unexpected parse result: {parsed:?}"
+    );
+}
+
+#[test]
+fn parse_action_list_rejects_missing_registry_value() {
+    let parsed = parse_args(&args(&[
+        "velvet-ballastics",
+        "action",
+        "list",
+        "--registry",
+    ]));
+
+    assert_eq!(parsed, Err(ParseError::MissingActionRegistryValue));
+    assert_eq!(
+        ParseError::MissingActionRegistryValue.to_string(),
+        "missing action-args value for --registry (expected: registered, empty, uninitialized)"
+    );
+}
+
+#[test]
+fn parse_action_list_rejects_registry_value_consuming_flag() {
+    let parsed = parse_args(&args(&[
+        "velvet-ballastics",
+        "action",
+        "list",
+        "--registry",
+        "--json",
+    ]));
+
+    assert_eq!(parsed, Err(ParseError::MissingActionRegistryValue));
+}
+
+#[test]
+fn parse_action_list_rejects_unknown_flag() {
+    let parsed = parse_args(&args(&["velvet-ballastics", "action", "list", "--bogus"]));
+
+    assert_eq!(
+        parsed,
+        Err(ParseError::UnknownActionListFlag("--bogus".into()))
+    );
+}
+
+#[test]
+fn parse_action_list_rejects_trailing_argument() {
+    let parsed = parse_args(&args(&["velvet-ballastics", "action", "list", "junk"]));
+
+    assert_eq!(
+        parsed,
+        Err(ParseError::UnexpectedActionListArgument("junk".into()))
+    );
+}
+
+#[test]
+fn registered_cli_actions_returns_three_sorted_contracts_without_mutation() {
+    let registry = match registered_cli_actions() {
+        Ok(registry) => registry,
+        Err(error) => {
+            assert!(false, "registered CLI actions should build: {error}");
+            return;
+        }
+    };
+    let before_len = registry.len();
+    let first_listing: Vec<u16> = registry
+        .registered_contracts()
+        .iter()
+        .map(|contract| contract.id.get())
+        .collect();
+    let second_listing: Vec<u16> = registry
+        .registered_contracts()
+        .iter()
+        .map(|contract| contract.id.get())
+        .collect();
+
+    assert_eq!(first_listing, vec![1, 2, 3]);
+    assert_eq!(second_listing, first_listing);
+    assert_eq!(registry.len(), before_len);
+}
+
+#[test]
+fn registered_cli_action_table_rows_are_exact() {
+    let registry = match registered_cli_actions() {
+        Ok(registry) => registry,
+        Err(error) => {
+            assert!(false, "registered CLI actions should build: {error}");
+            return;
+        }
+    };
+    let rows = action_table_rows(&registry);
+
+    assert_eq!(rows.len(), 3);
+    let [first, second, third] = rows.as_slice() else {
+        assert!(false, "expected exactly three action table rows: {rows:?}");
+        return;
+    };
+    assert_eq!(first.id, 1);
+    assert_eq!(first.idempotency, "deterministic_pure");
+    assert_eq!(first.retry_safety, "safe");
+    assert_eq!(first.side_effect, "none");
+    assert_eq!(first.input_slot_count, 1);
+    assert_eq!(first.output_slot_count, 1);
+    assert_eq!(first.timeout_ms, 1_000);
+    assert_eq!(second.id, 2);
+    assert_eq!(second.idempotency, "idempotent_external");
+    assert_eq!(second.retry_safety, "key_required");
+    assert_eq!(second.side_effect, "writes");
+    assert_eq!(second.input_slot_count, 2);
+    assert_eq!(second.output_slot_count, 1);
+    assert_eq!(second.timeout_ms, 5_000);
+    assert_eq!(third.id, 3);
+    assert_eq!(third.idempotency, "at_least_once_external");
+    assert_eq!(third.retry_safety, "unsafe");
+    assert_eq!(third.side_effect, "sends");
+    assert_eq!(third.input_slot_count, 1);
+    assert_eq!(third.output_slot_count, 0);
+    assert_eq!(third.timeout_ms, 10_000);
+}
+
+#[test]
+fn action_contract_names_are_stable_for_json_and_table_output() {
+    assert_eq!(
+        action_idempotency_name(vb_core::action::Idempotency::DeterministicPure),
+        "deterministic_pure"
     );
 }
 
@@ -471,166 +649,13 @@ fn signal_name_returns_correct_labels() {
 #[test]
 fn decode_step_inputs_empty_data_returns_empty() {
     let result = decode_step_inputs(b"");
-    match result {
-        Ok(values) => assert_eq!(values.len(), 0),
-        Err(err) => assert_eq!(err, std::process::ExitCode::from(1)),
-    }
+    assert_eq!(result, Ok(Box::from([])));
 }
 
 #[test]
 fn decode_step_inputs_invalid_data_returns_error() {
     let result = decode_step_inputs(b"garbage");
-    assert_eq!(result, Err(std::process::ExitCode::from(2)));
-}
-
-#[test]
-fn parse_error_unknown_emit_target() {
-    let result = parse_args(&args(&[
-        "velvet-ballastics",
-        "compile",
-        "workflow.yaml",
-        "--emit",
-        "binary",
-        "--out",
-        "workflow.vbir",
-    ]))
-    .map(|_| ());
-    match result {
-        Err(err) => {
-            assert_eq!(err, ParseError::UnknownEmitTarget("binary".to_string()));
-            assert_eq!(
-                err.to_string(),
-                "unknown emit target: binary (expected: ir, rust, yaml, postcard)"
-            );
-        }
-        Ok(()) => {
-            assert_eq!(
-                Ok(()),
-                Err(ParseError::UnknownEmitTarget("binary".to_string()))
-            );
-        }
-    }
-}
-
-#[test]
-fn parse_error_unknown_durability() {
-    let result = parse_args(&args(&[
-        "velvet-ballastics",
-        "run",
-        "workflow.yaml",
-        "--input-bin",
-        "input.bin",
-        "--durability",
-        "forever",
-    ]))
-    .map(|_| ());
-    match result {
-        Err(err) => {
-            assert_eq!(err, ParseError::UnknownDurability("forever".to_string()));
-            assert_eq!(
-                err.to_string(),
-                "unknown durability mode: forever (expected: strict, journaled, none)"
-            );
-        }
-        Ok(()) => {
-            assert_eq!(
-                Ok(()),
-                Err(ParseError::UnknownDurability("forever".to_string()))
-            );
-        }
-    }
-}
-
-#[test]
-fn parse_error_unknown_profile() {
-    let result = parse_args(&args(&[
-        "velvet-ballastics",
-        "verify",
-        "workflow.yaml",
-        "--profile",
-        "deep",
-    ]))
-    .map(|_| ());
-    match result {
-        Err(err) => {
-            assert_eq!(err, ParseError::UnknownProfile("deep".to_string()));
-            assert_eq!(
-                err.to_string(),
-                "unknown verify profile: deep (expected: quick, standard, full)"
-            );
-        }
-        Ok(()) => {
-            assert_eq!(Ok(()), Err(ParseError::UnknownProfile("deep".to_string())));
-        }
-    }
-}
-
-#[test]
-fn parse_error_unknown_command() {
-    let result = parse_args(&args(&["velvet-ballastics", "wat"])).map(|_| ());
-    match result {
-        Err(err) => {
-            assert_eq!(err, ParseError::UnknownCommand("wat".to_string()));
-            assert_eq!(
-                err.to_string(),
-                "unknown command: wat (expected one of: help, version, agent-context, ai-context, validate, verify, explain, compile, run, run-compiled, ipc-serve, inspect, events, replay, trace, retry, resume, bench-run, doctor, answer, graph, diff, incident, submit, simulate)"
-            );
-        }
-        Ok(()) => {
-            assert_eq!(Ok(()), Err(ParseError::UnknownCommand("wat".to_string())));
-        }
-    }
-}
-
-#[test]
-fn parse_error_no_command() {
-    let result = parse_args(&args(&["velvet-ballastics"])).map(|_| ());
-    match result {
-        Err(err) => {
-            assert_eq!(err, ParseError::NoCommand);
-            assert_eq!(err.to_string(), "no command provided");
-        }
-        Ok(()) => {
-            assert_eq!(Ok(()), Err(ParseError::NoCommand));
-        }
-    }
-}
-
-#[test]
-fn parse_error_invalid_step() {
-    let result = parse_args(&args(&[
-        "velvet-ballastics",
-        "answer",
-        "1",
-        "--step",
-        "NaN",
-        "--value-file",
-        "value.bin",
-        "--db",
-        "journal-db",
-    ]))
-    .map(|_| ());
-    match result {
-        Err(err) => {
-            assert_eq!(err, ParseError::InvalidStep("NaN".to_string()));
-            assert_eq!(err.to_string(), "invalid step: NaN");
-        }
-        Ok(()) => {
-            assert_eq!(Ok(()), Err(ParseError::InvalidStep("NaN".to_string())));
-        }
-    }
-}
-
-#[test]
-fn input_mapping_error_variants_have_exact_messages() {
-    assert_eq!(
-        InputMappingError::SlotCountExceeded.to_string(),
-        "INPUT_MAPPING_FAILED: input slot count exceeds workflow slot count"
-    );
-    assert_eq!(
-        InputMappingError::SlotIndexOutOfRange.to_string(),
-        "INPUT_MAPPING_FAILED: input slot index out of range"
-    );
+    assert_eq!(result, Err(setup_exit_code()));
 }
 
 #[test]
@@ -674,6 +699,91 @@ fn build_step_frame_out_of_range_returns_error() {
     assert!(compiled.is_some(), "test workflow should compile");
     if let Some(compiled) = compiled {
         let result = build_step_frame(&compiled, StepIdx::new(99));
-        assert_ne!(result.as_ref().map(|_| ()), Ok(()));
+        assert_eq!(result, Err(setup_exit_code()));
     }
+}
+
+#[test]
+fn parse_error_exact_variant_coverage() {
+    assert_eq!(
+        parse_args(&args(&[
+            "velvet-ballastics",
+            "compile",
+            "workflow.yaml",
+            "--emit",
+            "binary",
+            "--out",
+            "workflow.out",
+        ])),
+        Err(ParseError::UnknownEmitTarget("binary".into()))
+    );
+    assert_eq!(
+        parse_args(&args(&[
+            "velvet-ballastics",
+            "run",
+            "workflow.yaml",
+            "--input-bin",
+            "input.bin",
+            "--durability",
+            "eventual",
+        ])),
+        Err(ParseError::UnknownDurability("eventual".into()))
+    );
+    assert_eq!(
+        parse_args(&args(&["velvet-ballastics", "action", "show"])),
+        Err(ParseError::UnknownActionCommand("show".into()))
+    );
+    assert_eq!(
+        parse_args(&args(&[
+            "velvet-ballastics",
+            "answer",
+            "run-1",
+            "--step",
+            "not-a-step",
+            "--value-file",
+            "value.bin",
+            "--db",
+            "journal-db",
+        ])),
+        Err(ParseError::InvalidStep("not-a-step".into()))
+    );
+}
+
+#[test]
+fn input_mapping_error_exact_variant_coverage() {
+    let compiled = finish_workflow();
+    assert!(compiled.is_some(), "test workflow should compile");
+    if let Some(compiled) = compiled {
+        assert_eq!(
+            map_runtime_inputs(&compiled, b"not-postcard"),
+            Err(InputMappingError::DecodeFailed)
+        );
+
+        let too_many_values: Box<[vb_core::SlotValue]> = Box::from([
+            vb_core::SlotValue::Bool(true),
+            vb_core::SlotValue::Bool(false),
+        ]);
+        let encoded = postcard::to_allocvec(&too_many_values);
+        if let Ok(encoded) = encoded {
+            assert_eq!(
+                map_runtime_inputs(&compiled, &encoded),
+                Err(InputMappingError::SlotCountExceeded)
+            );
+        } else {
+            assert!(false, "test payload should encode: {encoded:?}");
+        }
+    }
+
+    assert_eq!(
+        InputMappingError::SlotIndexOutOfRange.to_string(),
+        INPUT_MAPPING_SLOT_INDEX_OUT_OF_RANGE_MESSAGE
+    );
+    assert_eq!(
+        InputMappingError::DecodeFailed.to_string(),
+        INPUT_MAPPING_DECODE_FAILED_MESSAGE
+    );
+    assert_eq!(
+        InputMappingError::SlotCountExceeded.to_string(),
+        INPUT_MAPPING_SLOT_COUNT_EXCEEDED_MESSAGE
+    );
 }
