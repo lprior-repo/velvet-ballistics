@@ -193,7 +193,6 @@ impl FjallJournal {
 
         Ok(results)
     }
-
     /// Non-destructive trim eligibility diagnostic.
     ///
     /// Scans all runs and reports eligibility WITHOUT deleting anything.
@@ -245,12 +244,10 @@ impl FjallJournal {
             }
 
             // Count trimmable events for this run
-            let events_trimmable =
-                self.count_trimmable_events(header.run, safe_point)?;
+            let events_trimmable = self.count_trimmable_events(header.run, safe_point)?;
 
             eligible_runs = eligible_runs.saturating_add(1);
-            total_events_trimmable =
-                total_events_trimmable.saturating_add(events_trimmable);
+            total_events_trimmable = total_events_trimmable.saturating_add(events_trimmable);
 
             runs.push(TrimEligibility::Eligible {
                 run: header.run,
@@ -283,9 +280,9 @@ impl FjallJournal {
             if key.len() < 17 {
                 continue;
             }
-            let slice = key
-                .get(9..17)
-                .ok_or_else(|| JournalError::from(TrimError::IncompleteTrim { deleted_count: 0 }))?;
+            let slice = key.get(9..17).ok_or_else(|| {
+                JournalError::from(TrimError::IncompleteTrim { deleted_count: 0 })
+            })?;
             let seq_bytes: [u8; 8] = slice
                 .try_into()
                 .map_err(|_| JournalError::from(TrimError::IncompleteTrim { deleted_count: 0 }))?;
@@ -352,12 +349,14 @@ impl FjallJournal {
 
         terminal_runs.sort_by_key(|(_, ts)| std::cmp::Reverse(*ts));
 
-        let position = terminal_runs
-            .iter()
-            .position(|(r, _)| *r == run)
-            .unwrap_or(terminal_runs.len());
+        let Some(position) = terminal_runs.iter().position(|(r, _)| *r == run) else {
+            return Ok(());
+        };
 
-        let retain_count = usize::try_from(policy.retain_last_n_terminal).unwrap_or(usize::MAX);
+        let retain_count = match usize::try_from(policy.retain_last_n_terminal) {
+            Ok(value) => value,
+            Err(_) => usize::MAX,
+        };
         if position < retain_count {
             return Err(TrimError::RetentionPolicyBlocks { run });
         }
@@ -484,7 +483,6 @@ mod tests {
             run,
             seq: EventSeq::new(seq),
             step: StepIdx::new(step),
-        attempt: 1,
         }
     }
 
@@ -493,7 +491,6 @@ mod tests {
             run,
             seq: EventSeq::new(seq),
             result: SlotIdx::new(0),
-        attempt: 1,
         }
     }
 
@@ -785,7 +782,6 @@ mod tests {
             .expect("should succeed");
         assert_eq!(latest, None);
     }
-
     #[test]
     fn trim_preserves_events_at_or_after_snapshot() {
         let (_temp, journal) = temp_journal();
@@ -1165,17 +1161,14 @@ mod tests {
             .trim_eligibility_diagnostic(TrimPolicy::default())
             .expect("diagnostic should succeed");
 
-        let eligible = diag
-            .runs
-            .iter()
-            .find_map(|r| match r {
-                TrimEligibility::Eligible {
-                    run: r,
-                    safe_point,
-                    events_trimmable,
-                } if *r == run => Some((*safe_point, *events_trimmable)),
-                _ => None,
-            });
+        let eligible = diag.runs.iter().find_map(|r| match r {
+            TrimEligibility::Eligible {
+                run: r,
+                safe_point,
+                events_trimmable,
+            } if *r == run => Some((*safe_point, *events_trimmable)),
+            _ => None,
+        });
         assert!(
             eligible.is_some(),
             "run should be eligible, got {:?}",
