@@ -2400,6 +2400,7 @@ mod tests {
             seq: EventSeq::new(0),
             slot,
             value: None,
+            extra: None,
         };
         journal
             .append_strict(&event)
@@ -2632,6 +2633,7 @@ mod tests {
             seq: EventSeq::new(2),
             slot: vb_core::SlotIdx::new(0),
             value: None,
+            extra: None,
         };
         let e3 = JournalEvent::StepSucceeded {
             run,
@@ -2942,6 +2944,7 @@ mod tests {
                 seq: EventSeq::new(0),
                 slot: vb_core::SlotIdx::new(0),
                 value: None,
+                extra: None,
             }
             .run_id(),
             run
@@ -3080,6 +3083,7 @@ mod tests {
                 seq,
                 slot: vb_core::SlotIdx::new(0),
                 value: None,
+                extra: None,
             }
             .seq(),
             seq
@@ -3204,6 +3208,7 @@ mod tests {
                 seq,
                 slot: vb_core::SlotIdx::new(0),
                 value: None,
+                extra: None,
             }
             .record_kind(),
             RecordKind::SlotWritten
@@ -3327,6 +3332,7 @@ mod tests {
             seq: EventSeq::new(3),
             slot: vb_core::SlotIdx::new(7),
             value: None,
+            extra: None,
         };
         let encoded = encode_record(MAGIC_JOURNAL_EVENT, RecordKind::SlotWritten, 3, &event, 128)
             .expect("encoding should succeed");
@@ -3808,6 +3814,7 @@ mod tests {
                     seq: EventSeq::new(2),
                     slot: vb_core::SlotIdx::new(0),
                     value: None,
+                    extra: None,
                 },
                 JournalEvent::ActionScheduled {
                     run,
@@ -5311,6 +5318,7 @@ mod tests {
             seq: EventSeq::new(0),
             slot: SlotIdx::new(5),
             value: None,
+            extra: None,
         };
         let mut batch = journal.batch();
         batch

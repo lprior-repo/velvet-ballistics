@@ -209,6 +209,7 @@ mod tests {
                 seq: EventSeq::new(3),
                 slot: SlotIdx::ZERO,
                 value: Some(encoded_value),
+                extra: None,
             },
         ];
         let seed = recover_runtime_frame_seed_from_events(&events)
@@ -291,6 +292,7 @@ mod tests {
                 postcard::to_allocvec(&tail_value)
                     .map_err(|err| format!("tail value encodes: {err:?}"))?,
             ),
+            extra: None,
         }];
 
         let seed = recover_runtime_frame_seed_from_snapshot_and_tail(&snapshot, &tail)
@@ -1031,6 +1033,7 @@ mod tests {
                 seq: EventSeq::new(2),
                 slot: SlotIdx::new(0),
                 value: None,
+                extra: None,
             },
             JournalEvent::ActionScheduled {
                 run,
@@ -1513,6 +1516,7 @@ mod tests {
                 seq: EventSeq::new(1),
                 slot: SlotIdx::new(5),
                 value: None,
+                extra: None,
             },
             JournalEvent::RunFailedEvent {
                 run,
@@ -1544,18 +1548,21 @@ mod tests {
                 seq: EventSeq::new(1),
                 slot: SlotIdx::new(3),
                 value: None,
+                extra: None,
             },
             JournalEvent::SlotWrittenEvent {
                 run,
                 seq: EventSeq::new(2),
                 slot: SlotIdx::new(7),
                 value: None,
+                extra: None,
             },
             JournalEvent::SlotWrittenEvent {
                 run,
                 seq: EventSeq::new(3),
                 slot: SlotIdx::new(2),
                 value: None,
+                extra: None,
             },
             JournalEvent::RunFailedEvent {
                 run,

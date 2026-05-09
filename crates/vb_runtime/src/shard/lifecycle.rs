@@ -131,6 +131,7 @@ impl Shard {
             run,
             slot: output.output_slot,
             value: encoded_value,
+            extra: None,
         })?;
         self.journal.append(RuntimeJournalEvent::StepSucceeded {
             run,
@@ -286,6 +287,7 @@ impl Shard {
             run,
             slot: answer.answer_slot,
             value: encoded_answer_value,
+            extra: None,
         })?;
         self.journal.append(RuntimeJournalEvent::StepSucceeded {
             run,

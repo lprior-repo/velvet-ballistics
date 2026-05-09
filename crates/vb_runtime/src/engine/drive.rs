@@ -5,9 +5,9 @@
 use vb_core::action::ActionContract;
 use vb_core::engine::{EngineError, StepBudget};
 use vb_core::frame::RunFrame;
-use vb_core::ids::StepIdx;
+use vb_core::ids::{SlotIdx, StepIdx};
 use vb_core::value_store::ValueStore;
-use vb_core::workflow::{CompiledNodeKind, CompiledWorkflow};
+use vb_core::workflow::{CompiledNode, CompiledNodeKind, CompiledWorkflow};
 
 use crate::engine::execute::execute_node_full;
 use crate::engine::helpers::mark_step_after_signal;
@@ -92,7 +92,12 @@ pub fn drive_deterministic_full(
         // Evidence chain: emit SlotWritten with actual value for all slot writes,
         // including internal expression evaluations (SetConst, Copy, EvalExpr,
         // BuildObject, BuildList). This satisfies Phase 40/44 requirement.
-        if let Some(slot) = node.output
+        if let Some(slot) = collect_written_slot(node)
+            && let Ok(value) = run.read_slot(slot)
+        {
+            let extra = collect_states.capture_state(run.run_id(), slot);
+            evidence.push_slot_written_with_extra(slot, *value, extra);
+        } else if let Some(slot) = node.output
             && let Ok(value) = run.read_slot(slot)
         {
             evidence.push_slot_written(slot, *value);
@@ -116,6 +121,18 @@ pub fn drive_deterministic_full(
             RuntimeSignal::Continue => {}
             other => return Ok(other),
         }
+    }
+}
+
+fn collect_written_slot(node: &CompiledNode) -> Option<SlotIdx> {
+    match &node.kind {
+        CompiledNodeKind::CollectStart { source, .. } => match node.output {
+            Some(output) => Some(output),
+            None => Some(*source),
+        },
+        CompiledNodeKind::CollectNext { collector_slot, .. }
+        | CompiledNodeKind::CollectFinish { collector_slot } => Some(*collector_slot),
+        _ => None,
     }
 }
 
@@ -212,6 +229,20 @@ mod tests {
             CompiledNodeKind::Do {
                 action: ActionId::new(action),
                 input: SlotIdx::new(inp),
+            },
+        )
+    }
+    fn collect_start(id: u16, source: u16, out: u16, body: u16, done: u16) -> CompiledNode {
+        cn(
+            id,
+            Some(out),
+            None,
+            CompiledNodeKind::CollectStart {
+                source: SlotIdx::new(source),
+                limit: 100,
+                page_size: 1,
+                body: StepIdx::new(body),
+                done: StepIdx::new(done),
             },
         )
     }
@@ -597,6 +628,63 @@ mod tests {
     }
 
     #[test]
+    fn collect_pagination_extra_single_authoritative_evidence_write() -> Result<(), String> {
+        let wf = mkwf(vec![collect_start(0, 0, 1, 1, 2), fin(1, 1), fin(2, 1)], 2)?;
+        let mut run = mkr(3, 2)?;
+        let mut store = ValueStore::new();
+        let page = Box::from([SlotValue::I64(10), SlotValue::I64(20)]);
+        let list_id = store.insert_list(page).map_err(|e| format!("{e}"))?;
+        run.write_slot(SlotIdx::new(0), SlotValue::List(list_id))
+            .map_err(|e| format!("{e}"))?;
+        let mut budget = StepBudget::new(10);
+        let mut evidence = EvidenceCollector::new();
+        let mut collect_states = CollectStates::new();
+
+        drive_deterministic_full(
+            &wf,
+            &mut run,
+            &mut budget,
+            &mut store,
+            &[],
+            RetryPolicy::NEVER,
+            &mut evidence,
+            &mut collect_states,
+            &CapabilitySet::empty(),
+        )
+        .map_err(|e| format!("{e}"))?;
+
+        let events = evidence.drain();
+        let matching_writes = events
+            .iter()
+            .filter(|event| {
+                matches!(
+                    event,
+                    EvidenceEvent::SlotWritten {
+                        slot,
+                        ..
+                    } if *slot == SlotIdx::new(1)
+                )
+            })
+            .count();
+        let extra_bearing_writes = events
+            .iter()
+            .filter(|event| {
+                matches!(
+                    event,
+                    EvidenceEvent::SlotWritten {
+                        slot,
+                        extra: Some(_),
+                        ..
+                    } if *slot == SlotIdx::new(1)
+                )
+            })
+            .count();
+        assert_eq!(matching_writes, 1);
+        assert_eq!(extra_bearing_writes, 1);
+        Ok(())
+    }
+
+    #[test]
     fn cat7_multi_step_chain() -> Result<(), String> {
         let wf = mkwf(vec![nop(0, 1), nop(1, 2), nop(2, 3), fin(3, 0)], 1)?;
         let mut r = mkr(4, 1)?;
@@ -652,7 +740,7 @@ mod tests {
         dde(&wf, &mut r, &mut b, &mut ev, &CapabilitySet::empty())?;
         let events = ev.drain();
         let found = events.iter().any(|e| match e {
-            EvidenceEvent::SlotWritten { slot, value } => {
+            EvidenceEvent::SlotWritten { slot, value, .. } => {
                 *slot == SlotIdx::new(0) && *value == SlotValue::I64(33)
             }
             _ => false,
@@ -674,7 +762,7 @@ mod tests {
         dde(&wf, &mut r, &mut b, &mut ev, &CapabilitySet::empty())?;
         let events = ev.drain();
         let found = events.iter().any(|e| match e {
-            EvidenceEvent::SlotWritten { slot, value } => {
+            EvidenceEvent::SlotWritten { slot, value, .. } => {
                 *slot == SlotIdx::new(0) && *value == SlotValue::I64(88)
             }
             _ => false,
@@ -1235,7 +1323,7 @@ mod tests {
         dde(&wf, &mut r, &mut b, &mut ev, &CapabilitySet::empty())?;
         let events = ev.drain();
         let found = events.iter().any(|e| match e {
-            EvidenceEvent::SlotWritten { slot, value } => {
+            EvidenceEvent::SlotWritten { slot, value, .. } => {
                 *slot == SlotIdx::new(0) && *value == SlotValue::Bool(true)
             }
             _ => false,

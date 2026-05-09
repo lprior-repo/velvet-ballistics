@@ -78,6 +78,9 @@ pub enum JournalEvent {
         slot: SlotIdx,
         /// Encoded slot value bytes (postcard-encoded `SlotValue`), if captured.
         value: Option<Vec<u8>>,
+        /// Encoded frame extra data captured with this slot write, if any.
+        #[serde(default)]
+        extra: Option<Vec<u8>>,
     },
     /// Wait was scheduled.
     WaitScheduledEvent {

@@ -3,16 +3,18 @@
 use std::collections::HashMap;
 use std::time::SystemTime;
 
+use serde::{Deserialize, Serialize};
 use vb_core::errors::EngineError;
 use vb_core::frame::RunFrame;
 use vb_core::ids::{ListId, RunId, SlotIdx, StepIdx};
 use vb_core::value::{SlotValue, Taint};
 use vb_core::value_store::ValueStore;
+use vb_storage::JournalEvent;
 
 use super::helpers::{expect_list, jump_to, jump_to_next, require_output};
 
 /// Per-run pagination state stored in a side table keyed by (RunId, SlotIdx).
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CollectPaginationState {
     run_id: RunId,
     collector_slot: SlotIdx,
@@ -62,6 +64,87 @@ impl CollectStates {
     pub fn remove(&mut self, run_id: RunId, collector_slot: SlotIdx) {
         self.entries.remove(&(run_id, collector_slot));
     }
+
+    /// Serialize the active state for a collector slot as durable frame extra data.
+    pub fn capture_extra(
+        &self,
+        run_id: RunId,
+        collector_slot: SlotIdx,
+    ) -> Result<Option<Vec<u8>>, EngineError> {
+        self.entries
+            .get(&(run_id, collector_slot))
+            .map(postcard::to_allocvec)
+            .transpose()
+            .map_err(|_| EngineError::InvalidCompiledWorkflow {
+                reason: "collect pagination state encode failed",
+            })
+    }
+
+    /// Capture the active state for a collector slot.
+    #[must_use]
+    pub fn capture_state(
+        &self,
+        run_id: RunId,
+        collector_slot: SlotIdx,
+    ) -> Option<CollectPaginationState> {
+        self.entries.get(&(run_id, collector_slot)).copied()
+    }
+
+    /// Hydrate durable frame extra data into the pagination side table.
+    pub fn hydrate_extra(
+        &mut self,
+        run_id: RunId,
+        collector_slot: SlotIdx,
+        extra: &[u8],
+    ) -> Result<(), EngineError> {
+        let state: CollectPaginationState =
+            postcard::from_bytes(extra).map_err(|_| EngineError::InvalidCompiledWorkflow {
+                reason: "collect pagination state decode failed",
+            })?;
+        validate_hydrated_identity(&state, run_id, collector_slot)?;
+        self.upsert(state)
+    }
+
+    /// Hydrate durable pagination extras carried by slot-write journal events.
+    pub fn hydrate_journal_events(&mut self, events: &[JournalEvent]) -> Result<(), EngineError> {
+        events
+            .iter()
+            .try_for_each(|event| self.hydrate_journal_event(event))
+    }
+
+    fn hydrate_journal_event(&mut self, event: &JournalEvent) -> Result<(), EngineError> {
+        match event {
+            JournalEvent::SlotWrittenEvent {
+                run,
+                slot,
+                extra: Some(extra),
+                ..
+            } => self.hydrate_extra(*run, *slot, extra),
+            _ => Ok(()),
+        }
+    }
+}
+
+/// Builds collect pagination state from durable journal events recovered for a run.
+pub fn hydrate_collect_states_from_recovered_journal(
+    events: &[JournalEvent],
+) -> Result<CollectStates, EngineError> {
+    let mut states = CollectStates::new();
+    states.hydrate_journal_events(events)?;
+    Ok(states)
+}
+
+fn validate_hydrated_identity(
+    state: &CollectPaginationState,
+    run_id: RunId,
+    collector_slot: SlotIdx,
+) -> Result<(), EngineError> {
+    if state.run_id != run_id || state.collector_slot != collector_slot {
+        return Err(EngineError::InvalidCompiledWorkflow {
+            reason: "collect pagination state identity mismatch",
+        });
+    }
+    Ok(())
 }
 
 /// Executes CollectStart: reads source list, writes the first page,

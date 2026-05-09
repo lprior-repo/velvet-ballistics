@@ -568,6 +568,7 @@ mod tests {
             seq: EventSeq::new(1),
             slot: SlotIdx::new(0),
             value: None,
+            extra: None,
         };
         apply_summary_event(&mut summary, &event);
         assert_counters(&summary, 0, 0, 0, 0, 0, 1);

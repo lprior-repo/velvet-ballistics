@@ -1,6 +1,8 @@
 use super::*;
 use crate::test_harness::list_in_slot;
 use vb_core::value_store::ValueStore;
+use vb_storage::recovery::{ActionReplayTracker, recover_full_journal};
+use vb_storage::{EventSeq, JournalEvent};
 
 fn fresh_frame() -> RunFrame {
     crate::test_harness::fresh_frame(8, 8)
@@ -8,6 +10,50 @@ fn fresh_frame() -> RunFrame {
 
 fn fresh_states() -> CollectStates {
     CollectStates::new()
+}
+
+fn assert_invalid_workflow_reason(result: Result<(), EngineError>, expected: &'static str) {
+    match result {
+        Err(EngineError::InvalidCompiledWorkflow { reason }) => assert_eq!(reason, expected),
+        other => assert_eq!(
+            other,
+            Err(EngineError::InvalidCompiledWorkflow { reason: expected })
+        ),
+    }
+}
+
+fn captured_collect_extra(run: &mut RunFrame, collector: SlotIdx) -> Result<Vec<u8>, String> {
+    let mut store = ValueStore::new();
+    let mut states = fresh_states();
+    let source = SlotIdx::new(0);
+    list_in_slot(&mut *run, &mut store, source, vec![SlotValue::I64(10)]);
+    collect_start(
+        run,
+        &mut store,
+        &mut states,
+        source,
+        100,
+        1,
+        StepIdx::new(1),
+        StepIdx::new(2),
+        Some(collector),
+        None,
+    )
+    .map_err(|e| format!("collect_start: {e:?}"))?;
+    states
+        .capture_extra(run.run_id(), collector)
+        .map_err(|e| format!("capture: {e:?}"))?
+        .ok_or("expected pagination extra".to_owned())
+}
+
+fn slot_written_extra(run: RunId, slot: SlotIdx, extra: Vec<u8>) -> JournalEvent {
+    JournalEvent::SlotWrittenEvent {
+        run,
+        seq: EventSeq::new(0),
+        slot,
+        value: None,
+        extra: Some(extra),
+    }
 }
 
 fn assert_slot_list_items(
@@ -1870,6 +1916,205 @@ fn collect_full_lifecycle_single_item_pages() -> Result<(), String> {
         format!("expected pc={done:?} after exhaustion, got {:?}", run.pc()),
     )?;
     assert_slot_list_items(&run, &store, collector, &[]);
+    Ok(())
+}
+
+/// Captured pagination extra hydrates a fresh state table and preserves CollectNext progress.
+#[test]
+fn collect_pagination_extra_round_trips_for_recovery() -> Result<(), String> {
+    let mut run = fresh_frame();
+    let mut store = ValueStore::new();
+    let mut states = fresh_states();
+    let source = SlotIdx::new(0);
+    let collector = SlotIdx::new(1);
+    let body = StepIdx::new(1);
+    let done = StepIdx::new(2);
+
+    list_in_slot(
+        &mut run,
+        &mut store,
+        source,
+        vec![SlotValue::I64(10), SlotValue::I64(20), SlotValue::I64(30)],
+    );
+    collect_start(
+        &mut run,
+        &mut store,
+        &mut states,
+        source,
+        100,
+        1,
+        body,
+        done,
+        Some(collector),
+        None,
+    )
+    .map_err(|e| format!("collect_start: {e:?}"))?;
+
+    let extra = states
+        .capture_extra(run.run_id(), collector)
+        .map_err(|e| format!("capture: {e:?}"))?
+        .ok_or("expected pagination extra")?;
+    let mut recovered = fresh_states();
+    recovered
+        .hydrate_extra(run.run_id(), collector, &extra)
+        .map_err(|e| format!("hydrate: {e:?}"))?;
+
+    collect_next(&mut run, &mut store, &mut recovered, collector, body, done)
+        .map_err(|e| format!("collect_next: {e:?}"))?;
+    assert_slot_list_items(&run, &store, collector, &[SlotValue::I64(20)]);
+    Ok(())
+}
+
+/// Corrupt durable pagination extra is rejected instead of silently losing cursor state.
+#[test]
+fn collect_pagination_extra_rejects_corrupt_bytes() -> Result<(), String> {
+    let mut states = fresh_states();
+    let result = states.hydrate_extra(RunId::new(1), SlotIdx::new(1), &[255, 0, 7]);
+    assert_invalid_workflow_reason(result, "collect pagination state decode failed");
+    Ok(())
+}
+
+#[test]
+fn collect_journal_extra_rejects_corrupt_bytes() -> Result<(), String> {
+    let event = slot_written_extra(RunId::new(1), SlotIdx::new(1), vec![255, 0, 7]);
+    let mut states = fresh_states();
+    let result = states.hydrate_journal_events(&[event]);
+    assert_invalid_workflow_reason(result, "collect pagination state decode failed");
+    Ok(())
+}
+
+#[test]
+fn collect_pagination_extra_recovered_journal_rejects_corrupt_bytes() -> Result<(), String> {
+    let dir = tempfile::TempDir::new().map_err(|e| format!("tempdir: {e}"))?;
+    let journal =
+        vb_storage::FjallJournal::open(dir.path(), Some(vb_storage::FjallConfig::default()))
+            .map_err(|e| format!("journal open: {e:?}"))?;
+    let run = RunId::new(9);
+    journal
+        .append_strict(&slot_written_extra(run, SlotIdx::new(1), vec![255, 0, 7]))
+        .map_err(|e| format!("append: {e:?}"))?;
+
+    let mut tracker = ActionReplayTracker::new();
+    let recovered =
+        recover_full_journal(&journal, run, &mut tracker).map_err(|e| format!("recover: {e:?}"))?;
+    let result = hydrate_collect_states_from_recovered_journal(&recovered);
+    assert_invalid_workflow_reason(result.map(|_| ()), "collect pagination state decode failed");
+    Ok(())
+}
+
+#[test]
+fn collect_pagination_extra_recovered_journal_round_trips_and_resumes_next_page()
+-> Result<(), String> {
+    let dir = tempfile::TempDir::new().map_err(|e| format!("tempdir: {e}"))?;
+    let journal =
+        vb_storage::FjallJournal::open(dir.path(), Some(vb_storage::FjallConfig::default()))
+            .map_err(|e| format!("journal open: {e:?}"))?;
+    let mut run = fresh_frame();
+    let mut store = ValueStore::new();
+    let mut states = fresh_states();
+    let source = SlotIdx::new(0);
+    let collector = SlotIdx::new(1);
+    let body = StepIdx::new(1);
+    let done = StepIdx::new(2);
+
+    list_in_slot(
+        &mut run,
+        &mut store,
+        source,
+        vec![SlotValue::I64(10), SlotValue::I64(20), SlotValue::I64(30)],
+    );
+    collect_start(
+        &mut run,
+        &mut store,
+        &mut states,
+        source,
+        100,
+        1,
+        body,
+        done,
+        Some(collector),
+        None,
+    )
+    .map_err(|e| format!("collect_start: {e:?}"))?;
+    let extra = states
+        .capture_extra(run.run_id(), collector)
+        .map_err(|e| format!("capture: {e:?}"))?
+        .ok_or("expected pagination extra")?;
+    journal
+        .append_strict(&slot_written_extra(run.run_id(), collector, extra))
+        .map_err(|e| format!("append: {e:?}"))?;
+
+    let mut tracker = ActionReplayTracker::new();
+    let recovered = recover_full_journal(&journal, run.run_id(), &mut tracker)
+        .map_err(|e| format!("recover: {e:?}"))?;
+    let mut hydrated = hydrate_collect_states_from_recovered_journal(&recovered)
+        .map_err(|e| format!("hydrate: {e:?}"))?;
+    let hydrated_state = hydrated
+        .capture_state(run.run_id(), collector)
+        .ok_or("expected hydrated pagination state")?;
+    assert_eq!(hydrated_state.cursor, 1);
+    assert_eq!(hydrated_state.page_size, 1);
+    assert_slot_list_items(&run, &store, collector, &[SlotValue::I64(10)]);
+
+    collect_next(&mut run, &mut store, &mut hydrated, collector, body, done)
+        .map_err(|e| format!("collect_next: {e:?}"))?;
+
+    assert_eq!(run.pc(), body);
+    assert_slot_list_items(&run, &store, collector, &[SlotValue::I64(20)]);
+    let resumed_state = hydrated
+        .capture_state(run.run_id(), collector)
+        .ok_or("expected resumed pagination state")?;
+    assert_eq!(resumed_state.cursor, 2);
+    assert_eq!(resumed_state.page_size, 1);
+    Ok(())
+}
+
+/// Hydration must not accept extras from another run or collector slot.
+#[test]
+fn collect_pagination_extra_rejects_identity_mismatch() -> Result<(), String> {
+    let mut run = fresh_frame();
+    let collector = SlotIdx::new(1);
+    let extra = captured_collect_extra(&mut run, collector)?;
+    let mut recovered = fresh_states();
+    let result = recovered.hydrate_extra(RunId::new(2), collector, &extra);
+    assert_invalid_workflow_reason(result, "collect pagination state identity mismatch");
+    Ok(())
+}
+
+#[test]
+fn collect_journal_extra_rejects_identity_mismatch() -> Result<(), String> {
+    let mut run = fresh_frame();
+    let collector = SlotIdx::new(1);
+    let extra = captured_collect_extra(&mut run, collector)?;
+    let event = slot_written_extra(RunId::new(2), collector, extra);
+    let mut recovered = fresh_states();
+    let result = recovered.hydrate_journal_events(&[event]);
+    assert_invalid_workflow_reason(result, "collect pagination state identity mismatch");
+    Ok(())
+}
+
+#[test]
+fn collect_pagination_extra_recovered_journal_rejects_identity_mismatch() -> Result<(), String> {
+    let dir = tempfile::TempDir::new().map_err(|e| format!("tempdir: {e}"))?;
+    let journal =
+        vb_storage::FjallJournal::open(dir.path(), Some(vb_storage::FjallConfig::default()))
+            .map_err(|e| format!("journal open: {e:?}"))?;
+    let mut run = fresh_frame();
+    let collector = SlotIdx::new(1);
+    let extra = captured_collect_extra(&mut run, collector)?;
+    let durable_run = RunId::new(2);
+    journal
+        .append_strict(&slot_written_extra(durable_run, collector, extra))
+        .map_err(|e| format!("append: {e:?}"))?;
+
+    let mut tracker = ActionReplayTracker::new();
+    let recovered = recover_full_journal(&journal, durable_run, &mut tracker)
+        .map_err(|e| format!("recover: {e:?}"))?;
+    let result = hydrate_collect_states_from_recovered_journal(&recovered);
+    assert_invalid_workflow_reason(
+        result.map(|_| ()),
+        "collect pagination state identity mismatch",
+    );
     Ok(())
 }
 

@@ -52,6 +52,7 @@ fn build_full_run_events(run: RunId, digest: WorkflowDigest) -> Vec<JournalEvent
         seq: EventSeq::new(seq),
         slot: SlotIdx::new(0),
         value: None,
+        extra: None,
     });
     seq = seq.saturating_add(1);
 
@@ -60,6 +61,7 @@ fn build_full_run_events(run: RunId, digest: WorkflowDigest) -> Vec<JournalEvent
         seq: EventSeq::new(seq),
         slot: SlotIdx::new(1),
         value: None,
+        extra: None,
     });
     seq = seq.saturating_add(1);
 
@@ -84,6 +86,7 @@ fn build_full_run_events(run: RunId, digest: WorkflowDigest) -> Vec<JournalEvent
         seq: EventSeq::new(seq),
         slot: SlotIdx::new(2),
         value: None,
+        extra: None,
     });
     seq = seq.saturating_add(1);
 
@@ -400,6 +403,7 @@ fn strict_durability_survives_immediate_reopen() {
             seq: EventSeq::new(2),
             slot: SlotIdx::new(0),
             value: None,
+            extra: None,
         },
         JournalEvent::StepSucceeded {
             run,
@@ -503,6 +507,7 @@ fn journaled_queue_shutdown_drains_all_events() {
             seq: EventSeq::new(2),
             slot: SlotIdx::new(5),
             value: None,
+            extra: None,
         },
     ];
 
@@ -594,6 +599,7 @@ fn action_replay_tracker_reconstructs_from_events() {
             seq: EventSeq::new(4),
             slot: SlotIdx::new(0),
             value: None,
+            extra: None,
         },
         JournalEvent::StepSucceeded {
             run,

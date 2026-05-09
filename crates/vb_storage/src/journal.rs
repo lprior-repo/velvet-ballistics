@@ -849,6 +849,7 @@ mod tests {
                 seq: EventSeq::new(3),
                 slot: SlotIdx::new(0),
                 value: None,
+                extra: None,
             },
             JournalEvent::ActionCompletedEvent {
                 run,

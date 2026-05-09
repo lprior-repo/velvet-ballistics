@@ -102,6 +102,8 @@ pub enum RuntimeJournalEvent {
         slot: SlotIdx,
         /// Encoded slot value bytes (postcard-encoded `SlotValue`).
         value: Vec<u8>,
+        /// Encoded frame extra data captured with this slot write.
+        extra: Option<Vec<u8>>,
     },
     /// Deterministic step began execution.
     StepStarted {
@@ -396,14 +398,18 @@ impl StorageRuntimeJournal {
             RuntimeJournalEvent::AskAnswered { run, step, .. } => {
                 Some(JournalEvent::AskAnsweredEvent { run, seq, step })
             }
-            RuntimeJournalEvent::SlotWritten { run, slot, value } => {
-                Some(JournalEvent::SlotWrittenEvent {
-                    run,
-                    seq,
-                    slot,
-                    value: Some(value),
-                })
-            }
+            RuntimeJournalEvent::SlotWritten {
+                run,
+                slot,
+                value,
+                extra,
+            } => Some(JournalEvent::SlotWrittenEvent {
+                run,
+                seq,
+                slot,
+                value: Some(value),
+                extra,
+            }),
             RuntimeJournalEvent::RunSubmitted { .. }
             | RuntimeJournalEvent::RunFinished { .. }
             | RuntimeJournalEvent::RunFailed { .. }
@@ -788,6 +794,7 @@ mod tests {
                 run,
                 slot: SlotIdx::new(5),
                 value: Vec::new(),
+                extra: None,
             }),
             Ok(())
         );
@@ -840,6 +847,7 @@ mod tests {
                     seq: EventSeq::new(6),
                     slot: SlotIdx::new(5),
                     value: Some(Vec::new()),
+                    extra: None,
                 },
             ]
         );

@@ -218,37 +218,19 @@ impl Shard {
                         .append(RuntimeJournalEvent::StepStarted { run, step })?;
                 }
                 EvidenceEvent::StepSucceeded { step, output } => {
-                    if let Some(slot) = output {
-                        let encoded = if let Some(state) = self.runs.get(&run) {
-                            if let Ok(value) = state.frame.read_slot(slot) {
-                                postcard::to_allocvec(value)
-                                    .map_err(|_| RuntimeError::EncodeFailed)?
-                            } else {
-                                Vec::new()
-                            }
-                        } else {
-                            Vec::new()
-                        };
-                        self.trace_ring.push(TraceEvent::SlotWritten {
-                            run,
-                            slot,
-                            value: encoded.clone(),
-                        });
-                        self.journal.append(RuntimeJournalEvent::SlotWritten {
-                            run,
-                            slot,
-                            value: encoded,
-                        })?;
-                    }
                     self.journal.append(RuntimeJournalEvent::StepSucceeded {
                         run,
                         step,
                         output: output.unwrap_or(SlotIdx::ZERO),
                     })?;
                 }
-                EvidenceEvent::SlotWritten { slot, value } => {
+                EvidenceEvent::SlotWritten { slot, value, extra } => {
                     let encoded =
                         postcard::to_allocvec(&value).map_err(|_| RuntimeError::EncodeFailed)?;
+                    let encoded_extra = extra
+                        .map(|state| postcard::to_allocvec(&state))
+                        .transpose()
+                        .map_err(|_| RuntimeError::EncodeFailed)?;
                     self.trace_ring.push(TraceEvent::SlotWritten {
                         run,
                         slot,
@@ -258,6 +240,7 @@ impl Shard {
                         run,
                         slot,
                         value: encoded,
+                        extra: encoded_extra,
                     })?;
                 }
             }

@@ -541,11 +541,7 @@ mod tests {
                     run,
                     slot: SlotIdx::new(0),
                     value: postcard::to_allocvec(&SlotValue::Bool(true)).unwrap(),
-                },
-                RuntimeJournalEvent::SlotWritten {
-                    run,
-                    slot: SlotIdx::new(0),
-                    value: Vec::new(),
+                    extra: None,
                 },
                 RuntimeJournalEvent::StepSucceeded {
                     run,

@@ -9,6 +9,8 @@ use vb_core::errors::EngineError;
 use vb_core::ids::{ActionId, SlotIdx, StepIdx};
 use vb_core::value::SlotValue;
 
+use crate::primitives::collect::CollectPaginationState;
+
 /// Evidence event emitted by the deterministic drive loop for each step.
 ///
 /// These events are collected during `drive_deterministic_full` and drained
@@ -35,6 +37,8 @@ pub enum EvidenceEvent {
         slot: SlotIdx,
         /// Value written to the slot.
         value: SlotValue,
+        /// Optional frame extra data captured with the slot write.
+        extra: Option<CollectPaginationState>,
     },
 }
 
@@ -104,7 +108,26 @@ impl EvidenceCollector {
     /// Silently drops the event if the collector is at capacity.
     pub fn push_slot_written(&mut self, slot: SlotIdx, value: SlotValue) {
         if self.events.len() < self.capacity {
-            self.events.push(EvidenceEvent::SlotWritten { slot, value });
+            self.events.push(EvidenceEvent::SlotWritten {
+                slot,
+                value,
+                extra: None,
+            });
+        } else {
+            self.dropped = self.dropped.saturating_add(1);
+        }
+    }
+
+    /// Records a SlotWritten event with frame extra data.
+    pub fn push_slot_written_with_extra(
+        &mut self,
+        slot: SlotIdx,
+        value: SlotValue,
+        extra: Option<CollectPaginationState>,
+    ) {
+        if self.events.len() < self.capacity {
+            self.events
+                .push(EvidenceEvent::SlotWritten { slot, value, extra });
         } else {
             self.dropped = self.dropped.saturating_add(1);
         }
@@ -823,7 +846,7 @@ mod tests {
         collector.push_slot_written(SlotIdx::new(3), SlotValue::I64(99));
         let events = collector.drain();
         match events.first() {
-            Some(EvidenceEvent::SlotWritten { slot, value }) => {
+            Some(EvidenceEvent::SlotWritten { slot, value, .. }) => {
                 assert_eq!(*slot, SlotIdx::new(3));
                 assert_eq!(*value, SlotValue::I64(99));
             }

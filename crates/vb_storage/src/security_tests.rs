@@ -764,6 +764,7 @@ mod tests {
             seq: EventSeq::new(7),
             slot: SlotIdx::new(3),
             value: Some(vec![0xDE, 0xAD]),
+            extra: None,
         };
         let original = encode_record(
             MAGIC_JOURNAL_EVENT,
@@ -870,6 +871,7 @@ mod tests {
             seq: EventSeq::new(0),
             slot: SlotIdx::new(0),
             value: Some(big_value),
+            extra: None,
         };
         let result = encode_record(
             MAGIC_JOURNAL_EVENT,

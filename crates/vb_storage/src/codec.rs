@@ -379,6 +379,7 @@ mod tests {
             seq: EventSeq::new(3),
             slot: SlotIdx::new(0),
             value: Some(slot_bytes),
+            extra: None,
         };
         let bytes = encode_record(
             MAGIC_JOURNAL_EVENT,
@@ -1131,6 +1132,7 @@ mod tests {
             seq: EventSeq::new(10),
             slot: SlotIdx::new(2),
             value: None,
+            extra: None,
         };
         let bytes = encode_record(
             MAGIC_JOURNAL_EVENT,
@@ -1813,6 +1815,7 @@ mod tests {
             seq: EventSeq::new(0),
             slot: SlotIdx::new(u16::MAX.into()),
             value: Some(large_value.clone()),
+            extra: None,
         };
         let bytes = encode_record(
             MAGIC_JOURNAL_EVENT,
@@ -2051,6 +2054,7 @@ mod tests {
                     seq: EventSeq::new(6),
                     slot: SlotIdx::new(0),
                     value: None,
+                    extra: None,
                 },
                 RecordKind::SlotWritten,
             ),
@@ -2248,12 +2252,14 @@ mod tests {
                 seq: EventSeq::new(6),
                 slot: SlotIdx::new(0),
                 value: None,
+                extra: None,
             },
             JournalEvent::SlotWrittenEvent {
                 run,
                 seq: EventSeq::new(7),
                 slot: SlotIdx::new(1),
                 value: Some(slot_bytes),
+                extra: None,
             },
             JournalEvent::WaitScheduledEvent {
                 run,
