@@ -9,6 +9,8 @@ use crate::domain::{
 };
 use makepad_widgets::*;
 use vb_ui::app_state::{AppState, HealthLevel, Screen};
+use vb_ui::incident::timeline::{IncidentTimeline, TimelineEntry};
+use vb_ui::incident::types::IncidentSeverity;
 use vb_ui::system::ticker::{EventTicker, TickerEventKind};
 
 const HEADER_HEIGHT: f64 = 44.0;
@@ -196,7 +198,7 @@ pub(crate) fn draw_content(
         Screen::WorkflowGraph => draw_workflow_graph_content(draw_bg, draw_vector, draw_text, cx, &panel_rect, app_state),
         Screen::RunReplay => draw_run_replay_content(draw_bg, draw_text, cx, &panel_rect, app_state),
         Screen::Verification => draw_verification_content(draw_bg, draw_text, cx, &panel_rect, app_state),
-        Screen::IncidentConsole => draw_incident_content(draw_bg, draw_text, cx, &panel_rect, app_state),
+        Screen::IncidentConsole => draw_incident_content(draw_bg, draw_vector, draw_text, cx, &panel_rect, app_state),
     }
 }
 
@@ -661,6 +663,7 @@ fn draw_verification_content(
 #[allow(elided_lifetimes_in_paths)]
 fn draw_incident_content(
     draw_bg: &mut DrawColor,
+    draw_vector: &mut DrawVector,
     draw_text: &mut DrawText,
     cx: &mut Cx2d,
     panel: &Rect,
@@ -730,7 +733,162 @@ fn draw_incident_content(
     draw_bg.color = Vec4f { x: 0.15, y: 0.08, z: 0.08, w: 1.0 };
     draw_bg.draw_abs(cx, console_rect);
     draw_text_label(draw_text, cx, DVec2 { x: console_rect.pos.x + 8.0, y: console_rect.pos.y + 4.0 }, "Console");
+// Incident timeline visualization
+    let timeline_rect = Rect {
+        pos: DVec2 { x: panel.pos.x + 16.0, y: panel.pos.y + 130.0 },
+        size: DVec2 { x: panel.size.x - 32.0, y: 24.0 },
+    };
+    draw_incident_timeline(draw_bg, draw_vector, draw_text, cx, &timeline_rect, inc);
 }
+
+const TIMELINE_MARGIN: f64 = 8.0;
+const TIMELINE_AXIS_HEIGHT: f64 = 2.0;
+
+fn format_timeline_time(timestamp_us: u64) -> String {
+    let total_ms = timestamp_us / 1000;
+    let ms = total_ms % 1000;
+    let total_secs = total_ms / 1000;
+    let secs = total_secs % 60;
+    let total_mins = total_secs / 60;
+    let mins = total_mins % 60;
+    let hours = total_mins / 60;
+    if hours > 0 {
+        format!("{:02}:{:02}:{:02}", hours, mins, secs)
+    } else {
+        format!("{:02}:{:02}.{:03}", mins, secs, ms)
+    }
+}
+
+#[allow(elided_lifetimes_in_paths)]
+fn draw_incident_timeline(
+    draw_bg: &mut DrawColor,
+    draw_vector: &mut DrawVector,
+    draw_text: &mut DrawText,
+    cx: &mut Cx2d,
+    rect: &Rect,
+    incident: &vb_ui::app_state::IncidentData,
+) {
+    let entries: Vec<TimelineEntry> = incident
+        .selected_incident
+        .map(|id| {
+            vec![TimelineEntry {
+                timestamp_us: id.wrapping_mul(1_000_000),
+                run_id: id,
+                step: 0,
+                severity: if incident.critical_count > 0 {
+                    IncidentSeverity::Critical
+                } else if incident.warning_count > 0 {
+                    IncidentSeverity::Warning
+                } else {
+                    IncidentSeverity::Info
+                },
+                failure_code: vb_ui::incident::types::FailureCode::Unknown(String::new()),
+                label: String::new(),
+                color: [0.0; 4],
+                replay_safe: true,
+            }]
+        })
+        .unwrap_or_default();
+
+    let (earliest_us, latest_us) = if entries.is_empty() {
+        (0, 0)
+    } else {
+        (
+            entries.iter().map(|e| e.timestamp_us).min().unwrap_or(0),
+            entries.iter().map(|e| e.timestamp_us).max().unwrap_or(0),
+        )
+    };
+
+    let width = rect.size.x;
+    let height = rect.size.y;
+    let axis_y = rect.pos.y + height - TIMELINE_AXIS_HEIGHT;
+
+    draw_bg.color = Vec4f { x: 0.08, y: 0.06, z: 0.10, w: 1.0 };
+    draw_bg.draw_abs(cx, *rect);
+
+    let axis_rect = Rect {
+        pos: DVec2 { x: rect.pos.x + TIMELINE_MARGIN, y: axis_y },
+        size: DVec2 { x: width - 2.0 * TIMELINE_MARGIN, y: TIMELINE_AXIS_HEIGHT },
+    };
+    draw_bg.color = Vec4f { x: 0.4, y: 0.4, z: 0.5, w: 1.0 };
+    draw_bg.draw_abs(cx, axis_rect);
+
+    if entries.is_empty() {
+        return;
+    }
+
+    let span_us = latest_us.saturating_sub(earliest_us);
+    let usable_width = width - 2.0 * TIMELINE_MARGIN;
+
+    for i in 0..=5 {
+        let progress = if span_us == 0 { 0.5_f64 } else { (i as f64) / 5.0 };
+        let time_us = earliest_us.saturating_add((span_us as f64 * progress) as u64);
+        let label = format_timeline_time(time_us);
+        let x = rect.pos.x + TIMELINE_MARGIN + usable_width * progress;
+
+        draw_text.text_style.font_size = 7.0;
+        draw_text.color = Vec4f { x: 0.6, y: 0.6, z: 0.7, w: 1.0 };
+        draw_text.draw_abs(cx, DVec2 { x: x - 20.0, y: axis_y - 14.0 }, &label);
+    }
+
+    let selected_timestamp = incident.selected_incident.map(|id| id.wrapping_mul(1_000_000));
+
+    draw_vector.begin();
+
+    for entry in &entries {
+        let x_pos = if span_us == 0 {
+            rect.pos.x + width / 2.0
+        } else {
+            let progress = (entry.timestamp_us.saturating_sub(earliest_us)) as f64 / span_us as f64;
+            rect.pos.x + TIMELINE_MARGIN + usable_width * progress
+        };
+
+        let is_selected = selected_timestamp.map_or(false, |ts| ts == entry.timestamp_us);
+        let dot_radius = if is_selected { 7.0_f64 } else { 5.0_f64 };
+        let dot_y = axis_y - dot_radius - 2.0;
+
+        let severity_color = entry.severity.severity_color();
+
+        if is_selected {
+            draw_vector.set_color(severity_color[0], severity_color[1], severity_color[2], 0.3_f32);
+            draw_vector.circle(x_pos as f32, dot_y as f32, (dot_radius + 4.0) as f32);
+            draw_vector.fill();
+        }
+
+        draw_vector.set_color(severity_color[0], severity_color[1], severity_color[2], severity_color[3]);
+        draw_vector.circle(x_pos as f32, dot_y as f32, dot_radius as f32);
+        draw_vector.fill();
+
+        if is_selected {
+            draw_vector.set_color(1.0_f32, 1.0_f32, 1.0_f32, 0.8_f32);
+            draw_vector.circle(x_pos as f32, dot_y as f32, (dot_radius + 2.0) as f32);
+            draw_vector.stroke(1.5_f32);
+        }
+    }
+
+    draw_vector.end(cx);
+
+    let marker_y = axis_y - 18.0;
+    for (i, entry) in entries.iter().enumerate() {
+        let x_pos = if span_us == 0 {
+            rect.pos.x + width / 2.0
+        } else {
+            let progress = (entry.timestamp_us.saturating_sub(earliest_us)) as f64 / span_us as f64;
+            rect.pos.x + TIMELINE_MARGIN + usable_width * progress
+        };
+
+        let label = entry.time_label();
+        draw_text.text_style.font_size = 6.0;
+        draw_text.color = Vec4f { x: 0.7, y: 0.7, z: 0.8, w: 1.0 };
+        let label_x = if i == 0 {
+            x_pos - 20.0
+        } else if i == entries.len() - 1 {
+            x_pos - 40.0
+        } else {
+            x_pos - 25.0
+        };
+        draw_text.draw_abs(cx, DVec2 { x: label_x, y: marker_y }, &label);
+    }}
 
 
 const EVENT_TICKER_ROW_HEIGHT: f64 = 22.0;
