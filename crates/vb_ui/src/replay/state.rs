@@ -170,8 +170,6 @@ impl ReplayState {
                 next.terminal_kind = Some(TerminalKind::Failed);
                 next.steps_failed = saturating_add_one(next.steps_failed);
             }
-
-            JournalEvent::RunAdmission { .. } => {}
         }
 
         next

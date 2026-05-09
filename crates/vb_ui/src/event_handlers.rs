@@ -20,6 +20,8 @@ pub(crate) enum TransportControlKind {
     JumpToStart,
     /// Step backward by one event.
     StepBackward,
+    /// Step forward by one event.
+    StepForward,
     /// Toggle between play and pause.
     TogglePlayPause,
     /// Jump to the last event.
@@ -133,7 +135,7 @@ fn resolve_button_index_to_control(button_idx: usize) -> Option<TransportControl
     match button_idx {
         0 => Some(TransportControlKind::JumpToStart),
         1 => Some(TransportControlKind::StepBackward),
-        2 => Some(TransportControlKind::TogglePlayPause),
+        2 => Some(TransportControlKind::StepForward),
         3 => Some(TransportControlKind::JumpToEnd),
         _ => None,
     }
@@ -156,8 +158,8 @@ pub(crate) fn handle_keyboard(
     cx: &mut Cx,
     uid: WidgetUid,
     event: &Event,
-    _app_state: &vb_ui::app_state::AppState,
-    _workflow_canvas: &mut Option<vb_ui::workflow::WorkflowCanvas>,
+    app_state: &vb_ui::app_state::AppState,
+    workflow_canvas: &mut Option<vb_ui::workflow::WorkflowCanvas>,
 ) {
     let Event::KeyDown(kde) = event else {
         return;
@@ -168,6 +170,18 @@ pub(crate) fn handle_keyboard(
                 uid,
                 VbAction::TransportControl(TransportControlKind::TogglePlayPause),
             );
+        }
+        KeyCode::Equals | KeyCode::Minus
+            if app_state.current_screen == vb_ui::app_state::Screen::WorkflowGraph =>
+        {
+            if let Some(canvas) = workflow_canvas {
+                const ZOOM_FACTOR: f64 = 1.25;
+                if kde.key_code == KeyCode::Equals {
+                    canvas.zoom_in(ZOOM_FACTOR);
+                } else {
+                    canvas.zoom_out(ZOOM_FACTOR);
+                }
+            }
         }
         KeyCode::Escape => {
             cx.widget_action(uid, VbAction::Escape);

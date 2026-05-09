@@ -70,8 +70,6 @@ pub struct VbApp {
     workflow_canvas: Option<WorkflowCanvas>,
     #[rust]
     rect: Rect,
-    #[rust]
-    ctrl_pressed: bool,
 }
 
 impl Widget for VbApp {
@@ -86,7 +84,13 @@ impl Widget for VbApp {
         );
         handle_nav(cx, self.uid, &self.rect, &hit);
         handle_transport(cx, self.uid, &self.rect, &hit);
-        handle_keyboard(cx, self.uid, event, &self.app_state, &mut self.workflow_canvas);
+        handle_keyboard(
+            cx,
+            self.uid,
+            event,
+            &self.app_state,
+            &mut self.workflow_canvas,
+        );
         self.redraw(cx);
     }
 
@@ -213,6 +217,14 @@ impl MatchEvent for VbApp {
                                 });
                                 TransportState::Playing { next_tick_at: 0 }
                             };
+                        }
+                        TransportControlKind::StepForward => {
+                            self.app_state.replay.playback_position =
+                                self.app_state.replay.playback_position.saturating_add(1);
+                            self.app_state.replay.transport_state = TransportState::Paused;
+                            script_eval!(cx, {
+                                mod.state.transport_state = "Paused"
+                            });
                         }
                         TransportControlKind::JumpToEnd => {
                             self.app_state.replay.playback_position =
