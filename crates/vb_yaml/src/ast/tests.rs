@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Tests for the AST parsing.
 //!
 //! This module contains comprehensive tests for the AST types and parsing.

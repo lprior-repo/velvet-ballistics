@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Stable diagnostic error codes (Section 16 of the master contract).
 
 #![allow(unreachable_pub)]

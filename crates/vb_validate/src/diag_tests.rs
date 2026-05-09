@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! BDD exact-assertion tests for diagnostic conversion.
 //!
 //! Verifies exact error code and message mapping fidelity.

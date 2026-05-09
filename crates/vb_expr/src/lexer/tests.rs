@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Lexer tests.
 
 #[allow(unused_imports)]

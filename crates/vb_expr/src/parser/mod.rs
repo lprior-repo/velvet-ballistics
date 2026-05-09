@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Expression parser producing a typed AST from token streams.
 
 use crate::lexer::{BinaryOp, LiteralToken, Token, UnaryOp, infix_binding_power};

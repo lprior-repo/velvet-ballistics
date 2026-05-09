@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Field and document structure validation for schema validation.
 
 #![allow(unreachable_pub)]

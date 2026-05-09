@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Typed AST for the workflow definition language.
 //!
 //! This module provides [`WorkflowSource`] and its supporting types, representing

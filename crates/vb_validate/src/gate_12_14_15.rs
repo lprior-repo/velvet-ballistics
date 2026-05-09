@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Gates 12, 14, 15: Action contract, slot type consistency, determinism proof.
 
 #![allow(unreachable_pub)]

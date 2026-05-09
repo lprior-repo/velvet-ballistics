@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Parsing entry points for the AST.
 //!
 //! This module provides the high-level parsing functions that convert

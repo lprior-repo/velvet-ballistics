@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! BDD exact-assertion tests for reference validation.
 //!
 //! These tests verify exact error type and message fidelity for

@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Builtin binary and unary operator evaluation.
 
 use arrayvec::ArrayVec;

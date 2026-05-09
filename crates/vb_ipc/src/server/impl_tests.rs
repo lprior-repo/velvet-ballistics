@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Tests for `IpcServer` implementation (`impl_.rs`).
 //!
 //! Covers:

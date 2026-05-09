@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! IPC frame types.
 
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};

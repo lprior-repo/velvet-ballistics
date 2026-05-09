@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Gate 9: All referenced slots exist within declared slot_count.
 
 #![allow(unreachable_pub)]

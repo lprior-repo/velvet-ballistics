@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Plan verifier gates for compiled workflow IR (Section 63 of the master doc).
 //!
 //! Gates 7, 8, 9, 11, and 13 validate structural properties of `WorkflowParts`

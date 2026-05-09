@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Gate 10: Node-kind-specific constraints.
 
 #![allow(unreachable_pub)]

@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Source map module tests.
 
 use crate::source_map_types::{SourceMap, SourceSpan};

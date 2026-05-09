@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Tests for frame encoding/decoding.
 
 use crate::error::IpcError;

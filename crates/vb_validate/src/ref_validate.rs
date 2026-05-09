@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Reference validation for workflow documents.
 //!
 //! Builds reference tables from declared inputs, vars, secrets, and step IDs,

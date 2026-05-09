@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! IPC frame encoding and decoding utilities.
 
 use byteorder::{LittleEndian, ReadBytesExt};

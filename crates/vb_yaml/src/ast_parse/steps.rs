@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Step and primitive parsing.
 
 use crate::{YamlError, YamlResult, ast::{

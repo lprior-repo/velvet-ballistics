@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Lightweight document model for schema validation.
 
 #![allow(unreachable_pub)]

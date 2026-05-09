@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! IPC metrics types.
 
 use serde::{Deserialize, Serialize};

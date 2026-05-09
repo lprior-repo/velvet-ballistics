@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Tests for type_taint module (extracted from type_taint.rs)
 
 use crate::type_taint::{

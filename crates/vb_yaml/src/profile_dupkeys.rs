@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Duplicate key detection for YAML profile.
 
 use crate::{YamlError, YamlResult, events::YamlEvent};

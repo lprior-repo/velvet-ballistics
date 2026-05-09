@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! YAML node lookup and field-extraction helpers.
 //!
 //! These helpers work on `&saphyr::Yaml<'_>` using `as_mapping_get`.

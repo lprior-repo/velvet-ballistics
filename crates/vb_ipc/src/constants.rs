@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! IPC protocol constants.
 
 /// IPC frame magic: `VBLT` little-endian.

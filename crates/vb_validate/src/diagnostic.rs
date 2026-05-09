@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Diagnostic conversion for validation errors.
 //!
 //! Converts `ValidationError` variants into stable `Diagnostic` records with

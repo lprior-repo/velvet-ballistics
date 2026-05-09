@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! IPC numeric identifiers.
 //!
 //! These are wire-format identifiers used at the IPC boundary. They are distinct

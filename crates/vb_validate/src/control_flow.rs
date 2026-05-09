@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Control-flow validation for workflow documents.
 //!
 //! Validates CFG construction, rejects backward branches (cycles), ensures

@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Adversarial error case parsing tests - step validation.
 
 #[cfg(test)]

@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Tests for schema validation.
 
 #![allow(unreachable_pub)]

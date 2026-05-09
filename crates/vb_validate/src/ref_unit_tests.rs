@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Basic reference validation tests.
 //!
 //! Unit tests for reference validation covering declared references,

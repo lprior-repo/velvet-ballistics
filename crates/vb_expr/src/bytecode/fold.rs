@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Constant folding utilities for expression bytecode compilation.
 
 use crate::lexer::{BinaryOp, UnaryOp};

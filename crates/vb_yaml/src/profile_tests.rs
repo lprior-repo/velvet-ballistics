@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Profile module tests.
 
 use crate::profile_validation::{

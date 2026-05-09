@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Adversarial typecheck tests.
 
 #![allow(dead_code, unused_imports)]

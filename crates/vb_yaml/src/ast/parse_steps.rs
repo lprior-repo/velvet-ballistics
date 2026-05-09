@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Step parsing logic.
 
 use super::parse::{lookup, opt_str, opt_u32, require_scalar_in, require_str_in, require_u16};

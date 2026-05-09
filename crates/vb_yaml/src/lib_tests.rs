@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Library-level integration tests.
 
 use super::*;

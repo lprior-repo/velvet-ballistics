@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Trace event helpers.
 
 use vb_runtime::runtime::Runtime;

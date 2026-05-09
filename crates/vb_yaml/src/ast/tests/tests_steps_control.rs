@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Control flow step parsing tests - Choose.
 
 #[cfg(test)]

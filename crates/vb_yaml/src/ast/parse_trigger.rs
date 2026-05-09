@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Trigger parsing logic.
 
 use crate::{YamlError, YamlResult};

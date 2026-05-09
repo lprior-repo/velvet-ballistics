@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Inputs, vars, and secrets parsing tests.
 
 #[cfg(test)]

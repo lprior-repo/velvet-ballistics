@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Ticket conversion helpers.
 
 use vb_core::RunId;

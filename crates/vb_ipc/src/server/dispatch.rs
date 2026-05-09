@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! IPC command dispatch.
 
 use vb_runtime::runtime::Runtime;

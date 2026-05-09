@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Adversarial reference validation tests.
 //!
 //! Tests that verify the reference validation system resists bypass attacks

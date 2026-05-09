@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Strict YAML profile enforcement.
 //!
 //! This module implements the "strict profile" that rejects YAML features

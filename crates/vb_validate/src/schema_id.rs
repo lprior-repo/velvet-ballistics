@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! ID validation for schema validation.
 
 #![allow(unreachable_pub)]

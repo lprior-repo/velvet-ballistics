@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Tests for the expression bytecode evaluator.
 //! Extracted from eval.rs to satisfy the 300-line file limit.
 

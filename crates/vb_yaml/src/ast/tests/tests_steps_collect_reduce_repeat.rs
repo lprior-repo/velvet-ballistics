@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Collect, Reduce, and Repeat step parsing tests.
 
 #[cfg(test)]

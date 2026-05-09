@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! IpcServer implementation.
 
 #![allow(unused_imports)]

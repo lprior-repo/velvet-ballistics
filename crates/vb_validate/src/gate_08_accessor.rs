@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Gate 8: Accessor path segments are valid symbols.
 
 #![allow(unreachable_pub)]

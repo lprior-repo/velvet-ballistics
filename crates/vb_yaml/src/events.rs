@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Typed YAML event stream wrapping saphyr-parser events.
 //!
 //! This module provides a [`YamlEvent`] enum that mirrors the saphyr-parser

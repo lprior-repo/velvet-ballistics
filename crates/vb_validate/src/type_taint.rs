@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Type and taint validation for workflow documents.
 //!
 //! Tracks input/action/result types through workflow steps, enforces secret

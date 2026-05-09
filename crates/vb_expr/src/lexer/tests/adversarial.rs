@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Adversarial lexer tests.
 
 #![allow(dead_code, unused_imports)]

@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Fact table for type/taint validation.
 
 #![allow(unreachable_pub)]

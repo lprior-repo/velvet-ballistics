@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Shared validation pipeline for compiled workflow IR.
 //!
 //! Provides a single entry point that runs all cold-path validation gates

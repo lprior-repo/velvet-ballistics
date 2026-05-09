@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Source map building functions.
 
 use crate::YamlResult;

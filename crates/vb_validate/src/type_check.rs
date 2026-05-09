@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Type checking for workflow documents.
 
 #![allow(unreachable_pub)]

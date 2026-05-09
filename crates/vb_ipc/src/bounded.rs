@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Bounded payload types.
 
 use bytes::Bytes;

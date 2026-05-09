@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Basic step type parsing tests - Set and Do.
 
 #[cfg(test)]

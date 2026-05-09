@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! IPC ingress types.
 
 use bytes::Bytes;

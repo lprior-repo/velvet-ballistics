@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Type primitives for type/taint validation.
 
 #![allow(unreachable_pub)]

@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! BDD parser tests.
 
 #[allow(unused_imports)]

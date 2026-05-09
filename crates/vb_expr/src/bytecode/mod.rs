@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Cold-path expression AST to bytecode compiler with constant folding.
 
 use crate::lexer::{BinaryOp, UnaryOp};

@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! IPC error types.
 
 use thiserror::Error;

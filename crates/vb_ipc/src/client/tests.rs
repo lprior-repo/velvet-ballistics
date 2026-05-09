@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Tests for client module.
 
 use crate::client::{IpcClient, IpcClientError};

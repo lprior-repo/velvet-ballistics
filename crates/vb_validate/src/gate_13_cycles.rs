@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Gate 13: No circular references in slot dependency graph.
 
 #![allow(unreachable_pub)]

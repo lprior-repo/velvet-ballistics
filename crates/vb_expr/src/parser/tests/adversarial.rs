@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Adversarial parser tests.
 
 #![allow(dead_code, unused_imports)]

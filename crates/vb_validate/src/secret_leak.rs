@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Resource limit validation for workflow documents.
 
 #![allow(unreachable_pub)]

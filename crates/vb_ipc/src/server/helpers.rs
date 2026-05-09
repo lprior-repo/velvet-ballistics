@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Buffer and frame helper functions.
 
 use super::IpcResponse;

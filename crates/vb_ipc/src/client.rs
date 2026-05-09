@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! IPC client for connecting to a velvet_ballastics runtime.
 
 use std::io::Write;

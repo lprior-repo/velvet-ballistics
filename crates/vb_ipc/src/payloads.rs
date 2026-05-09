@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! IPC payload types.
 
 use serde::{Deserialize, Serialize};

@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Terminal step parsing tests - Wait, Ask, Finish.
 
 #[cfg(test)]

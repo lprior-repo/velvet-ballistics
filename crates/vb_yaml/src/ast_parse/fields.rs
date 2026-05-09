@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Field-list parsing: inputs, vars, secrets.
 
 use crate::{YamlError, YamlResult, ast::{InputField, VarField, SecretField}};

@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Bytecode compilation tests.
 
 mod adversarial;

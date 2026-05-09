@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Stack operation primitives for bounded stack-based expression evaluator.
 
 use arrayvec::ArrayVec;

@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Gate 7: Expression stack depth bounded.
 
 #![allow(unreachable_pub)]

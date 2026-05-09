@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Event conversion and collection functions.
 
 use crate::{YamlError, YamlResult};

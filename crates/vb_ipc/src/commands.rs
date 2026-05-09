@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! IPC command identifiers.
 
 use serde::{Deserialize, Serialize};

@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Taint propagation validation for workflow documents.
 
 #![allow(unreachable_pub)]

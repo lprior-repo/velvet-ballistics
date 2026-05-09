@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Metadata parsing: retry, error handler, result, examples.
 
 use crate::{YamlError, YamlResult, ast::{RetryPolicy, ErrorHandlerAst, ResultMapping, ExampleAst}};

@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Gate 11: ForEach/Together body graph is well-formed.
 
 #![allow(unreachable_pub)]

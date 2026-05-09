@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Integration tests for vb_ipc.
 
 use vb_core::{DiagnosticCode, RunId, WorkflowDigest};

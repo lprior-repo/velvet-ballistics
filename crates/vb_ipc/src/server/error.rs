@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! IPC server errors.
 
 use crate::IpcError;

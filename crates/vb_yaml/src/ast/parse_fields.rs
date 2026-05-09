@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Field parsing logic for inputs, vars, secrets, result, and examples.
 
 use crate::{YamlError, YamlResult};

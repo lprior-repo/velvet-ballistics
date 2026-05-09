@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Trigger declaration parsing.
 
 use crate::{YamlError, YamlResult, ast::TriggerAst};

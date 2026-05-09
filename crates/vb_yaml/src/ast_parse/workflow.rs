@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Top-level workflow document parsing.
 
 use saphyr::LoadableYamlNode;

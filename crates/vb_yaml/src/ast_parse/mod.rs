@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Parsing logic for the workflow AST.
 //!
 //! This module is organized into sub-modules by concern:

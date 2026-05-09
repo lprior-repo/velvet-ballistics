@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Step metadata and result/examples parsing tests.
 
 #[cfg(test)]

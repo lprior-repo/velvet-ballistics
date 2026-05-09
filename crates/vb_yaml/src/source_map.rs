@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Source location tracking for YAML nodes.
 //!
 //! This module provides [`SourceMap`] which maps YAML node indices to

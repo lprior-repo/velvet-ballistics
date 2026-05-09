@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Schema validation for workflow documents.
 //!
 //! Validates required/unknown fields, version strings, trigger declarations,

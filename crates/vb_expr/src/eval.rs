@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Bounded stack-based expression bytecode evaluator.
 
 use arrayvec::ArrayVec;

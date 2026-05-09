@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! IPC action output types.
 
 use serde::{Deserialize, Serialize};

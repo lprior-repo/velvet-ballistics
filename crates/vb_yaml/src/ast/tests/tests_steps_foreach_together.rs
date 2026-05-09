@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! ForEach and Together step parsing tests.
 
 #[cfg(test)]

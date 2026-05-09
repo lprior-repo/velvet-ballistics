@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Basic error case parsing tests.
 
 #[cfg(test)]

@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Compile-time type inference for expression ASTs.
 
 use crate::parser::{ExprAst, ExprHelper, ExprLiteral};

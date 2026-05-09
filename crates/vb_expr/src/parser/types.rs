@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Expression AST types for vb_expr.
 
 /// Parsed expression AST node.

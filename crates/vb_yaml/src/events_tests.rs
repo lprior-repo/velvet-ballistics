@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Events module tests.
 
 use crate::events_types::{YamlEvent, ScalarStyle, EventSpan};

@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Expression token types for vb_expr.
 
 /// Expression token produced by the lexer.

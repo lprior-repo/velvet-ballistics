@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Inline unit tests for the evaluator.
 
 use vb_core::limits::MAX_EXPRESSION_STACK;

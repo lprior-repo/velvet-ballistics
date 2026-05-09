@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Diagnostic collection and test helpers for validation errors.
 //!
 //! Contains the `all_variants` helper used by multiple test modules.

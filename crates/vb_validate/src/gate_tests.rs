@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Tests for plan verifier gates.
 
 use crate::{ValidationError, ValidationResult};

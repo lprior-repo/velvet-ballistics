@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Expression tokenizer producing bounded token streams.
 //!
 //! Uses [`logos`] to generate a finite-state lexer, then converts the raw

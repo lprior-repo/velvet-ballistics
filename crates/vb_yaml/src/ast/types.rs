@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Typed AST type definitions for the workflow definition language.
 //!
 //! All AST types are pure data structures with no parsing logic.
