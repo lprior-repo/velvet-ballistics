@@ -816,7 +816,7 @@ mod tests {
             &mut cs,
             &CapabilitySet::empty(),
         );
-        assert!(result.is_ok(), "expected Ok, got {result:?}");
+        assert_eq!(result, Ok(RuntimeSignal::Continue));
         // NEVER policy: max_attempts=1, attempt=0 < 1, routes to body=step0
         let pc = run.pc();
         assert_eq!(pc, StepIdx::new(0), "expected PC routed to body step 0");
@@ -861,7 +861,7 @@ mod tests {
             &mut cs,
             &CapabilitySet::empty(),
         );
-        assert!(result.is_ok(), "expected Ok, got {result:?}");
+        assert_eq!(result, Ok(RuntimeSignal::Continue));
         // NEVER policy: max_attempts=1, attempt=1 >= 1, routes to exhausted=step1
         let pc = run.pc();
         assert_eq!(
@@ -909,7 +909,7 @@ mod tests {
             &mut cs,
             &CapabilitySet::empty(),
         );
-        assert!(result.is_ok(), "expected Ok, got {result:?}");
+        assert_eq!(result, Ok(RuntimeSignal::Continue));
         // DEFAULT policy: max_attempts=3, attempt=1 < 3, routes to body=step0
         let pc = run.pc();
         assert_eq!(pc, StepIdx::new(0), "expected PC routed to body step 0");
@@ -953,7 +953,7 @@ mod tests {
             &mut cs,
             &CapabilitySet::empty(),
         );
-        assert!(result.is_ok(), "expected Ok, got {result:?}");
+        assert_eq!(result, Ok(RuntimeSignal::Continue));
         // DEFAULT policy: max_attempts=3, attempt=3 >= 3, routes to exhausted=step1
         let pc = run.pc();
         assert_eq!(
@@ -1001,7 +1001,7 @@ mod tests {
             &mut cs,
             &CapabilitySet::empty(),
         );
-        assert!(result.is_ok(), "expected Ok, got {result:?}");
+        assert_eq!(result, Ok(RuntimeSignal::Continue));
         let pc = run.pc();
         assert_eq!(pc, StepIdx::new(1), "expected PC routed to body step 1");
     }
@@ -1040,7 +1040,7 @@ mod tests {
             &mut cs,
             &CapabilitySet::empty(),
         );
-        assert!(result.is_ok(), "expected Ok, got {result:?}");
+        assert_eq!(result, Ok(RuntimeSignal::Continue));
         let pc = run.pc();
         assert_eq!(pc, StepIdx::new(1), "expected PC routed to body step 1");
     }
@@ -1203,18 +1203,24 @@ mod tests {
             Some(n) => n,
             None => return,
         };
-        let result = execute_node_full(
-            &wf,
-            &mut run,
-            &mut store,
-            n,
-            &[],
-            RetryPolicy::NEVER,
-            &mut cs,
-            &CapabilitySet::empty(),
-        );
-        // May succeed or error, but must not panic
-        let _ = result;
+        // This catch_unwind match is a panic-safety guard, not a fallible-result
+        // assertion. It verifies that execute_node_full itself does not panic;
+        // the inner RuntimeEngineResult is intentionally not asserted here.
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            execute_node_full(
+                &wf,
+                &mut run,
+                &mut store,
+                n,
+                &[],
+                RetryPolicy::NEVER,
+                &mut cs,
+                &CapabilitySet::empty(),
+            )
+        }));
+        if let Err(payload) = result {
+            std::panic::resume_unwind(payload);
+        }
     }
 
     // =====================================================================
@@ -1590,18 +1596,24 @@ mod tests {
             Some(n) => n,
             None => return,
         };
-        let result = execute_node_full(
-            &wf,
-            &mut run,
-            &mut store,
-            n,
-            &[],
-            RetryPolicy::NEVER,
-            &mut cs,
-            &CapabilitySet::empty(),
-        );
-        // Zero attempts may succeed or error, but must not panic
-        let _ = result;
+        // This catch_unwind match is a panic-safety guard, not a fallible-result
+        // assertion. It verifies that execute_node_full itself does not panic;
+        // the inner RuntimeEngineResult is intentionally not asserted here.
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            execute_node_full(
+                &wf,
+                &mut run,
+                &mut store,
+                n,
+                &[],
+                RetryPolicy::NEVER,
+                &mut cs,
+                &CapabilitySet::empty(),
+            )
+        }));
+        if let Err(payload) = result {
+            std::panic::resume_unwind(payload);
+        }
     }
 
     // =====================================================================
