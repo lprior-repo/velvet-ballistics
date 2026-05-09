@@ -196,14 +196,14 @@ pub struct RecoveredStepEntry {
     pub state: RecoveredStepState,
 }
 
-/// One recovered slot entry with value and taint.
+/// One slot value recovered by deterministic workflow replay.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RecoveredSlotEntry {
     /// Slot index.
     pub slot: SlotIdx,
-    /// Durable slot value.
+    /// Reconstructed slot value.
     pub value: SlotValue,
-    /// Durable taint marker for the value.
+    /// Reconstructed taint marker.
     pub taint: Taint,
 }
 
@@ -296,7 +296,7 @@ pub struct RecoveryFrameSeed {
     pub pc: StepIdx,
     /// Final step states inferred from durable lifecycle events.
     pub steps: Vec<RecoveredStepEntry>,
-    /// Final slot values and taint inferred from snapshot data plus slot write events.
+    /// Slot values reconstructed by deterministic replay.
     pub slots: Vec<RecoveredSlotEntry>,
     /// Actions scheduled but not completed or failed at the recovery point.
     pub pending_actions: Vec<RecoveredPendingAction>,

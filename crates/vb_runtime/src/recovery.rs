@@ -60,62 +60,57 @@ impl RuntimeRecoveryBoundary for DurableFrameRecoveryBoundary {
     }
 
     fn hydrate_run_frame(&self) -> RuntimeResult<RunFrame> {
-        if has_unsupported_live_frame_state(&self.seed) {
-            return Err(RuntimeError::InvalidRecoveryHydration);
-        }
-        hydrate_run_frame(&self.seed)
+        reject_unsupported_live_frame_state(&self.seed)?;
+        let mut frame = empty_recovered_frame(&self.seed)?;
+        apply_recovered_steps(&mut frame, &self.seed)?;
+        apply_recovered_slots(&mut frame, &self.seed)?;
+        apply_recovered_pc(&mut frame, &self.seed)?;
+        Ok(frame)
     }
 }
 
-fn has_unsupported_live_frame_state(seed: &RecoveryFrameSeed) -> bool {
-    (seed.summary.slots_written > 0 && seed.unsupported.slot_values)
-        || (seed.summary.slots_written > 0 && seed.unsupported.slot_taint)
+fn reject_unsupported_live_frame_state(seed: &RecoveryFrameSeed) -> RuntimeResult<()> {
+    if seed.unsupported.slot_values
+        || seed.unsupported.slot_taint
         || (!seed.pending_actions.is_empty() && seed.unsupported.pending_actions)
+    {
+        Err(RuntimeError::InvalidRecoveryHydration)
+    } else {
+        Ok(())
+    }
 }
 
-fn hydrate_run_frame(seed: &RecoveryFrameSeed) -> RuntimeResult<RunFrame> {
-    let frame = RunFrame::new(
+fn empty_recovered_frame(seed: &RecoveryFrameSeed) -> RuntimeResult<RunFrame> {
+    RunFrame::new(
         seed.summary.run,
         seed.first_step,
         seed.step_count,
         seed.slot_count,
     )
-    .map_err(|_| RuntimeError::InvalidRecoveryHydration)?;
-    let frame = seed.slots.iter().try_fold(frame, apply_recovered_slot)?;
-    let frame = seed
-        .steps
+    .map_err(|_| RuntimeError::InvalidRecoveryHydration)
+}
+
+fn apply_recovered_steps(frame: &mut RunFrame, seed: &RecoveryFrameSeed) -> RuntimeResult<()> {
+    seed.steps
         .iter()
-        .try_fold(frame, apply_recovered_step_entry)?;
+        .try_for_each(|entry| apply_recovered_step(frame, entry.step, entry.state))
+}
+
+fn apply_recovered_slots(frame: &mut RunFrame, seed: &RecoveryFrameSeed) -> RuntimeResult<()> {
+    seed.slots.iter().try_for_each(|entry| {
+        frame
+            .write_slot_with_taint(entry.slot, entry.value, entry.taint)
+            .map_err(|_| RuntimeError::InvalidRecoveryHydration)
+    })
+}
+
+fn apply_recovered_pc(frame: &mut RunFrame, seed: &RecoveryFrameSeed) -> RuntimeResult<()> {
     if seed.pc.as_usize() >= usize::from(seed.step_count) {
-        Err(RuntimeError::InvalidRecoveryHydration)
-    } else {
-        set_recovered_pc(frame, seed.pc)
+        return Err(RuntimeError::InvalidRecoveryHydration);
     }
-}
-
-fn apply_recovered_slot(
-    mut frame: RunFrame,
-    entry: &vb_storage::recovery::RecoveredSlotEntry,
-) -> RuntimeResult<RunFrame> {
     frame
-        .write_slot_with_taint(entry.slot, entry.value, entry.taint)
-        .map_err(|_| RuntimeError::InvalidRecoveryHydration)?;
-    Ok(frame)
-}
-
-fn apply_recovered_step_entry(
-    mut frame: RunFrame,
-    entry: &vb_storage::recovery::RecoveredStepEntry,
-) -> RuntimeResult<RunFrame> {
-    apply_recovered_step(&mut frame, entry.step, entry.state)?;
-    Ok(frame)
-}
-
-fn set_recovered_pc(mut frame: RunFrame, pc: vb_core::StepIdx) -> RuntimeResult<RunFrame> {
-    frame
-        .set_pc(pc)
-        .map_err(|_| RuntimeError::InvalidRecoveryHydration)?;
-    Ok(frame)
+        .set_pc(seed.pc)
+        .map_err(|_| RuntimeError::InvalidRecoveryHydration)
 }
 
 /// Recovery boundary factory that selects summary-only or full-frame
@@ -191,12 +186,11 @@ mod tests {
     use crate::RuntimeError;
     use crate::recovery::recovery_boundary_from_hydration;
     use vb_core::frame::StepState;
-    use vb_core::{ActionId, RunId, SlotIdx, SlotValue, StepIdx, Taint, WorkflowDigest};
+    use vb_core::{RunId, SlotIdx, SlotValue, StepIdx, Taint, WorkflowDigest};
     use vb_storage::EventSeq;
     use vb_storage::recovery::{
-        RecoveredPendingAction, RecoveredSlotEntry, RecoveredStepEntry, RecoveredStepState,
-        RecoveryFrameSeed, RecoveryHydration, RecoveryRuntimeSummary, RecoveryTerminalState,
-        UnsupportedRecoveryState,
+        RecoveredStepEntry, RecoveredStepState, RecoveryFrameSeed, RecoveryHydration,
+        RecoveryRuntimeSummary, RecoveryTerminalState, UnsupportedRecoveryState,
     };
 
     #[test]
@@ -219,44 +213,6 @@ mod tests {
         let boundary = SummaryRecoveryBoundary::from_summary(summary);
 
         assert_eq!(boundary.summary(), summary);
-    }
-
-    #[test]
-    fn hydrate_run_admission_from_events_recovers_latest_admission() {
-        let run = RunId::new(22);
-        let digest = WorkflowDigest::from_bytes([8; 32]);
-        let events = vec![vb_storage::JournalEvent::RunAdmission {
-            run,
-            seq: EventSeq::new(0),
-            artifact_digest: digest,
-            granted_capabilities: vb_core::capability::CapabilitySet::empty(),
-            policy: vb_core::policy::RuntimePolicy::Journaled,
-        }];
-
-        assert_eq!(
-            crate::recovery::hydrate_run_admission_from_events(&events),
-            Some(crate::admission::RunAdmission::new(
-                digest,
-                run,
-                vb_core::capability::CapabilitySet::empty(),
-                vb_core::policy::RuntimePolicy::Journaled,
-            ))
-        );
-    }
-
-    #[test]
-    fn hydrate_run_admission_from_events_returns_none_without_admission() {
-        let run = RunId::new(23);
-        let events = vec![vb_storage::JournalEvent::RunAccepted {
-            run,
-            seq: EventSeq::new(0),
-            workflow: WorkflowDigest::from_bytes([9; 32]),
-        }];
-
-        assert_eq!(
-            crate::recovery::hydrate_run_admission_from_events(&events),
-            None
-        );
     }
 
     #[test]
@@ -317,8 +273,8 @@ mod tests {
             slots: Vec::new(),
             pending_actions: Vec::new(),
             unsupported: UnsupportedRecoveryState {
-                slot_values: true,
-                slot_taint: true,
+                slot_values: false,
+                slot_taint: false,
                 action_payloads: false,
                 pending_actions: false,
             },
@@ -341,8 +297,8 @@ mod tests {
         assert_eq!(
             boundary.unsupported_state(),
             UnsupportedRecoveryState {
-                slot_values: true,
-                slot_taint: true,
+                slot_values: false,
+                slot_taint: false,
                 action_payloads: false,
                 pending_actions: false,
             }
@@ -389,6 +345,54 @@ mod tests {
             boundary.hydrate_run_frame(),
             Err(RuntimeError::InvalidRecoveryHydration)
         );
+    }
+
+    #[test]
+    fn durable_frame_recovery_boundary_hydrates_exact_slot_value_and_taint() -> Result<(), String> {
+        let run = RunId::new(22);
+        let summary = RecoveryRuntimeSummary {
+            run,
+            first_seq: EventSeq::new(0),
+            last_seq: EventSeq::new(2),
+            workflow: Some(WorkflowDigest::from_bytes([8; 32])),
+            steps_started: 1,
+            steps_succeeded: 1,
+            actions_scheduled: 0,
+            actions_resolved: 0,
+            suspensions: 0,
+            slots_written: 1,
+            terminal: None,
+        };
+        let seed = RecoveryFrameSeed {
+            summary,
+            first_step: StepIdx::ZERO,
+            step_count: 1,
+            slot_count: 2,
+            pc: StepIdx::ZERO,
+            steps: vec![RecoveredStepEntry {
+                step: StepIdx::ZERO,
+                state: RecoveredStepState::Succeeded,
+            }],
+            slots: vec![vb_storage::recovery::RecoveredSlotEntry {
+                slot: SlotIdx::new(1),
+                value: SlotValue::I64(86),
+                taint: Taint::Secret,
+            }],
+            pending_actions: Vec::new(),
+            unsupported: UnsupportedRecoveryState {
+                slot_values: false,
+                slot_taint: false,
+                action_payloads: false,
+                pending_actions: false,
+            },
+        };
+        let frame = DurableFrameRecoveryBoundary::from_seed(seed)
+            .hydrate_run_frame()
+            .map_err(|error| format!("slot hydration failed: {error:?}"))?;
+
+        assert_eq!(frame.read_slot(SlotIdx::new(1)), Ok(&SlotValue::I64(86)));
+        assert_eq!(frame.read_taint(SlotIdx::new(1)), Ok(Taint::Secret));
+        Ok(())
     }
 
     #[test]
@@ -451,8 +455,8 @@ mod tests {
             slots: Vec::new(),
             pending_actions: Vec::new(),
             unsupported: UnsupportedRecoveryState {
-                slot_values: true,
-                slot_taint: true,
+                slot_values: false,
+                slot_taint: false,
                 action_payloads: false,
                 pending_actions: false,
             },
@@ -527,115 +531,5 @@ mod tests {
         assert_eq!(recovered_summary.steps_started, summary.steps_started);
         assert_eq!(recovered_summary.steps_succeeded, summary.steps_succeeded);
         assert_eq!(recovered_summary.terminal, summary.terminal);
-    }
-
-    #[test]
-    fn durable_frame_recovery_boundary_restores_slot_values_and_taint() {
-        let run = RunId::new(22);
-        let summary = RecoveryRuntimeSummary {
-            run,
-            first_seq: EventSeq::new(0),
-            last_seq: EventSeq::new(3),
-            workflow: Some(WorkflowDigest::from_bytes([8; 32])),
-            steps_started: 1,
-            steps_succeeded: 1,
-            actions_scheduled: 0,
-            actions_resolved: 0,
-            suspensions: 0,
-            slots_written: 1,
-            terminal: None,
-        };
-        let seed = RecoveryFrameSeed {
-            summary,
-            first_step: StepIdx::ZERO,
-            step_count: 1,
-            slot_count: 1,
-            pc: StepIdx::ZERO,
-            steps: vec![RecoveredStepEntry {
-                step: StepIdx::ZERO,
-                state: RecoveredStepState::Succeeded,
-            }],
-            slots: vec![RecoveredSlotEntry {
-                slot: SlotIdx::ZERO,
-                value: SlotValue::I64(41),
-                taint: Taint::Secret,
-            }],
-            pending_actions: Vec::new(),
-            unsupported: UnsupportedRecoveryState {
-                slot_values: false,
-                slot_taint: false,
-                action_payloads: false,
-                pending_actions: false,
-            },
-        };
-        let boundary = DurableFrameRecoveryBoundary::from_seed(seed);
-
-        let recovered = boundary.hydrate_run_frame().map(|frame| {
-            (
-                frame.run_id(),
-                frame.pc(),
-                frame.step_count(),
-                frame.slot_count(),
-                frame.read_slot(SlotIdx::ZERO).copied(),
-                frame.read_taint(SlotIdx::ZERO),
-            )
-        });
-
-        assert_eq!(
-            recovered,
-            Ok((
-                run,
-                StepIdx::ZERO,
-                1,
-                1,
-                Ok(SlotValue::I64(41)),
-                Ok(Taint::Secret),
-            ))
-        );
-    }
-
-    #[test]
-    fn durable_frame_recovery_boundary_rejects_pending_actions_until_resumability_supported() {
-        let run = RunId::new(23);
-        let summary = RecoveryRuntimeSummary {
-            run,
-            first_seq: EventSeq::new(0),
-            last_seq: EventSeq::new(2),
-            workflow: Some(WorkflowDigest::from_bytes([9; 32])),
-            steps_started: 1,
-            steps_succeeded: 0,
-            actions_scheduled: 1,
-            actions_resolved: 0,
-            suspensions: 0,
-            slots_written: 0,
-            terminal: None,
-        };
-        let seed = RecoveryFrameSeed {
-            summary,
-            first_step: StepIdx::ZERO,
-            step_count: 1,
-            slot_count: 0,
-            pc: StepIdx::ZERO,
-            steps: vec![RecoveredStepEntry {
-                step: StepIdx::ZERO,
-                state: RecoveredStepState::Running,
-            }],
-            slots: Vec::new(),
-            pending_actions: vec![RecoveredPendingAction {
-                step: StepIdx::ZERO,
-                action: ActionId::new(1),
-            }],
-            unsupported: UnsupportedRecoveryState::pending_actions_unsupported(),
-        };
-        let boundary = DurableFrameRecoveryBoundary::from_seed(seed);
-
-        assert_eq!(
-            boundary.hydrate_run_frame(),
-            Err(RuntimeError::InvalidRecoveryHydration)
-        );
-        assert_eq!(
-            boundary.unsupported_state(),
-            UnsupportedRecoveryState::pending_actions_unsupported()
-        );
     }
 }

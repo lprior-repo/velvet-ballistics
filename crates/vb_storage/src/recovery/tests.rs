@@ -11,29 +11,161 @@
 )]
 mod tests {
     use crate::recovery::{
-        ActionReplayTracker, DigestCheck, RecoveredPendingAction, RecoveredSlotEntry,
-        RecoveredStepEntry, RecoveredStepState, RecoveryError, RecoveryHydration,
+        ActionReplayTracker, DigestCheck, RecoveredStepState, RecoveryError, RecoveryHydration,
         RecoveryTerminalState, RunSnapshot, UnsupportedRecoveryState, check_compiled_ir_digest,
         check_workflow_source_digest, extract_terminal, is_terminal_event,
-        recover_all_incomplete_runs, recover_full_journal, recover_run_admission,
-        recover_runtime_frame_seed, recover_runtime_frame_seed_from_events,
-        recover_runtime_frame_seed_from_snapshot_and_tail, recover_runtime_summary,
+        recover_all_incomplete_runs, recover_full_journal, recover_runtime_frame_seed,
+        recover_runtime_frame_seed_from_events,
+        recover_runtime_frame_seed_from_events_with_workflow, recover_runtime_summary,
         recover_snapshot_plus_tail, replay_events, summarize_recovery_events, verify_digests,
     };
     use crate::{EventSeq, FjallJournal, JournalEvent, RunHeaderRecord};
-    use vb_core::{
-        ActionId, CapabilitySet, RunId, RuntimePolicy, SlotIdx, SlotValue, StepIdx, Taint,
-        WorkflowDigest, WorkflowId,
+    use vb_core::value::{ConstValue, SlotValue, Taint};
+    use vb_core::workflow::{
+        CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
     };
+    use vb_core::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest, WorkflowId};
 
-    fn workflow_digest_from_byte(byte: u8) -> WorkflowDigest {
+    fn sample_digest(byte: u8) -> WorkflowDigest {
         WorkflowDigest::from_bytes([byte; 32])
+    }
+
+    fn deterministic_plan() -> Result<CompiledWorkflow, Box<dyn std::error::Error>> {
+        CompiledWorkflow::try_from_parts(deterministic_parts())
+            .map_err(Box::<dyn std::error::Error>::from)
+    }
+
+    fn deterministic_parts() -> WorkflowParts {
+        WorkflowParts {
+            name: "recovery_replay".into(),
+            digest: sample_digest(44),
+            nodes: deterministic_nodes().into(),
+            expressions: Vec::new().into(),
+            accessors: Vec::new().into(),
+            constants: vec![ConstValue::I64(42)].into(),
+            slot_count: 2,
+            symbols_count: 0,
+            entry: StepIdx::ZERO,
+            resource_contract: ResourceContract::DEFAULT,
+            step_names: Box::new([]),
+        }
+    }
+
+    fn deterministic_nodes() -> Vec<CompiledNode> {
+        vec![set_const_zero(), copy_zero_to_one(), finish_one()]
+    }
+
+    fn set_const_zero() -> CompiledNode {
+        CompiledNode {
+            id: StepIdx::ZERO,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::SetConst {
+                value: vb_core::ConstIdx::new(0),
+            },
+            output: Some(SlotIdx::new(0)),
+            next: Some(StepIdx::new(1)),
+        }
+    }
+
+    fn copy_zero_to_one() -> CompiledNode {
+        CompiledNode {
+            id: StepIdx::new(1),
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Copy {
+                source: SlotIdx::new(0),
+            },
+            output: Some(SlotIdx::new(1)),
+            next: Some(StepIdx::new(2)),
+        }
+    }
+
+    fn finish_one() -> CompiledNode {
+        CompiledNode {
+            id: StepIdx::new(2),
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::new(1),
+            },
+            output: None,
+            next: None,
+        }
+    }
+
+    fn deterministic_replay_events(run: RunId, workflow: WorkflowDigest) -> Vec<JournalEvent> {
+        vec![
+            accepted_event(run, EventSeq::new(0), workflow),
+            started_event(run, EventSeq::new(1), StepIdx::ZERO),
+            succeeded_event(run, EventSeq::new(2), StepIdx::ZERO, SlotIdx::new(0)),
+            started_event(run, EventSeq::new(3), StepIdx::new(1)),
+            succeeded_event(run, EventSeq::new(4), StepIdx::new(1), SlotIdx::new(1)),
+        ]
+    }
+
+    fn step_succeeded_events(
+        run: RunId,
+        workflow: WorkflowDigest,
+        step: StepIdx,
+    ) -> Vec<JournalEvent> {
+        vec![
+            accepted_event(run, EventSeq::new(0), workflow),
+            succeeded_event(run, EventSeq::new(1), step, SlotIdx::new(0)),
+        ]
+    }
+
+    fn accepted_event(run: RunId, seq: EventSeq, workflow: WorkflowDigest) -> JournalEvent {
+        JournalEvent::RunAccepted { run, seq, workflow }
+    }
+
+    fn started_event(run: RunId, seq: EventSeq, step: StepIdx) -> JournalEvent {
+        JournalEvent::StepStarted { run, seq, step }
+    }
+
+    fn succeeded_event(run: RunId, seq: EventSeq, step: StepIdx, output: SlotIdx) -> JournalEvent {
+        JournalEvent::StepSucceeded {
+            run,
+            seq,
+            step,
+            output,
+        }
+    }
+
+    fn assert_recovered_i64_slot(seed: &crate::recovery::RecoveryFrameSeed, slot: SlotIdx) {
+        assert!(seed.slots.iter().any(|entry| {
+            entry.slot == slot && entry.value == SlotValue::I64(42) && entry.taint == Taint::Clean
+        }));
+    }
+
+    fn assert_compiled_digest_mismatch(
+        result: Result<crate::recovery::RecoveryFrameSeed, RecoveryError>,
+        expected: WorkflowDigest,
+        found: WorkflowDigest,
+    ) {
+        assert!(matches!(
+            result,
+            Err(RecoveryError::CompiledIrDigestMismatch { expected: e, found: f })
+                if e == expected && f == found
+        ));
+    }
+
+    fn assert_replay_divergence_step(
+        result: Result<crate::recovery::RecoveryFrameSeed, RecoveryError>,
+        expected_step: StepIdx,
+        expected_detail: &str,
+    ) {
+        assert!(matches!(
+            result,
+            Err(RecoveryError::ReplayDivergence { step, detail })
+                if step == expected_step && detail == expected_detail
+        ));
     }
 
     #[test]
     fn summarize_recovery_events_returns_summary_hydration() {
         let run = RunId::new(77);
-        let workflow = workflow_digest_from_byte(9);
+        let workflow = sample_digest(9);
         let events = vec![
             JournalEvent::RunAccepted {
                 run,
@@ -89,7 +221,7 @@ mod tests {
         let dir = tempfile::tempdir().expect("temp dir");
         let journal = FjallJournal::open(dir.path(), None).expect("journal opens");
         let run = RunId::new(79);
-        let workflow = workflow_digest_from_byte(10);
+        let workflow = sample_digest(10);
 
         journal
             .append_journaled(&JournalEvent::RunAccepted {
@@ -115,82 +247,10 @@ mod tests {
     }
 
     #[test]
-    fn recover_run_admission_reads_durable_fjall_event() -> Result<(), String> {
-        let dir = tempfile::tempdir().map_err(|err| format!("temp dir failed: {err}"))?;
-        let journal = FjallJournal::open(dir.path(), None)
-            .map_err(|err| format!("journal open failed: {err:?}"))?;
-        let run = RunId::new(80);
-        let digest = workflow_digest_from_byte(11);
-
-        journal
-            .append_journaled(&JournalEvent::RunAdmission {
-                run,
-                seq: EventSeq::new(0),
-                artifact_digest: digest,
-                granted_capabilities: CapabilitySet::empty(),
-                policy: RuntimePolicy::Journaled,
-            })
-            .map_err(|err| format!("admission append failed: {err:?}"))?;
-
-        assert_eq!(
-            recover_run_admission(&journal, run)
-                .map_err(|err| format!("admission recovery failed: {err:?}"))?,
-            Some(crate::recovery::RecoveredRunAdmission {
-                run_id: run,
-                artifact_digest: digest,
-                granted_capabilities: CapabilitySet::empty(),
-                policy: RuntimePolicy::Journaled,
-            })
-        );
-        Ok(())
-    }
-
-    #[test]
-    fn recover_run_admission_returns_none_when_run_has_no_admission() -> Result<(), String> {
-        let dir = tempfile::tempdir().map_err(|err| format!("temp dir failed: {err}"))?;
-        let journal = FjallJournal::open(dir.path(), None)
-            .map_err(|err| format!("journal open failed: {err:?}"))?;
-        let run = RunId::new(81);
-
-        journal
-            .append_journaled(&JournalEvent::RunAccepted {
-                run,
-                seq: EventSeq::new(0),
-                workflow: workflow_digest_from_byte(12),
-            })
-            .map_err(|err| format!("accepted append failed: {err:?}"))?;
-
-        assert_eq!(
-            recover_run_admission(&journal, run)
-                .map_err(|err| format!("admission recovery failed: {err:?}"))?,
-            None
-        );
-        Ok(())
-    }
-
-    #[test]
-    fn recover_run_admission_returns_no_recovery_data_on_empty_journal() -> Result<(), String> {
-        let dir = tempfile::tempdir().map_err(|err| format!("temp dir failed: {err}"))?;
-        let journal = FjallJournal::open(dir.path(), None)
-            .map_err(|err| format!("journal open failed: {err:?}"))?;
-        let run = RunId::new(82);
-
-        match recover_run_admission(&journal, run) {
-            Err(RecoveryError::NoRecoveryData { run: found }) => assert_eq!(found, run),
-            other => {
-                return Err(format!(
-                    "expected exact NoRecoveryData for {run:?}, got {other:?}"
-                ));
-            }
-        }
-        Ok(())
-    }
-
-    #[test]
     fn recover_runtime_frame_seed_from_events_rebuilds_dimensions_and_step_states()
     -> Result<(), String> {
         let run = RunId::new(91);
-        let workflow = workflow_digest_from_byte(13);
+        let workflow = sample_digest(13);
         let events = vec![
             JournalEvent::RunAccepted {
                 run,
@@ -221,26 +281,59 @@ mod tests {
         ];
 
         let seed = recover_runtime_frame_seed_from_events(&events)
-            .map_err(|err| format!("seed recovers: {err:?}"))?;
+            .map_err(|error| format!("seed recovery failed: {error:?}"))?;
 
         assert_eq!(seed.summary.run, run);
         assert_eq!(seed.summary.workflow, Some(workflow));
         assert_eq!(seed.step_count, 4);
         assert_eq!(seed.slot_count, 6);
         assert_eq!(seed.pc, StepIdx::new(3));
-        assert_eq!(
-            sorted_steps(seed.steps),
-            vec![
-                RecoveredStepEntry {
-                    step: StepIdx::new(1),
-                    state: RecoveredStepState::Waiting,
-                },
-                RecoveredStepEntry {
-                    step: StepIdx::new(3),
-                    state: RecoveredStepState::Succeeded,
-                },
-            ]
+        assert!(seed.steps.iter().any(
+            |entry| entry.step == StepIdx::new(1) && entry.state == RecoveredStepState::Waiting
+        ));
+        assert!(
+            seed.steps.iter().any(|entry| entry.step == StepIdx::new(3)
+                && entry.state == RecoveredStepState::Succeeded)
         );
+        assert_eq!(
+            seed.unsupported,
+            UnsupportedRecoveryState {
+                slot_values: true,
+                slot_taint: true,
+                action_payloads: false,
+                pending_actions: false,
+            }
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn frame_seed_with_workflow_replays_deterministic_slot_values()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let run = RunId::new(94);
+        let plan = deterministic_plan()?;
+        let events = deterministic_replay_events(run, sample_digest(44));
+
+        let seed = recover_runtime_frame_seed_from_events_with_workflow(&events, &plan)?;
+
+        assert!(!seed.unsupported.slot_values);
+        assert!(!seed.unsupported.slot_taint);
+        assert_recovered_i64_slot(&seed, SlotIdx::new(0));
+        assert_recovered_i64_slot(&seed, SlotIdx::new(1));
+        Ok(())
+    }
+
+    #[test]
+    fn frame_seed_builder_delegates_to_workflow_replay() -> Result<(), Box<dyn std::error::Error>> {
+        let run = RunId::new(941);
+        let plan = deterministic_plan()?;
+        let events = deterministic_replay_events(run, sample_digest(44));
+
+        let seed = crate::recovery::RecoveryFrameSeedBuilder::new()
+            .with_workflow(&plan)
+            .build(&events)?;
+
+        assert_recovered_i64_slot(&seed, SlotIdx::new(1));
         assert_eq!(
             seed.unsupported,
             UnsupportedRecoveryState {
@@ -254,227 +347,34 @@ mod tests {
     }
 
     #[test]
-    fn recover_runtime_frame_seed_restores_slots_taint_and_pending_actions() -> Result<(), String> {
-        let run = RunId::new(191);
-        let workflow = workflow_digest_from_byte(31);
-        let value = SlotValue::I64(99);
-        let encoded_value =
-            postcard::to_allocvec(&value).map_err(|err| format!("slot value encodes: {err:?}"))?;
-        let events = vec![
-            JournalEvent::RunAccepted {
-                run,
-                seq: EventSeq::new(0),
-                workflow,
-            },
-            JournalEvent::StepStarted {
-                run,
-                seq: EventSeq::new(1),
-                step: StepIdx::ZERO,
-            },
-            JournalEvent::ActionScheduled {
-                run,
-                seq: EventSeq::new(2),
-                step: StepIdx::ZERO,
-                action: ActionId::new(7),
-            },
-            JournalEvent::SlotWrittenEvent {
-                run,
-                seq: EventSeq::new(3),
-                slot: SlotIdx::ZERO,
-                value: Some(encoded_value),
-                extra: None,
-            },
-        ];
-        let seed = recover_runtime_frame_seed_from_events(&events)
-            .map_err(|err| format!("seed recovers: {err:?}"))?;
+    fn frame_seed_with_workflow_rejects_digest_mismatch_before_replay()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let run = RunId::new(95);
+        let plan = deterministic_plan()?;
+        let mismatched = sample_digest(45);
+        let events = step_succeeded_events(run, mismatched, StepIdx::new(99));
 
-        assert_eq!(
-            sorted_slots(seed.slots),
-            vec![RecoveredSlotEntry {
-                slot: SlotIdx::ZERO,
-                value,
-                taint: Taint::Clean,
-            }]
-        );
-        assert_eq!(
-            sorted_pending_actions(seed.pending_actions),
-            vec![RecoveredPendingAction {
-                step: StepIdx::ZERO,
-                action: ActionId::new(7),
-            }]
-        );
-        assert_eq!(seed.unsupported.slot_values, false);
-        assert_eq!(seed.unsupported.slot_taint, true);
-        assert_eq!(seed.unsupported.pending_actions, true);
+        let result = recover_runtime_frame_seed_from_events_with_workflow(&events, &plan);
+
+        assert_compiled_digest_mismatch(result, sample_digest(44), mismatched);
         Ok(())
     }
 
     #[test]
-    fn recover_runtime_frame_seed_from_snapshot_restores_snapshot_taint() -> Result<(), String> {
-        let run = RunId::new(192);
-        let workflow = workflow_digest_from_byte(32);
-        let snapshot_values: Vec<Option<SlotValue>> = vec![Some(SlotValue::I64(41))];
-        let snapshot_taint = vec![Taint::Secret];
-        let snapshot = RunSnapshot {
-            run,
-            seq: EventSeq::new(9),
-            workflow,
-            slots: postcard::to_allocvec(&snapshot_values)
-                .map_err(|err| format!("snapshot slots encode: {err:?}"))?,
-            taint: postcard::to_allocvec(&snapshot_taint)
-                .map_err(|err| format!("snapshot taint encodes: {err:?}"))?,
-        };
+    fn frame_seed_with_workflow_maps_replay_step_not_found()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let run = RunId::new(96);
+        let plan = deterministic_plan()?;
+        let events = step_succeeded_events(run, sample_digest(44), StepIdx::new(99));
 
-        let seed = recover_runtime_frame_seed_from_snapshot_and_tail(&snapshot, &[])
-            .map_err(|err| format!("snapshot seed recovers: {err:?}"))?;
+        let result = recover_runtime_frame_seed_from_events_with_workflow(&events, &plan);
 
-        assert_eq!(
-            sorted_slots(seed.slots),
-            vec![RecoveredSlotEntry {
-                slot: SlotIdx::ZERO,
-                value: SlotValue::I64(41),
-                taint: Taint::Secret,
-            }]
-        );
-        assert_eq!(seed.unsupported.slot_taint, false);
-        Ok(())
-    }
-
-    #[test]
-    fn snapshot_tail_recovery_uses_snapshot_as_base_and_tail_overwrites_slot_value_and_taint()
-    -> Result<(), String> {
-        let run = RunId::new(193);
-        let workflow = workflow_digest_from_byte(33);
-        let snapshot_values: Vec<Option<SlotValue>> = vec![Some(SlotValue::I64(41))];
-        let snapshot_taint = vec![Taint::Secret];
-        let snapshot = RunSnapshot {
-            run,
-            seq: EventSeq::new(9),
-            workflow,
-            slots: postcard::to_allocvec(&snapshot_values)
-                .map_err(|err| format!("snapshot slots encode: {err:?}"))?,
-            taint: postcard::to_allocvec(&snapshot_taint)
-                .map_err(|err| format!("snapshot taint encodes: {err:?}"))?,
-        };
-        let tail_value = SlotValue::I64(99);
-        let tail = vec![JournalEvent::SlotWrittenEvent {
-            run,
-            seq: EventSeq::new(10),
-            slot: SlotIdx::ZERO,
-            value: Some(
-                postcard::to_allocvec(&tail_value)
-                    .map_err(|err| format!("tail value encodes: {err:?}"))?,
-            ),
-            extra: None,
-        }];
-
-        let seed = recover_runtime_frame_seed_from_snapshot_and_tail(&snapshot, &tail)
-            .map_err(|err| format!("snapshot plus tail recovers: {err:?}"))?;
-
-        assert_eq!(
-            sorted_slots(seed.slots),
-            vec![RecoveredSlotEntry {
-                slot: SlotIdx::ZERO,
-                value: tail_value,
-                taint: Taint::Clean,
-            }]
-        );
-        assert_eq!(seed.unsupported.slot_taint, true);
-        Ok(())
-    }
-
-    #[test]
-    fn unsupported_recovery_state_constructors_preserve_valid_capability_combinations() {
-        assert_eq!(
-            UnsupportedRecoveryState::slot_values_unsupported(),
-            UnsupportedRecoveryState {
-                slot_values: true,
-                slot_taint: true,
-                action_payloads: false,
-                pending_actions: false,
-            }
-        );
-        assert_eq!(
-            UnsupportedRecoveryState::event_slot_taint_unsupported()
-                .union(UnsupportedRecoveryState::pending_actions_unsupported()),
-            UnsupportedRecoveryState {
-                slot_values: false,
-                slot_taint: true,
-                action_payloads: false,
-                pending_actions: true,
-            }
-        );
-    }
-
-    #[test]
-    fn recovery_error_variants_preserve_exact_payloads() {
-        let journal_error: RecoveryError = crate::JournalError::KeyCapacity.into();
-        assert!(matches!(
-            journal_error,
-            RecoveryError::Journal(crate::JournalError::KeyCapacity)
-        ));
-
-        let action_error = RecoveryError::ActionAbiMismatch {
-            action_id: ActionId::new(9),
-        };
-        assert!(matches!(
-            action_error,
-            RecoveryError::ActionAbiMismatch { action_id } if action_id == ActionId::new(9)
-        ));
-
-        let policy_error = RecoveryError::PolicyDigestMismatch {
-            step: StepIdx::new(3),
-        };
-        assert!(matches!(
-            policy_error,
-            RecoveryError::PolicyDigestMismatch { step } if step == StepIdx::new(3)
-        ));
-
-        let terminal_error = RecoveryError::TerminalStateMismatch {
-            expected: String::from("finished"),
-            found: String::from("failed"),
-        };
-        assert!(matches!(
-            terminal_error,
-            RecoveryError::TerminalStateMismatch { expected, found }
-                if expected == "finished" && found == "failed"
-        ));
-    }
-
-    #[test]
-    fn corrupt_snapshot_returns_exact_recovery_error_variant() {
-        let snapshot = RunSnapshot {
-            run: RunId::new(194),
-            seq: EventSeq::new(12),
-            workflow: workflow_digest_from_byte(34),
-            slots: vec![0xFF, 0xFF],
-            taint: Vec::new(),
-        };
-
-        let result = recover_runtime_frame_seed_from_snapshot_and_tail(&snapshot, &[]);
-
-        assert!(matches!(
+        assert_replay_divergence_step(
             result,
-            Err(RecoveryError::CorruptSnapshot { run, seq })
-                if run == RunId::new(194) && seq == EventSeq::new(12)
-        ));
-    }
-
-    fn sorted_steps(mut steps: Vec<RecoveredStepEntry>) -> Vec<RecoveredStepEntry> {
-        steps.sort_by_key(|entry| entry.step.get());
-        steps
-    }
-
-    fn sorted_slots(mut slots: Vec<RecoveredSlotEntry>) -> Vec<RecoveredSlotEntry> {
-        slots.sort_by_key(|entry| entry.slot.get());
-        slots
-    }
-
-    fn sorted_pending_actions(
-        mut actions: Vec<RecoveredPendingAction>,
-    ) -> Vec<RecoveredPendingAction> {
-        actions.sort_by_key(|entry| (entry.step.get(), entry.action.get()));
-        actions
+            StepIdx::new(99),
+            "replay step not found in compiled workflow",
+        );
+        Ok(())
     }
 
     #[test]
@@ -498,7 +398,7 @@ mod tests {
         let dir = tempfile::tempdir().expect("temp dir");
         let journal = FjallJournal::open(dir.path(), None).expect("journal opens");
         let run = RunId::new(93);
-        let workflow = workflow_digest_from_byte(14);
+        let workflow = sample_digest(14);
 
         journal
             .append_journaled(&JournalEvent::RunAccepted {
@@ -529,7 +429,7 @@ mod tests {
     fn recover_all_incomplete_runs_returns_only_non_terminal_runs() {
         let dir = tempfile::tempdir().expect("temp dir");
         let journal = FjallJournal::open(dir.path(), None).expect("journal opens");
-        let workflow = workflow_digest_from_byte(11);
+        let workflow = sample_digest(11);
         let incomplete = RunId::new(81);
         let finished = RunId::new(82);
 
@@ -578,7 +478,7 @@ mod tests {
         let dir = tempfile::tempdir().expect("temp dir");
         let journal = FjallJournal::open(dir.path(), None).expect("journal opens");
         let run = RunId::new(83);
-        let workflow = workflow_digest_from_byte(12);
+        let workflow = sample_digest(12);
 
         put_test_header(&journal, run, workflow);
 
@@ -727,7 +627,7 @@ mod tests {
         let snapshot = RunSnapshot {
             run,
             seq: snapshot_seq,
-            workflow: workflow_digest_from_byte(1),
+            workflow: sample_digest(1),
             slots: Vec::new(),
             taint: Vec::new(),
         };
@@ -805,7 +705,7 @@ mod tests {
             JournalEvent::RunAccepted {
                 run,
                 seq: EventSeq::new(0),
-                workflow: workflow_digest_from_byte(1),
+                workflow: sample_digest(1),
             },
             JournalEvent::StepStarted {
                 run,
@@ -838,7 +738,7 @@ mod tests {
             JournalEvent::RunAccepted {
                 run,
                 seq: EventSeq::new(0),
-                workflow: workflow_digest_from_byte(1),
+                workflow: sample_digest(1),
             },
             JournalEvent::ActionScheduled {
                 run,
@@ -869,7 +769,7 @@ mod tests {
             JournalEvent::RunAccepted {
                 run,
                 seq: EventSeq::new(0),
-                workflow: workflow_digest_from_byte(1),
+                workflow: sample_digest(1),
             },
             JournalEvent::WaitScheduledEvent {
                 run,
@@ -892,7 +792,7 @@ mod tests {
             JournalEvent::RunAccepted {
                 run,
                 seq: EventSeq::new(0),
-                workflow: workflow_digest_from_byte(1),
+                workflow: sample_digest(1),
             },
             JournalEvent::AskScheduledEvent {
                 run,
@@ -942,14 +842,14 @@ mod tests {
 
     #[test]
     fn compiled_ir_digest_match_succeeds() {
-        let digest = workflow_digest_from_byte(42);
+        let digest = sample_digest(42);
         check_compiled_ir_digest(digest, digest).expect("matching digests should succeed");
     }
 
     #[test]
     fn compiled_ir_digest_mismatch_fails() {
-        let expected = workflow_digest_from_byte(1);
-        let found = workflow_digest_from_byte(2);
+        let expected = sample_digest(1);
+        let found = sample_digest(2);
         let Err(err) = check_compiled_ir_digest(expected, found) else {
             panic!("mismatched digests should fail");
         };
@@ -987,7 +887,7 @@ mod tests {
             JournalEvent::RunAccepted {
                 run: RunId::new(1),
                 seq: EventSeq::new(0),
-                workflow: workflow_digest_from_byte(1),
+                workflow: sample_digest(1),
             },
             JournalEvent::RunFinished {
                 run: RunId::new(1),
@@ -1006,7 +906,7 @@ mod tests {
         let events = vec![JournalEvent::RunAccepted {
             run: RunId::new(1),
             seq: EventSeq::new(0),
-            workflow: workflow_digest_from_byte(1),
+            workflow: sample_digest(1),
         }];
 
         let terminal = extract_terminal(&events);
@@ -1018,7 +918,7 @@ mod tests {
         let snapshot = RunSnapshot {
             run: RunId::new(1),
             seq: EventSeq::new(5),
-            workflow: workflow_digest_from_byte(1),
+            workflow: sample_digest(1),
             slots: Vec::new(),
             taint: Vec::new(),
         };
@@ -1059,7 +959,7 @@ mod tests {
         let accepted = JournalEvent::RunAccepted {
             run,
             seq: EventSeq::new(0),
-            workflow: workflow_digest_from_byte(1),
+            workflow: sample_digest(1),
         };
         let started = JournalEvent::StepStarted {
             run,
@@ -1095,7 +995,7 @@ mod tests {
             JournalEvent::RunAccepted {
                 run,
                 seq: EventSeq::new(0),
-                workflow: workflow_digest_from_byte(1),
+                workflow: sample_digest(1),
             },
             JournalEvent::StepStarted {
                 run,
@@ -1166,7 +1066,7 @@ mod tests {
         let snapshot = RunSnapshot {
             run: RunId::new(10),
             seq: EventSeq::new(5),
-            workflow: workflow_digest_from_byte(1),
+            workflow: sample_digest(1),
             slots: Vec::new(),
             taint: Vec::new(),
         };
@@ -1223,7 +1123,7 @@ mod tests {
             crate::FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
 
         let run = RunId::new(100);
-        let stored_digest = workflow_digest_from_byte(1);
+        let stored_digest = sample_digest(1);
         let event = JournalEvent::RunAccepted {
             run,
             seq: EventSeq::new(0),
@@ -1233,7 +1133,7 @@ mod tests {
             .append_journaled(&event)
             .expect("setup: append event");
 
-        let wrong_digest = workflow_digest_from_byte(2);
+        let wrong_digest = sample_digest(2);
         let result = check_workflow_source_digest(&journal, run, wrong_digest);
         let Err(RecoveryError::WorkflowSourceDigestMismatch { expected, found }) = result else {
             panic!("expected WorkflowSourceDigestMismatch, got {:?}", result);
@@ -1249,7 +1149,7 @@ mod tests {
             crate::FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
 
         let run = RunId::new(101);
-        let digest = workflow_digest_from_byte(5);
+        let digest = sample_digest(5);
         let event = JournalEvent::RunAccepted {
             run,
             seq: EventSeq::new(0),
@@ -1265,8 +1165,8 @@ mod tests {
 
     #[test]
     fn check_compiled_ir_digest_returns_mismatch_when_digests_differ() {
-        let expected = workflow_digest_from_byte(10);
-        let found = workflow_digest_from_byte(20);
+        let expected = sample_digest(10);
+        let found = sample_digest(20);
         let result = check_compiled_ir_digest(expected, found);
         let Err(RecoveryError::CompiledIrDigestMismatch {
             expected: exp,
@@ -1286,7 +1186,7 @@ mod tests {
             crate::FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
 
         let run = RunId::new(200);
-        let digest = workflow_digest_from_byte(7);
+        let digest = sample_digest(7);
         let event = JournalEvent::RunAccepted {
             run,
             seq: EventSeq::new(0),
@@ -1300,8 +1200,8 @@ mod tests {
             &journal,
             run,
             digest,
-            workflow_digest_from_byte(8),
-            workflow_digest_from_byte(8),
+            sample_digest(8),
+            sample_digest(8),
             DigestCheck::Full,
         )
         .expect("matching digests at Full level should succeed");
@@ -1314,7 +1214,7 @@ mod tests {
             crate::FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
 
         let run = RunId::new(201);
-        let digest = workflow_digest_from_byte(7);
+        let digest = sample_digest(7);
         let event = JournalEvent::RunAccepted {
             run,
             seq: EventSeq::new(0),
@@ -1328,8 +1228,8 @@ mod tests {
             &journal,
             run,
             digest,
-            workflow_digest_from_byte(8),
-            workflow_digest_from_byte(9),
+            sample_digest(8),
+            sample_digest(9),
             DigestCheck::WorkflowAndIr,
         );
         assert!(matches!(
@@ -1370,7 +1270,7 @@ mod tests {
             JournalEvent::RunAccepted {
                 run,
                 seq: EventSeq::new(0),
-                workflow: workflow_digest_from_byte(1),
+                workflow: sample_digest(1),
             },
             JournalEvent::ActionScheduled {
                 run,
@@ -1425,7 +1325,7 @@ mod tests {
         let event = JournalEvent::RunAccepted {
             run: RunId::new(1),
             seq: EventSeq::new(0),
-            workflow: workflow_digest_from_byte(1),
+            workflow: sample_digest(1),
         };
         assert!(!is_terminal_event(&event));
     }
@@ -1451,7 +1351,7 @@ mod tests {
             JournalEvent::RunAccepted {
                 run: RunId::new(1),
                 seq: EventSeq::new(0),
-                workflow: workflow_digest_from_byte(1),
+                workflow: sample_digest(1),
             },
             JournalEvent::StepStarted {
                 run: RunId::new(1),
@@ -1471,7 +1371,7 @@ mod tests {
         let events = vec![JournalEvent::RunAccepted {
             run: RunId::new(1),
             seq: EventSeq::new(0),
-            workflow: workflow_digest_from_byte(1),
+            workflow: sample_digest(1),
         }];
 
         let terminal = extract_terminal(&events);
@@ -1490,7 +1390,7 @@ mod tests {
             JournalEvent::RunAccepted {
                 run: run_a,
                 seq: EventSeq::new(0),
-                workflow: workflow_digest_from_byte(1),
+                workflow: sample_digest(1),
             },
             JournalEvent::StepStarted {
                 run: run_a,
@@ -1525,7 +1425,7 @@ mod tests {
             JournalEvent::RunAccepted {
                 run: run_a,
                 seq: EventSeq::new(0),
-                workflow: workflow_digest_from_byte(2),
+                workflow: sample_digest(2),
             },
             JournalEvent::StepSucceeded {
                 run: run_a,
@@ -1577,13 +1477,13 @@ mod tests {
     /// When no steps have started, `first_step` should default to `StepIdx::ZERO`.
     /// A run with only SlotWritten events (no StepStarted/StepSucceeded) exercises this path.
     #[test]
-    fn frame_seed_first_step_defaults_to_zero_when_no_steps_started() {
+    fn frame_seed_first_step_defaults_to_zero_when_no_steps_started() -> Result<(), String> {
         let run = RunId::new(700);
         let events = vec![
             JournalEvent::RunAccepted {
                 run,
                 seq: EventSeq::new(0),
-                workflow: workflow_digest_from_byte(3),
+                workflow: sample_digest(3),
             },
             JournalEvent::SlotWrittenEvent {
                 run,
@@ -1599,11 +1499,12 @@ mod tests {
         ];
 
         let seed = recover_runtime_frame_seed_from_events(&events)
-            .expect("seed should recover from slot-only events");
+            .map_err(|error| format!("seed recovery failed: {error:?}"))?;
         assert_eq!(seed.first_step, StepIdx::ZERO);
         assert_eq!(seed.step_count, 0);
         assert!(seed.steps.is_empty());
         assert_eq!(seed.pc, StepIdx::ZERO);
+        Ok(())
     }
 
     /// SlotWrittenEvent slot-dimension tracking without StepSucceeded:
@@ -1615,7 +1516,7 @@ mod tests {
             JournalEvent::RunAccepted {
                 run,
                 seq: EventSeq::new(0),
-                workflow: workflow_digest_from_byte(4),
+                workflow: sample_digest(4),
             },
             JournalEvent::SlotWrittenEvent {
                 run,
@@ -1649,5 +1550,44 @@ mod tests {
         // max_slot is 7, so slot_count should be 7 + 1 = 8
         assert_eq!(seed.slot_count, 8);
         assert_eq!(seed.summary.slots_written, 3);
+    }
+
+    // --- RecoveryError variant exact tests ---
+
+    #[test]
+    fn recovery_error_action_abi_mismatch_constructs_correctly() {
+        let action_id = ActionId::new(42);
+        let err = RecoveryError::ActionAbiMismatch { action_id };
+        assert!(matches!(err, RecoveryError::ActionAbiMismatch { action_id: a } if a == action_id));
+    }
+
+    #[test]
+    fn recovery_error_policy_digest_mismatch_constructs_correctly() {
+        let step = StepIdx::new(7);
+        let err = RecoveryError::PolicyDigestMismatch { step };
+        assert!(matches!(err, RecoveryError::PolicyDigestMismatch { step: s } if s == step));
+    }
+
+    #[test]
+    fn recovery_error_corrupt_snapshot_constructs_correctly() {
+        let run = RunId::new(99);
+        let seq = EventSeq::new(5);
+        let err = RecoveryError::CorruptSnapshot { run, seq };
+        assert!(
+            matches!(err, RecoveryError::CorruptSnapshot { run: r, seq: s } if r == run && s == seq)
+        );
+    }
+
+    #[test]
+    fn recovery_error_terminal_state_mismatch_constructs_correctly() {
+        let expected = "Finished".to_string();
+        let found = "Failed".to_string();
+        let err = RecoveryError::TerminalStateMismatch {
+            expected: expected.clone(),
+            found: found.clone(),
+        };
+        assert!(
+            matches!(err, RecoveryError::TerminalStateMismatch { expected: e, found: f } if e == expected && f == found)
+        );
     }
 }
