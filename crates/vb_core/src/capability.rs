@@ -54,7 +54,7 @@ impl CapabilitySet {
                     };
                     continue;
                 }
-                let name_match = required.name().starts_with(grant.name());
+                let name_match = capability_name_grants(grant.name(), required.name());
                 if name_match && grant.action == required.action {
                     return true;
                 }
@@ -73,6 +73,19 @@ impl CapabilitySet {
 
     pub fn is_empty(&self) -> bool {
         self.grants.is_empty()
+    }
+}
+
+fn capability_name_grants(grant_name: &str, required_name: &str) -> bool {
+    if grant_name.is_empty() {
+        return false;
+    }
+    if required_name == grant_name {
+        return true;
+    }
+    match required_name.strip_prefix(grant_name) {
+        Some(suffix) => suffix.starts_with('.'),
+        None => false,
     }
 }
 
@@ -133,6 +146,26 @@ mod tests {
         assert!(set.grants(&cap("network.github", ActionId::new(1))));
         assert!(set.grants(&cap("network.http", ActionId::new(1))));
         assert!(!set.grants(&cap("secrets.network", ActionId::new(1))));
+    }
+
+    #[test]
+    fn capability_set_does_not_grant_short_partial_prefix() {
+        // Given a grant whose name is only a lexical prefix of the required capability.
+        let short = CapabilitySet::from_grants(Box::new([cap("net", ActionId::new(1))]));
+
+        // When checking a dotted child capability under a different root.
+        // Then the partial prefix must not grant access.
+        assert!(!short.grants(&cap("network.github", ActionId::new(1))));
+    }
+
+    #[test]
+    fn capability_set_does_not_grant_sibling_partial_prefix() {
+        // Given a grant whose name is a sibling lexical prefix, not a hierarchy parent.
+        let sibling = CapabilitySet::from_grants(Box::new([cap("networking", ActionId::new(1))]));
+
+        // When checking a dotted child of the network hierarchy.
+        // Then the sibling prefix must not grant access.
+        assert!(!sibling.grants(&cap("network.github", ActionId::new(1))));
     }
 
     #[test]

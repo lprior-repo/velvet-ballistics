@@ -262,10 +262,14 @@ mod tests {
         let required = Capability::new("network".into(), ActionId::new(1));
         let granted = CapabilitySet::empty();
         let result = check_capability(action, &required, &granted);
-        assert!(matches!(
+        assert_eq!(
             result,
-            Err(AdmissionError::CapabilityDenied { .. })
-        ));
+            Err(AdmissionError::CapabilityDenied {
+                action,
+                required,
+                granted,
+            })
+        );
     }
 
     #[test]
@@ -275,6 +279,27 @@ mod tests {
         let granted =
             CapabilitySet::from_grants(Box::new([Capability::new("network".into(), action)]));
         assert_eq!(check_capability(action, &required, &granted), Ok(()));
+    }
+
+    #[test]
+    fn admission_check_capability_rejects_partial_prefix_grant() {
+        // Given a required capability under the network hierarchy.
+        let action = ActionId::new(99);
+        let required = Capability::new("network.http".into(), action);
+        let granted = CapabilitySet::from_grants(Box::new([Capability::new("net".into(), action)]));
+
+        // When admission checks a lexical-only prefix grant.
+        let result = check_capability(action, &required, &granted);
+
+        // Then it denies with the exact required and granted capabilities.
+        assert_eq!(
+            result,
+            Err(AdmissionError::CapabilityDenied {
+                action,
+                required,
+                granted,
+            })
+        );
     }
 
     #[test]
@@ -320,11 +345,8 @@ mod tests {
             run_id,
             caps.clone(),
         );
-        assert!(result.is_ok());
-        let admission = match result {
-            Ok(a) => a,
-            Err(_) => return,
-        };
+        let admission = RunAdmission::new(digest, run_id, caps, RuntimePolicy::Strict);
+        assert_eq!(result, Ok(admission.clone()));
         assert_eq!(admission.artifact_digest(), digest);
         assert_eq!(admission.run_id(), run_id);
         assert_eq!(admission.policy(), RuntimePolicy::Strict);
@@ -344,7 +366,15 @@ mod tests {
         let run_id = RunId::new(1);
         let caps = CapabilitySet::empty();
         let result = admit_run(&store, RuntimePolicy::Relaxed, digest, run_id, caps);
-        assert!(result.is_ok());
+        assert_eq!(
+            result,
+            Ok(RunAdmission::new(
+                digest,
+                run_id,
+                CapabilitySet::empty(),
+                RuntimePolicy::Relaxed,
+            ))
+        );
     }
 
     #[test]

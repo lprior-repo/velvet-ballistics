@@ -536,29 +536,7 @@ pub fn validate_gate_13_no_slot_cycles(parts: &WorkflowParts) -> ValidationResul
         return Ok(());
     }
 
-    // Build adjacency: for each output slot, which slots does it depend on?
-    let mut adjacency: Vec<Vec<usize>> = vec![Vec::new(); slot_count];
-
-    for node in parts.nodes.iter() {
-        let reads = node_reads(node, &parts.expressions);
-        if let Some(output) = node.output {
-            let out_usize = output.as_usize();
-            if out_usize < slot_count {
-                for read_slot in reads {
-                    let read_usize = read_slot.as_usize();
-                    if read_usize < slot_count
-                        && read_usize != out_usize
-                        && let Some(list) = adjacency.get_mut(out_usize)
-                        && !list.contains(&read_usize)
-                    {
-                        list.push(read_usize);
-                    }
-                }
-            }
-        }
-    }
-
-    // Detect cycles via DFS with three-color marking.
+    let adjacency = build_slot_adjacency(parts, slot_count);
     let mut visited: Vec<u8> = vec![0; slot_count]; // 0 = white, 1 = gray, 2 = black
     for slot in 0..slot_count {
         if visited.get(slot) == Some(&0) {
@@ -566,6 +544,49 @@ pub fn validate_gate_13_no_slot_cycles(parts: &WorkflowParts) -> ValidationResul
         }
     }
     Ok(())
+}
+
+/// Builds adjacency: for each output slot, which slots does it depend on?
+fn build_slot_adjacency(parts: &WorkflowParts, slot_count: usize) -> Vec<Vec<usize>> {
+    let mut adjacency = vec![Vec::new(); slot_count];
+    parts.nodes.iter().for_each(|node| {
+        append_node_edges(&mut adjacency, node, &parts.expressions, slot_count);
+    });
+    adjacency
+}
+
+fn append_node_edges(
+    adjacency: &mut [Vec<usize>],
+    node: &CompiledNode,
+    expressions: &[ExprProgram],
+    slot_count: usize,
+) {
+    if let Some(output) = node.output.filter(|output| output.as_usize() < slot_count) {
+        node_reads(node, expressions)
+            .into_iter()
+            .for_each(|read_slot| {
+                add_unique_edge(
+                    adjacency,
+                    output.as_usize(),
+                    read_slot.as_usize(),
+                    slot_count,
+                );
+            });
+    }
+}
+
+fn add_unique_edge(
+    adjacency: &mut [Vec<usize>],
+    output: usize,
+    read_slot: usize,
+    slot_count: usize,
+) {
+    if read_slot < slot_count
+        && let Some(list) = adjacency.get_mut(output)
+        && !list.contains(&read_slot)
+    {
+        list.push(read_slot);
+    }
 }
 
 fn detect_cycle_dfs(
@@ -1663,16 +1684,18 @@ mod tests {
             },
         ];
         let parts = make_parts(nodes, 2);
-        assert!(matches!(
+        assert_eq!(
             validate_gate_13_no_slot_cycles(&parts),
-            Err(ValidationError::SlotDependencyCycle { .. })
-        ));
+            Err(ValidationError::SlotDependencyCycle {
+                slot: 1,
+                chain: "slot 1 -> slot 0".into(),
+            })
+        );
     }
 
     #[test]
-    fn gate_13_accepts_self_copy_is_not_cycle() {
-        // A node that reads and writes the same slot is not a cycle in our
-        // model because we filter out self-edges in the adjacency list.
+    fn gate_13_rejects_self_copy_cycle() {
+        // A node that reads and writes the same slot is a direct cycle.
         let nodes = vec![CompiledNode {
             id: StepIdx::new(0),
             output: Some(SlotIdx::new(0)),
@@ -1684,7 +1707,44 @@ mod tests {
             },
         }];
         let parts = make_parts(nodes, 1);
-        assert_eq!(validate_gate_13_no_slot_cycles(&parts), Ok(()));
+        assert_eq!(
+            validate_gate_13_no_slot_cycles(&parts),
+            Err(ValidationError::SlotDependencyCycle {
+                slot: 0,
+                chain: "slot 0 -> slot 0".into(),
+            })
+        );
+    }
+
+    #[test]
+    fn gate13_rejects_direct_self_dependency() {
+        // Given an expression node that writes slot 0.
+        let mut parts = make_parts(vec![finish_node(1, 0)], 1);
+        parts.expressions = Box::new([ExprProgram {
+            ops: Box::new([ExprOp::LoadSlot(SlotIdx::new(0))]),
+            max_stack: 1,
+        }]);
+        let node = CompiledNode {
+            id: StepIdx::new(0),
+            output: Some(SlotIdx::new(0)),
+            next: Some(StepIdx::new(1)),
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::EvalExpr {
+                expr: ExprIdx::new(0),
+            },
+        };
+        parts.nodes = Box::new([node, finish_node(1, 0)]);
+
+        // When the expression also reads slot 0.
+        // Then Gate 13 rejects the exact direct self-dependency cycle.
+        assert_eq!(
+            validate_gate_13_no_slot_cycles(&parts),
+            Err(ValidationError::SlotDependencyCycle {
+                slot: 0,
+                chain: "slot 0 -> slot 0".into(),
+            })
+        );
     }
 
     #[test]
