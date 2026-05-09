@@ -81,6 +81,187 @@ pub struct InspectorCard {
 }
 
 // ---------------------------------------------------------------------------
+// Selected Event Panel
+// ---------------------------------------------------------------------------
+
+/// Neon purple (#b14dff) -- taint / secret-sensitive.
+pub const NEON_PURPLE: &str = "#b14dff";
+/// Neon teal (#00e5c7) -- durable / replay-safe.
+pub const NEON_TEAL: &str = "#00e5c7";
+
+/// The selected event panel shows details of the currently highlighted journal
+/// event in the timeline.
+#[derive(Debug, Clone)]
+pub struct SelectedEventPanel {
+    /// Journal event sequence number.
+    pub seq: String,
+    /// Event timestamp in microseconds.
+    pub timestamp_micros: String,
+    /// Shard / replica identifier.
+    pub shard_id: String,
+    /// Step index this event relates to, if any.
+    pub step: String,
+    /// Event kind label, e.g. "ActionFailed".
+    pub event_kind: String,
+    /// Evidence identifier associated with this event.
+    pub evidence_id: String,
+    /// Short SHA256 digest of the event payload.
+    pub digest_summary: String,
+    /// Color for the event kind label.
+    pub event_kind_color: String,
+}
+
+impl SelectedEventPanel {
+    /// Returns a placeholder SelectedEventPanel with populated string fields.
+    #[must_use]
+    pub fn placeholder() -> Self {
+        Self {
+            seq: String::from("3"),
+            timestamp_micros: String::from("1715000000000000"),
+            shard_id: String::from("shard-0"),
+            step: String::from("0"),
+            event_kind: String::from("ActionFailed"),
+            evidence_id: String::from("ev-0042"),
+            digest_summary: String::from("sha256:a3f1…c9d2"),
+            event_kind_color: String::from(NEON_RED),
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Slot Diff Table
+// ---------------------------------------------------------------------------
+
+/// A single row in the slot diff table.
+#[derive(Debug, Clone)]
+pub struct SlotDiffRow {
+    /// Formatted slot identifier, e.g. "SlotIdx(3)".
+    pub slot_id: String,
+    /// Formatted previous value, e.g. "I64(0)".
+    pub before: String,
+    /// Formatted new value, e.g. "I64(42)".
+    pub after: String,
+    /// Previous taint label, e.g. "Clean".
+    pub taint_before: String,
+    /// New taint label, e.g. "Secret".
+    pub taint_after: String,
+}
+
+/// The slot diff table shows computed differences between two replay states.
+#[derive(Debug, Clone)]
+pub struct SlotDiffTable {
+    /// Table header row labels.
+    pub headers: Vec<String>,
+    /// Data rows.
+    pub rows: Vec<SlotDiffRow>,
+}
+
+impl SlotDiffTable {
+    /// Returns a placeholder SlotDiffTable with two sample rows.
+    #[must_use]
+    pub fn placeholder() -> Self {
+        let headers = vec![
+            String::from("slot"),
+            String::from("before"),
+            String::from("after"),
+            String::from("taint before"),
+            String::from("taint after"),
+        ];
+        let rows = vec![
+            SlotDiffRow {
+                slot_id: String::from("SlotIdx(0)"),
+                before: String::from("<empty>"),
+                after: String::from("Null"),
+                taint_before: String::from("Clean"),
+                taint_after: String::from("Clean"),
+            },
+            SlotDiffRow {
+                slot_id: String::from("SlotIdx(3)"),
+                before: String::from("I64(0)"),
+                after: String::from("I64(42)"),
+                taint_before: String::from("Clean"),
+                taint_after: String::from("Secret"),
+            },
+        ];
+        Self { headers, rows }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Recovery Decision Panel
+// ---------------------------------------------------------------------------
+
+/// The recovery decision panel shows the active recovery strategy and its
+/// parameters when the replay has reached a failure boundary.
+#[derive(Debug, Clone)]
+pub struct RecoveryDecisionPanel {
+    /// Recovery strategy name, e.g. "Retry", "Abort", "Skip".
+    pub strategy: String,
+    /// Strategy accent color.
+    pub strategy_color: String,
+    /// Maximum retry attempts before giving up.
+    pub max_attempts: String,
+    /// Whether idempotent replay is required.
+    pub idempotency_required: String,
+    /// Human-readable apply/replay action label.
+    pub apply_action: String,
+    /// Color for the apply action label.
+    pub apply_action_color: String,
+}
+
+impl RecoveryDecisionPanel {
+    /// Returns a placeholder RecoveryDecisionPanel.
+    #[must_use]
+    pub fn placeholder() -> Self {
+        Self {
+            strategy: String::from("Retry"),
+            strategy_color: String::from(NEON_ORANGE),
+            max_attempts: String::from("3"),
+            idempotency_required: String::from("true"),
+            apply_action: String::from("apply: github.issue.create"),
+            apply_action_color: String::from(NEON_CYAN),
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Live Mode Toggle
+// ---------------------------------------------------------------------------
+
+/// The live/frozen toggle in the transport bar.
+#[derive(Debug, Clone)]
+pub struct LiveModeToggle {
+    /// Toggle label, e.g. "live" or "frozen".
+    pub label: String,
+    /// `true` = live mode, `false` = frozen mode.
+    pub is_live: bool,
+    /// Accent color (neon green when live, dim when frozen).
+    pub color: String,
+}
+
+impl LiveModeToggle {
+    /// Returns the live toggle in live mode.
+    #[must_use]
+    pub fn live() -> Self {
+        Self {
+            label: String::from("live"),
+            is_live: true,
+            color: String::from(NEON_GREEN),
+        }
+    }
+
+    /// Returns the live toggle in frozen mode.
+    #[must_use]
+    pub fn frozen() -> Self {
+        Self {
+            label: String::from("frozen"),
+            is_live: false,
+            color: String::from(TEXT_DIM),
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Transport bar
 // ---------------------------------------------------------------------------
 
@@ -111,6 +292,8 @@ pub struct TransportBar {
     pub speed_label: String,
     /// Jump chips (quick navigation).
     pub jump_chips: Vec<JumpChip>,
+    /// Live/frozen mode toggle.
+    pub live_toggle: LiveModeToggle,
 }
 
 // ---------------------------------------------------------------------------
@@ -140,13 +323,16 @@ pub struct GraphNode {
 
 /// Top-level data model for the Replay Theater screen layout.
 ///
-/// Contains all the placeholder data needed to render the four
-/// quadrants of the Replay Theater:
+/// Contains all the placeholder data needed to render the six
+/// panels of the Replay Theater:
 ///
 /// 1. **Top bar** -- run id, workflow name
-/// 2. **Left** -- workflow graph with node overlay cards
-/// 3. **Right** -- detail inspector with step, ticket, and slot-diff cards
-/// 4. **Bottom** -- transport bar and timeline strip
+/// 2. **Left-top** -- runtime graph with node overlay cards
+/// 3. **Right-top** -- selected event panel (seq, timestamp, shard, step, kind, evidence, digest)
+/// 4. **Left-bottom** -- journal timeline strip with scrubbing cursor
+/// 5. **Right-middle** -- slot diff table (slot_id, before, after, taint_before, taint_after)
+/// 6. **Right-bottom** -- recovery decision panel (strategy, max_attempts, idempotency)
+/// 7. **Bottom-left** -- playback controls + live/frozen toggle
 pub struct ReplayTheaterScreen {
     // -- Top bar --
     /// Displayed run id.
@@ -154,23 +340,39 @@ pub struct ReplayTheaterScreen {
     /// Displayed workflow name.
     pub workflow_name: String,
 
-    // -- Left: workflow graph --
+    // -- Left-top: runtime graph --
     /// Nodes to render in the graph overlay.
     pub graph_nodes: Vec<GraphNode>,
 
-    // -- Right: detail inspector --
+    // -- Right-top: selected event panel --
+    /// Selected event details.
+    pub selected_event_panel: SelectedEventPanel,
+
+    // -- Legacy inspector cards (kept for compat) --
     /// Inspector cards (step, ticket, slot diffs).
     pub inspector_cards: Vec<InspectorCard>,
-    /// Slot diff panel (model, used to build the diff card).
-    pub slot_diff_panel: SlotDiffPanel,
 
-    // -- Bottom: transport + timeline --
-    /// Transport bar state.
-    pub transport_bar: TransportBar,
+    // -- Left-bottom: journal timeline --
     /// Timeline strip (event markers).
     pub timeline_strip: TimelineStrip,
     /// Pre-built timeline chips for rendering.
     pub timeline_chips: Vec<TimelineChip>,
+
+    // -- Right-middle: slot diff table --
+    /// Slot diff table.
+    pub slot_diff_table: SlotDiffTable,
+
+    // -- Left-bottom: transport bar --
+    /// Transport bar state (buttons, speed, jumps, live toggle).
+    pub transport_bar: TransportBar,
+
+    // -- Right-bottom: recovery decision panel --
+    /// Recovery decision panel.
+    pub recovery_decision_panel: RecoveryDecisionPanel,
+
+    // -- Legacy slot diff panel (kept for existing API compat) --
+    /// Slot diff panel (model).
+    pub slot_diff_panel: SlotDiffPanel,
 }
 
 impl ReplayTheaterScreen {
@@ -346,6 +548,7 @@ impl ReplayTheaterScreen {
             buttons,
             speed_label: String::from("1x"),
             jump_chips,
+            live_toggle: LiveModeToggle::frozen(),
         };
 
         // -- Timeline strip (placeholder events) --
@@ -370,6 +573,15 @@ impl ReplayTheaterScreen {
         strip.set_cursor(0);
         let timeline_chips = strip.build_chips();
 
+        // -- Selected event panel (placeholder) --
+        let selected_event_panel = SelectedEventPanel::placeholder();
+
+        // -- Slot diff table (placeholder) --
+        let slot_diff_table = SlotDiffTable::placeholder();
+
+        // -- Recovery decision panel (placeholder) --
+        let recovery_decision_panel = RecoveryDecisionPanel::placeholder();
+
         Self {
             run_id,
             workflow_name,
@@ -379,6 +591,9 @@ impl ReplayTheaterScreen {
             transport_bar,
             timeline_strip: strip,
             timeline_chips,
+            selected_event_panel,
+            slot_diff_table,
+            recovery_decision_panel,
         }
     }
 
@@ -482,6 +697,48 @@ impl ReplayTheaterScreen {
     #[must_use]
     pub fn graph_nodes(&self) -> &[GraphNode] {
         &self.graph_nodes
+    }
+
+    /// Returns a reference to the selected event panel.
+    #[must_use]
+    pub fn selected_event_panel(&self) -> &SelectedEventPanel {
+        &self.selected_event_panel
+    }
+
+    /// Returns a reference to the slot diff table.
+    #[must_use]
+    pub fn slot_diff_table(&self) -> &SlotDiffTable {
+        &self.slot_diff_table
+    }
+
+    /// Returns a reference to the recovery decision panel.
+    #[must_use]
+    pub fn recovery_decision_panel(&self) -> &RecoveryDecisionPanel {
+        &self.recovery_decision_panel
+    }
+
+    /// Returns the live/frozen toggle.
+    #[must_use]
+    pub fn live_toggle(&self) -> &LiveModeToggle {
+        &self.transport_bar.live_toggle
+    }
+
+    /// Returns the formatted header bar text.
+    #[must_use]
+    pub fn header_bar_text(&self) -> String {
+        String::from("vb -- Replay Theater")
+    }
+
+    /// Returns the run id badge text, e.g. "8172".
+    #[must_use]
+    pub fn run_badge_text(&self) -> String {
+        format!("Run: {}", self.run_id)
+    }
+
+    /// Returns the workflow badge text, e.g. "Workflow: issue-triage".
+    #[must_use]
+    pub fn workflow_badge_text(&self) -> String {
+        format!("Workflow: {}", self.workflow_name)
     }
 }
 
@@ -926,5 +1183,224 @@ mod tests {
             cloned.jump_chips.len(),
             screen.transport_bar.jump_chips.len()
         );
+        assert_eq!(
+            cloned.live_toggle.label,
+            screen.transport_bar.live_toggle.label
+        );
+    }
+
+    // -- SelectedEventPanel --
+
+    #[test]
+    fn selected_event_panel_placeholder_has_all_fields() {
+        let panel = SelectedEventPanel::placeholder();
+        assert!(!panel.seq.is_empty());
+        assert!(!panel.timestamp_micros.is_empty());
+        assert!(!panel.shard_id.is_empty());
+        assert!(!panel.step.is_empty());
+        assert!(!panel.event_kind.is_empty());
+        assert!(!panel.evidence_id.is_empty());
+        assert!(!panel.digest_summary.is_empty());
+        assert_eq!(panel.event_kind, "ActionFailed");
+        assert_eq!(panel.event_kind_color, NEON_RED);
+    }
+
+    #[test]
+    fn selected_event_panel_clone_roundtrip() {
+        let panel = SelectedEventPanel::placeholder();
+        let cloned = panel.clone();
+        assert_eq!(cloned.seq, panel.seq);
+        assert_eq!(cloned.event_kind, panel.event_kind);
+        assert_eq!(cloned.event_kind_color, panel.event_kind_color);
+    }
+
+    #[test]
+    fn screen_selected_event_panel_is_accessible() {
+        let screen = ReplayTheaterScreen::new();
+        let panel = screen.selected_event_panel();
+        assert_eq!(panel.event_kind, "ActionFailed");
+    }
+
+    // -- SlotDiffTable --
+
+    #[test]
+    fn slot_diff_table_placeholder_has_headers_and_rows() {
+        let table = SlotDiffTable::placeholder();
+        assert_eq!(table.headers.len(), 5);
+        assert_eq!(table.rows.len(), 2);
+        assert_eq!(table.headers[0], "slot");
+        assert_eq!(table.headers[1], "before");
+        assert_eq!(table.headers[2], "after");
+        assert_eq!(table.headers[3], "taint before");
+        assert_eq!(table.headers[4], "taint after");
+    }
+
+    #[test]
+    fn slot_diff_table_placeholder_row_fields_are_nonempty() {
+        let table = SlotDiffTable::placeholder();
+        for (i, row) in table.rows.iter().enumerate() {
+            assert!(!row.slot_id.is_empty(), "row {i} slot_id empty");
+            assert!(!row.before.is_empty(), "row {i} before empty");
+            assert!(!row.after.is_empty(), "row {i} after empty");
+            assert!(!row.taint_before.is_empty(), "row {i} taint_before empty");
+            assert!(!row.taint_after.is_empty(), "row {i} taint_after empty");
+        }
+    }
+
+    #[test]
+    fn slot_diff_table_clone_roundtrip() {
+        let table = SlotDiffTable::placeholder();
+        let cloned = table.clone();
+        assert_eq!(cloned.headers.len(), table.headers.len());
+        assert_eq!(cloned.rows.len(), table.rows.len());
+    }
+
+    #[test]
+    fn screen_slot_diff_table_is_accessible() {
+        let screen = ReplayTheaterScreen::new();
+        let table = screen.slot_diff_table();
+        assert_eq!(table.rows.len(), 2);
+    }
+
+    // -- RecoveryDecisionPanel --
+
+    #[test]
+    fn recovery_decision_panel_placeholder_fields() {
+        let panel = RecoveryDecisionPanel::placeholder();
+        assert_eq!(panel.strategy, "Retry");
+        assert_eq!(panel.strategy_color, NEON_ORANGE);
+        assert_eq!(panel.max_attempts, "3");
+        assert_eq!(panel.idempotency_required, "true");
+        assert!(!panel.apply_action.is_empty());
+        assert_eq!(panel.apply_action_color, NEON_CYAN);
+    }
+
+    #[test]
+    fn recovery_decision_panel_clone_roundtrip() {
+        let panel = RecoveryDecisionPanel::placeholder();
+        let cloned = panel.clone();
+        assert_eq!(cloned.strategy, panel.strategy);
+        assert_eq!(cloned.max_attempts, panel.max_attempts);
+        assert_eq!(cloned.idempotency_required, panel.idempotency_required);
+    }
+
+    #[test]
+    fn screen_recovery_decision_panel_is_accessible() {
+        let screen = ReplayTheaterScreen::new();
+        let panel = screen.recovery_decision_panel();
+        assert_eq!(panel.strategy, "Retry");
+        assert_eq!(panel.max_attempts, "3");
+    }
+
+    // -- LiveModeToggle --
+
+    #[test]
+    fn live_mode_toggle_live() {
+        let toggle = LiveModeToggle::live();
+        assert_eq!(toggle.label, "live");
+        assert!(toggle.is_live);
+        assert_eq!(toggle.color, NEON_GREEN);
+    }
+
+    #[test]
+    fn live_mode_toggle_frozen() {
+        let toggle = LiveModeToggle::frozen();
+        assert_eq!(toggle.label, "frozen");
+        assert!(!toggle.is_live);
+        assert_eq!(toggle.color, TEXT_DIM);
+    }
+
+    #[test]
+    fn live_mode_toggle_clone_roundtrip() {
+        let toggle = LiveModeToggle::live();
+        let cloned = toggle.clone();
+        assert_eq!(cloned.label, toggle.label);
+        assert_eq!(cloned.is_live, toggle.is_live);
+        assert_eq!(cloned.color, toggle.color);
+    }
+
+    #[test]
+    fn transport_bar_includes_live_toggle() {
+        let screen = ReplayTheaterScreen::new();
+        let toggle = screen.live_toggle();
+        assert_eq!(toggle.label, "frozen");
+        assert!(!toggle.is_live);
+    }
+
+    // -- Screen-level integration --
+
+    #[test]
+    fn screen_new_builds_all_six_panels() {
+        let screen = ReplayTheaterScreen::new();
+        // Graph nodes (left-top)
+        assert_eq!(screen.graph_node_count(), 6);
+        // Selected event panel (right-top)
+        assert_eq!(screen.selected_event_panel().event_kind, "ActionFailed");
+        // Timeline strip (left-bottom)
+        assert_eq!(screen.timeline_strip().events().len(), 6);
+        // Slot diff table (right-middle)
+        assert_eq!(screen.slot_diff_table().rows.len(), 2);
+        // Transport bar (left-bottom)
+        assert_eq!(screen.transport_bar().buttons.len(), 4);
+        // Recovery decision panel (right-bottom)
+        assert_eq!(screen.recovery_decision_panel().strategy, "Retry");
+    }
+
+    #[test]
+    fn screen_header_bar_text_formats_correctly() {
+        let screen = ReplayTheaterScreen::new();
+        assert_eq!(screen.header_bar_text(), "vb -- Replay Theater");
+    }
+
+    #[test]
+    fn screen_run_badge_text() {
+        let screen = ReplayTheaterScreen::new();
+        assert_eq!(screen.run_badge_text(), "Run: 8172");
+    }
+
+    #[test]
+    fn screen_workflow_badge_text() {
+        let screen = ReplayTheaterScreen::new();
+        assert_eq!(screen.workflow_badge_text(), "Workflow: issue-triage");
+    }
+
+    // -- SlotDiffRow clone --
+
+    #[test]
+    fn slot_diff_row_clone_roundtrip() {
+        let row = SlotDiffRow {
+            slot_id: String::from("SlotIdx(1)"),
+            before: String::from("I64(0)"),
+            after: String::from("I64(99)"),
+            taint_before: String::from("Clean"),
+            taint_after: String::from("Secret"),
+        };
+        let cloned = row.clone();
+        assert_eq!(cloned.slot_id, row.slot_id);
+        assert_eq!(cloned.before, row.before);
+        assert_eq!(cloned.after, row.after);
+        assert_eq!(cloned.taint_before, row.taint_before);
+        assert_eq!(cloned.taint_after, row.taint_after);
+    }
+
+    // -- NEON_PURPLE and NEON_TEAL constants --
+
+    #[test]
+    fn neon_purple_is_b14dff() {
+        assert_eq!(NEON_PURPLE, "#b14dff");
+    }
+
+    #[test]
+    fn neon_teal_is_00e5c7() {
+        assert_eq!(NEON_TEAL, "#00e5c7");
+    }
+
+    // -- TransportBar includes live_toggle in clone --
+
+    #[test]
+    fn transport_bar_clone_includes_live_toggle() {
+        let screen = ReplayTheaterScreen::new();
+        let cloned = screen.transport_bar.clone();
+        assert_eq!(cloned.live_toggle.label, "frozen");
     }
 }

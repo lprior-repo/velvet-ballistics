@@ -10,10 +10,13 @@ members = [
     "crates/vb_ipc",
     "crates/vb_codegen",
     "crates/vb_ui",
+    "crates/vb_ui_makepad",
+    "crates/vb_ui_snapshot",
     "crates/velvet_ballastics",
     "crates/flow-core",
     "crates/flow-step-plugin",
     "crates/flow-editor-makepad",
+    "xtask",
     "fuzz",
 ]
 resolver = "2"

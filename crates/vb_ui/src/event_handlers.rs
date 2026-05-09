@@ -1,10 +1,11 @@
 #![forbid(unsafe_code)]
+#![allow(clippy::arithmetic_side_effects)]
 //! Event handlers for the Mission Control UI.
 //!
 //! Emits Makepad actions for navigation and transport controls.
 //! State mutation happens in `MatchEvent::handle_actions` in `main.rs`.
 
-use crate::domain::{IpcCleanCycles, TabOffsets, TransportLayout};
+use crate::domain::{IpcCleanCycles, SidebarLayout, TransportLayout};
 use makepad_widgets::*;
 use vb_ui::app_state::Screen;
 use vb_ui::ipc_wiring::{IpcAppWiring, WiringError};
@@ -48,8 +49,8 @@ pub(crate) enum VbAction {
 // Navigation
 // ---------------------------------------------------------------------------
 
-/// Detects which nav tab (if any) was hit by the finger event.
-fn detect_nav_tab_hit(hit: &Hit, rect: &Rect) -> Option<usize> {
+/// Detects which sidebar nav row (if any) was hit by the finger event.
+fn detect_nav_row_hit(hit: &Hit, rect: &Rect) -> Option<u32> {
     let Hit::FingerDown(fe) = hit else {
         return None;
     };
@@ -57,37 +58,67 @@ fn detect_nav_tab_hit(hit: &Hit, rect: &Rect) -> Option<usize> {
         return None;
     }
 
-    let tab_y = rect.pos.y + TabOffsets::HEADER_HEIGHT;
-    if fe.abs.y < tab_y || fe.abs.y >= tab_y + TabOffsets::TAB_HEIGHT {
+    let layout = SidebarLayout::from_rect(*rect);
+    if fe.abs.x < layout.x || fe.abs.x >= layout.x + layout.row_width {
         return None;
     }
 
-    let offsets = TabOffsets::new();
-    let rel_x = fe.abs.x - rect.pos.x;
-    offsets
-        .0
-        .iter()
-        .position(|&offset| rel_x >= offset && rel_x < offset + TabOffsets::TAB_WIDTH)
+    let rel_y = fe.abs.y - layout.nav_y;
+    row_from_relative_y(rel_y, &layout)
 }
 
-/// Converts a tab index to its corresponding screen, or `None` if invalid.
-fn resolve_nav_tab_to_screen(tab_idx: usize) -> Option<Screen> {
-    match tab_idx {
-        0 => Some(Screen::RunReplay),
-        1 => Some(Screen::Verification),
-        2 => Some(Screen::SystemOverview),
-        3 => Some(Screen::WorkflowGraph),
-        4 => Some(Screen::IncidentConsole),
+fn row_from_relative_y(rel_y: f64, layout: &SidebarLayout) -> Option<u32> {
+    if row_contains(rel_y, layout, 0) {
+        Some(0)
+    } else if row_contains(rel_y, layout, 1) {
+        Some(1)
+    } else if row_contains(rel_y, layout, 2) {
+        Some(2)
+    } else if row_contains(rel_y, layout, 3) {
+        Some(3)
+    } else if row_contains(rel_y, layout, 4) {
+        Some(4)
+    } else if row_contains(rel_y, layout, 5) {
+        Some(5)
+    } else if row_contains(rel_y, layout, 6) {
+        Some(6)
+    } else if row_contains(rel_y, layout, 7) {
+        Some(7)
+    } else if row_contains(rel_y, layout, 8) {
+        Some(8)
+    } else if row_contains(rel_y, layout, 9) {
+        Some(9)
+    } else {
+        None
+    }
+}
+
+fn row_contains(rel_y: f64, layout: &SidebarLayout, row: u32) -> bool {
+    let top = f64::from(row) * (layout.row_height + layout.row_gap);
+    rel_y >= top && rel_y < top + layout.row_height
+}
+
+/// Converts a sidebar row to its corresponding screen, or `None` if invalid.
+fn resolve_nav_row_to_screen(row: u32) -> Option<Screen> {
+    match row {
+        0 => Some(Screen::ExecutionOverview),
+        1 => Some(Screen::WorkflowGraphAuthoring),
+        2 => Some(Screen::ExecutionDetailsGraph),
+        3 => Some(Screen::VerificationCertificate),
+        4 => Some(Screen::ReplayTheater),
+        5 => Some(Screen::IncidentFailureConsole),
+        6 => Some(Screen::ActionRegistry),
+        7 | 8 => Some(Screen::StorageDoctorAiContext),
         _ => None,
     }
 }
 
-/// Emits a `SwitchScreen` action when a nav tab is clicked.
+/// Emits a `SwitchScreen` action when a sidebar nav row is clicked.
 pub(crate) fn handle_nav(cx: &mut Cx, uid: WidgetUid, rect: &Rect, hit: &Hit) {
-    let Some(idx) = detect_nav_tab_hit(hit, rect) else {
+    let Some(row) = detect_nav_row_hit(hit, rect) else {
         return;
     };
-    let Some(screen) = resolve_nav_tab_to_screen(idx) else {
+    let Some(screen) = resolve_nav_row_to_screen(row) else {
         return;
     };
     cx.widget_action(uid, VbAction::SwitchScreen(screen));
@@ -98,7 +129,7 @@ pub(crate) fn handle_nav(cx: &mut Cx, uid: WidgetUid, rect: &Rect, hit: &Hit) {
 // ---------------------------------------------------------------------------
 
 /// Detects which transport button (if any) was hit by the finger event.
-fn detect_transport_button_hit(hit: &Hit, rect: &Rect, layout: &TransportLayout) -> Option<usize> {
+fn detect_transport_button_hit(hit: &Hit, layout: &TransportLayout) -> Option<usize> {
     let Hit::FingerDown(fe) = hit else {
         return None;
     };
@@ -106,15 +137,12 @@ fn detect_transport_button_hit(hit: &Hit, rect: &Rect, layout: &TransportLayout)
         return None;
     }
 
-    if fe.abs.y < layout.transport_y_offset
-        || fe.abs.y >= layout.transport_y_offset + layout.transport_height
-    {
+    if fe.abs.y < layout.transport_y || fe.abs.y >= layout.transport_y + layout.transport_height {
         return None;
     }
 
-    let transport_start_x = rect.pos.x + layout.start_x_offset;
-    let rel_x = fe.abs.x - transport_start_x;
-    let positions = layout.button_positions(transport_start_x);
+    let rel_x = fe.abs.x - layout.transport_x;
+    let positions = layout.button_positions();
 
     positions
         .iter()
@@ -126,16 +154,26 @@ fn resolve_button_index_to_control(button_idx: usize) -> Option<TransportControl
     match button_idx {
         0 => Some(TransportControlKind::JumpToStart),
         1 => Some(TransportControlKind::StepBackward),
-        2 => Some(TransportControlKind::StepForward),
-        3 => Some(TransportControlKind::JumpToEnd),
+        2 => Some(TransportControlKind::TogglePlayPause),
+        3 => Some(TransportControlKind::StepForward),
+        4 => Some(TransportControlKind::JumpToEnd),
         _ => None,
     }
 }
 
 /// Emits a `TransportControl` action when a transport button is clicked.
-pub(crate) fn handle_transport(cx: &mut Cx, uid: WidgetUid, rect: &Rect, hit: &Hit) {
+pub(crate) fn handle_transport(
+    cx: &mut Cx,
+    uid: WidgetUid,
+    rect: &Rect,
+    hit: &Hit,
+    app_state: &vb_ui::app_state::AppState,
+) {
+    if app_state.current_screen != Screen::ReplayTheater {
+        return;
+    }
     let layout = TransportLayout::from_rect(rect);
-    let Some(btn_idx) = detect_transport_button_hit(hit, rect, &layout) else {
+    let Some(btn_idx) = detect_transport_button_hit(hit, &layout) else {
         return;
     };
     let Some(control) = resolve_button_index_to_control(btn_idx) else {
@@ -156,14 +194,14 @@ pub(crate) fn handle_keyboard(
         return;
     };
     match kde.key_code {
-        KeyCode::Space => {
+        KeyCode::Space if app_state.current_screen == Screen::ReplayTheater => {
             cx.widget_action(
                 uid,
                 VbAction::TransportControl(TransportControlKind::TogglePlayPause),
             );
         }
         KeyCode::Equals | KeyCode::Minus
-            if app_state.current_screen == vb_ui::app_state::Screen::WorkflowGraph =>
+            if app_state.current_screen == vb_ui::app_state::Screen::WorkflowGraphAuthoring =>
         {
             if let Some(canvas) = workflow_canvas {
                 const ZOOM_FACTOR: f64 = 1.25;

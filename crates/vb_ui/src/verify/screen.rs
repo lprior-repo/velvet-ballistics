@@ -854,6 +854,341 @@ pub fn action_reports_to_display(reports: &[ActionPolicyReport]) -> ActionPolicy
 }
 
 // ---------------------------------------------------------------------------
+// Error types for fallible constructors
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Error {
+    VerificationIncomplete,
+    ArtifactDigestMissing,
+    WorkflowCorrupted,
+    PanelRenderError,
+}
+
+impl std::fmt::Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::VerificationIncomplete => write!(f, "verification report has no certificates"),
+            Self::ArtifactDigestMissing => write!(f, "artifact digest field is empty"),
+            Self::WorkflowCorrupted => write!(f, "workflow entry index out of bounds"),
+            Self::PanelRenderError => write!(f, "UI panel failed to construct from data"),
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// VerificationBanner -- top banner with pass/fail status
+// ---------------------------------------------------------------------------
+
+const BANNER_GREEN: &str = "#10B981";
+const BANNER_RED: &str = "#EF4444";
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BannerStatus {
+    Pass,
+    Fail,
+}
+
+impl BannerStatus {
+    #[must_use]
+    pub fn color(&self) -> &'static str {
+        match self {
+            Self::Pass => BANNER_GREEN,
+            Self::Fail => BANNER_RED,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct VerificationBanner {
+    pub status: BannerStatus,
+    pub message: String,
+}
+
+impl VerificationBanner {
+    #[must_use]
+    pub fn new(passed: bool) -> Self {
+        if passed {
+            Self {
+                status: BannerStatus::Pass,
+                message: String::from("Verification passed"),
+            }
+        } else {
+            Self {
+                status: BannerStatus::Fail,
+                message: String::from("Verification failed"),
+            }
+        }
+    }
+
+    #[must_use]
+    pub fn status(&self) -> BannerStatus {
+        self.status
+    }
+
+    #[must_use]
+    pub fn message(&self) -> &str {
+        &self.message
+    }
+}
+
+// ---------------------------------------------------------------------------
+// VerificationGate -- one gate in the 9-gate pipeline
+// ---------------------------------------------------------------------------
+
+const GATE_PENDING_COLOR: &str = "#98A2B3";
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum GateStatus {
+    Pass,
+    Fail,
+    Warning,
+    Pending,
+}
+
+impl GateStatus {
+    #[must_use]
+    pub fn color(&self) -> &'static str {
+        match self {
+            Self::Pass => NEON_GREEN,
+            Self::Fail => NEON_RED,
+            Self::Warning => NEON_ORANGE,
+            Self::Pending => GATE_PENDING_COLOR,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct VerificationGate {
+    pub name: String,
+    pub status: GateStatus,
+    pub index: usize,
+}
+
+impl VerificationGate {
+    #[must_use]
+    pub fn new(name: &str, status: GateStatus, index: usize) -> Self {
+        Self {
+            name: String::from(name),
+            status,
+            index,
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// ArtifactPanel -- side panel with artifact metadata and digests
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone)]
+pub struct ArtifactPanel {
+    pub artifact_version: String,
+    pub workflow_version: String,
+    pub ir_digest: String,
+    pub action_abi_digest: String,
+    pub policy_digest: String,
+    pub verified_timestamp: String,
+    pub warnings: Vec<String>,
+}
+
+impl ArtifactPanel {
+    #[must_use]
+    pub fn new(
+        artifact_version: &str,
+        workflow_version: &str,
+        ir_digest: &str,
+        action_abi_digest: &str,
+        policy_digest: &str,
+        verified_timestamp: &str,
+        warnings: Vec<String>,
+    ) -> Self {
+        Self {
+            artifact_version: String::from(artifact_version),
+            workflow_version: String::from(workflow_version),
+            ir_digest: String::from(ir_digest),
+            action_abi_digest: String::from(action_abi_digest),
+            policy_digest: String::from(policy_digest),
+            verified_timestamp: String::from(verified_timestamp),
+            warnings,
+        }
+    }
+
+    #[must_use]
+    pub fn warning_count(&self) -> usize {
+        self.warnings.len()
+    }
+
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.ir_digest.is_empty()
+            && self.action_abi_digest.is_empty()
+            && self.policy_digest.is_empty()
+    }
+}
+
+// ---------------------------------------------------------------------------
+// ProofSummary -- five boolean badges for verification outcome
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ProofSummary {
+    pub bounded: bool,
+    pub taint_safe: bool,
+    pub retry_safe: bool,
+    pub durable: bool,
+    pub replayable: bool,
+}
+
+impl ProofSummary {
+    #[must_use]
+    pub fn new(
+        bounded: bool,
+        taint_safe: bool,
+        retry_safe: bool,
+        durable: bool,
+        replayable: bool,
+    ) -> Self {
+        Self {
+            bounded,
+            taint_safe,
+            retry_safe,
+            durable,
+            replayable,
+        }
+    }
+
+    #[must_use]
+    pub fn badge_count(&self) -> usize {
+        5
+    }
+
+    #[must_use]
+    pub fn all_pass(&self) -> bool {
+        self.bounded && self.taint_safe && self.retry_safe && self.durable && self.replayable
+    }
+
+    #[must_use]
+    pub fn pass_count(&self) -> usize {
+        let mut count = 0usize;
+        if self.bounded {
+            count = count.saturating_add(1);
+        }
+        if self.taint_safe {
+            count = count.saturating_add(1);
+        }
+        if self.retry_safe {
+            count = count.saturating_add(1);
+        }
+        if self.durable {
+            count = count.saturating_add(1);
+        }
+        if self.replayable {
+            count = count.saturating_add(1);
+        }
+        count
+    }
+}
+
+// ---------------------------------------------------------------------------
+// VerificationCertificateView -- top-level container for Screen 4
+// ---------------------------------------------------------------------------
+
+pub struct VerificationCertificateView {
+    pub banner: VerificationBanner,
+    pub certificate_cards: Vec<CertificateCard>,
+    pub gates: Vec<VerificationGate>,
+    pub artifact_panel: ArtifactPanel,
+    pub proof_summary: ProofSummary,
+}
+
+impl VerificationCertificateView {
+    #[must_use]
+    pub fn new(
+        banner: VerificationBanner,
+        certificate_cards: Vec<CertificateCard>,
+        gates: Vec<VerificationGate>,
+        artifact_panel: ArtifactPanel,
+        proof_summary: ProofSummary,
+    ) -> Self {
+        Self {
+            banner,
+            certificate_cards,
+            gates,
+            artifact_panel,
+            proof_summary,
+        }
+    }
+
+    #[must_use]
+    pub fn gate_count(&self) -> usize {
+        self.gates.len()
+    }
+
+    #[must_use]
+    pub fn card_count(&self) -> usize {
+        self.certificate_cards.len()
+    }
+}
+
+impl Default for VerificationCertificateView {
+    fn default() -> Self {
+        let banner = VerificationBanner::new(true);
+        let certificate_cards = Vec::new();
+        let gates = Vec::new();
+        let artifact_panel = ArtifactPanel::new("", "", "", "", "", "", Vec::new());
+        let proof_summary = ProofSummary::new(false, false, false, false, false);
+        Self {
+            banner,
+            certificate_cards,
+            gates,
+            artifact_panel,
+            proof_summary,
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// 9-gate pipeline builder
+// ---------------------------------------------------------------------------
+
+/// Build the standard 9-gate pipeline in order.
+/// Gates: Parse, Graph check, Policy, Resources, Taint, Durability, Idempotency, Capability, Result
+#[must_use]
+pub fn build_gate_pipeline() -> Vec<VerificationGate> {
+    let gate_names = [
+        "Parse",
+        "Graph check",
+        "Policy",
+        "Resources",
+        "Taint",
+        "Durability",
+        "Idempotency",
+        "Capability",
+        "Result",
+    ];
+    gate_names
+        .iter()
+        .enumerate()
+        .map(|(i, name)| VerificationGate::new(name, GateStatus::Pending, i))
+        .collect()
+}
+
+/// Returns the 8 certificate card titles in the contract-specified order.
+#[must_use]
+pub fn certificate_card_titles() -> Vec<&'static str> {
+    vec![
+        "Structure",
+        "Boundedness",
+        "Resources",
+        "Taint/Secrets",
+        "Action policy",
+        "Durability",
+        "Idempotency",
+        "Capability",
+    ]
+}
+
+// ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
 
@@ -935,7 +1270,7 @@ mod tests {
     }
 
     #[test]
-    fn certificate_card_titles() {
+    fn certificate_card_titles_from_panel() {
         let panel = VerificationPanel::new();
         let cards = panel.certificate_cards();
         assert_eq!(cards[0].title, "Structural Validity");
@@ -1394,5 +1729,222 @@ mod tests {
         assert_eq!(fail_card.border_color, NEON_RED);
         let warn_card = CertificateCard::new("W", CardStatus::Warning, "meh");
         assert_eq!(warn_card.border_color, NEON_ORANGE);
+    }
+
+    // ========================================================================
+    // VerificationBanner
+    // ========================================================================
+
+    #[test]
+    fn banner_pass() {
+        let banner = VerificationBanner::new(true);
+        assert_eq!(banner.status(), BannerStatus::Pass);
+        assert_eq!(banner.message(), "Verification passed");
+        assert_eq!(banner.status().color(), BANNER_GREEN);
+    }
+
+    #[test]
+    fn banner_fail() {
+        let banner = VerificationBanner::new(false);
+        assert_eq!(banner.status(), BannerStatus::Fail);
+        assert_eq!(banner.message(), "Verification failed");
+        assert_eq!(banner.status().color(), BANNER_RED);
+    }
+
+    // ========================================================================
+    // VerificationGate
+    // ========================================================================
+
+    #[test]
+    fn gate_pass() {
+        let gate = VerificationGate::new("Parse", GateStatus::Pass, 0);
+        assert_eq!(gate.name, "Parse");
+        assert_eq!(gate.status, GateStatus::Pass);
+        assert_eq!(gate.index, 0);
+        assert_eq!(gate.status.color(), NEON_GREEN);
+    }
+
+    #[test]
+    fn gate_fail() {
+        let gate = VerificationGate::new("Result", GateStatus::Fail, 8);
+        assert_eq!(gate.name, "Result");
+        assert_eq!(gate.status, GateStatus::Fail);
+        assert_eq!(gate.index, 8);
+        assert_eq!(gate.status.color(), NEON_RED);
+    }
+
+    #[test]
+    fn gate_pending() {
+        let gate = VerificationGate::new("Taint", GateStatus::Pending, 4);
+        assert_eq!(gate.status, GateStatus::Pending);
+        assert_eq!(gate.status.color(), GATE_PENDING_COLOR);
+    }
+
+    // ========================================================================
+    // ArtifactPanel
+    // ========================================================================
+
+    #[test]
+    fn artifact_panel_fields() {
+        let panel = ArtifactPanel::new(
+            "v1.0.0",
+            "wf-v2",
+            "abc123",
+            "def456",
+            "ghi789",
+            "2026-05-09T12:00:00Z",
+            vec![String::from("warn1"), String::from("warn2")],
+        );
+        assert_eq!(panel.artifact_version, "v1.0.0");
+        assert_eq!(panel.workflow_version, "wf-v2");
+        assert_eq!(panel.ir_digest, "abc123");
+        assert_eq!(panel.action_abi_digest, "def456");
+        assert_eq!(panel.policy_digest, "ghi789");
+        assert_eq!(panel.verified_timestamp, "2026-05-09T12:00:00Z");
+        assert_eq!(panel.warning_count(), 2);
+        assert!(!panel.is_empty());
+    }
+
+    #[test]
+    fn artifact_panel_empty() {
+        let panel = ArtifactPanel::new("", "", "", "", "", "", Vec::new());
+        assert!(panel.is_empty());
+        assert_eq!(panel.warning_count(), 0);
+    }
+
+    // ========================================================================
+    // ProofSummary
+    // ========================================================================
+
+    #[test]
+    fn proof_summary_all_pass() {
+        let summary = ProofSummary::new(true, true, true, true, true);
+        assert!(summary.all_pass());
+        assert_eq!(summary.badge_count(), 5);
+        assert_eq!(summary.pass_count(), 5);
+    }
+
+    #[test]
+    fn proof_summary_all_fail() {
+        let summary = ProofSummary::new(false, false, false, false, false);
+        assert!(!summary.all_pass());
+        assert_eq!(summary.pass_count(), 0);
+    }
+
+    #[test]
+    fn proof_summary_partial() {
+        let summary = ProofSummary::new(true, false, true, false, true);
+        assert!(!summary.all_pass());
+        assert_eq!(summary.pass_count(), 3);
+    }
+
+    // ========================================================================
+    // VerificationCertificateView
+    // ========================================================================
+
+    #[test]
+    fn certificate_view_default() {
+        let view = VerificationCertificateView::default();
+        assert_eq!(view.card_count(), 0);
+        assert_eq!(view.gate_count(), 0);
+        assert!(view.proof_summary.badge_count() == 5);
+    }
+
+    #[test]
+    fn certificate_view_new() {
+        let banner = VerificationBanner::new(true);
+        let cards = vec![CertificateCard::new("Test", CardStatus::Pass, "ok")];
+        let gates = build_gate_pipeline();
+        let artifact = ArtifactPanel::new("v1", "wf1", "digest", "", "", "ts", Vec::new());
+        let proof = ProofSummary::new(true, true, false, true, false);
+        let view = VerificationCertificateView::new(banner, cards, gates, artifact, proof);
+        assert_eq!(view.card_count(), 1);
+        assert_eq!(view.gate_count(), 9);
+        assert_eq!(view.proof_summary.pass_count(), 3);
+    }
+
+    // ========================================================================
+    // Gate pipeline and card title invariants
+    // ========================================================================
+
+    #[test]
+    fn gate_pipeline_has_9_gates() {
+        let gates = build_gate_pipeline();
+        assert_eq!(gates.len(), 9);
+        let expected_names = [
+            "Parse",
+            "Graph check",
+            "Policy",
+            "Resources",
+            "Taint",
+            "Durability",
+            "Idempotency",
+            "Capability",
+            "Result",
+        ];
+        for (i, gate) in gates.iter().enumerate() {
+            assert_eq!(gate.index, i);
+            assert_eq!(gate.name, expected_names[i]);
+        }
+    }
+
+    #[test]
+    fn certificate_card_titles_invariant() {
+        let titles = super::certificate_card_titles();
+        assert_eq!(titles.len(), 8);
+        assert_eq!(titles[0], "Structure");
+        assert_eq!(titles[1], "Boundedness");
+        assert_eq!(titles[2], "Resources");
+        assert_eq!(titles[3], "Taint/Secrets");
+        assert_eq!(titles[4], "Action policy");
+        assert_eq!(titles[5], "Durability");
+        assert_eq!(titles[6], "Idempotency");
+        assert_eq!(titles[7], "Capability");
+    }
+
+    // ========================================================================
+    // Error display
+    // ========================================================================
+
+    #[test]
+    fn error_display() {
+        assert_eq!(
+            format!("{}", Error::VerificationIncomplete),
+            "verification report has no certificates"
+        );
+        assert_eq!(
+            format!("{}", Error::ArtifactDigestMissing),
+            "artifact digest field is empty"
+        );
+        assert_eq!(
+            format!("{}", Error::WorkflowCorrupted),
+            "workflow entry index out of bounds"
+        );
+        assert_eq!(
+            format!("{}", Error::PanelRenderError),
+            "UI panel failed to construct from data"
+        );
+    }
+
+    // ========================================================================
+    // BannerStatus and GateStatus colors match contract
+    // ========================================================================
+
+    #[test]
+    fn banner_pass_color_is_contract_green() {
+        assert_eq!(BannerStatus::Pass.color(), "#10B981");
+    }
+
+    #[test]
+    fn banner_fail_color_is_contract_red() {
+        assert_eq!(BannerStatus::Fail.color(), "#EF4444");
+    }
+
+    #[test]
+    fn gate_status_colors() {
+        assert_eq!(GateStatus::Pass.color(), NEON_GREEN);
+        assert_eq!(GateStatus::Fail.color(), NEON_RED);
+        assert_eq!(GateStatus::Warning.color(), NEON_ORANGE);
+        assert_eq!(GateStatus::Pending.color(), GATE_PENDING_COLOR);
     }
 }

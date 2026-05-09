@@ -22,9 +22,10 @@ pub use controller::{
 pub use engine::ReplayEngine;
 pub use graph_overlay::{GraphOverlay, NodeOverlay, NodeOverlayState, OverlayBadge, OverlayConfig};
 pub use screen::{
-    BORDER, CANVAS_BG, CARD_BG, GraphNode, InspectorCard, InspectorField, JumpChip, NEON_CYAN,
-    NEON_GREEN, NEON_ORANGE, NEON_RED, PANEL_BG, ReplayTheaterScreen, TEXT_DIM, TEXT_PRIMARY,
-    TEXT_SECONDARY, TransportBar, TransportButton,
+    BORDER, CANVAS_BG, CARD_BG, GraphNode, InspectorCard, InspectorField, JumpChip, LiveModeToggle,
+    NEON_CYAN, NEON_GREEN, NEON_ORANGE, NEON_PURPLE, NEON_RED, NEON_TEAL, PANEL_BG,
+    RecoveryDecisionPanel, ReplayTheaterScreen, SelectedEventPanel, SlotDiffRow, SlotDiffTable,
+    TEXT_DIM, TEXT_PRIMARY, TEXT_SECONDARY, TransportBar, TransportButton,
 };
 pub use slot_panel::{DiffEntry, SlotDiff, SlotDiffPanel};
 pub use state::{ReplayBookmark, ReplaySessionState, ReplayState, TerminalKind};

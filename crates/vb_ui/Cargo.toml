@@ -16,7 +16,9 @@ makepad-widgets = { git = "https://github.com/makepad/makepad", branch = "dev" }
 vb_ipc = { path = "../vb_ipc" }
 vb_core = { path = "../vb_core" }
 vb_storage = { path = "../vb_storage" }
+vb_ui_model = { path = "../vb_ui_model" }
 postcard = { version = "1", features = ["alloc"] }
+seahash = "4"
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1" }
 smol_str = { version = "0.3", features = ["serde"] }

@@ -27,7 +27,7 @@ script_mod! {
     use mod.prelude.widgets_internal.*
 
     let state = {
-        current_screen: "RunReplay",
+        current_screen: "ExecutionOverview",
         transport_state: "Idle"
     }
     mod.state = state
@@ -83,7 +83,7 @@ impl Widget for VbApp {
             &mut self.ipc_clean_cycles,
         );
         handle_nav(cx, self.uid, &self.rect, &hit);
-        handle_transport(cx, self.uid, &self.rect, &hit);
+        handle_transport(cx, self.uid, &self.rect, &hit, &self.app_state);
         handle_keyboard(
             cx,
             self.uid,
@@ -174,13 +174,7 @@ impl MatchEvent for VbApp {
                 match app_action {
                     VbAction::SwitchScreen(screen) => {
                         self.app_state.switch_screen(*screen);
-                        let screen_name = match screen {
-                            vb_ui::app_state::Screen::RunReplay => "RunReplay",
-                            vb_ui::app_state::Screen::Verification => "Verification",
-                            vb_ui::app_state::Screen::SystemOverview => "SystemOverview",
-                            vb_ui::app_state::Screen::WorkflowGraph => "WorkflowGraph",
-                            vb_ui::app_state::Screen::IncidentConsole => "IncidentConsole",
-                        };
+                        let screen_name = screen.splash_name();
                         script_eval!(cx, {
                             mod.state.current_screen = #(screen_name)
                         });
@@ -236,9 +230,9 @@ impl MatchEvent for VbApp {
                         self.app_state.show_shortcuts = false;
                         self.app_state.replay.transport_state = TransportState::Idle;
                         self.app_state
-                            .switch_screen(vb_ui::app_state::Screen::RunReplay);
+                            .switch_screen(vb_ui::app_state::Screen::ExecutionOverview);
                         script_eval!(cx, {
-                            mod.state.current_screen = "RunReplay"
+                            mod.state.current_screen = "ExecutionOverview"
                             mod.state.transport_state = "Idle"
                         });
                     }

@@ -1,114 +1,286 @@
 #![forbid(unsafe_code)]
-//! Drawing helpers for the Mission Control UI.
-//!
-//! Contains low-level draw functions extracted from main.rs to satisfy
-//! Farley constraints (≤ 25 lines per function).
+#![allow(clippy::arithmetic_side_effects)]
+//! White Makepad shell renderer for the canonical eight-screen UI.
 
 use crate::domain::{
-    TabColors, TabOffsets, dark_bg_color, header_bg_color, panel_bg_color, separator_color,
+    ShellMetrics, SidebarLayout, TransportLayout, accent_from_rgba, app_bg_color, border_color,
+    failure_color, muted_text_color, panel_color, primary_blue_color, primary_text_color,
+    secondary_text_color, success_color, surface_color, warning_color,
 };
 use makepad_widgets::*;
-use vb_ui::app_state::{AppState, HealthLevel, Screen};
-use vb_ui::incident::timeline::TimelineEntry;
-use vb_ui::incident::types::IncidentSeverity;
+use vb_ui::app_state::{AppState, Screen};
 use vb_ui::workflow::WorkflowCanvas;
 
-const HEADER_HEIGHT: f64 = 44.0;
+const CARD_GAP: f64 = 16.0;
+const CARD_HEIGHT: f64 = 148.0;
+const HERO_HEIGHT: f64 = 122.0;
 
-#[allow(clippy::as_conversions)]
-fn f64_to_f32(value: f64) -> f32 {
-    if value > f32::MAX.into() {
-        f32::MAX
-    } else if value < f32::MIN.into() {
-        f32::MIN
-    } else {
-        value as f32
-    }
+#[derive(Clone, Copy)]
+enum Tone {
+    Neutral,
+    Blue,
+    Green,
+    Purple,
+    Warning,
+    Failure,
 }
 
-#[allow(clippy::as_conversions)]
-fn usize_to_f64(value: usize) -> f64 {
-    value as f64
+#[derive(Clone, Copy)]
+struct PanelSpec {
+    title: &'static str,
+    metric: &'static str,
+    detail: &'static str,
+    tone: Tone,
 }
 
-#[allow(clippy::as_conversions)]
-fn u64_to_f64(value: u64) -> f64 {
-    value as f64
+#[derive(Clone, Copy)]
+struct ScreenSpec {
+    hero_title: &'static str,
+    hero_detail: &'static str,
+    left_title: &'static str,
+    right_title: &'static str,
+    panels: &'static [PanelSpec],
 }
 
-#[allow(clippy::as_conversions)]
-fn f64_to_u64(value: f64) -> u64 {
-    if !value.is_finite() || value <= 0.0 {
-        0
-    } else if value >= u64::MAX as f64 {
-        u64::MAX
-    } else {
-        value as u64
-    }
-}
+const OVERVIEW_PANELS: &[PanelSpec] = &[
+    PanelSpec {
+        title: "Active runs",
+        metric: "23",
+        detail: "running across shards",
+        tone: Tone::Blue,
+    },
+    PanelSpec {
+        title: "Healthy actions",
+        metric: "1,245",
+        detail: "99.2k/sec",
+        tone: Tone::Green,
+    },
+    PanelSpec {
+        title: "Verification pass rate",
+        metric: "99.8%",
+        detail: "last 24h",
+        tone: Tone::Green,
+    },
+    PanelSpec {
+        title: "Queue depth",
+        metric: "178",
+        detail: "medium pressure",
+        tone: Tone::Warning,
+    },
+];
 
-/// Draws the main dark background covering the entire widget.
+const WORKFLOW_PANELS: &[PanelSpec] = &[
+    PanelSpec {
+        title: "Selected workflow",
+        metric: "issue_triage",
+        detail: "draft projected as numeric IR",
+        tone: Tone::Purple,
+    },
+    PanelSpec {
+        title: "Selected step",
+        metric: "create_issue",
+        detail: "github.issue.create",
+        tone: Tone::Blue,
+    },
+    PanelSpec {
+        title: "Retry policy",
+        metric: "max 2",
+        detail: "backoff 1s",
+        tone: Tone::Neutral,
+    },
+    PanelSpec {
+        title: "Taint flow",
+        metric: "Clean",
+        detail: "input/output certified",
+        tone: Tone::Green,
+    },
+];
+
+const DETAILS_PANELS: &[PanelSpec] = &[
+    PanelSpec {
+        title: "Run",
+        metric: "run_7273",
+        detail: "workflow issue_triage",
+        tone: Tone::Blue,
+    },
+    PanelSpec {
+        title: "Attempt",
+        metric: "1 of 2",
+        detail: "elapsed 00:00:03",
+        tone: Tone::Warning,
+    },
+    PanelSpec {
+        title: "Shard",
+        metric: "1",
+        detail: "idempotency key issue_triage:8421",
+        tone: Tone::Neutral,
+    },
+    PanelSpec {
+        title: "Event stream",
+        metric: "seq 12",
+        detail: "create_issue started",
+        tone: Tone::Blue,
+    },
+];
+
+const VERIFY_PANELS: &[PanelSpec] = &[
+    PanelSpec {
+        title: "Structure valid",
+        metric: "PASS",
+        detail: "CFG accepted",
+        tone: Tone::Green,
+    },
+    PanelSpec {
+        title: "Boundedness",
+        metric: "PASS",
+        detail: "finite paths",
+        tone: Tone::Green,
+    },
+    PanelSpec {
+        title: "Resources",
+        metric: "PASS",
+        detail: "within limits",
+        tone: Tone::Green,
+    },
+    PanelSpec {
+        title: "Capabilities",
+        metric: "PASS",
+        detail: "least privilege",
+        tone: Tone::Green,
+    },
+];
+
+const REPLAY_PANELS: &[PanelSpec] = &[
+    PanelSpec {
+        title: "Selected event",
+        metric: "seq 12",
+        detail: "10:42:21.132",
+        tone: Tone::Blue,
+    },
+    PanelSpec {
+        title: "Recovery strategy",
+        metric: "Retry",
+        detail: "same idempotency key",
+        tone: Tone::Green,
+    },
+    PanelSpec {
+        title: "Slot diff",
+        metric: "3 fields",
+        detail: "title/repo/attempt",
+        tone: Tone::Purple,
+    },
+    PanelSpec {
+        title: "Safety",
+        metric: "Safe",
+        detail: "action scheduled durable",
+        tone: Tone::Green,
+    },
+];
+
+const INCIDENT_PANELS: &[PanelSpec] = &[
+    PanelSpec {
+        title: "Failure",
+        metric: "ACTION_TIMEOUT",
+        detail: "create_issue",
+        tone: Tone::Failure,
+    },
+    PanelSpec {
+        title: "Retry safety",
+        metric: "YES",
+        detail: "same key required",
+        tone: Tone::Green,
+    },
+    PanelSpec {
+        title: "Evidence",
+        metric: "2 events",
+        detail: "started + timeout",
+        tone: Tone::Warning,
+    },
+    PanelSpec {
+        title: "Runbook",
+        metric: "RB-012",
+        detail: "GitHub Actions",
+        tone: Tone::Neutral,
+    },
+];
+
+const ACTION_PANELS: &[PanelSpec] = &[
+    PanelSpec {
+        title: "Selected action",
+        metric: "ActionId(7)",
+        detail: "github.issue.create",
+        tone: Tone::Warning,
+    },
+    PanelSpec {
+        title: "Policy",
+        metric: "Idempotent",
+        detail: "external write",
+        tone: Tone::Green,
+    },
+    PanelSpec {
+        title: "Capabilities",
+        metric: "3",
+        detail: "github, secrets, journal",
+        tone: Tone::Purple,
+    },
+    PanelSpec {
+        title: "Schema",
+        metric: "4 in / 2 out",
+        detail: "postcard binary",
+        tone: Tone::Blue,
+    },
+];
+
+const STORAGE_PANELS: &[PanelSpec] = &[
+    PanelSpec {
+        title: "Storage doctor",
+        metric: "PASS",
+        detail: "Fjall lock held",
+        tone: Tone::Green,
+    },
+    PanelSpec {
+        title: "Journal events",
+        metric: "12,482",
+        detail: "monotonic SeqNo",
+        tone: Tone::Blue,
+    },
+    PanelSpec {
+        title: "Blob bytes",
+        metric: "2.1 GiB",
+        detail: "summarized for AI",
+        tone: Tone::Purple,
+    },
+    PanelSpec {
+        title: "Trim threshold",
+        metric: "WARN",
+        detail: "trim recommended soon",
+        tone: Tone::Warning,
+    },
+];
+
 #[allow(elided_lifetimes_in_paths)]
 pub(crate) fn draw_background(draw_bg: &mut DrawColor, cx: &mut Cx2d, rect: Rect) {
-    draw_bg.color = dark_bg_color();
-    draw_bg.draw_abs(cx, rect);
+    draw_rect(draw_bg, cx, rect, app_bg_color());
+    draw_rect(draw_bg, cx, ShellMetrics::shell_rect(rect), border_color());
+    draw_inset_rect(
+        draw_bg,
+        cx,
+        ShellMetrics::shell_rect(rect),
+        surface_color(),
+        ShellMetrics::HAIRLINE,
+    );
 }
 
-/// Draws the header bar with title placeholder and separator line.
 #[allow(elided_lifetimes_in_paths)]
 pub(crate) fn draw_header_bar(draw_header: &mut DrawColor, cx: &mut Cx2d, rect: Rect) {
-    let header_rect = header_geometry(rect);
-    draw_header.color = header_bg_color();
-    draw_header.draw_abs(cx, header_rect);
-    draw_header_title(draw_header, cx, rect);
-    draw_header_separator(draw_header, cx, rect);
+    draw_card(
+        draw_header,
+        cx,
+        ShellMetrics::top_bar_rect(rect),
+        surface_color(),
+    );
 }
 
-fn header_geometry(rect: Rect) -> Rect {
-    Rect {
-        pos: rect.pos,
-        size: DVec2 {
-            x: rect.size.x,
-            y: HEADER_HEIGHT,
-        },
-    }
-}
-
-#[allow(elided_lifetimes_in_paths)]
-fn draw_header_title(draw_header: &mut DrawColor, cx: &mut Cx2d, rect: Rect) {
-    let title_rect = Rect {
-        pos: DVec2 {
-            x: rect.pos.x + 16.0,
-            y: rect.pos.y + 8.0,
-        },
-        size: DVec2 { x: 40.0, y: 28.0 },
-    };
-    draw_header.color = Vec4f {
-        x: 0.0,
-        y: 0.96,
-        z: 1.0,
-        w: 1.0,
-    };
-    draw_header.draw_abs(cx, title_rect);
-}
-
-#[allow(elided_lifetimes_in_paths)]
-fn draw_header_separator(draw_header: &mut DrawColor, cx: &mut Cx2d, rect: Rect) {
-    let separator_rect = Rect {
-        pos: DVec2 {
-            x: rect.pos.x,
-            y: rect.pos.y + HEADER_HEIGHT,
-        },
-        size: DVec2 {
-            x: rect.size.x,
-            y: 1.0,
-        },
-    };
-    draw_header.color = separator_color();
-    draw_header.draw_abs(cx, separator_rect);
-}
-
-/// Draws the navigation tabs (5 tabs across the header).
 #[allow(elided_lifetimes_in_paths)]
 pub(crate) fn draw_nav_tabs(
     draw_nav: &mut DrawColor,
@@ -116,1503 +288,763 @@ pub(crate) fn draw_nav_tabs(
     rect: Rect,
     app_state: &AppState,
 ) {
-    let offsets = TabOffsets::new();
-    let y = rect.pos.y + TabOffsets::HEADER_HEIGHT;
-
-    for (i, &x_offset) in offsets.0.iter().enumerate() {
-        let is_active = match app_state.current_screen() {
-            Screen::RunReplay => i == 0,
-            Screen::Verification => i == 1,
-            Screen::SystemOverview => i == 2,
-            Screen::WorkflowGraph => i == 3,
-            Screen::IncidentConsole => i == 4,
-        };
-
-        let colors = TabColors::for_tab(i, is_active);
-
-        // Tab background
-        let tab_rect = Rect {
-            pos: DVec2 {
-                x: rect.pos.x + x_offset,
-                y,
-            },
-            size: DVec2 {
-                x: TabOffsets::TAB_WIDTH,
-                y: TabOffsets::TAB_HEIGHT,
-            },
-        };
-        draw_nav.color = Vec4f {
-            x: colors.bg[0],
-            y: colors.bg[1],
-            z: colors.bg[2],
-            w: 1.0,
-        };
-        draw_nav.draw_abs(cx, tab_rect);
-
-        // Tab accent (bottom border)
-        let accent_rect = Rect {
-            pos: DVec2 {
-                x: rect.pos.x + x_offset,
-                y: y + TabOffsets::TAB_HEIGHT - 3.0,
-            },
-            size: DVec2 {
-                x: TabOffsets::TAB_WIDTH,
-                y: 3.0,
-            },
-        };
-        draw_nav.color = Vec4f {
-            x: colors.accent[0],
-            y: colors.accent[1],
-            z: colors.accent[2],
-            w: 1.0,
-        };
-        draw_nav.draw_abs(cx, accent_rect);
-    }
+    draw_card(
+        draw_nav,
+        cx,
+        ShellMetrics::sidebar_rect(rect),
+        surface_color(),
+    );
+    draw_nav_row(draw_nav, cx, rect, app_state, Screen::ExecutionOverview, 0);
+    draw_nav_row(
+        draw_nav,
+        cx,
+        rect,
+        app_state,
+        Screen::WorkflowGraphAuthoring,
+        1,
+    );
+    draw_nav_row(
+        draw_nav,
+        cx,
+        rect,
+        app_state,
+        Screen::ExecutionDetailsGraph,
+        2,
+    );
+    draw_nav_row(
+        draw_nav,
+        cx,
+        rect,
+        app_state,
+        Screen::VerificationCertificate,
+        3,
+    );
+    draw_nav_row(draw_nav, cx, rect, app_state, Screen::ReplayTheater, 4);
+    draw_nav_row(
+        draw_nav,
+        cx,
+        rect,
+        app_state,
+        Screen::IncidentFailureConsole,
+        5,
+    );
+    draw_nav_row(draw_nav, cx, rect, app_state, Screen::ActionRegistry, 6);
+    draw_nav_row(
+        draw_nav,
+        cx,
+        rect,
+        app_state,
+        Screen::StorageDoctorAiContext,
+        7,
+    );
+    draw_nav_row(
+        draw_nav,
+        cx,
+        rect,
+        app_state,
+        Screen::StorageDoctorAiContext,
+        8,
+    );
 }
 
-/// Helper for consistent light-gray placeholder text.
-#[allow(elided_lifetimes_in_paths)]
-fn draw_text_label(draw_text: &mut DrawText, cx: &mut Cx2d, pos: DVec2, text: &str) {
-    draw_text.text_style.font_size = 10.0;
-    draw_text.color = Vec4f {
-        x: 0.9,
-        y: 0.9,
-        z: 0.9,
-        w: 1.0,
-    };
-    draw_text.draw_abs(cx, pos, text);
-}
-
-/// Draws the main content area with a panel and accent border.
 #[allow(elided_lifetimes_in_paths)]
 pub(crate) fn draw_content(
     draw_bg: &mut DrawColor,
-    draw_vector: &mut DrawVector,
+    _draw_vector: &mut DrawVector,
     draw_text: &mut DrawText,
     cx: &mut Cx2d,
     rect: Rect,
     app_state: &AppState,
-    workflow_canvas: &Option<WorkflowCanvas>,
+    _workflow_canvas: &Option<WorkflowCanvas>,
 ) {
-    let content_y = rect.pos.y + 73.0;
-
-    // Content background
-    let content_rect = Rect {
-        pos: DVec2 {
-            x: rect.pos.x,
-            y: content_y,
-        },
-        size: DVec2 {
-            x: rect.size.x,
-            y: rect.size.y - 73.0,
-        },
-    };
-    draw_bg.color = dark_bg_color();
-    draw_bg.draw_abs(cx, content_rect);
-
-    // Panel background
-    let panel_rect = Rect {
-        pos: DVec2 {
-            x: rect.pos.x + 20.0,
-            y: content_y + 20.0,
-        },
-        size: DVec2 {
-            x: rect.size.x - 40.0,
-            y: 150.0,
-        },
-    };
-    draw_bg.color = panel_bg_color();
-    draw_bg.draw_abs(cx, panel_rect);
-
-    // Accent border (left edge) colored by current screen
-    let (r, g, b) = match app_state.current_screen() {
-        Screen::RunReplay => (0.0, 0.96, 1.0),
-        Screen::Verification => (0.22, 1.0, 0.08),
-        Screen::SystemOverview => (0.18, 0.42, 1.0),
-        Screen::WorkflowGraph => (0.69, 0.30, 1.0),
-        Screen::IncidentConsole => (1.0, 0.03, 0.23),
-    };
-    let accent_rect = Rect {
-        pos: DVec2 {
-            x: rect.pos.x + 20.0,
-            y: content_y + 20.0,
-        },
-        size: DVec2 { x: 4.0, y: 150.0 },
-    };
-    draw_bg.color = Vec4f {
-        x: r,
-        y: g,
-        z: b,
-        w: 1.0,
-    };
-    draw_bg.draw_abs(cx, accent_rect);
-
-    // Per-screen placeholder content
-    match app_state.current_screen() {
-        Screen::SystemOverview => {
-            draw_system_overview_content(draw_bg, draw_text, cx, &panel_rect, app_state)
-        }
-        Screen::WorkflowGraph => draw_workflow_graph_content(
-            draw_bg,
-            draw_vector,
-            draw_text,
-            cx,
-            &panel_rect,
-            app_state,
-            workflow_canvas,
-        ),
-        Screen::RunReplay => {
-            draw_run_replay_content(draw_bg, draw_text, cx, &panel_rect, app_state)
-        }
-        Screen::Verification => {
-            draw_verification_content(draw_bg, draw_text, cx, &panel_rect, app_state)
-        }
-        Screen::IncidentConsole => {
-            draw_incident_content(draw_bg, draw_vector, draw_text, cx, &panel_rect, app_state)
-        }
+    draw_sidebar_text(draw_text, cx, rect);
+    draw_top_bar_text(draw_bg, draw_text, cx, rect, app_state);
+    draw_screen(
+        draw_bg,
+        draw_text,
+        cx,
+        ShellMetrics::content_rect(rect),
+        app_state,
+    );
+    if app_state.show_shortcuts {
+        draw_shortcuts(draw_bg, draw_text, cx, rect);
     }
 }
 
 #[allow(elided_lifetimes_in_paths)]
-fn draw_system_overview_content(
+fn draw_screen(
     draw_bg: &mut DrawColor,
     draw_text: &mut DrawText,
     cx: &mut Cx2d,
-    panel: &Rect,
+    content: Rect,
     app_state: &AppState,
 ) {
-    let sys = &app_state.system;
+    let spec = screen_spec(app_state.current_screen());
+    draw_hero(draw_bg, draw_text, cx, content, app_state, spec);
+    draw_panel_grid(draw_bg, draw_text, cx, content, spec.panels);
+    draw_wide_panels(draw_bg, draw_text, cx, content, spec);
+    if app_state.current_screen() == Screen::ReplayTheater {
+        draw_transport(draw_bg, draw_text, cx, content);
+    }
+}
 
-    // Title bar placeholder (blue accent)
-    let title_rect = Rect {
-        pos: DVec2 {
-            x: panel.pos.x + 16.0,
-            y: panel.pos.y + 12.0,
+fn screen_spec(screen: Screen) -> ScreenSpec {
+    match screen {
+        Screen::ExecutionOverview => ScreenSpec {
+            hero_title: "System overview",
+            hero_detail: "Active runs, queue pressure, shard flow, and event ticker stay visible without red overload.",
+            left_title: "Executions",
+            right_title: "Shard flow map",
+            panels: OVERVIEW_PANELS,
         },
-        size: DVec2 { x: 180.0, y: 18.0 },
-    };
-    draw_bg.color = Vec4f {
-        x: 0.18,
-        y: 0.42,
-        z: 1.0,
-        w: 1.0,
-    };
-    draw_bg.draw_abs(cx, title_rect);
-    draw_text_label(
-        draw_text,
-        cx,
-        DVec2 {
-            x: panel.pos.x + 20.0,
-            y: panel.pos.y + 14.0,
+        Screen::WorkflowGraphAuthoring => ScreenSpec {
+            hero_title: "Verified workflow canvas",
+            hero_detail: "State palette, retained node coordinates, semantic edge packets, and fixed inspector width.",
+            left_title: "Canvas",
+            right_title: "Step inspector",
+            panels: WORKFLOW_PANELS,
         },
-        "System Overview",
-    );
+        Screen::ExecutionDetailsGraph => ScreenSpec {
+            hero_title: "Run inspection",
+            hero_detail: "Runtime graph, step details, and event stream remain tied to the selected run evidence.",
+            left_title: "Runtime graph",
+            right_title: "Event stream",
+            panels: DETAILS_PANELS,
+        },
+        Screen::VerificationCertificate => ScreenSpec {
+            hero_title: "Verification passed",
+            hero_detail: "All admission gates passed with deterministic certificate and digest evidence.",
+            left_title: "Certificate gates",
+            right_title: "Accepted artifact",
+            panels: VERIFY_PANELS,
+        },
+        Screen::ReplayTheater => ScreenSpec {
+            hero_title: "Journal replay",
+            hero_detail: "Scrubber-driven graph state, selected event marker, slot diff, and safe recovery decision.",
+            left_title: "Replay graph",
+            right_title: "Selected event",
+            panels: REPLAY_PANELS,
+        },
+        Screen::IncidentFailureConsole => ScreenSpec {
+            hero_title: "ACTION_TIMEOUT at create_issue",
+            hero_detail: "Failure path is restrained red; evidence, retry safety, and repair hints take priority.",
+            left_title: "Failure path",
+            right_title: "Evidence chain",
+            panels: INCIDENT_PANELS,
+        },
+        Screen::ActionRegistry => ScreenSpec {
+            hero_title: "Action contracts",
+            hero_detail: "Numeric ActionId policy, side effects, capabilities, retry safety, and binary schemas.",
+            left_title: "Action registry",
+            right_title: "Contract inspector",
+            panels: ACTION_PANELS,
+        },
+        Screen::StorageDoctorAiContext => ScreenSpec {
+            hero_title: "Storage doctor passed",
+            hero_detail: "Fjall keyspaces, postcard envelopes, journal health, and AI-safe context packet.",
+            left_title: "Journal doctor",
+            right_title: "AI context packet",
+            panels: STORAGE_PANELS,
+        },
+    }
+}
 
-    // Shard count metric bar
-    let shard_bar = Rect {
-        pos: DVec2 {
-            x: panel.pos.x + 16.0,
-            y: panel.pos.y + 42.0,
-        },
+#[allow(elided_lifetimes_in_paths)]
+fn draw_hero(
+    draw_bg: &mut DrawColor,
+    draw_text: &mut DrawText,
+    cx: &mut Cx2d,
+    content: Rect,
+    app_state: &AppState,
+    spec: ScreenSpec,
+) {
+    let hero = Rect {
+        pos: content.pos,
         size: DVec2 {
-            x: f64::from(sys.shard_count).mul_add(8.0, 40.0).min(200.0),
-            y: 12.0,
+            x: content.size.x,
+            y: HERO_HEIGHT,
         },
     };
-    draw_bg.color = Vec4f {
-        x: 0.3,
-        y: 0.5,
-        z: 1.0,
-        w: 1.0,
-    };
-    draw_bg.draw_abs(cx, shard_bar);
-    let shard_text = format!("Shards: {}", sys.shard_count);
-    draw_text_label(
+    draw_card(draw_bg, cx, hero, surface_color());
+    draw_accent(draw_bg, cx, hero, app_state.screen_nav_color());
+    draw_label(
         draw_text,
         cx,
-        DVec2 {
-            x: shard_bar.pos.x + shard_bar.size.x + 8.0,
-            y: shard_bar.pos.y + 1.0,
-        },
-        &shard_text,
+        hero.pos.x + 24.0,
+        hero.pos.y + 22.0,
+        spec.hero_title,
+        20.0,
+        primary_text_color(),
     );
-
-    // Active runs metric bar
-    let runs_bar = Rect {
-        pos: DVec2 {
-            x: panel.pos.x + 16.0,
-            y: panel.pos.y + 62.0,
-        },
-        size: DVec2 {
-            x: f64::from(sys.total_active_runs)
-                .mul_add(6.0, 40.0)
-                .min(200.0),
-            y: 12.0,
-        },
-    };
-    draw_bg.color = Vec4f {
-        x: 0.0,
-        y: 0.8,
-        z: 1.0,
-        w: 1.0,
-    };
-    draw_bg.draw_abs(cx, runs_bar);
-    let runs_text = format!("Runs: {}", sys.total_active_runs);
-    draw_text_label(
+    draw_label(
         draw_text,
         cx,
-        DVec2 {
-            x: runs_bar.pos.x + runs_bar.size.x + 8.0,
-            y: runs_bar.pos.y + 1.0,
-        },
-        &runs_text,
+        hero.pos.x + 24.0,
+        hero.pos.y + 56.0,
+        spec.hero_detail,
+        12.0,
+        secondary_text_color(),
     );
-
-    // Queue depth metric bar
-    let queue_bar = Rect {
-        pos: DVec2 {
-            x: panel.pos.x + 16.0,
-            y: panel.pos.y + 82.0,
-        },
-        size: DVec2 {
-            x: f64::from(sys.total_queue_depth)
-                .mul_add(4.0, 40.0)
-                .min(200.0),
-            y: 12.0,
-        },
-    };
-    draw_bg.color = Vec4f {
-        x: 0.5,
-        y: 0.7,
-        z: 1.0,
-        w: 1.0,
-    };
-    draw_bg.draw_abs(cx, queue_bar);
-    let queue_text = format!("Queue: {}", sys.total_queue_depth);
-    draw_text_label(
+    draw_label(
         draw_text,
         cx,
-        DVec2 {
-            x: queue_bar.pos.x + queue_bar.size.x + 8.0,
-            y: queue_bar.pos.y + 1.0,
-        },
-        &queue_text,
-    );
-
-    // Health status indicator
-    let health_color = match sys.overall_health {
-        HealthLevel::Healthy => Vec4f {
-            x: 0.22,
-            y: 1.0,
-            z: 0.08,
-            w: 1.0,
-        },
-        HealthLevel::Degraded => Vec4f {
-            x: 1.0,
-            y: 0.9,
-            z: 0.0,
-            w: 1.0,
-        },
-        HealthLevel::Critical => Vec4f {
-            x: 1.0,
-            y: 0.03,
-            z: 0.23,
-            w: 1.0,
-        },
-    };
-    let health_rect = Rect {
-        pos: DVec2 {
-            x: panel.pos.x + 16.0,
-            y: panel.pos.y + 110.0,
-        },
-        size: DVec2 { x: 80.0, y: 20.0 },
-    };
-    draw_bg.color = health_color;
-    draw_bg.draw_abs(cx, health_rect);
-    let health_label = match sys.overall_health {
-        HealthLevel::Healthy => "Healthy",
-        HealthLevel::Degraded => "Degraded",
-        HealthLevel::Critical => "Critical",
-    };
-    draw_text_label(
-        draw_text,
-        cx,
-        DVec2 {
-            x: health_rect.pos.x + health_rect.size.x + 8.0,
-            y: health_rect.pos.y + 4.0,
-        },
-        health_label,
+        hero.pos.x + 24.0,
+        hero.pos.y + 84.0,
+        "Figma-ready white Makepad shell",
+        11.0,
+        muted_text_color(),
     );
 }
 
-const NODE_CARD_WIDTH: f64 = 160.0;
-const NODE_CARD_HEIGHT: f64 = 48.0;
-const NODE_HEADER_HEIGHT: f64 = 24.0;
-const NODE_BORDER_RADIUS: f64 = 8.0;
-const NODE_PORT_RADIUS: f64 = 5.0;
-
-struct SampleNodeCard {
-    header_color: [f32; 4],
-    body_color: [f32; 4],
-    border_color: [f32; 4],
-    text_color: [f32; 4],
-    kind_label: String,
-    step_name: String,
-    badges: Vec<(String, [f32; 4])>,
-    state_glow: Option<([f32; 4], f32)>,
+#[allow(elided_lifetimes_in_paths)]
+fn draw_panel_grid(
+    draw_bg: &mut DrawColor,
+    draw_text: &mut DrawText,
+    cx: &mut Cx2d,
+    content: Rect,
+    panels: &[PanelSpec],
+) {
+    panels.iter().enumerate().for_each(|(index, panel)| {
+        let col = usize_to_f64(index % 4);
+        let card_width = (content.size.x - (CARD_GAP * 3.0)) / 4.0;
+        let x = content.pos.x + (card_width + CARD_GAP) * col;
+        let y = content.pos.y + HERO_HEIGHT + CARD_GAP;
+        draw_metric_card(draw_bg, draw_text, cx, x, y, card_width, panel);
+    });
 }
 
-fn build_sample_node_cards() -> Vec<SampleNodeCard> {
-    vec![
-        SampleNodeCard {
-            header_color: [0.098, 0.098, 0.157, 1.0],
-            body_color: [0.133, 0.133, 0.200, 1.0],
-            border_color: [0.247, 0.247, 0.420, 1.0],
-            text_color: [0.910, 0.910, 1.0, 1.0],
-            kind_label: "SetConst".to_string(),
-            step_name: "#0 val=42".to_string(),
-            badges: vec![],
-            state_glow: Some(([0.0, 0.482, 0.502, 1.0], 4.0)),
+#[allow(elided_lifetimes_in_paths)]
+fn draw_wide_panels(
+    draw_bg: &mut DrawColor,
+    draw_text: &mut DrawText,
+    cx: &mut Cx2d,
+    content: Rect,
+    spec: ScreenSpec,
+) {
+    let y = content.pos.y + HERO_HEIGHT + CARD_GAP + CARD_HEIGHT + CARD_GAP;
+    let left_width = (content.size.x * 0.62) - (CARD_GAP * 0.5);
+    let right_width = content.size.x - left_width - CARD_GAP;
+    let height = content.size.y - HERO_HEIGHT - CARD_HEIGHT - (CARD_GAP * 2.0);
+    let left = Rect {
+        pos: DVec2 {
+            x: content.pos.x,
+            y,
         },
-        SampleNodeCard {
-            header_color: [0.157, 0.086, 0.027, 1.0],
-            body_color: [0.200, 0.118, 0.039, 1.0],
-            border_color: [1.0, 0.42, 0.0, 1.0],
-            text_color: [0.910, 0.910, 1.0, 1.0],
-            kind_label: "Do#7".to_string(),
-            step_name: "#1 action=A7 S".to_string(),
-            badges: vec![
-                ("A7".to_string(), [1.0, 0.42, 0.0, 1.0]),
-                ("S".to_string(), [1.0, 0.0, 1.0, 1.0]),
-            ],
-            state_glow: Some(([0.0, 0.961, 1.0, 1.0], 6.0)),
+        size: DVec2 {
+            x: left_width,
+            y: height,
         },
-        SampleNodeCard {
-            header_color: [0.133, 0.071, 0.196, 1.0],
-            body_color: [0.180, 0.098, 0.251, 1.0],
-            border_color: [0.694, 0.302, 1.0, 1.0],
-            text_color: [0.910, 0.910, 1.0, 1.0],
-            kind_label: "Choose".to_string(),
-            step_name: "#2 branch".to_string(),
-            badges: vec![],
-            state_glow: None,
+    };
+    let right = Rect {
+        pos: DVec2 {
+            x: content.pos.x + left_width + CARD_GAP,
+            y,
         },
-    ]
+        size: DVec2 {
+            x: right_width,
+            y: height,
+        },
+    };
+    draw_card(draw_bg, cx, left, surface_color());
+    draw_card(draw_bg, cx, right, surface_color());
+    draw_label(
+        draw_text,
+        cx,
+        left.pos.x + 20.0,
+        left.pos.y + 20.0,
+        spec.left_title,
+        16.0,
+        primary_text_color(),
+    );
+    draw_label(
+        draw_text,
+        cx,
+        right.pos.x + 20.0,
+        right.pos.y + 20.0,
+        spec.right_title,
+        16.0,
+        primary_text_color(),
+    );
+    draw_panel_lines(draw_text, cx, left);
+    draw_inspector_lines(draw_text, cx, right);
 }
 
-#[allow(elided_lifetimes_in_paths, clippy::too_many_arguments)]
-pub(crate) fn draw_workflow_node_card(
-    draw_vector: &mut DrawVector,
+#[allow(elided_lifetimes_in_paths)]
+fn draw_metric_card(
+    draw_bg: &mut DrawColor,
     draw_text: &mut DrawText,
     cx: &mut Cx2d,
     x: f64,
     y: f64,
-    header_color: [f32; 4],
-    body_color: [f32; 4],
-    border_color: [f32; 4],
-    text_color: [f32; 4],
-    kind_label: &str,
-    step_name: &str,
-    badges: &[(String, [f32; 4])],
-    state_glow: Option<([f32; 4], f32)>,
+    width: f64,
+    panel: &PanelSpec,
 ) {
-    let radius = f64_to_f32(NODE_BORDER_RADIUS);
-    let width = f64_to_f32(NODE_CARD_WIDTH);
-    let height = f64_to_f32(NODE_CARD_HEIGHT);
-    let header_h = f64_to_f32(NODE_HEADER_HEIGHT);
-
-    draw_vector.begin();
-
-    if let Some((glow_c, glow_r)) = state_glow {
-        draw_vector.set_color(glow_c[0], glow_c[1], glow_c[2], glow_c[3] * 0.25);
-        draw_vector.rounded_rect(f64_to_f32(x), f64_to_f32(y), width, height, glow_r);
-        draw_vector.fill();
-    }
-
-    draw_vector.set_color(body_color[0], body_color[1], body_color[2], body_color[3]);
-    draw_vector.rounded_rect(f64_to_f32(x), f64_to_f32(y), width, height, radius);
-    draw_vector.fill();
-
-    draw_vector.set_color(
-        border_color[0],
-        border_color[1],
-        border_color[2],
-        border_color[3],
-    );
-    draw_vector.rounded_rect(f64_to_f32(x), f64_to_f32(y), width, height, radius);
-    draw_vector.stroke(1.5_f32);
-
-    let header_dark = [
-        (header_color[0] * 0.85).min(header_color[0]),
-        (header_color[1] * 0.85).min(header_color[1]),
-        (header_color[2] * 0.85).min(header_color[2]),
-        header_color[3],
-    ];
-    draw_vector.set_color(
-        header_dark[0],
-        header_dark[1],
-        header_dark[2],
-        header_dark[3],
-    );
-    draw_vector.rounded_rect(f64_to_f32(x), f64_to_f32(y), width, header_h, radius);
-    draw_vector.fill();
-
-    draw_text.text_style.font_size = 9.0;
-    draw_text.color = Vec4f {
-        x: text_color[0],
-        y: text_color[1],
-        z: text_color[2],
-        w: text_color[3],
-    };
-    draw_text.draw_abs(
-        cx,
-        DVec2 {
-            x: x + 8.0,
-            y: y + 5.0,
-        },
-        kind_label,
-    );
-
-    draw_text.text_style.font_size = 8.0;
-    draw_text.color = Vec4f {
-        x: text_color[0] * 0.7,
-        y: text_color[1] * 0.7,
-        z: text_color[2] * 0.7,
-        w: text_color[3],
-    };
-    draw_text.draw_abs(
-        cx,
-        DVec2 {
-            x: x + 8.0,
-            y: y + NODE_HEADER_HEIGHT + 4.0,
-        },
-        step_name,
-    );
-
-    let mut badge_x = x + NODE_CARD_WIDTH - 8.0;
-    for (_badge_text, badge_color) in badges {
-        let badge_h = 12.0_f32;
-        let badge_y = y + 6.0;
-        draw_vector.set_color(
-            badge_color[0],
-            badge_color[1],
-            badge_color[2],
-            badge_color[3],
-        );
-        draw_vector.rounded_rect(
-            f64_to_f32(badge_x - 18.0),
-            f64_to_f32(badge_y),
-            18.0_f32,
-            badge_h,
-            3.0_f32,
-        );
-        draw_vector.fill();
-        badge_x -= 21.0;
-    }
-
-    let port_y = y + NODE_HEADER_HEIGHT + (NODE_CARD_HEIGHT - NODE_HEADER_HEIGHT) / 2.0;
-    let port_x_left = x - NODE_PORT_RADIUS - 2.0;
-    let port_x_right = x + NODE_CARD_WIDTH + NODE_PORT_RADIUS + 2.0;
-
-    draw_vector.set_color(0.224_f32, 1.0_f32, 0.078_f32, 1.0_f32);
-    draw_vector.circle(
-        f64_to_f32(port_x_left),
-        f64_to_f32(port_y),
-        f64_to_f32(NODE_PORT_RADIUS),
-    );
-    draw_vector.fill();
-
-    draw_vector.set_color(1.0_f32, 0.42_f32, 0.0_f32, 1.0_f32);
-    draw_vector.circle(
-        f64_to_f32(port_x_right),
-        f64_to_f32(port_y),
-        f64_to_f32(NODE_PORT_RADIUS),
-    );
-    draw_vector.fill();
-
-    draw_vector.end(cx);
-}
-
-#[allow(elided_lifetimes_in_paths)]
-fn draw_workflow_graph_content(
-    draw_bg: &mut DrawColor,
-    draw_vector: &mut DrawVector,
-    draw_text: &mut DrawText,
-    cx: &mut Cx2d,
-    panel: &Rect,
-    app_state: &AppState,
-    workflow_canvas: &Option<WorkflowCanvas>,
-) {
-    let wf = &app_state.workflow;
-
-    // Title bar placeholder (purple accent)
-    let title_rect = Rect {
-        pos: DVec2 {
-            x: panel.pos.x + 16.0,
-            y: panel.pos.y + 12.0,
-        },
-        size: DVec2 { x: 180.0, y: 18.0 },
-    };
-    draw_bg.color = Vec4f {
-        x: 0.69,
-        y: 0.30,
-        z: 1.0,
-        w: 1.0,
-    };
-    draw_bg.draw_abs(cx, title_rect);
-    draw_text_label(
-        draw_text,
-        cx,
-        DVec2 {
-            x: panel.pos.x + 20.0,
-            y: panel.pos.y + 14.0,
-        },
-        "Workflow Graph",
-    );
-
-    // Workflow name placeholder
-    let name_rect = Rect {
-        pos: DVec2 {
-            x: panel.pos.x + 16.0,
-            y: panel.pos.y + 42.0,
-        },
-        size: DVec2 { x: 140.0, y: 14.0 },
-    };
-    draw_bg.color = Vec4f {
-        x: 0.5,
-        y: 0.4,
-        z: 0.8,
-        w: 1.0,
-    };
-    draw_bg.draw_abs(cx, name_rect);
-    let name_text = match wf.name.as_deref() {
-        Some(name) => format!("Name: {}", name),
-        None => String::from("Name: —"),
-    };
-    draw_text_label(
-        draw_text,
-        cx,
-        DVec2 {
-            x: name_rect.pos.x + name_rect.size.x + 8.0,
-            y: name_rect.pos.y + 1.0,
-        },
-        &name_text,
-    );
-
-    // Node count bar
-    let node_count = workflow_canvas.as_ref().map_or(wf.node_count, |c| {
-        u32::try_from(c.node_count()).map_or(u32::MAX, |v| v)
-    });
-    let node_bar = Rect {
-        pos: DVec2 {
-            x: panel.pos.x + 16.0,
-            y: panel.pos.y + 66.0,
-        },
+    let rect = Rect {
+        pos: DVec2 { x, y },
         size: DVec2 {
-            x: f64::from(node_count).mul_add(10.0, 30.0).min(200.0),
-            y: 12.0,
+            x: width,
+            y: CARD_HEIGHT,
         },
     };
-    draw_bg.color = Vec4f {
-        x: 0.8,
-        y: 0.5,
-        z: 1.0,
-        w: 1.0,
-    };
-    draw_bg.draw_abs(cx, node_bar);
-    let node_text = format!("Nodes: {}", node_count);
-    draw_text_label(
-        draw_text,
+    draw_card(draw_bg, cx, rect, surface_color());
+    draw_rect(
+        draw_bg,
         cx,
-        DVec2 {
-            x: node_bar.pos.x + node_bar.size.x + 8.0,
-            y: node_bar.pos.y + 1.0,
-        },
-        &node_text,
-    );
-
-    let canvas_rect = Rect {
-        pos: DVec2 {
-            x: panel.pos.x + 240.0,
-            y: panel.pos.y + 42.0,
-        },
-        size: DVec2 { x: 200.0, y: 90.0 },
-    };
-    draw_bg.color = Vec4f {
-        x: 0.12,
-        y: 0.10,
-        z: 0.20,
-        w: 1.0,
-    };
-    draw_bg.draw_abs(cx, canvas_rect);
-
-    if let Some(canvas) = workflow_canvas {
-        render_workflow_canvas(canvas, draw_vector, draw_text, cx, &canvas_rect);
-    } else {
-        let sample_nodes = build_sample_node_cards();
-        for (i, node) in sample_nodes.iter().enumerate() {
-            let card_x = canvas_rect.pos.x + 10.0 + usize_to_f64(i) * (NODE_CARD_WIDTH + 10.0);
-            let card_y = canvas_rect.pos.y + 20.0;
-            draw_workflow_node_card(
-                draw_vector,
-                draw_text,
-                cx,
-                card_x,
-                card_y,
-                node.header_color,
-                node.body_color,
-                node.border_color,
-                node.text_color,
-                &node.kind_label,
-                &node.step_name,
-                &node.badges,
-                node.state_glow,
-            );
-        }
-    }
-}
-
-#[allow(elided_lifetimes_in_paths)]
-fn render_workflow_canvas(
-    canvas: &WorkflowCanvas,
-    draw_vector: &mut DrawVector,
-    draw_text: &mut DrawText,
-    cx: &mut Cx2d,
-    canvas_rect: &Rect,
-) {
-    let viewport = canvas.viewport_rect(canvas_rect.size.x, canvas_rect.size.y);
-    let visible = canvas.visible_nodes(&viewport);
-
-    let (pan_x, pan_y) = canvas.pan();
-    let zoom = canvas.zoom();
-    let selected = canvas.selected();
-
-    for (step_idx, x, y, width, height) in visible {
-        let screen_x = canvas_rect.pos.x + (x - pan_x) * zoom;
-        let screen_y = canvas_rect.pos.y + (y - pan_y) * zoom;
-        let screen_w = width * zoom;
-        let screen_h = height * zoom;
-
-        let is_selected = selected == Some(step_idx);
-        let (header_color, body_color, border_color, text_color) = if is_selected {
-            (
-                [0.89, 0.89, 1.0, 1.0],
-                [0.22, 0.22, 0.35, 1.0],
-                [0.69, 0.30, 1.0, 1.0],
-                [1.0, 1.0, 1.0, 1.0],
-            )
-        } else {
-            (
-                [0.25, 0.25, 0.40, 1.0],
-                [0.15, 0.15, 0.25, 1.0],
-                [0.40, 0.40, 0.60, 1.0],
-                [0.90, 0.90, 1.0, 1.0],
-            )
-        };
-
-        let kind_label = format!("Step {}", step_idx);
-        let step_name = format!("#{}", step_idx);
-
-        draw_workflow_node_card(
-            draw_vector,
-            draw_text,
-            cx,
-            screen_x - screen_w / 2.0,
-            screen_y - screen_h / 2.0,
-            header_color,
-            body_color,
-            border_color,
-            text_color,
-            &kind_label,
-            &step_name,
-            &[],
-            None,
-        );
-    }
-}
-
-#[allow(elided_lifetimes_in_paths)]
-fn draw_run_replay_content(
-    draw_bg: &mut DrawColor,
-    draw_text: &mut DrawText,
-    cx: &mut Cx2d,
-    panel: &Rect,
-    app_state: &AppState,
-) {
-    let replay = &app_state.replay;
-
-    // Title bar placeholder (cyan accent)
-    let title_rect = Rect {
-        pos: DVec2 {
-            x: panel.pos.x + 16.0,
-            y: panel.pos.y + 12.0,
-        },
-        size: DVec2 { x: 180.0, y: 18.0 },
-    };
-    draw_bg.color = Vec4f {
-        x: 0.0,
-        y: 0.96,
-        z: 1.0,
-        w: 1.0,
-    };
-    draw_bg.draw_abs(cx, title_rect);
-    draw_text_label(
-        draw_text,
-        cx,
-        DVec2 {
-            x: panel.pos.x + 20.0,
-            y: panel.pos.y + 14.0,
-        },
-        "Run Replay",
-    );
-
-    // Event count bar
-    let event_bar = Rect {
-        pos: DVec2 {
-            x: panel.pos.x + 16.0,
-            y: panel.pos.y + 42.0,
-        },
-        size: DVec2 {
-            x: f64::from(replay.total_events).mul_add(3.0, 40.0).min(200.0),
-            y: 12.0,
-        },
-    };
-    draw_bg.color = Vec4f {
-        x: 0.0,
-        y: 0.7,
-        z: 0.9,
-        w: 1.0,
-    };
-    draw_bg.draw_abs(cx, event_bar);
-    let event_text = format!("Events: {}", replay.total_events);
-    draw_text_label(
-        draw_text,
-        cx,
-        DVec2 {
-            x: event_bar.pos.x + event_bar.size.x + 8.0,
-            y: event_bar.pos.y + 1.0,
-        },
-        &event_text,
-    );
-
-    // Playback position indicator
-    let position_bar = Rect {
-        pos: DVec2 {
-            x: panel.pos.x + 16.0,
-            y: panel.pos.y + 62.0,
-        },
-        size: DVec2 {
-            x: f64::from(replay.playback_position)
-                .mul_add(2.0, 40.0)
-                .min(200.0),
-            y: 12.0,
-        },
-    };
-    draw_bg.color = Vec4f {
-        x: 0.2,
-        y: 0.8,
-        z: 1.0,
-        w: 1.0,
-    };
-    draw_bg.draw_abs(cx, position_bar);
-    let position_text = format!("Pos: {}", replay.playback_position);
-    draw_text_label(
-        draw_text,
-        cx,
-        DVec2 {
-            x: position_bar.pos.x + position_bar.size.x + 8.0,
-            y: position_bar.pos.y + 1.0,
-        },
-        &position_text,
-    );
-
-    // Speed indicator
-    let speed_width = replay.playback_speed.mul_add(20.0, 40.0).min(120.0);
-    let speed_rect = Rect {
-        pos: DVec2 {
-            x: panel.pos.x + 16.0,
-            y: panel.pos.y + 82.0,
-        },
-        size: DVec2 {
-            x: speed_width,
-            y: 12.0,
-        },
-    };
-    draw_bg.color = Vec4f {
-        x: 0.4,
-        y: 0.9,
-        z: 1.0,
-        w: 1.0,
-    };
-    draw_bg.draw_abs(cx, speed_rect);
-    let speed_text = format!("Speed: {:.1}x", replay.playback_speed);
-    draw_text_label(
-        draw_text,
-        cx,
-        DVec2 {
-            x: speed_rect.pos.x + speed_rect.size.x + 8.0,
-            y: speed_rect.pos.y + 1.0,
-        },
-        &speed_text,
-    );
-
-    // Transport state indicator
-    let transport_color = if replay.transport_state.is_playing() {
-        Vec4f {
-            x: 0.22,
-            y: 1.0,
-            z: 0.08,
-            w: 1.0,
-        }
-    } else if replay.transport_state.is_paused() {
-        Vec4f {
-            x: 1.0,
-            y: 0.9,
-            z: 0.0,
-            w: 1.0,
-        }
-    } else {
-        Vec4f {
-            x: 0.5,
-            y: 0.5,
-            z: 0.6,
-            w: 1.0,
-        }
-    };
-    let transport_rect = Rect {
-        pos: DVec2 {
-            x: panel.pos.x + 16.0,
-            y: panel.pos.y + 110.0,
-        },
-        size: DVec2 { x: 60.0, y: 20.0 },
-    };
-    draw_bg.color = transport_color;
-    draw_bg.draw_abs(cx, transport_rect);
-    let transport_label = if replay.transport_state.is_playing() {
-        "Playing"
-    } else if replay.transport_state.is_paused() {
-        "Paused"
-    } else {
-        "Stopped"
-    };
-    draw_text_label(
-        draw_text,
-        cx,
-        DVec2 {
-            x: transport_rect.pos.x + transport_rect.size.x + 8.0,
-            y: transport_rect.pos.y + 4.0,
-        },
-        transport_label,
-    );
-}
-
-#[allow(elided_lifetimes_in_paths)]
-fn draw_verification_content(
-    draw_bg: &mut DrawColor,
-    draw_text: &mut DrawText,
-    cx: &mut Cx2d,
-    panel: &Rect,
-    app_state: &AppState,
-) {
-    let verify = &app_state.verification;
-
-    // Title bar placeholder (green accent)
-    let title_rect = Rect {
-        pos: DVec2 {
-            x: panel.pos.x + 16.0,
-            y: panel.pos.y + 12.0,
-        },
-        size: DVec2 { x: 180.0, y: 18.0 },
-    };
-    draw_bg.color = Vec4f {
-        x: 0.22,
-        y: 1.0,
-        z: 0.08,
-        w: 1.0,
-    };
-    draw_bg.draw_abs(cx, title_rect);
-    draw_text_label(
-        draw_text,
-        cx,
-        DVec2 {
-            x: panel.pos.x + 20.0,
-            y: panel.pos.y + 14.0,
-        },
-        "Verification",
-    );
-
-    // Total checks bar
-    let checks_bar = Rect {
-        pos: DVec2 {
-            x: panel.pos.x + 16.0,
-            y: panel.pos.y + 42.0,
-        },
-        size: DVec2 {
-            x: f64::from(verify.total_checks)
-                .mul_add(15.0, 30.0)
-                .min(200.0),
-            y: 12.0,
-        },
-    };
-    draw_bg.color = Vec4f {
-        x: 0.5,
-        y: 0.8,
-        z: 0.4,
-        w: 1.0,
-    };
-    draw_bg.draw_abs(cx, checks_bar);
-    let checks_text = format!("Checks: {}", verify.total_checks);
-    draw_text_label(
-        draw_text,
-        cx,
-        DVec2 {
-            x: checks_bar.pos.x + checks_bar.size.x + 8.0,
-            y: checks_bar.pos.y + 1.0,
-        },
-        &checks_text,
-    );
-
-    // Pass count indicator
-    let pass_rect = Rect {
-        pos: DVec2 {
-            x: panel.pos.x + 16.0,
-            y: panel.pos.y + 62.0,
-        },
-        size: DVec2 {
-            x: f64::from(verify.pass_count).mul_add(15.0, 20.0).min(120.0),
-            y: 10.0,
-        },
-    };
-    draw_bg.color = Vec4f {
-        x: 0.22,
-        y: 1.0,
-        z: 0.08,
-        w: 1.0,
-    };
-    draw_bg.draw_abs(cx, pass_rect);
-    let pass_text = format!("Pass: {}", verify.pass_count);
-    draw_text_label(
-        draw_text,
-        cx,
-        DVec2 {
-            x: pass_rect.pos.x + pass_rect.size.x + 8.0,
-            y: pass_rect.pos.y + 1.0,
-        },
-        &pass_text,
-    );
-
-    // Fail count indicator
-    let fail_rect = Rect {
-        pos: DVec2 {
-            x: panel.pos.x + 16.0,
-            y: panel.pos.y + 78.0,
-        },
-        size: DVec2 {
-            x: f64::from(verify.fail_count).mul_add(15.0, 20.0).min(120.0),
-            y: 10.0,
-        },
-    };
-    draw_bg.color = Vec4f {
-        x: 1.0,
-        y: 0.03,
-        z: 0.23,
-        w: 1.0,
-    };
-    draw_bg.draw_abs(cx, fail_rect);
-    let fail_text = format!("Fail: {}", verify.fail_count);
-    draw_text_label(
-        draw_text,
-        cx,
-        DVec2 {
-            x: fail_rect.pos.x + fail_rect.size.x + 8.0,
-            y: fail_rect.pos.y + 1.0,
-        },
-        &fail_text,
-    );
-
-    // All-clean status indicator
-    let status_color = if verify.all_clean {
-        Vec4f {
-            x: 0.22,
-            y: 1.0,
-            z: 0.08,
-            w: 1.0,
-        }
-    } else if verify.fail_count > 0 {
-        Vec4f {
-            x: 1.0,
-            y: 0.03,
-            z: 0.23,
-            w: 1.0,
-        }
-    } else {
-        Vec4f {
-            x: 1.0,
-            y: 0.9,
-            z: 0.0,
-            w: 1.0,
-        }
-    };
-    let status_rect = Rect {
-        pos: DVec2 {
-            x: panel.pos.x + 16.0,
-            y: panel.pos.y + 100.0,
-        },
-        size: DVec2 { x: 80.0, y: 20.0 },
-    };
-    draw_bg.color = status_color;
-    draw_bg.draw_abs(cx, status_rect);
-    let status_label = if verify.all_clean {
-        "All Clean"
-    } else if verify.fail_count > 0 {
-        "Has Failures"
-    } else {
-        "Has Warnings"
-    };
-    draw_text_label(
-        draw_text,
-        cx,
-        DVec2 {
-            x: status_rect.pos.x + status_rect.size.x + 8.0,
-            y: status_rect.pos.y + 4.0,
-        },
-        status_label,
-    );
-
-    // Certificate panel placeholders (6 small rectangles)
-    for i in 0..6 {
-        let cert_rect = Rect {
+        Rect {
             pos: DVec2 {
-                x: panel.pos.x + 240.0 + f64::from(i) * 35.0,
-                y: panel.pos.y + 42.0,
+                x: x + 16.0,
+                y: y + 18.0,
             },
-            size: DVec2 { x: 28.0, y: 28.0 },
-        };
-        draw_bg.color = Vec4f {
-            x: 0.1,
-            y: 0.15,
-            z: 0.1,
-            w: 1.0,
-        };
-        draw_bg.draw_abs(cx, cert_rect);
-    }
+            size: DVec2 { x: 34.0, y: 4.0 },
+        },
+        tone_color(panel.tone),
+    );
+    draw_label(
+        draw_text,
+        cx,
+        x + 16.0,
+        y + 34.0,
+        panel.title,
+        11.0,
+        secondary_text_color(),
+    );
+    draw_label(
+        draw_text,
+        cx,
+        x + 16.0,
+        y + 66.0,
+        panel.metric,
+        24.0,
+        primary_text_color(),
+    );
+    draw_label(
+        draw_text,
+        cx,
+        x + 16.0,
+        y + 106.0,
+        panel.detail,
+        11.0,
+        muted_text_color(),
+    );
 }
 
 #[allow(elided_lifetimes_in_paths)]
-fn draw_incident_content(
+fn draw_sidebar_text(draw_text: &mut DrawText, cx: &mut Cx2d, rect: Rect) {
+    let sidebar = ShellMetrics::sidebar_rect(rect);
+    draw_label(
+        draw_text,
+        cx,
+        sidebar.pos.x + 22.0,
+        sidebar.pos.y + 24.0,
+        "velvet-ballastics",
+        17.0,
+        primary_text_color(),
+    );
+    draw_label(
+        draw_text,
+        cx,
+        sidebar.pos.x + 22.0,
+        sidebar.pos.y + 52.0,
+        "local-first workflow flight recorder",
+        10.5,
+        muted_text_color(),
+    );
+    draw_nav_text(draw_text, cx, rect, "Overview", 0);
+    draw_nav_text(draw_text, cx, rect, "Workflow Graph", 1);
+    draw_nav_text(draw_text, cx, rect, "Executions", 2);
+    draw_nav_text(draw_text, cx, rect, "Verification", 3);
+    draw_nav_text(draw_text, cx, rect, "Replay", 4);
+    draw_nav_text(draw_text, cx, rect, "Incidents", 5);
+    draw_nav_text(draw_text, cx, rect, "Actions", 6);
+    draw_nav_text(draw_text, cx, rect, "Storage", 7);
+    draw_nav_text(draw_text, cx, rect, "AI Context", 8);
+    draw_nav_text(draw_text, cx, rect, "Settings", 9);
+    draw_label(
+        draw_text,
+        cx,
+        sidebar.pos.x + 22.0,
+        sidebar.pos.y + sidebar.size.y - 58.0,
+        "local server online",
+        11.0,
+        success_color(),
+    );
+}
+
+#[allow(elided_lifetimes_in_paths)]
+fn draw_top_bar_text(
     draw_bg: &mut DrawColor,
-    draw_vector: &mut DrawVector,
     draw_text: &mut DrawText,
     cx: &mut Cx2d,
-    panel: &Rect,
+    rect: Rect,
     app_state: &AppState,
 ) {
-    let inc = &app_state.incident;
-
-    // Title bar placeholder (red accent)
-    let title_rect = Rect {
-        pos: DVec2 {
-            x: panel.pos.x + 16.0,
-            y: panel.pos.y + 12.0,
-        },
-        size: DVec2 { x: 180.0, y: 18.0 },
-    };
-    draw_bg.color = Vec4f {
-        x: 1.0,
-        y: 0.03,
-        z: 0.23,
-        w: 1.0,
-    };
-    draw_bg.draw_abs(cx, title_rect);
-    draw_text_label(
+    let top = ShellMetrics::top_bar_rect(rect);
+    let (chip_one, chip_two) = app_state.screen_status_chips();
+    draw_label(
         draw_text,
         cx,
-        DVec2 {
-            x: panel.pos.x + 20.0,
-            y: panel.pos.y + 14.0,
-        },
-        "Incident Console",
+        top.pos.x + 22.0,
+        top.pos.y + 16.0,
+        app_state.screen_title(),
+        19.0,
+        primary_text_color(),
     );
-
-    // Active incidents bar
-    let active_bar = Rect {
-        pos: DVec2 {
-            x: panel.pos.x + 16.0,
-            y: panel.pos.y + 42.0,
-        },
-        size: DVec2 {
-            x: f64::from(inc.active_incidents)
-                .mul_add(20.0, 30.0)
-                .min(200.0),
-            y: 14.0,
-        },
-    };
-    draw_bg.color = Vec4f {
-        x: 1.0,
-        y: 0.2,
-        z: 0.2,
-        w: 1.0,
-    };
-    draw_bg.draw_abs(cx, active_bar);
-    let active_text = format!("Active: {}", inc.active_incidents);
-    draw_text_label(
+    draw_label(
         draw_text,
         cx,
-        DVec2 {
-            x: active_bar.pos.x + active_bar.size.x + 8.0,
-            y: active_bar.pos.y + 2.0,
-        },
-        &active_text,
+        top.pos.x + 22.0,
+        top.pos.y + 46.0,
+        app_state.screen_subtitle(),
+        11.5,
+        secondary_text_color(),
     );
-
-    // Critical count indicator
-    let crit_rect = Rect {
-        pos: DVec2 {
-            x: panel.pos.x + 16.0,
-            y: panel.pos.y + 66.0,
-        },
-        size: DVec2 {
-            x: f64::from(inc.critical_count).mul_add(20.0, 20.0).min(120.0),
-            y: 10.0,
-        },
-    };
-    draw_bg.color = Vec4f {
-        x: 1.0,
-        y: 0.03,
-        z: 0.23,
-        w: 1.0,
-    };
-    draw_bg.draw_abs(cx, crit_rect);
-    let crit_text = format!("Critical: {}", inc.critical_count);
-    draw_text_label(
+    draw_chip(
+        draw_bg,
         draw_text,
         cx,
-        DVec2 {
-            x: crit_rect.pos.x + crit_rect.size.x + 8.0,
-            y: crit_rect.pos.y + 1.0,
+        Rect {
+            pos: DVec2 {
+                x: top.pos.x + top.size.x - 450.0,
+                y: top.pos.y + 22.0,
+            },
+            size: DVec2 { x: 116.0, y: 28.0 },
         },
-        &crit_text,
+        chip_one,
+        panel_color(),
+        primary_blue_color(),
     );
-
-    // Warning count indicator
-    let warn_rect = Rect {
-        pos: DVec2 {
-            x: panel.pos.x + 16.0,
-            y: panel.pos.y + 82.0,
-        },
-        size: DVec2 {
-            x: f64::from(inc.warning_count).mul_add(20.0, 20.0).min(120.0),
-            y: 10.0,
-        },
-    };
-    draw_bg.color = Vec4f {
-        x: 1.0,
-        y: 0.7,
-        z: 0.0,
-        w: 1.0,
-    };
-    draw_bg.draw_abs(cx, warn_rect);
-    let warn_text = format!("Warn: {}", inc.warning_count);
-    draw_text_label(
+    draw_chip(
+        draw_bg,
         draw_text,
         cx,
-        DVec2 {
-            x: warn_rect.pos.x + warn_rect.size.x + 8.0,
-            y: warn_rect.pos.y + 1.0,
+        Rect {
+            pos: DVec2 {
+                x: top.pos.x + top.size.x - 320.0,
+                y: top.pos.y + 22.0,
+            },
+            size: DVec2 { x: 116.0, y: 28.0 },
         },
-        &warn_text,
+        chip_two,
+        panel_color(),
+        success_color(),
     );
-
-    // Selected incident indicator
-    let selected_color = if inc.selected_incident.is_some() {
-        Vec4f {
-            x: 1.0,
-            y: 0.5,
-            z: 0.0,
-            w: 1.0,
-        }
-    } else {
-        Vec4f {
-            x: 0.3,
-            y: 0.3,
-            z: 0.4,
-            w: 1.0,
-        }
-    };
-    let selected_rect = Rect {
-        pos: DVec2 {
-            x: panel.pos.x + 16.0,
-            y: panel.pos.y + 104.0,
-        },
-        size: DVec2 { x: 80.0, y: 20.0 },
-    };
-    draw_bg.color = selected_color;
-    draw_bg.draw_abs(cx, selected_rect);
-    let selected_label = if inc.selected_incident.is_some() {
-        "Selected"
-    } else {
-        "None"
-    };
-    draw_text_label(
+    draw_button(
+        draw_bg,
         draw_text,
         cx,
-        DVec2 {
-            x: selected_rect.pos.x + selected_rect.size.x + 8.0,
-            y: selected_rect.pos.y + 4.0,
-        },
-        selected_label,
+        top.pos.x + top.size.x - 185.0,
+        top.pos.y + 18.0,
+        "Verify",
+        primary_blue_color(),
     );
-
-    // Console placeholder
-    let console_rect = Rect {
-        pos: DVec2 {
-            x: panel.pos.x + 240.0,
-            y: panel.pos.y + 42.0,
-        },
-        size: DVec2 { x: 200.0, y: 90.0 },
-    };
-    draw_bg.color = Vec4f {
-        x: 0.15,
-        y: 0.08,
-        z: 0.08,
-        w: 1.0,
-    };
-    draw_bg.draw_abs(cx, console_rect);
-    draw_text_label(
+    draw_button(
+        draw_bg,
         draw_text,
         cx,
-        DVec2 {
-            x: console_rect.pos.x + 8.0,
-            y: console_rect.pos.y + 4.0,
-        },
-        "Console",
+        top.pos.x + top.size.x - 94.0,
+        top.pos.y + 18.0,
+        "Submit",
+        warning_color(),
     );
-    // Incident timeline visualization
-    let timeline_rect = Rect {
-        pos: DVec2 {
-            x: panel.pos.x + 16.0,
-            y: panel.pos.y + 130.0,
-        },
-        size: DVec2 {
-            x: panel.size.x - 32.0,
-            y: 24.0,
-        },
-    };
-    draw_incident_timeline(draw_bg, draw_vector, draw_text, cx, &timeline_rect, inc);
 }
 
-const TIMELINE_MARGIN: f64 = 8.0;
-const TIMELINE_AXIS_HEIGHT: f64 = 2.0;
+#[allow(elided_lifetimes_in_paths)]
+fn draw_nav_text(draw_text: &mut DrawText, cx: &mut Cx2d, rect: Rect, label: &str, row: u32) {
+    let row_rect = SidebarLayout::from_rect(rect).row_rect(row);
+    draw_label(
+        draw_text,
+        cx,
+        row_rect.pos.x + 14.0,
+        row_rect.pos.y + 10.0,
+        label,
+        11.5,
+        secondary_text_color(),
+    );
+}
 
-fn format_timeline_time(timestamp_us: u64) -> String {
-    let total_ms = timestamp_us / 1000;
-    let ms = total_ms % 1000;
-    let total_secs = total_ms / 1000;
-    let secs = total_secs % 60;
-    let total_mins = total_secs / 60;
-    let mins = total_mins % 60;
-    let hours = total_mins / 60;
-    if hours > 0 {
-        format!("{:02}:{:02}:{:02}", hours, mins, secs)
-    } else {
-        format!("{:02}:{:02}.{:03}", mins, secs, ms)
+#[allow(elided_lifetimes_in_paths)]
+fn draw_nav_row(
+    draw_nav: &mut DrawColor,
+    cx: &mut Cx2d,
+    rect: Rect,
+    app_state: &AppState,
+    screen: Screen,
+    row: u32,
+) {
+    let row_rect = SidebarLayout::from_rect(rect).row_rect(row);
+    if app_state.current_screen() == screen {
+        draw_rect(draw_nav, cx, row_rect, panel_color());
+        draw_rect(
+            draw_nav,
+            cx,
+            Rect {
+                pos: row_rect.pos,
+                size: DVec2 {
+                    x: 4.0,
+                    y: row_rect.size.y,
+                },
+            },
+            accent_from_rgba(screen.nav_color()),
+        );
     }
 }
 
 #[allow(elided_lifetimes_in_paths)]
-fn draw_incident_timeline(
+fn draw_panel_lines(draw_text: &mut DrawText, cx: &mut Cx2d, panel: Rect) {
+    draw_label(
+        draw_text,
+        cx,
+        panel.pos.x + 20.0,
+        panel.pos.y + 64.0,
+        "Start -> classify -> route_issue -> create_issue -> build_result",
+        12.0,
+        secondary_text_color(),
+    );
+    draw_label(
+        draw_text,
+        cx,
+        panel.pos.x + 20.0,
+        panel.pos.y + 100.0,
+        "Animated edge packets and selected-node glow are shader-driven follow-up work.",
+        11.0,
+        muted_text_color(),
+    );
+    draw_label(
+        draw_text,
+        cx,
+        panel.pos.x + 20.0,
+        panel.pos.y + 136.0,
+        "This shell keeps retained graph/layout data wiring intact for the next pass.",
+        11.0,
+        muted_text_color(),
+    );
+}
+
+#[allow(elided_lifetimes_in_paths)]
+fn draw_inspector_lines(draw_text: &mut DrawText, cx: &mut Cx2d, panel: Rect) {
+    draw_label(
+        draw_text,
+        cx,
+        panel.pos.x + 20.0,
+        panel.pos.y + 64.0,
+        "Action ID: act_918cb7v4",
+        12.0,
+        secondary_text_color(),
+    );
+    draw_label(
+        draw_text,
+        cx,
+        panel.pos.x + 20.0,
+        panel.pos.y + 94.0,
+        "Idempotency: issue_triage:8421",
+        12.0,
+        secondary_text_color(),
+    );
+    draw_label(
+        draw_text,
+        cx,
+        panel.pos.x + 20.0,
+        panel.pos.y + 124.0,
+        "Taint: clean input / clean output",
+        12.0,
+        success_color(),
+    );
+}
+
+#[allow(elided_lifetimes_in_paths)]
+fn draw_transport(draw_bg: &mut DrawColor, draw_text: &mut DrawText, cx: &mut Cx2d, content: Rect) {
+    let x = content.pos.x + TransportLayout::START_X_OFFSET;
+    let y = content.pos.y + TransportLayout::TRANSPORT_Y_OFFSET;
+    draw_button(draw_bg, draw_text, cx, x, y, "|<", panel_color());
+    draw_button(draw_bg, draw_text, cx, x + 44.0, y, "<", panel_color());
+    draw_button(
+        draw_bg,
+        draw_text,
+        cx,
+        x + 88.0,
+        y,
+        "Play",
+        primary_blue_color(),
+    );
+    draw_button(draw_bg, draw_text, cx, x + 170.0, y, ">", panel_color());
+    draw_button(draw_bg, draw_text, cx, x + 214.0, y, ">|", panel_color());
+}
+
+#[allow(elided_lifetimes_in_paths)]
+fn draw_shortcuts(draw_bg: &mut DrawColor, draw_text: &mut DrawText, cx: &mut Cx2d, rect: Rect) {
+    let panel = Rect {
+        pos: DVec2 {
+            x: rect.pos.x + rect.size.x - 360.0,
+            y: rect.pos.y + 120.0,
+        },
+        size: DVec2 { x: 300.0, y: 118.0 },
+    };
+    draw_card(draw_bg, cx, panel, surface_color());
+    draw_label(
+        draw_text,
+        cx,
+        panel.pos.x + 18.0,
+        panel.pos.y + 18.0,
+        "Shortcuts",
+        15.0,
+        primary_text_color(),
+    );
+    draw_label(
+        draw_text,
+        cx,
+        panel.pos.x + 18.0,
+        panel.pos.y + 50.0,
+        "Space: replay play/pause",
+        11.0,
+        secondary_text_color(),
+    );
+    draw_label(
+        draw_text,
+        cx,
+        panel.pos.x + 18.0,
+        panel.pos.y + 76.0,
+        "+/-: workflow zoom",
+        11.0,
+        secondary_text_color(),
+    );
+}
+
+#[allow(elided_lifetimes_in_paths)]
+fn draw_button(
     draw_bg: &mut DrawColor,
-    draw_vector: &mut DrawVector,
     draw_text: &mut DrawText,
     cx: &mut Cx2d,
-    rect: &Rect,
-    incident: &vb_ui::app_state::IncidentData,
+    x: f64,
+    y: f64,
+    label: &str,
+    color: Vec4f,
 ) {
-    let entries: Vec<TimelineEntry> = incident
-        .selected_incident
-        .map(|id| {
-            vec![TimelineEntry {
-                timestamp_us: id.wrapping_mul(1_000_000),
-                run_id: id,
-                step: 0,
-                severity: if incident.critical_count > 0 {
-                    IncidentSeverity::Critical
-                } else if incident.warning_count > 0 {
-                    IncidentSeverity::Warning
-                } else {
-                    IncidentSeverity::Info
-                },
-                failure_code: vb_ui::incident::types::FailureCode::Unknown(String::new()),
-                label: String::new(),
-                color: [0.0; 4],
-                replay_safe: true,
-            }]
-        })
-        .unwrap_or_default();
-
-    let (earliest_us, latest_us) = if entries.is_empty() {
-        (0, 0)
-    } else {
-        (
-            entries.iter().map(|e| e.timestamp_us).min().unwrap_or(0),
-            entries.iter().map(|e| e.timestamp_us).max().unwrap_or(0),
-        )
+    let button = Rect {
+        pos: DVec2 { x, y },
+        size: DVec2 { x: 74.0, y: 34.0 },
     };
+    draw_rect(draw_bg, cx, button, color);
+    draw_label(
+        draw_text,
+        cx,
+        x + 15.0,
+        y + 10.0,
+        label,
+        11.0,
+        primary_text_color(),
+    );
+}
 
-    let width = rect.size.x;
-    let height = rect.size.y;
-    let axis_y = rect.pos.y + height - TIMELINE_AXIS_HEIGHT;
-
-    draw_bg.color = Vec4f {
-        x: 0.08,
-        y: 0.06,
-        z: 0.10,
-        w: 1.0,
-    };
-    draw_bg.draw_abs(cx, *rect);
-
-    let axis_rect = Rect {
-        pos: DVec2 {
-            x: rect.pos.x + TIMELINE_MARGIN,
-            y: axis_y,
-        },
-        size: DVec2 {
-            x: width - 2.0 * TIMELINE_MARGIN,
-            y: TIMELINE_AXIS_HEIGHT,
-        },
-    };
-    draw_bg.color = Vec4f {
-        x: 0.4,
-        y: 0.4,
-        z: 0.5,
-        w: 1.0,
-    };
-    draw_bg.draw_abs(cx, axis_rect);
-
-    if entries.is_empty() {
-        return;
-    }
-
-    let span_us = latest_us.saturating_sub(earliest_us);
-    let usable_width = width - 2.0 * TIMELINE_MARGIN;
-
-    for i in 0..=5 {
-        let progress = if span_us == 0 {
-            0.5_f64
-        } else {
-            usize_to_f64(i) / 5.0
-        };
-        let time_us = earliest_us.saturating_add(f64_to_u64(u64_to_f64(span_us) * progress));
-        let label = format_timeline_time(time_us);
-        let x = rect.pos.x + TIMELINE_MARGIN + usable_width * progress;
-
-        draw_text.text_style.font_size = 7.0;
-        draw_text.color = Vec4f {
-            x: 0.6,
-            y: 0.6,
-            z: 0.7,
-            w: 1.0,
-        };
-        draw_text.draw_abs(
-            cx,
-            DVec2 {
-                x: x - 20.0,
-                y: axis_y - 14.0,
+#[allow(elided_lifetimes_in_paths)]
+fn draw_chip(
+    draw_bg: &mut DrawColor,
+    draw_text: &mut DrawText,
+    cx: &mut Cx2d,
+    chip: Rect,
+    label: &str,
+    bg: Vec4f,
+    text: Vec4f,
+) {
+    draw_rect(draw_bg, cx, chip, bg);
+    draw_rect(
+        draw_bg,
+        cx,
+        Rect {
+            pos: chip.pos,
+            size: DVec2 {
+                x: 3.0,
+                y: chip.size.y,
             },
-            &label,
-        );
-    }
+        },
+        text,
+    );
+    draw_label(
+        draw_text,
+        cx,
+        chip.pos.x + 12.0,
+        chip.pos.y + 8.0,
+        label,
+        10.0,
+        text,
+    );
+}
 
-    let selected_timestamp = incident
-        .selected_incident
-        .map(|id| id.wrapping_mul(1_000_000));
+#[allow(elided_lifetimes_in_paths)]
+fn draw_card(draw_bg: &mut DrawColor, cx: &mut Cx2d, rect: Rect, fill: Vec4f) {
+    draw_rect(draw_bg, cx, rect, border_color());
+    draw_inset_rect(draw_bg, cx, rect, fill, ShellMetrics::HAIRLINE);
+}
 
-    draw_vector.begin();
-
-    for entry in &entries {
-        let x_pos = if span_us == 0 {
-            rect.pos.x + width / 2.0
-        } else {
-            let progress =
-                u64_to_f64(entry.timestamp_us.saturating_sub(earliest_us)) / u64_to_f64(span_us);
-            rect.pos.x + TIMELINE_MARGIN + usable_width * progress
-        };
-
-        let is_selected = selected_timestamp == Some(entry.timestamp_us);
-        let dot_radius = if is_selected { 7.0_f64 } else { 5.0_f64 };
-        let dot_y = axis_y - dot_radius - 2.0;
-
-        let severity_color = entry.severity.severity_color();
-
-        if is_selected {
-            draw_vector.set_color(
-                severity_color[0],
-                severity_color[1],
-                severity_color[2],
-                0.3_f32,
-            );
-            draw_vector.circle(
-                f64_to_f32(x_pos),
-                f64_to_f32(dot_y),
-                f64_to_f32(dot_radius + 4.0),
-            );
-            draw_vector.fill();
-        }
-
-        draw_vector.set_color(
-            severity_color[0],
-            severity_color[1],
-            severity_color[2],
-            severity_color[3],
-        );
-        draw_vector.circle(f64_to_f32(x_pos), f64_to_f32(dot_y), f64_to_f32(dot_radius));
-        draw_vector.fill();
-
-        if is_selected {
-            draw_vector.set_color(1.0_f32, 1.0_f32, 1.0_f32, 0.8_f32);
-            draw_vector.circle(
-                f64_to_f32(x_pos),
-                f64_to_f32(dot_y),
-                f64_to_f32(dot_radius + 2.0),
-            );
-            draw_vector.stroke(1.5_f32);
-        }
-    }
-
-    draw_vector.end(cx);
-
-    let marker_y = axis_y - 18.0;
-    for (i, entry) in entries.iter().enumerate() {
-        let x_pos = if span_us == 0 {
-            rect.pos.x + width / 2.0
-        } else {
-            let progress =
-                u64_to_f64(entry.timestamp_us.saturating_sub(earliest_us)) / u64_to_f64(span_us);
-            rect.pos.x + TIMELINE_MARGIN + usable_width * progress
-        };
-
-        let label = entry.time_label();
-        draw_text.text_style.font_size = 6.0;
-        draw_text.color = Vec4f {
-            x: 0.7,
-            y: 0.7,
-            z: 0.8,
-            w: 1.0,
-        };
-        let label_x = if i == 0 {
-            x_pos - 20.0
-        } else if i.saturating_add(1) == entries.len() {
-            x_pos - 40.0
-        } else {
-            x_pos - 25.0
-        };
-        draw_text.draw_abs(
-            cx,
-            DVec2 {
-                x: label_x,
-                y: marker_y,
+#[allow(elided_lifetimes_in_paths)]
+fn draw_accent(draw_bg: &mut DrawColor, cx: &mut Cx2d, rect: Rect, color: [f32; 4]) {
+    draw_rect(
+        draw_bg,
+        cx,
+        Rect {
+            pos: rect.pos,
+            size: DVec2 {
+                x: 5.0,
+                y: rect.size.y,
             },
-            &label,
-        );
+        },
+        accent_from_rgba(color),
+    );
+}
+
+#[allow(elided_lifetimes_in_paths)]
+fn draw_inset_rect(draw_bg: &mut DrawColor, cx: &mut Cx2d, rect: Rect, color: Vec4f, inset: f64) {
+    draw_rect(
+        draw_bg,
+        cx,
+        Rect {
+            pos: DVec2 {
+                x: rect.pos.x + inset,
+                y: rect.pos.y + inset,
+            },
+            size: DVec2 {
+                x: rect.size.x - (inset * 2.0),
+                y: rect.size.y - (inset * 2.0),
+            },
+        },
+        color,
+    );
+}
+
+#[allow(elided_lifetimes_in_paths)]
+fn draw_rect(draw_bg: &mut DrawColor, cx: &mut Cx2d, rect: Rect, color: Vec4f) {
+    draw_bg.color = color;
+    draw_bg.draw_abs(cx, rect);
+}
+
+#[allow(elided_lifetimes_in_paths)]
+fn draw_label(
+    draw_text: &mut DrawText,
+    cx: &mut Cx2d,
+    x: f64,
+    y: f64,
+    text: &str,
+    size: f32,
+    color: Vec4f,
+) {
+    draw_text.text_style.font_size = size;
+    draw_text.color = color;
+    draw_text.draw_abs(cx, DVec2 { x, y }, text);
+}
+
+fn tone_color(tone: Tone) -> Vec4f {
+    match tone {
+        Tone::Neutral => muted_text_color(),
+        Tone::Blue => primary_blue_color(),
+        Tone::Green => success_color(),
+        Tone::Purple => accent_from_rgba([0.431, 0.321, 0.898, 1.0]),
+        Tone::Warning => warning_color(),
+        Tone::Failure => failure_color(),
+    }
+}
+
+fn usize_to_f64(value: usize) -> f64 {
+    match u32::try_from(value) {
+        Ok(converted) => f64::from(converted),
+        Err(_) => f64::from(u32::MAX),
     }
 }

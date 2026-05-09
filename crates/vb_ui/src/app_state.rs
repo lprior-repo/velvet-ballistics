@@ -1,21 +1,111 @@
 #![forbid(unsafe_code)]
-//! Screen navigation and global app state for the mission control UI.
+//! Screen navigation and global app state for the Makepad UI.
 //!
-//! Manages which of the five primary screens is active and holds the
-//! per-screen data payloads that the UI reads during rendering.
+//! Manages the eight canonical screens from the 11:51 Figma bundle while
+//! retaining the IPC-backed data payloads used by the renderer.
 
 use crate::replay::timeline::TimelineStrip;
 use crate::replay::transport::TransportState;
 use crate::system::screen::SystemScreen;
 
-/// The 5 primary screens of the mission control UI.
+/// The eight canonical screens of the white Makepad UI.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Screen {
-    RunReplay,
-    Verification,
-    SystemOverview,
-    WorkflowGraph,
-    IncidentConsole,
+    ExecutionOverview,
+    WorkflowGraphAuthoring,
+    ExecutionDetailsGraph,
+    VerificationCertificate,
+    ReplayTheater,
+    IncidentFailureConsole,
+    ActionRegistry,
+    StorageDoctorAiContext,
+}
+
+impl Screen {
+    pub const fn splash_name(self) -> &'static str {
+        match self {
+            Self::ExecutionOverview => "ExecutionOverview",
+            Self::WorkflowGraphAuthoring => "WorkflowGraphAuthoring",
+            Self::ExecutionDetailsGraph => "ExecutionDetailsGraph",
+            Self::VerificationCertificate => "VerificationCertificate",
+            Self::ReplayTheater => "ReplayTheater",
+            Self::IncidentFailureConsole => "IncidentFailureConsole",
+            Self::ActionRegistry => "ActionRegistry",
+            Self::StorageDoctorAiContext => "StorageDoctorAiContext",
+        }
+    }
+
+    pub const fn nav_label(self) -> &'static str {
+        match self {
+            Self::ExecutionOverview => "Overview",
+            Self::WorkflowGraphAuthoring => "Workflow Graph",
+            Self::ExecutionDetailsGraph => "Executions",
+            Self::VerificationCertificate => "Verification",
+            Self::ReplayTheater => "Replay",
+            Self::IncidentFailureConsole => "Incidents",
+            Self::ActionRegistry => "Actions",
+            Self::StorageDoctorAiContext => "Storage / AI",
+        }
+    }
+
+    pub const fn title(self) -> &'static str {
+        match self {
+            Self::ExecutionOverview => "Execution Observatory Overview",
+            Self::WorkflowGraphAuthoring => "Workflow Graph Authoring",
+            Self::ExecutionDetailsGraph => "Execution Details Graph View",
+            Self::VerificationCertificate => "Verification Certificate View",
+            Self::ReplayTheater => "Replay Theater",
+            Self::IncidentFailureConsole => "Incident Failure Console",
+            Self::ActionRegistry => "Action Registry / Contract Inspector",
+            Self::StorageDoctorAiContext => "Storage / Journal Doctor + AI Context",
+        }
+    }
+
+    pub const fn subtitle(self) -> &'static str {
+        match self {
+            Self::ExecutionOverview => "Black-box recorder · local-first workflow health",
+            Self::WorkflowGraphAuthoring => "YAML source projected as verified numeric IR",
+            Self::ExecutionDetailsGraph => {
+                "Single run inspection with graph, events, and step details"
+            }
+            Self::VerificationCertificate => "Accepted artifact proof before runtime admission",
+            Self::ReplayTheater => "A cinematic flight recorder for durable workflow executions",
+            Self::IncidentFailureConsole => "Minimal red, maximum evidence and recovery clarity",
+            Self::ActionRegistry => {
+                "Numeric ActionId contracts, side-effect policy, capabilities, and schemas"
+            }
+            Self::StorageDoctorAiContext => {
+                "Fjall keyspaces, Postcard envelopes, replay health, and AI-safe packet"
+            }
+        }
+    }
+
+    pub const fn status_chips(self) -> (&'static str, &'static str) {
+        match self {
+            Self::ExecutionOverview => ("makepad · prod", "Healthy"),
+            Self::WorkflowGraphAuthoring => ("Verified", "Draft"),
+            Self::ExecutionDetailsGraph => ("Running", "Replay safe"),
+            Self::VerificationCertificate => ("Verified", "Strict"),
+            Self::ReplayTheater => ("Replay safe", "Journaled"),
+            Self::IncidentFailureConsole => ("Needs operator", "Replay safe"),
+            Self::ActionRegistry => ("Contracts valid", "ABI stable"),
+            Self::StorageDoctorAiContext => ("DB healthy", "Replay lab ready"),
+        }
+    }
+
+    /// RGBA semantic accent color for the active nav row and screen highlights.
+    pub const fn nav_color(self) -> [f32; 4] {
+        match self {
+            Self::ExecutionOverview => [0.145, 0.388, 0.922, 1.0],
+            Self::WorkflowGraphAuthoring => [0.431, 0.321, 0.898, 1.0],
+            Self::ExecutionDetailsGraph => [0.145, 0.388, 0.922, 1.0],
+            Self::VerificationCertificate => [0.086, 0.651, 0.416, 1.0],
+            Self::ReplayTheater => [0.169, 0.424, 1.0, 1.0],
+            Self::IncidentFailureConsole => [0.898, 0.282, 0.302, 1.0],
+            Self::ActionRegistry => [0.773, 0.357, 0.083, 1.0],
+            Self::StorageDoctorAiContext => [0.431, 0.321, 0.898, 1.0],
+        }
+    }
 }
 
 /// Global app state shared across screens.
@@ -103,25 +193,23 @@ impl CertCardStatus {
         }
     }
 
-    /// Returns the neon color hex string for the badge based on status.
-    /// neon_green (#39ff14) for PASS, neon_yellow (#ffe600) for WARN,
-    /// neon_red (#ff073a) for FAIL.
+    /// Returns the semantic light-theme color hex string for the badge.
     pub fn badge_color(&self) -> &'static str {
         match self.badge_text.as_str() {
-            "PASS" => "#39ff14",
-            "WARN" => "#ffe600",
-            "FAIL" => "#ff073a",
-            _ => "#555577",
+            "PASS" => "#16a66a",
+            "WARN" => "#f59e0b",
+            "FAIL" => "#e5484d",
+            _ => "#98a2b3",
         }
     }
 
-    /// Returns the neon color hex string for field values based on status.
+    /// Returns the semantic light-theme color hex string for field values.
     pub fn field_color(&self) -> &'static str {
         match self.badge_text.as_str() {
-            "PASS" => "#39ff14",
-            "WARN" => "#ffe600",
-            "FAIL" => "#ff073a",
-            _ => "#555577",
+            "PASS" => "#16a66a",
+            "WARN" => "#f59e0b",
+            "FAIL" => "#e5484d",
+            _ => "#98a2b3",
         }
     }
 }
@@ -152,7 +240,7 @@ pub struct WorkflowData {
 impl AppState {
     pub fn new() -> Self {
         Self {
-            current_screen: Screen::RunReplay,
+            current_screen: Screen::ExecutionOverview,
             connected: false,
             selected_run_id: None,
             selected_workflow_name: None,
@@ -177,29 +265,20 @@ impl AppState {
     }
 
     pub fn screen_title(&self) -> &'static str {
-        match self.current_screen {
-            Screen::RunReplay => "Replay Theater",
-            Screen::Verification => "Verification",
-            Screen::SystemOverview => "System Overview",
-            Screen::WorkflowGraph => "Workflow Graph",
-            Screen::IncidentConsole => "Incident Console",
-        }
+        self.current_screen.title()
     }
 
-    /// Returns an RGBA color (each channel 0.0–1.0) used for the active nav tab accent.
+    pub fn screen_subtitle(&self) -> &'static str {
+        self.current_screen.subtitle()
+    }
+
+    pub fn screen_status_chips(&self) -> (&'static str, &'static str) {
+        self.current_screen.status_chips()
+    }
+
+    /// Returns an RGBA color (each channel 0.0-1.0) used for the active nav row accent.
     pub fn screen_nav_color(&self) -> [f32; 4] {
-        match self.current_screen {
-            // Neon cyan: #00f5ff → (0, 0.96, 1.0, 1)
-            Screen::RunReplay => [0.0, 0.96, 1.0, 1.0],
-            // Neon green: #39ff14 → (0.22, 1.0, 0.08, 1)
-            Screen::Verification => [0.22, 1.0, 0.08, 1.0],
-            // Neon blue: #2d6bff → (0.18, 0.42, 1.0, 1)
-            Screen::SystemOverview => [0.18, 0.42, 1.0, 1.0],
-            // Neon purple: #b14dff → (0.69, 0.30, 1.0, 1)
-            Screen::WorkflowGraph => [0.69, 0.30, 1.0, 1.0],
-            // Neon red: #ff073a → (1.0, 0.03, 0.23, 1)
-            Screen::IncidentConsole => [1.0, 0.03, 0.23, 1.0],
-        }
+        self.current_screen.nav_color()
     }
 
     /// Re-derive the lightweight `SystemData` summary fields from the rich
@@ -459,9 +538,9 @@ mod tests {
     // -----------------------------------------------------------------------
 
     #[test]
-    fn app_state_new_defaults_to_run_replay_screen() {
+    fn app_state_new_defaults_to_execution_overview_screen() {
         let state = AppState::new();
-        assert_eq!(state.current_screen, Screen::RunReplay);
+        assert_eq!(state.current_screen, Screen::ExecutionOverview);
     }
 
     #[test]
@@ -504,11 +583,14 @@ mod tests {
     #[test]
     fn screen_variants_are_distinct() {
         let variants = [
-            Screen::RunReplay,
-            Screen::Verification,
-            Screen::SystemOverview,
-            Screen::WorkflowGraph,
-            Screen::IncidentConsole,
+            Screen::ExecutionOverview,
+            Screen::WorkflowGraphAuthoring,
+            Screen::ExecutionDetailsGraph,
+            Screen::VerificationCertificate,
+            Screen::ReplayTheater,
+            Screen::IncidentFailureConsole,
+            Screen::ActionRegistry,
+            Screen::StorageDoctorAiContext,
         ];
         for (i, a) in variants.iter().enumerate() {
             for (j, b) in variants.iter().enumerate() {
@@ -524,97 +606,95 @@ mod tests {
     #[test]
     fn switch_screen_updates_current_screen() {
         let mut state = AppState::new();
-        assert_eq!(state.current_screen(), Screen::RunReplay);
+        assert_eq!(state.current_screen(), Screen::ExecutionOverview);
 
-        state.switch_screen(Screen::Verification);
-        assert_eq!(state.current_screen(), Screen::Verification);
+        state.switch_screen(Screen::WorkflowGraphAuthoring);
+        assert_eq!(state.current_screen(), Screen::WorkflowGraphAuthoring);
 
-        state.switch_screen(Screen::SystemOverview);
-        assert_eq!(state.current_screen(), Screen::SystemOverview);
+        state.switch_screen(Screen::ExecutionDetailsGraph);
+        assert_eq!(state.current_screen(), Screen::ExecutionDetailsGraph);
 
-        state.switch_screen(Screen::WorkflowGraph);
-        assert_eq!(state.current_screen(), Screen::WorkflowGraph);
+        state.switch_screen(Screen::VerificationCertificate);
+        assert_eq!(state.current_screen(), Screen::VerificationCertificate);
 
-        state.switch_screen(Screen::IncidentConsole);
-        assert_eq!(state.current_screen(), Screen::IncidentConsole);
+        state.switch_screen(Screen::ReplayTheater);
+        assert_eq!(state.current_screen(), Screen::ReplayTheater);
+
+        state.switch_screen(Screen::IncidentFailureConsole);
+        assert_eq!(state.current_screen(), Screen::IncidentFailureConsole);
+
+        state.switch_screen(Screen::ActionRegistry);
+        assert_eq!(state.current_screen(), Screen::ActionRegistry);
+
+        state.switch_screen(Screen::StorageDoctorAiContext);
+        assert_eq!(state.current_screen(), Screen::StorageDoctorAiContext);
     }
 
     #[test]
     fn screen_title_returns_correct_labels() {
         let mut state = AppState::new();
 
-        state.switch_screen(Screen::RunReplay);
+        state.switch_screen(Screen::ExecutionOverview);
+        assert_eq!(state.screen_title(), "Execution Observatory Overview");
+
+        state.switch_screen(Screen::WorkflowGraphAuthoring);
+        assert_eq!(state.screen_title(), "Workflow Graph Authoring");
+
+        state.switch_screen(Screen::ExecutionDetailsGraph);
+        assert_eq!(state.screen_title(), "Execution Details Graph View");
+
+        state.switch_screen(Screen::VerificationCertificate);
+        assert_eq!(state.screen_title(), "Verification Certificate View");
+
+        state.switch_screen(Screen::ReplayTheater);
         assert_eq!(state.screen_title(), "Replay Theater");
 
-        state.switch_screen(Screen::Verification);
-        assert_eq!(state.screen_title(), "Verification");
+        state.switch_screen(Screen::IncidentFailureConsole);
+        assert_eq!(state.screen_title(), "Incident Failure Console");
 
-        state.switch_screen(Screen::SystemOverview);
-        assert_eq!(state.screen_title(), "System Overview");
+        state.switch_screen(Screen::ActionRegistry);
+        assert_eq!(state.screen_title(), "Action Registry / Contract Inspector");
 
-        state.switch_screen(Screen::WorkflowGraph);
-        assert_eq!(state.screen_title(), "Workflow Graph");
-
-        state.switch_screen(Screen::IncidentConsole);
-        assert_eq!(state.screen_title(), "Incident Console");
+        state.switch_screen(Screen::StorageDoctorAiContext);
+        assert_eq!(
+            state.screen_title(),
+            "Storage / Journal Doctor + AI Context"
+        );
     }
 
     // -----------------------------------------------------------------------
-    // screen_nav_color returns unique RGBA for each screen
+    // screen metadata returns canonical Figma labels
     // -----------------------------------------------------------------------
 
     #[test]
-    fn screen_nav_color_cyan_for_run_replay() {
+    fn screen_metadata_matches_figma_bundle() {
         let mut state = AppState::new();
-        state.switch_screen(Screen::RunReplay);
+        state.switch_screen(Screen::ReplayTheater);
+        assert_eq!(
+            state.screen_subtitle(),
+            "A cinematic flight recorder for durable workflow executions"
+        );
+        assert_eq!(state.screen_status_chips(), ("Replay safe", "Journaled"));
+    }
+
+    #[test]
+    fn screen_nav_color_uses_light_semantic_blue_for_overview() {
+        let state = AppState::new();
         let [r, g, b, a] = state.screen_nav_color();
-        assert_eq!(r, 0.0);
-        assert!((g - 0.96).abs() < 0.01);
-        assert_eq!(b, 1.0);
+        assert!((r - 0.145).abs() < 0.01);
+        assert!((g - 0.388).abs() < 0.01);
+        assert!((b - 0.922).abs() < 0.01);
         assert_eq!(a, 1.0);
     }
 
     #[test]
-    fn screen_nav_color_green_for_verification() {
+    fn screen_nav_color_uses_light_semantic_red_for_incidents() {
         let mut state = AppState::new();
-        state.switch_screen(Screen::Verification);
+        state.switch_screen(Screen::IncidentFailureConsole);
         let [r, g, b, a] = state.screen_nav_color();
-        assert!((r - 0.22).abs() < 0.01);
-        assert_eq!(g, 1.0);
-        assert!((b - 0.08).abs() < 0.01);
-        assert_eq!(a, 1.0);
-    }
-
-    #[test]
-    fn screen_nav_color_blue_for_system_overview() {
-        let mut state = AppState::new();
-        state.switch_screen(Screen::SystemOverview);
-        let [r, g, b, a] = state.screen_nav_color();
-        assert!((r - 0.18).abs() < 0.01);
-        assert!((g - 0.42).abs() < 0.01);
-        assert_eq!(b, 1.0);
-        assert_eq!(a, 1.0);
-    }
-
-    #[test]
-    fn screen_nav_color_purple_for_workflow_graph() {
-        let mut state = AppState::new();
-        state.switch_screen(Screen::WorkflowGraph);
-        let [r, g, b, a] = state.screen_nav_color();
-        assert!((r - 0.69).abs() < 0.01);
-        assert!((g - 0.30).abs() < 0.01);
-        assert_eq!(b, 1.0);
-        assert_eq!(a, 1.0);
-    }
-
-    #[test]
-    fn screen_nav_color_red_for_incident_console() {
-        let mut state = AppState::new();
-        state.switch_screen(Screen::IncidentConsole);
-        let [r, g, b, a] = state.screen_nav_color();
-        assert_eq!(r, 1.0);
-        assert!((g - 0.03).abs() < 0.01);
-        assert!((b - 0.23).abs() < 0.01);
+        assert!((r - 0.898).abs() < 0.01);
+        assert!((g - 0.282).abs() < 0.01);
+        assert!((b - 0.302).abs() < 0.01);
         assert_eq!(a, 1.0);
     }
 
@@ -1319,8 +1399,8 @@ mod tests {
             field3: String::new(),
             field4: String::new(),
         };
-        assert_eq!(card.badge_color(), "#39ff14");
-        assert_eq!(card.field_color(), "#39ff14");
+        assert_eq!(card.badge_color(), "#16a66a");
+        assert_eq!(card.field_color(), "#16a66a");
     }
 
     #[test]
@@ -1332,8 +1412,8 @@ mod tests {
             field3: String::new(),
             field4: String::new(),
         };
-        assert_eq!(card.badge_color(), "#ffe600");
-        assert_eq!(card.field_color(), "#ffe600");
+        assert_eq!(card.badge_color(), "#f59e0b");
+        assert_eq!(card.field_color(), "#f59e0b");
     }
 
     #[test]
@@ -1345,8 +1425,8 @@ mod tests {
             field3: String::new(),
             field4: String::new(),
         };
-        assert_eq!(card.badge_color(), "#ff073a");
-        assert_eq!(card.field_color(), "#ff073a");
+        assert_eq!(card.badge_color(), "#e5484d");
+        assert_eq!(card.field_color(), "#e5484d");
     }
 
     #[test]
@@ -1358,8 +1438,8 @@ mod tests {
             field3: String::new(),
             field4: String::new(),
         };
-        assert_eq!(card.badge_color(), "#555577");
-        assert_eq!(card.field_color(), "#555577");
+        assert_eq!(card.badge_color(), "#98a2b3");
+        assert_eq!(card.field_color(), "#98a2b3");
     }
 
     // -----------------------------------------------------------------------
@@ -1655,7 +1735,7 @@ mod tests {
         );
     }
 
-    /// LOW: CertCardStatus badge_color returns fallback "#555577" for
+    /// LOW: CertCardStatus badge_color returns fallback "#98a2b3" for
     /// any unrecognized badge_text, including empty string.
     #[test]
     fn blackhat_cert_card_badge_color_fallback_for_empty_string() {
@@ -1666,8 +1746,8 @@ mod tests {
             field3: String::new(),
             field4: String::new(),
         };
-        assert_eq!(card.badge_color(), "#555577");
-        assert_eq!(card.field_color(), "#555577");
+        assert_eq!(card.badge_color(), "#98a2b3");
+        assert_eq!(card.field_color(), "#98a2b3");
     }
 
     /// LOW: Sync system from screen with zero total_active_runs and

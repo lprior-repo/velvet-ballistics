@@ -1,10 +1,11 @@
 #![forbid(unsafe_code)]
+#![allow(clippy::arithmetic_side_effects)]
 //! Domain types for the Mission Control UI.
 //!
 //! Wraps primitive values to eliminate primitive obsession and enforce
 //! Farley constraints (each function ≤ 25 lines).
 
-use makepad_widgets::{Rect, Vec4f};
+use makepad_widgets::{DVec2, Rect, Vec4f};
 
 /// Number of consecutive clean IPC poll cycles before clearing an error state.
 /// After 3 clean cycles, the error is considered resolved.
@@ -27,125 +28,201 @@ impl IpcCleanCycles {
     }
 }
 
-/// X-axis offsets for the 5 navigation tabs in the header bar.
+/// Shared shell metrics from the 11:51 Figma bundle.
 #[derive(Debug, Clone, Copy)]
-pub(crate) struct TabOffsets(pub [f64; 5]);
+pub(crate) struct ShellMetrics;
 
-impl TabOffsets {
-    pub(crate) const fn new() -> Self {
-        Self([0.0, 80.0, 160.0, 240.0, 330.0])
+impl ShellMetrics {
+    pub(crate) const OUTER_MARGIN: f64 = 32.0;
+    pub(crate) const SIDEBAR_WIDTH: f64 = 246.0;
+    pub(crate) const TOP_BAR_HEIGHT: f64 = 78.0;
+    pub(crate) const CONTENT_GUTTER: f64 = 16.0;
+    pub(crate) const HAIRLINE: f64 = 1.0;
+
+    pub(crate) fn shell_rect(rect: Rect) -> Rect {
+        Rect {
+            pos: DVec2 {
+                x: rect.pos.x + Self::OUTER_MARGIN,
+                y: rect.pos.y + Self::OUTER_MARGIN,
+            },
+            size: DVec2 {
+                x: rect.size.x - (Self::OUTER_MARGIN * 2.0),
+                y: rect.size.y - (Self::OUTER_MARGIN * 2.0),
+            },
+        }
     }
 
-    pub(crate) const TAB_WIDTH: f64 = 70.0;
-    pub(crate) const TAB_HEIGHT: f64 = 28.0;
-    pub(crate) const HEADER_HEIGHT: f64 = 45.0;
+    pub(crate) fn sidebar_rect(rect: Rect) -> Rect {
+        let shell = Self::shell_rect(rect);
+        Rect {
+            pos: shell.pos,
+            size: DVec2 {
+                x: Self::SIDEBAR_WIDTH,
+                y: shell.size.y,
+            },
+        }
+    }
+
+    pub(crate) fn top_bar_rect(rect: Rect) -> Rect {
+        let shell = Self::shell_rect(rect);
+        Rect {
+            pos: DVec2 {
+                x: shell.pos.x + Self::SIDEBAR_WIDTH + Self::CONTENT_GUTTER,
+                y: shell.pos.y,
+            },
+            size: DVec2 {
+                x: shell.size.x - Self::SIDEBAR_WIDTH - Self::CONTENT_GUTTER,
+                y: Self::TOP_BAR_HEIGHT,
+            },
+        }
+    }
+
+    pub(crate) fn content_rect(rect: Rect) -> Rect {
+        let top_bar = Self::top_bar_rect(rect);
+        let shell = Self::shell_rect(rect);
+        Rect {
+            pos: DVec2 {
+                x: top_bar.pos.x,
+                y: top_bar.pos.y + top_bar.size.y + Self::CONTENT_GUTTER,
+            },
+            size: DVec2 {
+                x: top_bar.size.x,
+                y: shell.size.y - Self::TOP_BAR_HEIGHT - Self::CONTENT_GUTTER,
+            },
+        }
+    }
+}
+
+/// Fixed left-sidebar navigation layout.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct SidebarLayout {
+    pub(crate) x: f64,
+    pub(crate) nav_y: f64,
+    pub(crate) row_width: f64,
+    pub(crate) row_height: f64,
+    pub(crate) row_gap: f64,
+}
+
+impl SidebarLayout {
+    pub(crate) const NAV_TOP_OFFSET: f64 = 118.0;
+    pub(crate) const ROW_X_OFFSET: f64 = 16.0;
+    pub(crate) const ROW_WIDTH: f64 = 214.0;
+    pub(crate) const ROW_HEIGHT: f64 = 34.0;
+    pub(crate) const ROW_GAP: f64 = 8.0;
+
+    pub(crate) fn from_rect(rect: Rect) -> Self {
+        let sidebar = ShellMetrics::sidebar_rect(rect);
+        Self {
+            x: sidebar.pos.x + Self::ROW_X_OFFSET,
+            nav_y: sidebar.pos.y + Self::NAV_TOP_OFFSET,
+            row_width: Self::ROW_WIDTH,
+            row_height: Self::ROW_HEIGHT,
+            row_gap: Self::ROW_GAP,
+        }
+    }
+
+    pub(crate) fn row_rect(&self, row: u32) -> Rect {
+        let offset = f64::from(row) * (self.row_height + self.row_gap);
+        Rect {
+            pos: DVec2 {
+                x: self.x,
+                y: self.nav_y + offset,
+            },
+            size: DVec2 {
+                x: self.row_width,
+                y: self.row_height,
+            },
+        }
+    }
 }
 
 /// Layout constants for the transport (playback) bar.
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct TransportLayout {
-    pub(crate) transport_y_offset: f64,
+    pub(crate) transport_x: f64,
+    pub(crate) transport_y: f64,
     pub(crate) transport_height: f64,
     pub(crate) btn_width: f64,
-    pub(crate) start_x_offset: f64,
 }
 
 impl TransportLayout {
-    pub(crate) const CONTENT_Y_OFFSET: f64 = 73.0;
-    pub(crate) const TRANSPORT_Y_OFFSET: f64 = 150.0;
-    pub(crate) const TRANSPORT_HEIGHT: f64 = 50.0;
-    pub(crate) const BTN_WIDTH: f64 = 30.0;
+    pub(crate) const TRANSPORT_Y_OFFSET: f64 = 420.0;
+    pub(crate) const TRANSPORT_HEIGHT: f64 = 40.0;
+    pub(crate) const BTN_WIDTH: f64 = 34.0;
     pub(crate) const BTN_SPACING: f64 = 10.0;
-    pub(crate) const START_X_OFFSET: f64 = 20.0;
+    pub(crate) const START_X_OFFSET: f64 = 32.0;
 
     #[allow(elided_lifetimes_in_paths)]
     pub(crate) fn from_rect(rect: &Rect) -> Self {
+        let content = ShellMetrics::content_rect(*rect);
         Self {
-            transport_y_offset: rect.pos.y + Self::CONTENT_Y_OFFSET + Self::TRANSPORT_Y_OFFSET,
+            transport_x: content.pos.x + Self::START_X_OFFSET,
+            transport_y: content.pos.y + Self::TRANSPORT_Y_OFFSET,
             transport_height: Self::TRANSPORT_HEIGHT,
             btn_width: Self::BTN_WIDTH,
-            start_x_offset: Self::START_X_OFFSET,
         }
     }
 
-    /// Returns button x positions: [|<, <, >, >|]
-    pub(crate) fn button_positions(&self, _transport_start_x: f64) -> [f64; 4] {
+    /// Returns button x positions: [|<, <, play/pause, >, >|]
+    pub(crate) fn button_positions(&self) -> [f64; 5] {
         compute_button_positions()
     }
 }
 
-const fn compute_button_positions() -> [f64; 4] {
+const fn compute_button_positions() -> [f64; 5] {
     let spacing = TransportLayout::BTN_WIDTH + TransportLayout::BTN_SPACING;
-    [0.0, spacing, spacing * 2.0, spacing * 3.0]
+    [0.0, spacing, spacing * 2.0, spacing * 3.0, spacing * 4.0]
 }
 
-/// Pre-computed color palette for the nav tabs (background + accent per tab).
-#[derive(Debug, Clone)]
-pub(crate) struct TabColors {
-    pub(crate) bg: [f32; 3],
-    pub(crate) accent: [f32; 3],
+const fn rgba(x: f32, y: f32, z: f32, w: f32) -> Vec4f {
+    Vec4f { x, y, z, w }
 }
 
-impl TabColors {
-    pub(crate) fn for_tab(screen_index: usize, is_active: bool) -> Self {
-        let (bg_r, bg_g, bg_b) = if is_active {
-            (0.10_f32, 0.165_f32, 0.165_f32)
-        } else {
-            (0.102_f32, 0.102_f32, 0.180_f32)
-        };
-
-        let accent = match screen_index {
-            0 => (0.0_f32, 0.96_f32, 1.0_f32),  // RunReplay - cyan
-            1 => (0.22_f32, 1.0_f32, 0.08_f32), // Verification - green
-            2 => (0.18_f32, 0.42_f32, 1.0_f32), // SystemOverview - blue
-            3 => (0.69_f32, 0.30_f32, 1.0_f32), // WorkflowGraph - purple
-            4 => (1.0_f32, 0.03_f32, 0.23_f32), // IncidentConsole - red
-            _ => (0.5_f32, 0.5_f32, 0.5_f32),
-        };
-
-        Self {
-            bg: [bg_r, bg_g, bg_b],
-            accent: [accent.0, accent.1, accent.2],
-        }
-    }
+pub(crate) fn app_bg_color() -> Vec4f {
+    rgba(0.957, 0.965, 0.976, 1.0)
 }
 
-/// Dark background color used for main content areas.
-pub(crate) fn dark_bg_color() -> Vec4f {
-    Vec4f {
-        x: 0.039,
-        y: 0.039,
-        z: 0.071,
-        w: 1.0,
-    }
+pub(crate) fn surface_color() -> Vec4f {
+    rgba(1.0, 1.0, 1.0, 1.0)
 }
 
-/// Header bar background color.
-pub(crate) fn header_bg_color() -> Vec4f {
-    Vec4f {
-        x: 0.071,
-        y: 0.078,
-        z: 0.122,
-        w: 1.0,
-    }
+pub(crate) fn panel_color() -> Vec4f {
+    rgba(0.984, 0.988, 0.996, 1.0)
 }
 
-/// Separator line color between header and content.
-pub(crate) fn separator_color() -> Vec4f {
-    Vec4f {
-        x: 0.165,
-        y: 0.165,
-        z: 0.290,
-        w: 1.0,
-    }
+pub(crate) fn border_color() -> Vec4f {
+    rgba(0.898, 0.918, 0.945, 1.0)
 }
 
-/// Panel background color for content areas.
-pub(crate) fn panel_bg_color() -> Vec4f {
-    Vec4f {
-        x: 0.086,
-        y: 0.086,
-        z: 0.165,
-        w: 1.0,
-    }
+pub(crate) fn primary_text_color() -> Vec4f {
+    rgba(0.059, 0.09, 0.165, 1.0)
+}
+
+pub(crate) fn secondary_text_color() -> Vec4f {
+    rgba(0.263, 0.322, 0.4, 1.0)
+}
+
+pub(crate) fn muted_text_color() -> Vec4f {
+    rgba(0.541, 0.596, 0.667, 1.0)
+}
+
+pub(crate) fn success_color() -> Vec4f {
+    rgba(0.086, 0.651, 0.416, 1.0)
+}
+
+pub(crate) fn warning_color() -> Vec4f {
+    rgba(0.961, 0.62, 0.043, 1.0)
+}
+
+pub(crate) fn failure_color() -> Vec4f {
+    rgba(0.898, 0.282, 0.302, 1.0)
+}
+
+pub(crate) fn primary_blue_color() -> Vec4f {
+    rgba(0.145, 0.388, 0.922, 1.0)
+}
+
+pub(crate) fn accent_from_rgba(color: [f32; 4]) -> Vec4f {
+    let [x, y, z, w] = color;
+    rgba(x, y, z, w)
 }

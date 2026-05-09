@@ -6249,11 +6249,16 @@ fn vb1u88_cancel_unknown_run_does_not_emit_events() {
     );
     assert_eq!(shard.tick(), Ok(true));
     let after = journal.snapshot().expect("journal snapshot should succeed");
-    assert_eq!(before, after, "no journal events should be emitted for unknown run cancel");
+    assert_eq!(
+        before, after,
+        "no journal events should be emitted for unknown run cancel"
+    );
     let trace_events = shard.trace_ring_mut().drain();
     let unknown_run = super::RunId::new(8888);
     assert!(
-        !trace_events.iter().any(|e| matches!(e, TraceEvent::RunCancelled { run } if *run == unknown_run)),
+        !trace_events
+            .iter()
+            .any(|e| matches!(e, TraceEvent::RunCancelled { run } if *run == unknown_run)),
         "no trace RunCancelled event for unknown run"
     );
 }
@@ -6275,11 +6280,17 @@ fn vb1u88_cancel_removes_run_and_releases_frame() {
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
-    assert_eq!(shard.frame_pools.get(&(1, 1)).map(|p| p.available()), Some(0));
+    assert_eq!(
+        shard.frame_pools.get(&(1, 1)).map(|p| p.available()),
+        Some(0)
+    );
     assert_eq!(shard.enqueue(ShardCommand::Cancel { run }), Ok(()));
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(shard.runs.get(&run), None);
-    assert_eq!(shard.frame_pools.get(&(1, 1)).map(|p| p.available()), Some(1));
+    assert_eq!(
+        shard.frame_pools.get(&(1, 1)).map(|p| p.available()),
+        Some(1)
+    );
     assert_eq!(shard.counters().snapshot().runs_failed, 1);
 }
 
@@ -6336,12 +6347,8 @@ fn vb1u88_status_shutting_down_after_shutdown_tick() {
 fn vb1u88_status_command_queue_depth_correct() {
     let config = small_config();
     let mut shard = Shard::new(config);
-    assert_eq!(
-        shard.enqueue(ShardCommand::Shutdown), Ok(())
-    );
-    assert_eq!(
-        shard.enqueue(ShardCommand::Shutdown), Ok(())
-    );
+    assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
+    assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
     let status = shard.status();
     assert_eq!(status.command_queue_depth, 2);
     assert_eq!(status.command_queue_capacity, 16);
