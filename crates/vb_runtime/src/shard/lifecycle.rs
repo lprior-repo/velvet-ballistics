@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Run lifecycle management: submit, resume, cancel, action completion, timers.
 
 use vb_core::ValueStore;

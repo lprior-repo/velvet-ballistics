@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Cold typed workflow AST for the compiler boundary.
 //!
 //! YAML remains confined to `vb-compiler`; runtime crates consume only lowered

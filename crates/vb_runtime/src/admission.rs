@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Runtime admission control for workflow runs.
 //!
 //! `RunAdmission` records the artifact digest, granted capabilities,

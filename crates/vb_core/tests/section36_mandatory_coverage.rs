@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Section 36 mandatory test coverage: FiniteF64, SlotValue, StepBudget,
 //! RunFrame, try_from_parts, and engine invariants.
 

@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Top-level workflow parts validation.
 
 use super::accessors::{

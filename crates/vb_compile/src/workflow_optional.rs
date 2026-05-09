@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 
 fn validate_phase_zero_result(doc: &Yaml<'_>) -> Result<(), CompileError> {
     let Some(node) = doc.as_mapping_get("result") else {

@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Expression operator evaluation.
 
 use crate::errors::EngineError;

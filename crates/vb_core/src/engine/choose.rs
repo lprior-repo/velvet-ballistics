@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Choose branch evaluation logic.
 
 use crate::errors::EngineError;

@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Runtime slot value model.
 
 use crate::errors::{CoreError, CoreResult};

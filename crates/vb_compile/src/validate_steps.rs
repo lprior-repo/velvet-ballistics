@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 fn validate_workflow_document_shape(doc: &Yaml<'_>) -> Result<(), CompileError> {
     validate_top_level_keys(doc)?;
     validate_workflow_version(doc)?;

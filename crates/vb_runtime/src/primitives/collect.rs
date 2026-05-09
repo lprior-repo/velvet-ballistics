@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Collect pagination primitive handlers.
 
 use std::collections::HashMap;

@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 fn reject_duplicate_mapping_keys(text: &str) -> Result<(), CompileError> {
     let mut parser = Parser::new_from_str(text);
 

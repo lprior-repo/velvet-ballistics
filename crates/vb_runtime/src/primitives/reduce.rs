@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Reduce accumulation primitive handlers.
 
 use vb_core::errors::EngineError;

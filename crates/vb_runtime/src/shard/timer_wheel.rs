@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Timer wheel for wait/ask deadline tracking.
 //!
 //! Uses a BTreeMap<Instant, Vec<TimerEntry>> as the primary time-index

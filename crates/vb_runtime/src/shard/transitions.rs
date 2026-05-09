@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Run state transition helpers: keep, finish, await action, await timer, fail.
 
 use vb_core::action::ActionTicket;

@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Replay step execution.
 
 use crate::errors::EngineError;

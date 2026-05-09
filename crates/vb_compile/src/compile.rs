@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 
 // ---------------------------------------------------------------------------
 // Phase 11-12 public slot compiler and IR lowering API (section 28)

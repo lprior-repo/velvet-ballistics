@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Expression bytecode types and validation.
 
 use crate::errors::{CoreError, CoreResult};

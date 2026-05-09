@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Phase 1 public contract tests for vb-core foundational types.
 
 use core::str::FromStr;

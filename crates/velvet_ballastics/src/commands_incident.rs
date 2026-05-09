@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 #![allow(unreachable_pub)]
 //! Pure incident report computation logic, separated from I/O and formatting.
 

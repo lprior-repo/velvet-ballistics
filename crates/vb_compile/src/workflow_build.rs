@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 fn build_workflow_parts(text: &str, doc: &Yaml<'_>) -> Result<WorkflowParts, CompileError> {
     validate_workflow_document_shape(doc)?;
 

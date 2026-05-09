@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Cold expression lexer/parser used by the compiler AST boundary.
 
 use crate::CompileError;

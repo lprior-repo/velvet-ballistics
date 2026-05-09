@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Together parallel-branch primitive handlers.
 
 use vb_core::errors::EngineError;

@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Choice-related replay step handlers.
 
 use crate::errors::EngineError;

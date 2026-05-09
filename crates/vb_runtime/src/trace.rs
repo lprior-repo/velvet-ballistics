@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Bounded trace ring using rtrb SPSC ring buffer.
 
 use std::collections::VecDeque;

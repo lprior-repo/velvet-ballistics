@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Accessor evaluation.
 
 use crate::errors::EngineError;

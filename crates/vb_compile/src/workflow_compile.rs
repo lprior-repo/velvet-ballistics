@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 fn compile_step(
     step: &Yaml<'_>,
     index: usize,

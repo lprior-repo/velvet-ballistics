@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Workflow validation functions.
 //!
 //! This module is split into:

@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Lowering logic module.
 //!
 //! This module contains the `SlotCompiler` and `lower_*` functions.

@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Workflow validation - graph structural validation.
 
 use crate::ids::StepIdx;

@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 const DEFAULT_MAX_SOURCE_BYTES: usize = 1_048_576;
 const DEFAULT_MAX_DEPTH: u16 = 64;
 const DEFAULT_MAX_NODES: u32 = 100_000;

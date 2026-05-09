@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 fn validate_strict_profile(root: &Yaml<'_>, limits: YamlLimits) -> Result<(), CompileError> {
     if !root.is_mapping() {
         return Err(CompileError::TopLevelNotMapping);

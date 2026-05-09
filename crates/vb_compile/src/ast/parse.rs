@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 use super::marks::AstMarks;
 use super::types::{
     AstExpression, AstMapEntry, AstValue, StepAst, StepKindAst, StepPrimitiveAst, TriggerAst,

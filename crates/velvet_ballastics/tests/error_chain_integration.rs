@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Error chain integration tests.
 //!
 //! Verifies that error types implement Display, Error, and support proper

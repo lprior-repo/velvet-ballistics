@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 use crate::{CompileError, CompileErrors, non_string_key_error, validate_public_name};
 use saphyr::Yaml;
 

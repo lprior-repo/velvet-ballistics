@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Expression evaluation operations for replay.
 
 use crate::errors::EngineError;

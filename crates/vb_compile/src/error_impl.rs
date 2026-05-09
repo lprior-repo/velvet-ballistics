@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 impl CompileError {
     /// Stable machine-readable validation diagnostic code.
     #[must_use]

@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Pure workflow analysis logic for graph and simulate commands.
 
 use vb_core::ids::StepIdx;

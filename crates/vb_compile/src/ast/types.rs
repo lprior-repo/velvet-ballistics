@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 use crate::SourceMark;
 use crate::expression::ParsedExpression;
 use vb_core::{ActionId, SlotIdx, StepIdx};

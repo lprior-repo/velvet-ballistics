@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Compiled workflow node types.
 
 use crate::ids::{ActionId, ConstIdx, ExprIdx, SlotIdx, StepIdx, SymbolId};

@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Command implementations for velvet-ballastics.
 //! Thin re-export facade over sibling modules: run, storage, bench.
 

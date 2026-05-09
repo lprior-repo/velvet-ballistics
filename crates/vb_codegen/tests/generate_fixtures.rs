@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Generate trybuild fixtures from compiled workflows.
 
 use std::path::PathBuf;

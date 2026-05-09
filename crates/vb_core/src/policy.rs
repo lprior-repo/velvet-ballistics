@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Runtime admission policy controlling verification strictness and durability.
 
 /// Controls how strictly artifact admission verification is enforced.

@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Shared helper functions for primitive handlers.
 
 use vb_core::errors::EngineError;

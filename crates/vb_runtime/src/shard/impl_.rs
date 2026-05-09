@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Shard construction, queue operations, and core tick processing.
 
 use crossbeam_queue::ArrayQueue;

@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Wait and Ask suspension primitive handlers.
 
 use vb_core::errors::EngineError;

@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Integration tests for basic engine workflow execution.
 
 use crate::errors::EngineError;

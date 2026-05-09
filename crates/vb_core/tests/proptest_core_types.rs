@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Proptest property tests for core types: FiniteF64, Taint lattice, ValueStore, SlotValue.
 
 use proptest::prelude::*;

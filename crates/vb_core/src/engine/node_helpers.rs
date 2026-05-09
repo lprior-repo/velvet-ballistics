@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Node execution helper functions.
 
 use crate::errors::EngineError;

@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 // Test modules for vb_compile
 mod helpers;
 mod test_01;

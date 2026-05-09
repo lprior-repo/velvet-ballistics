@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Engine signal types and step budget.
 
 use crate::errors::EngineError;

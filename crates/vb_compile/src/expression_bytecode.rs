@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Cold expression bytecode lowering.
 
 use crate::CompileError;

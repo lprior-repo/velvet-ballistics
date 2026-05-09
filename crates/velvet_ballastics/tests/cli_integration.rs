@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! CLI integration tests — truth serum adversarial audit as executable tests.
 //!
 //! These tests encode the exact scenarios from the manual truth-serum audit

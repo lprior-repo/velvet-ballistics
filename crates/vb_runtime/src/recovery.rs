@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Runtime recovery boundary over storage summary hydration.
 
 use vb_core::frame::{RunFrame, StepState};

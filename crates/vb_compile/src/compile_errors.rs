@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 pub struct CompileErrors(pub Vec<CompileError>);
 
 impl CompileErrors {

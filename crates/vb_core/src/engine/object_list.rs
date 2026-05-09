@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Object and list construction helpers.
 
 use crate::errors::EngineError;

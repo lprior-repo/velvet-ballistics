@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Control-flow validation for compiled workflow ASTs.
 //!
 //! Validates choose branch targets, rejects backward branches (cycles), and

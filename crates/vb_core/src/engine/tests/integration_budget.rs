@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Integration tests for step budget handling.
 
 use crate::errors::EngineError;

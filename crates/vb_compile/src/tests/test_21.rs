@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 // Edge-case tests for the compilation pipeline:
 // - Empty workflow boundaries
 // - Single-node workflows

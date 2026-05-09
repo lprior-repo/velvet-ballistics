@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Repeat retry-loop primitive handlers.
 
 use vb_core::errors::EngineError;

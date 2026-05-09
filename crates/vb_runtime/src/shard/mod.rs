@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Single-threaded shard owning mutable run state directly.
 
 pub mod helpers;

@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Integration tests for choose slot and choose expression nodes.
 
 use crate::ids::{ConstIdx, ExprIdx, RunId, SlotIdx, StepIdx, WorkflowDigest};

@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 fn non_string_key_error() -> CompileError {
     CompileError::NonStringKey {
         mark: SourceMark::unavailable(),

@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
     let Some(node) = doc.as_mapping_get("result") else {
         return Ok(());
     };

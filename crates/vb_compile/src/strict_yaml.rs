@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Strict YAML profile event checks for the cold compiler boundary.
 //!
 //! This module intentionally lives in `vb-compiler`, not in runtime crates.

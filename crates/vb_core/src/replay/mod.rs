@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Deterministic replay engine for reconstructing slot state from journal evidence.
 //!
 //! Given a compiled workflow and step evidence, re-executes deterministic steps

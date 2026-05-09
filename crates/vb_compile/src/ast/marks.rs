@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 use crate::{CompileError, SourceMark};
 use saphyr_parser::{Event, Parser};
 use std::collections::BTreeMap;

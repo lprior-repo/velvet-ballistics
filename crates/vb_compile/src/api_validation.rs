@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 /// Validates compiled workflow IR against structural and resource invariants.
 ///
 /// Runs the shared validation pipeline (gates 7-15) via

@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Expression evaluation engine.
 
 mod accessors;

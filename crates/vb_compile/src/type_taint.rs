@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 use crate::ast::{AstExpression, AstMapEntry, AstValue, StepKindAst, WorkflowAst};
 use crate::expression::{BinaryOp, ExpressionHelper, ExpressionLiteral, ParsedExpression, UnaryOp};
 use crate::{CompileError, CompileErrors};

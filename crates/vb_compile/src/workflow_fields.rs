@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 struct WorkflowBuilder {
     nodes: Vec<CompiledNode>,
     constants: Vec<ConstValue>,

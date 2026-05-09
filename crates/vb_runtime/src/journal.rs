@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Runtime-local journal append port.
 
 use indexmap::IndexMap;

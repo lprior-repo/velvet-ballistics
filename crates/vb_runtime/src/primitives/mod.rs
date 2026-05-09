@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Iteration and compound primitive handlers.
 
 pub mod collect;

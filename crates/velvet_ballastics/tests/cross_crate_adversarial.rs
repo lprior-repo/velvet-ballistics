@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Adversarial BDD-style integration tests attacking cross-crate seams.
 //!
 //! These tests exercise the boundaries between crates to find bugs in

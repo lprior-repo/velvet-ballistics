@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Section 38 behavioral property tests: terminal state rejection, replay
 //! determinism, ordering invariants, and snapshot equivalence.
 

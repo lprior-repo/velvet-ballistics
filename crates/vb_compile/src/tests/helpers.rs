@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 
     use super::{CompileError, CompileErrors, SlotCompiler, SourceMark, YamlCompiler, YamlLimits};
     use super::{

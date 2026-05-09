@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Workflow validation - node validation.
 
 use crate::ids::{ConstIdx, SlotIdx, StepIdx};

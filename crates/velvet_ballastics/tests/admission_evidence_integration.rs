@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Admission and evidence chain integration tests.
 //!
 //! These tests exercise end-to-end flows across multiple crates: submitting

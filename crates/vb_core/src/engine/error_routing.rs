@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! On-error/then handler routing for step failures.
 //!
 //! When a step fails, the engine checks if the compiled node declares an

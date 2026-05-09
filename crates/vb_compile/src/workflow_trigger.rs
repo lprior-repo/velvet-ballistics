@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 fn validate_top_level_keys(doc: &Yaml<'_>) -> Result<(), CompileError> {
     let Some(mapping) = doc.as_mapping() else {
         return Err(CompileError::TopLevelNotMapping);

@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Retry/try_again policy primitives for bounded retries with delay and exhaustion.
 //!
 //! Provides `RetryPolicy` for configuring retry behavior, `RetryState` for

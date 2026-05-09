@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Pure helper functions for shard operations.
 
 use vb_core::action::ActionTicket;

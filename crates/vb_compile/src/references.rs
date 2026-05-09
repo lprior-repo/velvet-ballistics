@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Reference validation for compiled workflow ASTs.
 //!
 //! Delegates core reference validation to `vb_validate::references` to avoid

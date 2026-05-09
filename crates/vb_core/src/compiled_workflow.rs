@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Compiled workflow IR types.
 
 use crate::ids::{

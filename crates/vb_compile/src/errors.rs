@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 pub enum CompileError {
     /// Source exceeded configured byte limit.
     #[error("YAML source exceeds byte limit: actual={actual}, limit={limit}")]

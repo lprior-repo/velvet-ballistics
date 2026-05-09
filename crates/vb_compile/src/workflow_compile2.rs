@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 fn compile_save(
     body: &Yaml<'_>,
     index: usize,

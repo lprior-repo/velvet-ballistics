@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Synchronous in-memory state-machine loop.
 
 pub(crate) mod choose;

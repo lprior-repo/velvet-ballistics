@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Single-step execution engine.
 
 use super::choose;

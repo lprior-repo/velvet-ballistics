@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Cold arenas backing handle-only runtime slot values.
 
 use crate::errors::{CoreError, CoreResult};

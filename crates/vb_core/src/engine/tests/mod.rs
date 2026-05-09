@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Integration tests for the engine.
 
 mod integration_accessor;

@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
     validate_workflow_version(doc)?;
     validate_workflow_trigger(doc)?;
     validate_optional_top_level_shapes(doc)?;

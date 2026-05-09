@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Atomic-ish counters for runtime observability.
 
 use core::sync::atomic::{AtomicU64, Ordering};

@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Integration tests for accessor evaluation.
 
 use crate::errors::EngineError;

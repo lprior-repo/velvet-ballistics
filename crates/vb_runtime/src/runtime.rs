@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Multi-shard runtime routing commands to correct shards.
 
 use std::num::NonZeroUsize;

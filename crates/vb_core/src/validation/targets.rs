@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Workflow validation - target collection helpers.
 
 use crate::ids::StepIdx;

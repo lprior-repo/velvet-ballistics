@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Deterministic run loop and step budget execution.
 
 use crate::EngineSignal;

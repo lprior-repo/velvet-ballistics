@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Workflow validation - resource contract validation.
 
 use crate::errors::CoreError;

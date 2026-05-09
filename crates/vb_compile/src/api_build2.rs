@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 pub fn lower_reduce(
     id: StepIdx,
     input: SlotIdx,

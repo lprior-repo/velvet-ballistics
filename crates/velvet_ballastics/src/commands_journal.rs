@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Pure journal analysis logic for trace, retry, resume, answer commands.
 //!
 //! All functions in this module are pure: they accept `&[JournalEvent]` and

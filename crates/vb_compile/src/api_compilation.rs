@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 use saphyr::Yaml;
 use saphyr_parser::Parser;
 use thiserror::Error;

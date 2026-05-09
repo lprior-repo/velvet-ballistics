@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! ForEach iteration primitive handlers.
 
 use vb_core::errors::EngineError;
