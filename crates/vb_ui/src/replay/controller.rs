@@ -1012,6 +1012,7 @@ mod tests {
             run,
             seq: EventSeq::new(seq),
             step,
+            attempt: 1,
         }
     }
 
@@ -1036,6 +1037,7 @@ mod tests {
             seq: EventSeq::new(seq),
             step,
             action,
+            attempt: 1,
         }
     }
 
@@ -1045,6 +1047,7 @@ mod tests {
             seq: EventSeq::new(seq),
             step,
             action,
+            attempt: 1,
         }
     }
 
@@ -1052,6 +1055,7 @@ mod tests {
         JournalEvent::RunFailedEvent {
             run,
             seq: EventSeq::new(seq),
+            attempt: 1,
         }
     }
 
@@ -1060,6 +1064,7 @@ mod tests {
             run,
             seq: EventSeq::new(seq),
             result,
+            attempt: 1,
         }
     }
 

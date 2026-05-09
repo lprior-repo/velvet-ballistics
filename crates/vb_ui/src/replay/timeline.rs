@@ -434,12 +434,14 @@ mod tests {
             run: make_run_id(),
             seq: make_event_seq(seq),
             result: vb_core::SlotIdx::new(0),
+            attempt: 1,
         }
     }
     fn je_run_failed(seq: u64) -> JournalEvent {
         JournalEvent::RunFailedEvent {
             run: make_run_id(),
             seq: make_event_seq(seq),
+            attempt: 1,
         }
     }
 

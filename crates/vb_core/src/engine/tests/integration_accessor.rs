@@ -9,7 +9,7 @@ use crate::value::{SlotValue, Taint};
 use crate::value_store::{ObjectField, ValueStore};
 use crate::workflow::{
     AccessorProgram, CompiledNode, CompiledNodeKind, CompiledWorkflow, ExprOp, ExprProgram,
-    PathSegment, ResourceContract, WorkflowParts,
+    PathSegment, WorkflowParts,
 };
 
 use crate::engine::{

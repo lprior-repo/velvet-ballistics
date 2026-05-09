@@ -595,7 +595,12 @@ fn parse_action_registry_mode(value: &str) -> Result<ActionRegistryMode, ParseEr
 }
 
 fn parse_verify(args: &[OsString]) -> Result<Command, ParseError> {
-    let workflow = positional(args, 2, "workflow.yaml")?;
+    // Find the first positional argument (workflow path) by skipping over
+    // named flags and their values. Start at index 2 to skip program name and subcommand.
+    // This correctly handles:
+    //   vb verify workflow.yaml              (workflow at index 2)
+    //   vb verify --profile quick workflow.yaml  (workflow at index 4)
+    let workflow = find_positional(args, 2).ok_or(ParseError::MissingArgument("workflow.yaml"))?;
     let profile = match named_flag(args, "--profile") {
         Some(raw) => match raw.as_str() {
             "quick" => VerifyProfile::Quick,
@@ -949,6 +954,23 @@ fn named_flag(args: &[OsString], flag: &str) -> Option<String> {
                 .get(i.checked_add(1)?)
                 .and_then(|v| v.to_str())
                 .map(String::from);
+        }
+    }
+    None
+}
+
+/// Find the first positional argument (not starting with `--`) starting at `start_idx`.
+/// This correctly skips over named flags and their values to locate the workflow path.
+fn find_positional(args: &[OsString], start_idx: usize) -> Option<PathBuf> {
+    let mut i = start_idx;
+    while i < args.len() {
+        let arg = args[i].to_str()?;
+        // Skip named flags (starting with `--`) and their values
+        if arg.starts_with("--") {
+            i = i.saturating_add(2); // Skip flag name and value
+        } else {
+            // Found a positional argument
+            return Some(PathBuf::from(arg));
         }
     }
     None

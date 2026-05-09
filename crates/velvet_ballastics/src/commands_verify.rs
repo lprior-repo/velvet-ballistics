@@ -134,8 +134,8 @@ pub(crate) fn exit_code_for_error(err: &VerifyError) -> CliExitCode {
     match err {
         VerifyError::YamlParse(_) => CliExitCode::ValidationFailed,
         VerifyError::Compile(_) => CliExitCode::ValidationFailed,
-        VerifyError::IrValidation(_) => CliExitCode::ValidationFailed,
-        VerifyError::BudgetPolicy(_) => CliExitCode::ValidationFailed,
+        VerifyError::IrValidation(_) => CliExitCode::VerificationFailed,
+        VerifyError::BudgetPolicy(_) => CliExitCode::VerificationFailed,
         VerifyError::StorageError(_) => CliExitCode::StorageError,
         VerifyError::ReplayDivergence(_) => CliExitCode::ReplayDivergence,
     }

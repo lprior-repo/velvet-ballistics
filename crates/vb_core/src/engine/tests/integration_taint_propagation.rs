@@ -18,8 +18,8 @@ use crate::workflow::{
 
 use crate::action::ActionTicket;
 use crate::engine::{
-    EngineSignal, StepBudget, build_list, build_object, eval_expr_with_store, new_run_frame,
-    resume_action_completion, run_until_blocked, step_once,
+    EngineSignal, eval_expr_with_store,
+    resume_action_completion,
 };
 use crate::frame::RunFrame;
 
@@ -1346,7 +1346,7 @@ fn choose_expr_branch_returns_missing_next_step_when_no_match_and_no_otherwise()
     let result = choose_expr_branch(&workflow, &mut run, &mut store, &branches, None);
 
     match result {
-        Err(EngineError::MissingNextStep { step }) => Ok(()),
+        Err(EngineError::MissingNextStep { .. }) => Ok(()),
         other => Err(format!("expected MissingNextStep, got: {other:?}")),
     }
 }

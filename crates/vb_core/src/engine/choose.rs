@@ -280,11 +280,11 @@ mod tests {
 
         let expr_true =
             ExprProgram::try_from_ops(vec![ExprOp::LoadConst(ConstIdx::new(0))].into_boxed_slice())
-                .map_err(|e| crate::WorkflowError::Expression(e))
+                .map_err(crate::WorkflowError::Expression)
                 .map_err(|e| e.to_string())?;
         let expr_false =
             ExprProgram::try_from_ops(vec![ExprOp::LoadConst(ConstIdx::new(1))].into_boxed_slice())
-                .map_err(|e| crate::WorkflowError::Expression(e))
+                .map_err(crate::WorkflowError::Expression)
                 .map_err(|e| e.to_string())?;
 
         CompiledWorkflow::try_from_parts(WorkflowParts {

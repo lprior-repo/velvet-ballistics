@@ -3596,7 +3596,30 @@ fn explain_validation_error(err: &vb_validate::ValidationError) {
         }
         ValidationError::NonDeterministicPath { from_node, to_node } => {
             outln!("Non-Deterministic Path");
-            outln!("  Path from node {from_node} to {to_node} contains no suspension point.");
+            outln!(
+                "  Path from node {from_node} to {to_node} contains no suspension point."
+            );
+        }
+        ValidationError::AccessorPathTooDeep {
+            accessor_index,
+            depth,
+            max,
+        } => {
+            outln!("Accessor Path Too Deep");
+            outln!(
+                "  Accessor {accessor_index} has depth {depth}, which exceeds the maximum {max}."
+            );
+        }
+        ValidationError::AccessorSymbolOutOfBounds {
+            accessor_index,
+            segment_index,
+            symbol,
+            symbols_count,
+        } => {
+            outln!("Accessor Symbol Out of Bounds");
+            outln!(
+                "  Accessor {accessor_index} segment {segment_index}: symbol {symbol} is out of bounds (symbols_count={symbols_count})."
+            );
         }
     }
 }

@@ -553,7 +553,7 @@ mod tests {
             ]
             .into_boxed_slice(),
         )
-        .map_err(|e| crate::WorkflowError::Expression(e))
+        .map_err(crate::WorkflowError::Expression)
         .map_err(|e| e.to_string())?;
 
         let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {

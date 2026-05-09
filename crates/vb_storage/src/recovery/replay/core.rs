@@ -10,21 +10,47 @@ use crate::recovery::types::{ActionReplayTracker, RecoveryError, RecoveryResult}
 use crate::{EventSeq, FjallJournal, JournalEvent};
 use vb_core::{RunId, StepIdx};
 
+/// Computes the maximum attempt number observed in action-scheduling and
+/// action-completion events. Events without an attempt field contribute 1
+/// (PRE-001: treat as attempt 1).
+#[must_use]
+fn compute_max_attempt(events: &[JournalEvent]) -> u16 {
+    let mut max_attempt = 1u16;
+    for event in events {
+        if let Some(attempt) = event.attempt().filter(|&a| a > max_attempt) {
+            max_attempt = attempt;
+        }
+    }
+    max_attempt
+}
+
 /// Core replay logic for all journal event kinds.
 /// Populates the action tracker and detects divergence.
+///
+/// ## Filtering (PRE-001)
+/// Only events from the latest execution attempt affect live state.
+/// Events from older attempts are excluded from state transition logic
+/// but are still included in the returned output for diagnostics.
 pub fn replay_events(
     events: &[JournalEvent],
     tracker: &mut ActionReplayTracker,
 ) -> RecoveryResult<Vec<JournalEvent>> {
+    let max_attempt = compute_max_attempt(events);
     let mut replayed = Vec::new();
     let mut last_step: Option<StepIdx> = None;
 
     for event in events {
+        // PRE-001: skip state-affecting events from older attempts
+        let attempt = event.attempt().unwrap_or(1);
+        if attempt < max_attempt {
+            replayed.push(event.clone());
+            continue;
+        }
+
         match event {
             JournalEvent::RunAccepted { .. }
             | JournalEvent::RunAdmission { .. }
             | JournalEvent::StepSucceeded { .. }
-            | JournalEvent::SlotWrittenEvent { .. }
             | JournalEvent::WaitScheduledEvent { .. }
             | JournalEvent::AskScheduledEvent { .. }
             | JournalEvent::AskAnsweredEvent { .. }
@@ -64,6 +90,9 @@ pub fn replay_events(
             JournalEvent::ActionFailedEvent { action, step, .. } => {
                 // Mark action as failed to prevent re-execution
                 tracker.mark_failed(*action, *step);
+            }
+            JournalEvent::SlotWrittenEvent { .. } => {
+                // Slot writes are allowed for latest attempt
             }
         }
         replayed.push(event.clone());
@@ -139,6 +168,13 @@ pub fn is_terminal_event(event: &JournalEvent) -> bool {
 }
 
 /// Extracts the terminal event from a replay sequence, if any.
+///
+/// Only considers terminal events from the latest execution attempt.
+/// Terminal events from older (stale) attempts are ignored.
 pub fn extract_terminal(events: &[JournalEvent]) -> Option<&JournalEvent> {
-    events.iter().rev().find(|event| is_terminal_event(event))
+    let max_attempt = compute_max_attempt(events);
+    events
+        .iter()
+        .rev()
+        .find(|event| is_terminal_event(event) && event.attempt().unwrap_or(1) == max_attempt)
 }

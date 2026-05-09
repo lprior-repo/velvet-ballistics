@@ -4,18 +4,18 @@
 use crate::errors::EngineError;
 use crate::frame::StepState;
 use crate::ids::{
-    ActionId, ConstIdx, ExprIdx, ListId, ObjectId, RunId, SlotIdx, StepIdx, SymbolId,
+    ActionId, ConstIdx, ExprIdx, RunId, SlotIdx, StepIdx, SymbolId,
     WorkflowDigest,
 };
 use crate::value::{ConstValue, SlotValue, Taint, join_taint};
-use crate::value_store::{ObjectField, ValueStore};
+use crate::value_store::ValueStore;
 use crate::workflow::{
-    AccessorProgram, CompiledNode, CompiledNodeKind, CompiledWorkflow, ExprBranch, ExprOp,
-    ExprProgram, PathSegment, ResourceContract, SlotBranch, WorkflowParts,
+    CompiledNode, CompiledNodeKind, CompiledWorkflow, ExprOp,
+    ExprProgram, WorkflowParts,
 };
 
 use crate::engine::{
-    EngineSignal, StepBudget, eval_accessor, eval_accessor_with_store, eval_expr, new_run_frame,
+    EngineSignal, StepBudget, new_run_frame,
     run_until_blocked, step_once,
 };
 

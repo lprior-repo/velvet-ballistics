@@ -59,7 +59,12 @@ fn arb_accessor(root: u16, path: Vec<PathSegment>) -> AccessorProgram {
 proptest! {
     /// When symbol < symbols_count, gate_08 must return Ok.
     #[test]
-    fn gate_08_symbol_in_bounds_returns_ok(symbol in 0u32..100u32, symbols_count in 1u32..200u32) {
+    fn gate_08_symbol_in_bounds_returns_ok(
+        // Use prop_filter to ensure symbol < symbols_count
+        symbol in 0u32..100u32,
+        symbols_count in 1u32..200u32,
+    ) {
+        prop_assume!(symbol < symbols_count, "symbol must be < symbols_count for this test");
         let sym_id = SymbolId::new(symbol);
         let accessor = arb_accessor(0, vec![PathSegment::Field(sym_id)]);
         let parts = arb_parts(1, symbols_count, vec![accessor]);
@@ -79,6 +84,7 @@ proptest! {
         symbols_count in 1u32..99u32,
     ) {
         // symbol is always >= 100 > symbols_count (which is < 99), so symbol >= symbols_count always holds
+        prop_assume!(symbol >= symbols_count);
         let sym_id = SymbolId::new(symbol);
         let accessor = arb_accessor(0, vec![PathSegment::Field(sym_id)]);
         let parts = arb_parts(1, symbols_count, vec![accessor]);
@@ -113,15 +119,17 @@ proptest! {
         sym1 in 50u32..200u32,
         symbols_count in 1u32..10u32,
     ) {
-        // Ensure first accessor is always valid: sym0 < symbols_count and root0 < slot_count
-        // sym0 in 0..3, symbols_count in 1..10 → sym0 < symbols_count always holds
+        // Ensure first accessor is always valid: sym0 < symbols_count
+        prop_assume!(sym0 < symbols_count);
+        // Second accessor is always invalid: sym1 >= 50 > symbols_count
+        prop_assume!(sym1 >= symbols_count);
+
         let accessor0 = arb_accessor(root0, vec![PathSegment::Field(SymbolId::new(sym0))]);
         let accessor1 = arb_accessor(root1, vec![PathSegment::Field(SymbolId::new(sym1))]);
         let parts = arb_parts(10, symbols_count, vec![accessor0, accessor1]);
 
         let result = validate_gate_08_accessor_path_segments(&parts);
 
-        // sym1 >= 50, symbols_count < 10 → sym1 >= symbols_count always holds
         prop_assert!(result.is_err(), "expected Err for out-of-bounds second accessor, got {result:?}");
         let err = result.unwrap_err();
         prop_assert!(
@@ -201,12 +209,13 @@ proptest! {
         ];
         let parts = arb_parts(slot_count, symbols_count, accessors);
 
-        let result1 = crate::shared::validate(&parts);
-        let result2 = crate::shared::validate(&parts);
-        let result3 = crate::shared::validate(&parts);
+        let r1 = crate::shared::validate(&parts);
+        let r2 = crate::shared::validate(&parts);
+        let r3 = crate::shared::validate(&parts);
 
-        prop_assert_eq!(result1, result2, "validate must be deterministic: first vs second call");
-        prop_assert_eq!(result2, result3, "validate must be deterministic: second vs third call");
+        // Determinism: same inputs produce same output
+        prop_assert_eq!(r1.clone(), r2.clone());
+        prop_assert_eq!(r2, r3);
     }
 }
 

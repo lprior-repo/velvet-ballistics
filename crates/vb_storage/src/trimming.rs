@@ -5,20 +5,17 @@
 //! events needed for recovery. Events older than a confirmed snapshot are
 //! eligible for trimming.
 
+use fjall::Readable;
 use vb_core::RunId;
 
 use crate::{EventSeq, FjallJournal, JournalError, JournalEvent};
-
-use fjall::Readable;
 
 /// Retention policy for journal trimming.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct TrimPolicy {
     /// If true, skip runs that have no events to trim (no-op runs).
     pub skip_noop_runs: bool,
-    /// Number of most-recent terminal runs per workflow to retain.
-    /// A run is eligible for trimming only if it is NOT among the
-    /// `retain_last_n_terminal` most recent terminal runs for its workflow.
+    /// Number of most recent terminal runs to retain per workflow.
     pub retain_last_n_terminal: u32,
 }
 
@@ -46,10 +43,16 @@ pub enum TrimError {
         /// Run without a durable snapshot.
         run: RunId,
     },
-    /// Retention policy blocks trimming this terminal run.
-    #[error("retention policy blocks trim for run {run:?}")]
+    /// Backwards-compatible alias for callers that have not migrated wording.
+    #[error("no confirmed snapshot for run {run:?}")]
+    NoSnapshot {
+        /// Run without a snapshot.
+        run: RunId,
+    },
+    /// Retention policy protects this run from trimming.
+    #[error("retention policy blocks trimming run {run:?}")]
     RetentionPolicyBlocks {
-        /// Run blocked by retention policy.
+        /// Protected run.
         run: RunId,
     },
     /// Trim operation was interrupted.
@@ -63,16 +66,19 @@ pub enum TrimError {
 impl TrimError {
     pub const NO_DURABLE_SNAPSHOT_CODE: vb_core::DiagnosticCode =
         vb_core::DiagnosticCode::new(0x4101);
+    pub const NO_SNAPSHOT_CODE: vb_core::DiagnosticCode = Self::NO_DURABLE_SNAPSHOT_CODE;
+    pub const INCOMPLETE_TRIM_CODE: vb_core::DiagnosticCode = vb_core::DiagnosticCode::new(0x4102);
     pub const RETENTION_POLICY_BLOCKS_CODE: vb_core::DiagnosticCode =
         vb_core::DiagnosticCode::new(0x4103);
-    pub const INCOMPLETE_TRIM_CODE: vb_core::DiagnosticCode = vb_core::DiagnosticCode::new(0x4102);
 
     #[must_use]
     pub const fn diagnostic_code(&self) -> vb_core::DiagnosticCode {
         match self {
             Self::Fjall(_) => JournalError::FJALL_CODE,
             Self::Journal(_) => JournalError::FJALL_CODE,
-            Self::NoDurableSnapshot { .. } => Self::NO_DURABLE_SNAPSHOT_CODE,
+            Self::NoDurableSnapshot { .. } | Self::NoSnapshot { .. } => {
+                Self::NO_DURABLE_SNAPSHOT_CODE
+            }
             Self::RetentionPolicyBlocks { .. } => Self::RETENTION_POLICY_BLOCKS_CODE,
             Self::IncompleteTrim { .. } => Self::INCOMPLETE_TRIM_CODE,
         }
@@ -83,22 +89,21 @@ impl TrimError {
 pub type TrimResult<T> = Result<T, TrimError>;
 
 impl FjallJournal {
+    /// Returns the latest confirmed snapshot sequence for a run.
+    pub fn latest_snapshot_seq(&self, run: RunId) -> TrimResult<Option<EventSeq>> {
+        self.latest_durable_snapshot_seq(run)
+    }
+
     /// Returns the latest durable snapshot sequence for a run.
-    ///
-    /// Scans all snapshots for the given run and returns the one with the
-    /// highest sequence number. Returns `None` if no snapshot exists.
     pub fn latest_durable_snapshot_seq(&self, run: RunId) -> TrimResult<Option<EventSeq>> {
         let prefix_key = snapshot_prefix_key(run);
         let mut latest: Option<EventSeq> = None;
 
         for item in self.run_snapshot.prefix(prefix_key) {
             let key = item.key().map_err(TrimError::from)?;
-            if key.len() < 17 {
+            let Some(slice) = key.get(9..17) else {
                 continue;
-            }
-            let slice = key
-                .get(9..17)
-                .ok_or(TrimError::IncompleteTrim { deleted_count: 0 })?;
+            };
             let seq_bytes: [u8; 8] = slice
                 .try_into()
                 .map_err(|_| TrimError::IncompleteTrim { deleted_count: 0 })?;
@@ -113,15 +118,10 @@ impl FjallJournal {
         Ok(latest)
     }
 
-    /// Returns the latest confirmed snapshot sequence for a run.
-    pub fn latest_snapshot_seq(&self, run: RunId) -> TrimResult<Option<EventSeq>> {
-        self.latest_durable_snapshot_seq(run)
-    }
-
     /// Trims journal events for a specific run.
     ///
-    /// Removes events with sequence numbers less than the latest durable
-    /// snapshot sequence. If no durable snapshot exists for the run, returns an error.
+    /// Removes events with sequence numbers less than the latest confirmed
+    /// snapshot sequence. If no snapshot exists for the run, returns an error.
     ///
     /// Trimming is idempotent: subsequent trims of an already-trimmed run
     /// are a no-op.
@@ -130,11 +130,9 @@ impl FjallJournal {
         run: RunId,
         policy: TrimPolicy,
     ) -> TrimResult<TrimmedRunResult> {
-        let Some(cutoff_seq) = self.latest_durable_snapshot_seq(run)? else {
+        let Some(cutoff_seq) = self.latest_snapshot_seq(run)? else {
             return Err(TrimError::NoDurableSnapshot { run });
         };
-
-        self.check_retention_policy(run, &policy)?;
 
         let prefix_key = crate::keys::run_prefix_key(run)?;
         let mut batch = self.database.batch();
@@ -178,11 +176,10 @@ impl FjallJournal {
         })
     }
 
-    /// Trims journal events for all runs with durable snapshots.
+    /// Trims journal events for all runs with confirmed snapshots.
     ///
     /// Iterates over all run headers and trims events for each run that
-    /// has a durable snapshot. Runs without durable snapshots or runs
-    /// blocked by retention policy are skipped.
+    /// has a confirmed snapshot. Runs without snapshots are skipped.
     pub fn trim_all_eligible_runs(&self, policy: TrimPolicy) -> TrimResult<Vec<TrimmedRunResult>> {
         let headers = self.run_headers()?;
         let mut results = Vec::new();
@@ -190,8 +187,9 @@ impl FjallJournal {
         for header in headers {
             match self.trim_events_for_run(header.run, policy) {
                 Ok(result) => results.push(result),
-                Err(TrimError::NoDurableSnapshot { .. }) => continue,
-                Err(TrimError::RetentionPolicyBlocks { .. }) => continue,
+                Err(TrimError::NoDurableSnapshot { .. } | TrimError::NoSnapshot { .. }) => {
+                    continue;
+                }
                 Err(e) => return Err(e),
             }
         }
@@ -488,6 +486,7 @@ mod tests {
             run,
             seq: EventSeq::new(seq),
             step: StepIdx::new(step),
+            attempt: 1,
         }
     }
 
@@ -496,6 +495,7 @@ mod tests {
             run,
             seq: EventSeq::new(seq),
             result: SlotIdx::new(0),
+            attempt: 1,
         }
     }
 
@@ -637,7 +637,7 @@ mod tests {
         let result = journal.trim_events_for_run(run, TrimPolicy::default());
         assert!(
             matches!(result, Err(TrimError::NoDurableSnapshot { .. })),
-            "should error when no snapshot exists, got {:?}",
+            "should error when no durable snapshot exists, got {:?}",
             result
         );
     }

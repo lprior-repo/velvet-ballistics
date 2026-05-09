@@ -20,8 +20,7 @@
 )]
 mod vb_h6ix_tests {
     use crate::recovery::{
-        ActionReplayTracker, RecoveryError,
-        extract_terminal, is_terminal_event, replay_events,
+        ActionReplayTracker, RecoveryError, extract_terminal, is_terminal_event, replay_events,
     };
     use crate::{EventSeq, JournalEvent};
     use vb_core::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest};
@@ -85,7 +84,7 @@ mod vb_h6ix_tests {
             tracker.is_resolved(ActionId::new(2), StepIdx::ZERO),
             "action 2 from attempt 2 should be resolved"
         );
-        assert(
+        assert!(
             !tracker.is_resolved(ActionId::new(1), StepIdx::ZERO),
             "action 1 from attempt 1 (stale) should NOT be resolved"
         );
@@ -195,7 +194,7 @@ mod vb_h6ix_tests {
             tracker.is_resolved(ActionId::new(2), StepIdx::ZERO),
             "action 2 from attempt 3 (max) should be resolved"
         );
-        assert(
+        assert!(
             !tracker.is_resolved(ActionId::new(1), StepIdx::ZERO),
             "action 1 from attempt 1 (stale) should NOT be resolved"
         );
@@ -251,7 +250,7 @@ mod vb_h6ix_tests {
             tracker.is_resolved(ActionId::new(2), StepIdx::ZERO),
             "action 2 (attempt 2) should be resolved"
         );
-        assert(
+        assert!(
             !tracker.is_resolved(ActionId::new(1), StepIdx::ZERO),
             "action 1 (attempt 1, stale) should NOT be resolved in tracker"
         );
@@ -280,10 +279,16 @@ mod vb_h6ix_tests {
         let terminal = extract_terminal(&events);
 
         // The latest-attempt terminal should win
-        assert!(terminal.is_some(), "extract_terminal should find a terminal");
+        assert!(
+            terminal.is_some(),
+            "extract_terminal should find a terminal"
+        );
         match terminal {
             Some(JournalEvent::RunFailedEvent { attempt, .. }) => {
-                assert_eq!(*attempt, 2, "latest attempt terminal should be RunFailedEvent with attempt 2");
+                assert_eq!(
+                    *attempt, 2,
+                    "latest attempt terminal should be RunFailedEvent with attempt 2"
+                );
             }
             Some(other) => {
                 panic!("expected RunFailedEvent, got {:?}", other);
@@ -333,7 +338,11 @@ mod vb_h6ix_tests {
         // INV-003: stale events cannot allocate live timers, pending action tickets
         // We verify by checking that only the attempt 2 event is in the output
         // and the tracker was populated correctly
-        assert_eq!(replayed.len(), events.len(), "all events should be preserved");
+        assert_eq!(
+            replayed.len(),
+            events.len(),
+            "all events should be preserved"
+        );
     }
 
     /// Behavior 19: stale slot writes do not appear in frame seed —
@@ -401,6 +410,7 @@ mod vb_h6ix_tests {
                 run: RunId::new(1),
                 seq: EventSeq::new(1),
                 attempt: 1,
+                reason: None,
             },
             JournalEvent::RunFinished {
                 run: RunId::new(1),
@@ -413,10 +423,17 @@ mod vb_h6ix_tests {
         let terminal = extract_terminal(&events);
 
         // Last terminal is RunFinished at seq 2
-        assert!(terminal.is_some(), "extract_terminal should find a terminal");
+        assert!(
+            terminal.is_some(),
+            "extract_terminal should find a terminal"
+        );
         match terminal {
             Some(JournalEvent::RunFinished { seq, .. }) => {
-                assert_eq!(*seq, EventSeq::new(2), "last terminal by seq should be returned");
+                assert_eq!(
+                    *seq,
+                    EventSeq::new(2),
+                    "last terminal by seq should be returned"
+                );
             }
             Some(other) => {
                 panic!("expected RunFinished at seq 2, got {:?}", other);
@@ -450,7 +467,10 @@ mod vb_h6ix_tests {
         let terminal = extract_terminal(&events);
 
         // Latest-attempt terminal should win (RunFailedEvent from attempt 2)
-        assert!(terminal.is_some(), "extract_terminal should find a terminal");
+        assert!(
+            terminal.is_some(),
+            "extract_terminal should find a terminal"
+        );
         match terminal {
             Some(JournalEvent::RunFailedEvent { attempt, .. }) => {
                 assert_eq!(*attempt, 2, "latest-attempt terminal should win");
@@ -654,7 +674,10 @@ mod vb_h6ix_tests {
         match err {
             RecoveryError::ReplayDivergence { step, detail } => {
                 assert_eq!(step, StepIdx::ZERO);
-                assert!(detail.contains("step"), "detail should describe the ordering issue");
+                assert!(
+                    detail.contains("step"),
+                    "detail should describe the ordering issue"
+                );
             }
             _ => panic!("expected ReplayDivergence, got {:?}", err),
         }
@@ -790,7 +813,10 @@ mod vb_h6ix_tests {
             panic!("empty replay should succeed");
         };
 
-        assert!(replayed.is_empty(), "empty input should produce empty output");
+        assert!(
+            replayed.is_empty(),
+            "empty input should produce empty output"
+        );
     }
 
     // =========================================================================
@@ -863,6 +889,7 @@ mod vb_h6ix_tests {
             run,
             seq: EventSeq::ZERO,
             attempt: 1,
+            reason: None,
         }));
         assert!(is_terminal_event(&JournalEvent::RunFailedEvent {
             run,

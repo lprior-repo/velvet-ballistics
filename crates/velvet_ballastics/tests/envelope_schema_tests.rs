@@ -128,12 +128,12 @@ fn metadata_envelope_constructs_with_run_id_command_timestamp() {
     use vb_core::ids::RunId;
 
     let metadata = vb_ui_model::envelope::MetadataEnvelope::new(
-        RunId::from_u64(1),
+        RunId::from(1),
         "status".to_string(),
         1234567890,
     );
 
-    assert_eq!(metadata.run_id(), &RunId::from_u64(1));
+    assert_eq!(metadata.run_id(), &RunId::from(1));
     assert_eq!(metadata.command(), "status");
     assert_eq!(metadata.timestamp(), 1234567890);
 }
@@ -145,7 +145,7 @@ fn metadata_envelope_rejects_empty_command() {
     use vb_core::ids::RunId;
 
     let _ = vb_ui_model::envelope::MetadataEnvelope::new(
-        RunId::from_u64(1),
+        RunId::from(1),
         "".to_string(),
         1234567890,
     );
@@ -158,7 +158,7 @@ fn metadata_envelope_serializes_to_json_with_correct_fields() {
     use serde_json;
 
     let metadata = vb_ui_model::envelope::MetadataEnvelope::new(
-        RunId::from_u64(42),
+        RunId::from(42),
         "validate".to_string(),
         9999999999,
     );
@@ -265,7 +265,7 @@ fn output_envelope_constructs_with_all_fields() {
         vb_ui_model::envelope::SchemaVersion::new(1),
         vb_ui_model::envelope::EnvelopeKind::Success,
         vb_ui_model::envelope::MetadataEnvelope::new(
-            RunId::from_u64(1),
+            RunId::from(1),
             "status".to_string(),
             1111111111,
         ),
@@ -288,7 +288,7 @@ fn output_envelope_constructs_with_diagnostic_no_payload() {
         vb_ui_model::envelope::SchemaVersion::new(1),
         vb_ui_model::envelope::EnvelopeKind::Error,
         vb_ui_model::envelope::MetadataEnvelope::new(
-            RunId::from_u64(1),
+            RunId::from(1),
             "validate".to_string(),
             2222222222,
         ),
@@ -316,7 +316,7 @@ fn output_envelope_rejects_both_diagnostic_and_payload() {
         vb_ui_model::envelope::SchemaVersion::new(1),
         vb_ui_model::envelope::EnvelopeKind::Error,
         vb_ui_model::envelope::MetadataEnvelope::new(
-            RunId::from_u64(1),
+            RunId::from(1),
             "test".to_string(),
             3333333333,
         ),
@@ -339,7 +339,7 @@ fn output_envelope_rejects_success_with_diagnostic() {
         vb_ui_model::envelope::SchemaVersion::new(1),
         vb_ui_model::envelope::EnvelopeKind::Success,
         vb_ui_model::envelope::MetadataEnvelope::new(
-            RunId::from_u64(1),
+            RunId::from(1),
             "test".to_string(),
             4444444444,
         ),
@@ -363,7 +363,7 @@ fn output_envelope_rejects_error_without_diagnostic() {
         vb_ui_model::envelope::SchemaVersion::new(1),
         vb_ui_model::envelope::EnvelopeKind::Error,
         vb_ui_model::envelope::MetadataEnvelope::new(
-            RunId::from_u64(1),
+            RunId::from(1),
             "test".to_string(),
             5555555555,
         ),
@@ -382,7 +382,7 @@ fn output_envelope_json_contains_schema_version() {
         vb_ui_model::envelope::SchemaVersion::new(1),
         vb_ui_model::envelope::EnvelopeKind::Status,
         vb_ui_model::envelope::MetadataEnvelope::new(
-            RunId::from_u64(1),
+            RunId::from(1),
             "status".to_string(),
             6666666666,
         ),
@@ -409,7 +409,7 @@ fn output_envelope_json_contains_kind_field() {
         vb_ui_model::envelope::SchemaVersion::new(1),
         vb_ui_model::envelope::EnvelopeKind::Workflow,
         vb_ui_model::envelope::MetadataEnvelope::new(
-            RunId::from_u64(1),
+            RunId::from(1),
             "events".to_string(),
             7777777777,
         ),
@@ -435,7 +435,7 @@ fn output_envelope_roundtrips_through_json() {
         vb_ui_model::envelope::SchemaVersion::new(1),
         vb_ui_model::envelope::EnvelopeKind::Event,
         vb_ui_model::envelope::MetadataEnvelope::new(
-            RunId::from_u64(99),
+            RunId::from(99),
             "events".to_string(),
             8888888888,
         ),
@@ -465,7 +465,7 @@ fn output_envelope_serializes_to_postcard() {
         vb_ui_model::envelope::SchemaVersion::new(1),
         vb_ui_model::envelope::EnvelopeKind::Status,
         vb_ui_model::envelope::MetadataEnvelope::new(
-            RunId::from_u64(5),
+            RunId::from(5),
             "status".to_string(),
             9999999999,
         ),
@@ -491,7 +491,7 @@ fn output_envelope_roundtrips_through_postcard() {
         vb_ui_model::envelope::SchemaVersion::new(1),
         vb_ui_model::envelope::EnvelopeKind::Diagnostic,
         vb_ui_model::envelope::MetadataEnvelope::new(
-            RunId::from_u64(7),
+            RunId::from(7),
             "doctor".to_string(),
             1010101010,
         ),
@@ -525,7 +525,7 @@ fn output_envelope_postcard_is_deterministic() {
         vb_ui_model::envelope::SchemaVersion::new(1),
         vb_ui_model::envelope::EnvelopeKind::Success,
         vb_ui_model::envelope::MetadataEnvelope::new(
-            RunId::from_u64(1),
+            RunId::from(1),
             "test".to_string(),
             1212121212,
         ),
@@ -571,7 +571,7 @@ fn schema_version_preserved_in_json_format() {
         vb_ui_model::envelope::SchemaVersion::new(version.value()),
         vb_ui_model::envelope::EnvelopeKind::Success,
         vb_ui_model::envelope::MetadataEnvelope::new(
-            RunId::from_u64(1),
+            RunId::from(1),
             "test".to_string(),
             1313131313,
         ),
@@ -607,7 +607,7 @@ fn each_envelope_kind_serializes_to_json() {
             vb_ui_model::envelope::SchemaVersion::new(1),
             kind,
             vb_ui_model::envelope::MetadataEnvelope::new(
-                RunId::from_u64(1),
+                RunId::from(1),
                 "test".to_string(),
                 1414141414,
             ),

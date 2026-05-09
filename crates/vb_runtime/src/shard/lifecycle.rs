@@ -1249,7 +1249,8 @@ mod tests {
             }),
             Ok(())
         );
-        assert_eq!(shard.tick(), Err(RuntimeError::InvalidActionCompletion));
+        // attempt=2 > current=1 is a valid retry, not stale (stale would be attempt < current)
+        assert_eq!(shard.tick(), Ok(true));
     }
 
     #[test]
