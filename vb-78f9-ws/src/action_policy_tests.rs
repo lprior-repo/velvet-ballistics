@@ -2,10 +2,11 @@
 #![cfg(test)]
 
 use vb_core::action::{
-    ActionContract, ActionId, Idempotency, SideEffect, RetrySafety,
+    ActionContract, Idempotency, SideEffect, RetrySafety,
 };
+use vb_core::ids::ActionId;
 use vb_ui::verify::action_policy::{
-    ActionPolicyReport, PolicyIssue, IdempotencyClass, analyze_action_policies,
+    ActionPolicyReport, PolicyIssue, IdempotencyClass, analyze_actions,
 };
 
 #[test]
@@ -118,15 +119,40 @@ fn test_action_policy_report_strict_eligible_false_when_issues_present() {
 
 #[test]
 fn test_analyze_policies_on_fully_covered_workflow() {
-    use vb_core::frame::RunFrame;
+    use vb_runtime::action::ActionRegistry;
+    let registry = ActionRegistry::new();
+    let contract1 = ActionContract {
+        id: ActionId::new(10),
+        input_slot_count: 1,
+        output_slot_count: 1,
+        max_input_bytes: 1024,
+        max_output_bytes: 1024,
+        timeout_ms: 1000,
+        idempotency: Idempotency::DeterministicPure,
+        side_effect: SideEffect::None,
+        retry_safety: RetrySafety::Safe,
+        required_capabilities: Box::new([]),
+    };
+    let contract2 = ActionContract {
+        id: ActionId::new(11),
+        input_slot_count: 1,
+        output_slot_count: 1,
+        max_input_bytes: 1024,
+        max_output_bytes: 1024,
+        timeout_ms: 1000,
+        idempotency: Idempotency::DeterministicPure,
+        side_effect: SideEffect::None,
+        retry_safety: RetrySafety::Safe,
+        required_capabilities: Box::new([]),
+    };
+    registry.register(contract1).expect("register should succeed");
+    registry.register(contract2).expect("register should succeed");
     let workflow = vec![
         ActionId::new(10),
         ActionId::new(11),
     ];
-    let registry: vb_runtime::action::ActionRegistry = todo!("registry setup");
-    let result = analyze_action_policies(&workflow, &registry);
-    assert!(result.is_ok(), "analyze_policies should succeed for valid workflow");
-    let reports = result.unwrap();
+    let registry_contracts: Vec<ActionContract> = registry.registered_contracts().into_iter().cloned().collect();
+    let reports = analyze_actions(&workflow, &registry_contracts[..]);
     assert_eq!(reports.len(), 2, "should have report for each action");
     for report in &reports {
         assert!(report.strict_eligible, "fully covered workflow should have all strict_eligible");
@@ -135,11 +161,11 @@ fn test_analyze_policies_on_fully_covered_workflow() {
 
 #[test]
 fn test_analyze_policies_reports_missing_contracts() {
+    use vb_runtime::action::ActionRegistry;
+    let registry = ActionRegistry::new();
     let workflow = vec![ActionId::new(999)];
-    let registry: vb_runtime::action::ActionRegistry = todo!("empty registry");
-    let result = analyze_action_policies(&workflow, &registry);
-    assert!(result.is_ok(), "analyze_policies should succeed");
-    let reports = result.unwrap();
+    let registry_contracts: Vec<ActionContract> = registry.registered_contracts().into_iter().cloned().collect();
+    let reports = analyze_actions(&workflow, &registry_contracts[..]);
     assert!(!reports.is_empty(), "should have reports");
     let report = &reports[0];
     assert!(report.issues.contains(&PolicyIssue::MissingTimeout),
@@ -166,9 +192,8 @@ fn test_analyze_policies_reports_unsafe_retry() {
     };
     registry.register(contract).expect("register should succeed");
     let workflow = vec![ActionId::new(20)];
-    let result = analyze_action_policies(&workflow, &registry);
-    assert!(result.is_ok(), "analyze_policies should succeed");
-    let reports = result.unwrap();
+    let registry_contracts: Vec<ActionContract> = registry.registered_contracts().into_iter().cloned().collect();
+    let reports = analyze_actions(&workflow, &registry_contracts[..]);
     assert!(reports[0].issues.contains(&PolicyIssue::UnsafeRetry),
         "Unsafe contract should produce UnsafeRetry issue");
 }

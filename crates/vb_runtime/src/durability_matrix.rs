@@ -47,16 +47,7 @@ pub struct DurabilityRow {
 
 /// All primitives that must have a matrix row.
 pub const REQUIRED_PRIMITIVES: &[&str] = &[
-    "set",
-    "do",
-    "choose",
-    "for_each",
-    "together",
-    "collect",
-    "reduce",
-    "repeat",
-    "wait",
-    "ask",
+    "set", "do", "choose", "for_each", "together", "collect", "reduce", "repeat", "wait", "ask",
     "finish",
 ];
 
@@ -70,10 +61,7 @@ pub const DURABILITY_MATRIX: &[DurabilityRow] = &[
     DurabilityRow {
         primitive: "set",
         compiled_node_kind: "SetConst",
-        journal_events: &[
-            RecordKind::StepStarted,
-            RecordKind::SlotWritten,
-        ],
+        journal_events: &[RecordKind::StepStarted, RecordKind::SlotWritten],
         storage_partition: StoragePartition::RuntimeJournal,
         ack_point: AckPoint::AfterJournalAppend,
         replay_assertion: "Replay reproduces the same slot value and advances PC",
@@ -108,10 +96,7 @@ pub const DURABILITY_MATRIX: &[DurabilityRow] = &[
     DurabilityRow {
         primitive: "for_each",
         compiled_node_kind: "ForEach",
-        journal_events: &[
-            RecordKind::StepStarted,
-            RecordKind::SlotWritten,
-        ],
+        journal_events: &[RecordKind::StepStarted, RecordKind::SlotWritten],
         storage_partition: StoragePartition::RuntimeJournal,
         ack_point: AckPoint::AfterJournalAppend,
         replay_assertion: "Replay iterates the same items in the same order",
@@ -211,29 +196,21 @@ pub const DURABILITY_MATRIX: &[DurabilityRow] = &[
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DurabilityError {
     /// A required primitive has no matrix row.
-    MissingPrimitiveRow {
-        primitive: String,
-    },
+    MissingPrimitiveRow { primitive: String },
     /// A row exists but has no test evidence.
-    MissingReplayProof {
-        primitive: String,
-        event: String,
-    },
+    MissingReplayProof { primitive: String, event: String },
     /// A row claims ack-before-persist.
-    AckBeforePersist {
-        primitive: String,
-        handler: String,
-    },
+    AckBeforePersist { primitive: String, handler: String },
     /// A journal event has no associated primitive.
-    OrphanEvent {
-        event: String,
-    },
+    OrphanEvent { event: String },
 }
 
 /// Verify that every required primitive has a row.
 pub fn verify_matrix_completeness() -> Result<(), DurabilityError> {
     for &primitive in REQUIRED_PRIMITIVES {
-        let found = DURABILITY_MATRIX.iter().any(|row| row.primitive == primitive);
+        let found = DURABILITY_MATRIX
+            .iter()
+            .any(|row| row.primitive == primitive);
         if !found {
             return Err(DurabilityError::MissingPrimitiveRow {
                 primitive: primitive.to_owned(),
@@ -314,12 +291,19 @@ mod tests {
     #[test]
     fn full_matrix_verification_passes() {
         let result = verify_matrix();
-        assert!(result.is_ok(), "Expected full matrix to pass, got: {:?}", result);
+        assert!(
+            result.is_ok(),
+            "Expected full matrix to pass, got: {:?}",
+            result
+        );
     }
 
     #[test]
     fn set_row_exists_and_is_correct() {
-        let row = DURABILITY_MATRIX.iter().find(|r| r.primitive == "set").unwrap();
+        let row = DURABILITY_MATRIX
+            .iter()
+            .find(|r| r.primitive == "set")
+            .unwrap();
         assert_eq!(row.compiled_node_kind, "SetConst");
         assert!(row.journal_events.contains(&RecordKind::StepStarted));
         assert!(row.journal_events.contains(&RecordKind::SlotWritten));
@@ -328,7 +312,10 @@ mod tests {
 
     #[test]
     fn do_row_exists_and_is_correct() {
-        let row = DURABILITY_MATRIX.iter().find(|r| r.primitive == "do").unwrap();
+        let row = DURABILITY_MATRIX
+            .iter()
+            .find(|r| r.primitive == "do")
+            .unwrap();
         assert_eq!(row.compiled_node_kind, "Do");
         assert!(row.journal_events.contains(&RecordKind::ActionScheduled));
         assert!(row.journal_events.contains(&RecordKind::ActionCompleted));
@@ -337,14 +324,20 @@ mod tests {
 
     #[test]
     fn wait_row_names_wait_scheduled_and_wait_resolved() {
-        let row = DURABILITY_MATRIX.iter().find(|r| r.primitive == "wait").unwrap();
+        let row = DURABILITY_MATRIX
+            .iter()
+            .find(|r| r.primitive == "wait")
+            .unwrap();
         assert!(row.journal_events.contains(&RecordKind::WaitScheduled));
         assert_eq!(row.ack_point, AckPoint::AfterJournalAppend);
     }
 
     #[test]
     fn ask_row_names_ask_scheduled_and_ask_answered() {
-        let row = DURABILITY_MATRIX.iter().find(|r| r.primitive == "ask").unwrap();
+        let row = DURABILITY_MATRIX
+            .iter()
+            .find(|r| r.primitive == "ask")
+            .unwrap();
         assert!(row.journal_events.contains(&RecordKind::AskScheduled));
         assert!(row.journal_events.contains(&RecordKind::AskAnswered));
         assert_eq!(row.ack_point, AckPoint::AfterJournalAppend);
@@ -352,7 +345,10 @@ mod tests {
 
     #[test]
     fn finish_row_names_run_finished() {
-        let row = DURABILITY_MATRIX.iter().find(|r| r.primitive == "finish").unwrap();
+        let row = DURABILITY_MATRIX
+            .iter()
+            .find(|r| r.primitive == "finish")
+            .unwrap();
         assert!(row.journal_events.contains(&RecordKind::RunFinished));
         assert_eq!(row.ack_point, AckPoint::AfterJournalAppend);
     }

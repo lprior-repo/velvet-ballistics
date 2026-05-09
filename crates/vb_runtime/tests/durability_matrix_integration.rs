@@ -5,9 +5,7 @@ use std::sync::Arc;
 use vb_core::capability::CapabilitySet;
 use vb_core::ids::{RunId, SlotIdx, StepIdx, WorkflowDigest};
 use vb_core::value::{SlotValue, Taint};
-use vb_core::workflow::{
-    CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts,
-};
+use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
 use vb_runtime::journal::{RuntimeJournalEvent, VolatileRuntimeJournal};
 use vb_runtime::shard::{Shard, ShardCommand, ShardConfig};
 
@@ -231,10 +229,13 @@ fn submit_handler_persists_before_ack() {
     shard.tick().unwrap();
 
     let events = journal.snapshot().unwrap();
-    let has_run_submitted = events.iter().any(|e| {
-        matches!(e, RuntimeJournalEvent::RunSubmitted { run: r, .. } if *r == run)
-    });
-    assert!(has_run_submitted, "RunSubmitted must be persisted before ack");
+    let has_run_submitted = events
+        .iter()
+        .any(|e| matches!(e, RuntimeJournalEvent::RunSubmitted { run: r, .. } if *r == run));
+    assert!(
+        has_run_submitted,
+        "RunSubmitted must be persisted before ack"
+    );
 }
 
 #[test]
@@ -279,15 +280,15 @@ fn action_completed_persists_before_ack() {
     shard.tick().unwrap();
 
     let events = journal.snapshot().unwrap();
-    let has_slot_written = events.iter().any(|e| {
-        matches!(e, RuntimeJournalEvent::SlotWritten { run: r, .. } if *r == run)
-    });
-    let has_step_succeeded = events.iter().any(|e| {
-        matches!(e, RuntimeJournalEvent::StepSucceeded { run: r, .. } if *r == run)
-    });
-    let has_action_completed = events.iter().any(|e| {
-        matches!(e, RuntimeJournalEvent::ActionCompleted { run: r, .. } if *r == run)
-    });
+    let has_slot_written = events
+        .iter()
+        .any(|e| matches!(e, RuntimeJournalEvent::SlotWritten { run: r, .. } if *r == run));
+    let has_step_succeeded = events
+        .iter()
+        .any(|e| matches!(e, RuntimeJournalEvent::StepSucceeded { run: r, .. } if *r == run));
+    let has_action_completed = events
+        .iter()
+        .any(|e| matches!(e, RuntimeJournalEvent::ActionCompleted { run: r, .. } if *r == run));
 
     assert!(has_slot_written, "SlotWritten must be persisted before ack");
     assert!(
@@ -342,9 +343,9 @@ fn action_failed_persists_before_ack() {
     shard.tick().unwrap();
 
     let events = journal.snapshot().unwrap();
-    let has_action_failed = events.iter().any(|e| {
-        matches!(e, RuntimeJournalEvent::ActionFailed { run: r, .. } if *r == run)
-    });
+    let has_action_failed = events
+        .iter()
+        .any(|e| matches!(e, RuntimeJournalEvent::ActionFailed { run: r, .. } if *r == run));
     assert!(
         has_action_failed,
         "ActionFailed must be persisted before ack"
@@ -385,20 +386,17 @@ fn ask_answered_persists_before_ack() {
     shard.tick().unwrap();
 
     let events = journal.snapshot().unwrap();
-    let has_ask_answered = events.iter().any(|e| {
-        matches!(e, RuntimeJournalEvent::AskAnswered { run: r, .. } if *r == run)
-    });
-    let has_slot_written = events.iter().any(|e| {
-        matches!(e, RuntimeJournalEvent::SlotWritten { run: r, .. } if *r == run)
-    });
-    let has_step_succeeded = events.iter().any(|e| {
-        matches!(e, RuntimeJournalEvent::StepSucceeded { run: r, .. } if *r == run)
-    });
+    let has_ask_answered = events
+        .iter()
+        .any(|e| matches!(e, RuntimeJournalEvent::AskAnswered { run: r, .. } if *r == run));
+    let has_slot_written = events
+        .iter()
+        .any(|e| matches!(e, RuntimeJournalEvent::SlotWritten { run: r, .. } if *r == run));
+    let has_step_succeeded = events
+        .iter()
+        .any(|e| matches!(e, RuntimeJournalEvent::StepSucceeded { run: r, .. } if *r == run));
 
-    assert!(
-        has_ask_answered,
-        "AskAnswered must be persisted before ack"
-    );
+    assert!(has_ask_answered, "AskAnswered must be persisted before ack");
     assert!(has_slot_written, "SlotWritten must be persisted before ack");
     assert!(
         has_step_succeeded,
@@ -430,9 +428,9 @@ fn cancel_persists_before_ack() {
     shard.tick().unwrap();
 
     let events = journal.snapshot().unwrap();
-    let has_run_cancelled = events.iter().any(|e| {
-        matches!(e, RuntimeJournalEvent::RunCancelled { run: r } if *r == run)
-    });
+    let has_run_cancelled = events
+        .iter()
+        .any(|e| matches!(e, RuntimeJournalEvent::RunCancelled { run: r } if *r == run));
     assert!(
         has_run_cancelled,
         "RunCancelled must be persisted before ack"
@@ -463,9 +461,9 @@ fn timer_fired_persists_before_ack() {
     shard.tick().unwrap();
 
     let events = journal.snapshot().unwrap();
-    let has_wait_resolved = events.iter().any(|e| {
-        matches!(e, RuntimeJournalEvent::WaitResolved { run: r, .. } if *r == run)
-    });
+    let has_wait_resolved = events
+        .iter()
+        .any(|e| matches!(e, RuntimeJournalEvent::WaitResolved { run: r, .. } if *r == run));
     assert!(
         has_wait_resolved,
         "WaitResolved must be persisted before ack"
@@ -477,7 +475,7 @@ fn timer_fired_persists_before_ack() {
 // ---------------------------------------------------------------------------
 
 use vb_runtime::durability_matrix::{
-    verify_matrix_completeness, verify_matrix_replay_proofs, verify_ack_after_persist,
+    verify_ack_after_persist, verify_matrix_completeness, verify_matrix_replay_proofs,
 };
 
 #[test]

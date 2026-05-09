@@ -2,13 +2,17 @@
 #![cfg(test)]
 
 use vb_core::action::{
-    ActionContract, ActionId, ActionOutcome, ActionTicket, ActionOutputReady,
+    ActionContract, ActionOutcome, ActionTicket, ActionOutputReady,
     ActionFailure, ActionFailureCode, Idempotency, SideEffect, RetrySafety, RetryPolicy,
-    RunId, SeqNo, StepIdx, SlotIdx, SlotValue, Taint,
 };
+use vb_core::capability::CapabilitySet;
+use vb_core::frame::RunFrame;
+use vb_core::ids::{ActionId, RunId, SeqNo, SlotIdx, StepIdx};
+use vb_core::value::{SlotValue, Taint};
 use vb_runtime::engine::action::{
     execute_do, resume_action_outcome, compute_idempotency_key,
 };
+use vb_runtime::engine::types::{RuntimeSignal, RetryPolicy as RuntimeRetryPolicy};
 
 fn make_contract(id: ActionId, idempotency: Idempotency) -> ActionContract {
     ActionContract {
@@ -25,23 +29,55 @@ fn make_contract(id: ActionId, idempotency: Idempotency) -> ActionContract {
     }
 }
 
+fn make_test_frame(run_id: RunId, input_taint: Taint) -> RunFrame {
+    let mut frame = RunFrame::new(run_id, StepIdx::new(0), 10, 1).expect("frame should create");
+    frame.write_taint(SlotIdx::new(0), input_taint).expect("taint write should work");
+    frame
+}
+
+fn execute_do_test<'a>(
+    run: &RunFrame,
+    step: StepIdx,
+    action: ActionId,
+    input: SlotIdx,
+    seq: SeqNo,
+    registry_contracts: &'a [&ActionContract],
+    granted: &CapabilitySet,
+) -> vb_runtime::engine::types::RuntimeEngineResult<RuntimeSignal> {
+    let contract = match registry_contracts.get(usize::from(action.get())) {
+        Some(c) if c.id == action => *c,
+        _ => {
+            return Err(vb_runtime::engine::types::RuntimeEngineError::Action(
+                vb_core::action::ActionError::UnknownAction { action },
+            ));
+        }
+    };
+    execute_do(
+        run, step, action, input, seq,
+        contract, registry_contracts, granted,
+        RuntimeRetryPolicy::NEVER,
+    )
+}
+
 #[test]
 fn test_execute_do_registered_deterministic_pure_with_clean_input() {
     use vb_runtime::action::ActionRegistry;
     let registry = ActionRegistry::new();
     let contract = make_contract(ActionId::new(1), Idempotency::DeterministicPure);
-    registry.register(contract).expect("register should succeed");
+    registry.register(contract.clone()).expect("register should succeed");
     let run_id = RunId::new(1);
     let step = StepIdx::new(0);
     let seq = SeqNo::new(1);
     let action = ActionId::new(1);
     let input_taint = Taint::Clean;
-    let granted: Vec<_> = vec![];
-    let result = execute_do(run_id, step, seq, action, input_taint, &granted, &registry);
+    let frame = make_test_frame(run_id, input_taint);
+    let granted = CapabilitySet::empty();
+    let registry_contracts: Vec<ActionContract> = registry.registered_contracts().into_iter().cloned().collect();
+    let result = execute_do_test(&frame, step, action, SlotIdx::new(0), seq, &registry_contracts, &granted);
     assert!(result.is_ok(), "execute_do should succeed for clean input on pure action");
     let signal = result.unwrap();
     match signal {
-        vb_core::engine::RuntimeSignal::AwaitingAction(ticket) => {
+        RuntimeSignal::AwaitingAction(ticket) => {
             assert_eq!(ticket.attempt, 1, "attempt should be 1 on first dispatch");
             let expected_key = compute_idempotency_key(run_id, seq, action);
             assert_eq!(ticket.idempotency_key, expected_key, "idempotency_key should match");
@@ -55,14 +91,16 @@ fn test_execute_do_at_least_once_with_secret_input_propagates_taint() {
     use vb_runtime::action::ActionRegistry;
     let registry = ActionRegistry::new();
     let contract = make_contract(ActionId::new(2), Idempotency::AtLeastOnceExternal);
-    registry.register(contract).expect("register should succeed");
+    registry.register(contract.clone()).expect("register should succeed");
     let run_id = RunId::new(1);
     let step = StepIdx::new(0);
     let seq = SeqNo::new(1);
     let action = ActionId::new(2);
     let input_taint = Taint::Secret;
-    let granted: Vec<_> = vec![];
-    let result = execute_do(run_id, step, seq, action, input_taint, &granted, &registry);
+    let frame = make_test_frame(run_id, input_taint);
+    let granted = CapabilitySet::empty();
+    let registry_contracts: Vec<ActionContract> = registry.registered_contracts().into_iter().cloned().collect();
+    let result = execute_do_test(&frame, step, action, SlotIdx::new(0), seq, &registry_contracts, &granted);
     assert!(result.is_ok(), "execute_do should succeed for AtLeastOnce with secret input");
 }
 
@@ -71,18 +109,20 @@ fn test_execute_do_idempotency_key_matches_compute() {
     use vb_runtime::action::ActionRegistry;
     let registry = ActionRegistry::new();
     let contract = make_contract(ActionId::new(3), Idempotency::DeterministicPure);
-    registry.register(contract).expect("register should succeed");
+    registry.register(contract.clone()).expect("register should succeed");
     let run_id = RunId::new(5);
     let step = StepIdx::new(2);
     let seq = SeqNo::new(10);
     let action = ActionId::new(3);
     let input_taint = Taint::Clean;
-    let granted: Vec<_> = vec![];
-    let result = execute_do(run_id, step, seq, action, input_taint, &granted, &registry);
+    let frame = make_test_frame(run_id, input_taint);
+    let granted = CapabilitySet::empty();
+    let registry_contracts: Vec<ActionContract> = registry.registered_contracts().into_iter().cloned().collect();
+    let result = execute_do_test(&frame, step, action, SlotIdx::new(0), seq, &registry_contracts, &granted);
     assert!(result.is_ok(), "execute_do should succeed");
     let signal = result.unwrap();
     match signal {
-        vb_core::engine::RuntimeSignal::AwaitingAction(ticket) => {
+        RuntimeSignal::AwaitingAction(ticket) => {
             let expected = compute_idempotency_key(run_id, seq, action);
             assert_eq!(ticket.idempotency_key, expected, "idempotency_key should match compute");
         }
@@ -99,8 +139,10 @@ fn test_execute_do_unregistered_action_returns_unknown_action_error() {
     let seq = SeqNo::new(1);
     let action = ActionId::new(999);
     let input_taint = Taint::Clean;
-    let granted: Vec<_> = vec![];
-    let result = execute_do(run_id, step, seq, action, input_taint, &granted, &registry);
+    let frame = make_test_frame(run_id, input_taint);
+    let granted = CapabilitySet::empty();
+    let registry_contracts: Vec<ActionContract> = registry.registered_contracts().into_iter().cloned().collect();
+    let result = execute_do_test(&frame, step, action, SlotIdx::new(0), seq, &registry_contracts, &granted);
     assert!(result.is_err(), "execute_do should fail for unregistered action");
 }
 
@@ -109,14 +151,16 @@ fn test_execute_do_deterministic_pure_with_secret_input_fails_taint() {
     use vb_runtime::action::ActionRegistry;
     let registry = ActionRegistry::new();
     let contract = make_contract(ActionId::new(4), Idempotency::DeterministicPure);
-    registry.register(contract).expect("register should succeed");
+    registry.register(contract.clone()).expect("register should succeed");
     let run_id = RunId::new(1);
     let step = StepIdx::new(0);
     let seq = SeqNo::new(1);
     let action = ActionId::new(4);
     let input_taint = Taint::Secret;
-    let granted: Vec<_> = vec![];
-    let result = execute_do(run_id, step, seq, action, input_taint, &granted, &registry);
+    let frame = make_test_frame(run_id, input_taint);
+    let granted = CapabilitySet::empty();
+    let registry_contracts: Vec<ActionContract> = registry.registered_contracts().into_iter().cloned().collect();
+    let result = execute_do_test(&frame, step, action, SlotIdx::new(0), seq, &registry_contracts, &granted);
     assert!(result.is_err(), "execute_do should fail for secret input on pure action");
 }
 
@@ -125,22 +169,25 @@ fn test_execute_do_deterministic_pure_with_derived_secret_fails_taint() {
     use vb_runtime::action::ActionRegistry;
     let registry = ActionRegistry::new();
     let contract = make_contract(ActionId::new(5), Idempotency::DeterministicPure);
-    registry.register(contract).expect("register should succeed");
+    registry.register(contract.clone()).expect("register should succeed");
     let run_id = RunId::new(1);
     let step = StepIdx::new(0);
     let seq = SeqNo::new(1);
     let action = ActionId::new(5);
     let input_taint = Taint::DerivedFromSecret;
-    let granted: Vec<_> = vec![];
-    let result = execute_do(run_id, step, seq, action, input_taint, &granted, &registry);
+    let frame = make_test_frame(run_id, input_taint);
+    let granted = CapabilitySet::empty();
+    let registry_contracts: Vec<ActionContract> = registry.registered_contracts().into_iter().cloned().collect();
+    let result = execute_do_test(&frame, step, action, SlotIdx::new(0), seq, &registry_contracts, &granted);
     assert!(result.is_err(), "execute_do should fail for derived secret input on pure action");
 }
 
 #[test]
 fn test_execute_do_missing_capability_returns_capability_denied() {
-    use vb_core::capability::Capability;
+    use vb_core::capability::{Capability, CapabilitySet};
     use vb_runtime::action::ActionRegistry;
     let registry = ActionRegistry::new();
+    let required_cap = Capability::new("Network".into(), ActionId::new(6));
     let contract = ActionContract {
         id: ActionId::new(6),
         input_slot_count: 1,
@@ -151,16 +198,19 @@ fn test_execute_do_missing_capability_returns_capability_denied() {
         idempotency: Idempotency::DeterministicPure,
         side_effect: SideEffect::None,
         retry_safety: RetrySafety::Safe,
-        required_capabilities: Box::new([Capability::Network]),
+        required_capabilities: Box::new([required_cap.clone()]),
     };
-    registry.register(contract).expect("register should succeed");
+    registry.register(contract.clone()).expect("register should succeed");
     let run_id = RunId::new(1);
     let step = StepIdx::new(0);
     let seq = SeqNo::new(1);
     let action = ActionId::new(6);
     let input_taint = Taint::Clean;
-    let granted = vec![Capability::Disk];
-    let result = execute_do(run_id, step, seq, action, input_taint, &granted, &registry);
+    let frame = make_test_frame(run_id, input_taint);
+    let disk_cap = Capability::new("Disk".into(), ActionId::new(6));
+    let granted = CapabilitySet::from_grants(Box::new([disk_cap]));
+    let registry_contracts: Vec<ActionContract> = registry.registered_contracts().into_iter().cloned().collect();
+    let result = execute_do_test(&frame, step, action, SlotIdx::new(0), seq, &registry_contracts, &granted);
     assert!(result.is_err(), "execute_do should fail when capability not granted");
 }
 
@@ -169,16 +219,18 @@ fn test_resume_ready_writes_output_slot() {
     use vb_runtime::action::ActionRegistry;
     let registry = ActionRegistry::new();
     let contract = make_contract(ActionId::new(7), Idempotency::DeterministicPure);
-    registry.register(contract).expect("register should succeed");
+    registry.register(contract.clone()).expect("register should succeed");
     let run_id = RunId::new(1);
     let step = StepIdx::new(0);
     let seq = SeqNo::new(1);
     let action = ActionId::new(7);
     let input_taint = Taint::Clean;
-    let granted: Vec<_> = vec![];
-    let exec_result = execute_do(run_id, step, seq, action, input_taint, &granted, &registry);
+    let frame = make_test_frame(run_id, input_taint);
+    let granted = CapabilitySet::empty();
+    let registry_contracts: Vec<_> = registry.registered_contracts();
+    let exec_result = execute_do_test(&frame, step, action, SlotIdx::new(0), seq, &registry_contracts, &granted);
     let ticket = match exec_result.unwrap() {
-        vb_core::engine::RuntimeSignal::AwaitingAction(t) => t,
+        RuntimeSignal::AwaitingAction(t) => t,
         _ => panic!("expected AwaitingAction"),
     };
     let ready = ActionOutputReady {
@@ -190,7 +242,7 @@ fn test_resume_ready_writes_output_slot() {
     let resume_result = resume_action_outcome(&ticket, ActionOutcome::Ready(ready), &contract);
     assert!(resume_result.is_ok(), "resume with Ready should succeed");
     let signal = resume_result.unwrap();
-    assert_eq!(signal, vb_core::engine::RuntimeSignal::Continue, "Ready should return Continue");
+    assert_eq!(signal, RuntimeSignal::Continue, "Ready should return Continue");
 }
 
 #[test]
@@ -296,7 +348,7 @@ fn test_resume_failed_retryable_below_capacity_returns_retry() {
     assert!(result.is_ok(), "resume with retryable failure below capacity should succeed");
     let signal = result.unwrap();
     match signal {
-        vb_core::engine::RuntimeSignal::AwaitingAction(retry_ticket) => {
+        RuntimeSignal::AwaitingAction(retry_ticket) => {
             assert_eq!(retry_ticket.attempt, 2, "attempt should be incremented");
             assert_eq!(retry_ticket.seq.get(), 2, "seq should be incremented");
         }
@@ -338,7 +390,7 @@ fn test_resume_failed_retryable_increments_attempt_and_seq() {
     assert!(result.is_ok(), "resume should succeed for retryable below capacity");
     let signal = result.unwrap();
     match signal {
-        vb_core::engine::RuntimeSignal::AwaitingAction(retry_ticket) => {
+        RuntimeSignal::AwaitingAction(retry_ticket) => {
             assert_eq!(retry_ticket.attempt, 2, "attempt should be 2");
             assert_eq!(retry_ticket.seq, SeqNo::new(6), "seq should be original + 1");
         }

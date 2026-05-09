@@ -1005,7 +1005,7 @@ mod integration_tests {
             shard.enqueue(crate::shard::ShardCommand::Cancel { run: nonexistent }),
             Ok(())
         );
-        assert_eq!(shard.tick(), Ok(()));
+        assert_eq!(shard.tick(), Ok(true));
 
         assert_eq!(
             shard.counters().snapshot().runs_failed,
@@ -1046,7 +1046,7 @@ mod integration_tests {
             shard.enqueue(crate::shard::ShardCommand::Cancel { run: run_id }),
             Ok(())
         );
-        assert_eq!(shard.tick(), Ok(()));
+        assert_eq!(shard.tick(), Ok(true));
 
         assert_eq!(
             shard.counters().snapshot().runs_failed,

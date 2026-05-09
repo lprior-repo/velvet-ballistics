@@ -100,35 +100,17 @@ pub fn submit_artifact(
     workflow: &vb_core::CompiledWorkflow,
     policy: vb_core::RuntimePolicy,
 ) -> Result<AcceptedArtifact, JournalError> {
-    match policy {
-        vb_core::RuntimePolicy::Relaxed => {
-            // No verification required, just persist.
+    let (gate_count, durable, ir_bytes) = match policy {
+        vb_core::RuntimePolicy::Relaxed => (0u8, false, {
             let parts = workflow.to_parts();
-            let bytes =
-                postcard::to_allocvec(&parts).map_err(|_| JournalError::ArtifactMalformed)?;
-            let record = CompiledIrRecord {
-                digest: workflow.digest(),
-                ir: bytes,
-            };
-            journal.put_compiled_ir(&record)?;
-            Ok(AcceptedArtifact {
-                digest: workflow.digest(),
-                ir: record.ir,
-                verification: VerificationProof::new(workflow.digest(), 0, false),
-                accepted_at_seq: EventSeq::new(0),
-                required_capabilities: Box::new([]),
-            })
-        }
+            postcard::to_allocvec(&parts).map_err(|_| JournalError::ArtifactMalformed)?
+        }),
         vb_core::RuntimePolicy::Journaled | vb_core::RuntimePolicy::Strict => {
             let parts = workflow.to_parts();
 
-            // Gate 1: Structure validation — must reconstruct successfully.
             vb_core::CompiledWorkflow::try_from_parts(parts.clone())
                 .map_err(|_| JournalError::ArtifactMalformed)?;
 
-            // Gate 2: Checksum validation — hash the content fields (digest zeroed)
-            // and compare to the claimed digest. This avoids the circular dependency
-            // where the digest field is part of its own hash input.
             let mut parts_for_hash = parts.clone();
             parts_for_hash.digest = vb_core::WorkflowDigest::from_bytes([0u8; 32]);
             let hash_bytes = postcard::to_allocvec(&parts_for_hash)
@@ -138,34 +120,45 @@ pub fn submit_artifact(
                 return Err(JournalError::ArtifactChecksumMismatch);
             }
 
-            // Full serialization for storage (includes correct digest).
             let bytes =
                 postcard::to_allocvec(&parts).map_err(|_| JournalError::ArtifactMalformed)?;
-
-            // Persist accepted artifact.
-            let record = CompiledIrRecord {
-                digest: workflow.digest(),
-                ir: bytes,
-            };
-            journal.put_compiled_ir(&record)?;
-
-            let durable = policy == vb_core::RuntimePolicy::Strict;
-            if durable {
-                journal.persist_strict()?;
-            }
-
-            let proof = VerificationProof::new(workflow.digest(), ADMISSION_GATE_COUNT, durable);
-            let artifact = AcceptedArtifact {
-                digest: workflow.digest(),
-                ir: record.ir,
-                verification: proof,
-                accepted_at_seq: EventSeq::new(0),
-                required_capabilities: Box::new([]),
-            };
-
-            Ok(artifact)
+            (
+                ADMISSION_GATE_COUNT,
+                policy == vb_core::RuntimePolicy::Strict,
+                bytes,
+            )
         }
+    };
+
+    let proof = VerificationProof::new(workflow.digest(), gate_count, durable);
+    let artifact = AcceptedArtifact {
+        digest: workflow.digest(),
+        ir: ir_bytes.clone(),
+        verification: proof,
+        accepted_at_seq: EventSeq::new(0),
+        required_capabilities: Box::new([]),
+    };
+
+    let artifact_bytes =
+        postcard::to_allocvec(&artifact).map_err(|_| JournalError::ArtifactMalformed)?;
+    let record = CompiledIrRecord {
+        digest: workflow.digest(),
+        ir: artifact_bytes,
+    };
+    journal.put_compiled_ir(&record)?;
+
+    if durable {
+        journal.persist_strict()?;
     }
+
+    let stored = journal
+        .compiled_ir(workflow.digest())
+        .map_err(|_| JournalError::ArtifactMalformed)?;
+    if stored.is_none() {
+        return Err(JournalError::ArtifactMalformed);
+    }
+
+    Ok(artifact)
 }
 
 /// Validates and persists a compiled workflow artifact.

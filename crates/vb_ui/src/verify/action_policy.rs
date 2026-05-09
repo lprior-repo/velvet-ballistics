@@ -49,6 +49,76 @@ pub struct ActionPolicyReport {
     pub issues: Vec<PolicyIssue>,
 }
 
+impl ActionPolicyReport {
+    /// Constructs a policy report for a single action.
+    ///
+    /// When `contract` is `None`, the action is treated as having no contract
+    /// and will receive `MissingTimeout` and `MissingIdempotency` issues.
+    pub fn for_action(action: ActionId, contract: Option<&ActionContract>) -> Self {
+        let action_raw = action.get();
+        let mut issues: Vec<PolicyIssue> = Vec::new();
+
+        let idempotency_class = match contract {
+            Some(c) => classify_idempotency(c),
+            None => IdempotencyClass::Unknown,
+        };
+
+        let (has_timeout, timeout_ms) = match contract {
+            Some(c) => {
+                let configured = c.timeout_ms > 0;
+                let ms = if configured {
+                    Some(u32::try_from(c.timeout_ms).ok().unwrap_or(u32::MAX))
+                } else {
+                    None
+                };
+                (configured, ms)
+            }
+            None => (false, None),
+        };
+
+        if !has_timeout {
+            issues.push(PolicyIssue::MissingTimeout);
+        }
+
+        if idempotency_class == IdempotencyClass::Unknown {
+            issues.push(PolicyIssue::MissingIdempotency);
+        }
+
+        if let Some(c) = contract
+            && c.retry_safety == RetrySafety::Unsafe
+        {
+            issues.push(PolicyIssue::UnsafeRetry);
+        }
+
+        let strict_eligible = compute_strict_eligibility(idempotency_class, has_timeout, &issues);
+
+        ActionPolicyReport {
+            action_id: action_raw,
+            idempotency_class,
+            has_timeout,
+            timeout_ms,
+            strict_eligible,
+            issues,
+        }
+    }
+
+    /// Inserts a deduplicated report into the map.
+    ///
+    /// Only inserts if the action_id is not already present.
+    /// This is used when processing workflows where multiple Do nodes
+    /// may reference the same action.
+    pub fn insert_deduplicated(
+        reports: &mut std::collections::HashMap<ActionId, ActionPolicyReport>,
+        action: ActionId,
+        contract: Option<&ActionContract>,
+    ) {
+        if !reports.contains_key(&action) {
+            let report = Self::for_action(action, contract);
+            reports.insert(action, report);
+        }
+    }
+}
+
 /// Analyzes all Do nodes in the workflow and produces a policy compliance report
 /// for each unique action invocation.
 ///
@@ -79,6 +149,31 @@ pub fn analyze_action_policies(
             let report = build_report(action, contracts);
             reports.push(report);
         }
+    }
+
+    reports
+}
+
+/// Analyzes a workflow given as a slice of action IDs and a slice of contracts.
+///
+/// This is a simpler interface for cases where the full `WorkflowParts`
+/// is not available. Each action in the workflow is analyzed once (deduplicated).
+pub fn analyze_actions(
+    workflow: &[ActionId],
+    contracts: &[ActionContract],
+) -> Vec<ActionPolicyReport> {
+    let mut reports: Vec<ActionPolicyReport> = Vec::new();
+    let mut seen: Vec<u16> = Vec::new();
+
+    for &action in workflow.iter() {
+        let action_raw = action.get();
+        if seen.contains(&action_raw) {
+            continue;
+        }
+        seen.push(action_raw);
+        let contract = find_contract(action, contracts);
+        let report = ActionPolicyReport::for_action(action, contract);
+        reports.push(report);
     }
 
     reports

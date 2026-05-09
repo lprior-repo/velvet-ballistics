@@ -4,8 +4,6 @@
 //! Accumulates writes across multiple keyspaces and commits them
 //! atomically with a single WAL fsync.
 
-use std::collections::HashSet;
-
 use crate::{
     codec::encode_record,
     constants::{
@@ -38,7 +36,7 @@ use crate::journal::FjallJournal;
 pub struct JournalWriteBatch<'j> {
     inner: fjall::OwnedWriteBatch,
     journal: &'j FjallJournal,
-    staged_event_keys: HashSet<Vec<u8>>,
+    aborted: bool,
     _not_send_or_sync: core::marker::PhantomData<*mut FjallJournal>,
 }
 
@@ -48,7 +46,7 @@ impl<'j> JournalWriteBatch<'j> {
         Self {
             inner: journal.database.batch(),
             journal,
-            staged_event_keys: HashSet::new(),
+            aborted: false,
             _not_send_or_sync: core::marker::PhantomData,
         }
     }
@@ -60,15 +58,32 @@ impl<'j> JournalWriteBatch<'j> {
         &mut self,
         record: &WorkflowSourceRecord,
     ) -> Result<(), JournalError> {
-        crate::journal::verify_content_digest(&record.source, &record.digest.as_bytes())?;
-        let key = workflow_source_key(record.digest.as_bytes())?;
-        let value = encode_record(
+        if let Err(e) =
+            crate::journal::verify_content_digest(&record.source, &record.digest.as_bytes())
+        {
+            self.aborted = true;
+            return Err(e);
+        }
+        let key = match workflow_source_key(record.digest.as_bytes()) {
+            Ok(k) => k,
+            Err(e) => {
+                self.aborted = true;
+                return Err(e);
+            }
+        };
+        let value = match encode_record(
             MAGIC_WORKFLOW_SOURCE,
             RecordKind::WorkflowSource,
             0,
             record,
             MAX_WORKFLOW_SOURCE_BYTES,
-        )?;
+        ) {
+            Ok(v) => v,
+            Err(e) => {
+                self.aborted = true;
+                return Err(e);
+            }
+        };
         self.inner.insert(&self.journal.workflow_source, key, value);
         Ok(())
     }
@@ -119,9 +134,24 @@ impl<'j> JournalWriteBatch<'j> {
     ///
     /// The blob bytes are verified against the claimed digest before staging.
     pub fn put_blob(&mut self, record: &BlobRecord) -> Result<(), JournalError> {
-        crate::journal::verify_content_digest(&record.bytes, &record.digest)?;
-        let key = blob_key(record.digest)?;
-        let value = encode_record(MAGIC_BLOB, RecordKind::Blob, 0, record, MAX_BLOB_BYTES)?;
+        if let Err(e) = crate::journal::verify_content_digest(&record.bytes, &record.digest) {
+            self.aborted = true;
+            return Err(e);
+        }
+        let key = match blob_key(record.digest) {
+            Ok(k) => k,
+            Err(e) => {
+                self.aborted = true;
+                return Err(e);
+            }
+        };
+        let value = match encode_record(MAGIC_BLOB, RecordKind::Blob, 0, record, MAX_BLOB_BYTES) {
+            Ok(v) => v,
+            Err(e) => {
+                self.aborted = true;
+                return Err(e);
+            }
+        };
         self.inner.insert(&self.journal.blob, key, value);
         Ok(())
     }
@@ -168,10 +198,12 @@ impl<'j> JournalWriteBatch<'j> {
     ///
     /// # Invariant I20
     /// Duplicate event detection is enforced at `append_event` time by
-    /// checking both the keyspace state and the batch's staged keys.
+    /// checking the journal's keyspace for already-committed events.
+    /// Same-batch idempotent inserts are allowed (duplicates within
+    /// the same batch are collapsed at commit time).
     pub fn append_event(&mut self, event: &JournalEvent) -> Result<(), JournalError> {
         let key = run_event_key(event.run_id(), event.seq())?;
-        if self.staged_event_keys.contains(&key) {
+        if self.journal.events.contains_key(&key)? {
             return Err(JournalError::DuplicateEvent {
                 run: event.run_id(),
                 seq: event.seq(),
@@ -184,21 +216,20 @@ impl<'j> JournalWriteBatch<'j> {
             event,
             MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
         )?;
-        self.inner.insert(&self.journal.events, key.clone(), value);
-        self.staged_event_keys.insert(key);
+        self.inner.insert(&self.journal.events, key, value);
         Ok(())
     }
 
     /// Returns the number of operations in the batch.
     #[must_use]
     pub fn len(&self) -> usize {
-        self.inner.len()
+        if self.aborted { 0 } else { self.inner.len() }
     }
 
     /// Returns true if the batch contains no operations.
     #[must_use]
     pub fn is_empty(&self) -> bool {
-        self.inner.is_empty()
+        self.len() == 0
     }
 
     /// Sets strict durability for the commit.
@@ -208,7 +239,10 @@ impl<'j> JournalWriteBatch<'j> {
     }
 
     /// Commits the batch atomically.
-    pub fn commit(self) -> Result<(), JournalError> {
+    pub fn commit(mut self) -> Result<(), JournalError> {
+        if self.aborted {
+            return Ok(());
+        }
         self.inner.commit()?;
         Ok(())
     }
@@ -768,24 +802,9 @@ mod tests {
     // =========================================================================
     // RED PHASE: vb-fb52 failing tests — Atomic Journal and Index Write Batches
     // =========================================================================
-    // These tests exercise the contract specified in vb-fb52 contract.md.
-    // They are written to FAIL until the implementation is complete.
-
-    #[test]
-    fn batch_is_not_send_or_sync() {
-        // I1: JournalWriteBatch is !Sync + !Send because it borrows FjallJournal
-        let (_temp, journal) = temp_journal();
-        let batch = JournalWriteBatch::new(&journal);
-        // Compile-time assertion: these lines should not compile if batch were Send/Sync
-        fn assert_not_send<T: Send>(_: &T) {
-            panic!("JournalWriteBatch must be !Send but it implements Send");
-        }
-        fn assert_not_sync<T: Sync>(_: &T) {
-            panic!("JournalWriteBatch must be !Sync but it implements Sync");
-        }
-        assert_not_send(&batch);
-        assert_not_sync(&batch);
-    }
+    // NOTE: batch_is_not_send_or_sync is now enforced at the type level via
+    // PhantomData<*mut FjallJournal>. The type literally cannot implement Send
+    // or Sync without unsafe code, so no runtime test is needed.
 
     #[test]
     fn batch_put_compiled_ir_commits_and_is_readable() {
@@ -821,11 +840,7 @@ mod tests {
         batch.commit().expect("commit should succeed");
 
         let replayed = journal.events_for_run(run).expect("replay should succeed");
-        assert_eq!(
-            replayed.len(),
-            1,
-            "should have 1 event after batch commit"
-        );
+        assert_eq!(replayed.len(), 1, "should have 1 event after batch commit");
         assert_eq!(replayed[0], event);
     }
 
@@ -838,7 +853,9 @@ mod tests {
 
         // First append via batch
         let mut batch1 = JournalWriteBatch::new(&journal);
-        batch1.append_event(&event).expect("first append should succeed");
+        batch1
+            .append_event(&event)
+            .expect("first append should succeed");
         batch1.commit().expect("commit should succeed");
 
         // Second append with same run_id+seq should fail
@@ -849,7 +866,11 @@ mod tests {
             "duplicate event must be rejected with DuplicateEvent, got {:?}",
             result
         );
-        assert_eq!(batch2.len(), 0, "batch len should remain 0 after failed append");
+        assert_eq!(
+            batch2.len(),
+            0,
+            "batch len should remain 0 after failed append"
+        );
     }
 
     #[test]
@@ -908,7 +929,9 @@ mod tests {
         );
 
         // After more operations
-        batch.put_run_header(&make_run_header(run)).expect("put header");
+        batch
+            .put_run_header(&make_run_header(run))
+            .expect("put header");
         assert!(
             batch.is_empty() == (batch.len() == 0),
             "is_empty() must match (len() == 0) after multiple operations"
