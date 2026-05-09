@@ -82,6 +82,7 @@ commands:
   agent-context                                      Emit versioned AI-agent CLI schema
   status     [--active-runs <N>] [--queue-depth <N>] [--trace-dropped <N>] [--json|--jsonl]  Report runtime shard status
   action list [--json|--jsonl]                       List registered action contracts
+  action inspect <action_id> [--json|--jsonl]         Show one registered action contract
 
 options:
   --json      Output structured JSON
@@ -102,6 +103,11 @@ fn main() -> ExitCode {
         }
         Ok(Command::Status { options, output }) => cmd_status(options, output),
         Ok(Command::ActionList { output, registry }) => cmd_action_list(output, registry),
+        Ok(Command::ActionInspect {
+            action_id,
+            output,
+            registry,
+        }) => cmd_action_inspect(action_id, output, registry),
         Ok(Command::Verify {
             workflow,
             profile,
@@ -267,6 +273,27 @@ fn cmd_action_list(output: OutputFormat, registry_mode: ActionRegistryMode) -> E
     }
 }
 
+fn cmd_action_inspect(
+    action_id: u16,
+    output: OutputFormat,
+    registry_mode: ActionRegistryMode,
+) -> ExitCode {
+    match registry_mode {
+        ActionRegistryMode::Registered => match registered_cli_actions() {
+            Ok(registry) => write_action_inspect(&registry, action_id, output),
+            Err(error) => write_action_registry_error(&error, output),
+        },
+        ActionRegistryMode::Empty => {
+            let registry = ActionRegistry::new();
+            write_action_inspect(&registry, action_id, output)
+        }
+        ActionRegistryMode::Uninitialized => {
+            write_action_registry_uninitialized(output);
+            CliExitCode::ValidationFailed.into()
+        }
+    }
+}
+
 fn write_action_registry_error(
     error: &vb_core::action::ActionError,
     output: OutputFormat,
@@ -337,6 +364,113 @@ fn write_action_registry(registry: &ActionRegistry, output: OutputFormat) -> Exi
     ExitCode::SUCCESS
 }
 
+fn write_action_inspect(
+    registry: &ActionRegistry,
+    action_id: u16,
+    output: OutputFormat,
+) -> ExitCode {
+    match registry.resolve_compile_time(vb_core::ActionId::new(action_id)) {
+        Ok(contract) => write_action_contract(contract, output),
+        Err(error) => write_action_inspect_error(action_id, &error, output),
+    }
+}
+
+fn write_action_inspect_error(
+    action_id: u16,
+    error: &vb_core::action::ActionError,
+    output: OutputFormat,
+) -> ExitCode {
+    let message = format!("action {action_id} is not registered: {error}");
+    if output == OutputFormat::Text {
+        errln!("{message}");
+    } else {
+        json_error(
+            &serde_json::json!({
+                "success": false,
+                "action_id": action_id,
+                "error": message,
+            }),
+            output,
+        );
+    }
+    CliExitCode::ValidationFailed.into()
+}
+
+fn write_action_contract(
+    contract: &vb_core::action::ActionContract,
+    output: OutputFormat,
+) -> ExitCode {
+    let detail = action_contract_detail(contract);
+    if output == OutputFormat::Text {
+        write_action_contract_text(&detail);
+    } else {
+        json_out(&detail.to_json(), output);
+    }
+    ExitCode::SUCCESS
+}
+
+fn write_action_contract_text(detail: &ActionContractDetail) {
+    outln!("action {}", detail.id);
+    outln!("  input_slot_count: {}", detail.input_slot_count);
+    outln!("  output_slot_count: {}", detail.output_slot_count);
+    outln!("  max_input_bytes: {}", detail.max_input_bytes);
+    outln!("  max_output_bytes: {}", detail.max_output_bytes);
+    outln!("  timeout_ms: {}", detail.timeout_ms);
+    outln!("  idempotency: {}", detail.idempotency);
+    outln!("  retry_safety: {}", detail.retry_safety);
+    outln!("  side_effect: {}", detail.side_effect);
+    outln!("  idempotency_rule: {}", detail.idempotency_rule);
+    outln!(
+        "  required_capabilities: {}",
+        detail.required_capabilities.join(",")
+    );
+    outln!("  failure_codes: {}", detail.failure_codes.join(","));
+    outln!("  example_input_schema: {}", detail.example_input_schema);
+    outln!("  example_output_schema: {}", detail.example_output_schema);
+}
+
+#[derive(Debug, Clone)]
+struct ActionContractDetail {
+    id: u16,
+    input_slot_count: u16,
+    output_slot_count: u16,
+    max_input_bytes: u32,
+    max_output_bytes: u32,
+    timeout_ms: u64,
+    idempotency: &'static str,
+    retry_safety: &'static str,
+    side_effect: &'static str,
+    required_capabilities: Vec<String>,
+    failure_codes: Vec<&'static str>,
+    idempotency_rule: &'static str,
+    example_input_schema: &'static str,
+    example_output_schema: &'static str,
+}
+
+impl ActionContractDetail {
+    fn to_json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "success": true,
+            "action": {
+                "id": self.id,
+                "input_slot_count": self.input_slot_count,
+                "output_slot_count": self.output_slot_count,
+                "max_input_bytes": self.max_input_bytes,
+                "max_output_bytes": self.max_output_bytes,
+                "timeout_ms": self.timeout_ms,
+                "idempotency": self.idempotency,
+                "retry_safety": self.retry_safety,
+                "side_effect": self.side_effect,
+                "required_capabilities": self.required_capabilities,
+                "failure_codes": self.failure_codes,
+                "idempotency_rule": self.idempotency_rule,
+                "example_input_schema": self.example_input_schema,
+                "example_output_schema": self.example_output_schema,
+            }
+        })
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
 struct ActionTableRow {
     id: u16,
@@ -362,6 +496,29 @@ fn action_table_rows(registry: &ActionRegistry) -> Vec<ActionTableRow> {
             timeout_ms: contract.timeout_ms,
         })
         .collect()
+}
+
+fn action_contract_detail(contract: &vb_core::action::ActionContract) -> ActionContractDetail {
+    ActionContractDetail {
+        id: contract.id.get(),
+        input_slot_count: contract.input_slot_count,
+        output_slot_count: contract.output_slot_count,
+        max_input_bytes: contract.max_input_bytes,
+        max_output_bytes: contract.max_output_bytes,
+        timeout_ms: contract.timeout_ms,
+        idempotency: action_idempotency_name(contract.idempotency),
+        retry_safety: action_retry_safety_name(contract.retry_safety),
+        side_effect: action_side_effect_name(contract.side_effect),
+        required_capabilities: contract
+            .required_capabilities
+            .iter()
+            .map(|capability| format!("{}:{}", capability.name(), capability.action_id().get()))
+            .collect(),
+        failure_codes: action_failure_code_names().to_vec(),
+        idempotency_rule: action_idempotency_rule(contract.idempotency, contract.retry_safety),
+        example_input_schema: "postcard(ActionInput { run, step, action, input, ticket })",
+        example_output_schema: "postcard(ActionOutcome::Ready|Suspended|Failed)",
+    }
 }
 
 fn write_action_table_rows(rows: &[ActionTableRow]) {
@@ -486,6 +643,38 @@ fn action_side_effect_name(value: vb_core::action::SideEffect) -> &'static str {
         vb_core::action::SideEffect::Sends => "sends",
         vb_core::action::SideEffect::Creates => "creates",
         vb_core::action::SideEffect::Destroys => "destroys",
+    }
+}
+
+fn action_failure_code_names() -> &'static [&'static str] {
+    &[
+        "rejected",
+        "timeout",
+        "rate_limited",
+        "resource_exhausted",
+        "external_unavailable",
+        "invalid_input",
+        "permission_denied",
+        "conflict",
+        "unknown",
+    ]
+}
+
+fn action_idempotency_rule(
+    idempotency: vb_core::action::Idempotency,
+    retry_safety: vb_core::action::RetrySafety,
+) -> &'static str {
+    match (idempotency, retry_safety) {
+        (vb_core::action::Idempotency::DeterministicPure, _) => {
+            "pure deterministic actions may replay without an external key"
+        }
+        (_, vb_core::action::RetrySafety::KeyRequired) => {
+            "external retries require a stable idempotency key"
+        }
+        (_, vb_core::action::RetrySafety::Unsafe) => {
+            "unsafe actions must not be retried automatically"
+        }
+        _ => "retry behavior follows the action contract",
     }
 }
 
@@ -3683,7 +3872,7 @@ fn write_error_stderr(error: &ParseError) -> io::Result<()> {
         ParseError::UnknownActionCommand(cmd) => {
             writeln!(
                 handle,
-                "unknown action command: {cmd} (expected: list)\n\n{HELP}"
+                "unknown action command: {cmd} (expected: list, inspect)\n\n{HELP}"
             )
         }
         ParseError::UnknownActionRegistry(registry) => {
@@ -3703,6 +3892,16 @@ fn write_error_stderr(error: &ParseError) -> io::Result<()> {
             handle,
             "unexpected action list argument: {argument}\n\n{HELP}"
         ),
+        ParseError::UnknownActionInspectFlag(flag) => {
+            writeln!(handle, "unknown action inspect flag: {flag}\n\n{HELP}")
+        }
+        ParseError::UnexpectedActionInspectArgument(argument) => writeln!(
+            handle,
+            "unexpected action inspect argument: {argument}\n\n{HELP}"
+        ),
+        ParseError::InvalidActionId(action_id) => {
+            writeln!(handle, "invalid action id: {action_id}\n\n{HELP}")
+        }
         ParseError::NoCommand => {
             writeln!(handle, "{HELP}")
         }

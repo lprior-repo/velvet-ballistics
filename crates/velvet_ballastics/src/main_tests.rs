@@ -6,10 +6,10 @@ use super::{
     ActionRegistryMode, Command, DurabilityMode, INPUT_MAPPING_DECODE_FAILED_MESSAGE,
     INPUT_MAPPING_SLOT_COUNT_EXCEEDED_MESSAGE, INPUT_MAPPING_SLOT_INDEX_OUT_OF_RANGE_MESSAGE,
     InputMappingError, ParseError, RunStatus, StepTarget, StorageWorkflowResolver,
-    action_idempotency_name, action_table_rows, build_step_frame, decode_step_inputs,
-    execute_step_isolated, map_runtime_inputs, node_kind_name, parse_args, redacted_slot_value,
-    registered_cli_actions, run_compiled_workflow, setup_exit_code, signal_name,
-    suggested_ai_commands, write_step_inputs,
+    action_contract_detail, action_idempotency_name, action_table_rows, build_step_frame,
+    decode_step_inputs, execute_step_isolated, map_runtime_inputs, node_kind_name, parse_args,
+    redacted_slot_value, registered_cli_actions, run_compiled_workflow, setup_exit_code,
+    signal_name, suggested_ai_commands, write_step_inputs,
 };
 use std::ffi::OsString;
 use std::path::PathBuf;
@@ -264,6 +264,44 @@ fn parse_action_list_accepts_empty_registry_json() {
 }
 
 #[test]
+fn parse_action_inspect_accepts_action_id_and_json() {
+    let parsed = parse_args(&args(&[
+        "velvet-ballastics",
+        "action",
+        "inspect",
+        "2",
+        "--json",
+    ]));
+
+    assert!(
+        matches!(
+            parsed,
+            Ok(Command::ActionInspect {
+                action_id: 2,
+                output: super::OutputFormat::Json,
+                registry: ActionRegistryMode::Registered,
+            })
+        ),
+        "unexpected parse result: {parsed:?}"
+    );
+}
+
+#[test]
+fn parse_action_inspect_rejects_invalid_action_id() {
+    let parsed = parse_args(&args(&[
+        "velvet-ballastics",
+        "action",
+        "inspect",
+        "not-a-number",
+    ]));
+
+    assert_eq!(
+        parsed,
+        Err(ParseError::InvalidActionId("not-a-number".into()))
+    );
+}
+
+#[test]
 fn parse_action_list_rejects_invalid_registry() {
     let parsed = parse_args(&args(&[
         "velvet-ballastics",
@@ -391,6 +429,32 @@ fn registered_cli_action_table_rows_are_exact() {
     assert_eq!(third.input_slot_count, 1);
     assert_eq!(third.output_slot_count, 0);
     assert_eq!(third.timeout_ms, 10_000);
+}
+
+#[test]
+fn registered_cli_action_inspect_detail_contains_contract_and_rules() -> Result<(), String> {
+    let registry = registered_cli_actions()
+        .map_err(|error| format!("registered CLI actions should build: {error}"))?;
+    let contract = registry
+        .resolve_compile_time(vb_core::ActionId::new(2))
+        .map_err(|error| format!("action 2 should resolve: {error}"))?;
+    let detail = action_contract_detail(contract);
+
+    assert_eq!(detail.id, 2);
+    assert_eq!(detail.idempotency, "idempotent_external");
+    assert_eq!(detail.retry_safety, "key_required");
+    assert_eq!(detail.side_effect, "writes");
+    assert_eq!(detail.input_slot_count, 2);
+    assert_eq!(detail.output_slot_count, 1);
+    assert_eq!(detail.max_input_bytes, 65_536);
+    assert_eq!(detail.max_output_bytes, 65_536);
+    assert_eq!(detail.timeout_ms, 5_000);
+    assert!(detail.failure_codes.contains(&"permission_denied"));
+    assert_eq!(
+        detail.idempotency_rule,
+        "external retries require a stable idempotency key"
+    );
+    Ok(())
 }
 
 #[test]

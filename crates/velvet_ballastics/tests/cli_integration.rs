@@ -565,6 +565,102 @@ fn cli_action_list_jsonl_output_has_exact_lines() {
     assert_eq!(first.get("timeout_ms"), Some(&serde_json::json!(1000)));
 }
 
+#[test]
+fn cli_action_inspect_text_output_has_contract_details() {
+    let output = run_cli(&[
+        std::ffi::OsStr::new("action"),
+        std::ffi::OsStr::new("inspect"),
+        std::ffi::OsStr::new("2"),
+    ]);
+    let output = match output {
+        Some(output) => output,
+        None => {
+            assert!(
+                forced_assertion_failure(),
+                "failed to execute velvet_ballastics CLI for action inspect 2"
+            );
+            return;
+        }
+    };
+
+    assert_cli_success(&output, "action inspect 2");
+    let stdout = output_stdout(&output);
+    assert!(stdout.contains("action 2"));
+    assert!(stdout.contains("idempotency: idempotent_external"));
+    assert!(stdout.contains("retry_safety: key_required"));
+    assert!(stdout.contains("failure_codes: rejected,timeout,rate_limited"));
+    assert!(stdout.contains("example_input_schema:"));
+}
+
+#[test]
+fn cli_action_inspect_json_output_has_full_contract() {
+    let output = run_cli(&[
+        std::ffi::OsStr::new("action"),
+        std::ffi::OsStr::new("inspect"),
+        std::ffi::OsStr::new("2"),
+        std::ffi::OsStr::new("--json"),
+    ]);
+    let output = match output {
+        Some(output) => output,
+        None => {
+            assert!(
+                forced_assertion_failure(),
+                "failed to execute velvet_ballastics CLI for action inspect 2 --json"
+            );
+            return;
+        }
+    };
+
+    assert_cli_success(&output, "action inspect 2 --json");
+    let parsed = match serde_json::from_str::<serde_json::Value>(&output_stdout(&output)) {
+        Ok(value) => value,
+        Err(error) => {
+            assert!(
+                forced_assertion_failure(),
+                "action inspect JSON should parse: {error}; stdout={}",
+                output_stdout(&output)
+            );
+            return;
+        }
+    };
+    assert_eq!(parsed["success"], serde_json::json!(true));
+    assert_eq!(parsed["action"]["id"], serde_json::json!(2));
+    assert_eq!(
+        parsed["action"]["idempotency"],
+        serde_json::json!("idempotent_external")
+    );
+    assert_eq!(
+        parsed["action"]["retry_safety"],
+        serde_json::json!("key_required")
+    );
+    assert_eq!(
+        parsed["action"]["idempotency_rule"],
+        serde_json::json!("external retries require a stable idempotency key")
+    );
+    assert!(parsed["action"]["failure_codes"].is_array());
+}
+
+#[test]
+fn cli_action_inspect_unregistered_action_fails() {
+    let output = run_cli(&[
+        std::ffi::OsStr::new("action"),
+        std::ffi::OsStr::new("inspect"),
+        std::ffi::OsStr::new("99"),
+    ]);
+    let output = match output {
+        Some(output) => output,
+        None => {
+            assert!(
+                forced_assertion_failure(),
+                "failed to execute velvet_ballastics CLI for action inspect 99"
+            );
+            return;
+        }
+    };
+
+    assert_cli_failure_contains(&output, "action inspect 99", "action 99 is not registered");
+}
+
 // ---------------------------------------------------------------------------
 // Phase 1: YAML parsing — vb_yaml
 // ---------------------------------------------------------------------------

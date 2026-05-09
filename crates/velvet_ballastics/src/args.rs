@@ -57,6 +57,11 @@ pub(crate) enum Command {
         output: OutputFormat,
         registry: ActionRegistryMode,
     },
+    ActionInspect {
+        action_id: u16,
+        output: OutputFormat,
+        registry: ActionRegistryMode,
+    },
     Verify {
         workflow: PathBuf,
         profile: VerifyProfile,
@@ -224,12 +229,21 @@ pub(crate) enum ParseError {
     MissingActionRegistryValue,
     UnknownActionListFlag(String),
     UnexpectedActionListArgument(String),
+    UnknownActionInspectFlag(String),
+    UnexpectedActionInspectArgument(String),
+    InvalidActionId(String),
     NoCommand,
     InvalidStep(String),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct ActionListParseState {
+    output: OutputFormat,
+    registry: ActionRegistryMode,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct ActionInspectParseState {
     output: OutputFormat,
     registry: ActionRegistryMode,
 }
@@ -344,13 +358,16 @@ fn parse_action(args: &[OsString]) -> Result<Command, ParseError> {
         .get(2)
         .and_then(|s| s.to_str())
         .ok_or(ParseError::MissingArgument("action subcommand"))?;
-    if action_command != "list" {
-        return Err(ParseError::UnknownActionCommand(action_command.into()));
-    }
     let action_args = match args.get(3..) {
         Some(values) => values,
         None => &[],
     };
+    if action_command == "inspect" {
+        return parse_action_inspect(action_args);
+    }
+    if action_command != "list" {
+        return Err(ParseError::UnknownActionCommand(action_command.into()));
+    }
     let parsed = parse_action_list_args(
         action_args,
         ActionListParseState {
@@ -362,6 +379,62 @@ fn parse_action(args: &[OsString]) -> Result<Command, ParseError> {
         output: parsed.output,
         registry: parsed.registry,
     })
+}
+
+fn parse_action_inspect(args: &[OsString]) -> Result<Command, ParseError> {
+    let (raw_id, rest) = args
+        .split_first()
+        .ok_or(ParseError::MissingArgument("action_id"))?;
+    let id = raw_id
+        .to_str()
+        .ok_or_else(|| ParseError::InvalidActionId(format!("{raw_id:?}")))?
+        .parse::<u16>()
+        .map_err(|_| ParseError::InvalidActionId(raw_id.to_string_lossy().into_owned()))?;
+    let parsed = parse_action_inspect_args(
+        rest,
+        ActionInspectParseState {
+            output: OutputFormat::Text,
+            registry: ActionRegistryMode::Registered,
+        },
+    )?;
+    Ok(Command::ActionInspect {
+        action_id: id,
+        output: parsed.output,
+        registry: parsed.registry,
+    })
+}
+
+fn parse_action_inspect_args(
+    args: &[OsString],
+    state: ActionInspectParseState,
+) -> Result<ActionInspectParseState, ParseError> {
+    match args.split_first() {
+        None => Ok(state),
+        Some((raw, rest)) => match raw.to_str() {
+            Some("--json") => parse_action_inspect_args(
+                rest,
+                ActionInspectParseState {
+                    output: OutputFormat::Json,
+                    ..state
+                },
+            ),
+            Some("--jsonl") => parse_action_inspect_args(
+                rest,
+                ActionInspectParseState {
+                    output: OutputFormat::Jsonl,
+                    ..state
+                },
+            ),
+            Some("--registry") => parse_action_inspect_registry_arg(rest, state),
+            Some(flag) if flag.starts_with("--") => {
+                Err(ParseError::UnknownActionInspectFlag(flag.into()))
+            }
+            Some(arg) => Err(ParseError::UnexpectedActionInspectArgument(arg.into())),
+            None => Err(ParseError::UnexpectedActionInspectArgument(format!(
+                "{raw:?}"
+            ))),
+        },
+    }
 }
 
 fn parse_action_list_args(
@@ -481,6 +554,22 @@ fn parse_action_registry_arg(
             Some(value) if value.starts_with("--") => Err(ParseError::MissingActionRegistryValue),
             Some(value) => parse_action_registry_mode(value).and_then(|registry| {
                 parse_action_list_args(rest, ActionListParseState { registry, ..state })
+            }),
+            None => Err(ParseError::MissingActionRegistryValue),
+        },
+        None => Err(ParseError::MissingActionRegistryValue),
+    }
+}
+
+fn parse_action_inspect_registry_arg(
+    args: &[OsString],
+    state: ActionInspectParseState,
+) -> Result<ActionInspectParseState, ParseError> {
+    match args.split_first() {
+        Some((raw, rest)) => match raw.to_str() {
+            Some(value) if value.starts_with("--") => Err(ParseError::MissingActionRegistryValue),
+            Some(value) => parse_action_registry_mode(value).and_then(|registry| {
+                parse_action_inspect_args(rest, ActionInspectParseState { registry, ..state })
             }),
             None => Err(ParseError::MissingActionRegistryValue),
         },
@@ -871,7 +960,10 @@ impl std::fmt::Display for ParseError {
                 write!(formatter, "invalid status argument: {reason}")
             }
             Self::UnknownActionCommand(cmd) => {
-                write!(formatter, "unknown action command: {cmd} (expected: list)")
+                write!(
+                    formatter,
+                    "unknown action command: {cmd} (expected: list, inspect)"
+                )
             }
             Self::UnknownActionRegistry(registry) => {
                 write!(
@@ -888,6 +980,15 @@ impl std::fmt::Display for ParseError {
             }
             Self::UnexpectedActionListArgument(argument) => {
                 write!(formatter, "unexpected action list argument: {argument}")
+            }
+            Self::UnknownActionInspectFlag(flag) => {
+                write!(formatter, "unknown action inspect flag: {flag}")
+            }
+            Self::UnexpectedActionInspectArgument(argument) => {
+                write!(formatter, "unexpected action inspect argument: {argument}")
+            }
+            Self::InvalidActionId(action_id) => {
+                write!(formatter, "invalid action id: {action_id}")
             }
             Self::NoCommand => write!(formatter, "no command provided"),
             Self::InvalidStep(step) => write!(formatter, "invalid step: {step}"),
