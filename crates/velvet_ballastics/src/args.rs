@@ -44,6 +44,11 @@ pub(crate) enum Command {
     Help,
     Version,
     AgentContext,
+    AiContext {
+        run_id: String,
+        db: PathBuf,
+        output: OutputFormat,
+    },
     Verify {
         workflow: PathBuf,
         profile: VerifyProfile,
@@ -157,7 +162,7 @@ pub(crate) enum Command {
     },
 }
 
-pub(crate) const VALID_COMMANDS: &str = "help, version, agent-context, validate, verify, explain, compile, run, run-compiled, ipc-serve, inspect, events, replay, trace, retry, resume, bench-run, doctor, answer, graph, diff, incident, submit, simulate";
+pub(crate) const VALID_COMMANDS: &str = "help, version, agent-context, ai-context, validate, verify, explain, compile, run, run-compiled, ipc-serve, inspect, events, replay, trace, retry, resume, bench-run, doctor, answer, graph, diff, incident, submit, simulate";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum EmitTarget {
@@ -181,7 +186,7 @@ pub(crate) struct StepTarget {
     pub(crate) step_input: PathBuf,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 #[allow(dead_code)]
 pub(crate) enum ParseError {
     MissingArgument(&'static str),
@@ -203,6 +208,7 @@ pub(crate) fn parse_args(args: &[OsString]) -> Result<Command, ParseError> {
         "help" | "--help" | "-h" => Ok(Command::Help),
         "version" | "--version" | "-V" => Ok(Command::Version),
         "agent-context" => Ok(Command::AgentContext),
+        "ai-context" => parse_ai_context(args),
         "verify" => parse_verify(args),
         "validate" => parse_validate(args),
         "explain" => parse_explain(args),
@@ -226,6 +232,15 @@ pub(crate) fn parse_args(args: &[OsString]) -> Result<Command, ParseError> {
         "submit" => parse_submit(args),
         other => Err(ParseError::UnknownCommand(other.into())),
     }
+}
+
+fn parse_ai_context(args: &[OsString]) -> Result<Command, ParseError> {
+    let a = parse_run_db_args(args)?;
+    Ok(Command::AiContext {
+        run_id: a.run_id,
+        db: a.db,
+        output: a.output,
+    })
 }
 
 fn parse_verify(args: &[OsString]) -> Result<Command, ParseError> {
@@ -822,9 +837,10 @@ mod tests {
             matches!(parsed, Ok(Command::Run { .. })),
             "unexpected parse result: {parsed:?}"
         );
-        if let Ok(Command::Run { step, .. }) = parsed {
-            assert!(step.is_some());
-            let target = step.expect("step target");
+        if let Ok(Command::Run {
+            step: Some(target), ..
+        }) = parsed
+        {
             assert_eq!(target.step_id, 3);
             assert_eq!(target.step_input, PathBuf::from("step-data.bin"));
         }

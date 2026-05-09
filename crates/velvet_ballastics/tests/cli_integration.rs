@@ -73,7 +73,7 @@ fn resolve_test_reference(reference: &str) -> Option<vb_core::ids::SlotIdx> {
     }
 }
 
-fn test_failed() -> bool {
+fn forced_assertion_failure() -> bool {
     false
 }
 
@@ -81,7 +81,11 @@ fn write_test_file(path: &std::path::Path, contents: &[u8]) -> bool {
     match std::fs::write(path, contents) {
         Ok(()) => true,
         Err(err) => {
-            assert!(test_failed(), "failed to write {}: {err}", path.display());
+            assert!(
+                forced_assertion_failure(),
+                "failed to write {}: {err}",
+                path.display()
+            );
             false
         }
     }
@@ -94,7 +98,10 @@ fn run_cli(args: &[&std::ffi::OsStr]) -> Option<std::process::Output> {
     match command.output() {
         Ok(output) => Some(output),
         Err(err) => {
-            assert!(test_failed(), "failed to execute velvet_ballastics: {err}");
+            assert!(
+                forced_assertion_failure(),
+                "failed to execute velvet_ballastics: {err}"
+            );
             None
         }
     }
@@ -124,7 +131,7 @@ fn assert_cli_success(output: &std::process::Output, command: &str) {
 #[test]
 fn yaml_parse_empty_source_returns_error() {
     let result = vb_yaml::parse_workflow_source("");
-    assert!(result.is_err(), "empty source should fail");
+    assert_eq!(result, Err(vb_yaml::YamlError::EmptySource));
 }
 
 #[test]
@@ -150,7 +157,7 @@ steps: []
     let result = vb_yaml::parse_workflow_source(yaml);
     let err = match result {
         Ok(_) => {
-            assert!(test_failed(), "missing version should fail");
+            assert!(forced_assertion_failure(), "missing version should fail");
             return;
         }
         Err(err) => err.to_string(),
@@ -172,7 +179,7 @@ steps: []
     let result = vb_yaml::parse_workflow_source(yaml);
     let err = match result {
         Ok(_) => {
-            assert!(test_failed(), "missing name should fail");
+            assert!(forced_assertion_failure(), "missing name should fail");
             return;
         }
         Err(err) => err.to_string(),
@@ -206,7 +213,10 @@ steps:
             assert_eq!(wf.name, "test-workflow");
             assert_eq!(wf.steps.len(), 2);
         }
-        Err(err) => assert!(test_failed(), "should parse valid workflow: {err:?}"),
+        Err(err) => assert!(
+            forced_assertion_failure(),
+            "should parse valid workflow: {err:?}"
+        ),
     }
 }
 
@@ -243,7 +253,7 @@ steps:
     let result = vb_yaml::parse_workflow_source(yaml);
     let err = match result {
         Ok(_) => {
-            assert!(test_failed(), "missing do.action should fail");
+            assert!(forced_assertion_failure(), "missing do.action should fail");
             return;
         }
         Err(err) => err.to_string(),
@@ -269,7 +279,7 @@ steps:
     let result = vb_yaml::parse_workflow_source(yaml);
     let err = match result {
         Ok(_) => {
-            assert!(test_failed(), "missing set.output should fail");
+            assert!(forced_assertion_failure(), "missing set.output should fail");
             return;
         }
         Err(err) => err.to_string(),
@@ -310,9 +320,9 @@ fn expr_lex_and_parse_simple_addition() {
     match vb_expr::lexer::lex_expr("1 + 2") {
         Ok(tokens) => match vb_expr::parser::parse_expr(&tokens) {
             Ok(ast) => assert!(matches!(ast, vb_expr::parser::ExprAst::Binary { .. })),
-            Err(err) => assert!(test_failed(), "parse failed: {err:?}"),
+            Err(err) => assert!(forced_assertion_failure(), "parse failed: {err:?}"),
         },
-        Err(err) => assert!(test_failed(), "lex failed: {err:?}"),
+        Err(err) => assert!(forced_assertion_failure(), "lex failed: {err:?}"),
     }
 }
 
@@ -321,14 +331,14 @@ fn expr_bytecode_compile_and_eval() {
     let tokens = match vb_expr::lexer::lex_expr("1 + 2") {
         Ok(tokens) => tokens,
         Err(err) => {
-            assert!(test_failed(), "lex failed: {err:?}");
+            assert!(forced_assertion_failure(), "lex failed: {err:?}");
             return;
         }
     };
     let ast = match vb_expr::parser::parse_expr(&tokens) {
         Ok(ast) => ast,
         Err(err) => {
-            assert!(test_failed(), "parse failed: {err:?}");
+            assert!(forced_assertion_failure(), "parse failed: {err:?}");
             return;
         }
     };
@@ -336,14 +346,14 @@ fn expr_bytecode_compile_and_eval() {
     let program = match vb_expr::bytecode::compile_expr_with_pool(&ast, &mut constants) {
         Ok(program) => program,
         Err(err) => {
-            assert!(test_failed(), "bytecode failed: {err:?}");
+            assert!(forced_assertion_failure(), "bytecode failed: {err:?}");
             return;
         }
     };
     let const_vals: Vec<vb_core::value::ConstValue> = constants;
     match vb_expr::eval::eval_expr_program(&program, &[], &const_vals) {
         Ok(result) => assert_eq!(result, SlotValue::I64(3)),
-        Err(err) => assert!(test_failed(), "eval failed: {err:?}"),
+        Err(err) => assert!(forced_assertion_failure(), "eval failed: {err:?}"),
     }
 }
 
@@ -352,14 +362,14 @@ fn expr_rejects_division_by_zero() {
     let tokens = match vb_expr::lexer::lex_expr("1 / 0") {
         Ok(tokens) => tokens,
         Err(err) => {
-            assert!(test_failed(), "lex failed: {err:?}");
+            assert!(forced_assertion_failure(), "lex failed: {err:?}");
             return;
         }
     };
     let ast = match vb_expr::parser::parse_expr(&tokens) {
         Ok(ast) => ast,
         Err(err) => {
-            assert!(test_failed(), "parse failed: {err:?}");
+            assert!(forced_assertion_failure(), "parse failed: {err:?}");
             return;
         }
     };
@@ -367,13 +377,13 @@ fn expr_rejects_division_by_zero() {
     let program = match vb_expr::bytecode::compile_expr_with_pool(&ast, &mut constants) {
         Ok(program) => program,
         Err(err) => {
-            assert!(test_failed(), "bytecode failed: {err:?}");
+            assert!(forced_assertion_failure(), "bytecode failed: {err:?}");
             return;
         }
     };
     let const_vals: Vec<vb_core::value::ConstValue> = constants;
     let result = vb_expr::eval::eval_expr_program(&program, &[], &const_vals);
-    assert!(result.is_err(), "division by zero should fail");
+    assert_eq!(result, Err(vb_expr::ExprError::DivisionByZero));
 }
 
 #[test]
@@ -381,14 +391,14 @@ fn expr_boolean_logic() {
     let tokens = match vb_expr::lexer::lex_expr("true and false") {
         Ok(tokens) => tokens,
         Err(err) => {
-            assert!(test_failed(), "lex failed: {err:?}");
+            assert!(forced_assertion_failure(), "lex failed: {err:?}");
             return;
         }
     };
     let ast = match vb_expr::parser::parse_expr(&tokens) {
         Ok(ast) => ast,
         Err(err) => {
-            assert!(test_failed(), "parse failed: {err:?}");
+            assert!(forced_assertion_failure(), "parse failed: {err:?}");
             return;
         }
     };
@@ -396,14 +406,14 @@ fn expr_boolean_logic() {
     let program = match vb_expr::bytecode::compile_expr_with_pool(&ast, &mut constants) {
         Ok(program) => program,
         Err(err) => {
-            assert!(test_failed(), "bytecode failed: {err:?}");
+            assert!(forced_assertion_failure(), "bytecode failed: {err:?}");
             return;
         }
     };
     let const_vals: Vec<vb_core::value::ConstValue> = constants;
     match vb_expr::eval::eval_expr_program(&program, &[], &const_vals) {
         Ok(result) => assert_eq!(result, SlotValue::Bool(false)),
-        Err(err) => assert!(test_failed(), "eval failed: {err:?}"),
+        Err(err) => assert!(forced_assertion_failure(), "eval failed: {err:?}"),
     }
 }
 
@@ -412,7 +422,7 @@ fn expr_variable_reference() {
     let compiled = match vb_expr::bytecode::compile_expr("$x + 1", &resolve_test_reference) {
         Ok(compiled) => compiled,
         Err(err) => {
-            assert!(test_failed(), "compile failed: {err:?}");
+            assert!(forced_assertion_failure(), "compile failed: {err:?}");
             return;
         }
     };
@@ -421,7 +431,7 @@ fn expr_variable_reference() {
     let slots: Vec<Option<SlotValue>> = vec![Some(SlotValue::I64(41))];
     match vb_expr::eval::eval_expr_program(&program, &slots, &const_vals) {
         Ok(result) => assert_eq!(result, SlotValue::I64(42)),
-        Err(err) => assert!(test_failed(), "eval failed: {err:?}"),
+        Err(err) => assert!(forced_assertion_failure(), "eval failed: {err:?}"),
     }
 }
 
@@ -469,7 +479,23 @@ fn core_workflow_rejects_invalid_jump_target() {
 fn compile_rejects_non_utf8_input() {
     let binary: &[u8] = &[0xff, 0xfe, 0x00];
     let result = vb_compile::compile_workflow(binary);
-    assert!(result.is_err(), "binary input should fail compile");
+    let err = match result {
+        Ok(compiled) => {
+            assert!(
+                forced_assertion_failure(),
+                "binary input should fail compile: {compiled:?}"
+            );
+            return;
+        }
+        Err(err) => err,
+    };
+    assert_eq!(err.len(), 1);
+    assert_eq!(
+        err.first().map(std::string::ToString::to_string),
+        Some(
+            "YAML source must be UTF-8: invalid utf-8 sequence of 1 bytes from index 0".to_string()
+        )
+    );
 }
 
 #[test]
@@ -495,14 +521,17 @@ fn ipc_frame_roundtrip() {
     let encoded = match header.encode() {
         Ok(encoded) => encoded,
         Err(err) => {
-            assert!(test_failed(), "encode failed: {err:?}");
+            assert!(forced_assertion_failure(), "encode failed: {err:?}");
             return;
         }
     };
     let nonzero = match std::num::NonZeroUsize::new(4096) {
         Some(nonzero) => nonzero,
         None => {
-            assert!(test_failed(), "nonzero payload limit should be valid");
+            assert!(
+                forced_assertion_failure(),
+                "nonzero payload limit should be valid"
+            );
             return;
         }
     };
@@ -513,7 +542,7 @@ fn ipc_frame_roundtrip() {
             assert_eq!(decoded.command, vb_ipc::IpcCommand::Health);
             assert_eq!(decoded.payload_len, 0);
         }
-        Err(err) => assert!(test_failed(), "decode failed: {err:?}"),
+        Err(err) => assert!(forced_assertion_failure(), "decode failed: {err:?}"),
     }
 }
 
@@ -545,7 +574,7 @@ fn storage_encode_decode_roundtrip() {
     ) {
         Ok(encoded) => encoded,
         Err(err) => {
-            assert!(test_failed(), "encode failed: {err:?}");
+            assert!(forced_assertion_failure(), "encode failed: {err:?}");
             return;
         }
     };
@@ -555,7 +584,7 @@ fn storage_encode_decode_roundtrip() {
         vb_storage::decode_record(&encoded, MAGIC, 4096);
     match decoded {
         Ok((_envelope, decoded)) => assert_eq!(decoded, payload),
-        Err(err) => assert!(test_failed(), "decode failed: {err:?}"),
+        Err(err) => assert!(forced_assertion_failure(), "decode failed: {err:?}"),
     }
 }
 
@@ -579,7 +608,7 @@ fn storage_corrupt_record_fails_decode() {
     ) {
         Ok(encoded) => encoded,
         Err(err) => {
-            assert!(test_failed(), "encode failed: {err:?}");
+            assert!(forced_assertion_failure(), "encode failed: {err:?}");
             return;
         }
     };
@@ -629,7 +658,10 @@ fn codegen_emit_rust_produces_output() {
     let compiled = match vb_core::workflow::CompiledWorkflow::try_from_parts(parts) {
         Ok(compiled) => compiled,
         Err(err) => {
-            assert!(test_failed(), "compile workflow failed: {err:?}");
+            assert!(
+                forced_assertion_failure(),
+                "compile workflow failed: {err:?}"
+            );
             return;
         }
     };
@@ -639,7 +671,10 @@ fn codegen_emit_rust_produces_output() {
             assert!(!output.is_empty(), "codegen output should not be empty");
             assert!(output.contains("fn drive"), "should contain drive function");
         }
-        Err(err) => assert!(test_failed(), "codegen should succeed: {err:?}"),
+        Err(err) => assert!(
+            forced_assertion_failure(),
+            "codegen should succeed: {err:?}"
+        ),
     }
 }
 
@@ -648,7 +683,7 @@ fn cli_run_journaled_then_events_and_inspect_read_temp_db() {
     let dir = match tempfile::tempdir() {
         Ok(dir) => dir,
         Err(err) => {
-            assert!(test_failed(), "tempdir failed: {err}");
+            assert!(forced_assertion_failure(), "tempdir failed: {err}");
             return;
         }
     };
@@ -725,11 +760,216 @@ fn cli_run_journaled_then_events_and_inspect_read_temp_db() {
 }
 
 #[test]
+fn cli_ai_context_for_journaled_run_emits_compiled_ir_summary() {
+    let dir = match tempfile::tempdir() {
+        Ok(dir) => dir,
+        Err(err) => {
+            assert!(forced_assertion_failure(), "tempdir failed: {err}");
+            return;
+        }
+    };
+    let workflow_path = dir.path().join("workflow.yaml");
+    let input_path = dir.path().join("input.bin");
+    let db_path = dir.path().join("fjall-db");
+    if !write_test_file(&workflow_path, CLI_WORKFLOW.as_bytes()) {
+        return;
+    }
+    if !write_test_file(&input_path, &[]) {
+        return;
+    }
+
+    let run_output = match run_cli(&[
+        std::ffi::OsStr::new("run"),
+        workflow_path.as_os_str(),
+        std::ffi::OsStr::new("--input-bin"),
+        input_path.as_os_str(),
+        std::ffi::OsStr::new("--durability"),
+        std::ffi::OsStr::new("journaled"),
+        std::ffi::OsStr::new("--db"),
+        db_path.as_os_str(),
+    ]) {
+        Some(output) => output,
+        None => return,
+    };
+    assert_cli_success(&run_output, "run --durability journaled --db");
+
+    let compiled = match vb_compile::compile_workflow(CLI_WORKFLOW.as_bytes()) {
+        Ok(compiled) => compiled,
+        Err(err) => {
+            assert!(
+                forced_assertion_failure(),
+                "test workflow compile failed: {err:?}"
+            );
+            return;
+        }
+    };
+    let journal = match vb_storage::FjallJournal::open(&db_path, None) {
+        Ok(journal) => journal,
+        Err(err) => {
+            assert!(forced_assertion_failure(), "failed to open journal: {err}");
+            return;
+        }
+    };
+    match journal.remove_artifact(compiled.digest()) {
+        Ok(()) => {}
+        Err(err) => {
+            assert!(
+                forced_assertion_failure(),
+                "failed to remove compiled IR artifact: {err}"
+            );
+            return;
+        }
+    }
+    drop(journal);
+
+    let context_output = match run_cli(&[
+        std::ffi::OsStr::new("ai-context"),
+        std::ffi::OsStr::new("1"),
+        std::ffi::OsStr::new("--db"),
+        db_path.as_os_str(),
+        std::ffi::OsStr::new("--json"),
+    ]) {
+        Some(output) => output,
+        None => return,
+    };
+    assert_cli_success(&context_output, "ai-context 1 --json");
+    let stdout = output_stdout(&context_output);
+    let packet: serde_json::Value = match serde_json::from_str(&stdout) {
+        Ok(packet) => packet,
+        Err(err) => {
+            assert!(
+                forced_assertion_failure(),
+                "ai-context JSON parse failed: {err}; stdout={stdout}"
+            );
+            return;
+        }
+    };
+    assert_eq!(
+        packet.pointer("/kind"),
+        Some(&serde_json::json!("AiContextPacket"))
+    );
+    assert_eq!(
+        packet.pointer("/workflow/compiled_ir/available"),
+        Some(&serde_json::json!(true))
+    );
+    assert_eq!(
+        packet.pointer("/workflow/compiled_ir/node_count"),
+        Some(&serde_json::json!(2))
+    );
+    assert_eq!(
+        packet.pointer("/workflow/source_included"),
+        Some(&serde_json::json!(false))
+    );
+    assert_eq!(
+        packet.pointer("/workflow/compiled_ir/nodes/0/kind"),
+        Some(&serde_json::json!("SetConst"))
+    );
+    assert_eq!(
+        packet.pointer("/workflow/compiled_ir/nodes/1/kind"),
+        Some(&serde_json::json!("Finish"))
+    );
+    assert_eq!(
+        packet.pointer("/trace_ring_snapshot/available"),
+        Some(&serde_json::json!(false))
+    );
+    assert_eq!(
+        packet.pointer("/trace_ring_snapshot/fabricated"),
+        Some(&serde_json::json!(false))
+    );
+    assert_eq!(
+        packet.pointer("/trace_ring_snapshot/events"),
+        Some(&serde_json::json!([]))
+    );
+    let suggestions = match packet
+        .pointer("/suggested_next_cli_commands")
+        .and_then(serde_json::Value::as_array)
+    {
+        Some(suggestions) => suggestions,
+        None => {
+            assert!(
+                forced_assertion_failure(),
+                "suggestions must be a JSON array: {packet}"
+            );
+            return;
+        }
+    };
+    assert!(
+        suggestions.iter().any(|value| value
+            .as_str()
+            .is_some_and(|command| command.contains("inspect 1 --db"))),
+        "finished run should suggest inspect: {packet}"
+    );
+    assert!(
+        suggestions.iter().any(|value| value
+            .as_str()
+            .is_some_and(|command| command.contains("events 1 --db"))),
+        "finished run should suggest events: {packet}"
+    );
+    assert!(
+        suggestions.iter().any(|value| value
+            .as_str()
+            .is_some_and(|command| command.contains("replay 1 --db"))),
+        "finished run should suggest replay: {packet}"
+    );
+    let rendered = packet.to_string();
+    assert!(
+        !rendered.contains("version: velvet-ballastics/v1"),
+        "source YAML must not be emitted: {rendered}"
+    );
+    assert!(
+        !rendered.contains("static ActionContract records are not embedded"),
+        "placeholder contract text must not be emitted: {rendered}"
+    );
+}
+
+#[test]
+fn cli_ai_context_reports_missing_and_invalid_run_ids() {
+    let dir = match tempfile::tempdir() {
+        Ok(dir) => dir,
+        Err(err) => {
+            assert!(forced_assertion_failure(), "tempdir failed: {err}");
+            return;
+        }
+    };
+    let invalid_output = match run_cli(&[
+        std::ffi::OsStr::new("ai-context"),
+        std::ffi::OsStr::new("not-a-run"),
+        std::ffi::OsStr::new("--db"),
+        dir.path().as_os_str(),
+        std::ffi::OsStr::new("--json"),
+    ]) {
+        Some(output) => output,
+        None => return,
+    };
+    assert_eq!(invalid_output.status.code(), Some(1));
+    let invalid_stderr = output_stderr(&invalid_output);
+    assert!(
+        invalid_stderr.contains("invalid run_id 'not-a-run'"),
+        "invalid run id error missing: {invalid_stderr}"
+    );
+
+    let missing_output = match run_cli(&[
+        std::ffi::OsStr::new("ai-context"),
+        std::ffi::OsStr::new("77"),
+        std::ffi::OsStr::new("--db"),
+        dir.path().as_os_str(),
+        std::ffi::OsStr::new("--json"),
+    ]) {
+        Some(output) => output,
+        None => return,
+    };
+    assert_eq!(missing_output.status.code(), Some(1));
+    let stderr = output_stderr(&missing_output);
+    assert!(stderr.contains("RUN_NOT_FOUND"), "missing code: {stderr}");
+    assert!(stderr.contains("77"), "missing run id: {stderr}");
+}
+
+#[test]
 fn cli_run_maps_postcard_slot_values_from_input_bin() {
     let dir = match tempfile::tempdir() {
         Ok(dir) => dir,
         Err(err) => {
-            assert!(test_failed(), "tempdir failed: {err}");
+            assert!(forced_assertion_failure(), "tempdir failed: {err}");
             return;
         }
     };
@@ -739,7 +979,10 @@ fn cli_run_maps_postcard_slot_values_from_input_bin() {
     let workflow_payload = match postcard::to_allocvec(&input_slot_parts()) {
         Ok(payload) => payload,
         Err(err) => {
-            assert!(test_failed(), "failed to encode workflow payload: {err}");
+            assert!(
+                forced_assertion_failure(),
+                "failed to encode workflow payload: {err}"
+            );
             return;
         }
     };
@@ -750,7 +993,10 @@ fn cli_run_maps_postcard_slot_values_from_input_bin() {
     let payload = match postcard::to_allocvec(&values) {
         Ok(payload) => payload,
         Err(err) => {
-            assert!(test_failed(), "failed to encode input payload: {err}");
+            assert!(
+                forced_assertion_failure(),
+                "failed to encode input payload: {err}"
+            );
             return;
         }
     };
@@ -782,7 +1028,7 @@ fn cli_run_reports_exact_input_mapping_decode_failure() {
     let dir = match tempfile::tempdir() {
         Ok(dir) => dir,
         Err(err) => {
-            assert!(test_failed(), "tempdir failed: {err}");
+            assert!(forced_assertion_failure(), "tempdir failed: {err}");
             return;
         }
     };
@@ -906,7 +1152,7 @@ fn cli_validate_valid_minimal_workflow_succeeds() {
     let dir = match tempfile::tempdir() {
         Ok(dir) => dir,
         Err(err) => {
-            assert!(test_failed(), "tempdir failed: {err}");
+            assert!(forced_assertion_failure(), "tempdir failed: {err}");
             return;
         }
     };
@@ -944,7 +1190,7 @@ fn cli_validate_invalid_yaml_returns_parse_error() {
     let dir = match tempfile::tempdir() {
         Ok(dir) => dir,
         Err(err) => {
-            assert!(test_failed(), "tempdir failed: {err}");
+            assert!(forced_assertion_failure(), "tempdir failed: {err}");
             return;
         }
     };
@@ -973,7 +1219,7 @@ fn cli_validate_undefined_step_reference_returns_validation_error() {
     let dir = match tempfile::tempdir() {
         Ok(dir) => dir,
         Err(err) => {
-            assert!(test_failed(), "tempdir failed: {err}");
+            assert!(forced_assertion_failure(), "tempdir failed: {err}");
             return;
         }
     };
@@ -1014,7 +1260,7 @@ fn cli_validate_type_mismatch_returns_typed_error() {
     let dir = match tempfile::tempdir() {
         Ok(dir) => dir,
         Err(err) => {
-            assert!(test_failed(), "tempdir failed: {err}");
+            assert!(forced_assertion_failure(), "tempdir failed: {err}");
             return;
         }
     };
@@ -1061,7 +1307,7 @@ fn cli_compile_valid_workflow_produces_ir() {
     let dir = match tempfile::tempdir() {
         Ok(dir) => dir,
         Err(err) => {
-            assert!(test_failed(), "tempdir failed: {err}");
+            assert!(forced_assertion_failure(), "tempdir failed: {err}");
             return;
         }
     };
@@ -1093,7 +1339,10 @@ fn cli_compile_valid_workflow_produces_ir() {
     let ir_bytes = match std::fs::read(&ir_path) {
         Ok(bytes) => bytes,
         Err(err) => {
-            assert!(test_failed(), "failed to read compiled IR: {err}");
+            assert!(
+                forced_assertion_failure(),
+                "failed to read compiled IR: {err}"
+            );
             return;
         }
     };
@@ -1111,7 +1360,7 @@ fn cli_compile_invalid_syntax_fails_with_clear_error() {
     let dir = match tempfile::tempdir() {
         Ok(dir) => dir,
         Err(err) => {
-            assert!(test_failed(), "tempdir failed: {err}");
+            assert!(forced_assertion_failure(), "tempdir failed: {err}");
             return;
         }
     };
@@ -1149,7 +1398,7 @@ fn cli_compile_preserves_workflow_digest() {
     let dir = match tempfile::tempdir() {
         Ok(dir) => dir,
         Err(err) => {
-            assert!(test_failed(), "tempdir failed: {err}");
+            assert!(forced_assertion_failure(), "tempdir failed: {err}");
             return;
         }
     };
@@ -1176,14 +1425,20 @@ fn cli_compile_preserves_workflow_digest() {
     let ir_bytes = match std::fs::read(&ir_path) {
         Ok(bytes) => bytes,
         Err(err) => {
-            assert!(test_failed(), "failed to read compiled IR: {err}");
+            assert!(
+                forced_assertion_failure(),
+                "failed to read compiled IR: {err}"
+            );
             return;
         }
     };
     let parts = match postcard::from_bytes::<vb_core::workflow::WorkflowParts>(&ir_bytes) {
         Ok(parts) => parts,
         Err(err) => {
-            assert!(test_failed(), "failed to decode WorkflowParts: {err}");
+            assert!(
+                forced_assertion_failure(),
+                "failed to decode WorkflowParts: {err}"
+            );
             return;
         }
     };
@@ -1197,7 +1452,10 @@ fn cli_compile_preserves_workflow_digest() {
                 "compiled IR digest should match in-memory compile digest"
             );
         }
-        Err(err) => assert!(test_failed(), "in-memory compile should succeed: {err:?}"),
+        Err(err) => assert!(
+            forced_assertion_failure(),
+            "in-memory compile should succeed: {err:?}"
+        ),
     }
 }
 
@@ -1210,7 +1468,7 @@ fn cli_run_minimal_workflow_completes() {
     let dir = match tempfile::tempdir() {
         Ok(dir) => dir,
         Err(err) => {
-            assert!(test_failed(), "tempdir failed: {err}");
+            assert!(forced_assertion_failure(), "tempdir failed: {err}");
             return;
         }
     };
@@ -1248,7 +1506,7 @@ fn cli_run_strict_durability_writes_journal_events() {
     let dir = match tempfile::tempdir() {
         Ok(dir) => dir,
         Err(err) => {
-            assert!(test_failed(), "tempdir failed: {err}");
+            assert!(forced_assertion_failure(), "tempdir failed: {err}");
             return;
         }
     };
@@ -1309,7 +1567,7 @@ fn cli_run_invalid_workflow_returns_error_exit_code() {
     let dir = match tempfile::tempdir() {
         Ok(dir) => dir,
         Err(err) => {
-            assert!(test_failed(), "tempdir failed: {err}");
+            assert!(forced_assertion_failure(), "tempdir failed: {err}");
             return;
         }
     };
@@ -1354,7 +1612,7 @@ fn cli_inspect_compiled_run_shows_status_and_event_count() {
     let dir = match tempfile::tempdir() {
         Ok(dir) => dir,
         Err(err) => {
-            assert!(test_failed(), "tempdir failed: {err}");
+            assert!(forced_assertion_failure(), "tempdir failed: {err}");
             return;
         }
     };
@@ -1410,7 +1668,7 @@ fn cli_inspect_nonexistent_run_shows_no_events() {
     let dir = match tempfile::tempdir() {
         Ok(dir) => dir,
         Err(err) => {
-            assert!(test_failed(), "tempdir failed: {err}");
+            assert!(forced_assertion_failure(), "tempdir failed: {err}");
             return;
         }
     };
@@ -1420,7 +1678,7 @@ fn cli_inspect_nonexistent_run_shows_no_events() {
     let journal = match vb_storage::FjallJournal::open(&db_path, None) {
         Ok(j) => j,
         Err(err) => {
-            assert!(test_failed(), "failed to open journal: {err}");
+            assert!(forced_assertion_failure(), "failed to open journal: {err}");
             return;
         }
     };

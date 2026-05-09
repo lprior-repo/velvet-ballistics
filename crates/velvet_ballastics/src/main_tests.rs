@@ -4,9 +4,10 @@
 
 use super::{
     Command, DurabilityMode, INPUT_MAPPING_DECODE_FAILED_MESSAGE,
-    INPUT_MAPPING_SLOT_COUNT_EXCEEDED_MESSAGE, ParseError, StepTarget, StorageWorkflowResolver,
-    build_step_frame, decode_step_inputs, execute_step_isolated, map_runtime_inputs,
-    node_kind_name, parse_args, run_compiled_workflow, signal_name, write_step_inputs,
+    INPUT_MAPPING_SLOT_COUNT_EXCEEDED_MESSAGE, InputMappingError, ParseError, RunStatus,
+    StepTarget, StorageWorkflowResolver, build_step_frame, decode_step_inputs,
+    execute_step_isolated, map_runtime_inputs, node_kind_name, parse_args, redacted_slot_value,
+    run_compiled_workflow, signal_name, suggested_ai_commands, write_step_inputs,
 };
 use std::ffi::OsString;
 use std::path::PathBuf;
@@ -17,6 +18,63 @@ use vb_core::workflow::{
     CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
 };
 use vb_storage::{CompiledIrRecord, EventSeq, JournalEvent};
+
+#[test]
+fn parse_ai_context_accepts_run_id_db_and_json() {
+    let parsed = parse_args(&args(&[
+        "velvet-ballastics",
+        "ai-context",
+        "42",
+        "--db",
+        "journal-db",
+        "--json",
+    ]));
+
+    assert!(matches!(parsed, Ok(Command::AiContext { .. })));
+    if let Ok(Command::AiContext { run_id, db, output }) = parsed {
+        assert_eq!(run_id, "42");
+        assert_eq!(db, PathBuf::from("journal-db"));
+        assert_eq!(output, super::OutputFormat::Json);
+    }
+}
+
+#[test]
+fn parse_ai_context_requires_db() {
+    let parsed = parse_args(&args(&["velvet-ballastics", "ai-context", "42"]));
+
+    assert!(matches!(parsed, Err(ParseError::MissingArgument("--db"))));
+}
+
+#[test]
+fn ai_context_redacts_secret_snapshot_slot_value() {
+    let encoded = postcard::to_allocvec(&vb_core::SlotValue::I64(99));
+    assert!(encoded.is_ok(), "slot value should encode: {encoded:?}");
+    let Ok(encoded) = encoded else {
+        return;
+    };
+    let snapshot = vb_storage::RunSnapshot {
+        run: vb_core::RunId::new(1),
+        seq: EventSeq::new(1),
+        workflow: WorkflowDigest::from_bytes([7; 32]),
+        slots: Vec::new(),
+        taint: vec![2],
+    };
+
+    let value = redacted_slot_value(SlotIdx::ZERO, Some(&encoded), Some(&snapshot));
+
+    assert_eq!(value, serde_json::Value::String("[REDACTED]".to_string()));
+}
+
+#[test]
+fn ai_context_failed_run_suggests_incident_command() {
+    let commands = suggested_ai_commands("7", std::path::Path::new("db-path"), RunStatus::Failed);
+
+    assert!(
+        commands
+            .iter()
+            .any(|command| command.contains("incident 7 --db db-path --json"))
+    );
+}
 
 fn args(parts: &[&str]) -> Vec<OsString> {
     parts.iter().map(|part| OsString::from(*part)).collect()
@@ -156,13 +214,13 @@ fn map_runtime_inputs_decodes_slot_values() {
             return;
         };
         let mapped = map_runtime_inputs(&compiled, &payload);
-        assert!(mapped.is_ok(), "input mapping should decode: {mapped:?}");
-        if let Ok(mapped) = mapped {
-            assert_eq!(
-                mapped.as_ref(),
-                &[(vb_core::SlotIdx::ZERO, vb_core::SlotValue::Bool(true))]
-            );
-        }
+        assert_eq!(
+            mapped,
+            Ok(Box::from([(
+                vb_core::SlotIdx::ZERO,
+                vb_core::SlotValue::Bool(true)
+            )]))
+        );
     }
 }
 
@@ -172,7 +230,7 @@ fn map_runtime_inputs_rejects_malformed_input_bin() {
     assert!(compiled.is_some(), "test workflow should compile");
     if let Some(compiled) = compiled {
         let mapped = map_runtime_inputs(&compiled, b"not-postcard");
-        assert!(mapped.is_err(), "malformed input should be rejected");
+        assert_eq!(mapped, Err(InputMappingError::DecodeFailed));
     }
 }
 
@@ -370,15 +428,166 @@ fn signal_name_returns_correct_labels() {
 #[test]
 fn decode_step_inputs_empty_data_returns_empty() {
     let result = decode_step_inputs(b"");
-    assert!(result.is_ok());
-    let values = result.expect("ok");
-    assert!(values.is_empty());
+    match result {
+        Ok(values) => assert_eq!(values.len(), 0),
+        Err(err) => assert_eq!(err, std::process::ExitCode::from(1)),
+    }
 }
 
 #[test]
 fn decode_step_inputs_invalid_data_returns_error() {
     let result = decode_step_inputs(b"garbage");
-    assert!(result.is_err());
+    assert_eq!(result, Err(std::process::ExitCode::from(2)));
+}
+
+#[test]
+fn parse_error_unknown_emit_target() {
+    let result = parse_args(&args(&[
+        "velvet-ballastics",
+        "compile",
+        "workflow.yaml",
+        "--emit",
+        "binary",
+        "--out",
+        "workflow.vbir",
+    ]))
+    .map(|_| ());
+    match result {
+        Err(err) => {
+            assert_eq!(err, ParseError::UnknownEmitTarget("binary".to_string()));
+            assert_eq!(
+                err.to_string(),
+                "unknown emit target: binary (expected: ir, rust, yaml, postcard)"
+            );
+        }
+        Ok(()) => {
+            assert_eq!(
+                Ok(()),
+                Err(ParseError::UnknownEmitTarget("binary".to_string()))
+            );
+        }
+    }
+}
+
+#[test]
+fn parse_error_unknown_durability() {
+    let result = parse_args(&args(&[
+        "velvet-ballastics",
+        "run",
+        "workflow.yaml",
+        "--input-bin",
+        "input.bin",
+        "--durability",
+        "forever",
+    ]))
+    .map(|_| ());
+    match result {
+        Err(err) => {
+            assert_eq!(err, ParseError::UnknownDurability("forever".to_string()));
+            assert_eq!(
+                err.to_string(),
+                "unknown durability mode: forever (expected: strict, journaled, none)"
+            );
+        }
+        Ok(()) => {
+            assert_eq!(
+                Ok(()),
+                Err(ParseError::UnknownDurability("forever".to_string()))
+            );
+        }
+    }
+}
+
+#[test]
+fn parse_error_unknown_profile() {
+    let result = parse_args(&args(&[
+        "velvet-ballastics",
+        "verify",
+        "workflow.yaml",
+        "--profile",
+        "deep",
+    ]))
+    .map(|_| ());
+    match result {
+        Err(err) => {
+            assert_eq!(err, ParseError::UnknownProfile("deep".to_string()));
+            assert_eq!(
+                err.to_string(),
+                "unknown verify profile: deep (expected: quick, standard, full)"
+            );
+        }
+        Ok(()) => {
+            assert_eq!(Ok(()), Err(ParseError::UnknownProfile("deep".to_string())));
+        }
+    }
+}
+
+#[test]
+fn parse_error_unknown_command() {
+    let result = parse_args(&args(&["velvet-ballastics", "wat"])).map(|_| ());
+    match result {
+        Err(err) => {
+            assert_eq!(err, ParseError::UnknownCommand("wat".to_string()));
+            assert_eq!(
+                err.to_string(),
+                "unknown command: wat (expected one of: help, version, agent-context, ai-context, validate, verify, explain, compile, run, run-compiled, ipc-serve, inspect, events, replay, trace, retry, resume, bench-run, doctor, answer, graph, diff, incident, submit, simulate)"
+            );
+        }
+        Ok(()) => {
+            assert_eq!(Ok(()), Err(ParseError::UnknownCommand("wat".to_string())));
+        }
+    }
+}
+
+#[test]
+fn parse_error_no_command() {
+    let result = parse_args(&args(&["velvet-ballastics"])).map(|_| ());
+    match result {
+        Err(err) => {
+            assert_eq!(err, ParseError::NoCommand);
+            assert_eq!(err.to_string(), "no command provided");
+        }
+        Ok(()) => {
+            assert_eq!(Ok(()), Err(ParseError::NoCommand));
+        }
+    }
+}
+
+#[test]
+fn parse_error_invalid_step() {
+    let result = parse_args(&args(&[
+        "velvet-ballastics",
+        "answer",
+        "1",
+        "--step",
+        "NaN",
+        "--value-file",
+        "value.bin",
+        "--db",
+        "journal-db",
+    ]))
+    .map(|_| ());
+    match result {
+        Err(err) => {
+            assert_eq!(err, ParseError::InvalidStep("NaN".to_string()));
+            assert_eq!(err.to_string(), "invalid step: NaN");
+        }
+        Ok(()) => {
+            assert_eq!(Ok(()), Err(ParseError::InvalidStep("NaN".to_string())));
+        }
+    }
+}
+
+#[test]
+fn input_mapping_error_variants_have_exact_messages() {
+    assert_eq!(
+        InputMappingError::SlotCountExceeded.to_string(),
+        "INPUT_MAPPING_FAILED: input slot count exceeds workflow slot count"
+    );
+    assert_eq!(
+        InputMappingError::SlotIndexOutOfRange.to_string(),
+        "INPUT_MAPPING_FAILED: input slot index out of range"
+    );
 }
 
 #[test]
@@ -386,7 +595,11 @@ fn write_step_inputs_populates_frame_slots() {
     let compiled = finish_workflow();
     assert!(compiled.is_some(), "test workflow should compile");
     if let Some(compiled) = compiled {
-        let mut frame = build_step_frame(&compiled, StepIdx::ZERO).expect("frame should build");
+        let frame = build_step_frame(&compiled, StepIdx::ZERO);
+        assert!(frame.is_ok(), "frame should build: {frame:?}");
+        let Ok(mut frame) = frame else {
+            return;
+        };
         let inputs: Box<[vb_core::SlotValue]> = Box::from([vb_core::SlotValue::I64(42)]);
         write_step_inputs(&mut frame, &inputs);
         assert_eq!(
@@ -401,7 +614,11 @@ fn execute_step_isolated_set_const_step_succeeds() {
     let compiled = finish_workflow();
     assert!(compiled.is_some(), "test workflow should compile");
     if let Some(compiled) = compiled {
-        let node = compiled.node(StepIdx::ZERO).expect("step 0 must exist");
+        let node = compiled.node(StepIdx::ZERO);
+        assert!(node.is_some(), "step 0 must exist");
+        let Some(node) = node else {
+            return;
+        };
         let inputs: Box<[vb_core::SlotValue]> = Box::from([]);
         let code = execute_step_isolated(&compiled, StepIdx::ZERO, node, &inputs);
         assert_eq!(code, std::process::ExitCode::SUCCESS);

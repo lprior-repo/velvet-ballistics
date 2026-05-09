@@ -5,6 +5,7 @@
 
 mod agent_context;
 mod args;
+mod commands_ai_context;
 mod commands_diff;
 mod commands_incident;
 mod commands_journal;
@@ -24,6 +25,8 @@ use args::{
     Command, DurabilityMode, EmitTarget, OutputFormat, ParseError, StepTarget, VALID_COMMANDS,
     VerifyProfile,
 };
+#[cfg(test)]
+pub(crate) use commands_ai_context::{RunStatus, redacted_slot_value, suggested_ai_commands};
 use exit_code::CliExitCode;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -71,6 +74,7 @@ commands:
   incident   <run_id> --db <path> [--json|--jsonl]     Black-box failure report
   submit     <workflow.yaml> --input-bin <file> --db <path> --durability <mode> [--json|--jsonl]  Submit workflow run
   simulate   <workflow.yaml> [--json|--jsonl]     Dry-run workflow without executing actions
+  ai-context <run_id> --db <path> [--json|--jsonl]  Emit compact AI context packet for a run
   help                                                Print this message
   version                                             Print version
   agent-context                                      Emit versioned AI-agent CLI schema
@@ -89,6 +93,9 @@ fn main() -> ExitCode {
         Ok(Command::Help) => exit_from_io(&write_help_stdout(), ExitCode::SUCCESS),
         Ok(Command::Version) => exit_from_io(&write_version_stdout(), ExitCode::SUCCESS),
         Ok(Command::AgentContext) => cmd_agent_context(),
+        Ok(Command::AiContext { run_id, db, output }) => {
+            commands_ai_context::handle(&run_id, &db, output)
+        }
         Ok(Command::Verify {
             workflow,
             profile,
@@ -668,11 +675,76 @@ fn cmd_run(
         }
     };
 
+    match durability {
+        DurabilityMode::None => {}
+        _ => {
+            if let Err(code) = store_workflow_artifacts(&compiled, &bytes, db, output) {
+                return code;
+            }
+        }
+    }
+
     // run_compiled_workflow outputs directly; for structured output we output a result wrapper
     if output != OutputFormat::Text {
         outln!("{{\"status\": \"running\", \"run_id\": 1}}");
     }
     run_compiled_workflow(&compiled, inputs, durability, db)
+}
+
+fn store_workflow_artifacts(
+    compiled: &vb_core::CompiledWorkflow,
+    source: &[u8],
+    db: Option<&std::path::Path>,
+    output: OutputFormat,
+) -> Result<(), ExitCode> {
+    let Some(db) = db else {
+        return Ok(());
+    };
+    let parts = compiled.to_parts();
+    let ir = match postcard::to_allocvec(&parts) {
+        Ok(ir) => ir,
+        Err(e) => {
+            report_compiled_ir_store_error(format_args!("compiled IR encode error: {e}"), output);
+            return Err(CliExitCode::StorageError.into());
+        }
+    };
+    let journal = match vb_storage::FjallJournal::open(db, None) {
+        Ok(journal) => journal,
+        Err(e) => {
+            report_compiled_ir_store_error(
+                format_args!("error opening journal at {}: {e}", db.display()),
+                output,
+            );
+            return Err(CliExitCode::StorageError.into());
+        }
+    };
+    let source_record = vb_storage::WorkflowSourceRecord {
+        digest: compiled.digest(),
+        source: source.to_vec(),
+    };
+    if let Err(e) = journal.put_workflow_source(&source_record) {
+        report_compiled_ir_store_error(format_args!("workflow source write error: {e}"), output);
+        return Err(CliExitCode::StorageError.into());
+    }
+    let record = vb_storage::CompiledIrRecord {
+        digest: compiled.digest(),
+        ir,
+    };
+    journal.put_compiled_ir(&record).map_err(|e| {
+        report_compiled_ir_store_error(format_args!("compiled IR write error: {e}"), output);
+        CliExitCode::StorageError.into()
+    })
+}
+
+fn report_compiled_ir_store_error(args: std::fmt::Arguments<'_>, output: OutputFormat) {
+    if output != OutputFormat::Text {
+        json_error(
+            &serde_json::json!({"success": false, "error": args.to_string()}),
+            output,
+        );
+    } else {
+        errln!("{args}");
+    }
 }
 
 fn cmd_submit(
