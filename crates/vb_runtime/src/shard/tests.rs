@@ -2304,20 +2304,54 @@ fn shard_trace_ring_overflow_drops_events_gracefully() {
     };
     let mut shard = Shard::new(config);
     // When submitting and completing multiple runs (producing >2 trace events)
-    for i in 1u64..=4 {
-        let Some(workflow) = finished_workflow() else {
-            return;
-        };
-        assert_eq!(
-            shard.enqueue(ShardCommand::Submit {
-                run: super::RunId::new(400 + i),
-                workflow,
-                caps: vb_core::capability::CapabilitySet::empty()
-            }),
-            Ok(())
-        );
-        assert_eq!(shard.tick(), Ok(true));
-    }
+    let Some(workflow) = finished_workflow() else {
+        return;
+    };
+    assert_eq!(
+        shard.enqueue(ShardCommand::Submit {
+            run: super::RunId::new(401),
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    let Some(workflow) = finished_workflow() else {
+        return;
+    };
+    assert_eq!(
+        shard.enqueue(ShardCommand::Submit {
+            run: super::RunId::new(402),
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    let Some(workflow) = finished_workflow() else {
+        return;
+    };
+    assert_eq!(
+        shard.enqueue(ShardCommand::Submit {
+            run: super::RunId::new(403),
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    let Some(workflow) = finished_workflow() else {
+        return;
+    };
+    assert_eq!(
+        shard.enqueue(ShardCommand::Submit {
+            run: super::RunId::new(404),
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
     // Then the trace ring has dropped events
     let events = shard.trace_ring_mut().drain();
     assert_eq!(events.len() <= 2, true);
@@ -2375,20 +2409,42 @@ fn shard_submit_max_active_runs_boundary_exactly_at_limit_succeeds() {
     };
     let mut shard = Shard::new(config);
     // When submitting exactly 3 suspended runs (each suspends on Do, staying active)
-    for i in 1u64..=3 {
-        let Some(workflow) = suspended_workflow() else {
-            return;
-        };
-        assert_eq!(
-            shard.enqueue(ShardCommand::Submit {
-                run: super::RunId::new(500 + i),
-                workflow,
-                caps: vb_core::capability::CapabilitySet::empty()
-            }),
-            Ok(())
-        );
-        assert_eq!(shard.tick(), Ok(true));
-    }
+    let Some(workflow) = suspended_workflow() else {
+        return;
+    };
+    assert_eq!(
+        shard.enqueue(ShardCommand::Submit {
+            run: super::RunId::new(501),
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    let Some(workflow) = suspended_workflow() else {
+        return;
+    };
+    assert_eq!(
+        shard.enqueue(ShardCommand::Submit {
+            run: super::RunId::new(502),
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    let Some(workflow) = suspended_workflow() else {
+        return;
+    };
+    assert_eq!(
+        shard.enqueue(ShardCommand::Submit {
+            run: super::RunId::new(503),
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
     // Then all 3 are submitted successfully
     assert_eq!(shard.counters().snapshot().runs_submitted, 3);
     // And submitting a 4th returns ActiveRunCapacityExceeded
@@ -3024,7 +3080,16 @@ fn shard_config_new_accepts_valid_parameters() {
         512,
         vb_core::policy::RuntimePolicy::Relaxed,
     );
-    assert_eq!(result.is_ok(), true);
+    assert_eq!(
+        result,
+        Ok(ShardConfig {
+            command_queue_capacity: 1024,
+            trace_capacity: 4096,
+            step_budget_per_tick: 1000,
+            max_active_runs: 512,
+            policy: vb_core::policy::RuntimePolicy::Relaxed,
+        })
+    );
 }
 
 #[test]
@@ -4213,7 +4278,8 @@ fn bh_shd_03_action_failure_trace_events_count() {
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
-    let _ = shard.trace_ring_mut().drain();
+    let drained_before_failure = shard.trace_ring_mut().drain();
+    assert_ne!(drained_before_failure.len(), 0);
     let ticket = action_ticket(run, vb_core::ids::StepIdx::ZERO);
     let failure = timeout_failure();
     assert_eq!(
@@ -4235,9 +4301,8 @@ fn bh_shd_03_action_failure_trace_events_count() {
 // Severity: Low. Performance concern only.
 #[test]
 fn bh_shd_04_find_error_handler_linear_scan_fallback() {
-    let mut nodes = Vec::new();
     let handler_idx = 20u16;
-    nodes.push(CompiledNode {
+    let first_node = CompiledNode {
         id: vb_core::ids::StepIdx::ZERO,
         output: None,
         next: None,
@@ -4248,18 +4313,16 @@ fn bh_shd_04_find_error_handler_linear_scan_fallback() {
             handler: vb_core::ids::StepIdx::new(handler_idx),
             error_slot: None,
         },
+    };
+    let middle_nodes = (1u16..handler_idx).map(|i| CompiledNode {
+        id: vb_core::ids::StepIdx::new(i),
+        output: None,
+        next: Some(vb_core::ids::StepIdx::new(i + 1)),
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::Nop,
     });
-    for i in 1u16..handler_idx {
-        nodes.push(CompiledNode {
-            id: vb_core::ids::StepIdx::new(i),
-            output: None,
-            next: Some(vb_core::ids::StepIdx::new(i + 1)),
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Nop,
-        });
-    }
-    nodes.push(CompiledNode {
+    let last_node = CompiledNode {
         id: vb_core::ids::StepIdx::new(handler_idx),
         output: Some(SlotIdx::new(0)),
         next: None,
@@ -4268,7 +4331,11 @@ fn bh_shd_04_find_error_handler_linear_scan_fallback() {
         kind: CompiledNodeKind::SetConst {
             value: ConstIdx::new(0),
         },
-    });
+    };
+    let nodes = std::iter::once(first_node)
+        .chain(middle_nodes)
+        .chain(std::iter::once(last_node))
+        .collect::<Vec<_>>();
     let parts = WorkflowParts {
         name: Box::from("bh_large_wf"),
         digest: WorkflowDigest::from_bytes([0xEE; 32]),
@@ -5173,11 +5240,15 @@ fn shard_config_new_at_max_capacity_boundary() {
         4,
         vb_core::policy::RuntimePolicy::Relaxed,
     );
-    assert_eq!(result.is_ok(), true);
-    let config = result.ok();
     assert_eq!(
-        config.map(|c| c.command_queue_capacity),
-        Some(MAX_COMMAND_QUEUE_CAPACITY)
+        result,
+        Ok(ShardConfig {
+            command_queue_capacity: MAX_COMMAND_QUEUE_CAPACITY,
+            trace_capacity: 16,
+            step_budget_per_tick: 100,
+            max_active_runs: 4,
+            policy: vb_core::policy::RuntimePolicy::Relaxed,
+        })
     );
 }
 
@@ -5185,7 +5256,16 @@ fn shard_config_new_at_max_capacity_boundary() {
 #[test]
 fn shard_config_new_at_minimum_capacity() {
     let result = ShardConfig::new(1, 0, 0, 1, vb_core::policy::RuntimePolicy::Relaxed);
-    assert_eq!(result.is_ok(), true);
+    assert_eq!(
+        result,
+        Ok(ShardConfig {
+            command_queue_capacity: 1,
+            trace_capacity: 0,
+            step_budget_per_tick: 0,
+            max_active_runs: 1,
+            policy: vb_core::policy::RuntimePolicy::Relaxed,
+        })
+    );
 }
 
 /// Submit a finished workflow, then inspect it -- counters correct.
@@ -5282,35 +5362,47 @@ fn shard_config_debug_format_contains_field_names() {
 fn shard_config_new_accepts_zero_trace_capacity() {
     // trace_capacity is not validated by ShardConfig::new; zero is accepted.
     let result = ShardConfig::new(1, 0, 1, 1, vb_core::policy::RuntimePolicy::Relaxed);
-    assert!(result.is_ok());
-    let config = match result {
-        Ok(c) => c,
-        Err(_) => return,
-    };
-    assert_eq!(config.trace_capacity, 0);
+    assert_eq!(
+        result,
+        Ok(ShardConfig {
+            command_queue_capacity: 1,
+            trace_capacity: 0,
+            step_budget_per_tick: 1,
+            max_active_runs: 1,
+            policy: vb_core::policy::RuntimePolicy::Relaxed,
+        })
+    );
 }
 
 #[test]
 fn shard_config_new_accepts_zero_step_budget() {
     // step_budget_per_tick is not validated; zero is accepted.
     let result = ShardConfig::new(1, 1, 0, 1, vb_core::policy::RuntimePolicy::Relaxed);
-    assert!(result.is_ok());
-    let config = match result {
-        Ok(c) => c,
-        Err(_) => return,
-    };
-    assert_eq!(config.step_budget_per_tick, 0);
+    assert_eq!(
+        result,
+        Ok(ShardConfig {
+            command_queue_capacity: 1,
+            trace_capacity: 1,
+            step_budget_per_tick: 0,
+            max_active_runs: 1,
+            policy: vb_core::policy::RuntimePolicy::Relaxed,
+        })
+    );
 }
 
 #[test]
 fn shard_config_new_accepts_max_step_budget() {
     let result = ShardConfig::new(1, 1, u64::MAX, 1, vb_core::policy::RuntimePolicy::Relaxed);
-    assert!(result.is_ok());
-    let config = match result {
-        Ok(c) => c,
-        Err(_) => return,
-    };
-    assert_eq!(config.step_budget_per_tick, u64::MAX);
+    assert_eq!(
+        result,
+        Ok(ShardConfig {
+            command_queue_capacity: 1,
+            trace_capacity: 1,
+            step_budget_per_tick: u64::MAX,
+            max_active_runs: 1,
+            policy: vb_core::policy::RuntimePolicy::Relaxed,
+        })
+    );
 }
 
 #[test]
@@ -5923,20 +6015,42 @@ fn shard_submit_with_inputs_completes_finished_workflow() {
 fn shard_multiple_submits_complete() {
     let config = small_config();
     let mut shard = Shard::new(config);
-    for i in 0u64..3 {
-        let Some(workflow) = finished_workflow() else {
-            return;
-        };
-        assert_eq!(
-            shard.enqueue(ShardCommand::Submit {
-                run: super::RunId::new(i),
-                workflow,
-                caps: vb_core::capability::CapabilitySet::empty(),
-            }),
-            Ok(())
-        );
-        assert_eq!(shard.tick(), Ok(true));
-    }
+    let Some(workflow) = finished_workflow() else {
+        return;
+    };
+    assert_eq!(
+        shard.enqueue(ShardCommand::Submit {
+            run: super::RunId::new(0),
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty(),
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    let Some(workflow) = finished_workflow() else {
+        return;
+    };
+    assert_eq!(
+        shard.enqueue(ShardCommand::Submit {
+            run: super::RunId::new(1),
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty(),
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    let Some(workflow) = finished_workflow() else {
+        return;
+    };
+    assert_eq!(
+        shard.enqueue(ShardCommand::Submit {
+            run: super::RunId::new(2),
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty(),
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
     assert_eq!(shard.counters().snapshot().runs_submitted, 3);
     assert_eq!(shard.counters().snapshot().runs_completed, 3);
 }
