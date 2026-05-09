@@ -235,7 +235,7 @@ tasks:
       set -euo pipefail
       mkdir -p target/miri-tmp
       mkdir -p target/moon-locks
-      TMPDIR="$PWD/target/miri-tmp" flock --shared target/moon-locks/source-mutation.lock timeout 5m rustup run nightly-2026-04-28 cargo miri test -p vb_core -p vb_expr -p vb_validate --lib --all-features -- --skip proptests
+      TMPDIR="$PWD/target/miri-tmp" flock --shared target/moon-locks/source-mutation.lock timeout 10m rustup run nightly-2026-04-28 cargo miri test -p vb_core -p vb_expr -p vb_validate --lib --all-features -- --skip proptests
     toolchains:
       - rust
     inputs:

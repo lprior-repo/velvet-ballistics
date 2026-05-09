@@ -42,15 +42,6 @@ pub(crate) enum VbAction {
     Escape,
     /// Toggle shortcuts help overlay.
     ToggleShortcuts,
-    /// Workflow canvas zoom.
-    WorkflowZoom(WorkflowZoomAction),
-}
-
-/// Zoom direction for workflow canvas.
-#[derive(Clone, Copy, Debug)]
-pub(crate) enum WorkflowZoomAction {
-    ZoomIn,
-    ZoomOut,
 }
 
 // ---------------------------------------------------------------------------

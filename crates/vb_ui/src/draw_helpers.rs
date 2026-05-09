@@ -9,12 +9,43 @@ use crate::domain::{
 };
 use makepad_widgets::*;
 use vb_ui::app_state::{AppState, HealthLevel, Screen};
-use vb_ui::incident::timeline::{IncidentTimeline, TimelineEntry};
+use vb_ui::incident::timeline::TimelineEntry;
 use vb_ui::incident::types::IncidentSeverity;
-use vb_ui::system::ticker::{EventTicker, TickerEventKind};
 use vb_ui::workflow::WorkflowCanvas;
 
 const HEADER_HEIGHT: f64 = 44.0;
+
+#[allow(clippy::as_conversions)]
+fn f64_to_f32(value: f64) -> f32 {
+    if value > f32::MAX.into() {
+        f32::MAX
+    } else if value < f32::MIN.into() {
+        f32::MIN
+    } else {
+        value as f32
+    }
+}
+
+#[allow(clippy::as_conversions)]
+fn usize_to_f64(value: usize) -> f64 {
+    value as f64
+}
+
+#[allow(clippy::as_conversions)]
+fn u64_to_f64(value: u64) -> f64 {
+    value as f64
+}
+
+#[allow(clippy::as_conversions)]
+fn f64_to_u64(value: f64) -> u64 {
+    if !value.is_finite() || value <= 0.0 {
+        0
+    } else if value >= u64::MAX as f64 {
+        u64::MAX
+    } else {
+        value as u64
+    }
+}
 
 /// Draws the main dark background covering the entire widget.
 #[allow(elided_lifetimes_in_paths)]
@@ -469,7 +500,7 @@ fn build_sample_node_cards() -> Vec<SampleNodeCard> {
     ]
 }
 
-#[allow(elided_lifetimes_in_paths)]
+#[allow(elided_lifetimes_in_paths, clippy::too_many_arguments)]
 pub(crate) fn draw_workflow_node_card(
     draw_vector: &mut DrawVector,
     draw_text: &mut DrawText,
@@ -485,21 +516,21 @@ pub(crate) fn draw_workflow_node_card(
     badges: &[(String, [f32; 4])],
     state_glow: Option<([f32; 4], f32)>,
 ) {
-    let radius = NODE_BORDER_RADIUS as f32;
-    let width = NODE_CARD_WIDTH as f32;
-    let height = NODE_CARD_HEIGHT as f32;
-    let header_h = NODE_HEADER_HEIGHT as f32;
+    let radius = f64_to_f32(NODE_BORDER_RADIUS);
+    let width = f64_to_f32(NODE_CARD_WIDTH);
+    let height = f64_to_f32(NODE_CARD_HEIGHT);
+    let header_h = f64_to_f32(NODE_HEADER_HEIGHT);
 
     draw_vector.begin();
 
     if let Some((glow_c, glow_r)) = state_glow {
         draw_vector.set_color(glow_c[0], glow_c[1], glow_c[2], glow_c[3] * 0.25);
-        draw_vector.rounded_rect(x as f32, y as f32, width, height, glow_r);
+        draw_vector.rounded_rect(f64_to_f32(x), f64_to_f32(y), width, height, glow_r);
         draw_vector.fill();
     }
 
     draw_vector.set_color(body_color[0], body_color[1], body_color[2], body_color[3]);
-    draw_vector.rounded_rect(x as f32, y as f32, width, height, radius);
+    draw_vector.rounded_rect(f64_to_f32(x), f64_to_f32(y), width, height, radius);
     draw_vector.fill();
 
     draw_vector.set_color(
@@ -508,7 +539,7 @@ pub(crate) fn draw_workflow_node_card(
         border_color[2],
         border_color[3],
     );
-    draw_vector.rounded_rect(x as f32, y as f32, width, height, radius);
+    draw_vector.rounded_rect(f64_to_f32(x), f64_to_f32(y), width, height, radius);
     draw_vector.stroke(1.5_f32);
 
     let header_dark = [
@@ -523,7 +554,7 @@ pub(crate) fn draw_workflow_node_card(
         header_dark[2],
         header_dark[3],
     );
-    draw_vector.rounded_rect(x as f32, y as f32, width, header_h, radius);
+    draw_vector.rounded_rect(f64_to_f32(x), f64_to_f32(y), width, header_h, radius);
     draw_vector.fill();
 
     draw_text.text_style.font_size = 9.0;
@@ -569,8 +600,8 @@ pub(crate) fn draw_workflow_node_card(
             badge_color[3],
         );
         draw_vector.rounded_rect(
-            (badge_x - 18.0) as f32,
-            badge_y as f32,
+            f64_to_f32(badge_x - 18.0),
+            f64_to_f32(badge_y),
             18.0_f32,
             badge_h,
             3.0_f32,
@@ -584,11 +615,19 @@ pub(crate) fn draw_workflow_node_card(
     let port_x_right = x + NODE_CARD_WIDTH + NODE_PORT_RADIUS + 2.0;
 
     draw_vector.set_color(0.224_f32, 1.0_f32, 0.078_f32, 1.0_f32);
-    draw_vector.circle(port_x_left as f32, port_y as f32, NODE_PORT_RADIUS as f32);
+    draw_vector.circle(
+        f64_to_f32(port_x_left),
+        f64_to_f32(port_y),
+        f64_to_f32(NODE_PORT_RADIUS),
+    );
     draw_vector.fill();
 
     draw_vector.set_color(1.0_f32, 0.42_f32, 0.0_f32, 1.0_f32);
-    draw_vector.circle(port_x_right as f32, port_y as f32, NODE_PORT_RADIUS as f32);
+    draw_vector.circle(
+        f64_to_f32(port_x_right),
+        f64_to_f32(port_y),
+        f64_to_f32(NODE_PORT_RADIUS),
+    );
     draw_vector.fill();
 
     draw_vector.end(cx);
@@ -661,9 +700,9 @@ fn draw_workflow_graph_content(
     );
 
     // Node count bar
-    let node_count = workflow_canvas
-        .as_ref()
-        .map_or(wf.node_count, |c| c.node_count() as u32);
+    let node_count = workflow_canvas.as_ref().map_or(wf.node_count, |c| {
+        u32::try_from(c.node_count()).map_or(u32::MAX, |v| v)
+    });
     let node_bar = Rect {
         pos: DVec2 {
             x: panel.pos.x + 16.0,
@@ -712,7 +751,7 @@ fn draw_workflow_graph_content(
     } else {
         let sample_nodes = build_sample_node_cards();
         for (i, node) in sample_nodes.iter().enumerate() {
-            let card_x = canvas_rect.pos.x + 10.0 + (i as f64) * (NODE_CARD_WIDTH + 10.0);
+            let card_x = canvas_rect.pos.x + 10.0 + usize_to_f64(i) * (NODE_CARD_WIDTH + 10.0);
             let card_y = canvas_rect.pos.y + 20.0;
             draw_workflow_node_card(
                 draw_vector,
@@ -1461,9 +1500,9 @@ fn draw_incident_timeline(
         let progress = if span_us == 0 {
             0.5_f64
         } else {
-            (i as f64) / 5.0
+            usize_to_f64(i) / 5.0
         };
-        let time_us = earliest_us.saturating_add((span_us as f64 * progress) as u64);
+        let time_us = earliest_us.saturating_add(f64_to_u64(u64_to_f64(span_us) * progress));
         let label = format_timeline_time(time_us);
         let x = rect.pos.x + TIMELINE_MARGIN + usable_width * progress;
 
@@ -1494,11 +1533,12 @@ fn draw_incident_timeline(
         let x_pos = if span_us == 0 {
             rect.pos.x + width / 2.0
         } else {
-            let progress = (entry.timestamp_us.saturating_sub(earliest_us)) as f64 / span_us as f64;
+            let progress =
+                u64_to_f64(entry.timestamp_us.saturating_sub(earliest_us)) / u64_to_f64(span_us);
             rect.pos.x + TIMELINE_MARGIN + usable_width * progress
         };
 
-        let is_selected = selected_timestamp.map_or(false, |ts| ts == entry.timestamp_us);
+        let is_selected = selected_timestamp == Some(entry.timestamp_us);
         let dot_radius = if is_selected { 7.0_f64 } else { 5.0_f64 };
         let dot_y = axis_y - dot_radius - 2.0;
 
@@ -1511,7 +1551,11 @@ fn draw_incident_timeline(
                 severity_color[2],
                 0.3_f32,
             );
-            draw_vector.circle(x_pos as f32, dot_y as f32, (dot_radius + 4.0) as f32);
+            draw_vector.circle(
+                f64_to_f32(x_pos),
+                f64_to_f32(dot_y),
+                f64_to_f32(dot_radius + 4.0),
+            );
             draw_vector.fill();
         }
 
@@ -1521,12 +1565,16 @@ fn draw_incident_timeline(
             severity_color[2],
             severity_color[3],
         );
-        draw_vector.circle(x_pos as f32, dot_y as f32, dot_radius as f32);
+        draw_vector.circle(f64_to_f32(x_pos), f64_to_f32(dot_y), f64_to_f32(dot_radius));
         draw_vector.fill();
 
         if is_selected {
             draw_vector.set_color(1.0_f32, 1.0_f32, 1.0_f32, 0.8_f32);
-            draw_vector.circle(x_pos as f32, dot_y as f32, (dot_radius + 2.0) as f32);
+            draw_vector.circle(
+                f64_to_f32(x_pos),
+                f64_to_f32(dot_y),
+                f64_to_f32(dot_radius + 2.0),
+            );
             draw_vector.stroke(1.5_f32);
         }
     }
@@ -1538,7 +1586,8 @@ fn draw_incident_timeline(
         let x_pos = if span_us == 0 {
             rect.pos.x + width / 2.0
         } else {
-            let progress = (entry.timestamp_us.saturating_sub(earliest_us)) as f64 / span_us as f64;
+            let progress =
+                u64_to_f64(entry.timestamp_us.saturating_sub(earliest_us)) / u64_to_f64(span_us);
             rect.pos.x + TIMELINE_MARGIN + usable_width * progress
         };
 
@@ -1552,7 +1601,7 @@ fn draw_incident_timeline(
         };
         let label_x = if i == 0 {
             x_pos - 20.0
-        } else if i == entries.len() - 1 {
+        } else if i.saturating_add(1) == entries.len() {
             x_pos - 40.0
         } else {
             x_pos - 25.0
@@ -1564,139 +1613,6 @@ fn draw_incident_timeline(
                 y: marker_y,
             },
             &label,
-        );
-    }
-}
-
-const EVENT_TICKER_ROW_HEIGHT: f64 = 22.0;
-const EVENT_TICKER_INDICATOR_SIZE: f64 = 10.0;
-
-fn ticker_kind_label(kind: TickerEventKind) -> &'static str {
-    match kind {
-        TickerEventKind::RunAccepted => "RunAccepted",
-        TickerEventKind::StepStarted => "StepStarted",
-        TickerEventKind::StepSucceeded => "StepSucceeded",
-        TickerEventKind::ActionScheduled => "ActionSched",
-        TickerEventKind::ActionCompleted => "ActionComp",
-        TickerEventKind::ActionFailed => "ActionFailed",
-        TickerEventKind::RunFinished => "RunFinished",
-        TickerEventKind::RunFailed => "RunFailed",
-        TickerEventKind::Other => "Other",
-    }
-}
-
-fn format_ticker_timestamp(seq: u64) -> String {
-    format!("#{:06}", seq)
-}
-
-#[allow(elided_lifetimes_in_paths)]
-pub(crate) fn draw_event_ticker(
-    draw_bg: &mut DrawColor,
-    draw_text: &mut DrawText,
-    cx: &mut Cx2d,
-    rect: Rect,
-    ticker: &EventTicker,
-) {
-    let events = ticker.events();
-
-    if events.is_empty() {
-        draw_text.text_style.font_size = 10.0;
-        draw_text.color = Vec4f {
-            x: 0.5,
-            y: 0.5,
-            z: 0.5,
-            w: 1.0,
-        };
-        draw_text.draw_abs(
-            cx,
-            DVec2 {
-                x: rect.pos.x + 16.0,
-                y: rect.pos.y + 8.0,
-            },
-            "No events",
-        );
-        return;
-    }
-
-    let max_visible = ((rect.size.y - 16.0) / EVENT_TICKER_ROW_HEIGHT).floor() as usize;
-    let start_idx = if events.len() > max_visible {
-        events.len() - max_visible
-    } else {
-        0
-    };
-
-    for i in start_idx..events.len() {
-        let event = &events[i];
-        let row_y = rect.pos.y + 8.0 + ((i - start_idx) as f64) * EVENT_TICKER_ROW_HEIGHT;
-
-        let color = EventTicker::event_color(event.kind);
-        let indicator_rect = Rect {
-            pos: DVec2 {
-                x: rect.pos.x + 8.0,
-                y: row_y + 4.0,
-            },
-            size: DVec2 {
-                x: EVENT_TICKER_INDICATOR_SIZE,
-                y: EVENT_TICKER_INDICATOR_SIZE,
-            },
-        };
-        draw_bg.color = Vec4f {
-            x: color[0],
-            y: color[1],
-            z: color[2],
-            w: 1.0,
-        };
-        draw_bg.draw_abs(cx, indicator_rect);
-
-        let timestamp = format_ticker_timestamp(event.seq);
-        draw_text.text_style.font_size = 8.0;
-        draw_text.color = Vec4f {
-            x: 0.6,
-            y: 0.6,
-            z: 0.65,
-            w: 1.0,
-        };
-        draw_text.draw_abs(
-            cx,
-            DVec2 {
-                x: rect.pos.x + 24.0,
-                y: row_y + 4.0,
-            },
-            &timestamp,
-        );
-
-        let kind_label = ticker_kind_label(event.kind);
-        draw_text.text_style.font_size = 8.0;
-        draw_text.color = Vec4f {
-            x: color[0] * 0.9,
-            y: color[1] * 0.9,
-            z: color[2] * 0.9,
-            w: 1.0,
-        };
-        draw_text.draw_abs(
-            cx,
-            DVec2 {
-                x: rect.pos.x + 98.0,
-                y: row_y + 4.0,
-            },
-            kind_label,
-        );
-
-        let msg_x = rect.pos.x + 194.0;
-        draw_text.text_style.font_size = 9.0;
-        draw_text.color = Vec4f {
-            x: 0.85,
-            y: 0.85,
-            z: 0.88,
-            w: 1.0,
-        };
-        draw_text.draw_abs(
-            cx,
-            DVec2 {
-                x: msg_x,
-                y: row_y + 3.0,
-            },
-            &event.summary,
         );
     }
 }

@@ -372,10 +372,10 @@ impl WorkflowCanvas {
     #[must_use]
     pub fn is_hidden_by_collapse(&self, node_id: &str) -> bool {
         for group_id in &self.collapsed_groups {
-            if let Some(group) = self.document.graph.groups.get(group_id.as_str()) {
-                if group.children.iter().any(|c| c.as_str() == node_id) {
-                    return true;
-                }
+            if let Some(group) = self.document.graph.groups.get(group_id.as_str())
+                && group.children.iter().any(|c| c.as_str() == node_id)
+            {
+                return true;
             }
         }
         false

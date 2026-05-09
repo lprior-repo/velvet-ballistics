@@ -89,23 +89,23 @@ pub(crate) struct TabColors {
 impl TabColors {
     pub(crate) fn for_tab(screen_index: usize, is_active: bool) -> Self {
         let (bg_r, bg_g, bg_b) = if is_active {
-            (0.10, 0.165, 0.165)
+            (0.10_f32, 0.165_f32, 0.165_f32)
         } else {
-            (0.102, 0.102, 0.180)
+            (0.102_f32, 0.102_f32, 0.180_f32)
         };
 
         let accent = match screen_index {
-            0 => (0.0, 0.96, 1.0),  // RunReplay - cyan
-            1 => (0.22, 1.0, 0.08), // Verification - green
-            2 => (0.18, 0.42, 1.0), // SystemOverview - blue
-            3 => (0.69, 0.30, 1.0), // WorkflowGraph - purple
-            4 => (1.0, 0.03, 0.23), // IncidentConsole - red
-            _ => (0.5, 0.5, 0.5),
+            0 => (0.0_f32, 0.96_f32, 1.0_f32),  // RunReplay - cyan
+            1 => (0.22_f32, 1.0_f32, 0.08_f32), // Verification - green
+            2 => (0.18_f32, 0.42_f32, 1.0_f32), // SystemOverview - blue
+            3 => (0.69_f32, 0.30_f32, 1.0_f32), // WorkflowGraph - purple
+            4 => (1.0_f32, 0.03_f32, 0.23_f32), // IncidentConsole - red
+            _ => (0.5_f32, 0.5_f32, 0.5_f32),
         };
 
         Self {
-            bg: [bg_r as f32, bg_g as f32, bg_b as f32],
-            accent: [accent.0 as f32, accent.1 as f32, accent.2 as f32],
+            bg: [bg_r, bg_g, bg_b],
+            accent: [accent.0, accent.1, accent.2],
         }
     }
 }

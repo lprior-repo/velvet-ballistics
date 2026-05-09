@@ -128,10 +128,7 @@ fn ingest_timeline_events_to_app(
                 .timeline_strip
                 .extend_from_journal(&journal_events);
             let new_len = app_state.replay.timeline_strip.events().len();
-            app_state.replay.total_events = match u32::try_from(new_len) {
-                Ok(v) => v,
-                Err(_) => u32::MAX,
-            };
+            app_state.replay.total_events = u32::try_from(new_len).map_or(u32::MAX, |v| v);
         }
     }
 }
@@ -247,9 +244,6 @@ impl MatchEvent for VbApp {
                     }
                     VbAction::ToggleShortcuts => {
                         self.app_state.show_shortcuts = !self.app_state.show_shortcuts;
-                    }
-                    VbAction::WorkflowZoom(_) => {
-                        // Workflow zoom handled by the workflow graph canvas.
                     }
                     VbAction::NoOp => {}
                 }
