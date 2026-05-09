@@ -722,43 +722,35 @@ fn validate_parts(parts: &WorkflowParts) -> Result<(), WorkflowError> {
 }
 
 fn validate_budget(parts: &WorkflowParts) -> Result<(), WorkflowError> {
-    use crate::budget::{BoundednessPolicy, BudgetError, WholeWorkflowBudget};
+    use crate::budget::{BoundednessPolicy, WholeWorkflowBudget};
 
     let budget = WholeWorkflowBudget::compute(&parts.nodes, parts.entry, &parts.resource_contract)?;
 
-    match BoundednessPolicy::DEFAULT.validate(&budget) {
+    validate_budget_result(BoundednessPolicy::DEFAULT.validate(&budget))
+}
+
+fn validate_budget_result(
+    result: Result<(), crate::budget::BudgetError>,
+) -> Result<(), WorkflowError> {
+    match result {
         Ok(()) => Ok(()),
-        Err(BudgetError::TotalStepsExceeded { .. }) => Err(WorkflowError::BudgetPolicyExceeded {
-            detail: "max_total_steps",
+        Err(error) => Err(WorkflowError::BudgetPolicyExceeded {
+            detail: budget_error_detail(&error),
         }),
-        Err(BudgetError::TotalSlotsExceeded { .. }) => Err(WorkflowError::BudgetPolicyExceeded {
-            detail: "max_total_slots",
-        }),
-        Err(BudgetError::FanoutExceeded { .. }) => Err(WorkflowError::BudgetPolicyExceeded {
-            detail: "max_fanout",
-        }),
-        Err(BudgetError::NestingDepthExceeded { .. }) => Err(WorkflowError::BudgetPolicyExceeded {
-            detail: "max_nesting_depth",
-        }),
-        Err(BudgetError::ParallelExceeded { .. }) => Err(WorkflowError::BudgetPolicyExceeded {
-            detail: "max_parallel_in_flight",
-        }),
-        Err(BudgetError::ActionTicketsExceeded { .. }) => {
-            Err(WorkflowError::BudgetPolicyExceeded {
-                detail: "max_action_tickets",
-            })
-        }
-        Err(BudgetError::RunTimeExceeded { .. }) => Err(WorkflowError::BudgetPolicyExceeded {
-            detail: "max_run_time_seconds",
-        }),
-        Err(BudgetError::ResultBytesExceeded { .. }) => Err(WorkflowError::BudgetPolicyExceeded {
-            detail: "max_result_bytes",
-        }),
-        Err(BudgetError::StepsExecutableExceeded { .. }) => {
-            Err(WorkflowError::BudgetPolicyExceeded {
-                detail: "max_steps_executable",
-            })
-        }
+    }
+}
+
+fn budget_error_detail(error: &crate::budget::BudgetError) -> &'static str {
+    match error {
+        crate::budget::BudgetError::TotalStepsExceeded { .. } => "max_total_steps",
+        crate::budget::BudgetError::TotalSlotsExceeded { .. } => "max_total_slots",
+        crate::budget::BudgetError::FanoutExceeded { .. } => "max_fanout",
+        crate::budget::BudgetError::NestingDepthExceeded { .. } => "max_nesting_depth",
+        crate::budget::BudgetError::ParallelExceeded { .. } => "max_parallel_in_flight",
+        crate::budget::BudgetError::ActionTicketsExceeded { .. } => "max_action_tickets",
+        crate::budget::BudgetError::RunTimeExceeded { .. } => "max_run_time_seconds",
+        crate::budget::BudgetError::ResultBytesExceeded { .. } => "max_result_bytes",
+        crate::budget::BudgetError::StepsExecutableExceeded { .. } => "max_steps_executable",
     }
 }
 
@@ -1638,7 +1630,9 @@ fn validate_together_start_edges(
     ci: usize,
     cid: StepIdx,
 ) -> Result<(), WorkflowError> {
-    let _ = branches;
+    for branch in branches {
+        validate_forward_target(*branch, ci, cid)?;
+    }
     validate_forward_target(join, ci, cid)
 }
 
@@ -1648,7 +1642,7 @@ fn validate_together_branch_edges(
     ci: usize,
     cid: StepIdx,
 ) -> Result<(), WorkflowError> {
-    let _ = entry;
+    validate_forward_target(entry, ci, cid)?;
     validate_forward_target(join, ci, cid)
 }
 

@@ -1,5 +1,7 @@
 #[cfg(test)]
 mod tests {
+    use super::super::validate_budget_result;
+    use crate::budget::BudgetError;
     use crate::ids::{
         AccessorIdx, ActionId, ConstIdx, ExprIdx, SlotIdx, StepIdx, SymbolId, WorkflowDigest,
     };
@@ -11,6 +13,20 @@ mod tests {
         ExprOp, ExprProgram, PathSegment, ResourceContract, SlotBranch, WorkflowError,
         WorkflowParts, check_expr_stack_bound,
     };
+    use std::fmt::Debug;
+
+    fn assert_pairwise_distinct<T>(values: &[T])
+    where
+        T: PartialEq + Debug,
+    {
+        assert!(
+            values.iter().enumerate().all(|(left_index, left)| values
+                .iter()
+                .enumerate()
+                .all(|(right_index, right)| (left_index == right_index) == (left == right))),
+            "variants must be pairwise distinct: {values:?}"
+        );
+    }
 
     #[test]
     fn expr_program_rejects_binary_underflow() -> Result<(), String> {
@@ -1598,14 +1614,14 @@ mod tests {
             1,
         );
         let result = CompiledWorkflow::try_from_parts(parts).map(|_| ());
-        // Backward jumps create cycles and must be rejected
-        assert!(result.is_err(), "backward jump should be rejected as cycle");
-        let err = result.unwrap_err();
-        assert!(
-            err.to_string().contains("jump cycle"),
-            "error should mention jump cycle"
-        );
-        Ok(())
+        match result {
+            Err(WorkflowError::JumpCycle { step, target })
+                if step == StepIdx::new(1) && target == StepIdx::new(0) =>
+            {
+                Ok(())
+            }
+            other => Err(format!("expected exact JumpCycle variant, got {other:?}")),
+        }
     }
 
     #[test]
@@ -3336,15 +3352,7 @@ mod tests {
             ExprOp::Lt,
             ExprOp::Lte,
         ];
-        for (i, a) in ops.iter().enumerate() {
-            for (j, b) in ops.iter().enumerate() {
-                if i == j {
-                    assert_eq!(a, b);
-                } else {
-                    assert_ne!(a, b, "{a:?} must differ from {b:?}");
-                }
-            }
-        }
+        assert_pairwise_distinct(&ops);
     }
 
     #[test]
@@ -3357,15 +3365,7 @@ mod tests {
     #[test]
     fn expr_op_arithmetic_variants_are_distinct() {
         let ops = [ExprOp::Add, ExprOp::Sub, ExprOp::Mul, ExprOp::Div];
-        for (i, a) in ops.iter().enumerate() {
-            for (j, b) in ops.iter().enumerate() {
-                if i == j {
-                    assert_eq!(a, b);
-                } else {
-                    assert_ne!(a, b, "{a:?} must differ from {b:?}");
-                }
-            }
-        }
+        assert_pairwise_distinct(&ops);
     }
 
     #[test]
@@ -3376,29 +3376,13 @@ mod tests {
             ExprOp::EndsWith,
             ExprOp::Has,
         ];
-        for (i, a) in ops.iter().enumerate() {
-            for (j, b) in ops.iter().enumerate() {
-                if i == j {
-                    assert_eq!(a, b);
-                } else {
-                    assert_ne!(a, b, "{a:?} must differ from {b:?}");
-                }
-            }
-        }
+        assert_pairwise_distinct(&ops);
     }
 
     #[test]
     fn expr_op_unary_helpers_are_distinct() {
         let ops = [ExprOp::Exists, ExprOp::Length, ExprOp::Empty];
-        for (i, a) in ops.iter().enumerate() {
-            for (j, b) in ops.iter().enumerate() {
-                if i == j {
-                    assert_eq!(a, b);
-                } else {
-                    assert_ne!(a, b, "{a:?} must differ from {b:?}");
-                }
-            }
-        }
+        assert_pairwise_distinct(&ops);
     }
 
     #[test]
@@ -3411,15 +3395,7 @@ mod tests {
             ExprOp::Count,
             ExprOp::Unique,
         ];
-        for (i, a) in ops.iter().enumerate() {
-            for (j, b) in ops.iter().enumerate() {
-                if i == j {
-                    assert_eq!(a, b);
-                } else {
-                    assert_ne!(a, b, "{a:?} must differ from {b:?}");
-                }
-            }
-        }
+        assert_pairwise_distinct(&ops);
     }
 
     // =========================================================================
@@ -3814,6 +3790,273 @@ mod tests {
         assert!(error.to_string().contains("max_total_steps"));
     }
 
+    #[test]
+    fn workflow_error_step_count_overflow_exact_variant_fields() -> Result<(), String> {
+        match (WorkflowError::StepCountOverflow { actual: u64::MAX }) {
+            WorkflowError::StepCountOverflow { actual } if actual == u64::MAX => Ok(()),
+            other => Err(format!(
+                "expected exact StepCountOverflow variant, got {other:?}"
+            )),
+        }
+    }
+
+    #[test]
+    fn workflow_error_jump_cycle_exact_variant_fields() -> Result<(), String> {
+        match (WorkflowError::JumpCycle {
+            step: StepIdx::new(7),
+            target: StepIdx::new(3),
+        }) {
+            WorkflowError::JumpCycle { step, target }
+                if step == StepIdx::new(7) && target == StepIdx::new(3) =>
+            {
+                Ok(())
+            }
+            other => Err(format!("expected exact JumpCycle variant, got {other:?}")),
+        }
+    }
+
+    #[test]
+    fn validate_budget_maps_every_budget_error_variant_to_exact_detail() -> Result<(), String> {
+        assert_budget_detail(total_steps_error(), "max_total_steps")?;
+        assert_budget_detail(total_slots_error(), "max_total_slots")?;
+        assert_budget_detail(fanout_error(), "max_fanout")?;
+        assert_budget_detail(nesting_depth_error(), "max_nesting_depth")?;
+        assert_budget_detail(parallel_error(), "max_parallel_in_flight")?;
+        assert_budget_detail(action_tickets_error(), "max_action_tickets")?;
+        assert_budget_detail(run_time_error(), "max_run_time_seconds")?;
+        assert_budget_detail(result_bytes_error(), "max_result_bytes")?;
+        assert_budget_detail(steps_executable_error(), "max_steps_executable")?;
+        Ok(())
+    }
+
+    #[test]
+    fn workflow_budget_validation_reports_total_steps_detail() -> Result<(), String> {
+        assert_workflow_budget_detail(total_steps_budget_parts(), "max_total_steps")
+    }
+
+    #[test]
+    fn workflow_budget_validation_reports_fanout_detail() -> Result<(), String> {
+        assert_workflow_budget_detail(fanout_budget_parts(), "max_fanout")
+    }
+
+    #[test]
+    fn workflow_budget_validation_reports_nesting_depth_detail() -> Result<(), String> {
+        assert_workflow_budget_detail(nesting_depth_budget_parts(), "max_nesting_depth")
+    }
+
+    #[test]
+    fn workflow_budget_validation_reports_result_bytes_detail() -> Result<(), String> {
+        assert_workflow_budget_detail(result_bytes_budget_parts(), "max_result_bytes")
+    }
+
+    fn total_steps_error() -> BudgetError {
+        BudgetError::TotalStepsExceeded {
+            actual: 2,
+            limit: 1,
+        }
+    }
+
+    fn total_slots_error() -> BudgetError {
+        BudgetError::TotalSlotsExceeded {
+            actual: 2,
+            limit: 1,
+        }
+    }
+
+    fn fanout_error() -> BudgetError {
+        BudgetError::FanoutExceeded {
+            actual: 2,
+            limit: 1,
+        }
+    }
+
+    fn nesting_depth_error() -> BudgetError {
+        BudgetError::NestingDepthExceeded {
+            actual: 2,
+            limit: 1,
+        }
+    }
+
+    fn parallel_error() -> BudgetError {
+        BudgetError::ParallelExceeded {
+            actual: 2,
+            limit: 1,
+        }
+    }
+
+    fn action_tickets_error() -> BudgetError {
+        BudgetError::ActionTicketsExceeded {
+            actual: 2,
+            limit: 1,
+        }
+    }
+
+    fn run_time_error() -> BudgetError {
+        BudgetError::RunTimeExceeded {
+            actual: 2,
+            limit: 1,
+        }
+    }
+
+    fn result_bytes_error() -> BudgetError {
+        BudgetError::ResultBytesExceeded {
+            actual: 2,
+            limit: 1,
+        }
+    }
+
+    fn steps_executable_error() -> BudgetError {
+        BudgetError::StepsExecutableExceeded {
+            actual: 2,
+            limit: 1,
+        }
+    }
+
+    fn assert_budget_detail(error: BudgetError, detail: &'static str) -> Result<(), String> {
+        match validate_budget_result(Err(error)) {
+            Err(WorkflowError::BudgetPolicyExceeded { detail: actual }) if actual == detail => {
+                Ok(())
+            }
+            other => Err(format!("unexpected budget validation result: {other:?}")),
+        }
+    }
+
+    fn assert_workflow_budget_detail(
+        parts: WorkflowParts,
+        detail: &'static str,
+    ) -> Result<(), String> {
+        match CompiledWorkflow::try_from_parts(parts) {
+            Err(WorkflowError::BudgetPolicyExceeded { detail: actual }) if actual == detail => {
+                Ok(())
+            }
+            other => Err(format!("unexpected workflow validation result: {other:?}")),
+        }
+    }
+
+    fn total_steps_budget_parts() -> WorkflowParts {
+        budget_parts(
+            vec![
+                budget_node(
+                    0,
+                    CompiledNodeKind::ForEachStart {
+                        input: SlotIdx::new(0),
+                        item_slot: SlotIdx::new(0),
+                        limit: 1_000_001,
+                        body: StepIdx::new(1),
+                        done: StepIdx::new(2),
+                    },
+                ),
+                budget_node(1, CompiledNodeKind::Nop),
+                budget_node(2, CompiledNodeKind::Nop),
+            ],
+            1,
+            budget_contract(3, 1),
+        )
+    }
+
+    fn fanout_budget_parts() -> WorkflowParts {
+        budget_parts(
+            vec![
+                budget_node(
+                    0,
+                    CompiledNodeKind::ChooseSlot {
+                        branches: fanout_branches(),
+                        otherwise: None,
+                    },
+                ),
+                budget_node(1, CompiledNodeKind::Nop),
+            ],
+            1,
+            budget_contract(2, 1),
+        )
+    }
+
+    fn nesting_depth_budget_parts() -> WorkflowParts {
+        budget_parts(nesting_nodes(), 1, budget_contract(10, 1))
+    }
+
+    fn result_bytes_budget_parts() -> WorkflowParts {
+        budget_parts(
+            vec![budget_node(0, CompiledNodeKind::Nop)],
+            0,
+            ResourceContract {
+                max_steps: 1,
+                max_slots: 0,
+                max_output_bytes: 262_145,
+                ..ResourceContract::DEFAULT
+            },
+        )
+    }
+
+    fn fanout_branches() -> Box<[SlotBranch]> {
+        (0..65)
+            .map(|_| SlotBranch {
+                condition: SlotIdx::new(0),
+                target: StepIdx::new(1),
+            })
+            .collect::<Vec<_>>()
+            .into_boxed_slice()
+    }
+
+    fn nesting_nodes() -> Vec<CompiledNode> {
+        (0..9)
+            .map(|index| {
+                budget_node(
+                    index,
+                    CompiledNodeKind::ForEachStart {
+                        input: SlotIdx::new(0),
+                        item_slot: SlotIdx::new(0),
+                        limit: 1,
+                        body: StepIdx::new(
+                            u16::try_from(index.saturating_add(1)).map_or(u16::MAX, |v| v),
+                        ),
+                        done: StepIdx::new(9),
+                    },
+                )
+            })
+            .chain(std::iter::once(budget_node(9, CompiledNodeKind::Nop)))
+            .collect()
+    }
+
+    fn budget_contract(max_steps: u16, max_slots: u16) -> ResourceContract {
+        ResourceContract {
+            max_steps,
+            max_slots,
+            ..ResourceContract::DEFAULT
+        }
+    }
+
+    fn budget_parts(
+        nodes: Vec<CompiledNode>,
+        slot_count: u16,
+        resource_contract: ResourceContract,
+    ) -> WorkflowParts {
+        WorkflowParts {
+            name: Box::<str>::from("budget_validation"),
+            digest: WorkflowDigest::from_bytes([0x71; 32]),
+            nodes: nodes.into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: Box::new([]),
+            slot_count,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract,
+            step_names: Box::default(),
+        }
+    }
+
+    fn budget_node(index: u16, kind: CompiledNodeKind) -> CompiledNode {
+        CompiledNode {
+            id: StepIdx::new(index),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind,
+        }
+    }
+
     #[cfg(test)]
     mod proptests {
         use super::{
@@ -3850,21 +4093,22 @@ mod tests {
         /// Nodes 0..N-2 are SetConst, node N-1 is Finish.
         /// slot_count = 1 (slot 0 is used throughout).
         fn build_valid_chain(step_count: usize) -> WorkflowParts {
-            let mut nodes = Vec::with_capacity(step_count);
             let last = step_count.saturating_sub(1);
-            for i in 0..last {
-                let next_step = u16::try_from(i.saturating_add(1)).map_or(u16::MAX, |v| v);
-                nodes.push(CompiledNode {
-                    id: StepIdx::new(u16::try_from(i).map_or(u16::MAX, |v| v)),
-                    output: Some(SlotIdx::new(0)),
-                    next: Some(StepIdx::new(next_step)),
-                    on_error: None,
-                    error_slot: None,
-                    kind: CompiledNodeKind::SetConst {
-                        value: ConstIdx::new(0),
-                    },
-                });
-            }
+            let mut nodes: Vec<CompiledNode> = (0..last)
+                .map(|i| {
+                    let next_step = u16::try_from(i.saturating_add(1)).map_or(u16::MAX, |v| v);
+                    CompiledNode {
+                        id: StepIdx::new(u16::try_from(i).map_or(u16::MAX, |v| v)),
+                        output: Some(SlotIdx::new(0)),
+                        next: Some(StepIdx::new(next_step)),
+                        on_error: None,
+                        error_slot: None,
+                        kind: CompiledNodeKind::SetConst {
+                            value: ConstIdx::new(0),
+                        },
+                    }
+                })
+                .collect();
             nodes.push(CompiledNode {
                 id: StepIdx::new(u16::try_from(last).map_or(u16::MAX, |v| v)),
                 output: None,
@@ -3888,6 +4132,63 @@ mod tests {
                 entry: StepIdx::new(0),
                 resource_contract: resource_contract(max_steps, 1, 1, 0, 0),
                 step_names: Box::new([]),
+            }
+        }
+
+        fn chain_node(index: usize, total: usize) -> CompiledNode {
+            let is_last = index == total.saturating_sub(1);
+            let next = if is_last {
+                None
+            } else {
+                Some(StepIdx::new(
+                    u16::try_from(index.saturating_add(1)).map_or(u16::MAX, |v| v),
+                ))
+            };
+            let kind = if is_last {
+                CompiledNodeKind::Finish {
+                    result: SlotIdx::new(0),
+                }
+            } else {
+                CompiledNodeKind::SetConst {
+                    value: ConstIdx::new(0),
+                }
+            };
+            CompiledNode {
+                id: StepIdx::new(u16::try_from(index).map_or(u16::MAX, |v| v)),
+                output: Some(SlotIdx::new(0)),
+                next,
+                on_error: None,
+                error_slot: None,
+                kind,
+            }
+        }
+
+        fn duplicate_step_node(
+            index: usize,
+            total: usize,
+            duplicate_position: usize,
+        ) -> CompiledNode {
+            let claimed_id = if index == duplicate_position {
+                StepIdx::new(0)
+            } else {
+                StepIdx::new(u16::try_from(index).map_or(u16::MAX, |v| v))
+            };
+            CompiledNode {
+                id: claimed_id,
+                ..chain_node(index, total)
+            }
+        }
+
+        fn unreachable_finish_node(index: usize) -> CompiledNode {
+            CompiledNode {
+                id: StepIdx::new(u16::try_from(index).map_or(u16::MAX, |v| v)),
+                output: None,
+                next: None,
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::Finish {
+                    result: SlotIdx::new(0),
+                },
             }
         }
 
@@ -4025,37 +4326,9 @@ mod tests {
             ) {
                 let n = usize::from(step_count);
                 let dup_pos = usize::from(duplicate_id_pos.min(step_count.saturating_sub(1)));
-                let mut nodes = Vec::with_capacity(n);
-                for i in 0..n {
-                    let next = if i < n.saturating_sub(1) {
-                        Some(StepIdx::new(u16::try_from(i.saturating_add(1)).map_or(u16::MAX, |v| v)))
-                    } else {
-                        None
-                    };
-                    let kind = if i == n.saturating_sub(1) {
-                        CompiledNodeKind::Finish {
-                            result: SlotIdx::new(0),
-                        }
-                    } else {
-                        CompiledNodeKind::SetConst {
-                            value: ConstIdx::new(0),
-                        }
-                    };
-                    // Node at dup_pos claims to be step 0 (duplicate).
-                    let claimed_id = if i == dup_pos {
-                        StepIdx::new(0)
-                    } else {
-                        StepIdx::new(u16::try_from(i).map_or(u16::MAX, |v| v))
-                    };
-                    nodes.push(CompiledNode {
-                        id: claimed_id,
-                        output: Some(SlotIdx::new(0)),
-                        next,
-                        on_error: None,
-                        error_slot: None,
-                        kind,
-                    });
-                }
+                let nodes = (0..n)
+                    .map(|index| duplicate_step_node(index, n, dup_pos))
+                    .collect::<Vec<_>>();
                 let max_steps = u16::try_from(n).map_or(u16::MAX, |v| v);
                 let parts = WorkflowParts {
                     name: Box::<str>::from("prop_c_dup"),
@@ -4100,48 +4373,10 @@ mod tests {
                 let chain_n = usize::from(chain_len);
                 let extra_n = usize::from(unreachable_count);
                 let total = chain_n.saturating_add(extra_n);
-                let mut nodes = Vec::with_capacity(total);
-
-                // Build a valid chain of chain_len nodes.
-                for i in 0..chain_n {
-                    let is_last = i == chain_n.saturating_sub(1);
-                    let next = if is_last {
-                        None
-                    } else {
-                        Some(StepIdx::new(u16::try_from(i.saturating_add(1)).map_or(u16::MAX, |v| v)))
-                    };
-                    let kind = if is_last {
-                        CompiledNodeKind::Finish {
-                            result: SlotIdx::new(0),
-                        }
-                    } else {
-                        CompiledNodeKind::SetConst {
-                            value: ConstIdx::new(0),
-                        }
-                    };
-                    nodes.push(CompiledNode {
-                        id: StepIdx::new(u16::try_from(i).map_or(u16::MAX, |v| v)),
-                        output: Some(SlotIdx::new(0)),
-                        next,
-                        on_error: None,
-                        error_slot: None,
-                        kind,
-                    });
-                }
-
-                // Add unreachable nodes at the end.
-                for i in chain_n..total {
-                    nodes.push(CompiledNode {
-                        id: StepIdx::new(u16::try_from(i).map_or(u16::MAX, |v| v)),
-                        output: None,
-                        next: None,
-                        on_error: None,
-                        error_slot: None,
-                        kind: CompiledNodeKind::Finish {
-                            result: SlotIdx::new(0),
-                        },
-                    });
-                }
+                let nodes = (0..chain_n)
+                    .map(|index| chain_node(index, chain_n))
+                    .chain((chain_n..total).map(unreachable_finish_node))
+                    .collect::<Vec<_>>();
 
                 let max_steps = u16::try_from(total).map_or(u16::MAX, |v| v);
                 let parts = WorkflowParts {
@@ -4441,35 +4676,13 @@ mod tests {
             ExprOp::Lt,
             ExprOp::Lte,
         ];
-        for (i, op_a) in ops.iter().enumerate() {
-            for (j, op_b) in ops.iter().enumerate() {
-                if i == j {
-                    assert_eq!(op_a, op_b, "same index must be equal");
-                } else {
-                    assert_ne!(
-                        op_a, op_b,
-                        "different ExprOp comparison variants must differ"
-                    );
-                }
-            }
-        }
+        assert_pairwise_distinct(&ops);
     }
 
     #[test]
     fn expr_op_arithmetic_variants_pairwise_distinct() {
         let ops = [ExprOp::Add, ExprOp::Sub, ExprOp::Mul, ExprOp::Div];
-        for (i, op_a) in ops.iter().enumerate() {
-            for (j, op_b) in ops.iter().enumerate() {
-                if i == j {
-                    assert_eq!(op_a, op_b, "same index must be equal");
-                } else {
-                    assert_ne!(
-                        op_a, op_b,
-                        "different ExprOp arithmetic variants must differ"
-                    );
-                }
-            }
-        }
+        assert_pairwise_distinct(&ops);
     }
 
     #[test]
