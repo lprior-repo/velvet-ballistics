@@ -4,9 +4,10 @@
 mod tests {
     use crate::{
         CodegenError, compare_generated_to_ir, compile_check_generated_rust, emit_action_boundary,
-        emit_action_match_dispatch, emit_drive_function, emit_finish, emit_ids,
-        emit_resource_contract, emit_rust_workflow, emit_step_function, emit_trybuild_fixture,
-        format_generated_rust, validate_generated_subset,
+        emit_action_match_dispatch, emit_drive_function, emit_expr_function, emit_finish, emit_ids,
+        emit_list_store_contract, emit_resource_contract, emit_rust_workflow, emit_step_function,
+        emit_trybuild_fixture, emit_value_store_contract, format_generated_rust,
+        validate_generated_subset,
     };
     use vb_core::{
         AccessorProgram, ActionId, CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx,
@@ -441,7 +442,7 @@ mod tests {
         let source_path = temp_dir.path().join("generated_action_suspend.rs");
         let binary_path = temp_dir.path().join("generated_action_suspend_bin");
         let harness = format!(
-            "{generated}\nfn main() {{\n    let mut slots = [None; WORKFLOW_SLOT_COUNT];\n    match slots.get_mut(usize::from({input}u16)) {{\n        Some(slot) => *slot = Some(SlotValue::I64(99)),\n        None => {{ println!(\"slot_out_of_bounds\"); std::process::exit(20); }}\n    }}\n    match drive(slots) {{\n        Err(DriveError::ActionSuspend {{ action_id, input_slot }}) if action_id == {action}u16 && input_slot == {input}u16 => println!(\"generated_action_suspend:{action}:{input}\"),\n        other => {{ println!(\"unexpected:{{other:?}}\"); std::process::exit(21); }}\n    }}\n}}\n",
+            "{generated}\nfn main() {{\n    let mut slots = [None; WORKFLOW_SLOT_COUNT];\n    match slots.get_mut(usize::from({input}u16)) {{\n        Some(slot) => *slot = Some(SlotValue::I64(99)),\n        None => {{ println!(\"slot_out_of_bounds\"); std::process::exit(20); }}\n    }}\n    match drive(slots) {{\n        Err(DriveError::ActionSuspend {{ action_id, input_slot, .. }}) if action_id == {action}u16 && input_slot == {input}u16 => println!(\"generated_action_suspend:{action}:{input}\"),\n        other => {{ println!(\"unexpected:{{other:?}}\"); std::process::exit(21); }}\n    }}\n}}\n",
             action = action.get(),
             input = input.get()
         );
@@ -510,6 +511,132 @@ mod tests {
         }
 
         Ok(stdout)
+    }
+
+    fn generated_step_stdout(
+        workflow: &CompiledWorkflow,
+        name: &str,
+        body_source: &str,
+    ) -> Result<String, String> {
+        let generated = emit_rust_workflow(workflow).map_err(|e| e.to_string())?;
+        let temp_dir = tempfile::Builder::new()
+            .prefix(&format!("vb_codegen_step_{}_{}", std::process::id(), name))
+            .tempdir()
+            .map_err(|e| e.to_string())?;
+        let source_path = temp_dir.path().join("generated_step.rs");
+        let binary_path = temp_dir.path().join("generated_step_bin");
+        let harness = format!("{generated}\nfn main() {{\n{body_source}\n}}\n");
+        std::fs::write(&source_path, harness).map_err(|e| e.to_string())?;
+
+        let compile = std::process::Command::new("rustc")
+            .arg("--edition")
+            .arg("2024")
+            .arg("-o")
+            .arg(&binary_path)
+            .arg(&source_path)
+            .output()
+            .map_err(|e| e.to_string())?;
+        if !compile.status.success() {
+            return Err(String::from_utf8_lossy(&compile.stderr).into_owned());
+        }
+
+        let run = std::process::Command::new(&binary_path)
+            .output()
+            .map_err(|e| e.to_string())?;
+        let stdout = String::from_utf8_lossy(&run.stdout).into_owned();
+        if !run.status.success() {
+            let stderr = String::from_utf8_lossy(&run.stderr);
+            return Err(format!("generated step failed: {stdout}{stderr}"));
+        }
+
+        Ok(stdout)
+    }
+
+    fn generated_trace_stdout(
+        workflow: &CompiledWorkflow,
+        name: &str,
+        init_source: &str,
+    ) -> Result<String, String> {
+        let generated = emit_rust_workflow(workflow).map_err(|e| e.to_string())?;
+        let temp_dir = tempfile::Builder::new()
+            .prefix(&format!("vb_codegen_trace_{}_{}", std::process::id(), name))
+            .tempdir()
+            .map_err(|e| e.to_string())?;
+        let source_path = temp_dir.path().join("generated_trace.rs");
+        let binary_path = temp_dir.path().join("generated_trace_bin");
+        let harness = generated_trace_harness(&generated, workflow, init_source)?;
+        std::fs::write(&source_path, harness).map_err(|e| e.to_string())?;
+
+        let compile = std::process::Command::new("rustc")
+            .arg("--edition")
+            .arg("2024")
+            .arg("-o")
+            .arg(&binary_path)
+            .arg(&source_path)
+            .output()
+            .map_err(|e| e.to_string())?;
+        if !compile.status.success() {
+            return Err(String::from_utf8_lossy(&compile.stderr).into_owned());
+        }
+
+        let run = std::process::Command::new(&binary_path)
+            .output()
+            .map_err(|e| e.to_string())?;
+        let stdout = String::from_utf8_lossy(&run.stdout).into_owned();
+        if !run.status.success() {
+            let stderr = String::from_utf8_lossy(&run.stderr);
+            return Err(format!("generated trace failed: {stdout}{stderr}"));
+        }
+
+        Ok(stdout)
+    }
+
+    fn generated_trace_harness(
+        generated: &str,
+        workflow: &CompiledWorkflow,
+        init_source: &str,
+    ) -> Result<String, String> {
+        Ok(format!(
+            "{generated}\nfn main() {{\n    const TRACE_STEP_LIMIT: usize = {};\n    let mut slots = [None; WORKFLOW_SLOT_COUNT];\n    let mut slot_taints = [Taint::Clean; WORKFLOW_SLOT_COUNT];\n{init_source}\n    let mut list_store = ListStore::new();\n    let mut object_store = ObjectStore::new();\n    let mut pc: u16 = {};\n    let mut journal = String::new();\n    let mut retry_attempt_total: u16 = 0;\n    let mut terminal = false;\n    for _step_index in 0..TRACE_STEP_LIMIT {{\n        journal.push_str(\"start:\");\n        journal.push_str(&pc.to_string());\n        journal.push('|');\n        let retry_attempt_before = retry_attempt_for_pc(pc, &slots).unwrap_or(0);\n        let outcome = match pc {{\n{}            _ => Err(DriveError::InvalidProgramCounter),\n        }};\n        match outcome {{\n            Ok(StepOutcome::Continue(next)) => {{\n                retry_attempt_total = retry_attempt_total.saturating_add(retry_attempt_before);\n                journal.push_str(\"continue:\");\n                journal.push_str(&next.to_string());\n                journal.push('|');\n                pc = next;\n            }}\n            Ok(StepOutcome::Finished(value)) => {{\n                journal.push_str(\"finished\");\n                println!(\"result:{{value:?}}\");\n                println!(\"final_pc:{{pc}}\");\n                println!(\"slots:{{slots:?}}\");\n                println!(\"journal:{{journal}}\");\n                println!(\"retry_attempt_total:{{retry_attempt_total}}\");\n                terminal = true;\n                break;\n            }}\n            Err(error) => {{\n                journal.push_str(\"error\");\n                println!(\"error:{{error:?}}\");\n                println!(\"final_pc:{{pc}}\");\n                println!(\"slots:{{slots:?}}\");\n                println!(\"journal:{{journal}}\");\n                println!(\"retry_attempt_total:{{retry_attempt_total}}\");\n                terminal = true;\n                break;\n            }}\n        }}\n    }}\n    if !terminal {{\n        journal.push_str(\"step_limit\");\n        println!(\"error:StepLimitExceeded\");\n        println!(\"final_pc:{{pc}}\");\n        println!(\"slots:{{slots:?}}\");\n        println!(\"journal:{{journal}}\");\n        println!(\"retry_attempt_total:{{retry_attempt_total}}\");\n        std::process::exit(22);\n    }}\n}}\n\nfn retry_attempt_for_pc(pc: u16, slots: &[Option<SlotValue>; WORKFLOW_SLOT_COUNT]) -> Result<u16, DriveError> {{\n    match pc {{\n{}        _ => Ok(0),\n    }}\n}}\n",
+            trace_step_limit(workflow)?,
+            workflow.entry().get(),
+            generated_trace_arms(workflow),
+            generated_retry_trace_arms(workflow)
+        ))
+    }
+
+    fn trace_step_limit(workflow: &CompiledWorkflow) -> Result<usize, String> {
+        usize::from(workflow.node_count())
+            .checked_add(1)
+            .ok_or_else(|| String::from("trace step limit overflow"))
+    }
+
+    fn generated_trace_arms(workflow: &CompiledWorkflow) -> String {
+        (0..workflow.node_count()).fold(String::new(), |mut arms, idx| {
+            arms.push_str("            ");
+            arms.push_str(&idx.to_string());
+            arms.push_str(" => step_");
+            arms.push_str(&idx.to_string());
+            arms.push_str("(&mut slots, &mut slot_taints, &mut list_store, &mut object_store),\n");
+            arms
+        })
+    }
+
+    fn generated_retry_trace_arms(workflow: &CompiledWorkflow) -> String {
+        (0..workflow.node_count()).fold(String::new(), |mut arms, idx| {
+            if let Some(node) = workflow.node(StepIdx::new(idx))
+                && let CompiledNodeKind::RetryCheck { policy_slot, .. } = node.kind
+            {
+                arms.push_str("        ");
+                arms.push_str(&idx.to_string());
+                arms.push_str(" => read_retry_state_from_slot(slots, ");
+                arms.push_str(&policy_slot.get().to_string());
+                arms.push_str(
+                    ", CONTRACT_MAX_RETRY_ATTEMPTS).map(|state| state.current_attempt()),\n",
+                );
+            }
+            arms
+        })
     }
 
     fn expected_drive_error_stdout(workflow: &CompiledWorkflow) -> Result<String, String> {
@@ -700,6 +827,109 @@ mod tests {
             step_names: Box::new([]),
         };
         CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())
+    }
+
+    fn primitive_retry_check_workflow() -> Result<CompiledWorkflow, String> {
+        let parts = WorkflowParts {
+            name: Box::<str>::from("test_primitive_retry_check_exec"),
+            digest: WorkflowDigest::from_bytes([0xE7; 32]),
+            nodes: vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: Some(SlotIdx::new(0)),
+                    next: Some(StepIdx::new(1)),
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::SetConst {
+                        value: ConstIdx::new(0),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: None,
+                    next: None,
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::RetryCheck {
+                        policy_slot: SlotIdx::new(0),
+                        body: StepIdx::new(2),
+                        exhausted: StepIdx::new(3),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(2),
+                    output: Some(SlotIdx::new(1)),
+                    next: Some(StepIdx::new(4)),
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::SetConst {
+                        value: ConstIdx::new(1),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(3),
+                    output: Some(SlotIdx::new(1)),
+                    next: Some(StepIdx::new(4)),
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::SetConst {
+                        value: ConstIdx::new(2),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(4),
+                    output: None,
+                    next: None,
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(1),
+                    },
+                },
+            ]
+            .into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: vec![
+                ConstValue::I64(retry_state_raw(1, 2)?),
+                ConstValue::I64(99),
+                ConstValue::I64(-1),
+            ]
+            .into_boxed_slice(),
+            slot_count: 2,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract {
+                max_steps: 100,
+                max_slots: 10,
+                max_constants: 10,
+                max_accessors: 0,
+                max_expressions: 0,
+                max_expr_stack: 0,
+                max_input_bytes: 0,
+                max_output_bytes: 0,
+                max_step_budget_per_tick: 100,
+                max_blob_bytes: 0,
+                max_ipc_payload_bytes: 0,
+                max_retry_attempts: 3,
+                max_fanout: 1,
+                max_collect_items: 0,
+                max_queue_depth: 0,
+                max_journal_batch_bytes: 0,
+            },
+            step_names: Box::new([]),
+        };
+        CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())
+    }
+
+    fn retry_state_raw(attempt: u16, remaining: u16) -> Result<i64, String> {
+        let attempt_bits = u64::from(attempt)
+            .checked_shl(16)
+            .ok_or_else(|| String::from("retry attempt shift overflow"))?;
+        let packed = attempt_bits
+            .checked_add(u64::from(remaining))
+            .ok_or_else(|| String::from("retry state pack overflow"))?;
+        i64::try_from(packed).map_err(|e| e.to_string())
     }
 
     fn primitive_choose_workflow() -> Result<CompiledWorkflow, String> {
@@ -1507,10 +1737,14 @@ mod tests {
         // When emit_step_function generates code
         let mut out = String::new();
         emit_step_function(&mut out, node, &workflow).map_err(|e| e.to_string())?;
-        // Then the output contains action suspend dispatch
+        // Then the output returns a typed action suspension instead of continuing.
         assert!(
-            out.contains("ActionSuspend"),
-            "Do node must emit ActionSuspend error, got: {out}"
+            out.contains("ActionPending"),
+            "Do node must emit ActionPending suspension, got: {out}"
+        );
+        assert!(
+            out.contains("step: 0"),
+            "Do node must preserve pc 0, got: {out}"
         );
         assert!(
             out.contains("action_id: 5"),
@@ -1844,16 +2078,22 @@ mod tests {
         // Given an action boundary with action 7 and input slot 3
         let mut out = String::new();
         // When emit_action_boundary writes the code
-        emit_action_boundary(&mut out, ActionId::new(7), SlotIdx::new(3))
-            .map_err(|e| e.to_string())?;
+        emit_action_boundary(
+            &mut out,
+            StepIdx::new(2),
+            ActionId::new(7),
+            SlotIdx::new(3),
+            Some(StepIdx::new(4)),
+        )
+        .map_err(|e| e.to_string())?;
         // Then the output reads the input slot and returns ActionSuspend
         assert!(
             out.contains("read_slot(slots, 3)"),
             "action boundary must read input slot 3, got: {out}"
         );
         assert!(
-            out.contains("ActionSuspend { action_id: 7, input_slot: 3 }"),
-            "action boundary must return ActionSuspend with correct fields, got: {out}"
+            out.contains("ActionPending { step: 2, action_id: 7, input_slot: 3, resume_pc: 4 }"),
+            "action boundary must return typed ActionPending suspension, got: {out}"
         );
         Ok(())
     }
@@ -2100,6 +2340,104 @@ mod tests {
         assert!(
             source.contains("fn read_slot_optional"),
             "must define read_slot_optional function"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn generated_expression_equivalence_trace_matches_interpreter_state_and_replay()
+    -> Result<(), String> {
+        let workflow = primitive_expression_workflow()?;
+
+        let mut run = new_run_frame(RunId::new(20), &workflow).map_err(|e| e.to_string())?;
+        let mut budget = StepBudget::MAX;
+        let mut store = ValueStore::new();
+        let mut evidence = EvidenceCollector::new();
+        let mut collect_states = CollectStates::new();
+        let signal = drive_deterministic_full(
+            &workflow,
+            &mut run,
+            &mut budget,
+            &mut store,
+            &[],
+            RetryPolicy::NEVER,
+            &mut evidence,
+            &mut collect_states,
+            &CapabilitySet::empty(),
+        )
+        .map_err(|e| e.to_string())?;
+        assert_eq!(signal, RuntimeSignal::Finished(SlotValue::Bool(true)));
+        assert_eq!(run.pc(), StepIdx::new(1));
+        assert_eq!(
+            run.initialized_slots().map_err(|e| e.to_string())?,
+            vec![(
+                SlotIdx::new(0),
+                SlotValue::Bool(true),
+                vb_core::Taint::Clean
+            )]
+        );
+
+        let first_replay = generated_trace_stdout(&workflow, "expr_trace_one", "")?;
+        let second_replay = generated_trace_stdout(&workflow, "expr_trace_two", "")?;
+        let expected = "result:Bool(true)\nfinal_pc:1\nslots:[Some(Bool(true))]\njournal:start:0|continue:1|start:1|finished\nretry_attempt_total:0\n";
+        assert_eq!(first_replay, expected);
+        assert_eq!(second_replay, expected);
+        Ok(())
+    }
+
+    #[test]
+    fn generated_choose_type_error_trace_matches_exact_typed_error_and_pc() -> Result<(), String> {
+        let workflow = non_boolean_choose_workflow()?;
+
+        assert_boolean_number_type_mismatch(ir_drive_error(&workflow)?)?;
+        let generated_stdout = generated_trace_stdout(&workflow, "choose_type_trace", "")?;
+
+        assert_eq!(
+            generated_stdout,
+            "error:TypeMismatch { expected: \"boolean\", found: \"number\" }\nfinal_pc:0\nslots:[None]\njournal:start:0|error\nretry_attempt_total:0\n"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn generated_retry_check_trace_reports_real_attempt_and_terminal_slot_values()
+    -> Result<(), String> {
+        let workflow = primitive_retry_check_workflow()?;
+
+        let generated_stdout = generated_trace_stdout(&workflow, "retry_check_trace", "")?;
+
+        assert_eq!(
+            generated_stdout,
+            "result:I64(99)\nfinal_pc:4\nslots:[Some(I64(65538)), Some(I64(99))]\njournal:start:0|continue:1|start:1|continue:2|start:2|continue:4|start:4|finished\nretry_attempt_total:1\n"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn generated_subset_rejects_unsupported_control_primitives_with_exact_feature()
+    -> Result<(), String> {
+        let together_error = validate_generated_subset(&together_workflow()?)
+            .err()
+            .ok_or("TogetherStart unexpectedly accepted")?;
+        assert_eq!(
+            together_error.to_string(),
+            "unsupported generated Rust IR feature: TogetherStart"
+        );
+
+        let reduce_error = validate_generated_subset(&reduce_workflow()?)
+            .err()
+            .ok_or("ReduceStart unexpectedly accepted")?;
+        assert_eq!(
+            reduce_error.to_string(),
+            "unsupported generated Rust IR feature: ReduceStart"
+        );
+
+        let repeat_error = validate_generated_subset(&repeat_workflow()?)
+            .err()
+            .ok_or("RepeatStart unexpectedly accepted")?;
+        assert_eq!(
+            repeat_error.to_string(),
+            "unsupported generated Rust IR feature: RepeatStart"
         );
         Ok(())
     }
@@ -2548,7 +2886,7 @@ mod tests {
         let runtime_value = runtime_drive_finished_value(&workflow)?;
         match runtime_value {
             SlotValue::List(id) => {
-                assert_eq!(id.get(), 1, "runtime must return inserted empty tail")
+                assert_eq!(id.get(), 1, "runtime must return inserted empty tail");
             }
             other => return Err(format!("expected runtime list result, got {other:?}")),
         }
@@ -2644,38 +2982,38 @@ mod tests {
 
     #[test]
     fn codegen_error_display_contains_variant_name() {
-        assert_error_display_contains(CodegenError::FormatBufferOverflow, "buffer");
+        assert_error_display_contains(&CodegenError::FormatBufferOverflow, "buffer");
         assert_error_display_contains(
-            CodegenError::RustfmtFailed {
+            &CodegenError::RustfmtFailed {
                 detail: String::from("test"),
             },
             "rustfmt",
         );
         assert_error_display_contains(
-            CodegenError::CompileCheckFailed {
+            &CodegenError::CompileCheckFailed {
                 detail: String::from("test"),
             },
             "compile",
         );
         assert_error_display_contains(
-            CodegenError::SemanticMismatch {
+            &CodegenError::SemanticMismatch {
                 detail: String::from("test"),
             },
             "semantic",
         );
         assert_error_display_contains(
-            CodegenError::Io(std::io::Error::other("io")),
+            &CodegenError::Io(std::io::Error::other("io")),
             "codegen IO error",
         );
         assert_error_display_contains(
-            CodegenError::TrybuildFixture {
+            &CodegenError::TrybuildFixture {
                 detail: String::from("test"),
             },
             "trybuild",
         );
     }
 
-    fn assert_error_display_contains(error: CodegenError, keyword: &str) {
+    fn assert_error_display_contains(error: &CodegenError, keyword: &str) {
         let message = error.to_string();
         assert!(
             message.contains(keyword),
@@ -3664,7 +4002,7 @@ mod tests {
             .get(dispatch_section_start..)
             .ok_or("dispatch section start invalid")?;
         let dispatch_section_end = dispatch_section
-            .find("}")
+            .find('}')
             .ok_or("dispatch closing brace missing")?;
         let dispatch_body = dispatch_section
             .get(..dispatch_section_end)
@@ -3738,6 +4076,30 @@ mod tests {
     }
 
     #[test]
+    fn compare_generated_to_ir_rejects_wrong_action_boundary_count() -> Result<(), String> {
+        let workflow = do_action_workflow()?;
+        let source = emit_rust_workflow(&workflow)
+            .map_err(|e| e.to_string())?
+            .replace("Action boundary:", "Action boundary removed:");
+
+        let detail = semantic_mismatch_detail(compare_generated_to_ir(&source, &workflow))?;
+        assert_eq!(detail, "action count mismatch: generated has 0, IR has 1");
+        Ok(())
+    }
+
+    #[test]
+    fn compare_generated_to_ir_rejects_missing_terminal_result_pattern() -> Result<(), String> {
+        let workflow = minimal_workflow()?;
+        let source = emit_rust_workflow(&workflow)
+            .map_err(|e| e.to_string())?
+            .replace("StepOutcome::Finished", "StepOutcome::Terminated");
+
+        let detail = semantic_mismatch_detail(compare_generated_to_ir(&source, &workflow))?;
+        assert_eq!(detail, "generated source is missing terminal result return");
+        Ok(())
+    }
+
+    #[test]
     fn build_list_codegen_is_now_supported() -> Result<(), String> {
         let workflow = unsupported_build_list_workflow()?;
         // BuildList is now supported: validation and emission should succeed
@@ -3751,38 +4113,31 @@ mod tests {
     }
 
     #[test]
-    fn contains_expression_codegen_is_now_supported() -> Result<(), String> {
+    fn contains_expression_codegen_rejects_missing_symbol_store() -> Result<(), String> {
         let workflow = unsupported_contains_expression_workflow()?;
-        // Contains is now supported: validation and emission should succeed
-        validate_generated_subset(&workflow).map_err(|e| e.to_string())?;
-        let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
-        assert!(
-            source.contains("symbol_contains"),
-            "generated source must contain symbol_contains, got: {source}"
-        );
-        Ok(())
+        assert_unsupported_ir(
+            validate_generated_subset(&workflow),
+            "text helper contains requires runtime symbol store",
+            "unsupported generated Rust IR feature: text helper contains requires runtime symbol store",
+        )
     }
 
     #[test]
-    fn unsupported_accessor_codegen_is_rejected_before_emit() -> Result<(), String> {
+    fn accessor_traversal_codegen_is_supported() -> Result<(), String> {
         let workflow = unsupported_accessor_traversal_workflow()?;
-        assert_unsupported_ir(
-            validate_generated_subset(&workflow),
-            "accessor traversal",
-            "unsupported generated Rust IR feature: accessor traversal",
-        )?;
-        assert_unsupported_ir(
-            emit_rust_workflow(&workflow),
-            "accessor traversal",
-            "unsupported generated Rust IR feature: accessor traversal",
-        )?;
+        validate_generated_subset(&workflow).map_err(|e| e.to_string())?;
+        let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
+        assert!(
+            source.contains("object_field_scan"),
+            "missing object field traversal: {source}"
+        );
         Ok(())
     }
 
     fn assert_unsupported_ir<T>(
         result: Result<T, CodegenError>,
         expected_feature: &'static str,
-        expected_message: &'static str,
+        expected_message: &str,
     ) -> Result<(), String> {
         let error = result
             .err()
@@ -3810,8 +4165,10 @@ mod tests {
 
         compare_generated_to_ir(&source, &workflow).map_err(|e| e.to_string())?;
         assert!(
-            source.contains("stack.push(read_slot(slots, 0)?)?;"),
-            "empty accessor must compile to the same checked root-slot read as LoadSlot"
+            source.contains(
+                "stack.push_tainted(read_slot(slots, 0)?, read_taint(slot_taints, 0)?)?;"
+            ),
+            "empty accessor must preserve root-slot value and taint"
         );
         assert!(
             !source.contains("accessor traversal"),
@@ -3909,9 +4266,9 @@ mod tests {
         let workflow = do_action_workflow()?;
         // When generating source
         let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
-        // Then the Do step function contains ActionSuspend with the correct action id
+        // Then the Do step function contains ActionPending with the correct action id
         assert!(
-            source.contains("ActionSuspend { action_id: 5"),
+            source.contains("ActionPending { step: 0, action_id: 5"),
             "do step must reference action_id 5"
         );
         assert!(
@@ -4047,8 +4404,7 @@ mod tests {
         let violations = forbidden_generated_source_violations(&source);
         assert!(
             violations.is_empty(),
-            "generated source contains forbidden constructs: {:?}",
-            violations
+            "generated source contains forbidden constructs: {violations:?}"
         );
         Ok(())
     }
@@ -4068,7 +4424,7 @@ mod tests {
         let nodes = std::iter::once(CompiledNode {
             id: StepIdx::new(0),
             output: None,
-            next: None,
+            next: Some(StepIdx::new(1)),
             on_error: None,
             error_slot: None,
             kind: CompiledNodeKind::Choose {
@@ -4170,10 +4526,13 @@ mod tests {
         // When generating source
         let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
         // Then the source is valid (3 steps, 2 constants, no expressions)
-        let step_count = source
-            .lines()
-            .filter(|l| l.trim().starts_with("fn step_"))
-            .count() as u16;
+        let step_count = u16::try_from(
+            source
+                .lines()
+                .filter(|l| l.trim().starts_with("fn step_"))
+                .count(),
+        )
+        .map_err(|e| e.to_string())?;
         assert!(
             step_count == 3,
             "expected 3 step handlers, found {step_count}"
@@ -4394,7 +4753,7 @@ mod tests {
     // Verify that Jump-to-self cycle detection is absent (code gen gap).
     // The generated drive loop will infinite-loop if a step returns Continue to itself.
     #[test]
-    fn jump_to_self_produces_infinite_loop_without_budget_guard() -> Result<(), String> {
+    fn jump_to_self_produces_infinite_loop_without_budget_guard() {
         // Given a workflow where step 0 is a Nop that continues to step 0 (self-loop)
         let parts = WorkflowParts {
             name: Box::<str>::from("test_self_loop"),
@@ -4438,7 +4797,6 @@ mod tests {
             }
         }
         // If the workflow was rejected by validation, that's also acceptable
-        Ok(())
     }
 
     // Verify that WaitEvent without timeout slot emits only the event read.
@@ -5579,6 +5937,130 @@ mod tests {
         Ok(())
     }
 
+    fn single_unsupported_node_workflow(
+        name: &'static str,
+        kind: CompiledNodeKind,
+    ) -> Result<CompiledWorkflow, String> {
+        let parts = WorkflowParts {
+            name: Box::<str>::from(name),
+            digest: WorkflowDigest::from_bytes([0xC7; 32]),
+            nodes: vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: Some(SlotIdx::new(0)),
+                    next: Some(StepIdx::new(1)),
+                    on_error: None,
+                    error_slot: None,
+                    kind,
+                },
+                choose_finish_node(1),
+            ]
+            .into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: vec![ConstValue::I64(0)].into_boxed_slice(),
+            slot_count: 2,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+            step_names: Box::new([]),
+        };
+        CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())
+    }
+
+    #[test]
+    fn generated_subset_rejects_each_collect_reduce_repeat_variant_exactly() -> Result<(), String> {
+        let cases = [
+            (
+                single_unsupported_node_workflow(
+                    "test_collect_page_reject",
+                    CompiledNodeKind::CollectPage {
+                        collector_slot: SlotIdx::new(0),
+                        body: StepIdx::new(1),
+                        done: StepIdx::new(1),
+                    },
+                )?,
+                "CollectPage",
+            ),
+            (
+                single_unsupported_node_workflow(
+                    "test_collect_next_reject",
+                    CompiledNodeKind::CollectNext {
+                        collector_slot: SlotIdx::new(0),
+                        body: StepIdx::new(1),
+                        done: StepIdx::new(1),
+                    },
+                )?,
+                "CollectNext",
+            ),
+            (
+                single_unsupported_node_workflow(
+                    "test_collect_finish_reject",
+                    CompiledNodeKind::CollectFinish {
+                        collector_slot: SlotIdx::new(0),
+                    },
+                )?,
+                "CollectFinish",
+            ),
+            (
+                single_unsupported_node_workflow(
+                    "test_reduce_next_reject",
+                    CompiledNodeKind::ReduceNext {
+                        iterator_slot: SlotIdx::new(0),
+                        accumulator: SlotIdx::new(1),
+                        body: StepIdx::new(1),
+                        done: StepIdx::new(1),
+                    },
+                )?,
+                "ReduceNext",
+            ),
+            (
+                single_unsupported_node_workflow(
+                    "test_reduce_finish_reject",
+                    CompiledNodeKind::ReduceFinish {
+                        accumulator: SlotIdx::new(0),
+                    },
+                )?,
+                "ReduceFinish",
+            ),
+            (
+                single_unsupported_node_workflow(
+                    "test_repeat_attempt_reject",
+                    CompiledNodeKind::RepeatAttempt {
+                        attempt_slot: SlotIdx::new(0),
+                        body: StepIdx::new(1),
+                        done: StepIdx::new(1),
+                    },
+                )?,
+                "RepeatAttempt",
+            ),
+            (
+                single_unsupported_node_workflow(
+                    "test_repeat_check_reject",
+                    CompiledNodeKind::RepeatCheck {
+                        attempt_slot: SlotIdx::new(0),
+                        done: StepIdx::new(1),
+                    },
+                )?,
+                "RepeatCheck",
+            ),
+            (
+                single_unsupported_node_workflow(
+                    "test_repeat_finish_reject",
+                    CompiledNodeKind::RepeatFinish {
+                        result: SlotIdx::new(0),
+                    },
+                )?,
+                "RepeatFinish",
+            ),
+        ];
+
+        cases.iter().try_for_each(|(workflow, feature)| {
+            let expected = format!("unsupported generated Rust IR feature: {feature}");
+            assert_unsupported_ir(validate_generated_subset(workflow), feature, &expected)
+        })
+    }
+
     // --- Nested ForEach validation acceptance test ---
 
     #[test]
@@ -5790,6 +6272,45 @@ mod tests {
     }
 
     #[test]
+    fn build_object_generated_step_joins_mixed_taint_to_secret() -> Result<(), String> {
+        let workflow = build_object_multi_field_workflow()?;
+        let stdout = generated_step_stdout(
+            &workflow,
+            "build_object_taint",
+            "    let mut slots = [None; WORKFLOW_SLOT_COUNT];\n    let mut taints = [Taint::Clean; WORKFLOW_SLOT_COUNT];\n    slots[0] = Some(SlotValue::I64(10));\n    slots[1] = Some(SlotValue::Bool(true));\n    slots[2] = Some(SlotValue::Symbol(2));\n    taints[0] = Taint::Clean;\n    taints[1] = Taint::DerivedFromSecret;\n    taints[2] = Taint::Secret;\n    let mut list_store = ListStore::new();\n    let mut object_store = ObjectStore::new();\n    match step_0(&mut slots, &mut taints, &mut list_store, &mut object_store) {\n        Ok(_) => println!(\"slot={:?};taint={:?}\", slots[3], taints[3]),\n        Err(error) => println!(\"err:{error:?}\"),\n    }",
+        )?;
+        assert!(
+            stdout.contains("slot=Some(Object(0));taint=Secret"),
+            "BuildObject must join mixed taint to Secret, got: {stdout}"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn build_object_generated_step_missing_field_reports_slot_null() -> Result<(), String> {
+        let workflow = build_object_multi_field_workflow()?;
+        let stdout = generated_step_stdout(
+            &workflow,
+            "build_object_missing_field",
+            "    let mut slots = [None; WORKFLOW_SLOT_COUNT];\n    let mut taints = [Taint::Clean; WORKFLOW_SLOT_COUNT];\n    slots[0] = Some(SlotValue::I64(10));\n    slots[2] = Some(SlotValue::Symbol(2));\n    let mut list_store = ListStore::new();\n    let mut object_store = ObjectStore::new();\n    match step_0(&mut slots, &mut taints, &mut list_store, &mut object_store) {\n        Err(DriveError::SlotNull) => println!(\"err:SlotNull\"),\n        Err(error) => println!(\"unexpected_err:{error:?}\"),\n        Ok(_) => println!(\"unexpected_ok\"),\n    }",
+        )?;
+        assert_eq!(stdout, "err:SlotNull\n");
+        Ok(())
+    }
+
+    #[test]
+    fn build_object_store_bounds_report_object_store_overflow() -> Result<(), String> {
+        let workflow = build_object_multi_field_workflow()?;
+        let stdout = generated_step_stdout(
+            &workflow,
+            "build_object_store_bounds",
+            "    let mut object_store = ObjectStore::new();\n    let field = ObjectField { key: 0, value: SlotValue::Null, taint: Taint::Clean };\n    match object_store.insert_fields(&[field, field, field, field]) {\n        Err(DriveError::ObjectStoreOverflow) => println!(\"err:ObjectStoreOverflow\"),\n        other => println!(\"unexpected:{other:?}\"),\n    }",
+        )?;
+        assert_eq!(stdout, "err:ObjectStoreOverflow\n");
+        Ok(())
+    }
+
+    #[test]
     fn build_object_zero_fields_emits_object_zero() -> Result<(), String> {
         let parts = WorkflowParts {
             name: Box::<str>::from("test_build_object_zero"),
@@ -5923,6 +6444,105 @@ mod tests {
     }
 
     #[test]
+    fn list_store_contract_wrapper_matches_value_store_contract() -> Result<(), String> {
+        let workflow = build_list_multi_item_workflow()?;
+        let mut wrapper = String::new();
+        let mut direct = String::new();
+
+        emit_list_store_contract(&mut wrapper, &workflow).map_err(|e| e.to_string())?;
+        emit_value_store_contract(&mut direct, &workflow).map_err(|e| e.to_string())?;
+
+        assert_eq!(wrapper, direct);
+        assert!(
+            wrapper.contains("LIST_STORE_RECORD_CAPACITY")
+                && wrapper.contains("LIST_STORE_VALUE_CAPACITY"),
+            "list-store contract wrapper must emit fixed generated list capacities, got: {wrapper}"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn build_list_generated_step_preserves_clean_taint() -> Result<(), String> {
+        let workflow = build_list_multi_item_workflow()?;
+        let stdout = generated_step_stdout(
+            &workflow,
+            "build_list_clean_taint",
+            "    let mut slots = [None; WORKFLOW_SLOT_COUNT];\n    let mut taints = [Taint::Clean; WORKFLOW_SLOT_COUNT];\n    slots[0] = Some(SlotValue::I64(10));\n    slots[1] = Some(SlotValue::Bool(true));\n    slots[2] = Some(SlotValue::Symbol(2));\n    let mut list_store = ListStore::new();\n    let mut object_store = ObjectStore::new();\n    match step_0(&mut slots, &mut taints, &mut list_store, &mut object_store) {\n        Ok(_) => println!(\"slot={:?};taint={:?}\", slots[3], taints[3]),\n        Err(error) => println!(\"err:{error:?}\"),\n    }",
+        )?;
+        assert!(
+            stdout.contains("slot=Some(List(0));taint=Clean"),
+            "BuildList clean inputs must produce clean output, got: {stdout}"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn build_list_generated_step_joins_secret_taint() -> Result<(), String> {
+        let workflow = build_list_multi_item_workflow()?;
+        let stdout = generated_step_stdout(
+            &workflow,
+            "build_list_secret_taint",
+            "    let mut slots = [None; WORKFLOW_SLOT_COUNT];\n    let mut taints = [Taint::Clean; WORKFLOW_SLOT_COUNT];\n    slots[0] = Some(SlotValue::I64(10));\n    slots[1] = Some(SlotValue::Bool(true));\n    slots[2] = Some(SlotValue::Symbol(2));\n    taints[1] = Taint::Secret;\n    let mut list_store = ListStore::new();\n    let mut object_store = ObjectStore::new();\n    match step_0(&mut slots, &mut taints, &mut list_store, &mut object_store) {\n        Ok(_) => println!(\"slot={:?};taint={:?}\", slots[3], taints[3]),\n        Err(error) => println!(\"err:{error:?}\"),\n    }",
+        )?;
+        assert!(
+            stdout.contains("slot=Some(List(0));taint=Secret"),
+            "BuildList secret input must taint output Secret, got: {stdout}"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn build_list_generated_step_missing_item_reports_slot_null() -> Result<(), String> {
+        let workflow = build_list_multi_item_workflow()?;
+        let stdout = generated_step_stdout(
+            &workflow,
+            "build_list_missing_item",
+            "    let mut slots = [None; WORKFLOW_SLOT_COUNT];\n    let mut taints = [Taint::Clean; WORKFLOW_SLOT_COUNT];\n    slots[0] = Some(SlotValue::I64(10));\n    slots[2] = Some(SlotValue::Symbol(2));\n    let mut list_store = ListStore::new();\n    let mut object_store = ObjectStore::new();\n    match step_0(&mut slots, &mut taints, &mut list_store, &mut object_store) {\n        Err(DriveError::SlotNull) => println!(\"err:SlotNull\"),\n        Err(error) => println!(\"unexpected_err:{error:?}\"),\n        Ok(_) => println!(\"unexpected_ok\"),\n    }",
+        )?;
+        assert_eq!(stdout, "err:SlotNull\n");
+        Ok(())
+    }
+
+    #[test]
+    fn build_list_store_bounds_report_list_store_overflow() -> Result<(), String> {
+        let workflow = build_list_multi_item_workflow()?;
+        let stdout = generated_step_stdout(
+            &workflow,
+            "build_list_store_bounds",
+            "    let mut list_store = ListStore::new();\n    match list_store.insert_items_with_taints(\n        &[SlotValue::I64(1), SlotValue::I64(2), SlotValue::I64(3), SlotValue::I64(4)],\n        &[Taint::Clean, Taint::Clean, Taint::Clean, Taint::Clean],\n    ) {\n        Err(DriveError::ListStoreOverflow) => println!(\"err:ListStoreOverflow\"),\n        other => println!(\"unexpected:{other:?}\"),\n    }",
+        )?;
+        assert_eq!(stdout, "err:ListStoreOverflow\n");
+        Ok(())
+    }
+
+    #[test]
+    fn build_list_store_taint_length_mismatch_reports_typed_failure() -> Result<(), String> {
+        let workflow = build_list_multi_item_workflow()?;
+        let stdout = generated_step_stdout(
+            &workflow,
+            "build_list_taint_mismatch",
+            "    let mut list_store = ListStore::new();\n    match list_store.insert_items_with_taints(&[SlotValue::I64(1)], &[]) {\n        Err(DriveError::InvalidCompiledWorkflow { reason }) => {\n            println!(\"err:InvalidCompiledWorkflow:{reason}\");\n        }\n        other => println!(\"unexpected:{other:?}\"),\n    }",
+        )?;
+        assert_eq!(
+            stdout,
+            "err:InvalidCompiledWorkflow:list value/taint length mismatch\n"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn generated_list_expect_reports_exact_type_mismatch() -> Result<(), String> {
+        let workflow = build_list_multi_item_workflow()?;
+        let stdout = generated_step_stdout(
+            &workflow,
+            "build_list_exact_type_mismatch",
+            "    match expect_list_value(SlotValue::I64(7)) {\n        Err(DriveError::TypeMismatch { expected, found }) => {\n            println!(\"err:TypeMismatch:{expected}:{found}\");\n        }\n        other => println!(\"unexpected:{other:?}\"),\n    }",
+        )?;
+        assert_eq!(stdout, "err:TypeMismatch:list:number\n");
+        Ok(())
+    }
+
+    #[test]
     fn build_list_zero_items_emits_list_zero() -> Result<(), String> {
         let parts = WorkflowParts {
             name: Box::<str>::from("test_build_list_zero"),
@@ -6040,8 +6660,8 @@ mod tests {
         let mut out = String::new();
         emit_step_function(&mut out, node, &workflow).map_err(|e| e.to_string())?;
         assert!(
-            out.contains("read_slot(slots, 0)"),
-            "RetryCheck must read policy slot, got: {out}"
+            out.contains("read_retry_state_from_slot(slots, 0, CONTRACT_MAX_RETRY_ATTEMPTS)"),
+            "RetryCheck must decode typed retry state from policy slot, got: {out}"
         );
         Ok(())
     }
@@ -6053,11 +6673,11 @@ mod tests {
         let mut out = String::new();
         emit_step_function(&mut out, node, &workflow).map_err(|e| e.to_string())?;
         assert!(
-            out.contains("StepOutcome::Continue(1)"),
+            out.contains("retry_check_target(_retry_state.current_attempt(), CONTRACT_MAX_RETRY_ATTEMPTS, 1, 2)"),
             "RetryCheck body branch must target step 1, got: {out}"
         );
         assert!(
-            out.contains("StepOutcome::Continue(2)"),
+            out.contains("CONTRACT_MAX_RETRY_ATTEMPTS"),
             "RetryCheck exhausted branch must target step 2, got: {out}"
         );
         Ok(())
@@ -6070,8 +6690,8 @@ mod tests {
         let mut out = String::new();
         emit_step_function(&mut out, node, &workflow).map_err(|e| e.to_string())?;
         assert!(
-            out.contains("_retry_count"),
-            "RetryCheck must extract retry count, got: {out}"
+            out.contains("_retry_state.current_attempt()"),
+            "RetryCheck must read invariant-checked retry attempt, got: {out}"
         );
         assert!(
             out.contains("CONTRACT_MAX_RETRY_ATTEMPTS"),
@@ -6087,12 +6707,12 @@ mod tests {
         let mut out = String::new();
         emit_step_function(&mut out, node, &workflow).map_err(|e| e.to_string())?;
         assert!(
-            out.contains("SlotValue::I64"),
-            "RetryCheck must match on SlotValue::I64 for policy, got: {out}"
+            out.contains("read_retry_state_from_slot"),
+            "RetryCheck must route policy through typed decoder, got: {out}"
         );
         assert!(
-            out.contains("TypeMismatch"),
-            "RetryCheck must emit type mismatch error guard, got: {out}"
+            out.contains("read_retry_state_from_slot"),
+            "RetryCheck must delegate type guard to decoder, got: {out}"
         );
         Ok(())
     }
@@ -6161,22 +6781,23 @@ mod tests {
     }
 
     #[test]
-    fn starts_with_expression_passes_validation() -> Result<(), String> {
+    fn starts_with_expression_rejects_missing_symbol_store() -> Result<(), String> {
         let workflow = starts_with_expression_workflow()?;
-        validate_generated_subset(&workflow).map_err(|e| e.to_string())?;
-        Ok(())
+        assert_unsupported_ir(
+            validate_generated_subset(&workflow),
+            "text helper starts_with requires runtime symbol store",
+            "unsupported generated Rust IR feature: text helper starts_with requires runtime symbol store",
+        )
     }
 
     #[test]
-    fn starts_with_expression_emits_symbol_starts_with() -> Result<(), String> {
+    fn starts_with_expression_emit_fails_closed() -> Result<(), String> {
         let workflow = starts_with_expression_workflow()?;
-        let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
-        assert!(
-            source.contains("symbol_starts_with"),
-            "StartsWith must emit symbol_starts_with call, got source snippet: {}",
-            &source.chars().take(500).collect::<String>()
-        );
-        Ok(())
+        assert_unsupported_ir(
+            emit_rust_workflow(&workflow),
+            "text helper starts_with requires runtime symbol store",
+            "unsupported generated Rust IR feature: text helper starts_with requires runtime symbol store",
+        )
     }
 
     fn ends_with_expression_workflow() -> Result<CompiledWorkflow, String> {
@@ -6229,21 +6850,23 @@ mod tests {
     }
 
     #[test]
-    fn ends_with_expression_passes_validation() -> Result<(), String> {
+    fn ends_with_expression_rejects_missing_symbol_store() -> Result<(), String> {
         let workflow = ends_with_expression_workflow()?;
-        validate_generated_subset(&workflow).map_err(|e| e.to_string())?;
-        Ok(())
+        assert_unsupported_ir(
+            validate_generated_subset(&workflow),
+            "text helper ends_with requires runtime symbol store",
+            "unsupported generated Rust IR feature: text helper ends_with requires runtime symbol store",
+        )
     }
 
     #[test]
-    fn ends_with_expression_emits_symbol_ends_with() -> Result<(), String> {
+    fn ends_with_expression_emit_fails_closed() -> Result<(), String> {
         let workflow = ends_with_expression_workflow()?;
-        let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
-        assert!(
-            source.contains("symbol_ends_with"),
-            "EndsWith must emit symbol_ends_with call"
-        );
-        Ok(())
+        assert_unsupported_ir(
+            emit_rust_workflow(&workflow),
+            "text helper ends_with requires runtime symbol store",
+            "unsupported generated Rust IR feature: text helper ends_with requires runtime symbol store",
+        )
     }
 
     // --- Helper expression op: Has ---
@@ -6293,6 +6916,61 @@ mod tests {
         CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())
     }
 
+    fn has_generated_execution_workflow(search_value: i64) -> Result<CompiledWorkflow, String> {
+        let expr = ExprProgram::try_from_ops(Box::new([
+            vb_core::ExprOp::LoadSlot(SlotIdx::new(2)),
+            vb_core::ExprOp::LoadConst(ConstIdx::new(0)),
+            vb_core::ExprOp::Has,
+        ]))
+        .map_err(|e| e.to_string())?;
+        let parts = WorkflowParts {
+            name: Box::<str>::from("test_has_generated_execution"),
+            digest: WorkflowDigest::from_bytes([0xE2; 32]),
+            nodes: vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: Some(SlotIdx::new(2)),
+                    next: Some(StepIdx::new(1)),
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::BuildList {
+                        items: vec![SlotIdx::new(0), SlotIdx::new(1)].into_boxed_slice(),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: Some(SlotIdx::new(3)),
+                    next: Some(StepIdx::new(2)),
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::EvalExpr {
+                        expr: vb_core::ExprIdx::new(0),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(2),
+                    output: None,
+                    next: None,
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(3),
+                    },
+                },
+            ]
+            .into_boxed_slice(),
+            expressions: vec![expr].into_boxed_slice(),
+            accessors: Box::new([]),
+            constants: vec![ConstValue::I64(search_value)].into_boxed_slice(),
+            slot_count: 4,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+            step_names: Box::new([]),
+        };
+        CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())
+    }
+
     #[test]
     fn has_expression_passes_validation() -> Result<(), String> {
         let workflow = has_expression_workflow()?;
@@ -6301,21 +6979,45 @@ mod tests {
     }
 
     #[test]
-    fn has_expression_emits_object_and_list_match() -> Result<(), String> {
+    fn has_expression_emits_list_contains_match() -> Result<(), String> {
         let workflow = has_expression_workflow()?;
         let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
-        assert!(
-            source.contains("SlotValue::Object"),
-            "Has must match SlotValue::Object"
-        );
         assert!(
             source.contains("SlotValue::List"),
             "Has must match SlotValue::List"
         );
         assert!(
+            source.contains("list_contains_item"),
+            "Has must scan list contents"
+        );
+        assert!(
             source.contains("SlotValue::Bool"),
             "Has must produce SlotValue::Bool result"
         );
+        Ok(())
+    }
+
+    #[test]
+    fn has_generated_execution_returns_true_for_present_item() -> Result<(), String> {
+        let workflow = has_generated_execution_workflow(7)?;
+        let stdout = generated_drive_stdout(
+            &workflow,
+            "has_present_item",
+            "    slots[0] = Some(SlotValue::I64(7));\n    slots[1] = Some(SlotValue::I64(9));",
+        )?;
+        assert_eq!(stdout, "ok:Bool(true)\n");
+        Ok(())
+    }
+
+    #[test]
+    fn has_generated_execution_returns_false_for_absent_item() -> Result<(), String> {
+        let workflow = has_generated_execution_workflow(8)?;
+        let stdout = generated_drive_stdout(
+            &workflow,
+            "has_absent_item",
+            "    slots[0] = Some(SlotValue::I64(7));\n    slots[1] = Some(SlotValue::I64(9));",
+        )?;
+        assert_eq!(stdout, "ok:Bool(false)\n");
         Ok(())
     }
 
@@ -6434,33 +7136,23 @@ mod tests {
     }
 
     #[test]
-    fn length_expression_passes_validation() -> Result<(), String> {
+    fn length_expression_rejects_unproven_symbol_store() -> Result<(), String> {
         let workflow = length_expression_workflow()?;
-        validate_generated_subset(&workflow).map_err(|e| e.to_string())?;
-        Ok(())
+        assert_unsupported_ir(
+            validate_generated_subset(&workflow),
+            "helper length requires runtime symbol store or type proof",
+            "unsupported generated Rust IR feature: helper length requires runtime symbol store or type proof",
+        )
     }
 
     #[test]
-    fn length_expression_emits_list_and_object_match() -> Result<(), String> {
+    fn length_expression_emit_fails_closed() -> Result<(), String> {
         let workflow = length_expression_workflow()?;
-        let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
-        assert!(
-            source.contains("SlotValue::List(handle)"),
-            "Length must match SlotValue::List with handle"
-        );
-        assert!(
-            source.contains("list_item_count(list_store, handle)?"),
-            "Length must resolve generated list payload length"
-        );
-        assert!(
-            source.contains("SlotValue::Object(n)"),
-            "Length must match SlotValue::Object with count"
-        );
-        assert!(
-            source.contains("SlotValue::I64"),
-            "Length must produce SlotValue::I64 result"
-        );
-        Ok(())
+        assert_unsupported_ir(
+            emit_rust_workflow(&workflow),
+            "helper length requires runtime symbol store or type proof",
+            "unsupported generated Rust IR feature: helper length requires runtime symbol store or type proof",
+        )
     }
 
     // --- Helper expression op: Empty ---
@@ -6510,27 +7202,201 @@ mod tests {
     }
 
     #[test]
-    fn empty_expression_passes_validation() -> Result<(), String> {
+    fn empty_expression_rejects_unproven_symbol_store() -> Result<(), String> {
         let workflow = empty_expression_workflow()?;
-        validate_generated_subset(&workflow).map_err(|e| e.to_string())?;
+        assert_unsupported_ir(
+            validate_generated_subset(&workflow),
+            "helper empty requires runtime symbol store or type proof",
+            "unsupported generated Rust IR feature: helper empty requires runtime symbol store or type proof",
+        )
+    }
+
+    #[test]
+    fn empty_expression_emit_fails_closed() -> Result<(), String> {
+        let workflow = empty_expression_workflow()?;
+        assert_unsupported_ir(
+            emit_rust_workflow(&workflow),
+            "helper empty requires runtime symbol store or type proof",
+            "unsupported generated Rust IR feature: helper empty requires runtime symbol store or type proof",
+        )
+    }
+
+    #[test]
+    fn direct_expr_emit_preserves_fail_closed_helper_branches() -> Result<(), String> {
+        let cases = [
+            (
+                unsupported_contains_expression_workflow()?,
+                "text helper contains requires runtime symbol store",
+            ),
+            (
+                starts_with_expression_workflow()?,
+                "text helper starts_with requires runtime symbol store",
+            ),
+            (
+                ends_with_expression_workflow()?,
+                "text helper ends_with requires runtime symbol store",
+            ),
+        ];
+
+        cases.iter().try_for_each(|(workflow, reason)| {
+            let mut out = String::new();
+            emit_expr_function(&mut out, vb_core::ExprIdx::new(0), workflow)
+                .map_err(|e| e.to_string())?;
+            assert!(
+                out.contains("InvalidCompiledWorkflow") && out.contains(reason),
+                "direct expression emission must keep fail-closed reason {reason}, got: {out}"
+            );
+            Ok::<(), String>(())
+        })?;
+
         Ok(())
     }
 
     #[test]
-    fn empty_expression_emits_zero_check() -> Result<(), String> {
-        let workflow = empty_expression_workflow()?;
-        let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
+    fn direct_expr_emit_keeps_length_and_empty_typed_runtime_guards() -> Result<(), String> {
+        let cases = [
+            (
+                length_expression_workflow()?,
+                "list or object",
+                "SlotValue::I64(_len)",
+            ),
+            (
+                empty_expression_workflow()?,
+                "list, object, or null",
+                "SlotValue::Bool(_is_empty)",
+            ),
+        ];
+
+        cases
+            .iter()
+            .try_for_each(|(workflow, expected_type, result)| {
+                let mut out = String::new();
+                emit_expr_function(&mut out, vb_core::ExprIdx::new(0), workflow)
+                    .map_err(|e| e.to_string())?;
+                assert!(
+                    out.contains(expected_type) && out.contains(result),
+                    "direct expression emission must retain typed guard {expected_type}, got: {out}"
+                );
+                Ok::<(), String>(())
+            })?;
+
+        Ok(())
+    }
+
+    fn direct_expression_workflow(
+        name: &'static str,
+        ops: Box<[vb_core::ExprOp]>,
+        constants: Box<[ConstValue]>,
+        slot_count: u16,
+    ) -> Result<CompiledWorkflow, String> {
+        let expr = ExprProgram::try_from_ops(ops).map_err(|e| e.to_string())?;
+        let parts = WorkflowParts {
+            name: Box::<str>::from(name),
+            digest: WorkflowDigest::from_bytes([0xA7; 32]),
+            nodes: vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: Some(SlotIdx::new(0)),
+                    next: Some(StepIdx::new(1)),
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::EvalExpr {
+                        expr: vb_core::ExprIdx::new(0),
+                    },
+                },
+                choose_finish_node(1),
+            ]
+            .into_boxed_slice(),
+            expressions: vec![expr].into_boxed_slice(),
+            accessors: Box::new([]),
+            constants,
+            slot_count,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+            step_names: Box::new([]),
+        };
+        CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())
+    }
+
+    #[test]
+    fn direct_expr_emit_covers_allocating_helper_branches() -> Result<(), String> {
+        let append = direct_expression_workflow(
+            "test_direct_append_emit",
+            Box::new([
+                vb_core::ExprOp::LoadSlot(SlotIdx::new(0)),
+                vb_core::ExprOp::LoadConst(ConstIdx::new(0)),
+                vb_core::ExprOp::Append,
+            ]),
+            vec![ConstValue::I64(7)].into_boxed_slice(),
+            1,
+        )?;
+        let append_if = direct_expression_workflow(
+            "test_direct_append_if_emit",
+            Box::new([
+                vb_core::ExprOp::LoadSlot(SlotIdx::new(0)),
+                vb_core::ExprOp::LoadConst(ConstIdx::new(0)),
+                vb_core::ExprOp::LoadConst(ConstIdx::new(1)),
+                vb_core::ExprOp::AppendIf,
+            ]),
+            vec![ConstValue::I64(7), ConstValue::Bool(true)].into_boxed_slice(),
+            1,
+        )?;
+        let merge = direct_expression_workflow(
+            "test_direct_merge_emit",
+            Box::new([
+                vb_core::ExprOp::LoadSlot(SlotIdx::new(0)),
+                vb_core::ExprOp::LoadSlot(SlotIdx::new(1)),
+                vb_core::ExprOp::Merge,
+            ]),
+            Box::new([]),
+            2,
+        )?;
+
+        let cases = [
+            (append, "append_list_item"),
+            (append_if, "clone_list_items"),
+            (merge, "merge_object_records"),
+        ];
+        cases.iter().try_for_each(|(workflow, expected)| {
+            let mut out = String::new();
+            emit_expr_function(&mut out, vb_core::ExprIdx::new(0), workflow)
+                .map_err(|e| e.to_string())?;
+            assert!(
+                out.contains(expected),
+                "direct expression emission must include helper {expected}, got: {out}"
+            );
+            Ok::<(), String>(())
+        })
+    }
+
+    #[test]
+    fn direct_expr_emit_covers_mul_and_missing_expression_branches() -> Result<(), String> {
+        let mul = direct_expression_workflow(
+            "test_direct_mul_emit",
+            Box::new([
+                vb_core::ExprOp::LoadConst(ConstIdx::new(0)),
+                vb_core::ExprOp::LoadConst(ConstIdx::new(1)),
+                vb_core::ExprOp::Mul,
+            ]),
+            vec![ConstValue::I64(6), ConstValue::I64(7)].into_boxed_slice(),
+            1,
+        )?;
+
+        let mut mul_out = String::new();
+        emit_expr_function(&mut mul_out, vb_core::ExprIdx::new(0), &mul)
+            .map_err(|e| e.to_string())?;
         assert!(
-            source.contains("SlotValue::List(handle)"),
-            "Empty must match SlotValue::List with handle"
+            mul_out.contains("checked_mul") && mul_out.contains("IntegerOverflow"),
+            "Mul emission must use checked multiplication, got: {mul_out}"
         );
+
+        let mut missing_expr_out = String::new();
+        emit_expr_function(&mut missing_expr_out, vb_core::ExprIdx::new(1), &mul)
+            .map_err(|e| e.to_string())?;
         assert!(
-            source.contains("list_item_count(list_store, handle)? == 0"),
-            "Empty must check generated list payload length == 0"
-        );
-        assert!(
-            source.contains("SlotValue::Null => true"),
-            "Empty must treat Null as empty"
+            missing_expr_out.is_empty(),
+            "missing expression emission should be a no-op, got: {missing_expr_out}"
         );
         Ok(())
     }
@@ -6582,18 +7448,14 @@ mod tests {
     }
 
     #[test]
-    fn sum_expression_is_rejected_as_unsupported() -> Result<(), String> {
+    fn sum_expression_codegen_is_supported() -> Result<(), String> {
         let workflow = sum_expression_workflow()?;
-        assert_unsupported_ir(
-            validate_generated_subset(&workflow),
-            "sum",
-            "unsupported generated Rust IR feature: sum",
-        )?;
-        assert_unsupported_ir(
-            emit_rust_workflow(&workflow),
-            "sum",
-            "unsupported generated Rust IR feature: sum",
-        )?;
+        validate_generated_subset(&workflow).map_err(|e| e.to_string())?;
+        let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
+        assert!(
+            source.contains("sum_list_items"),
+            "missing sum helper: {source}"
+        );
         Ok(())
     }
 
@@ -6708,41 +7570,22 @@ mod tests {
     }
 
     #[test]
-    fn unique_expression_is_rejected_as_unsupported() -> Result<(), String> {
+    fn unique_expression_codegen_is_supported() -> Result<(), String> {
         let workflow = unique_expression_workflow()?;
-        assert_unsupported_ir(
-            validate_generated_subset(&workflow),
-            "unique",
-            "unsupported generated Rust IR feature: unique",
-        )?;
-        assert_unsupported_ir(
-            emit_rust_workflow(&workflow),
-            "unique",
-            "unsupported generated Rust IR feature: unique",
-        )?;
+        validate_generated_subset(&workflow).map_err(|e| e.to_string())?;
+        let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
+        assert!(
+            source.contains("unique_list_items"),
+            "missing unique helper: {source}"
+        );
         Ok(())
     }
 
-    // --- Cross-cutting: all helper ops in one workflow pass validation and emit ---
+    // --- Cross-cutting: runtime-store-free helper ops pass validation and emit ---
 
     #[test]
-    fn all_helper_ops_together_pass_validation() -> Result<(), String> {
-        // Build a single workflow with multiple expressions, one for each helper op
-        let ops_contains = vec![
-            vb_core::ExprOp::LoadConst(ConstIdx::new(0)),
-            vb_core::ExprOp::LoadConst(ConstIdx::new(1)),
-            vb_core::ExprOp::Contains,
-        ];
-        let ops_starts = vec![
-            vb_core::ExprOp::LoadConst(ConstIdx::new(0)),
-            vb_core::ExprOp::LoadConst(ConstIdx::new(1)),
-            vb_core::ExprOp::StartsWith,
-        ];
-        let ops_ends = vec![
-            vb_core::ExprOp::LoadConst(ConstIdx::new(0)),
-            vb_core::ExprOp::LoadConst(ConstIdx::new(1)),
-            vb_core::ExprOp::EndsWith,
-        ];
+    fn runtime_store_free_helper_ops_together_pass_validation() -> Result<(), String> {
+        // Build one workflow with helper ops that do not need symbol strings.
         let ops_has = vec![
             vb_core::ExprOp::LoadConst(ConstIdx::new(0)),
             vb_core::ExprOp::LoadConst(ConstIdx::new(1)),
@@ -6752,35 +7595,54 @@ mod tests {
             vb_core::ExprOp::LoadConst(ConstIdx::new(0)),
             vb_core::ExprOp::Exists,
         ];
-        let ops_length = vec![
+        let ops_sum = vec![
             vb_core::ExprOp::LoadConst(ConstIdx::new(0)),
-            vb_core::ExprOp::Length,
+            vb_core::ExprOp::Sum,
         ];
-        let ops_empty = vec![
+        let ops_unique = vec![
             vb_core::ExprOp::LoadConst(ConstIdx::new(0)),
-            vb_core::ExprOp::Empty,
+            vb_core::ExprOp::Unique,
         ];
         let ops_count = vec![
             vb_core::ExprOp::LoadConst(ConstIdx::new(0)),
             vb_core::ExprOp::Count,
         ];
 
-        let expr_contains = ExprProgram::try_from_ops(ops_contains.into_boxed_slice())
-            .map_err(|e| e.to_string())?;
-        let expr_starts =
-            ExprProgram::try_from_ops(ops_starts.into_boxed_slice()).map_err(|e| e.to_string())?;
-        let expr_ends =
-            ExprProgram::try_from_ops(ops_ends.into_boxed_slice()).map_err(|e| e.to_string())?;
         let expr_has =
             ExprProgram::try_from_ops(ops_has.into_boxed_slice()).map_err(|e| e.to_string())?;
         let expr_exists =
             ExprProgram::try_from_ops(ops_exists.into_boxed_slice()).map_err(|e| e.to_string())?;
-        let expr_length =
-            ExprProgram::try_from_ops(ops_length.into_boxed_slice()).map_err(|e| e.to_string())?;
-        let expr_empty =
-            ExprProgram::try_from_ops(ops_empty.into_boxed_slice()).map_err(|e| e.to_string())?;
+        let expr_sum =
+            ExprProgram::try_from_ops(ops_sum.into_boxed_slice()).map_err(|e| e.to_string())?;
+        let expr_unique =
+            ExprProgram::try_from_ops(ops_unique.into_boxed_slice()).map_err(|e| e.to_string())?;
         let expr_count =
             ExprProgram::try_from_ops(ops_count.into_boxed_slice()).map_err(|e| e.to_string())?;
+        let expr_has_again = ExprProgram::try_from_ops(
+            vec![
+                vb_core::ExprOp::LoadConst(ConstIdx::new(0)),
+                vb_core::ExprOp::LoadConst(ConstIdx::new(1)),
+                vb_core::ExprOp::Has,
+            ]
+            .into_boxed_slice(),
+        )
+        .map_err(|e| e.to_string())?;
+        let expr_exists_again = ExprProgram::try_from_ops(
+            vec![
+                vb_core::ExprOp::LoadConst(ConstIdx::new(0)),
+                vb_core::ExprOp::Exists,
+            ]
+            .into_boxed_slice(),
+        )
+        .map_err(|e| e.to_string())?;
+        let expr_count_again = ExprProgram::try_from_ops(
+            vec![
+                vb_core::ExprOp::LoadConst(ConstIdx::new(0)),
+                vb_core::ExprOp::Count,
+            ]
+            .into_boxed_slice(),
+        )
+        .map_err(|e| e.to_string())?;
 
         // 8 EvalExpr nodes + 1 Finish node = 9 nodes
         let nodes: Vec<CompiledNode> = vec![
@@ -6881,14 +7743,14 @@ mod tests {
             digest: WorkflowDigest::from_bytes([0xF0; 32]),
             nodes: nodes.into_boxed_slice(),
             expressions: vec![
-                expr_contains,
-                expr_starts,
-                expr_ends,
                 expr_has,
                 expr_exists,
-                expr_length,
-                expr_empty,
+                expr_sum,
+                expr_unique,
                 expr_count,
+                expr_has_again,
+                expr_exists_again,
+                expr_count_again,
             ]
             .into_boxed_slice(),
             accessors: Box::new([]),
@@ -6906,35 +7768,35 @@ mod tests {
         // Verify each expression function was generated
         assert!(
             source.contains("fn eval_expr_0"),
-            "must generate eval_expr_0 (Contains)"
+            "must generate eval_expr_0 (Has)"
         );
         assert!(
             source.contains("fn eval_expr_1"),
-            "must generate eval_expr_1 (StartsWith)"
+            "must generate eval_expr_1 (Exists)"
         );
         assert!(
             source.contains("fn eval_expr_2"),
-            "must generate eval_expr_2 (EndsWith)"
+            "must generate eval_expr_2 (Sum)"
         );
         assert!(
             source.contains("fn eval_expr_3"),
-            "must generate eval_expr_3 (Has)"
+            "must generate eval_expr_3 (Unique)"
         );
         assert!(
             source.contains("fn eval_expr_4"),
-            "must generate eval_expr_4 (Exists)"
+            "must generate eval_expr_4 (Count)"
         );
         assert!(
             source.contains("fn eval_expr_5"),
-            "must generate eval_expr_5 (Length)"
+            "must generate eval_expr_5 (Has repeated)"
         );
         assert!(
             source.contains("fn eval_expr_6"),
-            "must generate eval_expr_6 (Empty)"
+            "must generate eval_expr_6 (Exists repeated)"
         );
         assert!(
             source.contains("fn eval_expr_7"),
-            "must generate eval_expr_7 (Count)"
+            "must generate eval_expr_7 (Count repeated)"
         );
 
         // Verify semantic check passes
@@ -7501,22 +8363,25 @@ mod tests {
 
     #[test]
     fn step_do_action_emits_suspend() {
-        let nodes = vec![CompiledNode {
-            id: StepIdx::new(0),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Do {
-                action: ActionId::new(5),
-                input: SlotIdx::new(0),
+        let nodes = vec![
+            CompiledNode {
+                id: StepIdx::new(0),
+                output: None,
+                next: Some(StepIdx::new(1)),
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::Do {
+                    action: ActionId::new(5),
+                    input: SlotIdx::new(0),
+                },
             },
-        }];
+            finish_node(1),
+        ];
         let wf = make_step_workflow(nodes, 2);
         let code = emit_node_in_wf(StepIdx::new(0), &wf);
         assert!(
-            code.contains("ActionSuspend"),
-            "Do should emit ActionSuspend: {code}"
+            code.contains("ActionPending"),
+            "Do should emit ActionPending suspension: {code}"
         );
         assert!(
             code.contains("action_id: 5"),
@@ -7539,8 +8404,8 @@ mod tests {
         let code = emit_first_node(node, 2);
         assert!(code.contains("_deadline"), "should read deadline: {code}");
         assert!(
-            code.contains("StepOutcome::Continue(1)"),
-            "should continue: {code}"
+            code.contains("WaitUntil { step: 0, deadline_slot: 0, resume_pc: 1 }"),
+            "should suspend with wait-until metadata: {code}"
         );
     }
 
@@ -7585,8 +8450,10 @@ mod tests {
         assert!(code.contains("_event"), "should read event: {code}");
         assert!(code.contains("_timeout"), "should read timeout: {code}");
         assert!(
-            code.contains("StepOutcome::Continue(1)"),
-            "should continue: {code}"
+            code.contains(
+                "WaitEvent { step: 0, event_slot: 0, timeout_slot: Some(1), resume_pc: 1 }"
+            ),
+            "should suspend with wait-event metadata: {code}"
         );
     }
 
@@ -7698,6 +8565,215 @@ mod tests {
     }
 
     #[test]
+    fn step_do_without_next_emits_missing_next_after_input_read() -> Result<(), String> {
+        let nodes = vec![CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Do {
+                action: ActionId::new(7),
+                input: SlotIdx::new(1),
+            },
+        }];
+        let wf = make_step_workflow(nodes, 2);
+        let mut out = String::new();
+        let node = wf.node(StepIdx::new(0)).ok_or("node 0 missing")?;
+        emit_step_function(&mut out, node, &wf).map_err(|e| e.to_string())?;
+        assert!(
+            out.contains("read_slot(slots, 1)"),
+            "Do must still validate input slot before suspension: {out}"
+        );
+        assert!(
+            out.contains("MissingNextStep"),
+            "Do without next must emit MissingNextStep: {out}"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn step_wait_event_with_timeout_without_next_emits_missing_next() -> Result<(), String> {
+        let nodes = vec![CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::WaitEvent {
+                event: SlotIdx::new(0),
+                timeout_slot: Some(SlotIdx::new(1)),
+            },
+        }];
+        let wf = make_step_workflow(nodes, 2);
+        let mut out = String::new();
+        let node = wf.node(StepIdx::new(0)).ok_or("node 0 missing")?;
+        emit_step_function(&mut out, node, &wf).map_err(|e| e.to_string())?;
+        assert!(out.contains("_event"), "should read event: {out}");
+        assert!(out.contains("_timeout"), "should read timeout: {out}");
+        assert!(
+            out.contains("MissingNextStep"),
+            "WaitEvent with timeout and no next must emit MissingNextStep: {out}"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn step_ask_with_next_emits_resume_metadata() {
+        let node = CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: Some(StepIdx::new(1)),
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Ask {
+                prompt: SlotIdx::new(1),
+                timeout_slot: Some(SlotIdx::new(2)),
+            },
+        };
+        let code = emit_first_node(node, 5);
+        assert!(
+            code.contains(
+                "AskPending { step: 0, prompt_slot: 1, timeout_slot: Some(2), resume_pc: 1 }"
+            ),
+            "Ask must preserve prompt, timeout, and resume metadata: {code}"
+        );
+    }
+
+    #[test]
+    fn field_accessor_generated_step_joins_root_and_field_taint() -> Result<(), String> {
+        let expr = ExprProgram::try_from_ops(
+            vec![vb_core::ExprOp::LoadAccessor(vb_core::AccessorIdx::new(0))].into_boxed_slice(),
+        )
+        .map_err(|e| e.to_string())?;
+        let wf = make_step_workflow_with_symbols(
+            vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: Some(SlotIdx::new(1)),
+                    next: Some(StepIdx::new(1)),
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::EvalExpr {
+                        expr: vb_core::ExprIdx::new(0),
+                    },
+                },
+                finish_node(1),
+            ],
+            2,
+            1,
+            Box::new([]),
+            vec![expr].into_boxed_slice(),
+            vec![AccessorProgram {
+                root: SlotIdx::new(0),
+                path: vec![PathSegment::Field(vb_core::SymbolId::new(0))].into_boxed_slice(),
+            }]
+            .into_boxed_slice(),
+        );
+        let stdout = generated_step_stdout(
+            &wf,
+            "field_accessor_taint_join",
+            "    let mut slots = [None; WORKFLOW_SLOT_COUNT];\n    let mut taints = [Taint::Clean; WORKFLOW_SLOT_COUNT];\n    let mut list_store = ListStore::new();\n    let mut object_store = ObjectStore::new();\n    let field = ObjectField { key: 0, value: SlotValue::I64(7), taint: Taint::Secret };\n    let object = object_store.insert_fields(&[field]).map_err(|error| format!(\"setup:{error:?}\"));\n    match object {\n        Ok(handle) => {\n            slots[0] = Some(SlotValue::Object(handle));\n            taints[0] = Taint::DerivedFromSecret;\n            match step_0(&mut slots, &mut taints, &mut list_store, &mut object_store) {\n                Ok(_) => println!(\"slot={:?};taint={:?}\", slots[1], taints[1]),\n                Err(error) => println!(\"err:{error:?}\"),\n            }\n        }\n        Err(error) => println!(\"{error}\"),\n    }",
+        )?;
+        assert_eq!(stdout, "slot=Some(I64(7));taint=Secret\n");
+        Ok(())
+    }
+
+    #[test]
+    fn list_accessor_generated_step_joins_root_and_item_taint() -> Result<(), String> {
+        let expr = ExprProgram::try_from_ops(
+            vec![vb_core::ExprOp::LoadAccessor(vb_core::AccessorIdx::new(0))].into_boxed_slice(),
+        )
+        .map_err(|e| e.to_string())?;
+        let wf = make_step_workflow_with_symbols(
+            vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: Some(SlotIdx::new(1)),
+                    next: Some(StepIdx::new(1)),
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::EvalExpr {
+                        expr: vb_core::ExprIdx::new(0),
+                    },
+                },
+                finish_node(1),
+            ],
+            2,
+            0,
+            Box::new([]),
+            vec![expr].into_boxed_slice(),
+            vec![AccessorProgram {
+                root: SlotIdx::new(0),
+                path: vec![PathSegment::Index(0)].into_boxed_slice(),
+            }]
+            .into_boxed_slice(),
+        );
+        let stdout = generated_step_stdout(
+            &wf,
+            "list_accessor_taint_join",
+            "    let mut slots = [None; WORKFLOW_SLOT_COUNT];\n    let mut taints = [Taint::Clean; WORKFLOW_SLOT_COUNT];\n    let mut list_store = ListStore::new();\n    let mut object_store = ObjectStore::new();\n    let list = list_store.insert_items_with_taints(&[SlotValue::I64(9)], &[Taint::Secret]).map_err(|error| format!(\"setup:{error:?}\"));\n    match list {\n        Ok(handle) => {\n            slots[0] = Some(SlotValue::List(handle));\n            taints[0] = Taint::DerivedFromSecret;\n            match step_0(&mut slots, &mut taints, &mut list_store, &mut object_store) {\n                Ok(_) => println!(\"slot={:?};taint={:?}\", slots[1], taints[1]),\n                Err(error) => println!(\"err:{error:?}\"),\n            }\n        }\n        Err(error) => println!(\"{error}\"),\n    }",
+        )?;
+        assert_eq!(stdout, "slot=Some(I64(9));taint=Secret\n");
+        Ok(())
+    }
+
+    #[test]
+    fn append_helper_reports_overflow_when_capacity_is_full() -> Result<(), String> {
+        let workflow = build_list_multi_item_workflow()?;
+        let stdout = generated_step_stdout(
+            &workflow,
+            "append_helper_overflow",
+            "    let mut list_store = ListStore::new();\n    let list = list_store.insert_items_with_taints(\n        &[SlotValue::I64(1), SlotValue::I64(2), SlotValue::I64(3)],\n        &[Taint::Clean, Taint::Clean, Taint::Clean],\n    );\n    match list {\n        Ok(handle) => match append_list_item(&mut list_store, handle, SlotValue::I64(4), Taint::Clean) {\n            Err(DriveError::ListStoreOverflow) => println!(\"err:ListStoreOverflow\"),\n            other => println!(\"unexpected:{other:?}\"),\n        },\n        Err(error) => println!(\"setup:{error:?}\"),\n    }",
+        )?;
+        assert_eq!(stdout, "err:ListStoreOverflow\n");
+        Ok(())
+    }
+
+    #[test]
+    fn unique_helper_uses_checked_prefix_slice_and_preserves_first_taint() -> Result<(), String> {
+        let workflow = build_list_multi_item_workflow()?;
+        let stdout = generated_step_stdout(
+            &workflow,
+            "unique_helper_checked_slice",
+            "    let mut list_store = ListStore::new();\n    list_store.records[0] = Some(ListRecord { start: 0, len: 3 });\n    list_store.values[0] = SlotValue::I64(1);\n    list_store.values[1] = SlotValue::I64(1);\n    list_store.values[2] = SlotValue::I64(2);\n    list_store.taints[0] = Taint::Secret;\n    list_store.taints[1] = Taint::Clean;\n    list_store.taints[2] = Taint::DerivedFromSecret;\n    list_store.record_len = 1;\n    list_store.value_len = 0;\n    match unique_list_items(&mut list_store, 0) {\n        Ok(unique) => match (list_store.value_at(unique, 0), list_store.value_at(unique, 1), list_item_count(&list_store, unique)) {\n            (Ok((first, first_taint)), Ok((second, second_taint)), Ok(count)) => {\n                println!(\"count={count};first={first:?}:{first_taint:?};second={second:?}:{second_taint:?}\");\n            }\n            other => println!(\"unexpected:{other:?}\"),\n        },\n        Err(error) => println!(\"err:{error:?}\"),\n    }",
+        )?;
+        assert_eq!(
+            stdout,
+            "count=2;first=I64(1):Secret;second=I64(2):DerivedFromSecret\n"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn merge_helper_reports_overflow_for_disjoint_full_objects() -> Result<(), String> {
+        let workflow = build_object_multi_field_workflow()?;
+        let stdout = generated_step_stdout(
+            &workflow,
+            "merge_helper_overflow",
+            "    let mut fields = [None; OBJECT_STORE_FIELD_CAPACITY];\n    let existing = ObjectField { key: 0, value: SlotValue::I64(1), taint: Taint::Clean };\n    for index in 0..OBJECT_STORE_FIELD_CAPACITY {\n        match fields.get_mut(index) {\n            Some(slot) => *slot = Some(existing),\n            None => println!(\"setup:index\"),\n        }\n    }\n    let new_field = ObjectField { key: 99, value: SlotValue::I64(9), taint: Taint::Clean };\n    match upsert_object_field(&mut fields, 3, new_field) {\n        Err(DriveError::ObjectStoreOverflow) => println!(\"err:ObjectStoreOverflow\"),\n        other => println!(\"unexpected:{other:?}\"),\n    }",
+        )?;
+        assert_eq!(stdout, "err:ObjectStoreOverflow\n");
+        Ok(())
+    }
+
+    #[test]
+    fn collect_nodes_are_rejected_by_generated_subset_validation() -> Result<(), String> {
+        let error = validate_generated_subset(&collect_workflow()?)
+            .err()
+            .ok_or("CollectStart unexpectedly accepted")?;
+        assert!(
+            matches!(error, CodegenError::UnsupportedIr { feature } if feature == "CollectStart"),
+            "CollectStart must return exact UnsupportedIr feature, got: {error}"
+        );
+        assert_eq!(
+            error.to_string(),
+            "unsupported generated Rust IR feature: CollectStart"
+        );
+        Ok(())
+    }
+
+    #[test]
     fn step_ask_resume_emits_answer_slot() {
         let node = CompiledNode {
             id: StepIdx::new(0),
@@ -7714,7 +8790,7 @@ mod tests {
             code.contains("_answer_slot"),
             "should declare answer_slot: {code}"
         );
-        assert!(code.contains("3"), "should contain slot index 3: {code}");
+        assert!(code.contains('3'), "should contain slot index 3: {code}");
     }
 
     #[test]
@@ -7799,17 +8875,20 @@ mod tests {
         ];
         let wf = make_step_workflow(nodes, 2);
         let code = emit_node_in_wf(StepIdx::new(0), &wf);
-        assert!(code.contains("_policy"), "should read policy slot: {code}");
+        assert!(
+            code.contains("read_retry_state_from_slot"),
+            "should read typed retry policy slot: {code}"
+        );
         assert!(
             code.contains("CONTRACT_MAX_RETRY_ATTEMPTS"),
             "should check retry limit: {code}"
         );
         assert!(
-            code.contains("Continue(1)"),
+            code.contains("retry_check_target"),
             "should continue to body: {code}"
         );
         assert!(
-            code.contains("Continue(2)"),
+            code.contains("1, 2"),
             "should continue to exhausted: {code}"
         );
     }
@@ -7835,10 +8914,13 @@ mod tests {
         let wf = make_step_workflow(nodes, 2);
         let code = emit_node_in_wf(StepIdx::new(0), &wf);
         assert!(
-            code.contains("_retry_count"),
-            "should extract retry_count: {code}"
+            code.contains("_retry_state.current_attempt()"),
+            "should extract retry attempt: {code}"
         );
-        assert!(code.contains("_limit"), "should define limit: {code}");
+        assert!(
+            code.contains("CONTRACT_MAX_RETRY_ATTEMPTS"),
+            "should define limit: {code}"
+        );
     }
 
     #[test]
@@ -8614,37 +9696,6 @@ mod tests {
         Ok(())
     }
 
-    /// `emit_unsupported_expr` must emit the op name inside the error
-    /// and include a `return` statement.
-    #[test]
-    fn emit_unsupported_expr_contains_op_name() -> Result<(), String> {
-        let mut out = String::new();
-        crate::emit_unsupported_expr(&mut out, "append").map_err(|e| e.to_string())?;
-        assert!(
-            out.contains("UnsupportedExpressionOp"),
-            "should emit UnsupportedExpressionOp, got: {out}"
-        );
-        assert!(out.contains("append"), "should embed op name, got: {out}");
-        assert!(
-            out.contains("return"),
-            "should include return statement, got: {out}"
-        );
-        Ok(())
-    }
-
-    /// `emit_unsupported_expr` with a different op name.
-    #[test]
-    fn emit_unsupported_expr_different_op() -> Result<(), String> {
-        let mut out = String::new();
-        crate::emit_unsupported_expr(&mut out, "merge").map_err(|e| e.to_string())?;
-        assert!(out.contains("merge"), "should embed merge, got: {out}");
-        assert!(
-            !out.contains("append"),
-            "should not contain wrong op, got: {out}"
-        );
-        Ok(())
-    }
-
     /// `write_header` must emit the unsafe_code forbid directive.
     #[test]
     fn write_header_emits_forbid_unsafe() -> Result<(), String> {
@@ -9012,7 +10063,7 @@ mod tests {
             .find(|l| l.contains("CONTRACT_MAX_RETRY_ATTEMPTS"))
             .ok_or("constant CONTRACT_MAX_RETRY_ATTEMPTS not found in output")?;
         assert!(
-            line.contains("3"),
+            line.contains('3'),
             "constant CONTRACT_MAX_RETRY_ATTEMPTS should have value 3, got: {line}"
         );
 
@@ -9190,13 +10241,20 @@ mod tests {
     // ========================================================================
 
     /// `emit_action_boundary` must emit a comment, a slot read, and the
-    /// ActionSuspend error with the correct action_id and input_slot.
+    /// ActionPending suspension with the exact pc, action_id, input_slot, and resume pc.
     #[test]
     fn emit_action_boundary_correct_ids() -> Result<(), String> {
         let mut out = String::new();
         let action = ActionId::new(42);
         let input = SlotIdx::new(7);
-        emit_action_boundary(&mut out, action, input).map_err(|e| e.to_string())?;
+        emit_action_boundary(
+            &mut out,
+            StepIdx::new(9),
+            action,
+            input,
+            Some(StepIdx::new(10)),
+        )
+        .map_err(|e| e.to_string())?;
 
         assert!(
             out.contains("Action boundary: action_id=42, input_slot=7"),
@@ -9207,9 +10265,10 @@ mod tests {
             "should read input slot 7, got: {out}"
         );
         assert!(
-            out.contains("ActionSuspend"),
-            "should emit ActionSuspend error"
+            out.contains("ActionPending"),
+            "should emit ActionPending suspension"
         );
+        assert!(out.contains("step: 9"), "should embed step 9 in suspension");
         assert!(
             out.contains("action_id: 42"),
             "should embed action_id 42 in error"
@@ -9225,8 +10284,14 @@ mod tests {
     #[test]
     fn emit_action_boundary_zero_ids() -> Result<(), String> {
         let mut out = String::new();
-        emit_action_boundary(&mut out, ActionId::new(0), SlotIdx::new(0))
-            .map_err(|e| e.to_string())?;
+        emit_action_boundary(
+            &mut out,
+            StepIdx::new(0),
+            ActionId::new(0),
+            SlotIdx::new(0),
+            Some(StepIdx::new(1)),
+        )
+        .map_err(|e| e.to_string())?;
 
         assert!(
             out.contains("action_id=0, input_slot=0"),
@@ -9243,8 +10308,14 @@ mod tests {
     #[test]
     fn emit_action_boundary_large_ids() -> Result<(), String> {
         let mut out = String::new();
-        emit_action_boundary(&mut out, ActionId::new(65535), SlotIdx::new(65534))
-            .map_err(|e| e.to_string())?;
+        emit_action_boundary(
+            &mut out,
+            StepIdx::new(65533),
+            ActionId::new(65535),
+            SlotIdx::new(65534),
+            Some(StepIdx::new(65535)),
+        )
+        .map_err(|e| e.to_string())?;
 
         assert!(
             out.contains("action_id=65535, input_slot=65534"),
@@ -10357,10 +11428,10 @@ mod tests {
             "WaitUntil must read the deadline from slot 0"
         );
 
-        // Must contain a Continue to step_2 after the wait
+        // Must contain typed suspension to step_2 after the wait resolves.
         assert!(
-            source.contains("StepOutcome::Continue(2)"),
-            "WaitUntil must continue to step 2"
+            source.contains("WaitUntil { step: 1, deadline_slot: 0, resume_pc: 2 }"),
+            "WaitUntil must suspend with resume pc 2"
         );
 
         // Semantic check
@@ -10451,8 +11522,8 @@ mod tests {
 
         // The RetryCheck node (step_2) must read the policy slot
         assert!(
-            source.contains("let _policy = read_slot(slots, 0)"),
-            "RetryCheck must read policy from slot 0"
+            source.contains("read_retry_state_from_slot(slots, 0, CONTRACT_MAX_RETRY_ATTEMPTS)"),
+            "RetryCheck must decode policy from slot 0"
         );
 
         // RetryCheck must compare retry count to CONTRACT_MAX_RETRY_ATTEMPTS
@@ -10463,8 +11534,7 @@ mod tests {
 
         // RetryCheck must have branch targets for retry body and exhausted path
         assert!(
-            source.contains("StepOutcome::Continue(1)")
-                && source.contains("StepOutcome::Continue(4)"),
+            source.contains("retry_check_target(_retry_state.current_attempt(), CONTRACT_MAX_RETRY_ATTEMPTS, 1, 4)"),
             "RetryCheck must branch to body (step 1) or exhausted (step 4)"
         );
 

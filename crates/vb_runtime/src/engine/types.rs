@@ -345,7 +345,8 @@ mod tests {
     fn evidence_collector_drain_leaves_empty() {
         let mut collector = EvidenceCollector::new();
         collector.push_step_started(StepIdx::new(0));
-        let _ = collector.drain();
+        let drained = collector.drain();
+        assert_eq!(drained.len(), 1);
         assert_eq!(collector.len(), 0);
         assert!(collector.is_empty());
     }
@@ -430,36 +431,24 @@ mod tests {
         let events = collector.drain();
         assert_eq!(events.len(), 4);
 
-        let step_0_start = &events[0];
-        let step_0_succ = &events[1];
-        let step_1_start = &events[2];
-        let step_1_succ = &events[3];
-
         assert_eq!(
-            *step_0_start,
-            EvidenceEvent::StepStarted {
-                step: StepIdx::new(0)
-            }
-        );
-        assert_eq!(
-            *step_0_succ,
-            EvidenceEvent::StepSucceeded {
-                step: StepIdx::new(0),
-                output: Some(SlotIdx::new(0))
-            }
-        );
-        assert_eq!(
-            *step_1_start,
-            EvidenceEvent::StepStarted {
-                step: StepIdx::new(1)
-            }
-        );
-        assert_eq!(
-            *step_1_succ,
-            EvidenceEvent::StepSucceeded {
-                step: StepIdx::new(1),
-                output: None
-            }
+            events.as_slice(),
+            &[
+                EvidenceEvent::StepStarted {
+                    step: StepIdx::new(0)
+                },
+                EvidenceEvent::StepSucceeded {
+                    step: StepIdx::new(0),
+                    output: Some(SlotIdx::new(0))
+                },
+                EvidenceEvent::StepStarted {
+                    step: StepIdx::new(1)
+                },
+                EvidenceEvent::StepSucceeded {
+                    step: StepIdx::new(1),
+                    output: None
+                }
+            ]
         );
     }
 
@@ -471,7 +460,8 @@ mod tests {
     fn evidence_collector_accepts_events_after_drain() {
         let mut collector = EvidenceCollector::new();
         collector.push_step_started(StepIdx::new(0));
-        let _ = collector.drain();
+        let drained = collector.drain();
+        assert_eq!(drained.len(), 1);
 
         collector.push_step_started(StepIdx::new(1));
         collector.push_step_succeeded(StepIdx::new(1), Some(SlotIdx::new(2)));
@@ -641,9 +631,7 @@ mod tests {
     #[test]
     fn evidence_collector_dropped_saturates_on_many_drops() {
         let mut collector = EvidenceCollector::with_capacity(0);
-        for i in 0u16..10_000 {
-            collector.push_step_started(StepIdx::new(i));
-        }
+        (0u16..10_000).for_each(|i| collector.push_step_started(StepIdx::new(i)));
         assert_eq!(collector.len(), 0, "zero capacity should hold nothing");
         assert_eq!(collector.dropped(), 10_000, "all events should be dropped");
     }
@@ -883,11 +871,16 @@ mod tests {
         collector.push_step_succeeded(StepIdx::new(1), None);
         let events = collector.drain();
         assert_eq!(events.len(), 5);
-        assert!(matches!(events[0], EvidenceEvent::StepStarted { .. }));
-        assert!(matches!(events[1], EvidenceEvent::SlotWritten { .. }));
-        assert!(matches!(events[2], EvidenceEvent::StepSucceeded { .. }));
-        assert!(matches!(events[3], EvidenceEvent::StepStarted { .. }));
-        assert!(matches!(events[4], EvidenceEvent::StepSucceeded { .. }));
+        assert!(matches!(
+            events.as_slice(),
+            [
+                EvidenceEvent::StepStarted { .. },
+                EvidenceEvent::SlotWritten { .. },
+                EvidenceEvent::StepSucceeded { .. },
+                EvidenceEvent::StepStarted { .. },
+                EvidenceEvent::StepSucceeded { .. }
+            ]
+        ));
     }
 
     #[test]

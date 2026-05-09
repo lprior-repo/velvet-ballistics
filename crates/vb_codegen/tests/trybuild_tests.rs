@@ -17,7 +17,7 @@ fn trybuild_compile_fail_tests() -> Result<(), String> {
     // Check that compile-fail fixtures exist and are loadable
     let fixture_files: Vec<_> = std::fs::read_dir(&fixtures)
         .map_err(|e| e.to_string())?
-        .filter_map(|entry| entry.ok())
+        .filter_map(std::result::Result::ok)
         .filter(|entry| entry.path().extension().is_some_and(|ext| ext == "rs"))
         .map(|entry| entry.path())
         .collect();
@@ -53,7 +53,7 @@ fn trybuild_pass_tests() -> Result<(), String> {
 
     let fixture_files: Vec<_> = std::fs::read_dir(&fixtures)
         .map_err(|e| e.to_string())?
-        .filter_map(|entry| entry.ok())
+        .filter_map(std::result::Result::ok)
         .filter(|entry| entry.path().extension().is_some_and(|ext| ext == "rs"))
         .map(|entry| entry.path())
         .collect();

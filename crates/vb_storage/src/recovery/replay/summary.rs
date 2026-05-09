@@ -600,7 +600,12 @@ fn replay_error_to_recovery(error: ReplayError) -> RecoveryError {
 mod tests {
     use super::*;
     use crate::EventSeq;
-    use vb_core::{ActionId, ListId, ObjectId, RunId, SlotIdx, StepIdx, Taint};
+    use crate::recovery::types::RecoveryTerminalState;
+    use vb_core::replay::SuspensionKind;
+    use vb_core::{
+        ActionId, CapabilitySet, FiniteF64, ListId, ObjectId, RunId, RuntimePolicy, SlotIdx,
+        StepIdx, Taint, WorkflowDigest,
+    };
 
     fn fresh_summary() -> RecoveryRuntimeSummary {
         RecoveryRuntimeSummary {
@@ -693,6 +698,131 @@ mod tests {
     }
 
     #[test]
+    fn summary_events_cover_workflow_admission_retry_and_terminals() {
+        let mut summary = fresh_summary();
+        let run = RunId::new(1);
+        let workflow = digest(7);
+        let events = [
+            JournalEvent::RunAccepted {
+                run,
+                seq: EventSeq::new(1),
+                workflow,
+            },
+            JournalEvent::RunAdmission {
+                run,
+                seq: EventSeq::new(2),
+                artifact_digest: digest(8),
+                granted_capabilities: CapabilitySet::empty(),
+                policy: RuntimePolicy::Strict,
+            },
+            JournalEvent::StepStarted {
+                run,
+                seq: EventSeq::new(3),
+                step: StepIdx::new(1),
+            },
+            JournalEvent::StepSucceeded {
+                run,
+                seq: EventSeq::new(4),
+                step: StepIdx::new(1),
+                output: SlotIdx::new(2),
+            },
+            JournalEvent::ActionScheduled {
+                run,
+                seq: EventSeq::new(5),
+                step: StepIdx::new(1),
+                action: ActionId::new(3),
+            },
+            JournalEvent::ActionCompletedEvent {
+                run,
+                seq: EventSeq::new(6),
+                step: StepIdx::new(1),
+                action: ActionId::new(3),
+            },
+            JournalEvent::RetryScheduledEvent {
+                run,
+                seq: EventSeq::new(7),
+                step: StepIdx::new(1),
+            },
+            JournalEvent::RunFinished {
+                run,
+                seq: EventSeq::new(8),
+                result: SlotIdx::new(2),
+            },
+        ];
+
+        events
+            .iter()
+            .for_each(|event| apply_summary_event(&mut summary, event));
+
+        assert_eq!(summary.workflow, Some(workflow));
+        assert_counters(&summary, 1, 1, 1, 1, 1, 0);
+        assert_eq!(
+            summary.terminal,
+            Some(RecoveryTerminalState::Finished {
+                result: SlotIdx::new(2),
+            })
+        );
+
+        apply_summary_event(
+            &mut summary,
+            &JournalEvent::RunCancelled {
+                run,
+                seq: EventSeq::new(9),
+            },
+        );
+        assert_eq!(summary.terminal, Some(RecoveryTerminalState::Cancelled));
+
+        apply_summary_event(
+            &mut summary,
+            &JournalEvent::RunFailedEvent {
+                run,
+                seq: EventSeq::new(10),
+            },
+        );
+        assert_eq!(summary.terminal, Some(RecoveryTerminalState::Failed));
+    }
+
+    #[test]
+    fn recover_run_admission_returns_latest_metadata_or_none() {
+        let run = RunId::new(12);
+        let first = digest(1);
+        let latest = digest(2);
+        let events = vec![
+            JournalEvent::RunAccepted {
+                run,
+                seq: EventSeq::new(0),
+                workflow: digest(9),
+            },
+            JournalEvent::RunAdmission {
+                run,
+                seq: EventSeq::new(1),
+                artifact_digest: first,
+                granted_capabilities: CapabilitySet::empty(),
+                policy: RuntimePolicy::Relaxed,
+            },
+            JournalEvent::RunAdmission {
+                run,
+                seq: EventSeq::new(2),
+                artifact_digest: latest,
+                granted_capabilities: CapabilitySet::empty(),
+                policy: RuntimePolicy::Journaled,
+            },
+        ];
+
+        let recovered = recover_run_admission_from_events(&events);
+        assert!(matches!(
+            recovered,
+            Some(RecoveredRunAdmission {
+                artifact_digest,
+                run_id,
+                policy: RuntimePolicy::Journaled,
+                ..
+            }) if artifact_digest == latest && run_id == run
+        ));
+        assert_eq!(recover_run_admission_from_events(&events[0..1]), None);
+    }
+
+    #[test]
     fn replayed_object_slots_are_explicitly_unsupported() {
         let slots = recovered_single_slot(SlotValue::Object(ObjectId::new(7)));
 
@@ -715,6 +845,159 @@ mod tests {
     }
 
     #[test]
+    fn replayed_all_scalar_slot_variants_remain_supported() {
+        [
+            SlotValue::Null,
+            SlotValue::Bool(true),
+            SlotValue::F64(finite_f64(1.25)),
+            SlotValue::Symbol(vb_core::SymbolId::new(4)),
+        ]
+        .into_iter()
+        .for_each(|value| {
+            let slots = recovered_single_slot(value);
+            assert!(slots.fully_supported, "scalar slot must be supported");
+            assert_eq!(slots.entries.len(), 1);
+        });
+    }
+
+    #[test]
+    fn summarize_recovery_events_empty_returns_exact_no_recovery_data() {
+        let result = summarize_recovery_events(&[]);
+
+        assert!(matches!(
+            result,
+            Err(RecoveryError::NoRecoveryData { run }) if run == RunId::new(0)
+        ));
+    }
+
+    #[test]
+    fn frame_seed_empty_events_returns_exact_no_recovery_data() {
+        let result = recover_runtime_frame_seed_from_events(&[]);
+
+        assert!(matches!(
+            result,
+            Err(RecoveryError::NoRecoveryData { run }) if run == RunId::new(0)
+        ));
+    }
+
+    #[test]
+    fn frame_seed_builder_without_workflow_delegates_to_event_recovery() {
+        let events = vec![JournalEvent::StepStarted {
+            run: RunId::new(21),
+            seq: EventSeq::new(0),
+            step: StepIdx::new(5),
+        }];
+
+        let direct = recover_runtime_frame_seed_from_events(&events);
+        let built = RecoveryFrameSeedBuilder::new().build(&events);
+
+        assert!(matches!((direct, built), (Ok(a), Ok(b)) if a == b));
+    }
+
+    #[test]
+    fn workflow_digest_rejection_reports_exact_mismatch_and_accepts_match() {
+        let expected = digest(11);
+        let found = digest(12);
+        let events = [JournalEvent::RunAccepted {
+            run: RunId::new(31),
+            seq: EventSeq::new(0),
+            workflow: found,
+        }];
+
+        assert!(matches!(
+            reject_workflow_digest_mismatch(&events, expected),
+            Err(RecoveryError::CompiledIrDigestMismatch { expected: e, found: f })
+                if e == expected && f == found
+        ));
+        assert_eq!(
+            reject_workflow_digest_mismatch(&events, found).ok(),
+            Some(())
+        );
+        assert_eq!(
+            reject_workflow_digest_mismatch(&[], expected).ok(),
+            Some(())
+        );
+    }
+
+    #[test]
+    fn frame_seed_slot_dimension_overflow_reports_exact_variant() {
+        let run = RunId::new(41);
+        let events = [JournalEvent::StepSucceeded {
+            run,
+            seq: EventSeq::new(0),
+            step: StepIdx::new(0),
+            output: SlotIdx::MAX,
+        }];
+
+        assert!(matches!(
+            recover_runtime_frame_seed_from_events(&events),
+            Err(RecoveryError::FrameDimensionOverflow { run: found }) if found == run
+        ));
+    }
+
+    #[test]
+    fn event_slot_values_cover_valid_corrupt_and_missing_frame_paths() {
+        let run = RunId::new(51);
+        let valid_bytes = encoded_slot_value(SlotValue::Bool(true));
+        let events = vec![
+            JournalEvent::SlotWrittenEvent {
+                run,
+                seq: EventSeq::new(0),
+                slot: SlotIdx::new(0),
+                value: Some(valid_bytes),
+                extra: None,
+            },
+            JournalEvent::SlotWrittenEvent {
+                run,
+                seq: EventSeq::new(1),
+                slot: SlotIdx::new(1),
+                value: Some(vec![255, 0, 255]),
+                extra: None,
+            },
+            JournalEvent::SlotWrittenEvent {
+                run,
+                seq: EventSeq::new(2),
+                slot: SlotIdx::new(2),
+                value: None,
+                extra: None,
+            },
+        ];
+
+        let seed = recover_runtime_frame_seed_from_events(&events);
+
+        assert!(
+            matches!(seed, Ok(ref recovered) if recovered.slots.iter().any(|entry|
+                entry.slot == SlotIdx::new(0)
+                    && entry.value == SlotValue::Bool(true)
+                    && entry.taint == Taint::Clean
+            ))
+        );
+        assert!(
+            matches!(seed, Ok(recovered) if recovered.unsupported.slot_values
+            && recovered.unsupported.slot_taint)
+        );
+    }
+
+    #[test]
+    fn unresolved_action_marks_pending_action_recovery_unsupported() {
+        let run = RunId::new(61);
+        let events = [JournalEvent::ActionScheduled {
+            run,
+            seq: EventSeq::new(0),
+            step: StepIdx::new(3),
+            action: ActionId::new(9),
+        }];
+
+        let seed = recover_runtime_frame_seed_from_events(&events);
+
+        assert!(
+            matches!(seed, Ok(recovered) if recovered.pending_actions.iter().any(|entry|
+            entry.step == StepIdx::new(3) && entry.action == ActionId::new(9)
+        ) && recovered.unsupported.pending_actions)
+        );
+    }
+
+    #[test]
     fn replay_step_not_found_maps_to_exact_recovery_error() {
         assert_replay_divergence(
             ReplayError::StepNotFound {
@@ -730,11 +1013,44 @@ mod tests {
         assert_replay_divergence(
             ReplayError::NonDeterministicStep {
                 step: StepIdx::new(4),
-                kind: "Ask",
+                kind: SuspensionKind::AskPending,
             },
             StepIdx::new(4),
             "replay blocked by non-deterministic Ask step",
         );
+    }
+
+    #[test]
+    fn replay_non_deterministic_mapping_uses_all_typed_kind_names() {
+        let cases = [
+            (
+                SuspensionKind::ActionPending,
+                "replay blocked by non-deterministic Do step",
+            ),
+            (
+                SuspensionKind::AskPending,
+                "replay blocked by non-deterministic Ask step",
+            ),
+            (
+                SuspensionKind::WaitUntil,
+                "replay blocked by non-deterministic WaitUntil step",
+            ),
+            (
+                SuspensionKind::WaitEvent,
+                "replay blocked by non-deterministic WaitEvent step",
+            ),
+        ];
+
+        cases.into_iter().for_each(|(kind, detail)| {
+            assert_replay_divergence(
+                ReplayError::NonDeterministicStep {
+                    step: StepIdx::new(4),
+                    kind,
+                },
+                StepIdx::new(4),
+                detail,
+            );
+        });
     }
 
     #[test]
@@ -770,12 +1086,69 @@ mod tests {
         );
     }
 
+    #[test]
+    fn recovery_summary_multiple_runs_reports_exact_divergence_detail() {
+        let events = two_run_events();
+
+        assert!(matches!(
+            summarize_recovery_events(&events),
+            Err(RecoveryError::ReplayDivergence { step, detail })
+                if step == StepIdx::ZERO
+                    && detail == "recovery summary received events for multiple runs"
+        ));
+    }
+
+    #[test]
+    fn frame_seed_multiple_runs_reports_exact_divergence_detail() {
+        let events = two_run_events();
+
+        assert!(matches!(
+            recover_runtime_frame_seed_from_events(&events),
+            Err(RecoveryError::ReplayDivergence { step, detail })
+                if step == StepIdx::ZERO
+                    && detail == "frame seed recovery received events for multiple runs"
+        ));
+    }
+
     fn recovered_single_slot(value: SlotValue) -> RecoveredSlots {
         RecoveredSlots::from_replayed(vec![RecoveredSlotEntry {
             slot: SlotIdx::new(0),
             value,
             taint: Taint::Secret,
         }])
+    }
+
+    fn digest(byte: u8) -> WorkflowDigest {
+        WorkflowDigest::from_bytes([byte; 32])
+    }
+
+    fn encoded_slot_value(value: SlotValue) -> Vec<u8> {
+        match postcard::to_allocvec(&value) {
+            Ok(bytes) => bytes,
+            Err(error) => panic!("slot value encoding failed: {error}"),
+        }
+    }
+
+    fn finite_f64(value: f64) -> FiniteF64 {
+        match FiniteF64::new(value) {
+            Ok(finite) => finite,
+            Err(error) => panic!("finite test value rejected: {error}"),
+        }
+    }
+
+    fn two_run_events() -> [JournalEvent; 2] {
+        [
+            JournalEvent::StepStarted {
+                run: RunId::new(1),
+                seq: EventSeq::new(0),
+                step: StepIdx::new(0),
+            },
+            JournalEvent::StepStarted {
+                run: RunId::new(2),
+                seq: EventSeq::new(1),
+                step: StepIdx::new(0),
+            },
+        ]
     }
 
     fn assert_replay_divergence(error: ReplayError, step: StepIdx, detail: &str) {

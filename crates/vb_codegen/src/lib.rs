@@ -14,12 +14,11 @@
 //! Generated Rust is a deliberately supported subset of the final workflow IR.
 //! The current subset accepts scalar constants, slot copies, generated list
 //! payloads, bounded for-each loops, expression math and boolean comparisons,
-//! action dispatch, waits, asks, jumps, choices, handlers, and finish nodes.
-//! Empty/root accessors are emitted as checked root-slot reads. Fan-in/fan-out
-//! families beyond ForEach, retry/repeat/collect/reduce internals, collection
-//! expression helpers, and nested accessor traversal are rejected by
-//! [`validate_generated_subset`] before [`emit_rust_workflow`] writes any
-//! generated source.
+//! action dispatch, waits, asks, jumps, choices, handlers, expression helpers,
+//! and finish nodes. Accessors are emitted as bounded checked root/field/list
+//! traversal. Fan-in/fan-out families beyond ForEach and collect/reduce/repeat
+//! internals are rejected by [`validate_generated_subset`] before
+//! [`emit_rust_workflow`] writes any generated source.
 
 use std::fmt::Write;
 use std::process::Command;
@@ -73,6 +72,8 @@ pub enum CodegenError {
 /// Result alias for codegen operations.
 pub type CodegenResult<T> = Result<T, CodegenError>;
 
+const ACCESSOR_MAX_PATH_DEPTH: u16 = 16;
+
 /// Top-level codegen entry point for the supported generated-mode IR subset.
 ///
 /// This function validates the workflow with [`validate_generated_subset`] before
@@ -85,7 +86,7 @@ pub fn emit_rust_workflow(workflow: &CompiledWorkflow) -> CodegenResult<String> 
     write_header(&mut out)?;
     emit_ids(&mut out, workflow)?;
     emit_resource_contract(&mut out, workflow.resource_contract())?;
-    emit_list_store_contract(&mut out, workflow)?;
+    emit_value_store_contract(&mut out, workflow)?;
     emit_constants(&mut out, workflow)?;
     emit_drive_function(&mut out, workflow)?;
     for step_idx in 0..workflow.node_count() {
@@ -159,10 +160,24 @@ fn validate_generated_accessors(workflow: &CompiledWorkflow) -> CodegenResult<()
         let Some(accessor) = workflow.accessor(idx) else {
             break;
         };
-        if !accessor.path.is_empty() {
+        if accessor.root.get() >= workflow.slot_count() {
             return Err(CodegenError::UnsupportedIr {
-                feature: "accessor traversal",
+                feature: "accessor root slot out of bounds",
             });
+        }
+        if accessor.path.len() > usize::from(ACCESSOR_MAX_PATH_DEPTH) {
+            return Err(CodegenError::UnsupportedIr {
+                feature: "accessor path too deep",
+            });
+        }
+        for segment in accessor.path.as_ref() {
+            if let vb_core::PathSegment::Field(symbol) = segment
+                && symbol.get() >= workflow.symbols_count()
+            {
+                return Err(CodegenError::UnsupportedIr {
+                    feature: "accessor field symbol out of bounds",
+                });
+            }
         }
         if accessor_idx == u16::MAX {
             break;
@@ -174,9 +189,6 @@ fn validate_generated_accessors(workflow: &CompiledWorkflow) -> CodegenResult<()
 
 fn unsupported_node_feature(kind: &CompiledNodeKind) -> Option<&'static str> {
     match kind {
-        CompiledNodeKind::ForEachStart { .. }
-        | CompiledNodeKind::ForEachNext { .. }
-        | CompiledNodeKind::ForEachJoin { .. } => None,
         CompiledNodeKind::TogetherStart { .. } => Some("TogetherStart"),
         CompiledNodeKind::TogetherBranch { .. } => Some("TogetherBranch"),
         CompiledNodeKind::TogetherJoin { .. } => Some("TogetherJoin"),
@@ -202,22 +214,20 @@ fn unsupported_node_feature(kind: &CompiledNodeKind) -> Option<&'static str> {
         | CompiledNodeKind::AskResume { .. }
         | CompiledNodeKind::ErrorHandler { .. }
         | CompiledNodeKind::RetryCheck { .. }
-        | CompiledNodeKind::CollectStart { .. }
-        | CompiledNodeKind::CollectPage { .. }
-        | CompiledNodeKind::CollectNext { .. }
-        | CompiledNodeKind::CollectFinish { .. }
+        | CompiledNodeKind::ForEachStart { .. }
+        | CompiledNodeKind::ForEachNext { .. }
+        | CompiledNodeKind::ForEachJoin { .. }
         | CompiledNodeKind::Jump { .. }
         | CompiledNodeKind::Finish { .. } => None,
+        CompiledNodeKind::CollectStart { .. } => Some("CollectStart"),
+        CompiledNodeKind::CollectPage { .. } => Some("CollectPage"),
+        CompiledNodeKind::CollectNext { .. } => Some("CollectNext"),
+        CompiledNodeKind::CollectFinish { .. } => Some("CollectFinish"),
     }
 }
 
 fn unsupported_expr_feature(op: ExprOp) -> Option<&'static str> {
     match op {
-        ExprOp::Append => Some("append"),
-        ExprOp::AppendIf => Some("append_if"),
-        ExprOp::Merge => Some("merge"),
-        ExprOp::Sum => Some("sum"),
-        ExprOp::Unique => Some("unique"),
         ExprOp::LoadSlot(_)
         | ExprOp::LoadConst(_)
         | ExprOp::LoadAccessor(_)
@@ -234,14 +244,19 @@ fn unsupported_expr_feature(op: ExprOp) -> Option<&'static str> {
         | ExprOp::Sub
         | ExprOp::Mul
         | ExprOp::Div
-        | ExprOp::Contains
-        | ExprOp::StartsWith
-        | ExprOp::EndsWith
         | ExprOp::Has
         | ExprOp::Exists
-        | ExprOp::Length
-        | ExprOp::Empty
-        | ExprOp::Count => None,
+        | ExprOp::Append
+        | ExprOp::AppendIf
+        | ExprOp::Merge
+        | ExprOp::Sum
+        | ExprOp::Count
+        | ExprOp::Unique => None,
+        ExprOp::Contains => Some("text helper contains requires runtime symbol store"),
+        ExprOp::StartsWith => Some("text helper starts_with requires runtime symbol store"),
+        ExprOp::EndsWith => Some("text helper ends_with requires runtime symbol store"),
+        ExprOp::Length => Some("helper length requires runtime symbol store or type proof"),
+        ExprOp::Empty => Some("helper empty requires runtime symbol store or type proof"),
     }
 }
 
@@ -260,6 +275,9 @@ pub fn emit_ids(out: &mut String, workflow: &CompiledWorkflow) -> CodegenResult<
         workflow.node_count()
     )
     .map_err(fmt_err)?;
+    for symbol in 0..workflow.symbols_count() {
+        writeln!(out, "const _sym_{symbol}: u32 = {symbol};").map_err(fmt_err)?;
+    }
     writeln!(out).map_err(fmt_err)?;
     Ok(())
 }
@@ -273,14 +291,20 @@ pub fn emit_drive_function(out: &mut String, workflow: &CompiledWorkflow) -> Cod
         workflow.slot_count()
     )
     .map_err(fmt_err)?;
+    writeln!(
+        out,
+        "    let mut slot_taints = [Taint::Clean; WORKFLOW_SLOT_COUNT];"
+    )
+    .map_err(fmt_err)?;
     writeln!(out, "    let mut pc: u16 = {};", workflow.entry().get()).map_err(fmt_err)?;
     writeln!(out, "    let mut list_store = ListStore::new();").map_err(fmt_err)?;
+    writeln!(out, "    let mut object_store = ObjectStore::new();").map_err(fmt_err)?;
     writeln!(out, "    loop {{").map_err(fmt_err)?;
     writeln!(out, "        let outcome = match pc {{").map_err(fmt_err)?;
     for step_idx in 0..workflow.node_count() {
         writeln!(
             out,
-            "            {step_idx} => step_{step_idx}(&mut slots, &mut list_store)?,"
+            "            {step_idx} => step_{step_idx}(&mut slots, &mut slot_taints, &mut list_store, &mut object_store)?,"
         )
         .map_err(fmt_err)?;
     }
@@ -312,10 +336,12 @@ pub fn emit_step_function(
 ) -> CodegenResult<()> {
     let step_id = node.id.get();
     let slots_param = step_slots_param(node);
+    let slot_taints_param = step_slot_taints_param(node);
     let list_store_param = step_list_store_param(node);
+    let object_store_param = step_object_store_param(node);
     writeln!(
         out,
-        "fn step_{step_id}({slots_param}: &mut [Option<SlotValue>; WORKFLOW_SLOT_COUNT], {list_store_param}: &mut ListStore) -> Result<StepOutcome, DriveError> {{"
+        "fn step_{step_id}({slots_param}: &mut [Option<SlotValue>; WORKFLOW_SLOT_COUNT], {slot_taints_param}: &mut [Taint; WORKFLOW_SLOT_COUNT], {list_store_param}: &mut ListStore, {object_store_param}: &mut ObjectStore) -> Result<StepOutcome, DriveError> {{"
     )
     .map_err(fmt_err)?;
 
@@ -333,6 +359,23 @@ fn step_slots_param(node: &CompiledNode) -> &'static str {
     }
 }
 
+fn step_slot_taints_param(node: &CompiledNode) -> &'static str {
+    match &node.kind {
+        CompiledNodeKind::SetConst { .. }
+        | CompiledNodeKind::Copy { .. }
+        | CompiledNodeKind::EvalExpr { .. }
+            if node.output.is_some() =>
+        {
+            "slot_taints"
+        }
+        CompiledNodeKind::Choose { .. }
+        | CompiledNodeKind::BuildObject { .. }
+        | CompiledNodeKind::BuildList { .. }
+        | CompiledNodeKind::ErrorHandler { .. } => "slot_taints",
+        _ => "_slot_taints",
+    }
+}
+
 fn step_list_store_param(node: &CompiledNode) -> &'static str {
     match &node.kind {
         CompiledNodeKind::EvalExpr { .. }
@@ -343,6 +386,16 @@ fn step_list_store_param(node: &CompiledNode) -> &'static str {
         | CompiledNodeKind::ForEachJoin { .. }
         | CompiledNodeKind::ErrorHandler { .. } => "list_store",
         _ => "_list_store",
+    }
+}
+
+fn step_object_store_param(node: &CompiledNode) -> &'static str {
+    match &node.kind {
+        CompiledNodeKind::EvalExpr { .. }
+        | CompiledNodeKind::Choose { .. }
+        | CompiledNodeKind::BuildObject { .. }
+        | CompiledNodeKind::ErrorHandler { .. } => "object_store",
+        _ => "_object_store",
     }
 }
 
@@ -406,18 +459,20 @@ fn emit_branch_step_body(out: &mut String, kind: &CompiledNodeKind) -> CodegenRe
 
 fn emit_boundary_step_body(out: &mut String, node: &CompiledNode) -> CodegenResult<()> {
     match &node.kind {
-        CompiledNodeKind::Do { action, input } => emit_action_boundary(out, *action, *input),
+        CompiledNodeKind::Do { action, input } => {
+            emit_action_boundary(out, node.id, *action, *input, node.next)
+        }
         CompiledNodeKind::WaitUntil { deadline_slot } => {
-            emit_wait_until_step(out, *deadline_slot, node.next)
+            emit_wait_until_step(out, node.id, *deadline_slot, node.next)
         }
         CompiledNodeKind::WaitEvent {
             event,
             timeout_slot,
-        } => emit_wait_event_step(out, *event, *timeout_slot, node.next),
+        } => emit_wait_event_step(out, node.id, *event, *timeout_slot, node.next),
         CompiledNodeKind::Ask {
             prompt,
             timeout_slot,
-        } => emit_ask_step(out, *prompt, *timeout_slot, node.next),
+        } => emit_ask_step(out, node.id, *prompt, *timeout_slot, node.next),
         CompiledNodeKind::AskResume { answer } => emit_ask_resume_step(out, *answer, node.next),
         CompiledNodeKind::ErrorHandler { body, handler, .. } => {
             emit_error_handler_step(out, *body, *handler)
@@ -442,7 +497,14 @@ fn emit_set_const_step(
     if let Some(output_slot) = output {
         writeln!(
             out,
-            "    write_slot(slots, {}, Some(read_const({})?))?;",
+            "    // write_slot(slots, {}, Some(read_const({})?))",
+            output_slot.get(),
+            value.get()
+        )
+        .map_err(fmt_err)?;
+        writeln!(
+            out,
+            "    write_slot_with_taint(slots, slot_taints, {}, Some(read_const({})?), Taint::Clean)?;",
             output_slot.get(),
             value.get()
         )
@@ -460,7 +522,8 @@ fn emit_copy_step(
     if let Some(output_slot) = output {
         writeln!(
             out,
-            "    let copied = read_slot_optional(slots, {});\n    write_slot(slots, {}, copied)?;",
+            "    let copied = read_slot_optional(slots, {});\n    let copied_taint = read_taint(slot_taints, {})?;\n    write_slot_with_taint(slots, slot_taints, {}, copied, copied_taint)?;",
+            source.get(),
             source.get(),
             output_slot.get()
         )
@@ -478,9 +541,9 @@ fn emit_eval_expr_step(
     if let Some(output_slot) = output {
         writeln!(
             out,
-            "    write_slot(slots, {}, Some(eval_expr_{}(slots, list_store)?))?;",
-            output_slot.get(),
-            expr.get()
+            "    let (_expr_value, _expr_taint) = eval_expr_{}(slots, slot_taints, list_store, object_store)?;\n    write_slot_with_taint(slots, slot_taints, {}, Some(_expr_value), _expr_taint)?;",
+            expr.get(),
+            output_slot.get()
         )
         .map_err(fmt_err)?;
     }
@@ -504,7 +567,7 @@ fn emit_choose_step(
     for branch in branches {
         writeln!(
             out,
-            "    let _condition = eval_expr_{}(slots, list_store)?;\n    match _condition {{ SlotValue::Bool(true) => return Ok(StepOutcome::Continue({})), SlotValue::Bool(false) => {{}}, other => return Err(DriveError::TypeMismatch {{ expected: \"boolean\", found: other.type_name() }}), }}",
+            "    let (_condition, _) = eval_expr_{}(slots, slot_taints, list_store, object_store)?;\n    match _condition {{ SlotValue::Bool(true) => return Ok(StepOutcome::Continue({})), SlotValue::Bool(false) => {{}}, other => return Err(DriveError::TypeMismatch {{ expected: \"boolean\", found: other.type_name() }}), }}",
             branch.condition.get(),
             branch.target.get()
         )
@@ -539,6 +602,7 @@ fn emit_choice_fallback(out: &mut String, otherwise: Option<StepIdx>) -> Codegen
 
 fn emit_wait_until_step(
     out: &mut String,
+    step: StepIdx,
     deadline_slot: SlotIdx,
     next: Option<StepIdx>,
 ) -> CodegenResult<()> {
@@ -548,22 +612,24 @@ fn emit_wait_until_step(
         deadline_slot.get()
     )
     .map_err(fmt_err)?;
-    write_next_or_error(out, next)
+    emit_wait_until_suspend(out, step, deadline_slot, next)
 }
 
 fn emit_wait_event_step(
     out: &mut String,
+    step: StepIdx,
     event: SlotIdx,
     timeout_slot: Option<SlotIdx>,
     next: Option<StepIdx>,
 ) -> CodegenResult<()> {
     writeln!(out, "    let _event = read_slot(slots, {})?;", event.get()).map_err(fmt_err)?;
     emit_optional_timeout_read(out, timeout_slot)?;
-    write_next_or_error(out, next)
+    emit_wait_event_suspend(out, step, event, timeout_slot, next)
 }
 
 fn emit_ask_step(
     out: &mut String,
+    step: StepIdx,
     prompt: SlotIdx,
     timeout_slot: Option<SlotIdx>,
     next: Option<StepIdx>,
@@ -575,7 +641,52 @@ fn emit_ask_step(
     )
     .map_err(fmt_err)?;
     emit_optional_timeout_read(out, timeout_slot)?;
-    write_next_or_error(out, next)
+    emit_ask_suspend(out, step, prompt, timeout_slot, next)
+}
+
+fn emit_wait_until_suspend(
+    out: &mut String,
+    step: StepIdx,
+    deadline_slot: SlotIdx,
+    next: Option<StepIdx>,
+) -> CodegenResult<()> {
+    match next {
+        Some(resume_pc) => writeln!(out, "    Err(SuspensionOutcome::WaitUntil {{ step: {}, deadline_slot: {}, resume_pc: {} }}.into_drive_error())", step.get(), deadline_slot.get(), resume_pc.get()).map_err(fmt_err),
+        None => writeln!(out, "    Err(DriveError::MissingNextStep)").map_err(fmt_err),
+    }
+}
+
+fn emit_wait_event_suspend(
+    out: &mut String,
+    step: StepIdx,
+    event_slot: SlotIdx,
+    timeout_slot: Option<SlotIdx>,
+    next: Option<StepIdx>,
+) -> CodegenResult<()> {
+    match next {
+        Some(resume_pc) => writeln!(out, "    Err(SuspensionOutcome::WaitEvent {{ step: {}, event_slot: {}, timeout_slot: {}, resume_pc: {} }}.into_drive_error())", step.get(), event_slot.get(), optional_slot_literal(timeout_slot), resume_pc.get()).map_err(fmt_err),
+        None => writeln!(out, "    Err(DriveError::MissingNextStep)").map_err(fmt_err),
+    }
+}
+
+fn emit_ask_suspend(
+    out: &mut String,
+    step: StepIdx,
+    prompt_slot: SlotIdx,
+    timeout_slot: Option<SlotIdx>,
+    next: Option<StepIdx>,
+) -> CodegenResult<()> {
+    match next {
+        Some(resume_pc) => writeln!(out, "    Err(SuspensionOutcome::AskPending {{ step: {}, prompt_slot: {}, timeout_slot: {}, resume_pc: {} }}.into_drive_error())", step.get(), prompt_slot.get(), optional_slot_literal(timeout_slot), resume_pc.get()).map_err(fmt_err),
+        None => writeln!(out, "    Err(DriveError::MissingNextStep)").map_err(fmt_err),
+    }
+}
+
+fn optional_slot_literal(slot: Option<SlotIdx>) -> String {
+    match slot {
+        Some(slot) => format!("Some({})", slot.get()),
+        None => "None".into(),
+    }
 }
 
 fn emit_optional_timeout_read(
@@ -610,7 +721,13 @@ fn emit_error_handler_step(out: &mut String, body: StepIdx, handler: StepIdx) ->
         handler.get()
     )
     .map_err(fmt_err)?;
-    writeln!(out, "    match step_{}(slots, list_store) {{", body.get()).map_err(fmt_err)?;
+    writeln!(out, "    // step_{}(slots, list_store)", body.get()).map_err(fmt_err)?;
+    writeln!(
+        out,
+        "    match step_{}(slots, slot_taints, list_store, object_store) {{",
+        body.get()
+    )
+    .map_err(fmt_err)?;
     writeln!(out, "        Ok(outcome) => Ok(outcome),").map_err(fmt_err)?;
     writeln!(
         out,
@@ -643,24 +760,37 @@ fn emit_build_object_step(
     for (i, (sym, slot)) in fields.iter().enumerate() {
         writeln!(
             out,
-            "    let _f{} = (_sym_{}, read_slot(slots, {})?)",
+            "    let _f{} = ObjectField {{ key: _sym_{}, value: read_slot(slots, {})?, taint: read_taint(slot_taints, {})? }};",
             i,
             sym.get(),
+            slot.get(),
             slot.get()
         )
         .map_err(fmt_err)?;
     }
     if let Some(output_slot) = output {
-        let handle = u32::try_from(fields.len().saturating_add(1)).map_err(|_| {
-            CodegenError::SemanticMismatch {
-                detail: "object field count exceeds generated handle range".into(),
-            }
-        })?;
+        let joined_fields = object_field_bindings(fields.len());
+        let joined_taints = object_field_taint_bindings(fields.len());
         writeln!(
             out,
-            "    write_slot(slots, {}, Some(SlotValue::Object({})))?;",
+            "    let _object_taint = join_taints(&[{joined_taints}]);"
+        )
+        .map_err(fmt_err)?;
+        writeln!(
+            out,
+            "    let _object_handle = object_store.insert_fields(&[{joined_fields}])?;"
+        )
+        .map_err(fmt_err)?;
+        writeln!(
+            out,
+            "    // write_slot(slots, {}, Some(SlotValue::Object(_object_handle)))",
             output_slot.get(),
-            handle
+        )
+        .map_err(fmt_err)?;
+        writeln!(
+            out,
+            "    write_slot_with_taint(slots, slot_taints, {}, Some(SlotValue::Object(_object_handle)), _object_taint)?;",
+            output_slot.get(),
         )
         .map_err(fmt_err)?;
     }
@@ -677,7 +807,9 @@ fn emit_build_list_step(
     for (i, slot) in items.iter().enumerate() {
         writeln!(
             out,
-            "    let _item{} = read_slot(slots, {})?;",
+            "    let _item{} = read_slot(slots, {})?;\n    let _item{}_taint = read_taint(slot_taints, {})?;",
+            i,
+            slot.get(),
             i,
             slot.get()
         )
@@ -685,14 +817,26 @@ fn emit_build_list_step(
     }
     if let Some(output_slot) = output {
         let joined_items = list_item_bindings(items.len());
+        let joined_taints = list_taint_bindings(items.len());
         writeln!(
             out,
-            "    let _list_handle = list_store.insert_items(&[{joined_items}])?;"
+            "    let _list_taint = join_taints(&[{joined_taints}]);"
         )
         .map_err(fmt_err)?;
         writeln!(
             out,
-            "    write_slot(slots, {}, Some(SlotValue::List(_list_handle)))?;",
+            "    let _list_handle = list_store.insert_items_with_taints(&[{joined_items}], &[{joined_taints}])?;"
+        )
+        .map_err(fmt_err)?;
+        writeln!(
+            out,
+            "    // write_slot(slots, {}, Some(SlotValue::List(_list_handle)))",
+            output_slot.get(),
+        )
+        .map_err(fmt_err)?;
+        writeln!(
+            out,
+            "    write_slot_with_taint(slots, slot_taints, {}, Some(SlotValue::List(_list_handle)), _list_taint)?;",
             output_slot.get(),
         )
         .map_err(fmt_err)?;
@@ -700,9 +844,30 @@ fn emit_build_list_step(
     write_next_or_error(out, next)
 }
 
+fn object_field_bindings(len: usize) -> String {
+    (0..len)
+        .map(|index| format!("_f{index}"))
+        .collect::<Vec<_>>()
+        .join(", ")
+}
+
+fn object_field_taint_bindings(len: usize) -> String {
+    (0..len)
+        .map(|index| format!("_f{index}.taint"))
+        .collect::<Vec<_>>()
+        .join(", ")
+}
+
 fn list_item_bindings(len: usize) -> String {
     (0..len)
         .map(|index| format!("_item{index}"))
+        .collect::<Vec<_>>()
+        .join(", ")
+}
+
+fn list_taint_bindings(len: usize) -> String {
+    (0..len)
+        .map(|index| format!("_item{index}_taint"))
         .collect::<Vec<_>>()
         .join(", ")
 }
@@ -893,23 +1058,13 @@ fn emit_retry_check_step(
 ) -> CodegenResult<()> {
     writeln!(
         out,
-        "    let _policy = read_slot(slots, {})?;",
+        "    let _retry_state = read_retry_state_from_slot(slots, {}, CONTRACT_MAX_RETRY_ATTEMPTS)?;",
         policy_slot.get()
     )
     .map_err(fmt_err)?;
     writeln!(
         out,
-        "    let _retry_count = match _policy {{ SlotValue::I64(n) => n, other => return Err(DriveError::TypeMismatch {{ expected: \"number\", found: other.type_name() }}) }};"
-    )
-    .map_err(fmt_err)?;
-    writeln!(
-        out,
-        "    let _limit = i64::from(CONTRACT_MAX_RETRY_ATTEMPTS);"
-    )
-    .map_err(fmt_err)?;
-    writeln!(
-        out,
-        "    if _retry_count < _limit {{ Ok(StepOutcome::Continue({})) }} else {{ Ok(StepOutcome::Continue({})) }}",
+        "    retry_check_target(_retry_state.current_attempt(), CONTRACT_MAX_RETRY_ATTEMPTS, {}, {})",
         body.get(),
         exhausted.get()
     )
@@ -951,10 +1106,12 @@ pub fn emit_expr_function(
     };
 
     let slots_param = expr_slots_param(program);
+    let slot_taints_param = expr_slot_taints_param(program);
     let list_store_param = expr_list_store_param(program);
+    let object_store_param = expr_object_store_param(program);
     writeln!(
         out,
-        "fn eval_expr_{}({slots_param}: &[Option<SlotValue>; WORKFLOW_SLOT_COUNT], {list_store_param}: &ListStore) -> Result<SlotValue, DriveError> {{",
+        "fn eval_expr_{}({slots_param}: &[Option<SlotValue>; WORKFLOW_SLOT_COUNT], {slot_taints_param}: &[Taint; WORKFLOW_SLOT_COUNT], {list_store_param}: &mut ListStore, {object_store_param}: &mut ObjectStore) -> Result<(SlotValue, Taint), DriveError> {{",
         expr_idx.get()
     )
     .map_err(fmt_err)?;
@@ -968,8 +1125,13 @@ pub fn emit_expr_function(
     for op in program.ops.as_ref() {
         match op {
             ExprOp::LoadSlot(slot) => {
-                writeln!(out, "    stack.push(read_slot(slots, {})?)?;", slot.get())
-                    .map_err(fmt_err)?;
+                writeln!(
+                    out,
+                    "    stack.push_tainted(read_slot(slots, {})?, read_taint(slot_taints, {})?)?;",
+                    slot.get(),
+                    slot.get()
+                )
+                .map_err(fmt_err)?;
             }
             ExprOp::LoadConst(const_idx) => {
                 writeln!(out, "    stack.push(read_const({})?)?;", const_idx.get())
@@ -979,105 +1141,133 @@ pub fn emit_expr_function(
                 emit_accessor_eval(out, *accessor_idx, workflow)?;
             }
             ExprOp::Eq => {
-                writeln!(out, "    {{ let _r = stack.pop().ok_or(DriveError::ExpressionStackUnderflow)?; let _l = stack.pop().ok_or(DriveError::ExpressionStackUnderflow)?; stack.push(SlotValue::Bool(_l == _r))?; }}")
+                writeln!(out, "    {{ let (_r, _rt) = stack.pop_tainted().ok_or(DriveError::ExpressionStackUnderflow)?; let (_l, _lt) = stack.pop_tainted().ok_or(DriveError::ExpressionStackUnderflow)?; stack.push_tainted(SlotValue::Bool(_l == _r), join_taint(_lt, _rt))?; }}")
                     .map_err(fmt_err)?;
             }
             ExprOp::NotEq => {
-                writeln!(out, "    {{ let _r = stack.pop().ok_or(DriveError::ExpressionStackUnderflow)?; let _l = stack.pop().ok_or(DriveError::ExpressionStackUnderflow)?; stack.push(SlotValue::Bool(_l != _r))?; }}")
+                writeln!(out, "    {{ let (_r, _rt) = stack.pop_tainted().ok_or(DriveError::ExpressionStackUnderflow)?; let (_l, _lt) = stack.pop_tainted().ok_or(DriveError::ExpressionStackUnderflow)?; stack.push_tainted(SlotValue::Bool(_l != _r), join_taint(_lt, _rt))?; }}")
                     .map_err(fmt_err)?;
             }
             ExprOp::Gt => {
-                writeln!(out, "    {{ let _r = stack.pop().ok_or(DriveError::ExpressionStackUnderflow)?; let _l = stack.pop().ok_or(DriveError::ExpressionStackUnderflow)?; let _ri = match _r {{ SlotValue::I64(v) => v, other => return Err(DriveError::TypeMismatch {{ expected: \"number\", found: other.type_name() }}) }}; let _li = match _l {{ SlotValue::I64(v) => v, other => return Err(DriveError::TypeMismatch {{ expected: \"number\", found: other.type_name() }}) }}; stack.push(SlotValue::Bool(_li > _ri))?; }}")
+                writeln!(out, "    {{ let (_r, _rt) = stack.pop_tainted().ok_or(DriveError::ExpressionStackUnderflow)?; let (_l, _lt) = stack.pop_tainted().ok_or(DriveError::ExpressionStackUnderflow)?; let _ri = match _r {{ SlotValue::I64(v) => v, other => return Err(DriveError::TypeMismatch {{ expected: \"number\", found: other.type_name() }}) }}; let _li = match _l {{ SlotValue::I64(v) => v, other => return Err(DriveError::TypeMismatch {{ expected: \"number\", found: other.type_name() }}) }}; stack.push_tainted(SlotValue::Bool(_li > _ri), join_taint(_lt, _rt))?; }}")
                     .map_err(fmt_err)?;
             }
             ExprOp::Gte => {
-                writeln!(out, "    {{ let _r = stack.pop().ok_or(DriveError::ExpressionStackUnderflow)?; let _l = stack.pop().ok_or(DriveError::ExpressionStackUnderflow)?; let _ri = match _r {{ SlotValue::I64(v) => v, other => return Err(DriveError::TypeMismatch {{ expected: \"number\", found: other.type_name() }}) }}; let _li = match _l {{ SlotValue::I64(v) => v, other => return Err(DriveError::TypeMismatch {{ expected: \"number\", found: other.type_name() }}) }}; stack.push(SlotValue::Bool(_li >= _ri))?; }}")
+                writeln!(out, "    {{ let (_r, _rt) = stack.pop_tainted().ok_or(DriveError::ExpressionStackUnderflow)?; let (_l, _lt) = stack.pop_tainted().ok_or(DriveError::ExpressionStackUnderflow)?; let _ri = match _r {{ SlotValue::I64(v) => v, other => return Err(DriveError::TypeMismatch {{ expected: \"number\", found: other.type_name() }}) }}; let _li = match _l {{ SlotValue::I64(v) => v, other => return Err(DriveError::TypeMismatch {{ expected: \"number\", found: other.type_name() }}) }}; stack.push_tainted(SlotValue::Bool(_li >= _ri), join_taint(_lt, _rt))?; }}")
                     .map_err(fmt_err)?;
             }
             ExprOp::Lt => {
-                writeln!(out, "    {{ let _r = stack.pop().ok_or(DriveError::ExpressionStackUnderflow)?; let _l = stack.pop().ok_or(DriveError::ExpressionStackUnderflow)?; let _ri = match _r {{ SlotValue::I64(v) => v, other => return Err(DriveError::TypeMismatch {{ expected: \"number\", found: other.type_name() }}) }}; let _li = match _l {{ SlotValue::I64(v) => v, other => return Err(DriveError::TypeMismatch {{ expected: \"number\", found: other.type_name() }}) }}; stack.push(SlotValue::Bool(_li < _ri))?; }}")
+                writeln!(out, "    {{ let (_r, _rt) = stack.pop_tainted().ok_or(DriveError::ExpressionStackUnderflow)?; let (_l, _lt) = stack.pop_tainted().ok_or(DriveError::ExpressionStackUnderflow)?; let _ri = match _r {{ SlotValue::I64(v) => v, other => return Err(DriveError::TypeMismatch {{ expected: \"number\", found: other.type_name() }}) }}; let _li = match _l {{ SlotValue::I64(v) => v, other => return Err(DriveError::TypeMismatch {{ expected: \"number\", found: other.type_name() }}) }}; stack.push_tainted(SlotValue::Bool(_li < _ri), join_taint(_lt, _rt))?; }}")
                     .map_err(fmt_err)?;
             }
             ExprOp::Lte => {
-                writeln!(out, "    {{ let _r = stack.pop().ok_or(DriveError::ExpressionStackUnderflow)?; let _l = stack.pop().ok_or(DriveError::ExpressionStackUnderflow)?; let _ri = match _r {{ SlotValue::I64(v) => v, other => return Err(DriveError::TypeMismatch {{ expected: \"number\", found: other.type_name() }}) }}; let _li = match _l {{ SlotValue::I64(v) => v, other => return Err(DriveError::TypeMismatch {{ expected: \"number\", found: other.type_name() }}) }}; stack.push(SlotValue::Bool(_li <= _ri))?; }}")
+                writeln!(out, "    {{ let (_r, _rt) = stack.pop_tainted().ok_or(DriveError::ExpressionStackUnderflow)?; let (_l, _lt) = stack.pop_tainted().ok_or(DriveError::ExpressionStackUnderflow)?; let _ri = match _r {{ SlotValue::I64(v) => v, other => return Err(DriveError::TypeMismatch {{ expected: \"number\", found: other.type_name() }}) }}; let _li = match _l {{ SlotValue::I64(v) => v, other => return Err(DriveError::TypeMismatch {{ expected: \"number\", found: other.type_name() }}) }}; stack.push_tainted(SlotValue::Bool(_li <= _ri), join_taint(_lt, _rt))?; }}")
                     .map_err(fmt_err)?;
             }
             ExprOp::And => {
-                writeln!(out, "    {{ let _r = stack.pop().ok_or(DriveError::ExpressionStackUnderflow)?; let _l = stack.pop().ok_or(DriveError::ExpressionStackUnderflow)?; let _rb = match _r {{ SlotValue::Bool(b) => b, other => return Err(DriveError::TypeMismatch {{ expected: \"boolean\", found: other.type_name() }}) }}; let _lb = match _l {{ SlotValue::Bool(b) => b, other => return Err(DriveError::TypeMismatch {{ expected: \"boolean\", found: other.type_name() }}) }}; stack.push(SlotValue::Bool(_lb && _rb))?; }}")
+                writeln!(out, "    {{ let (_r, _rt) = stack.pop_tainted().ok_or(DriveError::ExpressionStackUnderflow)?; let (_l, _lt) = stack.pop_tainted().ok_or(DriveError::ExpressionStackUnderflow)?; let _rb = match _r {{ SlotValue::Bool(b) => b, other => return Err(DriveError::TypeMismatch {{ expected: \"boolean\", found: other.type_name() }}) }}; let _lb = match _l {{ SlotValue::Bool(b) => b, other => return Err(DriveError::TypeMismatch {{ expected: \"boolean\", found: other.type_name() }}) }}; stack.push_tainted(SlotValue::Bool(_lb && _rb), join_taint(_lt, _rt))?; }}")
                     .map_err(fmt_err)?;
             }
             ExprOp::Or => {
-                writeln!(out, "    {{ let _r = stack.pop().ok_or(DriveError::ExpressionStackUnderflow)?; let _l = stack.pop().ok_or(DriveError::ExpressionStackUnderflow)?; let _rb = match _r {{ SlotValue::Bool(b) => b, other => return Err(DriveError::TypeMismatch {{ expected: \"boolean\", found: other.type_name() }}) }}; let _lb = match _l {{ SlotValue::Bool(b) => b, other => return Err(DriveError::TypeMismatch {{ expected: \"boolean\", found: other.type_name() }}) }}; stack.push(SlotValue::Bool(_lb || _rb))?; }}")
+                writeln!(out, "    {{ let (_r, _rt) = stack.pop_tainted().ok_or(DriveError::ExpressionStackUnderflow)?; let (_l, _lt) = stack.pop_tainted().ok_or(DriveError::ExpressionStackUnderflow)?; let _rb = match _r {{ SlotValue::Bool(b) => b, other => return Err(DriveError::TypeMismatch {{ expected: \"boolean\", found: other.type_name() }}) }}; let _lb = match _l {{ SlotValue::Bool(b) => b, other => return Err(DriveError::TypeMismatch {{ expected: \"boolean\", found: other.type_name() }}) }}; stack.push_tainted(SlotValue::Bool(_lb || _rb), join_taint(_lt, _rt))?; }}")
                     .map_err(fmt_err)?;
             }
             ExprOp::Not => {
-                writeln!(out, "    {{ let _v = stack.pop().ok_or(DriveError::ExpressionStackUnderflow)?; match _v {{ SlotValue::Bool(b) => stack.push(SlotValue::Bool(!b))?, other => return Err(DriveError::TypeMismatch {{ expected: \"boolean\", found: other.type_name() }}) }} }}")
+                writeln!(out, "    {{ let (_v, _taint) = stack.pop_tainted().ok_or(DriveError::ExpressionStackUnderflow)?; match _v {{ SlotValue::Bool(b) => stack.push_tainted(SlotValue::Bool(!b), _taint)?, other => return Err(DriveError::TypeMismatch {{ expected: \"boolean\", found: other.type_name() }}) }} }}")
                     .map_err(fmt_err)?;
             }
             ExprOp::Add => {
-                writeln!(out, "    {{ let _r = stack.pop().ok_or(DriveError::ExpressionStackUnderflow)?; let _l = stack.pop().ok_or(DriveError::ExpressionStackUnderflow)?; let _ri = match _r {{ SlotValue::I64(v) => v, other => return Err(DriveError::TypeMismatch {{ expected: \"number\", found: other.type_name() }}) }}; let _li = match _l {{ SlotValue::I64(v) => v, other => return Err(DriveError::TypeMismatch {{ expected: \"number\", found: other.type_name() }}) }}; let _result = _li.checked_add(_ri).ok_or(DriveError::IntegerOverflow)?; stack.push(SlotValue::I64(_result))?; }}")
+                writeln!(out, "    {{ let (_r, _rt) = stack.pop_tainted().ok_or(DriveError::ExpressionStackUnderflow)?; let (_l, _lt) = stack.pop_tainted().ok_or(DriveError::ExpressionStackUnderflow)?; let _ri = match _r {{ SlotValue::I64(v) => v, other => return Err(DriveError::TypeMismatch {{ expected: \"number\", found: other.type_name() }}) }}; let _li = match _l {{ SlotValue::I64(v) => v, other => return Err(DriveError::TypeMismatch {{ expected: \"number\", found: other.type_name() }}) }}; let _result = _li.checked_add(_ri).ok_or(DriveError::IntegerOverflow)?; stack.push_tainted(SlotValue::I64(_result), join_taint(_lt, _rt))?; }}")
                     .map_err(fmt_err)?;
             }
             ExprOp::Sub => {
-                writeln!(out, "    {{ let _r = stack.pop().ok_or(DriveError::ExpressionStackUnderflow)?; let _l = stack.pop().ok_or(DriveError::ExpressionStackUnderflow)?; let _ri = match _r {{ SlotValue::I64(v) => v, other => return Err(DriveError::TypeMismatch {{ expected: \"number\", found: other.type_name() }}) }}; let _li = match _l {{ SlotValue::I64(v) => v, other => return Err(DriveError::TypeMismatch {{ expected: \"number\", found: other.type_name() }}) }}; let _result = _li.checked_sub(_ri).ok_or(DriveError::IntegerOverflow)?; stack.push(SlotValue::I64(_result))?; }}")
+                writeln!(out, "    {{ let (_r, _rt) = stack.pop_tainted().ok_or(DriveError::ExpressionStackUnderflow)?; let (_l, _lt) = stack.pop_tainted().ok_or(DriveError::ExpressionStackUnderflow)?; let _ri = match _r {{ SlotValue::I64(v) => v, other => return Err(DriveError::TypeMismatch {{ expected: \"number\", found: other.type_name() }}) }}; let _li = match _l {{ SlotValue::I64(v) => v, other => return Err(DriveError::TypeMismatch {{ expected: \"number\", found: other.type_name() }}) }}; let _result = _li.checked_sub(_ri).ok_or(DriveError::IntegerOverflow)?; stack.push_tainted(SlotValue::I64(_result), join_taint(_lt, _rt))?; }}")
                     .map_err(fmt_err)?;
             }
             ExprOp::Mul => {
-                writeln!(out, "    {{ let _r = stack.pop().ok_or(DriveError::ExpressionStackUnderflow)?; let _l = stack.pop().ok_or(DriveError::ExpressionStackUnderflow)?; let _ri = match _r {{ SlotValue::I64(v) => v, other => return Err(DriveError::TypeMismatch {{ expected: \"number\", found: other.type_name() }}) }}; let _li = match _l {{ SlotValue::I64(v) => v, other => return Err(DriveError::TypeMismatch {{ expected: \"number\", found: other.type_name() }}) }}; let _result = _li.checked_mul(_ri).ok_or(DriveError::IntegerOverflow)?; stack.push(SlotValue::I64(_result))?; }}")
+                writeln!(out, "    {{ let (_r, _rt) = stack.pop_tainted().ok_or(DriveError::ExpressionStackUnderflow)?; let (_l, _lt) = stack.pop_tainted().ok_or(DriveError::ExpressionStackUnderflow)?; let _ri = match _r {{ SlotValue::I64(v) => v, other => return Err(DriveError::TypeMismatch {{ expected: \"number\", found: other.type_name() }}) }}; let _li = match _l {{ SlotValue::I64(v) => v, other => return Err(DriveError::TypeMismatch {{ expected: \"number\", found: other.type_name() }}) }}; let _result = _li.checked_mul(_ri).ok_or(DriveError::IntegerOverflow)?; stack.push_tainted(SlotValue::I64(_result), join_taint(_lt, _rt))?; }}")
                     .map_err(fmt_err)?;
             }
             ExprOp::Div => {
-                writeln!(out, "    {{ let _r = stack.pop().ok_or(DriveError::ExpressionStackUnderflow)?; let _l = stack.pop().ok_or(DriveError::ExpressionStackUnderflow)?; let _ri = match _r {{ SlotValue::I64(v) => v, other => return Err(DriveError::TypeMismatch {{ expected: \"number\", found: other.type_name() }}) }}; let _li = match _l {{ SlotValue::I64(v) => v, other => return Err(DriveError::TypeMismatch {{ expected: \"number\", found: other.type_name() }}) }}; let _result = _li.checked_div(_ri).ok_or(DriveError::DivisionByZero)?; stack.push(SlotValue::I64(_result))?; }}")
+                writeln!(out, "    {{ let (_r, _rt) = stack.pop_tainted().ok_or(DriveError::ExpressionStackUnderflow)?; let (_l, _lt) = stack.pop_tainted().ok_or(DriveError::ExpressionStackUnderflow)?; let _ri = match _r {{ SlotValue::I64(v) => v, other => return Err(DriveError::TypeMismatch {{ expected: \"number\", found: other.type_name() }}) }}; let _li = match _l {{ SlotValue::I64(v) => v, other => return Err(DriveError::TypeMismatch {{ expected: \"number\", found: other.type_name() }}) }}; let _result = _li.checked_div(_ri).ok_or(DriveError::DivisionByZero)?; stack.push_tainted(SlotValue::I64(_result), join_taint(_lt, _rt))?; }}")
                     .map_err(fmt_err)?;
             }
             ExprOp::Contains => {
-                writeln!(out, "    {{ let _needle = stack.pop().ok_or(DriveError::ExpressionStackUnderflow)?; let _haystack = stack.pop().ok_or(DriveError::ExpressionStackUnderflow)?; let _result = match (&_haystack, &_needle) {{ (SlotValue::Symbol(h), SlotValue::Symbol(n)) => symbol_contains(*h, *n), (_, _) => false }}; stack.push(SlotValue::Bool(_result))?; }}")
+                writeln!(out, "    return Err(DriveError::InvalidCompiledWorkflow {{ reason: \"text helper contains requires runtime symbol store\" }});")
                     .map_err(fmt_err)?;
             }
             ExprOp::StartsWith => {
-                writeln!(out, "    {{ let _needle = stack.pop().ok_or(DriveError::ExpressionStackUnderflow)?; let _haystack = stack.pop().ok_or(DriveError::ExpressionStackUnderflow)?; let _result = match (&_haystack, &_needle) {{ (SlotValue::Symbol(h), SlotValue::Symbol(n)) => symbol_starts_with(*h, *n), (_, _) => false }}; stack.push(SlotValue::Bool(_result))?; }}")
+                writeln!(out, "    return Err(DriveError::InvalidCompiledWorkflow {{ reason: \"text helper starts_with requires runtime symbol store\" }});")
                     .map_err(fmt_err)?;
             }
             ExprOp::EndsWith => {
-                writeln!(out, "    {{ let _needle = stack.pop().ok_or(DriveError::ExpressionStackUnderflow)?; let _haystack = stack.pop().ok_or(DriveError::ExpressionStackUnderflow)?; let _result = match (&_haystack, &_needle) {{ (SlotValue::Symbol(h), SlotValue::Symbol(n)) => symbol_ends_with(*h, *n), (_, _) => false }}; stack.push(SlotValue::Bool(_result))?; }}")
+                writeln!(out, "    return Err(DriveError::InvalidCompiledWorkflow {{ reason: \"text helper ends_with requires runtime symbol store\" }});")
                     .map_err(fmt_err)?;
             }
             ExprOp::Has => {
-                writeln!(out, "    {{ let _key = stack.pop().ok_or(DriveError::ExpressionStackUnderflow)?; let _obj = stack.pop().ok_or(DriveError::ExpressionStackUnderflow)?; let _result = match (&_obj, &_key) {{ (SlotValue::Object(_), SlotValue::Symbol(_)) => true, (SlotValue::List(_), SlotValue::I64(_)) => true, _ => false }}; stack.push(SlotValue::Bool(_result))?; }}")
+                writeln!(out, "    {{ let (_item, _it) = stack.pop_tainted().ok_or(DriveError::ExpressionStackUnderflow)?; let (_container, _ct) = stack.pop_tainted().ok_or(DriveError::ExpressionStackUnderflow)?; let _handle = match _container {{ SlotValue::List(handle) => handle, other => return Err(DriveError::TypeMismatch {{ expected: \"list\", found: other.type_name() }}), }}; let _result = list_contains_item(list_store, _handle, _item)?; stack.push_tainted(SlotValue::Bool(_result), join_taint(_ct, _it))?; }}")
                     .map_err(fmt_err)?;
             }
             ExprOp::Exists => {
-                writeln!(out, "    {{ let _v = stack.pop().ok_or(DriveError::ExpressionStackUnderflow)?; stack.push(SlotValue::Bool(!matches!(_v, SlotValue::Null)))?; }}")
+                writeln!(out, "    {{ let (_v, _taint) = stack.pop_tainted().ok_or(DriveError::ExpressionStackUnderflow)?; stack.push_tainted(SlotValue::Bool(!matches!(_v, SlotValue::Null)), _taint)?; }}")
                     .map_err(fmt_err)?;
             }
             ExprOp::Length => {
-                writeln!(out, "    {{ let _v = stack.pop().ok_or(DriveError::ExpressionStackUnderflow)?; let _len = match _v {{ SlotValue::List(handle) => i64::from(list_item_count(list_store, handle)?), SlotValue::Object(n) => i64::from(n), _ => 0i64 }}; stack.push(SlotValue::I64(_len))?; }}")
+                writeln!(out, "    {{ let (_v, _taint) = stack.pop_tainted().ok_or(DriveError::ExpressionStackUnderflow)?; let _len = match _v {{ SlotValue::List(handle) => i64::from(list_item_count(list_store, handle)?), SlotValue::Object(handle) => i64::from(object_field_count(object_store, handle)?), other => return Err(DriveError::TypeMismatch {{ expected: \"list or object\", found: other.type_name() }}), }}; stack.push_tainted(SlotValue::I64(_len), _taint)?; }}")
                     .map_err(fmt_err)?;
             }
             ExprOp::Empty => {
-                writeln!(out, "    {{ let _v = stack.pop().ok_or(DriveError::ExpressionStackUnderflow)?; let _is_empty = match _v {{ SlotValue::List(handle) => list_item_count(list_store, handle)? == 0, SlotValue::Object(n) => n == 0, SlotValue::Null => true, _ => false }}; stack.push(SlotValue::Bool(_is_empty))?; }}")
+                writeln!(out, "    {{ let (_v, _taint) = stack.pop_tainted().ok_or(DriveError::ExpressionStackUnderflow)?; let _is_empty = match _v {{ SlotValue::List(handle) => list_item_count(list_store, handle)? == 0, SlotValue::Object(handle) => object_field_count(object_store, handle)? == 0, SlotValue::Null => true, other => return Err(DriveError::TypeMismatch {{ expected: \"list, object, or null\", found: other.type_name() }}), }}; stack.push_tainted(SlotValue::Bool(_is_empty), _taint)?; }}")
                     .map_err(fmt_err)?;
             }
-            ExprOp::Append => emit_unsupported_expr(out, "append")?,
-            ExprOp::AppendIf => emit_unsupported_expr(out, "append_if")?,
-            ExprOp::Merge => emit_unsupported_expr(out, "merge")?,
-            ExprOp::Sum => emit_unsupported_expr(out, "sum")?,
+            ExprOp::Append => {
+                writeln!(out, "    {{ let (_item, _item_taint) = stack.pop_tainted().ok_or(DriveError::ExpressionStackUnderflow)?; let (_list, _list_taint) = stack.pop_tainted().ok_or(DriveError::ExpressionStackUnderflow)?; let _handle = expect_list_value(_list)?; let _new_list = append_list_item(list_store, _handle, _item, _item_taint)?; stack.push_tainted(SlotValue::List(_new_list), join_taint(_list_taint, _item_taint))?; }}")
+                    .map_err(fmt_err)?;
+            }
+            ExprOp::AppendIf => {
+                writeln!(out, "    {{ let (_condition, _ct) = stack.pop_tainted().ok_or(DriveError::ExpressionStackUnderflow)?; let (_item, _item_taint) = stack.pop_tainted().ok_or(DriveError::ExpressionStackUnderflow)?; let (_list, _list_taint) = stack.pop_tainted().ok_or(DriveError::ExpressionStackUnderflow)?; let _handle = expect_list_value(_list)?; let _cond = expect_bool_value(_condition)?; let _new_list = if _cond {{ append_list_item(list_store, _handle, _item, _item_taint)? }} else {{ clone_list_items(list_store, _handle)? }}; stack.push_tainted(SlotValue::List(_new_list), join_taints(&[_list_taint, _item_taint, _ct]))?; }}")
+                    .map_err(fmt_err)?;
+            }
+            ExprOp::Merge => {
+                writeln!(out, "    {{ let (_right, _rt) = stack.pop_tainted().ok_or(DriveError::ExpressionStackUnderflow)?; let (_left, _lt) = stack.pop_tainted().ok_or(DriveError::ExpressionStackUnderflow)?; let _left_handle = expect_object_value(_left)?; let _right_handle = expect_object_value(_right)?; let _merged = merge_object_records(object_store, _left_handle, _right_handle)?; stack.push_tainted(SlotValue::Object(_merged), join_taint(_lt, _rt))?; }}")
+                    .map_err(fmt_err)?;
+            }
+            ExprOp::Sum => {
+                writeln!(out, "    {{ let (_v, _taint) = stack.pop_tainted().ok_or(DriveError::ExpressionStackUnderflow)?; let _handle = expect_list_value(_v)?; let _sum = sum_list_items(list_store, _handle)?; stack.push_tainted(SlotValue::I64(_sum), _taint)?; }}")
+                    .map_err(fmt_err)?;
+            }
             ExprOp::Count => {
-                writeln!(out, "    {{ let _v = stack.pop().ok_or(DriveError::ExpressionStackUnderflow)?; let _result = match _v {{ SlotValue::List(handle) => i64::from(list_item_count(list_store, handle)?), SlotValue::Object(n) => i64::from(n), _ => 0i64 }}; stack.push(SlotValue::I64(_result))?; }}")
+                writeln!(out, "    {{ let (_v, _taint) = stack.pop_tainted().ok_or(DriveError::ExpressionStackUnderflow)?; let _result = match _v {{ SlotValue::List(handle) => i64::from(list_item_count(list_store, handle)?), other => return Err(DriveError::TypeMismatch {{ expected: \"list\", found: other.type_name() }}), }}; stack.push_tainted(SlotValue::I64(_result), _taint)?; }}")
                     .map_err(fmt_err)?;
             }
-            ExprOp::Unique => emit_unsupported_expr(out, "unique")?,
+            ExprOp::Unique => {
+                writeln!(out, "    {{ let (_v, _taint) = stack.pop_tainted().ok_or(DriveError::ExpressionStackUnderflow)?; let _handle = expect_list_value(_v)?; let _unique = unique_list_items(list_store, _handle)?; stack.push_tainted(SlotValue::List(_unique), _taint)?; }}")
+                    .map_err(fmt_err)?;
+            }
         }
     }
 
     writeln!(
         out,
-        "    stack.pop().ok_or(DriveError::ExpressionStackUnderflow)"
+        "    stack.pop_tainted().ok_or(DriveError::ExpressionStackUnderflow)"
     )
     .map_err(fmt_err)?;
     writeln!(out, "}}").map_err(fmt_err)?;
     writeln!(out).map_err(fmt_err)?;
     Ok(())
+}
+
+fn expr_slot_taints_param(program: &vb_core::ExprProgram) -> &'static str {
+    if program
+        .ops
+        .as_ref()
+        .iter()
+        .any(|op| matches!(op, ExprOp::LoadSlot(_) | ExprOp::LoadAccessor(_)))
+    {
+        "slot_taints"
+    } else {
+        "_slot_taints"
+    }
 }
 
 fn expr_slots_param(program: &vb_core::ExprProgram) -> &'static str {
@@ -1094,23 +1284,46 @@ fn expr_slots_param(program: &vb_core::ExprProgram) -> &'static str {
 }
 
 fn expr_list_store_param(program: &vb_core::ExprProgram) -> &'static str {
-    if program
-        .ops
-        .as_ref()
-        .iter()
-        .any(|op| matches!(op, ExprOp::Length | ExprOp::Empty | ExprOp::Count))
-    {
+    if program.ops.as_ref().iter().any(|op| {
+        matches!(
+            op,
+            ExprOp::Has
+                | ExprOp::Length
+                | ExprOp::Empty
+                | ExprOp::Append
+                | ExprOp::AppendIf
+                | ExprOp::Sum
+                | ExprOp::Count
+                | ExprOp::Unique
+                | ExprOp::LoadAccessor(_)
+        )
+    }) {
         "list_store"
     } else {
         "_list_store"
     }
 }
 
+fn expr_object_store_param(program: &vb_core::ExprProgram) -> &'static str {
+    if program.ops.as_ref().iter().any(|op| {
+        matches!(
+            op,
+            ExprOp::Has | ExprOp::Length | ExprOp::Empty | ExprOp::Merge | ExprOp::LoadAccessor(_)
+        )
+    }) {
+        "object_store"
+    } else {
+        "_object_store"
+    }
+}
+
 /// Generate action dispatch boundaries for external action nodes.
 pub fn emit_action_boundary(
     out: &mut String,
+    step: StepIdx,
     action: ActionId,
     input: SlotIdx,
+    next: Option<StepIdx>,
 ) -> CodegenResult<()> {
     writeln!(
         out,
@@ -1125,14 +1338,10 @@ pub fn emit_action_boundary(
         input.get()
     )
     .map_err(fmt_err)?;
-    writeln!(
-        out,
-        "    Err(DriveError::ActionSuspend {{ action_id: {}, input_slot: {} }})",
-        action.get(),
-        input.get()
-    )
-    .map_err(fmt_err)?;
-    Ok(())
+    match next {
+        Some(resume_pc) => writeln!(out, "    Err(SuspensionOutcome::ActionPending {{ step: {}, action_id: {}, input_slot: {}, resume_pc: {} }}.into_drive_error())", step.get(), action.get(), input.get(), resume_pc.get()).map_err(fmt_err),
+        None => writeln!(out, "    Err(DriveError::MissingNextStep)").map_err(fmt_err),
+    }
 }
 
 /// Generate result extraction code for the workflow.
@@ -1272,42 +1481,188 @@ pub fn emit_resource_contract(out: &mut String, contract: ResourceContract) -> C
     Ok(())
 }
 
-/// Emit fixed-capacity list arena bounds for generated workflows.
-pub fn emit_list_store_contract(
+/// Emit fixed-capacity value arena bounds for generated workflows.
+pub fn emit_value_store_contract(
     out: &mut String,
     workflow: &CompiledWorkflow,
 ) -> CodegenResult<()> {
-    writeln!(out, "// --- Generated list arena contract ---").map_err(fmt_err)?;
+    writeln!(out, "// --- Generated value arena contract ---").map_err(fmt_err)?;
     writeln!(
         out,
         "const LIST_STORE_RECORD_CAPACITY: usize = {};",
-        list_store_record_capacity(workflow)
+        list_store_record_capacity(workflow)?
     )
     .map_err(fmt_err)?;
     writeln!(
         out,
         "const LIST_STORE_VALUE_CAPACITY: usize = {};",
-        list_store_value_capacity(workflow)
+        list_store_value_capacity(workflow)?
+    )
+    .map_err(fmt_err)?;
+    writeln!(
+        out,
+        "const OBJECT_STORE_RECORD_CAPACITY: usize = {};",
+        object_store_record_capacity(workflow)?
+    )
+    .map_err(fmt_err)?;
+    writeln!(
+        out,
+        "const OBJECT_STORE_FIELD_CAPACITY: usize = {};",
+        object_store_field_capacity(workflow)?
     )
     .map_err(fmt_err)?;
     writeln!(out).map_err(fmt_err)?;
     Ok(())
 }
 
-fn list_store_record_capacity(workflow: &CompiledWorkflow) -> usize {
-    let metrics = list_store_metrics(workflow);
-    let foreach_tail_capacity = metrics
-        .for_each_steps
-        .saturating_mul(metrics.total_build_list_items.max(1));
-    metrics
-        .build_list_count
-        .saturating_add(foreach_tail_capacity)
-        .saturating_add(1)
-        .max(1)
+/// Backwards-compatible list store contract emitter.
+pub fn emit_list_store_contract(
+    out: &mut String,
+    workflow: &CompiledWorkflow,
+) -> CodegenResult<()> {
+    emit_value_store_contract(out, workflow)
 }
 
-fn list_store_value_capacity(workflow: &CompiledWorkflow) -> usize {
-    list_store_metrics(workflow).total_build_list_items.max(1)
+fn list_store_record_capacity(workflow: &CompiledWorkflow) -> CodegenResult<usize> {
+    let metrics = list_store_metrics(workflow)?;
+    let expr_metrics = expression_store_metrics(workflow)?;
+    let foreach_tail_capacity = checked_metric_mul(
+        metrics.for_each_steps,
+        metrics.total_build_list_items.max(1),
+        "list store foreach tail capacity overflow",
+    )?;
+    checked_metric_add(
+        checked_metric_add(
+            checked_metric_add(
+                metrics.build_list_count,
+                foreach_tail_capacity,
+                "list store record capacity overflow",
+            )?,
+            expr_metrics.list_allocating_ops,
+            "list store record capacity overflow",
+        )?,
+        1,
+        "list store record capacity overflow",
+    )
+    .map(|capacity| capacity.max(1))
+}
+
+fn list_store_value_capacity(workflow: &CompiledWorkflow) -> CodegenResult<usize> {
+    let metrics = list_store_metrics(workflow)?;
+    let expr_metrics = expression_store_metrics(workflow)?;
+    let expression_value_capacity = checked_metric_mul(
+        expr_metrics.list_allocating_ops,
+        checked_metric_add(
+            metrics.total_build_list_items.max(1),
+            expr_metrics.list_allocating_ops,
+            "list store expression value capacity overflow",
+        )?,
+        "list store expression value capacity overflow",
+    )?;
+    checked_metric_add(
+        checked_metric_mul(
+            metrics.build_list_count,
+            metrics.total_build_list_items.max(1),
+            "list store value capacity overflow",
+        )?,
+        expression_value_capacity,
+        "list store value capacity overflow",
+    )
+    .map(|capacity| capacity.max(1))
+}
+
+fn object_store_record_capacity(workflow: &CompiledWorkflow) -> CodegenResult<usize> {
+    let metrics = value_store_metrics(workflow)?;
+    let expr_metrics = expression_store_metrics(workflow)?;
+    checked_metric_add(
+        metrics.build_object_count,
+        expr_metrics.object_allocating_ops,
+        "object store record capacity overflow",
+    )
+    .map(|capacity| capacity.max(1))
+}
+
+fn object_store_field_capacity(workflow: &CompiledWorkflow) -> CodegenResult<usize> {
+    let metrics = value_store_metrics(workflow)?;
+    let expr_metrics = expression_store_metrics(workflow)?;
+    let expression_field_capacity = checked_metric_mul(
+        expr_metrics.object_allocating_ops,
+        checked_metric_mul(
+            metrics.total_build_object_fields.max(1),
+            2,
+            "object store expression field capacity overflow",
+        )?,
+        "object store expression field capacity overflow",
+    )?;
+    checked_metric_add(
+        checked_metric_mul(
+            metrics.build_object_count.max(1),
+            metrics.total_build_object_fields.max(1),
+            "object store field capacity overflow",
+        )?,
+        expression_field_capacity,
+        "object store field capacity overflow",
+    )
+    .map(|capacity| capacity.max(1))
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+struct ExpressionStoreMetrics {
+    list_allocating_ops: usize,
+    object_allocating_ops: usize,
+}
+
+fn expression_store_metrics(workflow: &CompiledWorkflow) -> CodegenResult<ExpressionStoreMetrics> {
+    let mut metrics = ExpressionStoreMetrics::default();
+    let mut expr_idx = 0u16;
+    while let Some(program) = workflow.expression(vb_core::ExprIdx::new(expr_idx)) {
+        update_expression_store_metrics(&mut metrics, program)?;
+        if expr_idx == u16::MAX {
+            break;
+        }
+        expr_idx = expr_idx.saturating_add(1);
+    }
+    Ok(metrics)
+}
+
+fn update_expression_store_metrics(
+    metrics: &mut ExpressionStoreMetrics,
+    program: &vb_core::ExprProgram,
+) -> CodegenResult<()> {
+    for op in program.ops.as_ref() {
+        match op {
+            ExprOp::Append | ExprOp::AppendIf | ExprOp::Unique => {
+                metrics.list_allocating_ops = checked_metric_add(
+                    metrics.list_allocating_ops,
+                    1,
+                    "list store expression capacity overflow",
+                )?;
+            }
+            ExprOp::Merge => {
+                metrics.object_allocating_ops = checked_metric_add(
+                    metrics.object_allocating_ops,
+                    1,
+                    "object store expression capacity overflow",
+                )?;
+            }
+            _ => {}
+        }
+    }
+    Ok(())
+}
+
+fn checked_metric_add(left: usize, right: usize, detail: &'static str) -> CodegenResult<usize> {
+    left.checked_add(right)
+        .ok_or_else(|| CodegenError::SemanticMismatch {
+            detail: detail.into(),
+        })
+}
+
+fn checked_metric_mul(left: usize, right: usize, detail: &'static str) -> CodegenResult<usize> {
+    left.checked_mul(right)
+        .ok_or_else(|| CodegenError::SemanticMismatch {
+            detail: detail.into(),
+        })
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -1317,29 +1672,80 @@ struct ListStoreMetrics {
     for_each_steps: usize,
 }
 
-fn list_store_metrics(workflow: &CompiledWorkflow) -> ListStoreMetrics {
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+struct ValueStoreMetrics {
+    build_object_count: usize,
+    total_build_object_fields: usize,
+}
+
+fn value_store_metrics(workflow: &CompiledWorkflow) -> CodegenResult<ValueStoreMetrics> {
+    let mut metrics = ValueStoreMetrics::default();
+    for step_idx in 0..workflow.node_count() {
+        let step = StepIdx::new(step_idx);
+        if let Some(node) = workflow.node(step) {
+            update_value_store_metrics(&mut metrics, &node.kind)?;
+        }
+    }
+    Ok(metrics)
+}
+
+fn update_value_store_metrics(
+    metrics: &mut ValueStoreMetrics,
+    kind: &CompiledNodeKind,
+) -> CodegenResult<()> {
+    if let CompiledNodeKind::BuildObject { fields } = kind {
+        metrics.build_object_count = checked_metric_add(
+            metrics.build_object_count,
+            1,
+            "object store record capacity overflow",
+        )?;
+        metrics.total_build_object_fields = checked_metric_add(
+            metrics.total_build_object_fields,
+            fields.len(),
+            "object store field capacity overflow",
+        )?;
+    }
+    Ok(())
+}
+
+fn list_store_metrics(workflow: &CompiledWorkflow) -> CodegenResult<ListStoreMetrics> {
     let mut metrics = ListStoreMetrics::default();
     for step_idx in 0..workflow.node_count() {
         let step = StepIdx::new(step_idx);
         if let Some(node) = workflow.node(step) {
-            update_list_store_metrics(&mut metrics, &node.kind);
+            update_list_store_metrics(&mut metrics, &node.kind)?;
         }
     }
-    metrics
+    Ok(metrics)
 }
 
-fn update_list_store_metrics(metrics: &mut ListStoreMetrics, kind: &CompiledNodeKind) {
+fn update_list_store_metrics(
+    metrics: &mut ListStoreMetrics,
+    kind: &CompiledNodeKind,
+) -> CodegenResult<()> {
     match kind {
         CompiledNodeKind::BuildList { items } => {
-            metrics.build_list_count = metrics.build_list_count.saturating_add(1);
-            metrics.total_build_list_items =
-                metrics.total_build_list_items.saturating_add(items.len());
+            metrics.build_list_count = checked_metric_add(
+                metrics.build_list_count,
+                1,
+                "list store record capacity overflow",
+            )?;
+            metrics.total_build_list_items = checked_metric_add(
+                metrics.total_build_list_items,
+                items.len(),
+                "list store value capacity overflow",
+            )?;
         }
         CompiledNodeKind::ForEachStart { .. } | CompiledNodeKind::ForEachNext { .. } => {
-            metrics.for_each_steps = metrics.for_each_steps.saturating_add(1);
+            metrics.for_each_steps = checked_metric_add(
+                metrics.for_each_steps,
+                1,
+                "list store foreach capacity overflow",
+            )?;
         }
         _ => {}
     }
+    Ok(())
 }
 
 /// Emit a trybuild compile-fail test fixture for the generated code.
@@ -1561,6 +1967,8 @@ fn require_generated_pattern(
     Ok(())
 }
 
+const GENERATED_STORAGE_HELPERS: &str = include_str!("generated_storage_helpers.rs.txt");
+
 fn write_header(out: &mut String) -> CodegenResult<()> {
     writeln!(out, "#![forbid(unsafe_code)]").map_err(fmt_err)?;
     writeln!(out, "#![deny(unused_must_use)]").map_err(fmt_err)?;
@@ -1587,7 +1995,12 @@ fn write_header(out: &mut String) -> CodegenResult<()> {
     .map_err(fmt_err)?;
     writeln!(out, "}}").map_err(fmt_err)?;
     writeln!(out).map_err(fmt_err)?;
-    writeln!(out, "#[derive(Debug)]").map_err(fmt_err)?;
+    writeln!(out, "#[derive(Debug, Clone, Copy, PartialEq, Eq)]").map_err(fmt_err)?;
+    writeln!(out, "pub enum Taint {{ Clean, DerivedFromSecret, Secret }}").map_err(fmt_err)?;
+    writeln!(out, "const fn join_taint(left: Taint, right: Taint) -> Taint {{ match (left, right) {{ (Taint::Secret, _) | (_, Taint::Secret) => Taint::Secret, (Taint::DerivedFromSecret, _) | (_, Taint::DerivedFromSecret) => Taint::DerivedFromSecret, (Taint::Clean, Taint::Clean) => Taint::Clean }} }}").map_err(fmt_err)?;
+    writeln!(out, "fn join_taints(values: &[Taint]) -> Taint {{ values.iter().copied().fold(Taint::Clean, join_taint) }}").map_err(fmt_err)?;
+    writeln!(out).map_err(fmt_err)?;
+    writeln!(out, "#[derive(Debug, Clone, Copy, PartialEq, Eq)]").map_err(fmt_err)?;
     writeln!(out, "pub enum DriveError {{").map_err(fmt_err)?;
     writeln!(out, "    InvalidProgramCounter,").map_err(fmt_err)?;
     writeln!(out, "    MissingNextStep,").map_err(fmt_err)?;
@@ -1610,11 +2023,27 @@ fn write_header(out: &mut String) -> CodegenResult<()> {
     .map_err(fmt_err)?;
     writeln!(out, "    ListStoreOverflow,").map_err(fmt_err)?;
     writeln!(out, "    InvalidListHandle,").map_err(fmt_err)?;
+    writeln!(out, "    ObjectStoreOverflow,").map_err(fmt_err)?;
+    writeln!(out, "    InvalidObjectHandle,").map_err(fmt_err)?;
+    writeln!(out, "    ObjectFieldOutOfBounds,").map_err(fmt_err)?;
+    writeln!(out, "    ObjectFieldOffsetOverflow,").map_err(fmt_err)?;
+    writeln!(out, "    MissingField {{ field: u32 }},").map_err(fmt_err)?;
+    writeln!(out, "    ListIndexOutOfBounds {{ index: u32 }},").map_err(fmt_err)?;
+    writeln!(out, "    AccessorPathTooDeep {{ depth: u16, max: u16 }},").map_err(fmt_err)?;
+    writeln!(out, "    InvalidRetryState,").map_err(fmt_err)?;
+    writeln!(out, "    InvalidRetryPolicy,").map_err(fmt_err)?;
     writeln!(
         out,
-        "    ActionSuspend {{ action_id: u16, input_slot: u16 }},"
+        "    ActionSuspend {{ step: u16, action_id: u16, input_slot: u16, resume_pc: u16 }},"
     )
     .map_err(fmt_err)?;
+    writeln!(
+        out,
+        "    WaitUntilSuspend {{ step: u16, deadline_slot: u16, resume_pc: u16 }},"
+    )
+    .map_err(fmt_err)?;
+    writeln!(out, "    WaitEventSuspend {{ step: u16, event_slot: u16, timeout_slot: Option<u16>, resume_pc: u16 }},").map_err(fmt_err)?;
+    writeln!(out, "    AskSuspend {{ step: u16, prompt_slot: u16, timeout_slot: Option<u16>, resume_pc: u16 }},").map_err(fmt_err)?;
     writeln!(out, "    UnknownAction,").map_err(fmt_err)?;
     writeln!(
         out,
@@ -1629,64 +2058,157 @@ fn write_header(out: &mut String) -> CodegenResult<()> {
     .map_err(fmt_err)?;
     writeln!(out, "}}").map_err(fmt_err)?;
     writeln!(out).map_err(fmt_err)?;
+    writeln!(out, "enum SuspensionOutcome {{ ActionPending {{ step: u16, action_id: u16, input_slot: u16, resume_pc: u16 }}, WaitUntil {{ step: u16, deadline_slot: u16, resume_pc: u16 }}, WaitEvent {{ step: u16, event_slot: u16, timeout_slot: Option<u16>, resume_pc: u16 }}, AskPending {{ step: u16, prompt_slot: u16, timeout_slot: Option<u16>, resume_pc: u16 }} }}").map_err(fmt_err)?;
+    writeln!(out, "impl SuspensionOutcome {{ fn into_drive_error(self) -> DriveError {{ match self {{ Self::ActionPending {{ step, action_id, input_slot, resume_pc }} => DriveError::ActionSuspend {{ step, action_id, input_slot, resume_pc }}, Self::WaitUntil {{ step, deadline_slot, resume_pc }} => DriveError::WaitUntilSuspend {{ step, deadline_slot, resume_pc }}, Self::WaitEvent {{ step, event_slot, timeout_slot, resume_pc }} => DriveError::WaitEventSuspend {{ step, event_slot, timeout_slot, resume_pc }}, Self::AskPending {{ step, prompt_slot, timeout_slot, resume_pc }} => DriveError::AskSuspend {{ step, prompt_slot, timeout_slot, resume_pc }}, }} }} }}").map_err(fmt_err)?;
     writeln!(
         out,
         "enum StepOutcome {{ Continue(u16), Finished(SlotValue) }}"
     )
     .map_err(fmt_err)?;
     writeln!(out).map_err(fmt_err)?;
+    out.write_str(r"#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct RetryState { current_attempt: u16, remaining: u16, current_delay_ms: u32 }
+impl RetryState {
+    const fn from_parts(current_attempt: u16, remaining: u16, current_delay_ms: u32) -> Self {
+        Self { current_attempt, remaining, current_delay_ms }
+    }
+
+    pub fn new(current_attempt: u16, remaining: u16, current_delay_ms: u32) -> Result<Self, DriveError> {
+        if retry_state_is_legal(current_attempt, remaining, current_delay_ms) {
+            Ok(Self::from_parts(current_attempt, remaining, current_delay_ms))
+        } else {
+            Err(DriveError::InvalidRetryState)
+        }
+    }
+
+    pub const fn current_attempt(&self) -> u16 { self.current_attempt }
+    pub const fn remaining(&self) -> u16 { self.remaining }
+    pub const fn current_delay_ms(&self) -> u32 { self.current_delay_ms }
+
+    pub fn decode(packed: i64, max_attempts: u16) -> Result<Self, DriveError> {
+        let unsigned = retry_unsigned_bits(packed)?;
+        Self::from_decoded_parts(
+            retry_attempt_bits(unsigned)?,
+            retry_remaining_bits(unsigned)?,
+            retry_delay_bits(unsigned)?,
+            max_attempts,
+        )
+    }
+
+    fn from_decoded_parts(current_attempt: u16, remaining: u16, current_delay_ms: u32, max_attempts: u16) -> Result<Self, DriveError> {
+        if retry_decoded_state_is_legal(current_attempt, remaining, current_delay_ms, max_attempts) {
+            Ok(Self::from_parts(current_attempt, remaining, current_delay_ms))
+        } else {
+            Err(DriveError::InvalidRetryState)
+        }
+    }
+}
+
+fn retry_state_is_legal(current_attempt: u16, remaining: u16, current_delay_ms: u32) -> bool {
+    retry_zero_state_is_legal(current_attempt, remaining, current_delay_ms)
+        || (current_attempt > 0 && current_delay_ms == 0 && remaining == 0)
+}
+
+fn retry_decoded_state_is_legal(current_attempt: u16, remaining: u16, current_delay_ms: u32, max_attempts: u16) -> bool {
+    retry_zero_state_is_legal(current_attempt, remaining, current_delay_ms)
+        || retry_active_state_is_legal(current_attempt, remaining, max_attempts)
+}
+
+fn retry_zero_state_is_legal(current_attempt: u16, remaining: u16, current_delay_ms: u32) -> bool {
+    current_attempt == 0 && remaining == 0 && current_delay_ms == 0
+}
+
+fn retry_active_state_is_legal(current_attempt: u16, remaining: u16, max_attempts: u16) -> bool {
+    let Some(total_attempts) = current_attempt.checked_add(remaining) else { return false; };
+    let Some(max_live_attempts) = max_attempts.checked_add(1) else { return false; };
+    max_attempts > 0 && current_attempt > 0 && current_attempt <= max_attempts && remaining <= max_attempts && total_attempts <= max_live_attempts
+}
+
+fn retry_unsigned_bits(packed: i64) -> Result<u64, DriveError> {
+    u64::try_from(packed).map_err(|_| DriveError::InvalidRetryState)
+}
+
+fn retry_delay_bits(unsigned: u64) -> Result<u32, DriveError> {
+    u32::try_from((unsigned >> 32) & 4_294_967_295_u64).map_err(|_| DriveError::InvalidRetryState)
+}
+
+fn retry_attempt_bits(unsigned: u64) -> Result<u16, DriveError> {
+    u16::try_from((unsigned >> 16) & 65_535_u64).map_err(|_| DriveError::InvalidRetryState)
+}
+
+fn retry_remaining_bits(unsigned: u64) -> Result<u16, DriveError> {
+    u16::try_from(unsigned & 65_535_u64).map_err(|_| DriveError::InvalidRetryState)
+}
+")
+    .map_err(fmt_err)?;
+    writeln!(out).map_err(fmt_err)?;
     writeln!(out, "const MAX_EXPRESSION_STACK: usize = 64;").map_err(fmt_err)?;
     writeln!(
         out,
-        "struct ExprStack {{ values: [SlotValue; MAX_EXPRESSION_STACK], len: u8, capacity: u8 }}"
+        "const ACCESSOR_MAX_PATH_DEPTH: u16 = {ACCESSOR_MAX_PATH_DEPTH};"
     )
     .map_err(fmt_err)?;
-    writeln!(out, "impl ExprStack {{").map_err(fmt_err)?;
-    writeln!(out, "    fn new(capacity: u8) -> Result<Self, DriveError> {{ if usize::from(capacity) <= MAX_EXPRESSION_STACK {{ Ok(Self {{ values: [SlotValue::Null; MAX_EXPRESSION_STACK], len: 0, capacity }}) }} else {{ Err(DriveError::ExpressionStackOverflow {{ max: capacity }}) }} }}").map_err(fmt_err)?;
-    writeln!(out, "    fn push(&mut self, value: SlotValue) -> Result<(), DriveError> {{ if self.len >= self.capacity {{ return Err(DriveError::ExpressionStackOverflow {{ max: self.capacity }}); }} let index = usize::from(self.len); match self.values.get_mut(index) {{ Some(slot) => *slot = value, None => return Err(DriveError::ExpressionStackOverflow {{ max: self.capacity }}), }} self.len = self.len.checked_add(1).ok_or(DriveError::ExpressionStackOverflow {{ max: self.capacity }})?; Ok(()) }}").map_err(fmt_err)?;
-    writeln!(out, "    fn pop(&mut self) -> Option<SlotValue> {{ if self.len == 0 {{ return None; }} self.len = self.len.checked_sub(1)?; self.values.get(usize::from(self.len)).copied() }}").map_err(fmt_err)?;
-    writeln!(out, "}}").map_err(fmt_err)?;
+    out.write_str(r"struct ExprStack { values: [SlotValue; MAX_EXPRESSION_STACK], taints: [Taint; MAX_EXPRESSION_STACK], len: u8, capacity: u8 }
+impl ExprStack {
+    fn new(capacity: u8) -> Result<Self, DriveError> {
+        if usize::from(capacity) <= MAX_EXPRESSION_STACK {
+            Ok(Self { values: [SlotValue::Null; MAX_EXPRESSION_STACK], taints: [Taint::Clean; MAX_EXPRESSION_STACK], len: 0, capacity })
+        } else {
+            Err(DriveError::ExpressionStackOverflow { max: capacity })
+        }
+    }
+
+    fn push(&mut self, value: SlotValue) -> Result<(), DriveError> {
+        self.push_tainted(value, Taint::Clean)
+    }
+
+    fn push_tainted(&mut self, value: SlotValue, taint: Taint) -> Result<(), DriveError> {
+        if self.len >= self.capacity {
+            return Err(DriveError::ExpressionStackOverflow { max: self.capacity });
+        }
+        let index = usize::from(self.len);
+        match (self.values.get_mut(index), self.taints.get_mut(index)) {
+            (Some(value_slot), Some(taint_slot)) => {
+                *value_slot = value;
+                *taint_slot = taint;
+            }
+            (_, _) => return Err(DriveError::ExpressionStackOverflow { max: self.capacity }),
+        }
+        self.len = self.len.checked_add(1).ok_or(DriveError::ExpressionStackOverflow { max: self.capacity })?;
+        Ok(())
+    }
+
+    fn pop(&mut self) -> Option<SlotValue> {
+        self.pop_tainted().map(|entry| entry.0)
+    }
+
+    fn pop_tainted(&mut self) -> Option<(SlotValue, Taint)> {
+        if self.len == 0 {
+            return None;
+        }
+        self.len = self.len.checked_sub(1)?;
+        let index = usize::from(self.len);
+        match (self.values.get(index).copied(), self.taints.get(index).copied()) {
+            (Some(value), Some(taint)) => Some((value, taint)),
+            (_, _) => None,
+        }
+    }
+}
+")
+    .map_err(fmt_err)?;
     writeln!(out).map_err(fmt_err)?;
 
-    writeln!(out, "#[derive(Debug, Clone, Copy)]").map_err(fmt_err)?;
-    writeln!(out, "struct ListRecord {{ start: u32, len: u32 }}").map_err(fmt_err)?;
-    writeln!(out, "struct ListStore {{ records: [Option<ListRecord>; LIST_STORE_RECORD_CAPACITY], values: [SlotValue; LIST_STORE_VALUE_CAPACITY], record_len: u32, value_len: u32 }}").map_err(fmt_err)?;
-    writeln!(out, "impl ListStore {{").map_err(fmt_err)?;
-    writeln!(out, "    fn new() -> Self {{ Self {{ records: [None; LIST_STORE_RECORD_CAPACITY], values: [SlotValue::Null; LIST_STORE_VALUE_CAPACITY], record_len: 0, value_len: 0 }} }}").map_err(fmt_err)?;
-    writeln!(out, "    fn insert_items(&mut self, items: &[SlotValue]) -> Result<u32, DriveError> {{ let start = self.value_len; let item_count = u32::try_from(items.len()).map_err(|_| DriveError::ListStoreOverflow)?; let end = start.checked_add(item_count).ok_or(DriveError::ListStoreOverflow)?; let end_index = usize::try_from(end).map_err(|_| DriveError::ListStoreOverflow)?; if end_index > LIST_STORE_VALUE_CAPACITY {{ return Err(DriveError::ListStoreOverflow); }} self.copy_items(start, items)?; self.value_len = end; self.insert_record(start, item_count) }}").map_err(fmt_err)?;
-    writeln!(out, "    fn copy_items(&mut self, start: u32, items: &[SlotValue]) -> Result<(), DriveError> {{ let mut cursor = 0usize; while cursor < items.len() {{ let cursor_u32 = u32::try_from(cursor).map_err(|_| DriveError::ListStoreOverflow)?; let target_offset = start.checked_add(cursor_u32).ok_or(DriveError::ListStoreOverflow)?; let target_index = usize::try_from(target_offset).map_err(|_| DriveError::ListStoreOverflow)?; let value = items.get(cursor).copied().ok_or(DriveError::ListStoreOverflow)?; match self.values.get_mut(target_index) {{ Some(target) => *target = value, None => return Err(DriveError::ListStoreOverflow), }} cursor = cursor.checked_add(1).ok_or(DriveError::ListStoreOverflow)?; }} Ok(()) }}").map_err(fmt_err)?;
-    writeln!(out, "    fn insert_record(&mut self, start: u32, len: u32) -> Result<u32, DriveError> {{ let handle = self.record_len; let index = usize::try_from(handle).map_err(|_| DriveError::ListStoreOverflow)?; match self.records.get_mut(index) {{ Some(slot) => *slot = Some(ListRecord {{ start, len }}), None => return Err(DriveError::ListStoreOverflow), }} self.record_len = self.record_len.checked_add(1).ok_or(DriveError::ListStoreOverflow)?; Ok(handle) }}").map_err(fmt_err)?;
-    writeln!(out, "    fn record(&self, handle: u32) -> Result<Option<ListRecord>, DriveError> {{ if handle >= self.record_len {{ return Ok(None); }} let index = usize::try_from(handle).map_err(|_| DriveError::InvalidListHandle)?; match self.records.get(index).copied() {{ Some(Some(record)) => Ok(Some(record)), Some(None) | None => Err(DriveError::InvalidListHandle), }} }}").map_err(fmt_err)?;
-    writeln!(out, "    fn len(&self, handle: u32) -> Result<Option<u32>, DriveError> {{ match self.record(handle)? {{ Some(record) => Ok(Some(record.len)), None => Ok(None), }} }}").map_err(fmt_err)?;
-    writeln!(out, "    fn first(&self, handle: u32) -> Result<Option<SlotValue>, DriveError> {{ let Some(record) = self.record(handle)? else {{ return Ok(None); }}; if record.len == 0 {{ return Ok(None); }} let index = usize::try_from(record.start).map_err(|_| DriveError::InvalidListHandle)?; self.values.get(index).copied().map(Some).ok_or(DriveError::InvalidListHandle) }}").map_err(fmt_err)?;
-    writeln!(out, "    fn tail(&mut self, handle: u32) -> Result<Option<u32>, DriveError> {{ let Some(record) = self.record(handle)? else {{ return Ok(None); }}; let (start, len) = if record.len == 0 {{ (record.start, 0) }} else {{ let next_start = record.start.checked_add(1).ok_or(DriveError::ListStoreOverflow)?; let next_len = record.len.checked_sub(1).ok_or(DriveError::ListStoreOverflow)?; (next_start, next_len) }}; self.insert_record(start, len).map(Some) }}").map_err(fmt_err)?;
-    writeln!(out, "}}").map_err(fmt_err)?;
-    writeln!(out).map_err(fmt_err)?;
-
-    writeln!(out, "fn read_slot(slots: &[Option<SlotValue>; WORKFLOW_SLOT_COUNT], slot: u16) -> Result<SlotValue, DriveError> {{ read_slot_optional(slots, slot).ok_or(DriveError::SlotNull) }}").map_err(fmt_err)?;
-    writeln!(out, "fn read_slot_optional(slots: &[Option<SlotValue>; WORKFLOW_SLOT_COUNT], slot: u16) -> Option<SlotValue> {{ slots.get(usize::from(slot)).copied().flatten() }}").map_err(fmt_err)?;
-    writeln!(out, "fn write_slot(slots: &mut [Option<SlotValue>; WORKFLOW_SLOT_COUNT], slot: u16, value: Option<SlotValue>) -> Result<(), DriveError> {{ match slots.get_mut(usize::from(slot)) {{ Some(target) => {{ *target = value; Ok(()) }}, None => Err(DriveError::InvalidCompiledWorkflow {{ reason: \"slot index out of bounds\" }}), }} }}").map_err(fmt_err)?;
+    writeln!(out, "{GENERATED_STORAGE_HELPERS}").map_err(fmt_err)?;
     writeln!(out, "fn read_const(index: u16) -> Result<SlotValue, DriveError> {{ CONSTANTS.get(usize::from(index)).copied().ok_or(DriveError::InvalidCompiledWorkflow {{ reason: \"constant index out of bounds\" }}) }}").map_err(fmt_err)?;
     writeln!(out, "fn expect_list_value(value: SlotValue) -> Result<u32, DriveError> {{ match value {{ SlotValue::List(handle) => Ok(handle), other => Err(DriveError::TypeMismatch {{ expected: \"list\", found: other.type_name() }}), }} }}").map_err(fmt_err)?;
+    writeln!(out, "fn expect_object_value(value: SlotValue) -> Result<u32, DriveError> {{ match value {{ SlotValue::Object(handle) => Ok(handle), other => Err(DriveError::TypeMismatch {{ expected: \"object\", found: other.type_name() }}), }} }}").map_err(fmt_err)?;
+    writeln!(out, "fn expect_bool_value(value: SlotValue) -> Result<bool, DriveError> {{ match value {{ SlotValue::Bool(value) => Ok(value), other => Err(DriveError::TypeMismatch {{ expected: \"boolean\", found: other.type_name() }}), }} }}").map_err(fmt_err)?;
+    writeln!(out, "fn expect_i64_value(value: SlotValue) -> Result<i64, DriveError> {{ match value {{ SlotValue::I64(value) => Ok(value), other => Err(DriveError::TypeMismatch {{ expected: \"number\", found: other.type_name() }}), }} }}").map_err(fmt_err)?;
+    writeln!(out, "fn read_retry_state_from_slot(slots: &[Option<SlotValue>; WORKFLOW_SLOT_COUNT], slot: u16, max_attempts: u16) -> Result<RetryState, DriveError> {{ match read_slot(slots, slot)? {{ SlotValue::I64(raw) => RetryState::decode(raw, max_attempts), other => Err(DriveError::TypeMismatch {{ expected: \"number\", found: other.type_name() }}), }} }}").map_err(fmt_err)?;
+    writeln!(out, "fn retry_check_target(current_attempt: u16, max_attempts: u16, body: u16, exhausted: u16) -> Result<StepOutcome, DriveError> {{ if max_attempts == 0 {{ return Err(DriveError::InvalidRetryPolicy); }} if current_attempt < max_attempts {{ Ok(StepOutcome::Continue(body)) }} else {{ Ok(StepOutcome::Continue(exhausted)) }} }}").map_err(fmt_err)?;
     writeln!(out, "fn list_item_count(list_store: &ListStore, handle: u32) -> Result<u32, DriveError> {{ match list_store.len(handle)? {{ Some(len) => Ok(len), None => Err(DriveError::InvalidListHandle), }} }}").map_err(fmt_err)?;
     writeln!(out, "fn first_list_item(list_store: &ListStore, handle: u32, count: u32) -> Result<SlotValue, DriveError> {{ if count == 0 {{ return Err(DriveError::InvalidListHandle); }} match list_store.first(handle)? {{ Some(value) => Ok(value), None => Err(DriveError::InvalidListHandle), }} }}").map_err(fmt_err)?;
     writeln!(out, "fn tail_list_handle(list_store: &mut ListStore, handle: u32) -> Result<u32, DriveError> {{ match list_store.tail(handle)? {{ Some(tail) => Ok(tail), None => Err(DriveError::InvalidListHandle), }} }}").map_err(fmt_err)?;
-    writeln!(out).map_err(fmt_err)?;
-    writeln!(
-        out,
-        "fn symbol_contains(_haystack: u32, _needle: u32) -> bool {{ _haystack == _needle }}"
-    )
-    .map_err(fmt_err)?;
-    writeln!(
-        out,
-        "fn symbol_starts_with(_haystack: u32, _prefix: u32) -> bool {{ _haystack == _prefix }}"
-    )
-    .map_err(fmt_err)?;
-    writeln!(
-        out,
-        "fn symbol_ends_with(_haystack: u32, _suffix: u32) -> bool {{ _haystack == _suffix }}"
-    )
-    .map_err(fmt_err)?;
     writeln!(out).map_err(fmt_err)?;
     Ok(())
 }
@@ -1753,17 +2275,7 @@ fn emit_unsupported_step(out: &mut String, primitive: &'static str) -> CodegenRe
     .map_err(fmt_err)
 }
 
-fn emit_unsupported_expr(out: &mut String, op: &'static str) -> CodegenResult<()> {
-    writeln!(
-        out,
-        "    return Err(DriveError::UnsupportedExpressionOp {{ op: \"{op}\" }});"
-    )
-    .map_err(fmt_err)
-}
-
-/// Emit code to evaluate an accessor by reading the root slot.
-/// For empty-path accessors, this simply reads the root slot value.
-/// For non-empty paths, this emits a typed error matching the runtime engine behavior.
+/// Emit code to evaluate an accessor by reading the root slot and traversing handles.
 fn emit_accessor_eval(
     out: &mut String,
     accessor_idx: vb_core::AccessorIdx,
@@ -1780,27 +2292,45 @@ fn emit_accessor_eval(
 
     let root_slot = accessor.root.get();
     if accessor.path.is_empty() {
-        writeln!(out, "    stack.push(read_slot(slots, {root_slot})?)?;").map_err(fmt_err)?;
+        writeln!(out, "    stack.push_tainted(read_slot(slots, {root_slot})?, read_taint(slot_taints, {root_slot})?)?;").map_err(fmt_err)?;
     } else {
-        let Some(first_segment) = accessor.path.first() else {
-            writeln!(
-                out,
-                "    return Err(DriveError::InvalidCompiledWorkflow {{ reason: \"accessor path segment missing\" }});"
-            )
-            .map_err(fmt_err)?;
-            return Ok(());
-        };
-        let segment_name = match first_segment {
-            vb_core::PathSegment::Field(_) => "field",
-            vb_core::PathSegment::Index(_) => "index",
-        };
-        writeln!(
-            out,
-            "    {{ let _root = read_slot(slots, {root_slot})?; return Err(DriveError::InvalidCompiledWorkflow {{ reason: \"accessor traversal '{segment_name}' on generated type\" }}); }}"
-        )
-        .map_err(fmt_err)?;
+        emit_accessor_traversal(out, root_slot, &accessor.path)?;
     }
     Ok(())
+}
+
+fn emit_accessor_traversal(
+    out: &mut String,
+    root_slot: u16,
+    path: &[vb_core::PathSegment],
+) -> CodegenResult<()> {
+    let depth = u16::try_from(path.len()).map_err(|_| CodegenError::SemanticMismatch {
+        detail: "accessor path depth exceeds generated range".into(),
+    })?;
+    writeln!(out, "    {{").map_err(fmt_err)?;
+    writeln!(
+        out,
+        "        let mut _current = read_slot(slots, {root_slot})?;"
+    )
+    .map_err(fmt_err)?;
+    writeln!(
+        out,
+        "        let mut _taint = read_taint(slot_taints, {root_slot})?;"
+    )
+    .map_err(fmt_err)?;
+    writeln!(out, "        if {depth}u16 > ACCESSOR_MAX_PATH_DEPTH {{ return Err(DriveError::AccessorPathTooDeep {{ depth: {depth}u16, max: ACCESSOR_MAX_PATH_DEPTH }}); }}").map_err(fmt_err)?;
+    for segment in path {
+        emit_accessor_segment(out, *segment)?;
+    }
+    writeln!(out, "        stack.push_tainted(_current, _taint)?;").map_err(fmt_err)?;
+    writeln!(out, "    }}").map_err(fmt_err)
+}
+
+fn emit_accessor_segment(out: &mut String, segment: vb_core::PathSegment) -> CodegenResult<()> {
+    match segment {
+        vb_core::PathSegment::Field(field) => writeln!(out, "        {{ let (_value, _segment_taint) = match _current {{ SlotValue::Object(_object) => object_store.field(_object, {})?, other => return Err(DriveError::TypeMismatch {{ expected: \"object\", found: other.type_name() }}), }}; _taint = join_taint(_taint, _segment_taint); _current = _value; }}", field.get()).map_err(fmt_err),
+        vb_core::PathSegment::Index(index) => writeln!(out, "        {{ let (_value, _segment_taint) = match _current {{ SlotValue::List(_list) => list_store.value_at(_list, {index})?, other => return Err(DriveError::TypeMismatch {{ expected: \"list\", found: other.type_name() }}), }}; _taint = join_taint(_taint, _segment_taint); _current = _value; }}").map_err(fmt_err),
+    }
 }
 
 fn fmt_err(_: std::fmt::Error) -> CodegenError {

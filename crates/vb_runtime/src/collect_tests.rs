@@ -80,6 +80,184 @@ fn assert_slot_list_items(
     }
 }
 
+fn slot_list_id(run: &RunFrame, slot: SlotIdx) -> Result<ListId, String> {
+    match *run.read_slot(slot).map_err(|e| format!("{e:?}"))? {
+        SlotValue::List(id) => Ok(id),
+        other => Err(format!("expected List, got {other:?}")),
+    }
+}
+
+fn collect_state_for_current_page(
+    states: &CollectStates,
+    run: &RunFrame,
+    collector: SlotIdx,
+) -> Result<CollectPaginationState, String> {
+    let current_page = slot_list_id(run, collector)?;
+    states
+        .find(run.run_id(), collector, current_page)
+        .ok_or("collect state missing for current page".to_owned())
+}
+
+struct CollectScenario {
+    run: RunFrame,
+    store: ValueStore,
+    states: CollectStates,
+    collector: SlotIdx,
+    body: StepIdx,
+    done: StepIdx,
+}
+
+impl CollectScenario {
+    fn start(items: Vec<SlotValue>, limit: u32, page_size: u32) -> Result<Self, String> {
+        let mut run = fresh_frame();
+        let mut store = ValueStore::new();
+        let mut states = fresh_states();
+        let source = SlotIdx::new(0);
+        let collector = SlotIdx::new(1);
+        let body = StepIdx::new(1);
+        let done = StepIdx::new(2);
+
+        list_in_slot(&mut run, &mut store, source, items);
+        collect_start(
+            &mut run,
+            &mut store,
+            &mut states,
+            source,
+            limit,
+            page_size,
+            body,
+            done,
+            Some(collector),
+            None,
+        )
+        .map_err(|e| format!("collect_start: {e:?}"))?;
+
+        Ok(Self {
+            run,
+            store,
+            states,
+            collector,
+            body,
+            done,
+        })
+    }
+
+    fn next(&mut self) -> Result<vb_core::EngineSignal, String> {
+        collect_next(
+            &mut self.run,
+            &mut self.store,
+            &mut self.states,
+            self.collector,
+            self.body,
+            self.done,
+        )
+        .map_err(|e| format!("collect_next: {e:?}"))
+    }
+
+    fn current_page(&self) -> Result<ListId, String> {
+        slot_list_id(&self.run, self.collector)
+    }
+
+    fn assert_current_cursor(&self, expected: usize) -> Result<(), String> {
+        assert_eq!(
+            collect_state_for_current_page(&self.states, &self.run, self.collector)?.cursor,
+            expected
+        );
+        Ok(())
+    }
+
+    fn assert_live_cursor(&self, page: ListId, expected: usize) -> Result<(), String> {
+        assert_eq!(
+            self.states
+                .find(self.run.run_id(), self.collector, page)
+                .ok_or("live state missing after stale rejection".to_owned())?
+                .cursor,
+            expected
+        );
+        Ok(())
+    }
+
+    fn assert_collector_items(&self, expected: &[SlotValue]) -> Result<(), String> {
+        let id = slot_list_id(&self.run, self.collector)?;
+        let items = self
+            .store
+            .list(id)
+            .map_err(|e| format!("collector list read: {e:?}"))?;
+        assert_eq!(items, expected);
+        Ok(())
+    }
+
+    fn write_collector_page(&mut self, page: ListId) -> Result<(), String> {
+        self.run
+            .write_slot(self.collector, SlotValue::List(page))
+            .map_err(|e| format!("write collector page: {e:?}"))
+    }
+
+    fn reject_next(&mut self) {
+        assert_eq!(
+            collect_next(
+                &mut self.run,
+                &mut self.store,
+                &mut self.states,
+                self.collector,
+                self.body,
+                self.done,
+            ),
+            Err(EngineError::InvalidCompiledWorkflow {
+                reason: "collect pagination state missing"
+            })
+        );
+    }
+}
+
+fn non_monotonic_collect_scenario() -> Result<CollectScenario, String> {
+    CollectScenario::start(
+        vec![
+            SlotValue::I64(30),
+            SlotValue::I64(10),
+            SlotValue::I64(20),
+            SlotValue::I64(40),
+            SlotValue::I64(15),
+        ],
+        5,
+        2,
+    )
+}
+
+fn duplicate_page_rejection_scenario() -> Result<(CollectScenario, ListId), String> {
+    let mut scenario = CollectScenario::start(
+        vec![
+            SlotValue::I64(1),
+            SlotValue::I64(2),
+            SlotValue::I64(3),
+            SlotValue::I64(4),
+        ],
+        4,
+        2,
+    )?;
+    let duplicate_page = scenario.current_page()?;
+    scenario.next()?;
+    let advanced_page = scenario.current_page()?;
+    scenario.assert_current_cursor(4)?;
+    scenario.write_collector_page(duplicate_page)?;
+    scenario.reject_next();
+    Ok((scenario, advanced_page))
+}
+
+fn stale_page_rejection_scenario() -> Result<(CollectScenario, ListId), String> {
+    let mut scenario = CollectScenario::start(
+        vec![SlotValue::I64(7), SlotValue::I64(8), SlotValue::I64(9)],
+        3,
+        1,
+    )?;
+    let stale_page = scenario.current_page()?;
+    scenario.next()?;
+    let live_page = scenario.current_page()?;
+    scenario.write_collector_page(stale_page)?;
+    scenario.reject_next();
+    Ok((scenario, live_page))
+}
+
 #[test]
 fn collect_start_initializes_collector() {
     let mut run = fresh_frame();
@@ -2602,5 +2780,275 @@ fn collect_repeated_start_next_cycles() -> Result<(), String> {
     .map_err(|e| format!("start 2: {e:?}"))?;
     ensure(run.pc() == body, "second cycle should start at body")?;
     assert_slot_list_items(&run, &store, collector, &[SlotValue::I64(10)]);
+    Ok(())
+}
+
+#[test]
+fn collect_first_page_preserves_non_monotonic_source_order() -> Result<(), String> {
+    let scenario = non_monotonic_collect_scenario()?;
+
+    assert_eq!(scenario.run.pc(), scenario.body);
+    scenario.assert_collector_items(&[SlotValue::I64(30), SlotValue::I64(10)])?;
+    scenario.assert_current_cursor(2)?;
+    Ok(())
+}
+
+#[test]
+fn collect_second_page_preserves_non_monotonic_source_order() -> Result<(), String> {
+    let mut scenario = non_monotonic_collect_scenario()?;
+
+    assert_eq!(scenario.next()?, vb_core::EngineSignal::Continue);
+    assert_eq!(scenario.run.pc(), scenario.body);
+    scenario.assert_collector_items(&[SlotValue::I64(20), SlotValue::I64(40)])?;
+    scenario.assert_current_cursor(4)?;
+    Ok(())
+}
+
+#[test]
+fn collect_third_page_preserves_non_monotonic_source_order() -> Result<(), String> {
+    let mut scenario = non_monotonic_collect_scenario()?;
+
+    scenario.next()?;
+    assert_eq!(scenario.next()?, vb_core::EngineSignal::Continue);
+    assert_eq!(scenario.run.pc(), scenario.body);
+    scenario.assert_collector_items(&[SlotValue::I64(15)])?;
+    scenario.assert_current_cursor(5)?;
+    Ok(())
+}
+
+#[test]
+fn collect_next_rejects_duplicate_first_page_response_after_cursor_advanced() -> Result<(), String>
+{
+    duplicate_page_rejection_scenario()?;
+    Ok(())
+}
+
+#[test]
+fn duplicate_first_page_rejection_preserves_advanced_state() -> Result<(), String> {
+    let (scenario, advanced_page) = duplicate_page_rejection_scenario()?;
+
+    scenario.assert_live_cursor(advanced_page, 4)?;
+    Ok(())
+}
+
+#[test]
+fn collect_next_rejects_stale_completion_page() -> Result<(), String> {
+    stale_page_rejection_scenario()?;
+    Ok(())
+}
+
+#[test]
+fn stale_completion_page_rejection_preserves_live_state() -> Result<(), String> {
+    let (scenario, live_page) = stale_page_rejection_scenario()?;
+
+    scenario.assert_live_cursor(live_page, 2)?;
+    Ok(())
+}
+
+#[test]
+fn collect_start_enforces_page_size_bounds_before_allocating_page() -> Result<(), String> {
+    let mut run = fresh_frame();
+    let mut store = ValueStore::new();
+    let mut states = fresh_states();
+    let source = SlotIdx::new(0);
+    let collector = SlotIdx::new(1);
+    list_in_slot(
+        &mut run,
+        &mut store,
+        source,
+        vec![SlotValue::I64(1), SlotValue::I64(2)],
+    );
+
+    assert_eq!(
+        collect_start(
+            &mut run,
+            &mut store,
+            &mut states,
+            source,
+            2,
+            3,
+            StepIdx::new(1),
+            StepIdx::new(2),
+            Some(collector),
+            None,
+        ),
+        Err(EngineError::CollectPageLimitExceeded)
+    );
+    assert_eq!(
+        run.read_slot(collector),
+        Err(EngineError::SlotUninitialized { slot: collector })
+    );
+    assert_eq!(states.capture_state(run.run_id(), collector), None);
+    Ok(())
+}
+
+#[test]
+fn collect_start_enforces_fanout_item_limit_at_exact_boundary() -> Result<(), String> {
+    let mut run = fresh_frame();
+    let mut store = ValueStore::new();
+    let mut states = fresh_states();
+    let source = SlotIdx::new(0);
+    let collector = SlotIdx::new(1);
+    let body = StepIdx::new(1);
+    let done = StepIdx::new(2);
+    list_in_slot(
+        &mut run,
+        &mut store,
+        source,
+        vec![SlotValue::I64(1), SlotValue::I64(2), SlotValue::I64(3)],
+    );
+
+    assert_eq!(
+        collect_start(
+            &mut run,
+            &mut store,
+            &mut states,
+            source,
+            3,
+            2,
+            body,
+            done,
+            Some(collector),
+            None,
+        ),
+        Ok(vb_core::EngineSignal::Continue)
+    );
+    assert_eq!(run.pc(), body);
+    assert_slot_list_items(
+        &run,
+        &store,
+        collector,
+        &[SlotValue::I64(1), SlotValue::I64(2)],
+    );
+    assert_eq!(
+        collect_state_for_current_page(&states, &run, collector)?.item_count,
+        3
+    );
+    assert_eq!(
+        collect_state_for_current_page(&states, &run, collector)?.limit,
+        3
+    );
+    Ok(())
+}
+
+#[test]
+fn collect_start_rejects_fanout_one_over_limit_without_collector_state() -> Result<(), String> {
+    let mut run = fresh_frame();
+    let mut store = ValueStore::new();
+    let mut states = fresh_states();
+    let source = SlotIdx::new(0);
+    let collector = SlotIdx::new(1);
+    list_in_slot(
+        &mut run,
+        &mut store,
+        source,
+        vec![SlotValue::I64(1), SlotValue::I64(2), SlotValue::I64(3)],
+    );
+
+    assert_eq!(
+        collect_start(
+            &mut run,
+            &mut store,
+            &mut states,
+            source,
+            2,
+            2,
+            StepIdx::new(1),
+            StepIdx::new(2),
+            Some(collector),
+            None,
+        ),
+        Err(EngineError::CollectItemLimitExceeded)
+    );
+    assert_eq!(
+        run.read_slot(collector),
+        Err(EngineError::SlotUninitialized { slot: collector })
+    );
+    assert_eq!(states.capture_state(run.run_id(), collector), None);
+    Ok(())
+}
+
+#[test]
+fn collect_next_honors_value_store_arena_cap_without_advancing_cursor() -> Result<(), String> {
+    let mut run = fresh_frame();
+    let mut store = ValueStore::with_max_slots(2);
+    let mut states = fresh_states();
+    let source = SlotIdx::new(0);
+    let collector = SlotIdx::new(1);
+    let body = StepIdx::new(1);
+    let done = StepIdx::new(2);
+    list_in_slot(
+        &mut run,
+        &mut store,
+        source,
+        vec![SlotValue::I64(1), SlotValue::I64(2), SlotValue::I64(3)],
+    );
+    collect_start(
+        &mut run,
+        &mut store,
+        &mut states,
+        source,
+        3,
+        1,
+        body,
+        done,
+        Some(collector),
+        None,
+    )
+    .map_err(|e| format!("collect_start: {e:?}"))?;
+    let first_page = slot_list_id(&run, collector)?;
+
+    assert_eq!(
+        collect_next(&mut run, &mut store, &mut states, collector, body, done),
+        Err(EngineError::BudgetExceeded {
+            budget: "max_slots",
+            limit: 2,
+        })
+    );
+    assert_eq!(slot_list_id(&run, collector)?, first_page);
+    assert_slot_list_items(&run, &store, collector, &[SlotValue::I64(1)]);
+    assert_eq!(
+        states
+            .find(run.run_id(), collector, first_page)
+            .ok_or("first-page state missing after arena-cap rejection".to_owned())?
+            .cursor,
+        1
+    );
+    Ok(())
+}
+
+#[test]
+fn collect_next_writes_empty_page_and_removes_state_after_last_item() -> Result<(), String> {
+    let mut run = fresh_frame();
+    let mut store = ValueStore::new();
+    let mut states = fresh_states();
+    let source = SlotIdx::new(0);
+    let collector = SlotIdx::new(1);
+    let body = StepIdx::new(1);
+    let done = StepIdx::new(2);
+    list_in_slot(&mut run, &mut store, source, vec![SlotValue::I64(99)]);
+    collect_start(
+        &mut run,
+        &mut store,
+        &mut states,
+        source,
+        1,
+        1,
+        body,
+        done,
+        Some(collector),
+        None,
+    )
+    .map_err(|e| format!("collect_start: {e:?}"))?;
+    let first_page = slot_list_id(&run, collector)?;
+
+    assert_eq!(
+        collect_next(&mut run, &mut store, &mut states, collector, body, done),
+        Ok(vb_core::EngineSignal::Continue)
+    );
+    assert_eq!(run.pc(), done);
+    assert_slot_list_items(&run, &store, collector, &[]);
+    assert_eq!(states.find(run.run_id(), collector, first_page), None);
+    assert_eq!(states.capture_state(run.run_id(), collector), None);
     Ok(())
 }

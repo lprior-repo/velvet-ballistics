@@ -16,7 +16,7 @@ pub mod choose;
 pub mod ops;
 pub mod step;
 
-pub use step::ReplayAction;
+pub use step::{ReplayAction, SuspensionKind};
 
 // ---------------------------------------------------------------------------
 // Error types
@@ -34,8 +34,8 @@ pub enum ReplayError {
     NonDeterministicStep {
         /// Step index of the blocking node.
         step: StepIdx,
-        /// Human-readable node kind name.
-        kind: &'static str,
+        /// Typed non-deterministic suspension kind.
+        kind: SuspensionKind,
     },
     /// A required slot was not populated before being read.
     SlotNotAvailable {
@@ -222,22 +222,26 @@ impl<'a> ReplayEngine<'a> {
         run: RunFrame,
         mode: ReplayTargetMode,
     ) -> Result<RunFrame, ReplayError> {
+        let collect_states = step::ReplayCollectStates::new();
         std::iter::successors(Some(self.plan.entry()), |step| Some(*step))
             .take(replay_step_budget_len())
-            .try_fold((run, self.plan.entry()), |(mut frame, current), _| {
-                if mode == ReplayTargetMode::Before && current == target_step {
-                    return Err(ReplayFoldStop::Done(frame));
-                }
-                let next = self.replay_one(current, &mut frame, store)?;
-                if mode == ReplayTargetMode::Through && current == target_step {
-                    Err(ReplayFoldStop::Done(frame))
-                } else {
-                    match next {
-                        Some(step) => Ok((frame, step)),
-                        None => Err(ReplayFoldStop::Done(frame)),
+            .try_fold(
+                (run, self.plan.entry(), collect_states),
+                |(mut frame, current, mut states), _| {
+                    if mode == ReplayTargetMode::Before && current == target_step {
+                        return Err(ReplayFoldStop::Done(frame));
                     }
-                }
-            })
+                    let next = self.replay_one(current, &mut frame, store, &mut states)?;
+                    if mode == ReplayTargetMode::Through && current == target_step {
+                        Err(ReplayFoldStop::Done(frame))
+                    } else {
+                        match next {
+                            Some(step) => Ok((frame, step, states)),
+                            None => Err(ReplayFoldStop::Done(frame)),
+                        }
+                    }
+                },
+            )
             .map_or_else(ReplayFoldStop::into_result, |_| {
                 Err(ReplayError::Internal {
                     reason: "replay step budget exhausted",
@@ -250,6 +254,7 @@ impl<'a> ReplayEngine<'a> {
         current: StepIdx,
         run: &mut RunFrame,
         store: &mut ValueStore,
+        collect_states: &mut step::ReplayCollectStates,
     ) -> Result<Option<StepIdx>, ReplayFoldStop> {
         let node =
             self.plan
@@ -257,7 +262,7 @@ impl<'a> ReplayEngine<'a> {
                 .ok_or(ReplayFoldStop::Error(ReplayError::StepNotFound {
                     step: current,
                 }))?;
-        match step::replay_step(node, run, store, self.plan) {
+        match step::replay_step_with_collect(node, run, store, self.plan, collect_states) {
             Ok(step::ReplayAction::Continue(next)) => Ok(Some(next)),
             Ok(step::ReplayAction::Finished) => Ok(None),
             Ok(step::ReplayAction::Suspended { step, kind }) => {

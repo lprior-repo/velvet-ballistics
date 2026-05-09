@@ -1,6 +1,8 @@
 #[cfg(test)]
 #[allow(clippy::module_inception)]
 mod proptests {
+    use std::fmt::Write as _;
+
     use crate::{
         CodegenError, compare_generated_to_ir, emit_action_boundary, emit_resource_contract,
         emit_rust_workflow, validate_generated_subset,
@@ -84,22 +86,30 @@ mod proptests {
 
     fn equivalence_main_source(workflow: &CompiledWorkflow) -> String {
         format!(
-            "fn main() {{\n    let mut slots = [None; WORKFLOW_SLOT_COUNT];\n    let mut list_store = ListStore::new();\n    let value = drive_equivalence_trace(&mut slots, &mut list_store);\n    println!(\"{{value}}|slots:{{}}|{{}}|{{}}\", slot_text(&slots, 0), slot_text(&slots, 1), slot_text(&slots, 2));\n}}\n{}",
+            "fn main() {{\n    let mut slots = [None; WORKFLOW_SLOT_COUNT];\n    let mut slot_taints = [Taint::Clean; WORKFLOW_SLOT_COUNT];\n    let mut list_store = ListStore::new();\n    let mut object_store = ObjectStore::new();\n    let value = drive_equivalence_trace(&mut slots, &mut slot_taints, &mut list_store, &mut object_store);\n    println!(\"{{value}}|slots:{{}}|{{}}|{{}}\", slot_text(&slots, 0), slot_text(&slots, 1), slot_text(&slots, 2));\n}}\n{}",
             drive_trace_function_source(workflow)
         )
     }
 
     fn drive_trace_function_source(workflow: &CompiledWorkflow) -> String {
         format!(
-            "fn drive_equivalence_trace(slots: &mut [Option<SlotValue>; WORKFLOW_SLOT_COUNT], list_store: &mut ListStore) -> String {{\n    let mut pc: u16 = 0;\n    loop {{\n        let outcome = match pc {{\n{}            _ => Err(DriveError::InvalidProgramCounter),\n        }};\n        match outcome {{\n            Ok(StepOutcome::Continue(next)) => pc = next,\n            Ok(StepOutcome::Finished(done)) => break format!(\"finished:{{done:?}}\"),\n            Err(error) => break format!(\"err:{{error:?}}\"),\n        }}\n    }}\n}}",
+            "fn drive_equivalence_trace(slots: &mut [Option<SlotValue>; WORKFLOW_SLOT_COUNT], slot_taints: &mut [Taint; WORKFLOW_SLOT_COUNT], list_store: &mut ListStore, object_store: &mut ObjectStore) -> String {{\n    let mut pc: u16 = 0;\n    loop {{\n        let outcome = match pc {{\n{}            _ => Err(DriveError::InvalidProgramCounter),\n        }};\n        match outcome {{\n            Ok(StepOutcome::Continue(next)) => pc = next,\n            Ok(StepOutcome::Finished(done)) => break format!(\"finished:{{done:?}}\"),\n            Err(error) => break format!(\"err:{{error:?}}\"),\n        }}\n    }}\n}}",
             dynamic_step_arms(workflow)
         )
     }
 
     fn dynamic_step_arms(workflow: &CompiledWorkflow) -> String {
-        (0..workflow.node_count())
-            .map(|idx| format!("            {idx} => step_{idx}(slots, list_store),\n"))
-            .collect()
+        (0..workflow.node_count()).fold(String::new(), |mut arms, idx| {
+            if writeln!(
+                arms,
+                "            {idx} => step_{idx}(slots, slot_taints, list_store, object_store),"
+            )
+            .is_err()
+            {
+                arms.clear();
+            }
+            arms
+        })
     }
 
     fn ir_equivalence_trace(workflow: &CompiledWorkflow) -> Result<String, String> {
@@ -322,7 +332,7 @@ mod proptests {
 
             let generated = generated_equivalence_stdout(
                 &workflow,
-                &format!("{}_{}_{}_{}", take_branch, branch_value, left, right),
+                &format!("{take_branch}_{branch_value}_{left}_{right}"),
             ).map_err(TestCaseError::fail)?;
             let interpreted = ir_equivalence_trace(&workflow).map_err(TestCaseError::fail)?;
 
@@ -506,8 +516,14 @@ mod proptests {
     #[test]
     fn emit_action_boundary_includes_action_marker_comment() -> Result<(), String> {
         let mut out = String::new();
-        emit_action_boundary(&mut out, ActionId::new(5), SlotIdx::new(2))
-            .map_err(|e| e.to_string())?;
+        emit_action_boundary(
+            &mut out,
+            StepIdx::new(1),
+            ActionId::new(5),
+            SlotIdx::new(2),
+            Some(StepIdx::new(3)),
+        )
+        .map_err(|e| e.to_string())?;
         if out.contains("Action boundary: action_id=5, input_slot=2") {
             Ok(())
         } else {

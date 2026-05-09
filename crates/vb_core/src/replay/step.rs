@@ -3,12 +3,46 @@
 
 use crate::errors::EngineError;
 use crate::frame::RunFrame;
-use crate::ids::{ConstIdx, ExprIdx, SlotIdx, StepIdx, SymbolId};
+use std::collections::HashMap;
+
+use crate::ids::{ConstIdx, ExprIdx, ListId, SlotIdx, StepIdx, SymbolId};
 use crate::value::{SlotValue, Taint, join_taint};
 use crate::value_store::{ObjectField, ValueStore};
 use crate::workflow::{CompiledNode, CompiledNodeKind, CompiledWorkflow};
 
 use super::{ReplayError, eval_expr_for_replay, slot_to_replay_err};
+
+/// Typed non-deterministic suspension kind observed during replay.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SuspensionKind {
+    /// Action boundary waiting for an external action completion.
+    ActionPending,
+    /// Ask node waiting for an external answer.
+    AskPending,
+    /// Wait-until node waiting for a deadline.
+    WaitUntil,
+    /// Wait-event node waiting for an event or timeout.
+    WaitEvent,
+}
+
+impl SuspensionKind {
+    /// Stable diagnostic name for logs and compatibility assertions.
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::ActionPending => "Do",
+            Self::AskPending => "Ask",
+            Self::WaitUntil => "WaitUntil",
+            Self::WaitEvent => "WaitEvent",
+        }
+    }
+}
+
+impl core::fmt::Display for SuspensionKind {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.write_str((*self).as_str())
+    }
+}
 
 /// Internal action returned by `replay_step`.
 pub enum ReplayAction {
@@ -17,7 +51,60 @@ pub enum ReplayAction {
     /// The run finished.
     Finished,
     /// The run is suspended on a non-deterministic node.
-    Suspended { step: StepIdx, kind: &'static str },
+    Suspended { step: StepIdx, kind: SuspensionKind },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct ReplayCollectState {
+    source: ListId,
+    current_page: ListId,
+    cursor: usize,
+    page_size: usize,
+    item_count: usize,
+    taint: Taint,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct ReplayCollectStartArgs {
+    source: SlotIdx,
+    limit: u32,
+    page_size: u32,
+    body: StepIdx,
+    done: StepIdx,
+}
+
+#[derive(Debug, Default)]
+pub struct ReplayCollectStates {
+    entries: HashMap<SlotIdx, ReplayCollectState>,
+}
+
+impl ReplayCollectStates {
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    fn upsert(&mut self, collector: SlotIdx, state: ReplayCollectState) {
+        self.entries.insert(collector, state);
+    }
+
+    fn find(
+        &self,
+        collector: SlotIdx,
+        current_page: ListId,
+    ) -> Result<ReplayCollectState, ReplayError> {
+        self.entries
+            .get(&collector)
+            .filter(|state| state.current_page == current_page)
+            .copied()
+            .ok_or(ReplayError::Internal {
+                reason: "collect pagination state missing during replay",
+            })
+    }
+
+    fn remove(&mut self, collector: SlotIdx) {
+        self.entries.remove(&collector);
+    }
 }
 
 /// Replays a single deterministic step.
@@ -32,6 +119,17 @@ pub fn replay_step(
     store: &mut ValueStore,
     plan: &CompiledWorkflow,
 ) -> Result<ReplayAction, ReplayError> {
+    replay_step_with_collect(node, run, store, plan, &mut ReplayCollectStates::new())
+}
+
+/// Replays a single deterministic step with caller-owned collect pagination state.
+pub fn replay_step_with_collect(
+    node: &CompiledNode,
+    run: &mut RunFrame,
+    store: &mut ValueStore,
+    plan: &CompiledWorkflow,
+    collect_states: &mut ReplayCollectStates,
+) -> Result<ReplayAction, ReplayError> {
     match &node.kind {
         CompiledNodeKind::Nop => replay_nop(node, run),
         CompiledNodeKind::SetConst { value } => replay_set_const(plan, run, node, *value),
@@ -41,10 +139,10 @@ pub fn replay_step(
         CompiledNodeKind::BuildList { items } => replay_build_list(run, store, node, items),
         CompiledNodeKind::Finish { result } => replay_finish(run, *result),
         CompiledNodeKind::Jump { target } => replay_jump(run, *target),
-        CompiledNodeKind::Do { .. } => replay_suspend(node, "Do"),
-        CompiledNodeKind::Ask { .. } => replay_suspend(node, "Ask"),
-        CompiledNodeKind::WaitUntil { .. } => replay_suspend(node, "WaitUntil"),
-        CompiledNodeKind::WaitEvent { .. } => replay_suspend(node, "WaitEvent"),
+        CompiledNodeKind::Do { .. } => Ok(replay_suspend(node, SuspensionKind::ActionPending)),
+        CompiledNodeKind::Ask { .. } => Ok(replay_suspend(node, SuspensionKind::AskPending)),
+        CompiledNodeKind::WaitUntil { .. } => Ok(replay_suspend(node, SuspensionKind::WaitUntil)),
+        CompiledNodeKind::WaitEvent { .. } => Ok(replay_suspend(node, SuspensionKind::WaitEvent)),
         CompiledNodeKind::ChooseSlot {
             branches,
             otherwise,
@@ -53,10 +151,241 @@ pub fn replay_step(
             branches,
             otherwise,
         } => super::choose::replay_choose_expr(plan, run, store, branches, *otherwise),
+        CompiledNodeKind::CollectStart {
+            source,
+            limit,
+            page_size,
+            body,
+            done,
+        } => replay_collect_start(
+            run,
+            store,
+            collect_states,
+            node,
+            ReplayCollectStartArgs {
+                source: *source,
+                limit: *limit,
+                page_size: *page_size,
+                body: *body,
+                done: *done,
+            },
+        ),
+        CompiledNodeKind::CollectPage {
+            collector_slot,
+            body,
+            ..
+        } => replay_collect_page(run, *collector_slot, *body),
+        CompiledNodeKind::CollectNext {
+            collector_slot,
+            body,
+            done,
+        } => replay_collect_next(run, store, collect_states, *collector_slot, *body, *done),
+        CompiledNodeKind::CollectFinish { collector_slot } => {
+            replay_collect_finish(run, collect_states, node, *collector_slot)
+        }
         _ => Err(ReplayError::Internal {
             reason: "unsupported node kind for replay",
         }),
     }
+}
+
+fn replay_collect_start(
+    run: &mut RunFrame,
+    store: &mut ValueStore,
+    states: &mut ReplayCollectStates,
+    node: &CompiledNode,
+    args: ReplayCollectStartArgs,
+) -> Result<ReplayAction, ReplayError> {
+    let list_id = read_list_slot(run, args.source)?;
+    let source_taint = run.read_taint(args.source).map_err(slot_to_replay_err)?;
+    let page_size = replay_page_size(args.page_size)?;
+    let item_limit = replay_item_limit(args.limit)?;
+    if page_size > item_limit {
+        return Err(ReplayError::Internal {
+            reason: "collect page size exceeds limit during replay",
+        });
+    }
+    let items = store.list(list_id).map_err(|_| ReplayError::Internal {
+        reason: "collect source list missing during replay",
+    })?;
+    let item_count = items.len();
+    if item_count > item_limit {
+        return Err(ReplayError::Internal {
+            reason: "collect item count exceeds limit during replay",
+        });
+    }
+    let collector = node.output.map_or(args.source, |slot| slot);
+    if items.is_empty() {
+        write_empty_collect_page(run, store, collector, source_taint)?;
+        states.remove(collector);
+        return replay_jump(run, args.done);
+    }
+    let page = collect_page_items(items, 0, page_size)?;
+    let current_page = write_collect_page(run, store, collector, &page, source_taint)?;
+    states.upsert(
+        collector,
+        ReplayCollectState {
+            source: list_id,
+            current_page,
+            cursor: page.len(),
+            page_size,
+            item_count,
+            taint: source_taint,
+        },
+    );
+    replay_jump(run, args.body)
+}
+
+fn replay_collect_page(
+    run: &mut RunFrame,
+    collector_slot: SlotIdx,
+    body: StepIdx,
+) -> Result<ReplayAction, ReplayError> {
+    validate_collect_slot_list(run, collector_slot)?;
+    replay_jump(run, body)
+}
+
+fn replay_collect_next(
+    run: &mut RunFrame,
+    store: &mut ValueStore,
+    states: &mut ReplayCollectStates,
+    collector_slot: SlotIdx,
+    body: StepIdx,
+    done: StepIdx,
+) -> Result<ReplayAction, ReplayError> {
+    let current_id = read_list_slot(run, collector_slot)?;
+    let current = store.list(current_id).map_err(|_| ReplayError::Internal {
+        reason: "collect current page missing during replay",
+    })?;
+    if current.is_empty() {
+        states.remove(collector_slot);
+        return replay_jump(run, done);
+    }
+    let state = states.find(collector_slot, current_id)?;
+    let source_items = store
+        .list(state.source)
+        .map_err(|_| ReplayError::Internal {
+            reason: "collect source list missing during replay",
+        })?;
+    if source_items.len() != state.item_count {
+        return Err(ReplayError::Internal {
+            reason: "collect source length changed during replay",
+        });
+    }
+    if state.cursor >= state.item_count {
+        write_empty_collect_page(run, store, collector_slot, state.taint)?;
+        states.remove(collector_slot);
+        return replay_jump(run, done);
+    }
+    let page = collect_page_items(source_items, state.cursor, state.page_size)?;
+    let current_page = write_collect_page(run, store, collector_slot, &page, state.taint)?;
+    states.upsert(
+        collector_slot,
+        ReplayCollectState {
+            current_page,
+            cursor: state
+                .cursor
+                .checked_add(page.len())
+                .ok_or(ReplayError::Internal {
+                    reason: "collect cursor overflow during replay",
+                })?,
+            ..state
+        },
+    );
+    replay_jump(run, body)
+}
+
+fn validate_collect_slot_list(run: &RunFrame, slot: SlotIdx) -> Result<(), ReplayError> {
+    read_list_slot(run, slot).map(|_list| ())
+}
+
+fn replay_collect_finish(
+    run: &mut RunFrame,
+    states: &mut ReplayCollectStates,
+    node: &CompiledNode,
+    collector_slot: SlotIdx,
+) -> Result<ReplayAction, ReplayError> {
+    let value = *run.read_slot(collector_slot).map_err(slot_to_replay_err)?;
+    let taint = run.read_taint(collector_slot).map_err(slot_to_replay_err)?;
+    let output = node.output.ok_or(ReplayError::Internal {
+        reason: "CollectFinish node missing output slot",
+    })?;
+    run.write_slot_with_taint(output, value, taint)
+        .map_err(slot_to_replay_err)?;
+    states.remove(collector_slot);
+    advance_to_next(run, node).map(ReplayAction::Continue)
+}
+
+fn read_list_slot(run: &RunFrame, slot: SlotIdx) -> Result<ListId, ReplayError> {
+    match *run.read_slot(slot).map_err(slot_to_replay_err)? {
+        SlotValue::List(list) => Ok(list),
+        _ => Err(ReplayError::Internal {
+            reason: "collect slot was not list during replay",
+        }),
+    }
+}
+
+fn replay_page_size(raw: u32) -> Result<usize, ReplayError> {
+    match raw {
+        0 => Err(ReplayError::Internal {
+            reason: "collect page size was zero during replay",
+        }),
+        value => usize::try_from(value).map_err(|_| ReplayError::Internal {
+            reason: "collect page size overflow during replay",
+        }),
+    }
+}
+
+fn replay_item_limit(raw: u32) -> Result<usize, ReplayError> {
+    usize::try_from(raw).map_err(|_| ReplayError::Internal {
+        reason: "collect limit overflow during replay",
+    })
+}
+
+fn collect_page_items(
+    items: &[SlotValue],
+    start: usize,
+    page_size: usize,
+) -> Result<Box<[SlotValue]>, ReplayError> {
+    let remaining = items
+        .len()
+        .checked_sub(start)
+        .ok_or(ReplayError::Internal {
+            reason: "collect cursor beyond item count during replay",
+        })?;
+    Ok(items
+        .iter()
+        .skip(start)
+        .take(page_size.min(remaining))
+        .copied()
+        .collect::<Vec<_>>()
+        .into_boxed_slice())
+}
+
+fn write_collect_page(
+    run: &mut RunFrame,
+    store: &mut ValueStore,
+    collector: SlotIdx,
+    items: &[SlotValue],
+    taint: Taint,
+) -> Result<ListId, ReplayError> {
+    let page_id = store
+        .insert_list(items.to_vec().into_boxed_slice())
+        .map_err(|_| ReplayError::Internal {
+            reason: "insert collect page failed during replay",
+        })?;
+    run.write_slot_with_taint(collector, SlotValue::List(page_id), taint)
+        .map_err(slot_to_replay_err)?;
+    Ok(page_id)
+}
+
+fn write_empty_collect_page(
+    run: &mut RunFrame,
+    store: &mut ValueStore,
+    collector: SlotIdx,
+    taint: Taint,
+) -> Result<(), ReplayError> {
+    write_collect_page(run, store, collector, &[], taint).map(|_page_id| ())
 }
 
 fn replay_nop(node: &CompiledNode, run: &mut RunFrame) -> Result<ReplayAction, ReplayError> {
@@ -64,10 +393,7 @@ fn replay_nop(node: &CompiledNode, run: &mut RunFrame) -> Result<ReplayAction, R
         reason: "Nop node missing next step",
     })?;
     run.set_pc(next).map_err(slot_to_replay_err)?;
-    run.increment_executed()
-        .map_err(|_| ReplayError::Internal {
-            reason: "executed counter overflow",
-        })?;
+    increment_replay_executed(run)?;
     Ok(ReplayAction::Continue(next))
 }
 
@@ -79,27 +405,21 @@ fn replay_finish(run: &mut RunFrame, result: SlotIdx) -> Result<ReplayAction, Re
             reason: "unexpected error reading finish result slot",
         },
     })?;
-    run.increment_executed()
-        .map_err(|_| ReplayError::Internal {
-            reason: "executed counter overflow",
-        })?;
+    increment_replay_executed(run)?;
     Ok(ReplayAction::Finished)
 }
 
 fn replay_jump(run: &mut RunFrame, target: StepIdx) -> Result<ReplayAction, ReplayError> {
     run.set_pc(target).map_err(slot_to_replay_err)?;
-    run.increment_executed()
-        .map_err(|_| ReplayError::Internal {
-            reason: "executed counter overflow",
-        })?;
+    increment_replay_executed(run)?;
     Ok(ReplayAction::Continue(target))
 }
 
-fn replay_suspend(node: &CompiledNode, kind: &'static str) -> Result<ReplayAction, ReplayError> {
-    Ok(ReplayAction::Suspended {
+fn replay_suspend(node: &CompiledNode, kind: SuspensionKind) -> ReplayAction {
+    ReplayAction::Suspended {
         step: node.id,
         kind,
-    })
+    }
 }
 
 fn replay_set_const(
@@ -267,1990 +587,16 @@ fn advance_to_next(run: &mut RunFrame, node: &CompiledNode) -> Result<StepIdx, R
         reason: "node missing next step",
     })?;
     run.set_pc(next).map_err(slot_to_replay_err)?;
-    run.increment_executed()
-        .map_err(|_| ReplayError::Internal {
-            reason: "executed counter overflow",
-        })?;
+    increment_replay_executed(run)?;
     Ok(next)
 }
 
-#[cfg(test)]
-mod tests {
-    use crate::errors::CoreError;
-    use crate::frame::RunFrame;
-    use crate::ids::{
-        ActionId, ConstIdx, ExprIdx, RunId, SlotIdx, StepIdx, SymbolId, WorkflowDigest,
-    };
-    use crate::limits::MAX_EXPRESSION_STACK;
-    use crate::replay::{ReplayError, step::ReplayAction};
-    use crate::value::{ConstValue, SlotValue, Taint};
-    use crate::value_store::ValueStore;
-    use crate::workflow::{
-        CompiledNode, CompiledNodeKind, ExprOp, ExprProgram, ResourceContract, SlotBranch,
-        WorkflowParts, check_expr_stack_bound,
-    };
-
-    use super::replay_step;
-
-    fn make_plan(
-        nodes: Vec<CompiledNode>,
-        constants: Vec<ConstValue>,
-        expressions: Vec<ExprProgram>,
-    ) -> Result<crate::workflow::CompiledWorkflow, CoreError> {
-        crate::workflow::CompiledWorkflow::try_from_parts(WorkflowParts {
-            name: "test_step".into(),
-            digest: WorkflowDigest::from_bytes([0; 32]),
-            nodes: nodes.into(),
-            expressions: expressions.into(),
-            accessors: vec![].into(),
-            constants: constants.into(),
-            slot_count: 8,
-            symbols_count: 1,
-            entry: StepIdx::new(0),
-            resource_contract: ResourceContract::DEFAULT,
-            step_names: Box::new([]),
-        })
-        .map_err(|_| CoreError::InvalidCompiledWorkflow {
-            reason: "test workflow validation failed",
-        })
-    }
-
-    fn make_plan_with_symbols(
-        nodes: Vec<CompiledNode>,
-        constants: Vec<ConstValue>,
-        expressions: Vec<ExprProgram>,
-        symbols_count: u32,
-    ) -> Result<crate::workflow::CompiledWorkflow, CoreError> {
-        crate::workflow::CompiledWorkflow::try_from_parts(WorkflowParts {
-            name: "test_step".into(),
-            digest: WorkflowDigest::from_bytes([0; 32]),
-            nodes: nodes.into(),
-            expressions: expressions.into(),
-            accessors: vec![].into(),
-            constants: constants.into(),
-            slot_count: 8,
-            symbols_count,
-            entry: StepIdx::new(0),
-            resource_contract: ResourceContract::DEFAULT,
-            step_names: Box::new([]),
-        })
-        .map_err(|_| CoreError::InvalidCompiledWorkflow {
-            reason: "test workflow validation failed",
-        })
-    }
-
-    fn make_expr_program(ops: Vec<ExprOp>) -> Result<ExprProgram, CoreError> {
-        let max_stack = check_expr_stack_bound(&ops, MAX_EXPRESSION_STACK)?;
-        ExprProgram::try_from_parts(ops.into(), max_stack)
-    }
-
-    fn replay_err_to_core(e: ReplayError) -> CoreError {
-        match e {
-            ReplayError::StepNotFound { step } => CoreError::InvalidProgramCounter { step },
-            ReplayError::SlotNotAvailable { slot } => CoreError::SlotOutOfBounds { slot },
-            ReplayError::ExpressionEvalFailed { step } => CoreError::InvalidProgramCounter { step },
-            ReplayError::NonDeterministicStep { step, .. } => {
-                CoreError::InvalidProgramCounter { step }
-            }
-            ReplayError::Internal { reason } => CoreError::InternalInvariantViolation { reason },
-        }
-    }
-
-    // ---- Nop step ----
-
-    #[test]
-    fn replay_nop_advances_to_next() -> Result<(), CoreError> {
-        let plan = make_plan(
-            vec![
-                CompiledNode {
-                    id: StepIdx::new(0),
-                    on_error: None,
-                    error_slot: None,
-                    kind: CompiledNodeKind::Nop,
-                    output: None,
-                    next: Some(StepIdx::new(1)),
-                },
-                CompiledNode {
-                    id: StepIdx::new(1),
-                    on_error: None,
-                    error_slot: None,
-                    kind: CompiledNodeKind::Finish {
-                        result: SlotIdx::new(0),
-                    },
-                    output: None,
-                    next: None,
-                },
-            ],
-            vec![ConstValue::I64(0)],
-            vec![],
-        )?;
-
-        let step_count = plan.node_count();
-        let slot_count = plan.slot_count();
-        let mut run = RunFrame::new(RunId::new(0), StepIdx::new(0), step_count, slot_count)?;
-        let mut store = ValueStore::new();
-        run.write_slot(SlotIdx::new(0), SlotValue::I64(0))?;
-
-        let node = plan
-            .node(StepIdx::new(0))
-            .ok_or(CoreError::InternalInvariantViolation {
-                reason: "node 0 missing",
-            })?;
-        let action = replay_step(node, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
-
-        match action {
-            ReplayAction::Continue(next) if next == StepIdx::new(1) => {}
-            _ => {
-                return Err(CoreError::InternalInvariantViolation {
-                    reason: "Nop should return Continue(1)",
-                });
-            }
-        }
-        if run.pc() != StepIdx::new(1) {
-            return Err(CoreError::InternalInvariantViolation {
-                reason: "PC should be at step 1",
-            });
-        }
-        if run.executed() != 1 {
-            return Err(CoreError::InternalInvariantViolation {
-                reason: "executed should be 1",
-            });
-        }
-        Ok(())
-    }
-
-    #[test]
-    fn replay_nop_missing_next_returns_error() -> Result<(), CoreError> {
-        let plan = make_plan(
-            vec![CompiledNode {
-                id: StepIdx::new(0),
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::Nop,
-                output: None,
-                next: None,
-            }],
-            vec![],
-            vec![],
-        )?;
-
-        let step_count = plan.node_count();
-        let slot_count = plan.slot_count();
-        let mut run = RunFrame::new(RunId::new(0), StepIdx::new(0), step_count, slot_count)?;
-        let mut store = ValueStore::new();
-
-        let node = plan
-            .node(StepIdx::new(0))
-            .ok_or(CoreError::InternalInvariantViolation {
-                reason: "node 0 missing",
-            })?;
-        let result = replay_step(node, &mut run, &mut store, &plan);
-        assert!(
-            matches!(
-                result,
-                Err(ReplayError::Internal {
-                    reason: "Nop node missing next step"
-                })
-            ),
-            "Nop without next must fail"
-        );
-        Ok(())
-    }
-
-    // ---- SetConst step ----
-
-    #[test]
-    fn replay_set_const_writes_slot() -> Result<(), CoreError> {
-        let plan = make_plan(
-            vec![
-                CompiledNode {
-                    id: StepIdx::new(0),
-                    on_error: None,
-                    error_slot: None,
-                    kind: CompiledNodeKind::SetConst {
-                        value: ConstIdx::new(0),
-                    },
-                    output: Some(SlotIdx::new(0)),
-                    next: Some(StepIdx::new(1)),
-                },
-                CompiledNode {
-                    id: StepIdx::new(1),
-                    on_error: None,
-                    error_slot: None,
-                    kind: CompiledNodeKind::Finish {
-                        result: SlotIdx::new(0),
-                    },
-                    output: None,
-                    next: None,
-                },
-            ],
-            vec![ConstValue::I64(42)],
-            vec![],
-        )?;
-
-        let step_count = plan.node_count();
-        let slot_count = plan.slot_count();
-        let mut run = RunFrame::new(RunId::new(0), StepIdx::new(0), step_count, slot_count)?;
-        let mut store = ValueStore::new();
-
-        let node = plan
-            .node(StepIdx::new(0))
-            .ok_or(CoreError::InternalInvariantViolation {
-                reason: "node 0 missing",
-            })?;
-        replay_step(node, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
-
-        if *run.read_slot(SlotIdx::new(0))? != SlotValue::I64(42) {
-            return Err(CoreError::InternalInvariantViolation {
-                reason: "slot 0 should be I64(42) after SetConst",
-            });
-        }
-        Ok(())
-    }
-
-    #[test]
-    fn replay_set_const_bool() -> Result<(), CoreError> {
-        let plan = make_plan(
-            vec![
-                CompiledNode {
-                    id: StepIdx::new(0),
-                    on_error: None,
-                    error_slot: None,
-                    kind: CompiledNodeKind::SetConst {
-                        value: ConstIdx::new(0),
-                    },
-                    output: Some(SlotIdx::new(0)),
-                    next: Some(StepIdx::new(1)),
-                },
-                CompiledNode {
-                    id: StepIdx::new(1),
-                    on_error: None,
-                    error_slot: None,
-                    kind: CompiledNodeKind::Finish {
-                        result: SlotIdx::new(0),
-                    },
-                    output: None,
-                    next: None,
-                },
-            ],
-            vec![ConstValue::Bool(true)],
-            vec![],
-        )?;
-
-        let step_count = plan.node_count();
-        let slot_count = plan.slot_count();
-        let mut run = RunFrame::new(RunId::new(0), StepIdx::new(0), step_count, slot_count)?;
-        let mut store = ValueStore::new();
-
-        let node = plan
-            .node(StepIdx::new(0))
-            .ok_or(CoreError::InternalInvariantViolation {
-                reason: "node 0 missing",
-            })?;
-        replay_step(node, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
-
-        if *run.read_slot(SlotIdx::new(0))? != SlotValue::Bool(true) {
-            return Err(CoreError::InternalInvariantViolation {
-                reason: "slot 0 should be Bool(true)",
-            });
-        }
-        Ok(())
-    }
-
-    #[test]
-    fn replay_set_const_null() -> Result<(), CoreError> {
-        let plan = make_plan(
-            vec![
-                CompiledNode {
-                    id: StepIdx::new(0),
-                    on_error: None,
-                    error_slot: None,
-                    kind: CompiledNodeKind::SetConst {
-                        value: ConstIdx::new(0),
-                    },
-                    output: Some(SlotIdx::new(0)),
-                    next: Some(StepIdx::new(1)),
-                },
-                CompiledNode {
-                    id: StepIdx::new(1),
-                    on_error: None,
-                    error_slot: None,
-                    kind: CompiledNodeKind::Finish {
-                        result: SlotIdx::new(0),
-                    },
-                    output: None,
-                    next: None,
-                },
-            ],
-            vec![ConstValue::Null],
-            vec![],
-        )?;
-
-        let step_count = plan.node_count();
-        let slot_count = plan.slot_count();
-        let mut run = RunFrame::new(RunId::new(0), StepIdx::new(0), step_count, slot_count)?;
-        let mut store = ValueStore::new();
-
-        let node = plan
-            .node(StepIdx::new(0))
-            .ok_or(CoreError::InternalInvariantViolation {
-                reason: "node 0 missing",
-            })?;
-        replay_step(node, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
-
-        if *run.read_slot(SlotIdx::new(0))? != SlotValue::Null {
-            return Err(CoreError::InternalInvariantViolation {
-                reason: "slot 0 should be Null",
-            });
-        }
-        Ok(())
-    }
-
-    #[test]
-    fn replay_set_const_missing_output_returns_error() -> Result<(), CoreError> {
-        let plan = make_plan(
-            vec![
-                CompiledNode {
-                    id: StepIdx::new(0),
-                    on_error: None,
-                    error_slot: None,
-                    kind: CompiledNodeKind::SetConst {
-                        value: ConstIdx::new(0),
-                    },
-                    output: None,
-                    next: Some(StepIdx::new(1)),
-                },
-                CompiledNode {
-                    id: StepIdx::new(1),
-                    on_error: None,
-                    error_slot: None,
-                    kind: CompiledNodeKind::Finish {
-                        result: SlotIdx::new(0),
-                    },
-                    output: None,
-                    next: None,
-                },
-            ],
-            vec![ConstValue::I64(1)],
-            vec![],
-        )?;
-
-        let mut run = RunFrame::new(
-            RunId::new(0),
-            StepIdx::new(0),
-            plan.node_count(),
-            plan.slot_count(),
-        )?;
-        let mut store = ValueStore::new();
-
-        let node = plan
-            .node(StepIdx::new(0))
-            .ok_or(CoreError::InternalInvariantViolation {
-                reason: "node 0 missing",
-            })?;
-        let result = replay_step(node, &mut run, &mut store, &plan);
-        assert!(
-            matches!(
-                result,
-                Err(ReplayError::Internal {
-                    reason: "SetConst node missing output slot"
-                })
-            ),
-            "SetConst without output must fail"
-        );
-        Ok(())
-    }
-
-    // ---- Copy step ----
-
-    #[test]
-    fn replay_copy_transfers_value_and_taint() -> Result<(), CoreError> {
-        let plan = make_plan(
-            vec![
-                CompiledNode {
-                    id: StepIdx::new(0),
-                    on_error: None,
-                    error_slot: None,
-                    kind: CompiledNodeKind::SetConst {
-                        value: ConstIdx::new(0),
-                    },
-                    output: Some(SlotIdx::new(0)),
-                    next: Some(StepIdx::new(1)),
-                },
-                CompiledNode {
-                    id: StepIdx::new(1),
-                    on_error: None,
-                    error_slot: None,
-                    kind: CompiledNodeKind::Copy {
-                        source: SlotIdx::new(0),
-                    },
-                    output: Some(SlotIdx::new(1)),
-                    next: Some(StepIdx::new(2)),
-                },
-                CompiledNode {
-                    id: StepIdx::new(2),
-                    on_error: None,
-                    error_slot: None,
-                    kind: CompiledNodeKind::Finish {
-                        result: SlotIdx::new(1),
-                    },
-                    output: None,
-                    next: None,
-                },
-            ],
-            vec![ConstValue::I64(100)],
-            vec![],
-        )?;
-
-        let step_count = plan.node_count();
-        let slot_count = plan.slot_count();
-        let mut run = RunFrame::new(RunId::new(0), StepIdx::new(0), step_count, slot_count)?;
-        let mut store = ValueStore::new();
-
-        let node0 = plan
-            .node(StepIdx::new(0))
-            .ok_or(CoreError::InternalInvariantViolation {
-                reason: "node 0 missing",
-            })?;
-        replay_step(node0, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
-        run.write_taint(SlotIdx::new(0), Taint::Secret)?;
-
-        let node1 = plan
-            .node(StepIdx::new(1))
-            .ok_or(CoreError::InternalInvariantViolation {
-                reason: "node 1 missing",
-            })?;
-        replay_step(node1, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
-
-        if *run.read_slot(SlotIdx::new(1))? != SlotValue::I64(100) {
-            return Err(CoreError::InternalInvariantViolation {
-                reason: "slot 1 should be I64(100)",
-            });
-        }
-        if run.read_taint(SlotIdx::new(1))? != Taint::Secret {
-            return Err(CoreError::InternalInvariantViolation {
-                reason: "slot 1 taint should be Secret",
-            });
-        }
-        Ok(())
-    }
-
-    #[test]
-    fn replay_copy_clean_source_has_clean_taint() -> Result<(), CoreError> {
-        let plan = make_plan(
-            vec![
-                CompiledNode {
-                    id: StepIdx::new(0),
-                    on_error: None,
-                    error_slot: None,
-                    kind: CompiledNodeKind::SetConst {
-                        value: ConstIdx::new(0),
-                    },
-                    output: Some(SlotIdx::new(0)),
-                    next: Some(StepIdx::new(1)),
-                },
-                CompiledNode {
-                    id: StepIdx::new(1),
-                    on_error: None,
-                    error_slot: None,
-                    kind: CompiledNodeKind::Copy {
-                        source: SlotIdx::new(0),
-                    },
-                    output: Some(SlotIdx::new(1)),
-                    next: Some(StepIdx::new(2)),
-                },
-                CompiledNode {
-                    id: StepIdx::new(2),
-                    on_error: None,
-                    error_slot: None,
-                    kind: CompiledNodeKind::Finish {
-                        result: SlotIdx::new(1),
-                    },
-                    output: None,
-                    next: None,
-                },
-            ],
-            vec![ConstValue::I64(1)],
-            vec![],
-        )?;
-
-        let step_count = plan.node_count();
-        let slot_count = plan.slot_count();
-        let mut run = RunFrame::new(RunId::new(0), StepIdx::new(0), step_count, slot_count)?;
-        let mut store = ValueStore::new();
-
-        let node0 = plan
-            .node(StepIdx::new(0))
-            .ok_or(CoreError::InternalInvariantViolation {
-                reason: "node 0 missing",
-            })?;
-        replay_step(node0, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
-
-        let node1 = plan
-            .node(StepIdx::new(1))
-            .ok_or(CoreError::InternalInvariantViolation {
-                reason: "node 1 missing",
-            })?;
-        replay_step(node1, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
-
-        if run.read_taint(SlotIdx::new(1))? != Taint::Clean {
-            return Err(CoreError::InternalInvariantViolation {
-                reason: "slot 1 taint should be Clean",
-            });
-        }
-        Ok(())
-    }
-
-    #[test]
-    fn replay_copy_uninitialized_source_returns_error() -> Result<(), CoreError> {
-        let plan = make_plan(
-            vec![
-                CompiledNode {
-                    id: StepIdx::new(0),
-                    on_error: None,
-                    error_slot: None,
-                    kind: CompiledNodeKind::Copy {
-                        source: SlotIdx::new(3),
-                    },
-                    output: Some(SlotIdx::new(1)),
-                    next: Some(StepIdx::new(1)),
-                },
-                CompiledNode {
-                    id: StepIdx::new(1),
-                    on_error: None,
-                    error_slot: None,
-                    kind: CompiledNodeKind::Finish {
-                        result: SlotIdx::new(1),
-                    },
-                    output: None,
-                    next: None,
-                },
-            ],
-            vec![],
-            vec![],
-        )?;
-
-        let mut run = RunFrame::new(
-            RunId::new(0),
-            StepIdx::new(0),
-            plan.node_count(),
-            plan.slot_count(),
-        )?;
-        let mut store = ValueStore::new();
-
-        let node = plan
-            .node(StepIdx::new(0))
-            .ok_or(CoreError::InternalInvariantViolation {
-                reason: "node 0 missing",
-            })?;
-        let result = replay_step(node, &mut run, &mut store, &plan);
-        assert!(
-            matches!(result, Err(ReplayError::SlotNotAvailable { slot }) if slot == SlotIdx::new(3)),
-            "Copy from uninitialized slot must fail with SlotNotAvailable"
-        );
-        Ok(())
-    }
-
-    #[test]
-    fn replay_copy_missing_output_returns_error() -> Result<(), CoreError> {
-        let plan = make_plan(
-            vec![
-                CompiledNode {
-                    id: StepIdx::new(0),
-                    on_error: None,
-                    error_slot: None,
-                    kind: CompiledNodeKind::SetConst {
-                        value: ConstIdx::new(0),
-                    },
-                    output: Some(SlotIdx::new(0)),
-                    next: Some(StepIdx::new(1)),
-                },
-                CompiledNode {
-                    id: StepIdx::new(1),
-                    on_error: None,
-                    error_slot: None,
-                    kind: CompiledNodeKind::Copy {
-                        source: SlotIdx::new(0),
-                    },
-                    output: None,
-                    next: Some(StepIdx::new(2)),
-                },
-                CompiledNode {
-                    id: StepIdx::new(2),
-                    on_error: None,
-                    error_slot: None,
-                    kind: CompiledNodeKind::Finish {
-                        result: SlotIdx::new(0),
-                    },
-                    output: None,
-                    next: None,
-                },
-            ],
-            vec![ConstValue::I64(1)],
-            vec![],
-        )?;
-
-        let step_count = plan.node_count();
-        let slot_count = plan.slot_count();
-        let mut run = RunFrame::new(RunId::new(0), StepIdx::new(0), step_count, slot_count)?;
-        let mut store = ValueStore::new();
-
-        let node0 = plan
-            .node(StepIdx::new(0))
-            .ok_or(CoreError::InternalInvariantViolation {
-                reason: "node 0 missing",
-            })?;
-        replay_step(node0, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
-
-        let node1 = plan
-            .node(StepIdx::new(1))
-            .ok_or(CoreError::InternalInvariantViolation {
-                reason: "node 1 missing",
-            })?;
-        let result = replay_step(node1, &mut run, &mut store, &plan);
-        assert!(
-            matches!(
-                result,
-                Err(ReplayError::Internal {
-                    reason: "Copy node missing output slot"
-                })
-            ),
-            "Copy without output must fail"
-        );
-        Ok(())
-    }
-
-    // ---- EvalExpr step ----
-
-    #[test]
-    fn replay_eval_expr_computes_result() -> Result<(), CoreError> {
-        let expr = make_expr_program(vec![
-            ExprOp::LoadSlot(SlotIdx::new(0)),
-            ExprOp::LoadSlot(SlotIdx::new(1)),
-            ExprOp::Add,
-        ])?;
-
-        let plan = make_plan(
-            vec![
-                CompiledNode {
-                    id: StepIdx::new(0),
-                    on_error: None,
-                    error_slot: None,
-                    kind: CompiledNodeKind::SetConst {
-                        value: ConstIdx::new(0),
-                    },
-                    output: Some(SlotIdx::new(0)),
-                    next: Some(StepIdx::new(1)),
-                },
-                CompiledNode {
-                    id: StepIdx::new(1),
-                    on_error: None,
-                    error_slot: None,
-                    kind: CompiledNodeKind::SetConst {
-                        value: ConstIdx::new(1),
-                    },
-                    output: Some(SlotIdx::new(1)),
-                    next: Some(StepIdx::new(2)),
-                },
-                CompiledNode {
-                    id: StepIdx::new(2),
-                    on_error: None,
-                    error_slot: None,
-                    kind: CompiledNodeKind::EvalExpr {
-                        expr: ExprIdx::new(0),
-                    },
-                    output: Some(SlotIdx::new(2)),
-                    next: Some(StepIdx::new(3)),
-                },
-                CompiledNode {
-                    id: StepIdx::new(3),
-                    on_error: None,
-                    error_slot: None,
-                    kind: CompiledNodeKind::Finish {
-                        result: SlotIdx::new(2),
-                    },
-                    output: None,
-                    next: None,
-                },
-            ],
-            vec![ConstValue::I64(30), ConstValue::I64(12)],
-            vec![expr],
-        )?;
-
-        let step_count = plan.node_count();
-        let slot_count = plan.slot_count();
-        let mut run = RunFrame::new(RunId::new(0), StepIdx::new(0), step_count, slot_count)?;
-        let mut store = ValueStore::new();
-
-        let node0 = plan
-            .node(StepIdx::new(0))
-            .ok_or(CoreError::InternalInvariantViolation {
-                reason: "node 0 missing",
-            })?;
-        replay_step(node0, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
-
-        let node1 = plan
-            .node(StepIdx::new(1))
-            .ok_or(CoreError::InternalInvariantViolation {
-                reason: "node 1 missing",
-            })?;
-        replay_step(node1, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
-
-        let node2 = plan
-            .node(StepIdx::new(2))
-            .ok_or(CoreError::InternalInvariantViolation {
-                reason: "node 2 missing",
-            })?;
-        replay_step(node2, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
-
-        if *run.read_slot(SlotIdx::new(2))? != SlotValue::I64(42) {
-            return Err(CoreError::InternalInvariantViolation {
-                reason: "slot 2 should be I64(42)",
-            });
-        }
-        Ok(())
-    }
-
-    // ---- BuildObject step ----
-
-    #[test]
-    fn replay_build_object_creates_handle() -> Result<(), CoreError> {
-        let field_sym = SymbolId::new(0);
-        let plan = make_plan(
-            vec![
-                CompiledNode {
-                    id: StepIdx::new(0),
-                    on_error: None,
-                    error_slot: None,
-                    kind: CompiledNodeKind::SetConst {
-                        value: ConstIdx::new(0),
-                    },
-                    output: Some(SlotIdx::new(0)),
-                    next: Some(StepIdx::new(1)),
-                },
-                CompiledNode {
-                    id: StepIdx::new(1),
-                    on_error: None,
-                    error_slot: None,
-                    kind: CompiledNodeKind::BuildObject {
-                        fields: vec![(field_sym, SlotIdx::new(0))].into(),
-                    },
-                    output: Some(SlotIdx::new(1)),
-                    next: Some(StepIdx::new(2)),
-                },
-                CompiledNode {
-                    id: StepIdx::new(2),
-                    on_error: None,
-                    error_slot: None,
-                    kind: CompiledNodeKind::Finish {
-                        result: SlotIdx::new(1),
-                    },
-                    output: None,
-                    next: None,
-                },
-            ],
-            vec![ConstValue::I64(42)],
-            vec![],
-        )?;
-
-        let step_count = plan.node_count();
-        let slot_count = plan.slot_count();
-        let mut run = RunFrame::new(RunId::new(0), StepIdx::new(0), step_count, slot_count)?;
-        let mut store = ValueStore::new();
-
-        let node0 = plan
-            .node(StepIdx::new(0))
-            .ok_or(CoreError::InternalInvariantViolation {
-                reason: "node 0 missing",
-            })?;
-        replay_step(node0, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
-
-        let node1 = plan
-            .node(StepIdx::new(1))
-            .ok_or(CoreError::InternalInvariantViolation {
-                reason: "node 1 missing",
-            })?;
-        replay_step(node1, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
-
-        match *run.read_slot(SlotIdx::new(1))? {
-            SlotValue::Object(id) => {
-                let obj = store.object(id)?;
-                let field = obj.first().ok_or(CoreError::InternalInvariantViolation {
-                    reason: "object should have a field",
-                })?;
-                if field.key != field_sym || field.value != SlotValue::I64(42) {
-                    return Err(CoreError::InternalInvariantViolation {
-                        reason: "field mismatch",
-                    });
-                }
-            }
-            _ => {
-                return Err(CoreError::InternalInvariantViolation {
-                    reason: "slot 1 should be Object",
-                });
-            }
-        }
-        Ok(())
-    }
-
-    #[test]
-    fn replay_build_object_empty_fields() -> Result<(), CoreError> {
-        let plan = make_plan(
-            vec![
-                CompiledNode {
-                    id: StepIdx::new(0),
-                    on_error: None,
-                    error_slot: None,
-                    kind: CompiledNodeKind::BuildObject {
-                        fields: vec![].into(),
-                    },
-                    output: Some(SlotIdx::new(0)),
-                    next: Some(StepIdx::new(1)),
-                },
-                CompiledNode {
-                    id: StepIdx::new(1),
-                    on_error: None,
-                    error_slot: None,
-                    kind: CompiledNodeKind::Finish {
-                        result: SlotIdx::new(0),
-                    },
-                    output: None,
-                    next: None,
-                },
-            ],
-            vec![],
-            vec![],
-        )?;
-
-        let step_count = plan.node_count();
-        let slot_count = plan.slot_count();
-        let mut run = RunFrame::new(RunId::new(0), StepIdx::new(0), step_count, slot_count)?;
-        let mut store = ValueStore::new();
-
-        let node = plan
-            .node(StepIdx::new(0))
-            .ok_or(CoreError::InternalInvariantViolation {
-                reason: "node 0 missing",
-            })?;
-        replay_step(node, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
-
-        match *run.read_slot(SlotIdx::new(0))? {
-            SlotValue::Object(id) => {
-                let obj = store.object(id)?;
-                if !obj.is_empty() {
-                    return Err(CoreError::InternalInvariantViolation {
-                        reason: "empty BuildObject should create empty object",
-                    });
-                }
-            }
-            _ => {
-                return Err(CoreError::InternalInvariantViolation {
-                    reason: "slot 0 should be Object",
-                });
-            }
-        }
-        Ok(())
-    }
-
-    #[test]
-    fn replay_build_object_uninitialized_field_returns_error() -> Result<(), CoreError> {
-        let field_sym = SymbolId::new(0);
-        let plan = make_plan(
-            vec![
-                CompiledNode {
-                    id: StepIdx::new(0),
-                    on_error: None,
-                    error_slot: None,
-                    kind: CompiledNodeKind::BuildObject {
-                        fields: vec![(field_sym, SlotIdx::new(5))].into(),
-                    },
-                    output: Some(SlotIdx::new(0)),
-                    next: Some(StepIdx::new(1)),
-                },
-                CompiledNode {
-                    id: StepIdx::new(1),
-                    on_error: None,
-                    error_slot: None,
-                    kind: CompiledNodeKind::Finish {
-                        result: SlotIdx::new(0),
-                    },
-                    output: None,
-                    next: None,
-                },
-            ],
-            vec![],
-            vec![],
-        )?;
-
-        let mut run = RunFrame::new(
-            RunId::new(0),
-            StepIdx::new(0),
-            plan.node_count(),
-            plan.slot_count(),
-        )?;
-        let mut store = ValueStore::new();
-
-        let node = plan
-            .node(StepIdx::new(0))
-            .ok_or(CoreError::InternalInvariantViolation {
-                reason: "node 0 missing",
-            })?;
-        let result = replay_step(node, &mut run, &mut store, &plan);
-        assert!(
-            result.is_err(),
-            "BuildObject with uninitialized field must fail"
-        );
-        Ok(())
-    }
-
-    #[test]
-    fn replay_build_object_propagates_taint() -> Result<(), CoreError> {
-        let field_sym = SymbolId::new(0);
-        let plan = make_plan(
-            vec![
-                CompiledNode {
-                    id: StepIdx::new(0),
-                    on_error: None,
-                    error_slot: None,
-                    kind: CompiledNodeKind::SetConst {
-                        value: ConstIdx::new(0),
-                    },
-                    output: Some(SlotIdx::new(0)),
-                    next: Some(StepIdx::new(1)),
-                },
-                CompiledNode {
-                    id: StepIdx::new(1),
-                    on_error: None,
-                    error_slot: None,
-                    kind: CompiledNodeKind::BuildObject {
-                        fields: vec![(field_sym, SlotIdx::new(0))].into(),
-                    },
-                    output: Some(SlotIdx::new(1)),
-                    next: Some(StepIdx::new(2)),
-                },
-                CompiledNode {
-                    id: StepIdx::new(2),
-                    on_error: None,
-                    error_slot: None,
-                    kind: CompiledNodeKind::Finish {
-                        result: SlotIdx::new(1),
-                    },
-                    output: None,
-                    next: None,
-                },
-            ],
-            vec![ConstValue::I64(1)],
-            vec![],
-        )?;
-
-        let step_count = plan.node_count();
-        let slot_count = plan.slot_count();
-        let mut run = RunFrame::new(RunId::new(0), StepIdx::new(0), step_count, slot_count)?;
-        let mut store = ValueStore::new();
-
-        let node0 = plan
-            .node(StepIdx::new(0))
-            .ok_or(CoreError::InternalInvariantViolation {
-                reason: "node 0 missing",
-            })?;
-        replay_step(node0, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
-        run.write_taint(SlotIdx::new(0), Taint::DerivedFromSecret)?;
-
-        let node1 = plan
-            .node(StepIdx::new(1))
-            .ok_or(CoreError::InternalInvariantViolation {
-                reason: "node 1 missing",
-            })?;
-        replay_step(node1, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
-
-        if run.read_taint(SlotIdx::new(1))? != Taint::DerivedFromSecret {
-            return Err(CoreError::InternalInvariantViolation {
-                reason: "BuildObject output taint should be DerivedFromSecret",
-            });
-        }
-        Ok(())
-    }
-
-    // ---- BuildList step ----
-
-    #[test]
-    fn replay_build_list_creates_handle() -> Result<(), CoreError> {
-        let plan = make_plan(
-            vec![
-                CompiledNode {
-                    id: StepIdx::new(0),
-                    on_error: None,
-                    error_slot: None,
-                    kind: CompiledNodeKind::SetConst {
-                        value: ConstIdx::new(0),
-                    },
-                    output: Some(SlotIdx::new(0)),
-                    next: Some(StepIdx::new(1)),
-                },
-                CompiledNode {
-                    id: StepIdx::new(1),
-                    on_error: None,
-                    error_slot: None,
-                    kind: CompiledNodeKind::SetConst {
-                        value: ConstIdx::new(1),
-                    },
-                    output: Some(SlotIdx::new(1)),
-                    next: Some(StepIdx::new(2)),
-                },
-                CompiledNode {
-                    id: StepIdx::new(2),
-                    on_error: None,
-                    error_slot: None,
-                    kind: CompiledNodeKind::BuildList {
-                        items: vec![SlotIdx::new(0), SlotIdx::new(1)].into(),
-                    },
-                    output: Some(SlotIdx::new(2)),
-                    next: Some(StepIdx::new(3)),
-                },
-                CompiledNode {
-                    id: StepIdx::new(3),
-                    on_error: None,
-                    error_slot: None,
-                    kind: CompiledNodeKind::Finish {
-                        result: SlotIdx::new(2),
-                    },
-                    output: None,
-                    next: None,
-                },
-            ],
-            vec![ConstValue::I64(10), ConstValue::I64(20)],
-            vec![],
-        )?;
-
-        let step_count = plan.node_count();
-        let slot_count = plan.slot_count();
-        let mut run = RunFrame::new(RunId::new(0), StepIdx::new(0), step_count, slot_count)?;
-        let mut store = ValueStore::new();
-
-        let node0 = plan
-            .node(StepIdx::new(0))
-            .ok_or(CoreError::InternalInvariantViolation {
-                reason: "node 0 missing",
-            })?;
-        replay_step(node0, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
-
-        let node1 = plan
-            .node(StepIdx::new(1))
-            .ok_or(CoreError::InternalInvariantViolation {
-                reason: "node 1 missing",
-            })?;
-        replay_step(node1, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
-
-        let node2 = plan
-            .node(StepIdx::new(2))
-            .ok_or(CoreError::InternalInvariantViolation {
-                reason: "node 2 missing",
-            })?;
-        replay_step(node2, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
-
-        match *run.read_slot(SlotIdx::new(2))? {
-            SlotValue::List(id) => {
-                let list = store.list(id)?;
-                if list.len() != 2 {
-                    return Err(CoreError::InternalInvariantViolation {
-                        reason: "list should have 2 items",
-                    });
-                }
-                if list[0] != SlotValue::I64(10) || list[1] != SlotValue::I64(20) {
-                    return Err(CoreError::InternalInvariantViolation {
-                        reason: "list items mismatch",
-                    });
-                }
-            }
-            _ => {
-                return Err(CoreError::InternalInvariantViolation {
-                    reason: "slot 2 should be List",
-                });
-            }
-        }
-        Ok(())
-    }
-
-    #[test]
-    fn replay_build_list_empty_items() -> Result<(), CoreError> {
-        let plan = make_plan(
-            vec![
-                CompiledNode {
-                    id: StepIdx::new(0),
-                    on_error: None,
-                    error_slot: None,
-                    kind: CompiledNodeKind::BuildList {
-                        items: vec![].into(),
-                    },
-                    output: Some(SlotIdx::new(0)),
-                    next: Some(StepIdx::new(1)),
-                },
-                CompiledNode {
-                    id: StepIdx::new(1),
-                    on_error: None,
-                    error_slot: None,
-                    kind: CompiledNodeKind::Finish {
-                        result: SlotIdx::new(0),
-                    },
-                    output: None,
-                    next: None,
-                },
-            ],
-            vec![],
-            vec![],
-        )?;
-
-        let step_count = plan.node_count();
-        let slot_count = plan.slot_count();
-        let mut run = RunFrame::new(RunId::new(0), StepIdx::new(0), step_count, slot_count)?;
-        let mut store = ValueStore::new();
-
-        let node = plan
-            .node(StepIdx::new(0))
-            .ok_or(CoreError::InternalInvariantViolation {
-                reason: "node 0 missing",
-            })?;
-        replay_step(node, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
-
-        match *run.read_slot(SlotIdx::new(0))? {
-            SlotValue::List(id) => {
-                let list = store.list(id)?;
-                if !list.is_empty() {
-                    return Err(CoreError::InternalInvariantViolation {
-                        reason: "empty BuildList should create empty list",
-                    });
-                }
-            }
-            _ => {
-                return Err(CoreError::InternalInvariantViolation {
-                    reason: "slot 0 should be List",
-                });
-            }
-        }
-        Ok(())
-    }
-
-    #[test]
-    fn replay_build_list_uninitialized_item_returns_error() -> Result<(), CoreError> {
-        let plan = make_plan(
-            vec![
-                CompiledNode {
-                    id: StepIdx::new(0),
-                    on_error: None,
-                    error_slot: None,
-                    kind: CompiledNodeKind::BuildList {
-                        items: vec![SlotIdx::new(5)].into(),
-                    },
-                    output: Some(SlotIdx::new(0)),
-                    next: Some(StepIdx::new(1)),
-                },
-                CompiledNode {
-                    id: StepIdx::new(1),
-                    on_error: None,
-                    error_slot: None,
-                    kind: CompiledNodeKind::Finish {
-                        result: SlotIdx::new(0),
-                    },
-                    output: None,
-                    next: None,
-                },
-            ],
-            vec![],
-            vec![],
-        )?;
-
-        let mut run = RunFrame::new(
-            RunId::new(0),
-            StepIdx::new(0),
-            plan.node_count(),
-            plan.slot_count(),
-        )?;
-        let mut store = ValueStore::new();
-
-        let node = plan
-            .node(StepIdx::new(0))
-            .ok_or(CoreError::InternalInvariantViolation {
-                reason: "node 0 missing",
-            })?;
-        let result = replay_step(node, &mut run, &mut store, &plan);
-        assert!(
-            result.is_err(),
-            "BuildList with uninitialized item must fail"
-        );
-        Ok(())
-    }
-
-    #[test]
-    fn replay_build_list_propagates_taint() -> Result<(), CoreError> {
-        let plan = make_plan(
-            vec![
-                CompiledNode {
-                    id: StepIdx::new(0),
-                    on_error: None,
-                    error_slot: None,
-                    kind: CompiledNodeKind::SetConst {
-                        value: ConstIdx::new(0),
-                    },
-                    output: Some(SlotIdx::new(0)),
-                    next: Some(StepIdx::new(1)),
-                },
-                CompiledNode {
-                    id: StepIdx::new(1),
-                    on_error: None,
-                    error_slot: None,
-                    kind: CompiledNodeKind::BuildList {
-                        items: vec![SlotIdx::new(0)].into(),
-                    },
-                    output: Some(SlotIdx::new(1)),
-                    next: Some(StepIdx::new(2)),
-                },
-                CompiledNode {
-                    id: StepIdx::new(2),
-                    on_error: None,
-                    error_slot: None,
-                    kind: CompiledNodeKind::Finish {
-                        result: SlotIdx::new(1),
-                    },
-                    output: None,
-                    next: None,
-                },
-            ],
-            vec![ConstValue::I64(7)],
-            vec![],
-        )?;
-
-        let step_count = plan.node_count();
-        let slot_count = plan.slot_count();
-        let mut run = RunFrame::new(RunId::new(0), StepIdx::new(0), step_count, slot_count)?;
-        let mut store = ValueStore::new();
-
-        let node0 = plan
-            .node(StepIdx::new(0))
-            .ok_or(CoreError::InternalInvariantViolation {
-                reason: "node 0 missing",
-            })?;
-        replay_step(node0, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
-        run.write_taint(SlotIdx::new(0), Taint::Secret)?;
-
-        let node1 = plan
-            .node(StepIdx::new(1))
-            .ok_or(CoreError::InternalInvariantViolation {
-                reason: "node 1 missing",
-            })?;
-        replay_step(node1, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
-
-        if run.read_taint(SlotIdx::new(1))? != Taint::Secret {
-            return Err(CoreError::InternalInvariantViolation {
-                reason: "BuildList output taint should be Secret",
-            });
-        }
-        Ok(())
-    }
-
-    // ---- Finish step ----
-
-    #[test]
-    fn replay_finish_returns_finished_action() -> Result<(), CoreError> {
-        let plan = make_plan(
-            vec![
-                CompiledNode {
-                    id: StepIdx::new(0),
-                    on_error: None,
-                    error_slot: None,
-                    kind: CompiledNodeKind::SetConst {
-                        value: ConstIdx::new(0),
-                    },
-                    output: Some(SlotIdx::new(0)),
-                    next: Some(StepIdx::new(1)),
-                },
-                CompiledNode {
-                    id: StepIdx::new(1),
-                    on_error: None,
-                    error_slot: None,
-                    kind: CompiledNodeKind::Finish {
-                        result: SlotIdx::new(0),
-                    },
-                    output: None,
-                    next: None,
-                },
-            ],
-            vec![ConstValue::I64(99)],
-            vec![],
-        )?;
-
-        let step_count = plan.node_count();
-        let slot_count = plan.slot_count();
-        let mut run = RunFrame::new(RunId::new(0), StepIdx::new(0), step_count, slot_count)?;
-        let mut store = ValueStore::new();
-
-        let node0 = plan
-            .node(StepIdx::new(0))
-            .ok_or(CoreError::InternalInvariantViolation {
-                reason: "node 0 missing",
-            })?;
-        replay_step(node0, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
-
-        let node1 = plan
-            .node(StepIdx::new(1))
-            .ok_or(CoreError::InternalInvariantViolation {
-                reason: "node 1 missing",
-            })?;
-        let action = replay_step(node1, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
-
-        match action {
-            ReplayAction::Finished => {}
-            _ => {
-                return Err(CoreError::InternalInvariantViolation {
-                    reason: "Finish should return Finished",
-                });
-            }
-        }
-        if run.executed() != 2 {
-            return Err(CoreError::InternalInvariantViolation {
-                reason: "executed should be 2",
-            });
-        }
-        Ok(())
-    }
-
-    #[test]
-    fn replay_finish_uninitialized_result_returns_error() -> Result<(), CoreError> {
-        let plan = make_plan(
-            vec![CompiledNode {
-                id: StepIdx::new(0),
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::Finish {
-                    result: SlotIdx::new(5),
-                },
-                output: None,
-                next: None,
-            }],
-            vec![],
-            vec![],
-        )?;
-
-        let mut run = RunFrame::new(
-            RunId::new(0),
-            StepIdx::new(0),
-            plan.node_count(),
-            plan.slot_count(),
-        )?;
-        let mut store = ValueStore::new();
-
-        let node = plan
-            .node(StepIdx::new(0))
-            .ok_or(CoreError::InternalInvariantViolation {
-                reason: "node 0 missing",
-            })?;
-        let result = replay_step(node, &mut run, &mut store, &plan);
-        assert!(
-            result.is_err(),
-            "Finish with uninitialized result must fail"
-        );
-        Ok(())
-    }
-
-    // ---- Jump step ----
-
-    #[test]
-    fn replay_jump_advances_pc_to_target() -> Result<(), CoreError> {
-        let plan = make_plan(
-            vec![
-                CompiledNode {
-                    id: StepIdx::new(0),
-                    on_error: None,
-                    error_slot: None,
-                    kind: CompiledNodeKind::Jump {
-                        target: StepIdx::new(1),
-                    },
-                    output: None,
-                    next: None,
-                },
-                CompiledNode {
-                    id: StepIdx::new(1),
-                    on_error: None,
-                    error_slot: None,
-                    kind: CompiledNodeKind::Finish {
-                        result: SlotIdx::new(0),
-                    },
-                    output: None,
-                    next: None,
-                },
-            ],
-            vec![ConstValue::I64(0)],
-            vec![],
-        )?;
-
-        let step_count = plan.node_count();
-        let slot_count = plan.slot_count();
-        let mut run = RunFrame::new(RunId::new(0), StepIdx::new(0), step_count, slot_count)?;
-        run.write_slot(SlotIdx::new(0), SlotValue::I64(0))?;
-        let mut store = ValueStore::new();
-
-        let node = plan
-            .node(StepIdx::new(0))
-            .ok_or(CoreError::InternalInvariantViolation {
-                reason: "node 0 missing",
-            })?;
-        let action = replay_step(node, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
-
-        match action {
-            ReplayAction::Continue(next) if next == StepIdx::new(1) => {}
-            _ => {
-                return Err(CoreError::InternalInvariantViolation {
-                    reason: "Jump should return Continue(1)",
-                });
-            }
-        }
-        if run.pc() != StepIdx::new(1) {
-            return Err(CoreError::InternalInvariantViolation {
-                reason: "PC should be at step 1",
-            });
-        }
-        Ok(())
-    }
-
-    // ---- Suspend steps ----
-
-    #[test]
-    fn replay_do_suspends() -> Result<(), CoreError> {
-        let plan = make_plan(
-            vec![CompiledNode {
-                id: StepIdx::new(0),
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::Do {
-                    action: ActionId::new(0),
-                    input: SlotIdx::new(0),
-                },
-                output: None,
-                next: None,
-            }],
-            vec![],
-            vec![],
-        )?;
-
-        let mut run = RunFrame::new(
-            RunId::new(0),
-            StepIdx::new(0),
-            plan.node_count(),
-            plan.slot_count(),
-        )?;
-        let mut store = ValueStore::new();
-
-        let node = plan
-            .node(StepIdx::new(0))
-            .ok_or(CoreError::InternalInvariantViolation {
-                reason: "node 0 missing",
-            })?;
-        let action = replay_step(node, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
-
-        match action {
-            ReplayAction::Suspended { step, kind } if step == StepIdx::new(0) && kind == "Do" => {}
-            _ => {
-                return Err(CoreError::InternalInvariantViolation {
-                    reason: "Do should return Suspended(0, Do)",
-                });
-            }
-        }
-        Ok(())
-    }
-
-    #[test]
-    fn replay_ask_suspends() -> Result<(), CoreError> {
-        let plan = make_plan(
-            vec![CompiledNode {
-                id: StepIdx::new(0),
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::Ask {
-                    prompt: SlotIdx::new(0),
-                    timeout_slot: None,
-                },
-                output: None,
-                next: None,
-            }],
-            vec![],
-            vec![],
-        )?;
-
-        let mut run = RunFrame::new(
-            RunId::new(0),
-            StepIdx::new(0),
-            plan.node_count(),
-            plan.slot_count(),
-        )?;
-        let mut store = ValueStore::new();
-
-        let node = plan
-            .node(StepIdx::new(0))
-            .ok_or(CoreError::InternalInvariantViolation {
-                reason: "node 0 missing",
-            })?;
-        let action = replay_step(node, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
-
-        match action {
-            ReplayAction::Suspended { step, kind } if step == StepIdx::new(0) && kind == "Ask" => {}
-            _ => {
-                return Err(CoreError::InternalInvariantViolation {
-                    reason: "Ask should return Suspended(0, Ask)",
-                });
-            }
-        }
-        Ok(())
-    }
-
-    #[test]
-    fn replay_wait_until_suspends() -> Result<(), CoreError> {
-        let plan = make_plan(
-            vec![CompiledNode {
-                id: StepIdx::new(0),
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::WaitUntil {
-                    deadline_slot: SlotIdx::new(0),
-                },
-                output: None,
-                next: None,
-            }],
-            vec![],
-            vec![],
-        )?;
-
-        let mut run = RunFrame::new(
-            RunId::new(0),
-            StepIdx::new(0),
-            plan.node_count(),
-            plan.slot_count(),
-        )?;
-        let mut store = ValueStore::new();
-
-        let node = plan
-            .node(StepIdx::new(0))
-            .ok_or(CoreError::InternalInvariantViolation {
-                reason: "node 0 missing",
-            })?;
-        let action = replay_step(node, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
-
-        match action {
-            ReplayAction::Suspended { step, kind }
-                if step == StepIdx::new(0) && kind == "WaitUntil" => {}
-            _ => {
-                return Err(CoreError::InternalInvariantViolation {
-                    reason: "WaitUntil should return Suspended(0, WaitUntil)",
-                });
-            }
-        }
-        Ok(())
-    }
-
-    #[test]
-    fn replay_wait_event_suspends() -> Result<(), CoreError> {
-        let plan = make_plan(
-            vec![CompiledNode {
-                id: StepIdx::new(0),
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::WaitEvent {
-                    event: SlotIdx::new(0),
-                    timeout_slot: None,
-                },
-                output: None,
-                next: None,
-            }],
-            vec![],
-            vec![],
-        )?;
-
-        let mut run = RunFrame::new(
-            RunId::new(0),
-            StepIdx::new(0),
-            plan.node_count(),
-            plan.slot_count(),
-        )?;
-        let mut store = ValueStore::new();
-
-        let node = plan
-            .node(StepIdx::new(0))
-            .ok_or(CoreError::InternalInvariantViolation {
-                reason: "node 0 missing",
-            })?;
-        let action = replay_step(node, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
-
-        match action {
-            ReplayAction::Suspended { step, kind }
-                if step == StepIdx::new(0) && kind == "WaitEvent" => {}
-            _ => {
-                return Err(CoreError::InternalInvariantViolation {
-                    reason: "WaitEvent should return Suspended(0, WaitEvent)",
-                });
-            }
-        }
-        Ok(())
-    }
-
-    // ---- ChooseSlot step ----
-
-    #[test]
-    fn replay_choose_slot_true_branch_taken() -> Result<(), CoreError> {
-        let plan = make_plan(
-            vec![
-                CompiledNode {
-                    id: StepIdx::new(0),
-                    on_error: None,
-                    error_slot: None,
-                    kind: CompiledNodeKind::SetConst {
-                        value: ConstIdx::new(0),
-                    },
-                    output: Some(SlotIdx::new(0)),
-                    next: Some(StepIdx::new(1)),
-                },
-                CompiledNode {
-                    id: StepIdx::new(1),
-                    on_error: None,
-                    error_slot: None,
-                    kind: CompiledNodeKind::ChooseSlot {
-                        branches: vec![SlotBranch {
-                            condition: SlotIdx::new(0),
-                            target: StepIdx::new(2),
-                        }]
-                        .into(),
-                        otherwise: Some(StepIdx::new(3)),
-                    },
-                    output: None,
-                    next: None,
-                },
-                CompiledNode {
-                    id: StepIdx::new(2),
-                    on_error: None,
-                    error_slot: None,
-                    kind: CompiledNodeKind::Finish {
-                        result: SlotIdx::new(0),
-                    },
-                    output: None,
-                    next: None,
-                },
-                CompiledNode {
-                    id: StepIdx::new(3),
-                    on_error: None,
-                    error_slot: None,
-                    kind: CompiledNodeKind::Finish {
-                        result: SlotIdx::new(0),
-                    },
-                    output: None,
-                    next: None,
-                },
-            ],
-            vec![ConstValue::Bool(true)],
-            vec![],
-        )?;
-
-        let step_count = plan.node_count();
-        let slot_count = plan.slot_count();
-        let mut run = RunFrame::new(RunId::new(0), StepIdx::new(0), step_count, slot_count)?;
-        let mut store = ValueStore::new();
-
-        let node0 = plan
-            .node(StepIdx::new(0))
-            .ok_or(CoreError::InternalInvariantViolation {
-                reason: "node 0 missing",
-            })?;
-        replay_step(node0, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
-
-        let node1 = plan
-            .node(StepIdx::new(1))
-            .ok_or(CoreError::InternalInvariantViolation {
-                reason: "node 1 missing",
-            })?;
-        let action = replay_step(node1, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
-
-        match action {
-            ReplayAction::Continue(next) if next == StepIdx::new(2) => {}
-            _ => {
-                return Err(CoreError::InternalInvariantViolation {
-                    reason: "ChooseSlot true should go to step 2",
-                });
-            }
-        }
-        Ok(())
-    }
-
-    #[test]
-    fn replay_choose_slot_false_falls_to_otherwise() -> Result<(), CoreError> {
-        let plan = make_plan(
-            vec![
-                CompiledNode {
-                    id: StepIdx::new(0),
-                    on_error: None,
-                    error_slot: None,
-                    kind: CompiledNodeKind::SetConst {
-                        value: ConstIdx::new(0),
-                    },
-                    output: Some(SlotIdx::new(0)),
-                    next: Some(StepIdx::new(1)),
-                },
-                CompiledNode {
-                    id: StepIdx::new(1),
-                    on_error: None,
-                    error_slot: None,
-                    kind: CompiledNodeKind::ChooseSlot {
-                        branches: vec![SlotBranch {
-                            condition: SlotIdx::new(0),
-                            target: StepIdx::new(2),
-                        }]
-                        .into(),
-                        otherwise: Some(StepIdx::new(3)),
-                    },
-                    output: None,
-                    next: None,
-                },
-                CompiledNode {
-                    id: StepIdx::new(2),
-                    on_error: None,
-                    error_slot: None,
-                    kind: CompiledNodeKind::Finish {
-                        result: SlotIdx::new(0),
-                    },
-                    output: None,
-                    next: None,
-                },
-                CompiledNode {
-                    id: StepIdx::new(3),
-                    on_error: None,
-                    error_slot: None,
-                    kind: CompiledNodeKind::Finish {
-                        result: SlotIdx::new(0),
-                    },
-                    output: None,
-                    next: None,
-                },
-            ],
-            vec![ConstValue::Bool(false)],
-            vec![],
-        )?;
-
-        let step_count = plan.node_count();
-        let slot_count = plan.slot_count();
-        let mut run = RunFrame::new(RunId::new(0), StepIdx::new(0), step_count, slot_count)?;
-        let mut store = ValueStore::new();
-
-        let node0 = plan
-            .node(StepIdx::new(0))
-            .ok_or(CoreError::InternalInvariantViolation {
-                reason: "node 0 missing",
-            })?;
-        replay_step(node0, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
-
-        let node1 = plan
-            .node(StepIdx::new(1))
-            .ok_or(CoreError::InternalInvariantViolation {
-                reason: "node 1 missing",
-            })?;
-        let action = replay_step(node1, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
-
-        match action {
-            ReplayAction::Continue(next) if next == StepIdx::new(3) => {}
-            _ => {
-                return Err(CoreError::InternalInvariantViolation {
-                    reason: "ChooseSlot false should go to otherwise (step 3)",
-                });
-            }
-        }
-        Ok(())
-    }
-
-    // ---- Multi-step counter ----
-
-    #[test]
-    fn replay_multi_step_executed_counter() -> Result<(), CoreError> {
-        let plan = make_plan(
-            vec![
-                CompiledNode {
-                    id: StepIdx::new(0),
-                    on_error: None,
-                    error_slot: None,
-                    kind: CompiledNodeKind::Nop,
-                    output: None,
-                    next: Some(StepIdx::new(1)),
-                },
-                CompiledNode {
-                    id: StepIdx::new(1),
-                    on_error: None,
-                    error_slot: None,
-                    kind: CompiledNodeKind::Nop,
-                    output: None,
-                    next: Some(StepIdx::new(2)),
-                },
-                CompiledNode {
-                    id: StepIdx::new(2),
-                    on_error: None,
-                    error_slot: None,
-                    kind: CompiledNodeKind::Nop,
-                    output: None,
-                    next: Some(StepIdx::new(3)),
-                },
-                CompiledNode {
-                    id: StepIdx::new(3),
-                    on_error: None,
-                    error_slot: None,
-                    kind: CompiledNodeKind::Finish {
-                        result: SlotIdx::new(0),
-                    },
-                    output: None,
-                    next: None,
-                },
-            ],
-            vec![ConstValue::I64(0)],
-            vec![],
-        )?;
-
-        let step_count = plan.node_count();
-        let slot_count = plan.slot_count();
-        let mut run = RunFrame::new(RunId::new(0), StepIdx::new(0), step_count, slot_count)?;
-        run.write_slot(SlotIdx::new(0), SlotValue::I64(0))?;
-        let mut store = ValueStore::new();
-
-        let node0 = plan
-            .node(StepIdx::new(0))
-            .ok_or(CoreError::InternalInvariantViolation {
-                reason: "node 0 missing",
-            })?;
-        replay_step(node0, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
-
-        let node1 = plan
-            .node(StepIdx::new(1))
-            .ok_or(CoreError::InternalInvariantViolation {
-                reason: "node 1 missing",
-            })?;
-        replay_step(node1, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
-
-        let node2 = plan
-            .node(StepIdx::new(2))
-            .ok_or(CoreError::InternalInvariantViolation {
-                reason: "node 2 missing",
-            })?;
-        replay_step(node2, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
-
-        let node3 = plan
-            .node(StepIdx::new(3))
-            .ok_or(CoreError::InternalInvariantViolation {
-                reason: "node 3 missing",
-            })?;
-        replay_step(node3, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
-
-        if run.executed() != 4 {
-            return Err(CoreError::InternalInvariantViolation {
-                reason: "executed counter should be 4",
-            });
-        }
-        Ok(())
-    }
-
-    // ---- BuildObject multiple fields ----
-
-    #[test]
-    fn replay_build_object_multiple_fields_preserves_order() -> Result<(), CoreError> {
-        let sym_a = SymbolId::new(0);
-        let sym_b = SymbolId::new(1);
-        let plan = make_plan_with_symbols(
-            vec![
-                CompiledNode {
-                    id: StepIdx::new(0),
-                    on_error: None,
-                    error_slot: None,
-                    kind: CompiledNodeKind::SetConst {
-                        value: ConstIdx::new(0),
-                    },
-                    output: Some(SlotIdx::new(0)),
-                    next: Some(StepIdx::new(1)),
-                },
-                CompiledNode {
-                    id: StepIdx::new(1),
-                    on_error: None,
-                    error_slot: None,
-                    kind: CompiledNodeKind::SetConst {
-                        value: ConstIdx::new(1),
-                    },
-                    output: Some(SlotIdx::new(1)),
-                    next: Some(StepIdx::new(2)),
-                },
-                CompiledNode {
-                    id: StepIdx::new(2),
-                    on_error: None,
-                    error_slot: None,
-                    kind: CompiledNodeKind::BuildObject {
-                        fields: vec![(sym_a, SlotIdx::new(0)), (sym_b, SlotIdx::new(1))].into(),
-                    },
-                    output: Some(SlotIdx::new(2)),
-                    next: Some(StepIdx::new(3)),
-                },
-                CompiledNode {
-                    id: StepIdx::new(3),
-                    on_error: None,
-                    error_slot: None,
-                    kind: CompiledNodeKind::Finish {
-                        result: SlotIdx::new(2),
-                    },
-                    output: None,
-                    next: None,
-                },
-            ],
-            vec![ConstValue::I64(10), ConstValue::I64(20)],
-            vec![],
-            2,
-        )?;
-
-        let step_count = plan.node_count();
-        let slot_count = plan.slot_count();
-        let mut run = RunFrame::new(RunId::new(0), StepIdx::new(0), step_count, slot_count)?;
-        let mut store = ValueStore::new();
-
-        let node0 = plan
-            .node(StepIdx::new(0))
-            .ok_or(CoreError::InternalInvariantViolation {
-                reason: "node 0 missing",
-            })?;
-        replay_step(node0, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
-
-        let node1 = plan
-            .node(StepIdx::new(1))
-            .ok_or(CoreError::InternalInvariantViolation {
-                reason: "node 1 missing",
-            })?;
-        replay_step(node1, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
-
-        let node2 = plan
-            .node(StepIdx::new(2))
-            .ok_or(CoreError::InternalInvariantViolation {
-                reason: "node 2 missing",
-            })?;
-        replay_step(node2, &mut run, &mut store, &plan).map_err(replay_err_to_core)?;
-
-        match *run.read_slot(SlotIdx::new(2))? {
-            SlotValue::Object(id) => {
-                let fields = store.object(id)?;
-                if fields.len() != 2 {
-                    return Err(CoreError::InternalInvariantViolation {
-                        reason: "object should have 2 fields",
-                    });
-                }
-                if fields[0].key != sym_a
-                    || fields[0].value != SlotValue::I64(10)
-                    || fields[1].key != sym_b
-                    || fields[1].value != SlotValue::I64(20)
-                {
-                    return Err(CoreError::InternalInvariantViolation {
-                        reason: "field order or values wrong",
-                    });
-                }
-            }
-            _ => {
-                return Err(CoreError::InternalInvariantViolation {
-                    reason: "slot 2 should be Object",
-                });
-            }
-        }
-        Ok(())
-    }
+fn increment_replay_executed(run: &mut RunFrame) -> Result<(), ReplayError> {
+    run.increment_executed().map_err(|_| ReplayError::Internal {
+        reason: "executed counter overflow",
+    })
 }
+
+#[cfg(test)]
+#[path = "step_tests.rs"]
+mod tests;
