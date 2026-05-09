@@ -15,6 +15,8 @@
 #[cfg(test)]
 use std::collections::HashMap;
 
+use std::collections::HashSet;
+
 use vb_core::ids::StepIdx;
 use vb_core::workflow::{CompiledNode, CompiledNodeKind, CompiledWorkflow};
 
@@ -296,6 +298,29 @@ impl WorkflowCanvas {
         self.zoom = zoom.clamp(MIN_ZOOM, MAX_ZOOM);
     }
 
+    /// Zoom in by a multiplicative factor.
+    pub fn zoom_in(&mut self, factor: f64) {
+        let new_zoom = self.zoom * factor;
+        self.set_zoom(new_zoom);
+    }
+
+    /// Zoom out by a multiplicative factor.
+    pub fn zoom_out(&mut self, factor: f64) {
+        let new_zoom = self.zoom / factor;
+        self.set_zoom(new_zoom);
+    }
+
+    /// Reset zoom to the default level.
+    pub fn zoom_reset(&mut self) {
+        self.zoom = DEFAULT_ZOOM;
+    }
+
+    /// Returns the zoom level as a percentage string.
+    #[must_use]
+    pub fn zoom_percentage(&self) -> String {
+        format!("{:.0}%", self.zoom * 100.0)
+    }
+
     /// Select a node by step index. Pass `None` to deselect.
     pub fn set_selected(&mut self, step: Option<usize>) {
         self.selected = step;
@@ -361,8 +386,6 @@ impl WorkflowCanvas {
         &self.collapsed_groups
     }
 
-    /// Compute the visible viewport rectangle in world coordinates.
-    ///
     /// The viewport is derived from pan offset, zoom level, and the given
     /// screen dimensions.
     #[must_use]
