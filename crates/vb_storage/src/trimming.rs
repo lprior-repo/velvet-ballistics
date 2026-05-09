@@ -484,7 +484,6 @@ mod tests {
             run,
             seq: EventSeq::new(seq),
             step: StepIdx::new(step),
-        attempt: 1,
         }
     }
 
@@ -493,7 +492,6 @@ mod tests {
             run,
             seq: EventSeq::new(seq),
             result: SlotIdx::new(0),
-        attempt: 1,
         }
     }
 

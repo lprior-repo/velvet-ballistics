@@ -51,3 +51,4 @@ callgrind.out.*
 mutants.out/
 mutants.out.old/
 mutants.out.*/
+.beads/moon-ci-output.md

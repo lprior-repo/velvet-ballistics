@@ -14,6 +14,8 @@
 //! - Snapshot-plus-tail journal recovery
 //! - Full journal recovery when no snapshot available
 
+pub mod hydrate;
+pub mod hydrate_support;
 pub mod recover;
 pub mod replay;
 pub mod types;
@@ -50,6 +52,7 @@ pub use replay::{
 // Re-exports - recover
 // ============================================================================
 
+pub use hydrate::{hydrate_run_frame, hydrate_run_frame_from_events};
 pub use recover::{
     check_compiled_ir_digest, check_workflow_source_digest, recover_all_incomplete_runs,
     recover_runtime_frame_seed, recover_runtime_summary, verify_digests,

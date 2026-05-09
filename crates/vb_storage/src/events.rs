@@ -225,6 +225,14 @@ impl JournalEvent {
         }
     }
 
+    /// Returns the attempt number for this event, if present.
+    ///
+    /// Events without an attempt field (PRE-001: treat as attempt 1).
+    #[must_use]
+    pub const fn attempt(&self) -> Option<u16> {
+        None
+    }
+
     /// Returns the slot value if this is a `SlotWrittenEvent` and a value was captured.
     #[must_use]
     pub fn slot_value(&self) -> Option<SlotValue> {

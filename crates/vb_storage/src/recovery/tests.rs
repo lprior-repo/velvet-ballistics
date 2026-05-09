@@ -14,9 +14,8 @@ mod tests {
     use crate::recovery::{
         ActionReplayTracker, DigestCheck, RecoveredStepState, RecoveryError, RecoveryHydration,
         RecoveryTerminalState, RunSnapshot, UnsupportedRecoveryState, check_compiled_ir_digest,
-        check_workflow_source_digest, extract_terminal, is_terminal_event,
-        recover_all_incomplete_runs, recover_full_journal, recover_runtime_frame_seed,
-        recover_runtime_frame_seed_from_events,
+        check_workflow_source_digest, extract_terminal, is_terminal_event, recover_all_incomplete_runs,
+        recover_full_journal, recover_runtime_frame_seed, recover_runtime_frame_seed_from_events,
         recover_runtime_frame_seed_from_events_with_workflow, recover_runtime_summary,
         recover_snapshot_plus_tail, replay_events, summarize_recovery_events, verify_digests,
     };
@@ -121,7 +120,7 @@ mod tests {
     }
 
     fn started_event(run: RunId, seq: EventSeq, step: StepIdx) -> JournalEvent {
-        JournalEvent::StepStarted { run, seq, step }
+        JournalEvent::StepStarted { run, seq, step, attempt: 1 }
     }
 
     fn succeeded_event(run: RunId, seq: EventSeq, step: StepIdx, output: SlotIdx) -> JournalEvent {
@@ -177,23 +176,27 @@ mod tests {
                 run,
                 seq: EventSeq::new(1),
                 step: StepIdx::new(2),
+                attempt: 1,
             },
             JournalEvent::ActionScheduled {
                 run,
                 seq: EventSeq::new(2),
                 step: StepIdx::new(2),
                 action: ActionId::new(5),
+                attempt: 1,
             },
             JournalEvent::ActionCompletedEvent {
                 run,
                 seq: EventSeq::new(3),
                 step: StepIdx::new(2),
                 action: ActionId::new(5),
+                attempt: 1,
             },
             JournalEvent::RunFinished {
                 run,
                 seq: EventSeq::new(4),
                 result: SlotIdx::new(3),
+                attempt: 1,
             },
         ];
 
@@ -235,6 +238,8 @@ mod tests {
             .append_journaled(&JournalEvent::RunCancelled {
                 run,
                 seq: EventSeq::new(1),
+                attempt: 1,
+                reason: None,
             })
             .expect("cancelled append succeeds");
 
@@ -262,11 +267,13 @@ mod tests {
                 run,
                 seq: EventSeq::new(1),
                 step: StepIdx::new(1),
+                attempt: 1,
             },
             JournalEvent::WaitScheduledEvent {
                 run,
                 seq: EventSeq::new(2),
                 step: StepIdx::new(1),
+                attempt: 1,
             },
             JournalEvent::StepSucceeded {
                 run,
@@ -278,6 +285,7 @@ mod tests {
                 run,
                 seq: EventSeq::new(4),
                 result: SlotIdx::new(5),
+                attempt: 1,
             },
         ];
 
@@ -385,6 +393,7 @@ mod tests {
             run,
             seq: EventSeq::new(0),
             step: StepIdx::MAX,
+            attempt: 1,
         }];
 
         let result = recover_runtime_frame_seed_from_events(&events);
@@ -413,6 +422,7 @@ mod tests {
                 run,
                 seq: EventSeq::new(1),
                 step: StepIdx::new(2),
+                attempt: 1,
             })
             .expect("ask append succeeds");
 
@@ -447,6 +457,7 @@ mod tests {
                 run: incomplete,
                 seq: EventSeq::new(1),
                 step: StepIdx::new(4),
+                attempt: 1,
             })
             .expect("incomplete step append succeeds");
         journal
@@ -461,6 +472,7 @@ mod tests {
                 run: finished,
                 seq: EventSeq::new(1),
                 result: SlotIdx::new(2),
+                attempt: 1,
             })
             .expect("finished append succeeds");
 
@@ -659,6 +671,7 @@ mod tests {
             seq: EventSeq::new(0),
             step,
             action,
+            attempt: 1,
         }];
 
         let result = replay_events(&events, &mut tracker);
@@ -683,12 +696,14 @@ mod tests {
                 seq: EventSeq::new(0),
                 step,
                 action,
+                attempt: 1,
             },
             JournalEvent::ActionCompletedEvent {
                 run: RunId::new(1),
                 seq: EventSeq::new(1),
                 step,
                 action,
+                attempt: 1,
             },
         ];
 
@@ -712,6 +727,7 @@ mod tests {
                 run,
                 seq: EventSeq::new(1),
                 step: StepIdx::new(0),
+                attempt: 1,
             },
             JournalEvent::StepSucceeded {
                 run,
@@ -723,6 +739,7 @@ mod tests {
                 run,
                 seq: EventSeq::new(3),
                 result: SlotIdx::new(3),
+                attempt: 1,
             },
         ];
 
@@ -746,17 +763,20 @@ mod tests {
                 seq: EventSeq::new(1),
                 step,
                 action,
+                attempt: 1,
             },
             JournalEvent::ActionCompletedEvent {
                 run,
                 seq: EventSeq::new(2),
                 step,
                 action,
+                attempt: 1,
             },
             JournalEvent::RunFinished {
                 run,
                 seq: EventSeq::new(3),
                 result: SlotIdx::new(0),
+                attempt: 1,
             },
         ];
 
@@ -776,10 +796,13 @@ mod tests {
                 run,
                 seq: EventSeq::new(1),
                 step: StepIdx::new(7),
+                attempt: 1,
             },
             JournalEvent::RunCancelled {
                 run,
                 seq: EventSeq::new(2),
+                attempt: 1,
+                reason: None,
             },
         ];
 
@@ -799,16 +822,19 @@ mod tests {
                 run,
                 seq: EventSeq::new(1),
                 step: StepIdx::new(8),
+                attempt: 1,
             },
             JournalEvent::AskAnsweredEvent {
                 run,
                 seq: EventSeq::new(2),
                 step: StepIdx::new(8),
+                attempt: 1,
             },
             JournalEvent::RunFinished {
                 run,
                 seq: EventSeq::new(3),
                 result: SlotIdx::new(1),
+                attempt: 1,
             },
         ];
 
@@ -829,6 +855,7 @@ mod tests {
             seq: EventSeq::new(0),
             step,
             action,
+            attempt: 1,
         }];
 
         let result = replay_events(&events, &mut tracker);
@@ -866,19 +893,24 @@ mod tests {
             run: RunId::new(1),
             seq: EventSeq::new(5),
             result: SlotIdx::new(0),
+            attempt: 1,
         }));
         assert!(is_terminal_event(&JournalEvent::RunCancelled {
             run: RunId::new(1),
             seq: EventSeq::new(5),
+            attempt: 1,
+            reason: None,
         }));
         assert!(is_terminal_event(&JournalEvent::RunFailedEvent {
             run: RunId::new(1),
             seq: EventSeq::new(5),
+            attempt: 1,
         }));
         assert!(!is_terminal_event(&JournalEvent::StepStarted {
             run: RunId::new(1),
             seq: EventSeq::new(0),
             step: StepIdx::new(0),
+            attempt: 1,
         }));
     }
 
@@ -894,6 +926,7 @@ mod tests {
                 run: RunId::new(1),
                 seq: EventSeq::new(1),
                 result: SlotIdx::new(0),
+                attempt: 1,
             },
         ];
 
@@ -966,11 +999,13 @@ mod tests {
             run,
             seq: EventSeq::new(1),
             step: StepIdx::new(0),
+            attempt: 1,
         };
         let finished = JournalEvent::RunFinished {
             run,
             seq: EventSeq::new(2),
             result: SlotIdx::new(0),
+            attempt: 1,
         };
 
         journal
@@ -1002,6 +1037,7 @@ mod tests {
                 run,
                 seq: EventSeq::new(1),
                 step: StepIdx::new(0),
+                attempt: 1,
             },
             JournalEvent::SlotWrittenEvent {
                 run,
@@ -1009,38 +1045,45 @@ mod tests {
                 slot: SlotIdx::new(0),
                 value: None,
                 extra: None,
+                attempt: 1,
             },
             JournalEvent::ActionScheduled {
                 run,
                 seq: EventSeq::new(3),
                 step: StepIdx::new(0),
                 action: ActionId::new(1),
+                attempt: 1,
             },
             JournalEvent::ActionCompletedEvent {
                 run,
                 seq: EventSeq::new(4),
                 step: StepIdx::new(0),
                 action: ActionId::new(1),
+                attempt: 1,
             },
             JournalEvent::WaitScheduledEvent {
                 run,
                 seq: EventSeq::new(5),
                 step: StepIdx::new(1),
+                attempt: 1,
             },
             JournalEvent::AskScheduledEvent {
                 run,
                 seq: EventSeq::new(6),
                 step: StepIdx::new(2),
+                attempt: 1,
             },
             JournalEvent::AskAnsweredEvent {
                 run,
                 seq: EventSeq::new(7),
                 step: StepIdx::new(2),
+                attempt: 1,
             },
             JournalEvent::RetryScheduledEvent {
                 run,
                 seq: EventSeq::new(8),
                 step: StepIdx::new(3),
+                attempt: 1,
             },
             JournalEvent::StepSucceeded {
                 run,
@@ -1052,6 +1095,7 @@ mod tests {
                 run,
                 seq: EventSeq::new(10),
                 result: SlotIdx::new(1),
+                attempt: 1,
             },
         ];
 
@@ -1076,6 +1120,7 @@ mod tests {
                 run: RunId::new(10),
                 seq: EventSeq::new(6),
                 step: StepIdx::new(0),
+                attempt: 1,
             },
             JournalEvent::StepSucceeded {
                 run: RunId::new(10),
@@ -1099,11 +1144,13 @@ mod tests {
                 run,
                 seq: EventSeq::new(0),
                 step: StepIdx::new(2),
+                attempt: 1,
             },
             JournalEvent::StepStarted {
                 run,
                 seq: EventSeq::new(1),
                 step: StepIdx::new(1),
+                attempt: 1,
             },
         ];
 
@@ -1278,12 +1325,14 @@ mod tests {
                 seq: EventSeq::new(1),
                 step,
                 action,
+                attempt: 1,
             },
             JournalEvent::ActionCompletedEvent {
                 run,
                 seq: EventSeq::new(2),
                 step,
                 action,
+                attempt: 1,
             },
         ];
 
@@ -1299,6 +1348,7 @@ mod tests {
             run: RunId::new(1),
             seq: EventSeq::new(5),
             result: SlotIdx::new(0),
+            attempt: 1,
         };
         assert!(is_terminal_event(&event));
     }
@@ -1308,6 +1358,7 @@ mod tests {
         let event = JournalEvent::RunFailedEvent {
             run: RunId::new(1),
             seq: EventSeq::new(5),
+            attempt: 1,
         };
         assert!(is_terminal_event(&event));
     }
@@ -1317,6 +1368,8 @@ mod tests {
         let event = JournalEvent::RunCancelled {
             run: RunId::new(1),
             seq: EventSeq::new(5),
+            attempt: 1,
+            reason: None,
         };
         assert!(is_terminal_event(&event));
     }
@@ -1337,6 +1390,7 @@ mod tests {
             run: RunId::new(1),
             seq: EventSeq::new(1),
             step: StepIdx::new(0),
+            attempt: 1,
         };
         assert!(!is_terminal_event(&event));
     }
@@ -1347,6 +1401,7 @@ mod tests {
             run: RunId::new(1),
             seq: EventSeq::new(3),
             result: SlotIdx::new(42),
+            attempt: 1,
         };
         let events = vec![
             JournalEvent::RunAccepted {
@@ -1358,6 +1413,7 @@ mod tests {
                 run: RunId::new(1),
                 seq: EventSeq::new(1),
                 step: StepIdx::new(0),
+                attempt: 1,
             },
             finished.clone(),
         ];
@@ -1397,11 +1453,13 @@ mod tests {
                 run: run_a,
                 seq: EventSeq::new(1),
                 step: StepIdx::new(0),
+                attempt: 1,
             },
             JournalEvent::StepStarted {
                 run: run_b,
                 seq: EventSeq::new(2),
                 step: StepIdx::new(0),
+                attempt: 1,
             },
         ];
 
@@ -1438,6 +1496,7 @@ mod tests {
                 run: run_b,
                 seq: EventSeq::new(0),
                 step: StepIdx::new(1),
+                attempt: 1,
             },
         ];
 
@@ -1492,10 +1551,12 @@ mod tests {
                 slot: SlotIdx::new(5),
                 value: None,
                 extra: None,
+                attempt: 1,
             },
             JournalEvent::RunFailedEvent {
                 run,
                 seq: EventSeq::new(2),
+                attempt: 1,
             },
         ];
 
@@ -1525,6 +1586,7 @@ mod tests {
                 slot: SlotIdx::new(3),
                 value: None,
                 extra: None,
+                attempt: 1,
             },
             JournalEvent::SlotWrittenEvent {
                 run,
@@ -1532,6 +1594,7 @@ mod tests {
                 slot: SlotIdx::new(7),
                 value: None,
                 extra: None,
+                attempt: 1,
             },
             JournalEvent::SlotWrittenEvent {
                 run,
@@ -1539,10 +1602,12 @@ mod tests {
                 slot: SlotIdx::new(2),
                 value: None,
                 extra: None,
+                attempt: 1,
             },
             JournalEvent::RunFailedEvent {
                 run,
                 seq: EventSeq::new(4),
+                attempt: 1,
             },
         ];
 
@@ -1592,3 +1657,774 @@ mod tests {
         );
     }
 }
+
+// ============================================================================
+// Hydrate RunFrame from snapshot and journal — TDD Red Phase tests
+// ============================================================================
+
+#[cfg(test)]
+#[allow(
+    clippy::assertions_on_constants,
+    clippy::expect_used,
+    clippy::indexing_slicing,
+    clippy::panic,
+    clippy::panic_in_result_fn,
+    clippy::unwrap_used
+)]
+mod hydrate_run_frame_tests {
+    use crate::recovery::{
+        hydrate_run_frame, hydrate_run_frame_from_events, RecoveryError, RunSnapshot,
+    };
+    use crate::{EventSeq, JournalEvent};
+    use vb_core::value::{SlotValue, Taint};
+    use vb_core::{ActionId, RunId, SlotIdx, StepIdx, StepState, WorkflowDigest};
+
+    fn sample_digest(byte: u8) -> WorkflowDigest {
+        WorkflowDigest::from_bytes([byte; 32])
+    }
+
+    fn empty_snapshot(run: RunId, seq: EventSeq) -> RunSnapshot {
+        RunSnapshot {
+            run,
+            seq,
+            workflow: sample_digest(1),
+            slots: Vec::new(),
+            taint: Vec::new(),
+        }
+    }
+
+    fn snapshot_with_slots(
+        run: RunId,
+        seq: EventSeq,
+        slot_entries: &[(SlotIdx, SlotValue, Taint)],
+    ) -> RunSnapshot {
+        let slots: Vec<(SlotIdx, SlotValue, Taint)> = slot_entries.to_vec();
+        let slots_bytes = postcard::to_allocvec(&slots).expect("postcard encode slots");
+        let taint_bytes = postcard::to_allocvec(&slots).expect("postcard encode taint");
+        RunSnapshot {
+            run,
+            seq,
+            workflow: sample_digest(1),
+            slots: slots_bytes,
+            taint: taint_bytes,
+        }
+    }
+
+    // --- Happy path: snapshot + tail events ---
+
+    #[test]
+    fn hydrate_run_frame_reconstructs_frame_from_snapshot_and_tail_events() {
+        let run = RunId::new(1);
+        let snapshot = snapshot_with_slots(
+            run,
+            EventSeq::new(0),
+            &[(SlotIdx::new(0), SlotValue::I64(42), Taint::Clean)],
+        );
+        let tail = vec![
+            JournalEvent::StepStarted {
+                run,
+                seq: EventSeq::new(1),
+                step: StepIdx::new(0),
+                attempt: 1,
+            },
+            JournalEvent::StepSucceeded {
+                run,
+                seq: EventSeq::new(2),
+                step: StepIdx::new(0),
+                output: SlotIdx::new(0),
+            },
+        ];
+
+        let result = hydrate_run_frame(&snapshot, &tail, run);
+
+        assert!(
+            result.is_ok(),
+            "expected Ok(RunFrame), got Err: {:?}",
+            result
+        );
+        let frame = result.unwrap();
+        assert_eq!(frame.run_id(), run);
+        assert_eq!(frame.step_count(), 1);
+        assert_eq!(frame.slot_count(), 1);
+        assert_eq!(
+            frame.step_state(StepIdx::new(0)).unwrap(),
+            StepState::Succeeded
+        );
+        assert_eq!(frame.read_slot(SlotIdx::new(0)).unwrap(), &SlotValue::I64(42));
+    }
+
+    // --- Happy path: events only ---
+
+    #[test]
+    fn hydrate_run_frame_from_events_reconstructs_without_snapshot() {
+        let run = RunId::new(1);
+        let events = vec![
+            JournalEvent::RunAccepted {
+                run,
+                seq: EventSeq::new(0),
+                workflow: sample_digest(1),
+            },
+            JournalEvent::StepStarted {
+                run,
+                seq: EventSeq::new(1),
+                step: StepIdx::new(0),
+                attempt: 1,
+            },
+            JournalEvent::SlotWrittenEvent {
+                run,
+                seq: EventSeq::new(2),
+                slot: SlotIdx::new(0),
+                value: Some(postcard::to_allocvec(&SlotValue::I64(7)).unwrap()),
+                extra: None,
+                attempt: 1,
+            },
+        ];
+
+        let result = hydrate_run_frame_from_events(&events, run);
+
+        assert!(
+            result.is_ok(),
+            "expected Ok(RunFrame), got Err: {:?}",
+            result
+        );
+        let frame = result.unwrap();
+        assert_eq!(frame.run_id(), run);
+        assert_eq!(frame.step_count(), 1);
+        assert_eq!(frame.slot_count(), 1);
+        assert_eq!(frame.read_slot(SlotIdx::new(0)).unwrap(), &SlotValue::I64(7));
+    }
+
+    // --- Error: mismatched snapshot run_id ---
+
+    #[test]
+    fn hydrate_run_frame_rejects_mismatched_snapshot_run_id() {
+        let snapshot = empty_snapshot(RunId::new(1), EventSeq::new(0));
+        let run = RunId::new(2);
+
+        let result = hydrate_run_frame(&snapshot, &[], run);
+
+        assert!(
+            matches!(result, Err(RecoveryError::ReplayDivergence { .. })),
+            "expected ReplayDivergence, got {:?}",
+            result
+        );
+    }
+
+    // --- Error: tail event for wrong run ---
+
+    #[test]
+    fn hydrate_run_frame_rejects_tail_event_for_wrong_run() {
+        let run = RunId::new(1);
+        let snapshot = empty_snapshot(run, EventSeq::new(0));
+        let tail = vec![JournalEvent::StepStarted {
+            run: RunId::new(2),
+            seq: EventSeq::new(1),
+            step: StepIdx::new(0),
+            attempt: 1,
+        }];
+
+        let result = hydrate_run_frame(&snapshot, &tail, run);
+
+        assert!(
+            matches!(result, Err(RecoveryError::ReplayDivergence { .. })),
+            "expected ReplayDivergence, got {:?}",
+            result
+        );
+    }
+
+    // --- Error: tail event before snapshot seq ---
+
+    #[test]
+    fn hydrate_run_frame_rejects_tail_event_before_snapshot_seq() {
+        let run = RunId::new(1);
+        let snapshot = empty_snapshot(run, EventSeq::new(10));
+        let tail = vec![JournalEvent::StepStarted {
+            run,
+            seq: EventSeq::new(5),
+            step: StepIdx::new(0),
+            attempt: 1,
+        }];
+
+        let result = hydrate_run_frame(&snapshot, &tail, run);
+
+        assert!(
+            matches!(result, Err(RecoveryError::ReplayDivergence { .. })),
+            "expected ReplayDivergence, got {:?}",
+            result
+        );
+    }
+
+    // --- Error: corrupt snapshot bytes ---
+
+    #[test]
+    fn hydrate_run_frame_rejects_corrupt_snapshot_slots_bytes() {
+        let run = RunId::new(1);
+        let snapshot = RunSnapshot {
+            run,
+            seq: EventSeq::new(0),
+            workflow: sample_digest(1),
+            slots: vec![0xFF, 0xFF],
+            taint: vec![0xFF, 0xFF],
+        };
+
+        let result = hydrate_run_frame(&snapshot, &[], run);
+
+        assert!(
+            matches!(result, Err(RecoveryError::CorruptSnapshot { .. })),
+            "expected CorruptSnapshot, got {:?}",
+            result
+        );
+    }
+
+    // --- Error: empty snapshot and empty events ---
+
+    #[test]
+    fn hydrate_run_frame_rejects_empty_snapshot_and_empty_events() {
+        let run = RunId::new(1);
+        let snapshot = empty_snapshot(run, EventSeq::new(0));
+
+        let result = hydrate_run_frame(&snapshot, &[], run);
+
+        assert!(
+            matches!(result, Err(RecoveryError::NoRecoveryData { .. })),
+            "expected NoRecoveryData, got {:?}",
+            result
+        );
+    }
+
+    // --- Error: zero step count from events ---
+
+    #[test]
+    fn hydrate_run_frame_from_events_rejects_zero_step_count() {
+        let run = RunId::new(1);
+        let events = vec![JournalEvent::RunAccepted {
+            run,
+            seq: EventSeq::new(0),
+            workflow: sample_digest(1),
+        }];
+
+        let result = hydrate_run_frame_from_events(&events, run);
+
+        assert!(
+            matches!(
+                result,
+                Err(RecoveryError::ReplayDivergence { .. })
+                    | Err(RecoveryError::NoRecoveryData { .. })
+            ),
+            "expected error for zero step count, got {:?}",
+            result
+        );
+    }
+
+    // --- State: PC from last step event ---
+
+    #[test]
+    fn hydrate_run_frame_pc_set_from_last_step_event() {
+        let run = RunId::new(1);
+        let events = vec![
+            JournalEvent::StepStarted {
+                run,
+                seq: EventSeq::new(1),
+                step: StepIdx::new(0),
+                attempt: 1,
+            },
+            JournalEvent::StepSucceeded {
+                run,
+                seq: EventSeq::new(2),
+                step: StepIdx::new(0),
+                output: SlotIdx::new(0),
+            },
+            JournalEvent::StepStarted {
+                run,
+                seq: EventSeq::new(3),
+                step: StepIdx::new(1),
+                attempt: 1,
+            },
+        ];
+
+        let result = hydrate_run_frame_from_events(&events, run);
+        assert!(result.is_ok(), "expected Ok, got {:?}", result);
+        let frame = result.unwrap();
+        assert_eq!(frame.pc(), StepIdx::new(1));
+    }
+
+    // --- State: Step states merge snapshot and tail ---
+
+    #[test]
+    fn hydrate_run_frame_states_merge_snapshot_and_tail() {
+        let run = RunId::new(1);
+        let snapshot = empty_snapshot(run, EventSeq::new(0));
+        let tail = vec![
+            JournalEvent::StepStarted {
+                run,
+                seq: EventSeq::new(1),
+                step: StepIdx::new(0),
+                attempt: 1,
+            },
+            JournalEvent::StepSucceeded {
+                run,
+                seq: EventSeq::new(2),
+                step: StepIdx::new(0),
+                output: SlotIdx::new(0),
+            },
+            JournalEvent::StepStarted {
+                run,
+                seq: EventSeq::new(3),
+                step: StepIdx::new(1),
+                attempt: 1,
+            },
+        ];
+
+        let result = hydrate_run_frame(&snapshot, &tail, run);
+        assert!(result.is_ok(), "expected Ok, got {:?}", result);
+        let frame = result.unwrap();
+        assert_eq!(
+            frame.step_state(StepIdx::new(0)).unwrap(),
+            StepState::Succeeded
+        );
+        assert_eq!(
+            frame.step_state(StepIdx::new(1)).unwrap(),
+            StepState::Running
+        );
+    }
+
+    // --- State: Slots overwritten by tail events ---
+
+    #[test]
+    fn hydrate_run_frame_slots_overwritten_by_tail_events() {
+        let run = RunId::new(1);
+        let snapshot = snapshot_with_slots(
+            run,
+            EventSeq::new(0),
+            &[(SlotIdx::new(0), SlotValue::I64(1), Taint::Clean)],
+        );
+        let tail = vec![
+            JournalEvent::StepStarted {
+                run,
+                seq: EventSeq::new(1),
+                step: StepIdx::new(0),
+                attempt: 1,
+            },
+            JournalEvent::SlotWrittenEvent {
+                run,
+                seq: EventSeq::new(2),
+                slot: SlotIdx::new(0),
+                value: Some(postcard::to_allocvec(
+                    &SlotValue::I64(2)).unwrap()),
+                extra: None,
+                attempt: 1,
+            },
+        ];
+
+        let result = hydrate_run_frame(&snapshot, &tail, run);
+        assert!(result.is_ok(), "expected Ok, got {:?}", result);
+        let frame = result.unwrap();
+        assert_eq!(frame.read_slot(SlotIdx::new(0)).unwrap(), &SlotValue::I64(2));
+    }
+
+    // --- State: Taint preserved when tail has no taint ---
+
+    #[test]
+    fn hydrate_run_frame_taint_preserved_when_tail_has_no_taint() {
+        let run = RunId::new(1);
+        let snapshot = snapshot_with_slots(
+            run,
+            EventSeq::new(0),
+            &[(SlotIdx::new(0), SlotValue::I64(1), Taint::Secret)],
+        );
+        let tail = vec![
+            JournalEvent::StepStarted {
+                run,
+                seq: EventSeq::new(1),
+                step: StepIdx::new(0),
+                attempt: 1,
+            },
+            JournalEvent::SlotWrittenEvent {
+                run,
+                seq: EventSeq::new(2),
+                slot: SlotIdx::new(0),
+                value: Some(postcard::to_allocvec(
+                    &SlotValue::I64(2)).unwrap()),
+                extra: None,
+                attempt: 1,
+            },
+        ];
+
+        let result = hydrate_run_frame(&snapshot, &tail, run);
+        assert!(result.is_ok(), "expected Ok, got {:?}", result);
+        let frame = result.unwrap();
+        assert_eq!(frame.read_taint(SlotIdx::new(0)).unwrap(), Taint::Secret);
+    }
+
+    // --- State: Executed counter ---
+
+    #[test]
+    fn hydrate_run_frame_executed_counter_matches_tail_event_count() {
+        let run = RunId::new(1);
+        let snapshot = empty_snapshot(run, EventSeq::new(0));
+        let tail = vec![
+            JournalEvent::StepStarted {
+                run,
+                seq: EventSeq::new(1),
+                step: StepIdx::new(0),
+                attempt: 1,
+            },
+            JournalEvent::StepSucceeded {
+                run,
+                seq: EventSeq::new(2),
+                step: StepIdx::new(0),
+                output: SlotIdx::new(0),
+            },
+            JournalEvent::SlotWrittenEvent {
+                run,
+                seq: EventSeq::new(3),
+                slot: SlotIdx::new(0),
+                value: Some(postcard::to_allocvec(&SlotValue::I64(7)).unwrap()),
+                extra: None,
+                attempt: 1,
+            },
+        ];
+
+        let result = hydrate_run_frame(&snapshot, &tail, run);
+        assert!(result.is_ok(), "expected Ok, got {:?}", result);
+        let frame = result.unwrap();
+        assert_eq!(frame.executed(), 3);
+    }
+
+    // --- State: Parallel in-flight ---
+
+    #[test]
+    fn hydrate_run_frame_reconstructs_parallel_in_flight() {
+        let run = RunId::new(1);
+        let events = vec![
+            JournalEvent::StepStarted {
+                run,
+                seq: EventSeq::new(1),
+                step: StepIdx::new(0),
+                attempt: 1,
+            },
+            JournalEvent::ActionScheduled {
+                run,
+                seq: EventSeq::new(2),
+                step: StepIdx::new(0),
+                action: ActionId::new(1),
+                attempt: 1,
+            },
+            JournalEvent::StepStarted {
+                run,
+                seq: EventSeq::new(3),
+                step: StepIdx::new(1),
+                attempt: 1,
+            },
+            JournalEvent::ActionScheduled {
+                run,
+                seq: EventSeq::new(4),
+                step: StepIdx::new(1),
+                action: ActionId::new(2),
+                attempt: 1,
+            },
+            JournalEvent::ActionCompletedEvent {
+                run,
+                seq: EventSeq::new(5),
+                step: StepIdx::new(0),
+                action: ActionId::new(1),
+                attempt: 1,
+            },
+        ];
+
+        let result = hydrate_run_frame_from_events(&events, run);
+        assert!(result.is_ok(), "expected Ok, got {:?}", result);
+        let frame = result.unwrap();
+        assert_eq!(frame.parallel_in_flight(), 1);
+        assert_eq!(frame.max_parallel_in_flight(), 2);
+    }
+
+    // --- Invariant: Dimension integrity ---
+
+    #[test]
+    fn hydrate_run_frame_maintains_dimension_integrity() {
+        let run = RunId::new(1);
+        let snapshot = empty_snapshot(run, EventSeq::new(0));
+        let tail = vec![
+            JournalEvent::StepStarted {
+                run,
+                seq: EventSeq::new(1),
+                step: StepIdx::new(0),
+                attempt: 1,
+            },
+            JournalEvent::SlotWrittenEvent {
+                run,
+                seq: EventSeq::new(2),
+                slot: SlotIdx::new(0),
+                value: Some(postcard::to_allocvec(&SlotValue::I64(1)).unwrap()),
+                extra: None,
+                attempt: 1,
+            },
+        ];
+
+        let result = hydrate_run_frame(&snapshot, &tail, run);
+        assert!(result.is_ok(), "expected Ok, got {:?}", result);
+        let frame = result.unwrap();
+        assert_eq!(frame.step_count(), 1);
+        assert_eq!(frame.slot_count(), 1);
+    }
+
+    // --- Invariant: Deterministic ---
+
+    #[test]
+    fn hydrate_run_frame_is_deterministic() {
+        let run = RunId::new(1);
+        let snapshot = empty_snapshot(run, EventSeq::new(0));
+        let tail = vec![JournalEvent::StepStarted {
+            run,
+            seq: EventSeq::new(1),
+            step: StepIdx::new(0),
+            attempt: 1,
+        }];
+
+        let result1 = hydrate_run_frame(&snapshot, &tail, run);
+        let result2 = hydrate_run_frame(&snapshot, &tail, run);
+
+        match (&result1, &result2) {
+            (Ok(f1), Ok(f2)) => {
+                assert_eq!(f1.run_id(), f2.run_id());
+                assert_eq!(f1.pc(), f2.pc());
+                assert_eq!(f1.step_count(), f2.step_count());
+                assert_eq!(f1.slot_count(), f2.slot_count());
+            }
+            (Err(e1), Err(e2)) => {
+                assert_eq!(e1.to_string(), e2.to_string());
+            }
+            _ => panic!("results differ in Ok/Err variant: {:?} vs {:?}", result1, result2),
+        }
+    }
+
+    // --- Additional edge case tests for coverage ---
+
+    #[test]
+    fn hydrate_run_frame_wait_scheduled_marks_waiting() {
+        let run = RunId::new(1);
+        let snapshot = empty_snapshot(run, EventSeq::new(0));
+        let tail = vec![
+            JournalEvent::StepStarted {
+                run,
+                seq: EventSeq::new(1),
+                step: StepIdx::new(0),
+                attempt: 1,
+            },
+            JournalEvent::WaitScheduledEvent {
+                run,
+                seq: EventSeq::new(2),
+                step: StepIdx::new(0),
+                attempt: 1,
+            },
+        ];
+
+        let result = hydrate_run_frame(&snapshot, &tail, run);
+        assert!(result.is_ok(), "expected Ok, got {:?}", result);
+        let frame = result.unwrap();
+        assert_eq!(frame.step_state(StepIdx::new(0)).unwrap(), StepState::Waiting);
+    }
+
+    #[test]
+    fn hydrate_run_frame_ask_scheduled_marks_asking() {
+        let run = RunId::new(1);
+        let snapshot = empty_snapshot(run, EventSeq::new(0));
+        let tail = vec![
+            JournalEvent::StepStarted {
+                run,
+                seq: EventSeq::new(1),
+                step: StepIdx::new(0),
+                attempt: 1,
+            },
+            JournalEvent::AskScheduledEvent {
+                run,
+                seq: EventSeq::new(2),
+                step: StepIdx::new(0),
+                attempt: 1,
+            },
+        ];
+
+        let result = hydrate_run_frame(&snapshot, &tail, run);
+        assert!(result.is_ok(), "expected Ok, got {:?}", result);
+        let frame = result.unwrap();
+        assert_eq!(frame.step_state(StepIdx::new(0)).unwrap(), StepState::Asking);
+    }
+
+    #[test]
+    fn hydrate_run_frame_action_failed_decrements_parallel() {
+        let run = RunId::new(1);
+        let events = vec![
+            JournalEvent::StepStarted {
+                run,
+                seq: EventSeq::new(1),
+                step: StepIdx::new(0),
+                attempt: 1,
+            },
+            JournalEvent::ActionScheduled {
+                run,
+                seq: EventSeq::new(2),
+                step: StepIdx::new(0),
+                action: ActionId::new(1),
+                attempt: 1,
+            },
+            JournalEvent::ActionFailedEvent {
+                run,
+                seq: EventSeq::new(3),
+                step: StepIdx::new(0),
+                action: ActionId::new(1),
+                attempt: 1,
+            },
+        ];
+
+        let result = hydrate_run_frame_from_events(&events, run);
+        assert!(result.is_ok(), "expected Ok, got {:?}", result);
+        let frame = result.unwrap();
+        assert_eq!(frame.parallel_in_flight(), 0);
+        assert_eq!(frame.max_parallel_in_flight(), 1);
+    }
+
+    #[test]
+    fn hydrate_run_frame_run_finished_is_no_op() {
+        let run = RunId::new(1);
+        let snapshot = empty_snapshot(run, EventSeq::new(0));
+        let tail = vec![
+            JournalEvent::StepStarted {
+                run,
+                seq: EventSeq::new(1),
+                step: StepIdx::new(0),
+                attempt: 1,
+            },
+            JournalEvent::StepSucceeded {
+                run,
+                seq: EventSeq::new(2),
+                step: StepIdx::new(0),
+                output: SlotIdx::new(0),
+            },
+            JournalEvent::RunFinished {
+                run,
+                seq: EventSeq::new(3),
+                result: SlotIdx::new(0),
+                attempt: 1,
+            },
+        ];
+
+        let result = hydrate_run_frame(&snapshot, &tail, run);
+        assert!(result.is_ok(), "expected Ok, got {:?}", result);
+        let frame = result.unwrap();
+        assert_eq!(frame.step_state(StepIdx::new(0)).unwrap(), StepState::Succeeded);
+    }
+
+    #[test]
+    fn hydrate_run_frame_run_cancelled_is_no_op() {
+        let run = RunId::new(1);
+        let snapshot = empty_snapshot(run, EventSeq::new(0));
+        let tail = vec![
+            JournalEvent::StepStarted {
+                run,
+                seq: EventSeq::new(1),
+                step: StepIdx::new(0),
+                attempt: 1,
+            },
+            JournalEvent::RunCancelled {
+                run,
+                seq: EventSeq::new(2),
+                attempt: 1,
+                reason: None,
+            },
+        ];
+
+        let result = hydrate_run_frame(&snapshot, &tail, run);
+        assert!(result.is_ok(), "expected Ok, got {:?}", result);
+        let frame = result.unwrap();
+        assert_eq!(frame.step_state(StepIdx::new(0)).unwrap(), StepState::Running);
+    }
+
+    #[test]
+    fn hydrate_run_frame_rejects_tail_event_at_same_seq_as_snapshot() {
+        let run = RunId::new(1);
+        let snapshot = empty_snapshot(run, EventSeq::new(5));
+        let tail = vec![JournalEvent::StepStarted {
+            run,
+            seq: EventSeq::new(5),
+            step: StepIdx::new(0),
+            attempt: 1,
+        }];
+
+        let result = hydrate_run_frame(&snapshot, &tail, run);
+        assert!(
+            matches!(result, Err(RecoveryError::ReplayDivergence { .. })),
+            "expected ReplayDivergence for equal seq, got {:?}",
+            result
+        );
+    }
+
+    #[test]
+    fn hydrate_run_frame_rejects_tail_event_seq_less_than_snapshot() {
+        let run = RunId::new(1);
+        let snapshot = empty_snapshot(run, EventSeq::new(10));
+        let tail = vec![JournalEvent::StepStarted {
+            run,
+            seq: EventSeq::new(9),
+            step: StepIdx::new(0),
+            attempt: 1,
+        }];
+
+        let result = hydrate_run_frame(&snapshot, &tail, run);
+        assert!(
+            matches!(result, Err(RecoveryError::ReplayDivergence { .. })),
+            "expected ReplayDivergence for seq < snapshot, got {:?}",
+            result
+        );
+    }
+
+    #[test]
+    fn hydrate_run_frame_from_events_with_multiple_slots() {
+        let run = RunId::new(1);
+        let events = vec![
+            JournalEvent::RunAccepted {
+                run,
+                seq: EventSeq::new(0),
+                workflow: sample_digest(1),
+            },
+            JournalEvent::StepStarted {
+                run,
+                seq: EventSeq::new(1),
+                step: StepIdx::new(0),
+                attempt: 1,
+            },
+            JournalEvent::SlotWrittenEvent {
+                run,
+                seq: EventSeq::new(2),
+                slot: SlotIdx::new(0),
+                value: Some(postcard::to_allocvec(
+                    &SlotValue::I64(1)).unwrap()),
+                extra: None,
+                attempt: 1,
+            },
+            JournalEvent::SlotWrittenEvent {
+                run,
+                seq: EventSeq::new(3),
+                slot: SlotIdx::new(1),
+                value: Some(postcard::to_allocvec(
+                    &SlotValue::I64(2)).unwrap()),
+                extra: None,
+                attempt: 1,
+            },
+            JournalEvent::StepSucceeded {
+                run,
+                seq: EventSeq::new(4),
+                step: StepIdx::new(0),
+                output: SlotIdx::new(1),
+            },
+        ];
+
+        let result = hydrate_run_frame_from_events(&events, run);
+        assert!(result.is_ok(), "expected Ok, got {:?}", result);
+        let frame = result.unwrap();
+        assert_eq!(frame.slot_count(), 2);
+        assert_eq!(frame.read_slot(SlotIdx::new(0)).unwrap(), &SlotValue::I64(1));
+        assert_eq!(frame.read_slot(SlotIdx::new(1)).unwrap(), &SlotValue::I64(2));
+    }
+}
+
