@@ -9839,15 +9839,25 @@ mod tests {
                     error_slot: None,
                     kind: CompiledNodeKind::TogetherBranch {
                         branch: 0,
-                        entry: StepIdx::new(1),
-                        join: StepIdx::new(2),
+                        entry: StepIdx::new(2),
+                        join: StepIdx::new(3),
                         accumulator: SlotIdx::new(0),
                     },
                 },
                 CompiledNode {
                     id: StepIdx::new(2),
+                    output: Some(SlotIdx::new(0)),
+                    next: Some(StepIdx::new(3)),
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::SetConst {
+                        value: ConstIdx::new(0),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(3),
                     output: None,
-                    next: None,
+                    next: Some(StepIdx::new(4)),
                     on_error: None,
                     error_slot: None,
                     kind: CompiledNodeKind::TogetherJoin {
@@ -9855,11 +9865,21 @@ mod tests {
                         accumulator: SlotIdx::new(0),
                     },
                 },
+                CompiledNode {
+                    id: StepIdx::new(4),
+                    output: None,
+                    next: None,
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(0),
+                    },
+                },
             ]
             .into_boxed_slice(),
             expressions: Box::new([]),
             accessors: Box::new([]),
-            constants: Box::new([]),
+            constants: vec![ConstValue::I64(1)].into_boxed_slice(),
             slot_count: 1,
             symbols_count: 0,
             entry: StepIdx::new(0),
