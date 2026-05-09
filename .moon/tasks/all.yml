@@ -22,6 +22,10 @@ fileGroups:
   docs:
     - 'README.md'
     - 'docs/**/*'
+  proofs:
+    - 'proofs/**/*'
+    - 'VERIFYING_RUST_WITH_LEAN_AND_GATES.md'
+    - 'moon-rust-verification.yml'
 
 tasks:
   fmt:
@@ -425,6 +429,71 @@ tasks:
       - 'target/release/**'
     options:
       runInCI: true
+
+  verify-fast:
+    command: 'bash scripts/rust-verification-gauntlet.sh fast'
+    toolchains:
+      - rust
+    inputs:
+      - '@globs(sources)'
+      - '@globs(tests)'
+      - '@globs(configs)'
+      - '@globs(proofs)'
+    options:
+      cache: false
+      runInCI: false
+
+  verify-standard:
+    command: 'bash scripts/rust-verification-gauntlet.sh standard'
+    toolchains:
+      - rust
+    inputs:
+      - '@globs(sources)'
+      - '@globs(tests)'
+      - '@globs(configs)'
+      - '@globs(proofs)'
+    options:
+      cache: false
+      runInCI: false
+
+  verify-deep:
+    command: 'bash scripts/rust-verification-gauntlet.sh deep'
+    toolchains:
+      - rust
+    inputs:
+      - '@globs(sources)'
+      - '@globs(tests)'
+      - '@globs(configs)'
+      - '@globs(proofs)'
+    options:
+      cache: false
+      runInCI: false
+
+  verify-proof:
+    command: 'bash scripts/rust-verification-gauntlet.sh proof'
+    toolchains:
+      - rust
+    inputs:
+      - '@globs(sources)'
+      - '@globs(tests)'
+      - '@globs(configs)'
+      - '@globs(proofs)'
+    options:
+      cache: false
+      runInCI: false
+
+  verify-all:
+    command: 'bash scripts/rust-verification-gauntlet.sh all'
+    toolchains:
+      - rust
+    inputs:
+      - '@globs(sources)'
+      - '@globs(tests)'
+      - '@globs(configs)'
+      - '@globs(proofs)'
+    options:
+      cache: false
+      runInCI: false
 
   quick:
     script: |
