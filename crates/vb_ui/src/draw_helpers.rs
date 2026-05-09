@@ -12,6 +12,7 @@ use vb_ui::app_state::{AppState, HealthLevel, Screen};
 use vb_ui::incident::timeline::{IncidentTimeline, TimelineEntry};
 use vb_ui::incident::types::IncidentSeverity;
 use vb_ui::system::ticker::{EventTicker, TickerEventKind};
+use vb_ui::workflow::WorkflowCanvas;
 
 const HEADER_HEIGHT: f64 = 44.0;
 
@@ -138,6 +139,7 @@ pub(crate) fn draw_content(
     cx: &mut Cx2d,
     rect: Rect,
     app_state: &AppState,
+    workflow_canvas: &Option<WorkflowCanvas>,
 ) {
     let content_y = rect.pos.y + 73.0;
 
@@ -195,7 +197,7 @@ pub(crate) fn draw_content(
     // Per-screen placeholder content
     match app_state.current_screen() {
         Screen::SystemOverview => draw_system_overview_content(draw_bg, draw_text, cx, &panel_rect, app_state),
-        Screen::WorkflowGraph => draw_workflow_graph_content(draw_bg, draw_vector, draw_text, cx, &panel_rect, app_state),
+        Screen::WorkflowGraph => draw_workflow_graph_content(draw_bg, draw_vector, draw_text, cx, &panel_rect, app_state, workflow_canvas),
         Screen::RunReplay => draw_run_replay_content(draw_bg, draw_text, cx, &panel_rect, app_state),
         Screen::Verification => draw_verification_content(draw_bg, draw_text, cx, &panel_rect, app_state),
         Screen::IncidentConsole => draw_incident_content(draw_bg, draw_vector, draw_text, cx, &panel_rect, app_state),
@@ -436,6 +438,7 @@ fn draw_workflow_graph_content(
     cx: &mut Cx2d,
     panel: &Rect,
     app_state: &AppState,
+    workflow_canvas: &Option<WorkflowCanvas>,
 ) {
     let wf = &app_state.workflow;
 
@@ -462,13 +465,14 @@ fn draw_workflow_graph_content(
     draw_text_label(draw_text, cx, DVec2 { x: name_rect.pos.x + name_rect.size.x + 8.0, y: name_rect.pos.y + 1.0 }, &name_text);
 
     // Node count bar
+    let node_count = workflow_canvas.as_ref().map_or(wf.node_count, |c| c.node_count() as u32);
     let node_bar = Rect {
         pos: DVec2 { x: panel.pos.x + 16.0, y: panel.pos.y + 66.0 },
-        size: DVec2 { x: f64::from(wf.node_count).mul_add(10.0, 30.0).min(200.0), y: 12.0 },
+        size: DVec2 { x: f64::from(node_count).mul_add(10.0, 30.0).min(200.0), y: 12.0 },
     };
     draw_bg.color = Vec4f { x: 0.8, y: 0.5, z: 1.0, w: 1.0 };
     draw_bg.draw_abs(cx, node_bar);
-    let node_text = format!("Nodes: {}", wf.node_count);
+    let node_text = format!("Nodes: {}", node_count);
     draw_text_label(draw_text, cx, DVec2 { x: node_bar.pos.x + node_bar.size.x + 8.0, y: node_bar.pos.y + 1.0 }, &node_text);
 
     let canvas_rect = Rect {
@@ -478,24 +482,77 @@ fn draw_workflow_graph_content(
     draw_bg.color = Vec4f { x: 0.12, y: 0.10, z: 0.20, w: 1.0 };
     draw_bg.draw_abs(cx, canvas_rect);
 
-    let sample_nodes = build_sample_node_cards();
-    for (i, node) in sample_nodes.iter().enumerate() {
-        let card_x = canvas_rect.pos.x + 10.0 + (i as f64) * (NODE_CARD_WIDTH + 10.0);
-        let card_y = canvas_rect.pos.y + 20.0;
+    if let Some(canvas) = workflow_canvas {
+        render_workflow_canvas(canvas, draw_vector, draw_text, cx, &canvas_rect);
+    } else {
+        let sample_nodes = build_sample_node_cards();
+        for (i, node) in sample_nodes.iter().enumerate() {
+            let card_x = canvas_rect.pos.x + 10.0 + (i as f64) * (NODE_CARD_WIDTH + 10.0);
+            let card_y = canvas_rect.pos.y + 20.0;
+            draw_workflow_node_card(
+                draw_vector,
+                draw_text,
+                cx,
+                card_x,
+                card_y,
+                node.header_color,
+                node.body_color,
+                node.border_color,
+                node.text_color,
+                &node.kind_label,
+                &node.step_name,
+                &node.badges,
+                node.state_glow,
+            );
+        }
+    }
+}
+
+#[allow(elided_lifetimes_in_paths)]
+fn render_workflow_canvas(
+    canvas: &WorkflowCanvas,
+    draw_vector: &mut DrawVector,
+    draw_text: &mut DrawText,
+    cx: &mut Cx2d,
+    canvas_rect: &Rect,
+) {
+    let viewport = canvas.viewport_rect(canvas_rect.size.x, canvas_rect.size.y);
+    let visible = canvas.visible_nodes(&viewport);
+
+    let (pan_x, pan_y) = canvas.pan();
+    let zoom = canvas.zoom();
+    let selected = canvas.selected();
+
+    for (step_idx, x, y, width, height) in visible {
+        let screen_x = canvas_rect.pos.x + (x - pan_x) * zoom;
+        let screen_y = canvas_rect.pos.y + (y - pan_y) * zoom;
+        let screen_w = width * zoom;
+        let screen_h = height * zoom;
+
+        let is_selected = selected == Some(step_idx);
+        let (header_color, body_color, border_color, text_color) = if is_selected {
+            ([0.89, 0.89, 1.0, 1.0], [0.22, 0.22, 0.35, 1.0], [0.69, 0.30, 1.0, 1.0], [1.0, 1.0, 1.0, 1.0])
+        } else {
+            ([0.25, 0.25, 0.40, 1.0], [0.15, 0.15, 0.25, 1.0], [0.40, 0.40, 0.60, 1.0], [0.90, 0.90, 1.0, 1.0])
+        };
+
+        let kind_label = format!("Step {}", step_idx);
+        let step_name = format!("#{}", step_idx);
+
         draw_workflow_node_card(
             draw_vector,
             draw_text,
             cx,
-            card_x,
-            card_y,
-            node.header_color,
-            node.body_color,
-            node.border_color,
-            node.text_color,
-            &node.kind_label,
-            &node.step_name,
-            &node.badges,
-            node.state_glow,
+            screen_x - screen_w / 2.0,
+            screen_y - screen_h / 2.0,
+            header_color,
+            body_color,
+            border_color,
+            text_color,
+            &kind_label,
+            &step_name,
+            &[],
+            None,
         );
     }
 }

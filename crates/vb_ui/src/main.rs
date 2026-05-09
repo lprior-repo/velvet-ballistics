@@ -12,6 +12,7 @@ use makepad_widgets::*;
 use vb_ui::app_state::AppState;
 use vb_ui::ipc_wiring::IpcAppWiring;
 use vb_ui::replay::transport::TransportState;
+use vb_ui::workflow::WorkflowCanvas;
 
 use crate::domain::IpcCleanCycles;
 use crate::draw_helpers::{draw_background, draw_content, draw_header_bar, draw_nav_tabs};
@@ -65,6 +66,8 @@ pub struct VbApp {
     #[rust]
     ipc_clean_cycles: IpcCleanCycles,
     #[rust]
+    workflow_canvas: Option<WorkflowCanvas>,
+    #[rust]
     rect: Rect,
 }
 
@@ -89,7 +92,7 @@ impl Widget for VbApp {
         draw_background(&mut self.draw_bg, cx, self.rect);
         draw_header_bar(&mut self.draw_header, cx, self.rect);
         draw_nav_tabs(&mut self.draw_nav, cx, self.rect, &self.app_state);
-        draw_content(&mut self.draw_bg, &mut self.draw_vector, &mut self.draw_text, cx, self.rect, &self.app_state);
+        draw_content(&mut self.draw_bg, &mut self.draw_vector, &mut self.draw_text, cx, self.rect, &self.app_state, &self.workflow_canvas);
         DrawStep::done()
     }
 }
