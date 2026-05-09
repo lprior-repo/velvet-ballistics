@@ -17,7 +17,8 @@ use vb_ui::workflow::WorkflowCanvas;
 use crate::domain::IpcCleanCycles;
 use crate::draw_helpers::{draw_background, draw_content, draw_header_bar, draw_nav_tabs};
 use crate::event_handlers::{
-    handle_nav, handle_transport, poll_ipc_and_detect_changes, TransportControlKind, VbAction,
+    handle_nav, handle_transport, poll_ipc_and_detect_changes,
+    TransportControlKind, VbAction,
 };
 
 app_main!(VbApp);
