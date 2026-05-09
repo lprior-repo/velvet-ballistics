@@ -68,7 +68,10 @@ pub use queue::JournalWriterQueue;
 pub use types::JournalWriterFlushReport;
 
 // Trimming
-pub use trimming::{TrimError, TrimPolicy, TrimResult, TrimStatus, TrimmedRunResult};
+pub use trimming::{
+    TrimBlocker, TrimDiagnostic, TrimEligibility, TrimError, TrimPolicy, TrimResult, TrimStatus,
+    TrimmedRunResult,
+};
 
 // Codec
 pub use codec::{

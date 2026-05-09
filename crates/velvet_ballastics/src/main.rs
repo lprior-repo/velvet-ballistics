@@ -3787,6 +3787,68 @@ fn cmd_doctor(db: &std::path::Path, output: OutputFormat) -> ExitCode {
         }
     }
 
+    // Check 4: trim eligibility diagnostic (non-destructive)
+    match journal.trim_eligibility_diagnostic(vb_storage::TrimPolicy::default()) {
+        Ok(diag) => {
+            let mut runs = Vec::new();
+            for run in &diag.runs {
+                match run {
+                    vb_storage::TrimEligibility::Eligible { run: r, safe_point, events_trimmable } => {
+                        runs.push(serde_json::json!({
+                            "run": r.get(),
+                            "status": "eligible",
+                            "safe_point": safe_point.get(),
+                            "events_trimmable": events_trimmable
+                        }));
+                    }
+                    vb_storage::TrimEligibility::Blocked { run: r, blocker } => {
+                        let blocker_name = match blocker {
+                            vb_storage::TrimBlocker::NoDurableSnapshot => "no_durable_snapshot",
+                            vb_storage::TrimBlocker::RetentionPolicy { .. } => "retention_policy",
+                        };
+                        runs.push(serde_json::json!({
+                            "run": r.get(),
+                            "status": "blocked",
+                            "blocker": blocker_name
+                        }));
+                    }
+                }
+            }
+            checks.push(serde_json::json!({
+                "check": "trim_eligibility",
+                "status": "pass",
+                "message": format!(
+                    "trim eligibility: {} total, {} eligible, {} blocked, {} events trimmable",
+                    diag.total_runs, diag.eligible_runs, diag.blocked_runs, diag.total_events_trimmable
+                ),
+                "total_runs": diag.total_runs,
+                "eligible_runs": diag.eligible_runs,
+                "blocked_runs": diag.blocked_runs,
+                "total_events_trimmable": diag.total_events_trimmable,
+                "runs": runs
+            }));
+        }
+        Err(e) => {
+            checks.push(serde_json::json!({
+                "check": "trim_eligibility",
+                "status": "fail",
+                "message": format!("trim eligibility diagnostic failed: {e}")
+            }));
+            if output != OutputFormat::Text {
+                json_error(
+                    &serde_json::json!({
+                        "success": false,
+                        "checks": checks
+                    }),
+                    output,
+                );
+            } else {
+                errln!("FAIL: trim eligibility diagnostic failed: {e}");
+            }
+            return CliExitCode::StorageError.into();
+        }
+    }
+
     checks.push(serde_json::json!({
         "check": "all",
         "status": "pass",
@@ -3802,6 +3864,30 @@ fn cmd_doctor(db: &std::path::Path, output: OutputFormat) -> ExitCode {
             output,
         );
     } else {
+        // Print trim eligibility summary in text mode
+        if let Ok(diag) = journal.trim_eligibility_diagnostic(vb_storage::TrimPolicy::default()) {
+            outln!(
+                "doctor: trim eligibility — {} total, {} eligible, {} blocked, {} events trimmable",
+                diag.total_runs, diag.eligible_runs, diag.blocked_runs, diag.total_events_trimmable
+            );
+            for run in &diag.runs {
+                match run {
+                    vb_storage::TrimEligibility::Eligible { run: r, safe_point, events_trimmable } => {
+                        outln!(
+                            "doctor:   run {} eligible — safe_point={} events_trimmable={}",
+                            r.get(), safe_point.get(), events_trimmable
+                        );
+                    }
+                    vb_storage::TrimEligibility::Blocked { run: r, blocker } => {
+                        let blocker_name = match blocker {
+                            vb_storage::TrimBlocker::NoDurableSnapshot => "no_durable_snapshot",
+                            vb_storage::TrimBlocker::RetentionPolicy { .. } => "retention_policy",
+                        };
+                        outln!("doctor:   run {} blocked — blocker={}", r.get(), blocker_name);
+                    }
+                }
+            }
+        }
         outln!("doctor: all checks passed");
     }
     ExitCode::SUCCESS

@@ -2238,3 +2238,354 @@ fn cli_inspect_nonexistent_run_shows_no_events() {
         "inspect should report no events for nonexistent run: {stdout}"
     );
 }
+
+// ---------------------------------------------------------------------------
+// Doctor trim eligibility integration tests (vb-zo9d)
+// ---------------------------------------------------------------------------
+
+#[test]
+fn cli_doctor_json_includes_trim_eligibility_check() {
+    let dir = match tempfile::tempdir() {
+        Ok(dir) => dir,
+        Err(err) => {
+            assert!(forced_assertion_failure(), "tempdir failed: {err}");
+            return;
+        }
+    };
+    let db_path = dir.path().join("doctor-trim-db");
+
+    // Set up journal with one run that has a snapshot
+    let journal = match vb_storage::FjallJournal::open(&db_path, None) {
+        Ok(j) => j,
+        Err(err) => {
+            assert!(forced_assertion_failure(), "failed to open journal: {err}");
+            return;
+        }
+    };
+
+    let run = vb_core::RunId::new(100_000);
+    let digest = vb_core::WorkflowDigest::from_bytes([0xCC; 32]);
+    let events: Vec<vb_storage::JournalEvent> = (0..6u64)
+        .map(|i| {
+            if i == 0 {
+                vb_storage::JournalEvent::RunAccepted {
+                    run,
+                    seq: vb_storage::EventSeq::new(i),
+                    workflow: digest,
+                }
+            } else {
+                vb_storage::JournalEvent::StepStarted {
+                    run,
+                    seq: vb_storage::EventSeq::new(i),
+                    step: vb_core::StepIdx::new(i as u16 - 1),
+                    
+                }
+            }
+        })
+        .collect();
+    if let Err(err) = journal.append_strict_batch(&events) {
+        assert!(
+            forced_assertion_failure(),
+            "failed to append events: {err}"
+        );
+        return;
+    }
+
+    let header = vb_storage::RunHeaderRecord {
+        run,
+        workflow_id: vb_core::WorkflowId::new(0),
+        compiled_digest: digest,
+        status: 0,
+        accepted_at_ms: 100_000,
+    };
+    if let Err(err) = journal.put_run_header(&header) {
+        assert!(
+            forced_assertion_failure(),
+            "failed to write header: {err}"
+        );
+        return;
+    }
+
+    let snapshot = vb_storage::RunSnapshot {
+        run,
+        seq: vb_storage::EventSeq::new(3),
+        workflow: digest,
+        slots: vec![0u8],
+        taint: vec![],
+    };
+    if let Err(err) = journal.put_snapshot(&snapshot) {
+        assert!(
+            forced_assertion_failure(),
+            "failed to write snapshot: {err}"
+        );
+        return;
+    }
+    drop(journal);
+
+    let output = match run_cli(&[
+            std::ffi::OsStr::new("doctor"),
+            std::ffi::OsStr::new("--db"),
+            db_path.as_os_str(),
+            std::ffi::OsStr::new("--json"),
+        ]) {
+        Some(output) => output,
+        None => return,
+    };
+    assert_cli_success(&output,
+        "doctor --db <path> --json"
+    );
+
+    let stdout = output_stdout(&output);
+    let packet: serde_json::Value = match serde_json::from_str(&stdout) {
+        Ok(packet) => packet,
+        Err(err) => {
+            assert!(
+                forced_assertion_failure(),
+                "doctor JSON parse failed: {err}; stdout={stdout}"
+            );
+            return;
+        }
+    };
+
+    // Find the trim_eligibility check
+    let checks = match packet.get("checks").and_then(|c| c.as_array()) {
+        Some(checks) => checks,
+        None => {
+            assert!(
+                forced_assertion_failure(),
+                "doctor JSON missing checks array: {stdout}"
+            );
+            return;
+        }
+    };
+    let trim_check = checks.iter().find(|c| {
+        c.get("check")
+            .and_then(|n| n.as_str())
+            .map_or(false, |n| n == "trim_eligibility")
+    });
+    assert!(
+        trim_check.is_some(),
+        "doctor JSON should include trim_eligibility check: {stdout}"
+    );
+    let trim_check = trim_check.unwrap();
+    assert_eq!(
+        trim_check.get("status"),
+        Some(&serde_json::json!("pass"))
+    );
+    assert_eq!(
+        trim_check.get("total_runs"),
+        Some(&serde_json::json!(1))
+    );
+    assert_eq!(
+        trim_check.get("eligible_runs"),
+        Some(&serde_json::json!(1))
+    );
+    assert_eq!(
+        trim_check.get("blocked_runs"),
+        Some(&serde_json::json!(0))
+    );
+    assert_eq!(
+        trim_check.get("total_events_trimmable"),
+        Some(&serde_json::json!(3))
+    );
+}
+
+#[test]
+fn cli_doctor_text_reports_trim_eligibility() {
+    let dir = match tempfile::tempdir() {
+        Ok(dir) => dir,
+        Err(err) => {
+            assert!(forced_assertion_failure(), "tempdir failed: {err}");
+            return;
+        }
+    };
+    let db_path = dir.path().join("doctor-trim-text-db");
+
+    let journal = match vb_storage::FjallJournal::open(&db_path, None) {
+        Ok(j) => j,
+        Err(err) => {
+            assert!(forced_assertion_failure(), "failed to open journal: {err}");
+            return;
+        }
+    };
+
+    let run = vb_core::RunId::new(100_001);
+    let digest = vb_core::WorkflowDigest::from_bytes([0xDD; 32]);
+    let events = [
+        vb_storage::JournalEvent::RunAccepted {
+            run,
+            seq: vb_storage::EventSeq::new(0),
+            workflow: digest,
+        },
+        vb_storage::JournalEvent::StepStarted {
+            run,
+            seq: vb_storage::EventSeq::new(1),
+            step: vb_core::StepIdx::new(0),
+            
+        },
+    ];
+    if let Err(err) = journal.append_strict_batch(&events) {
+        assert!(
+            forced_assertion_failure(),
+            "failed to append events: {err}"
+        );
+        return;
+    }
+
+    let header = vb_storage::RunHeaderRecord {
+        run,
+        workflow_id: vb_core::WorkflowId::new(0),
+        compiled_digest: digest,
+        status: 0,
+        accepted_at_ms: 100_001,
+    };
+    if let Err(err) = journal.put_run_header(&header) {
+        assert!(
+            forced_assertion_failure(),
+            "failed to write header: {err}"
+        );
+        return;
+    }
+
+    // No snapshot — run should be blocked
+    drop(journal);
+
+    let output = match run_cli(&[
+            std::ffi::OsStr::new("doctor"),
+            std::ffi::OsStr::new("--db"),
+            db_path.as_os_str(),
+        ]) {
+        Some(output) => output,
+        None => return,
+    };
+    assert_cli_success(&output,
+        "doctor --db <path>"
+    );
+
+    let stdout = output_stdout(&output);
+    assert!(
+        stdout.contains("trim eligibility"),
+        "doctor text output should mention trim eligibility: {stdout}"
+    );
+    assert!(
+        stdout.contains("1 total"),
+        "doctor text should report 1 total run: {stdout}"
+    );
+    assert!(
+        stdout.contains("0 eligible"),
+        "doctor text should report 0 eligible: {stdout}"
+    );
+    assert!(
+        stdout.contains("1 blocked"),
+        "doctor text should report 1 blocked: {stdout}"
+    );
+}
+
+#[test]
+fn cli_doctor_returns_success_for_healthy_journal_with_trim_recommended() {
+    let dir = match tempfile::tempdir() {
+        Ok(dir) => dir,
+        Err(err) => {
+            assert!(forced_assertion_failure(), "tempdir failed: {err}");
+            return;
+        }
+    };
+    let db_path = dir.path().join("doctor-trim-success-db");
+
+    let journal = match vb_storage::FjallJournal::open(&db_path, None) {
+        Ok(j) => j,
+        Err(err) => {
+            assert!(forced_assertion_failure(), "failed to open journal: {err}");
+            return;
+        }
+    };
+
+    let run = vb_core::RunId::new(100_002);
+    let digest = vb_core::WorkflowDigest::from_bytes([0xEE; 32]);
+    let events: Vec<vb_storage::JournalEvent> = (0..4u64)
+        .map(|i| {
+            if i == 0 {
+                vb_storage::JournalEvent::RunAccepted {
+                    run,
+                    seq: vb_storage::EventSeq::new(i),
+                    workflow: digest,
+                }
+            } else {
+                vb_storage::JournalEvent::StepStarted {
+                    run,
+                    seq: vb_storage::EventSeq::new(i),
+                    step: vb_core::StepIdx::new(i as u16 - 1),
+                    
+                }
+            }
+        })
+        .collect();
+    if let Err(err) = journal.append_strict_batch(&events) {
+        assert!(
+            forced_assertion_failure(),
+            "failed to append events: {err}"
+        );
+        return;
+    }
+
+    let header = vb_storage::RunHeaderRecord {
+        run,
+        workflow_id: vb_core::WorkflowId::new(0),
+        compiled_digest: digest,
+        status: 0,
+        accepted_at_ms: 100_002,
+    };
+    if let Err(err) = journal.put_run_header(&header) {
+        assert!(
+            forced_assertion_failure(),
+            "failed to write header: {err}"
+        );
+        return;
+    }
+
+    let snapshot = vb_storage::RunSnapshot {
+        run,
+        seq: vb_storage::EventSeq::new(2),
+        workflow: digest,
+        slots: vec![0u8],
+        taint: vec![],
+    };
+    if let Err(err) = journal.put_snapshot(&snapshot) {
+        assert!(
+            forced_assertion_failure(),
+            "failed to write snapshot: {err}"
+        );
+        return;
+    }
+    drop(journal);
+
+    let output = match run_cli(&[
+            std::ffi::OsStr::new("doctor"),
+            std::ffi::OsStr::new("--db"),
+            db_path.as_os_str(),
+        ]) {
+        Some(output) => output,
+        None => return,
+    };
+    assert_cli_success(&output,
+        "doctor --db <path>"
+    );
+}
+
+#[test]
+fn cli_doctor_returns_storage_error_for_unreadable_path() {
+    let nonexistent = std::path::PathBuf::from("/nonexistent/path/to/db");
+
+    let output = match run_cli(&[
+            std::ffi::OsStr::new("doctor"),
+            std::ffi::OsStr::new("--db"),
+            nonexistent.as_os_str(),
+        ]) {
+        Some(output) => output,
+        None => return,
+    };
+    assert!(
+        !output.status.success(),
+        "doctor should fail for unreadable path"
+    );
+}

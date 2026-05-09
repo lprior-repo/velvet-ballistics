@@ -194,9 +194,114 @@ impl FjallJournal {
         Ok(results)
     }
 
+    /// Non-destructive trim eligibility diagnostic.
+    ///
+    /// Scans all runs and reports eligibility WITHOUT deleting anything.
+    /// Safe to run during incident triage.
+    pub fn trim_eligibility_diagnostic(
+        &self,
+        policy: TrimPolicy,
+    ) -> Result<TrimDiagnostic, JournalError> {
+        let headers = self.run_headers()?;
+        let mut runs = Vec::new();
+        let mut total_runs: u64 = 0;
+        let mut eligible_runs: u64 = 0;
+        let mut blocked_runs: u64 = 0;
+        let mut total_events_trimmable: u64 = 0;
+
+        for header in headers {
+            total_runs = total_runs.saturating_add(1);
+
+            let safe_point = match self.latest_durable_snapshot_seq(header.run) {
+                Ok(Some(seq)) => seq,
+                Ok(None) => {
+                    blocked_runs = blocked_runs.saturating_add(1);
+                    runs.push(TrimEligibility::Blocked {
+                        run: header.run,
+                        blocker: TrimBlocker::NoDurableSnapshot,
+                    });
+                    continue;
+                }
+                Err(e) => {
+                    // Convert TrimError to JournalError for the public API
+                    return Err(JournalError::from(e));
+                }
+            };
+
+            // Check retention policy (reuses internal logic)
+            match self.check_retention_policy(header.run, &policy) {
+                Ok(()) => {}
+                Err(TrimError::RetentionPolicyBlocks { .. }) => {
+                    blocked_runs = blocked_runs.saturating_add(1);
+                    runs.push(TrimEligibility::Blocked {
+                        run: header.run,
+                        blocker: TrimBlocker::RetentionPolicy {
+                            retain_last_n_terminal: policy.retain_last_n_terminal,
+                        },
+                    });
+                    continue;
+                }
+                Err(e) => return Err(JournalError::from(e)),
+            }
+
+            // Count trimmable events for this run
+            let events_trimmable =
+                self.count_trimmable_events(header.run, safe_point)?;
+
+            eligible_runs = eligible_runs.saturating_add(1);
+            total_events_trimmable =
+                total_events_trimmable.saturating_add(events_trimmable);
+
+            runs.push(TrimEligibility::Eligible {
+                run: header.run,
+                safe_point,
+                events_trimmable,
+            });
+        }
+
+        Ok(TrimDiagnostic {
+            runs,
+            total_runs,
+            eligible_runs,
+            blocked_runs,
+            total_events_trimmable,
+        })
+    }
+
+    /// Counts events with sequence numbers less than the safe point.
+    fn count_trimmable_events(
+        &self,
+        run: RunId,
+        safe_point: EventSeq,
+    ) -> Result<u64, JournalError> {
+        let prefix_key = crate::keys::run_prefix_key(run)?;
+        let snap = self.database.snapshot();
+        let mut count: u64 = 0;
+
+        for item in snap.prefix(&self.events, prefix_key) {
+            let key = item.key().map_err(JournalError::from)?;
+            if key.len() < 17 {
+                continue;
+            }
+            let slice = key
+                .get(9..17)
+                .ok_or_else(|| JournalError::from(TrimError::IncompleteTrim { deleted_count: 0 }))?;
+            let seq_bytes: [u8; 8] = slice
+                .try_into()
+                .map_err(|_| JournalError::from(TrimError::IncompleteTrim { deleted_count: 0 }))?;
+            let seq_u64 = u64::from_be_bytes(seq_bytes);
+
+            if seq_u64 < safe_point.get() {
+                count = count.saturating_add(1);
+            }
+        }
+
+        Ok(count)
+    }
+
     /// Checks whether a run has reached a terminal state by scanning its
     /// journal events for a terminal event variant.
-    fn has_terminal_event(&self, run: RunId) -> TrimResult<bool> {
+    pub(crate) fn has_terminal_event(&self, run: RunId) -> TrimResult<bool> {
         let prefix = crate::keys::run_prefix_key(run)?;
         let snap = self.database.snapshot();
 
@@ -220,7 +325,7 @@ impl FjallJournal {
     /// If the run is terminal and is among the `retain_last_n_terminal`
     /// most recent terminal runs for its workflow, returns
     /// `TrimError::RetentionPolicyBlocks`.
-    fn check_retention_policy(&self, run: RunId, policy: &TrimPolicy) -> TrimResult<()> {
+    pub(crate) fn check_retention_policy(&self, run: RunId, policy: &TrimPolicy) -> TrimResult<()> {
         if policy.retain_last_n_terminal == 0 {
             return Ok(());
         }
@@ -283,6 +388,54 @@ pub enum TrimStatus {
     NoOp,
 }
 
+/// Per-run trim eligibility status (non-destructive diagnostic).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum TrimEligibility {
+    /// Run can be trimmed up to the safe point.
+    Eligible {
+        /// The run identifier.
+        run: RunId,
+        /// Highest event sequence covered by a durable snapshot.
+        safe_point: EventSeq,
+        /// Number of events that would be deleted if trimmed.
+        events_trimmable: u64,
+    },
+    /// Run cannot be trimmed due to a blocker.
+    Blocked {
+        /// The run identifier.
+        run: RunId,
+        /// The reason trimming is blocked.
+        blocker: TrimBlocker,
+    },
+}
+
+/// Reason a run cannot be trimmed.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum TrimBlocker {
+    /// No durable snapshot exists for this run.
+    NoDurableSnapshot,
+    /// Retention policy protects this terminal run.
+    RetentionPolicy {
+        /// The retention count that blocked this run.
+        retain_last_n_terminal: u32,
+    },
+}
+
+/// Aggregate trim diagnostic for all runs in the journal.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TrimDiagnostic {
+    /// Per-run eligibility results.
+    pub runs: Vec<TrimEligibility>,
+    /// Total number of runs in the journal.
+    pub total_runs: u64,
+    /// Number of runs eligible for trimming.
+    pub eligible_runs: u64,
+    /// Number of runs blocked from trimming.
+    pub blocked_runs: u64,
+    /// Total events that would be deleted if all eligible runs were trimmed.
+    pub total_events_trimmable: u64,
+}
+
 fn snapshot_prefix_key(run: RunId) -> [u8; 9] {
     let prefix: [u8; 1] = [crate::constants::PREFIX_RUN_SNAPSHOT];
     let run_be: [u8; 8] = run.get().to_be_bytes();
@@ -331,6 +484,7 @@ mod tests {
             run,
             seq: EventSeq::new(seq),
             step: StepIdx::new(step),
+        attempt: 1,
         }
     }
 
@@ -339,6 +493,7 @@ mod tests {
             run,
             seq: EventSeq::new(seq),
             result: SlotIdx::new(0),
+        attempt: 1,
         }
     }
 
@@ -905,5 +1060,398 @@ mod tests {
             err.diagnostic_code(),
             TrimError::RETENTION_POLICY_BLOCKS_CODE
         );
+    }
+
+    // -----------------------------------------------------------------------
+    // Trim Eligibility Diagnostic — Red Phase Tests (vb-zo9d)
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn diagnostic_returns_eligible_and_blocked_runs() {
+        let (_temp, journal) = temp_journal();
+        let run_a = RunId::new(10_000);
+        let run_b = RunId::new(10_001);
+        let digest = WorkflowDigest::from_bytes([0x55; DIGEST_BYTES]);
+
+        // Run A: has events and snapshot
+        let events_a: Vec<JournalEvent> = (0..6u64)
+            .map(|i| {
+                if i == 0 {
+                    make_event(run_a, i)
+                } else {
+                    make_step_started(run_a, i, i as u16 - 1)
+                }
+            })
+            .collect();
+        journal
+            .append_strict_batch(&events_a)
+            .expect("batch A should succeed");
+        write_header(&journal, run_a, digest);
+        let snapshot_a = RunSnapshot {
+            run: run_a,
+            seq: EventSeq::new(3),
+            workflow: digest,
+            slots: vec![0u8],
+            taint: vec![],
+        };
+        journal.put_snapshot(&snapshot_a).expect("snapshot A ok");
+
+        // Run B: has events but NO snapshot
+        let events_b = [make_event(run_b, 0), make_step_started(run_b, 1, 0)];
+        journal
+            .append_strict_batch(&events_b)
+            .expect("batch B should succeed");
+        write_header(&journal, run_b, digest);
+
+        let diag = journal
+            .trim_eligibility_diagnostic(TrimPolicy::default())
+            .expect("diagnostic should succeed");
+
+        assert_eq!(diag.total_runs, 2, "should report 2 total runs");
+        assert_eq!(diag.eligible_runs, 1, "run A should be eligible");
+        assert_eq!(diag.blocked_runs, 1, "run B should be blocked");
+
+        let eligible = diag
+            .runs
+            .iter()
+            .find(|r| matches!(r, TrimEligibility::Eligible { run, .. } if *run == run_a));
+        assert!(
+            eligible.is_some(),
+            "run A should be Eligible, got {:?}",
+            diag.runs
+        );
+
+        let blocked = diag
+            .runs
+            .iter()
+            .find(|r| matches!(r, TrimEligibility::Blocked { run, .. } if *run == run_b));
+        assert!(
+            blocked.is_some(),
+            "run B should be Blocked, got {:?}",
+            diag.runs
+        );
+    }
+
+    #[test]
+    fn diagnostic_reports_correct_safe_point_and_trimmable_count() {
+        let (_temp, journal) = temp_journal();
+        let run = RunId::new(11_000);
+        let digest = WorkflowDigest::from_bytes([0x66; DIGEST_BYTES]);
+
+        let events: Vec<JournalEvent> = (0..10u64)
+            .map(|i| {
+                if i == 0 {
+                    make_event(run, i)
+                } else {
+                    make_step_started(run, i, i as u16 - 1)
+                }
+            })
+            .collect();
+        journal
+            .append_strict_batch(&events)
+            .expect("batch should succeed");
+        write_header(&journal, run, digest);
+
+        let snapshot = RunSnapshot {
+            run,
+            seq: EventSeq::new(5),
+            workflow: digest,
+            slots: vec![0u8],
+            taint: vec![],
+        };
+        journal.put_snapshot(&snapshot).expect("snapshot ok");
+
+        let diag = journal
+            .trim_eligibility_diagnostic(TrimPolicy::default())
+            .expect("diagnostic should succeed");
+
+        let eligible = diag
+            .runs
+            .iter()
+            .find_map(|r| match r {
+                TrimEligibility::Eligible {
+                    run: r,
+                    safe_point,
+                    events_trimmable,
+                } if *r == run => Some((*safe_point, *events_trimmable)),
+                _ => None,
+            });
+        assert!(
+            eligible.is_some(),
+            "run should be eligible, got {:?}",
+            diag.runs
+        );
+        let (safe_point, trimmable) = eligible.unwrap();
+        assert_eq!(safe_point, EventSeq::new(5), "safe point should be seq 5");
+        assert_eq!(trimmable, 5, "should report 5 trimmable events (0-4)");
+        assert_eq!(
+            diag.total_events_trimmable, 5,
+            "aggregate trimmable should be 5"
+        );
+    }
+
+    #[test]
+    fn diagnostic_blocks_run_without_durable_snapshot() {
+        let (_temp, journal) = temp_journal();
+        let run = RunId::new(12_000);
+        let digest = WorkflowDigest::from_bytes([0x77; DIGEST_BYTES]);
+
+        let events = [make_event(run, 0), make_step_started(run, 1, 0)];
+        journal
+            .append_strict_batch(&events)
+            .expect("batch should succeed");
+        write_header(&journal, run, digest);
+        // No snapshot written
+
+        let diag = journal
+            .trim_eligibility_diagnostic(TrimPolicy::default())
+            .expect("diagnostic should succeed");
+
+        assert_eq!(diag.total_runs, 1);
+        assert_eq!(diag.eligible_runs, 0);
+        assert_eq!(diag.blocked_runs, 1);
+
+        let blocked = diag.runs.first().expect("should have one run result");
+        assert!(
+            matches!(
+                blocked,
+                TrimEligibility::Blocked {
+                    run: r,
+                    blocker: TrimBlocker::NoDurableSnapshot,
+                } if *r == run
+            ),
+            "run should be blocked by NoDurableSnapshot, got {:?}",
+            blocked
+        );
+    }
+
+    #[test]
+    fn diagnostic_blocks_recent_terminal_run_under_retention() {
+        let (_temp, journal) = temp_journal();
+        let run = RunId::new(13_000);
+        let workflow_id = WorkflowId::new(3);
+        let digest = WorkflowDigest::from_bytes([0x88; DIGEST_BYTES]);
+
+        // Terminal run: events 0..=3 with RunFinished at seq 3
+        let events: Vec<JournalEvent> = (0..4u64)
+            .map(|i| {
+                if i == 0 {
+                    make_event(run, i)
+                } else if i == 3 {
+                    make_run_finished(run, i)
+                } else {
+                    make_step_started(run, i, i as u16 - 1)
+                }
+            })
+            .collect();
+        journal
+            .append_strict_batch(&events)
+            .expect("batch should succeed");
+        write_header_with_workflow(&journal, run, workflow_id, digest, 13_000);
+
+        let snapshot = RunSnapshot {
+            run,
+            seq: EventSeq::new(2),
+            workflow: digest,
+            slots: vec![0u8],
+            taint: vec![],
+        };
+        journal.put_snapshot(&snapshot).expect("snapshot ok");
+
+        let policy = TrimPolicy {
+            skip_noop_runs: true,
+            retain_last_n_terminal: 5,
+        };
+        let diag = journal
+            .trim_eligibility_diagnostic(policy)
+            .expect("diagnostic should succeed");
+
+        assert_eq!(diag.total_runs, 1);
+        assert_eq!(diag.eligible_runs, 0);
+        assert_eq!(diag.blocked_runs, 1);
+
+        let blocked = diag.runs.first().expect("should have one run result");
+        assert!(
+            matches!(
+                blocked,
+                TrimEligibility::Blocked {
+                    run: r,
+                    blocker: TrimBlocker::RetentionPolicy {
+                        retain_last_n_terminal: 5,
+                    },
+                } if *r == run
+            ),
+            "run should be blocked by RetentionPolicy, got {:?}",
+            blocked
+        );
+    }
+
+    #[test]
+    fn diagnostic_allows_non_terminal_run_despite_retention() {
+        let (_temp, journal) = temp_journal();
+        let run = RunId::new(14_000);
+        let workflow_id = WorkflowId::new(4);
+        let digest = WorkflowDigest::from_bytes([0x99; DIGEST_BYTES]);
+
+        // Non-terminal run: no RunFinished event
+        let events: Vec<JournalEvent> = (0..3u64)
+            .map(|i| {
+                if i == 0 {
+                    make_event(run, i)
+                } else {
+                    make_step_started(run, i, i as u16 - 1)
+                }
+            })
+            .collect();
+        journal
+            .append_strict_batch(&events)
+            .expect("batch should succeed");
+        write_header_with_workflow(&journal, run, workflow_id, digest, 14_000);
+
+        let snapshot = RunSnapshot {
+            run,
+            seq: EventSeq::new(1),
+            workflow: digest,
+            slots: vec![0u8],
+            taint: vec![],
+        };
+        journal.put_snapshot(&snapshot).expect("snapshot ok");
+
+        let policy = TrimPolicy {
+            skip_noop_runs: true,
+            retain_last_n_terminal: 10,
+        };
+        let diag = journal
+            .trim_eligibility_diagnostic(policy)
+            .expect("diagnostic should succeed");
+
+        assert_eq!(diag.total_runs, 1);
+        assert_eq!(diag.eligible_runs, 1);
+        assert_eq!(diag.blocked_runs, 0);
+
+        let eligible = diag.runs.first().expect("should have one run result");
+        assert!(
+            matches!(
+                eligible,
+                TrimEligibility::Eligible {
+                    run: r,
+                    safe_point: EventSeq(1),
+                    events_trimmable: 1,
+                } if *r == run
+            ),
+            "non-terminal run should be eligible, got {:?}",
+            eligible
+        );
+    }
+
+    #[test]
+    fn diagnostic_does_not_delete_events() {
+        let (_temp, journal) = temp_journal();
+        let run = RunId::new(15_000);
+        let digest = WorkflowDigest::from_bytes([0xAA; DIGEST_BYTES]);
+
+        let events: Vec<JournalEvent> = (0..5u64)
+            .map(|i| {
+                if i == 0 {
+                    make_event(run, i)
+                } else {
+                    make_step_started(run, i, i as u16 - 1)
+                }
+            })
+            .collect();
+        journal
+            .append_strict_batch(&events)
+            .expect("batch should succeed");
+        write_header(&journal, run, digest);
+
+        let snapshot = RunSnapshot {
+            run,
+            seq: EventSeq::new(3),
+            workflow: digest,
+            slots: vec![0u8],
+            taint: vec![],
+        };
+        journal.put_snapshot(&snapshot).expect("snapshot ok");
+
+        let before = journal
+            .events_for_run(run)
+            .expect("events before diagnostic");
+        assert_eq!(before.len(), 5);
+
+        let _diag = journal
+            .trim_eligibility_diagnostic(TrimPolicy::default())
+            .expect("diagnostic should succeed");
+
+        let after = journal
+            .events_for_run(run)
+            .expect("events after diagnostic");
+        assert_eq!(
+            after.len(),
+            5,
+            "diagnostic must not delete events, before={} after={}",
+            before.len(),
+            after.len()
+        );
+    }
+
+    #[test]
+    fn diagnostic_is_idempotent() {
+        let (_temp, journal) = temp_journal();
+        let run = RunId::new(16_000);
+        let digest = WorkflowDigest::from_bytes([0xBB; DIGEST_BYTES]);
+
+        let events: Vec<JournalEvent> = (0..4u64)
+            .map(|i| {
+                if i == 0 {
+                    make_event(run, i)
+                } else {
+                    make_step_started(run, i, i as u16 - 1)
+                }
+            })
+            .collect();
+        journal
+            .append_strict_batch(&events)
+            .expect("batch should succeed");
+        write_header(&journal, run, digest);
+
+        let snapshot = RunSnapshot {
+            run,
+            seq: EventSeq::new(2),
+            workflow: digest,
+            slots: vec![0u8],
+            taint: vec![],
+        };
+        journal.put_snapshot(&snapshot).expect("snapshot ok");
+
+        let diag1 = journal
+            .trim_eligibility_diagnostic(TrimPolicy::default())
+            .expect("first diagnostic should succeed");
+        let diag2 = journal
+            .trim_eligibility_diagnostic(TrimPolicy::default())
+            .expect("second diagnostic should succeed");
+
+        assert_eq!(diag1.total_runs, diag2.total_runs);
+        assert_eq!(diag1.eligible_runs, diag2.eligible_runs);
+        assert_eq!(diag1.blocked_runs, diag2.blocked_runs);
+        assert_eq!(diag1.total_events_trimmable, diag2.total_events_trimmable);
+        assert_eq!(diag1.runs.len(), diag2.runs.len());
+        for (a, b) in diag1.runs.iter().zip(diag2.runs.iter()) {
+            assert_eq!(a, b, "diagnostic results should be identical across calls");
+        }
+    }
+
+    #[test]
+    fn diagnostic_returns_empty_for_empty_journal() {
+        let (_temp, journal) = temp_journal();
+
+        let diag = journal
+            .trim_eligibility_diagnostic(TrimPolicy::default())
+            .expect("diagnostic should succeed");
+
+        assert_eq!(diag.total_runs, 0);
+        assert_eq!(diag.eligible_runs, 0);
+        assert_eq!(diag.blocked_runs, 0);
+        assert_eq!(diag.total_events_trimmable, 0);
+        assert!(diag.runs.is_empty());
     }
 }
