@@ -103,6 +103,22 @@ pub enum RuntimeError {
     /// Action completion did not match the suspended Do step.
     InvalidActionCompletion,
 
+    /// Action completion belongs to an older attempt than the live suspended attempt.
+    StaleAttempt {
+        /// Attempt carried by the incoming completion ticket.
+        incoming: u16,
+        /// Current attempt recorded on the live run state.
+        current: u16,
+    },
+
+    /// Action completion or scheduling exceeded the bounded retry capacity.
+    AttemptBeyondMax {
+        /// Attempt carried by the ticket.
+        attempt: u16,
+        /// Maximum attempt count from the retry policy.
+        max: u16,
+    },
+
     /// Timer fired for a run that is not suspended on a registered timer.
     InvalidTimerFire,
 
@@ -200,6 +216,15 @@ fn write_runtime_error_dynamic(
         RuntimeError::CommandQueueCapacityExceeded { capacity, max } => {
             write!(f, "command queue capacity {capacity} exceeds maximum {max}")
         }
+        RuntimeError::StaleAttempt { incoming, current } => {
+            write!(
+                f,
+                "stale action attempt: incoming {incoming}, current {current}"
+            )
+        }
+        RuntimeError::AttemptBeyondMax { attempt, max } => {
+            write!(f, "action attempt {attempt} exceeds max attempts {max}")
+        }
         _ => Ok(()),
     }
 }
@@ -274,6 +299,20 @@ fn runtime_error_core_field_eq(left: &RuntimeError, right: &RuntimeError) -> boo
                 capacity: c,
                 max: d,
             },
+        ) => a == c && b == d,
+        (
+            RuntimeError::StaleAttempt {
+                incoming: a,
+                current: b,
+            },
+            RuntimeError::StaleAttempt {
+                incoming: c,
+                current: d,
+            },
+        ) => a == c && b == d,
+        (
+            RuntimeError::AttemptBeyondMax { attempt: a, max: b },
+            RuntimeError::AttemptBeyondMax { attempt: c, max: d },
         ) => a == c && b == d,
         _ => false,
     }
@@ -372,7 +411,9 @@ impl RuntimeError {
             },
             Self::UnsupportedAsyncStrictAck => Self::UNSUPPORTED_ASYNC_STRICT_ACK_CODE,
             Self::FramePoolUnavailable => Self::FRAME_POOL_UNAVAILABLE_CODE,
-            Self::InvalidActionCompletion => Self::INVALID_ACTION_COMPLETION_CODE,
+            Self::InvalidActionCompletion
+            | Self::StaleAttempt { .. }
+            | Self::AttemptBeyondMax { .. } => Self::INVALID_ACTION_COMPLETION_CODE,
             Self::InvalidTimerFire => Self::INVALID_TIMER_FIRE_CODE,
             Self::UnsupportedFullRecoveryHydration => {
                 Self::UNSUPPORTED_FULL_RECOVERY_HYDRATION_CODE
@@ -400,7 +441,9 @@ impl RuntimeError {
                 vb_core::errors::CoreError::QueueFull => Some(Self::QUEUE_FULL_RUNTIME_CODE),
                 _ => Some(Self::STORAGE_ERROR_RUNTIME_CODE),
             },
-            Self::InvalidActionCompletion => Some(Self::ACTION_FAILED_RUNTIME_CODE),
+            Self::InvalidActionCompletion
+            | Self::StaleAttempt { .. }
+            | Self::AttemptBeyondMax { .. } => Some(Self::ACTION_FAILED_RUNTIME_CODE),
             _ => None,
         }
     }
@@ -703,6 +746,18 @@ mod bdd_runtime_error {
             RuntimeError::InvalidActionCompletion.runtime_code(),
             Some("ACTION_FAILED")
         );
+        assert_eq!(
+            RuntimeError::StaleAttempt {
+                incoming: 1,
+                current: 2,
+            }
+            .runtime_code(),
+            Some("ACTION_FAILED")
+        );
+        assert_eq!(
+            RuntimeError::AttemptBeyondMax { attempt: 4, max: 3 }.runtime_code(),
+            Some("ACTION_FAILED")
+        );
     }
 
     #[test]
@@ -743,11 +798,17 @@ mod bdd_runtime_error {
             RuntimeError::UnsupportedAsyncStrictAck.diagnostic_code(),
             RuntimeError::FramePoolUnavailable.diagnostic_code(),
             RuntimeError::InvalidActionCompletion.diagnostic_code(),
+            RuntimeError::StaleAttempt {
+                incoming: 1,
+                current: 2,
+            }
+            .diagnostic_code(),
+            RuntimeError::AttemptBeyondMax { attempt: 4, max: 3 }.diagnostic_code(),
             RuntimeError::InvalidTimerFire.diagnostic_code(),
             RuntimeError::UnsupportedFullRecoveryHydration.diagnostic_code(),
             RuntimeError::InvalidRecoveryHydration.diagnostic_code(),
         ];
-        assert_eq!(codes.len(), 14);
+        assert_eq!(codes.len(), 16);
         let seen = std::collections::BTreeSet::from(codes);
         assert_eq!(seen.len(), 14);
     }
@@ -836,6 +897,26 @@ mod bdd_runtime_error {
     fn runtime_error_diagnostic_code_invalid_action_completion() {
         assert_eq!(
             RuntimeError::InvalidActionCompletion.diagnostic_code(),
+            DiagnosticCode::new(0x200B)
+        );
+    }
+
+    #[test]
+    fn runtime_error_diagnostic_code_stale_attempt() {
+        assert_eq!(
+            RuntimeError::StaleAttempt {
+                incoming: 1,
+                current: 2
+            }
+            .diagnostic_code(),
+            DiagnosticCode::new(0x200B)
+        );
+    }
+
+    #[test]
+    fn runtime_error_diagnostic_code_attempt_beyond_max() {
+        assert_eq!(
+            RuntimeError::AttemptBeyondMax { attempt: 4, max: 3 }.diagnostic_code(),
             DiagnosticCode::new(0x200B)
         );
     }

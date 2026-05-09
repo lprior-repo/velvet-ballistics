@@ -115,6 +115,7 @@ pub fn journal_action_suspended(
 ) -> ActionJournalEvent {
     ActionJournalEvent::Suspended {
         ticket,
+        attempt: ticket.attempt,
         action,
         input_slot,
         output_slot,
@@ -159,6 +160,7 @@ pub fn resume_action_completion(
 
     let journal = ActionJournalEvent::Completed {
         ticket,
+        attempt: ticket.attempt,
         output_slot,
         output_taint,
     };
@@ -192,6 +194,7 @@ pub fn resume_action_failure(
 
     let journal = ActionJournalEvent::Failed {
         ticket,
+        attempt: ticket.attempt,
         code: failure_code,
         retry_policy,
     };
@@ -895,12 +898,14 @@ mod tests {
         match event {
             crate::action::ActionJournalEvent::Suspended {
                 ticket: t,
+                attempt,
                 action,
                 input_slot,
                 output_slot,
                 step,
             } => {
                 ensure_equal(t.run, RunId::new(1))?;
+                ensure_equal(attempt, 1)?;
                 ensure_equal(action, ActionId::new(5))?;
                 ensure_equal(input_slot, SlotIdx::new(0))?;
                 ensure_equal(output_slot, SlotIdx::new(1))?;

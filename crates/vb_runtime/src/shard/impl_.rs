@@ -433,11 +433,15 @@ mod tests {
 
     #[test]
     fn config_new_accepts_min_valid_capacity() {
-        assert_eq!(
-            ShardConfig::new(1, 1, 1, 1, vb_core::policy::RuntimePolicy::Relaxed)
-                .map(|config| config.command_queue_capacity),
-            Ok(1)
-        );
+        let result = ShardConfig::new(1, 1, 1, 1, vb_core::policy::RuntimePolicy::Relaxed);
+        let expected = ShardConfig {
+            command_queue_capacity: 1,
+            trace_capacity: 1,
+            step_budget_per_tick: 1,
+            max_active_runs: 1,
+            policy: vb_core::policy::RuntimePolicy::Relaxed,
+        };
+        assert_eq!(result, Ok(expected));
     }
 
     #[test]
@@ -473,33 +477,35 @@ mod tests {
 
     #[test]
     fn config_new_accepts_max_command_queue_capacity() {
-        assert_eq!(
-            ShardConfig::new(
-                MAX_COMMAND_QUEUE_CAPACITY,
-                1,
-                1,
-                1,
-                vb_core::policy::RuntimePolicy::Relaxed,
-            )
-            .map(|config| config.command_queue_capacity),
-            Ok(MAX_COMMAND_QUEUE_CAPACITY)
+        let result = ShardConfig::new(
+            MAX_COMMAND_QUEUE_CAPACITY,
+            1,
+            1,
+            1,
+            vb_core::policy::RuntimePolicy::Relaxed,
         );
+        let expected = ShardConfig {
+            command_queue_capacity: MAX_COMMAND_QUEUE_CAPACITY,
+            trace_capacity: 1,
+            step_budget_per_tick: 1,
+            max_active_runs: 1,
+            policy: vb_core::policy::RuntimePolicy::Relaxed,
+        };
+        assert_eq!(result, Ok(expected));
     }
 
     #[test]
     fn config_new_preserves_all_fields() {
+        let config = ShardConfig::new(64, 128, 256, 32, vb_core::policy::RuntimePolicy::Relaxed);
         assert_eq!(
-            ShardConfig::new(64, 128, 256, 32, vb_core::policy::RuntimePolicy::Relaxed).map(
-                |config| {
-                    (
-                        config.command_queue_capacity,
-                        config.trace_capacity,
-                        config.step_budget_per_tick,
-                        config.max_active_runs,
-                    )
-                }
-            ),
-            Ok((64, 128, 256, 32))
+            config,
+            Ok(ShardConfig {
+                command_queue_capacity: 64,
+                trace_capacity: 128,
+                step_budget_per_tick: 256,
+                max_active_runs: 32,
+                policy: vb_core::policy::RuntimePolicy::Relaxed,
+            })
         );
     }
 

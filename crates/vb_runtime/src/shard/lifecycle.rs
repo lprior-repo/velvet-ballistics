@@ -19,12 +19,60 @@ use crate::{RuntimeError, RuntimeResult};
 use crate::primitives::collect::CollectStates;
 use crate::shard::types::{AskAnswer, PendingTimerKind, RunState, Shard};
 
-enum ActionFailureTransition {
-    Retry { max_attempts: u16 },
-    RetryExhaustedRouteToHandler { max_attempts: u16 },
-    RetryExhaustedFailRun { max_attempts: u16 },
-    RouteToHandler,
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum ActionFailureOutcome {
+    RetryNow,
+    DriveHandler,
     FailRun,
+}
+
+fn retry_is_available(
+    state: &mut RunState,
+    ticket: ActionTicket,
+    retry_policy: VbCoreRetryPolicy,
+) -> RuntimeResult<bool> {
+    if retry_policy != VbCoreRetryPolicy::Retryable
+        || !crate::shard::helpers::retry_metadata_exists(state, ticket.step)
+    {
+        return Ok(false);
+    }
+    let policy = crate::shard::helpers::retry_policy_after_action(state, ticket.step)?;
+    crate::shard::helpers::record_retry_attempt(state, ticket, policy)
+}
+
+fn apply_error_handler(
+    state: &mut RunState,
+    ticket: ActionTicket,
+) -> RuntimeResult<ActionFailureOutcome> {
+    match crate::shard::helpers::find_error_handler_for_failure(&state.workflow, ticket.step) {
+        Some((handler, error_slot)) => {
+            state
+                .frame
+                .mark_failed(ticket.step)
+                .map_err(|_| RuntimeError::InvalidActionCompletion)?;
+            write_failure_slot(state, ticket.step, error_slot)?;
+            state
+                .frame
+                .set_pc(handler)
+                .map_err(|_| RuntimeError::InvalidActionCompletion)?;
+            Ok(ActionFailureOutcome::DriveHandler)
+        }
+        None => Ok(ActionFailureOutcome::FailRun),
+    }
+}
+
+fn write_failure_slot(
+    state: &mut RunState,
+    step: StepIdx,
+    error_slot: Option<SlotIdx>,
+) -> RuntimeResult<()> {
+    match error_slot {
+        Some(slot) => state
+            .frame
+            .write_slot(slot, vb_core::value::SlotValue::I64(i64::from(step.get())))
+            .map_err(|_| RuntimeError::InvalidActionCompletion),
+        None => Ok(()),
+    }
 }
 
 impl Shard {
@@ -188,141 +236,68 @@ impl Shard {
         failure: ActionFailure,
     ) -> RuntimeResult<()> {
         let run = ticket.run;
-        let outcome = {
-            let state = self.runs.get_mut(&run).ok_or(RuntimeError::RunNotFound)?;
-            Self::action_failure_outcome(state, ticket, &failure)?
-        };
-        self.append_action_failed(ticket, failure)?;
-        self.apply_action_failure_outcome(run, outcome)
-    }
-
-    fn action_failure_outcome(
-        state: &mut RunState,
-        ticket: ActionTicket,
-        failure: &ActionFailure,
-    ) -> RuntimeResult<ActionFailureTransition> {
-        crate::shard::helpers::validate_action_completion(state, ticket)?;
-        match Self::retry_failure_outcome(state, ticket, failure)? {
-            Some(outcome) => Ok(outcome),
-            None => Self::handler_failure_outcome(state, ticket).map(|routed| {
-                if routed {
-                    ActionFailureTransition::RouteToHandler
-                } else {
-                    ActionFailureTransition::FailRun
-                }
-            }),
+        let code = failure.code;
+        let ticket = self.ticket_with_retry_capacity(ticket, failure.retry_policy)?;
+        let outcome = self.apply_action_failure_to_state(ticket, failure)?;
+        self.trace_ring.push(TraceEvent::ActionFailed {
+            run,
+            step: ticket.step,
+            code,
+        });
+        self.journal.append(RuntimeJournalEvent::ActionFailed {
+            run,
+            step: ticket.step,
+            action: ticket.action,
+        })?;
+        match outcome {
+            ActionFailureOutcome::RetryNow | ActionFailureOutcome::DriveHandler => {
+                self.drive_run(run)
+            }
+            ActionFailureOutcome::FailRun => {
+                let state = self.take_run_state(run)?;
+                self.fail_run_state(run, state)
+            }
         }
     }
 
-    fn retry_failure_outcome(
-        state: &mut RunState,
+    fn ticket_with_retry_capacity(
+        &self,
         ticket: ActionTicket,
-        failure: &ActionFailure,
-    ) -> RuntimeResult<Option<ActionFailureTransition>> {
-        if failure.retry_policy != VbCoreRetryPolicy::Retryable
+        retry_policy: VbCoreRetryPolicy,
+    ) -> RuntimeResult<ActionTicket> {
+        let Some(state) = self.runs.get(&ticket.run) else {
+            return Err(RuntimeError::RunNotFound);
+        };
+        if retry_policy != VbCoreRetryPolicy::Retryable
             || !crate::shard::helpers::retry_metadata_exists(state, ticket.step)
         {
-            return Ok(None);
+            return Ok(ticket);
         }
         let policy = crate::shard::helpers::retry_policy_after_action(state, ticket.step)?;
-        if crate::shard::helpers::record_retry_attempt(state, ticket, policy)? {
+        Ok(ActionTicket {
+            capacity: ticket.capacity.max(policy.max_attempts),
+            ..ticket
+        })
+    }
+
+    fn apply_action_failure_to_state(
+        &mut self,
+        ticket: ActionTicket,
+        failure: ActionFailure,
+    ) -> RuntimeResult<ActionFailureOutcome> {
+        let state = self
+            .runs
+            .get_mut(&ticket.run)
+            .ok_or(RuntimeError::RunNotFound)?;
+        crate::shard::helpers::validate_action_completion(state, ticket)?;
+        if retry_is_available(state, ticket, failure.retry_policy)? {
             state
                 .frame
                 .set_pc(ticket.step)
                 .map_err(|_| RuntimeError::InvalidActionCompletion)?;
-            Ok(Some(ActionFailureTransition::Retry {
-                max_attempts: policy.max_attempts,
-            }))
-        } else {
-            Self::handler_failure_outcome(state, ticket).map(|routed| {
-                Some(if routed {
-                    ActionFailureTransition::RetryExhaustedRouteToHandler {
-                        max_attempts: policy.max_attempts,
-                    }
-                } else {
-                    ActionFailureTransition::RetryExhaustedFailRun {
-                        max_attempts: policy.max_attempts,
-                    }
-                })
-            })
+            return Ok(ActionFailureOutcome::RetryNow);
         }
-    }
-
-    fn handler_failure_outcome(state: &mut RunState, ticket: ActionTicket) -> RuntimeResult<bool> {
-        match crate::shard::helpers::find_error_handler_for_failure(&state.workflow, ticket.step) {
-            Some((handler, error_slot)) => {
-                Self::route_failed_action_to_handler(state, ticket.step, handler, error_slot)?;
-                Ok(true)
-            }
-            None => Ok(false),
-        }
-    }
-
-    fn route_failed_action_to_handler(
-        state: &mut RunState,
-        failed: StepIdx,
-        handler: StepIdx,
-        error_slot: Option<SlotIdx>,
-    ) -> RuntimeResult<()> {
-        state
-            .frame
-            .mark_failed(failed)
-            .map_err(|_| RuntimeError::InvalidActionCompletion)?;
-        if let Some(slot) = error_slot {
-            state
-                .frame
-                .write_slot(
-                    slot,
-                    vb_core::value::SlotValue::I64(i64::from(failed.get())),
-                )
-                .map_err(|_| RuntimeError::InvalidActionCompletion)?;
-        }
-        state
-            .frame
-            .set_pc(handler)
-            .map_err(|_| RuntimeError::InvalidActionCompletion)
-    }
-
-    fn append_action_failed(
-        &mut self,
-        ticket: ActionTicket,
-        failure: ActionFailure,
-    ) -> RuntimeResult<()> {
-        self.trace_ring.push(TraceEvent::ActionFailed {
-            run: ticket.run,
-            step: ticket.step,
-            code: failure.code,
-        });
-        self.journal.append(RuntimeJournalEvent::ActionFailed {
-            run: ticket.run,
-            step: ticket.step,
-            action: ticket.action,
-        })
-    }
-
-    fn apply_action_failure_outcome(
-        &mut self,
-        run: RunId,
-        outcome: ActionFailureTransition,
-    ) -> RuntimeResult<()> {
-        match outcome {
-            ActionFailureTransition::Retry { max_attempts }
-            | ActionFailureTransition::RetryExhaustedRouteToHandler { max_attempts } => {
-                debug_assert!(max_attempts > 0);
-                self.drive_run(run)
-            }
-            ActionFailureTransition::RetryExhaustedFailRun { max_attempts } => {
-                debug_assert!(max_attempts > 0);
-                self.fail_active_run(run)
-            }
-            ActionFailureTransition::RouteToHandler => self.drive_run(run),
-            ActionFailureTransition::FailRun => self.fail_active_run(run),
-        }
-    }
-
-    fn fail_active_run(&mut self, run: RunId) -> RuntimeResult<()> {
-        let state = self.take_run_state(run)?;
-        self.fail_run_state(run, state)
+        apply_error_handler(state, ticket)
     }
 
     pub(crate) fn handle_ask_answer(&mut self, answer: AskAnswer) -> RuntimeResult<()> {
@@ -517,6 +492,66 @@ mod tests {
             accessors: Box::from([]),
             constants: Box::from([]),
             slot_count: 1,
+            symbols_count: 0,
+            entry: StepIdx::ZERO,
+            step_names: Box::from([]),
+            resource_contract: ResourceContract::DEFAULT,
+        };
+        vb_core::workflow::CompiledWorkflow::try_from_parts(parts).ok()
+    }
+
+    fn zero_retry_policy_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
+        let set_policy = CompiledNode {
+            id: StepIdx::ZERO,
+            output: Some(SlotIdx::new(1)),
+            next: Some(StepIdx::new(1)),
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::SetConst {
+                value: ConstIdx::new(0),
+            },
+        };
+        let action = CompiledNode {
+            id: StepIdx::new(1),
+            output: None,
+            next: Some(StepIdx::new(2)),
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Do {
+                action: ActionId::new(0),
+                input: SlotIdx::ZERO,
+            },
+        };
+        let retry = CompiledNode {
+            id: StepIdx::new(2),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::RetryCheck {
+                policy_slot: SlotIdx::new(1),
+                body: StepIdx::new(1),
+                exhausted: StepIdx::new(3),
+            },
+        };
+        let finish = CompiledNode {
+            id: StepIdx::new(3),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::ZERO,
+            },
+        };
+        let parts = WorkflowParts {
+            name: Box::from("zero_retry_policy"),
+            digest: WorkflowDigest::from_bytes([8; 32]),
+            nodes: Box::from([set_policy, action, retry, finish]),
+            expressions: Box::from([]),
+            accessors: Box::from([]),
+            constants: Box::from([ConstValue::I64(0)]),
+            slot_count: 2,
             symbols_count: 0,
             entry: StepIdx::ZERO,
             step_names: Box::from([]),
@@ -1164,6 +1199,194 @@ mod tests {
             Ok(())
         );
         assert_eq!(shard.tick(), Err(RuntimeError::RunNotFound));
+    }
+
+    #[test]
+    fn future_attempt_completion_rejected_when_current_attempt_exists() {
+        let mut shard = Shard::new(small_config());
+        let Some(wf) = suspended_workflow() else {
+            assert_eq!(None::<()>, Some(()), "missing suspended workflow fixture");
+            return;
+        };
+        let run = RunId::new(40_001);
+        assert_eq!(
+            shard.enqueue(ShardCommand::Submit {
+                run,
+                workflow: wf,
+                caps: CapabilitySet::empty(),
+            }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Ok(true));
+        let Some(state) = shard.runs.get_mut(&run) else {
+            assert_eq!(None::<()>, Some(()), "run should remain active");
+            return;
+        };
+        assert_eq!(state.action_attempts.get(0).copied(), Some(1));
+        let output = ActionOutputReady {
+            output_slot: SlotIdx::ZERO,
+            value: SlotValue::I64(7),
+            taint: Taint::Clean,
+            encoded_len: 0,
+        };
+        assert_eq!(
+            shard.enqueue(ShardCommand::ActionCompleted {
+                ticket: ActionTicket {
+                    capacity: 3,
+                    ..make_ticket(run, StepIdx::ZERO, 2)
+                },
+                output,
+            }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Err(RuntimeError::InvalidActionCompletion));
+    }
+
+    #[test]
+    fn future_attempt_completion_beyond_max_is_action_failed_code() {
+        let mut shard = Shard::new(small_config());
+        let Some(wf) = suspended_workflow() else {
+            assert_eq!(None::<()>, Some(()), "missing suspended workflow fixture");
+            return;
+        };
+        let run = RunId::new(40_002);
+        assert_eq!(
+            shard.enqueue(ShardCommand::Submit {
+                run,
+                workflow: wf,
+                caps: CapabilitySet::empty(),
+            }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Ok(true));
+        let output = ActionOutputReady {
+            output_slot: SlotIdx::ZERO,
+            value: SlotValue::I64(7),
+            taint: Taint::Clean,
+            encoded_len: 0,
+        };
+        let error = RuntimeError::AttemptBeyondMax { attempt: 4, max: 3 };
+        assert_eq!(error.runtime_code(), Some("ACTION_FAILED"));
+        assert_eq!(
+            shard.enqueue(ShardCommand::ActionCompleted {
+                ticket: ActionTicket {
+                    capacity: 3,
+                    ..make_ticket(run, StepIdx::ZERO, 4)
+                },
+                output,
+            }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Err(error));
+    }
+
+    #[test]
+    fn stale_attempt_completion_leaves_run_counters_journal_and_frame_unchanged() {
+        let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
+        let shared: SharedRuntimeJournal = journal.clone();
+        let mut shard = Shard::new_with_journal(small_config(), shared);
+        let Some(wf) = suspended_workflow() else {
+            assert_eq!(None::<()>, Some(()), "missing suspended workflow fixture");
+            return;
+        };
+        let run = RunId::new(41);
+        assert_eq!(
+            shard.enqueue(ShardCommand::Submit {
+                run,
+                workflow: wf,
+                caps: CapabilitySet::empty(),
+            }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Ok(true));
+        let Some(state) = shard.runs.get_mut(&run) else {
+            assert_eq!(None::<()>, Some(()), "run should remain active");
+            return;
+        };
+        if let Some(attempt) = state.action_attempts.get_mut(0) {
+            *attempt = 3;
+        }
+        let frame_before = state.frame.clone();
+        let step_state_before = state.frame.step_state(StepIdx::ZERO);
+        let attempts_before = state.action_attempts.clone();
+        let counters_before = shard.counters().snapshot();
+        let journal_before = journal.snapshot();
+        let trace_before = shard
+            .trace_ring()
+            .snapshot_for_run(run, shard.trace_ring().capacity());
+        let output = ActionOutputReady {
+            output_slot: SlotIdx::ZERO,
+            value: SlotValue::I64(7),
+            taint: Taint::Clean,
+            encoded_len: 0,
+        };
+        assert_eq!(
+            shard.enqueue(ShardCommand::ActionCompleted {
+                ticket: ActionTicket {
+                    capacity: 3,
+                    ..make_ticket(run, StepIdx::ZERO, 2)
+                },
+                output,
+            }),
+            Ok(())
+        );
+        assert_eq!(
+            shard.tick(),
+            Err(RuntimeError::StaleAttempt {
+                incoming: 2,
+                current: 3,
+            })
+        );
+        let Some(state_after) = shard.runs.get(&run) else {
+            assert_eq!(
+                None::<()>,
+                Some(()),
+                "run should remain active after rejection"
+            );
+            return;
+        };
+        assert_eq!(state_after.frame.pc(), frame_before.pc());
+        assert_eq!(
+            state_after.frame.step_state(StepIdx::ZERO),
+            step_state_before
+        );
+        assert_eq!(state_after.frame, frame_before);
+        assert_eq!(state_after.action_attempts, attempts_before);
+        assert_eq!(shard.counters().snapshot(), counters_before);
+        assert_eq!(journal.snapshot(), journal_before);
+        assert_eq!(
+            shard
+                .trace_ring()
+                .snapshot_for_run(run, shard.trace_ring().capacity()),
+            trace_before
+        );
+    }
+
+    #[test]
+    fn scheduling_propagates_zero_retry_policy_error() {
+        let mut shard = Shard::new(small_config());
+        let Some(wf) = zero_retry_policy_workflow() else {
+            assert_eq!(
+                None::<()>,
+                Some(()),
+                "missing zero retry policy workflow fixture"
+            );
+            return;
+        };
+        assert_eq!(
+            shard.enqueue(ShardCommand::Submit {
+                run: RunId::new(42),
+                workflow: wf,
+                caps: CapabilitySet::empty(),
+            }),
+            Ok(())
+        );
+        assert_eq!(
+            shard.tick(),
+            Err(RuntimeError::UnsupportedOperation {
+                operation: "retry_policy_attempts_zero",
+            })
+        );
     }
 
     #[test]

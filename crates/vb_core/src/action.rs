@@ -483,6 +483,8 @@ pub enum ActionJournalEvent {
     Suspended {
         /// Ticket identifying the in-flight action.
         ticket: ActionTicket,
+        /// Monotonic per-step attempt number captured for replay.
+        attempt: u16,
         /// Action contract ID for dispatch routing.
         action: ActionId,
         /// Input slot carrying the action payload.
@@ -496,6 +498,8 @@ pub enum ActionJournalEvent {
     Completed {
         /// Ticket of the completed action.
         ticket: ActionTicket,
+        /// Monotonic per-step attempt number captured for replay.
+        attempt: u16,
         /// Output slot written by the action.
         output_slot: SlotIdx,
         /// Taint propagated from input to output.
@@ -505,6 +509,8 @@ pub enum ActionJournalEvent {
     Failed {
         /// Ticket of the failed action.
         ticket: ActionTicket,
+        /// Monotonic per-step attempt number captured for replay.
+        attempt: u16,
         /// Failure code for diagnostics.
         code: ActionFailureCode,
         /// Whether the failure is retryable.
@@ -1776,6 +1782,7 @@ mod tests {
         };
         let event = ActionJournalEvent::Suspended {
             ticket,
+            attempt: ticket.attempt,
             action: ActionId::new(7),
             input_slot: SlotIdx::new(0),
             output_slot: SlotIdx::new(1),
@@ -1784,12 +1791,14 @@ mod tests {
         match event {
             ActionJournalEvent::Suspended {
                 ticket: t,
+                attempt,
                 action,
                 input_slot,
                 output_slot,
                 step,
             } => {
                 assert_eq!(t.run, RunId::new(10));
+                assert_eq!(attempt, 1);
                 assert_eq!(action, ActionId::new(7));
                 assert_eq!(input_slot, SlotIdx::new(0));
                 assert_eq!(output_slot, SlotIdx::new(1));
@@ -1812,16 +1821,19 @@ mod tests {
         };
         let event = ActionJournalEvent::Completed {
             ticket,
+            attempt: ticket.attempt,
             output_slot: SlotIdx::new(2),
             output_taint: Taint::Secret,
         };
         match event {
             ActionJournalEvent::Completed {
                 ticket: t,
+                attempt,
                 output_slot,
                 output_taint,
             } => {
                 assert_eq!(t.run, RunId::new(11));
+                assert_eq!(attempt, 1);
                 assert_eq!(output_slot, SlotIdx::new(2));
                 assert_eq!(output_taint, Taint::Secret);
             }
@@ -1842,16 +1854,19 @@ mod tests {
         };
         let event = ActionJournalEvent::Failed {
             ticket,
+            attempt: ticket.attempt,
             code: ActionFailureCode::Timeout,
             retry_policy: RetryPolicy::Retryable,
         };
         match event {
             ActionJournalEvent::Failed {
                 ticket: t,
+                attempt,
                 code,
                 retry_policy,
             } => {
                 assert_eq!(t.run, RunId::new(12));
+                assert_eq!(attempt, 3);
                 assert_eq!(code, ActionFailureCode::Timeout);
                 assert_eq!(retry_policy, RetryPolicy::Retryable);
             }
@@ -1872,6 +1887,7 @@ mod tests {
         };
         let event = ActionJournalEvent::Suspended {
             ticket,
+            attempt: ticket.attempt,
             action: ActionId::new(3),
             input_slot: SlotIdx::new(0),
             output_slot: SlotIdx::new(1),
@@ -1898,6 +1914,7 @@ mod tests {
         };
         let event = ActionJournalEvent::Completed {
             ticket,
+            attempt: ticket.attempt,
             output_slot: SlotIdx::new(3),
             output_taint: Taint::DerivedFromSecret,
         };
@@ -1922,6 +1939,7 @@ mod tests {
         };
         let event = ActionJournalEvent::Failed {
             ticket,
+            attempt: ticket.attempt,
             code: ActionFailureCode::Rejected,
             retry_policy: RetryPolicy::NonRetryable,
         };

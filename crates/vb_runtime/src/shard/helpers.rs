@@ -29,6 +29,7 @@ pub fn validate_action_completion(
     state: &crate::shard::types::RunState,
     ticket: ActionTicket,
 ) -> RuntimeResult<()> {
+    validate_ticket_attempt(state, ticket)?;
     if state.frame.step_state(ticket.step) != Ok(StepState::Running) {
         return Err(RuntimeError::InvalidActionCompletion);
     }
@@ -39,6 +40,53 @@ pub fn validate_action_completion(
         CompiledNodeKind::Do { action, .. } if action == ticket.action => Ok(()),
         _ => Err(RuntimeError::InvalidActionCompletion),
     }
+}
+
+fn validate_ticket_attempt(
+    state: &crate::shard::types::RunState,
+    ticket: ActionTicket,
+) -> RuntimeResult<()> {
+    if ticket.attempt == 0 || ticket.capacity == 0 || ticket.attempt > ticket.capacity {
+        return Err(RuntimeError::AttemptBeyondMax {
+            attempt: ticket.attempt,
+            max: ticket.capacity,
+        });
+    }
+    let current = state
+        .action_attempts
+        .get(ticket.step.as_usize())
+        .copied()
+        .ok_or(RuntimeError::InvalidActionCompletion)?;
+    if ticket.attempt < current {
+        return Err(RuntimeError::StaleAttempt {
+            incoming: ticket.attempt,
+            current,
+        });
+    }
+    if current != 0 && ticket.attempt > current {
+        return Err(RuntimeError::InvalidActionCompletion);
+    }
+    Ok(())
+}
+
+/// Promotes an engine-issued ticket to the live per-step attempt counter.
+pub fn normalize_scheduled_ticket(
+    state: &crate::shard::types::RunState,
+    ticket: ActionTicket,
+) -> RuntimeResult<ActionTicket> {
+    let current = state
+        .action_attempts
+        .get(ticket.step.as_usize())
+        .copied()
+        .ok_or(RuntimeError::InvalidActionCompletion)?;
+    let attempt = current.max(ticket.attempt).max(1);
+    if ticket.capacity == 0 || attempt > ticket.capacity {
+        return Err(RuntimeError::AttemptBeyondMax {
+            attempt,
+            max: ticket.capacity,
+        });
+    }
+    Ok(ActionTicket { attempt, ..ticket })
 }
 
 /// Advances PC after an action completes successfully.
@@ -115,11 +163,24 @@ pub fn new_action_attempts(step_count: u16) -> Box<[u16]> {
 
 /// Records a scheduled action attempt.
 pub fn record_scheduled_attempt(state: &mut crate::shard::types::RunState, ticket: ActionTicket) {
+    if ticket.attempt == 0 {
+        return;
+    }
     if let Some(attempt) = state.action_attempts.get_mut(ticket.step.as_usize())
         && (*attempt == 0 || *attempt < ticket.attempt)
     {
         *attempt = ticket.attempt;
     }
+}
+
+fn validate_retry_attempt(ticket: ActionTicket, policy: RetryPolicy) -> RuntimeResult<()> {
+    if policy.max_attempts == 0 || ticket.attempt == 0 || ticket.attempt > policy.max_attempts {
+        return Err(RuntimeError::AttemptBeyondMax {
+            attempt: ticket.attempt,
+            max: policy.max_attempts,
+        });
+    }
+    Ok(())
 }
 
 /// Returns true if retry metadata exists for the given step.
@@ -191,13 +252,12 @@ pub fn record_retry_attempt(
     ticket: ActionTicket,
     policy: RetryPolicy,
 ) -> RuntimeResult<bool> {
+    validate_retry_attempt(ticket, policy)?;
     let attempt = state
         .action_attempts
         .get_mut(ticket.step.as_usize())
         .ok_or(RuntimeError::InvalidActionCompletion)?;
-    if *attempt == 0 || *attempt < ticket.attempt {
-        *attempt = ticket.attempt;
-    }
+    *attempt = (*attempt).max(ticket.attempt);
     if *attempt >= policy.max_attempts {
         return Ok(false);
     }
@@ -284,7 +344,7 @@ pub fn snapshot_from_state(
 #[cfg(test)]
 mod tests {
     use vb_core::action::ActionTicket;
-    use vb_core::frame::RunFrame;
+    use vb_core::frame::{RunFrame, StepState};
     use vb_core::ids::{ActionId, ConstIdx, RunId, SeqNo, SlotIdx, StepIdx, WorkflowDigest};
     use vb_core::value::{ConstValue, SlotValue, Taint};
     use vb_core::value_store::ValueStore;
@@ -296,9 +356,9 @@ mod tests {
     use super::super::types::RunState;
     use super::{
         PendingTimer, PendingTimerKind, advance_after_action_completion, advance_after_timer_fire,
-        find_error_handler_for_failure, new_action_attempts, record_retry_attempt,
-        record_scheduled_attempt, result_slot_for_finished_run, retry_metadata_exists,
-        retry_policy_after_action, seed_input_slots, snapshot_from_state,
+        find_error_handler_for_failure, new_action_attempts, normalize_scheduled_ticket,
+        record_retry_attempt, record_scheduled_attempt, result_slot_for_finished_run,
+        retry_metadata_exists, retry_policy_after_action, seed_input_slots, snapshot_from_state,
         timer_registration_required, validate_action_completion,
     };
 
@@ -629,9 +689,7 @@ mod tests {
     fn new_action_attempts_with_many_steps() {
         let attempts = new_action_attempts(100);
         assert_eq!(attempts.len(), 100);
-        for i in 0..100 {
-            assert_eq!(attempts.get(i).copied(), Some(0));
-        }
+        assert!(attempts.iter().copied().all(|attempt| attempt == 0));
     }
 
     #[test]
@@ -647,9 +705,11 @@ mod tests {
     #[test]
     fn record_scheduled_attempt_records_first_attempt() {
         let Some(wf) = suspended_workflow() else {
+            assert_eq!(None::<()>, Some(()), "missing suspended workflow fixture");
             return;
         };
         let Some(mut state) = make_run_state(wf, RunId::new(1)) else {
+            assert_eq!(None::<()>, Some(()), "missing run state fixture");
             return;
         };
         let t = ticket(RunId::new(1), StepIdx::ZERO, 1);
@@ -660,9 +720,11 @@ mod tests {
     #[test]
     fn record_scheduled_attempt_updates_higher_attempt() {
         let Some(wf) = suspended_workflow() else {
+            assert_eq!(None::<()>, Some(()), "missing suspended workflow fixture");
             return;
         };
         let Some(mut state) = make_run_state(wf, RunId::new(1)) else {
+            assert_eq!(None::<()>, Some(()), "missing run state fixture");
             return;
         };
         let t1 = ticket(RunId::new(1), StepIdx::ZERO, 1);
@@ -675,9 +737,11 @@ mod tests {
     #[test]
     fn record_scheduled_attempt_ignores_lower_attempt() {
         let Some(wf) = suspended_workflow() else {
+            assert_eq!(None::<()>, Some(()), "missing suspended workflow fixture");
             return;
         };
         let Some(mut state) = make_run_state(wf, RunId::new(1)) else {
+            assert_eq!(None::<()>, Some(()), "missing run state fixture");
             return;
         };
         let t_high = ticket(RunId::new(1), StepIdx::ZERO, 5);
@@ -690,9 +754,11 @@ mod tests {
     #[test]
     fn record_scheduled_attempt_on_out_of_bounds_step_is_noop() {
         let Some(wf) = suspended_workflow() else {
+            assert_eq!(None::<()>, Some(()), "missing suspended workflow fixture");
             return;
         };
         let Some(mut state) = make_run_state(wf, RunId::new(1)) else {
+            assert_eq!(None::<()>, Some(()), "missing run state fixture");
             return;
         };
         let t = ticket(RunId::new(1), StepIdx::new(99), 1);
@@ -768,9 +834,11 @@ mod tests {
     #[test]
     fn validate_action_completion_rejects_non_running_step() {
         let Some(wf) = suspended_workflow() else {
+            assert_eq!(None::<()>, Some(()), "missing suspended workflow fixture");
             return;
         };
         let Some(state) = make_run_state(wf, RunId::new(1)) else {
+            assert_eq!(None::<()>, Some(()), "missing run state fixture");
             return;
         };
         // Step 0 is in Pending state (not Running), so validation should fail.
@@ -782,9 +850,11 @@ mod tests {
     #[test]
     fn validate_action_completion_rejects_out_of_bounds_step() {
         let Some(wf) = suspended_workflow() else {
+            assert_eq!(None::<()>, Some(()), "missing suspended workflow fixture");
             return;
         };
         let Some(state) = make_run_state(wf, RunId::new(1)) else {
+            assert_eq!(None::<()>, Some(()), "missing run state fixture");
             return;
         };
         let t = ticket(RunId::new(1), StepIdx::new(99), 1);
@@ -921,14 +991,14 @@ mod tests {
         // Drive step 0 (SetConst) and manually write the policy value.
         // The deterministic engine is not running in this unit test, so
         // we populate the slot directly.
-        assert!(state.frame.mark_running(StepIdx::ZERO).is_ok());
-        assert!(state.frame.mark_succeeded(StepIdx::ZERO).is_ok());
-        assert!(state.frame.set_pc(StepIdx::new(1)).is_ok());
-        assert!(
+        assert_eq!(state.frame.mark_running(StepIdx::ZERO), Ok(()));
+        assert_eq!(state.frame.mark_succeeded(StepIdx::ZERO), Ok(()));
+        assert_eq!(state.frame.set_pc(StepIdx::new(1)), Ok(()));
+        assert_eq!(
             state
                 .frame
-                .write_slot_with_taint(SlotIdx::new(1), SlotValue::I64(3), Taint::Clean)
-                .is_ok()
+                .write_slot_with_taint(SlotIdx::new(1), SlotValue::I64(3), Taint::Clean),
+            Ok(())
         );
 
         let policy = retry_policy_after_action(&state, StepIdx::new(1));
@@ -977,9 +1047,11 @@ mod tests {
     #[test]
     fn record_retry_attempt_increments_and_allows_retry() {
         let Some(wf) = suspended_workflow() else {
+            assert_eq!(None::<()>, Some(()), "missing suspended workflow fixture");
             return;
         };
         let Some(mut state) = make_run_state(wf, RunId::new(1)) else {
+            assert_eq!(None::<()>, Some(()), "missing run state fixture");
             return;
         };
         let t = ticket(RunId::new(1), StepIdx::ZERO, 1);
@@ -995,9 +1067,11 @@ mod tests {
     #[test]
     fn record_retry_attempt_blocks_when_max_reached() {
         let Some(wf) = suspended_workflow() else {
+            assert_eq!(None::<()>, Some(()), "missing suspended workflow fixture");
             return;
         };
         let Some(mut state) = make_run_state(wf, RunId::new(1)) else {
+            assert_eq!(None::<()>, Some(()), "missing run state fixture");
             return;
         };
         let t = ticket(RunId::new(1), StepIdx::ZERO, 1);
@@ -1013,9 +1087,11 @@ mod tests {
     #[test]
     fn record_retry_attempt_rejects_out_of_bounds_step() {
         let Some(wf) = suspended_workflow() else {
+            assert_eq!(None::<()>, Some(()), "missing suspended workflow fixture");
             return;
         };
         let Some(mut state) = make_run_state(wf, RunId::new(1)) else {
+            assert_eq!(None::<()>, Some(()), "missing run state fixture");
             return;
         };
         let t = ticket(RunId::new(1), StepIdx::new(99), 1);
@@ -1028,6 +1104,52 @@ mod tests {
             record_retry_attempt(&mut state, t, policy),
             Err(RuntimeError::InvalidActionCompletion)
         );
+    }
+
+    #[test]
+    fn record_retry_attempt_rejects_zero_attempt() {
+        let Some(wf) = suspended_workflow() else {
+            assert_eq!(None::<()>, Some(()), "missing suspended workflow fixture");
+            return;
+        };
+        let Some(mut state) = make_run_state(wf, RunId::new(1)) else {
+            assert_eq!(None::<()>, Some(()), "missing run state fixture");
+            return;
+        };
+        let t = ticket(RunId::new(1), StepIdx::ZERO, 0);
+        let policy = crate::engine::RetryPolicy {
+            max_attempts: 3,
+            base_delay_ms: 0,
+            exponential_backoff: false,
+        };
+        assert_eq!(
+            record_retry_attempt(&mut state, t, policy),
+            Err(RuntimeError::AttemptBeyondMax { attempt: 0, max: 3 })
+        );
+        assert_eq!(state.action_attempts.get(0).copied(), Some(0));
+    }
+
+    #[test]
+    fn record_retry_attempt_rejects_zero_policy_capacity() {
+        let Some(wf) = suspended_workflow() else {
+            assert_eq!(None::<()>, Some(()), "missing suspended workflow fixture");
+            return;
+        };
+        let Some(mut state) = make_run_state(wf, RunId::new(1)) else {
+            assert_eq!(None::<()>, Some(()), "missing run state fixture");
+            return;
+        };
+        let t = ticket(RunId::new(1), StepIdx::ZERO, 1);
+        let policy = crate::engine::RetryPolicy {
+            max_attempts: 0,
+            base_delay_ms: 0,
+            exponential_backoff: false,
+        };
+        assert_eq!(
+            record_retry_attempt(&mut state, t, policy),
+            Err(RuntimeError::AttemptBeyondMax { attempt: 1, max: 0 })
+        );
+        assert_eq!(state.action_attempts.get(0).copied(), Some(0));
     }
 
     // =======================================================================
@@ -1045,10 +1167,7 @@ mod tests {
                 assert_eq!(handler, StepIdx::new(2));
                 assert_eq!(error_slot, None);
             }
-            None => {
-                // Wrong: expected Some
-                assert!(false);
-            }
+            None => assert_eq!(result.is_some(), true),
         }
     }
 
@@ -1058,7 +1177,7 @@ mod tests {
             return;
         };
         let result = find_error_handler_for_failure(&wf, StepIdx::ZERO);
-        assert!(result.is_some());
+        assert_eq!(result.map(|(handler, _)| handler), Some(StepIdx::new(2)));
     }
 
     #[test]
@@ -1102,9 +1221,9 @@ mod tests {
             return;
         };
         // Drive to the Finish node (step 1).
-        assert!(state.frame.mark_running(StepIdx::ZERO).is_ok());
-        assert!(state.frame.mark_succeeded(StepIdx::ZERO).is_ok());
-        assert!(state.frame.set_pc(StepIdx::new(1)).is_ok());
+        assert_eq!(state.frame.mark_running(StepIdx::ZERO), Ok(()));
+        assert_eq!(state.frame.mark_succeeded(StepIdx::ZERO), Ok(()));
+        assert_eq!(state.frame.set_pc(StepIdx::new(1)), Ok(()));
         let slot = result_slot_for_finished_run(&state);
         assert_eq!(slot, Some(SlotIdx::new(0)));
     }
@@ -1149,9 +1268,9 @@ mod tests {
         let Some(mut state) = make_run_state(wf, run_id) else {
             return;
         };
-        assert!(state.frame.mark_running(StepIdx::ZERO).is_ok());
-        assert!(state.frame.mark_succeeded(StepIdx::ZERO).is_ok());
-        assert!(state.frame.set_pc(StepIdx::new(1)).is_ok());
+        assert_eq!(state.frame.mark_running(StepIdx::ZERO), Ok(()));
+        assert_eq!(state.frame.mark_succeeded(StepIdx::ZERO), Ok(()));
+        assert_eq!(state.frame.set_pc(StepIdx::new(1)), Ok(()));
         // executed is incremented by increment_executed, not by mark_succeeded,
         // so it remains 0 in this manual state manipulation.
         let snapshot = snapshot_from_state(run_id, 0, &state);
@@ -1236,11 +1355,11 @@ mod tests {
             return;
         };
         // Drive to step 1 (WaitUntil) first.
-        assert!(state.frame.mark_running(StepIdx::ZERO).is_ok());
-        assert!(state.frame.mark_succeeded(StepIdx::ZERO).is_ok());
-        assert!(state.frame.set_pc(StepIdx::new(1)).is_ok());
+        assert_eq!(state.frame.mark_running(StepIdx::ZERO), Ok(()));
+        assert_eq!(state.frame.mark_succeeded(StepIdx::ZERO), Ok(()));
+        assert_eq!(state.frame.set_pc(StepIdx::new(1)), Ok(()));
         // Mark step 1 as running to satisfy advance_after_timer_fire
-        assert!(state.frame.mark_running(StepIdx::new(1)).is_ok());
+        assert_eq!(state.frame.mark_running(StepIdx::new(1)), Ok(()));
 
         let timer = PendingTimer {
             step: StepIdx::new(1),
@@ -1262,10 +1381,10 @@ mod tests {
             return;
         };
         // Drive to step 1 (WaitUntil)
-        assert!(state.frame.mark_running(StepIdx::ZERO).is_ok());
-        assert!(state.frame.mark_succeeded(StepIdx::ZERO).is_ok());
-        assert!(state.frame.set_pc(StepIdx::new(1)).is_ok());
-        assert!(state.frame.mark_running(StepIdx::new(1)).is_ok());
+        assert_eq!(state.frame.mark_running(StepIdx::ZERO), Ok(()));
+        assert_eq!(state.frame.mark_succeeded(StepIdx::ZERO), Ok(()));
+        assert_eq!(state.frame.set_pc(StepIdx::new(1)), Ok(()));
+        assert_eq!(state.frame.mark_running(StepIdx::new(1)), Ok(()));
 
         let timer = PendingTimer {
             step: StepIdx::new(1),
@@ -1312,7 +1431,7 @@ mod tests {
         let Some(mut state) = make_run_state(wf, RunId::new(1)) else {
             return;
         };
-        assert!(state.frame.mark_running(StepIdx::ZERO).is_ok());
+        assert_eq!(state.frame.mark_running(StepIdx::ZERO), Ok(()));
 
         let timer = PendingTimer {
             step: StepIdx::ZERO,
@@ -1509,11 +1628,231 @@ mod tests {
             return;
         };
         // Mark step 0 as running so validate passes
-        assert!(state.frame.mark_running(StepIdx::ZERO).is_ok());
+        assert_eq!(state.frame.mark_running(StepIdx::ZERO), Ok(()));
 
         let t = ticket(RunId::new(1), StepIdx::ZERO, 1);
         let result = validate_action_completion(&state, t);
         assert_eq!(result, Ok(()));
+    }
+
+    #[test]
+    fn validate_action_completion_accepts_matching_current_attempt() {
+        let Some(wf) = suspended_workflow() else {
+            return;
+        };
+        let Some(mut state) = make_run_state(wf, RunId::new(1)) else {
+            return;
+        };
+        assert_eq!(state.frame.mark_running(StepIdx::ZERO), Ok(()));
+        if let Some(attempt) = state.action_attempts.get_mut(0) {
+            *attempt = 2;
+        }
+
+        let result = validate_action_completion(
+            &state,
+            ActionTicket {
+                capacity: 3,
+                ..ticket(RunId::new(1), StepIdx::ZERO, 2)
+            },
+        );
+        assert_eq!(result, Ok(()));
+    }
+
+    #[test]
+    fn validate_action_completion_rejects_stale_attempt_without_state_change() {
+        let Some(wf) = suspended_workflow() else {
+            return;
+        };
+        let Some(mut state) = make_run_state(wf, RunId::new(1)) else {
+            return;
+        };
+        assert_eq!(state.frame.mark_running(StepIdx::ZERO), Ok(()));
+        let pc_before = state.frame.pc();
+        let executed_before = state.frame.executed();
+        let frame_before = state.frame.clone();
+        if let Some(attempt) = state.action_attempts.get_mut(0) {
+            *attempt = 3;
+        }
+
+        let result = validate_action_completion(
+            &state,
+            ActionTicket {
+                capacity: 3,
+                ..ticket(RunId::new(1), StepIdx::ZERO, 2)
+            },
+        );
+        assert_eq!(
+            result,
+            Err(RuntimeError::StaleAttempt {
+                incoming: 2,
+                current: 3
+            })
+        );
+        assert_eq!(state.action_attempts.get(0).copied(), Some(3));
+        assert_eq!(state.frame.pc(), pc_before);
+        assert_eq!(state.frame.executed(), executed_before);
+        assert_eq!(state.frame, frame_before);
+        assert_eq!(
+            state.frame.step_state(StepIdx::ZERO),
+            Ok(StepState::Running)
+        );
+    }
+
+    #[test]
+    fn validate_action_completion_rejects_zero_attempt() {
+        let Some(wf) = suspended_workflow() else {
+            return;
+        };
+        let Some(mut state) = make_run_state(wf, RunId::new(1)) else {
+            return;
+        };
+        assert_eq!(state.frame.mark_running(StepIdx::ZERO), Ok(()));
+
+        let result = validate_action_completion(
+            &state,
+            ActionTicket {
+                capacity: 3,
+                ..ticket(RunId::new(1), StepIdx::ZERO, 0)
+            },
+        );
+        assert_eq!(
+            result,
+            Err(RuntimeError::AttemptBeyondMax { attempt: 0, max: 3 })
+        );
+    }
+
+    #[test]
+    fn validate_action_completion_rejects_zero_capacity() {
+        let Some(wf) = suspended_workflow() else {
+            return;
+        };
+        let Some(mut state) = make_run_state(wf, RunId::new(1)) else {
+            return;
+        };
+        assert_eq!(state.frame.mark_running(StepIdx::ZERO), Ok(()));
+
+        let result = validate_action_completion(
+            &state,
+            ActionTicket {
+                capacity: 0,
+                ..ticket(RunId::new(1), StepIdx::ZERO, 1)
+            },
+        );
+        assert_eq!(
+            result,
+            Err(RuntimeError::AttemptBeyondMax { attempt: 1, max: 0 })
+        );
+    }
+
+    #[test]
+    fn validate_action_completion_rejects_attempt_beyond_max() {
+        let Some(wf) = suspended_workflow() else {
+            return;
+        };
+        let Some(mut state) = make_run_state(wf, RunId::new(1)) else {
+            return;
+        };
+        assert_eq!(state.frame.mark_running(StepIdx::ZERO), Ok(()));
+
+        let result = validate_action_completion(
+            &state,
+            ActionTicket {
+                capacity: 3,
+                ..ticket(RunId::new(1), StepIdx::ZERO, 4)
+            },
+        );
+        assert_eq!(
+            result,
+            Err(RuntimeError::AttemptBeyondMax { attempt: 4, max: 3 })
+        );
+    }
+
+    #[test]
+    fn normalize_scheduled_ticket_promotes_attempts_one_two_three() {
+        let Some(wf) = suspended_workflow() else {
+            return;
+        };
+        let Some(mut state) = make_run_state(wf, RunId::new(1)) else {
+            return;
+        };
+        let first = normalize_scheduled_ticket(
+            &state,
+            ActionTicket {
+                capacity: 3,
+                ..ticket(RunId::new(1), StepIdx::ZERO, 1)
+            },
+        );
+        assert_eq!(first.map(|t| t.attempt), Ok(1));
+
+        if let Some(attempt) = state.action_attempts.get_mut(0) {
+            *attempt = 2;
+        }
+        let second = normalize_scheduled_ticket(
+            &state,
+            ActionTicket {
+                capacity: 3,
+                ..ticket(RunId::new(1), StepIdx::ZERO, 1)
+            },
+        );
+        assert_eq!(second.map(|t| t.attempt), Ok(2));
+
+        if let Some(attempt) = state.action_attempts.get_mut(0) {
+            *attempt = 3;
+        }
+        let third = normalize_scheduled_ticket(
+            &state,
+            ActionTicket {
+                capacity: 3,
+                ..ticket(RunId::new(1), StepIdx::ZERO, 1)
+            },
+        );
+        assert_eq!(third.map(|t| t.attempt), Ok(3));
+    }
+
+    #[test]
+    fn normalize_scheduled_ticket_rejects_zero_capacity_as_attempt_beyond_max() {
+        let Some(wf) = suspended_workflow() else {
+            return;
+        };
+        let Some(state) = make_run_state(wf, RunId::new(1)) else {
+            return;
+        };
+        let result = normalize_scheduled_ticket(
+            &state,
+            ActionTicket {
+                capacity: 0,
+                ..ticket(RunId::new(1), StepIdx::ZERO, 0)
+            },
+        );
+        assert_eq!(
+            result,
+            Err(RuntimeError::AttemptBeyondMax { attempt: 1, max: 0 })
+        );
+    }
+
+    #[test]
+    fn normalize_scheduled_ticket_rejects_attempt_beyond_max_with_exact_error() {
+        let Some(wf) = suspended_workflow() else {
+            return;
+        };
+        let Some(mut state) = make_run_state(wf, RunId::new(1)) else {
+            return;
+        };
+        if let Some(attempt) = state.action_attempts.get_mut(0) {
+            *attempt = 4;
+        }
+        let result = normalize_scheduled_ticket(
+            &state,
+            ActionTicket {
+                capacity: 3,
+                ..ticket(RunId::new(1), StepIdx::ZERO, 1)
+            },
+        );
+        assert_eq!(
+            result,
+            Err(RuntimeError::AttemptBeyondMax { attempt: 4, max: 3 })
+        );
+        assert_eq!(state.action_attempts.get(0).copied(), Some(4));
     }
 
     // ---- validate_action_completion rejects wrong action id ----
@@ -1526,7 +1865,7 @@ mod tests {
         let Some(mut state) = make_run_state(wf, RunId::new(1)) else {
             return;
         };
-        assert!(state.frame.mark_running(StepIdx::ZERO).is_ok());
+        assert_eq!(state.frame.mark_running(StepIdx::ZERO), Ok(()));
 
         let t = ActionTicket {
             run: RunId::new(1),
@@ -1643,14 +1982,14 @@ mod tests {
             return;
         };
         // Drive step 0 and write a Bool to the policy slot
-        assert!(state.frame.mark_running(StepIdx::ZERO).is_ok());
-        assert!(state.frame.mark_succeeded(StepIdx::ZERO).is_ok());
-        assert!(state.frame.set_pc(StepIdx::new(1)).is_ok());
-        assert!(
+        assert_eq!(state.frame.mark_running(StepIdx::ZERO), Ok(()));
+        assert_eq!(state.frame.mark_succeeded(StepIdx::ZERO), Ok(()));
+        assert_eq!(state.frame.set_pc(StepIdx::new(1)), Ok(()));
+        assert_eq!(
             state
                 .frame
-                .write_slot_with_taint(SlotIdx::new(1), SlotValue::Bool(true), Taint::Clean)
-                .is_ok()
+                .write_slot_with_taint(SlotIdx::new(1), SlotValue::Bool(true), Taint::Clean),
+            Ok(())
         );
 
         let result = retry_policy_after_action(&state, StepIdx::new(1));
@@ -1748,14 +2087,14 @@ mod tests {
         let Some(mut state) = make_run_state(wf, RunId::new(1)) else {
             return;
         };
-        assert!(state.frame.mark_running(StepIdx::ZERO).is_ok());
-        assert!(state.frame.mark_succeeded(StepIdx::ZERO).is_ok());
-        assert!(state.frame.set_pc(StepIdx::new(1)).is_ok());
-        assert!(
+        assert_eq!(state.frame.mark_running(StepIdx::ZERO), Ok(()));
+        assert_eq!(state.frame.mark_succeeded(StepIdx::ZERO), Ok(()));
+        assert_eq!(state.frame.set_pc(StepIdx::new(1)), Ok(()));
+        assert_eq!(
             state
                 .frame
-                .write_slot_with_taint(SlotIdx::new(1), SlotValue::I64(-1), Taint::Clean)
-                .is_ok()
+                .write_slot_with_taint(SlotIdx::new(1), SlotValue::I64(-1), Taint::Clean),
+            Ok(())
         );
 
         let result = retry_policy_after_action(&state, StepIdx::new(1));
@@ -1833,14 +2172,14 @@ mod tests {
         let Some(mut state) = make_run_state(wf, RunId::new(1)) else {
             return;
         };
-        assert!(state.frame.mark_running(StepIdx::ZERO).is_ok());
-        assert!(state.frame.mark_succeeded(StepIdx::ZERO).is_ok());
-        assert!(state.frame.set_pc(StepIdx::new(1)).is_ok());
-        assert!(
+        assert_eq!(state.frame.mark_running(StepIdx::ZERO), Ok(()));
+        assert_eq!(state.frame.mark_succeeded(StepIdx::ZERO), Ok(()));
+        assert_eq!(state.frame.set_pc(StepIdx::new(1)), Ok(()));
+        assert_eq!(
             state
                 .frame
-                .write_slot_with_taint(SlotIdx::new(1), SlotValue::I64(0), Taint::Clean)
-                .is_ok()
+                .write_slot_with_taint(SlotIdx::new(1), SlotValue::I64(0), Taint::Clean),
+            Ok(())
         );
 
         let result = retry_policy_after_action(&state, StepIdx::new(1));
@@ -1976,7 +2315,7 @@ mod tests {
                 assert_eq!(handler, StepIdx::new(2));
                 assert_eq!(error_slot, Some(SlotIdx::new(1)));
             }
-            None => assert!(false, "expected Some"),
+            None => assert_eq!(result.is_some(), true),
         }
     }
 
@@ -2105,9 +2444,9 @@ mod tests {
             return;
         };
         // Drive step 0 to increment executed count
-        assert!(state.frame.mark_running(StepIdx::ZERO).is_ok());
-        assert!(state.frame.mark_succeeded(StepIdx::ZERO).is_ok());
-        assert!(state.frame.set_pc(StepIdx::new(1)).is_ok());
+        assert_eq!(state.frame.mark_running(StepIdx::ZERO), Ok(()));
+        assert_eq!(state.frame.mark_succeeded(StepIdx::ZERO), Ok(()));
+        assert_eq!(state.frame.set_pc(StepIdx::new(1)), Ok(()));
 
         let snap = snapshot_from_state(run_id, 0, &state);
         assert_eq!(snap.run, run_id);
