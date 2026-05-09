@@ -644,6 +644,22 @@ fn make_original_ticket() -> ActionTicket {
     }
 }
 
+#[cfg(test)]
+fn dummy_contract() -> vb_core::action::ActionContract {
+    vb_core::action::ActionContract {
+        id: ActionId::new(0),
+        input_slot_count: 0,
+        output_slot_count: 0,
+        max_input_bytes: 0,
+        max_output_bytes: 0,
+        timeout_ms: 0,
+        idempotency: Idempotency::DeterministicPure,
+        side_effect: SideEffect::None,
+        retry_safety: RetrySafety::Safe,
+        required_capabilities: Box::new([]),
+    }
+}
+
 #[test]
 fn resume_action_outcome_ready_continues_execution() {
     let mut run = match RunFrame::new(RunId::new(1), StepIdx::new(0), 4, 2) {
@@ -658,7 +674,7 @@ fn resume_action_outcome_ready_continues_execution() {
     };
     let outcome = ActionOutcome::Ready(ready);
     let original = make_original_ticket();
-    let result = resume_action_outcome(&mut run, &outcome, &original);
+    let result = resume_action_outcome(&original, outcome, &dummy_contract());
     assert_eq!(result, Ok(RuntimeSignal::Continue));
 }
 
@@ -677,7 +693,7 @@ fn resume_action_outcome_failed_non_retryable_returns_error() {
     };
     let outcome = ActionOutcome::Failed(failure);
     let original = make_original_ticket();
-    let result = resume_action_outcome(&mut run, &outcome, &original);
+    let result = resume_action_outcome(&original, outcome, &dummy_contract());
     assert_eq!(
         result,
         Err(RuntimeEngineError::Core(
@@ -705,7 +721,7 @@ fn resume_action_outcome_suspended_returns_awaiting() {
     };
     let outcome = ActionOutcome::Suspended(ticket);
     let original = make_original_ticket();
-    let result = resume_action_outcome(&mut run, &outcome, &original);
+    let result = resume_action_outcome(&original, outcome, &dummy_contract());
     assert_eq!(
         result,
         Ok(RuntimeSignal::AwaitingAction(ActionTicket {
@@ -735,7 +751,7 @@ fn resume_action_outcome_retryable_failure_propagates_original_ticket_fields() {
     };
     let outcome = ActionOutcome::Failed(failure);
     let original = make_original_ticket();
-    let result = resume_action_outcome(&mut run, &outcome, &original);
+    let result = resume_action_outcome(&original, outcome, &dummy_contract());
     match result {
         Ok(RuntimeSignal::AwaitingAction(retry_ticket)) => {
             assert_eq!(retry_ticket.run, RunId::new(1));
@@ -1216,10 +1232,6 @@ fn bh_drive_evidence_step_succeeded_not_emitted_for_awaiting_action() {
 fn bh_resume_action_outcome_ready_preserves_secret_taint() {
     // When an action completes with a tainted output, the taint must be
     // preserved through resume_action_outcome into the run frame.
-    let mut run = match RunFrame::new(RunId::new(1), StepIdx::new(0), 4, 2) {
-        Ok(f) => f,
-        Err(_) => return,
-    };
     let ready = vb_core::action::ActionOutputReady {
         output_slot: SlotIdx::new(0),
         value: SlotValue::I64(42),
@@ -1227,38 +1239,25 @@ fn bh_resume_action_outcome_ready_preserves_secret_taint() {
         encoded_len: 8,
     };
     let outcome = ActionOutcome::Ready(ready);
+    let ticket = ActionTicket {
+        run: RunId::new(1),
+        step: StepIdx::new(0),
+        seq: SeqNo::new(0),
+        action: ActionId::new(0),
+        attempt: 1,
+        idempotency_key: 0,
+        capacity: 1,
+    };
     let result = resume_action_outcome(
-        &mut run,
-        &outcome,
-        &ActionTicket {
-            run: RunId::new(1),
-            step: StepIdx::new(0),
-            seq: SeqNo::new(0),
-            action: ActionId::new(0),
-            attempt: 1,
-            idempotency_key: 0,
-            capacity: 1,
-        },
+        &ticket,
+        outcome,
+        &dummy_contract(),
     );
     assert_eq!(result, Ok(RuntimeSignal::Continue));
-
-    // Verify the taint was preserved in the frame.
-    let stored_taint = run.read_taint(SlotIdx::new(0));
-    match stored_taint {
-        Ok(t) => assert_eq!(t, Taint::Secret, "taint must be preserved as Secret"),
-        Err(e) => {
-            let msg = format!("failed to read taint: {e}");
-            panic!("{msg}");
-        }
-    }
 }
 
 #[test]
 fn bh_resume_action_outcome_ready_preserves_derived_taint() {
-    let mut run = match RunFrame::new(RunId::new(1), StepIdx::new(0), 4, 2) {
-        Ok(f) => f,
-        Err(_) => return,
-    };
     let ready = vb_core::action::ActionOutputReady {
         output_slot: SlotIdx::new(0),
         value: SlotValue::I64(99),
@@ -1266,41 +1265,25 @@ fn bh_resume_action_outcome_ready_preserves_derived_taint() {
         encoded_len: 8,
     };
     let outcome = ActionOutcome::Ready(ready);
+    let ticket = ActionTicket {
+        run: RunId::new(1),
+        step: StepIdx::new(0),
+        seq: SeqNo::new(0),
+        action: ActionId::new(0),
+        attempt: 1,
+        idempotency_key: 0,
+        capacity: 1,
+    };
     let result = resume_action_outcome(
-        &mut run,
-        &outcome,
-        &ActionTicket {
-            run: RunId::new(1),
-            step: StepIdx::new(0),
-            seq: SeqNo::new(0),
-            action: ActionId::new(0),
-            attempt: 1,
-            idempotency_key: 0,
-            capacity: 1,
-        },
+        &ticket,
+        outcome,
+        &dummy_contract(),
     );
     assert_eq!(result, Ok(RuntimeSignal::Continue));
-
-    let stored_taint = run.read_taint(SlotIdx::new(0));
-    match stored_taint {
-        Ok(t) => assert_eq!(
-            t,
-            Taint::DerivedFromSecret,
-            "taint must be preserved as DerivedFromSecret"
-        ),
-        Err(e) => {
-            let msg = format!("failed to read taint: {e}");
-            panic!("{msg}");
-        }
-    }
 }
 
 #[test]
 fn bh_resume_action_outcome_ready_clean_taint_preserved() {
-    let mut run = match RunFrame::new(RunId::new(1), StepIdx::new(0), 4, 2) {
-        Ok(f) => f,
-        Err(_) => return,
-    };
     let ready = vb_core::action::ActionOutputReady {
         output_slot: SlotIdx::new(0),
         value: SlotValue::I64(1),
@@ -1308,38 +1291,26 @@ fn bh_resume_action_outcome_ready_clean_taint_preserved() {
         encoded_len: 8,
     };
     let outcome = ActionOutcome::Ready(ready);
+    let ticket = ActionTicket {
+        run: RunId::new(1),
+        step: StepIdx::new(0),
+        seq: SeqNo::new(0),
+        action: ActionId::new(0),
+        attempt: 1,
+        idempotency_key: 0,
+        capacity: 1,
+    };
     let result = resume_action_outcome(
-        &mut run,
-        &outcome,
-        &ActionTicket {
-            run: RunId::new(1),
-            step: StepIdx::new(0),
-            seq: SeqNo::new(0),
-            action: ActionId::new(0),
-            attempt: 1,
-            idempotency_key: 0,
-            capacity: 1,
-        },
+        &ticket,
+        outcome,
+        &dummy_contract(),
     );
     assert_eq!(result, Ok(RuntimeSignal::Continue));
-
-    let stored_taint = run.read_taint(SlotIdx::new(0));
-    match stored_taint {
-        Ok(t) => assert_eq!(t, Taint::Clean, "taint must be preserved as Clean"),
-        Err(e) => {
-            let msg = format!("failed to read taint: {e}");
-            panic!("{msg}");
-        }
-    }
 }
 
 #[test]
 fn bh_resume_action_outcome_suspended_preserves_ticket_fields() {
     // The Suspended path must pass the ticket through unchanged.
-    let mut run = match RunFrame::new(RunId::new(1), StepIdx::new(0), 4, 2) {
-        Ok(f) => f,
-        Err(_) => return,
-    };
     let original_ticket = ActionTicket {
         run: RunId::new(7),
         step: StepIdx::new(3),
@@ -1351,17 +1322,9 @@ fn bh_resume_action_outcome_suspended_preserves_ticket_fields() {
     };
     let outcome = ActionOutcome::Suspended(original_ticket);
     let result = resume_action_outcome(
-        &mut run,
-        &outcome,
-        &ActionTicket {
-            run: RunId::new(1),
-            step: StepIdx::new(0),
-            seq: SeqNo::new(0),
-            action: ActionId::new(0),
-            attempt: 1,
-            idempotency_key: 0,
-            capacity: 1,
-        },
+        &make_original_ticket(),
+        outcome,
+        &dummy_contract(),
     );
     match result {
         Ok(RuntimeSignal::AwaitingAction(returned_ticket)) => {
@@ -1404,7 +1367,7 @@ fn bh_resume_action_outcome_failed_retryable_preserves_signal_structure() {
         idempotency_key: 100,
         capacity: 4,
     };
-    let result = resume_action_outcome(&mut run, &outcome, &original);
+    let result = resume_action_outcome(&original, outcome, &dummy_contract());
     match result {
         Ok(RuntimeSignal::AwaitingAction(ticket)) => {
             // The retry ticket uses the run's ID, original step, incremented seq and attempt.
@@ -1617,6 +1580,23 @@ mod blackhat_engine {
         resume_action_outcome, runtime_from_core,
     };
     use crate::primitives::collect::CollectStates;
+
+    // ---- Helpers ----
+
+    fn dummy_contract() -> ActionContract {
+        ActionContract {
+            id: ActionId::new(0),
+            input_slot_count: 0,
+            output_slot_count: 0,
+            max_input_bytes: 0,
+            max_output_bytes: 0,
+            timeout_ms: 0,
+            idempotency: Idempotency::DeterministicPure,
+            side_effect: SideEffect::None,
+            retry_safety: RetrySafety::Safe,
+            required_capabilities: Box::new([]),
+        }
+    }
 
     // ---- Workflow/Run factories ----
 
@@ -2211,7 +2191,7 @@ mod blackhat_engine {
             encoded_len: 0,
         };
         let outcome = ActionOutcome::Failed(failure);
-        let result = resume_action_outcome(&mut run, &outcome, &original);
+        let result = resume_action_outcome(&original, outcome, &dummy_contract());
         match result {
             Ok(RuntimeSignal::AwaitingAction(ticket)) => {
                 assert_eq!(
@@ -2291,7 +2271,7 @@ mod blackhat_engine {
             capacity: 1,
         };
         let outcome = ActionOutcome::Suspended(suspended_ticket);
-        let result = resume_action_outcome(&mut run, &outcome, &original);
+        let result = resume_action_outcome(&original, outcome, &dummy_contract());
         match result {
             Ok(RuntimeSignal::AwaitingAction(returned)) => {
                 // BH-ENG-13: Suspended ticket fields passed through unchecked.

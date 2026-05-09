@@ -11,7 +11,7 @@ use std::collections::HashMap;
 
 use vb_core::action::{ActionError, ActionTicket};
 
-/// Default capacity for [`IdempotencyTracker::new()`].
+/// Default capacity for [`IdempotencyTracker::with_default_capacity()`].
 const DEFAULT_CAPACITY: usize = 1024;
 
 /// Bounded tracker that records completed action tickets for exactly-once
@@ -142,7 +142,7 @@ impl IdempotencyTracker {
 
 impl Default for IdempotencyTracker {
     fn default() -> Self {
-        Self::new()
+        Self::with_default_capacity()
     }
 }
 
@@ -165,14 +165,14 @@ mod tests {
 
     #[test]
     fn idempotency_tracker_new_is_empty() {
-        let tracker = IdempotencyTracker::new();
+        let tracker = IdempotencyTracker::with_default_capacity();
         assert!(tracker.is_empty());
         assert_eq!(tracker.len(), 0);
     }
 
     #[test]
     fn idempotency_tracker_record_completion_succeeds() {
-        let mut tracker = IdempotencyTracker::new();
+        let mut tracker = IdempotencyTracker::with_default_capacity();
         let ticket = make_ticket(42);
         assert_eq!(tracker.mark_completed(&ticket), Ok(()));
         assert!(tracker.is_completed(&ticket));
@@ -181,7 +181,7 @@ mod tests {
 
     #[test]
     fn idempotency_tracker_duplicate_completion_returns_error() {
-        let mut tracker = IdempotencyTracker::new();
+        let mut tracker = IdempotencyTracker::with_default_capacity();
         let ticket = make_ticket(99);
         assert_eq!(tracker.mark_completed(&ticket), Ok(()));
         assert_eq!(
@@ -192,7 +192,7 @@ mod tests {
 
     #[test]
     fn idempotency_tracker_different_keys_are_independent() {
-        let mut tracker = IdempotencyTracker::new();
+        let mut tracker = IdempotencyTracker::with_default_capacity();
         let ticket_a = make_ticket(1);
         let ticket_b = make_ticket(2);
         let ticket_c = make_ticket(3);
@@ -207,7 +207,7 @@ mod tests {
     #[test]
     fn idempotency_tracker_default_matches_new() {
         let default = IdempotencyTracker::default();
-        let new = IdempotencyTracker::new();
+        let new = IdempotencyTracker::with_default_capacity();
         assert_eq!(default.len(), new.len());
         assert_eq!(default.is_empty(), new.is_empty());
         assert_eq!(default.capacity, new.capacity);
@@ -215,14 +215,14 @@ mod tests {
 
     #[test]
     fn idempotency_tracker_mark_dispatched_new_is_true() {
-        let tracker = IdempotencyTracker::new();
+        let tracker = IdempotencyTracker::with_default_capacity();
         let ticket = make_ticket(10);
         assert!(tracker.mark_dispatched(&ticket));
     }
 
     #[test]
     fn idempotency_tracker_mark_dispatched_duplicate_is_false() {
-        let mut tracker = IdempotencyTracker::new();
+        let mut tracker = IdempotencyTracker::with_default_capacity();
         let ticket = make_ticket(10);
         assert_eq!(tracker.mark_completed(&ticket), Ok(()));
         assert!(!tracker.mark_dispatched(&ticket));
@@ -230,7 +230,7 @@ mod tests {
 
     #[test]
     fn idempotency_tracker_is_duplicate_completion_true_after_record() {
-        let mut tracker = IdempotencyTracker::new();
+        let mut tracker = IdempotencyTracker::with_default_capacity();
         let ticket = make_ticket(55);
         assert!(!tracker.is_duplicate_completion(&ticket));
         assert_eq!(tracker.mark_completed(&ticket), Ok(()));

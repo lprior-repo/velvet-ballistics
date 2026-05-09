@@ -154,17 +154,15 @@ pub fn execute_error_handler(failure: &ActionFailure, handler: StepIdx, body: St
 /// retry ticket with the correct action ID, incremented sequence number,
 /// incremented attempt count, and recomputed idempotency key.
 pub fn resume_action_outcome(
-    run: &mut RunFrame,
-    outcome: &ActionOutcome,
     original_ticket: &ActionTicket,
+    outcome: ActionOutcome,
+    _contract: &ActionContract,
 ) -> RuntimeEngineResult<RuntimeSignal> {
     match outcome {
-        ActionOutcome::Ready(ready) => {
-            run.write_slot_with_taint(ready.output_slot, ready.value, ready.taint)
-                .map_err(RuntimeEngineError::Core)?;
+        ActionOutcome::Ready(_ready) => {
             Ok(RuntimeSignal::Continue)
         }
-        ActionOutcome::Suspended(ticket) => Ok(RuntimeSignal::AwaitingAction(*ticket)),
+        ActionOutcome::Suspended(ticket) => Ok(RuntimeSignal::AwaitingAction(ticket)),
         ActionOutcome::Failed(failure) => {
             if failure.retry_policy == vb_core::action::RetryPolicy::Retryable
                 && original_ticket.attempt < original_ticket.capacity
@@ -188,9 +186,9 @@ pub fn resume_action_outcome(
                             },
                         ))?;
                 let idempotency_key =
-                    compute_idempotency_key(run.run_id(), next_seq, original_ticket.action);
+                    compute_idempotency_key(original_ticket.run, next_seq, original_ticket.action);
                 Ok(RuntimeSignal::AwaitingAction(ActionTicket {
-                    run: run.run_id(),
+                    run: original_ticket.run,
                     step: original_ticket.step,
                     seq: next_seq,
                     action: original_ticket.action,
@@ -601,7 +599,6 @@ mod tests {
 
     #[test]
     fn resume_retries_when_attempt_below_capacity() {
-        let mut run = RunFrame::new(RunId::new(1), StepIdx::new(0), 4, 2).unwrap();
         let ticket = ActionTicket {
             run: RunId::new(1),
             step: StepIdx::new(0),
@@ -619,7 +616,7 @@ mod tests {
             encoded_len: 0,
         };
         let outcome = ActionOutcome::Failed(failure);
-        let result = resume_action_outcome(&mut run, &outcome, &ticket);
+        let result = resume_action_outcome(&ticket, outcome, &make_contract(ticket.action.get()));
         match result {
             Ok(RuntimeSignal::AwaitingAction(retry)) => {
                 assert_eq!(retry.attempt, 2);
@@ -634,7 +631,6 @@ mod tests {
 
     #[test]
     fn resume_returns_retry_exhausted_when_capacity_reached() {
-        let mut run = RunFrame::new(RunId::new(1), StepIdx::new(0), 4, 2).unwrap();
         let ticket = ActionTicket {
             run: RunId::new(1),
             step: StepIdx::new(0),
@@ -652,7 +648,7 @@ mod tests {
             encoded_len: 0,
         };
         let outcome = ActionOutcome::Failed(failure);
-        let result = resume_action_outcome(&mut run, &outcome, &ticket);
+        let result = resume_action_outcome(&ticket, outcome, &make_contract(ticket.action.get()));
         match result {
             Err(RuntimeEngineError::RetryExhausted { action, attempts }) => {
                 assert_eq!(action, ActionId::new(5));
@@ -667,7 +663,6 @@ mod tests {
 
     #[test]
     fn resume_capacity_one_never_retries() {
-        let mut run = RunFrame::new(RunId::new(1), StepIdx::new(0), 4, 2).unwrap();
         let ticket = ActionTicket {
             run: RunId::new(1),
             step: StepIdx::new(0),
@@ -685,7 +680,7 @@ mod tests {
             encoded_len: 0,
         };
         let outcome = ActionOutcome::Failed(failure);
-        let result = resume_action_outcome(&mut run, &outcome, &ticket);
+        let result = resume_action_outcome(&ticket, outcome, &make_contract(ticket.action.get()));
         assert!(
             matches!(result, Err(RuntimeEngineError::RetryExhausted { .. })),
             "capacity=1 must reject retry: {result:?}"

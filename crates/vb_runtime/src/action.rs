@@ -7,6 +7,8 @@ use vb_core::action::{
 };
 use vb_core::ids::ActionId;
 
+pub use crate::idempotency::IdempotencyTracker;
+
 /// Maximum number of registered actions.
 const MAX_REGISTERED_ACTIONS: usize = 65_535;
 
@@ -809,7 +811,7 @@ mod tests {
     #[test]
     fn idempotency_tracker_new_is_empty() {
         use crate::idempotency::IdempotencyTracker;
-        let tracker = IdempotencyTracker::new();
+        let tracker = IdempotencyTracker::with_default_capacity();
         assert_eq!(tracker.is_empty(), true);
         assert_eq!(tracker.len(), 0);
     }
@@ -817,7 +819,7 @@ mod tests {
     #[test]
     fn idempotency_tracker_record_completion_succeeds() {
         use crate::idempotency::IdempotencyTracker;
-        let mut tracker = IdempotencyTracker::new();
+        let mut tracker = IdempotencyTracker::with_default_capacity();
         let ticket = ActionTicket {
             run: RunId::new(0),
             step: StepIdx::new(0),
@@ -835,7 +837,7 @@ mod tests {
     #[test]
     fn idempotency_tracker_duplicate_completion_returns_error() {
         use crate::idempotency::IdempotencyTracker;
-        let mut tracker = IdempotencyTracker::new();
+        let mut tracker = IdempotencyTracker::with_default_capacity();
         let ticket = ActionTicket {
             run: RunId::new(0),
             step: StepIdx::new(0),
@@ -855,7 +857,7 @@ mod tests {
     #[test]
     fn idempotency_tracker_different_keys_are_independent() {
         use crate::idempotency::IdempotencyTracker;
-        let mut tracker = IdempotencyTracker::new();
+        let mut tracker = IdempotencyTracker::with_default_capacity();
         let ticket_a = ActionTicket {
             run: RunId::new(0),
             step: StepIdx::new(0),
@@ -895,7 +897,7 @@ mod tests {
     fn idempotency_tracker_default_matches_new() {
         use crate::idempotency::IdempotencyTracker;
         let default = IdempotencyTracker::default();
-        let new = IdempotencyTracker::new();
+        let new = IdempotencyTracker::with_default_capacity();
         assert_eq!(default.len(), new.len());
         assert_eq!(default.is_empty(), new.is_empty());
     }
