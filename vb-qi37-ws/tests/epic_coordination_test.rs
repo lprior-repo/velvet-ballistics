@@ -27,7 +27,7 @@ fn workspace_path(relative: &str) -> PathBuf {
 
 fn bd_show(bead_id: &str) -> Result<String, String> {
     let output = Command::new("bd")
-        .args(["show", bead_id, "--state"])
+        .args(["show", bead_id, "--json"])
         .current_dir(velvet_root())
         .output()
         .map_err(|e| format!("bd show {} failed: {}", bead_id, e))?;
@@ -40,8 +40,26 @@ fn bd_show(bead_id: &str) -> Result<String, String> {
         ));
     }
 
-    String::from_utf8(output.stdout)
-        .map_err(|e| format!("bd show {} output invalid UTF-8: {}", bead_id, e))
+    let json_str = String::from_utf8(output.stdout)
+        .map_err(|e| format!("bd show {} output invalid UTF-8: {}", bead_id, e))?;
+
+    let json_value: serde_json::Value = serde_json::from_str(&json_str)
+        .map_err(|e| format!("bd show {} failed to parse JSON: {}", bead_id, e))?;
+
+    let status = json_value[0]["status"]
+        .as_str()
+        .ok_or_else(|| format!("bd show {} has no status field", bead_id))?;
+
+    let state = match status {
+        "open" => 1,
+        "in_progress" => 1,
+        "blocked" => 1,
+        "deferred" => 0,
+        "closed" => 8,
+        other => return Err(format!("bd show {} has unknown status: {}", bead_id, other)),
+    };
+
+    Ok(state.to_string())
 }
 
 fn parse_state(state_output: &str) -> Result<u32, String> {

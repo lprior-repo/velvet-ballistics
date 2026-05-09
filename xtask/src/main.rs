@@ -10,6 +10,13 @@ use vb_ui_snapshot::{
     tokens::{self, UiTokens},
 };
 
+// ============================================================================
+// Command-center gate modules (POST-001/002/003)
+// ============================================================================
+
+mod evidence;
+mod gates;
+
 #[derive(Parser)]
 #[command(name = "xtask")]
 #[command(about = "Velvet Ballistics xtask commands")]
@@ -51,6 +58,27 @@ enum Commands {
         #[arg(long, default_value = "tests/ui_snapshots")]
         input_dir: String,
     },
+    // ========================================================================
+    // Section 77 Command-Center Gates (POST-001/002/003/007)
+    // ========================================================================
+    #[command(name = "ai-fast")]
+    AiFast {
+        /// Bead ID to scope evidence output to .evidence/<bead-id>/
+        #[arg(long)]
+        bead: Option<String>,
+    },
+    #[command(name = "ai-deep")]
+    AiDeep {
+        /// Bead ID to scope evidence output to .evidence/<bead-id>/
+        #[arg(long)]
+        bead: Option<String>,
+    },
+    #[command(name = "ai-release")]
+    AiRelease {
+        /// Bead ID to scope evidence output to .evidence/<bead-id>/
+        #[arg(long)]
+        bead: Option<String>,
+    },
 }
 
 fn main() -> anyhow::Result<()> {
@@ -74,6 +102,12 @@ fn main() -> anyhow::Result<()> {
             screen,
             input_dir,
         } => cmd_ui_overlap_check(all, screen, &input_dir),
+        // ====================================================================
+        // Section 77 Command-Center Gates
+        // ====================================================================
+        Commands::AiFast { bead } => cmd_ai_fast(bead.as_deref()),
+        Commands::AiDeep { bead } => cmd_ai_deep(bead.as_deref()),
+        Commands::AiRelease { bead } => cmd_ai_release(bead.as_deref()),
     }
 }
 

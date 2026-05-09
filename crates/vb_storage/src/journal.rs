@@ -266,7 +266,7 @@ impl FjallJournal {
     /// Replays one run's events in contiguous per-run sequence order.
     pub fn events_for_run(&self, run: vb_core::RunId) -> Result<Vec<JournalEvent>, JournalError> {
         let start_seq = self
-            .latest_snapshot_seq(run)
+            .latest_durable_snapshot_seq(run)
             .ok()
             .flatten()
             .unwrap_or(EventSeq::new(0));
@@ -274,7 +274,7 @@ impl FjallJournal {
     }
 
     /// Returns events for a run starting from a given sequence, with validation.
-    fn events_for_run_from(
+    pub(crate) fn events_for_run_from(
         &self,
         run: vb_core::RunId,
         start_seq: EventSeq,

@@ -2,9 +2,9 @@
 #![cfg(test)]
 
 use vb_core::action::{
-    ActionContract, ActionError, ActionId, Idempotency, SideEffect, RetrySafety,
-    Capability,
+    ActionContract, ActionError, Idempotency, SideEffect, RetrySafety,
 };
+use vb_core::ids::ActionId;
 use vb_runtime::action::ActionRegistry;
 
 fn make_contract(id: ActionId) -> ActionContract {
@@ -113,7 +113,7 @@ fn test_registry_registered_contracts_returns_ascending_order() {
     registry.register(make_contract(ActionId::new(50))).expect("register 50 succeeds");
     registry.register(make_contract(ActionId::new(10))).expect("register 10 succeeds");
     registry.register(make_contract(ActionId::new(30))).expect("register 30 succeeds");
-    let contracts: Vec<_> = registry.registered_contracts().collect();
+    let contracts = registry.registered_contracts();
     let ids: Vec<_> = contracts.iter().map(|c| c.id).collect();
     let mut sorted_ids = ids.clone();
     sorted_ids.sort();
@@ -141,13 +141,15 @@ fn test_registry_resolve_registered_returns_ok() {
 #[test]
 fn test_registry_dispatch_unknown_action_returns_error() {
     let registry = ActionRegistry::new();
-    use vb_core::action::{ActionInput, RunId, SeqNo, StepIdx};
+    use vb_core::action::{ActionInput, ActionTicket};
+    use vb_core::ids::{RunId, SeqNo, SlotIdx, StepIdx};
+    let dummy_contract = make_contract(ActionId::new(42));
     let input = ActionInput {
         run: RunId::new(1),
         step: StepIdx::new(0),
         action: ActionId::new(42),
         input: SlotIdx::new(0),
-        ticket: vb_core::action::ActionTicket {
+        ticket: ActionTicket {
             run: RunId::new(1),
             step: StepIdx::new(0),
             seq: SeqNo::new(1),
@@ -157,7 +159,7 @@ fn test_registry_dispatch_unknown_action_returns_error() {
             capacity: 1,
         },
     };
-    let result = registry.dispatch(input);
+    let result = registry.dispatch(&input, &dummy_contract);
     assert!(result.is_err(), "dispatch on unknown action should fail");
     let err = result.unwrap_err();
     assert_eq!(err, ActionError::UnknownAction { action: ActionId::new(42) });
@@ -178,14 +180,15 @@ fn test_registry_dispatch_with_zero_max_bytes_and_nonzero_slots_fails() {
         retry_safety: RetrySafety::Safe,
         required_capabilities: Box::new([]),
     };
-    registry.register(contract).expect("register should succeed");
-    use vb_core::action::{ActionInput, RunId, SeqNo, StepIdx};
+    registry.register(contract.clone()).expect("register should succeed");
+    use vb_core::action::{ActionInput, ActionTicket};
+    use vb_core::ids::{RunId, SeqNo, SlotIdx, StepIdx};
     let input = ActionInput {
         run: RunId::new(1),
         step: StepIdx::new(0),
         action: ActionId::new(8),
         input: SlotIdx::new(0),
-        ticket: vb_core::action::ActionTicket {
+        ticket: ActionTicket {
             run: RunId::new(1),
             step: StepIdx::new(0),
             seq: SeqNo::new(1),
@@ -195,14 +198,12 @@ fn test_registry_dispatch_with_zero_max_bytes_and_nonzero_slots_fails() {
             capacity: 1,
         },
     };
-    let result = registry.dispatch(input);
+    let result = registry.dispatch(&input, &contract);
     assert!(result.is_err(), "dispatch with zero max_bytes should fail");
     match result {
-        Err(ActionError::PayloadTooLarge { max_bytes, actual_bytes }) => {
+        Err(ActionError::PayloadTooLarge { max_bytes, actual_bytes: _ }) => {
             assert_eq!(max_bytes, 0, "max_bytes should be 0");
         }
         _ => panic!("expected PayloadTooLarge error"),
     }
 }
-
-use vb_core::ids::SlotIdx;

@@ -38,8 +38,8 @@ pub mod security_tests;
 pub mod snapshots;
 pub mod tests;
 pub mod trimming;
-pub mod vb_2bok_durability_gate_tests;
 pub mod types;
+pub mod vb_2bok_durability_gate_tests;
 
 // ============================================================================
 // Re-exports from submodules
@@ -68,7 +68,10 @@ pub use queue::JournalWriterQueue;
 pub use types::JournalWriterFlushReport;
 
 // Trimming
-pub use trimming::{TrimError, TrimPolicy, TrimResult, TrimStatus, TrimmedRunResult};
+pub use trimming::{
+    TrimBlocker, TrimDiagnostic, TrimEligibility, TrimError, TrimPolicy, TrimResult, TrimStatus,
+    TrimmedRunResult,
+};
 
 // Codec
 pub use codec::{

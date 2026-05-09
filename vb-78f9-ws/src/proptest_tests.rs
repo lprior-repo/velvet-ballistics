@@ -2,9 +2,10 @@
 #![cfg(test)]
 
 use vb_core::action::{
-    ActionContract, ActionId, Idempotency, SideEffect, RetrySafety,
-    RunId, SeqNo, Taint,
+    ActionContract, Idempotency, SideEffect, RetrySafety,
 };
+use vb_core::ids::{ActionId, RunId, SeqNo, StepIdx};
+use vb_core::value::Taint;
 use vb_runtime::action::ActionRegistry;
 use vb_runtime::engine::action::compute_idempotency_key;
 

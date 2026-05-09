@@ -7263,7 +7263,8 @@ mod tests {
     fn test_lock_releases_on_journal_drop() {
         let temp = tempfile::tempdir().expect("tempdir creation should succeed");
         {
-            let _journal = FjallJournal::open(temp.path(), None).expect("first open should succeed");
+            let _journal =
+                FjallJournal::open(temp.path(), None).expect("first open should succeed");
         } // journal dropped here, lock released
         let result = FjallJournal::open(temp.path(), None);
         assert!(result.is_ok(), "re-open after drop must succeed");
@@ -7288,8 +7289,15 @@ mod tests {
         let _journal = FjallJournal::open(temp.path(), None).expect("first open should succeed");
         let lock_path = temp.path().join(".process.lock");
         let contents = std::fs::read_to_string(&lock_path).expect("read lock file");
-        let pid: u32 = contents.trim().parse().expect("lock file should contain valid PID");
-        assert_eq!(pid, std::process::id(), "lock file should contain current process PID");
+        let pid: u32 = contents
+            .trim()
+            .parse()
+            .expect("lock file should contain valid PID");
+        assert_eq!(
+            pid,
+            std::process::id(),
+            "lock file should contain current process PID"
+        );
     }
 
     #[test]
@@ -7297,16 +7305,12 @@ mod tests {
         let temp = tempfile::tempdir().expect("tempdir creation should succeed");
         let _journal = FjallJournal::open(temp.path(), None).expect("first open should succeed");
 
-        let before_count = std::fs::read_dir(temp.path())
-            .expect("read_dir")
-            .count();
+        let before_count = std::fs::read_dir(temp.path()).expect("read_dir").count();
 
         let result = FjallJournal::open(temp.path(), None);
         assert!(result.is_err(), "second open must fail");
 
-        let after_count = std::fs::read_dir(temp.path())
-            .expect("read_dir")
-            .count();
+        let after_count = std::fs::read_dir(temp.path()).expect("read_dir").count();
 
         assert_eq!(
             before_count, after_count,

@@ -159,9 +159,7 @@ pub fn resume_action_outcome(
     _contract: &ActionContract,
 ) -> RuntimeEngineResult<RuntimeSignal> {
     match outcome {
-        ActionOutcome::Ready(_ready) => {
-            Ok(RuntimeSignal::Continue)
-        }
+        ActionOutcome::Ready(_ready) => Ok(RuntimeSignal::Continue),
         ActionOutcome::Suspended(ticket) => Ok(RuntimeSignal::AwaitingAction(ticket)),
         ActionOutcome::Failed(failure) => {
             if failure.retry_policy == vb_core::action::RetryPolicy::Retryable

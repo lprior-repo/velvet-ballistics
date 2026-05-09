@@ -14,11 +14,7 @@
     clippy::unwrap_used
 )]
 mod durability_gate_tests {
-    use crate::{
-        BlobRecord, CompiledIrRecord, DIGEST_BYTES, EventSeq, FjallJournal, JournalError,
-        JournalEvent, WorkflowSourceRecord,
-    };
-    use crate::admission::{submit_artifact, admit_compiled_artifact, AcceptedArtifact};
+    use crate::admission::{AcceptedArtifact, admit_compiled_artifact, submit_artifact};
     use crate::codec::{decode_record, encode_record};
     use crate::constants::{
         CRC_OFFSET, MAGIC_BLOB, MAGIC_COMPILED_ARTIFACT, MAGIC_JOURNAL_EVENT,
@@ -26,7 +22,13 @@ mod durability_gate_tests {
         MAX_JOURNAL_EVENT_PAYLOAD_BYTES, MAX_WORKFLOW_SOURCE_BYTES, RECORD_HEADER_BYTES,
     };
     use crate::records::RecordKind;
-    use vb_core::{RunId, SlotIdx, StepIdx, WorkflowDigest, WorkflowId, RuntimePolicy, CompiledWorkflow};
+    use crate::{
+        BlobRecord, CompiledIrRecord, DIGEST_BYTES, EventSeq, FjallJournal, JournalError,
+        JournalEvent, WorkflowSourceRecord,
+    };
+    use vb_core::{
+        CompiledWorkflow, RunId, RuntimePolicy, SlotIdx, StepIdx, WorkflowDigest, WorkflowId,
+    };
 
     // =========================================================================
     // Test fixtures and helpers
@@ -111,7 +113,8 @@ mod durability_gate_tests {
             "Relaxed policy must have durable=false"
         );
         assert_eq!(
-            result.verification.digest, workflow.digest(),
+            result.verification.digest,
+            workflow.digest(),
             "proof digest must match workflow digest"
         );
         Ok(())
@@ -173,7 +176,9 @@ mod durability_gate_tests {
         submit_artifact(&journal, &workflow, RuntimePolicy::Relaxed)
             .map_err(|e| format!("submit_artifact failed: {e}"))?;
 
-        let loaded = journal.compiled_ir(digest).map_err(|e| format!("read: {e}"))?;
+        let loaded = journal
+            .compiled_ir(digest)
+            .map_err(|e| format!("read: {e}"))?;
         assert!(
             loaded.is_some(),
             "Relaxed policy must persist record to compiled_ir keyspace"
@@ -189,11 +194,16 @@ mod durability_gate_tests {
         let (_temp, journal) = temp_journal().map_err(|e| format!("journal open: {e}"))?;
         let workflow = minimal_valid_workflow()?;
 
-        for policy in [RuntimePolicy::Relaxed, RuntimePolicy::Journaled, RuntimePolicy::Strict] {
+        for policy in [
+            RuntimePolicy::Relaxed,
+            RuntimePolicy::Journaled,
+            RuntimePolicy::Strict,
+        ] {
             let result = submit_artifact(&journal, &workflow, policy)
                 .map_err(|e| format!("submit_artifact({policy:?}) failed: {e}"))?;
             assert_eq!(
-                result.digest, workflow.digest(),
+                result.digest,
+                workflow.digest(),
                 "artifact.digest must equal workflow.digest() for policy {policy:?}"
             );
         }
@@ -208,7 +218,11 @@ mod durability_gate_tests {
         let (_temp, journal) = temp_journal().map_err(|e| format!("journal open: {e}"))?;
         let workflow = minimal_valid_workflow()?;
 
-        for policy in [RuntimePolicy::Relaxed, RuntimePolicy::Journaled, RuntimePolicy::Strict] {
+        for policy in [
+            RuntimePolicy::Relaxed,
+            RuntimePolicy::Journaled,
+            RuntimePolicy::Strict,
+        ] {
             let result = submit_artifact(&journal, &workflow, policy)
                 .map_err(|e| format!("submit_artifact({policy:?}) failed: {e}"))?;
             assert!(
@@ -255,7 +269,8 @@ mod durability_gate_tests {
             .map_err(|e| format!("admit_compiled_artifact failed: {e}"))?;
 
         assert_eq!(
-            result, workflow.digest(),
+            result,
+            workflow.digest(),
             "admit_compiled_artifact must return workflow digest on success"
         );
         Ok(())
@@ -290,10 +305,10 @@ mod durability_gate_tests {
         let workflow = minimal_valid_workflow()?;
         let expected_digest = workflow.digest();
 
-        admit_compiled_artifact(&journal, &workflow)
-            .map_err(|e| format!("admit failed: {e}"))?;
+        admit_compiled_artifact(&journal, &workflow).map_err(|e| format!("admit failed: {e}"))?;
 
-        let loaded = journal.compiled_ir(expected_digest)
+        let loaded = journal
+            .compiled_ir(expected_digest)
             .map_err(|e| format!("read: {e}"))?;
         assert!(
             loaded.is_some(),
@@ -314,7 +329,8 @@ mod durability_gate_tests {
             .map_err(|e| format!("admit failed: {e}"))?;
 
         assert_eq!(
-            result, workflow.digest(),
+            result,
+            workflow.digest(),
             "returned digest must equal workflow.digest()"
         );
         Ok(())
@@ -365,9 +381,8 @@ mod durability_gate_tests {
         let digest = [0x42u8; 32];
 
         // This must not panic — must return Result
-        let result = std::panic::catch_unwind(|| {
-            crate::journal::verify_content_digest(&content, &digest)
-        });
+        let result =
+            std::panic::catch_unwind(|| crate::journal::verify_content_digest(&content, &digest));
         assert!(
             result.is_ok(),
             "verify_content_digest must not panic on any input"
@@ -813,8 +828,8 @@ mod durability_gate_tests {
     fn second_journal_open_on_same_path_is_prevented_by_process_lock() -> Result<(), String> {
         let temp = tempfile::tempdir().map_err(|e| format!("tempdir failed: {e}"))?;
 
-        let _journal1 = FjallJournal::open(temp.path(), None)
-            .map_err(|e| format!("first open failed: {e}"))?;
+        let _journal1 =
+            FjallJournal::open(temp.path(), None).map_err(|e| format!("first open failed: {e}"))?;
 
         let result = FjallJournal::open(temp.path(), None);
         assert!(
@@ -902,10 +917,7 @@ mod durability_gate_tests {
         let loaded = journal
             .compiled_ir(digest_a)
             .map_err(|e| format!("read: {e}"))?;
-        assert!(
-            loaded.is_some(),
-            "artifact must be stored after admission"
-        );
+        assert!(loaded.is_some(), "artifact must be stored after admission");
         Ok(())
     }
 
@@ -995,28 +1007,33 @@ mod durability_gate_tests {
 
         // Batch must be empty after fraud attempt
         assert_eq!(
-            batch.len(), 0,
+            batch.len(),
+            0,
             "batch must be empty after failed put (nothing staged)"
         );
         Ok(())
     }
 
-    /// TEST: artifact_digest_equals_blake3_of_ir
+    /// TEST: artifact_digest_equals_workflow_digest
     ///
-    /// Contract §3.1: artifact.digest == blake3::hash(artifact.ir).
+    /// Contract §2.1 Postcondition (All): artifact.digest == workflow.digest().
     #[test]
-    fn artifact_digest_equals_blake3_of_ir() -> Result<(), String> {
+    fn artifact_digest_equals_workflow_digest() -> Result<(), String> {
         let (_temp, journal) = temp_journal().map_err(|e| format!("journal open: {e}"))?;
         let workflow = minimal_valid_workflow()?;
 
-        for policy in [RuntimePolicy::Relaxed, RuntimePolicy::Journaled, RuntimePolicy::Strict] {
+        for policy in [
+            RuntimePolicy::Relaxed,
+            RuntimePolicy::Journaled,
+            RuntimePolicy::Strict,
+        ] {
             let artifact = submit_artifact(&journal, &workflow, policy)
                 .map_err(|e| format!("submit failed: {e}"))?;
 
-            let computed_ir_hash: [u8; 32] = blake3::hash(&artifact.ir).into();
             assert_eq!(
-                artifact.digest.as_bytes(), computed_ir_hash,
-                "artifact.digest must equal blake3::hash(artifact.ir) for policy {policy:?}"
+                artifact.digest.as_bytes(),
+                workflow.digest().as_bytes(),
+                "artifact.digest must equal workflow.digest() for policy {policy:?}"
             );
         }
         Ok(())
@@ -1039,10 +1056,14 @@ mod durability_gate_tests {
             .collect();
 
         for event in &events {
-            journal.append_journaled(event).map_err(|e| format!("append: {e}"))?;
+            journal
+                .append_journaled(event)
+                .map_err(|e| format!("append: {e}"))?;
         }
 
-        let replayed = journal.events_for_run(run).map_err(|e| format!("replay: {e}"))?;
+        let replayed = journal
+            .events_for_run(run)
+            .map_err(|e| format!("replay: {e}"))?;
 
         for (i, event) in replayed.iter().enumerate() {
             assert_eq!(
@@ -1070,9 +1091,13 @@ mod durability_gate_tests {
             seq: EventSeq::new(0),
             workflow: WorkflowDigest::from_bytes([0; DIGEST_BYTES]),
         };
-        journal.append_strict(&event).map_err(|e| format!("append: {e}"))?;
+        journal
+            .append_strict(&event)
+            .map_err(|e| format!("append: {e}"))?;
 
-        let events_b = journal.events_for_run(run_b).map_err(|e| format!("replay: {e}"))?;
+        let events_b = journal
+            .events_for_run(run_b)
+            .map_err(|e| format!("replay: {e}"))?;
         assert!(
             events_b.is_empty(),
             "run B must have zero events from run A"
@@ -1100,8 +1125,12 @@ mod durability_gate_tests {
             workflow: WorkflowDigest::from_bytes([0; DIGEST_BYTES]),
         };
 
-        journal.append_unpersisted(&e0).map_err(|e| format!("append 0: {e}"))?;
-        journal.append_unpersisted(&e2).map_err(|e| format!("append 2: {e}"))?;
+        journal
+            .append_unpersisted(&e0)
+            .map_err(|e| format!("append 0: {e}"))?;
+        journal
+            .append_unpersisted(&e2)
+            .map_err(|e| format!("append 2: {e}"))?;
 
         let result = journal.events_for_run(run);
         assert!(
@@ -1155,7 +1184,8 @@ mod durability_gate_tests {
     fn artifact_malformed_error_code() -> Result<(), String> {
         let code = JournalError::ARTIFACT_MALFORMED_CODE;
         assert_eq!(
-            code.code(), 0x4017,
+            code.code(),
+            0x4017,
             "ArtifactMalformed must have diagnostic code 0x4017"
         );
         Ok(())
@@ -1168,7 +1198,8 @@ mod durability_gate_tests {
     fn artifact_checksum_mismatch_error_code() -> Result<(), String> {
         let code = JournalError::ARTIFACT_CHECKSUM_MISMATCH_CODE;
         assert_eq!(
-            code.code(), 0x4018,
+            code.code(),
+            0x4018,
             "ArtifactChecksumMismatch must have diagnostic code 0x4018"
         );
         Ok(())
@@ -1180,7 +1211,11 @@ mod durability_gate_tests {
     #[test]
     fn bad_magic_error_code() -> Result<(), String> {
         let code = JournalError::BAD_MAGIC_CODE;
-        assert_eq!(code.code(), 0x400B, "BadMagic must have diagnostic code 0x400B");
+        assert_eq!(
+            code.code(),
+            0x400B,
+            "BadMagic must have diagnostic code 0x400B"
+        );
         Ok(())
     }
 
@@ -1191,7 +1226,8 @@ mod durability_gate_tests {
     fn header_checksum_mismatch_error_code() -> Result<(), String> {
         let code = JournalError::HEADER_CHECKSUM_MISMATCH_CODE;
         assert_eq!(
-            code.code(), 0x4012,
+            code.code(),
+            0x4012,
             "HeaderChecksumMismatch must have diagnostic code 0x4012"
         );
         Ok(())
@@ -1204,7 +1240,8 @@ mod durability_gate_tests {
     fn payload_digest_mismatch_error_code() -> Result<(), String> {
         let code = JournalError::PAYLOAD_DIGEST_MISMATCH_CODE;
         assert_eq!(
-            code.code(), 0x4013,
+            code.code(),
+            0x4013,
             "PayloadDigestMismatch must have diagnostic code 0x4013"
         );
         Ok(())
@@ -1217,7 +1254,8 @@ mod durability_gate_tests {
     fn header_length_mismatch_error_code() -> Result<(), String> {
         let code = JournalError::HEADER_LENGTH_MISMATCH_CODE;
         assert_eq!(
-            code.code(), 0x4010,
+            code.code(),
+            0x4010,
             "HeaderLengthMismatch must have diagnostic code 0x4010"
         );
         Ok(())
@@ -1230,7 +1268,8 @@ mod durability_gate_tests {
     fn payload_too_large_error_code() -> Result<(), String> {
         let code = JournalError::PAYLOAD_TOO_LARGE_CODE;
         assert_eq!(
-            code.code(), 0x4011,
+            code.code(),
+            0x4011,
             "PayloadTooLarge must have diagnostic code 0x4011"
         );
         Ok(())
@@ -1243,7 +1282,8 @@ mod durability_gate_tests {
     fn unexpected_eof_error_code() -> Result<(), String> {
         let code = JournalError::UNEXPECTED_EOF_CODE;
         assert_eq!(
-            code.code(), 0x4014,
+            code.code(),
+            0x4014,
             "UnexpectedEof must have diagnostic code 0x4014"
         );
         Ok(())
@@ -1256,7 +1296,8 @@ mod durability_gate_tests {
     fn postcard_decode_failed_error_code() -> Result<(), String> {
         let code = JournalError::POSTCARD_DECODE_FAILED_CODE;
         assert_eq!(
-            code.code(), 0x4015,
+            code.code(),
+            0x4015,
             "PostcardDecodeFailed must have diagnostic code 0x4015"
         );
         Ok(())
@@ -1269,7 +1310,8 @@ mod durability_gate_tests {
     fn unknown_record_kind_error_code() -> Result<(), String> {
         let code = JournalError::UNKNOWN_RECORD_KIND_CODE;
         assert_eq!(
-            code.code(), 0x400E,
+            code.code(),
+            0x400E,
             "UnknownRecordKind must have diagnostic code 0x400E"
         );
         Ok(())
@@ -1282,7 +1324,8 @@ mod durability_gate_tests {
     fn process_lock_held_error_code() -> Result<(), String> {
         let code = JournalError::PROCESS_LOCK_HELD_CODE;
         assert_eq!(
-            code.code(), 0x401A,
+            code.code(),
+            0x401A,
             "ProcessLockHeld must have diagnostic code 0x401A"
         );
         Ok(())
@@ -1295,7 +1338,8 @@ mod durability_gate_tests {
     fn write_lock_poisoned_error_code() -> Result<(), String> {
         let code = JournalError::WRITE_LOCK_POISONED_CODE;
         assert_eq!(
-            code.code(), 0x4005,
+            code.code(),
+            0x4005,
             "WriteLockPoisoned must have diagnostic code 0x4005"
         );
         Ok(())
@@ -1308,7 +1352,8 @@ mod durability_gate_tests {
     fn unsupported_schema_version_error_code() -> Result<(), String> {
         let code = JournalError::UNSUPPORTED_SCHEMA_VERSION_CODE;
         assert_eq!(
-            code.code(), 0x400C,
+            code.code(),
+            0x400C,
             "UnsupportedSchemaVersion must have diagnostic code 0x400C"
         );
         Ok(())
@@ -1321,7 +1366,8 @@ mod durability_gate_tests {
     fn migration_required_error_code() -> Result<(), String> {
         let code = JournalError::MIGRATION_REQUIRED_CODE;
         assert_eq!(
-            code.code(), 0x400D,
+            code.code(),
+            0x400D,
             "MigrationRequired must have diagnostic code 0x400D"
         );
         Ok(())
@@ -1341,8 +1387,13 @@ mod durability_gate_tests {
         let result = submit_artifact(&journal, &workflow, RuntimePolicy::Relaxed)
             .map_err(|e| format!("submit failed: {e}"))?;
 
-        let loaded = journal.compiled_ir(digest).map_err(|e| format!("read: {e}"))?;
-        assert!(loaded.is_some(), "artifact must be persisted in compiled_ir keyspace");
+        let loaded = journal
+            .compiled_ir(digest)
+            .map_err(|e| format!("read: {e}"))?;
+        assert!(
+            loaded.is_some(),
+            "artifact must be persisted in compiled_ir keyspace"
+        );
 
         assert_eq!(result.verification.gate_count, 0, "gate_count must be 0");
         assert!(!result.verification.durable, "durable must be false");
@@ -1410,9 +1461,13 @@ mod durability_gate_tests {
             .map_err(|e| format!("read: {e}"))?;
         let record = loaded.ok_or_else(|| String::from("artifact not found"))?;
 
-        assert!(!record.ir.is_empty(), "retrieved ir bytes must be non-empty");
+        assert!(
+            !record.ir.is_empty(),
+            "retrieved ir bytes must be non-empty"
+        );
         assert_eq!(
-            record.digest, workflow.digest(),
+            record.digest,
+            workflow.digest(),
             "retrieved digest must equal original workflow digest"
         );
 
@@ -1454,25 +1509,30 @@ mod durability_gate_tests {
             "workflow_source must be readable after batch commit"
         );
 
-        let loaded_blob = journal.blob(blob_digest).map_err(|e| format!("read blob: {e}"))?;
-        assert!(loaded_blob.is_some(), "blob must be readable after batch commit");
+        let loaded_blob = journal
+            .blob(blob_digest)
+            .map_err(|e| format!("read blob: {e}"))?;
+        assert!(
+            loaded_blob.is_some(),
+            "blob must be readable after batch commit"
+        );
 
         Ok(())
     }
 
-    /// BDD Scenario: Artifact digest equals BLAKE3 of stored IR bytes
+    /// BDD Scenario: Artifact digest equals workflow digest
     #[test]
-    fn bdd_artifact_digest_equals_blake3_of_ir() -> Result<(), String> {
+    fn bdd_artifact_digest_equals_workflow_digest() -> Result<(), String> {
         let (_temp, journal) = temp_journal().map_err(|e| format!("journal open: {e}"))?;
         let workflow = minimal_valid_workflow()?;
 
         let artifact = submit_artifact(&journal, &workflow, RuntimePolicy::Strict)
             .map_err(|e| format!("submit: {e}"))?;
 
-        let computed_hash: [u8; 32] = blake3::hash(&artifact.ir).into();
         assert_eq!(
-            artifact.digest.as_bytes(), computed_hash,
-            "artifact.digest must equal blake3::hash(artifact.ir)"
+            artifact.digest.as_bytes(),
+            workflow.digest().as_bytes(),
+            "artifact.digest must equal workflow.digest()"
         );
 
         Ok(())
@@ -1490,10 +1550,14 @@ mod durability_gate_tests {
                 seq: EventSeq::new(i),
                 step: StepIdx::new(i as u16),
             };
-            journal.append_journaled(&event).map_err(|e| format!("append: {e}"))?;
+            journal
+                .append_journaled(&event)
+                .map_err(|e| format!("append: {e}"))?;
         }
 
-        let replayed = journal.events_for_run(run).map_err(|e| format!("replay: {e}"))?;
+        let replayed = journal
+            .events_for_run(run)
+            .map_err(|e| format!("replay: {e}"))?;
 
         for (i, event) in replayed.iter().enumerate() {
             assert_eq!(
@@ -1807,8 +1871,8 @@ mod durability_gate_tests {
     fn bdd_second_process_cannot_open_same_journal_path() -> Result<(), String> {
         let temp = tempfile::tempdir().map_err(|e| format!("tempdir failed: {e}"))?;
 
-        let _journal1 = FjallJournal::open(temp.path(), None)
-            .map_err(|e| format!("first open: {e}"))?;
+        let _journal1 =
+            FjallJournal::open(temp.path(), None).map_err(|e| format!("first open: {e}"))?;
 
         let result = FjallJournal::open(temp.path(), None);
         assert!(
@@ -1836,8 +1900,12 @@ mod durability_gate_tests {
             workflow: WorkflowDigest::from_bytes([0; DIGEST_BYTES]),
         };
 
-        journal.append_unpersisted(&e0).map_err(|e| format!("append 0: {e}"))?;
-        journal.append_unpersisted(&e2).map_err(|e| format!("append 2: {e}"))?;
+        journal
+            .append_unpersisted(&e0)
+            .map_err(|e| format!("append 0: {e}"))?;
+        journal
+            .append_unpersisted(&e2)
+            .map_err(|e| format!("append 2: {e}"))?;
 
         let result = journal.events_for_run(run);
         assert!(
@@ -1874,7 +1942,11 @@ mod durability_gate_tests {
 
         // If the forged blob is rejected, the batch should be empty
         if forged_blob_result.is_err() {
-            assert_eq!(batch.len(), 0, "batch must be empty after forged item rejection");
+            assert_eq!(
+                batch.len(),
+                0,
+                "batch must be empty after forged item rejection"
+            );
         }
 
         Ok(())

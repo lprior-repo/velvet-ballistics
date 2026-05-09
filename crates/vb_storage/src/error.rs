@@ -233,6 +233,9 @@ pub enum JournalError {
         /// Underlying I/O error.
         source: std::io::Error,
     },
+    /// Journal trim operation error.
+    #[error("trim operation failed: {0}")]
+    Trim(Box<crate::TrimError>),
 }
 
 impl JournalError {
@@ -322,6 +325,17 @@ impl JournalError {
             Self::ArtifactNotFound { .. } => Self::ARTIFACT_NOT_FOUND_CODE,
             Self::ProcessLockHeld { .. } => Self::PROCESS_LOCK_HELD_CODE,
             Self::ProcessLockIo { .. } => Self::PROCESS_LOCK_IO_CODE,
+            Self::Trim(_) => Self::FJALL_CODE, // Map trim errors to a generic code
+        }
+    }
+}
+
+impl From<crate::TrimError> for JournalError {
+    fn from(err: crate::TrimError) -> Self {
+        match err {
+            crate::TrimError::Fjall(e) => Self::Fjall(e),
+            crate::TrimError::Journal(e) => e,
+            _ => Self::Trim(Box::new(err)),
         }
     }
 }

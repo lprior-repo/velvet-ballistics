@@ -1248,11 +1248,7 @@ fn bh_resume_action_outcome_ready_preserves_secret_taint() {
         idempotency_key: 0,
         capacity: 1,
     };
-    let result = resume_action_outcome(
-        &ticket,
-        outcome,
-        &dummy_contract(),
-    );
+    let result = resume_action_outcome(&ticket, outcome, &dummy_contract());
     assert_eq!(result, Ok(RuntimeSignal::Continue));
 }
 
@@ -1274,11 +1270,7 @@ fn bh_resume_action_outcome_ready_preserves_derived_taint() {
         idempotency_key: 0,
         capacity: 1,
     };
-    let result = resume_action_outcome(
-        &ticket,
-        outcome,
-        &dummy_contract(),
-    );
+    let result = resume_action_outcome(&ticket, outcome, &dummy_contract());
     assert_eq!(result, Ok(RuntimeSignal::Continue));
 }
 
@@ -1300,11 +1292,7 @@ fn bh_resume_action_outcome_ready_clean_taint_preserved() {
         idempotency_key: 0,
         capacity: 1,
     };
-    let result = resume_action_outcome(
-        &ticket,
-        outcome,
-        &dummy_contract(),
-    );
+    let result = resume_action_outcome(&ticket, outcome, &dummy_contract());
     assert_eq!(result, Ok(RuntimeSignal::Continue));
 }
 
@@ -1321,11 +1309,7 @@ fn bh_resume_action_outcome_suspended_preserves_ticket_fields() {
         capacity: 1,
     };
     let outcome = ActionOutcome::Suspended(original_ticket);
-    let result = resume_action_outcome(
-        &make_original_ticket(),
-        outcome,
-        &dummy_contract(),
-    );
+    let result = resume_action_outcome(&make_original_ticket(), outcome, &dummy_contract());
     match result {
         Ok(RuntimeSignal::AwaitingAction(returned_ticket)) => {
             assert_eq!(returned_ticket.run, RunId::new(7));

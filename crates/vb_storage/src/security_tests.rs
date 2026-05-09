@@ -912,8 +912,15 @@ mod tests {
         let lock_path = temp.path().join(".process.lock");
         assert!(lock_path.exists(), ".process.lock must exist after open");
         let contents = std::fs::read_to_string(&lock_path).expect("read lock file");
-        let pid: u32 = contents.trim().parse().expect("lock file should contain valid PID");
-        assert_eq!(pid, std::process::id(), "lock file should contain current process PID");
+        let pid: u32 = contents
+            .trim()
+            .parse()
+            .expect("lock file should contain valid PID");
+        assert_eq!(
+            pid,
+            std::process::id(),
+            "lock file should contain current process PID"
+        );
     }
 
     /// SECURITY: Lock releases on journal drop, allowing re-open.
@@ -921,10 +928,14 @@ mod tests {
     fn lock_releases_on_journal_drop() {
         let temp = tempfile::tempdir().expect("tempdir creation should succeed");
         {
-            let _journal1 = FjallJournal::open(temp.path(), None).expect("first open should succeed");
+            let _journal1 =
+                FjallJournal::open(temp.path(), None).expect("first open should succeed");
         } // journal1 dropped here, releasing the lock
         let result = FjallJournal::open(temp.path(), None);
-        assert!(result.is_ok(), "re-open after drop must succeed because lock was released");
+        assert!(
+            result.is_ok(),
+            "re-open after drop must succeed because lock was released"
+        );
     }
 
     /// SECURITY: No Fjall mutation occurs when lock acquisition fails.
@@ -934,18 +945,14 @@ mod tests {
         let _journal1 = FjallJournal::open(temp.path(), None).expect("first open should succeed");
 
         // Count files before second attempt
-        let before_count = std::fs::read_dir(temp.path())
-            .expect("read_dir")
-            .count();
+        let before_count = std::fs::read_dir(temp.path()).expect("read_dir").count();
 
         // Second open fails
         let result = FjallJournal::open(temp.path(), None);
         assert!(result.is_err(), "second open must fail");
 
         // Count files after second attempt
-        let after_count = std::fs::read_dir(temp.path())
-            .expect("read_dir")
-            .count();
+        let after_count = std::fs::read_dir(temp.path()).expect("read_dir").count();
 
         assert_eq!(
             before_count, after_count,
