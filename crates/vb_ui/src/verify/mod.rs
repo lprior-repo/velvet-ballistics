@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 pub mod action_policy;
 pub mod certificates;
 pub mod durability;

@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Storage error types with diagnostic codes.
 
 use std::path::Path;

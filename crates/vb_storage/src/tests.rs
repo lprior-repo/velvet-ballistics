@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 #[cfg(test)]
 #[allow(
     clippy::assertions_on_constants,

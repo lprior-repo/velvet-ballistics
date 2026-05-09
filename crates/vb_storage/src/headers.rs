@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Run header storage operations.
 //!
 //! Provides storage and retrieval of run metadata records.

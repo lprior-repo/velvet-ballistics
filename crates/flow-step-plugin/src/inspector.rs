@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 /// Inspector field definition.
 #[derive(Debug, Clone)]
 pub struct InspectorField {

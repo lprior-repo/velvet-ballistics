@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 use serde::{Deserialize, Serialize};
 use smol_str::SmolStr;
 

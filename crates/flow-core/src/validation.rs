@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 use crate::doc::*;
 use crate::ids::*;
 use crate::patch::{Diagnostic, DiagnosticSeverity};

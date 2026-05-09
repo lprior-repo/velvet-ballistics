@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Core replay logic for journal recovery.
 //!
 //! Provides:

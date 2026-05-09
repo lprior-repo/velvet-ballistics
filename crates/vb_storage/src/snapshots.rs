@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Snapshot storage operations.
 //!
 //! Provides storage and retrieval of compact run snapshots.

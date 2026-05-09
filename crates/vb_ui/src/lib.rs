@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 pub mod app_state;
 pub mod graph_builder;
 pub mod graph_renderer;

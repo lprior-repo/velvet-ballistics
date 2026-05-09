@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 /// Queue monitoring model for the system overview screen.
 ///
 /// Tracks pressure status across the five internal queue pools

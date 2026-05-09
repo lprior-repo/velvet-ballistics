@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Viewport math, selection state, and hit-testing for the flow editor.
 //!
 //! This module contains all the pure-logic operations that can be tested

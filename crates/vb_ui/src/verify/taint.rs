@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Taint tracking data structures for the verification view.
 //!
 //! Provides slot-level taint classification and propagation tracking used by

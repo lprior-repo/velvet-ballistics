@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Data-driven rendering model for the system overview screen.
 //!
 //! This module defines the "render frame" structs that the Makepad integration

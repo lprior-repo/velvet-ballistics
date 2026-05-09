@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 use flow_core::doc::FlowDocument;
 
 /// Import Amazon States Language JSON into a FlowDocument.

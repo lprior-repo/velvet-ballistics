@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Action policy panel -- analyzes Do-node policy compliance for the Verification screen.
 //!
 //! For each Do node in the compiled workflow, this module classifies the action's

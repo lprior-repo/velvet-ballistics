@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Diff computation engine for replay comparison.
 //!
 //! Compares consecutive [`ReplaySnapshot`] pairs carried by [`ReplayEvent`]s,

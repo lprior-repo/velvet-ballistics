@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Exclusive process lock using POSIX flock.
 //!
 //! Prevents dual writers from corrupting the Fjall LSM-tree by acquiring an

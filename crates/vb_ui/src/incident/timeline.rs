@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 use super::types::{FailureCode, IncidentRecord, IncidentSeverity};
 
 /// A single display-ready entry on the incident timeline visualization.

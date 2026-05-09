@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Activity lanes component for visualizing per-shard load across the runtime.
 //!
 //! Each [`ShardLane`] captures a point-in-time snapshot of one shard's queue

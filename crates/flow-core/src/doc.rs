@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 use crate::ids::*;
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};

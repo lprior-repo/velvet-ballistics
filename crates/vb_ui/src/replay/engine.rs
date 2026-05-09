@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Replay engine that reconstructs run state from journal events.
 //!
 //! The engine pre-computes a `ReplayState` at every event boundary on

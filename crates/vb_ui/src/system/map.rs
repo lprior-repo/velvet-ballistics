@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 // System Map / Topology module for Phase 3A.
 // Provides topology snapshot data for the System Overview screen,
 // including shard node status, system-wide aggregates, and grid layout

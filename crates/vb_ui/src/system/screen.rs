@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 /// System overview screen orchestration.
 ///
 /// `SystemScreen` owns the four subsystems (topology, metrics, alerts,

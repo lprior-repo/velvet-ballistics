@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Replay Theater screen layout model (Phase 1F).
 //!
 //! Provides the data skeleton for the Makepad 2.0 Splash DSL layout

@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Workflow canvas module for the Velvet Ballistics graph editor.
 //!
 //! Provides the authoring canvas that combines a [`FlowDocument`] with computed

@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! FlowPlugin trait system for the flow editor.
 //!
 //! Defines the plugin interface, registry, function-pointer types, and data

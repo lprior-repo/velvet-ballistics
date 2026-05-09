@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Verification certificate panel -- UI view over IPC verification results.
 //!
 //! Transforms `vb_ipc::VerificationResult` into structured certificate entries

@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 use super::repair::{RepairSuggestion, suggest_repairs};
 use super::types::{Incident, IncidentRecord, IncidentSeverity};
 

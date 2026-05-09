@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Journal trimming with retention policy.
 //!
 //! Periodically trims old journal events to reduce storage while preserving

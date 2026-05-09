@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Taint flow overlay -- traces secret-to-sink paths through the workflow graph.
 //!
 //! Given a `WorkflowParts` and a taint map (slot -> taint label), identifies:

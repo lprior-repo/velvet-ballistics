@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Replay-specific types: diffs, playback speed, event types, snapshots, and
 //! derived diagnostics.
 

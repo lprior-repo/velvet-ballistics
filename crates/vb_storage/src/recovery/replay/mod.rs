@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Replay module for journal recovery.
 //!
 //! Organized into:

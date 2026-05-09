@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Drawing primitives for the flow editor canvas.
 //! Constants and helper types for node, edge, port, and grid rendering.
 

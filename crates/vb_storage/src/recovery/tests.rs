@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Recovery tests for velvet-ballastics journal.
 
 #[cfg(test)]

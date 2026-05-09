@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 pub mod draw;
 pub mod edge_render;
 pub mod flow_editor;

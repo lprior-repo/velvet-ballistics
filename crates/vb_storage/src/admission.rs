@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Artifact admission and verification functions.
 //!
 //! Provides artifact submission and admission flows with policy-controlled durability.

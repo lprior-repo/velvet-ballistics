@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Resource bounds panel -- displays contract limits and computed worst-case resource usage.
 
 use vb_core::workflow::{CompiledNodeKind, ResourceContract, WorkflowParts};

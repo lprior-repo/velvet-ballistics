@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! BLACKHAT security tests for vb_storage.
 //!
 //! Documents and verifies security properties across the storage layer including:

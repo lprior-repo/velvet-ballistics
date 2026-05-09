@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Certificate-based verification analysis for compiled workflows.
 //!
 //! Provides two verification APIs:

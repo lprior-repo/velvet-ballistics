@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Keyspace names, magic constants, and size constants for vb_storage.
 //!
 //! These constants define the storage contract between the runtime and

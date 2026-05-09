@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 use std::time::Duration;
 
 use vb_ipc::{AggregateMetrics, ShardMetrics};

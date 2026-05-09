@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 /// Background layers
 pub mod bg {
     pub const CANVAS: [f32; 4] = [0.039, 0.039, 0.071, 1.0]; // #0a0a12

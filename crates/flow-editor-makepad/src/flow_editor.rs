@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! FlowEditor widget -- the main canvas for graph visualization and editing.
 //!
 //! Renders a node-graph canvas with pan/zoom interaction using Makepad 2.0

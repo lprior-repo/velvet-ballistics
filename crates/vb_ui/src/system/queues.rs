@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 // Queue snapshot model for the System Overview "engine room" panel.
 //
 // Tracks aggregate queue depths across five pools -- ready, action,

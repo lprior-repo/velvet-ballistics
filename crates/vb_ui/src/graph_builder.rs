@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Convert VB compiled workflow IR into flow-core document model for visualization.
 //!
 //! This module bridges VB's runtime IR (`CompiledNode` / `WorkflowParts`) and the

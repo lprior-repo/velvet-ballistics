@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Core storage types: configuration, profiles, and sequencing.
 
 use vb_core::{ActionId, RunId, WorkflowId};

@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Fjall-backed journal implementation.
 //!
 //! Provides the main storage interface for workflow artifacts,

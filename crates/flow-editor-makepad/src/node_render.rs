@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Node rendering data production for the flow editor canvas.
 //!
 //! This module is a pure-logic layer that takes a `FlowNodeRecord` and produces

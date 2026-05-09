@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Key encoding functions for Fjall keyspaces.
 //!
 //! Each key variant uses a specific binary format with a type prefix

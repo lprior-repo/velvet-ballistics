@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 use smol_str::SmolStr;
 
 /// Visual properties for a registered node kind.

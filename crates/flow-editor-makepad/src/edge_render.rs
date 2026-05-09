@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Edge rendering: bezier curves, arrow heads, animated particles, and
 //! kind-specific styling for the flow-editor canvas.
 //!

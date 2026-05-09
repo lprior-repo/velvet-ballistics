@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 use crate::theme::colors;
 
 /// Font weight variants with their numeric CSS values.

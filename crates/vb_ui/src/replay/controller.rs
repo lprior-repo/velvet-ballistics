@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Replay controller bridging the IPC bridge with the Makepad UI.
 //!
 //! The controller owns the `ReplayEngine` and `IpcBridge`, manages playback

@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 /// Animation durations in seconds.
 pub mod duration {
     pub const STATE_TRANSITION: f64 = 0.15;

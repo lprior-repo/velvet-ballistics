@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Binary serialization helpers for record encoding/decoding.
 //!
 //! Provides low-level byte manipulation for fixed-width record headers.

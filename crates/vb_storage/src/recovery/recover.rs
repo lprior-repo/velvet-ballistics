@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! High-level recovery orchestration.
 //!
 //! Provides:

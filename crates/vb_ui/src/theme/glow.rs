@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 /// Glow parameters for a node overlay.
 #[derive(Debug, Clone, Copy)]
 pub struct GlowParams {

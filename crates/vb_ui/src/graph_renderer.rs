@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Render instruction production for the workflow graph.
 //!
 //! This module produces data-structure render instructions (`NodeCard`, `EdgeLine`)

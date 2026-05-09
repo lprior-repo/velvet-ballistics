@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! System topology data layer.
 //!
 //! `TopologySnapshot` wraps a `SystemTopology` (from map.rs) and the

@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 /// Data-driven queue visualisation panel for the system overview screen.
 ///
 /// Transforms raw per-shard queue depths and capacities into structured

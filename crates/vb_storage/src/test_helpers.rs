@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 #![allow(unused_imports)]
 //! Test helpers that re-export vb_storage internals for use in tests.
 //!

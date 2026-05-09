@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Artifact storage operations for compiled IR and workflow source.
 //!
 //! Provides storage, retrieval, listing, and removal of compiled artifacts.

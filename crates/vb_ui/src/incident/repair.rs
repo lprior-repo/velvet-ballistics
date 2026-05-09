@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 use super::types::{FailureCode, Incident, IncidentRecord, SideEffectCertainty};
 
 // ---------------------------------------------------------------------------

@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Slot diff panel -- shows what changed at each replay event boundary.
 //!
 //! Phase 1D component: computes and renders slot-value diffs between two

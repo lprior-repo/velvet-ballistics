@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Transport controller for the replay playback state machine.
 //!
 //! Manages play/pause/seek/step state transitions and auto-advances the

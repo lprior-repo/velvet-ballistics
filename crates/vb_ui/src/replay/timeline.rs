@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Timeline strip model for replay event scrubbing (Phase 1C).
 //!
 //! Represents a run's journal as a linear sequence of event markers,

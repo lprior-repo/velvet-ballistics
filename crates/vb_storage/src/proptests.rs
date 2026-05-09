@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 #[cfg(test)]
 #[allow(clippy::as_conversions, clippy::cast_possible_truncation)]
 mod proptests {

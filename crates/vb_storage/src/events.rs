@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Journal event types and record kind identifiers.
 
 use crate::{EventSeq, RecordKind};

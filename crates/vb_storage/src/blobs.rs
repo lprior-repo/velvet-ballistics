@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Blob storage operations.
 //!
 //! Provides storage and retrieval of large binary blobs.

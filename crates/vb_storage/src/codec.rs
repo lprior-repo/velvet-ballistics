@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Record encoding and decoding functions.
 //!
 //! Provides the binary wire format for all storage records.

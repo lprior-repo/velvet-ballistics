@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Recovery module for velvet-ballastics journal.
 //!
 //! Organized into:

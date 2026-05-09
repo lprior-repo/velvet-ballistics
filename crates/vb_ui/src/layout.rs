@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Sugiyama-style layered graph layout for workflow DAGs.
 //!
 //! Converts node positions from `[0, 0]` placeholder coordinates to properly

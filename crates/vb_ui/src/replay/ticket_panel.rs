@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Action ticket panel -- shows durable action metadata for replay safety decisions.
 
 use vb_core::ids::{ActionId, RunId, SeqNo, StepIdx};

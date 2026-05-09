@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Hot-path / latency overlay for the System Overview screen.
 //!
 //! Tracks per-segment duration samples in fixed-size ring buffers and exposes

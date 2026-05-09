@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 /// Cyberpunk mission control color palette.
 pub mod colors {
     // Background layers

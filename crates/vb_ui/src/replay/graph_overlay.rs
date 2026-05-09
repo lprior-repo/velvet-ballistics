@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Graph overlay for the replay theater.
 //!
 //! Maps step IDs to runtime overlay states using a `ReplayState` snapshot

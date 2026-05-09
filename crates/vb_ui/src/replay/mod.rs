@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Run Inspector / Replay Theater module.
 //!
 //! Reconstructs run state from journal events and supports time-travel

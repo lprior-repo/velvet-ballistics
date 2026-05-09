@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Maps VB CompiledNodeKind variants to visual properties for the workflow graph.
 //!
 //! Provides [`NodeCategory`] (semantic grouping), [`NodeShape`] (geometric

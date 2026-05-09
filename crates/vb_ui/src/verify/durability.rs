@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Durability/replay panel for verifying workflow replay safety.
 //!
 //! Examines Do nodes in a compiled workflow and checks whether their actions

@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Async journal writer queue and batch builder.
 //!
 //! Provides bounded queueing for journal events with durability profiling.

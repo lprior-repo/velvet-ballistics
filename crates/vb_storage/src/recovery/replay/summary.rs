@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Summary and frame seed building for journal recovery.
 //!
 //! Provides:

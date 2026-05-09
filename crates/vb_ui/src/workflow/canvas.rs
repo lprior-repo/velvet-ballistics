@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Workflow canvas -- viewport, selection, focus-jump, edge path computation,
 //! and the graph data model (Phase 4A, read-only).
 //!

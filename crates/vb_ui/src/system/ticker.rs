@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 use std::collections::{HashSet, VecDeque};
 
 #[derive(Debug, Clone)]

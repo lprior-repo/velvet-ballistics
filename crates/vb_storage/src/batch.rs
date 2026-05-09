@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Atomic cross-keyspace write batch backed by Fjall.
 //!
 //! Accumulates writes across multiple keyspaces and commits them

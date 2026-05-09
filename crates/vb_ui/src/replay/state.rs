@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Virtual run state reconstructed at a specific event boundary.
 //!
 //! Also contains [`ReplayBookmark`] and [`ReplaySessionState`] for richer

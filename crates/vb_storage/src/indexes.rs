@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Index storage operations.
 //!
 //! Provides storage of status, workflow, and action index markers.

@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Durable record types for storage.
 
 use vb_core::{RunId, WorkflowDigest, WorkflowId};
