@@ -36,6 +36,8 @@ pub struct AppState {
     /// Last IPC wiring error, if any. Surfaces connection failures and IPC
     /// errors in the System Overview screen so they are not silently swallowed.
     pub last_ipc_error: Option<String>,
+    /// Whether to show the shortcuts help overlay.
+    pub show_shortcuts: bool,
 }
 
 /// Replay Theater screen data.
@@ -162,6 +164,7 @@ impl AppState {
             workflow: WorkflowData::new(),
             system_screen: SystemScreen::new(),
             last_ipc_error: None,
+            show_shortcuts: false,
         }
     }
 

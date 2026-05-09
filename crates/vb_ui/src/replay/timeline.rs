@@ -292,6 +292,7 @@ fn journal_event_info(je: &JournalEvent) -> (String, Option<u16>) {
         JournalEvent::RunCancelled { .. } => ("RunCancelled".to_owned(), None),
         JournalEvent::RunFinished { .. } => ("RunFinished".to_owned(), None),
         JournalEvent::RunFailedEvent { .. } => ("RunFailed".to_owned(), None),
+        JournalEvent::RunAdmission { .. } => ("RunAdmission".to_owned(), None),
     }
 }
 
@@ -379,6 +380,7 @@ mod tests {
             seq: make_event_seq(seq),
             slot: vb_core::SlotIdx::new(0),
             value: None,
+            extra: None,
         }
     }
     fn je_wait_scheduled(seq: u64, step: u16) -> JournalEvent {

@@ -17,8 +17,8 @@ use vb_ui::workflow::WorkflowCanvas;
 use crate::domain::IpcCleanCycles;
 use crate::draw_helpers::{draw_background, draw_content, draw_header_bar, draw_nav_tabs};
 use crate::event_handlers::{
-    handle_nav, handle_transport, poll_ipc_and_detect_changes,
-    TransportControlKind, VbAction,
+    TransportControlKind, VbAction, handle_keyboard, handle_nav, handle_transport,
+    poll_ipc_and_detect_changes,
 };
 
 app_main!(VbApp);
@@ -70,6 +70,8 @@ pub struct VbApp {
     workflow_canvas: Option<WorkflowCanvas>,
     #[rust]
     rect: Rect,
+    #[rust]
+    ctrl_pressed: bool,
 }
 
 impl Widget for VbApp {
@@ -84,6 +86,7 @@ impl Widget for VbApp {
         );
         handle_nav(cx, self.uid, &self.rect, &hit);
         handle_transport(cx, self.uid, &self.rect, &hit);
+        handle_keyboard(cx, self.uid, event, &self.app_state, &mut self.workflow_canvas);
         self.redraw(cx);
     }
 
@@ -93,7 +96,15 @@ impl Widget for VbApp {
         draw_background(&mut self.draw_bg, cx, self.rect);
         draw_header_bar(&mut self.draw_header, cx, self.rect);
         draw_nav_tabs(&mut self.draw_nav, cx, self.rect, &self.app_state);
-        draw_content(&mut self.draw_bg, &mut self.draw_vector, &mut self.draw_text, cx, self.rect, &self.app_state, &self.workflow_canvas);
+        draw_content(
+            &mut self.draw_bg,
+            &mut self.draw_vector,
+            &mut self.draw_text,
+            cx,
+            self.rect,
+            &self.app_state,
+            &self.workflow_canvas,
+        );
         DrawStep::done()
     }
 }
@@ -212,6 +223,22 @@ impl MatchEvent for VbApp {
                             });
                         }
                     },
+                    VbAction::Escape => {
+                        self.app_state.show_shortcuts = false;
+                        self.app_state.replay.transport_state = TransportState::Idle;
+                        self.app_state
+                            .switch_screen(vb_ui::app_state::Screen::RunReplay);
+                        script_eval!(cx, {
+                            mod.state.current_screen = "RunReplay"
+                            mod.state.transport_state = "Idle"
+                        });
+                    }
+                    VbAction::ToggleShortcuts => {
+                        self.app_state.show_shortcuts = !self.app_state.show_shortcuts;
+                    }
+                    VbAction::WorkflowZoom(_) => {
+                        // Workflow zoom handled by the workflow graph canvas.
+                    }
                     VbAction::NoOp => {}
                 }
             }

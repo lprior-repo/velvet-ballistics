@@ -3,7 +3,7 @@
 //! This module contains comprehensive tests for the AST types and parsing.
 
 #[cfg(test)]
-mod tests {
+mod ast_tests {
     use super::super::parse::parse_workflow_ast;
     use super::super::types::*;
     use crate::YamlError;

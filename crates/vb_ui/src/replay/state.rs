@@ -103,6 +103,10 @@ impl ReplayState {
                 next.run_id = *run;
             }
 
+            JournalEvent::RunAdmission { .. } => {
+                // Run admission metadata; no ReplayState field to update.
+            }
+
             JournalEvent::StepStarted { step, .. } => {
                 next.step_states.insert(*step, StepState::Running);
             }
@@ -166,6 +170,8 @@ impl ReplayState {
                 next.terminal_kind = Some(TerminalKind::Failed);
                 next.steps_failed = saturating_add_one(next.steps_failed);
             }
+
+            JournalEvent::RunAdmission { .. } => {}
         }
 
         next
@@ -411,6 +417,7 @@ mod tests {
             seq: seq(seq_val),
             slot: SlotIdx::new(slot),
             value: None,
+            extra: None,
         }
     }
 

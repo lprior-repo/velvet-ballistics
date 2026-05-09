@@ -491,6 +491,7 @@ pub fn trace_to_journal(trace: IpcTraceEvent) -> Option<JournalEvent> {
             seq,
             slot,
             value: None,
+            extra: None,
         }),
         IpcTraceEventKind::ActionScheduled { run, step } => Some(JournalEvent::ActionScheduled {
             run,

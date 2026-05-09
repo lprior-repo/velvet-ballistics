@@ -338,6 +338,7 @@ mod tests {
             seq: EventSeq::new(seq),
             slot,
             value: None,
+            extra: None,
         }
     }
 

@@ -225,6 +225,7 @@ mod tests {
             seq: EventSeq::new(seq),
             slot: SlotIdx::new(slot),
             value: bytes.ok(),
+            extra: None,
         }
     }
 
@@ -306,6 +307,7 @@ mod tests {
             seq: EventSeq::new(10),
             slot: SlotIdx::new(0),
             value: None,
+            extra: None,
         };
         let current = HashMap::new();
         let panel = SlotDiffPanel::from_event(&event, &current);
@@ -830,7 +832,8 @@ mod tests {
             run: vb_core::ids::RunId::new(1),
             seq: EventSeq::new(99),
             slot: SlotIdx::new(5),
-            value: Some(vec![0xFF, 0xFE, 0xFD, 0xFC]), // garbage bytes
+            value: Some(vec![0xFF, 0xFE, 0xFD, 0xFC]),
+            extra: None, // garbage bytes
         };
         let current = HashMap::new();
         let panel = SlotDiffPanel::from_event(&event, &current);
@@ -865,6 +868,7 @@ mod tests {
             seq: EventSeq::new(50),
             slot: SlotIdx::new(10),
             value: None, // represents deletion or clearing
+            extra: None,
         };
         // Slot 10 exists in current state.
         let current = slot_map(&[(10, SlotValue::I64(42))]);
@@ -1092,7 +1096,8 @@ mod tests {
             run: vb_core::ids::RunId::new(1),
             seq: EventSeq::new(42),
             slot: SlotIdx::new(10),
-            value: Some(vec![0xDE, 0xAD, 0xBE]), // garbage postcard bytes
+            value: Some(vec![0xDE, 0xAD, 0xBE]),
+            extra: None, // garbage postcard bytes
         };
         let panel = SlotDiffPanel::from_event(&event, &HashMap::new());
         assert!(
@@ -1117,6 +1122,7 @@ mod tests {
             seq: EventSeq::new(5),
             slot: SlotIdx::new(3),
             value: None, // semantically: delete slot 3
+            extra: None,
         };
         let current = slot_map(&[(3, SlotValue::Bool(true))]);
         let panel = SlotDiffPanel::from_event(&event, &current);

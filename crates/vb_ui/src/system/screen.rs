@@ -87,7 +87,9 @@ impl SystemScreen {
             alerts: AlertManager::new(MAX_ALERTS),
             ticker: EventTicker::new(MAX_TICKER_EVENTS),
             queue_monitors: Vec::new(),
-            latency_breakdown: LatencyBreakdown { segments: Vec::new() },
+            latency_breakdown: LatencyBreakdown {
+                segments: Vec::new(),
+            },
         }
     }
 
@@ -2227,6 +2229,9 @@ mod tests {
             display: String::from("325us"),
             fill_color: String::from("#00f5ff"),
             width_ratio: 0.001,
+            p50_us: 300,
+            p95_us: 400,
+            p99_us: 500,
         };
         let debug = format!("{seg:?}");
         assert!(debug.contains("submit -> admit"));

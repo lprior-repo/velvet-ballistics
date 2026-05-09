@@ -36,6 +36,19 @@ pub(crate) enum VbAction {
     SwitchScreen(Screen),
     /// Transport control button was pressed.
     TransportControl(TransportControlKind),
+    /// Escape key was pressed.
+    Escape,
+    /// Toggle shortcuts help overlay.
+    ToggleShortcuts,
+    /// Workflow canvas zoom.
+    WorkflowZoom(WorkflowZoomAction),
+}
+
+/// Zoom direction for workflow canvas.
+#[derive(Clone, Copy, Debug)]
+pub(crate) enum WorkflowZoomAction {
+    ZoomIn,
+    ZoomOut,
 }
 
 // ---------------------------------------------------------------------------
@@ -138,6 +151,36 @@ pub(crate) fn handle_transport(cx: &mut Cx, uid: WidgetUid, rect: &Rect, hit: &H
     cx.widget_action(uid, VbAction::TransportControl(control));
 }
 
+/// Emits transport control or escape actions when keyboard keys are pressed.
+pub(crate) fn handle_keyboard(
+    cx: &mut Cx,
+    uid: WidgetUid,
+    event: &Event,
+    _app_state: &vb_ui::app_state::AppState,
+    _workflow_canvas: &mut Option<vb_ui::workflow::WorkflowCanvas>,
+) {
+    let Event::KeyDown(kde) = event else {
+        return;
+    };
+    match kde.key_code {
+        KeyCode::Space => {
+            cx.widget_action(
+                uid,
+                VbAction::TransportControl(TransportControlKind::TogglePlayPause),
+            );
+        }
+        KeyCode::Escape => {
+            cx.widget_action(uid, VbAction::Escape);
+        }
+        KeyCode::Slash if kde.modifiers.shift => {
+            cx.widget_action(uid, VbAction::ToggleShortcuts);
+        }
+        _ => {}
+    }
+}
+
+// ---------------------------------------------------------------------------
+// IPC wiring
 // ---------------------------------------------------------------------------
 // IPC wiring
 // ---------------------------------------------------------------------------
