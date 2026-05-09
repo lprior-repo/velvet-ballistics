@@ -6104,3 +6104,679 @@ fn inspect_snapshot_debug_format() {
         "Debug should contain InspectSnapshot: {debug}"
     );
 }
+
+// =========================================================================
+// vb-1u88: Graceful Shutdown and Cancellation Edges — RED PHASE TESTS
+// These tests compile but fail assertions until implementation matches spec.
+// =========================================================================
+
+// ---------------------------------------------------------------------------
+// Section 2: Tick and Shutdown — Postconditions
+// ---------------------------------------------------------------------------
+
+#[test]
+fn vb1u88_tick_multiple_times_after_shutdown_all_false() {
+    let config = small_config();
+    let mut shard = Shard::new(config);
+    assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
+    assert_eq!(shard.tick(), Ok(false));
+    assert_eq!(shard.tick(), Ok(false));
+    assert_eq!(shard.tick(), Ok(false));
+    assert_eq!(shard.is_shutting_down(), true);
+}
+
+#[test]
+fn vb1u88_drain_for_shutdown_processes_submit_then_shutdown() {
+    let config = small_config();
+    let mut shard = Shard::new(config);
+    let Some(workflow) = finished_workflow() else {
+        return;
+    };
+    assert_eq!(
+        shard.enqueue(ShardCommand::Submit {
+            run: super::RunId::new(1),
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
+    assert_eq!(shard.drain_for_shutdown(), Ok(()));
+    assert_eq!(shard.is_shutting_down(), true);
+    assert_eq!(shard.counters().snapshot().runs_completed, 1);
+}
+
+#[test]
+fn vb1u88_drain_for_shutdown_on_already_shutting_down() {
+    let config = small_config();
+    let mut shard = Shard::new(config);
+    assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
+    assert_eq!(shard.tick(), Ok(false));
+    assert_eq!(shard.drain_for_shutdown(), Ok(()));
+}
+
+#[test]
+fn vb1u88_drain_for_shutdown_empty_queue_returns_shutdown_in_progress() {
+    let config = small_config();
+    let mut shard = Shard::new(config);
+    assert_eq!(
+        shard.drain_for_shutdown(),
+        Err(RuntimeError::ShutdownInProgress)
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Section 3: Handle Cancel — Postconditions
+// ---------------------------------------------------------------------------
+
+#[test]
+fn vb1u88_cancel_unknown_run_returns_ok() {
+    let config = small_config();
+    let mut shard = Shard::new(config);
+    assert_eq!(
+        shard.enqueue(ShardCommand::Cancel {
+            run: super::RunId::new(9999)
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+}
+
+#[test]
+fn vb1u88_cancel_emits_run_cancelled_journal_event() {
+    let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
+    let shared: SharedRuntimeJournal = journal.clone();
+    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let Some(workflow) = suspended_workflow() else {
+        return;
+    };
+    let run = super::RunId::new(1001);
+    assert_eq!(
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    assert_eq!(shard.enqueue(ShardCommand::Cancel { run }), Ok(()));
+    assert_eq!(shard.tick(), Ok(true));
+    let events = journal.snapshot().expect("journal snapshot should succeed");
+    assert!(
+        events.contains(&RuntimeJournalEvent::RunCancelled { run }),
+        "journal should contain RunCancelled event"
+    );
+}
+
+#[test]
+fn vb1u88_cancel_emits_run_cancelled_trace_event() {
+    let config = small_config();
+    let mut shard = Shard::new(config);
+    let Some(workflow) = suspended_workflow() else {
+        return;
+    };
+    let run = super::RunId::new(1002);
+    assert_eq!(
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    assert_eq!(shard.enqueue(ShardCommand::Cancel { run }), Ok(()));
+    assert_eq!(shard.tick(), Ok(true));
+    let events = shard.trace_ring_mut().drain();
+    assert!(
+        events.contains(&TraceEvent::RunCancelled { run }),
+        "trace should contain RunCancelled event"
+    );
+}
+
+#[test]
+fn vb1u88_cancel_unknown_run_does_not_emit_events() {
+    let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
+    let shared: SharedRuntimeJournal = journal.clone();
+    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let before = journal.snapshot().expect("journal snapshot should succeed");
+    assert_eq!(
+        shard.enqueue(ShardCommand::Cancel {
+            run: super::RunId::new(8888)
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    let after = journal.snapshot().expect("journal snapshot should succeed");
+    assert_eq!(before, after, "no journal events should be emitted for unknown run cancel");
+    let trace_events = shard.trace_ring_mut().drain();
+    let unknown_run = super::RunId::new(8888);
+    assert!(
+        !trace_events.iter().any(|e| matches!(e, TraceEvent::RunCancelled { run } if *run == unknown_run)),
+        "no trace RunCancelled event for unknown run"
+    );
+}
+
+#[test]
+fn vb1u88_cancel_removes_run_and_releases_frame() {
+    let config = small_config();
+    let mut shard = Shard::new(config);
+    let Some(workflow) = suspended_workflow() else {
+        return;
+    };
+    let run = super::RunId::new(1003);
+    assert_eq!(
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    assert_eq!(shard.frame_pools.get(&(1, 1)).map(|p| p.available()), Some(0));
+    assert_eq!(shard.enqueue(ShardCommand::Cancel { run }), Ok(()));
+    assert_eq!(shard.tick(), Ok(true));
+    assert_eq!(shard.runs.get(&run), None);
+    assert_eq!(shard.frame_pools.get(&(1, 1)).map(|p| p.available()), Some(1));
+    assert_eq!(shard.counters().snapshot().runs_failed, 1);
+}
+
+#[test]
+fn vb1u88_cancel_removes_pending_timer() {
+    let config = small_config();
+    let mut shard = Shard::new(config);
+    let Some(workflow) = timed_wait_then_finish_workflow() else {
+        return;
+    };
+    let run = super::RunId::new(1004);
+    assert_eq!(
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    assert_eq!(shard.pending_timers.len(), 1);
+    assert_eq!(shard.enqueue(ShardCommand::Cancel { run }), Ok(()));
+    assert_eq!(shard.tick(), Ok(true));
+    assert_eq!(shard.pending_timers.len(), 0);
+}
+
+// ---------------------------------------------------------------------------
+// Section 4: Status and Health Reporting
+// ---------------------------------------------------------------------------
+
+#[test]
+fn vb1u88_status_running_when_not_shutting_down() {
+    let config = small_config();
+    let shard = Shard::new(config);
+    let status = shard.status();
+    assert_eq!(status.health, super::ShardHealth::Running);
+    assert_eq!(status.running, true);
+    assert_eq!(status.shutting_down, false);
+}
+
+#[test]
+fn vb1u88_status_shutting_down_after_shutdown_tick() {
+    let config = small_config();
+    let mut shard = Shard::new(config);
+    assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
+    assert_eq!(shard.tick(), Ok(false));
+    let status = shard.status();
+    assert_eq!(status.health, super::ShardHealth::ShuttingDown);
+    assert_eq!(status.running, false);
+    assert_eq!(status.shutting_down, true);
+}
+
+#[test]
+fn vb1u88_status_command_queue_depth_correct() {
+    let config = small_config();
+    let mut shard = Shard::new(config);
+    assert_eq!(
+        shard.enqueue(ShardCommand::Shutdown), Ok(())
+    );
+    assert_eq!(
+        shard.enqueue(ShardCommand::Shutdown), Ok(())
+    );
+    let status = shard.status();
+    assert_eq!(status.command_queue_depth, 2);
+    assert_eq!(status.command_queue_capacity, 16);
+}
+
+#[test]
+fn vb1u88_status_immutable_during_shutdown() {
+    let config = small_config();
+    let mut shard = Shard::new(config);
+    assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
+    let status1 = shard.status();
+    let status2 = shard.status();
+    assert_eq!(status1.command_queue_depth, status2.command_queue_depth);
+    assert_eq!(status1.active_runs, status2.active_runs);
+}
+
+#[test]
+fn vb1u88_is_shutting_down_false_on_new_shard() {
+    let config = small_config();
+    let shard = Shard::new(config);
+    assert_eq!(shard.is_shutting_down(), false);
+}
+
+#[test]
+fn vb1u88_is_shutting_down_true_after_shutdown() {
+    let config = small_config();
+    let mut shard = Shard::new(config);
+    assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
+    assert_eq!(shard.tick(), Ok(false));
+    assert_eq!(shard.is_shutting_down(), true);
+}
+
+#[test]
+fn vb1u88_shutdown_is_permanent_no_unshutdown() {
+    let config = small_config();
+    let mut shard = Shard::new(config);
+    assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
+    assert_eq!(shard.tick(), Ok(false));
+    for _ in 0..10 {
+        assert_eq!(shard.tick(), Ok(false));
+    }
+    assert_eq!(shard.is_shutting_down(), true);
+    let status = shard.status();
+    assert_eq!(status.health, super::ShardHealth::ShuttingDown);
+}
+
+// ---------------------------------------------------------------------------
+// Section 5: Error Paths — RunNotFound variants
+// ---------------------------------------------------------------------------
+
+#[test]
+fn vb1u88_action_completion_unknown_run_not_found() {
+    let config = small_config();
+    let mut shard = Shard::new(config);
+    let ticket = vb_core::action::ActionTicket {
+        run: super::RunId::new(9999),
+        step: vb_core::ids::StepIdx::ZERO,
+        seq: vb_core::ids::SeqNo::ZERO,
+        action: ActionId::new(0),
+        attempt: 1,
+        idempotency_key: 0,
+        capacity: 1,
+    };
+    let output = vb_core::action::ActionOutputReady {
+        output_slot: SlotIdx::ZERO,
+        value: vb_core::value::SlotValue::I64(1),
+        taint: vb_core::value::Taint::Clean,
+        encoded_len: 0,
+    };
+    assert_eq!(
+        shard.enqueue(ShardCommand::ActionCompleted { ticket, output }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Err(RuntimeError::RunNotFound));
+}
+
+#[test]
+fn vb1u88_action_failure_unknown_run_not_found() {
+    let config = small_config();
+    let mut shard = Shard::new(config);
+    let ticket = vb_core::action::ActionTicket {
+        run: super::RunId::new(9999),
+        step: vb_core::ids::StepIdx::ZERO,
+        seq: vb_core::ids::SeqNo::ZERO,
+        action: ActionId::new(0),
+        attempt: 1,
+        idempotency_key: 0,
+        capacity: 1,
+    };
+    let failure = vb_core::action::ActionFailure {
+        code: ActionFailureCode::Timeout,
+        retry_policy: VbRetryPolicy::NonRetryable,
+        taint: vb_core::value::Taint::Clean,
+        detail: None,
+        encoded_len: 0,
+    };
+    assert_eq!(
+        shard.enqueue(ShardCommand::ActionFailed { ticket, failure }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Err(RuntimeError::RunNotFound));
+}
+
+#[test]
+fn vb1u88_resume_unknown_run_not_found() {
+    let config = small_config();
+    let mut shard = Shard::new(config);
+    assert_eq!(
+        shard.enqueue(ShardCommand::Resume {
+            run: super::RunId::new(9999)
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Err(RuntimeError::RunNotFound));
+}
+
+#[test]
+fn vb1u88_timer_fire_unknown_run_not_found() {
+    let config = small_config();
+    let mut shard = Shard::new(config);
+    assert_eq!(
+        shard.enqueue(ShardCommand::TimerFired {
+            run: super::RunId::new(9999)
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Err(RuntimeError::RunNotFound));
+}
+
+#[test]
+fn vb1u88_ask_answer_unknown_run_not_found() {
+    let config = small_config();
+    let mut shard = Shard::new(config);
+    let answer = AskAnswer {
+        ticket: AskTicket {
+            run: super::RunId::new(9999),
+            ask_step: vb_core::ids::StepIdx::ZERO,
+            resume_step: vb_core::ids::StepIdx::new(1),
+        },
+        answer_slot: SlotIdx::ZERO,
+        value: vb_core::value::SlotValue::Bool(true),
+        taint: vb_core::value::Taint::Clean,
+    };
+    assert_eq!(shard.enqueue(ShardCommand::AskAnswered { answer }), Ok(()));
+    assert_eq!(shard.tick(), Err(RuntimeError::RunNotFound));
+}
+
+// ---------------------------------------------------------------------------
+// Section 6: Invariants
+// ---------------------------------------------------------------------------
+
+#[test]
+fn vb1u88_invariant_runs_len_never_exceeds_max() {
+    let config = ShardConfig {
+        command_queue_capacity: 16,
+        trace_capacity: 16,
+        step_budget_per_tick: 4,
+        max_active_runs: 2,
+        policy: vb_core::policy::RuntimePolicy::Relaxed,
+    };
+    let mut shard = Shard::new(config);
+    let Some(workflow) = suspended_workflow() else {
+        return;
+    };
+    for i in 0..5 {
+        assert_eq!(
+            shard.enqueue(ShardCommand::Submit {
+                run: super::RunId::new(i as u64),
+                workflow: workflow.clone(),
+                caps: vb_core::capability::CapabilitySet::empty()
+            }),
+            Ok(())
+        );
+        let _ = shard.tick();
+        assert!(
+            shard.runs.len() <= config.max_active_runs,
+            "runs.len() = {} should never exceed max_active_runs = {}",
+            shard.runs.len(),
+            config.max_active_runs
+        );
+    }
+}
+
+#[test]
+fn vb1u88_invariant_queue_len_never_exceeds_capacity() {
+    let config = ShardConfig {
+        command_queue_capacity: 3,
+        trace_capacity: 16,
+        step_budget_per_tick: 4,
+        max_active_runs: 4,
+        policy: vb_core::policy::RuntimePolicy::Relaxed,
+    };
+    let shard = Shard::new(config);
+    for _ in 0..3 {
+        assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
+    }
+    assert_eq!(
+        shard.enqueue(ShardCommand::Shutdown),
+        Err(RuntimeError::QueueFull)
+    );
+    assert!(shard.command_queue.len() <= shard.command_queue.capacity());
+}
+
+#[test]
+fn vb1u88_invariant_no_trace_dropped_during_operation() {
+    let config = ShardConfig {
+        command_queue_capacity: 16,
+        trace_capacity: 32,
+        step_budget_per_tick: 4,
+        max_active_runs: 4,
+        policy: vb_core::policy::RuntimePolicy::Relaxed,
+    };
+    let mut shard = Shard::new(config);
+    let Some(workflow) = finished_workflow() else {
+        return;
+    };
+    for i in 0..4 {
+        assert_eq!(
+            shard.enqueue(ShardCommand::Submit {
+                run: super::RunId::new(i as u64),
+                workflow: workflow.clone(),
+                caps: vb_core::capability::CapabilitySet::empty()
+            }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Ok(true));
+    }
+    assert_eq!(shard.trace_ring().dropped(), 0);
+}
+
+// ---------------------------------------------------------------------------
+// Section 7: Edge Cases
+// ---------------------------------------------------------------------------
+
+#[test]
+fn vb1u88_run_id_zero_handled_correctly() {
+    let config = small_config();
+    let mut shard = Shard::new(config);
+    let Some(workflow) = finished_workflow() else {
+        return;
+    };
+    assert_eq!(
+        shard.enqueue(ShardCommand::Submit {
+            run: super::RunId::new(0),
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    assert_eq!(shard.counters().snapshot().runs_completed, 1);
+}
+
+#[test]
+fn vb1u88_max_run_id_handled_correctly() {
+    let config = small_config();
+    let mut shard = Shard::new(config);
+    let Some(workflow) = finished_workflow() else {
+        return;
+    };
+    assert_eq!(
+        shard.enqueue(ShardCommand::Submit {
+            run: super::RunId::new(u64::MAX),
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    assert_eq!(shard.counters().snapshot().runs_completed, 1);
+}
+
+#[test]
+fn vb1u88_multiple_sequential_finished_runs_no_leakage() {
+    let config = small_config();
+    let mut shard = Shard::new(config);
+    let Some(workflow) = finished_workflow() else {
+        return;
+    };
+    for i in 0..10 {
+        let run_id = super::RunId::new(i);
+        assert_eq!(
+            shard.enqueue(ShardCommand::Submit {
+                run: run_id,
+                workflow: workflow.clone(),
+                caps: vb_core::capability::CapabilitySet::empty()
+            }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Ok(true));
+        assert_eq!(shard.runs.get(&run_id), None);
+    }
+    assert_eq!(shard.counters().snapshot().runs_completed, 10);
+    assert_eq!(shard.counters().snapshot().runs_failed, 0);
+}
+
+#[test]
+fn vb1u88_queue_full_at_capacity_boundary() {
+    let config = ShardConfig {
+        command_queue_capacity: 2,
+        trace_capacity: 4,
+        step_budget_per_tick: 4,
+        max_active_runs: 4,
+        policy: vb_core::policy::RuntimePolicy::Relaxed,
+    };
+    let shard = Shard::new(config);
+    assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
+    assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
+    assert_eq!(
+        shard.enqueue(ShardCommand::Shutdown),
+        Err(RuntimeError::QueueFull)
+    );
+}
+
+#[test]
+fn vb1u88_action_ticket_step_idx_boundary() {
+    let config = small_config();
+    let mut shard = Shard::new(config);
+    let Some(workflow) = suspended_workflow() else {
+        return;
+    };
+    let run = super::RunId::new(9001);
+    assert_eq!(
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    let ticket_min = vb_core::action::ActionTicket {
+        run,
+        step: vb_core::ids::StepIdx::ZERO,
+        seq: vb_core::ids::SeqNo::ZERO,
+        action: ActionId::new(0),
+        attempt: 1,
+        idempotency_key: 0,
+        capacity: 1,
+    };
+    let output = vb_core::action::ActionOutputReady {
+        output_slot: SlotIdx::ZERO,
+        value: vb_core::value::SlotValue::I64(1),
+        taint: vb_core::value::Taint::Clean,
+        encoded_len: 0,
+    };
+    assert_eq!(
+        shard.enqueue(ShardCommand::ActionCompleted {
+            ticket: ticket_min,
+            output
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+}
+
+// ---------------------------------------------------------------------------
+// Section 8: Integration Tests — BDD Given-When-Then
+// ---------------------------------------------------------------------------
+
+#[test]
+fn vb1u88_bdd_clean_shutdown_sequence() {
+    let config = small_config();
+    let mut shard = Shard::new(config);
+    let Some(workflow) = finished_workflow() else {
+        return;
+    };
+    assert_eq!(
+        shard.enqueue(ShardCommand::Submit {
+            run: super::RunId::new(1),
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
+    let result = shard.tick();
+    assert_eq!(result, Ok(false));
+    assert_eq!(shard.is_shutting_down(), true);
+    assert_eq!(shard.status().health, super::ShardHealth::ShuttingDown);
+}
+
+#[test]
+fn vb1u88_bdd_cancel_non_existent_run_is_idempotent() {
+    let config = small_config();
+    let mut shard = Shard::new(config);
+    let before_failed = shard.counters().snapshot().runs_failed;
+    assert_eq!(
+        shard.enqueue(ShardCommand::Cancel {
+            run: super::RunId::new(9999)
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    assert_eq!(shard.counters().snapshot().runs_failed, before_failed);
+    assert_eq!(shard.counters().snapshot().runs_completed, 0);
+}
+
+#[test]
+fn vb1u88_bdd_multiple_ticks_after_shutdown_idempotent() {
+    let config = small_config();
+    let mut shard = Shard::new(config);
+    assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
+    assert_eq!(shard.tick(), Ok(false));
+    assert_eq!(shard.tick(), Ok(false));
+    assert_eq!(shard.tick(), Ok(false));
+    assert_eq!(shard.is_shutting_down(), true);
+}
+
+#[test]
+fn vb1u88_bdd_cancel_run_removes_from_runs_emits_events() {
+    let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
+    let shared: SharedRuntimeJournal = journal.clone();
+    let mut shard = Shard::new_with_journal(small_config(), shared);
+    let Some(workflow) = suspended_workflow() else {
+        return;
+    };
+    let run = super::RunId::new(5001);
+    assert_eq!(
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    assert_eq!(shard.enqueue(ShardCommand::Cancel { run }), Ok(()));
+    assert_eq!(shard.tick(), Ok(true));
+    let events = journal.snapshot().expect("journal snapshot should succeed");
+    assert!(
+        events.contains(&RuntimeJournalEvent::RunCancelled { run }),
+        "RunCancelled journal event should be present"
+    );
+    assert_eq!(shard.runs.get(&run), None);
+    assert_eq!(shard.counters().snapshot().runs_failed, 1);
+}
