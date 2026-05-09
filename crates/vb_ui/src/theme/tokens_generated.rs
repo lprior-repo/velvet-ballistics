@@ -1,6 +1,4 @@
-// Generated from velvet_ui_tokens.toml — DO NOT EDIT
-
-use crate::theme::colors;
+// Generated from velvet_ui_tokens.toml - DO NOT EDIT
 
 #[derive(Debug, Clone, Copy)]
 pub struct TokenColors {
@@ -14,23 +12,15 @@ pub struct TokenColors {
     pub warning:        [f32; 4],
 }
 
-pub fn hex_to_f32(c: &str) -> [f32; 4] {
-    let hex = c.trim_start_matches('#');
-    let r = u8::from_str_radix(&hex[0..2], 16).unwrap_or(0) as f32 / 255.0;
-    let g = u8::from_str_radix(&hex[2..4], 16).unwrap_or(0) as f32 / 255.0;
-    let b = u8::from_str_radix(&hex[4..6], 16).unwrap_or(0) as f32 / 255.0;
-    [r, g, b, 1.0]
-}
-
 pub const TOKENS: TokenColors = TokenColors {
-    surface:      hex_to_f32("#FFFFFF"),
-    text_primary: hex_to_f32("#101828"),
-    success:      hex_to_f32("#16A66A"),
-    running:      hex_to_f32("#1F7AF5"),
-    failure:      hex_to_f32("#E5484D"),
-    taint:        hex_to_f32("#8B5CF6"),
-    durable:      hex_to_f32("#14B8A6"),
-    warning:      hex_to_f32("#F59E0B"),
+    surface:      [1.000000, 1.000000, 1.000000, 1.0],
+    text_primary: [0.062745, 0.094118, 0.156863, 1.0],
+    success:      [0.086275, 0.650980, 0.415686, 1.0],
+    running:      [0.121569, 0.478431, 0.960784, 1.0],
+    failure:      [0.898039, 0.282353, 0.301961, 1.0],
+    taint:        [0.545098, 0.360784, 0.964706, 1.0],
+    durable:      [0.078431, 0.721569, 0.650980, 1.0],
+    warning:      [0.960784, 0.619608, 0.043137, 1.0],
 };
 
 pub const LAYOUT: TokenLayout = TokenLayout {

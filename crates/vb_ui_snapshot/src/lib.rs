@@ -1,6 +1,10 @@
 #![forbid(unsafe_code)]
 #![cfg_attr(not(feature = "std"), no_std)]
 
+extern crate alloc;
+
+use alloc::vec::Vec;
+
 pub mod checks;
 pub mod error;
 pub mod fixtures;

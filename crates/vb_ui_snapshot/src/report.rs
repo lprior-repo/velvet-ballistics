@@ -1,6 +1,17 @@
 #![forbid(unsafe_code)]
 
+#[cfg(feature = "std")]
+use alloc::borrow::Cow;
+use alloc::{
+    string::{String, ToString},
+    vec::Vec,
+};
+use core::fmt;
+
 use serde::{Deserialize, Serialize};
+
+#[cfg(feature = "std")]
+use saphyr::{Mapping, Scalar, Yaml, YamlEmitter};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UiSnapshotReport {
@@ -39,8 +50,8 @@ pub enum CheckKind {
     PngValidity,
 }
 
-impl std::fmt::Display for CheckKind {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl fmt::Display for CheckKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Overlap => write!(f, "overlap_check"),
             Self::Clipping => write!(f, "clipping_check"),
@@ -78,9 +89,123 @@ impl UiSnapshotReport {
         self.failed_screens = self.screens.iter().filter(|s| !s.passed).count();
     }
 
+    #[cfg(feature = "std")]
     pub fn to_yaml(&self) -> anyhow::Result<String> {
-        serde_yaml::to_string(self).map_err(|e| anyhow::anyhow!("YAML serialization failed: {e}"))
+        let doc = report_to_yaml(self)?;
+        let mut output = String::new();
+        let mut emitter = YamlEmitter::new(&mut output);
+        emitter
+            .dump(&doc)
+            .map_err(|e| anyhow::anyhow!("Saphyr YAML emission failed: {e}"))?;
+        Ok(output)
     }
+}
+
+#[cfg(feature = "std")]
+fn report_to_yaml(report: &UiSnapshotReport) -> anyhow::Result<Yaml<'static>> {
+    let mut mapping = Mapping::new();
+    mapping.insert(yaml_key("status"), yaml_string(&report.status));
+    mapping.insert(yaml_key("screens"), yaml_screens(&report.screens)?);
+    mapping.insert(yaml_key("total_screens"), yaml_usize(report.total_screens)?);
+    mapping.insert(
+        yaml_key("passed_screens"),
+        yaml_usize(report.passed_screens)?,
+    );
+    mapping.insert(
+        yaml_key("failed_screens"),
+        yaml_usize(report.failed_screens)?,
+    );
+    Ok(Yaml::Mapping(mapping))
+}
+
+#[cfg(feature = "std")]
+fn yaml_screens(screens: &[ScreenResult]) -> anyhow::Result<Yaml<'static>> {
+    screens
+        .iter()
+        .map(screen_to_yaml)
+        .collect::<anyhow::Result<Vec<_>>>()
+        .map(Yaml::Sequence)
+}
+
+#[cfg(feature = "std")]
+fn screen_to_yaml(screen: &ScreenResult) -> anyhow::Result<Yaml<'static>> {
+    let mut mapping = Mapping::new();
+    mapping.insert(yaml_key("screen_name"), yaml_string(&screen.screen_name));
+    mapping.insert(yaml_key("png_path"), yaml_option_string(&screen.png_path));
+    mapping.insert(yaml_key("checks"), yaml_checks(&screen.checks)?);
+    mapping.insert(yaml_key("passed"), yaml_bool(screen.passed));
+    Ok(Yaml::Mapping(mapping))
+}
+
+#[cfg(feature = "std")]
+fn yaml_checks(checks: &[CheckResult]) -> anyhow::Result<Yaml<'static>> {
+    checks
+        .iter()
+        .map(check_to_yaml)
+        .collect::<anyhow::Result<Vec<_>>>()
+        .map(Yaml::Sequence)
+}
+
+#[cfg(feature = "std")]
+fn check_to_yaml(check: &CheckResult) -> anyhow::Result<Yaml<'static>> {
+    let mut mapping = Mapping::new();
+    mapping.insert(yaml_key("kind"), yaml_string(check_kind_name(check.kind)));
+    mapping.insert(yaml_key("passed"), yaml_bool(check.passed));
+    mapping.insert(yaml_key("detail"), yaml_option_string(&check.detail));
+    Ok(Yaml::Mapping(mapping))
+}
+
+#[cfg(feature = "std")]
+fn check_kind_name(kind: CheckKind) -> &'static str {
+    match kind {
+        CheckKind::Overlap => "Overlap",
+        CheckKind::Clipping => "Clipping",
+        CheckKind::ChipReadability => "ChipReadability",
+        CheckKind::Bounds => "Bounds",
+        CheckKind::SelectedState => "SelectedState",
+        CheckKind::ColorDrift => "ColorDrift",
+        CheckKind::Spelling => "Spelling",
+        CheckKind::PngValidity => "PngValidity",
+    }
+}
+
+#[cfg(feature = "std")]
+fn yaml_key(key: &'static str) -> Yaml<'static> {
+    yaml_borrowed_string(key)
+}
+
+#[cfg(feature = "std")]
+fn yaml_option_string(value: &Option<String>) -> Yaml<'static> {
+    value
+        .as_ref()
+        .map_or_else(yaml_null, |text| yaml_string(text))
+}
+
+#[cfg(feature = "std")]
+fn yaml_string(value: &str) -> Yaml<'static> {
+    Yaml::Value(Scalar::String(Cow::Owned(value.to_string())))
+}
+
+#[cfg(feature = "std")]
+fn yaml_borrowed_string(value: &'static str) -> Yaml<'static> {
+    Yaml::Value(Scalar::String(Cow::Borrowed(value)))
+}
+
+#[cfg(feature = "std")]
+fn yaml_bool(value: bool) -> Yaml<'static> {
+    Yaml::Value(Scalar::Boolean(value))
+}
+
+#[cfg(feature = "std")]
+fn yaml_null() -> Yaml<'static> {
+    Yaml::Value(Scalar::Null)
+}
+
+#[cfg(feature = "std")]
+fn yaml_usize(value: usize) -> anyhow::Result<Yaml<'static>> {
+    i64::try_from(value)
+        .map(|integer| Yaml::Value(Scalar::Integer(integer)))
+        .map_err(|e| anyhow::anyhow!("snapshot report count exceeded YAML integer range: {e}"))
 }
 
 impl Default for UiSnapshotReport {
@@ -112,5 +237,32 @@ pub fn make_fail_result(kind: CheckKind, detail: &str) -> CheckResult {
         kind,
         passed: false,
         detail: Some(detail.to_string()),
+    }
+}
+
+#[cfg(all(test, feature = "std"))]
+mod tests {
+    use super::{CheckKind, UiSnapshotReport, make_fail_result};
+    use saphyr::LoadableYamlNode;
+
+    #[test]
+    fn saphyr_yaml_emits_parseable_report() -> anyhow::Result<()> {
+        let mut report = UiSnapshotReport::new();
+        report.add_screen(super::make_screen_result(
+            "execution_overview",
+            vec![make_fail_result(CheckKind::ColorDrift, "token drift")],
+        ));
+        report.finalize();
+
+        let yaml = report.to_yaml()?;
+        let docs = saphyr::Yaml::load_from_str(&yaml)?;
+        let status = docs
+            .iter()
+            .next()
+            .and_then(|doc| doc.as_mapping_get("status"))
+            .and_then(saphyr::Yaml::as_str);
+
+        assert_eq!(status, Some("fail"));
+        Ok(())
     }
 }

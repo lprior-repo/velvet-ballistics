@@ -148,7 +148,7 @@ pub(crate) struct TransportLayout {
 impl TransportLayout {
     pub(crate) const TRANSPORT_Y_OFFSET: f64 = 420.0;
     pub(crate) const TRANSPORT_HEIGHT: f64 = 40.0;
-    pub(crate) const BTN_WIDTH: f64 = 34.0;
+    pub(crate) const BTN_WIDTH: f64 = 74.0;
     pub(crate) const BTN_SPACING: f64 = 10.0;
     pub(crate) const START_X_OFFSET: f64 = 32.0;
 

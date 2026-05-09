@@ -921,7 +921,10 @@ fn draw_button(
 ) {
     let button = Rect {
         pos: DVec2 { x, y },
-        size: DVec2 { x: 74.0, y: 34.0 },
+        size: DVec2 {
+            x: TransportLayout::BTN_WIDTH,
+            y: 34.0,
+        },
     };
     draw_rect(draw_bg, cx, button, color);
     draw_label(

@@ -1,5 +1,8 @@
 #![forbid(unsafe_code)]
 
+use alloc::{string::String, vec::Vec};
+use core::fmt;
+
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -56,8 +59,8 @@ pub enum UiSnapshotError {
     IoError(String),
 }
 
-impl std::fmt::Display for UiSnapshotError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl fmt::Display for UiSnapshotError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::FixtureNotFound(name) => write!(f, "Fixture not found: {name}"),
             Self::SnapshotCommandFailed(msg) => write!(f, "Snapshot command failed: {msg}"),
@@ -137,22 +140,32 @@ impl std::fmt::Display for UiSnapshotError {
     }
 }
 
+#[cfg(feature = "std")]
 impl std::error::Error for UiSnapshotError {}
 
+#[cfg(feature = "std")]
 impl From<std::io::Error> for UiSnapshotError {
     fn from(e: std::io::Error) -> Self {
+        use alloc::string::ToString;
+
         Self::IoError(e.to_string())
     }
 }
 
+#[cfg(feature = "std")]
 impl From<png::EncodingError> for UiSnapshotError {
     fn from(e: png::EncodingError) -> Self {
+        use alloc::string::ToString;
+
         Self::ImageError(e.to_string())
     }
 }
 
+#[cfg(feature = "std")]
 impl From<image::ImageError> for UiSnapshotError {
     fn from(e: image::ImageError) -> Self {
+        use alloc::string::ToString;
+
         Self::ImageError(e.to_string())
     }
 }

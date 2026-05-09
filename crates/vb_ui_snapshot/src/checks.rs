@@ -1,11 +1,22 @@
 #![forbid(unsafe_code)]
 
+#[cfg(feature = "std")]
+use alloc::{format, string::ToString};
+use alloc::{string::String, vec::Vec};
+#[cfg(feature = "std")]
+use core::str;
+
+#[cfg(feature = "std")]
 use std::path::Path;
 
+#[cfg(feature = "std")]
 use image::{DynamicImage, GenericImageView};
 
+#[cfg(feature = "std")]
 use crate::error::UiSnapshotError;
+#[cfg(feature = "std")]
 use crate::tokens::UiTokens;
+#[cfg(feature = "std")]
 use crate::{BASELINE_HEIGHT, BASELINE_WIDTH, COLOR_DRIFT_THRESHOLD};
 
 pub struct OverlapResult {
@@ -81,6 +92,7 @@ pub struct HiddenSelectedState {
     pub node_id: String,
 }
 
+#[cfg(feature = "std")]
 const APPROVED_WORDS: &[&str] = &[
     "velvet",
     "ballistics",
@@ -154,11 +166,13 @@ const APPROVED_WORDS: &[&str] = &[
     "if",
 ];
 
+#[cfg(feature = "std")]
 fn is_word_approved(word: &str) -> bool {
     let lower = word.to_lowercase();
     APPROVED_WORDS.iter().any(|&w| w == lower)
 }
 
+#[cfg(feature = "std")]
 fn extract_words_from_image(img: &DynamicImage) -> Vec<String> {
     let mut words = Vec::new();
     let (w, h) = img.dimensions();
@@ -210,18 +224,21 @@ fn extract_words_from_image(img: &DynamicImage) -> Vec<String> {
     words
 }
 
+#[cfg(feature = "std")]
 pub fn check_overlap(_screen_png: &Path) -> Result<OverlapResult, UiSnapshotError> {
     Ok(OverlapResult {
         overlaps: Vec::new(),
     })
 }
 
+#[cfg(feature = "std")]
 pub fn check_clipping(_screen_png: &Path) -> Result<ClippingResult, UiSnapshotError> {
     Ok(ClippingResult {
         clipped_labels: Vec::new(),
     })
 }
 
+#[cfg(feature = "std")]
 pub fn check_chip_readability(
     _screen_png: &Path,
 ) -> Result<ChipReadabilityResult, UiSnapshotError> {
@@ -230,6 +247,7 @@ pub fn check_chip_readability(
     })
 }
 
+#[cfg(feature = "std")]
 pub fn check_bounds(
     _screen_png: &Path,
     _outer_margin: u32,
@@ -241,12 +259,14 @@ pub fn check_bounds(
     })
 }
 
+#[cfg(feature = "std")]
 pub fn check_selected_state(_screen_png: &Path) -> Result<SelectedStateResult, UiSnapshotError> {
     Ok(SelectedStateResult {
         hidden_states: Vec::new(),
     })
 }
 
+#[cfg(feature = "std")]
 pub fn check_color_drift(
     screen_png: &Path,
     tokens: &UiTokens,
@@ -268,7 +288,6 @@ pub fn check_color_drift(
 
     let mut all_drifts = Vec::new();
     let rgba = img.to_rgba8();
-    let (w, h) = rgba.dimensions();
 
     for (token_name, expected_hex) in &token_colors {
         let (er, eg, eb) = match hex_to_rgb(expected_hex) {
@@ -276,28 +295,11 @@ pub fn check_color_drift(
             Err(_) => continue,
         };
 
-        let sample_x = w / 2;
-        let sample_y = h / 2;
-        let pixel = rgba.get_pixel(sample_x, sample_y);
-        let (ar, ag, ab) = (pixel[0], pixel[1], pixel[2]);
-
-        let dr = (f32::from(ar) - f32::from(er)).abs() / 255.0;
-        let dg = (f32::from(ag) - f32::from(eg)).abs() / 255.0;
-        let db = f32::from(ab) - f32::from(eb);
-
-        let delta_r = (dr * 100.0).round();
-        let delta_g = (dg * 100.0).round();
-        let delta_b = (db.abs() / 255.0 * 100.0).round();
-
-        if delta_r > COLOR_DRIFT_THRESHOLD * 100.0
-            || delta_g > COLOR_DRIFT_THRESHOLD * 100.0
-            || delta_b > COLOR_DRIFT_THRESHOLD * 100.0
-        {
-            let avg_delta = (delta_r + delta_g + delta_b) / 3.0;
+        if let Some((actual, avg_delta)) = nearest_color_drift(&rgba, (er, eg, eb)) {
             all_drifts.push(TokenColorDrift {
                 token_name: token_name.to_string(),
                 expected_rgb: (er, eg, eb),
-                actual_rgb: (ar, ag, ab),
+                actual_rgb: actual,
                 delta_percent: avg_delta,
             });
         }
@@ -306,6 +308,40 @@ pub fn check_color_drift(
     Ok(ColorDriftResult { drifts: all_drifts })
 }
 
+#[cfg(feature = "std")]
+fn nearest_color_drift(
+    rgba: &image::RgbaImage,
+    expected: (u8, u8, u8),
+) -> Option<((u8, u8, u8), f32)> {
+    let threshold_percent = COLOR_DRIFT_THRESHOLD * 100.0;
+    let mut nearest_rgb = (0, 0, 0);
+    let mut nearest_delta = f32::MAX;
+
+    for pixel in rgba.pixels() {
+        let image::Rgba([ar, ag, ab, _alpha]) = *pixel;
+        let actual = (ar, ag, ab);
+        let delta = rgb_delta_percent(actual, expected);
+        if delta <= threshold_percent {
+            return None;
+        }
+        if delta < nearest_delta {
+            nearest_delta = delta;
+            nearest_rgb = actual;
+        }
+    }
+
+    Some((nearest_rgb, nearest_delta))
+}
+
+#[cfg(feature = "std")]
+fn rgb_delta_percent(actual: (u8, u8, u8), expected: (u8, u8, u8)) -> f32 {
+    let dr = (f32::from(actual.0) - f32::from(expected.0)).abs() / 255.0;
+    let dg = (f32::from(actual.1) - f32::from(expected.1)).abs() / 255.0;
+    let db = (f32::from(actual.2) - f32::from(expected.2)).abs() / 255.0;
+    ((dr + dg + db) / 3.0 * 100.0).round()
+}
+
+#[cfg(feature = "std")]
 pub fn check_spelling(screen_png: &Path) -> Result<SpellingResult, UiSnapshotError> {
     let img = image::open(screen_png).map_err(|e| {
         UiSnapshotError::ImageError(format!("Failed to open {}: {e}", screen_png.display()))
@@ -330,6 +366,7 @@ pub fn check_spelling(screen_png: &Path) -> Result<SpellingResult, UiSnapshotErr
     Ok(SpellingResult { violations })
 }
 
+#[cfg(feature = "std")]
 fn hex_to_rgb(hex: &str) -> Result<(u8, u8, u8), UiSnapshotError> {
     let hex = hex.trim_start_matches('#');
     if hex.len() != 6 {
@@ -352,14 +389,16 @@ fn hex_to_rgb(hex: &str) -> Result<(u8, u8, u8), UiSnapshotError> {
     }
 }
 
+#[cfg(feature = "std")]
 fn parse_hex_pair(pair: &[u8]) -> Result<u8, UiSnapshotError> {
-    let text = std::str::from_utf8(pair)
+    let text = str::from_utf8(pair)
         .map_err(|_| UiSnapshotError::TokenParseError("Invalid hex byte pair".to_string()))?;
 
     u8::from_str_radix(text, 16)
         .map_err(|_| UiSnapshotError::TokenParseError(format!("Invalid hex: {text}")))
 }
 
+#[cfg(feature = "std")]
 pub fn validate_png_dimensions(path: &Path) -> Result<(u32, u32), UiSnapshotError> {
     let img = image::open(path)
         .map_err(|e| UiSnapshotError::ImageError(format!("Invalid PNG {}: {e}", path.display())))?;
@@ -379,6 +418,7 @@ pub fn validate_png_dimensions(path: &Path) -> Result<(u32, u32), UiSnapshotErro
     Ok((w, h))
 }
 
+#[cfg(feature = "std")]
 pub fn generate_blank_screenshot(
     output_path: &Path,
     width: u32,

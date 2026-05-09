@@ -84,10 +84,6 @@ fn row_from_relative_y(rel_y: f64, layout: &SidebarLayout) -> Option<u32> {
         Some(6)
     } else if row_contains(rel_y, layout, 7) {
         Some(7)
-    } else if row_contains(rel_y, layout, 8) {
-        Some(8)
-    } else if row_contains(rel_y, layout, 9) {
-        Some(9)
     } else {
         None
     }
@@ -108,7 +104,7 @@ fn resolve_nav_row_to_screen(row: u32) -> Option<Screen> {
         4 => Some(Screen::ReplayTheater),
         5 => Some(Screen::IncidentFailureConsole),
         6 => Some(Screen::ActionRegistry),
-        7 | 8 => Some(Screen::StorageDoctorAiContext),
+        7 => Some(Screen::StorageDoctorAiContext),
         _ => None,
     }
 }

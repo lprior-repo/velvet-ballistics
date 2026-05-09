@@ -1,7 +1,13 @@
 #![forbid(unsafe_code)]
 
 use crate::error::UiSnapshotError;
+use alloc::{
+    format,
+    string::{String, ToString},
+};
 use serde::{Deserialize, Serialize};
+
+#[cfg(feature = "std")]
 use std::path::Path;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -111,6 +117,7 @@ impl Default for UiTokens {
     }
 }
 
+#[cfg(feature = "std")]
 pub fn load_tokens_from_file(path: &Path) -> Result<UiTokens, UiSnapshotError> {
     let content = std::fs::read_to_string(path)
         .map_err(|e| UiSnapshotError::IoError(format!("Failed to read {}: {e}", path.display())))?;
@@ -278,8 +285,7 @@ fn set_f32(target: &mut f32, value: f64) {
 
 pub fn tokens_to_rust_constants(tokens: &UiTokens) -> String {
     let mut out = String::new();
-    out.push_str("// Generated from velvet_ui_tokens.toml — DO NOT EDIT\n\n");
-    out.push_str("use crate::theme::colors;\n\n");
+    out.push_str("// Generated from velvet_ui_tokens.toml - DO NOT EDIT\n\n");
 
     out.push_str("#[derive(Debug, Clone, Copy)]\npub struct TokenColors {\n");
     out.push_str("    pub surface:        [f32; 4],\n");
@@ -292,49 +298,38 @@ pub fn tokens_to_rust_constants(tokens: &UiTokens) -> String {
     out.push_str("    pub warning:        [f32; 4],\n");
     out.push_str("}\n\n");
 
-    out.push_str("pub fn hex_to_f32(c: &str) -> [f32; 4] {\n");
-    out.push_str("    let hex = c.trim_start_matches('#');\n");
-    out.push_str("    let values = hex.as_bytes().chunks_exact(2).take(3).filter_map(|pair| {\n");
-    out.push_str("        std::str::from_utf8(pair).ok().and_then(|part| u8::from_str_radix(part, 16).ok())\n");
-    out.push_str("    }).collect::<Vec<_>>();\n");
-    out.push_str("    match values.as_slice() {\n");
-    out.push_str("        [r, g, b] => [f32::from(*r) / 255.0, f32::from(*g) / 255.0, f32::from(*b) / 255.0, 1.0],\n");
-    out.push_str("        _ => [0.0, 0.0, 0.0, 1.0],\n");
-    out.push_str("    }\n");
-    out.push_str("}\n\n");
-
     out.push_str("pub const TOKENS: TokenColors = TokenColors {\n");
     out.push_str(&format!(
-        "    surface:      hex_to_f32(\"{}\"),\n",
-        tokens.surface
+        "    surface:      {},\n",
+        hex_to_f32_literal(&tokens.surface)
     ));
     out.push_str(&format!(
-        "    text_primary: hex_to_f32(\"{}\"),\n",
-        tokens.text_primary
+        "    text_primary: {},\n",
+        hex_to_f32_literal(&tokens.text_primary)
     ));
     out.push_str(&format!(
-        "    success:      hex_to_f32(\"{}\"),\n",
-        tokens.success
+        "    success:      {},\n",
+        hex_to_f32_literal(&tokens.success)
     ));
     out.push_str(&format!(
-        "    running:      hex_to_f32(\"{}\"),\n",
-        tokens.running
+        "    running:      {},\n",
+        hex_to_f32_literal(&tokens.running)
     ));
     out.push_str(&format!(
-        "    failure:      hex_to_f32(\"{}\"),\n",
-        tokens.failure
+        "    failure:      {},\n",
+        hex_to_f32_literal(&tokens.failure)
     ));
     out.push_str(&format!(
-        "    taint:        hex_to_f32(\"{}\"),\n",
-        tokens.taint
+        "    taint:        {},\n",
+        hex_to_f32_literal(&tokens.taint)
     ));
     out.push_str(&format!(
-        "    durable:      hex_to_f32(\"{}\"),\n",
-        tokens.durable
+        "    durable:      {},\n",
+        hex_to_f32_literal(&tokens.durable)
     ));
     out.push_str(&format!(
-        "    warning:      hex_to_f32(\"{}\"),\n",
-        tokens.warning
+        "    warning:      {},\n",
+        hex_to_f32_literal(&tokens.warning)
     ));
     out.push_str("};\n\n");
 
@@ -380,6 +375,31 @@ pub fn tokens_to_rust_constants(tokens: &UiTokens) -> String {
     out.push_str("}\n");
 
     out
+}
+
+fn hex_to_f32_literal(hex: &str) -> String {
+    match parse_hex_rgb(hex) {
+        Some((r, g, b)) => format!(
+            "[{:.6}, {:.6}, {:.6}, 1.0]",
+            f32::from(r) / 255.0,
+            f32::from(g) / 255.0,
+            f32::from(b) / 255.0
+        ),
+        None => "[0.0, 0.0, 0.0, 1.0]".to_string(),
+    }
+}
+
+fn parse_hex_rgb(hex: &str) -> Option<(u8, u8, u8)> {
+    let bytes = hex.trim_start_matches('#').as_bytes();
+    let r = parse_hex_byte(bytes.get(0..2)?)?;
+    let g = parse_hex_byte(bytes.get(2..4)?)?;
+    let b = parse_hex_byte(bytes.get(4..6)?)?;
+    Some((r, g, b))
+}
+
+fn parse_hex_byte(bytes: &[u8]) -> Option<u8> {
+    let text = core::str::from_utf8(bytes).ok()?;
+    u8::from_str_radix(text, 16).ok()
 }
 
 #[cfg(test)]

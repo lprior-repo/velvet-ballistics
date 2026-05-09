@@ -1,6 +1,12 @@
 #![forbid(unsafe_code)]
 
 use crate::UiSnapshotError;
+use alloc::{
+    boxed::Box,
+    format,
+    string::{String, ToString},
+    vec,
+};
 use serde::{Deserialize, Serialize};
 use vb_ui_model::{
     ActionDescriptionView, AiContextPanel, AiContextView, Capability, EvidenceCardPanel,

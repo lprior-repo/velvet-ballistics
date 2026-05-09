@@ -10,8 +10,6 @@ pub enum ShellNav {
     Incidents,
     Actions,
     Storage,
-    AiContext,
-    Settings,
 }
 
 impl ShellNav {
@@ -24,9 +22,7 @@ impl ShellNav {
             Self::Replay => "Replay",
             Self::Incidents => "Incidents",
             Self::Actions => "Actions",
-            Self::Storage => "Storage",
-            Self::AiContext => "AI Context",
-            Self::Settings => "Settings",
+            Self::Storage => "Storage / AI",
         }
     }
 
@@ -40,8 +36,6 @@ impl ShellNav {
             Self::Incidents => [0.898, 0.282, 0.302, 1.0],
             Self::Actions => [0.773, 0.357, 0.083, 1.0],
             Self::Storage => [0.078, 0.722, 0.651, 1.0],
-            Self::AiContext => [0.545, 0.361, 0.965, 1.0],
-            Self::Settings => [0.478, 0.537, 0.588, 1.0],
         }
     }
 
@@ -55,8 +49,6 @@ impl ShellNav {
             Self::Incidents => Screen::IncidentFailureConsole,
             Self::Actions => Screen::ActionRegistry,
             Self::Storage => Screen::StorageDoctorAiContext,
-            Self::AiContext => Screen::AiContextScreen,
-            Self::Settings => Screen::Settings,
         }
     }
 }
@@ -93,8 +85,6 @@ pub enum Screen {
     IncidentFailureConsole,
     ActionRegistry,
     StorageDoctorAiContext,
-    AiContextScreen,
-    Settings,
 }
 
 impl Screen {
@@ -108,8 +98,6 @@ impl Screen {
             Self::IncidentFailureConsole => "IncidentFailureConsole",
             Self::ActionRegistry => "ActionRegistry",
             Self::StorageDoctorAiContext => "StorageDoctorAiContext",
-            Self::AiContextScreen => "AiContextScreen",
-            Self::Settings => "Settings",
         }
     }
 
@@ -122,9 +110,7 @@ impl Screen {
             Self::ReplayTheater => "Replay",
             Self::IncidentFailureConsole => "Incidents",
             Self::ActionRegistry => "Actions",
-            Self::StorageDoctorAiContext => "Storage",
-            Self::AiContextScreen => "AI Context",
-            Self::Settings => "Settings",
+            Self::StorageDoctorAiContext => "Storage / AI",
         }
     }
 
