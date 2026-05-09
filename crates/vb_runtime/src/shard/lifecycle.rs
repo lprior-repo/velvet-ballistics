@@ -61,6 +61,11 @@ impl Shard {
             run,
             workflow: digest,
         })?;
+        if let Some(admission) = admission.as_ref() {
+            self.journal.append(RuntimeJournalEvent::RunAdmission {
+                admission: admission.clone(),
+            })?;
+        }
         self.counters.inc_submitted();
         let frame_step_count = frame.step_count();
         let max_slots = workflow.resource_contract().max_slots;

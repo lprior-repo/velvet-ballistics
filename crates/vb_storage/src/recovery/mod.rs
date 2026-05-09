@@ -25,9 +25,9 @@ mod tests;
 // ============================================================================
 
 pub use types::{
-    ActionReplayTracker, DigestCheck, RecoveredPendingAction, RecoveredSlotEntry,
-    RecoveredStepEntry, RecoveredStepState, RecoveryError, RecoveryFrameSeed, RecoveryHydration,
-    RecoveryResult, RecoveryRuntimeSummary, RecoveryTerminalState, RunSnapshot,
+    ActionReplayTracker, DigestCheck, RecoveredPendingAction, RecoveredRunAdmission,
+    RecoveredSlotEntry, RecoveredStepEntry, RecoveredStepState, RecoveryError, RecoveryFrameSeed,
+    RecoveryHydration, RecoveryResult, RecoveryRuntimeSummary, RecoveryTerminalState, RunSnapshot,
     UnsupportedRecoveryState,
 };
 
@@ -37,8 +37,9 @@ pub use types::{
 
 pub use replay::{
     extract_terminal, is_terminal_event, load_snapshot, recover_full_journal,
-    recover_runtime_frame_seed_from_events, recover_runtime_frame_seed_from_snapshot_and_tail,
-    recover_snapshot_plus_tail, replay_events, summarize_recovery_events,
+    recover_run_admission_from_events, recover_runtime_frame_seed_from_events,
+    recover_runtime_frame_seed_from_snapshot_and_tail, recover_snapshot_plus_tail, replay_events,
+    summarize_recovery_events,
 };
 
 // ============================================================================
@@ -47,5 +48,5 @@ pub use replay::{
 
 pub use recover::{
     check_compiled_ir_digest, check_workflow_source_digest, recover_all_incomplete_runs,
-    recover_runtime_frame_seed, recover_runtime_summary, verify_digests,
+    recover_run_admission, recover_runtime_frame_seed, recover_runtime_summary, verify_digests,
 };

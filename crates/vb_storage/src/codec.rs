@@ -215,7 +215,7 @@ fn validate_schema_version(version: u16) -> Result<(), JournalError> {
 }
 
 fn validate_known_kind(kind: u16) -> Result<(), JournalError> {
-    if matches!(kind, 1 | 2 | 3 | 10..=23 | 30 | 40 | 50) {
+    if matches!(kind, 1 | 2 | 3 | 10..=24 | 30 | 40 | 50) {
         Ok(())
     } else {
         Err(JournalError::UnknownRecordKind { kind })
@@ -226,7 +226,7 @@ fn validate_kind_family(magic: u32, kind: u16) -> Result<(), JournalError> {
     let valid = match magic {
         MAGIC_WORKFLOW_SOURCE => kind == RecordKind::WorkflowSource.id(),
         MAGIC_COMPILED_ARTIFACT => kind == RecordKind::CompiledIr.id(),
-        MAGIC_JOURNAL_EVENT => matches!(kind, 10..=23),
+        MAGIC_JOURNAL_EVENT => matches!(kind, 10..=24),
         MAGIC_SNAPSHOT => kind == RecordKind::Snapshot.id(),
         MAGIC_BLOB => kind == RecordKind::Blob.id(),
         MAGIC_INDEX_RECORD => matches!(kind, 3 | 50),
@@ -920,12 +920,15 @@ mod tests {
             MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
         )?;
         // The decoded header should report a payload_len that makes total = header + payload
-        let (envelope, _) = decode_record::<JournalEvent>(
+        let (envelope, decoded) = decode_record::<JournalEvent>(
             &bytes,
             MAGIC_JOURNAL_EVENT,
             MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
         )?;
-        let _ = envelope; // used above in decode
+        assert_eq!(envelope.magic, MAGIC_JOURNAL_EVENT);
+        assert_eq!(envelope.record_kind, RecordKind::RunCancelled.id());
+        assert_eq!(envelope.sequence, 0);
+        assert_eq!(decoded, event);
         // Verify by decoding just the header
         let header =
             decode_record_header(&bytes, MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES)?;

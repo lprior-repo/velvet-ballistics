@@ -375,7 +375,9 @@ mod tests {
     use crate::trace::TraceEvent;
     use std::sync::Arc;
     use vb_core::action::{ActionFailureCode, ActionOutputReady, ActionTicket, RetryPolicy};
+    use vb_core::capability::CapabilitySet;
     use vb_core::ids::{ActionId, ConstIdx, SeqNo, SlotIdx, StepIdx, WorkflowDigest};
+    use vb_core::policy::RuntimePolicy;
     use vb_core::value::{SlotValue, Taint};
     use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
 
@@ -533,6 +535,14 @@ mod tests {
                 RuntimeJournalEvent::RunSubmitted {
                     run,
                     workflow: WorkflowDigest::from_bytes([2; 32]),
+                },
+                RuntimeJournalEvent::RunAdmission {
+                    admission: crate::admission::RunAdmission::new(
+                        WorkflowDigest::from_bytes([2; 32]),
+                        run,
+                        CapabilitySet::empty(),
+                        RuntimePolicy::Relaxed,
+                    ),
                 },
                 RuntimeJournalEvent::StepStarted {
                     run,

@@ -20,6 +20,11 @@ pub enum RuntimeJournalEvent {
         /// Compiled workflow digest admitted for this run.
         workflow: WorkflowDigest,
     },
+    /// Run admission metadata was recorded after admission control succeeded.
+    RunAdmission {
+        /// Admission record for this run.
+        admission: crate::admission::RunAdmission,
+    },
     /// Run reached a successful terminal state.
     RunFinished {
         /// Run identifier.
@@ -142,6 +147,7 @@ impl RuntimeJournalEvent {
             | Self::SlotWritten { run, .. }
             | Self::StepStarted { run, .. }
             | Self::StepSucceeded { run, .. } => *run,
+            Self::RunAdmission { admission } => admission.run_id(),
         }
     }
 }
@@ -313,6 +319,13 @@ impl StorageRuntimeJournal {
             RuntimeJournalEvent::RunSubmitted { run, workflow } => {
                 Some(JournalEvent::RunAccepted { run, seq, workflow })
             }
+            RuntimeJournalEvent::RunAdmission { admission } => Some(JournalEvent::RunAdmission {
+                run: admission.run_id(),
+                seq,
+                artifact_digest: admission.artifact_digest(),
+                granted_capabilities: admission.granted_capabilities().clone(),
+                policy: admission.policy(),
+            }),
             RuntimeJournalEvent::RunFinished { run, result } => {
                 Some(JournalEvent::RunFinished { run, seq, result })
             }
@@ -371,6 +384,7 @@ impl StorageRuntimeJournal {
                 })
             }
             RuntimeJournalEvent::RunSubmitted { .. }
+            | RuntimeJournalEvent::RunAdmission { .. }
             | RuntimeJournalEvent::RunFinished { .. }
             | RuntimeJournalEvent::RunFailed { .. }
             | RuntimeJournalEvent::RunCancelled { .. }
@@ -411,6 +425,7 @@ impl StorageRuntimeJournal {
                 extra,
             }),
             RuntimeJournalEvent::RunSubmitted { .. }
+            | RuntimeJournalEvent::RunAdmission { .. }
             | RuntimeJournalEvent::RunFinished { .. }
             | RuntimeJournalEvent::RunFailed { .. }
             | RuntimeJournalEvent::RunCancelled { .. }
@@ -670,6 +685,46 @@ mod tests {
                     result: SlotIdx::new(3),
                 },
             ]
+        );
+    }
+
+    #[test]
+    fn storage_runtime_journal_maps_run_admission_event() {
+        let Some((_dir, journal)) = require_ok(temp_journal(), "temp journal opens") else {
+            return;
+        };
+        let adapter = StorageRuntimeJournal::journaled(journal.clone());
+        let run = RunId::new(45);
+        let workflow = WorkflowDigest::from_bytes([9; 32]);
+        let admission = crate::admission::RunAdmission::new(
+            workflow,
+            run,
+            vb_core::capability::CapabilitySet::empty(),
+            vb_core::policy::RuntimePolicy::Relaxed,
+        );
+
+        assert_eq!(
+            adapter.append(RuntimeJournalEvent::RunAdmission { admission }),
+            Ok(())
+        );
+
+        let Some(events) = require_ok(
+            journal
+                .events_for_run(run)
+                .map_err(|error| error.to_string()),
+            "admission events read",
+        ) else {
+            return;
+        };
+        assert_eq!(
+            events,
+            vec![vb_storage::JournalEvent::RunAdmission {
+                run,
+                seq: EventSeq::new(0),
+                artifact_digest: workflow,
+                granted_capabilities: vb_core::capability::CapabilitySet::empty(),
+                policy: vb_core::policy::RuntimePolicy::Relaxed,
+            }]
         );
     }
 

@@ -8,6 +8,23 @@ use vb_storage::recovery::{
 
 use crate::{RuntimeError, RuntimeResult};
 
+/// Hydrates the latest run admission metadata from durable storage events.
+#[must_use]
+pub fn hydrate_run_admission_from_events(
+    events: &[vb_storage::JournalEvent],
+) -> Option<crate::admission::RunAdmission> {
+    vb_storage::recovery::replay::summary::recover_run_admission_from_events(events).map(
+        |admission| {
+            crate::admission::RunAdmission::new(
+                admission.artifact_digest,
+                admission.run_id,
+                admission.granted_capabilities,
+                admission.policy,
+            )
+        },
+    )
+}
+
 /// Runtime-facing recovery entrypoint.
 pub trait RuntimeRecoveryBoundary {
     /// Returns summary data that can be safely recovered from durable events.
@@ -202,6 +219,44 @@ mod tests {
         let boundary = SummaryRecoveryBoundary::from_summary(summary);
 
         assert_eq!(boundary.summary(), summary);
+    }
+
+    #[test]
+    fn hydrate_run_admission_from_events_recovers_latest_admission() {
+        let run = RunId::new(22);
+        let digest = WorkflowDigest::from_bytes([8; 32]);
+        let events = vec![vb_storage::JournalEvent::RunAdmission {
+            run,
+            seq: EventSeq::new(0),
+            artifact_digest: digest,
+            granted_capabilities: vb_core::capability::CapabilitySet::empty(),
+            policy: vb_core::policy::RuntimePolicy::Journaled,
+        }];
+
+        assert_eq!(
+            crate::recovery::hydrate_run_admission_from_events(&events),
+            Some(crate::admission::RunAdmission::new(
+                digest,
+                run,
+                vb_core::capability::CapabilitySet::empty(),
+                vb_core::policy::RuntimePolicy::Journaled,
+            ))
+        );
+    }
+
+    #[test]
+    fn hydrate_run_admission_from_events_returns_none_without_admission() {
+        let run = RunId::new(23);
+        let events = vec![vb_storage::JournalEvent::RunAccepted {
+            run,
+            seq: EventSeq::new(0),
+            workflow: WorkflowDigest::from_bytes([9; 32]),
+        }];
+
+        assert_eq!(
+            crate::recovery::hydrate_run_admission_from_events(&events),
+            None
+        );
     }
 
     #[test]

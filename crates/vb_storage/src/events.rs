@@ -1,7 +1,9 @@
 //! Journal event types and record kind identifiers.
 
 use crate::{EventSeq, RecordKind};
-use vb_core::{ActionId, RunId, SlotIdx, SlotValue, StepIdx, WorkflowDigest};
+use vb_core::{
+    ActionId, CapabilitySet, RunId, RuntimePolicy, SlotIdx, SlotValue, StepIdx, WorkflowDigest,
+};
 
 /// Compact binary journal event. JSONL is a projection, not this durable format.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -14,6 +16,19 @@ pub enum JournalEvent {
         seq: EventSeq,
         /// Compiled workflow digest.
         workflow: WorkflowDigest,
+    },
+    /// Run admission metadata persisted after admission control succeeds.
+    RunAdmission {
+        /// Run identifier.
+        run: RunId,
+        /// Per-run sequence.
+        seq: EventSeq,
+        /// Compiled artifact digest admitted for this run.
+        artifact_digest: WorkflowDigest,
+        /// Capabilities granted for this run.
+        granted_capabilities: CapabilitySet,
+        /// Policy used to admit this run.
+        policy: RuntimePolicy,
     },
     /// Step began execution.
     StepStarted {
@@ -149,6 +164,7 @@ impl JournalEvent {
     pub const fn run_id(&self) -> RunId {
         match self {
             Self::RunAccepted { run, .. }
+            | Self::RunAdmission { run, .. }
             | Self::StepStarted { run, .. }
             | Self::StepSucceeded { run, .. }
             | Self::ActionScheduled { run, .. }
@@ -170,6 +186,7 @@ impl JournalEvent {
     pub const fn seq(&self) -> EventSeq {
         match self {
             Self::RunAccepted { seq, .. }
+            | Self::RunAdmission { seq, .. }
             | Self::StepStarted { seq, .. }
             | Self::StepSucceeded { seq, .. }
             | Self::ActionScheduled { seq, .. }
@@ -191,6 +208,7 @@ impl JournalEvent {
     pub const fn record_kind(&self) -> RecordKind {
         match self {
             Self::RunAccepted { .. } => RecordKind::RunAccepted,
+            Self::RunAdmission { .. } => RecordKind::RunAdmission,
             Self::StepStarted { .. } => RecordKind::StepStarted,
             Self::StepSucceeded { .. } | Self::SlotWrittenEvent { .. } => RecordKind::SlotWritten,
             Self::ActionScheduled { .. } => RecordKind::ActionScheduled,

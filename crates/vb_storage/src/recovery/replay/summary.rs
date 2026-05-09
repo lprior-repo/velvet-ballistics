@@ -8,9 +8,9 @@ use std::collections::{HashMap, HashSet};
 
 use crate::JournalEvent;
 use crate::recovery::types::{
-    RecoveredPendingAction, RecoveredSlotEntry, RecoveredStepEntry, RecoveredStepState,
-    RecoveryError, RecoveryFrameSeed, RecoveryHydration, RecoveryResult, RecoveryRuntimeSummary,
-    RunSnapshot, UnsupportedRecoveryState,
+    RecoveredPendingAction, RecoveredRunAdmission, RecoveredSlotEntry, RecoveredStepEntry,
+    RecoveredStepState, RecoveryError, RecoveryFrameSeed, RecoveryHydration, RecoveryResult,
+    RecoveryRuntimeSummary, RunSnapshot, UnsupportedRecoveryState,
 };
 use vb_core::{ActionId, RunId, SlotIdx, SlotValue, StepIdx, Taint};
 
@@ -35,6 +35,7 @@ pub fn apply_summary_event(summary: &mut RecoveryRuntimeSummary, event: &Journal
         JournalEvent::RunAccepted { workflow, .. } => {
             summary.workflow = Some(*workflow);
         }
+        JournalEvent::RunAdmission { .. } => {}
         JournalEvent::StepStarted { .. } => {
             summary.steps_started = summary.steps_started.saturating_add(1);
         }
@@ -68,6 +69,27 @@ pub fn apply_summary_event(summary: &mut RecoveryRuntimeSummary, event: &Journal
         }
     }
 }
+
+/// Recovers the latest admission metadata from ordered journal events.
+#[must_use]
+pub fn recover_run_admission_from_events(events: &[JournalEvent]) -> Option<RecoveredRunAdmission> {
+    events.iter().rev().find_map(|event| match event {
+        JournalEvent::RunAdmission {
+            run,
+            artifact_digest,
+            granted_capabilities,
+            policy,
+            ..
+        } => Some(RecoveredRunAdmission {
+            artifact_digest: *artifact_digest,
+            run_id: *run,
+            granted_capabilities: granted_capabilities.clone(),
+            policy: *policy,
+        }),
+        _ => None,
+    })
+}
+
 /// Builds a summary-only recovery product from already ordered journal events.
 pub fn summarize_recovery_events(events: &[JournalEvent]) -> RecoveryResult<RecoveryHydration> {
     let Some(first) = events.first() else {

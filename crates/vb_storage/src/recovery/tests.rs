@@ -15,14 +15,15 @@ mod tests {
         RecoveredStepEntry, RecoveredStepState, RecoveryError, RecoveryHydration,
         RecoveryTerminalState, RunSnapshot, UnsupportedRecoveryState, check_compiled_ir_digest,
         check_workflow_source_digest, extract_terminal, is_terminal_event,
-        recover_all_incomplete_runs, recover_full_journal, recover_runtime_frame_seed,
-        recover_runtime_frame_seed_from_events, recover_runtime_frame_seed_from_snapshot_and_tail,
-        recover_runtime_summary, recover_snapshot_plus_tail, replay_events,
-        summarize_recovery_events, verify_digests,
+        recover_all_incomplete_runs, recover_full_journal, recover_run_admission,
+        recover_runtime_frame_seed, recover_runtime_frame_seed_from_events,
+        recover_runtime_frame_seed_from_snapshot_and_tail, recover_runtime_summary,
+        recover_snapshot_plus_tail, replay_events, summarize_recovery_events, verify_digests,
     };
     use crate::{EventSeq, FjallJournal, JournalEvent, RunHeaderRecord};
     use vb_core::{
-        ActionId, RunId, SlotIdx, SlotValue, StepIdx, Taint, WorkflowDigest, WorkflowId,
+        ActionId, CapabilitySet, RunId, RuntimePolicy, SlotIdx, SlotValue, StepIdx, Taint,
+        WorkflowDigest, WorkflowId,
     };
 
     fn workflow_digest_from_byte(byte: u8) -> WorkflowDigest {
@@ -111,6 +112,78 @@ mod tests {
         assert_eq!(summary.run, run);
         assert_eq!(summary.workflow, Some(workflow));
         assert_eq!(summary.terminal, Some(RecoveryTerminalState::Cancelled));
+    }
+
+    #[test]
+    fn recover_run_admission_reads_durable_fjall_event() -> Result<(), String> {
+        let dir = tempfile::tempdir().map_err(|err| format!("temp dir failed: {err}"))?;
+        let journal = FjallJournal::open(dir.path(), None)
+            .map_err(|err| format!("journal open failed: {err:?}"))?;
+        let run = RunId::new(80);
+        let digest = workflow_digest_from_byte(11);
+
+        journal
+            .append_journaled(&JournalEvent::RunAdmission {
+                run,
+                seq: EventSeq::new(0),
+                artifact_digest: digest,
+                granted_capabilities: CapabilitySet::empty(),
+                policy: RuntimePolicy::Journaled,
+            })
+            .map_err(|err| format!("admission append failed: {err:?}"))?;
+
+        assert_eq!(
+            recover_run_admission(&journal, run)
+                .map_err(|err| format!("admission recovery failed: {err:?}"))?,
+            Some(crate::recovery::RecoveredRunAdmission {
+                run_id: run,
+                artifact_digest: digest,
+                granted_capabilities: CapabilitySet::empty(),
+                policy: RuntimePolicy::Journaled,
+            })
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn recover_run_admission_returns_none_when_run_has_no_admission() -> Result<(), String> {
+        let dir = tempfile::tempdir().map_err(|err| format!("temp dir failed: {err}"))?;
+        let journal = FjallJournal::open(dir.path(), None)
+            .map_err(|err| format!("journal open failed: {err:?}"))?;
+        let run = RunId::new(81);
+
+        journal
+            .append_journaled(&JournalEvent::RunAccepted {
+                run,
+                seq: EventSeq::new(0),
+                workflow: workflow_digest_from_byte(12),
+            })
+            .map_err(|err| format!("accepted append failed: {err:?}"))?;
+
+        assert_eq!(
+            recover_run_admission(&journal, run)
+                .map_err(|err| format!("admission recovery failed: {err:?}"))?,
+            None
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn recover_run_admission_returns_no_recovery_data_on_empty_journal() -> Result<(), String> {
+        let dir = tempfile::tempdir().map_err(|err| format!("temp dir failed: {err}"))?;
+        let journal = FjallJournal::open(dir.path(), None)
+            .map_err(|err| format!("journal open failed: {err:?}"))?;
+        let run = RunId::new(82);
+
+        match recover_run_admission(&journal, run) {
+            Err(RecoveryError::NoRecoveryData { run: found }) => assert_eq!(found, run),
+            other => {
+                return Err(format!(
+                    "expected exact NoRecoveryData for {run:?}, got {other:?}"
+                ));
+            }
+        }
+        Ok(())
     }
 
     #[test]
@@ -590,7 +663,8 @@ mod tests {
                     JournalEvent::RunFailedEvent { .. } => {
                         summary.terminal = Some(TerminalSummary::Failed);
                     }
-                    JournalEvent::SlotWrittenEvent { .. }
+                    JournalEvent::RunAdmission { .. }
+                    | JournalEvent::SlotWrittenEvent { .. }
                     | JournalEvent::RetryScheduledEvent { .. } => {}
                 }
                 summary

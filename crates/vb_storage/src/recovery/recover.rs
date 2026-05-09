@@ -96,6 +96,18 @@ pub fn recover_runtime_frame_seed(
     crate::recovery::replay::summary::recover_runtime_frame_seed_from_events(&events)
 }
 
+/// Recovers the latest run admission metadata for a run from durable events.
+pub fn recover_run_admission(
+    journal: &FjallJournal,
+    run: RunId,
+) -> RecoveryResult<Option<crate::recovery::types::RecoveredRunAdmission>> {
+    let events = journal.events_for_run(run)?;
+    if events.is_empty() {
+        return Err(RecoveryError::NoRecoveryData { run });
+    }
+    Ok(crate::recovery::replay::summary::recover_run_admission_from_events(&events))
+}
+
 /// Recovers summary hydration for every durable run header whose journal has no
 /// terminal event. The run header scan supplies candidates; journal events define
 /// incompleteness because the status byte/index has no stable terminal mapping.

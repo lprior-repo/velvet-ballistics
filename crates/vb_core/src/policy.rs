@@ -1,7 +1,7 @@
 //! Runtime admission policy controlling verification strictness and durability.
 
 /// Controls how strictly artifact admission verification is enforced.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum RuntimePolicy {
     /// Require accepted artifact for all runs, SyncAll before return.
     Strict,
@@ -17,20 +17,9 @@ mod tests {
 
     #[test]
     fn policy_variants_are_distinct() {
-        let variants = [
-            RuntimePolicy::Strict,
-            RuntimePolicy::Journaled,
-            RuntimePolicy::Relaxed,
-        ];
-        for (i, a) in variants.iter().enumerate() {
-            for (j, b) in variants.iter().enumerate() {
-                if i == j {
-                    assert_eq!(a, b, "same index must be equal");
-                } else {
-                    assert_ne!(a, b, "different indices must be distinct");
-                }
-            }
-        }
+        assert_ne!(RuntimePolicy::Strict, RuntimePolicy::Journaled);
+        assert_ne!(RuntimePolicy::Strict, RuntimePolicy::Relaxed);
+        assert_ne!(RuntimePolicy::Journaled, RuntimePolicy::Relaxed);
     }
 
     #[test]

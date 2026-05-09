@@ -21,6 +21,7 @@ pub fn replay_events(
     for event in events {
         match event {
             JournalEvent::RunAccepted { .. }
+            | JournalEvent::RunAdmission { .. }
             | JournalEvent::StepSucceeded { .. }
             | JournalEvent::SlotWrittenEvent { .. }
             | JournalEvent::WaitScheduledEvent { .. }

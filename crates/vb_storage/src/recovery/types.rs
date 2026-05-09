@@ -7,7 +7,10 @@
 
 use crate::{EventSeq, JournalError};
 use serde::{Deserialize, Serialize};
-use vb_core::{ActionId, RunId, SlotIdx, SlotValue, StepIdx, Taint, WorkflowDigest};
+use vb_core::{
+    ActionId, CapabilitySet, RunId, RuntimePolicy, SlotIdx, SlotValue, StepIdx, Taint,
+    WorkflowDigest,
+};
 
 /// Recovery failures with typed diagnostics.
 #[derive(Debug, thiserror::Error)]
@@ -133,6 +136,19 @@ pub struct RecoveryRuntimeSummary {
     pub slots_written: u64,
     /// Terminal status, when a terminal event exists.
     pub terminal: Option<RecoveryTerminalState>,
+}
+
+/// Admission metadata recovered from durable journal events.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RecoveredRunAdmission {
+    /// Digest of the accepted compiled artifact.
+    pub artifact_digest: WorkflowDigest,
+    /// Run identifier assigned at admission.
+    pub run_id: RunId,
+    /// Capabilities granted for this run.
+    pub granted_capabilities: CapabilitySet,
+    /// Admission policy that governed this admission decision.
+    pub policy: RuntimePolicy,
 }
 
 /// Explicit recovery product. Supports summary-only or full live-frame seed
