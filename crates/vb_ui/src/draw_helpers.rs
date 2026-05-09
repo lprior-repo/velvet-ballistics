@@ -9,6 +9,7 @@ use crate::domain::{
 };
 use makepad_widgets::*;
 use vb_ui::app_state::{AppState, HealthLevel, Screen};
+use vb_ui::system::ticker::{EventTicker, TickerEventKind};
 
 const HEADER_HEIGHT: f64 = 44.0;
 
@@ -729,4 +730,79 @@ fn draw_incident_content(
     draw_bg.color = Vec4f { x: 0.15, y: 0.08, z: 0.08, w: 1.0 };
     draw_bg.draw_abs(cx, console_rect);
     draw_text_label(draw_text, cx, DVec2 { x: console_rect.pos.x + 8.0, y: console_rect.pos.y + 4.0 }, "Console");
+}
+
+
+const EVENT_TICKER_ROW_HEIGHT: f64 = 22.0;
+const EVENT_TICKER_INDICATOR_SIZE: f64 = 10.0;
+
+fn ticker_kind_label(kind: TickerEventKind) -> &'static str {
+    match kind {
+        TickerEventKind::RunAccepted => "RunAccepted",
+        TickerEventKind::StepStarted => "StepStarted",
+        TickerEventKind::StepSucceeded => "StepSucceeded",
+        TickerEventKind::ActionScheduled => "ActionSched",
+        TickerEventKind::ActionCompleted => "ActionComp",
+        TickerEventKind::ActionFailed => "ActionFailed",
+        TickerEventKind::RunFinished => "RunFinished",
+        TickerEventKind::RunFailed => "RunFailed",
+        TickerEventKind::Other => "Other",
+    }
+}
+
+fn format_ticker_timestamp(seq: u64) -> String {
+    format!("#{:06}", seq)
+}
+
+#[allow(elided_lifetimes_in_paths)]
+pub(crate) fn draw_event_ticker(
+    draw_bg: &mut DrawColor,
+    draw_text: &mut DrawText,
+    cx: &mut Cx2d,
+    rect: Rect,
+    ticker: &EventTicker,
+) {
+    let events = ticker.events();
+
+    if events.is_empty() {
+        draw_text.text_style.font_size = 10.0;
+        draw_text.color = Vec4f { x: 0.5, y: 0.5, z: 0.5, w: 1.0 };
+        draw_text.draw_abs(cx, DVec2 { x: rect.pos.x + 16.0, y: rect.pos.y + 8.0 }, "No events");
+        return;
+    }
+
+    let max_visible = ((rect.size.y - 16.0) / EVENT_TICKER_ROW_HEIGHT).floor() as usize;
+    let start_idx = if events.len() > max_visible {
+        events.len() - max_visible
+    } else {
+        0
+    };
+
+    for i in start_idx..events.len() {
+        let event = &events[i];
+        let row_y = rect.pos.y + 8.0 + ((i - start_idx) as f64) * EVENT_TICKER_ROW_HEIGHT;
+
+        let color = EventTicker::event_color(event.kind);
+        let indicator_rect = Rect {
+            pos: DVec2 { x: rect.pos.x + 8.0, y: row_y + 4.0 },
+            size: DVec2 { x: EVENT_TICKER_INDICATOR_SIZE, y: EVENT_TICKER_INDICATOR_SIZE },
+        };
+        draw_bg.color = Vec4f { x: color[0], y: color[1], z: color[2], w: 1.0 };
+        draw_bg.draw_abs(cx, indicator_rect);
+
+        let timestamp = format_ticker_timestamp(event.seq);
+        draw_text.text_style.font_size = 8.0;
+        draw_text.color = Vec4f { x: 0.6, y: 0.6, z: 0.65, w: 1.0 };
+        draw_text.draw_abs(cx, DVec2 { x: rect.pos.x + 24.0, y: row_y + 4.0 }, &timestamp);
+
+        let kind_label = ticker_kind_label(event.kind);
+        draw_text.text_style.font_size = 8.0;
+        draw_text.color = Vec4f { x: color[0] * 0.9, y: color[1] * 0.9, z: color[2] * 0.9, w: 1.0 };
+        draw_text.draw_abs(cx, DVec2 { x: rect.pos.x + 98.0, y: row_y + 4.0 }, kind_label);
+
+        let msg_x = rect.pos.x + 194.0;
+        draw_text.text_style.font_size = 9.0;
+        draw_text.color = Vec4f { x: 0.85, y: 0.85, z: 0.88, w: 1.0 };
+        draw_text.draw_abs(cx, DVec2 { x: msg_x, y: row_y + 3.0 }, &event.summary);
+    }
 }
