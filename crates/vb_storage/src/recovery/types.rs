@@ -7,7 +7,7 @@
 
 use crate::{EventSeq, JournalError};
 use serde::{Deserialize, Serialize};
-use vb_core::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest};
+use vb_core::{ActionId, RunId, SlotIdx, SlotValue, StepIdx, Taint, WorkflowDigest};
 
 /// Recovery failures with typed diagnostics.
 #[derive(Debug, thiserror::Error)]
@@ -180,6 +180,26 @@ pub struct RecoveredStepEntry {
     pub state: RecoveredStepState,
 }
 
+/// One recovered slot entry with value and taint.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RecoveredSlotEntry {
+    /// Slot index.
+    pub slot: SlotIdx,
+    /// Durable slot value.
+    pub value: SlotValue,
+    /// Durable taint marker for the value.
+    pub taint: Taint,
+}
+
+/// One pending action reconstructed from unresolved action lifecycle events.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RecoveredPendingAction {
+    /// Step that scheduled the action.
+    pub step: StepIdx,
+    /// Durable action identifier.
+    pub action: ActionId,
+}
+
 /// State that durable headers/events still cannot reconstruct into a live frame.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct UnsupportedRecoveryState {
@@ -189,6 +209,60 @@ pub struct UnsupportedRecoveryState {
     pub slot_taint: bool,
     /// Action payload/result bodies are not present in current action records.
     pub action_payloads: bool,
+    /// Pending action resumability cannot be projected into the runtime frame yet.
+    pub pending_actions: bool,
+}
+
+impl UnsupportedRecoveryState {
+    /// Recovery state is fully supported by the runtime hydration boundary.
+    pub const SUPPORTED: Self = Self {
+        slot_values: false,
+        slot_taint: false,
+        action_payloads: false,
+        pending_actions: false,
+    };
+
+    /// Event-only slot values have no durable taint payload.
+    #[must_use]
+    pub const fn event_slot_taint_unsupported() -> Self {
+        Self {
+            slot_taint: true,
+            ..Self::SUPPORTED
+        }
+    }
+
+    /// Some slot value bodies were missing or corrupt in the durable record.
+    #[must_use]
+    pub const fn slot_values_unsupported() -> Self {
+        Self {
+            slot_values: true,
+            slot_taint: true,
+            ..Self::SUPPORTED
+        }
+    }
+
+    /// Pending actions were recovered but cannot yet be resumed by `RunFrame`.
+    #[must_use]
+    pub const fn pending_actions_unsupported() -> Self {
+        Self {
+            pending_actions: true,
+            ..Self::SUPPORTED
+        }
+    }
+
+    /// Combines two support descriptors without permitting contradictory states.
+    #[must_use]
+    pub const fn union(self, other: Self) -> Self {
+        Self {
+            slot_values: self.slot_values || other.slot_values,
+            slot_taint: self.slot_taint
+                || other.slot_taint
+                || self.slot_values
+                || other.slot_values,
+            action_payloads: self.action_payloads || other.action_payloads,
+            pending_actions: self.pending_actions || other.pending_actions,
+        }
+    }
 }
 
 /// Minimal live-frame seed recovered from durable journal headers/events.
@@ -206,6 +280,10 @@ pub struct RecoveryFrameSeed {
     pub pc: StepIdx,
     /// Final step states inferred from durable lifecycle events.
     pub steps: Vec<RecoveredStepEntry>,
+    /// Final slot values and taint inferred from snapshot data plus slot write events.
+    pub slots: Vec<RecoveredSlotEntry>,
+    /// Actions scheduled but not completed or failed at the recovery point.
+    pub pending_actions: Vec<RecoveredPendingAction>,
     /// Exact pieces of live runtime state not represented by durable events yet.
     pub unsupported: UnsupportedRecoveryState,
 }

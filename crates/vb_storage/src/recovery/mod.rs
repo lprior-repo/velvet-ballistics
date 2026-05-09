@@ -25,9 +25,10 @@ mod tests;
 // ============================================================================
 
 pub use types::{
-    ActionReplayTracker, DigestCheck, RecoveredStepEntry, RecoveredStepState, RecoveryError,
-    RecoveryFrameSeed, RecoveryHydration, RecoveryResult, RecoveryRuntimeSummary,
-    RecoveryTerminalState, RunSnapshot, UnsupportedRecoveryState,
+    ActionReplayTracker, DigestCheck, RecoveredPendingAction, RecoveredSlotEntry,
+    RecoveredStepEntry, RecoveredStepState, RecoveryError, RecoveryFrameSeed, RecoveryHydration,
+    RecoveryResult, RecoveryRuntimeSummary, RecoveryTerminalState, RunSnapshot,
+    UnsupportedRecoveryState,
 };
 
 // ============================================================================
@@ -36,8 +37,8 @@ pub use types::{
 
 pub use replay::{
     extract_terminal, is_terminal_event, load_snapshot, recover_full_journal,
-    recover_runtime_frame_seed_from_events, recover_snapshot_plus_tail, replay_events,
-    summarize_recovery_events,
+    recover_runtime_frame_seed_from_events, recover_runtime_frame_seed_from_snapshot_and_tail,
+    recover_snapshot_plus_tail, replay_events, summarize_recovery_events,
 };
 
 // ============================================================================

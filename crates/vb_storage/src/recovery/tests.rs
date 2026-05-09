@@ -11,24 +11,28 @@
 )]
 mod tests {
     use crate::recovery::{
-        ActionReplayTracker, DigestCheck, RecoveredStepState, RecoveryError, RecoveryHydration,
+        ActionReplayTracker, DigestCheck, RecoveredPendingAction, RecoveredSlotEntry,
+        RecoveredStepEntry, RecoveredStepState, RecoveryError, RecoveryHydration,
         RecoveryTerminalState, RunSnapshot, UnsupportedRecoveryState, check_compiled_ir_digest,
         check_workflow_source_digest, extract_terminal, is_terminal_event,
         recover_all_incomplete_runs, recover_full_journal, recover_runtime_frame_seed,
-        recover_runtime_frame_seed_from_events, recover_runtime_summary,
-        recover_snapshot_plus_tail, replay_events, summarize_recovery_events, verify_digests,
+        recover_runtime_frame_seed_from_events, recover_runtime_frame_seed_from_snapshot_and_tail,
+        recover_runtime_summary, recover_snapshot_plus_tail, replay_events,
+        summarize_recovery_events, verify_digests,
     };
     use crate::{EventSeq, FjallJournal, JournalEvent, RunHeaderRecord};
-    use vb_core::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest, WorkflowId};
+    use vb_core::{
+        ActionId, RunId, SlotIdx, SlotValue, StepIdx, Taint, WorkflowDigest, WorkflowId,
+    };
 
-    fn test_digest(byte: u8) -> WorkflowDigest {
+    fn workflow_digest_from_byte(byte: u8) -> WorkflowDigest {
         WorkflowDigest::from_bytes([byte; 32])
     }
 
     #[test]
     fn summarize_recovery_events_returns_summary_hydration() {
         let run = RunId::new(77);
-        let workflow = test_digest(9);
+        let workflow = workflow_digest_from_byte(9);
         let events = vec![
             JournalEvent::RunAccepted {
                 run,
@@ -84,7 +88,7 @@ mod tests {
         let dir = tempfile::tempdir().expect("temp dir");
         let journal = FjallJournal::open(dir.path(), None).expect("journal opens");
         let run = RunId::new(79);
-        let workflow = test_digest(10);
+        let workflow = workflow_digest_from_byte(10);
 
         journal
             .append_journaled(&JournalEvent::RunAccepted {
@@ -110,9 +114,10 @@ mod tests {
     }
 
     #[test]
-    fn recover_runtime_frame_seed_from_events_rebuilds_dimensions_and_step_states() {
+    fn recover_runtime_frame_seed_from_events_rebuilds_dimensions_and_step_states()
+    -> Result<(), String> {
         let run = RunId::new(91);
-        let workflow = test_digest(13);
+        let workflow = workflow_digest_from_byte(13);
         let events = vec![
             JournalEvent::RunAccepted {
                 run,
@@ -142,28 +147,259 @@ mod tests {
             },
         ];
 
-        let seed = recover_runtime_frame_seed_from_events(&events).expect("seed recovers");
+        let seed = recover_runtime_frame_seed_from_events(&events)
+            .map_err(|err| format!("seed recovers: {err:?}"))?;
 
         assert_eq!(seed.summary.run, run);
         assert_eq!(seed.summary.workflow, Some(workflow));
         assert_eq!(seed.step_count, 4);
         assert_eq!(seed.slot_count, 6);
         assert_eq!(seed.pc, StepIdx::new(3));
-        assert!(seed.steps.iter().any(
-            |entry| entry.step == StepIdx::new(1) && entry.state == RecoveredStepState::Waiting
-        ));
-        assert!(
-            seed.steps.iter().any(|entry| entry.step == StepIdx::new(3)
-                && entry.state == RecoveredStepState::Succeeded)
+        assert_eq!(
+            sorted_steps(seed.steps),
+            vec![
+                RecoveredStepEntry {
+                    step: StepIdx::new(1),
+                    state: RecoveredStepState::Waiting,
+                },
+                RecoveredStepEntry {
+                    step: StepIdx::new(3),
+                    state: RecoveredStepState::Succeeded,
+                },
+            ]
         );
         assert_eq!(
             seed.unsupported,
             UnsupportedRecoveryState {
+                slot_values: false,
+                slot_taint: false,
+                action_payloads: false,
+                pending_actions: false,
+            }
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn recover_runtime_frame_seed_restores_slots_taint_and_pending_actions() -> Result<(), String> {
+        let run = RunId::new(191);
+        let workflow = workflow_digest_from_byte(31);
+        let value = SlotValue::I64(99);
+        let encoded_value =
+            postcard::to_allocvec(&value).map_err(|err| format!("slot value encodes: {err:?}"))?;
+        let events = vec![
+            JournalEvent::RunAccepted {
+                run,
+                seq: EventSeq::new(0),
+                workflow,
+            },
+            JournalEvent::StepStarted {
+                run,
+                seq: EventSeq::new(1),
+                step: StepIdx::ZERO,
+            },
+            JournalEvent::ActionScheduled {
+                run,
+                seq: EventSeq::new(2),
+                step: StepIdx::ZERO,
+                action: ActionId::new(7),
+            },
+            JournalEvent::SlotWrittenEvent {
+                run,
+                seq: EventSeq::new(3),
+                slot: SlotIdx::ZERO,
+                value: Some(encoded_value),
+            },
+        ];
+        let seed = recover_runtime_frame_seed_from_events(&events)
+            .map_err(|err| format!("seed recovers: {err:?}"))?;
+
+        assert_eq!(
+            sorted_slots(seed.slots),
+            vec![RecoveredSlotEntry {
+                slot: SlotIdx::ZERO,
+                value,
+                taint: Taint::Clean,
+            }]
+        );
+        assert_eq!(
+            sorted_pending_actions(seed.pending_actions),
+            vec![RecoveredPendingAction {
+                step: StepIdx::ZERO,
+                action: ActionId::new(7),
+            }]
+        );
+        assert_eq!(seed.unsupported.slot_values, false);
+        assert_eq!(seed.unsupported.slot_taint, true);
+        assert_eq!(seed.unsupported.pending_actions, true);
+        Ok(())
+    }
+
+    #[test]
+    fn recover_runtime_frame_seed_from_snapshot_restores_snapshot_taint() -> Result<(), String> {
+        let run = RunId::new(192);
+        let workflow = workflow_digest_from_byte(32);
+        let snapshot_values: Vec<Option<SlotValue>> = vec![Some(SlotValue::I64(41))];
+        let snapshot_taint = vec![Taint::Secret];
+        let snapshot = RunSnapshot {
+            run,
+            seq: EventSeq::new(9),
+            workflow,
+            slots: postcard::to_allocvec(&snapshot_values)
+                .map_err(|err| format!("snapshot slots encode: {err:?}"))?,
+            taint: postcard::to_allocvec(&snapshot_taint)
+                .map_err(|err| format!("snapshot taint encodes: {err:?}"))?,
+        };
+
+        let seed = recover_runtime_frame_seed_from_snapshot_and_tail(&snapshot, &[])
+            .map_err(|err| format!("snapshot seed recovers: {err:?}"))?;
+
+        assert_eq!(
+            sorted_slots(seed.slots),
+            vec![RecoveredSlotEntry {
+                slot: SlotIdx::ZERO,
+                value: SlotValue::I64(41),
+                taint: Taint::Secret,
+            }]
+        );
+        assert_eq!(seed.unsupported.slot_taint, false);
+        Ok(())
+    }
+
+    #[test]
+    fn snapshot_tail_recovery_uses_snapshot_as_base_and_tail_overwrites_slot_value_and_taint()
+    -> Result<(), String> {
+        let run = RunId::new(193);
+        let workflow = workflow_digest_from_byte(33);
+        let snapshot_values: Vec<Option<SlotValue>> = vec![Some(SlotValue::I64(41))];
+        let snapshot_taint = vec![Taint::Secret];
+        let snapshot = RunSnapshot {
+            run,
+            seq: EventSeq::new(9),
+            workflow,
+            slots: postcard::to_allocvec(&snapshot_values)
+                .map_err(|err| format!("snapshot slots encode: {err:?}"))?,
+            taint: postcard::to_allocvec(&snapshot_taint)
+                .map_err(|err| format!("snapshot taint encodes: {err:?}"))?,
+        };
+        let tail_value = SlotValue::I64(99);
+        let tail = vec![JournalEvent::SlotWrittenEvent {
+            run,
+            seq: EventSeq::new(10),
+            slot: SlotIdx::ZERO,
+            value: Some(
+                postcard::to_allocvec(&tail_value)
+                    .map_err(|err| format!("tail value encodes: {err:?}"))?,
+            ),
+        }];
+
+        let seed = recover_runtime_frame_seed_from_snapshot_and_tail(&snapshot, &tail)
+            .map_err(|err| format!("snapshot plus tail recovers: {err:?}"))?;
+
+        assert_eq!(
+            sorted_slots(seed.slots),
+            vec![RecoveredSlotEntry {
+                slot: SlotIdx::ZERO,
+                value: tail_value,
+                taint: Taint::Clean,
+            }]
+        );
+        assert_eq!(seed.unsupported.slot_taint, true);
+        Ok(())
+    }
+
+    #[test]
+    fn unsupported_recovery_state_constructors_preserve_valid_capability_combinations() {
+        assert_eq!(
+            UnsupportedRecoveryState::slot_values_unsupported(),
+            UnsupportedRecoveryState {
                 slot_values: true,
                 slot_taint: true,
                 action_payloads: false,
+                pending_actions: false,
             }
         );
+        assert_eq!(
+            UnsupportedRecoveryState::event_slot_taint_unsupported()
+                .union(UnsupportedRecoveryState::pending_actions_unsupported()),
+            UnsupportedRecoveryState {
+                slot_values: false,
+                slot_taint: true,
+                action_payloads: false,
+                pending_actions: true,
+            }
+        );
+    }
+
+    #[test]
+    fn recovery_error_variants_preserve_exact_payloads() {
+        let journal_error: RecoveryError = crate::JournalError::KeyCapacity.into();
+        assert!(matches!(
+            journal_error,
+            RecoveryError::Journal(crate::JournalError::KeyCapacity)
+        ));
+
+        let action_error = RecoveryError::ActionAbiMismatch {
+            action_id: ActionId::new(9),
+        };
+        assert!(matches!(
+            action_error,
+            RecoveryError::ActionAbiMismatch { action_id } if action_id == ActionId::new(9)
+        ));
+
+        let policy_error = RecoveryError::PolicyDigestMismatch {
+            step: StepIdx::new(3),
+        };
+        assert!(matches!(
+            policy_error,
+            RecoveryError::PolicyDigestMismatch { step } if step == StepIdx::new(3)
+        ));
+
+        let terminal_error = RecoveryError::TerminalStateMismatch {
+            expected: String::from("finished"),
+            found: String::from("failed"),
+        };
+        assert!(matches!(
+            terminal_error,
+            RecoveryError::TerminalStateMismatch { expected, found }
+                if expected == "finished" && found == "failed"
+        ));
+    }
+
+    #[test]
+    fn corrupt_snapshot_returns_exact_recovery_error_variant() {
+        let snapshot = RunSnapshot {
+            run: RunId::new(194),
+            seq: EventSeq::new(12),
+            workflow: workflow_digest_from_byte(34),
+            slots: vec![0xFF, 0xFF],
+            taint: Vec::new(),
+        };
+
+        let result = recover_runtime_frame_seed_from_snapshot_and_tail(&snapshot, &[]);
+
+        assert!(matches!(
+            result,
+            Err(RecoveryError::CorruptSnapshot { run, seq })
+                if run == RunId::new(194) && seq == EventSeq::new(12)
+        ));
+    }
+
+    fn sorted_steps(mut steps: Vec<RecoveredStepEntry>) -> Vec<RecoveredStepEntry> {
+        steps.sort_by_key(|entry| entry.step.get());
+        steps
+    }
+
+    fn sorted_slots(mut slots: Vec<RecoveredSlotEntry>) -> Vec<RecoveredSlotEntry> {
+        slots.sort_by_key(|entry| entry.slot.get());
+        slots
+    }
+
+    fn sorted_pending_actions(
+        mut actions: Vec<RecoveredPendingAction>,
+    ) -> Vec<RecoveredPendingAction> {
+        actions.sort_by_key(|entry| (entry.step.get(), entry.action.get()));
+        actions
     }
 
     #[test]
@@ -187,7 +423,7 @@ mod tests {
         let dir = tempfile::tempdir().expect("temp dir");
         let journal = FjallJournal::open(dir.path(), None).expect("journal opens");
         let run = RunId::new(93);
-        let workflow = test_digest(14);
+        let workflow = workflow_digest_from_byte(14);
 
         journal
             .append_journaled(&JournalEvent::RunAccepted {
@@ -218,7 +454,7 @@ mod tests {
     fn recover_all_incomplete_runs_returns_only_non_terminal_runs() {
         let dir = tempfile::tempdir().expect("temp dir");
         let journal = FjallJournal::open(dir.path(), None).expect("journal opens");
-        let workflow = test_digest(11);
+        let workflow = workflow_digest_from_byte(11);
         let incomplete = RunId::new(81);
         let finished = RunId::new(82);
 
@@ -267,7 +503,7 @@ mod tests {
         let dir = tempfile::tempdir().expect("temp dir");
         let journal = FjallJournal::open(dir.path(), None).expect("journal opens");
         let run = RunId::new(83);
-        let workflow = test_digest(12);
+        let workflow = workflow_digest_from_byte(12);
 
         put_test_header(&journal, run, workflow);
 
@@ -312,50 +548,51 @@ mod tests {
     }
 
     fn summarize_events(events: &[JournalEvent]) -> ReplaySummary {
-        let mut summary = ReplaySummary::default();
-        for event in events {
-            match event {
-                JournalEvent::RunAccepted { .. } => {
-                    summary.accepted = summary.accepted.saturating_add(1);
+        events
+            .iter()
+            .fold(ReplaySummary::default(), |mut summary, event| {
+                match event {
+                    JournalEvent::RunAccepted { .. } => {
+                        summary.accepted = summary.accepted.saturating_add(1);
+                    }
+                    JournalEvent::StepStarted { .. } => {
+                        summary.step_started = summary.step_started.saturating_add(1);
+                    }
+                    JournalEvent::StepSucceeded { .. } => {
+                        summary.step_succeeded = summary.step_succeeded.saturating_add(1);
+                    }
+                    JournalEvent::ActionScheduled { .. } => {
+                        summary.action_scheduled = summary.action_scheduled.saturating_add(1);
+                    }
+                    JournalEvent::ActionCompletedEvent { .. } => {
+                        summary.action_completed = summary.action_completed.saturating_add(1);
+                    }
+                    JournalEvent::ActionFailedEvent { .. } => {
+                        summary.action_failed = summary.action_failed.saturating_add(1);
+                    }
+                    JournalEvent::WaitScheduledEvent { .. } => {
+                        summary.wait_scheduled = summary.wait_scheduled.saturating_add(1);
+                    }
+                    JournalEvent::AskScheduledEvent { .. } => {
+                        summary.ask_scheduled = summary.ask_scheduled.saturating_add(1);
+                    }
+                    JournalEvent::AskAnsweredEvent { .. } => {
+                        summary.ask_answered = summary.ask_answered.saturating_add(1);
+                    }
+                    JournalEvent::RunCancelled { .. } => {
+                        summary.terminal = Some(TerminalSummary::Cancelled);
+                    }
+                    JournalEvent::RunFinished { result, .. } => {
+                        summary.terminal = Some(TerminalSummary::Finished(*result));
+                    }
+                    JournalEvent::RunFailedEvent { .. } => {
+                        summary.terminal = Some(TerminalSummary::Failed);
+                    }
+                    JournalEvent::SlotWrittenEvent { .. }
+                    | JournalEvent::RetryScheduledEvent { .. } => {}
                 }
-                JournalEvent::StepStarted { .. } => {
-                    summary.step_started = summary.step_started.saturating_add(1);
-                }
-                JournalEvent::StepSucceeded { .. } => {
-                    summary.step_succeeded = summary.step_succeeded.saturating_add(1);
-                }
-                JournalEvent::ActionScheduled { .. } => {
-                    summary.action_scheduled = summary.action_scheduled.saturating_add(1);
-                }
-                JournalEvent::ActionCompletedEvent { .. } => {
-                    summary.action_completed = summary.action_completed.saturating_add(1);
-                }
-                JournalEvent::ActionFailedEvent { .. } => {
-                    summary.action_failed = summary.action_failed.saturating_add(1);
-                }
-                JournalEvent::WaitScheduledEvent { .. } => {
-                    summary.wait_scheduled = summary.wait_scheduled.saturating_add(1);
-                }
-                JournalEvent::AskScheduledEvent { .. } => {
-                    summary.ask_scheduled = summary.ask_scheduled.saturating_add(1);
-                }
-                JournalEvent::AskAnsweredEvent { .. } => {
-                    summary.ask_answered = summary.ask_answered.saturating_add(1);
-                }
-                JournalEvent::RunCancelled { .. } => {
-                    summary.terminal = Some(TerminalSummary::Cancelled);
-                }
-                JournalEvent::RunFinished { result, .. } => {
-                    summary.terminal = Some(TerminalSummary::Finished(*result));
-                }
-                JournalEvent::RunFailedEvent { .. } => {
-                    summary.terminal = Some(TerminalSummary::Failed);
-                }
-                JournalEvent::SlotWrittenEvent { .. }
-                | JournalEvent::RetryScheduledEvent { .. } => {}
-            }
-        }
-        summary
+                summary
+            })
     }
 
     fn combine_summaries(base: ReplaySummary, tail: ReplaySummary) -> ReplaySummary {
@@ -374,33 +611,29 @@ mod tests {
     }
 
     fn summary_through(events: &[JournalEvent], seq: EventSeq) -> ReplaySummary {
-        let mut prefix = Vec::new();
-        for event in events {
-            if event.seq() <= seq {
-                prefix.push(event.clone());
-            }
-        }
+        let prefix = events
+            .iter()
+            .filter(|event| event.seq() <= seq)
+            .cloned()
+            .collect::<Vec<_>>();
         summarize_events(&prefix)
     }
 
     fn tail_after(events: &[JournalEvent], seq: EventSeq) -> Vec<JournalEvent> {
-        let mut tail = Vec::new();
-        for event in events {
-            if event.seq() > seq {
-                tail.push(event.clone());
-            }
-        }
-        tail
+        events
+            .iter()
+            .filter(|event| event.seq() > seq)
+            .cloned()
+            .collect()
     }
 
     fn append_events(
         journal: &FjallJournal,
         events: &[JournalEvent],
     ) -> Result<(), crate::JournalError> {
-        for event in events {
-            journal.append_journaled(event)?;
-        }
-        Ok(())
+        events
+            .iter()
+            .try_for_each(|event| journal.append_journaled(event))
     }
 
     fn assert_snapshot_tail_matches_full_summary(
@@ -418,7 +651,7 @@ mod tests {
         let snapshot = RunSnapshot {
             run,
             seq: snapshot_seq,
-            workflow: test_digest(1),
+            workflow: workflow_digest_from_byte(1),
             slots: Vec::new(),
             taint: Vec::new(),
         };
@@ -496,7 +729,7 @@ mod tests {
             JournalEvent::RunAccepted {
                 run,
                 seq: EventSeq::new(0),
-                workflow: test_digest(1),
+                workflow: workflow_digest_from_byte(1),
             },
             JournalEvent::StepStarted {
                 run,
@@ -529,7 +762,7 @@ mod tests {
             JournalEvent::RunAccepted {
                 run,
                 seq: EventSeq::new(0),
-                workflow: test_digest(1),
+                workflow: workflow_digest_from_byte(1),
             },
             JournalEvent::ActionScheduled {
                 run,
@@ -560,7 +793,7 @@ mod tests {
             JournalEvent::RunAccepted {
                 run,
                 seq: EventSeq::new(0),
-                workflow: test_digest(1),
+                workflow: workflow_digest_from_byte(1),
             },
             JournalEvent::WaitScheduledEvent {
                 run,
@@ -583,7 +816,7 @@ mod tests {
             JournalEvent::RunAccepted {
                 run,
                 seq: EventSeq::new(0),
-                workflow: test_digest(1),
+                workflow: workflow_digest_from_byte(1),
             },
             JournalEvent::AskScheduledEvent {
                 run,
@@ -633,14 +866,14 @@ mod tests {
 
     #[test]
     fn compiled_ir_digest_match_succeeds() {
-        let digest = test_digest(42);
+        let digest = workflow_digest_from_byte(42);
         check_compiled_ir_digest(digest, digest).expect("matching digests should succeed");
     }
 
     #[test]
     fn compiled_ir_digest_mismatch_fails() {
-        let expected = test_digest(1);
-        let found = test_digest(2);
+        let expected = workflow_digest_from_byte(1);
+        let found = workflow_digest_from_byte(2);
         let Err(err) = check_compiled_ir_digest(expected, found) else {
             panic!("mismatched digests should fail");
         };
@@ -678,7 +911,7 @@ mod tests {
             JournalEvent::RunAccepted {
                 run: RunId::new(1),
                 seq: EventSeq::new(0),
-                workflow: test_digest(1),
+                workflow: workflow_digest_from_byte(1),
             },
             JournalEvent::RunFinished {
                 run: RunId::new(1),
@@ -697,7 +930,7 @@ mod tests {
         let events = vec![JournalEvent::RunAccepted {
             run: RunId::new(1),
             seq: EventSeq::new(0),
-            workflow: test_digest(1),
+            workflow: workflow_digest_from_byte(1),
         }];
 
         let terminal = extract_terminal(&events);
@@ -709,7 +942,7 @@ mod tests {
         let snapshot = RunSnapshot {
             run: RunId::new(1),
             seq: EventSeq::new(5),
-            workflow: test_digest(1),
+            workflow: workflow_digest_from_byte(1),
             slots: Vec::new(),
             taint: Vec::new(),
         };
@@ -750,7 +983,7 @@ mod tests {
         let accepted = JournalEvent::RunAccepted {
             run,
             seq: EventSeq::new(0),
-            workflow: test_digest(1),
+            workflow: workflow_digest_from_byte(1),
         };
         let started = JournalEvent::StepStarted {
             run,
@@ -786,7 +1019,7 @@ mod tests {
             JournalEvent::RunAccepted {
                 run,
                 seq: EventSeq::new(0),
-                workflow: test_digest(1),
+                workflow: workflow_digest_from_byte(1),
             },
             JournalEvent::StepStarted {
                 run,
@@ -856,7 +1089,7 @@ mod tests {
         let snapshot = RunSnapshot {
             run: RunId::new(10),
             seq: EventSeq::new(5),
-            workflow: test_digest(1),
+            workflow: workflow_digest_from_byte(1),
             slots: Vec::new(),
             taint: Vec::new(),
         };
@@ -913,7 +1146,7 @@ mod tests {
             crate::FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
 
         let run = RunId::new(100);
-        let stored_digest = test_digest(1);
+        let stored_digest = workflow_digest_from_byte(1);
         let event = JournalEvent::RunAccepted {
             run,
             seq: EventSeq::new(0),
@@ -923,7 +1156,7 @@ mod tests {
             .append_journaled(&event)
             .expect("setup: append event");
 
-        let wrong_digest = test_digest(2);
+        let wrong_digest = workflow_digest_from_byte(2);
         let result = check_workflow_source_digest(&journal, run, wrong_digest);
         let Err(RecoveryError::WorkflowSourceDigestMismatch { expected, found }) = result else {
             panic!("expected WorkflowSourceDigestMismatch, got {:?}", result);
@@ -939,7 +1172,7 @@ mod tests {
             crate::FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
 
         let run = RunId::new(101);
-        let digest = test_digest(5);
+        let digest = workflow_digest_from_byte(5);
         let event = JournalEvent::RunAccepted {
             run,
             seq: EventSeq::new(0),
@@ -955,8 +1188,8 @@ mod tests {
 
     #[test]
     fn check_compiled_ir_digest_returns_mismatch_when_digests_differ() {
-        let expected = test_digest(10);
-        let found = test_digest(20);
+        let expected = workflow_digest_from_byte(10);
+        let found = workflow_digest_from_byte(20);
         let result = check_compiled_ir_digest(expected, found);
         let Err(RecoveryError::CompiledIrDigestMismatch {
             expected: exp,
@@ -976,7 +1209,7 @@ mod tests {
             crate::FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
 
         let run = RunId::new(200);
-        let digest = test_digest(7);
+        let digest = workflow_digest_from_byte(7);
         let event = JournalEvent::RunAccepted {
             run,
             seq: EventSeq::new(0),
@@ -990,8 +1223,8 @@ mod tests {
             &journal,
             run,
             digest,
-            test_digest(8),
-            test_digest(8),
+            workflow_digest_from_byte(8),
+            workflow_digest_from_byte(8),
             DigestCheck::Full,
         )
         .expect("matching digests at Full level should succeed");
@@ -1004,7 +1237,7 @@ mod tests {
             crate::FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
 
         let run = RunId::new(201);
-        let digest = test_digest(7);
+        let digest = workflow_digest_from_byte(7);
         let event = JournalEvent::RunAccepted {
             run,
             seq: EventSeq::new(0),
@@ -1018,8 +1251,8 @@ mod tests {
             &journal,
             run,
             digest,
-            test_digest(8),
-            test_digest(9),
+            workflow_digest_from_byte(8),
+            workflow_digest_from_byte(9),
             DigestCheck::WorkflowAndIr,
         );
         assert!(matches!(
@@ -1060,7 +1293,7 @@ mod tests {
             JournalEvent::RunAccepted {
                 run,
                 seq: EventSeq::new(0),
-                workflow: test_digest(1),
+                workflow: workflow_digest_from_byte(1),
             },
             JournalEvent::ActionScheduled {
                 run,
@@ -1115,7 +1348,7 @@ mod tests {
         let event = JournalEvent::RunAccepted {
             run: RunId::new(1),
             seq: EventSeq::new(0),
-            workflow: test_digest(1),
+            workflow: workflow_digest_from_byte(1),
         };
         assert!(!is_terminal_event(&event));
     }
@@ -1141,7 +1374,7 @@ mod tests {
             JournalEvent::RunAccepted {
                 run: RunId::new(1),
                 seq: EventSeq::new(0),
-                workflow: test_digest(1),
+                workflow: workflow_digest_from_byte(1),
             },
             JournalEvent::StepStarted {
                 run: RunId::new(1),
@@ -1161,7 +1394,7 @@ mod tests {
         let events = vec![JournalEvent::RunAccepted {
             run: RunId::new(1),
             seq: EventSeq::new(0),
-            workflow: test_digest(1),
+            workflow: workflow_digest_from_byte(1),
         }];
 
         let terminal = extract_terminal(&events);
@@ -1180,7 +1413,7 @@ mod tests {
             JournalEvent::RunAccepted {
                 run: run_a,
                 seq: EventSeq::new(0),
-                workflow: test_digest(1),
+                workflow: workflow_digest_from_byte(1),
             },
             JournalEvent::StepStarted {
                 run: run_a,
@@ -1215,7 +1448,7 @@ mod tests {
             JournalEvent::RunAccepted {
                 run: run_a,
                 seq: EventSeq::new(0),
-                workflow: test_digest(2),
+                workflow: workflow_digest_from_byte(2),
             },
             JournalEvent::StepSucceeded {
                 run: run_a,
@@ -1273,7 +1506,7 @@ mod tests {
             JournalEvent::RunAccepted {
                 run,
                 seq: EventSeq::new(0),
-                workflow: test_digest(3),
+                workflow: workflow_digest_from_byte(3),
             },
             JournalEvent::SlotWrittenEvent {
                 run,
@@ -1304,7 +1537,7 @@ mod tests {
             JournalEvent::RunAccepted {
                 run,
                 seq: EventSeq::new(0),
-                workflow: test_digest(4),
+                workflow: workflow_digest_from_byte(4),
             },
             JournalEvent::SlotWrittenEvent {
                 run,
