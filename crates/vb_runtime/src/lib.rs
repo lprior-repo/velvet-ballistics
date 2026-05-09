@@ -34,6 +34,7 @@
 pub mod action;
 pub mod admission;
 pub mod counters;
+pub mod durability_matrix;
 pub mod engine;
 pub mod frame_pool;
 pub mod idempotency;

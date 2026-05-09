@@ -16,7 +16,7 @@ use crate::engine::types::{
 };
 use crate::primitives::collect::CollectStates;
 
-fn compute_max_parallel_in_flight(plan: &CompiledWorkflow) -> RuntimeEngineResult<u16> {
+pub(crate) fn compute_max_parallel_in_flight(plan: &CompiledWorkflow) -> RuntimeEngineResult<u16> {
     let mut max_branches: u16 = 0;
     for i in 0..plan.node_count() {
         let step = StepIdx::new(i);

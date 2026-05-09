@@ -32,9 +32,17 @@ pub struct IdempotencyTracker {
 }
 
 impl IdempotencyTracker {
+    /// Creates a new tracker with the given bounded capacity.
+    ///
+    /// When the tracker reaches capacity, the oldest entry is evicted.
+    #[must_use]
+    pub fn new(capacity: usize) -> Self {
+        Self::with_capacity(capacity)
+    }
+
     /// Creates a new tracker with the default capacity.
     #[must_use]
-    pub fn new() -> Self {
+    pub fn with_default_capacity() -> Self {
         Self::with_capacity(DEFAULT_CAPACITY)
     }
 

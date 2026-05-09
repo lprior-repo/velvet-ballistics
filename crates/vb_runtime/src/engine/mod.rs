@@ -15,6 +15,7 @@ pub mod action;
 pub mod drive;
 pub mod execute;
 pub mod helpers;
+pub mod property_tests;
 pub mod signal;
 pub mod tests;
 pub mod types;

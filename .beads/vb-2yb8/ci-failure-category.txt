@@ -1,0 +1,6 @@
+CATEGORY: TEST_FAILURE
+SUBCATEGORY: PRE_EXISTING
+CRATE: vb_storage
+TEST: batch::tests::batch_is_not_send_or_sync
+RELATED_TO_BEAD: false
+FIRST_FAILURE_LINE: vb_storage/src/batch.rs:753
