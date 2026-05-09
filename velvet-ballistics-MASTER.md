@@ -1121,6 +1121,25 @@ velvet-ballastics/
   moon.yml
   supply-chain/
     config.toml
+  contracts/
+    ui_artifacts.yaml
+    ui_tokens.yaml
+    ui_motion.yaml
+    ui_screens.yaml
+  design/
+    figma/
+      figma_makepad_notes.md
+      velvet_ballastics_figma_ready_tightened_board.png
+      velvet_ballastics_figma_ready_tightened_screens.zip
+      screens/
+        png/
+        svg/
+    tokens/
+      velvet_ui_tokens.toml
+    reference/
+      figma_makepad_notes.md
+      white_makepad_8_screen_board.png
+      screenshots/
   crates/
     vb_core/
     vb_yaml/
@@ -1131,6 +1150,8 @@ velvet-ballastics/
     vb_runtime/
     vb_ipc/
     vb_codegen/
+    vb_ui_model/
+    vb_ui_makepad/
     velvet_ballastics/
   benches/
   fuzz/
@@ -1138,6 +1159,8 @@ velvet-ballastics/
 ```
 
 Round 2 state: the workspace has been rebaselined to the underscore crate contract above (`vb_core`, `vb_yaml`, `vb_validate`, `vb_expr`, `vb_compile`, `vb_storage`, `vb_runtime`, `vb_ipc`, `vb_codegen`, and `velvet_ballastics`). Any future hyphenated internal crate name is a regression unless it is explicitly labeled as a migration artifact.
+
+UI target state: `vb_ui_model` is a cold-path typed artifact crate shared by CLI and UI. `vb_ui_makepad` is the native desktop UI crate. Neither crate may introduce Makepad, graphics, windowing, or UI dependencies into `vb_core`, `vb_runtime`, `vb_storage`, `vb_ipc`, or generated workflow code. Any existing transitional UI crate must be migrated into this split or explicitly superseded by a bead.
 
 ---
 
@@ -1301,15 +1324,26 @@ velvet-ballastics compile <workflow.yaml> --emit rust --out <file.rs>
 velvet-ballastics run <workflow.yaml> --input-bin <input.vbin> --durability <mode>
 velvet-ballastics run-compiled <workflow.vbir> --input-bin <input.vbin> --durability <mode>
 velvet-ballastics ipc-serve --socket <path> --db <path>
+velvet-ballastics ui --db <path>
+velvet-ballastics ui --socket <path>
+velvet-ballastics ui --demo-fixture <fixture>
 velvet-ballastics agent-context
 velvet-ballastics inspect <run_id> --db <path>
 velvet-ballastics events <run_id> --db <path>
 velvet-ballastics replay <run_id> --db <path>
+velvet-ballastics graph <workflow.yaml> --emit yaml
+velvet-ballastics system status --emit yaml
+velvet-ballastics action list --emit yaml
+velvet-ballastics action inspect <action-name> --emit yaml
+velvet-ballastics incident <run_id> --db <path> --emit yaml
+velvet-ballastics ai context <run_id> --db <path> --emit yaml
 velvet-ballastics bench-run <workflow.yaml>
 velvet-ballastics doctor --db <path>
 ```
 
 CLI structured output is a cold-path operator/agent contract and never enters `vb_core`, `vb_runtime`, `vb_storage`, `vb_ipc`, or generated workflow code. `--emit yaml` is the canonical structured text flag for v1; `--emit postcard` is the canonical binary machine-output flag where supported. JSON may be added later as a separate cold adapter. Runtime machine artifacts remain binary/Postcard.
+
+The `ui` command launches the Makepad desktop application. It has exactly three v1 modes: embedded local observer mode via `--db <path>`, attached observer mode via binary IPC with `--socket <path>`, and deterministic fixture mode via `--demo-fixture <fixture>` for design review, demos, screenshot tests, and UI regression gates. No UI mode may require HTTP or JSON. Any future web adapter remains a separate cold-path adapter crate and cannot enter runtime core.
 
 ---
 
@@ -1327,6 +1361,8 @@ members = [
   "crates/vb_runtime",
   "crates/vb_ipc",
   "crates/vb_codegen",
+  "crates/vb_ui_model",
+  "crates/vb_ui_makepad",
   "crates/velvet_ballastics",
   "fuzz",
 ]
@@ -1354,6 +1390,8 @@ mio = "1"
 criterion = "0.8"
 iai-callgrind = "0.16"
 proptest = "1"
+# UI crate only. Forbidden in runtime core crates.
+makepad-widgets = { version = "1", default-features = false }
 
 [workspace.lints.rust]
 unsafe_code = "forbid"
@@ -1399,6 +1437,8 @@ debug = true
 lto = "thin"
 codegen-units = 1
 ```
+
+Makepad is approved only for `vb_ui_makepad` after a dependency-scope bead pins the exact version or git revision and records cargo-audit, cargo-deny, cargo-vet, cargo-geiger, cargo-machete, and license evidence. If a git revision is required for Makepad functionality, the dependency must be pinned by exact commit SHA, not a branch name, before release.
 
 ---
 
@@ -1764,6 +1804,22 @@ tests-fuzz
 benchmarks
 maxperf
 release-gates
+ui-model-artifacts
+ui-design-tokens
+ui-makepad-shell
+ui-graph-canvas
+ui-execution-observatory
+ui-verification-certificate-view
+ui-replay-theater
+ui-incident-console
+ui-action-registry
+ui-storage-doctor
+ui-ai-context-panel
+ui-motion-system
+ui-figma-import-export
+ui-snapshot-regression
+ui-performance-gates
+makepad-dependency-scope
 ```
 
 Every phase requires a parent bead. Every function cluster requires a child bead. The benchmark suite requires dedicated beads. Each fuzz target requires its own bead. Every P0 blocker requires a dedicated bead.
@@ -1824,6 +1880,21 @@ primitive-subphases
 toolchain-nightly-governance
 holzmann-matrix
 forbidden-hot-path-apis
+```
+
+Required first UI beads:
+
+```text
+ui-white-apple-pro-design-system
+ui-eight-screen-taxonomy
+ui-figma-ready-token-export
+ui-makepad-splash-shell
+ui-step-functions-observability-layout
+ui-runtime-graph-canvas
+ui-replay-timeline-scrubber
+ui-certificate-cards
+ui-incident-evidence-chain
+ui-ipc-observer-mode
 ```
 
 Example bead commands:
@@ -3493,11 +3564,22 @@ velvet-ballastics resume  <run-id> --db <path>
 velvet-ballastics retry   <run-id> --step <step-id> --db <path>
 velvet-ballastics answer  <run-id> --slot <slot-id> --value <file> --db <path>
 velvet-ballastics ipc-serve --socket <path> --db <path>
+velvet-ballastics ui --db <path>
+velvet-ballastics ui --socket <path>
+velvet-ballastics ui --demo-fixture <fixture>
+velvet-ballastics graph <workflow.yaml> --emit yaml
+velvet-ballastics system status --emit yaml
+velvet-ballastics action list --emit yaml
+velvet-ballastics action inspect <action-name> --emit yaml
+velvet-ballastics incident <run-id> --db <path> --emit yaml
+velvet-ballastics ai context <run-id> --db <path> --emit yaml
 velvet-ballastics bench-run <workflow.yaml>
 velvet-ballastics doctor  --db <path> [--emit yaml|postcard]
 ```
 
 The `vb` binary name is a mandatory alias. Both `velvet-ballastics` and `vb` invoke the same binary.
+
+The `ui` command launches the native Makepad command center. `--db <path>` opens embedded local observer mode using storage readers and direct APIs. `--socket <path>` opens attached mode using binary IPC only. `--demo-fixture <fixture>` opens deterministic mock mode for design review, demos, screenshot capture, and UI tests. No UI mode may require HTTP or JSON.
 
 ### Single-Step Testing
 
@@ -3617,6 +3699,20 @@ The following phases extend Section 35 for operator-facing features:
 | 58 | Codegen expansion | `BuildObject`, `BuildList`, helper expression ops (`Contains`, `Length`, `Empty`, `Sum`, `Count`, `Unique`), `RetryCheck`. IR/generated equivalence tests per newly supported primitive. |
 | 59 | Behavioral property tests | 11 required properties from Section 38: constant folding parity, bytecode/AST parity, digest stability, layout stability, replay determinism, snapshot equivalence, ordering invariants, bound enforcement, state machine, taint safety, IR/generated parity. |
 | 60 | `vb` binary alias | Cargo.toml `[[bin]]` entry for `vb` pointing to same `main.rs`. Both `velvet-ballastics` and `vb` produce identical behavior. |
+| 61 | UI model artifacts | `vb_ui_model` crate with typed `WorkflowGraph`, `VerificationReport`, `RunInspection`, `RunEvents`, `ReplayReport`, `IncidentReport`, `SystemStatus`, `ActionDescription`, `DoctorReport`, and `AiContextPacket` views. CLI/UI schema parity tests. |
+| 62 | Makepad shell | `vb_ui_makepad` crate, shared app chrome, sidebar, topbar, command buttons, status chips, profile selector, demo fixture loading. |
+| 63 | Design tokens and Figma bridge | Token source in `design/tokens`; generated Makepad token files; Figma-ready SVG/PNG references; token drift checker. |
+| 64 | Graph canvas | Pan/zoom canvas, nodes, curved edges, packet dots, selection, status color rules, taint overlay, layout fixtures. |
+| 65 | Execution observatory | Overview KPIs, shard flow map, active runs table, event ticker, queue pressure indicators, storage/IPC health summary. |
+| 66 | Execution details view | Single-run graph view, event table, step details panel, input/output/details tabs, runtime state coloring. |
+| 67 | Verification certificate view | Verification banner, certificate cards, gate pipeline, accepted artifact panel, warnings, proof summary. |
+| 68 | Replay theater | Journal timeline, playback controls, scrubber, selected event details, slot diffs, recovery decision panel, deterministic replay fixture. |
+| 69 | Incident failure console | Failure banner, failure path graph, evidence chain, action ticket, recovery controls, slot/taint diffs, repair hints. |
+| 70 | Action registry / contract inspector | Action list, selected `ActionContract`, idempotency/side-effect/retry safety, capability requirements, failure codes. |
+| 71 | Storage doctor / AI context | Fjall keyspace health, journal doctor, snapshot/tail status, AI-safe context packet, suggested commands. |
+| 72 | UI motion/performance | Shader-based packet dots, active-node glow, timeline pulse, bounded animation loops, no per-frame allocations after warm-up, UI perf benchmark. |
+| 73 | UI snapshot and overlap gates | Deterministic screenshots for all eight screens, image diff gate, overlap/clipping scanner, canonical spelling scan. |
+| 74 | UI release hardening | Keyboard navigation, accessibility labels, redaction tests, CLI/UI parity tests, demo fixtures, documentation, Makepad dependency audit. |
 
 ---
 
@@ -4341,147 +4437,250 @@ Then hand the output to an AI and ask: *What failed, is it safe to retry, and wh
 
 ### Vision
 
-A mission control–style front-end for the durable workflow system. The UI should feel like a game: alive, causal, and inspectable, rather than a CRUD dashboard. When an operator opens the application they must immediately understand the state of the system — what is running, blocked or failed, where bottlenecks are forming, whether sensitive data is flowing to forbidden sinks, and whether replaying an execution is safe.
+The `velvet-ballastics` front-end is a premium native command center for workflow execution observability, verification, replay, and incident response. It is not a generic SaaS dashboard, not a low-code canvas, and not a decorative graph editor.
 
-Two metaphors guide the design:
+The UI product identity is:
 
-1. **Air traffic control** for durable workflows — track many independent runs, see queue depths and shard health, spot collisions before they happen.
-2. **Mission control** for automation — monitor subsystem health and intervene during incidents.
+> Step Functions observability, but cleaner, sharper, calmer, and more cinematic — a workflow black-box recorder inside an Apple-quality native desktop app.
 
-Bad metaphors to avoid: kanban boards, generic forms dashboards, low-code builders. Focus on flow of state, movement of events, replay of decisions, and subsystem health.
+The UI visualizes operational truth already produced by the backend: `VerificationReport`, `WorkflowGraph`, `RunInspection`, `RunEvents`, `ReplayReport`, `IncidentReport`, `SystemStatus`, `ActionDescription`, storage health, journal evidence, action tickets, resource budgets, and taint paths. The UI does not invent state and does not become a second source of truth.
 
-### Visual Theme Reference
+### Design Direction
 
-The visual identity is defined by the two reference images at:
+The v1 UI uses a crisp Apple Pro-style light shell:
 
-- `docs/ui-reference/control-center-theme-a.png` — Grid-based multi-panel layout with process flow diagram, activity feed, metrics dashboard, and detailed log table. Deep navy/black background, bright green/red/yellow/cyan accents for status encoding. Flat design with monospaced data fonts.
-- `docs/ui-reference/control-center-theme-b.png` — Status indicator sidebar with shield icons, central workflow canvas with color-coded nodes, real-time metrics panel, and bottom KPI strip. Dark theme with green/yellow/red/purple/cyan accent palette. Geometric nodes, rounded corners, high contrast.
+- Ultra-clean off-white surfaces.
+- Matte white cards.
+- Faint translucent glass panels only where useful.
+- Hairline dividers instead of heavy borders.
+- Soft, realistic shadows.
+- Rounded 14–20px cards.
+- Precise 8px spacing rhythm.
+- Minimal, high-signal color use.
+- Crisp sans-serif typography for labels.
+- Monospace only for run IDs, action IDs, digests, slot IDs, timestamps, sequence numbers, and binary/record metadata.
+- No cyberpunk treatment, no overuse of neon, no overuse of glass, no thick borders, no 3D effects, and no generic web-dashboard chrome.
 
-Core aesthetic rules:
+The UI may borrow broad observability structure from AWS Step Functions-style execution pages — execution summary, graph/table/event views, selected-step details, event history, recovery controls — but it must reinterpret these into the `velvet-ballastics` product model: accepted artifacts, verification certificates, typed journals, replay safety, idempotency evidence, and taint/resource contracts.
 
-- Dark background (near-black/deep navy), high-contrast accent colors.
-- Color encodes meaning: green = healthy/success, amber = warning/retry, red = failed/critical, cyan = informational/in-progress, purple = active/secret-tainted.
-- Monospaced fonts for data. Sans-serif for labels.
-- Flat design, no gratuitous gradients or 3D effects.
-- Negative space between panels. Data-dense but not cluttered.
-- Subtle animation pulses for live state (queue bars, moving packets, node glows), not decorative animation.
+### Presentation Board and Figma Contract
 
-### Core Questions the UI Must Answer
+The current canonical intake bundle is the 2026-05-08 23:51 zip at `/home/lewis/Downloads/velvet_ballastics_makepad_ui_master_plan_with_images.zip`. Its extracted repository copy is:
 
-At all times the UI must answer these instantly:
+```text
+velvet_ballastics_makepad_ui_master_plan_with_images/
+  velvet-ballastics-MASTER-makepad-ui-update.md
+  design_assets/canonical/
+    figma_makepad_notes.md
+    velvet_ballastics_figma_ready_tightened_board.png
+  design_assets/velvet_ballastics_figma_ready_tightened/png/
+  design_assets/velvet_ballastics_figma_ready_tightened/svg/
+```
 
-1. **What is running?** Which workflows are active, where are they executing, what state is each run in?
-2. **What is blocked?** Which runs are waiting for external events, retries, or timers?
-3. **What failed and why?** Error code, context, replay safety.
-4. **Did side effects occur?** Durable action tickets and idempotency information.
-5. **Where is pressure building?** Queue depths, shard utilization, storage health.
-6. **Did secrets leak?** Taint propagation overlays showing secret-sensitive paths and sinks.
-7. **What changed since the last good run?** Diff slot values, taint status, certificates between runs.
+The design review artifact is an 8-screen desktop board:
 
-### Primary Screens
+```text
+1. Execution Observatory Overview
+2. Workflow Graph Authoring
+3. Execution Details Graph View
+4. Verification Certificate View
+5. Replay Theater
+6. Incident Failure Console
+7. Action Registry / Contract Inspector
+8. Storage / Journal Doctor + AI Context
+```
 
-#### A. System Overview ("World Map")
+Reference design assets live under:
 
-The entire runtime as a living machine. Four panels:
+```text
+design/figma/
+design/reference/
+design/tokens/
+```
 
-- **Left — Topology/System map:** Shards with identifiers and health indicators. Each shard displays active runs, ready queue depth, action completion queue depth, timer counts, frame pool usage, trace ring fill, and per-shard throughput metrics. Motion cues (pulses on queue bars, glowing packets between lanes) indicate work moving through the system.
-- **Centre — Activity lanes:** Horizontal lanes per shard, visualizing active runs flowing across steps. Blocked runs blink red, waiting runs glow blue, retries pulse amber. Lane height/intensity conveys queue pressure.
-- **Right — Alerts, incidents, and pressure:** Stack of alert cards summarizing current incidents, replay divergences, and blocked reconciliation. Cards are clickable to open the Run Inspector.
-- **Bottom — Event ticker:** Scrolling strip of recent system events (RunAccepted, StepStarted, ActionScheduled, etc.) with color-coded severity. Clicking an event jumps to the corresponding run.
+Figma files, SVGs, and PNG boards are design reference only. The implementation source of truth is Makepad Splash (`script_mod!`) plus Rust widget code. Any design token divergence between Figma and Makepad is a release blocker.
 
-Smooth panning, zooming, inertial scrolling, and heat-bar overlays. Simulation-like overview where operators watch workflows move through shards in real time.
+### Shared App Chrome
 
-#### B. Workflow Graph / Authoring View
+Every screen uses one shared shell:
 
-Individual workflow definition as a structured graph (not freeform whiteboard). YAML is source of truth; the canvas is a projection supporting structured editing.
+- Left sidebar with `velvet-ballastics` branding.
+- Minimal icon navigation: Overview, Workflow Graph, Executions, Verification, Replay, Incidents, Actions, Storage, AI Context, Settings.
+- Top action bar with compact capsule buttons: Verify, Simulate, Submit.
+- Status chips: Strict durability, Running, Verified, Replay safe, Needs operator.
+- Top right utility controls: profile/environment selector, local server status, notification indicator, optional command palette trigger.
 
-Each node card shows:
+Shared app chrome must be implemented once as `AppShell`, not copied per screen.
 
-- Step ID, primitive type (Task, Choice, Wait, Pass, Parallel, Map, Succeed, Fail), and action name for Task nodes.
-- Retry policy, timeout, resource impact.
-- Taint sensitivity and strict-safety status.
-- Inline badges: action id, retry count (R3), timeout (T5s), secret participation (S), strict-durable safety (D), recent failures (!).
+### Color System
 
-Edges labelled with transition type (normal, branch condition, error route, retry route, join). Historical branch frequencies on hover. Minimap for navigation. Scrubber overlays run-time state onto the design graph for replaying past executions.
+Use color only for state and meaning:
 
-Inspector pane: YAML source, compiled IR details, input/output slots, resource contracts, retry/catch policies, taint information, last-run statistics. Diff two workflow versions directly on the graph.
+| Meaning | Color role |
+|--------|------------|
+| Verified / succeeded / healthy | Green |
+| Running / active / selected | Blue or cyan |
+| Retry / warning / queue pressure | Amber |
+| Failed / critical incident | Red |
+| Taint / secret-sensitive path | Purple |
+| Durable / replay-safe | Teal |
+| Disabled / pending / muted | Gray |
 
-#### C. Run Inspector / Replay Theater
+The default UI is calm white, gray, and black. Accent color should appear as small chips, thin outlines, dots, timeline marks, node glows, graph packet markers, and status text. Large colored surfaces are reserved for rare success/failure banners and must stay visually restrained.
 
-The hero feature — a replayable mission log for a single execution. Unifies graph, timeline, event log, and inspectors:
+### Screen 1 — Execution Observatory Overview
 
-- **Left:** Workflow graph with nodes coloured by runtime state (green = succeeded, blue = waiting, amber = retrying, red = failed, grey = not executed, purple = secret-tainted, white/teal = verification-safe). Selecting a node opens a details drawer.
-- **Centre:** Timeline/playback control showing every journal event (RunAccepted, StepStarted, SlotWritten, ActionScheduled, ActionCompleted, ActionFailed, WaitScheduled, AskScheduled, RetryScheduled, RunFinished, RunFailed). Play, pause, step forward/backward, jump to failure, jump to action, jump to replay divergence, change playback speed. Event scrubber drives the graph overlay.
-- **Right:** Detail inspectors for selected node/event — slot diffs, taint diffs, action ticket details (run, step, attempt, idempotency key hash, timestamps, outcome, replay safety, duplicate completions). Slot diff panel shows how individual slot values change at each event.
-- **Bottom:** Event log with timestamps and severity, clickable to sync timeline. Tabs switch between event stream, slot changes, taint flows, action tickets, and system counters.
+Purpose: answer what is running, where pressure is building, and whether the local system is healthy.
 
-Time-travel debugging for durable workflows: scrub any run like a video replay and see every state transition, durable event, ticket, secret flow, and resource change.
+Required elements:
 
-#### D. Verification / Certificate View
+- KPI row: Active runs, Healthy actions, Verification pass rate, Queue depth, Open incidents.
+- Simplified executions table: run id, workflow, status, started, duration, shard, result.
+- Shard flow map: shard lanes, tiny packet dots moving through active executions, queue pressure marks, action completion lane, timer lane.
+- Event ticker: last N events, `RunAccepted`, `StepStarted`, `ActionScheduled`, `ActionCompleted`, `RunFinished`, `RunFailed`.
+- System health cards: local server online, Fjall store healthy, writer queue health, IPC socket status.
 
-Pre-flight certificates: structural validity, boundedness, resource bounds, taint flow, and action policy. Answers "is this workflow safe?" and surfaces proofs.
+Style: calm, spacious, operational, less dense than the Step Functions console or the previous dark reference board.
 
-Panels:
+### Screen 2 — Workflow Graph Authoring
 
-- **Structure:** Unreachable steps, invalid transitions, incorrect joins, cycle analysis.
-- **Boundedness:** Max transitions, max retries, fan-out, timer waits, action count.
-- **Resources:** Slot count, max frame size, max action payload, max result size, queue requirements.
-- **Taint/secret flow:** Source-to-sink graph. Purple paths = tainted flow; shield icons = safe outputs.
-- **Action policy:** Idempotency classification, timeout coverage, missing caps, strict-durability eligibility.
-- **Replay/durability:** Journaled vs strict profile differences, potential divergence points, worst-case recovery.
+Purpose: show the compiled workflow graph as a structured projection of YAML/IR, not as a freeform whiteboard.
 
-Each panel: summary pass/fail, numeric bounds, interactive overlays on the graph.
+Required elements:
 
-#### E. Incident / Failure Console
+- State palette on the left: Start, Action, Branch, Parallel, Wait, Subflow, Finish.
+- Center graph canvas: `Start`, `classify`, `route_issue`, `create_issue`, `notify_slack`, `build_result`, `Finish`.
+- Node cards: matte white card, status dot, primitive/action label, small badges for strict-safe, idempotency, taint, retry, timeout.
+- Edges: thin curved lines, tiny packet markers, branch labels, selected path emphasis.
+- Right step inspector: step name, primitive, action id, resource impact, input slots, output slot, retry policy, idempotency key, taint state.
+- Selected node: crisp blue outline, subtle glow, no large blue fill.
 
-Tactical incident board, not a log list. Top: failure code, offending step, run ID, workflow digest, replay safety, side-effect certainty. Tabs: cause, timeline, state diff, replay behaviour, repair suggestions.
+YAML source remains authoritative. The canvas may support structured editing only if edits round-trip through the parser/compiler/validator.
 
-Highlights the failure path, shows slot diffs just before failure, proposes recovery (increase timeout, reduce payload, add retry backoff, pin idempotency, fix secret leak). AI assistance can summarise or generate repro steps.
+### Screen 3 — Execution Details Graph View
+
+Purpose: inspect one active or past run in graph mode.
+
+Required elements:
+
+- Run summary: run id, workflow name, status, started timestamp, shard id, durability profile.
+- Runtime graph: succeeded nodes in green, selected/running node in blue, pending nodes muted gray, failed node red outline, secret/taint overlay purple only when active.
+- Event table below graph: seq, time, step, event, shard, evidence id.
+- Right step details panel: step name, action id, action type, attempt, started time, elapsed, idempotency key hash, input tab, output tab, details tab.
+
+This screen is the closest structural analog to Step Functions execution details, but it must show velvet-native concepts: journal evidence, action tickets, taint, slots, replay safety, and artifact digests.
+
+### Screen 4 — Verification Certificate View
+
+Purpose: pre-flight safety certificate for accepted artifacts.
+
+Required elements:
+
+- Green restrained banner: `Verification passed` or equivalent failure banner.
+- Certificate cards: Structure, Boundedness, Resources, Taint / Secrets, Action policy, Durability, Idempotency, Capability.
+- Horizontal verification gate pipeline: Parse, Graph check, Policy, Resources, Taint, Durability, Idempotency, Capability, Result.
+- Accepted artifact side panel: artifact version, workflow version, workflow digest, IR digest, action ABI digest, policy digest, verified timestamp, warnings.
+- Proof summary: bounded, taint safe, retry safe, durable, replayable.
+
+This screen must feel like a safety certificate, not an analytics dashboard.
+
+### Screen 5 — Replay Theater
+
+Purpose: the hero screen. A premium black-box recorder for deterministic workflow replay.
+
+Required elements:
+
+- Runtime graph on the left or center.
+- Journal timeline: event dots by sequence number, selected event highlight, scrubber position, jump to failure, jump to action, jump to divergence.
+- Playback controls: back, play/pause, step forward, replay speed, live/frozen mode.
+- Selected event panel: seq, timestamp, shard, step, event kind, evidence id, digest summary.
+- Slot diff table: slot id, before, after, taint before, taint after.
+- Recovery decision panel: strategy, max attempts, idempotency requirement, apply/replay action.
+
+This screen should feel like a video editor or flight recorder: calm, precise, replayable, and cinematic. Motion is implied by packet dots, scrubber state, event pulses, and graph overlays.
+
+### Screen 6 — Incident Failure Console
+
+Purpose: incident diagnosis and safe recovery.
+
+Required elements:
+
+- Red restrained banner: `ACTION_TIMEOUT at create_issue`, run id, action id, attempt, timestamp.
+- Compact chips: `Safe to retry: YES`, `Same idempotency key required`, `Strict durability`, `Replay safe`.
+- Failure path graph: failure node red outline, failure path focus, muted non-failure nodes.
+- Evidence chain: scheduled durable, completion durable, side-effect certainty, journal tail.
+- Recovery controls: retry same key, schedule retry, cancel run, open replay.
+- Action ticket panel: ticket id, action id, attempt, owner, rollback/retry metadata.
+- Slot and taint diff panels.
+- Repair hints: check API status, verify token scope, increase timeout, retry with backoff.
+
+Do not flood the screen with red. Red is reserved for the failure node, banner accent, and critical text.
+
+### Screen 7 — Action Registry / Contract Inspector
+
+Purpose: inspect registered native actions, numeric `ActionId` mappings, contracts, capabilities, idempotency, retry safety, and schema/digest metadata.
+
+Required elements:
+
+- Action list: name, action id, side effect class, idempotency, retry safety, strict safe, required capability.
+- Selected action inspector: `ActionContract`, input slot count, output slot count, max input bytes, max output bytes, timeout ms, idempotency classification, side effect classification, retry safety, action ABI digest.
+- Capability panel: required permissions, granted permissions, missing permissions.
+- Failure code panel: `RateLimited`, `Timeout`, `PermissionDenied`, `InvalidInput`, `ExternalUnavailable`.
+- Example call view: no JSON, no HTTP core routing, typed binary/postcard schema summary.
+
+### Screen 8 — Storage / Journal Doctor + AI Context
+
+Purpose: storage health, journal evidence, replay readiness, and AI-safe operational context.
+
+Required elements:
+
+- Storage health: Fjall keyspaces, writer queue, journal batch health, snapshot status, blob store status, index health.
+- Journal doctor: run event count, snapshot seq, tail seq, corrupt record status, trim recommendation, digest checks.
+- AI context packet: safe for model, secrets redacted, blobs summarized, suggested next commands, failure summary, replay safety.
+- Evidence card: last cert check, last replay check, last crash lab fixture, incomplete evidence warnings.
 
 ### AI Companion Panel
 
-Not a generic chat sidebar. The AI copilot receives structured artifacts: graph model, certificates, event stream, slot diffs, error packets, taint graph, resource counters.
+The AI panel is not a generic chat sidebar. It receives structured artifacts only:
 
-Useful actions:
+- `WorkflowGraph`
+- `VerificationReport`
+- `RunInspection`
+- `RunEvents`
+- `ReplayReport`
+- `IncidentReport`
+- `SystemStatus`
+- `ActionDescription`
+- `AiContextPacket`
 
-- Explain a failure and summarise what changed in a run.
-- Show all secret-sensitive paths and identify leaks.
-- Explain why strict-durability eligibility failed.
-- Suggest bounded retry policies, minimal reproductions, or resource optimisations.
+Prompts are action buttons, not open-ended chat by default:
 
-Prompts presented as buttons, not free-form chat. Responses shown alongside referenced data. AI output always maps back to YAML, compiled IR, journal events, or certificates — never hidden UI state.
+- Explain this failure.
+- Is this safe to retry?
+- Show secret-sensitive paths.
+- Explain strict-durability failure.
+- Generate minimal repro.
+- Suggest bounded retry policy.
+- Summarize what changed since last good run.
 
-### Front-End Data Contract
+AI output must cite graph nodes, journal events, slot diffs, action tickets, certificates, or diagnostics. AI output must never rely on hidden UI state.
 
-Backend must expose machine-readable artifacts consumed by both CLI and UI:
+### UI Build Order
 
-| Artifact | Consumer |
-|----------|----------|
-| `WorkflowGraph` | CLI `graph`, UI authoring canvas, AI |
-| `VerificationReport` | CLI `verify`, UI certificate view, AI |
-| `RunInspection` | CLI `inspect`, UI run inspector |
-| `RunEvents` | CLI `events`, UI timeline/event ticker |
-| `ReplayReport` | CLI `replay`, UI replay theater |
-| `IncidentReport` | CLI `incident`, UI incident console, AI |
-| `SystemStatus` | CLI `system status`, UI system overview |
-| `ActionDescription` | CLI `action inspect`, UI action panels, AI |
+| UI Phase | Deliverable | Why first |
+|----------|-------------|-----------|
+| UI-1 | `vb_ui_model` typed artifacts | Shared truth for CLI and UI. |
+| UI-2 | Makepad app shell and design tokens | Common chrome, spacing, color, typography. |
+| UI-3 | Replay Theater | Exercises hardest event/timeline/graph mapping first. |
+| UI-4 | Verification Certificate View | Product differentiation and accepted-artifact proof surface. |
+| UI-5 | Execution Details Graph View | Step Functions-style observability with velvet-native evidence. |
+| UI-6 | Incident Failure Console | Operational recovery path. |
+| UI-7 | Execution Observatory Overview | Macro health after per-run views work. |
+| UI-8 | Workflow Graph Authoring | Structured graph projection and editing. |
+| UI-9 | Action Registry / Storage Doctor / AI Context | Operator completeness. |
+| UI-10 | Motion/perf/snapshot gates | Release readiness. |
 
-These artifacts are delivered via streaming APIs or websockets so the UI remains live and responsive. The CLI emits the same artifacts in YAML or postcard format.
-
-### Front-End Build Order
-
-| Phase | Deliverable | Why first |
-|-------|-------------|-----------|
-| 1 | Run Inspector / Replay Theater | Immediate debugging value; exercises the hardest backend APIs first. |
-| 2 | Verification / Certificate View | Differentiates the product via static analysis and safety proofs. |
-| 3 | System Overview (World Map) | Macro health visibility once individual runs are inspectable. |
-| 4 | Authoring Canvas | Full editing lifecycle; requires incremental layout and careful UX. |
-
-Phase 1 surfaces the hardest problems early: mapping journal events to graph changes, aligning time series with visual layout, implementing diff inspectors. It also provides immediate debugging value before any other screen exists.
-
-### Technology
-
-The front-end is built with Makepad, consuming the same artifact types emitted by the CLI. The Makepad UI does not invent concepts — it visualizes proven backend artifacts. Both CLI and UI are views over the same typed data.
+The backend and CLI remain higher priority than decorative UI polish. UI concepts cannot introduce product states not emitted by backend artifacts.
 
 ---
 
@@ -5080,3 +5279,681 @@ Scanner checks: line count, allocation absence, formatting absence, bounded reso
 8. Close bead with evidence
 
 This turns AI from "creative coder" into "mechanical implementer."
+
+---
+
+## 78. Makepad UI Implementation Contract
+
+### Makepad Scope
+
+Makepad is used only for the native UI crate `vb_ui_makepad`. It is forbidden in:
+
+```text
+vb_core
+vb_runtime
+vb_storage
+vb_ipc
+vb_codegen generated output
+generated workflow code
+```
+
+Makepad dependencies must not change runtime semantics, binary IPC semantics, persistence semantics, or generated Rust workflow semantics.
+
+### Makepad Rationale
+
+Makepad is selected for the UI because the design requires a native, GPU-driven desktop application with highly interactive graph, timeline, animation, and custom-rendered visual states. The UI uses Makepad 2.0 Splash (`script_mod!`) for layout/style iteration and Rust widgets for deterministic state handling.
+
+### Crate Roles
+
+| Crate | Role | Runtime-core dependency? |
+|------|------|--------------------------|
+| `vb_ui_model` | Typed UI artifacts shared by CLI/UI. No Makepad. | Cold path only |
+| `vb_ui_makepad` | Native Makepad desktop app. | UI only |
+| `velvet_ballastics` | CLI command dispatch, including `ui`. | Cold path command |
+
+### `vb_ui_model` Required Types
+
+```rust
+pub enum UiScreenKind {
+    ExecutionOverview,
+    WorkflowGraphAuthoring,
+    ExecutionDetailsGraph,
+    VerificationCertificate,
+    ReplayTheater,
+    IncidentFailureConsole,
+    ActionRegistry,
+    StorageDoctorAiContext,
+}
+
+pub struct UiAppSnapshot {
+    pub status: SystemStatusView,
+    pub active_runs: Box<[RunSummaryView]>,
+    pub selected_run: Option<RunInspectionView>,
+    pub selected_workflow: Option<WorkflowGraphView>,
+    pub verification: Option<VerificationReportView>,
+    pub replay: Option<ReplayReportView>,
+    pub incident: Option<IncidentReportView>,
+    pub actions: Box<[ActionDescriptionView]>,
+    pub storage: Option<StorageDoctorView>,
+    pub ai_context: Option<AiContextView>,
+}
+```
+
+All UI model structs must use bounded collections. Any list returned to the UI must carry a limit/cursor or a fixed bound. Unbounded UI lists are forbidden.
+
+### Data Flow
+
+```text
+Compiler / verifier
+  -> WorkflowGraph, VerificationReport, AcceptedArtifact
+  -> vb_ui_model
+  -> Makepad UI
+
+Runtime / storage / replay
+  -> RunInspection, RunEvents, ReplayReport, IncidentReport, SystemStatus
+  -> vb_ui_model
+  -> Makepad UI
+```
+
+The UI consumes typed artifacts. It does not parse YAML, does not execute workflows, does not resolve references, and does not dispatch actions by string.
+
+### UI Connection Modes
+
+| Mode | Command | Data source | Purpose |
+|------|---------|-------------|---------|
+| Embedded | `velvet-ballastics ui --db <path>` | Direct storage/runtime readers | Local desktop app with DB access |
+| Attached | `velvet-ballastics ui --socket <path>` | Binary IPC | Operator app connected to running server |
+| Demo | `velvet-ballastics ui --demo-fixture <fixture>` | Deterministic fixtures | Design review, screenshot tests, demos |
+
+HTTP and JSON are not required for the UI. If a future streaming adapter is needed, it must be a separate cold-path adapter crate.
+
+### Makepad Structure
+
+Required module structure:
+
+```text
+crates/vb_ui_makepad/src/
+  app.rs
+  shell.rs
+  theme.rs
+  tokens.rs
+  data.rs
+  screens/
+    execution_overview.rs
+    workflow_graph_authoring.rs
+    execution_details.rs
+    verification_certificate.rs
+    replay_theater.rs
+    incident_failure.rs
+    action_registry.rs
+    storage_doctor_ai_context.rs
+  widgets/
+    app_shell.rs
+    status_chip.rs
+    metric_card.rs
+    graph_canvas.rs
+    graph_node.rs
+    graph_edge.rs
+    packet_dot.rs
+    timeline_scrubber.rs
+    event_table.rs
+    slot_diff_table.rs
+    certificate_card.rs
+    evidence_card.rs
+    action_ticket_card.rs
+    taint_overlay.rs
+    shard_flow_map.rs
+    ai_context_panel.rs
+  motion/
+    timeline.rs
+    easing.rs
+    bounded_animation.rs
+```
+
+### Makepad 2.0 Splash Rules
+
+Makepad Splash (`script_mod!`) must be used for layout, static style, theme tokens, and component composition. Rust code handles typed state, event routing, selection, filtering, and artifact binding.
+
+Required pattern:
+
+```rust
+use makepad_widgets::*;
+
+app_main!(App);
+
+script_mod! {
+    use mod.prelude.widgets.*
+
+    startup() do #(App::script_component(vm)) {
+        ui: Root {
+            main_window := Window {
+                window.inner_size: vec2(1920, 1080)
+                body +: {
+                    app_shell := AppShell {
+                        // Sidebar, top action bar, and routed screen content.
+                    }
+                }
+            }
+        }
+    }
+}
+
+impl App {
+    fn run(vm: &mut ScriptVm) -> Self {
+        crate::makepad_widgets::script_mod(vm);
+        App::from_script_mod(vm, self::script_mod)
+    }
+}
+
+#[derive(Script, ScriptHook)]
+pub struct App {
+    #[source]
+    source: ScriptObjectRef,
+    #[live]
+    ui: WidgetRef,
+    #[rust]
+    state: UiRuntimeState,
+}
+```
+
+Business state is Rust-owned and typed. Splash values may not become implicit workflow state. Old Makepad 1.x macro-based examples are not the implementation contract for this repository.
+
+### Custom Widgets
+
+The following custom widgets are required:
+
+| Widget | Purpose |
+|--------|---------|
+| `GraphCanvas` | Pan/zoom workflow and runtime graphs. |
+| `GraphNode` | Draw node cards with status, badges, selection, taint state. |
+| `GraphEdge` | Draw curved edges, branch labels, packet markers. |
+| `PacketDot` | Animated progress packets along edges. |
+| `TimelineScrubber` | Replay timeline with event dots and selected seq. |
+| `CertificateCard` | Verification proof card. |
+| `StatusChip` | Compact semantic status display. |
+| `EvidenceCard` | Digest, journal, artifact, policy evidence. |
+| `SlotDiffTable` | Before/after slot and taint changes. |
+| `ShardFlowMap` | Overview shard lanes and queue pressure. |
+| `ActionTicketCard` | Action id, attempt, idempotency key, replay safety. |
+| `AiContextPanel` | AI-safe context packet and suggested commands. |
+
+### Rendering Rules
+
+- Graph edges, packet dots, timeline dots, glows, and selection halos should be shader-rendered or custom draw widgets, not composed from hundreds of nested generic boxes.
+- Text is drawn only where meaningful; animation must not relayout text every frame.
+- The graph canvas stores precomputed node positions and edge paths. Per-frame layout recomputation is forbidden.
+- Animation loops must be bounded and stop when the view is hidden or the app is idle.
+- The UI may allocate during screen load, fixture load, and model update. Continuous per-frame animation should avoid heap allocation.
+
+### Figma-to-Makepad Workflow
+
+1. Figma board defines visual target, spacing, screen taxonomy, and interaction notes.
+2. `design/tokens/velvet_ui_tokens.toml` defines implementation tokens.
+3. `xtask ui-tokens` generates Makepad Splash token snippets, Figma token import metadata if supported, and Rust constants for layout metrics.
+4. Makepad Splash implements app shell and reusable components.
+5. `xtask ui-snapshot` captures deterministic screenshots from demo fixtures.
+6. Screenshot diff gates catch overlap, alignment, density, and regression issues.
+
+Figma is not the source of runtime data. Makepad is not allowed to scrape Figma assets at runtime.
+
+### Layout and Alignment Rules
+
+Every screen uses a 1920x1080 baseline layout with scalable constraints.
+
+Required frame metrics from the 11:51 design bundle:
+
+```text
+Window baseline:       1920 x 1080
+Outer margin:          32
+Sidebar width:         246
+Top bar height:        78
+Content gutter:        16
+Card radius:           14-22
+Small radius:          10
+Inspector width:       360-420
+Bottom timeline min:   220
+Graph canvas min:      720 x 520
+```
+
+All component positions use an 8px spacing rhythm. One-off pixel nudges are rejected unless documented in a design-token bead.
+
+### UI Snapshot Gate
+
+Every screen must have a deterministic demo fixture and snapshot:
+
+```text
+tests/ui_snapshots/execution_overview.png
+tests/ui_snapshots/workflow_graph_authoring.png
+tests/ui_snapshots/execution_details.png
+tests/ui_snapshots/verification_certificate.png
+tests/ui_snapshots/replay_theater.png
+tests/ui_snapshots/incident_failure.png
+tests/ui_snapshots/action_registry.png
+tests/ui_snapshots/storage_doctor_ai_context.png
+```
+
+Snapshot diff acceptance:
+
+- No overlapping panels.
+- No clipped primary labels.
+- No unreadable chips.
+- No controls outside safe bounds.
+- No hidden selected state.
+- No accidental color-system drift.
+- No canonical spelling violations.
+
+---
+
+## 79. UI Design System Tokens
+
+### Design Token Source
+
+The design token source is:
+
+```text
+design/tokens/velvet_ui_tokens.toml
+```
+
+Generated outputs:
+
+```text
+crates/vb_ui_makepad/src/generated/tokens.rs
+crates/vb_ui_makepad/src/generated/tokens.splash
+contracts/ui_tokens.yaml
+```
+
+Manual edits to generated token files are rejected.
+
+### Color Tokens
+
+```toml
+[color]
+background_board = "#F4F6F8"
+shell = "#F8FAFC"
+surface = "#FFFFFF"
+surface_glass = "#FFFFFFCC"
+surface_muted = "#F2F5F8"
+line_hair = "#DDE3EA"
+line_soft = "#E8EDF2"
+text_primary = "#101828"
+text_secondary = "#475467"
+text_tertiary = "#7A8796"
+
+success = "#16A66A"
+running = "#1F7AF5"
+active_cyan = "#19A7CE"
+warning = "#F59E0B"
+failure = "#E5484D"
+taint = "#8B5CF6"
+durable = "#14B8A6"
+pending = "#98A2B3"
+```
+
+### Typography Tokens
+
+```toml
+[type]
+family_sans = "Inter, SF Pro, system-ui"
+family_mono = "JetBrains Mono, SF Mono, ui-monospace"
+size_11 = 11
+size_12 = 12
+size_13 = 13
+size_14 = 14
+size_16 = 16
+size_20 = 20
+size_24 = 24
+weight_regular = 400
+weight_medium = 500
+weight_semibold = 600
+```
+
+Monospace may be used only for:
+
+```text
+RunId
+ActionId
+WorkflowDigest
+SeqNo
+SlotIdx
+StepIdx
+timestamps
+record kind IDs
+IPC frame fields
+artifact digests
+```
+
+### Spacing Tokens
+
+```toml
+[space]
+px_4 = 4
+px_8 = 8
+px_12 = 12
+px_16 = 16
+px_20 = 20
+px_24 = 24
+px_32 = 32
+px_40 = 40
+```
+
+### Radius Tokens
+
+```toml
+[radius]
+chip = 10
+control = 12
+card_min = 14
+card = 16
+card_max = 22
+panel = 20
+window = 24
+```
+
+### Shadow Tokens
+
+```toml
+[shadow]
+card = "0 8 24 rgba(16,24,40,0.08)"
+window = "0 20 60 rgba(16,24,40,0.14)"
+focus = "0 0 0 4 rgba(31,122,245,0.14)"
+failure = "0 0 0 4 rgba(229,72,77,0.12)"
+taint = "0 0 0 4 rgba(139,92,246,0.12)"
+```
+
+### Density Rule
+
+The UI must be spacious. Data tables are allowed, but screen density must not exceed these baseline limits:
+
+| Screen | Max primary panels | Max table rows visible by default |
+|--------|--------------------|-----------------------------------|
+| Execution overview | 6 | 7 |
+| Workflow authoring | 4 | 0 |
+| Execution details | 5 | 7 |
+| Verification | 6 | 0 |
+| Replay theater | 6 | 6 |
+| Incident console | 7 | 5 |
+| Action registry | 6 | 8 |
+| Storage doctor / AI context | 7 | 8 |
+
+If more data is available, use scroll, filters, disclosure, pagination, or drill-in.
+
+---
+
+## 80. UI Motion and Interaction Contract
+
+### Principle
+
+Animation must communicate state, causality, and replay timing. Decorative animation is rejected. Motion must be calm, bounded, and GPU-friendly.
+
+### Required Motion Primitives
+
+| Motion | Purpose | Screens |
+|--------|---------|---------|
+| Packet dots on edges | Show work moving through workflow graph. | Overview, graph, execution, replay |
+| Active node glow | Show selected/running step. | Graph, execution, replay |
+| Timeline scrubber | Show replay position. | Replay theater, execution details |
+| Selected event pulse | Show current journal event. | Replay theater |
+| Failure path focus | Guide attention to failed node and evidence chain. | Incident console |
+| Taint overlay | Show secret-sensitive path. | Verification, replay, incident |
+| Queue pressure shimmer | Indicate rising queue pressure without noise. | Overview |
+| Certificate check cascade | Show verification gate pass sequence. | Verification |
+
+### Motion Budget
+
+```text
+Target frame rate:          60fps minimum, 120fps when available
+Max animated graph nodes:   256 visible
+Max animated packet dots:   512 visible
+Max timeline event dots:    2,000 visible before clustering
+Max per-frame allocations:  0 in animation loops after warm-up
+Max animation tick when hidden: 0
+```
+
+### Animation State Rules
+
+- Animation state is UI state only; it never mutates runtime state.
+- Animation tickers pause when the screen is not visible.
+- Demo/snapshot mode must support deterministic time control.
+- Replay scrubber state must bind to `SeqNo`, not wall-clock time.
+- Packet animation may interpolate over precomputed edge paths but must not change graph topology.
+- Failure pulse and taint overlay must be accessible through static visual indicators as well.
+
+### Interaction Rules
+
+Required interactions:
+
+- Pan and zoom graph canvas.
+- Click node to open step inspector.
+- Hover node to show compact digest/resource/taint tooltip.
+- Click event row to sync graph and timeline.
+- Drag replay scrubber to any journal event.
+- Filter events by step, event kind, taint, and action id.
+- Toggle taint overlay.
+- Toggle evidence overlay.
+- Open action ticket from event or failed node.
+- Copy digest/run/action IDs from monospace fields.
+- Open AI context packet from run/incident.
+
+Forbidden interactions:
+
+- Hidden destructive actions without explicit confirmation or `--force` equivalent.
+- UI-only retry behavior not represented by CLI lifecycle command.
+- Freeform graph edits that bypass validation.
+- Unbounded event list rendering.
+
+---
+
+## 81. UI Artifact and Schema Contract
+
+### Shared Artifact Rule
+
+The UI and CLI render the same typed artifacts. A screen cannot display data unless the corresponding CLI command can emit it in structured form.
+
+| UI screen | Required artifact | CLI parity command |
+|-----------|-------------------|--------------------|
+| Execution Overview | `SystemStatus`, `RunSummaries`, `RunEvents` | `system status --emit yaml`, `events` |
+| Workflow Graph Authoring | `WorkflowGraph` | `graph --emit yaml` |
+| Execution Details | `RunInspection`, `RunEvents` | `inspect --emit yaml`, `events --emit yaml` |
+| Verification Certificate | `VerificationReport`, `AcceptedArtifact` | `verify --emit yaml` |
+| Replay Theater | `ReplayReport`, `RunEvents`, `SlotDiffs` | `replay --explain --emit yaml` |
+| Incident Console | `IncidentReport` | `incident --emit yaml` |
+| Action Registry | `ActionDescription`, `ActionList` | `action list`, `action inspect` |
+| Storage Doctor / AI Context | `DoctorReport`, `AiContextPacket` | `doctor --emit yaml`, `ai context --emit yaml` |
+
+### Required UI Model Fields
+
+Every UI artifact must include:
+
+```text
+schema_version
+kind
+generated_at
+source
+redaction_status
+```
+
+Every graph node must include:
+
+```text
+step_idx
+step_id
+kind
+status
+output_slot
+taint
+badges
+position
+```
+
+Every graph edge must include:
+
+```text
+from_step_idx
+to_step_idx
+edge_kind
+condition_summary
+is_failure_path
+is_taint_path
+packet_state
+```
+
+Every event row must include:
+
+```text
+seq
+timestamp
+run_id
+step_idx
+event_kind
+status
+evidence_digest
+attempt
+```
+
+Every action ticket view must include:
+
+```text
+ticket_digest
+run_id
+step_idx
+action_id
+attempt
+idempotency_key_hash
+scheduled_durable
+completion_durable
+replay_safe
+side_effect_certainty
+```
+
+### Redaction Rule
+
+The UI must never render raw secret values. Secret-sensitive values are represented by:
+
+```text
+redacted: true
+taint: Secret | DerivedFromSecret
+digest: blake3:<prefix>
+summary: <bounded static summary>
+```
+
+Any UI path that displays full blobs or raw action details must require an explicit unsafe operator action and must be disabled in AI context mode.
+
+---
+
+## 82. UI Implementation Phases
+
+The UI phase rows in Section 70 define the required delivery sequence after Phase 60:
+
+| Phase | Name | Required delivery |
+|-------|------|-------------------|
+| 61 | UI model artifacts | `vb_ui_model` crate with typed `WorkflowGraph`, `VerificationReport`, `RunInspection`, `RunEvents`, `ReplayReport`, `IncidentReport`, `SystemStatus`, `ActionDescription`, `DoctorReport`, and `AiContextPacket` views. CLI/UI schema parity tests. |
+| 62 | Makepad shell | `vb_ui_makepad` crate, shared app chrome, sidebar, topbar, command buttons, status chips, profile selector, demo fixture loading. |
+| 63 | Design tokens and Figma bridge | Token source in `design/tokens`; generated Makepad token files; Figma-ready SVG/PNG references; token drift checker. |
+| 64 | Graph canvas | Pan/zoom canvas, nodes, curved edges, packet dots, selection, status color rules, taint overlay, layout fixtures. |
+| 65 | Execution observatory | Overview KPIs, shard flow map, active runs table, event ticker, queue pressure indicators, storage/IPC health summary. |
+| 66 | Execution details view | Single-run graph view, event table, step details panel, input/output/details tabs, runtime state coloring. |
+| 67 | Verification certificate view | Verification banner, certificate cards, gate pipeline, accepted artifact panel, warnings, proof summary. |
+| 68 | Replay theater | Journal timeline, playback controls, scrubber, selected event details, slot diffs, recovery decision panel, deterministic replay fixture. |
+| 69 | Incident failure console | Failure banner, failure path graph, evidence chain, action ticket, recovery controls, slot/taint diffs, repair hints. |
+| 70 | Action registry / contract inspector | Action list, selected `ActionContract`, idempotency/side-effect/retry safety, capability requirements, failure codes. |
+| 71 | Storage doctor / AI context | Fjall keyspace health, journal doctor, snapshot/tail status, AI-safe context packet, suggested commands. |
+| 72 | UI motion/performance | Shader-based packet dots, active-node glow, timeline pulse, bounded animation loops, no per-frame allocations after warm-up, UI perf benchmark. |
+| 73 | UI snapshot and overlap gates | Deterministic screenshots for all eight screens, image diff gate, overlap/clipping scanner, canonical spelling scan. |
+| 74 | UI release hardening | Keyboard navigation, accessibility labels, redaction tests, CLI/UI parity tests, demo fixtures, documentation, Makepad dependency audit. |
+
+---
+
+## 83. UI Testing, Benchmarking, and Acceptance Gates
+
+### UI Tests
+
+Required tests:
+
+- `ui_model_schema_versions_are_stable`
+- `ui_artifacts_match_cli_output_kinds`
+- `workflow_graph_view_has_no_missing_nodes`
+- `workflow_graph_edges_reference_valid_nodes`
+- `event_rows_are_bounded`
+- `ai_context_redacts_secrets`
+- `incident_report_has_replay_safety`
+- `verification_certificate_maps_all_gates`
+- `action_ticket_hides_raw_idempotency_key`
+- `ui_tokens_generate_makepad_and_contract_outputs`
+- `all_screens_have_demo_fixtures`
+
+### UI Snapshot Tests
+
+Required deterministic snapshot fixtures:
+
+```text
+fixtures/ui/execution_overview.fixture
+fixtures/ui/workflow_graph_authoring.fixture
+fixtures/ui/execution_details.fixture
+fixtures/ui/verification_certificate.fixture
+fixtures/ui/replay_theater.fixture
+fixtures/ui/incident_failure.fixture
+fixtures/ui/action_registry.fixture
+fixtures/ui/storage_doctor_ai_context.fixture
+```
+
+Snapshot command:
+
+```bash
+cargo xtask ui-snapshot --all --emit yaml
+```
+
+Snapshot report:
+
+```yaml
+kind: UiSnapshotReport
+status: pass
+screens:
+  - screen: execution_overview
+    png: tests/ui_snapshots/execution_overview.png
+    overlap_check: pass
+    clipping_check: pass
+    spelling_check: pass
+    token_check: pass
+```
+
+### UI Performance Benchmarks
+
+Required UI benchmarks:
+
+| Benchmark | Requirement |
+|----------|-------------|
+| `ui_graph_pan_zoom_256_nodes` | Smooth interaction, no unbounded allocation. |
+| `ui_graph_packet_animation_512_packets` | Animation remains within frame budget. |
+| `ui_timeline_2000_events_clustered` | Timeline remains responsive. |
+| `ui_event_table_scroll_10000_bounded` | Virtualized/bounded rendering only. |
+| `ui_replay_scrub_1000_events` | Scrub updates selected graph/event without full relayout. |
+| `ui_fixture_load_all_screens` | Demo fixtures load under bounded memory. |
+
+### UI Acceptance Commands
+
+```bash
+cargo +nightly fmt --all -- --check
+cargo +nightly clippy -p vb_ui_model -p vb_ui_makepad --all-targets --all-features -- -D warnings
+cargo +nightly nextest run -p vb_ui_model -p vb_ui_makepad
+cargo xtask ui-tokens --check
+cargo xtask ui-snapshot --all
+cargo xtask ui-overlap-check --all
+cargo xtask ui-perf-smoke
+cargo xtask forbidden-scan --changed
+cargo xtask hotpath-scan --changed
+```
+
+### UI Definition of Done
+
+The Makepad UI is accepted only when:
+
+1. All eight required screens exist and are reachable from shared app chrome.
+2. Every screen consumes typed `vb_ui_model` artifacts.
+3. CLI/UI parity exists for all displayed artifact kinds.
+4. Figma token source and Makepad token output are synchronized.
+5. No UI panel overlap, clipping, or unreadable primary label exists in 1920x1080 baseline screenshots.
+6. All secret-sensitive values are redacted or summarized.
+7. Graph, replay, incident, and verification views expose journal/digest/evidence concepts accurately.
+8. Motion is bounded, meaningful, and can be disabled or frozen for deterministic snapshots.
+9. UI code does not introduce Makepad, HTTP, JSON, async runtimes, or web dependencies into runtime core crates.
+10. UI snapshot, token, model, parity, redaction, performance-smoke, lint, and test gates pass with evidence.
