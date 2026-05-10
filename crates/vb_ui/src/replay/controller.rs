@@ -577,6 +577,7 @@ pub fn convert_trace_events(traces: &[IpcTraceEvent]) -> Vec<JournalEvent> {
     journal_events
 }
 
+#[allow(clippy::unwrap_used, clippy::expect_used, clippy::indexing_slicing, clippy::needless_range_loop)]
 #[cfg(test)]
 mod tests {
     use super::*;

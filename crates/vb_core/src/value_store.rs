@@ -418,7 +418,6 @@ fn blob_index(id: BlobId) -> CoreResult<usize> {
 }
 
 #[cfg(test)]
-#[allow(clippy::panic_in_result_fn, clippy::indexing_slicing)]
 mod tests {
     use super::{ObjectField, ValueStore};
     use crate::errors::CoreError;

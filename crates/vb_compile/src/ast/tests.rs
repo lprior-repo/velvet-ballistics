@@ -392,7 +392,7 @@ steps:
 "#,
     )?;
     match error {
-        CompileError::PrimitiveLoweringLimitExceeded { value: 70000, .. } => Ok(()),
+        CompileError::PrimitiveLoweringLimitExceeded { value, .. } if value == 70000 => Ok(()),
         other => Err(format!(
             "action overflow did not report actual value: {other:?}"
         )),

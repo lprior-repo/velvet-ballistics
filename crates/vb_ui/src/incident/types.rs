@@ -250,6 +250,7 @@ pub struct IncidentRecord {
     pub detail: String,
 }
 
+#[allow(clippy::unwrap_used, clippy::expect_used, clippy::indexing_slicing, clippy::needless_range_loop)]
 #[cfg(test)]
 mod tests {
     use super::*;

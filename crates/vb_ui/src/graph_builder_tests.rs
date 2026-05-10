@@ -3,8 +3,8 @@
 // ---------------------------------------------------------------------------
 
 #[cfg(test)]
-#[allow(clippy::module_inception)]
 mod tests {
+    use super::*;
     use vb_core::ids::StepIdx;
     use vb_core::workflow::{CompiledNode, CompiledNodeKind, WorkflowParts};
 
@@ -13,6 +13,7 @@ mod tests {
         Cardinality, EdgeStyle, FlowPortRecord, GroupKind, PortRole, PortSide, SmolStr,
         build_document, build_ports, classify_node_kind, collect_span, compute_node_size,
     };
+    use crate::verify::certificates::verify_workflow;
 
     fn make_nop_node(id: u16, next: Option<u16>) -> CompiledNode {
         CompiledNode {
@@ -90,8 +91,7 @@ mod tests {
         assert_eq!(doc.graph.edges.len(), 1);
         let edge = doc.graph.edges.get_index(0).map(|(_, e)| e.clone());
         assert!(edge.is_some());
-        #[allow(clippy::unwrap_used)]
-        let e = edge.unwrap(); // SAFETY: prior assert guarantees Some
+        let e = edge.expect("edge missing");
         assert_eq!(e.source.as_str(), "step-0");
         assert_eq!(e.target.as_str(), "step-1");
         assert_eq!(e.source_port.as_str(), "next");
@@ -106,13 +106,11 @@ mod tests {
         let doc = build_document(&parts);
         let entry = doc.graph.nodes.get("step-0");
         assert!(entry.is_some());
-        #[allow(clippy::unwrap_used)]
-        let n = entry.unwrap(); // SAFETY: prior assert guarantees Some
+        let n = entry.expect("node missing");
         assert!(n.flags.entry);
         let non_entry = doc.graph.nodes.get("step-1");
         assert!(non_entry.is_some());
-        #[allow(clippy::unwrap_used)]
-        let n2 = non_entry.unwrap(); // SAFETY: prior assert guarantees Some
+        let n2 = non_entry.expect("node missing");
         assert!(!n2.flags.entry);
     }
 
@@ -123,8 +121,7 @@ mod tests {
         let doc = build_document(&parts);
         let node = doc.graph.nodes.get("step-0");
         assert!(node.is_some());
-        #[allow(clippy::unwrap_used)]
-        let record = node.unwrap(); // SAFETY: prior assert guarantees Some
+        let record = node.expect("node missing");
         assert!(record.flags.terminal);
     }
 
@@ -135,14 +132,12 @@ mod tests {
         let parts = make_simple_parts(vec![n0, n1], 0);
         let doc = build_document(&parts);
         assert_eq!(doc.graph.edges.len(), 1);
-        let e_opt = doc
+        let e = doc
             .graph
             .edges
             .get_index(0)
-            .map(|(_, e)| e.clone());
-        assert!(e_opt.is_some(), "edge missing");
-        #[allow(clippy::unwrap_used)]
-        let e = e_opt.unwrap(); // SAFETY: prior assert guarantees Some
+            .map(|(_, e)| e.clone())
+            .expect("edge missing");
         assert_eq!(e.source_port.as_str(), "jump");
         assert_eq!(e.target.as_str(), "step-1");
     }
@@ -228,14 +223,12 @@ mod tests {
         let parts = make_simple_parts(vec![n0, n1, n2], 0);
         let doc = build_document(&parts);
         assert_eq!(doc.graph.edges.len(), 1);
-        let e_opt = doc
+        let e = doc
             .graph
             .edges
             .get_index(0)
-            .map(|(_, e)| e.clone());
-        assert!(e_opt.is_some(), "edge missing");
-        #[allow(clippy::unwrap_used)]
-        let e = e_opt.unwrap(); // SAFETY: prior assert guarantees Some
+            .map(|(_, e)| e.clone())
+            .expect("edge missing");
         assert_eq!(e.source_port.as_str(), "handler");
         assert_eq!(e.target.as_str(), "step-2");
         assert!(e.style.dashed);
@@ -289,14 +282,12 @@ mod tests {
 
         // Should have a group.
         assert!(!doc.graph.groups.is_empty());
-        let group_opt = doc
+        let group = doc
             .graph
             .groups
             .get("group-foreach-0")
-            .cloned();
-        assert!(group_opt.is_some(), "group-foreach-0 should exist");
-        #[allow(clippy::unwrap_used)]
-        let group = group_opt.unwrap(); // SAFETY: prior assert guarantees Some
+            .cloned()
+            .expect("group missing");
         assert_eq!(group.kind, GroupKind::BranchContainer);
         assert_eq!(group.children.len(), 4);
     }
@@ -322,10 +313,8 @@ mod tests {
             Some("step-1")
         );
         let entry = doc.graph.nodes.get("step-1");
-        assert!(entry.is_some(), "node missing");
-        #[allow(clippy::unwrap_used)]
-        let entry_node = entry.unwrap(); // SAFETY: prior assert guarantees Some
-        assert!(entry_node.flags.entry);
+        assert!(entry.is_some());
+        assert!(entry.expect("node missing").flags.entry);
     }
 
     // -----------------------------------------------------------------------

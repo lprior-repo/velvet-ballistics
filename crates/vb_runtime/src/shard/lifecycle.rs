@@ -460,7 +460,6 @@ impl Shard {
 }
 
 #[cfg(test)]
-#[allow(clippy::panic_in_result_fn)]
 mod tests {
     use vb_core::action::{
         ActionFailure, ActionFailureCode, ActionOutputReady, ActionTicket,

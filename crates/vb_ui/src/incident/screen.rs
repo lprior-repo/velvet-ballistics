@@ -1032,6 +1032,7 @@ fn format_failure_code(code: &FailureCode) -> String {
     }
 }
 
+#[allow(clippy::unwrap_used, clippy::expect_used, clippy::indexing_slicing, clippy::needless_range_loop)]
 #[cfg(test)]
 mod tests {
     use super::*;

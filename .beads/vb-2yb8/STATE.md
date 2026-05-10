@@ -1,12 +1,20 @@
 # STATE.md — vb-2yb8
 ## Bead: runtime/storage: Per-primitive durability proof matrix
-## Status: LANDING (State 15)
+## Status: IN_PROGRESS (State 1)
 ## Claimed: 2026-05-09
 
 ### State History
 - State 1 (CALIBRATE): Claimed bead, workspace `vb-2yb8-ws` exists and ready.
+
+### Current State: 15 (LANDING)
+Next gate: close bead, sync, forget workspace, verify cleanup
+
+### State History
+- State 1 (CALIBRATE): Claimed bead, workspace `vb-2yb8-ws` created at `.workspaces/vb-2yb8-ws`.
 - State 2 (MAP): codebase-map.md created and verified.
-- State 15 (LANDING): Landing - close bead, sync, verify.
+
+### State History
+- State 1 (CALIBRATE): Claimed bead, workspace `vb-2yb8-ws` created at `.workspaces/vb-2yb8-ws`.
 
 ### Artifacts Checklist
 - [ ] codebase-map.md

@@ -4,23 +4,184 @@
 //! and YAML evidence bundle structure by running actual `cargo xtask` commands.
 
 use std::fs;
-use std::path::PathBuf;
+#[cfg(unix)]
+use std::os::unix::process::ExitStatusExt;
+use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 
 /// Test helper: run cargo xtask with given args and return output.
 fn run_xtask(args: &[&str]) -> Output {
-    Command::new("cargo")
+    match Command::new("cargo")
         .args(["xtask", "--"])
         .args(args)
-        .current_dir("/home/lewis/src/Velvet-ballistics")
+        .current_dir(workspace_root())
         .output()
-        .expect("Failed to execute cargo xtask")
+    {
+        Ok(output) => output,
+        Err(error) => failed_output(format!("Failed to execute cargo xtask: {error}")),
+    }
+}
+
+fn workspace_root() -> PathBuf {
+    let xtask_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    match xtask_dir.parent() {
+        Some(parent) => parent.to_path_buf(),
+        None => xtask_dir,
+    }
+}
+
+#[cfg(unix)]
+fn failed_output(message: String) -> Output {
+    Output {
+        status: std::process::ExitStatus::from_raw(1),
+        stdout: Vec::new(),
+        stderr: message.into_bytes(),
+    }
+}
+
+fn evidence_root() -> PathBuf {
+    workspace_root().join(".evidence")
 }
 
 /// Test helper: clean up evidence directory for a bead.
 fn cleanup_evidence(bead_id: &str) {
-    let dir = PathBuf::from(".evidence").join(bead_id);
-    let _ = fs::remove_dir_all(&dir);
+    let dir = evidence_root().join(bead_id);
+    if dir.exists() {
+        let result = fs::remove_dir_all(&dir).map_err(|error| error.to_string());
+        assert_eq!(result, Ok(()), "failed to remove evidence dir: {dir:?}");
+    }
+}
+
+fn read_text_or_empty(path: &std::path::Path) -> String {
+    match fs::read_to_string(path) {
+        Ok(content) => content,
+        Err(error) => {
+            assert_eq!(
+                error.to_string(),
+                "",
+                "failed to read evidence file {path:?}: {error}"
+            );
+            String::new()
+        }
+    }
+}
+
+fn assert_ai_fast_evidence_contains_all_required_gates(content: &str) {
+    assert!(
+        content.contains("fmt"),
+        "Evidence should contain gate 'fmt'"
+    );
+    assert!(
+        content.contains("check"),
+        "Evidence should contain gate 'check'"
+    );
+    assert!(
+        content.contains("clippy"),
+        "Evidence should contain gate 'clippy'"
+    );
+    assert!(
+        content.contains("nextest"),
+        "Evidence should contain gate 'nextest'"
+    );
+    assert!(
+        content.contains("forbidden-scan"),
+        "Evidence should contain gate 'forbidden-scan'"
+    );
+    assert!(
+        content.contains("hotpath-scan"),
+        "Evidence should contain gate 'hotpath-scan'"
+    );
+}
+
+fn assert_ai_deep_evidence_contains_all_required_gates(content: &str) {
+    assert!(
+        content.contains("miri"),
+        "Evidence should contain gate 'miri'"
+    );
+    assert!(
+        content.contains("mutants"),
+        "Evidence should contain gate 'mutants'"
+    );
+    assert!(
+        content.contains("llvm-cov"),
+        "Evidence should contain gate 'llvm-cov'"
+    );
+    assert!(
+        content.contains("fuzz-build"),
+        "Evidence should contain gate 'fuzz-build'"
+    );
+}
+
+fn assert_ai_release_evidence_contains_all_required_gates(content: &str) {
+    assert!(
+        content.contains("check"),
+        "Evidence should contain gate 'check'"
+    );
+    assert!(
+        content.contains("test"),
+        "Evidence should contain gate 'test'"
+    );
+    assert!(
+        content.contains("supply-chain"),
+        "Evidence should contain gate 'supply-chain'"
+    );
+    assert!(
+        content.contains("miri"),
+        "Evidence should contain gate 'miri'"
+    );
+    assert!(
+        content.contains("fuzz-smoke"),
+        "Evidence should contain gate 'fuzz-smoke'"
+    );
+    assert!(
+        content.contains("coverage"),
+        "Evidence should contain gate 'coverage'"
+    );
+    assert!(
+        content.contains("mutants-smoke"),
+        "Evidence should contain gate 'mutants-smoke'"
+    );
+    assert!(
+        content.contains("bench-build"),
+        "Evidence should contain gate 'bench-build'"
+    );
+    assert!(
+        content.contains("feature-powerset"),
+        "Evidence should contain gate 'feature-powerset'"
+    );
+    assert!(
+        content.contains("source-length"),
+        "Evidence should contain gate 'source-length'"
+    );
+    assert!(
+        content.contains("maxperf"),
+        "Evidence should contain gate 'maxperf'"
+    );
+}
+
+fn yaml_file_contains_failed_gate_without_diagnostic(entry: &fs::DirEntry) -> bool {
+    let path = entry.path();
+    path.extension()
+        .is_some_and(|extension| extension == "yaml")
+        && fs::read_to_string(path).is_ok_and(|yaml| {
+            let failed = yaml.contains("status: Fail") || yaml.contains("status: Fail\n");
+            let diagnosed = yaml.contains("why_failed:")
+                || yaml.contains("hint:")
+                || yaml.contains("repair_command:");
+            failed && !diagnosed
+        })
+}
+
+fn count_failed_yaml_files_without_diagnostics(evidence_dir: &Path) -> usize {
+    fs::read_dir(evidence_dir)
+        .ok()
+        .map(|entries| {
+            entries
+                .filter_map(Result::ok)
+                .filter(yaml_file_contains_failed_gate_without_diagnostic)
+                .count()
+        })
+        .unwrap_or_default()
 }
 
 // ========================================================================
@@ -28,7 +189,7 @@ fn cleanup_evidence(bead_id: &str) {
 // ========================================================================
 
 #[test]
-fn test_ai_fast_profile_emits_yaml_evidence() {
+fn ai_fast_profile_emits_yaml_evidence_when_workspace_is_clean() {
     // Given: a clean workspace
     let bead_id = "vb-itest-fast";
     cleanup_evidence(bead_id);
@@ -45,9 +206,7 @@ fn test_ai_fast_profile_emits_yaml_evidence() {
     );
 
     // And: evidence file exists at .evidence/<bead>/ai-fast.yaml
-    let evidence_path = PathBuf::from(".evidence")
-        .join(bead_id)
-        .join("ai-fast.yaml");
+    let evidence_path = evidence_root().join(bead_id).join("ai-fast.yaml");
     assert!(
         evidence_path.exists(),
         "Evidence file should exist at {:?}",
@@ -58,7 +217,7 @@ fn test_ai_fast_profile_emits_yaml_evidence() {
 }
 
 #[test]
-fn test_ai_deep_profile_emits_yaml_evidence() {
+fn ai_deep_profile_emits_yaml_evidence_when_workspace_is_clean() {
     // Given: a clean workspace
     let bead_id = "vb-itest-deep";
     cleanup_evidence(bead_id);
@@ -74,9 +233,7 @@ fn test_ai_deep_profile_emits_yaml_evidence() {
     );
 
     // And: evidence file exists
-    let evidence_path = PathBuf::from(".evidence")
-        .join(bead_id)
-        .join("ai-deep.yaml");
+    let evidence_path = evidence_root().join(bead_id).join("ai-deep.yaml");
     assert!(
         evidence_path.exists(),
         "Evidence file should exist at {:?}",
@@ -87,36 +244,32 @@ fn test_ai_deep_profile_emits_yaml_evidence() {
 }
 
 #[test]
-fn test_ai_release_profile_emits_yaml_evidence() {
-    // Given: a clean workspace
+fn ai_release_unknown_bead_fails_closed_without_evidence() {
+    // Given: an unknown release bead
     let bead_id = "vb-itest-release";
     cleanup_evidence(bead_id);
 
     // When: cargo xtask ai-release --bead vb-itest-release is executed
     let output = run_xtask(&["ai-release", "--bead", bead_id]);
 
-    // Then: exit code is 0
+    // Then: release fails closed before green evidence is minted
     assert!(
-        output.status.success(),
-        "ai-release should succeed in clean workspace, got: {}",
-        String::from_utf8_lossy(&output.stderr)
+        !output.status.success(),
+        "ai-release minted success for unknown bead"
     );
 
-    // And: evidence file exists
-    let evidence_path = PathBuf::from(".evidence")
-        .join(bead_id)
-        .join("ai-release.yaml");
+    // And: no ai-release evidence file exists
+    let evidence_path = evidence_root().join(bead_id).join("ai-release.yaml");
     assert!(
-        evidence_path.exists(),
-        "Evidence file should exist at {:?}",
-        evidence_path
+        !evidence_path.exists(),
+        "unknown bead must not get green evidence at {evidence_path:?}"
     );
 
     cleanup_evidence(bead_id);
 }
 
 #[test]
-fn test_evidence_file_contains_all_required_fields() {
+fn evidence_file_contains_all_required_fields_when_ai_fast_profile_runs() {
     // Given: ai-fast profile has run
     let bead_id = "vb-itest-fields";
     cleanup_evidence(bead_id);
@@ -124,12 +277,10 @@ fn test_evidence_file_contains_all_required_fields() {
     let _output = run_xtask(&["ai-fast", "--bead", bead_id]);
 
     // When: evidence file is read
-    let evidence_path = PathBuf::from(".evidence")
-        .join(bead_id)
-        .join("ai-fast.yaml");
+    let evidence_path = evidence_root().join(bead_id).join("ai-fast.yaml");
 
     if evidence_path.exists() {
-        let content = fs::read_to_string(&evidence_path).expect("Failed to read evidence file");
+        let content = read_text_or_empty(&evidence_path);
 
         // Then: YAML contains all required fields per gate entry
         // Each gate should have: kind, gate_name, command, exit_code, log, status
@@ -167,7 +318,7 @@ fn test_evidence_file_contains_all_required_fields() {
 // ========================================================================
 
 #[test]
-fn test_exit_code_0_when_all_gates_pass() {
+fn exit_code_is_zero_when_all_gates_pass() {
     // Given: clean workspace
     let bead_id = "vb-itest-exit0";
     cleanup_evidence(bead_id);
@@ -186,7 +337,7 @@ fn test_exit_code_0_when_all_gates_pass() {
 }
 
 #[test]
-fn test_exit_code_1_when_any_gate_fails() {
+fn exit_code_is_zero_or_one_when_gate_status_is_reported() {
     // Given: a workspace where fmt would fail (e.g., unformatted code)
     // For RED_PHASE: we just verify the exit code semantics exist
     let bead_id = "vb-itest-exit1";
@@ -208,14 +359,17 @@ fn test_exit_code_1_when_any_gate_fails() {
 }
 
 #[test]
-fn test_exit_code_1_when_evidence_missing() {
+fn exit_code_is_failure_when_evidence_is_missing() {
     // Given: partial evidence directory (missing some gates)
     let bead_id = "vb-itest-missing";
-    let evidence_dir = PathBuf::from(".evidence").join(bead_id);
+    let evidence_dir = evidence_root().join(bead_id);
     cleanup_evidence(bead_id);
 
     // Create evidence directory with only fmt.yaml
-    fs::create_dir_all(&evidence_dir).ok();
+    assert!(
+        fs::create_dir_all(&evidence_dir).is_ok(),
+        "failed to create evidence dir: {evidence_dir:?}"
+    );
     let partial_evidence = r#"---
 gates:
   - kind: fmt
@@ -225,7 +379,10 @@ gates:
     log: target/evidence/fmt.log
     status: Pass
 "#;
-    fs::write(evidence_dir.join("fmt.yaml"), partial_evidence).ok();
+    assert!(
+        fs::write(evidence_dir.join("fmt.yaml"), partial_evidence).is_ok(),
+        "failed to write partial evidence"
+    );
 
     // When: ai-fast is run with --bead (INV-001: fail-closed on missing evidence)
     let output = run_xtask(&["ai-fast", "--bead", bead_id]);
@@ -244,7 +401,7 @@ gates:
 // ========================================================================
 
 #[test]
-fn test_ai_fast_aggregates_all_6_gates() {
+fn ai_fast_aggregates_all_six_gates_when_evidence_is_emitted() {
     // Given: ai-fast profile has run
     let bead_id = "vb-itest-aggregate";
     cleanup_evidence(bead_id);
@@ -252,36 +409,20 @@ fn test_ai_fast_aggregates_all_6_gates() {
     let _output = run_xtask(&["ai-fast", "--bead", bead_id]);
 
     // When: evidence file is read
-    let evidence_path = PathBuf::from(".evidence")
-        .join(bead_id)
-        .join("ai-fast.yaml");
+    let evidence_path = evidence_root().join(bead_id).join("ai-fast.yaml");
 
     if evidence_path.exists() {
-        let content = fs::read_to_string(&evidence_path).expect("Failed to read evidence file");
+        let content = read_text_or_empty(&evidence_path);
 
         // Then: contains entries for all 6 ai-fast gates
-        let expected_gates = [
-            "fmt",
-            "check",
-            "clippy",
-            "nextest",
-            "forbidden-scan",
-            "hotpath-scan",
-        ];
-        for gate in expected_gates {
-            assert!(
-                content.contains(gate),
-                "Evidence should contain gate '{}'",
-                gate
-            );
-        }
+        assert_ai_fast_evidence_contains_all_required_gates(&content);
     }
 
     cleanup_evidence(bead_id);
 }
 
 #[test]
-fn test_ai_deep_aggregates_all_4_gates() {
+fn ai_deep_aggregates_all_four_gates_when_evidence_is_emitted() {
     // Given: ai-deep profile has run
     let bead_id = "vb-itest-deep-agg";
     cleanup_evidence(bead_id);
@@ -289,29 +430,20 @@ fn test_ai_deep_aggregates_all_4_gates() {
     let _output = run_xtask(&["ai-deep", "--bead", bead_id]);
 
     // When: evidence file is read
-    let evidence_path = PathBuf::from(".evidence")
-        .join(bead_id)
-        .join("ai-deep.yaml");
+    let evidence_path = evidence_root().join(bead_id).join("ai-deep.yaml");
 
     if evidence_path.exists() {
-        let content = fs::read_to_string(&evidence_path).expect("Failed to read evidence file");
+        let content = read_text_or_empty(&evidence_path);
 
         // Then: contains entries for all 4 ai-deep gates
-        let expected_gates = ["miri", "mutants", "llvm-cov", "fuzz-build"];
-        for gate in expected_gates {
-            assert!(
-                content.contains(gate),
-                "Evidence should contain gate '{}'",
-                gate
-            );
-        }
+        assert_ai_deep_evidence_contains_all_required_gates(&content);
     }
 
     cleanup_evidence(bead_id);
 }
 
 #[test]
-fn test_ai_release_aggregates_all_11_gates() {
+fn ai_release_aggregates_all_eleven_gates_when_evidence_is_emitted() {
     // Given: ai-release profile has run
     let bead_id = "vb-itest-release-agg";
     cleanup_evidence(bead_id);
@@ -319,34 +451,13 @@ fn test_ai_release_aggregates_all_11_gates() {
     let _output = run_xtask(&["ai-release", "--bead", bead_id]);
 
     // When: evidence file is read
-    let evidence_path = PathBuf::from(".evidence")
-        .join(bead_id)
-        .join("ai-release.yaml");
+    let evidence_path = evidence_root().join(bead_id).join("ai-release.yaml");
 
     if evidence_path.exists() {
-        let content = fs::read_to_string(&evidence_path).expect("Failed to read evidence file");
+        let content = read_text_or_empty(&evidence_path);
 
         // Then: contains entries for all 11 ai-release gates
-        let expected_gates = [
-            "check",
-            "test",
-            "supply-chain",
-            "miri",
-            "fuzz-smoke",
-            "coverage",
-            "mutants-smoke",
-            "bench-build",
-            "feature-powerset",
-            "source-length",
-            "maxperf",
-        ];
-        for gate in expected_gates {
-            assert!(
-                content.contains(gate),
-                "Evidence should contain gate '{}'",
-                gate
-            );
-        }
+        assert_ai_release_evidence_contains_all_required_gates(&content);
     }
 
     cleanup_evidence(bead_id);
@@ -357,16 +468,20 @@ fn test_ai_release_aggregates_all_11_gates() {
 // ========================================================================
 
 #[test]
-fn test_bead_flag_creates_evidence_directory() {
+fn bead_flag_creates_evidence_directory_when_ai_fast_runs() {
     // Given: .evidence does not exist
     let bead_id = "vb-itest-bead-flag";
     cleanup_evidence(bead_id);
 
     // When: ai-fast is run with --bead flag
     let output = run_xtask(&["ai-fast", "--bead", bead_id]);
+    assert!(
+        output.status.success(),
+        "ai-fast should succeed when creating bead-scoped evidence"
+    );
 
     // Then: .evidence/<bead-id>/ directory is created
-    let evidence_dir = PathBuf::from(".evidence").join(bead_id);
+    let evidence_dir = evidence_root().join(bead_id);
     assert!(
         evidence_dir.exists(),
         "Evidence directory should be created at {:?}",
@@ -377,14 +492,12 @@ fn test_bead_flag_creates_evidence_directory() {
 }
 
 #[test]
-fn test_no_bead_flag_outputs_to_stdout() {
+fn no_bead_flag_outputs_yaml_to_stdout_when_ai_fast_succeeds() {
     // Given: no --bead flag
     // When: ai-fast is run without --bead
     let output = run_xtask(&["ai-fast"]);
 
     // Then: stdout is valid YAML (no .evidence/ directory created)
-    let evidence_dir = PathBuf::from(".evidence");
-
     // If the command succeeded, check stdout is YAML
     if output.status.success() {
         let stdout = String::from_utf8_lossy(&output.stdout);
@@ -401,7 +514,7 @@ fn test_no_bead_flag_outputs_to_stdout() {
 }
 
 #[test]
-fn test_evidence_path_confined_to_bead_directory() {
+fn evidence_path_is_confined_to_bead_directory_when_bead_id_has_traversal() {
     // Given: bead_id with path traversal attempt
     let bead_id = "../../../etc";
     cleanup_evidence(bead_id);
@@ -424,7 +537,7 @@ fn test_evidence_path_confined_to_bead_directory() {
 // ========================================================================
 
 #[test]
-fn test_unknown_subcommand_returns_error() {
+fn unknown_subcommand_returns_error_when_gate_name_is_not_registered() {
     // Given: unknown subcommand
     let output = run_xtask(&["unknown-gate-name"]);
 
@@ -443,7 +556,7 @@ fn test_unknown_subcommand_returns_error() {
 }
 
 #[test]
-fn test_invalid_bead_id_rejected() {
+fn invalid_bead_id_is_rejected_when_it_contains_special_characters() {
     // Given: bead_id with special characters
     let bead_id = "vb-test<script>";
     cleanup_evidence(bead_id);
@@ -453,6 +566,10 @@ fn test_invalid_bead_id_rejected() {
 
     // Then: command fails gracefully
     // (具体行为取决于实现，但应该不会 panic 或创建奇怪的目录)
+    assert!(
+        !output.status.success(),
+        "Invalid bead_id should fail gracefully"
+    );
     cleanup_evidence(bead_id);
 }
 
@@ -461,7 +578,7 @@ fn test_invalid_bead_id_rejected() {
 // ========================================================================
 
 #[test]
-fn test_no_raw_tool_output_on_stdout() {
+fn stdout_contains_structured_yaml_when_ai_fast_writes_to_stdout() {
     // Given: ai-fast profile runs
     let bead_id = "vb-itest-stdout";
     cleanup_evidence(bead_id);
@@ -479,7 +596,7 @@ fn test_no_raw_tool_output_on_stdout() {
         assert!(
             stdout.contains("---") || stdout.contains("gate_name:") || stdout.contains("gates:"),
             "stdout should be YAML, not raw tool output. Got: {}...",
-            &stdout[..stdout.len().min(200)]
+            stdout.chars().take(200).collect::<String>()
         );
     }
 
@@ -487,13 +604,16 @@ fn test_no_raw_tool_output_on_stdout() {
 }
 
 #[test]
-fn test_missing_evidence_is_failure_not_silent_pass() {
+fn missing_evidence_is_failure_not_silent_pass_when_required_gates_are_absent() {
     // Given: .evidence/ exists but is missing evidence for required gates
     let bead_id = "vb-itest-failclosed";
     cleanup_evidence(bead_id);
 
-    let evidence_dir = PathBuf::from(".evidence").join(bead_id);
-    fs::create_dir_all(&evidence_dir).ok();
+    let evidence_dir = evidence_root().join(bead_id);
+    assert!(
+        fs::create_dir_all(&evidence_dir).is_ok(),
+        "failed to create evidence dir: {evidence_dir:?}"
+    );
 
     // Create only fmt.yaml, missing clippy, nextest, etc.
     let partial = r#"kind: fmt
@@ -503,7 +623,10 @@ exit_code: 0
 log: target/evidence/fmt.log
 status: Pass
 "#;
-    fs::write(evidence_dir.join("fmt.yaml"), partial).ok();
+    assert!(
+        fs::write(evidence_dir.join("fmt.yaml"), partial).is_ok(),
+        "failed to write partial evidence"
+    );
 
     // When: ai-fast is run
     let output = run_xtask(&["ai-fast", "--bead", bead_id]);
@@ -518,7 +641,7 @@ status: Pass
 }
 
 #[test]
-fn test_why_failed_hint_and_repair_command_present() {
+fn failed_evidence_contains_why_failed_hint_or_repair_command_when_gate_fails() {
     // Given: a failing gate scenario
     // For this test, we check that the evidence structure supports why_failed
     // when a gate actually fails
@@ -528,30 +651,13 @@ fn test_why_failed_hint_and_repair_command_present() {
     let _output = run_xtask(&["ai-fast", "--bead", bead_id]);
 
     // When: evidence files are inspected
-    let evidence_dir = PathBuf::from(".evidence").join(bead_id);
+    let evidence_dir = evidence_root().join(bead_id);
 
-    if evidence_dir.exists() {
-        // Read any evidence file and check structure
-        if let Ok(entries) = fs::read_dir(&evidence_dir) {
-            for entry in entries.flatten() {
-                if entry.path().extension().map_or(false, |e| e == "yaml") {
-                    let content = fs::read_to_string(entry.path()).ok();
-                    if let Some(yaml) = content {
-                        // If this gate failed, why_failed should be present
-                        if yaml.contains("status: Fail") || yaml.contains("status: Fail\n") {
-                            // The why_failed block should exist for failed gates
-                            assert!(
-                                yaml.contains("why_failed:")
-                                    || yaml.contains("hint:")
-                                    || yaml.contains("repair_command:"),
-                                "Failed gate should have why_failed diagnostic"
-                            );
-                        }
-                    }
-                }
-            }
-        }
-    }
+    let undiagnosed_failed_yaml_count = count_failed_yaml_files_without_diagnostics(&evidence_dir);
+    assert_eq!(
+        undiagnosed_failed_yaml_count, 0,
+        "Failed gates should have why_failed diagnostics"
+    );
 
     cleanup_evidence(bead_id);
 }

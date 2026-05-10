@@ -46,7 +46,7 @@ mod tests {
 
     #[test]
     fn step_from_ticket_returns_step_for_max_u16() {
-        let result = step_from_ticket(u64::from(u16::MAX));
+        let result = step_from_ticket(u16::MAX as u64);
         assert!(
             result.is_some(),
             "ticket u16::MAX should produce a valid step"
@@ -57,7 +57,7 @@ mod tests {
 
     #[test]
     fn step_from_ticket_returns_none_for_u16_max_plus_one() {
-        let result = step_from_ticket(u64::from(u16::MAX) + 1);
+        let result = step_from_ticket(u16::MAX as u64 + 1);
         assert!(result.is_none(), "ticket u16::MAX+1 should be out of range");
     }
 
@@ -110,7 +110,7 @@ mod tests {
     #[test]
     fn action_ticket_from_wire_returns_none_for_overflow() {
         let run_id = RunId::new(1);
-        let result = action_ticket_from_wire(run_id, u64::from(u16::MAX) + 1);
+        let result = action_ticket_from_wire(run_id, u16::MAX as u64 + 1);
         assert!(result.is_none(), "ticket exceeding u16 should return None");
     }
 
@@ -143,18 +143,14 @@ mod tests {
     }
 
     #[test]
-    #[allow(clippy::as_conversions)]
     fn payload_len_exact_u32_max() {
-        // u32::MAX always fits in usize on all supported platforms
         let val = u32::MAX as usize;
         assert_eq!(payload_len(val), u32::MAX);
     }
 
     #[test]
-    #[allow(clippy::as_conversions)]
     fn payload_len_over_u32_max_saturates() {
-        // u32::MAX always fits in usize on all supported platforms; overflow test
-        let val = (u32::MAX as usize).saturating_add(1);
+        let val = u32::MAX as usize + 1;
         assert_eq!(
             payload_len(val),
             u32::MAX,

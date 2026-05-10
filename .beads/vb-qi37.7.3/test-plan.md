@@ -1,566 +1,453 @@
 # Test Plan: vb-qi37.7.3 — IR reference validation
 
-Contract review prerequisite: `.beads/vb-qi37.7.3/contract-verification-review.md` is `STATUS: APPROVED`.
+## Review Repair Statement
 
-Scope: numeric compiled IR admission only. No production code, test code, proof code, bead status update, commit, push, or implementation is part of this artifact.
+This repaired plan explicitly addresses every rejection in `.beads/vb-qi37.7.3/test-plan-review.md`:
+
+- Direct BDD scenarios are added for `validate_symbol_references`, `validate_resource_references`, and `validate_action_references`, and their expected error enums match the contract signatures exactly.
+- Unit density is raised to **36 mandatory unit tests** for the 6 public contract functions, exceeding the required minimum of 30.
+- All prior conditional escape hatches are removed; this plan pins one expected enum, one diagnostic code set, and one static-gate evidence shape.
+- Verifier symbol parity is now the fixed contract: `vb_validate` must validate accessor, constant, and build-object symbol references.
+- Exact error variants, fields, deterministic first-failure ordering, resource strings, diagnostic codes, mutation targets, executable static gates, and CLI evidence are pinned.
+- Latest rejection repaired: direct `validate_symbol_references` and `validate_resource_references` scenarios now assert `WorkflowError` variants, while pipeline `validate`/`validate_with_contracts` scenarios assert mapped `ValidationError` variants; static/Holzmann gates now include executable commands, target paths, file:line evidence rules, and failure criteria.
 
 ## Summary
 
-- Behaviors identified: 27
-- Testing Trophy allocation: 45 unit/component, 26 integration, 2 manual/E2E, 6 property groups, 0 mandatory parser fuzz targets under waiver `W-FUZZ-001`, 5 Kani harness groups, 9 Lean proof obligations, 8 static/manual gates.
-- Mandatory mutation threshold: `>= 90%` killed overall for touched validation/admission modules and `100%` killed for critical mutants in Section 7.
-- Canonical acceptance command after implementation: `moon ci`, plus verification lanes mapped below.
-- Assertion rule: no planned assertion may be only `is_ok()` or `is_err()`; every failure asserts exact typed variant and salient fields.
+- Behaviors identified: 20
+- Trophy allocation: 36 unit / 28 integration / 2 E2E / 8 static gate checks
+- Proptest invariants: 6
+- Fuzz targets: 2
+- Kani harnesses: 4
+- Mutation threshold: `cargo-mutants` must kill **>= 90%** of mutants in touched validation modules, with the critical mutants listed in section 7 killed by named tests.
+- Canonical acceptance gate: `moon ci`.
+
+## Fixed Error and Diagnostic Contract
+
+Tests must assert these exact variants and fields. No assertion may use only `is_ok()` or `is_err()`.
+
+### Core admission and direct helper errors
+
+- `WorkflowError::SymbolOutOfBounds { symbol }`
+  - Returned by `CompiledWorkflow::try_from_parts(parts)` and direct `validate_symbol_references(&parts)`.
+  - `symbol` equals the offending `SymbolId`.
+- `WorkflowError::ResourceContractTooLarge { resource }`
+  - Returned by `CompiledWorkflow::try_from_parts(parts)` and direct `validate_resource_references(&parts)`.
+  - `resource` is exactly one of: `"max_steps"`, `"max_slots"`, `"max_constants"`, `"max_accessors"`, `"max_expressions"`, `"max_expr_stack"`.
+- `WorkflowError::ResourceContractExceeded { resource }`
+  - Returned by `CompiledWorkflow::try_from_parts(parts)` and direct `validate_resource_references(&parts)`.
+  - `resource` is exactly one of: `"max_steps"`, `"max_slots"`, `"max_constants"`, `"max_accessors"`, `"max_expressions"`, `"max_expr_stack"`.
+
+### Verifier errors required by this bead
+
+The pipeline functions `vb_validate::shared::validate(parts)` and `vb_validate::shared::validate_with_contracts(parts, action_contracts)` must map direct helper/core failures into these exact public verifier variants and diagnostic rendering:
+
+- `ValidationError::SymbolReferenceOutOfRange { symbol: usize, source: SymbolReferenceSource, source_index: usize }`
+  - `source` is exactly `SymbolReferenceSource::AccessorField`, `SymbolReferenceSource::ConstantPool`, or `SymbolReferenceSource::BuildObjectField`.
+  - Diagnostic code: `E050D`.
+- `ValidationError::ResourceContractTooLarge { resource: &'static str, declared: usize, hard_limit: usize }`
+  - Diagnostic code: `E050E`.
+- `ValidationError::ResourceContractExceeded { resource: &'static str, actual: usize, declared: usize }`
+  - Diagnostic code: `E050F`.
+- Existing `ValidationError::ActionContractMissing { action_id: usize, node_index: usize }`
+  - Diagnostic code remains `E0509`.
+- Existing `ValidationError::ActionContractOrphan { action_id: usize }`
+  - Diagnostic code remains `E050A`.
+
+### Deterministic first-failure ordering
+
+Validation must short-circuit in this order:
+
+1. Existing non-action gates in ascending gate order.
+2. Symbol reference validation carrier order: accessors, constants, build-object fields; within each carrier, slice iteration order.
+3. Resource validation order: `max_steps`, `max_slots`, `max_constants`, `max_accessors`, `max_expressions`, `max_expr_stack`.
+4. Action validation order: missing contracts in node-index order, then orphan contracts in supplied-contract slice order.
 
 ## 1. Behavior Inventory
 
-1. Core admission validates untrusted `WorkflowParts` before returning `CompiledWorkflow` when callers submit numeric IR.
-2. Validators do not mutate borrowed `WorkflowParts`, action contracts, registries, globals, or external state when validation succeeds or fails.
-3. `CompiledWorkflow::try_from_parts` returns `Result` and never panics when invalid references or resources are submitted.
-4. `validate(parts)` runs non-action verifier gates and does not claim action-contract completeness when `Do` nodes exist.
-5. `validate_with_contracts(parts, contracts)` requires action completeness when `Do` nodes exist.
-6. Validators treat numeric IDs and resource fields as untrusted when symbols, slots, constants, handlers, actions, and resources are generated across boundaries.
-7. Runtime core validation performs no YAML, JSON, HTTP, filesystem, network, plugin, or dynamic schema lookup when checking IR.
-8. Core admission accepts symbol carriers when every `SymbolId` in accessor fields, symbol constants, and build-object field keys is `< symbols_count`.
-9. Core admission rejects accessor field symbols when `symbol.get() >= symbols_count`.
-10. Core admission rejects `ConstValue::Symbol` when `symbol.get() >= symbols_count`.
-11. Core admission rejects build-object field keys when `symbol.get() >= symbols_count`.
-12. Core and verifier reject any symbol carrier when `symbols_count == 0` and `SymbolId::new(0)` appears.
-13. Core and verifier accept slot references only when every slot reference is `< slot_count` and artifact-owned.
-14. Core and verifier reject slot references when a slot is out of range, wrong-kind for the use site, or cross-artifact.
-15. Core and verifier accept constant references only when every constant index is in range, kind-correct, and artifact-owned; symbol-valued constants also satisfy symbol bounds.
-16. Core and verifier reject constant references when a constant index is out of range, wrong-kind, or cross-artifact.
-17. Core and verifier accept handler references only when every handler reference is in range, kind-correct, and artifact-owned.
-18. Core and verifier reject handler references when a handler ID is out of range, wrong-kind, or cross-artifact.
-19. `validate_with_contracts` succeeds when unique `Do.action` IDs equal unique supplied `ActionContract.id` values.
-20. `validate_with_contracts` rejects missing action contracts with exact action ID and node index.
-21. `validate_with_contracts` rejects orphan action contracts with exact action ID.
-22. Resource validation rejects declared `ResourceContract` members above protocol hard limits with `WorkflowError::ResourceContractTooLarge { resource }`; verifier parity requires the explicit amendment named in Open Questions if still in scope.
-23. Resource validation rejects actual IR usage above declared `ResourceContract` limits with `WorkflowError::ResourceContractExceeded { resource }`; verifier parity requires the explicit amendment named in Open Questions if still in scope.
-24. Diagnostics for every new validation variant expose stable codes/rendering and exact enum assertions downstream.
-25. `validate_symbol_references(parts)` succeeds only when every symbol carrier is below `symbols_count` and otherwise returns `WorkflowError::SymbolOutOfBounds { symbol }`.
-26. `validate_resource_references(parts)` succeeds only when declared resources are within hard limits and actual usage is within declaration, otherwise returning `WorkflowError::ResourceContractTooLarge { resource }` or `WorkflowError::ResourceContractExceeded { resource }`.
-27. `validate_action_references(parts, contracts)` succeeds only when unique `Do.action` IDs equal unique supplied `ActionContract.id` values, otherwise returning `ValidationError::ActionContractMissing { action_id, node_index }` or `ValidationError::ActionContractOrphan { action_id }`.
+1. `validate_symbol_references` returns `Ok(())` when all accessor, constant, and build-object symbols are `< symbols_count`.
+2. `validate_symbol_references` rejects accessor field symbols with `WorkflowError::SymbolOutOfBounds` when `symbol.get() >= symbols_count`.
+3. `validate_symbol_references` rejects symbol constants with `WorkflowError::SymbolOutOfBounds` when `symbol.get() >= symbols_count`.
+4. `validate_symbol_references` rejects build-object field keys with `WorkflowError::SymbolOutOfBounds` when `symbol.get() >= symbols_count`.
+5. `validate_symbol_references` rejects every symbol carrier with `WorkflowError::SymbolOutOfBounds` when `symbols_count == 0`.
+6. `CompiledWorkflow::try_from_parts` accepts a valid artifact and preserves public workflow counts when all symbol/resource checks pass.
+7. `CompiledWorkflow::try_from_parts` rejects all three symbol carriers with `WorkflowError::SymbolOutOfBounds` when out of bounds.
+8. `validate_resource_references` returns `Ok(())` when declared resources are within hard limits and cover actual usage.
+9. `validate_resource_references` rejects each declared resource member above its hard limit with `WorkflowError::ResourceContractTooLarge`.
+10. `validate_resource_references` rejects each actual usage count above its declaration with `WorkflowError::ResourceContractExceeded`.
+11. `CompiledWorkflow::try_from_parts` rejects declared resource members above hard limits with `WorkflowError::ResourceContractTooLarge`.
+12. `CompiledWorkflow::try_from_parts` rejects actual resource usage above declarations with `WorkflowError::ResourceContractExceeded`.
+13. `validate_action_references` returns `Ok(())` when unique `Do.action` IDs equal unique `ActionContract.id` values.
+14. `validate_action_references` rejects the first missing contract in node-index order with `ValidationError::ActionContractMissing`.
+15. `validate_action_references` rejects the first orphan contract in supplied-contract order with `ValidationError::ActionContractOrphan`.
+16. `validate(parts)` skips action-contract completeness but includes symbol and resource reference validation.
+17. `validate_with_contracts(parts, contracts)` includes symbol, resource, and action reference validation.
+18. Diagnostic rendering preserves stable exact codes and fields for all new and existing reference-validation errors.
+19. Validation failure is atomic and does not mutate borrowed parts/contracts or return a partially accepted workflow.
+20. Validation remains deterministic, bounded, panic-free, and free of runtime JSON/YAML/HTTP/filesystem/network lookup in the runtime core.
 
-## 2. Trophy Allocation
+## 2. Trophy Allocation and Density
 
-| Behavior(s) | Layer(s) | Tool/command | Rationale |
-|---|---|---|---|
-| 1, 3, 8-18, 22-23, 25-26 | Unit/component | `cargo test -p vb_core vb_qi37_7_3` through `moon run :verify-fast` | Pure admission/reference predicates and direct core helpers belong in fast deterministic tests with exact values. |
-| 4-5, 19-21, 24, 27 | Integration | `cargo test -p vb_validate vb_qi37_7_3` through `moon run :verify-fast` | Verifier pipeline behavior crosses gates, action contracts, diagnostics, and public error mapping; direct action-helper coverage prevents public API gaps. |
-| 2 | Miri/static/component | `moon run :verify-deep` | No-mutation/no-global-state is Rust shell evidence, not Lean. |
-| 6, 8-23 | Property | proptest under `moon run :verify-deep` | Generated numeric IDs/resources expose boundary and cross-product defects better than examples. |
-| 7 | Static/manual | `moon run :verify-standard` plus scans in Section 9 | Runtime-core no-I/O/no-config lookup is source-governance evidence. |
-| 8-23 | Kani | `moon run :verify-proof` | Bounded exhaustive checks prove off-by-one, index, and state-machine completeness. |
-| INV-001..INV-008, POST-007 | Lean | `moon run :verify-proof` | Pure deterministic invariants are Lean-owned per approved contract. |
-| Parser/codec fuzzing | Waived unless codec touched | `W-FUZZ-001`; void if decode/parser changes | This bead validates already-constructed in-memory `WorkflowParts`; no parser/codec boundary is in scope. |
-| CLI/manual smoke | Manual/E2E | two fixture-based smoke checks | Few black-box checks prove user-visible diagnostics without dominating the trophy. |
+| Public contract surface | Mandatory unit tests | Integration tests | Why |
+|---|---:|---:|---|
+| `validate_symbol_references` | 8 | 3 | Pure bounded scan over symbol carriers; needs carrier and zero-bound exhaustiveness. |
+| `validate_resource_references` | 14 | 4 | Pure bounded resource comparison; every member and boundary must be pinned. |
+| `validate_action_references` | 6 | 4 | Set-bijection with ordering and duplicate behavior. |
+| `validate` | 2 | 5 | Public pipeline behavior; default skips Gate 12 but includes symbol/resource checks. |
+| `validate_with_contracts` | 2 | 6 | Public pipeline with Gate 12; proves non-action gates run before action gate. |
+| `CompiledWorkflow::try_from_parts` | 4 | 6 | Core admission consumes owned artifact; preserve counts and exact core errors. |
+| Diagnostics/static/CLI | 0 | 2 E2E + 8 static | Black-box user and source-policy evidence. |
 
-Target ratio after implementation: integration/property-heavy around verifier boundary, with unit/component examples covering every error branch. Any deviation must be recorded in implementation evidence.
+Total mandatory unit density: **36 unit tests / 6 public functions = 6x**, above the required `>= 5x` density.
 
 ## 3. BDD Scenarios
 
-### Behavior: untrusted parts are checked before core admission
+### Behavior 1: `validate_symbol_references` accepts all in-bounds symbol carriers
 
-- Test: `fn try_from_parts_rejects_untrusted_parts_before_workflow_is_returned()`
-- Given: owned `WorkflowParts` containing one invalid accessor field symbol equal to `symbols_count`.
-- When: `CompiledWorkflow::try_from_parts(parts)` is called.
-- Then: result is `Err(WorkflowError::SymbolOutOfBounds { symbol })` with `symbol.get() == symbols_count`; no `CompiledWorkflow` value is observable.
+Test: `fn validate_symbol_references_returns_unit_when_all_symbol_carriers_are_in_bounds()`
 
-### Behavior: validators do not mutate borrowed inputs
+Given: `WorkflowParts` with `symbols_count = 3`, accessor field `SymbolId::new(0)`, constant `ConstValue::Symbol(SymbolId::new(1))`, and build-object field key `SymbolId::new(2)`.
+When: `validate_symbol_references(&parts)` is called.
+Then: the result is exactly `Ok(())`.
 
-- Test: `fn validate_with_contracts_leaves_parts_and_contracts_unchanged_when_action_missing()`
-- Given: cloned `WorkflowParts` with `Do(ActionId(7))` and empty `ActionContract` slice snapshot.
-- When: `validate_with_contracts(&parts, &contracts)` is called.
-- Then: result is `Err(ValidationError::ActionContractMissing { action_id: 7, node_index: 0 })`; `parts == original_parts`; `contracts == original_contracts`.
+### Behavior 2: `validate_symbol_references` rejects accessor field out of bounds
 
-### Behavior: invalid IR returns `Result::Err` without panic
+Test: `fn validate_symbol_references_returns_symbol_out_of_bounds_when_accessor_field_equals_symbols_count()`
 
-- Test: `fn try_from_parts_returns_result_error_when_slot_reference_is_out_of_range()`
-- Given: owned `WorkflowParts` with `slot_count = 1` and one node/expression using slot index `1`.
-- When: `CompiledWorkflow::try_from_parts(parts)` is called under normal test and Miri/cargo-careful lanes.
-- Then: result is `Err(WorkflowError::SlotOutOfBounds { slot: SlotIdx(1) })`; no `CompiledWorkflow` value is observable and no panic output occurs.
+Given: `WorkflowParts` with `symbols_count = 1` and accessor index `0` containing `PathSegment::Field(SymbolId::new(1))`.
+When: `validate_symbol_references(&parts)` is called.
+Then: result is `Err(WorkflowError::SymbolOutOfBounds { symbol: SymbolId::new(1) })`.
 
-### Behavior: default verifier skips action-contract completeness
+Boundary test: `fn validate_symbol_references_accepts_accessor_field_at_upper_valid_boundary()` expects `Ok(())` for `SymbolId::new(0)` with `symbols_count = 1`.
 
-- Test: `fn validate_returns_success_for_do_action_without_contract_when_non_action_gates_pass()`
-- Given: `WorkflowParts` with valid symbols, slots, constants, handlers, resources, and a `Do(ActionId(7))`; no contracts are supplied because `validate` has no contract argument.
-- When: `vb_validate::shared::validate(&parts)` is called.
-- Then: result is exactly `Ok(())`, proving no action-complete claim is made by this API.
+### Behavior 3: `validate_symbol_references` rejects symbol constant out of bounds
 
-### Behavior: action-complete verifier requires supplied contracts
+Test: `fn validate_symbol_references_returns_symbol_out_of_bounds_when_symbol_constant_equals_symbols_count()`
 
-- Test: `fn validate_with_contracts_returns_missing_contract_when_do_action_has_no_contract()`
-- Given: valid non-action `WorkflowParts` with `Do(ActionId(7))` at node index `0` and `contracts = []`.
-- When: `vb_validate::shared::validate_with_contracts(&parts, &contracts)` is called.
-- Then: result is `Err(ValidationError::ActionContractMissing { action_id: 7, node_index: 0 })`.
+Given: `WorkflowParts` with `symbols_count = 2` and constant index `0` equal to `ConstValue::Symbol(SymbolId::new(2))`.
+When: `validate_symbol_references(&parts)` is called.
+Then: result is `Err(WorkflowError::SymbolOutOfBounds { symbol: SymbolId::new(2) })`.
 
-### Behavior: numeric IDs/resources are untrusted
+Boundary test: `fn validate_symbol_references_accepts_symbol_constant_at_upper_valid_boundary()` expects `Ok(())` for `SymbolId::new(1)` with `symbols_count = 2`.
 
-- Test: `fn generated_numeric_ids_are_rejected_at_owner_bounds()`
-- Given: generated parts with exactly one invalid ID among symbol, slot, constant, handler, action, or resource cases and all earlier gates made valid.
-- When: the matching public validator is called.
-- Then: result is the exact typed error named in this plan for the generated offending ID/resource and location.
+### Behavior 4: `validate_symbol_references` rejects build-object field key out of bounds
 
-### Behavior: runtime core validation performs no external lookup
+Test: `fn validate_symbol_references_returns_symbol_out_of_bounds_when_build_object_field_equals_symbols_count()`
 
-- Test/gate: `given_runtime_core_validation_when_scanned_then_no_json_yaml_http_or_io_lookup_exists`
-- Given: touched runtime-core validation files under `crates/vb_core/src/**` and `crates/vb_validate/src/**` excluding tests/support.
-- When: static scan from Section 9 is executed.
-- Then: no touched validation/admission source contains YAML/JSON/HTTP/filesystem/network/plugin lookup patterns.
+Given: `WorkflowParts` with `symbols_count = 2` and build-object node index `0` containing field key `SymbolId::new(2)`.
+When: `validate_symbol_references(&parts)` is called.
+Then: result is `Err(WorkflowError::SymbolOutOfBounds { symbol: SymbolId::new(2) })`.
 
-### Behavior: in-bounds symbols are accepted
+Boundary test: `fn validate_symbol_references_accepts_build_object_field_at_upper_valid_boundary()` expects `Ok(())` for `SymbolId::new(1)` with `symbols_count = 2`.
 
-- Test: `fn symbol_references_are_accepted_when_every_carrier_is_below_symbols_count()`
-- Given: `symbols_count = 3`, accessor field `SymbolId(0)`, symbol constant `SymbolId(1)`, and build-object field `SymbolId(2)`.
-- When: `CompiledWorkflow::try_from_parts(parts)` and verifier validation are called on equivalent valid fixtures.
-- Then: core returns `Ok(workflow)` with public counts matching submitted parts, and verifier returns `Ok(())`.
+### Behavior 5: zero symbols rejects every symbol carrier
 
-### Behavior: direct symbol-reference helper accepts all in-bounds carriers
+Tests:
+- `fn validate_symbol_references_rejects_accessor_field_when_symbols_count_is_zero()` expects `Err(WorkflowError::SymbolOutOfBounds { symbol: SymbolId::new(0) })`.
+- `fn validate_symbol_references_rejects_symbol_constant_when_symbols_count_is_zero()` expects `Err(WorkflowError::SymbolOutOfBounds { symbol: SymbolId::new(0) })`.
+- `fn validate_symbol_references_rejects_build_object_field_when_symbols_count_is_zero()` expects `Err(WorkflowError::SymbolOutOfBounds { symbol: SymbolId::new(0) })`.
 
-- Test: `fn validate_symbol_references_returns_unit_when_all_symbol_carriers_are_in_bounds()`
-- Given: `WorkflowParts` with `symbols_count = 3`, accessor field `SymbolId(0)`, symbol constant `SymbolId(1)`, build-object field `SymbolId(2)`, and otherwise valid slots/constants/nodes/resources.
-- When: `vb_core::workflow::validate_symbol_references(&parts)` is called directly.
-- Then: result is exactly `Ok(())`; `parts` remains byte-for-byte/value equal to the pre-call snapshot.
+### Behavior 6: core admission accepts valid references and preserves public counts
 
-### Behavior: direct symbol-reference helper rejects an out-of-bounds carrier
+Test: `fn core_admission_preserves_workflow_counts_when_reference_validation_passes()`
 
-- Test: `fn validate_symbol_references_returns_symbol_out_of_bounds_when_accessor_field_equals_symbols_count()`
-- Given: `WorkflowParts` with `symbols_count = 1` and accessor index `0` containing `PathSegment::Field(SymbolId(1))`; all non-symbol validation inputs are otherwise valid.
-- When: `vb_core::workflow::validate_symbol_references(&parts)` is called directly.
-- Then: result is `Err(WorkflowError::SymbolOutOfBounds { symbol: SymbolId(1) })`; no generic validation error, string-only error, or later-gate resource/action error is accepted.
+Given: owned `WorkflowParts` with one entry node, `slot_count = 1`, one constant, one accessor, one expression, `symbols_count = 3`, and resource contract exactly matching the counts.
+When: `CompiledWorkflow::try_from_parts(parts)` is called.
+Then: it returns `Ok(workflow)` and public observations equal: `workflow.nodes().len() == 1`, `workflow.slot_count() == 1`, `workflow.constants().len() == 1`, `workflow.accessors().len() == 1`, `workflow.expressions().len() == 1`, and `workflow.symbols_count() == 3`. The implementation must expose any missing public read-only count accessor required for these exact assertions before tests are written; `Ok(Default::default())` must fail this test.
 
-### Behavior: accessor field symbol out of bounds is rejected
+### Behavior 7: core admission rejects symbol carriers with exact core variant
 
-- Test: `fn accessor_field_symbol_equal_to_symbols_count_returns_symbol_out_of_bounds()`
-- Given: `symbols_count = 1` and accessor index `0` contains `PathSegment::Field(SymbolId(1))`.
-- When: core admission and verifier validation run.
-- Then: core/helper returns `Err(WorkflowError::SymbolOutOfBounds { symbol: SymbolId(1) })`; verifier-side coverage is blocked until the contract is amended to add `ValidationError::SymbolReferenceOutOfRange { symbol: usize, symbols_count: usize, context: String }` with stable code `CODE_SYMBOL_REFERENCE_OUT_OF_RANGE = 0x050D`, where `symbol == 1`, `symbols_count == 1`, and `context == "accessor 0 field 0"` for this fixture.
+Tests:
+- `fn core_admission_returns_symbol_out_of_bounds_when_accessor_field_equals_symbols_count()` expects `Err(WorkflowError::SymbolOutOfBounds { symbol: SymbolId::new(1) })`.
+- `fn core_admission_returns_symbol_out_of_bounds_when_symbol_constant_equals_symbols_count()` expects `Err(WorkflowError::SymbolOutOfBounds { symbol: SymbolId::new(2) })`.
+- `fn core_admission_returns_symbol_out_of_bounds_when_build_object_field_equals_symbols_count()` expects `Err(WorkflowError::SymbolOutOfBounds { symbol: SymbolId::new(2) })`.
+- `fn core_admission_returns_symbol_out_of_bounds_when_symbol_carrier_exists_with_zero_symbols()` uses one test per carrier and expects `symbol == SymbolId::new(0)`.
 
-### Behavior: symbol constant out of bounds is rejected
+### Behavior 8: `validate_resource_references` accepts covered resources
 
-- Test: `fn symbol_constant_equal_to_symbols_count_returns_symbol_out_of_bounds()`
-- Given: `symbols_count = 2` and constant index `0` is `ConstValue::Symbol(SymbolId(2))`.
-- When: core admission and verifier validation run.
-- Then: core/helper returns `Err(WorkflowError::SymbolOutOfBounds { symbol: SymbolId(2) })`; verifier-side coverage requires `ValidationError::SymbolReferenceOutOfRange { symbol: 2, symbols_count: 2, context: "constant 0" }` after the `0x050D` contract amendment.
+Test: `fn validate_resource_references_returns_unit_when_declared_resources_cover_actual_usage()`
 
-### Behavior: build-object field symbol out of bounds is rejected
+Given: `WorkflowParts` where actual counts equal declared counts for `max_steps`, `max_slots`, `max_constants`, `max_accessors`, `max_expressions`, and every expression `max_stack == max_expr_stack`, with all declarations at or below hard limits.
+When: `validate_resource_references(&parts)` is called.
+Then: result is exactly `Ok(())`.
 
-- Test: `fn build_object_field_symbol_equal_to_symbols_count_returns_symbol_out_of_bounds()`
-- Given: `symbols_count = 2` and build-object node index `0` has field key `SymbolId(2)`.
-- When: core admission and verifier validation run.
-- Then: core/helper returns `Err(WorkflowError::SymbolOutOfBounds { symbol: SymbolId(2) })`; verifier-side coverage requires `ValidationError::SymbolReferenceOutOfRange { symbol: 2, symbols_count: 2, context: "build_object node 0 field 0" }` after the `0x050D` contract amendment.
+### Behavior 9: `validate_resource_references` rejects every declared hard-limit violation
 
-### Behavior: zero symbols rejects any symbol carrier
+Tests, one per resource member:
 
-- Tests:
-  - `fn zero_symbols_rejects_accessor_symbol_zero()`
-  - `fn zero_symbols_rejects_constant_symbol_zero()`
-  - `fn zero_symbols_rejects_build_object_symbol_zero()`
-- Given: `symbols_count = 0` and one carrier contains `SymbolId(0)`.
-- When: core admission/helper and verifier validation run.
-- Then: core/helper returns `Err(WorkflowError::SymbolOutOfBounds { symbol: SymbolId(0) })`; verifier-side coverage requires `ValidationError::SymbolReferenceOutOfRange { symbol: 0, symbols_count: 0, context: "accessor 0 field 0" }`, `context: "constant 0"`, or `context: "build_object node 0 field 0"` matching the carrier test after the `0x050D` contract amendment.
+- `fn validate_resource_references_returns_too_large_when_max_steps_exceeds_hard_limit()` expects `Err(WorkflowError::ResourceContractTooLarge { resource: "max_steps" })` and the fixture sets declared `MAX_STEPS_PER_WORKFLOW + 1` against hard limit `MAX_STEPS_PER_WORKFLOW`.
+- `fn validate_resource_references_returns_too_large_when_max_slots_exceeds_hard_limit()` expects `Err(WorkflowError::ResourceContractTooLarge { resource: "max_slots" })`.
+- `fn validate_resource_references_returns_too_large_when_max_constants_exceeds_hard_limit()` expects `Err(WorkflowError::ResourceContractTooLarge { resource: "max_constants" })`.
+- `fn validate_resource_references_returns_too_large_when_max_accessors_exceeds_hard_limit()` expects `Err(WorkflowError::ResourceContractTooLarge { resource: "max_accessors" })`.
+- `fn validate_resource_references_returns_too_large_when_max_expressions_exceeds_hard_limit()` expects `Err(WorkflowError::ResourceContractTooLarge { resource: "max_expressions" })`.
+- `fn validate_resource_references_returns_too_large_when_max_expr_stack_exceeds_hard_limit()` expects `Err(WorkflowError::ResourceContractTooLarge { resource: "max_expr_stack" })`.
 
-### Behavior: slot references are owned and in range
+Boundary tests: one per member at exactly the hard limit must return `Ok(())` when actual usage is valid.
 
-- Test: `fn slot_reference_equal_to_slot_count_returns_precise_slot_error()`
-- Given: `slot_count = 1` and one node/expression/action input uses slot `1`.
-- When: core admission and verifier validation run.
-- Then: core returns `Err(WorkflowError::SlotOutOfBounds { slot: SlotIdx(1) })`; verifier returns `Err(ValidationError::SlotReferenceOutOfRange { slot: 1, slot_count: 1, context: "node 0" })` for a node slot use or `context: "expression 0"` for an expression `LoadSlot` use.
-- Boundary: `fn slot_reference_at_last_valid_slot_is_accepted()` uses slot `0` with `slot_count = 1` and expects exact success value.
+### Behavior 10: `validate_resource_references` rejects actual usage over declared contract
 
-### Behavior: slot wrong-kind/cross-artifact is rejected
+Tests, one per resource member:
 
-- Test: `fn slot_reference_wrong_kind_returns_precise_slot_kind_error()`
-- Given: a slot reference used in a position that requires a different slot/reference kind, or a constructed cross-artifact slot fixture if the model exposes ownership tags.
-- When: verifier/core validation run.
-- Then: because the current implementation exposes only bounds/cycle/type variants, this requires a contract amendment before implementation: add `ValidationError::SlotReferenceWrongKind { slot: usize, required: String, actual: String, context: String }` with stable code `CODE_SLOT_REFERENCE_WRONG_KIND = 0x050E`; assert all four fields exactly. If cross-artifact slot ownership is not representable in `WorkflowParts`, mark that subcase waived by contract amendment rather than using a generic error.
+- `fn validate_resource_references_returns_exceeded_when_node_count_exceeds_max_steps()` expects `Err(WorkflowError::ResourceContractExceeded { resource: "max_steps" })` with fixture actual `2`, declared `1`.
+- `fn validate_resource_references_returns_exceeded_when_slot_count_exceeds_max_slots()` expects `Err(WorkflowError::ResourceContractExceeded { resource: "max_slots" })` with fixture actual `2`, declared `1`.
+- `fn validate_resource_references_returns_exceeded_when_constants_len_exceeds_max_constants()` expects `Err(WorkflowError::ResourceContractExceeded { resource: "max_constants" })` with fixture actual `2`, declared `1`.
+- `fn validate_resource_references_returns_exceeded_when_accessors_len_exceeds_max_accessors()` expects `Err(WorkflowError::ResourceContractExceeded { resource: "max_accessors" })` with fixture actual `2`, declared `1`.
+- `fn validate_resource_references_returns_exceeded_when_expressions_len_exceeds_max_expressions()` expects `Err(WorkflowError::ResourceContractExceeded { resource: "max_expressions" })` with fixture actual `2`, declared `1`.
+- `fn validate_resource_references_returns_exceeded_when_expression_max_stack_exceeds_max_expr_stack()` expects `Err(WorkflowError::ResourceContractExceeded { resource: "max_expr_stack" })` with fixture actual `3`, declared `2`.
 
-### Behavior: constant references are bounded, kind-correct, and artifact-owned
+Boundary tests: equality for each member must return `Ok(())`.
 
-- Test: `fn constant_reference_equal_to_constants_len_returns_precise_constant_error()`
-- Given: constants length `1` and a constant reference index `1`.
-- When: core admission and verifier validation run.
-- Then: core returns `Err(WorkflowError::ConstOutOfBounds { constant: ConstIdx(1) })`; verifier parity requires a contract amendment adding `ValidationError::ConstantReferenceOutOfRange { constant: usize, constant_count: usize, context: String }` with stable code `CODE_CONSTANT_REFERENCE_OUT_OF_RANGE = 0x050F`, asserted as `constant == 1`, `constant_count == 1`, and exact use-site context.
-- Boundary: `fn constant_reference_at_last_valid_index_is_accepted()` expects success for index `0` with one constant.
+### Behavior 11: core admission rejects declared resources above hard limits
 
-### Behavior: constant wrong-kind is rejected
+Tests:
+- `fn core_admission_returns_resource_contract_too_large_when_max_steps_exceeds_hard_limit()` expects `Err(WorkflowError::ResourceContractTooLarge { resource: "max_steps" })`.
+- Repeat for exact resource strings `"max_slots"`, `"max_constants"`, `"max_accessors"`, `"max_expressions"`, and `"max_expr_stack"`.
 
-- Test: `fn constant_reference_wrong_kind_returns_precise_constant_kind_error()`
-- Given: a use site requiring kind `K` and constant index `0` containing different kind `J`.
-- When: validation runs.
-- Then: this requires a contract amendment before implementation: add `ValidationError::ConstantReferenceWrongKind { constant: usize, required: String, actual: String, context: String }` with stable code `CODE_CONSTANT_REFERENCE_WRONG_KIND = 0x0510`; assert `constant == 0`, required kind `K`, actual kind `J`, and exact use-site context.
+### Behavior 12: core admission rejects actual resource usage above declarations
 
-### Behavior: handler references are bounded, kind-correct, and artifact-owned
+Tests:
+- `fn core_admission_returns_resource_contract_exceeded_when_node_count_exceeds_max_steps()` expects `Err(WorkflowError::ResourceContractExceeded { resource: "max_steps" })`.
+- Repeat for exact resource strings `"max_slots"`, `"max_constants"`, `"max_accessors"`, `"max_expressions"`, and `"max_expr_stack"`.
 
-- Test: `fn handler_reference_equal_to_handler_count_returns_precise_handler_error()`
-- Given: handler count/table length `1` and handler reference `1`.
-- When: validation runs.
-- Then: for `CompiledNodeKind::ErrorHandler { handler: StepIdx(1), .. }` with `node_count = 1`, core returns `Err(WorkflowError::StepOutOfBounds { step: StepIdx(1) })` and verifier returns `Err(ValidationError::LoopBodyStepOutOfRange { step: 1, node_count: 1, source_node: 0, label: "error_handler handler" })`.
-- Boundary: `fn handler_reference_at_last_valid_index_is_accepted()` expects success for handler `0` with one handler.
+### Behavior 13: `validate_action_references` accepts matching action contracts
 
-### Behavior: handler wrong-kind/cross-artifact is rejected
+Test: `fn validate_action_references_returns_unit_when_do_actions_match_contract_ids()`
 
-- Test: `fn handler_reference_wrong_kind_returns_precise_handler_kind_error()`
-- Given: handler reference points to a declared handler with the wrong kind for handler use, or to a cross-artifact handler if ownership tags exist.
-- When: validation runs.
-- Then: because current `WorkflowParts` models handlers as step references and has no handler kind/owner tag, this requires a contract amendment before implementation if kind/ownership remains in scope: add `ValidationError::HandlerReferenceWrongKind { handler: usize, required: String, actual: String, context: String }` with stable code `CODE_HANDLER_REFERENCE_WRONG_KIND = 0x0511`; otherwise amend ERR-008/INV-006 to reduce handler validation to step-range/structural handler reachability and assert the exact `StepOutOfBounds` / `LoopBodyStepOutOfRange` variants above.
-
-### Behavior: matching action contracts satisfy action-complete validation
-
-- Test: `fn validate_with_contracts_returns_unit_when_unique_do_actions_equal_unique_contract_ids()`
-- Given: `Do(ActionId(7))`, `Do(ActionId(7))`, `Do(ActionId(9))`, and contracts with IDs `{7, 9}`.
-- When: `validate_with_contracts(&parts, &contracts)` runs.
-- Then: result is exactly `Ok(())`.
-
-### Behavior: direct action-reference helper accepts exact action-contract set equality
-
-- Test: `fn validate_action_references_returns_unit_when_unique_do_actions_equal_unique_contract_ids()`
-- Given: `WorkflowParts` with `Do(ActionId(7))`, duplicate `Do(ActionId(7))`, and `Do(ActionId(9))`; supplied `ActionContract` slice contains exactly IDs `{7, 9}` in any deterministic order.
-- When: `vb_validate::shared::validate_action_references(&parts, &contracts)` is called directly.
-- Then: result is exactly `Ok(())`; duplicate `Do` IDs require only one matching contract and do not require duplicate contracts.
-
-### Behavior: direct action-reference helper rejects a missing contract with node index
-
-- Test: `fn validate_action_references_returns_missing_contract_when_do_action_has_no_contract()`
-- Given: `WorkflowParts` with `Do(ActionId(7))` at node index `2` and `contracts = []`.
-- When: `vb_validate::shared::validate_action_references(&parts, &contracts)` is called directly.
-- Then: result is `Err(ValidationError::ActionContractMissing { action_id: 7, node_index: 2 })`; no orphan or generic gate error is accepted.
-
-### Behavior: direct action-reference helper rejects an orphan contract with action ID
-
-- Test: `fn validate_action_references_returns_orphan_contract_when_contract_id_is_unreferenced()`
-- Given: `WorkflowParts` with no `Do` nodes and supplied `ActionContract` slice `[ActionContract { id: ActionId(9), .. }]`.
-- When: `vb_validate::shared::validate_action_references(&parts, &contracts)` is called directly.
-- Then: result is `Err(ValidationError::ActionContractOrphan { action_id: 9 })`; no missing-contract or generic gate error is accepted.
-
-### Behavior: missing action contract is rejected with node index
-
-- Test: `fn missing_action_contract_reports_first_missing_action_in_node_index_order()`
-- Given: `Do(ActionId(7))` at node index `2`, `Do(ActionId(9))` at node index `4`, and no contracts.
-- When: action-complete validation runs.
-- Then: result is `Err(ValidationError::ActionContractMissing { action_id: 7, node_index: 2 })`.
-
-### Behavior: orphan action contract is rejected with action ID
-
-- Test: `fn orphan_action_contract_reports_first_orphan_in_supplied_contract_order()`
-- Given: no `Do` nodes and supplied contracts `[ActionId(9), ActionId(11)]`.
-- When: action-complete validation runs.
-- Then: result is `Err(ValidationError::ActionContractOrphan { action_id: 9 })`.
-
-### Behavior: declared resource above hard limit is rejected
-
-- Tests, one per member:
-  - `fn declared_max_steps_above_hard_limit_returns_resource_contract_too_large()`
-  - `fn declared_max_slots_above_hard_limit_returns_resource_contract_too_large()`
-  - `fn declared_max_constants_above_hard_limit_returns_resource_contract_too_large()`
-  - `fn declared_max_accessors_above_hard_limit_returns_resource_contract_too_large()`
-  - `fn declared_max_expressions_above_hard_limit_returns_resource_contract_too_large()`
-  - `fn declared_max_expr_stack_above_hard_limit_returns_resource_contract_too_large()`
-- Given: exactly one declared resource equals hard limit + 1 and all prior fields are valid.
-- When: core/resource verifier validation runs.
-- Then: core/direct helper error is `WorkflowError::ResourceContractTooLarge { resource }` where `resource` is exactly one of `"max_steps"`, `"max_slots"`, `"max_constants"`, `"max_accessors"`, `"max_expressions"`, or `"max_expr_stack"` matching the mutated member; verifier resource parity currently lacks a dedicated variant and therefore requires a contract amendment adding `ValidationError::ResourceContractTooLarge { resource: String }` with stable code `CODE_RESOURCE_CONTRACT_TOO_LARGE = 0x0512` if verifier-side resource parity remains required.
-- Boundary: equality at hard limit is accepted when actual usage is within declaration.
-
-### Behavior: direct resource-reference helper accepts declared and actual usage within limits
-
-- Test: `fn validate_resource_references_returns_unit_when_declared_and_actual_resources_are_within_limits()`
-- Given: `WorkflowParts` whose `ResourceContract` members are each at or below protocol hard limits and whose actual nodes, slots, constants, accessors, expressions, handlers, and expression stack usage are each `<=` the corresponding declared member.
-- When: `vb_core::workflow::validate_resource_references(&parts)` is called directly.
-- Then: result is exactly `Ok(())`; `parts` remains equal to its pre-call snapshot.
-
-### Behavior: direct resource-reference helper rejects declared resource above hard limit
-
-- Test: `fn validate_resource_references_returns_resource_contract_too_large_when_declared_max_steps_exceeds_hard_limit()`
-- Given: `WorkflowParts` where exactly `resource_contract.max_steps` is `MAX_WORKFLOW_NODES + 1` and all actual usage is otherwise within declaration.
-- When: `vb_core::workflow::validate_resource_references(&parts)` is called directly.
-- Then: result is `Err(WorkflowError::ResourceContractTooLarge { resource: "max_steps" })`; no exceeded, symbol, slot, action, or generic error is accepted.
-
-### Behavior: actual usage above declared resource is rejected
-
-- Tests, one per member:
-  - `fn node_count_above_max_steps_returns_resource_contract_exceeded()`
-  - `fn slot_count_above_max_slots_returns_resource_contract_exceeded()`
-  - `fn constants_len_above_max_constants_returns_resource_contract_exceeded()`
-  - `fn accessors_len_above_max_accessors_returns_resource_contract_exceeded()`
-  - `fn expressions_len_above_max_expressions_returns_resource_contract_exceeded()`
-  - `fn expression_stack_above_max_expr_stack_returns_resource_contract_exceeded()`
-- Given: exactly one actual usage is declaration + 1 and declared values are within hard limits.
-- When: core/resource verifier validation runs.
-- Then: core/direct helper error is `WorkflowError::ResourceContractExceeded { resource }` where `resource` is exactly one of `"max_steps"`, `"max_slots"`, `"max_constants"`, `"max_accessors"`, `"max_expressions"`, or `"max_expr_stack"` matching the mutated member; verifier resource parity currently lacks a dedicated variant and therefore requires a contract amendment adding `ValidationError::ResourceContractExceeded { resource: String }` with stable code `CODE_RESOURCE_CONTRACT_EXCEEDED = 0x0513` if verifier-side resource parity remains required.
-- Boundary: actual usage equal to declaration is accepted.
-
-### Behavior: direct resource-reference helper rejects actual usage above declared limit
-
-- Test: `fn validate_resource_references_returns_resource_contract_exceeded_when_node_count_exceeds_max_steps()`
-- Given: `WorkflowParts` whose hard-limit-valid `resource_contract.max_steps` is `1` and whose actual node count is `2`; all other resource members and references are valid.
-- When: `vb_core::workflow::validate_resource_references(&parts)` is called directly.
-- Then: result is `Err(WorkflowError::ResourceContractExceeded { resource: "max_steps" })`; no too-large, symbol, slot, action, or generic error is accepted.
-
-### Behavior: diagnostic rendering is stable and exact
-
-- Tests:
-  - `fn diagnostic_for_symbol_reference_error_has_stable_code_and_location()`
-  - `fn diagnostic_for_slot_reference_error_has_stable_code_and_location()`
-  - `fn diagnostic_for_constant_reference_error_has_stable_code_and_location()`
-  - `fn diagnostic_for_handler_reference_error_has_stable_code_and_location()`
-  - `fn diagnostic_for_resource_too_large_has_stable_code_and_values()`
-  - `fn diagnostic_for_resource_exceeded_has_stable_code_and_values()`
-  - `fn diagnostic_for_action_contract_missing_has_stable_code_action_and_node()`
-  - `fn diagnostic_for_action_contract_orphan_has_stable_code_and_action()`
-- Given: one instance of each typed validation error.
-- When: diagnostic rendering/code conversion runs.
-- Then: stable code is exact and output includes salient fields; no generic `UNKNOWN`, string-only fallback, or internal error text appears.
-
-### Behavior: validation is deterministic and bounded
-
-- Test: `fn validation_returns_same_exact_result_for_repeated_runs_on_same_invalid_ir()`
-- Given: invalid fixtures for symbol, slot, constant, handler, resource, and action.
-- When: each public validator is run twice on the same inputs.
-- Then: exact `Result` values compare equal and first-failure ordering is stable.
+Given: one `Do` node with `ActionId::new(7)` and one `ActionContract { id: ActionId::new(7), .. }`.
+When: `validate_action_references(&parts, &contracts)` is called.
+Then: result is exactly `Ok(())`.
+
+Duplicate test: `fn validate_action_references_accepts_one_contract_for_duplicate_do_action_ids()` expects `Ok(())` for two `Do(7)` nodes and one contract `7`.
+
+### Behavior 14: `validate_action_references` rejects missing contracts in node-index order
+
+Test: `fn validate_action_references_returns_first_missing_contract_in_node_index_order()`
+
+Given: `Do(7)` at node index `2`, `Do(9)` at node index `4`, and no supplied contracts.
+When: `validate_action_references(&parts, &[])` is called.
+Then: result is `Err(ValidationError::ActionContractMissing { action_id: 7, node_index: 2 })`.
+
+Field swap test: `fn validate_action_references_preserves_action_id_and_node_index_fields_for_missing_contract()` expects `action_id == 7` and `node_index == 3` for `Do(7)` at node 3.
+
+### Behavior 15: `validate_action_references` rejects orphan contracts in supplied order
+
+Test: `fn validate_action_references_returns_first_orphan_contract_in_supplied_order()`
+
+Given: no `Do` nodes and contracts `[ActionId::new(9), ActionId::new(11)]`.
+When: `validate_action_references(&parts, &contracts)` is called.
+Then: result is `Err(ValidationError::ActionContractOrphan { action_id: 9 })`.
+
+Ordering test: `fn validate_action_references_reports_missing_before_orphan_when_both_exist()` expects `Err(ValidationError::ActionContractMissing { action_id: 7, node_index: 0 })` for parts with `Do(7)` and contracts `[9]`.
+
+### Behavior 16: default `validate` skips action contracts but validates symbols/resources
+
+Test: `fn shared_validate_returns_unit_for_do_node_without_contracts_when_non_action_gates_pass()`
+
+Given: valid parts containing `Do(7)` and no contracts are provided because `validate` has no contract argument.
+When: `vb_validate::shared::validate(&parts)` is called.
+Then: result is exactly `Ok(())`.
+
+Symbol test: `fn shared_validate_returns_symbol_reference_out_of_range_for_invalid_accessor_symbol()` expects `Err(ValidationError::SymbolReferenceOutOfRange { symbol: 1, source: SymbolReferenceSource::AccessorField, source_index: 0 })`.
+
+Resource test: `fn shared_validate_returns_resource_contract_exceeded_for_node_count_over_contract()` expects `Err(ValidationError::ResourceContractExceeded { resource: "max_steps", actual: 2, declared: 1 })`.
+
+### Behavior 17: `validate_with_contracts` includes non-action gates and action references
+
+Test: `fn validate_with_contracts_returns_action_contract_missing_after_non_action_gates_pass()`
+
+Given: parts with valid symbols/resources and `Do(7)` at node index `0`, and empty contracts.
+When: `validate_with_contracts(&parts, &[])` is called.
+Then: result is `Err(ValidationError::ActionContractMissing { action_id: 7, node_index: 0 })`.
+
+Precedence tests:
+- `fn validate_with_contracts_returns_symbol_error_before_action_error()` expects symbol error when both invalid symbol and missing action exist.
+- `fn validate_with_contracts_returns_resource_error_before_action_error()` expects resource error when both invalid resource and missing action exist.
+
+### Behavior 18: diagnostics preserve exact codes and messages
+
+Tests:
+- `fn diagnostic_from_error_returns_e050d_for_symbol_reference_out_of_range()` expects code `DiagnosticCode::new(0x050D)` and message contains `symbol 1`, `AccessorField`, and `source_index 0`.
+- `fn diagnostic_from_error_returns_e050e_for_resource_contract_too_large()` expects code `0x050E`, resource `max_steps`, declared value, and hard limit in message.
+- `fn diagnostic_from_error_returns_e050f_for_resource_contract_exceeded()` expects code `0x050F`, resource `max_steps`, actual value, and declared value in message.
+- `fn diagnostic_from_error_returns_e0509_for_action_contract_missing()` expects code `0x0509`, action `7`, and node `3` in message.
+- `fn diagnostic_from_error_returns_e050a_for_action_contract_orphan()` expects code `0x050A` and action `9` in message.
+
+### Behavior 19: validation failure is atomic
+
+Tests:
+- `fn validate_symbol_references_does_not_mutate_parts_when_symbol_validation_fails()` compares `parts == original_parts` after exact symbol error.
+- `fn validate_resource_references_does_not_mutate_parts_when_resource_validation_fails()` compares `parts == original_parts` after exact resource error.
+- `fn validate_action_references_does_not_mutate_parts_or_contracts_when_action_validation_fails()` compares both inputs to snapshots after exact action error.
+- `fn core_admission_returns_no_workflow_when_reference_validation_fails()` pattern-matches exact error and proves no `CompiledWorkflow` value exists in the `Err` branch.
+
+### Behavior 20: bounded deterministic source policy and CLI oracle
+
+Determinism test: `fn validation_returns_same_exact_error_on_repeated_runs_for_same_invalid_ir()` runs symbol, resource, and action invalid fixtures twice and compares exact `Result` values.
+
+E2E CLI test 1: `fn cli_validate_reports_e050d_for_invalid_symbol_reference_fixture()`
+
+Given: fixture `tests/fixtures/vb_qi37_7_3/invalid_symbol_accessor.vbir` containing accessor `SymbolId::new(1)` with `symbols_count = 1`.
+When: `cargo run -p velvet-ballastics -- validate tests/fixtures/vb_qi37_7_3/invalid_symbol_accessor.vbir --json` is executed.
+Then: process exit code is `1`; stderr or JSON error output contains `E050D`, `SymbolReferenceOutOfRange`, `symbol 1`, and `AccessorField`; output does not contain `UNKNOWN` or `internal error`.
+
+E2E CLI test 2: `fn cli_run_compiled_reports_resource_error_for_invalid_resource_fixture()`
+
+Given: fixture `tests/fixtures/vb_qi37_7_3/resource_max_steps_exceeded.vbir` with two nodes and `max_steps = 1`.
+When: `cargo run -p velvet-ballastics -- run-compiled tests/fixtures/vb_qi37_7_3/resource_max_steps_exceeded.vbir --input-bin tests/fixtures/vb_qi37_7_3/input.bin --durability memory --json` is executed.
+Then: process exit code is `1`; output contains `E050F`, `ResourceContractExceeded`, `max_steps`, `actual 2`, and `declared 1`.
 
 ## 4. Proptest Invariants
 
-### Proptest: symbol carrier bounds
+### Proptest: symbol bounds over all carriers
 
-- Invariant: validation succeeds iff every generated symbol carrier has `symbol < symbols_count`.
-- Strategy: generate `symbols_count in 0..=32`, carrier kind `{accessor_field, const_symbol, build_object_field}`, valid unrelated structure, and exactly one target symbol.
-- Anti-invariant: `symbols_count == 0` with any symbol carrier always yields exact symbol out-of-bounds error.
+Invariant: For generated parts with every symbol carrier `< symbols_count`, direct `validate_symbol_references` returns `Ok(())`; for exactly one offending carrier `>= symbols_count`, direct `validate_symbol_references` returns `WorkflowError::SymbolOutOfBounds` with the generated `SymbolId`, while pipeline `validate` maps the same fixture to `ValidationError::SymbolReferenceOutOfRange` with the generated symbol/source/source_index.
+Strategy: bounded `symbols_count in 0..=16`; carrier enum for accessor/constant/build-object; valid unrelated structure.
+Anti-invariant: `symbols_count == 0` plus any generated symbol carrier always fails direct helper/core validation with exact `WorkflowError::SymbolOutOfBounds { symbol: SymbolId::new(0) }`; pipeline validation additionally reports the exact source context.
 
-### Proptest: slot/constant/handler owner bounds and kind correctness
+### Proptest: core and verifier symbol parity
 
-- Invariant: every generated slot/constant/handler reference is accepted iff it is in range, kind-correct, and belongs to the same generated artifact model.
-- Strategy: bounded tables length `0..=16`, reference index `0..=17`, use-site kind enum, owner token enum `{same_artifact, other_artifact}` where representable.
-- Anti-invariant: one out-of-range, wrong-kind, or cross-artifact target always yields the precise corresponding error variant.
+Invariant: For any single invalid symbol carrier, direct `validate_symbol_references` and `CompiledWorkflow::try_from_parts` both return `WorkflowError::SymbolOutOfBounds` for the same numeric symbol; pipeline `validate` returns `ValidationError::SymbolReferenceOutOfRange` for that same symbol and source.
+Strategy: generate one invalid carrier at a time, keep every non-target field valid.
+Anti-invariant: Changing the same symbol to `symbols_count - 1` when `symbols_count > 0` makes both validations pass symbol checks.
 
-### Proptest: action-contract bijection
+### Proptest: resource coverage
 
-- Invariant: action-complete validation returns `Ok(())` iff unique `Do.action` IDs equal unique supplied `ActionContract.id` values.
-- Strategy: `0..=8` Do nodes, action IDs `0..=32`, `0..=8` contracts, generated duplicates included.
-- Anti-invariant: remove one referenced contract to force missing; add one unreferenced contract to force orphan.
+Invariant: If `actual <= declared <= hard_limit` for every resource member, direct `validate_resource_references` returns `Ok(())`; if one member has `declared > hard_limit`, direct validation returns `WorkflowError::ResourceContractTooLarge { resource }`; if one member has `actual > declared`, direct validation returns `WorkflowError::ResourceContractExceeded { resource }`. The pipeline `validate` maps the same fixtures to `ValidationError::ResourceContractTooLarge { resource, declared, hard_limit }` or `ValidationError::ResourceContractExceeded { resource, actual, declared }`.
+Strategy: generate small bounded counts for all resource members and derive declarations.
+Anti-invariant: lower exactly one declaration by one with no earlier failures.
 
-### Proptest: resource hard limits and coverage
+### Proptest: core and verifier resource parity
 
-- Invariant: validation succeeds iff `actual <= declared <= hard_limit` for each resource member.
-- Strategy: six resource members generated in `0..=hard_limit+1` with one target violation at a time.
-- Anti-invariant: `declared = hard_limit + 1` always yields too-large; `actual = declared + 1` always yields exceeded.
+Invariant: For the same resource member violation, verifier error `ValidationError::{ResourceContractTooLarge|ResourceContractExceeded}` and core error `WorkflowError::{ResourceContractTooLarge|ResourceContractExceeded}` use the same exact `resource` string.
+Strategy: generate one violation at a time for the six resource strings.
+Anti-invariant: swapping resource names must fail exact equality.
 
-### Proptest: core/verifier parity
+### Proptest: action contract bijection
 
-- Invariant: for equivalent invalid IR, core and verifier identify the same class of failure and same offending value/resource, even if enum types differ.
-- Strategy: generate a single violation for symbol, slot, constant, handler, or resource while all earlier gates pass.
-- Anti-invariant: changing the offending value to its upper valid boundary makes both validation surfaces pass that class of check.
+Invariant: `validate_action_references(parts, contracts) == Ok(())` iff unique `Do.action` IDs equal unique `ActionContract.id` values.
+Strategy: bounded `0..=8` Do nodes, action IDs `0..=32`, contracts with duplicates eliminated unless testing duplicate-contract rejection policy separately.
+Anti-invariant: remove the first referenced contract to force `ActionContractMissing`; add one unreferenced contract to force `ActionContractOrphan`.
 
-### Proptest: determinism/no mutation
+### Proptest: determinism and no mutation
 
-- Invariant: public validators are pure deterministic scans over input values; repeated calls return identical results and snapshots remain equal.
-- Strategy: generated valid/invalid parts and action contract slices.
-- Anti-invariant: any mutation, global counter effect, ordering nondeterminism, or panic fails the property.
+Invariant: Running any public validation function twice returns equal exact `Result` values and leaves borrowed inputs equal to snapshots.
+Strategy: generated valid and invalid parts/contracts for symbol/resource/action cases.
+Anti-invariant: no mutation is permitted; any inequality is failure.
 
 ## 5. Fuzz Targets
 
-### Waiver: in-memory validator has no parser/codec boundary
+### Fuzz target: artifact decode to `WorkflowParts` plus admission
 
-- Waiver: `W-FUZZ-001` from `verification-layers.md` applies only while implementation does not add/modify serialized IR parsing, deserialization, CLI decoding, or artifact codec code.
-- Required test-writer action: add a review/check test named `fn fuzz_waiver_remains_valid_when_no_parser_or_codec_boundary_is_touched()` that inspects implementation evidence/diff scope, not runtime behavior.
-- Compensating evidence: proptest groups above plus Kani bounds checks below.
+Input type: bytes for existing `.vbir`/postcard artifact decoder.
+Risk: panic, OOM, unchecked index/cast, accidental invalid admission, generic string-only error.
+Corpus seeds: minimal valid artifact; all three valid symbol carriers; accessor symbol equals count; constant symbol with zero symbols; build-object field equals count; `max_steps` hard-limit + 1; actual nodes 2 with `max_steps = 1`; expression max stack 3 with `max_expr_stack = 2`.
+Oracle: decoder returns a typed decode error, or decoded `WorkflowParts` passed to `CompiledWorkflow::try_from_parts` returns exact `Ok(CompiledWorkflow)` or exact `WorkflowError`; no panic/abort/OOM.
 
-### Conditional fuzz target: serialized artifact decode admission
+### Fuzz target: action contract verifier boundary
 
-- Trigger: implementation touches `.vbir`, postcard, bincode, JSON/YAML, CLI fixture decoding, or any bytes/string-to-`WorkflowParts` path.
-- Input type: arbitrary bytes for the touched decoder.
-- Risk: panic, OOM, invalid artifact admission, unchecked index/cast, generic string-only errors.
-- Corpus seeds: minimal valid artifact; invalid accessor symbol; invalid symbol constant; invalid build-object field; zero symbols with symbol zero; bad slot; bad constant; bad handler; declared resource hard limit + 1; actual resource over declared.
-- Oracle: decoder returns typed decode error, or decoded parts admitted/rejected by exact validation errors; no panic/abort/OOM.
+Input type: arbitrary bounded struct of `WorkflowParts` action nodes plus `ActionContract` IDs.
+Risk: set-equivalence bug, duplicate bug, ordering nondeterminism, panic on empty/large slices.
+Corpus seeds: no Do/no contracts; one Do matching contract; one Do/no contracts; no Do/one contract; two Do nodes sharing one action; Do(7)+contract(9).
+Oracle: exact `Ok(())`, `ActionContractMissing`, `ActionContractOrphan`, or earlier exact non-action `ValidationError`; no panic/OOM.
+
+Fuzz acceptance is mandatory. If fuzz tooling is unavailable, bead acceptance is **BLOCKED**, not downgraded.
 
 ## 6. Kani Harnesses
 
-### Kani: symbol off-by-one completeness
+### Kani: symbol boundary completeness
+Property: for `symbols_count <= 8` and symbol IDs `<= 9`, each carrier is accepted iff `symbol < symbols_count`; otherwise exact symbol error is returned.
+Bound: three carriers × `symbols_count 0..=8` × `symbol 0..=9`.
 
-- Property: for each symbol carrier and `symbols_count <= 8`, validation accepts exactly symbols `< symbols_count` and rejects symbols `>= symbols_count`.
-- Bound: carriers 3; counts `0..=8`; symbol IDs `0..=9`.
-- Rationale: proves zero-count and equality-boundary behavior beyond sampled unit cases.
+### Kani: resource off-by-one correctness
+Property: equality at declared/hard limit is accepted; `declared > hard_limit` and `actual > declared` fail with exact resource member.
+Bound: six resource members, counts `0..=8`, hard limits modelled as harness constants.
 
-### Kani: reference index bounds
+### Kani: action-contract bijection
+Property: up to 4 Do nodes and 4 contracts succeed iff unique ID sets are equal; missing is reported before orphan.
+Bound: action IDs `0..=7`, nodes/contracts `0..=4`.
 
-- Property: validation never indexes out of bounds and rejects invalid slot/constant/handler indices for vectors/tables length `0..=8`.
-- Bound: slots/constants/handlers/nodes/expressions/accessors length `0..=8`.
-- Rationale: repository forbids unchecked indexing; Kani proves harnessed traversal safety.
+### Kani: scan index bounds
+Property: validation scans never index out of bounds for vectors length `0..=8` and never panic.
+Bound: nodes/accessors/constants/expressions/contracts length `0..=8`.
 
-### Kani: action-contract set equality
-
-- Property: for up to 4 `Do` nodes and 4 contracts, action-complete validation succeeds iff unique ID sets are equal; missing is reported before orphan.
-- Bound: action IDs `0..=7`.
-- Rationale: catches duplicate/set and precedence mistakes.
-
-### Kani: resource comparison boundaries
-
-- Property: equality at hard limit and declared limit is accepted; `declared > hard_limit` and `actual > declared` are rejected with the correct resource member.
-- Bound: six members, counts `0..=8` with harness constants.
-- Rationale: proves comparison operators are not off by one.
-
-### Kani: no partial acceptance state machine
-
-- Property: admission outcome is either full success with all predicates true or typed failure; no state admits a `CompiledWorkflow` after any predicate failure.
-- Bound: reduced `WorkflowPartsModel` with booleans for each predicate class and bounded IDs/resources.
-- Rationale: proves postcondition POST-009 as a bounded admission lattice.
+Kani execution is mandatory for this bead when harnesses are added. If Kani cannot run in CI, acceptance is **BLOCKED** until a bead dependency records the infrastructure gap.
 
 ## 7. Mutation Testing Checkpoints
 
-Threshold: `cargo-mutants` must report `>= 90%` killed for touched `vb_core`/`vb_validate` validation modules. Critical mutants below must be killed; any survivor blocks acceptance regardless of aggregate rate.
+Minimum: `cargo-mutants --minimum-test-timeout 60 --package vb_core --package vb_validate` scoped to touched files must report **>= 90% killed**.
 
-- Remove call to reference validation before core admission -> killed by `try_from_parts_rejects_untrusted_parts_before_workflow_is_returned`.
-- Replace `>= symbols_count` with `> symbols_count` -> killed by three `*_equal_to_symbols_count_*` symbol tests.
-- Skip accessor symbol traversal -> killed by accessor carrier test.
-- Skip constant symbol traversal -> killed by constant carrier test.
-- Skip build-object field traversal -> killed by build-object carrier test.
-- Remove/export-stub `validate_symbol_references` or make it always return success -> killed by direct `validate_symbol_references_returns_symbol_out_of_bounds_when_accessor_field_equals_symbols_count`.
-- Allow `symbols_count == 0` with symbol zero -> killed by three zero-symbol tests.
-- Remove slot validation or use wrong count -> killed by slot out-of-range and property tests.
-- Remove constant bounds/kind check -> killed by constant out-of-range/wrong-kind tests.
-- Remove handler bounds/kind check -> killed by handler out-of-range/wrong-kind tests.
-- Replace action set equality with subset check -> killed by orphan action test.
-- Replace action set equality with superset check -> killed by missing action test.
-- Report orphan before missing -> killed by missing-before-orphan action scenario.
-- Ignore duplicate `Do.action` handling -> killed by duplicate Do matching-contract scenario.
-- Add Gate 12 to `validate` -> killed by default validate skip scenario.
-- Remove Gate 12 from `validate_with_contracts` -> killed by missing contract scenario.
-- Remove/export-stub `validate_action_references` or make it ignore supplied contracts -> killed by direct missing/orphan action-reference helper scenarios.
-- Replace `declared > hard_limit` with `declared >= hard_limit` -> killed by equality-at-hard-limit resource tests.
-- Replace `actual > declared` with `actual >= declared` -> killed by equality-at-declared-limit resource tests.
-- Remove/export-stub `validate_resource_references` or make it skip resource contract checks -> killed by direct too-large/exceeded resource-reference helper scenarios.
-- Swap resource names/fields -> killed by exact resource-member assertions.
-- Collapse typed errors to generic strings -> killed by exact enum and diagnostic tests.
-- Omit stable diagnostic code for new variant -> killed by diagnostic rendering tests.
-- Mutate borrowed inputs or use global state -> killed by no-mutation snapshot/Miri tests.
-- Introduce panic/unwrap/expect path -> killed by static scan plus invalid IR no-panic tests.
+Critical mutants and required killing tests:
+
+- Change `symbol >= symbols_count` to `symbol > symbols_count`: killed by the three `*_equals_symbols_count` symbol tests.
+- Remove accessor symbol scan: killed by `validate_symbol_references_returns_symbol_out_of_bounds_when_accessor_field_equals_symbols_count`.
+- Remove constant symbol scan: killed by constant out-of-bounds test.
+- Remove build-object field scan: killed by build-object out-of-bounds test.
+- Allow `symbols_count == 0`: killed by the three zero-symbol tests.
+- Swap symbol source context values: killed by exact `SymbolReferenceSource` assertions.
+- Hollow success into `Ok(Default::default())`: killed by `core_admission_preserves_workflow_counts_when_reference_validation_passes` exact count assertions.
+- Change `declared > hard_limit` to `declared >= hard_limit`: killed by hard-limit equality boundary tests.
+- Change `actual > declared` to `actual >= declared`: killed by actual-equals-declared boundary tests.
+- Swap resource string `max_steps` with `max_slots`: killed by exact resource-string tests in verifier and core.
+- Remove expression stack resource check: killed by `*_max_expr_stack_exceeds_*` tests.
+- Remove Gate 12 from `validate_with_contracts`: killed by `validate_with_contracts_returns_action_contract_missing_after_non_action_gates_pass`.
+- Add Gate 12 to `validate`: killed by `shared_validate_returns_unit_for_do_node_without_contracts_when_non_action_gates_pass`.
+- Report orphan before missing: killed by `validate_action_references_reports_missing_before_orphan_when_both_exist`.
+- Change missing `node_index` to `0`: killed by `validate_action_references_preserves_action_id_and_node_index_fields_for_missing_contract`.
+- Swap missing `action_id` and `node_index`: killed by exact field assertion for `action_id == 7`, `node_index == 3`.
+- Require duplicate contracts for duplicate Do references: killed by duplicate Do success test.
+- Collapse typed errors to generic strings: killed by exact enum pattern and diagnostic-code tests.
+- Mutate borrowed inputs: killed by atomicity snapshot tests.
+
+Surviving critical mutants block acceptance. Non-critical survivors may be accepted only if total kill rate remains >=90% and each survivor is documented with a rationale in implementation evidence.
 
 ## 8. Combinatorial Coverage Matrix
 
 | Scenario | Input Class | Expected Output | Layer |
 |---|---|---|---|
-| valid full IR | all references in range, resources covered | `Ok(CompiledWorkflow)` and `Ok(())` verifier with exact public counts | integration |
-| direct symbol helper valid | all symbol carriers below `symbols_count` | `Ok(())` from `validate_symbol_references` | unit |
-| direct symbol helper invalid | accessor field `SymbolId(symbols_count)` | `WorkflowError::SymbolOutOfBounds { symbol }` | unit/mutation |
-| accessor symbol valid upper boundary | `symbol = symbols_count - 1` | success | unit/property |
-| accessor symbol invalid equality | `symbol = symbols_count` | exact symbol error, accessor location | unit/property/Kani |
-| constant symbol invalid equality | `symbol = symbols_count` | exact symbol error, constant location | unit/property/Kani |
-| build-object symbol invalid equality | `symbol = symbols_count` | exact symbol error, build-object location | unit/property/Kani |
-| zero symbols + accessor | `symbols_count = 0`, symbol `0` | exact symbol error | unit/property/Kani |
-| slot valid upper boundary | slot `slot_count - 1` | success | unit/property |
-| slot invalid equality | slot `slot_count` | precise slot error | unit/property/Kani |
-| slot wrong kind | kind mismatch | precise slot kind error | unit/property |
-| constant invalid equality | index `constants.len()` | precise constant error | unit/property/Kani |
-| constant wrong kind | required/actual kind differ | precise constant kind error | unit/property |
-| handler invalid equality | id/table index equals handler count | precise handler error | unit/property/Kani |
-| handler wrong kind | required/actual kind differ | precise handler kind error | unit/property |
-| action contracts match | unique Do IDs equal contract IDs | `Ok(())` from `validate_with_contracts` | integration/property/Kani |
-| direct action helper contracts match | unique Do IDs equal contract IDs | `Ok(())` from `validate_action_references` | unit/property/Kani |
-| duplicate Do IDs | two Do nodes same ID, one matching contract | `Ok(())` | unit/property |
-| missing action contract | Do ID absent from contracts | `ActionContractMissing { action_id, node_index }` from `validate_with_contracts` and direct `validate_action_references` | unit/integration/mutation |
-| orphan action contract | contract ID not in Do set | `ActionContractOrphan { action_id }` from `validate_with_contracts` and direct `validate_action_references` | unit/integration/mutation |
-| default validate with missing action contract | valid non-action gates, Do without contract | `Ok(())` from `validate` | integration/mutation |
-| declared hard limit equality | declared equals hard limit | success if actual <= declared | unit/property/Kani |
-| direct resource helper valid | declared within hard limit and actual <= declared | `Ok(())` from `validate_resource_references` | unit |
-| declared hard limit + 1 | each resource member | `ResourceContractTooLarge { resource }` from core and direct `validate_resource_references` | unit/property/Kani/mutation |
-| actual equals declared | each resource member | success | unit/property/Kani |
-| actual declared + 1 | each resource member | `ResourceContractExceeded { resource }` from core and direct `validate_resource_references` | unit/property/Kani/mutation |
-| cross-artifact reference | foreign owner token/id where representable | precise ownership/reference error | integration/property |
-| diagnostic rendering | each error variant | exact stable code + salient fields | unit/integration |
-| static banned constructs | touched source | no unsafe/unwrap/expect/panic/todo/unimplemented/dbg/unchecked ops | static |
-| runtime I/O scan | touched runtime validation source | no JSON/YAML/HTTP/fs/network lookup | static |
-| CLI/manual invalid symbol | fixture invalid accessor symbol | non-zero exit + stable diagnostic code/fields | manual/E2E |
-| CLI/manual invalid resource | fixture resource exceeded | non-zero exit + stable diagnostic code/fields | manual/E2E |
+| valid symbol carriers | symbols 0/1/2, count 3 | `Ok(())` from `validate_symbol_references` | unit |
+| accessor equals count | accessor symbol 1, count 1 | direct helper: `Err(WorkflowError::SymbolOutOfBounds { symbol: SymbolId::new(1) })`; pipeline: `Err(SymbolReferenceOutOfRange { symbol: 1, AccessorField, 0 })` | unit/integration |
+| constant equals count | constant symbol 2, count 2 | direct helper: `Err(WorkflowError::SymbolOutOfBounds { symbol: SymbolId::new(2) })`; pipeline: `Err(SymbolReferenceOutOfRange { symbol: 2, ConstantPool, 0 })` | unit/integration |
+| build field equals count | field symbol 2, count 2 | direct helper: `Err(WorkflowError::SymbolOutOfBounds { symbol: SymbolId::new(2) })`; pipeline: `Err(SymbolReferenceOutOfRange { symbol: 2, BuildObjectField, 0 })` | unit/integration |
+| zero symbols accessor | count 0, accessor symbol 0 | direct helper/core exact `WorkflowError::SymbolOutOfBounds`; pipeline exact symbol verifier error | unit/integration |
+| zero symbols constant | count 0, constant symbol 0 | direct helper/core exact `WorkflowError::SymbolOutOfBounds`; pipeline exact symbol verifier error | unit/integration |
+| zero symbols build object | count 0, field symbol 0 | direct helper/core exact `WorkflowError::SymbolOutOfBounds`; pipeline exact symbol verifier error | unit/integration |
+| core symbol parity | invalid symbol carrier | `Err(WorkflowError::SymbolOutOfBounds { symbol })` | integration |
+| resources equal declarations | actual == declared for all members | `Ok(())` | unit |
+| declared hard limit + 1 | each resource member | direct helper: `Err(WorkflowError::ResourceContractTooLarge { resource })`; pipeline: `Err(ValidationError::ResourceContractTooLarge { resource, declared, hard_limit })` | unit/integration |
+| actual exceeds declared | each resource member | direct helper: `Err(WorkflowError::ResourceContractExceeded { resource })`; pipeline: `Err(ValidationError::ResourceContractExceeded { resource, actual, declared })` | unit/integration |
+| core resource too large | each resource member | `Err(WorkflowError::ResourceContractTooLarge { resource })` | integration |
+| core resource exceeded | each resource member | `Err(WorkflowError::ResourceContractExceeded { resource })` | integration |
+| action match | Do(7), contract(7) | `Ok(())` | unit/integration |
+| duplicate Do actions | Do(7), Do(7), contract(7) | `Ok(())` | unit |
+| missing action | Do(7), no contracts | `Err(ActionContractMissing { action_id: 7, node_index })` | unit/integration |
+| orphan action | no Do, contract(9) | `Err(ActionContractOrphan { action_id: 9 })` | unit/integration |
+| missing and orphan | Do(7), contract(9) | `Err(ActionContractMissing { action_id: 7, node_index: 0 })` | unit |
+| default validate with Do | Do(7), no contract arg | `Ok(())` if non-action gates pass | integration |
+| validate_with_contracts missing | Do(7), empty contracts | exact missing action error | integration |
+| diagnostics | each reference error | exact E050D/E050E/E050F/E0509/E050A | unit |
+| CLI invalid symbol | `.vbir` invalid accessor | exit 1 + E050D + exact fields | E2E |
+| CLI invalid resource | `.vbir` max_steps exceeded | exit 1 + E050F + exact fields | E2E |
+| source policy | implementation diff | no forbidden constructs/I/O | static |
 
-## 9. Contract and Proof Obligation Traceability
+## Static, Holzmann, and Resource Gates
 
-| Clause/obligation | Required tests/gates | Waiver |
-|---|---|---|
-| PRE-001 | `try_from_parts_rejects_untrusted_parts_before_workflow_is_returned`; `given_untrusted_workflow_parts_when_admitted_then_reference_integrity_is_checked`; `moon run :verify-fast` | none |
-| PRE-002 | no-mutation snapshot tests; Miri/cargo-careful via `moon run :verify-deep` | Lean waiver only, compensated by Rust evidence |
-| PRE-003 | invalid IR `Result::Err` no-panic tests; static banned-construct scan | Lean waiver only |
-| PRE-004 / POST-004 / AC-006 | `validate_returns_success_for_do_action_without_contract_when_non_action_gates_pass`; mutation adding Gate 12 to `validate` | Lean/API compat waiver only as documented |
-| PRE-005 | proptest generated numeric IDs/resources; Kani bounds | fuzz waived by W-FUZZ-001 if no parser/codec touched |
-| PRE-006 / AC-008 | runtime-core no-I/O static scan | Lean waiver only |
-| POST-001 / INV-001 / AC-001 / THM-INV-001 | direct `validate_symbol_references` success/failure scenarios; all symbol carrier examples; symbol proptest; Kani symbol harness; Lean theorem `all_symbol_refs_bounded_iff_valid` | none |
-| POST-002 / INV-002 / AC-002 / THM-INV-002 | zero-symbol carrier tests; proptest anti-invariant; Lean theorem `zero_symbols_rejects_symbol_ref` | none |
-| POST-003 / INV-003 / THM-INV-003 | direct `validate_action_references` success/missing/orphan scenarios; action set equality tests; duplicate Do test; proptest; Kani; Lean theorem `action_contract_bijection_exact` | none |
-| POST-005 / INV-004 / ERR-006 / THM-INV-004 | slot bounds/kind/ownership tests; proptest; Kani; Lean theorem `all_slot_refs_owned_and_bounded` | none |
-| POST-005/006 / INV-005 / ERR-007 / THM-INV-005 | constant bounds/kind tests and symbol constant tests; proptest; Kani; Lean theorem | none |
-| POST-005/006 / INV-006 / ERR-008 / THM-INV-006 | handler bounds/kind/ownership tests; proptest; Kani; Lean theorem | none |
-| POST-007 / THM-POST-007 | cross-artifact reference tests; action contract supplied-set ownership tests; Lean theorem `valid_references_are_artifact_or_contract_owned` | runtime shell exclusions per Lean contract |
-| POST-008 / INV-007/008 / AC-007 / THM-INV-007/008 | direct `validate_resource_references` success/too-large/exceeded scenarios; resource hard-limit and coverage tests; proptest; Kani; Lean resource theorems | none |
-| POST-009 | exact typed error/no partial workflow tests; mutation; static scan | Lean waiver only |
-| INV-009 | determinism repeated-run tests; no-I/O/unbounded static scan; coverage | Lean waiver only |
-| INV-010 | repository governance scans; no banned constructs/unchecked ops; Miri/cargo-careful | Lean waiver only |
-| ERR-001 | direct `validate_symbol_references` out-of-bounds scenario; symbol out-of-bounds tests for each carrier and zero symbol | none |
-| ERR-002 | direct `validate_resource_references` too-large scenario; one too-large test per resource member plus boundary equality | none |
-| ERR-003 | direct `validate_resource_references` exceeded scenario; one exceeded test per resource member plus boundary equality | none |
-| ERR-004 | direct `validate_action_references` missing scenario and pipeline missing tests asserting `action_id` and `node_index` | none |
-| ERR-005 | direct `validate_action_references` orphan scenario and pipeline orphan tests asserting `action_id` | none |
-| ERR-009 / AC-009 | diagnostic code/rendering tests for every new/existing reference error | Lean waiver only |
-| AC-010 | `moon ci`, `moon run :verify-fast`, `moon run :verify-standard`, `moon run :verify-proof`, `moon run :verify-all` evidence | process evidence, not Lean |
-| W-FUZZ-001 | waiver validity review plus proptest/Kani; conditional fuzz if codec touched | active only if no parser/codec touched |
-| W-LOOM-001 | static scan confirms no concurrency primitives | active; no concurrency scope |
-| W-PERF-001 | no performance claim review; deterministic bounded validation evidence | active |
-| W-API-001 | compile/downstream tests; semver checks only if external public API changes | conditional |
-| W-REL-001 | no release artifact review | active |
+These checks are concrete acceptance gates, not promises:
 
-## 10. Red-Phase Expectations for Test Writer
-
-Add tests first and prove red before implementation. Do not weaken assertions to compile around missing variants. If an expected verifier variant/code named in this plan is absent, implementation must either add exactly that variant/code or amend `contract.md` before green.
-
-| Red test to add | Intended initial failure | Command to prove red |
-|---|---|---|
-| `validate_symbol_references_returns_unit_when_all_symbol_carriers_are_in_bounds` / `validate_symbol_references_returns_symbol_out_of_bounds_when_accessor_field_equals_symbols_count` | public helper absent/stubbed or fails to traverse accessor symbols | `cargo test -p vb_core validate_symbol_references_returns -- --nocapture` |
-| `validate_resource_references_returns_unit_when_declared_and_actual_resources_are_within_limits` / too-large / exceeded direct helper tests | public helper absent/stubbed or resource helper not factored for direct call | `cargo test -p vb_core validate_resource_references_returns -- --nocapture` |
-| `validate_action_references_returns_unit_when_unique_do_actions_equal_unique_contract_ids` / missing / orphan direct helper tests | public helper absent/stubbed or Gate 12 is not directly exposed | `cargo test -p vb_validate validate_action_references_returns -- --nocapture` |
-| `accessor_field_symbol_equal_to_symbols_count_returns_symbol_out_of_bounds` | verifier currently misses accessor field symbol bounds or lacks precise verifier error | `cargo test -p vb_core -p vb_validate accessor_field_symbol_equal_to_symbols_count_returns_symbol_out_of_bounds -- --nocapture` |
-| `symbol_constant_equal_to_symbols_count_returns_symbol_out_of_bounds` | verifier/core parity gap for `ConstValue::Symbol` | `cargo test -p vb_core -p vb_validate symbol_constant_equal_to_symbols_count_returns_symbol_out_of_bounds -- --nocapture` |
-| `build_object_field_symbol_equal_to_symbols_count_returns_symbol_out_of_bounds` | build-object field carrier not traversed or not mapped | `cargo test -p vb_core -p vb_validate build_object_field_symbol_equal_to_symbols_count_returns_symbol_out_of_bounds -- --nocapture` |
-| `zero_symbols_rejects_accessor_symbol_zero` / constant / build-object | zero-symbol edge accepted | `cargo test -p vb_core -p vb_validate zero_symbols_rejects -- --nocapture` |
-| `slot_reference_equal_to_slot_count_returns_precise_slot_error` | slot gate absent/incomplete or generic error | `cargo test -p vb_core -p vb_validate slot_reference_equal_to_slot_count_returns_precise_slot_error -- --nocapture` |
-| `constant_reference_equal_to_constants_len_returns_precise_constant_error` | constant gate absent/incomplete | `cargo test -p vb_core -p vb_validate constant_reference_equal_to_constants_len_returns_precise_constant_error -- --nocapture` |
-| `handler_reference_equal_to_handler_count_returns_precise_handler_error` | handler gate absent/incomplete | `cargo test -p vb_core -p vb_validate handler_reference_equal_to_handler_count_returns_precise_handler_error -- --nocapture` |
-| `validate_with_contracts_returns_missing_contract_when_do_action_has_no_contract` | Gate 12 not called by action-complete path or wrong payload | `cargo test -p vb_validate validate_with_contracts_returns_missing_contract_when_do_action_has_no_contract -- --nocapture` |
-| `validate_returns_success_for_do_action_without_contract_when_non_action_gates_pass` | default validate incorrectly claims action completeness | `cargo test -p vb_validate validate_returns_success_for_do_action_without_contract_when_non_action_gates_pass -- --nocapture` |
-| `orphan_action_contract_reports_first_orphan_in_supplied_contract_order` | orphan check missing or nondeterministic | `cargo test -p vb_validate orphan_action_contract_reports_first_orphan_in_supplied_contract_order -- --nocapture` |
-| six `declared_*_above_hard_limit_returns_resource_contract_too_large` tests | missing hard-limit member check or wrong resource name | `cargo test -p vb_core -p vb_validate resource_contract_too_large -- --nocapture` |
-| six `*_above_max_*_returns_resource_contract_exceeded` tests | missing actual-usage check or wrong resource name | `cargo test -p vb_core -p vb_validate resource_contract_exceeded -- --nocapture` |
-| diagnostic stable-code tests | new variants lack code/renderer coverage | `cargo test -p vb_validate diagnostic_for_ -- --nocapture` |
-| no-I/O static scan | implementation imports runtime JSON/YAML/HTTP/fs/network lookup | scan command in Section 11 |
-
-Red proof rule: at least one targeted command above must fail for the intended reason before production changes. After implementation, the same command must pass with exact assertions unchanged.
-
-## 11. Static, Manual, and Gauntlet Gates
-
-Required after implementation:
-
-1. `moon ci`
-2. `moon run :verify-fast`
-3. `moon run :verify-standard`
-4. `moon run :verify-proof`
-5. `moon run :verify-deep`
-6. `moon run :verify-all`
-7. Mutation: `cargo mutants --package vb_core --package vb_validate --minimum-test-timeout 60` or workspace-approved equivalent scoped to touched validation/admission files; require `>= 90%` killed and all Section 7 critical mutants killed.
-8. Banned construct/unchecked operation scan from workspace root:
-   - `rg --line-number --with-filename --glob 'crates/vb_core/src/**' --glob 'crates/vb_validate/src/**' --glob '!**/tests/**' --glob '!**/test_support/**' 'unsafe|\.unwrap\(|\.expect\(|panic!|todo!|unimplemented!|dbg!|\[[^\]]+\]| as (u8|u16|u32|u64|usize|i8|i16|i32|i64|isize)'`
-   - Pass: no matches in touched runtime source; any pre-existing untouched match must be recorded with `file:line` evidence.
-9. Runtime I/O/config dependency scan from workspace root:
-   - `rg --line-number --with-filename --glob 'crates/vb_core/src/**' --glob 'crates/vb_validate/src/**' --glob '!**/tests/**' --glob '!**/test_support/**' 'std::fs|tokio::fs|std::net|tokio::net|reqwest|hyper|ureq|serde_yaml|serde_json|yaml|http|https|File::open|read_to_string|TcpStream|UdpSocket'`
-   - Pass: no matches in touched validation/admission source.
-10. Conditional fuzz command only if waiver voids because parser/codec boundary changed: run the project-standard fuzz target for the touched decoder for at least 60 seconds with corpus seeds from Section 5.
-11. Manual/E2E smoke, if CLI compiled artifact validation path exists: invalid symbol fixture returns non-zero exit and exact stable diagnostic; invalid resource fixture returns non-zero exit and exact stable diagnostic.
+1. `moon ci` must pass.
+2. `cargo test -p vb_core -p vb_validate vb_qi37_7_3 -- --nocapture` must pass targeted tests.
+3. `cargo test -p velvet-ballastics cli_validate_reports_e050d_for_invalid_symbol_reference_fixture cli_run_compiled_reports_resource_error_for_invalid_resource_fixture -- --nocapture` must pass E2E tests.
+4. `cargo mutants --package vb_core --package vb_validate --minimum-test-timeout 60` must report `>= 90%` kill rate.
+5. `cargo fuzz run artifact_decode_admission -- -max_total_time=60` must complete with no crash.
+6. `cargo fuzz run action_contract_verifier -- -max_total_time=60` must complete with no crash.
+7. `cargo kani -p vb_core` and `cargo kani -p vb_validate` must pass the harnesses added for this bead.
+8. Static forbidden-construct scan must be executed exactly from the workspace root and must produce `file:line:match` evidence for every violation:
+   - Command: `rg --line-number --with-filename --glob 'crates/vb_core/src/**' --glob 'crates/vb_validate/src/**' --glob '!**/tests/**' --glob '!**/test_support/**' 'unsafe|\.unwrap\(|\.expect\(|panic!|todo!|unimplemented!|dbg!|\[[^\]]+\]| as (u8|u16|u32|u64|usize|i8|i16|i32|i64|isize)'`
+   - Failure rule: exit code `0` with any matching line is a hard failure unless that exact `file:line` is pre-existing outside the bead diff and is listed in implementation evidence as untouched debt. Exit code `1` means no matches and passes. Exit code `>1` is a tool failure and blocks acceptance.
+   - Target paths: only runtime-core source under `crates/vb_core/src/**` and `crates/vb_validate/src/**`, excluding test modules/support.
+9. Static runtime I/O/config dependency scan must be executed exactly from the workspace root and must produce `file:line:match` evidence for every violation:
+   - Command: `rg --line-number --with-filename --glob 'crates/vb_core/src/**' --glob 'crates/vb_validate/src/**' --glob '!**/tests/**' --glob '!**/test_support/**' 'std::fs|tokio::fs|std::net|tokio::net|reqwest|hyper|ureq|serde_yaml|serde_json|yaml|http|https|File::open|read_to_string|TcpStream|UdpSocket'`
+   - Failure rule: any match in touched validation/admission code is a hard failure. Any pre-existing untouched match must be cited as `file:line` evidence and must not be in the bead diff. Exit code `1` is pass. Exit code `>1` blocks acceptance.
+10. Static panic/resource evidence must include `RUST_BACKTRACE=1 cargo test -p vb_core -p vb_validate vb_qi37_7_3 -- --nocapture` completing with exit code `0`, no output line containing `panicked at`, no output line containing `thread '.*' panicked`, and no tempfile or fixture files left outside `tests/fixtures/vb_qi37_7_3`.
 
 ## Open Questions
 
-None blocking for the three rejected public helper gaps. The plan now names direct BDD scenarios for `validate_symbol_references`, `validate_resource_references`, and `validate_action_references`.
-
-Required contract amendments if verifier parity remains in scope beyond existing variants:
-
-- Add `ValidationError::SymbolReferenceOutOfRange { symbol: usize, symbols_count: usize, context: String }`, code `0x050D`.
-- Add `ValidationError::SlotReferenceWrongKind { slot: usize, required: String, actual: String, context: String }`, code `0x050E`, or waive slot kind if not represented.
-- Add `ValidationError::ConstantReferenceOutOfRange { constant: usize, constant_count: usize, context: String }`, code `0x050F`.
-- Add `ValidationError::ConstantReferenceWrongKind { constant: usize, required: String, actual: String, context: String }`, code `0x0510`.
-- Add `ValidationError::HandlerReferenceWrongKind { handler: usize, required: String, actual: String, context: String }`, code `0x0511`, or amend handler scope to existing `StepOutOfBounds` / `LoopBodyStepOutOfRange` semantics.
-- Add `ValidationError::ResourceContractTooLarge { resource: String }`, code `0x0512`, and `ValidationError::ResourceContractExceeded { resource: String }`, code `0x0513`, if verifier resource parity is required instead of core/direct-helper-only resource validation.
+None. The review-required choices are pinned in this plan.

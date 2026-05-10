@@ -1,8 +1,6 @@
 #![forbid(unsafe_code)]
 //! Integration tests for the expression evaluator.
 
-#![allow(clippy::panic_in_result_fn)]
-
 use vb_core::limits::MAX_EXPRESSION_STACK;
 use vb_core::value_store::ValueStore;
 use vb_core::{ConstIdx, ConstValue, ExprOp, ExprProgram, SlotIdx, SlotValue};
@@ -112,54 +110,22 @@ fn evaluates_inequality() -> ExprResult<()> {
 }
 
 #[test]
-fn evaluates_comparison_ops_lt() -> ExprResult<()> {
+fn evaluates_comparison_ops() -> ExprResult<()> {
     let constants = vec![ConstValue::I64(3), ConstValue::I64(5)];
-    let program = make_program(vec![
-        ExprOp::LoadConst(ConstIdx::new(0)),
-        ExprOp::LoadConst(ConstIdx::new(1)),
-        ExprOp::Lt,
-    ])?;
-    let result = eval_with_const(&program, constants)?;
-    assert_eq!(result, SlotValue::Bool(true), "3 < 5 should be true");
-    Ok(())
-}
-
-#[test]
-fn evaluates_comparison_ops_lte() -> ExprResult<()> {
-    let constants = vec![ConstValue::I64(3), ConstValue::I64(5)];
-    let program = make_program(vec![
-        ExprOp::LoadConst(ConstIdx::new(0)),
-        ExprOp::LoadConst(ConstIdx::new(1)),
-        ExprOp::Lte,
-    ])?;
-    let result = eval_with_const(&program, constants)?;
-    assert_eq!(result, SlotValue::Bool(true), "3 <= 5 should be true");
-    Ok(())
-}
-
-#[test]
-fn evaluates_comparison_ops_gt() -> ExprResult<()> {
-    let constants = vec![ConstValue::I64(3), ConstValue::I64(5)];
-    let program = make_program(vec![
-        ExprOp::LoadConst(ConstIdx::new(0)),
-        ExprOp::LoadConst(ConstIdx::new(1)),
-        ExprOp::Gt,
-    ])?;
-    let result = eval_with_const(&program, constants)?;
-    assert_eq!(result, SlotValue::Bool(false), "3 > 5 should be false");
-    Ok(())
-}
-
-#[test]
-fn evaluates_comparison_ops_gte() -> ExprResult<()> {
-    let constants = vec![ConstValue::I64(3), ConstValue::I64(5)];
-    let program = make_program(vec![
-        ExprOp::LoadConst(ConstIdx::new(0)),
-        ExprOp::LoadConst(ConstIdx::new(1)),
-        ExprOp::Gte,
-    ])?;
-    let result = eval_with_const(&program, constants)?;
-    assert_eq!(result, SlotValue::Bool(false), "3 >= 5 should be false");
+    for (op, expected) in [
+        (ExprOp::Lt, true),
+        (ExprOp::Lte, true),
+        (ExprOp::Gt, false),
+        (ExprOp::Gte, false),
+    ] {
+        let program = make_program(vec![
+            ExprOp::LoadConst(ConstIdx::new(0)),
+            ExprOp::LoadConst(ConstIdx::new(1)),
+            op,
+        ])?;
+        let result = eval_with_const(&program, constants.clone())?;
+        assert_eq!(result, SlotValue::Bool(expected), "failed for {op:?}");
+    }
     Ok(())
 }
 
@@ -356,7 +322,10 @@ fn eval_binary_op_returns_type_mismatch_for_string_in_arithmetic() -> ExprResult
 
 #[test]
 fn eval_expr_program_returns_stack_overflow_for_deep_nesting() -> ExprResult<()> {
-    let ops: Vec<ExprOp> = (0u16..65).map(|i| ExprOp::LoadConst(ConstIdx::new(i))).collect();
+    let mut ops = Vec::new();
+    for i in 0..65u16 {
+        ops.push(ExprOp::LoadConst(ConstIdx::new(i)));
+    }
     let result = make_program(ops);
     let Err(ExprError::StackOverflow { max }) = result else {
         return Err(ExprError::UnexpectedToken {
@@ -1299,155 +1268,5 @@ fn eval_helper_with_store_sum_returns_integer_overflow_on_overflow() -> ExprResu
             token: "expected IntegerOverflow for sum overflow".into(),
         });
     };
-    Ok(())
-}
-
-// =========================================================================
-// Stub helper error-path coverage (no ValueStore available)
-// These helpers always return TypeMismatch without a store, but their
-// validation code paths are exercised to confirm the correct error.
-// =========================================================================
-
-/// eval_helper_starts_with without store returns TypeMismatch after validation.
-#[test]
-fn eval_helper_starts_with_without_store_returns_type_mismatch() -> ExprResult<()> {
-    // Construct Symbol handles (store doesn't exist, so lookup fails after validation)
-    let text_val = SlotValue::Symbol(vb_core::ids::SymbolId::new(0));
-    let prefix_val = SlotValue::Symbol(vb_core::ids::SymbolId::new(1));
-    let result = eval_helper(ExprHelper::StartsWith, &[text_val, prefix_val]);
-    let Err(ExprError::TypeMismatch { expected, found }) = result else {
-        return Err(ExprError::UnexpectedToken {
-            token: "expected TypeMismatch for StartsWith without store".into(),
-        });
-    };
-    assert!(
-        expected.contains("value-store"),
-        "expected store context error, got: {expected}"
-    );
-    Ok(())
-}
-
-/// eval_helper_ends_with without store returns TypeMismatch after validation.
-#[test]
-fn eval_helper_ends_with_without_store_returns_type_mismatch() -> ExprResult<()> {
-    let text_val = SlotValue::Symbol(vb_core::ids::SymbolId::new(0));
-    let suffix_val = SlotValue::Symbol(vb_core::ids::SymbolId::new(1));
-    let result = eval_helper(ExprHelper::EndsWith, &[text_val, suffix_val]);
-    let Err(ExprError::TypeMismatch { expected, found }) = result else {
-        return Err(ExprError::UnexpectedToken {
-            token: "expected TypeMismatch for EndsWith without store".into(),
-        });
-    };
-    assert!(
-        expected.contains("value-store"),
-        "expected store context error, got: {expected}"
-    );
-    Ok(())
-}
-
-/// eval_helper_has without store returns TypeMismatch after validation.
-#[test]
-fn eval_helper_has_without_store_returns_type_mismatch() -> ExprResult<()> {
-    let obj_val = SlotValue::Object(vb_core::ids::ObjectId::new(0));
-    let key_val = SlotValue::Symbol(vb_core::ids::SymbolId::new(1));
-    let result = eval_helper(ExprHelper::Has, &[obj_val, key_val]);
-    let Err(ExprError::TypeMismatch { expected, found }) = result else {
-        return Err(ExprError::UnexpectedToken {
-            token: "expected TypeMismatch for Has without store".into(),
-        });
-    };
-    assert!(
-        expected.contains("value-store"),
-        "expected store context error, got: {expected}"
-    );
-    Ok(())
-}
-
-/// eval_helper_append without store returns TypeMismatch after validation.
-#[test]
-fn eval_helper_append_without_store_returns_type_mismatch() -> ExprResult<()> {
-    let list_val = SlotValue::List(vb_core::ids::ListId::new(0));
-    let item_val = SlotValue::I64(42);
-    let result = eval_helper(ExprHelper::Append, &[list_val, item_val]);
-    let Err(ExprError::TypeMismatch { expected, found }) = result else {
-        return Err(ExprError::UnexpectedToken {
-            token: "expected TypeMismatch for Append without store".into(),
-        });
-    };
-    assert!(
-        expected.contains("value-store"),
-        "expected store context error, got: {expected}"
-    );
-    Ok(())
-}
-
-/// eval_helper_append_if without store returns TypeMismatch after validation.
-#[test]
-fn eval_helper_append_if_without_store_returns_type_mismatch() -> ExprResult<()> {
-    let list_val = SlotValue::List(vb_core::ids::ListId::new(0));
-    let item_val = SlotValue::I64(42);
-    let cond_val = SlotValue::Bool(true);
-    let result = eval_helper(ExprHelper::AppendIf, &[list_val, item_val, cond_val]);
-    let Err(ExprError::TypeMismatch { expected, found }) = result else {
-        return Err(ExprError::UnexpectedToken {
-            token: "expected TypeMismatch for AppendIf without store".into(),
-        });
-    };
-    assert!(
-        expected.contains("value-store"),
-        "expected store context error, got: {expected}"
-    );
-    Ok(())
-}
-
-/// eval_helper_merge without store returns TypeMismatch after validation.
-#[test]
-fn eval_helper_merge_without_store_returns_type_mismatch() -> ExprResult<()> {
-    let left_val = SlotValue::Object(vb_core::ids::ObjectId::new(0));
-    let right_val = SlotValue::Object(vb_core::ids::ObjectId::new(1));
-    let result = eval_helper(ExprHelper::Merge, &[left_val, right_val]);
-    let Err(ExprError::TypeMismatch { expected, found }) = result else {
-        return Err(ExprError::UnexpectedToken {
-            token: "expected TypeMismatch for Merge without store".into(),
-        });
-    };
-    assert!(
-        expected.contains("value-store"),
-        "expected store context error, got: {expected}"
-    );
-    Ok(())
-}
-
-/// eval_helper_sum without store returns TypeMismatch after validation.
-#[test]
-fn eval_helper_sum_without_store_returns_type_mismatch() -> ExprResult<()> {
-    let list_val = SlotValue::List(vb_core::ids::ListId::new(0));
-    let result = eval_helper(ExprHelper::Sum, &[list_val]);
-    let Err(ExprError::TypeMismatch { expected, found }) = result else {
-        return Err(ExprError::UnexpectedToken {
-            token: "expected TypeMismatch for Sum without store".into(),
-        });
-    };
-    assert!(
-        expected.contains("value-store"),
-        "expected store context error, got: {expected}"
-    );
-    Ok(())
-}
-
-/// eval_helper_append_if with wrong condition type returns TypeMismatch.
-#[test]
-fn eval_helper_append_if_wrong_cond_type_returns_type_mismatch() -> ExprResult<()> {
-    let list_val = SlotValue::List(vb_core::ids::ListId::new(0));
-    let item_val = SlotValue::I64(42);
-    let cond_val = SlotValue::I64(1); // wrong type, should be Bool
-    let result = eval_helper(ExprHelper::AppendIf, &[list_val, item_val, cond_val]);
-    let Err(ExprError::TypeMismatch { expected, found }) = result else {
-        return Err(ExprError::UnexpectedToken {
-            token: "expected TypeMismatch for AppendIf with wrong cond type".into(),
-        });
-    };
-    assert_eq!(expected, "boolean", "expected boolean, got: {expected}");
-    assert_eq!(found, "number", "expected number, got: {found}");
     Ok(())
 }

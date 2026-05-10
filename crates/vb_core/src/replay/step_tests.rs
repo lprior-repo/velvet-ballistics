@@ -1,4 +1,3 @@
-#![allow(clippy::panic_in_result_fn, clippy::panic, clippy::expect_used, clippy::ok_expect, clippy::indexing_slicing, clippy::as_conversions, clippy::redundant_guards)]
 use crate::errors::CoreError;
 use crate::frame::RunFrame;
 use crate::ids::{

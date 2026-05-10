@@ -1,5 +1,4 @@
 #![forbid(unsafe_code)]
-#![allow(clippy::panic_in_result_fn, clippy::panic, clippy::expect_used, clippy::ok_expect, clippy::indexing_slicing, unused_imports)]
 //! Integration tests for choose slot and choose expression nodes.
 
 use crate::ids::{ConstIdx, ExprIdx, RunId, SlotIdx, StepIdx, WorkflowDigest};

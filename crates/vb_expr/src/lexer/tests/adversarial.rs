@@ -1,7 +1,7 @@
 #![forbid(unsafe_code)]
 //! Adversarial lexer tests.
 
-#![allow(dead_code, unused_imports, clippy::panic_in_result_fn)]
+#![allow(dead_code, unused_imports)]
 
 use crate::ExprError;
 use crate::lexer::{SpannedToken, Token, TokenSpan, lex_expr};
@@ -175,62 +175,14 @@ fn blackhat_lx_002_unterminated_string_rejected() -> crate::ExprResult<()> {
 
 /// BH-LX-003: Unexpected characters rejected with typed error.
 #[test]
-fn blackhat_lx_003_unexpected_chars_rejected_at() -> crate::ExprResult<()> {
-    let r = lex_expr("@");
-    assert!(
-        matches!(r, Err(ExprError::UnexpectedChar { .. })),
-        "BH-LX-003: character '@' should be UnexpectedChar"
-    );
-    Ok(())
-}
-
-#[test]
-fn blackhat_lx_003_unexpected_chars_rejected_hash() -> crate::ExprResult<()> {
-    let r = lex_expr("#");
-    assert!(
-        matches!(r, Err(ExprError::UnexpectedChar { .. })),
-        "BH-LX-003: character '#' should be UnexpectedChar"
-    );
-    Ok(())
-}
-
-#[test]
-fn blackhat_lx_003_unexpected_chars_rejected_caret() -> crate::ExprResult<()> {
-    let r = lex_expr("^");
-    assert!(
-        matches!(r, Err(ExprError::UnexpectedChar { .. })),
-        "BH-LX-003: character '^' should be UnexpectedChar"
-    );
-    Ok(())
-}
-
-#[test]
-fn blackhat_lx_003_unexpected_chars_rejected_tilde() -> crate::ExprResult<()> {
-    let r = lex_expr("~");
-    assert!(
-        matches!(r, Err(ExprError::UnexpectedChar { .. })),
-        "BH-LX-003: character '~' should be UnexpectedChar"
-    );
-    Ok(())
-}
-
-#[test]
-fn blackhat_lx_003_unexpected_chars_rejected_backtick() -> crate::ExprResult<()> {
-    let r = lex_expr("`");
-    assert!(
-        matches!(r, Err(ExprError::UnexpectedChar { .. })),
-        "BH-LX-003: character '`' should be UnexpectedChar"
-    );
-    Ok(())
-}
-
-#[test]
-fn blackhat_lx_003_unexpected_chars_rejected_division() -> crate::ExprResult<()> {
-    let r = lex_expr("\u{00F7}");
-    assert!(
-        matches!(r, Err(ExprError::UnexpectedChar { .. })),
-        "BH-LX-003: character division sign should be UnexpectedChar"
-    );
+fn blackhat_lx_003_unexpected_chars_rejected() -> crate::ExprResult<()> {
+    for ch in ['@', '#', '^', '~', '`', '\u{00F7}'] {
+        let r = lex_expr(&ch.to_string());
+        assert!(
+            matches!(r, Err(ExprError::UnexpectedChar { .. })),
+            "BH-LX-003: character '{ch}' should be UnexpectedChar"
+        );
+    }
     Ok(())
 }
 
@@ -242,7 +194,7 @@ fn blackhat_lx_004_source_length_boundary_accepted() -> crate::ExprResult<()> {
     // both the source byte limit and the token limit.
     // 256 tokens * 2 bytes ("1 ") = 512 bytes, well under 4096.
     let source = "1 ".repeat(255); // 255 tokens of "1" + final End
-    let r = lex_expr(source.trim_end());
+    let r = lex_expr(&source.trim_end());
     assert!(
         r.is_ok(),
         "BH-LX-004: source within limits should be accepted"

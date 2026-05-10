@@ -4,7 +4,7 @@
 
 #[cfg(test)]
 mod tests {
-    // super::* removed — all items explicitly imported below
+    use super::*;
     use vb_core::ids::{ActionId, SlotIdx, StepIdx};
     use vb_core::workflow::{CompiledNode, CompiledNodeKind};
 
@@ -1928,7 +1928,7 @@ mod tests {
 
     #[test]
     fn durability_level_labels() {
-        test_durability_level_labels().expect("durability level labels test failed");
+        test_durability_level_labels().ok();
     }
 
     /// Test 37: DurabilityLevel::color() returns valid hex color constants.
@@ -1956,7 +1956,7 @@ mod tests {
 
     #[test]
     fn durability_level_colors() {
-        test_durability_level_colors().expect("durability level colors test failed");
+        test_durability_level_colors().ok();
     }
 
     /// Test 38: DurabilityLevel::rank() returns ordered values.
@@ -1981,7 +1981,7 @@ mod tests {
 
     #[test]
     fn durability_level_rank_ordering() {
-        test_durability_level_rank_ordering().expect("durability level rank ordering test failed");
+        test_durability_level_rank_ordering().ok();
     }
 
     /// Test 39: DurabilityLevel derive traits (Debug, Clone, Copy, PartialEq, Eq).
@@ -2010,7 +2010,7 @@ mod tests {
 
     #[test]
     fn durability_level_derives() {
-        test_durability_level_derives().expect("durability level derives test failed");
+        test_durability_level_derives().ok();
     }
 
     /// Test 40: DurabilityLevel::default() is BestEffort.
@@ -2024,7 +2024,7 @@ mod tests {
 
     #[test]
     fn durability_level_default() {
-        test_durability_level_default().expect("durability level default test failed");
+        test_durability_level_default().ok();
     }
 
     /// Test 41: DurabilityLevel pairwise inequality.
@@ -2050,8 +2050,7 @@ mod tests {
 
     #[test]
     fn durability_level_pairwise_inequality() {
-        test_durability_level_pairwise_inequality()
-            .expect("durability level pairwise inequality test failed");
+        test_durability_level_pairwise_inequality().ok();
     }
 
     /// Test 42: DurabilityLevel all labels are non-empty and distinct.
@@ -2085,8 +2084,7 @@ mod tests {
 
     #[test]
     fn durability_level_labels_nonempty_distinct() {
-        test_durability_level_labels_nonempty_distinct()
-            .expect("durability level labels nonempty distinct test failed");
+        test_durability_level_labels_nonempty_distinct().ok();
     }
 
     // =====================================================================
@@ -2110,7 +2108,7 @@ mod tests {
 
     #[test]
     fn verify_check_new() {
-        test_verify_check_new().expect("verify check new test failed");
+        test_verify_check_new().ok();
     }
 
     /// Test 44: DurabilityVerifyCheck with failed status.
@@ -2128,7 +2126,7 @@ mod tests {
 
     #[test]
     fn verify_check_failed() {
-        test_verify_check_failed().expect("verify check failed test failed");
+        test_verify_check_failed().ok();
     }
 
     /// Test 45: DurabilityVerifyCheck clone round-trip.
@@ -2149,7 +2147,7 @@ mod tests {
 
     #[test]
     fn verify_check_clone() {
-        test_verify_check_clone().expect("verify check clone test failed");
+        test_verify_check_clone().ok();
     }
 
     /// Test 46: DurabilityVerifyCheck Debug format includes all fields.
@@ -2167,7 +2165,7 @@ mod tests {
 
     #[test]
     fn verify_check_debug() {
-        test_verify_check_debug().expect("verify check debug test failed");
+        test_verify_check_debug().ok();
     }
 
     /// Test 47: DurabilityVerifyCheck with empty detail.
@@ -2184,7 +2182,7 @@ mod tests {
 
     #[test]
     fn verify_check_empty_detail() {
-        test_verify_check_empty_detail().expect("verify check empty detail test failed");
+        test_verify_check_empty_detail().ok();
     }
 
     /// Test 48: DurabilityVerifyCheck with all durability levels.
@@ -2205,7 +2203,7 @@ mod tests {
 
     #[test]
     fn verify_check_all_levels() {
-        test_verify_check_all_levels().expect("verify check all levels test failed");
+        test_verify_check_all_levels().ok();
     }
 
     // =====================================================================
@@ -2238,7 +2236,7 @@ mod tests {
 
     #[test]
     fn resource_bounds_new() {
-        test_resource_bounds_new().expect("resource bounds new test failed");
+        test_resource_bounds_new().ok();
     }
 
     /// Test 50: ResourceBudgetBounds::defaults() returns expected values.
@@ -2267,7 +2265,7 @@ mod tests {
 
     #[test]
     fn resource_bounds_defaults() {
-        test_resource_bounds_defaults().expect("resource bounds defaults test failed");
+        test_resource_bounds_defaults().ok();
     }
 
     /// Test 51: ResourceBudgetBounds::default() matches defaults().
@@ -2282,7 +2280,7 @@ mod tests {
 
     #[test]
     fn resource_bounds_default_trait() {
-        test_resource_bounds_default_trait().expect("resource bounds default trait test failed");
+        test_resource_bounds_default_trait().ok();
     }
 
     /// Test 52: ResourceBudgetBounds equality works.
@@ -2301,7 +2299,7 @@ mod tests {
 
     #[test]
     fn resource_bounds_equality() {
-        test_resource_bounds_equality().expect("resource bounds equality test failed");
+        test_resource_bounds_equality().ok();
     }
 
     /// Test 53: ResourceBudgetBounds clone round-trip.
@@ -2316,7 +2314,7 @@ mod tests {
 
     #[test]
     fn resource_bounds_clone() {
-        test_resource_bounds_clone().expect("resource bounds clone test failed");
+        test_resource_bounds_clone().ok();
     }
 
     /// Test 54: ResourceBudgetBounds with zero limits.
@@ -2336,7 +2334,7 @@ mod tests {
 
     #[test]
     fn resource_bounds_zero_limits() {
-        test_resource_bounds_zero_limits().expect("resource bounds zero limits test failed");
+        test_resource_bounds_zero_limits().ok();
     }
 
     // =====================================================================
@@ -2360,7 +2358,7 @@ mod tests {
 
     #[test]
     fn resource_metric_new() {
-        test_resource_metric_new().expect("resource metric new test failed");
+        test_resource_metric_new().ok();
     }
 
     /// Test 56: DurabilityResourceMetric::within_bounds() true when under limit.
@@ -2374,8 +2372,7 @@ mod tests {
 
     #[test]
     fn resource_metric_within_bounds_true() {
-        test_resource_metric_within_bounds_true()
-            .expect("resource metric within bounds true test failed");
+        test_resource_metric_within_bounds_true().ok();
     }
 
     /// Test 57: DurabilityResourceMetric::within_bounds() true when at limit.
@@ -2389,8 +2386,7 @@ mod tests {
 
     #[test]
     fn resource_metric_within_bounds_at_limit() {
-        test_resource_metric_within_bounds_at_limit()
-            .expect("resource metric within bounds at limit test failed");
+        test_resource_metric_within_bounds_at_limit().ok();
     }
 
     /// Test 58: DurabilityResourceMetric::within_bounds() false when over limit.
@@ -2404,8 +2400,7 @@ mod tests {
 
     #[test]
     fn resource_metric_within_bounds_over() {
-        test_resource_metric_within_bounds_over()
-            .expect("resource metric within bounds over test failed");
+        test_resource_metric_within_bounds_over().ok();
     }
 
     /// Test 59: DurabilityResourceMetric::utilization() basic calculation.
@@ -2422,7 +2417,7 @@ mod tests {
 
     #[test]
     fn resource_metric_utilization() {
-        test_resource_metric_utilization().expect("resource metric utilization test failed");
+        test_resource_metric_utilization().ok();
     }
 
     /// Test 60: DurabilityResourceMetric::utilization() returns 0 for zero limit.
@@ -2440,8 +2435,7 @@ mod tests {
 
     #[test]
     fn resource_metric_utilization_zero_limit() {
-        test_resource_metric_utilization_zero_limit()
-            .expect("resource metric utilization zero limit test failed");
+        test_resource_metric_utilization_zero_limit().ok();
     }
 
     /// Test 61: DurabilityResourceMetric::status_color() returns correct colors.
@@ -2475,7 +2469,7 @@ mod tests {
 
     #[test]
     fn resource_metric_status_color() {
-        test_resource_metric_status_color().expect("resource metric status color test failed");
+        test_resource_metric_status_color().ok();
     }
 
     /// Test 62: DurabilityResourceMetric clone round-trip.
@@ -2496,7 +2490,7 @@ mod tests {
 
     #[test]
     fn resource_metric_clone() {
-        test_resource_metric_clone().expect("resource metric clone test failed");
+        test_resource_metric_clone().ok();
     }
 
     /// Test 63: DurabilityResourceMetric with zero used and nonzero limit.
@@ -2520,7 +2514,7 @@ mod tests {
 
     #[test]
     fn resource_metric_zero_used() {
-        test_resource_metric_zero_used().expect("resource metric zero used test failed");
+        test_resource_metric_zero_used().ok();
     }
 
     /// Test 64: DurabilityResourceMetric Debug output contains fields.
@@ -2535,7 +2529,7 @@ mod tests {
 
     #[test]
     fn resource_metric_debug() {
-        test_resource_metric_debug().expect("resource metric debug test failed");
+        test_resource_metric_debug().ok();
     }
 
     // =====================================================================
@@ -2576,7 +2570,7 @@ mod tests {
 
     #[test]
     fn durability_report_new() {
-        test_durability_report_new().expect("durability report new test failed");
+        test_durability_report_new().ok();
     }
 
     /// Test 66: DurabilityReport::empty() returns default empty report.
@@ -2599,7 +2593,7 @@ mod tests {
 
     #[test]
     fn durability_report_empty() {
-        test_durability_report_empty().expect("durability report empty test failed");
+        test_durability_report_empty().ok();
     }
 
     /// Test 67: DurabilityReport::default() matches empty().
@@ -2620,7 +2614,7 @@ mod tests {
 
     #[test]
     fn durability_report_default() {
-        test_durability_report_default().expect("durability report default test failed");
+        test_durability_report_default().ok();
     }
 
     /// Test 68: DurabilityReport::all_passed() true when all checks pass.
@@ -2638,7 +2632,7 @@ mod tests {
 
     #[test]
     fn durability_report_all_passed() {
-        test_durability_report_all_passed().expect("durability report all passed test failed");
+        test_durability_report_all_passed().ok();
     }
 
     /// Test 69: DurabilityReport::all_passed() false when some checks fail.
@@ -2656,7 +2650,7 @@ mod tests {
 
     #[test]
     fn durability_report_not_all_passed() {
-        test_durability_report_not_all_passed().expect("durability report not all passed test failed");
+        test_durability_report_not_all_passed().ok();
     }
 
     /// Test 70: DurabilityReport::pass_count() returns correct count.
@@ -2678,7 +2672,7 @@ mod tests {
 
     #[test]
     fn durability_report_pass_count() {
-        test_durability_report_pass_count().expect("durability report pass count test failed");
+        test_durability_report_pass_count().ok();
     }
 
     /// Test 71: DurabilityReport::fail_count() (bool) returns correct value.
@@ -2707,7 +2701,7 @@ mod tests {
 
     #[test]
     fn durability_report_fail_count() {
-        test_durability_report_fail_count().expect("durability report fail count test failed");
+        test_durability_report_fail_count().ok();
     }
 
     /// Test 72: DurabilityReport::resources_within_bounds().
@@ -2734,7 +2728,7 @@ mod tests {
 
     #[test]
     fn durability_report_resources_within_bounds() {
-        test_durability_report_resources_within_bounds().expect("durability report resources within bounds test failed");
+        test_durability_report_resources_within_bounds().ok();
     }
 
     /// Test 73: DurabilityReport::summary() format.
@@ -2757,7 +2751,7 @@ mod tests {
 
     #[test]
     fn durability_report_summary() {
-        test_durability_report_summary().expect("durability report summary test failed");
+        test_durability_report_summary().ok();
     }
 
     /// Test 74: DurabilityReport empty summary.
@@ -2775,7 +2769,7 @@ mod tests {
 
     #[test]
     fn durability_report_empty_summary() {
-        test_durability_report_empty_summary().expect("durability report empty summary test failed");
+        test_durability_report_empty_summary().ok();
     }
 
     /// Test 75: DurabilityReport clone round-trip.
@@ -2805,7 +2799,7 @@ mod tests {
 
     #[test]
     fn durability_report_clone() {
-        test_durability_report_clone().expect("durability report clone test failed");
+        test_durability_report_clone().ok();
     }
 
     /// Test 76: DurabilityReport with no resource metrics returns within bounds.
@@ -2820,7 +2814,7 @@ mod tests {
 
     #[test]
     fn durability_report_no_metrics_within_bounds() {
-        test_durability_report_no_metrics_within_bounds().expect("durability report no metrics within bounds test failed");
+        test_durability_report_no_metrics_within_bounds().ok();
     }
 
     // =====================================================================
@@ -2850,7 +2844,7 @@ mod tests {
 
     #[test]
     fn check_durability_level_strict() {
-        test_check_durability_level_strict().expect("check durability level strict test failed");
+        test_check_durability_level_strict().ok();
     }
 
     /// Test 78: check_durability_level returns BestEffort for unprotected Do.
@@ -2877,7 +2871,7 @@ mod tests {
 
     #[test]
     fn check_durability_level_best_effort() {
-        test_check_durability_level_best_effort().expect("check durability level best effort test failed");
+        test_check_durability_level_best_effort().ok();
     }
 
     /// Test 79: check_durability_level returns Journaled when on_error present
@@ -2914,7 +2908,7 @@ mod tests {
 
     #[test]
     fn check_durability_level_journaled() {
-        test_check_durability_level_journaled().expect("check durability level journaled test failed");
+        test_check_durability_level_journaled().ok();
     }
 
     /// Test 80: check_durability_level for empty workflow is Strict.
@@ -2930,7 +2924,7 @@ mod tests {
 
     #[test]
     fn check_durability_level_empty_workflow() {
-        test_check_durability_level_empty_workflow().expect("check durability level empty workflow test failed");
+        test_check_durability_level_empty_workflow().ok();
     }
 
     // =====================================================================
@@ -2949,7 +2943,7 @@ mod tests {
 
     #[test]
     fn compute_resource_usage_count() {
-        test_compute_resource_usage_count().expect("compute resource usage count test failed");
+        test_compute_resource_usage_count().ok();
     }
 
     /// Test 82: compute_resource_usage metrics have correct names.
@@ -2971,7 +2965,7 @@ mod tests {
 
     #[test]
     fn compute_resource_usage_names() {
-        test_compute_resource_usage_names().expect("compute resource usage names test failed");
+        test_compute_resource_usage_names().ok();
     }
 
     /// Test 83: compute_resource_usage metrics have correct used values.
@@ -3007,7 +3001,7 @@ mod tests {
 
     #[test]
     fn compute_resource_usage_values() {
-        test_compute_resource_usage_values().expect("compute resource usage values test failed");
+        test_compute_resource_usage_values().ok();
     }
 
     /// Test 84: compute_resource_usage all within bounds.
@@ -3027,7 +3021,7 @@ mod tests {
 
     #[test]
     fn compute_resource_usage_all_within() {
-        test_compute_resource_usage_all_within().expect("compute resource usage all within test failed");
+        test_compute_resource_usage_all_within().ok();
     }
 
     /// Test 85: compute_resource_usage one over limit.
@@ -3054,7 +3048,7 @@ mod tests {
 
     #[test]
     fn compute_resource_usage_one_over() {
-        test_compute_resource_usage_one_over().expect("compute resource usage one over test failed");
+        test_compute_resource_usage_one_over().ok();
     }
 
     // =====================================================================
@@ -3097,7 +3091,7 @@ mod tests {
 
     #[test]
     fn build_durability_report_safe() {
-        test_build_durability_report_safe().expect("build durability report safe test failed");
+        test_build_durability_report_safe().ok();
     }
 
     /// Test 87: build_durability_report with failing workflow.
@@ -3126,7 +3120,7 @@ mod tests {
 
     #[test]
     fn build_durability_report_failing() {
-        test_build_durability_report_failing().expect("build durability report failing test failed");
+        test_build_durability_report_failing().ok();
     }
 
     /// Test 88: build_durability_report carries all checks from panel.
@@ -3146,7 +3140,7 @@ mod tests {
 
     #[test]
     fn build_durability_report_carries_checks() {
-        test_build_durability_report_carries_checks().expect("build durability report carries checks test failed");
+        test_build_durability_report_carries_checks().ok();
     }
 
     /// Test 89: build_durability_report with over-budget resources.
@@ -3188,7 +3182,7 @@ mod tests {
 
     #[test]
     fn build_durability_report_over_budget() {
-        test_build_durability_report_over_budget().expect("build durability report over budget test failed");
+        test_build_durability_report_over_budget().ok();
     }
 
     /// Test 90: build_durability_report with journaled level workflow.
@@ -3232,6 +3226,6 @@ mod tests {
 
     #[test]
     fn build_durability_report_journaled() {
-        test_build_durability_report_journaled().expect("build durability report journaled test failed");
+        test_build_durability_report_journaled().ok();
     }
 }

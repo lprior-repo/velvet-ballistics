@@ -298,7 +298,7 @@ mod tests {
                 assert!(evts.is_empty(), "no events should produce empty response");
             }
             other => {
-                unreachable!("expected Events, got {other:?}");
+                assert!(false, "expected Events, got {other:?}");
             }
         }
     }
@@ -313,15 +313,11 @@ mod tests {
         match response {
             IpcResponse::Events { events: evts } => {
                 assert_eq!(evts.len(), 2);
-                // SAFETY: length assertion above guarantees indices 0 and 1 are valid
-                #[allow(clippy::indexing_slicing)]
-                {
-                    assert_eq!(evts[0].sequence, 0);
-                    assert_eq!(evts[1].sequence, 1);
-                }
+                assert_eq!(evts[0].sequence, 0);
+                assert_eq!(evts[1].sequence, 1);
             }
             other => {
-                unreachable!("expected Events, got {other:?}");
+                assert!(false, "expected Events, got {other:?}");
             }
         }
     }
@@ -337,15 +333,11 @@ mod tests {
         match response {
             IpcResponse::Events { events: evts } => {
                 assert_eq!(evts.len(), 2);
-                // SAFETY: length assertion above guarantees indices 0 and 1 are valid
-                #[allow(clippy::indexing_slicing)]
-                {
-                    assert_eq!(evts[0].sequence, 1);
-                    assert_eq!(evts[1].sequence, 2);
-                }
+                assert_eq!(evts[0].sequence, 1);
+                assert_eq!(evts[1].sequence, 2);
             }
             other => {
-                unreachable!("expected Events, got {other:?}");
+                assert!(false, "expected Events, got {other:?}");
             }
         }
     }
@@ -362,7 +354,7 @@ mod tests {
                 );
             }
             other => {
-                unreachable!("expected Events, got {other:?}");
+                assert!(false, "expected Events, got {other:?}");
             }
         }
     }
@@ -377,20 +369,16 @@ mod tests {
         match response {
             IpcResponse::Events { events: evts } => {
                 assert_eq!(evts.len(), 1);
-                // SAFETY: length assertion above guarantees index 0 is valid
-                #[allow(clippy::indexing_slicing)]
-                {
-                    assert_eq!(
-                        evts[0].kind,
-                        IpcTraceEventKind::StepStarted {
-                            run: run_id(1),
-                            step: StepIdx::new(0),
-                        }
-                    );
-                }
+                assert_eq!(
+                    evts[0].kind,
+                    IpcTraceEventKind::StepStarted {
+                        run: run_id(1),
+                        step: StepIdx::new(0),
+                    }
+                );
             }
             other => {
-                unreachable!("expected Events, got {other:?}");
+                assert!(false, "expected Events, got {other:?}");
             }
         }
     }
@@ -410,17 +398,15 @@ mod tests {
     }
 
     #[test]
-    #[allow(clippy::as_conversions)]
     fn count_response_trace_returns_count_out_of_range_for_exceeding_u32() {
-        // u32::MAX as usize is always safe on supported platforms
-        let response = count_response_trace((u32::MAX as usize).saturating_add(1));
+        let response = count_response_trace(u32::MAX as usize + 1);
         match response {
             IpcResponse::CountOutOfRange { actual, limit } => {
-                assert_eq!(actual, (u32::MAX as usize).saturating_add(1));
+                assert_eq!(actual, u32::MAX as usize + 1);
                 assert_eq!(limit, u32::MAX);
             }
             other => {
-                unreachable!("expected CountOutOfRange, got {other:?}");
+                assert!(false, "expected CountOutOfRange, got {other:?}");
             }
         }
     }

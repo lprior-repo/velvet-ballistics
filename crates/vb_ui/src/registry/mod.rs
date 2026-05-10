@@ -483,6 +483,7 @@ pub fn action_list_row_from_description(desc: &ActionDescriptionView) -> ActionL
 // Tests
 // ---------------------------------------------------------------------------
 
+#[allow(clippy::unwrap_used, clippy::expect_used, clippy::indexing_slicing, clippy::needless_range_loop)]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -644,7 +645,7 @@ mod tests {
         let mut state = ActionRegistryState::default();
 
         let result = select_action(&mut state, &contracts, &granted, 20);
-        assert!(result.is_ok(), "select_action failed: {:?}", result.err());
+        assert!(result.is_ok());
         assert_eq!(state.selected_action_id, Some(20));
         assert!(state.selected_inspector.is_some());
         assert!(state.capability_delta.is_some());

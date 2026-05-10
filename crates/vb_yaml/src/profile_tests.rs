@@ -19,25 +19,6 @@ macro_rules! fail_assert {
     };
 }
 
-/// Generate deeply nested YAML for testing depth limits.
-fn generate_nested_yaml(depth: usize) -> String {
-    let mut yaml = String::from("a:\n");
-    for i in 0..depth {
-        let indent = "  ".repeat(i);
-        yaml.push_str(&format!("{indent}b:\n"));
-    }
-    yaml
-}
-
-/// Generate YAML with many mapping entries under a root key for testing node limits.
-fn generate_many_keys_under_root_yaml(key_count: usize) -> String {
-    let mut yaml = String::from("root:\n");
-    for i in 0..key_count {
-        yaml.push_str(&format!("  key{i}: val{i}\n"));
-    }
-    yaml
-}
-
 #[test]
 fn empty_source_rejected() {
     let result = validate_yaml_profile("");
@@ -113,7 +94,11 @@ fn reject_duplicate_keys_allows_unique() {
 
 #[test]
 fn depth_limit_enforced() {
-    let yaml = generate_nested_yaml(70);
+    let mut yaml = String::from("a:\n");
+    for i in 0..70 {
+        let indent = "  ".repeat(i);
+        yaml.push_str(&format!("{indent}b:\n"));
+    }
     let limits = YamlLimits {
         max_depth: 10,
         ..YamlLimits::default()
@@ -240,7 +225,11 @@ fn true_false_accepted_exact() {
 
 #[test]
 fn depth_limit_exact_values() {
-    let yaml = generate_nested_yaml(15);
+    let mut yaml = String::from("a:\n");
+    for i in 0..15 {
+        let indent = "  ".repeat(i);
+        yaml.push_str(&format!("{indent}b:\n"));
+    }
     let limits = YamlLimits {
         max_depth: 10,
         ..YamlLimits::default()
@@ -292,7 +281,10 @@ fn scalar_too_long_exact_values() {
 
 #[test]
 fn node_limit_exceeded_exact_values() {
-    let yaml = generate_many_keys_under_root_yaml(20);
+    let mut yaml = String::from("root:\n");
+    for i in 0..20 {
+        yaml.push_str(&format!("  key{i}: val{i}\n"));
+    }
     let limits = YamlLimits {
         max_nodes: 5,
         ..YamlLimits::default()

@@ -343,7 +343,6 @@ impl WorkflowDigest {
 }
 
 #[cfg(test)]
-#[allow(clippy::panic_in_result_fn, clippy::panic, clippy::as_conversions)]
 mod tests {
     use super::{RunId, SeqNo, SlotIdx, StepIdx, WorkflowId};
 

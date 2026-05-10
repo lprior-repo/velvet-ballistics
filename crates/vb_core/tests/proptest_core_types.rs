@@ -1,5 +1,4 @@
 #![forbid(unsafe_code)]
-#![allow(clippy::identity_op)]
 //! Proptest property tests for core types: FiniteF64, Taint lattice, ValueStore, SlotValue.
 
 use proptest::prelude::*;
@@ -73,27 +72,18 @@ proptest! {
     #[test]
     fn finite_f64_rejects_all_nan_variants(payload in 1u64..0x0040_0000_0000_0000u64) {
         // Construct a NaN by setting the exponent to all-ones and ensuring
-        // a non-zero mantissa.  Test both sign bits without a loop.
-        let nan_bits_0 = 0u64 | 0x7FF0_0000_0000_0000 | (payload & 0x000F_FFFF_FFFF_FFFF);
-        let nan_val_0 = f64::from_bits(nan_bits_0);
-        if nan_val_0.is_nan() {
-            prop_assert_eq!(
-                FiniteF64::new(nan_val_0),
-                Err(CoreError::NonFiniteNumber),
-                "NaN with bits {:#018X} must be rejected",
-                nan_bits_0,
-            );
-        }
-        let nan_bits_1 =
-            (1u64 << 63) | 0x7FF0_0000_0000_0000 | (payload & 0x000F_FFFF_FFFF_FFFF);
-        let nan_val_1 = f64::from_bits(nan_bits_1);
-        if nan_val_1.is_nan() {
-            prop_assert_eq!(
-                FiniteF64::new(nan_val_1),
-                Err(CoreError::NonFiniteNumber),
-                "NaN with bits {:#018X} must be rejected",
-                nan_bits_1,
-            );
+        // a non-zero mantissa.  Test both sign bits.
+        for sign in [0u64, 1u64 << 63] {
+            let nan_bits = sign | 0x7FF0_0000_0000_0000 | (payload & 0x000F_FFFF_FFFF_FFFF);
+            let nan_val = f64::from_bits(nan_bits);
+            if nan_val.is_nan() {
+                prop_assert_eq!(
+                    FiniteF64::new(nan_val),
+                    Err(CoreError::NonFiniteNumber),
+                    "NaN with bits {:#018X} must be rejected",
+                    nan_bits,
+                );
+            }
         }
     }
 

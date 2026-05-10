@@ -850,9 +850,11 @@ mod tests {
         let fanout_metric = worst
             .iter()
             .find(|m| m.label == "do_node_count / max_fanout");
-        assert!(fanout_metric.is_some(), "fanout metric should be present");
-        let m = fanout_metric.expect("fanout metric must exist after assert");
-        assert_eq!(m.status, ResourceStatus::ExceedsLimit);
+        assert!(fanout_metric.is_some());
+        let fm = fanout_metric.ok_or("missing").ok();
+        if let Some(m) = fm {
+            assert_eq!(m.status, ResourceStatus::ExceedsLimit);
+        }
     }
 
     #[test]

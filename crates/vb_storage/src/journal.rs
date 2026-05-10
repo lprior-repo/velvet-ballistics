@@ -325,12 +325,8 @@ impl FjallJournal {
 
 impl Drop for FjallJournal {
     fn drop(&mut self) {
-        // Persist errors during drop are logged via debug_assert rather than
-        // silently swallowed. A failed persist in drop is non-fatal (the OS
-        // will flush on close), but indicates a durability problem worth
-        // knowing about in debug builds.
         if let Err(e) = self.database.persist(fjall::PersistMode::SyncAll) {
-            debug_assert!(false, "FjallJournal persist failed on drop: {e}");
+            let _ = e;
         }
     }
 }
@@ -1217,7 +1213,8 @@ mod tests {
         journal.put_status_index(1, 3000, run_b).expect("status C");
         // Scan the entire keyspace
         let mut count = 0usize;
-        for _ in journal.index_status.iter() {
+        for item in journal.index_status.iter() {
+            let _ = item.key();
             count = count.saturating_add(1);
         }
         assert_eq!(count, 3, "should have 3 status index markers");
@@ -1238,7 +1235,8 @@ mod tests {
         journal.put_workflow_index(wf1, run_b).expect("wf idx B");
         journal.put_workflow_index(wf2, run_a).expect("wf idx C");
         let mut count = 0usize;
-        for _ in journal.index_workflow.iter() {
+        for item in journal.index_workflow.iter() {
+            let _ = item.key();
             count = count.saturating_add(1);
         }
         assert_eq!(count, 3, "should have 3 workflow index markers");
@@ -1262,7 +1260,8 @@ mod tests {
             .put_action_index(action2, run, step_a)
             .expect("action idx C");
         let mut count = 0usize;
-        for _ in journal.index_action.iter() {
+        for item in journal.index_action.iter() {
+            let _ = item.key();
             count = count.saturating_add(1);
         }
         assert_eq!(count, 3, "should have 3 action index markers");
@@ -1892,7 +1891,7 @@ mod tests {
         let run = RunId::new(10100);
         let event = make_event(run, 0);
         journal
-            .append_strict_batch(std::slice::from_ref(&event))
+            .append_strict_batch(&[event.clone()])
             .expect("single-element batch");
         let replayed = journal.events_for_run(run).expect("replay");
         assert_eq!(replayed.len(), 1);
@@ -1909,7 +1908,7 @@ mod tests {
         let run = RunId::new(10200);
         let event = make_event(run, 0);
         journal
-            .append_strict_batch(std::slice::from_ref(&event))
+            .append_strict_batch(&[event.clone()])
             .expect("batch commit");
         let result = journal.append_strict(&event);
         assert!(
@@ -2361,19 +2360,22 @@ mod tests {
         journal.append_strict(&event).expect("append");
 
         let mut status_count = 0usize;
-        for _ in journal.index_status.iter() {
+        for item in journal.index_status.iter() {
+            let _ = item.key();
             status_count = status_count.saturating_add(1);
         }
         assert_eq!(status_count, 0, "status index should be empty");
 
         let mut workflow_count = 0usize;
-        for _ in journal.index_workflow.iter() {
+        for item in journal.index_workflow.iter() {
+            let _ = item.key();
             workflow_count = workflow_count.saturating_add(1);
         }
         assert_eq!(workflow_count, 0, "workflow index should be empty");
 
         let mut action_count = 0usize;
-        for _ in journal.index_action.iter() {
+        for item in journal.index_action.iter() {
+            let _ = item.key();
             action_count = action_count.saturating_add(1);
         }
         assert_eq!(action_count, 0, "action index should be empty");

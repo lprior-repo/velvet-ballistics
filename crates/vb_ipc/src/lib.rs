@@ -184,7 +184,7 @@ impl IpcFrameHeader {
         let magic = cursor
             .read_u32::<LittleEndian>()
             .map_err(|_| IpcError::HeaderDecodeFailed)?;
-        if magic == /* ~ changed by cargo-mutants ~ */ IPC_MAGIC {
+        if magic != IPC_MAGIC {
             return Err(IpcError::InvalidMagic { actual: magic });
         }
 

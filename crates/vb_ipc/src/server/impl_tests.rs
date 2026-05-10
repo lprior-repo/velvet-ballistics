@@ -48,7 +48,10 @@ fn build_frame(command: IpcCommand, correlation: u64, payload_bytes: &[u8]) -> V
         command,
         0,
         correlation,
-        u32::try_from(payload_bytes.len()).unwrap_or_default(),
+        match u32::try_from(payload_bytes.len()) {
+            Ok(v) => v,
+            Err(_) => 0,
+        },
     );
     let encoded = header.encode().expect("header should encode");
     let mut frame = encoded.to_vec();
@@ -56,23 +59,11 @@ fn build_frame(command: IpcCommand, correlation: u64, payload_bytes: &[u8]) -> V
     frame
 }
 
-/// Reads exactly `n` bytes from the stream, polling with a bounded retry limit.
-/// Uses `poll_read` via the mio (or os) polling mechanism through the `Read` trait's
-/// non-blocking semantics. Bounded to `MAX_READ_ATTEMPTS` to enforce the no-loop rule.
+/// Reads exactly `n` bytes from the stream with a short timeout.
 fn read_exact_timeout(stream: &mut dyn Read, n: usize) -> Result<Vec<u8>, std::io::Error> {
-    const MAX_READ_ATTEMPTS: usize = 256;
     let mut buf = vec![0u8; n];
     let mut read_total = 0usize;
-    let mut attempts = 0usize;
     while read_total < n {
-        if attempts >= MAX_READ_ATTEMPTS {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::TimedOut,
-                "read timeout: max attempts reached",
-            ));
-        }
-        // SAFETY: `read_total < n` is enforced by the loop condition
-        #[allow(clippy::indexing_slicing)]
         match stream.read(&mut buf[read_total..]) {
             Ok(0) => {
                 return Err(std::io::Error::new(
@@ -80,12 +71,9 @@ fn read_exact_timeout(stream: &mut dyn Read, n: usize) -> Result<Vec<u8>, std::i
                     "eof",
                 ));
             }
-            Ok(count) => {
-                read_total = read_total.saturating_add(count);
-                attempts = 0;
-            }
+            Ok(count) => read_total = read_total.saturating_add(count),
             Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
-                attempts = attempts.saturating_add(1);
+                std::thread::sleep(Duration::from_millis(1));
             }
             Err(e) => return Err(e),
         }
@@ -233,7 +221,8 @@ fn server_processes_health_command_from_client() {
     let magic = u32::from_le_bytes(
         response_header
             .get(..4)
-            .and_then(|s| <[u8; 4]>::try_from(s).ok())
+            .map(|s| <[u8; 4]>::try_from(s).ok())
+            .flatten()
             .unwrap_or([0; 4]),
     );
     assert_eq!(magic, IPC_MAGIC, "response should have valid magic");
@@ -242,7 +231,8 @@ fn server_processes_health_command_from_client() {
     let payload_len = u32::from_le_bytes(
         response_header
             .get(20..24)
-            .and_then(|s| <[u8; 4]>::try_from(s).ok())
+            .map(|s| <[u8; 4]>::try_from(s).ok())
+            .flatten()
             .unwrap_or([0; 4]),
     );
 
@@ -259,10 +249,10 @@ fn server_processes_health_command_from_client() {
         match decoded {
             Ok(IpcResponse::Healthy) => {}
             Ok(other) => {
-                unreachable!("expected Healthy response, got {other:?}");
+                assert!(false, "expected Healthy response, got {other:?}");
             }
             Err(e) => {
-                unreachable!("response payload decode failed: {e}");
+                assert!(false, "response payload decode failed: {e}");
             }
         }
     }
@@ -337,7 +327,8 @@ fn server_responds_with_error_for_invalid_magic() {
     let payload_len = u32::from_le_bytes(
         response_header
             .get(20..24)
-            .and_then(|s| <[u8; 4]>::try_from(s).ok())
+            .map(|s| <[u8; 4]>::try_from(s).ok())
+            .flatten()
             .unwrap_or([0; 4]),
     );
     let payload_len_usize = match usize::try_from(payload_len) {
@@ -360,10 +351,10 @@ fn server_responds_with_error_for_invalid_magic() {
                 );
             }
             Ok(other) => {
-                unreachable!("expected FrameError, got {other:?}");
+                assert!(false, "expected FrameError, got {other:?}");
             }
             Err(e) => {
-                unreachable!("error response decode failed: {e}");
+                assert!(false, "error response decode failed: {e}");
             }
         }
     }
@@ -412,7 +403,8 @@ fn server_responds_with_error_for_unsupported_version() {
     let payload_len = u32::from_le_bytes(
         response_header
             .get(20..24)
-            .and_then(|s| <[u8; 4]>::try_from(s).ok())
+            .map(|s| <[u8; 4]>::try_from(s).ok())
+            .flatten()
             .unwrap_or([0; 4]),
     );
     let payload_len_usize = match usize::try_from(payload_len) {
@@ -435,10 +427,10 @@ fn server_responds_with_error_for_unsupported_version() {
                 );
             }
             Ok(other) => {
-                unreachable!("expected FrameError, got {other:?}");
+                assert!(false, "expected FrameError, got {other:?}");
             }
             Err(e) => {
-                unreachable!("error response decode failed: {e}");
+                assert!(false, "error response decode failed: {e}");
             }
         }
     }
@@ -458,15 +450,11 @@ fn server_accepts_multiple_clients() {
     let client3 = make_client(&path);
 
     // Accept all three clients.
-    server
-        .poll_once(&mut runtime, Some(Duration::from_millis(100)))
-        .expect("poll should succeed");
-    server
-        .poll_once(&mut runtime, Some(Duration::from_millis(100)))
-        .expect("poll should succeed");
-    server
-        .poll_once(&mut runtime, Some(Duration::from_millis(100)))
-        .expect("poll should succeed");
+    for _ in 0..3 {
+        server
+            .poll_once(&mut runtime, Some(Duration::from_millis(100)))
+            .expect("poll should succeed");
+    }
 
     // Verify server still works (all clients connected).
     let result = server.poll_once(&mut runtime, Some(Duration::ZERO));
@@ -544,7 +532,8 @@ fn server_responds_with_error_for_garbage_payload() {
     let payload_len = u32::from_le_bytes(
         response_header
             .get(20..24)
-            .and_then(|s| <[u8; 4]>::try_from(s).ok())
+            .map(|s| <[u8; 4]>::try_from(s).ok())
+            .flatten()
             .unwrap_or([0; 4]),
     );
     let payload_len_usize = match usize::try_from(payload_len) {
@@ -590,46 +579,28 @@ fn server_processes_multiple_commands_from_same_client() {
         .expect("process poll should succeed");
 
     // Read both response headers.
-    let response_header_bytes = read_exact_timeout(&mut client, IPC_HEADER_LEN);
-    assert!(
-        response_header_bytes.is_ok(),
-        "should read response header 1"
-    );
-    let response_header = response_header_bytes.expect("header");
-    let payload_len = u32::from_le_bytes(
-        response_header
-            .get(20..24)
-            .and_then(|s| <[u8; 4]>::try_from(s).ok())
-            .unwrap_or([0; 4]),
-    );
-    let payload_len_usize = match usize::try_from(payload_len) {
-        Ok(v) => v,
-        Err(_) => return,
-    };
-    if payload_len_usize > 0 {
-        let response_payload = read_exact_timeout(&mut client, payload_len_usize);
-        assert!(response_payload.is_ok(), "should read response payload 1");
-    }
-
-    let response_header_bytes = read_exact_timeout(&mut client, IPC_HEADER_LEN);
-    assert!(
-        response_header_bytes.is_ok(),
-        "should read response header 2"
-    );
-    let response_header = response_header_bytes.expect("header");
-    let payload_len = u32::from_le_bytes(
-        response_header
-            .get(20..24)
-            .and_then(|s| <[u8; 4]>::try_from(s).ok())
-            .unwrap_or([0; 4]),
-    );
-    let payload_len_usize = match usize::try_from(payload_len) {
-        Ok(v) => v,
-        Err(_) => return,
-    };
-    if payload_len_usize > 0 {
-        let response_payload = read_exact_timeout(&mut client, payload_len_usize);
-        assert!(response_payload.is_ok(), "should read response payload 2");
+    for i in 1..=2 {
+        let response_header_bytes = read_exact_timeout(&mut client, IPC_HEADER_LEN);
+        assert!(
+            response_header_bytes.is_ok(),
+            "should read response header {i}"
+        );
+        let response_header = response_header_bytes.expect("header");
+        let payload_len = u32::from_le_bytes(
+            response_header
+                .get(20..24)
+                .map(|s| <[u8; 4]>::try_from(s).ok())
+                .flatten()
+                .unwrap_or([0; 4]),
+        );
+        let payload_len_usize = match usize::try_from(payload_len) {
+            Ok(v) => v,
+            Err(_) => return,
+        };
+        if payload_len_usize > 0 {
+            let response_payload = read_exact_timeout(&mut client, payload_len_usize);
+            assert!(response_payload.is_ok(), "should read response payload {i}");
+        }
     }
 }
 
@@ -677,7 +648,8 @@ fn server_responds_with_error_for_nonzero_reserved_field() {
     let payload_len = u32::from_le_bytes(
         response_header
             .get(20..24)
-            .and_then(|s| <[u8; 4]>::try_from(s).ok())
+            .map(|s| <[u8; 4]>::try_from(s).ok())
+            .flatten()
             .unwrap_or([0; 4]),
     );
     let payload_len_usize = match usize::try_from(payload_len) {
@@ -697,10 +669,10 @@ fn server_responds_with_error_for_nonzero_reserved_field() {
                 );
             }
             Ok(other) => {
-                unreachable!("expected FrameError, got {other:?}");
+                assert!(false, "expected FrameError, got {other:?}");
             }
             Err(e) => {
-                unreachable!("error response decode failed: {e}");
+                assert!(false, "error response decode failed: {e}");
             }
         }
     }
@@ -937,11 +909,10 @@ fn workflow_resolver_not_found_is_rejected_by_dispatch() {
             }
             Ok(other) => {
                 // The resolver returned NotFound, so we accept any non-panic response.
-                // Use black_box to acknowledge consumption without asserting a specific variant.
-                std::hint::black_box(other);
+                let _ = other;
             }
             Err(e) => {
-                unreachable!("response payload decode failed: {e}");
+                assert!(false, "response payload decode failed: {e}");
             }
         }
     }
@@ -1281,155 +1252,34 @@ fn sequential_clients_each_get_health_response() {
     let mut server = IpcServer::bind(&path).expect("bind should succeed");
     let mut runtime = make_runtime();
 
-    // Client 0
-    {
+    for i in 0..3u64 {
         let mut client = make_client(&path);
-        server
-            .poll_once(&mut runtime, Some(Duration::from_millis(100)))
-            .expect("accept poll should succeed");
-        let correlation = 0u64.saturating_add(100);
-        let frame = build_frame(IpcCommand::Health, correlation, &[]);
-        client.write_all(&frame).expect("write health frame");
-        client.flush().expect("flush");
-        server
-            .poll_once(&mut runtime, Some(Duration::from_millis(100)))
-            .expect("process poll should succeed");
-        let response_header_bytes = read_exact_timeout(&mut client, IPC_HEADER_LEN);
-        assert!(
-            response_header_bytes.is_ok(),
-            "should read response header for client 0"
-        );
-        let response_header = response_header_bytes.expect("header");
-        let magic = u32::from_le_bytes(
-            response_header
-                .get(..4)
-                .and_then(|s| <[u8; 4]>::try_from(s).ok())
-                .unwrap_or([0; 4]),
-        );
-        assert_eq!(
-            magic, IPC_MAGIC,
-            "response magic should be valid for client 0"
-        );
-        let payload_len = u32::from_le_bytes(
-            response_header
-                .get(20..24)
-                .and_then(|s| <[u8; 4]>::try_from(s).ok())
-                .unwrap_or([0; 4]),
-        );
-        let payload_len_usize = match usize::try_from(payload_len) {
-            Ok(v) => v,
-            Err(_) => {
-                unreachable!("payload_len overflow for client 0");
-            }
-        };
-        if payload_len_usize > 0 {
-            let response_payload = read_exact_timeout(&mut client, payload_len_usize);
-            assert!(
-                response_payload.is_ok(),
-                "should read response payload for client 0"
-            );
-            let payload = response_payload.expect("read payload");
-            let decoded: Result<IpcResponse, _> = postcard::from_bytes(&payload);
-            match decoded {
-                Ok(IpcResponse::Healthy) => {}
-                Ok(other) => {
-                    unreachable!("expected Healthy for client 0, got {other:?}");
-                }
-                Err(e) => {
-                    unreachable!("response decode failed for client 0: {e}");
-                }
-            }
-        }
-        drop(client);
-        server
-            .poll_once(&mut runtime, Some(Duration::from_millis(100)))
-            .expect("disconnect poll should succeed");
-    }
 
-    // Client 1
-    {
-        let mut client = make_client(&path);
+        // Accept the client.
         server
             .poll_once(&mut runtime, Some(Duration::from_millis(100)))
             .expect("accept poll should succeed");
-        let correlation = 1u64.saturating_add(100);
-        let frame = build_frame(IpcCommand::Health, correlation, &[]);
-        client.write_all(&frame).expect("write health frame");
-        client.flush().expect("flush");
-        server
-            .poll_once(&mut runtime, Some(Duration::from_millis(100)))
-            .expect("process poll should succeed");
-        let response_header_bytes = read_exact_timeout(&mut client, IPC_HEADER_LEN);
-        assert!(
-            response_header_bytes.is_ok(),
-            "should read response header for client 1"
-        );
-        let response_header = response_header_bytes.expect("header");
-        let magic = u32::from_le_bytes(
-            response_header
-                .get(..4)
-                .and_then(|s| <[u8; 4]>::try_from(s).ok())
-                .unwrap_or([0; 4]),
-        );
-        assert_eq!(
-            magic, IPC_MAGIC,
-            "response magic should be valid for client 1"
-        );
-        let payload_len = u32::from_le_bytes(
-            response_header
-                .get(20..24)
-                .and_then(|s| <[u8; 4]>::try_from(s).ok())
-                .unwrap_or([0; 4]),
-        );
-        let payload_len_usize = match usize::try_from(payload_len) {
-            Ok(v) => v,
-            Err(_) => {
-                unreachable!("payload_len overflow for client 1");
-            }
-        };
-        if payload_len_usize > 0 {
-            let response_payload = read_exact_timeout(&mut client, payload_len_usize);
-            assert!(
-                response_payload.is_ok(),
-                "should read response payload for client 1"
-            );
-            let payload = response_payload.expect("read payload");
-            let decoded: Result<IpcResponse, _> = postcard::from_bytes(&payload);
-            match decoded {
-                Ok(IpcResponse::Healthy) => {}
-                Ok(other) => {
-                    unreachable!("expected Healthy for client 1, got {other:?}");
-                }
-                Err(e) => {
-                    unreachable!("response decode failed for client 1: {e}");
-                }
-            }
-        }
-        drop(client);
-        server
-            .poll_once(&mut runtime, Some(Duration::from_millis(100)))
-            .expect("disconnect poll should succeed");
-    }
 
-    // Client 2
-    {
-        let mut client = make_client(&path);
-        server
-            .poll_once(&mut runtime, Some(Duration::from_millis(100)))
-            .expect("accept poll should succeed");
-        let correlation = 2u64.saturating_add(100);
+        // Send health frame with correlation = i.
+        let correlation = i.saturating_add(100);
         let frame = build_frame(IpcCommand::Health, correlation, &[]);
         client.write_all(&frame).expect("write health frame");
         client.flush().expect("flush");
+
+        // Process the command.
         server
             .poll_once(&mut runtime, Some(Duration::from_millis(100)))
             .expect("process poll should succeed");
+
+        // Read response.
         let response_header_bytes = read_exact_timeout(&mut client, IPC_HEADER_LEN);
         assert!(
             response_header_bytes.is_ok(),
-            "should read response header for client 2"
+            "should read response header for client {i}"
         );
         let response_header = response_header_bytes.expect("header");
+
+        // Verify magic.
         let magic = u32::from_le_bytes(
             response_header
                 .get(..4)
@@ -1438,8 +1288,10 @@ fn sequential_clients_each_get_health_response() {
         );
         assert_eq!(
             magic, IPC_MAGIC,
-            "response magic should be valid for client 2"
+            "response magic should be valid for client {i}"
         );
+
+        // Read and verify payload.
         let payload_len = u32::from_le_bytes(
             response_header
                 .get(20..24)
@@ -1449,28 +1301,33 @@ fn sequential_clients_each_get_health_response() {
         let payload_len_usize = match usize::try_from(payload_len) {
             Ok(v) => v,
             Err(_) => {
-                unreachable!("payload_len overflow for client 2");
+                assert!(false, "payload_len overflow for client {i}");
+                return;
             }
         };
         if payload_len_usize > 0 {
             let response_payload = read_exact_timeout(&mut client, payload_len_usize);
             assert!(
                 response_payload.is_ok(),
-                "should read response payload for client 2"
+                "should read response payload for client {i}"
             );
             let payload = response_payload.expect("read payload");
             let decoded: Result<IpcResponse, _> = postcard::from_bytes(&payload);
             match decoded {
                 Ok(IpcResponse::Healthy) => {}
                 Ok(other) => {
-                    unreachable!("expected Healthy for client 2, got {other:?}");
+                    assert!(false, "expected Healthy for client {i}, got {other:?}");
                 }
                 Err(e) => {
-                    unreachable!("response decode failed for client 2: {e}");
+                    assert!(false, "response decode failed for client {i}: {e}");
                 }
             }
         }
+
+        // Drop the client to test sequential lifecycle.
         drop(client);
+
+        // Poll to clean up the disconnect.
         server
             .poll_once(&mut runtime, Some(Duration::from_millis(100)))
             .expect("disconnect poll should succeed");

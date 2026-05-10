@@ -296,6 +296,7 @@ fn compute_taint_deltas(before: &[u8], after: &[u8]) -> Vec<TaintDelta> {
 // Tests
 // ---------------------------------------------------------------------------
 
+#[allow(clippy::unwrap_used, clippy::expect_used, clippy::indexing_slicing, clippy::needless_range_loop)]
 #[cfg(test)]
 mod tests {
     use super::*;

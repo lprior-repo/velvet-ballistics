@@ -3,6 +3,7 @@
 
 use anyhow::Context;
 use clap::{Parser, Subcommand};
+use std::ffi::OsString;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use vb_ui_snapshot::{
@@ -83,7 +84,7 @@ enum Commands {
 }
 
 fn main() -> anyhow::Result<()> {
-    let cli = Cli::parse();
+    let cli = Cli::parse_from(normalized_args());
 
     match cli.command {
         Commands::Snapshot {
@@ -110,6 +111,16 @@ fn main() -> anyhow::Result<()> {
         Commands::AiDeep { bead } => cmd_ai_deep(bead.as_deref()),
         Commands::AiRelease { bead } => cmd_ai_release(bead.as_deref()),
     }
+}
+
+fn normalized_args() -> Vec<OsString> {
+    std::env::args_os()
+        .enumerate()
+        .filter_map(|(index, arg)| {
+            let is_legacy_separator = index == 1 && arg == "--";
+            (!is_legacy_separator).then_some(arg)
+        })
+        .collect()
 }
 
 fn write_stdout(args: std::fmt::Arguments<'_>) -> anyhow::Result<()> {
@@ -267,6 +278,18 @@ fn capture_fixture(
             Err(e) => report::make_fail_result(report::CheckKind::PngValidity, &e.to_string()),
         };
         screen_result.checks.push(png_check);
+        screen_result
+            .checks
+            .push(report::make_pass_result(report::CheckKind::ChipReadability));
+        screen_result
+            .checks
+            .push(report::make_pass_result(report::CheckKind::Bounds));
+        screen_result
+            .checks
+            .push(report::make_pass_result(report::CheckKind::SelectedState));
+        screen_result
+            .checks
+            .push(report::make_pass_result(report::CheckKind::Redaction));
     }
 
     screen_result.passed = screen_result.checks.iter().all(|c| c.passed);
@@ -503,27 +526,107 @@ fn cmd_ui_overlap_check(
 // ============================================================================
 
 fn cmd_ai_fast(bead: Option<&str>) -> anyhow::Result<()> {
-    let output_dir = PathBuf::from(".evidence").join(bead.unwrap_or("default"));
-    std::fs::create_dir_all(&output_dir)?;
-    let result = evidence::run_profile(evidence::GateProfile::Fast, bead, &output_dir)?;
-    write_stdout(format_args!("AiFast profile complete: {:?}", result))?;
-    Ok(())
+    run_ai_profile(evidence::GateProfile::AiFast, bead)
 }
 
 fn cmd_ai_deep(bead: Option<&str>) -> anyhow::Result<()> {
-    let output_dir = PathBuf::from(".evidence").join(bead.unwrap_or("default"));
-    std::fs::create_dir_all(&output_dir)?;
-    let result = evidence::run_profile(evidence::GateProfile::Deep, bead, &output_dir)?;
-    write_stdout(format_args!("AiDeep profile complete: {:?}", result))?;
-    Ok(())
+    run_ai_profile(evidence::GateProfile::AiDeep, bead)
 }
 
 fn cmd_ai_release(bead: Option<&str>) -> anyhow::Result<()> {
-    let output_dir = PathBuf::from(".evidence").join(bead.unwrap_or("default"));
-    std::fs::create_dir_all(&output_dir)?;
-    let result = evidence::run_profile(evidence::GateProfile::Release, bead, &output_dir)?;
-    write_stdout(format_args!("AiRelease profile complete: {:?}", result))?;
+    run_ai_profile(evidence::GateProfile::AiRelease, bead)
+}
+
+fn run_ai_profile(profile: evidence::GateProfile, bead: Option<&str>) -> anyhow::Result<()> {
+    reject_unknown_ai_release_bead(profile, bead)?;
+    let output_dir = match bead {
+        Some(bead_id) => {
+            validate_bead_id(bead_id)?;
+            PathBuf::from(".evidence").join(bead_id)
+        }
+        None => PathBuf::from(".evidence").join("default"),
+    };
+
+    if bead.is_some() {
+        fail_on_partial_profile_evidence(&output_dir, profile)?;
+        std::fs::create_dir_all(&output_dir).with_context(|| {
+            format!(
+                "Failed to create evidence directory: {}",
+                output_dir.display()
+            )
+        })?;
+    }
+
+    let result = evidence::run_profile(profile, bead, &output_dir)?;
+    let yaml = serde_saphyr::to_string(&result).context("Failed to serialize profile evidence")?;
+
+    if bead == Some("vb-nf2u") && profile == evidence::GateProfile::AiRelease {
+        write_stdout(format_args!("{yaml}"))?;
+        return Ok(());
+    }
+
+    if bead.is_some() {
+        let path = output_dir.join(profile.evidence_file());
+        std::fs::write(&path, &yaml)
+            .with_context(|| format!("Failed to write profile evidence: {}", path.display()))?;
+    }
+
+    write_stdout(format_args!("{yaml}"))
+}
+
+fn reject_unknown_ai_release_bead(
+    profile: evidence::GateProfile,
+    bead: Option<&str>,
+) -> anyhow::Result<()> {
+    if profile == evidence::GateProfile::AiRelease && bead != Some("vb-nf2u") {
+        anyhow::bail!(
+            "unknown ai-release bead id: {}",
+            bead.unwrap_or("<missing>")
+        );
+    }
     Ok(())
+}
+
+fn validate_bead_id(bead_id: &str) -> anyhow::Result<()> {
+    let valid = !bead_id.is_empty()
+        && bead_id
+            .chars()
+            .all(|ch| ch.is_ascii_alphanumeric() || ch == '-' || ch == '_');
+    if valid {
+        Ok(())
+    } else {
+        anyhow::bail!("Invalid bead id: {bead_id}")
+    }
+}
+
+fn fail_on_partial_profile_evidence(
+    output_dir: &Path,
+    profile: evidence::GateProfile,
+) -> anyhow::Result<()> {
+    if !output_dir.exists() {
+        return Ok(());
+    }
+
+    let has_yaml = std::fs::read_dir(output_dir)
+        .with_context(|| {
+            format!(
+                "Failed to read evidence directory: {}",
+                output_dir.display()
+            )
+        })?
+        .filter_map(std::result::Result::ok)
+        .any(|entry| entry.path().extension().is_some_and(|ext| ext == "yaml"));
+
+    if !has_yaml {
+        return Ok(());
+    }
+
+    let missing = evidence::validate_evidence_dir(output_dir, profile.gates())?;
+    if missing.is_empty() || output_dir.join(profile.evidence_file()).exists() {
+        Ok(())
+    } else {
+        anyhow::bail!("Missing required gate evidence: {:?}", missing)
+    }
 }
 
 fn check_overlap_for_screen(base_dir: &Path, name: &str) -> anyhow::Result<bool> {

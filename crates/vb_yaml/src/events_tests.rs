@@ -59,7 +59,9 @@ fn document_start_is_explicit() {
 fn anchor_id_is_zero_by_default() {
     let yaml = "a: b\n";
     let events = collect_ok!(yaml);
-    assert!(events.iter().all(|e| e.anchor_id() == 0));
+    for event in &events {
+        assert_eq!(event.anchor_id(), 0);
+    }
 }
 
 #[test]

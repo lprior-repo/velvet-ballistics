@@ -866,7 +866,6 @@ mod tests {
     /// SECURITY: Journal event respects max payload limit.
     #[test]
     fn journal_event_respects_max_payload() {
-        #[allow(clippy::as_conversions)]
         let big_value = vec![0xFFu8; MAX_JOURNAL_EVENT_PAYLOAD_BYTES as usize];
         let event = JournalEvent::SlotWrittenEvent {
             run: RunId::new(1),

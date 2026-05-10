@@ -1,7 +1,6 @@
 #![forbid(unsafe_code)]
 //! Bytecode compilation tests.
 
-#![allow(clippy::panic_in_result_fn)]
 mod adversarial;
 
 #[allow(unused_imports, dead_code)]
