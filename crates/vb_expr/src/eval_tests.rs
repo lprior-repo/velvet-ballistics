@@ -4,7 +4,7 @@
 
 #[cfg(test)]
 #[allow(clippy::panic_in_result_fn)]
-mod tests {
+mod eval_unit_tests {
     use crate::eval::{
         eval_binary_op, eval_expr_program, eval_expr_program_with_store, eval_helper,
         eval_helper_with_store, eval_unary_op,
@@ -113,22 +113,54 @@ mod tests {
     }
 
     #[test]
-    fn evaluates_comparison_ops() -> ExprResult<()> {
+    fn evaluates_comparison_ops_lt() -> ExprResult<()> {
         let constants = vec![ConstValue::I64(3), ConstValue::I64(5)];
-        for (op, expected) in [
-            (ExprOp::Lt, true),
-            (ExprOp::Lte, true),
-            (ExprOp::Gt, false),
-            (ExprOp::Gte, false),
-        ] {
-            let program = make_program(vec![
-                ExprOp::LoadConst(ConstIdx::new(0)),
-                ExprOp::LoadConst(ConstIdx::new(1)),
-                op,
-            ])?;
-            let result = eval_with_const(&program, constants.clone())?;
-            assert_eq!(result, SlotValue::Bool(expected), "failed for {op:?}");
-        }
+        let program = make_program(vec![
+            ExprOp::LoadConst(ConstIdx::new(0)),
+            ExprOp::LoadConst(ConstIdx::new(1)),
+            ExprOp::Lt,
+        ])?;
+        let result = eval_with_const(&program, constants)?;
+        assert_eq!(result, SlotValue::Bool(true), "3 < 5 should be true");
+        Ok(())
+    }
+
+    #[test]
+    fn evaluates_comparison_ops_lte() -> ExprResult<()> {
+        let constants = vec![ConstValue::I64(3), ConstValue::I64(5)];
+        let program = make_program(vec![
+            ExprOp::LoadConst(ConstIdx::new(0)),
+            ExprOp::LoadConst(ConstIdx::new(1)),
+            ExprOp::Lte,
+        ])?;
+        let result = eval_with_const(&program, constants)?;
+        assert_eq!(result, SlotValue::Bool(true), "3 <= 5 should be true");
+        Ok(())
+    }
+
+    #[test]
+    fn evaluates_comparison_ops_gt() -> ExprResult<()> {
+        let constants = vec![ConstValue::I64(3), ConstValue::I64(5)];
+        let program = make_program(vec![
+            ExprOp::LoadConst(ConstIdx::new(0)),
+            ExprOp::LoadConst(ConstIdx::new(1)),
+            ExprOp::Gt,
+        ])?;
+        let result = eval_with_const(&program, constants)?;
+        assert_eq!(result, SlotValue::Bool(false), "3 > 5 should be false");
+        Ok(())
+    }
+
+    #[test]
+    fn evaluates_comparison_ops_gte() -> ExprResult<()> {
+        let constants = vec![ConstValue::I64(3), ConstValue::I64(5)];
+        let program = make_program(vec![
+            ExprOp::LoadConst(ConstIdx::new(0)),
+            ExprOp::LoadConst(ConstIdx::new(1)),
+            ExprOp::Gte,
+        ])?;
+        let result = eval_with_const(&program, constants)?;
+        assert_eq!(result, SlotValue::Bool(false), "3 >= 5 should be false");
         Ok(())
     }
 
@@ -325,10 +357,9 @@ mod tests {
 
     #[test]
     fn eval_expr_program_returns_stack_overflow_for_deep_nesting() -> ExprResult<()> {
-        let mut ops = Vec::new();
-        for i in 0..65u16 {
-            ops.push(ExprOp::LoadConst(ConstIdx::new(i)));
-        }
+        let ops: Vec<ExprOp> = (0u16..65)
+            .map(|i| ExprOp::LoadConst(ConstIdx::new(i)))
+            .collect();
         let result = make_program(ops);
         let Err(ExprError::StackOverflow { max }) = result else {
             return Err(ExprError::UnexpectedToken {
@@ -903,8 +934,8 @@ mod tests {
             .list(unique_id)
             .map_err(|_| ExprError::UnexpectedEof)?;
         assert_eq!(items.len(), 2);
-        assert_eq!(items[0], SlotValue::I64(1));
-        assert_eq!(items[1], SlotValue::I64(2));
+        assert_eq!(items.first(), Some(&SlotValue::I64(1)));
+        assert_eq!(items.get(1), Some(&SlotValue::I64(2)));
         Ok(())
     }
 
@@ -934,9 +965,9 @@ mod tests {
             .list(unique_id)
             .map_err(|_| ExprError::UnexpectedEof)?;
         assert_eq!(items.len(), 3);
-        assert_eq!(items[0], SlotValue::I64(3));
-        assert_eq!(items[1], SlotValue::I64(1));
-        assert_eq!(items[2], SlotValue::I64(2));
+        assert_eq!(items.first(), Some(&SlotValue::I64(3)));
+        assert_eq!(items.get(1), Some(&SlotValue::I64(1)));
+        assert_eq!(items.get(2), Some(&SlotValue::I64(2)));
         Ok(())
     }
 
@@ -1190,8 +1221,8 @@ mod tests {
             .list(new_list_id)
             .map_err(|_| ExprError::UnexpectedEof)?;
         assert_eq!(items.len(), 2);
-        assert_eq!(items[0], SlotValue::I64(1));
-        assert_eq!(items[1], SlotValue::I64(2));
+        assert_eq!(items.first(), Some(&SlotValue::I64(1)));
+        assert_eq!(items.get(1), Some(&SlotValue::I64(2)));
         Ok(())
     }
 
@@ -1388,7 +1419,7 @@ mod tests {
     /// silent coercion.
     #[test]
     fn edge_f64_rejected_by_integer_addition() -> ExprResult<()> {
-        let f64_val = vb_core::value::FiniteF64::new(3.14).map_err(|_| ExprError::UnexpectedEof)?;
+        let f64_val = vb_core::value::FiniteF64::new(2.5).map_err(|_| ExprError::UnexpectedEof)?;
         let result = eval_binary_op(BinaryOp::Add, SlotValue::F64(f64_val), SlotValue::I64(1));
         let Err(ExprError::TypeMismatch { expected, found }) = result else {
             return Err(ExprError::UnexpectedToken {

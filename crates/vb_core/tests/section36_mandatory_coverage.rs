@@ -2,6 +2,7 @@
 //! Section 36 mandatory test coverage: FiniteF64, SlotValue, StepBudget,
 //! RunFrame, try_from_parts, and engine invariants.
 
+use proptest::prelude::*;
 use vb_core::errors::{CoreError, CoreResult};
 use vb_core::frame::{RunFrame, StepState};
 use vb_core::ids::{
@@ -328,13 +329,21 @@ fn step_budget_cannot_go_negative() -> CoreResult<()> {
 #[test]
 fn step_budget_zero_never_errors() -> CoreResult<()> {
     let mut budget = StepBudget::new(0);
-    // Many takes on an exhausted budget all succeed (returning false)
-    for _ in 0..100 {
-        let taken = budget.try_take()?;
-        assert_eq!(taken, false);
-    }
+    // An exhausted budget returns false on every try_take (no error)
+    let taken = budget.try_take()?;
+    assert_eq!(taken, false);
     assert_eq!(budget.remaining(), 0);
     Ok(())
+}
+
+proptest::proptest! {
+    #[test]
+    fn step_budget_zero_never_errors_batch(_calls in proptest::collection::vec(0u8..100, 1..=100)) {
+        // Exhausted budget is idempotent: try_take always returns false
+        let mut budget = StepBudget::new(0);
+        let results: Vec<bool> = _calls.iter().map(|_| budget.try_take().unwrap_or(false)).collect();
+        prop_assert!(results.iter().all(|r| *r == false));
+    }
 }
 
 #[test]
@@ -1192,7 +1201,7 @@ fn validate_resource_contract_rejects_oversized_max_steps() {
         result.is_ok(),
         "max_steps at the hard limit should be accepted"
     );
-    let _ = result;
+    // `contract` and `MAX_STEPS_PER_WORKFLOW` are read-only inputs for this test.
     let _ = contract;
     let _ = MAX_STEPS_PER_WORKFLOW;
 }

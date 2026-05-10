@@ -155,7 +155,7 @@ fn eval_expr_taint_workflow(digest: WorkflowDigest) -> Option<CompiledWorkflow> 
     CompiledWorkflow::try_from_parts(parts).ok()
 }
 
-fn test_config() -> vb_runtime::shard::ShardConfig {
+fn shard_config() -> vb_runtime::shard::ShardConfig {
     vb_runtime::shard::ShardConfig {
         command_queue_capacity: 16,
         trace_capacity: 256,
@@ -234,7 +234,7 @@ fn submit_artifact_then_run_succeeds() {
     };
     let mut runtime = vb_runtime::runtime::Runtime::new_with_journal(
         shard_count,
-        test_config(),
+        shard_config(),
         vb_runtime::journal::NoopRuntimeJournal::shared(),
     );
     let run_id = RunId::new(1);
@@ -299,7 +299,7 @@ fn run_without_artifact_under_relaxed_policy() {
     };
     let mut runtime = vb_runtime::runtime::Runtime::new_with_journal(
         shard_count,
-        test_config(),
+        shard_config(),
         vb_runtime::journal::NoopRuntimeJournal::shared(),
     );
     let run_id = RunId::new(2);
@@ -347,8 +347,11 @@ fn evidence_chain_after_execution() {
         return;
     };
     let journal = Arc::new(vb_runtime::journal::VolatileRuntimeJournal::new());
-    let mut runtime =
-        vb_runtime::runtime::Runtime::new_with_journal(shard_count, test_config(), journal.clone());
+    let mut runtime = vb_runtime::runtime::Runtime::new_with_journal(
+        shard_count,
+        shard_config(),
+        journal.clone(),
+    );
     let run_id = RunId::new(3);
 
     // When: submitting and ticking (suspends on action)
@@ -417,32 +420,30 @@ fn evidence_chain_after_execution() {
         }
     };
 
-    let mut found_step_succeeded = false;
-    let mut found_slot_written = false;
-    let mut found_run_submitted = false;
-    let mut found_run_finished = false;
-
-    for event in &events {
-        match event {
-            vb_runtime::journal::RuntimeJournalEvent::RunSubmitted { run, .. }
-                if *run == run_id =>
-            {
-                found_run_submitted = true;
-            }
-            vb_runtime::journal::RuntimeJournalEvent::RunFinished { run, .. } if *run == run_id => {
-                found_run_finished = true;
-            }
-            vb_runtime::journal::RuntimeJournalEvent::StepSucceeded { run, .. }
-                if *run == run_id =>
-            {
-                found_step_succeeded = true;
-            }
-            vb_runtime::journal::RuntimeJournalEvent::SlotWritten { run, .. } if *run == run_id => {
-                found_slot_written = true;
-            }
-            _ => {}
-        }
-    }
+    let found_step_succeeded = events.iter().any(|e| {
+        matches!(
+            e,
+            vb_runtime::journal::RuntimeJournalEvent::StepSucceeded { run, .. } if *run == run_id
+        )
+    });
+    let found_slot_written = events.iter().any(|e| {
+        matches!(
+            e,
+            vb_runtime::journal::RuntimeJournalEvent::SlotWritten { run, .. } if *run == run_id
+        )
+    });
+    let found_run_submitted = events.iter().any(|e| {
+        matches!(
+            e,
+            vb_runtime::journal::RuntimeJournalEvent::RunSubmitted { run, .. } if *run == run_id
+        )
+    });
+    let found_run_finished = events.iter().any(|e| {
+        matches!(
+            e,
+            vb_runtime::journal::RuntimeJournalEvent::RunFinished { run, .. } if *run == run_id
+        )
+    });
 
     assert!(
         found_run_submitted,
@@ -524,7 +525,7 @@ fn capability_check_rejects_unauthorized_action() {
     };
     let mut runtime = vb_runtime::runtime::Runtime::new_with_journal(
         shard_count,
-        test_config(),
+        shard_config(),
         vb_runtime::journal::NoopRuntimeJournal::shared(),
     );
     let run_id = RunId::new(4);

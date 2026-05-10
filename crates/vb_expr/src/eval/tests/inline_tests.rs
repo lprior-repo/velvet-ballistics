@@ -1,6 +1,8 @@
 #![forbid(unsafe_code)]
 //! Inline unit tests for the evaluator.
 
+#![allow(clippy::panic_in_result_fn)]
+
 use vb_core::limits::MAX_EXPRESSION_STACK;
 use vb_core::{ConstIdx, ConstValue, ExprOp, ExprProgram, SlotIdx, SlotValue};
 
@@ -108,22 +110,54 @@ fn evaluates_inequality() -> ExprResult<()> {
 }
 
 #[test]
-fn evaluates_comparison_ops() -> ExprResult<()> {
+fn evaluates_comparison_ops_lt() -> ExprResult<()> {
     let constants = vec![ConstValue::I64(3), ConstValue::I64(5)];
-    for (op, expected) in [
-        (ExprOp::Lt, true),
-        (ExprOp::Lte, true),
-        (ExprOp::Gt, false),
-        (ExprOp::Gte, false),
-    ] {
-        let program = make_program(vec![
-            ExprOp::LoadConst(ConstIdx::new(0)),
-            ExprOp::LoadConst(ConstIdx::new(1)),
-            op,
-        ])?;
-        let result = eval_with_const(&program, constants.clone())?;
-        assert_eq!(result, SlotValue::Bool(expected), "failed for {op:?}");
-    }
+    let program = make_program(vec![
+        ExprOp::LoadConst(ConstIdx::new(0)),
+        ExprOp::LoadConst(ConstIdx::new(1)),
+        ExprOp::Lt,
+    ])?;
+    let result = eval_with_const(&program, constants)?;
+    assert_eq!(result, SlotValue::Bool(true), "3 < 5 should be true");
+    Ok(())
+}
+
+#[test]
+fn evaluates_comparison_ops_lte() -> ExprResult<()> {
+    let constants = vec![ConstValue::I64(3), ConstValue::I64(5)];
+    let program = make_program(vec![
+        ExprOp::LoadConst(ConstIdx::new(0)),
+        ExprOp::LoadConst(ConstIdx::new(1)),
+        ExprOp::Lte,
+    ])?;
+    let result = eval_with_const(&program, constants)?;
+    assert_eq!(result, SlotValue::Bool(true), "3 <= 5 should be true");
+    Ok(())
+}
+
+#[test]
+fn evaluates_comparison_ops_gt() -> ExprResult<()> {
+    let constants = vec![ConstValue::I64(3), ConstValue::I64(5)];
+    let program = make_program(vec![
+        ExprOp::LoadConst(ConstIdx::new(0)),
+        ExprOp::LoadConst(ConstIdx::new(1)),
+        ExprOp::Gt,
+    ])?;
+    let result = eval_with_const(&program, constants)?;
+    assert_eq!(result, SlotValue::Bool(false), "3 > 5 should be false");
+    Ok(())
+}
+
+#[test]
+fn evaluates_comparison_ops_gte() -> ExprResult<()> {
+    let constants = vec![ConstValue::I64(3), ConstValue::I64(5)];
+    let program = make_program(vec![
+        ExprOp::LoadConst(ConstIdx::new(0)),
+        ExprOp::LoadConst(ConstIdx::new(1)),
+        ExprOp::Gte,
+    ])?;
+    let result = eval_with_const(&program, constants)?;
+    assert_eq!(result, SlotValue::Bool(false), "3 >= 5 should be false");
     Ok(())
 }
 
@@ -356,10 +390,8 @@ fn eval_expr_program_returns_stack_overflow_for_deep_nesting() -> ExprResult<()>
     // Given: a program with more than MAX_EXPRESSION_STACK values on stack
     // When: program construction is attempted
     // Then: the result is Err(StackOverflow { max: 64 })
-    let mut ops = Vec::new();
-    for i in 0..65u16 {
-        ops.push(ExprOp::LoadConst(ConstIdx::new(i)));
-    }
+    let ops: Vec<ExprOp> =
+        (0u16..65).map(|i| ExprOp::LoadConst(ConstIdx::new(i))).collect();
     let result = make_program(ops);
     let Err(ExprError::StackOverflow { max }) = result else {
         return Err(ExprError::UnexpectedToken {

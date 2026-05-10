@@ -1350,11 +1350,18 @@ fn step_budget_multi_step_consumption_to_zero() -> Result<(), String> {
 #[test]
 fn step_budget_consumption_returns_true_each_time_until_exhausted() -> Result<(), String> {
     let mut b = StepBudget::new(4);
-    for i in 0..4 {
-        let taken = b.try_take().map_err(|e| e.to_string())?;
-        ensure_equal(taken, true)?;
-        ensure_equal(b.remaining(), 3 - i)?;
-    }
+    let taken0 = b.try_take().map_err(|e| e.to_string())?;
+    ensure_equal(taken0, true)?;
+    ensure_equal(b.remaining(), 3)?;
+    let taken1 = b.try_take().map_err(|e| e.to_string())?;
+    ensure_equal(taken1, true)?;
+    ensure_equal(b.remaining(), 2)?;
+    let taken2 = b.try_take().map_err(|e| e.to_string())?;
+    ensure_equal(taken2, true)?;
+    ensure_equal(b.remaining(), 1)?;
+    let taken3 = b.try_take().map_err(|e| e.to_string())?;
+    ensure_equal(taken3, true)?;
+    ensure_equal(b.remaining(), 0)?;
     let final_take = b.try_take().map_err(|e| e.to_string())?;
     ensure_equal(final_take, false)
 }
@@ -1376,11 +1383,22 @@ fn step_budget_exhaustion_stays_at_zero() -> Result<(), String> {
     let mut b = StepBudget::new(2);
     b.try_take().map_err(|e| e.to_string())?;
     b.try_take().map_err(|e| e.to_string())?;
-    for _ in 0..5 {
-        let taken = b.try_take().map_err(|e| e.to_string())?;
-        ensure_equal(taken, false)?;
-        ensure_equal(b.remaining(), 0)?;
-    }
+    // After exhaustion, remaining stays at 0 and try_take returns false
+    let taken0 = b.try_take().map_err(|e| e.to_string())?;
+    ensure_equal(taken0, false)?;
+    ensure_equal(b.remaining(), 0)?;
+    let taken1 = b.try_take().map_err(|e| e.to_string())?;
+    ensure_equal(taken1, false)?;
+    ensure_equal(b.remaining(), 0)?;
+    let taken2 = b.try_take().map_err(|e| e.to_string())?;
+    ensure_equal(taken2, false)?;
+    ensure_equal(b.remaining(), 0)?;
+    let taken3 = b.try_take().map_err(|e| e.to_string())?;
+    ensure_equal(taken3, false)?;
+    ensure_equal(b.remaining(), 0)?;
+    let taken4 = b.try_take().map_err(|e| e.to_string())?;
+    ensure_equal(taken4, false)?;
+    ensure_equal(b.remaining(), 0)?;
     Ok(())
 }
 

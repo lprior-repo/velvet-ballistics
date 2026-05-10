@@ -485,7 +485,10 @@ mod tests {
         // Contract at index 0 has id=0, but we request id=99 at index 99
         let contracts = vec![make_contract(0)];
         let result = resolve_contract(ActionId::new(99), &contracts);
-        assert!(result.is_err());
+        assert!(
+            matches!(result, Err(RuntimeEngineError::Action(ActionError::UnknownAction { .. }))),
+            "resolve_contract should return UnknownAction for out-of-bounds action id"
+        );
     }
 
     #[test]
@@ -570,8 +573,7 @@ mod tests {
             RetryPolicy::NEVER,
         );
 
-        assert!(result.is_err());
-        let err = result.unwrap_err();
+        let err = result.expect_err("execute_do should fail when capability is not granted");
         assert!(matches!(
             err,
             RuntimeEngineError::Core(vb_core::errors::EngineError::CapabilityDenied { .. })

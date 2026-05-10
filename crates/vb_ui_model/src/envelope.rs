@@ -196,29 +196,22 @@ mod tests {
     #[test]
     fn schema_version_new_accepts_valid_value() {
         let result = SchemaVersion::new(1);
-        let value = match result {
-            Ok(v) => v,
-            Err(e) => panic!("Expected Ok but got: {:?}", e),
-        };
-        assert_eq!(value.get(), 1);
+        assert_eq!(result, Ok(SchemaVersion(1)));
     }
 
     #[test]
     fn schema_version_new_accepts_max_value() {
         let result = SchemaVersion::new(65535);
-        let value = match result {
-            Ok(v) => v,
-            Err(e) => panic!("Expected Ok but got: {:?}", e),
-        };
-        assert_eq!(value.get(), 65535);
+        assert_eq!(result, Ok(SchemaVersion(65535)));
     }
 
     #[test]
     fn schema_version_new_rejects_zero() {
         let result = SchemaVersion::new(0);
-        assert!(result.is_err());
-        let err = result.err().unwrap();
-        assert_eq!(err, EnvelopeError::InvalidSchemaVersion { value: 0 });
+        assert_eq!(
+            result,
+            Err(EnvelopeError::InvalidSchemaVersion { value: 0 })
+        );
     }
 
     #[test]
@@ -286,13 +279,12 @@ mod tests {
             None,
             Some(payload),
         );
-        let env = match envelope {
-            Ok(v) => v,
-            Err(e) => panic!("Expected Ok but got: {:?}", e),
-        };
-        assert_eq!(env.kind, EnvelopeKind::Success);
-        assert!(env.diagnostic.is_none());
-        assert!(env.payload.is_some());
+        assert!(envelope.is_ok());
+        if let Ok(env) = &envelope {
+            assert_eq!(env.kind, EnvelopeKind::Success);
+            assert!(env.diagnostic.is_none());
+            assert!(env.payload.is_some());
+        }
     }
 
     #[test]
@@ -306,9 +298,7 @@ mod tests {
             None,
             None,
         );
-        assert!(result.is_err());
-        let err = result.err().unwrap();
-        assert_eq!(err, EnvelopeError::ErrorMustHaveDiagnostic);
+        assert_eq!(result, Err(EnvelopeError::ErrorMustHaveDiagnostic));
     }
 
     #[test]
@@ -338,9 +328,7 @@ mod tests {
             Some(diag),
             None,
         );
-        assert!(result.is_err());
-        let err = result.err().unwrap();
-        assert_eq!(err, EnvelopeError::SuccessCannotHaveDiagnostic);
+        assert_eq!(result, Err(EnvelopeError::SuccessCannotHaveDiagnostic));
     }
 
     #[test]
@@ -356,9 +344,10 @@ mod tests {
             Some(diag),
             Some(payload),
         );
-        assert!(result.is_err());
-        let err = result.err().unwrap();
-        assert_eq!(err, EnvelopeError::DiagnosticAndPayloadMutuallyExclusive);
+        assert_eq!(
+            result,
+            Err(EnvelopeError::DiagnosticAndPayloadMutuallyExclusive)
+        );
     }
 
     #[test]

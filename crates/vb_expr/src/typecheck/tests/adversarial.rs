@@ -1,7 +1,7 @@
 #![forbid(unsafe_code)]
 //! Adversarial typecheck tests.
 
-#![allow(dead_code, unused_imports)]
+#![allow(dead_code, unused_imports, clippy::panic_in_result_fn)]
 
 use crate::ExprError;
 use crate::lexer::lex_expr;
@@ -112,29 +112,83 @@ fn typecheck_expr_allows_not_eq_on_incompatible_types() -> crate::ExprResult<()>
 
 /// BH-TC-001: Typecheck rejects null in all arithmetic operations.
 #[test]
-fn blackhat_tc_001_null_rejected_in_all_arithmetic() -> crate::ExprResult<()> {
-    for op in &["+", "-", "*", "/"] {
-        let source = format!("null {op} 1");
-        let result = check(&source);
-        assert!(
-            matches!(result, Err(ExprError::TypeMismatch { .. })),
-            "BH-TC-001: null {op} 1 should be TypeMismatch"
-        );
-    }
+fn blackhat_tc_001a_null_rejected_in_add() -> crate::ExprResult<()> {
+    let result = check("null + 1");
+    assert!(
+        matches!(result, Err(ExprError::TypeMismatch { .. })),
+        "BH-TC-001: null + 1 should be TypeMismatch"
+    );
+    Ok(())
+}
+
+#[test]
+fn blackhat_tc_001b_null_rejected_in_subtract() -> crate::ExprResult<()> {
+    let result = check("null - 1");
+    assert!(
+        matches!(result, Err(ExprError::TypeMismatch { .. })),
+        "BH-TC-001: null - 1 should be TypeMismatch"
+    );
+    Ok(())
+}
+
+#[test]
+fn blackhat_tc_001c_null_rejected_in_multiply() -> crate::ExprResult<()> {
+    let result = check("null * 1");
+    assert!(
+        matches!(result, Err(ExprError::TypeMismatch { .. })),
+        "BH-TC-001: null * 1 should be TypeMismatch"
+    );
+    Ok(())
+}
+
+#[test]
+fn blackhat_tc_001d_null_rejected_in_divide() -> crate::ExprResult<()> {
+    let result = check("null / 1");
+    assert!(
+        matches!(result, Err(ExprError::TypeMismatch { .. })),
+        "BH-TC-001: null / 1 should be TypeMismatch"
+    );
     Ok(())
 }
 
 /// BH-TC-002: Typecheck rejects null in all comparison operations.
 #[test]
-fn blackhat_tc_002_null_rejected_in_all_comparisons() -> crate::ExprResult<()> {
-    for op in &["<", "<=", ">", ">="] {
-        let source = format!("null {op} 1");
-        let result = check(&source);
-        assert!(
-            matches!(result, Err(ExprError::TypeMismatch { .. })),
-            "BH-TC-002: null {op} 1 should be TypeMismatch"
-        );
-    }
+fn blackhat_tc_002a_null_rejected_in_lt() -> crate::ExprResult<()> {
+    let result = check("null < 1");
+    assert!(
+        matches!(result, Err(ExprError::TypeMismatch { .. })),
+        "BH-TC-002: null < 1 should be TypeMismatch"
+    );
+    Ok(())
+}
+
+#[test]
+fn blackhat_tc_002b_null_rejected_in_lte() -> crate::ExprResult<()> {
+    let result = check("null <= 1");
+    assert!(
+        matches!(result, Err(ExprError::TypeMismatch { .. })),
+        "BH-TC-002: null <= 1 should be TypeMismatch"
+    );
+    Ok(())
+}
+
+#[test]
+fn blackhat_tc_002c_null_rejected_in_gt() -> crate::ExprResult<()> {
+    let result = check("null > 1");
+    assert!(
+        matches!(result, Err(ExprError::TypeMismatch { .. })),
+        "BH-TC-002: null > 1 should be TypeMismatch"
+    );
+    Ok(())
+}
+
+#[test]
+fn blackhat_tc_002d_null_rejected_in_gte() -> crate::ExprResult<()> {
+    let result = check("null >= 1");
+    assert!(
+        matches!(result, Err(ExprError::TypeMismatch { .. })),
+        "BH-TC-002: null >= 1 should be TypeMismatch"
+    );
     Ok(())
 }
 

@@ -1,6 +1,8 @@
 #![forbid(unsafe_code)]
 //! Tests for type_taint module (extracted from type_taint.rs)
 
+#![allow(clippy::unwrap_used, clippy::expect_used)]
+
 use crate::ValidationError;
 use crate::type_taint::{
     InputDecl, ResourceLimits, StepKind, StepTypes, Taint, TypedValue, ValueFact, ValueType,
@@ -2444,8 +2446,8 @@ fn boundary_slot_index_overwritten_to_clean() -> Result<(), String> {
 fn boundary_long_clean_chain_passes() -> Result<(), String> {
     let mut steps = Vec::new();
     steps.push(save_step("s0", TypedValue::Literal(ValueType::Number)));
-    for i in 1..10 {
-        let prev = i - 1;
+    for i in 1usize..10 {
+        let prev = i.saturating_sub(1);
         steps.push(save_step(&format!("s{i}"), TypedValue::Slot(prev)));
     }
     steps.push(finish_step("done", TypedValue::Slot(9)));

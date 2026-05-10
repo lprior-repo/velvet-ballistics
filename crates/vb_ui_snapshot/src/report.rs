@@ -257,12 +257,14 @@ mod tests {
         let yaml = report.to_yaml()?;
         let docs = saphyr::Yaml::load_from_str(&yaml)?;
         let status = docs
-            .iter()
-            .next()
+            .first()
             .and_then(|doc| doc.as_mapping_get("status"))
             .and_then(saphyr::Yaml::as_str);
 
-        assert_eq!(status, Some("fail"));
+        anyhow::ensure!(
+            status == Some("fail"),
+            "expected status 'fail', got {status:?}"
+        );
         Ok(())
     }
 }

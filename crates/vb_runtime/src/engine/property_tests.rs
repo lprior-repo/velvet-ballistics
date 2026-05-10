@@ -420,12 +420,13 @@ mod proptests {
             let mut frame1 = pool.take(run_id1, StepIdx::ZERO).expect("frame available");
 
             // Mark running and write to slots
-            let _ = frame1.mark_running(StepIdx::ZERO);
-            let _ = frame1.mark_succeeded(StepIdx::ZERO);
+            frame1.mark_running(StepIdx::ZERO).expect("mark_running must succeed in test");
+            frame1.mark_succeeded(StepIdx::ZERO).expect("mark_succeeded must succeed in test");
             if slot_count > 0 {
-                let _ = frame1.write_slot(SlotIdx::ZERO, SlotValue::I64(999));
+                frame1.write_slot(SlotIdx::ZERO, SlotValue::I64(999))
+                    .expect("write_slot must succeed in test");
             }
-            let _ = frame1.increment_executed();
+            frame1.increment_executed().expect("increment_executed must succeed in test");
 
             // Release frame back to pool
             pool.release(frame1);
@@ -737,19 +738,26 @@ mod proptests {
             // Set initial state (skip Pending which is default)
             match initial_state {
                 StepState::Running => {
-                    let _ = run.mark_running(StepIdx::ZERO);
+                    run.mark_running(StepIdx::ZERO)
+                        .expect("mark_running must succeed in test");
                 }
                 StepState::Waiting => {
-                    let _ = run.mark_running(StepIdx::ZERO);
-                    let _ = run.mark_waiting(StepIdx::ZERO);
+                    run.mark_running(StepIdx::ZERO)
+                        .expect("mark_running must succeed in test");
+                    run.mark_waiting(StepIdx::ZERO)
+                        .expect("mark_waiting must succeed in test");
                 }
                 StepState::Asking => {
-                    let _ = run.mark_running(StepIdx::ZERO);
-                    let _ = run.mark_asking(StepIdx::ZERO);
+                    run.mark_running(StepIdx::ZERO)
+                        .expect("mark_running must succeed in test");
+                    run.mark_asking(StepIdx::ZERO)
+                        .expect("mark_asking must succeed in test");
                 }
                 StepState::Succeeded => {
-                    let _ = run.mark_running(StepIdx::ZERO);
-                    let _ = run.mark_succeeded(StepIdx::ZERO);
+                    run.mark_running(StepIdx::ZERO)
+                        .expect("mark_running must succeed in test");
+                    run.mark_succeeded(StepIdx::ZERO)
+                        .expect("mark_succeeded must succeed in test");
                 }
                 _ => {}
             }

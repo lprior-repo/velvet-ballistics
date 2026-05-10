@@ -922,7 +922,7 @@ steps:
         return Err("expected parse_ast to fail".to_owned());
     };
     adv_ensure(
-        errors.0.len() >= 1,
+        !errors.0.is_empty(),
         "mapping with bad reference should produce at least one error",
     )
 }

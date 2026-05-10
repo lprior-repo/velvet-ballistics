@@ -1,6 +1,7 @@
 #![forbid(unsafe_code)]
 //! BDD parser tests.
 
+#![allow(clippy::panic_in_result_fn)]
 #[allow(unused_imports)]
 use crate::ExprError;
 use crate::lexer::{BinaryOp, UnaryOp, lex_expr};

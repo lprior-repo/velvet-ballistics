@@ -288,32 +288,57 @@ mod tests {
 
     #[test]
     fn require_boolean_rejects_text() {
-        let result = require_boolean(ValueType::Text);
-        assert!(result.is_err());
+        assert_eq!(
+            require_boolean(ValueType::Text),
+            Err(crate::ValidationError::TypeMismatch {
+                expected: "boolean".to_owned(),
+                found: "text".to_owned(),
+            })
+        );
     }
 
     #[test]
     fn require_boolean_rejects_number() {
-        let result = require_boolean(ValueType::Number);
-        assert!(result.is_err());
+        assert_eq!(
+            require_boolean(ValueType::Number),
+            Err(crate::ValidationError::TypeMismatch {
+                expected: "boolean".to_owned(),
+                found: "number".to_owned(),
+            })
+        );
     }
 
     #[test]
     fn require_boolean_rejects_null() {
-        let result = require_boolean(ValueType::Null);
-        assert!(result.is_err());
+        assert_eq!(
+            require_boolean(ValueType::Null),
+            Err(crate::ValidationError::TypeMismatch {
+                expected: "boolean".to_owned(),
+                found: "null".to_owned(),
+            })
+        );
     }
 
     #[test]
     fn require_boolean_rejects_object() {
-        let result = require_boolean(ValueType::Object);
-        assert!(result.is_err());
+        assert_eq!(
+            require_boolean(ValueType::Object),
+            Err(crate::ValidationError::TypeMismatch {
+                expected: "boolean".to_owned(),
+                found: "object".to_owned(),
+            })
+        );
     }
 
     #[test]
     fn require_boolean_rejects_list() {
-        let result = require_boolean(ValueType::List);
-        assert!(result.is_err());
+        assert_eq!(
+            require_boolean(ValueType::List),
+            Err(crate::ValidationError::TypeMismatch {
+                expected: "boolean".to_owned(),
+                found: "list".to_owned(),
+            })
+        );
     }
 
     // -- resolve_value tests --

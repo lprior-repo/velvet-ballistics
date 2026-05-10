@@ -1186,7 +1186,10 @@ fn phase23_branch_failure_preserves_existing_accumulator_state() {
         Some(output),
     );
     // Then the error is returned (fail-fast)
-    assert!(result.is_err());
+    assert!(
+        matches!(result, Err(vb_core::EngineError::TypeMismatch { .. })),
+        "together_branch should fail when accumulator is not a list, got {result:?}"
+    );
     // And the output slot still holds the value from the last successful branch
     let output_val = *run
         .read_slot(output)

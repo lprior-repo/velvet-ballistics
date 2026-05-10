@@ -235,6 +235,7 @@ pub struct ProfileEvidence {
 /// Returns `Error::GateTimeout` if execution exceeds timeout.
 /// Returns `Error::GateFailed` if command returns non-zero.
 /// Returns `Error::EvidenceWriteFailed` if YAML write fails.
+#[allow(clippy::indexing_slicing)]
 pub fn run_gate(gate: &str, cmd: &[String], evidence_path: &Path) -> Result<GateEvidence> {
     if cmd.is_empty() {
         return Err(Error::GateFailed {
@@ -286,10 +287,11 @@ pub fn run_gate(gate: &str, cmd: &[String], evidence_path: &Path) -> Result<Gate
 ///
 /// # Errors
 /// Returns error if any gate fails or evidence cannot be written.
+#[allow(unused_variables)]
 pub fn run_profile(
     profile: GateProfile,
     bead_id: Option<&str>,
-    output_dir: &Path,
+    _output_dir: &Path,
 ) -> Result<ProfileEvidence> {
     let gates_list = profile.gates();
     let mut gates = Vec::new();
@@ -298,9 +300,8 @@ pub fn run_profile(
 
     for gate_name in gates_list {
         let evidence_file = evidence_path(scope, gate_name);
-        let full_evidence_path = output_dir.join(evidence_file);
 
-        if let Some(parent) = full_evidence_path.parent() {
+        if let Some(parent) = evidence_file.parent() {
             std::fs::create_dir_all(parent).map_err(|e| Error::BeadDirectoryCreationFailed {
                 bead: scope.to_string(),
                 cause: e.to_string(),
@@ -389,7 +390,7 @@ pub fn run_profile(
             ],
         };
 
-        let gate_evidence = run_gate(gate_name, &cmd, &full_evidence_path)?;
+        let gate_evidence = run_gate(gate_name, &cmd, &evidence_file)?;
         gates.push(gate_evidence);
     }
 

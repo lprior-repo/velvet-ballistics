@@ -367,12 +367,12 @@ fn parse_action_list_rejects_trailing_argument() {
 }
 
 #[test]
+#[allow(clippy::panic)]
 fn registered_cli_actions_returns_three_sorted_contracts_without_mutation() {
     let registry = match registered_cli_actions() {
         Ok(registry) => registry,
         Err(error) => {
-            assert!(false, "registered CLI actions should build: {error}");
-            return;
+            panic!("registered CLI actions should build: {error}");
         }
     };
     let before_len = registry.len();
@@ -393,20 +393,19 @@ fn registered_cli_actions_returns_three_sorted_contracts_without_mutation() {
 }
 
 #[test]
+#[allow(clippy::panic)]
 fn registered_cli_action_table_rows_are_exact() {
     let registry = match registered_cli_actions() {
         Ok(registry) => registry,
         Err(error) => {
-            assert!(false, "registered CLI actions should build: {error}");
-            return;
+            panic!("registered CLI actions should build: {error}");
         }
     };
     let rows = action_table_rows(&registry);
 
     assert_eq!(rows.len(), 3);
     let [first, second, third] = rows.as_slice() else {
-        assert!(false, "expected exactly three action table rows: {rows:?}");
-        return;
+        panic!("expected exactly three action table rows: {rows:?}");
     };
     assert_eq!(first.id, 1);
     assert_eq!(first.idempotency, "deterministic_pure");
@@ -432,6 +431,7 @@ fn registered_cli_action_table_rows_are_exact() {
 }
 
 #[test]
+#[allow(clippy::panic_in_result_fn)]
 fn registered_cli_action_inspect_detail_contains_contract_and_rules() -> Result<(), String> {
     let registry = registered_cli_actions()
         .map_err(|error| format!("registered CLI actions should build: {error}"))?;
@@ -814,6 +814,7 @@ fn parse_error_exact_variant_coverage() {
 }
 
 #[test]
+#[allow(clippy::panic)]
 fn input_mapping_error_exact_variant_coverage() {
     let compiled = finish_workflow();
     assert!(compiled.is_some(), "test workflow should compile");
@@ -834,7 +835,7 @@ fn input_mapping_error_exact_variant_coverage() {
                 Err(InputMappingError::SlotCountExceeded)
             );
         } else {
-            assert!(false, "test payload should encode: {encoded:?}");
+            panic!("test payload should encode: {encoded:?}");
         }
     }
 

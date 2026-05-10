@@ -745,38 +745,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "98de4bbd547a563b716d8dfa9aad1cb19bfab00f4fa09a6a4ed21dbcf44ce9c4"
 
 [[package]]
-name = "flow-core"
-version = "0.1.0"
-dependencies = [
- "indexmap",
- "serde",
- "serde_json",
- "smallvec 1.15.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "smol_str",
-]
-
-[[package]]
-name = "flow-editor-makepad"
-version = "0.1.0"
-dependencies = [
- "flow-core",
- "makepad-widgets 2.0.0",
- "serde",
- "serde_json",
- "smol_str",
-]
-
-[[package]]
-name = "flow-step-plugin"
-version = "0.1.0"
-dependencies = [
- "flow-core",
- "serde",
- "serde_json",
- "smol_str",
-]
-
-[[package]]
 name = "flume"
 version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2697,9 +2665,6 @@ name = "smallvec"
 version = "1.15.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "67b1b7a3b5fe4f1376887184045fcf45c69e92af734b7aaddc05fb777b6fbd03"
-dependencies = [
- "serde",
-]
 
 [[package]]
 name = "smallvec"

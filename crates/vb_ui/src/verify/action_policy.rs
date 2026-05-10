@@ -586,13 +586,10 @@ mod tests {
         ];
         // Action 200 is at index 1, not 200.
         let found = find_contract(ActionId::new(200), &contracts);
-        assert!(found.is_some());
-        let found = found.ok_or("expected Some").ok();
-        let contract = found.as_ref().ok_or("expected contract").ok();
-        if let Some(c) = contract {
-            assert_eq!(c.id, ActionId::new(200));
-            assert_eq!(c.timeout_ms, 2000);
-        }
+        assert!(found.is_some(), "find_contract should find action 200");
+        let contract = found.as_ref().expect("contract must exist after assert");
+        assert_eq!(contract.id, ActionId::new(200));
+        assert_eq!(contract.timeout_ms, 2000);
     }
 
     // Test 12: Timeout overflow handling for large u64 timeout values.

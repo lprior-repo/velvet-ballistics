@@ -1043,7 +1043,7 @@ mod tests {
             .ok()
             .expect("must succeed");
         let result = retry_start(&mut frame, &policy, slot);
-        assert!(result.is_ok());
+        let _ = result.expect("retry_start must succeed for initial state write");
         let state = RetryState::read_from_slot(&frame, slot)
             .ok()
             .expect("must read");

@@ -1,6 +1,7 @@
 #![forbid(unsafe_code)]
 //! BDD typecheck tests.
 
+#![allow(clippy::panic_in_result_fn)]
 mod adversarial;
 
 #[allow(unused_imports)]

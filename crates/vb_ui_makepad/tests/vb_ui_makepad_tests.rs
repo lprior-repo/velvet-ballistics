@@ -1,13 +1,14 @@
 #![forbid(unsafe_code)]
+#![allow(clippy::panic, clippy::unwrap_used)]
 
 //! Integration tests for vb_ui_makepad crate.
 //! Tests cover: Error enum, tokens, graph_canvas, graph_node, graph_edge, shell, packet_dot
 
 use vb_ui_makepad::{
-    AnimationTick, AppShell, EdgeRenderInstr, Error, GraphCanvas, GraphNode, NodeBadge,
-    NodeCardRenderInstr, OverlayState, PacketDot, PacketMarkerInstr, Screen, ShellNav,
-    ShellStatusChip, color, graph_canvas::EdgePath, graph_canvas::ViewportRect,
-    graph_edge::EdgeType, layout, packet_dot::PacketDotManager, radius, shadow, space,
+    AppShell, EdgeRenderInstr, Error, GraphCanvas, GraphNode, NodeBadge, NodeCardRenderInstr,
+    OverlayState, PacketDot, PacketMarkerInstr, Screen, ShellNav, ShellStatusChip, color,
+    graph_canvas::EdgePath, graph_canvas::ViewportRect, graph_edge::EdgeType, layout,
+    packet_dot::PacketDotManager, radius, shadow, space,
 };
 
 // =============================================================================
@@ -176,8 +177,9 @@ weight_semibold = 600
 
     #[test]
     fn parse_hex_valid_six_char_hex_returns_correct_rgba() {
-        let result = parse_hex("#FF0000");
-        let rgba = result.expect("should parse valid 6-char hex");
+        let Ok(rgba) = parse_hex("#FF0000") else {
+            panic!("should parse valid 6-char hex")
+        };
         assert!((rgba[0] - 1.0).abs() < 1e-6, "R should be 1.0");
         assert!((rgba[1] - 0.0).abs() < 1e-6, "G should be 0.0");
         assert!((rgba[2] - 0.0).abs() < 1e-6, "B should be 0.0");
@@ -186,8 +188,9 @@ weight_semibold = 600
 
     #[test]
     fn parse_hex_valid_eight_char_hex_with_alpha() {
-        let result = parse_hex("#FF000080");
-        let rgba = result.expect("should parse valid 8-char hex");
+        let Ok(rgba) = parse_hex("#FF000080") else {
+            panic!("should parse valid 8-char hex")
+        };
         assert!((rgba[0] - 1.0).abs() < 1e-6, "R should be 1.0");
         assert!((rgba[1] - 0.0).abs() < 1e-6, "G should be 0.0");
         assert!((rgba[2] - 0.0).abs() < 1e-6, "B should be 0.0");
@@ -197,57 +200,63 @@ weight_semibold = 600
 
     #[test]
     fn parse_hex_no_prefix_returns_same_as_with_prefix() {
-        let with_hash = parse_hex("#FF0000").expect("should parse");
-        let without = parse_hex("FF0000").expect("should parse without #");
+        let Ok(with_hash) = parse_hex("#FF0000") else {
+            panic!("with_hash should parse")
+        };
+        let Ok(without) = parse_hex("FF0000") else {
+            panic!("without should parse")
+        };
         assert_eq!(with_hash, without);
     }
 
     #[test]
     fn parse_hex_lowercase_returns_same_as_uppercase() {
-        let upper = parse_hex("#FF0000").expect("should parse uppercase");
-        let lower = parse_hex("#ff0000").expect("should parse lowercase");
+        let Ok(upper) = parse_hex("#FF0000") else {
+            panic!("upper should parse")
+        };
+        let Ok(lower) = parse_hex("#ff0000") else {
+            panic!("lower should parse")
+        };
         assert_eq!(upper, lower);
     }
 
     #[test]
     fn parse_hex_whitespace_is_trimmed() {
-        let result = parse_hex("  #FF0000  ");
-        let rgba = result.expect("should trim whitespace");
+        let Ok(rgba) = parse_hex("  #FF0000  ") else {
+            panic!("should trim whitespace")
+        };
         assert!((rgba[0] - 1.0).abs() < 1e-6);
     }
 
     #[test]
     fn parse_hex_invalid_char_returns_error() {
         let result = parse_hex("#GG0000");
-        let err = result.expect_err("should return error for invalid char");
-        matches!(err, Error::TokenParseError(msg) if msg.contains("invalid hex"));
+        matches!(result, Err(Error::TokenParseError(msg)) if msg.contains("invalid hex"));
     }
 
     #[test]
     fn parse_hex_wrong_length_three_returns_error() {
         let result = parse_hex("#F00");
-        let err = result.expect_err("should error on 3-char hex");
-        matches!(err, Error::TokenParseError(msg) if msg.contains("invalid hex length"));
+        matches!(result, Err(Error::TokenParseError(msg)) if msg.contains("invalid hex length"));
     }
 
     #[test]
     fn parse_hex_wrong_length_four_returns_error() {
         let result = parse_hex("#FFFF");
-        let err = result.expect_err("should error on 4-char hex");
-        matches!(err, Error::TokenParseError(msg) if msg.contains("invalid hex length"));
+        matches!(result, Err(Error::TokenParseError(msg)) if msg.contains("invalid hex length"));
     }
 
     #[test]
     fn parse_hex_too_short_returns_error() {
         let result = parse_hex("#");
-        let err = result.expect_err("should error on too-short hex");
-        matches!(err, Error::TokenParseError(msg) if msg.contains("hex too short"));
+        matches!(result, Err(Error::TokenParseError(msg)) if msg.contains("hex too short"));
     }
 
     #[test]
     fn parse_hex_green_returns_correct_rgba() {
-        let result = parse_hex("#00FF00");
-        let rgba = result.expect("should parse green");
+        let Ok(rgba) = parse_hex("#00FF00") else {
+            panic!("should parse green")
+        };
         assert!((rgba[0] - 0.0).abs() < 1e-6, "R should be 0.0");
         assert!((rgba[1] - 1.0).abs() < 1e-6, "G should be 1.0");
         assert!((rgba[2] - 0.0).abs() < 1e-6, "B should be 0.0");
@@ -256,8 +265,9 @@ weight_semibold = 600
 
     #[test]
     fn parse_hex_blue_returns_correct_rgba() {
-        let result = parse_hex("#0000FF");
-        let rgba = result.expect("should parse blue");
+        let Ok(rgba) = parse_hex("#0000FF") else {
+            panic!("should parse blue")
+        };
         assert!((rgba[0] - 0.0).abs() < 1e-6, "R should be 0.0");
         assert!((rgba[1] - 0.0).abs() < 1e-6, "G should be 0.0");
         assert!((rgba[2] - 1.0).abs() < 1e-6, "B should be 1.0");
@@ -275,9 +285,7 @@ mod tokens_from_toml_tests {
     #[test]
     fn from_toml_empty_string_returns_invalid_token_error() {
         let result = vb_ui_makepad::tokens::ParsedTokens::from_toml("");
-        assert!(result.is_err());
-        let err = result.unwrap_err();
-        matches!(err, Error::InvalidToken(_));
+        matches!(result, Err(Error::InvalidToken(_)));
     }
 
     #[test]
@@ -287,9 +295,7 @@ mod tokens_from_toml_tests {
 sidebar_width = 246.0
 "#;
         let result = vb_ui_makepad::tokens::ParsedTokens::from_toml(toml);
-        assert!(result.is_err());
-        let err = result.unwrap_err();
-        matches!(err, Error::InvalidToken(msg) if msg.contains("missing color"));
+        matches!(result, Err(Error::InvalidToken(msg)) if msg.contains("missing color"));
     }
 
     #[test]
@@ -300,9 +306,7 @@ background_board = "#FFFFFF"
 [layout]
 "##;
         let result = vb_ui_makepad::tokens::ParsedTokens::from_toml(toml);
-        assert!(result.is_err());
-        let err = result.unwrap_err();
-        matches!(err, Error::InvalidToken(msg) if msg.contains("missing layout"));
+        matches!(result, Err(Error::InvalidToken(msg)) if msg.contains("missing layout"));
     }
 
     #[test]
@@ -325,9 +329,7 @@ size_11 = 11
 weight_regular = 400
 "#;
         let result = vb_ui_makepad::tokens::ParsedTokens::from_toml(toml);
-        assert!(result.is_err());
-        let err = result.unwrap_err();
-        matches!(err, Error::TokenParseError(msg) if msg.contains("not string"));
+        matches!(result, Err(Error::TokenParseError(msg)) if msg.contains("not string"));
     }
 
     #[test]
@@ -349,7 +351,7 @@ running = "#1F7AF5"
 active_cyan = "#19A7CE"
 warning = "#F59E0B"
 failure = "#E5484D"
-taint = "#8B5CE6"
+taint = "#8B5CF6"
 durable = "#14B8A6"
 pending = "#98A2B3"
 
@@ -406,8 +408,9 @@ weight_regular = 400
 weight_medium = 500
 weight_semibold = 600
 "##;
-        let result = vb_ui_makepad::tokens::ParsedTokens::from_toml(toml);
-        let parsed = result.expect("valid toml should parse");
+        let Ok(parsed) = vb_ui_makepad::tokens::ParsedTokens::from_toml(toml) else {
+            panic!("valid toml should parse")
+        };
         assert!((parsed.layout.sidebar_width - 246.0).abs() < 1e-6);
         assert!((parsed.space.px_4 - 4.0).abs() < 1e-6);
     }
@@ -488,8 +491,9 @@ weight_regular = 400
 weight_medium = 500
 weight_semibold = 600
 "##;
-        let result = vb_ui_makepad::tokens::ParsedTokens::from_toml(toml);
-        let parsed = result.expect("integer layout values should parse");
+        let Ok(parsed) = vb_ui_makepad::tokens::ParsedTokens::from_toml(toml) else {
+            panic!("integer layout values should parse")
+        };
         assert!((parsed.layout.sidebar_width - 246.0).abs() < 1e-6);
         assert!((parsed.layout.top_bar_height - 78.0).abs() < 1e-6);
     }
@@ -504,9 +508,9 @@ mod color_constants_tests {
 
     #[test]
     fn color_background_board_returns_valid_rgba() {
-        let rgba = color::background_board();
-        assert_eq!(rgba.len(), 4);
-        assert!(rgba.iter().all(|&v| v >= 0.0 && v <= 1.0));
+        let rgba: [f32; 4] = color::background_board();
+        // array length is guaranteed by type annotation; type-level invariant
+        assert!(rgba.iter().all(|&v| (0.0..=1.0).contains(&v)));
     }
 
     #[test]
@@ -547,8 +551,12 @@ mod layout_constants_tests {
 
     #[test]
     fn layout_graph_canvas_min_dimensions() {
-        assert!(layout::GRAPH_CANVAS_MIN_WIDTH >= 720.0);
-        assert!(layout::GRAPH_CANVAS_MIN_HEIGHT >= 520.0);
+        // These are regression guards on constant values
+        #[allow(clippy::assertions_on_constants)]
+        {
+            assert!(layout::GRAPH_CANVAS_MIN_WIDTH >= 720.0);
+            assert!(layout::GRAPH_CANVAS_MIN_HEIGHT >= 520.0);
+        }
     }
 }
 
@@ -609,10 +617,14 @@ mod space_constants_tests {
 
     #[test]
     fn space_sequence_is_correct() {
-        assert!(space::PX_4 < space::PX_8);
-        assert!(space::PX_8 < space::PX_16);
-        assert!(space::PX_16 < space::PX_32);
-        assert!(space::PX_32 < space::PX_40);
+        // Regression guard on constant ordering
+        #[allow(clippy::assertions_on_constants)]
+        {
+            assert!(space::PX_4 < space::PX_8);
+            assert!(space::PX_8 < space::PX_16);
+            assert!(space::PX_16 < space::PX_32);
+            assert!(space::PX_32 < space::PX_40);
+        }
     }
 }
 
@@ -860,9 +872,9 @@ mod graph_canvas_tests {
     #[test]
     fn graph_canvas_node_layout_position_valid_index() {
         let canvas = make_canvas();
-        let pos = canvas.node_layout_position(0);
-        assert!(pos.is_some());
-        let (x, y) = pos.unwrap();
+        let Some((x, y)) = canvas.node_layout_position(0) else {
+            panic!("should return position for valid index")
+        };
         assert!((x - 100.0).abs() < 1e-6);
         assert!((y - 100.0).abs() < 1e-6);
     }
@@ -1166,8 +1178,10 @@ mod edge_render_instr_tests {
             EdgeType::Normal,
         )
         .with_label("test".into());
-        assert!(instr.label.is_some());
-        assert_eq!(instr.label.unwrap(), "test");
+        let Some(label) = instr.label else {
+            panic!("should have label")
+        };
+        assert_eq!(label, "test");
     }
 }
 
@@ -1287,7 +1301,6 @@ mod packet_dot_tests {
 // =============================================================================
 
 mod animation_tick_tests {
-    use super::*;
     use vb_ui_makepad::AnimationTick;
 
     #[test]
@@ -1346,9 +1359,12 @@ mod packet_dot_manager_tests {
         let mut manager = PacketDotManager::new();
         manager.add_dot("e1".into());
         // Animate enough to finish (1000ms at speed 0.2 = t reaches 0.2 per call)
-        for _ in 0..10 {
-            manager.animate(1000.0);
-        }
+        // 5 calls × 0.2 = 1.0 t value = deactivation threshold
+        manager.animate(1000.0);
+        manager.animate(1000.0);
+        manager.animate(1000.0);
+        manager.animate(1000.0);
+        manager.animate(1000.0);
         assert_eq!(manager.active_count(), 0);
     }
 
@@ -1456,22 +1472,26 @@ mod app_shell_tests {
 
     #[test]
     fn app_shell_new_returns_ok_with_overview_nav() {
-        let shell = AppShell::new();
-        assert!(shell.is_ok());
-        let shell = shell.unwrap();
+        let Ok(shell) = AppShell::new() else {
+            panic!("AppShell::new() should succeed")
+        };
         assert_eq!(shell.active_nav(), ShellNav::Overview);
     }
 
     #[test]
     fn app_shell_set_active_nav() {
-        let mut shell = AppShell::new().unwrap();
+        let Ok(mut shell) = AppShell::new() else {
+            panic!("AppShell::new() should succeed")
+        };
         shell.set_active_nav(ShellNav::WorkflowGraph);
         assert_eq!(shell.active_nav(), ShellNav::WorkflowGraph);
     }
 
     #[test]
     fn app_shell_nav_item_rect_index_0() {
-        let shell = AppShell::new().unwrap();
+        let Ok(shell) = AppShell::new() else {
+            panic!("AppShell::new() should succeed")
+        };
         let rect = shell.nav_item_rect(0);
         assert!((rect.y - 0.0).abs() < 1e-6);
         assert!((rect.height - 56.0).abs() < 1e-6);
@@ -1479,7 +1499,9 @@ mod app_shell_tests {
 
     #[test]
     fn app_shell_nav_item_rect_index_3() {
-        let shell = AppShell::new().unwrap();
+        let Ok(shell) = AppShell::new() else {
+            panic!("AppShell::new() should succeed")
+        };
         let rect = shell.nav_item_rect(3);
         // y = 3 * 56 = 168
         assert!((rect.y - 168.0).abs() < 1e-6);
@@ -1487,7 +1509,9 @@ mod app_shell_tests {
 
     #[test]
     fn app_shell_nav_item_rect_large_index_handled_safely() {
-        let shell = AppShell::new().unwrap();
+        let Ok(shell) = AppShell::new() else {
+            panic!("AppShell::new() should succeed")
+        };
         // Should not panic with large index
         let rect = shell.nav_item_rect(usize::MAX);
         // y will be 0.0 due to cast failure (safe fallback)
@@ -1496,7 +1520,9 @@ mod app_shell_tests {
 
     #[test]
     fn app_shell_topbar_rect() {
-        let shell = AppShell::new().unwrap();
+        let Ok(shell) = AppShell::new() else {
+            panic!("AppShell::new() should succeed")
+        };
         let rect = shell.topbar_rect();
         assert!((rect.x - 246.0).abs() < 1e-6);
         assert!((rect.y - 0.0).abs() < 1e-6);
@@ -1506,7 +1532,9 @@ mod app_shell_tests {
 
     #[test]
     fn app_shell_content_rect() {
-        let shell = AppShell::new().unwrap();
+        let Ok(shell) = AppShell::new() else {
+            panic!("AppShell::new() should succeed")
+        };
         let rect = shell.content_rect();
         assert!((rect.x - 246.0).abs() < 1e-6);
         assert!((rect.y - 78.0).abs() < 1e-6);

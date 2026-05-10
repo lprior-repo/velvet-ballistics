@@ -2,6 +2,7 @@
 //! Gate 8: Accessor path segments are valid symbols.
 
 #![allow(unreachable_pub)]
+#![allow(unexpected_cfgs)]
 
 use crate::{ValidationError, ValidationResult};
 use vb_core::workflow::{AccessorProgram, PathSegment, WorkflowParts};

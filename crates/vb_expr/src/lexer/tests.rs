@@ -1,6 +1,7 @@
 #![forbid(unsafe_code)]
 //! Lexer tests.
 
+#![allow(clippy::panic_in_result_fn)]
 #[allow(unused_imports)]
 use crate::ExprError;
 #[allow(unused_imports)]

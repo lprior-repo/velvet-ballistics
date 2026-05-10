@@ -524,13 +524,15 @@ fn cli_action_list_jsonl_output_has_exact_lines() {
     let lines: Vec<_> = stdout.lines().collect();
     assert_eq!(lines.len(), 1, "JSONL output should be exactly one line");
 
-    let parsed = match serde_json::from_str::<serde_json::Value>(lines[0]) {
+    #[allow(clippy::unwrap_used)]
+    let first_line = lines.first().copied().unwrap();
+    let parsed = match serde_json::from_str::<serde_json::Value>(first_line) {
         Ok(value) => value,
         Err(error) => {
             assert!(
                 forced_assertion_failure(),
                 "action list JSONL should parse: {error}; line={}",
-                lines[0]
+                lines.first().copied().unwrap()
             );
             return;
         }
@@ -553,7 +555,10 @@ fn cli_action_list_jsonl_output_has_exact_lines() {
     );
 
     // Verify first action structure
-    let first = &actions[0];
+    #[allow(clippy::expect_used)]
+    let first = actions
+        .first()
+        .expect("actions should have at least one element");
     assert_eq!(first.get("id"), Some(&serde_json::json!(1)));
     assert_eq!(
         first.get("idempotency"),
@@ -624,21 +629,32 @@ fn cli_action_inspect_json_output_has_full_contract() {
             return;
         }
     };
-    assert_eq!(parsed["success"], serde_json::json!(true));
-    assert_eq!(parsed["action"]["id"], serde_json::json!(2));
+    assert_eq!(parsed.get("success"), Some(&serde_json::json!(true)));
     assert_eq!(
-        parsed["action"]["idempotency"],
-        serde_json::json!("idempotent_external")
+        parsed.get("action").and_then(|a| a.get("id")),
+        Some(&serde_json::json!(2))
     );
     assert_eq!(
-        parsed["action"]["retry_safety"],
-        serde_json::json!("key_required")
+        parsed.get("action").and_then(|a| a.get("idempotency")),
+        Some(&serde_json::json!("idempotent_external"))
     );
     assert_eq!(
-        parsed["action"]["idempotency_rule"],
-        serde_json::json!("external retries require a stable idempotency key")
+        parsed.get("action").and_then(|a| a.get("retry_safety")),
+        Some(&serde_json::json!("key_required"))
     );
-    assert!(parsed["action"]["failure_codes"].is_array());
+    assert_eq!(
+        parsed.get("action").and_then(|a| a.get("idempotency_rule")),
+        Some(&serde_json::json!(
+            "external retries require a stable idempotency key"
+        ))
+    );
+    assert!(
+        parsed
+            .get("action")
+            .and_then(|a| a.get("failure_codes"))
+            .is_some_and(|v| v.is_array()),
+        "action failure_codes should be present and be an array"
+    );
 }
 
 #[test]
@@ -2277,7 +2293,10 @@ fn cli_doctor_json_includes_trim_eligibility_check() {
                 vb_storage::JournalEvent::StepStarted {
                     run,
                     seq: vb_storage::EventSeq::new(i),
-                    step: vb_core::StepIdx::new(i as u16 - 1),
+                    step: vb_core::StepIdx::new({
+                        #[allow(clippy::unwrap_used)]
+                        u16::try_from(i).unwrap() - 1
+                    }),
                 }
             }
         })
@@ -2349,16 +2368,14 @@ fn cli_doctor_json_includes_trim_eligibility_check() {
             return;
         }
     };
-    let trim_check = checks.iter().find(|c| {
-        c.get("check")
-            .and_then(|n| n.as_str())
-            .map_or(false, |n| n == "trim_eligibility")
-    });
+    let trim_check = checks
+        .iter()
+        .find(|c| c.get("check").and_then(|n| n.as_str()) == Some("trim_eligibility"));
     assert!(
         trim_check.is_some(),
         "doctor JSON should include trim_eligibility check: {stdout}"
     );
-    let trim_check = trim_check.unwrap();
+    let trim_check = trim_check.expect("trim check should be found after assertion");
     assert_eq!(trim_check.get("status"), Some(&serde_json::json!("pass")));
     assert_eq!(trim_check.get("total_runs"), Some(&serde_json::json!(1)));
     assert_eq!(trim_check.get("eligible_runs"), Some(&serde_json::json!(1)));
@@ -2484,7 +2501,7 @@ fn cli_doctor_returns_success_for_healthy_journal_with_trim_recommended() {
                 vb_storage::JournalEvent::StepStarted {
                     run,
                     seq: vb_storage::EventSeq::new(i),
-                    step: vb_core::StepIdx::new(i as u16 - 1),
+                    step: vb_core::StepIdx::new(u16::try_from(i).unwrap() - 1),
                 }
             }
         })

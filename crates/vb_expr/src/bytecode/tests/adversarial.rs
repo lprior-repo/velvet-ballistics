@@ -1,7 +1,7 @@
 #![forbid(unsafe_code)]
 //! Adversarial bytecode tests.
 
-#![allow(dead_code, unused_imports)]
+#![allow(dead_code, unused_imports, clippy::panic_in_result_fn)]
 
 use vb_core::{ConstIdx, ConstValue, ExprOp};
 
@@ -123,10 +123,10 @@ fn compile_expr_with_resolver_rejects_text_literal() -> crate::ExprResult<()> {
 
 #[test]
 fn push_constant_returns_overflow_on_max_constants() -> crate::ExprResult<()> {
-    let mut constants: Vec<ConstValue> = Vec::new();
-    for i in 0u16..65_535 {
-        constants.push(ConstValue::I64(i64::from(i)));
-    }
+    let constants: Vec<ConstValue> = (0u16..65_535)
+        .map(|i| ConstValue::I64(i64::from(i)))
+        .collect();
+    let mut constants = constants;
     assert_eq!(constants.len(), 65_535);
     let result = push_constant(ConstValue::I64(0), &mut constants);
     assert!(
@@ -217,10 +217,10 @@ fn blackhat_bc_005_fold_rejects_neg_i64_min() -> crate::ExprResult<()> {
 /// BH-BC-006: Constant pool overflow at max boundary.
 #[test]
 fn blackhat_bc_006_constant_pool_overflow() -> crate::ExprResult<()> {
-    let mut constants: Vec<ConstValue> = Vec::new();
-    for i in 0u16..65_535 {
-        constants.push(ConstValue::I64(i64::from(i)));
-    }
+    let constants: Vec<ConstValue> = (0u16..65_535)
+        .map(|i| ConstValue::I64(i64::from(i)))
+        .collect();
+    let mut constants = constants;
     let r = push_constant(ConstValue::I64(0), &mut constants);
     assert!(
         matches!(r, Err(crate::ExprError::ConstantPoolOverflow)),

@@ -607,7 +607,8 @@ fn execute_do_without_contract_returns_valid_ticket_for_any_action() {
         Err(_) => return,
     };
     // Input slot must be initialized with clean taint.
-    let _ = run.write_slot(SlotIdx::new(0), vb_core::SlotValue::I64(0));
+    run.write_slot(SlotIdx::new(0), vb_core::SlotValue::I64(0))
+        .expect("write_slot must succeed: slot is valid and uninitialized in test");
     let result = execute_do_without_contract(
         &run,
         StepIdx::new(3),
@@ -1176,7 +1177,8 @@ fn bh_drive_evidence_step_succeeded_not_emitted_for_awaiting_action() {
         Err(_) => return,
     };
     // Input slot must be initialized with clean taint.
-    let _ = run.write_slot(SlotIdx::new(0), SlotValue::I64(0));
+    run.write_slot(SlotIdx::new(0), SlotValue::I64(0))
+        .expect("write_slot must succeed: slot is valid and uninitialized in test");
     let mut store = ValueStore::new();
     let mut budget = vb_core::engine::StepBudget::new(10);
     let mut evidence = EvidenceCollector::new();
@@ -1890,7 +1892,8 @@ mod blackhat_engine {
         };
         let wf = make_workflow(vec![node], 4);
         let mut run = make_run(4, 2);
-        let _ = run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(42), Taint::Secret);
+        run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(42), Taint::Secret)
+            .expect("write_slot_with_taint must succeed: slot is valid in test");
         let mut store = ValueStore::new();
         let mut cs = CollectStates::new();
         let n = match wf.node(StepIdx::ZERO) {
@@ -1929,7 +1932,8 @@ mod blackhat_engine {
         };
         let wf = make_workflow(vec![node], 4);
         let mut run = make_run(4, 2);
-        let _ = run.write_slot(SlotIdx::new(0), SlotValue::I64(42));
+        run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(42), Taint::Secret)
+            .expect("write_slot_with_taint must succeed: slot is valid in test");
         let mut store = ValueStore::new();
         let mut cs = CollectStates::new();
         let n = match wf.node(StepIdx::ZERO) {
@@ -1973,7 +1977,8 @@ mod blackhat_engine {
         };
         let wf = make_workflow(vec![node], 4);
         let mut run = make_run(4, 2);
-        let _ = run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(42), Taint::Secret);
+        run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(42), Taint::Secret)
+            .expect("write_slot_with_taint must succeed: slot is valid in test");
         let mut store = ValueStore::new();
         let mut cs = CollectStates::new();
         let n = match wf.node(StepIdx::ZERO) {
@@ -2050,7 +2055,8 @@ mod blackhat_engine {
             &mut cs,
             &CapabilitySet::empty(),
         );
-        assert!(result.is_ok());
+        let _ =
+            result.expect("execute_node_full must succeed for RetryCheck NEVER policy body route");
         assert_eq!(
             run.executed(),
             executed_before + 1,
@@ -2094,7 +2100,8 @@ mod blackhat_engine {
         };
         let mut run = make_run(4, 2);
         // Input slot must be initialized with clean taint for the no-contract path.
-        let _ = run.write_slot(SlotIdx::new(0), SlotValue::I64(0));
+        run.write_slot(SlotIdx::new(0), SlotValue::I64(0))
+            .expect("write_slot must succeed: slot is valid and uninitialized in test");
         let mut store = ValueStore::new();
         let mut budget = vb_core::engine::StepBudget::new(10);
         let mut evidence = EvidenceCollector::new();
@@ -2286,7 +2293,8 @@ mod blackhat_engine {
         let mut run = RunFrame::new(RunId::new(1), StepIdx::ZERO, 4, 2)
             .ok()
             .unwrap_or_else(|| panic!("RunFrame::new failed"));
-        let _ = run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(1), Taint::Secret);
+        run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(1), Taint::Secret)
+            .expect("write_slot_with_taint must succeed: slot is valid in test");
         let contract = ActionContract {
             id: ActionId::new(0),
             input_slot_count: 1,
@@ -2359,7 +2367,8 @@ mod blackhat_engine {
         let mut run = RunFrame::new(RunId::new(1), StepIdx::ZERO, 4, 2)
             .ok()
             .unwrap_or_else(|| panic!("RunFrame::new failed"));
-        let _ = run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(42), Taint::Secret);
+        run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(42), Taint::Secret)
+            .expect("write_slot_with_taint must succeed: slot is valid in test");
         let result = execute_do_without_contract(
             &run,
             StepIdx::ZERO,
@@ -2406,7 +2415,8 @@ mod blackhat_engine {
         let mut run = RunFrame::new(RunId::new(1), StepIdx::ZERO, 4, 2)
             .ok()
             .unwrap_or_else(|| panic!("RunFrame::new failed"));
-        let _ = run.write_slot(SlotIdx::new(0), SlotValue::I64(42));
+        run.write_slot(SlotIdx::new(0), SlotValue::I64(42))
+            .expect("write_slot must succeed: slot is valid in test");
         let result = execute_do_without_contract(
             &run,
             StepIdx::ZERO,

@@ -13,9 +13,6 @@ members = [
     "crates/vb_ui_makepad",
     "crates/vb_ui_snapshot",
     "crates/velvet_ballastics",
-    "crates/flow-core",
-    "crates/flow-step-plugin",
-    "crates/flow-editor-makepad",
     "xtask",
     "fuzz",
 ]
