@@ -4,16 +4,13 @@ STATUS: APPROVED
 
 ### Mode 1 — Plan Inquisition
 
-[PASS] Contract parity: all 6 public contract surfaces have direct BDD coverage: `validate_symbol_references`, `validate_resource_references`, `validate_action_references`, `validate`, `validate_with_contracts`, and `CompiledWorkflow::try_from_parts`.
-[PASS] Exact `WorkflowError::SymbolOutOfBounds`: direct helper and core-admission scenarios now assert `WorkflowError::SymbolOutOfBounds { symbol: SymbolId::new(...) }` for accessor, constant, build-object, and zero-symbol carriers.
-[PASS] Exact resource errors: direct helper and core-admission scenarios now assert `WorkflowError::{ResourceContractTooLarge, ResourceContractExceeded}` with exact resource strings for every declared-hard-limit and actual-usage-over-declared case.
-[PASS] Mapped verifier errors: pipeline scenarios now assert `ValidationError::SymbolReferenceOutOfRange`, `ValidationError::{ResourceContractTooLarge, ResourceContractExceeded}`, and `ValidationError::{ActionContractMissing, ActionContractOrphan}` with exact fields and diagnostic codes.
-[PASS] Assertion sharpness: planned Then clauses use exact `Ok(())`, exact public counts, exit codes, diagnostic codes, enum variants, and concrete fields; no `is_ok()` / `is_err()` escape hatch remains.
-[PASS] Density: 36 mandatory unit tests / 6 public functions = 6.0x; target >= 5x.
-[PASS] Property/fuzz coverage: non-trivial pure validators have proptest invariants, and parser/artifact decode plus action-contract verifier fuzz targets are mandatory.
-[PASS] Boundary coverage: min/zero, upper valid boundary, equals-count failure, hard-limit equality, hard-limit + 1, actual == declared, actual > declared, expression stack, duplicate action IDs, missing-before-orphan ordering, and no-mutation cases are explicitly named.
-[PASS] Mutation survivability: critical mutants are mapped to named tests, including off-by-one symbol/resource checks, deleted carrier scans, swapped resource names, swapped action fields, Gate 12 inclusion/exclusion, generic-error collapse, and mutation of borrowed inputs.
-[PASS] Static/Holzmann gates: the repaired plan now contains executable commands, target paths, file:line evidence rules, exit-code semantics, and failure criteria for forbidden constructs and runtime I/O/config dependency scans.
+[PASS] Contract parity: all 6 public contract surfaces have direct BDD coverage.
+[PASS] Direct helper retry blockers: `validate_symbol_references`, `validate_resource_references`, and `validate_action_references` now have direct-call success and exact typed failure scenarios.
+[PASS] Error variant coverage: every named contract error has an exact scenario or a concrete contract-amendment blocker with variant name, fields, and stable code.
+[PASS] Assertion sharpness: no planned `Then:` relies on bare `is_ok()` / `is_err()`; success assertions are exact `Ok(())` or exact accepted workflow values, failures assert typed variants and salient fields.
+[PASS] Density: 45 planned unit/component tests / 6 public functions = 7.5x; target >= 5x.
+[PASS] Property/Kani/mutation coverage: non-trivial symbol/resource/action/reference spaces have proptest, Kani, and mutation checkpoints.
+[PASS] Parser fuzz: validly waived by `W-FUZZ-001`, with conditional fuzz trigger if parser/codec scope is touched.
 
 ### LETHAL FINDINGS
 
@@ -27,12 +24,17 @@ None.
 
 None.
 
-### PRIOR REJECTION CHECK
+### Evidence
 
-- Prior direct-helper type mismatch is repaired: direct `validate_symbol_references` / `validate_resource_references` scenarios assert `WorkflowError`, while `validate` / `validate_with_contracts` scenarios assert mapped `ValidationError`.
-- Prior missing resource precision is repaired: both `ResourceContractTooLarge` and `ResourceContractExceeded` are separately required for direct helper, core admission, and verifier mapping paths.
-- Prior static/Holzmann gate vagueness is repaired: concrete `rg` commands, scoped paths, file:line evidence, and exit-code failure rules are now specified.
+- `contract.md:54` -> covered by direct symbol helper scenarios in `test-plan.md:119-131`, plus carrier and zero-symbol exact-error scenarios in `test-plan.md:133-162`.
+- `contract.md:55` -> covered by direct resource helper scenarios in `test-plan.md:265-278` and `test-plan.md:293-298`, plus per-member resource scenarios in `test-plan.md:251-263` and `test-plan.md:279-291`.
+- `contract.md:56` -> covered by direct action helper scenarios in `test-plan.md:216-235`, including exact success, missing-contract, and orphan-contract assertions.
+- `contract.md:57` -> covered by default verifier non-action-completeness scenario in `test-plan.md:84-89`.
+- `contract.md:58` -> covered by action-complete verifier scenarios in `test-plan.md:91-96` and `test-plan.md:209-214`.
+- `contract.md:59` -> covered by core admission scenarios in `test-plan.md:63-82`.
+- Previous placeholder defect is blocked: verifier symbol/resource/kind gaps now require concrete amendment variants and codes before green in `test-plan.md:138`, `test-plan.md:145`, `test-plan.md:152`, `test-plan.md:177`, `test-plan.md:184`, `test-plan.md:192`, `test-plan.md:207`, `test-plan.md:262`, `test-plan.md:290`, and `test-plan.md:559-566`.
+- Red-phase survivability is explicit: absent or stubbed public helpers must fail named red commands in `test-plan.md:513-517`, and critical stub/removal mutants are mapped in `test-plan.md:417-431`.
 
 ### MANDATE
 
-Proceed to implementation/test writing only if the resulting suite preserves this exactness: no generic assertions, no unmapped error variants, and all listed static, fuzz, Kani, mutation, targeted cargo, and `moon ci` gates must produce evidence before State 5 approval.
+Proceed to red phase. Do not weaken the plan around absent verifier variants: either implement exactly the named contract amendments/codes or amend `contract.md` before green. Any implementation that stubs the three public helpers, hides them behind pipeline-only tests, or downgrades typed errors to generic strings fails this review retroactively.

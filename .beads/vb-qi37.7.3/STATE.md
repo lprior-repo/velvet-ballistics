@@ -1,8 +1,25 @@
 # vb-qi37.7.3 STATE
 
-- Current State: State 3 (Contract synthesis dispatched)
+- Current State: State 8 (Machine gate redispatched after Git-env format reconciliation)
 - Title: ir: Validate symbol, action, and resource references
 - Branch/Workspace: `/home/lewis/src/Velvet-ballistics-femdation-p0p1-25`
 - Bookmark: `femdation-p0-p1-25`
 - Claim Evidence: `bd update vb-qi37.7.3 --claim` succeeded from `/home/lewis/src/Velvet-ballistics`
-- Next Gate: Verify `.beads/vb-qi37.7.3/contract.md` before State 4 test planning
+- State 3 Gate Evidence: Repaired contract artifacts verified non-empty; `proof-obligations.jsonl` parsed with 50 objects, `traceability-matrix.jsonl` parsed with 49 objects; waiver and POST-007 Lean linkage checks found required entries.
+- State 4 Gate Evidence: `contract-verification-review.md` and `test-plan-review.md` both verified with `STATUS: APPROVED`; `test-plan.md` verified non-empty.
+- State 5 Gate Evidence: `red-phase.md` verified non-empty with `STATUS: BLOCKED`; red tests were added and compilation fails for the intended contract reason: missing public APIs `validate_symbol_references`, `validate_resource_references`, and `validate_action_references`.
+- State 6 Gate Evidence: `implementation.md` verified non-empty with `STATUS: PASS`; `cargo nextest run -p vb_core -p vb_validate --test vb_qi37_7_3_red` verified 16/16 passing from the implementation workspace.
+- State 7 Gate Evidence: `manual-qa-smoke.md` verified with `STATUS: PASS`; smoke QA executed focused happy/failure paths and full `cargo nextest run -p vb_core -p vb_validate --test vb_qi37_7_3_red` with 16/16 passing.
+- State 8 Gate Evidence: `moon-report.md` and `ci-failure-category.txt` verified; `moon ci` is red with category `COMPILE_ERROR`. Plain `moon ci` used the wrong parent Git repo in this non-colocated JJ workspace; with `GIT_DIR=/home/lewis/src/Velvet-ballistics/.git` and `GIT_WORK_TREE=/home/lewis/src/Velvet-ballistics-femdation-p0p1-25`, forced `moon ci --force` reached real gates and failed in `velvet-ballastics:miri` compiling `vb_validate` because `proptest` is unresolved in `crates/vb_validate/src/gate_08_accessor.rs`.
+- State 6 Repair Evidence: `implementation.md` appended `MACHINE_GATE_REPAIR_STATUS: PASS`; focused bead suite verified again with `cargo nextest run -p vb_core -p vb_validate --test vb_qi37_7_3_red` passing 16/16.
+- State 8 Retry Evidence: `moon-report.md` and `ci-failure-category.txt` verified after rerun; forced machine gate reached real tasks with Velvet Git env and now fails first in `velvet-ballastics:fmt`; `ci-failure-category.txt` contains `FORMAT`.
+- State 6 Format Repair Evidence: `implementation.md` appended `FORMAT_REPAIR_STATUS: PASS`; `rtk cargo fmt --check` passed after rustfmt-only changes.
+- State 6 Compile Repair Evidence: `implementation.md` appended `COMPILE_AFTER_FORMAT_REPAIR_STATUS: PASS`; public APIs verified in source; `cargo nextest run -p vb_core -p vb_validate --test vb_qi37_7_3_red` independently verified 16/16 passing.
+- State 8 Retry Evidence: `moon-report.md`/`ci-failure-category.txt` verified after rerun; forced machine gate still fails first in `velvet-ballastics:fmt`. Root cause: Moon fmt task is exact `rustup run nightly-2026-04-28 cargo fmt --all --check`, while prior repair only used `rtk cargo fmt --check`.
+- State 6 Exact Format Evidence: `implementation.md` appended `EXACT_MOON_FORMAT_REPAIR_STATUS: BLOCKED`; exact `rustup run nightly-2026-04-28 cargo fmt --all --check` now passes, but required public validation APIs are absent and focused bead nextest fails unresolved imports.
+- State 6 Compile After Exact Format Evidence: `implementation.md` appended `COMPILE_AFTER_EXACT_MOON_FORMAT_REPAIR_STATUS: PASS`; public APIs verified in source; exact `rustup run nightly-2026-04-28 cargo fmt --all --check` passed; focused bead nextest independently verified 16/16 passing.
+- State 8 Retry Evidence: `moon-report.md`/`ci-failure-category.txt` verified after rerun; forced machine gate still fails first in `velvet-ballastics:fmt`. Direct reproduction shows the exact Moon formatter check fails only when run with the same `GIT_DIR=/home/lewis/src/Velvet-ballistics/.git` and `GIT_WORK_TREE=/home/lewis/src/Velvet-ballistics-femdation-p0p1-25` env used by Moon.
+- State 6 Exact Git-env Format Evidence: `implementation.md` appended `EXACT_GIT_ENV_MOON_FORMAT_REPAIR_STATUS: PASS`; exact Git-env `rustup run nightly-2026-04-28 cargo fmt --all --check` independently passed; public APIs verified in source; focused bead nextest independently verified 16/16 passing.
+- State 8 Retry Evidence: `moon-report.md`/`ci-failure-category.txt` verified after exact Git-env format repair; forced `moon ci --force` still fails first in `velvet-ballastics:fmt`, and a direct same-env `rustup run nightly-2026-04-28 cargo fmt --all --check` run after QA also fails. This means formatted changes are not persisting in the same tree/index Moon reads, or Moon/JJ/Git env is restoring a different effective workspace.
+- State 6 Git-env Format Reconciliation Evidence: `implementation.md` appended `GIT_ENV_FORMAT_RECONCILIATION_STATUS: PASS`; exact same-env `rustup run nightly-2026-04-28 cargo fmt --all --check` independently passed; public APIs verified in source; focused bead nextest independently verified 16/16 passing.
+- Next Gate: Rerun State 8 machine validation using Velvet Git env; write green `moon-report.md` or update `ci-failure-category.txt` with the first remaining failure category.

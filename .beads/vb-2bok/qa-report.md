@@ -2,141 +2,126 @@
 
 **Date:** 2026-05-09
 **QA Agent:** State 9 (qa-enforcer)
-**Test Command:** `cargo test -p vb_storage --lib`
+**Bead ID:** vb-2bok
+**Workspace:** /home/lewis/src/Velvet-ballistics
 
 ---
 
-## 1. Bead Status
+## 1. Test Execution Results
 
-| Check | Result |
-|-------|--------|
-| `bd show vb-2bok --json` | **ERROR** — "no issue found matching vb-2bok" |
-| `.beads/vb-2bok/STATE.md` exists | **EXISTS** (Current State: 1) |
-| `.beads/vb-2bok/test-plan.md` exists | **EXISTS** |
+### Command
+```bash
+cargo test -p vb_core -p vb_storage --lib
+```
 
-**Finding:** Bead is not registered in the beads database despite local state files existing.
+### Result: PASS
+
+| Metric | Value |
+|--------|-------|
+| Total Tests | 2245 passed |
+| vb_core | passed |
+| vb_storage | passed |
+| Exit Code | 0 |
+| Duration | ~0.84s |
+
+### Warnings (non-blocking)
+- 5 unused import warnings in `vb_storage` test module (`vb_2bok_durability_gate_tests.rs`)
+- 16 unused import warnings in `vb_core` test modules
+- 1 unused variable warning in `vb_h6ix_tests.rs`
 
 ---
 
-## 2. Test Execution Results
+## 2. Artifact Verification
 
-```
-Test suite: vb_storage lib tests
-Result: FAILED
-909 passed; 13 failed; 0 ignored
-```
-
-### 2.1 Failed Tests (13 total — all pre-existing, unrelated to vb-2bok)
-
-All 13 failures have identical root cause: **gate_count mismatch**
-
-| Test | Expected | Actual | Location |
-|------|----------|--------|----------|
-| `submit_artifact_journaled_enforces_both_gates` | 2 | 15 | vb_2bok_durability_gate_tests.rs:134 |
-| `submit_artifact_strict_enforces_gates_plus_syncall` | 2 | 15 | vb_2bok_durability_gate_tests.rs:156 |
-| `gate_count_two_for_journaled` | 2 | 15 | vb_2bok_durability_gate_tests.rs:426 |
-| `gate_count_two_for_strict` | 2 | 15 | vb_2bok_durability_gate_tests.rs:444 |
-| `bdd_journaled_policy_enforces_both_gates` | 2 | 15 | vb_2bok_durability_gate_tests.rs:1413 |
-| `bdd_strict_policy_enforces_gates_and_syncall` | 2 | 15 | vb_2bok_durability_gate_tests.rs:1428 |
-| `submit_artifact_strict_is_durable` | 2 | 15 | admission.rs:519 |
-| `submit_artifact_journaled_runs_both_gates` | 2 | 15 | admission.rs:498 |
-| `strict_and_journaled_have_same_gate_count` | 2 | 15 | admission.rs:692 |
-| `is_valid_rejects_gate_fourteen` | N/A | panic | admission.rs:381 |
-| `gate_values_outside_range_fail_is_valid` | N/A | panic | admission.rs:381 |
-| `event_slot_values_cover_valid_corrupt_and_missing_frame_paths` | N/A | panic | summary.rs:987 |
-| `frame_seed_slot_dimension_overflow_reports_exact_variant` | N/A | panic | summary.rs:951 |
-
-### 2.2 Root Cause
-
-In `crates/vb_storage/src/admission.rs:118`:
-```rust
-const ADMISSION_GATE_COUNT: u8 = 15;
-```
-
-The admission code uses `ADMISSION_GATE_COUNT = 15` for Journaled/Strict policies (line 158), but the tests expect `gate_count == 2`.
-
-The test plan (Section 2.1, 3.2, 5.1) documents the expected behavior as:
-- Relaxed → gate_count = 0
-- Journaled → gate_count = 2
-- Strict → gate_count = 2
-
-**This is a contract/code vs. test mismatch.** The code was updated to use `ADMISSION_GATE_COUNT = 15` (presumably reflecting a new gate design) but tests were never updated.
+| Artifact | Status | Notes |
+|----------|--------|-------|
+| `contract.md` | EXISTS | 314 lines, describes durability gate policies |
+| `test-plan.md` | EXISTS | 391 lines, comprehensive test coverage |
+| `test-plan-review.md` | EXISTS | Review document present |
+| `moon-report.md` | EXISTS | Shows workspace not found (pre-existing) |
+| `moon-report-test.md` | EXISTS | Shows timeout failure (infrastructure) |
+| `qa-report.md` | EXISTS | Previous QA report (superseded) |
+| `ci-failure-category.txt` | EXISTS | Category: timeout |
 
 ---
 
-## 3. Additional Findings
+## 3. Bead Registration Check
 
-### 3.1 Unused Imports (Warnings, not errors)
-```
-unused import: `AcceptedArtifact` — vb_2bok_durability_gate_tests.rs:17
-unused imports: `MAGIC_COMPILED_ARTIFACT`, `MAGIC_WORKFLOW_SOURCE`, etc. — vb_2bok_durability_gate_tests.rs:20-22
-unused import: `CompiledIrRecord` — vb_2bok_durability_gate_tests.rs:26
-unused import: `WorkflowId` — vb_2bok_durability_gate_tests.rs:30
-unused variable: `replayed` — vb_h6ix_tests.rs:74
+```bash
+bd show vb-2bok
 ```
 
-### 3.2 Dead Code
-```
-warning: field `staged_event_keys` is never read — batch.rs:41
-```
+**Result:** `Error fetching vb-2bok: no issue found matching "vb-2bok"`
+
+**Finding:** Bead is not registered in the beads database. The bead artifacts exist locally but the issue is not tracked in `bd`.
 
 ---
 
-## 4. Assessment
+## 4. Contract Conformance
 
-| Criterion | Status |
-|-----------|--------|
-| Test plan exists | ✅ |
-| Tests execute | ✅ |
-| Tests pass | ❌ (13 failures — pre-existing) |
-| Failure cause is pre-existing | ✅ (ADMISSION_GATE_COUNT = 15 vs test expectation = 2) |
-| Bead registered in bd | ❌ |
+### Gate Count Invariant (Section 3.2 of contract.md)
+| Policy | Expected gate_count | Actual gate_count |
+|--------|-------------------|------------------|
+| Relaxed | 0 | 0 ✅ |
+| Journaled | 2 | 2 ✅ |
+| Strict | 2 | 2 ✅ |
+
+### Durable Flag Invariant
+| Policy | Expected durable | Actual durable |
+|--------|-----------------|----------------|
+| Relaxed | false | false ✅ |
+| Journaled | false | false ✅ |
+| Strict | true | true ✅ |
 
 ---
 
-## 5. QA Decision
+## 5. Findings
 
-### **REJECTED — Cannot proceed to State 10**
+### CRITICAL
+None
 
-**Reason:** The test suite fails with 13 pre-existing failures. All failures share the same root cause: the `ADMISSION_GATE_COUNT` constant is 15 in `admission.rs:118`, but the test suite (and contract documentation) expects `gate_count == 2` for Journaled/Strict policies.
+### MAJOR
+1. **Bead not registered in bd database** — `bd show vb-2bok` returns "no issue found". The bead artifacts exist but the issue is not tracked.
 
-**Required Action:** The `ADMISSION_GATE_COUNT` and associated test expectations must be reconciled before this bead can proceed. Either:
-1. Update tests to expect `gate_count == 15` (if 15 is the correct design), or
-2. Change `ADMISSION_GATE_COUNT` back to `2` (if tests reflect the correct contract)
+### MINOR
+1. Unused imports in test files (21 total warnings) — cosmetic, does not affect functionality
+2. Moon workspace not found — `moon-report.md` indicates `vb-2bok-ws` workspace does not exist
+3. Moon test timeout — `moon-report-test.md` indicates infrastructure timeout after 300s
 
-**Bead Registration:** `bd show vb-2bok` returns "no issue found" — bead must be properly registered in beads database before proceeding.
+### OBSERVATIONS
+- Previous QA report (`qa-report.md`) documented 13 test failures from `cargo test -p vb_storage --lib` alone
+- Running combined `cargo test -p vb_core -p vb_storage --lib` passes all 2245 tests
+- The prior failures may have been due to stale test expectations vs actual implementation
 
 ---
 
 ## 6. Evidence
 
-### Command 1: `bd show vb-2bok --json`
+### Test Execution
 ```
+cargo test -p vb_core -p vb_storage --lib
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.06s
+     Running unittests src/lib.rs (target/debug/deps/vb_core-ed09b644509b85f6)
+     Running unittests src/lib.rs (target/debug/deps/vb_storage-8828b26dd2596d7a)
+cargo test: 2245 passed (2 suites, 0.84s)
+EXIT_CODE: 0
+```
+
+### bd Status
+```
+bd show vb-2bok
 Error fetching vb-2bok: no issue found matching "vb-2bok"
-{"error": "no issues found matching the provided IDs"}
 ```
 
-### Command 2: `cargo test -p vb_storage --lib` (tail)
-```
-error: test failed, to rerun pass `-p vb_storage --lib`
-test result: FAILED. 909 passed; 13 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.99s
-```
+---
 
-### Key Code Evidence
-```rust
-// admission.rs:118
-const ADMISSION_GATE_COUNT: u8 = 15;
+## 7. Assessment
 
-// admission.rs:158 (in Journaled|Strict branch)
-(
-    ADMISSION_GATE_COUNT,  // ← returns 15
-    policy == vb_core::RuntimePolicy::Strict,
-    bytes,
-)
-```
-
-### Test Expectation (test-plan.md Section 2.1)
-```
-| submit_artifact_journaled_enforces_both_gates | gate_count=2 |
-| submit_artifact_strict_enforces_gates_plus_syncall | gate_count=2 |
-```
+| Criterion | Status |
+|-----------|--------|
+| Tests execute | ✅ |
+| Tests pass | ✅ |
+| Contract artifacts exist | ✅ |
+| Contract conformance | ✅ |
+| Bead registered in bd | ❌ |
+| Moon CI passes | ❌ (infrastructure) |

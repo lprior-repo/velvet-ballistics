@@ -1,0 +1,66 @@
+▮▮▮▮ Loading changed files
+Base revision: N/A
+Head revision: HEAD
+Affected by changes: all
+Changed files:
+	../.jj/repo
+	../.jj/working_copy/checkout
+	../.jj/working_copy/tree_state
+	../.jj/working_copy/type
+	../crates/vb_compile/src/lib.rs
+	../crates/vb_core/src/workflow/mod.rs
+	../crates/vb_core/tests/vb_qi37_7_3_red.rs
+	../crates/vb_runtime/src/collect_tests.rs
+	../crates/vb_storage/src/batch.rs
+	../crates/vb_storage/src/recovery/replay/summary.rs
+	../crates/vb_storage/src/vb_2bok_durability_gate_tests.rs
+	../crates/vb_storage/tests/accepted_artifact_red_phase.rs
+	../crates/vb_ui_model/src/envelope.rs
+	../crates/vb_validate/src/shared.rs
+	../crates/vb_validate/tests/vb_qi37_7_3_red.rs
+	../crates/velvet_ballastics/src/main.rs
+	../crates/velvet_ballastics/tests/cli_integration.rs
+	../tests/vb_qi37_1_1_red_recovery_contract_test.rs
+	../xtask/src/evidence.rs
+	../xtask/src/gates.rs
+	../xtask/tests/integration_gates.rs
+▮▮▮▮ Building action graph
+
+│ CAUTION
+│ No tasks affected by changed files. Unable to execute action pipeline.
+
+Action count: 1
+Requested targets: 30
+	velvet-ballastics:agent-cli-contract
+	velvet-ballastics:maxperf
+	velvet-ballastics:pgo-instrument-build
+	velvet-ballastics:nightly-feature-gate
+	velvet-ballastics:supply-chain
+	velvet-ballastics:verify-all
+	velvet-ballastics:verify-proof
+	velvet-ballastics:verify-deep
+	velvet-ballastics:mutants-smoke
+	velvet-ballastics:verify-standard
+	velvet-ballastics:bench-build
+	velvet-ballastics:hardened-build
+	velvet-ballastics:check
+	velvet-ballastics:feature-powerset
+	velvet-ballastics:maxperf-native
+	velvet-ballastics:coverage
+	velvet-ballastics:doc
+	velvet-ballastics:sanitizer-address-check
+	velvet-ballastics:test
+	velvet-ballastics:miri
+	velvet-ballastics:nightly-feature-cargo-probe
+	velvet-ballastics:fmt
+	velvet-ballastics:lint-src
+	velvet-ballastics:verify-fast
+	velvet-ballastics:quick
+	velvet-ballastics:benchmark-proof
+	velvet-ballastics:doc-test
+	velvet-ballastics:source-length
+	velvet-ballastics:pgo-optimized-build
+	velvet-ballastics:fuzz-smoke
+Resolved targets: 0
+
+EXIT_STATUS:0
