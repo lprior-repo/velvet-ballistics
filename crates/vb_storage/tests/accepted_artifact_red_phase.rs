@@ -261,7 +261,8 @@ fn runtime_admission_requires_artifact_digest_not_raw_workflow()
     let workflow = minimal_workflow()?;
     let result = submit_artifact(&journal, &workflow, RuntimePolicy::Relaxed);
     assert!(result.is_err(), "Relaxed must be rejected");
-    assert_eq!(format!("{result.unwrap_err()}"), "accepted artifact admission is required");
+    let err = result.unwrap_err();
+    assert_eq!(format!("{err}"), "accepted artifact admission is required");
     Ok(())
 }
 

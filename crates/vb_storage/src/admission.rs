@@ -134,7 +134,28 @@ pub fn submit_artifact(
     policy: vb_core::RuntimePolicy,
 ) -> Result<AcceptedArtifact, JournalError> {
     match policy {
-        vb_core::RuntimePolicy::Relaxed => Err(JournalError::AdmissionRequired),
+        vb_core::RuntimePolicy::Relaxed => {
+            // Relaxed: skip gate validation, no durability, gate_count=0
+            let parts = workflow.to_parts();
+            let ir_bytes =
+                postcard::to_allocvec(&parts).map_err(|_| JournalError::ArtifactMalformed)?;
+            let proof = VerificationProof::new(workflow.digest(), 0, false);
+            let artifact = AcceptedArtifact {
+                digest: workflow.digest(),
+                ir: ir_bytes,
+                verification: proof,
+                accepted_at_seq: EventSeq::new(0),
+                required_capabilities: Box::new([]),
+            };
+            let artifact_bytes =
+                postcard::to_allocvec(&artifact).map_err(|_| JournalError::ArtifactMalformed)?;
+            let record = CompiledIrRecord {
+                digest: workflow.digest(),
+                ir: artifact_bytes,
+            };
+            journal.put_compiled_ir(&record)?;
+            Ok(artifact)
+        }
         vb_core::RuntimePolicy::Journaled | vb_core::RuntimePolicy::Strict => {
             let parts = workflow.to_parts();
 
