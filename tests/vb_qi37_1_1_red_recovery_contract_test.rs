@@ -1,3 +1,5 @@
+#![allow(clippy::panic, clippy::expect_used)]
+
 use proptest::prelude::*;
 use vb_core::{RunId, SlotIdx, SlotValue, StepIdx, Taint, WorkflowDigest};
 use vb_runtime::recovery::{DurableFrameRecoveryBoundary, RuntimeRecoveryBoundary};

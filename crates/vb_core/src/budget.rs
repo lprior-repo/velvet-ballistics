@@ -1267,7 +1267,7 @@ fn push_error_handler_successors(body: StepIdx, handler: StepIdx, stack: &mut Ve
 
 fn branch_count_to_u16(count: usize) -> Result<u16, WorkflowError> {
     u16::try_from(count).map_err(|_| WorkflowError::StepCountOverflow {
-        actual: count as u64,
+        actual: u64::try_from(count).unwrap_or(u64::MAX),
     })
 }
 

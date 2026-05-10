@@ -4,6 +4,8 @@
 //! Accumulates writes across multiple keyspaces and commits them
 //! atomically with a single WAL fsync.
 
+use std::collections::HashSet;
+
 use crate::{
     codec::encode_record,
     constants::{
@@ -36,6 +38,7 @@ use crate::journal::FjallJournal;
 pub struct JournalWriteBatch<'j> {
     inner: fjall::OwnedWriteBatch,
     journal: &'j FjallJournal,
+    #[allow(dead_code)]
     staged_event_keys: HashSet<[u8; JOURNAL_KEY_BYTES]>,
     aborted: bool,
     _not_send_or_sync: core::marker::PhantomData<*mut FjallJournal>,
@@ -205,7 +208,7 @@ impl<'j> JournalWriteBatch<'j> {
     /// the same batch are collapsed at commit time).
     pub fn append_event(&mut self, event: &JournalEvent) -> Result<(), JournalError> {
         let key = run_event_key(event.run_id(), event.seq())?;
-        if self.journal.events.contains_key(&key)? {
+        if self.journal.events.contains_key(key)? {
             return Err(JournalError::DuplicateEvent {
                 run: event.run_id(),
                 seq: event.seq(),

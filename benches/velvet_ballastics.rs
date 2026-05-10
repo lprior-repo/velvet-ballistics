@@ -102,6 +102,7 @@ fn bench_latency_budget_us() -> u64 {
     }
 }
 
+#[allow(clippy::arithmetic_side_effects)]
 fn budget_utilization_percent(elapsed: Duration, budget_us: u64) -> u128 {
     if budget_us == 0 {
         u128::MAX

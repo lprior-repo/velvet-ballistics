@@ -3439,6 +3439,47 @@ fn explain_validation_error(err: &vb_validate::ValidationError) {
             outln!("Non-Deterministic Path");
             outln!("  Path from node {from_node} to {to_node} contains no suspension point.");
         }
+        ValidationError::CapabilityNameEmpty {
+            action_id,
+            capability_index,
+        } => {
+            outln!("Capability Name Empty");
+            outln!("  Action {action_id}: capability {capability_index} has an empty name.");
+        }
+        ValidationError::CapabilityNameTooLong {
+            action_id,
+            capability_index,
+            len,
+            max,
+        } => {
+            outln!("Capability Name Too Long");
+            outln!("  Action {action_id}: capability {capability_index} name length {len} exceeds max {max}.");
+        }
+        ValidationError::CapabilityNameInvalid {
+            action_id,
+            capability_index,
+            name,
+        } => {
+            outln!("Capability Name Invalid");
+            outln!("  Action {action_id}: capability {capability_index} name '{name}' is invalid.");
+        }
+        ValidationError::CapabilityActionMismatch {
+            contract_action_id,
+            capability_action_id,
+            capability_index,
+        } => {
+            outln!("Capability Action Mismatch");
+            outln!("  Contract action {contract_action_id} != capability action {capability_action_id} at index {capability_index}.");
+        }
+        ValidationError::CapabilityDuplicate {
+            action_id,
+            first_index,
+            duplicate_index,
+            name,
+        } => {
+            outln!("Capability Duplicate");
+            outln!("  Action {action_id}: capability '{name}' first at {first_index}, duplicate at {duplicate_index}.");
+        }
     }
 }
 
