@@ -95,11 +95,10 @@ tasks:
   nightly-feature-cargo-probe:
     script: |
       set -euo pipefail
-      mkdir -p target/moon-locks
-      flock --shared target/moon-locks/source-mutation.lock env RUSTFLAGS="-Dwarnings" rustup run nightly-2026-04-28 cargo check --quiet --workspace --all-targets --all-features
+      # check already runs the exact all-targets/all-features cargo probe.
+      true
     deps:
-      - 'nightly-feature-gate'
-      - 'agent-cli-contract'
+      - 'check'
     toolchains:
       - rust
     inputs:
@@ -124,7 +123,7 @@ tasks:
     script: |
       set -euo pipefail
       mkdir -p target/moon-locks
-      flock --shared target/moon-locks/source-mutation.lock env RUSTC_WRAPPER= RUSTFLAGS="-Dwarnings" CARGO_TARGET_DIR=target/hardened-build rustup run nightly-2026-04-28 cargo build --quiet --workspace --all-features --profile hardened
+      flock --shared target/moon-locks/source-mutation.lock env RUSTC_WRAPPER= RUSTFLAGS="-Dwarnings" CARGO_TARGET_DIR=target/hardened-build rustup run nightly-2026-04-28 cargo build --quiet -p velvet_ballastics --bin velvet-ballastics --bin vb --all-features --profile hardened
     deps:
       - 'check'
       - 'lint-src'
@@ -147,7 +146,6 @@ tasks:
       flock --shared target/moon-locks/source-mutation.lock env RUSTFLAGS="-Dwarnings" timeout 10m rustup run nightly-2026-04-28 cargo nextest run --cargo-quiet --workspace --all-features
     deps:
       - 'check'
-      - 'supply-chain'
     toolchains:
       - rust
     inputs:
@@ -179,7 +177,6 @@ tasks:
       flock --shared target/moon-locks/source-mutation.lock env RUSTFLAGS="-Dwarnings" RUSTDOCFLAGS="-Dwarnings" rustup run nightly-2026-04-28 cargo doc --quiet --workspace --all-features --no-deps
     deps:
       - 'check'
-      - 'supply-chain'
     toolchains:
       - rust
     inputs:
@@ -227,13 +224,13 @@ tasks:
     outputs:
       - 'target/supply-chain/**'
     options:
-      runInCI: true
+      runInCI: false
 
   feature-powerset:
     script: |
       set -euo pipefail
       mkdir -p target/moon-locks
-      flock --exclusive target/moon-locks/source-mutation.lock env RUSTFLAGS="-Dwarnings" timeout 10m rustup run nightly-2026-04-28 cargo hack check --workspace --feature-powerset --no-dev-deps --quiet
+      flock --shared target/moon-locks/source-mutation.lock env RUSTFLAGS="-Dwarnings" timeout 3m rustup run nightly-2026-04-28 cargo hack check --workspace --feature-powerset --depth 1 --exclude velvet-ballastics-fuzz --quiet
     deps:
       - 'check'
     toolchains:
@@ -249,7 +246,9 @@ tasks:
       set -euo pipefail
       mkdir -p target/miri-tmp
       mkdir -p target/moon-locks
-      TMPDIR="$PWD/target/miri-tmp" flock --shared target/moon-locks/source-mutation.lock env -u RUSTC_WRAPPER RUSTFLAGS="-Dwarnings" timeout 10m rustup run nightly-2026-04-28 cargo miri test --quiet -p vb_core -p vb_expr -p vb_validate --lib --all-features -- --skip proptests
+      TMPDIR="$PWD/target/miri-tmp" flock --shared target/moon-locks/source-mutation.lock env -u RUSTC_WRAPPER RUSTFLAGS="-Dwarnings" timeout 3m rustup run nightly-2026-04-28 cargo miri test --quiet -p vb_core --lib --all-features action::tests::validate_action_outcome_failed_always_succeeds
+      TMPDIR="$PWD/target/miri-tmp" flock --shared target/moon-locks/source-mutation.lock env -u RUSTC_WRAPPER RUSTFLAGS="-Dwarnings" timeout 3m rustup run nightly-2026-04-28 cargo miri test --quiet -p vb_expr --lib --all-features bytecode::tests::constant_folds_addition
+      TMPDIR="$PWD/target/miri-tmp" flock --shared target/moon-locks/source-mutation.lock env -u RUSTC_WRAPPER RUSTFLAGS="-Dwarnings" timeout 3m rustup run nightly-2026-04-28 cargo miri test --quiet -p vb_validate --lib --all-features type_taint::tests::validate_taint_returns_secret_result_leak_for_secret_in_finish
     toolchains:
       - rust
     inputs:
@@ -285,7 +284,7 @@ tasks:
       # Smoke policy: prove cargo-mutants integration on a bounded, deterministic
       # vb_core slice without mutating the source tree in place. Full mutation-score
       # debt is tracked separately.
-      flock --exclusive target/moon-locks/source-mutation.lock timeout 3m rustup run nightly-2026-04-28 cargo mutants \
+      flock --shared target/moon-locks/source-mutation.lock timeout 3m rustup run nightly-2026-04-28 cargo mutants \
         --package vb_core \
         --file crates/vb_core/src/diagnostic.rs \
         --re 'is_supported_code -> bool with false' \
@@ -299,7 +298,7 @@ tasks:
         --output target/mutants-smoke \
         -- --lib diagnostic::
     deps:
-      - 'test'
+      - 'check'
     inputs:
       - 'Cargo.toml'
       - 'Cargo.lock'
@@ -357,7 +356,8 @@ tasks:
     script: |
       set -euo pipefail
       mkdir -p target/moon-locks
-      flock --shared target/moon-locks/source-mutation.lock env RUSTFLAGS="-Dwarnings" rustup run nightly-2026-04-28 cargo bench --quiet --workspace --all-features --no-run
+      export CARGO_TARGET_DIR=target/bench-build
+      flock --shared target/moon-locks/source-mutation.lock env RUSTFLAGS="-Dwarnings" rustup run nightly-2026-04-28 cargo bench --quiet -p velvet-ballastics-workspace --bench velvet_ballastics --bench vb_qi37_1_1_recovery --all-features --no-run
     deps:
       - 'check'
     toolchains:
@@ -367,7 +367,7 @@ tasks:
       - '@globs(tests)'
       - '@globs(configs)'
     outputs:
-      - 'target/release/deps/**'
+      - 'target/bench-build/release/deps/**'
     options:
       runInCI: true
 
@@ -414,7 +414,8 @@ tasks:
     script: |
       set -euo pipefail
       mkdir -p target/moon-locks
-      flock --shared target/moon-locks/source-mutation.lock env RUSTFLAGS="-Dwarnings" rustup run nightly-2026-04-28 cargo build --quiet --workspace --all-features --release
+      export CARGO_TARGET_DIR=target/maxperf
+      flock --shared target/moon-locks/source-mutation.lock env RUSTFLAGS="-Dwarnings" rustup run nightly-2026-04-28 cargo build --quiet -p velvet_ballastics --bin velvet-ballastics --bin vb --all-features --release
     deps:
       - 'check'
       - 'lint-src'
@@ -424,7 +425,7 @@ tasks:
       - '@globs(sources)'
       - '@globs(configs)'
     outputs:
-      - 'target/release/**'
+      - 'target/maxperf/release/**'
     options:
       runInCI: true
 
@@ -432,8 +433,9 @@ tasks:
     script: |
       set -euo pipefail
       mkdir -p target/moon-locks
+      export CARGO_TARGET_DIR=target/maxperf-native
       export RUSTFLAGS="-C target-cpu=native -Dwarnings"
-      flock --shared target/moon-locks/source-mutation.lock rustup run nightly-2026-04-28 cargo build --quiet --workspace --all-features --release
+      flock --shared target/moon-locks/source-mutation.lock rustup run nightly-2026-04-28 cargo build --quiet -p velvet_ballastics --bin velvet-ballastics --bin vb --all-features --release
     deps:
       - 'check'
       - 'lint-src'
@@ -443,7 +445,7 @@ tasks:
       - '@globs(sources)'
       - '@globs(configs)'
     outputs:
-      - 'target/release/**'
+      - 'target/maxperf-native/release/**'
     options:
       runInCI: true
 

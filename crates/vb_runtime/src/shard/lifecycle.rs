@@ -137,9 +137,9 @@ impl Shard {
         digest: vb_core::ids::WorkflowDigest,
         caps: CapabilitySet,
     ) -> RuntimeResult<Option<crate::admission::RunAdmission>> {
-        use crate::admission::{AdmissionError, admit_run};
+        use crate::admission::{AdmissionError, admit_artifact_run};
 
-        match admit_run(self.artifact_store.as_ref(), self.policy, digest, run, caps) {
+        match admit_artifact_run(self.artifact_store.as_ref(), self.policy, run, digest, caps) {
             Ok(admission) => Ok(Some(admission)),
             Err(AdmissionError::ArtifactNotFound { digest }) => {
                 Err(RuntimeError::AdmissionArtifactNotFound { digest })
@@ -157,6 +157,17 @@ impl Shard {
                 Err(RuntimeError::ActiveRunCapacityExceeded {
                     capacity: usize::try_from(available).map_or(usize::MAX, |value| value),
                 })
+            }
+            Err(AdmissionError::ArtifactEnvelopeDecodeFailed) => {
+                Err(RuntimeError::AdmissionArtifactInvalid {
+                    digest: vb_core::ids::WorkflowDigest::from_bytes([0u8; 32]),
+                })
+            }
+            Err(AdmissionError::ArtifactInvalidGateCount { .. }) => {
+                Err(RuntimeError::AdmissionArtifactInvalid { digest })
+            }
+            Err(AdmissionError::ArtifactInvalidProofFlag { .. }) => {
+                Err(RuntimeError::AdmissionArtifactInvalid { digest })
             }
         }
     }

@@ -12,6 +12,49 @@ use vb_core::capability::{Capability, CapabilitySet};
 use vb_core::ids::{ActionId, RunId, WorkflowDigest};
 use vb_core::policy::RuntimePolicy;
 
+/// Number of verification gates required in a v1 accepted artifact for Strict/Journaled admission.
+pub const REQUIRED_GATE_COUNT: u8 = 15;
+
+/// Artifact envelope validation errors for runtime admission.
+///
+/// These errors are raised when a stored compiled artifact fails semantic
+/// validation before a run can be admitted under Strict or Journaled policy.
+#[derive(Debug, Clone, PartialEq, Eq, Error)]
+pub enum ArtifactEnvelopeError {
+    /// Artifact was not found in the store.
+    #[error("artifact not found: {digest:?}")]
+    ArtifactNotFound {
+        /// Digest that was looked up.
+        digest: WorkflowDigest,
+    },
+    /// Artifact failed envelope deserialization.
+    #[error("artifact envelope decode failed")]
+    PostcardDecodeFailed,
+    /// Verification gate count is not 15.
+    #[error("invalid gate count: found {found}, required {required}")]
+    InvalidGateCount {
+        /// Found gate count.
+        found: u8,
+        /// Required gate count.
+        required: u8,
+    },
+    /// A required proof flag is false.
+    #[error("missing required proof flag: bounded")]
+    MissingRequiredProofFlagBounded,
+    /// A required proof flag is false.
+    #[error("missing required proof flag: taint_safe")]
+    MissingRequiredProofFlagTaintSafe,
+    /// A required proof flag is false.
+    #[error("missing required proof flag: retry_safe")]
+    MissingRequiredProofFlagRetrySafe,
+    /// A required proof flag is false.
+    #[error("missing required proof flag: durable")]
+    MissingRequiredProofFlagDurable,
+    /// A required proof flag is false.
+    #[error("missing required proof flag: replayable")]
+    MissingRequiredProofFlagReplayable,
+}
+
 /// Accepted run admission record, attached to a run frame after passing the admission gate.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RunAdmission {
@@ -123,6 +166,23 @@ pub enum AdmissionError {
         /// Available aggregate amount.
         available: u64,
     },
+    /// Artifact envelope failed to decode as a valid accepted artifact.
+    #[error("admission rejected: artifact envelope decode failed")]
+    ArtifactEnvelopeDecodeFailed,
+    /// Artifact has an invalid gate count for v1 admission.
+    #[error("admission rejected: artifact gate count {found} != {required}")]
+    ArtifactInvalidGateCount {
+        /// Found gate count.
+        found: u8,
+        /// Required gate count.
+        required: u8,
+    },
+    /// Artifact has a proof flag that is false.
+    #[error("admission rejected: artifact proof flag {flag} is false")]
+    ArtifactInvalidProofFlag {
+        /// Name of the false flag.
+        flag: &'static str,
+    },
 }
 
 /// Trait for checking whether a compiled artifact exists in storage.
@@ -137,15 +197,24 @@ pub trait ArtifactStore: Send + Sync {
 /// Shared artifact store trait object.
 pub type SharedArtifactStore = Arc<dyn ArtifactStore>;
 
+/// Shared accepted artifact store for full validation at admission gate.
+pub type SharedAcceptedArtifactStore = Arc<dyn AcceptedArtifactStore>;
+
 /// Artifact store that always reports artifacts as present.
 /// Used in tests and when policy is Relaxed.
 #[derive(Debug, Default)]
 pub struct AlwaysPresentArtifactStore;
 
 impl AlwaysPresentArtifactStore {
-    /// Creates a new shared always-present store.
+    /// Creates a new shared always-present store (legacy artifact-only view).
     #[must_use]
-    pub fn shared() -> SharedArtifactStore {
+    pub fn shared_artifact() -> SharedArtifactStore {
+        Arc::new(Self)
+    }
+
+    /// Creates a new shared always-present store as an accepted artifact store.
+    #[must_use]
+    pub fn shared() -> SharedAcceptedArtifactStore {
         Arc::new(Self)
     }
 }
@@ -153,6 +222,51 @@ impl AlwaysPresentArtifactStore {
 impl ArtifactStore for AlwaysPresentArtifactStore {
     fn compiled_ir_exists(&self, _digest: WorkflowDigest) -> bool {
         true
+    }
+}
+
+/// Loads and validates accepted artifacts from storage.
+///
+/// This trait enables the runtime admission gate to perform full artifact
+/// validation — not just existence — before admitting a run.
+pub trait AcceptedArtifactStore: Send + Sync {
+    /// Loads and validates an accepted artifact by digest.
+    ///
+    /// Returns the validated artifact on success, or an error if the artifact
+    /// is missing or fails semantic validation (gate count, proof flags).
+    fn load_accepted_artifact(
+        &self,
+        artifact_digest: WorkflowDigest,
+    ) -> Result<vb_storage::admission::AcceptedArtifact, ArtifactEnvelopeError>;
+}
+
+impl AcceptedArtifactStore for AlwaysPresentArtifactStore {
+    fn load_accepted_artifact(
+        &self,
+        artifact_digest: WorkflowDigest,
+    ) -> Result<vb_storage::admission::AcceptedArtifact, ArtifactEnvelopeError> {
+        // AlwaysPresentArtifactStore is used in tests that don't care about
+        // artifact content. Return a dummy artifact that passes validation
+        // for Strict/Journaled policies in tests.
+        let proof = vb_storage::admission::VerificationProof {
+            digest: artifact_digest,
+            gate_count: REQUIRED_GATE_COUNT,
+            durable: true,
+            bounded: true,
+            taint_safe: true,
+            retry_safe: true,
+            replayable: true,
+            idempotency_keyed: Box::new([]),
+            idempotency_attested: Box::new([]),
+            warnings: Vec::new(),
+        };
+        Ok(vb_storage::admission::AcceptedArtifact {
+            digest: artifact_digest,
+            ir: Vec::new(),
+            verification: proof,
+            accepted_at_seq: vb_storage::types::EventSeq::new(0),
+            required_capabilities: Box::new([]),
+        })
     }
 }
 
@@ -168,9 +282,15 @@ impl StorageArtifactStore {
         Self { journal }
     }
 
-    /// Creates a new shared storage-backed artifact store.
+    /// Creates a new shared storage-backed artifact store (legacy artifact-only view).
     #[must_use]
-    pub fn shared(journal: Arc<vb_storage::FjallJournal>) -> SharedArtifactStore {
+    pub fn shared_artifact(journal: Arc<vb_storage::FjallJournal>) -> SharedArtifactStore {
+        Arc::new(Self::new(journal))
+    }
+
+    /// Creates a new shared storage-backed accepted artifact store.
+    #[must_use]
+    pub fn shared(journal: Arc<vb_storage::FjallJournal>) -> SharedAcceptedArtifactStore {
         Arc::new(Self::new(journal))
     }
 }
@@ -178,6 +298,55 @@ impl StorageArtifactStore {
 impl ArtifactStore for StorageArtifactStore {
     fn compiled_ir_exists(&self, digest: WorkflowDigest) -> bool {
         matches!(self.journal.compiled_ir(digest), Ok(Some(_)))
+    }
+}
+
+impl AcceptedArtifactStore for StorageArtifactStore {
+    fn load_accepted_artifact(
+        &self,
+        artifact_digest: WorkflowDigest,
+    ) -> Result<vb_storage::admission::AcceptedArtifact, ArtifactEnvelopeError> {
+        // Load the compiled IR record from the journal.
+        let record = self
+            .journal
+            .compiled_ir(artifact_digest)
+            .map_err(|_jb_err| ArtifactEnvelopeError::ArtifactNotFound {
+                digest: artifact_digest,
+            })?
+            .ok_or(ArtifactEnvelopeError::ArtifactNotFound {
+                digest: artifact_digest,
+            })?;
+
+        // Decode the postcard payload as AcceptedArtifact.
+        let artifact: vb_storage::admission::AcceptedArtifact = postcard::from_bytes(&record.ir)
+            .map_err(|_decode_err| ArtifactEnvelopeError::PostcardDecodeFailed)?;
+
+        // Validate gate count (must be 15 for v1 accepted artifact).
+        if artifact.verification.gate_count != REQUIRED_GATE_COUNT {
+            return Err(ArtifactEnvelopeError::InvalidGateCount {
+                found: artifact.verification.gate_count,
+                required: REQUIRED_GATE_COUNT,
+            });
+        }
+
+        // Validate required proof flags are all true.
+        if !artifact.verification.bounded {
+            return Err(ArtifactEnvelopeError::MissingRequiredProofFlagBounded);
+        }
+        if !artifact.verification.taint_safe {
+            return Err(ArtifactEnvelopeError::MissingRequiredProofFlagTaintSafe);
+        }
+        if !artifact.verification.retry_safe {
+            return Err(ArtifactEnvelopeError::MissingRequiredProofFlagRetrySafe);
+        }
+        if !artifact.verification.durable {
+            return Err(ArtifactEnvelopeError::MissingRequiredProofFlagDurable);
+        }
+        if !artifact.verification.replayable {
+            return Err(ArtifactEnvelopeError::MissingRequiredProofFlagReplayable);
+        }
+
+        Ok(artifact)
     }
 }
 
@@ -203,6 +372,73 @@ pub fn admit_run(
         RuntimePolicy::Relaxed => {}
     }
     Ok(RunAdmission::new(digest, run_id, caps, policy))
+}
+
+/// Performs full admission gate check with artifact validation before run creation.
+///
+/// For `RuntimePolicy::Strict` and `RuntimePolicy::Journaled`:
+///   - Loads and validates the accepted artifact from storage
+///   - Checks that the artifact has all 15 gates passing and proof flags set
+///   - Validates that granted capabilities cover the artifact's required capabilities
+///
+/// For `RuntimePolicy::Relaxed`:
+///   - Skips artifact loading and capability checking
+///   - Returns a lightweight RunAdmission with no budget
+///
+/// Returns `Ok(RunAdmission)` on success, or an `AdmissionError` on rejection.
+/// On error, no run frame is allocated, no run state is inserted, and no
+/// `RunAccepted` journal event is recorded.
+pub fn admit_artifact_run(
+    store: &dyn AcceptedArtifactStore,
+    policy: RuntimePolicy,
+    run_id: RunId,
+    artifact_digest: WorkflowDigest,
+    caps: CapabilitySet,
+) -> Result<RunAdmission, AdmissionError> {
+    match policy {
+        RuntimePolicy::Strict | RuntimePolicy::Journaled => {
+            // Load and validate the full artifact.
+            let artifact = store
+                .load_accepted_artifact(artifact_digest)
+                .map_err(|source| match source {
+                    ArtifactEnvelopeError::ArtifactNotFound { digest } => {
+                        AdmissionError::ArtifactNotFound { digest }
+                    }
+                    ArtifactEnvelopeError::PostcardDecodeFailed => {
+                        AdmissionError::ArtifactEnvelopeDecodeFailed
+                    }
+                    ArtifactEnvelopeError::InvalidGateCount { found, required } => {
+                        AdmissionError::ArtifactInvalidGateCount { found, required }
+                    }
+                    ArtifactEnvelopeError::MissingRequiredProofFlagBounded => {
+                        AdmissionError::ArtifactInvalidProofFlag { flag: "bounded" }
+                    }
+                    ArtifactEnvelopeError::MissingRequiredProofFlagTaintSafe => {
+                        AdmissionError::ArtifactInvalidProofFlag { flag: "taint_safe" }
+                    }
+                    ArtifactEnvelopeError::MissingRequiredProofFlagRetrySafe => {
+                        AdmissionError::ArtifactInvalidProofFlag { flag: "retry_safe" }
+                    }
+                    ArtifactEnvelopeError::MissingRequiredProofFlagDurable => {
+                        AdmissionError::ArtifactInvalidProofFlag { flag: "durable" }
+                    }
+                    ArtifactEnvelopeError::MissingRequiredProofFlagReplayable => {
+                        AdmissionError::ArtifactInvalidProofFlag { flag: "replayable" }
+                    }
+                })?;
+
+            // Check that granted capabilities cover the artifact's required capabilities.
+            for required_cap in artifact.required_capabilities.iter() {
+                check_capability(required_cap.action_id(), required_cap, &caps)?;
+            }
+
+            Ok(RunAdmission::new(artifact_digest, run_id, caps, policy))
+        }
+        RuntimePolicy::Relaxed => {
+            // Relaxed: skip artifact loading and capability checking.
+            Ok(RunAdmission::new(artifact_digest, run_id, caps, policy))
+        }
+    }
 }
 
 /// Performs artifact admission plus aggregate resource capacity admission.
@@ -432,7 +668,7 @@ mod tests {
 
     #[test]
     fn admission_admit_run_strict_with_present_artifact() {
-        let store = AlwaysPresentArtifactStore::shared();
+        let store = AlwaysPresentArtifactStore::shared_artifact();
         let digest = test_digest();
         let run_id = RunId::new(1);
         let caps =

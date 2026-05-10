@@ -29,7 +29,7 @@ impl Shard {
     pub fn new_with_journal_and_artifact_store(
         config: ShardConfig,
         journal: SharedRuntimeJournal,
-        artifact_store: crate::admission::SharedArtifactStore,
+        artifact_store: crate::admission::SharedAcceptedArtifactStore,
     ) -> Self {
         Self {
             command_queue: ArrayQueue::new(config.command_queue_capacity),

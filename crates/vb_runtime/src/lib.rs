@@ -146,6 +146,12 @@ pub enum RuntimeError {
         digest: vb_core::ids::WorkflowDigest,
     },
 
+    /// Admission gate rejected the run because the accepted artifact envelope is invalid.
+    AdmissionArtifactInvalid {
+        /// Digest of the invalid artifact.
+        digest: vb_core::ids::WorkflowDigest,
+    },
+
     /// Admission gate rejected the run because the required capability was not granted.
     AdmissionCapabilityDenied {
         /// Action that required the capability.
@@ -190,6 +196,9 @@ fn runtime_error_static_message(error: &RuntimeError) -> Option<&'static str> {
         RuntimeError::ActiveRunCapacityZero => Some("active run capacity cannot be zero"),
         RuntimeError::AdmissionArtifactNotFound { .. } => {
             Some("admission rejected: artifact not found")
+        }
+        RuntimeError::AdmissionArtifactInvalid { .. } => {
+            Some("admission rejected: artifact invalid")
         }
         RuntimeError::AdmissionCapabilityDenied { .. } => {
             Some("admission rejected: capability denied")
@@ -326,6 +335,10 @@ fn runtime_error_admission_field_eq(left: &RuntimeError, right: &RuntimeError) -
             RuntimeError::AdmissionArtifactNotFound { digest: b },
         ) => a == b,
         (
+            RuntimeError::AdmissionArtifactInvalid { digest: a },
+            RuntimeError::AdmissionArtifactInvalid { digest: b },
+        ) => a == b,
+        (
             RuntimeError::AdmissionCapabilityDenied {
                 action: a,
                 required: b,
@@ -391,6 +404,8 @@ impl RuntimeError {
     pub const ADMISSION_ARTIFACT_NOT_FOUND_CODE: DiagnosticCode = DiagnosticCode::new(0x2011);
     /// Diagnostic code for admission capability denied.
     pub const ADMISSION_CAPABILITY_DENIED_CODE: DiagnosticCode = DiagnosticCode::new(0x2012);
+    /// Diagnostic code for admission artifact invalid.
+    pub const ADMISSION_ARTIFACT_INVALID_CODE: DiagnosticCode = DiagnosticCode::new(0x2014);
     /// Diagnostic code for encoding failure.
     pub const ENCODE_FAILED_CODE: DiagnosticCode = DiagnosticCode::new(0x2013);
 
@@ -423,6 +438,7 @@ impl RuntimeError {
             Self::CommandQueueCapacityExceeded { .. } => Self::COMMAND_QUEUE_CAPACITY_EXCEEDED_CODE,
             Self::ActiveRunCapacityZero => Self::ACTIVE_RUN_CAPACITY_ZERO_CODE,
             Self::AdmissionArtifactNotFound { .. } => Self::ADMISSION_ARTIFACT_NOT_FOUND_CODE,
+            Self::AdmissionArtifactInvalid { .. } => Self::ADMISSION_ARTIFACT_INVALID_CODE,
             Self::AdmissionCapabilityDenied { .. } => Self::ADMISSION_CAPABILITY_DENIED_CODE,
             Self::EncodeFailed => Self::ENCODE_FAILED_CODE,
         }
