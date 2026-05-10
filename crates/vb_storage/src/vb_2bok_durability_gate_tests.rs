@@ -14,20 +14,19 @@
     clippy::unwrap_used
 )]
 mod durability_gate_tests {
-    use crate::admission::{AcceptedArtifact, admit_compiled_artifact, submit_artifact};
+    use crate::admission::{admit_compiled_artifact, submit_artifact};
     use crate::codec::{decode_record, encode_record};
     use crate::constants::{
-        CRC_OFFSET, MAGIC_BLOB, MAGIC_COMPILED_ARTIFACT, MAGIC_JOURNAL_EVENT,
-        MAGIC_WORKFLOW_SOURCE, MAX_BLOB_BYTES, MAX_COMPILED_IR_BYTES,
-        MAX_JOURNAL_EVENT_PAYLOAD_BYTES, MAX_WORKFLOW_SOURCE_BYTES, RECORD_HEADER_BYTES,
+        CRC_OFFSET, MAGIC_BLOB, MAGIC_JOURNAL_EVENT,
+        MAX_JOURNAL_EVENT_PAYLOAD_BYTES, RECORD_HEADER_BYTES,
     };
     use crate::records::RecordKind;
     use crate::{
-        BlobRecord, CompiledIrRecord, DIGEST_BYTES, EventSeq, FjallJournal, JournalError,
+        BlobRecord, DIGEST_BYTES, EventSeq, FjallJournal, JournalError,
         JournalEvent, WorkflowSourceRecord,
     };
     use vb_core::{
-        CompiledWorkflow, RunId, RuntimePolicy, SlotIdx, StepIdx, WorkflowDigest, WorkflowId,
+        CompiledWorkflow, RunId, RuntimePolicy, SlotIdx, StepIdx, WorkflowDigest,
     };
 
     // =========================================================================
@@ -194,19 +193,18 @@ mod durability_gate_tests {
         let (_temp, journal) = temp_journal().map_err(|e| format!("journal open: {e}"))?;
         let workflow = minimal_valid_workflow()?;
 
-        for policy in [
-            RuntimePolicy::Relaxed,
-            RuntimePolicy::Journaled,
-            RuntimePolicy::Strict,
-        ] {
-            let result = submit_artifact(&journal, &workflow, policy)
-                .map_err(|e| format!("submit_artifact({policy:?}) failed: {e}"))?;
-            assert_eq!(
-                result.digest,
-                workflow.digest(),
-                "artifact.digest must equal workflow.digest() for policy {policy:?}"
-            );
-        }
+        [RuntimePolicy::Relaxed, RuntimePolicy::Journaled, RuntimePolicy::Strict]
+            .iter()
+            .try_for_each(|policy| {
+                let result = submit_artifact(&journal, &workflow, *policy)
+                    .map_err(|e| format!("submit_artifact({policy:?}) failed: {e}"))?;
+                assert_eq!(
+                    result.digest,
+                    workflow.digest(),
+                    "artifact.digest must equal workflow.digest() for policy {policy:?}"
+                );
+                Ok(())
+            })?;
         Ok(())
     }
 
@@ -218,18 +216,17 @@ mod durability_gate_tests {
         let (_temp, journal) = temp_journal().map_err(|e| format!("journal open: {e}"))?;
         let workflow = minimal_valid_workflow()?;
 
-        for policy in [
-            RuntimePolicy::Relaxed,
-            RuntimePolicy::Journaled,
-            RuntimePolicy::Strict,
-        ] {
-            let result = submit_artifact(&journal, &workflow, policy)
-                .map_err(|e| format!("submit_artifact({policy:?}) failed: {e}"))?;
-            assert!(
-                !result.ir.is_empty(),
-                "artifact.ir must be non-empty for policy {policy:?}"
-            );
-        }
+        [RuntimePolicy::Relaxed, RuntimePolicy::Journaled, RuntimePolicy::Strict]
+            .iter()
+            .try_for_each(|policy| {
+                let result = submit_artifact(&journal, &workflow, *policy)
+                    .map_err(|e| format!("submit_artifact({policy:?}) failed: {e}"))?;
+                assert!(
+                    !result.ir.is_empty(),
+                    "artifact.ir must be non-empty for policy {policy:?}"
+                );
+                Ok(())
+            })?;
         Ok(())
     }
 
@@ -626,9 +623,9 @@ mod durability_gate_tests {
         .map_err(|e| format!("encode failed: {e}"))?;
 
         let mut corrupt = bytes;
-        for byte in corrupt.iter_mut().skip(RECORD_HEADER_BYTES) {
+        corrupt.iter_mut().skip(RECORD_HEADER_BYTES).for_each(|byte| {
             *byte = byte.wrapping_add(1);
-        }
+        });
 
         let result = decode_record::<JournalEvent>(
             &corrupt,
@@ -1022,20 +1019,19 @@ mod durability_gate_tests {
         let (_temp, journal) = temp_journal().map_err(|e| format!("journal open: {e}"))?;
         let workflow = minimal_valid_workflow()?;
 
-        for policy in [
-            RuntimePolicy::Relaxed,
-            RuntimePolicy::Journaled,
-            RuntimePolicy::Strict,
-        ] {
-            let artifact = submit_artifact(&journal, &workflow, policy)
-                .map_err(|e| format!("submit failed: {e}"))?;
+        [RuntimePolicy::Relaxed, RuntimePolicy::Journaled, RuntimePolicy::Strict]
+            .iter()
+            .try_for_each(|policy| {
+                let artifact = submit_artifact(&journal, &workflow, *policy)
+                    .map_err(|e| format!("submit failed: {e}"))?;
 
-            assert_eq!(
-                artifact.digest.as_bytes(),
-                workflow.digest().as_bytes(),
-                "artifact.digest must equal workflow.digest() for policy {policy:?}"
-            );
-        }
+                assert_eq!(
+                    artifact.digest.as_bytes(),
+                    workflow.digest().as_bytes(),
+                    "artifact.digest must equal workflow.digest() for policy {policy:?}"
+                );
+                Ok(())
+            })?;
         Ok(())
     }
 
@@ -1055,17 +1051,17 @@ mod durability_gate_tests {
             })
             .collect();
 
-        for event in &events {
+        events.iter().try_for_each(|event| {
             journal
                 .append_journaled(event)
-                .map_err(|e| format!("append: {e}"))?;
-        }
+                .map_err(|e| format!("append: {e}"))
+        })?;
 
         let replayed = journal
             .events_for_run(run)
             .map_err(|e| format!("replay: {e}"))?;
 
-        for (i, event) in replayed.iter().enumerate() {
+        replayed.iter().enumerate().try_for_each(|(i, event)| {
             assert_eq!(
                 event.seq().get(),
                 i as u64,
@@ -1073,7 +1069,8 @@ mod durability_gate_tests {
                 i,
                 i
             );
-        }
+            Ok(())
+        })?;
         Ok(())
     }
 
@@ -1544,7 +1541,7 @@ mod durability_gate_tests {
         let (_temp, journal) = temp_journal().map_err(|e| format!("journal open: {e}"))?;
         let run = RunId::new(999);
 
-        for i in 0u64..5 {
+        (0u64..5).try_for_each(|i| {
             let event = JournalEvent::StepStarted {
                 run,
                 seq: EventSeq::new(i),
@@ -1552,14 +1549,14 @@ mod durability_gate_tests {
             };
             journal
                 .append_journaled(&event)
-                .map_err(|e| format!("append: {e}"))?;
-        }
+                .map_err(|e| format!("append: {e}"))
+        })?;
 
         let replayed = journal
             .events_for_run(run)
             .map_err(|e| format!("replay: {e}"))?;
 
-        for (i, event) in replayed.iter().enumerate() {
+        replayed.iter().enumerate().try_for_each(|(i, event)| {
             assert_eq!(
                 event.seq().get(),
                 i as u64,
@@ -1567,7 +1564,8 @@ mod durability_gate_tests {
                 i,
                 i
             );
-        }
+            Ok(())
+        })?;
 
         Ok(())
     }
@@ -1689,9 +1687,9 @@ mod durability_gate_tests {
         .map_err(|e| format!("encode: {e}"))?;
 
         let mut corrupt = bytes;
-        for byte in corrupt.iter_mut().skip(RECORD_HEADER_BYTES) {
+        corrupt.iter_mut().skip(RECORD_HEADER_BYTES).for_each(|byte| {
             *byte = byte.wrapping_add(1);
-        }
+        });
 
         let result = decode_record::<JournalEvent>(
             &corrupt,
