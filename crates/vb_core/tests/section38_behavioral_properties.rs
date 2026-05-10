@@ -1,4 +1,5 @@
 #![forbid(unsafe_code)]
+#![allow(clippy::panic_in_result_fn, clippy::expect_used)]
 //! Section 38 behavioral property tests: terminal state rejection, replay
 //! determinism, ordering invariants, and snapshot equivalence.
 

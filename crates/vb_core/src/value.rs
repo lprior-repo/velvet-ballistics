@@ -221,7 +221,7 @@ mod proptests {
 }
 
 #[cfg(test)]
-#[allow(clippy::expect_used, clippy::panic_in_result_fn, clippy::approx_constant)]
+#[allow(clippy::expect_used, clippy::panic_in_result_fn, clippy::approx_constant, clippy::clone_on_copy)]
 mod tests {
     use super::*;
     use crate::errors::CoreError;
