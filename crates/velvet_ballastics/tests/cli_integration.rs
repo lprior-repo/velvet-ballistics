@@ -93,7 +93,8 @@ fn write_test_file(path: &std::path::Path, contents: &[u8]) -> bool {
 }
 
 fn run_cli(args: &[&std::ffi::OsStr]) -> Option<std::process::Output> {
-    let mut command = std::process::Command::new(env!("CARGO_BIN_EXE_vb"));
+    let vb_bin = std::env::var("CARGO_BIN_EXE_vb").ok()?;
+    let mut command = std::process::Command::new(vb_bin);
     command.args(args);
 
     match command.output() {
@@ -2294,7 +2295,9 @@ fn cli_doctor_json_includes_trim_eligibility_check() {
                     run,
                     seq: vb_storage::EventSeq::new(i),
                     step: vb_core::StepIdx::new(
-                        u16::try_from(i).expect("i is 1..5 in StepStarted branch, always fits in u16") - 1
+                        u16::try_from(i)
+                            .expect("i is 1..5 in StepStarted branch, always fits in u16")
+                            - 1,
                     ),
                 }
             }
