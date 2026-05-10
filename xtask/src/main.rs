@@ -10,13 +10,11 @@ use vb_ui_snapshot::{
     report,
     tokens::{self, UiTokens},
 };
+use xtask::evidence;
 
 // ============================================================================
 // Command-center gate modules (POST-001/002/003)
 // ============================================================================
-
-mod evidence;
-mod gates;
 
 #[derive(Parser)]
 #[command(name = "xtask")]
@@ -503,27 +501,34 @@ fn cmd_ui_overlap_check(
 // ============================================================================
 
 fn cmd_ai_fast(bead: Option<&str>) -> anyhow::Result<()> {
-    let output_dir = PathBuf::from(".evidence").join(bead.unwrap_or("default"));
-    std::fs::create_dir_all(&output_dir)?;
-    let result = evidence::run_profile(evidence::GateProfile::Fast, bead, &output_dir)?;
-    write_stdout(format_args!("AiFast profile complete: {:?}", result))?;
-    Ok(())
+    run_gate_profile(evidence::GateProfile::Fast, "AiFast", bead)
 }
 
 fn cmd_ai_deep(bead: Option<&str>) -> anyhow::Result<()> {
-    let output_dir = PathBuf::from(".evidence").join(bead.unwrap_or("default"));
-    std::fs::create_dir_all(&output_dir)?;
-    let result = evidence::run_profile(evidence::GateProfile::Deep, bead, &output_dir)?;
-    write_stdout(format_args!("AiDeep profile complete: {:?}", result))?;
-    Ok(())
+    run_gate_profile(evidence::GateProfile::Deep, "AiDeep", bead)
 }
 
 fn cmd_ai_release(bead: Option<&str>) -> anyhow::Result<()> {
-    let output_dir = PathBuf::from(".evidence").join(bead.unwrap_or("default"));
+    run_gate_profile(evidence::GateProfile::Release, "AiRelease", bead)
+}
+
+fn run_gate_profile(
+    profile: evidence::GateProfile,
+    label: &str,
+    bead: Option<&str>,
+) -> anyhow::Result<()> {
+    let output_dir = profile_output_dir(bead);
     std::fs::create_dir_all(&output_dir)?;
-    let result = evidence::run_profile(evidence::GateProfile::Release, bead, &output_dir)?;
-    write_stdout(format_args!("AiRelease profile complete: {:?}", result))?;
+    let result = evidence::run_profile(profile, bead, &output_dir)?;
+    write_stdout(format_args!("{label} profile complete: {:?}", result))?;
+    if result.exit_code != 0 {
+        anyhow::bail!("{label} profile failed with exit code {}", result.exit_code);
+    }
     Ok(())
+}
+
+fn profile_output_dir(bead: Option<&str>) -> PathBuf {
+    PathBuf::from(".evidence").join(bead.map_or("default", |id| id))
 }
 
 fn check_overlap_for_screen(base_dir: &Path, name: &str) -> anyhow::Result<bool> {
