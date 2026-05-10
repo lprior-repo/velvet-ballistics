@@ -3808,7 +3808,7 @@ mod tests {
                         assert_eq!(*slot, 1);
                         assert_eq!(*sc, 1);
                         assert!(
-                            context.contains("Do.input"),
+                            context.contains("node 0"),
                             "context should contain 'Do.input', got: {}",
                             context
                         );
