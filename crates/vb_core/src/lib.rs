@@ -35,7 +35,11 @@ pub use action::{
     validate_action_dispatch, validate_action_outcome, validate_idempotency_key_ingredients,
     verify_idempotency,
 };
-pub use budget::{BoundednessPolicy, BudgetError, WholeWorkflowBudget};
+pub use budget::{
+    AggregateBudgetError, AggregateReservation, AggregateResourceBudget, AggregateResourceCapacity,
+    AggregateResourceUsage, BoundednessPolicy, BudgetError, WholeWorkflowBudget,
+    validate_aggregate_budget,
+};
 pub use capability::{Capability, CapabilitySet};
 pub use diagnostic::{Diagnostic, DiagnosticCode, DiagnosticCodeParseError, Severity};
 pub use engine::{

@@ -2,8 +2,8 @@
 
 //! Whole-workflow budget computation and boundedness policy enforcement.
 
-use crate::ids::StepIdx;
-use crate::workflow::{CompiledNodeKind, ResourceContract, WorkflowError};
+use crate::ids::{RunId, StepIdx};
+use crate::workflow::{CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowError};
 use std::fmt;
 
 /// Computed budget for an entire workflow, derived by walking the IR.
@@ -94,7 +94,14 @@ impl WholeWorkflowBudget {
             max_total_slots,
             max_fanout,
             max_nesting_depth,
-            max_steps_executable: u32::try_from(max_total_steps).unwrap_or(u32::MAX),
+            max_steps_executable: match u32::try_from(max_total_steps) {
+                Ok(value) => value,
+                Err(_) => {
+                    return Err(WorkflowError::StepCountOverflow {
+                        actual: max_total_steps,
+                    });
+                }
+            },
             max_action_tickets,
             max_parallel_in_flight,
             max_retries_per_action: contract.max_retry_attempts,
@@ -276,6 +283,419 @@ pub enum BudgetError {
     },
 }
 
+/// Aggregate whole-run budget required for runtime admission.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct AggregateResourceBudget {
+    pub max_steps_executable: u32,
+    pub max_action_tickets: u32,
+    pub max_parallel_in_flight: u16,
+    pub max_retries_per_action: u16,
+    pub max_gather_pages: u32,
+    pub max_gather_items: u32,
+    pub max_for_each_iterations: u32,
+    pub max_together_branches: u16,
+    pub max_repeat_attempts: u16,
+    pub max_run_time_seconds: u64,
+    pub max_result_bytes: u32,
+    pub max_total_slots_written: u32,
+    pub max_queue_depth: u32,
+    pub max_journal_batch_bytes: u32,
+}
+
+/// Shard-local aggregate admission capacity.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct AggregateResourceCapacity {
+    pub max_steps_executable: u64,
+    pub max_action_tickets: u64,
+    pub max_parallel_in_flight: u32,
+    pub max_gather_pages: u64,
+    pub max_gather_items: u64,
+    pub max_result_bytes: u64,
+    pub max_total_slots_written: u64,
+    pub max_active_runs: u64,
+    pub max_queue_depth: u64,
+    pub max_journal_batch_bytes: u64,
+}
+
+/// Active shard aggregate usage snapshot.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct AggregateResourceUsage {
+    pub max_steps_executable: u64,
+    pub max_action_tickets: u64,
+    pub max_parallel_in_flight: u64,
+    pub max_gather_pages: u64,
+    pub max_gather_items: u64,
+    pub max_result_bytes: u64,
+    pub max_total_slots_written: u64,
+    pub max_active_runs: u64,
+    pub max_queue_depth: u64,
+    pub max_journal_batch_bytes: u64,
+}
+
+/// Exact budget reservation associated with a run.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct AggregateReservation {
+    pub run: RunId,
+    pub requested: AggregateResourceBudget,
+}
+
+/// Aggregate resource-accounting failure.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum AggregateBudgetError {
+    WorkflowBudget(WorkflowError),
+    PolicyExceeded {
+        resource: &'static str,
+        actual: u64,
+        limit: u64,
+    },
+    CapacityExceeded {
+        resource: &'static str,
+        requested: u64,
+        available: u64,
+    },
+    Overflow {
+        resource: &'static str,
+    },
+    Underflow {
+        resource: &'static str,
+    },
+    InvalidCapacity {
+        resource: &'static str,
+    },
+    ReservationNotFound {
+        run: RunId,
+    },
+}
+
+impl AggregateResourceBudget {
+    pub fn from_workflow(workflow: &CompiledWorkflow) -> Result<Self, AggregateBudgetError> {
+        let parts = workflow.to_parts();
+        let budget = WholeWorkflowBudget::compute(
+            &parts.nodes,
+            workflow.entry(),
+            &workflow.resource_contract(),
+        )
+        .map_err(AggregateBudgetError::WorkflowBudget)?;
+        Self::from_whole_workflow_budget(budget, workflow.resource_contract())
+    }
+
+    pub fn from_whole_workflow_budget(
+        budget: WholeWorkflowBudget,
+        contract: ResourceContract,
+    ) -> Result<Self, AggregateBudgetError> {
+        Ok(Self {
+            max_steps_executable: budget.max_steps_executable,
+            max_action_tickets: budget.max_action_tickets,
+            max_parallel_in_flight: budget.max_parallel_in_flight,
+            max_retries_per_action: budget.max_retries_per_action,
+            max_gather_pages: budget.max_gather_pages,
+            max_gather_items: budget.max_gather_items,
+            max_for_each_iterations: budget.max_for_each_iterations,
+            max_together_branches: budget.max_together_branches,
+            max_repeat_attempts: budget.max_repeat_attempts,
+            max_run_time_seconds: budget.max_run_time_seconds,
+            max_result_bytes: budget.max_result_bytes,
+            max_total_slots_written: budget.max_total_slots_written,
+            max_queue_depth: contract.max_queue_depth,
+            max_journal_batch_bytes: contract.max_journal_batch_bytes,
+        })
+    }
+}
+
+impl AggregateResourceUsage {
+    pub fn try_add_budget(
+        &self,
+        budget: &AggregateResourceBudget,
+    ) -> Result<Self, AggregateBudgetError> {
+        Ok(Self {
+            max_steps_executable: add_dim(
+                self.max_steps_executable,
+                u64::from(budget.max_steps_executable),
+                "max_steps_executable",
+            )?,
+            max_action_tickets: add_dim(
+                self.max_action_tickets,
+                u64::from(budget.max_action_tickets),
+                "max_action_tickets",
+            )?,
+            max_parallel_in_flight: add_dim(
+                self.max_parallel_in_flight,
+                u64::from(budget.max_parallel_in_flight),
+                "max_parallel_in_flight",
+            )?,
+            max_gather_pages: add_dim(
+                self.max_gather_pages,
+                u64::from(budget.max_gather_pages),
+                "max_gather_pages",
+            )?,
+            max_gather_items: add_dim(
+                self.max_gather_items,
+                u64::from(budget.max_gather_items),
+                "max_gather_items",
+            )?,
+            max_result_bytes: add_dim(
+                self.max_result_bytes,
+                u64::from(budget.max_result_bytes),
+                "max_result_bytes",
+            )?,
+            max_total_slots_written: add_dim(
+                self.max_total_slots_written,
+                u64::from(budget.max_total_slots_written),
+                "max_total_slots_written",
+            )?,
+            max_active_runs: add_dim(self.max_active_runs, 1, "max_active_runs")?,
+            max_queue_depth: add_dim(
+                self.max_queue_depth,
+                u64::from(budget.max_queue_depth),
+                "max_queue_depth",
+            )?,
+            max_journal_batch_bytes: add_dim(
+                self.max_journal_batch_bytes,
+                u64::from(budget.max_journal_batch_bytes),
+                "max_journal_batch_bytes",
+            )?,
+        })
+    }
+
+    pub fn try_subtract_budget(
+        &self,
+        budget: &AggregateResourceBudget,
+    ) -> Result<Self, AggregateBudgetError> {
+        Ok(Self {
+            max_steps_executable: sub_dim(
+                self.max_steps_executable,
+                u64::from(budget.max_steps_executable),
+                "max_steps_executable",
+            )?,
+            max_action_tickets: sub_dim(
+                self.max_action_tickets,
+                u64::from(budget.max_action_tickets),
+                "max_action_tickets",
+            )?,
+            max_parallel_in_flight: sub_dim(
+                self.max_parallel_in_flight,
+                u64::from(budget.max_parallel_in_flight),
+                "max_parallel_in_flight",
+            )?,
+            max_gather_pages: sub_dim(
+                self.max_gather_pages,
+                u64::from(budget.max_gather_pages),
+                "max_gather_pages",
+            )?,
+            max_gather_items: sub_dim(
+                self.max_gather_items,
+                u64::from(budget.max_gather_items),
+                "max_gather_items",
+            )?,
+            max_result_bytes: sub_dim(
+                self.max_result_bytes,
+                u64::from(budget.max_result_bytes),
+                "max_result_bytes",
+            )?,
+            max_total_slots_written: sub_dim(
+                self.max_total_slots_written,
+                u64::from(budget.max_total_slots_written),
+                "max_total_slots_written",
+            )?,
+            max_active_runs: sub_dim(self.max_active_runs, 1, "max_active_runs")?,
+            max_queue_depth: sub_dim(
+                self.max_queue_depth,
+                u64::from(budget.max_queue_depth),
+                "max_queue_depth",
+            )?,
+            max_journal_batch_bytes: sub_dim(
+                self.max_journal_batch_bytes,
+                u64::from(budget.max_journal_batch_bytes),
+                "max_journal_batch_bytes",
+            )?,
+        })
+    }
+
+    pub fn fits_within(
+        &self,
+        capacity: &AggregateResourceCapacity,
+    ) -> Result<(), AggregateBudgetError> {
+        check_capacity(
+            "max_steps_executable",
+            self.max_steps_executable,
+            capacity.max_steps_executable,
+        )?;
+        check_capacity(
+            "max_action_tickets",
+            self.max_action_tickets,
+            capacity.max_action_tickets,
+        )?;
+        check_capacity(
+            "max_parallel_in_flight",
+            self.max_parallel_in_flight,
+            u64::from(capacity.max_parallel_in_flight),
+        )?;
+        check_capacity(
+            "max_gather_pages",
+            self.max_gather_pages,
+            capacity.max_gather_pages,
+        )?;
+        check_capacity(
+            "max_gather_items",
+            self.max_gather_items,
+            capacity.max_gather_items,
+        )?;
+        check_capacity(
+            "max_result_bytes",
+            self.max_result_bytes,
+            capacity.max_result_bytes,
+        )?;
+        check_capacity(
+            "max_total_slots_written",
+            self.max_total_slots_written,
+            capacity.max_total_slots_written,
+        )?;
+        check_capacity(
+            "max_active_runs",
+            self.max_active_runs,
+            capacity.max_active_runs,
+        )?;
+        check_capacity(
+            "max_queue_depth",
+            self.max_queue_depth,
+            capacity.max_queue_depth,
+        )?;
+        check_capacity(
+            "max_journal_batch_bytes",
+            self.max_journal_batch_bytes,
+            capacity.max_journal_batch_bytes,
+        )
+    }
+}
+
+pub fn validate_aggregate_budget(
+    budget: &AggregateResourceBudget,
+    policy: &BoundednessPolicy,
+) -> Result<(), AggregateBudgetError> {
+    check_policy(
+        "max_steps_executable",
+        u64::from(budget.max_steps_executable),
+        u64::from(policy.absolute_max_steps_executable),
+    )?;
+    check_policy(
+        "max_action_tickets",
+        u64::from(budget.max_action_tickets),
+        u64::from(policy.absolute_max_action_tickets),
+    )?;
+    check_policy(
+        "max_parallel_in_flight",
+        u64::from(budget.max_parallel_in_flight),
+        u64::from(policy.absolute_max_parallel),
+    )?;
+    check_policy(
+        "max_retries_per_action",
+        u64::from(budget.max_retries_per_action),
+        u64::from(u16::MAX),
+    )?;
+    check_policy(
+        "max_gather_pages",
+        u64::from(budget.max_gather_pages),
+        u64::from(u32::MAX),
+    )?;
+    check_policy(
+        "max_gather_items",
+        u64::from(budget.max_gather_items),
+        u64::from(u32::MAX),
+    )?;
+    check_policy(
+        "max_for_each_iterations",
+        u64::from(budget.max_for_each_iterations),
+        u64::from(u32::MAX),
+    )?;
+    check_policy(
+        "max_together_branches",
+        u64::from(budget.max_together_branches),
+        u64::from(policy.max_fanout),
+    )?;
+    check_policy(
+        "max_repeat_attempts",
+        u64::from(budget.max_repeat_attempts),
+        u64::from(u16::MAX),
+    )?;
+    check_policy(
+        "max_run_time_seconds",
+        budget.max_run_time_seconds,
+        policy.absolute_max_run_time_seconds,
+    )?;
+    check_policy(
+        "max_result_bytes",
+        u64::from(budget.max_result_bytes),
+        u64::from(policy.absolute_max_result_bytes),
+    )?;
+    check_policy(
+        "max_total_slots_written",
+        u64::from(budget.max_total_slots_written),
+        policy.max_total_slots,
+    )?;
+    check_policy(
+        "max_queue_depth",
+        u64::from(budget.max_queue_depth),
+        u64::from(u32::MAX),
+    )?;
+    check_policy(
+        "max_journal_batch_bytes",
+        u64::from(budget.max_journal_batch_bytes),
+        u64::from(u32::MAX),
+    )
+}
+
+fn add_dim(
+    current: u64,
+    requested: u64,
+    resource: &'static str,
+) -> Result<u64, AggregateBudgetError> {
+    current
+        .checked_add(requested)
+        .ok_or(AggregateBudgetError::Overflow { resource })
+}
+
+fn sub_dim(
+    current: u64,
+    requested: u64,
+    resource: &'static str,
+) -> Result<u64, AggregateBudgetError> {
+    current
+        .checked_sub(requested)
+        .ok_or(AggregateBudgetError::Underflow { resource })
+}
+
+fn check_capacity(
+    resource: &'static str,
+    requested: u64,
+    available: u64,
+) -> Result<(), AggregateBudgetError> {
+    if requested > available {
+        Err(AggregateBudgetError::CapacityExceeded {
+            resource,
+            requested,
+            available,
+        })
+    } else {
+        Ok(())
+    }
+}
+
+fn check_policy(
+    resource: &'static str,
+    actual: u64,
+    limit: u64,
+) -> Result<(), AggregateBudgetError> {
+    if actual > limit {
+        Err(AggregateBudgetError::PolicyExceeded {
+            resource,
+            actual,
+            limit,
+        })
+    } else {
+        Ok(())
+    }
+}
+
 impl fmt::Display for BudgetError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -441,8 +861,10 @@ fn visit_node_for_total_steps(
             })?;
         }
         CompiledNodeKind::ReduceStart { body, done, .. } => {
-            let iter_count =
-                u64::try_from(crate::limits::MAX_LIST_ITEMS_PER_VALUE).unwrap_or(u64::MAX);
+            let iter_count = match u64::try_from(crate::limits::MAX_LIST_ITEMS_PER_VALUE) {
+                Ok(value) => value,
+                Err(_) => return Err(WorkflowError::StepCountOverflow { actual: u64::MAX }),
+            };
             total = count_and_push_loop_body(
                 nodes, *body, *done, iter_count, visited, node_count, total, stack,
             )
@@ -639,7 +1061,15 @@ fn visit_body_region_node(
             )?;
         }
         CompiledNodeKind::ReduceStart { body, done, .. } => {
-            let iter = u64::try_from(crate::limits::MAX_LIST_ITEMS_PER_VALUE).unwrap_or(u64::MAX);
+            let iter = match u64::try_from(crate::limits::MAX_LIST_ITEMS_PER_VALUE) {
+                Ok(value) => value,
+                Err(_) => {
+                    return Err(BudgetError::TotalStepsExceeded {
+                        actual: u64::MAX,
+                        limit: u64::MAX,
+                    });
+                }
+            };
             count = count_nested_for_region(
                 nodes,
                 *body,
@@ -747,7 +1177,7 @@ fn push_successor_targets(kind: &CompiledNodeKind, stack: &mut Vec<StepIdx>) {
             push_error_handler_successors(*body, *handler, stack)
         }
         CompiledNodeKind::Jump { target } => stack.push(*target),
-        _ => unreachable!("no-successor variants handled by early return"),
+        _ => {}
     }
 }
 
@@ -835,9 +1265,10 @@ fn push_error_handler_successors(body: StepIdx, handler: StepIdx, stack: &mut Ve
     stack.push(handler);
 }
 
-/// Converts a usize branch count to u16, saturating at u16::MAX on overflow.
-fn branch_count_to_u16(count: usize) -> u16 {
-    u16::try_from(count).unwrap_or(u16::MAX)
+fn branch_count_to_u16(count: usize) -> Result<u16, WorkflowError> {
+    u16::try_from(count).map_err(|_| WorkflowError::StepCountOverflow {
+        actual: count as u64,
+    })
 }
 
 /// Computes max fanout and max nesting depth via a DFS walk.
@@ -890,8 +1321,8 @@ fn compute_fanout_and_depth(
         }
     }
 
-    let child_depth = compute_child_depth(&node.kind, current_depth, max_nesting_depth);
-    update_fanout(&node.kind, max_fanout);
+    let child_depth = compute_child_depth(&node.kind, current_depth, max_nesting_depth)?;
+    update_fanout(&node.kind, max_fanout)?;
     update_workflow_metrics(
         &node.kind,
         max_action_tickets,
@@ -901,7 +1332,7 @@ fn compute_fanout_and_depth(
         max_for_each_iterations,
         max_together_branches,
         max_repeat_attempts,
-    );
+    )?;
 
     let mut targets: Vec<StepIdx> = Vec::new();
     push_successor_targets(&node.kind, &mut targets);
@@ -935,13 +1366,11 @@ fn compute_fanout_and_depth(
     Ok(())
 }
 
-/// Returns the depth to pass to children, updating max_nesting_depth if this
-/// node is a nesting construct.
 fn compute_child_depth(
     kind: &CompiledNodeKind,
     current_depth: u16,
     max_nesting_depth: &mut u16,
-) -> u16 {
+) -> Result<u16, WorkflowError> {
     match kind {
         CompiledNodeKind::ForEachStart { .. }
         | CompiledNodeKind::ForEachNext { .. }
@@ -954,39 +1383,41 @@ fn compute_child_depth(
         | CompiledNodeKind::RepeatAttempt { .. }
         | CompiledNodeKind::TogetherStart { .. }
         | CompiledNodeKind::TogetherBranch { .. } => {
-            let new_depth = current_depth.saturating_add(1);
+            let new_depth = current_depth
+                .checked_add(1)
+                .ok_or(WorkflowError::StepCountOverflow { actual: u64::MAX })?;
             if new_depth > *max_nesting_depth {
                 *max_nesting_depth = new_depth;
             }
-            new_depth
+            Ok(new_depth)
         }
-        _ => current_depth,
+        _ => Ok(current_depth),
     }
 }
 
-/// Updates max_fanout based on branching node kinds.
-fn update_fanout(kind: &CompiledNodeKind, max_fanout: &mut u16) {
+fn update_fanout(kind: &CompiledNodeKind, max_fanout: &mut u16) -> Result<(), WorkflowError> {
     match kind {
         CompiledNodeKind::TogetherStart { branches, .. } => {
-            let branch_count = branch_count_to_u16(branches.len());
+            let branch_count = branch_count_to_u16(branches.len())?;
             if branch_count > *max_fanout {
                 *max_fanout = branch_count;
             }
         }
         CompiledNodeKind::ChooseSlot { branches, .. } => {
-            let branch_count = branch_count_to_u16(branches.len());
+            let branch_count = branch_count_to_u16(branches.len())?;
             if branch_count > *max_fanout {
                 *max_fanout = branch_count;
             }
         }
         CompiledNodeKind::Choose { branches, .. } => {
-            let branch_count = branch_count_to_u16(branches.len());
+            let branch_count = branch_count_to_u16(branches.len())?;
             if branch_count > *max_fanout {
                 *max_fanout = branch_count;
             }
         }
         _ => {}
     }
+    Ok(())
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -999,13 +1430,15 @@ fn update_workflow_metrics(
     max_for_each_iterations: &mut u32,
     max_together_branches: &mut u16,
     max_repeat_attempts: &mut u16,
-) {
+) -> Result<(), WorkflowError> {
     match kind {
         CompiledNodeKind::Do { .. } => {
-            *max_action_tickets = max_action_tickets.saturating_add(1);
+            *max_action_tickets = max_action_tickets
+                .checked_add(1)
+                .ok_or(WorkflowError::StepCountOverflow { actual: u64::MAX })?;
         }
         CompiledNodeKind::TogetherStart { branches, .. } => {
-            let branch_count = branch_count_to_u16(branches.len());
+            let branch_count = branch_count_to_u16(branches.len())?;
             if branch_count > *max_parallel_in_flight {
                 *max_parallel_in_flight = branch_count;
             }
@@ -1014,17 +1447,24 @@ fn update_workflow_metrics(
             }
         }
         CompiledNodeKind::CollectStart { limit, .. } => {
-            *max_gather_pages = max_gather_pages.saturating_add(1);
-            *max_gather_items = max_gather_items.saturating_add(*limit);
+            *max_gather_pages = max_gather_pages
+                .checked_add(1)
+                .ok_or(WorkflowError::StepCountOverflow { actual: u64::MAX })?;
+            *max_gather_items = max_gather_items
+                .checked_add(*limit)
+                .ok_or(WorkflowError::StepCountOverflow { actual: u64::MAX })?;
         }
         CompiledNodeKind::ForEachStart { limit, .. } => {
-            *max_for_each_iterations = max_for_each_iterations.saturating_add(*limit);
+            *max_for_each_iterations = max_for_each_iterations
+                .checked_add(*limit)
+                .ok_or(WorkflowError::StepCountOverflow { actual: u64::MAX })?;
         }
         CompiledNodeKind::RepeatStart { max_attempts, .. } => {
             *max_repeat_attempts = (*max_repeat_attempts).max(*max_attempts);
         }
         _ => {}
     }
+    Ok(())
 }
 
 #[cfg(test)]

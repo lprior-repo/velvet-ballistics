@@ -59,6 +59,11 @@ pub const CODE_ACTION_CONTRACT_MISSING: u16 = 0x0509;
 pub const CODE_ACTION_CONTRACT_ORPHAN: u16 = 0x050A;
 pub const CODE_SLOT_TYPE_INCONSISTENCY: u16 = 0x050B;
 pub const CODE_NON_DETERMINISTIC_PATH: u16 = 0x050C;
+pub const CODE_CAPABILITY_NAME_EMPTY: u16 = 0x050D;
+pub const CODE_CAPABILITY_NAME_TOO_LONG: u16 = 0x050E;
+pub const CODE_CAPABILITY_NAME_INVALID: u16 = 0x050F;
+pub const CODE_CAPABILITY_ACTION_MISMATCH: u16 = 0x0510;
+pub const CODE_CAPABILITY_DUPLICATE: u16 = 0x0511;
 
 #[cfg(test)]
 mod tests {
@@ -142,6 +147,17 @@ mod tests {
             ("CODE_ACTION_CONTRACT_ORPHAN", CODE_ACTION_CONTRACT_ORPHAN),
             ("CODE_SLOT_TYPE_INCONSISTENCY", CODE_SLOT_TYPE_INCONSISTENCY),
             ("CODE_NON_DETERMINISTIC_PATH", CODE_NON_DETERMINISTIC_PATH),
+            ("CODE_CAPABILITY_NAME_EMPTY", CODE_CAPABILITY_NAME_EMPTY),
+            (
+                "CODE_CAPABILITY_NAME_TOO_LONG",
+                CODE_CAPABILITY_NAME_TOO_LONG,
+            ),
+            ("CODE_CAPABILITY_NAME_INVALID", CODE_CAPABILITY_NAME_INVALID),
+            (
+                "CODE_CAPABILITY_ACTION_MISMATCH",
+                CODE_CAPABILITY_ACTION_MISMATCH,
+            ),
+            ("CODE_CAPABILITY_DUPLICATE", CODE_CAPABILITY_DUPLICATE),
         ]
     }
 
@@ -264,6 +280,11 @@ mod tests {
             CODE_ACTION_CONTRACT_ORPHAN,
             CODE_SLOT_TYPE_INCONSISTENCY,
             CODE_NON_DETERMINISTIC_PATH,
+            CODE_CAPABILITY_NAME_EMPTY,
+            CODE_CAPABILITY_NAME_TOO_LONG,
+            CODE_CAPABILITY_NAME_INVALID,
+            CODE_CAPABILITY_ACTION_MISMATCH,
+            CODE_CAPABILITY_DUPLICATE,
         ];
         for code in gate_codes {
             let high = (code >> 8) & 0xFF;
@@ -274,6 +295,6 @@ mod tests {
     #[test]
     fn code_count_matches_total() {
         let codes = all_codes();
-        assert_eq!(codes.len(), 48, "expected exactly 49 diagnostic codes");
+        assert_eq!(codes.len(), 53, "expected exactly 53 diagnostic codes");
     }
 }

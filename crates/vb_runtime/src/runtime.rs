@@ -553,6 +553,7 @@ mod tests {
                     run,
                     slot: SlotIdx::new(0),
                     value: encoded_bool,
+                    taint: vb_core::Taint::Clean,
                     extra: None,
                 },
                 RuntimeJournalEvent::StepSucceeded {

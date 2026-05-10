@@ -153,6 +153,11 @@ impl Shard {
                 required,
                 granted,
             }),
+            Err(AdmissionError::ResourceCapacityExceeded { available, .. }) => {
+                Err(RuntimeError::ActiveRunCapacityExceeded {
+                    capacity: usize::try_from(available).map_or(usize::MAX, |value| value),
+                })
+            }
         }
     }
 
@@ -193,6 +198,7 @@ impl Shard {
             run,
             slot: output.output_slot,
             value: encoded_value,
+            taint: output.taint,
             extra: None,
         })?;
         self.journal.append(RuntimeJournalEvent::StepSucceeded {
@@ -341,6 +347,7 @@ impl Shard {
             run,
             slot: answer.answer_slot,
             value: encoded_answer_value,
+            taint: answer.taint,
             extra: None,
         })?;
         self.journal.append(RuntimeJournalEvent::StepSucceeded {

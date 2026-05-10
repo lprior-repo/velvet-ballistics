@@ -96,11 +96,13 @@ pub fn drive_deterministic_full(
             && let Ok(value) = run.read_slot(slot)
         {
             let extra = collect_states.capture_state(run.run_id(), slot);
-            evidence.push_slot_written_with_extra(slot, *value, extra);
+            let taint = run.read_taint(slot).map_err(RuntimeEngineError::Core)?;
+            evidence.push_slot_written_with_extra(slot, *value, taint, extra);
         } else if let Some(slot) = node.output
             && let Ok(value) = run.read_slot(slot)
         {
-            evidence.push_slot_written(slot, *value);
+            let taint = run.read_taint(slot).map_err(RuntimeEngineError::Core)?;
+            evidence.push_slot_written_with_taint(slot, *value, taint);
         }
 
         // Evidence chain: emit StepSucceeded only when the step actually succeeded.

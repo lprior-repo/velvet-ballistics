@@ -3052,3 +3052,90 @@ fn collect_next_writes_empty_page_and_removes_state_after_last_item() -> Result<
     assert_eq!(states.capture_state(run.run_id(), collector), None);
     Ok(())
 }
+
+// =========================================================================
+// vb-qi37.3.1 RED PHASE: collect state isolation contract tests.
+// These tests encode the approved bead plan and are expected to fail until
+// the implementation changes collect pagination completion/isolation behavior.
+// =========================================================================
+
+fn qi37_start_collect_with_items(
+    items: Vec<SlotValue>,
+    page_size: u32,
+) -> Result<
+    (
+        RunFrame,
+        ValueStore,
+        CollectStates,
+        SlotIdx,
+        SlotIdx,
+        StepIdx,
+        StepIdx,
+    ),
+    String,
+> {
+    let mut run = fresh_frame();
+    let mut store = ValueStore::new();
+    let mut states = fresh_states();
+    let source = SlotIdx::new(0);
+    let collector = SlotIdx::new(1);
+    let body = StepIdx::new(1);
+    let done = StepIdx::new(2);
+
+    list_in_slot(&mut run, &mut store, source, items);
+    assert_eq!(
+        collect_start(
+            &mut run,
+            &mut store,
+            &mut states,
+            source,
+            32,
+            page_size,
+            body,
+            done,
+            Some(collector),
+            None,
+        ),
+        Ok(vb_core::EngineSignal::Continue)
+    );
+
+    Ok((run, store, states, source, collector, body, done))
+}
+
+#[test]
+fn collect_start_exact_page_limit_finishes_without_active_pagination_state() -> Result<(), String> {
+    let (run, store, states, _source, collector, _body, done) =
+        qi37_start_collect_with_items(vec![SlotValue::I64(10), SlotValue::I64(20)], 2)?;
+
+    assert_eq!(run.pc(), done);
+    assert_slot_list_items(
+        &run,
+        &store,
+        collector,
+        &[SlotValue::I64(10), SlotValue::I64(20)],
+    );
+    assert_eq!(states.capture_state(run.run_id(), collector), None);
+    Ok(())
+}
+
+#[test]
+fn collect_next_returns_cursor_beyond_source_error_when_cursor_is_one_above_source_len()
+-> Result<(), String> {
+    let (mut run, mut store, mut states, _source, collector, body, done) =
+        qi37_start_collect_with_items(vec![SlotValue::I64(10), SlotValue::I64(20)], 1)?;
+    let page = slot_list_id(&run, collector)?;
+    let state = states
+        .find(run.run_id(), collector, page)
+        .ok_or("expected active state".to_owned())?;
+    states
+        .upsert(CollectPaginationState { cursor: 3, ..state })
+        .map_err(|e| format!("{e:?}"))?;
+
+    assert_eq!(
+        collect_next(&mut run, &mut store, &mut states, collector, body, done),
+        Err(EngineError::InternalInvariantViolation {
+            reason: "collect cursor beyond source items",
+        })
+    );
+    Ok(())
+}

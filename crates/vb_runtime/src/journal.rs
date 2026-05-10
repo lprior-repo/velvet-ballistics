@@ -3,6 +3,7 @@
 
 use indexmap::IndexMap;
 use std::sync::{Arc, Mutex};
+use vb_core::Taint;
 use vb_core::ids::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest};
 use vb_storage::{
     DurabilityProfile, EventSeq, FjallJournal, JournalEvent, JournalWriterFlushReport,
@@ -108,6 +109,8 @@ pub enum RuntimeJournalEvent {
         slot: SlotIdx,
         /// Encoded slot value bytes (postcard-encoded `SlotValue`).
         value: Vec<u8>,
+        /// Taint written with this slot value.
+        taint: Taint,
         /// Encoded frame extra data captured with this slot write.
         extra: Option<Vec<u8>>,
     },
@@ -417,13 +420,14 @@ impl StorageRuntimeJournal {
                 run,
                 slot,
                 value,
+                taint,
                 extra,
             } => Some(JournalEvent::SlotWrittenEvent {
                 run,
                 seq,
                 slot,
                 value: Some(value),
-                extra,
+                extra: encoded_slot_taint_extra(taint, extra),
             }),
             RuntimeJournalEvent::RunSubmitted { .. }
             | RuntimeJournalEvent::RunAdmission { .. }
@@ -453,6 +457,10 @@ impl StorageRuntimeJournal {
             },
         }
     }
+}
+
+fn encoded_slot_taint_extra(taint: Taint, extra: Option<Vec<u8>>) -> Option<Vec<u8>> {
+    extra.or_else(|| postcard::to_allocvec(&taint).ok())
 }
 
 impl RuntimeJournal for StorageRuntimeJournal {
@@ -584,6 +592,7 @@ mod tests {
     use std::num::NonZeroUsize;
     use std::sync::Arc;
     use vb_core::ids::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest};
+    use vb_core::value::Taint;
     use vb_core::workflow::{
         CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
     };
@@ -850,6 +859,7 @@ mod tests {
                 run,
                 slot: SlotIdx::new(5),
                 value: Vec::new(),
+                taint: Taint::Clean,
                 extra: None,
             }),
             Ok(())
@@ -903,7 +913,7 @@ mod tests {
                     seq: EventSeq::new(6),
                     slot: SlotIdx::new(5),
                     value: Some(Vec::new()),
-                    extra: None,
+                    extra: postcard::to_allocvec(&Taint::Clean).ok(),
                 },
             ]
         );

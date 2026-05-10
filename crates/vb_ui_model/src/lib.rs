@@ -18,6 +18,8 @@ pub use vb_core::ids::{
 };
 pub use vb_core::value::Taint;
 
+pub mod envelope;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[repr(u8)]
 pub enum UiScreenKind {

@@ -2365,6 +2365,7 @@ fn evidence_chain_benches(c: &mut Criterion) {
                             run,
                             slot: SlotIdx::new(0),
                             value: vec![],
+                            taint: vb_core::Taint::Clean,
                             extra: None,
                         }
                     } else if i % 5 == 3 {
@@ -2415,6 +2416,7 @@ fn evidence_chain_benches(c: &mut Criterion) {
                             run,
                             slot: SlotIdx::new(0),
                             value: vec![],
+                            taint: vb_core::Taint::Clean,
                             extra: None,
                         }
                     } else if i % 5 == 3 {

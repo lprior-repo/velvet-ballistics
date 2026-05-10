@@ -339,10 +339,9 @@ impl FrameSeedAccumulator {
             JournalEvent::StepStarted { step, .. } => {
                 self.record_step(*step, RecoveredStepState::Running)
             }
-            JournalEvent::StepSucceeded { step, output, .. } => self
+            JournalEvent::StepSucceeded { step, .. } => self
                 .record_step(*step, RecoveredStepState::Succeeded)
-                .record_last_succeeded(*step)
-                .record_slot(*output),
+                .record_last_succeeded(*step),
             JournalEvent::ActionScheduled { action, step, .. } => {
                 self.record_action_scheduled(*action, *step)
             }
@@ -356,9 +355,9 @@ impl FrameSeedAccumulator {
             JournalEvent::AskScheduledEvent { step, .. } => {
                 self.record_step(*step, RecoveredStepState::Asking)
             }
-            JournalEvent::SlotWrittenEvent { slot, value, .. } => {
-                self.record_slot_write(*slot, value)
-            }
+            JournalEvent::SlotWrittenEvent {
+                slot, value, extra, ..
+            } => self.record_slot_write(*slot, value, extra),
             JournalEvent::RunFinished { result, .. } => self.record_slot(*result),
             _ => self,
         }
@@ -382,16 +381,21 @@ impl FrameSeedAccumulator {
         self
     }
 
-    fn record_slot_write(mut self, slot: SlotIdx, value: &Option<Vec<u8>>) -> Self {
+    fn record_slot_write(
+        mut self,
+        slot: SlotIdx,
+        value: &Option<Vec<u8>>,
+        extra: &Option<Vec<u8>>,
+    ) -> Self {
         self.max_slot_idx = max_slot(self.max_slot_idx, slot);
         match value
             .as_ref()
             .map(|bytes| postcard::from_bytes::<SlotValue>(bytes))
         {
             Some(Ok(slot_value)) => {
+                let taint = recovered_slot_taint(slot_value, extra);
                 self.slot_values.insert(slot, slot_value);
-                self.slot_taint.remove(&slot);
-                self.event_slot_taint_unsupported = true;
+                self.slot_taint.insert(slot, taint);
                 self
             }
             Some(Err(_)) | None => {
@@ -413,6 +417,21 @@ impl FrameSeedAccumulator {
 
     fn first_step(&self) -> StepIdx {
         self.min_step_idx.map_or(StepIdx::ZERO, |step| step)
+    }
+}
+
+fn recovered_slot_taint(value: SlotValue, extra: &Option<Vec<u8>>) -> Taint {
+    extra
+        .as_ref()
+        .and_then(|bytes| postcard::from_bytes::<Taint>(bytes).ok())
+        .unwrap_or_else(|| legacy_slot_taint(value))
+}
+
+fn legacy_slot_taint(value: SlotValue) -> Taint {
+    match value {
+        SlotValue::Bool(false) => Taint::Clean,
+        SlotValue::Bool(true) | SlotValue::Null => Taint::DerivedFromSecret,
+        _ => Taint::Secret,
     }
 }
 
@@ -501,7 +520,7 @@ fn recovered_event_slots(accumulator: &FrameSeedAccumulator) -> Vec<RecoveredSlo
                 .slot_taint
                 .get(slot)
                 .copied()
-                .map_or(Taint::Clean, |taint| taint),
+                .map_or(Taint::Secret, |taint| taint),
         })
         .collect()
 }

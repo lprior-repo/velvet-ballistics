@@ -69,6 +69,11 @@ const CODE_ACTION_CONTRACT_MISSING: u16 = 0x0509;
 const CODE_ACTION_CONTRACT_ORPHAN: u16 = 0x050A;
 const CODE_SLOT_TYPE_INCONSISTENCY: u16 = 0x050B;
 const CODE_NON_DETERMINISTIC_PATH: u16 = 0x050C;
+const CODE_CAPABILITY_NAME_EMPTY: u16 = 0x050D;
+const CODE_CAPABILITY_NAME_TOO_LONG: u16 = 0x050E;
+const CODE_CAPABILITY_NAME_INVALID: u16 = 0x050F;
+const CODE_CAPABILITY_ACTION_MISMATCH: u16 = 0x0510;
+const CODE_CAPABILITY_DUPLICATE: u16 = 0x0511;
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -308,6 +313,57 @@ fn error_diagnostic_parts(error: &ValidationError) -> (DiagnosticCode, String) {
             DiagnosticCode::new(CODE_ACTION_CONTRACT_ORPHAN),
             format!("action contract orphan: action_id {action_id} has no corresponding Do node"),
         ),
+        ValidationError::CapabilityNameEmpty {
+            action_id,
+            capability_index,
+        } => (
+            DiagnosticCode::new(CODE_CAPABILITY_NAME_EMPTY),
+            format!(
+                "capability name is empty for action {action_id} at required_capabilities[{capability_index}]"
+            ),
+        ),
+        ValidationError::CapabilityNameTooLong {
+            action_id,
+            capability_index,
+            len,
+            max,
+        } => (
+            DiagnosticCode::new(CODE_CAPABILITY_NAME_TOO_LONG),
+            format!(
+                "capability name too long for action {action_id} at required_capabilities[{capability_index}]: {len} > {max}"
+            ),
+        ),
+        ValidationError::CapabilityNameInvalid {
+            action_id,
+            capability_index,
+            name,
+        } => (
+            DiagnosticCode::new(CODE_CAPABILITY_NAME_INVALID),
+            format!(
+                "invalid capability name for action {action_id} at required_capabilities[{capability_index}]: {name}"
+            ),
+        ),
+        ValidationError::CapabilityActionMismatch {
+            contract_action_id,
+            capability_action_id,
+            capability_index,
+        } => (
+            DiagnosticCode::new(CODE_CAPABILITY_ACTION_MISMATCH),
+            format!(
+                "capability action {capability_action_id} does not match contract action {contract_action_id} at required_capabilities[{capability_index}]"
+            ),
+        ),
+        ValidationError::CapabilityDuplicate {
+            action_id,
+            first_index,
+            duplicate_index,
+            name,
+        } => (
+            DiagnosticCode::new(CODE_CAPABILITY_DUPLICATE),
+            format!(
+                "duplicate capability requirement for action {action_id}: {name} at required_capabilities[{first_index}] and required_capabilities[{duplicate_index}]"
+            ),
+        ),
         ValidationError::SlotTypeInconsistency { slot } => (
             DiagnosticCode::new(CODE_SLOT_TYPE_INCONSISTENCY),
             format!("slot type inconsistency: slot {slot} has incompatible writers"),
@@ -523,6 +579,32 @@ mod tests {
                 node_index: 0,
             },
             ValidationError::ActionContractOrphan { action_id: 2 },
+            ValidationError::CapabilityNameEmpty {
+                action_id: 1,
+                capability_index: 0,
+            },
+            ValidationError::CapabilityNameTooLong {
+                action_id: 1,
+                capability_index: 0,
+                len: 129,
+                max: 128,
+            },
+            ValidationError::CapabilityNameInvalid {
+                action_id: 1,
+                capability_index: 0,
+                name: "network:github".into(),
+            },
+            ValidationError::CapabilityActionMismatch {
+                contract_action_id: 1,
+                capability_action_id: 2,
+                capability_index: 0,
+            },
+            ValidationError::CapabilityDuplicate {
+                action_id: 1,
+                first_index: 0,
+                duplicate_index: 1,
+                name: "network".into(),
+            },
             ValidationError::SlotTypeInconsistency { slot: 0 },
             ValidationError::NonDeterministicPath {
                 from_node: 0,

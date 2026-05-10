@@ -7,10 +7,10 @@
 use crate::{
     codec::encode_record,
     constants::{
-        MAGIC_BLOB, MAGIC_COMPILED_ARTIFACT, MAGIC_INDEX_RECORD, MAGIC_JOURNAL_EVENT,
-        MAGIC_SNAPSHOT, MAGIC_WORKFLOW_SOURCE, MAX_BLOB_BYTES, MAX_COMPILED_IR_BYTES,
-        MAX_JOURNAL_EVENT_PAYLOAD_BYTES, MAX_RUN_HEADER_BYTES, MAX_SNAPSHOT_BYTES,
-        MAX_WORKFLOW_SOURCE_BYTES,
+        JOURNAL_KEY_BYTES, MAGIC_BLOB, MAGIC_COMPILED_ARTIFACT, MAGIC_INDEX_RECORD,
+        MAGIC_JOURNAL_EVENT, MAGIC_SNAPSHOT, MAGIC_WORKFLOW_SOURCE, MAX_BLOB_BYTES,
+        MAX_COMPILED_IR_BYTES, MAX_JOURNAL_EVENT_PAYLOAD_BYTES, MAX_RUN_HEADER_BYTES,
+        MAX_SNAPSHOT_BYTES, MAX_WORKFLOW_SOURCE_BYTES,
     },
     error::JournalError,
     events::JournalEvent,
@@ -36,6 +36,7 @@ use crate::journal::FjallJournal;
 pub struct JournalWriteBatch<'j> {
     inner: fjall::OwnedWriteBatch,
     journal: &'j FjallJournal,
+    staged_event_keys: HashSet<[u8; JOURNAL_KEY_BYTES]>,
     aborted: bool,
     _not_send_or_sync: core::marker::PhantomData<*mut FjallJournal>,
 }
@@ -46,6 +47,7 @@ impl<'j> JournalWriteBatch<'j> {
         Self {
             inner: journal.database.batch(),
             journal,
+            staged_event_keys: HashSet::new(),
             aborted: false,
             _not_send_or_sync: core::marker::PhantomData,
         }

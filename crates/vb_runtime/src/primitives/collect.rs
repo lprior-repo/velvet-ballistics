@@ -183,6 +183,10 @@ pub fn collect_start(
     let page_len = page.len();
     let current_page = write_collected_page_with_taint(run, store, collector, page, source_taint)?;
     let cursor = checked_add_usize(0, page_len, "collect cursor overflow")?;
+    if cursor >= item_count {
+        states.remove(run.run_id(), collector);
+        return jump_to(run, done);
+    }
     let start_millis = millis_since_epoch()?;
     states.upsert(CollectPaginationState {
         run_id: run.run_id(),
@@ -237,16 +241,16 @@ pub fn collect_next(
     check_time_limit(&state)?;
     let source_items = store.list(state.source)?;
     validate_collect_state(&state, source_items.len())?;
+    if state.cursor > source_items.len() {
+        return Err(EngineError::InternalInvariantViolation {
+            reason: "collect cursor beyond source items",
+        });
+    }
     if state.cursor >= state.item_count {
         let empty_page = Vec::<SlotValue>::new().into_boxed_slice();
         let _ = write_collected_page(run, store, collector_slot, empty_page)?;
         states.remove(run.run_id(), collector_slot);
         return jump_to(run, done);
-    }
-    if state.cursor > source_items.len() {
-        return Err(EngineError::InternalInvariantViolation {
-            reason: "collect cursor beyond source items",
-        });
     }
     let page = copy_page_range(source_items, state.cursor, state.page_size)?;
     let page_len = page.len();

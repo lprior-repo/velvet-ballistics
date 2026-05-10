@@ -253,7 +253,6 @@ impl UnsupportedRecoveryState {
     pub const fn slot_values_unsupported() -> Self {
         Self {
             slot_values: true,
-            slot_taint: true,
             ..Self::SUPPORTED
         }
     }
@@ -272,10 +271,7 @@ impl UnsupportedRecoveryState {
     pub const fn union(self, other: Self) -> Self {
         Self {
             slot_values: self.slot_values || other.slot_values,
-            slot_taint: self.slot_taint
-                || other.slot_taint
-                || self.slot_values
-                || other.slot_values,
+            slot_taint: self.slot_taint || other.slot_taint,
             action_payloads: self.action_payloads || other.action_payloads,
             pending_actions: self.pending_actions || other.pending_actions,
         }

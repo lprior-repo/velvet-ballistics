@@ -11,8 +11,13 @@ serde.workspace = true
 thiserror.workspace = true
 
 [dev-dependencies]
+criterion.workspace = true
 postcard.workspace = true
 proptest = { workspace = true }
+
+[[bench]]
+name = "aggregate_resource_budget"
+harness = false
 
 [features]
 default = []
