@@ -144,7 +144,7 @@ tasks:
     script: |
       set -euo pipefail
       mkdir -p target/moon-locks
-      flock --shared target/moon-locks/source-mutation.lock timeout 10m rustup run nightly-2026-04-28 cargo nextest run --workspace --all-features
+      flock --shared target/moon-locks/source-mutation.lock timeout 10m rustup run nightly-2026-04-28 cargo nextest run --workspace --all-features --failure-output=short --success-output=never
     deps:
       - 'check'
       - 'supply-chain'
