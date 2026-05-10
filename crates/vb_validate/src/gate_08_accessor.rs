@@ -411,6 +411,11 @@ mod tests {
     }
 
     proptest! {
+        #![proptest_config(ProptestConfig {
+            failure_persistence: None,
+            ..ProptestConfig::default()
+        })]
+
         #[test]
         fn proptest_gate_08_accepts_exactly_field_symbols_below_symbols_count(
             symbols_count in 0u32..=16,

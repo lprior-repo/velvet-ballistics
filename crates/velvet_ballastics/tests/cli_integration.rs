@@ -2296,8 +2296,8 @@ fn cli_doctor_json_includes_trim_eligibility_check() {
                     seq: vb_storage::EventSeq::new(i),
                     step: vb_core::StepIdx::new(
                         u16::try_from(i)
-                            .expect("i is 1..5 in StepStarted branch, always fits in u16")
-                            - 1,
+                            .map(|value| value.saturating_sub(1))
+                            .unwrap_or(0),
                     ),
                 }
             }
@@ -2377,7 +2377,9 @@ fn cli_doctor_json_includes_trim_eligibility_check() {
         trim_check.is_some(),
         "doctor JSON should include trim_eligibility check: {stdout}"
     );
-    let trim_check = trim_check.expect("trim check should be found after assertion");
+    let Some(trim_check) = trim_check else {
+        return;
+    };
     assert_eq!(trim_check.get("status"), Some(&serde_json::json!("pass")));
     assert_eq!(trim_check.get("total_runs"), Some(&serde_json::json!(1)));
     assert_eq!(trim_check.get("eligible_runs"), Some(&serde_json::json!(1)));
@@ -2503,7 +2505,11 @@ fn cli_doctor_returns_success_for_healthy_journal_with_trim_recommended() {
                 vb_storage::JournalEvent::StepStarted {
                     run,
                     seq: vb_storage::EventSeq::new(i),
-                    step: vb_core::StepIdx::new(u16::try_from(i).unwrap() - 1),
+                    step: vb_core::StepIdx::new(
+                        u16::try_from(i)
+                            .map(|value| value.saturating_sub(1))
+                            .unwrap_or(0),
+                    ),
                 }
             }
         })

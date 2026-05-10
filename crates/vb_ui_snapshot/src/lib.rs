@@ -1,4 +1,5 @@
 #![forbid(unsafe_code)]
+#![allow(unexpected_cfgs)]
 #![cfg_attr(not(feature = "std"), no_std)]
 
 extern crate alloc;
@@ -8,8 +9,17 @@ use alloc::vec::Vec;
 pub mod checks;
 pub mod error;
 pub mod fixtures;
+pub mod layout_kernel;
+pub mod redaction;
 pub mod report;
+pub mod snapshot;
 pub mod tokens;
+
+#[cfg(kani)]
+mod kani_harnesses {
+    include!("../kani/inventory.rs");
+    include!("../kani/layout_predicates.rs");
+}
 
 pub use error::UiSnapshotError;
 pub use report::{CheckKind, CheckResult, ScreenResult, UiSnapshotReport};

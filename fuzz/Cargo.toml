@@ -17,15 +17,24 @@ workspace = true
 postcard.workspace = true
 blake3.workspace = true
 tempfile.workspace = true
+libfuzzer-sys = "0.4"
 vb_core = { path = "../crates/vb_core" }
 vb_expr = { path = "../crates/vb_expr" }
 vb_storage = { path = "../crates/vb_storage" }
 vb_validate = { path = "../crates/vb_validate" }
+vb_ui_snapshot = { path = "../crates/vb_ui_snapshot" }
 vb_yaml = { path = "../crates/vb_yaml" }
 
 [lib]
 name = "fuzz_lib"
 path = "src/lib.rs"
+
+[[bin]]
+name = "ui_redaction_artifact"
+path = "fuzz_targets/ui_redaction_artifact.rs"
+test = false
+doc = false
+bench = false
 
 [[bin]]
 name = "yaml_events"
