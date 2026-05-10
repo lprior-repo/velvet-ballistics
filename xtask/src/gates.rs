@@ -2,6 +2,9 @@
 //!
 //! This module provides the individual gate implementations that execute
 //! the actual quality checks (fmt, clippy, nextest, miri, etc.).
+//! RED_PHASE: All gate runners are stubs that return SubcommandNotFound.
+
+#![allow(dead_code)]
 //!
 //! Each gate follows the pattern:
 //! 1. Execute the underlying command

@@ -1,0 +1,17 @@
+vcs:
+  client: git
+  provider: github
+  defaultBranch: main
+
+projects:
+  velvet-ballastics: '.'
+
+defaultProject: velvet-ballastics
+
+versionConstraint: '>=1.0.0'
+
+pipeline:
+  installDependencies: true
+  syncWorkspace: true
+
+telemetry: false

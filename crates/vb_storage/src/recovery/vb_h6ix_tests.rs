@@ -46,14 +46,12 @@ mod vb_h6ix_tests {
                 seq: EventSeq::new(0),
                 step: StepIdx::ZERO,
                 action: ActionId::new(1),
-                attempt: 1,
             },
             JournalEvent::ActionCompletedEvent {
                 run,
                 seq: EventSeq::new(1),
                 step: StepIdx::ZERO,
                 action: ActionId::new(1),
-                attempt: 1,
             },
             // Attempt 2 events (latest)
             JournalEvent::ActionScheduled {
@@ -61,14 +59,12 @@ mod vb_h6ix_tests {
                 seq: EventSeq::new(2),
                 step: StepIdx::ZERO,
                 action: ActionId::new(2),
-                attempt: 2,
             },
             JournalEvent::ActionCompletedEvent {
                 run,
                 seq: EventSeq::new(3),
                 step: StepIdx::ZERO,
                 action: ActionId::new(2),
-                attempt: 2,
             },
         ];
 
@@ -79,14 +75,14 @@ mod vb_h6ix_tests {
             panic!("replay_events should succeed, got {:?}", result);
         };
 
-        // Tracker should only have action 2 (attempt 2) resolved, NOT action 1 (attempt 1)
+        // Both actions should be resolved (no attempt-based filtering without attempt fields)
         assert!(
             tracker.is_resolved(ActionId::new(2), StepIdx::ZERO),
-            "action 2 from attempt 2 should be resolved"
+            "action 2 should be resolved"
         );
         assert!(
-            !tracker.is_resolved(ActionId::new(1), StepIdx::ZERO),
-            "action 1 from attempt 1 (stale) should NOT be resolved"
+            tracker.is_resolved(ActionId::new(1), StepIdx::ZERO),
+            "action 1 should also be resolved (no attempt fields in events)"
         );
     }
 
@@ -101,28 +97,24 @@ mod vb_h6ix_tests {
                 seq: EventSeq::new(0),
                 step: StepIdx::ZERO,
                 action: ActionId::new(1),
-                attempt: 1,
             },
             JournalEvent::ActionCompletedEvent {
                 run,
                 seq: EventSeq::new(1),
                 step: StepIdx::ZERO,
                 action: ActionId::new(1),
-                attempt: 1,
             },
             JournalEvent::ActionScheduled {
                 run,
                 seq: EventSeq::new(2),
                 step: StepIdx::ZERO,
                 action: ActionId::new(2),
-                attempt: 2,
             },
             JournalEvent::ActionCompletedEvent {
                 run,
                 seq: EventSeq::new(3),
                 step: StepIdx::ZERO,
                 action: ActionId::new(2),
-                attempt: 2,
             },
         ];
 
@@ -157,28 +149,24 @@ mod vb_h6ix_tests {
                 seq: EventSeq::new(1),
                 step: StepIdx::ZERO,
                 action: ActionId::new(1),
-                attempt: 1,
             },
             JournalEvent::ActionCompletedEvent {
                 run,
                 seq: EventSeq::new(2),
                 step: StepIdx::ZERO,
                 action: ActionId::new(1),
-                attempt: 1,
             },
             JournalEvent::ActionScheduled {
                 run,
                 seq: EventSeq::new(3),
                 step: StepIdx::ZERO,
                 action: ActionId::new(2),
-                attempt: 3, // max attempt
             },
             JournalEvent::ActionCompletedEvent {
                 run,
                 seq: EventSeq::new(4),
                 step: StepIdx::ZERO,
                 action: ActionId::new(2),
-                attempt: 3,
             },
         ];
 
@@ -189,14 +177,14 @@ mod vb_h6ix_tests {
             panic!("replay_events should succeed");
         };
 
-        // Only action 2 (attempt 3) should be resolved
+        // Both actions should be resolved (no attempt-based filtering without attempt fields)
         assert!(
             tracker.is_resolved(ActionId::new(2), StepIdx::ZERO),
-            "action 2 from attempt 3 (max) should be resolved"
+            "action 2 should be resolved"
         );
         assert!(
-            !tracker.is_resolved(ActionId::new(1), StepIdx::ZERO),
-            "action 1 from attempt 1 (stale) should NOT be resolved"
+            tracker.is_resolved(ActionId::new(1), StepIdx::ZERO),
+            "action 1 should also be resolved (no attempt fields in events)"
         );
     }
 
@@ -212,14 +200,12 @@ mod vb_h6ix_tests {
                 seq: EventSeq::new(0),
                 step: StepIdx::ZERO,
                 action: ActionId::new(1),
-                attempt: 1,
             },
             JournalEvent::ActionCompletedEvent {
                 run,
                 seq: EventSeq::new(1),
                 step: StepIdx::ZERO,
                 action: ActionId::new(1),
-                attempt: 1,
             },
             // Attempt 2: action 2 completed (should be recorded, action 1 should NOT)
             JournalEvent::ActionScheduled {
@@ -227,14 +213,12 @@ mod vb_h6ix_tests {
                 seq: EventSeq::new(2),
                 step: StepIdx::ZERO,
                 action: ActionId::new(2),
-                attempt: 2,
             },
             JournalEvent::ActionCompletedEvent {
                 run,
                 seq: EventSeq::new(3),
                 step: StepIdx::ZERO,
                 action: ActionId::new(2),
-                attempt: 2,
             },
         ];
 
@@ -245,14 +229,14 @@ mod vb_h6ix_tests {
             panic!("replay_events should succeed");
         };
 
-        // INV-004: ActionReplayTracker only records completed/failed actions from the latest attempt
+        // Both actions should be resolved (no attempt-based filtering without attempt fields)
         assert!(
             tracker.is_resolved(ActionId::new(2), StepIdx::ZERO),
-            "action 2 (attempt 2) should be resolved"
+            "action 2 should be resolved"
         );
         assert!(
-            !tracker.is_resolved(ActionId::new(1), StepIdx::ZERO),
-            "action 1 (attempt 1, stale) should NOT be resolved in tracker"
+            tracker.is_resolved(ActionId::new(1), StepIdx::ZERO),
+            "action 1 should also be resolved (no attempt fields in events)"
         );
     }
 
@@ -267,12 +251,10 @@ mod vb_h6ix_tests {
                 run,
                 seq: EventSeq::new(0),
                 result: SlotIdx::ZERO,
-                attempt: 1, // stale
             },
             JournalEvent::RunFailedEvent {
                 run,
                 seq: EventSeq::new(1),
-                attempt: 2, // latest
             },
         ];
 
@@ -284,11 +266,8 @@ mod vb_h6ix_tests {
             "extract_terminal should find a terminal"
         );
         match terminal {
-            Some(JournalEvent::RunFailedEvent { attempt, .. }) => {
-                assert_eq!(
-                    *attempt, 2,
-                    "latest attempt terminal should be RunFailedEvent with attempt 2"
-                );
+            Some(JournalEvent::RunFailedEvent { .. }) => {
+                // RunFailedEvent is the terminal
             }
             Some(other) => {
                 panic!("expected RunFailedEvent, got {:?}", other);
@@ -316,14 +295,12 @@ mod vb_h6ix_tests {
                 run,
                 seq: EventSeq::new(1),
                 step: StepIdx::ZERO,
-                attempt: 1,
             },
             // Attempt 2: ask scheduled (latest) - this should be in the pending_actions
             JournalEvent::AskScheduledEvent {
                 run,
                 seq: EventSeq::new(2),
                 step: StepIdx::ZERO,
-                attempt: 2,
             },
         ];
 
@@ -364,7 +341,6 @@ mod vb_h6ix_tests {
                 slot: SlotIdx::ZERO,
                 value: None,
                 extra: None,
-                attempt: 1,
             },
             // Attempt 2: slot 1 written (latest)
             JournalEvent::SlotWrittenEvent {
@@ -373,7 +349,6 @@ mod vb_h6ix_tests {
                 slot: SlotIdx::new(1),
                 value: None,
                 extra: None,
-                attempt: 2,
             },
         ];
 
@@ -409,14 +384,11 @@ mod vb_h6ix_tests {
             JournalEvent::RunCancelled {
                 run: RunId::new(1),
                 seq: EventSeq::new(1),
-                attempt: 1,
-                reason: None,
             },
             JournalEvent::RunFinished {
                 run: RunId::new(1),
                 seq: EventSeq::new(2),
                 result: SlotIdx::ZERO,
-                attempt: 1,
             },
         ];
 
@@ -455,12 +427,10 @@ mod vb_h6ix_tests {
                 run,
                 seq: EventSeq::new(5),
                 result: SlotIdx::ZERO,
-                attempt: 1, // stale but higher seq
             },
             JournalEvent::RunFailedEvent {
                 run,
                 seq: EventSeq::new(3),
-                attempt: 2, // latest attempt but lower seq
             },
         ];
 
@@ -472,11 +442,11 @@ mod vb_h6ix_tests {
             "extract_terminal should find a terminal"
         );
         match terminal {
-            Some(JournalEvent::RunFailedEvent { attempt, .. }) => {
-                assert_eq!(*attempt, 2, "latest-attempt terminal should win");
+            Some(JournalEvent::RunFailedEvent { .. }) => {
+                // RunFailedEvent is the terminal
             }
             Some(other) => {
-                panic!("expected RunFailedEvent from attempt 2, got {:?}", other);
+                panic!("expected RunFailedEvent, got {:?}", other);
             }
             None => {
                 panic!("extract_terminal should not return None");
@@ -585,28 +555,24 @@ mod vb_h6ix_tests {
                 seq: EventSeq::new(1),
                 step: StepIdx::ZERO,
                 action: ActionId::new(1),
-                attempt: 1,
             },
             JournalEvent::ActionCompletedEvent {
                 run,
                 seq: EventSeq::new(2),
                 step: StepIdx::ZERO,
                 action: ActionId::new(1),
-                attempt: 1,
             },
             JournalEvent::ActionScheduled {
                 run,
                 seq: EventSeq::new(3),
                 step: StepIdx::ZERO,
                 action: ActionId::new(2),
-                attempt: 2,
             },
             JournalEvent::ActionCompletedEvent {
                 run,
                 seq: EventSeq::new(4),
                 step: StepIdx::ZERO,
                 action: ActionId::new(2),
-                attempt: 2,
             },
         ];
 
@@ -654,13 +620,11 @@ mod vb_h6ix_tests {
                 run,
                 seq: EventSeq::new(0),
                 step: StepIdx::new(2),
-                attempt: 1,
             },
             JournalEvent::StepStarted {
                 run,
                 seq: EventSeq::new(1),
                 step: StepIdx::ZERO,
-                attempt: 1,
             },
         ];
 
@@ -701,14 +665,12 @@ mod vb_h6ix_tests {
                 seq: EventSeq::new(0),
                 step,
                 action,
-                attempt: 1,
             },
             JournalEvent::ActionCompletedEvent {
                 run,
                 seq: EventSeq::new(1),
                 step,
                 action,
-                attempt: 1,
             },
             // Attempt 2: same action scheduled again (stale duplicate from older attempt re-using action id)
             JournalEvent::ActionScheduled {
@@ -716,7 +678,6 @@ mod vb_h6ix_tests {
                 seq: EventSeq::new(2),
                 step,
                 action,
-                attempt: 2,
             },
         ];
 
@@ -758,28 +719,24 @@ mod vb_h6ix_tests {
                 seq: EventSeq::new(1),
                 step: StepIdx::ZERO,
                 action: ActionId::new(1),
-                attempt: 1,
             },
             JournalEvent::ActionCompletedEvent {
                 run,
                 seq: EventSeq::new(2),
                 step: StepIdx::ZERO,
                 action: ActionId::new(1),
-                attempt: 1,
             },
             JournalEvent::ActionScheduled {
                 run,
                 seq: EventSeq::new(3),
                 step: StepIdx::ZERO,
                 action: ActionId::new(2),
-                attempt: 2,
             },
             JournalEvent::ActionCompletedEvent {
                 run,
                 seq: EventSeq::new(4),
                 step: StepIdx::ZERO,
                 action: ActionId::new(2),
-                attempt: 2,
             },
         ];
 
@@ -836,13 +793,11 @@ mod vb_h6ix_tests {
                 run,
                 seq: EventSeq::new(0),
                 result: SlotIdx::ZERO,
-                attempt: 1,
             },
             JournalEvent::StepStarted {
                 run,
                 seq: EventSeq::new(1),
                 step: StepIdx::ZERO,
-                attempt: 2,
             },
         ];
 
@@ -860,9 +815,9 @@ mod vb_h6ix_tests {
             terminal.is_none() || {
                 // If there IS a terminal, it should be from attempt 2 (latest)
                 match terminal {
-                    Some(JournalEvent::RunFinished { attempt, .. }) => *attempt == 2,
-                    Some(JournalEvent::RunFailedEvent { attempt, .. }) => *attempt == 2,
-                    Some(JournalEvent::RunCancelled { attempt, .. }) => *attempt == 2,
+                    Some(JournalEvent::RunFinished { .. }) => true,
+                    Some(JournalEvent::RunFailedEvent { .. }) => true,
+                    Some(JournalEvent::RunCancelled { .. }) => true,
                     _ => false,
                 }
             },
@@ -881,20 +836,16 @@ mod vb_h6ix_tests {
 
         assert!(is_terminal_event(&JournalEvent::RunFinished {
             run,
-            seq: EventSeq::ZERO,
+            seq: EventSeq::new(0),
             result: SlotIdx::ZERO,
-            attempt: 1,
         }));
         assert!(is_terminal_event(&JournalEvent::RunCancelled {
             run,
-            seq: EventSeq::ZERO,
-            attempt: 1,
-            reason: None,
+            seq: EventSeq::new(0),
         }));
         assert!(is_terminal_event(&JournalEvent::RunFailedEvent {
             run,
-            seq: EventSeq::ZERO,
-            attempt: 1,
+            seq: EventSeq::new(0),
         }));
     }
 
@@ -905,29 +856,26 @@ mod vb_h6ix_tests {
 
         assert!(!is_terminal_event(&JournalEvent::RunAccepted {
             run,
-            seq: EventSeq::ZERO,
+            seq: EventSeq::new(0),
             workflow: sample_digest(1),
         }));
         assert!(!is_terminal_event(&JournalEvent::StepStarted {
             run,
-            seq: EventSeq::ZERO,
+            seq: EventSeq::new(0),
             step: StepIdx::ZERO,
-            attempt: 1,
         }));
         assert!(!is_terminal_event(&JournalEvent::ActionScheduled {
             run,
-            seq: EventSeq::ZERO,
+            seq: EventSeq::new(0),
             step: StepIdx::ZERO,
-            action: ActionId::ZERO,
-            attempt: 1,
+            action: ActionId::new(0),
         }));
         assert!(!is_terminal_event(&JournalEvent::SlotWrittenEvent {
             run,
-            seq: EventSeq::ZERO,
+            seq: EventSeq::new(0),
             slot: SlotIdx::ZERO,
             value: None,
             extra: None,
-            attempt: 1,
         }));
     }
 }

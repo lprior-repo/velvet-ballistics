@@ -245,12 +245,10 @@ impl FjallJournal {
             }
 
             // Count trimmable events for this run
-            let events_trimmable =
-                self.count_trimmable_events(header.run, safe_point)?;
+            let events_trimmable = self.count_trimmable_events(header.run, safe_point)?;
 
             eligible_runs = eligible_runs.saturating_add(1);
-            total_events_trimmable =
-                total_events_trimmable.saturating_add(events_trimmable);
+            total_events_trimmable = total_events_trimmable.saturating_add(events_trimmable);
 
             runs.push(TrimEligibility::Eligible {
                 run: header.run,
@@ -283,9 +281,9 @@ impl FjallJournal {
             if key.len() < 17 {
                 continue;
             }
-            let slice = key
-                .get(9..17)
-                .ok_or_else(|| JournalError::from(TrimError::IncompleteTrim { deleted_count: 0 }))?;
+            let slice = key.get(9..17).ok_or_else(|| {
+                JournalError::from(TrimError::IncompleteTrim { deleted_count: 0 })
+            })?;
             let seq_bytes: [u8; 8] = slice
                 .try_into()
                 .map_err(|_| JournalError::from(TrimError::IncompleteTrim { deleted_count: 0 }))?;
@@ -1163,17 +1161,14 @@ mod tests {
             .trim_eligibility_diagnostic(TrimPolicy::default())
             .expect("diagnostic should succeed");
 
-        let eligible = diag
-            .runs
-            .iter()
-            .find_map(|r| match r {
-                TrimEligibility::Eligible {
-                    run: r,
-                    safe_point,
-                    events_trimmable,
-                } if *r == run => Some((*safe_point, *events_trimmable)),
-                _ => None,
-            });
+        let eligible = diag.runs.iter().find_map(|r| match r {
+            TrimEligibility::Eligible {
+                run: r,
+                safe_point,
+                events_trimmable,
+            } if *r == run => Some((*safe_point, *events_trimmable)),
+            _ => None,
+        });
         assert!(
             eligible.is_some(),
             "run should be eligible, got {:?}",
@@ -1328,18 +1323,18 @@ mod tests {
         assert_eq!(diag.blocked_runs, 0);
 
         let eligible = diag.runs.first().expect("should have one run result");
-        assert!(
-            matches!(
-                eligible,
-                TrimEligibility::Eligible {
-                    run: r,
-                    safe_point: EventSeq(1),
-                    events_trimmable: 1,
-                } if *r == run
-            ),
-            "non-terminal run should be eligible, got {:?}",
-            eligible
-        );
+        match eligible {
+            TrimEligibility::Eligible {
+                run: r,
+                safe_point,
+                events_trimmable,
+            } => {
+                assert_eq!(*r, run);
+                assert_eq!(*safe_point, EventSeq::new(1));
+                assert_eq!(*events_trimmable, 1);
+            }
+            _ => panic!("non-terminal run should be eligible, got {:?}", eligible),
+        }
     }
 
     #[test]
@@ -1374,7 +1369,12 @@ mod tests {
         let before = journal
             .events_for_run(run)
             .expect("events before diagnostic");
-        assert_eq!(before.len(), 5);
+        // events_for_run skips events before snapshot seq 3, so only seq 3,4 remain
+        assert_eq!(
+            before.len(),
+            2,
+            "events after snapshot should be 2 (seq 3,4)"
+        );
 
         let _diag = journal
             .trim_eligibility_diagnostic(TrimPolicy::default())
@@ -1385,7 +1385,7 @@ mod tests {
             .expect("events after diagnostic");
         assert_eq!(
             after.len(),
-            5,
+            before.len(),
             "diagnostic must not delete events, before={} after={}",
             before.len(),
             after.len()

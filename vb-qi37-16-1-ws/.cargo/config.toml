@@ -1,0 +1,9 @@
+[alias]
+ci = "clippy --workspace --all-targets --all-features -- -D warnings"
+check-all = "check --workspace --all-targets --all-features"
+fmt-check = "fmt --all -- --check"
+doc-all = "doc --workspace --all-features --no-deps"
+test-all = "test --workspace --all-features"
+hardened-build = "build --workspace --all-features --profile hardened"
+nightly-feature-cargo-probe = "check -Zallow-features=try_blocks,portable_simd,allocator_api,generic_const_exprs --workspace --all-targets --all-features"
+xtask = "run -p xtask --"

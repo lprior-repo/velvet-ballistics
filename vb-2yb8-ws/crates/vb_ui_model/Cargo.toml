@@ -1,0 +1,18 @@
+[package]
+name = "vb_ui_model"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+description = "Typed cold-path structs for Velvet Ballistics UI screens"
+publish = false
+
+[features]
+default = ["std"]
+std = ["serde/std"]
+
+[dependencies]
+serde = { version = "1", default-features = false, features = ["derive", "alloc"] }
+vb_core = { path = "../vb_core" }
+
+[lints]
+workspace = true

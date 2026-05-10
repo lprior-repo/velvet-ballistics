@@ -11,9 +11,14 @@ anyhow = "1"
 clap = { version = "4", features = ["derive"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+serde-saphyr = { workspace = true }
 toml = "0.9"
 image = { version = "0.25", default-features = false, features = ["png"] }
 tempfile = "3"
+
+[dev-dependencies]
+serde-saphyr = { workspace = true, features = ["serialize"] }
+saphyr = { workspace = true }
 
 [lints]
 workspace = true

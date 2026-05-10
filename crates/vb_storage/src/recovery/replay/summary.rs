@@ -653,7 +653,6 @@ mod tests {
             run: RunId::new(1),
             seq: EventSeq::new(1),
             step: StepIdx::new(0),
-            attempt: 1,
         };
         apply_summary_event(&mut summary, &event);
         assert_counters(&summary, 0, 0, 0, 0, 0, 0);
@@ -667,7 +666,6 @@ mod tests {
             seq: EventSeq::new(1),
             step: StepIdx::new(0),
             action: ActionId::new(0),
-            attempt: 1,
         };
         apply_summary_event(&mut summary, &event);
         assert_counters(&summary, 0, 0, 0, 1, 0, 0);
@@ -682,7 +680,6 @@ mod tests {
             slot: SlotIdx::new(0),
             value: None,
             extra: None,
-            attempt: 1,
         };
         apply_summary_event(&mut summary, &event);
         assert_counters(&summary, 0, 0, 0, 0, 0, 1);
@@ -695,7 +692,6 @@ mod tests {
             run: RunId::new(1),
             seq: EventSeq::new(1),
             step: StepIdx::new(0),
-            attempt: 1,
         };
         apply_summary_event(&mut summary, &event);
         assert_counters(&summary, 0, 0, 0, 0, 1, 0);

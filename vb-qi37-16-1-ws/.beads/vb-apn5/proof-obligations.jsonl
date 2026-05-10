@@ -1,0 +1,12 @@
+{"obligation_id":"PO1-first-open-succeeds","layer":"unit-test","tool":"cargo test -p vb_storage","description":"First process opening DB succeeds","severity":"critical","target":"crates/vb_storage/src/tests.rs"}
+{"obligation_id":"PO2-second-open-fails","layer":"unit-test","tool":"cargo test -p vb_storage","description":"Second process opening same DB fails with ProcessLockHeld","severity":"critical","target":"crates/vb_storage/src/security_tests.rs"}
+{"obligation_id":"PO3-holder-pid","layer":"unit-test","tool":"cargo test -p vb_storage","description":"ProcessLockHeld includes holder PID","severity":"medium","target":"crates/vb_storage/src/tests.rs"}
+{"obligation_id":"PO4-lock-release","layer":"unit-test","tool":"cargo test -p vb_storage","description":"After drop, second process can open","severity":"critical","target":"crates/vb_storage/src/tests.rs"}
+{"obligation_id":"PO5-lock-before-keyspaces","layer":"code-review","tool":"static analysis","description":"Lock acquired before Fjall keyspace creation","severity":"critical","target":"crates/vb_storage/src/journal.rs"}
+{"obligation_id":"PO6-doctor-report","layer":"integration-test","tool":"cargo test -p velvet_ballastics","description":"Doctor reports locked DB correctly","severity":"medium","target":"crates/velvet_ballastics/src/main_tests.rs"}
+{"obligation_id":"I1-at-most-one-holder","layer":"unit-test","tool":"cargo test -p vb_storage","description":"Only one process holds lock","severity":"critical","target":"crates/vb_storage/src/tests.rs"}
+{"obligation_id":"I2-error-has-path","layer":"unit-test","tool":"cargo test -p vb_storage","description":"ProcessLockHeld always has path","severity":"medium","target":"crates/vb_storage/src/tests.rs"}
+{"obligation_id":"I3-auto-release","layer":"unit-test","tool":"cargo test -p vb_storage","description":"Lock releases on Drop","severity":"critical","target":"crates/vb_storage/src/tests.rs"}
+{"obligation_id":"I4-no-keyspace-on-lock-fail","layer":"security-test","tool":"cargo test -p vb_storage","description":"No mutation if lock fails","severity":"critical","target":"crates/vb_storage/src/security_tests.rs"}
+{"obligation_id":"clippy-zero-unsafe","layer":"static-analysis","tool":"moon run :quick","description":"No unsafe, unwrap, expect, panic","severity":"critical","target":"all changed files"}
+{"obligation_id":"moon-ci-gate","layer":"ci","tool":"moon ci","description":"Full CI gate must pass","severity":"critical","target":"workspace"}

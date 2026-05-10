@@ -239,7 +239,7 @@ impl<'j> JournalWriteBatch<'j> {
     }
 
     /// Commits the batch atomically.
-    pub fn commit(mut self) -> Result<(), JournalError> {
+    pub fn commit(self) -> Result<(), JournalError> {
         if self.aborted {
             return Ok(());
         }

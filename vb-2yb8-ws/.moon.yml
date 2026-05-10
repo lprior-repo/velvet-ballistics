@@ -1,0 +1,22 @@
+includes:
+  - tasks: '.moon/tasks/all.yml'
+
+pipeline:
+  - 'fmt'
+  - 'lint-src'
+  - 'check'
+  - 'nightly-feature-gate'
+  - 'nightly-feature-cargo-probe'
+  - 'source-length'
+  - 'supply-chain'
+  - 'hardened-build'
+  - 'test'
+  - 'doc-test'
+  - 'doc'
+  - 'mutants-smoke'
+  - 'fuzz-smoke'
+  - 'miri'
+  - 'coverage'
+  - 'maxperf'
+  - 'maxperf-native'
+  - 'bench-build'

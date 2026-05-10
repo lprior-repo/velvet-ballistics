@@ -285,11 +285,15 @@ impl FjallJournal {
 
         for item in snap.prefix(&self.events, run_prefix_key(run)?) {
             let value = item.value()?;
-            let (_, event) = decode_record(
+            let (_, event): (_, JournalEvent) = decode_record(
                 value.as_ref(),
                 MAGIC_JOURNAL_EVENT,
                 MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
             )?;
+            // Skip events before the start sequence (already captured in snapshot)
+            if event.seq().get() < start_seq.get() {
+                continue;
+            }
             crate::codec::validate_replayed_event(run, expected, &event)?;
             expected = crate::codec::next_seq(expected)?;
             replay.push(event);

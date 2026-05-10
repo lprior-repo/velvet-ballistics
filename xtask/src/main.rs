@@ -1,4 +1,5 @@
 #![forbid(unsafe_code)]
+#![allow(unreachable_pub)]
 
 use anyhow::Context;
 use clap::{Parser, Subcommand};
@@ -494,6 +495,34 @@ fn cmd_ui_overlap_check(
         anyhow::bail!("UI overlap check failed");
     }
 
+    Ok(())
+}
+
+// ============================================================================
+// Section 77 Command-Center Gate Profiles
+// ============================================================================
+
+fn cmd_ai_fast(bead: Option<&str>) -> anyhow::Result<()> {
+    let output_dir = PathBuf::from(".evidence").join(bead.unwrap_or("default"));
+    std::fs::create_dir_all(&output_dir)?;
+    let result = evidence::run_profile(evidence::GateProfile::AiFast, bead, &output_dir)?;
+    write_stdout(format_args!("AiFast profile complete: {:?}", result))?;
+    Ok(())
+}
+
+fn cmd_ai_deep(bead: Option<&str>) -> anyhow::Result<()> {
+    let output_dir = PathBuf::from(".evidence").join(bead.unwrap_or("default"));
+    std::fs::create_dir_all(&output_dir)?;
+    let result = evidence::run_profile(evidence::GateProfile::AiDeep, bead, &output_dir)?;
+    write_stdout(format_args!("AiDeep profile complete: {:?}", result))?;
+    Ok(())
+}
+
+fn cmd_ai_release(bead: Option<&str>) -> anyhow::Result<()> {
+    let output_dir = PathBuf::from(".evidence").join(bead.unwrap_or("default"));
+    std::fs::create_dir_all(&output_dir)?;
+    let result = evidence::run_profile(evidence::GateProfile::AiRelease, bead, &output_dir)?;
+    write_stdout(format_args!("AiRelease profile complete: {:?}", result))?;
     Ok(())
 }
 

@@ -5,14 +5,14 @@
 //! - `hydrate_run_frame`: Reconstruct live RunFrame from snapshot + tail events
 //! - `hydrate_run_frame_from_events`: Reconstruct live RunFrame from events only
 
-use crate::recovery::types::{
-    ActionReplayTracker, RecoveredStepState, RecoveryError, RecoveryResult, RunSnapshot,
-};
+use crate::JournalEvent;
 use crate::recovery::hydrate_support::{
     apply_tail_events, compute_parallel_in_flight, decode_snapshot_slots,
     derive_dimensions_from_snapshot_and_tail,
 };
-use crate::JournalEvent;
+use crate::recovery::types::{
+    ActionReplayTracker, RecoveredStepState, RecoveryError, RecoveryResult, RunSnapshot,
+};
 use vb_core::RunId;
 
 /// Hydrates a live RunFrame from a snapshot plus ordered tail journal events.
@@ -81,9 +81,9 @@ pub fn hydrate_run_frame(
     // Decode snapshot slot/taint bytes
     let snapshot_slots = decode_snapshot_slots(&snapshot.slots, &snapshot.taint, run_id)?;
 
-    // Derive dimensions from snapshot + tail events
+    // Derive dimensions from snapshot + tail events (reuse decoded slots)
     let (step_count, slot_count, first_step) =
-        derive_dimensions_from_snapshot_and_tail(snapshot, tail_events, run_id)?;
+        derive_dimensions_from_snapshot_and_tail(snapshot, tail_events, run_id, &snapshot_slots)?;
 
     if step_count == 0 {
         return Err(RecoveryError::ReplayDivergence {
@@ -108,11 +108,12 @@ pub fn hydrate_run_frame(
 
     // Apply tail events
     let mut tracker = ActionReplayTracker::new();
-    let executed = apply_tail_events(&mut frame, tail_events, &mut tracker)
-        .map_err(|_| RecoveryError::ReplayDivergence {
+    let executed = apply_tail_events(&mut frame, tail_events, &mut tracker).map_err(|_| {
+        RecoveryError::ReplayDivergence {
             step: vb_core::StepIdx::ZERO,
             detail: "tail event application failed".to_owned(),
-        })?;
+        }
+    })?;
 
     // Set executed counter (tail events applied)
     for _ in 0..executed {
@@ -213,11 +214,12 @@ pub fn hydrate_run_frame_from_events(
     }
 
     // Compute parallel in-flight from action events
-    let peak = compute_parallel_in_flight(&mut frame, events)
-        .map_err(|_| RecoveryError::ReplayDivergence {
+    let peak = compute_parallel_in_flight(&mut frame, events).map_err(|_| {
+        RecoveryError::ReplayDivergence {
             step: vb_core::StepIdx::ZERO,
             detail: "parallel in-flight computation failed".to_owned(),
-        })?;
+        }
+    })?;
 
     // Set max_parallel_in_flight to the observed peak
     // (RunFrame::new initializes it to u16::MAX, which would never update)

@@ -4,8 +4,8 @@
 //! Internal helpers for slot decoding, dimension derivation, event application,
 //! and parallel in-flight tracking. Not part of the public API.
 
-use crate::recovery::types::{ActionReplayTracker, RecoveryError, RecoveryResult, RunSnapshot};
 use crate::JournalEvent;
+use crate::recovery::types::{ActionReplayTracker, RecoveryError, RecoveryResult, RunSnapshot};
 use vb_core::RunId;
 
 /// Decodes snapshot slot/taint bytes into recovered slot entries.
@@ -38,7 +38,13 @@ pub(super) fn decode_snapshot_slots(
     for (slot, value, default_taint) in slots {
         let explicit_taint = taint
             .iter()
-            .find_map(|(t_slot, _, t_taint)| if *t_slot == slot { Some(*t_taint) } else { None })
+            .find_map(|(t_slot, _, t_taint)| {
+                if *t_slot == slot {
+                    Some(*t_taint)
+                } else {
+                    None
+                }
+            })
             .unwrap_or(default_taint);
         entries.push(crate::recovery::types::RecoveredSlotEntry {
             slot,
@@ -51,24 +57,22 @@ pub(super) fn decode_snapshot_slots(
 }
 
 /// Derives step_count, slot_count, and first_step from snapshot + tail events.
+///
+/// Accepts pre-decoded snapshot slots to avoid double-decoding the snapshot bytes.
 pub(super) fn derive_dimensions_from_snapshot_and_tail(
-    snapshot: &RunSnapshot,
+    _snapshot: &RunSnapshot,
     tail_events: &[JournalEvent],
     run: RunId,
+    snapshot_slots: &[crate::recovery::types::RecoveredSlotEntry],
 ) -> RecoveryResult<(u16, u16, vb_core::StepIdx)> {
     let mut max_step: Option<vb_core::StepIdx> = None;
     let mut min_step: Option<vb_core::StepIdx> = None;
     let mut max_slot: Option<vb_core::SlotIdx> = None;
 
-    // Decode snapshot slots to find max slot index
-    if !snapshot.slots.is_empty() {
-        let slots: Vec<(vb_core::SlotIdx, vb_core::SlotValue, vb_core::Taint)> =
-            postcard::from_bytes(&snapshot.slots).map_err(|_| RecoveryError::CorruptSnapshot {
-                run,
-                seq: snapshot.seq,
-            })?;
-        for (slot, _, _) in slots {
-            max_slot = Some(max_slot.map_or(slot, |s| s.max(slot)));
+    // Use pre-decoded snapshot slots to find max slot index
+    if !snapshot_slots.is_empty() {
+        for entry in snapshot_slots {
+            max_slot = Some(max_slot.map_or(entry.slot, |s| s.max(entry.slot)));
         }
     }
 

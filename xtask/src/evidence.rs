@@ -13,12 +13,12 @@
 //! - `Error::EvidenceWriteFailed` — YAML serialization or file write error
 //! - `Error::SubcommandNotFound` — requested xtask subcommand does not exist
 //! - `Error::BeadDirectoryCreationFailed` — could not create `.evidence/<bead>/` directory
-//! - `Error::YamlSerializationFailed` — serde_yaml error during evidence serialization
+//! - `Error::YamlSerializationFailed` — saphyr error during evidence serialization
 //! - `Error::UpstreamMoonFailed` — moon run task returned non-zero
 //! - `Error::UpstreamJustFailed` — just recipe returned non-zero
 
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 /// Evidence bundle for a single gate execution.
 ///
@@ -90,7 +90,7 @@ pub enum Error {
     SubcommandNotFound { name: String },
     /// Could not create `.evidence/<bead>/` directory.
     BeadDirectoryCreationFailed { bead: String, cause: String },
-    /// serde_yaml error during evidence serialization.
+    /// saphyr error during evidence serialization.
     YamlSerializationFailed { gate: String, cause: String },
     /// moon run task returned non-zero.
     UpstreamMoonFailed { task: String, cause: String },
@@ -325,7 +325,7 @@ mod tests {
         };
 
         // When: serialized to YAML
-        let yaml = serde_yaml::to_string(&evidence);
+        let yaml = serde_saphyr::to_string(&evidence);
 
         // Then: output contains all required fields
         assert!(yaml.is_ok());
@@ -356,8 +356,8 @@ mod tests {
         };
 
         // When: serialized to YAML and deserialized back
-        let yaml = serde_yaml::to_string(&original).unwrap();
-        let parsed: GateEvidence = serde_yaml::from_str(&yaml).unwrap();
+        let yaml = serde_saphyr::to_string(&original).unwrap();
+        let parsed: GateEvidence = serde_saphyr::from_str(&yaml).unwrap();
 
         // Then: all fields match exactly
         assert_eq!(original.kind, parsed.kind);
@@ -385,7 +385,7 @@ mod tests {
         };
 
         // When: serialized to YAML
-        let yaml = serde_yaml::to_string(&evidence).unwrap();
+        let yaml = serde_saphyr::to_string(&evidence).unwrap();
 
         // Then: status is serialized as tagged variant
         assert!(yaml.contains("status: Skipped"));
@@ -646,8 +646,8 @@ mod tests {
 
         // Then: returns Error::GateTimeout (RED phase: currently returns GateFailed with exit 0)
         match result {
-            Err(Error::GateTimeout { gate_name, duration_secs }) => {
-                assert_eq!(gate_name, "miri");
+            Err(Error::GateTimeout { gate, duration_secs }) => {
+                assert_eq!(gate, "miri");
                 assert!(duration_secs > 0);
             }
             _ => {
