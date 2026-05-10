@@ -1770,8 +1770,7 @@ mod tests {
             ticket: 5,
             answer: vec![0xFF_u8; MAX_ANSWER_ASK_BYTES + 1],
         };
-        let encoded = postcard::to_allocvec(&payload)
-            .expect("payload should encode");
+        let encoded = postcard::to_allocvec(&payload).expect("payload should encode");
         // Verify the oversized answer round-trips through postcard decode,
         // confirming the handler's size check is the sole defense.
         let decoded = decode_payload::<crate::IpcPayload>(&encoded);
@@ -1797,8 +1796,7 @@ mod tests {
             ticket: 5,
             answer: vec![0xAA_u8; MAX_ANSWER_ASK_BYTES],
         };
-        let encoded = postcard::to_allocvec(&payload)
-            .expect("payload should encode");
+        let encoded = postcard::to_allocvec(&payload).expect("payload should encode");
         let decoded = decode_payload::<crate::IpcPayload>(&encoded);
         match decoded {
             Ok(crate::IpcPayload::AnswerAsk { answer, .. }) => {
@@ -1827,9 +1825,7 @@ mod tests {
                 "list runs cap should not exceed 4096"
             )
         };
-        const {
-            assert!(MAX_LIST_RUNS_LIMIT > 0, "list runs cap should be non-zero")
-        };
+        const { assert!(MAX_LIST_RUNS_LIMIT > 0, "list runs cap should be non-zero") };
     }
 
     /// FINDING 7 (MEDIUM): Verifies that a ListRuns payload with u32::MAX limit
@@ -1840,8 +1836,7 @@ mod tests {
             limit: u32::MAX,
             workflow: None,
         };
-        let encoded = postcard::to_allocvec(&payload)
-            .expect("payload should encode");
+        let encoded = postcard::to_allocvec(&payload).expect("payload should encode");
         let decoded = decode_payload::<crate::IpcPayload>(&encoded);
         match decoded {
             Ok(crate::IpcPayload::ListRuns { limit, .. }) => {
@@ -1883,7 +1878,10 @@ mod tests {
         // A value exceeding max_nodes should be capped
         let excessive = u16::MAX;
         let capped = excessive.min(max_nodes);
-        assert_eq!(capped, max_nodes, "excessive count should be capped to max_nodes");
+        assert_eq!(
+            capped, max_nodes,
+            "excessive count should be capped to max_nodes"
+        );
         // A small count should not be changed
         let small_capped = 100u16.min(max_nodes);
         assert_eq!(small_capped, 100, "small node count should pass through");

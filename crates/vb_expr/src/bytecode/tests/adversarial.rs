@@ -575,7 +575,10 @@ fn fold_unary_returns_none_for_non_constant_inner() {
         expr: Box::new(crate::parser::ExprAst::Reference("y".into())),
     };
     let result = crate::bytecode::const_fold_expr(&ast);
-    assert_eq!(result, None, "Unary with non-constant inner should not fold");
+    assert_eq!(
+        result, None,
+        "Unary with non-constant inner should not fold"
+    );
 
     // Unary with Neg on non-constant
     let ast = crate::parser::ExprAst::Unary {
@@ -594,7 +597,9 @@ fn fold_unary_returns_none_for_wrong_type() {
     // NOT on I64 → None (Not only works on Bool)
     let ast = crate::parser::ExprAst::Unary {
         op: UnaryOp::Not,
-        expr: Box::new(crate::parser::ExprAst::Literal(crate::parser::ExprLiteral::I64(42))),
+        expr: Box::new(crate::parser::ExprAst::Literal(
+            crate::parser::ExprLiteral::I64(42),
+        )),
     };
     let result = crate::bytecode::const_fold_expr(&ast);
     assert_eq!(result, None, "NOT on I64 should not fold");
@@ -602,7 +607,9 @@ fn fold_unary_returns_none_for_wrong_type() {
     // NEG on Bool → None (Neg only works on I64)
     let ast = crate::parser::ExprAst::Unary {
         op: UnaryOp::Neg,
-        expr: Box::new(crate::parser::ExprAst::Literal(crate::parser::ExprLiteral::Bool(true))),
+        expr: Box::new(crate::parser::ExprAst::Literal(
+            crate::parser::ExprLiteral::Bool(true),
+        )),
     };
     let result = crate::bytecode::const_fold_expr(&ast);
     assert_eq!(result, None, "Neg on Bool should not fold");
@@ -617,7 +624,9 @@ fn fold_binary_returns_none_for_non_constant_operands() {
     let ast = crate::parser::ExprAst::Binary {
         op: BinaryOp::Add,
         left: Box::new(crate::parser::ExprAst::Reference("a".into())),
-        right: Box::new(crate::parser::ExprAst::Literal(crate::parser::ExprLiteral::I64(1))),
+        right: Box::new(crate::parser::ExprAst::Literal(
+            crate::parser::ExprLiteral::I64(1),
+        )),
     };
     let result = crate::bytecode::const_fold_expr(&ast);
     assert_eq!(result, None, "Add with non-constant left should not fold");
@@ -625,7 +634,9 @@ fn fold_binary_returns_none_for_non_constant_operands() {
     // Binary with non-constant right
     let ast = crate::parser::ExprAst::Binary {
         op: BinaryOp::Sub,
-        left: Box::new(crate::parser::ExprAst::Literal(crate::parser::ExprLiteral::I64(1))),
+        left: Box::new(crate::parser::ExprAst::Literal(
+            crate::parser::ExprLiteral::I64(1),
+        )),
         right: Box::new(crate::parser::ExprAst::Reference("b".into())),
     };
     let result = crate::bytecode::const_fold_expr(&ast);
@@ -649,8 +660,12 @@ fn fold_binary_returns_none_for_wrong_arithmetic_types() {
     // Add with Bool + I64
     let ast = crate::parser::ExprAst::Binary {
         op: BinaryOp::Add,
-        left: Box::new(crate::parser::ExprAst::Literal(crate::parser::ExprLiteral::Bool(true))),
-        right: Box::new(crate::parser::ExprAst::Literal(crate::parser::ExprLiteral::I64(1))),
+        left: Box::new(crate::parser::ExprAst::Literal(
+            crate::parser::ExprLiteral::Bool(true),
+        )),
+        right: Box::new(crate::parser::ExprAst::Literal(
+            crate::parser::ExprLiteral::I64(1),
+        )),
     };
     let result = crate::bytecode::const_fold_expr(&ast);
     assert_eq!(result, None, "Add with Bool+I64 should not fold");
@@ -658,8 +673,12 @@ fn fold_binary_returns_none_for_wrong_arithmetic_types() {
     // Sub with I64 + Bool
     let ast = crate::parser::ExprAst::Binary {
         op: BinaryOp::Sub,
-        left: Box::new(crate::parser::ExprAst::Literal(crate::parser::ExprLiteral::I64(1))),
-        right: Box::new(crate::parser::ExprAst::Literal(crate::parser::ExprLiteral::Bool(false))),
+        left: Box::new(crate::parser::ExprAst::Literal(
+            crate::parser::ExprLiteral::I64(1),
+        )),
+        right: Box::new(crate::parser::ExprAst::Literal(
+            crate::parser::ExprLiteral::Bool(false),
+        )),
     };
     let result = crate::bytecode::const_fold_expr(&ast);
     assert_eq!(result, None, "Sub with I64+Bool should not fold");
@@ -673,8 +692,12 @@ fn fold_binary_returns_none_for_wrong_cmp_types() {
     // Lt with Bool values
     let ast = crate::parser::ExprAst::Binary {
         op: BinaryOp::Lt,
-        left: Box::new(crate::parser::ExprAst::Literal(crate::parser::ExprLiteral::Bool(true))),
-        right: Box::new(crate::parser::ExprAst::Literal(crate::parser::ExprLiteral::Bool(false))),
+        left: Box::new(crate::parser::ExprAst::Literal(
+            crate::parser::ExprLiteral::Bool(true),
+        )),
+        right: Box::new(crate::parser::ExprAst::Literal(
+            crate::parser::ExprLiteral::Bool(false),
+        )),
     };
     let result = crate::bytecode::const_fold_expr(&ast);
     assert_eq!(result, None, "Lt with Bool+Bool should not fold");
@@ -682,8 +705,12 @@ fn fold_binary_returns_none_for_wrong_cmp_types() {
     // Gt with Text (unsupported)
     let ast = crate::parser::ExprAst::Binary {
         op: BinaryOp::Gt,
-        left: Box::new(crate::parser::ExprAst::Literal(crate::parser::ExprLiteral::Text("hi".into()))),
-        right: Box::new(crate::parser::ExprAst::Literal(crate::parser::ExprLiteral::Text("there".into()))),
+        left: Box::new(crate::parser::ExprAst::Literal(
+            crate::parser::ExprLiteral::Text("hi".into()),
+        )),
+        right: Box::new(crate::parser::ExprAst::Literal(
+            crate::parser::ExprLiteral::Text("there".into()),
+        )),
     };
     let result = crate::bytecode::const_fold_expr(&ast);
     assert_eq!(result, None, "Gt with Text values should not fold");
@@ -697,8 +724,12 @@ fn fold_binary_returns_none_for_wrong_bool_types() {
     // And with I64 operands
     let ast = crate::parser::ExprAst::Binary {
         op: BinaryOp::And,
-        left: Box::new(crate::parser::ExprAst::Literal(crate::parser::ExprLiteral::I64(1))),
-        right: Box::new(crate::parser::ExprAst::Literal(crate::parser::ExprLiteral::I64(0))),
+        left: Box::new(crate::parser::ExprAst::Literal(
+            crate::parser::ExprLiteral::I64(1),
+        )),
+        right: Box::new(crate::parser::ExprAst::Literal(
+            crate::parser::ExprLiteral::I64(0),
+        )),
     };
     let result = crate::bytecode::const_fold_expr(&ast);
     assert_eq!(result, None, "And with I64+I64 should not fold");
@@ -706,8 +737,12 @@ fn fold_binary_returns_none_for_wrong_bool_types() {
     // Or with Bool + I64
     let ast = crate::parser::ExprAst::Binary {
         op: BinaryOp::Or,
-        left: Box::new(crate::parser::ExprAst::Literal(crate::parser::ExprLiteral::Bool(true))),
-        right: Box::new(crate::parser::ExprAst::Literal(crate::parser::ExprLiteral::I64(0))),
+        left: Box::new(crate::parser::ExprAst::Literal(
+            crate::parser::ExprLiteral::Bool(true),
+        )),
+        right: Box::new(crate::parser::ExprAst::Literal(
+            crate::parser::ExprLiteral::I64(0),
+        )),
     };
     let result = crate::bytecode::const_fold_expr(&ast);
     assert_eq!(result, None, "Or with Bool+I64 should not fold");
@@ -721,8 +756,12 @@ fn fold_binary_div_returns_none_for_non_i64_divisor() {
     // Div with Bool divisor
     let ast = crate::parser::ExprAst::Binary {
         op: BinaryOp::Div,
-        left: Box::new(crate::parser::ExprAst::Literal(crate::parser::ExprLiteral::I64(10))),
-        right: Box::new(crate::parser::ExprAst::Literal(crate::parser::ExprLiteral::Bool(true))),
+        left: Box::new(crate::parser::ExprAst::Literal(
+            crate::parser::ExprLiteral::I64(10),
+        )),
+        right: Box::new(crate::parser::ExprAst::Literal(
+            crate::parser::ExprLiteral::Bool(true),
+        )),
     };
     let result = crate::bytecode::const_fold_expr(&ast);
     assert_eq!(result, None, "Div with I64/Bool should not fold");
@@ -736,8 +775,12 @@ fn fold_binary_eq_works_with_null_and_mixed() {
     // Null == Null
     let ast = crate::parser::ExprAst::Binary {
         op: BinaryOp::Eq,
-        left: Box::new(crate::parser::ExprAst::Literal(crate::parser::ExprLiteral::Null)),
-        right: Box::new(crate::parser::ExprAst::Literal(crate::parser::ExprLiteral::Null)),
+        left: Box::new(crate::parser::ExprAst::Literal(
+            crate::parser::ExprLiteral::Null,
+        )),
+        right: Box::new(crate::parser::ExprAst::Literal(
+            crate::parser::ExprLiteral::Null,
+        )),
     };
     let result = crate::bytecode::const_fold_expr(&ast);
     assert_eq!(result, Some(ConstValue::Bool(true)));
@@ -745,8 +788,12 @@ fn fold_binary_eq_works_with_null_and_mixed() {
     // Null != I64
     let ast = crate::parser::ExprAst::Binary {
         op: BinaryOp::NotEq,
-        left: Box::new(crate::parser::ExprAst::Literal(crate::parser::ExprLiteral::Null)),
-        right: Box::new(crate::parser::ExprAst::Literal(crate::parser::ExprLiteral::I64(42))),
+        left: Box::new(crate::parser::ExprAst::Literal(
+            crate::parser::ExprLiteral::Null,
+        )),
+        right: Box::new(crate::parser::ExprAst::Literal(
+            crate::parser::ExprLiteral::I64(42),
+        )),
     };
     let result = crate::bytecode::const_fold_expr(&ast);
     assert_eq!(result, Some(ConstValue::Bool(true)));
@@ -754,8 +801,12 @@ fn fold_binary_eq_works_with_null_and_mixed() {
     // I64 == I64 (equal)
     let ast = crate::parser::ExprAst::Binary {
         op: BinaryOp::Eq,
-        left: Box::new(crate::parser::ExprAst::Literal(crate::parser::ExprLiteral::I64(5))),
-        right: Box::new(crate::parser::ExprAst::Literal(crate::parser::ExprLiteral::I64(5))),
+        left: Box::new(crate::parser::ExprAst::Literal(
+            crate::parser::ExprLiteral::I64(5),
+        )),
+        right: Box::new(crate::parser::ExprAst::Literal(
+            crate::parser::ExprLiteral::I64(5),
+        )),
     };
     let result = crate::bytecode::const_fold_expr(&ast);
     assert_eq!(result, Some(ConstValue::Bool(true)));

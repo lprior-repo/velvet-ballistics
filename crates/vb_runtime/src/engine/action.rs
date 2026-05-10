@@ -240,7 +240,11 @@ pub fn resolve_contract(
 }
 
 #[cfg(test)]
-#[allow(clippy::expect_used, clippy::unwrap_used, clippy::cloned_ref_to_slice_refs)]
+#[allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    clippy::cloned_ref_to_slice_refs
+)]
 mod tests {
     use super::*;
     use vb_core::action::{Idempotency, RetrySafety, SideEffect};
@@ -487,7 +491,12 @@ mod tests {
         let contracts = vec![make_contract(0)];
         let result = resolve_contract(ActionId::new(99), &contracts);
         assert!(
-            matches!(result, Err(RuntimeEngineError::Action(ActionError::UnknownAction { .. }))),
+            matches!(
+                result,
+                Err(RuntimeEngineError::Action(
+                    ActionError::UnknownAction { .. }
+                ))
+            ),
             "resolve_contract should return UnknownAction for out-of-bounds action id"
         );
     }

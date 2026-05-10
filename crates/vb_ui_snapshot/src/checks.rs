@@ -466,7 +466,11 @@ mod tests {
         Ok((path, dir))
     }
 
-    fn create_1920x1080_with_color(r: u8, g: u8, b: u8) -> anyhow::Result<(std::path::PathBuf, tempfile::TempDir)> {
+    fn create_1920x1080_with_color(
+        r: u8,
+        g: u8,
+        b: u8,
+    ) -> anyhow::Result<(std::path::PathBuf, tempfile::TempDir)> {
         let dir = tempfile::tempdir()?;
         let path = dir.path().join("color.png");
         let mut img = image::RgbaImage::new(1920, 1080);
@@ -616,7 +620,10 @@ mod tests {
 
     #[test]
     fn hex_to_rgb_valid_with_whitespace() {
-        assert_eq!(super::hex_to_rgb("  #12AB34  ").unwrap(), (0x12, 0xAB, 0x34));
+        assert_eq!(
+            super::hex_to_rgb("  #12AB34  ").unwrap(),
+            (0x12, 0xAB, 0x34)
+        );
     }
 
     #[test]
@@ -686,19 +693,25 @@ mod tests {
 
     #[test]
     fn clipping_result_has_clipped_labels_field() {
-        let result = super::ClippingResult { clipped_labels: vec![] };
+        let result = super::ClippingResult {
+            clipped_labels: vec![],
+        };
         assert!(result.clipped_labels.is_empty());
     }
 
     #[test]
     fn chip_readability_result_has_unreadable_chips_field() {
-        let result = super::ChipReadabilityResult { unreadable_chips: vec![] };
+        let result = super::ChipReadabilityResult {
+            unreadable_chips: vec![],
+        };
         assert!(result.unreadable_chips.is_empty());
     }
 
     #[test]
     fn bounds_result_has_out_of_bounds_controls_field() {
-        let result = super::BoundsResult { out_of_bounds_controls: vec![] };
+        let result = super::BoundsResult {
+            out_of_bounds_controls: vec![],
+        };
         assert!(result.out_of_bounds_controls.is_empty());
     }
 
@@ -716,7 +729,9 @@ mod tests {
 
     #[test]
     fn selected_state_result_has_hidden_states_field() {
-        let result = super::SelectedStateResult { hidden_states: vec![] };
+        let result = super::SelectedStateResult {
+            hidden_states: vec![],
+        };
         assert!(result.hidden_states.is_empty());
     }
 

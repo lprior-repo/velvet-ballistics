@@ -721,6 +721,7 @@ impl ExecutionRunSummary {
 // Tests
 // ---------------------------------------------------------------------------
 
+#[allow(clippy::unwrap_used, clippy::expect_used, clippy::indexing_slicing, clippy::needless_range_loop)]
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1425,5 +1426,337 @@ mod tests {
         let text = build_details_text(StepIdx::new(0), events);
         assert!(text.contains("Slot"));
         assert!(text.contains("written"));
+    }
+
+    // -- Event filtering tests -----------------------------------------------
+
+    #[test]
+    fn find_step_started_time_returns_some_when_event_exists() {
+        let events = &[vb_ipc::IpcTraceEvent {
+            sequence: 5_000_000,
+            kind: vb_ipc::IpcTraceEventKind::StepStarted {
+                run: vb_core::ids::RunId::new(1),
+                step: StepIdx::new(3),
+            },
+        }];
+        let result = find_step_started_time(StepIdx::new(3), events);
+        assert!(result.is_some());
+        assert!(result.unwrap().contains("05:00:00"));
+    }
+
+    #[test]
+    fn find_step_started_time_returns_none_for_missing_step() {
+        let events = &[vb_ipc::IpcTraceEvent {
+            sequence: 1_000_000,
+            kind: vb_ipc::IpcTraceEventKind::StepStarted {
+                run: vb_core::ids::RunId::new(1),
+                step: StepIdx::new(0),
+            },
+        }];
+        let result = find_step_started_time(StepIdx::new(99), events);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn compute_elapsed_from_events_with_start_and_end() {
+        let events = &[
+            vb_ipc::IpcTraceEvent {
+                sequence: 1_000_000,
+                kind: vb_ipc::IpcTraceEventKind::StepStarted {
+                    run: vb_core::ids::RunId::new(1),
+                    step: StepIdx::new(0),
+                },
+            },
+            vb_ipc::IpcTraceEvent {
+                sequence: 3_000_000,
+                kind: vb_ipc::IpcTraceEventKind::StepEnded {
+                    run: vb_core::ids::RunId::new(1),
+                    step: StepIdx::new(0),
+                },
+            },
+        ];
+        let elapsed = compute_elapsed_from_events(StepIdx::new(0), events);
+        assert!(elapsed.contains("2s") || elapsed.contains("0m 2s"));
+    }
+
+    #[test]
+    fn compute_elapsed_from_events_no_start_returns_dash() {
+        let events: &[vb_ipc::IpcTraceEvent] = &[];
+        let elapsed = compute_elapsed_from_events(StepIdx::new(0), events);
+        assert_eq!(elapsed, "--");
+    }
+
+    #[test]
+    fn compute_elapsed_from_events_start_no_end_uses_start_seq() {
+        let events = &[vb_ipc::IpcTraceEvent {
+            sequence: 1_000_000,
+            kind: vb_ipc::IpcTraceEventKind::StepStarted {
+                run: vb_core::ids::RunId::new(1),
+                step: StepIdx::new(0),
+            },
+        }];
+        let elapsed = compute_elapsed_from_events(StepIdx::new(0), events);
+        // No StepEnded or ActionFailed, so elapsed uses start_event.sequence
+        assert_eq!(elapsed, "0us");
+    }
+
+    #[test]
+    fn compute_elapsed_from_events_action_failed_ends_early() {
+        let events = &[
+            vb_ipc::IpcTraceEvent {
+                sequence: 1_000_000,
+                kind: vb_ipc::IpcTraceEventKind::StepStarted {
+                    run: vb_core::ids::RunId::new(1),
+                    step: StepIdx::new(0),
+                },
+            },
+            vb_ipc::IpcTraceEvent {
+                sequence: 2_000_000,
+                kind: vb_ipc::IpcTraceEventKind::ActionFailed {
+                    run: vb_core::ids::RunId::new(1),
+                    step: StepIdx::new(0),
+                    code: vb_core::action::ActionFailureCode::Unknown,
+                },
+            },
+        ];
+        let elapsed = compute_elapsed_from_events(StepIdx::new(0), events);
+        // ActionFailed marks the end, so elapsed is 2M - 1M = 1s
+        assert!(elapsed.contains("1s"));
+    }
+
+    #[test]
+    fn build_details_text_with_ask_answer() {
+        let events = &[vb_ipc::IpcTraceEvent {
+            sequence: 1_000_000,
+            kind: vb_ipc::IpcTraceEventKind::AskAnswered {
+                run: vb_core::ids::RunId::new(1),
+                step: StepIdx::new(0),
+                slot: vb_core::ids::SlotIdx::new(2),
+            },
+        }];
+        let text = build_details_text(StepIdx::new(0), events);
+        assert!(text.contains("Ask/Answer"));
+    }
+
+    #[test]
+    fn build_details_text_with_multiple_slot_writes() {
+        let events = &[
+            vb_ipc::IpcTraceEvent {
+                sequence: 1_000_000,
+                kind: vb_ipc::IpcTraceEventKind::SlotWritten {
+                    run: vb_core::ids::RunId::new(1),
+                    slot: vb_core::ids::SlotIdx::new(0),
+                    value: Vec::new(),
+                },
+            },
+            vb_ipc::IpcTraceEvent {
+                sequence: 2_000_000,
+                kind: vb_ipc::IpcTraceEventKind::SlotWritten {
+                    run: vb_core::ids::RunId::new(1),
+                    slot: vb_core::ids::SlotIdx::new(1),
+                    value: Vec::new(),
+                },
+            },
+        ];
+        let text = build_details_text(StepIdx::new(0), events);
+        assert!(text.contains("Slot"));
+    }
+
+    #[test]
+    fn extract_input_output_scheduled_and_completed() {
+        let events = &[
+            vb_ipc::IpcTraceEvent {
+                sequence: 1_000_000,
+                kind: vb_ipc::IpcTraceEventKind::ActionScheduled {
+                    run: vb_core::ids::RunId::new(1),
+                    step: StepIdx::new(5),
+                },
+            },
+            vb_ipc::IpcTraceEvent {
+                sequence: 2_000_000,
+                kind: vb_ipc::IpcTraceEventKind::ActionCompleted {
+                    run: vb_core::ids::RunId::new(1),
+                    step: StepIdx::new(5),
+                },
+            },
+        ];
+        let (input, output) = extract_input_output(StepIdx::new(5), events);
+        assert!(input.contains("json"));
+        assert!(output.contains("json"));
+    }
+
+    #[test]
+    fn extract_input_output_with_failure() {
+        let events = &[vb_ipc::IpcTraceEvent {
+            sequence: 1_000_000,
+            kind: vb_ipc::IpcTraceEventKind::ActionFailed {
+                run: vb_core::ids::RunId::new(1),
+                step: StepIdx::new(3),
+                code: vb_core::action::ActionFailureCode::Unknown,
+            },
+        }];
+        let (_input, output) = extract_input_output(StepIdx::new(3), events);
+        assert!(output.contains("error"));
+    }
+
+    #[test]
+    fn extract_input_output_no_matching_events() {
+        let events = &[vb_ipc::IpcTraceEvent {
+            sequence: 1_000_000,
+            kind: vb_ipc::IpcTraceEventKind::StepStarted {
+                run: vb_core::ids::RunId::new(1),
+                step: StepIdx::new(0),
+            },
+        }];
+        let (input, output) = extract_input_output(StepIdx::new(99), events);
+        assert_eq!(input, "--");
+        assert_eq!(output, "--");
+    }
+
+    // -- format_elapsed tests -----------------------------------------------
+
+    #[test]
+    fn format_elapsed_zero_duration() {
+        use std::time::UNIX_EPOCH;
+        let start = UNIX_EPOCH;
+        let end = UNIX_EPOCH;
+        let result = format_elapsed(start, Some(end));
+        assert!(result.contains("0"));
+    }
+
+    #[test]
+    fn format_elapsed_hours_minutes_seconds() {
+        use std::time::{Duration, UNIX_EPOCH};
+        let start = UNIX_EPOCH;
+        let end = start + Duration::new(3661, 0); // 1h 1m 1s
+        let result = format_elapsed(start, Some(end));
+        assert!(result.contains("1h"));
+    }
+
+    #[test]
+    fn format_elapsed_error_when_end_before_start() {
+        use std::time::{SystemTime, UNIX_EPOCH};
+        let start = UNIX_EPOCH;
+        let end = UNIX_EPOCH - std::time::Duration::new(1, 0);
+        let result = format_elapsed(start, Some(end));
+        assert_eq!(result, "--");
+    }
+
+    // -- Step details tests -------------------------------------------------
+
+    #[test]
+    fn build_step_details_step_not_in_graph() {
+        use vb_core::ids::StepIdx;
+        use crate::workflow::canvas::WorkflowGraph;
+        let fake_graph = WorkflowGraph {
+            nodes: Vec::new(),
+            edges: Vec::new(),
+            entry_step: StepIdx::new(0),
+            slot_count: 0,
+            workflow_name: String::new(),
+        };
+        let result = build_step_details(StepIdx::new(99), &[], &fake_graph);
+        assert!(result.is_err());
+    }
+}
+
+    #[test]
+    fn build_step_details_with_events() {
+        use vb_core::ids::StepIdx;
+        use crate::workflow::canvas::WorkflowGraph;
+        let node = crate::graph_builder_tests::make_node(StepIdx::new(0));
+        let fake_graph = WorkflowGraph {
+            nodes: vec![node],
+            edges: Vec::new(),
+            entry_step: StepIdx::new(0),
+            slot_count: 1,
+            workflow_name: String::new(),
+        };
+        let events = &[vb_ipc::IpcTraceEvent {
+            sequence: 1_000_000,
+            kind: vb_ipc::IpcTraceEventKind::StepStarted {
+                run: vb_core::ids::RunId::new(1),
+                step: StepIdx::new(0),
+            },
+        }];
+        let result = build_step_details(StepIdx::new(0), events, &fake_graph);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn node_runtime_state_tainted() {
+        use vb_core::ids::StepIdx;
+        // Tainted is when overlay_color returns Some
+        let state = RuntimeNodeState::Tainted;
+        assert!(state.overlay_color().is_some());
+        let events: &[vb_ipc::IpcTraceEvent] = &[];
+        let result = node_runtime_state(StepIdx::new(0), events, None);
+        // Tainted is set by overlay_color, not by events
+        assert_eq!(result, RuntimeNodeState::Tainted);
+    }
+
+    #[test]
+    fn node_runtime_state_selected_with_failed() {
+        use vb_core::ids::StepIdx;
+        let events = &[
+            vb_ipc::IpcTraceEvent {
+                sequence: 1_000_000,
+                kind: vb_ipc::IpcTraceEventKind::StepStarted {
+                    run: vb_core::ids::RunId::new(1),
+                    step: StepIdx::new(0),
+                },
+            },
+            vb_ipc::IpcTraceEvent {
+                sequence: 2_000_000,
+                kind: vb_ipc::IpcTraceEventKind::ActionFailed {
+                    run: vb_core::ids::RunId::new(1),
+                    step: StepIdx::new(0),
+                    code: vb_core::action::ActionFailureCode::Unknown,
+                },
+            },
+        ];
+        // When selected AND has failed, should be Failed not Selected
+        let state = node_runtime_state(StepIdx::new(0), events, Some(StepIdx::new(0)));
+        assert_eq!(state, RuntimeNodeState::Failed);
+    }
+
+    #[test]
+    fn step_tab_content_input() {
+        use vb_core::ids::StepIdx;
+        let events = &[
+            vb_ipc::IpcTraceEvent {
+                sequence: 1_000_000,
+                kind: vb_ipc::IpcTraceEventKind::ActionScheduled {
+                    run: vb_core::ids::RunId::new(1),
+                    step: StepIdx::new(0),
+                },
+            },
+        ];
+        let result = step_tab_content(DetailTab::Input, StepIdx::new(0), events);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn step_tab_content_output() {
+        use vb_core::ids::StepIdx;
+        let events = &[
+            vb_ipc::IpcTraceEvent {
+                sequence: 1_000_000,
+                kind: vb_ipc::IpcTraceEventKind::ActionCompleted {
+                    run: vb_core::ids::RunId::new(1),
+                    step: StepIdx::new(0),
+                },
+            },
+        ];
+        let result = step_tab_content(DetailTab::Output, StepIdx::new(0), events);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn step_tab_content_details() {
+        use vb_core::ids::StepIdx;
+        let events: &[vb_ipc::IpcTraceEvent] = &[];
+        let result = step_tab_content(DetailTab::Details, StepIdx::new(0), events);
+        assert!(result.is_ok());
     }
 }

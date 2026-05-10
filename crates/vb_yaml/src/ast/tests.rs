@@ -1742,4 +1742,31 @@ mod ast_tests {
             "expected FieldShape for empty when, got: {result:?}"
         );
     }
+
+    // -----------------------------------------------------------------------
+    // Mutation survivor tests — Round 3
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn require_scalar_in_rejects_empty_string() {
+        // Given: a save step with an empty value (parsed via require_scalar_in)
+        let yaml = indoc::indoc! {"
+            version: velvet-ballastics/v1
+            name: empty-scalar-test
+            when:
+              manual: {}
+            steps:
+              - id: s1
+                save:
+                  value: ''
+        "};
+        // When: parsing the workflow
+        let result = parse_workflow_ast(yaml);
+        // Then: Err(YamlError::FieldShape) — empty string rejected
+        // Kills: mutation where !s.is_empty() becomes true in require_scalar_in
+        assert!(
+            matches!(result, Err(YamlError::FieldShape { field, .. }) if field.contains("save.value")),
+            "expected FieldShape error for empty save.value, got: {result:?}"
+        );
+    }
 }

@@ -44,18 +44,45 @@ use super::helpers::*;
     }
 
     #[test]
-    fn compiler_rejects_legacy_step_aliases() {
-        for alias in ["gather", "summarize", "copy"] {
-            let source = format!(
-                "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {{}}\nsteps:\n  - id: legacy\n    {alias}:\n      slot: 0\n      value: 1\n  - id: done\n    finish:\n      result: 0\n"
-            );
-            let result = YamlCompiler::default().compile(source.as_bytes());
+    fn compiler_rejects_legacy_step_aliases_gather() {
+        let alias = "gather";
+        let source = format!(
+            "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {{}}\nsteps:\n  - id: legacy\n    {alias}:\n      slot: 0\n      value: 1\n  - id: done\n    finish:\n      result: 0\n"
+        );
+        let result = YamlCompiler::default().compile(source.as_bytes());
 
-            assert!(
-                matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::UnknownStepField { .. }))),
-                "legacy alias {alias} must be rejected"
-            );
-        }
+        assert!(
+            matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::UnknownStepField { .. }))),
+            "legacy alias {alias} must be rejected"
+        );
+    }
+
+    #[test]
+    fn compiler_rejects_legacy_step_aliases_summarize() {
+        let alias = "summarize";
+        let source = format!(
+            "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {{}}\nsteps:\n  - id: legacy\n    {alias}:\n      slot: 0\n      value: 1\n  - id: done\n    finish:\n      result: 0\n"
+        );
+        let result = YamlCompiler::default().compile(source.as_bytes());
+
+        assert!(
+            matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::UnknownStepField { .. }))),
+            "legacy alias {alias} must be rejected"
+        );
+    }
+
+    #[test]
+    fn compiler_rejects_legacy_step_aliases_copy() {
+        let alias = "copy";
+        let source = format!(
+            "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {{}}\nsteps:\n  - id: legacy\n    {alias}:\n      slot: 0\n      value: 1\n  - id: done\n    finish:\n      result: 0\n"
+        );
+        let result = YamlCompiler::default().compile(source.as_bytes());
+
+        assert!(
+            matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::UnknownStepField { .. }))),
+            "legacy alias {alias} must be rejected"
+        );
     }
 
     #[test]
@@ -83,28 +110,93 @@ use super::helpers::*;
     }
 
     #[test]
-    fn compiler_rejects_malformed_master_primitives_with_exact_diagnostic() {
-        for (primitive, code) in [
-            ("for_each", "INVALID_FOR_EACH"),
-            ("together", "INVALID_TOGETHER"),
-            ("collect", "INVALID_COLLECT"),
-            ("reduce", "INVALID_REDUCE"),
-            ("repeat", "INVALID_REPEAT"),
-        ] {
-            let source = format!(
-                "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {{}}\nsteps:\n  - id: unsupported\n    {primitive}: noop\n  - id: done\n    finish:\n      result: 0\n"
-            );
-            let result = YamlCompiler::default().compile(source.as_bytes());
+    fn compiler_rejects_malformed_master_primitives_with_exact_diagnostic_for_each() {
+        let (primitive, code) = ("for_each", "INVALID_FOR_EACH");
+        let source = format!(
+            "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {{}}\nsteps:\n  - id: unsupported\n    {primitive}: noop\n  - id: done\n    finish:\n      result: 0\n"
+        );
+        let result = YamlCompiler::default().compile(source.as_bytes());
 
-            assert!(
-                matches!(
-                    result,
-                    Err(ref errors)
-                        if errors.first().map(CompileError::code) == Some(code)
-                ),
-                "primitive {primitive} should be rejected with exact invalid diagnostic"
-            );
-        }
+        assert!(
+            matches!(
+                result,
+                Err(ref errors)
+                    if errors.first().map(CompileError::code) == Some(code)
+            ),
+            "primitive {primitive} should be rejected with exact invalid diagnostic"
+        );
+    }
+
+    #[test]
+    fn compiler_rejects_malformed_master_primitives_with_exact_diagnostic_together() {
+        let (primitive, code) = ("together", "INVALID_TOGETHER");
+        let source = format!(
+            "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {{}}\nsteps:\n  - id: unsupported\n    {primitive}: noop\n  - id: done\n    finish:\n      result: 0\n"
+        );
+        let result = YamlCompiler::default().compile(source.as_bytes());
+
+        assert!(
+            matches!(
+                result,
+                Err(ref errors)
+                    if errors.first().map(CompileError::code) == Some(code)
+            ),
+            "primitive {primitive} should be rejected with exact invalid diagnostic"
+        );
+    }
+
+    #[test]
+    fn compiler_rejects_malformed_master_primitives_with_exact_diagnostic_collect() {
+        let (primitive, code) = ("collect", "INVALID_COLLECT");
+        let source = format!(
+            "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {{}}\nsteps:\n  - id: unsupported\n    {primitive}: noop\n  - id: done\n    finish:\n      result: 0\n"
+        );
+        let result = YamlCompiler::default().compile(source.as_bytes());
+
+        assert!(
+            matches!(
+                result,
+                Err(ref errors)
+                    if errors.first().map(CompileError::code) == Some(code)
+            ),
+            "primitive {primitive} should be rejected with exact invalid diagnostic"
+        );
+    }
+
+    #[test]
+    fn compiler_rejects_malformed_master_primitives_with_exact_diagnostic_reduce() {
+        let (primitive, code) = ("reduce", "INVALID_REDUCE");
+        let source = format!(
+            "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {{}}\nsteps:\n  - id: unsupported\n    {primitive}: noop\n  - id: done\n    finish:\n      result: 0\n"
+        );
+        let result = YamlCompiler::default().compile(source.as_bytes());
+
+        assert!(
+            matches!(
+                result,
+                Err(ref errors)
+                    if errors.first().map(CompileError::code) == Some(code)
+            ),
+            "primitive {primitive} should be rejected with exact invalid diagnostic"
+        );
+    }
+
+    #[test]
+    fn compiler_rejects_malformed_master_primitives_with_exact_diagnostic_repeat() {
+        let (primitive, code) = ("repeat", "INVALID_REPEAT");
+        let source = format!(
+            "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {{}}\nsteps:\n  - id: unsupported\n    {primitive}: noop\n  - id: done\n    finish:\n      result: 0\n"
+        );
+        let result = YamlCompiler::default().compile(source.as_bytes());
+
+        assert!(
+            matches!(
+                result,
+                Err(ref errors)
+                    if errors.first().map(CompileError::code) == Some(code)
+            ),
+            "primitive {primitive} should be rejected with exact invalid diagnostic"
+        );
     }
 
     #[test]
@@ -145,4 +237,3 @@ use super::helpers::*;
         );
         Ok(())
     }
-

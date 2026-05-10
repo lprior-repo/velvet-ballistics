@@ -10,7 +10,7 @@ use vb_core::ids::ActionId;
 pub use crate::idempotency::IdempotencyTracker;
 
 /// Maximum number of registered actions.
-const MAX_REGISTERED_ACTIONS: usize = 65_535;
+pub(crate) const MAX_REGISTERED_ACTIONS: usize = 65_535;
 
 /// Registry mapping numeric action identifiers to their contracts.
 #[derive(Debug, Clone)]

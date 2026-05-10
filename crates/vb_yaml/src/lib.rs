@@ -875,6 +875,21 @@ mod tests {
         assert_eq!(result, None);
     }
 
+    #[test]
+    fn span_for_node_valid_index_returns_some() {
+        // Given: a valid source map
+        let yaml = "a: 1\n";
+        let Ok(map) = build_source_map(yaml) else {
+            fail_assert!("build_source_map failed");
+            return;
+        };
+        // When: looking up a valid node index (0 = root)
+        let result = span_for_node(&map, 0);
+        // Then: Some(...)
+        // Kills: mutation where span_for_node returns None
+        assert!(result.is_some(), "expected Some, got {result:?}");
+    }
+
     // -----------------------------------------------------------------------
     // Adversarial BDD tests - top-level API attack vectors
     // -----------------------------------------------------------------------

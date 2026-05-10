@@ -769,7 +769,9 @@ mod tests {
             Err(_) => return,
         };
         for _ in 0..10 {
-            frame.increment_executed().expect("increment_executed must succeed");
+            frame
+                .increment_executed()
+                .expect("increment_executed must succeed");
         }
         assert_eq!(frame.executed(), 10);
         pool.release(frame);

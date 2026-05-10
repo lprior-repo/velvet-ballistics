@@ -63,13 +63,9 @@ fn read_exact_timeout(stream: &mut dyn Read, n: usize) -> Result<Vec<u8>, std::i
     const MAX_READ_ATTEMPTS: usize = 256;
     let mut buf = vec![0u8; n];
     let mut read_total = 0usize;
-    let mut attempts = 0usize;
-    while read_total < n {
-        if attempts >= MAX_READ_ATTEMPTS {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::TimedOut,
-                "read timeout: max attempts reached",
-            ));
+    for _ in 0..MAX_READ_ATTEMPTS {
+        if read_total >= n {
+            return Ok(buf);
         }
         // SAFETY: `read_total < n` is enforced by the loop condition
         #[allow(clippy::indexing_slicing)]
@@ -82,15 +78,17 @@ fn read_exact_timeout(stream: &mut dyn Read, n: usize) -> Result<Vec<u8>, std::i
             }
             Ok(count) => {
                 read_total = read_total.saturating_add(count);
-                attempts = 0;
             }
             Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
-                attempts = attempts.saturating_add(1);
+                // No progress — continue looping (counts as one attempt)
             }
             Err(e) => return Err(e),
         }
     }
-    Ok(buf)
+    Err(std::io::Error::new(
+        std::io::ErrorKind::TimedOut,
+        "read timeout: max attempts reached",
+    ))
 }
 
 // ── bind tests ──────────────────────────────────────────────────────────────

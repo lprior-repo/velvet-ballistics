@@ -1,4 +1,11 @@
-#![allow(clippy::panic_in_result_fn, clippy::expect_used, clippy::unwrap_used, unused_variables, clippy::needless_return, clippy::type_complexity)]
+#![allow(
+    clippy::panic_in_result_fn,
+    clippy::expect_used,
+    clippy::unwrap_used,
+    unused_variables,
+    clippy::needless_return,
+    clippy::type_complexity
+)]
 
 use super::*;
 use crate::test_harness::list_in_slot;

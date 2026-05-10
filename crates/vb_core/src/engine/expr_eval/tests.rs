@@ -1,5 +1,11 @@
 //! Tests for expression evaluation.
-#![allow(clippy::panic_in_result_fn, clippy::panic, clippy::expect_used, clippy::indexing_slicing, clippy::as_conversions)]
+#![allow(
+    clippy::panic_in_result_fn,
+    clippy::panic,
+    clippy::expect_used,
+    clippy::indexing_slicing,
+    clippy::as_conversions
+)]
 
 use crate::errors::EngineError;
 use crate::ids::{ConstIdx, ExprIdx, RunId, SlotIdx, StepIdx, WorkflowDigest};

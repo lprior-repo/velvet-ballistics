@@ -459,7 +459,7 @@ impl StorageRuntimeJournal {
     }
 }
 
-fn encoded_slot_taint_extra(taint: Taint, extra: Option<Vec<u8>>) -> Option<Vec<u8>> {
+pub(crate) fn encoded_slot_taint_extra(taint: Taint, extra: Option<Vec<u8>>) -> Option<Vec<u8>> {
     extra.or_else(|| postcard::to_allocvec(&taint).ok())
 }
 

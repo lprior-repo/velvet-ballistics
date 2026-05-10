@@ -1947,4 +1947,76 @@ mod tests {
         assert_eq!(store.total_arena_count(), 0);
         Ok(())
     }
+
+    // =========================================================================
+    // Requested coverage tests — insert_list_with_taint, list_item_with_taint, object_field_with_taint
+    // =========================================================================
+
+    #[test]
+    fn insert_list_with_taint_rejects_mismatched_lengths() -> Result<(), String> {
+        let mut store = ValueStore::new();
+
+        let values = vec![SlotValue::I64(1), SlotValue::I64(2)].into_boxed_slice();
+        let taints = vec![Taint::Clean].into_boxed_slice(); // wrong length: 1 vs 2
+
+        match store.insert_list_with_taint(values, taints) {
+            Err(CoreError::InternalInvariantViolation {
+                reason: "list values and taints length mismatch",
+            }) => Ok(()),
+            other => Err(format!(
+                "expected 'list values and taints length mismatch' error, got {other:?}"
+            )),
+        }
+    }
+
+    #[test]
+    fn list_item_with_taint_returns_value_and_taint() -> Result<(), String> {
+        let mut store = ValueStore::new();
+
+        let list_id = store
+            .insert_list_with_taint(
+                vec![SlotValue::I64(99), SlotValue::Bool(true)].into_boxed_slice(),
+                vec![Taint::Secret, Taint::Clean].into_boxed_slice(),
+            )
+            .map_err(|e| e.to_string())?;
+
+        let (value0, taint0) = store
+            .list_item_with_taint(list_id, 0)
+            .map_err(|e| e.to_string())?;
+        assert_eq!(value0, SlotValue::I64(99));
+        assert_eq!(taint0, Taint::Secret);
+
+        let (value1, taint1) = store
+            .list_item_with_taint(list_id, 1)
+            .map_err(|e| e.to_string())?;
+        assert_eq!(value1, SlotValue::Bool(true));
+        assert_eq!(taint1, Taint::Clean);
+
+        Ok(())
+    }
+
+    #[test]
+    fn object_field_with_taint_returns_value_and_taint() -> Result<(), String> {
+        let mut store = ValueStore::new();
+        let key = SymbolId::new(7);
+
+        let obj_id = store
+            .insert_object(
+                vec![ObjectField {
+                    key,
+                    value: SlotValue::I64(55),
+                    taint: Taint::DerivedFromSecret,
+                }]
+                .into_boxed_slice(),
+            )
+            .map_err(|e| e.to_string())?;
+
+        let (value, taint) = store
+            .object_field_with_taint(obj_id, key)
+            .map_err(|e| e.to_string())?;
+        assert_eq!(value, SlotValue::I64(55));
+        assert_eq!(taint, Taint::DerivedFromSecret);
+
+        Ok(())
+    }
 }

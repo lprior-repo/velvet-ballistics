@@ -2,6 +2,7 @@
 //!
 //! Extracted from certificates.rs to comply with the 300-line file limit.
 
+#[allow(clippy::unwrap_used, clippy::expect_used, clippy::indexing_slicing, clippy::needless_range_loop)]
 #[cfg(test)]
 mod tests {
     use vb_core::ids::WorkflowDigest;
@@ -2449,5 +2450,678 @@ mod tests {
             matches!(cert.status, CertificateStatus::Pass),
             "TogetherStart should pass loop nesting check"
         );
+    }
+
+    // -- Additional reachability tests ----------------------------------------
+
+    #[test]
+    fn analysis_multiple_unreachable_nodes() {
+        // Build a workflow where nodes 1, 2, 3 are all unreachable
+        let mut nodes = Vec::new();
+        // Node 0: entry Nop with no next (dead end)
+        nodes.push(CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Nop,
+        });
+        // Node 1: unreachable
+        nodes.push(CompiledNode {
+            id: StepIdx::new(1),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
+        });
+        // Node 2: unreachable
+        nodes.push(CompiledNode {
+            id: StepIdx::new(2),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Nop,
+        });
+        let parts = WorkflowParts {
+            name: String::from("multi-unreachable").into_boxed_str(),
+            digest: WorkflowDigest::from_bytes([0; 32]),
+            nodes: nodes.into_boxed_slice(),
+            expressions: Vec::new().into_boxed_slice(),
+            accessors: Vec::new().into_boxed_slice(),
+            constants: Vec::new().into_boxed_slice(),
+            slot_count: 1,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+            step_names: Vec::new().into_boxed_slice(),
+        };
+        let result = VerificationResult::analyze(&parts);
+        let reachability = result
+            .certificates
+            .iter()
+            .find(|c| c.kind == CertificateKind::Reachability);
+        assert!(reachability.is_some());
+        let cert = reachability.expect("reachability cert must exist");
+        assert!(matches!(cert.status, CertificateStatus::Fail(_)));
+        // The details should mention multiple steps
+        assert!(cert.details.contains("2") || cert.details.contains("step 1"));
+    }
+
+    #[test]
+    fn analysis_reachability_via_error_handler_path() {
+        // Node 0 -> Node 1 via next, Node 2 is only reachable via on_error
+        let mut nodes = Vec::new();
+        nodes.push(CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: Some(StepIdx::new(1)),
+            on_error: Some(StepIdx::new(2)),
+            error_slot: None,
+            kind: CompiledNodeKind::Do {
+                action: vb_core::ids::ActionId::new(1),
+                input: SlotIdx::new(0),
+            },
+        });
+        nodes.push(CompiledNode {
+            id: StepIdx::new(1),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
+        });
+        nodes.push(CompiledNode {
+            id: StepIdx::new(2),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
+        });
+        let parts = WorkflowParts {
+            name: String::from("error-path-reach").into_boxed_str(),
+            digest: WorkflowDigest::from_bytes([0; 32]),
+            nodes: nodes.into_boxed_slice(),
+            expressions: Vec::new().into_boxed_slice(),
+            accessors: Vec::new().into_boxed_slice(),
+            constants: Vec::new().into_boxed_slice(),
+            slot_count: 1,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+            step_names: Vec::new().into_boxed_slice(),
+        };
+        let result = VerificationResult::analyze(&parts);
+        let reachability = result
+            .certificates
+            .iter()
+            .find(|c| c.kind == CertificateKind::Reachability);
+        assert!(reachability.is_some());
+        let cert = reachability.expect("reachability cert must exist");
+        // All nodes reachable (entry -> 1, entry -> 2 via error)
+        assert!(matches!(cert.status, CertificateStatus::Pass), "Got: {:?}", cert.status);
+    }
+
+    #[test]
+    fn analysis_reachability_choose_branches() {
+        // Node 0 Choose branches to 1 and 2, both lead to 3
+        let mut nodes = Vec::new();
+        nodes.push(CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Choose {
+                branches: Box::new([
+                    vb_core::compiled_workflow::ExprBranch {
+                        condition: vb_core::ids::ExprIdx::new(0),
+                        target: StepIdx::new(1),
+                    },
+                    vb_core::compiled_workflow::ExprBranch {
+                        condition: vb_core::ids::ExprIdx::new(1),
+                        target: StepIdx::new(2),
+                    },
+                ]),
+                otherwise: Some(StepIdx::new(1)),
+            },
+        });
+        nodes.push(CompiledNode {
+            id: StepIdx::new(1),
+            output: None,
+            next: Some(StepIdx::new(3)),
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Nop,
+        });
+        nodes.push(CompiledNode {
+            id: StepIdx::new(2),
+            output: None,
+            next: Some(StepIdx::new(3)),
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Nop,
+        });
+        nodes.push(CompiledNode {
+            id: StepIdx::new(3),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
+        });
+        let parts = WorkflowParts {
+            name: String::from("choose-reach").into_boxed_str(),
+            digest: WorkflowDigest::from_bytes([0; 32]),
+            nodes: nodes.into_boxed_slice(),
+            expressions: Vec::new().into_boxed_slice(),
+            accessors: Vec::new().into_boxed_slice(),
+            constants: Vec::new().into_boxed_slice(),
+            slot_count: 1,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+            step_names: Vec::new().into_boxed_slice(),
+        };
+        let result = VerificationResult::analyze(&parts);
+        let reachability = result
+            .certificates
+            .iter()
+            .find(|c| c.kind == CertificateKind::Reachability);
+        assert!(reachability.is_some());
+        let cert = reachability.expect("reachability cert must exist");
+        assert!(matches!(cert.status, CertificateStatus::Pass), "Got: {:?}", cert.status);
+    }
+
+    // -- Additional loop nesting tests ---------------------------------------
+
+    #[test]
+    fn analysis_repeat_loop_proper_nesting() {
+        let mut nodes = Vec::new();
+        // RepeatStart at 0 -> body 1 -> RepeatCheck at 2 -> done 4
+        // Inner: CollectStart at 1 -> body 2 -> CollectFinish at 3 -> done 4
+        nodes.push(CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::RepeatStart {
+                input: SlotIdx::new(0),
+                body: StepIdx::new(1),
+                done: StepIdx::new(4),
+                limit: 10,
+            },
+        });
+        nodes.push(CompiledNode {
+            id: StepIdx::new(1),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::CollectStart {
+                source: SlotIdx::new(1),
+                limit: 5,
+                page_size: 10,
+                body: StepIdx::new(2),
+                done: StepIdx::new(4),
+            },
+        });
+        nodes.push(CompiledNode {
+            id: StepIdx::new(2),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Nop,
+        });
+        nodes.push(CompiledNode {
+            id: StepIdx::new(3),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::CollectFinish {
+                collector_slot: SlotIdx::new(2),
+            },
+        });
+        nodes.push(CompiledNode {
+            id: StepIdx::new(4),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
+        });
+        let parts = WorkflowParts {
+            name: String::from("repeat-nest").into_boxed_str(),
+            digest: WorkflowDigest::from_bytes([0; 32]),
+            nodes: nodes.into_boxed_slice(),
+            expressions: Vec::new().into_boxed_slice(),
+            accessors: Vec::new().into_boxed_slice(),
+            constants: Vec::new().into_boxed_slice(),
+            slot_count: 4,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+            step_names: Vec::new().into_boxed_slice(),
+        };
+        let result = VerificationResult::analyze(&parts);
+        let ln = result
+            .certificates
+            .iter()
+            .find(|c| c.kind == CertificateKind::LoopNesting);
+        assert!(ln.is_some());
+        assert!(matches!(ln.expect("ln").status, CertificateStatus::Pass));
+    }
+
+    #[test]
+    fn analysis_loop_body_target_out_of_bounds() {
+        let mut nodes = Vec::new();
+        nodes.push(CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::ForEachStart {
+                input: SlotIdx::new(0),
+                item_slot: SlotIdx::new(1),
+                limit: 5,
+                body: StepIdx::new(99), // out of bounds!
+                done: StepIdx::new(2),
+            },
+        });
+        nodes.push(CompiledNode {
+            id: StepIdx::new(1),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
+        });
+        let parts = WorkflowParts {
+            name: String::from("loop-oob").into_boxed_str(),
+            digest: WorkflowDigest::from_bytes([0; 32]),
+            nodes: nodes.into_boxed_slice(),
+            expressions: Vec::new().into_boxed_slice(),
+            accessors: Vec::new().into_boxed_slice(),
+            constants: Vec::new().into_boxed_slice(),
+            slot_count: 4,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+            step_names: Vec::new().into_boxed_slice(),
+        };
+        let result = VerificationResult::analyze(&parts);
+        let ln = result
+            .certificates
+            .iter()
+            .find(|c| c.kind == CertificateKind::LoopNesting);
+        assert!(ln.is_some());
+        let cert = ln.expect("ln");
+        // Body target out of bounds should cause a fail or warn
+        assert!(
+            matches!(cert.status, CertificateStatus::Fail(_) | CertificateStatus::Warn(_)),
+            "Got: {:?}", cert.status
+        );
+    }
+
+    #[test]
+    fn analysis_zero_loops_passes() {
+        // A workflow with no loops should pass loop nesting
+        let mut nodes = Vec::new();
+        nodes.push(CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: Some(StepIdx::new(1)),
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Nop,
+        });
+        nodes.push(CompiledNode {
+            id: StepIdx::new(1),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
+        });
+        let parts = WorkflowParts {
+            name: String::from("no-loops").into_boxed_str(),
+            digest: WorkflowDigest::from_bytes([0; 32]),
+            nodes: nodes.into_boxed_slice(),
+            expressions: Vec::new().into_boxed_slice(),
+            accessors: Vec::new().into_boxed_slice(),
+            constants: Vec::new().into_boxed_slice(),
+            slot_count: 1,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+            step_names: Vec::new().into_boxed_slice(),
+        };
+        let result = VerificationResult::analyze(&parts);
+        let ln = result
+            .certificates
+            .iter()
+            .find(|c| c.kind == CertificateKind::LoopNesting);
+        assert!(ln.is_some());
+        let cert = ln.expect("ln");
+        assert!(matches!(cert.status, CertificateStatus::Pass));
+        assert!(cert.details.contains("0 loop"));
+    }
+
+    #[test]
+    fn analysis_together_branches_all_reachable() {
+        let mut nodes = Vec::new();
+        nodes.push(CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::TogetherStart {
+                branches: Box::new([StepIdx::new(1), StepIdx::new(2)]),
+                join: StepIdx::new(3),
+            },
+        });
+        nodes.push(CompiledNode {
+            id: StepIdx::new(1),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::TogetherBranch {
+                branch: 0,
+                entry: StepIdx::new(2),
+                join: StepIdx::new(3),
+                accumulator: SlotIdx::new(0),
+            },
+        });
+        nodes.push(CompiledNode {
+            id: StepIdx::new(2),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::TogetherBranch {
+                branch: 1,
+                entry: StepIdx::new(2),
+                join: StepIdx::new(3),
+                accumulator: SlotIdx::new(0),
+            },
+        });
+        nodes.push(CompiledNode {
+            id: StepIdx::new(3),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
+        });
+        let parts = WorkflowParts {
+            name: String::from("together-reach").into_boxed_str(),
+            digest: WorkflowDigest::from_bytes([0; 32]),
+            nodes: nodes.into_boxed_slice(),
+            expressions: Vec::new().into_boxed_slice(),
+            accessors: Vec::new().into_boxed_slice(),
+            constants: Vec::new().into_boxed_slice(),
+            slot_count: 1,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+            step_names: Vec::new().into_boxed_slice(),
+        };
+        let result = VerificationResult::analyze(&parts);
+        let reachability = result
+            .certificates
+            .iter()
+            .find(|c| c.kind == CertificateKind::Reachability);
+        assert!(reachability.is_some());
+        let cert = reachability.expect("reachability cert must exist");
+        assert!(matches!(cert.status, CertificateStatus::Pass), "Got: {:?}", cert.status);
+    }
+
+    #[test]
+    fn analysis_error_handler_successor() {
+        // Node 0 has on_error pointing to Node 2
+        let mut nodes = Vec::new();
+        nodes.push(CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: Some(StepIdx::new(1)),
+            on_error: Some(StepIdx::new(2)),
+            error_slot: None,
+            kind: CompiledNodeKind::Do {
+                action: vb_core::ids::ActionId::new(1),
+                input: SlotIdx::new(0),
+            },
+        });
+        nodes.push(CompiledNode {
+            id: StepIdx::new(1),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
+        });
+        nodes.push(CompiledNode {
+            id: StepIdx::new(2),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
+        });
+        let parts = WorkflowParts {
+            name: String::from("error-handler").into_boxed_str(),
+            digest: WorkflowDigest::from_bytes([0; 32]),
+            nodes: nodes.into_boxed_slice(),
+            expressions: Vec::new().into_boxed_slice(),
+            accessors: Vec::new().into_boxed_slice(),
+            constants: Vec::new().into_boxed_slice(),
+            slot_count: 1,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+            step_names: Vec::new().into_boxed_slice(),
+        };
+        let result = VerificationResult::analyze(&parts);
+        let reachability = result
+            .certificates
+            .iter()
+            .find(|c| c.kind == CertificateKind::Reachability);
+        assert!(reachability.is_some());
+        let cert = reachability.expect("reachability cert must exist");
+        assert!(matches!(cert.status, CertificateStatus::Pass), "Got: {:?}", cert.status);
+    }
+
+    #[test]
+    fn analysis_choose_only_otherwise_reachable() {
+        // Choose with only otherwise branch
+        let mut nodes = Vec::new();
+        nodes.push(CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Choose {
+                branches: Box::new([]),
+                otherwise: Some(StepIdx::new(1)),
+            },
+        });
+        nodes.push(CompiledNode {
+            id: StepIdx::new(1),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
+        });
+        let parts = WorkflowParts {
+            name: String::from("choose-otherwise").into_boxed_str(),
+            digest: WorkflowDigest::from_bytes([0; 32]),
+            nodes: nodes.into_boxed_slice(),
+            expressions: Vec::new().into_boxed_slice(),
+            accessors: Vec::new().into_boxed_slice(),
+            constants: Vec::new().into_boxed_slice(),
+            slot_count: 1,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+            step_names: Vec::new().into_boxed_slice(),
+        };
+        let result = VerificationResult::analyze(&parts);
+        let reachability = result
+            .certificates
+            .iter()
+            .find(|c| c.kind == CertificateKind::Reachability);
+        assert!(reachability.is_some());
+        let cert = reachability.expect("reachability cert must exist");
+        assert!(matches!(cert.status, CertificateStatus::Pass), "Got: {:?}", cert.status);
+    }
+
+    #[test]
+    fn analysis_choose_slot_branches() {
+        let mut nodes = Vec::new();
+        nodes.push(CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::ChooseSlot {
+                slot: SlotIdx::new(0),
+                branches: Box::new([
+                    vb_core::compiled_workflow::SlotBranch {
+                        condition: SlotIdx::new(0),
+                        target: StepIdx::new(1),
+                    },
+                ]),
+                otherwise: Some(StepIdx::new(2)),
+            },
+        });
+        nodes.push(CompiledNode {
+            id: StepIdx::new(1),
+            output: None,
+            next: Some(StepIdx::new(3)),
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Nop,
+        });
+        nodes.push(CompiledNode {
+            id: StepIdx::new(2),
+            output: None,
+            next: Some(StepIdx::new(3)),
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Nop,
+        });
+        nodes.push(CompiledNode {
+            id: StepIdx::new(3),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
+        });
+        let parts = WorkflowParts {
+            name: String::from("choose-slot").into_boxed_str(),
+            digest: WorkflowDigest::from_bytes([0; 32]),
+            nodes: nodes.into_boxed_slice(),
+            expressions: Vec::new().into_boxed_slice(),
+            accessors: Vec::new().into_boxed_slice(),
+            constants: Vec::new().into_boxed_slice(),
+            slot_count: 1,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+            step_names: Vec::new().into_boxed_slice(),
+        };
+        let result = VerificationResult::analyze(&parts);
+        let reachability = result
+            .certificates
+            .iter()
+            .find(|c| c.kind == CertificateKind::Reachability);
+        assert!(reachability.is_some());
+        let cert = reachability.expect("reachability cert must exist");
+        assert!(matches!(cert.status, CertificateStatus::Pass), "Got: {:?}", cert.status);
+    }
+
+    #[test]
+    fn collect_successors_for_foreach_start() {
+        let succs = collect_successors(
+            &CompiledNodeKind::ForEachStart {
+                input: SlotIdx::new(0),
+                item_slot: SlotIdx::new(1),
+                limit: 5,
+                body: StepIdx::new(3),
+                done: StepIdx::new(7),
+            },
+            None,
+            None,
+        );
+        assert!(succs.contains(&StepIdx::new(3)));
+        assert!(succs.contains(&StepIdx::new(7)));
+    }
+
+    #[test]
+    fn collect_successors_for_retry_check() {
+        let succs = collect_successors(
+            &CompiledNodeKind::RetryCheck {
+                body: StepIdx::new(1),
+                exhausted: StepIdx::new(5),
+                remaining: 3,
+            },
+            Some(StepIdx::new(2)),
+            None,
+        );
+        assert!(succs.contains(&StepIdx::new(1)));
+        assert!(succs.contains(&StepIdx::new(5)));
+        assert!(succs.contains(&StepIdx::new(2))); // next also included
+    }
+
+    #[test]
+    fn collect_successors_for_error_handler() {
+        let succs = collect_successors(
+            &CompiledNodeKind::ErrorHandler {
+                body: StepIdx::new(0),
+                handler: StepIdx::new(4),
+                slot: SlotIdx::new(1),
+            },
+            Some(StepIdx::new(2)),
+            None,
+        );
+        assert!(succs.contains(&StepIdx::new(0)));
+        assert!(succs.contains(&StepIdx::new(4)));
+        assert!(succs.contains(&StepIdx::new(2)));
     }
 }

@@ -517,7 +517,10 @@ mod tokens_parse_production_tests {
         // Production value from design/tokens/velvet_ui_tokens.toml "#F4F6F8"
         // F4=244, F6=246, F8=248
         let expected = [244.0 / 255.0, 246.0 / 255.0, 248.0 / 255.0, 1.0];
-        assert_eq!(rgba, expected, "background_board parsed incorrectly from production TOML");
+        assert_eq!(
+            rgba, expected,
+            "background_board parsed incorrectly from production TOML"
+        );
     }
 
     #[test]
@@ -547,9 +550,11 @@ mod tokens_parse_production_tests {
         let tokens = Tokens::parse().expect("production TOML should parse");
         let rgba = tokens.color.surface_glass;
         // Production value: "#FFFFFFCC" — 8-char hex with alpha
-        assert!((rgba[3] - 204.0 / 255.0).abs() < 1e-6,
+        assert!(
+            (rgba[3] - 204.0 / 255.0).abs() < 1e-6,
             "surface_glass alpha should be 0xCC/255, got {}",
-            rgba[3]);
+            rgba[3]
+        );
     }
 }
 

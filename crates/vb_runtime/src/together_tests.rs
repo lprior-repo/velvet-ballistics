@@ -1,4 +1,9 @@
-#![allow(clippy::expect_used, clippy::unwrap_used, clippy::redundant_closure, clippy::indexing_slicing)]
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    clippy::redundant_closure,
+    clippy::indexing_slicing
+)]
 
 use super::*;
 use crate::test_harness::list_in_slot;

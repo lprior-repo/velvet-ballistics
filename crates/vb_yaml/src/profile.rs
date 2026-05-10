@@ -1344,4 +1344,121 @@ mod tests {
         // Then: Err(YamlError::MultipleDocuments { count: 3 })
         assert_eq!(result, Err(YamlError::MultipleDocuments { count: 3 }));
     }
+
+    // -----------------------------------------------------------------------
+    // Mutation survivor tests — Round 3
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn alias_event_rejected_as_anchor_alias_merge() {
+        let yaml = "a: &anchor value\nb: *anchor\n";
+        let Ok(events) = crate::events::collect_events(yaml) else {
+            fail_assert!("collect_events failed");
+            return;
+        };
+        let result = reject_anchors_aliases_merges(&events);
+        assert_eq!(result, Err(YamlError::AnchorAliasMerge));
+    }
+
+    // -----------------------------------------------------------------------
+    // Mutation survivors: check_scalar_length > -> >=
+    // profile.rs:133
+    // Kills: replacing > with >=
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn scalar_at_exactly_max_bytes_accepted() {
+        // Given: a string at exactly max_bytes
+        let text = "x".repeat(100);
+        // When: checking scalar length at boundary
+        let result = check_scalar_length(&text, 100);
+        // Then: Ok (at boundary, not over)
+        // Kills: mutation where > becomes >=
+        assert_eq!(result, Ok(()));
+    }
+
+    #[test]
+    fn scalar_one_over_max_bytes_rejected() {
+        // Given: a string one byte over max_bytes
+        let text = "x".repeat(101);
+        // When: checking scalar length
+        let result = check_scalar_length(&text, 100);
+        // Then: Err(ScalarTooLong)
+        assert!(matches!(result, Err(YamlError::ScalarTooLong { len: 101, max: 100 })));
+    }
+
+    // -----------------------------------------------------------------------
+    // Mutation survivor: delete SequenceEnd arm
+    // profile.rs:335
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn sequence_end_in_duplicate_key_check_is_not_error() {
+        // Given: YAML with a sequence that ends, then more content
+        let yaml = "key:\n  - item1\n  - item2\nother: value\n";
+        let Ok(events) = crate::events::collect_events(yaml) else {
+            fail_assert!("collect_events failed");
+            return;
+        };
+        // When: running duplicate key check
+        let result = reject_duplicate_mapping_keys(&events);
+        // Then: Ok (no duplicate keys)
+        assert_eq!(result, Ok(()));
+    }
+
+    // -----------------------------------------------------------------------
+    // Mutation survivor: expecting_key guard frame.expecting_key with true
+    // profile.rs:374
+    // Kills: replacing guard frame.expecting_key with true
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn scalar_after_scalar_toggles_expecting_key() {
+        // Given: YAML with scalar value (expecting_key=false path after first scalar)
+        let yaml = "key: value\n";
+        let Ok(events) = crate::events::collect_events(yaml) else {
+            fail_assert!("collect_events failed");
+            return;
+        };
+        // When: running duplicate key check
+        let result = reject_duplicate_mapping_keys(&events);
+        // Then: Ok (no duplicate keys)
+        assert_eq!(result, Ok(()));
+    }
+
+    #[test]
+    fn duplicate_key_detected_via_reject_duplicate_mapping_keys() {
+        // Given: YAML with duplicate key
+        let yaml = "key: value1\nkey: value2\n";
+        let Ok(events) = crate::events::collect_events(yaml) else {
+            fail_assert!("collect_events failed");
+            return;
+        };
+        // When: checking for duplicate keys
+        let result = reject_duplicate_mapping_keys(&events);
+        // Then: Err(DuplicateKey)
+        assert!(matches!(result, Err(YamlError::DuplicateKey { key: _ })));
+    }
+
+    // -----------------------------------------------------------------------
+    // Mutation survivor: is_allowed_tag -> false
+    // profile.rs:197
+    // Kills: replacing is_allowed_tag with false
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn allowed_tag_via_full_uri_form_not_rejected() {
+        // Given: YAML with an explicit tag:yaml.org,2002:str tag
+        let yaml = "key: !<tag:yaml.org,2002:str> value\n";
+        let Ok(events) = crate::events::collect_events(yaml) else {
+            // If parsing fails, skip this test
+            return;
+        };
+        // When: running forbidden features check
+        let result = reject_forbidden_features(&events);
+        // Then: Ok (allowed tag)
+        // Kills: is_allowed_tag -> false mutation
+        assert_eq!(result, Ok(()));
+    }
+
 }

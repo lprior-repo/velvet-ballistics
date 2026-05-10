@@ -103,13 +103,7 @@ steps:
             ..YamlLimits::default()
         };
         let compiler = YamlCompiler::new(tiny_limits);
-        let mut source =
-            String::from("version: velvet-ballastics/v1\nname: big\nwhen:\n  manual: {}\nsteps:\n");
-        // Add enough steps to exceed 100 bytes
-        for i in 0..20 {
-            source.push_str(&format!("  - id: s{i}\n    save:\n      value: 1\n"));
-        }
-        source.push_str("  - id: done\n    finish:\n      result: 0\n");
+        let source = build_oversized_workflow_source(100);
         let result = compiler.compile(source.as_bytes());
         let Err(errors) = result else {
             return Err("expected compile error for oversized source".to_owned());
@@ -125,15 +119,8 @@ steps:
     /// pool tracks correctly for a modest number of steps.
     #[test]
     fn many_save_steps_compile_with_correct_node_count() -> Result<(), String> {
-        let mut source = String::from(
-            "version: velvet-ballastics/v1\nname: many_saves\nwhen:\n  manual: {}\nsteps:\n",
-        );
         let step_count: usize = 50;
-        for i in 0..step_count {
-            source.push_str(&format!("  - id: s{i}\n    save:\n      value: {i}\n"));
-        }
-        // Finish with literal 0 (treated as slot 0, which is written by save step 0)
-        source.push_str("  - id: done\n    finish:\n      result: 0\n");
+        let source = build_many_saves_workflow_source(step_count);
         let workflow = adv_compile_ok(source.as_bytes())?;
         // Each save produces 1 node, finish with slot 0 produces 1 node
         let expected = step_count + 1;

@@ -10,7 +10,12 @@
 //! No unwrap/expect/panic in test bodies - use assert! for assertions.
 
 #[cfg(test)]
-#[allow(clippy::expect_used, clippy::unwrap_used, unused_mut, clippy::bool_comparison)]
+#[allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    unused_mut,
+    clippy::bool_comparison
+)]
 mod proptests {
     use proptest::prelude::*;
 

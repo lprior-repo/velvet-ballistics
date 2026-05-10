@@ -242,7 +242,10 @@ pub fn make_fail_result(kind: CheckKind, detail: &str) -> CheckResult {
 
 #[cfg(all(test, feature = "std"))]
 mod tests {
-    use super::{make_fail_result, make_pass_result, make_screen_result, CheckKind, CheckResult, ScreenResult, UiSnapshotReport};
+    use super::{
+        CheckKind, CheckResult, ScreenResult, UiSnapshotReport, make_fail_result, make_pass_result,
+        make_screen_result,
+    };
     use saphyr::LoadableYamlNode;
 
     // ── UiSnapshotReport ──────────────────────────────────────────────────────
@@ -281,8 +284,14 @@ mod tests {
     #[test]
     fn finalize_computes_counts() {
         let mut report = UiSnapshotReport::new();
-        report.add_screen(make_screen_result("scr1", vec![make_pass_result(CheckKind::Overlap)]));
-        report.add_screen(make_screen_result("scr2", vec![make_fail_result(CheckKind::ColorDrift, "drift")]));
+        report.add_screen(make_screen_result(
+            "scr1",
+            vec![make_pass_result(CheckKind::Overlap)],
+        ));
+        report.add_screen(make_screen_result(
+            "scr2",
+            vec![make_fail_result(CheckKind::ColorDrift, "drift")],
+        ));
         report.finalize();
         assert_eq!(report.total_screens, 2);
         assert_eq!(report.passed_screens, 1);
@@ -292,8 +301,14 @@ mod tests {
     #[test]
     fn finalize_status_fail_when_any_screen_fails() {
         let mut report = UiSnapshotReport::new();
-        report.add_screen(make_screen_result("scr1", vec![make_pass_result(CheckKind::Overlap)]));
-        report.add_screen(make_screen_result("scr2", vec![make_fail_result(CheckKind::Spelling, "typo")]));
+        report.add_screen(make_screen_result(
+            "scr1",
+            vec![make_pass_result(CheckKind::Overlap)],
+        ));
+        report.add_screen(make_screen_result(
+            "scr2",
+            vec![make_fail_result(CheckKind::Spelling, "typo")],
+        ));
         report.finalize();
         assert_eq!(report.failed_screens, 1);
     }
@@ -419,10 +434,11 @@ mod tests {
         let docs = saphyr::Yaml::load_from_str(&yaml)?;
         // Verify the report serializes to YAML and contains expected top-level keys
         let doc = docs.first().expect("expected at least one YAML document");
-        let status = doc
-            .as_mapping_get("status")
-            .and_then(saphyr::Yaml::as_str);
-        anyhow::ensure!(status == Some("pass"), "expected status 'pass', got {status:?}");
+        let status = doc.as_mapping_get("status").and_then(saphyr::Yaml::as_str);
+        anyhow::ensure!(
+            status == Some("pass"),
+            "expected status 'pass', got {status:?}"
+        );
         let screens = doc
             .as_mapping_get("screens")
             .and_then(saphyr::Yaml::as_sequence);
@@ -436,17 +452,21 @@ mod tests {
     #[test]
     fn yaml_report_has_correct_total_screens() -> anyhow::Result<()> {
         let mut report = UiSnapshotReport::new();
-        report.add_screen(make_screen_result("a", vec![make_pass_result(CheckKind::Overlap)]));
-        report.add_screen(make_screen_result("b", vec![make_pass_result(CheckKind::Spelling)]));
+        report.add_screen(make_screen_result(
+            "a",
+            vec![make_pass_result(CheckKind::Overlap)],
+        ));
+        report.add_screen(make_screen_result(
+            "b",
+            vec![make_pass_result(CheckKind::Spelling)],
+        ));
         report.finalize();
 
         let yaml = report.to_yaml()?;
         let docs = saphyr::Yaml::load_from_str(&yaml)?;
         let doc = docs.first().expect("expected at least one YAML document");
         // Verify status is "pass" when all screens pass
-        let status = doc
-            .as_mapping_get("status")
-            .and_then(saphyr::Yaml::as_str);
+        let status = doc.as_mapping_get("status").and_then(saphyr::Yaml::as_str);
         anyhow::ensure!(status == Some("pass"), "expected 'pass', got {status:?}");
         // Verify 2 screens in the sequence
         let screens = doc
@@ -463,7 +483,10 @@ mod tests {
     fn yaml_screens_sequence_has_correct_count() -> anyhow::Result<()> {
         let mut report = UiSnapshotReport::new();
         for name in ["scr1", "scr2", "scr3"] {
-            report.add_screen(make_screen_result(name, vec![make_pass_result(CheckKind::Overlap)]));
+            report.add_screen(make_screen_result(
+                name,
+                vec![make_pass_result(CheckKind::Overlap)],
+            ));
         }
         report.finalize();
 

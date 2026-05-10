@@ -50,6 +50,9 @@ pub use shard::{AskAnswer, AskTicket};
 #[cfg(test)]
 mod test_harness;
 
+#[cfg(test)]
+mod mutation_survivor_tests;
+
 use std::sync::Arc;
 use vb_core::DiagnosticCode;
 

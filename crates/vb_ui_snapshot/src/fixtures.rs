@@ -1370,8 +1370,9 @@ mod tests {
         for name in names {
             let fixture = load_demo_fixture(name)?;
             let json = serialize_fixture(&fixture)?;
-            let parsed: DemoFixture = serde_json::from_str(&json)
-                .map_err(|e| UiSnapshotError::IoError(format!("roundtrip failed for {name}: {e}")))?;
+            let parsed: DemoFixture = serde_json::from_str(&json).map_err(|e| {
+                UiSnapshotError::IoError(format!("roundtrip failed for {name}: {e}"))
+            })?;
             assert_eq!(parsed.name, name);
         }
         Ok(())
@@ -1424,7 +1425,10 @@ mod tests {
     fn demo_fixture_incident_failure_has_degraded_health() -> Result<(), UiSnapshotError> {
         let fixture = load_demo_fixture("incident_failure")?;
         use vb_ui_model::StorageHealth;
-        assert_eq!(fixture.app_snapshot.status.storage_health, StorageHealth::Degraded);
+        assert_eq!(
+            fixture.app_snapshot.status.storage_health,
+            StorageHealth::Degraded
+        );
         Ok(())
     }
 

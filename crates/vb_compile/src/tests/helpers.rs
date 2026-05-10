@@ -159,3 +159,39 @@ steps:
         Ok(())
     }
 
+    /// Fills a SlotCompiler with u16::MAX + 1 constant entries.
+    fn fill_slot_compiler_constants(sc: &mut SlotCompiler) -> Result<(), String> {
+        let count = usize::from(u16::MAX) + 1;
+        for i in 0..count {
+            let value = i64::try_from(i).map_err(|error| error.to_string())?;
+            let val = ConstValue::I64(value);
+            sc.push_constant(val)
+                .map_err(|e| format!("push {i} failed: {e:?}"))?;
+        }
+        Ok(())
+    }
+
+    /// Builds workflow source that exceeds the byte limit.
+    fn build_oversized_workflow_source(limit: usize) -> String {
+        let mut source = String::from("version: velvet-ballastics/v1\nname: big\nwhen:\n  manual: {}\nsteps:\n");
+        let mut i = 0;
+        while source.len() < limit {
+            source.push_str(&format!("  - id: s{i}\n    save:\n      value: 1\n"));
+            i += 1;
+        }
+        source.push_str("  - id: done\n    finish:\n      result: 0\n");
+        source
+    }
+
+    /// Builds workflow source with many save steps.
+    fn build_many_saves_workflow_source(step_count: usize) -> String {
+        let mut source = String::from(
+            "version: velvet-ballastics/v1\nname: many_saves\nwhen:\n  manual: {}\nsteps:\n",
+        );
+        for i in 0..step_count {
+            source.push_str(&format!("  - id: s{i}\n    save:\n      value: {i}\n"));
+        }
+        source.push_str("  - id: done\n    finish:\n      result: 0\n");
+        source
+    }
+

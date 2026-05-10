@@ -20,32 +20,90 @@ use super::helpers::*;
     }
 
     #[test]
-    fn compiler_accepts_input_long_form_list_elements() {
-        for element in ["any", "text", "number", "boolean", "object"] {
-            let result = compile_with_inputs(&format!(
-                "  values:\n    is: list\n    of: {element}\n    default: []\n    min: 0\n    max: 10\n"
-            ));
+    fn compiler_accepts_input_long_form_list_elements_any() {
+        let element = "any";
+        let result = compile_with_inputs(&format!(
+            "  values:\n    is: list\n    of: {element}\n    default: []\n    min: 0\n    max: 10\n"
+        ));
 
-            assert!(
-                matches!(result, Ok(ref workflow) if workflow.name() == "schema_case"),
-                "list element schema {element} should compile"
-            );
-        }
+        assert!(
+            matches!(result, Ok(ref workflow) if workflow.name() == "schema_case"),
+            "list element schema {element} should compile"
+        );
     }
 
     #[test]
-    fn compiler_rejects_input_schema_unknown_fields() {
-        for inputs in [
-            "  value:\n    is: text\n    kind: text\n",
-            "  customer:\n    is: object\n    fields:\n      value:\n        is: text\n        from: request.body.value\n",
-        ] {
-            let result = compile_with_inputs(inputs);
+    fn compiler_accepts_input_long_form_list_elements_text() {
+        let element = "text";
+        let result = compile_with_inputs(&format!(
+            "  values:\n    is: list\n    of: {element}\n    default: []\n    min: 0\n    max: 10\n"
+        ));
 
-            assert!(matches!(
-                result,
-                Err(ref errors) if matches!(errors.first(), Some(CompileError::UnknownInputSchemaField { .. }))
-            ));
-        }
+        assert!(
+            matches!(result, Ok(ref workflow) if workflow.name() == "schema_case"),
+            "list element schema {element} should compile"
+        );
+    }
+
+    #[test]
+    fn compiler_accepts_input_long_form_list_elements_number() {
+        let element = "number";
+        let result = compile_with_inputs(&format!(
+            "  values:\n    is: list\n    of: {element}\n    default: []\n    min: 0\n    max: 10\n"
+        ));
+
+        assert!(
+            matches!(result, Ok(ref workflow) if workflow.name() == "schema_case"),
+            "list element schema {element} should compile"
+        );
+    }
+
+    #[test]
+    fn compiler_accepts_input_long_form_list_elements_boolean() {
+        let element = "boolean";
+        let result = compile_with_inputs(&format!(
+            "  values:\n    is: list\n    of: {element}\n    default: []\n    min: 0\n    max: 10\n"
+        ));
+
+        assert!(
+            matches!(result, Ok(ref workflow) if workflow.name() == "schema_case"),
+            "list element schema {element} should compile"
+        );
+    }
+
+    #[test]
+    fn compiler_accepts_input_long_form_list_elements_object() {
+        let element = "object";
+        let result = compile_with_inputs(&format!(
+            "  values:\n    is: list\n    of: {element}\n    default: []\n    min: 0\n    max: 10\n"
+        ));
+
+        assert!(
+            matches!(result, Ok(ref workflow) if workflow.name() == "schema_case"),
+            "list element schema {element} should compile"
+        );
+    }
+
+    #[test]
+    fn compiler_rejects_input_schema_unknown_fields_is_and_kind() {
+        let inputs = "  value:\n    is: text\n    kind: text\n";
+        let result = compile_with_inputs(inputs);
+
+        assert!(matches!(
+            result,
+            Err(ref errors) if matches!(errors.first(), Some(CompileError::UnknownInputSchemaField { .. }))
+        ));
+    }
+
+    #[test]
+    fn compiler_rejects_input_schema_unknown_fields_from_and_is() {
+        let inputs = "  customer:\n    is: object\n    fields:\n      value:\n        is: text\n        from: request.body.value\n";
+        let result = compile_with_inputs(inputs);
+
+        assert!(matches!(
+            result,
+            Err(ref errors) if matches!(errors.first(), Some(CompileError::UnknownInputSchemaField { .. }))
+        ));
     }
 
     #[test]
@@ -62,54 +120,179 @@ use super::helpers::*;
     }
 
     #[test]
-    fn compiler_rejects_invalid_input_schema_child_fields() {
-        for inputs in [
-            "  values:\n    is: list\n",
-            "  value:\n    is: text\n    of: text\n",
-            "  value:\n    is: text\n    fields:\n      nested: text\n",
-            "  value:\n    is: text\n    extra: reject\n",
-            "  customer:\n    is: object\n    extra: ignore\n",
-            "  customer:\n    is: object\n    fields: true\n",
-            "  values:\n    is: list\n    of: integer\n",
-            "  value:\n    is: integer\n",
-        ] {
-            let result = compile_with_inputs(inputs);
+    fn compiler_rejects_invalid_input_schema_child_fields_list_no_of() {
+        let inputs = "  values:\n    is: list\n";
+        let result = compile_with_inputs(inputs);
 
-            assert!(
-                matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidInputSchema { .. }))),
-                "invalid schema should be rejected: {inputs}"
-            );
-        }
+        assert!(
+            matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidInputSchema { .. }))),
+            "invalid schema should be rejected: {inputs}"
+        );
     }
 
     #[test]
-    fn compiler_rejects_non_boolean_input_schema_flags() {
-        for flag in ["optional", "nullable", "secret"] {
-            let result = compile_with_inputs(&format!("  value:\n    is: text\n    {flag}: yes\n"));
+    fn compiler_rejects_invalid_input_schema_child_fields_text_with_of() {
+        let inputs = "  value:\n    is: text\n    of: text\n";
+        let result = compile_with_inputs(inputs);
 
-            assert!(matches!(
-                result,
-                Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidInputSchema { .. }))
-            ));
-        }
+        assert!(
+            matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidInputSchema { .. }))),
+            "invalid schema should be rejected: {inputs}"
+        );
     }
 
     #[test]
-    fn compiler_rejects_default_that_does_not_match_input_schema() {
-        for inputs in [
-            "  value:\n    is: text\n    default: 1\n",
-            "  value:\n    is: number\n    default: nope\n",
-            "  value:\n    is: boolean\n    default: nope\n",
-            "  value:\n    is: object\n    default: []\n",
-            "  value:\n    is: list\n    of: text\n    default: {}\n",
-        ] {
-            let result = compile_with_inputs(inputs);
+    fn compiler_rejects_invalid_input_schema_child_fields_text_with_fields() {
+        let inputs = "  value:\n    is: text\n    fields:\n      nested: text\n";
+        let result = compile_with_inputs(inputs);
 
-            assert!(matches!(
-                result,
-                Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidInputSchema { .. }))
-            ));
-        }
+        assert!(
+            matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidInputSchema { .. }))),
+            "invalid schema should be rejected: {inputs}"
+        );
+    }
+
+    #[test]
+    fn compiler_rejects_invalid_input_schema_child_fields_text_with_extra() {
+        let inputs = "  value:\n    is: text\n    extra: reject\n";
+        let result = compile_with_inputs(inputs);
+
+        assert!(
+            matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidInputSchema { .. }))),
+            "invalid schema should be rejected: {inputs}"
+        );
+    }
+
+    #[test]
+    fn compiler_rejects_invalid_input_schema_child_fields_object_with_extra() {
+        let inputs = "  customer:\n    is: object\n    extra: ignore\n";
+        let result = compile_with_inputs(inputs);
+
+        assert!(
+            matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidInputSchema { .. }))),
+            "invalid schema should be rejected: {inputs}"
+        );
+    }
+
+    #[test]
+    fn compiler_rejects_invalid_input_schema_child_fields_object_with_fields_true() {
+        let inputs = "  customer:\n    is: object\n    fields: true\n";
+        let result = compile_with_inputs(inputs);
+
+        assert!(
+            matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidInputSchema { .. }))),
+            "invalid schema should be rejected: {inputs}"
+        );
+    }
+
+    #[test]
+    fn compiler_rejects_invalid_input_schema_child_fields_list_of_integer() {
+        let inputs = "  values:\n    is: list\n    of: integer\n";
+        let result = compile_with_inputs(inputs);
+
+        assert!(
+            matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidInputSchema { .. }))),
+            "invalid schema should be rejected: {inputs}"
+        );
+    }
+
+    #[test]
+    fn compiler_rejects_invalid_input_schema_child_fields_integer_type() {
+        let inputs = "  value:\n    is: integer\n";
+        let result = compile_with_inputs(inputs);
+
+        assert!(
+            matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidInputSchema { .. }))),
+            "invalid schema should be rejected: {inputs}"
+        );
+    }
+
+    #[test]
+    fn compiler_rejects_non_boolean_input_schema_flags_optional() {
+        let flag = "optional";
+        let result = compile_with_inputs(&format!("  value:\n    is: text\n    {flag}: yes\n"));
+
+        assert!(matches!(
+            result,
+            Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidInputSchema { .. }))
+        ));
+    }
+
+    #[test]
+    fn compiler_rejects_non_boolean_input_schema_flags_nullable() {
+        let flag = "nullable";
+        let result = compile_with_inputs(&format!("  value:\n    is: text\n    {flag}: yes\n"));
+
+        assert!(matches!(
+            result,
+            Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidInputSchema { .. }))
+        ));
+    }
+
+    #[test]
+    fn compiler_rejects_non_boolean_input_schema_flags_secret() {
+        let flag = "secret";
+        let result = compile_with_inputs(&format!("  value:\n    is: text\n    {flag}: yes\n"));
+
+        assert!(matches!(
+            result,
+            Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidInputSchema { .. }))
+        ));
+    }
+
+    #[test]
+    fn compiler_rejects_default_that_does_not_match_input_schema_text_default_number() {
+        let inputs = "  value:\n    is: text\n    default: 1\n";
+        let result = compile_with_inputs(inputs);
+
+        assert!(matches!(
+            result,
+            Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidInputSchema { .. }))
+        ));
+    }
+
+    #[test]
+    fn compiler_rejects_default_that_does_not_match_input_schema_number_default_string() {
+        let inputs = "  value:\n    is: number\n    default: nope\n";
+        let result = compile_with_inputs(inputs);
+
+        assert!(matches!(
+            result,
+            Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidInputSchema { .. }))
+        ));
+    }
+
+    #[test]
+    fn compiler_rejects_default_that_does_not_match_input_schema_boolean_default_string() {
+        let inputs = "  value:\n    is: boolean\n    default: nope\n";
+        let result = compile_with_inputs(inputs);
+
+        assert!(matches!(
+            result,
+            Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidInputSchema { .. }))
+        ));
+    }
+
+    #[test]
+    fn compiler_rejects_default_that_does_not_match_input_schema_object_default_array() {
+        let inputs = "  value:\n    is: object\n    default: []\n";
+        let result = compile_with_inputs(inputs);
+
+        assert!(matches!(
+            result,
+            Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidInputSchema { .. }))
+        ));
+    }
+
+    #[test]
+    fn compiler_rejects_default_that_does_not_match_input_schema_list_default_object() {
+        let inputs = "  value:\n    is: list\n    of: text\n    default: {}\n";
+        let result = compile_with_inputs(inputs);
+
+        assert!(matches!(
+            result,
+            Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidInputSchema { .. }))
+        ));
     }
 
     #[test]
@@ -126,21 +309,67 @@ use super::helpers::*;
     }
 
     #[test]
-    fn compiler_rejects_invalid_input_schema_bounds() {
-        for inputs in [
-            "  value:\n    is: number\n    min: 10\n    max: 1\n",
-            "  values:\n    is: list\n    of: text\n    min: -1\n",
-            "  value:\n    is: text\n    min: 1\n",
-            "  value:\n    is: text\n    min_length: -1\n",
-            "  value:\n    is: text\n    min_length: 10\n    max_length: 1\n",
-            "  value:\n    is: number\n    min_length: 1\n",
-        ] {
-            let result = compile_with_inputs(inputs);
+    fn compiler_rejects_invalid_input_schema_bounds_min_greater_than_max() {
+        let inputs = "  value:\n    is: number\n    min: 10\n    max: 1\n";
+        let result = compile_with_inputs(inputs);
 
-            assert!(
-                matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidInputSchema { .. }))),
-                "invalid bounds should be rejected: {inputs}"
-            );
-        }
+        assert!(
+            matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidInputSchema { .. }))),
+            "invalid bounds should be rejected: {inputs}"
+        );
     }
 
+    #[test]
+    fn compiler_rejects_invalid_input_schema_bounds_list_negative_min() {
+        let inputs = "  values:\n    is: list\n    of: text\n    min: -1\n";
+        let result = compile_with_inputs(inputs);
+
+        assert!(
+            matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidInputSchema { .. }))),
+            "invalid bounds should be rejected: {inputs}"
+        );
+    }
+
+    #[test]
+    fn compiler_rejects_invalid_input_schema_bounds_text_with_min() {
+        let inputs = "  value:\n    is: text\n    min: 1\n";
+        let result = compile_with_inputs(inputs);
+
+        assert!(
+            matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidInputSchema { .. }))),
+            "invalid bounds should be rejected: {inputs}"
+        );
+    }
+
+    #[test]
+    fn compiler_rejects_invalid_input_schema_bounds_text_negative_min_length() {
+        let inputs = "  value:\n    is: text\n    min_length: -1\n";
+        let result = compile_with_inputs(inputs);
+
+        assert!(
+            matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidInputSchema { .. }))),
+            "invalid bounds should be rejected: {inputs}"
+        );
+    }
+
+    #[test]
+    fn compiler_rejects_invalid_input_schema_bounds_text_min_greater_than_max_length() {
+        let inputs = "  value:\n    is: text\n    min_length: 10\n    max_length: 1\n";
+        let result = compile_with_inputs(inputs);
+
+        assert!(
+            matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidInputSchema { .. }))),
+            "invalid bounds should be rejected: {inputs}"
+        );
+    }
+
+    #[test]
+    fn compiler_rejects_invalid_input_schema_bounds_number_with_min_length() {
+        let inputs = "  value:\n    is: number\n    min_length: 1\n";
+        let result = compile_with_inputs(inputs);
+
+        assert!(
+            matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidInputSchema { .. }))),
+            "invalid bounds should be rejected: {inputs}"
+        );
+    }

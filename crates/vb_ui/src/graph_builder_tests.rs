@@ -135,11 +135,7 @@ mod tests {
         let parts = make_simple_parts(vec![n0, n1], 0);
         let doc = build_document(&parts);
         assert_eq!(doc.graph.edges.len(), 1);
-        let e_opt = doc
-            .graph
-            .edges
-            .get_index(0)
-            .map(|(_, e)| e.clone());
+        let e_opt = doc.graph.edges.get_index(0).map(|(_, e)| e.clone());
         assert!(e_opt.is_some(), "edge missing");
         #[allow(clippy::unwrap_used)]
         let e = e_opt.unwrap(); // SAFETY: prior assert guarantees Some
@@ -228,11 +224,7 @@ mod tests {
         let parts = make_simple_parts(vec![n0, n1, n2], 0);
         let doc = build_document(&parts);
         assert_eq!(doc.graph.edges.len(), 1);
-        let e_opt = doc
-            .graph
-            .edges
-            .get_index(0)
-            .map(|(_, e)| e.clone());
+        let e_opt = doc.graph.edges.get_index(0).map(|(_, e)| e.clone());
         assert!(e_opt.is_some(), "edge missing");
         #[allow(clippy::unwrap_used)]
         let e = e_opt.unwrap(); // SAFETY: prior assert guarantees Some
@@ -289,11 +281,7 @@ mod tests {
 
         // Should have a group.
         assert!(!doc.graph.groups.is_empty());
-        let group_opt = doc
-            .graph
-            .groups
-            .get("group-foreach-0")
-            .cloned();
+        let group_opt = doc.graph.groups.get("group-foreach-0").cloned();
         assert!(group_opt.is_some(), "group-foreach-0 should exist");
         #[allow(clippy::unwrap_used)]
         let group = group_opt.unwrap(); // SAFETY: prior assert guarantees Some

@@ -503,13 +503,41 @@ panel = 25.0
 window = 35.0
 "##;
         let tokens = parse_tokens_from_toml(content)?;
-        require_value(tokens.chip_radius.to_bits(), 15.5_f32.to_bits(), "chip_radius")?;
-        require_value(tokens.control_radius.to_bits(), 8.0_f32.to_bits(), "control_radius")?;
-        require_value(tokens.card_min_radius.to_bits(), 5.0_f32.to_bits(), "card_min_radius")?;
-        require_value(tokens.card_radius.to_bits(), 20.0_f32.to_bits(), "card_radius")?;
-        require_value(tokens.card_max_radius.to_bits(), 30.0_f32.to_bits(), "card_max_radius")?;
-        require_value(tokens.panel_radius.to_bits(), 25.0_f32.to_bits(), "panel_radius")?;
-        require_value(tokens.window_radius.to_bits(), 35.0_f32.to_bits(), "window_radius")?;
+        require_value(
+            tokens.chip_radius.to_bits(),
+            15.5_f32.to_bits(),
+            "chip_radius",
+        )?;
+        require_value(
+            tokens.control_radius.to_bits(),
+            8.0_f32.to_bits(),
+            "control_radius",
+        )?;
+        require_value(
+            tokens.card_min_radius.to_bits(),
+            5.0_f32.to_bits(),
+            "card_min_radius",
+        )?;
+        require_value(
+            tokens.card_radius.to_bits(),
+            20.0_f32.to_bits(),
+            "card_radius",
+        )?;
+        require_value(
+            tokens.card_max_radius.to_bits(),
+            30.0_f32.to_bits(),
+            "card_max_radius",
+        )?;
+        require_value(
+            tokens.panel_radius.to_bits(),
+            25.0_f32.to_bits(),
+            "panel_radius",
+        )?;
+        require_value(
+            tokens.window_radius.to_bits(),
+            35.0_f32.to_bits(),
+            "window_radius",
+        )?;
         Ok(())
     }
 
@@ -597,7 +625,11 @@ graph_canvas_min_height = 600
         require_value(tokens.inspector_width_max, 600, "inspector_width_max")?;
         require_value(tokens.bottom_timeline_min, 300, "bottom_timeline_min")?;
         require_value(tokens.graph_canvas_min_width, 800, "graph_canvas_min_width")?;
-        require_value(tokens.graph_canvas_min_height, 600, "graph_canvas_min_height")?;
+        require_value(
+            tokens.graph_canvas_min_height,
+            600,
+            "graph_canvas_min_height",
+        )?;
         Ok(())
     }
 

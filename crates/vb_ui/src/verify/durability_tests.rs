@@ -2656,7 +2656,8 @@ mod tests {
 
     #[test]
     fn durability_report_not_all_passed() {
-        test_durability_report_not_all_passed().expect("durability report not all passed test failed");
+        test_durability_report_not_all_passed()
+            .expect("durability report not all passed test failed");
     }
 
     /// Test 70: DurabilityReport::pass_count() returns correct count.
@@ -2734,7 +2735,8 @@ mod tests {
 
     #[test]
     fn durability_report_resources_within_bounds() {
-        test_durability_report_resources_within_bounds().expect("durability report resources within bounds test failed");
+        test_durability_report_resources_within_bounds()
+            .expect("durability report resources within bounds test failed");
     }
 
     /// Test 73: DurabilityReport::summary() format.
@@ -2775,7 +2777,8 @@ mod tests {
 
     #[test]
     fn durability_report_empty_summary() {
-        test_durability_report_empty_summary().expect("durability report empty summary test failed");
+        test_durability_report_empty_summary()
+            .expect("durability report empty summary test failed");
     }
 
     /// Test 75: DurabilityReport clone round-trip.
@@ -2820,7 +2823,8 @@ mod tests {
 
     #[test]
     fn durability_report_no_metrics_within_bounds() {
-        test_durability_report_no_metrics_within_bounds().expect("durability report no metrics within bounds test failed");
+        test_durability_report_no_metrics_within_bounds()
+            .expect("durability report no metrics within bounds test failed");
     }
 
     // =====================================================================
@@ -2877,7 +2881,8 @@ mod tests {
 
     #[test]
     fn check_durability_level_best_effort() {
-        test_check_durability_level_best_effort().expect("check durability level best effort test failed");
+        test_check_durability_level_best_effort()
+            .expect("check durability level best effort test failed");
     }
 
     /// Test 79: check_durability_level returns Journaled when on_error present
@@ -2914,7 +2919,8 @@ mod tests {
 
     #[test]
     fn check_durability_level_journaled() {
-        test_check_durability_level_journaled().expect("check durability level journaled test failed");
+        test_check_durability_level_journaled()
+            .expect("check durability level journaled test failed");
     }
 
     /// Test 80: check_durability_level for empty workflow is Strict.
@@ -2930,7 +2936,8 @@ mod tests {
 
     #[test]
     fn check_durability_level_empty_workflow() {
-        test_check_durability_level_empty_workflow().expect("check durability level empty workflow test failed");
+        test_check_durability_level_empty_workflow()
+            .expect("check durability level empty workflow test failed");
     }
 
     // =====================================================================
@@ -3027,7 +3034,8 @@ mod tests {
 
     #[test]
     fn compute_resource_usage_all_within() {
-        test_compute_resource_usage_all_within().expect("compute resource usage all within test failed");
+        test_compute_resource_usage_all_within()
+            .expect("compute resource usage all within test failed");
     }
 
     /// Test 85: compute_resource_usage one over limit.
@@ -3054,7 +3062,8 @@ mod tests {
 
     #[test]
     fn compute_resource_usage_one_over() {
-        test_compute_resource_usage_one_over().expect("compute resource usage one over test failed");
+        test_compute_resource_usage_one_over()
+            .expect("compute resource usage one over test failed");
     }
 
     // =====================================================================
@@ -3126,7 +3135,8 @@ mod tests {
 
     #[test]
     fn build_durability_report_failing() {
-        test_build_durability_report_failing().expect("build durability report failing test failed");
+        test_build_durability_report_failing()
+            .expect("build durability report failing test failed");
     }
 
     /// Test 88: build_durability_report carries all checks from panel.
@@ -3146,7 +3156,8 @@ mod tests {
 
     #[test]
     fn build_durability_report_carries_checks() {
-        test_build_durability_report_carries_checks().expect("build durability report carries checks test failed");
+        test_build_durability_report_carries_checks()
+            .expect("build durability report carries checks test failed");
     }
 
     /// Test 89: build_durability_report with over-budget resources.
@@ -3188,7 +3199,8 @@ mod tests {
 
     #[test]
     fn build_durability_report_over_budget() {
-        test_build_durability_report_over_budget().expect("build durability report over budget test failed");
+        test_build_durability_report_over_budget()
+            .expect("build durability report over budget test failed");
     }
 
     /// Test 90: build_durability_report with journaled level workflow.
@@ -3232,6 +3244,7 @@ mod tests {
 
     #[test]
     fn build_durability_report_journaled() {
-        test_build_durability_report_journaled().expect("build durability report journaled test failed");
+        test_build_durability_report_journaled()
+            .expect("build durability report journaled test failed");
     }
 }
