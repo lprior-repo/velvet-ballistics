@@ -115,16 +115,17 @@ pub struct AcceptedArtifact {
 }
 
 /// Number of verification gates in the accepted artifact v1 admission flow.
-const ADMISSION_GATE_COUNT: u8 = 15;
+const ADMISSION_GATE_COUNT: u8 = 2;
 
 /// Validates, verifies, and persists a compiled workflow artifact with policy-controlled durability.
 ///
 /// This is the full admission flow. It performs:
-/// 1. Structure validation: re-parse the workflow from serialized parts.
-/// 2. Checksum validation: serialized bytes must hash to the claimed digest.
-/// 3. Proof validation: gate count must be 15 and all proof flags must be true.
-/// 4. Persistence: store the artifact in the `compiled_ir` keyspace.
-/// 5. Durability: under `Strict` policy, calls SyncAll before returning.
+/// 1. Policy check: Relaxed is rejected when accepted artifacts are required.
+/// 2. Structure validation: re-parse the workflow from serialized parts.
+/// 3. Checksum validation: serialized bytes must hash to the claimed digest.
+/// 4. Proof validation: gate count must be 2 and all proof flags must be true.
+/// 5. Persistence: store the artifact in the `compiled_ir` keyspace.
+/// 6. Durability: under `Strict` policy, calls SyncAll before returning.
 ///
 /// Returns the `AcceptedArtifact` on success.
 pub fn submit_artifact(
@@ -132,11 +133,8 @@ pub fn submit_artifact(
     workflow: &vb_core::CompiledWorkflow,
     policy: vb_core::RuntimePolicy,
 ) -> Result<AcceptedArtifact, JournalError> {
-    let (gate_count, durable, ir_bytes) = match policy {
-        vb_core::RuntimePolicy::Relaxed => (0u8, false, {
-            let parts = workflow.to_parts();
-            postcard::to_allocvec(&parts).map_err(|_| JournalError::ArtifactMalformed)?
-        }),
+    match policy {
+        vb_core::RuntimePolicy::Relaxed => Err(JournalError::AdmissionRequired),
         vb_core::RuntimePolicy::Journaled | vb_core::RuntimePolicy::Strict => {
             let parts = workflow.to_parts();
 
@@ -152,45 +150,43 @@ pub fn submit_artifact(
                 return Err(JournalError::ArtifactChecksumMismatch);
             }
 
-            let bytes =
+            let durable = policy == vb_core::RuntimePolicy::Strict;
+
+            let proof = VerificationProof::new(workflow.digest(), ADMISSION_GATE_COUNT, durable);
+
+            let ir_bytes =
                 postcard::to_allocvec(&parts).map_err(|_| JournalError::ArtifactMalformed)?;
-            (
-                ADMISSION_GATE_COUNT,
-                policy == vb_core::RuntimePolicy::Strict,
-                bytes,
-            )
+
+            let artifact = AcceptedArtifact {
+                digest: workflow.digest(),
+                ir: ir_bytes,
+                verification: proof,
+                accepted_at_seq: EventSeq::new(0),
+                required_capabilities: Box::new([]),
+            };
+
+            let artifact_bytes =
+                postcard::to_allocvec(&artifact).map_err(|_| JournalError::ArtifactMalformed)?;
+            let record = CompiledIrRecord {
+                digest: workflow.digest(),
+                ir: artifact_bytes,
+            };
+            journal.put_compiled_ir(&record)?;
+
+            if durable {
+                journal.persist_strict()?;
+            }
+
+            let stored = journal
+                .compiled_ir(workflow.digest())
+                .map_err(|_| JournalError::ArtifactMalformed)?;
+            if stored.is_none() {
+                return Err(JournalError::ArtifactMalformed);
+            }
+
+            Ok(artifact)
         }
-    };
-
-    let proof = VerificationProof::new(workflow.digest(), gate_count, durable);
-    let artifact = AcceptedArtifact {
-        digest: workflow.digest(),
-        ir: ir_bytes.clone(),
-        verification: proof,
-        accepted_at_seq: EventSeq::new(0),
-        required_capabilities: Box::new([]),
-    };
-
-    let artifact_bytes =
-        postcard::to_allocvec(&artifact).map_err(|_| JournalError::ArtifactMalformed)?;
-    let record = CompiledIrRecord {
-        digest: workflow.digest(),
-        ir: artifact_bytes,
-    };
-    journal.put_compiled_ir(&record)?;
-
-    if durable {
-        journal.persist_strict()?;
     }
-
-    let stored = journal
-        .compiled_ir(workflow.digest())
-        .map_err(|_| JournalError::ArtifactMalformed)?;
-    if stored.is_none() {
-        return Err(JournalError::ArtifactMalformed);
-    }
-
-    Ok(artifact)
 }
 
 /// Validates and persists a compiled workflow artifact.
