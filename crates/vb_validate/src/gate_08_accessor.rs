@@ -397,9 +397,7 @@ mod tests {
     }
 
     #[test]
-    fn debug_proptest_failure() {
-        use vb_core::ids::SymbolId;
-        use vb_core::workflow::PathSegment;
+    fn regression_proptest_gate_08_root_precedence_with_valid_field() {
         let parts = workflow_parts_with_accessors(
             2,
             1,
@@ -408,12 +406,7 @@ mod tests {
                 Box::new([PathSegment::Field(SymbolId::new(0))]),
             )]),
         );
-        eprintln!("symbols_count = {}", parts.symbols_count);
-        eprintln!("slot_count = {}", parts.slot_count);
-        eprintln!("accessor.root = {:?}", parts.accessors[0].root);
-        eprintln!("accessor.path = {:?}", parts.accessors[0].path);
-        let result = validate_gate_08_accessor_path_segments(&parts);
-        eprintln!("result = {:?}", result);
+        assert_eq!(validate_gate_08_accessor_path_segments(&parts), Ok(()));
     }
 
     proptest! {
