@@ -47,7 +47,13 @@ fn validate_node_slots(
             }
         }
         CompiledNodeKind::Do { input, .. } => {
-            check_slot(*input, node_index, slot_count)?;
+            if input.as_usize() >= slot_count {
+                return Err(ValidationError::SlotReferenceOutOfRange {
+                    slot: input.as_usize(),
+                    slot_count,
+                    context: "Do.input".to_string(),
+                });
+            }
         }
         CompiledNodeKind::Choose { .. } | CompiledNodeKind::ChooseSlot { .. } => {}
         CompiledNodeKind::ForEachStart {

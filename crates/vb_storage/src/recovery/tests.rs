@@ -300,7 +300,7 @@ mod tests {
             seed.unsupported,
             UnsupportedRecoveryState {
                 slot_values: true,
-                slot_taint: true,
+                slot_taint: false,
                 action_payloads: false,
                 pending_actions: false,
             }

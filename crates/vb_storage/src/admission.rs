@@ -11,25 +11,25 @@ use crate::journal::FjallJournal;
 
 /// A soft verification failure that does not block admission but should be reported.
 ///
-/// Each warning is associated with a specific verification gate (1-15 range) and
-/// carries a numeric code and human-readable message.
+/// Each warning is associated with a specific verification gate (1-2 range per
+/// contract §4.2) and carries a numeric code and human-readable message.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct VerificationWarning {
     /// Numeric code identifying the specific warning condition.
     pub code: u32,
     /// Human-readable description of the warning.
     pub message: Box<str>,
-    /// Which verification gate produced this warning (1-15 range).
+    /// Which verification gate produced this warning (1-2 range per contract).
     pub gate: u8,
 }
 
 impl VerificationWarning {
     /// Minimum valid gate value (inclusive).
     pub const MIN_GATE: u8 = 1;
-    /// Maximum valid gate value (inclusive).
-    pub const MAX_GATE: u8 = 15;
+    /// Maximum valid gate value (inclusive). Contract §4.2 specifies gate_count = 2.
+    pub const MAX_GATE: u8 = 2;
 
-    /// Returns `true` if the `gate` field falls within the valid 1-15 range.
+    /// Returns `true` if the `gate` field falls within the valid 1-2 range.
     #[must_use]
     pub fn is_valid(&self) -> bool {
         self.gate >= Self::MIN_GATE && self.gate <= Self::MAX_GATE
@@ -379,7 +379,7 @@ mod tests {
     }
 
     #[test]
-    fn is_valid_accepts_gate_thirteen() {
+    fn is_valid_accepts_gate_two() {
         let w = VerificationWarning {
             code: 1,
             message: Box::from("max gate"),
