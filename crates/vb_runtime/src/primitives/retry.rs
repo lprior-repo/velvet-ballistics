@@ -188,12 +188,12 @@ impl RetryState {
     /// Encodes the retry state into an I64 slot value.
     ///
     /// Layout:
-    /// - Bits [63:32] = current_delay_ms (u32)
-    /// - Bits [31:16] = current_attempt (u16)
-    /// - Bits [15:0]  = remaining (u16)
+    /// - Bits \[63:32\] = current_delay_ms (u32)
+    /// - Bits \[31:16\] = current_attempt (u16)
+    /// - Bits \[15:0\]  = remaining (u16)
     ///
     /// All bit ranges fit within the non-negative i64 space since the
-    /// maximum delay (u32::MAX) occupies bits [63:32] but the high bit
+    /// maximum delay (u32::MAX) occupies bits \[63:32\] but the high bit
     /// (sign bit) can only be set if delay >= 2^31, which we accept as
     /// a valid encoding that still round-trips correctly through i64.
     pub fn encode(&self) -> Result<i64, RetryPolicyError> {

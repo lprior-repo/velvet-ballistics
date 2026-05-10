@@ -20,12 +20,12 @@ serde_json = { workspace = true, features = ["alloc"] }
 serde-saphyr = { workspace = true }
 
 [[bin]]
-name = "velvet-ballistics"
+name = "velvet-ballastics"
 path = "src/main.rs"
 
 [[bin]]
 name = "vb"
-path = "src/main.rs"
+path = "src/vb.rs"
 
 [dev-dependencies]
 bytes = { workspace = true }

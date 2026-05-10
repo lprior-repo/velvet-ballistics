@@ -12,7 +12,7 @@ name = "vb-ui"
 path = "src/main.rs"
 
 [dependencies]
-makepad-widgets = { git = "https://github.com/makepad/makepad", branch = "dev" }
+makepad-widgets = { git = "https://github.com/makepad/makepad", rev = "20b6c53b6f229b165fe7f813504ae93405159d27" }
 vb_ipc = { path = "../vb_ipc" }
 vb_core = { path = "../vb_core" }
 vb_storage = { path = "../vb_storage" }

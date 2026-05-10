@@ -4,11 +4,9 @@
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use vb_core::ids::{ActionId, SlotIdx, StepIdx};
     use vb_core::workflow::{CompiledNode, CompiledNodeKind};
 
-    // All durability module types - use full path since super::* doesn't capture them
     use crate::verify::durability::{
         DurabilityCheck, DurabilityLevel, DurabilityPanel, DurabilityReport,
         DurabilityResourceMetric, DurabilityVerifyCheck, ReplayRisk, ResourceBudgetBounds,

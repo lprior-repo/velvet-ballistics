@@ -1,15 +1,12 @@
 #![forbid(unsafe_code)]
 //! Integration tests for step budget handling.
 
-use crate::errors::EngineError;
 use crate::frame::StepState;
 use crate::ids::{RunId, SlotIdx, StepIdx, WorkflowDigest};
 use crate::value::{ConstValue, SlotValue, Taint};
-use crate::workflow::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
-};
+use crate::workflow::{CompiledNode, CompiledNodeKind, CompiledWorkflow, WorkflowParts};
 
-use crate::engine::{EngineSignal, StepBudget, new_run_frame, run_until_blocked, step_once};
+use crate::engine::{EngineSignal, StepBudget, new_run_frame, run_until_blocked};
 
 fn test_store() -> crate::value_store::ValueStore {
     crate::value_store::ValueStore::new()

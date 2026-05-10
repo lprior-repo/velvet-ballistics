@@ -11,7 +11,7 @@
 use tempfile::TempDir;
 use vb_core::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest};
 use vb_storage::recovery::{
-    ActionReplayTracker, RecoveryError, extract_terminal, recover_full_journal, replay_events,
+    ActionReplayTracker, RecoveryError, extract_terminal, recover_full_journal,
 };
 use vb_storage::{EventSeq, FjallConfig, FjallJournal, JournalEvent};
 

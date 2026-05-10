@@ -13,9 +13,6 @@ members = [
     "crates/vb_ui_makepad",
     "crates/vb_ui_snapshot",
     "crates/velvet_ballastics",
-    "crates/flow-core",
-    "crates/flow-step-plugin",
-    "crates/flow-editor-makepad",
     "xtask",
     "fuzz",
 ]
@@ -103,6 +100,7 @@ unsafe_code = "forbid"
 unused_must_use = "deny"
 unreachable_pub = "deny"
 rust_2018_idioms = { level = "deny", priority = -1 }
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(kani)'] }
 
 [workspace.lints.clippy]
 correctness = { level = "deny", priority = -1 }

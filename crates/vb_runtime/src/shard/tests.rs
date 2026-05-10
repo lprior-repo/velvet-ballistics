@@ -6347,7 +6347,7 @@ fn vb1u88_status_shutting_down_after_shutdown_tick() {
 #[test]
 fn vb1u88_status_command_queue_depth_correct() {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let shard = Shard::new(config);
     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
     let status = shard.status();
@@ -6358,7 +6358,7 @@ fn vb1u88_status_command_queue_depth_correct() {
 #[test]
 fn vb1u88_status_immutable_during_shutdown() {
     let config = small_config();
-    let mut shard = Shard::new(config);
+    let shard = Shard::new(config);
     assert_eq!(shard.enqueue(ShardCommand::Shutdown), Ok(()));
     let status1 = shard.status();
     let status2 = shard.status();

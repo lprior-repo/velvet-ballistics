@@ -1,10 +1,12 @@
 #![forbid(unsafe_code)]
 //! Expression AST types for vb_expr.
 
+use vb_core::FiniteF64;
+
 /// Parsed expression AST node.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ExprAst {
-    /// Null, boolean, integer, or string literal.
+    /// Null, boolean, number, or string literal.
     Literal(ExprLiteral),
     /// Source reference beginning with `$`.
     Reference(Box<str>),
@@ -42,6 +44,8 @@ pub enum ExprLiteral {
     Bool(bool),
     /// Signed 64-bit integer literal.
     I64(i64),
+    /// Finite double-precision floating-point literal.
+    F64(FiniteF64),
     /// Double-quoted string literal.
     Text(Box<str>),
 }

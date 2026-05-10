@@ -53,7 +53,7 @@ impl CompiledWorkflow {
     /// Creates a compiled workflow without validation.
     ///
     /// Enabled by the `test-util` feature. For test use only.
-    /// Production code must use [`try_from_parts`].
+    /// Production code must use [`Self::try_from_parts`].
     #[cfg(feature = "test-util")]
     pub fn from_parts_unchecked(parts: WorkflowParts) -> Self {
         Self {

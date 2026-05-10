@@ -10,6 +10,7 @@ pub fn fold_literal(lit: &crate::parser::ExprLiteral) -> Option<ConstValue> {
         crate::parser::ExprLiteral::Null => Some(ConstValue::Null),
         crate::parser::ExprLiteral::Bool(v) => Some(ConstValue::Bool(*v)),
         crate::parser::ExprLiteral::I64(v) => Some(ConstValue::I64(*v)),
+        crate::parser::ExprLiteral::F64(v) => Some(ConstValue::F64(*v)),
         crate::parser::ExprLiteral::Text(_) => None,
     }
 }

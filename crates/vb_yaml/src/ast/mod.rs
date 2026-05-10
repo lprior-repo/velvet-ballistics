@@ -11,7 +11,7 @@
 //! - [`types`] - All AST type definitions
 //! - [`parse`] - Parsing entry points and helpers
 //! - [`parse_steps`] - Step parsing logic
-//! - [`tests`] - Comprehensive test suite
+//! - `tests` - Comprehensive test suite
 
 pub mod parse;
 pub mod parse_fields;

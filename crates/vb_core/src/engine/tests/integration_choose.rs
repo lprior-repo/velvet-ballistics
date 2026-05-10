@@ -4,8 +4,8 @@
 use crate::ids::{ConstIdx, ExprIdx, RunId, SlotIdx, StepIdx, WorkflowDigest};
 use crate::value::{ConstValue, SlotValue, Taint};
 use crate::workflow::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ExprBranch, ExprOp, ExprProgram,
-    ResourceContract, SlotBranch, WorkflowParts,
+    CompiledNode, CompiledNodeKind, CompiledWorkflow, ExprBranch, ExprOp, ExprProgram, SlotBranch,
+    WorkflowParts,
 };
 
 use crate::engine::{EngineSignal, StepBudget, new_run_frame, run_until_blocked};

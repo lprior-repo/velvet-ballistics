@@ -185,6 +185,7 @@ fn literal_ast(lit: LiteralToken) -> ExprAst {
         LiteralToken::Null => ExprAst::Literal(ExprLiteral::Null),
         LiteralToken::Bool(v) => ExprAst::Literal(ExprLiteral::Bool(v)),
         LiteralToken::I64(v) => ExprAst::Literal(ExprLiteral::I64(v)),
+        LiteralToken::F64(v) => ExprAst::Literal(ExprLiteral::F64(v)),
         LiteralToken::Text(v) => ExprAst::Literal(ExprLiteral::Text(v)),
     }
 }

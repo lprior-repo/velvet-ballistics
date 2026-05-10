@@ -1,11 +1,11 @@
 #![forbid(unsafe_code)]
 //! Tests for type_taint module (extracted from type_taint.rs)
 
+use crate::ValidationError;
 use crate::type_taint::{
     InputDecl, ResourceLimits, StepKind, StepTypes, Taint, TypedValue, ValueFact, ValueType,
     WorkflowTypes, validate_resource_limits, validate_taint, validate_types,
 };
-use crate::{ValidationError, ValidationResult};
 
 fn make_workflow(steps: Vec<StepTypes>) -> WorkflowTypes {
     WorkflowTypes {

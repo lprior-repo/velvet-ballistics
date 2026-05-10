@@ -1,7 +1,7 @@
 #![forbid(unsafe_code)]
 //! Workflow canvas module for the Velvet Ballistics graph editor.
 //!
-//! Provides the authoring canvas that combines a [`FlowDocument`] with computed
+//! Provides the authoring canvas that combines a [`crate::graph_builder::FlowDocument`] with computed
 //! layout positions, viewport state, and node selection. The canvas is a pure
 //! data structure -- it has no side effects and performs no rendering.
 //!

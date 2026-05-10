@@ -22,7 +22,7 @@ impl ReplayEngine {
     ///
     /// Events **must** be sorted by ascending `seq` number.
     /// Pre-computes the state at every event boundary so that
-    /// [`state_at`] is O(1).
+    /// [`Self::state_at`] is O(1).
     pub fn from_events(events: Vec<JournalEvent>) -> Self {
         let mut states = Vec::with_capacity(events.len().saturating_add(1));
 

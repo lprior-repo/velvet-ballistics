@@ -313,7 +313,7 @@ impl LaneSegmentBuilder {
 /// Each bucket covers a fixed duration (`bucket_duration_ms` milliseconds).
 /// Events are recorded via [`ActivityHeatmap::record_event`] and the correct
 /// bucket is incremented using saturating arithmetic. The cached
-/// [`max_bucket`](ActivityHeatmap::max_bucket) field enables efficient
+/// The cached `max_bucket` field enables efficient
 /// normalisation via [`ActivityHeatmap::intensity`].
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ActivityHeatmap {

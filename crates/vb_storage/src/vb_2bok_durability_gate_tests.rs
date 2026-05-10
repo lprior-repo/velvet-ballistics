@@ -14,21 +14,18 @@
     clippy::unwrap_used
 )]
 mod durability_gate_tests {
-    use crate::admission::{AcceptedArtifact, admit_compiled_artifact, submit_artifact};
+    use crate::admission::{admit_compiled_artifact, submit_artifact};
     use crate::codec::{decode_record, encode_record};
     use crate::constants::{
-        CRC_OFFSET, MAGIC_BLOB, MAGIC_COMPILED_ARTIFACT, MAGIC_JOURNAL_EVENT,
-        MAGIC_WORKFLOW_SOURCE, MAX_BLOB_BYTES, MAX_COMPILED_IR_BYTES,
-        MAX_JOURNAL_EVENT_PAYLOAD_BYTES, MAX_WORKFLOW_SOURCE_BYTES, RECORD_HEADER_BYTES,
+        CRC_OFFSET, MAGIC_BLOB, MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+        RECORD_HEADER_BYTES,
     };
     use crate::records::RecordKind;
     use crate::{
-        BlobRecord, CompiledIrRecord, DIGEST_BYTES, EventSeq, FjallJournal, JournalError,
-        JournalEvent, WorkflowSourceRecord,
+        BlobRecord, DIGEST_BYTES, EventSeq, FjallJournal, JournalError, JournalEvent,
+        WorkflowSourceRecord,
     };
-    use vb_core::{
-        CompiledWorkflow, RunId, RuntimePolicy, SlotIdx, StepIdx, WorkflowDigest, WorkflowId,
-    };
+    use vb_core::{CompiledWorkflow, RunId, RuntimePolicy, SlotIdx, StepIdx, WorkflowDigest};
 
     // =========================================================================
     // Test fixtures and helpers

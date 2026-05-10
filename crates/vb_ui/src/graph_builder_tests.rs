@@ -4,7 +4,6 @@
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use vb_core::ids::StepIdx;
     use vb_core::workflow::{CompiledNode, CompiledNodeKind, WorkflowParts};
 
@@ -13,7 +12,6 @@ mod tests {
         Cardinality, EdgeStyle, FlowPortRecord, GroupKind, PortRole, PortSide, SmolStr,
         build_document, build_ports, classify_node_kind, collect_span, compute_node_size,
     };
-    use crate::verify::certificates::verify_workflow;
 
     fn make_nop_node(id: u16, next: Option<u16>) -> CompiledNode {
         CompiledNode {

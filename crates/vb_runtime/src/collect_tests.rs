@@ -3047,7 +3047,7 @@ fn collect_next_writes_empty_page_and_removes_state_after_last_item() -> Result<
         None,
     )
     .map_err(|e| format!("collect_start: {e:?}"))?;
-    let first_page = slot_list_id(&run, collector)?;
+    let _first_page = slot_list_id(&run, collector)?;
 
     // collect_start already completed (cursor >= item_count), so state is removed.
     // Calling collect_next after completion returns an error because state is missing.

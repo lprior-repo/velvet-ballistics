@@ -662,7 +662,7 @@ fn dummy_contract() -> vb_core::action::ActionContract {
 
 #[test]
 fn resume_action_outcome_ready_continues_execution() {
-    let mut run = match RunFrame::new(RunId::new(1), StepIdx::new(0), 4, 2) {
+    let _run = match RunFrame::new(RunId::new(1), StepIdx::new(0), 4, 2) {
         Ok(f) => f,
         Err(_) => return,
     };
@@ -680,7 +680,7 @@ fn resume_action_outcome_ready_continues_execution() {
 
 #[test]
 fn resume_action_outcome_failed_non_retryable_returns_error() {
-    let mut run = match RunFrame::new(RunId::new(1), StepIdx::new(0), 4, 2) {
+    let _run = match RunFrame::new(RunId::new(1), StepIdx::new(0), 4, 2) {
         Ok(f) => f,
         Err(_) => return,
     };
@@ -706,7 +706,7 @@ fn resume_action_outcome_failed_non_retryable_returns_error() {
 
 #[test]
 fn resume_action_outcome_suspended_returns_awaiting() {
-    let mut run = match RunFrame::new(RunId::new(1), StepIdx::new(0), 4, 2) {
+    let _run = match RunFrame::new(RunId::new(1), StepIdx::new(0), 4, 2) {
         Ok(f) => f,
         Err(_) => return,
     };
@@ -738,7 +738,7 @@ fn resume_action_outcome_suspended_returns_awaiting() {
 
 #[test]
 fn resume_action_outcome_retryable_failure_propagates_original_ticket_fields() {
-    let mut run = match RunFrame::new(RunId::new(1), StepIdx::new(0), 4, 2) {
+    let _run = match RunFrame::new(RunId::new(1), StepIdx::new(0), 4, 2) {
         Ok(f) => f,
         Err(_) => return,
     };
@@ -1330,7 +1330,7 @@ fn bh_resume_action_outcome_suspended_preserves_ticket_fields() {
 fn bh_resume_action_outcome_failed_retryable_preserves_signal_structure() {
     // A retryable failure should produce an AwaitingAction with a retry ticket
     // derived from the original ticket (incremented seq and attempt).
-    let mut run = match RunFrame::new(RunId::new(1), StepIdx::new(0), 4, 2) {
+    let _run = match RunFrame::new(RunId::new(1), StepIdx::new(0), 4, 2) {
         Ok(f) => f,
         Err(_) => return,
     };
@@ -2155,7 +2155,7 @@ mod blackhat_engine {
 
     #[test]
     fn bh_eng_11_retry_ticket_uses_frame_run_id() {
-        let mut run = RunFrame::new(RunId::new(99), StepIdx::ZERO, 4, 2)
+        let _run = RunFrame::new(RunId::new(99), StepIdx::ZERO, 4, 2)
             .ok()
             .unwrap_or_else(|| panic!("RunFrame::new failed"));
         let original = ActionTicket {
@@ -2233,7 +2233,7 @@ mod blackhat_engine {
 
     #[test]
     fn bh_eng_13_suspended_outcome_ignores_original_ticket() {
-        let mut run = RunFrame::new(RunId::new(1), StepIdx::ZERO, 4, 2)
+        let _run = RunFrame::new(RunId::new(1), StepIdx::ZERO, 4, 2)
             .ok()
             .unwrap_or_else(|| panic!("RunFrame::new failed"));
         let suspended_ticket = ActionTicket {

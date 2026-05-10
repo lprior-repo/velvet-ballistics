@@ -1,8 +1,8 @@
 #![forbid(unsafe_code)]
 //! Timer wheel for wait/ask deadline tracking.
 //!
-//! Uses a BTreeMap<Instant, Vec<TimerEntry>> as the primary time-index
-//! and a HashMap<RunId, (Instant, PendingTimerKind)> as the run-index.
+//! Uses `BTreeMap<Instant, Vec<TimerEntry>>` as the primary time-index
+//! and `HashMap<RunId, (Instant, PendingTimerKind)>` as the run-index.
 //! This gives O(log n) insert/cancel and O(k) fire where k is expired timers.
 
 use std::collections::{BTreeMap, HashMap};

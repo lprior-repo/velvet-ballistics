@@ -220,7 +220,7 @@ pub struct IncidentSlotDiff {
 }
 
 /// Aggregated detail sections for the currently selected incident.
-/// Returned by [`IncidentScreen::detail_sections`] for tab-based rendering.
+/// Returned by `IncidentScreen::detail_sections` for tab-based rendering.
 #[derive(Debug, Clone)]
 pub struct IncidentDetailSections {
     /// Structured cause information, if an incident is selected.

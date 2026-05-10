@@ -71,7 +71,7 @@ mod vb_h6ix_tests {
         let mut tracker = ActionReplayTracker::new();
         let result = replay_events(&events, &mut tracker);
 
-        let Ok(replayed) = result else {
+        let Ok(_replayed) = result else {
             panic!("replay_events should succeed, got {:?}", result);
         };
 

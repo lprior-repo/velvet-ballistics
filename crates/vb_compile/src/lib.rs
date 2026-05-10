@@ -3830,7 +3830,6 @@ mod tests {
                 "Expected error but lower_steps_to_ir succeeded. \
                  This FAILS before fix because lower_steps_to_ir bypasses Gate 9."
             ),
-            other => panic!("Expected CompileErrors, got: {:?}", other),
         }
     }
 
@@ -3874,7 +3873,6 @@ mod tests {
                 }
             }
             Ok(_) => panic!("Expected error from validate_ir, got Ok"),
-            other => panic!("Expected CompileErrors, got: {:?}", other),
         }
     }
 
@@ -3961,7 +3959,6 @@ mod tests {
                 }
             }
             Ok(_) => panic!("Expected error, got Ok"),
-            other => panic!("Expected CompileErrors, got: {:?}", other),
         }
     }
 
@@ -4001,7 +3998,6 @@ mod tests {
                 }
             }
             Ok(_) => panic!("Expected error, got Ok"),
-            other => panic!("Expected CompileErrors, got: {:?}", other),
         }
     }
 
@@ -4027,7 +4023,6 @@ mod tests {
                 }
             }
             Ok(_) => panic!("Expected error, got Ok"),
-            other => panic!("Expected CompileErrors, got: {:?}", other),
         }
     }
 
@@ -4068,7 +4063,6 @@ steps:
                 }
             }
             Ok(_) => panic!("Expected error, got Ok"),
-            other => panic!("Expected CompileErrors, got: {:?}", other),
         }
     }
 
@@ -4118,7 +4112,6 @@ steps:
                 }
             }
             Ok(_) => panic!("Expected error, got Ok"),
-            other => panic!("Expected CompileErrors, got: {:?}", other),
         }
     }
 
@@ -4221,7 +4214,6 @@ steps:
                 );
             }
             Ok(_) => panic!("Expected error, got Ok"),
-            other => panic!("Expected CompileErrors, got: {:?}", other),
         }
     }
 }
