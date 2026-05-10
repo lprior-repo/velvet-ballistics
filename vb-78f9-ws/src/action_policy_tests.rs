@@ -105,22 +105,21 @@ fn test_action_policy_report_strict_eligible_false_when_issues_present() {
         output_slot_count: 1,
         max_input_bytes: 1024,
         max_output_bytes: 1024,
-        timeout_ms: 1000,
+        timeout_ms: 0,
         idempotency: Idempotency::DeterministicPure,
         side_effect: SideEffect::None,
         retry_safety: RetrySafety::Safe,
         required_capabilities: Box::new([]),
     };
-    let mut report = ActionPolicyReport::for_action(ActionId::new(7), Some(&contract));
-    assert!(report.strict_eligible, "initial report should be strict eligible");
-    report.issues.push(PolicyIssue::MissingTimeout);
+    let report = ActionPolicyReport::for_action(ActionId::new(7), Some(&contract));
+    assert!(report.issues.contains(&PolicyIssue::MissingTimeout), "zero timeout should have MissingTimeout issue");
     assert!(!report.strict_eligible, "report with issues should not be strict eligible");
 }
 
 #[test]
 fn test_analyze_policies_on_fully_covered_workflow() {
     use vb_runtime::action::ActionRegistry;
-    let registry = ActionRegistry::new();
+    let mut registry = ActionRegistry::new();
     let contract1 = ActionContract {
         id: ActionId::new(10),
         input_slot_count: 1,
@@ -177,7 +176,7 @@ fn test_analyze_policies_reports_missing_contracts() {
 #[test]
 fn test_analyze_policies_reports_unsafe_retry() {
     use vb_runtime::action::ActionRegistry;
-    let registry = ActionRegistry::new();
+    let mut registry = ActionRegistry::new();
     let contract = ActionContract {
         id: ActionId::new(20),
         input_slot_count: 1,

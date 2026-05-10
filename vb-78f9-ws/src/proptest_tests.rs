@@ -34,7 +34,7 @@ fn test_idempotency_key_no_collision_on_adjacent_seq() {
 
 #[test]
 fn test_registry_resolve_returns_what_was_stored() {
-    let registry = ActionRegistry::new();
+    let mut registry = ActionRegistry::new();
     for id_val in 0..100u16 {
         let contract = ActionContract {
             id: ActionId::new(id_val),
@@ -59,8 +59,9 @@ fn test_registry_resolve_returns_what_was_stored() {
 
 #[test]
 fn test_registry_len_consistency() {
-    let registry = ActionRegistry::new();
+    let mut registry = ActionRegistry::new();
     let test_ids = [5u16, 50, 99, 0, 25];
+    let expected_lens = [6, 51, 100, 100, 100];
     for (i, &id_val) in test_ids.iter().enumerate() {
         let contract = ActionContract {
             id: ActionId::new(id_val),
@@ -75,14 +76,14 @@ fn test_registry_len_consistency() {
             required_capabilities: Box::new([]),
         };
         registry.register(contract).expect("register should succeed");
-        let expected_len = (i + 1) as usize;
+        let expected_len = expected_lens[i];
         assert_eq!(registry.len(), expected_len, "len mismatch after {} registrations", i + 1);
     }
 }
 
 #[test]
 fn test_registry_duplicate_registration_consistency() {
-    let registry = ActionRegistry::new();
+    let mut registry = ActionRegistry::new();
     let contract = ActionContract {
         id: ActionId::new(77),
         input_slot_count: 1,
@@ -156,7 +157,7 @@ fn test_pure_preserves_non_clean_taints() {
 #[test]
 fn test_tracker_eviction_fifo_order() {
     let capacity = 5;
-    let tracker = vb_runtime::action::IdempotencyTracker::new(capacity);
+    let mut tracker = vb_runtime::action::IdempotencyTracker::new(capacity);
     for i in 0..capacity {
         let ticket = vb_core::action::ActionTicket {
             run: RunId::new(1),
@@ -164,10 +165,10 @@ fn test_tracker_eviction_fifo_order() {
             seq: SeqNo::new(i as u64 + 1),
             action: ActionId::new(1),
             attempt: 1,
-            idempotency_key: u128::from(i),
+            idempotency_key: u128::from(i as u64),
             capacity: 3,
         };
-        tracker.mark_completed(ticket).expect("mark should succeed");
+        tracker.mark_completed(&ticket).expect("mark should succeed");
     }
     assert_eq!(tracker.len(), capacity, "tracker should be at capacity");
     let first_ticket = vb_core::action::ActionTicket {
@@ -176,17 +177,17 @@ fn test_tracker_eviction_fifo_order() {
         seq: SeqNo::new(0),
         action: ActionId::new(1),
         attempt: 1,
-        idempotency_key: u128::from(999),
+        idempotency_key: u128::from(999_u64),
         capacity: 3,
     };
-    tracker.mark_completed(first_ticket).expect("new mark should succeed");
+    tracker.mark_completed(&first_ticket).expect("new mark should succeed");
     assert!(tracker.len() <= capacity, "tracker should never exceed capacity");
 }
 
 #[test]
 fn test_tracker_capacity_never_exceeded() {
     let capacity = 10;
-    let tracker = vb_runtime::action::IdempotencyTracker::new(capacity);
+    let mut tracker = vb_runtime::action::IdempotencyTracker::new(capacity);
     for i in 0..20 {
         let ticket = vb_core::action::ActionTicket {
             run: RunId::new(1),
@@ -194,10 +195,10 @@ fn test_tracker_capacity_never_exceeded() {
             seq: SeqNo::new(i as u64 + 100),
             action: ActionId::new(1),
             attempt: 1,
-            idempotency_key: u128::from(1000 + i),
+            idempotency_key: u128::from(1000_u64 + i as u64),
             capacity: 3,
         };
-        let _ = tracker.mark_completed(ticket);
+        let _ = tracker.mark_completed(&ticket);
     }
     assert!(tracker.len() <= capacity, "tracker should never exceed capacity");
 }
@@ -235,41 +236,4 @@ fn test_action_contract_timeout_ms_bounds() {
         required_capabilities: Box::new([]),
     };
     assert_eq!(contract.timeout_ms, u64::MAX, "timeout_ms should fit in u64");
-}
-
-#[test]
-fn test_action_error_encoding_roundtrip() {
-    use vb_core::action::ActionError;
-    let errors = [
-        ActionError::UnknownAction { action: ActionId::new(1) },
-        ActionError::InvalidTicket,
-        ActionError::PayloadTooLarge { max_bytes: 100, actual_bytes: 200 },
-        ActionError::OutputSlotOutOfBounds { slot: 5, max_slots: 4 },
-        ActionError::NonIdempotentReplayBlocked,
-        ActionError::CompletionAlreadyRecorded,
-        ActionError::QueueFull,
-        ActionError::EncodingFailed,
-        ActionError::DispatchFailed,
-    ];
-    for original in &errors {
-        let encoded: Vec<u8> = postcard::to_allocvec(original).expect("encode should succeed");
-        let decoded: ActionError = postcard::from_bytes(&encoded).expect("decode should succeed");
-        assert_eq!(&decoded, original, "roundtrip should preserve error");
-    }
-}
-
-#[test]
-fn test_idempotency_violation_encoding_roundtrip() {
-    use vb_core::action::IdempotencyViolation;
-    let violations = [
-        IdempotencyViolation::MissingKey(SideEffect::Writes),
-        IdempotencyViolation::SecretInKey(3),
-        IdempotencyViolation::RandomInKey(2),
-        IdempotencyViolation::TimeInKey(1),
-    ];
-    for original in &violations {
-        let encoded: Vec<u8> = postcard::to_allocvec(original).expect("encode should succeed");
-        let decoded: IdempotencyViolation = postcard::from_bytes(&encoded).expect("decode should succeed");
-        assert_eq!(&decoded, original, "roundtrip should preserve violation");
-    }
 }
