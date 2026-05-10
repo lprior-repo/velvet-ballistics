@@ -85,6 +85,7 @@ impl FramePool {
 }
 
 #[cfg(test)]
+#[allow(clippy::expect_used)]
 mod tests {
     use super::*;
     use vb_core::ids::SlotIdx;
@@ -768,7 +769,7 @@ mod tests {
             Err(_) => return,
         };
         for _ in 0..10 {
-            let _ = frame.increment_executed();
+            frame.increment_executed().expect("increment_executed must succeed");
         }
         assert_eq!(frame.executed(), 10);
         pool.release(frame);

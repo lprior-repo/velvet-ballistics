@@ -1,4 +1,5 @@
 #![forbid(unsafe_code)]
+#![allow(clippy::identity_op)]
 //! Proptest property tests for core types: FiniteF64, Taint lattice, ValueStore, SlotValue.
 
 use proptest::prelude::*;

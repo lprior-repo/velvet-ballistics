@@ -242,13 +242,151 @@ pub fn make_fail_result(kind: CheckKind, detail: &str) -> CheckResult {
 
 #[cfg(all(test, feature = "std"))]
 mod tests {
-    use super::{CheckKind, UiSnapshotReport, make_fail_result};
+    use super::{make_fail_result, make_pass_result, make_screen_result, CheckKind, CheckResult, ScreenResult, UiSnapshotReport};
     use saphyr::LoadableYamlNode;
+
+    // ── UiSnapshotReport ──────────────────────────────────────────────────────
+
+    #[test]
+    fn new_report_has_pass_status() {
+        let report = UiSnapshotReport::new();
+        assert_eq!(report.status, "pass");
+        assert_eq!(report.total_screens, 0);
+        assert_eq!(report.passed_screens, 0);
+        assert_eq!(report.failed_screens, 0);
+        assert!(report.screens.is_empty());
+    }
+
+    #[test]
+    fn add_screen_updates_status_to_fail_when_screen_fails() {
+        let mut report = UiSnapshotReport::new();
+        report.add_screen(make_screen_result(
+            "test_screen",
+            vec![make_fail_result(CheckKind::ColorDrift, "drifted")],
+        ));
+        assert_eq!(report.status, "fail");
+        assert_eq!(report.screens.len(), 1);
+    }
+
+    #[test]
+    fn add_screen_keeps_status_pass_when_all_screens_pass() {
+        let mut report = UiSnapshotReport::new();
+        report.add_screen(make_screen_result(
+            "test_screen",
+            vec![make_pass_result(CheckKind::Overlap)],
+        ));
+        assert_eq!(report.status, "pass");
+    }
+
+    #[test]
+    fn finalize_computes_counts() {
+        let mut report = UiSnapshotReport::new();
+        report.add_screen(make_screen_result("scr1", vec![make_pass_result(CheckKind::Overlap)]));
+        report.add_screen(make_screen_result("scr2", vec![make_fail_result(CheckKind::ColorDrift, "drift")]));
+        report.finalize();
+        assert_eq!(report.total_screens, 2);
+        assert_eq!(report.passed_screens, 1);
+        assert_eq!(report.failed_screens, 1);
+    }
+
+    #[test]
+    fn finalize_status_fail_when_any_screen_fails() {
+        let mut report = UiSnapshotReport::new();
+        report.add_screen(make_screen_result("scr1", vec![make_pass_result(CheckKind::Overlap)]));
+        report.add_screen(make_screen_result("scr2", vec![make_fail_result(CheckKind::Spelling, "typo")]));
+        report.finalize();
+        assert_eq!(report.failed_screens, 1);
+    }
+
+    #[test]
+    fn default_implementation_matches_new() {
+        let default_report = UiSnapshotReport::default();
+        let new_report = UiSnapshotReport::new();
+        assert_eq!(default_report.status, new_report.status);
+        assert_eq!(default_report.screens.len(), new_report.screens.len());
+    }
+
+    // ── make_screen_result ───────────────────────────────────────────────────
+
+    #[test]
+    fn make_screen_result_is_passed_when_all_checks_passed() {
+        let result = make_screen_result(
+            "my_screen",
+            vec![
+                make_pass_result(CheckKind::Overlap),
+                make_pass_result(CheckKind::ColorDrift),
+            ],
+        );
+        assert!(result.passed);
+        assert_eq!(result.screen_name, "my_screen");
+        assert_eq!(result.checks.len(), 2);
+        assert!(result.png_path.is_none());
+    }
+
+    #[test]
+    fn make_screen_result_is_failed_when_any_check_fails() {
+        let result = make_screen_result(
+            "my_screen",
+            vec![
+                make_pass_result(CheckKind::Bounds),
+                make_fail_result(CheckKind::Clipping, "label truncated"),
+            ],
+        );
+        assert!(!result.passed);
+    }
+
+    // ── make_pass_result ──────────────────────────────────────────────────────
+
+    #[test]
+    fn make_pass_result_has_passed_true_and_no_detail() {
+        let result = make_pass_result(CheckKind::Spelling);
+        assert!(result.passed);
+        assert_eq!(result.kind, CheckKind::Spelling);
+        assert!(result.detail.is_none());
+    }
+
+    #[test]
+    fn make_fail_result_has_passed_false_and_detail() {
+        let result = make_fail_result(CheckKind::ChipReadability, "low contrast");
+        assert!(!result.passed);
+        assert_eq!(result.kind, CheckKind::ChipReadability);
+        assert_eq!(result.detail.as_deref(), Some("low contrast"));
+    }
+
+    // ── CheckKind ─────────────────────────────────────────────────────────────
+
+    #[test]
+    fn check_kind_display_covers_all_variants() {
+        use core::fmt::Write;
+        let mut s = String::new();
+        for kind in [
+            CheckKind::Overlap,
+            CheckKind::Clipping,
+            CheckKind::ChipReadability,
+            CheckKind::Bounds,
+            CheckKind::SelectedState,
+            CheckKind::ColorDrift,
+            CheckKind::Spelling,
+            CheckKind::PngValidity,
+        ] {
+            write!(&mut s, "{kind}").unwrap();
+        }
+        assert!(s.contains("overlap_check"));
+        assert!(s.contains("png_validity_check"));
+    }
+
+    #[test]
+    fn check_kind_partial_eq() {
+        assert_eq!(CheckKind::Overlap, CheckKind::Overlap);
+        assert_ne!(CheckKind::Overlap, CheckKind::ColorDrift);
+    }
+
+    // ── YAML roundtrip ────────────────────────────────────────────────────────
 
     #[test]
     fn saphyr_yaml_emits_parseable_report() -> anyhow::Result<()> {
         let mut report = UiSnapshotReport::new();
-        report.add_screen(super::make_screen_result(
+        report.add_screen(make_screen_result(
             "execution_overview",
             vec![make_fail_result(CheckKind::ColorDrift, "token drift")],
         ));
@@ -264,6 +402,81 @@ mod tests {
         anyhow::ensure!(
             status == Some("fail"),
             "expected status 'fail', got {status:?}"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn yaml_report_has_pass_screens_count() -> anyhow::Result<()> {
+        let mut report = UiSnapshotReport::new();
+        report.add_screen(make_screen_result(
+            "scr1",
+            vec![make_pass_result(CheckKind::Overlap)],
+        ));
+        report.finalize();
+
+        let yaml = report.to_yaml()?;
+        let docs = saphyr::Yaml::load_from_str(&yaml)?;
+        // Verify the report serializes to YAML and contains expected top-level keys
+        let doc = docs.first().expect("expected at least one YAML document");
+        let status = doc
+            .as_mapping_get("status")
+            .and_then(saphyr::Yaml::as_str);
+        anyhow::ensure!(status == Some("pass"), "expected status 'pass', got {status:?}");
+        let screens = doc
+            .as_mapping_get("screens")
+            .and_then(saphyr::Yaml::as_sequence);
+        anyhow::ensure!(
+            screens.map_or(0, |s| s.len()) == 1,
+            "expected 1 screen in YAML"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn yaml_report_has_correct_total_screens() -> anyhow::Result<()> {
+        let mut report = UiSnapshotReport::new();
+        report.add_screen(make_screen_result("a", vec![make_pass_result(CheckKind::Overlap)]));
+        report.add_screen(make_screen_result("b", vec![make_pass_result(CheckKind::Spelling)]));
+        report.finalize();
+
+        let yaml = report.to_yaml()?;
+        let docs = saphyr::Yaml::load_from_str(&yaml)?;
+        let doc = docs.first().expect("expected at least one YAML document");
+        // Verify status is "pass" when all screens pass
+        let status = doc
+            .as_mapping_get("status")
+            .and_then(saphyr::Yaml::as_str);
+        anyhow::ensure!(status == Some("pass"), "expected 'pass', got {status:?}");
+        // Verify 2 screens in the sequence
+        let screens = doc
+            .as_mapping_get("screens")
+            .and_then(saphyr::Yaml::as_sequence);
+        anyhow::ensure!(
+            screens.map_or(0, |s| s.len()) == 2,
+            "expected 2 screens, got {screens:?}"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn yaml_screens_sequence_has_correct_count() -> anyhow::Result<()> {
+        let mut report = UiSnapshotReport::new();
+        for name in ["scr1", "scr2", "scr3"] {
+            report.add_screen(make_screen_result(name, vec![make_pass_result(CheckKind::Overlap)]));
+        }
+        report.finalize();
+
+        let yaml = report.to_yaml()?;
+        let docs = saphyr::Yaml::load_from_str(&yaml)?;
+        let screens = docs
+            .first()
+            .and_then(|doc| doc.as_mapping_get("screens"))
+            .and_then(saphyr::Yaml::as_sequence);
+
+        anyhow::ensure!(
+            screens.map_or(0, |s| s.len()) == 3,
+            "expected 3 screens in YAML sequence"
         );
         Ok(())
     }

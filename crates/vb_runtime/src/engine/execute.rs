@@ -371,6 +371,7 @@ pub fn execute_node_full(
 }
 
 #[cfg(test)]
+#[allow(clippy::expect_used)]
 mod tests {
     use super::*;
     use crate::primitives::collect::CollectStates;

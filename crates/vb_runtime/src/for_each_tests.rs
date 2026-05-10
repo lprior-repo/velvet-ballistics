@@ -1,3 +1,5 @@
+#![allow(clippy::expect_used, clippy::unwrap_used, clippy::map_flatten, clippy::unnecessary_fallible_conversions)]
+
 use super::*;
 use crate::test_harness::list_in_slot;
 use vb_core::value_store::ValueStore;
@@ -1655,7 +1657,8 @@ fn phase22_nested_for_each_outer_and_inner_have_separate_limits() {
 
     // Outer can still advance (its iterator is independent)
     // Reset PC to a valid step for next advance
-    run.set_pc(StepIdx::ZERO).ok();
+    run.set_pc(StepIdx::ZERO)
+        .expect("set_pc must succeed");
     let outer_next = for_each_next(
         &mut run,
         &mut store,

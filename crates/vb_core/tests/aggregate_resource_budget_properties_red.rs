@@ -1,3 +1,4 @@
+#![allow(clippy::indexing_slicing)]
 use proptest::prelude::{ProptestConfig, *};
 
 const BUDGET_RS: &str = include_str!("../src/budget.rs");

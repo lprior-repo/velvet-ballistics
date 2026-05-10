@@ -121,6 +121,7 @@ impl Default for TimerWheel {
 }
 
 #[cfg(test)]
+#[allow(clippy::indexing_slicing)]
 mod tests {
     use super::*;
     use vb_core::ids::RunId;

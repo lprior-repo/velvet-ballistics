@@ -1,4 +1,5 @@
 //! Budget module integration tests.
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic_in_result_fn, clippy::panic, clippy::indexing_slicing, clippy::as_conversions)]
 
 use crate::budget::{BoundednessPolicy, BudgetError, WholeWorkflowBudget};
 use crate::engine::StepBudget;
@@ -814,10 +815,8 @@ fn step_budget_max_equals_limit() {
 fn step_budget_zero_exhausts_immediately() {
     let mut budget = StepBudget::new(0);
     let result = budget.try_take();
-    assert!(
-        result.is_ok() && result.as_ref().map_err(|_| "").unwrap() == &false,
-        "zero budget should return Ok(false) immediately"
-    );
+    // SAFETY: try_take on StepBudget with count=0 always returns Ok(false)
+    assert_eq!(result, Ok(false), "zero budget should return Ok(false) immediately");
 }
 
 // =========================================================================
@@ -1186,18 +1185,15 @@ fn blackhat_reduce_start_uses_max_list_items_as_iteration_count() {
         },
     ];
     let contract = test_contract(3, 3);
-    let budget = WholeWorkflowBudget::compute(&nodes, StepIdx::new(0), &contract).ok();
+    let budget = WholeWorkflowBudget::compute(&nodes, StepIdx::new(0), &contract)
+        .expect("BLACKHAT BH-BUD-13: ReduceStart should compute with MAX_LIST_ITEMS iterations");
 
     let expected_iters = u64::try_from(crate::limits::MAX_LIST_ITEMS_PER_VALUE).unwrap_or(u64::MAX);
     let expected = 1 + expected_iters + 1;
 
-    assert!(
-        budget.is_some(),
-        "BLACKHAT BH-BUD-13: ReduceStart should compute with MAX_LIST_ITEMS iterations"
-    );
     assert_eq!(
-        budget.as_ref().map(|b| b.max_total_steps),
-        Some(expected),
+        budget.max_total_steps,
+        expected,
         "BLACKHAT BH-BUD-13: expected {expected} steps"
     );
 }

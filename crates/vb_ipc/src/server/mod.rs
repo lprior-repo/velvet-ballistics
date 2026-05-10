@@ -24,6 +24,7 @@ pub mod ticket;
 pub mod trace;
 
 #[cfg(test)]
+#[allow(clippy::expect_used)]
 mod impl_tests;
 
 use crate::{

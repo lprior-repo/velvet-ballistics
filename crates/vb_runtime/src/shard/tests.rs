@@ -1,5 +1,5 @@
 //! Tests for the shard module.
-#![allow(dead_code, unused_imports)]
+#![allow(dead_code, unused_imports, unused_mut, clippy::expect_used)]
 
 use vb_core::ActionFailureCode;
 use vb_core::action::RetryPolicy as VbRetryPolicy;

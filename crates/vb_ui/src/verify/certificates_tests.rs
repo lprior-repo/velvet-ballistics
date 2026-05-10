@@ -4,7 +4,6 @@
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use vb_core::ids::WorkflowDigest;
     use vb_core::ids::{SlotIdx, StepIdx};
     use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
@@ -14,8 +13,7 @@ mod tests {
         Certificate, CertificateKind, CertificateStatus, CheckStatus, VerificationResult,
         collect_successors, verify_workflow,
     };
-    // EdgeStyle and GroupKind from graph_builder
-    use crate::graph_builder::{EdgeStyle, GroupKind};
+    // EdgeStyle and GroupKind removed — not used in tests
 
     fn minimal_parts() -> WorkflowParts {
         WorkflowParts {

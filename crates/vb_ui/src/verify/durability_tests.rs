@@ -4,7 +4,7 @@
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    // super::* removed — all items explicitly imported below
     use vb_core::ids::{ActionId, SlotIdx, StepIdx};
     use vb_core::workflow::{CompiledNode, CompiledNodeKind};
 

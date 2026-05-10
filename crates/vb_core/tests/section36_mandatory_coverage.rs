@@ -1,4 +1,5 @@
 #![forbid(unsafe_code)]
+#![allow(clippy::unwrap_used, clippy::panic_in_result_fn, clippy::panic, clippy::indexing_slicing, clippy::arithmetic_side_effects, clippy::bool_assert_comparison, clippy::as_conversions, clippy::bool_comparison, clippy::approx_constant)]
 //! Section 36 mandatory test coverage: FiniteF64, SlotValue, StepBudget,
 //! RunFrame, try_from_parts, and engine invariants.
 

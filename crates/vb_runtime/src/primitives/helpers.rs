@@ -74,6 +74,7 @@ pub(crate) fn require_output(
 }
 
 #[cfg(test)]
+#[allow(clippy::approx_constant, clippy::len_zero)]
 mod tests {
     use super::*;
     use vb_core::value_store::ValueStore;

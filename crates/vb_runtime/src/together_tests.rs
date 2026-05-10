@@ -1,3 +1,5 @@
+#![allow(clippy::expect_used, clippy::unwrap_used, clippy::redundant_closure, clippy::indexing_slicing)]
+
 use super::*;
 use crate::test_harness::list_in_slot;
 use vb_core::ids::BranchIdx;
@@ -70,7 +72,8 @@ fn together_join_waits_for_all_branches() {
         .ok()
         .unwrap_or_else(|| panic!("slot write must succeed"));
 
-    run.add_parallel_in_flight(2).ok();
+    run.add_parallel_in_flight(2)
+        .expect("add_parallel_in_flight must succeed");
     let result = together_join(
         &mut run,
         &mut store,
@@ -252,7 +255,8 @@ fn together_join_returns_error_when_output_missing() {
     let accumulator = SlotIdx::new(0);
     list_in_slot(&mut run, &mut store, accumulator, vec![SlotValue::I64(10)]);
     // When calling together_join with output=None
-    run.add_parallel_in_flight(1).ok();
+    run.add_parallel_in_flight(1)
+        .expect("add_parallel_in_flight must succeed");
     let result = together_join(
         &mut run,
         &mut store,
@@ -285,7 +289,8 @@ fn together_join_returns_error_when_next_missing() {
         .ok()
         .unwrap_or_else(|| panic!("write must succeed"));
     // When calling together_join with next=None
-    run.add_parallel_in_flight(1).ok();
+    run.add_parallel_in_flight(1)
+        .expect("add_parallel_in_flight must succeed");
     let result = together_join(
         &mut run,
         &mut store,
@@ -502,7 +507,8 @@ fn together_join_with_null_last_result_preserves_accumulator() {
         .ok()
         .unwrap_or_else(|| panic!("write"));
     // When calling together_join
-    run.add_parallel_in_flight(1).ok();
+    run.add_parallel_in_flight(1)
+        .expect("add_parallel_in_flight must succeed");
     let result = together_join(
         &mut run,
         &mut store,
@@ -543,7 +549,8 @@ fn together_join_appends_non_null_non_list_last_result() {
         .ok()
         .unwrap_or_else(|| panic!("write"));
     // When calling together_join
-    run.add_parallel_in_flight(1).ok();
+    run.add_parallel_in_flight(1)
+        .expect("add_parallel_in_flight must succeed");
     let result = together_join(
         &mut run,
         &mut store,
@@ -589,7 +596,8 @@ fn together_join_with_list_in_output_does_not_double_append() {
         .ok()
         .unwrap_or_else(|| panic!("write"));
     // When calling together_join
-    run.add_parallel_in_flight(1).ok();
+    run.add_parallel_in_flight(1)
+        .expect("add_parallel_in_flight must succeed");
     let result = together_join(
         &mut run,
         &mut store,
@@ -632,7 +640,8 @@ fn together_join_with_non_list_accumulator_uses_accumulator_value() {
         .ok()
         .unwrap_or_else(|| panic!("write"));
     // When calling together_join
-    run.add_parallel_in_flight(1).ok();
+    run.add_parallel_in_flight(1)
+        .expect("add_parallel_in_flight must succeed");
     let result = together_join(
         &mut run,
         &mut store,
@@ -965,7 +974,8 @@ fn phase23_join_appends_last_branch_result_to_accumulator() {
         .ok()
         .unwrap_or_else(|| panic!("write"));
     // When calling together_join
-    run.add_parallel_in_flight(2).ok();
+    run.add_parallel_in_flight(2)
+        .expect("add_parallel_in_flight must succeed");
     let result = together_join(
         &mut run,
         &mut store,
@@ -1013,7 +1023,8 @@ fn phase23_join_three_branches_all_results_collected() {
         .ok()
         .unwrap_or_else(|| panic!("write"));
     // When calling together_join with branch_count=3
-    run.add_parallel_in_flight(3).ok();
+    run.add_parallel_in_flight(3)
+        .expect("add_parallel_in_flight must succeed");
     let result = together_join(
         &mut run,
         &mut store,
@@ -1056,7 +1067,8 @@ fn phase23_join_produces_list_in_output_slot() {
         .ok()
         .unwrap_or_else(|| panic!("write"));
     // When calling together_join
-    run.add_parallel_in_flight(2).ok();
+    run.add_parallel_in_flight(2)
+        .expect("add_parallel_in_flight must succeed");
     let result = together_join(
         &mut run,
         &mut store,
@@ -1103,7 +1115,8 @@ fn phase23_join_merges_taint_from_accumulator_and_output() {
         .ok()
         .unwrap_or_else(|| panic!("write"));
     // When calling together_join
-    run.add_parallel_in_flight(2).ok();
+    run.add_parallel_in_flight(2)
+        .expect("add_parallel_in_flight must succeed");
     let result = together_join(
         &mut run,
         &mut store,
@@ -1206,7 +1219,8 @@ fn phase23_join_failure_when_output_slot_missing() {
     let accumulator = SlotIdx::new(0);
     list_in_slot(&mut run, &mut store, accumulator, vec![SlotValue::I64(10)]);
     // When calling together_join with output=None
-    run.add_parallel_in_flight(1).ok();
+    run.add_parallel_in_flight(1)
+        .expect("add_parallel_in_flight must succeed");
     let result = together_join(
         &mut run,
         &mut store,
@@ -1401,7 +1415,8 @@ fn phase23_join_with_single_branch_collects_one_result() {
         .ok()
         .unwrap_or_else(|| panic!("write"));
     // When calling together_join with branch_count=1
-    run.add_parallel_in_flight(1).ok();
+    run.add_parallel_in_flight(1)
+        .expect("add_parallel_in_flight must succeed");
     let result = together_join(
         &mut run,
         &mut store,
@@ -1514,7 +1529,8 @@ fn phase23_join_preserves_order_of_branch_results() {
         .ok()
         .unwrap_or_else(|| panic!("write"));
     // When calling together_join with branch_count=4
-    run.add_parallel_in_flight(4).ok();
+    run.add_parallel_in_flight(4)
+        .expect("add_parallel_in_flight must succeed");
     let result = together_join(
         &mut run,
         &mut store,

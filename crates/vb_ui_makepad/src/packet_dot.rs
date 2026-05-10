@@ -127,6 +127,11 @@ impl PacketDotManager {
             dot.reset();
         }
     }
+
+    /// Returns a slice of all dots for testing verification.
+    pub fn dots(&self) -> &[PacketDot] {
+        &self.dots
+    }
 }
 
 impl Default for PacketDotManager {

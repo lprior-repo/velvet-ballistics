@@ -167,18 +167,31 @@ steps:
 }
 
 #[test]
-fn parse_ast_rejects_illegal_runtime_references() -> Result<(), String> {
-    for reference in ["$runtime.now", "$now", "$random", "$steps.done"] {
-        let source = format!(
-            "version: velvet-ballastics/v1\nname: ref_case\nwhen:\n  manual: {{}}\nexamples:\n  - name: fixture\n    value: {reference}\nsteps:\n  - id: done\n    finish:\n      result: 0\n"
-        );
-        let error = parse_error(source.as_bytes())?;
-        ensure(
-            matches!(error, CompileError::IllegalReference { .. }),
-            "illegal reference did not use typed diagnostic",
-        )?;
-    }
-    Ok(())
+fn parse_ast_rejects_illegal_runtime_reference_runtime_now() -> Result<(), String> {
+    let source = "version: velvet-ballastics/v1\nname: ref_case\nwhen:\n  manual: {}\nexamples:\n  - name: fixture\n    value: $runtime.now\nsteps:\n  - id: done\n    finish:\n      result: 0\n";
+    let error = parse_error(source.as_bytes())?;
+    ensure(matches!(error, CompileError::IllegalReference { .. }), "illegal reference did not use typed diagnostic")
+}
+
+#[test]
+fn parse_ast_rejects_illegal_runtime_reference_now() -> Result<(), String> {
+    let source = "version: velvet-ballastics/v1\nname: ref_case\nwhen:\n  manual: {}\nexamples:\n  - name: fixture\n    value: $now\nsteps:\n  - id: done\n    finish:\n      result: 0\n";
+    let error = parse_error(source.as_bytes())?;
+    ensure(matches!(error, CompileError::IllegalReference { .. }), "illegal reference did not use typed diagnostic")
+}
+
+#[test]
+fn parse_ast_rejects_illegal_runtime_reference_random() -> Result<(), String> {
+    let source = "version: velvet-ballastics/v1\nname: ref_case\nwhen:\n  manual: {}\nexamples:\n  - name: fixture\n    value: $random\nsteps:\n  - id: done\n    finish:\n      result: 0\n";
+    let error = parse_error(source.as_bytes())?;
+    ensure(matches!(error, CompileError::IllegalReference { .. }), "illegal reference did not use typed diagnostic")
+}
+
+#[test]
+fn parse_ast_rejects_illegal_runtime_reference_steps_done() -> Result<(), String> {
+    let source = "version: velvet-ballastics/v1\nname: ref_case\nwhen:\n  manual: {}\nexamples:\n  - name: fixture\n    value: $steps.done\nsteps:\n  - id: done\n    finish:\n      result: 0\n";
+    let error = parse_error(source.as_bytes())?;
+    ensure(matches!(error, CompileError::IllegalReference { .. }), "illegal reference did not use typed diagnostic")
 }
 
 #[test]

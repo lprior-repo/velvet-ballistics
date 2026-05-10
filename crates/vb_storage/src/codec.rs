@@ -1817,7 +1817,7 @@ mod tests {
         let event = JournalEvent::SlotWrittenEvent {
             run: RunId::new(1),
             seq: EventSeq::new(0),
-            slot: SlotIdx::new(u16::MAX.into()),
+            slot: SlotIdx::new(u16::MAX),
             value: Some(large_value.clone()),
             extra: None,
         };

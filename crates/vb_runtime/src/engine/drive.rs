@@ -163,6 +163,7 @@ pub fn drive_with_actions(
 }
 
 #[cfg(test)]
+#[allow(clippy::panic_in_result_fn, clippy::expect_used, clippy::boxed_local, clippy::manual_repeat_n)]
 mod tests {
     use crate::engine::drive::{drive_deterministic_full, drive_with_actions};
     use crate::engine::types::{

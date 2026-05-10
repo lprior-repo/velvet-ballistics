@@ -133,57 +133,115 @@ steps:
         ensure_equal(error.diagnostic_code(), expected)
     }
 
-    #[test]
-    fn compile_error_exposes_stable_validation_codes() -> Result<(), String> {
-        for (source, code) in [
-            (
-                b"version: velvet-ballastics/v1\nversion: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    finish:\n      result: 0\n".as_slice(),
-                "DUPLICATE_KEY",
-            ),
-            (
-                b"version: velvet-ballastics/v1\nname: &n fast_path\ncopy: *n\n",
-                "FORBIDDEN_YAML_FEATURE",
-            ),
-            (
-                b"version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\nunexpected: true\nsteps:\n  - id: done\n    finish:\n      result: 0\n",
-                "UNKNOWN_TOP_LEVEL_FIELD",
-            ),
-            (
-                b"name: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    finish:\n      result: 0\n",
-                "MISSING_REQUIRED_FIELD",
-            ),
-            (
-                b"version: velvet/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    finish:\n      result: 0\n",
-                "INVALID_VERSION",
-            ),
-            (
-                b"version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: BuildResult\n    save:\n      value: 1\n  - id: done\n    finish:\n      result: 0\n",
-                "INVALID_ID",
-            ),
-            (
-                b"version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: finish\n    save:\n      value: 1\n  - id: done\n    finish:\n      result: 0\n",
-                "RESERVED_ID",
-            ),
-            (
-                b"version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: duplicate\n    save:\n      value: 1\n  - id: duplicate\n    finish:\n      result: 0\n",
-                "DUPLICATE_ID",
-            ),
-            (
-                b"version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: only_metadata\n    name: Only Metadata\n  - id: done\n    finish:\n      result: 0\n",
-                "MISSING_STEP_PRIMITIVE",
-            ),
-            (
-                b"version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: build_result\n    save:\n      value: 1\n    finish:\n      result: 0\n  - id: done\n    finish:\n      result: 0\n",
-                "MULTIPLE_STEP_PRIMITIVES",
-            ),
-            (
-                b"version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: route\n    choose: true\n  - id: done\n    finish:\n      result: 0\n",
-                "INVALID_CHOOSE",
-            ),
-        ] {
-            assert_compile_code(source, code)?;
+    /// Builds a large workflow source that exceeds max_source_bytes.
+    fn build_oversized_workflow_source(max_steps: usize) -> String {
+        let mut source =
+            String::from("version: velvet-ballastics/v1\nname: big\nwhen:\n  manual: {}\nsteps:\n");
+        for i in 0..max_steps {
+            source.push_str(&format!("  - id: s{i}\n    save:\n      value: 1\n"));
         }
-        Ok(())
+        source.push_str("  - id: done\n    finish:\n      result: 0\n");
+        source
+    }
+
+    /// Builds a workflow source with many save steps.
+    fn build_many_saves_workflow_source(step_count: usize) -> String {
+        let mut source = String::from(
+            "version: velvet-ballastics/v1\nname: many_saves\nwhen:\n  manual: {}\nsteps:\n",
+        );
+        for i in 0..step_count {
+            source.push_str(&format!("  - id: s{i}\n    save:\n      value: {i}\n"));
+        }
+        source.push_str("  - id: done\n    finish:\n      result: 0\n");
+        source
+    }
+
+    #[test]
+    fn compile_error_exposes_stable_validation_codes_duplicate_key() -> Result<(), String> {
+        assert_compile_code(
+            b"version: velvet-ballastics/v1\nversion: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    finish:\n      result: 0\n",
+            "DUPLICATE_KEY",
+        )
+    }
+
+    #[test]
+    fn compile_error_exposes_stable_validation_codes_forbidden_yaml() -> Result<(), String> {
+        assert_compile_code(
+            b"version: velvet-ballastics/v1\nname: &n fast_path\ncopy: *n\n",
+            "FORBIDDEN_YAML_FEATURE",
+        )
+    }
+
+    #[test]
+    fn compile_error_exposes_stable_validation_codes_unknown_top_level() -> Result<(), String> {
+        assert_compile_code(
+            b"version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\nunexpected: true\nsteps:\n  - id: done\n    finish:\n      result: 0\n",
+            "UNKNOWN_TOP_LEVEL_FIELD",
+        )
+    }
+
+    #[test]
+    fn compile_error_exposes_stable_validation_codes_missing_required() -> Result<(), String> {
+        assert_compile_code(
+            b"name: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    finish:\n      result: 0\n",
+            "MISSING_REQUIRED_FIELD",
+        )
+    }
+
+    #[test]
+    fn compile_error_exposes_stable_validation_codes_invalid_version() -> Result<(), String> {
+        assert_compile_code(
+            b"version: velvet/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    finish:\n      result: 0\n",
+            "INVALID_VERSION",
+        )
+    }
+
+    #[test]
+    fn compile_error_exposes_stable_validation_codes_invalid_id() -> Result<(), String> {
+        assert_compile_code(
+            b"version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: BuildResult\n    save:\n      value: 1\n  - id: done\n    finish:\n      result: 0\n",
+            "INVALID_ID",
+        )
+    }
+
+    #[test]
+    fn compile_error_exposes_stable_validation_codes_reserved_id() -> Result<(), String> {
+        assert_compile_code(
+            b"version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: finish\n    save:\n      value: 1\n  - id: done\n    finish:\n      result: 0\n",
+            "RESERVED_ID",
+        )
+    }
+
+    #[test]
+    fn compile_error_exposes_stable_validation_codes_duplicate_id() -> Result<(), String> {
+        assert_compile_code(
+            b"version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: duplicate\n    save:\n      value: 1\n  - id: duplicate\n    finish:\n      result: 0\n",
+            "DUPLICATE_ID",
+        )
+    }
+
+    #[test]
+    fn compile_error_exposes_stable_validation_codes_missing_primitive() -> Result<(), String> {
+        assert_compile_code(
+            b"version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: only_metadata\n    name: Only Metadata\n  - id: done\n    finish:\n      result: 0\n",
+            "MISSING_STEP_PRIMITIVE",
+        )
+    }
+
+    #[test]
+    fn compile_error_exposes_stable_validation_codes_multiple_primitives() -> Result<(), String> {
+        assert_compile_code(
+            b"version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: build_result\n    save:\n      value: 1\n    finish:\n      result: 0\n  - id: done\n    finish:\n      result: 0\n",
+            "MULTIPLE_STEP_PRIMITIVES",
+        )
+    }
+
+    #[test]
+    fn compile_error_exposes_stable_validation_codes_invalid_choose() -> Result<(), String> {
+        assert_compile_code(
+            b"version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: route\n    choose: true\n  - id: done\n    finish:\n      result: 0\n",
+            "INVALID_CHOOSE",
+        )
     }
 
     #[test]
@@ -244,10 +302,16 @@ steps:
     }
 
     #[test]
-    fn parse_ast_and_compile_expose_same_diagnostic_codes() -> Result<(), String> {
-        for source in [
-            b"version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\nunexpected: true\nsteps:\n  - id: done\n    finish:\n      result: 0\n".as_slice(),
-            br#"version: velvet-ballastics/v1
+    fn parse_ast_and_compile_expose_same_diagnostic_unknown_top_level() -> Result<(), String> {
+        let source = b"version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\nunexpected: true\nsteps:\n  - id: done\n    finish:\n      result: 0\n";
+        let compile = compile_first_error(source)?;
+        let parse = parse_first_error(source)?;
+        ensure_equal(compile.code(), parse.code())
+    }
+
+    #[test]
+    fn parse_ast_and_compile_expose_same_diagnostic_input_ref() -> Result<(), String> {
+        let source = br#"version: velvet-ballastics/v1
 name: fast_path
 when:
   manual: {}
@@ -260,8 +324,15 @@ steps:
   - id: done
     finish:
       result: true
-"#,
-            br#"version: velvet-ballastics/v1
+"#;
+        let compile = compile_first_error(source)?;
+        let parse = parse_first_error(source)?;
+        ensure_equal(compile.code(), parse.code())
+    }
+
+    #[test]
+    fn parse_ast_and_compile_expose_same_diagnostic_secret_ref() -> Result<(), String> {
+        let source = br#"version: velvet-ballastics/v1
 name: fast_path
 when:
   manual: {}
@@ -274,13 +345,10 @@ steps:
   - id: done
     finish:
       result: true
-"#,
-        ] {
-            let compile = compile_first_error(source)?;
-            let parse = parse_first_error(source)?;
-            ensure_equal(compile.code(), parse.code())?;
-        }
-        Ok(())
+"#;
+        let compile = compile_first_error(source)?;
+        let parse = parse_first_error(source)?;
+        ensure_equal(compile.code(), parse.code())
     }
 
     #[test]
@@ -392,52 +460,99 @@ steps:
     }
 
     #[test]
-    fn compiler_accepts_allowed_input_schema_shorthand() {
-        for shorthand in [
-            "text",
-            "number",
-            "boolean",
-            "object",
-            "any",
-            "list<any>",
-            "list<text>",
-            "list<number>",
-            "list<boolean>",
-        ] {
-            let result = compile_with_inputs(&format!("  value: {shorthand}\n"));
-
-            assert!(
-                matches!(result, Ok(ref workflow) if workflow.name() == "schema_case"),
-                "schema shorthand {shorthand} should compile"
-            );
-        }
+    fn compiler_accepts_allowed_input_schema_shorthand_text() {
+        let result = compile_with_inputs("  value: text\n");
+        assert!(matches!(result, Ok(ref workflow) if workflow.name() == "schema_case"));
     }
 
     #[test]
-    fn compiler_rejects_unknown_input_schema_shorthand() {
-        for shorthand in ["integer", "string", "list", "list<object>"] {
-            let result = compile_with_inputs(&format!("  value: {shorthand}\n"));
-
-            assert!(
-                matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidInputSchema { .. }))),
-                "schema shorthand {shorthand} should be rejected"
-            );
-        }
+    fn compiler_accepts_allowed_input_schema_shorthand_number() {
+        let result = compile_with_inputs("  value: number\n");
+        assert!(matches!(result, Ok(ref workflow) if workflow.name() == "schema_case"));
     }
 
     #[test]
-    fn compiler_and_ast_report_same_schema_diagnostics() {
-        for inputs in [
-            "  value: integer\n",
-            "  value:\n    is: text\n    kind: text\n",
-            "  value:\n    is: text\n    default: 1\n",
-        ] {
-            let source = format!(
-                "version: velvet-ballastics/v1\nname: schema_case\nwhen:\n  manual: {{}}\ninputs:\n{inputs}steps:\n  - id: done\n    finish:\n      result: 0\n"
-            );
+    fn compiler_accepts_allowed_input_schema_shorthand_boolean() {
+        let result = compile_with_inputs("  value: boolean\n");
+        assert!(matches!(result, Ok(ref workflow) if workflow.name() == "schema_case"));
+    }
 
-            assert_compile_parse_first_error(source.as_bytes());
-        }
+    #[test]
+    fn compiler_accepts_allowed_input_schema_shorthand_object() {
+        let result = compile_with_inputs("  value: object\n");
+        assert!(matches!(result, Ok(ref workflow) if workflow.name() == "schema_case"));
+    }
+
+    #[test]
+    fn compiler_accepts_allowed_input_schema_shorthand_any() {
+        let result = compile_with_inputs("  value: any\n");
+        assert!(matches!(result, Ok(ref workflow) if workflow.name() == "schema_case"));
+    }
+
+    #[test]
+    fn compiler_accepts_allowed_input_schema_shorthand_list_any() {
+        let result = compile_with_inputs("  value: list<any>\n");
+        assert!(matches!(result, Ok(ref workflow) if workflow.name() == "schema_case"));
+    }
+
+    #[test]
+    fn compiler_accepts_allowed_input_schema_shorthand_list_text() {
+        let result = compile_with_inputs("  value: list<text>\n");
+        assert!(matches!(result, Ok(ref workflow) if workflow.name() == "schema_case"));
+    }
+
+    #[test]
+    fn compiler_accepts_allowed_input_schema_shorthand_list_number() {
+        let result = compile_with_inputs("  value: list<number>\n");
+        assert!(matches!(result, Ok(ref workflow) if workflow.name() == "schema_case"));
+    }
+
+    #[test]
+    fn compiler_accepts_allowed_input_schema_shorthand_list_boolean() {
+        let result = compile_with_inputs("  value: list<boolean>\n");
+        assert!(matches!(result, Ok(ref workflow) if workflow.name() == "schema_case"));
+    }
+
+    #[test]
+    fn compiler_rejects_unknown_input_schema_shorthand_integer() {
+        let result = compile_with_inputs("  value: integer\n");
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidInputSchema { .. }))));
+    }
+
+    #[test]
+    fn compiler_rejects_unknown_input_schema_shorthand_string() {
+        let result = compile_with_inputs("  value: string\n");
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidInputSchema { .. }))));
+    }
+
+    #[test]
+    fn compiler_rejects_unknown_input_schema_shorthand_list() {
+        let result = compile_with_inputs("  value: list\n");
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidInputSchema { .. }))));
+    }
+
+    #[test]
+    fn compiler_rejects_unknown_input_schema_shorthand_list_object() {
+        let result = compile_with_inputs("  value: list<object>\n");
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidInputSchema { .. }))));
+    }
+
+    #[test]
+    fn compiler_and_ast_report_same_schema_diagnostics_integer() {
+        let source = "version: velvet-ballastics/v1\nname: schema_case\nwhen:\n  manual: {}\ninputs:\n  value: integer\nsteps:\n  - id: done\n    finish:\n      result: 0\n";
+        assert_compile_parse_first_error(source.as_bytes());
+    }
+
+    #[test]
+    fn compiler_and_ast_report_same_schema_diagnostics_kind() {
+        let source = "version: velvet-ballastics/v1\nname: schema_case\nwhen:\n  manual: {}\ninputs:\n  value:\n    is: text\n    kind: text\nsteps:\n  - id: done\n    finish:\n      result: 0\n";
+        assert_compile_parse_first_error(source.as_bytes());
+    }
+
+    #[test]
+    fn compiler_and_ast_report_same_schema_diagnostics_default() {
+        let source = "version: velvet-ballastics/v1\nname: schema_case\nwhen:\n  manual: {}\ninputs:\n  value:\n    is: text\n    default: 1\nsteps:\n  - id: done\n    finish:\n      result: 0\n";
+        assert_compile_parse_first_error(source.as_bytes());
     }
 
     #[test]
@@ -492,32 +607,45 @@ steps:
     }
 
     #[test]
-    fn compiler_accepts_input_long_form_list_elements() {
-        for element in ["any", "text", "number", "boolean", "object"] {
-            let result = compile_with_inputs(&format!(
-                "  values:\n    is: list\n    of: {element}\n    default: []\n    min: 0\n    max: 10\n"
-            ));
-
-            assert!(
-                matches!(result, Ok(ref workflow) if workflow.name() == "schema_case"),
-                "list element schema {element} should compile"
-            );
-        }
+    fn compiler_accepts_input_long_form_list_element_any() {
+        let result = compile_with_inputs("  values:\n    is: list\n    of: any\n    default: []\n    min: 0\n    max: 10\n");
+        assert!(matches!(result, Ok(ref workflow) if workflow.name() == "schema_case"));
     }
 
     #[test]
-    fn compiler_rejects_input_schema_unknown_fields() {
-        for inputs in [
-            "  value:\n    is: text\n    kind: text\n",
-            "  customer:\n    is: object\n    fields:\n      value:\n        is: text\n        from: request.body.value\n",
-        ] {
-            let result = compile_with_inputs(inputs);
+    fn compiler_accepts_input_long_form_list_element_text() {
+        let result = compile_with_inputs("  values:\n    is: list\n    of: text\n    default: []\n    min: 0\n    max: 10\n");
+        assert!(matches!(result, Ok(ref workflow) if workflow.name() == "schema_case"));
+    }
 
-            assert!(matches!(
-                result,
-                Err(ref errors) if matches!(errors.first(), Some(CompileError::UnknownInputSchemaField { .. }))
-            ));
-        }
+    #[test]
+    fn compiler_accepts_input_long_form_list_element_number() {
+        let result = compile_with_inputs("  values:\n    is: list\n    of: number\n    default: []\n    min: 0\n    max: 10\n");
+        assert!(matches!(result, Ok(ref workflow) if workflow.name() == "schema_case"));
+    }
+
+    #[test]
+    fn compiler_accepts_input_long_form_list_element_boolean() {
+        let result = compile_with_inputs("  values:\n    is: list\n    of: boolean\n    default: []\n    min: 0\n    max: 10\n");
+        assert!(matches!(result, Ok(ref workflow) if workflow.name() == "schema_case"));
+    }
+
+    #[test]
+    fn compiler_accepts_input_long_form_list_element_object() {
+        let result = compile_with_inputs("  values:\n    is: list\n    of: object\n    default: []\n    min: 0\n    max: 10\n");
+        assert!(matches!(result, Ok(ref workflow) if workflow.name() == "schema_case"));
+    }
+
+    #[test]
+    fn compiler_rejects_input_schema_unknown_fields_kind() {
+        let result = compile_with_inputs("  value:\n    is: text\n    kind: text\n");
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::UnknownInputSchemaField { .. }))));
+    }
+
+    #[test]
+    fn compiler_rejects_input_schema_unknown_fields_nested() {
+        let result = compile_with_inputs("  customer:\n    is: object\n    fields:\n      value:\n        is: text\n        from: request.body.value\n");
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::UnknownInputSchemaField { .. }))));
     }
 
     #[test]
@@ -534,54 +662,99 @@ steps:
     }
 
     #[test]
-    fn compiler_rejects_invalid_input_schema_child_fields() {
-        for inputs in [
-            "  values:\n    is: list\n",
-            "  value:\n    is: text\n    of: text\n",
-            "  value:\n    is: text\n    fields:\n      nested: text\n",
-            "  value:\n    is: text\n    extra: reject\n",
-            "  customer:\n    is: object\n    extra: ignore\n",
-            "  customer:\n    is: object\n    fields: true\n",
-            "  values:\n    is: list\n    of: integer\n",
-            "  value:\n    is: integer\n",
-        ] {
-            let result = compile_with_inputs(inputs);
-
-            assert!(
-                matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidInputSchema { .. }))),
-                "invalid schema should be rejected: {inputs}"
-            );
-        }
+    fn compiler_rejects_invalid_input_schema_child_fields_list_no_of() {
+        let result = compile_with_inputs("  values:\n    is: list\n");
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidInputSchema { .. }))));
     }
 
     #[test]
-    fn compiler_rejects_non_boolean_input_schema_flags() {
-        for flag in ["optional", "nullable", "secret"] {
-            let result = compile_with_inputs(&format!("  value:\n    is: text\n    {flag}: yes\n"));
-
-            assert!(matches!(
-                result,
-                Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidInputSchema { .. }))
-            ));
-        }
+    fn compiler_rejects_invalid_input_schema_child_fields_text_with_of() {
+        let result = compile_with_inputs("  value:\n    is: text\n    of: text\n");
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidInputSchema { .. }))));
     }
 
     #[test]
-    fn compiler_rejects_default_that_does_not_match_input_schema() {
-        for inputs in [
-            "  value:\n    is: text\n    default: 1\n",
-            "  value:\n    is: number\n    default: nope\n",
-            "  value:\n    is: boolean\n    default: nope\n",
-            "  value:\n    is: object\n    default: []\n",
-            "  value:\n    is: list\n    of: text\n    default: {}\n",
-        ] {
-            let result = compile_with_inputs(inputs);
+    fn compiler_rejects_invalid_input_schema_child_fields_text_with_fields() {
+        let result = compile_with_inputs("  value:\n    is: text\n    fields:\n      nested: text\n");
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidInputSchema { .. }))));
+    }
 
-            assert!(matches!(
-                result,
-                Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidInputSchema { .. }))
-            ));
-        }
+    #[test]
+    fn compiler_rejects_invalid_input_schema_child_fields_text_extra() {
+        let result = compile_with_inputs("  value:\n    is: text\n    extra: reject\n");
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidInputSchema { .. }))));
+    }
+
+    #[test]
+    fn compiler_rejects_invalid_input_schema_child_fields_object_extra() {
+        let result = compile_with_inputs("  customer:\n    is: object\n    extra: ignore\n");
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidInputSchema { .. }))));
+    }
+
+    #[test]
+    fn compiler_rejects_invalid_input_schema_child_fields_object_fields_bool() {
+        let result = compile_with_inputs("  customer:\n    is: object\n    fields: true\n");
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidInputSchema { .. }))));
+    }
+
+    #[test]
+    fn compiler_rejects_invalid_input_schema_child_fields_list_integer_of() {
+        let result = compile_with_inputs("  values:\n    is: list\n    of: integer\n");
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidInputSchema { .. }))));
+    }
+
+    #[test]
+    fn compiler_rejects_invalid_input_schema_child_fields_integer_shorthand() {
+        let result = compile_with_inputs("  value:\n    is: integer\n");
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidInputSchema { .. }))));
+    }
+
+    #[test]
+    fn compiler_rejects_non_boolean_input_schema_flag_optional() {
+        let result = compile_with_inputs("  value:\n    is: text\n    optional: yes\n");
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidInputSchema { .. }))));
+    }
+
+    #[test]
+    fn compiler_rejects_non_boolean_input_schema_flag_nullable() {
+        let result = compile_with_inputs("  value:\n    is: text\n    nullable: yes\n");
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidInputSchema { .. }))));
+    }
+
+    #[test]
+    fn compiler_rejects_non_boolean_input_schema_flag_secret() {
+        let result = compile_with_inputs("  value:\n    is: text\n    secret: yes\n");
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidInputSchema { .. }))));
+    }
+
+    #[test]
+    fn compiler_rejects_default_mismatch_text() {
+        let result = compile_with_inputs("  value:\n    is: text\n    default: 1\n");
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidInputSchema { .. }))));
+    }
+
+    #[test]
+    fn compiler_rejects_default_mismatch_number() {
+        let result = compile_with_inputs("  value:\n    is: number\n    default: nope\n");
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidInputSchema { .. }))));
+    }
+
+    #[test]
+    fn compiler_rejects_default_mismatch_boolean() {
+        let result = compile_with_inputs("  value:\n    is: boolean\n    default: nope\n");
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidInputSchema { .. }))));
+    }
+
+    #[test]
+    fn compiler_rejects_default_mismatch_object() {
+        let result = compile_with_inputs("  value:\n    is: object\n    default: []\n");
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidInputSchema { .. }))));
+    }
+
+    #[test]
+    fn compiler_rejects_default_mismatch_list() {
+        let result = compile_with_inputs("  value:\n    is: list\n    of: text\n    default: {}\n");
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidInputSchema { .. }))));
     }
 
     #[test]
@@ -598,56 +771,117 @@ steps:
     }
 
     #[test]
-    fn compiler_rejects_invalid_input_schema_bounds() {
-        for inputs in [
-            "  value:\n    is: number\n    min: 10\n    max: 1\n",
-            "  values:\n    is: list\n    of: text\n    min: -1\n",
-            "  value:\n    is: text\n    min: 1\n",
-            "  value:\n    is: text\n    min_length: -1\n",
-            "  value:\n    is: text\n    min_length: 10\n    max_length: 1\n",
-            "  value:\n    is: number\n    min_length: 1\n",
-        ] {
-            let result = compile_with_inputs(inputs);
-
-            assert!(
-                matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidInputSchema { .. }))),
-                "invalid bounds should be rejected: {inputs}"
-            );
-        }
+    fn compiler_rejects_invalid_input_schema_bounds_min_gt_max() {
+        let result = compile_with_inputs("  value:\n    is: number\n    min: 10\n    max: 1\n");
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidInputSchema { .. }))));
     }
 
     #[test]
-    fn compiler_rejects_non_mapping_optional_top_level_fields() {
-        for field in ["inputs", "vars", "secrets"] {
-            let source = format!(
-                "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {{}}\n{field}: true\nsteps:\n  - id: done\n    finish:\n      result: 0\n"
-            );
-            let result = YamlCompiler::default().compile(source.as_bytes());
-
-            assert!(
-                matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::FieldShape { .. }))),
-                "{field} must be mapping-shaped"
-            );
-        }
+    fn compiler_rejects_invalid_input_schema_bounds_negative_list_min() {
+        let result = compile_with_inputs("  values:\n    is: list\n    of: text\n    min: -1\n");
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidInputSchema { .. }))));
     }
 
     #[test]
-    fn compiler_rejects_invalid_optional_top_level_names() {
-        for (field, key) in [
-            ("inputs", "InputValue"),
-            ("vars", "run"),
-            ("secrets", "api-key"),
-        ] {
-            let source = format!(
-                "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {{}}\n{field}:\n  {key}: value\nsteps:\n  - id: done\n    finish:\n      result: 0\n"
-            );
-            let result = YamlCompiler::default().compile(source.as_bytes());
+    fn compiler_rejects_invalid_input_schema_bounds_text_uses_min() {
+        let result = compile_with_inputs("  value:\n    is: text\n    min: 1\n");
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidInputSchema { .. }))));
+    }
 
-            assert!(
-                matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidName { .. }))),
-                "{field}.{key} must use Velvet v1 public naming"
-            );
-        }
+    #[test]
+    fn compiler_rejects_invalid_input_schema_bounds_negative_length() {
+        let result = compile_with_inputs("  value:\n    is: text\n    min_length: -1\n");
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidInputSchema { .. }))));
+    }
+
+    #[test]
+    fn compiler_rejects_invalid_input_schema_bounds_length_range() {
+        let result = compile_with_inputs("  value:\n    is: text\n    min_length: 10\n    max_length: 1\n");
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidInputSchema { .. }))));
+    }
+
+    #[test]
+    fn compiler_rejects_invalid_input_schema_bounds_number_with_length() {
+        let result = compile_with_inputs("  value:\n    is: number\n    min_length: 1\n");
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidInputSchema { .. }))));
+    }
+
+    #[test]
+    fn compiler_rejects_invalid_input_schema_bounds_min_gt_max() {
+        let result = compile_with_inputs("  value:\n    is: number\n    min: 10\n    max: 1\n");
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidInputSchema { .. }))));
+    }
+
+    #[test]
+    fn compiler_rejects_invalid_input_schema_bounds_negative_min() {
+        let result = compile_with_inputs("  values:\n    is: list\n    of: text\n    min: -1\n");
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidInputSchema { .. }))));
+    }
+
+    #[test]
+    fn compiler_rejects_invalid_input_schema_bounds_text_min() {
+        let result = compile_with_inputs("  value:\n    is: text\n    min: 1\n");
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidInputSchema { .. }))));
+    }
+
+    #[test]
+    fn compiler_rejects_invalid_input_schema_bounds_negative_length() {
+        let result = compile_with_inputs("  value:\n    is: text\n    min_length: -1\n");
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidInputSchema { .. }))));
+    }
+
+    #[test]
+    fn compiler_rejects_invalid_input_schema_bounds_length_range() {
+        let result = compile_with_inputs("  value:\n    is: text\n    min_length: 10\n    max_length: 1\n");
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidInputSchema { .. }))));
+    }
+
+    #[test]
+    fn compiler_rejects_invalid_input_schema_bounds_number_with_length() {
+        let result = compile_with_inputs("  value:\n    is: number\n    min_length: 1\n");
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidInputSchema { .. }))));
+    }
+
+    #[test]
+    fn compiler_rejects_non_mapping_inputs_field() {
+        let source = "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\ninputs: true\nsteps:\n  - id: done\n    finish:\n      result: 0\n";
+        let result = YamlCompiler::default().compile(source.as_bytes());
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::FieldShape { .. }))));
+    }
+
+    #[test]
+    fn compiler_rejects_non_mapping_vars_field() {
+        let source = "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\nvars: true\nsteps:\n  - id: done\n    finish:\n      result: 0\n";
+        let result = YamlCompiler::default().compile(source.as_bytes());
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::FieldShape { .. }))));
+    }
+
+    #[test]
+    fn compiler_rejects_non_mapping_secrets_field() {
+        let source = "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\nsecrets: true\nsteps:\n  - id: done\n    finish:\n      result: 0\n";
+        let result = YamlCompiler::default().compile(source.as_bytes());
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::FieldShape { .. }))));
+    }
+
+    #[test]
+    fn compiler_rejects_invalid_optional_top_level_name_inputs() {
+        let source = "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\ninputs:\n  InputValue: value\nsteps:\n  - id: done\n    finish:\n      result: 0\n";
+        let result = YamlCompiler::default().compile(source.as_bytes());
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidName { .. }))));
+    }
+
+    #[test]
+    fn compiler_rejects_invalid_optional_top_level_name_vars() {
+        let source = "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\nvars:\n  run: value\nsteps:\n  - id: done\n    finish:\n      result: 0\n";
+        let result = YamlCompiler::default().compile(source.as_bytes());
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidName { .. }))));
+    }
+
+    #[test]
+    fn compiler_rejects_invalid_optional_top_level_name_secrets() {
+        let source = "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\nsecrets:\n  api-key: value\nsteps:\n  - id: done\n    finish:\n      result: 0\n";
+        let result = YamlCompiler::default().compile(source.as_bytes());
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidName { .. }))));
     }
 
     #[test]
@@ -685,43 +919,38 @@ steps:
     }
 
     #[test]
-    fn compiler_rejects_invalid_examples_shape() {
-        for examples in ["true", "\n  - fixture"] {
-            let source = format!(
-                "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {{}}\nexamples: {examples}\nsteps:\n  - id: done\n    finish:\n      result: 0\n"
-            );
-            let result = YamlCompiler::default().compile(source.as_bytes());
-
-            assert!(
-                matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::FieldShape { .. }))),
-                "examples must be a sequence of mappings"
-            );
-        }
+    fn compiler_rejects_invalid_examples_shape_scalar() {
+        let source = "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\nexamples: true\nsteps:\n  - id: done\n    finish:\n      result: 0\n";
+        let result = YamlCompiler::default().compile(source.as_bytes());
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::FieldShape { .. }))));
     }
 
     #[test]
-    fn compiler_rejects_examples_without_valid_names() {
-        for examples in ["\n  - input: {}", "\n  - name: 42", "\n  - name: run"] {
-            let source = format!(
-                "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {{}}\nexamples: {examples}\nsteps:\n  - id: done\n    finish:\n      result: 0\n"
-            );
-            let result = YamlCompiler::default().compile(source.as_bytes());
+    fn compiler_rejects_invalid_examples_shape_sequence() {
+        let source = "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\nexamples:\n  - fixture\nsteps:\n  - id: done\n    finish:\n      result: 0\n";
+        let result = YamlCompiler::default().compile(source.as_bytes());
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::FieldShape { .. }))));
+    }
 
-            assert!(
-                matches!(
-                    result,
-                    Err(ref errors) if matches!(
-                        errors.first(),
-                        Some(
-                            CompileError::MissingField { .. }
-                                | CompileError::FieldShape { .. }
-                                | CompileError::InvalidName { .. }
-                        )
-                    )
-                ),
-                "examples must declare valid fixture names"
-            );
-        }
+    #[test]
+    fn compiler_rejects_examples_without_valid_names_missing() {
+        let source = "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\nexamples:\n  - input: {}\nsteps:\n  - id: done\n    finish:\n      result: 0\n";
+        let result = YamlCompiler::default().compile(source.as_bytes());
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::MissingField { .. }))));
+    }
+
+    #[test]
+    fn compiler_rejects_examples_without_valid_names_number() {
+        let source = "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\nexamples:\n  - name: 42\nsteps:\n  - id: done\n    finish:\n      result: 0\n";
+        let result = YamlCompiler::default().compile(source.as_bytes());
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidName { .. }))));
+    }
+
+    #[test]
+    fn compiler_rejects_examples_without_valid_names_reserved() {
+        let source = "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\nexamples:\n  - name: run\nsteps:\n  - id: done\n    finish:\n      result: 0\n";
+        let result = YamlCompiler::default().compile(source.as_bytes());
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidName { .. }))));
     }
 
     #[test]
@@ -752,18 +981,31 @@ steps:
     }
 
     #[test]
-    fn compiler_rejects_invalid_workflow_names() {
-        for name in ["", "FastPath", "fast-path", "run"] {
-            let source = format!(
-                "version: velvet-ballastics/v1\nname: \"{name}\"\nwhen:\n  manual: {{}}\nsteps:\n  - id: done\n    finish:\n      result: 0\n"
-            );
-            let result = YamlCompiler::default().compile(source.as_bytes());
+    fn compiler_rejects_invalid_workflow_name_empty() {
+        let source = "version: velvet-ballastics/v1\nname: \"\"\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    finish:\n      result: 0\n";
+        let result = YamlCompiler::default().compile(source.as_bytes());
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidName { field: "name", .. }))));
+    }
 
-            assert!(
-                matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidName { field: "name", .. }))),
-                "workflow name {name:?} must be rejected"
-            );
-        }
+    #[test]
+    fn compiler_rejects_invalid_workflow_name_camel_case() {
+        let source = "version: velvet-ballastics/v1\nname: \"FastPath\"\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    finish:\n      result: 0\n";
+        let result = YamlCompiler::default().compile(source.as_bytes());
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidName { field: "name", .. }))));
+    }
+
+    #[test]
+    fn compiler_rejects_invalid_workflow_name_kebab_case() {
+        let source = "version: velvet-ballastics/v1\nname: \"fast-path\"\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    finish:\n      result: 0\n";
+        let result = YamlCompiler::default().compile(source.as_bytes());
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidName { field: "name", .. }))));
+    }
+
+    #[test]
+    fn compiler_rejects_invalid_workflow_name_reserved() {
+        let source = "version: velvet-ballastics/v1\nname: \"run\"\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    finish:\n      result: 0\n";
+        let result = YamlCompiler::default().compile(source.as_bytes());
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidName { field: "name", .. }))));
     }
 
     #[test]
@@ -778,27 +1020,31 @@ steps:
     }
 
     #[test]
-    fn compiler_rejects_invalid_step_ids() {
-        for id in ["", "BuildResult", "build-result", "finish"] {
-            let source = format!(
-                "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {{}}\nsteps:\n  - id: \"{id}\"\n    save:\n      value: 1\n  - id: done\n    finish:\n      result: 0\n"
-            );
-            let result = YamlCompiler::default().compile(source.as_bytes());
+    fn compiler_rejects_invalid_step_id_empty() {
+        let source = "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: \"\"\n    save:\n      value: 1\n  - id: done\n    finish:\n      result: 0\n";
+        let result = YamlCompiler::default().compile(source.as_bytes());
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidName { field: "step id", .. }))));
+    }
 
-            assert!(
-                matches!(
-                    result,
-                    Err(ref errors) if matches!(
-                        errors.first(),
-                        Some(CompileError::InvalidName {
-                            field: "step id",
-                            ..
-                        })
-                    )
-                ),
-                "step id {id:?} must be rejected"
-            );
-        }
+    #[test]
+    fn compiler_rejects_invalid_step_id_camel_case() {
+        let source = "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: \"BuildResult\"\n    save:\n      value: 1\n  - id: done\n    finish:\n      result: 0\n";
+        let result = YamlCompiler::default().compile(source.as_bytes());
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidName { field: "step id", .. }))));
+    }
+
+    #[test]
+    fn compiler_rejects_invalid_step_id_kebab_case() {
+        let source = "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: \"build-result\"\n    save:\n      value: 1\n  - id: done\n    finish:\n      result: 0\n";
+        let result = YamlCompiler::default().compile(source.as_bytes());
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidName { field: "step id", .. }))));
+    }
+
+    #[test]
+    fn compiler_rejects_invalid_step_id_reserved() {
+        let source = "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: \"finish\"\n    save:\n      value: 1\n  - id: done\n    finish:\n      result: 0\n";
+        let result = YamlCompiler::default().compile(source.as_bytes());
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidName { field: "step id", .. }))));
     }
 
     #[test]
@@ -834,21 +1080,38 @@ steps:
     }
 
     #[test]
-    fn compiler_rejects_unsupported_phase_zero_step_control_fields() {
-        for control in ["if", "with", "try_again", "on_error", "then"] {
-            let source = format!(
-                "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {{}}\nsteps:\n  - id: build_result\n    {control}: true\n    save:\n      value: 1\n  - id: done\n    finish:\n      result: 0\n"
-            );
-            let result = YamlCompiler::default().compile(source.as_bytes());
+    fn compiler_rejects_unsupported_phase_zero_step_control_if() {
+        let source = "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: build_result\n    if: true\n    save:\n      value: 1\n  - id: done\n    finish:\n      result: 0\n";
+        let result = YamlCompiler::default().compile(source.as_bytes());
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::UnsupportedStepControlField { .. }))));
+    }
 
-            assert!(
-                matches!(
-                    result,
-                    Err(ref errors) if matches!(errors.first(), Some(CompileError::UnsupportedStepControlField { .. }))
-                ),
-                "control field {control} must be rejected until Phase 0 compiles it"
-            );
-        }
+    #[test]
+    fn compiler_rejects_unsupported_phase_zero_step_control_with() {
+        let source = "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: build_result\n    with: true\n    save:\n      value: 1\n  - id: done\n    finish:\n      result: 0\n";
+        let result = YamlCompiler::default().compile(source.as_bytes());
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::UnsupportedStepControlField { .. }))));
+    }
+
+    #[test]
+    fn compiler_rejects_unsupported_phase_zero_step_control_try_again() {
+        let source = "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: build_result\n    try_again: true\n    save:\n      value: 1\n  - id: done\n    finish:\n      result: 0\n";
+        let result = YamlCompiler::default().compile(source.as_bytes());
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::UnsupportedStepControlField { .. }))));
+    }
+
+    #[test]
+    fn compiler_rejects_unsupported_phase_zero_step_control_on_error() {
+        let source = "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: build_result\n    on_error: true\n    save:\n      value: 1\n  - id: done\n    finish:\n      result: 0\n";
+        let result = YamlCompiler::default().compile(source.as_bytes());
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::UnsupportedStepControlField { .. }))));
+    }
+
+    #[test]
+    fn compiler_rejects_unsupported_phase_zero_step_control_then() {
+        let source = "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: build_result\n    then: true\n    save:\n      value: 1\n  - id: done\n    finish:\n      result: 0\n";
+        let result = YamlCompiler::default().compile(source.as_bytes());
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::UnsupportedStepControlField { .. }))));
     }
 
     #[test]
@@ -863,19 +1126,21 @@ steps:
     }
 
     #[test]
-    fn compiler_rejects_invalid_workflow_trigger_shapes() {
-        for source in [
-            b"version: velvet-ballastics/v1\nname: fast_path\nwhen: manual\nsteps:\n  - finish:\n      result: 0\n".as_slice(),
-            b"version: velvet-ballastics/v1\nname: fast_path\nwhen: {}\nsteps:\n  - finish:\n      result: 0\n",
-            b"version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\n  event: {}\nsteps:\n  - finish:\n      result: 0\n",
-        ] {
-            let result = YamlCompiler::default().compile(source);
+    fn compiler_rejects_invalid_workflow_trigger_shape_scalar() {
+        let result = YamlCompiler::default().compile(b"version: velvet-ballastics/v1\nname: fast_path\nwhen: manual\nsteps:\n  - finish:\n      result: 0\n");
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::FieldShape { .. }))));
+    }
 
-            assert!(matches!(
-                result,
-                Err(ref errors) if matches!(errors.first(), Some(CompileError::FieldShape { .. } | CompileError::InvalidTriggerCount { .. }))
-            ));
-        }
+    #[test]
+    fn compiler_rejects_invalid_workflow_trigger_shape_empty_map() {
+        let result = YamlCompiler::default().compile(b"version: velvet-ballastics/v1\nname: fast_path\nwhen: {}\nsteps:\n  - finish:\n      result: 0\n");
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::FieldShape { .. }))));
+    }
+
+    #[test]
+    fn compiler_rejects_invalid_workflow_trigger_shape_multiple() {
+        let result = YamlCompiler::default().compile(b"version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\n  event: {}\nsteps:\n  - finish:\n      result: 0\n");
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidTriggerCount { .. }))));
     }
 
     #[test]
@@ -891,102 +1156,171 @@ steps:
     }
 
     #[test]
-    fn compiler_rejects_scalar_workflow_trigger_config() {
-        for trigger in ["manual", "webhook", "schedule", "event"] {
-            let source = format!(
-                "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  {trigger}: true\nsteps:\n  - finish:\n      result: 0\n"
-            );
-            let result = YamlCompiler::default().compile(source.as_bytes());
-
-            assert!(
-                matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::TriggerShape { .. }))),
-                "trigger {trigger} config must be mapping-shaped"
-            );
-        }
+    fn compiler_rejects_scalar_workflow_trigger_manual() {
+        let source = "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: true\nsteps:\n  - finish:\n      result: 0\n";
+        let result = YamlCompiler::default().compile(source.as_bytes());
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::TriggerShape { .. }))));
     }
 
     #[test]
-    fn compiler_accepts_valid_workflow_trigger_configs() {
-        for when_body in [
-            "  manual: {}\n",
-            "  webhook:\n    path: /github\n    method: POST\n    unique: request.header.X-GitHub-Delivery\n",
-            "  schedule:\n    cron: \"*/5 * * * *\"\n    timezone: UTC\n",
-            "  event:\n    name: customer.created\n",
-        ] {
-            let source = format!(
-                "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n{when_body}steps:\n  - id: build_result\n    save:\n      value: 1\n  - id: done\n    finish:\n      result: 0\n"
-            );
-            let result = YamlCompiler::default().compile(source.as_bytes());
-
-            assert!(
-                matches!(result, Ok(ref workflow) if workflow.name() == "fast_path"),
-                "valid trigger should compile"
-            );
-        }
+    fn compiler_rejects_scalar_workflow_trigger_webhook() {
+        let source = "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  webhook: true\nsteps:\n  - finish:\n      result: 0\n";
+        let result = YamlCompiler::default().compile(source.as_bytes());
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::TriggerShape { .. }))));
     }
 
     #[test]
-    fn compiler_rejects_unknown_workflow_trigger_fields() {
-        for when_body in [
-            "  manual:\n    extra: true\n",
-            "  webhook:\n    path: /github\n    method: POST\n    extra: true\n",
-            "  schedule:\n    cron: \"*/5 * * * *\"\n    extra: true\n",
-            "  event:\n    name: customer.created\n    extra: true\n",
-        ] {
-            let source = format!(
-                "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n{when_body}steps:\n  - finish:\n      result: 0\n"
-            );
-            let result = YamlCompiler::default().compile(source.as_bytes());
-
-            assert!(matches!(
-                result,
-                Err(ref errors) if matches!(errors.first(), Some(CompileError::UnknownTriggerField { .. }))
-            ));
-        }
+    fn compiler_rejects_scalar_workflow_trigger_schedule() {
+        let source = "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  schedule: true\nsteps:\n  - finish:\n      result: 0\n";
+        let result = YamlCompiler::default().compile(source.as_bytes());
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::TriggerShape { .. }))));
     }
 
     #[test]
-    fn compiler_rejects_missing_required_workflow_trigger_fields() {
-        for when_body in [
-            "  webhook:\n    method: POST\n",
-            "  webhook:\n    path: /github\n",
-            "  schedule:\n    timezone: UTC\n",
-            "  event: {}\n",
-        ] {
-            let source = format!(
-                "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n{when_body}steps:\n  - finish:\n      result: 0\n"
-            );
-            let result = YamlCompiler::default().compile(source.as_bytes());
-
-            assert!(matches!(
-                result,
-                Err(ref errors) if matches!(errors.first(), Some(CompileError::MissingTriggerField { .. }))
-            ));
-        }
+    fn compiler_rejects_scalar_workflow_trigger_event() {
+        let source = "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  event: true\nsteps:\n  - finish:\n      result: 0\n";
+        let result = YamlCompiler::default().compile(source.as_bytes());
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::TriggerShape { .. }))));
     }
 
     #[test]
-    fn compiler_rejects_invalid_workflow_trigger_field_values() {
-        for when_body in [
-            "  webhook:\n    path: github\n    method: POST\n",
-            "  webhook:\n    path: /github\n    method: TRACE\n",
-            "  webhook:\n    path: 42\n    method: POST\n",
-            "  webhook:\n    path: /github\n    method: POST\n    unique: 42\n",
-            "  schedule:\n    cron: \"0 0 0 0 0 0\"\n",
-            "  schedule:\n    cron: 42\n",
-            "  schedule:\n    cron: \"*/5 * * * *\"\n    timezone: 42\n",
-            "  event:\n    name: 42\n",
-        ] {
-            let source = format!(
-                "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n{when_body}steps:\n  - finish:\n      result: 0\n"
-            );
-            let result = YamlCompiler::default().compile(source.as_bytes());
+    fn compiler_accepts_valid_workflow_trigger_config_manual() {
+        let source = "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: build_result\n    save:\n      value: 1\n  - id: done\n    finish:\n      result: 0\n";
+        let result = YamlCompiler::default().compile(source.as_bytes());
+        assert!(matches!(result, Ok(ref workflow) if workflow.name() == "fast_path"));
+    }
 
-            assert!(matches!(
-                result,
-                Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidTriggerField { .. }))
-            ));
-        }
+    #[test]
+    fn compiler_accepts_valid_workflow_trigger_config_webhook() {
+        let source = "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  webhook:\n    path: /github\n    method: POST\n    unique: request.header.X-GitHub-Delivery\nsteps:\n  - id: build_result\n    save:\n      value: 1\n  - id: done\n    finish:\n      result: 0\n";
+        let result = YamlCompiler::default().compile(source.as_bytes());
+        assert!(matches!(result, Ok(ref workflow) if workflow.name() == "fast_path"));
+    }
+
+    #[test]
+    fn compiler_accepts_valid_workflow_trigger_config_schedule() {
+        let source = "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  schedule:\n    cron: \"*/5 * * * *\"\n    timezone: UTC\nsteps:\n  - id: build_result\n    save:\n      value: 1\n  - id: done\n    finish:\n      result: 0\n";
+        let result = YamlCompiler::default().compile(source.as_bytes());
+        assert!(matches!(result, Ok(ref workflow) if workflow.name() == "fast_path"));
+    }
+
+    #[test]
+    fn compiler_accepts_valid_workflow_trigger_config_event() {
+        let source = "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  event:\n    name: customer.created\nsteps:\n  - id: build_result\n    save:\n      value: 1\n  - id: done\n    finish:\n      result: 0\n";
+        let result = YamlCompiler::default().compile(source.as_bytes());
+        assert!(matches!(result, Ok(ref workflow) if workflow.name() == "fast_path"));
+    }
+
+    #[test]
+    fn compiler_rejects_unknown_workflow_trigger_fields_manual() {
+        let source = "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual:\n    extra: true\nsteps:\n  - finish:\n      result: 0\n";
+        let result = YamlCompiler::default().compile(source.as_bytes());
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::UnknownTriggerField { .. }))));
+    }
+
+    #[test]
+    fn compiler_rejects_unknown_workflow_trigger_fields_webhook() {
+        let source = "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  webhook:\n    path: /github\n    method: POST\n    extra: true\nsteps:\n  - finish:\n      result: 0\n";
+        let result = YamlCompiler::default().compile(source.as_bytes());
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::UnknownTriggerField { .. }))));
+    }
+
+    #[test]
+    fn compiler_rejects_unknown_workflow_trigger_fields_schedule() {
+        let source = "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  schedule:\n    cron: \"*/5 * * * *\"\n    extra: true\nsteps:\n  - finish:\n      result: 0\n";
+        let result = YamlCompiler::default().compile(source.as_bytes());
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::UnknownTriggerField { .. }))));
+    }
+
+    #[test]
+    fn compiler_rejects_unknown_workflow_trigger_fields_event() {
+        let source = "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  event:\n    name: customer.created\n    extra: true\nsteps:\n  - finish:\n      result: 0\n";
+        let result = YamlCompiler::default().compile(source.as_bytes());
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::UnknownTriggerField { .. }))));
+    }
+
+    #[test]
+    fn compiler_rejects_missing_required_workflow_trigger_webhook_method() {
+        let source = "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  webhook:\n    method: POST\nsteps:\n  - finish:\n      result: 0\n";
+        let result = YamlCompiler::default().compile(source.as_bytes());
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::MissingTriggerField { .. }))));
+    }
+
+    #[test]
+    fn compiler_rejects_missing_required_workflow_trigger_webhook_path() {
+        let source = "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  webhook:\n    path: /github\nsteps:\n  - finish:\n      result: 0\n";
+        let result = YamlCompiler::default().compile(source.as_bytes());
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::MissingTriggerField { .. }))));
+    }
+
+    #[test]
+    fn compiler_rejects_missing_required_workflow_trigger_schedule_cron() {
+        let source = "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  schedule:\n    timezone: UTC\nsteps:\n  - finish:\n      result: 0\n";
+        let result = YamlCompiler::default().compile(source.as_bytes());
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::MissingTriggerField { .. }))));
+    }
+
+    #[test]
+    fn compiler_rejects_missing_required_workflow_trigger_event_name() {
+        let source = "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  event: {}\nsteps:\n  - finish:\n      result: 0\n";
+        let result = YamlCompiler::default().compile(source.as_bytes());
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::MissingTriggerField { .. }))));
+    }
+
+    #[test]
+    fn compiler_rejects_invalid_workflow_trigger_field_webhook_relative_path() {
+        let source = "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  webhook:\n    path: github\n    method: POST\nsteps:\n  - finish:\n      result: 0\n";
+        let result = YamlCompiler::default().compile(source.as_bytes());
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidTriggerField { .. }))));
+    }
+
+    #[test]
+    fn compiler_rejects_invalid_workflow_trigger_field_webhook_trace_method() {
+        let source = "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  webhook:\n    path: /github\n    method: TRACE\nsteps:\n  - finish:\n      result: 0\n";
+        let result = YamlCompiler::default().compile(source.as_bytes());
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidTriggerField { .. }))));
+    }
+
+    #[test]
+    fn compiler_rejects_invalid_workflow_trigger_field_webhook_numeric_path() {
+        let source = "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  webhook:\n    path: 42\n    method: POST\nsteps:\n  - finish:\n      result: 0\n";
+        let result = YamlCompiler::default().compile(source.as_bytes());
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidTriggerField { .. }))));
+    }
+
+    #[test]
+    fn compiler_rejects_invalid_workflow_trigger_field_webhook_numeric_unique() {
+        let source = "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  webhook:\n    path: /github\n    method: POST\n    unique: 42\nsteps:\n  - finish:\n      result: 0\n";
+        let result = YamlCompiler::default().compile(source.as_bytes());
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidTriggerField { .. }))));
+    }
+
+    #[test]
+    fn compiler_rejects_invalid_workflow_trigger_field_schedule_bad_cron_format() {
+        let source = "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  schedule:\n    cron: \"0 0 0 0 0 0\"\nsteps:\n  - finish:\n      result: 0\n";
+        let result = YamlCompiler::default().compile(source.as_bytes());
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidTriggerField { .. }))));
+    }
+
+    #[test]
+    fn compiler_rejects_invalid_workflow_trigger_field_schedule_numeric_cron() {
+        let source = "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  schedule:\n    cron: 42\nsteps:\n  - finish:\n      result: 0\n";
+        let result = YamlCompiler::default().compile(source.as_bytes());
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidTriggerField { .. }))));
+    }
+
+    #[test]
+    fn compiler_rejects_invalid_workflow_trigger_field_schedule_numeric_timezone() {
+        let source = "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  schedule:\n    cron: \"*/5 * * * *\"\n    timezone: 42\nsteps:\n  - finish:\n      result: 0\n";
+        let result = YamlCompiler::default().compile(source.as_bytes());
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidTriggerField { .. }))));
+    }
+
+    #[test]
+    fn compiler_rejects_invalid_workflow_trigger_field_event_numeric_name() {
+        let source = "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  event:\n    name: 42\nsteps:\n  - finish:\n      result: 0\n";
+        let result = YamlCompiler::default().compile(source.as_bytes());
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidTriggerField { .. }))));
     }
 
     #[test]
@@ -1115,18 +1449,24 @@ steps:
     }
 
     #[test]
-    fn compiler_rejects_legacy_step_aliases() {
-        for alias in ["gather", "summarize", "copy"] {
-            let source = format!(
-                "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {{}}\nsteps:\n  - id: legacy\n    {alias}:\n      slot: 0\n      value: 1\n  - id: done\n    finish:\n      result: 0\n"
-            );
-            let result = YamlCompiler::default().compile(source.as_bytes());
+    fn compiler_rejects_legacy_step_alias_gather() {
+        let source = "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: legacy\n    gather:\n      slot: 0\n      value: 1\n  - id: done\n    finish:\n      result: 0\n";
+        let result = YamlCompiler::default().compile(source.as_bytes());
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::UnknownStepField { .. }))));
+    }
 
-            assert!(
-                matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::UnknownStepField { .. }))),
-                "legacy alias {alias} must be rejected"
-            );
-        }
+    #[test]
+    fn compiler_rejects_legacy_step_alias_summarize() {
+        let source = "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: legacy\n    summarize:\n      slot: 0\n      value: 1\n  - id: done\n    finish:\n      result: 0\n";
+        let result = YamlCompiler::default().compile(source.as_bytes());
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::UnknownStepField { .. }))));
+    }
+
+    #[test]
+    fn compiler_rejects_legacy_step_alias_copy() {
+        let source = "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: legacy\n    copy:\n      slot: 0\n      value: 1\n  - id: done\n    finish:\n      result: 0\n";
+        let result = YamlCompiler::default().compile(source.as_bytes());
+        assert!(matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::UnknownStepField { .. }))));
     }
 
     #[test]
@@ -1154,28 +1494,38 @@ steps:
     }
 
     #[test]
-    fn compiler_rejects_malformed_master_primitives_with_exact_diagnostic() {
-        for (primitive, code) in [
-            ("for_each", "INVALID_FOR_EACH"),
-            ("together", "INVALID_TOGETHER"),
-            ("collect", "INVALID_COLLECT"),
-            ("reduce", "INVALID_REDUCE"),
-            ("repeat", "INVALID_REPEAT"),
-        ] {
-            let source = format!(
-                "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {{}}\nsteps:\n  - id: unsupported\n    {primitive}: noop\n  - id: done\n    finish:\n      result: 0\n"
-            );
-            let result = YamlCompiler::default().compile(source.as_bytes());
+    fn compiler_rejects_malformed_master_primitive_for_each() {
+        let source = "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: unsupported\n    for_each: noop\n  - id: done\n    finish:\n      result: 0\n";
+        let result = YamlCompiler::default().compile(source.as_bytes());
+        assert!(matches!(result, Err(ref errors) if errors.first().map(CompileError::code) == Some("INVALID_FOR_EACH")));
+    }
 
-            assert!(
-                matches!(
-                    result,
-                    Err(ref errors)
-                        if errors.first().map(CompileError::code) == Some(code)
-                ),
-                "primitive {primitive} should be rejected with exact invalid diagnostic"
-            );
-        }
+    #[test]
+    fn compiler_rejects_malformed_master_primitive_together() {
+        let source = "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: unsupported\n    together: noop\n  - id: done\n    finish:\n      result: 0\n";
+        let result = YamlCompiler::default().compile(source.as_bytes());
+        assert!(matches!(result, Err(ref errors) if errors.first().map(CompileError::code) == Some("INVALID_TOGETHER")));
+    }
+
+    #[test]
+    fn compiler_rejects_malformed_master_primitive_collect() {
+        let source = "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: unsupported\n    collect: noop\n  - id: done\n    finish:\n      result: 0\n";
+        let result = YamlCompiler::default().compile(source.as_bytes());
+        assert!(matches!(result, Err(ref errors) if errors.first().map(CompileError::code) == Some("INVALID_COLLECT")));
+    }
+
+    #[test]
+    fn compiler_rejects_malformed_master_primitive_reduce() {
+        let source = "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: unsupported\n    reduce: noop\n  - id: done\n    finish:\n      result: 0\n";
+        let result = YamlCompiler::default().compile(source.as_bytes());
+        assert!(matches!(result, Err(ref errors) if errors.first().map(CompileError::code) == Some("INVALID_REDUCE")));
+    }
+
+    #[test]
+    fn compiler_rejects_malformed_master_primitive_repeat() {
+        let source = "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: unsupported\n    repeat: noop\n  - id: done\n    finish:\n      result: 0\n";
+        let result = YamlCompiler::default().compile(source.as_bytes());
+        assert!(matches!(result, Err(ref errors) if errors.first().map(CompileError::code) == Some("INVALID_REPEAT")));
     }
 
     #[test]
@@ -2552,13 +2902,7 @@ steps:
             ..YamlLimits::default()
         };
         let compiler = YamlCompiler::new(tiny_limits);
-        let mut source =
-            String::from("version: velvet-ballastics/v1\nname: big\nwhen:\n  manual: {}\nsteps:\n");
-        // Add enough steps to exceed 100 bytes
-        for i in 0..20 {
-            source.push_str(&format!("  - id: s{i}\n    save:\n      value: 1\n"));
-        }
-        source.push_str("  - id: done\n    finish:\n      result: 0\n");
+        let source = build_oversized_workflow_source(20);
         let result = compiler.compile(source.as_bytes());
         let Err(errors) = result else {
             return Err("expected compile error for oversized source".to_owned());
@@ -2574,15 +2918,8 @@ steps:
     /// pool tracks correctly for a modest number of steps.
     #[test]
     fn many_save_steps_compile_with_correct_node_count() -> Result<(), String> {
-        let mut source = String::from(
-            "version: velvet-ballastics/v1\nname: many_saves\nwhen:\n  manual: {}\nsteps:\n",
-        );
         let step_count: usize = 50;
-        for i in 0..step_count {
-            source.push_str(&format!("  - id: s{i}\n    save:\n      value: {i}\n"));
-        }
-        // Finish with literal 0 (treated as slot 0, which is written by save step 0)
-        source.push_str("  - id: done\n    finish:\n      result: 0\n");
+        let source = build_many_saves_workflow_source(step_count);
         let workflow = adv_compile_ok(source.as_bytes())?;
         // Each save produces 1 node, finish with slot 0 produces 1 node
         let expected = step_count + 1;
@@ -3111,16 +3448,10 @@ steps:
             errors.len() >= 2,
             "expected at least 2 accumulated reference errors",
         )?;
-        for error in errors.iter() {
-            adv_ensure(
-                matches!(
-                    error,
-                    CompileError::UnknownReferenceName { kind: "input", .. }
-                ),
-                "accumulated error was not an input reference error",
-            )?;
-        }
-        Ok(())
+        adv_ensure(
+            errors.iter().all(|e| matches!(e, CompileError::UnknownReferenceName { kind: "input", .. })),
+            "accumulated error was not an input reference error",
+        )
     }
 
     /// Attack vector: Expression with deeply nested parentheses hits depth limit.

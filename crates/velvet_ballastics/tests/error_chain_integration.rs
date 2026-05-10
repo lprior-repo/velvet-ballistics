@@ -75,9 +75,11 @@ fn workflow_error_propagates_into_compile_error() {
         "compiled workflow IR failed validation: compiled workflow must contain at least one node",
         "CompileError from WorkflowError should display the exact IR validation chain"
     );
+    let workflow_src = source_as::<vb_core::workflow::WorkflowError>(&compile_error)
+        .expect("CompileError should have WorkflowError in source chain");
     assert!(
         matches!(
-            source_as::<vb_core::workflow::WorkflowError>(&compile_error).expect("should have source"),
+            workflow_src,
             vb_core::workflow::WorkflowError::EmptyNodes
         ),
         "CompileError should expose exact WorkflowError::EmptyNodes source"
@@ -100,9 +102,11 @@ fn runtime_error_includes_cause_from_core_error() {
         matches!(&runtime_error, &vb_runtime::RuntimeError::Core { .. }),
         "RuntimeError should preserve CoreError in RuntimeError::Core"
     );
+    let core_src = source_as::<vb_core::errors::CoreError>(&runtime_error)
+        .expect("RuntimeError should have CoreError in source chain");
     assert!(
         matches!(
-            source_as::<vb_core::errors::CoreError>(&runtime_error).expect("should have source"),
+            core_src,
             vb_core::errors::CoreError::QueueFull
         ),
         "RuntimeError should expose the exact CoreError::QueueFull source"
@@ -127,9 +131,11 @@ fn storage_error_propagates_up_through_runtime() {
         ),
         "RuntimeError should preserve JournalError in StorageJournalAppend"
     );
+    let journal_src = source_as::<vb_storage::JournalError>(&runtime_error)
+        .expect("RuntimeError should have JournalError in source chain");
     assert!(
         matches!(
-            source_as::<vb_storage::JournalError>(&runtime_error).expect("should have source"),
+            journal_src,
             vb_storage::JournalError::WriteLockPoisoned
         ),
         "RuntimeError should expose the exact JournalError::WriteLockPoisoned source"
@@ -147,9 +153,11 @@ fn core_error_propagates_up_through_runtime_with_source() {
         display, "runtime core error: expression stack overflow: max 16",
         "RuntimeError from CoreError should display the exact runtime core chain"
     );
+    let runtime_core_src = source_as::<vb_core::errors::CoreError>(&runtime_error)
+        .expect("RuntimeError should have CoreError in source chain");
     assert!(
         matches!(
-            source_as::<vb_core::errors::CoreError>(&runtime_error).expect("should have source"),
+            runtime_core_src,
             vb_core::errors::CoreError::ExpressionStackOverflow { max: 16 }
         ),
         "RuntimeError should expose exact CoreError source"
@@ -187,9 +195,11 @@ fn error_chain_three_levels_deep() {
         "three-level chain top should render the exact IR validation chain"
     );
 
+    let workflow_src = source_as::<vb_core::workflow::WorkflowError>(&compile_error)
+        .expect("CompileError should have WorkflowError in source chain");
     assert!(
         matches!(
-            source_as::<vb_core::workflow::WorkflowError>(&compile_error).expect("should have source"),
+            workflow_src,
             vb_core::workflow::WorkflowError::Expression(
                 vb_core::errors::CoreError::ExpressionStackOverflow { max: 64 }
             )
@@ -197,10 +207,11 @@ fn error_chain_three_levels_deep() {
         "CompileError should expose exact WorkflowError source"
     );
 
-    let workflow_src = source_as::<vb_core::workflow::WorkflowError>(&compile_error).expect("should have source");
+    let core_src = source_as::<vb_core::errors::CoreError>(workflow_src)
+        .expect("WorkflowError should have CoreError in source chain");
     assert!(
         matches!(
-            source_as::<vb_core::errors::CoreError>(workflow_src).expect("should have source"),
+            core_src,
             vb_core::errors::CoreError::ExpressionStackOverflow { max: 64 }
         ),
         "WorkflowError should expose exact nested CoreError source"
@@ -211,9 +222,11 @@ fn error_chain_three_levels_deep() {
 #[test]
 fn compile_errors_collection_exposes_first_source() {
     let errors = vb_compile::CompileErrors(vec![vb_compile::CompileError::EmptySource]);
+    let first_src = source_as::<vb_compile::CompileError>(&errors)
+        .expect("CompileErrors should have CompileError in source chain");
     assert!(
         matches!(
-            source_as::<vb_compile::CompileError>(&errors).expect("should have source"),
+            first_src,
             vb_compile::CompileError::EmptySource
         ),
         "CompileErrors should expose the exact first CompileError source"
@@ -239,9 +252,11 @@ fn recovery_error_wraps_journal_error() {
         "RecoveryError should preserve JournalError in the exact Journal variant"
     );
 
+    let recovery_journal_src = source_as::<vb_storage::JournalError>(&recovery_error)
+        .expect("RecoveryError should have JournalError in source chain");
     assert!(
         matches!(
-            source_as::<vb_storage::JournalError>(&recovery_error).expect("should have source"),
+            recovery_journal_src,
             vb_storage::JournalError::QueueFull
         ),
         "RecoveryError::Journal should expose exact JournalError source"

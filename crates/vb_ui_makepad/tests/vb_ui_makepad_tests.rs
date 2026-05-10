@@ -500,6 +500,60 @@ weight_semibold = 600
 }
 
 // =============================================================================
+// TOKENS PARSE (PRODUCTION) TESTS — verifies parse_hex correctness
+// =============================================================================
+
+mod tokens_parse_production_tests {
+    #![allow(clippy::expect_used)]
+
+    use vb_ui_makepad::tokens::Tokens;
+
+    #[test]
+    fn tokens_parse_color_background_board_from_production_toml() {
+        // Verifies parse_hex correctly parses the production TOML color values.
+        // If / were replaced with % or *, this would produce wrong values.
+        let tokens = Tokens::parse().expect("production TOML should parse");
+        let rgba = tokens.color.background_board;
+        // Production value from design/tokens/velvet_ui_tokens.toml "#F4F6F8"
+        // F4=244, F6=246, F8=248
+        let expected = [244.0 / 255.0, 246.0 / 255.0, 248.0 / 255.0, 1.0];
+        assert_eq!(rgba, expected, "background_board parsed incorrectly from production TOML");
+    }
+
+    #[test]
+    fn tokens_parse_color_success_from_production_toml() {
+        let tokens = Tokens::parse().expect("production TOML should parse");
+        let rgba = tokens.color.success;
+        // Production value: "#16A66A"
+        assert!(rgba[1] > 0.5, "success green channel should dominate");
+        assert!((rgba[0] - 22.0 / 255.0).abs() < 1e-3);
+        assert!((rgba[1] - 166.0 / 255.0).abs() < 1e-3);
+        assert!((rgba[2] - 106.0 / 255.0).abs() < 1e-3);
+    }
+
+    #[test]
+    fn tokens_parse_color_failure_from_production_toml() {
+        let tokens = Tokens::parse().expect("production TOML should parse");
+        let rgba = tokens.color.failure;
+        // Production value: "#E5484D"
+        assert!(rgba[0] > 0.5, "failure red channel should dominate");
+        assert!((rgba[0] - 229.0 / 255.0).abs() < 1e-3);
+        assert!((rgba[1] - 72.0 / 255.0).abs() < 1e-3);
+        assert!((rgba[2] - 77.0 / 255.0).abs() < 1e-3);
+    }
+
+    #[test]
+    fn tokens_parse_color_surface_glass_alpha_from_production_toml() {
+        let tokens = Tokens::parse().expect("production TOML should parse");
+        let rgba = tokens.color.surface_glass;
+        // Production value: "#FFFFFFCC" — 8-char hex with alpha
+        assert!((rgba[3] - 204.0 / 255.0).abs() < 1e-6,
+            "surface_glass alpha should be 0xCC/255, got {}",
+            rgba[3]);
+    }
+}
+
+// =============================================================================
 // COLOR CONSTANTS TESTS
 // =============================================================================
 
@@ -509,26 +563,53 @@ mod color_constants_tests {
     #[test]
     fn color_background_board_returns_valid_rgba() {
         let rgba: [f32; 4] = color::background_board();
-        // array length is guaranteed by type annotation; type-level invariant
-        assert!(rgba.iter().all(|&v| (0.0..=1.0).contains(&v)));
+        // Exact values from design/tokens/velvet_ui_tokens.toml "#F4F6F8"
+        // F4=244, F6=246, F8=248 — mutations [0.0; 4] or [1.0; 4] would fail
+        assert_eq!(rgba, [244.0 / 255.0, 246.0 / 255.0, 248.0 / 255.0, 1.0]);
+    }
+
+    #[test]
+    fn color_shell_exact_value() {
+        let rgba: [f32; 4] = color::shell();
+        // Exact from "#F8FAFC" — F8=248, FA=250, FC=252
+        assert_eq!(rgba, [248.0 / 255.0, 250.0 / 255.0, 252.0 / 255.0, 1.0]);
     }
 
     #[test]
     fn color_surface_glass_has_alpha_less_than_one() {
         let rgba = color::surface_glass();
+        // Exact from "#FFFFFFCC" — alpha is 0xCC = 204
         assert!(rgba[3] < 1.0, "glass alpha should be less than 1.0");
+        assert!((rgba[3] - 204.0 / 255.0).abs() < 1e-6);
     }
 
     #[test]
-    fn color_failure_is_redish() {
-        let rgba = color::failure();
+    fn color_failure_exact_value() {
+        let rgba: [f32; 4] = color::failure();
+        // Exact from "#E5484D" — mutations [0.0; 4] or [1.0; 4] would fail
         assert!(rgba[0] > 0.5, "failure should be red-dominant");
+        assert!((rgba[0] - 229.0 / 255.0).abs() < 1e-3);
+        assert!((rgba[1] - 72.0 / 255.0).abs() < 1e-3);
+        assert!((rgba[2] - 77.0 / 255.0).abs() < 1e-3);
     }
 
     #[test]
-    fn color_success_is_greenish() {
-        let rgba = color::success();
+    fn color_success_exact_value() {
+        let rgba: [f32; 4] = color::success();
+        // Exact from "#16A66A" — mutations [0.0; 4] or [1.0; 4] would fail
         assert!(rgba[1] > 0.5, "success should be green-dominant");
+        assert!((rgba[0] - 22.0 / 255.0).abs() < 1e-3);
+        assert!((rgba[1] - 166.0 / 255.0).abs() < 1e-3);
+        assert!((rgba[2] - 106.0 / 255.0).abs() < 1e-3);
+    }
+
+    #[test]
+    fn color_text_primary_exact_value() {
+        let rgba: [f32; 4] = color::text_primary();
+        // Exact from "#101828"
+        assert!((rgba[0] - 16.0 / 255.0).abs() < 1e-3);
+        assert!((rgba[1] - 24.0 / 255.0).abs() < 1e-3);
+        assert!((rgba[2] - 40.0 / 255.0).abs() < 1e-3);
     }
 }
 
@@ -1369,6 +1450,25 @@ mod packet_dot_manager_tests {
     }
 
     #[test]
+    fn packet_dot_manager_animate_reaches_t_one_at_correct_position() {
+        let mut manager = PacketDotManager::new();
+        manager.add_dot("e1".into());
+        // Animate exactly to t=1.0: 5 × 1000ms at speed 0.2 → t = 1.0
+        manager.animate(1000.0);
+        manager.animate(1000.0);
+        manager.animate(1000.0);
+        manager.animate(1000.0);
+        manager.animate(1000.0);
+        // Verify t is clamped to 1.0 (not overshooting via wrong speed formula)
+        let dot = manager.dots().first().unwrap();
+        assert!(
+            (dot.t - 1.0).abs() < 1e-6,
+            "dot t should be 1.0 after 5s animation, got {}",
+            dot.t
+        );
+    }
+
+    #[test]
     fn packet_dot_manager_clear_removes_all() {
         let mut manager = PacketDotManager::new();
         manager.add_dot("e1".into());
@@ -1383,10 +1483,18 @@ mod packet_dot_manager_tests {
         let mut manager = PacketDotManager::new();
         manager.add_dot("e1".into());
         manager.add_dot("e2".into());
-        manager.animate(500.0); // Advance a bit
+        manager.animate(500.0); // Advance t (speed 0.2, nd=0.5 → t += 0.1)
         manager.reset_all();
-        // After reset, all dots should be active at t=0
+        // After reset, all dots should be at t=0 and active
         assert_eq!(manager.active_count(), 2);
+        for dot in manager.dots() {
+            assert!(
+                (dot.t - 0.0).abs() < 1e-6,
+                "dot t should be 0.0 after reset, got {}",
+                dot.t
+            );
+            assert!(dot.active, "dot should be active after reset");
+        }
     }
 }
 
@@ -1410,7 +1518,20 @@ mod shell_nav_tests {
     #[test]
     fn shell_nav_nav_color_overview() {
         let c = ShellNav::Overview.nav_color();
-        assert_eq!(c.len(), 4);
+        // Exact values from shell.rs — mutations like [0.0; 4] would fail this
+        assert_eq!(c, [0.145, 0.388, 0.922, 1.0]);
+    }
+
+    #[test]
+    fn shell_nav_nav_color_workflow_graph() {
+        let c = ShellNav::WorkflowGraph.nav_color();
+        assert_eq!(c, [0.431, 0.321, 0.898, 1.0]);
+    }
+
+    #[test]
+    fn shell_nav_nav_color_incidents() {
+        let c = ShellNav::Incidents.nav_color();
+        assert_eq!(c, [0.898, 0.282, 0.302, 1.0]);
     }
 
     #[test]

@@ -1,4 +1,5 @@
 //! Tests for the replay module.
+#![allow(clippy::panic_in_result_fn)]
 
 use crate::errors::CoreError;
 use crate::frame::RunFrame;

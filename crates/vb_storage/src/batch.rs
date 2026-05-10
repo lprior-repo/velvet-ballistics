@@ -910,26 +910,17 @@ mod tests {
         let mut batch = JournalWriteBatch::new(&journal);
 
         // Initially empty
-        assert!(
-            batch.is_empty() == (batch.len() == 0),
-            "is_empty() must match (len() == 0) for new batch"
-        );
+        assert!(batch.is_empty(), "batch should be empty initially");
 
         // After one operation
         batch.append_event(&make_event(run, 0)).expect("append");
-        assert!(
-            batch.is_empty() == (batch.len() == 0),
-            "is_empty() must match (len() == 0) after one operation"
-        );
+        assert!(!batch.is_empty(), "batch should not be empty after one operation");
 
         // After more operations
         batch
             .put_run_header(&make_run_header(run))
             .expect("put header");
-        assert!(
-            batch.is_empty() == (batch.len() == 0),
-            "is_empty() must match (len() == 0) after multiple operations"
-        );
+        assert!(!batch.is_empty(), "batch should not be empty after multiple operations");
     }
 
     #[test]

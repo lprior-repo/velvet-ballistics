@@ -1085,6 +1085,7 @@ fn enqueue_successors(
 }
 
 #[cfg(test)]
+#[allow(clippy::expect_used)]
 mod tests {
     use super::*;
 
@@ -1101,10 +1102,7 @@ mod tests {
         match result {
             Ok(decoded) => assert_eq!(decoded, crate::IpcPayload::Health),
             Err(_) => {
-                assert!(
-                    false,
-                    "decode_payload should succeed for valid Health payload"
-                );
+                unreachable!("decode_payload should succeed for valid Health payload");
             }
         }
     }
@@ -1676,14 +1674,18 @@ mod tests {
     /// is a reasonable bound.
     #[test]
     fn taint_path_entries_cap_is_bounded() {
-        assert!(
-            MAX_TAINT_PATH_ENTRIES <= 65536,
-            "taint path cap should not exceed 65536"
-        );
-        assert!(
-            MAX_TAINT_PATH_ENTRIES > 0,
-            "taint path cap should be non-zero"
-        );
+        const {
+            assert!(
+                MAX_TAINT_PATH_ENTRIES <= 65536,
+                "taint path cap should not exceed 65536"
+            )
+        };
+        const {
+            assert!(
+                MAX_TAINT_PATH_ENTRIES > 0,
+                "taint path cap should be non-zero"
+            )
+        };
     }
 
     /// FINDING 4 (LOW): sanitize_runtime_error should not allocate excessively.
@@ -1768,10 +1770,8 @@ mod tests {
             ticket: 5,
             answer: vec![0xFF_u8; MAX_ANSWER_ASK_BYTES + 1],
         };
-        let Ok(encoded) = postcard::to_allocvec(&payload) else {
-            assert!(false, "payload should encode");
-            return;
-        };
+        let encoded = postcard::to_allocvec(&payload)
+            .expect("payload should encode");
         // Verify the oversized answer round-trips through postcard decode,
         // confirming the handler's size check is the sole defense.
         let decoded = decode_payload::<crate::IpcPayload>(&encoded);
@@ -1783,7 +1783,7 @@ mod tests {
                 );
             }
             other => {
-                assert!(false, "expected AnswerAsk, got {other:?}");
+                unreachable!("expected AnswerAsk, got {other:?}");
             }
         }
     }
@@ -1797,10 +1797,8 @@ mod tests {
             ticket: 5,
             answer: vec![0xAA_u8; MAX_ANSWER_ASK_BYTES],
         };
-        let Ok(encoded) = postcard::to_allocvec(&payload) else {
-            assert!(false, "payload should encode");
-            return;
-        };
+        let encoded = postcard::to_allocvec(&payload)
+            .expect("payload should encode");
         let decoded = decode_payload::<crate::IpcPayload>(&encoded);
         match decoded {
             Ok(crate::IpcPayload::AnswerAsk { answer, .. }) => {
@@ -1811,7 +1809,7 @@ mod tests {
                 );
             }
             other => {
-                assert!(false, "expected AnswerAsk, got {other:?}");
+                unreachable!("expected AnswerAsk, got {other:?}");
             }
         }
     }
@@ -1823,11 +1821,15 @@ mod tests {
     /// that the capping logic uses saturating min.
     #[test]
     fn list_runs_limit_cap_is_bounded() {
-        assert!(
-            MAX_LIST_RUNS_LIMIT <= 4096,
-            "list runs cap should not exceed 4096"
-        );
-        assert!(MAX_LIST_RUNS_LIMIT > 0, "list runs cap should be non-zero");
+        const {
+            assert!(
+                MAX_LIST_RUNS_LIMIT <= 4096,
+                "list runs cap should not exceed 4096"
+            )
+        };
+        const {
+            assert!(MAX_LIST_RUNS_LIMIT > 0, "list runs cap should be non-zero")
+        };
     }
 
     /// FINDING 7 (MEDIUM): Verifies that a ListRuns payload with u32::MAX limit
@@ -1838,10 +1840,8 @@ mod tests {
             limit: u32::MAX,
             workflow: None,
         };
-        let Ok(encoded) = postcard::to_allocvec(&payload) else {
-            assert!(false, "payload should encode");
-            return;
-        };
+        let encoded = postcard::to_allocvec(&payload)
+            .expect("payload should encode");
         let decoded = decode_payload::<crate::IpcPayload>(&encoded);
         match decoded {
             Ok(crate::IpcPayload::ListRuns { limit, .. }) => {
@@ -1851,7 +1851,7 @@ mod tests {
                 assert_eq!(capped, MAX_LIST_RUNS_LIMIT, "should be capped");
             }
             other => {
-                assert!(false, "expected ListRuns, got {other:?}");
+                unreachable!("expected ListRuns, got {other:?}");
             }
         }
     }
@@ -1861,28 +1861,31 @@ mod tests {
     /// compiled workflows. Verifies the MAX_WORKFLOW_GRAPH_NODES constant.
     #[test]
     fn workflow_graph_nodes_cap_is_bounded() {
-        assert!(
-            MAX_WORKFLOW_GRAPH_NODES <= 8192,
-            "workflow graph nodes cap should not exceed 8192"
-        );
-        assert!(
-            MAX_WORKFLOW_GRAPH_NODES > 0,
-            "workflow graph nodes cap should be non-zero"
-        );
+        const {
+            assert!(
+                MAX_WORKFLOW_GRAPH_NODES <= 8192,
+                "workflow graph nodes cap should not exceed 8192"
+            )
+        };
+        const {
+            assert!(
+                MAX_WORKFLOW_GRAPH_NODES > 0,
+                "workflow graph nodes cap should be non-zero"
+            )
+        };
     }
 
     /// FINDING 8 (MEDIUM): Verifies the capping logic for node_count.
     /// When node_count exceeds MAX_WORKFLOW_GRAPH_NODES, it should be capped.
     #[test]
     fn workflow_graph_node_count_capping_logic() {
-        let capped = u16::MAX.min(u16::try_from(MAX_WORKFLOW_GRAPH_NODES).unwrap_or(u16::MAX));
-        assert_eq!(
-            capped,
-            u16::try_from(MAX_WORKFLOW_GRAPH_NODES).unwrap_or(u16::MAX),
-            "u16::MAX should be capped to MAX_WORKFLOW_GRAPH_NODES"
-        );
+        let max_nodes = u16::try_from(MAX_WORKFLOW_GRAPH_NODES).unwrap_or(u16::MAX);
+        // A value exceeding max_nodes should be capped
+        let excessive = u16::MAX;
+        let capped = excessive.min(max_nodes);
+        assert_eq!(capped, max_nodes, "excessive count should be capped to max_nodes");
         // A small count should not be changed
-        let small_capped = 100u16.min(u16::try_from(MAX_WORKFLOW_GRAPH_NODES).unwrap_or(u16::MAX));
+        let small_capped = 100u16.min(max_nodes);
         assert_eq!(small_capped, 100, "small node count should pass through");
     }
 }

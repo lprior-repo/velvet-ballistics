@@ -547,7 +547,7 @@ fn ordering_invariants_pc_advances_monotonically_in_linear_workflow() -> Result<
     let prev_pc = frame.pc();
     ensure(prev_pc == StepIdx::new(0), "must start at PC 0")?;
 
-    let signal = step_once(&workflow, &mut frame, &mut store).expect("step_once must succeed");
+    let signal = step_once(&workflow, &mut frame, &mut store).map_err(|e| e.to_string())?;
     assert_eq!(signal, EngineSignal::Continue);
     let next_pc = frame.pc();
     ensure(
@@ -646,7 +646,7 @@ fn snapshot_equivalence_step_states_consistent_after_completion() -> Result<(), 
     let mut store = ValueStore::new();
 
     run_until_blocked(&workflow, &mut frame, StepBudget::MAX, &mut store)
-        .expect("run_until_blocked must succeed");
+        .map_err(|e| e.to_string())?;
 
     // Both steps must be in terminal (succeeded) state
     let step0 = frame

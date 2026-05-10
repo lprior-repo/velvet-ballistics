@@ -10,6 +10,7 @@
 //! No unwrap/expect/panic in test bodies - use assert! for assertions.
 
 #[cfg(test)]
+#[allow(clippy::expect_used, clippy::unwrap_used, unused_mut, clippy::bool_comparison)]
 mod proptests {
     use proptest::prelude::*;
 
@@ -36,6 +37,7 @@ mod proptests {
     use crate::primitives::collect::CollectStates;
     use crate::shard::{Shard, ShardCommand, ShardConfig};
 
+    #[allow(dead_code)]
     fn make_simple_workflow(slot_count: u16, result_slot: SlotIdx) -> CompiledWorkflow {
         let node0 = CompiledNode {
             id: StepIdx::new(0),
@@ -480,7 +482,7 @@ mod proptests {
                 max_active_runs: 1024,
                 policy: vb_core::policy::RuntimePolicy::Strict,
             };
-            let mut shard = Shard::new(config);
+            let shard = Shard::new(config);
 
             let mut success_count = 0usize;
 
@@ -545,7 +547,7 @@ mod proptests {
                     workflow,
                     caps: CapabilitySet::empty(),
                 };
-                let _ = shard.enqueue(cmd);
+                shard.enqueue(cmd).expect("enqueue must succeed");
             }
 
             let initial_queue_len = shard.command_queue_len();
@@ -614,7 +616,7 @@ mod proptests {
                     workflow,
                     caps: CapabilitySet::empty(),
                 };
-                let _ = shard.enqueue(cmd);
+                shard.enqueue(cmd).expect("enqueue must succeed");
             }
 
             // Process pre-shutdown commands
@@ -625,7 +627,7 @@ mod proptests {
             }
 
             // Enqueue shutdown
-            let _ = shard.enqueue(ShardCommand::Shutdown);
+            shard.enqueue(ShardCommand::Shutdown).expect("enqueue must succeed");
 
             // First tick processes shutdown
             let first_result = shard.tick();
@@ -674,20 +676,20 @@ mod proptests {
                         workflow,
                         caps: CapabilitySet::empty(),
                     };
-                    let _ = shard.enqueue(cmd);
+                    shard.enqueue(cmd).expect("enqueue must succeed");
                 }
 
                 if i < cancels {
                     let run_id = RunId::new(u64::try_from(i).unwrap_or(0));
                     let cmd = ShardCommand::Cancel { run: run_id };
-                    let _ = shard.enqueue(cmd);
+                    shard.enqueue(cmd).expect("enqueue must succeed");
                 }
             }
 
             // Process all commands
             let total_commands = submits + cancels;
             for _ in 0..total_commands {
-                let _ = shard.tick();
+                shard.tick().expect("tick must succeed");
             }
 
             // INV(S4): A RunId appears in self.runs at most once

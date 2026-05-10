@@ -48,10 +48,7 @@ fn build_frame(command: IpcCommand, correlation: u64, payload_bytes: &[u8]) -> V
         command,
         0,
         correlation,
-        match u32::try_from(payload_bytes.len()) {
-            Ok(v) => v,
-            Err(_) => 0,
-        },
+        u32::try_from(payload_bytes.len()).unwrap_or_default(),
     );
     let encoded = header.encode().expect("header should encode");
     let mut frame = encoded.to_vec();
@@ -74,6 +71,8 @@ fn read_exact_timeout(stream: &mut dyn Read, n: usize) -> Result<Vec<u8>, std::i
                 "read timeout: max attempts reached",
             ));
         }
+        // SAFETY: `read_total < n` is enforced by the loop condition
+        #[allow(clippy::indexing_slicing)]
         match stream.read(&mut buf[read_total..]) {
             Ok(0) => {
                 return Err(std::io::Error::new(
@@ -86,7 +85,7 @@ fn read_exact_timeout(stream: &mut dyn Read, n: usize) -> Result<Vec<u8>, std::i
                 attempts = 0;
             }
             Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
-                attempts += 1;
+                attempts = attempts.saturating_add(1);
             }
             Err(e) => return Err(e),
         }
@@ -234,8 +233,7 @@ fn server_processes_health_command_from_client() {
     let magic = u32::from_le_bytes(
         response_header
             .get(..4)
-            .map(|s| <[u8; 4]>::try_from(s).ok())
-            .flatten()
+            .and_then(|s| <[u8; 4]>::try_from(s).ok())
             .unwrap_or([0; 4]),
     );
     assert_eq!(magic, IPC_MAGIC, "response should have valid magic");
@@ -244,8 +242,7 @@ fn server_processes_health_command_from_client() {
     let payload_len = u32::from_le_bytes(
         response_header
             .get(20..24)
-            .map(|s| <[u8; 4]>::try_from(s).ok())
-            .flatten()
+            .and_then(|s| <[u8; 4]>::try_from(s).ok())
             .unwrap_or([0; 4]),
     );
 
@@ -262,10 +259,10 @@ fn server_processes_health_command_from_client() {
         match decoded {
             Ok(IpcResponse::Healthy) => {}
             Ok(other) => {
-                assert!(false, "expected Healthy response, got {other:?}");
+                unreachable!("expected Healthy response, got {other:?}");
             }
             Err(e) => {
-                assert!(false, "response payload decode failed: {e}");
+                unreachable!("response payload decode failed: {e}");
             }
         }
     }
@@ -340,8 +337,7 @@ fn server_responds_with_error_for_invalid_magic() {
     let payload_len = u32::from_le_bytes(
         response_header
             .get(20..24)
-            .map(|s| <[u8; 4]>::try_from(s).ok())
-            .flatten()
+            .and_then(|s| <[u8; 4]>::try_from(s).ok())
             .unwrap_or([0; 4]),
     );
     let payload_len_usize = match usize::try_from(payload_len) {
@@ -364,10 +360,10 @@ fn server_responds_with_error_for_invalid_magic() {
                 );
             }
             Ok(other) => {
-                assert!(false, "expected FrameError, got {other:?}");
+                unreachable!("expected FrameError, got {other:?}");
             }
             Err(e) => {
-                assert!(false, "error response decode failed: {e}");
+                unreachable!("error response decode failed: {e}");
             }
         }
     }
@@ -416,8 +412,7 @@ fn server_responds_with_error_for_unsupported_version() {
     let payload_len = u32::from_le_bytes(
         response_header
             .get(20..24)
-            .map(|s| <[u8; 4]>::try_from(s).ok())
-            .flatten()
+            .and_then(|s| <[u8; 4]>::try_from(s).ok())
             .unwrap_or([0; 4]),
     );
     let payload_len_usize = match usize::try_from(payload_len) {
@@ -440,10 +435,10 @@ fn server_responds_with_error_for_unsupported_version() {
                 );
             }
             Ok(other) => {
-                assert!(false, "expected FrameError, got {other:?}");
+                unreachable!("expected FrameError, got {other:?}");
             }
             Err(e) => {
-                assert!(false, "error response decode failed: {e}");
+                unreachable!("error response decode failed: {e}");
             }
         }
     }
@@ -549,8 +544,7 @@ fn server_responds_with_error_for_garbage_payload() {
     let payload_len = u32::from_le_bytes(
         response_header
             .get(20..24)
-            .map(|s| <[u8; 4]>::try_from(s).ok())
-            .flatten()
+            .and_then(|s| <[u8; 4]>::try_from(s).ok())
             .unwrap_or([0; 4]),
     );
     let payload_len_usize = match usize::try_from(payload_len) {
@@ -605,8 +599,7 @@ fn server_processes_multiple_commands_from_same_client() {
     let payload_len = u32::from_le_bytes(
         response_header
             .get(20..24)
-            .map(|s| <[u8; 4]>::try_from(s).ok())
-            .flatten()
+            .and_then(|s| <[u8; 4]>::try_from(s).ok())
             .unwrap_or([0; 4]),
     );
     let payload_len_usize = match usize::try_from(payload_len) {
@@ -627,8 +620,7 @@ fn server_processes_multiple_commands_from_same_client() {
     let payload_len = u32::from_le_bytes(
         response_header
             .get(20..24)
-            .map(|s| <[u8; 4]>::try_from(s).ok())
-            .flatten()
+            .and_then(|s| <[u8; 4]>::try_from(s).ok())
             .unwrap_or([0; 4]),
     );
     let payload_len_usize = match usize::try_from(payload_len) {
@@ -685,8 +677,7 @@ fn server_responds_with_error_for_nonzero_reserved_field() {
     let payload_len = u32::from_le_bytes(
         response_header
             .get(20..24)
-            .map(|s| <[u8; 4]>::try_from(s).ok())
-            .flatten()
+            .and_then(|s| <[u8; 4]>::try_from(s).ok())
             .unwrap_or([0; 4]),
     );
     let payload_len_usize = match usize::try_from(payload_len) {
@@ -706,10 +697,10 @@ fn server_responds_with_error_for_nonzero_reserved_field() {
                 );
             }
             Ok(other) => {
-                assert!(false, "expected FrameError, got {other:?}");
+                unreachable!("expected FrameError, got {other:?}");
             }
             Err(e) => {
-                assert!(false, "error response decode failed: {e}");
+                unreachable!("error response decode failed: {e}");
             }
         }
     }
@@ -950,7 +941,7 @@ fn workflow_resolver_not_found_is_rejected_by_dispatch() {
                 std::hint::black_box(other);
             }
             Err(e) => {
-                assert!(false, "response payload decode failed: {e}");
+                unreachable!("response payload decode failed: {e}");
             }
         }
     }
@@ -1328,8 +1319,7 @@ fn sequential_clients_each_get_health_response() {
         let payload_len_usize = match usize::try_from(payload_len) {
             Ok(v) => v,
             Err(_) => {
-                assert!(false, "payload_len overflow for client 0");
-                return;
+                unreachable!("payload_len overflow for client 0");
             }
         };
         if payload_len_usize > 0 {
@@ -1343,10 +1333,10 @@ fn sequential_clients_each_get_health_response() {
             match decoded {
                 Ok(IpcResponse::Healthy) => {}
                 Ok(other) => {
-                    assert!(false, "expected Healthy for client 0, got {other:?}");
+                    unreachable!("expected Healthy for client 0, got {other:?}");
                 }
                 Err(e) => {
-                    assert!(false, "response decode failed for client 0: {e}");
+                    unreachable!("response decode failed for client 0: {e}");
                 }
             }
         }
@@ -1394,8 +1384,7 @@ fn sequential_clients_each_get_health_response() {
         let payload_len_usize = match usize::try_from(payload_len) {
             Ok(v) => v,
             Err(_) => {
-                assert!(false, "payload_len overflow for client 1");
-                return;
+                unreachable!("payload_len overflow for client 1");
             }
         };
         if payload_len_usize > 0 {
@@ -1409,10 +1398,10 @@ fn sequential_clients_each_get_health_response() {
             match decoded {
                 Ok(IpcResponse::Healthy) => {}
                 Ok(other) => {
-                    assert!(false, "expected Healthy for client 1, got {other:?}");
+                    unreachable!("expected Healthy for client 1, got {other:?}");
                 }
                 Err(e) => {
-                    assert!(false, "response decode failed for client 1: {e}");
+                    unreachable!("response decode failed for client 1: {e}");
                 }
             }
         }
@@ -1460,8 +1449,7 @@ fn sequential_clients_each_get_health_response() {
         let payload_len_usize = match usize::try_from(payload_len) {
             Ok(v) => v,
             Err(_) => {
-                assert!(false, "payload_len overflow for client 2");
-                return;
+                unreachable!("payload_len overflow for client 2");
             }
         };
         if payload_len_usize > 0 {
@@ -1475,10 +1463,10 @@ fn sequential_clients_each_get_health_response() {
             match decoded {
                 Ok(IpcResponse::Healthy) => {}
                 Ok(other) => {
-                    assert!(false, "expected Healthy for client 2, got {other:?}");
+                    unreachable!("expected Healthy for client 2, got {other:?}");
                 }
                 Err(e) => {
-                    assert!(false, "response decode failed for client 2: {e}");
+                    unreachable!("response decode failed for client 2: {e}");
                 }
             }
         }

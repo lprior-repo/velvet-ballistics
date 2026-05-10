@@ -1,4 +1,4 @@
-#![allow(clippy::indexing_slicing)]
+#![allow(clippy::indexing_slicing, clippy::bool_assert_comparison)]
 
 const BUDGET_RS: &str = include_str!("../src/budget.rs");
 const CORE_LIB_RS: &str = include_str!("../src/lib.rs");

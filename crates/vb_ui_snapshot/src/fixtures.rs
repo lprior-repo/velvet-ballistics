@@ -1245,3 +1245,224 @@ pub fn serialize_fixture(fixture: &DemoFixture) -> Result<String, UiSnapshotErro
     serde_json::to_string_pretty(fixture)
         .map_err(|e| UiSnapshotError::IoError(format!("JSON serialization failed: {e}")))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ── load_demo_fixture ─────────────────────────────────────────────────────
+
+    #[test]
+    fn load_demo_fixture_execution_overview() -> Result<(), UiSnapshotError> {
+        let fixture = load_demo_fixture("execution_overview")?;
+        assert_eq!(fixture.name, "execution_overview");
+        assert_eq!(fixture.screen_kind, "ExecutionOverview");
+        assert!(fixture.app_snapshot.active_runs.len() >= 1);
+        Ok(())
+    }
+
+    #[test]
+    fn load_demo_fixture_workflow_graph_authoring() -> Result<(), UiSnapshotError> {
+        let fixture = load_demo_fixture("workflow_graph_authoring")?;
+        assert_eq!(fixture.name, "workflow_graph_authoring");
+        assert_eq!(fixture.screen_kind, "WorkflowGraphAuthoring");
+        assert!(fixture.app_snapshot.selected_workflow.is_some());
+        Ok(())
+    }
+
+    #[test]
+    fn load_demo_fixture_execution_details() -> Result<(), UiSnapshotError> {
+        let fixture = load_demo_fixture("execution_details")?;
+        assert_eq!(fixture.name, "execution_details");
+        assert_eq!(fixture.screen_kind, "ExecutionDetailsGraph");
+        Ok(())
+    }
+
+    #[test]
+    fn load_demo_fixture_verification_certificate() -> Result<(), UiSnapshotError> {
+        let fixture = load_demo_fixture("verification_certificate")?;
+        assert_eq!(fixture.name, "verification_certificate");
+        assert_eq!(fixture.screen_kind, "VerificationCertificate");
+        assert!(fixture.app_snapshot.verification.is_some());
+        Ok(())
+    }
+
+    #[test]
+    fn load_demo_fixture_replay_theater() -> Result<(), UiSnapshotError> {
+        let fixture = load_demo_fixture("replay_theater")?;
+        assert_eq!(fixture.name, "replay_theater");
+        assert_eq!(fixture.screen_kind, "ReplayTheater");
+        assert!(fixture.app_snapshot.replay.is_some());
+        Ok(())
+    }
+
+    #[test]
+    fn load_demo_fixture_incident_failure() -> Result<(), UiSnapshotError> {
+        let fixture = load_demo_fixture("incident_failure")?;
+        assert_eq!(fixture.name, "incident_failure");
+        assert_eq!(fixture.screen_kind, "IncidentFailureConsole");
+        assert!(fixture.app_snapshot.incident.is_some());
+        Ok(())
+    }
+
+    #[test]
+    fn load_demo_fixture_action_registry() -> Result<(), UiSnapshotError> {
+        let fixture = load_demo_fixture("action_registry")?;
+        assert_eq!(fixture.name, "action_registry");
+        assert_eq!(fixture.screen_kind, "ActionRegistry");
+        assert!(!fixture.app_snapshot.actions.is_empty());
+        Ok(())
+    }
+
+    #[test]
+    fn load_demo_fixture_storage_doctor_ai_context() -> Result<(), UiSnapshotError> {
+        let fixture = load_demo_fixture("storage_doctor_ai_context")?;
+        assert_eq!(fixture.name, "storage_doctor_ai_context");
+        assert_eq!(fixture.screen_kind, "StorageDoctorAiContext");
+        assert!(fixture.app_snapshot.storage.is_some());
+        Ok(())
+    }
+
+    #[test]
+    fn load_demo_fixture_unknown_fixture_returns_error() {
+        let result = load_demo_fixture("nonexistent_fixture");
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        let display = alloc::format!("{err}");
+        assert!(display.contains("nonexistent_fixture"));
+        assert!(display.contains("Fixture not found"));
+    }
+
+    // ── serialize_fixture ─────────────────────────────────────────────────────
+
+    #[test]
+    fn serialize_fixture_produces_valid_json() -> Result<(), UiSnapshotError> {
+        let fixture = load_demo_fixture("execution_overview")?;
+        let json = serialize_fixture(&fixture)?;
+        assert!(json.contains("execution_overview"));
+        assert!(json.contains("ExecutionOverview"));
+        Ok(())
+    }
+
+    #[test]
+    fn serialize_fixture_roundtrip() -> Result<(), UiSnapshotError> {
+        let fixture = load_demo_fixture("workflow_graph_authoring")?;
+        let json = serialize_fixture(&fixture)?;
+        let parsed: DemoFixture = serde_json::from_str(&json)
+            .map_err(|e| UiSnapshotError::IoError(format!("JSON parse failed: {e}")))?;
+        assert_eq!(parsed.name, fixture.name);
+        assert_eq!(parsed.screen_kind, fixture.screen_kind);
+        Ok(())
+    }
+
+    #[test]
+    fn serialize_fixture_all_variants_roundtrip() -> Result<(), UiSnapshotError> {
+        let names = [
+            "execution_overview",
+            "workflow_graph_authoring",
+            "execution_details",
+            "verification_certificate",
+            "replay_theater",
+            "incident_failure",
+            "action_registry",
+            "storage_doctor_ai_context",
+        ];
+        for name in names {
+            let fixture = load_demo_fixture(name)?;
+            let json = serialize_fixture(&fixture)?;
+            let parsed: DemoFixture = serde_json::from_str(&json)
+                .map_err(|e| UiSnapshotError::IoError(format!("roundtrip failed for {name}: {e}")))?;
+            assert_eq!(parsed.name, name);
+        }
+        Ok(())
+    }
+
+    // ── make_digest ───────────────────────────────────────────────────────────
+
+    #[test]
+    fn make_digest_produces_digest() {
+        let digest = make_digest(0xAB);
+        let bytes: [u8; 32] = digest.as_bytes();
+        // All bytes should be 0xAB
+        assert!(bytes.iter().all(|&b| b == 0xAB));
+    }
+
+    #[test]
+    fn make_digest_zero_produces_all_zero() {
+        let digest = make_digest(0);
+        let bytes: [u8; 32] = digest.as_bytes();
+        assert!(bytes.iter().all(|&b| b == 0));
+    }
+
+    #[test]
+    fn make_digest_different_values_different_digests() {
+        let d1 = make_digest(1);
+        let d2 = make_digest(2);
+        let b1: [u8; 32] = d1.as_bytes();
+        let b2: [u8; 32] = d2.as_bytes();
+        assert_ne!(b1, b2);
+    }
+
+    // ── DemoFixture structure ─────────────────────────────────────────────────
+
+    #[test]
+    fn demo_fixture_has_name_and_screen_kind() -> Result<(), UiSnapshotError> {
+        let fixture = load_demo_fixture("execution_overview")?;
+        assert!(!fixture.name.is_empty());
+        assert!(!fixture.screen_kind.is_empty());
+        Ok(())
+    }
+
+    #[test]
+    fn demo_fixture_execution_overview_has_runs() -> Result<(), UiSnapshotError> {
+        let fixture = load_demo_fixture("execution_overview")?;
+        assert!(!fixture.app_snapshot.active_runs.is_empty());
+        Ok(())
+    }
+
+    #[test]
+    fn demo_fixture_incident_failure_has_degraded_health() -> Result<(), UiSnapshotError> {
+        let fixture = load_demo_fixture("incident_failure")?;
+        use vb_ui_model::StorageHealth;
+        assert_eq!(fixture.app_snapshot.status.storage_health, StorageHealth::Degraded);
+        Ok(())
+    }
+
+    #[test]
+    fn demo_fixture_replay_theater_has_failure_status() -> Result<(), UiSnapshotError> {
+        let fixture = load_demo_fixture("replay_theater")?;
+        use vb_ui_model::RunStatus;
+        assert!(fixture.app_snapshot.replay.is_some());
+        let replay = fixture.app_snapshot.replay.as_ref().unwrap();
+        assert_eq!(replay.status, RunStatus::Failure);
+        Ok(())
+    }
+
+    #[test]
+    fn demo_fixture_verification_certificate_has_warnings() -> Result<(), UiSnapshotError> {
+        let fixture = load_demo_fixture("verification_certificate")?;
+        let verification = fixture.app_snapshot.verification.as_ref().unwrap();
+        assert!(!verification.warnings.is_empty());
+        assert!(verification.passed);
+        Ok(())
+    }
+
+    #[test]
+    fn demo_fixture_action_registry_has_multiple_actions() -> Result<(), UiSnapshotError> {
+        let fixture = load_demo_fixture("action_registry")?;
+        assert!(fixture.app_snapshot.actions.len() >= 4);
+        Ok(())
+    }
+
+    #[test]
+    fn demo_fixture_storage_doctor_has_corrupt_record() -> Result<(), UiSnapshotError> {
+        let fixture = load_demo_fixture("storage_doctor_ai_context")?;
+        let storage = fixture.app_snapshot.storage.as_ref().unwrap();
+        use vb_ui_model::CorruptRecordStatus;
+        assert!(matches!(
+            storage.journal.corrupt_records,
+            CorruptRecordStatus::Corrupt { .. }
+        ));
+        Ok(())
+    }
+}

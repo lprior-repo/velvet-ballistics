@@ -519,6 +519,7 @@ pub enum ActionJournalEvent {
 }
 
 #[cfg(test)]
+#[allow(clippy::expect_used, clippy::ok_expect, clippy::panic_in_result_fn, clippy::panic, clippy::indexing_slicing, clippy::as_conversions)]
 mod tests {
     use super::*;
 

@@ -567,7 +567,7 @@ impl WorkflowCanvas {
 
     // Expose for testing: get the position map.
     #[cfg(test)]
-    pub fn test_positions(&self) -> HashMap<usize, [f64; 2]> {
+    pub fn positions_for_testing(&self) -> HashMap<usize, [f64; 2]> {
         let mut map = HashMap::new();
         for (idx, node_id) in self.node_ids.iter().enumerate() {
             if let Some(&pos) = self.layout.positions.get(node_id.as_str()) {
@@ -1342,7 +1342,7 @@ mod tests {
     fn focus_jump_centers_on_node() {
         let doc = make_chain_document();
         let mut canvas = WorkflowCanvas::new(doc);
-        let positions = canvas.test_positions();
+        let positions = canvas.positions_for_testing();
         let target_pos = positions.get(&1).copied().unwrap_or([0.0; 2]);
         let ok = canvas.focus_jump(1, 800.0, 600.0);
         assert!(ok);
@@ -1391,7 +1391,7 @@ mod tests {
     fn chain_layout_positions_increase_in_x() {
         let doc = make_chain_document();
         let canvas = WorkflowCanvas::new(doc);
-        let positions = canvas.test_positions();
+        let positions = canvas.positions_for_testing();
         let p0 = positions.get(&0).copied().unwrap_or([0.0; 2]);
         let p1 = positions.get(&1).copied().unwrap_or([0.0; 2]);
         let p2 = positions.get(&2).copied().unwrap_or([0.0; 2]);
@@ -1428,7 +1428,7 @@ mod tests {
         let doc = make_chain_document();
         let mut canvas = WorkflowCanvas::new(doc);
         canvas.set_zoom(0.5);
-        let positions = canvas.test_positions();
+        let positions = canvas.positions_for_testing();
         let Some(target_pos) = positions.get(&1).copied() else {
             return;
         };
@@ -1483,7 +1483,7 @@ mod tests {
         let ok = canvas.focus_jump(0, 800.0, 600.0);
         assert!(ok);
         let (px, py) = canvas.pan();
-        let positions = canvas.test_positions();
+        let positions = canvas.positions_for_testing();
         let Some(pos) = positions.get(&0).copied() else {
             return;
         };

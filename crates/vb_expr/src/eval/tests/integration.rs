@@ -1301,3 +1301,153 @@ fn eval_helper_with_store_sum_returns_integer_overflow_on_overflow() -> ExprResu
     };
     Ok(())
 }
+
+// =========================================================================
+// Stub helper error-path coverage (no ValueStore available)
+// These helpers always return TypeMismatch without a store, but their
+// validation code paths are exercised to confirm the correct error.
+// =========================================================================
+
+/// eval_helper_starts_with without store returns TypeMismatch after validation.
+#[test]
+fn eval_helper_starts_with_without_store_returns_type_mismatch() -> ExprResult<()> {
+    // Construct Symbol handles (store doesn't exist, so lookup fails after validation)
+    let text_val = SlotValue::Symbol(vb_core::ids::SymbolId::new(0));
+    let prefix_val = SlotValue::Symbol(vb_core::ids::SymbolId::new(1));
+    let result = eval_helper(ExprHelper::StartsWith, &[text_val, prefix_val]);
+    let Err(ExprError::TypeMismatch { expected, found }) = result else {
+        return Err(ExprError::UnexpectedToken {
+            token: "expected TypeMismatch for StartsWith without store".into(),
+        });
+    };
+    assert!(
+        expected.contains("value-store"),
+        "expected store context error, got: {expected}"
+    );
+    Ok(())
+}
+
+/// eval_helper_ends_with without store returns TypeMismatch after validation.
+#[test]
+fn eval_helper_ends_with_without_store_returns_type_mismatch() -> ExprResult<()> {
+    let text_val = SlotValue::Symbol(vb_core::ids::SymbolId::new(0));
+    let suffix_val = SlotValue::Symbol(vb_core::ids::SymbolId::new(1));
+    let result = eval_helper(ExprHelper::EndsWith, &[text_val, suffix_val]);
+    let Err(ExprError::TypeMismatch { expected, found }) = result else {
+        return Err(ExprError::UnexpectedToken {
+            token: "expected TypeMismatch for EndsWith without store".into(),
+        });
+    };
+    assert!(
+        expected.contains("value-store"),
+        "expected store context error, got: {expected}"
+    );
+    Ok(())
+}
+
+/// eval_helper_has without store returns TypeMismatch after validation.
+#[test]
+fn eval_helper_has_without_store_returns_type_mismatch() -> ExprResult<()> {
+    let obj_val = SlotValue::Object(vb_core::ids::ObjectId::new(0));
+    let key_val = SlotValue::Symbol(vb_core::ids::SymbolId::new(1));
+    let result = eval_helper(ExprHelper::Has, &[obj_val, key_val]);
+    let Err(ExprError::TypeMismatch { expected, found }) = result else {
+        return Err(ExprError::UnexpectedToken {
+            token: "expected TypeMismatch for Has without store".into(),
+        });
+    };
+    assert!(
+        expected.contains("value-store"),
+        "expected store context error, got: {expected}"
+    );
+    Ok(())
+}
+
+/// eval_helper_append without store returns TypeMismatch after validation.
+#[test]
+fn eval_helper_append_without_store_returns_type_mismatch() -> ExprResult<()> {
+    let list_val = SlotValue::List(vb_core::ids::ListId::new(0));
+    let item_val = SlotValue::I64(42);
+    let result = eval_helper(ExprHelper::Append, &[list_val, item_val]);
+    let Err(ExprError::TypeMismatch { expected, found }) = result else {
+        return Err(ExprError::UnexpectedToken {
+            token: "expected TypeMismatch for Append without store".into(),
+        });
+    };
+    assert!(
+        expected.contains("value-store"),
+        "expected store context error, got: {expected}"
+    );
+    Ok(())
+}
+
+/// eval_helper_append_if without store returns TypeMismatch after validation.
+#[test]
+fn eval_helper_append_if_without_store_returns_type_mismatch() -> ExprResult<()> {
+    let list_val = SlotValue::List(vb_core::ids::ListId::new(0));
+    let item_val = SlotValue::I64(42);
+    let cond_val = SlotValue::Bool(true);
+    let result = eval_helper(ExprHelper::AppendIf, &[list_val, item_val, cond_val]);
+    let Err(ExprError::TypeMismatch { expected, found }) = result else {
+        return Err(ExprError::UnexpectedToken {
+            token: "expected TypeMismatch for AppendIf without store".into(),
+        });
+    };
+    assert!(
+        expected.contains("value-store"),
+        "expected store context error, got: {expected}"
+    );
+    Ok(())
+}
+
+/// eval_helper_merge without store returns TypeMismatch after validation.
+#[test]
+fn eval_helper_merge_without_store_returns_type_mismatch() -> ExprResult<()> {
+    let left_val = SlotValue::Object(vb_core::ids::ObjectId::new(0));
+    let right_val = SlotValue::Object(vb_core::ids::ObjectId::new(1));
+    let result = eval_helper(ExprHelper::Merge, &[left_val, right_val]);
+    let Err(ExprError::TypeMismatch { expected, found }) = result else {
+        return Err(ExprError::UnexpectedToken {
+            token: "expected TypeMismatch for Merge without store".into(),
+        });
+    };
+    assert!(
+        expected.contains("value-store"),
+        "expected store context error, got: {expected}"
+    );
+    Ok(())
+}
+
+/// eval_helper_sum without store returns TypeMismatch after validation.
+#[test]
+fn eval_helper_sum_without_store_returns_type_mismatch() -> ExprResult<()> {
+    let list_val = SlotValue::List(vb_core::ids::ListId::new(0));
+    let result = eval_helper(ExprHelper::Sum, &[list_val]);
+    let Err(ExprError::TypeMismatch { expected, found }) = result else {
+        return Err(ExprError::UnexpectedToken {
+            token: "expected TypeMismatch for Sum without store".into(),
+        });
+    };
+    assert!(
+        expected.contains("value-store"),
+        "expected store context error, got: {expected}"
+    );
+    Ok(())
+}
+
+/// eval_helper_append_if with wrong condition type returns TypeMismatch.
+#[test]
+fn eval_helper_append_if_wrong_cond_type_returns_type_mismatch() -> ExprResult<()> {
+    let list_val = SlotValue::List(vb_core::ids::ListId::new(0));
+    let item_val = SlotValue::I64(42);
+    let cond_val = SlotValue::I64(1); // wrong type, should be Bool
+    let result = eval_helper(ExprHelper::AppendIf, &[list_val, item_val, cond_val]);
+    let Err(ExprError::TypeMismatch { expected, found }) = result else {
+        return Err(ExprError::UnexpectedToken {
+            token: "expected TypeMismatch for AppendIf with wrong cond type".into(),
+        });
+    };
+    assert_eq!(expected, "boolean", "expected boolean, got: {expected}");
+    assert_eq!(found, "number", "expected number, got: {found}");
+    Ok(())
+}

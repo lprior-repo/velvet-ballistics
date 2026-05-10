@@ -240,6 +240,7 @@ pub fn resolve_contract(
 }
 
 #[cfg(test)]
+#[allow(clippy::expect_used, clippy::unwrap_used, clippy::cloned_ref_to_slice_refs)]
 mod tests {
     use super::*;
     use vb_core::action::{Idempotency, RetrySafety, SideEffect};

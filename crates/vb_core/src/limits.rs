@@ -94,6 +94,7 @@ pub const MAX_VALUES_PER_RUN: usize = 1_000_000;
 pub const MAX_STEP_BUDGET: u64 = 10_000;
 
 #[cfg(test)]
+#[allow(clippy::assertions_on_constants, clippy::panic_in_result_fn, clippy::panic)]
 mod tests {
     use super::*;
 

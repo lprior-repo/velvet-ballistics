@@ -473,4 +473,279 @@ size_14 = 14
 
         Ok(())
     }
+
+    #[test]
+    fn test_parse_tokens_partial_toml_uses_defaults() -> Result<(), UiSnapshotError> {
+        let tokens = parse_tokens_from_toml("")?;
+        // All fields should be default values
+        assert_eq!(tokens.window_width, 1920);
+        assert_eq!(tokens.window_height, 1080);
+        assert_eq!(tokens.surface.as_str(), "#FFFFFF");
+        Ok(())
+    }
+
+    #[test]
+    fn test_parse_tokens_invalid_toml() {
+        let result = parse_tokens_from_toml("not valid toml {{{{");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_parse_tokens_with_radius_table() -> Result<(), UiSnapshotError> {
+        let content = r##"
+[radius]
+chip = 15.5
+control = 8.0
+card_min = 5.0
+card = 20.0
+card_max = 30.0
+panel = 25.0
+window = 35.0
+"##;
+        let tokens = parse_tokens_from_toml(content)?;
+        require_value(tokens.chip_radius.to_bits(), 15.5_f32.to_bits(), "chip_radius")?;
+        require_value(tokens.control_radius.to_bits(), 8.0_f32.to_bits(), "control_radius")?;
+        require_value(tokens.card_min_radius.to_bits(), 5.0_f32.to_bits(), "card_min_radius")?;
+        require_value(tokens.card_radius.to_bits(), 20.0_f32.to_bits(), "card_radius")?;
+        require_value(tokens.card_max_radius.to_bits(), 30.0_f32.to_bits(), "card_max_radius")?;
+        require_value(tokens.panel_radius.to_bits(), 25.0_f32.to_bits(), "panel_radius")?;
+        require_value(tokens.window_radius.to_bits(), 35.0_f32.to_bits(), "window_radius")?;
+        Ok(())
+    }
+
+    #[test]
+    fn test_parse_tokens_with_type_table() -> Result<(), UiSnapshotError> {
+        let content = r##"
+[type]
+family_sans = "Roboto"
+family_mono = "Fira Code"
+size_11 = 11
+size_12 = 12
+size_13 = 13
+size_16 = 16
+size_20 = 20
+size_24 = 24
+weight_regular = 300
+weight_medium = 600
+weight_semibold = 700
+"##;
+        let tokens = parse_tokens_from_toml(content)?;
+        require_value(tokens.family_sans.as_str(), "Roboto", "family_sans")?;
+        require_value(tokens.family_mono.as_str(), "Fira Code", "family_mono")?;
+        require_value(tokens.weight_regular, 300, "weight_regular")?;
+        require_value(tokens.weight_medium, 600, "weight_medium")?;
+        require_value(tokens.weight_semibold, 700, "weight_semibold")?;
+        Ok(())
+    }
+
+    #[test]
+    fn test_parse_tokens_all_color_fields() -> Result<(), UiSnapshotError> {
+        let content = r##"
+[color]
+background_board = "#000000"
+shell = "#111111"
+surface = "#222222"
+surface_glass = "#333333CC"
+surface_muted = "#444444"
+line_hair = "#555555"
+line_soft = "#666666"
+text_primary = "#777777"
+text_secondary = "#888888"
+text_tertiary = "#999999"
+success = "#AAAAAA"
+running = "#BBBBBB"
+active_cyan = "#CCCCCC"
+warning = "#DDDDDD"
+failure = "#EEEEEE"
+taint = "#FFFFFF"
+durable = "#ABABAB"
+pending = "#BCBCBC"
+"##;
+        let tokens = parse_tokens_from_toml(content)?;
+        assert_eq!(tokens.background_board, "#000000");
+        assert_eq!(tokens.shell, "#111111");
+        assert_eq!(tokens.text_secondary, "#888888");
+        assert_eq!(tokens.text_tertiary, "#999999");
+        assert_eq!(tokens.active_cyan, "#CCCCCC");
+        Ok(())
+    }
+
+    #[test]
+    fn test_parse_tokens_layout_fields() -> Result<(), UiSnapshotError> {
+        let content = r##"
+[layout]
+window_width = 3840
+window_height = 2160
+outer_margin = 64
+sidebar_width = 300
+top_bar_height = 100
+content_gutter = 24
+inspector_width_min = 400
+inspector_width_max = 600
+bottom_timeline_min = 300
+graph_canvas_min_width = 800
+graph_canvas_min_height = 600
+"##;
+        let tokens = parse_tokens_from_toml(content)?;
+        require_value(tokens.window_width, 3840, "window_width")?;
+        require_value(tokens.window_height, 2160, "window_height")?;
+        require_value(tokens.outer_margin, 64, "outer_margin")?;
+        require_value(tokens.sidebar_width, 300, "sidebar_width")?;
+        require_value(tokens.top_bar_height, 100, "top_bar_height")?;
+        require_value(tokens.content_gutter, 24, "content_gutter")?;
+        require_value(tokens.inspector_width_min, 400, "inspector_width_min")?;
+        require_value(tokens.inspector_width_max, 600, "inspector_width_max")?;
+        require_value(tokens.bottom_timeline_min, 300, "bottom_timeline_min")?;
+        require_value(tokens.graph_canvas_min_width, 800, "graph_canvas_min_width")?;
+        require_value(tokens.graph_canvas_min_height, 600, "graph_canvas_min_height")?;
+        Ok(())
+    }
+
+    #[test]
+    fn test_set_u32_converts_valid_i64() {
+        let mut val = 0u32;
+        super::set_u32(&mut val, 42);
+        assert_eq!(val, 42);
+    }
+
+    #[test]
+    fn test_set_u32_ignores_negative_i64() {
+        let mut val = 999u32;
+        super::set_u32(&mut val, -1);
+        assert_eq!(val, 999); // unchanged
+    }
+
+    #[test]
+    fn test_set_u32_ignores_overflow_i64() {
+        let mut val = 0u32;
+        super::set_u32(&mut val, i64::MAX);
+        assert_eq!(val, 0); // unchanged
+    }
+
+    #[test]
+    fn test_set_f32_converts_valid_f64() {
+        let mut val = 0.0_f32;
+        super::set_f32(&mut val, 3.14159);
+        assert!((val - 3.14159).abs() < 0.0001);
+    }
+
+    #[test]
+    fn test_set_f32_ignores_nan() {
+        let mut val = 1.0_f32;
+        super::set_f32(&mut val, f64::NAN);
+        assert_eq!(val, 1.0); // unchanged
+    }
+
+    #[test]
+    fn test_set_f32_ignores_infinity() {
+        let mut val = 1.0_f32;
+        super::set_f32(&mut val, f64::INFINITY);
+        assert_eq!(val, 1.0); // unchanged
+    }
+
+    #[test]
+    fn test_parse_hex_rgb_valid() {
+        assert_eq!(super::parse_hex_rgb("#FF8040"), Some((0xFF, 0x80, 0x40)));
+        // 7 chars gets parsed as 3 pairs: 9A, BC, DE — trailing "F" is dropped
+        assert_eq!(super::parse_hex_rgb("9ABCDEF"), Some((0x9A, 0xBC, 0xDE)));
+    }
+
+    #[test]
+    fn test_parse_hex_rgb_without_hash() {
+        assert_eq!(super::parse_hex_rgb("AABBCC"), Some((0xAA, 0xBB, 0xCC)));
+    }
+
+    #[test]
+    fn test_parse_hex_rgb_invalid_too_short() {
+        assert_eq!(super::parse_hex_rgb("#ABC"), None);
+    }
+
+    #[test]
+    fn test_parse_hex_rgb_invalid_empty() {
+        assert_eq!(super::parse_hex_rgb(""), None);
+    }
+
+    #[test]
+    fn test_parse_hex_byte_valid() {
+        assert_eq!(super::parse_hex_byte(b"FF"), Some(255));
+        assert_eq!(super::parse_hex_byte(b"00"), Some(0));
+        assert_eq!(super::parse_hex_byte(b"1A"), Some(26));
+        assert_eq!(super::parse_hex_byte(b"aB"), Some(171));
+    }
+
+    #[test]
+    fn test_parse_hex_byte_invalid() {
+        assert_eq!(super::parse_hex_byte(b"GG"), None);
+        assert_eq!(super::parse_hex_byte(b""), None);
+    }
+
+    #[test]
+    fn test_hex_to_f32_literal_converts_correctly() {
+        let literal = super::hex_to_f32_literal("#FFFFFF");
+        assert!(literal.contains("1.0")); // R=255/255=1.0
+    }
+
+    #[test]
+    fn test_hex_to_f32_literal_black() {
+        let literal = super::hex_to_f32_literal("#000000");
+        assert!(literal.contains("0.0"));
+    }
+
+    #[test]
+    fn test_hex_to_f32_literal_invalid_returns_black() {
+        let literal = super::hex_to_f32_literal("not hex");
+        assert_eq!(literal, "[0.0, 0.0, 0.0, 1.0]".to_string());
+    }
+
+    #[test]
+    fn test_tokens_to_rust_constants_produces_output() {
+        let tokens = UiTokens::default();
+        let output = super::tokens_to_rust_constants(&tokens);
+        assert!(output.contains("pub struct TokenColors"));
+        assert!(output.contains("pub struct TokenLayout"));
+        assert!(output.contains("pub const TOKENS: TokenColors"));
+        assert!(output.contains("pub const LAYOUT: TokenLayout"));
+    }
+
+    #[test]
+    fn test_tokens_to_rust_constants_contains_color_values() {
+        let tokens = UiTokens::default();
+        let output = super::tokens_to_rust_constants(&tokens);
+        // Default surface is #FFFFFF which is [1.0, 1.0, 1.0, 1.0]
+        assert!(output.contains("surface"));
+        assert!(output.contains("text_primary"));
+        assert!(output.contains("success"));
+    }
+
+    #[test]
+    fn test_default_tokens_has_expected_values() {
+        let tokens = UiTokens::default();
+        assert_eq!(tokens.window_width, 1920);
+        assert_eq!(tokens.window_height, 1080);
+        assert_eq!(tokens.outer_margin, 32);
+        assert_eq!(tokens.chip_radius, 10.0);
+        assert_eq!(tokens.family_sans, "Inter, SF Pro, system-ui");
+    }
+
+    #[cfg(feature = "std")]
+    #[test]
+    fn test_load_tokens_from_file_missing_file() {
+        use std::path::Path;
+        let result = super::load_tokens_from_file(Path::new("/nonexistent/path/tokens.toml"));
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        let display = alloc::format!("{err}");
+        assert!(display.contains("Failed to read"));
+    }
+
+    #[cfg(feature = "std")]
+    #[test]
+    fn test_load_tokens_from_file_invalid_toml() -> anyhow::Result<()> {
+        let dir = tempfile::tempdir()?;
+        let path = dir.path().join("bad.toml");
+        std::fs::write(&path, "invalid {{{")?;
+        let result = super::load_tokens_from_file(&path);
+        assert!(result.is_err());
+        Ok(())
+    }
 }

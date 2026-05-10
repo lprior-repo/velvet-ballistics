@@ -404,6 +404,7 @@ pub fn retry_on_failure(
 }
 
 #[cfg(test)]
+#[allow(clippy::ok_expect, clippy::expect_used, clippy::let_unit_value)]
 mod tests {
     use super::*;
     use vb_core::action::{ActionFailureCode, RetryPolicy as VbRetryPolicy};

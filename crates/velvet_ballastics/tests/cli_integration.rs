@@ -2293,10 +2293,9 @@ fn cli_doctor_json_includes_trim_eligibility_check() {
                 vb_storage::JournalEvent::StepStarted {
                     run,
                     seq: vb_storage::EventSeq::new(i),
-                    step: vb_core::StepIdx::new({
-                        #[allow(clippy::unwrap_used)]
-                        u16::try_from(i).unwrap() - 1
-                    }),
+                    step: vb_core::StepIdx::new(
+                        u16::try_from(i).expect("i is 1..5 in StepStarted branch, always fits in u16") - 1
+                    ),
                 }
             }
         })
