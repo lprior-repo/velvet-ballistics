@@ -4,7 +4,7 @@
 use crate::lexer::{BinaryOp, UnaryOp};
 use crate::parser::{ExprAst, ExprHelper, ExprLiteral};
 use crate::{ExprError, ExprResult};
-use vb_core::{ConstIdx, ConstValue, CoreError, ExprOp, ExprProgram, SlotIdx};
+use vb_core::{ConstIdx, ConstValue, CoreError, ExprOp, ExprProgram, FiniteF64, SlotIdx};
 
 pub mod fold;
 pub mod tests;
@@ -154,6 +154,10 @@ fn literal_to_const(lit: &ExprLiteral) -> ExprResult<ConstValue> {
         ExprLiteral::Text(_) => Err(ExprError::UnsupportedLiteral {
             literal: "text".into(),
         }),
+        ExprLiteral::F64(v) => {
+            let finite = FiniteF64::new(*v).map_err(|_| ExprError::NonFiniteFloat)?;
+            Ok(ConstValue::F64(finite))
+        }
     }
 }
 

@@ -1,6 +1,8 @@
 #![forbid(unsafe_code)]
 //! Expression token types for vb_expr.
 
+use vb_core::FiniteF64;
+
 /// Expression token produced by the lexer.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Token {
@@ -56,6 +58,8 @@ pub enum LiteralToken {
     I64(i64),
     /// Double-quoted string literal.
     Text(Box<str>),
+    /// Double-precision floating-point literal (finite only).
+    F64(FiniteF64),
 }
 
 /// Left-associative infix binary operator.

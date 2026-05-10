@@ -81,6 +81,7 @@ fn infer_literal(lit: &ExprLiteral) -> ExprType {
         ExprLiteral::Bool(_) => ExprType::Bool,
         ExprLiteral::I64(_) => ExprType::I64,
         ExprLiteral::Text(_) => ExprType::Text,
+        ExprLiteral::F64(_) => ExprType::F64,
     }
 }
 
