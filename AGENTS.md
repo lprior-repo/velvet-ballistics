@@ -13,10 +13,10 @@
 
 ## Beads Workflow
 
-Run `bd prime` before work to load the full workflow context.
+
 
 ```bash
-bd prime             # Load full beads workflow context
+
 bd ready             # Find available work
 bd show <id>         # View issue details
 bd update <id> --claim  # Claim work atomically
@@ -83,7 +83,7 @@ cp -rf source dest          # NOT: cp -r directory
 <!-- BEGIN BEADS INTEGRATION v:1 profile:minimal hash:ca08a54f -->
 ## Beads Issue Tracker
 
-This project uses **bd (beads)** for issue tracking. Run `bd prime` to see full workflow context and commands.
+This project uses **bd (beads)** for issue tracking.
 
 ### Quick Reference
 
@@ -97,7 +97,7 @@ bd close <id>         # Complete work
 ### Rules
 
 - Use `bd` for ALL task tracking — do NOT use TodoWrite, TaskCreate, or markdown TODO lists
-- Run `bd prime` for detailed command reference and session close protocol
+
 - Use `bd remember` for persistent knowledge — do NOT use MEMORY.md files
 
 ## Session Completion
