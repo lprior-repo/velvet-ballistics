@@ -1,4 +1,5 @@
 #![forbid(unsafe_code)]
+#![allow(clippy::panic)]
 //! Integration tests for durability matrix: handler persistence-before-ack.
 
 use std::sync::Arc;
@@ -206,6 +207,14 @@ fn small_config() -> ShardConfig {
     }
 }
 
+macro_rules! assert_ok {
+    ($result:expr, $msg:expr) => {
+        if let Err(e) = $result {
+            panic!(concat!($msg, ": {:?}"), e);
+        }
+    };
+}
+
 // ---------------------------------------------------------------------------
 // Persistence-before-ack tests
 // ---------------------------------------------------------------------------
@@ -219,16 +228,20 @@ fn submit_handler_persists_before_ack() {
     };
     let run = RunId::new(1);
 
-    shard
-        .enqueue(ShardCommand::Submit {
+    assert_ok!(
+        shard.enqueue(ShardCommand::Submit {
             run,
             workflow,
             caps: CapabilitySet::empty(),
-        })
-        .unwrap();
-    shard.tick().unwrap();
+        }),
+        "enqueue Submit should succeed"
+    );
+    assert_ok!(shard.tick(), "tick after Submit should succeed");
 
-    let events = journal.snapshot().unwrap();
+    let events = match journal.snapshot() {
+        Ok(e) => e,
+        Err(e) => panic!("snapshot should succeed: {:?}", e),
+    };
     let has_run_submitted = events
         .iter()
         .any(|e| matches!(e, RuntimeJournalEvent::RunSubmitted { run: r, .. } if *r == run));
@@ -247,17 +260,19 @@ fn action_completed_persists_before_ack() {
     };
     let run = RunId::new(1);
 
-    shard
-        .enqueue(ShardCommand::Submit {
+    assert_ok!(
+        shard.enqueue(ShardCommand::Submit {
             run,
             workflow,
             caps: CapabilitySet::empty(),
-        })
-        .unwrap();
-    shard.tick().unwrap();
+        }),
+        "enqueue Submit should succeed"
+    );
+    assert_ok!(shard.tick(), "tick after Submit should succeed");
 
-    // Clear journal from submit phase
-    let _ = journal.snapshot().unwrap();
+    if let Err(e) = journal.snapshot() {
+        panic!("snapshot after Submit should succeed: {:?}", e);
+    }
 
     let ticket = vb_core::action::ActionTicket {
         run,
@@ -274,12 +289,16 @@ fn action_completed_persists_before_ack() {
         taint: Taint::Clean,
         encoded_len: 1,
     };
-    shard
-        .enqueue(ShardCommand::ActionCompleted { ticket, output })
-        .unwrap();
-    shard.tick().unwrap();
+    assert_ok!(
+        shard.enqueue(ShardCommand::ActionCompleted { ticket, output }),
+        "enqueue ActionCompleted should succeed"
+    );
+    assert_ok!(shard.tick(), "tick after ActionCompleted should succeed");
 
-    let events = journal.snapshot().unwrap();
+    let events = match journal.snapshot() {
+        Ok(e) => e,
+        Err(e) => panic!("snapshot after ActionCompleted should succeed: {:?}", e),
+    };
     let has_slot_written = events
         .iter()
         .any(|e| matches!(e, RuntimeJournalEvent::SlotWritten { run: r, .. } if *r == run));
@@ -310,16 +329,19 @@ fn action_failed_persists_before_ack() {
     };
     let run = RunId::new(1);
 
-    shard
-        .enqueue(ShardCommand::Submit {
+    assert_ok!(
+        shard.enqueue(ShardCommand::Submit {
             run,
             workflow,
             caps: CapabilitySet::empty(),
-        })
-        .unwrap();
-    shard.tick().unwrap();
+        }),
+        "enqueue Submit should succeed"
+    );
+    assert_ok!(shard.tick(), "tick after Submit should succeed");
 
-    let _ = journal.snapshot().unwrap();
+    if let Err(e) = journal.snapshot() {
+        panic!("snapshot after Submit should succeed: {:?}", e);
+    }
 
     let ticket = vb_core::action::ActionTicket {
         run,
@@ -337,12 +359,16 @@ fn action_failed_persists_before_ack() {
         detail: None,
         encoded_len: 0,
     };
-    shard
-        .enqueue(ShardCommand::ActionFailed { ticket, failure })
-        .unwrap();
-    shard.tick().unwrap();
+    assert_ok!(
+        shard.enqueue(ShardCommand::ActionFailed { ticket, failure }),
+        "enqueue ActionFailed should succeed"
+    );
+    assert_ok!(shard.tick(), "tick after ActionFailed should succeed");
 
-    let events = journal.snapshot().unwrap();
+    let events = match journal.snapshot() {
+        Ok(e) => e,
+        Err(e) => panic!("snapshot after ActionFailed should succeed: {:?}", e),
+    };
     let has_action_failed = events
         .iter()
         .any(|e| matches!(e, RuntimeJournalEvent::ActionFailed { run: r, .. } if *r == run));
@@ -361,16 +387,19 @@ fn ask_answered_persists_before_ack() {
     };
     let run = RunId::new(1);
 
-    shard
-        .enqueue(ShardCommand::Submit {
+    assert_ok!(
+        shard.enqueue(ShardCommand::Submit {
             run,
             workflow,
             caps: CapabilitySet::empty(),
-        })
-        .unwrap();
-    shard.tick().unwrap();
+        }),
+        "enqueue Submit should succeed"
+    );
+    assert_ok!(shard.tick(), "tick after Submit should succeed");
 
-    let _ = journal.snapshot().unwrap();
+    if let Err(e) = journal.snapshot() {
+        panic!("snapshot after Submit should succeed: {:?}", e);
+    }
 
     let answer = vb_runtime::shard::AskAnswer {
         ticket: vb_runtime::shard::AskTicket {
@@ -382,10 +411,16 @@ fn ask_answered_persists_before_ack() {
         value: SlotValue::I64(99),
         taint: Taint::Clean,
     };
-    shard.enqueue(ShardCommand::AskAnswered { answer }).unwrap();
-    shard.tick().unwrap();
+    assert_ok!(
+        shard.enqueue(ShardCommand::AskAnswered { answer }),
+        "enqueue AskAnswered should succeed"
+    );
+    assert_ok!(shard.tick(), "tick after AskAnswered should succeed");
 
-    let events = journal.snapshot().unwrap();
+    let events = match journal.snapshot() {
+        Ok(e) => e,
+        Err(e) => panic!("snapshot after AskAnswered should succeed: {:?}", e),
+    };
     let has_ask_answered = events
         .iter()
         .any(|e| matches!(e, RuntimeJournalEvent::AskAnswered { run: r, .. } if *r == run));
@@ -413,21 +448,27 @@ fn cancel_persists_before_ack() {
     };
     let run = RunId::new(1);
 
-    shard
-        .enqueue(ShardCommand::Submit {
+    assert_ok!(
+        shard.enqueue(ShardCommand::Submit {
             run,
             workflow,
             caps: CapabilitySet::empty(),
-        })
-        .unwrap();
-    shard.tick().unwrap();
+        }),
+        "enqueue Submit should succeed"
+    );
+    assert_ok!(shard.tick(), "tick after Submit should succeed");
 
-    let _ = journal.snapshot().unwrap();
+    if let Err(e) = journal.snapshot() {
+        panic!("snapshot after Submit should succeed: {:?}", e);
+    }
 
-    shard.enqueue(ShardCommand::Cancel { run }).unwrap();
-    shard.tick().unwrap();
+    assert_ok!(shard.enqueue(ShardCommand::Cancel { run }), "enqueue Cancel should succeed");
+    assert_ok!(shard.tick(), "tick after Cancel should succeed");
 
-    let events = journal.snapshot().unwrap();
+    let events = match journal.snapshot() {
+        Ok(e) => e,
+        Err(e) => panic!("snapshot after Cancel should succeed: {:?}", e),
+    };
     let has_run_cancelled = events
         .iter()
         .any(|e| matches!(e, RuntimeJournalEvent::RunCancelled { run: r } if *r == run));
@@ -446,21 +487,30 @@ fn timer_fired_persists_before_ack() {
     };
     let run = RunId::new(1);
 
-    shard
-        .enqueue(ShardCommand::Submit {
+    assert_ok!(
+        shard.enqueue(ShardCommand::Submit {
             run,
             workflow,
             caps: CapabilitySet::empty(),
-        })
-        .unwrap();
-    shard.tick().unwrap();
+        }),
+        "enqueue Submit should succeed"
+    );
+    assert_ok!(shard.tick(), "tick after Submit should succeed");
 
-    let _ = journal.snapshot().unwrap();
+    if let Err(e) = journal.snapshot() {
+        panic!("snapshot after Submit should succeed: {:?}", e);
+    }
 
-    shard.enqueue(ShardCommand::TimerFired { run }).unwrap();
-    shard.tick().unwrap();
+    assert_ok!(
+        shard.enqueue(ShardCommand::TimerFired { run }),
+        "enqueue TimerFired should succeed"
+    );
+    assert_ok!(shard.tick(), "tick after TimerFired should succeed");
 
-    let events = journal.snapshot().unwrap();
+    let events = match journal.snapshot() {
+        Ok(e) => e,
+        Err(e) => panic!("snapshot after TimerFired should succeed: {:?}", e),
+    };
     let has_wait_resolved = events
         .iter()
         .any(|e| matches!(e, RuntimeJournalEvent::WaitResolved { run: r, .. } if *r == run));
@@ -471,39 +521,70 @@ fn timer_fired_persists_before_ack() {
 }
 
 // ---------------------------------------------------------------------------
-// Gate tests for missing evidence
+// Gate tests for matrix verification
 // ---------------------------------------------------------------------------
 
 use vb_runtime::durability_matrix::{
-    verify_ack_after_persist, verify_matrix_completeness, verify_matrix_replay_proofs,
+    verify_ack_after_persist, verify_matrix, verify_matrix_completeness,
+    verify_matrix_completeness_with_primitives, verify_matrix_replay_proofs,
 };
 
 #[test]
-fn gate_fails_when_primitive_row_is_missing() {
+fn gate_passes_when_matrix_is_complete() {
     let result = verify_matrix_completeness();
     assert!(
         result.is_ok(),
-        "Matrix should be complete; if this fails, the missing primitive is: {:?}",
+        "Matrix should be complete; got: {:?}",
         result
     );
 }
 
 #[test]
-fn gate_fails_when_row_omits_replay_evidence() {
+fn gate_passes_when_all_rows_have_replay_evidence() {
     let result = verify_matrix_replay_proofs();
     assert!(
         result.is_ok(),
-        "All rows should have replay proof; if this fails: {:?}",
+        "All rows should have replay proof; got: {:?}",
         result
     );
 }
 
 #[test]
-fn gate_fails_when_row_claims_ack_before_persist() {
+fn gate_passes_when_no_row_claims_ack_before_persist() {
     let result = verify_ack_after_persist();
     assert!(
         result.is_ok(),
-        "No row should claim ack-before-persist; if this fails: {:?}",
+        "No row should claim ack-before-persist; got: {:?}",
+        result
+    );
+}
+
+#[test]
+fn full_matrix_verification_passes() {
+    let result = verify_matrix();
+    assert!(
+        result.is_ok(),
+        "Full matrix verification should pass; got: {:?}",
+        result
+    );
+}
+
+#[test]
+fn gate_err_when_primitive_missing_via_testable_variant() {
+    let result = verify_matrix_completeness_with_primitives(&["nonexistent_primitive"]);
+    assert!(
+        result.is_err(),
+        "Expected error for missing primitive, got: {:?}",
+        result
+    );
+}
+
+#[test]
+fn gate_passes_with_single_existing_primitive() {
+    let result = verify_matrix_completeness_with_primitives(&["set"]);
+    assert!(
+        result.is_ok(),
+        "Single existing primitive should pass; got: {:?}",
         result
     );
 }

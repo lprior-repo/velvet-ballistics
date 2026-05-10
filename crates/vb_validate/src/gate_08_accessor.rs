@@ -396,6 +396,26 @@ mod tests {
         );
     }
 
+    #[test]
+    fn debug_proptest_failure() {
+        use vb_core::ids::SymbolId;
+        use vb_core::workflow::PathSegment;
+        let parts = workflow_parts_with_accessors(
+            2,
+            1,
+            Box::new([accessor_allocating_boxed_path(
+                0,
+                Box::new([PathSegment::Field(SymbolId::new(0))]),
+            )]),
+        );
+        eprintln!("symbols_count = {}", parts.symbols_count);
+        eprintln!("slot_count = {}", parts.slot_count);
+        eprintln!("accessor.root = {:?}", parts.accessors[0].root);
+        eprintln!("accessor.path = {:?}", parts.accessors[0].path);
+        let result = validate_gate_08_accessor_path_segments(&parts);
+        eprintln!("result = {:?}", result);
+    }
+
     proptest! {
         #[test]
         fn proptest_gate_08_accepts_exactly_field_symbols_below_symbols_count(
@@ -479,7 +499,7 @@ mod tests {
                 1,
                 Box::new([accessor_allocating_boxed_path(
                     root,
-                    Box::new([PathSegment::Field(SymbolId::new(1))]),
+                    Box::new([PathSegment::Field(SymbolId::new(0))]),
                 )]),
             );
             prop_assert_eq!(

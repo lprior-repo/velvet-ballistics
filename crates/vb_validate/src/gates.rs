@@ -1454,6 +1454,7 @@ mod tests {
     #[test]
     fn gate_08_accepts_valid_accessor() {
         let mut parts = make_parts(vec![finish_node(0, 0)], 2);
+        parts.symbols_count = 2;
         parts.accessors = Box::new([AccessorProgram {
             root: SlotIdx::new(0),
             path: Box::new([PathSegment::Field(SymbolId::new(1))]),

@@ -3,10 +3,189 @@ Base revision: N/A
 Head revision: HEAD
 Affected by changes: all
 Changed files:
+	../.beads/vb-2bok/STATE.md
+	../.beads/vb-2bok/qa-report.md
+	../.beads/vb-2bok/qa-review.md
+	../.beads/vb-2bok/test-suite-review.md
+	../.beads/vb-2yb8/STATE.md
+	../.beads/vb-2yb8/qa-report.md
+	../.beads/vb-2yb8/qa-review.md
+	../.beads/vb-2yb8/test-suite-review.md
+	../.beads/vb-3ksi/STATE.md
+	../.beads/vb-3ksi/codebase-map.md
+	../.beads/vb-6azo/STATE.md
+	../.beads/vb-6azo/qa-report.md
+	../.beads/vb-6azo/qa-review.md
+	../.beads/vb-6azo/test-suite-review.md
+	../.beads/vb-78f9/STATE.md
+	../.beads/vb-78f9/qa-report.md
+	../.beads/vb-78f9/qa-review.md
+	../.beads/vb-78f9/test-suite-review.md
+	../.beads/vb-7gs9/STATE.md
+	../.beads/vb-7gs9/qa-report.md
+	../.beads/vb-7gs9/qa-review.md
+	../.beads/vb-99n6/STATE.md
+	../.beads/vb-99n6/qa-report.md
+	../.beads/vb-99n6/qa-review.md
+	../.beads/vb-99n6/test-suite-review.md
+	../.beads/vb-fb52/STATE.md
+	../.beads/vb-fb52/qa-report.md
+	../.beads/vb-fb52/qa-review.md
+	../.beads/vb-fb52/test-suite-review.md
+	../.beads/vb-qi37.7.3/STATE.md
+	../.beads/vb-qi37.7.3/ci-failure-category.txt
+	../.beads/vb-qi37.7.3/contract-verification-review.md
+	../.beads/vb-qi37.7.3/contract.md
+	../.beads/vb-qi37.7.3/implementation.md
+	../.beads/vb-qi37.7.3/lean-contract.md
+	../.beads/vb-qi37.7.3/manual-qa-smoke.md
+	../.beads/vb-qi37.7.3/moon-ci-force.out
+	../.beads/vb-qi37.7.3/moon-ci.out
+	../.beads/vb-qi37.7.3/moon-report.md
+	../.beads/vb-qi37.7.3/proof-obligations.jsonl
+	../.beads/vb-qi37.7.3/red-phase.md
+	../.beads/vb-qi37.7.3/test-plan-review.md
+	../.beads/vb-qi37.7.3/test-plan.md
+	../.beads/vb-qi37.7.3/traceability-matrix.jsonl
+	../.beads/vb-qi37.7.3/verification-layers.md
+	../.beads/vb-qi37/STATE.md
+	../.beads/vb-qi37/qa-report.md
+	../.beads/vb-qi37/qa-review.md
+	../.beads/vb-qi37/test-suite-review.md
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/.gitignore
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/README.md
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/agent-r11-drift-6/architecture-refactor.md
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/agent-r6-drift-11/architecture-refactor.md
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/agent-r6-drift-6/architecture-refactor.md
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/agent-r6-drift-9/architecture-refactor.md
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/agent-r7-drift-10/architecture-refactor.md
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/agent-r7-drift-3/architecture-refactor.md
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/agent-r7-drift-5/architecture-refactor.md
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/agent-r7-drift-6/architecture-refactor.md
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/agent-r8-drift-2/architecture-refactor.md
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/agent-r8-drift-3/architecture-refactor.md
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/agent-r8-drift-7/architecture-refactor.md
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/agent-r9-drift-10/architecture-refactor.md
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/agent-r9-drift-3/architecture-refactor.md
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/agent-r9-drift-5/architecture-refactor.md
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/agent-r9-drift-7/architecture-refactor.md
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/config.yaml
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/hooks/post-checkout
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/hooks/post-merge
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/hooks/pre-commit
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/hooks/pre-push
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/hooks/prepare-commit-msg
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/manual-qa-smoke.md
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/metadata.json
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/r11-drift-1/architecture-refactor.md
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/r12-drift-10/architecture-refactor.md
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/r12-drift-12/architecture-refactor.md
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/r12-drift-3/architecture-refactor.md
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/r12-drift-4/architecture-refactor.md
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/r12-drift-5/architecture-refactor.md
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/r12-drift-6/architecture-refactor.md
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/r12-drift-8/architecture-refactor.md
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/r12-drift-9/architecture-refactor.md
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/r13-drift-1/architecture-refactor.md
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/schemas/velvet-ballistics-20260503135422-0jxeizzj.cue
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/schemas/velvet-ballistics-20260503135422-0wkc6wuu.cue
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/schemas/velvet-ballistics-20260503135422-2voajemi.cue
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/schemas/velvet-ballistics-20260503135422-6ay0sral.cue
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/schemas/velvet-ballistics-20260503135422-cz6ydamo.cue
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/schemas/velvet-ballistics-20260503135422-ddconglm.cue
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/schemas/velvet-ballistics-20260503135422-ede0vyes.cue
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/schemas/velvet-ballistics-20260503135422-fw1lcmvk.cue
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/schemas/velvet-ballistics-20260503135422-g9ehfmji.cue
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/schemas/velvet-ballistics-20260503135422-gkb0yrtr.cue
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/schemas/velvet-ballistics-20260503135422-gkhqie0n.cue
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/schemas/velvet-ballistics-20260503135422-jlpeurjj.cue
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/schemas/velvet-ballistics-20260503135422-jvdj5mpi.cue
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/schemas/velvet-ballistics-20260503135422-k5byvy7k.cue
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/schemas/velvet-ballistics-20260503135422-khzxkk1f.cue
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/schemas/velvet-ballistics-20260503135422-m2z49gxw.cue
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/schemas/velvet-ballistics-20260503135422-n2nxpqma.cue
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/schemas/velvet-ballistics-20260503135422-n9clkc34.cue
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/schemas/velvet-ballistics-20260503135422-ndtcldoh.cue
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/schemas/velvet-ballistics-20260503135422-oe0dgyee.cue
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/schemas/velvet-ballistics-20260503135422-pouno4gp.cue
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/schemas/velvet-ballistics-20260503135422-puqpbisd.cue
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/schemas/velvet-ballistics-20260503135422-qea6slkm.cue
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/schemas/velvet-ballistics-20260503135422-qmpylgwe.cue
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/schemas/velvet-ballistics-20260503135422-r4snrvax.cue
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/schemas/velvet-ballistics-20260503135422-wssokwv7.cue
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/schemas/velvet-ballistics-20260503135422-y6qkbkxe.cue
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/schemas/velvet-ballistics-20260503135422-yqqctky8.cue
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/schemas/velvet-ballistics-20260503135422-zalnuqoo.cue
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/schemas/velvet-ballistics-20260503135423-avzx72iz.cue
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/schemas/velvet-ballistics-20260503135423-mpdoz3kh.cue
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/vb-1u88/manual-qa-final.md
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/vb-2yb8/manual-qa-smoke.md
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/vb-apn5/STATE.md
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/vb-apn5/architectural-drift-review.md
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/vb-apn5/black-hat-review.md
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/vb-apn5/codebase-map.md
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/vb-apn5/contract-verification-review.md
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/vb-apn5/contract.md
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/vb-apn5/implementation.md
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/vb-apn5/kani-justification.md
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/vb-apn5/manual-qa-final.md
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/vb-apn5/moon-report.md
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/vb-apn5/proof-obligations.jsonl
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/vb-apn5/qa-report.md
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/vb-apn5/qa-review.md
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/vb-apn5/red-queen-report.md
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/vb-apn5/test-plan-review.md
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/vb-apn5/test-plan.md
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/vb-apn5/test-suite-review.md
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/vb-apn5/traceability-matrix.jsonl
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/vb-apn5/verification-layers.md
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/vb-b5f/STATE.md
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/vb-blq/STATE.md
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/vb-f2zo/architecture-refactor.md
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/vb-heqb/implementation.md
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/vb-jul7/architecture-refactor.md
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/vb-kd2b/STATE.md
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/vb-kd2b/architectural-drift-review.md
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/vb-kd2b/black-hat-final.md
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/vb-kd2b/black-hat-review-v2.md
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/vb-kd2b/black-hat-review.md
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/vb-kd2b/codebase-map.md
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/vb-kd2b/contract.md
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/vb-kd2b/martin-fowler-tests.md
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/vb-kd2b/test-plan-review.md
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/vb-kd2b/test-plan.md
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/vb-ndi1/implementation.md
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/vb-p5so/STATE.md
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/vb-p5so/architectural-drift-review.md
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/vb-p5so/black-hat-review.md
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/vb-p5so/codebase-map.md
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/vb-p5so/contract-verification-review.md
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/vb-p5so/contract.md
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/vb-p5so/implementation.md
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/vb-p5so/kani-justification.md
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/vb-p5so/manual-qa-final.md
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/vb-p5so/manual-qa-smoke.md
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/vb-p5so/moon-report.md
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/vb-p5so/proof-obligations.jsonl
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/vb-p5so/qa-report.md
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/vb-p5so/qa-review.md
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/vb-p5so/red-queen-report.md
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/vb-p5so/test-plan-review.md
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/vb-p5so/test-plan.md
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/vb-p5so/test-suite-review.md
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/vb-p5so/traceability-matrix.jsonl
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.beads/vb-p5so/verification-layers.md
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.cargo/config.toml
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.claude/settings.json
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.geigerignore
+	../.beads/workspace-backups/vb-2yb8-ws-20260509T-repair/.gitignore
+	../.beads/workspace-repair-report.md
+	../.gitignore
 	../.jj/repo
 	../.jj/working_copy/checkout
 	../.jj/working_copy/tree_state
 	../.jj/working_copy/type
+	../.moon/tasks/all.yml
 	../crates/vb_compile/src/lib.rs
 	../crates/vb_core/src/workflow/mod.rs
 	../crates/vb_core/tests/vb_qi37_7_3_red.rs
@@ -15,14 +194,20 @@ Changed files:
 	../crates/vb_storage/src/recovery/replay/summary.rs
 	../crates/vb_storage/src/vb_2bok_durability_gate_tests.rs
 	../crates/vb_storage/tests/accepted_artifact_red_phase.rs
+	../crates/vb_ui/src/verify/action_policy.rs
 	../crates/vb_ui_model/src/envelope.rs
 	../crates/vb_validate/src/shared.rs
 	../crates/vb_validate/tests/vb_qi37_7_3_red.rs
 	../crates/velvet_ballastics/src/main.rs
 	../crates/velvet_ballastics/tests/cli_integration.rs
+	../fuzz/src/bin/aggregate_artifact_budget.rs
+	../fuzz/src/bin/aggregate_workflow_budget.rs
+	../fuzz/src/bin/recover_runtime_frame_seed_contract.rs
+	../supply-chain/imports.lock
 	../tests/vb_qi37_1_1_red_recovery_contract_test.rs
 	../xtask/src/evidence.rs
 	../xtask/src/gates.rs
+	../xtask/src/main.rs
 	../xtask/tests/integration_gates.rs
 ▮▮▮▮ Building action graph
 

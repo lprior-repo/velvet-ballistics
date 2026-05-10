@@ -203,7 +203,7 @@ mod durability_gate_tests {
                     workflow.digest(),
                     "artifact.digest must equal workflow.digest() for policy {policy:?}"
                 );
-                Ok(())
+                Ok::<(), String>(())
             })?;
         Ok(())
     }
@@ -225,7 +225,7 @@ mod durability_gate_tests {
                     !result.ir.is_empty(),
                     "artifact.ir must be non-empty for policy {policy:?}"
                 );
-                Ok(())
+                Ok::<(), String>(())
             })?;
         Ok(())
     }
@@ -1030,7 +1030,7 @@ mod durability_gate_tests {
                     workflow.digest().as_bytes(),
                     "artifact.digest must equal workflow.digest() for policy {policy:?}"
                 );
-                Ok(())
+                Ok::<(), String>(())
             })?;
         Ok(())
     }
@@ -1069,7 +1069,7 @@ mod durability_gate_tests {
                 i,
                 i
             );
-            Ok(())
+            Ok::<(), String>(())
         })?;
         Ok(())
     }
@@ -1564,7 +1564,7 @@ mod durability_gate_tests {
                 i,
                 i
             );
-            Ok(())
+            Ok::<(), String>(())
         })?;
 
         Ok(())

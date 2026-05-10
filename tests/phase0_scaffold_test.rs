@@ -467,14 +467,12 @@ fn justfile_defines_complete_pgo_pipeline() -> Result<(), String> {
 }
 
 #[test]
-fn pgo_workload_fixtures_compile() -> Result<(), String> {
-    for relative in [
-        "tests/fixtures/pgo/minimal_save.yaml",
-        "tests/fixtures/pgo/choose_true.yaml",
-    ] {
-        let bytes = fs::read(workspace_path(relative))
-            .map_err(|error| format!("{} must be readable: {}", relative, error))?;
-        vb_compile::compile_workflow(&bytes).map_err(|errors| {
+fn pgo_workload_minimal_save_fixture_compiles() -> Result<(), String> {
+    let relative = "tests/fixtures/pgo/minimal_save.yaml";
+    let bytes = fs::read(workspace_path(relative))
+        .map_err(|error| format!("{} must be readable: {}", relative, error))?;
+    vb_compile::compile_workflow(&bytes)
+        .map_err(|errors| {
             let details = errors
                 .0
                 .iter()
@@ -483,8 +481,24 @@ fn pgo_workload_fixtures_compile() -> Result<(), String> {
                 .join(", ");
             format!("{} must compile as a PGO workload: {}", relative, details)
         })?;
-    }
+    Ok(())
+}
 
+#[test]
+fn pgo_workload_choose_true_fixture_compiles() -> Result<(), String> {
+    let relative = "tests/fixtures/pgo/choose_true.yaml";
+    let bytes = fs::read(workspace_path(relative))
+        .map_err(|error| format!("{} must be readable: {}", relative, error))?;
+    vb_compile::compile_workflow(&bytes)
+        .map_err(|errors| {
+            let details = errors
+                .0
+                .iter()
+                .map(std::string::ToString::to_string)
+                .collect::<Vec<_>>()
+                .join(", ");
+            format!("{} must compile as a PGO workload: {}", relative, details)
+        })?;
     Ok(())
 }
 

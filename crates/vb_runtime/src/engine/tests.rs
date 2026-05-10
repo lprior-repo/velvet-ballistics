@@ -1487,15 +1487,22 @@ mod proptests {
         fn step_budget_never_allows_more_than_n_steps(n in 1u64..1000u64) {
             let mut budget = vb_core::engine::StepBudget::new(n);
             let mut taken = 0u64;
-            let mut drained = false;
-            while !drained && taken <= n + 1 {
+            let mut exhausted = false;
+            for _ in 0..n.saturating_add(1) {
                 match budget.try_take() {
                     Ok(true) => taken += 1,
-                    Ok(false) => drained = true,
-                    Err(_) => drained = true,
+                    Ok(false) => {
+                        exhausted = true;
+                        break;
+                    }
+                    Err(_) => {
+                        exhausted = true;
+                        break;
+                    }
                 }
             }
             prop_assert_eq!(taken, n);
+            prop_assert!(exhausted, "budget should be exhausted after {} steps", n);
         }
     }
 
