@@ -554,7 +554,8 @@ mod tests {
         let wf = make_workflow(vec![node], 4);
         let mut run = make_run(4, 2);
         // Input slot must be initialized with clean taint for the no-contract path.
-        let _ = run.write_slot(SlotIdx::new(0), SlotValue::I64(0));
+        run.write_slot(SlotIdx::new(0), SlotValue::I64(0))
+            .expect("write_slot must succeed: slot is valid and uninitialized in test");
         let mut store = ValueStore::new();
         let mut cs = CollectStates::new();
         let n = match wf.node(StepIdx::ZERO) {
@@ -603,7 +604,8 @@ mod tests {
         };
         let wf = make_workflow(vec![node], 4);
         let mut run = make_run(4, 2);
-        let _ = run.write_slot(SlotIdx::new(0), SlotValue::I64(10));
+        run.write_slot(SlotIdx::new(0), SlotValue::I64(10))
+            .expect("write_slot must succeed: slot is valid and uninitialized in test");
         let mut store = ValueStore::new();
         let mut cs = CollectStates::new();
         let n = match wf.node(StepIdx::ZERO) {
@@ -737,7 +739,8 @@ mod tests {
         };
         let wf = make_workflow(vec![node], 4);
         let mut run = make_run(4, 2);
-        let _ = run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(1), Taint::Secret);
+        run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(1), Taint::Secret)
+            .expect("write_slot_with_taint must succeed: slot is valid and uninitialized in test");
         let mut store = ValueStore::new();
         let mut cs = CollectStates::new();
         let n = match wf.node(StepIdx::ZERO) {
@@ -844,7 +847,8 @@ mod tests {
         let wf = make_workflow(vec![node0, node1], 4);
         let mut run = make_run(4, 4);
         // Write attempt=1 into the policy slot
-        let _ = run.write_slot(SlotIdx::new(0), SlotValue::I64(1));
+        run.write_slot(SlotIdx::new(0), SlotValue::I64(1))
+            .expect("write_slot must succeed: slot is valid and uninitialized in test");
         let mut store = ValueStore::new();
         let mut cs = CollectStates::new();
         let n = match wf.node(StepIdx::ZERO) {
@@ -892,7 +896,8 @@ mod tests {
         let node1 = finish_node(1, 0);
         let wf = make_workflow(vec![node0, node1], 4);
         let mut run = make_run(4, 4);
-        let _ = run.write_slot(SlotIdx::new(0), SlotValue::I64(1));
+        run.write_slot(SlotIdx::new(0), SlotValue::I64(1))
+            .expect("write_slot must succeed: slot is valid and uninitialized in test");
         let mut store = ValueStore::new();
         let mut cs = CollectStates::new();
         let n = match wf.node(StepIdx::ZERO) {
@@ -936,7 +941,8 @@ mod tests {
         let node1 = finish_node(1, 0);
         let wf = make_workflow(vec![node0, node1], 4);
         let mut run = make_run(4, 4);
-        let _ = run.write_slot(SlotIdx::new(0), SlotValue::I64(3));
+        run.write_slot(SlotIdx::new(0), SlotValue::I64(3))
+            .expect("write_slot must succeed: slot is valid and uninitialized in test");
         let mut store = ValueStore::new();
         let mut cs = CollectStates::new();
         let n = match wf.node(StepIdx::ZERO) {

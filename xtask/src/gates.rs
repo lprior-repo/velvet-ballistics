@@ -12,7 +12,6 @@
 //! 3. Return evidence bundle via `run_gate`
 
 use crate::evidence::{run_gate, GateEvidence, Result};
-use std::path::PathBuf;
 
 /// Gate identifiers matching Section 77.1 requirements.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

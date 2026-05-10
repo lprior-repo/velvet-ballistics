@@ -63,6 +63,7 @@ pub enum GateStatus {
 
 /// All error variants for xtask gate operations.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[allow(dead_code)]
 pub enum Error {
     /// Gate exceeded its configured timeout duration.
     GateTimeout {
@@ -141,23 +142,24 @@ pub type Result<T> = std::result::Result<T, Error>;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum GateProfile {
     /// Fast gates: fmt, check, clippy, nextest, forbidden-scan, hotpath-scan
-    AiFast,
+    Fast,
     /// Deep gates: miri, mutants, llvm-cov, fuzz-build
-    AiDeep,
+    Deep,
     /// Release gates: check, test, supply-chain, miri, fuzz-smoke, coverage,
     /// mutants-smoke, bench-build, feature-powerset, source-length, maxperf
-    AiRelease,
+    Release,
 }
 
+#[allow(dead_code)]
 impl GateProfile {
     /// Returns the list of gates in this profile.
     pub fn gates(self) -> &'static [&'static str] {
         match self {
-            GateProfile::AiFast => &[
+            GateProfile::Fast => &[
                 "fmt", "check", "clippy", "nextest", "forbidden-scan", "hotpath-scan",
             ],
-            GateProfile::AiDeep => &["miri", "mutants", "llvm-cov", "fuzz-build"],
-            GateProfile::AiRelease => &[
+            GateProfile::Deep => &["miri", "mutants", "llvm-cov", "fuzz-build"],
+            GateProfile::Release => &[
                 "check",
                 "test",
                 "supply-chain",
@@ -176,9 +178,9 @@ impl GateProfile {
     /// Returns the evidence file name for this profile.
     pub fn evidence_file(self) -> &'static str {
         match self {
-            GateProfile::AiFast => "ai-fast.yaml",
-            GateProfile::AiDeep => "ai-deep.yaml",
-            GateProfile::AiRelease => "ai-release.yaml",
+            GateProfile::Fast => "ai-fast.yaml",
+            GateProfile::Deep => "ai-deep.yaml",
+            GateProfile::Release => "ai-release.yaml",
         }
     }
 }
@@ -245,6 +247,7 @@ pub fn run_profile(
 /// # Returns
 /// `WhyFailed` with gate_name, hint, and repair_command populated.
 /// Returns `None` if the gate did not fail.
+#[allow(dead_code)]
 pub fn explain_failure(evidence: &GateEvidence) -> Option<WhyFailed> {
     // RED_PHASE: Not implemented yet - returns None
     let _ = evidence;
@@ -262,6 +265,7 @@ pub fn explain_failure(evidence: &GateEvidence) -> Option<WhyFailed> {
 /// # Errors
 /// Returns `Error::MissingEvidence` for each missing evidence file.
 /// Returns `Error::BeadDirectoryCreationFailed` if directory cannot be accessed.
+#[allow(dead_code)]
 pub fn validate_evidence_dir(dir: &Path, required_gates: &[&str]) -> Result<Vec<Error>> {
     // RED_PHASE: Not implemented yet - returns empty Ok
     let _ = (dir, required_gates);
@@ -294,6 +298,7 @@ pub fn evidence_path(bead_id: &str, gate_name: &str) -> PathBuf {
 /// # Errors
 /// Returns `Error::YamlSerializationFailed` if serialization fails.
 /// Returns `Error::EvidenceWriteFailed` if file write fails.
+#[allow(dead_code)]
 pub fn write_evidence(evidence: &GateEvidence, path: &Path) -> Result<()> {
     // RED_PHASE: Not implemented yet - returns error
     let _ = (evidence, path);
@@ -570,7 +575,7 @@ mod tests {
 
     #[test]
     fn test_ai_fast_profile_has_6_gates() {
-        let gates = GateProfile::AiFast.gates();
+        let gates = GateProfile::Fast.gates();
         assert_eq!(gates.len(), 6);
         assert!(gates.contains(&"fmt"));
         assert!(gates.contains(&"check"));
@@ -582,7 +587,7 @@ mod tests {
 
     #[test]
     fn test_ai_deep_profile_has_4_gates() {
-        let gates = GateProfile::AiDeep.gates();
+        let gates = GateProfile::Deep.gates();
         assert_eq!(gates.len(), 4);
         assert!(gates.contains(&"miri"));
         assert!(gates.contains(&"mutants"));
@@ -592,7 +597,7 @@ mod tests {
 
     #[test]
     fn test_ai_release_profile_has_11_gates() {
-        let gates = GateProfile::AiRelease.gates();
+        let gates = GateProfile::Release.gates();
         assert_eq!(gates.len(), 11);
         assert!(gates.contains(&"check"));
         assert!(gates.contains(&"test"));
@@ -609,9 +614,9 @@ mod tests {
 
     #[test]
     fn test_profile_evidence_file_names() {
-        assert_eq!(GateProfile::AiFast.evidence_file(), "ai-fast.yaml");
-        assert_eq!(GateProfile::AiDeep.evidence_file(), "ai-deep.yaml");
-        assert_eq!(GateProfile::AiRelease.evidence_file(), "ai-release.yaml");
+        assert_eq!(GateProfile::Fast.evidence_file(), "ai-fast.yaml");
+        assert_eq!(GateProfile::Deep.evidence_file(), "ai-deep.yaml");
+        assert_eq!(GateProfile::Release.evidence_file(), "ai-release.yaml");
     }
 
     // ========================================================================
@@ -729,7 +734,7 @@ mod tests {
     #[test]
     fn test_run_profile_returns_aggregated_evidence() {
         // Given: ai-fast profile
-        let profile = GateProfile::AiFast;
+        let profile = GateProfile::Fast;
         let bead_id = Some("vb-test");
         let output_dir = PathBuf::from(".evidence");
 

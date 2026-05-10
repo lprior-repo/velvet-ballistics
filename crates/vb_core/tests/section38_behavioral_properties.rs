@@ -408,7 +408,8 @@ fn replay_determinism_step_by_step_produces_identical_pc_sequence() -> Result<()
     ensure(initial_pc == StepIdx::new(0), "initial PC must be step 0")?;
 
     // Step 1: SetConst
-    let _ = step_once(&workflow, &mut frame, &mut store).map_err(|e| e.to_string())?;
+    let signal = step_once(&workflow, &mut frame, &mut store).expect("step_once must succeed");
+    assert_eq!(signal, EngineSignal::Continue);
     let after_step1 = frame.pc();
     ensure(
         after_step1 == StepIdx::new(1),
@@ -546,7 +547,8 @@ fn ordering_invariants_pc_advances_monotonically_in_linear_workflow() -> Result<
     let prev_pc = frame.pc();
     ensure(prev_pc == StepIdx::new(0), "must start at PC 0")?;
 
-    let _ = step_once(&workflow, &mut frame, &mut store).map_err(|e| e.to_string())?;
+    let signal = step_once(&workflow, &mut frame, &mut store).expect("step_once must succeed");
+    assert_eq!(signal, EngineSignal::Continue);
     let next_pc = frame.pc();
     ensure(
         next_pc.get() > prev_pc.get(),
@@ -643,8 +645,8 @@ fn snapshot_equivalence_step_states_consistent_after_completion() -> Result<(), 
     .map_err(|e| e.to_string())?;
     let mut store = ValueStore::new();
 
-    let _ = run_until_blocked(&workflow, &mut frame, StepBudget::MAX, &mut store)
-        .map_err(|e| e.to_string())?;
+    run_until_blocked(&workflow, &mut frame, StepBudget::MAX, &mut store)
+        .expect("run_until_blocked must succeed");
 
     // Both steps must be in terminal (succeeded) state
     let step0 = frame

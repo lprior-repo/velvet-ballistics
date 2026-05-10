@@ -543,12 +543,16 @@ mod proptests {
 
             let initial_queue_len = shard.command_queue_len();
 
-            // Tick and count how many commands were processed
+            // Tick and count how many commands were actually processed.
+            // A command is processed only when the queue shrinks (tick pops a command).
             let mut processed = 0usize;
             for _ in 0..tick_count {
+                let queue_before = shard.command_queue_len();
                 match shard.tick() {
                     Ok(true) => {
-                        processed += 1;
+                        if shard.command_queue_len() < queue_before {
+                            processed += 1;
+                        }
                     }
                     Ok(false) => break, // Shutdown
                     Err(_) => break,
@@ -563,7 +567,7 @@ mod proptests {
                 tick_count,
             );
 
-            // INV(S2): After N ticks, exactly N commands processed (or fewer if queue empty)
+            // INV(S2): After N ticks, exactly min(initial_queue_len, tick_count) commands processed
             let expected_processed = initial_queue_len.min(tick_count);
             assert_eq!(
                 processed,
@@ -674,7 +678,10 @@ mod proptests {
             }
 
             // Process all commands
-            while shard.tick().unwrap_or(false) {}
+            let total_commands = submits + cancels;
+            for _ in 0..total_commands {
+                let _ = shard.tick();
+            }
 
             // INV(S4): A RunId appears in self.runs at most once
             // After Cancel, the run is not in self.runs
@@ -722,8 +729,23 @@ mod proptests {
             ).expect("valid frame");
 
             // Set initial state (skip Pending which is default)
-            if initial_state == StepState::Running {
-                let _ = run.mark_running(StepIdx::ZERO);
+            match initial_state {
+                StepState::Running => {
+                    let _ = run.mark_running(StepIdx::ZERO);
+                }
+                StepState::Waiting => {
+                    let _ = run.mark_running(StepIdx::ZERO);
+                    let _ = run.mark_waiting(StepIdx::ZERO);
+                }
+                StepState::Asking => {
+                    let _ = run.mark_running(StepIdx::ZERO);
+                    let _ = run.mark_asking(StepIdx::ZERO);
+                }
+                StepState::Succeeded => {
+                    let _ = run.mark_running(StepIdx::ZERO);
+                    let _ = run.mark_succeeded(StepIdx::ZERO);
+                }
+                _ => {}
             }
 
             // INV(M1): valid_state_transitions
@@ -785,12 +807,11 @@ mod proptests {
                     );
                 }
                 // INV(M2): Invalid transitions from non-Running states
+                // Succeeded -> Succeeded is idempotent (valid), so exclude Succeeded.
                 (StepState::Waiting, RuntimeSignal::Continue)
                 | (StepState::Waiting, RuntimeSignal::Finished(_))
                 | (StepState::Asking, RuntimeSignal::Continue)
-                | (StepState::Asking, RuntimeSignal::Finished(_))
-                | (StepState::Succeeded, RuntimeSignal::Continue)
-                | (StepState::Succeeded, RuntimeSignal::Finished(_)) => {
+                | (StepState::Asking, RuntimeSignal::Finished(_)) => {
                     let result = mark_step_after_signal(&mut run, StepIdx::ZERO, &signal);
                     assert!(
                         matches!(result, Err(EngineError::InternalInvariantViolation { .. })),
@@ -812,9 +833,10 @@ mod proptests {
         let too_many_branches = usize::from(u16::MAX) + 1;
         let mut nodes = Vec::new();
 
-        // Create a TogetherStart node with too many branches
+        // Create a TogetherStart node with too many branches.
+        // All branches point to step 1 (the join node) so the workflow is valid.
         let branches: Vec<StepIdx> = (0..too_many_branches)
-            .map(|i| StepIdx::new(u16::try_from(i).unwrap_or(0)))
+            .map(|_| StepIdx::new(1))
             .collect();
 
         nodes.push(CompiledNode {
@@ -825,13 +847,13 @@ mod proptests {
             error_slot: None,
             kind: CompiledNodeKind::TogetherStart {
                 branches: branches.into_boxed_slice(),
-                join: StepIdx::new(u16::try_from(too_many_branches).unwrap()),
+                join: StepIdx::new(1),
             },
         });
 
         // Add a join node
         nodes.push(CompiledNode {
-            id: StepIdx::new(u16::try_from(too_many_branches).unwrap()),
+            id: StepIdx::new(1),
             output: None,
             next: None,
             on_error: None,
@@ -853,7 +875,9 @@ mod proptests {
             step_names: vec![].into_boxed_slice(),
         };
 
-        let workflow = CompiledWorkflow::try_from_parts(parts).expect("workflow created");
+        // Use from_parts_unchecked to bypass validation that would reject
+        // 65536 nodes (step count overflow) or out-of-range branch indices.
+        let workflow = CompiledWorkflow::from_parts_unchecked(parts);
 
         let result = compute_max_parallel_in_flight(&workflow);
         assert!(

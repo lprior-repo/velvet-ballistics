@@ -347,7 +347,8 @@ steps:
       result: 0
 "#;
         // The result is deterministic -- either compile or validation error
-        let _ = YamlCompiler::default().compile(source);
+        let result = YamlCompiler::default().compile(source);
+        assert!(result.is_ok(), "compilation should succeed for valid YAML: {:?}", result);
         Ok(())
     }
 

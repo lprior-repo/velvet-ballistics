@@ -292,11 +292,11 @@ mod tests {
             },
         )
     }
-    fn tog(id: u16, branches: Box<[u16]>, join: u16) -> CompiledNode {
+    fn tog(id: u16, out: u16, branches: Box<[u16]>, join: u16) -> CompiledNode {
         let br: Box<[StepIdx]> = branches.iter().map(|b| StepIdx::new(*b)).collect();
         cn(
             id,
-            None,
+            Some(out),
             None,
             CompiledNodeKind::TogetherStart {
                 branches: br,
@@ -822,7 +822,7 @@ mod tests {
     fn bonus_together() -> Result<(), String> {
         let wf = mkwf(
             vec![
-                tog(0, Box::from([1u16, 2]), 3),
+                tog(0, 0, Box::from([1u16, 2]), 3),
                 fin(1, 1),
                 fin(2, 1),
                 fin(3, 1),
@@ -833,7 +833,8 @@ mod tests {
         ws(&mut r, 1, SlotValue::I64(0))?;
         let mut b = StepBudget::new(10);
         let mut ev = EvidenceCollector::new();
-        let _ = dde(&wf, &mut r, &mut b, &mut ev, &CapabilitySet::empty());
+        dde(&wf, &mut r, &mut b, &mut ev, &CapabilitySet::empty())
+            .expect("drive_deterministic_full must succeed for bonus_together test");
         Ok(())
     }
 
@@ -1021,7 +1022,7 @@ mod tests {
         use crate::engine::drive::compute_max_parallel_in_flight;
         let wf = mkwf(
             vec![
-                tog(0, Box::from([1u16, 2]), 3),
+                tog(0, 0, Box::from([1u16, 2]), 3),
                 fin(1, 1),
                 fin(2, 1),
                 fin(3, 1),

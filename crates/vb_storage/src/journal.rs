@@ -325,8 +325,12 @@ impl FjallJournal {
 
 impl Drop for FjallJournal {
     fn drop(&mut self) {
+        // Persist errors during drop are logged via debug_assert rather than
+        // silently swallowed. A failed persist in drop is non-fatal (the OS
+        // will flush on close), but indicates a durability problem worth
+        // knowing about in debug builds.
         if let Err(e) = self.database.persist(fjall::PersistMode::SyncAll) {
-            let _ = e;
+            debug_assert!(false, "FjallJournal persist failed on drop: {e}");
         }
     }
 }

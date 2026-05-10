@@ -5,7 +5,7 @@ use crate::type_taint::{
     InputDecl, ResourceLimits, StepKind, StepTypes, Taint, TypedValue, ValueFact, ValueType,
     WorkflowTypes, validate_resource_limits, validate_taint, validate_types,
 };
-use crate::{ValidationError, ValidationResult};
+use crate::ValidationError;
 
 fn make_workflow(steps: Vec<StepTypes>) -> WorkflowTypes {
     WorkflowTypes {
@@ -1552,22 +1552,22 @@ fn clean_composite_stays_clean() -> Result<(), String> {
 
 #[test]
 fn run_taint_propagates_through_arithmetic_style_composite() {
-    taint_propagates_through_arithmetic_style_composite().unwrap()
+    taint_propagates_through_arithmetic_style_composite().expect("test helper should not fail")
 }
 
 #[test]
 fn run_taint_propagates_through_comparison_style_composite() {
-    taint_propagates_through_comparison_style_composite().unwrap()
+    taint_propagates_through_comparison_style_composite().expect("test helper should not fail")
 }
 
 #[test]
 fn run_taint_propagates_through_logic_style_composite() {
-    taint_propagates_through_logic_style_composite().unwrap()
+    taint_propagates_through_logic_style_composite().expect("test helper should not fail")
 }
 
 #[test]
 fn run_clean_composite_stays_clean() {
-    clean_composite_stays_clean().unwrap()
+    clean_composite_stays_clean().expect("test helper should not fail")
 }
 
 fn secret_origin_propagates_through_all_downstream_paths() -> Result<(), String> {
@@ -1640,17 +1640,17 @@ fn secret_origin_composite_slot_is_tainted() -> Result<(), String> {
 
 #[test]
 fn run_secret_origin_propagates_through_all_downstream_paths() {
-    secret_origin_propagates_through_all_downstream_paths().unwrap()
+    secret_origin_propagates_through_all_downstream_paths().expect("test helper should not fail")
 }
 
 #[test]
 fn run_secret_origin_relay_slot_is_tainted() {
-    secret_origin_relay_slot_is_tainted().unwrap()
+    secret_origin_relay_slot_is_tainted().expect("test helper should not fail")
 }
 
 #[test]
 fn run_secret_origin_composite_slot_is_tainted() {
-    secret_origin_composite_slot_is_tainted().unwrap()
+    secret_origin_composite_slot_is_tainted().expect("test helper should not fail")
 }
 
 fn slot_to_slot_single_relay_propagates_taint() -> Result<(), String> {
@@ -1721,12 +1721,12 @@ fn slot_to_slot_two_hop_relay_carries_taint() -> Result<(), String> {
 
 #[test]
 fn run_slot_to_slot_single_relay_propagates_taint() {
-    slot_to_slot_single_relay_propagates_taint().unwrap()
+    slot_to_slot_single_relay_propagates_taint().expect("test helper should not fail")
 }
 
 #[test]
 fn run_slot_to_slot_clean_relay_stays_clean() {
-    slot_to_slot_clean_relay_stays_clean().unwrap()
+    slot_to_slot_clean_relay_stays_clean().expect("test helper should not fail")
 }
 
 #[test]

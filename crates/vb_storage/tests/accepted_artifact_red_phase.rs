@@ -223,8 +223,6 @@ fn accepted_artifact_encoder_records_zero_accepted_at_seq()
 #[test]
 fn accepted_artifact_roundtrip_through_storage_persists_and_loads()
 -> Result<(), String> {
-    use vb_storage::records::CompiledIrRecord;
-
     let journal = temp_journal()?;
     let workflow = minimal_workflow()?;
     let artifact = submit_artifact(&journal, &workflow, RuntimePolicy::Strict)

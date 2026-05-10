@@ -507,14 +507,22 @@ mod tests {
     fn resolve_contract_returns_first_contract() {
         let contracts = vec![make_contract(0)];
         let result = resolve_contract(ActionId::new(0), &contracts);
-        assert!(result.is_ok());
+        assert_eq!(
+            result.expect("resolve_contract should succeed for id-in-range").id,
+            ActionId::new(0),
+            "resolved contract id must match requested action id"
+        );
     }
 
     #[test]
     fn resolve_contract_returns_last_contract() {
         let contracts = vec![make_contract(0), make_contract(1), make_contract(2)];
         let result = resolve_contract(ActionId::new(2), &contracts);
-        assert!(result.is_ok());
+        assert_eq!(
+            result.expect("resolve_contract should succeed for id-in-range").id,
+            ActionId::new(2),
+            "resolved contract id must match requested action id"
+        );
     }
 
     // =====================================================================
@@ -539,7 +547,8 @@ mod tests {
     #[test]
     fn execute_do_returns_capability_denied_when_required_capability_not_granted() {
         let mut run = RunFrame::new(RunId::new(1), StepIdx::new(0), 4, 2).unwrap();
-        let _ = run.write_slot(SlotIdx::new(0), vb_core::value::SlotValue::I64(0));
+        run.write_slot(SlotIdx::new(0), vb_core::value::SlotValue::I64(0))
+            .expect("write_slot must succeed: slot is valid and uninitialized in test");
         let action = ActionId::new(0);
         let required_cap = Capability::new("secrets".into(), action);
         let contract = make_contract_with_capability(action, required_cap);
@@ -568,7 +577,8 @@ mod tests {
     #[test]
     fn execute_do_succeeds_when_required_capability_is_granted() {
         let mut run = RunFrame::new(RunId::new(1), StepIdx::new(0), 4, 2).unwrap();
-        let _ = run.write_slot(SlotIdx::new(0), vb_core::value::SlotValue::I64(0));
+        run.write_slot(SlotIdx::new(0), vb_core::value::SlotValue::I64(0))
+            .expect("write_slot must succeed: slot is valid and uninitialized in test");
         let action = ActionId::new(0);
         let required_cap = Capability::new("secrets".into(), action);
         let contract = make_contract_with_capability(action, required_cap);
@@ -587,8 +597,7 @@ mod tests {
             RetryPolicy::DEFAULT,
         );
 
-        assert!(result.is_ok());
-        assert!(matches!(result.unwrap(), RuntimeSignal::AwaitingAction(_)));
+        assert!(matches!(result.expect("execute_do should succeed with capability granted"), RuntimeSignal::AwaitingAction(_)));
     }
 
     // =====================================================================

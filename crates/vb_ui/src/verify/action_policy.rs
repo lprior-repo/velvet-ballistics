@@ -112,10 +112,7 @@ impl ActionPolicyReport {
         action: ActionId,
         contract: Option<&ActionContract>,
     ) {
-        if !reports.contains_key(&action) {
-            let report = Self::for_action(action, contract);
-            reports.insert(action, report);
-        }
+        reports.entry(action).or_insert_with(|| Self::for_action(action, contract));
     }
 }
 
