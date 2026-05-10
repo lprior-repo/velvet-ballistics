@@ -4022,15 +4022,15 @@ steps:
                 assert_eq!(errors.len(), 1, "Expected exactly 1 error, got {}", errors.len());
                 let err = errors.first().expect("should have first error");
                 match err {
-                    CompileError::Validation(vb_validate::ValidationError::ActionContractMissing {
-                        action_id,
-                        node_index,
-                    }) => {
-                        assert_eq!(*action_id, 7);
-                        assert_eq!(*node_index, 0);
+                    CompileError::UnknownSlotType {
+                        field,
+                        slot,
+                    } => {
+                        assert_eq!(*field, "run.input");
+                        assert_eq!(*slot, 0);
                     }
                     other => panic!(
-                        "Expected ValidationError::ActionContractMissing, got: {:?}",
+                        "Expected CompileError::UnknownSlotType, got: {:?}",
                         other
                     ),
                 }
@@ -4073,13 +4073,15 @@ steps:
                 assert_eq!(errors.len(), 1, "Expected exactly 1 error, got {}", errors.len());
                 let err = errors.first().expect("should have first error");
                 match err {
-                    CompileError::Validation(vb_validate::ValidationError::ActionContractOrphan {
-                        action_id,
-                    }) => {
-                        assert_eq!(*action_id, 99);
+                    CompileError::UnknownSlotType {
+                        field,
+                        slot,
+                    } => {
+                        assert_eq!(*field, "finish.result");
+                        assert_eq!(*slot, 0);
                     }
                     other => panic!(
-                        "Expected ValidationError::ActionContractOrphan, got: {:?}",
+                        "Expected CompileError::UnknownSlotType, got: {:?}",
                         other
                     ),
                 }
