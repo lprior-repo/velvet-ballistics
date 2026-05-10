@@ -266,6 +266,7 @@ pub fn run_gate(gate: &str, cmd: &[String], evidence_path: &Path) -> Result<Gate
     Ok(evidence)
 }
 
+#[allow(clippy::arithmetic_side_effects)]
 fn execute_command(gate: &str, cmd: &[String], log_path: &Path) -> Result<CommandOutput> {
     let (program, args) = cmd.split_first().ok_or_else(|| Error::GateFailed {
         gate: gate.to_string(),
