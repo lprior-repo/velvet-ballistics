@@ -2,93 +2,56 @@
 use super::helpers::*;
 
     #[test]
-    fn compile_error_exposes_stable_validation_codes_duplicate_key() -> Result<(), String> {
-        assert_compile_code(
-            b"version: velvet-ballastics/v1\nversion: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    finish:\n      result: 0\n".as_slice(),
-            "DUPLICATE_KEY",
-        )
-    }
-
-    #[test]
-    fn compile_error_exposes_stable_validation_codes_forbidden_yaml() -> Result<(), String> {
-        assert_compile_code(
-            b"version: velvet-ballastics/v1\nname: &n fast_path\ncopy: *n\n",
-            "FORBIDDEN_YAML_FEATURE",
-        )
-    }
-
-    #[test]
-    fn compile_error_exposes_stable_validation_codes_unknown_top_level_field(
-    ) -> Result<(), String> {
-        assert_compile_code(
-            b"version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\nunexpected: true\nsteps:\n  - id: done\n    finish:\n      result: 0\n",
-            "UNKNOWN_TOP_LEVEL_FIELD",
-        )
-    }
-
-    #[test]
-    fn compile_error_exposes_stable_validation_codes_missing_required_field(
-    ) -> Result<(), String> {
-        assert_compile_code(
-            b"name: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    finish:\n      result: 0\n",
-            "MISSING_REQUIRED_FIELD",
-        )
-    }
-
-    #[test]
-    fn compile_error_exposes_stable_validation_codes_invalid_version() -> Result<(), String> {
-        assert_compile_code(
-            b"version: velvet/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    finish:\n      result: 0\n",
-            "INVALID_VERSION",
-        )
-    }
-
-    #[test]
-    fn compile_error_exposes_stable_validation_codes_invalid_id() -> Result<(), String> {
-        assert_compile_code(
-            b"version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: BuildResult\n    save:\n      value: 1\n  - id: done\n    finish:\n      result: 0\n",
-            "INVALID_ID",
-        )
-    }
-
-    #[test]
-    fn compile_error_exposes_stable_validation_codes_reserved_id() -> Result<(), String> {
-        assert_compile_code(
-            b"version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: finish\n    save:\n      value: 1\n  - id: done\n    finish:\n      result: 0\n",
-            "RESERVED_ID",
-        )
-    }
-
-    #[test]
-    fn compile_error_exposes_stable_validation_codes_duplicate_id() -> Result<(), String> {
-        assert_compile_code(
-            b"version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: duplicate\n    save:\n      value: 1\n  - id: duplicate\n    finish:\n      result: 0\n",
-            "DUPLICATE_ID",
-        )
-    }
-
-    #[test]
-    fn compile_error_exposes_stable_validation_codes_missing_step_primitive() -> Result<(), String> {
-        assert_compile_code(
-            b"version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: only_metadata\n    name: Only Metadata\n  - id: done\n    finish:\n      result: 0\n",
-            "MISSING_STEP_PRIMITIVE",
-        )
-    }
-
-    #[test]
-    fn compile_error_exposes_stable_validation_codes_multiple_step_primitives() -> Result<(), String> {
-        assert_compile_code(
-            b"version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: build_result\n    save:\n      value: 1\n    finish:\n      result: 0\n  - id: done\n    finish:\n      result: 0\n",
-            "MULTIPLE_STEP_PRIMITIVES",
-        )
-    }
-
-    #[test]
-    fn compile_error_exposes_stable_validation_codes_invalid_choose() -> Result<(), String> {
-        assert_compile_code(
-            b"version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: route\n    choose: true\n  - id: done\n    finish:\n      result: 0\n",
-            "INVALID_CHOOSE",
-        )
+    fn compile_error_exposes_stable_validation_codes() -> Result<(), String> {
+        for (source, code) in [
+            (
+                b"version: velvet-ballastics/v1\nversion: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    finish:\n      result: 0\n".as_slice(),
+                "DUPLICATE_KEY",
+            ),
+            (
+                b"version: velvet-ballastics/v1\nname: &n fast_path\ncopy: *n\n",
+                "FORBIDDEN_YAML_FEATURE",
+            ),
+            (
+                b"version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\nunexpected: true\nsteps:\n  - id: done\n    finish:\n      result: 0\n",
+                "UNKNOWN_TOP_LEVEL_FIELD",
+            ),
+            (
+                b"name: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    finish:\n      result: 0\n",
+                "MISSING_REQUIRED_FIELD",
+            ),
+            (
+                b"version: velvet/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    finish:\n      result: 0\n",
+                "INVALID_VERSION",
+            ),
+            (
+                b"version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: BuildResult\n    save:\n      value: 1\n  - id: done\n    finish:\n      result: 0\n",
+                "INVALID_ID",
+            ),
+            (
+                b"version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: finish\n    save:\n      value: 1\n  - id: done\n    finish:\n      result: 0\n",
+                "RESERVED_ID",
+            ),
+            (
+                b"version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: duplicate\n    save:\n      value: 1\n  - id: duplicate\n    finish:\n      result: 0\n",
+                "DUPLICATE_ID",
+            ),
+            (
+                b"version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: only_metadata\n    name: Only Metadata\n  - id: done\n    finish:\n      result: 0\n",
+                "MISSING_STEP_PRIMITIVE",
+            ),
+            (
+                b"version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: build_result\n    save:\n      value: 1\n    finish:\n      result: 0\n  - id: done\n    finish:\n      result: 0\n",
+                "MULTIPLE_STEP_PRIMITIVES",
+            ),
+            (
+                b"version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\nsteps:\n  - id: route\n    choose: true\n  - id: done\n    finish:\n      result: 0\n",
+                "INVALID_CHOOSE",
+            ),
+        ] {
+            assert_compile_code(source, code)?;
+        }
+        Ok(())
     }
 
     #[test]
@@ -149,18 +112,10 @@ steps:
     }
 
     #[test]
-    fn parse_ast_and_compile_expose_same_diagnostic_codes_unknown_top_level_field(
-    ) -> Result<(), String> {
-        let source = b"version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\nunexpected: true\nsteps:\n  - id: done\n    finish:\n      result: 0\n".as_slice();
-        let compile = compile_first_error(source)?;
-        let parse = parse_first_error(source)?;
-        ensure_equal(compile.code(), parse.code())
-    }
-
-    #[test]
-    fn parse_ast_and_compile_expose_same_diagnostic_codes_invalid_reference(
-    ) -> Result<(), String> {
-        let source = br#"version: velvet-ballastics/v1
+    fn parse_ast_and_compile_expose_same_diagnostic_codes() -> Result<(), String> {
+        for source in [
+            b"version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\nunexpected: true\nsteps:\n  - id: done\n    finish:\n      result: 0\n".as_slice(),
+            br#"version: velvet-ballastics/v1
 name: fast_path
 when:
   manual: {}
@@ -173,16 +128,8 @@ steps:
   - id: done
     finish:
       result: true
-"#;
-        let compile = compile_first_error(source)?;
-        let parse = parse_first_error(source)?;
-        ensure_equal(compile.code(), parse.code())
-    }
-
-    #[test]
-    fn parse_ast_and_compile_expose_same_diagnostic_codes_undeclared_secret(
-    ) -> Result<(), String> {
-        let source = br#"version: velvet-ballastics/v1
+"#,
+            br#"version: velvet-ballastics/v1
 name: fast_path
 when:
   manual: {}
@@ -195,10 +142,13 @@ steps:
   - id: done
     finish:
       result: true
-"#;
-        let compile = compile_first_error(source)?;
-        let parse = parse_first_error(source)?;
-        ensure_equal(compile.code(), parse.code())
+"#,
+        ] {
+            let compile = compile_first_error(source)?;
+            let parse = parse_first_error(source)?;
+            ensure_equal(compile.code(), parse.code())?;
+        }
+        Ok(())
     }
 
     #[test]
@@ -279,3 +229,4 @@ steps:
             Err(ref errors) if matches!(errors.first(), Some(CompileError::UnknownTopLevelField { .. }))
         ));
     }
+

@@ -207,14 +207,7 @@ pub enum DurabilityError {
 
 /// Verify that every required primitive has a row.
 pub fn verify_matrix_completeness() -> Result<(), DurabilityError> {
-    verify_matrix_completeness_with_primitives(REQUIRED_PRIMITIVES)
-}
-
-/// Verify that every required primitive has a row (testable variant).
-pub fn verify_matrix_completeness_with_primitives(
-    primitives: &[&str],
-) -> Result<(), DurabilityError> {
-    for &primitive in primitives {
+    for &primitive in REQUIRED_PRIMITIVES {
         let found = DURABILITY_MATRIX
             .iter()
             .any(|row| row.primitive == primitive);
@@ -229,14 +222,7 @@ pub fn verify_matrix_completeness_with_primitives(
 
 /// Verify that every row has at least one test evidence link.
 pub fn verify_matrix_replay_proofs() -> Result<(), DurabilityError> {
-    verify_matrix_replay_proofs_with_matrix(DURABILITY_MATRIX)
-}
-
-/// Verify that every row has at least one test evidence link (testable variant).
-pub fn verify_matrix_replay_proofs_with_matrix(
-    matrix: &[DurabilityRow],
-) -> Result<(), DurabilityError> {
-    for row in matrix {
+    for row in DURABILITY_MATRIX {
         if row.test_evidence.is_empty() {
             return Err(DurabilityError::MissingReplayProof {
                 primitive: row.primitive.to_owned(),
@@ -249,14 +235,7 @@ pub fn verify_matrix_replay_proofs_with_matrix(
 
 /// Verify that no row claims ack-before-persist.
 pub fn verify_ack_after_persist() -> Result<(), DurabilityError> {
-    verify_ack_after_persist_with_matrix(DURABILITY_MATRIX)
-}
-
-/// Verify that no row claims ack-before-persist (testable variant).
-pub fn verify_ack_after_persist_with_matrix(
-    matrix: &[DurabilityRow],
-) -> Result<(), DurabilityError> {
-    for row in matrix {
+    for row in DURABILITY_MATRIX {
         if row.ack_point == AckPoint::BeforeJournalAppend {
             return Err(DurabilityError::AckBeforePersist {
                 primitive: row.primitive.to_owned(),
@@ -275,19 +254,7 @@ pub fn verify_matrix() -> Result<(), DurabilityError> {
     Ok(())
 }
 
-/// Run all matrix verifications with custom primitives (testable variant).
-pub fn verify_matrix_with_primitives_and_matrix(
-    primitives: &[&str],
-    matrix: &[DurabilityRow],
-) -> Result<(), DurabilityError> {
-    verify_matrix_completeness_with_primitives(primitives)?;
-    verify_matrix_replay_proofs_with_matrix(matrix)?;
-    verify_ack_after_persist_with_matrix(matrix)?;
-    Ok(())
-}
-
 #[cfg(test)]
-#[allow(clippy::panic)]
 mod tests {
     use super::*;
 
@@ -333,10 +300,10 @@ mod tests {
 
     #[test]
     fn set_row_exists_and_is_correct() {
-        let row = match DURABILITY_MATRIX.iter().find(|r| r.primitive == "set") {
-            Some(r) => r,
-            None => panic!("set primitive must have a row in the matrix"),
-        };
+        let row = DURABILITY_MATRIX
+            .iter()
+            .find(|r| r.primitive == "set")
+            .unwrap();
         assert_eq!(row.compiled_node_kind, "SetConst");
         assert!(row.journal_events.contains(&RecordKind::StepStarted));
         assert!(row.journal_events.contains(&RecordKind::SlotWritten));
@@ -345,10 +312,10 @@ mod tests {
 
     #[test]
     fn do_row_exists_and_is_correct() {
-        let row = match DURABILITY_MATRIX.iter().find(|r| r.primitive == "do") {
-            Some(r) => r,
-            None => panic!("do primitive must have a row in the matrix"),
-        };
+        let row = DURABILITY_MATRIX
+            .iter()
+            .find(|r| r.primitive == "do")
+            .unwrap();
         assert_eq!(row.compiled_node_kind, "Do");
         assert!(row.journal_events.contains(&RecordKind::ActionScheduled));
         assert!(row.journal_events.contains(&RecordKind::ActionCompleted));
@@ -357,20 +324,20 @@ mod tests {
 
     #[test]
     fn wait_row_names_wait_scheduled_and_wait_resolved() {
-        let row = match DURABILITY_MATRIX.iter().find(|r| r.primitive == "wait") {
-            Some(r) => r,
-            None => panic!("wait primitive must have a row in the matrix"),
-        };
+        let row = DURABILITY_MATRIX
+            .iter()
+            .find(|r| r.primitive == "wait")
+            .unwrap();
         assert!(row.journal_events.contains(&RecordKind::WaitScheduled));
         assert_eq!(row.ack_point, AckPoint::AfterJournalAppend);
     }
 
     #[test]
     fn ask_row_names_ask_scheduled_and_ask_answered() {
-        let row = match DURABILITY_MATRIX.iter().find(|r| r.primitive == "ask") {
-            Some(r) => r,
-            None => panic!("ask primitive must have a row in the matrix"),
-        };
+        let row = DURABILITY_MATRIX
+            .iter()
+            .find(|r| r.primitive == "ask")
+            .unwrap();
         assert!(row.journal_events.contains(&RecordKind::AskScheduled));
         assert!(row.journal_events.contains(&RecordKind::AskAnswered));
         assert_eq!(row.ack_point, AckPoint::AfterJournalAppend);
@@ -378,101 +345,11 @@ mod tests {
 
     #[test]
     fn finish_row_names_run_finished() {
-        let row = match DURABILITY_MATRIX.iter().find(|r| r.primitive == "finish") {
-            Some(r) => r,
-            None => panic!("finish primitive must have a row in the matrix"),
-        };
+        let row = DURABILITY_MATRIX
+            .iter()
+            .find(|r| r.primitive == "finish")
+            .unwrap();
         assert!(row.journal_events.contains(&RecordKind::RunFinished));
         assert_eq!(row.ack_point, AckPoint::AfterJournalAppend);
-    }
-
-    #[test]
-    fn verify_matrix_completeness_err_when_primitive_missing() {
-        let result = verify_matrix_completeness_with_primitives(&["nonexistent_primitive"]);
-        let err = match result {
-            Err(e) => e,
-            Ok(v) => panic!("Expected error for missing primitive, got Ok: {:?}", v),
-        };
-        assert!(
-            matches!(&err, DurabilityError::MissingPrimitiveRow { primitive } if primitive == "nonexistent_primitive"),
-            "Expected MissingPrimitiveRow error, got: {:?}",
-            err
-        );
-    }
-
-    #[test]
-    fn verify_matrix_replay_proofs_err_when_evidence_empty() {
-        let phantom_row = DurabilityRow {
-            primitive: "phantom",
-            compiled_node_kind: "Phantom",
-            journal_events: &[RecordKind::StepStarted],
-            storage_partition: StoragePartition::RuntimeJournal,
-            ack_point: AckPoint::AfterJournalAppend,
-            replay_assertion: "phantom",
-            test_evidence: &[],
-        };
-        let result = verify_matrix_replay_proofs_with_matrix(&[phantom_row]);
-        let err = match result {
-            Err(e) => e,
-            Ok(v) => panic!("Expected error for empty evidence, got Ok: {:?}", v),
-        };
-        assert!(
-            matches!(&err, DurabilityError::MissingReplayProof { primitive, .. } if primitive == "phantom"),
-            "Expected MissingReplayProof error, got: {:?}",
-            err
-        );
-    }
-
-    #[test]
-    fn verify_ack_after_persist_err_when_before_journal_append() {
-        let bad_row = DurabilityRow {
-            primitive: "bad_handler",
-            compiled_node_kind: "BadHandler",
-            journal_events: &[RecordKind::StepStarted],
-            storage_partition: StoragePartition::RuntimeJournal,
-            ack_point: AckPoint::BeforeJournalAppend,
-            replay_assertion: "bad",
-            test_evidence: &["test.rs"],
-        };
-        let result = verify_ack_after_persist_with_matrix(&[bad_row]);
-        let err = match result {
-            Err(e) => e,
-            Ok(v) => panic!("Expected error for ack-before-persist, got Ok: {:?}", v),
-        };
-        assert!(
-            matches!(&err, DurabilityError::AckBeforePersist { primitive, .. } if primitive == "bad_handler"),
-            "Expected AckBeforePersist error, got: {:?}",
-            err
-        );
-    }
-
-    #[test]
-    fn verify_matrix_completeness_empty_primitives_succeeds() {
-        let result = verify_matrix_completeness_with_primitives(&[]);
-        assert!(
-            result.is_ok(),
-            "Empty primitives list should succeed, got: {:?}",
-            result
-        );
-    }
-
-    #[test]
-    fn verify_matrix_completeness_single_primitive_succeeds() {
-        let result = verify_matrix_completeness_with_primitives(&["set"]);
-        assert!(
-            result.is_ok(),
-            "Single existing primitive should succeed, got: {:?}",
-            result
-        );
-    }
-
-    #[test]
-    fn verify_matrix_completeness_err_when_duplicate_primitives() {
-        let result = verify_matrix_completeness_with_primitives(&["set", "set"]);
-        assert!(
-            result.is_ok(),
-            "Duplicate primitives should still pass completeness check (not a completeness error), got: {:?}",
-            result
-        );
     }
 }

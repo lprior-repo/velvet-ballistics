@@ -15,6 +15,7 @@ serde-saphyr = { workspace = true }
 toml = "0.9"
 image = { version = "0.25", default-features = false, features = ["png"] }
 tempfile = "3"
+blake3.workspace = true
 
 [dev-dependencies]
 serde-saphyr = { workspace = true, features = ["serialize"] }

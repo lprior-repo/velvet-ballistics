@@ -234,7 +234,7 @@ pub fn admit_run_with_budget(
     ))
 }
 
-pub(crate) fn map_budget_error(
+fn map_budget_error(
     error: vb_core::budget::AggregateBudgetError,
     _requested_budget: AggregateResourceBudget,
     _available_capacity: AggregateResourceCapacity,

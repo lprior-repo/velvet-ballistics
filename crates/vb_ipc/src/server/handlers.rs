@@ -1085,7 +1085,6 @@ fn enqueue_successors(
 }
 
 #[cfg(test)]
-#[allow(clippy::expect_used)]
 mod tests {
     use super::*;
 
@@ -1102,7 +1101,10 @@ mod tests {
         match result {
             Ok(decoded) => assert_eq!(decoded, crate::IpcPayload::Health),
             Err(_) => {
-                unreachable!("decode_payload should succeed for valid Health payload");
+                assert!(
+                    false,
+                    "decode_payload should succeed for valid Health payload"
+                );
             }
         }
     }
@@ -1111,31 +1113,32 @@ mod tests {
     fn decode_payload_returns_error_for_garbage_bytes() {
         let garbage: &[u8] = &[0xFF, 0xFE, 0xFD, 0xFC];
         let result = decode_payload::<crate::IpcPayload>(garbage);
-        assert!(
-            result.is_err(),
-            "decode_payload should fail for garbage bytes"
-        );
-        let Err(IpcResponse::PayloadError {
-            diagnostic,
-            message,
-        }) = result
-        else {
-            unreachable!("expected PayloadError variant for garbage bytes");
-        };
-        assert!(!message.is_empty(), "error message should not be empty");
-        assert_eq!(diagnostic, 0x300D);
+        match result {
+            Err(IpcResponse::PayloadError {
+                diagnostic,
+                message,
+            }) => {
+                assert!(!message.is_empty(), "error message should not be empty");
+                assert_eq!(diagnostic, 0x300D);
+            }
+            other => {
+                assert!(false, "expected PayloadError for garbage, got {other:?}");
+            }
+        }
     }
 
     #[test]
     fn decode_payload_returns_error_for_empty_bytes() {
         let result = decode_payload::<crate::IpcPayload>(&[]);
-        assert!(
-            result.is_err(),
-            "decode_payload should fail for empty bytes"
-        );
-        let Err(IpcResponse::PayloadError { .. }) = result else {
-            unreachable!("expected PayloadError variant for empty bytes");
-        };
+        match result {
+            Err(IpcResponse::PayloadError { .. }) => {}
+            other => {
+                assert!(
+                    false,
+                    "expected PayloadError for empty bytes, got {other:?}"
+                );
+            }
+        }
     }
 
     #[test]
@@ -1146,8 +1149,11 @@ mod tests {
         let Ok(encoded) = postcard::to_allocvec(&payload) else {
             return;
         };
-        let decoded = decode_payload::<crate::IpcPayload>(&encoded)
-            .expect("postcard roundtrip must succeed for valid IpcPayload");
+        let result = decode_payload::<crate::IpcPayload>(&encoded);
+        let Ok(decoded) = result else {
+            assert!(false, "should decode CancelRun");
+            return;
+        };
         assert_eq!(decoded, payload);
     }
 
@@ -1160,8 +1166,11 @@ mod tests {
         let Ok(encoded) = postcard::to_allocvec(&payload) else {
             return;
         };
-        let decoded = decode_payload::<crate::IpcPayload>(&encoded)
-            .expect("postcard roundtrip must succeed for valid IpcPayload");
+        let result = decode_payload::<crate::IpcPayload>(&encoded);
+        let Ok(decoded) = result else {
+            assert!(false, "should decode DrainTrace");
+            return;
+        };
         assert_eq!(decoded, payload);
     }
 
@@ -1171,8 +1180,11 @@ mod tests {
         let Ok(encoded) = postcard::to_allocvec(&payload) else {
             return;
         };
-        let decoded = decode_payload::<crate::IpcPayload>(&encoded)
-            .expect("postcard roundtrip must succeed for valid IpcPayload");
+        let result = decode_payload::<crate::IpcPayload>(&encoded);
+        let Ok(decoded) = result else {
+            assert!(false, "should decode Shutdown");
+            return;
+        };
         assert_eq!(decoded, payload);
     }
 
@@ -1185,8 +1197,11 @@ mod tests {
         let Ok(encoded) = postcard::to_allocvec(&payload) else {
             return;
         };
-        let decoded = decode_payload::<crate::IpcPayload>(&encoded)
-            .expect("postcard roundtrip must succeed for valid IpcPayload");
+        let result = decode_payload::<crate::IpcPayload>(&encoded);
+        let Ok(decoded) = result else {
+            assert!(false, "should decode ListEvents");
+            return;
+        };
         assert_eq!(decoded, payload);
     }
 
@@ -1198,8 +1213,11 @@ mod tests {
         let Ok(encoded) = postcard::to_allocvec(&payload) else {
             return;
         };
-        let decoded = decode_payload::<crate::IpcPayload>(&encoded)
-            .expect("postcard roundtrip must succeed for valid IpcPayload");
+        let result = decode_payload::<crate::IpcPayload>(&encoded);
+        let Ok(decoded) = result else {
+            assert!(false, "should decode InspectRun");
+            return;
+        };
         assert_eq!(decoded, payload);
     }
 
@@ -1213,8 +1231,11 @@ mod tests {
         let Ok(encoded) = postcard::to_allocvec(&payload) else {
             return;
         };
-        let decoded = decode_payload::<crate::IpcPayload>(&encoded)
-            .expect("postcard roundtrip must succeed for valid IpcPayload");
+        let result = decode_payload::<crate::IpcPayload>(&encoded);
+        let Ok(decoded) = result else {
+            assert!(false, "should decode AnswerAsk");
+            return;
+        };
         assert_eq!(decoded, payload);
     }
 
@@ -1228,8 +1249,11 @@ mod tests {
         let Ok(encoded) = postcard::to_allocvec(&payload) else {
             return;
         };
-        let decoded = decode_payload::<crate::IpcPayload>(&encoded)
-            .expect("postcard roundtrip must succeed for valid IpcPayload");
+        let result = decode_payload::<crate::IpcPayload>(&encoded);
+        let Ok(decoded) = result else {
+            assert!(false, "should decode CompleteAction");
+            return;
+        };
         assert_eq!(decoded, payload);
     }
 
@@ -1243,8 +1267,11 @@ mod tests {
         let Ok(encoded) = postcard::to_allocvec(&payload) else {
             return;
         };
-        let decoded = decode_payload::<crate::IpcPayload>(&encoded)
-            .expect("postcard roundtrip must succeed for valid IpcPayload");
+        let result = decode_payload::<crate::IpcPayload>(&encoded);
+        let Ok(decoded) = result else {
+            assert!(false, "should decode FailAction");
+            return;
+        };
         assert_eq!(decoded, payload);
     }
 
@@ -1254,8 +1281,11 @@ mod tests {
         let Ok(encoded) = postcard::to_allocvec(&payload) else {
             return;
         };
-        let decoded = decode_payload::<crate::IpcPayload>(&encoded)
-            .expect("postcard roundtrip must succeed for valid IpcPayload");
+        let result = decode_payload::<crate::IpcPayload>(&encoded);
+        let Ok(decoded) = result else {
+            assert!(false, "should decode GetMetrics");
+            return;
+        };
         assert_eq!(decoded, payload);
     }
 
@@ -1268,8 +1298,11 @@ mod tests {
         let Ok(encoded) = postcard::to_allocvec(&payload) else {
             return;
         };
-        let decoded = decode_payload::<crate::IpcPayload>(&encoded)
-            .expect("postcard roundtrip must succeed for valid IpcPayload");
+        let result = decode_payload::<crate::IpcPayload>(&encoded);
+        let Ok(decoded) = result else {
+            assert!(false, "should decode ListRuns");
+            return;
+        };
         assert_eq!(decoded, payload);
     }
 
@@ -1283,8 +1316,11 @@ mod tests {
         let Ok(encoded) = postcard::to_allocvec(&payload) else {
             return;
         };
-        let decoded = decode_payload::<crate::IpcPayload>(&encoded)
-            .expect("postcard roundtrip must succeed for valid IpcPayload");
+        let result = decode_payload::<crate::IpcPayload>(&encoded);
+        let Ok(decoded) = result else {
+            assert!(false, "should decode SubmitRun");
+            return;
+        };
         assert_eq!(decoded, payload);
     }
 
@@ -1305,60 +1341,72 @@ mod tests {
     #[test]
     fn ipc_error_response_maps_full_to_payload_error() {
         let response = ipc_error_response(crate::IpcError::Full);
-        let IpcResponse::PayloadError {
-            diagnostic,
-            message,
-        } = response
-        else {
-            unreachable!("expected PayloadError variant");
-        };
-        assert_eq!(diagnostic, 0x3001);
-        assert!(message.contains("full"), "expected 'full' in '{message}'");
+        match response {
+            IpcResponse::PayloadError {
+                diagnostic,
+                message,
+            } => {
+                assert_eq!(diagnostic, 0x3001);
+                assert!(message.contains("full"), "expected 'full' in '{message}'");
+            }
+            other => {
+                assert!(false, "expected PayloadError, got {other:?}");
+            }
+        }
     }
 
     #[test]
     fn ipc_error_response_maps_decode_failed_to_payload_error() {
         let response = ipc_error_response(crate::IpcError::PayloadDecodeFailed);
-        let IpcResponse::PayloadError {
-            diagnostic,
-            message,
-        } = response
-        else {
-            unreachable!("expected PayloadError variant");
-        };
-        assert_eq!(diagnostic, 0x300D);
-        assert!(
-            message.contains("decode"),
-            "expected 'decode' in '{message}'"
-        );
+        match response {
+            IpcResponse::PayloadError {
+                diagnostic,
+                message,
+            } => {
+                assert_eq!(diagnostic, 0x300D);
+                assert!(
+                    message.contains("decode"),
+                    "expected 'decode' in '{message}'"
+                );
+            }
+            other => {
+                assert!(false, "expected PayloadError, got {other:?}");
+            }
+        }
     }
 
     #[test]
     fn ipc_error_response_maps_invalid_magic_to_payload_error() {
         let response = ipc_error_response(crate::IpcError::InvalidMagic { actual: 0xBAD });
-        let IpcResponse::PayloadError {
-            diagnostic,
-            message,
-        } = response
-        else {
-            unreachable!("expected PayloadError variant");
-        };
-        assert_eq!(diagnostic, 0x3004);
-        assert!(message.contains("magic"), "expected 'magic' in '{message}'");
+        match response {
+            IpcResponse::PayloadError {
+                diagnostic,
+                message,
+            } => {
+                assert_eq!(diagnostic, 0x3004);
+                assert!(message.contains("magic"), "expected 'magic' in '{message}'");
+            }
+            other => {
+                assert!(false, "expected PayloadError, got {other:?}");
+            }
+        }
     }
 
     #[test]
     fn ipc_error_response_maps_unknown_command_to_payload_error() {
         let response = ipc_error_response(crate::IpcError::UnknownCommand(200));
-        let IpcResponse::PayloadError {
-            diagnostic,
-            message,
-        } = response
-        else {
-            unreachable!("expected PayloadError variant");
-        };
-        assert_eq!(diagnostic, 0x3006);
-        assert!(message.contains("200"), "expected '200' in '{message}'");
+        match response {
+            IpcResponse::PayloadError {
+                diagnostic,
+                message,
+            } => {
+                assert_eq!(diagnostic, 0x3006);
+                assert!(message.contains("200"), "expected '200' in '{message}'");
+            }
+            other => {
+                assert!(false, "expected PayloadError, got {other:?}");
+            }
+        }
     }
 
     // -- all_successors regression tests --
@@ -1467,13 +1515,20 @@ mod tests {
         let payload = crate::IpcPayload::CancelRun {
             run_id: vb_core::RunId::new(9999),
         };
-        let encoded = postcard::to_allocvec(&payload).expect("payload should encode");
+        let Ok(encoded) = postcard::to_allocvec(&payload) else {
+            assert!(false, "payload should encode");
+            return;
+        };
         // Verify the payload decodes correctly (the handler would proceed to cancel_run).
         let decoded = decode_payload::<crate::IpcPayload>(&encoded);
-        let Ok(crate::IpcPayload::CancelRun { run_id }) = decoded else {
-            unreachable!("expected CancelRun payload");
-        };
-        assert_eq!(run_id, vb_core::RunId::new(9999));
+        match decoded {
+            Ok(crate::IpcPayload::CancelRun { run_id }) => {
+                assert_eq!(run_id, vb_core::RunId::new(9999));
+            }
+            other => {
+                assert!(false, "expected CancelRun payload, got {other:?}");
+            }
+        }
     }
 
     /// Verifies that handle_get_workflow_graph would reject a workflow
@@ -1484,13 +1539,19 @@ mod tests {
     fn get_workflow_graph_payload_roundtrips() {
         let digest = vb_core::WorkflowDigest::from_bytes([0xAB; 32]);
         let payload = crate::IpcPayload::GetWorkflowGraph { digest };
-        let encoded =
-            postcard::to_allocvec(&payload).expect("GetWorkflowGraph payload should encode");
-        let decoded = decode_payload::<crate::IpcPayload>(&encoded);
-        let Ok(crate::IpcPayload::GetWorkflowGraph { digest: d }) = decoded else {
-            unreachable!("expected GetWorkflowGraph payload");
+        let Ok(encoded) = postcard::to_allocvec(&payload) else {
+            assert!(false, "GetWorkflowGraph payload should encode");
+            return;
         };
-        assert_eq!(d, digest, "digest must round-trip unchanged");
+        let decoded = decode_payload::<crate::IpcPayload>(&encoded);
+        match decoded {
+            Ok(crate::IpcPayload::GetWorkflowGraph { digest: d }) => {
+                assert_eq!(d, digest, "digest must round-trip unchanged");
+            }
+            other => {
+                assert!(false, "expected GetWorkflowGraph, got {other:?}");
+            }
+        }
     }
 
     /// Verifies that handle_verify_workflow includes a digest integrity
@@ -1499,13 +1560,19 @@ mod tests {
     fn verify_workflow_payload_roundtrips() {
         let digest = vb_core::WorkflowDigest::from_bytes([0xCD; 32]);
         let payload = crate::IpcPayload::VerifyWorkflow { digest };
-        let encoded =
-            postcard::to_allocvec(&payload).expect("VerifyWorkflow payload should encode");
-        let decoded = decode_payload::<crate::IpcPayload>(&encoded);
-        let Ok(crate::IpcPayload::VerifyWorkflow { digest: d }) = decoded else {
-            unreachable!("expected VerifyWorkflow payload");
+        let Ok(encoded) = postcard::to_allocvec(&payload) else {
+            assert!(false, "VerifyWorkflow payload should encode");
+            return;
         };
-        assert_eq!(d, digest, "digest must round-trip unchanged");
+        let decoded = decode_payload::<crate::IpcPayload>(&encoded);
+        match decoded {
+            Ok(crate::IpcPayload::VerifyWorkflow { digest: d }) => {
+                assert_eq!(d, digest, "digest must round-trip unchanged");
+            }
+            other => {
+                assert!(false, "expected VerifyWorkflow, got {other:?}");
+            }
+        }
     }
 
     /// Verifies that get-taint-report payload round-trips with correct digest.
@@ -1513,13 +1580,19 @@ mod tests {
     fn get_taint_report_payload_roundtrips() {
         let digest = vb_core::WorkflowDigest::from_bytes([0xEF; 32]);
         let payload = crate::IpcPayload::GetTaintReport { digest };
-        let encoded =
-            postcard::to_allocvec(&payload).expect("GetTaintReport payload should encode");
-        let decoded = decode_payload::<crate::IpcPayload>(&encoded);
-        let Ok(crate::IpcPayload::GetTaintReport { digest: d }) = decoded else {
-            unreachable!("expected GetTaintReport payload");
+        let Ok(encoded) = postcard::to_allocvec(&payload) else {
+            assert!(false, "GetTaintReport payload should encode");
+            return;
         };
-        assert_eq!(d, digest, "digest must round-trip unchanged");
+        let decoded = decode_payload::<crate::IpcPayload>(&encoded);
+        match decoded {
+            Ok(crate::IpcPayload::GetTaintReport { digest: d }) => {
+                assert_eq!(d, digest, "digest must round-trip unchanged");
+            }
+            other => {
+                assert!(false, "expected GetTaintReport, got {other:?}");
+            }
+        }
     }
 
     /// Verifies that handle_get_workflow_graph returns WorkflowDigestMismatch
@@ -1591,17 +1664,24 @@ mod tests {
             workflow: vb_core::WorkflowDigest::from_bytes([0x00; 32]),
             input: vec![0xAA_u8; MAX_SUBMIT_INPUT_LEN + 1],
         });
-        let encoded = postcard::to_allocvec(&payload).expect("payload should encode");
+        let Ok(encoded) = postcard::to_allocvec(&payload) else {
+            assert!(false, "payload should encode");
+            return;
+        };
         // Verify the oversized input round-trips through postcard decode,
         // confirming the handler's size check is the sole defense.
         let decoded = decode_payload::<crate::IpcPayload>(&encoded);
-        let Ok(crate::IpcPayload::SubmitRun(inner)) = decoded else {
-            unreachable!("expected SubmitRun payload");
-        };
-        assert!(
-            inner.input.len() > MAX_SUBMIT_INPUT_LEN,
-            "input should exceed cap after decode"
-        );
+        match decoded {
+            Ok(crate::IpcPayload::SubmitRun(inner)) => {
+                assert!(
+                    inner.input.len() > MAX_SUBMIT_INPUT_LEN,
+                    "input should exceed cap after decode"
+                );
+            }
+            other => {
+                assert!(false, "expected SubmitRun, got {other:?}");
+            }
+        }
     }
 
     /// FINDING 1 (MEDIUM): Verifies that a submit with input at exactly the
@@ -1614,16 +1694,23 @@ mod tests {
             workflow: vb_core::WorkflowDigest::from_bytes([0x00; 32]),
             input: vec![0xBB_u8; MAX_SUBMIT_INPUT_LEN],
         });
-        let encoded = postcard::to_allocvec(&payload).expect("payload should encode");
-        let decoded = decode_payload::<crate::IpcPayload>(&encoded);
-        let Ok(crate::IpcPayload::SubmitRun(inner)) = decoded else {
-            unreachable!("expected SubmitRun payload");
+        let Ok(encoded) = postcard::to_allocvec(&payload) else {
+            assert!(false, "payload should encode");
+            return;
         };
-        assert_eq!(
-            inner.input.len(),
-            MAX_SUBMIT_INPUT_LEN,
-            "input at exact cap should decode"
-        );
+        let decoded = decode_payload::<crate::IpcPayload>(&encoded);
+        match decoded {
+            Ok(crate::IpcPayload::SubmitRun(inner)) => {
+                assert_eq!(
+                    inner.input.len(),
+                    MAX_SUBMIT_INPUT_LEN,
+                    "input at exact cap should decode"
+                );
+            }
+            other => {
+                assert!(false, "expected SubmitRun, got {other:?}");
+            }
+        }
     }
 
     /// FINDING 2 (MEDIUM): CompleteAction.output must be capped to prevent
@@ -1636,16 +1723,23 @@ mod tests {
             ticket: 7,
             output: vec![0xCC_u8; MAX_ACTION_OUTPUT_LEN],
         };
-        let encoded = postcard::to_allocvec(&payload).expect("payload should encode");
-        let decoded = decode_payload::<crate::IpcPayload>(&encoded);
-        let Ok(crate::IpcPayload::CompleteAction { output, .. }) = decoded else {
-            unreachable!("expected CompleteAction payload");
+        let Ok(encoded) = postcard::to_allocvec(&payload) else {
+            assert!(false, "payload should encode");
+            return;
         };
-        assert_eq!(
-            output.len(),
-            MAX_ACTION_OUTPUT_LEN,
-            "output at exact cap should decode"
-        );
+        let decoded = decode_payload::<crate::IpcPayload>(&encoded);
+        match decoded {
+            Ok(crate::IpcPayload::CompleteAction { output, .. }) => {
+                assert_eq!(
+                    output.len(),
+                    MAX_ACTION_OUTPUT_LEN,
+                    "output at exact cap should decode"
+                );
+            }
+            other => {
+                assert!(false, "expected CompleteAction, got {other:?}");
+            }
+        }
     }
 
     /// FINDING 2 (MEDIUM): FailAction.error must be capped to prevent
@@ -1657,16 +1751,23 @@ mod tests {
             ticket: 3,
             error: vec![0xDD_u8; MAX_ACTION_ERROR_LEN],
         };
-        let encoded = postcard::to_allocvec(&payload).expect("payload should encode");
-        let decoded = decode_payload::<crate::IpcPayload>(&encoded);
-        let Ok(crate::IpcPayload::FailAction { error, .. }) = decoded else {
-            unreachable!("expected FailAction payload");
+        let Ok(encoded) = postcard::to_allocvec(&payload) else {
+            assert!(false, "payload should encode");
+            return;
         };
-        assert_eq!(
-            error.len(),
-            MAX_ACTION_ERROR_LEN,
-            "error at exact cap should decode"
-        );
+        let decoded = decode_payload::<crate::IpcPayload>(&encoded);
+        match decoded {
+            Ok(crate::IpcPayload::FailAction { error, .. }) => {
+                assert_eq!(
+                    error.len(),
+                    MAX_ACTION_ERROR_LEN,
+                    "error at exact cap should decode"
+                );
+            }
+            other => {
+                assert!(false, "expected FailAction, got {other:?}");
+            }
+        }
     }
 
     /// FINDING 3 (HIGH): Taint report path entries must be capped to prevent
@@ -1674,18 +1775,14 @@ mod tests {
     /// is a reasonable bound.
     #[test]
     fn taint_path_entries_cap_is_bounded() {
-        const {
-            assert!(
-                MAX_TAINT_PATH_ENTRIES <= 65536,
-                "taint path cap should not exceed 65536"
-            )
-        };
-        const {
-            assert!(
-                MAX_TAINT_PATH_ENTRIES > 0,
-                "taint path cap should be non-zero"
-            )
-        };
+        assert!(
+            MAX_TAINT_PATH_ENTRIES <= 65536,
+            "taint path cap should not exceed 65536"
+        );
+        assert!(
+            MAX_TAINT_PATH_ENTRIES > 0,
+            "taint path cap should be non-zero"
+        );
     }
 
     /// FINDING 4 (LOW): sanitize_runtime_error should not allocate excessively.
@@ -1770,7 +1867,10 @@ mod tests {
             ticket: 5,
             answer: vec![0xFF_u8; MAX_ANSWER_ASK_BYTES + 1],
         };
-        let encoded = postcard::to_allocvec(&payload).expect("payload should encode");
+        let Ok(encoded) = postcard::to_allocvec(&payload) else {
+            assert!(false, "payload should encode");
+            return;
+        };
         // Verify the oversized answer round-trips through postcard decode,
         // confirming the handler's size check is the sole defense.
         let decoded = decode_payload::<crate::IpcPayload>(&encoded);
@@ -1782,7 +1882,7 @@ mod tests {
                 );
             }
             other => {
-                unreachable!("expected AnswerAsk, got {other:?}");
+                assert!(false, "expected AnswerAsk, got {other:?}");
             }
         }
     }
@@ -1796,7 +1896,10 @@ mod tests {
             ticket: 5,
             answer: vec![0xAA_u8; MAX_ANSWER_ASK_BYTES],
         };
-        let encoded = postcard::to_allocvec(&payload).expect("payload should encode");
+        let Ok(encoded) = postcard::to_allocvec(&payload) else {
+            assert!(false, "payload should encode");
+            return;
+        };
         let decoded = decode_payload::<crate::IpcPayload>(&encoded);
         match decoded {
             Ok(crate::IpcPayload::AnswerAsk { answer, .. }) => {
@@ -1807,7 +1910,7 @@ mod tests {
                 );
             }
             other => {
-                unreachable!("expected AnswerAsk, got {other:?}");
+                assert!(false, "expected AnswerAsk, got {other:?}");
             }
         }
     }
@@ -1819,13 +1922,11 @@ mod tests {
     /// that the capping logic uses saturating min.
     #[test]
     fn list_runs_limit_cap_is_bounded() {
-        const {
-            assert!(
-                MAX_LIST_RUNS_LIMIT <= 4096,
-                "list runs cap should not exceed 4096"
-            )
-        };
-        const { assert!(MAX_LIST_RUNS_LIMIT > 0, "list runs cap should be non-zero") };
+        assert!(
+            MAX_LIST_RUNS_LIMIT <= 4096,
+            "list runs cap should not exceed 4096"
+        );
+        assert!(MAX_LIST_RUNS_LIMIT > 0, "list runs cap should be non-zero");
     }
 
     /// FINDING 7 (MEDIUM): Verifies that a ListRuns payload with u32::MAX limit
@@ -1836,7 +1937,10 @@ mod tests {
             limit: u32::MAX,
             workflow: None,
         };
-        let encoded = postcard::to_allocvec(&payload).expect("payload should encode");
+        let Ok(encoded) = postcard::to_allocvec(&payload) else {
+            assert!(false, "payload should encode");
+            return;
+        };
         let decoded = decode_payload::<crate::IpcPayload>(&encoded);
         match decoded {
             Ok(crate::IpcPayload::ListRuns { limit, .. }) => {
@@ -1846,7 +1950,7 @@ mod tests {
                 assert_eq!(capped, MAX_LIST_RUNS_LIMIT, "should be capped");
             }
             other => {
-                unreachable!("expected ListRuns, got {other:?}");
+                assert!(false, "expected ListRuns, got {other:?}");
             }
         }
     }
@@ -1856,34 +1960,28 @@ mod tests {
     /// compiled workflows. Verifies the MAX_WORKFLOW_GRAPH_NODES constant.
     #[test]
     fn workflow_graph_nodes_cap_is_bounded() {
-        const {
-            assert!(
-                MAX_WORKFLOW_GRAPH_NODES <= 8192,
-                "workflow graph nodes cap should not exceed 8192"
-            )
-        };
-        const {
-            assert!(
-                MAX_WORKFLOW_GRAPH_NODES > 0,
-                "workflow graph nodes cap should be non-zero"
-            )
-        };
+        assert!(
+            MAX_WORKFLOW_GRAPH_NODES <= 8192,
+            "workflow graph nodes cap should not exceed 8192"
+        );
+        assert!(
+            MAX_WORKFLOW_GRAPH_NODES > 0,
+            "workflow graph nodes cap should be non-zero"
+        );
     }
 
     /// FINDING 8 (MEDIUM): Verifies the capping logic for node_count.
     /// When node_count exceeds MAX_WORKFLOW_GRAPH_NODES, it should be capped.
     #[test]
     fn workflow_graph_node_count_capping_logic() {
-        let max_nodes = u16::try_from(MAX_WORKFLOW_GRAPH_NODES).unwrap_or(u16::MAX);
-        // A value exceeding max_nodes should be capped
-        let excessive = u16::MAX;
-        let capped = excessive.min(max_nodes);
+        let capped = u16::MAX.min(u16::try_from(MAX_WORKFLOW_GRAPH_NODES).unwrap_or(u16::MAX));
         assert_eq!(
-            capped, max_nodes,
-            "excessive count should be capped to max_nodes"
+            capped,
+            u16::try_from(MAX_WORKFLOW_GRAPH_NODES).unwrap_or(u16::MAX),
+            "u16::MAX should be capped to MAX_WORKFLOW_GRAPH_NODES"
         );
         // A small count should not be changed
-        let small_capped = 100u16.min(max_nodes);
+        let small_capped = 100u16.min(u16::try_from(MAX_WORKFLOW_GRAPH_NODES).unwrap_or(u16::MAX));
         assert_eq!(small_capped, 100, "small node count should pass through");
     }
 }

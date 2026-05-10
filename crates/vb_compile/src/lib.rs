@@ -3730,7 +3730,6 @@ fn object_slot_value(
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 mod tests {
     use super::*;
 
@@ -3831,6 +3830,7 @@ mod tests {
                 "Expected error but lower_steps_to_ir succeeded. \
                  This FAILS before fix because lower_steps_to_ir bypasses Gate 9."
             ),
+            other => panic!("Expected CompileErrors, got: {:?}", other),
         }
     }
 
@@ -3874,6 +3874,7 @@ mod tests {
                 }
             }
             Ok(_) => panic!("Expected error from validate_ir, got Ok"),
+            other => panic!("Expected CompileErrors, got: {:?}", other),
         }
     }
 
@@ -3960,6 +3961,7 @@ mod tests {
                 }
             }
             Ok(_) => panic!("Expected error, got Ok"),
+            other => panic!("Expected CompileErrors, got: {:?}", other),
         }
     }
 
@@ -3999,6 +4001,7 @@ mod tests {
                 }
             }
             Ok(_) => panic!("Expected error, got Ok"),
+            other => panic!("Expected CompileErrors, got: {:?}", other),
         }
     }
 
@@ -4024,6 +4027,7 @@ mod tests {
                 }
             }
             Ok(_) => panic!("Expected error, got Ok"),
+            other => panic!("Expected CompileErrors, got: {:?}", other),
         }
     }
 
@@ -4064,6 +4068,7 @@ steps:
                 }
             }
             Ok(_) => panic!("Expected error, got Ok"),
+            other => panic!("Expected CompileErrors, got: {:?}", other),
         }
     }
 
@@ -4113,6 +4118,7 @@ steps:
                 }
             }
             Ok(_) => panic!("Expected error, got Ok"),
+            other => panic!("Expected CompileErrors, got: {:?}", other),
         }
     }
 
@@ -4148,7 +4154,10 @@ steps:
                 assert_eq!(node_index, 0);
             }
             Ok(_) => panic!("Expected error, got Ok"),
-            Err(other) => panic!("Expected ActionContractMissing error, got {:?}", other),
+            other => panic!(
+                "Expected ValidationError::ActionContractMissing, got: {:?}",
+                other
+            ),
         }
     }
 
@@ -4178,7 +4187,10 @@ steps:
                 assert_eq!(action_id, 99);
             }
             Ok(_) => panic!("Expected error, got Ok"),
-            Err(other) => panic!("Expected ActionContractOrphan error, got {:?}", other),
+            other => panic!(
+                "Expected ValidationError::ActionContractOrphan, got: {:?}",
+                other
+            ),
         }
     }
 
@@ -4209,6 +4221,7 @@ steps:
                 );
             }
             Ok(_) => panic!("Expected error, got Ok"),
+            other => panic!("Expected CompileErrors, got: {:?}", other),
         }
     }
 }

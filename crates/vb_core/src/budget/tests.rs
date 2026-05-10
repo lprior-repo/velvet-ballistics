@@ -1,12 +1,4 @@
 //! Budget module integration tests.
-#![allow(
-    clippy::unwrap_used,
-    clippy::expect_used,
-    clippy::panic_in_result_fn,
-    clippy::panic,
-    clippy::indexing_slicing,
-    clippy::as_conversions
-)]
 
 use crate::budget::{BoundednessPolicy, BudgetError, WholeWorkflowBudget};
 use crate::engine::StepBudget;
@@ -822,10 +814,8 @@ fn step_budget_max_equals_limit() {
 fn step_budget_zero_exhausts_immediately() {
     let mut budget = StepBudget::new(0);
     let result = budget.try_take();
-    // SAFETY: try_take on StepBudget with count=0 always returns Ok(false)
-    assert_eq!(
-        result,
-        Ok(false),
+    assert!(
+        result.is_ok() && result.as_ref().map_err(|_| "").unwrap() == &false,
         "zero budget should return Ok(false) immediately"
     );
 }
@@ -1196,14 +1186,18 @@ fn blackhat_reduce_start_uses_max_list_items_as_iteration_count() {
         },
     ];
     let contract = test_contract(3, 3);
-    let budget = WholeWorkflowBudget::compute(&nodes, StepIdx::new(0), &contract)
-        .expect("BLACKHAT BH-BUD-13: ReduceStart should compute with MAX_LIST_ITEMS iterations");
+    let budget = WholeWorkflowBudget::compute(&nodes, StepIdx::new(0), &contract).ok();
 
     let expected_iters = u64::try_from(crate::limits::MAX_LIST_ITEMS_PER_VALUE).unwrap_or(u64::MAX);
     let expected = 1 + expected_iters + 1;
 
+    assert!(
+        budget.is_some(),
+        "BLACKHAT BH-BUD-13: ReduceStart should compute with MAX_LIST_ITEMS iterations"
+    );
     assert_eq!(
-        budget.max_total_steps, expected,
+        budget.as_ref().map(|b| b.max_total_steps),
+        Some(expected),
         "BLACKHAT BH-BUD-13: expected {expected} steps"
     );
 }
@@ -1356,18 +1350,11 @@ fn step_budget_multi_step_consumption_to_zero() -> Result<(), String> {
 #[test]
 fn step_budget_consumption_returns_true_each_time_until_exhausted() -> Result<(), String> {
     let mut b = StepBudget::new(4);
-    let taken0 = b.try_take().map_err(|e| e.to_string())?;
-    ensure_equal(taken0, true)?;
-    ensure_equal(b.remaining(), 3)?;
-    let taken1 = b.try_take().map_err(|e| e.to_string())?;
-    ensure_equal(taken1, true)?;
-    ensure_equal(b.remaining(), 2)?;
-    let taken2 = b.try_take().map_err(|e| e.to_string())?;
-    ensure_equal(taken2, true)?;
-    ensure_equal(b.remaining(), 1)?;
-    let taken3 = b.try_take().map_err(|e| e.to_string())?;
-    ensure_equal(taken3, true)?;
-    ensure_equal(b.remaining(), 0)?;
+    for i in 0..4 {
+        let taken = b.try_take().map_err(|e| e.to_string())?;
+        ensure_equal(taken, true)?;
+        ensure_equal(b.remaining(), 3 - i)?;
+    }
     let final_take = b.try_take().map_err(|e| e.to_string())?;
     ensure_equal(final_take, false)
 }
@@ -1389,22 +1376,11 @@ fn step_budget_exhaustion_stays_at_zero() -> Result<(), String> {
     let mut b = StepBudget::new(2);
     b.try_take().map_err(|e| e.to_string())?;
     b.try_take().map_err(|e| e.to_string())?;
-    // After exhaustion, remaining stays at 0 and try_take returns false
-    let taken0 = b.try_take().map_err(|e| e.to_string())?;
-    ensure_equal(taken0, false)?;
-    ensure_equal(b.remaining(), 0)?;
-    let taken1 = b.try_take().map_err(|e| e.to_string())?;
-    ensure_equal(taken1, false)?;
-    ensure_equal(b.remaining(), 0)?;
-    let taken2 = b.try_take().map_err(|e| e.to_string())?;
-    ensure_equal(taken2, false)?;
-    ensure_equal(b.remaining(), 0)?;
-    let taken3 = b.try_take().map_err(|e| e.to_string())?;
-    ensure_equal(taken3, false)?;
-    ensure_equal(b.remaining(), 0)?;
-    let taken4 = b.try_take().map_err(|e| e.to_string())?;
-    ensure_equal(taken4, false)?;
-    ensure_equal(b.remaining(), 0)?;
+    for _ in 0..5 {
+        let taken = b.try_take().map_err(|e| e.to_string())?;
+        ensure_equal(taken, false)?;
+        ensure_equal(b.remaining(), 0)?;
+    }
     Ok(())
 }
 

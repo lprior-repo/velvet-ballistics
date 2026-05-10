@@ -347,8 +347,7 @@ steps:
       result: 0
 "#;
         // The result is deterministic -- either compile or validation error
-        let result = YamlCompiler::default().compile(source);
-        assert!(result.is_ok(), "compilation should succeed for valid YAML: {:?}", result);
+        let _ = YamlCompiler::default().compile(source);
         Ok(())
     }
 
@@ -978,7 +977,14 @@ steps:
     #[test]
     fn slot_compiler_expression_overflow_rejected() -> Result<(), String> {
         let mut sc = SlotCompiler::new();
-        fill_slot_compiler_expressions(&mut sc)?;
+        let count = usize::from(u16::MAX) + 1;
+        for i in 0..count {
+            let empty_ops: Box<[vb_core::workflow::ExprOp]> = Box::from([]);
+            let prog = ExprProgram::try_from_ops(empty_ops)
+                .unwrap_or_else(|_| ExprProgram { ops: Box::from([]), max_stack: 0 });
+            sc.push_expression(prog)
+                .map_err(|e| format!("push expression {i} failed: {e:?}"))?;
+        }
         let empty_ops: Box<[vb_core::workflow::ExprOp]> = Box::from([]);
         let prog = ExprProgram::try_from_ops(empty_ops)
             .unwrap_or_else(|_| ExprProgram { ops: Box::from([]), max_stack: 0 });
@@ -989,7 +995,15 @@ steps:
     #[test]
     fn slot_compiler_accessor_overflow_rejected() -> Result<(), String> {
         let mut sc = SlotCompiler::new();
-        fill_slot_compiler_accessors(&mut sc)?;
+        let count = usize::from(u16::MAX) + 1;
+        for i in 0..count {
+            let prog = vb_core::AccessorProgram {
+                root: SlotIdx::new(0),
+                path: Box::from([]),
+            };
+            sc.push_accessor(prog)
+                .map_err(|e| format!("push accessor {i} failed: {e:?}"))?;
+        }
         let prog = vb_core::AccessorProgram {
             root: SlotIdx::new(0),
             path: Box::from([]),

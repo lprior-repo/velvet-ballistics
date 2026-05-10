@@ -1,5 +1,3 @@
-#![allow(clippy::panic_in_result_fn)]
-
 use proptest::prelude::*;
 use vb_core::action::{
     ActionContract, ActionTicket, Idempotency, IdempotencyViolation, RetrySafety, SideEffect,

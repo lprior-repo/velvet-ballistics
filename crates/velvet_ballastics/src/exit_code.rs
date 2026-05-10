@@ -58,7 +58,6 @@ mod tests {
     use std::process::ExitCode;
 
     #[test]
-    #[allow(clippy::as_conversions)]
     fn discriminant_values_match_spec() {
         assert_eq!(CliExitCode::Success as u8, 0);
         assert_eq!(CliExitCode::ValidationFailed as u8, 1);
@@ -120,7 +119,6 @@ mod tests {
     }
 
     #[test]
-    #[allow(clippy::as_conversions)]
     fn all_variants_are_distinct() {
         let values: [u8; 9] = [
             CliExitCode::Success as u8,

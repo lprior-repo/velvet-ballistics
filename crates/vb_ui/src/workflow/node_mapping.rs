@@ -1059,10 +1059,13 @@ mod tests {
             AMBER,
         ];
         for colour in &colours {
-            let [r, g, b, _a] = *colour;
-            assert!(r >= 0.0 && r <= 1.0, "R channel {} outside [0, 1]", r);
-            assert!(g >= 0.0 && g <= 1.0, "G channel {} outside [0, 1]", g);
-            assert!(b >= 0.0 && b <= 1.0, "B channel {} outside [0, 1]", b);
+            for ch in 0..3 {
+                assert!(
+                    colour[ch] >= 0.0 && colour[ch] <= 1.0,
+                    "channel {ch} = {} is outside [0, 1]",
+                    colour[ch]
+                );
+            }
         }
     }
 

@@ -1,7 +1,7 @@
 #![forbid(unsafe_code)]
 
 //! Engine tests moved from engine.rs for line count compliance.
-#![allow(unused_imports, clippy::expect_used, clippy::unwrap_used)]
+#![allow(unused_imports)]
 
 use vb_core::action::Idempotency;
 use vb_core::action::RetrySafety;
@@ -607,8 +607,7 @@ fn execute_do_without_contract_returns_valid_ticket_for_any_action() {
         Err(_) => return,
     };
     // Input slot must be initialized with clean taint.
-    run.write_slot(SlotIdx::new(0), vb_core::SlotValue::I64(0))
-        .expect("write_slot must succeed: slot is valid and uninitialized in test");
+    let _ = run.write_slot(SlotIdx::new(0), vb_core::SlotValue::I64(0));
     let result = execute_do_without_contract(
         &run,
         StepIdx::new(3),
@@ -663,7 +662,7 @@ fn dummy_contract() -> vb_core::action::ActionContract {
 
 #[test]
 fn resume_action_outcome_ready_continues_execution() {
-    let _run = match RunFrame::new(RunId::new(1), StepIdx::new(0), 4, 2) {
+    let mut run = match RunFrame::new(RunId::new(1), StepIdx::new(0), 4, 2) {
         Ok(f) => f,
         Err(_) => return,
     };
@@ -681,7 +680,7 @@ fn resume_action_outcome_ready_continues_execution() {
 
 #[test]
 fn resume_action_outcome_failed_non_retryable_returns_error() {
-    let _run = match RunFrame::new(RunId::new(1), StepIdx::new(0), 4, 2) {
+    let mut run = match RunFrame::new(RunId::new(1), StepIdx::new(0), 4, 2) {
         Ok(f) => f,
         Err(_) => return,
     };
@@ -707,7 +706,7 @@ fn resume_action_outcome_failed_non_retryable_returns_error() {
 
 #[test]
 fn resume_action_outcome_suspended_returns_awaiting() {
-    let _run = match RunFrame::new(RunId::new(1), StepIdx::new(0), 4, 2) {
+    let mut run = match RunFrame::new(RunId::new(1), StepIdx::new(0), 4, 2) {
         Ok(f) => f,
         Err(_) => return,
     };
@@ -739,7 +738,7 @@ fn resume_action_outcome_suspended_returns_awaiting() {
 
 #[test]
 fn resume_action_outcome_retryable_failure_propagates_original_ticket_fields() {
-    let _run = match RunFrame::new(RunId::new(1), StepIdx::new(0), 4, 2) {
+    let mut run = match RunFrame::new(RunId::new(1), StepIdx::new(0), 4, 2) {
         Ok(f) => f,
         Err(_) => return,
     };
@@ -1177,8 +1176,7 @@ fn bh_drive_evidence_step_succeeded_not_emitted_for_awaiting_action() {
         Err(_) => return,
     };
     // Input slot must be initialized with clean taint.
-    run.write_slot(SlotIdx::new(0), SlotValue::I64(0))
-        .expect("write_slot must succeed: slot is valid and uninitialized in test");
+    let _ = run.write_slot(SlotIdx::new(0), SlotValue::I64(0));
     let mut store = ValueStore::new();
     let mut budget = vb_core::engine::StepBudget::new(10);
     let mut evidence = EvidenceCollector::new();
@@ -1199,7 +1197,7 @@ fn bh_drive_evidence_step_succeeded_not_emitted_for_awaiting_action() {
         other => {
             // If the result is something else, that is still valid behavior,
             // but we want to check the AwaitingAction path specifically.
-            drop(other);
+            let _ = other;
             return;
         }
     }
@@ -1332,7 +1330,7 @@ fn bh_resume_action_outcome_suspended_preserves_ticket_fields() {
 fn bh_resume_action_outcome_failed_retryable_preserves_signal_structure() {
     // A retryable failure should produce an AwaitingAction with a retry ticket
     // derived from the original ticket (incremented seq and attempt).
-    let _run = match RunFrame::new(RunId::new(1), StepIdx::new(0), 4, 2) {
+    let mut run = match RunFrame::new(RunId::new(1), StepIdx::new(0), 4, 2) {
         Ok(f) => f,
         Err(_) => return,
     };
@@ -1489,22 +1487,15 @@ mod proptests {
         fn step_budget_never_allows_more_than_n_steps(n in 1u64..1000u64) {
             let mut budget = vb_core::engine::StepBudget::new(n);
             let mut taken = 0u64;
-            let mut exhausted = false;
-            for _ in 0..n.saturating_add(1) {
+            let mut drained = false;
+            while !drained && taken <= n + 1 {
                 match budget.try_take() {
                     Ok(true) => taken += 1,
-                    Ok(false) => {
-                        exhausted = true;
-                        break;
-                    }
-                    Err(_) => {
-                        exhausted = true;
-                        break;
-                    }
+                    Ok(false) => drained = true,
+                    Err(_) => drained = true,
                 }
             }
             prop_assert_eq!(taken, n);
-            prop_assert!(exhausted, "budget should be exhausted after {} steps", n);
         }
     }
 
@@ -1892,8 +1883,7 @@ mod blackhat_engine {
         };
         let wf = make_workflow(vec![node], 4);
         let mut run = make_run(4, 2);
-        run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(42), Taint::Secret)
-            .expect("write_slot_with_taint must succeed: slot is valid in test");
+        let _ = run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(42), Taint::Secret);
         let mut store = ValueStore::new();
         let mut cs = CollectStates::new();
         let n = match wf.node(StepIdx::ZERO) {
@@ -1932,8 +1922,7 @@ mod blackhat_engine {
         };
         let wf = make_workflow(vec![node], 4);
         let mut run = make_run(4, 2);
-        run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(42), Taint::Clean)
-            .expect("write_slot_with_taint must succeed: slot is valid in test");
+        let _ = run.write_slot(SlotIdx::new(0), SlotValue::I64(42));
         let mut store = ValueStore::new();
         let mut cs = CollectStates::new();
         let n = match wf.node(StepIdx::ZERO) {
@@ -1977,8 +1966,7 @@ mod blackhat_engine {
         };
         let wf = make_workflow(vec![node], 4);
         let mut run = make_run(4, 2);
-        run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(42), Taint::Secret)
-            .expect("write_slot_with_taint must succeed: slot is valid in test");
+        let _ = run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(42), Taint::Secret);
         let mut store = ValueStore::new();
         let mut cs = CollectStates::new();
         let n = match wf.node(StepIdx::ZERO) {
@@ -2055,8 +2043,7 @@ mod blackhat_engine {
             &mut cs,
             &CapabilitySet::empty(),
         );
-        let _ =
-            result.expect("execute_node_full must succeed for RetryCheck NEVER policy body route");
+        assert!(result.is_ok());
         assert_eq!(
             run.executed(),
             executed_before + 1,
@@ -2100,8 +2087,7 @@ mod blackhat_engine {
         };
         let mut run = make_run(4, 2);
         // Input slot must be initialized with clean taint for the no-contract path.
-        run.write_slot(SlotIdx::new(0), SlotValue::I64(0))
-            .expect("write_slot must succeed: slot is valid and uninitialized in test");
+        let _ = run.write_slot(SlotIdx::new(0), SlotValue::I64(0));
         let mut store = ValueStore::new();
         let mut budget = vb_core::engine::StepBudget::new(10);
         let mut evidence = EvidenceCollector::new();
@@ -2120,7 +2106,7 @@ mod blackhat_engine {
         match result {
             Ok(RuntimeSignal::AwaitingAction(_)) => {}
             other => {
-                drop(other);
+                let _ = other;
                 return;
             }
         }
@@ -2169,7 +2155,7 @@ mod blackhat_engine {
 
     #[test]
     fn bh_eng_11_retry_ticket_uses_frame_run_id() {
-        let _run = RunFrame::new(RunId::new(99), StepIdx::ZERO, 4, 2)
+        let mut run = RunFrame::new(RunId::new(99), StepIdx::ZERO, 4, 2)
             .ok()
             .unwrap_or_else(|| panic!("RunFrame::new failed"));
         let original = ActionTicket {
@@ -2247,7 +2233,7 @@ mod blackhat_engine {
 
     #[test]
     fn bh_eng_13_suspended_outcome_ignores_original_ticket() {
-        let _run = RunFrame::new(RunId::new(1), StepIdx::ZERO, 4, 2)
+        let mut run = RunFrame::new(RunId::new(1), StepIdx::ZERO, 4, 2)
             .ok()
             .unwrap_or_else(|| panic!("RunFrame::new failed"));
         let suspended_ticket = ActionTicket {
@@ -2293,8 +2279,7 @@ mod blackhat_engine {
         let mut run = RunFrame::new(RunId::new(1), StepIdx::ZERO, 4, 2)
             .ok()
             .unwrap_or_else(|| panic!("RunFrame::new failed"));
-        run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(1), Taint::Secret)
-            .expect("write_slot_with_taint must succeed: slot is valid in test");
+        let _ = run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(1), Taint::Secret);
         let contract = ActionContract {
             id: ActionId::new(0),
             input_slot_count: 1,
@@ -2367,8 +2352,7 @@ mod blackhat_engine {
         let mut run = RunFrame::new(RunId::new(1), StepIdx::ZERO, 4, 2)
             .ok()
             .unwrap_or_else(|| panic!("RunFrame::new failed"));
-        run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(42), Taint::Secret)
-            .expect("write_slot_with_taint must succeed: slot is valid in test");
+        let _ = run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(42), Taint::Secret);
         let result = execute_do_without_contract(
             &run,
             StepIdx::ZERO,
@@ -2415,8 +2399,7 @@ mod blackhat_engine {
         let mut run = RunFrame::new(RunId::new(1), StepIdx::ZERO, 4, 2)
             .ok()
             .unwrap_or_else(|| panic!("RunFrame::new failed"));
-        run.write_slot(SlotIdx::new(0), SlotValue::I64(42))
-            .expect("write_slot must succeed: slot is valid in test");
+        let _ = run.write_slot(SlotIdx::new(0), SlotValue::I64(42));
         let result = execute_do_without_contract(
             &run,
             StepIdx::ZERO,

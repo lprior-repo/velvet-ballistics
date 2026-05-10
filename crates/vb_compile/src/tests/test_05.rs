@@ -13,95 +13,27 @@ use super::helpers::*;
     }
 
     #[test]
-    fn compiler_rejects_invalid_step_ids_empty() {
-        let id = "";
-        let source = format!(
-            "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {{}}\nsteps:\n  - id: \"{id}\"\n    save:\n      value: 1\n  - id: done\n    finish:\n      result: 0\n"
-        );
-        let result = YamlCompiler::default().compile(source.as_bytes());
+    fn compiler_rejects_invalid_step_ids() {
+        for id in ["", "BuildResult", "build-result", "finish"] {
+            let source = format!(
+                "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {{}}\nsteps:\n  - id: \"{id}\"\n    save:\n      value: 1\n  - id: done\n    finish:\n      result: 0\n"
+            );
+            let result = YamlCompiler::default().compile(source.as_bytes());
 
-        assert!(
-            matches!(
-                result,
-                Err(ref errors) if matches!(
-                    errors.first(),
-                    Some(CompileError::InvalidName {
-                        field: "step id",
-                        ..
-                    })
-                )
-            ),
-            "step id {id:?} must be rejected"
-        );
-    }
-
-    #[test]
-    fn compiler_rejects_invalid_step_ids_build_result() {
-        let id = "BuildResult";
-        let source = format!(
-            "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {{}}\nsteps:\n  - id: \"{id}\"\n    save:\n      value: 1\n  - id: done\n    finish:\n      result: 0\n"
-        );
-        let result = YamlCompiler::default().compile(source.as_bytes());
-
-        assert!(
-            matches!(
-                result,
-                Err(ref errors) if matches!(
-                    errors.first(),
-                    Some(CompileError::InvalidName {
-                        field: "step id",
-                        ..
-                    })
-                )
-            ),
-            "step id {id:?} must be rejected"
-        );
-    }
-
-    #[test]
-    fn compiler_rejects_invalid_step_ids_kebab_case() {
-        let id = "build-result";
-        let source = format!(
-            "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {{}}\nsteps:\n  - id: \"{id}\"\n    save:\n      value: 1\n  - id: done\n    finish:\n      result: 0\n"
-        );
-        let result = YamlCompiler::default().compile(source.as_bytes());
-
-        assert!(
-            matches!(
-                result,
-                Err(ref errors) if matches!(
-                    errors.first(),
-                    Some(CompileError::InvalidName {
-                        field: "step id",
-                        ..
-                    })
-                )
-            ),
-            "step id {id:?} must be rejected"
-        );
-    }
-
-    #[test]
-    fn compiler_rejects_invalid_step_ids_finish() {
-        let id = "finish";
-        let source = format!(
-            "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {{}}\nsteps:\n  - id: \"{id}\"\n    save:\n      value: 1\n  - id: done\n    finish:\n      result: 0\n"
-        );
-        let result = YamlCompiler::default().compile(source.as_bytes());
-
-        assert!(
-            matches!(
-                result,
-                Err(ref errors) if matches!(
-                    errors.first(),
-                    Some(CompileError::InvalidName {
-                        field: "step id",
-                        ..
-                    })
-                )
-            ),
-            "step id {id:?} must be rejected"
-        );
+            assert!(
+                matches!(
+                    result,
+                    Err(ref errors) if matches!(
+                        errors.first(),
+                        Some(CompileError::InvalidName {
+                            field: "step id",
+                            ..
+                        })
+                    )
+                ),
+                "step id {id:?} must be rejected"
+            );
+        }
     }
 
     #[test]
@@ -137,88 +69,21 @@ use super::helpers::*;
     }
 
     #[test]
-    fn compiler_rejects_unsupported_phase_zero_step_control_fields_if() {
-        let control = "if";
-        let source = format!(
-            "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {{}}\nsteps:\n  - id: build_result\n    {control}: true\n    save:\n      value: 1\n  - id: done\n    finish:\n      result: 0\n"
-        );
-        let result = YamlCompiler::default().compile(source.as_bytes());
+    fn compiler_rejects_unsupported_phase_zero_step_control_fields() {
+        for control in ["if", "with", "try_again", "on_error", "then"] {
+            let source = format!(
+                "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {{}}\nsteps:\n  - id: build_result\n    {control}: true\n    save:\n      value: 1\n  - id: done\n    finish:\n      result: 0\n"
+            );
+            let result = YamlCompiler::default().compile(source.as_bytes());
 
-        assert!(
-            matches!(
-                result,
-                Err(ref errors) if matches!(errors.first(), Some(CompileError::UnsupportedStepControlField { .. }))
-            ),
-            "control field {control} must be rejected until Phase 0 compiles it"
-        );
-    }
-
-    #[test]
-    fn compiler_rejects_unsupported_phase_zero_step_control_fields_with() {
-        let control = "with";
-        let source = format!(
-            "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {{}}\nsteps:\n  - id: build_result\n    {control}: true\n    save:\n      value: 1\n  - id: done\n    finish:\n      result: 0\n"
-        );
-        let result = YamlCompiler::default().compile(source.as_bytes());
-
-        assert!(
-            matches!(
-                result,
-                Err(ref errors) if matches!(errors.first(), Some(CompileError::UnsupportedStepControlField { .. }))
-            ),
-            "control field {control} must be rejected until Phase 0 compiles it"
-        );
-    }
-
-    #[test]
-    fn compiler_rejects_unsupported_phase_zero_step_control_fields_try_again() {
-        let control = "try_again";
-        let source = format!(
-            "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {{}}\nsteps:\n  - id: build_result\n    {control}: true\n    save:\n      value: 1\n  - id: done\n    finish:\n      result: 0\n"
-        );
-        let result = YamlCompiler::default().compile(source.as_bytes());
-
-        assert!(
-            matches!(
-                result,
-                Err(ref errors) if matches!(errors.first(), Some(CompileError::UnsupportedStepControlField { .. }))
-            ),
-            "control field {control} must be rejected until Phase 0 compiles it"
-        );
-    }
-
-    #[test]
-    fn compiler_rejects_unsupported_phase_zero_step_control_fields_on_error() {
-        let control = "on_error";
-        let source = format!(
-            "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {{}}\nsteps:\n  - id: build_result\n    {control}: true\n    save:\n      value: 1\n  - id: done\n    finish:\n      result: 0\n"
-        );
-        let result = YamlCompiler::default().compile(source.as_bytes());
-
-        assert!(
-            matches!(
-                result,
-                Err(ref errors) if matches!(errors.first(), Some(CompileError::UnsupportedStepControlField { .. }))
-            ),
-            "control field {control} must be rejected until Phase 0 compiles it"
-        );
-    }
-
-    #[test]
-    fn compiler_rejects_unsupported_phase_zero_step_control_fields_then() {
-        let control = "then";
-        let source = format!(
-            "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {{}}\nsteps:\n  - id: build_result\n    {control}: true\n    save:\n      value: 1\n  - id: done\n    finish:\n      result: 0\n"
-        );
-        let result = YamlCompiler::default().compile(source.as_bytes());
-
-        assert!(
-            matches!(
-                result,
-                Err(ref errors) if matches!(errors.first(), Some(CompileError::UnsupportedStepControlField { .. }))
-            ),
-            "control field {control} must be rejected until Phase 0 compiles it"
-        );
+            assert!(
+                matches!(
+                    result,
+                    Err(ref errors) if matches!(errors.first(), Some(CompileError::UnsupportedStepControlField { .. }))
+                ),
+                "control field {control} must be rejected until Phase 0 compiles it"
+            );
+        }
     }
 
     #[test]
@@ -233,36 +98,19 @@ use super::helpers::*;
     }
 
     #[test]
-    fn compiler_rejects_invalid_workflow_trigger_shapes_scalar_manual() {
-        let source = b"version: velvet-ballastics/v1\nname: fast_path\nwhen: manual\nsteps:\n  - finish:\n      result: 0\n";
-        let result = YamlCompiler::default().compile(source);
+    fn compiler_rejects_invalid_workflow_trigger_shapes() {
+        for source in [
+            b"version: velvet-ballastics/v1\nname: fast_path\nwhen: manual\nsteps:\n  - finish:\n      result: 0\n".as_slice(),
+            b"version: velvet-ballastics/v1\nname: fast_path\nwhen: {}\nsteps:\n  - finish:\n      result: 0\n",
+            b"version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\n  event: {}\nsteps:\n  - finish:\n      result: 0\n",
+        ] {
+            let result = YamlCompiler::default().compile(source);
 
-        assert!(matches!(
-            result,
-            Err(ref errors) if matches!(errors.first(), Some(CompileError::FieldShape { .. } | CompileError::InvalidTriggerCount { .. }))
-        ));
-    }
-
-    #[test]
-    fn compiler_rejects_invalid_workflow_trigger_shapes_empty_map() {
-        let source = b"version: velvet-ballastics/v1\nname: fast_path\nwhen: {}\nsteps:\n  - finish:\n      result: 0\n";
-        let result = YamlCompiler::default().compile(source);
-
-        assert!(matches!(
-            result,
-            Err(ref errors) if matches!(errors.first(), Some(CompileError::FieldShape { .. } | CompileError::InvalidTriggerCount { .. }))
-        ));
-    }
-
-    #[test]
-    fn compiler_rejects_invalid_workflow_trigger_shapes_multiple_triggers() {
-        let source = b"version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  manual: {}\n  event: {}\nsteps:\n  - finish:\n      result: 0\n";
-        let result = YamlCompiler::default().compile(source);
-
-        assert!(matches!(
-            result,
-            Err(ref errors) if matches!(errors.first(), Some(CompileError::FieldShape { .. } | CompileError::InvalidTriggerCount { .. }))
-        ));
+            assert!(matches!(
+                result,
+                Err(ref errors) if matches!(errors.first(), Some(CompileError::FieldShape { .. } | CompileError::InvalidTriggerCount { .. }))
+            ));
+        }
     }
 
     #[test]
@@ -278,57 +126,17 @@ use super::helpers::*;
     }
 
     #[test]
-    fn compiler_rejects_scalar_workflow_trigger_config_manual() {
-        let trigger = "manual";
-        let source = format!(
-            "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  {trigger}: true\nsteps:\n  - finish:\n      result: 0\n"
-        );
-        let result = YamlCompiler::default().compile(source.as_bytes());
+    fn compiler_rejects_scalar_workflow_trigger_config() {
+        for trigger in ["manual", "webhook", "schedule", "event"] {
+            let source = format!(
+                "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  {trigger}: true\nsteps:\n  - finish:\n      result: 0\n"
+            );
+            let result = YamlCompiler::default().compile(source.as_bytes());
 
-        assert!(
-            matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::TriggerShape { .. }))),
-            "trigger {trigger} config must be mapping-shaped"
-        );
+            assert!(
+                matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::TriggerShape { .. }))),
+                "trigger {trigger} config must be mapping-shaped"
+            );
+        }
     }
 
-    #[test]
-    fn compiler_rejects_scalar_workflow_trigger_config_webhook() {
-        let trigger = "webhook";
-        let source = format!(
-            "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  {trigger}: true\nsteps:\n  - finish:\n      result: 0\n"
-        );
-        let result = YamlCompiler::default().compile(source.as_bytes());
-
-        assert!(
-            matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::TriggerShape { .. }))),
-            "trigger {trigger} config must be mapping-shaped"
-        );
-    }
-
-    #[test]
-    fn compiler_rejects_scalar_workflow_trigger_config_schedule() {
-        let trigger = "schedule";
-        let source = format!(
-            "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  {trigger}: true\nsteps:\n  - finish:\n      result: 0\n"
-        );
-        let result = YamlCompiler::default().compile(source.as_bytes());
-
-        assert!(
-            matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::TriggerShape { .. }))),
-            "trigger {trigger} config must be mapping-shaped"
-        );
-    }
-
-    #[test]
-    fn compiler_rejects_scalar_workflow_trigger_config_event() {
-        let trigger = "event";
-        let source = format!(
-            "version: velvet-ballastics/v1\nname: fast_path\nwhen:\n  {trigger}: true\nsteps:\n  - finish:\n      result: 0\n"
-        );
-        let result = YamlCompiler::default().compile(source.as_bytes());
-
-        assert!(
-            matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::TriggerShape { .. }))),
-            "trigger {trigger} config must be mapping-shaped"
-        );
-    }

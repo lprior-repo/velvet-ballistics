@@ -1,5 +1,4 @@
 #[cfg(kani)]
-#[allow(clippy::all)]
 mod aggregate_budget_kani_harnesses {
     const BUDGET_RS: &str = include_str!("../src/budget.rs");
     const ADMISSION_RS: &str = include_str!("../../vb_runtime/src/admission.rs");

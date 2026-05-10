@@ -71,7 +71,7 @@ mod vb_h6ix_tests {
         let mut tracker = ActionReplayTracker::new();
         let result = replay_events(&events, &mut tracker);
 
-        let Ok(_) = result else {
+        let Ok(replayed) = result else {
             panic!("replay_events should succeed, got {:?}", result);
         };
 
@@ -812,13 +812,15 @@ mod vb_h6ix_tests {
         // This test documents the expected behavior: stale terminal should NOT win
         // when there's a newer in-progress attempt
         assert!(
-            terminal.is_none()
-                || matches!(
-                    terminal,
-                    Some(JournalEvent::RunFinished { .. })
-                        | Some(JournalEvent::RunFailedEvent { .. })
-                        | Some(JournalEvent::RunCancelled { .. })
-                ),
+            terminal.is_none() || {
+                // If there IS a terminal, it should be from attempt 2 (latest)
+                match terminal {
+                    Some(JournalEvent::RunFinished { .. }) => true,
+                    Some(JournalEvent::RunFailedEvent { .. }) => true,
+                    Some(JournalEvent::RunCancelled { .. }) => true,
+                    _ => false,
+                }
+            },
             "stale terminal from attempt 1 should not win over in-progress attempt 2"
         );
     }

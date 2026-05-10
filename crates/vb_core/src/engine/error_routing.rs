@@ -151,14 +151,6 @@ fn has_error_handler(node: &CompiledNode) -> bool {
 }
 
 #[cfg(test)]
-#[allow(
-    clippy::panic_in_result_fn,
-    clippy::panic,
-    clippy::expect_used,
-    clippy::ok_expect,
-    clippy::indexing_slicing,
-    clippy::as_conversions
-)]
 mod tests {
     use super::{
         ErrorHandlerOutcome, ErrorSlotData, error_code_string, has_error_handler,

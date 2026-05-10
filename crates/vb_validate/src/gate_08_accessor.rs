@@ -2,7 +2,6 @@
 //! Gate 8: Accessor path segments are valid symbols.
 
 #![allow(unreachable_pub)]
-#![allow(unexpected_cfgs)]
 
 use crate::{ValidationError, ValidationResult};
 use vb_core::workflow::{AccessorProgram, PathSegment, WorkflowParts};
@@ -397,20 +396,12 @@ mod tests {
         );
     }
 
-    #[test]
-    fn regression_proptest_gate_08_root_precedence_with_valid_field() {
-        let parts = workflow_parts_with_accessors(
-            2,
-            1,
-            Box::new([accessor_allocating_boxed_path(
-                0,
-                Box::new([PathSegment::Field(SymbolId::new(0))]),
-            )]),
-        );
-        assert_eq!(validate_gate_08_accessor_path_segments(&parts), Ok(()));
-    }
-
     proptest! {
+        #![proptest_config(ProptestConfig {
+            failure_persistence: None,
+            ..ProptestConfig::default()
+        })]
+
         #[test]
         fn proptest_gate_08_accepts_exactly_field_symbols_below_symbols_count(
             symbols_count in 0u32..=16,

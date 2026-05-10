@@ -644,7 +644,7 @@ mod tests {
         let mut state = ActionRegistryState::default();
 
         let result = select_action(&mut state, &contracts, &granted, 20);
-        assert!(result.is_ok(), "select_action failed: {:?}", result.err());
+        assert!(result.is_ok());
         assert_eq!(state.selected_action_id, Some(20));
         assert!(state.selected_inspector.is_some());
         assert!(state.capability_delta.is_some());

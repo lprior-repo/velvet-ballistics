@@ -31,176 +31,52 @@ use super::helpers::*;
     }
 
     #[test]
-    fn compiler_accepts_allowed_input_schema_shorthand_text() {
-        let shorthand = "text";
-        let result = compile_with_inputs(&format!("  value: {shorthand}\n"));
+    fn compiler_accepts_allowed_input_schema_shorthand() {
+        for shorthand in [
+            "text",
+            "number",
+            "boolean",
+            "object",
+            "any",
+            "list<any>",
+            "list<text>",
+            "list<number>",
+            "list<boolean>",
+        ] {
+            let result = compile_with_inputs(&format!("  value: {shorthand}\n"));
 
-        assert!(
-            matches!(result, Ok(ref workflow) if workflow.name() == "schema_case"),
-            "schema shorthand {shorthand} should compile"
-        );
+            assert!(
+                matches!(result, Ok(ref workflow) if workflow.name() == "schema_case"),
+                "schema shorthand {shorthand} should compile"
+            );
+        }
     }
 
     #[test]
-    fn compiler_accepts_allowed_input_schema_shorthand_number() {
-        let shorthand = "number";
-        let result = compile_with_inputs(&format!("  value: {shorthand}\n"));
+    fn compiler_rejects_unknown_input_schema_shorthand() {
+        for shorthand in ["integer", "string", "list", "list<object>"] {
+            let result = compile_with_inputs(&format!("  value: {shorthand}\n"));
 
-        assert!(
-            matches!(result, Ok(ref workflow) if workflow.name() == "schema_case"),
-            "schema shorthand {shorthand} should compile"
-        );
+            assert!(
+                matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidInputSchema { .. }))),
+                "schema shorthand {shorthand} should be rejected"
+            );
+        }
     }
 
     #[test]
-    fn compiler_accepts_allowed_input_schema_shorthand_boolean() {
-        let shorthand = "boolean";
-        let result = compile_with_inputs(&format!("  value: {shorthand}\n"));
+    fn compiler_and_ast_report_same_schema_diagnostics() {
+        for inputs in [
+            "  value: integer\n",
+            "  value:\n    is: text\n    kind: text\n",
+            "  value:\n    is: text\n    default: 1\n",
+        ] {
+            let source = format!(
+                "version: velvet-ballastics/v1\nname: schema_case\nwhen:\n  manual: {{}}\ninputs:\n{inputs}steps:\n  - id: done\n    finish:\n      result: 0\n"
+            );
 
-        assert!(
-            matches!(result, Ok(ref workflow) if workflow.name() == "schema_case"),
-            "schema shorthand {shorthand} should compile"
-        );
-    }
-
-    #[test]
-    fn compiler_accepts_allowed_input_schema_shorthand_object() {
-        let shorthand = "object";
-        let result = compile_with_inputs(&format!("  value: {shorthand}\n"));
-
-        assert!(
-            matches!(result, Ok(ref workflow) if workflow.name() == "schema_case"),
-            "schema shorthand {shorthand} should compile"
-        );
-    }
-
-    #[test]
-    fn compiler_accepts_allowed_input_schema_shorthand_any() {
-        let shorthand = "any";
-        let result = compile_with_inputs(&format!("  value: {shorthand}\n"));
-
-        assert!(
-            matches!(result, Ok(ref workflow) if workflow.name() == "schema_case"),
-            "schema shorthand {shorthand} should compile"
-        );
-    }
-
-    #[test]
-    fn compiler_accepts_allowed_input_schema_shorthand_list_any() {
-        let shorthand = "list<any>";
-        let result = compile_with_inputs(&format!("  value: {shorthand}\n"));
-
-        assert!(
-            matches!(result, Ok(ref workflow) if workflow.name() == "schema_case"),
-            "schema shorthand {shorthand} should compile"
-        );
-    }
-
-    #[test]
-    fn compiler_accepts_allowed_input_schema_shorthand_list_text() {
-        let shorthand = "list<text>";
-        let result = compile_with_inputs(&format!("  value: {shorthand}\n"));
-
-        assert!(
-            matches!(result, Ok(ref workflow) if workflow.name() == "schema_case"),
-            "schema shorthand {shorthand} should compile"
-        );
-    }
-
-    #[test]
-    fn compiler_accepts_allowed_input_schema_shorthand_list_number() {
-        let shorthand = "list<number>";
-        let result = compile_with_inputs(&format!("  value: {shorthand}\n"));
-
-        assert!(
-            matches!(result, Ok(ref workflow) if workflow.name() == "schema_case"),
-            "schema shorthand {shorthand} should compile"
-        );
-    }
-
-    #[test]
-    fn compiler_accepts_allowed_input_schema_shorthand_list_boolean() {
-        let shorthand = "list<boolean>";
-        let result = compile_with_inputs(&format!("  value: {shorthand}\n"));
-
-        assert!(
-            matches!(result, Ok(ref workflow) if workflow.name() == "schema_case"),
-            "schema shorthand {shorthand} should compile"
-        );
-    }
-
-    #[test]
-    fn compiler_rejects_unknown_input_schema_shorthand_integer() {
-        let shorthand = "integer";
-        let result = compile_with_inputs(&format!("  value: {shorthand}\n"));
-
-        assert!(
-            matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidInputSchema { .. }))),
-            "schema shorthand {shorthand} should be rejected"
-        );
-    }
-
-    #[test]
-    fn compiler_rejects_unknown_input_schema_shorthand_string() {
-        let shorthand = "string";
-        let result = compile_with_inputs(&format!("  value: {shorthand}\n"));
-
-        assert!(
-            matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidInputSchema { .. }))),
-            "schema shorthand {shorthand} should be rejected"
-        );
-    }
-
-    #[test]
-    fn compiler_rejects_unknown_input_schema_shorthand_list() {
-        let shorthand = "list";
-        let result = compile_with_inputs(&format!("  value: {shorthand}\n"));
-
-        assert!(
-            matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidInputSchema { .. }))),
-            "schema shorthand {shorthand} should be rejected"
-        );
-    }
-
-    #[test]
-    fn compiler_rejects_unknown_input_schema_shorthand_list_object() {
-        let shorthand = "list<object>";
-        let result = compile_with_inputs(&format!("  value: {shorthand}\n"));
-
-        assert!(
-            matches!(result, Err(ref errors) if matches!(errors.first(), Some(CompileError::InvalidInputSchema { .. }))),
-            "schema shorthand {shorthand} should be rejected"
-        );
-    }
-
-    #[test]
-    fn compiler_and_ast_report_same_schema_diagnostics_inline_kind() {
-        let inputs = "  value: integer\n";
-        let source = format!(
-            "version: velvet-ballastics/v1\nname: schema_case\nwhen:\n  manual: {{}}\ninputs:\n{inputs}steps:\n  - id: done\n    finish:\n      result: 0\n"
-        );
-
-        assert_compile_parse_first_error(source.as_bytes());
-    }
-
-    #[test]
-    fn compiler_and_ast_report_same_schema_diagnostics_is_and_kind() {
-        let inputs = "  value:\n    is: text\n    kind: text\n";
-        let source = format!(
-            "version: velvet-ballastics/v1\nname: schema_case\nwhen:\n  manual: {{}}\ninputs:\n{inputs}steps:\n  - id: done\n    finish:\n      result: 0\n"
-        );
-
-        assert_compile_parse_first_error(source.as_bytes());
-    }
-
-    #[test]
-    fn compiler_and_ast_report_same_schema_diagnostics_is_and_default() {
-        let inputs = "  value:\n    is: text\n    default: 1\n";
-        let source = format!(
-            "version: velvet-ballastics/v1\nname: schema_case\nwhen:\n  manual: {{}}\ninputs:\n{inputs}steps:\n  - id: done\n    finish:\n      result: 0\n"
-        );
-
-        assert_compile_parse_first_error(source.as_bytes());
+            assert_compile_parse_first_error(source.as_bytes());
+        }
     }
 
     #[test]
@@ -230,10 +106,9 @@ use super::helpers::*;
 
     #[test]
     fn schema_validation_does_not_preempt_finish_position_errors() {
-        let source = b"version: velvet-ballastics/v1\nname: schema_case\nwhen:\n  manual: {}\ninputs:\n  value: integer\nsteps:\n  - id: early\n    finish:\n      result: 0
-      status: success
-  - id: done\n    finish:\n      result: 0\n";
+        let source = b"version: velvet-ballastics/v1\nname: schema_case\nwhen:\n  manual: {}\ninputs:\n  value: integer\nsteps:\n  - id: early\n    finish:\n      result: 0\n      status: success\n  - id: done\n    finish:\n      result: 0\n";
 
         assert!(compile_error_text(source).contains("field finish"));
         assert_compile_parse_first_error(source);
     }
+

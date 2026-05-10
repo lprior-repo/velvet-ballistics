@@ -305,6 +305,10 @@ criteria = "safe-to-deploy"
 version = "1.0.102"
 criteria = "safe-to-deploy"
 
+[[exemptions.arbitrary]]
+version = "1.4.2"
+criteria = "safe-to-deploy"
+
 [[exemptions.arraydeque]]
 version = "0.5.1"
 criteria = "safe-to-deploy"
@@ -733,6 +737,10 @@ criteria = "safe-to-run"
 version = "1.0.18"
 criteria = "safe-to-deploy"
 
+[[exemptions.jobserver]]
+version = "0.1.34"
+criteria = "safe-to-deploy"
+
 [[exemptions.js-sys]]
 version = "0.3.97"
 criteria = "safe-to-deploy"
@@ -751,6 +759,10 @@ criteria = "safe-to-deploy"
 
 [[exemptions.libc]]
 version = "0.2.186"
+criteria = "safe-to-deploy"
+
+[[exemptions.libfuzzer-sys]]
+version = "0.4.12"
 criteria = "safe-to-deploy"
 
 [[exemptions.libloading]]

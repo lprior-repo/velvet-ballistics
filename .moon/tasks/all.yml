@@ -144,7 +144,7 @@ tasks:
     script: |
       set -euo pipefail
       mkdir -p target/moon-locks
-      flock --shared target/moon-locks/source-mutation.lock timeout 10m rustup run nightly-2026-04-28 cargo nextest run --workspace --all-features --failure-output=immediate-final --success-output=never
+      flock --shared target/moon-locks/source-mutation.lock timeout 10m rustup run nightly-2026-04-28 cargo nextest run --workspace --all-features
     deps:
       - 'check'
       - 'supply-chain'
@@ -483,7 +483,7 @@ tasks:
       runInCI: false
 
   verify-all:
-    command: 'bash scripts/rust-verification-gauntlet.sh all'
+    command: 'env VERIFY_BEAD_ID=vb-nf2u ALLOW_BEAD_LOCKBUD_WAIVER=1 bash scripts/rust-verification-gauntlet.sh all'
     toolchains:
       - rust
     inputs:

@@ -173,13 +173,16 @@ steps:
             errors.len() >= 2,
             "expected at least 2 accumulated reference errors",
         )?;
-        adv_ensure(
-            errors.iter().all(|e| {
-                matches!(e, CompileError::UnknownReferenceName { kind: "input", .. })
-            }),
-            "accumulated error was not an input reference error",
-        )
-    }
+        for error in errors.iter() {
+            adv_ensure(
+                matches!(
+                    error,
+                    CompileError::UnknownReferenceName { kind: "input", .. }
+                ),
+                "accumulated error was not an input reference error",
+            )?;
+        }
+        Ok(())
     }
 
     /// Attack vector: Expression with deeply nested parentheses hits depth limit.

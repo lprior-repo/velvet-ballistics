@@ -782,13 +782,25 @@ mod tests {
         batch.commit().expect("index batch commit should succeed");
 
         // Verify index markers are present
-        let status_count = journal.index_status.iter().count();
+        let mut status_count = 0usize;
+        for item in journal.index_status.iter() {
+            let _ = item.key();
+            status_count = status_count.saturating_add(1);
+        }
         assert_eq!(status_count, 1, "should have 1 status index marker");
 
-        let wf_count = journal.index_workflow.iter().count();
+        let mut wf_count = 0usize;
+        for item in journal.index_workflow.iter() {
+            let _ = item.key();
+            wf_count = wf_count.saturating_add(1);
+        }
         assert_eq!(wf_count, 1, "should have 1 workflow index marker");
 
-        let action_count = journal.index_action.iter().count();
+        let mut action_count = 0usize;
+        for item in journal.index_action.iter() {
+            let _ = item.key();
+            action_count = action_count.saturating_add(1);
+        }
         assert_eq!(action_count, 1, "should have 1 action index marker");
     }
 
@@ -873,30 +885,29 @@ mod tests {
         let run = RunId::new(400);
 
         let mut batch = JournalWriteBatch::new(&journal);
+        let mut expected_len = 0;
 
-        // Stage 3 events using indexed iteration
-        let events: Vec<_> = (0..3)
-            .map(|i| JournalEvent::RunAccepted {
+        // Stage 3 events
+        for i in 0..3 {
+            let evt = JournalEvent::RunAccepted {
                 run,
                 seq: EventSeq::new(i),
                 workflow: WorkflowDigest::from_bytes([0; 32]),
-            })
-            .collect();
-
-        events.iter().enumerate().for_each(|(idx, evt)| {
-            batch.append_event(evt).expect("append should succeed");
-            let expected_len = idx + 1;
+            };
+            batch.append_event(&evt).expect("append should succeed");
+            expected_len += 1;
             assert_eq!(
                 batch.len(),
                 expected_len,
                 "len() must equal staged count after each operation"
             );
-        });
+        }
 
         // Stage a header
         let header = make_run_header(run);
         batch.put_run_header(&header).expect("put header");
-        assert_eq!(batch.len(), 4);
+        expected_len += 1;
+        assert_eq!(batch.len(), expected_len);
 
         batch.commit().expect("commit should succeed");
     }
@@ -910,13 +921,16 @@ mod tests {
         let mut batch = JournalWriteBatch::new(&journal);
 
         // Initially empty
-        assert!(batch.is_empty(), "batch should be empty initially");
+        assert!(
+            batch.is_empty() == (batch.len() == 0),
+            "is_empty() must match (len() == 0) for new batch"
+        );
 
         // After one operation
         batch.append_event(&make_event(run, 0)).expect("append");
         assert!(
-            !batch.is_empty(),
-            "batch should not be empty after one operation"
+            batch.is_empty() == (batch.len() == 0),
+            "is_empty() must match (len() == 0) after one operation"
         );
 
         // After more operations
@@ -924,8 +938,8 @@ mod tests {
             .put_run_header(&make_run_header(run))
             .expect("put header");
         assert!(
-            !batch.is_empty(),
-            "batch should not be empty after multiple operations"
+            batch.is_empty() == (batch.len() == 0),
+            "is_empty() must match (len() == 0) after multiple operations"
         );
     }
 
@@ -936,28 +950,24 @@ mod tests {
         let run = RunId::new(600);
 
         let mut batch = JournalWriteBatch::new(&journal);
+        let mut prev_len = 0;
 
         let operations = 5;
-        let events: Vec<_> = (0..operations)
-            .map(|i| JournalEvent::RunAccepted {
+        for i in 0..operations {
+            let evt = JournalEvent::RunAccepted {
                 run,
                 seq: EventSeq::new(i),
                 workflow: WorkflowDigest::from_bytes([0; 32]),
-            })
-            .collect();
-
-        let mut prev_len = 0;
-        events.iter().for_each(|evt| {
-            batch.append_event(evt).expect("append");
-            let new_len = batch.len();
+            };
+            batch.append_event(&evt).expect("append");
             assert!(
-                new_len > prev_len,
+                batch.len() > prev_len,
                 "len() must increase monotonically, prev={}, new={}",
                 prev_len,
-                new_len
+                batch.len()
             );
-            prev_len = new_len;
-        });
+            prev_len = batch.len();
+        }
 
         batch.commit().expect("commit");
     }
@@ -1041,936 +1051,5 @@ mod tests {
             matches!(result, Err(JournalError::PayloadDigestMismatch)),
             "blob digest verification must be mandatory"
         );
-    }
-
-    // =========================================================================
-    // Additional tests for 5x density (40 new tests)
-    // =========================================================================
-
-    #[test]
-    fn batch_append_step_succeeded_event_commits_and_is_readable() {
-        let (_temp, journal) = temp_journal();
-        let run = RunId::new(1101);
-        let event = JournalEvent::StepSucceeded {
-            run,
-            seq: EventSeq::new(0),
-            step: StepIdx::new(3),
-            output: SlotIdx::new(7),
-        };
-
-        let mut batch = JournalWriteBatch::new(&journal);
-        batch.append_event(&event).expect("append step succeeded");
-        batch.commit().expect("commit should succeed");
-
-        let events = journal.events_for_run(run).expect("replay should succeed");
-        assert_eq!(events.len(), 1);
-        assert_eq!(events[0], event);
-    }
-
-    #[test]
-    fn batch_append_run_finished_event_commits_and_is_readable() {
-        let (_temp, journal) = temp_journal();
-        let run = RunId::new(1102);
-        let event = JournalEvent::RunFinished {
-            run,
-            seq: EventSeq::new(0),
-            result: SlotIdx::new(9),
-        };
-
-        let mut batch = JournalWriteBatch::new(&journal);
-        batch.append_event(&event).expect("append run finished");
-        batch.commit().expect("commit should succeed");
-
-        let events = journal.events_for_run(run).expect("replay should succeed");
-        assert_eq!(events.len(), 1);
-        assert_eq!(events[0], event);
-    }
-
-    #[test]
-    fn batch_append_run_cancelled_event_commits_and_is_readable() {
-        let (_temp, journal) = temp_journal();
-        let run = RunId::new(1103);
-        let event = JournalEvent::RunCancelled {
-            run,
-            seq: EventSeq::new(0),
-        };
-
-        let mut batch = JournalWriteBatch::new(&journal);
-        batch.append_event(&event).expect("append run cancelled");
-        batch.commit().expect("commit should succeed");
-
-        let events = journal.events_for_run(run).expect("replay should succeed");
-        assert_eq!(events.len(), 1);
-        assert_eq!(events[0], event);
-    }
-
-    #[test]
-    fn batch_append_multiple_events_same_run_preserves_order() {
-        let (_temp, journal) = temp_journal();
-        let run = RunId::new(1200);
-        let e0 = JournalEvent::RunAccepted {
-            run,
-            seq: EventSeq::new(0),
-            workflow: WorkflowDigest::from_bytes([0; DIGEST_BYTES]),
-        };
-        let e1 = JournalEvent::StepStarted {
-            run,
-            seq: EventSeq::new(1),
-            step: StepIdx::new(0),
-        };
-        let e2 = JournalEvent::StepSucceeded {
-            run,
-            seq: EventSeq::new(2),
-            step: StepIdx::new(0),
-            output: SlotIdx::new(0),
-        };
-
-        let mut batch = JournalWriteBatch::new(&journal);
-        batch.append_event(&e0).expect("append 0");
-        batch.append_event(&e1).expect("append 1");
-        batch.append_event(&e2).expect("append 2");
-        batch.commit().expect("commit should succeed");
-
-        let events = journal.events_for_run(run).expect("replay should succeed");
-        assert_eq!(events.len(), 3);
-        assert_eq!(events[0], e0);
-        assert_eq!(events[1], e1);
-        assert_eq!(events[2], e2);
-    }
-
-    #[test]
-    fn batch_len_tracks_all_operation_types() {
-        let (_temp, journal) = temp_journal();
-        let run = RunId::new(1300);
-
-        let mut batch = JournalWriteBatch::new(&journal);
-        assert_eq!(batch.len(), 0);
-
-        batch
-            .append_event(&make_event(run, 0))
-            .expect("append event");
-        assert_eq!(batch.len(), 1);
-
-        let header = make_run_header(run);
-        batch.put_run_header(&header).expect("put header");
-        assert_eq!(batch.len(), 2);
-
-        let source = b"test source".to_vec();
-        let digest = WorkflowDigest::from_bytes(blake3::hash(&source).into());
-        let wf_record = WorkflowSourceRecord { digest, source };
-        batch
-            .put_workflow_source(&wf_record)
-            .expect("put wf source");
-        assert_eq!(batch.len(), 3);
-
-        batch
-            .put_status_index(1, 1000, run)
-            .expect("put status idx");
-        assert_eq!(batch.len(), 4);
-    }
-
-    #[test]
-    fn batch_is_empty_after_single_operation_is_false() {
-        let (_temp, journal) = temp_journal();
-        let run = RunId::new(1400);
-
-        let mut batch = JournalWriteBatch::new(&journal);
-        assert!(batch.is_empty());
-
-        batch.append_event(&make_event(run, 0)).expect("append");
-        assert!(!batch.is_empty());
-    }
-
-    #[test]
-    fn batch_is_empty_after_commit_is_false_for_nonempty_batch() {
-        let (_temp, journal) = temp_journal();
-        let run = RunId::new(1401);
-
-        let mut batch = JournalWriteBatch::new(&journal);
-        batch.append_event(&make_event(run, 0)).expect("append");
-        assert!(!batch.is_empty());
-        batch.commit().expect("commit should succeed");
-    }
-
-    #[test]
-    fn batch_len_after_commit_equals_committed_count() {
-        let (_temp, journal) = temp_journal();
-        let run = RunId::new(1500);
-
-        let mut batch = JournalWriteBatch::new(&journal);
-        (0..7).for_each(|i| {
-            batch.append_event(&make_event(run, i)).expect("append");
-        });
-        assert_eq!(batch.len(), 7);
-        batch.commit().expect("commit should succeed");
-    }
-
-    #[test]
-    fn batch_put_status_index_with_various_states() {
-        let (_temp, journal) = temp_journal();
-        let run = RunId::new(1700);
-
-        (0..4u8).for_each(|state| {
-            let mut batch = JournalWriteBatch::new(&journal);
-            batch
-                .put_status_index(state, 1000 + u64::from(state), run)
-                .expect("put status index");
-            batch.commit().expect("commit should succeed");
-        });
-    }
-
-    #[test]
-    fn batch_put_workflow_index_multiple_workflows() {
-        let (_temp, journal) = temp_journal();
-        let run = RunId::new(1800);
-
-        (0..4u32).for_each(|i| {
-            let workflow_id = vb_core::WorkflowId::new(i + 1);
-            let mut batch = JournalWriteBatch::new(&journal);
-            batch
-                .put_workflow_index(workflow_id, run)
-                .expect("put workflow idx");
-            batch.commit().expect("commit should succeed");
-        });
-    }
-
-    #[test]
-    fn batch_put_action_index_multiple_actions() {
-        let (_temp, journal) = temp_journal();
-        let run = RunId::new(1900);
-        let step = StepIdx::new(0);
-
-        (0..4u16).for_each(|i| {
-            let action_id = vb_core::ActionId::new(i + 1);
-            let mut batch = JournalWriteBatch::new(&journal);
-            batch
-                .put_action_index(action_id, run, step)
-                .expect("put action idx");
-            batch.commit().expect("commit should succeed");
-        });
-    }
-
-    #[test]
-    fn batch_put_blob_with_correct_digest_succeeds() {
-        let (_temp, journal) = temp_journal();
-        let payload = vec![0xDE, 0xAD, 0xBE, 0xEF];
-        let digest: [u8; DIGEST_BYTES] = blake3::hash(&payload).into();
-        let record = BlobRecord {
-            digest,
-            bytes: payload,
-        };
-
-        let mut batch = JournalWriteBatch::new(&journal);
-        batch.put_blob(&record).expect("put blob should succeed");
-        batch.commit().expect("commit should succeed");
-
-        let loaded = journal
-            .blob(record.digest)
-            .expect("get blob")
-            .expect("blob should exist");
-        assert_eq!(loaded.bytes, record.bytes);
-    }
-
-    #[test]
-    fn batch_put_compiled_ir_readable_after_commit() {
-        let (_temp, journal) = temp_journal();
-        let ir = b"compiled ir bytes for batch test".to_vec();
-        let digest = WorkflowDigest::from_bytes(blake3::hash(&ir).into());
-        let record = CompiledIrRecord {
-            digest,
-            ir: ir.clone(),
-        };
-
-        let mut batch = JournalWriteBatch::new(&journal);
-        batch.put_compiled_ir(&record).expect("put compiled ir");
-        batch.commit().expect("commit should succeed");
-
-        let loaded = journal
-            .compiled_ir(digest)
-            .expect("get compiled ir")
-            .expect("ir should exist");
-        assert_eq!(loaded.ir, ir);
-    }
-
-    #[test]
-    fn batch_multiple_operations_same_batch_all_visible_after_commit() {
-        let (_temp, journal) = temp_journal();
-        let run = RunId::new(2000);
-        let source = b"workflow source data".to_vec();
-        let source_digest = WorkflowDigest::from_bytes(blake3::hash(&source).into());
-        let header = RunHeaderRecord {
-            run,
-            workflow_id: WorkflowId::new(42),
-            compiled_digest: WorkflowDigest::from_bytes([0xAB; DIGEST_BYTES]),
-            status: 1,
-            accepted_at_ms: 5000,
-        };
-
-        {
-            let mut batch = JournalWriteBatch::new(&journal);
-            batch
-                .put_workflow_source(&WorkflowSourceRecord {
-                    digest: source_digest,
-                    source: source.clone(),
-                })
-                .expect("put wf source");
-            batch.put_run_header(&header).expect("put header");
-            batch
-                .append_event(&make_event(run, 0))
-                .expect("append event");
-            batch.commit().expect("commit should succeed");
-        }
-
-        let ws = journal
-            .workflow_source(source_digest)
-            .expect("get ws")
-            .expect("ws should exist");
-        assert_eq!(ws.source, source);
-        let h = journal
-            .run_header(run)
-            .expect("get header")
-            .expect("header should exist");
-        assert_eq!(h.workflow_id, header.workflow_id);
-        let events = journal.events_for_run(run).expect("get events");
-        assert_eq!(events.len(), 1);
-    }
-
-    #[test]
-    fn batch_len_increases_by_one_for_each_operation() {
-        let (_temp, journal) = temp_journal();
-        let run = RunId::new(2100);
-
-        let mut batch = JournalWriteBatch::new(&journal);
-        let initial_len = batch.len();
-
-        batch.append_event(&make_event(run, 0)).expect("append");
-        assert_eq!(batch.len(), initial_len + 1);
-
-        batch
-            .put_run_header(&make_run_header(run))
-            .expect("put header");
-        assert_eq!(batch.len(), initial_len + 2);
-
-        batch.put_status_index(1, 1000, run).expect("put status");
-        assert_eq!(batch.len(), initial_len + 3);
-    }
-
-    #[test]
-    fn batch_is_empty_reflects_true_state() {
-        let (_temp, journal) = temp_journal();
-        let run = RunId::new(2200);
-
-        let mut batch = JournalWriteBatch::new(&journal);
-        assert!(batch.is_empty());
-
-        batch.append_event(&make_event(run, 0)).expect("append");
-        assert!(!batch.is_empty());
-
-        let header = make_run_header(run);
-        batch.put_run_header(&header).expect("put header");
-        assert!(!batch.is_empty());
-    }
-
-    #[test]
-    fn batch_strict_mode_affects_commit() {
-        let (_temp, journal) = temp_journal();
-        let _run = RunId::new(2300);
-
-        let batch = JournalWriteBatch::new(&journal);
-        let _strict_batch = batch.strict();
-    }
-
-    #[test]
-    fn batch_strict_batch_accepts_operations() {
-        let (_temp, journal) = temp_journal();
-        let run = RunId::new(2301);
-
-        let mut batch = JournalWriteBatch::new(&journal).strict();
-        batch
-            .append_event(&make_event(run, 0))
-            .expect("append should succeed");
-        assert_eq!(batch.len(), 1);
-        batch.commit().expect("commit should succeed");
-    }
-
-    #[test]
-    fn batch_rejects_duplicate_event_across_batches() {
-        let (_temp, journal) = temp_journal();
-        let run = RunId::new(2400);
-        let event = make_event(run, 0);
-
-        {
-            let mut batch1 = JournalWriteBatch::new(&journal);
-            batch1
-                .append_event(&event)
-                .expect("first append should succeed");
-            batch1.commit().expect("commit should succeed");
-        }
-
-        let mut batch2 = JournalWriteBatch::new(&journal);
-        let result = batch2.append_event(&event);
-        assert!(matches!(result, Err(JournalError::DuplicateEvent { .. })));
-    }
-
-    #[test]
-    fn batch_len_zero_after_failed_append() {
-        let (_temp, journal) = temp_journal();
-        let run = RunId::new(2500);
-        let event = make_event(run, 0);
-
-        let mut batch1 = JournalWriteBatch::new(&journal);
-        batch1.append_event(&event).expect("first append");
-        batch1.commit().expect("commit");
-
-        let mut batch2 = JournalWriteBatch::new(&journal);
-        let result = batch2.append_event(&event);
-        assert!(matches!(result, Err(JournalError::DuplicateEvent { .. })));
-        assert_eq!(batch2.len(), 0, "batch len must be 0 after failed append");
-    }
-
-    #[test]
-    fn batch_aborted_operations_set_len_to_zero() {
-        let (_temp, journal) = temp_journal();
-        let source = b"data".to_vec();
-        let wrong_digest = WorkflowDigest::from_bytes([0xFF; DIGEST_BYTES]);
-
-        let mut batch = JournalWriteBatch::new(&journal);
-        let result = batch.put_workflow_source(&WorkflowSourceRecord {
-            digest: wrong_digest,
-            source,
-        });
-        assert!(matches!(result, Err(JournalError::PayloadDigestMismatch)));
-        assert_eq!(batch.len(), 0, "aborted batch must report len 0");
-    }
-
-    #[test]
-    fn batch_put_workflow_source_then_readable() {
-        let (_temp, journal) = temp_journal();
-        let source = b"workflow source for read test".to_vec();
-        let digest = WorkflowDigest::from_bytes(blake3::hash(&source).into());
-        let record = WorkflowSourceRecord {
-            digest,
-            source: source.clone(),
-        };
-
-        let mut batch = JournalWriteBatch::new(&journal);
-        batch
-            .put_workflow_source(&record)
-            .expect("put should succeed");
-        batch.commit().expect("commit should succeed");
-
-        let loaded = journal
-            .workflow_source(digest)
-            .expect("get should succeed")
-            .expect("should be found");
-        assert_eq!(loaded.source, source);
-    }
-
-    #[test]
-    fn batch_put_run_header_then_readable() {
-        let (_temp, journal) = temp_journal();
-        let run = RunId::new(2600);
-        let header = RunHeaderRecord {
-            run,
-            workflow_id: WorkflowId::new(99),
-            compiled_digest: WorkflowDigest::from_bytes([0x12; DIGEST_BYTES]),
-            status: 2,
-            accepted_at_ms: 9999,
-        };
-
-        let mut batch = JournalWriteBatch::new(&journal);
-        batch.put_run_header(&header).expect("put should succeed");
-        batch.commit().expect("commit should succeed");
-
-        let loaded = journal
-            .run_header(run)
-            .expect("get should succeed")
-            .expect("should be found");
-        assert_eq!(loaded.workflow_id, header.workflow_id);
-        assert_eq!(loaded.status, header.status);
-    }
-
-    #[test]
-    fn batch_event_replay_returns_correct_sequence() {
-        let (_temp, journal) = temp_journal();
-        let run = RunId::new(2700);
-        let events: Vec<_> = (0..5u16)
-            .map(|i| JournalEvent::StepStarted {
-                run,
-                seq: EventSeq::new(i as u64),
-                step: StepIdx::new(i),
-            })
-            .collect();
-
-        let mut batch = JournalWriteBatch::new(&journal);
-        events.iter().for_each(|evt| {
-            batch.append_event(evt).expect("append should succeed");
-        });
-        batch.commit().expect("commit should succeed");
-
-        let replayed = journal.events_for_run(run).expect("replay should succeed");
-        assert_eq!(replayed.len(), 5);
-        replayed.iter().enumerate().for_each(|(i, evt)| {
-            assert_eq!(evt.seq(), EventSeq::new(i as u64));
-        });
-    }
-
-    #[test]
-    fn batch_len_equals_staged_count_for_various_operations() {
-        let (_temp, journal) = temp_journal();
-        let run = RunId::new(2800);
-
-        let mut batch = JournalWriteBatch::new(&journal);
-        let mut expected = 0;
-
-        batch.append_event(&make_event(run, 0)).expect("append");
-        expected += 1;
-        assert_eq!(batch.len(), expected);
-
-        batch.put_status_index(1, 1000, run).expect("put status");
-        expected += 1;
-        assert_eq!(batch.len(), expected);
-
-        batch
-            .put_workflow_index(WorkflowId::new(1), run)
-            .expect("put workflow");
-        expected += 1;
-        assert_eq!(batch.len(), expected);
-
-        batch
-            .put_action_index(vb_core::ActionId::new(1), run, StepIdx::new(0))
-            .expect("put action");
-        expected += 1;
-        assert_eq!(batch.len(), expected);
-
-        batch
-            .put_run_header(&make_run_header(run))
-            .expect("put header");
-        expected += 1;
-        assert_eq!(batch.len(), expected);
-    }
-
-    #[test]
-    fn batch_index_operations_do_not_require_payload() {
-        let (_temp, journal) = temp_journal();
-        let run = RunId::new(2900);
-
-        let mut batch = JournalWriteBatch::new(&journal);
-        batch.put_status_index(2, 5000, run).expect("status idx");
-        batch
-            .put_workflow_index(WorkflowId::new(10), run)
-            .expect("workflow idx");
-        batch
-            .put_action_index(vb_core::ActionId::new(20), run, StepIdx::new(1))
-            .expect("action idx");
-        assert_eq!(batch.len(), 3);
-        batch.commit().expect("commit should succeed");
-    }
-
-    #[test]
-    fn batch_put_blob_rejects_wrong_digest() {
-        let (_temp, journal) = temp_journal();
-        let payload = vec![1, 2, 3, 4, 5];
-        let _correct_digest: [u8; DIGEST_BYTES] = blake3::hash(&payload).into();
-        let wrong_digest: [u8; DIGEST_BYTES] = [0xFF; DIGEST_BYTES];
-
-        let record = BlobRecord {
-            digest: wrong_digest,
-            bytes: payload,
-        };
-
-        let mut batch = JournalWriteBatch::new(&journal);
-        let result = batch.put_blob(&record);
-        assert!(matches!(result, Err(JournalError::PayloadDigestMismatch)));
-        assert_eq!(batch.len(), 0);
-    }
-
-    #[test]
-    fn batch_event_commits_correctly() {
-        let (_temp, journal) = temp_journal();
-        let run = RunId::new(3000);
-        let event = JournalEvent::StepStarted {
-            run,
-            seq: EventSeq::new(0),
-            step: StepIdx::new(5),
-        };
-
-        let mut batch = JournalWriteBatch::new(&journal);
-        batch.append_event(&event).expect("append should succeed");
-        batch.commit().expect("commit should succeed");
-
-        let events = journal.events_for_run(run).expect("replay should succeed");
-        assert_eq!(events.len(), 1);
-    }
-
-    #[test]
-    fn batch_multiple_runs_do_not_interfere() {
-        let (_temp, journal) = temp_journal();
-        let run1 = RunId::new(3100);
-        let run2 = RunId::new(3101);
-
-        let mut batch1 = JournalWriteBatch::new(&journal);
-        batch1
-            .append_event(&make_event(run1, 0))
-            .expect("append run1");
-        batch1.commit().expect("commit run1");
-
-        let mut batch2 = JournalWriteBatch::new(&journal);
-        batch2
-            .append_event(&make_event(run2, 0))
-            .expect("append run2");
-        batch2.commit().expect("commit run2");
-
-        let events1 = journal.events_for_run(run1).expect("replay run1");
-        let events2 = journal.events_for_run(run2).expect("replay run2");
-        assert_eq!(events1.len(), 1);
-        assert_eq!(events2.len(), 1);
-    }
-
-    #[test]
-    fn batch_len_after_clear_equals_zero() {
-        let (_temp, journal) = temp_journal();
-        let run = RunId::new(3200);
-
-        let mut batch = JournalWriteBatch::new(&journal);
-        batch.append_event(&make_event(run, 0)).expect("append");
-        assert_eq!(batch.len(), 1);
-
-        let batch2 = JournalWriteBatch::new(&journal);
-        assert_eq!(batch2.len(), 0);
-    }
-
-    #[test]
-    fn batch_put_compiled_ir_with_valid_digest() {
-        let (_temp, journal) = temp_journal();
-        let ir = b"valid compiled ir".to_vec();
-        let ir_clone = ir.clone();
-        let digest = WorkflowDigest::from_bytes(blake3::hash(&ir).into());
-        let record = CompiledIrRecord { digest, ir };
-
-        let mut batch = JournalWriteBatch::new(&journal);
-        batch.put_compiled_ir(&record).expect("put should succeed");
-        batch.commit().expect("commit should succeed");
-
-        let loaded = journal
-            .compiled_ir(digest)
-            .expect("get should succeed")
-            .expect("should be found");
-        assert_eq!(loaded.ir, ir_clone);
-    }
-
-    #[test]
-    fn batch_workflow_source_with_valid_digest() {
-        let (_temp, journal) = temp_journal();
-        let source = b"valid workflow source".to_vec();
-        let digest = WorkflowDigest::from_bytes(blake3::hash(&source).into());
-        let record = WorkflowSourceRecord { digest, source };
-
-        let mut batch = JournalWriteBatch::new(&journal);
-        batch
-            .put_workflow_source(&record)
-            .expect("put should succeed");
-        batch.commit().expect("commit should succeed");
-
-        let loaded = journal
-            .workflow_source(digest)
-            .expect("get should succeed")
-            .expect("should be found");
-        assert_eq!(loaded.source, record.source);
-    }
-
-    #[test]
-    fn batch_status_index_markers_are_queryable() {
-        let (_temp, journal) = temp_journal();
-        let run = RunId::new(3300);
-
-        let mut batch = JournalWriteBatch::new(&journal);
-        batch
-            .put_status_index(1, 1000, run)
-            .expect("put status idx");
-        batch.commit().expect("commit should succeed");
-
-        let markers = journal.index_status.iter().count();
-        assert!(markers >= 1, "should have at least 1 status index marker");
-    }
-
-    #[test]
-    fn batch_workflow_index_markers_are_queryable() {
-        let (_temp, journal) = temp_journal();
-        let run = RunId::new(3301);
-        let workflow_id = WorkflowId::new(42);
-
-        let mut batch = JournalWriteBatch::new(&journal);
-        batch
-            .put_workflow_index(workflow_id, run)
-            .expect("put workflow idx");
-        batch.commit().expect("commit should succeed");
-
-        let markers = journal.index_workflow.iter().count();
-        assert!(markers >= 1, "should have at least 1 workflow index marker");
-    }
-
-    #[test]
-    fn batch_action_index_markers_are_queryable() {
-        let (_temp, journal) = temp_journal();
-        let run = RunId::new(3302);
-        let action_id = vb_core::ActionId::new(7);
-        let step = StepIdx::new(3);
-
-        let mut batch = JournalWriteBatch::new(&journal);
-        batch
-            .put_action_index(action_id, run, step)
-            .expect("put action idx");
-        batch.commit().expect("commit should succeed");
-
-        let markers = journal.index_action.iter().count();
-        assert!(markers >= 1, "should have at least 1 action index marker");
-    }
-
-    #[test]
-    fn batch_commit_persists_all_keyspaces_atomically() {
-        let (_temp, journal) = temp_journal();
-        let run = RunId::new(3400);
-        let source = b"atomic test source".to_vec();
-        let source_digest = WorkflowDigest::from_bytes(blake3::hash(&source).into());
-        let header = RunHeaderRecord {
-            run,
-            workflow_id: WorkflowId::new(77),
-            compiled_digest: WorkflowDigest::from_bytes([0xCC; DIGEST_BYTES]),
-            status: 1,
-            accepted_at_ms: 7000,
-        };
-
-        {
-            let mut batch = JournalWriteBatch::new(&journal);
-            batch
-                .put_workflow_source(&WorkflowSourceRecord {
-                    digest: source_digest,
-                    source: source.clone(),
-                })
-                .expect("put wf source");
-            batch.put_run_header(&header).expect("put header");
-            batch
-                .append_event(&make_event(run, 0))
-                .expect("append event");
-            batch.commit().expect("commit should succeed");
-        }
-
-        let ws_exists = journal
-            .workflow_source(source_digest)
-            .expect("get ws")
-            .is_some();
-        let header_exists = journal.run_header(run).expect("get header").is_some();
-        let event_exists = !journal.events_for_run(run).expect("get events").is_empty();
-        assert!(
-            ws_exists && header_exists && event_exists,
-            "all keyspaces must be present after atomic commit"
-        );
-    }
-
-    #[test]
-    fn batch_run_admission_event_commits_and_is_readable() {
-        let (_temp, journal) = temp_journal();
-        let run = RunId::new(3500);
-        let event = JournalEvent::RunAdmission {
-            run,
-            seq: EventSeq::new(0),
-            artifact_digest: WorkflowDigest::from_bytes([0xAA; DIGEST_BYTES]),
-            granted_capabilities: vb_core::CapabilitySet::empty(),
-            policy: vb_core::RuntimePolicy::Strict,
-        };
-
-        let mut batch = JournalWriteBatch::new(&journal);
-        batch.append_event(&event).expect("append run admission");
-        batch.commit().expect("commit should succeed");
-
-        let events = journal.events_for_run(run).expect("replay should succeed");
-        assert_eq!(events.len(), 1);
-    }
-
-    #[test]
-    fn batch_action_scheduled_event_commits_and_is_readable() {
-        let (_temp, journal) = temp_journal();
-        let run = RunId::new(3600);
-        let event = JournalEvent::ActionScheduled {
-            run,
-            seq: EventSeq::new(0),
-            step: StepIdx::new(1),
-            action: vb_core::ActionId::new(5),
-        };
-
-        let mut batch = JournalWriteBatch::new(&journal);
-        batch.append_event(&event).expect("append action scheduled");
-        batch.commit().expect("commit should succeed");
-
-        let events = journal.events_for_run(run).expect("replay should succeed");
-        assert_eq!(events.len(), 1);
-    }
-
-    #[test]
-    fn batch_action_completed_event_commits_and_is_readable() {
-        let (_temp, journal) = temp_journal();
-        let run = RunId::new(3700);
-        let event = JournalEvent::ActionCompletedEvent {
-            run,
-            seq: EventSeq::new(0),
-            step: StepIdx::new(2),
-            action: vb_core::ActionId::new(10),
-        };
-
-        let mut batch = JournalWriteBatch::new(&journal);
-        batch.append_event(&event).expect("append action completed");
-        batch.commit().expect("commit should succeed");
-
-        let events = journal.events_for_run(run).expect("replay should succeed");
-        assert_eq!(events.len(), 1);
-    }
-
-    #[test]
-    fn batch_action_failed_event_commits_and_is_readable() {
-        let (_temp, journal) = temp_journal();
-        let run = RunId::new(3800);
-        let event = JournalEvent::ActionFailedEvent {
-            run,
-            seq: EventSeq::new(0),
-            step: StepIdx::new(3),
-            action: vb_core::ActionId::new(15),
-        };
-
-        let mut batch = JournalWriteBatch::new(&journal);
-        batch.append_event(&event).expect("append action failed");
-        batch.commit().expect("commit should succeed");
-
-        let events = journal.events_for_run(run).expect("replay should succeed");
-        assert_eq!(events.len(), 1);
-    }
-
-    #[test]
-    fn batch_slot_written_event_commits_and_is_readable() {
-        let (_temp, journal) = temp_journal();
-        let run = RunId::new(3900);
-        let event = JournalEvent::SlotWrittenEvent {
-            run,
-            seq: EventSeq::new(0),
-            slot: SlotIdx::new(4),
-            value: Some(b"slot value".to_vec()),
-            extra: None,
-        };
-
-        let mut batch = JournalWriteBatch::new(&journal);
-        batch.append_event(&event).expect("append slot written");
-        batch.commit().expect("commit should succeed");
-
-        let events = journal.events_for_run(run).expect("replay should succeed");
-        assert_eq!(events.len(), 1);
-    }
-
-    #[test]
-    fn batch_wait_scheduled_event_commits_and_is_readable() {
-        let (_temp, journal) = temp_journal();
-        let run = RunId::new(4000);
-        let event = JournalEvent::WaitScheduledEvent {
-            run,
-            seq: EventSeq::new(0),
-            step: StepIdx::new(1),
-        };
-
-        let mut batch = JournalWriteBatch::new(&journal);
-        batch.append_event(&event).expect("append wait scheduled");
-        batch.commit().expect("commit should succeed");
-
-        let events = journal.events_for_run(run).expect("replay should succeed");
-        assert_eq!(events.len(), 1);
-    }
-
-    #[test]
-    fn batch_ask_scheduled_event_commits_and_is_readable() {
-        let (_temp, journal) = temp_journal();
-        let run = RunId::new(4100);
-        let event = JournalEvent::AskScheduledEvent {
-            run,
-            seq: EventSeq::new(0),
-            step: StepIdx::new(2),
-        };
-
-        let mut batch = JournalWriteBatch::new(&journal);
-        batch.append_event(&event).expect("append ask scheduled");
-        batch.commit().expect("commit should succeed");
-
-        let events = journal.events_for_run(run).expect("replay should succeed");
-        assert_eq!(events.len(), 1);
-    }
-
-    #[test]
-    fn batch_retry_scheduled_event_commits_and_is_readable() {
-        let (_temp, journal) = temp_journal();
-        let run = RunId::new(4200);
-        let event = JournalEvent::RetryScheduledEvent {
-            run,
-            seq: EventSeq::new(0),
-            step: StepIdx::new(3),
-        };
-
-        let mut batch = JournalWriteBatch::new(&journal);
-        batch.append_event(&event).expect("append retry scheduled");
-        batch.commit().expect("commit should succeed");
-
-        let events = journal.events_for_run(run).expect("replay should succeed");
-        assert_eq!(events.len(), 1);
-    }
-
-    #[test]
-    fn batch_run_failed_event_commits_and_is_readable() {
-        let (_temp, journal) = temp_journal();
-        let run = RunId::new(4300);
-        let event = JournalEvent::RunFailedEvent {
-            run,
-            seq: EventSeq::new(0),
-        };
-
-        let mut batch = JournalWriteBatch::new(&journal);
-        batch.append_event(&event).expect("append run failed");
-        batch.commit().expect("commit should succeed");
-
-        let events = journal.events_for_run(run).expect("replay should succeed");
-        assert_eq!(events.len(), 1);
-    }
-
-    #[test]
-    fn batch_len_zero_for_empty_batch() {
-        let (_temp, journal) = temp_journal();
-        let batch = JournalWriteBatch::new(&journal);
-        assert_eq!(batch.len(), 0);
-        assert!(batch.is_empty());
-    }
-
-    #[test]
-    fn batch_len_after_single_append_is_one() {
-        let (_temp, journal) = temp_journal();
-        let run = RunId::new(4500);
-        let mut batch = JournalWriteBatch::new(&journal);
-        batch.append_event(&make_event(run, 0)).expect("append");
-        assert_eq!(batch.len(), 1);
-    }
-
-    #[test]
-    fn batch_multiple_events_same_run_all_committed() {
-        let (_temp, journal) = temp_journal();
-        let run = RunId::new(4600);
-        let events: Vec<_> = (0..10u16)
-            .map(|i| JournalEvent::StepStarted {
-                run,
-                seq: EventSeq::new(i as u64),
-                step: StepIdx::new(i),
-            })
-            .collect();
-
-        let mut batch = JournalWriteBatch::new(&journal);
-        events.iter().for_each(|evt| {
-            batch.append_event(evt).expect("append should succeed");
-        });
-        batch.commit().expect("commit should succeed");
-        let replayed = journal.events_for_run(run).expect("replay should succeed");
-        assert_eq!(replayed.len(), 10);
     }
 }

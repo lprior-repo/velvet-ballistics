@@ -517,9 +517,7 @@ fn eval_helper_append(args: &[SlotValue]) -> ExprResult<SlotValue> {
 fn eval_helper_append_if(args: &[SlotValue]) -> ExprResult<SlotValue> {
     let (list_val, _item_val, cond_val) = three_args(args, ExprHelper::AppendIf)?;
     let _list_id = expect_list(*list_val)?;
-    // Note: cond validation is called for API symmetry with the store-aware variant,
-    // but this stub always returns TypeMismatch without a store regardless.
-    let _: bool = expect_bool(*cond_val)?;
+    let _ = expect_bool(*cond_val)?;
     Err(ExprError::TypeMismatch {
         expected: "value-store context required for list append".into(),
         found: "list handle without store".into(),

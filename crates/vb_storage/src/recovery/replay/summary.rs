@@ -838,7 +838,6 @@ mod tests {
                 ..
             }) if artifact_digest == latest && run_id == run
         ));
-        #[allow(clippy::indexing_slicing)]
         assert_eq!(recover_run_admission_from_events(&events[0..1]), None);
     }
 

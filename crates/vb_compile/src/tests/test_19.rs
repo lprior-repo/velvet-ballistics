@@ -82,7 +82,13 @@ steps:
     fn slot_compiler_constant_pool_overflow_rejected() -> Result<(), String> {
         let mut sc = SlotCompiler::new();
         // Fill up to u16::MAX + 1 (65536) constants; the 65537th push should fail
-        fill_slot_compiler_constants(&mut sc)?;
+        let count = usize::from(u16::MAX) + 1;
+        for i in 0..count {
+            let value = i64::try_from(i).map_err(|error| error.to_string())?;
+            let val = ConstValue::I64(value);
+            sc.push_constant(val)
+                .map_err(|e| format!("push {i} failed: {e:?}"))?;
+        }
         // Now the pool has 65536 entries; the next push should fail
         let result = sc.push_constant(ConstValue::I64(0));
         adv_ensure(
