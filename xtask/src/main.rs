@@ -517,7 +517,7 @@ fn run_gate_profile(
     label: &str,
     bead: Option<&str>,
 ) -> anyhow::Result<()> {
-    let output_dir = profile_output_dir(bead);
+    let output_dir = profile_output_dir(bead)?;
     std::fs::create_dir_all(&output_dir)?;
     let result = evidence::run_profile(profile, bead, &output_dir)?;
     write_stdout(format_args!("{label} profile complete: {:?}", result))?;
@@ -527,8 +527,10 @@ fn run_gate_profile(
     Ok(())
 }
 
-fn profile_output_dir(bead: Option<&str>) -> PathBuf {
-    PathBuf::from(".evidence").join(bead.map_or("default", |id| id))
+fn profile_output_dir(bead: Option<&str>) -> anyhow::Result<PathBuf> {
+    let scope = bead.map_or("default", |id| id);
+    evidence::validate_bead_id(scope)?;
+    Ok(PathBuf::from(".evidence").join(scope))
 }
 
 fn check_overlap_for_screen(base_dir: &Path, name: &str) -> anyhow::Result<bool> {
