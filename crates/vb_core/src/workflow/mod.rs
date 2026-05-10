@@ -184,6 +184,8 @@ pub struct ResourceContract {
     pub max_expr_stack: u8,
     /// Maximum deterministic transitions per runtime tick.
     pub max_step_budget_per_tick: u64,
+    /// Maximum transitions per runtime tick.
+    pub max_transitions_per_tick: u64,
     /// Maximum input bytes accepted at admission.
     pub max_input_bytes: u32,
     /// Maximum output bytes produced by a run.
@@ -214,6 +216,7 @@ impl ResourceContract {
         max_expressions: 4_096,
         max_expr_stack: 64,
         max_step_budget_per_tick: 10_000,
+        max_transitions_per_tick: 10_000,
         max_input_bytes: 1_048_576,
         max_output_bytes: 262_144,
         max_blob_bytes: 16_777_216,

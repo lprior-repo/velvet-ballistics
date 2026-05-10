@@ -1215,6 +1215,7 @@ const fn test_contract(max_steps: u16, max_slots: u16) -> ResourceContract {
         max_expressions: 0,
         max_expr_stack: 0,
         max_step_budget_per_tick: 1,
+        max_transitions_per_tick: 1,
         max_input_bytes: 1,
         max_output_bytes: 1,
         max_blob_bytes: 1,

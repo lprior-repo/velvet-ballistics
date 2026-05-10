@@ -1,2 +1,11 @@
 [profile.default]
-test-threads = 1
+test-threads = "num-cpus"
+status-level = "fail"
+final-status-level = "fail"
+
+[test-groups]
+vb-nf2u-ui-release = { max-threads = 1 }
+
+[[profile.default.overrides]]
+filter = 'binary(=vb_nf2u_ui_release_acceptance)'
+test-group = 'vb-nf2u-ui-release'

@@ -228,6 +228,7 @@ mod tests {
             max_expressions: 10,
             max_expr_stack: 10,
             max_step_budget_per_tick: 10,
+            max_transitions_per_tick: 10,
             max_input_bytes: 100,
             max_output_bytes: 100,
             max_blob_bytes: 100,

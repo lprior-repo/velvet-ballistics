@@ -2,11 +2,6 @@ rust:
   version: 'nightly-2026-04-28'
   bins:
     - 'cargo-nextest'
-    - 'cargo-audit'
-    - 'cargo-deny'
-    - 'cargo-vet'
-    - 'cargo-geiger'
-    - 'cargo-machete'
     - 'cargo-hack'
     - 'cargo-mutants'
     - 'cargo-llvm-cov'

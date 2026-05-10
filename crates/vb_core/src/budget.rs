@@ -300,6 +300,10 @@ pub struct AggregateResourceBudget {
     pub max_total_slots_written: u32,
     pub max_queue_depth: u32,
     pub max_journal_batch_bytes: u32,
+    /// Maximum step budget per runtime tick (from ResourceContract).
+    pub max_step_budget_per_tick: u64,
+    /// Maximum transitions per runtime tick.
+    pub max_transitions_per_tick: u64,
 }
 
 /// Shard-local aggregate admission capacity.
@@ -315,6 +319,10 @@ pub struct AggregateResourceCapacity {
     pub max_active_runs: u64,
     pub max_queue_depth: u64,
     pub max_journal_batch_bytes: u64,
+    /// Maximum step budget per tick capacity.
+    pub max_step_budget_per_tick: u64,
+    /// Maximum transitions per tick capacity.
+    pub max_transitions_per_tick: u64,
 }
 
 /// Active shard aggregate usage snapshot.
@@ -330,6 +338,10 @@ pub struct AggregateResourceUsage {
     pub max_active_runs: u64,
     pub max_queue_depth: u64,
     pub max_journal_batch_bytes: u64,
+    /// Current step budget per tick usage.
+    pub max_step_budget_per_tick: u64,
+    /// Current transitions per tick usage.
+    pub max_transitions_per_tick: u64,
 }
 
 /// Exact budget reservation associated with a run.
@@ -365,6 +377,16 @@ pub enum AggregateBudgetError {
     ReservationNotFound {
         run: RunId,
     },
+    /// Step ceiling exceeded per tick.
+    StepCeilingExceeded {
+        requested: u64,
+        limit: u64,
+    },
+    /// Per-tick transition ceiling exceeded.
+    PerTickCeilingExceeded {
+        requested: u64,
+        limit: u64,
+    },
 }
 
 impl AggregateResourceBudget {
@@ -376,7 +398,9 @@ impl AggregateResourceBudget {
             &workflow.resource_contract(),
         )
         .map_err(AggregateBudgetError::WorkflowBudget)?;
-        Self::from_whole_workflow_budget(budget, workflow.resource_contract())
+        let aggregate = Self::from_whole_workflow_budget(budget, workflow.resource_contract())?;
+        validate_step_ceilings(&aggregate)?;
+        Ok(aggregate)
     }
 
     pub fn from_whole_workflow_budget(
@@ -398,6 +422,8 @@ impl AggregateResourceBudget {
             max_total_slots_written: budget.max_total_slots_written,
             max_queue_depth: contract.max_queue_depth,
             max_journal_batch_bytes: contract.max_journal_batch_bytes,
+            max_step_budget_per_tick: contract.max_step_budget_per_tick,
+            max_transitions_per_tick: contract.max_transitions_per_tick,
         })
     }
 }
@@ -454,6 +480,16 @@ impl AggregateResourceUsage {
                 u64::from(budget.max_journal_batch_bytes),
                 "max_journal_batch_bytes",
             )?,
+            max_step_budget_per_tick: add_dim(
+                self.max_step_budget_per_tick,
+                budget.max_step_budget_per_tick,
+                "max_step_budget_per_tick",
+            )?,
+            max_transitions_per_tick: add_dim(
+                self.max_transitions_per_tick,
+                budget.max_transitions_per_tick,
+                "max_transitions_per_tick",
+            )?,
         })
     }
 
@@ -507,6 +543,16 @@ impl AggregateResourceUsage {
                 self.max_journal_batch_bytes,
                 u64::from(budget.max_journal_batch_bytes),
                 "max_journal_batch_bytes",
+            )?,
+            max_step_budget_per_tick: sub_dim(
+                self.max_step_budget_per_tick,
+                budget.max_step_budget_per_tick,
+                "max_step_budget_per_tick",
+            )?,
+            max_transitions_per_tick: sub_dim(
+                self.max_transitions_per_tick,
+                budget.max_transitions_per_tick,
+                "max_transitions_per_tick",
             )?,
         })
     }
@@ -564,6 +610,16 @@ impl AggregateResourceUsage {
             "max_journal_batch_bytes",
             self.max_journal_batch_bytes,
             capacity.max_journal_batch_bytes,
+        )?;
+        check_capacity(
+            "max_step_budget_per_tick",
+            self.max_step_budget_per_tick,
+            capacity.max_step_budget_per_tick,
+        )?;
+        check_capacity(
+            "max_transitions_per_tick",
+            self.max_transitions_per_tick,
+            capacity.max_transitions_per_tick,
         )
     }
 }
@@ -642,6 +698,45 @@ pub fn validate_aggregate_budget(
         u64::from(budget.max_journal_batch_bytes),
         u64::from(u32::MAX),
     )
+}
+
+/// Validates step ceiling dimensions (max_step_budget_per_tick and
+/// max_transitions_per_tick) against hard limits.
+pub fn validate_step_ceilings(
+    budget: &AggregateResourceBudget,
+) -> Result<(), AggregateBudgetError> {
+    // Hard limit for step budget per tick - derived from MAX_STEPS_PER_TICK if defined,
+    // otherwise use a conservative upper bound.
+    const HARD_MAX_STEP_BUDGET_PER_TICK: u64 = 1_000_000;
+    const HARD_MAX_TRANSITIONS_PER_TICK: u64 = 1_000_000;
+
+    if budget.max_step_budget_per_tick == 0 {
+        return Err(AggregateBudgetError::StepCeilingExceeded {
+            requested: 0,
+            limit: HARD_MAX_STEP_BUDGET_PER_TICK,
+        });
+    }
+    if budget.max_step_budget_per_tick > HARD_MAX_STEP_BUDGET_PER_TICK {
+        return Err(AggregateBudgetError::StepCeilingExceeded {
+            requested: budget.max_step_budget_per_tick,
+            limit: HARD_MAX_STEP_BUDGET_PER_TICK,
+        });
+    }
+
+    if budget.max_transitions_per_tick == 0 {
+        return Err(AggregateBudgetError::PerTickCeilingExceeded {
+            requested: 0,
+            limit: HARD_MAX_TRANSITIONS_PER_TICK,
+        });
+    }
+    if budget.max_transitions_per_tick > HARD_MAX_TRANSITIONS_PER_TICK {
+        return Err(AggregateBudgetError::PerTickCeilingExceeded {
+            requested: budget.max_transitions_per_tick,
+            limit: HARD_MAX_TRANSITIONS_PER_TICK,
+        });
+    }
+
+    Ok(())
 }
 
 fn add_dim(

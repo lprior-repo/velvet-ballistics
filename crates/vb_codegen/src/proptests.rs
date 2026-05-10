@@ -303,6 +303,7 @@ mod proptests {
                         max_input_bytes: input_bytes,
                         max_output_bytes: output_bytes,
                         max_step_budget_per_tick: 500,
+                        max_transitions_per_tick: 500,
                         max_blob_bytes: 1024,
                         max_ipc_payload_bytes: 2048,
                         max_retry_attempts: 3,

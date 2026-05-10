@@ -11,7 +11,7 @@ defaultProject: velvet-ballastics
 versionConstraint: '>=1.0.0'
 
 pipeline:
-  installDependencies: true
+  installDependencies: false
   syncWorkspace: true
 
 telemetry: false
