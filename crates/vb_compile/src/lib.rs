@@ -3797,14 +3797,21 @@ mod tests {
         // Check that result is Err with exactly one ValidationError::SlotReferenceOutOfRange
         match result {
             Err(CompileErrors(ref errors)) => {
-                assert_eq!(errors.len(), 1, "Expected exactly 1 error, got {}", errors.len());
+                assert_eq!(
+                    errors.len(),
+                    1,
+                    "Expected exactly 1 error, got {}",
+                    errors.len()
+                );
                 let err = errors.first().expect("should have first error");
                 match err {
-                    CompileError::Validation(vb_validate::ValidationError::SlotReferenceOutOfRange {
-                        slot,
-                        slot_count: sc,
-                        context,
-                    }) => {
+                    CompileError::Validation(
+                        vb_validate::ValidationError::SlotReferenceOutOfRange {
+                            slot,
+                            slot_count: sc,
+                            context,
+                        },
+                    ) => {
                         assert_eq!(*slot, 1);
                         assert_eq!(*sc, 1);
                         assert!(
@@ -3836,14 +3843,21 @@ mod tests {
 
         match result {
             Err(CompileErrors(ref errors)) => {
-                assert_eq!(errors.len(), 1, "Expected exactly 1 error, got {}", errors.len());
+                assert_eq!(
+                    errors.len(),
+                    1,
+                    "Expected exactly 1 error, got {}",
+                    errors.len()
+                );
                 let err = errors.first().expect("should have first error");
                 match err {
-                    CompileError::Validation(vb_validate::ValidationError::SlotReferenceOutOfRange {
-                        slot,
-                        slot_count: sc,
-                        context,
-                    }) => {
+                    CompileError::Validation(
+                        vb_validate::ValidationError::SlotReferenceOutOfRange {
+                            slot,
+                            slot_count: sc,
+                            context,
+                        },
+                    ) => {
                         assert_eq!(*slot, 1);
                         assert_eq!(*sc, 1);
                         assert!(
@@ -3879,7 +3893,10 @@ mod tests {
             parts.digest,
         );
 
-        assert!(result.is_ok(), "lower_steps_to_ir should succeed for valid parts");
+        assert!(
+            result.is_ok(),
+            "lower_steps_to_ir should succeed for valid parts"
+        );
 
         let workflow = result.unwrap();
         let output_parts = workflow.to_parts();
@@ -3929,7 +3946,12 @@ mod tests {
 
         match result {
             Err(CompileErrors(ref errors)) => {
-                assert_eq!(errors.len(), 1, "Expected exactly 1 error, got {}", errors.len());
+                assert_eq!(
+                    errors.len(),
+                    1,
+                    "Expected exactly 1 error, got {}",
+                    errors.len()
+                );
                 let err = errors.first().expect("should have first error");
                 match err {
                     CompileError::Workflow(WorkflowError::EmptyNodes) => {}
@@ -3960,7 +3982,12 @@ mod tests {
 
         match result {
             Err(CompileErrors(ref errors)) => {
-                assert_eq!(errors.len(), 1, "Expected exactly 1 error, got {}", errors.len());
+                assert_eq!(
+                    errors.len(),
+                    1,
+                    "Expected exactly 1 error, got {}",
+                    errors.len()
+                );
                 let err = errors.first().expect("should have first error");
                 match err {
                     CompileError::Workflow(WorkflowError::NodeIdMismatch { expected, actual }) => {
@@ -3983,7 +4010,12 @@ mod tests {
 
         match result {
             Err(CompileErrors(ref errors)) => {
-                assert_eq!(errors.len(), 1, "Expected exactly 1 error, got {}", errors.len());
+                assert_eq!(
+                    errors.len(),
+                    1,
+                    "Expected exactly 1 error, got {}",
+                    errors.len()
+                );
                 let err = errors.first().expect("should have first error");
                 match err {
                     CompileError::Workflow(WorkflowError::EmptyNodes) => {}
@@ -4015,20 +4047,19 @@ steps:
 
         match result {
             Err(CompileErrors(ref errors)) => {
-                assert_eq!(errors.len(), 1, "Expected exactly 1 error, got {}", errors.len());
+                assert_eq!(
+                    errors.len(),
+                    1,
+                    "Expected exactly 1 error, got {}",
+                    errors.len()
+                );
                 let err = errors.first().expect("should have first error");
                 match err {
-                    CompileError::UnknownSlotType {
-                        field,
-                        slot,
-                    } => {
+                    CompileError::UnknownSlotType { field, slot } => {
                         assert_eq!(*field, "run.input");
                         assert_eq!(*slot, 0);
                     }
-                    other => panic!(
-                        "Expected CompileError::UnknownSlotType, got: {:?}",
-                        other
-                    ),
+                    other => panic!("Expected CompileError::UnknownSlotType, got: {:?}", other),
                 }
             }
             Ok(_) => panic!("Expected error, got Ok"),
@@ -4065,20 +4096,19 @@ steps:
 
         match result {
             Err(CompileErrors(ref errors)) => {
-                assert_eq!(errors.len(), 1, "Expected exactly 1 error, got {}", errors.len());
+                assert_eq!(
+                    errors.len(),
+                    1,
+                    "Expected exactly 1 error, got {}",
+                    errors.len()
+                );
                 let err = errors.first().expect("should have first error");
                 match err {
-                    CompileError::UnknownSlotType {
-                        field,
-                        slot,
-                    } => {
+                    CompileError::UnknownSlotType { field, slot } => {
                         assert_eq!(*field, "finish.result");
                         assert_eq!(*slot, 0);
                     }
-                    other => panic!(
-                        "Expected CompileError::UnknownSlotType, got: {:?}",
-                        other
-                    ),
+                    other => panic!("Expected CompileError::UnknownSlotType, got: {:?}", other),
                 }
             }
             Ok(_) => panic!("Expected error, got Ok"),
@@ -4117,6 +4147,7 @@ steps:
                 assert_eq!(node_index, 0);
             }
             Ok(_) => panic!("Expected error, got Ok"),
+            Err(other) => panic!("Expected ActionContractMissing error, got {:?}", other),
         }
     }
 
@@ -4146,6 +4177,7 @@ steps:
                 assert_eq!(action_id, 99);
             }
             Ok(_) => panic!("Expected error, got Ok"),
+            Err(other) => panic!("Expected ActionContractOrphan error, got {:?}", other),
         }
     }
 

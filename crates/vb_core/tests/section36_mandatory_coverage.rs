@@ -857,7 +857,12 @@ fn failed_step_does_not_become_succeeded_without_error_handler() -> Result<(), S
 
     // step_once will fail because output slot is None on the Copy node
     let result = step_once(&workflow, &mut frame, &mut store);
-    assert_eq!(result, Err(CoreError::MissingOutputSlot { step: StepIdx::new(0) }));
+    assert_eq!(
+        result,
+        Err(CoreError::MissingOutputSlot {
+            step: StepIdx::new(0)
+        })
+    );
     assert_eq!(
         frame
             .step_state(StepIdx::new(0))

@@ -508,7 +508,9 @@ mod tests {
         let contracts = vec![make_contract(0)];
         let result = resolve_contract(ActionId::new(0), &contracts);
         assert_eq!(
-            result.expect("resolve_contract should succeed for id-in-range").id,
+            result
+                .expect("resolve_contract should succeed for id-in-range")
+                .id,
             ActionId::new(0),
             "resolved contract id must match requested action id"
         );
@@ -519,7 +521,9 @@ mod tests {
         let contracts = vec![make_contract(0), make_contract(1), make_contract(2)];
         let result = resolve_contract(ActionId::new(2), &contracts);
         assert_eq!(
-            result.expect("resolve_contract should succeed for id-in-range").id,
+            result
+                .expect("resolve_contract should succeed for id-in-range")
+                .id,
             ActionId::new(2),
             "resolved contract id must match requested action id"
         );
@@ -597,7 +601,10 @@ mod tests {
             RetryPolicy::DEFAULT,
         );
 
-        assert!(matches!(result.expect("execute_do should succeed with capability granted"), RuntimeSignal::AwaitingAction(_)));
+        assert!(matches!(
+            result.expect("execute_do should succeed with capability granted"),
+            RuntimeSignal::AwaitingAction(_)
+        ));
     }
 
     // =====================================================================

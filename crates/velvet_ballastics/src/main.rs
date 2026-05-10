@@ -3453,7 +3453,9 @@ fn explain_validation_error(err: &vb_validate::ValidationError) {
             max,
         } => {
             outln!("Capability Name Too Long");
-            outln!("  Action {action_id}: capability {capability_index} name length {len} exceeds max {max}.");
+            outln!(
+                "  Action {action_id}: capability {capability_index} name length {len} exceeds max {max}."
+            );
         }
         ValidationError::CapabilityNameInvalid {
             action_id,
@@ -3469,7 +3471,9 @@ fn explain_validation_error(err: &vb_validate::ValidationError) {
             capability_index,
         } => {
             outln!("Capability Action Mismatch");
-            outln!("  Contract action {contract_action_id} != capability action {capability_action_id} at index {capability_index}.");
+            outln!(
+                "  Contract action {contract_action_id} != capability action {capability_action_id} at index {capability_index}."
+            );
         }
         ValidationError::CapabilityDuplicate {
             action_id,
@@ -3478,7 +3482,9 @@ fn explain_validation_error(err: &vb_validate::ValidationError) {
             name,
         } => {
             outln!("Capability Duplicate");
-            outln!("  Action {action_id}: capability '{name}' first at {first_index}, duplicate at {duplicate_index}.");
+            outln!(
+                "  Action {action_id}: capability '{name}' first at {first_index}, duplicate at {duplicate_index}."
+            );
         }
     }
 }
@@ -3834,7 +3840,11 @@ fn cmd_doctor(db: &std::path::Path, output: OutputFormat) -> ExitCode {
             let mut runs = Vec::new();
             for run in &diag.runs {
                 match run {
-                    vb_storage::TrimEligibility::Eligible { run: r, safe_point, events_trimmable } => {
+                    vb_storage::TrimEligibility::Eligible {
+                        run: r,
+                        safe_point,
+                        events_trimmable,
+                    } => {
                         runs.push(serde_json::json!({
                             "run": r.get(),
                             "status": "eligible",
@@ -3909,14 +3919,23 @@ fn cmd_doctor(db: &std::path::Path, output: OutputFormat) -> ExitCode {
         if let Ok(diag) = journal.trim_eligibility_diagnostic(vb_storage::TrimPolicy::default()) {
             outln!(
                 "doctor: trim eligibility — {} total, {} eligible, {} blocked, {} events trimmable",
-                diag.total_runs, diag.eligible_runs, diag.blocked_runs, diag.total_events_trimmable
+                diag.total_runs,
+                diag.eligible_runs,
+                diag.blocked_runs,
+                diag.total_events_trimmable
             );
             for run in &diag.runs {
                 match run {
-                    vb_storage::TrimEligibility::Eligible { run: r, safe_point, events_trimmable } => {
+                    vb_storage::TrimEligibility::Eligible {
+                        run: r,
+                        safe_point,
+                        events_trimmable,
+                    } => {
                         outln!(
                             "doctor:   run {} eligible — safe_point={} events_trimmable={}",
-                            r.get(), safe_point.get(), events_trimmable
+                            r.get(),
+                            safe_point.get(),
+                            events_trimmable
                         );
                     }
                     vb_storage::TrimEligibility::Blocked { run: r, blocker } => {
@@ -3924,7 +3943,11 @@ fn cmd_doctor(db: &std::path::Path, output: OutputFormat) -> ExitCode {
                             vb_storage::TrimBlocker::NoDurableSnapshot => "no_durable_snapshot",
                             vb_storage::TrimBlocker::RetentionPolicy { .. } => "retention_policy",
                         };
-                        outln!("doctor:   run {} blocked — blocker={}", r.get(), blocker_name);
+                        outln!(
+                            "doctor:   run {} blocked — blocker={}",
+                            r.get(),
+                            blocker_name
+                        );
                     }
                 }
             }

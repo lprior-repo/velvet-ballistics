@@ -6525,7 +6525,11 @@ fn vb1u88_invariant_runs_len_never_exceeds_max() {
         );
         let tick_result = shard.tick();
         assert!(
-            tick_result.is_ok() || matches!(tick_result, Err(RuntimeError::ActiveRunCapacityExceeded { .. })),
+            tick_result.is_ok()
+                || matches!(
+                    tick_result,
+                    Err(RuntimeError::ActiveRunCapacityExceeded { .. })
+                ),
             "tick returned unexpected error: {:?}",
             tick_result
         );

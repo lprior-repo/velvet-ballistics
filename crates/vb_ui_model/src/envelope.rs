@@ -131,7 +131,11 @@ impl fmt::Display for EnvelopeError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             EnvelopeError::InvalidSchemaVersion { value } => {
-                write!(f, "schema version {} is out of valid range 1..=65535", value)
+                write!(
+                    f,
+                    "schema version {} is out of valid range 1..=65535",
+                    value
+                )
             }
             EnvelopeError::SuccessCannotHaveDiagnostic => {
                 write!(f, "Success envelope cannot have a diagnostic")

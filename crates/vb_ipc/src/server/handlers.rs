@@ -1113,7 +1113,10 @@ mod tests {
     fn decode_payload_returns_error_for_garbage_bytes() {
         let garbage: &[u8] = &[0xFF, 0xFE, 0xFD, 0xFC];
         let result = decode_payload::<crate::IpcPayload>(garbage);
-        assert!(result.is_err(), "decode_payload should fail for garbage bytes");
+        assert!(
+            result.is_err(),
+            "decode_payload should fail for garbage bytes"
+        );
         let Err(IpcResponse::PayloadError {
             diagnostic,
             message,
@@ -1128,7 +1131,10 @@ mod tests {
     #[test]
     fn decode_payload_returns_error_for_empty_bytes() {
         let result = decode_payload::<crate::IpcPayload>(&[]);
-        assert!(result.is_err(), "decode_payload should fail for empty bytes");
+        assert!(
+            result.is_err(),
+            "decode_payload should fail for empty bytes"
+        );
         let Err(IpcResponse::PayloadError { .. }) = result else {
             unreachable!("expected PayloadError variant for empty bytes");
         };
@@ -1463,8 +1469,7 @@ mod tests {
         let payload = crate::IpcPayload::CancelRun {
             run_id: vb_core::RunId::new(9999),
         };
-        let encoded = postcard::to_allocvec(&payload)
-            .expect("payload should encode");
+        let encoded = postcard::to_allocvec(&payload).expect("payload should encode");
         // Verify the payload decodes correctly (the handler would proceed to cancel_run).
         let decoded = decode_payload::<crate::IpcPayload>(&encoded);
         let Ok(crate::IpcPayload::CancelRun { run_id }) = decoded else {
@@ -1481,8 +1486,8 @@ mod tests {
     fn get_workflow_graph_payload_roundtrips() {
         let digest = vb_core::WorkflowDigest::from_bytes([0xAB; 32]);
         let payload = crate::IpcPayload::GetWorkflowGraph { digest };
-        let encoded = postcard::to_allocvec(&payload)
-            .expect("GetWorkflowGraph payload should encode");
+        let encoded =
+            postcard::to_allocvec(&payload).expect("GetWorkflowGraph payload should encode");
         let decoded = decode_payload::<crate::IpcPayload>(&encoded);
         let Ok(crate::IpcPayload::GetWorkflowGraph { digest: d }) = decoded else {
             unreachable!("expected GetWorkflowGraph payload");
@@ -1496,8 +1501,8 @@ mod tests {
     fn verify_workflow_payload_roundtrips() {
         let digest = vb_core::WorkflowDigest::from_bytes([0xCD; 32]);
         let payload = crate::IpcPayload::VerifyWorkflow { digest };
-        let encoded = postcard::to_allocvec(&payload)
-            .expect("VerifyWorkflow payload should encode");
+        let encoded =
+            postcard::to_allocvec(&payload).expect("VerifyWorkflow payload should encode");
         let decoded = decode_payload::<crate::IpcPayload>(&encoded);
         let Ok(crate::IpcPayload::VerifyWorkflow { digest: d }) = decoded else {
             unreachable!("expected VerifyWorkflow payload");
@@ -1510,8 +1515,8 @@ mod tests {
     fn get_taint_report_payload_roundtrips() {
         let digest = vb_core::WorkflowDigest::from_bytes([0xEF; 32]);
         let payload = crate::IpcPayload::GetTaintReport { digest };
-        let encoded = postcard::to_allocvec(&payload)
-            .expect("GetTaintReport payload should encode");
+        let encoded =
+            postcard::to_allocvec(&payload).expect("GetTaintReport payload should encode");
         let decoded = decode_payload::<crate::IpcPayload>(&encoded);
         let Ok(crate::IpcPayload::GetTaintReport { digest: d }) = decoded else {
             unreachable!("expected GetTaintReport payload");
@@ -1588,8 +1593,7 @@ mod tests {
             workflow: vb_core::WorkflowDigest::from_bytes([0x00; 32]),
             input: vec![0xAA_u8; MAX_SUBMIT_INPUT_LEN + 1],
         });
-        let encoded = postcard::to_allocvec(&payload)
-            .expect("payload should encode");
+        let encoded = postcard::to_allocvec(&payload).expect("payload should encode");
         // Verify the oversized input round-trips through postcard decode,
         // confirming the handler's size check is the sole defense.
         let decoded = decode_payload::<crate::IpcPayload>(&encoded);
@@ -1612,8 +1616,7 @@ mod tests {
             workflow: vb_core::WorkflowDigest::from_bytes([0x00; 32]),
             input: vec![0xBB_u8; MAX_SUBMIT_INPUT_LEN],
         });
-        let encoded = postcard::to_allocvec(&payload)
-            .expect("payload should encode");
+        let encoded = postcard::to_allocvec(&payload).expect("payload should encode");
         let decoded = decode_payload::<crate::IpcPayload>(&encoded);
         let Ok(crate::IpcPayload::SubmitRun(inner)) = decoded else {
             unreachable!("expected SubmitRun payload");
@@ -1635,8 +1638,7 @@ mod tests {
             ticket: 7,
             output: vec![0xCC_u8; MAX_ACTION_OUTPUT_LEN],
         };
-        let encoded = postcard::to_allocvec(&payload)
-            .expect("payload should encode");
+        let encoded = postcard::to_allocvec(&payload).expect("payload should encode");
         let decoded = decode_payload::<crate::IpcPayload>(&encoded);
         let Ok(crate::IpcPayload::CompleteAction { output, .. }) = decoded else {
             unreachable!("expected CompleteAction payload");
@@ -1657,8 +1659,7 @@ mod tests {
             ticket: 3,
             error: vec![0xDD_u8; MAX_ACTION_ERROR_LEN],
         };
-        let encoded = postcard::to_allocvec(&payload)
-            .expect("payload should encode");
+        let encoded = postcard::to_allocvec(&payload).expect("payload should encode");
         let decoded = decode_payload::<crate::IpcPayload>(&encoded);
         let Ok(crate::IpcPayload::FailAction { error, .. }) = decoded else {
             unreachable!("expected FailAction payload");

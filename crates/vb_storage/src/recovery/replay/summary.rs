@@ -953,8 +953,10 @@ mod tests {
         assert!(result.is_ok(), "Expected Ok, got: {:?}", result);
         let seed = result.unwrap();
         assert_eq!(seed.step_count, 1);
-        assert!(seed.steps.iter().any(|entry| entry.step == StepIdx::new(0)
-            && entry.state == RecoveredStepState::Succeeded));
+        assert!(
+            seed.steps.iter().any(|entry| entry.step == StepIdx::new(0)
+                && entry.state == RecoveredStepState::Succeeded)
+        );
     }
 
     #[test]
@@ -989,11 +991,12 @@ mod tests {
 
         let recovered = seed.expect("should recover successfully");
         assert!(
-            recovered.slots.iter().any(|entry|
-                entry.slot == SlotIdx::new(0)
+            recovered
+                .slots
+                .iter()
+                .any(|entry| entry.slot == SlotIdx::new(0)
                     && entry.value == SlotValue::Bool(true)
-                    && entry.taint == Taint::DerivedFromSecret
-            ),
+                    && entry.taint == Taint::DerivedFromSecret),
             "Expected slot 0 with Bool(true) and DerivedFromSecret taint"
         );
         assert!(

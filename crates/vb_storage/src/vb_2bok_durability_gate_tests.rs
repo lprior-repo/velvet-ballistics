@@ -17,17 +17,15 @@ mod durability_gate_tests {
     use crate::admission::{admit_compiled_artifact, submit_artifact};
     use crate::codec::{decode_record, encode_record};
     use crate::constants::{
-        CRC_OFFSET, MAGIC_BLOB, MAGIC_JOURNAL_EVENT,
-        MAX_JOURNAL_EVENT_PAYLOAD_BYTES, RECORD_HEADER_BYTES,
+        CRC_OFFSET, MAGIC_BLOB, MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+        RECORD_HEADER_BYTES,
     };
     use crate::records::RecordKind;
     use crate::{
-        BlobRecord, DIGEST_BYTES, EventSeq, FjallJournal, JournalError,
-        JournalEvent, WorkflowSourceRecord,
+        BlobRecord, DIGEST_BYTES, EventSeq, FjallJournal, JournalError, JournalEvent,
+        WorkflowSourceRecord,
     };
-    use vb_core::{
-        CompiledWorkflow, RunId, RuntimePolicy, SlotIdx, StepIdx, WorkflowDigest,
-    };
+    use vb_core::{CompiledWorkflow, RunId, RuntimePolicy, SlotIdx, StepIdx, WorkflowDigest};
 
     // =========================================================================
     // Test fixtures and helpers
@@ -193,18 +191,22 @@ mod durability_gate_tests {
         let (_temp, journal) = temp_journal().map_err(|e| format!("journal open: {e}"))?;
         let workflow = minimal_valid_workflow()?;
 
-        [RuntimePolicy::Relaxed, RuntimePolicy::Journaled, RuntimePolicy::Strict]
-            .iter()
-            .try_for_each(|policy| {
-                let result = submit_artifact(&journal, &workflow, *policy)
-                    .map_err(|e| format!("submit_artifact({policy:?}) failed: {e}"))?;
-                assert_eq!(
-                    result.digest,
-                    workflow.digest(),
-                    "artifact.digest must equal workflow.digest() for policy {policy:?}"
-                );
-                Ok::<(), String>(())
-            })?;
+        [
+            RuntimePolicy::Relaxed,
+            RuntimePolicy::Journaled,
+            RuntimePolicy::Strict,
+        ]
+        .iter()
+        .try_for_each(|policy| {
+            let result = submit_artifact(&journal, &workflow, *policy)
+                .map_err(|e| format!("submit_artifact({policy:?}) failed: {e}"))?;
+            assert_eq!(
+                result.digest,
+                workflow.digest(),
+                "artifact.digest must equal workflow.digest() for policy {policy:?}"
+            );
+            Ok::<(), String>(())
+        })?;
         Ok(())
     }
 
@@ -216,17 +218,21 @@ mod durability_gate_tests {
         let (_temp, journal) = temp_journal().map_err(|e| format!("journal open: {e}"))?;
         let workflow = minimal_valid_workflow()?;
 
-        [RuntimePolicy::Relaxed, RuntimePolicy::Journaled, RuntimePolicy::Strict]
-            .iter()
-            .try_for_each(|policy| {
-                let result = submit_artifact(&journal, &workflow, *policy)
-                    .map_err(|e| format!("submit_artifact({policy:?}) failed: {e}"))?;
-                assert!(
-                    !result.ir.is_empty(),
-                    "artifact.ir must be non-empty for policy {policy:?}"
-                );
-                Ok::<(), String>(())
-            })?;
+        [
+            RuntimePolicy::Relaxed,
+            RuntimePolicy::Journaled,
+            RuntimePolicy::Strict,
+        ]
+        .iter()
+        .try_for_each(|policy| {
+            let result = submit_artifact(&journal, &workflow, *policy)
+                .map_err(|e| format!("submit_artifact({policy:?}) failed: {e}"))?;
+            assert!(
+                !result.ir.is_empty(),
+                "artifact.ir must be non-empty for policy {policy:?}"
+            );
+            Ok::<(), String>(())
+        })?;
         Ok(())
     }
 
@@ -623,9 +629,12 @@ mod durability_gate_tests {
         .map_err(|e| format!("encode failed: {e}"))?;
 
         let mut corrupt = bytes;
-        corrupt.iter_mut().skip(RECORD_HEADER_BYTES).for_each(|byte| {
-            *byte = byte.wrapping_add(1);
-        });
+        corrupt
+            .iter_mut()
+            .skip(RECORD_HEADER_BYTES)
+            .for_each(|byte| {
+                *byte = byte.wrapping_add(1);
+            });
 
         let result = decode_record::<JournalEvent>(
             &corrupt,
@@ -1019,19 +1028,23 @@ mod durability_gate_tests {
         let (_temp, journal) = temp_journal().map_err(|e| format!("journal open: {e}"))?;
         let workflow = minimal_valid_workflow()?;
 
-        [RuntimePolicy::Relaxed, RuntimePolicy::Journaled, RuntimePolicy::Strict]
-            .iter()
-            .try_for_each(|policy| {
-                let artifact = submit_artifact(&journal, &workflow, *policy)
-                    .map_err(|e| format!("submit failed: {e}"))?;
+        [
+            RuntimePolicy::Relaxed,
+            RuntimePolicy::Journaled,
+            RuntimePolicy::Strict,
+        ]
+        .iter()
+        .try_for_each(|policy| {
+            let artifact = submit_artifact(&journal, &workflow, *policy)
+                .map_err(|e| format!("submit failed: {e}"))?;
 
-                assert_eq!(
-                    artifact.digest.as_bytes(),
-                    workflow.digest().as_bytes(),
-                    "artifact.digest must equal workflow.digest() for policy {policy:?}"
-                );
-                Ok::<(), String>(())
-            })?;
+            assert_eq!(
+                artifact.digest.as_bytes(),
+                workflow.digest().as_bytes(),
+                "artifact.digest must equal workflow.digest() for policy {policy:?}"
+            );
+            Ok::<(), String>(())
+        })?;
         Ok(())
     }
 
@@ -1687,9 +1700,12 @@ mod durability_gate_tests {
         .map_err(|e| format!("encode: {e}"))?;
 
         let mut corrupt = bytes;
-        corrupt.iter_mut().skip(RECORD_HEADER_BYTES).for_each(|byte| {
-            *byte = byte.wrapping_add(1);
-        });
+        corrupt
+            .iter_mut()
+            .skip(RECORD_HEADER_BYTES)
+            .for_each(|byte| {
+                *byte = byte.wrapping_add(1);
+            });
 
         let result = decode_record::<JournalEvent>(
             &corrupt,

@@ -27,7 +27,12 @@ fn captured_collect_extra(run: &mut RunFrame, collector: SlotIdx) -> Result<Vec<
     let mut states = fresh_states();
     let source = SlotIdx::new(0);
     // Use 2 items with page_size=1 so state is preserved after first page
-    list_in_slot(&mut *run, &mut store, source, vec![SlotValue::I64(10), SlotValue::I64(20)]);
+    list_in_slot(
+        &mut *run,
+        &mut store,
+        source,
+        vec![SlotValue::I64(10), SlotValue::I64(20)],
+    );
     collect_start(
         run,
         &mut store,

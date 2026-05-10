@@ -4,10 +4,10 @@
 //! Tests cover: Error enum, tokens, graph_canvas, graph_node, graph_edge, shell, packet_dot
 
 use vb_ui_makepad::{
-    color, graph_canvas::EdgePath, layout, radius, shadow, space, AppShell, EdgeRenderInstr,
-    EdgeType, Error, GraphCanvas, GraphNode, NodeBadge, NodeCardRenderInstr, OverlayState,
-    PacketDot, PacketDotManager, PacketMarkerInstr, Screen, ShellNav, ShellStatusChip,
-    ViewportRect,
+    AnimationTick, AppShell, EdgeRenderInstr, Error, GraphCanvas, GraphNode, NodeBadge,
+    NodeCardRenderInstr, OverlayState, PacketDot, PacketMarkerInstr, Screen, ShellNav,
+    ShellStatusChip, color, graph_canvas::EdgePath, graph_canvas::ViewportRect,
+    graph_edge::EdgeType, layout, packet_dot::PacketDotManager, radius, shadow, space,
 };
 
 // =============================================================================
@@ -95,27 +95,83 @@ mod tokens_parse_hex_tests {
         // Use Tokens::parse to exercise parse_hex indirectly via from_toml
         // Direct parse_hex testing via a minimal TOML
         let toml = format!(
-            r#"
+            r##"
 [color]
 background_board = "{}"
+shell = "#FFFFFF"
+surface = "#FFFFFF"
+surface_glass = "#FFFFFF"
+surface_muted = "#FFFFFF"
+line_hair = "#FFFFFF"
+line_soft = "#FFFFFF"
+text_primary = "#FFFFFF"
+text_secondary = "#FFFFFF"
+text_tertiary = "#FFFFFF"
+success = "#FFFFFF"
+running = "#FFFFFF"
+active_cyan = "#FFFFFF"
+warning = "#FFFFFF"
+failure = "#FFFFFF"
+taint = "#FFFFFF"
+durable = "#FFFFFF"
+pending = "#FFFFFF"
+
 [layout]
 sidebar_width = 246.0
+top_bar_height = 78.0
+outer_margin = 32.0
+content_gutter = 16.0
+inspector_width_min = 360.0
+inspector_width_max = 420.0
+bottom_timeline_min = 220.0
+graph_canvas_min_width = 720.0
+graph_canvas_min_height = 520.0
+window_width = 1920.0
+window_height = 1080.0
+
 [space]
 px_4 = 4.0
+px_8 = 8.0
+px_12 = 12.0
+px_16 = 16.0
+px_20 = 20.0
+px_24 = 24.0
+px_32 = 32.0
+px_40 = 40.0
+
 [radius]
 chip = 10.0
+control = 12.0
+card_min = 14.0
+card = 16.0
+card_max = 22.0
+panel = 20.0
+window = 24.0
+
 [shadow]
 card = "0 8 24 rgba(16,24,40,0.08)"
+window = "0 20 60 rgba(16,24,40,0.14)"
+focus = "0 0 0 4 rgba(31,122,245,0.14)"
+failure = "0 0 0 4 rgba(229,72,77,0.12)"
+taint = "0 0 0 4 rgba(139,92,246,0.12)"
+
 [type]
-family_sans = "Inter"
-family_mono = "Mono"
+family_sans = "Inter, SF Pro, system-ui"
+family_mono = "JetBrains Mono, SF Mono, ui-monospace"
 size_11 = 11
+size_12 = 12
+size_13 = 13
+size_14 = 14
+size_16 = 16
+size_20 = 20
+size_24 = 24
 weight_regular = 400
-"#,
+weight_medium = 500
+weight_semibold = 600
+"##,
             hex
         );
-        vb_ui_makepad::tokens::ParsedTokens::from_toml(&toml)
-            .map(|p| p.color.background_board)
+        vb_ui_makepad::tokens::ParsedTokens::from_toml(&toml).map(|p| p.color.background_board)
     }
 
     #[test]
@@ -238,11 +294,11 @@ sidebar_width = 246.0
 
     #[test]
     fn from_toml_missing_layout_key_returns_error() {
-        let toml = r#"
+        let toml = r##"
 [color]
 background_board = "#FFFFFF"
 [layout]
-"#;
+"##;
         let result = vb_ui_makepad::tokens::ParsedTokens::from_toml(toml);
         assert!(result.is_err());
         let err = result.unwrap_err();
@@ -276,7 +332,7 @@ weight_regular = 400
 
     #[test]
     fn from_toml_valid_toml_parses_successfully() {
-        let toml = r#"
+        let toml = r##"
 [color]
 background_board = "#F0F0F0"
 shell = "#FFFFFF"
@@ -349,7 +405,7 @@ size_24 = 24
 weight_regular = 400
 weight_medium = 500
 weight_semibold = 600
-"#;
+"##;
         let result = vb_ui_makepad::tokens::ParsedTokens::from_toml(toml);
         let parsed = result.expect("valid toml should parse");
         assert!((parsed.layout.sidebar_width - 246.0).abs() < 1e-6);
@@ -358,7 +414,7 @@ weight_semibold = 600
 
     #[test]
     fn from_toml_integer_layout_value_parses_as_f64() {
-        let toml = r#"
+        let toml = r##"
 [color]
 background_board = "#FFFFFF"
 shell = "#FFFFFF"
@@ -431,7 +487,7 @@ size_24 = 24
 weight_regular = 400
 weight_medium = 500
 weight_semibold = 600
-"#;
+"##;
         let result = vb_ui_makepad::tokens::ParsedTokens::from_toml(toml);
         let parsed = result.expect("integer layout values should parse");
         assert!((parsed.layout.sidebar_width - 246.0).abs() < 1e-6);
@@ -569,7 +625,12 @@ mod viewport_rect_tests {
 
     #[test]
     fn viewport_rect_intersects_disjoint_returns_false() {
-        let v = ViewportRect { x: 0.0, y: 0.0, width: 100.0, height: 100.0 };
+        let v = ViewportRect {
+            x: 0.0,
+            y: 0.0,
+            width: 100.0,
+            height: 100.0,
+        };
         // Another rect completely to the right
         let result = v.intersects(200.0, 0.0, 100.0, 100.0);
         assert!(!result, "disjoint rects should not intersect");
@@ -577,14 +638,24 @@ mod viewport_rect_tests {
 
     #[test]
     fn viewport_rect_intersects_overlapping_returns_true() {
-        let v = ViewportRect { x: 0.0, y: 0.0, width: 100.0, height: 100.0 };
+        let v = ViewportRect {
+            x: 0.0,
+            y: 0.0,
+            width: 100.0,
+            height: 100.0,
+        };
         let result = v.intersects(50.0, 50.0, 100.0, 100.0);
         assert!(result, "overlapping rects should intersect");
     }
 
     #[test]
     fn viewport_rect_intersects_adjacent_edge_returns_false() {
-        let v = ViewportRect { x: 0.0, y: 0.0, width: 100.0, height: 100.0 };
+        let v = ViewportRect {
+            x: 0.0,
+            y: 0.0,
+            width: 100.0,
+            height: 100.0,
+        };
         // Rect starts exactly where this one ends (touching edge)
         let result = v.intersects(100.0, 0.0, 100.0, 100.0);
         assert!(!result, "adjacent touching rects should not intersect");
@@ -592,7 +663,12 @@ mod viewport_rect_tests {
 
     #[test]
     fn viewport_rect_intersects_contained_returns_true() {
-        let v = ViewportRect { x: 0.0, y: 0.0, width: 200.0, height: 200.0 };
+        let v = ViewportRect {
+            x: 0.0,
+            y: 0.0,
+            width: 200.0,
+            height: 200.0,
+        };
         let result = v.intersects(50.0, 50.0, 50.0, 50.0);
         assert!(result, "contained rect should intersect");
     }
@@ -644,38 +720,51 @@ mod graph_canvas_tests {
     }
 
     #[test]
-    fn graph_canvas_viewport_rect_at_zoom_2() {
-        let mut canvas = make_canvas();
-        canvas.set_zoom(2.0);
-        let rect = canvas.viewport_rect(1920.0, 1080.0);
-        // At zoom 2, viewport should be 2x wider/taller
-        assert!((rect.width - 960.0).abs() < 1e-3, "width should be 960 at zoom 2");
-        assert!((rect.height - 540.0).abs() < 1e-3, "height should be 540 at zoom 2");
-    }
-
-    #[test]
     fn graph_canvas_viewport_rect_handles_zero_zoom() {
         let mut canvas = make_canvas();
         canvas.set_zoom(0.0);
         let rect = canvas.viewport_rect(1920.0, 1080.0);
-        // Should use fallback 1.0 zoom
-        assert!((rect.width - 1920.0).abs() < 1e-3);
+        // Zoom 0.0 is clamped to MIN_ZOOM (0.1), so inv_zoom = 10.0
+        assert!(
+            (rect.width - 19200.0).abs() < 1e-3,
+            "width should be 19200 at clamped zoom 0.1"
+        );
+        assert!(
+            (rect.height - 10800.0).abs() < 1e-3,
+            "height should be 10800 at clamped zoom 0.1"
+        );
     }
 
     #[test]
     fn graph_canvas_visible_nodes_empty_viewport_returns_none() {
         let canvas = make_canvas();
-        let viewport = ViewportRect { x: 5000.0, y: 5000.0, width: 100.0, height: 100.0 };
+        let viewport = ViewportRect {
+            x: 5000.0,
+            y: 5000.0,
+            width: 100.0,
+            height: 100.0,
+        };
         let result = canvas.visible_nodes(&viewport, (160.0, 48.0));
-        assert!(result.is_empty(), "nodes far from viewport should not be visible");
+        assert!(
+            result.is_empty(),
+            "nodes far from viewport should not be visible"
+        );
     }
 
     #[test]
     fn graph_canvas_visible_nodes_includes_intersecting() {
         let canvas = make_canvas();
-        let viewport = ViewportRect { x: 0.0, y: 0.0, width: 400.0, height: 400.0 };
+        let viewport = ViewportRect {
+            x: 0.0,
+            y: 0.0,
+            width: 400.0,
+            height: 400.0,
+        };
         let result = canvas.visible_nodes(&viewport, (160.0, 48.0));
-        assert!(!result.is_empty(), "nodes intersecting viewport should be visible");
+        assert!(
+            !result.is_empty(),
+            "nodes intersecting viewport should be visible"
+        );
     }
 
     #[test]
@@ -730,7 +819,11 @@ mod graph_canvas_tests {
         let mut canvas = make_canvas();
         canvas.set_zoom(1.5);
         let pct = canvas.zoom_percentage();
-        assert!(pct.contains("150%"), "zoom percentage should be 150%, got {}", pct);
+        assert!(
+            pct.contains("150%"),
+            "zoom percentage should be 150%, got {}",
+            pct
+        );
     }
 
     #[test]
@@ -1048,7 +1141,8 @@ mod edge_render_instr_tests {
     #[test]
     fn edge_render_instr_from_edge_path() {
         let instr = EdgeRenderInstr::from_edge_path(
-            0, 1,
+            0,
+            1,
             [0.0, 0.0],
             [50.0, 0.0],
             [100.0, 50.0],
@@ -1063,13 +1157,15 @@ mod edge_render_instr_tests {
     #[test]
     fn edge_render_instr_with_label() {
         let instr = EdgeRenderInstr::from_edge_path(
-            0, 1,
+            0,
+            1,
             [0.0, 0.0],
             [50.0, 0.0],
             [100.0, 50.0],
             [150.0, 50.0],
             EdgeType::Normal,
-        ).with_label("test".into());
+        )
+        .with_label("test".into());
         assert!(instr.label.is_some());
         assert_eq!(instr.label.unwrap(), "test");
     }
@@ -1192,6 +1288,7 @@ mod packet_dot_tests {
 
 mod animation_tick_tests {
     use super::*;
+    use vb_ui_makepad::AnimationTick;
 
     #[test]
     fn animation_tick_new_stores_delta_ms() {

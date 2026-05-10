@@ -2278,16 +2278,12 @@ fn cli_doctor_json_includes_trim_eligibility_check() {
                     run,
                     seq: vb_storage::EventSeq::new(i),
                     step: vb_core::StepIdx::new(i as u16 - 1),
-                    
                 }
             }
         })
         .collect();
     if let Err(err) = journal.append_strict_batch(&events) {
-        assert!(
-            forced_assertion_failure(),
-            "failed to append events: {err}"
-        );
+        assert!(forced_assertion_failure(), "failed to append events: {err}");
         return;
     }
 
@@ -2299,10 +2295,7 @@ fn cli_doctor_json_includes_trim_eligibility_check() {
         accepted_at_ms: 100_000,
     };
     if let Err(err) = journal.put_run_header(&header) {
-        assert!(
-            forced_assertion_failure(),
-            "failed to write header: {err}"
-        );
+        assert!(forced_assertion_failure(), "failed to write header: {err}");
         return;
     }
 
@@ -2323,17 +2316,15 @@ fn cli_doctor_json_includes_trim_eligibility_check() {
     drop(journal);
 
     let output = match run_cli(&[
-            std::ffi::OsStr::new("doctor"),
-            std::ffi::OsStr::new("--db"),
-            db_path.as_os_str(),
-            std::ffi::OsStr::new("--json"),
-        ]) {
+        std::ffi::OsStr::new("doctor"),
+        std::ffi::OsStr::new("--db"),
+        db_path.as_os_str(),
+        std::ffi::OsStr::new("--json"),
+    ]) {
         Some(output) => output,
         None => return,
     };
-    assert_cli_success(&output,
-        "doctor --db <path> --json"
-    );
+    assert_cli_success(&output, "doctor --db <path> --json");
 
     let stdout = output_stdout(&output);
     let packet: serde_json::Value = match serde_json::from_str(&stdout) {
@@ -2368,22 +2359,10 @@ fn cli_doctor_json_includes_trim_eligibility_check() {
         "doctor JSON should include trim_eligibility check: {stdout}"
     );
     let trim_check = trim_check.unwrap();
-    assert_eq!(
-        trim_check.get("status"),
-        Some(&serde_json::json!("pass"))
-    );
-    assert_eq!(
-        trim_check.get("total_runs"),
-        Some(&serde_json::json!(1))
-    );
-    assert_eq!(
-        trim_check.get("eligible_runs"),
-        Some(&serde_json::json!(1))
-    );
-    assert_eq!(
-        trim_check.get("blocked_runs"),
-        Some(&serde_json::json!(0))
-    );
+    assert_eq!(trim_check.get("status"), Some(&serde_json::json!("pass")));
+    assert_eq!(trim_check.get("total_runs"), Some(&serde_json::json!(1)));
+    assert_eq!(trim_check.get("eligible_runs"), Some(&serde_json::json!(1)));
+    assert_eq!(trim_check.get("blocked_runs"), Some(&serde_json::json!(0)));
     assert_eq!(
         trim_check.get("total_events_trimmable"),
         Some(&serde_json::json!(3))
@@ -2421,14 +2400,10 @@ fn cli_doctor_text_reports_trim_eligibility() {
             run,
             seq: vb_storage::EventSeq::new(1),
             step: vb_core::StepIdx::new(0),
-            
         },
     ];
     if let Err(err) = journal.append_strict_batch(&events) {
-        assert!(
-            forced_assertion_failure(),
-            "failed to append events: {err}"
-        );
+        assert!(forced_assertion_failure(), "failed to append events: {err}");
         return;
     }
 
@@ -2440,10 +2415,7 @@ fn cli_doctor_text_reports_trim_eligibility() {
         accepted_at_ms: 100_001,
     };
     if let Err(err) = journal.put_run_header(&header) {
-        assert!(
-            forced_assertion_failure(),
-            "failed to write header: {err}"
-        );
+        assert!(forced_assertion_failure(), "failed to write header: {err}");
         return;
     }
 
@@ -2451,16 +2423,14 @@ fn cli_doctor_text_reports_trim_eligibility() {
     drop(journal);
 
     let output = match run_cli(&[
-            std::ffi::OsStr::new("doctor"),
-            std::ffi::OsStr::new("--db"),
-            db_path.as_os_str(),
-        ]) {
+        std::ffi::OsStr::new("doctor"),
+        std::ffi::OsStr::new("--db"),
+        db_path.as_os_str(),
+    ]) {
         Some(output) => output,
         None => return,
     };
-    assert_cli_success(&output,
-        "doctor --db <path>"
-    );
+    assert_cli_success(&output, "doctor --db <path>");
 
     let stdout = output_stdout(&output);
     assert!(
@@ -2515,16 +2485,12 @@ fn cli_doctor_returns_success_for_healthy_journal_with_trim_recommended() {
                     run,
                     seq: vb_storage::EventSeq::new(i),
                     step: vb_core::StepIdx::new(i as u16 - 1),
-                    
                 }
             }
         })
         .collect();
     if let Err(err) = journal.append_strict_batch(&events) {
-        assert!(
-            forced_assertion_failure(),
-            "failed to append events: {err}"
-        );
+        assert!(forced_assertion_failure(), "failed to append events: {err}");
         return;
     }
 
@@ -2536,10 +2502,7 @@ fn cli_doctor_returns_success_for_healthy_journal_with_trim_recommended() {
         accepted_at_ms: 100_002,
     };
     if let Err(err) = journal.put_run_header(&header) {
-        assert!(
-            forced_assertion_failure(),
-            "failed to write header: {err}"
-        );
+        assert!(forced_assertion_failure(), "failed to write header: {err}");
         return;
     }
 
@@ -2560,16 +2523,14 @@ fn cli_doctor_returns_success_for_healthy_journal_with_trim_recommended() {
     drop(journal);
 
     let output = match run_cli(&[
-            std::ffi::OsStr::new("doctor"),
-            std::ffi::OsStr::new("--db"),
-            db_path.as_os_str(),
-        ]) {
+        std::ffi::OsStr::new("doctor"),
+        std::ffi::OsStr::new("--db"),
+        db_path.as_os_str(),
+    ]) {
         Some(output) => output,
         None => return,
     };
-    assert_cli_success(&output,
-        "doctor --db <path>"
-    );
+    assert_cli_success(&output, "doctor --db <path>");
 }
 
 #[test]
@@ -2577,10 +2538,10 @@ fn cli_doctor_returns_storage_error_for_unreadable_path() {
     let nonexistent = std::path::PathBuf::from("/nonexistent/path/to/db");
 
     let output = match run_cli(&[
-            std::ffi::OsStr::new("doctor"),
-            std::ffi::OsStr::new("--db"),
-            nonexistent.as_os_str(),
-        ]) {
+        std::ffi::OsStr::new("doctor"),
+        std::ffi::OsStr::new("--db"),
+        nonexistent.as_os_str(),
+    ]) {
         Some(output) => output,
         None => return,
     };

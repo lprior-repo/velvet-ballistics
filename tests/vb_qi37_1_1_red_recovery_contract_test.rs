@@ -7,7 +7,10 @@ use vb_storage::recovery::{
     RecoveredSlotEntry, RecoveredStepEntry, RecoveredStepState, RecoveryFrameSeed,
     RecoveryRuntimeSummary, UnsupportedRecoveryState, recover_runtime_frame_seed_from_events,
 };
-use vb_storage::{EventSeq, FjallJournal, JournalEvent, JournalWriterFlushReport, JournalWriterQueue, StorageLimits};
+use vb_storage::{
+    EventSeq, FjallJournal, JournalEvent, JournalWriterFlushReport, JournalWriterQueue,
+    StorageLimits,
+};
 
 fn encoded(value: SlotValue) -> Result<Vec<u8>, postcard::Error> {
     postcard::to_allocvec(&value)
@@ -301,7 +304,8 @@ fn supported_seed_hydrates_exact_derived_taint() {
 fn drain_report_contract_requires_three_drained_and_three_written() {
     let temp_dir = tempfile::tempdir().expect("tempdir must succeed");
     let journal = FjallJournal::open(temp_dir.path(), None).expect("journal open must succeed");
-    let queue = JournalWriterQueue::new(8, 8, StorageLimits::DEFAULT).expect("queue create must succeed");
+    let queue =
+        JournalWriterQueue::new(8, 8, StorageLimits::DEFAULT).expect("queue create must succeed");
     let run = RunId::new(9999);
 
     queue

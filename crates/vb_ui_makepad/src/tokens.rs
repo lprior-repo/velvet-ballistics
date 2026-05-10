@@ -87,7 +87,7 @@ impl Tokens {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct ParsedTokens {
     pub color: ColorSection,
     pub layout: LayoutSection,
@@ -99,7 +99,7 @@ pub struct ParsedTokens {
     pub type_weight: TypeWeightSection,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct ColorSection {
     pub background_board: [f32; 4],
     pub shell: [f32; 4],
@@ -121,7 +121,7 @@ pub struct ColorSection {
     pub pending: [f32; 4],
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct LayoutSection {
     pub sidebar_width: f64,
     pub top_bar_height: f64,
@@ -136,7 +136,7 @@ pub struct LayoutSection {
     pub window_height: f64,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct RadiusSection {
     pub chip: f64,
     pub control: f64,
@@ -147,7 +147,7 @@ pub struct RadiusSection {
     pub window: f64,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct ShadowSection {
     pub card: String,
     pub window: String,
@@ -156,7 +156,7 @@ pub struct ShadowSection {
     pub taint: String,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct SpaceSection {
     pub px_4: f64,
     pub px_8: f64,
@@ -168,13 +168,13 @@ pub struct SpaceSection {
     pub px_40: f64,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct TypeFamilySection {
     pub sans: String,
     pub mono: String,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct TypeSizeSection {
     pub size_11: u32,
     pub size_12: u32,
@@ -185,7 +185,7 @@ pub struct TypeSizeSection {
     pub size_24: u32,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct TypeWeightSection {
     pub regular: u32,
     pub medium: u32,
@@ -194,9 +194,11 @@ pub struct TypeWeightSection {
 
 impl ParsedTokens {
     pub fn from_toml(toml_str: &str) -> Result<Self, Error> {
-        let table: toml::Value = toml_str
-            .parse::<toml::Value>()
-            .map_err(|e| Error::InvalidToken(e.to_string()))?;
+        let table: toml::Value = toml::Value::Table(
+            toml_str
+                .parse::<toml::Table>()
+                .map_err(|e| Error::InvalidToken(e.to_string()))?,
+        );
 
         let get_color = |key: &str| -> Result<[f32; 4], Error> {
             let val = table

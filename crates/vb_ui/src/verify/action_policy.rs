@@ -112,7 +112,9 @@ impl ActionPolicyReport {
         action: ActionId,
         contract: Option<&ActionContract>,
     ) {
-        reports.entry(action).or_insert_with(|| Self::for_action(action, contract));
+        reports
+            .entry(action)
+            .or_insert_with(|| Self::for_action(action, contract));
     }
 }
 

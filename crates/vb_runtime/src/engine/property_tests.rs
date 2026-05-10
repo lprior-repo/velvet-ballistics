@@ -22,15 +22,19 @@ mod proptests {
     use vb_core::value::ConstValue;
     use vb_core::value::SlotValue;
     use vb_core::value_store::ValueStore;
-    use vb_core::workflow::{CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts};
+    use vb_core::workflow::{
+        CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
+    };
 
+    use crate::RuntimeError;
     use crate::engine::drive::{compute_max_parallel_in_flight, drive_deterministic_full};
     use crate::engine::helpers::mark_step_after_signal;
-    use crate::engine::types::{EvidenceCollector, EvidenceEvent, RuntimeEngineError, RuntimeSignal};
+    use crate::engine::types::{
+        EvidenceCollector, EvidenceEvent, RuntimeEngineError, RuntimeSignal,
+    };
     use crate::frame_pool::FramePool;
     use crate::primitives::collect::CollectStates;
     use crate::shard::{Shard, ShardCommand, ShardConfig};
-    use crate::RuntimeError;
 
     fn make_simple_workflow(slot_count: u16, result_slot: SlotIdx) -> CompiledWorkflow {
         let node0 = CompiledNode {
@@ -49,7 +53,9 @@ mod proptests {
             next: None,
             on_error: None,
             error_slot: None,
-            kind: CompiledNodeKind::Finish { result: result_slot },
+            kind: CompiledNodeKind::Finish {
+                result: result_slot,
+            },
         };
         let parts = WorkflowParts {
             name: "test_workflow".into(),
@@ -835,9 +841,7 @@ mod proptests {
 
         // Create a TogetherStart node with too many branches.
         // All branches point to step 1 (the join node) so the workflow is valid.
-        let branches: Vec<StepIdx> = (0..too_many_branches)
-            .map(|_| StepIdx::new(1))
-            .collect();
+        let branches: Vec<StepIdx> = (0..too_many_branches).map(|_| StepIdx::new(1)).collect();
 
         nodes.push(CompiledNode {
             id: StepIdx::new(0),
@@ -858,7 +862,9 @@ mod proptests {
             next: None,
             on_error: None,
             error_slot: None,
-            kind: CompiledNodeKind::Finish { result: SlotIdx::ZERO },
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::ZERO,
+            },
         });
 
         let parts = WorkflowParts {
@@ -902,6 +908,10 @@ mod proptests {
         assert_eq!(collector.dropped(), 1, "dropped must be 1");
 
         collector.push_step_started(StepIdx::new(1));
-        assert_eq!(collector.dropped(), 2, "dropped must be 2 after second push");
+        assert_eq!(
+            collector.dropped(),
+            2,
+            "dropped must be 2 after second push"
+        );
     }
 }

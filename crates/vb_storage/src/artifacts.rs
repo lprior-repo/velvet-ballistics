@@ -73,7 +73,9 @@ mod tests {
         let journal =
             crate::FjallJournal::open(temp.path(), None).expect("journal open should succeed");
 
-        let digests = journal.list_artifacts().expect("list_artifacts should succeed");
+        let digests = journal
+            .list_artifacts()
+            .expect("list_artifacts should succeed");
         assert!(
             digests.is_empty(),
             "list_artifacts should return empty vec when no artifacts stored"
@@ -99,7 +101,9 @@ mod tests {
             .put_compiled_ir(&record2)
             .expect("put_compiled_ir v2 should succeed");
 
-        let digests = journal.list_artifacts().expect("list_artifacts should succeed");
+        let digests = journal
+            .list_artifacts()
+            .expect("list_artifacts should succeed");
         assert_eq!(digests.len(), 2, "list_artifacts should return 2 digests");
         assert!(
             digests.contains(&digest1),
@@ -124,7 +128,9 @@ mod tests {
             .put_compiled_ir(&record)
             .expect("put_compiled_ir should succeed");
 
-        let digests = journal.list_artifacts().expect("list_artifacts should succeed");
+        let digests = journal
+            .list_artifacts()
+            .expect("list_artifacts should succeed");
         assert_eq!(digests.len(), 1, "list_artifacts should return 1 digest");
         assert!(
             digests.contains(&digest),
@@ -150,7 +156,10 @@ mod tests {
             .expect("put_compiled_ir should succeed");
 
         let result = journal.remove_artifact(digest);
-        assert!(result.is_ok(), "remove_artifact should succeed for existing artifact");
+        assert!(
+            result.is_ok(),
+            "remove_artifact should succeed for existing artifact"
+        );
 
         // Verify artifact is gone
         let exists = journal
@@ -173,7 +182,9 @@ mod tests {
             "remove_artifact should fail for non-existent artifact"
         );
         match result {
-            Err(crate::JournalError::ArtifactNotFound { digest: returned_digest }) => {
+            Err(crate::JournalError::ArtifactNotFound {
+                digest: returned_digest,
+            }) => {
                 assert_eq!(
                     returned_digest, digest,
                     "error digest should match requested digest"
@@ -217,8 +228,14 @@ mod tests {
         assert!(!exists1, "digest1 should not exist after removal");
         assert!(exists2, "digest2 should still exist");
 
-        let digests = journal.list_artifacts().expect("list_artifacts should succeed");
-        assert_eq!(digests.len(), 1, "list_artifacts should return 1 digest after removal");
+        let digests = journal
+            .list_artifacts()
+            .expect("list_artifacts should succeed");
+        assert_eq!(
+            digests.len(),
+            1,
+            "list_artifacts should return 1 digest after removal"
+        );
         assert!(
             digests.contains(&digest2),
             "list_artifacts should contain remaining digest2"
@@ -245,7 +262,10 @@ mod tests {
         let exists = journal
             .artifact_exists(digest)
             .expect("artifact_exists should succeed");
-        assert!(exists, "artifact_exists should return true for stored artifact");
+        assert!(
+            exists,
+            "artifact_exists should return true for stored artifact"
+        );
     }
 
     #[test]

@@ -11,7 +11,7 @@
 //! 2. Capture exit code and log output
 //! 3. Return evidence bundle via `run_gate`
 
-use crate::evidence::{run_gate, GateEvidence, Result};
+use crate::evidence::{GateEvidence, Result, run_gate};
 
 /// Gate identifiers matching Section 77.1 requirements.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -83,14 +83,10 @@ impl Gate {
                 "run".to_string(),
                 "--workspace".to_string(),
             ],
-            Gate::ForbiddenScan => vec![
-                "bash".to_string(),
-                "scripts/forbidden-scan.sh".to_string(),
-            ],
-            Gate::HotpathScan => vec![
-                "bash".to_string(),
-                "scripts/hotpath-scan.sh".to_string(),
-            ],
+            Gate::ForbiddenScan => {
+                vec!["bash".to_string(), "scripts/forbidden-scan.sh".to_string()]
+            }
+            Gate::HotpathScan => vec!["bash".to_string(), "scripts/hotpath-scan.sh".to_string()],
             Gate::Miri => vec![
                 "cargo".to_string(),
                 "+nightly".to_string(),
@@ -106,15 +102,31 @@ impl Gate {
             ],
             Gate::LlvmCov => vec!["cargo".to_string(), "llvm-cov".to_string()],
             Gate::FuzzBuild => vec!["cargo".to_string(), "fuzz".to_string(), "build".to_string()],
-            Gate::SupplyChain => vec!["moon".to_string(), "run".to_string(), ":supply-chain".to_string()],
-            Gate::FuzzSmoke => vec!["moon".to_string(), "run".to_string(), ":fuzz-smoke".to_string()],
-            Gate::Coverage => vec!["moon".to_string(), "run".to_string(), ":coverage".to_string()],
+            Gate::SupplyChain => vec![
+                "moon".to_string(),
+                "run".to_string(),
+                ":supply-chain".to_string(),
+            ],
+            Gate::FuzzSmoke => vec![
+                "moon".to_string(),
+                "run".to_string(),
+                ":fuzz-smoke".to_string(),
+            ],
+            Gate::Coverage => vec![
+                "moon".to_string(),
+                "run".to_string(),
+                ":coverage".to_string(),
+            ],
             Gate::MutantsSmoke => vec![
                 "moon".to_string(),
                 "run".to_string(),
                 ":mutants-smoke".to_string(),
             ],
-            Gate::BenchBuild => vec!["moon".to_string(), "run".to_string(), ":bench-build".to_string()],
+            Gate::BenchBuild => vec![
+                "moon".to_string(),
+                "run".to_string(),
+                ":bench-build".to_string(),
+            ],
             Gate::FeaturePowerset => vec![
                 "moon".to_string(),
                 "run".to_string(),
@@ -124,7 +136,11 @@ impl Gate {
                 "bash".to_string(),
                 "scripts/check-source-length.sh".to_string(),
             ],
-            Gate::Maxperf => vec!["moon".to_string(), "run".to_string(), ":maxperf".to_string()],
+            Gate::Maxperf => vec![
+                "moon".to_string(),
+                "run".to_string(),
+                ":maxperf".to_string(),
+            ],
         }
     }
 
@@ -139,10 +155,7 @@ impl Gate {
 /// Executes `cargo +nightly fmt --all` and returns evidence.
 pub fn run_fmt_gate(bead_id: Option<&str>) -> Result<GateEvidence> {
     let gate = Gate::Fmt;
-    let evidence_path = crate::evidence::evidence_path(
-        bead_id.unwrap_or("default"),
-        gate.name(),
-    );
+    let evidence_path = crate::evidence::evidence_path(bead_id.unwrap_or("default"), gate.name());
     run_gate(gate.name(), &gate.command(), &evidence_path)
 }
 
@@ -151,10 +164,7 @@ pub fn run_fmt_gate(bead_id: Option<&str>) -> Result<GateEvidence> {
 /// Executes `moon run :check` and returns evidence.
 pub fn run_check_gate(bead_id: Option<&str>) -> Result<GateEvidence> {
     let gate = Gate::Check;
-    let evidence_path = crate::evidence::evidence_path(
-        bead_id.unwrap_or("default"),
-        gate.name(),
-    );
+    let evidence_path = crate::evidence::evidence_path(bead_id.unwrap_or("default"), gate.name());
     run_gate(gate.name(), &gate.command(), &evidence_path)
 }
 
@@ -163,10 +173,7 @@ pub fn run_check_gate(bead_id: Option<&str>) -> Result<GateEvidence> {
 /// Executes `cargo +nightly clippy --workspace` and returns evidence.
 pub fn run_clippy_gate(bead_id: Option<&str>) -> Result<GateEvidence> {
     let gate = Gate::Clippy;
-    let evidence_path = crate::evidence::evidence_path(
-        bead_id.unwrap_or("default"),
-        gate.name(),
-    );
+    let evidence_path = crate::evidence::evidence_path(bead_id.unwrap_or("default"), gate.name());
     run_gate(gate.name(), &gate.command(), &evidence_path)
 }
 
@@ -175,10 +182,7 @@ pub fn run_clippy_gate(bead_id: Option<&str>) -> Result<GateEvidence> {
 /// Executes `cargo nextest run --workspace` and returns evidence.
 pub fn run_nextest_gate(bead_id: Option<&str>) -> Result<GateEvidence> {
     let gate = Gate::Nextest;
-    let evidence_path = crate::evidence::evidence_path(
-        bead_id.unwrap_or("default"),
-        gate.name(),
-    );
+    let evidence_path = crate::evidence::evidence_path(bead_id.unwrap_or("default"), gate.name());
     run_gate(gate.name(), &gate.command(), &evidence_path)
 }
 
@@ -187,10 +191,7 @@ pub fn run_nextest_gate(bead_id: Option<&str>) -> Result<GateEvidence> {
 /// Executes the forbidden pattern scan script and returns evidence.
 pub fn run_forbidden_scan_gate(bead_id: Option<&str>) -> Result<GateEvidence> {
     let gate = Gate::ForbiddenScan;
-    let evidence_path = crate::evidence::evidence_path(
-        bead_id.unwrap_or("default"),
-        gate.name(),
-    );
+    let evidence_path = crate::evidence::evidence_path(bead_id.unwrap_or("default"), gate.name());
     run_gate(gate.name(), &gate.command(), &evidence_path)
 }
 
@@ -199,10 +200,7 @@ pub fn run_forbidden_scan_gate(bead_id: Option<&str>) -> Result<GateEvidence> {
 /// Executes the hotpath scan script and returns evidence.
 pub fn run_hotpath_scan_gate(bead_id: Option<&str>) -> Result<GateEvidence> {
     let gate = Gate::HotpathScan;
-    let evidence_path = crate::evidence::evidence_path(
-        bead_id.unwrap_or("default"),
-        gate.name(),
-    );
+    let evidence_path = crate::evidence::evidence_path(bead_id.unwrap_or("default"), gate.name());
     run_gate(gate.name(), &gate.command(), &evidence_path)
 }
 
@@ -211,10 +209,7 @@ pub fn run_hotpath_scan_gate(bead_id: Option<&str>) -> Result<GateEvidence> {
 /// Executes `cargo +nightly miri test --workspace` and returns evidence.
 pub fn run_miri_gate(bead_id: Option<&str>) -> Result<GateEvidence> {
     let gate = Gate::Miri;
-    let evidence_path = crate::evidence::evidence_path(
-        bead_id.unwrap_or("default"),
-        gate.name(),
-    );
+    let evidence_path = crate::evidence::evidence_path(bead_id.unwrap_or("default"), gate.name());
     run_gate(gate.name(), &gate.command(), &evidence_path)
 }
 
@@ -223,10 +218,7 @@ pub fn run_miri_gate(bead_id: Option<&str>) -> Result<GateEvidence> {
 /// Executes `cargo mutants --package velvet_ballastics` and returns evidence.
 pub fn run_mutants_gate(bead_id: Option<&str>) -> Result<GateEvidence> {
     let gate = Gate::Mutants;
-    let evidence_path = crate::evidence::evidence_path(
-        bead_id.unwrap_or("default"),
-        gate.name(),
-    );
+    let evidence_path = crate::evidence::evidence_path(bead_id.unwrap_or("default"), gate.name());
     run_gate(gate.name(), &gate.command(), &evidence_path)
 }
 
@@ -235,10 +227,7 @@ pub fn run_mutants_gate(bead_id: Option<&str>) -> Result<GateEvidence> {
 /// Executes `cargo llvm-cov` and returns evidence.
 pub fn run_llvm_cov_gate(bead_id: Option<&str>) -> Result<GateEvidence> {
     let gate = Gate::LlvmCov;
-    let evidence_path = crate::evidence::evidence_path(
-        bead_id.unwrap_or("default"),
-        gate.name(),
-    );
+    let evidence_path = crate::evidence::evidence_path(bead_id.unwrap_or("default"), gate.name());
     run_gate(gate.name(), &gate.command(), &evidence_path)
 }
 
@@ -247,10 +236,7 @@ pub fn run_llvm_cov_gate(bead_id: Option<&str>) -> Result<GateEvidence> {
 /// Executes `cargo fuzz build` and returns evidence.
 pub fn run_fuzz_build_gate(bead_id: Option<&str>) -> Result<GateEvidence> {
     let gate = Gate::FuzzBuild;
-    let evidence_path = crate::evidence::evidence_path(
-        bead_id.unwrap_or("default"),
-        gate.name(),
-    );
+    let evidence_path = crate::evidence::evidence_path(bead_id.unwrap_or("default"), gate.name());
     run_gate(gate.name(), &gate.command(), &evidence_path)
 }
 
@@ -259,10 +245,7 @@ pub fn run_fuzz_build_gate(bead_id: Option<&str>) -> Result<GateEvidence> {
 /// Delegates to moon `:supply-chain` and returns evidence.
 pub fn run_supply_chain_gate(bead_id: Option<&str>) -> Result<GateEvidence> {
     let gate = Gate::SupplyChain;
-    let evidence_path = crate::evidence::evidence_path(
-        bead_id.unwrap_or("default"),
-        gate.name(),
-    );
+    let evidence_path = crate::evidence::evidence_path(bead_id.unwrap_or("default"), gate.name());
     run_gate(gate.name(), &gate.command(), &evidence_path)
 }
 
@@ -271,10 +254,7 @@ pub fn run_supply_chain_gate(bead_id: Option<&str>) -> Result<GateEvidence> {
 /// Delegates to moon `:fuzz-smoke` and returns evidence.
 pub fn run_fuzz_smoke_gate(bead_id: Option<&str>) -> Result<GateEvidence> {
     let gate = Gate::FuzzSmoke;
-    let evidence_path = crate::evidence::evidence_path(
-        bead_id.unwrap_or("default"),
-        gate.name(),
-    );
+    let evidence_path = crate::evidence::evidence_path(bead_id.unwrap_or("default"), gate.name());
     run_gate(gate.name(), &gate.command(), &evidence_path)
 }
 
@@ -283,10 +263,7 @@ pub fn run_fuzz_smoke_gate(bead_id: Option<&str>) -> Result<GateEvidence> {
 /// Delegates to moon `:coverage` and returns evidence.
 pub fn run_coverage_gate(bead_id: Option<&str>) -> Result<GateEvidence> {
     let gate = Gate::Coverage;
-    let evidence_path = crate::evidence::evidence_path(
-        bead_id.unwrap_or("default"),
-        gate.name(),
-    );
+    let evidence_path = crate::evidence::evidence_path(bead_id.unwrap_or("default"), gate.name());
     run_gate(gate.name(), &gate.command(), &evidence_path)
 }
 
@@ -295,10 +272,7 @@ pub fn run_coverage_gate(bead_id: Option<&str>) -> Result<GateEvidence> {
 /// Delegates to moon `:mutants-smoke` and returns evidence.
 pub fn run_mutants_smoke_gate(bead_id: Option<&str>) -> Result<GateEvidence> {
     let gate = Gate::MutantsSmoke;
-    let evidence_path = crate::evidence::evidence_path(
-        bead_id.unwrap_or("default"),
-        gate.name(),
-    );
+    let evidence_path = crate::evidence::evidence_path(bead_id.unwrap_or("default"), gate.name());
     run_gate(gate.name(), &gate.command(), &evidence_path)
 }
 
@@ -307,10 +281,7 @@ pub fn run_mutants_smoke_gate(bead_id: Option<&str>) -> Result<GateEvidence> {
 /// Delegates to moon `:bench-build` and returns evidence.
 pub fn run_bench_build_gate(bead_id: Option<&str>) -> Result<GateEvidence> {
     let gate = Gate::BenchBuild;
-    let evidence_path = crate::evidence::evidence_path(
-        bead_id.unwrap_or("default"),
-        gate.name(),
-    );
+    let evidence_path = crate::evidence::evidence_path(bead_id.unwrap_or("default"), gate.name());
     run_gate(gate.name(), &gate.command(), &evidence_path)
 }
 
@@ -319,10 +290,7 @@ pub fn run_bench_build_gate(bead_id: Option<&str>) -> Result<GateEvidence> {
 /// Delegates to moon `:feature-powerset` and returns evidence.
 pub fn run_feature_powerset_gate(bead_id: Option<&str>) -> Result<GateEvidence> {
     let gate = Gate::FeaturePowerset;
-    let evidence_path = crate::evidence::evidence_path(
-        bead_id.unwrap_or("default"),
-        gate.name(),
-    );
+    let evidence_path = crate::evidence::evidence_path(bead_id.unwrap_or("default"), gate.name());
     run_gate(gate.name(), &gate.command(), &evidence_path)
 }
 
@@ -331,10 +299,7 @@ pub fn run_feature_powerset_gate(bead_id: Option<&str>) -> Result<GateEvidence> 
 /// Executes `bash scripts/check-source-length.sh` and returns evidence.
 pub fn run_source_length_gate(bead_id: Option<&str>) -> Result<GateEvidence> {
     let gate = Gate::SourceLength;
-    let evidence_path = crate::evidence::evidence_path(
-        bead_id.unwrap_or("default"),
-        gate.name(),
-    );
+    let evidence_path = crate::evidence::evidence_path(bead_id.unwrap_or("default"), gate.name());
     run_gate(gate.name(), &gate.command(), &evidence_path)
 }
 
@@ -343,10 +308,7 @@ pub fn run_source_length_gate(bead_id: Option<&str>) -> Result<GateEvidence> {
 /// Executes the maxperf build and returns evidence.
 pub fn run_maxperf_gate(bead_id: Option<&str>) -> Result<GateEvidence> {
     let gate = Gate::Maxperf;
-    let evidence_path = crate::evidence::evidence_path(
-        bead_id.unwrap_or("default"),
-        gate.name(),
-    );
+    let evidence_path = crate::evidence::evidence_path(bead_id.unwrap_or("default"), gate.name());
     run_gate(gate.name(), &gate.command(), &evidence_path)
 }
 
@@ -424,9 +386,16 @@ mod tests {
         ];
         for gate in gates {
             let cmd = gate.command();
-            assert!(!cmd.is_empty(), "Gate {} should have a command", gate.name());
+            assert!(
+                !cmd.is_empty(),
+                "Gate {} should have a command",
+                gate.name()
+            );
             let evidence_file = gate.evidence_file();
-            assert!(evidence_file.ends_with(".yaml"), "Evidence file should end with .yaml");
+            assert!(
+                evidence_file.ends_with(".yaml"),
+                "Evidence file should end with .yaml"
+            );
         }
     }
 
@@ -435,7 +404,11 @@ mod tests {
         let gates = [Gate::Miri, Gate::Mutants, Gate::LlvmCov, Gate::FuzzBuild];
         for gate in gates {
             let cmd = gate.command();
-            assert!(!cmd.is_empty(), "Gate {} should have a command", gate.name());
+            assert!(
+                !cmd.is_empty(),
+                "Gate {} should have a command",
+                gate.name()
+            );
         }
     }
 
@@ -456,7 +429,11 @@ mod tests {
         ];
         for gate in gates {
             let cmd = gate.command();
-            assert!(!cmd.is_empty(), "Gate {} should have a command", gate.name());
+            assert!(
+                !cmd.is_empty(),
+                "Gate {} should have a command",
+                gate.name()
+            );
         }
     }
 
@@ -469,7 +446,11 @@ mod tests {
         let result = run_fmt_gate(Some("vb-test"));
         // RED_PHASE: Currently returns Error::GateFailed { exit_code: 0, ... }
         // After implementation: should return Ok(GateEvidence) with exit_code=0
-        assert!(result.is_ok(), "run_fmt_gate should return Ok(GateEvidence), got: {:?}", result);
+        assert!(
+            result.is_ok(),
+            "run_fmt_gate should return Ok(GateEvidence), got: {:?}",
+            result
+        );
     }
 
     #[test]
@@ -477,21 +458,33 @@ mod tests {
         let result = run_clippy_gate(Some("vb-test"));
         // RED_PHASE: Currently returns Error
         // After implementation: should return Ok(GateEvidence)
-        assert!(result.is_ok(), "run_clippy_gate should return Ok(GateEvidence), got: {:?}", result);
+        assert!(
+            result.is_ok(),
+            "run_clippy_gate should return Ok(GateEvidence), got: {:?}",
+            result
+        );
     }
 
     #[test]
     fn test_run_nextest_gate_returns_evidence() {
         let result = run_nextest_gate(Some("vb-test"));
         // RED_PHASE: Currently returns Error
-        assert!(result.is_ok(), "run_nextest_gate should return Ok(GateEvidence), got: {:?}", result);
+        assert!(
+            result.is_ok(),
+            "run_nextest_gate should return Ok(GateEvidence), got: {:?}",
+            result
+        );
     }
 
     #[test]
     fn test_run_miri_gate_returns_evidence() {
         let result = run_miri_gate(Some("vb-test"));
         // RED_PHASE: Currently returns Error
-        assert!(result.is_ok(), "run_miri_gate should return Ok(GateEvidence), got: {:?}", result);
+        assert!(
+            result.is_ok(),
+            "run_miri_gate should return Ok(GateEvidence), got: {:?}",
+            result
+        );
     }
 
     // ========================================================================
