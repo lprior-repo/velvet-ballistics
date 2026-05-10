@@ -19,6 +19,10 @@
 
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
+use std::time::{Duration, Instant};
+
+const GATE_TIMEOUT_SECS: u64 = 600;
+const POLL_INTERVAL_MS: u64 = 50;
 
 /// Evidence bundle for a single gate execution.
 ///
@@ -83,6 +87,8 @@ pub enum Error {
     },
     /// Requested xtask subcommand does not exist.
     SubcommandNotFound { name: String },
+    /// Bead ID is invalid or would escape the evidence directory.
+    InvalidBeadId { bead: String },
     /// Could not create `.evidence/<bead>/` directory.
     BeadDirectoryCreationFailed { bead: String, cause: String },
     /// saphyr error during evidence serialization.
@@ -134,6 +140,9 @@ impl std::fmt::Display for Error {
             }
             Error::SubcommandNotFound { name } => {
                 write!(f, "Subcommand not found: '{}'", name)
+            }
+            Error::InvalidBeadId { bead } => {
+                write!(f, "Invalid bead id: '{}'", bead)
             }
             Error::BeadDirectoryCreationFailed { bead, cause } => {
                 write!(
@@ -224,183 +233,225 @@ pub struct ProfileEvidence {
 // Core orchestration functions
 // ============================================================================
 
+/// Captured output from a real bounded command execution.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CommandOutput {
+    pub exit_code: i32,
+    pub stdout: Vec<u8>,
+    pub stderr: Vec<u8>,
+}
+
+pub type GateRunner = fn(&str, &[String], &Path) -> Result<GateEvidence>;
+
 /// Executes a single gate command and serializes evidence.
-///
-/// # Arguments
-/// * `gate` - The gate name (e.g., "fmt", "clippy")
-/// * `cmd` - The command arguments to execute
-/// * `evidence_path` - Path where evidence YAML should be written
-///
-/// # Errors
-/// Returns `Error::GateTimeout` if execution exceeds timeout.
-/// Returns `Error::GateFailed` if command returns non-zero.
-/// Returns `Error::EvidenceWriteFailed` if YAML write fails.
-#[allow(clippy::indexing_slicing)]
 pub fn run_gate(gate: &str, cmd: &[String], evidence_path: &Path) -> Result<GateEvidence> {
-    if cmd.is_empty() {
-        return Err(Error::GateFailed {
-            gate: gate.to_string(),
-            exit_code: -1,
-            log: evidence_path.to_path_buf(),
-        });
-    }
-    let mut command = std::process::Command::new(&cmd[0]);
-    if cmd.len() > 1 {
-        command.args(&cmd[1..]);
-    }
-
-    let output = command.output().map_err(|_e| Error::GateFailed {
-        gate: gate.to_string(),
-        exit_code: -1,
-        log: evidence_path.to_path_buf(),
-    })?;
-
-    let exit_code = output.status.code().unwrap_or(-1);
-
-    let status = if output.status.success() {
+    let log_path = evidence_path.with_extension("log");
+    let output = execute_command(gate, cmd, &log_path)?;
+    let status = if output.exit_code == 0 {
         GateStatus::Pass
     } else {
         GateStatus::Fail
     };
-
-    let evidence = GateEvidence {
+    let mut evidence = GateEvidence {
         kind: gate.to_string(),
         gate_name: gate.to_string(),
         command: cmd.join(" "),
-        exit_code,
-        log: evidence_path.to_path_buf(),
+        exit_code: output.exit_code,
+        log: log_path,
         status,
         why_failed: None,
     };
-
+    evidence.why_failed = explain_failure(&evidence);
     write_evidence(&evidence, evidence_path)?;
-
     Ok(evidence)
 }
 
+fn execute_command(gate: &str, cmd: &[String], log_path: &Path) -> Result<CommandOutput> {
+    let (program, args) = cmd.split_first().ok_or_else(|| Error::GateFailed {
+        gate: gate.to_string(),
+        exit_code: -1,
+        log: log_path.to_path_buf(),
+    })?;
+    let mut child = std::process::Command::new(program)
+        .args(args)
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+        .map_err(|_e| Error::GateFailed {
+            gate: gate.to_string(),
+            exit_code: -1,
+            log: log_path.to_path_buf(),
+        })?;
+    let deadline = Instant::now() + Duration::from_secs(GATE_TIMEOUT_SECS);
+    loop {
+        match child.try_wait() {
+            Ok(Some(_status)) => {
+                let output = child.wait_with_output().map_err(|_e| Error::GateFailed {
+                    gate: gate.to_string(),
+                    exit_code: -1,
+                    log: log_path.to_path_buf(),
+                })?;
+                let exit_code = output.status.code().map_or(-1, |code| code);
+                write_raw_log(log_path, &output.stdout, &output.stderr)?;
+                return Ok(CommandOutput {
+                    exit_code,
+                    stdout: output.stdout,
+                    stderr: output.stderr,
+                });
+            }
+            Ok(None) if Instant::now() >= deadline => {
+                child.kill().map_err(|_e| Error::GateFailed {
+                    gate: gate.to_string(),
+                    exit_code: -1,
+                    log: log_path.to_path_buf(),
+                })?;
+                child.wait().map_err(|_e| Error::GateFailed {
+                    gate: gate.to_string(),
+                    exit_code: -1,
+                    log: log_path.to_path_buf(),
+                })?;
+                write_raw_log(log_path, b"gate timed out", &[])?;
+                return Err(Error::GateTimeout {
+                    gate: gate.to_string(),
+                    duration_secs: GATE_TIMEOUT_SECS,
+                });
+            }
+            Ok(None) => std::thread::sleep(Duration::from_millis(POLL_INTERVAL_MS)),
+            Err(e) => {
+                write_raw_log(log_path, e.to_string().as_bytes(), &[])?;
+                return Err(Error::GateFailed {
+                    gate: gate.to_string(),
+                    exit_code: -1,
+                    log: log_path.to_path_buf(),
+                });
+            }
+        }
+    }
+}
+
+fn write_raw_log(path: &Path, stdout: &[u8], stderr: &[u8]) -> Result<()> {
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent).map_err(|e| Error::EvidenceWriteFailed {
+            gate: "raw-log".to_string(),
+            path: path.to_path_buf(),
+            cause: e.to_string(),
+        })?;
+    }
+    let mut data = Vec::new();
+    data.extend_from_slice(stdout);
+    if !stderr.is_empty() {
+        data.extend_from_slice(b"\n--- stderr ---\n");
+        data.extend_from_slice(stderr);
+    }
+    std::fs::write(path, data).map_err(|e| Error::EvidenceWriteFailed {
+        gate: "raw-log".to_string(),
+        path: path.to_path_buf(),
+        cause: e.to_string(),
+    })
+}
+
+/// Returns the concrete command for a known gate. Unknown gates fail closed.
+pub fn command_for_gate(gate: &str) -> Result<Vec<String>> {
+    let cmd = match gate {
+        "fmt" => ["moon", "run", ":fmt"].as_slice(),
+        "check" => ["moon", "run", ":check"].as_slice(),
+        "clippy" => ["moon", "run", ":clippy"].as_slice(),
+        "nextest" | "test" => ["moon", "run", ":test"].as_slice(),
+        "forbidden-scan" => ["moon", "run", ":forbidden-scan"].as_slice(),
+        "hotpath-scan" => ["moon", "run", ":hotpath-scan"].as_slice(),
+        "miri" => ["moon", "run", ":miri"].as_slice(),
+        "mutants" => ["moon", "run", ":mutants"].as_slice(),
+        "llvm-cov" | "coverage" => ["moon", "run", ":coverage"].as_slice(),
+        "fuzz-build" => ["moon", "run", ":fuzz-build"].as_slice(),
+        "supply-chain" => ["moon", "run", ":supply-chain"].as_slice(),
+        "fuzz-smoke" => ["moon", "run", ":fuzz-smoke"].as_slice(),
+        "mutants-smoke" => ["moon", "run", ":mutants-smoke"].as_slice(),
+        "bench-build" => ["moon", "run", ":bench-build"].as_slice(),
+        "feature-powerset" => ["moon", "run", ":feature-powerset"].as_slice(),
+        "source-length" => ["moon", "run", ":source-length"].as_slice(),
+        "maxperf" => ["moon", "run", ":maxperf"].as_slice(),
+        other => {
+            return Err(Error::SubcommandNotFound {
+                name: other.to_string(),
+            });
+        }
+    };
+    Ok(cmd.iter().map(|part| (*part).to_string()).collect())
+}
+
+/// Validate bead IDs before building evidence paths.
+pub fn validate_bead_id(bead_id: &str) -> Result<()> {
+    let valid = !bead_id.is_empty()
+        && !bead_id.contains("..")
+        && bead_id
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_' || c == '.');
+    if valid {
+        Ok(())
+    } else {
+        Err(Error::InvalidBeadId {
+            bead: bead_id.to_string(),
+        })
+    }
+}
+
 /// Runs all gates in a profile and aggregates evidence.
-///
-/// # Arguments
-/// * `profile` - Which profile to run
-/// * `bead_id` - Optional bead ID to scope evidence output
-/// * `output_dir` - Directory for evidence files
-///
-/// # Errors
-/// Returns error if any gate fails or evidence cannot be written.
-#[allow(unused_variables)]
 pub fn run_profile(
     profile: GateProfile,
     bead_id: Option<&str>,
-    _output_dir: &Path,
+    output_dir: &Path,
 ) -> Result<ProfileEvidence> {
-    let gates_list = profile.gates();
+    run_profile_with_runner(profile, bead_id, output_dir, run_gate)
+}
+
+/// Runs all gates in a profile using an injected runner.
+pub fn run_profile_with_runner(
+    profile: GateProfile,
+    bead_id: Option<&str>,
+    output_dir: &Path,
+    runner: GateRunner,
+) -> Result<ProfileEvidence> {
+    let scope = bead_id.map_or("default", |id| id);
+    validate_bead_id(scope)?;
     let mut gates = Vec::new();
-
-    let scope = bead_id.unwrap_or("default");
-
-    for gate_name in gates_list {
-        let evidence_file = evidence_path(scope, gate_name);
-
+    for gate_name in profile.gates() {
+        let evidence_file = output_dir.join(format!("{}.yaml", gate_name));
         if let Some(parent) = evidence_file.parent() {
             std::fs::create_dir_all(parent).map_err(|e| Error::BeadDirectoryCreationFailed {
                 bead: scope.to_string(),
                 cause: e.to_string(),
             })?;
         }
-
-        let gate_cmd = *gate_name;
-        let cmd = match gate_cmd {
-            "fmt" => vec![
-                "cargo".to_string(),
-                "+nightly".to_string(),
-                "fmt".to_string(),
-                "--all".to_string(),
-            ],
-            "clippy" => vec![
-                "cargo".to_string(),
-                "+nightly".to_string(),
-                "clippy".to_string(),
-                "--workspace".to_string(),
-            ],
-            "check" => vec![
-                "cargo".to_string(),
-                "check".to_string(),
-                "--workspace".to_string(),
-            ],
-            "test" => vec![
-                "cargo".to_string(),
-                "test".to_string(),
-                "--workspace".to_string(),
-            ],
-            "nextest" => vec![
-                "cargo".to_string(),
-                "nextest".to_string(),
-                "run".to_string(),
-                "--workspace".to_string(),
-            ],
-            "miri" => vec![
-                "cargo".to_string(),
-                "+nightly".to_string(),
-                "miri".to_string(),
-                "test".to_string(),
-                "--workspace".to_string(),
-            ],
-            "forbidden-scan" => vec![
-                "grep".to_string(),
-                "-r".to_string(),
-                "FORBIDDEN".to_string(),
-                "src/".to_string(),
-            ],
-            "hotpath-scan" => vec![
-                "echo".to_string(),
-                "hotpath-scan-not-implemented".to_string(),
-            ],
-            "source-length" => vec![
-                "wc".to_string(),
-                "-l".to_string(),
-                "src/**/*.rs".to_string(),
-            ],
-            "bench-build" => vec![
-                "cargo".to_string(),
-                "bench".to_string(),
-                "--no-run".to_string(),
-            ],
-            "feature-powerset" => vec![
-                "cargo".to_string(),
-                "build".to_string(),
-                "--all-features".to_string(),
-            ],
-            "supply-chain" => vec!["cargo".to_string(), "vet".to_string(), "diff".to_string()],
-            "coverage" | "llvm-cov" => vec![
-                "cargo".to_string(),
-                "llvm-cov".to_string(),
-                "--workspace".to_string(),
-            ],
-            "mutants" => vec![
-                "cargo".to_string(),
-                "mutants".to_string(),
-                "--workspace".to_string(),
-            ],
-            "fuzz-build" => vec!["cargo".to_string(), "fuzz".to_string(), "build".to_string()],
-            "fuzz-smoke" => vec!["cargo".to_string(), "fuzz".to_string(), "smoke".to_string()],
-            _ => vec![
-                "echo".to_string(),
-                "unknown-gate".to_string(),
-                gate_cmd.to_string(),
-            ],
-        };
-
-        let gate_evidence = run_gate(gate_name, &cmd, &evidence_file)?;
-        gates.push(gate_evidence);
+        let cmd = command_for_gate(gate_name)?;
+        gates.push(runner(gate_name, &cmd, &evidence_file)?);
     }
-
     let all_passed = gates.iter().all(|g| g.status == GateStatus::Pass);
     let exit_code = if all_passed { 0 } else { 1 };
-
-    Ok(ProfileEvidence {
+    let profile_evidence = ProfileEvidence {
         profile: format!("{:?}", profile),
         gates,
         exit_code,
+    };
+    write_profile_evidence(&profile_evidence, &output_dir.join(profile.evidence_file()))?;
+    Ok(profile_evidence)
+}
+
+fn write_profile_evidence(evidence: &ProfileEvidence, path: &Path) -> Result<()> {
+    let yaml = serde_saphyr::to_string(evidence).map_err(|e| Error::YamlSerializationFailed {
+        gate: evidence.profile.clone(),
+        cause: e.to_string(),
+    })?;
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent).map_err(|e| Error::EvidenceWriteFailed {
+            gate: evidence.profile.clone(),
+            path: path.to_path_buf(),
+            cause: e.to_string(),
+        })?;
+    }
+    std::fs::write(path, yaml).map_err(|e| Error::EvidenceWriteFailed {
+        gate: evidence.profile.clone(),
+        path: path.to_path_buf(),
+        cause: e.to_string(),
     })
 }
 
