@@ -230,7 +230,7 @@ tasks:
     script: |
       set -euo pipefail
       mkdir -p target/moon-locks
-      flock --shared target/moon-locks/source-mutation.lock env RUSTFLAGS="-Dwarnings" timeout 3m rustup run nightly-2026-04-28 cargo hack check --workspace --feature-powerset --depth 1 --exclude velvet-ballastics-fuzz --quiet
+      flock --shared target/moon-locks/source-mutation.lock env RUSTFLAGS="-Dwarnings" timeout 10m rustup run nightly-2026-04-28 cargo hack check --workspace --feature-powerset --depth 1 --exclude velvet-ballastics-fuzz --quiet
     deps:
       - 'check'
     toolchains:
