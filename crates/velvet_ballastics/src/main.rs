@@ -3546,6 +3546,8 @@ fn cmd_simulate(workflow: &std::path::Path, output: OutputFormat) -> ExitCode {
             .collect();
         json_out(
             &serde_json::json!({
+                "schema_version": "velvet-ballastics/v1",
+                "kind": "simulate",
                 "success": true,
                 "total_steps": result.total_steps,
                 "total_actions": result.action_count,
