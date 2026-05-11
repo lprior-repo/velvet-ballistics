@@ -1077,3 +1077,6 @@ mod tests {
         assert_eq!(hasher_a.finish(), hasher_b.finish());
     }
 }
+
+#[cfg(kani)]
+pub mod kani_id_bounds;
