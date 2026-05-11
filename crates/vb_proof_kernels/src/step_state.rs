@@ -157,9 +157,15 @@ mod tests {
 
     #[test]
     fn test_terminal_self_transition() {
-        assert!(is_valid_transition(StepState::Succeeded, StepState::Succeeded));
+        assert!(is_valid_transition(
+            StepState::Succeeded,
+            StepState::Succeeded
+        ));
         assert!(is_valid_transition(StepState::Failed, StepState::Failed));
-        assert!(is_valid_transition(StepState::Cancelled, StepState::Cancelled));
+        assert!(is_valid_transition(
+            StepState::Cancelled,
+            StepState::Cancelled
+        ));
         assert!(is_valid_transition(StepState::Skipped, StepState::Skipped));
     }
 
@@ -167,7 +173,10 @@ mod tests {
     fn test_invalid_transitions() {
         assert!(!is_valid_transition(StepState::Pending, StepState::Pending));
         assert!(!is_valid_transition(StepState::Running, StepState::Pending));
-        assert!(!is_valid_transition(StepState::Succeeded, StepState::Running));
+        assert!(!is_valid_transition(
+            StepState::Succeeded,
+            StepState::Running
+        ));
         assert!(!is_valid_transition(StepState::Failed, StepState::Running));
     }
 

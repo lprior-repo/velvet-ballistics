@@ -103,7 +103,7 @@ saphyr = { version = "=0.0.6", default-features = false }
 saphyr-parser = "=0.0.6"
 serde = { version = "1", default-features = false, features = ["derive", "alloc"] }
 serde-saphyr = { version = "=0.0.25", default-features = false, features = ["deserialize", "serialize"] }
-serde_json = { version = "1", default-features = false, features = ["alloc"] }
+serde_json = { version = "1", default-features = false, features = ["std", "alloc"] }
 thiserror = "2"
 tempfile = "3"
 toml = "0.9"

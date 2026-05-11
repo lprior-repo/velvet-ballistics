@@ -4,10 +4,10 @@ use std::path::PathBuf;
 
 use proptest::prelude::*;
 use velvet_ballastics_workspace::boundary_inventory::{
-    classify_boundary, required_evidence, validate_inventory, BoundaryCandidate, BoundaryClass,
-    BoundaryInventory, BoundaryInventoryError, BoundaryRecord, BoundaryRecordParts, EvidenceKind,
-    EvidenceReference, EvidenceRequirement, FieldState, FreshnessMarker, Owner, ReviewStatus,
-    ThreatStatement, WorkspaceRoot,
+    BoundaryCandidate, BoundaryClass, BoundaryInventory, BoundaryInventoryError, BoundaryRecord,
+    BoundaryRecordParts, EvidenceKind, EvidenceReference, EvidenceRequirement, FieldState,
+    FreshnessMarker, Owner, ReviewStatus, ThreatStatement, WorkspaceRoot, classify_boundary,
+    required_evidence, validate_inventory,
 };
 
 fn workspace() -> WorkspaceRoot {

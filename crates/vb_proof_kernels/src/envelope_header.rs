@@ -20,6 +20,12 @@ pub struct EnvelopeHeader {
     pub blake3_digest: [u8; 32],
 }
 
+impl Default for EnvelopeHeader {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl EnvelopeHeader {
     pub const MAGIC_VALUE: u32 = 0x564C5F42; // "VLB_"
 
@@ -83,10 +89,7 @@ pub enum ValidationResult {
     Err(ValidationError),
 }
 
-pub fn validate_header_before_alloc(
-    header: &EnvelopeHeader,
-    max_payload: u64,
-) -> ValidationResult {
+pub fn validate_header_before_alloc(header: &EnvelopeHeader, max_payload: u64) -> ValidationResult {
     header.validate_before_alloc(max_payload)
 }
 
@@ -128,7 +131,10 @@ mod tests {
         let mut header = EnvelopeHeader::new();
         header.magic = 0xDEAD;
         let result = header.validate_before_alloc(1024 * 1024);
-        assert!(matches!(result, ValidationResult::Err(ValidationError::InvalidMagic)));
+        assert!(matches!(
+            result,
+            ValidationResult::Err(ValidationError::InvalidMagic)
+        ));
     }
 
     #[test]
@@ -137,7 +143,10 @@ mod tests {
         header.payload_len_u32 = 0xFFFFFFFF;
         header.payload_len_hi = 0xFFFFFFFF;
         let result = header.validate_before_alloc(1024 * 1024);
-        assert!(matches!(result, ValidationResult::Err(ValidationError::PayloadTooLarge)));
+        assert!(matches!(
+            result,
+            ValidationResult::Err(ValidationError::PayloadTooLarge)
+        ));
     }
 
     #[test]

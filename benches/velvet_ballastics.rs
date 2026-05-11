@@ -14,6 +14,7 @@ use vb_core::{
     ExprOp, ExprProgram, ResourceContract, RunId, SlotBranch, SlotIdx, SlotValue, StepBudget,
     StepIdx, SymbolId, Taint, WorkflowDigest, WorkflowParts,
 };
+use vb_runtime::admission::ArtifactStore;
 use vb_runtime::journal::RuntimeJournal;
 use vb_storage::{EventSeq, JournalEvent};
 
@@ -2492,7 +2493,7 @@ fn admission_gate_benches(c: &mut Criterion) {
         |b| {
             checked_iter(b, "admit_run_relaxed", || {
                 let result = vb_runtime::admission::admit_run(
-                    black_box(always_present.as_ref()),
+                    black_box(always_present.as_ref() as &dyn ArtifactStore),
                     black_box(vb_core::RuntimePolicy::Relaxed),
                     black_box(digest),
                     black_box(RunId::new(1)),
@@ -2513,7 +2514,7 @@ fn admission_gate_benches(c: &mut Criterion) {
         |b| {
             checked_iter(b, "admit_run_strict_artifact_present", || {
                 let result = vb_runtime::admission::admit_run(
-                    black_box(always_present.as_ref()),
+                    black_box(always_present.as_ref() as &dyn ArtifactStore),
                     black_box(vb_core::RuntimePolicy::Strict),
                     black_box(digest),
                     black_box(RunId::new(2)),
@@ -2534,7 +2535,7 @@ fn admission_gate_benches(c: &mut Criterion) {
         |b| {
             checked_iter(b, "admit_run_multiple_action_caps", || {
                 let result = vb_runtime::admission::admit_run(
-                    black_box(always_present.as_ref()),
+                    black_box(always_present.as_ref() as &dyn ArtifactStore),
                     black_box(vb_core::RuntimePolicy::Strict),
                     black_box(digest),
                     black_box(RunId::new(3)),
@@ -2555,7 +2556,7 @@ fn admission_gate_benches(c: &mut Criterion) {
         |b| {
             checked_iter(b, "admit_run_empty_caps", || {
                 let result = vb_runtime::admission::admit_run(
-                    black_box(always_present.as_ref()),
+                    black_box(always_present.as_ref() as &dyn ArtifactStore),
                     black_box(vb_core::RuntimePolicy::Relaxed),
                     black_box(digest),
                     black_box(RunId::new(4)),

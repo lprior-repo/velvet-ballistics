@@ -1,7 +1,7 @@
 #![forbid(unsafe_code)]
 //! Kani harnesses proving `ExprStack` never panics.
 
-use crate::engine::expr_eval::stack::{pop_value, push_value, ExprStack};
+use crate::engine::expr_eval::stack::{ExprStack, pop_value, push_value};
 use crate::errors::EngineError;
 use crate::limits::MAX_EXPRESSION_STACK_USIZE;
 use crate::value::SlotValue;

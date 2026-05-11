@@ -21,11 +21,7 @@ impl Taint {
 }
 
 pub fn join_taint(a: Taint, b: Taint) -> Taint {
-    if a.rank() >= b.rank() {
-        a
-    } else {
-        b
-    }
+    if a.rank() >= b.rank() { a } else { b }
 }
 
 pub fn join_many(taints: &[Taint]) -> Taint {
@@ -90,19 +86,32 @@ mod tests {
 
     #[test]
     fn test_join_secret_derived() {
-        assert_eq!(join_taint(Taint::Secret, Taint::DerivedFromSecret), Taint::Secret);
+        assert_eq!(
+            join_taint(Taint::Secret, Taint::DerivedFromSecret),
+            Taint::Secret
+        );
     }
 
     #[test]
     fn test_join_derived_derived() {
-        assert_eq!(join_taint(Taint::DerivedFromSecret, Taint::DerivedFromSecret), Taint::DerivedFromSecret);
+        assert_eq!(
+            join_taint(Taint::DerivedFromSecret, Taint::DerivedFromSecret),
+            Taint::DerivedFromSecret
+        );
     }
 
     #[test]
     fn test_commutative() {
         for &a in &[Taint::Clean, Taint::DerivedFromSecret, Taint::Secret] {
             for &b in &[Taint::Clean, Taint::DerivedFromSecret, Taint::Secret] {
-                assert!(is_commutative(a, b), " {:?} ⊔ {:?} != {:?} ⊔ {:?}", a, b, b, a);
+                assert!(
+                    is_commutative(a, b),
+                    " {:?} ⊔ {:?} != {:?} ⊔ {:?}",
+                    a,
+                    b,
+                    b,
+                    a
+                );
             }
         }
     }

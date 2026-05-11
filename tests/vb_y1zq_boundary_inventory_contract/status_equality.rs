@@ -27,8 +27,8 @@ fn inventory_completion_status_returns_unknown_boundary_class_when_unknown_class
 }
 
 #[test]
-fn inventory_completion_status_returns_incomplete_discovery_input_when_inventory_empty_but_boundaries_discovered(
-) {
+fn inventory_completion_status_returns_incomplete_discovery_input_when_inventory_empty_but_boundaries_discovered()
+ {
     let inventory = ValidatedBoundaryInventory::empty_with_discovered_boundary_count(1);
 
     let result = inventory_completion_status(inventory);
@@ -40,8 +40,8 @@ fn inventory_completion_status_returns_incomplete_discovery_input_when_inventory
 }
 
 #[test]
-fn inventory_completion_status_returns_complete_when_all_boundaries_valid_fresh_reviewed_and_traceable(
-) {
+fn inventory_completion_status_returns_complete_when_all_boundaries_valid_fresh_reviewed_and_traceable()
+ {
     let records = vec![
         valid_record(BoundaryClass::Ipc, "crates/vb_ipc/src/frame.rs"),
         valid_record(BoundaryClass::Decoder, "crates/vb_yaml/src/decode.rs"),
