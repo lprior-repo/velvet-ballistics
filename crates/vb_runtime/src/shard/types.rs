@@ -3,6 +3,7 @@
 
 use crossbeam_queue::ArrayQueue;
 use indexmap::IndexMap;
+use vb_core::action::ActionContract;
 use vb_core::capability::CapabilitySet;
 use vb_core::frame::RunFrame;
 use vb_core::ids::{RunId, SlotIdx, StepIdx};
@@ -15,6 +16,7 @@ use crate::frame_pool::FramePool;
 use crate::journal::SharedRuntimeJournal;
 use crate::primitives::collect::CollectStates;
 use crate::trace::TraceRing;
+use vb_storage::recovery::ActionReplayTracker;
 
 // Aggregate resource model touchpoints for vb-qi37.2.1:
 // ShardConfig aggregate_capacity, Shard active_usage, Shard reservations,
@@ -195,6 +197,10 @@ pub struct Shard {
     pub(crate) inspect_response: Option<InspectResponse>,
     pub(crate) shutting_down: bool,
     pub(crate) journal: SharedRuntimeJournal,
+    /// Action contracts indexed by action ID for idempotency policy lookups.
+    pub(crate) action_contracts: Vec<ActionContract>,
+    /// Tracks resolved actions during replay to enforce NoDuplicateNonIdempotent.
+    pub(crate) replay_tracker: ActionReplayTracker,
 }
 
 /// Read-only shard health snapshot for operator status reporting.

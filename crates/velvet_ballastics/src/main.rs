@@ -24,10 +24,10 @@ use std::time::{Instant, SystemTime, UNIX_EPOCH};
 use args::parse_args;
 use args::{
     ActionRegistryMode, Command, DurabilityMode, EmitTarget, OutputFormat, ParseError, StepTarget,
-    VALID_COMMANDS, VerifyProfile,
+    VerifyProfile, VALID_COMMANDS,
 };
 #[cfg(test)]
-pub(crate) use commands_ai_context::{RunStatus, redacted_slot_value, suggested_ai_commands};
+pub(crate) use commands_ai_context::{redacted_slot_value, suggested_ai_commands, RunStatus};
 use exit_code::CliExitCode;
 use vb_runtime::action::ActionRegistry;
 
@@ -1194,7 +1194,7 @@ fn cmd_submit(
     durability: DurabilityMode,
     output: OutputFormat,
 ) -> ExitCode {
-    let _input_data = match read_file(input_bin) {
+    let input_data = match read_file(input_bin) {
         Ok(b) => b,
         Err(code) => return code,
     };
@@ -1304,30 +1304,76 @@ fn cmd_submit(
         return CliExitCode::StorageError.into();
     }
 
-    // Also record submission via runtime journal for durability-aware runbooks
+    // When durability is enabled, actually submit the run through the runtime
+    // to trigger two-phase admission (pending → admitted) and emit RunSubmitted
+    // event via the runtime's trace/journal system.
     if durability != DurabilityMode::None {
-        let runtime_journal = match runtime_journal_for_mode(durability, Some(db)) {
-            Ok(j) => j,
-            Err(code) => return code,
+        // Map runtime inputs from input binary
+        let inputs = match map_runtime_inputs(&compiled, &input_data) {
+            Ok(inputs) => inputs,
+            Err(error) => {
+                if output != OutputFormat::Text {
+                    json_error(
+                        &serde_json::json!({
+                            "success": false,
+                            "error": error.to_string()
+                        }),
+                        output,
+                    );
+                } else {
+                    errln!("{error}");
+                }
+                return CliExitCode::RuntimeFailed.into();
+            }
         };
-        let event = vb_runtime::journal::RuntimeJournalEvent::RunSubmitted {
-            run: run_id,
-            workflow: digest,
+
+        // Create runtime journal from the SAME FjallJournal used for storage
+        let runtime_journal =
+            vb_runtime::journal::StorageRuntimeJournal::shared_journaled(Arc::new(journal));
+
+        let Some(shard_count) = NonZeroUsize::new(1) else {
+            errln!("runtime configuration error: shard count must be non-zero");
+            return CliExitCode::RuntimeFailed.into();
         };
-        if let Err(e) = runtime_journal.append(event) {
+        let config = vb_runtime::shard::ShardConfig::default();
+        let mut runtime =
+            vb_runtime::runtime::Runtime::new_with_journal(shard_count, config, runtime_journal);
+
+        // Submit the run through the runtime to trigger two-phase admission
+        if let Err(e) = runtime.submit_compiled_with_inputs(run_id, compiled.clone(), inputs) {
             if output != OutputFormat::Text {
                 json_error(
                     &serde_json::json!({
                         "success": false,
-                        "error": format!("journal append error: {e}")
+                        "error": format!("runtime submit error: {e}")
                     }),
                     output,
                 );
             } else {
-                errln!("journal append error: {e}");
+                errln!("runtime submit error: {e}");
             }
-            return CliExitCode::StorageError.into();
+            return CliExitCode::RuntimeFailed.into();
         }
+
+        // Drive the runtime to process admission (pending → admitted) and emit
+        // RunSubmitted trace event
+        if let Err(e) = runtime.tick_all() {
+            if output != OutputFormat::Text {
+                json_error(
+                    &serde_json::json!({
+                        "success": false,
+                        "error": format!("runtime tick error: {e}")
+                    }),
+                    output,
+                );
+            } else {
+                errln!("runtime tick error: {e}");
+            }
+            return CliExitCode::RuntimeFailed.into();
+        }
+
+        // Drain trace to release resources (we don't output trace for submit)
+        let _traces = runtime.drain_trace();
     }
 
     if output != OutputFormat::Text {

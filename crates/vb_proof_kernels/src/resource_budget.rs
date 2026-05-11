@@ -16,7 +16,9 @@ pub struct Budget {
     pub repeat_attempts: u64,
     pub run_time_secs: u64,
     pub result_bytes: u64,
+    pub slots: u64,
     pub slots_written: u64,
+    pub memory_bytes: u64,
 }
 
 impl Budget {
@@ -36,7 +38,9 @@ impl Budget {
         self.repeat_attempts = self.repeat_attempts.max(other.repeat_attempts);
         self.run_time_secs = self.run_time_secs.saturating_add(other.run_time_secs);
         self.result_bytes = self.result_bytes.max(other.result_bytes);
+        self.slots = self.slots.max(other.slots);
         self.slots_written = self.slots_written.saturating_add(other.slots_written);
+        self.memory_bytes = self.memory_bytes.saturating_add(other.memory_bytes);
     }
 
     pub fn branch_max(&mut self, other: &Budget) {
@@ -51,7 +55,9 @@ impl Budget {
         self.repeat_attempts = self.repeat_attempts.max(other.repeat_attempts);
         self.run_time_secs = self.run_time_secs.max(other.run_time_secs);
         self.result_bytes = self.result_bytes.max(other.result_bytes);
+        self.slots = self.slots.max(other.slots);
         self.slots_written = self.slots_written.max(other.slots_written);
+        self.memory_bytes = self.memory_bytes.max(other.memory_bytes);
     }
 
     pub fn loop_mul(&mut self, iterations: u64) {
@@ -66,7 +72,9 @@ impl Budget {
         self.repeat_attempts = self.repeat_attempts.saturating_mul(iterations);
         self.run_time_secs = self.run_time_secs.saturating_mul(iterations);
         self.result_bytes = self.result_bytes.saturating_mul(iterations);
+        self.slots = self.slots.saturating_mul(iterations);
         self.slots_written = self.slots_written.saturating_mul(iterations);
+        self.memory_bytes = self.memory_bytes.saturating_mul(iterations);
     }
 }
 
@@ -77,6 +85,7 @@ pub struct Policy {
     pub max_run_time: u64,
     pub max_result_bytes: u64,
     pub max_steps: u64,
+    pub max_memory_bytes: u64,
 }
 
 impl Policy {
@@ -87,11 +96,15 @@ impl Policy {
             max_run_time: 30 * 24 * 60 * 60,
             max_result_bytes: 256 * 1024,
             max_steps: 1_000_000,
+            max_memory_bytes: 1024 * 1024 * 1024,
         }
     }
 
     pub fn within(&self, budget: &Budget) -> Vec<&'static str> {
         let mut violations = Vec::new();
+        if budget.slots == 0 {
+            violations.push("slots_zero");
+        }
         if budget.actions > self.max_actions {
             violations.push("actions");
         }
@@ -106,6 +119,9 @@ impl Policy {
         }
         if budget.steps > self.max_steps {
             violations.push("steps");
+        }
+        if budget.memory_bytes > self.max_memory_bytes {
+            violations.push("memory_bytes");
         }
         violations
     }
@@ -214,9 +230,21 @@ mod tests {
     #[test]
     fn test_policy_pass() {
         let policy = Policy::default_policy();
-        let budget = Budget::new();
+        let mut budget = Budget::new();
+        budget.slots = 1;
 
         let violations = policy.within(&budget);
         assert!(violations.is_empty());
+    }
+
+    #[test]
+    fn test_slots_zero_violation() {
+        let policy = Policy::default_policy();
+        let mut budget = Budget::new();
+        budget.slots = 0;
+
+        let violations = policy.within(&budget);
+        assert!(!violations.is_empty());
+        assert!(violations.contains(&"slots_zero"));
     }
 }

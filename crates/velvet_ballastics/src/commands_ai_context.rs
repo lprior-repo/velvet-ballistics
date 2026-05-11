@@ -613,8 +613,8 @@ mod tests {
     use vb_storage::{EventSeq, JournalError, JournalEvent};
 
     #[test]
-    fn ai_context_latest_snapshot_from_events_propagates_snapshot_lookup_error()
-    -> Result<(), String> {
+    fn ai_context_latest_snapshot_from_events_propagates_snapshot_lookup_error(
+    ) -> Result<(), String> {
         let run = vb_core::RunId::new(9);
         let events = [JournalEvent::RunAccepted {
             run,

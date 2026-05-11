@@ -61,6 +61,8 @@ pub enum JournalEvent {
         step: StepIdx,
         /// Action identifier.
         action: ActionId,
+        /// Execution attempt number (1-indexed).
+        attempt: u16,
     },
     /// Action completed successfully.
     ActionCompletedEvent {
@@ -72,6 +74,8 @@ pub enum JournalEvent {
         step: StepIdx,
         /// Action identifier.
         action: ActionId,
+        /// Execution attempt number (1-indexed).
+        attempt: u16,
     },
     /// Action failed.
     ActionFailedEvent {
@@ -83,6 +87,8 @@ pub enum JournalEvent {
         step: StepIdx,
         /// Action identifier.
         action: ActionId,
+        /// Execution attempt number (1-indexed).
+        attempt: u16,
     },
     /// Slot was written during execution.
     SlotWrittenEvent {
@@ -230,7 +236,12 @@ impl JournalEvent {
     /// Events without an attempt field (PRE-001: treat as attempt 1).
     #[must_use]
     pub const fn attempt(&self) -> Option<u16> {
-        None
+        match self {
+            Self::ActionScheduled { attempt, .. }
+            | Self::ActionCompletedEvent { attempt, .. }
+            | Self::ActionFailedEvent { attempt, .. } => Some(*attempt),
+            _ => None,
+        }
     }
 
     /// Returns the slot value if this is a `SlotWrittenEvent` and a value was captured.

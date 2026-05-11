@@ -3,6 +3,7 @@
 
 use crossbeam_queue::ArrayQueue;
 use indexmap::IndexMap;
+use vb_core::action::ActionContract;
 use vb_core::frame::RunFrame;
 use vb_core::ids::{RunId, SlotIdx, StepIdx};
 use vb_core::workflow::CompiledWorkflow;
@@ -13,6 +14,7 @@ use crate::frame_pool::FramePool;
 use crate::journal::{NoopRuntimeJournal, RuntimeJournalEvent, SharedRuntimeJournal};
 use crate::trace::{TraceEvent, TraceRing};
 use crate::{RuntimeError, RuntimeResult};
+use vb_storage::recovery::ActionReplayTracker;
 
 use crate::shard::types::{
     InspectResponse, MAX_COMMAND_QUEUE_CAPACITY, Shard, ShardCommand, ShardConfig, ShardHealth,
@@ -45,6 +47,8 @@ impl Shard {
             inspect_response: None,
             shutting_down: false,
             journal,
+            action_contracts: Vec::new(),
+            replay_tracker: ActionReplayTracker::new(),
         }
     }
 
@@ -88,6 +92,12 @@ impl Shard {
     #[must_use]
     pub fn command_queue_capacity(&self) -> usize {
         self.command_queue.capacity()
+    }
+
+    /// Sets the action contracts for idempotency policy lookups.
+    /// Should be called during shard initialization before processing runs.
+    pub fn set_action_contracts(&mut self, contracts: Vec<ActionContract>) {
+        self.action_contracts = contracts;
     }
 
     /// Returns the number of active runs on this shard.
