@@ -1188,6 +1188,101 @@ mod tests {
         Ok(())
     }
 
+    // =========================================================================
+    // Step state machine: terminal-state isolation tests
+    // =========================================================================
+
+    /// VB-CORE-STATE-001: Terminal states (Succeeded, Failed, Cancelled, Skipped)
+    /// block ALL transitions out, but allow idempotent re-mark (same→same).
+    /// Modeled in TLA+ by StepState.tla.
+    #[test]
+    fn ut_terminal_state_blocks_transitions() -> CoreResult<()> {
+        let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 4, 1)?;
+
+        // Transition each step to a different terminal state.
+        frame.mark_succeeded(StepIdx::ZERO)?;
+        frame.mark_failed(StepIdx::new(1))?;
+        frame.mark_cancelled(StepIdx::new(2))?;
+        frame.mark_skipped(StepIdx::new(3))?;
+
+        // Idempotent re-mark: same state → same state is always valid.
+        assert_eq!(frame.mark_succeeded(StepIdx::ZERO), Ok(()));
+        assert_eq!(frame.mark_failed(StepIdx::new(1)), Ok(()));
+        assert_eq!(frame.mark_cancelled(StepIdx::new(2)), Ok(()));
+        assert_eq!(frame.mark_skipped(StepIdx::new(3)), Ok(()));
+
+        // Terminal states cannot transition to any other state.
+        // Succeeded cannot go to anything else.
+        assert_eq!(
+            frame.mark_running(StepIdx::ZERO),
+            Err(CoreError::InternalInvariantViolation {
+                reason: "invalid_state_transition"
+            })
+        );
+        assert_eq!(
+            frame.mark_failed(StepIdx::ZERO),
+            Err(CoreError::InternalInvariantViolation {
+                reason: "invalid_state_transition"
+            })
+        );
+        assert_eq!(
+            frame.mark_waiting(StepIdx::ZERO),
+            Err(CoreError::InternalInvariantViolation {
+                reason: "invalid_state_transition"
+            })
+        );
+
+        // Failed cannot go to anything else.
+        assert_eq!(
+            frame.mark_running(StepIdx::new(1)),
+            Err(CoreError::InternalInvariantViolation {
+                reason: "invalid_state_transition"
+            })
+        );
+        assert_eq!(
+            frame.mark_succeeded(StepIdx::new(1)),
+            Err(CoreError::InternalInvariantViolation {
+                reason: "invalid_state_transition"
+            })
+        );
+        assert_eq!(
+            frame.mark_waiting(StepIdx::new(1)),
+            Err(CoreError::InternalInvariantViolation {
+                reason: "invalid_state_transition"
+            })
+        );
+
+        // Cancelled cannot go to anything else.
+        assert_eq!(
+            frame.mark_running(StepIdx::new(2)),
+            Err(CoreError::InternalInvariantViolation {
+                reason: "invalid_state_transition"
+            })
+        );
+        assert_eq!(
+            frame.mark_succeeded(StepIdx::new(2)),
+            Err(CoreError::InternalInvariantViolation {
+                reason: "invalid_state_transition"
+            })
+        );
+
+        // Skipped cannot go to anything else.
+        assert_eq!(
+            frame.mark_running(StepIdx::new(3)),
+            Err(CoreError::InternalInvariantViolation {
+                reason: "invalid_state_transition"
+            })
+        );
+        assert_eq!(
+            frame.mark_failed(StepIdx::new(3)),
+            Err(CoreError::InternalInvariantViolation {
+                reason: "invalid_state_transition"
+            })
+        );
+
+        Ok(())
+    }
+
     #[test]
     fn parallel_in_flight_reinitialize_resets_tracking() -> CoreResult<()> {
         let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 3, 1)?;

@@ -9,7 +9,7 @@
 
 use std::collections::HashMap;
 
-use vb_core::action::{ActionError, ActionTicket};
+use vb_core::action::{ActionError, ActionTicket, Idempotency};
 
 /// Default capacity for [`IdempotencyTracker::with_default_capacity()`].
 const DEFAULT_CAPACITY: usize = 1024;
@@ -19,9 +19,17 @@ const DEFAULT_CAPACITY: usize = 1024;
 ///
 /// Uses a HashMap keyed by the ticket's `idempotency_key` for O(1) lookups.
 /// When capacity is reached, the oldest entry is evicted (FIFO ring buffer).
+///
+/// ## Policy-aware tracking
+///
+/// The tracker distinguishes idempotency classes to avoid unnecessary storage:
+/// - `DeterministicPure` / `IdempotentExternal`: skip tracking entirely
+///   (retry is safe because the action is inherently idempotent or pure)
+/// - `AtLeastOnceExternal`: track in `at_least_once_completed` set
+///   (retry must be deduplicated by idempotency key)
 #[derive(Debug, Clone)]
 pub struct IdempotencyTracker {
-    /// Map from idempotency key to the completed ticket.
+    /// Map from idempotency key to the completed ticket (for all classes).
     completed: HashMap<u128, ActionTicket>,
     /// Insertion order for FIFO eviction.
     order: Vec<u128>,
@@ -29,6 +37,10 @@ pub struct IdempotencyTracker {
     capacity: usize,
     /// Position of the next slot to overwrite in `order` during eviction.
     cursor: usize,
+    /// Set of idempotency keys for `AtLeastOnceExternal` actions that have
+    /// completed. Kept separate so policy decision can be made without
+    /// consulting the full `completed` map.
+    at_least_once_completed: std::collections::HashSet<u128>,
 }
 
 impl IdempotencyTracker {
@@ -58,6 +70,7 @@ impl IdempotencyTracker {
             order: Vec::new(),
             capacity: effective_capacity,
             cursor: 0,
+            at_least_once_completed: std::collections::HashSet::new(),
         }
     }
 
@@ -99,6 +112,36 @@ impl IdempotencyTracker {
         Ok(())
     }
 
+    /// Records a successful completion for the given idempotency key and policy.
+    ///
+    /// For `AtLeastOnceExternal`, also records in the `at_least_once_completed`
+    /// set so `is_completed_for_policy` returns `true`. For other policies,
+    /// the `at_least_once_completed` set is unchanged.
+    ///
+    /// Returns `Err(ActionError::CompletionAlreadyRecorded)` if this key was
+    /// already marked as completed under this policy.
+    pub fn mark_completed_for_policy(
+        &mut self,
+        policy: Idempotency,
+        key: u128,
+    ) -> Result<(), ActionError> {
+        match policy {
+            Idempotency::DeterministicPure | Idempotency::IdempotentExternal => {
+                // These policies don't use the at_least_once_completed set.
+                // mark_completed is not called for these in practice, but we
+                // provide a no-op here for API symmetry.
+                Ok(())
+            }
+            Idempotency::AtLeastOnceExternal => {
+                if self.at_least_once_completed.contains(&key) {
+                    return Err(ActionError::CompletionAlreadyRecorded);
+                }
+                self.at_least_once_completed.insert(key);
+                Ok(())
+            }
+        }
+    }
+
     /// Returns `true` if the given ticket's idempotency key has been completed.
     #[must_use]
     pub fn is_completed(&self, ticket: &ActionTicket) -> bool {
@@ -110,6 +153,58 @@ impl IdempotencyTracker {
     #[must_use]
     pub fn is_duplicate_completion(&self, ticket: &ActionTicket) -> bool {
         self.completed.contains_key(&ticket.idempotency_key)
+    }
+
+    /// Tracks a dispatched action under the given idempotency policy.
+    ///
+    /// Returns `true` if this is a new dispatch (not yet tracked), or `false`
+    /// if it is a duplicate for this policy class.
+    ///
+    /// Policy-specific behaviour:
+    /// - `DeterministicPure` / `IdempotentExternal`: always returns `true`,
+    ///   does NOT record anything (safe to retry without deduplication).
+    /// - `AtLeastOnceExternal`: records the key; returns `false` if already
+    ///   seen. The caller MUST check the return value and skip re-dispatch.
+    #[must_use]
+    pub fn track_for_policy(
+        &mut self,
+        policy: Idempotency,
+        key: u128,
+    ) -> bool {
+        match policy {
+            Idempotency::DeterministicPure | Idempotency::IdempotentExternal => {
+                // Safe to retry without deduplication — skip tracking.
+                true
+            }
+            Idempotency::AtLeastOnceExternal => {
+                // Must deduplicate — record and check for duplicates.
+                if self.at_least_once_completed.contains(&key) {
+                    false
+                } else {
+                    self.at_least_once_completed.insert(key);
+                    true
+                }
+            }
+        }
+    }
+
+    /// Returns whether an `AtLeastOnceExternal` action with the given key
+    /// has been tracked as completed.
+    ///
+    /// Always returns `false` for `DeterministicPure` and `IdempotentExternal`
+    /// since those are never tracked.
+    #[must_use]
+    pub fn is_completed_for_policy(
+        &self,
+        policy: Idempotency,
+        key: u128,
+    ) -> bool {
+        match policy {
+            Idempotency::DeterministicPure | Idempotency::IdempotentExternal => false,
+            Idempotency::AtLeastOnceExternal => {
+                self.at_least_once_completed.contains(&key)
+            }
+        }
     }
 
     /// Evicts the oldest entry if the tracker is at or above capacity.
@@ -264,5 +359,85 @@ mod tests {
         assert!(!tracker.is_completed(&ticket_a));
         assert!(tracker.is_completed(&ticket_b));
         assert_eq!(tracker.len(), 1);
+    }
+
+    // =====================================================================
+    // Policy-aware tracking (VB-REPLAY-002)
+    // =====================================================================
+
+    #[test]
+    fn policy_aware_tracking_deterministic_pure_skips_tracking() {
+        // DeterministicPure: track_for_policy always returns true (new),
+        // but is_completed_for_policy always returns false (not tracked).
+        let mut tracker = IdempotencyTracker::with_default_capacity();
+        let key = 100u128;
+
+        assert!(tracker.track_for_policy(Idempotency::DeterministicPure, key));
+        // NOT tracked — is_completed_for_policy returns false for DeterministicPure
+        assert!(!tracker.is_completed_for_policy(Idempotency::DeterministicPure, key));
+        // is_completed (general) also returns false since nothing was tracked
+        let ticket = make_ticket(key);
+        assert!(!tracker.is_completed(&ticket));
+    }
+
+    #[test]
+    fn policy_aware_tracking_idempotent_external_skips_tracking() {
+        // IdempotentExternal: same as DeterministicPure — skip tracking.
+        let mut tracker = IdempotencyTracker::with_default_capacity();
+        let key = 200u128;
+
+        assert!(tracker.track_for_policy(Idempotency::IdempotentExternal, key));
+        assert!(!tracker.is_completed_for_policy(Idempotency::IdempotentExternal, key));
+        let ticket = make_ticket(key);
+        assert!(!tracker.is_completed(&ticket));
+    }
+
+    #[test]
+    fn policy_aware_tracking_at_least_once_external_tracks() {
+        // AtLeastOnceExternal: track_for_policy records and deduplicates.
+        let mut tracker = IdempotencyTracker::with_default_capacity();
+        let key = 300u128;
+
+        // First dispatch: new — returns true
+        assert!(tracker.track_for_policy(Idempotency::AtLeastOnceExternal, key));
+        // Second dispatch: duplicate — returns false
+        assert!(!tracker.track_for_policy(Idempotency::AtLeastOnceExternal, key));
+        // is_completed_for_policy: true after tracking
+        assert!(tracker.is_completed_for_policy(Idempotency::AtLeastOnceExternal, key));
+    }
+
+    #[test]
+    fn policy_aware_tracking_at_least_once_mark_completed_updates_set() {
+        // mark_completed_for_policy with AtLeastOnceExternal adds to the set.
+        let mut tracker = IdempotencyTracker::with_default_capacity();
+        let key = 400u128;
+
+        assert_eq!(
+            tracker.mark_completed_for_policy(Idempotency::AtLeastOnceExternal, key),
+            Ok(())
+        );
+        assert!(tracker.is_completed_for_policy(Idempotency::AtLeastOnceExternal, key));
+        // Duplicate completion: rejected
+        assert_eq!(
+            tracker.mark_completed_for_policy(Idempotency::AtLeastOnceExternal, key),
+            Err(vb_core::action::ActionError::CompletionAlreadyRecorded)
+        );
+    }
+
+    #[test]
+    fn policy_aware_tracking_different_policies_independent() {
+        // Keys are tracked independently per policy class.
+        let mut tracker = IdempotencyTracker::with_default_capacity();
+        let key = 500u128;
+
+        // DeterministicPure: not tracked
+        assert!(tracker.track_for_policy(Idempotency::DeterministicPure, key));
+        assert!(!tracker.is_completed_for_policy(Idempotency::DeterministicPure, key));
+
+        // Same key, AtLeastOnceExternal: tracked separately
+        assert!(tracker.track_for_policy(Idempotency::AtLeastOnceExternal, key));
+        assert!(tracker.is_completed_for_policy(Idempotency::AtLeastOnceExternal, key));
+        // DeterministicPure still not tracked
+        assert!(!tracker.is_completed_for_policy(Idempotency::DeterministicPure, key));
     }
 }

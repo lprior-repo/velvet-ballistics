@@ -537,6 +537,69 @@ mod tests {
     }
 
     #[test]
+    fn ut_retrystate_encoding_roundtrips() {
+        let state = RetryState {
+            current_attempt: 3,
+            remaining: 4,
+            current_delay_ms: 500,
+        };
+        let packed = state.encode().expect("encode must succeed");
+        let decoded = RetryState::decode(packed).expect("decode must succeed");
+        assert_eq!(decoded.current_attempt(), state.current_attempt);
+        assert_eq!(decoded.remaining(), state.remaining);
+        assert_eq!(decoded.current_delay_ms(), state.current_delay_ms);
+    }
+
+    #[test]
+    fn ut_retrystate_invariant_holds_for_active_state() {
+        let max_attempts: u16 = 5;
+        let state = RetryState {
+            current_attempt: 2,
+            remaining: 3,
+            current_delay_ms: 100,
+        };
+        let packed = state.encode().expect("encode must succeed");
+        let decoded = RetryState::decode(packed).expect("decode must succeed");
+        let total_attempts = decoded.current_attempt() + decoded.remaining();
+        let max_live_attempts = max_attempts + 1;
+        assert!(
+            total_attempts <= max_live_attempts,
+            "current_attempt({}) + remaining({}) = {} must be <= max_attempts({}) + 1 = {}",
+            decoded.current_attempt(),
+            decoded.remaining(),
+            total_attempts,
+            max_attempts,
+            max_live_attempts
+        );
+    }
+
+    #[test]
+    fn ut_retrystate_invariant_holds_for_zero_state() {
+        let max_attempts: u16 = 5;
+        let state = RetryState {
+            current_attempt: 0,
+            remaining: 0,
+            current_delay_ms: 0,
+        };
+        let packed = state.encode().expect("encode must succeed");
+        let decoded = RetryState::decode(packed).expect("decode must succeed");
+        assert_eq!(decoded.current_attempt(), 0);
+        assert_eq!(decoded.remaining(), 0);
+        assert_eq!(decoded.current_delay_ms(), 0);
+        let total_attempts = decoded.current_attempt() + decoded.remaining();
+        let max_live_attempts = max_attempts + 1;
+        assert!(
+            total_attempts <= max_live_attempts,
+            "zero state: current_attempt({}) + remaining({}) = {} must be <= max_attempts({}) + 1 = {}",
+            decoded.current_attempt(),
+            decoded.remaining(),
+            total_attempts,
+            max_attempts,
+            max_live_attempts
+        );
+    }
+
+    #[test]
     fn retry_state_decode_rejects_negative_with_zero_attempt_nonzero_remaining() {
         // Layout: delay=1 in [63:32], attempt=0 in [31:16], remaining=5 in [15:0]
         // attempt=0 with remaining>0 is invalid regardless of delay.

@@ -916,6 +916,29 @@ fn ipc_frame_header_new_stores_all_fields() {
 }
 
 #[test]
+fn ut_header_encoding_roundtrips() {
+    let header = IpcFrameHeader::new(IpcCommand::SubmitRunInline, 0x1234, 0xDEAD_BEEF, 512);
+    let encoded = header.encode().expect("header must encode");
+    let decoded =
+        IpcFrameHeader::decode(&encoded, MaxPayloadBytes::DEFAULT).expect("header must decode");
+    assert_eq!(decoded.command, header.command);
+    assert_eq!(decoded.flags, header.flags);
+    assert_eq!(decoded.correlation, header.correlation);
+    assert_eq!(decoded.payload_len, header.payload_len);
+}
+
+#[test]
+fn ut_header_reserved_field_is_zero() {
+    let header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, 0);
+    let encoded = header.encode().expect("header must encode");
+    let reserved_bytes: [u8; 2] = [encoded[10], encoded[11]];
+    assert_eq!(
+        reserved_bytes, [0x00, 0x00],
+        "reserved bytes at offset 10-11 must be zero"
+    );
+}
+
+#[test]
 fn header_encode_decode_roundtrip_preserves_flags() {
     let header = IpcFrameHeader::new(IpcCommand::SubmitRun, 0xABCD, 999, 10);
     let encoded = header.encode();
@@ -1041,6 +1064,23 @@ fn ipc_error_payload_length_out_of_range_display() {
     let error = IpcError::PayloadLengthOutOfRange { actual: 999 };
     let message = error.to_string();
     assert!(message.contains("999"), "expected '999' in '{message}'");
+}
+
+#[test]
+fn ut_u32_to_usize_conversion_succeeds_for_valid_values() {
+    let values = [0u32, 1, 100, u32::MAX];
+    for value in values {
+        let result = crate::u32_to_usize(value);
+        assert!(
+            result.is_ok(),
+            "u32_to_usize({value}) should succeed on this platform"
+        );
+        let converted = result.unwrap();
+        assert_eq!(
+            converted as u32, value,
+            "round-trip u32->usize->u32 should preserve value"
+        );
+    }
 }
 
 #[test]

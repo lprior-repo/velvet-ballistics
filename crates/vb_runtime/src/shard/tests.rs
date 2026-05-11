@@ -6342,13 +6342,11 @@ fn vb1u88_drain_for_shutdown_on_already_shutting_down() {
 }
 
 #[test]
-fn vb1u88_drain_for_shutdown_empty_queue_returns_shutdown_in_progress() {
+fn vb1u88_drain_for_shutdown_empty_queue_returns_ok() {
     let config = small_config();
     let mut shard = Shard::new(config);
-    assert_eq!(
-        shard.drain_for_shutdown(),
-        Err(RuntimeError::ShutdownInProgress)
-    );
+    // Empty queue — drain succeeds immediately
+    assert_eq!(shard.drain_for_shutdown(), Ok(()));
 }
 
 // ---------------------------------------------------------------------------

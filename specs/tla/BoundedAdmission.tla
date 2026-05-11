@@ -36,7 +36,7 @@ RequestAdmission(run, shard, reservation) ==
 
 AdmitRun(run, shard, reservation) ==
     /\ <<run, shard, reservation>> \in pending_admission
-    /\ |shard_runs[shard]| < MaxRunsPerShard
+    /\ Cardinality(shard_runs[shard]) < MaxRunsPerShard
     /\ reservation.slots <= MaxSlotsPerRun
     /\ reservation.actions <= MaxActionsPerRun
     /\ admitted_runs' = admitted_runs \cup {run}

@@ -153,6 +153,10 @@ impl IpcError {
 }
 
 /// Converts a u32 payload length to usize, returning an error if it doesn't fit.
+///
+/// On 64-bit platforms this is always valid since usize is 64-bit and u32 fits.
+/// On 32-bit platforms, payloads larger than `u32::MAX` would fail the conversion,
+/// but such payloads cannot be represented in the IPC frame anyway (payload_len is u32).
 pub(crate) fn u32_to_usize(value: u32) -> Result<usize, IpcError> {
     match usize::try_from(value) {
         Ok(converted) => Ok(converted),

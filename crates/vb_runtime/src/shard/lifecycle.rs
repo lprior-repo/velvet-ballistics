@@ -2088,4 +2088,98 @@ mod tests {
         );
         Ok(())
     }
+
+    // =======================================================================
+    // VB-REPLAY-001: Journal-Before-Dispatch ordering
+    // =======================================================================
+
+    #[test]
+    fn ut_journal_before_dispatch_ordering() -> Result<(), String> {
+        // Verify that ActionScheduled journal event is appended BEFORE
+        // execute_do returns Ok(AwaitingAction).
+        //
+        // This test uses VolatileRuntimeJournal which appends synchronously,
+        // so we can verify the event is in the journal after tick() returns.
+        let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
+        let shared: SharedRuntimeJournal = journal.clone();
+        let mut shard = Shard::new_with_journal(small_config(), shared);
+
+        let wf = require_workflow("suspended", suspended_workflow())?;
+        let run = RunId::new(700);
+        assert_eq!(
+            shard.enqueue(ShardCommand::Submit {
+                run,
+                workflow: wf,
+                caps: CapabilitySet::empty(),
+            }),
+            Ok(())
+        );
+
+        // First tick: Submit is processed, workflow drives to Do node,
+        // execute_do builds ActionTicket and returns AwaitingAction.
+        // The ActionScheduled journal event must be appended BEFORE
+        // tick() returns Ok(true).
+        assert_eq!(shard.tick(), Ok(true));
+
+        let events = require_snapshot(&journal)?;
+        let has_action_scheduled = events.iter().any(|e| {
+            *e == RuntimeJournalEvent::ActionScheduled {
+                run,
+                step: StepIdx::ZERO,
+                action: ActionId::new(0),
+            }
+        });
+        assert!(
+            has_action_scheduled,
+            "ActionScheduled must be in journal before tick() returns: {events:?}"
+        );
+
+        // Verify ActionScheduled appears BEFORE ActionCompleted in the journal.
+        let scheduled_pos = events.iter().position(|e| {
+            *e == RuntimeJournalEvent::ActionScheduled {
+                run,
+                step: StepIdx::ZERO,
+                action: ActionId::new(0),
+            }
+        });
+        assert!(
+            scheduled_pos.is_some(),
+            "ActionScheduled must be present in journal"
+        );
+        let scheduled_idx = scheduled_pos.unwrap();
+
+        // ActionCompleted will be written on the next tick when we complete the action.
+        // First complete the action.
+        let ticket = make_ticket(run, StepIdx::ZERO, 1);
+        let output = ActionOutputReady {
+            output_slot: SlotIdx::ZERO,
+            value: SlotValue::I64(42),
+            taint: Taint::Clean,
+            encoded_len: 0,
+        };
+        assert_eq!(
+            shard.enqueue(ShardCommand::ActionCompleted { ticket, output }),
+            Ok(())
+        );
+        assert_eq!(shard.tick(), Ok(true));
+
+        let events_after = require_snapshot(&journal)?;
+        let completed_pos = events_after.iter().position(|e| {
+            *e == RuntimeJournalEvent::ActionCompleted {
+                run,
+                step: StepIdx::ZERO,
+                action: ActionId::new(0),
+            }
+        });
+        assert!(
+            completed_pos.is_some(),
+            "ActionCompleted must be present in journal"
+        );
+        assert!(
+            scheduled_idx < completed_pos.unwrap(),
+            "ActionScheduled (index {scheduled_idx}) must appear before ActionCompleted (index {}) in journal",
+            completed_pos.unwrap()
+        );
+        Ok(())
+    }
 }

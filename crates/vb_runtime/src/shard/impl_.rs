@@ -333,17 +333,34 @@ impl Shard {
         }
     }
 
-    /// Drains the command queue by processing commands until shutdown or capacity limit.
+    /// Drains the command queue by processing commands until shutdown or empty.
+    ///
+    /// Returns `Ok(())` when either the `Shutdown` command is processed (shard
+    /// enters shutting_down state) or the queue becomes empty (all commands
+    /// drained). Returns `Err(ShutdownInProgress)` only if the queue had more
+    /// commands than `capacity` and we hit the iteration bound — meaning not
+    /// all could be drained during this call.
     pub fn drain_for_shutdown(&mut self) -> RuntimeResult<()> {
         let limit = self.command_queue.capacity();
         let mut processed = 0usize;
         while processed < limit {
+            if self.shutting_down {
+                self.pending_timers.clear();
+                return Ok(());
+            }
+            if self.command_queue.is_empty() {
+                // All enqueued commands processed — drain is complete.
+                return Ok(());
+            }
             if !self.tick()? {
+                // Shutdown command was processed.
                 self.pending_timers.clear();
                 return Ok(());
             }
             processed = processed.saturating_add(1);
         }
+        // Hit capacity bound with unprocessed commands — this should not happen
+        // unless more than `capacity` commands were enqueued concurrently.
         Err(RuntimeError::ShutdownInProgress)
     }
 }
@@ -599,6 +616,103 @@ mod tests {
     }
 
     // =======================================================================
+    // VB-REPLAY-003: tick processes exactly one command
+    // =======================================================================
+
+    #[test]
+    fn ut_tick_processes_one_command() {
+        let config = ShardConfig {
+            command_queue_capacity: 4,
+            trace_capacity: 4,
+            step_budget_per_tick: 4,
+            max_active_runs: 4,
+            policy: vb_core::policy::RuntimePolicy::Relaxed,
+        };
+        let mut shard = Shard::new(config);
+
+        // Enqueue two Submit commands
+        let Some(wf) = finished_workflow() else {
+            return;
+        };
+        assert_eq!(
+            shard.enqueue(ShardCommand::Submit {
+                run: RunId::new(1),
+                workflow: wf.clone(),
+                caps: CapabilitySet::empty(),
+            }),
+            Ok(())
+        );
+        assert_eq!(
+            shard.enqueue(ShardCommand::Submit {
+                run: RunId::new(2),
+                workflow: wf.clone(),
+                caps: CapabilitySet::empty(),
+            }),
+            Ok(())
+        );
+
+        // tick() should process exactly ONE command and return Ok(true)
+        assert_eq!(shard.tick(), Ok(true));
+        // One command processed (first Submit), one remains
+        assert_eq!(shard.command_queue_len(), 1);
+        // First run completed (Finish node)
+        assert_eq!(shard.counters().snapshot().runs_completed, 1);
+        assert_eq!(shard.active_run_count(), 0);
+
+        // Second tick processes the remaining command
+        assert_eq!(shard.tick(), Ok(true));
+        assert_eq!(shard.command_queue_len(), 0);
+        assert_eq!(shard.counters().snapshot().runs_completed, 2);
+    }
+
+    #[test]
+    fn ut_drain_for_shutdown_processes_all_commands() {
+        let config = ShardConfig {
+            command_queue_capacity: 8,
+            trace_capacity: 4,
+            step_budget_per_tick: 4,
+            max_active_runs: 4,
+            policy: vb_core::policy::RuntimePolicy::Relaxed,
+        };
+        let mut shard = Shard::new(config);
+
+        let Some(wf) = finished_workflow() else {
+            return;
+        };
+        // Enqueue multiple submits (no Shutdown command)
+        for run_id in 0u64..5 {
+            assert_eq!(
+                shard.enqueue(ShardCommand::Submit {
+                    run: RunId::new(run_id),
+                    workflow: wf.clone(),
+                    caps: CapabilitySet::empty(),
+                }),
+                Ok(())
+            );
+        }
+        assert_eq!(shard.command_queue_len(), 5);
+
+        // drain_for_shutdown should process ALL commands and return Ok(())
+        assert_eq!(shard.drain_for_shutdown(), Ok(()));
+        assert_eq!(shard.command_queue_len(), 0);
+        assert_eq!(shard.counters().snapshot().runs_completed, 5);
+    }
+
+    #[test]
+    fn ut_drain_for_shutdown_empty_queue_returns_ok() {
+        let config = ShardConfig {
+            command_queue_capacity: 4,
+            trace_capacity: 4,
+            step_budget_per_tick: 4,
+            max_active_runs: 4,
+            policy: vb_core::policy::RuntimePolicy::Relaxed,
+        };
+        let mut shard = Shard::new(config);
+        // Empty queue — drain should succeed
+        assert_eq!(shard.drain_for_shutdown(), Ok(()));
+    }
+
+    // =======================================================================
     // drain_for_shutdown
     // =======================================================================
 
@@ -630,7 +744,7 @@ mod tests {
     }
 
     #[test]
-    fn drain_for_shutdown_on_empty_queue_hits_capacity_limit() {
+    fn drain_for_shutdown_on_empty_queue_returns_ok() {
         let config = ShardConfig {
             command_queue_capacity: 2,
             trace_capacity: 4,
@@ -639,10 +753,8 @@ mod tests {
             policy: vb_core::policy::RuntimePolicy::Relaxed,
         };
         let mut shard = Shard::new(config);
-        assert_eq!(
-            shard.drain_for_shutdown(),
-            Err(RuntimeError::ShutdownInProgress)
-        );
+        // Empty queue — drain succeeds immediately
+        assert_eq!(shard.drain_for_shutdown(), Ok(()));
     }
 
     // =======================================================================

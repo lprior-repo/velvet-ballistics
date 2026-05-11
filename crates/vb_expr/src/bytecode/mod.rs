@@ -152,7 +152,7 @@ fn literal_to_const(lit: &ExprLiteral) -> ExprResult<ConstValue> {
         ExprLiteral::Bool(v) => Ok(ConstValue::Bool(*v)),
         ExprLiteral::I64(v) => Ok(ConstValue::I64(*v)),
         ExprLiteral::Text(_) => Err(ExprError::UnsupportedLiteral {
-            literal: "text".into(),
+            literal: "text literals are not supported directly in expressions; use $slot references to access text values".into(),
         }),
         ExprLiteral::F64(v) => Ok(ConstValue::F64(*v)),
     }

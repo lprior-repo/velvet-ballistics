@@ -281,6 +281,25 @@ fn compile(source: &str) -> crate::ExprResult<crate::bytecode::ExprProgram> {
     compile_expr_to_bytecode(&ast)
 }
 
+#[test]
+fn text_literal_in_expression_returns_clear_error() -> crate::ExprResult<()> {
+    let tokens = lex_expr(r#""hello""#)?;
+    let ast = parse_expr(&tokens)?;
+    let mut constants = Vec::new();
+    let result = compile_expr_with_pool(&ast, &mut constants);
+    let err = result.expect_err("text literal should fail");
+    match err {
+        crate::ExprError::UnsupportedLiteral { literal } => {
+            assert!(
+                literal.contains("text literals are not supported directly"),
+                "error message should mention text literals are not supported: {literal}"
+            );
+        }
+        other => panic!("expected UnsupportedLiteral error, got {other:?}"),
+    }
+    Ok(())
+}
+
 #[allow(dead_code)]
 fn compile_with_pool(
     source: &str,

@@ -41,6 +41,11 @@ fn eval_i64_pair(
     push_value(stack, SlotValue::I64(value))
 }
 
+/// Evaluates integer division.
+///
+/// Division uses `checked_div` which truncates toward zero (not floor).
+/// For example: `-7 / 2 = -3` (not `-4`), and `7 / -2 = -3` (not `-4`).
+/// This matches the IEEE 754 semantics for integer division in Rust.
 fn eval_div(stack: &mut ExprStack) -> Result<(), EngineError> {
     let (left, right) = pop_i64_pair(stack)?;
     if right == 0 {
@@ -471,6 +476,41 @@ mod tests {
     }
 
     #[test]
+    fn div_truncates_toward_zero() -> Result<(), String> {
+        let mut store = ValueStore::new();
+        let result = eval_ops(
+            vec![
+                ExprOp::LoadConst(ConstIdx::new(0)),
+                ExprOp::LoadConst(ConstIdx::new(1)),
+                ExprOp::Div,
+            ],
+            vec![ConstValue::I64(-7), ConstValue::I64(2)],
+            &mut store,
+        )?;
+        ensure_equal(result, SlotValue::I64(-3))?;
+        let result = eval_ops(
+            vec![
+                ExprOp::LoadConst(ConstIdx::new(0)),
+                ExprOp::LoadConst(ConstIdx::new(1)),
+                ExprOp::Div,
+            ],
+            vec![ConstValue::I64(-7), ConstValue::I64(-2)],
+            &mut store,
+        )?;
+        ensure_equal(result, SlotValue::I64(3))?;
+        let result = eval_ops(
+            vec![
+                ExprOp::LoadConst(ConstIdx::new(0)),
+                ExprOp::LoadConst(ConstIdx::new(1)),
+                ExprOp::Div,
+            ],
+            vec![ConstValue::I64(7), ConstValue::I64(-2)],
+            &mut store,
+        )?;
+        ensure_equal(result, SlotValue::I64(-3))
+    }
+
+    #[test]
     fn mul_overflow_returns_error() -> Result<(), String> {
         let mut store = ValueStore::new();
         let result = eval_ops(
@@ -486,6 +526,51 @@ mod tests {
             Err(msg) if msg.contains("overflow") => Ok(()),
             other => Err(format!("expected overflow error, got {other:?}")),
         }
+    }
+
+    #[test]
+    fn ut_i64_overflow_propagates_correctly() -> Result<(), String> {
+        let mut store = ValueStore::new();
+        let add_overflow = eval_ops(
+            vec![
+                ExprOp::LoadConst(ConstIdx::new(0)),
+                ExprOp::LoadConst(ConstIdx::new(1)),
+                ExprOp::Add,
+            ],
+            vec![ConstValue::I64(i64::MAX), ConstValue::I64(1)],
+            &mut store,
+        );
+        assert!(
+            add_overflow.is_err() && add_overflow.as_ref().unwrap_err().contains("overflow"),
+            "add overflow should propagate"
+        );
+        let sub_overflow = eval_ops(
+            vec![
+                ExprOp::LoadConst(ConstIdx::new(0)),
+                ExprOp::LoadConst(ConstIdx::new(1)),
+                ExprOp::Sub,
+            ],
+            vec![ConstValue::I64(i64::MIN), ConstValue::I64(1)],
+            &mut store,
+        );
+        assert!(
+            sub_overflow.is_err() && sub_overflow.as_ref().unwrap_err().contains("overflow"),
+            "sub overflow should propagate"
+        );
+        let mul_overflow = eval_ops(
+            vec![
+                ExprOp::LoadConst(ConstIdx::new(0)),
+                ExprOp::LoadConst(ConstIdx::new(1)),
+                ExprOp::Mul,
+            ],
+            vec![ConstValue::I64(i64::MAX), ConstValue::I64(2)],
+            &mut store,
+        );
+        assert!(
+            mul_overflow.is_err() && mul_overflow.as_ref().unwrap_err().contains("overflow"),
+            "mul overflow should propagate"
+        );
+        Ok(())
     }
 
     // ===== Comparisons =====
