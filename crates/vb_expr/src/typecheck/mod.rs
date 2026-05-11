@@ -163,9 +163,8 @@ fn typecheck_helper(
         | ExprHelper::Exists
         | ExprHelper::Empty => Ok(ExprType::Bool),
         ExprHelper::Length | ExprHelper::Sum | ExprHelper::Count => Ok(ExprType::I64),
-        ExprHelper::Append | ExprHelper::AppendIf | ExprHelper::Merge | ExprHelper::Unique => {
-            Ok(ExprType::List)
-        }
+        ExprHelper::Append | ExprHelper::AppendIf | ExprHelper::Unique => Ok(ExprType::List),
+        ExprHelper::Merge => Ok(ExprType::Object),
     }
 }
 
