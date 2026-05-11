@@ -46,13 +46,14 @@ pub mod shard;
 pub mod taint;
 pub mod trace;
 
-pub use shard::{AskAnswer, AskTicket};
+pub use shard::{AskAnswer, AskTicket, ResumeError, ResumeResult, ResumeStatus};
 
 #[cfg(test)]
 mod test_harness;
 
 use std::sync::Arc;
 use vb_core::DiagnosticCode;
+use vb_core::ids::RunId;
 
 /// Runtime error type.
 #[derive(Debug, Clone)]
@@ -165,6 +166,9 @@ pub enum RuntimeError {
 
     /// Failed to encode a slot value for journal persistence.
     EncodeFailed,
+
+    /// Run identifier was not found in the runtime journal.
+    RunIdNotFound(RunId),
 }
 
 impl std::fmt::Display for RuntimeError {
@@ -205,6 +209,7 @@ fn runtime_error_static_message(error: &RuntimeError) -> Option<&'static str> {
             Some("admission rejected: capability denied")
         }
         RuntimeError::EncodeFailed => Some("slot value encoding failed"),
+        RuntimeError::RunIdNotFound(..) => Some("run identifier not found in journal"),
         _ => None,
     }
 }
@@ -235,6 +240,9 @@ fn write_runtime_error_dynamic(
         }
         RuntimeError::AttemptBeyondMax { attempt, max } => {
             write!(f, "action attempt {attempt} exceeds max attempts {max}")
+        }
+        RuntimeError::RunIdNotFound(run_id) => {
+            write!(f, "run identifier not found: {run_id:?}")
         }
         _ => Ok(()),
     }
@@ -442,6 +450,7 @@ impl RuntimeError {
             Self::AdmissionArtifactInvalid { .. } => Self::ADMISSION_ARTIFACT_INVALID_CODE,
             Self::AdmissionCapabilityDenied { .. } => Self::ADMISSION_CAPABILITY_DENIED_CODE,
             Self::EncodeFailed => Self::ENCODE_FAILED_CODE,
+            Self::RunIdNotFound(..) => Self::RUN_NOT_FOUND_CODE,
         }
     }
 
@@ -481,6 +490,28 @@ impl From<vb_storage::JournalError> for RuntimeError {
     fn from(error: vb_storage::JournalError) -> Self {
         Self::StorageJournalAppend {
             source: Arc::new(error),
+        }
+    }
+}
+
+impl From<ResumeError> for RuntimeError {
+    fn from(error: ResumeError) -> Self {
+        match error {
+            ResumeError::RunIdNotFound { run_id: _ } => Self::RunNotFound,
+            ResumeError::NotResumable {
+                run_id: _,
+                current_state: _,
+            } => {
+                // NotResumable maps to RunNotFound for backward compatibility
+                Self::RunNotFound
+            }
+            ResumeError::IncompleteHydration { run_id: _ } => {
+                Self::UnsupportedFullRecoveryHydration
+            }
+            ResumeError::JournalAppendFailed => Self::StorageJournalAppend {
+                source: Arc::new(vb_storage::JournalError::QueueFull),
+            },
+            ResumeError::StructuredOutputFailed => Self::EncodeFailed,
         }
     }
 }

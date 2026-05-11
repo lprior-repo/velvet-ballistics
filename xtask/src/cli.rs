@@ -62,4 +62,26 @@ pub(crate) enum Commands {
         #[arg(long)]
         bead: Option<String>,
     },
+    #[command(name = "proof-plan")]
+    ProofPlan {
+        #[arg(long)]
+        crate_name: Option<String>,
+    },
+    #[command(name = "proof-check")]
+    ProofCheck {
+        #[arg(long)]
+        level: Option<String>,
+        #[arg(long)]
+        bead: Option<String>,
+    },
+    #[command(name = "proof-evidence")]
+    ProofEvidence {
+        #[arg(long)]
+        bead: String,
+    },
+    #[command(name = "proof-drift")]
+    ProofDrift {
+        #[arg(long, value_delimiter = ',')]
+        sections: Option<Vec<usize>>,
+    },
 }

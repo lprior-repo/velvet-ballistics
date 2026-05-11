@@ -186,6 +186,8 @@ pub const MAX_COMMAND_QUEUE_CAPACITY: usize = 65_536;
 pub struct Shard {
     pub(crate) command_queue: ArrayQueue<ShardCommand>,
     pub runs: IndexMap<RunId, RunState>,
+    /// Per-run lifecycle state tracking for resume eligibility.
+    pub(crate) runtime_states: IndexMap<RunId, RuntimeState>,
     pub(crate) pending_timers: IndexMap<RunId, PendingTimer>,
     pub(crate) frame_pools: IndexMap<FramePoolKey, FramePool>,
     pub(crate) trace_ring: TraceRing,
@@ -260,4 +262,76 @@ impl Default for ShardConfig {
             policy: vb_core::policy::RuntimePolicy::Strict,
         }
     }
+}
+
+/// Lifecycle state of a run tracked by the runtime for resume eligibility.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RuntimeState {
+    /// Run was created but has not yet been started.
+    Initial,
+    /// Run is actively executing.
+    Running,
+    /// Run suspended and can be resumed.
+    Resumable,
+    /// Resume is in flight for this run.
+    Resuming,
+    /// Run terminated with a failure.
+    Failed,
+}
+
+impl RuntimeState {
+    /// Returns true if this state is a valid target for resume.
+    #[must_use]
+    pub fn is_resumable(&self) -> bool {
+        matches!(self, Self::Resumable)
+    }
+}
+
+/// Status of a resume operation.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ResumeStatus {
+    /// Resume was accepted and the run was driven once.
+    ///
+    /// The post-drive lifecycle may be `Running`, `Resumable`, or terminal,
+    /// depending on the deterministic engine signal emitted by that drive.
+    Resumed,
+    /// Run was already running when resume was attempted.
+    AlreadyRunning,
+}
+
+/// Result of a successful resume operation.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ResumeResult {
+    /// The run identifier that was resumed.
+    pub run_id: RunId,
+    /// The status of the resume operation.
+    pub status: ResumeStatus,
+    /// Monotonic timestamp when the resume occurred.
+    pub timestamp: u64,
+}
+
+/// Errors that can occur during a resume operation.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ResumeError {
+    /// The run identifier was not found in the journal.
+    RunIdNotFound {
+        /// The run identifier that was not found.
+        run_id: RunId,
+    },
+    /// The run is not in a resumable state.
+    NotResumable {
+        /// The run identifier.
+        run_id: RunId,
+        /// The current state of the run.
+        current_state: RuntimeState,
+    },
+    /// Journal hydration is incomplete for this run.
+    IncompleteHydration {
+        /// The run identifier.
+        run_id: RunId,
+    },
+    /// Failed to append the Resumed event to the journal.
+    JournalAppendFailed,
+    /// Failed to produce structured output.
+    StructuredOutputFailed,
 }

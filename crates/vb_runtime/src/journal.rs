@@ -136,6 +136,13 @@ pub enum RuntimeJournalEvent {
         /// Execution attempt number for this step.
         attempt: u16,
     },
+    /// Run was resumed from a suspended state.
+    Resumed {
+        /// Run identifier.
+        run: RunId,
+        /// Monotonic timestamp in seconds since epoch.
+        timestamp: u64,
+    },
 }
 
 impl RuntimeJournalEvent {
@@ -158,6 +165,7 @@ impl RuntimeJournalEvent {
             | Self::StepStarted { run, .. }
             | Self::StepSucceeded { run, .. } => *run,
             Self::RunAdmission { admission } => admission.run_id(),
+            Self::Resumed { run, .. } => *run,
         }
     }
 }
@@ -374,7 +382,8 @@ impl StorageRuntimeJournal {
             | RuntimeJournalEvent::WaitResolved { .. }
             | RuntimeJournalEvent::AskScheduled { .. }
             | RuntimeJournalEvent::AskAnswered { .. }
-            | RuntimeJournalEvent::SlotWritten { .. } => None,
+            | RuntimeJournalEvent::SlotWritten { .. }
+            | RuntimeJournalEvent::Resumed { .. } => None,
         }
     }
 
@@ -421,7 +430,8 @@ impl StorageRuntimeJournal {
             | RuntimeJournalEvent::AskAnswered { .. }
             | RuntimeJournalEvent::SlotWritten { .. }
             | RuntimeJournalEvent::StepStarted { .. }
-            | RuntimeJournalEvent::StepSucceeded { .. } => None,
+            | RuntimeJournalEvent::StepSucceeded { .. }
+            | RuntimeJournalEvent::Resumed { .. } => None,
         }
     }
 
@@ -482,7 +492,8 @@ impl StorageRuntimeJournal {
             | RuntimeJournalEvent::ActionCompleted { .. }
             | RuntimeJournalEvent::ActionFailed { .. }
             | RuntimeJournalEvent::StepStarted { .. }
-            | RuntimeJournalEvent::StepSucceeded { .. } => None,
+            | RuntimeJournalEvent::StepSucceeded { .. }
+            | RuntimeJournalEvent::Resumed { .. } => None,
         }
     }
 
