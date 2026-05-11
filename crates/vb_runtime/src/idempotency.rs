@@ -166,11 +166,7 @@ impl IdempotencyTracker {
     /// - `AtLeastOnceExternal`: records the key; returns `false` if already
     ///   seen. The caller MUST check the return value and skip re-dispatch.
     #[must_use]
-    pub fn track_for_policy(
-        &mut self,
-        policy: Idempotency,
-        key: u128,
-    ) -> bool {
+    pub fn track_for_policy(&mut self, policy: Idempotency, key: u128) -> bool {
         match policy {
             Idempotency::DeterministicPure | Idempotency::IdempotentExternal => {
                 // Safe to retry without deduplication — skip tracking.
@@ -194,16 +190,10 @@ impl IdempotencyTracker {
     /// Always returns `false` for `DeterministicPure` and `IdempotentExternal`
     /// since those are never tracked.
     #[must_use]
-    pub fn is_completed_for_policy(
-        &self,
-        policy: Idempotency,
-        key: u128,
-    ) -> bool {
+    pub fn is_completed_for_policy(&self, policy: Idempotency, key: u128) -> bool {
         match policy {
             Idempotency::DeterministicPure | Idempotency::IdempotentExternal => false,
-            Idempotency::AtLeastOnceExternal => {
-                self.at_least_once_completed.contains(&key)
-            }
+            Idempotency::AtLeastOnceExternal => self.at_least_once_completed.contains(&key),
         }
     }
 

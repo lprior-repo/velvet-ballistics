@@ -39,15 +39,18 @@ FailAction(run, step, action, attempt) ==
 ReplayNext ==
     /\ replay_index < Len(journal)
     /\ LET event == journal[replay_index + 1] IN
-        /\ IF event.type = "ActionScheduled" THEN
-            \/ (event.policy \in {"DeterministicPure", "IdempotentExternal"} /\ UNCHANGED idempotent_actions)
-            \/ (event.policy = "AtLeastOnceExternal" /\ idempotent_actions' = idempotent_actions \cup {<<event.run, event.step, event.action, event.attempt>>})
-        ELSE IF event.type = "ActionCompleted" THEN
-            /\ <<event.run, event.step, event.action, event.attempt>> \notin idempotent_actions
-        ELSE
-            TRUE
+        CASE
+            /\ event.type = "ActionScheduled"
+            /\ event.policy \in {"DeterministicPure", "IdempotentExternal"}
+                -> TRUE
+            [] /\ event.type = "ActionScheduled"
+            /\ event.policy = "AtLeastOnceExternal"
+                -> idempotent_actions' = idempotent_actions \cup {<<event.run, event.step, event.action, event.attempt>>}
+            [] /\ event.type = "ActionCompleted"
+                -> <<event.run, event.step, event.action, event.attempt>> \notin idempotent_actions
+            [] OTHER -> TRUE
     /\ replay_index' = replay_index + 1
-    /\ UNCHANGED journal
+    /\ UNCHANGED <<journal, idempotent_actions>>
 
 IsIdempotent(event) ==
     event.type = "ActionCompleted" \/ event.type = "ActionFailed"
@@ -77,7 +80,11 @@ ReplaySafe ==
             journal[i].attempt = attempt
             => journal[j].type /= "ActionScheduled" \/ journal[j].attempt /= attempt
 
-Spec == Init /\ [][ReplayNext]_<<journal, replay_index, idempotent_actions>>
+ReplayComplete ==
+    replay_index >= Len(journal)
+    /\ UNCHANGED <<journal, replay_index, idempotent_actions>>
+
+Spec == Init /\ [][ReplayNext \/ ReplayComplete]_<<journal, replay_index, idempotent_actions>>
 
 THEOREM Spec => []NoDuplicateNonIdempotent
 THEOREM Spec => []ReplaySafe

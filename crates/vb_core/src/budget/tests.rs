@@ -3350,9 +3350,7 @@ fn ut_budget_sub_never_underflows() {
 
     match result.unwrap_err() {
         AggregateBudgetError::Underflow { resource: _ } => {}
-        other => panic!(
-            "expected AggregateBudgetError::Underflow, got {other:?}"
-        ),
+        other => panic!("expected AggregateBudgetError::Underflow, got {other:?}"),
     }
 
     // Non-zero usage subtract that results in zero is fine (no underflow)

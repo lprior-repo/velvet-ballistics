@@ -16,11 +16,11 @@ VARIABLES
 
 Init ==
     /\ journal = <<>>
-    /\ latest_attempt = [run \in RunId, step \in StepId |-> -1]
+    /\ latest_attempt = [<<run, step>> \in (RunId \X StepId) |-> -1]
 
 ScheduleAction(run, step, action, attempt) ==
     /\ journal' = Append(journal, [type |-> "ActionScheduled", run |-> run, step |-> step, action |-> action, attempt |-> attempt])
-    /\ latest_attempt' = [latest_attempt EXCEPT ![run][step] = attempt]
+    /\ latest_attempt' = [latest_attempt EXCEPT ![<<run, step>>] = attempt]
 
 CompleteAction(run, step, action, attempt, success) ==
     /\ journal' = Append(journal, [type |-> "ActionCompleted", run |-> run, step |-> step, action |-> action, attempt |-> attempt, success |-> success])
@@ -30,9 +30,9 @@ FailAction(run, step, action, attempt) ==
     /\ journal' = Append(journal, [type |-> "ActionFailed", run |-> run, step |-> step, action |-> action, attempt |-> attempt])
     /\ latest_attempt' = latest_attempt
 
-\* Stale completion: attempt < latest_attempt[run][step]
+\* Stale completion: attempt < latest_attempt[<<run, step>>]
 IsStale(run, step, attempt) ==
-    attempt < latest_attempt[run][step]
+    attempt < latest_attempt[<<run, step>>]
 
 \* Safety: stale completions must be rejected
 StaleCompletionRejected ==
@@ -42,7 +42,7 @@ StaleCompletionRejected ==
 
 AttemptMonotonic ==
     \A run \in RunId, step \in StepId :
-        latest_attempt[run][step] >= -1
+        latest_attempt[<<run, step>>] >= -1
 
 Next ==
     \E run \in RunId, step \in StepId, action \in ActionId, attempt \in {0, 1, 2, 3} :

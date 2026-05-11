@@ -150,13 +150,13 @@ impl IpcFrameHeader {
     /// Encodes the header using the §21 little-endian wire layout.
     ///
     /// Wire format (24 bytes total):
-    /// - Bytes [0:4]:   magic u32 little-endian (0x5642_4C54 "VBLT")
-    /// - Bytes [4:6]:   version u16 little-endian
-    /// - Bytes [6:8]:   command u16 little-endian
-    /// - Bytes [8:10]:  flags u16 little-endian
-    /// - Bytes [10:12]: reserved u16 little-endian (always 0)
-    /// - Bytes [12:20]: correlation u64 little-endian
-    /// - Bytes [20:24]: payload_len u32 little-endian
+    /// - Bytes \[0:4\]:   magic u32 little-endian (0x5642_4C54 "VBLT")
+    /// - Bytes \[4:6\]:   version u16 little-endian
+    /// - Bytes \[6:8\]:   command u16 little-endian
+    /// - Bytes \[8:10\]:  flags u16 little-endian
+    /// - Bytes \[10:12\]: reserved u16 little-endian (always 0)
+    /// - Bytes \[12:20\]: correlation u64 little-endian
+    /// - Bytes \[20:24\]: payload_len u32 little-endian
     pub fn encode(self) -> Result<[u8; IPC_HEADER_LEN], IpcError> {
         let mut bytes = [0u8; IPC_HEADER_LEN];
         let mut cursor = std::io::Cursor::new(&mut bytes[..]);

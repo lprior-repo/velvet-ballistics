@@ -933,7 +933,8 @@ fn ut_header_reserved_field_is_zero() {
     let encoded = header.encode().expect("header must encode");
     let reserved_bytes: [u8; 2] = [encoded[10], encoded[11]];
     assert_eq!(
-        reserved_bytes, [0x00, 0x00],
+        reserved_bytes,
+        [0x00, 0x00],
         "reserved bytes at offset 10-11 must be zero"
     );
 }

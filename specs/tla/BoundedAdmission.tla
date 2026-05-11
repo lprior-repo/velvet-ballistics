@@ -21,7 +21,7 @@ VARIABLES
     reserved_resources,
     pending_admission
 
-ResourceReservation == [slots: Nat, actions: Nat, memory_bytes: Nat]
+ResourceReservation == [slots: 0..MaxSlotsPerRun, actions: 0..MaxActionsPerRun, memory_bytes: 0..100]
 
 Init ==
     /\ admitted_runs = {}
@@ -62,7 +62,7 @@ NoRunAdmittedWithoutReservation ==
 
 ShardCapacityBounded ==
     \A shard \in ShardId :
-        |shard_runs[shard]| <= MaxRunsPerShard
+        Cardinality(shard_runs[shard]) <= MaxRunsPerShard
 
 AdmissionRequiresPending ==
     \A run \in admitted_runs :

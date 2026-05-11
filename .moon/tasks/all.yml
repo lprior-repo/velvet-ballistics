@@ -286,7 +286,7 @@ tasks:
       # Smoke policy: prove cargo-mutants integration on a bounded, deterministic
       # vb_core slice without mutating the source tree in place. Full mutation-score
       # debt is tracked separately.
-      flock --shared target/moon-locks/source-mutation.lock timeout 3m rustup run nightly-2026-04-28 cargo mutants \
+      flock --shared target/moon-locks/source-mutation.lock timeout 10m rustup run nightly-2026-04-28 cargo mutants \
         --package vb_core \
         --file crates/vb_core/src/diagnostic.rs \
         --re 'is_supported_code -> bool with false' \

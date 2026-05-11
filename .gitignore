@@ -52,3 +52,6 @@ mutants.out/
 mutants.out.old/
 mutants.out.*/
 .beads/moon-ci-output.md
+
+# TLA+/TLC generated model-checker state dumps
+specs/tla/states/

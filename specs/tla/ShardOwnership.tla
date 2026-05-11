@@ -16,18 +16,18 @@ VARIABLES
     pending_transfers
 
 Init ==
-    /\ run_owner = [run \in RunId |-> Nil]
+    /\ run_owner = [run \in RunId |-> 0]
     /\ shard_runs = [shard \in ShardId |-> {}]
     /\ pending_transfers = {}
 
 AssignShard(run, shard) ==
-    /\ run_owner[run] = Nil
+    /\ run_owner[run] = 0
     /\ run_owner' = [run_owner EXCEPT ![run] = shard]
     /\ shard_runs' = [shard_runs EXCEPT ![shard] = shard_runs[shard] \cup {run}]
     /\ UNCHANGED pending_transfers
 
 InitiateTransfer(run, new_shard) ==
-    /\ run_owner[run] /= Nil
+    /\ run_owner[run] /= 0
     /\ run_owner[run] /= new_shard
     /\ pending_transfers' = pending_transfers \cup {<<run, new_shard>>}
     /\ UNCHANGED <<run_owner, shard_runs>>

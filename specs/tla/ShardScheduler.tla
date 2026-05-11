@@ -31,7 +31,7 @@ VARIABLES
 ShardState == [queue: Seq(Command), shutting_down: BOOLEAN]
 
 Init ==
-    /\ queues = [s \in ShardId |-> <<>>]
+    /\ queues = [s \in ShardId |-> <<[type |-> "Submit", run |-> 1, action |-> 1]>>]
     /\ shard_status = [s \in ShardId |-> FALSE]
     /\ total_processed = 0
 
@@ -42,9 +42,10 @@ Init ==
 Tick(s) ==
     /\ shard_status[s] = FALSE
     /\ LET q == queues[s] IN
-        IF Len(q) = 0 THEN
-            \* Empty queue — tick returns TRUE (continue, no work done)
-            /\ queues' = queues
+            IF Len(q) = 0 THEN
+                \* Empty queue — tick returns TRUE (continue, no work done)
+                /\ queues' = queues
+                /\ UNCHANGED <<shard_status, total_processed>>
         ELSE
             \* Dequeue one command and process it
             LET cmd == Head(q) IN
@@ -81,12 +82,14 @@ ShutdownGraceful ==
             IF Len(q) = 0 THEN
                 \* Empty — try next shard (no-op for this shard)
                 /\ queues' = queues
-        ELSIF Head(q).type = "Shutdown" THEN
-                /\ queues' = [queues EXCEPT ![s] = Tail(q)]
-                /\ shard_status' = [shard_status EXCEPT ![s] = TRUE]
+                /\ UNCHANGED <<shard_status, total_processed>>
             ELSE
-                /\ queues' = [queues EXCEPT ![s] = Tail(q)]
-                /\ UNCHANGED shard_status
+                IF Head(q).type = "Shutdown" THEN
+                    /\ queues' = [queues EXCEPT ![s] = Tail(q)]
+                    /\ shard_status' = [shard_status EXCEPT ![s] = TRUE]
+                ELSE
+                    /\ queues' = [queues EXCEPT ![s] = Tail(q)]
+                    /\ UNCHANGED shard_status
     /\ total_processed' = total_processed + 1
 
 \* All shards are drained: every queue is empty or shutting_down
@@ -108,6 +111,13 @@ TickOneCommand ==
         /\ Len(queues[s]) > 0
         => Len(queues[s])' = Len(queues[s]) - 1
 
+SubmitCommand(s) ==
+    /\ shard_status[s] = FALSE
+    /\ Len(queues[s]) < MAX_COMMAND_QUEUE_CAPACITY
+    /\ \E run \in RunId, action \in ActionId :
+        queues' = [queues EXCEPT ![s] = Append(queues[s], [type |-> "Submit", run |-> run, action |-> action])]
+    /\ UNCHANGED <<shard_status, total_processed>>
+
 Next ==
     \/ \E s \in ShardId : Tick(s)
     \/ ShutdownGraceful
@@ -116,7 +126,7 @@ Spec == Init /\ [][Next]_<<queues, shard_status, total_processed>>
 
 \* Theorems
 THEOREM Spec => []QueueBounded
-THEOREM Spec => []TickOneCommand
-THEOREM Spec => []AllDrained
+THEOREM Spec => [][TickOneCommand]_<<queues, shard_status, total_processed>>
+THEOREM Spec => [][AllDrained]_<<queues, shard_status, total_processed>>
 
 ====
