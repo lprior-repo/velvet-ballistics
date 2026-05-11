@@ -311,7 +311,10 @@ fn lex_expr_tokenizes_not_keyword() -> crate::ExprResult<()> {
 #[test]
 fn lexes_float_literal() -> crate::ExprResult<()> {
     let tokens = lex_expr("3.14")?;
-    let expected = vec![Token::Literal(LiteralToken::F64(vb_core::FiniteF64::new(3.14)?)), Token::End];
+    let expected = vec![
+        Token::Literal(LiteralToken::F64(vb_core::FiniteF64::new(3.14)?)),
+        Token::End,
+    ];
     assert_eq!(tokens, expected);
     Ok(())
 }
@@ -319,7 +322,10 @@ fn lexes_float_literal() -> crate::ExprResult<()> {
 #[test]
 fn lexes_float_literal_with_leading_zero() -> crate::ExprResult<()> {
     let tokens = lex_expr("0.5")?;
-    let expected = vec![Token::Literal(LiteralToken::F64(vb_core::FiniteF64::new(0.5)?)), Token::End];
+    let expected = vec![
+        Token::Literal(LiteralToken::F64(vb_core::FiniteF64::new(0.5)?)),
+        Token::End,
+    ];
     assert_eq!(tokens, expected);
     Ok(())
 }
@@ -327,7 +333,10 @@ fn lexes_float_literal_with_leading_zero() -> crate::ExprResult<()> {
 #[test]
 fn lexes_float_literal_large_value() -> crate::ExprResult<()> {
     let tokens = lex_expr("123.456")?;
-    let expected = vec![Token::Literal(LiteralToken::F64(vb_core::FiniteF64::new(123.456)?)), Token::End];
+    let expected = vec![
+        Token::Literal(LiteralToken::F64(vb_core::FiniteF64::new(123.456)?)),
+        Token::End,
+    ];
     assert_eq!(tokens, expected);
     Ok(())
 }

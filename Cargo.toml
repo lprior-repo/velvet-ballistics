@@ -7,6 +7,7 @@ members = [
     "crates/vb_compile",
     "crates/vb_storage",
     "crates/vb_runtime",
+    "crates/vb_doc",
     "crates/vb_ipc",
     "crates/vb_codegen",
     "crates/vb_ui",
@@ -48,6 +49,7 @@ xtask = { path = "xtask" }
 vb_codegen = { path = "crates/vb_codegen" }
 vb_compile = { path = "crates/vb_compile" }
 vb_core = { path = "crates/vb_core" }
+vb_doc = { path = "crates/vb_doc" }
 vb_expr = { path = "crates/vb_expr" }
 vb_ipc = { path = "crates/vb_ipc" }
 vb_runtime = { path = "crates/vb_runtime" }

@@ -19,6 +19,7 @@ blake3.workspace = true
 tempfile.workspace = true
 libfuzzer-sys = "0.4"
 vb_core = { path = "../crates/vb_core" }
+vb_doc = { path = "../crates/vb_doc" }
 vb_expr = { path = "../crates/vb_expr" }
 vb_storage = { path = "../crates/vb_storage" }
 vb_validate = { path = "../crates/vb_validate" }
@@ -32,6 +33,13 @@ path = "src/lib.rs"
 [[bin]]
 name = "ui_redaction_artifact"
 path = "fuzz_targets/ui_redaction_artifact.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "check_doc_taint_consistency_accepts_arbitrary_markdown"
+path = "fuzz_targets/check_doc_taint_consistency_accepts_arbitrary_markdown.rs"
 test = false
 doc = false
 bench = false

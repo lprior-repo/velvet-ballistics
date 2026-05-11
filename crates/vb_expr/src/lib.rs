@@ -82,6 +82,9 @@ pub enum ExprError {
     #[error("integer out of range")]
     IntegerOutOfRange,
 
+    #[error("non-finite float")]
+    NonFiniteFloat,
+
     #[error("unexpected character: {ch}")]
     UnexpectedChar { ch: char },
 
@@ -106,9 +109,6 @@ pub enum ExprError {
 
     #[error("unsupported literal: {literal}")]
     UnsupportedLiteral { literal: String },
-
-    #[error("non-finite floating-point value (NaN or infinity)")]
-    NonFiniteFloat,
 }
 
 pub type ExprResult<T> = Result<T, ExprError>;

@@ -6,9 +6,9 @@ use crate::{ExprError, ExprResult};
 
 pub use types::{ExprAst, ExprHelper, ExprLiteral};
 
+pub mod miri_tests;
 pub mod tests;
 pub mod types;
-pub mod miri_tests;
 
 /// Maximum nesting depth for the parser.
 const MAX_DEPTH: u8 = 64;

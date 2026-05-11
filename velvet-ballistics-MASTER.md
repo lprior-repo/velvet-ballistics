@@ -606,7 +606,7 @@ Required types and functions:
 
 `StepBudget` uses `remaining: u64`; `try_take() -> CoreResult<bool>`. Budget `0` executes zero transitions and returns `StepBudgetExhausted`. Budget `1` executes exactly one transition.
 
-`EngineSignal::Finished(SlotValue, Taint)` carries taint from the result slot. The Finish node reads slot taint and propagates it to the signal. Compile-time validation rejects `Secret`-tainted finish results (defense-in-depth).
+`EngineSignal::Finished(SlotValue, Taint)` carries taint from the result slot. The Finish node reads slot taint and propagates it to the signal. Validation does not reject `Secret` or `DerivedFromSecret` finish results; runtime preserves the result-slot taint in the signal.
 
 ---
 
@@ -655,7 +655,7 @@ Finish
 
 Generated Rust execution may lower these into direct `match` arms or straight-line functions. It must keep the same step states, slot writes, taint behavior, suspension semantics, journal events, typed errors, and result values as IR mode.
 
-**`Finish` taint contract:** The `Finish` IR node reads the taint from the result slot and emits `EngineSignal::Finished(SlotValue, Taint)`. Taint is joined from all slots contributing to the result. Compile-time validation rejects workflows where the finish result slot is `Secret`-tainted (defense-in-depth).
+**`Finish` taint contract:** The `Finish` IR node reads the taint from the result slot and emits `EngineSignal::Finished(SlotValue, Taint)`. Taint is joined from all slots contributing to the result. Runtime preserves `Clean`, `DerivedFromSecret`, and `Secret` result taints; validation does not reject tainted finish results.
 
 Final choose contract: `Choose { branches, otherwise }` evaluates `ExprBranch { condition: ExprIdx, target }` in order and jumps to the first true expression; `ChooseSlot { branches, otherwise }` reads `SlotBranch { condition: SlotIdx, target }` in order after those slots have been materialized by prior IR. `ChooseSlot` condition slots must be validated as boolean slots. If no branch matches, `otherwise` is taken; missing `otherwise` with no match is `CoreError::MissingNextStep { step: current }`. Untyped or string-condition choose nodes are migration-only and are not part of final IR.
 
@@ -1541,7 +1541,7 @@ Required coverage:
 - Multiple primitives per step rejected; missing primitive rejected.
 - Forward references rejected.
 - Control-flow cycles detected and rejected.
-- Secret-tainted finish results rejected at compile time.
+- Secret-tainted finish results preserved in `Finished(SlotValue, Taint)`.
 - All diagnostics have code, path, span, and message.
 
 ### Engine invariant tests
@@ -2012,7 +2012,7 @@ Idempotent re-mark (`state == next`) is valid. All other transitions return `Int
 
 ### EngineSignal / RuntimeSignal
 
-Core engine signals: `Continue`, `Finished(SlotValue)`, `StepBudgetExhausted`, `AwaitingAction`, `AwaitingWait`, `AwaitingAsk`.
+Core engine signals: `Continue`, `Finished(SlotValue, Taint)`, `StepBudgetExhausted`, `AwaitingAction`, `AwaitingWait`, `AwaitingAsk`.
 
 Runtime engine extends `AwaitingAction` to carry `ActionTicket { run, step, seq, action, attempt, idempotency_key }`.
 
@@ -2065,8 +2065,8 @@ Runtime engine extends `AwaitingAction` to carry `ActionTicket { run, step, seq,
 | Aspect | Behavior |
 |--------|----------|
 | Inputs read | Expression program at `expr` index; expression may read arbitrary slots, constants, and accessors |
-| Slots written | `node.output` with `Taint::Clean` |
-| Taint | Always Clean (no taint join of expression operands) |
+| Slots written | `node.output` with the joined taint of expression operand slot reads |
+| Taint | `join_taint` over loaded expression operand slot taints |
 | StepState | Pending → Running → Succeeded |
 | Journal | SlotWritten |
 | Suspension | Never |
@@ -2078,9 +2078,9 @@ Runtime engine extends `AwaitingAction` to carry `ActionTicket { run, step, seq,
 
 | Aspect | Behavior |
 |--------|----------|
-| Inputs read | Each field's slot value |
-| Slots written | `node.output` with `SlotValue::Object(ObjectId)`, taint `Clean` |
-| Taint | Always Clean (no join of field taints) |
+| Inputs read | Each field's slot value and taint |
+| Slots written | `node.output` with `SlotValue::Object(ObjectId)` and joined field taint |
+| Taint | `join_taint` over field slot taints |
 | StepState | Pending → Running → Succeeded |
 | Journal | SlotWritten |
 | Suspension | Never |
@@ -2093,9 +2093,9 @@ Runtime engine extends `AwaitingAction` to carry `ActionTicket { run, step, seq,
 
 | Aspect | Behavior |
 |--------|----------|
-| Inputs read | Each item's slot value |
-| Slots written | `node.output` with `SlotValue::List(ListId)`, taint `Clean` |
-| Taint | Always Clean (no join of item taints) |
+| Inputs read | Each item's slot value and taint |
+| Slots written | `node.output` with `SlotValue::List(ListId)` and joined item taint |
+| Taint | `join_taint` over item slot taints |
 | StepState | Pending → Running → Succeeded |
 | Journal | SlotWritten |
 | Suspension | Never |
@@ -2196,9 +2196,9 @@ Runtime engine extends `AwaitingAction` to carry `ActionTicket { run, step, seq,
 
 | Aspect | Behavior |
 |--------|----------|
-| Inputs read | `answer` slot value |
-| Slots written | `node.output` with answer value (if output is Some) |
-| Taint | Clean (write_slot, not write_slot_with_taint) |
+| Inputs read | `answer` slot value and taint |
+| Slots written | `node.output` with answer value and answer taint (if output is Some) |
+| Taint | Propagated from answer slot |
 | StepState | Running → Succeeded |
 | Journal | SlotWritten, AskAnswered |
 | Suspension | Never |
@@ -2547,9 +2547,9 @@ Clean < DerivedFromSecret < Secret
 |-----------|---------------|
 | `SetConst` | Always `Clean` — constants are compile-time values with no secret origin |
 | `Copy` | Preserves source taint — `write_slot_with_taint(output, value, source_taint)` |
-| `EvalExpr` | Always `Clean` — `write_slot` (not `write_slot_with_taint`). No taint join of expression operands. |
-| `BuildObject` | Always `Clean` — no join of field taints |
-| `BuildList` | Always `Clean` — no join of item taints |
+| `EvalExpr` | Output taint is the join of expression operand slot taints. |
+| `BuildObject` | Output taint is the join of field slot taints. |
+| `BuildList` | Output taint is the join of item slot taints. |
 | `Do` (DeterministicPure) | Output ≥ input. `TaintViolation` if input is not Clean. Clean input → Clean output. |
 | `Do` (IdempotentExternal) | Same propagation as DeterministicPure |
 | `Do` (AtLeastOnceExternal) | Secret input → `DerivedFromSecret` output. `DerivedFromSecret` input → `DerivedFromSecret`. Clean input → Clean. |
@@ -3534,7 +3534,7 @@ This is the Holzmann influence: bounded loops, bounded allocation, no hidden gro
 1. `EvalExpr` joins taint from all loaded input slots.
 2. `BuildObject`/`BuildList` join taint from all field/item slots.
 3. `Finish` carries taint in the result signal `(SlotValue, Taint)`.
-4. Compile-time validation rejects workflows where a `Finish` result slot is `Secret`-tainted (defense-in-depth).
+4. Validation does not reject tainted finish results; `Clean`, `DerivedFromSecret`, and `Secret` finish taints are preserved in the result signal.
 5. Action output taint must be at least as restrictive as input taint for `DeterministicPure` and `IdempotentExternal` actions.
 6. `AtLeastOnceExternal` actions propagate conservatively as `DerivedFromSecret` when any input is tainted.
 7. Secret-tainted failure details must not enter public diagnostics without redaction.

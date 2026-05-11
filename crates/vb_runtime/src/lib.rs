@@ -43,6 +43,7 @@ pub mod primitives;
 pub mod recovery;
 pub mod runtime;
 pub mod shard;
+pub mod taint;
 pub mod trace;
 
 pub use shard::{AskAnswer, AskTicket};
