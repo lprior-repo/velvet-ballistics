@@ -124,6 +124,10 @@ enum LogosToken {
     #[regex(r"[0-9]+")]
     Integer,
 
+    // --- Floating-point literals ---
+    #[regex(r"[0-9]+\.[0-9]+")]
+    Float,
+
     // --- Identifiers / keywords ---
     #[regex(r"[a-zA-Z_][a-zA-Z0-9_]*")]
     Ident,
@@ -157,6 +161,13 @@ fn convert_logos_token(tok: LogosToken, slice: &str) -> ExprResult<Token> {
                 .parse::<i64>()
                 .map_err(|_| ExprError::IntegerOutOfRange)?;
             Ok(Token::Literal(LiteralToken::I64(value)))
+        }
+        LogosToken::Float => {
+            let value = slice
+                .parse::<f64>()
+                .map_err(|_| ExprError::NonFiniteFloat)?;
+            let finite = vb_core::FiniteF64::new(value).map_err(|_| ExprError::NonFiniteFloat)?;
+            Ok(Token::Literal(LiteralToken::F64(finite)))
         }
         LogosToken::Ident => Ok(classify_ident(slice)),
     }

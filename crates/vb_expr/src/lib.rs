@@ -100,6 +100,9 @@ pub enum ExprError {
 
     #[error("unsupported literal: {literal}")]
     UnsupportedLiteral { literal: String },
+
+    #[error("non-finite floating-point value (NaN or infinity)")]
+    NonFiniteFloat,
 }
 
 pub type ExprResult<T> = Result<T, ExprError>;
