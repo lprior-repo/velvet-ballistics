@@ -26,6 +26,7 @@ vb_validate = { path = "../crates/vb_validate" }
 vb_ui_snapshot = { path = "../crates/vb_ui_snapshot" }
 vb_yaml = { path = "../crates/vb_yaml" }
 xtask = { path = "../xtask" }
+velvet-ballastics-workspace = { path = ".." }
 
 [lib]
 name = "fuzz_lib"
@@ -202,6 +203,27 @@ bench = false
 [[bin]]
 name = "decode_record"
 path = "fuzz_targets/decode_record.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "boundary_inventory_parser"
+path = "src/bin/boundary_inventory_parser.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "boundary_metadata"
+path = "src/bin/boundary_metadata.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "boundary_evidence_reference"
+path = "src/bin/boundary_evidence_reference.rs"
 test = false
 doc = false
 bench = false

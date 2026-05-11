@@ -35,6 +35,7 @@ workspace = true
 
 [dependencies]
 saphyr.workspace = true
+serde_json.workspace = true
 toml.workspace = true
 
 [dev-dependencies]
@@ -71,6 +72,9 @@ harness = false
 name = "vb_kkvb_xtask_routing_red"
 harness = false
 
+[[bench]]
+name = "vb_y1zq_boundary_inventory"
+harness = false
 [workspace.package]
 edition = "2024"
 license = "MIT OR Apache-2.0"
