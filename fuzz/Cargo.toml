@@ -25,6 +25,7 @@ vb_storage = { path = "../crates/vb_storage" }
 vb_validate = { path = "../crates/vb_validate" }
 vb_ui_snapshot = { path = "../crates/vb_ui_snapshot" }
 vb_yaml = { path = "../crates/vb_yaml" }
+xtask = { path = "../xtask" }
 
 [lib]
 name = "fuzz_lib"

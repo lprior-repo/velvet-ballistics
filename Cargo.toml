@@ -14,9 +14,11 @@ members = [
     "crates/vb_ui_snapshot",
     "crates/vb_proof_kernels",
     "crates/velvet_ballastics",
+    "crates/workspace_tests",
     "xtask",
     "fuzz",
 ]
+default-members = ["."]
 resolver = "2"
 exclude = ["target/miri-tmp", "crates/vb_ui"]
 
@@ -63,6 +65,10 @@ harness = false
 
 [[bench]]
 name = "vb_qi37_1_1_recovery"
+harness = false
+
+[[bench]]
+name = "vb_kkvb_xtask_routing_red"
 harness = false
 
 [workspace.package]
