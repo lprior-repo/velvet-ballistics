@@ -113,12 +113,26 @@ rtk cargo run -p velvet_ballastics --bin vb -- submit /tmp/.../cli-workflow.yaml
 
 Note: an earlier manual QA attempt using `tests/fixtures/valid/minimal.yaml` failed because that fixture includes `description`, which this CLI compiler rejects as `unknown top-level workflow field: description`. Retried with the exact valid `CLI_WORKFLOW` shape.
 
-## Not run
+## Additional State 15 non-landing preflight
 
-`moon run :quick`, `moon run :test`, and `moon ci` were not run in this integration workspace. Prior known repo-wide Moon debt is tracked in `vb-w823`; this pass ran scoped CLI gates only.
+The original integration directory was absent on resume, so a new preflight workspace was created from existing integration change `tqypyqys 57f44923`:
+
+```text
+/home/lewis/src/Velvet-ballistics-vb-8iwj-wave3-preflight
+zmryxnnv e3b5bb45 (empty) vb-8iwj: run wave 3 landing preflight
+parent: tqypyqys 57f44923 vb-8iwj: integrate wave 3 CLI workspaces
+```
+
+Additional command evidence is recorded in `.beads/vb-8iwj/preflight-gates.md`.
+
+Summary:
+
+- `moon run :quick`: PASS.
+- `moon run :test`: first 300s attempt timed out; retry with 600s bound PASS, 9863 tests passed.
+- `moon ci`: completed non-zero, with failures classified `DEFERRED_GLOBAL` against existing `vb-w823` repo-wide fmt/lint debt.
 
 ## Landing blocker
 
 Classification: LANDING_BLOCKED.
 
-The merge workspace proves the three sibling changes can be combined locally, but original beads are not closed because State 15 requires actual landing/sync/cleanup. Source was not pushed and no bookmark was forced. Original workspaces remain present by user instruction.
+The merge/preflight workspaces prove the three sibling changes can be combined locally and pass non-landing preflight gates except known global Moon debt. Original beads are not closed because State 15 requires actual landing/sync/cleanup. Source was not pushed and no bookmark was forced. Original workspaces remain present by user instruction.

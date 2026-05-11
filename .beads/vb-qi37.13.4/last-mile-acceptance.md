@@ -62,3 +62,20 @@ Integration workspace `/home/lewis/src/Velvet-ballistics-vb-8iwj-wave3-integrati
 - final manual QA `status --emit yaml`: PASS, real YAML starts with `schema_version: velvet-ballastics/cli-output/v1`.
 
 Still not closed: source not landed to canonical remote/main, no safe push/bookmark policy was provided, and original workspace remains intentionally retained.
+
+## 2026-05-11 additional State 15 preflight
+
+The original integration directory was absent on resume; a new non-landing preflight workspace was created from `tqypyqys 57f44923`:
+
+```text
+/home/lewis/src/Velvet-ballistics-vb-8iwj-wave3-preflight
+zmryxnnv e3b5bb45 (empty) vb-8iwj: run wave 3 landing preflight
+```
+
+Additional evidence:
+
+- `moon run :quick`: PASS.
+- `moon run :test`: first 300s attempt timed out; 600s retry PASS, 9863 tests passed.
+- `moon ci`: completed non-zero; failures match `vb-w823` global debt (`vb_proof_kernels`, `vb_storage`, `fuzz`, `xtask` fmt/lint), classified `DEFERRED_GLOBAL`.
+
+Still not closed: no approved landing policy; original workspace `/home/lewis/src/Velvet-ballistics-vb-qi37-13-4-go` remains retained.
