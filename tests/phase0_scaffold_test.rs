@@ -63,6 +63,22 @@ fn require_valid_yaml_file(relative: &str, reason: &str) -> Result<(), String> {
     Ok(())
 }
 
+fn require_pgo_workload_fixture_compiles(relative: &str) -> Result<(), String> {
+    let bytes = fs::read(workspace_path(relative))
+        .map_err(|error| format!("{} must be readable: {}", relative, error))?;
+    vb_compile::compile_workflow(&bytes)
+        .map(|_workflow| ())
+        .map_err(|errors| {
+            let details = errors
+                .0
+                .iter()
+                .map(std::string::ToString::to_string)
+                .collect::<Vec<_>>()
+                .join(", ");
+            format!("{} must compile as a PGO workload: {}", relative, details)
+        })
+}
+
 #[test]
 fn deny_toml_exists() -> Result<(), String> {
     require_workspace_path("deny.toml")?;
@@ -467,25 +483,13 @@ fn justfile_defines_complete_pgo_pipeline() -> Result<(), String> {
 }
 
 #[test]
-fn pgo_workload_fixtures_compile() -> Result<(), String> {
-    for relative in [
-        "tests/fixtures/pgo/minimal_save.yaml",
-        "tests/fixtures/pgo/choose_true.yaml",
-    ] {
-        let bytes = fs::read(workspace_path(relative))
-            .map_err(|error| format!("{} must be readable: {}", relative, error))?;
-        vb_compile::compile_workflow(&bytes).map_err(|errors| {
-            let details = errors
-                .0
-                .iter()
-                .map(std::string::ToString::to_string)
-                .collect::<Vec<_>>()
-                .join(", ");
-            format!("{} must compile as a PGO workload: {}", relative, details)
-        })?;
-    }
+fn minimal_save_pgo_workload_fixture_compiles() -> Result<(), String> {
+    require_pgo_workload_fixture_compiles("tests/fixtures/pgo/minimal_save.yaml")
+}
 
-    Ok(())
+#[test]
+fn choose_true_pgo_workload_fixture_compiles() -> Result<(), String> {
+    require_pgo_workload_fixture_compiles("tests/fixtures/pgo/choose_true.yaml")
 }
 
 #[test]

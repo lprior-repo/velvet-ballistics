@@ -175,45 +175,44 @@ red_complete_slot_contract_test!(
 );
 
 #[test]
-fn event_only_recovery_keeps_slot_taint_supported_when_value_bytes_are_valid()
--> Result<(), postcard::Error> {
+fn event_only_recovery_keeps_slot_taint_supported_when_value_bytes_are_valid() {
     let events = complete_slot_events(
         RunId::new(43),
         StepIdx::new(1),
         SlotIdx::new(2),
         SlotValue::I64(12),
-    )?;
+    )
+    .expect("complete slot events must encode valid i64 slot value");
 
     assert_eq!(
         unsupported_for(&events),
         Ok(UnsupportedRecoveryState::SUPPORTED)
     );
-    Ok(())
 }
 
 #[test]
-fn deterministic_step_recovery_hydrates_exact_tainted_frame_when_slot_event_is_complete()
--> Result<(), postcard::Error> {
+fn deterministic_step_recovery_hydrates_exact_tainted_frame_when_slot_event_is_complete() {
     let events = complete_slot_events(
         RunId::new(44),
         StepIdx::new(2),
         SlotIdx::new(3),
         SlotValue::I64(99),
-    )?;
+    )
+    .expect("complete slot events must encode valid i64 slot value");
     let hydrated = seed_for(&events).and_then(hydration_label);
 
     assert_eq!(hydrated, Ok(()));
-    Ok(())
 }
 
 #[test]
-fn recovery_does_not_default_missing_durable_taint_to_clean() -> Result<(), postcard::Error> {
+fn recovery_does_not_default_missing_durable_taint_to_clean() {
     let events = complete_slot_events(
         RunId::new(45),
         StepIdx::new(2),
         SlotIdx::new(3),
         SlotValue::I64(99),
-    )?;
+    )
+    .expect("complete slot events must encode valid i64 slot value");
     let expected = vec![RecoveredSlotEntry {
         slot: SlotIdx::new(3),
         value: SlotValue::I64(99),
@@ -221,7 +220,6 @@ fn recovery_does_not_default_missing_durable_taint_to_clean() -> Result<(), post
     }];
 
     assert_eq!(slots_for(&events), Ok(expected));
-    Ok(())
 }
 
 #[test]

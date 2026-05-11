@@ -10,7 +10,6 @@ members = [
     "crates/vb_doc",
     "crates/vb_ipc",
     "crates/vb_codegen",
-    "crates/vb_ui",
     "crates/vb_ui_makepad",
     "crates/vb_ui_snapshot",
     "crates/vb_proof_kernels",
@@ -19,7 +18,7 @@ members = [
     "fuzz",
 ]
 resolver = "2"
-exclude = ["target/miri-tmp"]
+exclude = ["target/miri-tmp", "crates/vb_ui"]
 
 # Root package for workspace-level integration tests
 [package]
@@ -56,6 +55,7 @@ vb_runtime = { path = "crates/vb_runtime" }
 vb_storage = { path = "crates/vb_storage" }
 vb_validate = { path = "crates/vb_validate" }
 vb_yaml = { path = "crates/vb_yaml" }
+velvet_ballastics = { path = "crates/velvet_ballastics" }
 
 [[bench]]
 name = "velvet_ballastics"

@@ -1,8 +1,10 @@
+#![allow(clippy::panic)]
+
 use std::error::Error;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
-use std::sync::{Mutex, MutexGuard, OnceLock};
+use tempfile::TempDir;
 use xtask::evidence::{
     CoreParityClaim, DiagnosticCode, FixtureBackedState, FixtureGate, FixtureStatus,
     ParsedAiReleaseDocument, ParsedNegativeFixtureDocument, ParsedOverlapExpectedFailure,
@@ -25,192 +27,248 @@ const RAW_IDEMPOTENCY_KEY: &str = "Idempotency-Key: idem_vb_nf2u_secret";
 const RAW_TAINT: &str = "tainted_fixture_value_vb_nf2u";
 
 #[test]
-fn all_eight_screens_pass_reachability_and_overlap_gates() -> Result<(), Box<dyn Error>> {
+fn all_eight_screens_pass_reachability_and_overlap_gates() {
     // Given
-    let fixture_guard = reset_negative_fixtures()?;
-    let output = run_ai_release_for_vb_nf2u()?;
+    let workspace = isolated_workspace();
+    let output = must(run_ai_release_for_vb_nf2u(&workspace));
 
     // When
     assert_command_succeeded(&output);
-    let ai_release = read_required_artifact(AI_RELEASE_YAML)?;
-    let snapshot_report = read_required_artifact(UI_SNAPSHOT_REPORT_YAML)?;
+    let ai_release = read_required_artifact(&workspace, AI_RELEASE_YAML);
+    let snapshot_report = read_required_artifact(&workspace, UI_SNAPSHOT_REPORT_YAML);
 
     // Then
-    assert_ui_subgates_are_exact(&ai_release)?;
-    assert_snapshot_inventory_is_exact(&snapshot_report)?;
-    assert_screen_has_required_checks(&snapshot_report, "execution_overview")?;
-    assert_screen_has_required_checks(&snapshot_report, "workflow_graph_authoring")?;
-    assert_screen_has_required_checks(&snapshot_report, "execution_details")?;
-    assert_screen_has_required_checks(&snapshot_report, "verification_certificate")?;
-    assert_screen_has_required_checks(&snapshot_report, "replay_theater")?;
-    assert_screen_has_required_checks(&snapshot_report, "incident_failure")?;
-    assert_screen_has_required_checks(&snapshot_report, "action_registry")?;
-    assert_screen_has_required_checks(&snapshot_report, "storage_doctor_ai_context")?;
-    assert_fixture_evidence_disclaims_core_parity(&ai_release, &snapshot_report)?;
-    drop(fixture_guard);
-    Ok(())
+    assert_ui_subgates_are_exact(&ai_release);
+    assert_snapshot_inventory_is_exact(&snapshot_report);
+    assert_screen_has_required_checks(&snapshot_report, "execution_overview");
+    assert_screen_has_required_checks(&snapshot_report, "workflow_graph_authoring");
+    assert_screen_has_required_checks(&snapshot_report, "execution_details");
+    assert_screen_has_required_checks(&snapshot_report, "verification_certificate");
+    assert_screen_has_required_checks(&snapshot_report, "replay_theater");
+    assert_screen_has_required_checks(&snapshot_report, "incident_failure");
+    assert_screen_has_required_checks(&snapshot_report, "action_registry");
+    assert_screen_has_required_checks(&snapshot_report, "storage_doctor_ai_context");
+    assert_fixture_evidence_disclaims_core_parity(&ai_release, &snapshot_report);
 }
 
 #[test]
-fn secret_values_are_redacted_in_every_screen() -> Result<(), Box<dyn Error>> {
+fn secret_values_are_redacted_in_every_screen() {
     // Given
-    let fixture_guard = reset_negative_fixtures()?;
-    let output = run_ai_release_for_vb_nf2u()?;
+    let workspace = isolated_workspace();
+    let output = must(run_ai_release_for_vb_nf2u(&workspace));
 
     // When
     assert_command_succeeded(&output);
-    let ai_release = read_required_artifact(AI_RELEASE_YAML)?;
-    let snapshot_report = read_required_artifact(UI_SNAPSHOT_REPORT_YAML)?;
-    let negative_evidence = read_required_artifact(NEGATIVE_FIXTURES_TXT)?;
+    let ai_release = read_required_artifact(&workspace, AI_RELEASE_YAML);
+    let snapshot_report = read_required_artifact(&workspace, UI_SNAPSHOT_REPORT_YAML);
+    let negative_evidence = read_required_artifact(&workspace, NEGATIVE_FIXTURES_TXT);
     let evidence_text = format!("{ai_release}\n{snapshot_report}\n{negative_evidence}");
 
     // Then
     assert_no_raw_denied_values_are_emitted(&evidence_text);
-    assert_redaction_coverage_for_screen(&ai_release, "execution_overview")?;
-    assert_redaction_coverage_for_screen(&ai_release, "workflow_graph_authoring")?;
-    assert_redaction_coverage_for_screen(&ai_release, "execution_details")?;
-    assert_redaction_coverage_for_screen(&ai_release, "verification_certificate")?;
-    assert_redaction_coverage_for_screen(&ai_release, "replay_theater")?;
-    assert_redaction_coverage_for_screen(&ai_release, "incident_failure")?;
-    assert_redaction_coverage_for_screen(&ai_release, "action_registry")?;
-    assert_redaction_coverage_for_screen(&ai_release, "storage_doctor_ai_context")?;
-    drop(fixture_guard);
-    Ok(())
+    assert_redaction_coverage_for_screen(&ai_release, "execution_overview");
+    assert_redaction_coverage_for_screen(&ai_release, "workflow_graph_authoring");
+    assert_redaction_coverage_for_screen(&ai_release, "execution_details");
+    assert_redaction_coverage_for_screen(&ai_release, "verification_certificate");
+    assert_redaction_coverage_for_screen(&ai_release, "replay_theater");
+    assert_redaction_coverage_for_screen(&ai_release, "incident_failure");
+    assert_redaction_coverage_for_screen(&ai_release, "action_registry");
+    assert_redaction_coverage_for_screen(&ai_release, "storage_doctor_ai_context");
 }
 
 #[test]
-fn intentional_overlap_fixture_fails_gate() -> Result<(), Box<dyn Error>> {
+fn intentional_overlap_fixture_fails_gate() {
     // Given
-    let fixture_guard = reset_negative_fixtures()?;
-    prepare_intentional_overlap_fixture(
+    let workspace = isolated_workspace();
+    must(prepare_intentional_overlap_fixture(
+        &workspace,
         "screen_id=execution_overview\nfirst_control_id=run_button\nsecond_control_id=stop_button\nrun_button={x:10,y:10,width:100,height:60}\nstop_button={x:80,y:40,width:50,height:50}\nexpected_gate=layout\nexpected_code=layout_violation\noverlap_area_px=600\nbounds={ x: 10, y: 10, width: 100, height: 60 }\nactual_status=failed\n",
-    )?;
+    ));
 
     // When
-    let output = run_ai_release_for_vb_nf2u()?;
+    let output = must(run_ai_release_for_vb_nf2u(&workspace));
 
     // Then
     assert_command_succeeded(&output);
-    let negative_evidence = read_required_artifact(NEGATIVE_FIXTURES_TXT)?;
-    let entry = parse_negative_evidence(&negative_evidence)?.overlap;
-    assert_default_overlap_entry(&entry)?;
-    drop(fixture_guard);
-    Ok(())
+    let negative_evidence = read_required_artifact(&workspace, NEGATIVE_FIXTURES_TXT);
+    let entry = must(parse_negative_evidence(&negative_evidence)).overlap;
+    assert_default_overlap_entry(&entry);
 }
 
 #[test]
-fn intentional_secret_fixture_fails_redaction_gate() -> Result<(), Box<dyn Error>> {
+fn intentional_secret_fixture_fails_redaction_gate() {
     // Given
-    let fixture_guard = reset_negative_fixtures()?;
-    prepare_intentional_secret_fixture(
+    let workspace = isolated_workspace();
+    must(prepare_intentional_secret_fixture(
+        &workspace,
         "fixture_id=intentional_secret_fixture\nraw_sentinel=vb_nf2u_secret_sentinel\napi_key=sk_test_vb_nf2u_raw_secret\ntoken=Bearer vb_nf2u_token\npassword=password=hunter2\nidempotency=Idempotency-Key: idem_vb_nf2u_secret\ntaint=tainted_fixture_value_vb_nf2u\nexpected_gate=redaction\nexpected_code=redaction_violation\nactual_status=failed\n",
-    )?;
+    ));
 
     // When
-    let output = run_ai_release_for_vb_nf2u()?;
+    let output = must(run_ai_release_for_vb_nf2u(&workspace));
 
     // Then
     assert_command_succeeded(&output);
-    let negative_evidence = read_required_artifact(NEGATIVE_FIXTURES_TXT)?;
-    let entry = parse_negative_evidence(&negative_evidence)?.secret;
-    let expected = require_secret_expected(&entry)?;
+    let negative_evidence = read_required_artifact(&workspace, NEGATIVE_FIXTURES_TXT);
+    let entry = must(parse_negative_evidence(&negative_evidence)).secret;
+    let expected = must(require_secret_expected(&entry));
     assert_eq!(expected.status, FixtureStatus::ExpectedFailed);
     assert_eq!(expected.diagnostic_code, DiagnosticCode::Redaction);
     assert_eq!(expected.secret_class.as_str(), "api_key");
     assert_eq!(expected.redacted_sample.as_str(), "[REDACTED:api_key]");
     assert_no_raw_denied_values_are_emitted(&negative_evidence);
-    drop(fixture_guard);
-    Ok(())
 }
 
 #[test]
-fn overlap_negative_fixture_is_consumed_by_command_boundary() -> Result<(), Box<dyn Error>> {
+fn overlap_negative_fixture_is_consumed_by_command_boundary() {
     // Given
-    let fixture_guard = reset_negative_fixtures()?;
-    prepare_intentional_overlap_fixture(
+    let workspace = isolated_workspace();
+    must(prepare_intentional_overlap_fixture(
+        &workspace,
         "screen_id=execution_overview\nfirst_control_id=changed_run_button\nsecond_control_id=changed_stop_button\nchanged_run_button={x:1,y:1,width:10,height:10}\nchanged_stop_button={x:5,y:5,width:20,height:20}\nexpected_gate=layout\nexpected_code=layout_violation\noverlap_area_px=25\nbounds={ x: 1, y: 1, width: 10, height: 10 }\nactual_status=failed\nfixture_nonce=overlap_fixture_must_be_read\n",
-    )?;
+    ));
 
     // When
-    let output = run_ai_release_for_vb_nf2u()?;
+    let output = must(run_ai_release_for_vb_nf2u(&workspace));
 
     // Then
     assert_command_succeeded(&output);
-    let negative_evidence = read_required_artifact(NEGATIVE_FIXTURES_TXT)?;
-    let entry = parse_negative_evidence(&negative_evidence)?.overlap;
-    assert_changed_overlap_entry(&entry)?;
-    drop(fixture_guard);
-    Ok(())
+    let negative_evidence = read_required_artifact(&workspace, NEGATIVE_FIXTURES_TXT);
+    let entry = must(parse_negative_evidence(&negative_evidence)).overlap;
+    assert_changed_overlap_entry(&entry);
 }
 
 #[test]
-fn secret_negative_fixture_is_consumed_by_command_boundary() -> Result<(), Box<dyn Error>> {
+fn secret_negative_fixture_is_consumed_by_command_boundary() {
     // Given
-    let fixture_guard = reset_negative_fixtures()?;
-    prepare_intentional_secret_fixture(
+    let workspace = isolated_workspace();
+    must(prepare_intentional_secret_fixture(
+        &workspace,
         "fixture_id=intentional_secret_fixture\nraw_sentinel=vb_nf2u_secret_sentinel\napi_key=sk_test_vb_nf2u_raw_secret_CHANGED\nexpected_gate=redaction\nexpected_code=redaction_violation\nactual_status=failed\nfixture_nonce=secret_fixture_must_be_read\n",
-    )?;
+    ));
 
     // When
-    let output = run_ai_release_for_vb_nf2u()?;
+    let output = must(run_ai_release_for_vb_nf2u(&workspace));
 
     // Then
     assert_command_succeeded(&output);
-    let negative_evidence = read_required_artifact(NEGATIVE_FIXTURES_TXT)?;
-    let entry = parse_negative_evidence(&negative_evidence)?.secret;
-    let expected = require_secret_expected(&entry)?;
+    let negative_evidence = read_required_artifact(&workspace, NEGATIVE_FIXTURES_TXT);
+    let entry = must(parse_negative_evidence(&negative_evidence)).secret;
+    let expected = must(require_secret_expected(&entry));
     assert_eq!(
         expected.fixture_nonce.as_ref().map(|nonce| nonce.as_str()),
         Some("secret_fixture_must_be_read")
     );
     assert_no_raw_value(&negative_evidence, "sk_test_vb_nf2u_raw_secret_CHANGED");
-    drop(fixture_guard);
-    Ok(())
 }
 
 #[test]
-fn overlap_false_pass_fixture_is_rejected() -> Result<(), Box<dyn Error>> {
+fn overlap_false_pass_fixture_is_rejected() {
     // Given
-    let fixture_guard = reset_negative_fixtures()?;
-    prepare_intentional_overlap_fixture(
+    let workspace = isolated_workspace();
+    must(prepare_intentional_overlap_fixture(
+        &workspace,
         "fixture_id=intentional_overlap_fixture\nfirst_control_id=run_button\nsecond_control_id=stop_button\nexpected_gate=layout\nexpected_code=layout_violation\noverlap_area_px=600\nbounds={ x: 10, y: 10, width: 100, height: 60 }\nactual_status=passed\nfixture_nonce=overlap_false_pass_detector\n",
-    )?;
+    ));
 
     // When
-    let output = run_ai_release_for_vb_nf2u()?;
+    let output = must(run_ai_release_for_vb_nf2u(&workspace));
 
     // Then
-    assert_false_pass_diagnostic(&output, "intentional_overlap_fixture", FixtureGate::Layout)?;
-    drop(fixture_guard);
-    Ok(())
+    assert_false_pass_diagnostic(&output, "intentional_overlap_fixture", FixtureGate::Layout);
 }
 
 #[test]
-fn secret_false_pass_fixture_is_rejected() -> Result<(), Box<dyn Error>> {
+fn secret_false_pass_fixture_is_rejected() {
     // Given
-    let fixture_guard = reset_negative_fixtures()?;
-    prepare_intentional_secret_fixture(
+    let workspace = isolated_workspace();
+    must(prepare_intentional_secret_fixture(
+        &workspace,
         "fixture_id=intentional_secret_fixture\nexpected_gate=redaction\nexpected_code=redaction_violation\nactual_status=passed\nfixture_nonce=secret_false_pass_detector\n",
-    )?;
+    ));
 
     // When
-    let output = run_ai_release_for_vb_nf2u()?;
+    let output = must(run_ai_release_for_vb_nf2u(&workspace));
 
     // Then
     assert_false_pass_diagnostic(
         &output,
         "intentional_secret_fixture",
         FixtureGate::Redaction,
-    )?;
-    drop(fixture_guard);
+    );
+}
+
+struct IsolatedWorkspace {
+    root: TempDir,
+}
+
+impl IsolatedWorkspace {
+    fn path(&self) -> &Path {
+        self.root.path()
+    }
+
+    fn join(&self, relative: &str) -> PathBuf {
+        self.path().join(relative)
+    }
+}
+
+fn isolated_workspace() -> IsolatedWorkspace {
+    let workspace = IsolatedWorkspace {
+        root: must(tempfile::tempdir()),
+    };
+    must(copy_seed_evidence(&workspace));
+    must(write_default_negative_fixtures(&workspace));
+    workspace
+}
+
+fn copy_seed_evidence(workspace: &IsolatedWorkspace) -> Result<(), Box<dyn Error>> {
+    let source = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(".evidence/vb-nf2u");
+    let destination = workspace.join(".evidence/vb-nf2u");
+    copy_dir_recursive(&source, &destination)
+}
+
+fn copy_dir_recursive(source: &Path, destination: &Path) -> Result<(), Box<dyn Error>> {
+    fs::create_dir_all(destination)?;
+    for entry_result in fs::read_dir(source)? {
+        let entry = entry_result?;
+        let file_type = entry.file_type()?;
+        let child_destination = destination.join(entry.file_name());
+        if file_type.is_dir() {
+            copy_dir_recursive(&entry.path(), &child_destination)?;
+        } else {
+            fs::copy(entry.path(), child_destination)?;
+        }
+    }
     Ok(())
 }
 
-fn run_ai_release_for_vb_nf2u() -> Result<Output, Box<dyn Error>> {
+fn run_ai_release_for_vb_nf2u(workspace: &IsolatedWorkspace) -> Result<Output, Box<dyn Error>> {
     Command::new("cargo")
-        .args(["xtask", "ai-release", "--bead", BEAD_ID])
+        .args([
+            "run",
+            "--manifest-path",
+            workspace_manifest_path().as_str(),
+            "-p",
+            "xtask",
+            "--",
+            "ai-release",
+            "--bead",
+            BEAD_ID,
+        ])
+        .current_dir(workspace.path())
         .output()
         .map_err(Into::into)
+}
+
+fn workspace_manifest_path() -> String {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("Cargo.toml")
+        .to_string_lossy()
+        .to_string()
+}
+
+fn must<T, E: std::fmt::Display>(result: Result<T, E>) -> T {
+    result.unwrap_or_else(|error| panic!("unexpected test setup failure: {error}"))
 }
 
 fn assert_command_succeeded(output: &Output) {
@@ -227,7 +285,7 @@ fn assert_false_pass_diagnostic(
     output: &Output,
     expected_fixture: &str,
     expected_gate: FixtureGate,
-) -> Result<(), Box<dyn Error>> {
+) {
     assert_ne!(
         output.status.code(),
         Some(0),
@@ -240,51 +298,40 @@ fn assert_false_pass_diagnostic(
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
     );
-    assert_exact_false_pass_diagnostic(&combined, expected_fixture, expected_gate)?;
-    Ok(())
+    assert_exact_false_pass_diagnostic(&combined, expected_fixture, expected_gate);
 }
 
-fn read_required_artifact(path: &str) -> Result<String, Box<dyn Error>> {
-    let content = fs::read_to_string(path)?;
+fn read_required_artifact(workspace: &IsolatedWorkspace, path: &str) -> String {
+    let content = must(fs::read_to_string(workspace.join(path)));
     assert_ne!(content, "", "required artifact was empty: {path}");
-    Ok(content)
+    content
 }
 
-fn assert_ui_subgates_are_exact(ai_release: &str) -> Result<(), Box<dyn Error>> {
+fn assert_ui_subgates_are_exact(ai_release: &str) {
     assert_eq!(
-        subgate_names(&parse_ai_release(ai_release)?),
+        subgate_names(&must(parse_ai_release(ai_release))),
         canonical_subgates()
     );
-    Ok(())
 }
 
-fn assert_snapshot_inventory_is_exact(snapshot_report: &str) -> Result<(), Box<dyn Error>> {
-    let report = parse_snapshot_report(snapshot_report)?;
+fn assert_snapshot_inventory_is_exact(snapshot_report: &str) {
+    let report = must(parse_snapshot_report(snapshot_report));
     assert_eq!(report.total_screens, 8);
     assert_eq!(report.passed_screens, 8);
     assert_eq!(report.failed_screens, 0);
     assert_eq!(snapshot_screen_names(&report), canonical_screens());
-    Ok(())
 }
 
-fn assert_screen_has_required_checks(
-    snapshot_report: &str,
-    screen: &str,
-) -> Result<(), Box<dyn Error>> {
-    let report = parse_snapshot_report(snapshot_report)?;
+fn assert_screen_has_required_checks(snapshot_report: &str, screen: &str) {
+    let report = must(parse_snapshot_report(snapshot_report));
     let checks = snapshot_checks_for(&report, screen);
     assert_eq!(checks, required_checks());
-    Ok(())
 }
 
-fn assert_redaction_coverage_for_screen(
-    ai_release: &str,
-    screen: &str,
-) -> Result<(), Box<dyn Error>> {
-    let ai = parse_ai_release(ai_release)?;
+fn assert_redaction_coverage_for_screen(ai_release: &str, screen: &str) {
+    let ai = must(parse_ai_release(ai_release));
     let classes = redaction_classes_for(&ai, screen);
     assert_eq!(classes, redaction_classes());
-    Ok(())
 }
 
 fn snapshot_screen_names(report: &SnapshotReport) -> Vec<String> {
@@ -308,7 +355,7 @@ fn snapshot_checks_for(report: &SnapshotReport, screen: &str) -> Vec<String> {
                     .collect()
             })
         })
-        .map_or_else(Vec::new, |checks| checks)
+        .unwrap_or_default()
 }
 
 fn redaction_classes_for(doc: &AiReleaseDoc, screen: &str) -> Vec<String> {
@@ -323,7 +370,7 @@ fn redaction_classes_for(doc: &AiReleaseDoc, screen: &str) -> Vec<String> {
                     .collect()
             })
         })
-        .map_or_else(Vec::new, |classes| classes)
+        .unwrap_or_default()
 }
 
 fn subgate_names(doc: &AiReleaseDoc) -> Vec<String> {
@@ -358,36 +405,31 @@ fn assert_exact_false_pass_diagnostic(
     text: &str,
     expected_fixture: &str,
     expected_gate: FixtureGate,
-) -> Result<(), Box<dyn Error>> {
-    let diag = XtaskCommandDiagnostic::parse_output(text)?;
+) {
+    let diag = must(XtaskCommandDiagnostic::parse_output(text));
     assert_eq!(diag.error_code.as_str(), "false_pass_fixture_violation");
     assert_eq!(diag.fixture_id.as_str(), expected_fixture);
     assert_eq!(diag.expected_gate, expected_gate);
     assert_eq!(diag.actual_status, FixtureStatus::Passed);
-    Ok(())
 }
 
-fn assert_fixture_evidence_disclaims_core_parity(
-    ai_release: &str,
-    snapshot_report: &str,
-) -> Result<(), Box<dyn Error>> {
+fn assert_fixture_evidence_disclaims_core_parity(ai_release: &str, snapshot_report: &str) {
     assert_eq!(
-        parse_ai_release(ai_release)?.fixture_backed,
+        must(parse_ai_release(ai_release)).fixture_backed,
         FixtureBackedState::FixtureBacked
     );
     assert_eq!(
-        parse_ai_release(ai_release)?.core_runtime_parity_claim,
+        must(parse_ai_release(ai_release)).core_runtime_parity_claim,
         CoreParityClaim::Unsupported
     );
     assert_eq!(
-        parse_snapshot_report(snapshot_report)?.fixture_backed,
+        must(parse_snapshot_report(snapshot_report)).fixture_backed,
         FixtureBackedState::FixtureBacked
     );
     assert_eq!(
-        parse_snapshot_report(snapshot_report)?.core_runtime_parity_claim,
+        must(parse_snapshot_report(snapshot_report)).core_runtime_parity_claim,
         CoreParityClaim::Unsupported
     );
-    Ok(())
 }
 
 type SnapshotReport = ParsedSnapshotDocument;
@@ -395,8 +437,8 @@ type AiReleaseDoc = ParsedAiReleaseDocument;
 type NegativeEvidenceDoc = ParsedNegativeFixtureDocument;
 type NegativeEntry = ParsedOverlapFixtureEvidence;
 
-fn assert_default_overlap_entry(entry: &NegativeEntry) -> Result<(), Box<dyn Error>> {
-    let expected = require_overlap_expected(entry)?;
+fn assert_default_overlap_entry(entry: &NegativeEntry) {
+    let expected = must(require_overlap_expected(entry));
     assert_eq!(expected.status, FixtureStatus::ExpectedFailed);
     assert_eq!(expected.diagnostic_code, DiagnosticCode::Layout);
     assert_eq!(expected.screen_id.as_str(), "execution_overview");
@@ -405,7 +447,6 @@ fn assert_default_overlap_entry(entry: &NegativeEntry) -> Result<(), Box<dyn Err
     assert_eq!(expected.predicate.as_str(), "Overlap");
     assert_eq!(expected.overlap_area_px.as_u32(), 600);
     assert_default_overlap_bounds(expected);
-    Ok(())
 }
 
 fn assert_default_overlap_bounds(entry: &ParsedOverlapExpectedFailure) {
@@ -415,8 +456,8 @@ fn assert_default_overlap_bounds(entry: &ParsedOverlapExpectedFailure) {
     );
 }
 
-fn assert_changed_overlap_entry(entry: &NegativeEntry) -> Result<(), Box<dyn Error>> {
-    let expected = require_overlap_expected(entry)?;
+fn assert_changed_overlap_entry(entry: &NegativeEntry) {
+    let expected = must(require_overlap_expected(entry));
     assert_eq!(
         expected.fixture_nonce.as_ref().map(|nonce| nonce.as_str()),
         Some("overlap_fixture_must_be_read")
@@ -425,7 +466,6 @@ fn assert_changed_overlap_entry(entry: &NegativeEntry) -> Result<(), Box<dyn Err
     assert_eq!(expected.control_id.as_str(), "changed_run_button");
     assert_eq!(expected.second_control_id.as_str(), "changed_stop_button");
     assert_changed_overlap_bounds(expected);
-    Ok(())
 }
 
 fn assert_changed_overlap_bounds(entry: &ParsedOverlapExpectedFailure) {
@@ -524,13 +564,23 @@ fn redaction_classes() -> Vec<String> {
     .collect()
 }
 
-fn prepare_intentional_overlap_fixture(content: &str) -> Result<(), Box<dyn Error>> {
-    let path = Path::new(NEGATIVE_FIXTURE_DIR).join("intentional_overlap_fixture.txt");
+fn prepare_intentional_overlap_fixture(
+    workspace: &IsolatedWorkspace,
+    content: &str,
+) -> Result<(), Box<dyn Error>> {
+    let path = workspace
+        .join(NEGATIVE_FIXTURE_DIR)
+        .join("intentional_overlap_fixture.txt");
     write_fixture(path, content)
 }
 
-fn prepare_intentional_secret_fixture(content: &str) -> Result<(), Box<dyn Error>> {
-    let path = Path::new(NEGATIVE_FIXTURE_DIR).join("intentional_secret_fixture.txt");
+fn prepare_intentional_secret_fixture(
+    workspace: &IsolatedWorkspace,
+    content: &str,
+) -> Result<(), Box<dyn Error>> {
+    let path = workspace
+        .join(NEGATIVE_FIXTURE_DIR)
+        .join("intentional_secret_fixture.txt");
     write_fixture(path, content)
 }
 
@@ -541,35 +591,14 @@ fn write_fixture(path: PathBuf, content: &str) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn reset_negative_fixtures() -> Result<MutexGuard<'static, ()>, Box<dyn Error>> {
-    let guard = match fixture_mutex().lock() {
-        Ok(guard) => guard,
-        Err(poisoned) => poisoned.into_inner(),
-    };
-    match fs::remove_dir_all(NEGATIVE_FIXTURE_DIR) {
-        Ok(()) => {
-            write_default_negative_fixtures()?;
-            Ok(guard)
-        }
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
-            write_default_negative_fixtures()?;
-            Ok(guard)
-        }
-        Err(error) => Err(Box::new(error)),
-    }
-}
-
-fn write_default_negative_fixtures() -> Result<(), Box<dyn Error>> {
+fn write_default_negative_fixtures(workspace: &IsolatedWorkspace) -> Result<(), Box<dyn Error>> {
     prepare_intentional_overlap_fixture(
+        workspace,
         "fixture_id=intentional_overlap_fixture\nscreen_id=execution_overview\nfirst_control_id=run_button\nsecond_control_id=stop_button\nexpected_gate=layout\nexpected_code=layout_violation\noverlap_area_px=600\nbounds={ x: 10, y: 10, width: 100, height: 60 }\nactual_status=failed\n",
     )?;
     prepare_intentional_secret_fixture(
+        workspace,
         "fixture_id=intentional_secret_fixture\nexpected_gate=redaction\nexpected_code=redaction_violation\nactual_status=failed\n",
     )?;
     Ok(())
-}
-
-fn fixture_mutex() -> &'static Mutex<()> {
-    static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
-    LOCK.get_or_init(|| Mutex::new(()))
 }
