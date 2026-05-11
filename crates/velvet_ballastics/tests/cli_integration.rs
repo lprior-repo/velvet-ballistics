@@ -2550,7 +2550,6 @@ fn cli_doctor_returns_storage_error_for_unreadable_path() {
         "doctor should fail for unreadable path"
     );
 }
-
 // ---------------------------------------------------------------------------
 // vb-qi37.13.4: Structured output contract tests
 // ---------------------------------------------------------------------------
@@ -2691,5 +2690,378 @@ fn cli_emit_yaml_contract_is_not_silent_when_master_emit_mode_is_requested() {
     assert_eq!(
         parsed.get("schema_version"),
         Some(&serde_json::json!("velvet-ballastics/cli-output/v1"))
+    );
+}
+
+// ---------------------------------------------------------------------------
+// vb-qi37.15.1: simulate command black-box tests
+// ---------------------------------------------------------------------------
+
+#[test]
+fn cli_simulate_valid_workflow_reports_dry_run_summary() {
+    let dir = match tempfile::tempdir() {
+        Ok(dir) => dir,
+        Err(err) => {
+            assert!(forced_assertion_failure(), "tempdir failed: {err}");
+            return;
+        }
+    };
+    let workflow_path = dir.path().join("simulate.yaml");
+    if !write_test_file(&workflow_path, CLI_WORKFLOW.as_bytes()) {
+        return;
+    }
+
+    let output = match run_cli(&[std::ffi::OsStr::new("simulate"), workflow_path.as_os_str()]) {
+        Some(output) => output,
+        None => return,
+    };
+
+    assert_cli_success(&output, "simulate workflow.yaml");
+    let stdout = output_stdout(&output);
+    let stderr = output_stderr(&output);
+    assert_eq!(stderr, "", "simulate success must not write stderr");
+    assert!(
+        stdout.contains("simulation summary"),
+        "missing summary: {stdout}"
+    );
+    assert!(
+        stdout.contains("dry-run complete"),
+        "missing dry-run completion: {stdout}"
+    );
+    assert!(
+        stdout.contains("steps:    2"),
+        "expected two steps: {stdout}"
+    );
+}
+
+#[test]
+fn cli_simulate_json_emits_deterministic_trace() {
+    let dir = match tempfile::tempdir() {
+        Ok(dir) => dir,
+        Err(err) => {
+            assert!(forced_assertion_failure(), "tempdir failed: {err}");
+            return;
+        }
+    };
+    let workflow_path = dir.path().join("simulate-json.yaml");
+    if !write_test_file(&workflow_path, CLI_WORKFLOW.as_bytes()) {
+        return;
+    }
+
+    let output = match run_cli(&[
+        std::ffi::OsStr::new("simulate"),
+        workflow_path.as_os_str(),
+        std::ffi::OsStr::new("--json"),
+    ]) {
+        Some(output) => output,
+        None => return,
+    };
+
+    assert_cli_success(&output, "simulate workflow.yaml --json");
+    let stdout = output_stdout(&output);
+    let packet: serde_json::Value = match serde_json::from_str(&stdout) {
+        Ok(packet) => packet,
+        Err(error) => {
+            assert!(
+                forced_assertion_failure(),
+                "simulate JSON parse failed: {error}; stdout={stdout}"
+            );
+            return;
+        }
+    };
+    assert_eq!(packet.get("success"), Some(&serde_json::json!(true)));
+    assert_eq!(packet.get("total_steps"), Some(&serde_json::json!(2)));
+    assert_eq!(packet.get("total_actions"), Some(&serde_json::json!(0)));
+    let trace_len = packet
+        .get("trace")
+        .and_then(|trace| trace.as_array())
+        .map_or(0, std::vec::Vec::len);
+    assert_eq!(
+        trace_len, 2,
+        "simulate trace should contain both steps: {stdout}"
+    );
+    assert_eq!(
+        packet.get("schema_version"),
+        Some(&serde_json::json!("velvet-ballastics/v1")),
+        "simulate JSON must carry schema_version: {stdout}"
+    );
+    assert_eq!(
+        packet.get("kind"),
+        Some(&serde_json::json!("simulate")),
+        "simulate JSON must carry kind: {stdout}"
+    );
+}
+
+#[test]
+fn cli_simulate_invalid_workflow_reports_diagnostic() {
+    let dir = match tempfile::tempdir() {
+        Ok(dir) => dir,
+        Err(err) => {
+            assert!(forced_assertion_failure(), "tempdir failed: {err}");
+            return;
+        }
+    };
+    let workflow_path = dir.path().join("invalid-simulate.yaml");
+    if !write_test_file(&workflow_path, b"not-a-workflow") {
+        return;
+    }
+
+    let output = match run_cli(&[std::ffi::OsStr::new("simulate"), workflow_path.as_os_str()]) {
+        Some(output) => output,
+        None => return,
+    };
+
+    assert!(
+        !output.status.success(),
+        "simulate invalid workflow must fail"
+    );
+    let stderr = output_stderr(&output);
+    assert!(
+        stderr.contains("compile error") || stderr.contains("YAML"),
+        "expected diagnostic: {stderr}"
+    );
+}
+
+#[test]
+fn cli_simulate_does_not_create_db_side_effects() {
+    let dir = match tempfile::tempdir() {
+        Ok(dir) => dir,
+        Err(err) => {
+            assert!(forced_assertion_failure(), "tempdir failed: {err}");
+            return;
+        }
+    };
+    let workflow_path = dir.path().join("simulate-no-db.yaml");
+    let db_path = dir.path().join("simulate-db-should-not-exist");
+    if !write_test_file(&workflow_path, CLI_WORKFLOW.as_bytes()) {
+        return;
+    }
+
+    let output = match run_cli(&[std::ffi::OsStr::new("simulate"), workflow_path.as_os_str()]) {
+        Some(output) => output,
+        None => return,
+    };
+
+    assert_cli_success(&output, "simulate without db");
+    assert!(
+        !db_path.exists(),
+        "simulate must not create a durable DB path"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// vb-qi37.15.2: submit command and job ledger tests
+// ---------------------------------------------------------------------------
+
+fn parse_submit_run_id(stdout: &str) -> Option<String> {
+    stdout
+        .lines()
+        .find_map(|line| line.strip_prefix("submitted run ").map(ToOwned::to_owned))
+}
+
+#[test]
+fn cli_submit_persists_ledger_before_success() {
+    let dir = match tempfile::tempdir() {
+        Ok(dir) => dir,
+        Err(err) => {
+            assert!(forced_assertion_failure(), "tempdir failed: {err}");
+            return;
+        }
+    };
+    let workflow_path = dir.path().join("submit.yaml");
+    let input_path = dir.path().join("input.bin");
+    let db_path = dir.path().join("submit-db");
+    if !write_test_file(&workflow_path, CLI_WORKFLOW.as_bytes())
+        || !write_test_file(&input_path, &[])
+    {
+        return;
+    }
+
+    let output = match run_cli(&[
+        std::ffi::OsStr::new("submit"),
+        workflow_path.as_os_str(),
+        std::ffi::OsStr::new("--input-bin"),
+        input_path.as_os_str(),
+        std::ffi::OsStr::new("--db"),
+        db_path.as_os_str(),
+        std::ffi::OsStr::new("--durability"),
+        std::ffi::OsStr::new("journaled"),
+    ]) {
+        Some(output) => output,
+        None => return,
+    };
+    assert_cli_success(&output, "submit journaled");
+    let stdout = output_stdout(&output);
+    let Some(run_id) = parse_submit_run_id(&stdout) else {
+        assert!(
+            forced_assertion_failure(),
+            "submit did not print run id: {stdout}"
+        );
+        return;
+    };
+
+    let inspect = match run_cli(&[
+        std::ffi::OsStr::new("inspect"),
+        std::ffi::OsStr::new(&run_id),
+        std::ffi::OsStr::new("--db"),
+        db_path.as_os_str(),
+    ]) {
+        Some(output) => output,
+        None => return,
+    };
+    assert_cli_success(&inspect, "inspect submitted run");
+    let inspect_stdout = output_stdout(&inspect);
+    assert!(
+        inspect_stdout.contains(&run_id),
+        "inspect should reference run id {run_id}: {inspect_stdout}"
+    );
+}
+
+#[test]
+fn cli_submit_json_returns_structured_identifiers() {
+    let dir = match tempfile::tempdir() {
+        Ok(dir) => dir,
+        Err(err) => {
+            assert!(forced_assertion_failure(), "tempdir failed: {err}");
+            return;
+        }
+    };
+    let workflow_path = dir.path().join("submit-json.yaml");
+    let input_path = dir.path().join("input.bin");
+    let db_path = dir.path().join("submit-json-db");
+    if !write_test_file(&workflow_path, CLI_WORKFLOW.as_bytes())
+        || !write_test_file(&input_path, &[])
+    {
+        return;
+    }
+
+    let output = match run_cli(&[
+        std::ffi::OsStr::new("submit"),
+        workflow_path.as_os_str(),
+        std::ffi::OsStr::new("--input-bin"),
+        input_path.as_os_str(),
+        std::ffi::OsStr::new("--db"),
+        db_path.as_os_str(),
+        std::ffi::OsStr::new("--durability"),
+        std::ffi::OsStr::new("strict"),
+        std::ffi::OsStr::new("--json"),
+    ]) {
+        Some(output) => output,
+        None => return,
+    };
+    assert_cli_success(&output, "submit --json");
+    assert_eq!(
+        output_stderr(&output),
+        "",
+        "submit --json success must not write stderr"
+    );
+    let stdout = output_stdout(&output);
+    let packet: serde_json::Value = match serde_json::from_str(&stdout) {
+        Ok(packet) => packet,
+        Err(error) => {
+            assert!(
+                forced_assertion_failure(),
+                "submit JSON parse failed: {error}; stdout={stdout}"
+            );
+            return;
+        }
+    };
+    assert!(
+        packet
+            .get("run_id")
+            .and_then(|value| value.as_u64())
+            .is_some(),
+        "missing numeric run_id: {stdout}"
+    );
+    assert_eq!(packet.get("status"), Some(&serde_json::json!("submitted")));
+    assert_eq!(packet.get("step_count"), Some(&serde_json::json!(2)));
+    let digest_len = packet
+        .get("digest")
+        .and_then(|value| value.as_str())
+        .map_or(0, str::len);
+    assert_eq!(digest_len, 64, "digest must be 64 hex chars: {stdout}");
+}
+
+#[test]
+fn cli_submit_rejects_missing_input_bin() {
+    let dir = match tempfile::tempdir() {
+        Ok(dir) => dir,
+        Err(err) => {
+            assert!(forced_assertion_failure(), "tempdir failed: {err}");
+            return;
+        }
+    };
+    let workflow_path = dir.path().join("submit-missing-input.yaml");
+    let missing_input = dir.path().join("missing-input.bin");
+    let db_path = dir.path().join("submit-missing-input-db");
+    if !write_test_file(&workflow_path, CLI_WORKFLOW.as_bytes()) {
+        return;
+    }
+
+    let output = match run_cli(&[
+        std::ffi::OsStr::new("submit"),
+        workflow_path.as_os_str(),
+        std::ffi::OsStr::new("--input-bin"),
+        missing_input.as_os_str(),
+        std::ffi::OsStr::new("--db"),
+        db_path.as_os_str(),
+        std::ffi::OsStr::new("--durability"),
+        std::ffi::OsStr::new("strict"),
+    ]) {
+        Some(output) => output,
+        None => return,
+    };
+    assert!(!output.status.success(), "submit missing input must fail");
+    assert_eq!(
+        output_stdout(&output),
+        "",
+        "missing input must not write stdout"
+    );
+    let stderr = output_stderr(&output);
+    assert!(
+        stderr.contains("error reading"),
+        "missing input should report read error: {stderr}"
+    );
+}
+
+#[test]
+fn cli_submit_rejects_unknown_durability() {
+    let dir = match tempfile::tempdir() {
+        Ok(dir) => dir,
+        Err(err) => {
+            assert!(forced_assertion_failure(), "tempdir failed: {err}");
+            return;
+        }
+    };
+    let workflow_path = dir.path().join("submit-bad-durability.yaml");
+    let input_path = dir.path().join("input.bin");
+    let db_path = dir.path().join("submit-bad-durability-db");
+    if !write_test_file(&workflow_path, CLI_WORKFLOW.as_bytes())
+        || !write_test_file(&input_path, &[])
+    {
+        return;
+    }
+
+    let output = match run_cli(&[
+        std::ffi::OsStr::new("submit"),
+        workflow_path.as_os_str(),
+        std::ffi::OsStr::new("--input-bin"),
+        input_path.as_os_str(),
+        std::ffi::OsStr::new("--db"),
+        db_path.as_os_str(),
+        std::ffi::OsStr::new("--durability"),
+        std::ffi::OsStr::new("unsafe-fast"),
+    ]) {
+        Some(output) => output,
+        None => return,
+    };
+    assert!(
+        !output.status.success(),
+        "submit unknown durability must fail"
+    );
+    let stderr = output_stderr(&output);
+    assert!(
+        stderr.contains("unknown durability mode: unsafe-fast"),
+        "stderr should name bad mode: {stderr}"
     );
 }

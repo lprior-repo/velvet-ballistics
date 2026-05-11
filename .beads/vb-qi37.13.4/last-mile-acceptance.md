@@ -51,3 +51,14 @@ Additional overlapping file touched by all three but with non-adjacent command-h
 - `crates/velvet_ballastics/src/main.rs`
 
 Keep workspace `/home/lewis/src/Velvet-ballistics-vb-qi37-13-4-go`; do not close/forget until an integration pass combines the sibling CLI test modules and reruns gates.
+
+## 2026-05-11 integration retry
+
+Integration workspace `/home/lewis/src/Velvet-ballistics-vb-8iwj-wave3-integration` combines this change with `vb-qi37.15.1` and `vb-qi37.15.2` as merge parents. The `cli_integration.rs` 3-sided conflict was manually resolved by preserving all sibling test modules. Scoped evidence:
+
+- `cargo +nightly fmt -p velvet_ballastics --check`: pass.
+- `rtk cargo check -p velvet_ballastics --all-targets`: 0 errors, 1 duplicate-package warning.
+- `cli_emit_yaml_contract_is_not_silent_when_master_emit_mode_is_requested`: 1 passed, 85 filtered out.
+- final manual QA `status --emit yaml`: PASS, real YAML starts with `schema_version: velvet-ballastics/cli-output/v1`.
+
+Still not closed: source not landed to canonical remote/main, no safe push/bookmark policy was provided, and original workspace remains intentionally retained.
