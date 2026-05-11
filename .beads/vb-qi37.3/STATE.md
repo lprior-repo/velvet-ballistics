@@ -2,9 +2,9 @@ bead_id: vb-qi37.3
 bead_title: runtime: Prove collect pagination durability and hydration
 phase: State 15 - Landing and cleanup
 captured_in_session: 2026-05-11
-updated_at: 2026-05-11T12:54:03Z
+updated_at: 2026-05-11T12:58:30Z
 
-STATUS: IN_PROGRESS
+STATUS: COMPLETE
 owner_state: State 15
 rerun_from: State 15
 assigned_agent: go-skill orchestrator + explore + rust-contract + contract-verification-reviewer + test-planner + test-reviewer + test-writer + holzman-rust + hands-on-qa specialists
@@ -270,8 +270,12 @@ State 15 push evidence:
 - Post-push `jj status` showed `@` as `xqywtqkz d5f9a09b vb-qi37-3-landing | feat(vb-qi37.3): prove collect pagination durability` with parent `stvmrlkk 1be80acf main@origin`.
 - Post-push `jj bookmark list` showed local bookmark `vb-qi37-3-landing: xqywtqkz d5f9a09b feat(vb-qi37.3): prove collect pagination durability`.
 
-Remaining State 15 actions:
-- Refresh remote bookmark after this landing-evidence update.
-- Close `vb-qi37.3` from canonical workspace with a reason that notes remote bookmark `vb-qi37-3-landing`.
-- Run `bd dolt push`.
-- Forget workspace `vb-qi37-3-go`, remove/verify isolated directory gone, and verify canonical workspace is clean.
+Final State 15 evidence:
+- Refreshed remote bookmark after landing-evidence update: `jj bookmark move vb-qi37-3-landing --to @ && jj git push --remote origin --bookmark vb-qi37-3-landing` moved the remote bookmark to commit `7c12b98ad846`.
+- Closed `vb-qi37.3` from canonical workspace with reason: completed Go-skill States 1-15 through final QA; code/artifacts pushed to `vb-qi37-3-landing`; unrelated global FORMAT/CLIPPY/`vb_ui_model` debts deferred under `vb-bkgo`.
+- `bd close vb-qi37.3 --json` returned `status: closed`, `closed_at: 2026-05-11T12:54:42Z`.
+- `bd dolt push` completed: `Push complete.`
+- Original isolated JJ workspace `vb-qi37-3-go` was forgotten; `jj workspace list` no longer contains `vb-qi37-3-go`.
+- Original isolated directory `/home/lewis/src/Velvet-ballistics-vb-qi37-3-go` was removed; `test ! -e /home/lewis/src/Velvet-ballistics-vb-qi37-3-go` succeeded.
+- A temporary finalization workspace `vb-qi37-3-finalize` was created only to persist this final State 15 evidence on the pushed bookmark. It is scheduled for immediate forget/removal after this artifact is pushed.
+- Canonical workspace `/home/lewis/src/Velvet-ballistics` contains unrelated in-progress default-workspace changes for `vb-yvlb` and other files; those were not created by `vb-qi37.3` and were left untouched. This prevents claiming canonical workspace cleanliness, but it does not invalidate the `vb-qi37.3` workspace cleanup/push/close evidence.
