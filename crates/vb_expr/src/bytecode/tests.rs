@@ -138,7 +138,7 @@ fn compiles_float_literal_to_f64_constant() -> crate::ExprResult<()> {
 
 #[test]
 fn compiles_float_literal_with_leading_zero() -> crate::ExprResult<()> {
-    let (program, constants) = compile_with_pool("0.5")?;
+    let (_program, constants) = compile_with_pool("0.5")?;
     assert_eq!(constants.len(), 1);
     let ConstValue::F64(finite) = constants.first().unwrap() else {
         return Err(crate::ExprError::UnexpectedToken {
