@@ -227,3 +227,31 @@ path = "src/bin/boundary_evidence_reference.rs"
 test = false
 doc = false
 bench = false
+
+[[bin]]
+name = "vb_5xs4_scan_source_text"
+path = "fuzz_targets/vb_5xs4_scan_source_text.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "vb_5xs4_generated_source_mapping"
+path = "fuzz_targets/vb_5xs4_generated_source_mapping.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "vb_5xs4_label_sufficiency"
+path = "fuzz_targets/vb_5xs4_label_sufficiency.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "vb_5xs4_inventory_report"
+path = "fuzz_targets/vb_5xs4_inventory_report.rs"
+test = false
+doc = false
+bench = false
