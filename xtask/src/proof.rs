@@ -52,12 +52,14 @@ pub enum FuzzField {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct ProofLevel {
     pub id: String,
     pub name: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct ProofMatrix {
     pub crate_name: String,
     pub proof_strategy: String,
@@ -66,25 +68,7 @@ pub struct ProofMatrix {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ProofEvidence {
-    pub kind: String,
-    pub bead: String,
-    pub commit: String,
-    pub obligations: Vec<ObligationStatus>,
-    pub remaining_assumptions: Vec<String>,
-    pub verified: HashMap<String, String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ObligationStatus {
-    pub id: String,
-    pub status: String,
-    pub level: String,
-    pub commands: Vec<String>,
-    pub log: Option<String>,
-}
-
-#[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct ProofTarget {
     pub obligation_id: String,
     pub file: PathBuf,
@@ -107,6 +91,7 @@ pub fn load_proof_obligations() -> Result<Vec<ProofObligation>, String> {
     Ok(file.obligations)
 }
 
+#[allow(dead_code)]
 pub fn obligations_for_files(
     obligations: &[ProofObligation],
     changed_files: &[&str],
@@ -166,6 +151,7 @@ pub fn commands_for_obligation(obl: &ProofObligation) -> Vec<String> {
     cmds
 }
 
+#[allow(dead_code)]
 pub fn proof_levels() -> Vec<(&'static str, &'static str)> {
     vec![
         ("L0", "Mechanical scan / lint / CI evidence"),
