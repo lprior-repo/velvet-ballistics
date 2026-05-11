@@ -2550,3 +2550,146 @@ fn cli_doctor_returns_storage_error_for_unreadable_path() {
         "doctor should fail for unreadable path"
     );
 }
+
+// ---------------------------------------------------------------------------
+// vb-qi37.13.4: Structured output contract tests
+// ---------------------------------------------------------------------------
+
+fn stdout_contains_no_panic_text(stdout: &str) {
+    assert!(
+        !stdout.contains("thread 'main' panicked"),
+        "stdout leaked panic text: {stdout}"
+    );
+    assert!(
+        !stdout.contains("stack backtrace"),
+        "stdout leaked backtrace text: {stdout}"
+    );
+}
+
+fn stderr_contains_no_panic_text(stderr: &str) {
+    assert!(
+        !stderr.contains("thread 'main' panicked"),
+        "stderr leaked panic text: {stderr}"
+    );
+    assert!(
+        !stderr.contains("stack backtrace"),
+        "stderr leaked backtrace text: {stderr}"
+    );
+}
+
+#[test]
+fn cli_help_is_bounded_and_non_interactive() {
+    let output = match run_cli(&[std::ffi::OsStr::new("--help")]) {
+        Some(output) => output,
+        None => return,
+    };
+
+    assert_cli_success(&output, "--help");
+    let stdout = output_stdout(&output);
+    let stderr = output_stderr(&output);
+    assert_eq!(stderr, "", "help must not write stderr");
+    assert!(
+        stdout.contains("commands:"),
+        "help should list commands: {stdout}"
+    );
+    assert!(
+        stdout.len() <= 8192,
+        "help output must stay bounded: {} bytes",
+        stdout.len()
+    );
+    stdout_contains_no_panic_text(&stdout);
+}
+
+#[test]
+fn cli_status_json_writes_payload_to_stdout_only() {
+    let output = match run_cli(&[
+        std::ffi::OsStr::new("status"),
+        std::ffi::OsStr::new("--json"),
+    ]) {
+        Some(output) => output,
+        None => return,
+    };
+
+    assert_cli_success(&output, "status --json");
+    let stdout = output_stdout(&output);
+    let stderr = output_stderr(&output);
+    assert_eq!(
+        stderr, "",
+        "status --json must keep diagnostics off stderr on success"
+    );
+    let packet: serde_json::Value = match serde_json::from_str(&stdout) {
+        Ok(packet) => packet,
+        Err(error) => {
+            assert!(
+                forced_assertion_failure(),
+                "status JSON did not parse: {error}; stdout={stdout}"
+            );
+            return;
+        }
+    };
+    assert_eq!(packet.get("status"), Some(&serde_json::json!("running")));
+    stdout_contains_no_panic_text(&stdout);
+}
+
+#[test]
+fn cli_unknown_command_returns_stderr_diagnostic_without_stack_trace() {
+    let output = match run_cli(&[std::ffi::OsStr::new("definitely-not-a-command")]) {
+        Some(output) => output,
+        None => return,
+    };
+
+    assert!(!output.status.success(), "unknown command must fail");
+    let stdout = output_stdout(&output);
+    let stderr = output_stderr(&output);
+    assert_eq!(stdout, "", "unknown command must not write stdout");
+    assert!(
+        stderr.contains("unknown command: definitely-not-a-command"),
+        "stderr should name command: {stderr}"
+    );
+    stderr_contains_no_panic_text(&stderr);
+}
+
+#[test]
+fn cli_emit_yaml_contract_is_not_silent_when_master_emit_mode_is_requested() {
+    let output = match run_cli(&[
+        std::ffi::OsStr::new("status"),
+        std::ffi::OsStr::new("--emit"),
+        std::ffi::OsStr::new("yaml"),
+    ]) {
+        Some(output) => output,
+        None => return,
+    };
+
+    assert_cli_success(&output, "status --emit yaml");
+    let stdout = output_stdout(&output);
+    assert!(
+        stdout.starts_with("schema_version: velvet-ballastics/cli-output/v1"),
+        "master structured YAML must start with schema_version: {stdout}"
+    );
+    assert!(
+        stdout.contains("\nkind: status\n"),
+        "YAML must include kind: {stdout}"
+    );
+    assert!(
+        stdout.contains("\nstatus: running\n"),
+        "YAML must include status: {stdout}"
+    );
+    assert!(
+        !stdout.trim_start().starts_with('{'),
+        "--emit yaml must not be JSON-shaped: {stdout}"
+    );
+    let parsed: serde_json::Value = match serde_saphyr::from_str(&stdout) {
+        Ok(parsed) => parsed,
+        Err(error) => {
+            assert!(
+                forced_assertion_failure(),
+                "status --emit yaml did not parse as YAML: {error}; stdout={stdout}"
+            );
+            return;
+        }
+    };
+    assert_eq!(
+        parsed.get("schema_version"),
+        Some(&serde_json::json!("velvet-ballastics/cli-output/v1"))
+    );
+}

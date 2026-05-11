@@ -80,6 +80,36 @@ pub(crate) fn print_status(status: &CliStatus, output: OutputFormat) {
     }
 }
 
+pub(crate) fn print_status_yaml(status: &CliStatus) {
+    crate::write_stdout_line(format_args!(
+        "schema_version: velvet-ballastics/cli-output/v1"
+    ));
+    crate::write_stdout_line(format_args!("kind: status"));
+    crate::write_stdout_line(format_args!("status: {}", status.health));
+    crate::write_stdout_line(format_args!("running: {}", status.running));
+    crate::write_stdout_line(format_args!("shutting_down: {}", status.shutting_down));
+    crate::write_stdout_line(format_args!("command_queue:"));
+    crate::write_stdout_line(format_args!("  depth: {}", status.command_queue_depth));
+    crate::write_stdout_line(format_args!(
+        "  capacity: {}",
+        status.command_queue_capacity
+    ));
+    crate::write_stdout_line(format_args!("active_runs:"));
+    crate::write_stdout_line(format_args!("  active: {}", status.active_runs));
+    crate::write_stdout_line(format_args!(
+        "  max_active_runs: {}",
+        status.max_active_runs
+    ));
+    crate::write_stdout_line(format_args!("trace_ring:"));
+    crate::write_stdout_line(format_args!("  capacity: {}", status.trace_capacity));
+    crate::write_stdout_line(format_args!("  dropped: {}", status.trace_dropped));
+    crate::write_stdout_line(format_args!(
+        "step_budget_per_tick: {}",
+        status.step_budget_per_tick
+    ));
+    crate::write_stdout_line(format_args!("runtime_policy: {}", status.runtime_policy));
+}
+
 fn print_text(status: &CliStatus) {
     crate::write_stdout_line(format_args!("status: {}", status.health));
     crate::write_stdout_line(format_args!("running: {}", status.running));
@@ -106,6 +136,8 @@ fn print_text(status: &CliStatus) {
 fn print_json(status: &CliStatus, output: OutputFormat) {
     crate::json_out(
         &serde_json::json!({
+            "schema_version": "velvet-ballastics/v1",
+            "kind": "status",
             "status": status.health,
             "running": status.running,
             "shutting_down": status.shutting_down,
@@ -154,6 +186,7 @@ mod tests {
             active_runs: Some(5),
             queue_depth: Some(3),
             trace_dropped: Some(0),
+            emit_yaml: false,
         });
         assert_eq!(status.active_runs, 5);
         assert_eq!(status.command_queue_depth, 3);
@@ -166,6 +199,7 @@ mod tests {
             active_runs: Some(2048),
             queue_depth: Some(2048),
             trace_dropped: Some(7),
+            emit_yaml: false,
         });
         assert_eq!(status.active_runs, 2048);
         assert_eq!(status.command_queue_depth, 2048);

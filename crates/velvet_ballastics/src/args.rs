@@ -183,6 +183,7 @@ pub(crate) struct StatusOptions {
     pub(crate) active_runs: Option<usize>,
     pub(crate) queue_depth: Option<usize>,
     pub(crate) trace_dropped: Option<u64>,
+    pub(crate) emit_yaml: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -310,6 +311,28 @@ fn parse_status_options(
         None => validate_status_options(options),
         Some((flag, rest)) => match flag.to_str() {
             Some("--json" | "--jsonl") => parse_status_options(rest, options),
+            Some("--emit") => match rest.split_first() {
+                Some((emit, remaining)) => match emit.to_str() {
+                    Some("yaml") => parse_status_options(
+                        remaining,
+                        StatusOptions {
+                            emit_yaml: true,
+                            ..options
+                        },
+                    ),
+                    Some("text") => parse_status_options(remaining, options),
+                    Some("postcard") => Err(ParseError::InvalidStatusArgument(
+                        "postcard emit is not supported for status".into(),
+                    )),
+                    Some(other) => Err(ParseError::InvalidStatusArgument(format!(
+                        "unknown emit mode {other}"
+                    ))),
+                    None => Err(ParseError::InvalidStatusArgument(
+                        "emit mode is not valid UTF-8".into(),
+                    )),
+                },
+                None => Err(ParseError::MissingArgument("--emit")),
+            },
             Some("--active-runs") => {
                 let parsed = parse_status_usize_value(rest, "--active-runs")?;
                 parse_status_options(

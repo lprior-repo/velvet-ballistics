@@ -252,7 +252,11 @@ fn cmd_agent_context() -> ExitCode {
 
 fn cmd_status(options: args::StatusOptions, output: OutputFormat) -> ExitCode {
     let status = commands_status::build_status(options);
-    commands_status::print_status(&status, output);
+    if options.emit_yaml {
+        commands_status::print_status_yaml(&status);
+    } else {
+        commands_status::print_status(&status, output);
+    }
     ExitCode::SUCCESS
 }
 
