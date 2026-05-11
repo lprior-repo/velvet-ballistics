@@ -136,6 +136,25 @@ pub enum RuntimeJournalEvent {
         /// Execution attempt number for this step.
         attempt: u16,
     },
+    /// Run was resumed from a waiting state.
+    RunResumed {
+        /// Run identifier.
+        run: RunId,
+    },
+    /// Run was retried after failure.
+    RunRetried {
+        /// Run identifier.
+        run: RunId,
+    },
+    /// Run received an answer to a waiting question.
+    RunAnswered {
+        /// Run identifier.
+        run: RunId,
+        /// Slot that received the answer.
+        slot: SlotIdx,
+        /// The answer value encoded as bytes.
+        answer: Vec<u8>,
+    },
 }
 
 impl RuntimeJournalEvent {
@@ -156,7 +175,10 @@ impl RuntimeJournalEvent {
             | Self::AskAnswered { run, .. }
             | Self::SlotWritten { run, .. }
             | Self::StepStarted { run, .. }
-            | Self::StepSucceeded { run, .. } => *run,
+            | Self::StepSucceeded { run, .. }
+            | Self::RunResumed { run, .. }
+            | Self::RunRetried { run, .. }
+            | Self::RunAnswered { run, .. } => *run,
             Self::RunAdmission { admission } => admission.run_id(),
         }
     }
@@ -374,7 +396,10 @@ impl StorageRuntimeJournal {
             | RuntimeJournalEvent::WaitResolved { .. }
             | RuntimeJournalEvent::AskScheduled { .. }
             | RuntimeJournalEvent::AskAnswered { .. }
-            | RuntimeJournalEvent::SlotWritten { .. } => None,
+            | RuntimeJournalEvent::SlotWritten { .. }
+            | RuntimeJournalEvent::RunResumed { .. }
+            | RuntimeJournalEvent::RunRetried { .. }
+            | RuntimeJournalEvent::RunAnswered { .. } => None,
         }
     }
 
@@ -421,7 +446,10 @@ impl StorageRuntimeJournal {
             | RuntimeJournalEvent::AskAnswered { .. }
             | RuntimeJournalEvent::SlotWritten { .. }
             | RuntimeJournalEvent::StepStarted { .. }
-            | RuntimeJournalEvent::StepSucceeded { .. } => None,
+            | RuntimeJournalEvent::StepSucceeded { .. }
+            | RuntimeJournalEvent::RunResumed { .. }
+            | RuntimeJournalEvent::RunRetried { .. }
+            | RuntimeJournalEvent::RunAnswered { .. } => None,
         }
     }
 
@@ -483,6 +511,26 @@ impl StorageRuntimeJournal {
             | RuntimeJournalEvent::ActionFailed { .. }
             | RuntimeJournalEvent::StepStarted { .. }
             | RuntimeJournalEvent::StepSucceeded { .. } => None,
+            RuntimeJournalEvent::RunResumed { run } => Some(JournalEvent::RunResumed {
+                run,
+                timestamp: chrono::Utc::now(),
+            }),
+            RuntimeJournalEvent::RunRetried { run } => Some(JournalEvent::RunRetried {
+                run,
+                timestamp: chrono::Utc::now(),
+            }),
+            RuntimeJournalEvent::RunAnswered { run, slot, answer } => {
+                // Decode the postcard-encoded ConstValue from bytes
+                match postcard::from_bytes::<vb_core::value::ConstValue>(&answer) {
+                    Ok(answer_value) => Some(JournalEvent::RunAnswered {
+                        run,
+                        slot_idx: slot,
+                        answer: answer_value,
+                        timestamp: chrono::Utc::now(),
+                    }),
+                    Err(_) => None,
+                }
+            }
         }
     }
 

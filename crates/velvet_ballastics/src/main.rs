@@ -2230,6 +2230,15 @@ fn print_event(event: &vb_storage::JournalEvent) {
         vb_storage::JournalEvent::RunFailedEvent { seq, .. } => {
             outln!("  seq={}: RunFailed", seq.get());
         }
+        vb_storage::JournalEvent::RunResumed { run, .. } => {
+            outln!("  RunResumed run={}", run.get());
+        }
+        vb_storage::JournalEvent::RunRetried { run, .. } => {
+            outln!("  RunRetried run={}", run.get());
+        }
+        vb_storage::JournalEvent::RunAnswered { run, slot_idx, .. } => {
+            outln!("  RunAnswered run={} slot={}", run.get(), slot_idx.get());
+        }
     }
 }
 
@@ -2359,6 +2368,34 @@ fn event_to_json(event: &vb_storage::JournalEvent) -> serde_json::Value {
             serde_json::json!({
                 "seq": seq.get(),
                 "type": "RunFailed"
+            })
+        }
+        vb_storage::JournalEvent::RunResumed { run, timestamp } => {
+            serde_json::json!({
+                "type": "RunResumed",
+                "run": run.get(),
+                "timestamp": timestamp.to_rfc3339()
+            })
+        }
+        vb_storage::JournalEvent::RunRetried { run, timestamp } => {
+            serde_json::json!({
+                "type": "RunRetried",
+                "run": run.get(),
+                "timestamp": timestamp.to_rfc3339()
+            })
+        }
+        vb_storage::JournalEvent::RunAnswered {
+            run,
+            slot_idx,
+            answer,
+            timestamp,
+        } => {
+            serde_json::json!({
+                "type": "RunAnswered",
+                "run": run.get(),
+                "slot_idx": slot_idx.get(),
+                "answer": format!("{:?}", answer),
+                "timestamp": timestamp.to_rfc3339()
             })
         }
     }

@@ -294,6 +294,9 @@ fn journal_event_info(je: &JournalEvent) -> (String, Option<u16>) {
         JournalEvent::RunFinished { .. } => ("RunFinished".to_owned(), None),
         JournalEvent::RunFailedEvent { .. } => ("RunFailed".to_owned(), None),
         JournalEvent::RunAdmission { .. } => ("RunAdmission".to_owned(), None),
+        JournalEvent::RunResumed { .. } => ("RunResumed".to_owned(), None),
+        JournalEvent::RunRetried { .. } => ("RunRetried".to_owned(), None),
+        JournalEvent::RunAnswered { .. } => ("RunAnswered".to_owned(), None),
     }
 }
 

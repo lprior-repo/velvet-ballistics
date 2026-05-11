@@ -52,7 +52,9 @@ fuzz_target!(|data: &[u8]| {
     );
 
     #[allow(clippy::let_underscore_must_use)]
-    let _ = vb_storage::decode_record::<vb_storage::JournalEvent>(data, 0xFFFF_FFFF, max_payload_len);
+    let _ =
+        vb_storage::decode_record::<vb_storage::JournalEvent>(data, 0xFFFF_FFFF, max_payload_len);
     #[allow(clippy::let_underscore_must_use)]
-    let _ = vb_storage::decode_record::<vb_storage::JournalEvent>(data, 0x0000_0000, max_payload_len);
+    let _ =
+        vb_storage::decode_record::<vb_storage::JournalEvent>(data, 0x0000_0000, max_payload_len);
 });

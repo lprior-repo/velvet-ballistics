@@ -54,7 +54,7 @@ impl EnvelopeHeader {
     }
 
     pub fn payload_len(&self) -> u64 {
-        (self.payload_len_hi as u64) << 32 | (self.payload_len_u32 as u64)
+        u64::from(self.payload_len_hi) << 32 | u64::from(self.payload_len_u32)
     }
 
     pub fn validate_payload_len(&self, max: u64) -> bool {

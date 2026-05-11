@@ -164,6 +164,36 @@ fn trace_one(idx: usize, event: &JournalEvent) -> TraceEntry {
             seq: seq.get(),
             extra_json: vec![],
         },
+        JournalEvent::RunResumed { run, .. } => TraceEntry {
+            index: idx,
+            event_type: "RunResumed",
+            step: None,
+            seq: 0,
+            extra_json: vec![("run", serde_json::Value::from(run.get()))],
+        },
+        JournalEvent::RunRetried { run, .. } => TraceEntry {
+            index: idx,
+            event_type: "RunRetried",
+            step: None,
+            seq: 0,
+            extra_json: vec![("run", serde_json::Value::from(run.get()))],
+        },
+        JournalEvent::RunAnswered {
+            run,
+            slot_idx,
+            answer,
+            ..
+        } => TraceEntry {
+            index: idx,
+            event_type: "RunAnswered",
+            step: None,
+            seq: 0,
+            extra_json: vec![
+                ("run", serde_json::Value::from(run.get())),
+                ("slot_idx", serde_json::Value::from(slot_idx.get())),
+                ("answer", serde_json::Value::from(format!("{:?}", answer))),
+            ],
+        },
     }
 }
 

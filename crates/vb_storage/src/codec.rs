@@ -216,7 +216,7 @@ fn validate_schema_version(version: u16) -> Result<(), JournalError> {
 }
 
 fn validate_known_kind(kind: u16) -> Result<(), JournalError> {
-    if matches!(kind, 1 | 2 | 3 | 10..=24 | 30 | 40 | 50) {
+    if matches!(kind, 1 | 2 | 3 | 10..=27 | 30 | 40 | 50) {
         Ok(())
     } else {
         Err(JournalError::UnknownRecordKind { kind })
@@ -227,7 +227,7 @@ fn validate_kind_family(magic: u32, kind: u16) -> Result<(), JournalError> {
     let valid = match magic {
         MAGIC_WORKFLOW_SOURCE => kind == RecordKind::WorkflowSource.id(),
         MAGIC_COMPILED_ARTIFACT => kind == RecordKind::CompiledIr.id(),
-        MAGIC_JOURNAL_EVENT => matches!(kind, 10..=24),
+        MAGIC_JOURNAL_EVENT => matches!(kind, 10..=27),
         MAGIC_SNAPSHOT => kind == RecordKind::Snapshot.id(),
         MAGIC_BLOB => kind == RecordKind::Blob.id(),
         MAGIC_INDEX_RECORD => matches!(kind, 3 | 50),

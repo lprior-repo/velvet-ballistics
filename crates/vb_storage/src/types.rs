@@ -80,6 +80,13 @@ impl EventSeq {
     pub const fn get(self) -> u64 {
         self.0
     }
+
+    /// Zero event sequence.
+    pub const ZERO: Self = Self(0);
+    /// Minimum event sequence.
+    pub const MIN: Self = Self(0);
+    /// Maximum event sequence.
+    pub const MAX: Self = Self(u64::MAX);
 }
 
 /// Counts queued journal writes by durability profile.

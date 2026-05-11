@@ -43,6 +43,12 @@ pub enum RecordKind {
     RunFailed = 23,
     /// Run admission metadata event.
     RunAdmission = 24,
+    /// Run resumed event.
+    RunResumed = 25,
+    /// Run retried event.
+    RunRetried = 26,
+    /// Run answered event.
+    RunAnswered = 27,
     /// Snapshot record.
     Snapshot = 30,
     /// Blob record.
@@ -74,6 +80,9 @@ impl RecordKind {
             Self::RunFinished => 22,
             Self::RunFailed => 23,
             Self::RunAdmission => 24,
+            Self::RunResumed => 25,
+            Self::RunRetried => 26,
+            Self::RunAnswered => 27,
             Self::Snapshot => 30,
             Self::Blob => 40,
             Self::IndexUpdate => 50,

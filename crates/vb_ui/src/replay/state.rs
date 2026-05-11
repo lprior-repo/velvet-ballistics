@@ -171,6 +171,18 @@ impl ReplayState {
                 next.terminal_kind = Some(TerminalKind::Failed);
                 next.steps_failed = saturating_add_one(next.steps_failed);
             }
+
+            JournalEvent::RunResumed { .. } => {
+                // Informational only; no aggregate state change.
+            }
+
+            JournalEvent::RunRetried { .. } => {
+                // Informational only; no aggregate state change.
+            }
+
+            JournalEvent::RunAnswered { .. } => {
+                // Informational only; no aggregate state change.
+            }
         }
 
         next

@@ -18,6 +18,11 @@ postcard = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true, features = ["alloc"] }
 serde-saphyr = { workspace = true }
+chrono.workspace = true
+
+[lib]
+name = "velvet_ballastics"
+path = "src/lib.rs"
 
 [[bin]]
 name = "velvet-ballastics"

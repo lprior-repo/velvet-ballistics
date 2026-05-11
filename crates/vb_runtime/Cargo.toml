@@ -5,6 +5,7 @@ license.workspace = true
 version.workspace = true
 
 [dependencies]
+chrono.workspace = true
 crossbeam-queue.workspace = true
 indexmap.workspace = true
 rtrb.workspace = true

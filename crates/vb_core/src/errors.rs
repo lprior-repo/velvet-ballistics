@@ -8,6 +8,7 @@ use crate::ids::{
     ActionId, BlobId, ConstIdx, EventSeq, ExprIdx, ListId, ObjectId, RunId, SlotIdx, StepIdx,
     SymbolId,
 };
+use chrono::{DateTime, Utc};
 use thiserror::Error;
 
 /// Result alias for core operations.
@@ -273,6 +274,96 @@ pub enum CoreError {
         /// The configured limit.
         limit: u64,
     },
+    /// Lifecycle state transition was invalid.
+    #[error("lifecycle invalid transition: {context}")]
+    LifecycleInvalidTransition {
+        /// Diagnostic code.
+        code: DiagnosticCode,
+        /// Context description.
+        context: String,
+        /// When the error occurred.
+        timestamp: DateTime<Utc>,
+        /// Bead identifier if available.
+        bead_id: Option<RunId>,
+        /// Command that was rejected.
+        command: Option<&'static str>,
+    },
+    /// Lifecycle command was already issued (duplicate).
+    #[error("lifecycle duplicate request: {context}")]
+    LifecycleDuplicateRequest {
+        /// Diagnostic code.
+        code: DiagnosticCode,
+        /// Context description.
+        context: String,
+        /// When the error occurred.
+        timestamp: DateTime<Utc>,
+        /// Bead identifier if available.
+        bead_id: Option<RunId>,
+        /// Command that was duplicated.
+        command: Option<&'static str>,
+    },
+    /// Lifecycle command was stale (run already terminal).
+    #[error("lifecycle stale request: {context}")]
+    LifecycleStaleRequest {
+        /// Diagnostic code.
+        code: DiagnosticCode,
+        /// Context description.
+        context: String,
+        /// When the error occurred.
+        timestamp: DateTime<Utc>,
+        /// Bead identifier if available.
+        bead_id: Option<RunId>,
+        /// Command that was stale.
+        command: Option<&'static str>,
+    },
+    /// Lifecycle run not found.
+    #[error("lifecycle run not found: {context}")]
+    LifecycleNotFound {
+        /// Diagnostic code.
+        code: DiagnosticCode,
+        /// Context description.
+        context: String,
+        /// When the error occurred.
+        timestamp: DateTime<Utc>,
+        /// Bead identifier if available.
+        bead_id: Option<RunId>,
+    },
+    /// Lifecycle storage was unavailable.
+    #[error("lifecycle storage unavailable: {context}")]
+    LifecycleStorageUnavailable {
+        /// Diagnostic code.
+        code: DiagnosticCode,
+        /// Context description.
+        context: String,
+        /// When the error occurred.
+        timestamp: DateTime<Utc>,
+        /// Bead identifier if available.
+        bead_id: Option<RunId>,
+    },
+    /// Journal replay detected corruption.
+    #[error("lifecycle replay corruption: {context}")]
+    ReplayCorruption {
+        /// Diagnostic code.
+        code: DiagnosticCode,
+        /// Context description.
+        context: String,
+        /// When the error occurred.
+        timestamp: DateTime<Utc>,
+        /// Bead identifier if available.
+        bead_id: Option<RunId>,
+    },
+    /// Journal write failed.
+    #[error("lifecycle journal write failure: {context}")]
+    JournalWriteFailure {
+        /// Diagnostic code.
+        code: DiagnosticCode,
+        /// Context description.
+        context: String,
+        /// When the error occurred.
+        timestamp: DateTime<Utc>,
+        /// Bead identifier if available.
+        bead_id: Option<RunId>,
+    },
 }
 
 /// Classifies invalid collect page completions.
@@ -397,6 +488,20 @@ impl CoreError {
     pub const PARALLEL_LIMIT_EXCEEDED_CODE: DiagnosticCode = DiagnosticCode::new(0x1408);
     /// Capability denied diagnostic code.
     pub const CAPABILITY_DENIED_CODE: DiagnosticCode = DiagnosticCode::new(0x1409);
+    /// Lifecycle invalid transition diagnostic code.
+    pub const LIFECYCLE_INVALID_TRANSITION_CODE: DiagnosticCode = DiagnosticCode::new(0x1501);
+    /// Lifecycle duplicate request diagnostic code.
+    pub const LIFECYCLE_DUPLICATE_REQUEST_CODE: DiagnosticCode = DiagnosticCode::new(0x1502);
+    /// Lifecycle stale request diagnostic code.
+    pub const LIFECYCLE_STALE_REQUEST_CODE: DiagnosticCode = DiagnosticCode::new(0x1503);
+    /// Lifecycle not found diagnostic code.
+    pub const LIFECYCLE_NOT_FOUND_CODE: DiagnosticCode = DiagnosticCode::new(0x1504);
+    /// Lifecycle storage unavailable diagnostic code.
+    pub const LIFECYCLE_STORAGE_UNAVAILABLE_CODE: DiagnosticCode = DiagnosticCode::new(0x1505);
+    /// Replay corruption diagnostic code.
+    pub const REPLAY_CORRUPTION_CODE: DiagnosticCode = DiagnosticCode::new(0x1506);
+    /// Journal write failure diagnostic code.
+    pub const JOURNAL_WRITE_FAILURE_CODE: DiagnosticCode = DiagnosticCode::new(0x1507);
 
     /// Runtime code for constant-pool bounds failures.
     pub const CONST_OUT_OF_BOUNDS_RUNTIME_CODE: &str = "CONST_OUT_OF_BOUNDS";
@@ -426,6 +531,20 @@ impl CoreError {
     pub const BUDGET_EXCEEDED_RUNTIME_CODE: &str = "BUDGET_EXCEEDED";
     /// Capability denied runtime code.
     pub const CAPABILITY_DENIED_RUNTIME_CODE: &str = "CAPABILITY_DENIED";
+    /// Lifecycle invalid transition runtime code.
+    pub const LIFECYCLE_INVALID_TRANSITION_RUNTIME_CODE: &str = "LIFECYCLE_INVALID_TRANSITION";
+    /// Lifecycle duplicate request runtime code.
+    pub const LIFECYCLE_DUPLICATE_REQUEST_RUNTIME_CODE: &str = "LIFECYCLE_DUPLICATE_REQUEST";
+    /// Lifecycle stale request runtime code.
+    pub const LIFECYCLE_STALE_REQUEST_RUNTIME_CODE: &str = "LIFECYCLE_STALE_REQUEST";
+    /// Lifecycle not found runtime code.
+    pub const LIFECYCLE_NOT_FOUND_RUNTIME_CODE: &str = "LIFECYCLE_NOT_FOUND";
+    /// Lifecycle storage unavailable runtime code.
+    pub const LIFECYCLE_STORAGE_UNAVAILABLE_RUNTIME_CODE: &str = "LIFECYCLE_STORAGE_UNAVAILABLE";
+    /// Replay corruption runtime code.
+    pub const REPLAY_CORRUPTION_RUNTIME_CODE: &str = "REPLAY_CORRUPTION";
+    /// Journal write failure runtime code.
+    pub const JOURNAL_WRITE_FAILURE_RUNTIME_CODE: &str = "JOURNAL_WRITE_FAILURE";
 
     /// Returns the stable diagnostic code for this error.
     #[must_use]
@@ -472,6 +591,13 @@ impl CoreError {
             Self::ParallelLimitExceeded { .. } => Self::PARALLEL_LIMIT_EXCEEDED_CODE,
             Self::CapabilityDenied { .. } => Self::CAPABILITY_DENIED_CODE,
             Self::BudgetExceeded { .. } => Self::BUDGET_EXCEEDED_CODE,
+            Self::LifecycleInvalidTransition { .. } => Self::LIFECYCLE_INVALID_TRANSITION_CODE,
+            Self::LifecycleDuplicateRequest { .. } => Self::LIFECYCLE_DUPLICATE_REQUEST_CODE,
+            Self::LifecycleStaleRequest { .. } => Self::LIFECYCLE_STALE_REQUEST_CODE,
+            Self::LifecycleNotFound { .. } => Self::LIFECYCLE_NOT_FOUND_CODE,
+            Self::LifecycleStorageUnavailable { .. } => Self::LIFECYCLE_STORAGE_UNAVAILABLE_CODE,
+            Self::ReplayCorruption { .. } => Self::REPLAY_CORRUPTION_CODE,
+            Self::JournalWriteFailure { .. } => Self::JOURNAL_WRITE_FAILURE_CODE,
         }
     }
 
@@ -508,6 +634,19 @@ impl CoreError {
             }
             Self::BudgetExceeded { .. } => Some(Self::BUDGET_EXCEEDED_RUNTIME_CODE),
             Self::CapabilityDenied { .. } => Some(Self::CAPABILITY_DENIED_RUNTIME_CODE),
+            Self::LifecycleInvalidTransition { .. } => {
+                Some(Self::LIFECYCLE_INVALID_TRANSITION_RUNTIME_CODE)
+            }
+            Self::LifecycleDuplicateRequest { .. } => {
+                Some(Self::LIFECYCLE_DUPLICATE_REQUEST_RUNTIME_CODE)
+            }
+            Self::LifecycleStaleRequest { .. } => Some(Self::LIFECYCLE_STALE_REQUEST_RUNTIME_CODE),
+            Self::LifecycleNotFound { .. } => Some(Self::LIFECYCLE_NOT_FOUND_RUNTIME_CODE),
+            Self::LifecycleStorageUnavailable { .. } => {
+                Some(Self::LIFECYCLE_STORAGE_UNAVAILABLE_RUNTIME_CODE)
+            }
+            Self::ReplayCorruption { .. } => Some(Self::REPLAY_CORRUPTION_RUNTIME_CODE),
+            Self::JournalWriteFailure { .. } => Some(Self::JOURNAL_WRITE_FAILURE_RUNTIME_CODE),
             _ => None,
         }
     }
