@@ -2491,6 +2491,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f3767dfe8889ebb55a21409df2b6f36e66abfbe1eb92d64ff76ae799d3f91016"
 dependencies = [
  "arraydeque",
+ "encoding_rs",
  "hashlink",
  "ordered-float",
  "saphyr-parser",
@@ -3238,6 +3239,10 @@ dependencies = [
 name = "vb_ui_model"
 version = "0.1.0"
 dependencies = [
+ "blake3",
+ "crc32c",
+ "postcard",
+ "saphyr",
  "serde",
  "serde_json",
  "vb_core",

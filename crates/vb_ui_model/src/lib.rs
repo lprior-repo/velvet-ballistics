@@ -18,6 +18,7 @@ pub use vb_core::ids::{
 };
 pub use vb_core::value::Taint;
 
+pub mod emitter;
 pub mod envelope;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]

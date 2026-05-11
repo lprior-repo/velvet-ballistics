@@ -1,4 +1,5 @@
 #![forbid(unsafe_code)]
+#![cfg_attr(not(feature = "std"), no_std)]
 
 extern crate alloc;
 
@@ -38,22 +39,43 @@ impl fmt::Display for SchemaVersion {
 pub enum EnvelopeKind {
     Success = 0,
     Error = 1,
-    Diagnostic = 2,
+    DiagnosticReport = 2,
     Status = 3,
     Event = 4,
     Workflow = 5,
 }
 
 impl EnvelopeKind {
+    /// Returns the stable name for this envelope kind.
+    ///
+    /// For `DiagnosticReport`, returns "DiagnosticReport" (not "Diagnostic")
+    /// to match the canonical kind vocabulary in the contract.
     pub fn name(self) -> &'static str {
         match self {
             EnvelopeKind::Success => "Success",
             EnvelopeKind::Error => "Error",
-            EnvelopeKind::Diagnostic => "Diagnostic",
+            EnvelopeKind::DiagnosticReport => "DiagnosticReport",
             EnvelopeKind::Status => "Status",
             EnvelopeKind::Event => "Event",
             EnvelopeKind::Workflow => "Workflow",
         }
+    }
+
+    /// Returns true if this kind uses `data` field for its payload.
+    pub fn uses_data_field(self) -> bool {
+        match self {
+            EnvelopeKind::Success
+            | EnvelopeKind::Error
+            | EnvelopeKind::Status
+            | EnvelopeKind::Event
+            | EnvelopeKind::Workflow => true,
+            EnvelopeKind::DiagnosticReport => false,
+        }
+    }
+
+    /// Returns true if this kind uses `diagnostics` field.
+    pub fn uses_diagnostics_field(self) -> bool {
+        self == EnvelopeKind::DiagnosticReport
     }
 }
 
@@ -71,6 +93,63 @@ impl MetadataEnvelope {
             command,
             timestamp,
         }
+    }
+}
+
+/// Maximum number of diagnostic entries in a diagnostic report.
+pub const MAX_DIAGNOSTIC_ENTRIES: usize = 1000;
+
+/// Maximum length of a diagnostic message or code string.
+pub const MAX_DIAGNOSTIC_STRING_LEN: usize = 4096;
+
+/// A single diagnostic entry for structured diagnostics.
+///
+/// This corresponds to the `DiagnosticEntry` type referenced in the contract's
+/// diagnostic envelope shape (Q2).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct DiagnosticEntry {
+    /// Stable diagnostic code identifying the class of issue.
+    pub code: String,
+    /// Human-readable message describing the issue.
+    pub message: String,
+    /// Optional detailed information about the diagnostic.
+    pub detail: Option<String>,
+}
+
+impl DiagnosticEntry {
+    /// Creates a new diagnostic entry.
+    ///
+    /// Returns an error if the code or message exceeds `MAX_DIAGNOSTIC_STRING_LEN`.
+    pub fn new(
+        code: String,
+        message: String,
+        detail: Option<String>,
+    ) -> Result<Self, EnvelopeError> {
+        if code.len() > MAX_DIAGNOSTIC_STRING_LEN {
+            return Err(EnvelopeError::MessageTooLong {
+                len: code.len(),
+                max: MAX_DIAGNOSTIC_STRING_LEN,
+            });
+        }
+        if message.len() > MAX_DIAGNOSTIC_STRING_LEN {
+            return Err(EnvelopeError::MessageTooLong {
+                len: message.len(),
+                max: MAX_DIAGNOSTIC_STRING_LEN,
+            });
+        }
+        if let Some(ref d) = detail
+            && d.len() > MAX_DIAGNOSTIC_STRING_LEN
+        {
+            return Err(EnvelopeError::MessageTooLong {
+                len: d.len(),
+                max: MAX_DIAGNOSTIC_STRING_LEN,
+            });
+        }
+        Ok(Self {
+            code,
+            message,
+            detail,
+        })
     }
 }
 
@@ -112,18 +191,38 @@ pub struct OutputEnvelope {
     pub schema_version: SchemaVersion,
     pub kind: EnvelopeKind,
     pub metadata: MetadataEnvelope,
+    /// Data payload for kinds that use `data` field (Success, Error, Status, Event, Workflow).
+    /// Must be `None` for DiagnosticReport kind.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub diagnostic: Option<DiagnosticEnvelope>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub payload: Option<PayloadEnvelope>,
+    pub data: Option<PayloadEnvelope>,
+    /// Diagnostics for DiagnosticReport kind.
+    /// Must be empty for all other kinds.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub diagnostics: Vec<DiagnosticEntry>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum EnvelopeError {
-    InvalidSchemaVersion { value: u16 },
+    InvalidSchemaVersion {
+        value: u16,
+    },
     SuccessCannotHaveDiagnostic,
     ErrorMustHaveDiagnostic,
     DiagnosticAndPayloadMutuallyExclusive,
+    /// DiagnosticReport kind must have diagnostics, not data.
+    DiagnosticReportMustHaveDiagnostics,
+    /// Data field is not allowed for DiagnosticReport kind.
+    DataFieldNotAllowedForDiagnosticReport,
+    /// Number of diagnostic entries exceeds the maximum allowed.
+    DiagnosticLimitExceeded {
+        len: usize,
+        max: usize,
+    },
+    /// A string field exceeds the maximum allowed length.
+    MessageTooLong {
+        len: usize,
+        max: usize,
+    },
 }
 
 impl fmt::Display for EnvelopeError {
@@ -145,46 +244,114 @@ impl fmt::Display for EnvelopeError {
             EnvelopeError::DiagnosticAndPayloadMutuallyExclusive => {
                 write!(f, "envelope cannot have both diagnostic and payload")
             }
+            EnvelopeError::DiagnosticReportMustHaveDiagnostics => {
+                write!(f, "DiagnosticReport envelope must have diagnostics")
+            }
+            EnvelopeError::DataFieldNotAllowedForDiagnosticReport => {
+                write!(f, "data field is not allowed for DiagnosticReport kind")
+            }
+            EnvelopeError::DiagnosticLimitExceeded { len, max } => {
+                write!(f, "diagnostic entry count {} exceeds maximum {}", len, max)
+            }
+            EnvelopeError::MessageTooLong { len, max } => {
+                write!(f, "string length {} exceeds maximum {}", len, max)
+            }
         }
     }
 }
 
 impl OutputEnvelope {
+    /// Creates a new output envelope with the given data payload.
+    ///
+    /// # Invariants (I5 - Payload invariant)
+    /// - `data` contains exactly the typed payload for `kind`
+    /// - `DiagnosticReport` kind uses `diagnostics` instead of `data`
+    /// - For `DiagnosticReport`: `data` must be `None` and `diagnostics` must be non-empty
+    /// - For other kinds: `diagnostics` must be empty
+    ///
+    /// # Arguments
+    /// * `schema_version` - The schema version (must be valid)
+    /// * `kind` - The envelope kind
+    /// * `metadata` - The metadata envelope
+    /// * `data` - The data payload (allowed for Success, Error, Status, Event, Workflow)
+    /// * `diagnostics` - The diagnostics list (only allowed for DiagnosticReport)
     pub fn new(
         schema_version: SchemaVersion,
         kind: EnvelopeKind,
         metadata: MetadataEnvelope,
-        diagnostic: Option<DiagnosticEnvelope>,
-        payload: Option<PayloadEnvelope>,
+        data: Option<PayloadEnvelope>,
+        diagnostics: Vec<DiagnosticEntry>,
     ) -> Result<Self, EnvelopeError> {
-        if diagnostic.is_some() && payload.is_some() {
-            return Err(EnvelopeError::DiagnosticAndPayloadMutuallyExclusive);
-        }
-
-        match kind {
-            EnvelopeKind::Success => {
-                if diagnostic.is_some() {
-                    return Err(EnvelopeError::SuccessCannotHaveDiagnostic);
-                }
+        // I5 invariant: DiagnosticReport uses diagnostics, not data
+        if kind == EnvelopeKind::DiagnosticReport {
+            if data.is_some() {
+                return Err(EnvelopeError::DataFieldNotAllowedForDiagnosticReport);
             }
-            EnvelopeKind::Error => {
-                if diagnostic.is_none() {
-                    return Err(EnvelopeError::ErrorMustHaveDiagnostic);
-                }
+            if diagnostics.is_empty() {
+                return Err(EnvelopeError::DiagnosticReportMustHaveDiagnostics);
             }
-            EnvelopeKind::Diagnostic
-            | EnvelopeKind::Status
-            | EnvelopeKind::Event
-            | EnvelopeKind::Workflow => {}
+            if diagnostics.len() > MAX_DIAGNOSTIC_ENTRIES {
+                return Err(EnvelopeError::DiagnosticLimitExceeded {
+                    len: diagnostics.len(),
+                    max: MAX_DIAGNOSTIC_ENTRIES,
+                });
+            }
+        } else {
+            // For other kinds, diagnostics must be empty
+            if !diagnostics.is_empty() {
+                // Diagnostics field should not be used for non-DiagnosticReport kinds
+                // We silently allow empty diagnostics for other kinds for API compatibility
+                // but reject non-empty diagnostics
+                return Err(EnvelopeError::DiagnosticLimitExceeded {
+                    len: diagnostics.len(),
+                    max: 0,
+                });
+            }
         }
 
         Ok(Self {
             schema_version,
             kind,
             metadata,
-            diagnostic,
-            payload,
+            data,
+            diagnostics,
         })
+    }
+
+    /// Creates a new output envelope for a successful operation.
+    ///
+    /// Convenience constructor that sets `kind` to `Success` and ensures
+    /// no diagnostics are present.
+    pub fn success(
+        schema_version: SchemaVersion,
+        metadata: MetadataEnvelope,
+        data: PayloadEnvelope,
+    ) -> Result<Self, EnvelopeError> {
+        Self::new(
+            schema_version,
+            EnvelopeKind::Success,
+            metadata,
+            Some(data),
+            Vec::new(),
+        )
+    }
+
+    /// Creates a new output envelope for a DiagnosticReport.
+    ///
+    /// Convenience constructor that sets `kind` to `DiagnosticReport` and ensures
+    /// data is None and diagnostics is non-empty.
+    pub fn diagnostic_report(
+        schema_version: SchemaVersion,
+        metadata: MetadataEnvelope,
+        diagnostics: Vec<DiagnosticEntry>,
+    ) -> Result<Self, EnvelopeError> {
+        Self::new(
+            schema_version,
+            EnvelopeKind::DiagnosticReport,
+            metadata,
+            None,
+            diagnostics,
+        )
     }
 }
 
@@ -225,10 +392,30 @@ mod tests {
     fn envelope_kind_name() {
         assert_eq!(EnvelopeKind::Success.name(), "Success");
         assert_eq!(EnvelopeKind::Error.name(), "Error");
-        assert_eq!(EnvelopeKind::Diagnostic.name(), "Diagnostic");
+        assert_eq!(EnvelopeKind::DiagnosticReport.name(), "DiagnosticReport");
         assert_eq!(EnvelopeKind::Status.name(), "Status");
         assert_eq!(EnvelopeKind::Event.name(), "Event");
         assert_eq!(EnvelopeKind::Workflow.name(), "Workflow");
+    }
+
+    #[test]
+    fn envelope_kind_uses_data_field() {
+        assert!(EnvelopeKind::Success.uses_data_field());
+        assert!(EnvelopeKind::Error.uses_data_field());
+        assert!(EnvelopeKind::Status.uses_data_field());
+        assert!(EnvelopeKind::Event.uses_data_field());
+        assert!(EnvelopeKind::Workflow.uses_data_field());
+        assert!(!EnvelopeKind::DiagnosticReport.uses_data_field());
+    }
+
+    #[test]
+    fn envelope_kind_uses_diagnostics_field() {
+        assert!(!EnvelopeKind::Success.uses_diagnostics_field());
+        assert!(!EnvelopeKind::Error.uses_diagnostics_field());
+        assert!(!EnvelopeKind::Status.uses_diagnostics_field());
+        assert!(!EnvelopeKind::Event.uses_diagnostics_field());
+        assert!(!EnvelopeKind::Workflow.uses_diagnostics_field());
+        assert!(EnvelopeKind::DiagnosticReport.uses_diagnostics_field());
     }
 
     #[test]
@@ -238,6 +425,59 @@ mod tests {
         assert_eq!(metadata.run_id, run_id);
         assert_eq!(metadata.command, "test-command");
         assert_eq!(metadata.timestamp, 999);
+    }
+
+    #[test]
+    fn diagnostic_entry_new_valid() {
+        let entry = DiagnosticEntry::new(
+            "VB001".to_string(),
+            "Something went wrong".to_string(),
+            Some("Details here".to_string()),
+        );
+        assert!(entry.is_ok());
+        let e = entry.unwrap();
+        assert_eq!(e.code, "VB001");
+        assert_eq!(e.message, "Something went wrong");
+        assert_eq!(e.detail, Some("Details here".to_string()));
+    }
+
+    #[test]
+    fn diagnostic_entry_new_without_detail() {
+        let entry = DiagnosticEntry::new(
+            "VB001".to_string(),
+            "Something went wrong".to_string(),
+            None,
+        );
+        assert!(entry.is_ok());
+        assert_eq!(entry.unwrap().detail, None);
+    }
+
+    #[test]
+    fn diagnostic_entry_rejects_long_code() {
+        let long_code = "x".repeat(MAX_DIAGNOSTIC_STRING_LEN + 1);
+        let entry = DiagnosticEntry::new(long_code, "message".to_string(), None);
+        assert!(entry.is_err());
+        assert_eq!(
+            entry.unwrap_err(),
+            EnvelopeError::MessageTooLong {
+                len: MAX_DIAGNOSTIC_STRING_LEN + 1,
+                max: MAX_DIAGNOSTIC_STRING_LEN
+            }
+        );
+    }
+
+    #[test]
+    fn diagnostic_entry_rejects_long_message() {
+        let long_message = "x".repeat(MAX_DIAGNOSTIC_STRING_LEN + 1);
+        let entry = DiagnosticEntry::new("VB001".to_string(), long_message, None);
+        assert!(entry.is_err());
+        assert_eq!(
+            entry.unwrap_err(),
+            EnvelopeError::MessageTooLong {
+                len: MAX_DIAGNOSTIC_STRING_LEN + 1,
+                max: MAX_DIAGNOSTIC_STRING_LEN
+            }
+        );
     }
 
     #[test]
@@ -270,136 +510,182 @@ mod tests {
     }
 
     #[test]
-    fn output_envelope_success_without_diagnostic() {
+    fn output_envelope_success_with_data() {
         let run_id = RunId::new(1);
         let metadata = MetadataEnvelope::new(run_id, "status".to_string(), 100);
-        let payload = PayloadEnvelope::from_json(serde_json::json!({"data": "test"}));
+        let data = PayloadEnvelope::from_json(serde_json::json!({"data": "test"}));
         let envelope = OutputEnvelope::new(
             SchemaVersion::CURRENT,
             EnvelopeKind::Success,
             metadata,
-            None,
-            Some(payload),
+            Some(data),
+            Vec::new(),
         );
         assert!(envelope.is_ok());
         let env = envelope.unwrap();
         assert_eq!(env.kind, EnvelopeKind::Success);
-        assert!(env.diagnostic.is_none());
-        assert!(env.payload.is_some());
+        assert!(env.data.is_some());
+        assert!(env.diagnostics.is_empty());
     }
 
     #[test]
-    fn output_envelope_error_must_have_diagnostic() {
-        let run_id = RunId::new(1);
-        let metadata = MetadataEnvelope::new(run_id, "verify".to_string(), 100);
-        let result = OutputEnvelope::new(
-            SchemaVersion::CURRENT,
-            EnvelopeKind::Error,
-            metadata,
-            None,
-            None,
-        );
-        assert!(result.is_err());
-        assert_eq!(result.unwrap_err(), EnvelopeError::ErrorMustHaveDiagnostic);
-    }
-
-    #[test]
-    fn output_envelope_error_with_diagnostic() {
-        let run_id = RunId::new(1);
-        let metadata = MetadataEnvelope::new(run_id, "verify".to_string(), 100);
-        let diag = DiagnosticEnvelope::new("VB001".to_string(), "Failed".to_string(), None);
-        let result = OutputEnvelope::new(
-            SchemaVersion::CURRENT,
-            EnvelopeKind::Error,
-            metadata,
-            Some(diag),
-            None,
-        );
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn output_envelope_success_cannot_have_diagnostic() {
+    fn output_envelope_success_helper() {
         let run_id = RunId::new(1);
         let metadata = MetadataEnvelope::new(run_id, "status".to_string(), 100);
-        let diag = DiagnosticEnvelope::new("VB001".to_string(), "Warning".to_string(), None);
+        let data = PayloadEnvelope::from_json(serde_json::json!({"data": "test"}));
+        let envelope = OutputEnvelope::success(SchemaVersion::CURRENT, metadata, data);
+        assert!(envelope.is_ok());
+        let env = envelope.unwrap();
+        assert_eq!(env.kind, EnvelopeKind::Success);
+        assert!(env.data.is_some());
+    }
+
+    #[test]
+    fn output_envelope_error_with_data() {
+        // Error envelopes use data field, exit_code indicates error status
+        let run_id = RunId::new(1);
+        let metadata = MetadataEnvelope::new(run_id, "verify".to_string(), 100);
+        let data = PayloadEnvelope::from_json(serde_json::json!({"error": "validation failed"}));
+        let envelope = OutputEnvelope::new(
+            SchemaVersion::CURRENT,
+            EnvelopeKind::Error,
+            metadata,
+            Some(data),
+            Vec::new(),
+        );
+        assert!(envelope.is_ok());
+        let env = envelope.unwrap();
+        assert_eq!(env.kind, EnvelopeKind::Error);
+        assert!(env.data.is_some());
+        assert!(env.diagnostics.is_empty());
+    }
+
+    #[test]
+    fn output_envelope_diagnostic_report_requires_diagnostics() {
+        // DiagnosticReport must have diagnostics, not data
+        let run_id = RunId::new(1);
+        let metadata = MetadataEnvelope::new(run_id, "diagnostic".to_string(), 100);
         let result = OutputEnvelope::new(
             SchemaVersion::CURRENT,
-            EnvelopeKind::Success,
+            EnvelopeKind::DiagnosticReport,
             metadata,
-            Some(diag),
             None,
+            Vec::new(),
         );
         assert!(result.is_err());
         assert_eq!(
             result.unwrap_err(),
-            EnvelopeError::SuccessCannotHaveDiagnostic
+            EnvelopeError::DiagnosticReportMustHaveDiagnostics
         );
     }
 
     #[test]
-    fn output_envelope_cannot_have_both_diagnostic_and_payload() {
+    fn output_envelope_diagnostic_report_rejects_data() {
+        // DiagnosticReport cannot have data field
         let run_id = RunId::new(1);
-        let metadata = MetadataEnvelope::new(run_id, "status".to_string(), 100);
-        let diag = DiagnosticEnvelope::new("VB001".to_string(), "Error".to_string(), None);
-        let payload = PayloadEnvelope::from_json(serde_json::json!({"data": "test"}));
+        let metadata = MetadataEnvelope::new(run_id, "diagnostic".to_string(), 100);
+        let data = PayloadEnvelope::from_json(serde_json::json!({"data": "test"}));
         let result = OutputEnvelope::new(
             SchemaVersion::CURRENT,
-            EnvelopeKind::Status,
+            EnvelopeKind::DiagnosticReport,
             metadata,
-            Some(diag),
-            Some(payload),
+            Some(data),
+            Vec::new(),
         );
         assert!(result.is_err());
         assert_eq!(
             result.unwrap_err(),
-            EnvelopeError::DiagnosticAndPayloadMutuallyExclusive
+            EnvelopeError::DataFieldNotAllowedForDiagnosticReport
         );
     }
 
     #[test]
-    fn output_envelope_diagnostic_kind_allows_diagnostic() {
+    fn output_envelope_diagnostic_report_success() {
         let run_id = RunId::new(1);
         let metadata = MetadataEnvelope::new(run_id, "diagnostic".to_string(), 100);
-        let diag = DiagnosticEnvelope::new("VB001".to_string(), "Warning".to_string(), None);
-        let envelope = OutputEnvelope::new(
-            SchemaVersion::CURRENT,
-            EnvelopeKind::Diagnostic,
-            metadata,
-            Some(diag),
-            None,
-        );
+        let diagnostics = vec![
+            DiagnosticEntry::new(
+                "VB001".to_string(),
+                "Warning: something looks odd".to_string(),
+                None,
+            )
+            .unwrap(),
+            DiagnosticEntry::new(
+                "VB002".to_string(),
+                "Info: check this".to_string(),
+                Some("Detail text".to_string()),
+            )
+            .unwrap(),
+        ];
+        let envelope =
+            OutputEnvelope::diagnostic_report(SchemaVersion::CURRENT, metadata, diagnostics);
         assert!(envelope.is_ok());
+        let env = envelope.unwrap();
+        assert_eq!(env.kind, EnvelopeKind::DiagnosticReport);
+        assert!(env.data.is_none());
+        assert_eq!(env.diagnostics.len(), 2);
     }
 
     #[test]
-    fn output_envelope_diagnostic_kind_allows_payload() {
+    fn output_envelope_diagnostic_report_exceeds_limit() {
         let run_id = RunId::new(1);
         let metadata = MetadataEnvelope::new(run_id, "diagnostic".to_string(), 100);
-        let payload = PayloadEnvelope::from_json(serde_json::json!({"data": "test"}));
-        let envelope = OutputEnvelope::new(
+        let too_many_diagnostics = (0..=MAX_DIAGNOSTIC_ENTRIES)
+            .map(|i| {
+                DiagnosticEntry::new(format!("VB{:04}", i), "message".to_string(), None).unwrap()
+            })
+            .collect();
+        let result = OutputEnvelope::new(
             SchemaVersion::CURRENT,
-            EnvelopeKind::Diagnostic,
+            EnvelopeKind::DiagnosticReport,
             metadata,
             None,
-            Some(payload),
+            too_many_diagnostics,
         );
-        assert!(envelope.is_ok());
+        assert!(result.is_err());
+        assert_eq!(
+            result.unwrap_err(),
+            EnvelopeError::DiagnosticLimitExceeded {
+                len: MAX_DIAGNOSTIC_ENTRIES + 1,
+                max: MAX_DIAGNOSTIC_ENTRIES
+            }
+        );
     }
 
     #[test]
-    fn output_envelope_workflow_kind_allows_payload() {
+    fn output_envelope_workflow_kind_allows_data() {
         let run_id = RunId::new(1);
         let metadata = MetadataEnvelope::new(run_id, "workflow".to_string(), 100);
-        let payload = PayloadEnvelope::from_json(serde_json::json!({"steps": []}));
+        let data = PayloadEnvelope::from_json(serde_json::json!({"steps": []}));
         let envelope = OutputEnvelope::new(
             SchemaVersion::CURRENT,
             EnvelopeKind::Workflow,
             metadata,
-            None,
-            Some(payload),
+            Some(data),
+            Vec::new(),
         );
         assert!(envelope.is_ok());
+    }
+
+    #[test]
+    fn output_envelope_non_diagnostic_kind_rejects_diagnostics() {
+        // Non-DiagnosticReport kinds should not have diagnostics
+        let run_id = RunId::new(1);
+        let metadata = MetadataEnvelope::new(run_id, "status".to_string(), 100);
+        let diagnostics =
+            vec![DiagnosticEntry::new("VB001".to_string(), "Warning".to_string(), None).unwrap()];
+        let result = OutputEnvelope::new(
+            SchemaVersion::CURRENT,
+            EnvelopeKind::Success,
+            metadata,
+            None,
+            diagnostics,
+        );
+        assert!(result.is_err());
+        assert_eq!(
+            result.unwrap_err(),
+            EnvelopeError::DiagnosticLimitExceeded { len: 1, max: 0 }
+        );
     }
 
     #[test]
@@ -415,5 +701,19 @@ mod tests {
 
         let err = EnvelopeError::DiagnosticAndPayloadMutuallyExclusive;
         assert!(format!("{}", err).contains("both"));
+
+        let err = EnvelopeError::DiagnosticReportMustHaveDiagnostics;
+        assert!(format!("{}", err).contains("DiagnosticReport"));
+
+        let err = EnvelopeError::DataFieldNotAllowedForDiagnosticReport;
+        assert!(format!("{}", err).contains("data"));
+
+        let err = EnvelopeError::DiagnosticLimitExceeded { len: 10, max: 5 };
+        assert!(format!("{}", err).contains("10"));
+        assert!(format!("{}", err).contains("5"));
+
+        let err = EnvelopeError::MessageTooLong { len: 100, max: 50 };
+        assert!(format!("{}", err).contains("100"));
+        assert!(format!("{}", err).contains("50"));
     }
 }
