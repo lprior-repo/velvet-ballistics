@@ -12,6 +12,7 @@ members = [
     "crates/vb_ui",
     "crates/vb_ui_makepad",
     "crates/vb_ui_snapshot",
+    "crates/vb_proof_kernels",
     "crates/velvet_ballastics",
     "xtask",
     "fuzz",

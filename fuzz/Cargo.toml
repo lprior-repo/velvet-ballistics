@@ -182,3 +182,17 @@ path = "src/bin/recover_runtime_frame_seed_contract.rs"
 test = false
 doc = false
 bench = false
+
+[[bin]]
+name = "lex_expr"
+path = "fuzz_targets/lex_expr.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "decode_record"
+path = "fuzz_targets/decode_record.rs"
+test = false
+doc = false
+bench = false

@@ -34,6 +34,12 @@ pub use eval::{
 
 use thiserror::Error;
 
+impl From<vb_core::CoreError> for ExprError {
+    fn from(_: vb_core::CoreError) -> Self {
+        ExprError::NonFiniteFloat
+    }
+}
+
 /// Expression error type.
 #[derive(Debug, Error, Clone, PartialEq, Eq)]
 pub enum ExprError {

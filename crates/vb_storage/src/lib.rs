@@ -40,6 +40,10 @@ pub mod tests;
 pub mod trimming;
 pub mod types;
 pub mod vb_2bok_durability_gate_tests;
+#[cfg(miri)]
+pub mod codec_miri_tests;
+#[cfg(kani)]
+pub mod kani_codec;
 
 // ============================================================================
 // Re-exports from submodules

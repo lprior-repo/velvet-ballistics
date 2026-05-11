@@ -22,6 +22,7 @@ fn infers_literal_types() -> crate::ExprResult<()> {
     assert_eq!(check("true")?, ExprType::Bool);
     assert_eq!(check("null")?, ExprType::Null);
     assert_eq!(check("\"hello\"")?, ExprType::Text);
+    assert_eq!(check("3.14")?, ExprType::F64);
     Ok(())
 }
 

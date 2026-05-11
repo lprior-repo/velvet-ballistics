@@ -12,6 +12,7 @@ pub use types::{BinaryOp, LiteralToken, SpannedToken, Token, TokenSpan, UnaryOp}
 
 pub mod tests;
 pub mod types;
+pub mod miri_tests;
 
 /// Maximum source bytes accepted by the lexer.
 const MAX_SOURCE_BYTES: usize = 4096;

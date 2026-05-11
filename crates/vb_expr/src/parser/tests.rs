@@ -188,6 +188,32 @@ fn parse_expr_parses_variable_reference() -> crate::ExprResult<()> {
     Ok(())
 }
 
+// --- F64 literal parser tests ---
+
+#[test]
+fn parse_expr_parses_float_literal() -> crate::ExprResult<()> {
+    let expr = parse("3.14")?;
+    let finite = vb_core::FiniteF64::new(3.14)?;
+    assert_eq!(expr, ExprAst::Literal(ExprLiteral::F64(finite)));
+    Ok(())
+}
+
+#[test]
+fn parse_expr_parses_float_literal_with_zero_integer_part() -> crate::ExprResult<()> {
+    let expr = parse("0.5")?;
+    let finite = vb_core::FiniteF64::new(0.5)?;
+    assert_eq!(expr, ExprAst::Literal(ExprLiteral::F64(finite)));
+    Ok(())
+}
+
+#[test]
+fn parse_expr_parses_float_literal_large_value() -> crate::ExprResult<()> {
+    let expr = parse("999.999")?;
+    let finite = vb_core::FiniteF64::new(999.999)?;
+    assert_eq!(expr, ExprAst::Literal(ExprLiteral::F64(finite)));
+    Ok(())
+}
+
 #[test]
 fn parse_expr_returns_error_for_empty_input() -> crate::ExprResult<()> {
     let tokens = lex_expr("")?;

@@ -119,6 +119,50 @@ fn compiles_all_arithmetic_ops() -> crate::ExprResult<()> {
     Ok(())
 }
 
+// --- F64 bytecode tests ---
+
+#[test]
+fn compiles_float_literal_to_f64_constant() -> crate::ExprResult<()> {
+    let (program, constants) = compile_with_pool("3.14")?;
+    let expected_ops = vec![ExprOp::LoadConst(ConstIdx::new(0))];
+    assert_eq!(program.ops.as_ref(), expected_ops.as_slice());
+    assert_eq!(constants.len(), 1);
+    let ConstValue::F64(finite) = constants.first().unwrap() else {
+        return Err(crate::ExprError::UnexpectedToken {
+            token: "expected ConstValue::F64".into(),
+        });
+    };
+    assert_eq!(finite.get(), 3.14);
+    Ok(())
+}
+
+#[test]
+fn compiles_float_literal_with_leading_zero() -> crate::ExprResult<()> {
+    let (program, constants) = compile_with_pool("0.5")?;
+    assert_eq!(constants.len(), 1);
+    let ConstValue::F64(finite) = constants.first().unwrap() else {
+        return Err(crate::ExprError::UnexpectedToken {
+            token: "expected ConstValue::F64".into(),
+        });
+    };
+    assert_eq!(finite.get(), 0.5);
+    Ok(())
+}
+
+#[test]
+fn constant_folds_float_literal() -> crate::ExprResult<()> {
+    let tokens = lex_expr("2.5")?;
+    let ast = parse_expr(&tokens)?;
+    let folded = const_fold_expr(&ast);
+    let Some(ConstValue::F64(finite)) = folded else {
+        return Err(crate::ExprError::UnexpectedToken {
+            token: "expected ConstValue::F64 from folding".into(),
+        });
+    };
+    assert_eq!(finite.get(), 2.5);
+    Ok(())
+}
+
 #[test]
 fn compiles_all_helpers() -> crate::ExprResult<()> {
     compile_expr("contains($a, $b)", &resolve_test_reference)?;
