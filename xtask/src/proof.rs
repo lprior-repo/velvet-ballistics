@@ -75,6 +75,25 @@ pub struct ProofTarget {
     pub level: String,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ObligationStatus {
+    pub id: String,
+    pub status: String,
+    pub level: String,
+    pub commands: Vec<String>,
+    pub log: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ProofEvidence {
+    pub kind: String,
+    pub bead: String,
+    pub commit: String,
+    pub obligations: Vec<ObligationStatus>,
+    pub remaining_assumptions: Vec<String>,
+    pub verified: HashMap<String, String>,
+}
+
 #[derive(Debug, Deserialize)]
 struct ProofObligationsFile {
     obligations: Vec<ProofObligation>,
