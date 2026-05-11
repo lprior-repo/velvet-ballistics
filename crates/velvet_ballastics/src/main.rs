@@ -1304,17 +1304,15 @@ fn cmd_submit(
         return CliExitCode::StorageError.into();
     }
 
-    // Also record submission via runtime journal for durability-aware runbooks
+    // Also record submission for durability-aware runbooks without reopening the Fjall DB while
+    // the metadata journal handle is live.
     if durability != DurabilityMode::None {
-        let runtime_journal = match runtime_journal_for_mode(durability, Some(db)) {
-            Ok(j) => j,
-            Err(code) => return code,
-        };
-        let event = vb_runtime::journal::RuntimeJournalEvent::RunSubmitted {
+        let event = vb_storage::JournalEvent::RunAccepted {
             run: run_id,
+            seq: vb_storage::EventSeq::new(0),
             workflow: digest,
         };
-        if let Err(e) = runtime_journal.append(event) {
+        if let Err(e) = journal.append_strict_batch(&[event]) {
             if output != OutputFormat::Text {
                 json_error(
                     &serde_json::json!({

@@ -2550,3 +2550,182 @@ fn cli_doctor_returns_storage_error_for_unreadable_path() {
         "doctor should fail for unreadable path"
     );
 }
+
+// ---------------------------------------------------------------------------
+// vb-qi37.15.2: submit command and job ledger tests
+// ---------------------------------------------------------------------------
+
+fn parse_submit_run_id(stdout: &str) -> Option<String> {
+    stdout
+        .lines()
+        .find_map(|line| line.strip_prefix("submitted run ").map(ToOwned::to_owned))
+}
+
+#[test]
+fn cli_submit_persists_ledger_before_success() {
+    let dir = match tempfile::tempdir() {
+        Ok(dir) => dir,
+        Err(err) => {
+            assert!(forced_assertion_failure(), "tempdir failed: {err}");
+            return;
+        }
+    };
+    let workflow_path = dir.path().join("submit.yaml");
+    let input_path = dir.path().join("input.bin");
+    let db_path = dir.path().join("submit-db");
+    if !write_test_file(&workflow_path, CLI_WORKFLOW.as_bytes()) || !write_test_file(&input_path, &[]) {
+        return;
+    }
+
+    let output = match run_cli(&[
+        std::ffi::OsStr::new("submit"),
+        workflow_path.as_os_str(),
+        std::ffi::OsStr::new("--input-bin"),
+        input_path.as_os_str(),
+        std::ffi::OsStr::new("--db"),
+        db_path.as_os_str(),
+        std::ffi::OsStr::new("--durability"),
+        std::ffi::OsStr::new("journaled"),
+    ]) {
+        Some(output) => output,
+        None => return,
+    };
+    assert_cli_success(&output, "submit journaled");
+    let stdout = output_stdout(&output);
+    let Some(run_id) = parse_submit_run_id(&stdout) else {
+        assert!(forced_assertion_failure(), "submit did not print run id: {stdout}");
+        return;
+    };
+
+    let inspect = match run_cli(&[
+        std::ffi::OsStr::new("inspect"),
+        std::ffi::OsStr::new(&run_id),
+        std::ffi::OsStr::new("--db"),
+        db_path.as_os_str(),
+    ]) {
+        Some(output) => output,
+        None => return,
+    };
+    assert_cli_success(&inspect, "inspect submitted run");
+    let inspect_stdout = output_stdout(&inspect);
+    assert!(inspect_stdout.contains(&run_id), "inspect should reference run id {run_id}: {inspect_stdout}");
+}
+
+#[test]
+fn cli_submit_json_returns_structured_identifiers() {
+    let dir = match tempfile::tempdir() {
+        Ok(dir) => dir,
+        Err(err) => {
+            assert!(forced_assertion_failure(), "tempdir failed: {err}");
+            return;
+        }
+    };
+    let workflow_path = dir.path().join("submit-json.yaml");
+    let input_path = dir.path().join("input.bin");
+    let db_path = dir.path().join("submit-json-db");
+    if !write_test_file(&workflow_path, CLI_WORKFLOW.as_bytes()) || !write_test_file(&input_path, &[]) {
+        return;
+    }
+
+    let output = match run_cli(&[
+        std::ffi::OsStr::new("submit"),
+        workflow_path.as_os_str(),
+        std::ffi::OsStr::new("--input-bin"),
+        input_path.as_os_str(),
+        std::ffi::OsStr::new("--db"),
+        db_path.as_os_str(),
+        std::ffi::OsStr::new("--durability"),
+        std::ffi::OsStr::new("strict"),
+        std::ffi::OsStr::new("--json"),
+    ]) {
+        Some(output) => output,
+        None => return,
+    };
+    assert_cli_success(&output, "submit --json");
+    assert_eq!(output_stderr(&output), "", "submit --json success must not write stderr");
+    let stdout = output_stdout(&output);
+    let packet: serde_json::Value = match serde_json::from_str(&stdout) {
+        Ok(packet) => packet,
+        Err(error) => {
+            assert!(forced_assertion_failure(), "submit JSON parse failed: {error}; stdout={stdout}");
+            return;
+        }
+    };
+    assert!(packet.get("run_id").and_then(|value| value.as_u64()).is_some(), "missing numeric run_id: {stdout}");
+    assert_eq!(packet.get("status"), Some(&serde_json::json!("submitted")));
+    assert_eq!(packet.get("step_count"), Some(&serde_json::json!(2)));
+    let digest_len = packet
+        .get("digest")
+        .and_then(|value| value.as_str())
+        .map_or(0, str::len);
+    assert_eq!(digest_len, 64, "digest must be 64 hex chars: {stdout}");
+}
+
+#[test]
+fn cli_submit_rejects_missing_input_bin() {
+    let dir = match tempfile::tempdir() {
+        Ok(dir) => dir,
+        Err(err) => {
+            assert!(forced_assertion_failure(), "tempdir failed: {err}");
+            return;
+        }
+    };
+    let workflow_path = dir.path().join("submit-missing-input.yaml");
+    let missing_input = dir.path().join("missing-input.bin");
+    let db_path = dir.path().join("submit-missing-input-db");
+    if !write_test_file(&workflow_path, CLI_WORKFLOW.as_bytes()) {
+        return;
+    }
+
+    let output = match run_cli(&[
+        std::ffi::OsStr::new("submit"),
+        workflow_path.as_os_str(),
+        std::ffi::OsStr::new("--input-bin"),
+        missing_input.as_os_str(),
+        std::ffi::OsStr::new("--db"),
+        db_path.as_os_str(),
+        std::ffi::OsStr::new("--durability"),
+        std::ffi::OsStr::new("strict"),
+    ]) {
+        Some(output) => output,
+        None => return,
+    };
+    assert!(!output.status.success(), "submit missing input must fail");
+    assert_eq!(output_stdout(&output), "", "missing input must not write stdout");
+    let stderr = output_stderr(&output);
+    assert!(stderr.contains("error reading"), "missing input should report read error: {stderr}");
+}
+
+#[test]
+fn cli_submit_rejects_unknown_durability() {
+    let dir = match tempfile::tempdir() {
+        Ok(dir) => dir,
+        Err(err) => {
+            assert!(forced_assertion_failure(), "tempdir failed: {err}");
+            return;
+        }
+    };
+    let workflow_path = dir.path().join("submit-bad-durability.yaml");
+    let input_path = dir.path().join("input.bin");
+    let db_path = dir.path().join("submit-bad-durability-db");
+    if !write_test_file(&workflow_path, CLI_WORKFLOW.as_bytes()) || !write_test_file(&input_path, &[]) {
+        return;
+    }
+
+    let output = match run_cli(&[
+        std::ffi::OsStr::new("submit"),
+        workflow_path.as_os_str(),
+        std::ffi::OsStr::new("--input-bin"),
+        input_path.as_os_str(),
+        std::ffi::OsStr::new("--db"),
+        db_path.as_os_str(),
+        std::ffi::OsStr::new("--durability"),
+        std::ffi::OsStr::new("unsafe-fast"),
+    ]) {
+        Some(output) => output,
+        None => return,
+    };
+    assert!(!output.status.success(), "submit unknown durability must fail");
+    let stderr = output_stderr(&output);
+    assert!(stderr.contains("unknown durability mode: unsafe-fast"), "stderr should name bad mode: {stderr}");
+}
