@@ -1,0 +1,287 @@
+## Task: [vb-yvlb] p6-holtzman: Implement GAP-12 ShardOwnership in Rust
+
+bead_id: vb-yvlb
+deliverable: Full Rust implementation of `ShardOwnership.tla` spec + pre-existing build fix
+
+### Files to modify
+- `crates/vb_runtime/src/runtime.rs` — add ownership tracking + transfer actions
+- `crates/vb_runtime/src/lib.rs` — add RuntimeError variants
+- `crates/vb_runtime/src/shard/lifecycle.rs` — fix pre-existing `admit_artifact_run` call (DEFERRED_GLOBAL)
+
+---
+
+## PRE-EXISTING BUILD FIX (DEFERRED_GLOBAL — do this first)
+
+File: `crates/vb_runtime/src/shard/lifecycle.rs` line 142
+
+Current (broken) call:
+```rust
+match admit_artifact_run(self.artifact_store.as_ref(), self.policy, run, digest, caps) {
+```
+
+The function signature at `crates/vb_runtime/src/admission.rs:398` is:
+```rust
+pub fn admit_artifact_run(
+    store: &dyn AcceptedArtifactStore,
+    policy: RuntimePolicy,
+    run_id: RunId,
+    artifact_digest: WorkflowDigest,
+    caps: CapabilitySet,
+    reservation: AggregateResourceBudget,
+) -> Result<RunAdmission, AdmissionError>
+```
+
+**Fix**: The `workflow` variable is available in scope at line 104 (`let digest = workflow.digest();`). Construct an `AggregateResourceBudget` using `AggregateResourceBudget::from_workflow(&workflow)`. If it returns an error, propagate as `RuntimeError::UnsupportedOperation`.
+
+---
+
+## SHARDOWNERSHIP IMPLEMENTATION
+
+### TLA+ Spec (specs/tla/ShardOwnership.tla)
+
+Three state variables:
+1. `run_owner: [RunId -> ShardId]` — which shard owns each run
+2. `shard_runs: [ShardId -> Set[RunId]]` — reverse index
+3. `pending_transfers: Set[(RunId, ShardId)]` — in-flight migrations
+
+Three actions:
+- `AssignShard(run, shard)`: run_owner[run] must be Nil; sets owner and adds to shard_runs
+- `InitiateTransfer(run, new_shard)`: run_owner[run] must be != Nil and != new_shard; adds to pending_transfers
+- `CompleteTransfer(run, new_shard)`: <<run, new_shard>> must be in pending_transfers; removes from old shard_runs, adds to new shard_runs, updates run_owner, removes from pending_transfers
+
+Three invariants (THEOREMs):
+- `SingleOwner`: each run has exactly one shard owner
+- `RunOnExactlyOneShard`: each run appears in exactly one shard_runs set
+- `NoPendingTransferConflict`: pending transfers do not conflict with current ownership
+
+### Implementation Plan
+
+#### 1. Add `Transfer` and `ShardIndex` types
+
+In `crates/vb_runtime/src/runtime.rs`:
+
+```rust
+/// A pending or completed shard transfer of a run.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct Transfer {
+    pub run: RunId,
+    pub target_shard: ShardIndex,
+}
+
+/// A shard index (0-based position in the shards Vec).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct ShardIndex(pub usize);
+```
+
+#### 2. Extend `Runtime` struct
+
+In `crates/vb_runtime/src/runtime.rs`, add to the `Runtime` struct:
+
+```rust
+pub struct Runtime {
+    shards: Vec<Shard>,
+    shard_count: usize,
+    journal: SharedRuntimeJournal,
+    // === ShardOwnership state ===
+    run_owner: HashMap<RunId, ShardIndex>,
+    shard_runs: HashMap<ShardIndex, HashSet<RunId>>,
+    pending_transfers: HashSet<Transfer>,
+}
+```
+
+Initialize these in `Runtime::new_with_journal`:
+
+```rust
+Self {
+    shards,
+    shard_count: count,
+    journal,
+    run_owner: HashMap::new(),
+    shard_runs: (0..count).map(|i| (ShardIndex(i), HashSet::new())).collect(),
+    pending_transfers: HashSet::new(),
+}
+```
+
+#### 3. Add RuntimeError variants
+
+In `crates/vb_runtime/src/lib.rs`, add to `RuntimeError`:
+
+```rust
+/// Run is already owned by a shard.
+RunAlreadyOwned {
+    run: RunId,
+    owner: ShardIndex,
+},
+/// Transfer is already pending for this run->shard pair.
+TransferAlreadyPending {
+    run: RunId,
+    target_shard: ShardIndex,
+},
+/// No pending transfer found for the given run.
+NoPendingTransfer {
+    run: RunId,
+},
+/// Run is already being transferred to this shard.
+DuplicateTransfer {
+    run: RunId,
+    shard: ShardIndex,
+},
+/// Transfer source and target shards are the same.
+TransferSameShard {
+    run: RunId,
+    shard: ShardIndex,
+},
+```
+
+#### 4. Add Runtime methods for ownership actions
+
+```rust
+/// Assigns an unowned run to a shard. Called during submit.
+/// Precondition: run is not already owned (checked via RunAlreadyOwned error).
+pub fn assign_shard(&mut self, run: RunId, shard: ShardIndex) -> RuntimeResult<()> {
+    if let Some(&current) = self.run_owner.get(&run) {
+        return Err(RuntimeError::RunAlreadyOwned { run, owner: current });
+    }
+    let prev = self.run_owner.insert(run, shard);
+    // prev is None means the run was unowned (correct)
+    let runs = self.shard_runs.get_mut(&shard).ok_or(RuntimeError::RunNotFound)?;
+    runs.insert(run);
+    Ok(())
+}
+
+/// Initiates a transfer of run from its current shard to target_shard.
+/// The run must already be owned and not already transferring to target_shard.
+pub fn initiate_transfer(&mut self, run: RunId, target_shard: ShardIndex) -> RuntimeResult<()> {
+    let current_owner = self.run_owner.get(&run).ok_or(RuntimeError::RunNotFound)?;
+    if *current_owner == target_shard {
+        return Err(RuntimeError::TransferSameShard { run, shard: target_shard });
+    }
+    let transfer = Transfer { run, target_shard };
+    if self.pending_transfers.contains(&transfer) {
+        return Err(RuntimeError::TransferAlreadyPending { run, target_shard });
+    }
+    self.pending_transfers.insert(transfer);
+    Ok(())
+}
+
+/// Completes a pending transfer of run to target_shard.
+/// Removes run from old shard_runs, adds to new shard_runs, updates run_owner.
+pub fn complete_transfer(&mut self, run: RunId, target_shard: ShardIndex) -> RuntimeResult<()> {
+    let transfer = Transfer { run, target_shard };
+    if !self.pending_transfers.contains(&transfer) {
+        return Err(RuntimeError::NoPendingTransfer { run });
+    }
+    let old_owner = *self.run_owner.get(&run).ok_or(RuntimeError::RunNotFound)?;
+    // Remove from old shard
+    if let Some(old_runs) = self.shard_runs.get_mut(&old_owner) {
+        old_runs.remove(&run);
+    }
+    // Add to new shard
+    if let Some(new_runs) = self.shard_runs.get_mut(&target_shard) {
+        new_runs.insert(run);
+    } else {
+        return Err(RuntimeError::RunNotFound);
+    }
+    // Update owner
+    self.run_owner.insert(run, target_shard);
+    // Remove from pending
+    self.pending_transfers.remove(&transfer);
+    Ok(())
+}
+
+/// Releases ownership of a run when it terminates (complete/fail/cancel).
+pub fn release_run_ownership(&mut self, run: RunId) -> RuntimeResult<()> {
+    let owner = self.run_owner.remove(&run).ok_or(RuntimeError::RunNotFound)?;
+    if let Some(runs) = self.shard_runs.get_mut(&owner) {
+        runs.remove(&run);
+    }
+    // Remove any pending transfers for this run
+    self.pending_transfers.retain(|t| t.run != run);
+    Ok(())
+}
+```
+
+#### 5. Modify `shard_index` for ownership-based routing
+
+Replace the current `shard_index` implementation:
+
+```rust
+fn shard_index(&self, run: RunId) -> usize {
+    // First check run_owner for actual ownership
+    if let Some(&owner) = self.run_owner.get(&run) {
+        return owner.0;
+    }
+    // Fallback: hash-based for unowned runs (consistent placement)
+    let hash = run.get();
+    let Ok(count) = u64::try_from(self.shard_count) else {
+        return 0;
+    };
+    let Some(remainder) = hash.checked_rem(count) else {
+        return 0;
+    };
+    let Ok(index) = usize::try_from(remainder) else {
+        return 0;
+    };
+    index
+}
+```
+
+#### 6. Update submit path to claim ownership
+
+`Runtime::submit_direct` needs `&mut self` now (for assign_shard). Change signature and all callers.
+
+In `submit_direct`:
+```rust
+pub fn submit_direct(&mut self, run: RunId, workflow: CompiledWorkflow) -> RuntimeResult<()> {
+    let shard_idx = self.shard_index(run);
+    let shard = self.shards.get(shard_idx).ok_or(RuntimeError::RunNotFound)?;
+    // Claim ownership before submitting
+    self.assign_shard(run, ShardIndex(shard_idx))?;
+    shard.enqueue(ShardCommand::Submit {
+        run,
+        workflow,
+        caps: CapabilitySet::empty(),
+    })
+}
+```
+
+Update ALL callers of `submit_direct`, `submit_compiled`, `submit_compiled_with_inputs`, `cancel_run`, `resume_run`, `inspect_run`, `complete_action`, `complete_action_with_output`, `fail_action`, `answer_ask`, `timer_fired` to use `&mut self` instead of `&self`.
+
+Check callers in test files and other modules.
+
+#### 7. Call `release_run_ownership` on run termination
+
+In `Runtime::cancel_run`, call `self.release_run_ownership(run)` after enqueueing the Cancel command.
+
+For completion/failure — the shard processes these internally and does not notify Runtime. Document that callers must call `release_run_ownership` after run terminates. Add a note in the code.
+
+#### 8. Accessor methods for tests
+
+```rust
+pub fn get_run_owner(&self, run: RunId) -> Option<ShardIndex>;
+pub fn get_shard_runs(&self, shard: ShardIndex) -> Option<&HashSet<RunId>>;
+pub fn get_pending_transfers(&self) -> &HashSet<Transfer>;
+pub fn is_run_owned_by(&self, run: RunId, shard: ShardIndex) -> bool;
+```
+
+---
+
+## CONSTRAINTS
+- No `unwrap`, `expect`, `panic`, `todo`, `unimplemented`, or `dbg`
+- No `unsafe`
+- All HashMaps and HashSets must use `std::collections::HashMap` and `std::collections::HashSet`
+- `ShardIndex` must implement `Eq`, `Hash`, `Copy`, `Clone`, `Debug`, `PartialEq`
+- `Transfer` must implement `Eq`, `Hash`, `Clone`, `Debug`, `PartialEq`
+- Do not add `Mutex` or `RwLock` — use `&mut self` throughout
+- Add `use std::collections::{HashMap, HashSet};` at top of runtime.rs
+
+---
+
+## VERIFY
+
+After implementation:
+1. `cargo build -p vb_runtime` must succeed with zero errors
+2. `cargo test -p vb_runtime` must pass
+3. `cargo clippy -p vb_runtime` must be clean
+
+Write a brief `implementation.md` at `.beads/vb-yvlb/implementation.md` summarizing what was done.

@@ -369,6 +369,7 @@ impl StorageRuntimeJournal {
                     seq,
                     step,
                     action,
+                    attempt: 1,
                 })
             }
             RuntimeJournalEvent::ActionCompleted { run, step, action } => {
@@ -377,6 +378,7 @@ impl StorageRuntimeJournal {
                     seq,
                     step,
                     action,
+                    attempt: 1,
                 })
             }
             RuntimeJournalEvent::ActionFailed { run, step, action } => {
@@ -385,6 +387,7 @@ impl StorageRuntimeJournal {
                     seq,
                     step,
                     action,
+                    attempt: 1,
                 })
             }
             RuntimeJournalEvent::RunSubmitted { .. }
@@ -881,12 +884,14 @@ mod tests {
                     seq: EventSeq::new(0),
                     step: StepIdx::new(1),
                     action: ActionId::new(2),
+                    attempt: 1,
                 },
                 JournalEvent::ActionCompletedEvent {
                     run,
                     seq: EventSeq::new(1),
                     step: StepIdx::new(1),
                     action: ActionId::new(2),
+                    attempt: 1,
                 },
                 JournalEvent::WaitScheduledEvent {
                     run,
@@ -980,6 +985,7 @@ mod tests {
                     seq: EventSeq::new(1),
                     step: StepIdx::new(1),
                     action: ActionId::new(2),
+                    attempt: 1,
                 },
                 JournalEvent::RunFinished {
                     run,

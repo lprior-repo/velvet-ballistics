@@ -164,6 +164,15 @@ pub enum RuntimeError {
 
     /// Failed to encode a slot value for journal persistence.
     EncodeFailed,
+
+    /// An AtLeastOnceExternal action was re-scheduled during replay, but it was
+    /// already resolved (completed or failed). This violates NoDuplicateNonIdempotent.
+    NonIdempotentActionReplayed {
+        /// Action that was already resolved.
+        action: vb_core::ids::ActionId,
+        /// Step that was waiting for the action.
+        step: vb_core::ids::StepIdx,
+    },
 }
 
 impl std::fmt::Display for RuntimeError {
@@ -234,6 +243,14 @@ fn write_runtime_error_dynamic(
         }
         RuntimeError::AttemptBeyondMax { attempt, max } => {
             write!(f, "action attempt {attempt} exceeds max attempts {max}")
+        }
+        RuntimeError::NonIdempotentActionReplayed { action, step } => {
+            write!(
+                f,
+                "AtLeastOnceExternal action {:?} at step {:?} was already resolved during replay",
+                action,
+                step
+            )
         }
         _ => Ok(()),
     }
@@ -441,6 +458,10 @@ impl RuntimeError {
             Self::AdmissionArtifactInvalid { .. } => Self::ADMISSION_ARTIFACT_INVALID_CODE,
             Self::AdmissionCapabilityDenied { .. } => Self::ADMISSION_CAPABILITY_DENIED_CODE,
             Self::EncodeFailed => Self::ENCODE_FAILED_CODE,
+            Self::NonIdempotentActionReplayed { .. } => {
+                // Uses same code as invalid action completion since it's action-related
+                Self::INVALID_ACTION_COMPLETION_CODE
+            }
         }
     }
 
@@ -460,7 +481,8 @@ impl RuntimeError {
             },
             Self::InvalidActionCompletion
             | Self::StaleAttempt { .. }
-            | Self::AttemptBeyondMax { .. } => Some(Self::ACTION_FAILED_RUNTIME_CODE),
+            | Self::AttemptBeyondMax { .. }
+            | Self::NonIdempotentActionReplayed { .. } => Some(Self::ACTION_FAILED_RUNTIME_CODE),
             _ => None,
         }
     }
