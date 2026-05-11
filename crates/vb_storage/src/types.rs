@@ -1,6 +1,7 @@
 #![forbid(unsafe_code)]
 //! Core storage types: configuration, profiles, and sequencing.
 
+pub use vb_core::EventSeq;
 use vb_core::{ActionId, RunId, WorkflowId};
 
 /// Storage write limits shared by direct and queued journal writers.
@@ -58,27 +59,6 @@ pub fn keyspace_options_for(kind: KeyspaceProfile) -> fjall::KeyspaceCreateOptio
         KeyspaceProfile::Blob => fjall::KeyspaceCreateOptions::default().with_kv_separation(Some(
             fjall::KvSeparationOptions::default().separation_threshold(1024),
         )),
-    }
-}
-
-/// Monotonic per-run event sequence.
-#[derive(
-    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, serde::Serialize, serde::Deserialize,
-)]
-#[repr(transparent)]
-pub struct EventSeq(u64);
-
-impl EventSeq {
-    /// Creates an event sequence.
-    #[must_use]
-    pub const fn new(value: u64) -> Self {
-        Self(value)
-    }
-
-    /// Returns the raw sequence value.
-    #[must_use]
-    pub const fn get(self) -> u64 {
-        self.0
     }
 }
 

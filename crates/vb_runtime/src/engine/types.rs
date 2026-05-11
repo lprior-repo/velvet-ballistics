@@ -11,6 +11,8 @@ use vb_core::value::{SlotValue, Taint};
 
 use crate::primitives::collect::CollectPaginationState;
 
+const REQUIRED_COLLECT_SLOT_EXTRA: &str = "collect SlotWritten extra";
+
 /// Evidence event emitted by the deterministic drive loop for each step.
 ///
 /// These events are collected during `drive_deterministic_full` and drained
@@ -134,7 +136,18 @@ impl EvidenceCollector {
         value: SlotValue,
         taint: Taint,
         extra: Option<CollectPaginationState>,
-    ) {
+    ) -> Result<(), EngineError> {
+        if let Some(state) = extra
+            && self.events.len() >= self.capacity
+        {
+            return Err(EngineError::CollectEvidenceCapacityExceeded {
+                run_id: state.run_id,
+                slot,
+                capacity: self.capacity,
+                len: self.events.len(),
+                required: REQUIRED_COLLECT_SLOT_EXTRA,
+            });
+        }
         if self.events.len() < self.capacity {
             self.events.push(EvidenceEvent::SlotWritten {
                 slot,
@@ -145,6 +158,7 @@ impl EvidenceCollector {
         } else {
             self.dropped = self.dropped.saturating_add(1);
         }
+        Ok(())
     }
 
     /// Drains all collected events, returning them for processing.
@@ -1019,5 +1033,145 @@ mod tests {
         let original = RuntimeSignal::Finished(SlotValue::Bool(true));
         let cloned = original.clone();
         assert_eq!(cloned, original);
+    }
+
+    // vb-qi37.3 STATE 5 RED PHASE: required collect SlotWritten extras must
+    // not be silently dropped when evidence capacity is full. The approved
+    // plan requires a typed error surface; the current API returns unit, so
+    // compile failure is intentional red evidence for State 6.
+    #[test]
+    fn collect_slot_extra_capacity_full_returns_capacity_error_not_silent_drop() {
+        let run_id = vb_core::ids::RunId::new(4101);
+        let collector = SlotIdx::new(1);
+        let page = vb_core::ids::ListId::new(7);
+        let expected_state = crate::primitives::collect::CollectPaginationState {
+            run_id,
+            collector_slot: collector,
+            source: vb_core::ids::ListId::new(3),
+            current_page: page,
+            cursor: 1,
+            page_size: 1,
+            item_count: 2,
+            limit: 2,
+            time_limit_ms: None,
+            start_millis: 10,
+        };
+        let mut evidence = EvidenceCollector::with_capacity(2);
+        evidence.push_step_started(StepIdx::ZERO);
+        evidence.push_step_succeeded(StepIdx::ZERO, None);
+
+        let result = evidence.push_slot_written_with_extra(
+            collector,
+            SlotValue::List(page),
+            Taint::Clean,
+            Some(expected_state),
+        );
+
+        assert_eq!(
+            result,
+            Err(EngineError::CollectEvidenceCapacityExceeded {
+                run_id,
+                slot: collector,
+                capacity: 2,
+                len: 2,
+                required: "collect SlotWritten extra",
+            })
+        );
+        assert_eq!(
+            evidence.drain(),
+            vec![
+                EvidenceEvent::StepStarted {
+                    step: StepIdx::ZERO,
+                },
+                EvidenceEvent::StepSucceeded {
+                    step: StepIdx::ZERO,
+                    output: None,
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn collect_slot_extra_capacity_zero_returns_capacity_error_before_success() {
+        let run_id = vb_core::ids::RunId::new(4102);
+        let collector = SlotIdx::new(1);
+        let page = vb_core::ids::ListId::new(8);
+        let expected_state = crate::primitives::collect::CollectPaginationState {
+            run_id,
+            collector_slot: collector,
+            source: vb_core::ids::ListId::new(3),
+            current_page: page,
+            cursor: 1,
+            page_size: 1,
+            item_count: 2,
+            limit: 2,
+            time_limit_ms: None,
+            start_millis: 10,
+        };
+        let mut evidence = EvidenceCollector::with_capacity(0);
+
+        let result = evidence.push_slot_written_with_extra(
+            collector,
+            SlotValue::List(page),
+            Taint::Clean,
+            Some(expected_state),
+        );
+
+        assert_eq!(
+            result,
+            Err(EngineError::CollectEvidenceCapacityExceeded {
+                run_id,
+                slot: collector,
+                capacity: 0,
+                len: 0,
+                required: "collect SlotWritten extra",
+            })
+        );
+        assert_eq!(evidence.drain(), vec![]);
+    }
+
+    #[test]
+    fn collect_slot_extra_capacity_one_returns_capacity_error_and_preserves_existing_evidence() {
+        let run_id = vb_core::ids::RunId::new(4103);
+        let collector = SlotIdx::new(1);
+        let page = vb_core::ids::ListId::new(9);
+        let expected_state = crate::primitives::collect::CollectPaginationState {
+            run_id,
+            collector_slot: collector,
+            source: vb_core::ids::ListId::new(3),
+            current_page: page,
+            cursor: 1,
+            page_size: 1,
+            item_count: 2,
+            limit: 2,
+            time_limit_ms: None,
+            start_millis: 10,
+        };
+        let mut evidence = EvidenceCollector::with_capacity(1);
+        evidence.push_step_started(StepIdx::ZERO);
+
+        let result = evidence.push_slot_written_with_extra(
+            collector,
+            SlotValue::List(page),
+            Taint::Clean,
+            Some(expected_state),
+        );
+
+        assert_eq!(
+            result,
+            Err(EngineError::CollectEvidenceCapacityExceeded {
+                run_id,
+                slot: collector,
+                capacity: 1,
+                len: 1,
+                required: "collect SlotWritten extra",
+            })
+        );
+        assert_eq!(
+            evidence.drain(),
+            vec![EvidenceEvent::StepStarted {
+                step: StepIdx::ZERO,
+            }]
+        );
     }
 }

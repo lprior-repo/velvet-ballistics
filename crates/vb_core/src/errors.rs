@@ -5,7 +5,8 @@
 use crate::capability::{Capability, CapabilitySet};
 use crate::diagnostic::DiagnosticCode;
 use crate::ids::{
-    ActionId, BlobId, ConstIdx, ExprIdx, ListId, ObjectId, SlotIdx, StepIdx, SymbolId,
+    ActionId, BlobId, ConstIdx, EventSeq, ExprIdx, ListId, ObjectId, RunId, SlotIdx, StepIdx,
+    SymbolId,
 };
 use thiserror::Error;
 
@@ -196,6 +197,52 @@ pub enum CoreError {
     /// A collection time limit was exceeded.
     #[error("collect time limit exceeded")]
     CollectTimeLimitExceeded,
+    /// A collect page completion observed a page that is not the live current page.
+    #[error(
+        "collect page order violation {kind:?}: run {run_id:?} slot {collector_slot:?} expected {expected_page:?} observed {observed_page:?}"
+    )]
+    CollectPageOrderViolation {
+        /// Violation class.
+        kind: CollectPageOrderViolationKind,
+        /// Run whose collect state was checked.
+        run_id: RunId,
+        /// Collector slot whose page was observed.
+        collector_slot: SlotIdx,
+        /// Page currently required by durable collect state.
+        expected_page: ListId,
+        /// Page observed in the collector slot.
+        observed_page: ListId,
+    },
+    /// Collect continuation hydration failed closed.
+    #[error(
+        "collect extra hydration failed {kind:?}: run {run_id:?} slot {collector_slot:?} event {event_seq:?}"
+    )]
+    CollectExtraHydrationFailed {
+        /// Hydration failure class.
+        kind: CollectExtraHydrationFailureKind,
+        /// Durable event run.
+        run_id: RunId,
+        /// Durable event slot.
+        collector_slot: SlotIdx,
+        /// Durable event sequence when known.
+        event_seq: Option<EventSeq>,
+    },
+    /// Required collect evidence could not be retained by the bounded collector.
+    #[error(
+        "collect evidence capacity exceeded: run {run_id:?} slot {slot:?} capacity {capacity} len {len} required {required}"
+    )]
+    CollectEvidenceCapacityExceeded {
+        /// Run whose required collect state would be lost.
+        run_id: RunId,
+        /// Collector slot requiring evidence.
+        slot: SlotIdx,
+        /// Collector capacity.
+        capacity: usize,
+        /// Current collector length.
+        len: usize,
+        /// Required evidence label.
+        required: &'static str,
+    },
     /// Together branch count exceeded the bound.
     #[error("together branch limit exceeded: {max}")]
     TogetherBranchLimitExceeded {
@@ -226,6 +273,49 @@ pub enum CoreError {
         /// The configured limit.
         limit: u64,
     },
+}
+
+/// Classifies invalid collect page completions.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CollectPageOrderViolationKind {
+    /// The immediately preceding page was observed again.
+    Duplicate,
+    /// An older page than the immediate predecessor was observed.
+    Stale,
+    /// A future or unrelated page was observed.
+    OutOfOrder,
+}
+
+/// Classifies collect extra hydration failures.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CollectExtraHydrationFailureKind {
+    /// Required extra bytes were empty.
+    EmptyExtra,
+    /// Extra bytes could not be decoded as collect pagination state.
+    DecodeFailed,
+    /// Encoded state run did not match durable event run.
+    RunMismatch {
+        /// Expected durable run.
+        expected: RunId,
+        /// Actual encoded run.
+        actual: RunId,
+    },
+    /// Encoded state slot did not match durable event slot.
+    SlotMismatch {
+        /// Expected durable slot.
+        expected: SlotIdx,
+        /// Actual encoded slot.
+        actual: SlotIdx,
+    },
+    /// Encoded current page did not match the durable slot value.
+    CurrentPageMismatch {
+        /// Expected durable page.
+        expected: ListId,
+        /// Actual encoded page.
+        actual: ListId,
+    },
+    /// Extra belonged to a non-collect slot write.
+    NonCollectExtra,
 }
 
 impl CoreError {
@@ -375,6 +465,9 @@ impl CoreError {
             Self::CollectPageLimitExceeded => Self::COLLECT_PAGE_LIMIT_CODE,
             Self::CollectItemLimitExceeded => Self::COLLECT_ITEM_LIMIT_CODE,
             Self::CollectTimeLimitExceeded => Self::COLLECT_TIME_LIMIT_CODE,
+            Self::CollectPageOrderViolation { .. }
+            | Self::CollectExtraHydrationFailed { .. }
+            | Self::CollectEvidenceCapacityExceeded { .. } => Self::INVALID_COMPILED_WORKFLOW_CODE,
             Self::TogetherBranchLimitExceeded { .. } => Self::TOGETHER_BRANCH_LIMIT_CODE,
             Self::ParallelLimitExceeded { .. } => Self::PARALLEL_LIMIT_EXCEEDED_CODE,
             Self::CapabilityDenied { .. } => Self::CAPABILITY_DENIED_CODE,
@@ -408,6 +501,11 @@ impl CoreError {
             Self::CollectPageLimitExceeded
             | Self::CollectItemLimitExceeded
             | Self::CollectTimeLimitExceeded => Some(Self::COLLECT_LIMIT_REACHED_RUNTIME_CODE),
+            Self::CollectPageOrderViolation { .. }
+            | Self::CollectExtraHydrationFailed { .. }
+            | Self::CollectEvidenceCapacityExceeded { .. } => {
+                Some(Self::INVALID_COMPILED_WORKFLOW_RUNTIME_CODE)
+            }
             Self::BudgetExceeded { .. } => Some(Self::BUDGET_EXCEEDED_RUNTIME_CODE),
             Self::CapabilityDenied { .. } => Some(Self::CAPABILITY_DENIED_RUNTIME_CODE),
             _ => None,
