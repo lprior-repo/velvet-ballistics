@@ -445,11 +445,13 @@ mod tests {
             run,
             seq: EventSeq::new(1),
             step: StepIdx::new(0),
+            attempt: 1,
         };
         let e2 = JournalEvent::RunFinished {
             run,
             seq: EventSeq::new(2),
             result: SlotIdx::new(0),
+            attempt: 1,
         };
 
         let mut batch = JournalWriteBatch::new(&journal);

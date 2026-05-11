@@ -589,6 +589,7 @@ impl IncidentScreen {
                 seq,
                 step,
                 action,
+                ..
             } => {
                 let now = Instant::now();
                 let failure_code = FailureCode::ActionFailed(format!(
@@ -635,7 +636,7 @@ impl IncidentScreen {
                     timeline,
                 })
             }
-            vb_storage::JournalEvent::RunFailedEvent { run, seq } => {
+            vb_storage::JournalEvent::RunFailedEvent { run, seq, .. } => {
                 let now = Instant::now();
                 let failure_code =
                     FailureCode::Unknown(format!("Run {} failed at seq {}", run.get(), seq.get()));

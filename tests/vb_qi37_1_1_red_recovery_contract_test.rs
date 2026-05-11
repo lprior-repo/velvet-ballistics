@@ -32,6 +32,7 @@ fn complete_slot_events(
             run,
             seq: EventSeq::new(1),
             step,
+            attempt: 1,
         },
         JournalEvent::SlotWrittenEvent {
             run,
@@ -39,6 +40,7 @@ fn complete_slot_events(
             slot,
             value: Some(encoded(value)?),
             extra: None,
+            attempt: 1,
         },
         JournalEvent::StepSucceeded {
             run,
@@ -60,6 +62,7 @@ fn no_output_events(run: RunId, step: StepIdx) -> Vec<JournalEvent> {
             run,
             seq: EventSeq::new(1),
             step,
+            attempt: 1,
         },
         JournalEvent::StepSucceeded {
             run,
@@ -253,6 +256,7 @@ fn corrupt_slot_value_blocks_both_values_and_taint() {
         slot: SlotIdx::new(1),
         value: Some(vec![255, 0, 19]),
         extra: None,
+        attempt: 1,
     }];
     let expected = UnsupportedRecoveryState {
         slot_values: true,
@@ -273,6 +277,7 @@ fn missing_slot_value_blocks_both_values_and_taint() {
         slot: SlotIdx::new(1),
         value: None,
         extra: None,
+        attempt: 1,
     }];
     let expected = UnsupportedRecoveryState {
         slot_values: true,
@@ -318,6 +323,7 @@ fn drain_report_contract_requires_three_drained_and_three_written() {
             run,
             seq: EventSeq::new(1),
             step: StepIdx::new(1),
+            attempt: 1,
         })
         .expect("enqueue 1 must succeed");
     queue

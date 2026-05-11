@@ -46,12 +46,14 @@ mod vb_h6ix_tests {
                 seq: EventSeq::new(0),
                 step: StepIdx::ZERO,
                 action: ActionId::new(1),
+                attempt: 1,
             },
             JournalEvent::ActionCompletedEvent {
                 run,
                 seq: EventSeq::new(1),
                 step: StepIdx::ZERO,
                 action: ActionId::new(1),
+                attempt: 1,
             },
             // Attempt 2 events (latest)
             JournalEvent::ActionScheduled {
@@ -59,12 +61,14 @@ mod vb_h6ix_tests {
                 seq: EventSeq::new(2),
                 step: StepIdx::ZERO,
                 action: ActionId::new(2),
+                attempt: 1,
             },
             JournalEvent::ActionCompletedEvent {
                 run,
                 seq: EventSeq::new(3),
                 step: StepIdx::ZERO,
                 action: ActionId::new(2),
+                attempt: 1,
             },
         ];
 
@@ -97,24 +101,28 @@ mod vb_h6ix_tests {
                 seq: EventSeq::new(0),
                 step: StepIdx::ZERO,
                 action: ActionId::new(1),
+                attempt: 1,
             },
             JournalEvent::ActionCompletedEvent {
                 run,
                 seq: EventSeq::new(1),
                 step: StepIdx::ZERO,
                 action: ActionId::new(1),
+                attempt: 1,
             },
             JournalEvent::ActionScheduled {
                 run,
                 seq: EventSeq::new(2),
                 step: StepIdx::ZERO,
                 action: ActionId::new(2),
+                attempt: 1,
             },
             JournalEvent::ActionCompletedEvent {
                 run,
                 seq: EventSeq::new(3),
                 step: StepIdx::ZERO,
                 action: ActionId::new(2),
+                attempt: 1,
             },
         ];
 
@@ -149,24 +157,28 @@ mod vb_h6ix_tests {
                 seq: EventSeq::new(1),
                 step: StepIdx::ZERO,
                 action: ActionId::new(1),
+                attempt: 1,
             },
             JournalEvent::ActionCompletedEvent {
                 run,
                 seq: EventSeq::new(2),
                 step: StepIdx::ZERO,
                 action: ActionId::new(1),
+                attempt: 1,
             },
             JournalEvent::ActionScheduled {
                 run,
                 seq: EventSeq::new(3),
                 step: StepIdx::ZERO,
                 action: ActionId::new(2),
+                attempt: 1,
             },
             JournalEvent::ActionCompletedEvent {
                 run,
                 seq: EventSeq::new(4),
                 step: StepIdx::ZERO,
                 action: ActionId::new(2),
+                attempt: 1,
             },
         ];
 
@@ -200,12 +212,14 @@ mod vb_h6ix_tests {
                 seq: EventSeq::new(0),
                 step: StepIdx::ZERO,
                 action: ActionId::new(1),
+                attempt: 1,
             },
             JournalEvent::ActionCompletedEvent {
                 run,
                 seq: EventSeq::new(1),
                 step: StepIdx::ZERO,
                 action: ActionId::new(1),
+                attempt: 1,
             },
             // Attempt 2: action 2 completed (should be recorded, action 1 should NOT)
             JournalEvent::ActionScheduled {
@@ -213,12 +227,14 @@ mod vb_h6ix_tests {
                 seq: EventSeq::new(2),
                 step: StepIdx::ZERO,
                 action: ActionId::new(2),
+                attempt: 1,
             },
             JournalEvent::ActionCompletedEvent {
                 run,
                 seq: EventSeq::new(3),
                 step: StepIdx::ZERO,
                 action: ActionId::new(2),
+                attempt: 1,
             },
         ];
 
@@ -251,10 +267,12 @@ mod vb_h6ix_tests {
                 run,
                 seq: EventSeq::new(0),
                 result: SlotIdx::ZERO,
+                attempt: 1,
             },
             JournalEvent::RunFailedEvent {
                 run,
                 seq: EventSeq::new(1),
+                attempt: 1,
             },
         ];
 
@@ -295,12 +313,14 @@ mod vb_h6ix_tests {
                 run,
                 seq: EventSeq::new(1),
                 step: StepIdx::ZERO,
+                attempt: 1,
             },
             // Attempt 2: ask scheduled (latest) - this should be in the pending_actions
             JournalEvent::AskScheduledEvent {
                 run,
                 seq: EventSeq::new(2),
                 step: StepIdx::ZERO,
+                attempt: 1,
             },
         ];
 
@@ -341,6 +361,7 @@ mod vb_h6ix_tests {
                 slot: SlotIdx::ZERO,
                 value: None,
                 extra: None,
+                attempt: 1,
             },
             // Attempt 2: slot 1 written (latest)
             JournalEvent::SlotWrittenEvent {
@@ -349,6 +370,7 @@ mod vb_h6ix_tests {
                 slot: SlotIdx::new(1),
                 value: None,
                 extra: None,
+                attempt: 1,
             },
         ];
 
@@ -384,11 +406,14 @@ mod vb_h6ix_tests {
             JournalEvent::RunCancelled {
                 run: RunId::new(1),
                 seq: EventSeq::new(1),
+                attempt: 1,
+                reason: None,
             },
             JournalEvent::RunFinished {
                 run: RunId::new(1),
                 seq: EventSeq::new(2),
                 result: SlotIdx::ZERO,
+                attempt: 1,
             },
         ];
 
@@ -427,10 +452,12 @@ mod vb_h6ix_tests {
                 run,
                 seq: EventSeq::new(5),
                 result: SlotIdx::ZERO,
+                attempt: 1,
             },
             JournalEvent::RunFailedEvent {
                 run,
                 seq: EventSeq::new(3),
+                attempt: 1,
             },
         ];
 
@@ -555,24 +582,28 @@ mod vb_h6ix_tests {
                 seq: EventSeq::new(1),
                 step: StepIdx::ZERO,
                 action: ActionId::new(1),
+                attempt: 1,
             },
             JournalEvent::ActionCompletedEvent {
                 run,
                 seq: EventSeq::new(2),
                 step: StepIdx::ZERO,
                 action: ActionId::new(1),
+                attempt: 1,
             },
             JournalEvent::ActionScheduled {
                 run,
                 seq: EventSeq::new(3),
                 step: StepIdx::ZERO,
                 action: ActionId::new(2),
+                attempt: 1,
             },
             JournalEvent::ActionCompletedEvent {
                 run,
                 seq: EventSeq::new(4),
                 step: StepIdx::ZERO,
                 action: ActionId::new(2),
+                attempt: 1,
             },
         ];
 
@@ -620,11 +651,13 @@ mod vb_h6ix_tests {
                 run,
                 seq: EventSeq::new(0),
                 step: StepIdx::new(2),
+                attempt: 1,
             },
             JournalEvent::StepStarted {
                 run,
                 seq: EventSeq::new(1),
                 step: StepIdx::ZERO,
+                attempt: 1,
             },
         ];
 
@@ -665,12 +698,14 @@ mod vb_h6ix_tests {
                 seq: EventSeq::new(0),
                 step,
                 action,
+                attempt: 1,
             },
             JournalEvent::ActionCompletedEvent {
                 run,
                 seq: EventSeq::new(1),
                 step,
                 action,
+                attempt: 1,
             },
             // Attempt 2: same action scheduled again (stale duplicate from older attempt re-using action id)
             JournalEvent::ActionScheduled {
@@ -678,6 +713,7 @@ mod vb_h6ix_tests {
                 seq: EventSeq::new(2),
                 step,
                 action,
+                attempt: 1,
             },
         ];
 
@@ -719,24 +755,28 @@ mod vb_h6ix_tests {
                 seq: EventSeq::new(1),
                 step: StepIdx::ZERO,
                 action: ActionId::new(1),
+                attempt: 1,
             },
             JournalEvent::ActionCompletedEvent {
                 run,
                 seq: EventSeq::new(2),
                 step: StepIdx::ZERO,
                 action: ActionId::new(1),
+                attempt: 1,
             },
             JournalEvent::ActionScheduled {
                 run,
                 seq: EventSeq::new(3),
                 step: StepIdx::ZERO,
                 action: ActionId::new(2),
+                attempt: 1,
             },
             JournalEvent::ActionCompletedEvent {
                 run,
                 seq: EventSeq::new(4),
                 step: StepIdx::ZERO,
                 action: ActionId::new(2),
+                attempt: 1,
             },
         ];
 
@@ -793,11 +833,13 @@ mod vb_h6ix_tests {
                 run,
                 seq: EventSeq::new(0),
                 result: SlotIdx::ZERO,
+                attempt: 1,
             },
             JournalEvent::StepStarted {
                 run,
                 seq: EventSeq::new(1),
                 step: StepIdx::ZERO,
+                attempt: 1,
             },
         ];
 
@@ -838,14 +880,18 @@ mod vb_h6ix_tests {
             run,
             seq: EventSeq::new(0),
             result: SlotIdx::ZERO,
+            attempt: 1,
         }));
         assert!(is_terminal_event(&JournalEvent::RunCancelled {
             run,
             seq: EventSeq::new(0),
+            attempt: 1,
+            reason: None,
         }));
         assert!(is_terminal_event(&JournalEvent::RunFailedEvent {
             run,
             seq: EventSeq::new(0),
+            attempt: 1,
         }));
     }
 
@@ -863,12 +909,14 @@ mod vb_h6ix_tests {
             run,
             seq: EventSeq::new(0),
             step: StepIdx::ZERO,
+            attempt: 1,
         }));
         assert!(!is_terminal_event(&JournalEvent::ActionScheduled {
             run,
             seq: EventSeq::new(0),
             step: StepIdx::ZERO,
             action: ActionId::new(0),
+            attempt: 1,
         }));
         assert!(!is_terminal_event(&JournalEvent::SlotWrittenEvent {
             run,
@@ -876,6 +924,7 @@ mod vb_h6ix_tests {
             slot: SlotIdx::ZERO,
             value: None,
             extra: None,
+            attempt: 1,
         }));
     }
 }

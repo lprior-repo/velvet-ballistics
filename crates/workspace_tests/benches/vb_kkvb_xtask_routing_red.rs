@@ -1,5 +1,6 @@
-use criterion::{Criterion, black_box, criterion_group, criterion_main};
+use criterion::{Criterion, criterion_group, criterion_main};
 use std::ffi::OsString;
+use std::hint::black_box;
 use std::path::PathBuf;
 use xtask::{
     CommandFamily, OutputFormat, XtaskCommand, XtaskEnvironment, parse_xtask_command, route_command,

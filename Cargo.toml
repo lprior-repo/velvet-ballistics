@@ -15,6 +15,7 @@ members = [
     "crates/vb_proof_kernels",
     "crates/velvet_ballastics",
     "crates/workspace_tests",
+    "crates/vb_benchmark",
     "xtask",
     "fuzz",
 ]
@@ -48,6 +49,7 @@ saphyr.workspace = true
 tempfile.workspace = true
 toml.workspace = true
 xtask = { path = "xtask" }
+vb_benchmark = { path = "crates/vb_benchmark" }
 vb_codegen = { path = "crates/vb_codegen" }
 vb_compile = { path = "crates/vb_compile" }
 vb_core = { path = "crates/vb_core" }
@@ -94,6 +96,7 @@ fjall = { version = "3.1", default-features = false, features = ["lz4"] }
 indoc = "2"
 indexmap = "2"
 logos = "0.15"
+libfuzzer-sys = "0.4"
 mio = "1"
 postcard = { version = "1", features = ["alloc"] }
 proptest = "1"
@@ -103,7 +106,7 @@ saphyr = { version = "=0.0.6", default-features = false }
 saphyr-parser = "=0.0.6"
 serde = { version = "1", default-features = false, features = ["derive", "alloc"] }
 serde-saphyr = { version = "=0.0.25", default-features = false, features = ["deserialize", "serialize"] }
-serde_json = { version = "1", default-features = false, features = ["alloc"] }
+serde_json = { version = "1", default-features = false, features = ["std", "alloc"] }
 thiserror = "2"
 tempfile = "3"
 toml = "0.9"

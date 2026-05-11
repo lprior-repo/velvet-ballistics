@@ -121,7 +121,12 @@ mod tests {
     }
 
     fn started_event(run: RunId, seq: EventSeq, step: StepIdx) -> JournalEvent {
-        JournalEvent::StepStarted { run, seq, step }
+        JournalEvent::StepStarted {
+            run,
+            seq,
+            step,
+            attempt: 1,
+        }
     }
 
     fn succeeded_event(run: RunId, seq: EventSeq, step: StepIdx, output: SlotIdx) -> JournalEvent {
@@ -177,23 +182,27 @@ mod tests {
                 run,
                 seq: EventSeq::new(1),
                 step: StepIdx::new(2),
+                attempt: 1,
             },
             JournalEvent::ActionScheduled {
                 run,
                 seq: EventSeq::new(2),
                 step: StepIdx::new(2),
                 action: ActionId::new(5),
+                attempt: 1,
             },
             JournalEvent::ActionCompletedEvent {
                 run,
                 seq: EventSeq::new(3),
                 step: StepIdx::new(2),
                 action: ActionId::new(5),
+                attempt: 1,
             },
             JournalEvent::RunFinished {
                 run,
                 seq: EventSeq::new(4),
                 result: SlotIdx::new(3),
+                attempt: 1,
             },
         ];
 
@@ -235,6 +244,8 @@ mod tests {
             .append_journaled(&JournalEvent::RunCancelled {
                 run,
                 seq: EventSeq::new(1),
+                attempt: 1,
+                reason: None,
             })
             .expect("cancelled append succeeds");
 
@@ -262,11 +273,13 @@ mod tests {
                 run,
                 seq: EventSeq::new(1),
                 step: StepIdx::new(1),
+                attempt: 1,
             },
             JournalEvent::WaitScheduledEvent {
                 run,
                 seq: EventSeq::new(2),
                 step: StepIdx::new(1),
+                attempt: 1,
             },
             JournalEvent::StepSucceeded {
                 run,
@@ -278,6 +291,7 @@ mod tests {
                 run,
                 seq: EventSeq::new(4),
                 result: SlotIdx::new(5),
+                attempt: 1,
             },
         ];
 
@@ -385,6 +399,7 @@ mod tests {
             run,
             seq: EventSeq::new(0),
             step: StepIdx::MAX,
+            attempt: 1,
         }];
 
         let result = recover_runtime_frame_seed_from_events(&events);
@@ -413,6 +428,7 @@ mod tests {
                 run,
                 seq: EventSeq::new(1),
                 step: StepIdx::new(2),
+                attempt: 1,
             })
             .expect("ask append succeeds");
 
@@ -447,6 +463,7 @@ mod tests {
                 run: incomplete,
                 seq: EventSeq::new(1),
                 step: StepIdx::new(4),
+                attempt: 1,
             })
             .expect("incomplete step append succeeds");
         journal
@@ -461,6 +478,7 @@ mod tests {
                 run: finished,
                 seq: EventSeq::new(1),
                 result: SlotIdx::new(2),
+                attempt: 1,
             })
             .expect("finished append succeeds");
 
@@ -659,6 +677,7 @@ mod tests {
             seq: EventSeq::new(0),
             step,
             action,
+            attempt: 1,
         }];
 
         let result = replay_events(&events, &mut tracker);
@@ -683,12 +702,14 @@ mod tests {
                 seq: EventSeq::new(0),
                 step,
                 action,
+                attempt: 1,
             },
             JournalEvent::ActionCompletedEvent {
                 run: RunId::new(1),
                 seq: EventSeq::new(1),
                 step,
                 action,
+                attempt: 1,
             },
         ];
 
@@ -712,6 +733,7 @@ mod tests {
                 run,
                 seq: EventSeq::new(1),
                 step: StepIdx::new(0),
+                attempt: 1,
             },
             JournalEvent::StepSucceeded {
                 run,
@@ -723,6 +745,7 @@ mod tests {
                 run,
                 seq: EventSeq::new(3),
                 result: SlotIdx::new(3),
+                attempt: 1,
             },
         ];
 
@@ -746,17 +769,20 @@ mod tests {
                 seq: EventSeq::new(1),
                 step,
                 action,
+                attempt: 1,
             },
             JournalEvent::ActionCompletedEvent {
                 run,
                 seq: EventSeq::new(2),
                 step,
                 action,
+                attempt: 1,
             },
             JournalEvent::RunFinished {
                 run,
                 seq: EventSeq::new(3),
                 result: SlotIdx::new(0),
+                attempt: 1,
             },
         ];
 
@@ -776,10 +802,13 @@ mod tests {
                 run,
                 seq: EventSeq::new(1),
                 step: StepIdx::new(7),
+                attempt: 1,
             },
             JournalEvent::RunCancelled {
                 run,
                 seq: EventSeq::new(2),
+                attempt: 1,
+                reason: None,
             },
         ];
 
@@ -799,16 +828,19 @@ mod tests {
                 run,
                 seq: EventSeq::new(1),
                 step: StepIdx::new(8),
+                attempt: 1,
             },
             JournalEvent::AskAnsweredEvent {
                 run,
                 seq: EventSeq::new(2),
                 step: StepIdx::new(8),
+                attempt: 1,
             },
             JournalEvent::RunFinished {
                 run,
                 seq: EventSeq::new(3),
                 result: SlotIdx::new(1),
+                attempt: 1,
             },
         ];
 
@@ -829,6 +861,7 @@ mod tests {
             seq: EventSeq::new(0),
             step,
             action,
+            attempt: 1,
         }];
 
         let result = replay_events(&events, &mut tracker);
@@ -866,19 +899,24 @@ mod tests {
             run: RunId::new(1),
             seq: EventSeq::new(5),
             result: SlotIdx::new(0),
+            attempt: 1,
         }));
         assert!(is_terminal_event(&JournalEvent::RunCancelled {
             run: RunId::new(1),
             seq: EventSeq::new(5),
+            attempt: 1,
+            reason: None,
         }));
         assert!(is_terminal_event(&JournalEvent::RunFailedEvent {
             run: RunId::new(1),
             seq: EventSeq::new(5),
+            attempt: 1,
         }));
         assert!(!is_terminal_event(&JournalEvent::StepStarted {
             run: RunId::new(1),
             seq: EventSeq::new(0),
             step: StepIdx::new(0),
+            attempt: 1,
         }));
     }
 
@@ -894,6 +932,7 @@ mod tests {
                 run: RunId::new(1),
                 seq: EventSeq::new(1),
                 result: SlotIdx::new(0),
+                attempt: 1,
             },
         ];
 
@@ -966,11 +1005,13 @@ mod tests {
             run,
             seq: EventSeq::new(1),
             step: StepIdx::new(0),
+            attempt: 1,
         };
         let finished = JournalEvent::RunFinished {
             run,
             seq: EventSeq::new(2),
             result: SlotIdx::new(0),
+            attempt: 1,
         };
 
         journal
@@ -1002,6 +1043,7 @@ mod tests {
                 run,
                 seq: EventSeq::new(1),
                 step: StepIdx::new(0),
+                attempt: 1,
             },
             JournalEvent::SlotWrittenEvent {
                 run,
@@ -1009,38 +1051,45 @@ mod tests {
                 slot: SlotIdx::new(0),
                 value: None,
                 extra: None,
+                attempt: 1,
             },
             JournalEvent::ActionScheduled {
                 run,
                 seq: EventSeq::new(3),
                 step: StepIdx::new(0),
                 action: ActionId::new(1),
+                attempt: 1,
             },
             JournalEvent::ActionCompletedEvent {
                 run,
                 seq: EventSeq::new(4),
                 step: StepIdx::new(0),
                 action: ActionId::new(1),
+                attempt: 1,
             },
             JournalEvent::WaitScheduledEvent {
                 run,
                 seq: EventSeq::new(5),
                 step: StepIdx::new(1),
+                attempt: 1,
             },
             JournalEvent::AskScheduledEvent {
                 run,
                 seq: EventSeq::new(6),
                 step: StepIdx::new(2),
+                attempt: 1,
             },
             JournalEvent::AskAnsweredEvent {
                 run,
                 seq: EventSeq::new(7),
                 step: StepIdx::new(2),
+                attempt: 1,
             },
             JournalEvent::RetryScheduledEvent {
                 run,
                 seq: EventSeq::new(8),
                 step: StepIdx::new(3),
+                attempt: 1,
             },
             JournalEvent::StepSucceeded {
                 run,
@@ -1052,6 +1101,7 @@ mod tests {
                 run,
                 seq: EventSeq::new(10),
                 result: SlotIdx::new(1),
+                attempt: 1,
             },
         ];
 
@@ -1076,6 +1126,7 @@ mod tests {
                 run: RunId::new(10),
                 seq: EventSeq::new(6),
                 step: StepIdx::new(0),
+                attempt: 1,
             },
             JournalEvent::StepSucceeded {
                 run: RunId::new(10),
@@ -1099,11 +1150,13 @@ mod tests {
                 run,
                 seq: EventSeq::new(0),
                 step: StepIdx::new(2),
+                attempt: 1,
             },
             JournalEvent::StepStarted {
                 run,
                 seq: EventSeq::new(1),
                 step: StepIdx::new(1),
+                attempt: 1,
             },
         ];
 
@@ -1278,12 +1331,14 @@ mod tests {
                 seq: EventSeq::new(1),
                 step,
                 action,
+                attempt: 1,
             },
             JournalEvent::ActionCompletedEvent {
                 run,
                 seq: EventSeq::new(2),
                 step,
                 action,
+                attempt: 1,
             },
         ];
 
@@ -1299,6 +1354,7 @@ mod tests {
             run: RunId::new(1),
             seq: EventSeq::new(5),
             result: SlotIdx::new(0),
+            attempt: 1,
         };
         assert!(is_terminal_event(&event));
     }
@@ -1308,6 +1364,7 @@ mod tests {
         let event = JournalEvent::RunFailedEvent {
             run: RunId::new(1),
             seq: EventSeq::new(5),
+            attempt: 1,
         };
         assert!(is_terminal_event(&event));
     }
@@ -1317,6 +1374,8 @@ mod tests {
         let event = JournalEvent::RunCancelled {
             run: RunId::new(1),
             seq: EventSeq::new(5),
+            attempt: 1,
+            reason: None,
         };
         assert!(is_terminal_event(&event));
     }
@@ -1337,6 +1396,7 @@ mod tests {
             run: RunId::new(1),
             seq: EventSeq::new(1),
             step: StepIdx::new(0),
+            attempt: 1,
         };
         assert!(!is_terminal_event(&event));
     }
@@ -1347,6 +1407,7 @@ mod tests {
             run: RunId::new(1),
             seq: EventSeq::new(3),
             result: SlotIdx::new(42),
+            attempt: 1,
         };
         let events = vec![
             JournalEvent::RunAccepted {
@@ -1358,6 +1419,7 @@ mod tests {
                 run: RunId::new(1),
                 seq: EventSeq::new(1),
                 step: StepIdx::new(0),
+                attempt: 1,
             },
             finished.clone(),
         ];
@@ -1397,11 +1459,13 @@ mod tests {
                 run: run_a,
                 seq: EventSeq::new(1),
                 step: StepIdx::new(0),
+                attempt: 1,
             },
             JournalEvent::StepStarted {
                 run: run_b,
                 seq: EventSeq::new(2),
                 step: StepIdx::new(0),
+                attempt: 1,
             },
         ];
 
@@ -1438,6 +1502,7 @@ mod tests {
                 run: run_b,
                 seq: EventSeq::new(0),
                 step: StepIdx::new(1),
+                attempt: 1,
             },
         ];
 
@@ -1492,10 +1557,12 @@ mod tests {
                 slot: SlotIdx::new(5),
                 value: None,
                 extra: None,
+                attempt: 1,
             },
             JournalEvent::RunFailedEvent {
                 run,
                 seq: EventSeq::new(2),
+                attempt: 1,
             },
         ];
 
@@ -1525,6 +1592,7 @@ mod tests {
                 slot: SlotIdx::new(3),
                 value: None,
                 extra: None,
+                attempt: 1,
             },
             JournalEvent::SlotWrittenEvent {
                 run,
@@ -1532,6 +1600,7 @@ mod tests {
                 slot: SlotIdx::new(7),
                 value: None,
                 extra: None,
+                attempt: 1,
             },
             JournalEvent::SlotWrittenEvent {
                 run,
@@ -1539,10 +1608,12 @@ mod tests {
                 slot: SlotIdx::new(2),
                 value: None,
                 extra: None,
+                attempt: 1,
             },
             JournalEvent::RunFailedEvent {
                 run,
                 seq: EventSeq::new(4),
+                attempt: 1,
             },
         ];
 
@@ -1660,6 +1731,7 @@ mod hydrate_run_frame_tests {
                 run,
                 seq: EventSeq::new(1),
                 step: StepIdx::new(0),
+                attempt: 1,
             },
             JournalEvent::StepSucceeded {
                 run,
@@ -1705,6 +1777,7 @@ mod hydrate_run_frame_tests {
                 run,
                 seq: EventSeq::new(1),
                 step: StepIdx::new(0),
+                attempt: 1,
             },
             JournalEvent::SlotWrittenEvent {
                 run,
@@ -1712,6 +1785,7 @@ mod hydrate_run_frame_tests {
                 slot: SlotIdx::new(0),
                 value: Some(postcard::to_allocvec(&SlotValue::I64(7)).unwrap()),
                 extra: None,
+                attempt: 1,
             },
         ];
 
@@ -1758,6 +1832,7 @@ mod hydrate_run_frame_tests {
             run: RunId::new(2),
             seq: EventSeq::new(1),
             step: StepIdx::new(0),
+            attempt: 1,
         }];
 
         let result = hydrate_run_frame(&snapshot, &tail, run);
@@ -1779,6 +1854,7 @@ mod hydrate_run_frame_tests {
             run,
             seq: EventSeq::new(5),
             step: StepIdx::new(0),
+            attempt: 1,
         }];
 
         let result = hydrate_run_frame(&snapshot, &tail, run);
@@ -1862,6 +1938,7 @@ mod hydrate_run_frame_tests {
                 run,
                 seq: EventSeq::new(1),
                 step: StepIdx::new(0),
+                attempt: 1,
             },
             JournalEvent::StepSucceeded {
                 run,
@@ -1873,6 +1950,7 @@ mod hydrate_run_frame_tests {
                 run,
                 seq: EventSeq::new(3),
                 step: StepIdx::new(1),
+                attempt: 1,
             },
         ];
 
@@ -1893,6 +1971,7 @@ mod hydrate_run_frame_tests {
                 run,
                 seq: EventSeq::new(1),
                 step: StepIdx::new(0),
+                attempt: 1,
             },
             JournalEvent::StepSucceeded {
                 run,
@@ -1904,6 +1983,7 @@ mod hydrate_run_frame_tests {
                 run,
                 seq: EventSeq::new(3),
                 step: StepIdx::new(1),
+                attempt: 1,
             },
         ];
 
@@ -1935,6 +2015,7 @@ mod hydrate_run_frame_tests {
                 run,
                 seq: EventSeq::new(1),
                 step: StepIdx::new(0),
+                attempt: 1,
             },
             JournalEvent::SlotWrittenEvent {
                 run,
@@ -1942,6 +2023,7 @@ mod hydrate_run_frame_tests {
                 slot: SlotIdx::new(0),
                 value: Some(postcard::to_allocvec(&SlotValue::I64(2)).unwrap()),
                 extra: None,
+                attempt: 1,
             },
         ];
 
@@ -1969,6 +2051,7 @@ mod hydrate_run_frame_tests {
                 run,
                 seq: EventSeq::new(1),
                 step: StepIdx::new(0),
+                attempt: 1,
             },
             JournalEvent::SlotWrittenEvent {
                 run,
@@ -1976,6 +2059,7 @@ mod hydrate_run_frame_tests {
                 slot: SlotIdx::new(0),
                 value: Some(postcard::to_allocvec(&SlotValue::I64(2)).unwrap()),
                 extra: None,
+                attempt: 1,
             },
         ];
 
@@ -1996,6 +2080,7 @@ mod hydrate_run_frame_tests {
                 run,
                 seq: EventSeq::new(1),
                 step: StepIdx::new(0),
+                attempt: 1,
             },
             JournalEvent::StepSucceeded {
                 run,
@@ -2009,6 +2094,7 @@ mod hydrate_run_frame_tests {
                 slot: SlotIdx::new(0),
                 value: Some(postcard::to_allocvec(&SlotValue::I64(7)).unwrap()),
                 extra: None,
+                attempt: 1,
             },
         ];
 
@@ -2028,29 +2114,34 @@ mod hydrate_run_frame_tests {
                 run,
                 seq: EventSeq::new(1),
                 step: StepIdx::new(0),
+                attempt: 1,
             },
             JournalEvent::ActionScheduled {
                 run,
                 seq: EventSeq::new(2),
                 step: StepIdx::new(0),
                 action: ActionId::new(1),
+                attempt: 1,
             },
             JournalEvent::StepStarted {
                 run,
                 seq: EventSeq::new(3),
                 step: StepIdx::new(1),
+                attempt: 1,
             },
             JournalEvent::ActionScheduled {
                 run,
                 seq: EventSeq::new(4),
                 step: StepIdx::new(1),
                 action: ActionId::new(2),
+                attempt: 1,
             },
             JournalEvent::ActionCompletedEvent {
                 run,
                 seq: EventSeq::new(5),
                 step: StepIdx::new(0),
                 action: ActionId::new(1),
+                attempt: 1,
             },
         ];
 
@@ -2072,6 +2163,7 @@ mod hydrate_run_frame_tests {
                 run,
                 seq: EventSeq::new(1),
                 step: StepIdx::new(0),
+                attempt: 1,
             },
             JournalEvent::SlotWrittenEvent {
                 run,
@@ -2079,6 +2171,7 @@ mod hydrate_run_frame_tests {
                 slot: SlotIdx::new(0),
                 value: Some(postcard::to_allocvec(&SlotValue::I64(1)).unwrap()),
                 extra: None,
+                attempt: 1,
             },
         ];
 
@@ -2099,6 +2192,7 @@ mod hydrate_run_frame_tests {
             run,
             seq: EventSeq::new(1),
             step: StepIdx::new(0),
+            attempt: 1,
         }];
 
         let result1 = hydrate_run_frame(&snapshot, &tail, run);
@@ -2132,11 +2226,13 @@ mod hydrate_run_frame_tests {
                 run,
                 seq: EventSeq::new(1),
                 step: StepIdx::new(0),
+                attempt: 1,
             },
             JournalEvent::WaitScheduledEvent {
                 run,
                 seq: EventSeq::new(2),
                 step: StepIdx::new(0),
+                attempt: 1,
             },
         ];
 
@@ -2158,11 +2254,13 @@ mod hydrate_run_frame_tests {
                 run,
                 seq: EventSeq::new(1),
                 step: StepIdx::new(0),
+                attempt: 1,
             },
             JournalEvent::AskScheduledEvent {
                 run,
                 seq: EventSeq::new(2),
                 step: StepIdx::new(0),
+                attempt: 1,
             },
         ];
 
@@ -2183,18 +2281,21 @@ mod hydrate_run_frame_tests {
                 run,
                 seq: EventSeq::new(1),
                 step: StepIdx::new(0),
+                attempt: 1,
             },
             JournalEvent::ActionScheduled {
                 run,
                 seq: EventSeq::new(2),
                 step: StepIdx::new(0),
                 action: ActionId::new(1),
+                attempt: 1,
             },
             JournalEvent::ActionFailedEvent {
                 run,
                 seq: EventSeq::new(3),
                 step: StepIdx::new(0),
                 action: ActionId::new(1),
+                attempt: 1,
             },
         ];
 
@@ -2214,6 +2315,7 @@ mod hydrate_run_frame_tests {
                 run,
                 seq: EventSeq::new(1),
                 step: StepIdx::new(0),
+                attempt: 1,
             },
             JournalEvent::StepSucceeded {
                 run,
@@ -2225,6 +2327,7 @@ mod hydrate_run_frame_tests {
                 run,
                 seq: EventSeq::new(3),
                 result: SlotIdx::new(0),
+                attempt: 1,
             },
         ];
 
@@ -2246,10 +2349,13 @@ mod hydrate_run_frame_tests {
                 run,
                 seq: EventSeq::new(1),
                 step: StepIdx::new(0),
+                attempt: 1,
             },
             JournalEvent::RunCancelled {
                 run,
                 seq: EventSeq::new(2),
+                attempt: 1,
+                reason: None,
             },
         ];
 
@@ -2270,6 +2376,7 @@ mod hydrate_run_frame_tests {
             run,
             seq: EventSeq::new(5),
             step: StepIdx::new(0),
+            attempt: 1,
         }];
 
         let result = hydrate_run_frame(&snapshot, &tail, run);
@@ -2288,6 +2395,7 @@ mod hydrate_run_frame_tests {
             run,
             seq: EventSeq::new(9),
             step: StepIdx::new(0),
+            attempt: 1,
         }];
 
         let result = hydrate_run_frame(&snapshot, &tail, run);
@@ -2311,6 +2419,7 @@ mod hydrate_run_frame_tests {
                 run,
                 seq: EventSeq::new(1),
                 step: StepIdx::new(0),
+                attempt: 1,
             },
             JournalEvent::SlotWrittenEvent {
                 run,
@@ -2318,6 +2427,7 @@ mod hydrate_run_frame_tests {
                 slot: SlotIdx::new(0),
                 value: Some(postcard::to_allocvec(&SlotValue::I64(1)).unwrap()),
                 extra: None,
+                attempt: 1,
             },
             JournalEvent::SlotWrittenEvent {
                 run,
@@ -2325,6 +2435,7 @@ mod hydrate_run_frame_tests {
                 slot: SlotIdx::new(1),
                 value: Some(postcard::to_allocvec(&SlotValue::I64(2)).unwrap()),
                 extra: None,
+                attempt: 1,
             },
             JournalEvent::StepSucceeded {
                 run,

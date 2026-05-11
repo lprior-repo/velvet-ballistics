@@ -341,6 +341,7 @@ mod tests {
             run: make_run_id(),
             seq: make_event_seq(seq),
             step: make_step(step),
+            attempt: 1,
         }
     }
     fn je_step_succeeded(seq: u64, step: u16) -> JournalEvent {
@@ -357,6 +358,7 @@ mod tests {
             seq: make_event_seq(seq),
             step: make_step(step),
             action: make_action(0),
+            attempt: 1,
         }
     }
     fn je_action_completed(seq: u64, step: u16) -> JournalEvent {
@@ -365,6 +367,7 @@ mod tests {
             seq: make_event_seq(seq),
             step: make_step(step),
             action: make_action(0),
+            attempt: 1,
         }
     }
     fn je_action_failed(seq: u64, step: u16) -> JournalEvent {
@@ -373,6 +376,7 @@ mod tests {
             seq: make_event_seq(seq),
             step: make_step(step),
             action: make_action(0),
+            attempt: 1,
         }
     }
     fn je_slot_written(seq: u64) -> JournalEvent {
@@ -382,6 +386,7 @@ mod tests {
             slot: vb_core::SlotIdx::new(0),
             value: None,
             extra: None,
+            attempt: 1,
         }
     }
     fn je_wait_scheduled(seq: u64, step: u16) -> JournalEvent {
@@ -389,6 +394,7 @@ mod tests {
             run: make_run_id(),
             seq: make_event_seq(seq),
             step: make_step(step),
+            attempt: 1,
         }
     }
     fn je_ask_scheduled(seq: u64, step: u16) -> JournalEvent {
@@ -396,6 +402,7 @@ mod tests {
             run: make_run_id(),
             seq: make_event_seq(seq),
             step: make_step(step),
+            attempt: 1,
         }
     }
     fn je_ask_answered(seq: u64, step: u16) -> JournalEvent {
@@ -403,6 +410,7 @@ mod tests {
             run: make_run_id(),
             seq: make_event_seq(seq),
             step: make_step(step),
+            attempt: 1,
         }
     }
     fn je_retry_scheduled(seq: u64, step: u16) -> JournalEvent {
@@ -410,12 +418,15 @@ mod tests {
             run: make_run_id(),
             seq: make_event_seq(seq),
             step: make_step(step),
+            attempt: 1,
         }
     }
     fn je_run_cancelled(seq: u64) -> JournalEvent {
         JournalEvent::RunCancelled {
             run: make_run_id(),
             seq: make_event_seq(seq),
+            attempt: 1,
+            reason: None,
         }
     }
     fn je_run_finished(seq: u64) -> JournalEvent {
@@ -423,12 +434,14 @@ mod tests {
             run: make_run_id(),
             seq: make_event_seq(seq),
             result: vb_core::SlotIdx::new(0),
+            attempt: 1,
         }
     }
     fn je_run_failed(seq: u64) -> JournalEvent {
         JournalEvent::RunFailedEvent {
             run: make_run_id(),
             seq: make_event_seq(seq),
+            attempt: 1,
         }
     }
 

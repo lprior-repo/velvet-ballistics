@@ -24,7 +24,7 @@ fn make_contract(id: ActionId) -> ActionContract {
 
 #[test]
 fn test_registry_register_single_contract() {
-    let registry = ActionRegistry::new();
+    let mut registry = ActionRegistry::new();
     let contract = make_contract(ActionId::new(1));
     let result = registry.register(contract.clone());
     assert!(result.is_ok(), "register should succeed for new contract");
@@ -35,7 +35,7 @@ fn test_registry_register_single_contract() {
 
 #[test]
 fn test_registry_register_returns_registered_contract() {
-    let registry = ActionRegistry::new();
+    let mut registry = ActionRegistry::new();
     let contract = make_contract(ActionId::new(2));
     registry.register(contract.clone()).expect("register should succeed");
     let resolved = registry.resolve_compile_time(contract.id);
@@ -46,7 +46,7 @@ fn test_registry_register_returns_registered_contract() {
 
 #[test]
 fn test_registry_register_idempotent_empty_slot() {
-    let registry = ActionRegistry::new();
+    let mut registry = ActionRegistry::new();
     let contract = make_contract(ActionId::new(3));
     let first = registry.register(contract.clone());
     assert!(first.is_ok(), "first register should succeed");
@@ -54,7 +54,7 @@ fn test_registry_register_idempotent_empty_slot() {
 
 #[test]
 fn test_registry_register_duplicate_on_occupied_slot_fails() {
-    let registry = ActionRegistry::new();
+    let mut registry = ActionRegistry::new();
     let contract1 = make_contract(ActionId::new(4));
     let contract2 = ActionContract {
         id: ActionId::new(4),
@@ -77,7 +77,7 @@ fn test_registry_register_duplicate_on_occupied_slot_fails() {
 
 #[test]
 fn test_registry_register_action_id_at_max_u16_boundary() {
-    let registry = ActionRegistry::new();
+    let mut registry = ActionRegistry::new();
     let contract = make_contract(ActionId::new(65534));
     let result = registry.register(contract);
     assert!(result.is_ok(), "register with ActionId(65534) should succeed");
@@ -85,7 +85,7 @@ fn test_registry_register_action_id_at_max_u16_boundary() {
 
 #[test]
 fn test_registry_register_action_id_at_max_u16_plus_one_fails() {
-    let registry = ActionRegistry::new();
+    let mut registry = ActionRegistry::new();
     let contract = make_contract(ActionId::new(65535));
     let result = registry.register(contract);
     assert!(result.is_err(), "register with ActionId(65535) should fail");
@@ -93,7 +93,7 @@ fn test_registry_register_action_id_at_max_u16_plus_one_fails() {
 
 #[test]
 fn test_registry_len_after_single_register() {
-    let registry = ActionRegistry::new();
+    let mut registry = ActionRegistry::new();
     let contract = make_contract(ActionId::new(1));
     registry.register(contract).expect("register should succeed");
     assert_eq!(registry.len(), 1, "len should be 1 after single register");
@@ -101,7 +101,7 @@ fn test_registry_len_after_single_register() {
 
 #[test]
 fn test_registry_len_with_sparse_ids() {
-    let registry = ActionRegistry::new();
+    let mut registry = ActionRegistry::new();
     registry.register(make_contract(ActionId::new(0))).expect("register 0 succeeds");
     registry.register(make_contract(ActionId::new(100))).expect("register 100 succeeds");
     assert_eq!(registry.len(), 101, "len should be 101 for sparse ids");
@@ -109,7 +109,7 @@ fn test_registry_len_with_sparse_ids() {
 
 #[test]
 fn test_registry_registered_contracts_returns_ascending_order() {
-    let registry = ActionRegistry::new();
+    let mut registry = ActionRegistry::new();
     registry.register(make_contract(ActionId::new(50))).expect("register 50 succeeds");
     registry.register(make_contract(ActionId::new(10))).expect("register 10 succeeds");
     registry.register(make_contract(ActionId::new(30))).expect("register 30 succeeds");
@@ -122,7 +122,7 @@ fn test_registry_registered_contracts_returns_ascending_order() {
 
 #[test]
 fn test_registry_resolve_unknown_action_returns_error() {
-    let registry = ActionRegistry::new();
+    let mut registry = ActionRegistry::new();
     let result = registry.resolve_compile_time(ActionId::new(999));
     assert!(result.is_err(), "resolve on unknown action should fail");
     let err = result.unwrap_err();
@@ -131,7 +131,7 @@ fn test_registry_resolve_unknown_action_returns_error() {
 
 #[test]
 fn test_registry_resolve_registered_returns_ok() {
-    let registry = ActionRegistry::new();
+    let mut registry = ActionRegistry::new();
     let contract = make_contract(ActionId::new(7));
     registry.register(contract.clone()).expect("register should succeed");
     let result = registry.resolve_compile_time(contract.id);
@@ -140,7 +140,7 @@ fn test_registry_resolve_registered_returns_ok() {
 
 #[test]
 fn test_registry_dispatch_unknown_action_returns_error() {
-    let registry = ActionRegistry::new();
+    let mut registry = ActionRegistry::new();
     use vb_core::action::{ActionInput, ActionTicket};
     use vb_core::ids::{RunId, SeqNo, SlotIdx, StepIdx};
     let dummy_contract = make_contract(ActionId::new(42));
@@ -167,7 +167,7 @@ fn test_registry_dispatch_unknown_action_returns_error() {
 
 #[test]
 fn test_registry_dispatch_with_zero_max_bytes_and_nonzero_slots_fails() {
-    let registry = ActionRegistry::new();
+    let mut registry = ActionRegistry::new();
     let contract = ActionContract {
         id: ActionId::new(8),
         input_slot_count: 1,

@@ -39,6 +39,8 @@ pub enum JournalEvent {
         seq: EventSeq,
         /// Step index.
         step: StepIdx,
+        /// Attempt number (1-based).
+        attempt: u16,
     },
     /// Step completed and wrote an output slot.
     StepSucceeded {
@@ -61,6 +63,8 @@ pub enum JournalEvent {
         step: StepIdx,
         /// Action identifier.
         action: ActionId,
+        /// Attempt number (1-based).
+        attempt: u16,
     },
     /// Action completed successfully.
     ActionCompletedEvent {
@@ -72,6 +76,8 @@ pub enum JournalEvent {
         step: StepIdx,
         /// Action identifier.
         action: ActionId,
+        /// Attempt number (1-based).
+        attempt: u16,
     },
     /// Action failed.
     ActionFailedEvent {
@@ -83,6 +89,8 @@ pub enum JournalEvent {
         step: StepIdx,
         /// Action identifier.
         action: ActionId,
+        /// Attempt number (1-based).
+        attempt: u16,
     },
     /// Slot was written during execution.
     SlotWrittenEvent {
@@ -97,6 +105,8 @@ pub enum JournalEvent {
         /// Encoded frame extra data captured with this slot write, if any.
         #[serde(default)]
         extra: Option<Vec<u8>>,
+        /// Attempt number (1-based).
+        attempt: u16,
     },
     /// Wait was scheduled.
     WaitScheduledEvent {
@@ -106,6 +116,8 @@ pub enum JournalEvent {
         seq: EventSeq,
         /// Step index.
         step: StepIdx,
+        /// Attempt number (1-based).
+        attempt: u16,
     },
     /// Ask was scheduled.
     AskScheduledEvent {
@@ -115,6 +127,8 @@ pub enum JournalEvent {
         seq: EventSeq,
         /// Step index.
         step: StepIdx,
+        /// Attempt number (1-based).
+        attempt: u16,
     },
     /// Ask was answered.
     AskAnsweredEvent {
@@ -124,6 +138,8 @@ pub enum JournalEvent {
         seq: EventSeq,
         /// Step index.
         step: StepIdx,
+        /// Attempt number (1-based).
+        attempt: u16,
     },
     /// Retry was scheduled.
     RetryScheduledEvent {
@@ -133,6 +149,8 @@ pub enum JournalEvent {
         seq: EventSeq,
         /// Step index.
         step: StepIdx,
+        /// Attempt number (1-based).
+        attempt: u16,
     },
     /// Run cancelled.
     RunCancelled {
@@ -140,6 +158,10 @@ pub enum JournalEvent {
         run: RunId,
         /// Per-run sequence.
         seq: EventSeq,
+        /// Attempt number (1-based).
+        attempt: u16,
+        /// Optional cancellation reason.
+        reason: Option<String>,
     },
     /// Run completed.
     RunFinished {
@@ -149,6 +171,8 @@ pub enum JournalEvent {
         seq: EventSeq,
         /// Result slot index.
         result: SlotIdx,
+        /// Attempt number (1-based).
+        attempt: u16,
     },
     /// Run failed.
     RunFailedEvent {
@@ -156,6 +180,8 @@ pub enum JournalEvent {
         run: RunId,
         /// Per-run sequence.
         seq: EventSeq,
+        /// Attempt number (1-based).
+        attempt: u16,
     },
 }
 
@@ -225,14 +251,6 @@ impl JournalEvent {
         }
     }
 
-    /// Returns the attempt number for this event, if present.
-    ///
-    /// Events without an attempt field (PRE-001: treat as attempt 1).
-    #[must_use]
-    pub const fn attempt(&self) -> Option<u16> {
-        None
-    }
-
     /// Returns the slot value if this is a `SlotWrittenEvent` and a value was captured.
     #[must_use]
     pub fn slot_value(&self) -> Option<SlotValue> {
@@ -241,6 +259,33 @@ impl JournalEvent {
                 value: Some(bytes), ..
             } => postcard::from_bytes(bytes).ok(),
             _ => None,
+        }
+    }
+
+    /// Returns the attempt number for this event.
+    ///
+    /// Events that carry attempt info return `Some(attempt)`.
+    /// Events that don't carry attempt info (`RunAccepted`, `RunAdmission`,
+    /// `StepSucceeded`) return `None`; these are treated as
+    /// attempt 1 by the replay filtering logic (PRE-001).
+    #[must_use]
+    pub const fn attempt(&self) -> Option<u16> {
+        match self {
+            Self::ActionScheduled { attempt, .. }
+            | Self::ActionCompletedEvent { attempt, .. }
+            | Self::ActionFailedEvent { attempt, .. }
+            | Self::SlotWrittenEvent { attempt, .. }
+            | Self::WaitScheduledEvent { attempt, .. }
+            | Self::AskScheduledEvent { attempt, .. }
+            | Self::AskAnsweredEvent { attempt, .. }
+            | Self::RetryScheduledEvent { attempt, .. }
+            | Self::StepStarted { attempt, .. }
+            | Self::RunCancelled { attempt, .. }
+            | Self::RunFinished { attempt, .. }
+            | Self::RunFailedEvent { attempt, .. } => Some(*attempt),
+            Self::RunAccepted { .. } | Self::RunAdmission { .. } | Self::StepSucceeded { .. } => {
+                None
+            }
         }
     }
 }

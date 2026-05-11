@@ -371,6 +371,7 @@ mod tests {
             run: TEST_RUN,
             seq: seq(seq_val),
             step: StepIdx::new(step),
+            attempt: 1,
         }
     }
 
@@ -389,6 +390,7 @@ mod tests {
             seq: seq(seq_val),
             step: StepIdx::new(step),
             action: ActionId::new(action),
+            attempt: 1,
         }
     }
 
@@ -398,6 +400,7 @@ mod tests {
             seq: seq(seq_val),
             step: StepIdx::new(step),
             action: ActionId::new(action),
+            attempt: 1,
         }
     }
 
@@ -407,6 +410,7 @@ mod tests {
             seq: seq(seq_val),
             step: StepIdx::new(step),
             action: ActionId::new(action),
+            attempt: 1,
         }
     }
 
@@ -417,6 +421,7 @@ mod tests {
             slot: SlotIdx::new(slot),
             value: None,
             extra: None,
+            attempt: 1,
         }
     }
 
@@ -425,6 +430,7 @@ mod tests {
             run: TEST_RUN,
             seq: seq(seq_val),
             step: StepIdx::new(step),
+            attempt: 1,
         }
     }
 
@@ -433,6 +439,7 @@ mod tests {
             run: TEST_RUN,
             seq: seq(seq_val),
             step: StepIdx::new(step),
+            attempt: 1,
         }
     }
 
@@ -441,6 +448,7 @@ mod tests {
             run: TEST_RUN,
             seq: seq(seq_val),
             step: StepIdx::new(step),
+            attempt: 1,
         }
     }
 
@@ -449,6 +457,7 @@ mod tests {
             run: TEST_RUN,
             seq: seq(seq_val),
             step: StepIdx::new(step),
+            attempt: 1,
         }
     }
 
@@ -456,6 +465,8 @@ mod tests {
         JournalEvent::RunCancelled {
             run: TEST_RUN,
             seq: seq(seq_val),
+            attempt: 1,
+            reason: None,
         }
     }
 
@@ -464,6 +475,7 @@ mod tests {
             run: TEST_RUN,
             seq: seq(seq_val),
             result: SlotIdx::new(result),
+            attempt: 1,
         }
     }
 
@@ -471,6 +483,7 @@ mod tests {
         JournalEvent::RunFailedEvent {
             run: TEST_RUN,
             seq: seq(seq_val),
+            attempt: 1,
         }
     }
 

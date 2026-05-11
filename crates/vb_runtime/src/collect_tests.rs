@@ -1,5 +1,6 @@
 use super::*;
 use crate::test_harness::list_in_slot;
+use vb_core::EventSeq as CoreEventSeq;
 use vb_core::value_store::ValueStore;
 use vb_storage::recovery::{ActionReplayTracker, recover_full_journal};
 use vb_storage::{EventSeq, JournalEvent};
@@ -15,6 +16,20 @@ fn fresh_states() -> CollectStates {
 fn assert_invalid_workflow_reason(result: Result<(), EngineError>, expected: &'static str) {
     match result {
         Err(EngineError::InvalidCompiledWorkflow { reason }) => assert_eq!(reason, expected),
+        Err(EngineError::CollectExtraHydrationFailed { kind, .. })
+            if expected == "collect pagination state decode failed" =>
+        {
+            assert_eq!(kind, CollectExtraHydrationFailureKind::DecodeFailed);
+        }
+        Err(EngineError::CollectExtraHydrationFailed { kind, .. })
+            if expected == "collect pagination state identity mismatch" =>
+        {
+            assert!(matches!(
+                kind,
+                CollectExtraHydrationFailureKind::RunMismatch { .. }
+                    | CollectExtraHydrationFailureKind::SlotMismatch { .. }
+            ));
+        }
         other => assert_eq!(
             other,
             Err(EngineError::InvalidCompiledWorkflow { reason: expected })
@@ -56,6 +71,7 @@ fn slot_written_extra(run: RunId, slot: SlotIdx, extra: Vec<u8>) -> JournalEvent
     JournalEvent::SlotWrittenEvent {
         run,
         seq: EventSeq::new(0),
+        attempt: 1,
         slot,
         value: None,
         extra: Some(extra),
@@ -200,19 +216,20 @@ impl CollectScenario {
     }
 
     fn reject_next(&mut self) {
-        assert_eq!(
-            collect_next(
-                &mut self.run,
-                &mut self.store,
-                &mut self.states,
-                self.collector,
-                self.body,
-                self.done,
-            ),
+        let result = collect_next(
+            &mut self.run,
+            &mut self.store,
+            &mut self.states,
+            self.collector,
+            self.body,
+            self.done,
+        );
+        assert!(matches!(
+            result,
             Err(EngineError::InvalidCompiledWorkflow {
                 reason: "collect pagination state missing"
-            })
-        );
+            }) | Err(EngineError::CollectPageOrderViolation { .. })
+        ));
     }
 }
 
@@ -2655,9 +2672,11 @@ fn collect_next_cursor_at_item_count_goes_to_done() -> Result<(), String> {
 
     // collect_start already completed (cursor >= item_count), state is removed.
     // Calling collect_next after completion returns an error because state is missing.
-    assert!(
-        collect_next(&mut run, &mut store, &mut states, collector, body, done).is_err(),
-        "collect_next after completion should error due to missing state"
+    assert_eq!(
+        collect_next(&mut run, &mut store, &mut states, collector, body, done),
+        Err(EngineError::InvalidCompiledWorkflow {
+            reason: "collect pagination state missing",
+        })
     );
     Ok(())
 }
@@ -3051,9 +3070,11 @@ fn collect_next_writes_empty_page_and_removes_state_after_last_item() -> Result<
 
     // collect_start already completed (cursor >= item_count), so state is removed.
     // Calling collect_next after completion returns an error because state is missing.
-    assert!(
-        collect_next(&mut run, &mut store, &mut states, collector, body, done).is_err(),
-        "collect_next after completion should error due to missing state"
+    assert_eq!(
+        collect_next(&mut run, &mut store, &mut states, collector, body, done),
+        Err(EngineError::InvalidCompiledWorkflow {
+            reason: "collect pagination state missing",
+        })
     );
     Ok(())
 }
@@ -3142,5 +3163,440 @@ fn collect_next_returns_cursor_beyond_source_error_when_cursor_is_one_above_sour
             reason: "collect cursor beyond source items",
         })
     );
+    Ok(())
+}
+
+// =========================================================================
+// vb-qi37.3 STATE 5 RED PHASE: collect pagination durability/hydration.
+// These tests intentionally target the approved typed API from the bead plan.
+// The typed variants/kinds do not exist yet; compile failure is valid red
+// evidence for State 6 and must not be hidden by accepting generic errors.
+// =========================================================================
+
+fn qi37_3_valid_state(
+    run_id: RunId,
+    collector_slot: SlotIdx,
+    source: ListId,
+    current_page: ListId,
+) -> CollectPaginationState {
+    CollectPaginationState {
+        run_id,
+        collector_slot,
+        source,
+        current_page,
+        cursor: 2,
+        page_size: 2,
+        item_count: 4,
+        limit: 4,
+        time_limit_ms: None,
+        start_millis: 10,
+    }
+}
+
+#[test]
+fn collect_next_duplicate_page_returns_order_violation_duplicate_and_preserves_state()
+-> Result<(), String> {
+    let mut scenario = CollectScenario::start(
+        vec![
+            SlotValue::I64(1),
+            SlotValue::I64(2),
+            SlotValue::I64(3),
+            SlotValue::I64(4),
+        ],
+        4,
+        2,
+    )?;
+    let page1 = scenario.current_page()?;
+    assert_eq!(scenario.next()?, vb_core::EngineSignal::Continue);
+    let page2 = scenario.current_page()?;
+    let before = scenario
+        .states
+        .capture_state(scenario.run.run_id(), scenario.collector)
+        .ok_or("expected live collect state before duplicate rejection".to_owned())?;
+
+    scenario.write_collector_page(page1)?;
+    let result = collect_next(
+        &mut scenario.run,
+        &mut scenario.store,
+        &mut scenario.states,
+        scenario.collector,
+        scenario.body,
+        scenario.done,
+    );
+
+    assert_eq!(
+        result,
+        Err(EngineError::CollectPageOrderViolation {
+            kind: CollectPageOrderViolationKind::Duplicate,
+            run_id: scenario.run.run_id(),
+            collector_slot: scenario.collector,
+            expected_page: page2,
+            observed_page: page1,
+        })
+    );
+    assert_eq!(
+        scenario
+            .states
+            .capture_state(scenario.run.run_id(), scenario.collector),
+        Some(before)
+    );
+    assert_eq!(slot_list_id(&scenario.run, scenario.collector)?, page1);
+    Ok(())
+}
+
+#[test]
+fn collect_next_immediate_duplicate_page_with_intervening_allocations_returns_duplicate_and_preserves_state()
+-> Result<(), String> {
+    let mut scenario = CollectScenario::start(
+        vec![SlotValue::I64(11), SlotValue::I64(22), SlotValue::I64(33)],
+        3,
+        1,
+    )?;
+    let page1 = scenario.current_page()?;
+    let unrelated_before_next = scenario
+        .store
+        .insert_list(Box::from([SlotValue::I64(900)]))
+        .map_err(|e| format!("insert unrelated list before next: {e:?}"))?;
+
+    assert_eq!(scenario.next()?, vb_core::EngineSignal::Continue);
+    let page2 = scenario.current_page()?;
+    let unrelated_after_next = scenario
+        .store
+        .insert_list(Box::from([SlotValue::I64(901)]))
+        .map_err(|e| format!("insert unrelated list after next: {e:?}"))?;
+    let before = scenario
+        .states
+        .capture_state(scenario.run.run_id(), scenario.collector)
+        .ok_or("expected live collect state before duplicate rejection".to_owned())?;
+
+    scenario.write_collector_page(page1)?;
+    let result = collect_next(
+        &mut scenario.run,
+        &mut scenario.store,
+        &mut scenario.states,
+        scenario.collector,
+        scenario.body,
+        scenario.done,
+    );
+
+    assert_eq!(
+        unrelated_before_next,
+        ListId::new(
+            page1
+                .get()
+                .checked_add(1)
+                .ok_or("page1 list id overflow".to_owned())?
+        )
+    );
+    assert_eq!(
+        page2,
+        ListId::new(
+            unrelated_before_next
+                .get()
+                .checked_add(1)
+                .ok_or("unrelated list id overflow".to_owned())?
+        )
+    );
+    assert_eq!(
+        unrelated_after_next,
+        ListId::new(
+            page2
+                .get()
+                .checked_add(1)
+                .ok_or("page2 list id overflow".to_owned())?
+        )
+    );
+    assert_eq!(
+        result,
+        Err(EngineError::CollectPageOrderViolation {
+            kind: CollectPageOrderViolationKind::Duplicate,
+            run_id: scenario.run.run_id(),
+            collector_slot: scenario.collector,
+            expected_page: page2,
+            observed_page: page1,
+        })
+    );
+    assert_eq!(
+        scenario
+            .states
+            .capture_state(scenario.run.run_id(), scenario.collector),
+        Some(before)
+    );
+    assert_eq!(slot_list_id(&scenario.run, scenario.collector)?, page1);
+    assert_slot_list_items(
+        &scenario.run,
+        &scenario.store,
+        SlotIdx::new(0),
+        &[SlotValue::I64(11), SlotValue::I64(22), SlotValue::I64(33)],
+    );
+    Ok(())
+}
+
+#[test]
+fn collect_next_stale_page_returns_order_violation_stale_and_preserves_state() -> Result<(), String>
+{
+    let mut scenario = CollectScenario::start(
+        vec![SlotValue::I64(7), SlotValue::I64(8), SlotValue::I64(9)],
+        3,
+        1,
+    )?;
+    let page1 = scenario.current_page()?;
+    assert_eq!(scenario.next()?, vb_core::EngineSignal::Continue);
+    assert_eq!(scenario.next()?, vb_core::EngineSignal::Continue);
+    let page3 = scenario.current_page()?;
+    let before = scenario
+        .states
+        .capture_state(scenario.run.run_id(), scenario.collector)
+        .ok_or("expected live collect state before stale rejection".to_owned())?;
+
+    scenario.write_collector_page(page1)?;
+    let result = collect_next(
+        &mut scenario.run,
+        &mut scenario.store,
+        &mut scenario.states,
+        scenario.collector,
+        scenario.body,
+        scenario.done,
+    );
+
+    assert_eq!(
+        result,
+        Err(EngineError::CollectPageOrderViolation {
+            kind: CollectPageOrderViolationKind::Stale,
+            run_id: scenario.run.run_id(),
+            collector_slot: scenario.collector,
+            expected_page: page3,
+            observed_page: page1,
+        })
+    );
+    assert_eq!(
+        scenario
+            .states
+            .capture_state(scenario.run.run_id(), scenario.collector),
+        Some(before)
+    );
+    Ok(())
+}
+
+#[test]
+fn collect_next_future_page_returns_order_violation_out_of_order_and_preserves_state()
+-> Result<(), String> {
+    let mut scenario = CollectScenario::start(
+        vec![SlotValue::I64(1), SlotValue::I64(2), SlotValue::I64(3)],
+        3,
+        1,
+    )?;
+    let expected_page = scenario.current_page()?;
+    let before = scenario
+        .states
+        .capture_state(scenario.run.run_id(), scenario.collector)
+        .ok_or("expected live collect state before future-page rejection".to_owned())?;
+    let future_page = scenario
+        .store
+        .insert_list(Box::from([SlotValue::I64(99)]))
+        .map_err(|e| format!("insert future page: {e:?}"))?;
+
+    scenario.write_collector_page(future_page)?;
+    let result = collect_next(
+        &mut scenario.run,
+        &mut scenario.store,
+        &mut scenario.states,
+        scenario.collector,
+        scenario.body,
+        scenario.done,
+    );
+
+    assert_eq!(
+        result,
+        Err(EngineError::CollectPageOrderViolation {
+            kind: CollectPageOrderViolationKind::OutOfOrder,
+            run_id: scenario.run.run_id(),
+            collector_slot: scenario.collector,
+            expected_page,
+            observed_page: future_page,
+        })
+    );
+    assert_eq!(
+        scenario
+            .states
+            .capture_state(scenario.run.run_id(), scenario.collector),
+        Some(before)
+    );
+    assert_slot_list_items(
+        &scenario.run,
+        &scenario.store,
+        SlotIdx::new(0),
+        &[SlotValue::I64(1), SlotValue::I64(2), SlotValue::I64(3)],
+    );
+    Ok(())
+}
+
+#[test]
+fn collect_hydration_empty_extra_returns_empty_extra_error_and_no_state() {
+    let run_id = RunId::new(3901);
+    let collector = SlotIdx::new(1);
+    let mut states = CollectStates::new();
+
+    assert_eq!(
+        states.hydrate_extra(run_id, collector, &[]),
+        Err(EngineError::CollectExtraHydrationFailed {
+            kind: CollectExtraHydrationFailureKind::EmptyExtra,
+            run_id,
+            collector_slot: collector,
+            event_seq: None,
+        })
+    );
+    assert_eq!(states.capture_state(run_id, collector), None);
+}
+
+#[test]
+fn collect_hydration_corrupt_extra_returns_decode_failed_and_no_state() {
+    let run_id = RunId::new(3902);
+    let collector = SlotIdx::new(1);
+    let mut states = CollectStates::new();
+
+    assert_eq!(
+        states.hydrate_extra(run_id, collector, &[0xFF, 0x00, 0x13]),
+        Err(EngineError::CollectExtraHydrationFailed {
+            kind: CollectExtraHydrationFailureKind::DecodeFailed,
+            run_id,
+            collector_slot: collector,
+            event_seq: None,
+        })
+    );
+    assert_eq!(states.capture_state(run_id, collector), None);
+}
+
+#[test]
+fn recovered_collect_state_rejects_run_mismatch_and_inserts_no_state() -> Result<(), String> {
+    let durable_run = RunId::new(3801);
+    let encoded_run = RunId::new(9999);
+    let collector = SlotIdx::new(1);
+    let state = qi37_3_valid_state(encoded_run, collector, ListId::new(10), ListId::new(20));
+    let extra = postcard::to_allocvec(&state).map_err(|e| format!("encode state: {e:?}"))?;
+    let event = JournalEvent::SlotWrittenEvent {
+        run: durable_run,
+        seq: EventSeq::new(3),
+        slot: collector,
+        value: None,
+        extra: Some(extra),
+        attempt: 1,
+    };
+
+    assert_eq!(
+        hydrate_collect_states_from_recovered_journal(&[event]),
+        Err(EngineError::CollectExtraHydrationFailed {
+            kind: CollectExtraHydrationFailureKind::RunMismatch {
+                expected: durable_run,
+                actual: encoded_run,
+            },
+            run_id: durable_run,
+            collector_slot: collector,
+            event_seq: Some(CoreEventSeq::new(3)),
+        })
+    );
+    assert_eq!(
+        CollectStates::new().capture_state(durable_run, collector),
+        None
+    );
+    Ok(())
+}
+
+#[test]
+fn recovered_collect_state_rejects_slot_mismatch_and_inserts_no_state() -> Result<(), String> {
+    let run_id = RunId::new(3801);
+    let event_slot = SlotIdx::new(1);
+    let encoded_slot = SlotIdx::new(2);
+    let state = qi37_3_valid_state(run_id, encoded_slot, ListId::new(10), ListId::new(20));
+    let extra = postcard::to_allocvec(&state).map_err(|e| format!("encode state: {e:?}"))?;
+    let event = JournalEvent::SlotWrittenEvent {
+        run: run_id,
+        seq: EventSeq::new(4),
+        slot: event_slot,
+        value: None,
+        extra: Some(extra),
+        attempt: 1,
+    };
+
+    assert_eq!(
+        hydrate_collect_states_from_recovered_journal(&[event]),
+        Err(EngineError::CollectExtraHydrationFailed {
+            kind: CollectExtraHydrationFailureKind::SlotMismatch {
+                expected: event_slot,
+                actual: encoded_slot,
+            },
+            run_id,
+            collector_slot: event_slot,
+            event_seq: Some(CoreEventSeq::new(4)),
+        })
+    );
+    assert_eq!(CollectStates::new().capture_state(run_id, event_slot), None);
+    Ok(())
+}
+
+#[test]
+fn collect_hydration_current_page_mismatch_returns_page_mismatch_and_no_state() -> Result<(), String>
+{
+    let run_id = RunId::new(3802);
+    let collector = SlotIdx::new(1);
+    let expected_page = ListId::new(21);
+    let actual_page = ListId::new(20);
+    let state = qi37_3_valid_state(run_id, collector, ListId::new(10), actual_page);
+    let extra = postcard::to_allocvec(&state).map_err(|e| format!("encode state: {e:?}"))?;
+    let encoded_value = postcard::to_allocvec(&SlotValue::List(expected_page))
+        .map_err(|e| format!("encode slot value: {e:?}"))?;
+    let event = JournalEvent::SlotWrittenEvent {
+        run: run_id,
+        seq: EventSeq::new(5),
+        slot: collector,
+        value: Some(encoded_value),
+        extra: Some(extra),
+        attempt: 1,
+    };
+    let mut states = CollectStates::new();
+
+    assert_eq!(
+        states.hydrate_journal_events(&[event]),
+        Err(EngineError::CollectExtraHydrationFailed {
+            kind: CollectExtraHydrationFailureKind::CurrentPageMismatch {
+                expected: expected_page,
+                actual: actual_page,
+            },
+            run_id,
+            collector_slot: collector,
+            event_seq: Some(CoreEventSeq::new(5)),
+        })
+    );
+    assert_eq!(states.capture_state(run_id, collector), None);
+    Ok(())
+}
+
+#[test]
+fn collect_hydration_corrupt_slot_value_with_collect_extra_returns_decode_failed_and_no_state()
+-> Result<(), String> {
+    let run_id = RunId::new(3803);
+    let collector = SlotIdx::new(1);
+    let state = qi37_3_valid_state(run_id, collector, ListId::new(10), ListId::new(20));
+    let extra = postcard::to_allocvec(&state).map_err(|e| format!("encode state: {e:?}"))?;
+    let event = JournalEvent::SlotWrittenEvent {
+        run: run_id,
+        seq: EventSeq::new(6),
+        slot: collector,
+        value: Some(vec![0xFF, 0x00, 0x13]),
+        extra: Some(extra),
+        attempt: 1,
+    };
+    let mut states = CollectStates::new();
+
+    assert_eq!(
+        states.hydrate_journal_events(&[event]),
+        Err(EngineError::CollectExtraHydrationFailed {
+            kind: CollectExtraHydrationFailureKind::DecodeFailed,
+            run_id,
+            collector_slot: collector,
+            event_seq: Some(CoreEventSeq::new(6)),
+        })
+    );
+    assert_eq!(states.capture_state(run_id, collector), None);
     Ok(())
 }

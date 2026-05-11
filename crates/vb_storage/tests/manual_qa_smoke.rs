@@ -20,19 +20,21 @@ fn make_event(run: RunId, seq: u64) -> JournalEvent {
     }
 }
 
-fn make_step_started(run: RunId, seq: u64, step: u16) -> JournalEvent {
+fn make_step_started(run: RunId, seq: u64, step: u16, attempt: u16) -> JournalEvent {
     JournalEvent::StepStarted {
         run,
         seq: EventSeq::new(seq),
         step: StepIdx::new(step),
+        attempt,
     }
 }
 
-fn make_run_finished(run: RunId, seq: u64) -> JournalEvent {
+fn make_run_finished(run: RunId, seq: u64, attempt: u16) -> JournalEvent {
     JournalEvent::RunFinished {
         run,
         seq: EventSeq::new(seq),
         result: SlotIdx::new(0),
+        attempt,
     }
 }
 
@@ -47,7 +49,7 @@ fn smoke_happy_path_trim() {
             if i == 0 {
                 make_event(run, i)
             } else {
-                make_step_started(run, i, i as u16 - 1)
+                make_step_started(run, i, i as u16 - 1, i as u16)
             }
         })
         .collect();
@@ -83,8 +85,8 @@ fn smoke_retention_policy_blocks() {
 
     let events = vec![
         make_event(run, 0),
-        make_step_started(run, 1, 0),
-        make_run_finished(run, 2),
+        make_step_started(run, 1, 0, 1),
+        make_run_finished(run, 2, 1),
     ];
     journal.append_strict_batch(&events).unwrap();
 
@@ -123,7 +125,7 @@ fn smoke_no_snapshot_fails_closed() {
     let (_temp, journal) = temp_journal();
     let run = RunId::new(200);
 
-    let events = vec![make_event(run, 0), make_step_started(run, 1, 0)];
+    let events = vec![make_event(run, 0), make_step_started(run, 1, 0, 1)];
     journal.append_strict_batch(&events).unwrap();
 
     let result = journal.trim_events_for_run(run, TrimPolicy::default());
@@ -142,7 +144,7 @@ fn smoke_idempotency() {
             if i == 0 {
                 make_event(run, i)
             } else {
-                make_step_started(run, i, i as u16 - 1)
+                make_step_started(run, i, i as u16 - 1, i as u16)
             }
         })
         .collect();

@@ -1,14 +1,14 @@
 #[cfg(test)]
 #[allow(clippy::panic_in_result_fn)]
 mod tests {
-    use super::{CompileError, CompileErrors, SlotCompiler, SourceMark, YamlCompiler, YamlLimits};
     use super::{
         compile_to_generated_rust, compute_compiled_digest, lower_ask, lower_do, lower_finish,
         lower_set,
     };
-    use vb_core::ConstValue;
+    use super::{CompileError, CompileErrors, SlotCompiler, SourceMark, YamlCompiler, YamlLimits};
     use vb_core::ids::{ActionId, ConstIdx, SlotIdx, StepIdx, WorkflowDigest};
     use vb_core::workflow::{CompiledNode, CompiledNodeKind, ExprProgram, WorkflowParts};
+    use vb_core::ConstValue;
     use vb_core::{CompiledWorkflow, ResourceContract};
 
     macro_rules! compile_test_fail {
@@ -3727,7 +3727,10 @@ steps:
             parts.digest,
         );
 
-        assert!(result.is_ok(), "lower_steps_to_ir should succeed for valid parts");
+        assert!(
+            result.is_ok(),
+            "lower_steps_to_ir should succeed for valid parts"
+        );
 
         let workflow = result.unwrap();
         let output_parts = workflow.to_parts();

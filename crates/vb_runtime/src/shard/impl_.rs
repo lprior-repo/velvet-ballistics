@@ -148,7 +148,7 @@ impl Shard {
             }
             ShardCommand::AskAnswered { answer } => self.handle_ask_answer(answer)?,
             ShardCommand::TimerFired { run } => self.handle_timer(run)?,
-            ShardCommand::Cancel { run } => self.handle_cancel(run)?,
+            ShardCommand::Cancel { run, reason } => self.handle_cancel(run, reason)?,
             ShardCommand::Inspect { run, correlation } => {
                 self.handle_inspect(run, correlation);
             }
@@ -274,6 +274,7 @@ impl Shard {
                 Some(slot) => slot,
                 None => SlotIdx::ZERO,
             },
+            attempt: 1,
         })
     }
 

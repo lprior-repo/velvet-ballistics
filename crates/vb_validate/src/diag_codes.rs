@@ -64,6 +64,8 @@ pub const CODE_CAPABILITY_NAME_TOO_LONG: u16 = 0x050E;
 pub const CODE_CAPABILITY_NAME_INVALID: u16 = 0x050F;
 pub const CODE_CAPABILITY_ACTION_MISMATCH: u16 = 0x0510;
 pub const CODE_CAPABILITY_DUPLICATE: u16 = 0x0511;
+pub const CODE_ACCESSOR_PATH_TOO_DEEP: u16 = 0x0512;
+pub const CODE_ACCESSOR_SYMBOL_OUT_OF_BOUNDS: u16 = 0x0513;
 
 #[cfg(test)]
 mod tests {
@@ -158,6 +160,11 @@ mod tests {
                 CODE_CAPABILITY_ACTION_MISMATCH,
             ),
             ("CODE_CAPABILITY_DUPLICATE", CODE_CAPABILITY_DUPLICATE),
+            ("CODE_ACCESSOR_PATH_TOO_DEEP", CODE_ACCESSOR_PATH_TOO_DEEP),
+            (
+                "CODE_ACCESSOR_SYMBOL_OUT_OF_BOUNDS",
+                CODE_ACCESSOR_SYMBOL_OUT_OF_BOUNDS,
+            ),
         ]
     }
 
@@ -285,6 +292,8 @@ mod tests {
             CODE_CAPABILITY_NAME_INVALID,
             CODE_CAPABILITY_ACTION_MISMATCH,
             CODE_CAPABILITY_DUPLICATE,
+            CODE_ACCESSOR_PATH_TOO_DEEP,
+            CODE_ACCESSOR_SYMBOL_OUT_OF_BOUNDS,
         ];
         for code in gate_codes {
             let high = (code >> 8) & 0xFF;
@@ -295,6 +304,6 @@ mod tests {
     #[test]
     fn code_count_matches_total() {
         let codes = all_codes();
-        assert_eq!(codes.len(), 53, "expected exactly 53 diagnostic codes");
+        assert_eq!(codes.len(), 55, "expected exactly 55 diagnostic codes");
     }
 }

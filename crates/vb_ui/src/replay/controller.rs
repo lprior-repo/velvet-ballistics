@@ -477,9 +477,12 @@ pub fn trace_to_journal(trace: IpcTraceEvent) -> Option<JournalEvent> {
             seq,
             workflow: WorkflowDigest::from_bytes([0u8; 32]),
         }),
-        IpcTraceEventKind::StepStarted { run, step } => {
-            Some(JournalEvent::StepStarted { run, seq, step })
-        }
+        IpcTraceEventKind::StepStarted { run, step } => Some(JournalEvent::StepStarted {
+            run,
+            seq,
+            step,
+            attempt: 1,
+        }),
         IpcTraceEventKind::StepEnded { run, step } => Some(JournalEvent::StepSucceeded {
             run,
             seq,
@@ -493,6 +496,7 @@ pub fn trace_to_journal(trace: IpcTraceEvent) -> Option<JournalEvent> {
             slot,
             value: None,
             extra: None,
+            attempt: 1,
         }),
         IpcTraceEventKind::ActionScheduled { run, step } => Some(JournalEvent::ActionScheduled {
             run,
@@ -500,6 +504,7 @@ pub fn trace_to_journal(trace: IpcTraceEvent) -> Option<JournalEvent> {
             step,
             // ActionId not present in trace; use a sentinel.
             action: ActionId::new(0),
+            attempt: 1,
         }),
         IpcTraceEventKind::ActionCompleted { run, step } => {
             Some(JournalEvent::ActionCompletedEvent {
@@ -507,6 +512,7 @@ pub fn trace_to_journal(trace: IpcTraceEvent) -> Option<JournalEvent> {
                 seq,
                 step,
                 action: ActionId::new(0),
+                attempt: 1,
             })
         }
         IpcTraceEventKind::ActionFailed { run, step, .. } => {
@@ -515,18 +521,32 @@ pub fn trace_to_journal(trace: IpcTraceEvent) -> Option<JournalEvent> {
                 seq,
                 step,
                 action: ActionId::new(0),
+                attempt: 1,
             })
         }
-        IpcTraceEventKind::AskAnswered { run, step, .. } => {
-            Some(JournalEvent::AskAnsweredEvent { run, seq, step })
-        }
+        IpcTraceEventKind::AskAnswered { run, step, .. } => Some(JournalEvent::AskAnsweredEvent {
+            run,
+            seq,
+            step,
+            attempt: 1,
+        }),
         IpcTraceEventKind::RunFinished { run } => Some(JournalEvent::RunFinished {
             run,
             seq,
             result: SlotIdx::new(0),
+            attempt: 1,
         }),
-        IpcTraceEventKind::RunFailed { run } => Some(JournalEvent::RunFailedEvent { run, seq }),
-        IpcTraceEventKind::RunCancelled { run } => Some(JournalEvent::RunCancelled { run, seq }),
+        IpcTraceEventKind::RunFailed { run } => Some(JournalEvent::RunFailedEvent {
+            run,
+            seq,
+            attempt: 1,
+        }),
+        IpcTraceEventKind::RunCancelled { run } => Some(JournalEvent::RunCancelled {
+            run,
+            seq,
+            attempt: 1,
+            reason: None,
+        }),
     }
 }
 
@@ -992,6 +1012,7 @@ mod tests {
             run,
             seq: EventSeq::new(seq),
             step,
+            attempt: 1,
         }
     }
 
@@ -1016,6 +1037,7 @@ mod tests {
             seq: EventSeq::new(seq),
             step,
             action,
+            attempt: 1,
         }
     }
 
@@ -1025,6 +1047,7 @@ mod tests {
             seq: EventSeq::new(seq),
             step,
             action,
+            attempt: 1,
         }
     }
 
@@ -1032,6 +1055,7 @@ mod tests {
         JournalEvent::RunFailedEvent {
             run,
             seq: EventSeq::new(seq),
+            attempt: 1,
         }
     }
 
@@ -1040,6 +1064,7 @@ mod tests {
             run,
             seq: EventSeq::new(seq),
             result,
+            attempt: 1,
         }
     }
 

@@ -211,6 +211,7 @@ mod tests {
             run: RunId::new(99),
             seq: EventSeq::new(12),
             result: vb_core::SlotIdx::new(1),
+            attempt: 1,
         };
 
         let encoded = encode_record(
@@ -379,11 +380,13 @@ mod tests {
                 run,
                 seq: EventSeq::new(1),
                 step: StepIdx::new(0),
+                attempt: 1,
             },
             JournalEvent::RunFinished {
                 run,
                 seq: EventSeq::new(2),
                 result: vb_core::SlotIdx::new(0),
+                attempt: 1,
             },
         ];
 
@@ -437,6 +440,7 @@ mod tests {
             run,
             seq: EventSeq::new(1),
             result: vb_core::SlotIdx::new(0),
+            attempt: 1,
         });
         assert_eq!(builder.len(), 2);
         assert_eq!(builder.as_slice().len(), 2);
@@ -458,6 +462,7 @@ mod tests {
             run,
             seq: EventSeq::new(1),
             step: StepIdx::new(0),
+            attempt: 1,
         });
 
         journal
@@ -486,6 +491,7 @@ mod tests {
             run,
             seq: EventSeq::new(1),
             result: vb_core::SlotIdx::new(0),
+            attempt: 1,
         };
 
         queue
@@ -837,10 +843,13 @@ mod tests {
         let journaled = JournalEvent::RunCancelled {
             run,
             seq: EventSeq::new(0),
+            attempt: 1,
+            reason: None,
         };
         let strict = JournalEvent::RunFailedEvent {
             run,
             seq: EventSeq::new(1),
+            attempt: 1,
         };
 
         queue
@@ -873,6 +882,7 @@ mod tests {
             run,
             seq: EventSeq::new(1),
             result: vb_core::SlotIdx::new(0),
+            attempt: 1,
         };
 
         queue
@@ -905,6 +915,7 @@ mod tests {
             run,
             seq: EventSeq::new(1),
             result: vb_core::SlotIdx::new(0),
+            attempt: 1,
         };
 
         journal
@@ -1196,6 +1207,7 @@ mod tests {
             run: RunId::new(5),
             seq: EventSeq::new(1),
             result: vb_core::SlotIdx::new(0),
+            attempt: 1,
         };
         let mut encoded = encode_record(
             MAGIC_JOURNAL_EVENT,
@@ -1223,6 +1235,7 @@ mod tests {
             run: RunId::new(2),
             seq: EventSeq::new(0),
             step: StepIdx::new(3),
+            attempt: 1,
         };
         let mut encoded = encode_record(
             MAGIC_JOURNAL_EVENT,
@@ -1288,6 +1301,7 @@ mod tests {
             run,
             seq: EventSeq::new(2),
             step: StepIdx::new(0),
+            attempt: 1,
         };
         journal
             .append_journaled(&event2)
@@ -1724,6 +1738,7 @@ mod tests {
             run,
             seq: EventSeq::new(2),
             step: StepIdx::new(0),
+            attempt: 1,
         };
         journal
             .append_strict(&event2)
@@ -1958,6 +1973,7 @@ mod tests {
             run: run_a,
             seq: EventSeq::new(1),
             step: StepIdx::new(0),
+            attempt: 1,
         };
 
         journal
@@ -2042,6 +2058,7 @@ mod tests {
             run: RunId::new(1),
             seq: EventSeq::new(7),
             step: StepIdx::new(0),
+            attempt: 1,
         };
         assert_eq!(event.seq(), EventSeq::new(7));
     }
@@ -2055,6 +2072,7 @@ mod tests {
             run: RunId::new(1),
             seq: EventSeq::new(1),
             result: vb_core::SlotIdx::new(0),
+            attempt: 1,
         };
         assert_eq!(event.record_kind(), RecordKind::RunFinished);
     }
@@ -2307,6 +2325,7 @@ mod tests {
             run,
             seq: EventSeq::new(1),
             step: StepIdx::new(0),
+            attempt: 1,
         };
         journal
             .append_strict(&accepted)
@@ -2335,6 +2354,7 @@ mod tests {
             run,
             seq: EventSeq::new(0),
             step,
+            attempt: 1,
         };
         journal
             .append_strict(&event)
@@ -2402,6 +2422,7 @@ mod tests {
             slot,
             value: None,
             extra: None,
+            attempt: 1,
         };
         journal
             .append_strict(&event)
@@ -2434,6 +2455,7 @@ mod tests {
             seq: EventSeq::new(0),
             step,
             action,
+            attempt: 1,
         };
         journal
             .append_strict(&event)
@@ -2469,6 +2491,7 @@ mod tests {
             seq: EventSeq::new(0),
             step,
             action,
+            attempt: 1,
         };
         journal
             .append_strict(&event)
@@ -2502,6 +2525,7 @@ mod tests {
             run,
             seq: EventSeq::new(0),
             result,
+            attempt: 1,
         };
         journal
             .append_strict(&event)
@@ -2531,6 +2555,7 @@ mod tests {
         let event = JournalEvent::RunFailedEvent {
             run,
             seq: EventSeq::new(0),
+            attempt: 1,
         };
         journal
             .append_strict(&event)
@@ -2559,11 +2584,13 @@ mod tests {
             run,
             seq: EventSeq::new(1),
             step: StepIdx::new(0),
+            attempt: 1,
         };
         let e2 = JournalEvent::RunFinished {
             run,
             seq: EventSeq::new(2),
             result: vb_core::SlotIdx::new(0),
+            attempt: 1,
         };
         journal
             .append_strict(&e0)
@@ -2628,6 +2655,7 @@ mod tests {
             run,
             seq: EventSeq::new(1),
             step: StepIdx::new(0),
+            attempt: 1,
         };
         let e2 = JournalEvent::SlotWrittenEvent {
             run,
@@ -2635,6 +2663,7 @@ mod tests {
             slot: vb_core::SlotIdx::new(0),
             value: None,
             extra: None,
+            attempt: 1,
         };
         let e3 = JournalEvent::StepSucceeded {
             run,
@@ -2646,6 +2675,7 @@ mod tests {
             run,
             seq: EventSeq::new(4),
             result: vb_core::SlotIdx::new(1),
+            attempt: 1,
         };
         journal
             .append_journaled(&e0)
@@ -2719,16 +2749,19 @@ mod tests {
             run: run_a,
             seq: EventSeq::new(1),
             step: StepIdx::new(0),
+            attempt: 1,
         };
         let b1 = JournalEvent::StepStarted {
             run: run_b,
             seq: EventSeq::new(1),
             step: StepIdx::new(0),
+            attempt: 1,
         };
         let a2 = JournalEvent::RunFinished {
             run: run_a,
             seq: EventSeq::new(2),
             result: vb_core::SlotIdx::new(0),
+            attempt: 1,
         };
 
         journal
@@ -2893,8 +2926,9 @@ mod tests {
         assert_eq!(
             JournalEvent::StepStarted {
                 run,
-                seq: EventSeq::new(0),
-                step: StepIdx::new(0)
+                seq: EventSeq::new(1),
+                step: vb_core::StepIdx::ZERO,
+                attempt: 1,
             }
             .run_id(),
             run
@@ -2914,7 +2948,8 @@ mod tests {
                 run,
                 seq: EventSeq::new(0),
                 step: StepIdx::new(0),
-                action: ActionId::new(1)
+                action: ActionId::new(1),
+                attempt: 1,
             }
             .run_id(),
             run
@@ -2924,7 +2959,8 @@ mod tests {
                 run,
                 seq: EventSeq::new(0),
                 step: StepIdx::new(0),
-                action: ActionId::new(1)
+                action: ActionId::new(1),
+                attempt: 1,
             }
             .run_id(),
             run
@@ -2934,7 +2970,8 @@ mod tests {
                 run,
                 seq: EventSeq::new(0),
                 step: StepIdx::new(0),
-                action: ActionId::new(1)
+                action: ActionId::new(1),
+                attempt: 1,
             }
             .run_id(),
             run
@@ -2946,6 +2983,7 @@ mod tests {
                 slot: vb_core::SlotIdx::new(0),
                 value: None,
                 extra: None,
+                attempt: 1,
             }
             .run_id(),
             run
@@ -2954,7 +2992,8 @@ mod tests {
             JournalEvent::WaitScheduledEvent {
                 run,
                 seq: EventSeq::new(0),
-                step: StepIdx::new(0)
+                step: StepIdx::new(0),
+                attempt: 1,
             }
             .run_id(),
             run
@@ -2963,7 +3002,8 @@ mod tests {
             JournalEvent::AskScheduledEvent {
                 run,
                 seq: EventSeq::new(0),
-                step: StepIdx::new(0)
+                step: StepIdx::new(0),
+                attempt: 1,
             }
             .run_id(),
             run
@@ -2972,7 +3012,8 @@ mod tests {
             JournalEvent::AskAnsweredEvent {
                 run,
                 seq: EventSeq::new(0),
-                step: StepIdx::new(0)
+                step: StepIdx::new(0),
+                attempt: 1,
             }
             .run_id(),
             run
@@ -2981,7 +3022,8 @@ mod tests {
             JournalEvent::RetryScheduledEvent {
                 run,
                 seq: EventSeq::new(0),
-                step: StepIdx::new(0)
+                step: StepIdx::new(0),
+                attempt: 1,
             }
             .run_id(),
             run
@@ -2989,7 +3031,9 @@ mod tests {
         assert_eq!(
             JournalEvent::RunCancelled {
                 run,
-                seq: EventSeq::new(0)
+                seq: EventSeq::new(0),
+                attempt: 1,
+                reason: None,
             }
             .run_id(),
             run
@@ -2998,7 +3042,8 @@ mod tests {
             JournalEvent::RunFinished {
                 run,
                 seq: EventSeq::new(0),
-                result: vb_core::SlotIdx::new(0)
+                result: vb_core::SlotIdx::new(0),
+                attempt: 1,
             }
             .run_id(),
             run
@@ -3006,7 +3051,8 @@ mod tests {
         assert_eq!(
             JournalEvent::RunFailedEvent {
                 run,
-                seq: EventSeq::new(0)
+                seq: EventSeq::new(0),
+                attempt: 1,
             }
             .run_id(),
             run
@@ -3033,7 +3079,8 @@ mod tests {
             JournalEvent::StepStarted {
                 run,
                 seq,
-                step: StepIdx::new(0)
+                step: StepIdx::new(0),
+                attempt: 1,
             }
             .seq(),
             seq
@@ -3053,7 +3100,8 @@ mod tests {
                 run,
                 seq,
                 step: StepIdx::new(0),
-                action: ActionId::new(1)
+                action: ActionId::new(1),
+                attempt: 1,
             }
             .seq(),
             seq
@@ -3063,7 +3111,8 @@ mod tests {
                 run,
                 seq,
                 step: StepIdx::new(0),
-                action: ActionId::new(1)
+                action: ActionId::new(1),
+                attempt: 1,
             }
             .seq(),
             seq
@@ -3073,7 +3122,8 @@ mod tests {
                 run,
                 seq,
                 step: StepIdx::new(0),
-                action: ActionId::new(1)
+                action: ActionId::new(1),
+                attempt: 1,
             }
             .seq(),
             seq
@@ -3085,6 +3135,7 @@ mod tests {
                 slot: vb_core::SlotIdx::new(0),
                 value: None,
                 extra: None,
+                attempt: 1,
             }
             .seq(),
             seq
@@ -3093,7 +3144,8 @@ mod tests {
             JournalEvent::WaitScheduledEvent {
                 run,
                 seq,
-                step: StepIdx::new(0)
+                step: StepIdx::new(0),
+                attempt: 1,
             }
             .seq(),
             seq
@@ -3102,7 +3154,8 @@ mod tests {
             JournalEvent::AskScheduledEvent {
                 run,
                 seq,
-                step: StepIdx::new(0)
+                step: StepIdx::new(0),
+                attempt: 1,
             }
             .seq(),
             seq
@@ -3111,7 +3164,8 @@ mod tests {
             JournalEvent::AskAnsweredEvent {
                 run,
                 seq,
-                step: StepIdx::new(0)
+                step: StepIdx::new(0),
+                attempt: 1,
             }
             .seq(),
             seq
@@ -3120,22 +3174,41 @@ mod tests {
             JournalEvent::RetryScheduledEvent {
                 run,
                 seq,
-                step: StepIdx::new(0)
+                step: StepIdx::new(0),
+                attempt: 1,
             }
             .seq(),
             seq
         );
-        assert_eq!(JournalEvent::RunCancelled { run, seq }.seq(), seq);
+        assert_eq!(
+            JournalEvent::RunCancelled {
+                run,
+                seq,
+                attempt: 1,
+                reason: None
+            }
+            .seq(),
+            seq
+        );
         assert_eq!(
             JournalEvent::RunFinished {
                 run,
                 seq,
-                result: vb_core::SlotIdx::new(0)
+                result: vb_core::SlotIdx::new(0),
+                attempt: 1,
             }
             .seq(),
             seq
         );
-        assert_eq!(JournalEvent::RunFailedEvent { run, seq }.seq(), seq);
+        assert_eq!(
+            JournalEvent::RunFailedEvent {
+                run,
+                seq,
+                attempt: 1
+            }
+            .seq(),
+            seq
+        );
     }
 
     #[test]
@@ -3158,7 +3231,8 @@ mod tests {
             JournalEvent::StepStarted {
                 run,
                 seq,
-                step: StepIdx::new(0)
+                step: StepIdx::new(0),
+                attempt: 1,
             }
             .record_kind(),
             RecordKind::StepStarted
@@ -3178,7 +3252,8 @@ mod tests {
                 run,
                 seq,
                 step: StepIdx::new(0),
-                action: ActionId::new(1)
+                action: ActionId::new(1),
+                attempt: 1,
             }
             .record_kind(),
             RecordKind::ActionScheduled
@@ -3188,7 +3263,8 @@ mod tests {
                 run,
                 seq,
                 step: StepIdx::new(0),
-                action: ActionId::new(1)
+                action: ActionId::new(1),
+                attempt: 1,
             }
             .record_kind(),
             RecordKind::ActionCompleted
@@ -3198,7 +3274,8 @@ mod tests {
                 run,
                 seq,
                 step: StepIdx::new(0),
-                action: ActionId::new(1)
+                action: ActionId::new(1),
+                attempt: 1,
             }
             .record_kind(),
             RecordKind::ActionFailed
@@ -3210,6 +3287,7 @@ mod tests {
                 slot: vb_core::SlotIdx::new(0),
                 value: None,
                 extra: None,
+                attempt: 1,
             }
             .record_kind(),
             RecordKind::SlotWritten
@@ -3218,7 +3296,8 @@ mod tests {
             JournalEvent::WaitScheduledEvent {
                 run,
                 seq,
-                step: StepIdx::new(0)
+                step: StepIdx::new(0),
+                attempt: 1,
             }
             .record_kind(),
             RecordKind::WaitScheduled
@@ -3227,7 +3306,8 @@ mod tests {
             JournalEvent::AskScheduledEvent {
                 run,
                 seq,
-                step: StepIdx::new(0)
+                step: StepIdx::new(0),
+                attempt: 1,
             }
             .record_kind(),
             RecordKind::AskScheduled
@@ -3236,7 +3316,8 @@ mod tests {
             JournalEvent::AskAnsweredEvent {
                 run,
                 seq,
-                step: StepIdx::new(0)
+                step: StepIdx::new(0),
+                attempt: 1,
             }
             .record_kind(),
             RecordKind::AskAnswered
@@ -3245,26 +3326,39 @@ mod tests {
             JournalEvent::RetryScheduledEvent {
                 run,
                 seq,
-                step: StepIdx::new(0)
+                step: StepIdx::new(0),
+                attempt: 1,
             }
             .record_kind(),
             RecordKind::RetryScheduled
         );
         assert_eq!(
-            JournalEvent::RunCancelled { run, seq }.record_kind(),
+            JournalEvent::RunCancelled {
+                run,
+                seq,
+                attempt: 1,
+                reason: None
+            }
+            .record_kind(),
             RecordKind::RunCancelled
         );
         assert_eq!(
             JournalEvent::RunFinished {
                 run,
                 seq,
-                result: vb_core::SlotIdx::new(0)
+                result: vb_core::SlotIdx::new(0),
+                attempt: 1,
             }
             .record_kind(),
             RecordKind::RunFinished
         );
         assert_eq!(
-            JournalEvent::RunFailedEvent { run, seq }.record_kind(),
+            JournalEvent::RunFailedEvent {
+                run,
+                seq,
+                attempt: 1
+            }
+            .record_kind(),
             RecordKind::RunFailed
         );
     }
@@ -3297,6 +3391,7 @@ mod tests {
             run: RunId::new(2),
             seq: EventSeq::new(1),
             step: StepIdx::new(5),
+            attempt: 1,
         };
         let encoded = encode_record(MAGIC_JOURNAL_EVENT, RecordKind::StepStarted, 1, &event, 128)
             .expect("encoding should succeed");
@@ -3334,6 +3429,7 @@ mod tests {
             slot: vb_core::SlotIdx::new(7),
             value: None,
             extra: None,
+            attempt: 1,
         };
         let encoded = encode_record(MAGIC_JOURNAL_EVENT, RecordKind::SlotWritten, 3, &event, 128)
             .expect("encoding should succeed");
@@ -3352,6 +3448,7 @@ mod tests {
             seq: EventSeq::new(4),
             step: StepIdx::new(2),
             action: ActionId::new(3),
+            attempt: 1,
         };
         let encoded = encode_record(
             MAGIC_JOURNAL_EVENT,
@@ -3376,6 +3473,7 @@ mod tests {
             seq: EventSeq::new(5),
             step: StepIdx::new(2),
             action: ActionId::new(3),
+            attempt: 1,
         };
         let encoded = encode_record(
             MAGIC_JOURNAL_EVENT,
@@ -3399,6 +3497,7 @@ mod tests {
             run: RunId::new(7),
             seq: EventSeq::new(6),
             result: vb_core::SlotIdx::new(99),
+            attempt: 1,
         };
         let encoded = encode_record(MAGIC_JOURNAL_EVENT, RecordKind::RunFinished, 6, &event, 128)
             .expect("encoding should succeed");
@@ -3415,6 +3514,7 @@ mod tests {
         let event = JournalEvent::RunFailedEvent {
             run: RunId::new(8),
             seq: EventSeq::new(7),
+            attempt: 1,
         };
         let encoded = encode_record(MAGIC_JOURNAL_EVENT, RecordKind::RunFailed, 7, &event, 128)
             .expect("encoding should succeed");
@@ -3456,6 +3556,7 @@ mod tests {
             seq: EventSeq::new(3),
             step: StepIdx::new(1),
             action: ActionId::new(4),
+            attempt: 1,
         };
         let encoded = encode_record(
             MAGIC_JOURNAL_EVENT,
@@ -3632,6 +3733,7 @@ mod tests {
             run: run1,
             seq: EventSeq::new(1),
             step: StepIdx::new(0),
+            attempt: 1,
         };
         let r2_e0 = JournalEvent::RunAccepted {
             run: run2,
@@ -3642,11 +3744,13 @@ mod tests {
             run: run2,
             seq: EventSeq::new(1),
             step: StepIdx::new(1),
+            attempt: 1,
         };
         let r2_e2 = JournalEvent::RunFinished {
             run: run2,
             seq: EventSeq::new(2),
             result: vb_core::SlotIdx::new(0),
+            attempt: 1,
         };
 
         journal
@@ -3809,6 +3913,7 @@ mod tests {
                     run,
                     seq: EventSeq::new(1),
                     step: StepIdx::new(0),
+                    attempt: 1,
                 },
                 JournalEvent::SlotWrittenEvent {
                     run,
@@ -3816,18 +3921,21 @@ mod tests {
                     slot: vb_core::SlotIdx::new(0),
                     value: None,
                     extra: None,
+                    attempt: 1,
                 },
                 JournalEvent::ActionScheduled {
                     run,
                     seq: EventSeq::new(3),
                     step: StepIdx::new(0),
                     action: ActionId::new(1),
+                    attempt: 1,
                 },
                 JournalEvent::ActionCompletedEvent {
                     run,
                     seq: EventSeq::new(4),
                     step: StepIdx::new(0),
                     action: ActionId::new(1),
+                    attempt: 1,
                 },
                 JournalEvent::StepSucceeded {
                     run,
@@ -3839,8 +3947,10 @@ mod tests {
                     run,
                     seq: EventSeq::new(6),
                     result: vb_core::SlotIdx::new(1),
+                    attempt: 1,
                 },
             ];
+
             for event in &events {
                 journal
                     .append_strict(event)
@@ -3932,6 +4042,7 @@ mod tests {
             run: RunId::new(10),
             seq: EventSeq::new(2),
             step: StepIdx::new(3),
+            attempt: 1,
         };
         let encoded = encode_record(
             MAGIC_JOURNAL_EVENT,
@@ -3955,6 +4066,7 @@ mod tests {
             run: RunId::new(11),
             seq: EventSeq::new(3),
             step: StepIdx::new(4),
+            attempt: 1,
         };
         let encoded = encode_record(
             MAGIC_JOURNAL_EVENT,
@@ -3978,6 +4090,7 @@ mod tests {
             run: RunId::new(12),
             seq: EventSeq::new(4),
             step: StepIdx::new(5),
+            attempt: 1,
         };
         let encoded = encode_record(MAGIC_JOURNAL_EVENT, RecordKind::AskAnswered, 4, &event, 128)
             .expect("encoding should succeed");
@@ -3995,6 +4108,7 @@ mod tests {
             run: RunId::new(13),
             seq: EventSeq::new(5),
             step: StepIdx::new(6),
+            attempt: 1,
         };
         let encoded = encode_record(
             MAGIC_JOURNAL_EVENT,
@@ -4017,6 +4131,8 @@ mod tests {
         let event = JournalEvent::RunCancelled {
             run: RunId::new(14),
             seq: EventSeq::new(6),
+            attempt: 1,
+            reason: None,
         };
         let encoded = encode_record(
             MAGIC_JOURNAL_EVENT,
@@ -4359,6 +4475,7 @@ mod tests {
             run,
             seq: EventSeq::new(0),
             step: StepIdx::new(0),
+            attempt: 1,
         });
         let Err(JournalError::DuplicateEvent { run: r, seq: s }) = result else {
             panic!("expected DuplicateEvent, got {:?}", result)
@@ -4386,7 +4503,8 @@ mod tests {
                 .append_journaled(&JournalEvent::RunFinished {
                     run,
                     seq: EventSeq::new(5),
-                    result: vb_core::SlotIdx::new(0)
+                    result: vb_core::SlotIdx::new(0),
+                    attempt: 1,
                 })
                 .is_ok()
         );
@@ -4599,6 +4717,8 @@ mod tests {
                 .enqueue_journaled(JournalEvent::RunCancelled {
                     run,
                     seq: EventSeq::new(1),
+                    attempt: 1,
+                    reason: None,
                 })
                 .is_ok()
         );
@@ -4629,6 +4749,8 @@ mod tests {
         let next = JournalEvent::RunCancelled {
             run,
             seq: EventSeq::new(1),
+            attempt: 1,
+            reason: None,
         };
 
         assert!(matches!(journal.append_journaled(&duplicate), Ok(())));
@@ -4664,6 +4786,8 @@ mod tests {
         let cancelled = JournalEvent::RunCancelled {
             run,
             seq: EventSeq::new(1),
+            attempt: 1,
+            reason: None,
         };
 
         queue
@@ -4696,6 +4820,8 @@ mod tests {
         let cancelled = JournalEvent::RunCancelled {
             run,
             seq: EventSeq::new(1),
+            attempt: 1,
+            reason: None,
         };
 
         queue
@@ -4729,6 +4855,8 @@ mod tests {
         let cancelled = JournalEvent::RunCancelled {
             run,
             seq: EventSeq::new(1),
+            attempt: 1,
+            reason: None,
         };
 
         journal
@@ -5119,6 +5247,7 @@ mod tests {
             run,
             seq: EventSeq::new(0),
             step: StepIdx::new(1),
+            attempt: 1,
         };
         let mut batch = journal.batch();
         batch
@@ -5163,6 +5292,7 @@ mod tests {
         let event = JournalEvent::RunFailedEvent {
             run,
             seq: EventSeq::new(0),
+            attempt: 1,
         };
         let mut batch = journal.batch();
         batch
@@ -5186,6 +5316,7 @@ mod tests {
             seq: EventSeq::new(0),
             step: StepIdx::new(0),
             action: ActionId::new(7),
+            attempt: 1,
         };
         let mut batch = journal.batch();
         batch
@@ -5209,6 +5340,7 @@ mod tests {
             seq: EventSeq::new(0),
             step: StepIdx::new(1),
             action: ActionId::new(8),
+            attempt: 1,
         };
         let mut batch = journal.batch();
         batch
@@ -5232,6 +5364,7 @@ mod tests {
             seq: EventSeq::new(0),
             step: StepIdx::new(2),
             action: ActionId::new(9),
+            attempt: 1,
         };
         let mut batch = journal.batch();
         batch
@@ -5254,6 +5387,7 @@ mod tests {
             run,
             seq: EventSeq::new(0),
             result: SlotIdx::new(42),
+            attempt: 1,
         };
         let mut batch = journal.batch();
         batch
@@ -5275,6 +5409,7 @@ mod tests {
         let event = JournalEvent::RunFailedEvent {
             run,
             seq: EventSeq::new(0),
+            attempt: 1,
         };
         let mut batch = journal.batch();
         batch
@@ -5296,6 +5431,8 @@ mod tests {
         let event = JournalEvent::RunCancelled {
             run,
             seq: EventSeq::new(0),
+            attempt: 1,
+            reason: None,
         };
         let mut batch = journal.batch();
         batch
@@ -5320,6 +5457,7 @@ mod tests {
             slot: SlotIdx::new(5),
             value: None,
             extra: None,
+            attempt: 1,
         };
         let mut batch = journal.batch();
         batch
@@ -5342,6 +5480,7 @@ mod tests {
             run,
             seq: EventSeq::new(0),
             step: StepIdx::new(3),
+            attempt: 1,
         };
         let mut batch = journal.batch();
         batch
@@ -5377,6 +5516,7 @@ mod tests {
             run: run_a,
             seq: EventSeq::new(1),
             result: SlotIdx::new(0),
+            attempt: 1,
         };
         let mut batch = journal.batch();
         batch
@@ -5551,11 +5691,13 @@ mod tests {
             run,
             seq: EventSeq::new(1),
             step: StepIdx::new(0),
+            attempt: 1,
         };
         let event_2 = JournalEvent::RunFinished {
             run,
             seq: EventSeq::new(2),
             result: SlotIdx::new(0),
+            attempt: 1,
         };
         queue
             .enqueue_journaled(event_0.clone())
@@ -5591,6 +5733,8 @@ mod tests {
         let event_1 = JournalEvent::RunCancelled {
             run,
             seq: EventSeq::new(1),
+            attempt: 1,
+            reason: None,
         };
         queue
             .enqueue_strict(event_0.clone())
@@ -5621,7 +5765,8 @@ mod tests {
         let strict_event = JournalEvent::StepStarted {
             run,
             seq: EventSeq::new(1),
-            step: StepIdx::new(0),
+            step: StepIdx::ZERO,
+            attempt: 1,
         };
         queue
             .enqueue_journaled(journaled_event.clone())
@@ -6039,11 +6184,13 @@ mod tests {
             run,
             seq: EventSeq::new(1),
             step: StepIdx::new(0),
+            attempt: 1,
         });
         builder.push(JournalEvent::RunFinished {
             run,
             seq: EventSeq::new(2),
             result: SlotIdx::new(0),
+            attempt: 1,
         });
         assert_eq!(
             builder.len(),
@@ -6064,6 +6211,8 @@ mod tests {
         let e1 = JournalEvent::RunCancelled {
             run,
             seq: EventSeq::new(1),
+            attempt: 1,
+            reason: None,
         };
         builder.push(e0.clone());
         builder.push(e1.clone());
@@ -6094,11 +6243,13 @@ mod tests {
             run,
             seq: EventSeq::new(1),
             step: StepIdx::new(0),
+            attempt: 1,
         });
         builder.push(JournalEvent::RunFinished {
             run,
             seq: EventSeq::new(2),
             result: SlotIdx::new(0),
+            attempt: 1,
         });
         assert_eq!(builder.len(), 3);
         journal
@@ -6446,11 +6597,13 @@ mod tests {
             run,
             seq: EventSeq::new(1),
             step: StepIdx::new(0),
+            attempt: 1,
         };
         let e2 = JournalEvent::RunFinished {
             run,
             seq: EventSeq::new(2),
             result: SlotIdx::new(1),
+            attempt: 1,
         };
         let mut batch = journal.batch();
         batch.append_event(&e0).expect("append 0 must succeed");
@@ -6988,6 +7141,7 @@ mod tests {
                 run: run_a,
                 seq: EventSeq::new(1),
                 step: vb_core::StepIdx::ZERO,
+                attempt: 1,
             })
             .expect("append a2");
         let events_a = journal.events_for_run(run_a).expect("events a");
@@ -7204,6 +7358,7 @@ mod tests {
                 run,
                 seq: EventSeq::new(1),
                 step: vb_core::StepIdx::ZERO,
+                attempt: 1,
             })
             .expect("append1");
         let events = journal.events_for_run(run).expect("replay");

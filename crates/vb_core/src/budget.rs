@@ -284,7 +284,7 @@ pub enum BudgetError {
 }
 
 /// Aggregate whole-run budget required for runtime admission.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct AggregateResourceBudget {
     pub max_steps_executable: u32,
     pub max_action_tickets: u32,

@@ -51,7 +51,7 @@ fn execute_do_test(
     let contract = registry_contracts
         .get(usize::from(action.get()))
         .filter(|c| c.id == action)
-        .copied();
+        .cloned();
     let contract = match contract {
         Some(c) => c,
         None => {
@@ -69,7 +69,7 @@ fn execute_do_test(
 
 #[test]
 fn test_full_action_lifecycle() {
-    let registry = ActionRegistry::new();
+    let mut registry = ActionRegistry::new();
     let contract = make_contract(ActionId::new(1), Idempotency::DeterministicPure, RetrySafety::Safe, 1);
     registry.register(contract.clone()).expect("register should succeed");
     let run_id = RunId::new(1);
@@ -95,15 +95,15 @@ fn test_full_action_lifecycle() {
     };
     let resume_result = resume_action_outcome(&ticket, ActionOutcome::Ready(ready), &contract);
     assert!(resume_result.is_ok(), "resume should succeed");
-    let tracker = vb_runtime::action::IdempotencyTracker::new(100);
-    let mark_result = tracker.mark_completed(ticket);
+    let mut tracker = vb_runtime::action::IdempotencyTracker::new(100);
+    let mark_result = tracker.mark_completed(&ticket);
     assert!(mark_result.is_ok(), "mark_completed should succeed");
     assert!(tracker.is_completed(&ticket), "is_completed should be true");
 }
 
 #[test]
 fn test_retry_flow_within_capacity() {
-    let registry = ActionRegistry::new();
+    let mut registry = ActionRegistry::new();
     let contract = make_contract(
         ActionId::new(2),
         Idempotency::AtLeastOnceExternal,
@@ -166,7 +166,7 @@ fn test_retry_flow_within_capacity() {
 #[test]
 fn test_execute_do_capability_check_blocks_ungranted() {
     use vb_core::capability::Capability;
-    let registry = ActionRegistry::new();
+    let mut registry = ActionRegistry::new();
     let network_cap = Capability::new("Network".into(), ActionId::new(3));
     let contract = ActionContract {
         id: ActionId::new(3),
@@ -197,7 +197,7 @@ fn test_execute_do_capability_check_blocks_ungranted() {
 #[test]
 fn test_execute_do_capability_check_passes_with_matching_grant() {
     use vb_core::capability::Capability;
-    let registry = ActionRegistry::new();
+    let mut registry = ActionRegistry::new();
     let network_cap = Capability::new("Network".into(), ActionId::new(4));
     let contract = ActionContract {
         id: ActionId::new(4),
@@ -228,7 +228,7 @@ fn test_execute_do_capability_check_passes_with_matching_grant() {
 
 #[test]
 fn test_taint_propagates_through_multiple_at_least_once_actions() {
-    let registry = ActionRegistry::new();
+    let mut registry = ActionRegistry::new();
     let pure_contract = make_contract(ActionId::new(10), Idempotency::DeterministicPure, RetrySafety::Safe, 1);
     let at_least_once_contract = make_contract(
         ActionId::new(11),
@@ -240,7 +240,7 @@ fn test_taint_propagates_through_multiple_at_least_once_actions() {
     registry.register(at_least_once_contract).expect("at_least_once register should succeed");
     let run_id = RunId::new(1);
     let granted = CapabilitySet::empty();
-    let registry_contracts: Vec<_> = registry.registered_contracts();
+    let registry_contracts: Vec<ActionContract> = registry.registered_contracts().into_iter().cloned().collect();
     let frame1 = make_test_frame(run_id, Taint::Clean);
     let result1 = execute_do_test(&frame1, StepIdx::new(0), ActionId::new(10), SlotIdx::new(0), SeqNo::new(1), &registry_contracts, &granted);
     assert!(result1.is_ok(), "pure action with clean input should succeed");
@@ -254,12 +254,12 @@ fn test_taint_propagates_through_multiple_at_least_once_actions() {
 
 #[test]
 fn test_secret_input_blocks_pure_action() {
-    let registry = ActionRegistry::new();
+    let mut registry = ActionRegistry::new();
     let contract = make_contract(ActionId::new(20), Idempotency::DeterministicPure, RetrySafety::Safe, 1);
     registry.register(contract).expect("register should succeed");
     let run_id = RunId::new(1);
     let granted = CapabilitySet::empty();
-    let registry_contracts: Vec<_> = registry.registered_contracts();
+    let registry_contracts: Vec<ActionContract> = registry.registered_contracts().into_iter().cloned().collect();
     let frame = make_test_frame(run_id, Taint::Secret);
     let result = execute_do_test(&frame, StepIdx::new(0), ActionId::new(20), SlotIdx::new(0), SeqNo::new(1), &registry_contracts, &granted);
     assert!(result.is_err(), "pure action with secret input should fail");
@@ -267,12 +267,12 @@ fn test_secret_input_blocks_pure_action() {
 
 #[test]
 fn test_clean_input_passes_through_pure_action() {
-    let registry = ActionRegistry::new();
+    let mut registry = ActionRegistry::new();
     let contract = make_contract(ActionId::new(21), Idempotency::DeterministicPure, RetrySafety::Safe, 1);
     registry.register(contract).expect("register should succeed");
     let run_id = RunId::new(1);
     let granted = CapabilitySet::empty();
-    let registry_contracts: Vec<_> = registry.registered_contracts();
+    let registry_contracts: Vec<ActionContract> = registry.registered_contracts().into_iter().cloned().collect();
     let frame = make_test_frame(run_id, Taint::Clean);
     let result = execute_do_test(&frame, StepIdx::new(0), ActionId::new(21), SlotIdx::new(0), SeqNo::new(1), &registry_contracts, &granted);
     assert!(result.is_ok(), "pure action with clean input should succeed");

@@ -2,9 +2,9 @@ use std::ffi::OsString;
 use std::path::PathBuf;
 
 use xtask::{
-    CommandFamily, DeferredReason, OutputFormat, StructuredStatus, WorkspaceManifest,
-    XtaskCommand, XtaskCommandError, XtaskEnvironment, assert_runtime_dependency_boundary,
-    parse_xtask_command, placeholder_status, render_structured_status, route_command,
+    CommandFamily, DeferredReason, OutputFormat, StructuredStatus, WorkspaceManifest, XtaskCommand,
+    XtaskCommandError, XtaskEnvironment, assert_runtime_dependency_boundary, parse_xtask_command,
+    placeholder_status, render_structured_status, route_command,
 };
 
 const FAMILIES: [(&str, CommandFamily); 20] = [
@@ -44,14 +44,20 @@ fn env_available() -> XtaskEnvironment {
 }
 
 fn env_with_disabled(family: CommandFamily) -> XtaskEnvironment {
-    XtaskEnvironment { unavailable_families: vec![family], ..env_available() }
+    XtaskEnvironment {
+        unavailable_families: vec![family],
+        ..env_available()
+    }
 }
 
 #[test]
 fn all_command_families_have_exact_public_names_and_parse_forms() {
     for (name, family) in FAMILIES {
         assert_eq!(family.public_name(), name);
-        assert_eq!(parse_xtask_command(argv(&["xtask", name])), Ok(XtaskCommand::Required(family)));
+        assert_eq!(
+            parse_xtask_command(argv(&["xtask", name])),
+            Ok(XtaskCommand::Required(family))
+        );
         assert_eq!(
             parse_xtask_command(argv(&["xtask", name, "--bead", "vb-kkvb"])),
             Ok(XtaskCommand::Required(family))
@@ -108,8 +114,14 @@ fn all_command_families_route_and_render_deferred_json() {
             message: format!("{name} automation deferred: implementation is outside bead vb-kkvb"),
             next_steps: vec![format!("open follow-up bead for {name} engine integration")],
         };
-        assert_eq!(placeholder_status(family, DeferredReason::NotImplementedInThisBead), Ok(expected.clone()));
-        assert_eq!(route_command(XtaskCommand::Required(family), &env_available()), Ok(expected.clone()));
+        assert_eq!(
+            placeholder_status(family, DeferredReason::NotImplementedInThisBead),
+            Ok(expected.clone())
+        );
+        assert_eq!(
+            route_command(XtaskCommand::Required(family), &env_available()),
+            Ok(expected.clone())
+        );
         assert_eq!(
             route_command(XtaskCommand::Required(family), &env_with_disabled(family)),
             Err(XtaskCommandError::Unavailable {
@@ -119,28 +131,56 @@ fn all_command_families_route_and_render_deferred_json() {
         );
         assert_eq!(
             render_structured_status(&expected, OutputFormat::JsonLines),
-            Ok(format!("{{\"command\":\"{name}\",\"status\":\"deferred\",\"message\":\"{name} automation deferred: implementation is outside bead vb-kkvb\",\"next_steps\":[\"open follow-up bead for {name} engine integration\"]}}\n"))
+            Ok(format!(
+                "{{\"command\":\"{name}\",\"status\":\"deferred\",\"message\":\"{name} automation deferred: implementation is outside bead vb-kkvb\",\"next_steps\":[\"open follow-up bead for {name} engine integration\"]}}\n"
+            ))
         );
     }
 }
 
 #[test]
 fn top_level_and_legacy_commands_classify_exactly() {
-    assert_eq!(parse_xtask_command(argv(&["xtask", "--help"])), Ok(XtaskCommand::Help));
-    assert_eq!(parse_xtask_command(argv(&["xtask", "-h"])), Ok(XtaskCommand::Help));
-    assert_eq!(parse_xtask_command(argv(&["xtask", "--version"])), Ok(XtaskCommand::Version));
-    assert_eq!(parse_xtask_command(argv(&["xtask", "-V"])), Ok(XtaskCommand::Version));
-    for name in ["ui-snapshot", "ui-tokens", "ui-overlap-check", "ai-fast", "ai-deep", "ai-release"] {
-        assert_eq!(parse_xtask_command(argv(&["xtask", name])), Ok(XtaskCommand::Legacy(name)));
+    assert_eq!(
+        parse_xtask_command(argv(&["xtask", "--help"])),
+        Ok(XtaskCommand::Help)
+    );
+    assert_eq!(
+        parse_xtask_command(argv(&["xtask", "-h"])),
+        Ok(XtaskCommand::Help)
+    );
+    assert_eq!(
+        parse_xtask_command(argv(&["xtask", "--version"])),
+        Ok(XtaskCommand::Version)
+    );
+    assert_eq!(
+        parse_xtask_command(argv(&["xtask", "-V"])),
+        Ok(XtaskCommand::Version)
+    );
+    for name in [
+        "ui-snapshot",
+        "ui-tokens",
+        "ui-overlap-check",
+        "ai-fast",
+        "ai-deep",
+        "ai-release",
+    ] {
+        assert_eq!(
+            parse_xtask_command(argv(&["xtask", name])),
+            Ok(XtaskCommand::Legacy(name))
+        );
     }
 }
 
 #[test]
 fn parser_rejects_malformed_commands_without_normalization_shortcuts() {
-    for command in ["", " ", "AI-plan", "-ai-plan", "ai-plan-", "ai--plan", "ai_plan", "åi-plan"] {
+    for command in [
+        "", " ", "AI-plan", "-ai-plan", "ai-plan-", "ai--plan", "ai_plan", "åi-plan",
+    ] {
         assert_eq!(
             parse_xtask_command(argv(&["xtask", command])),
-            Err(XtaskCommandError::UnknownCommand { command: command.to_string() })
+            Err(XtaskCommandError::UnknownCommand {
+                command: command.to_string()
+            })
         );
     }
     assert_eq!(
@@ -164,7 +204,15 @@ fn renderer_preserves_json_escaping_and_rejects_incomplete_status() {
     assert_eq!(rendered.contains("ai-context\\\"quoted"), true);
     assert_eq!(rendered.contains("line\\nnext"), true);
     assert_eq!(
-        render_structured_status(&StructuredStatus { command: "ai-context".into(), status: "deferred".into(), message: String::new(), next_steps: vec!["next".into()] }, OutputFormat::JsonLines),
+        render_structured_status(
+            &StructuredStatus {
+                command: "ai-context".into(),
+                status: "deferred".into(),
+                message: String::new(),
+                next_steps: vec!["next".into()]
+            },
+            OutputFormat::JsonLines
+        ),
         Err(XtaskCommandError::OutputRenderFailed {
             command: "ai-context".to_string(),
             reason: "structured status fields must be non-empty".to_string(),
@@ -174,7 +222,12 @@ fn renderer_preserves_json_escaping_and_rejects_incomplete_status() {
 
 #[test]
 fn runtime_dependency_boundary_accepts_and_rejects_declared_edges() {
-    for (crate_name, dep) in [("vb_core", "xtask"), ("vb_storage", "toml"), ("vb_ipc", "reqwest"), ("vb_runtime", "serde_yaml")] {
+    for (crate_name, dep) in [
+        ("vb_core", "xtask"),
+        ("vb_storage", "toml"),
+        ("vb_ipc", "reqwest"),
+        ("vb_runtime", "serde_yaml"),
+    ] {
         assert_eq!(
             assert_runtime_dependency_boundary(&WorkspaceManifest::from_edges([(crate_name, dep)])),
             Err(XtaskCommandError::DependencyBoundaryViolation {
@@ -183,7 +236,15 @@ fn runtime_dependency_boundary_accepts_and_rejects_declared_edges() {
             })
         );
     }
-    for (crate_name, dep) in [("vb_ui", "clap"), ("vb_codegen", "toml"), ("vb_runtime", "fjall"), ("vb_storage", "bytes")] {
-        assert_eq!(assert_runtime_dependency_boundary(&WorkspaceManifest::from_edges([(crate_name, dep)])), Ok(()));
+    for (crate_name, dep) in [
+        ("vb_ui", "clap"),
+        ("vb_codegen", "toml"),
+        ("vb_runtime", "fjall"),
+        ("vb_storage", "bytes"),
+    ] {
+        assert_eq!(
+            assert_runtime_dependency_boundary(&WorkspaceManifest::from_edges([(crate_name, dep)])),
+            Ok(())
+        );
     }
 }

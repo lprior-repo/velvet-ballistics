@@ -332,6 +332,7 @@ mod tests {
             run: RunId::new(100),
             seq: EventSeq::new(1),
             step: StepIdx::new(5),
+            attempt: 1,
         };
         let bytes = encode_record(
             MAGIC_JOURNAL_EVENT,
@@ -355,6 +356,7 @@ mod tests {
             run: RunId::new(7),
             seq: EventSeq::new(99),
             result: SlotIdx::new(3),
+            attempt: 1,
         };
         let bytes = encode_record(
             MAGIC_JOURNAL_EVENT,
@@ -381,6 +383,7 @@ mod tests {
             slot: SlotIdx::new(0),
             value: Some(slot_bytes),
             extra: None,
+            attempt: 1,
         };
         let bytes = encode_record(
             MAGIC_JOURNAL_EVENT,
@@ -403,6 +406,33 @@ mod tests {
         let event = JournalEvent::RunCancelled {
             run: RunId::new(55),
             seq: EventSeq::new(2),
+            attempt: 1,
+            reason: None,
+        };
+        let bytes = encode_record(
+            MAGIC_JOURNAL_EVENT,
+            RecordKind::RunCancelled,
+            event.seq().get(),
+            &event,
+            MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+        )?;
+        let (_, decoded) = decode_record::<JournalEvent>(
+            &bytes,
+            MAGIC_JOURNAL_EVENT,
+            MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+        )?;
+        assert_eq!(decoded, event);
+        Ok(())
+    }
+
+    #[test]
+    fn encode_decode_roundtrip_journal_event_run_cancelled_with_reason() -> Result<(), JournalError>
+    {
+        let event = JournalEvent::RunCancelled {
+            run: RunId::new(56),
+            seq: EventSeq::new(3),
+            attempt: 1,
+            reason: Some("user request".to_string()),
         };
         let bytes = encode_record(
             MAGIC_JOURNAL_EVENT,
@@ -424,9 +454,10 @@ mod tests {
     fn encode_decode_roundtrip_journal_event_action_failed() -> Result<(), JournalError> {
         let event = JournalEvent::ActionFailedEvent {
             run: RunId::new(200),
-            seq: EventSeq::new(15),
+            seq: EventSeq::new(3),
             step: StepIdx::new(2),
-            action: vb_core::ActionId::new(7),
+            action: vb_core::ActionId::new(99),
+            attempt: 1,
         };
         let bytes = encode_record(
             MAGIC_JOURNAL_EVENT,
@@ -688,6 +719,8 @@ mod tests {
         let event = JournalEvent::RunCancelled {
             run: RunId::new(0),
             seq: EventSeq::new(0),
+            attempt: 1,
+            reason: None,
         };
         // First encode to discover the actual payload size
         let probe = encode_record(
@@ -799,6 +832,8 @@ mod tests {
         let event = JournalEvent::RunCancelled {
             run: RunId::new(1),
             seq: EventSeq::new(0),
+            attempt: 1,
+            reason: None,
         };
         let mut bytes = encode_record(
             MAGIC_JOURNAL_EVENT,
@@ -912,6 +947,8 @@ mod tests {
         let event = JournalEvent::RunCancelled {
             run: RunId::new(1),
             seq: EventSeq::new(0),
+            attempt: 1,
+            reason: None,
         };
         let bytes = encode_record(
             MAGIC_JOURNAL_EVENT,
@@ -974,6 +1011,7 @@ mod tests {
             seq: EventSeq::new(3),
             step: StepIdx::new(0),
             action: vb_core::ActionId::new(5),
+            attempt: 1,
         };
         let bytes = encode_record(
             MAGIC_JOURNAL_EVENT,
@@ -998,6 +1036,7 @@ mod tests {
             seq: EventSeq::new(4),
             step: StepIdx::new(1),
             action: vb_core::ActionId::new(5),
+            attempt: 1,
         };
         let bytes = encode_record(
             MAGIC_JOURNAL_EVENT,
@@ -1021,6 +1060,7 @@ mod tests {
             run: RunId::new(40),
             seq: EventSeq::new(5),
             step: StepIdx::new(2),
+            attempt: 1,
         };
         let bytes = encode_record(
             MAGIC_JOURNAL_EVENT,
@@ -1044,6 +1084,7 @@ mod tests {
             run: RunId::new(50),
             seq: EventSeq::new(6),
             step: StepIdx::new(3),
+            attempt: 1,
         };
         let bytes = encode_record(
             MAGIC_JOURNAL_EVENT,
@@ -1067,6 +1108,7 @@ mod tests {
             run: RunId::new(60),
             seq: EventSeq::new(7),
             step: StepIdx::new(4),
+            attempt: 1,
         };
         let bytes = encode_record(
             MAGIC_JOURNAL_EVENT,
@@ -1090,6 +1132,7 @@ mod tests {
             run: RunId::new(70),
             seq: EventSeq::new(8),
             step: StepIdx::new(5),
+            attempt: 1,
         };
         let bytes = encode_record(
             MAGIC_JOURNAL_EVENT,
@@ -1112,6 +1155,7 @@ mod tests {
         let event = JournalEvent::RunFailedEvent {
             run: RunId::new(80),
             seq: EventSeq::new(9),
+            attempt: 1,
         };
         let bytes = encode_record(
             MAGIC_JOURNAL_EVENT,
@@ -1137,6 +1181,7 @@ mod tests {
             slot: SlotIdx::new(2),
             value: None,
             extra: None,
+            attempt: 1,
         };
         let bytes = encode_record(
             MAGIC_JOURNAL_EVENT,
@@ -1214,6 +1259,8 @@ mod tests {
         let event = JournalEvent::RunCancelled {
             run: RunId::new(u64::MAX),
             seq: EventSeq::new(u64::MAX),
+            attempt: 1,
+            reason: None,
         };
         let bytes = encode_record(
             MAGIC_JOURNAL_EVENT,
@@ -1241,6 +1288,8 @@ mod tests {
         let event = JournalEvent::RunCancelled {
             run: RunId::new(1),
             seq: EventSeq::new(0),
+            attempt: 1,
+            reason: None,
         };
         let mut bytes = encode_record(
             MAGIC_JOURNAL_EVENT,
@@ -1279,6 +1328,8 @@ mod tests {
         let event = JournalEvent::RunCancelled {
             run: RunId::new(1),
             seq: EventSeq::new(0),
+            attempt: 1,
+            reason: None,
         };
         let mut bytes = encode_record(
             MAGIC_JOURNAL_EVENT,
@@ -1317,6 +1368,8 @@ mod tests {
         let event = JournalEvent::RunCancelled {
             run: RunId::new(1),
             seq: EventSeq::new(0),
+            attempt: 1,
+            reason: None,
         };
         let bytes = encode_record(
             MAGIC_JOURNAL_EVENT,
@@ -1530,6 +1583,8 @@ mod tests {
         let event = JournalEvent::RunCancelled {
             run: RunId::new(0),
             seq: EventSeq::new(0),
+            attempt: 1,
+            reason: None,
         };
         // Discover actual payload size
         let probe = encode_record(
@@ -1565,6 +1620,8 @@ mod tests {
         let event = JournalEvent::RunCancelled {
             run: RunId::new(1),
             seq: EventSeq::new(0),
+            attempt: 1,
+            reason: None,
         };
         let mut bytes = encode_record(
             MAGIC_JOURNAL_EVENT,
@@ -1595,6 +1652,8 @@ mod tests {
         let event = JournalEvent::RunCancelled {
             run: RunId::new(1),
             seq: EventSeq::new(0),
+            attempt: 1,
+            reason: None,
         };
         let full = encode_record(
             MAGIC_JOURNAL_EVENT,
@@ -1628,6 +1687,8 @@ mod tests {
         let event = JournalEvent::RunCancelled {
             run: RunId::new(1),
             seq: EventSeq::new(0),
+            attempt: 1,
+            reason: None,
         };
         let mut bytes = encode_record(
             MAGIC_JOURNAL_EVENT,
@@ -1820,6 +1881,7 @@ mod tests {
             slot: SlotIdx::new(u16::MAX.into()),
             value: Some(large_value.clone()),
             extra: None,
+            attempt: 1,
         };
         let bytes = encode_record(
             MAGIC_JOURNAL_EVENT,
@@ -1954,15 +2016,19 @@ mod tests {
                 run,
                 seq: EventSeq::new(1),
                 step: StepIdx::new(0),
+                attempt: 1,
             },
             JournalEvent::RunCancelled {
                 run,
                 seq: EventSeq::new(2),
+                attempt: 1,
+                reason: None,
             },
             JournalEvent::RunFinished {
                 run,
                 seq: EventSeq::new(3),
                 result: SlotIdx::new(0),
+                attempt: 1,
             },
         ];
 
@@ -2013,6 +2079,7 @@ mod tests {
                     run,
                     seq: EventSeq::new(1),
                     step: StepIdx::new(0),
+                    attempt: 1,
                 },
                 RecordKind::StepStarted,
             ),
@@ -2031,6 +2098,7 @@ mod tests {
                     seq: EventSeq::new(3),
                     step: StepIdx::new(0),
                     action: vb_core::ActionId::new(1),
+                    attempt: 1,
                 },
                 RecordKind::ActionScheduled,
             ),
@@ -2040,6 +2108,7 @@ mod tests {
                     seq: EventSeq::new(4),
                     step: StepIdx::new(0),
                     action: vb_core::ActionId::new(1),
+                    attempt: 1,
                 },
                 RecordKind::ActionCompleted,
             ),
@@ -2049,6 +2118,7 @@ mod tests {
                     seq: EventSeq::new(5),
                     step: StepIdx::new(1),
                     action: vb_core::ActionId::new(2),
+                    attempt: 1,
                 },
                 RecordKind::ActionFailed,
             ),
@@ -2059,6 +2129,7 @@ mod tests {
                     slot: SlotIdx::new(0),
                     value: None,
                     extra: None,
+                    attempt: 1,
                 },
                 RecordKind::SlotWritten,
             ),
@@ -2067,6 +2138,7 @@ mod tests {
                     run,
                     seq: EventSeq::new(7),
                     step: StepIdx::new(1),
+                    attempt: 1,
                 },
                 RecordKind::WaitScheduled,
             ),
@@ -2075,6 +2147,7 @@ mod tests {
                     run,
                     seq: EventSeq::new(8),
                     step: StepIdx::new(2),
+                    attempt: 1,
                 },
                 RecordKind::AskScheduled,
             ),
@@ -2083,6 +2156,7 @@ mod tests {
                     run,
                     seq: EventSeq::new(9),
                     step: StepIdx::new(2),
+                    attempt: 1,
                 },
                 RecordKind::AskAnswered,
             ),
@@ -2091,6 +2165,7 @@ mod tests {
                     run,
                     seq: EventSeq::new(10),
                     step: StepIdx::new(1),
+                    attempt: 1,
                 },
                 RecordKind::RetryScheduled,
             ),
@@ -2098,6 +2173,8 @@ mod tests {
                 JournalEvent::RunCancelled {
                     run,
                     seq: EventSeq::new(11),
+                    attempt: 1,
+                    reason: None,
                 },
                 RecordKind::RunCancelled,
             ),
@@ -2106,6 +2183,7 @@ mod tests {
                     run,
                     seq: EventSeq::new(12),
                     result: SlotIdx::new(1),
+                    attempt: 1,
                 },
                 RecordKind::RunFinished,
             ),
@@ -2113,6 +2191,7 @@ mod tests {
                 JournalEvent::RunFailedEvent {
                     run,
                     seq: EventSeq::new(13),
+                    attempt: 1,
                 },
                 RecordKind::RunFailed,
             ),
@@ -2173,6 +2252,8 @@ mod tests {
         let event = JournalEvent::RunCancelled {
             run: RunId::new(1),
             seq: EventSeq::new(0),
+            attempt: 1,
+            reason: None,
         };
         let mut bytes = encode_record(
             MAGIC_JOURNAL_EVENT,
@@ -2226,6 +2307,7 @@ mod tests {
                 run,
                 seq: EventSeq::new(1),
                 step: StepIdx::new(0),
+                attempt: 1,
             },
             JournalEvent::StepSucceeded {
                 run,
@@ -2238,18 +2320,21 @@ mod tests {
                 seq: EventSeq::new(3),
                 step: StepIdx::new(0),
                 action: vb_core::ActionId::new(1),
+                attempt: 1,
             },
             JournalEvent::ActionCompletedEvent {
                 run,
                 seq: EventSeq::new(4),
                 step: StepIdx::new(0),
                 action: vb_core::ActionId::new(1),
+                attempt: 1,
             },
             JournalEvent::ActionFailedEvent {
                 run,
                 seq: EventSeq::new(5),
                 step: StepIdx::new(1),
                 action: vb_core::ActionId::new(2),
+                attempt: 1,
             },
             JournalEvent::SlotWrittenEvent {
                 run,
@@ -2257,6 +2342,7 @@ mod tests {
                 slot: SlotIdx::new(0),
                 value: None,
                 extra: None,
+                attempt: 1,
             },
             JournalEvent::SlotWrittenEvent {
                 run,
@@ -2264,39 +2350,48 @@ mod tests {
                 slot: SlotIdx::new(1),
                 value: Some(slot_bytes),
                 extra: None,
+                attempt: 1,
             },
             JournalEvent::WaitScheduledEvent {
                 run,
                 seq: EventSeq::new(8),
                 step: StepIdx::new(1),
+                attempt: 1,
             },
             JournalEvent::AskScheduledEvent {
                 run,
                 seq: EventSeq::new(9),
                 step: StepIdx::new(2),
+                attempt: 1,
             },
             JournalEvent::AskAnsweredEvent {
                 run,
                 seq: EventSeq::new(10),
                 step: StepIdx::new(2),
+                attempt: 1,
             },
             JournalEvent::RetryScheduledEvent {
                 run,
                 seq: EventSeq::new(11),
                 step: StepIdx::new(1),
+                attempt: 1,
             },
             JournalEvent::RunCancelled {
                 run,
                 seq: EventSeq::new(12),
+                attempt: 1,
+                reason: None,
             },
             JournalEvent::RunFinished {
                 run,
                 seq: EventSeq::new(13),
                 result: SlotIdx::new(0),
+                attempt: 1,
             },
             JournalEvent::RunFailedEvent {
                 run,
                 seq: EventSeq::new(14),
+                attempt: 1,
             },
         ];
 
@@ -2483,6 +2578,8 @@ mod tests {
         let event = JournalEvent::RunCancelled {
             run: RunId::new(1),
             seq: EventSeq::new(0),
+            attempt: 1,
+            reason: None,
         };
         let full = encode_record(
             MAGIC_JOURNAL_EVENT,
@@ -2689,6 +2786,8 @@ mod tests {
         let event = JournalEvent::RunCancelled {
             run: RunId::new(1),
             seq: EventSeq::new(0),
+            attempt: 1,
+            reason: None,
         };
         let mut bytes = encode_record(
             MAGIC_JOURNAL_EVENT,
@@ -2820,6 +2919,8 @@ mod tests {
         let event = JournalEvent::RunCancelled {
             run: RunId::new(0),
             seq: EventSeq::new(0),
+            attempt: 1,
+            reason: None,
         };
         let result = validate_replayed_event(RunId::new(0), EventSeq::new(0), &event);
         assert!(result.is_ok(), "zero run and seq should pass validation");
@@ -2830,6 +2931,8 @@ mod tests {
         let event = JournalEvent::RunCancelled {
             run: RunId::new(u64::MAX),
             seq: EventSeq::new(u64::MAX),
+            attempt: 1,
+            reason: None,
         };
         let result = validate_replayed_event(RunId::new(u64::MAX), EventSeq::new(u64::MAX), &event);
         assert!(result.is_ok(), "max run and seq should pass validation");
@@ -2884,6 +2987,8 @@ mod tests {
         let event = JournalEvent::RunCancelled {
             run: RunId::new(1),
             seq: EventSeq::new(0),
+            attempt: 1,
+            reason: None,
         };
         let mut bytes = encode_record(
             MAGIC_JOURNAL_EVENT,

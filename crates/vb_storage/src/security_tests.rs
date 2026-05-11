@@ -299,6 +299,8 @@ mod tests {
         let event = JournalEvent::RunCancelled {
             run: RunId::new(1),
             seq: EventSeq::new(0),
+            attempt: 1,
+            reason: None,
         };
         let result = encode_record(MAGIC_JOURNAL_EVENT, RecordKind::RunCancelled, 0, &event, 0);
         assert!(
@@ -386,8 +388,10 @@ mod tests {
         let event = JournalEvent::RunCancelled {
             run: RunId::new(1),
             seq: EventSeq::new(0),
+            attempt: 1,
+            reason: None,
         };
-        let full = encode_record(
+        let bytes = encode_record(
             MAGIC_JOURNAL_EVENT,
             RecordKind::RunCancelled,
             0,
@@ -396,7 +400,7 @@ mod tests {
         )
         .expect("encode should succeed");
 
-        let truncated = &full[..RECORD_HEADER_BYTES];
+        let truncated = &bytes[..RECORD_HEADER_BYTES];
         let result = decode_record::<JournalEvent>(
             truncated,
             MAGIC_JOURNAL_EVENT,
@@ -493,6 +497,8 @@ mod tests {
         let event = JournalEvent::RunCancelled {
             run: RunId::new(1),
             seq: EventSeq::new(0),
+            attempt: 1,
+            reason: None,
         };
         let mut bytes = encode_record(
             MAGIC_JOURNAL_EVENT,
@@ -559,6 +565,8 @@ mod tests {
         let event = JournalEvent::RunCancelled {
             run: RunId::new(1),
             seq: EventSeq::new(0),
+            attempt: 1,
+            reason: None,
         };
         let result = encode_record(MAGIC_SNAPSHOT, RecordKind::Blob, 0, &event, MAX_BLOB_BYTES);
         assert!(
@@ -766,6 +774,7 @@ mod tests {
             slot: SlotIdx::new(3),
             value: Some(vec![0xDE, 0xAD]),
             extra: None,
+            attempt: 1,
         };
         let original = encode_record(
             MAGIC_JOURNAL_EVENT,
@@ -808,6 +817,8 @@ mod tests {
         let event = JournalEvent::RunCancelled {
             run: RunId::new(1),
             seq: EventSeq::new(0),
+            attempt: 1,
+            reason: None,
         };
         let mut bytes = encode_record(
             MAGIC_JOURNAL_EVENT,
@@ -873,6 +884,7 @@ mod tests {
             slot: SlotIdx::new(0),
             value: Some(big_value),
             extra: None,
+            attempt: 1,
         };
         let result = encode_record(
             MAGIC_JOURNAL_EVENT,

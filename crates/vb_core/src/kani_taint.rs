@@ -1,4 +1,4 @@
-use crate::value::{join_taint, Taint};
+use crate::value::{Taint, join_taint};
 
 fn taint_from_u8(v: u8) -> Taint {
     match v % 3 {
@@ -56,5 +56,8 @@ fn join_taint_commutative() {
     let b = taint_from_u8(b_raw);
     let result_ab = join_taint(a, b);
     let result_ba = join_taint(b, a);
-    kani::assert(result_ab == result_ba, "join_taint(a, b) == join_taint(b, a)");
+    kani::assert(
+        result_ab == result_ba,
+        "join_taint(a, b) == join_taint(b, a)",
+    );
 }

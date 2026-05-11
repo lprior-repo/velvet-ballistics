@@ -9,12 +9,8 @@ thiserror.workspace = true
 vb_core = { path = "../vb_core" }
 
 [dev-dependencies]
-criterion.workspace = true
-proptest.workspace = true
-
-[[bench]]
-name = "capability_schema"
-harness = false
+criterion = { workspace = true }
+proptest = { workspace = true }
 
 [lints]
 workspace = true

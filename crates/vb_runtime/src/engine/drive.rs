@@ -55,75 +55,99 @@ pub fn drive_deterministic_full(
     collect_states: &mut CollectStates,
     granted: &vb_core::capability::CapabilitySet,
 ) -> RuntimeEngineResult<RuntimeSignal> {
-    let max_parallel = compute_max_parallel_in_flight(plan)?;
-    run.set_max_parallel_in_flight(max_parallel);
+    initialize_drive(run, plan)?;
 
     loop {
-        if !budget.try_take().map_err(RuntimeEngineError::Core)? {
+        let Some(step) = begin_drive_step(plan, run, budget, evidence)? else {
             return Ok(RuntimeSignal::StepBudgetExhausted);
-        }
-
-        let pc = run.pc();
-        let node = plan
-            .node(pc)
-            .ok_or(EngineError::InvalidProgramCounter { step: pc })?;
-
-        // Evidence chain: emit StepStarted before execution.
-        evidence.push_step_started(pc);
-
-        run.mark_running(pc).map_err(RuntimeEngineError::Core)?;
-
+        };
         let signal = execute_node_full(
             plan,
             run,
             store,
-            node,
+            step.node,
             contracts,
             retry_policy,
             collect_states,
             granted,
         )?;
-
-        match mark_step_after_signal(run, pc, &signal) {
-            Ok(()) => {}
-            Err(e) => return Err(RuntimeEngineError::Core(e)),
-        }
-
-        // Evidence chain: emit SlotWritten with actual value for all slot writes,
-        // including internal expression evaluations (SetConst, Copy, EvalExpr,
-        // BuildObject, BuildList). This satisfies Phase 40/44 requirement.
-        if let Some(slot) = collect_written_slot(node)
-            && let Ok(value) = run.read_slot(slot)
-        {
-            let extra = collect_states.capture_state(run.run_id(), slot);
-            let taint = run.read_taint(slot).map_err(RuntimeEngineError::Core)?;
-            evidence.push_slot_written_with_extra(slot, *value, taint, extra);
-        } else if let Some(slot) = node.output
-            && let Ok(value) = run.read_slot(slot)
-        {
-            let taint = run.read_taint(slot).map_err(RuntimeEngineError::Core)?;
-            evidence.push_slot_written_with_taint(slot, *value, taint);
-        }
-
-        // Evidence chain: emit StepSucceeded only when the step actually succeeded.
-        // For signals like StepBudgetExhausted, AwaitingAction, AwaitingWait,
-        // and AwaitingAsk, the step did not complete successfully, so we must
-        // not emit a spurious StepSucceeded event.
-        match &signal {
-            RuntimeSignal::Continue | RuntimeSignal::Finished(_) => {
-                evidence.push_step_succeeded(pc, node.output);
-            }
-            RuntimeSignal::StepBudgetExhausted
-            | RuntimeSignal::AwaitingAction(_)
-            | RuntimeSignal::AwaitingWait
-            | RuntimeSignal::AwaitingAsk => {}
-        }
-
+        finish_drive_step(run, evidence, collect_states, step, &signal)?;
         match signal {
             RuntimeSignal::Continue => {}
             other => return Ok(other),
         }
     }
+}
+
+struct DriveStep<'a> {
+    pc: StepIdx,
+    node: &'a CompiledNode,
+}
+
+fn initialize_drive(run: &mut RunFrame, plan: &CompiledWorkflow) -> RuntimeEngineResult<()> {
+    let max_parallel = compute_max_parallel_in_flight(plan)?;
+    run.set_max_parallel_in_flight(max_parallel);
+    Ok(())
+}
+
+fn begin_drive_step<'a>(
+    plan: &'a CompiledWorkflow,
+    run: &mut RunFrame,
+    budget: &mut StepBudget,
+    evidence: &mut EvidenceCollector,
+) -> RuntimeEngineResult<Option<DriveStep<'a>>> {
+    if !budget.try_take().map_err(RuntimeEngineError::Core)? {
+        return Ok(None);
+    }
+    let pc = run.pc();
+    let node = plan
+        .node(pc)
+        .ok_or(EngineError::InvalidProgramCounter { step: pc })?;
+    evidence.push_step_started(pc);
+    run.mark_running(pc).map_err(RuntimeEngineError::Core)?;
+    Ok(Some(DriveStep { pc, node }))
+}
+
+fn finish_drive_step(
+    run: &mut RunFrame,
+    evidence: &mut EvidenceCollector,
+    collect_states: &CollectStates,
+    step: DriveStep<'_>,
+    signal: &RuntimeSignal,
+) -> RuntimeEngineResult<()> {
+    mark_step_after_signal(run, step.pc, signal).map_err(RuntimeEngineError::Core)?;
+    emit_slot_evidence(run, evidence, collect_states, step.node)?;
+    if signal_is_success(signal) {
+        evidence.push_step_succeeded(step.pc, step.node.output);
+    }
+    Ok(())
+}
+
+fn signal_is_success(signal: &RuntimeSignal) -> bool {
+    matches!(signal, RuntimeSignal::Continue | RuntimeSignal::Finished(_))
+}
+
+fn emit_slot_evidence(
+    run: &RunFrame,
+    evidence: &mut EvidenceCollector,
+    collect_states: &CollectStates,
+    node: &CompiledNode,
+) -> RuntimeEngineResult<()> {
+    if let Some(slot) = collect_written_slot(node)
+        && let Ok(value) = run.read_slot(slot)
+    {
+        let extra = collect_states.capture_state(run.run_id(), slot);
+        let taint = run.read_taint(slot).map_err(RuntimeEngineError::Core)?;
+        evidence
+            .push_slot_written_with_extra(slot, *value, taint, extra)
+            .map_err(RuntimeEngineError::Core)?;
+    } else if let Some(slot) = node.output
+        && let Ok(value) = run.read_slot(slot)
+    {
+        let taint = run.read_taint(slot).map_err(RuntimeEngineError::Core)?;
+        evidence.push_slot_written_with_taint(slot, *value, taint);
+    }
+    Ok(())
 }
 
 fn collect_written_slot(node: &CompiledNode) -> Option<SlotIdx> {

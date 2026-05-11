@@ -1681,21 +1681,22 @@ fn push_loop_span(
         return Ok(());
     };
 
-    if let Some(&(_outer_start, outer_done)) = spans.last()
-        && done_idx > outer_done
-    {
-        return Err(WorkflowError::ImproperLoopNesting {
-            inner: StepIdx::new(u16::try_from(ci).map_err(|_| {
-                WorkflowError::ResourceContractExceeded {
-                    resource: "max_steps",
-                }
-            })?),
-            outer_done: StepIdx::new(u16::try_from(outer_done).map_err(|_| {
-                WorkflowError::ResourceContractExceeded {
-                    resource: "max_steps",
-                }
-            })?),
-        });
+    match spans.last().copied() {
+        Some((_outer_start, outer_done)) if done_idx > outer_done => {
+            return Err(WorkflowError::ImproperLoopNesting {
+                inner: StepIdx::new(u16::try_from(ci).map_err(|_| {
+                    WorkflowError::ResourceContractExceeded {
+                        resource: "max_steps",
+                    }
+                })?),
+                outer_done: StepIdx::new(u16::try_from(outer_done).map_err(|_| {
+                    WorkflowError::ResourceContractExceeded {
+                        resource: "max_steps",
+                    }
+                })?),
+            });
+        }
+        _ => {}
     }
 
     while spans

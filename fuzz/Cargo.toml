@@ -3,6 +3,7 @@ name = "velvet-ballastics-fuzz"
 version = "0.1.0"
 edition = "2024"
 publish = false
+autobins = false
 
 [package.metadata]
 cargo-fuzz = true
@@ -14,37 +15,21 @@ fuzz = []
 workspace = true
 
 [dependencies]
+libfuzzer-sys.workspace = true
 postcard.workspace = true
 blake3.workspace = true
 tempfile.workspace = true
-libfuzzer-sys = "0.4"
+velvet_ballastics_workspace = { path = "..", package = "velvet-ballastics-workspace" }
+xtask = { path = "../xtask" }
 vb_core = { path = "../crates/vb_core" }
-vb_doc = { path = "../crates/vb_doc" }
 vb_expr = { path = "../crates/vb_expr" }
 vb_storage = { path = "../crates/vb_storage" }
 vb_validate = { path = "../crates/vb_validate" }
-vb_ui_snapshot = { path = "../crates/vb_ui_snapshot" }
 vb_yaml = { path = "../crates/vb_yaml" }
-xtask = { path = "../xtask" }
-velvet-ballastics-workspace = { path = ".." }
 
 [lib]
 name = "fuzz_lib"
 path = "src/lib.rs"
-
-[[bin]]
-name = "ui_redaction_artifact"
-path = "fuzz_targets/ui_redaction_artifact.rs"
-test = false
-doc = false
-bench = false
-
-[[bin]]
-name = "check_doc_taint_consistency_accepts_arbitrary_markdown"
-path = "fuzz_targets/check_doc_taint_consistency_accepts_arbitrary_markdown.rs"
-test = false
-doc = false
-bench = false
 
 [[bin]]
 name = "yaml_events"
@@ -159,22 +144,22 @@ doc = false
 bench = false
 
 [[bin]]
-name = "capability_name_schema"
-path = "src/bin/capability_name_schema.rs"
+name = "replay_events"
+path = "src/bin/replay_events.rs"
 test = false
 doc = false
 bench = false
 
 [[bin]]
-name = "capability_contract_schema"
-path = "src/bin/capability_contract_schema.rs"
+name = "extract_terminal"
+path = "src/bin/extract_terminal.rs"
 test = false
 doc = false
 bench = false
 
 [[bin]]
-name = "aggregate_workflow_budget"
-path = "src/bin/aggregate_workflow_budget.rs"
+name = "action_tracker"
+path = "src/bin/action_tracker.rs"
 test = false
 doc = false
 bench = false
@@ -187,22 +172,15 @@ doc = false
 bench = false
 
 [[bin]]
-name = "recover_runtime_frame_seed_contract"
-path = "src/bin/recover_runtime_frame_seed_contract.rs"
+name = "aggregate_workflow_budget"
+path = "src/bin/aggregate_workflow_budget.rs"
 test = false
 doc = false
 bench = false
 
 [[bin]]
-name = "lex_expr"
-path = "fuzz_targets/lex_expr.rs"
-test = false
-doc = false
-bench = false
-
-[[bin]]
-name = "decode_record"
-path = "fuzz_targets/decode_record.rs"
+name = "boundary_evidence_reference"
+path = "src/bin/boundary_evidence_reference.rs"
 test = false
 doc = false
 bench = false
@@ -222,36 +200,29 @@ doc = false
 bench = false
 
 [[bin]]
-name = "boundary_evidence_reference"
-path = "src/bin/boundary_evidence_reference.rs"
+name = "recover_runtime_frame_seed_contract"
+path = "src/bin/recover_runtime_frame_seed_contract.rs"
 test = false
 doc = false
 bench = false
 
 [[bin]]
-name = "vb_5xs4_scan_source_text"
-path = "fuzz_targets/vb_5xs4_scan_source_text.rs"
+name = "structured_status_render_hostile"
+path = "src/bin/structured_status_render_hostile.rs"
 test = false
 doc = false
 bench = false
 
 [[bin]]
-name = "vb_5xs4_generated_source_mapping"
-path = "fuzz_targets/vb_5xs4_generated_source_mapping.rs"
+name = "xtask_parse_argv_hostile"
+path = "src/bin/xtask_parse_argv_hostile.rs"
 test = false
 doc = false
 bench = false
 
 [[bin]]
-name = "vb_5xs4_label_sufficiency"
-path = "fuzz_targets/vb_5xs4_label_sufficiency.rs"
-test = false
-doc = false
-bench = false
-
-[[bin]]
-name = "vb_5xs4_inventory_report"
-path = "fuzz_targets/vb_5xs4_inventory_report.rs"
+name = "xtask_parse_options_hostile"
+path = "src/bin/xtask_parse_options_hostile.rs"
 test = false
 doc = false
 bench = false

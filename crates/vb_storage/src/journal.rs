@@ -368,6 +368,7 @@ mod tests {
             run,
             seq: EventSeq::new(seq),
             step: StepIdx::new(step),
+            attempt: 1,
         }
     }
 
@@ -675,6 +676,7 @@ mod tests {
                 run,
                 seq: EventSeq::new(i),
                 step: StepIdx::new(i as u16),
+                attempt: 1,
             })
             .collect();
         journal
@@ -768,6 +770,7 @@ mod tests {
                 run,
                 seq: EventSeq::new(2),
                 result: SlotIdx::new(0),
+                attempt: 1,
             },
         ];
         journal
@@ -842,12 +845,14 @@ mod tests {
                 run,
                 seq: EventSeq::new(1),
                 step: StepIdx::new(0),
+                attempt: 1,
             },
             JournalEvent::ActionScheduled {
                 run,
                 seq: EventSeq::new(2),
                 step: StepIdx::new(0),
                 action: vb_core::ActionId::new(1),
+                attempt: 1,
             },
             JournalEvent::SlotWrittenEvent {
                 run,
@@ -855,42 +860,51 @@ mod tests {
                 slot: SlotIdx::new(0),
                 value: None,
                 extra: None,
+                attempt: 1,
             },
             JournalEvent::ActionCompletedEvent {
                 run,
                 seq: EventSeq::new(4),
                 step: StepIdx::new(0),
                 action: vb_core::ActionId::new(1),
+                attempt: 1,
             },
             JournalEvent::ActionFailedEvent {
                 run,
                 seq: EventSeq::new(5),
                 step: StepIdx::new(1),
                 action: vb_core::ActionId::new(2),
+                attempt: 1,
             },
             JournalEvent::WaitScheduledEvent {
                 run,
                 seq: EventSeq::new(6),
                 step: StepIdx::new(1),
+                attempt: 1,
             },
             JournalEvent::AskScheduledEvent {
                 run,
                 seq: EventSeq::new(7),
                 step: StepIdx::new(2),
+                attempt: 1,
             },
             JournalEvent::AskAnsweredEvent {
                 run,
                 seq: EventSeq::new(8),
                 step: StepIdx::new(2),
+                attempt: 1,
             },
             JournalEvent::RetryScheduledEvent {
                 run,
                 seq: EventSeq::new(9),
                 step: StepIdx::new(1),
+                attempt: 1,
             },
             JournalEvent::RunCancelled {
                 run,
                 seq: EventSeq::new(10),
+                attempt: 1,
+                reason: None,
             },
         ];
 
@@ -1185,6 +1199,7 @@ mod tests {
                 run,
                 seq: EventSeq::new(i),
                 step: StepIdx::new(i as u16),
+                attempt: 1,
             })
             .collect();
         journal
@@ -1518,6 +1533,7 @@ mod tests {
                 run,
                 seq: EventSeq::new(i),
                 step: StepIdx::new((i % 256) as u16),
+                attempt: 1,
             })
             .collect();
 
@@ -1853,16 +1869,19 @@ mod tests {
                 run: run_a,
                 seq: EventSeq::new(1),
                 step: StepIdx::new(0),
+                attempt: 1,
             },
             JournalEvent::StepStarted {
                 run: run_b,
                 seq: EventSeq::new(1),
                 step: StepIdx::new(0),
+                attempt: 1,
             },
             JournalEvent::StepStarted {
                 run: run_a,
                 seq: EventSeq::new(2),
                 step: StepIdx::new(1),
+                attempt: 1,
             },
         ];
         journal
@@ -1944,6 +1963,7 @@ mod tests {
                 run,
                 seq: EventSeq::new(seq),
                 step: StepIdx::new(seq as u16),
+                attempt: 1,
             };
             journal
                 .append_unpersisted(&event)
@@ -2035,6 +2055,7 @@ mod tests {
                 run,
                 seq: EventSeq::new(i),
                 step: StepIdx::new((i % 256) as u16),
+                attempt: 1,
             })
             .collect();
 
@@ -2069,6 +2090,7 @@ mod tests {
             run,
             seq: EventSeq::new(1),
             step: StepIdx::new(0),
+            attempt: 1,
         };
         journal.append_unpersisted(&e1).expect("append seq 1");
 
@@ -2297,6 +2319,7 @@ mod tests {
                 run,
                 seq: EventSeq::new(seq),
                 step: StepIdx::new(seq as u16),
+                attempt: 1,
             };
             journal
                 .append_journaled(&event)
@@ -2331,6 +2354,7 @@ mod tests {
             run,
             seq: EventSeq::new(1),
             step: StepIdx::new(0),
+            attempt: 1,
         };
         journal.append_journaled(&e1).expect("journaled append");
 
@@ -2338,6 +2362,7 @@ mod tests {
             run,
             seq: EventSeq::new(2),
             step: StepIdx::new(1),
+            attempt: 1,
         };
         journal.append_strict(&e2).expect("strict append 2");
 

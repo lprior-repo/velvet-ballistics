@@ -2278,6 +2278,7 @@ fn cli_doctor_json_includes_trim_eligibility_check() {
                     run,
                     seq: vb_storage::EventSeq::new(i),
                     step: vb_core::StepIdx::new(i as u16 - 1),
+                    attempt: 1,
                 }
             }
         })
@@ -2400,6 +2401,7 @@ fn cli_doctor_text_reports_trim_eligibility() {
             run,
             seq: vb_storage::EventSeq::new(1),
             step: vb_core::StepIdx::new(0),
+            attempt: 1,
         },
     ];
     if let Err(err) = journal.append_strict_batch(&events) {
@@ -2485,6 +2487,7 @@ fn cli_doctor_returns_success_for_healthy_journal_with_trim_recommended() {
                     run,
                     seq: vb_storage::EventSeq::new(i),
                     step: vb_core::StepIdx::new(i as u16 - 1),
+                    attempt: 1,
                 }
             }
         })

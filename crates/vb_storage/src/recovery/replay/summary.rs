@@ -672,6 +672,7 @@ mod tests {
             run: RunId::new(1),
             seq: EventSeq::new(1),
             step: StepIdx::new(0),
+            attempt: 1,
         };
         apply_summary_event(&mut summary, &event);
         assert_counters(&summary, 0, 0, 0, 0, 0, 0);
@@ -685,6 +686,7 @@ mod tests {
             seq: EventSeq::new(1),
             step: StepIdx::new(0),
             action: ActionId::new(0),
+            attempt: 1,
         };
         apply_summary_event(&mut summary, &event);
         assert_counters(&summary, 0, 0, 0, 1, 0, 0);
@@ -699,6 +701,7 @@ mod tests {
             slot: SlotIdx::new(0),
             value: None,
             extra: None,
+            attempt: 1,
         };
         apply_summary_event(&mut summary, &event);
         assert_counters(&summary, 0, 0, 0, 0, 0, 1);
@@ -711,6 +714,7 @@ mod tests {
             run: RunId::new(1),
             seq: EventSeq::new(1),
             step: StepIdx::new(0),
+            attempt: 1,
         };
         apply_summary_event(&mut summary, &event);
         assert_counters(&summary, 0, 0, 0, 0, 1, 0);
@@ -738,6 +742,7 @@ mod tests {
                 run,
                 seq: EventSeq::new(3),
                 step: StepIdx::new(1),
+                attempt: 1,
             },
             JournalEvent::StepSucceeded {
                 run,
@@ -750,22 +755,26 @@ mod tests {
                 seq: EventSeq::new(5),
                 step: StepIdx::new(1),
                 action: ActionId::new(3),
+                attempt: 1,
             },
             JournalEvent::ActionCompletedEvent {
                 run,
                 seq: EventSeq::new(6),
                 step: StepIdx::new(1),
                 action: ActionId::new(3),
+                attempt: 1,
             },
             JournalEvent::RetryScheduledEvent {
                 run,
                 seq: EventSeq::new(7),
                 step: StepIdx::new(1),
+                attempt: 1,
             },
             JournalEvent::RunFinished {
                 run,
                 seq: EventSeq::new(8),
                 result: SlotIdx::new(2),
+                attempt: 1,
             },
         ];
 
@@ -787,6 +796,8 @@ mod tests {
             &JournalEvent::RunCancelled {
                 run,
                 seq: EventSeq::new(9),
+                attempt: 1,
+                reason: None,
             },
         );
         assert_eq!(summary.terminal, Some(RecoveryTerminalState::Cancelled));
@@ -796,6 +807,7 @@ mod tests {
             &JournalEvent::RunFailedEvent {
                 run,
                 seq: EventSeq::new(10),
+                attempt: 1,
             },
         );
         assert_eq!(summary.terminal, Some(RecoveryTerminalState::Failed));
@@ -905,6 +917,7 @@ mod tests {
             run: RunId::new(21),
             seq: EventSeq::new(0),
             step: StepIdx::new(5),
+            attempt: 1,
         }];
 
         let direct = recover_runtime_frame_seed_from_events(&events);
@@ -970,6 +983,7 @@ mod tests {
                 slot: SlotIdx::new(0),
                 value: Some(valid_bytes),
                 extra: None,
+                attempt: 1,
             },
             JournalEvent::SlotWrittenEvent {
                 run,
@@ -977,6 +991,7 @@ mod tests {
                 slot: SlotIdx::new(1),
                 value: Some(vec![255, 0, 255]),
                 extra: None,
+                attempt: 1,
             },
             JournalEvent::SlotWrittenEvent {
                 run,
@@ -984,6 +999,7 @@ mod tests {
                 slot: SlotIdx::new(2),
                 value: None,
                 extra: None,
+                attempt: 1,
             },
         ];
 
@@ -1013,6 +1029,7 @@ mod tests {
             seq: EventSeq::new(0),
             step: StepIdx::new(3),
             action: ActionId::new(9),
+            attempt: 1,
         }];
 
         let seed = recover_runtime_frame_seed_from_events(&events);
@@ -1169,11 +1186,13 @@ mod tests {
                 run: RunId::new(1),
                 seq: EventSeq::new(0),
                 step: StepIdx::new(0),
+                attempt: 1,
             },
             JournalEvent::StepStarted {
                 run: RunId::new(2),
                 seq: EventSeq::new(1),
                 step: StepIdx::new(0),
+                attempt: 1,
             },
         ]
     }

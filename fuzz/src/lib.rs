@@ -192,6 +192,48 @@ pub fn fuzz_journal_event(data: &[u8]) {
     );
 }
 
+/// Exercises recovery replay over arbitrary postcard-encoded event vectors.
+pub fn fuzz_replay_events(data: &[u8]) {
+    let Ok(events): Result<Vec<vb_storage::JournalEvent>, _> = postcard::from_bytes(data) else {
+        return;
+    };
+    let mut tracker = vb_storage::recovery::ActionReplayTracker::new();
+    let _result = vb_storage::recovery::replay_events(&events, &mut tracker);
+}
+
+/// Exercises terminal extraction over arbitrary postcard-encoded event vectors.
+pub fn fuzz_extract_terminal(data: &[u8]) {
+    let Ok(events): Result<Vec<vb_storage::JournalEvent>, _> = postcard::from_bytes(data) else {
+        return;
+    };
+    let _terminal = vb_storage::recovery::extract_terminal(&events);
+}
+
+/// Exercises action replay tracker state transitions over compact byte triples.
+pub fn fuzz_action_tracker(data: &[u8]) {
+    let mut tracker = vb_storage::recovery::ActionReplayTracker::new();
+    for chunk in data.chunks_exact(3).take(64) {
+        let Some(mode) = chunk.first().copied() else {
+            continue;
+        };
+        let Some(action) = chunk.get(1).copied() else {
+            continue;
+        };
+        let Some(step) = chunk.get(2).copied() else {
+            continue;
+        };
+        let action = vb_core::ActionId::new(u16::from(action));
+        let step = vb_core::StepIdx::new(u16::from(step));
+        match mode % 3 {
+            0 => tracker.mark_completed(action, step),
+            1 => tracker.mark_failed(action, step),
+            _ => {
+                let _resolved = tracker.is_resolved(action, step);
+            }
+        }
+    }
+}
+
 /// Exercises expression lex/parse/compile/eval for arbitrary UTF-8 input.
 pub fn fuzz_expression(data: &[u8]) {
     let Ok(text) = std::str::from_utf8(data) else {

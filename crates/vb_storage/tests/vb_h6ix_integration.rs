@@ -60,12 +60,14 @@ fn recover_full_journal_filters_to_latest_attempt() {
             seq: EventSeq::new(1),
             step: StepIdx::ZERO,
             action: ActionId::new(1),
+            attempt: 1,
         },
         JournalEvent::ActionCompletedEvent {
             run,
             seq: EventSeq::new(2),
             step: StepIdx::ZERO,
             action: ActionId::new(1),
+            attempt: 1,
         },
         // Attempt 2: action 2 scheduled and completed (latest)
         JournalEvent::ActionScheduled {
@@ -73,17 +75,20 @@ fn recover_full_journal_filters_to_latest_attempt() {
             seq: EventSeq::new(3),
             step: StepIdx::ZERO,
             action: ActionId::new(2),
+            attempt: 1,
         },
         JournalEvent::ActionCompletedEvent {
             run,
             seq: EventSeq::new(4),
             step: StepIdx::ZERO,
             action: ActionId::new(2),
+            attempt: 1,
         },
         JournalEvent::RunFinished {
             run,
             seq: EventSeq::new(5),
             result: SlotIdx::ZERO,
+            attempt: 1,
         },
     ];
 
@@ -142,11 +147,13 @@ fn stale_terminal_does_not_win_over_failed() {
             run,
             seq: EventSeq::new(1),
             result: SlotIdx::ZERO,
+            attempt: 1,
         },
         // Attempt 2: RunFailedEvent (latest)
         JournalEvent::RunFailedEvent {
             run,
             seq: EventSeq::new(2),
+            attempt: 1,
         },
     ];
 
@@ -238,12 +245,14 @@ fn all_events_returned_including_stale_integration() {
             seq: EventSeq::new(1),
             step: StepIdx::ZERO,
             action: ActionId::new(1),
+            attempt: 1,
         },
         JournalEvent::ActionCompletedEvent {
             run,
             seq: EventSeq::new(2),
             step: StepIdx::ZERO,
             action: ActionId::new(1),
+            attempt: 1,
         },
         JournalEvent::SlotWrittenEvent {
             run,
@@ -251,6 +260,7 @@ fn all_events_returned_including_stale_integration() {
             slot: SlotIdx::ZERO,
             value: None,
             extra: None,
+            attempt: 1,
         },
         // Attempt 2 events (latest)
         JournalEvent::ActionScheduled {
@@ -258,12 +268,14 @@ fn all_events_returned_including_stale_integration() {
             seq: EventSeq::new(4),
             step: StepIdx::ZERO,
             action: ActionId::new(2),
+            attempt: 1,
         },
         JournalEvent::ActionCompletedEvent {
             run,
             seq: EventSeq::new(5),
             step: StepIdx::ZERO,
             action: ActionId::new(2),
+            attempt: 1,
         },
         JournalEvent::SlotWrittenEvent {
             run,
@@ -271,11 +283,13 @@ fn all_events_returned_including_stale_integration() {
             slot: SlotIdx::new(1),
             value: None,
             extra: None,
+            attempt: 1,
         },
         JournalEvent::RunFinished {
             run,
             seq: EventSeq::new(7),
             result: SlotIdx::new(1),
+            attempt: 1,
         },
     ];
 
@@ -325,12 +339,14 @@ fn tracker_only_records_from_max_attempt() {
             seq: EventSeq::new(1),
             step: StepIdx::ZERO,
             action: ActionId::new(1),
+            attempt: 1,
         },
         JournalEvent::ActionCompletedEvent {
             run,
             seq: EventSeq::new(2),
             step: StepIdx::ZERO,
             action: ActionId::new(1),
+            attempt: 1,
         },
         // Attempt 2: action B
         JournalEvent::ActionScheduled {
@@ -338,12 +354,14 @@ fn tracker_only_records_from_max_attempt() {
             seq: EventSeq::new(3),
             step: StepIdx::ZERO,
             action: ActionId::new(2),
+            attempt: 1,
         },
         JournalEvent::ActionCompletedEvent {
             run,
             seq: EventSeq::new(4),
             step: StepIdx::ZERO,
             action: ActionId::new(2),
+            attempt: 1,
         },
         // Attempt 1: action C (another stale event)
         JournalEvent::ActionScheduled {
@@ -351,12 +369,14 @@ fn tracker_only_records_from_max_attempt() {
             seq: EventSeq::new(5),
             step: StepIdx::new(1),
             action: ActionId::new(3),
+            attempt: 1,
         },
         JournalEvent::ActionCompletedEvent {
             run,
             seq: EventSeq::new(6),
             step: StepIdx::new(1),
             action: ActionId::new(3),
+            attempt: 1,
         },
         // Attempt 2: action D (latest)
         JournalEvent::ActionScheduled {
@@ -364,12 +384,14 @@ fn tracker_only_records_from_max_attempt() {
             seq: EventSeq::new(7),
             step: StepIdx::new(1),
             action: ActionId::new(4),
+            attempt: 1,
         },
         JournalEvent::ActionCompletedEvent {
             run,
             seq: EventSeq::new(8),
             step: StepIdx::new(1),
             action: ActionId::new(4),
+            attempt: 1,
         },
     ];
 
@@ -427,17 +449,20 @@ fn stale_pending_actions_excluded_integration() {
             run,
             seq: EventSeq::new(1),
             step: StepIdx::ZERO,
+            attempt: 1,
         },
         // Attempt 2: ask scheduled (latest)
         JournalEvent::AskScheduledEvent {
             run,
             seq: EventSeq::new(2),
             step: StepIdx::ZERO,
+            attempt: 1,
         },
         JournalEvent::AskAnsweredEvent {
             run,
             seq: EventSeq::new(3),
             step: StepIdx::ZERO,
+            attempt: 1,
         },
     ];
 
@@ -484,24 +509,28 @@ fn replay_determinism_integration() {
             seq: EventSeq::new(1),
             step: StepIdx::ZERO,
             action: ActionId::new(1),
+            attempt: 1,
         },
         JournalEvent::ActionCompletedEvent {
             run,
             seq: EventSeq::new(2),
             step: StepIdx::ZERO,
             action: ActionId::new(1),
+            attempt: 1,
         },
         JournalEvent::ActionScheduled {
             run,
             seq: EventSeq::new(3),
             step: StepIdx::ZERO,
             action: ActionId::new(2),
+            attempt: 1,
         },
         JournalEvent::ActionCompletedEvent {
             run,
             seq: EventSeq::new(4),
             step: StepIdx::ZERO,
             action: ActionId::new(2),
+            attempt: 1,
         },
     ];
 

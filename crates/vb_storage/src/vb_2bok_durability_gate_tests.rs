@@ -661,6 +661,8 @@ mod durability_gate_tests {
         let event = JournalEvent::RunCancelled {
             run: RunId::new(1),
             seq: EventSeq::new(0),
+            attempt: 1,
+            reason: None,
         };
         let full = encode_record(
             MAGIC_JOURNAL_EVENT,
@@ -694,6 +696,8 @@ mod durability_gate_tests {
         let event = JournalEvent::RunCancelled {
             run: RunId::new(1),
             seq: EventSeq::new(0),
+            attempt: 1,
+            reason: None,
         };
         let mut bytes = encode_record(
             MAGIC_JOURNAL_EVENT,
@@ -799,6 +803,7 @@ mod durability_gate_tests {
             slot: SlotIdx::new(0),
             value: Some(big_value),
             extra: None,
+            attempt: 1,
         };
         let result = encode_record(
             MAGIC_JOURNAL_EVENT,
@@ -1049,6 +1054,7 @@ mod durability_gate_tests {
                 run,
                 seq: EventSeq::new(i),
                 step: StepIdx::new(i as u16),
+                attempt: 1,
             })
             .collect();
 
@@ -1546,6 +1552,7 @@ mod durability_gate_tests {
                 run,
                 seq: EventSeq::new(i),
                 step: StepIdx::new(i as u16),
+                attempt: 1,
             };
             journal
                 .append_journaled(&event)
@@ -1772,6 +1779,8 @@ mod durability_gate_tests {
         let event = JournalEvent::RunCancelled {
             run: RunId::new(1),
             seq: EventSeq::new(0),
+            attempt: 1,
+            reason: None,
         };
         let mut bytes = encode_record(
             MAGIC_JOURNAL_EVENT,
@@ -1813,6 +1822,8 @@ mod durability_gate_tests {
         let event = JournalEvent::RunCancelled {
             run: RunId::new(1),
             seq: EventSeq::new(0),
+            attempt: 1,
+            reason: None,
         };
         let full = encode_record(
             MAGIC_JOURNAL_EVENT,
@@ -1847,6 +1858,7 @@ mod durability_gate_tests {
             slot: SlotIdx::new(0),
             value: Some(big_value),
             extra: None,
+            attempt: 1,
         };
         let result = encode_record(
             MAGIC_JOURNAL_EVENT,

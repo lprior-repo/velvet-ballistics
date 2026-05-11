@@ -7,20 +7,15 @@
 
 use std::panic::catch_unwind;
 
+use crate::JournalEvent;
 use crate::{
-    codec::{
-        decode_record, decode_record_header,
-        verify_digest_match,
-    },
-    constants::{
-        MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES, RECORD_HEADER_BYTES,
-    },
+    codec::{decode_record, decode_record_header, verify_digest_match},
+    constants::{MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES, RECORD_HEADER_BYTES},
     error::JournalError,
     records::RecordKind,
     types::EventSeq,
 };
 use vb_core::{RunId, WorkflowDigest};
-use crate::JournalEvent;
 
 fn panic_free_decode_header(input: &[u8]) -> Result<(), JournalError> {
     let result = catch_unwind(|| {
@@ -262,7 +257,10 @@ fn verify_digest_match_on_empty_payload_correct_returns_ok() {
     let payload: &[u8] = &[];
     let correct_digest: [u8; 32] = blake3::hash(&[]).into();
     let result = panic_free_verify_digest(payload, correct_digest);
-    assert!(result.is_ok(), "correct digest on empty payload should pass");
+    assert!(
+        result.is_ok(),
+        "correct digest on empty payload should pass"
+    );
 }
 
 #[test]
@@ -397,7 +395,11 @@ fn decode_record_header_on_valid_encoded_header_returns_ok() {
     )
     .expect("encode_record_header must succeed");
     let result = panic_free_decode_header(&header);
-    assert!(result.is_ok(), "valid header must decode successfully, got {:?}", result);
+    assert!(
+        result.is_ok(),
+        "valid header must decode successfully, got {:?}",
+        result
+    );
 }
 
 #[test]

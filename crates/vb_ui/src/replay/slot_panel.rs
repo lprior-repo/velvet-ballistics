@@ -227,6 +227,7 @@ mod tests {
             slot: SlotIdx::new(slot),
             value: bytes.ok(),
             extra: None,
+            attempt: 1,
         }
     }
 
@@ -235,6 +236,7 @@ mod tests {
             run: vb_core::ids::RunId::new(1),
             seq: EventSeq::new(seq),
             step: vb_core::ids::StepIdx::new(0),
+            attempt: 1,
         }
     }
 

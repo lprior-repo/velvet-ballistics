@@ -656,9 +656,7 @@ fn compile_error_preserves_action_contract_orphan_variant() {
     let compile_err = CompileError::Validation(inner);
 
     match compile_err {
-        CompileError::Validation(ValidationError::ActionContractOrphan {
-            action_id,
-        }) => {
+        CompileError::Validation(ValidationError::ActionContractOrphan { action_id }) => {
             assert_eq!(action_id.get(), 99);
         }
         other => panic!("Expected ActionContractOrphan, got: {:?}", other),

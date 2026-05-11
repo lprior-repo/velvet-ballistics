@@ -63,6 +63,7 @@ numeric_id!(ListId, u32, get);
 numeric_id!(ObjectId, u32, get);
 numeric_id!(BlobId, u64, get);
 numeric_id!(RunId, u64, get);
+numeric_id!(EventSeq, u64, get);
 numeric_id!(SeqNo, u64, get);
 
 checked_index!(StepIdx);

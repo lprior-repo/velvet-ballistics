@@ -1,9 +1,9 @@
 #![forbid(unsafe_code)]
-#![cfg_attr(not(feature = "std"), no_std)]
 
 extern crate alloc;
 
 use alloc::string::String;
+use alloc::vec::Vec;
 use core::fmt;
 use serde::{Deserialize, Serialize};
 
@@ -11,6 +11,9 @@ pub use vb_core::ids::RunId;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SchemaVersion(u16);
+
+/// Current structured output envelope schema version.
+pub const CURRENT_SCHEMA_VERSION: SchemaVersion = SchemaVersion::CURRENT;
 
 impl SchemaVersion {
     pub const CURRENT: SchemaVersion = SchemaVersion(1);
@@ -24,6 +27,10 @@ impl SchemaVersion {
     }
 
     pub const fn get(self) -> u16 {
+        self.0
+    }
+
+    pub const fn value(self) -> u16 {
         self.0
     }
 }
@@ -61,6 +68,22 @@ impl EnvelopeKind {
         }
     }
 
+    pub fn as_str(self) -> &'static str {
+        self.name()
+    }
+
+    pub fn parse(value: &str) -> Option<Self> {
+        match value {
+            "Success" => Some(Self::Success),
+            "Error" => Some(Self::Error),
+            "DiagnosticReport" => Some(Self::DiagnosticReport),
+            "Status" => Some(Self::Status),
+            "Event" => Some(Self::Event),
+            "Workflow" => Some(Self::Workflow),
+            _ => None,
+        }
+    }
+
     /// Returns true if this kind uses `data` field for its payload.
     pub fn uses_data_field(self) -> bool {
         match self {
@@ -93,6 +116,18 @@ impl MetadataEnvelope {
             command,
             timestamp,
         }
+    }
+
+    pub const fn run_id(&self) -> &RunId {
+        &self.run_id
+    }
+
+    pub fn command(&self) -> &str {
+        &self.command
+    }
+
+    pub const fn timestamp(&self) -> i64 {
+        self.timestamp
     }
 }
 
@@ -168,11 +203,23 @@ impl DiagnosticEnvelope {
             detail,
         }
     }
+
+    pub fn code(&self) -> &str {
+        &self.code
+    }
+
+    pub fn message(&self) -> &str {
+        &self.message
+    }
+
+    pub const fn detail(&self) -> Option<&String> {
+        self.detail.as_ref()
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(transparent)]
 pub struct PayloadEnvelope {
-    #[serde(skip)]
     json_value: serde_json::Value,
 }
 
@@ -193,10 +240,12 @@ pub struct OutputEnvelope {
     pub metadata: MetadataEnvelope,
     /// Data payload for kinds that use `data` field (Success, Error, Status, Event, Workflow).
     /// Must be `None` for DiagnosticReport kind.
+    #[serde(default)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub data: Option<PayloadEnvelope>,
     /// Diagnostics for DiagnosticReport kind.
     /// Must be empty for all other kinds.
+    #[serde(default)]
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub diagnostics: Vec<DiagnosticEntry>,
 }
@@ -261,6 +310,22 @@ impl fmt::Display for EnvelopeError {
 }
 
 impl OutputEnvelope {
+    pub const fn schema_version(&self) -> &SchemaVersion {
+        &self.schema_version
+    }
+
+    pub const fn kind(&self) -> &EnvelopeKind {
+        &self.kind
+    }
+
+    pub const fn payload(&self) -> Option<&PayloadEnvelope> {
+        self.data.as_ref()
+    }
+
+    pub fn diagnostic(&self) -> Option<&DiagnosticEntry> {
+        self.diagnostics.first()
+    }
+
     /// Creates a new output envelope with the given data payload.
     ///
     /// # Invariants (I5 - Payload invariant)

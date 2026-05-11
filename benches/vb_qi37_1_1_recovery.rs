@@ -13,6 +13,7 @@ fn bench_no_output_recovery(c: &mut Criterion) {
             run: RunId::new(90),
             seq: EventSeq::new(1),
             step: StepIdx::new(1),
+            attempt: 1,
         },
         JournalEvent::StepSucceeded {
             run: RunId::new(90),

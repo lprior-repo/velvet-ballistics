@@ -15,6 +15,7 @@ pub(crate) struct VerifyOk {
 }
 
 /// Structured error from the verification pipeline.
+#[allow(dead_code)]
 pub(crate) enum VerifyError {
     /// YAML source could not be parsed.
     YamlParse(String),
@@ -24,6 +25,10 @@ pub(crate) enum VerifyError {
     IrValidation(String),
     /// Budget policy violation (fatal in full profile).
     BudgetPolicy(String),
+    /// Storage operation failed.
+    StorageError(String),
+    /// Replay divergence detected.
+    ReplayDivergence(String),
 }
 
 /// Run the full verification pipeline on a workflow source text.
@@ -130,7 +135,9 @@ pub(crate) fn exit_code_for_error(err: &VerifyError) -> CliExitCode {
     match err {
         VerifyError::YamlParse(_) => CliExitCode::ValidationFailed,
         VerifyError::Compile(_) => CliExitCode::ValidationFailed,
-        VerifyError::IrValidation(_) => CliExitCode::ValidationFailed,
-        VerifyError::BudgetPolicy(_) => CliExitCode::ValidationFailed,
+        VerifyError::IrValidation(_) => CliExitCode::VerificationFailed,
+        VerifyError::BudgetPolicy(_) => CliExitCode::VerificationFailed,
+        VerifyError::StorageError(_) => CliExitCode::StorageError,
+        VerifyError::ReplayDivergence(_) => CliExitCode::ReplayDivergence,
     }
 }

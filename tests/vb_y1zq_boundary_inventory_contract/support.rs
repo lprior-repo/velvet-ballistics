@@ -2,12 +2,12 @@ use std::path::Path;
 pub(crate) use std::path::PathBuf;
 
 pub(crate) use velvet_ballastics_workspace::boundary_inventory::{
-    classify_boundary, discover_boundaries, inventory_completion_status, parse_inventory,
-    required_evidence, validate_evidence_reference_bytes, validate_inventory, BoundaryCandidate,
-    BoundaryClass, BoundaryExposure, BoundaryInventory, BoundaryInventoryError, BoundaryRecord,
-    BoundaryRecordParts, BoundaryRisk, ClassifiedBoundary, ClassifiedBoundaryInput, EvidenceKind,
-    EvidenceReference, EvidenceRequirement, FieldState, FreshnessMarker, Owner, ReviewStatus,
-    ThreatStatement, UnsafeIsolationStatus, ValidatedBoundaryInventory, WorkspaceRoot,
+    BoundaryCandidate, BoundaryClass, BoundaryExposure, BoundaryInventory, BoundaryInventoryError,
+    BoundaryRecord, BoundaryRecordParts, BoundaryRisk, ClassifiedBoundary, ClassifiedBoundaryInput,
+    EvidenceKind, EvidenceReference, EvidenceRequirement, FieldState, FreshnessMarker, Owner,
+    ReviewStatus, ThreatStatement, UnsafeIsolationStatus, ValidatedBoundaryInventory,
+    WorkspaceRoot, classify_boundary, discover_boundaries, inventory_completion_status,
+    parse_inventory, required_evidence, validate_evidence_reference_bytes, validate_inventory,
 };
 
 pub(crate) fn workspace(name: &str) -> WorkspaceRoot {
@@ -174,8 +174,8 @@ pub(crate) fn discover_temp_with_files(
         .map_err(|error| format!("{error:?}"))
 }
 
-pub(crate) fn discover_workspace_with_missing_surfaces_and_omitted_decoder_config(
-) -> Result<Result<Vec<BoundaryCandidate>, BoundaryInventoryError>, String> {
+pub(crate) fn discover_workspace_with_missing_surfaces_and_omitted_decoder_config()
+-> Result<Result<Vec<BoundaryCandidate>, BoundaryInventoryError>, String> {
     let dir = tempfile::tempdir().map_err(|error| error.to_string())?;
     std::fs::write(
         dir.path().join("boundary-surfaces.txt"),

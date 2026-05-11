@@ -74,6 +74,8 @@ const CODE_CAPABILITY_NAME_TOO_LONG: u16 = 0x050E;
 const CODE_CAPABILITY_NAME_INVALID: u16 = 0x050F;
 const CODE_CAPABILITY_ACTION_MISMATCH: u16 = 0x0510;
 const CODE_CAPABILITY_DUPLICATE: u16 = 0x0511;
+const CODE_ACCESSOR_PATH_TOO_DEEP: u16 = 0x0512;
+const CODE_ACCESSOR_SYMBOL_OUT_OF_BOUNDS: u16 = 0x0513;
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -270,6 +272,25 @@ fn error_diagnostic_parts(error: &ValidationError) -> (DiagnosticCode, String) {
         } => (
             DiagnosticCode::new(CODE_ACCESSOR_PATH_INVALID),
             format!("accessor path invalid: accessor {accessor_index}, segment {segment_index}"),
+        ),
+        ValidationError::AccessorPathTooDeep {
+            accessor_index,
+            depth,
+            max,
+        } => (
+            DiagnosticCode::new(CODE_ACCESSOR_PATH_TOO_DEEP),
+            format!("accessor path too deep: accessor {accessor_index}, depth {depth}, max {max}"),
+        ),
+        ValidationError::AccessorSymbolOutOfBounds {
+            accessor_index,
+            segment_index,
+            symbol,
+            symbols_count,
+        } => (
+            DiagnosticCode::new(CODE_ACCESSOR_SYMBOL_OUT_OF_BOUNDS),
+            format!(
+                "accessor symbol out of bounds: accessor {accessor_index}, segment {segment_index}, symbol {symbol}, symbols_count {symbols_count}"
+            ),
         ),
         ValidationError::SlotReferenceOutOfRange {
             slot,

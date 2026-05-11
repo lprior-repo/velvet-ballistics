@@ -97,6 +97,8 @@ pub enum ShardCommand {
     Cancel {
         /// Run identifier.
         run: RunId,
+        /// Optional cancellation reason.
+        reason: Option<String>,
     },
     /// Inspect run state for diagnostic purposes.
     Inspect {
@@ -143,7 +145,7 @@ pub struct RunState {
     /// Cold value store for list, object, and blob handles.
     pub store: ValueStore,
     /// Per-Do-step attempt counters owned with the live frame.
-    pub(crate) action_attempts: Box<[u16]>,
+    pub action_attempts: Box<[u16]>,
     /// Admission record for this run, if admission gating was performed.
     pub admission: Option<crate::admission::RunAdmission>,
     /// Per-run collect pagination state side table.
@@ -183,7 +185,7 @@ pub const MAX_COMMAND_QUEUE_CAPACITY: usize = 65_536;
 /// Single-threaded shard owning all mutable run state.
 pub struct Shard {
     pub(crate) command_queue: ArrayQueue<ShardCommand>,
-    pub(crate) runs: IndexMap<RunId, RunState>,
+    pub runs: IndexMap<RunId, RunState>,
     pub(crate) pending_timers: IndexMap<RunId, PendingTimer>,
     pub(crate) frame_pools: IndexMap<FramePoolKey, FramePool>,
     pub(crate) trace_ring: TraceRing,

@@ -352,7 +352,7 @@ mod tests {
         let mut parts = valid_parts();
         parts.resource_contract.max_steps = u16::MAX;
         let limit = crate::limits::MAX_STEPS_PER_WORKFLOW;
-        if u16::MAX as usize > limit {
+        if usize::from(u16::MAX) > limit {
             let result = validate_resource_contract(&parts);
             assert_eq!(
                 result,
@@ -368,7 +368,7 @@ mod tests {
         let mut parts = valid_parts();
         parts.resource_contract.max_slots = u16::MAX;
         let limit = crate::limits::MAX_SLOTS_PER_WORKFLOW;
-        if u16::MAX as usize > limit {
+        if usize::from(u16::MAX) > limit {
             let result = validate_resource_contract(&parts);
             assert_eq!(
                 result,
@@ -384,7 +384,7 @@ mod tests {
         let mut parts = valid_parts();
         parts.resource_contract.max_constants = u16::MAX;
         let limit = crate::limits::MAX_CONSTANTS;
-        if u16::MAX as usize > limit {
+        if usize::from(u16::MAX) > limit {
             let result = validate_resource_contract(&parts);
             assert_eq!(
                 result,
@@ -400,7 +400,7 @@ mod tests {
         let mut parts = valid_parts();
         parts.resource_contract.max_accessors = u16::MAX;
         let limit = crate::limits::MAX_ACCESSORS;
-        if u16::MAX as usize > limit {
+        if usize::from(u16::MAX) > limit {
             let result = validate_resource_contract(&parts);
             assert_eq!(
                 result,
@@ -416,7 +416,7 @@ mod tests {
         let mut parts = valid_parts();
         parts.resource_contract.max_expressions = u16::MAX;
         let limit = crate::limits::MAX_EXPRESSIONS;
-        if u16::MAX as usize > limit {
+        if usize::from(u16::MAX) > limit {
             let result = validate_resource_contract(&parts);
             assert_eq!(
                 result,
@@ -1156,4 +1156,7 @@ mod tests {
         assert_eq!(validate_node_bounds(&parts), Ok(()));
         assert_eq!(validate_transition_target(&parts), Ok(()));
     }
+
+    // RED PHASE: additional resource contract tests
+    mod red_phase_tests;
 }

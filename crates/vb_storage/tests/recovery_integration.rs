@@ -44,6 +44,7 @@ fn build_full_run_events(run: RunId, digest: WorkflowDigest) -> Vec<JournalEvent
         run,
         seq: EventSeq::new(seq),
         step: StepIdx::new(0),
+        attempt: 1,
     });
     seq = seq.saturating_add(1);
 
@@ -53,6 +54,7 @@ fn build_full_run_events(run: RunId, digest: WorkflowDigest) -> Vec<JournalEvent
         slot: SlotIdx::new(0),
         value: None,
         extra: None,
+        attempt: 1,
     });
     seq = seq.saturating_add(1);
 
@@ -62,6 +64,7 @@ fn build_full_run_events(run: RunId, digest: WorkflowDigest) -> Vec<JournalEvent
         slot: SlotIdx::new(1),
         value: None,
         extra: None,
+        attempt: 1,
     });
     seq = seq.saturating_add(1);
 
@@ -78,6 +81,7 @@ fn build_full_run_events(run: RunId, digest: WorkflowDigest) -> Vec<JournalEvent
         run,
         seq: EventSeq::new(seq),
         step: StepIdx::new(1),
+        attempt: 1,
     });
     seq = seq.saturating_add(1);
 
@@ -87,6 +91,7 @@ fn build_full_run_events(run: RunId, digest: WorkflowDigest) -> Vec<JournalEvent
         slot: SlotIdx::new(2),
         value: None,
         extra: None,
+        attempt: 1,
     });
     seq = seq.saturating_add(1);
 
@@ -103,6 +108,7 @@ fn build_full_run_events(run: RunId, digest: WorkflowDigest) -> Vec<JournalEvent
         run,
         seq: EventSeq::new(seq),
         result: SlotIdx::new(2),
+        attempt: 1,
     });
 
     events
@@ -295,6 +301,7 @@ fn partial_write_recovery_detects_incomplete_state() {
             run,
             seq: EventSeq::new(1),
             step: StepIdx::new(0),
+            attempt: 1,
         },
     ];
 
@@ -397,6 +404,7 @@ fn strict_durability_survives_immediate_reopen() {
             run,
             seq: EventSeq::new(1),
             step: StepIdx::new(0),
+            attempt: 1,
         },
         JournalEvent::SlotWrittenEvent {
             run,
@@ -404,6 +412,7 @@ fn strict_durability_survives_immediate_reopen() {
             slot: SlotIdx::new(0),
             value: None,
             extra: None,
+            attempt: 1,
         },
         JournalEvent::StepSucceeded {
             run,
@@ -445,6 +454,7 @@ fn journaled_durability_appears_after_flush() {
             run,
             seq: EventSeq::new(1),
             step: StepIdx::new(0),
+            attempt: 1,
         },
     ];
 
@@ -501,6 +511,7 @@ fn journaled_queue_shutdown_drains_all_events() {
             run,
             seq: EventSeq::new(1),
             step: StepIdx::new(0),
+            attempt: 1,
         },
         JournalEvent::SlotWrittenEvent {
             run,
@@ -508,6 +519,7 @@ fn journaled_queue_shutdown_drains_all_events() {
             slot: SlotIdx::new(5),
             value: None,
             extra: None,
+            attempt: 1,
         },
     ];
 
@@ -581,18 +593,21 @@ fn action_replay_tracker_reconstructs_from_events() {
             run,
             seq: EventSeq::new(1),
             step: StepIdx::new(0),
+            attempt: 1,
         },
         JournalEvent::ActionScheduled {
             run,
             seq: EventSeq::new(2),
             step: StepIdx::new(0),
             action: ActionId::new(10),
+            attempt: 1,
         },
         JournalEvent::ActionCompletedEvent {
             run,
             seq: EventSeq::new(3),
             step: StepIdx::new(0),
             action: ActionId::new(10),
+            attempt: 1,
         },
         JournalEvent::SlotWrittenEvent {
             run,
@@ -600,6 +615,7 @@ fn action_replay_tracker_reconstructs_from_events() {
             slot: SlotIdx::new(0),
             value: None,
             extra: None,
+            attempt: 1,
         },
         JournalEvent::StepSucceeded {
             run,
@@ -650,18 +666,21 @@ fn action_replay_tracker_tracks_failed_actions() {
             run,
             seq: EventSeq::new(1),
             step: StepIdx::new(0),
+            attempt: 1,
         },
         JournalEvent::ActionScheduled {
             run,
             seq: EventSeq::new(2),
             step: StepIdx::new(0),
             action: ActionId::new(11),
+            attempt: 1,
         },
         JournalEvent::ActionFailedEvent {
             run,
             seq: EventSeq::new(3),
             step: StepIdx::new(0),
             action: ActionId::new(11),
+            attempt: 1,
         },
     ];
 
@@ -701,24 +720,28 @@ fn action_replay_blocks_duplicate_scheduled_action() {
             run,
             seq: EventSeq::new(1),
             step: StepIdx::new(0),
+            attempt: 1,
         },
         JournalEvent::ActionScheduled {
             run,
             seq: EventSeq::new(2),
             step: StepIdx::new(0),
             action: ActionId::new(12),
+            attempt: 1,
         },
         JournalEvent::ActionCompletedEvent {
             run,
             seq: EventSeq::new(3),
             step: StepIdx::new(0),
             action: ActionId::new(12),
+            attempt: 1,
         },
         JournalEvent::ActionScheduled {
             run,
             seq: EventSeq::new(4),
             step: StepIdx::new(0),
             action: ActionId::new(12),
+            attempt: 1,
         },
     ];
 
@@ -796,6 +819,7 @@ fn terminal_event_identification_after_recovery() {
             run,
             seq: EventSeq::new(1),
             step: StepIdx::new(0),
+            attempt: 1,
         },
         JournalEvent::StepSucceeded {
             run,
@@ -807,6 +831,7 @@ fn terminal_event_identification_after_recovery() {
             run,
             seq: EventSeq::new(3),
             result: SlotIdx::new(0),
+            attempt: 1,
         },
     ];
 
@@ -857,11 +882,13 @@ fn recovery_across_multiple_runs_is_isolated() {
             run: run_a,
             seq: EventSeq::new(1),
             step: StepIdx::new(0),
+            attempt: 1,
         },
         JournalEvent::RunFinished {
             run: run_a,
             seq: EventSeq::new(2),
             result: SlotIdx::new(0),
+            attempt: 1,
         },
     ];
 
@@ -874,6 +901,8 @@ fn recovery_across_multiple_runs_is_isolated() {
         JournalEvent::RunCancelled {
             run: run_b,
             seq: EventSeq::new(1),
+            attempt: 1,
+            reason: None,
         },
     ];
 

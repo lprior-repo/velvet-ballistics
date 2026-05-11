@@ -55,7 +55,11 @@ fn empty_plan_with_expr(
 fn run_frame_with_slots(slots: Vec<SlotValue>) -> Result<crate::RunFrame, EngineError> {
     let mut run = crate::RunFrame::new(RunId::new(1), StepIdx::new(0), 1, 8)?;
     for (i, value) in slots.iter().enumerate() {
-        let idx = SlotIdx::new(i as u16);
+        let idx = SlotIdx::new(u16::try_from(i).map_err(|_| {
+            EngineError::InternalInvariantViolation {
+                reason: "slot index overflow",
+            }
+        })?);
         run.write_slot(idx, *value)?;
     }
     Ok(run)

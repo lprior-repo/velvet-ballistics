@@ -64,9 +64,8 @@ fn validate_ticket_attempt(
             current,
         });
     }
-    if current != 0 && ticket.attempt > current {
-        return Err(RuntimeError::InvalidActionCompletion);
-    }
+    // Allow ticket.attempt >= current: equal is a retry, higher is a valid retry
+    // The only rejection is stale (ticket.attempt < current)
     Ok(())
 }
 

@@ -264,7 +264,7 @@ mod tests {
         let slot_count = if slots.is_empty() {
             1u16
         } else {
-            slots.len() as u16
+            u16::try_from(slots.len()).map_err(|_| "slot count overflow")?
         };
         let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
             name: Box::<str>::from("text_list_test"),
@@ -291,7 +291,8 @@ mod tests {
         let mut run = crate::frame::RunFrame::new(RunId::new(1), StepIdx::new(0), 1, slot_count)
             .map_err(|e| e.to_string())?;
         for (i, value) in slots.iter().enumerate() {
-            run.write_slot(SlotIdx::new(i as u16), *value)
+            let idx = u16::try_from(i).map_err(|_| "slot index overflow")?;
+            run.write_slot(SlotIdx::new(idx), *value)
                 .map_err(|e| e.to_string())?;
         }
         let (value, _taint) =

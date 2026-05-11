@@ -72,8 +72,7 @@ fn kani_wrong_magic_any_value() {
     header[8..12].copy_from_slice(&60u32.to_le_bytes());
     header[12..16].copy_from_slice(&0u32.to_le_bytes());
     let checksum = crc32c::crc32c(&header[..CRC_OFFSET]);
-    header[CRC_OFFSET..CRC_OFFSET.saturating_add(4)]
-        .copy_from_slice(&checksum.to_le_bytes());
+    header[CRC_OFFSET..CRC_OFFSET.saturating_add(4)].copy_from_slice(&checksum.to_le_bytes());
     let result = decode_record_header(&header, EXPECTED_MAGIC, MAX_PAYLOAD_LEN);
     assert!(result.is_err());
     let err = result.unwrap_err();
@@ -91,8 +90,7 @@ fn kani_future_schema_version() {
     header[8..12].copy_from_slice(&60u32.to_le_bytes());
     header[12..16].copy_from_slice(&0u32.to_le_bytes());
     let checksum = crc32c::crc32c(&header[..CRC_OFFSET]);
-    header[CRC_OFFSET..CRC_OFFSET.saturating_add(4)]
-        .copy_from_slice(&checksum.to_le_bytes());
+    header[CRC_OFFSET..CRC_OFFSET.saturating_add(4)].copy_from_slice(&checksum.to_le_bytes());
     let result = decode_record_header(&header, EXPECTED_MAGIC, MAX_PAYLOAD_LEN);
     assert!(result.is_err());
     let err = result.unwrap_err();
@@ -111,8 +109,7 @@ fn kani_past_schema_version() {
     header[8..12].copy_from_slice(&60u32.to_le_bytes());
     header[12..16].copy_from_slice(&0u32.to_le_bytes());
     let checksum = crc32c::crc32c(&header[..CRC_OFFSET]);
-    header[CRC_OFFSET..CRC_OFFSET.saturating_add(4)]
-        .copy_from_slice(&checksum.to_le_bytes());
+    header[CRC_OFFSET..CRC_OFFSET.saturating_add(4)].copy_from_slice(&checksum.to_le_bytes());
     let result = decode_record_header(&header, EXPECTED_MAGIC, MAX_PAYLOAD_LEN);
     assert!(result.is_err());
     let err = result.unwrap_err();
@@ -130,8 +127,7 @@ fn kani_bad_crc() {
     header[12..16].copy_from_slice(&0u32.to_le_bytes());
     let good_checksum = crc32c::crc32c(&header[..CRC_OFFSET]);
     let bad_checksum = good_checksum.wrapping_add(1);
-    header[CRC_OFFSET..CRC_OFFSET.saturating_add(4)]
-        .copy_from_slice(&bad_checksum.to_le_bytes());
+    header[CRC_OFFSET..CRC_OFFSET.saturating_add(4)].copy_from_slice(&bad_checksum.to_le_bytes());
     let result = decode_record_header(&header, EXPECTED_MAGIC, MAX_PAYLOAD_LEN);
     assert!(result.is_err());
     let err = result.unwrap_err();

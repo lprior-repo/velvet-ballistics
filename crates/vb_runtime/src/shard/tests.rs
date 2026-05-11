@@ -337,7 +337,8 @@ fn cancel_nonexistent_run_succeeds_silently() {
     let mut shard = Shard::new(config);
     assert_eq!(
         shard.enqueue(ShardCommand::Cancel {
-            run: super::RunId::new(999)
+            run: super::RunId::new(9999),
+            reason: None,
         }),
         Ok(())
     );
@@ -608,7 +609,10 @@ fn cancelled_run_releases_frame_to_dimension_pool() {
         Some(0)
     );
 
-    assert_eq!(shard.enqueue(ShardCommand::Cancel { run }), Ok(()));
+    assert_eq!(
+        shard.enqueue(ShardCommand::Cancel { run, reason: None }),
+        Ok(())
+    );
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(
         shard.frame_pools.get(&(1, 1)).map(FramePool::available),
@@ -635,7 +639,10 @@ fn cancel_cleans_pending_timer() {
     );
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(shard.pending_timers.len(), 1);
-    assert_eq!(shard.enqueue(ShardCommand::Cancel { run }), Ok(()));
+    assert_eq!(
+        shard.enqueue(ShardCommand::Cancel { run, reason: None }),
+        Ok(())
+    );
     assert_eq!(shard.tick(), Ok(true));
 
     assert_eq!(shard.pending_timers.len(), 0);
@@ -915,7 +922,7 @@ fn shard_resume_returns_error_for_unknown_run() {
     // When resuming a non-existent run
     assert_eq!(
         shard.enqueue(ShardCommand::Resume {
-            run: super::RunId::new(999),
+            run: super::RunId::new(9999),
         }),
         Ok(())
     );
@@ -1131,7 +1138,10 @@ fn shard_cancel_removes_run_from_runs_map() {
     );
     assert_eq!(shard.tick(), Ok(true));
     // When cancelling the run
-    assert_eq!(shard.enqueue(ShardCommand::Cancel { run }), Ok(()));
+    assert_eq!(
+        shard.enqueue(ShardCommand::Cancel { run, reason: None }),
+        Ok(())
+    );
     assert_eq!(shard.tick(), Ok(true));
     // Then inspect returns NotFound (run removed from map)
     assert_eq!(
@@ -1170,7 +1180,10 @@ fn shard_cancel_records_run_cancelled_trace_event() {
     );
     assert_eq!(shard.tick(), Ok(true));
     // When cancelling the run
-    assert_eq!(shard.enqueue(ShardCommand::Cancel { run }), Ok(()));
+    assert_eq!(
+        shard.enqueue(ShardCommand::Cancel { run, reason: None }),
+        Ok(())
+    );
     assert_eq!(shard.tick(), Ok(true));
     // Then the trace ring contains a RunCancelled event
     let events = shard.trace_ring_mut().drain();
@@ -1202,13 +1215,16 @@ fn shard_cancel_emits_cancelled_journal_and_preserves_counter_semantics() {
     assert_eq!(shard.tick(), Ok(true));
 
     // When cancelling the active run
-    assert_eq!(shard.enqueue(ShardCommand::Cancel { run }), Ok(()));
+    assert_eq!(
+        shard.enqueue(ShardCommand::Cancel { run, reason: None }),
+        Ok(())
+    );
     assert_eq!(shard.tick(), Ok(true));
 
     // Then cancellation is a distinct journal/trace event, while the legacy failed counter
     // still counts the non-successful terminal lifecycle.
     assert!(
-        matches!(journal.snapshot(), Ok(events) if events.contains(&RuntimeJournalEvent::RunCancelled { run }))
+        matches!(journal.snapshot(), Ok(events) if events.iter().any(|e| matches!(e, RuntimeJournalEvent::RunCancelled { run: r, .. } if *r == run)))
     );
     assert!(
         shard
@@ -1239,7 +1255,10 @@ fn shard_cancel_increments_failed_counter() {
     );
     assert_eq!(shard.tick(), Ok(true));
     // When cancelling the run
-    assert_eq!(shard.enqueue(ShardCommand::Cancel { run }), Ok(()));
+    assert_eq!(
+        shard.enqueue(ShardCommand::Cancel { run, reason: None }),
+        Ok(())
+    );
     assert_eq!(shard.tick(), Ok(true));
     // Then the failed counter is incremented
     assert_eq!(shard.counters().snapshot().runs_failed, 1);
@@ -1489,9 +1508,11 @@ fn shard_command_equality_cancel() {
     // Given two identical Cancel commands
     let a = ShardCommand::Cancel {
         run: super::RunId::new(1),
+        reason: None,
     };
     let b = ShardCommand::Cancel {
         run: super::RunId::new(1),
+        reason: None,
     };
     assert_eq!(a, b);
 }
@@ -1501,9 +1522,11 @@ fn shard_command_equality_differs_run_id() {
     // Given two Cancel commands with different run IDs
     let a = ShardCommand::Cancel {
         run: super::RunId::new(1),
+        reason: None,
     };
     let b = ShardCommand::Cancel {
         run: super::RunId::new(2),
+        reason: None,
     };
     assert_ne!(a, b);
 }
@@ -1590,7 +1613,8 @@ fn shard_cancel_nonexistent_does_not_increment_failed() {
     // When cancelling a non-existent run
     assert_eq!(
         shard.enqueue(ShardCommand::Cancel {
-            run: super::RunId::new(999)
+            run: super::RunId::new(999),
+            reason: None,
         }),
         Ok(())
     );
@@ -1786,7 +1810,10 @@ fn shard_cancel_then_inspect_returns_not_found() {
     );
     assert_eq!(shard.tick(), Ok(true));
     // When cancelling then inspecting
-    assert_eq!(shard.enqueue(ShardCommand::Cancel { run }), Ok(()));
+    assert_eq!(
+        shard.enqueue(ShardCommand::Cancel { run, reason: None }),
+        Ok(())
+    );
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(
         shard.enqueue(ShardCommand::Inspect {
@@ -1854,7 +1881,10 @@ fn shard_duplicate_submit_after_cancel_succeeds() {
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
-    assert_eq!(shard.enqueue(ShardCommand::Cancel { run }), Ok(()));
+    assert_eq!(
+        shard.enqueue(ShardCommand::Cancel { run, reason: None }),
+        Ok(())
+    );
     assert_eq!(shard.tick(), Ok(true));
     // When re-submitting the same run ID
     assert_eq!(
@@ -2062,12 +2092,96 @@ fn shard_multiple_cancels_idempotent_for_same_run() {
     );
     assert_eq!(shard.tick(), Ok(true));
     // When cancelling twice
-    assert_eq!(shard.enqueue(ShardCommand::Cancel { run }), Ok(()));
+    assert_eq!(
+        shard.enqueue(ShardCommand::Cancel { run, reason: None }),
+        Ok(())
+    );
     assert_eq!(shard.tick(), Ok(true));
-    assert_eq!(shard.enqueue(ShardCommand::Cancel { run }), Ok(()));
+    assert_eq!(
+        shard.enqueue(ShardCommand::Cancel { run, reason: None }),
+        Ok(())
+    );
     assert_eq!(shard.tick(), Ok(true));
     // Then failed counter is 1 (not 2)
     assert_eq!(shard.counters().snapshot().runs_failed, 1);
+}
+
+#[test]
+fn shard_cancel_with_reason_persists_reason_to_journal() {
+    // Given a shard with an active run and a recording journal
+    let config = small_config();
+    let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
+    let shared: crate::journal::SharedRuntimeJournal = journal.clone();
+    let mut shard = Shard::new_with_journal(config, shared);
+    let Some(workflow) = suspended_workflow() else {
+        return;
+    };
+    let run = super::RunId::new(206);
+    assert_eq!(
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    // When cancelling with a reason
+    let reason = Some("user request".to_string());
+    assert_eq!(
+        shard.enqueue(ShardCommand::Cancel {
+            run,
+            reason: reason.clone()
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    // Then the journal contains RunCancelled with the reason
+    let events = journal.snapshot().unwrap_or_default();
+    let has_reason = events.iter().any(|e| {
+        matches!(e, RuntimeJournalEvent::RunCancelled { run: r, reason: Some(req) } if r == &run && req == "user request")
+    });
+    assert!(
+        has_reason,
+        "journal should contain RunCancelled with reason 'user request', got: {events:?}"
+    );
+}
+
+#[test]
+fn shard_cancel_without_reason_persists_none_to_journal() {
+    // Given a shard with an active run and a recording journal
+    let config = small_config();
+    let journal = std::sync::Arc::new(crate::journal::VolatileRuntimeJournal::new());
+    let shared: crate::journal::SharedRuntimeJournal = journal.clone();
+    let mut shard = Shard::new_with_journal(config, shared);
+    let Some(workflow) = suspended_workflow() else {
+        return;
+    };
+    let run = super::RunId::new(207);
+    assert_eq!(
+        shard.enqueue(ShardCommand::Submit {
+            run,
+            workflow,
+            caps: vb_core::capability::CapabilitySet::empty()
+        }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    // When cancelling without a reason
+    assert_eq!(
+        shard.enqueue(ShardCommand::Cancel { run, reason: None }),
+        Ok(())
+    );
+    assert_eq!(shard.tick(), Ok(true));
+    // Then the journal contains RunCancelled with reason=None
+    let events = journal.snapshot().unwrap_or_default();
+    let has_no_reason = events.iter().any(
+        |e| matches!(e, RuntimeJournalEvent::RunCancelled { run: r, reason: None } if r == &run),
+    );
+    assert!(
+        has_no_reason,
+        "journal should contain RunCancelled with reason=None, got: {events:?}"
+    );
 }
 
 // =======================================================================
@@ -2117,7 +2231,10 @@ fn shard_cancel_then_resubmit_then_cancel_increments_failed_twice() {
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
-    assert_eq!(shard.enqueue(ShardCommand::Cancel { run }), Ok(()));
+    assert_eq!(
+        shard.enqueue(ShardCommand::Cancel { run, reason: None }),
+        Ok(())
+    );
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
@@ -2129,7 +2246,10 @@ fn shard_cancel_then_resubmit_then_cancel_increments_failed_twice() {
     );
     assert_eq!(shard.tick(), Ok(true));
     // When cancelling the re-submitted run
-    assert_eq!(shard.enqueue(ShardCommand::Cancel { run }), Ok(()));
+    assert_eq!(
+        shard.enqueue(ShardCommand::Cancel { run, reason: None }),
+        Ok(())
+    );
     assert_eq!(shard.tick(), Ok(true));
     // Then failed counter is 2 (both cancellations counted)
     assert_eq!(shard.counters().snapshot().runs_failed, 2);
@@ -2227,7 +2347,10 @@ fn shard_snapshot_run_after_cancel_returns_not_found() {
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
-    assert_eq!(shard.enqueue(ShardCommand::Cancel { run }), Ok(()));
+    assert_eq!(
+        shard.enqueue(ShardCommand::Cancel { run, reason: None }),
+        Ok(())
+    );
     assert_eq!(shard.tick(), Ok(true));
     // When snapshotting the cancelled run
     let response = shard.snapshot_run(run, 7);
@@ -2259,7 +2382,10 @@ fn shard_timer_for_cancelled_run_returns_run_not_found() {
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
-    assert_eq!(shard.enqueue(ShardCommand::Cancel { run }), Ok(()));
+    assert_eq!(
+        shard.enqueue(ShardCommand::Cancel { run, reason: None }),
+        Ok(())
+    );
     assert_eq!(shard.tick(), Ok(true));
     // When a timer fires for the cancelled run
     assert_eq!(shard.enqueue(ShardCommand::TimerFired { run }), Ok(()));
@@ -2285,7 +2411,10 @@ fn shard_resume_for_cancelled_run_returns_run_not_found() {
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
-    assert_eq!(shard.enqueue(ShardCommand::Cancel { run }), Ok(()));
+    assert_eq!(
+        shard.enqueue(ShardCommand::Cancel { run, reason: None }),
+        Ok(())
+    );
     assert_eq!(shard.tick(), Ok(true));
     // When resuming the cancelled run
     assert_eq!(shard.enqueue(ShardCommand::Resume { run }), Ok(()));
@@ -2813,7 +2942,10 @@ fn shard_cancel_then_resubmit_same_run_id_succeeds() {
     );
     assert_eq!(shard.tick(), Ok(true));
     // When cancelling and re-submitting with same ID
-    assert_eq!(shard.enqueue(ShardCommand::Cancel { run }), Ok(()));
+    assert_eq!(
+        shard.enqueue(ShardCommand::Cancel { run, reason: None }),
+        Ok(())
+    );
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(
         shard.enqueue(ShardCommand::Submit {
@@ -3025,7 +3157,8 @@ fn shard_queue_len_decrements_after_tick() {
     // Cancel for a non-existent run succeeds silently
     assert_eq!(
         shard.enqueue(ShardCommand::Cancel {
-            run: super::RunId::new(999)
+            run: super::RunId::new(999),
+            reason: None,
         }),
         Ok(())
     );
@@ -3433,7 +3566,10 @@ fn shard_cancel_on_finished_run_succeeds_silently_without_counter_increment() {
     assert_eq!(shard.counters().snapshot().runs_completed, 1);
 
     // When cancelling the already-finished run
-    assert_eq!(shard.enqueue(ShardCommand::Cancel { run }), Ok(()));
+    assert_eq!(
+        shard.enqueue(ShardCommand::Cancel { run, reason: None }),
+        Ok(())
+    );
     assert_eq!(shard.tick(), Ok(true));
     // Then no additional counter increment
     assert_eq!(shard.counters().snapshot().runs_failed, 0);
@@ -3972,7 +4108,10 @@ fn shard_cancel_removes_pending_ask_timer() {
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(shard.pending_timers.len(), 1);
 
-    assert_eq!(shard.enqueue(ShardCommand::Cancel { run }), Ok(()));
+    assert_eq!(
+        shard.enqueue(ShardCommand::Cancel { run, reason: None }),
+        Ok(())
+    );
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(shard.pending_timers.len(), 0);
     assert_eq!(shard.counters().snapshot().runs_failed, 1);
@@ -4093,7 +4232,10 @@ fn shard_ask_answer_after_cancel_returns_run_not_found() {
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
-    assert_eq!(shard.enqueue(ShardCommand::Cancel { run }), Ok(()));
+    assert_eq!(
+        shard.enqueue(ShardCommand::Cancel { run, reason: None }),
+        Ok(())
+    );
     assert_eq!(shard.tick(), Ok(true));
 
     let answer = AskAnswer {
@@ -4131,7 +4273,10 @@ fn shard_action_failure_after_cancel_returns_run_not_found() {
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
-    assert_eq!(shard.enqueue(ShardCommand::Cancel { run }), Ok(()));
+    assert_eq!(
+        shard.enqueue(ShardCommand::Cancel { run, reason: None }),
+        Ok(())
+    );
     assert_eq!(shard.tick(), Ok(true));
 
     let ticket = action_ticket(run, vb_core::ids::StepIdx::ZERO);
@@ -4165,7 +4310,10 @@ fn shard_resume_after_cancel_returns_run_not_found() {
     );
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(shard.pending_timers.len(), 1);
-    assert_eq!(shard.enqueue(ShardCommand::Cancel { run }), Ok(()));
+    assert_eq!(
+        shard.enqueue(ShardCommand::Cancel { run, reason: None }),
+        Ok(())
+    );
     assert_eq!(shard.tick(), Ok(true));
 
     assert_eq!(shard.enqueue(ShardCommand::Resume { run }), Ok(()));
@@ -4512,12 +4660,17 @@ fn bh_shd_10_cancel_nonexistent_run_no_journal_event() {
     let shared: SharedRuntimeJournal = journal.clone();
     let mut shard = Shard::new_with_journal(config, shared);
     let run = super::RunId::new(810);
-    assert_eq!(shard.enqueue(ShardCommand::Cancel { run }), Ok(()));
+    assert_eq!(
+        shard.enqueue(ShardCommand::Cancel { run, reason: None }),
+        Ok(())
+    );
     assert_eq!(shard.tick(), Ok(true));
     let events = journal.snapshot().unwrap_or_default();
     let cancelled_count = events
         .iter()
-        .filter(|e| matches!(e, RuntimeJournalEvent::RunCancelled { run: r } if *r == run))
+        .filter(
+            |e| matches!(e, RuntimeJournalEvent::RunCancelled { run: r, reason: _ } if *r == run),
+        )
         .count();
     assert_eq!(
         cancelled_count, 0,
@@ -4609,7 +4762,10 @@ fn bh_shd_13_timer_fire_after_cancel_returns_run_not_found() {
     );
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(shard.pending_timer_count(), 1);
-    assert_eq!(shard.enqueue(ShardCommand::Cancel { run }), Ok(()));
+    assert_eq!(
+        shard.enqueue(ShardCommand::Cancel { run, reason: None }),
+        Ok(())
+    );
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(shard.pending_timer_count(), 0);
     assert_eq!(shard.enqueue(ShardCommand::TimerFired { run }), Ok(()));
@@ -4703,6 +4859,7 @@ fn shard_submit_cancel_inspect_mixed_lifecycle() {
     assert_eq!(
         shard.enqueue(ShardCommand::Cancel {
             run: super::RunId::new(901),
+            reason: None,
         }),
         Ok(())
     );
@@ -4795,12 +4952,24 @@ fn shard_active_run_count_across_lifecycle() {
     assert_eq!(shard.active_run_count(), 2);
 
     // Cancel one -> count = 1
-    assert_eq!(shard.enqueue(ShardCommand::Cancel { run: run_a }), Ok(()));
+    assert_eq!(
+        shard.enqueue(ShardCommand::Cancel {
+            run: run_a,
+            reason: None
+        }),
+        Ok(())
+    );
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(shard.active_run_count(), 1);
 
     // Cancel the other -> count = 0
-    assert_eq!(shard.enqueue(ShardCommand::Cancel { run: run_b }), Ok(()));
+    assert_eq!(
+        shard.enqueue(ShardCommand::Cancel {
+            run: run_b,
+            reason: None
+        }),
+        Ok(())
+    );
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(shard.active_run_count(), 0);
 }
@@ -4850,7 +5019,13 @@ fn shard_submit_after_full_cancel_resets_capacity() {
     );
 
     // Cancel and re-submit should work
-    assert_eq!(shard.enqueue(ShardCommand::Cancel { run: run1 }), Ok(()));
+    assert_eq!(
+        shard.enqueue(ShardCommand::Cancel {
+            run: run1,
+            reason: None
+        }),
+        Ok(())
+    );
     assert_eq!(shard.tick(), Ok(true));
 
     let Some(wf3) = finished_workflow() else {
@@ -4930,7 +5105,10 @@ fn shard_submit_with_inputs_after_cancel() {
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
-    assert_eq!(shard.enqueue(ShardCommand::Cancel { run }), Ok(()));
+    assert_eq!(
+        shard.enqueue(ShardCommand::Cancel { run, reason: None }),
+        Ok(())
+    );
     assert_eq!(shard.tick(), Ok(true));
 
     // Resubmit with inputs
@@ -5140,7 +5318,13 @@ fn shard_capacity_one_submit_cancel_submit_sequence() {
     assert_eq!(shard.tick(), Ok(true));
 
     // Cancel + tick
-    assert_eq!(shard.enqueue(ShardCommand::Cancel { run: run1 }), Ok(()));
+    assert_eq!(
+        shard.enqueue(ShardCommand::Cancel {
+            run: run1,
+            reason: None
+        }),
+        Ok(())
+    );
     assert_eq!(shard.tick(), Ok(true));
 
     // New submit should succeed (capacity freed)
@@ -6064,6 +6248,7 @@ fn shard_multiple_submits_complete() {
 fn shard_command_variants_cross_inequality() {
     let cancel = ShardCommand::Cancel {
         run: super::RunId::new(1),
+        reason: None,
     };
     let resume = ShardCommand::Resume {
         run: super::RunId::new(1),
@@ -6176,7 +6361,8 @@ fn vb1u88_cancel_unknown_run_returns_ok() {
     let mut shard = Shard::new(config);
     assert_eq!(
         shard.enqueue(ShardCommand::Cancel {
-            run: super::RunId::new(9999)
+            run: super::RunId::new(9999),
+            reason: None,
         }),
         Ok(())
     );
@@ -6201,11 +6387,16 @@ fn vb1u88_cancel_emits_run_cancelled_journal_event() {
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
-    assert_eq!(shard.enqueue(ShardCommand::Cancel { run }), Ok(()));
+    assert_eq!(
+        shard.enqueue(ShardCommand::Cancel { run, reason: None }),
+        Ok(())
+    );
     assert_eq!(shard.tick(), Ok(true));
     let events = journal.snapshot().expect("journal snapshot should succeed");
     assert!(
-        events.contains(&RuntimeJournalEvent::RunCancelled { run }),
+        events
+            .iter()
+            .any(|e| matches!(e, RuntimeJournalEvent::RunCancelled { run: r, .. } if *r == run)),
         "journal should contain RunCancelled event"
     );
 }
@@ -6227,7 +6418,10 @@ fn vb1u88_cancel_emits_run_cancelled_trace_event() {
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
-    assert_eq!(shard.enqueue(ShardCommand::Cancel { run }), Ok(()));
+    assert_eq!(
+        shard.enqueue(ShardCommand::Cancel { run, reason: None }),
+        Ok(())
+    );
     assert_eq!(shard.tick(), Ok(true));
     let events = shard.trace_ring_mut().drain();
     assert!(
@@ -6244,7 +6438,8 @@ fn vb1u88_cancel_unknown_run_does_not_emit_events() {
     let before = journal.snapshot().expect("journal snapshot should succeed");
     assert_eq!(
         shard.enqueue(ShardCommand::Cancel {
-            run: super::RunId::new(8888)
+            run: super::RunId::new(8888),
+            reason: None,
         }),
         Ok(())
     );
@@ -6285,7 +6480,10 @@ fn vb1u88_cancel_removes_run_and_releases_frame() {
         shard.frame_pools.get(&(1, 1)).map(|p| p.available()),
         Some(0)
     );
-    assert_eq!(shard.enqueue(ShardCommand::Cancel { run }), Ok(()));
+    assert_eq!(
+        shard.enqueue(ShardCommand::Cancel { run, reason: None }),
+        Ok(())
+    );
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(shard.runs.get(&run), None);
     assert_eq!(
@@ -6313,7 +6511,10 @@ fn vb1u88_cancel_removes_pending_timer() {
     );
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(shard.pending_timers.len(), 1);
-    assert_eq!(shard.enqueue(ShardCommand::Cancel { run }), Ok(()));
+    assert_eq!(
+        shard.enqueue(ShardCommand::Cancel { run, reason: None }),
+        Ok(())
+    );
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(shard.pending_timers.len(), 0);
 }
@@ -6740,7 +6941,8 @@ fn vb1u88_bdd_cancel_non_existent_run_is_idempotent() {
     let before_failed = shard.counters().snapshot().runs_failed;
     assert_eq!(
         shard.enqueue(ShardCommand::Cancel {
-            run: super::RunId::new(9999)
+            run: super::RunId::new(9999),
+            reason: None,
         }),
         Ok(())
     );
@@ -6778,11 +6980,16 @@ fn vb1u88_bdd_cancel_run_removes_from_runs_emits_events() {
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
-    assert_eq!(shard.enqueue(ShardCommand::Cancel { run }), Ok(()));
+    assert_eq!(
+        shard.enqueue(ShardCommand::Cancel { run, reason: None }),
+        Ok(())
+    );
     assert_eq!(shard.tick(), Ok(true));
     let events = journal.snapshot().expect("journal snapshot should succeed");
     assert!(
-        events.contains(&RuntimeJournalEvent::RunCancelled { run }),
+        events
+            .iter()
+            .any(|e| matches!(e, RuntimeJournalEvent::RunCancelled { run: r, .. } if *r == run)),
         "RunCancelled journal event should be present"
     );
     assert_eq!(shard.runs.get(&run), None);

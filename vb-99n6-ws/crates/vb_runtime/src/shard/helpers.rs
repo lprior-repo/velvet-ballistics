@@ -135,8 +135,7 @@ pub fn advance_after_timer_fire(
         (
             PendingTimerKind::Wait,
             CompiledNodeKind::WaitUntil { .. } | CompiledNodeKind::WaitEvent { .. },
-        )
-        | (PendingTimerKind::Ask, CompiledNodeKind::Ask { .. }) => {}
+        ) => {}
         _ => return Err(RuntimeError::InvalidTimerFire),
     }
     state

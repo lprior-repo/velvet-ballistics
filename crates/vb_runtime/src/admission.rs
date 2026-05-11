@@ -56,7 +56,7 @@ pub enum ArtifactEnvelopeError {
 }
 
 /// Accepted run admission record, attached to a run frame after passing the admission gate.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct RunAdmission {
     /// Digest of the accepted compiled artifact.
     artifact_digest: WorkflowDigest,

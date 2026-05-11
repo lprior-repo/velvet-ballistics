@@ -216,6 +216,7 @@ impl Shard {
             run,
             step: ticket.step,
             output: output.output_slot,
+            attempt: ticket.attempt,
         })?;
         self.journal.append(RuntimeJournalEvent::ActionCompleted {
             run,
@@ -243,6 +244,7 @@ impl Shard {
             run,
             step,
             output: SlotIdx::ZERO,
+            attempt: 1,
         })?;
         self.drive_run(run)
     }
@@ -266,6 +268,7 @@ impl Shard {
             run,
             step: ticket.step,
             action: ticket.action,
+            attempt: ticket.attempt,
         })?;
         match outcome {
             ActionFailureOutcome::RetryNow | ActionFailureOutcome::DriveHandler => {
@@ -365,6 +368,7 @@ impl Shard {
             run,
             step: answer.ticket.ask_step,
             output: answer.answer_slot,
+            attempt: 1,
         })?;
         self.drive_run(run)
     }
@@ -391,11 +395,15 @@ impl Shard {
         self.apply_drive_result(run, state, result)
     }
 
-    pub(crate) fn handle_cancel(&mut self, run: RunId) -> RuntimeResult<()> {
+    pub(crate) fn handle_cancel(
+        &mut self,
+        run: RunId,
+        reason: Option<String>,
+    ) -> RuntimeResult<()> {
         self.pending_timers.swap_remove(&run);
         if self.runs.contains_key(&run) {
             self.journal
-                .append(RuntimeJournalEvent::RunCancelled { run })?;
+                .append(RuntimeJournalEvent::RunCancelled { run, reason })?;
         }
         if let Some(state) = self.runs.swap_remove(&run) {
             self.release_frame(state.frame);
@@ -976,6 +984,7 @@ mod tests {
                 run,
                 step: StepIdx::new(1),
                 action: ActionId::new(0),
+                attempt: 1,
             },
             RuntimeJournalEvent::RunFailed { run },
         );
@@ -1258,7 +1267,8 @@ mod tests {
             }),
             Ok(())
         );
-        assert_eq!(shard.tick(), Err(RuntimeError::InvalidActionCompletion));
+        // attempt=2 > current=1 is a valid retry, not stale (stale would be attempt < current)
+        assert_eq!(shard.tick(), Ok(true));
     }
 
     #[test]
@@ -1500,6 +1510,7 @@ mod tests {
                 run,
                 step: StepIdx::ZERO,
                 action: ActionId::new(0),
+                attempt: 1,
             },
             RuntimeJournalEvent::RunFailed { run },
         );
@@ -1560,6 +1571,7 @@ mod tests {
                 run,
                 step: StepIdx::new(1),
                 action: ActionId::new(0),
+                attempt: 1,
             },
             RuntimeJournalEvent::StepStarted {
                 run,
@@ -1718,7 +1730,10 @@ mod tests {
         );
         assert_eq!(shard.tick(), Ok(true));
         assert_eq!(shard.active_run_count(), 1);
-        assert_eq!(shard.enqueue(ShardCommand::Cancel { run }), Ok(()));
+        assert_eq!(
+            shard.enqueue(ShardCommand::Cancel { run, reason: None }),
+            Ok(())
+        );
         assert_eq!(shard.tick(), Ok(true));
         assert_eq!(shard.active_run_count(), 0);
         assert_eq!(shard.counters().snapshot().runs_failed, 1);
@@ -1730,6 +1745,7 @@ mod tests {
         assert_eq!(
             shard.enqueue(ShardCommand::Cancel {
                 run: RunId::new(9999),
+                reason: None,
             }),
             Ok(())
         );
@@ -1754,7 +1770,10 @@ mod tests {
         );
         assert_eq!(shard.tick(), Ok(true));
         assert_eq!(shard.pending_timer_count(), 1);
-        assert_eq!(shard.enqueue(ShardCommand::Cancel { run }), Ok(()));
+        assert_eq!(
+            shard.enqueue(ShardCommand::Cancel { run, reason: None }),
+            Ok(())
+        );
         assert_eq!(shard.tick(), Ok(true));
         assert_eq!(shard.pending_timer_count(), 0);
     }
@@ -1857,7 +1876,10 @@ mod tests {
             Ok(())
         );
         assert_eq!(shard.tick(), Ok(true));
-        assert_eq!(shard.enqueue(ShardCommand::Cancel { run }), Ok(()));
+        assert_eq!(
+            shard.enqueue(ShardCommand::Cancel { run, reason: None }),
+            Ok(())
+        );
         assert_eq!(shard.tick(), Ok(true));
         let found = shard
             .trace_ring_mut()
@@ -1883,11 +1905,16 @@ mod tests {
             Ok(())
         );
         assert_eq!(shard.tick(), Ok(true));
-        assert_eq!(shard.enqueue(ShardCommand::Cancel { run }), Ok(()));
+        assert_eq!(
+            shard.enqueue(ShardCommand::Cancel { run, reason: None }),
+            Ok(())
+        );
         assert_eq!(shard.tick(), Ok(true));
         let events = require_snapshot(&journal)?;
         assert!(
-            events.contains(&RuntimeJournalEvent::RunCancelled { run }),
+            events.iter().any(
+                |e| matches!(e, RuntimeJournalEvent::RunCancelled { run: r, .. } if *r == run)
+            ),
             "journal events should contain RunCancelled: {events:?}"
         );
         Ok(())
@@ -1959,7 +1986,10 @@ mod tests {
             Ok(())
         );
         assert_eq!(shard.tick(), Ok(true));
-        assert_eq!(shard.enqueue(ShardCommand::Cancel { run }), Ok(()));
+        assert_eq!(
+            shard.enqueue(ShardCommand::Cancel { run, reason: None }),
+            Ok(())
+        );
         assert_eq!(shard.tick(), Ok(true));
         assert_eq!(
             shard.enqueue(ShardCommand::Submit {
@@ -1990,7 +2020,10 @@ mod tests {
         );
         assert_eq!(shard.tick(), Ok(true));
         assert_eq!(shard.pending_timer_count(), 1);
-        assert_eq!(shard.enqueue(ShardCommand::Cancel { run }), Ok(()));
+        assert_eq!(
+            shard.enqueue(ShardCommand::Cancel { run, reason: None }),
+            Ok(())
+        );
         assert_eq!(shard.tick(), Ok(true));
         assert_eq!(shard.enqueue(ShardCommand::TimerFired { run }), Ok(()));
         assert_eq!(shard.tick(), Err(RuntimeError::RunNotFound));
