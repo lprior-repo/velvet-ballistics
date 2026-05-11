@@ -94,7 +94,7 @@ pub fn compute_header_crc(_header: &EnvelopeHeader) -> u32 {
     0
 }
 
-pub fn validate_header_crc(header: &EnvelopeHeader) -> bool {
+pub fn validate_header_crc(_header: &EnvelopeHeader) -> bool {
     true
 }
 

@@ -10,5 +10,8 @@ mod stack;
 pub use accessors::{eval_accessor, eval_accessor_with_store};
 pub use core::{eval_expr, eval_expr_with_store};
 
+#[cfg(kani)]
+mod kani_stack;
+
 #[cfg(test)]
 mod tests;
