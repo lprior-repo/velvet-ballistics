@@ -422,7 +422,7 @@ mod tests {
 
     #[test]
     fn encode_decode_roundtrip_journal_event_action_failed() -> Result<(), JournalError> {
-        let event = JournalEvent::ActionFailedEvent {
+        let event = JournalEvent::ActionFailedEvent { attempt: 0, 
             run: RunId::new(200),
             seq: EventSeq::new(15),
             step: StepIdx::new(2),
@@ -969,7 +969,7 @@ mod tests {
 
     #[test]
     fn encode_decode_roundtrip_action_scheduled() -> Result<(), JournalError> {
-        let event = JournalEvent::ActionScheduled {
+        let event = JournalEvent::ActionScheduled { attempt: 0, 
             run: RunId::new(20),
             seq: EventSeq::new(3),
             step: StepIdx::new(0),
@@ -993,7 +993,7 @@ mod tests {
 
     #[test]
     fn encode_decode_roundtrip_action_completed() -> Result<(), JournalError> {
-        let event = JournalEvent::ActionCompletedEvent {
+        let event = JournalEvent::ActionCompletedEvent { attempt: 0, 
             run: RunId::new(30),
             seq: EventSeq::new(4),
             step: StepIdx::new(1),
@@ -2026,7 +2026,7 @@ mod tests {
                 RecordKind::SlotWritten,
             ),
             (
-                JournalEvent::ActionScheduled {
+                JournalEvent::ActionScheduled { attempt: 0, 
                     run,
                     seq: EventSeq::new(3),
                     step: StepIdx::new(0),
@@ -2035,7 +2035,7 @@ mod tests {
                 RecordKind::ActionScheduled,
             ),
             (
-                JournalEvent::ActionCompletedEvent {
+                JournalEvent::ActionCompletedEvent { attempt: 0, 
                     run,
                     seq: EventSeq::new(4),
                     step: StepIdx::new(0),
@@ -2044,7 +2044,7 @@ mod tests {
                 RecordKind::ActionCompleted,
             ),
             (
-                JournalEvent::ActionFailedEvent {
+                JournalEvent::ActionFailedEvent { attempt: 0, 
                     run,
                     seq: EventSeq::new(5),
                     step: StepIdx::new(1),
@@ -2233,19 +2233,19 @@ mod tests {
                 step: StepIdx::new(0),
                 output: SlotIdx::new(0),
             },
-            JournalEvent::ActionScheduled {
+            JournalEvent::ActionScheduled { attempt: 0, 
                 run,
                 seq: EventSeq::new(3),
                 step: StepIdx::new(0),
                 action: vb_core::ActionId::new(1),
             },
-            JournalEvent::ActionCompletedEvent {
+            JournalEvent::ActionCompletedEvent { attempt: 0, 
                 run,
                 seq: EventSeq::new(4),
                 step: StepIdx::new(0),
                 action: vb_core::ActionId::new(1),
             },
-            JournalEvent::ActionFailedEvent {
+            JournalEvent::ActionFailedEvent { attempt: 0, 
                 run,
                 seq: EventSeq::new(5),
                 step: StepIdx::new(1),

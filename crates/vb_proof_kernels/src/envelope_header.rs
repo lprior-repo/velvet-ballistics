@@ -284,7 +284,7 @@ mod tests {
 
     #[test]
     fn test_crc_changes_with_header_content() {
-        let mut header1 = EnvelopeHeader::new();
+        let header1 = EnvelopeHeader::new();
         let mut header2 = EnvelopeHeader::new();
         header2.magic = 0xFFFFFFFF;
         let crc1 = compute_header_crc(&header1);

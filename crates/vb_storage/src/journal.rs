@@ -843,7 +843,7 @@ mod tests {
                 seq: EventSeq::new(1),
                 step: StepIdx::new(0),
             },
-            JournalEvent::ActionScheduled {
+            JournalEvent::ActionScheduled { attempt: 0, 
                 run,
                 seq: EventSeq::new(2),
                 step: StepIdx::new(0),
@@ -856,13 +856,13 @@ mod tests {
                 value: None,
                 extra: None,
             },
-            JournalEvent::ActionCompletedEvent {
+            JournalEvent::ActionCompletedEvent { attempt: 0, 
                 run,
                 seq: EventSeq::new(4),
                 step: StepIdx::new(0),
                 action: vb_core::ActionId::new(1),
             },
-            JournalEvent::ActionFailedEvent {
+            JournalEvent::ActionFailedEvent { attempt: 0, 
                 run,
                 seq: EventSeq::new(5),
                 step: StepIdx::new(1),

@@ -178,13 +178,13 @@ mod tests {
                 seq: EventSeq::new(1),
                 step: StepIdx::new(2),
             },
-            JournalEvent::ActionScheduled {
+            JournalEvent::ActionScheduled { attempt: 1, 
                 run,
                 seq: EventSeq::new(2),
                 step: StepIdx::new(2),
                 action: ActionId::new(5),
             },
-            JournalEvent::ActionCompletedEvent {
+            JournalEvent::ActionCompletedEvent { attempt: 1, 
                 run,
                 seq: EventSeq::new(3),
                 step: StepIdx::new(2),
@@ -654,7 +654,7 @@ mod tests {
         tracker.mark_completed(action, step);
         assert!(tracker.is_resolved(action, step));
 
-        let events = vec![JournalEvent::ActionScheduled {
+        let events = vec![JournalEvent::ActionScheduled { attempt: 1, 
             run: RunId::new(1),
             seq: EventSeq::new(0),
             step,
@@ -678,13 +678,13 @@ mod tests {
         let step = StepIdx::new(5);
 
         let events = vec![
-            JournalEvent::ActionScheduled {
+            JournalEvent::ActionScheduled { attempt: 1, 
                 run: RunId::new(1),
                 seq: EventSeq::new(0),
                 step,
                 action,
             },
-            JournalEvent::ActionCompletedEvent {
+            JournalEvent::ActionCompletedEvent { attempt: 1, 
                 run: RunId::new(1),
                 seq: EventSeq::new(1),
                 step,
@@ -741,13 +741,13 @@ mod tests {
                 seq: EventSeq::new(0),
                 workflow: sample_digest(1),
             },
-            JournalEvent::ActionScheduled {
+            JournalEvent::ActionScheduled { attempt: 1, 
                 run,
                 seq: EventSeq::new(1),
                 step,
                 action,
             },
-            JournalEvent::ActionCompletedEvent {
+            JournalEvent::ActionCompletedEvent { attempt: 1, 
                 run,
                 seq: EventSeq::new(2),
                 step,
@@ -824,7 +824,7 @@ mod tests {
         tracker.mark_failed(action, step);
         assert!(tracker.is_resolved(action, step));
 
-        let events = vec![JournalEvent::ActionScheduled {
+        let events = vec![JournalEvent::ActionScheduled { attempt: 1, 
             run: RunId::new(1),
             seq: EventSeq::new(0),
             step,
@@ -1010,13 +1010,13 @@ mod tests {
                 value: None,
                 extra: None,
             },
-            JournalEvent::ActionScheduled {
+            JournalEvent::ActionScheduled { attempt: 1, 
                 run,
                 seq: EventSeq::new(3),
                 step: StepIdx::new(0),
                 action: ActionId::new(1),
             },
-            JournalEvent::ActionCompletedEvent {
+            JournalEvent::ActionCompletedEvent { attempt: 1, 
                 run,
                 seq: EventSeq::new(4),
                 step: StepIdx::new(0),
@@ -1273,13 +1273,13 @@ mod tests {
                 seq: EventSeq::new(0),
                 workflow: sample_digest(1),
             },
-            JournalEvent::ActionScheduled {
+            JournalEvent::ActionScheduled { attempt: 1, 
                 run,
                 seq: EventSeq::new(1),
                 step,
                 action,
             },
-            JournalEvent::ActionCompletedEvent {
+            JournalEvent::ActionCompletedEvent { attempt: 1, 
                 run,
                 seq: EventSeq::new(2),
                 step,
@@ -2029,7 +2029,7 @@ mod hydrate_run_frame_tests {
                 seq: EventSeq::new(1),
                 step: StepIdx::new(0),
             },
-            JournalEvent::ActionScheduled {
+            JournalEvent::ActionScheduled { attempt: 1, 
                 run,
                 seq: EventSeq::new(2),
                 step: StepIdx::new(0),
@@ -2040,13 +2040,13 @@ mod hydrate_run_frame_tests {
                 seq: EventSeq::new(3),
                 step: StepIdx::new(1),
             },
-            JournalEvent::ActionScheduled {
+            JournalEvent::ActionScheduled { attempt: 1, 
                 run,
                 seq: EventSeq::new(4),
                 step: StepIdx::new(1),
                 action: ActionId::new(2),
             },
-            JournalEvent::ActionCompletedEvent {
+            JournalEvent::ActionCompletedEvent { attempt: 1, 
                 run,
                 seq: EventSeq::new(5),
                 step: StepIdx::new(0),
@@ -2184,13 +2184,13 @@ mod hydrate_run_frame_tests {
                 seq: EventSeq::new(1),
                 step: StepIdx::new(0),
             },
-            JournalEvent::ActionScheduled {
+            JournalEvent::ActionScheduled { attempt: 1, 
                 run,
                 seq: EventSeq::new(2),
                 step: StepIdx::new(0),
                 action: ActionId::new(1),
             },
-            JournalEvent::ActionFailedEvent {
+            JournalEvent::ActionFailedEvent { attempt: 1, 
                 run,
                 seq: EventSeq::new(3),
                 step: StepIdx::new(0),

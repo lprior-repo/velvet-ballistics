@@ -47,6 +47,7 @@ pub enum RuntimePolicy {
 /// # TLA+ Specification
 ///
 /// See `specs/tla/JournalBeforeDispatch.tla` for the formal specification and proof.
+#[allow(non_snake_case)]
 pub mod JournalBeforeDispatch {
     /// Safety property: every dispatched action has a corresponding `ActionScheduled`
     /// journal entry.
@@ -57,6 +58,7 @@ pub mod JournalBeforeDispatch {
     /// becomes **vacuously true** — there are no journal entries to violate the invariant,
     /// but the safety guarantee is not actually enforced. Only use `NoopRuntimeJournal`
     /// when you intentionally want to bypass `DispatchSafety` enforcement.
+    #[allow(non_upper_case_globals)]
     pub const DispatchSafety: &str = "DispatchSafety";
 }
 

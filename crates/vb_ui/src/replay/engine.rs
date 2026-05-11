@@ -302,7 +302,7 @@ mod tests {
         step: StepIdx,
         action: ActionId,
     ) -> JournalEvent {
-        JournalEvent::ActionScheduled {
+        JournalEvent::ActionScheduled { attempt: 0, 
             run,
             seq: EventSeq::new(seq),
             step,
@@ -316,7 +316,7 @@ mod tests {
         step: StepIdx,
         action: ActionId,
     ) -> JournalEvent {
-        JournalEvent::ActionCompletedEvent {
+        JournalEvent::ActionCompletedEvent { attempt: 0, 
             run,
             seq: EventSeq::new(seq),
             step,
@@ -325,7 +325,7 @@ mod tests {
     }
 
     fn make_action_failed(run: RunId, seq: u64, step: StepIdx, action: ActionId) -> JournalEvent {
-        JournalEvent::ActionFailedEvent {
+        JournalEvent::ActionFailedEvent { attempt: 0, 
             run,
             seq: EventSeq::new(seq),
             step,

@@ -584,7 +584,7 @@ impl IncidentScreen {
     /// if it represents a failure (ActionFailedEvent or RunFailedEvent).
     pub fn process_failure(event: &vb_storage::JournalEvent) -> Option<Incident> {
         match event {
-            vb_storage::JournalEvent::ActionFailedEvent {
+            vb_storage::JournalEvent::ActionFailedEvent { attempt: 0, 
                 run,
                 seq,
                 step,
@@ -1041,7 +1041,7 @@ mod tests {
     fn test_process_failure_action_failed_event() {
         use vb_core::{ActionId, RunId, StepIdx};
         use vb_storage::EventSeq;
-        let event = vb_storage::JournalEvent::ActionFailedEvent {
+        let event = vb_storage::JournalEvent::ActionFailedEvent { attempt: 0, 
             run: RunId::new(42),
             seq: EventSeq::new(5),
             step: StepIdx::new(3),
@@ -1121,7 +1121,7 @@ mod tests {
     fn test_process_failure_action_completed_returns_none() {
         use vb_core::{ActionId, RunId, StepIdx};
         use vb_storage::EventSeq;
-        let event = vb_storage::JournalEvent::ActionCompletedEvent {
+        let event = vb_storage::JournalEvent::ActionCompletedEvent { attempt: 0, 
             run: RunId::new(1),
             seq: EventSeq::new(2),
             step: StepIdx::new(0),
@@ -1542,7 +1542,7 @@ mod tests {
         use vb_core::{ActionId, RunId, StepIdx};
         use vb_storage::EventSeq;
         let mut screen = IncidentScreen::new();
-        let event = vb_storage::JournalEvent::ActionFailedEvent {
+        let event = vb_storage::JournalEvent::ActionFailedEvent { attempt: 0, 
             run: RunId::new(42),
             seq: EventSeq::new(1),
             step: StepIdx::new(0),
@@ -1561,7 +1561,7 @@ mod tests {
         use vb_core::{ActionId, RunId, StepIdx};
         use vb_storage::EventSeq;
         let mut screen = IncidentScreen::new();
-        let e1 = vb_storage::JournalEvent::ActionFailedEvent {
+        let e1 = vb_storage::JournalEvent::ActionFailedEvent { attempt: 0, 
             run: RunId::new(1),
             seq: EventSeq::new(1),
             step: StepIdx::new(0),
@@ -2578,7 +2578,7 @@ mod tests {
     fn blackhat_process_failure_returns_zero_id_violating_uniqueness() {
         use vb_core::{ActionId, RunId, StepIdx};
         use vb_storage::EventSeq;
-        let e1 = vb_storage::JournalEvent::ActionFailedEvent {
+        let e1 = vb_storage::JournalEvent::ActionFailedEvent { attempt: 0, 
             run: RunId::new(1),
             seq: EventSeq::new(1),
             step: StepIdx::new(0),
@@ -2606,7 +2606,7 @@ mod tests {
         use vb_core::{ActionId, RunId, StepIdx};
         use vb_storage::EventSeq;
         let mut screen = IncidentScreen::new();
-        let event = vb_storage::JournalEvent::ActionFailedEvent {
+        let event = vb_storage::JournalEvent::ActionFailedEvent { attempt: 0, 
             run: RunId::new(1),
             seq: EventSeq::new(1),
             step: StepIdx::new(0),

@@ -2429,7 +2429,7 @@ mod tests {
         let run = RunId::new(13);
         let step = StepIdx::new(4);
         let action = ActionId::new(2);
-        let event = JournalEvent::ActionScheduled {
+        let event = JournalEvent::ActionScheduled { attempt: 0, 
             run,
             seq: EventSeq::new(0),
             step,
@@ -2443,7 +2443,7 @@ mod tests {
             .events_for_run(run)
             .expect("events_for_run should succeed");
         assert_eq!(events.len(), 1);
-        let JournalEvent::ActionScheduled {
+        let JournalEvent::ActionScheduled { attempt: 0, 
             step: found_step,
             action: found_action,
             ..
@@ -2464,7 +2464,7 @@ mod tests {
         let run = RunId::new(14);
         let step = StepIdx::new(6);
         let action = ActionId::new(3);
-        let event = JournalEvent::ActionCompletedEvent {
+        let event = JournalEvent::ActionCompletedEvent { attempt: 0, 
             run,
             seq: EventSeq::new(0),
             step,
@@ -2478,7 +2478,7 @@ mod tests {
             .events_for_run(run)
             .expect("events_for_run should succeed");
         assert_eq!(events.len(), 1);
-        let JournalEvent::ActionCompletedEvent {
+        let JournalEvent::ActionCompletedEvent { attempt: 0, 
             step: found_step,
             action: found_action,
             ..
@@ -2910,7 +2910,7 @@ mod tests {
             run
         );
         assert_eq!(
-            JournalEvent::ActionScheduled {
+            JournalEvent::ActionScheduled { attempt: 0, 
                 run,
                 seq: EventSeq::new(0),
                 step: StepIdx::new(0),
@@ -2920,7 +2920,7 @@ mod tests {
             run
         );
         assert_eq!(
-            JournalEvent::ActionCompletedEvent {
+            JournalEvent::ActionCompletedEvent { attempt: 0, 
                 run,
                 seq: EventSeq::new(0),
                 step: StepIdx::new(0),
@@ -2930,7 +2930,7 @@ mod tests {
             run
         );
         assert_eq!(
-            JournalEvent::ActionFailedEvent {
+            JournalEvent::ActionFailedEvent { attempt: 0, 
                 run,
                 seq: EventSeq::new(0),
                 step: StepIdx::new(0),
@@ -3049,7 +3049,7 @@ mod tests {
             seq
         );
         assert_eq!(
-            JournalEvent::ActionScheduled {
+            JournalEvent::ActionScheduled { attempt: 0, 
                 run,
                 seq,
                 step: StepIdx::new(0),
@@ -3059,7 +3059,7 @@ mod tests {
             seq
         );
         assert_eq!(
-            JournalEvent::ActionCompletedEvent {
+            JournalEvent::ActionCompletedEvent { attempt: 0, 
                 run,
                 seq,
                 step: StepIdx::new(0),
@@ -3069,7 +3069,7 @@ mod tests {
             seq
         );
         assert_eq!(
-            JournalEvent::ActionFailedEvent {
+            JournalEvent::ActionFailedEvent { attempt: 0, 
                 run,
                 seq,
                 step: StepIdx::new(0),
@@ -3174,7 +3174,7 @@ mod tests {
             RecordKind::SlotWritten
         );
         assert_eq!(
-            JournalEvent::ActionScheduled {
+            JournalEvent::ActionScheduled { attempt: 0, 
                 run,
                 seq,
                 step: StepIdx::new(0),
@@ -3184,7 +3184,7 @@ mod tests {
             RecordKind::ActionScheduled
         );
         assert_eq!(
-            JournalEvent::ActionCompletedEvent {
+            JournalEvent::ActionCompletedEvent { attempt: 0, 
                 run,
                 seq,
                 step: StepIdx::new(0),
@@ -3194,7 +3194,7 @@ mod tests {
             RecordKind::ActionCompleted
         );
         assert_eq!(
-            JournalEvent::ActionFailedEvent {
+            JournalEvent::ActionFailedEvent { attempt: 0, 
                 run,
                 seq,
                 step: StepIdx::new(0),
@@ -3347,7 +3347,7 @@ mod tests {
         // Given an ActionScheduled event
         // When encoded and decoded
         // Then the event survives the roundtrip exactly
-        let event = JournalEvent::ActionScheduled {
+        let event = JournalEvent::ActionScheduled { attempt: 0, 
             run: RunId::new(5),
             seq: EventSeq::new(4),
             step: StepIdx::new(2),
@@ -3371,7 +3371,7 @@ mod tests {
         // Given an ActionCompletedEvent
         // When encoded and decoded
         // Then the event survives the roundtrip exactly
-        let event = JournalEvent::ActionCompletedEvent {
+        let event = JournalEvent::ActionCompletedEvent { attempt: 0, 
             run: RunId::new(6),
             seq: EventSeq::new(5),
             step: StepIdx::new(2),
@@ -3451,7 +3451,7 @@ mod tests {
         // Given an ActionFailedEvent
         // When encoded and decoded
         // Then the event survives the roundtrip exactly
-        let event = JournalEvent::ActionFailedEvent {
+        let event = JournalEvent::ActionFailedEvent { attempt: 0, 
             run: RunId::new(9),
             seq: EventSeq::new(3),
             step: StepIdx::new(1),
@@ -3817,13 +3817,13 @@ mod tests {
                     value: None,
                     extra: None,
                 },
-                JournalEvent::ActionScheduled {
+                JournalEvent::ActionScheduled { attempt: 0, 
                     run,
                     seq: EventSeq::new(3),
                     step: StepIdx::new(0),
                     action: ActionId::new(1),
                 },
-                JournalEvent::ActionCompletedEvent {
+                JournalEvent::ActionCompletedEvent { attempt: 0, 
                     run,
                     seq: EventSeq::new(4),
                     step: StepIdx::new(0),
@@ -5181,7 +5181,7 @@ mod tests {
         let temp_dir = tempfile::tempdir().expect("setup: tempdir");
         let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
         let run = RunId::new(1005);
-        let event = JournalEvent::ActionScheduled {
+        let event = JournalEvent::ActionScheduled { attempt: 0, 
             run,
             seq: EventSeq::new(0),
             step: StepIdx::new(0),
@@ -5204,7 +5204,7 @@ mod tests {
         let temp_dir = tempfile::tempdir().expect("setup: tempdir");
         let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
         let run = RunId::new(1006);
-        let event = JournalEvent::ActionCompletedEvent {
+        let event = JournalEvent::ActionCompletedEvent { attempt: 0, 
             run,
             seq: EventSeq::new(0),
             step: StepIdx::new(1),
@@ -5227,7 +5227,7 @@ mod tests {
         let temp_dir = tempfile::tempdir().expect("setup: tempdir");
         let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
         let run = RunId::new(1007);
-        let event = JournalEvent::ActionFailedEvent {
+        let event = JournalEvent::ActionFailedEvent { attempt: 0, 
             run,
             seq: EventSeq::new(0),
             step: StepIdx::new(2),

@@ -680,7 +680,7 @@ mod tests {
     #[test]
     fn action_failed_event_increments_actions_resolved_only() {
         let mut summary = fresh_summary();
-        let event = JournalEvent::ActionFailedEvent {
+        let event = JournalEvent::ActionFailedEvent { attempt: 0, 
             run: RunId::new(1),
             seq: EventSeq::new(1),
             step: StepIdx::new(0),
@@ -745,13 +745,13 @@ mod tests {
                 step: StepIdx::new(1),
                 output: SlotIdx::new(2),
             },
-            JournalEvent::ActionScheduled {
+            JournalEvent::ActionScheduled { attempt: 0, 
                 run,
                 seq: EventSeq::new(5),
                 step: StepIdx::new(1),
                 action: ActionId::new(3),
             },
-            JournalEvent::ActionCompletedEvent {
+            JournalEvent::ActionCompletedEvent { attempt: 0, 
                 run,
                 seq: EventSeq::new(6),
                 step: StepIdx::new(1),
@@ -1008,7 +1008,7 @@ mod tests {
     #[test]
     fn unresolved_action_marks_pending_action_recovery_unsupported() {
         let run = RunId::new(61);
-        let events = [JournalEvent::ActionScheduled {
+        let events = [JournalEvent::ActionScheduled { attempt: 0, 
             run,
             seq: EventSeq::new(0),
             step: StepIdx::new(3),
