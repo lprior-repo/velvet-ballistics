@@ -131,7 +131,7 @@ fn eval_not(stack: &mut ReplayExprStack) -> Result<(), ReplayError> {
     stack.push(SlotValue::Bool(!b))
 }
 
-fn eval_add(stack: &mut ReplayExprStack) -> Result<(), ReplayError> {
+pub(crate) fn eval_add(stack: &mut ReplayExprStack) -> Result<(), ReplayError> {
     let (left, right) = pop_i64_pair(stack)?;
     let result = left
         .checked_add(right)
@@ -141,7 +141,7 @@ fn eval_add(stack: &mut ReplayExprStack) -> Result<(), ReplayError> {
     stack.push(SlotValue::I64(result))
 }
 
-fn eval_sub(stack: &mut ReplayExprStack) -> Result<(), ReplayError> {
+pub(crate) fn eval_sub(stack: &mut ReplayExprStack) -> Result<(), ReplayError> {
     let (left, right) = pop_i64_pair(stack)?;
     let result = left
         .checked_sub(right)
@@ -151,7 +151,7 @@ fn eval_sub(stack: &mut ReplayExprStack) -> Result<(), ReplayError> {
     stack.push(SlotValue::I64(result))
 }
 
-fn eval_mul(stack: &mut ReplayExprStack) -> Result<(), ReplayError> {
+pub(crate) fn eval_mul(stack: &mut ReplayExprStack) -> Result<(), ReplayError> {
     let (left, right) = pop_i64_pair(stack)?;
     let result = left
         .checked_mul(right)

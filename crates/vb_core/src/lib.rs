@@ -28,6 +28,9 @@ pub mod value;
 pub mod value_store;
 pub mod workflow;
 
+#[cfg(kani)]
+pub mod kani_taint;
+
 pub use action::{
     ActionContract, ActionError, ActionFailure, ActionFailureCode, ActionInput, ActionJournalEvent,
     ActionOutcome, ActionOutput, ActionOutputReady, ActionResult, ActionTicket, Idempotency,
