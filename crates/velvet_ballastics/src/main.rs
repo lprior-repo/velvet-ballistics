@@ -259,7 +259,11 @@ fn cmd_agent_context() -> ExitCode {
 
 fn cmd_status(options: args::StatusOptions, output: OutputFormat) -> ExitCode {
     let status = commands_status::build_status(options);
-    commands_status::print_status(&status, output);
+    if options.emit_yaml {
+        commands_status::print_status_yaml(&status);
+    } else {
+        commands_status::print_status(&status, output);
+    }
     ExitCode::SUCCESS
 }
 
@@ -1338,19 +1342,14 @@ fn cmd_submit(
         }
         return CliExitCode::StorageError.into();
     }
-    drop(journal);
-
-    // Also record submission via runtime journal for durability-aware runbooks
+    // Also record submission for durability-aware runbooks before releasing the metadata journal.
     if durability != DurabilityMode::None {
-        let runtime_journal = match runtime_journal_for_mode(durability, Some(db)) {
-            Ok(j) => j,
-            Err(code) => return code,
-        };
-        let event = vb_runtime::journal::RuntimeJournalEvent::RunSubmitted {
+        let event = vb_storage::JournalEvent::RunAccepted {
             run: run_id,
+            seq: vb_storage::EventSeq::new(0),
             workflow: digest,
         };
-        if let Err(e) = runtime_journal.append(event) {
+        if let Err(e) = journal.append_strict_batch(&[event]) {
             if output != OutputFormat::Text {
                 json_error(
                     &serde_json::json!({
@@ -1365,6 +1364,7 @@ fn cmd_submit(
             return CliExitCode::StorageError.into();
         }
     }
+    drop(journal);
 
     if output != OutputFormat::Text {
         json_out(
@@ -3732,6 +3732,8 @@ fn cmd_simulate(workflow: &std::path::Path, output: OutputFormat) -> ExitCode {
             .collect();
         json_out(
             &serde_json::json!({
+                "schema_version": "velvet-ballastics/v1",
+                "kind": "simulate",
                 "success": true,
                 "total_steps": result.total_steps,
                 "total_actions": result.action_count,

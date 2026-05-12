@@ -198,19 +198,18 @@ pub fn write_proof_evidence(
     let obligations_status: Vec<ObligationStatus> = results
         .iter()
         .map(|(id, passed)| {
-            let obl = obligations
-                .iter()
-                .find(|o| o.id == *id)
-                .unwrap_or_else(|| panic!("Obligation not found: {}", id));
-            ObligationStatus {
+            let Some(obl) = obligations.iter().find(|o| o.id == *id) else {
+                return Err(format!("Obligation not found: {id}"));
+            };
+            Ok(ObligationStatus {
                 id: id.clone(),
                 status: if *passed { "pass".to_string() } else { "fail".to_string() },
                 level: obl.proof_level.clone(),
                 commands: commands_for_obligation(obl),
                 log: None,
-            }
+            })
         })
-        .collect();
+        .collect::<Result<Vec<_>, String>>()?;
 
     let evidence = ProofEvidence {
         kind: "ProofEvidence".to_string(),

@@ -281,7 +281,7 @@ impl Shard {
         }
     }
 
-    fn ticket_with_retry_capacity(
+    pub fn ticket_with_retry_capacity(
         &self,
         ticket: ActionTicket,
         retry_policy: VbCoreRetryPolicy,
