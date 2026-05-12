@@ -81,10 +81,9 @@ impl StepBudget {
     pub fn from_env() -> Result<Self, EngineError> {
         match std::env::var(Self::BENCH_LATENCY_BUDGET_US) {
             Ok(raw) => {
-                let parsed =
-                    raw.parse::<u64>().map_err(|_| EngineError::BudgetParse {
-                        reason: "invalid u64 value",
-                    })?;
+                let parsed = raw.parse::<u64>().map_err(|_| EngineError::BudgetParse {
+                    reason: "invalid u64 value",
+                })?;
                 Ok(Self::new(parsed))
             }
             Err(std::env::VarError::NotPresent) => Ok(Self::new(Self::DEFAULT_BUDGET)),

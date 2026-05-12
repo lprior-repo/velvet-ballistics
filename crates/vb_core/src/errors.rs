@@ -5,8 +5,10 @@
 use crate::capability::{Capability, CapabilitySet};
 use crate::diagnostic::DiagnosticCode;
 use crate::ids::{
-    ActionId, BlobId, ConstIdx, ExprIdx, ListId, ObjectId, SlotIdx, StepIdx, SymbolId,
+    ActionId, BlobId, ConstIdx, EventSeq, ExprIdx, ListId, ObjectId, RunId, SlotIdx, StepIdx,
+    SymbolId,
 };
+use chrono::{DateTime, Utc};
 use thiserror::Error;
 
 /// Result alias for core operations.
@@ -14,6 +16,146 @@ pub type CoreResult<T> = Result<T, CoreError>;
 
 /// Backward-compatible engine error name.
 pub type EngineError = CoreError;
+
+/// Kind of page-order violation during evidence collection.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CollectPageOrderViolationKind {
+    /// A page was collected out of sequential order.
+    OutOfOrder,
+    /// A duplicate page was observed.
+    Duplicate,
+    /// A stale page was observed.
+    Stale,
+}
+
+/// Kind of extra-hydration failure.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CollectExtraHydrationFailureKind {
+    /// Extra data was empty.
+    EmptyExtra,
+    /// Extra data decoding failed.
+    DecodeFailed,
+    /// Run ID mismatch.
+    RunMismatch {
+        /// Expected run ID.
+        expected: RunId,
+        /// Actual run ID.
+        actual: RunId,
+    },
+    /// Slot mismatch.
+    SlotMismatch {
+        /// Expected slot.
+        expected: SlotIdx,
+        /// Actual slot.
+        actual: SlotIdx,
+    },
+    /// Current page mismatch.
+    CurrentPageMismatch {
+        /// Expected page.
+        expected: ListId,
+        /// Actual page.
+        actual: ListId,
+    },
+}
+
+/// Evidence collection failed because capacity was exceeded.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CollectEvidenceCapacityExceeded {
+    /// Run identifier.
+    pub run_id: crate::ids::RunId,
+    /// Slot that caused the overflow.
+    pub slot: crate::ids::SlotIdx,
+    /// Configured capacity.
+    pub capacity: usize,
+    /// Actual length of data.
+    pub len: usize,
+    /// Required extra slots.
+    pub required: usize,
+}
+
+/// Lifecycle error: storage is unavailable.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LifecycleStorageUnavailable {
+    /// Diagnostic code.
+    pub code: DiagnosticCode,
+    /// Human-readable context.
+    pub context: String,
+    /// Timestamp of the error.
+    pub timestamp: DateTime<Utc>,
+    /// Associated run ID if available.
+    pub bead_id: Option<RunId>,
+}
+
+/// Lifecycle error: duplicate request.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LifecycleDuplicateRequest {
+    /// Diagnostic code.
+    pub code: DiagnosticCode,
+    /// Human-readable context.
+    pub context: String,
+    /// Timestamp of the error.
+    pub timestamp: DateTime<Utc>,
+    /// Associated run ID if available.
+    pub bead_id: Option<RunId>,
+    /// Command that triggered the duplicate request.
+    pub command: Option<&'static str>,
+}
+
+/// Lifecycle error: stale request.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LifecycleStaleRequest {
+    /// Diagnostic code.
+    pub code: DiagnosticCode,
+    /// Human-readable context.
+    pub context: String,
+    /// Timestamp of the error.
+    pub timestamp: DateTime<Utc>,
+    /// Associated run ID if available.
+    pub bead_id: Option<RunId>,
+    /// Command that triggered the stale request.
+    pub command: Option<&'static str>,
+}
+
+/// Lifecycle error: invalid state transition.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LifecycleInvalidTransition {
+    /// Diagnostic code.
+    pub code: DiagnosticCode,
+    /// Human-readable context.
+    pub context: String,
+    /// Timestamp of the error.
+    pub timestamp: DateTime<Utc>,
+    /// Associated run ID if available.
+    pub bead_id: Option<RunId>,
+    /// Command that triggered the invalid transition.
+    pub command: Option<&'static str>,
+}
+
+/// Journal write failure.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct JournalWriteFailure {
+    /// Diagnostic code.
+    pub code: DiagnosticCode,
+    /// Human-readable context.
+    pub context: String,
+    /// Timestamp of the error.
+    pub timestamp: DateTime<Utc>,
+    /// Associated run ID if available.
+    pub bead_id: Option<RunId>,
+}
+
+/// Replay detected corruption.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ReplayCorruption {
+    /// Diagnostic code.
+    pub code: DiagnosticCode,
+    /// Human-readable context.
+    pub context: String,
+    /// Timestamp of the error.
+    pub timestamp: DateTime<Utc>,
+    /// Associated run ID if available.
+    pub bead_id: Option<RunId>,
+}
 
 /// Failures emitted by core validation and execution code.
 #[derive(Debug, Error, Clone, PartialEq, Eq)]
@@ -232,6 +374,124 @@ pub enum CoreError {
         /// Parse failure reason.
         reason: &'static str,
     },
+    /// Evidence collection hit a page-order violation.
+    #[error("collect page order violation: {kind:?} run {run_id:?} slot {collector_slot:?}")]
+    CollectPageOrderViolation {
+        /// Kind of page-order violation.
+        kind: CollectPageOrderViolationKind,
+        /// Run identifier.
+        run_id: RunId,
+        /// Collector slot.
+        collector_slot: SlotIdx,
+        /// Expected page.
+        expected_page: ListId,
+        /// Observed page.
+        observed_page: ListId,
+    },
+    /// Extra-hydration evidence collection failed.
+    #[error("collect extra hydration failed: {kind:?} run {run_id:?} slot {collector_slot:?}")]
+    CollectExtraHydrationFailed {
+        /// Kind of failure.
+        kind: CollectExtraHydrationFailureKind,
+        /// Run identifier.
+        run_id: RunId,
+        /// Collector slot.
+        collector_slot: SlotIdx,
+        /// Event sequence number.
+        event_seq: Option<EventSeq>,
+    },
+    /// Evidence collection capacity was exceeded.
+    #[error("collect evidence capacity exceeded: run {run_id:?} slot {slot:?} capacity {capacity}")]
+    CollectEvidenceCapacityExceeded {
+        /// Run identifier.
+        run_id: RunId,
+        /// Slot that caused the overflow.
+        slot: SlotIdx,
+        /// Configured capacity.
+        capacity: usize,
+        /// Actual length of data.
+        len: usize,
+        /// Description of what's required.
+        required: &'static str,
+    },
+    /// Lifecycle storage unavailable.
+    #[error("lifecycle storage unavailable: {context}")]
+    LifecycleStorageUnavailable {
+        /// Diagnostic code.
+        code: DiagnosticCode,
+        /// Human-readable context.
+        context: String,
+        /// Timestamp of the error.
+        timestamp: DateTime<Utc>,
+        /// Associated run ID if available.
+        bead_id: Option<RunId>,
+    },
+    /// Lifecycle duplicate request.
+    #[error("lifecycle duplicate request: {context}")]
+    LifecycleDuplicateRequest {
+        /// Diagnostic code.
+        code: DiagnosticCode,
+        /// Human-readable context.
+        context: String,
+        /// Timestamp of the error.
+        timestamp: DateTime<Utc>,
+        /// Associated run ID if available.
+        bead_id: Option<RunId>,
+        /// Command that triggered the duplicate request.
+        command: Option<&'static str>,
+    },
+    /// Lifecycle stale request.
+    #[error("lifecycle stale request: {context}")]
+    LifecycleStaleRequest {
+        /// Diagnostic code.
+        code: DiagnosticCode,
+        /// Human-readable context.
+        context: String,
+        /// Timestamp of the error.
+        timestamp: DateTime<Utc>,
+        /// Associated run ID if available.
+        bead_id: Option<RunId>,
+        /// Command that triggered the stale request.
+        command: Option<&'static str>,
+    },
+    /// Lifecycle invalid transition.
+    #[error("lifecycle invalid transition: {context}")]
+    LifecycleInvalidTransition {
+        /// Diagnostic code.
+        code: DiagnosticCode,
+        /// Human-readable context.
+        context: String,
+        /// Timestamp of the error.
+        timestamp: DateTime<Utc>,
+        /// Associated run ID if available.
+        bead_id: Option<RunId>,
+        /// Command that triggered the invalid transition.
+        command: Option<&'static str>,
+    },
+    /// Journal write failure.
+    #[error("journal write failed: {context}")]
+    JournalWriteFailure {
+        /// Diagnostic code.
+        code: DiagnosticCode,
+        /// Human-readable context.
+        context: String,
+        /// Timestamp of the error.
+        timestamp: DateTime<Utc>,
+        /// Associated run ID if available.
+        bead_id: Option<RunId>,
+    },
+    /// Replay detected corruption.
+    #[error("replay corruption: {context}")]
+    ReplayCorruption {
+        /// Diagnostic code.
+        code: DiagnosticCode,
+        /// Human-readable context.
+        context: String,
+        /// Timestamp of the error.
+        timestamp: DateTime<Utc>,
+        /// Associated run ID if available.
+        bead_id: Option<RunId>,
+    },
 }
 
 impl CoreError {
@@ -315,6 +575,24 @@ impl CoreError {
     pub const PARALLEL_LIMIT_EXCEEDED_CODE: DiagnosticCode = DiagnosticCode::new(0x1408);
     /// Capability denied diagnostic code.
     pub const CAPABILITY_DENIED_CODE: DiagnosticCode = DiagnosticCode::new(0x1409);
+    /// Collect page order violation diagnostic code.
+    pub const COLLECT_PAGE_ORDER_VIOLATION_CODE: DiagnosticCode = DiagnosticCode::new(0x140B);
+    /// Collect extra hydration failed diagnostic code.
+    pub const COLLECT_EXTRA_HYDRATION_FAILED_CODE: DiagnosticCode = DiagnosticCode::new(0x140C);
+    /// Collect evidence capacity exceeded diagnostic code.
+    pub const COLLECT_EVIDENCE_CAPACITY_EXCEEDED_CODE: DiagnosticCode = DiagnosticCode::new(0x140D);
+    /// Lifecycle storage unavailable diagnostic code.
+    pub const LIFECYCLE_STORAGE_UNAVAILABLE_CODE: DiagnosticCode = DiagnosticCode::new(0x1501);
+    /// Lifecycle duplicate request diagnostic code.
+    pub const LIFECYCLE_DUPLICATE_REQUEST_CODE: DiagnosticCode = DiagnosticCode::new(0x1502);
+    /// Lifecycle stale request diagnostic code.
+    pub const LIFECYCLE_STALE_REQUEST_CODE: DiagnosticCode = DiagnosticCode::new(0x1503);
+    /// Lifecycle invalid transition diagnostic code.
+    pub const LIFECYCLE_INVALID_TRANSITION_CODE: DiagnosticCode = DiagnosticCode::new(0x1504);
+    /// Journal write failure diagnostic code.
+    pub const JOURNAL_WRITE_FAILURE_CODE: DiagnosticCode = DiagnosticCode::new(0x1505);
+    /// Replay corruption diagnostic code.
+    pub const REPLAY_CORRUPTION_CODE: DiagnosticCode = DiagnosticCode::new(0x1506);
 
     /// Runtime code for constant-pool bounds failures.
     pub const CONST_OUT_OF_BOUNDS_RUNTIME_CODE: &str = "CONST_OUT_OF_BOUNDS";
@@ -388,6 +666,17 @@ impl CoreError {
             Self::CapabilityDenied { .. } => Self::CAPABILITY_DENIED_CODE,
             Self::BudgetExceeded { .. } => Self::BUDGET_EXCEEDED_CODE,
             Self::BudgetParse { .. } => Self::BUDGET_PARSE_CODE,
+            Self::CollectPageOrderViolation { .. } => Self::COLLECT_PAGE_ORDER_VIOLATION_CODE,
+            Self::CollectExtraHydrationFailed { .. } => Self::COLLECT_EXTRA_HYDRATION_FAILED_CODE,
+            Self::CollectEvidenceCapacityExceeded { .. } => {
+                Self::COLLECT_EVIDENCE_CAPACITY_EXCEEDED_CODE
+            }
+            Self::LifecycleStorageUnavailable { .. } => Self::LIFECYCLE_STORAGE_UNAVAILABLE_CODE,
+            Self::LifecycleDuplicateRequest { .. } => Self::LIFECYCLE_DUPLICATE_REQUEST_CODE,
+            Self::LifecycleStaleRequest { .. } => Self::LIFECYCLE_STALE_REQUEST_CODE,
+            Self::LifecycleInvalidTransition { .. } => Self::LIFECYCLE_INVALID_TRANSITION_CODE,
+            Self::JournalWriteFailure { .. } => Self::JOURNAL_WRITE_FAILURE_CODE,
+            Self::ReplayCorruption { .. } => Self::REPLAY_CORRUPTION_CODE,
         }
     }
 

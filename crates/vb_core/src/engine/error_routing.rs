@@ -92,6 +92,15 @@ fn engine_error_static_code(error: &EngineError) -> &'static str {
         ResourceLimitExceeded { .. } => "RESOURCE_LIMIT_EXCEEDED",
         &CoreError::SlotUninitialized { .. } => "SLOT_UNINITIALIZED",
         CapabilityDenied { .. } => "CAPABILITY_DENIED",
+        CollectPageOrderViolation { .. } => "COLLECT_PAGE_ORDER_VIOLATION",
+        CollectExtraHydrationFailed { .. } => "COLLECT_EXTRA_HYDRATION_FAILED",
+        CollectEvidenceCapacityExceeded { .. } => "COLLECT_EVIDENCE_CAPACITY_EXCEEDED",
+        LifecycleStorageUnavailable { .. } => "LIFECYCLE_STORAGE_UNAVAILABLE",
+        LifecycleDuplicateRequest { .. } => "LIFECYCLE_DUPLICATE_REQUEST",
+        LifecycleStaleRequest { .. } => "LIFECYCLE_STALE_REQUEST",
+        LifecycleInvalidTransition { .. } => "LIFECYCLE_INVALID_TRANSITION",
+        JournalWriteFailure { .. } => "JOURNAL_WRITE_FAILURE",
+        ReplayCorruption { .. } => "REPLAY_CORRUPTION",
     }
 }
 

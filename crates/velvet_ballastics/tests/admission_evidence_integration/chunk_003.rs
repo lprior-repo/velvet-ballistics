@@ -1,3 +1,82 @@
+
+// ===========================================================================
+// Test 3: evidence chain after execution
+// ===========================================================================
+
+#[test]
+fn evidence_chain_after_execution() {
+    // Given: a multi-step workflow that runs an action, then finishes.
+    // Using a Do + Finish workflow: the action completion produces
+    // SlotWritten and StepSucceeded events in addition to RunSubmitted/RunFinished.
+    let digest = WorkflowDigest::from_bytes([3u8; 32]);
+    let Some(workflow) = do_action_workflow(digest) else {
+        fail_assert!("workflow construction failed");
+        return;
+    };
+    let Some(shard_count) = NonZeroUsize::new(1) else {
+        fail_assert!("invalid shard count");
+        return;
+    };
+    let journal = Arc::new(vb_runtime::journal::VolatileRuntimeJournal::new());
+    let mut runtime =
+        vb_runtime::runtime::Runtime::new_with_journal(shard_count, test_config(), journal.clone());
+    let run_id = RunId::new(3);
+
+    // When: submitting and ticking (suspends on action)
+    match runtime.submit_direct(run_id, workflow) {
+        Ok(()) => {}
+        Err(err) => {
+            fail_assert!("submit_direct failed: {err}");
+            return;
+        }
+    }
+    match runtime.tick_all() {
+        Ok(true) => {}
+        Ok(false) => {
+            fail_assert!("tick_all returned false unexpectedly");
+            return;
+        }
+        Err(err) => {
+            fail_assert!("tick_all failed: {err}");
+            return;
+        }
+    }
+
+    // Complete the action to resume and finish the workflow
+    let ticket = vb_core::action::ActionTicket {
+        run: run_id,
+        step: StepIdx::new(0),
+        seq: vb_core::ids::SeqNo::ZERO,
+        action: ActionId::new(7),
+        attempt: 1,
+        idempotency_key: 0,
+        capacity: 1,
+    };
+    let output = vb_core::action::ActionOutputReady {
+        output_slot: SlotIdx::new(1),
+        value: SlotValue::I64(99),
+        taint: Taint::Clean,
+        encoded_len: 8,
+    };
+    match runtime.complete_action_with_output(ticket, output) {
+        Ok(()) => {}
+        Err(err) => {
+            fail_assert!("complete_action_with_output failed: {err}");
+            return;
+        }
+    }
+    match runtime.tick_all() {
+        Ok(true) => {}
+        Ok(false) => {
+            fail_assert!("tick_all returned false unexpectedly after action completion");
+            return;
+        }
+        Err(err) => {
+            fail_assert!("tick_all failed after action completion: {err}");
+            return;
+        }
+    }
+
     // Then: the journal contains the full evidence chain:
     // RunSubmitted -> StepSucceeded (action) -> SlotWritten -> ActionCompleted ->
     // StepSucceeded (finish) -> RunFinished
@@ -164,41 +243,3 @@ fn capability_check_rejects_unauthorized_action() {
         }
     }
 }
-
-// ===========================================================================
-// Test 5: budget validation rejects oversized workflow
-// ===========================================================================
-
-#[test]
-fn budget_validation_rejects_oversized_workflow() {
-    // Given: a BoundednessPolicy with very tight limits
-    let tight_policy = vb_core::BoundednessPolicy {
-        max_total_steps: 2,
-        max_total_slots: 10,
-        max_fanout: 1,
-        max_nesting_depth: 1,
-        absolute_max_action_tickets: 1,
-        absolute_max_parallel: 1,
-        absolute_max_run_time_seconds: 60,
-        absolute_max_result_bytes: 1024,
-        absolute_max_steps_executable: 2,
-    };
-
-    // When: creating a 3-node workflow that exceeds the step limit
-    let budget = vb_core::WholeWorkflowBudget {
-        max_total_steps: 3,
-        max_total_slots: 5,
-        max_fanout: 0,
-        max_nesting_depth: 0,
-        max_steps_executable: 3,
-        max_action_tickets: 0,
-        max_parallel_in_flight: 0,
-        max_retries_per_action: 0,
-        max_gather_pages: 0,
-        max_gather_items: 0,
-        max_for_each_iterations: 0,
-        max_together_branches: 0,
-        max_repeat_attempts: 0,
-        max_run_time_seconds: 0,
-        max_result_bytes: 0,
-        max_total_slots_written: 0,
