@@ -38,7 +38,18 @@ impl Shard {
     }
 
     /// Enqueues a command. Returns `QueueFull` on overflow.
+    /// For submit variants, validates journal health before enqueueing
+    /// because handle_submit writes to journal before returning.
     pub fn enqueue(&self, cmd: ShardCommand) -> RuntimeResult<()> {
+        match &cmd {
+            ShardCommand::Submit { .. }
+            | ShardCommand::SubmitPrePersisted { .. }
+            | ShardCommand::SubmitWithInputs { .. } => {
+                // Probe journal health before accepting the command.
+                self.journal.probe()?;
+            }
+            _ => {}
+        }
         self.command_queue
             .push(cmd)
             .map_err(|_| RuntimeError::QueueFull)

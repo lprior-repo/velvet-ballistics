@@ -17,6 +17,15 @@ impl RuntimeJournal for QueuedStorageRuntimeJournal {
         Ok(())
     }
 
+    fn probe(&self) -> RuntimeResult<()> {
+        // Verify the mutex is not poisoned.
+        let _guard = self
+            .next_seq_by_run
+            .lock()
+            .map_err(|_| RuntimeError::JournalPoisoned)?;
+        Ok(())
+    }
+
     fn drain_for_shutdown(&self) -> RuntimeResult<JournalWriterFlushReport> {
         self.drain_all()
     }

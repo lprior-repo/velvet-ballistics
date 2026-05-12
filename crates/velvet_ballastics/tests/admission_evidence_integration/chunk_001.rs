@@ -172,6 +172,9 @@ impl vb_runtime::journal::RuntimeJournal for FailingBeforeHeaderJournal {
     ) -> vb_runtime::RuntimeResult<()> {
         Err(vb_runtime::RuntimeError::JournalPoisoned)
     }
+    fn probe(&self) -> vb_runtime::RuntimeResult<()> {
+        Err(vb_runtime::RuntimeError::JournalPoisoned)
+    }
 }
 
 #[test]

@@ -172,6 +172,10 @@ pub trait RuntimeJournal: Send + Sync {
     /// Appends a lifecycle event.
     fn append(&self, event: RuntimeJournalEvent) -> RuntimeResult<()>;
 
+    /// Probes journal health without side effects.
+    /// Returns `JournalPoisoned` if the underlying storage is unavailable.
+    fn probe(&self) -> RuntimeResult<()>;
+
     /// Drains queued durable writes during graceful shutdown.
     fn drain_for_shutdown(&self) -> RuntimeResult<JournalWriterFlushReport> {
         Ok(JournalWriterFlushReport {
@@ -198,6 +202,9 @@ impl NoopRuntimeJournal {
 
 impl RuntimeJournal for NoopRuntimeJournal {
     fn append(&self, _event: RuntimeJournalEvent) -> RuntimeResult<()> {
+        Ok(())
+    }
+    fn probe(&self) -> RuntimeResult<()> {
         Ok(())
     }
 }
@@ -276,6 +283,14 @@ impl RuntimeJournal for VolatileRuntimeJournal {
             .lock()
             .map_err(|_| crate::RuntimeError::JournalPoisoned)?;
         events.push(event);
+        Ok(())
+    }
+    fn probe(&self) -> RuntimeResult<()> {
+        // Verify the mutex is not poisoned.
+        let _guard = self
+            .events
+            .lock()
+            .map_err(|_| crate::RuntimeError::JournalPoisoned)?;
         Ok(())
     }
 }

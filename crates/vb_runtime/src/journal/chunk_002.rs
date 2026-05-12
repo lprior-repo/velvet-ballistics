@@ -207,6 +207,14 @@ impl RuntimeJournal for StorageRuntimeJournal {
         sequences.insert(run_id, next);
         Ok(())
     }
+    fn probe(&self) -> RuntimeResult<()> {
+        // Verify the mutex is not poisoned.
+        let _guard = self
+            .next_seq_by_run
+            .lock()
+            .map_err(|_| RuntimeError::JournalPoisoned)?;
+        Ok(())
+    }
 }
 
 /// Runtime journal adapter that stages lifecycle events through `JournalWriterQueue`.
