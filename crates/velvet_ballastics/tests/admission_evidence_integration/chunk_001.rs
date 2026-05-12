@@ -1,3 +1,11 @@
+#![forbid(unsafe_code)]
+//! Admission and evidence chain integration tests.
+//!
+//! These tests exercise end-to-end flows across multiple crates: submitting
+//! artifacts, running workflows under various policies, verifying journal
+//! evidence chains, capability enforcement, budget validation, and taint
+//! propagation.
+
 use std::num::NonZeroUsize;
 use std::sync::Arc;
 
@@ -92,135 +100,91 @@ fn do_action_workflow(digest: WorkflowDigest) -> Option<CompiledWorkflow> {
         constants: Box::from([]),
         slot_count: 2,
         symbols_count: 0,
-        entry: StepIdx::new(0),
-        resource_contract: ResourceContract::DEFAULT,
-        step_names: Box::default(),
-    };
-    CompiledWorkflow::try_from_parts(parts).ok()
 }
-
-/// Creates a workflow that evaluates an expression loading slot 0 (which will
-/// be tainted) and writes the result to slot 1, then finishes with slot 1.
 fn eval_expr_taint_workflow(digest: WorkflowDigest) -> Option<CompiledWorkflow> {
-    // Expression program: LoadSlot(0), LoadConst(0), Add -> loads slot 0 (tainted),
-    // loads constant 0, adds them, result inherits slot 0 taint.
-    let expr_program = ExprProgram::try_from_ops(Box::from([
-        ExprOp::LoadSlot(SlotIdx::new(0)),
-        ExprOp::LoadConst(ConstIdx::new(0)),
-        ExprOp::Add,
-    ]))
-    .ok()?;
-
-    let node0 = CompiledNode {
-        id: StepIdx::new(0),
-        output: Some(SlotIdx::new(1)),
-        next: Some(StepIdx::new(1)),
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::EvalExpr {
-            expr: ExprIdx::new(0),
-        },
-    };
-    let node1 = CompiledNode {
-        id: StepIdx::new(1),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Finish {
-            result: SlotIdx::new(1),
-        },
-    };
-    let parts = WorkflowParts {
-        name: Box::from("taint_expr"),
-        digest,
-        nodes: Box::from([node0, node1]),
-        expressions: Box::from([expr_program]),
-        accessors: Box::from([]),
-        constants: Box::from([ConstValue::I64(1)]),
-        slot_count: 3,
-        symbols_count: 0,
-        entry: StepIdx::new(0),
-        resource_contract: ResourceContract::DEFAULT,
-        step_names: Box::default(),
-    };
-    CompiledWorkflow::try_from_parts(parts).ok()
 }
-
 fn test_config() -> vb_runtime::shard::ShardConfig {
-    vb_runtime::shard::ShardConfig {
-        command_queue_capacity: 16,
-        trace_capacity: 256,
-        step_budget_per_tick: 100,
-        max_active_runs: 16,
-        policy: vb_core::policy::RuntimePolicy::Relaxed,
     }
 }
-
 fn temp_journal() -> Option<(tempfile::TempDir, Arc<vb_storage::FjallJournal>)> {
-    let dir = tempfile::tempdir().ok()?;
-    let journal = vb_storage::FjallJournal::open(dir.path(), None).ok()?;
-    Some((dir, Arc::new(journal)))
 }
-
-struct FailingBeforeHeaderJournal;
-
-impl vb_runtime::journal::RuntimeJournal for FailingBeforeHeaderJournal {
-    fn append(
-        &self,
-        _event: vb_runtime::journal::RuntimeJournalEvent,
-    ) -> vb_runtime::RuntimeResult<()> {
-        Err(vb_runtime::RuntimeError::JournalPoisoned)
-    }
-}
-
-#[test]
-fn storage_failure_before_header_prevents_ack() {
-    let digest = WorkflowDigest::from_bytes([0x41u8; 32]);
-    let Some(workflow) = set_const_finish_workflow(digest) else {
-        fail_assert!("workflow construction failed");
-        return;
-    };
-    let Some(shard_count) = NonZeroUsize::new(1) else {
-        fail_assert!("invalid shard count");
-        return;
-    };
-    let runtime = vb_runtime::runtime::Runtime::new_with_journal(
-        shard_count,
-        test_config(),
-        Arc::new(FailingBeforeHeaderJournal),
-    );
-
-    assert_eq!(
-        runtime.submit_direct(RunId::new(4505), workflow),
-        Err(vb_runtime::RuntimeError::JournalPoisoned)
-    );
-}
-
-#[test]
-fn restart_lookup_finds_persisted_header() {
-    let digest = WorkflowDigest::from_bytes([0x42u8; 32]);
-    let Some(workflow) = set_const_finish_workflow(digest) else {
-        fail_assert!("workflow construction failed");
-        return;
-    };
-    let Some((_dir, journal)) = temp_journal() else {
-        fail_assert!("temp journal open failed");
-        return;
-    };
-
-    let artifact =
-        vb_storage::submit_artifact(&journal, &workflow, vb_core::RuntimePolicy::Relaxed);
-    match artifact {
-        Ok(record) => assert_eq!(record.digest, digest),
-        Err(err) => {
-            fail_assert!("submit_artifact failed: {err}");
-            return;
+fn submit_artifact_then_run_succeeds() {
+        }
+        }
         }
     }
-    match journal.compiled_ir(digest) {
-        Ok(Some(record)) => assert_eq!(record.digest, digest),
-        Ok(None) => fail_assert!("persisted compiled IR should be found by digest"),
-        Err(err) => fail_assert!("compiled_ir lookup failed: {err}"),
+        }
+        }
+    }
+        }
+    }
+        }
+        }
     }
 }
+fn run_without_artifact_under_relaxed_policy() {
+        }
+        }
+    }
+        }
+    }
+        }
+        }
+    }
+}
+fn evidence_chain_after_execution() {
+        }
+    }
+        }
+        }
+    }
+        }
+    }
+        }
+        }
+    }
+        }
+            {
+            }
+            }
+            {
+            }
+            }
+        }
+    }
+}
+fn capability_check_rejects_unauthorized_action() {
+        }
+    }
+        }
+        }
+    }
+        }
+        }
+    }
+}
+fn budget_validation_rejects_oversized_workflow() {
+        }
+        }
+        }
+    }
+}
+fn taint_propagates_through_expression_eval() {
+        }
+        }
+    }
+        }
+        }
+    }
+        }
+        }
+    }
+        }
+        }
+    }
+        }
+        }
+        }
+    }
+}
+[626 more lines]
