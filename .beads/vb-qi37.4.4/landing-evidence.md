@@ -44,3 +44,10 @@ updated_at: 2026-05-11
 ## Landing Decision
 - Ready-to-land preflight: YES for code/artifact/gate state, subject to normal State 15 landing actions not requested here.
 - Not performed by request: moving main, pushing, closing bead, forgetting/removing workspace.
+
+## Combined qi37 Landing Update — 2026-05-12T03:56:46Z
+
+- Included through combined ready base in workspace `/home/lewis/src/Velvet-ballistics-landing-all-q37`.
+- Combined source length / no `body.inc` gate: PASS.
+- Combined canonical gate: `moon ci` PASS — 19 tasks completed, 2 cached; 8063 tests passed.
+- See `.beads/qi37-all-landing-evidence.md`.

@@ -2,8 +2,10 @@
 //! Journal event types and record kind identifiers.
 
 use crate::{EventSeq, RecordKind};
+use chrono::{DateTime, Utc};
 use vb_core::{
-    ActionId, CapabilitySet, RunId, RuntimePolicy, SlotIdx, SlotValue, StepIdx, WorkflowDigest,
+    ActionId, CapabilitySet, ConstValue, RunId, RuntimePolicy, SlotIdx, SlotValue, StepIdx,
+    WorkflowDigest,
 };
 
 /// Compact binary journal event. JSONL is a projection, not this durable format.
@@ -183,6 +185,31 @@ pub enum JournalEvent {
         /// Attempt number (1-based).
         attempt: u16,
     },
+    /// Run was resumed from a waiting state.
+    RunResumed {
+        /// Run identifier.
+        run: RunId,
+        /// When the run was resumed.
+        timestamp: DateTime<Utc>,
+    },
+    /// Run was retried after failure.
+    RunRetried {
+        /// Run identifier.
+        run: RunId,
+        /// When the run was retried.
+        timestamp: DateTime<Utc>,
+    },
+    /// Run received an answer to a waiting question.
+    RunAnswered {
+        /// Run identifier.
+        run: RunId,
+        /// Slot that received the answer.
+        slot_idx: SlotIdx,
+        /// The answer value.
+        answer: ConstValue,
+        /// When the answer was received.
+        timestamp: DateTime<Utc>,
+    },
 }
 
 impl JournalEvent {
@@ -204,11 +231,17 @@ impl JournalEvent {
             | Self::RetryScheduledEvent { run, .. }
             | Self::RunCancelled { run, .. }
             | Self::RunFinished { run, .. }
-            | Self::RunFailedEvent { run, .. } => *run,
+            | Self::RunFailedEvent { run, .. }
+            | Self::RunResumed { run, .. }
+            | Self::RunRetried { run, .. }
+            | Self::RunAnswered { run, .. } => *run,
         }
     }
 
     /// Event sequence carried by this event.
+    ///
+    /// Lifecycle events (RunResumed, RunRetried, RunAnswered) do not carry sequence numbers
+    /// as they are not part of the durable event log ordering.
     #[must_use]
     pub const fn seq(&self) -> EventSeq {
         match self {
@@ -227,6 +260,9 @@ impl JournalEvent {
             | Self::RunCancelled { seq, .. }
             | Self::RunFinished { seq, .. }
             | Self::RunFailedEvent { seq, .. } => *seq,
+            Self::RunResumed { .. } | Self::RunRetried { .. } | Self::RunAnswered { .. } => {
+                EventSeq::ZERO
+            }
         }
     }
 
@@ -248,6 +284,9 @@ impl JournalEvent {
             Self::RunCancelled { .. } => RecordKind::RunCancelled,
             Self::RunFinished { .. } => RecordKind::RunFinished,
             Self::RunFailedEvent { .. } => RecordKind::RunFailed,
+            Self::RunResumed { .. } => RecordKind::RunResumed,
+            Self::RunRetried { .. } => RecordKind::RunRetried,
+            Self::RunAnswered { .. } => RecordKind::RunAnswered,
         }
     }
 
@@ -283,9 +322,12 @@ impl JournalEvent {
             | Self::RunCancelled { attempt, .. }
             | Self::RunFinished { attempt, .. }
             | Self::RunFailedEvent { attempt, .. } => Some(*attempt),
-            Self::RunAccepted { .. } | Self::RunAdmission { .. } | Self::StepSucceeded { .. } => {
-                None
-            }
+            Self::RunAccepted { .. }
+            | Self::RunAdmission { .. }
+            | Self::StepSucceeded { .. }
+            | Self::RunResumed { .. }
+            | Self::RunRetried { .. }
+            | Self::RunAnswered { .. } => None,
         }
     }
 }

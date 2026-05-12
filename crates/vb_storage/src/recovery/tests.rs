@@ -584,7 +584,10 @@ mod tests {
                     }
                     JournalEvent::RunAdmission { .. }
                     | JournalEvent::SlotWrittenEvent { .. }
-                    | JournalEvent::RetryScheduledEvent { .. } => {}
+                    | JournalEvent::RetryScheduledEvent { .. }
+                    | JournalEvent::RunResumed { .. }
+                    | JournalEvent::RunRetried { .. }
+                    | JournalEvent::RunAnswered { .. } => {}
                 }
                 summary
             })

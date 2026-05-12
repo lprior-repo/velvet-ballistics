@@ -202,6 +202,15 @@ pub fn diff_event_summary(event: &JournalEvent) -> serde_json::Value {
         JournalEvent::RunFailedEvent { seq, .. } => {
             serde_json::json!({"type": "RunFailed", "seq": seq.get()})
         }
+        JournalEvent::RunResumed { run, .. } => {
+            serde_json::json!({"type": "RunResumed", "run": run.get()})
+        }
+        JournalEvent::RunRetried { run, .. } => {
+            serde_json::json!({"type": "RunRetried", "run": run.get()})
+        }
+        JournalEvent::RunAnswered { run, slot_idx, .. } => {
+            serde_json::json!({"type": "RunAnswered", "run": run.get(), "slot_idx": slot_idx.get()})
+        }
     }
 }
 
@@ -223,6 +232,9 @@ pub fn event_name(event: &JournalEvent) -> &'static str {
         JournalEvent::RunCancelled { .. } => "RunCancelled",
         JournalEvent::RunFinished { .. } => "RunFinished",
         JournalEvent::RunFailedEvent { .. } => "RunFailed",
+        JournalEvent::RunResumed { .. } => "RunResumed",
+        JournalEvent::RunRetried { .. } => "RunRetried",
+        JournalEvent::RunAnswered { .. } => "RunAnswered",
     }
 }
 

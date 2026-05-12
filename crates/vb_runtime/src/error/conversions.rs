@@ -26,7 +26,9 @@ impl From<ResumeError> for RuntimeError {
                 run_id: _,
                 current_state: _,
             } => Self::InvalidActionCompletion,
-            ResumeError::IncompleteHydration { run_id: _ } => Self::UnsupportedFullRecoveryHydration,
+            ResumeError::IncompleteHydration { run_id: _ } => {
+                Self::UnsupportedFullRecoveryHydration
+            }
             ResumeError::JournalAppendFailed => Self::StorageJournalAppend {
                 source: Arc::new(vb_storage::JournalError::WriteLockPoisoned),
             },

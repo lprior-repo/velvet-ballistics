@@ -87,6 +87,7 @@ byteorder = "1.5"
 arrayvec = "0.7"
 blake3 = "1"
 bytes = { version = "1", features = ["serde"] }
+chrono = { version = "0.4", features = ["serde"] }
 crc32c = "0.6"
 crossbeam-channel = "0.5"
 crossbeam-queue = "0.3"

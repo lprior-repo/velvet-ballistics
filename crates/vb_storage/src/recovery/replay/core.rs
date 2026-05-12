@@ -57,7 +57,10 @@ pub fn replay_events(
             | JournalEvent::RetryScheduledEvent { .. }
             | JournalEvent::RunCancelled { .. }
             | JournalEvent::RunFinished { .. }
-            | JournalEvent::RunFailedEvent { .. } => {}
+            | JournalEvent::RunFailedEvent { .. }
+            | JournalEvent::RunResumed { .. }
+            | JournalEvent::RunRetried { .. }
+            | JournalEvent::RunAnswered { .. } => {}
             JournalEvent::StepStarted { step, .. } => {
                 // Verify step ordering
                 if let Some(prev) = last_step

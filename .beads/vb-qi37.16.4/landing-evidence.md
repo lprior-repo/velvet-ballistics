@@ -39,6 +39,13 @@ ready_for_orchestrator_state_15_push_close: YES, but this repair intentionally d
 
 None for State 15 rebase/conflict preflight in this isolated workspace.
 
+## Combined qi37 Landing Update — 2026-05-12T03:56:46Z
+
+- Included through combined ready base in workspace `/home/lewis/src/Velvet-ballistics-landing-all-q37`.
+- Combined ask-answer focused gate: `rtk cargo test -p vb_runtime ask_answer --lib` PASS — 19 passed, 1323 filtered out.
+- Combined canonical gate: `moon ci` PASS — 19 tasks completed, 2 cached; 8063 tests passed.
+- See `.beads/qi37-all-landing-evidence.md`.
+
 ## Source and Isolated Workspace
 
 - source_checkout: `/home/lewis/src/Velvet-ballistics`

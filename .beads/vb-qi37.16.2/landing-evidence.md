@@ -64,3 +64,10 @@ YES for preflight/hygiene. Per user instruction, this run did not move main, pus
 ## Blockers
 
 None found.
+
+## Combined qi37 Landing Update — 2026-05-12T03:56:46Z
+
+- Included in combined workspace `/home/lewis/src/Velvet-ballistics-landing-all-q37`.
+- Durable resume focused gate rerun: `rtk cargo test -p vb_runtime --test durable_resume_red_phase` PASS — 17 passed.
+- Combined canonical gate: `moon ci` PASS — 19 tasks completed, 2 cached; 8063 tests passed.
+- See `.beads/qi37-all-landing-evidence.md`.

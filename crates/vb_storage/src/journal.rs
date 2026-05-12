@@ -321,6 +321,76 @@ impl FjallJournal {
     pub fn batch(&self) -> JournalWriteBatch<'_> {
         JournalWriteBatch::new(self)
     }
+
+    /// Injects a raw record directly into the events keyspace.
+    /// **TEST USE ONLY** — bypasses normal encoding and validation.
+    ///
+    /// This allows integration tests to inject malformed bytes that will be
+    /// detected during replay as `JournalError::PostcardDecodeFailed`.
+    ///
+    /// Safe because it only writes to the caller's own journal keyspace,
+    /// never reads or modifies existing data, and requires a valid run ID.
+    pub fn inject_raw_event(
+        &self,
+        run: vb_core::RunId,
+        seq: u64,
+        raw_bytes: &[u8],
+    ) -> Result<(), JournalError> {
+        let key = crate::keys::run_event_key(run, EventSeq::new(seq))?;
+        // Insert raw bytes directly — no encoding, no magic validation
+        self.events.insert(key.to_vec(), raw_bytes.to_vec())?;
+        Ok(())
+    }
+
+    /// Injects a sequence gap by writing an event at the given sequence
+    /// without writing the preceding sequences.
+    /// **TEST USE ONLY** — for creating missing-event test scenarios.
+    ///
+    /// This creates a sequence gap by inserting an event at `gap_seq` that
+    /// will cause `events_for_run_from` to detect a `SequenceGap` error
+    /// when replay starts from `start_seq` (typically 0).
+    ///
+    /// The injected event is a structurally valid but semantically empty
+    /// record at the gap sequence. When `events_for_run_from` validates
+    /// the sequence, it expects `start_seq` but finds `gap_seq`,
+    /// triggering `JournalError::SequenceGap`.
+    ///
+    /// # Example
+    ///
+    /// To create a gap at seq=1 (missing seq=0):
+    /// ```no_run
+    /// # use vb_core::RunId;
+    /// # use vb_storage::FjallJournal;
+    /// # let temp = tempfile::tempdir()?;
+    /// # let journal = FjallJournal::open(temp.path(), None)?;
+    /// # let run = RunId::new(1);
+    /// journal.inject_seq_gap(run, 0, 1)?; // start=0, gap_at=1
+    /// # Ok::<(), Box<dyn std::error::Error>>(())
+    /// ```
+    pub fn inject_seq_gap(
+        &self,
+        run: vb_core::RunId,
+        _start_seq: u64,
+        gap_seq: u64,
+    ) -> Result<(), JournalError> {
+        // Write the gap event at gap_seq without writing start_seq..gap_seq
+        // This creates a SequenceGap when events_for_run_from expects start_seq
+        // but finds gap_seq
+        let key = crate::keys::run_event_key(run, EventSeq::new(gap_seq))?;
+        // Encode a minimal valid record at the gap sequence
+        // Use RunCancelled as the record kind (valid for MAGIC_JOURNAL_EVENT)
+        // The sequence validation happens at validate_replayed_event level,
+        // not at decode time
+        let value = crate::codec::encode_record(
+            crate::constants::MAGIC_JOURNAL_EVENT,
+            crate::records::RecordKind::RunCancelled, // Valid kind for journal events
+            gap_seq,
+            &(), // Empty payload - decode will succeed but be meaningless
+            crate::constants::MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
+        )?;
+        self.events.insert(key.to_vec(), value)?;
+        Ok(())
+    }
 }
 
 impl Drop for FjallJournal {
