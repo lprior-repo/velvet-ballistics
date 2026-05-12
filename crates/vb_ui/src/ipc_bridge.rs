@@ -395,6 +395,7 @@ fn ipc_thread(rx: Receiver<IpcRequest>, tx: Sender<IpcReply>) {
                         run_id,
                         ticket,
                         answer,
+                        taint: None,
                     };
                     match send_and_recv(c, IpcCommand::AnswerAsk, corr, &payload) {
                         Ok(response) => {

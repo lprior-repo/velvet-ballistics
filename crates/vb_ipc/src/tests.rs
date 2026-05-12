@@ -606,6 +606,7 @@ fn payload_roundtrip_preserves_answer_ask_variant() {
         run_id: RunId::new(5),
         ticket: 999,
         answer: Vec::from(&b"yes"[..]),
+        taint: None,
     };
 
     let encoded = encode_payload(&payload, MaxPayloadBytes::DEFAULT);
@@ -1352,6 +1353,7 @@ fn adversarial_answer_ask_with_zero_ticket_roundtrips() {
         run_id: RunId::new(1),
         ticket: 0,
         answer: Vec::new(),
+        taint: None,
     };
 
     let encoded = encode_payload(&payload, MaxPayloadBytes::DEFAULT);
@@ -1368,6 +1370,7 @@ fn adversarial_answer_ask_with_max_u64_ticket_roundtrips() {
         run_id: RunId::new(1),
         ticket: u64::MAX,
         answer: Vec::from(&b"malicious"[..]),
+        taint: None,
     };
 
     let encoded = encode_payload(&payload, MaxPayloadBytes::DEFAULT);

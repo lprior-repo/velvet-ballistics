@@ -238,6 +238,7 @@ mod tests {
             max_collect_items: 10,
             max_queue_depth: 10,
             max_journal_batch_bytes: 100,
+            ..ResourceContract::DEFAULT
         }
     }
 

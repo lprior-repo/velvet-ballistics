@@ -1218,6 +1218,7 @@ const fn test_contract(max_steps: u16, max_slots: u16) -> ResourceContract {
         max_collect_items: 0,
         max_queue_depth: 1,
         max_journal_batch_bytes: 1,
+        ..ResourceContract::DEFAULT
     }
 }
 

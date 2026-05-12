@@ -381,6 +381,7 @@ fn ask_answered_persists_before_ack() {
         answer_slot: SlotIdx::new(2),
         value: SlotValue::I64(99),
         taint: Taint::Clean,
+        encoded_len: 0,
     };
     shard.enqueue(ShardCommand::AskAnswered { answer }).unwrap();
     shard.tick().unwrap();

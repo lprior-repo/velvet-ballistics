@@ -917,6 +917,7 @@ mod tests {
                 max_collect_items: 0,
                 max_queue_depth: 0,
                 max_journal_batch_bytes: 0,
+                ..ResourceContract::DEFAULT
             },
             step_names: Box::new([]),
         };
@@ -1473,6 +1474,7 @@ mod tests {
             max_collect_items: 100,
             max_queue_depth: 64,
             max_journal_batch_bytes: 512,
+            ..ResourceContract::DEFAULT
         };
 
         // When emit_resource_contract writes the contract constants
@@ -2121,6 +2123,7 @@ mod tests {
             max_collect_items: 100,
             max_queue_depth: 64,
             max_journal_batch_bytes: 512,
+            ..ResourceContract::DEFAULT
         };
         // When emit_resource_contract writes constants
         let mut out = String::new();
@@ -4367,6 +4370,7 @@ mod tests {
             max_collect_items: 200,
             max_queue_depth: 128,
             max_journal_batch_bytes: 1024,
+            ..ResourceContract::DEFAULT
         };
         // When emit_resource_contract writes the constants
         let mut out = String::new();
@@ -10167,6 +10171,7 @@ mod tests {
             max_collect_items: 50,
             max_queue_depth: 10,
             max_journal_batch_bytes: 2048,
+            ..ResourceContract::DEFAULT
         };
         let mut out = String::new();
         emit_resource_contract(&mut out, custom).map_err(|e| e.to_string())?;
@@ -10211,6 +10216,7 @@ mod tests {
             max_collect_items: 0,
             max_queue_depth: 0,
             max_journal_batch_bytes: 0,
+            ..ResourceContract::DEFAULT
         };
         let mut out = String::new();
         emit_resource_contract(&mut out, zero).map_err(|e| e.to_string())?;

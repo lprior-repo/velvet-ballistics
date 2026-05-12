@@ -339,6 +339,12 @@ pub enum IpcPayload {
         ticket: u64,
         /// Postcard-compatible answer bytes.
         answer: Vec<u8>,
+        /// Taint classification of the answer value.
+        /// The caller classifies the answer value as Clean, DerivedFromSecret, or Secret.
+        /// The runtime enforces INV-002: Secret-tainted answers require
+        /// ResourceContract::allows_secret_results to be true.
+        /// When None (backward-compatible), defaults to Taint::Clean.
+        taint: Option<Taint>,
     },
     /// Complete an external action ticket.
     CompleteAction {
