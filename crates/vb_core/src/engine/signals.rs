@@ -10,6 +10,7 @@ use crate::value::{SlotValue, Taint};
 /// The hard ceiling is [`MAX_STEP_BUDGET`]. Any value provided to [`StepBudget::new`]
 /// that exceeds this ceiling is clamped, and [`StepBudget::try_take`] returns an
 /// error if the internal counter somehow exceeds the ceiling.
+#[derive(Debug)]
 pub struct StepBudget {
     remaining: u64,
 }
@@ -62,6 +63,35 @@ impl StepBudget {
     #[must_use]
     pub const fn remaining(&self) -> u64 {
         self.remaining
+    }
+
+    /// Environment variable name for bench latency budget.
+    const BENCH_LATENCY_BUDGET_US: &'static str = "VB_BENCH_LATENCY_BUDGET_US";
+
+    /// Default budget when env var is absent.
+    const DEFAULT_BUDGET: u64 = MAX_STEP_BUDGET;
+
+    /// Creates a budget from the VB_BENCH_LATENCY_BUDGET_US environment variable.
+    ///
+    /// - Returns `Ok(budget)` when env var is set and parses as u64.
+    ///   Value is clamped to [`MAX_STEP_BUDGET`].
+    /// - Returns `Err(EngineError::BudgetParse { reason })` when env var is set
+    ///   but contains non-numeric content.
+    /// - Returns `Ok(Self::new(Self::DEFAULT_BUDGET))` when env var is absent.
+    pub fn from_env() -> Result<Self, EngineError> {
+        match std::env::var(Self::BENCH_LATENCY_BUDGET_US) {
+            Ok(raw) => {
+                let parsed =
+                    raw.parse::<u64>().map_err(|_| EngineError::BudgetParse {
+                        reason: "invalid u64 value",
+                    })?;
+                Ok(Self::new(parsed))
+            }
+            Err(std::env::VarError::NotPresent) => Ok(Self::new(Self::DEFAULT_BUDGET)),
+            Err(_) => Err(EngineError::BudgetParse {
+                reason: "env var access error",
+            }),
+        }
     }
 }
 

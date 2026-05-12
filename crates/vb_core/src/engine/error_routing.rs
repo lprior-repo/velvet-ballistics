@@ -85,22 +85,13 @@ fn engine_error_static_code(error: &EngineError) -> &'static str {
         CollectPageLimitExceeded => "COLLECT_PAGE_LIMIT_EXCEEDED",
         CollectItemLimitExceeded => "COLLECT_ITEM_LIMIT_EXCEEDED",
         CollectTimeLimitExceeded => "COLLECT_TIME_LIMIT_EXCEEDED",
-        CollectPageOrderViolation { .. } => "COLLECT_PAGE_ORDER_VIOLATION",
-        CollectExtraHydrationFailed { .. } => "COLLECT_EXTRA_HYDRATION_FAILED",
-        CollectEvidenceCapacityExceeded { .. } => "COLLECT_EVIDENCE_CAPACITY_EXCEEDED",
         TogetherBranchLimitExceeded { .. } => "TOGETHER_BRANCH_LIMIT_EXCEEDED",
         ParallelLimitExceeded { .. } => "PARALLEL_LIMIT_EXCEEDED",
         BudgetExceeded { .. } => "BUDGET_EXCEEDED",
+        BudgetParse { .. } => "BUDGET_PARSE",
         ResourceLimitExceeded { .. } => "RESOURCE_LIMIT_EXCEEDED",
         &CoreError::SlotUninitialized { .. } => "SLOT_UNINITIALIZED",
         CapabilityDenied { .. } => "CAPABILITY_DENIED",
-        LifecycleInvalidTransition { .. } => "LIFECYCLE_INVALID_TRANSITION",
-        LifecycleDuplicateRequest { .. } => "LIFECYCLE_DUPLICATE_REQUEST",
-        LifecycleStaleRequest { .. } => "LIFECYCLE_STALE_REQUEST",
-        LifecycleNotFound { .. } => "LIFECYCLE_NOT_FOUND",
-        LifecycleStorageUnavailable { .. } => "LIFECYCLE_STORAGE_UNAVAILABLE",
-        ReplayCorruption { .. } => "REPLAY_CORRUPTION",
-        JournalWriteFailure { .. } => "JOURNAL_WRITE_FAILURE",
     }
 }
 
