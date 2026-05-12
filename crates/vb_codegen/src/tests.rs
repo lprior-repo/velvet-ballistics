@@ -11560,4 +11560,349 @@ mod tests {
         compare_generated_to_ir(&source, &workflow).map_err(|e| e.to_string())?;
         Ok(())
     }
+
+    // =========================================================================
+    // POST-005: Slot value preservation tests for BuildObject/BatchList
+    // =========================================================================
+    // These tests verify that slot loading/storing/copying produces identical
+    // SlotValue results between generated Rust and IR execution.
+    //
+    // MISSING: No test currently verifies slot value preservation for
+    // BuildObject multi-field slot operations or BatchList slot operations.
+
+    /// POST-005: BuildObject slot value preservation - field slots must roundtrip identically.
+    #[test]
+    fn post_005_build_object_field_slot_roundtrip_preserves_value() -> Result<(), String> {
+        // This test requires a BuildObject workflow where we:
+        // 1. Store values in multiple field slots
+        // 2. Load them back via the generated code
+        // 3. Assert the SlotValue matches exactly between IR and generated Rust
+        //
+        // CURRENTLY MISSING: No existing test verifies this behavior.
+        // The test will fail until codegen emits slot preservation code.
+        let workflow = build_object_workflow()?;
+        let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
+
+        // Generated code must contain slot store and load operations that preserve
+        // the exact SlotValue (including the specific ObjectId handle).
+        // We need to verify the ObjectId is preserved through store→load cycle.
+        assert!(
+            source.contains("Object(0)"),
+            "BuildObject must produce Object handle in slot, but source does not contain expected Object handle"
+        );
+
+        // MISSING: Actual test would run both IR and generated code and compare
+        // the exact ObjectId in the output slot. This requires implementing the
+        // full parity test harness for BuildObject slot preservation.
+        Err(String::from(
+            "POST-005: Slot value roundtrip test not yet implemented. \
+             Need workflow that stores ObjectId in slot 0, copies to slot 1, \
+             then verifies both slots contain the same ObjectId after execution."
+        ))
+    }
+
+    /// POST-005: BatchList slot copying must preserve list handle identity.
+    #[test]
+    fn post_005_batch_list_slot_copy_preserves_list_handle() -> Result<(), String> {
+        // BuildList creates a list, then Copy node copies the list handle to
+        // another slot. Both slots must contain the same ListId after execution.
+        //
+        // MISSING: No existing test verifies list handle preservation through
+        // slot copying operations.
+        Err(String::from(
+            "POST-005: BatchList slot copy test not yet implemented. \
+             Need workflow: BuildList → Copy(src=result, dst=temp) → Finish(dst=temp) \
+             that verifies IR and generated Rust produce identical ListId in dst slot."
+        ))
+    }
+
+    // =========================================================================
+    // POST-006: Taint propagation tests for EvalExpr and action results
+    // =========================================================================
+    // These tests verify taint flows through expression evaluation and action
+    // result handling.
+    //
+    // MISSING: Tests for EvalExpr operand taints and action result taints.
+
+    /// POST-006: EvalExpr operand taint must propagate through binary operations.
+    #[test]
+    fn post_006_eval_expr_binary_op_preserves_operand_taints() -> Result<(), String> {
+        // When evaluating "slot0 + slot1", if slot0 has Secret taint, the
+        // result must have Secret taint regardless of slot1's taint.
+        //
+        // MISSING: No existing test verifies taint propagation through
+        // expression binary operations in the generated code.
+        Err(String::from(
+            "POST-006: EvalExpr binary op taint propagation test not yet implemented. \
+             Need workflow: SetConst(Secret) → SetConst(Clean) → Expr(Add) → Finish \
+             that verifies result taint is Secret when either operand is Secret."
+        ))
+    }
+
+    /// POST-006: Action result taint must attach to output slot after action completes.
+    #[test]
+    fn post_006_action_result_taint_attaches_to_output_slot() -> Result<(), String> {
+        // When an action returns a value with Secret taint, the output slot
+        // must receive that taint.
+        //
+        // MISSING: No existing test verifies action result taint attachment
+        // in the generated code's action dispatch handling.
+        Err(String::from(
+            "POST-006: Action result taint propagation test not yet implemented. \
+             Need workflow with action that returns Secret-tainted value, then \
+             verify the output slot taint matches the action's returned taint."
+        ))
+    }
+
+    // =========================================================================
+    // POST-007: Typed error preservation for all error cases
+    // =========================================================================
+    // These tests verify that specific error variants are preserved with their
+    // exact field values through code generation.
+    //
+    // MISSING: Tests for SlotOutOfBounds, MissingOutputSlot, AccessorPathTooDeep,
+    // ExprOutOfBounds, BudgetExhausted, TaintViolation error cases.
+
+    /// POST-007: SlotOutOfBounds error must preserve exact slot index.
+    #[test]
+    fn post_007_slot_out_of_bounds_preserves_slot_index() -> Result<(), String> {
+        // When a step accesses slot 99 but the workflow only has 10 slots,
+        // the error must be DriveError::SlotOutOfBounds { slot: 99 } exactly.
+        //
+        // MISSING: No existing test verifies the generated code preserves
+        // the exact slot index in SlotOutOfBounds errors.
+        Err(String::from(
+            "POST-007: SlotOutOfBounds error preservation test not yet implemented. \
+             Need workflow that accesses out-of-bounds slot and verifies the \
+             generated Rust emits exactly SlotOutOfBounds with the invalid slot index."
+        ))
+    }
+
+    /// POST-007: MissingOutputSlot error must preserve the step index.
+    #[test]
+    fn post_007_missing_output_slot_preserves_step_index() -> Result<(), String> {
+        // When a node requiring an output slot doesn't have one, the error
+        // must be DriveError::MissingOutputSlot { step: <node_id> }.
+        //
+        // MISSING: No existing test verifies the generated code preserves
+        // the step index in MissingOutputSlot errors.
+        Err(String::from(
+            "POST-007: MissingOutputSlot error preservation test not yet implemented. \
+             Need workflow with node that requires output slot but doesn't have one, \
+             then verify the generated code emits MissingOutputSlot with correct step index."
+        ))
+    }
+
+    /// POST-007: AccessorPathTooDeep error must preserve depth and max fields.
+    #[test]
+    fn post_007_accessor_path_too_deep_preserves_depth_and_max() -> Result<(), String> {
+        // When an accessor path exceeds the maximum depth (e.g., depth=17, max=16),
+        // the error must be DriveError::AccessorPathTooDeep { depth: 17, max: 16 }.
+        //
+        // MISSING: No existing test verifies the generated code preserves
+        // both depth and max fields in AccessorPathTooDeep errors.
+        Err(String::from(
+            "POST-007: AccessorPathTooDeep error preservation test not yet implemented. \
+             Need workflow with deeply nested accessor path that exceeds MAX_PATH_DEPTH, \
+             then verify the generated code emits AccessorPathTooDeep with correct fields."
+        ))
+    }
+
+    /// POST-007: ExprOutOfBounds error must preserve the expression index.
+    #[test]
+    fn post_007_expr_out_of_bounds_preserves_expr_index() -> Result<(), String> {
+        // When an expression program references an invalid expression index,
+        // the error must preserve the exact expression index.
+        //
+        // MISSING: No existing test verifies expr index preservation in errors.
+        Err(String::from(
+            "POST-007: ExprOutOfBounds error preservation test not yet implemented. \
+             Need workflow with invalid expression index reference, \
+             then verify the generated code emits ExprOutOfBounds with correct expr index."
+        ))
+    }
+
+    /// POST-007: StepBudgetExhausted error must be emitted when budget limit is reached.
+    #[test]
+    fn post_007_step_budget_exhausted_error_preserved() -> Result<(), String> {
+        // When step budget is exhausted, the generated code must emit
+        // DriveError::StepBudgetExhausted exactly.
+        //
+        // MISSING: No existing test verifies StepBudgetExhausted error handling
+        // in the generated code.
+        Err(String::from(
+            "POST-007: StepBudgetExhausted error preservation test not yet implemented. \
+             Need workflow with very low step budget that gets exhausted, \
+             then verify the generated code emits StepBudgetExhausted exactly."
+        ))
+    }
+
+    /// POST-007: TaintViolation error must be emitted when secret is used improperly.
+    #[test]
+    fn post_007_taint_violation_error_preserved() -> Result<(), String> {
+        // When a Secret-tainted value is used where Clean is required,
+        // the error must be DriveError::TaintViolation.
+        //
+        // MISSING: No existing test verifies TaintViolation error in codegen.
+        // Note: The generated minimal_workflow.rs shows Taint enum but no
+        // TaintViolation error variant exists in DriveError yet.
+        Err(String::from(
+            "POST-007: TaintViolation error preservation test not yet implemented. \
+             Need workflow that uses Secret-tainted value in a Clean-required context, \
+             then verify the generated code emits TaintViolation error."
+        ))
+    }
+
+    // =========================================================================
+    // POST-008: Ask/AskResume ticket resumption tests
+    // =========================================================================
+    // These tests verify that AskResume correctly handles ticket-based
+    // resumption and that the answer slot is properly populated.
+    //
+    // MISSING: AskResume resumption behavior is not tested.
+
+    /// POST-008: AskResume must populate answer slot from ticket on resumption.
+    #[test]
+    fn post_008_ask_resume_populates_answer_slot_from_ticket() -> Result<(), String> {
+        // When an AskResume step is resumed with a ticket containing an answer,
+        // the answer must be written to the answer slot.
+        //
+        // MISSING: No existing test verifies the answer slot population during
+        // AskResume resumption in the generated code.
+        Err(String::from(
+            "POST-008: AskResume answer slot population test not yet implemented. \
+             Need workflow with Ask → AskResume where AskResume is resumed with a \
+             ticket containing an answer, then verify the answer slot contains \
+             the value from the ticket after resumption."
+        ))
+    }
+
+    /// POST-008: Ask ticket must preserve prompt and timeout through suspend/resume.
+    #[test]
+    fn post_008_ask_ticket_preserves_prompt_and_timeout() -> Result<(), String> {
+        // When an Ask suspends and is resumed, the ticket must preserve the
+        // original prompt slot and timeout slot values.
+        //
+        // MISSING: No existing test verifies ticket preservation through
+        // suspend/resume cycle.
+        Err(String::from(
+            "POST-008: Ask ticket preservation test not yet implemented. \
+             Need workflow with Ask that suspends with prompt_slot=0, timeout_slot=1, \
+             then resume and verify the ticket preserves these exact slot indices."
+        ))
+    }
+
+    // =========================================================================
+    // POST-009: RetryCheck exhausted routing (attempt >= max)
+    // =========================================================================
+    // This test verifies that RetryCheck correctly routes to the exhausted
+    // path when attempt count reaches or exceeds the maximum.
+    //
+    // MISSING: Test with attempt >= max is not present.
+
+    /// POST-009: RetryCheck exhausted path taken when attempt >= max.
+    #[test]
+    fn post_009_retry_check_routes_to_exhausted_when_attempt_eq_max() -> Result<(), String> {
+        // When RetryCheck is called with current_attempt >= max_attempts,
+        // it must route to the exhausted target, not the retry body.
+        //
+        // MISSING: No existing test verifies the exhausted routing when
+        // attempt equals max. The existing test only checks non-exhausted case.
+        let workflow = do_with_retry_check_workflow()?;
+        let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
+
+        // The generated retry_check_target function must handle the equality case.
+        // Currently the code might only handle attempt > max, missing the == case.
+        assert!(
+            source.contains("retry_check_target"),
+            "Generated code must contain retry_check_target function"
+        );
+
+        // MISSING: Actual test would set up state where attempt == max and
+        // verify the exhausted path is taken, not the retry body.
+        Err(String::from(
+            "POST-009: RetryCheck exhausted routing when attempt >= max not yet tested. \
+             Need workflow with RetryCheck where current_attempt equals max_attempts, \
+             then verify the exhausted path is taken (continues to terminal slot) \
+             and the retry body is NOT executed."
+        ))
+    }
+
+    /// POST-009: RetryCheck exhausted path taken when attempt > max.
+    #[test]
+    fn post_009_retry_check_routes_to_exhausted_when_attempt_gt_max() -> Result<(), String> {
+        // When RetryCheck is called with current_attempt > max_attempts,
+        // it must route to the exhausted target.
+        //
+        // MISSING: Test for strictly greater than case is also missing.
+        Err(String::from(
+            "POST-009: RetryCheck exhausted routing when attempt > max not yet tested. \
+             Need workflow with RetryCheck where current_attempt > max_attempts, \
+             then verify the exhausted path is taken."
+        ))
+    }
+
+    // =========================================================================
+    // POST-010: Journal signature tests
+    // =========================================================================
+    // These tests verify that the generated code emits correct journal events
+    // for SlotWritten, ActionScheduled, ActionCompleted, and RunFinished.
+    //
+    // MISSING: Journal signatures are not tested at all.
+
+    /// POST-010: SlotWritten journal event must be emitted when slot is written.
+    #[test]
+    fn post_010_slot_written_journal_event_emitted() -> Result<(), String> {
+        // When a slot is written, the journal must contain SlotWritten event
+        // with the slot index and the written value's taint.
+        //
+        // MISSING: No existing test verifies journal event emission in codegen.
+        Err(String::from(
+            "POST-010: SlotWritten journal event test not yet implemented. \
+             Need workflow that writes to slot 0, then verify the generated code \
+             emits SlotWritten event with slot=0 and the correct taint."
+        ))
+    }
+
+    /// POST-010: ActionScheduled journal event must be emitted when action starts.
+    #[test]
+    fn post_010_action_scheduled_journal_event_emitted() -> Result<(), String> {
+        // When a Do node schedules an action, the journal must contain
+        // ActionScheduled event with the action_id and step index.
+        //
+        // MISSING: No existing test verifies ActionScheduled event in codegen.
+        Err(String::from(
+            "POST-010: ActionScheduled journal event test not yet implemented. \
+             Need workflow with Do node for action 10, then verify the generated \
+             code emits ActionScheduled event with action_id=10 and step=1."
+        ))
+    }
+
+    /// POST-010: ActionCompleted journal event must be emitted when action finishes.
+    #[test]
+    fn post_010_action_completed_journal_event_emitted() -> Result<(), String> {
+        // When an action completes (successfully or with failure), the journal
+        // must contain ActionCompleted event.
+        //
+        // MISSING: No existing test verifies ActionCompleted event in codegen.
+        Err(String::from(
+            "POST-010: ActionCompleted journal event test not yet implemented. \
+             Need workflow with Do node that completes, then verify the generated \
+             code emits ActionCompleted event with correct action_id and result."
+        ))
+    }
+
+    /// POST-010: RunFinished journal event must be emitted when run completes.
+    #[test]
+    fn post_010_run_finished_journal_event_emitted() -> Result<(), String> {
+        // When a workflow run finishes (either by reaching Finish node or by
+        // error), the journal must contain RunFinished event.
+        //
+        // MISSING: No existing test verifies RunFinished event in codegen.
+        Err(String::from(
+            "POST-010: RunFinished journal event test not yet implemented. \
+             Need workflow that runs to completion, then verify the generated \
+             code emits RunFinished event with the final status."
+        ))
+    }
 }
