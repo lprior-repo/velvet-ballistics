@@ -21,7 +21,7 @@ VARIABLES
     reserved_resources,
     pending_admission
 
-ResourceReservation == [slots: 0..MaxSlotsPerRun, actions: 0..MaxActionsPerRun, memory_bytes: 0..100]
+ResourceReservation == [slots: 0..MaxSlotsPerRun, actions: 0..MaxActionsPerRun, memory_bytes: 0..10]
 
 Init ==
     /\ admitted_runs = {}
@@ -81,6 +81,10 @@ Next ==
         \/ RunCompleted(run)
 
 Spec == Init /\ [][Next]_<<admitted_runs, shard_runs, reserved_resources, pending_admission>>
+
+StateConstraint ==
+    /\ Cardinality(pending_admission) <= 2
+    /\ Cardinality(admitted_runs) <= 2
 
 THEOREM Spec => []NoRunAdmittedWithoutReservation
 THEOREM Spec => []ShardCapacityBounded

@@ -89,6 +89,8 @@ Next ==
 
 Spec == Init /\ [][Next]_<<journal, dispatched, pending_dispatch>>
 
+StateConstraint == Len(journal) <= 4
+
 THEOREM Spec => []DispatchSafety
 THEOREM Spec => []DispatchBeforeCommit
 

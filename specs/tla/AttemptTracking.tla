@@ -52,6 +52,8 @@ Next ==
 
 Spec == Init /\ [][Next]_<<journal, latest_attempt>>
 
+StateConstraint == Len(journal) <= 3
+
 THEOREM Spec => []StaleCompletionRejected
 THEOREM Spec => []AttemptMonotonic
 

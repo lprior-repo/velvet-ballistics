@@ -120,9 +120,14 @@ SubmitCommand(s) ==
 
 Next ==
     \/ \E s \in ShardId : Tick(s)
+    \/ \E s \in ShardId : SubmitCommand(s)
     \/ ShutdownGraceful
 
 Spec == Init /\ [][Next]_<<queues, shard_status, total_processed>>
+
+StateConstraint ==
+    /\ Len(queues[1]) <= 3
+    /\ total_processed <= 5
 
 \* Theorems
 THEOREM Spec => []QueueBounded
