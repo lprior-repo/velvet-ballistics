@@ -20,7 +20,7 @@ workflow.yaml
 
 1. Runtime state transitions use `StepIdx`, not YAML nodes.
 2. Runtime data uses `SlotIdx`, not `HashMap<String, Value>`.
-3. Future expressions compile to bytecode before a run is accepted; Phase 0 encodes public `save` plus internal `SetConst`/`Copy`/`Choose`/`Finish` IR nodes.
+3. Future expressions compile to bytecode before a run is accepted; public `save` plus internal `SetConst`/`Copy`/`Choose`/`Finish` IR nodes form the baseline compiler output.
 4. Actions resolve to numeric `ActionId` values before execution.
 5. Deterministic steps execute synchronously until finish or an async boundary.
 6. Engine shards do not spawn one task per step.

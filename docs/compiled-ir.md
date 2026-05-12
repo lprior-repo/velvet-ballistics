@@ -19,12 +19,23 @@ entry StepIdx
 
 ## Current Node Kinds
 
-```text
-SetConst { output: SlotIdx, value: ConstIdx, next: StepIdx }
-Copy { output: SlotIdx, source: SlotIdx, next: StepIdx }
-Choose { condition: SlotIdx, on_true: StepIdx, on_false: StepIdx }
-Finish { result: SlotIdx }
-```
+The authoritative `CompiledNodeKind` enum is defined in `crates/vb_core/src/nodes.rs`.
+It contains **34 variants** covering all workflow primitives:
+
+| Category | Variants |
+|----------|----------|
+| Control | `Nop`, `Jump`, `Finish` |
+| Slot ops | `SetConst`, `Copy`, `EvalExpr` |
+| Composite | `BuildObject`, `BuildList` |
+| Branching | `Choose`, `ChooseSlot` |
+| Iteration | `ForEachStart`, `ForEachNext`, `ForEachJoin` |
+| Parallel | `TogetherStart`, `TogetherBranch`, `TogetherJoin` |
+| Collection | `CollectStart`, `CollectPage`, `CollectNext`, `CollectFinish` |
+| Reduction | `ReduceStart`, `ReduceNext`, `ReduceFinish` |
+| Repetition | `RepeatStart`, `RepeatAttempt`, `RepeatCheck`, `RepeatFinish` |
+| Temporal | `WaitUntil`, `WaitEvent` |
+| External I/O | `Do`, `Ask`, `AskResume` |
+| Error handling | `RetryCheck`, `ErrorHandler` |
 
 Outputs are variant-specific so missing writer output slots are unrepresentable.
 

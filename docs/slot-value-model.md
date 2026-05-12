@@ -10,9 +10,14 @@ Runtime values live in numeric slots. Known fields must be flattened into slots 
 Null
 Bool(bool)
 I64(i64)
-Text(Box<str>)
-Bytes(bytes::Bytes)
+F64(FiniteF64)
+Symbol(SymbolId)   — Interned symbol handle
+List(ListId)       — Runtime list arena handle
+Object(ObjectId)   — Runtime object arena handle
+Blob(BlobId)       — Runtime blob arena/storage handle
 ```
+
+All variants are `Copy` (no heap allocation in the enum itself).
 
 `SlotValue::is_true` returns true only for `Bool(true)`.
 
@@ -32,6 +37,6 @@ DerivedFromSecret
 
 All slot access uses checked slice access. Out-of-bounds reads/writes return typed errors. No unchecked indexing or string slicing is allowed.
 
-## Future Values
+## Value Handles
 
-Future phases may add finite numeric values, symbols, lists, objects, and blob arena references. Hot known fields still compile to slots; object values are for cold or opaque payload boundaries only.
+All non-scalar values (`Symbol`, `List`, `Object`, `Blob`) are handles into runtime arenas. Handles are Copy and compact. Hot known fields compile to slots; object/list/blob values are for cold or opaque payload boundaries only.
