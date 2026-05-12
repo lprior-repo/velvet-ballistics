@@ -13,6 +13,7 @@ impl Shard {
         Self {
             command_queue: ArrayQueue::new(config.command_queue_capacity),
             runs: IndexMap::new(),
+            runtime_states: IndexMap::new(),
             pending_timers: IndexMap::new(),
             frame_pools: IndexMap::new(),
             trace_ring: TraceRing::new(config.trace_capacity),
@@ -120,7 +121,9 @@ impl Shard {
                 inputs,
                 caps,
             } => self.handle_submit_with_inputs(run, workflow, &inputs, caps)?,
-            ShardCommand::Resume { run } => self.handle_resume(run)?,
+            ShardCommand::Resume { run } => {
+                self.handle_resume(run).map_err(RuntimeError::from)?;
+            }
             ShardCommand::ActionCompleted { ticket, output } => {
                 self.handle_action_completion(ticket, output)?;
             }

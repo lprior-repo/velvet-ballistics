@@ -71,6 +71,7 @@ impl Shard {
             collect_states: CollectStates::new(),
         };
         self.runs.insert(run, state);
+        self.runtime_states.insert(run, RuntimeState::Initial);
         self.drive_run(run)?;
         Ok(())
     }
@@ -116,8 +117,68 @@ impl Shard {
         }
     }
 
-    pub(crate) fn handle_resume(&mut self, run: RunId) -> RuntimeResult<()> {
-        self.drive_run(run)
+    pub fn handle_resume(&mut self, run: RunId) -> Result<ResumeResult, ResumeError> {
+        self.validate_run_exists(run)?;
+        let current_state = self.get_runtime_state_or_running(run);
+        if current_state == RuntimeState::Running {
+            return Ok(ResumeResult {
+                run_id: run,
+                status: ResumeStatus::AlreadyRunning,
+                timestamp: current_timestamp(),
+            });
+        }
+        if current_state != RuntimeState::Resumable {
+            return Err(ResumeError::NotResumable {
+                run_id: run,
+                current_state,
+            });
+        }
+        let timestamp = self.append_resumed_event(run)?;
+        let drive_result = self.drive_run(run);
+        Self::observe_resume_drive_result(drive_result);
+        Ok(ResumeResult {
+            run_id: run,
+            status: ResumeStatus::Resumed,
+            timestamp,
+        })
+    }
+
+    fn validate_run_exists(&self, run: RunId) -> Result<(), ResumeError> {
+        if !self.runs.contains_key(&run) {
+            return Err(ResumeError::RunIdNotFound { run_id: run });
+        }
+        Ok(())
+    }
+
+    fn get_runtime_state_or_running(&self, run: RunId) -> RuntimeState {
+        self.runtime_states
+            .get(&run)
+            .copied()
+            .unwrap_or(RuntimeState::Running)
+    }
+
+    fn append_resumed_event(&mut self, run: RunId) -> Result<u64, ResumeError> {
+        if !self.is_run_tracked(run) {
+            return Err(ResumeError::IncompleteHydration { run_id: run });
+        }
+        self.runtime_states.insert(run, RuntimeState::Resuming);
+        let timestamp = current_timestamp();
+        let resumed_event = RuntimeJournalEvent::Resumed { run, timestamp };
+        if self.journal.append(resumed_event).is_err() {
+            self.runtime_states.insert(run, RuntimeState::Resumable);
+            return Err(ResumeError::JournalAppendFailed);
+        }
+        Ok(timestamp)
+    }
+
+    fn is_run_tracked(&self, run: RunId) -> bool {
+        self.runtime_states.contains_key(&run)
+    }
+
+    fn observe_resume_drive_result(result: RuntimeResult<()>) {
+        match result {
+            Ok(()) | Err(_) => {}
+        }
     }
 
     #[allow(clippy::needless_pass_by_value)]

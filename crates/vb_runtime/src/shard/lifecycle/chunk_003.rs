@@ -15,7 +15,16 @@ use crate::trace::TraceEvent;
 use crate::{RuntimeError, RuntimeResult};
 
 use crate::primitives::collect::CollectStates;
-use crate::shard::types::{AskAnswer, PendingTimerKind, RunState, Shard};
+use crate::shard::types::{
+    AskAnswer, PendingTimerKind, ResumeError, ResumeResult, ResumeStatus, RunState, RuntimeState,
+    Shard,
+};
+
+fn current_timestamp() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |duration| duration.as_secs())
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum ActionFailureOutcome {
@@ -72,4 +81,3 @@ fn write_failure_slot(
         None => Ok(()),
     }
 }
-

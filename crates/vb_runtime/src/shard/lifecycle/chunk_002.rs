@@ -142,7 +142,6 @@ impl Shard {
         )
     }
 
-    #[allow(clippy::needless_pass_by_value)]
     fn apply_drive_result(
         &mut self,
         run: RunId,
@@ -151,14 +150,45 @@ impl Shard {
     ) -> RuntimeResult<()> {
         match result {
             Ok(RuntimeSignal::Continue | RuntimeSignal::StepBudgetExhausted) => {
+                self.runtime_states.insert(run, RuntimeState::Running);
                 self.keep_run(run, state);
                 Ok(())
             }
-            Ok(RuntimeSignal::Finished(_)) => self.finish_run(run, state),
-            Ok(RuntimeSignal::AwaitingAction(ticket)) => self.await_action(run, state, ticket),
-            Ok(RuntimeSignal::AwaitingWait) => self.await_timer(run, state, PendingTimerKind::Wait),
-            Ok(RuntimeSignal::AwaitingAsk) => self.await_timer(run, state, PendingTimerKind::Ask),
-            Err(_) => self.fail_run_state(run, state),
+            Ok(RuntimeSignal::Finished(_)) => self.apply_terminal_finished(run, state),
+            Ok(RuntimeSignal::AwaitingAction(ticket)) => self.apply_awaiting_action(run, state, ticket),
+            Ok(RuntimeSignal::AwaitingWait) => self.apply_awaiting_timer(run, state, PendingTimerKind::Wait),
+            Ok(RuntimeSignal::AwaitingAsk) => self.apply_awaiting_timer(run, state, PendingTimerKind::Ask),
+            Err(_) => self.apply_terminal_failed(run, state),
         }
+    }
+
+    fn apply_awaiting_action(
+        &mut self,
+        run: RunId,
+        state: RunState,
+        ticket: ActionTicket,
+    ) -> RuntimeResult<()> {
+        self.runtime_states.insert(run, RuntimeState::Resumable);
+        self.await_action(run, state, ticket)
+    }
+
+    fn apply_awaiting_timer(
+        &mut self,
+        run: RunId,
+        state: RunState,
+        kind: PendingTimerKind,
+    ) -> RuntimeResult<()> {
+        self.runtime_states.insert(run, RuntimeState::Resumable);
+        self.await_timer(run, state, kind)
+    }
+
+    fn apply_terminal_finished(&mut self, run: RunId, state: RunState) -> RuntimeResult<()> {
+        self.runtime_states.swap_remove(&run);
+        self.finish_run(run, state)
+    }
+
+    fn apply_terminal_failed(&mut self, run: RunId, state: RunState) -> RuntimeResult<()> {
+        self.runtime_states.swap_remove(&run);
+        self.fail_run_state(run, state)
     }
 }

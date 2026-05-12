@@ -133,6 +133,13 @@ pub enum RuntimeJournalEvent {
         /// Execution attempt number for this step.
         attempt: u16,
     },
+    /// Run was resumed from a suspended state.
+    Resumed {
+        /// Run identifier.
+        run: RunId,
+        /// Monotonic timestamp in seconds since epoch.
+        timestamp: u64,
+    },
 }
 
 impl RuntimeJournalEvent {
@@ -153,7 +160,8 @@ impl RuntimeJournalEvent {
             | Self::AskAnswered { run, .. }
             | Self::SlotWritten { run, .. }
             | Self::StepStarted { run, .. }
-            | Self::StepSucceeded { run, .. } => *run,
+            | Self::StepSucceeded { run, .. }
+            | Self::Resumed { run, .. } => *run,
             Self::RunAdmission { admission } => admission.run_id(),
         }
     }
@@ -278,4 +286,3 @@ pub struct StorageRuntimeJournal {
     next_seq_by_run: Mutex<IndexMap<RunId, EventSeq>>,
     profile: DurabilityProfile,
 }
-

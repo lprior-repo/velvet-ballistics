@@ -48,7 +48,7 @@ pub mod taint;
 pub mod trace;
 
 pub use error::{RuntimeError, RuntimeResult};
-pub use shard::{AskAnswer, AskTicket};
+pub use shard::{AskAnswer, AskTicket, ResumeError, ResumeResult, ResumeStatus};
 
 #[cfg(test)]
 mod test_harness;

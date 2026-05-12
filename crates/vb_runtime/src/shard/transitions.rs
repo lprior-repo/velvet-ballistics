@@ -98,6 +98,9 @@ impl Shard {
         self.pending_timers.swap_remove(&run);
         self.counters.inc_failed();
         self.trace_ring.push(TraceEvent::RunFailed { run });
+        // Track Failed state so handle_resume can return NotResumable (not RunIdNotFound)
+        self.runtime_states
+            .insert(run, crate::shard::types::RuntimeState::Failed);
         self.journal
             .append(RuntimeJournalEvent::RunFailed { run })?;
         self.release_frame(state.frame);

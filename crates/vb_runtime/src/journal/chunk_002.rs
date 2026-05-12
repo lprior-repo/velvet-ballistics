@@ -79,7 +79,8 @@ impl StorageRuntimeJournal {
             | RuntimeJournalEvent::WaitResolved { .. }
             | RuntimeJournalEvent::AskScheduled { .. }
             | RuntimeJournalEvent::AskAnswered { .. }
-            | RuntimeJournalEvent::SlotWritten { .. } => None,
+            | RuntimeJournalEvent::SlotWritten { .. }
+            | RuntimeJournalEvent::Resumed { .. } => None,
         }
     }
 
@@ -123,7 +124,8 @@ impl StorageRuntimeJournal {
             | RuntimeJournalEvent::AskAnswered { .. }
             | RuntimeJournalEvent::SlotWritten { .. }
             | RuntimeJournalEvent::StepStarted { .. }
-            | RuntimeJournalEvent::StepSucceeded { .. } => None,
+            | RuntimeJournalEvent::StepSucceeded { .. }
+            | RuntimeJournalEvent::Resumed { .. } => None,
         }
     }
 
@@ -164,7 +166,8 @@ impl StorageRuntimeJournal {
             | RuntimeJournalEvent::ActionCompleted { .. }
             | RuntimeJournalEvent::ActionFailed { .. }
             | RuntimeJournalEvent::StepStarted { .. }
-            | RuntimeJournalEvent::StepSucceeded { .. } => None,
+            | RuntimeJournalEvent::StepSucceeded { .. }
+            | RuntimeJournalEvent::Resumed { .. } => None,
         }
     }
 
@@ -269,4 +272,3 @@ impl QueuedStorageRuntimeJournal {
             .map_err(RuntimeError::from)
     }
 }
-
