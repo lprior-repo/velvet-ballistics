@@ -311,6 +311,7 @@ mod proptests {
                         max_collect_items: 100,
                         max_queue_depth: 64,
                         max_journal_batch_bytes: 512,
+                        ..ResourceContract::DEFAULT
                     }
                 },
             )

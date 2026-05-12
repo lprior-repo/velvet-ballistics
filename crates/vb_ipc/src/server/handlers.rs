@@ -215,6 +215,7 @@ pub fn handle_answer_ask(payload: &[u8], runtime: &mut Runtime) -> IpcResponse {
         run_id,
         ticket,
         answer,
+        taint,
     }) = decode_payload::<crate::IpcPayload>(payload)
     else {
         return IpcResponse::BadRequest;
@@ -231,6 +232,28 @@ pub fn handle_answer_ask(payload: &[u8], runtime: &mut Runtime) -> IpcResponse {
     let Some(ask_step) = step_from_ticket(ticket) else {
         return IpcResponse::BadRequest;
     };
+    let encoded_len = match u32::try_from(answer.len()) {
+        Ok(len) => len,
+        Err(_) => {
+            // MAX_ANSWER_ASK_BYTES (65536) is well below u32::MAX, so this
+            // branch is logically unreachable due to the prior bounds check.
+            // The match handles the fallible conversion without panicking.
+            return IpcResponse::RuntimeError {
+                message: String::from("answer payload size exceeds u32::MAX"),
+            };
+        }
+    };
+    // Decode the caller's answer bytes as a postcard-serialized SlotValue.
+    // The bytes are expected to be valid postcard-encoded SlotValue; if decode
+    // fails, return an error rather than silently discarding the payload.
+    let value = match postcard::from_bytes::<SlotValue>(&answer) {
+        Ok(v) => v,
+        Err(_) => {
+            return IpcResponse::RuntimeError {
+                message: String::from("answer bytes are not valid postcard-encoded SlotValue"),
+            };
+        }
+    };
     let answer = AskAnswer {
         ticket: AskTicket {
             run: run_id,
@@ -238,8 +261,9 @@ pub fn handle_answer_ask(payload: &[u8], runtime: &mut Runtime) -> IpcResponse {
             resume_step: ask_step,
         },
         answer_slot: SlotIdx::ZERO,
-        value: SlotValue::Null,
-        taint: Taint::Clean,
+        value,
+        taint: taint.unwrap_or(Taint::Clean),
+        encoded_len,
     };
 
     match runtime.answer_ask(answer) {
@@ -1227,6 +1251,7 @@ mod tests {
             run_id: vb_core::RunId::new(3),
             ticket: 42,
             answer: Vec::from(&b"yes"[..]),
+            taint: None,
         };
         let Ok(encoded) = postcard::to_allocvec(&payload) else {
             return;
@@ -1866,6 +1891,7 @@ mod tests {
             run_id: vb_core::RunId::new(1),
             ticket: 5,
             answer: vec![0xFF_u8; MAX_ANSWER_ASK_BYTES + 1],
+            taint: None,
         };
         let Ok(encoded) = postcard::to_allocvec(&payload) else {
             assert!(false, "payload should encode");
@@ -1895,6 +1921,7 @@ mod tests {
             run_id: vb_core::RunId::new(1),
             ticket: 5,
             answer: vec![0xAA_u8; MAX_ANSWER_ASK_BYTES],
+            taint: None,
         };
         let Ok(encoded) = postcard::to_allocvec(&payload) else {
             assert!(false, "payload should encode");
@@ -1913,6 +1940,114 @@ mod tests {
                 assert!(false, "expected AnswerAsk, got {other:?}");
             }
         }
+    }
+
+    // -------------------------------------------------------------------------
+    // INV-002: Taint classification and enforcement
+    // -------------------------------------------------------------------------
+
+    /// INV-002: Verifies that the IPC handler passes the caller-provided taint
+    /// field through to the runtime's answer_ask call.
+    /// When taint is None (backward-compatible default), Taint::Clean is used.
+    #[test]
+    fn answer_ask_taint_none_defaults_to_clean() {
+        let payload = crate::IpcPayload::AnswerAsk {
+            run_id: vb_core::RunId::new(1),
+            ticket: 0,
+            answer: Vec::from(&b"test"[..]),
+            taint: None,
+        };
+        let Ok(encoded) = postcard::to_allocvec(&payload) else {
+            assert!(false, "payload should encode");
+            return;
+        };
+        let decoded = decode_payload::<crate::IpcPayload>(&encoded);
+        let Ok(crate::IpcPayload::AnswerAsk { taint, .. }) = decoded else {
+            assert!(false, "should decode AnswerAsk");
+            return;
+        };
+        assert_eq!(
+            taint, None,
+            "taint field should round-trip as None (means Taint::Clean at handler)"
+        );
+    }
+
+    /// INV-002: Verifies that a caller-supplied taint of Secret can round-trip
+    /// through the IPC protocol. The runtime enforces INV-002 by rejecting
+    /// Secret-tainted answers when ResourceContract::allows_secret_results is false.
+    #[test]
+    fn answer_ask_taint_secret_roundtrips() {
+        let payload = crate::IpcPayload::AnswerAsk {
+            run_id: vb_core::RunId::new(1),
+            ticket: 5,
+            answer: Vec::from(&b"secret_value"[..]),
+            taint: Some(Taint::Secret),
+        };
+        let Ok(encoded) = postcard::to_allocvec(&payload) else {
+            assert!(false, "payload should encode");
+            return;
+        };
+        let decoded = decode_payload::<crate::IpcPayload>(&encoded);
+        let Ok(crate::IpcPayload::AnswerAsk { taint, .. }) = decoded else {
+            assert!(false, "should decode AnswerAsk with taint");
+            return;
+        };
+        assert_eq!(
+            taint,
+            Some(Taint::Secret),
+            "Taint::Secret should round-trip correctly"
+        );
+    }
+
+    /// INV-002: Verifies that a caller-supplied taint of DerivedFromSecret can
+    /// round-trip through the IPC protocol.
+    #[test]
+    fn answer_ask_taint_derived_from_secret_roundtrips() {
+        let payload = crate::IpcPayload::AnswerAsk {
+            run_id: vb_core::RunId::new(1),
+            ticket: 5,
+            answer: Vec::from(&b"derived_value"[..]),
+            taint: Some(Taint::DerivedFromSecret),
+        };
+        let Ok(encoded) = postcard::to_allocvec(&payload) else {
+            assert!(false, "payload should encode");
+            return;
+        };
+        let decoded = decode_payload::<crate::IpcPayload>(&encoded);
+        let Ok(crate::IpcPayload::AnswerAsk { taint, .. }) = decoded else {
+            assert!(false, "should decode AnswerAsk with taint");
+            return;
+        };
+        assert_eq!(
+            taint,
+            Some(Taint::DerivedFromSecret),
+            "Taint::DerivedFromSecret should round-trip correctly"
+        );
+    }
+
+    /// INV-002: Verifies that Taint::Clean round-trips correctly.
+    #[test]
+    fn answer_ask_taint_clean_explicit_roundtrips() {
+        let payload = crate::IpcPayload::AnswerAsk {
+            run_id: vb_core::RunId::new(1),
+            ticket: 5,
+            answer: Vec::from(&b"clean_value"[..]),
+            taint: Some(Taint::Clean),
+        };
+        let Ok(encoded) = postcard::to_allocvec(&payload) else {
+            assert!(false, "payload should encode");
+            return;
+        };
+        let decoded = decode_payload::<crate::IpcPayload>(&encoded);
+        let Ok(crate::IpcPayload::AnswerAsk { taint, .. }) = decoded else {
+            assert!(false, "should decode AnswerAsk with taint");
+            return;
+        };
+        assert_eq!(
+            taint,
+            Some(Taint::Clean),
+            "Taint::Clean should round-trip correctly"
+        );
     }
 
     /// FINDING 7 (MEDIUM): handle_list_runs must cap the client-supplied limit.

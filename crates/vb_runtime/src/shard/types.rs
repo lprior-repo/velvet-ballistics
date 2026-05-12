@@ -46,6 +46,15 @@ pub enum ShardCommand {
         /// Capabilities granted to this run.
         caps: CapabilitySet,
     },
+    /// Submit a run whose durable header was already persisted by the runtime shell.
+    SubmitPrePersisted {
+        /// Run identifier chosen by the caller.
+        run: RunId,
+        /// Compiled workflow to execute.
+        workflow: CompiledWorkflow,
+        /// Capabilities granted to this run.
+        caps: CapabilitySet,
+    },
     /// Submit a new run with runtime input slots already mapped by the caller.
     SubmitWithInputs {
         /// Run identifier chosen by the caller.
@@ -133,6 +142,40 @@ pub struct AskAnswer {
     pub value: SlotValue,
     /// Answer taint marker.
     pub taint: Taint,
+    /// Encoded length of the answer payload in bytes.
+    pub encoded_len: u32,
+}
+
+impl AskAnswer {
+    /// Creates an answer when the caller has not precomputed encoded size.
+    #[must_use]
+    pub fn new(ticket: AskTicket, answer_slot: SlotIdx, value: SlotValue, taint: Taint) -> Self {
+        Self {
+            ticket,
+            answer_slot,
+            value,
+            taint,
+            encoded_len: 0,
+        }
+    }
+
+    /// Creates an answer with explicit encoded payload length.
+    #[must_use]
+    pub fn with_encoded_len(
+        ticket: AskTicket,
+        answer_slot: SlotIdx,
+        value: SlotValue,
+        taint: Taint,
+        encoded_len: u32,
+    ) -> Self {
+        Self {
+            ticket,
+            answer_slot,
+            value,
+            taint,
+            encoded_len,
+        }
+    }
 }
 
 /// Mutable run state owned directly by the shard.

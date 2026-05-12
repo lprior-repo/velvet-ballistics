@@ -102,11 +102,13 @@ struct ProofObligationsFile {
 pub fn load_proof_obligations() -> Result<Vec<ProofObligation>, String> {
     let path = PathBuf::from("contracts/proof_obligations.yaml");
     if !path.exists() {
-        return Err(format!("Proof obligations file not found: {}", path.display()));
+        return Err(format!(
+            "Proof obligations file not found: {}",
+            path.display()
+        ));
     }
     let content = std::fs::read_to_string(&path).map_err(|e| e.to_string())?;
-    let file: ProofObligationsFile =
-        serde_saphyr::from_str(&content).map_err(|e| e.to_string())?;
+    let file: ProofObligationsFile = serde_saphyr::from_str(&content).map_err(|e| e.to_string())?;
     Ok(file.obligations)
 }
 
@@ -118,19 +120,12 @@ pub fn obligations_for_files(
     let changed_set: std::collections::HashSet<_> = changed_files.iter().collect();
     obligations
         .iter()
-        .filter(|obl| {
-            obl.files
-                .iter()
-                .any(|f| changed_set.contains(&f.as_str()))
-        })
+        .filter(|obl| obl.files.iter().any(|f| changed_set.contains(&f.as_str())))
         .cloned()
         .collect()
 }
 
-pub fn obligations_for_level(
-    obligations: &[ProofObligation],
-    level: &str,
-) -> Vec<ProofObligation> {
+pub fn obligations_for_level(obligations: &[ProofObligation], level: &str) -> Vec<ProofObligation> {
     obligations
         .iter()
         .filter(|obl| obl.proof_level == level)
@@ -203,20 +198,26 @@ pub fn write_proof_evidence(
             };
             Ok(ObligationStatus {
                 id: id.clone(),
-                status: if *passed { "pass".to_string() } else { "fail".to_string() },
+                status: if *passed {
+                    "pass".to_string()
+                } else {
+                    "fail".to_string()
+                },
                 level: obl.proof_level.clone(),
                 commands: commands_for_obligation(obl),
                 log: None,
             })
         })
-        .collect::<Result<Vec<_>, String>>()?;
+        .collect::<Result<Vec<ObligationStatus>, String>>()?;
 
     let evidence = ProofEvidence {
         kind: "ProofEvidence".to_string(),
         bead: bead_id.to_string(),
         commit,
         obligations: obligations_status,
-        remaining_assumptions: vec!["Fjall fsync correctness treated as external dependency".to_string()],
+        remaining_assumptions: vec![
+            "Fjall fsync correctness treated as external dependency".to_string(),
+        ],
         verified: HashMap::new(),
     };
 

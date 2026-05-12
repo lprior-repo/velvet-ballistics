@@ -27,6 +27,7 @@ target/
 *.pid
 *.sock
 *.socket
+states/
 run/
 runtime/
 tmp/

@@ -64,8 +64,6 @@ fn validate_ticket_attempt(
             current,
         });
     }
-    // Allow ticket.attempt >= current: equal is a retry, higher is a valid retry
-    // The only rejection is stale (ticket.attempt < current)
     Ok(())
 }
 

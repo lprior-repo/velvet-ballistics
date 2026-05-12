@@ -701,6 +701,7 @@ mod tests {
             max_collect_items: 0,
             max_queue_depth: 1,
             max_journal_batch_bytes: 1,
+            ..ResourceContract::DEFAULT
         }
     }
 
@@ -4512,6 +4513,7 @@ mod tests {
                 max_collect_items: 0,
                 max_queue_depth: 1,
                 max_journal_batch_bytes: 1,
+                ..ResourceContract::DEFAULT
             }
         }
 

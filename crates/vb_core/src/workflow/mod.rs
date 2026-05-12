@@ -204,6 +204,8 @@ pub struct ResourceContract {
     pub max_queue_depth: u32,
     /// Maximum journal batch bytes.
     pub max_journal_batch_bytes: u32,
+    /// Whether secret-tainted results are allowed in answer payloads.
+    pub allows_secret_results: bool,
 }
 
 impl ResourceContract {
@@ -226,6 +228,7 @@ impl ResourceContract {
         max_collect_items: 1_024,
         max_queue_depth: 1_024,
         max_journal_batch_bytes: 1_048_576,
+        allows_secret_results: false,
     };
 }
 
