@@ -3777,6 +3777,125 @@ mod tests {
         }
     }
 
+    fn public_compile_source() -> &'static [u8] {
+        br#"version: velvet-ballastics/v1
+name: adapter_case
+when:
+  manual: {}
+steps:
+  - id: set_value
+    save:
+      value: 1
+  - id: done
+    finish:
+      result: 0
+"#
+    }
+
+    fn first_error(result: Result<CompiledWorkflow, CompileErrors>) -> CompileError {
+        match result {
+            Ok(_) => panic!("expected compile error"),
+            Err(errors) => match errors.0.into_iter().next() {
+                Some(error) => error,
+                None => panic!("expected at least one compile error"),
+            },
+        }
+    }
+
+    #[test]
+    fn test_existing_compile_api_returns_expected_artifact() {
+        let workflow = compile_workflow(public_compile_source()).expect("valid workflow compiles");
+
+        assert_eq!(workflow.name(), "adapter_case");
+        assert_eq!(workflow.entry(), StepIdx::new(0));
+        assert_eq!(workflow.slot_count(), 1);
+        assert_eq!(workflow.node_count(), 2);
+
+        let parts = workflow.to_parts();
+        assert_eq!(parts.constants.as_ref(), &[ConstValue::I64(1)]);
+        assert_eq!(vb_validate::shared::validate(&parts), Ok(()));
+    }
+
+    #[test]
+    fn test_existing_invalid_input_returns_same_diagnostic_code() {
+        let source = br#"version: velvet-ballastics/v1
+name: adapter_case
+unexpected: true
+when:
+  manual: {}
+steps:
+  - id: done
+    finish:
+      result: 0
+"#;
+
+        let error = first_error(compile_workflow(source));
+
+        assert_eq!(error.code(), "UNKNOWN_TOP_LEVEL_FIELD");
+        assert_eq!(error.diagnostic_code(), "UNKNOWN_TOP_LEVEL_FIELD");
+    }
+
+    #[test]
+    fn test_compile_invalid_input_matches_validate_diagnostic() {
+        let validate_parts = make_parts_for_lower(
+            vec![do_node(0, ActionId::new(7), SlotIdx::new(1))],
+            vec![],
+            1,
+        );
+        let lower_parts = validate_parts.clone();
+
+        let validate_error = first_error(validate_ir(validate_parts));
+        let lower_error = first_error(lower_steps_to_ir(
+            lower_parts.nodes.into_vec(),
+            lower_parts.expressions.into_vec(),
+            lower_parts.accessors.into_vec(),
+            lower_parts.constants.into_vec(),
+            lower_parts.slot_count,
+            lower_parts.symbols_count,
+            &lower_parts.name,
+            lower_parts.digest,
+        ));
+
+        assert_eq!(validate_error.code(), lower_error.code());
+        assert_eq!(
+            validate_error.diagnostic_code(),
+            lower_error.diagnostic_code()
+        );
+
+        match (validate_error, lower_error) {
+            (
+                CompileError::Validation(vb_validate::ValidationError::SlotReferenceOutOfRange {
+                    slot: validate_slot,
+                    slot_count: validate_count,
+                    context: validate_context,
+                }),
+                CompileError::Validation(vb_validate::ValidationError::SlotReferenceOutOfRange {
+                    slot: lower_slot,
+                    slot_count: lower_count,
+                    context: lower_context,
+                }),
+            ) => {
+                assert_eq!(validate_slot, lower_slot);
+                assert_eq!(validate_count, lower_count);
+                assert_eq!(validate_context, lower_context);
+            }
+            other => panic!("expected matching slot reference diagnostics, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn test_full_pipeline() {
+        let workflow = compile_workflow(public_compile_source()).expect("valid workflow compiles");
+        let artifact = emit_compiled_artifact(&workflow).expect("artifact encodes");
+        let decoded_parts =
+            postcard::from_bytes::<WorkflowParts>(&artifact).expect("artifact decodes");
+        let validated = validate_ir(decoded_parts).expect("decoded artifact validates");
+
+        assert_eq!(validated.name(), workflow.name());
+        assert_eq!(validated.digest(), workflow.digest());
+        assert_eq!(validated.node_count(), workflow.node_count());
+    }
+
     /// RED-PHASE: lower_steps_to_ir bypasses Gate 9 (slot reference validation).
     #[test]
     fn lower_steps_to_ir_bypasses_gate_9_slot_reference_validation() {

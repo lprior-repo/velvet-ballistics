@@ -1,9 +1,12 @@
 #![forbid(unsafe_code)]
-//! Integration tests for validation pipeline call sites (bead vb-qi37.8).
+//! Integration tests for public validation and compilation adapter behavior.
 //!
-//! Covers requirements R16-R21 from contract.md:
-//! - R16: vb_compile::compile.rs:30 calls validate_with_contracts
-//! - R17: vb_compile::api_compilation.rs:51 calls validate_with_contracts
+//! Covers requirements R16-R21 from contract.md without relying on stale
+//! split-file paths. These tests assert public adapter behavior remains stable
+//! while semantic validation is routed through the shared pipeline.
+//!
+//! - R16: compile adapter workflows call validate_with_contracts
+//! - R17: API compilation workflows call validate_with_contracts
 //! - R18: vb_compile::schema.rs:651 calls validate
 //! - R19: vb_compile::types.rs:155 calls validate
 //! - R20: velvet_ballastics::commands_verify.rs:76 calls validate
@@ -50,12 +53,12 @@ fn make_contract(action_id: u16) -> ActionContract {
 }
 
 // ===========================================================================
-// R16: vb_compile::compile.rs:30 calls validate_with_contracts
+// R16: compile adapter workflows call validate_with_contracts
 // ===========================================================================
 
 #[test]
 fn integration_compile_calls_validate_with_contracts() {
-    // Simulate compile.rs workflow with Do nodes and contracts
+    // Simulate the public compile adapter workflow with Do nodes and contracts.
     let nodes = vec![
         CompiledNode {
             id: StepIdx::new(0),
@@ -82,20 +85,18 @@ fn integration_compile_calls_validate_with_contracts() {
     let parts = make_parts(nodes, 1);
     let contracts = vec![make_contract(1)];
 
-    // This is what compile.rs:30 should call
     let result = validate_with_contracts(&parts, &contracts);
 
-    // Should succeed when workflow is valid
-    assert!(result.is_ok() || result.is_err()); // Deterministic call
+    assert_eq!(result, Ok(()));
 }
 
 // ===========================================================================
-// R17: vb_compile::api_compilation.rs:51 calls validate_with_contracts
+// R17: API compilation workflows call validate_with_contracts
 // ===========================================================================
 
 #[test]
 fn integration_api_compilation_calls_validate_with_contracts() {
-    // Simulate API compilation workflow
+    // Simulate a public API compilation workflow.
     let nodes = vec![
         CompiledNode {
             id: StepIdx::new(0),
@@ -110,17 +111,6 @@ fn integration_api_compilation_calls_validate_with_contracts() {
         },
         CompiledNode {
             id: StepIdx::new(1),
-            output: Some(SlotIdx::new(0)),
-            next: Some(StepIdx::new(2)),
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Do {
-                action: ActionId::new(2),
-                input: SlotIdx::new(0),
-            },
-        },
-        CompiledNode {
-            id: StepIdx::new(2),
             output: None,
             next: None,
             on_error: None,
@@ -131,12 +121,29 @@ fn integration_api_compilation_calls_validate_with_contracts() {
         },
     ];
     let parts = make_parts(nodes, 1);
-    let contracts = vec![make_contract(1), make_contract(2)];
+    let contracts = vec![make_contract(1)];
 
-    // This is what api_compilation.rs:51 should call
     let result = validate_with_contracts(&parts, &contracts);
 
-    assert!(result.is_ok() || result.is_err());
+    assert_eq!(result, Ok(()));
+}
+
+#[test]
+fn test_existing_validate_api_returns_expected_success() {
+    let nodes = vec![CompiledNode {
+        id: StepIdx::new(0),
+        output: None,
+        next: None,
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::Finish {
+            result: SlotIdx::new(0),
+        },
+    }];
+    let parts = make_parts(nodes, 1);
+
+    assert_eq!(validate(&parts), Ok(()));
+    assert_eq!(ValidationPipeline::default().validate(&parts), Ok(()));
 }
 
 // ===========================================================================
@@ -247,10 +254,9 @@ fn integration_fuzz_calls_validate_with_contracts() {
     let parts = make_parts(nodes, 1);
     let contracts = vec![make_contract(1)];
 
-    // This is what fuzz/lib.rs:40 and :60 should call
     let result = validate_with_contracts(&parts, &contracts);
 
-    assert!(result.is_ok() || result.is_err());
+    assert_eq!(result, Ok(()));
 }
 
 // ===========================================================================
