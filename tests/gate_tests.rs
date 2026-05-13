@@ -3,7 +3,8 @@
 //!
 //! These tests complement the existing gate_tests.rs in vb_validate.
 
-use vb_core::ids::{ConstIdx, SlotIdx, StepIdx, SymbolId};
+use vb_core::ids::{AccessorIdx, ConstIdx, SlotIdx, StepIdx, SymbolId};
+use vb_core::value::ConstValue;
 use vb_core::workflow::{
     AccessorProgram, CompiledNode, CompiledNodeKind, ExprOp, ExprProgram, PathSegment,
     ResourceContract, WorkflowParts,
@@ -11,8 +12,8 @@ use vb_core::workflow::{
 use vb_validate::ValidationError;
 use vb_validate::gates::{
     validate_gate_07_expression_stack_depth, validate_gate_08_accessor_path_segments,
-    validate_gate_09_slot_references, validate_gate_11_loop_body_graph,
-    validate_gate_13_no_slot_cycles,
+    validate_gate_09_slot_references, validate_gate_10_node_kind_specific,
+    validate_gate_11_loop_body_graph, validate_gate_13_no_slot_cycles,
 };
 
 // ---------------------------------------------------------------------------
@@ -182,6 +183,26 @@ fn gate_08_rejects_sentinel_index_segment() {
     ));
 }
 
+#[test]
+fn gate_08_rejects_field_symbol_out_of_bounds_precisely() {
+    let mut parts = make_parts(vec![finish_node(0, 0)], 1);
+    parts.symbols_count = 2;
+    parts.accessors = Box::new([AccessorProgram {
+        root: SlotIdx::new(0),
+        path: Box::new([PathSegment::Index(0), PathSegment::Field(SymbolId::new(9))]),
+    }]);
+
+    assert_eq!(
+        validate_gate_08_accessor_path_segments(&parts),
+        Err(ValidationError::AccessorSymbolOutOfBounds {
+            accessor_index: 0,
+            segment_index: 1,
+            symbol: 9,
+            symbols_count: 2,
+        })
+    );
+}
+
 // ===========================================================================
 // Gate 9: Slot references
 // ===========================================================================
@@ -235,6 +256,81 @@ fn gate_09_rejects_build_object_slot_out_of_range() {
     assert!(matches!(
         validate_gate_09_slot_references(&parts),
         Err(ValidationError::SlotReferenceOutOfRange { .. })
+    ));
+}
+
+// ===========================================================================
+// Gate 10: Non-slot reference integrity
+// ===========================================================================
+
+#[test]
+fn gate_10_accepts_expression_const_and_accessor_references_in_range() {
+    let mut parts = make_parts(vec![finish_node(0, 0)], 1);
+    parts.constants = Box::new([ConstValue::I64(7)]);
+    parts.accessors = Box::new([AccessorProgram {
+        root: SlotIdx::new(0),
+        path: Box::new([]),
+    }]);
+    parts.expressions = Box::new([ExprProgram {
+        ops: Box::new([
+            ExprOp::LoadConst(ConstIdx::new(0)),
+            ExprOp::LoadAccessor(AccessorIdx::new(0)),
+        ]),
+        max_stack: 2,
+    }]);
+
+    assert_eq!(validate_gate_10_node_kind_specific(&parts), Ok(()));
+}
+
+#[test]
+fn gate_10_rejects_expression_const_reference_out_of_range() {
+    let mut parts = make_parts(vec![finish_node(0, 0)], 1);
+    parts.expressions = Box::new([ExprProgram {
+        ops: Box::new([ExprOp::LoadConst(ConstIdx::new(0))]),
+        max_stack: 1,
+    }]);
+
+    assert!(matches!(
+        validate_gate_10_node_kind_specific(&parts),
+        Err(ValidationError::NodeKindConstraintViolation { node_index: 0, detail })
+            if detail == "Expression 0 LoadConst const index 0 out of range (const_count 0)"
+    ));
+}
+
+#[test]
+fn gate_10_rejects_expression_accessor_reference_out_of_range() {
+    let mut parts = make_parts(vec![finish_node(0, 0)], 1);
+    parts.expressions = Box::new([ExprProgram {
+        ops: Box::new([ExprOp::LoadAccessor(AccessorIdx::new(0))]),
+        max_stack: 1,
+    }]);
+
+    assert!(matches!(
+        validate_gate_10_node_kind_specific(&parts),
+        Err(ValidationError::NodeKindConstraintViolation { node_index: 0, detail })
+            if detail == "Expression 0 LoadAccessor accessor index 0 out of range (accessor_count 0)"
+    ));
+}
+
+#[test]
+fn gate_10_rejects_build_object_field_symbol_out_of_range() {
+    let node = CompiledNode {
+        id: StepIdx::new(0),
+        output: Some(SlotIdx::new(0)),
+        next: None,
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::BuildObject {
+            fields: Box::new([(SymbolId::new(7), SlotIdx::new(0))]),
+        },
+    };
+    let mut parts = make_parts(vec![node], 1);
+    parts.symbols_count = 2;
+
+    assert!(matches!(
+        validate_gate_10_node_kind_specific(&parts),
+        Err(ValidationError::NodeKindConstraintViolation { node_index: 0, detail })
+            if detail == "BuildObject field 0 symbol 7 out of range (symbols_count 2)"
     ));
 }
 

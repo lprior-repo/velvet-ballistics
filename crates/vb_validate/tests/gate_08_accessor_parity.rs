@@ -114,9 +114,11 @@ fn aggregate_gate_08_reports_invalid_field_segment_coordinates() {
 
     assert_eq!(
         gates::validate_gate_08_accessor_path_segments(&parts),
-        Err(ValidationError::AccessorPathInvalid {
+        Err(ValidationError::AccessorSymbolOutOfBounds {
             accessor_index: 1,
             segment_index: 1,
+            symbol: 2,
+            symbols_count: 2,
         })
     );
 }
@@ -168,9 +170,11 @@ fn aggregate_gate_08_rejects_field_equal_to_symbols_count() {
 
     assert_eq!(
         gates::validate_gate_08_accessor_path_segments(&parts),
-        Err(ValidationError::AccessorPathInvalid {
+        Err(ValidationError::AccessorSymbolOutOfBounds {
             accessor_index: 0,
             segment_index: 0,
+            symbol: 4,
+            symbols_count: 4,
         })
     );
 }
@@ -181,9 +185,11 @@ fn aggregate_gate_08_rejects_field_above_symbols_count() {
 
     assert_eq!(
         gates::validate_gate_08_accessor_path_segments(&parts),
-        Err(ValidationError::AccessorPathInvalid {
+        Err(ValidationError::AccessorSymbolOutOfBounds {
             accessor_index: 0,
             segment_index: 0,
+            symbol: 5,
+            symbols_count: 4,
         })
     );
 }
@@ -210,9 +216,11 @@ fn validate_gate_08_matches_core_workflow_for_invalid_field_boundaries() {
 
     assert_eq!(
         gates::validate_gate_08_accessor_path_segments(&parts),
-        Err(ValidationError::AccessorPathInvalid {
+        Err(ValidationError::AccessorSymbolOutOfBounds {
             accessor_index: 0,
             segment_index: 0,
+            symbol: 1,
+            symbols_count: 1,
         })
     );
     assert_eq!(

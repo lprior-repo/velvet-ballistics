@@ -77,10 +77,10 @@ fn accessor(root: u16, path: Vec<PathSegment>) -> AccessorProgram {
 }
 
 // ---------------------------------------------------------------------------
-// RED PHASE: These tests prove accessor symbol out-of-bounds → AccessorPathInvalid
+// RED PHASE: These tests prove accessor symbol out-of-bounds → AccessorSymbolOutOfBounds
 // ---------------------------------------------------------------------------
 
-/// RED PHASE TEST: Pipeline must return AccessorPathInvalid when an
+/// RED PHASE TEST: Pipeline must return AccessorSymbolOutOfBounds when an
 /// accessor's Field segment uses a symbol ID >= symbols_count.
 #[test]
 fn pipeline_validate_rejects_accessor_symbol_out_of_bounds() {
@@ -95,16 +95,18 @@ fn pipeline_validate_rejects_accessor_symbol_out_of_bounds() {
     assert!(
         matches!(
             &err,
-            vb_validate::ValidationError::AccessorPathInvalid {
+            vb_validate::ValidationError::AccessorSymbolOutOfBounds {
                 accessor_index: 0,
                 segment_index: 0,
+                symbol: 7,
+                symbols_count: 5,
             }
         ),
-        "expected AccessorPathInvalid {{ accessor_index: 0, segment_index: 0 }}, got {err:?}"
+        "expected AccessorSymbolOutOfBounds for accessor_index=0, symbol=7, symbols_count=5, got {err:?}"
     );
 }
 
-/// RED PHASE TEST: Pipeline must return AccessorPathInvalid for second accessor.
+/// RED PHASE TEST: Pipeline must return AccessorSymbolOutOfBounds for second accessor.
 #[test]
 fn pipeline_validate_rejects_second_accessor_symbol_out_of_bounds() {
     let mut parts = make_parts(2, 3);
@@ -119,16 +121,18 @@ fn pipeline_validate_rejects_second_accessor_symbol_out_of_bounds() {
     assert!(
         matches!(
             &err,
-            vb_validate::ValidationError::AccessorPathInvalid {
+            vb_validate::ValidationError::AccessorSymbolOutOfBounds {
                 accessor_index: 1,
                 segment_index: 0,
+                symbol: 99,
+                symbols_count: 3,
             }
         ),
-        "expected AccessorPathInvalid for accessor_index=1, got {err:?}"
+        "expected AccessorSymbolOutOfBounds for accessor_index=1, symbol=99, symbols_count=3, got {err:?}"
     );
 }
 
-/// RED PHASE TEST: Pipeline must return AccessorPathInvalid for deep path segment.
+/// RED PHASE TEST: Pipeline must return AccessorSymbolOutOfBounds for deep path segment.
 #[test]
 fn pipeline_validate_rejects_deep_accessor_segment_symbol_out_of_bounds() {
     let mut parts = make_parts(1, 5);
@@ -147,12 +151,14 @@ fn pipeline_validate_rejects_deep_accessor_segment_symbol_out_of_bounds() {
     assert!(
         matches!(
             &err,
-            vb_validate::ValidationError::AccessorPathInvalid {
+            vb_validate::ValidationError::AccessorSymbolOutOfBounds {
                 accessor_index: 0,
                 segment_index: 1,
+                symbol: 10,
+                symbols_count: 5,
             }
         ),
-        "expected AccessorPathInvalid at segment_index=1, got {err:?}"
+        "expected AccessorSymbolOutOfBounds at segment_index=1, symbol=10, symbols_count=5, got {err:?}"
     );
 }
 

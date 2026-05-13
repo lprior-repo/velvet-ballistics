@@ -6,13 +6,18 @@
 #![allow(clippy::collapsible_match)]
 
 use crate::{ValidationError, ValidationResult};
-use vb_core::workflow::{CompiledNodeKind, WorkflowParts};
+use vb_core::ids::{AccessorIdx, ConstIdx};
+use vb_core::workflow::{CompiledNodeKind, ExprOp, WorkflowParts};
 
 pub fn validate_gate_10_node_kind_specific(parts: &WorkflowParts) -> ValidationResult<()> {
     let slot_count = usize::from(parts.slot_count);
     let const_count = parts.constants.len();
+    let accessor_count = parts.accessors.len();
     let expr_count = parts.expressions.len();
     let node_count = parts.nodes.len();
+    let symbols_count = parts.symbols_count;
+
+    validate_expression_references(parts, const_count, accessor_count)?;
 
     for (node_index, node) in parts.nodes.iter().enumerate() {
         match &node.kind {
@@ -187,7 +192,16 @@ pub fn validate_gate_10_node_kind_specific(parts: &WorkflowParts) -> ValidationR
                 }
             }
             CompiledNodeKind::BuildObject { fields } => {
-                for (fi, (_, slot)) in fields.iter().enumerate() {
+                for (fi, (symbol, slot)) in fields.iter().enumerate() {
+                    if symbol.get() >= symbols_count {
+                        return Err(ValidationError::NodeKindConstraintViolation {
+                            node_index,
+                            detail: format!(
+                                "BuildObject field {fi} symbol {} out of range (symbols_count {symbols_count})",
+                                symbol.get()
+                            ),
+                        });
+                    }
                     if slot.as_usize() >= slot_count {
                         return Err(ValidationError::NodeKindConstraintViolation {
                             node_index,
@@ -212,6 +226,62 @@ pub fn validate_gate_10_node_kind_specific(parts: &WorkflowParts) -> ValidationR
             }
             _ => {}
         }
+    }
+    Ok(())
+}
+
+fn validate_expression_references(
+    parts: &WorkflowParts,
+    const_count: usize,
+    accessor_count: usize,
+) -> ValidationResult<()> {
+    parts
+        .expressions
+        .iter()
+        .enumerate()
+        .try_for_each(|(expr_index, expr)| {
+            expr.ops.iter().try_for_each(|op| match op {
+                ExprOp::LoadConst(value) => {
+                    validate_load_const_reference(expr_index, *value, const_count)
+                }
+                ExprOp::LoadAccessor(accessor) => {
+                    validate_load_accessor_reference(expr_index, *accessor, accessor_count)
+                }
+                _ => Ok(()),
+            })
+        })
+}
+
+fn validate_load_const_reference(
+    expr_index: usize,
+    value: ConstIdx,
+    const_count: usize,
+) -> ValidationResult<()> {
+    let const_usize = value.as_usize();
+    if const_usize >= const_count {
+        return Err(ValidationError::NodeKindConstraintViolation {
+            node_index: expr_index,
+            detail: format!(
+                "Expression {expr_index} LoadConst const index {const_usize} out of range (const_count {const_count})"
+            ),
+        });
+    }
+    Ok(())
+}
+
+fn validate_load_accessor_reference(
+    expr_index: usize,
+    accessor: AccessorIdx,
+    accessor_count: usize,
+) -> ValidationResult<()> {
+    let accessor_usize = accessor.as_usize();
+    if accessor_usize >= accessor_count {
+        return Err(ValidationError::NodeKindConstraintViolation {
+            node_index: expr_index,
+            detail: format!(
+                "Expression {expr_index} LoadAccessor accessor index {accessor_usize} out of range (accessor_count {accessor_count})"
+            ),
+        });
     }
     Ok(())
 }

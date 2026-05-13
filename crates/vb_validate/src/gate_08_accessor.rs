@@ -31,9 +31,11 @@ fn validate_field_symbol(
     if symbol.get() < symbols_count {
         Ok(())
     } else {
-        Err(ValidationError::AccessorPathInvalid {
+        Err(ValidationError::AccessorSymbolOutOfBounds {
             accessor_index: acc_index,
             segment_index: seg_index,
+            symbol: symbol.get(),
+            symbols_count,
         })
     }
 }
@@ -124,9 +126,11 @@ mod tests {
         if field_id < symbols_count {
             Ok(())
         } else {
-            Err(ValidationError::AccessorPathInvalid {
+            Err(ValidationError::AccessorSymbolOutOfBounds {
                 accessor_index: 0,
                 segment_index: 0,
+                symbol: field_id,
+                symbols_count,
             })
         }
     }
@@ -188,9 +192,11 @@ mod tests {
 
         assert_eq!(
             validate_gate_08_accessor_path_segments(&parts),
-            Err(ValidationError::AccessorPathInvalid {
+            Err(ValidationError::AccessorSymbolOutOfBounds {
                 accessor_index: 0,
                 segment_index: 0,
+                symbol: 3,
+                symbols_count: 3,
             })
         );
     }
@@ -201,9 +207,11 @@ mod tests {
 
         assert_eq!(
             validate_gate_08_accessor_path_segments(&parts),
-            Err(ValidationError::AccessorPathInvalid {
+            Err(ValidationError::AccessorSymbolOutOfBounds {
                 accessor_index: 0,
                 segment_index: 0,
+                symbol: 4,
+                symbols_count: 3,
             })
         );
     }
@@ -214,9 +222,11 @@ mod tests {
 
         assert_eq!(
             validate_gate_08_accessor_path_segments(&parts),
-            Err(ValidationError::AccessorPathInvalid {
+            Err(ValidationError::AccessorSymbolOutOfBounds {
                 accessor_index: 0,
                 segment_index: 0,
+                symbol: 0,
+                symbols_count: 0,
             })
         );
     }
@@ -337,9 +347,11 @@ mod tests {
 
         assert_eq!(
             validate_gate_08_accessor_path_segments(&parts),
-            Err(ValidationError::AccessorPathInvalid {
+            Err(ValidationError::AccessorSymbolOutOfBounds {
                 accessor_index: 1,
                 segment_index: 1,
+                symbol: 2,
+                symbols_count: 2,
             })
         );
     }
@@ -382,16 +394,20 @@ mod tests {
 
         assert_eq!(
             validate_gate_08_accessor_path_segments(&parts),
-            Err(ValidationError::AccessorPathInvalid {
+            Err(ValidationError::AccessorSymbolOutOfBounds {
                 accessor_index: 0,
                 segment_index: 0,
+                symbol: 1,
+                symbols_count: 1,
             })
         );
         assert_eq!(
             crate::gates::validate_gate_08_accessor_path_segments(&parts),
-            Err(ValidationError::AccessorPathInvalid {
+            Err(ValidationError::AccessorSymbolOutOfBounds {
                 accessor_index: 0,
                 segment_index: 0,
+                symbol: 1,
+                symbols_count: 1,
             })
         );
     }
@@ -432,10 +448,7 @@ mod tests {
             );
             prop_assert_eq!(
                 validate_gate_08_accessor_path_segments(&parts),
-                Err(ValidationError::AccessorPathInvalid {
-                    accessor_index: 0,
-                    segment_index: 0,
-                })
+                expected_single_field_result(symbols_count, field_id)
             );
         }
 
@@ -467,9 +480,11 @@ mod tests {
             );
             prop_assert_eq!(
                 validate_gate_08_accessor_path_segments(&parts),
-                Err(ValidationError::AccessorPathInvalid {
+                Err(ValidationError::AccessorSymbolOutOfBounds {
                     accessor_index: 0,
                     segment_index: 1,
+                    symbol: invalid_field,
+                    symbols_count: 2,
                 })
             );
         }

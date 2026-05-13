@@ -102,10 +102,12 @@ proptest! {
         prop_assert!(
             matches!(
                 &err,
-                crate::ValidationError::AccessorPathInvalid {
+                crate::ValidationError::AccessorSymbolOutOfBounds {
                     accessor_index: 0,
                     segment_index: 0,
-                }
+                    symbol: actual_symbol,
+                    symbols_count: actual_symbols_count,
+                } if *actual_symbol == symbol && *actual_symbols_count == symbols_count
             ),
             "wrong error variant or field values: got {err:?}"
         );
@@ -131,17 +133,22 @@ proptest! {
 
         let result = validate_gate_08_accessor_path_segments(&parts);
 
-        prop_assert!(result.is_err(), "expected Err for out-of-bounds second accessor, got {result:?}");
+        prop_assert!(
+            result.is_err(),
+            "expected Err for out-of-bounds second accessor, got {result:?}"
+        );
         let err = result.unwrap_err();
         prop_assert!(
             matches!(
                 &err,
-                crate::ValidationError::AccessorPathInvalid {
+                crate::ValidationError::AccessorSymbolOutOfBounds {
                     accessor_index: 1,
                     segment_index: 0,
-                }
+                    symbol: actual_symbol,
+                    symbols_count: actual_symbols_count,
+                } if *actual_symbol == sym1 && *actual_symbols_count == symbols_count
             ),
-            "expected error at accessor_index=1, got {err:?}"
+            "expected error at accessor_index=1 with symbol={sym1}, symbols_count={symbols_count}, got {err:?}"
         );
     }
 
