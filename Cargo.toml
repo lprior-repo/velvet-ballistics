@@ -30,14 +30,33 @@ edition = "2024"
 license = "MIT OR Apache-2.0"
 version = "0.1.0"
 publish = false
+default-run = "velvet-ballastics"
 
 [lints]
 workspace = true
 
 [dependencies]
+chrono.workspace = true
+crc32fast.workspace = true
+postcard.workspace = true
 saphyr.workspace = true
+serde.workspace = true
+serde-saphyr.workspace = true
 serde_json.workspace = true
 toml.workspace = true
+vb_codegen = { path = "crates/vb_codegen" }
+vb_compile = { path = "crates/vb_compile" }
+vb_core = { path = "crates/vb_core" }
+vb_expr = { path = "crates/vb_expr" }
+vb_ipc = { path = "crates/vb_ipc" }
+vb_runtime = { path = "crates/vb_runtime" }
+vb_storage = { path = "crates/vb_storage" }
+vb_validate = { path = "crates/vb_validate" }
+vb_yaml = { path = "crates/vb_yaml" }
+
+[[bin]]
+name = "velvet-ballastics"
+path = "crates/velvet_ballastics/src/main.rs"
 
 [dev-dependencies]
 blake3.workspace = true
@@ -118,7 +137,7 @@ unsafe_code = "forbid"
 unused_must_use = "deny"
 unreachable_pub = "deny"
 rust_2018_idioms = { level = "deny", priority = -1 }
-unexpected_cfgs = { level = "warn", check-cfg = ['cfg(kani)'] }
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(kani)', 'cfg(loom)'] }
 
 [workspace.lints.clippy]
 correctness = { level = "deny", priority = -1 }

@@ -1,6 +1,7 @@
 #[cfg(test)]
 #[allow(clippy::module_inception)]
 mod proptests {
+    #[cfg(not(miri))]
     use std::fmt::Write as _;
 
     use crate::{
@@ -10,16 +11,21 @@ mod proptests {
     use proptest::prelude::*;
     use vb_core::{
         ActionId, CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, ConstValue,
-        EngineSignal, ExprProgram, ResourceContract, RunId, SlotIdx, StepBudget, StepIdx, Taint,
-        WorkflowDigest, WorkflowParts, engine::new_run_frame, engine::run_until_blocked,
+        ExprProgram, ResourceContract, SlotIdx, StepIdx, WorkflowDigest, WorkflowParts,
+    };
+    #[cfg(not(miri))]
+    use vb_core::{
+        EngineSignal, RunId, StepBudget, Taint, engine::new_run_frame, engine::run_until_blocked,
     };
 
+    #[cfg(not(miri))]
     struct GeneratedHarness {
         temp_dir: tempfile::TempDir,
         source_path: std::path::PathBuf,
         binary_path: std::path::PathBuf,
     }
 
+    #[cfg(not(miri))]
     fn generated_equivalence_stdout(
         workflow: &CompiledWorkflow,
         name: &str,
@@ -31,6 +37,7 @@ mod proptests {
         compile_and_run_generated(&paths)
     }
 
+    #[cfg(not(miri))]
     fn generated_harness_paths(name: &str) -> Result<GeneratedHarness, String> {
         let temp_dir = tempfile::Builder::new()
             .prefix(&format!("vb_codegen_prop_equiv_{name}_"))
@@ -45,6 +52,7 @@ mod proptests {
         })
     }
 
+    #[cfg(not(miri))]
     fn compile_and_run_generated(paths: &GeneratedHarness) -> Result<String, String> {
         if !paths.temp_dir.path().exists() {
             return Err(String::from("generated harness tempdir missing"));
@@ -72,6 +80,7 @@ mod proptests {
         Ok(stdout)
     }
 
+    #[cfg(not(miri))]
     fn equivalence_harness_source(workflow: &CompiledWorkflow, generated: &str) -> String {
         format!(
             "{generated}\n{}\n{}\n",
@@ -80,10 +89,12 @@ mod proptests {
         )
     }
 
+    #[cfg(not(miri))]
     fn slot_text_function_source() -> &'static str {
         "fn slot_text(slots: &[Option<SlotValue>; WORKFLOW_SLOT_COUNT], index: u16) -> String {\n    match slots.get(usize::from(index)) {\n        Some(value) => format!(\"{value:?}\"),\n        None => String::from(\"slot-out-of-bounds\"),\n    }\n}"
     }
 
+    #[cfg(not(miri))]
     fn equivalence_main_source(workflow: &CompiledWorkflow) -> String {
         format!(
             "fn main() {{\n    let mut slots = [None; WORKFLOW_SLOT_COUNT];\n    let mut slot_taints = [Taint::Clean; WORKFLOW_SLOT_COUNT];\n    let mut list_store = ListStore::new();\n    let mut object_store = ObjectStore::new();\n    let value = drive_equivalence_trace(&mut slots, &mut slot_taints, &mut list_store, &mut object_store);\n    println!(\"{{value}}|slots:{{}}|{{}}|{{}}\", slot_text(&slots, 0), slot_text(&slots, 1), slot_text(&slots, 2));\n}}\n{}",
@@ -91,6 +102,7 @@ mod proptests {
         )
     }
 
+    #[cfg(not(miri))]
     fn drive_trace_function_source(workflow: &CompiledWorkflow) -> String {
         format!(
             "fn drive_equivalence_trace(slots: &mut [Option<SlotValue>; WORKFLOW_SLOT_COUNT], slot_taints: &mut [Taint; WORKFLOW_SLOT_COUNT], list_store: &mut ListStore, object_store: &mut ObjectStore) -> String {{\n    let mut pc: u16 = 0;\n    loop {{\n        let outcome = match pc {{\n{}            _ => Err(DriveError::InvalidProgramCounter),\n        }};\n        match outcome {{\n            Ok(StepOutcome::Continue(next)) => pc = next,\n            Ok(StepOutcome::Finished(done)) => break format!(\"finished:{{done:?}}\"),\n            Err(error) => break format!(\"err:{{error:?}}\"),\n        }}\n    }}\n}}",
@@ -98,6 +110,7 @@ mod proptests {
         )
     }
 
+    #[cfg(not(miri))]
     fn dynamic_step_arms(workflow: &CompiledWorkflow) -> String {
         (0..workflow.node_count()).fold(String::new(), |mut arms, idx| {
             if writeln!(
@@ -112,6 +125,7 @@ mod proptests {
         })
     }
 
+    #[cfg(not(miri))]
     fn ir_equivalence_trace(workflow: &CompiledWorkflow) -> Result<String, String> {
         let mut run = new_run_frame(RunId::new(46), workflow).map_err(|e| e.to_string())?;
         let mut store = vb_core::ValueStore::new();
@@ -128,6 +142,7 @@ mod proptests {
         Ok(format!("{head}|slots:{slot0}|{slot1}|{slot2}\n"))
     }
 
+    #[cfg(not(miri))]
     fn slot_trace(run: &vb_core::RunFrame, slot: SlotIdx) -> String {
         match run.read_slot(slot) {
             Ok(value) => format!("Some({value:?})"),
@@ -135,6 +150,7 @@ mod proptests {
         }
     }
 
+    #[cfg(not(miri))]
     fn arb_small_i64() -> impl Strategy<Value = i64> {
         -1_000_000i64..1_000_000i64
     }
@@ -317,9 +333,27 @@ mod proptests {
             )
     }
 
-    proptest! {
-        #![proptest_config(ProptestConfig::with_cases(16))]
+    #[cfg(miri)]
+    #[test]
+    fn fixed_six_step_emitted_rust_miri_smoke() -> Result<(), String> {
+        let workflow = fixed_six_step_equivalence_workflow(true, 7, 11, 13)?;
+        let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
+        compare_generated_to_ir(&source, &workflow).map_err(|e| e.to_string())?;
+        if source.contains("WORKFLOW_NODE_COUNT") {
+            Ok(())
+        } else {
+            Err(String::from("generated source missing workflow node count"))
+        }
+    }
 
+    proptest! {
+        #![proptest_config(ProptestConfig {
+            cases: 16,
+            failure_persistence: None,
+            .. ProptestConfig::default()
+        })]
+
+        #[cfg(not(miri))]
         #[test]
         fn fixed_six_step_emitted_rust_and_ir_match_finished_signal_and_slots(
             take_branch in any::<bool>(),

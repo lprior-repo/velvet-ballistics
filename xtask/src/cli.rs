@@ -84,4 +84,10 @@ pub(crate) enum Commands {
         #[arg(long, value_delimiter = ',')]
         sections: Option<Vec<usize>>,
     },
+    #[command(name = "loom")]
+    Loom {
+        /// Loom model name to run (e.g., bounded_queue, journal_writer_queue)
+        #[arg(long)]
+        model: String,
+    },
 }

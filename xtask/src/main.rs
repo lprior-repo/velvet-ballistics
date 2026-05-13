@@ -5,6 +5,7 @@ mod ai_profile;
 mod cli;
 mod evidence;
 mod gates;
+mod loom;
 mod proof;
 mod shell;
 mod ui_overlap;
@@ -62,6 +63,7 @@ fn run_legacy_cli(cli: Cli) -> anyhow::Result<()> {
         Commands::ProofCheck { level, bead } => cmd_proof_check(level.as_deref(), bead.as_deref()),
         Commands::ProofEvidence { bead } => cmd_proof_evidence(&bead),
         Commands::ProofDrift { sections } => cmd_proof_drift(sections.as_deref()),
+        Commands::Loom { model } => loom::cmd_loom(&model),
     }
 }
 

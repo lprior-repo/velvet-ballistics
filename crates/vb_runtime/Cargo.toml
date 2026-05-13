@@ -19,6 +19,7 @@ serde.workspace = true
 proptest = { workspace = true }
 tempfile.workspace = true
 vb_core = { path = "../vb_core", features = ["test-util"] }
+loom = "0.7"
 
 [lints]
 workspace = true

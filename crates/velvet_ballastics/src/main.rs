@@ -74,7 +74,7 @@ commands:
   resume     <run_id> --db <path> [--json|--jsonl]     Resume a suspended run
   cancel     <run_id> --db <path> [--reason <text>] [--json|--jsonl]  Cancel a run
   bench-run  <workflow.yaml> [--json|--jsonl]          Benchmark a workflow
-  doctor     --db <path> [--json|--jsonl]              Run diagnostic checks
+  doctor     [--db <path>] [--json|--jsonl]            Run diagnostic checks
   answer     <run_id> --step <N> --value-file <file> --db <path> [--json|--jsonl]  Answer a suspended step
   graph      <workflow.yaml> [--json|--jsonl]          Output control flow graph in DOT format
   diff       <run_a> <run_b> --db <path> [--json|--jsonl]  Compare two runs
@@ -158,7 +158,7 @@ fn main() -> ExitCode {
         Ok(Command::Retry { run_id, db, output }) => cmd_retry(&run_id, &db, output),
         Ok(Command::Resume { run_id, db, output }) => cmd_resume(&run_id, &db, output),
         Ok(Command::BenchRun { workflow, output }) => cmd_bench_run(&workflow, output),
-        Ok(Command::Doctor { db, output }) => cmd_doctor(&db, output),
+        Ok(Command::Doctor { db, output }) => cmd_doctor(db.as_deref(), output),
         Ok(Command::Answer {
             run_id,
             step,
@@ -4071,7 +4071,11 @@ fn cmd_bench_run(workflow: &std::path::Path, output: OutputFormat) -> ExitCode {
     ExitCode::SUCCESS
 }
 
-fn cmd_doctor(db: &std::path::Path, output: OutputFormat) -> ExitCode {
+fn cmd_doctor(db: Option<&std::path::Path>, output: OutputFormat) -> ExitCode {
+    let Some(db) = db else {
+        return cmd_doctor_without_db(output);
+    };
+
     let mut checks = Vec::new();
     let _success = true;
 
@@ -4337,6 +4341,35 @@ fn cmd_doctor(db: &std::path::Path, output: OutputFormat) -> ExitCode {
         }
         outln!("doctor: all checks passed");
     }
+    ExitCode::SUCCESS
+}
+
+fn cmd_doctor_without_db(output: OutputFormat) -> ExitCode {
+    let remediation = "rerun with `doctor --db <path>` to verify Fjall journal storage";
+    let checks = vec![serde_json::json!({
+        "check": "database_path",
+        "status": "skip",
+        "category": "missing_db",
+        "message": "no --db <path> provided; persistent journal checks skipped",
+        "remediation": remediation
+    })];
+
+    if output != OutputFormat::Text {
+        json_out(
+            &serde_json::json!({
+                "success": true,
+                "mode": "stateless",
+                "category": "missing_db",
+                "checks": checks,
+                "remediation": remediation
+            }),
+            output,
+        );
+    } else {
+        outln!("doctor: no --db <path> provided; persistent journal checks skipped");
+        outln!("doctor: {remediation}");
+    }
+
     ExitCode::SUCCESS
 }
 

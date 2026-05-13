@@ -132,7 +132,7 @@ pub(crate) enum Command {
         output: OutputFormat,
     },
     Doctor {
-        db: PathBuf,
+        db: Option<PathBuf>,
         output: OutputFormat,
     },
     Explain {
@@ -847,12 +847,9 @@ fn parse_bench_run(args: &[OsString]) -> Result<Command, ParseError> {
 }
 
 fn parse_doctor(args: &[OsString]) -> Result<Command, ParseError> {
-    let db = named_flag(args, "--db").ok_or(ParseError::MissingArgument("--db"))?;
+    let db = named_flag(args, "--db").map(PathBuf::from);
     let output = parse_output_format(args);
-    Ok(Command::Doctor {
-        db: PathBuf::from(db),
-        output,
-    })
+    Ok(Command::Doctor { db, output })
 }
 
 fn parse_answer(args: &[OsString]) -> Result<Command, ParseError> {
@@ -1753,6 +1750,38 @@ mod tests {
         );
         if let Ok(Command::Simulate { output, .. }) = parsed {
             assert_eq!(output, OutputFormat::Jsonl);
+        }
+    }
+
+    #[test]
+    fn parse_doctor_without_db_is_stateless_text_mode() {
+        let parsed = parse_args(&args(&["velvet-ballastics", "doctor"]));
+        assert!(
+            matches!(parsed, Ok(Command::Doctor { .. })),
+            "unexpected parse result: {parsed:?}"
+        );
+        if let Ok(Command::Doctor { db, output }) = parsed {
+            assert_eq!(db, None);
+            assert_eq!(output, OutputFormat::Text);
+        }
+    }
+
+    #[test]
+    fn parse_doctor_accepts_optional_db_and_json_output() {
+        let parsed = parse_args(&args(&[
+            "velvet-ballastics",
+            "doctor",
+            "--db",
+            "journal-db",
+            "--json",
+        ]));
+        assert!(
+            matches!(parsed, Ok(Command::Doctor { .. })),
+            "unexpected parse result: {parsed:?}"
+        );
+        if let Ok(Command::Doctor { db, output }) = parsed {
+            assert_eq!(db, Some(PathBuf::from("journal-db")));
+            assert_eq!(output, OutputFormat::Json);
         }
     }
 

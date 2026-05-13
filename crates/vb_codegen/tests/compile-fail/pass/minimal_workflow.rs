@@ -6,6 +6,8 @@
 //! Generated workflow - DO NOT EDIT
 //! Produced by vb_codegen emit_rust_workflow
 
+use std::convert::TryFrom;
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum SlotValue { Null, Bool(bool), I64(i64), F64(f64), Symbol(u32), List(u32), Object(u32), Blob(u64) }
 

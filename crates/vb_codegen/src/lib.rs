@@ -2276,6 +2276,8 @@ fn write_header(out: &mut String) -> CodegenResult<()> {
     writeln!(out, "//! Generated workflow - DO NOT EDIT").map_err(fmt_err)?;
     writeln!(out, "//! Produced by vb_codegen emit_rust_workflow").map_err(fmt_err)?;
     writeln!(out).map_err(fmt_err)?;
+    writeln!(out, "use std::convert::TryFrom;").map_err(fmt_err)?;
+    writeln!(out).map_err(fmt_err)?;
     writeln!(out, "#[derive(Debug, Clone, Copy, PartialEq)]").map_err(fmt_err)?;
     writeln!(out, "pub enum SlotValue {{ Null, Bool(bool), I64(i64), F64(f64), Symbol(u32), List(u32), Object(u32), Blob(u64) }}")
         .map_err(fmt_err)?;
@@ -2771,4 +2773,5 @@ fn fmt_err(_: std::fmt::Error) -> CodegenError {
 }
 
 mod proptests;
+#[cfg(not(miri))]
 mod tests;

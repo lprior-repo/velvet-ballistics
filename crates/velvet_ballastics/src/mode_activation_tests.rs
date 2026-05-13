@@ -419,7 +419,7 @@ fn command_mode_resume_is_storage() {
 #[test]
 fn command_mode_doctor_is_storage() {
     let cmd = Command::Doctor {
-        db: PathBuf::from("/tmp/journal"),
+        db: Some(PathBuf::from("/tmp/journal")),
         output: OutputFormat::Text,
     };
     assert_eq!(command_mode(&cmd), CommandMode::Storage);
@@ -651,7 +651,7 @@ fn command_mode_all_25_command_variants_are_classified() {
     );
     assert_eq!(
         command_mode(&Command::Doctor {
-            db: PathBuf::from("/tmp/j"),
+            db: Some(PathBuf::from("/tmp/j")),
             output: OutputFormat::Text,
         }),
         CommandMode::Storage
@@ -789,7 +789,7 @@ fn storage_commands_are_not_pure_nor_runtime_nor_ui() {
             output: OutputFormat::Text,
         },
         Command::Doctor {
-            db: PathBuf::from("/tmp/j"),
+            db: Some(PathBuf::from("/tmp/j")),
             output: OutputFormat::Text,
         },
     ];

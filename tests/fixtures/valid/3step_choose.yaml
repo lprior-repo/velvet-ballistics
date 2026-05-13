@@ -1,61 +1,27 @@
 # 3-Step Choose Workflow Fixture
-# Valid workflow demonstrating choice/conditional step execution
+# Valid workflow demonstrating current velvet-ballastics/v1 choice semantics.
 ---
-version: 1
+version: velvet-ballastics/v1
 name: "three_step_choose"
-description: "A workflow with three steps demonstrating choice semantics"
 
-when: "always"
+when:
+  manual: {}
 
-inputs:
-  env:
-    type: string
-    default: "prod"
-
-vars:
-  retry_count:
-    type: integer
-    value: 3
-
-secrets:
-  - api_key
-  - db_password
+inputs: {}
+vars: {}
+secrets: {}
 
 steps:
   - id: step_init
-    name: "Initialize"
-    run:
-      action: "initialize"
-      config:
-        timeout: 30
-    output:
-      result: "init_result"
+    save:
+      value: 1
 
   - id: step_choose
-    name: "Choose Environment"
     choose:
-      condition: "${inputs.env}"
-      branches:
-        prod:
-          target: "step_deploy"
-        staging:
-          target: "step_deploy"
-        default:
-          target: "step_cleanup"
-    output:
-      selected: "branch_used"
+      condition: true
+      on_true: 2
+      on_false: 2
 
-  - id: step_deploy
-    name: "Deploy"
-    run:
-      action: "deploy"
-      target: "production"
-    depends_on:
-      - "step_init"
-    output:
-      deployment_id: "deploy_result"
-
-result:
-  output:
-    status: "success"
-    steps_completed: "${steps.step_*.id}"
+  - id: step_done
+    finish:
+      result: 0

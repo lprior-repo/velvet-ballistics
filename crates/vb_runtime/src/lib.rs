@@ -43,6 +43,8 @@ pub mod idempotency;
 pub mod journal;
 #[cfg(kani)]
 pub mod kani_capability_harnesses;
+#[cfg(loom)]
+pub mod models;
 pub mod primitives;
 pub mod recovery;
 pub mod runtime;
