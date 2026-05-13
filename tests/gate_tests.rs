@@ -61,6 +61,17 @@ fn copy_node(index: u16, source: u16, output: u16) -> CompiledNode {
     }
 }
 
+fn nop_node(index: u16, next: Option<u16>) -> CompiledNode {
+    CompiledNode {
+        id: StepIdx::new(index),
+        output: None,
+        next: next.map(StepIdx::new),
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::Nop,
+    }
+}
+
 // ===========================================================================
 // Gate 7: Expression stack depth
 // ===========================================================================
@@ -364,6 +375,207 @@ fn gate_11_rejects_loop_body_before_start() {
     assert!(matches!(
         validate_gate_11_loop_body_graph(&parts),
         Err(ValidationError::LoopBodyStepOutOfRange { .. })
+    ));
+}
+
+#[test]
+fn gate_11_rejects_orphan_foreach_join() {
+    let parts = make_parts(
+        vec![CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::ForEachJoin {
+                output: SlotIdx::new(0),
+            },
+        }],
+        1,
+    );
+    assert!(matches!(
+        validate_gate_11_loop_body_graph(&parts),
+        Err(ValidationError::NodeKindConstraintViolation { .. })
+    ));
+}
+
+#[test]
+fn gate_11_rejects_orphan_collect_next() {
+    let parts = make_parts(
+        vec![
+            CompiledNode {
+                id: StepIdx::new(0),
+                output: None,
+                next: None,
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::CollectNext {
+                    collector_slot: SlotIdx::new(0),
+                    body: StepIdx::new(1),
+                    done: StepIdx::new(2),
+                },
+            },
+            nop_node(1, Some(2)),
+            finish_node(2, 0),
+        ],
+        1,
+    );
+    assert!(matches!(
+        validate_gate_11_loop_body_graph(&parts),
+        Err(ValidationError::NodeKindConstraintViolation { .. })
+    ));
+}
+
+#[test]
+fn gate_11_rejects_collect_finish_without_start() {
+    let parts = make_parts(
+        vec![CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::CollectFinish {
+                collector_slot: SlotIdx::new(0),
+            },
+        }],
+        1,
+    );
+    assert!(matches!(
+        validate_gate_11_loop_body_graph(&parts),
+        Err(ValidationError::NodeKindConstraintViolation { .. })
+    ));
+}
+
+#[test]
+fn gate_11_rejects_reduce_next_with_mismatched_start() {
+    let parts = make_parts(
+        vec![
+            CompiledNode {
+                id: StepIdx::new(0),
+                output: None,
+                next: Some(StepIdx::new(1)),
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::ReduceStart {
+                    input: SlotIdx::new(0),
+                    accumulator: SlotIdx::new(1),
+                    initial: ConstIdx::new(0),
+                    body: StepIdx::new(1),
+                    done: StepIdx::new(3),
+                },
+            },
+            CompiledNode {
+                id: StepIdx::new(1),
+                output: None,
+                next: None,
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::ReduceNext {
+                    iterator_slot: SlotIdx::new(0),
+                    accumulator: SlotIdx::new(1),
+                    body: StepIdx::new(1),
+                    done: StepIdx::new(2),
+                },
+            },
+            finish_node(2, 0),
+            finish_node(3, 0),
+        ],
+        2,
+    );
+    assert!(matches!(
+        validate_gate_11_loop_body_graph(&parts),
+        Err(ValidationError::NodeKindConstraintViolation { .. })
+    ));
+}
+
+#[test]
+fn gate_11_rejects_together_branch_without_start() {
+    let parts = make_parts(
+        vec![
+            CompiledNode {
+                id: StepIdx::new(0),
+                output: None,
+                next: None,
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::TogetherBranch {
+                    branch: 0,
+                    entry: StepIdx::new(1),
+                    join: StepIdx::new(2),
+                    accumulator: SlotIdx::new(0),
+                },
+            },
+            nop_node(1, Some(2)),
+            finish_node(2, 0),
+        ],
+        1,
+    );
+    assert!(matches!(
+        validate_gate_11_loop_body_graph(&parts),
+        Err(ValidationError::NodeKindConstraintViolation { .. })
+    ));
+}
+
+#[test]
+fn gate_11_rejects_together_join_branch_count_mismatch() {
+    let parts = make_parts(
+        vec![
+            CompiledNode {
+                id: StepIdx::new(0),
+                output: None,
+                next: Some(StepIdx::new(1)),
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::TogetherStart {
+                    branches: Box::new([StepIdx::new(1), StepIdx::new(2)]),
+                    join: StepIdx::new(3),
+                },
+            },
+            nop_node(1, Some(3)),
+            nop_node(2, Some(3)),
+            CompiledNode {
+                id: StepIdx::new(3),
+                output: None,
+                next: None,
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::TogetherJoin {
+                    branch_count: 1,
+                    accumulator: SlotIdx::new(0),
+                },
+            },
+        ],
+        1,
+    );
+    assert!(matches!(
+        validate_gate_11_loop_body_graph(&parts),
+        Err(ValidationError::NodeKindConstraintViolation { .. })
+    ));
+}
+
+#[test]
+fn gate_11_rejects_repeat_check_without_start() {
+    let parts = make_parts(
+        vec![
+            CompiledNode {
+                id: StepIdx::new(0),
+                output: None,
+                next: None,
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::RepeatCheck {
+                    attempt_slot: SlotIdx::new(0),
+                    done: StepIdx::new(1),
+                },
+            },
+            finish_node(1, 0),
+        ],
+        1,
+    );
+    assert!(matches!(
+        validate_gate_11_loop_body_graph(&parts),
+        Err(ValidationError::NodeKindConstraintViolation { .. })
     ));
 }
 

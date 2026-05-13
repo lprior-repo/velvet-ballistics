@@ -472,7 +472,262 @@ pub fn validate_gate_11_loop_body_graph(parts: &WorkflowParts) -> ValidationResu
             _ => {}
         }
     }
+    validate_loop_pairings(parts)?;
     Ok(())
+}
+
+fn validate_loop_pairings(parts: &WorkflowParts) -> ValidationResult<()> {
+    parts
+        .nodes
+        .iter()
+        .enumerate()
+        .try_for_each(|(index, node)| validate_node_pairing(parts, index, &node.kind))
+}
+
+fn validate_node_pairing(
+    parts: &WorkflowParts,
+    index: usize,
+    kind: &CompiledNodeKind,
+) -> ValidationResult<()> {
+    match kind {
+        CompiledNodeKind::ForEachNext { body, done, .. } => require_matching_body_start(
+            parts,
+            index,
+            *body,
+            *done,
+            "ForEachNext",
+            is_matching_for_each_start,
+        ),
+        CompiledNodeKind::ForEachJoin { .. } => {
+            require_matching_done_start(parts, index, "ForEachJoin", is_foreach_start_done)
+        }
+        CompiledNodeKind::TogetherBranch { branch, join, .. } => {
+            require_matching_together_branch(parts, index, *branch, *join)
+        }
+        CompiledNodeKind::TogetherJoin { branch_count, .. } => {
+            require_matching_together_join(parts, index, *branch_count)
+        }
+        CompiledNodeKind::CollectPage { body, done, .. }
+        | CompiledNodeKind::CollectNext { body, done, .. } => require_matching_body_start(
+            parts,
+            index,
+            *body,
+            *done,
+            "Collect continuation",
+            is_matching_collect_start,
+        ),
+        CompiledNodeKind::CollectFinish { .. } => {
+            require_matching_done_start(parts, index, "CollectFinish", is_collect_start_done)
+        }
+        CompiledNodeKind::ReduceNext { body, done, .. } => require_matching_body_start(
+            parts,
+            index,
+            *body,
+            *done,
+            "ReduceNext",
+            is_matching_reduce_start,
+        ),
+        CompiledNodeKind::ReduceFinish { .. } => {
+            require_matching_done_start(parts, index, "ReduceFinish", is_reduce_start_done)
+        }
+        CompiledNodeKind::RepeatAttempt { body, done, .. } => require_matching_body_start(
+            parts,
+            index,
+            *body,
+            *done,
+            "RepeatAttempt",
+            is_matching_repeat_start,
+        ),
+        CompiledNodeKind::RepeatCheck { done, .. } => {
+            require_matching_repeat_check(parts, index, *done)
+        }
+        CompiledNodeKind::RepeatFinish { .. } => {
+            require_matching_done_start(parts, index, "RepeatFinish", is_repeat_start_done)
+        }
+        _ => Ok(()),
+    }
+}
+
+fn require_matching_body_start(
+    parts: &WorkflowParts,
+    index: usize,
+    body: StepIdx,
+    done: StepIdx,
+    label: &str,
+    start_matches: fn(&CompiledNodeKind, StepIdx, StepIdx) -> bool,
+) -> ValidationResult<()> {
+    let has_match = step_in_loop_body(index, body, done)
+        && has_prior_matching_start(parts, index, |kind| start_matches(kind, body, done));
+    require_pairing(has_match, index, format!("{label} has no matching start"))
+}
+
+fn require_matching_done_start(
+    parts: &WorkflowParts,
+    index: usize,
+    label: &str,
+    start_done_matches: fn(&CompiledNodeKind, usize) -> bool,
+) -> ValidationResult<()> {
+    let has_match = has_prior_matching_start(parts, index, |kind| start_done_matches(kind, index));
+    require_pairing(has_match, index, format!("{label} has no matching start"))
+}
+
+fn require_matching_repeat_check(
+    parts: &WorkflowParts,
+    index: usize,
+    done: StepIdx,
+) -> ValidationResult<()> {
+    let has_match = has_prior_matching_start(parts, index, |kind| match kind {
+        CompiledNodeKind::RepeatStart {
+            body,
+            done: start_done,
+            ..
+        } => *start_done == done && step_in_loop_body(index, *body, *start_done),
+        _ => false,
+    });
+    require_pairing(has_match, index, "RepeatCheck has no matching RepeatStart")
+}
+
+fn require_matching_together_branch(
+    parts: &WorkflowParts,
+    index: usize,
+    branch: u16,
+    join: StepIdx,
+) -> ValidationResult<()> {
+    let has_match = has_prior_matching_start(parts, index, |kind| match kind {
+        CompiledNodeKind::TogetherStart {
+            branches,
+            join: start_join,
+        } => {
+            *start_join == join
+                && branches.iter().enumerate().any(|(branch_index, target)| {
+                    branch_index == usize::from(branch) && target.as_usize() == index
+                })
+        }
+        _ => false,
+    });
+    require_pairing(
+        has_match,
+        index,
+        "TogetherBranch has no matching TogetherStart branch target",
+    )
+}
+
+fn require_matching_together_join(
+    parts: &WorkflowParts,
+    index: usize,
+    branch_count: u16,
+) -> ValidationResult<()> {
+    let has_match = has_prior_matching_start(parts, index, |kind| match kind {
+        CompiledNodeKind::TogetherStart { branches, join } => {
+            join.as_usize() == index && branches.len() == usize::from(branch_count)
+        }
+        _ => false,
+    });
+    require_pairing(
+        has_match,
+        index,
+        "TogetherJoin has no matching TogetherStart branch count",
+    )
+}
+
+fn has_prior_matching_start(
+    parts: &WorkflowParts,
+    index: usize,
+    predicate: impl Fn(&CompiledNodeKind) -> bool,
+) -> bool {
+    parts
+        .nodes
+        .iter()
+        .take(index)
+        .any(|node| predicate(&node.kind))
+}
+
+fn step_in_loop_body(index: usize, body: StepIdx, done: StepIdx) -> bool {
+    let body_index = body.as_usize();
+    let done_index = done.as_usize();
+    index >= body_index && index < done_index
+}
+
+fn require_pairing(matches: bool, index: usize, detail: impl Into<String>) -> ValidationResult<()> {
+    if matches {
+        return Ok(());
+    }
+    Err(ValidationError::NodeKindConstraintViolation {
+        node_index: index,
+        detail: detail.into(),
+    })
+}
+
+fn is_matching_for_each_start(kind: &CompiledNodeKind, body: StepIdx, done: StepIdx) -> bool {
+    matches!(
+        kind,
+        CompiledNodeKind::ForEachStart {
+            body: start_body,
+            done: start_done,
+            ..
+        } if *start_body == body && *start_done == done
+    )
+}
+
+fn is_matching_collect_start(kind: &CompiledNodeKind, body: StepIdx, done: StepIdx) -> bool {
+    matches!(
+        kind,
+        CompiledNodeKind::CollectStart {
+            body: start_body,
+            done: start_done,
+            ..
+        } if *start_body == body && *start_done == done
+    )
+}
+
+fn is_matching_reduce_start(kind: &CompiledNodeKind, body: StepIdx, done: StepIdx) -> bool {
+    matches!(
+        kind,
+        CompiledNodeKind::ReduceStart {
+            body: start_body,
+            done: start_done,
+            ..
+        } if *start_body == body && *start_done == done
+    )
+}
+
+fn is_matching_repeat_start(kind: &CompiledNodeKind, body: StepIdx, done: StepIdx) -> bool {
+    matches!(
+        kind,
+        CompiledNodeKind::RepeatStart {
+            body: start_body,
+            done: start_done,
+            ..
+        } if *start_body == body && *start_done == done
+    )
+}
+
+fn is_foreach_start_done(kind: &CompiledNodeKind, index: usize) -> bool {
+    matches!(
+        kind,
+        CompiledNodeKind::ForEachStart { done, .. } if done.as_usize() == index
+    )
+}
+
+fn is_collect_start_done(kind: &CompiledNodeKind, index: usize) -> bool {
+    matches!(
+        kind,
+        CompiledNodeKind::CollectStart { done, .. } if done.as_usize() == index
+    )
+}
+
+fn is_reduce_start_done(kind: &CompiledNodeKind, index: usize) -> bool {
+    matches!(
+        kind,
+        CompiledNodeKind::ReduceStart { done, .. } if done.as_usize() == index
+    )
+}
+
+fn is_repeat_start_done(kind: &CompiledNodeKind, index: usize) -> bool {
+    matches!(
+        kind,
+        CompiledNodeKind::RepeatStart { done, .. } if done.as_usize() == index
+    )
 }
 
 fn check_step_in_range(
