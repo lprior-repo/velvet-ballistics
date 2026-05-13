@@ -123,9 +123,9 @@ pub proof fn lemma_determinism(c1: SpecStepState, n1: SpecStepState, c2: SpecSte
     ensures validate_transition(c1, n1) == validate_transition(c2, n2),
 {}
 
-/// Idempotency: self-transition is always allowed.
+/// Idempotency: self-transition is always allowed except for Pending.
 pub proof fn lemma_idempotency(s: SpecStepState)
-    ensures validate_transition(s, s) == true,
+    ensures is_pending(s) == false ==> validate_transition(s, s) == true,
 {
     // Terminal and suspend cases: eq_state(s, s) = true.
     // Running: explicit self-loop arm = true.

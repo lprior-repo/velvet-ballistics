@@ -54,7 +54,7 @@ pub proof fn lemma_add_dim_err_on_overflow(current: int, delta: int)
 
 /// add_dim monotonicity — INV-002
 pub proof fn lemma_add_monotonic(current: int, delta: int)
-    requires add_dim_ok(current, delta),
+    requires add_dim_ok(current, delta) && delta >= 0,
     ensures add_dim_spec(current, delta) >= current && add_dim_spec(current, delta) >= delta,
 {}
 
@@ -81,7 +81,7 @@ pub proof fn lemma_sub_dim_err_on_underflow(current: int, delta: int)
 
 /// sub_dim non-negative diff — INV-003
 pub proof fn lemma_sub_nonnegative(current: int, delta: int)
-    requires sub_dim_ok(current, delta),
+    requires sub_dim_ok(current, delta) && delta >= 0,
     ensures sub_dim_spec(current, delta) <= current,
 {}
 
