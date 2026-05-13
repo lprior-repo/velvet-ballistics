@@ -3577,7 +3577,9 @@ velvet-ballastics bench-run <workflow.yaml>
 velvet-ballastics doctor  --db <path> [--emit yaml|postcard]
 ```
 
-The `vb` binary name is a mandatory alias. Both `velvet-ballastics` and `vb` invoke the same binary.
+The only supported CLI binary name is `velvet-ballastics`. Short aliases such as
+`vb` are not part of the canonical interface and must not be added as Cargo bin
+targets.
 
 The `ui` command launches the native Makepad command center. `--db <path>` opens embedded local observer mode using storage readers and direct APIs. `--socket <path>` opens attached mode using binary IPC only. `--demo-fixture <fixture>` opens deterministic mock mode for design review, demos, screenshot capture, and UI tests. No UI mode may require HTTP or JSON.
 
@@ -3698,7 +3700,7 @@ The following phases extend Section 35 for operator-facing features:
 | 57 | Recovery evidence chain | `SlotWritten` + `StepSucceeded` per deterministic step, `UnsupportedRecoveryState` hydration gate, fix stubbed `verify_digests` at `Full` level. Tests: crash recovery with full evidence chain, hydration failure on missing state. |
 | 58 | Codegen expansion | `BuildObject`, `BuildList`, helper expression ops (`Contains`, `Length`, `Empty`, `Sum`, `Count`, `Unique`), `RetryCheck`. IR/generated equivalence tests per newly supported primitive. |
 | 59 | Behavioral property tests | 11 required properties from Section 38: constant folding parity, bytecode/AST parity, digest stability, layout stability, replay determinism, snapshot equivalence, ordering invariants, bound enforcement, state machine, taint safety, IR/generated parity. |
-| 60 | `vb` binary alias | Cargo.toml `[[bin]]` entry for `vb` pointing to same `main.rs`. Both `velvet-ballastics` and `vb` produce identical behavior. |
+| 60 | Canonical CLI binary | Cargo.toml exposes only the canonical `velvet-ballastics` binary. Short aliases such as `vb` are rejected to preserve the naming contract. |
 | 61 | UI model artifacts | `vb_ui_model` crate with typed `WorkflowGraph`, `VerificationReport`, `RunInspection`, `RunEvents`, `ReplayReport`, `IncidentReport`, `SystemStatus`, `ActionDescription`, `DoctorReport`, and `AiContextPacket` views. CLI/UI schema parity tests. |
 | 62 | Makepad shell | `vb_ui_makepad` crate, shared app chrome, sidebar, topbar, command buttons, status chips, profile selector, demo fixture loading. |
 | 63 | Design tokens and Figma bridge | Token source in `design/tokens`; generated Makepad token files; Figma-ready SVG/PNG references; token drift checker. |

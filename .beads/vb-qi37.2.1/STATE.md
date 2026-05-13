@@ -1,29 +1,32 @@
 # vb-qi37.2.1 STATE
 
-- Current State: State 1.5 (Contract Synthesized — Pending Independent Review)
+- Current State: State 8 (Test Writer — tests written)
 - Title: runtime: Define aggregate resource budget model
 - Parent: vb-qi37.2
 - Priority: P0
 - Blocking: vb-qi37.2.2, vb-qi37.2.3, vb-qi37.2.4
 
-## State 1 Contract Synthesis Summary
+## State 8 Test Writer Completion
 
-Implementation already landed (prior State 15 pass). This State 1.5 pass verified contract accuracy against current `vb_core::budget` and `vb_runtime::admission` implementation and emitted missing rust-contract skill artifacts:
+- test-writer-report.md created at `vb-qi37-2-1/test-writer-report.md`
+- 90 BDD scenarios implemented in `crates/vb_core/tests/aggregate_budget_vb_qi37_2_1.rs`
+- 7 proptest invariants implemented in `crates/vb_core/tests/aggregate_budget_properties_vb_qi37_2_1.rs`
+- 2 fuzz targets created (not yet run)
+- All tests follow `subject_[outcome]_when_[condition]` naming convention
+- No banned assertions (is_ok/is_err without value checking)
 
-- `contract.md` — existing comprehensive contract (verified accurate)
-- `lean-contract.md` — NEW: Lean-owned kernel theorems and waivers
-- `verification-layers.md` — NEW: full verification layer mapping
-- `proof-obligations.jsonl` — NEW: 41 proof obligations (valid JSONL)
-- `traceability-matrix.jsonl` — NEW: clause-to-test/proof mapping (valid JSONL)
-- `martin-fowler-tests.md` — NEW: 35 Given-When-Then scenarios
+## Test File Locations
 
-## Blocking Status
+- Unit tests: `vb-qi37-2-1/crates/vb_core/tests/aggregate_budget_vb_qi37_2_1.rs`
+- Proptest: `vb-qi37-2-1/crates/vb_core/tests/aggregate_budget_properties_vb_qi37_2_1.rs`
+- Fuzz targets: `vb-qi37-2-1/fuzz/fuzz_targets/`
 
-This bead BLOCKS:
-- `vb-qi37.2.2` — aggregate budget enforcement at tick admission
-- `vb-qi37.2.3` — aggregate budget release on finish/fail/cancel
-- `vb-qi37.2.4` — aggregate budget audit journal integration
+## Prior State History
+
+- State 7 (Test Planner): test-plan.md approved with 90 scenarios, 7 invariants, 2 fuzz targets
+- State 6 (Proof Review — REJECTED): proof-writer artifacts missing
+- test-plan-review: APPROVED — all 15 checkpoints passed
 
 ## Next Action
 
-Independent contract reviewer must write `contract-verification-review.md` with `STATUS: APPROVED` or `STATUS: REJECTED` before test planning or implementation proceeds.
+Run quality gates: `cargo test -p vb_core`, proptest with 10000 cases, mutation testing

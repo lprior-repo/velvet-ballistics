@@ -1,180 +1,67 @@
 # Contract Verification Review
 
-**Bead:** vb-nsnc
-**Title:** verifier/runtime: Define capability contract schema
-**Review Date:** 2026-05-10
-**Status:** STATUS: APPROVED
-
-## Command Evidence
-
-```bash
-test -s .beads/vb-nsnc/contract.md        # exists, 257 lines
-test -s .beads/vb-nsnc/lean-contract.md   # exists, 95 lines
-test -s .beads/vb-nsnc/verification-layers.md  # exists, 78 lines
-jq -c . .beads/vb-nsnc/proof-obligations.jsonl  # valid JSONL, 31 records
-jq -c . .beads/vb-nsnc/traceability-matrix.jsonl  # valid JSONL, 15 records
-```
-
-All mandatory gate files exist and pass JSONL validation.
-
----
+STATUS: REJECTED
 
 ## Files Reviewed
+- contract.md
+- tla-spec.md (MISSING)
+- lean-contract.md
+- verification-layers.md
+- proof-obligations.jsonl
+- traceability-matrix.jsonl
 
-| Artifact | Lines/Records | Status |
-|----------|---------------|--------|
-| `contract.md` | 257 | ✓ Present, comprehensive |
-| `lean-contract.md` | 95 | ✓ Present, 6 theorems + 2 waivers |
-| `verification-layers.md` | 78 | ✓ Present, 26 layers assigned |
-| `proof-obligations.jsonl` | 31 JSON objects | ✓ Valid JSONL |
-| `traceability-matrix.jsonl` | 15 JSON objects | ✓ Valid JSONL |
-
----
+## Command Evidence
+- `jq -c . .beads/vb-nsnc/proof-obligations.jsonl` -> valid JSONL
+- `jq -c . .beads/vb-nsnc/traceability-matrix.jsonl` -> valid JSONL
+- `test -s .beads/vb-nsnc/tla-spec.md` -> MISSING (blocker)
 
 ## Findings
 
-### Severity: MINOR — Waiver documentation gap
+### Severity: LETHAL
+- **Clause:** N/A (missing file)
+- **Problem:** `tla-spec.md` is absent. Per mandatory gate rule `tla_temporal_default`, the spec is required. However, this contract describes pure cold-path data schema validation with no temporal/state-over-time behavior, no workflows, no protocols, no concurrent state, no lifecycle transitions, and no scheduler behavior. TLA+ is not applicable.
+- **Required fix:** Either (a) add `tla-spec.md` with a waiver explaining TLA+ is inapplicable because this is static data validation (pure functions over bounded strings), naming limitation, owner, expiry, and compensating evidence; or (b) if the reviewer accepts TLA+ inapplicability as self-evident for pure data-schema validation, waive this requirement with explicit rationale. The contract cannot proceed without resolving this gate.
 
-**Clause:** WAIVER-002 (Diagnostic string formatting)
+### Severity: LETHAL
+- **Clause:** Review Axis 5 / rule `executable_obligation_schema`
+- **Problem:** Every `proof-obligations.jsonl` entry is missing the required fields: `expected_evidence`, `risk`, `scope`, `owner_state`, `rerun_from`. The rule states these are mandatory for every line. No entry has `expected_evidence` (mechanically observable pass/fail criterion), `risk` (high/medium/low), `scope` (exact package/target/function), `owner_state` (who owns rerunning), or `rerun_from` (restart point). All 31 entries fail this schema contract.
+- **Required fix:** Every JSONL entry must include all 16 required fields. Add `expected_evidence` with exact pass/fail observable criterion per entry (e.g., "exit code 0, no CapabilityName* in stderr"). Add `risk` field (high/medium/low). Add `scope` (exact Rust module path or test target). Add `owner_state` and `rerun_from` for each.
 
-**Problem:** The waiver states compensating evidence is "unit tests verify exact E050D..E0511 codes and messages; CLI integration tests verify exit code 1 and rendered output" but does not cite specific test names or fixture paths.
+### Severity: MAJOR
+- **Clause:** AC-8 / STATIC-SAFETY-001
+- **Problem:** Rule `source_lint_not_test_style` requires source clippy to target production/source code, not test helper structure. `STATIC-SAFETY-001` uses `moon ci` which is a crate-wide gate — it may lint test targets as well as production code. The rule explicitly rejects using lint on test targets to judge helper, loop, table-driven, or local-mutability structure.
+- **Required fix:** Narrow `STATIC-SAFETY-001` command to explicitly target production source only (e.g., `cargo clippy -p vb_validate --lib --bins`, not `--tests`). Tests are judged by compile, execution, and assertions.
 
-**Required fix:** None required for approval — waiver is properly structured with owner, reason, expiry, and compensating evidence. Minor documentation gap does not block approval.
+### Severity: MAJOR
+- **Clause:** Review Axis 1 / rule `layer_completeness`
+- **Problem:** `API-COMPAT-001` uses `contract_clause: "future"` which is not a defined contract clause label. No AC-10 or AC-11 appears in proof-obligations (acceptance criteria for `moon ci` final gate and CLI integration). Traceability matrix covers only 15 of 31 proof obligation entries; some clauses appear in compound form (e.g., "PRE-1 POST-1", "POST-3 POST-4 POST-5 POST-6") making granular traceability opaque.
+- **Required fix:** Map all acceptance criteria (AC-1 through AC-11) explicitly. Replace `"future"` with the actual clause being covered. Expand traceability matrix to one entry per contract clause or justify compound grouping.
 
-**Verdict:** APPROVED with MINOR documentation note.
-
----
+### Severity: MINOR
+- **Clause:** Rule `theorem_contract_required`
+- **Problem:** `lean-contract.md` correctly states Verus is not the appropriate layer for this pure-data-validation kernel and that Kani provides compensating formal verification. However, WAIVER-003 in `lean-contract.md` states "Lean theorems not yet encoded" without naming a concrete implementation plan, timeline, or owner for the Lean encoding. The waiver expires "never" but provides no path to eventual Lean adoption.
+- **Required fix:** If Lean is the long-term goal, name a concrete owner, milestone, and follow-up condition. If Kani is the permanent compensating layer, rename WAIVER-003 to reflect that Kani is the final layer (not a placeholder) and update expiry rationale accordingly.
 
 ## Coverage Decision
 
-### Contract clauses traced:
+| Category | Status |
+|----------|--------|
+| Contract clauses traced | PARTIAL — I3, I4, I5, I9, I10, POST-3..7, PRE-1, POST-1 covered; AC-1, AC-2, AC-3, AC-4, AC-5, AC-6, AC-7, AC-10, AC-11 absent or compound |
+| TLA+-owned clauses covered | N/A — TLA+ not applicable (pure data validation); needs explicit waiver |
+| Verus-owned clauses covered | N/A — Kani chosen over Verus for this kernel; correctly justified |
+| Theorem-owned clauses covered | PARTIAL — 6 Lean theorems named but not encoded; WAIVER-003 is indefinite |
+| Proof obligations traced | YES — all 31 entries trace to clauses via traceability matrix |
+| TLA+ scope valid | NO — spec missing; TLA+ inapplicable but not waived |
+| Verus scope valid | N/A — Kani used instead |
+| Lean/Aeneas/Hax scope valid | PARTIAL — scope correct (pure grammar/length/dup/detection), encoding deferred |
+| Waivers valid | PARTIAL — WAIVER-001 and WAIVER-002 are well-formed; WAIVER-003 is indefinite |
 
-| Clause ID | Description | Traced |
-|-----------|-------------|--------|
-| I3 | Valid name grammar | ✓ THM-GRAMMAR-VALID-001, PROP-GRAMMAR-VALID-001, PROP-GRAMMAR-INVALID-001, FUZZ-GRAMMAR-001 |
-| I4 | Action relation | ✓ THM-ACTION-RELATION-001, PROP-ACTION-RELATION-001 |
-| I5 | No duplicates | ✓ THM-DUPLICATE-DETECTION-001, THM-DUPLICATE-SCOPE-001, PROP-DUPLICATE-001 |
-| I9 | First error wins | ✓ THM-FIRST-ERROR-001, PROP-DETERMINISM-001 |
-| I10 | Missing/orphan preserved | ✓ INT-REGRESSION-MISSING-001, INT-REGRESSION-ORPHAN-001 |
-| PRE-1 | Trusted WorkflowParts | ✓ INT-PIPELINE-001 |
-| POST-1 | Schema valid passes | ✓ INT-PIPELINE-001 |
-| POST-3 | Empty/toolong rejected | ✓ UNIT-ERR-EMPTY-001, UNIT-ERR-TOOLONG-001 |
-| POST-4 | Action mismatch rejected | ✓ UNIT-ERR-MISMATCH-001 |
-| POST-5 | Duplicate rejected | ✓ UNIT-ERR-DUPLICATE-001 |
-| POST-6 | Invalid grammar rejected | ✓ UNIT-ERR-INVALID-001 |
-| POST-7 | Diagnostics codes E050D..E0511 | ✓ UNIT-DIAG-E050D-001..E0511-001 |
-| AC-8 | No unsafe/unwrap/panic | ✓ STATIC-SAFETY-001 |
-| AC-9 | No runtime JSON/YAML/HTTP | ✓ STATIC-SAFETY-002 |
-| INV-7 | Bounded loops | ✓ STATIC-SAFETY-003 |
+## Summary
 
-**All 15 contract clauses traced to proof obligations and verification layers.**
+The contract describes a pure cold-path data schema validation task — grammar checking, length bounds, action-relation enforcement, and duplicate detection over bounded capability name strings. This is not a temporal, concurrent, protocol, or state-machine problem, so TLA+ is inapplicable but requires an explicit waiver rather than absence.
 
----
+The proof obligation coverage for the actual validation logic (I3, I4, I5, I9) is strong: Kani for bounded model checking, proptest for property-based grammar coverage, cargo-fuzz for adversarial inputs, and unit/integration/e2e for concrete cases. This is the right verification stack for pure data validation.
 
-### Lean-owned clauses covered:
+The blocking issues are: (1) missing TLA+ spec or waiver — must be resolved before approval; (2) proof-obligations.jsonl missing 5 required fields on all 31 entries — correctable; (3) static safety scope may include test targets — needs narrowing to production source only.
 
-| Theorem | Target | Module | Status |
-|---------|--------|--------|--------|
-| THM-GRAMMAR-VALID-001 | `is_capability_name_grammar_valid` | VBValidate.Capability | ✓ |
-| THM-LENGTH-BOUND-001 | `validate_capability_name` | VBValidate.Capability | ✓ |
-| THM-FIRST-ERROR-001 | `validate_capability_name` | VBValidate.Capability | ✓ |
-| THM-DUPLICATE-DETECTION-001 | `validate_no_duplicate_capability_requirements` | VBValidate.Capability | ✓ |
-| THM-DUPLICATE-SCOPE-001 | `validate_no_duplicate_capability_requirements` | VBValidate.Capability | ✓ |
-| THM-ACTION-RELATION-001 | `validate_required_capability` | VBValidate.Capability | ✓ |
-
-**All 6 Lean theorems have valid scope: pure deterministic kernels only. No I/O, async, storage, or UI in Lean scope.**
-
----
-
-### Proof obligations traced:
-
-- **31 total proof obligations** across kani (6), proptest (5), cargo-fuzz (1), unit (10), integration (4), e2e (1), static-scan (3), api-compat (1)
-- **Every obligation has:** id, contract_clause, target, claim, layer, checker, evidence, status
-- **Lean obligations have:** lean_module, theorem, model, refinement, shell_exclusions
-- **All traceable to contract clauses via traceability-matrix.jsonl**
-
----
-
-### Lean scope valid:
-
-✓ All Lean theorems target pure functions with no side effects:
-- `is_capability_name_grammar_valid` — pure ASCII byte classification
-- `validate_capability_name` — pure validation with early returns
-- `validate_no_duplicate_capability_requirements` — pure search with deterministic ordering
-- `validate_required_capability` — pure orchestration
-
-✓ Shell exclusions correctly identify runtime orchestration functions excluded from Lean proof:
-- `validate_gate_12_action_contract_completeness` — iterates over WorkflowParts
-- `validate_action_contract_capability_schema` — orchestration
-- `validate_required_capability` — calls pure functions (Lean-owned) with context
-
-✓ No Lean claims over I/O, async, storage adapters, UI, wall-clock time, network, or external services.
-
----
-
-### Waivers valid:
-
-| Waiver | Clause | Owner | Reason | Expiry | Compensating Evidence |
-|--------|--------|-------|--------|--------|----------------------|
-| WAIVER-001 | Gate 12 orchestration | vb-nsnc contract | WorkflowParts iteration not translatable to Lean | Never | Kani + proptest + integration |
-| WAIVER-002 | Diagnostic formatting | vb-nsnc contract | String formatting has no pure logical content | Never | Unit tests on exact codes/messages |
-
-✓ Both waivers have clause ID, owner, reason, expiry, and compensating evidence.
-
----
-
-## Layer Fit Assessment
-
-| Clause Risk | Required Layer | Assigned | Fit |
-|-------------|---------------|----------|-----|
-| Pure grammar (critical) | lean + kani + proptest | THM + PROP + FUZZ | ✓ |
-| Pure length bound (critical) | lean + kani | THM + PROP | ✓ |
-| Pure duplicates (critical) | lean + kani | THM + PROP | ✓ |
-| Action relation (critical) | lean + kani | THM + PROP | ✓ |
-| First error (critical) | lean + kani | THM + PROP | ✓ |
-| Parser/codec boundary | cargo-fuzz | FUZZ-GRAMMAR-001 | ✓ |
-| Numeric/indexing safety | kani | THM-*-001 | ✓ |
-| Static safety | static-scan | STATIC-SAFETY-001..003 | ✓ |
-| Diagnostic codes | unit | UNIT-DIAG-E050D..E0511 | ✓ |
-| Integration pipeline | integration | INT-PIPELINE-001..002 | ✓ |
-| Regressions | integration | INT-REGRESSION-MISSING/ORPHAN | ✓ |
-| CLI rendering | e2e | E2E-CLI-001 | ✓ |
-
-**All high-risk pure deterministic clauses have Lean + Rust-realization evidence (kani/proptest). Parser boundary has cargo-fuzz. No weak layer assignments.**
-
----
-
-## Defense-in-Depth Verdict
-
-| Layer | Count | Critical |
-|-------|-------|----------|
-| kani | 6 | ✓ Pure critical kernels |
-| proptest | 5 | ✓ Property invariants |
-| cargo-fuzz | 1 | ✓ Grammar parser boundary |
-| unit | 10 | ✓ Exact error variants |
-| integration | 4 | ✓ Pipeline + regressions |
-| e2e | 1 | ✓ CLI user-facing |
-| static-scan | 3 | ✓ No forbidden constructs |
-| api-compat | 1 | ✓ Future compatibility |
-| **Total** | **31** | |
-
-**Defense-in-depth is sufficient. Every pure deterministic critical clause has ≥2 independent verification layers (Lean + Rust evidence).**
-
----
-
-## Final Verdict
-
-**STATUS: APPROVED**
-
-**Rationale:**
-1. All mandatory artifacts exist and pass JSONL validation
-2. All 15 contract clauses traced to proof obligations
-3. All 6 Lean theorems have valid scope (pure kernels only, no I/O)
-4. All 31 proof obligations have appropriate layer assignments
-5. Both waivers properly structured with compensating evidence
-6. No weak layer assignments for critical behavior
-7. Defense-in-depth: ≥2 layers per pure critical clause
-
-**Unblocks:** vb-7ode (runtime: Enforce capabilities at action dispatch) — contract schema is complete and verified
-
-**Next:** vb-7ode implementer reads `.beads/vb-nsnc/contract.md` for capability contract schema definition, then proceeds from State 1 codebase mapping with full verification context.
+This contract can reach APPROVED once: a TLA+ inapplicability waiver is added (or TLA+ spec is added if temporal behavior is identified), all 31 proof-obligation entries are augmented with expected_evidence/risk/scope/owner_state/rerun_from, and STATIC-SAFETY-001 command is narrowed to production source only.

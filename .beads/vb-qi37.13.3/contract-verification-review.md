@@ -1,61 +1,65 @@
 # Contract Verification Review
 
-STATUS: APPROVED
+STATUS: REJECTED
 
 ## Files Reviewed
-- `.beads/vb-qi37.13.3/contract.md` — reference only (parent bead vb-qi37.13.1 contract.md)
 - `.beads/vb-qi37.13.3/proof-obligations.jsonl` — 23 lines, valid JSONL
-- `.beads/vb-qi37.13.3/traceability-matrix.jsonl` — 24 lines, valid JSONL
+- `.beads/vb-qi37.13.3/contract-verification-review.md` — pre-existing (prior agent)
+- `.beads/vb-qi37.13.3/STATE.md` — state tracker
 
 ## Command Evidence
 ```
-jq -c . .beads/vb-qi37.13.3/proof-obligations.jsonl >/dev/null -> exit 0
-jq -c . .beads/vb-qi37.13.3/traceability-matrix.jsonl >/dev/null -> exit 0
+jq -c . .beads/vb-qi37.13.3/proof-obligations.jsonl >/dev/null -> exit 0 (23 lines valid)
 ```
 
-## Prior Findings Resolution
+## Findings
 
-### LETHAL: Missing error variant proof obligations — RESOLVED
-Three `EmitterError` variants (`DigestComputeFailed`, `CrcComputeFailed`, `YamlEncodeFailed`) now have explicit waiver entries:
-- `WAIVER-EMIT-002`: BLAKE3 digest computation is infallible (blake3::Hasher::finalize has no error path)
-- `WAIVER-EMIT-003`: CRC32C computation is infallible (crc32c::crc32c takes byte slice, returns u32 directly)
-- `WAIVER-EMIT-004`: YAML serialization is infallible for valid envelope types (serde_yaml to_string failure requires unsupported types or self-reference; OutputEnvelope uses serde derive with primitive fields only)
+### Severity: LETHAL
+### Clause: tla_temporal_default
+### Problem: `tla-spec.md` is absent. The skill mandates this file as the temporal model boundary for workflow, protocol, scheduler, retry, claim/lease, lifecycle, concurrent, distributed, or state-over-time clauses. The emitter.rs postcard/yaml binary protocol has temporal state-over-time behavior (envelope structure across emissions) that requires TLA+ modeling or an explicit waiver.
+### Required fix: Add `tla-spec.md` naming TLA+ module/model path, variables, Init, Next, invariants, and refinement relation to Rust envelope events, OR provide a waiver with owner, reason, expiry, limitation, and compensating evidence for why TLA+ does not apply.
 
-Compensating evidence documented for all three: STATIC-001 (no unsafe), COV-001 (>90% coverage), and PROP-004 (YAML round-trip exercise).
+### Severity: LETHAL
+### Clause: theorem_contract_required
+### Problem: `lean-contract.md` is absent. The skill mandates this file as the theorem-kernel plan, or a clear statement that Verus owns all Rust-local proof obligations instead, with rationale.
+### Required fix: Add `lean-contract.md` naming the theorem kernel scope and which clauses are Verus-owned vs Lean/Aeneas/Hax-owned, OR state explicitly that Verus covers all Rust-local obligations with rationale.
 
-### MAJOR: KAN-005 misalignment — RESOLVED
-- `proof-obligations.jsonl` maps KAN-005 to `POST-08` (BLAKE3 digest scope) — consistent
-- `traceability-matrix.jsonl` maps `PRE-005` to `KAN-010` (new RunId validation proof obligation)
-- KAN-010 added to proof-obligations.jsonl: "RunId field validated as non-zero before emission; InvalidRunId returned for zero RunId"
-- KAN-005 no longer appears in PRE-005 traceability entry
+### Severity: LETHAL
+### Clause: layer_completeness / jsonl_required
+### Problem: `traceability-matrix.jsonl` is absent. The proof-obligations.jsonl (23 entries) cannot be cross-traced to contract clauses without a traceability matrix. The skill requires every precondition, postcondition, invariant, transition rule, and error variant to have a traceability entry.
+### Required fix: Add `traceability-matrix.jsonl` mapping each contract clause ID to its proof obligation IDs and evidence paths.
 
-### MINOR: PRE-004 and PRE-005 absent from proof-obligations.jsonl — RESOLVED
-- PRE-004: Added `PROP-006` with claim "ANSI escape sequences in YAML output return AnsiForbidden error before emission"
-- PRE-005: Added `KAN-010` with claim "RunId field validated as non-zero before emission"
-- Both now trace correctly between proof-obligations.jsonl and traceability-matrix.jsonl
+### Severity: MAJOR
+### Clause: contract_coverage
+### Problem: `contract.md` is absent. The bead references "parent bead vb-qi37.13.1 contract.md" but the skill requires the file to be present in `.beads/vb-qi37.13.3/` for independent review. The proof-obligations.jsonl references contract clauses (PRE-002, POST-03, POST-06, POST-07, POST-08, INV-02, INV-05, INV-06, INV-07, INV-08, INV-09, INV-10, Q1, ERR-AnsiForbidden, PRE-004, PRE-005, ERR-DigestComputeFailed, ERR-CrcComputeFailed, ERR-YamlEncodeFailed, GLOBAL) but no contract document exists in this bead's artifact directory.
+### Required fix: Add `contract.md` to `.beads/vb-qi37.13.3/` with all clause IDs matching proof-obligations.jsonl references.
+
+### Severity: MAJOR
+### Clause: verification_layers
+### Problem: `verification-layers.md` is absent. The skill requires this artifact to document which verification layer owns which proof obligation category.
+### Required fix: Add `verification-layers.md` naming kani, proptest, cargo-fuzz, static-scan, cargo-llvm-cov, cargo-mutants scope boundaries and why each layer fits its obligations.
 
 ## Coverage Decision
 
 | Axis | Result |
 |------|--------|
-| Contract clauses traced | COMPLETE — all 10 error variants covered (6 with proof obligations, 3 with waivers, 1 with proptest) |
-| Proof obligations traced | COMPLETE — 23 entries covering all contract clauses, 3 waivers with compensating evidence |
-| Waivers valid | COMPLETE — WAIVER-EMIT-002, WAIVER-EMIT-003, WAIVER-EMIT-004 all have required fields |
+| Contract clauses traced | INCOMPLETE — no contract.md present |
+| TLA+-owned clauses covered | INCOMPLETE — no tla-spec.md |
+| Verus-owned clauses covered | PARTIAL — Kani and proptest obligations present but no lean-contract.md verifying scope |
+| Theorem-owned clauses covered | INCOMPLETE — no lean-contract.md |
+| Proof obligations traced | INCOMPLETE — traceability-matrix.jsonl absent |
+| TLA+ scope valid | INCOMPLETE — tla-spec.md absent, no waiver |
+| Verus scope valid | CANNOT DETERMINE — lean-contract.md absent |
+| Lean/Aeneas/Hax scope valid | CANNOT DETERMINE — lean-contract.md absent |
+| Waivers valid | PARTIAL — WAIVER-EMIT-002/003/004 present in proof-obligations.jsonl but no verification-layers.md to confirm compensating evidence coverage |
 
-## Verification Layer Summary
+## Blocker Summary
 
-| Layer | Count | Status |
-|-------|-------|--------|
-| kani | 10 | KAN-001 through KAN-010 (KAN-010 added for PRE-005) |
-| proptest | 6 | PROP-001 through PROP-006 (PROP-006 added for PRE-004) |
-| cargo-fuzz | 1 | FUZZ-001 |
-| static-scan | 1 | STATIC-001 |
-| cargo-llvm-cov | 1 | COV-001 |
-| cargo-mutants | 1 | MUT-001 |
-| waiver | 3 | WAIVER-EMIT-002, WAIVER-EMIT-003, WAIVER-EMIT-004 |
+5 mandatory artifacts missing per skill rules:
+1. `contract.md` — LETHAL
+2. `tla-spec.md` — LETHAL
+3. `lean-contract.md` — LETHAL
+4. `verification-layers.md` — MAJOR
+5. `traceability-matrix.jsonl` — LETHAL
 
-## Remaining Work
-
-This review approves the contract artifacts only. Implementation (State 3) and test writing (State 4) remain pending. The bead may advance to State 5 (contract verification review) pipeline.
-
-**Approve and advance to implementation gate.**
+**Reject and return to proof-planner/go-skill for artifact completion before re-review.**

@@ -123,7 +123,7 @@ tasks:
     script: |
       set -euo pipefail
       mkdir -p target/moon-locks
-      flock --shared target/moon-locks/source-mutation.lock env RUSTC_WRAPPER= RUSTFLAGS="-Dwarnings" CARGO_TARGET_DIR=target/hardened-build rustup run nightly-2026-04-28 cargo build --quiet -p velvet_ballastics --bin velvet-ballastics --bin vb --all-features --profile hardened
+      flock --shared target/moon-locks/source-mutation.lock env RUSTC_WRAPPER= RUSTFLAGS="-Dwarnings" CARGO_TARGET_DIR=target/hardened-build rustup run nightly-2026-04-28 cargo build --quiet -p velvet_ballastics --bin velvet-ballastics --all-features --profile hardened
     deps:
       - 'test'
       - 'lint-src'
@@ -387,7 +387,7 @@ tasks:
       runInCI: false
 
   pgo-instrument-build:
-    script: 'RUSTFLAGS="-Cprofile-generate=$PWD/target/pgo/profiles" rustup run nightly-2026-04-28 cargo build -p velvet_ballastics --bin velvet-ballistics --bin vb --all-features --profile maxperf'
+    script: 'RUSTFLAGS="-Cprofile-generate=$PWD/target/pgo/profiles" rustup run nightly-2026-04-28 cargo build -p velvet_ballastics --bin velvet-ballistics --all-features --profile maxperf'
     toolchains:
       - rust
     inputs:
@@ -400,7 +400,7 @@ tasks:
       runInCI: false
 
   pgo-optimized-build:
-    script: 'RUSTFLAGS="-Cprofile-use=$PWD/target/pgo/merged.profdata -Cllvm-args=-pgo-warn-missing-function" rustup run nightly-2026-04-28 cargo build -p velvet_ballastics --bin velvet-ballistics --bin vb --all-features --profile maxperf'
+    script: 'RUSTFLAGS="-Cprofile-use=$PWD/target/pgo/merged.profdata -Cllvm-args=-pgo-warn-missing-function" rustup run nightly-2026-04-28 cargo build -p velvet_ballastics --bin velvet-ballistics --all-features --profile maxperf'
     toolchains:
       - rust
     inputs:
@@ -417,7 +417,7 @@ tasks:
       set -euo pipefail
       mkdir -p target/moon-locks
       export CARGO_TARGET_DIR=target/maxperf
-      flock --shared target/moon-locks/source-mutation.lock env RUSTFLAGS="-Dwarnings" rustup run nightly-2026-04-28 cargo build --quiet -p velvet_ballastics --bin velvet-ballastics --bin vb --all-features --release
+      flock --shared target/moon-locks/source-mutation.lock env RUSTFLAGS="-Dwarnings" rustup run nightly-2026-04-28 cargo build --quiet -p velvet_ballastics --bin velvet-ballastics --all-features --release
     deps:
       - 'test'
       - 'lint-src'
@@ -437,7 +437,7 @@ tasks:
       mkdir -p target/moon-locks
       export CARGO_TARGET_DIR=target/maxperf-native
       export RUSTFLAGS="-C target-cpu=native -Dwarnings"
-      flock --shared target/moon-locks/source-mutation.lock rustup run nightly-2026-04-28 cargo build --quiet -p velvet_ballastics --bin velvet-ballastics --bin vb --all-features --release
+      flock --shared target/moon-locks/source-mutation.lock rustup run nightly-2026-04-28 cargo build --quiet -p velvet_ballastics --bin velvet-ballastics --all-features --release
     deps:
       - 'test'
       - 'lint-src'

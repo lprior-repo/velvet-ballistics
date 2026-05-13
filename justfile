@@ -6,7 +6,7 @@ allowed_features := "try_blocks,portable_simd,allocator_api,generic_const_exprs"
 pgo_profile_dir := "target/pgo/profiles"
 pgo_merged_profile := "target/pgo/merged.profdata"
 pgo_binary := "./target/maxperf/velvet-ballistics"
-pgo_build_args := "-p velvet_ballastics --bin velvet-ballastics --bin vb --all-features --profile maxperf"
+pgo_build_args := "-p velvet_ballastics --bin velvet-ballastics --all-features --profile maxperf"
 
 fmt:
 	cargo +{{nightly}} fmt --all --check
