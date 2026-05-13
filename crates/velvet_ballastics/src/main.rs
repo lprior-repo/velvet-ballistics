@@ -4131,6 +4131,23 @@ fn cmd_bench_run(workflow: &std::path::Path, output: OutputFormat) -> ExitCode {
     ExitCode::SUCCESS
 }
 
+fn open_doctor_journal(
+    db: &std::path::Path,
+) -> Result<vb_storage::FjallJournal, vb_storage::JournalError> {
+    for delay in [
+        std::time::Duration::from_millis(5),
+        std::time::Duration::from_millis(25),
+    ] {
+        match vb_storage::FjallJournal::open(db, None) {
+            Ok(journal) => return Ok(journal),
+            Err(vb_storage::JournalError::ProcessLockHeld { .. }) => std::thread::sleep(delay),
+            Err(err) => return Err(err),
+        }
+    }
+
+    vb_storage::FjallJournal::open(db, None)
+}
+
 fn cmd_doctor(db: Option<&std::path::Path>, output: OutputFormat) -> ExitCode {
     let Some(db) = db else {
         return cmd_doctor_without_db(output);
@@ -4140,7 +4157,7 @@ fn cmd_doctor(db: Option<&std::path::Path>, output: OutputFormat) -> ExitCode {
     let _success = true;
 
     // Check 1: can we open the journal?
-    let journal = match vb_storage::FjallJournal::open(db, None) {
+    let journal = match open_doctor_journal(db) {
         Ok(j) => {
             checks.push(serde_json::json!({
                 "check": "open_journal",

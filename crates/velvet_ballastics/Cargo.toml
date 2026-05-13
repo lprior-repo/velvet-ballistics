@@ -29,10 +29,6 @@ path = "src/lib.rs"
 name = "velvet-ballastics"
 path = "src/main.rs"
 
-[[bin]]
-name = "vb"
-path = "src/vb.rs"
-
 [dev-dependencies]
 bytes = { workspace = true }
 proptest = { workspace = true }

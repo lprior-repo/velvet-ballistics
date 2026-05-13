@@ -740,6 +740,11 @@ mod tests {
         ));
     }
 
+    #[cfg(kani)]
+    mod emitter_proofs {
+        include!("../../kani/vb-qi37.13.3/emitter_proofs.rs");
+    }
+
     #[cfg(feature = "std")]
     #[test]
     fn yaml_envelope_from_envelope() {

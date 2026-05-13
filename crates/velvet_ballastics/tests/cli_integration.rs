@@ -1,4 +1,5 @@
 #![forbid(unsafe_code)]
+#![cfg(not(miri))]
 //! CLI integration tests — truth serum adversarial audit as executable tests.
 //!
 //! These tests encode the exact scenarios from the manual truth-serum audit
@@ -93,7 +94,7 @@ fn write_test_file(path: &std::path::Path, contents: &[u8]) -> bool {
 }
 
 fn run_cli(args: &[&std::ffi::OsStr]) -> Option<std::process::Output> {
-    let mut command = std::process::Command::new(env!("CARGO_BIN_EXE_vb"));
+    let mut command = std::process::Command::new(env!("CARGO_BIN_EXE_velvet-ballastics"));
     command.args(args);
 
     match command.output() {
