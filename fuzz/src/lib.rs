@@ -14,10 +14,6 @@ use vb_core::ids::{ActionId, SlotIdx, StepIdx, WorkflowDigest};
 use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract};
 
 const MAX_FUZZ_PAYLOAD: u32 = 4096;
-const MAX_FUZZ_PAYLOAD_USIZE: usize = 4096;
-const IPC_HEADER_LEN: usize = 24;
-const IPC_MAGIC: u32 = 0x5642_4C54;
-const IPC_VERSION: u16 = 1;
 const SMALL_WORKFLOW_A: &[u8] = b"version: velvet-ballastics/v1\nname: fuzz_a\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    finish:\n      result: 0\n";
 const SMALL_WORKFLOW_B: &[u8] = b"version: velvet-ballastics/v1\nname: fuzz_b\nwhen:\n  manual: {}\nsteps:\n  - id: save_value\n    save:\n      value: true\n  - id: done\n    finish:\n      result: 0\n";
 
@@ -135,42 +131,30 @@ pub fn fuzz_yaml_events(data: &[u8]) {
 
 /// Exercises IPC header/frame decoding and typed payload decoding.
 pub fn fuzz_ipc_frame(data: &[u8]) {
-    if data.len() < IPC_HEADER_LEN {
+    use vb_ipc::frame::{decode_frame_header, decode_frame_payload};
+
+    let Some(header_bytes) = data.get(..vb_ipc::IPC_HEADER_LEN) else {
         return;
+    };
+
+    let mut header = [0u8; vb_ipc::IPC_HEADER_LEN];
+    header.copy_from_slice(header_bytes);
+
+    // Call the real decoder - this is what the fuzz target should exercise
+    let Ok(header) = decode_frame_header(&header) else {
+        return;
+    };
+
+    let Some(payload) = data.get(vb_ipc::IPC_HEADER_LEN..) else {
+        return;
+    };
+
+    // Only attempt payload decode if there's actually payload data
+    if !payload.is_empty() && usize::try_from(header.payload_len).is_ok() {
+        match decode_frame_payload(&header, payload) {
+            Ok(_) | Err(_) => {}
+        }
     }
-
-    let mut header = [0_u8; IPC_HEADER_LEN];
-    let Some(prefix) = data.get(..IPC_HEADER_LEN) else {
-        return;
-    };
-    header.copy_from_slice(prefix);
-
-    let Some(payload) = data.get(IPC_HEADER_LEN..) else {
-        return;
-    };
-
-    let Some(magic) = read_u32_le(header.get(0..4)) else {
-        return;
-    };
-    let Some(version) = read_u16_le(header.get(4..6)) else {
-        return;
-    };
-    let Some(command) = read_u16_le(header.get(6..8)) else {
-        return;
-    };
-    let Some(reserved) = read_u16_le(header.get(10..12)) else {
-        return;
-    };
-    let Some(payload_len) = read_u32_le(header.get(20..24)) else {
-        return;
-    };
-
-    let _is_valid_header = magic == IPC_MAGIC
-        && version == IPC_VERSION
-        && (1..=11).contains(&command)
-        && reserved == 0
-        && usize::try_from(payload_len) == Ok(payload.len())
-        && payload.len() <= MAX_FUZZ_PAYLOAD_USIZE;
 }
 
 /// Exercises storage record envelope decode and valid-event encode paths.
@@ -1400,16 +1384,4 @@ fn selected_workflow(data: &[u8]) -> &'static [u8] {
         Some(value) if value.is_multiple_of(2) => SMALL_WORKFLOW_A,
         _ => SMALL_WORKFLOW_B,
     }
-}
-
-fn read_u16_le(bytes: Option<&[u8]>) -> Option<u16> {
-    let slice = bytes?;
-    let array = <[u8; 2]>::try_from(slice).ok()?;
-    Some(u16::from_le_bytes(array))
-}
-
-fn read_u32_le(bytes: Option<&[u8]>) -> Option<u32> {
-    let slice = bytes?;
-    let array = <[u8; 4]>::try_from(slice).ok()?;
-    Some(u32::from_le_bytes(array))
 }
