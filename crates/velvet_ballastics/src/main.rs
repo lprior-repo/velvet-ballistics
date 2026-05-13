@@ -960,7 +960,7 @@ fn cmd_compile(
             }
         }
         EmitTarget::Rust => {
-            let source = match vb_codegen::emit_rust_workflow(&compiled) {
+            let mut source = match vb_codegen::emit_rust_workflow(&compiled) {
                 Ok(s) => s,
                 Err(e) => {
                     if output != OutputFormat::Text {
@@ -977,6 +977,20 @@ fn cmd_compile(
                     return CliExitCode::CompileFailed.into();
                 }
             };
+            source.push_str(
+                r#"
+fn main() {
+    let slots = [None; WORKFLOW_SLOT_COUNT];
+    match drive(slots) {
+        Ok(value) => println!("{:?}", value),
+        Err(error) => {
+            eprintln!("{:?}", error);
+            std::process::exit(1);
+        }
+    }
+}
+"#,
+            );
             if let Err(e) = std::fs::write(out, &source) {
                 if output != OutputFormat::Text {
                     json_error(
@@ -1167,11 +1181,7 @@ fn cmd_run(
         }
     }
 
-    // run_compiled_workflow outputs directly; for structured output we output a result wrapper
-    if output != OutputFormat::Text {
-        outln!("{{\"status\": \"running\", \"run_id\": 1}}");
-    }
-    run_compiled_workflow(&compiled, inputs, durability, db)
+    run_compiled_workflow(&compiled, inputs, durability, db, output)
 }
 
 fn store_workflow_artifacts(
@@ -1710,10 +1720,7 @@ fn cmd_run_compiled(
         }
     };
 
-    if output != OutputFormat::Text {
-        outln!("{{\"status\": \"running\", \"run_id\": 1}}");
-    }
-    run_compiled_workflow(&compiled, inputs, durability, db)
+    run_compiled_workflow(&compiled, inputs, durability, db, output)
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -1760,26 +1767,34 @@ fn map_runtime_inputs(
 fn runtime_journal_for_mode(
     durability: DurabilityMode,
     db: Option<&std::path::Path>,
+    output: OutputFormat,
 ) -> Result<vb_runtime::journal::SharedRuntimeJournal, ExitCode> {
     match durability {
         DurabilityMode::None => Ok(vb_runtime::journal::NoopRuntimeJournal::shared()),
-        DurabilityMode::Journaled => open_storage_runtime_journal(db, false),
-        DurabilityMode::Strict => open_storage_runtime_journal(db, true),
+        DurabilityMode::Journaled => open_storage_runtime_journal(db, false, output),
+        DurabilityMode::Strict => open_storage_runtime_journal(db, true, output),
     }
 }
 
 fn open_storage_runtime_journal(
     db: Option<&std::path::Path>,
     strict: bool,
+    output: OutputFormat,
 ) -> Result<vb_runtime::journal::SharedRuntimeJournal, ExitCode> {
     let Some(path) = db else {
-        errln!("--db is required when --durability is strict or journaled");
+        report_runtime_error(
+            format_args!("--db is required when --durability is strict or journaled"),
+            output,
+        );
         return Err(CliExitCode::StorageError.into());
     };
     let journal = match vb_storage::FjallJournal::open(path, None) {
         Ok(journal) => Arc::new(journal),
         Err(e) => {
-            errln!("error opening journal at {}: {e}", path.display());
+            report_runtime_error(
+                format_args!("error opening journal at {}: {e}", path.display()),
+                output,
+            );
             return Err(CliExitCode::StorageError.into());
         }
     };
@@ -1796,53 +1811,95 @@ fn run_compiled_workflow(
     inputs: Box<[(vb_core::SlotIdx, vb_core::SlotValue)]>,
     durability: DurabilityMode,
     db: Option<&std::path::Path>,
+    output: OutputFormat,
 ) -> ExitCode {
     let run_id = vb_core::RunId::new(1);
     let Some(shard_count) = NonZeroUsize::new(1) else {
-        errln!("runtime configuration error: shard count must be non-zero");
+        report_runtime_error(
+            format_args!("runtime configuration error: shard count must be non-zero"),
+            output,
+        );
         return CliExitCode::RuntimeFailed.into();
     };
     let config = vb_runtime::shard::ShardConfig::default();
-    let journal = match runtime_journal_for_mode(durability, db) {
+    let journal = match runtime_journal_for_mode(durability, db, output) {
         Ok(journal) => journal,
         Err(code) => return code,
     };
     let mut runtime = vb_runtime::runtime::Runtime::new_with_journal(shard_count, config, journal);
 
     if let Err(e) = runtime.submit_compiled_with_inputs(run_id, compiled.clone(), inputs) {
-        errln!("runtime submit error: {e}");
+        report_runtime_error(format_args!("runtime submit error: {e}"), output);
         return CliExitCode::RuntimeFailed.into();
     }
     if let Err(e) = runtime.tick_all() {
-        errln!("runtime tick error: {e}");
+        report_runtime_error(format_args!("runtime tick error: {e}"), output);
         return CliExitCode::RuntimeFailed.into();
     }
 
     let counters = runtime.counters_snapshot();
     let traces = runtime.drain_trace();
-    outln!(
-        "run {}: submitted={} completed={} failed={} steps={}",
-        run_id.get(),
-        counters.runs_submitted,
-        counters.runs_completed,
-        counters.runs_failed,
-        counters.steps_executed
-    );
-    for trace in &traces {
-        print_trace_event(trace);
+    let status = if counters.runs_failed != 0 {
+        "failed"
+    } else if counters.runs_completed != 0 {
+        "completed"
+    } else {
+        "accepted"
+    };
+    if output != OutputFormat::Text {
+        json_out(
+            &serde_json::json!({
+                "success": counters.runs_failed == 0,
+                "run_id": run_id.get(),
+                "status": status,
+                "runtime": {
+                    "submitted": counters.runs_submitted,
+                    "completed": counters.runs_completed,
+                    "failed": counters.runs_failed,
+                    "steps": counters.steps_executed
+                },
+                "trace_count": traces.len()
+            }),
+            output,
+        );
+    } else {
+        outln!(
+            "run {}: submitted={} completed={} failed={} steps={}",
+            run_id.get(),
+            counters.runs_submitted,
+            counters.runs_completed,
+            counters.runs_failed,
+            counters.steps_executed
+        );
+        for trace in &traces {
+            print_trace_event(trace);
+        }
+
+        if counters.runs_failed != 0 {
+            errln!("run failed");
+        } else if counters.runs_completed != 0 {
+            outln!("run completed");
+        } else {
+            outln!("run accepted but not terminal after one runtime tick");
+        }
     }
 
     if counters.runs_failed != 0 {
-        errln!("run failed");
         return CliExitCode::RuntimeFailed.into();
-    }
-    if counters.runs_completed != 0 {
-        outln!("run completed");
-    } else {
-        outln!("run accepted but not terminal after one runtime tick");
     }
 
     ExitCode::SUCCESS
+}
+
+fn report_runtime_error(args: std::fmt::Arguments<'_>, output: OutputFormat) {
+    if output != OutputFormat::Text {
+        json_error(
+            &serde_json::json!({"success": false, "error": args.to_string()}),
+            output,
+        );
+    } else {
+        errln!("{args}");
+    }
 }
 
 fn print_trace_event(event: &vb_runtime::trace::TraceEvent) {
@@ -2019,17 +2076,20 @@ fn cmd_inspect(run_id: &str, db: &std::path::Path, output: OutputFormat) -> Exit
         Ok(events) => {
             if events.is_empty() {
                 if output != OutputFormat::Text {
-                    json_out(
+                    json_error(
                         &serde_json::json!({
+                            "success": false,
                             "run_id": run_id,
                             "status": "not_found",
-                            "events": 0
+                            "events": 0,
+                            "error": format!("run {run_id}: no events found")
                         }),
                         output,
                     );
                 } else {
-                    outln!("run {run_id}: no events found");
+                    errln!("run {run_id}: no events found");
                 }
+                return CliExitCode::ValidationFailed.into();
             } else {
                 let terminal = events.last();
                 let status = match terminal {

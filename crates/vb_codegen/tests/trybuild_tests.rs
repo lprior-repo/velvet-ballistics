@@ -1,3 +1,4 @@
+#![cfg(not(miri))]
 //! Trybuild compile-fail tests for generated Rust workflows.
 
 use std::path::PathBuf;

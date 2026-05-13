@@ -30,7 +30,7 @@ edition = "2024"
 license = "MIT OR Apache-2.0"
 version = "0.1.0"
 publish = false
-default-run = "velvet-ballastics"
+default-run = "velvet-ballastics-root"
 
 [lints]
 workspace = true
@@ -55,7 +55,7 @@ vb_validate = { path = "crates/vb_validate" }
 vb_yaml = { path = "crates/vb_yaml" }
 
 [[bin]]
-name = "velvet-ballastics"
+name = "velvet-ballastics-root"
 path = "crates/velvet_ballastics/src/main.rs"
 
 [dev-dependencies]

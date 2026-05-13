@@ -1,4 +1,5 @@
 #![forbid(unsafe_code)]
+#![cfg(not(miri))]
 //! Generate trybuild fixtures from compiled workflows.
 
 use std::path::PathBuf;

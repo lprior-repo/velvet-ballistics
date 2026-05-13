@@ -2231,11 +2231,10 @@ fn cli_inspect_nonexistent_run_shows_no_events() {
         Some(output) => output,
         None => return,
     };
-    assert_cli_success(&inspect_output, "inspect nonexistent run");
-    let stdout = output_stdout(&inspect_output);
-    assert!(
-        stdout.contains("no events found"),
-        "inspect should report no events for nonexistent run: {stdout}"
+    assert_cli_failure_contains(
+        &inspect_output,
+        "inspect nonexistent run",
+        "no events found",
     );
 }
 

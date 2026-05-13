@@ -97,7 +97,7 @@ pub fn non_terminal_states() -> Vec<StepState> {
 pub fn terminal_cannot_transition_to_non_terminal() -> bool {
     for terminal in terminal_states() {
         let next = next_states(terminal);
-        if next.len() != 1 || next[0] != terminal {
+        if !matches!(next.as_slice(), [only] if *only == terminal) {
             return false;
         }
     }
