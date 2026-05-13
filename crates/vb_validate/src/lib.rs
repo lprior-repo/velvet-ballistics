@@ -28,7 +28,9 @@ use thiserror::Error;
 pub mod control_flow;
 pub mod diagnostic;
 pub mod gates;
++++++++ xwwsyowu 99290f0c "fix(vb-qi37.4): add persist_strict() durability barrier to put_run_header()" (rebase destination)
 pub mod idempotency_contract;
+pub use gates::*;
 pub mod references;
 pub mod schema;
 pub mod shared;
