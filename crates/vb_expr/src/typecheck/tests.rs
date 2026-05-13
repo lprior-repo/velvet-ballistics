@@ -193,6 +193,9 @@ fn typecheck_expr_infers_helper_return_types() -> crate::ExprResult<()> {
 
     let ty_unique = check("unique($x)")?;
     assert_eq!(ty_unique, ExprType::List);
+
+    let ty_merge = check("merge($x, $y)")?;
+    assert_eq!(ty_merge, ExprType::Object);
     Ok(())
 }
 
