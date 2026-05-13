@@ -25,6 +25,7 @@ impl FjallJournal {
             crate::constants::MAX_RUN_HEADER_BYTES,
         )?;
         self.run_header.insert(key.to_vec(), value)?;
+        self.persist_strict()?;
         Ok(())
     }
 
