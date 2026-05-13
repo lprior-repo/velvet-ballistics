@@ -67,7 +67,7 @@ pub fn validate_gate_07_expression_stack_depth(parts: &WorkflowParts) -> Validat
 /// - Not/Exists/Length/Empty/Sum/Count/Unique: pop 1, push 1
 /// - AppendIf: pop 3, push 1
 /// - All others (binary): pop 2, push 1
-fn compute_stack_depth(ops: &[ExprOp]) -> ValidationResult<u8> {
+pub fn compute_stack_depth(ops: &[ExprOp]) -> ValidationResult<u8> {
     let mut depth: u8 = 0;
     let mut max_depth: u8 = 0;
     for op in ops {
@@ -387,7 +387,17 @@ fn check_slot(slot: SlotIdx, node_index: usize, slot_count: usize) -> Validation
 /// must be contained within their outer loop spans.
 pub fn validate_gate_11_loop_body_graph(parts: &WorkflowParts) -> ValidationResult<()> {
     let node_count = parts.nodes.len();
+    if node_count == 0 {
+        return Ok(());
+    }
+    check_step_in_range(parts.entry, node_count, 0, "entry")?;
     for (index, node) in parts.nodes.iter().enumerate() {
+        if let Some(next) = node.next {
+            check_next_step_in_range(next, node_count, index)?;
+        }
+        if let Some(on_error) = node.on_error {
+            check_step_in_range(on_error, node_count, index, "on_error")?;
+        }
         match &node.kind {
             CompiledNodeKind::ForEachStart { body, done, .. } => {
                 check_step_in_range(*body, node_count, index, "for_each body")?;
@@ -477,6 +487,22 @@ fn check_step_in_range(
             node_count,
             source_node: source_index,
             label: label.to_owned(),
+        });
+    }
+    Ok(())
+}
+
+fn check_next_step_in_range(
+    step: StepIdx,
+    node_count: usize,
+    source_index: usize,
+) -> ValidationResult<()> {
+    if step.as_usize() > node_count {
+        return Err(ValidationError::LoopBodyStepOutOfRange {
+            step: step.as_usize(),
+            node_count,
+            source_node: source_index,
+            label: "next".to_owned(),
         });
     }
     Ok(())
@@ -609,7 +635,9 @@ fn add_unique_edge(
     slot_count: usize,
 ) {
     match adjacency.get_mut(output) {
-        Some(list) if read_slot < slot_count && !list.contains(&read_slot) => {
+        Some(list)
+            if read_slot < slot_count && read_slot != output && !list.contains(&read_slot) =>
+        {
             list.push(read_slot);
         }
         _ => {}
@@ -679,9 +707,7 @@ fn node_reads(node: &CompiledNode, expressions: &[ExprProgram]) -> Vec<SlotIdx> 
                 reads.push(*slot);
             }
         }
-        CompiledNodeKind::Do { input, .. } => {
-            reads.push(*input);
-        }
+        CompiledNodeKind::Do { .. } => {}
         CompiledNodeKind::Choose { branches, .. } => {
             for branch in branches.iter() {
                 if let Some(expr_program) = expressions.get(branch.condition.as_usize()) {
@@ -1820,8 +1846,8 @@ mod tests {
     }
 
     #[test]
-    fn gate_13_rejects_self_copy_cycle() {
-        // A node that reads and writes the same slot is a direct cycle.
+    fn gate_13_accepts_self_copy_not_cycle() {
+        // A self-copy is a no-op dependency, not a cross-slot cycle.
         let nodes = vec![CompiledNode {
             id: StepIdx::new(0),
             output: Some(SlotIdx::new(0)),
@@ -1833,17 +1859,11 @@ mod tests {
             },
         }];
         let parts = make_parts(nodes, 1);
-        assert_eq!(
-            validate_gate_13_no_slot_cycles(&parts),
-            Err(ValidationError::SlotDependencyCycle {
-                slot: 0,
-                chain: "slot 0 -> slot 0".into(),
-            })
-        );
+        assert_eq!(validate_gate_13_no_slot_cycles(&parts), Ok(()));
     }
 
     #[test]
-    fn gate13_rejects_direct_self_dependency() {
+    fn gate13_accepts_direct_self_dependency() {
         // Given an expression node that writes slot 0.
         let mut parts = make_parts(vec![finish_node(1, 0)], 1);
         parts.expressions = Box::new([ExprProgram {
@@ -1863,14 +1883,8 @@ mod tests {
         parts.nodes = Box::new([node, finish_node(1, 0)]);
 
         // When the expression also reads slot 0.
-        // Then Gate 13 rejects the exact direct self-dependency cycle.
-        assert_eq!(
-            validate_gate_13_no_slot_cycles(&parts),
-            Err(ValidationError::SlotDependencyCycle {
-                slot: 0,
-                chain: "slot 0 -> slot 0".into(),
-            })
-        );
+        // Then Gate 13 treats the self edge as an in-place update, not a cycle.
+        assert_eq!(validate_gate_13_no_slot_cycles(&parts), Ok(()));
     }
 
     #[test]

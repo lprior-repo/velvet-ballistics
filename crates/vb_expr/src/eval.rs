@@ -162,58 +162,169 @@ pub fn eval_binary_op(op: BinaryOp, left: SlotValue, right: SlotValue) -> ExprRe
         BinaryOp::Or => Ok(SlotValue::Bool(expect_bool(left)? || expect_bool(right)?)),
         BinaryOp::Eq => Ok(SlotValue::Bool(left == right)),
         BinaryOp::NotEq => Ok(SlotValue::Bool(left != right)),
-        BinaryOp::Add => eval_i64_values(left, right, i64::checked_add),
-        BinaryOp::Sub => eval_i64_values(left, right, i64::checked_sub),
-        BinaryOp::Mul => eval_i64_values(left, right, i64::checked_mul),
-        BinaryOp::Div => eval_div_values(left, right),
-        BinaryOp::Gt => eval_i64_cmp_values(left, right, i64::gt),
-        BinaryOp::Gte => eval_i64_cmp_values(left, right, i64::ge),
-        BinaryOp::Lt => eval_i64_cmp_values(left, right, i64::lt),
-        BinaryOp::Lte => eval_i64_cmp_values(left, right, i64::le),
+        BinaryOp::Add => eval_add_op(left, right),
+        BinaryOp::Sub => eval_sub_op(left, right),
+        BinaryOp::Mul => eval_mul_op(left, right),
+        BinaryOp::Div => eval_div_op(left, right),
+        BinaryOp::Gt => eval_gt_op(left, right),
+        BinaryOp::Gte => eval_gte_op(left, right),
+        BinaryOp::Lt => eval_lt_op(left, right),
+        BinaryOp::Lte => eval_lte_op(left, right),
     }
+}
+
+fn eval_add_op(left: SlotValue, right: SlotValue) -> ExprResult<SlotValue> {
+    match (left, right) {
+        (SlotValue::F64(l), SlotValue::F64(r)) => {
+            let result = l.get() + r.get();
+            let finite = vb_core::value::FiniteF64::new(result)?;
+            Ok(SlotValue::F64(finite))
+        }
+        (SlotValue::I64(l), SlotValue::I64(r)) => eval_i64_values_(l, r, i64::checked_add),
+        (other_left, other_right) => eval_i64_values_(
+            expect_i64(other_left)?,
+            expect_i64(other_right)?,
+            i64::checked_add,
+        ),
+    }
+}
+
+fn eval_sub_op(left: SlotValue, right: SlotValue) -> ExprResult<SlotValue> {
+    match (left, right) {
+        (SlotValue::F64(l), SlotValue::F64(r)) => {
+            let result = l.get() - r.get();
+            let finite = vb_core::value::FiniteF64::new(result)?;
+            Ok(SlotValue::F64(finite))
+        }
+        (SlotValue::I64(l), SlotValue::I64(r)) => eval_i64_values_(l, r, i64::checked_sub),
+        (other_left, other_right) => eval_i64_values_(
+            expect_i64(other_left)?,
+            expect_i64(other_right)?,
+            i64::checked_sub,
+        ),
+    }
+}
+
+fn eval_mul_op(left: SlotValue, right: SlotValue) -> ExprResult<SlotValue> {
+    match (left, right) {
+        (SlotValue::F64(l), SlotValue::F64(r)) => {
+            let result = l.get() * r.get();
+            let finite = vb_core::value::FiniteF64::new(result)?;
+            Ok(SlotValue::F64(finite))
+        }
+        (SlotValue::I64(l), SlotValue::I64(r)) => eval_i64_values_(l, r, i64::checked_mul),
+        (other_left, other_right) => eval_i64_values_(
+            expect_i64(other_left)?,
+            expect_i64(other_right)?,
+            i64::checked_mul,
+        ),
+    }
+}
+
+fn eval_div_op(left: SlotValue, right: SlotValue) -> ExprResult<SlotValue> {
+    match (left, right) {
+        (SlotValue::F64(l), SlotValue::F64(r)) => {
+            let result = l.get() / r.get();
+            let finite =
+                vb_core::value::FiniteF64::new(result).map_err(|_| ExprError::NonFiniteFloat)?;
+            Ok(SlotValue::F64(finite))
+        }
+        (SlotValue::I64(l), SlotValue::I64(r)) => eval_div_values_(l, r),
+        (other_left, other_right) => {
+            eval_div_values_(expect_i64(other_left)?, expect_i64(other_right)?)
+        }
+    }
+}
+
+fn eval_gt_op(left: SlotValue, right: SlotValue) -> ExprResult<SlotValue> {
+    match (left, right) {
+        (SlotValue::F64(l), SlotValue::F64(r)) => Ok(SlotValue::Bool(l.get() > r.get())),
+        (SlotValue::I64(l), SlotValue::I64(r)) => eval_i64_cmp_values_(l, r, i64::gt),
+        (other_left, other_right) => {
+            eval_i64_cmp_values_(expect_i64(other_left)?, expect_i64(other_right)?, i64::gt)
+        }
+    }
+}
+
+fn eval_gte_op(left: SlotValue, right: SlotValue) -> ExprResult<SlotValue> {
+    match (left, right) {
+        (SlotValue::F64(l), SlotValue::F64(r)) => Ok(SlotValue::Bool(l.get() >= r.get())),
+        (SlotValue::I64(l), SlotValue::I64(r)) => eval_i64_cmp_values_(l, r, i64::ge),
+        (other_left, other_right) => {
+            eval_i64_cmp_values_(expect_i64(other_left)?, expect_i64(other_right)?, i64::ge)
+        }
+    }
+}
+
+fn eval_lt_op(left: SlotValue, right: SlotValue) -> ExprResult<SlotValue> {
+    match (left, right) {
+        (SlotValue::F64(l), SlotValue::F64(r)) => Ok(SlotValue::Bool(l.get() < r.get())),
+        (SlotValue::I64(l), SlotValue::I64(r)) => eval_i64_cmp_values_(l, r, i64::lt),
+        (other_left, other_right) => {
+            eval_i64_cmp_values_(expect_i64(other_left)?, expect_i64(other_right)?, i64::lt)
+        }
+    }
+}
+
+fn eval_lte_op(left: SlotValue, right: SlotValue) -> ExprResult<SlotValue> {
+    match (left, right) {
+        (SlotValue::F64(l), SlotValue::F64(r)) => Ok(SlotValue::Bool(l.get() <= r.get())),
+        (SlotValue::I64(l), SlotValue::I64(r)) => eval_i64_cmp_values_(l, r, i64::le),
+        (other_left, other_right) => {
+            eval_i64_cmp_values_(expect_i64(other_left)?, expect_i64(other_right)?, i64::le)
+        }
+    }
+}
+
+fn eval_i64_values_(
+    left: i64,
+    right: i64,
+    op: fn(i64, i64) -> Option<i64>,
+) -> ExprResult<SlotValue> {
+    let value = op(left, right).ok_or(ExprError::IntegerOverflow)?;
+    Ok(SlotValue::I64(value))
+}
+
+fn eval_div_values_(left: i64, right: i64) -> ExprResult<SlotValue> {
+    if right == 0 {
+        return Err(ExprError::DivisionByZero);
+    }
+    let value = left.checked_div(right).ok_or(ExprError::IntegerOverflow)?;
+    Ok(SlotValue::I64(value))
+}
+
+fn eval_i64_cmp_values_(
+    left: i64,
+    right: i64,
+    op: fn(&i64, &i64) -> bool,
+) -> ExprResult<SlotValue> {
+    Ok(SlotValue::Bool(op(&left, &right)))
 }
 
 /// Evaluates one unary operation over an already-popped value.
 pub fn eval_unary_op(op: UnaryOp, value: SlotValue) -> ExprResult<SlotValue> {
     match op {
         UnaryOp::Not => Ok(SlotValue::Bool(!expect_bool(value)?)),
-        UnaryOp::Neg => {
-            let number = expect_i64(value)?;
-            let negated = number.checked_neg().ok_or(ExprError::IntegerOverflow)?;
+        UnaryOp::Neg => eval_neg_op(value),
+    }
+}
+
+fn eval_neg_op(value: SlotValue) -> ExprResult<SlotValue> {
+    match value {
+        SlotValue::F64(f) => {
+            let result = -f.get();
+            let finite = vb_core::value::FiniteF64::new(result)?;
+            Ok(SlotValue::F64(finite))
+        }
+        SlotValue::I64(n) => {
+            let negated = n.checked_neg().ok_or(ExprError::IntegerOverflow)?;
             Ok(SlotValue::I64(negated))
         }
+        other => Err(ExprError::TypeMismatch {
+            expected: "number".into(),
+            found: other.type_name().into(),
+        }),
     }
-}
-
-fn eval_i64_values(
-    left: SlotValue,
-    right: SlotValue,
-    op: fn(i64, i64) -> Option<i64>,
-) -> ExprResult<SlotValue> {
-    let value = op(expect_i64(left)?, expect_i64(right)?).ok_or(ExprError::IntegerOverflow)?;
-    Ok(SlotValue::I64(value))
-}
-
-fn eval_div_values(left: SlotValue, right: SlotValue) -> ExprResult<SlotValue> {
-    let left_i64 = expect_i64(left)?;
-    let right_i64 = expect_i64(right)?;
-    if right_i64 == 0 {
-        return Err(ExprError::DivisionByZero);
-    }
-    let value = left_i64
-        .checked_div(right_i64)
-        .ok_or(ExprError::IntegerOverflow)?;
-    Ok(SlotValue::I64(value))
-}
-
-fn eval_i64_cmp_values(
-    left: SlotValue,
-    right: SlotValue,
-    op: fn(&i64, &i64) -> bool,
-) -> ExprResult<SlotValue> {
-    let left_i64 = expect_i64(left)?;
-    let right_i64 = expect_i64(right)?;
-    Ok(SlotValue::Bool(op(&left_i64, &right_i64)))
 }
 
 fn eval_helper_op_with_store(
@@ -426,6 +537,10 @@ fn eval_helper_exists(args: &[SlotValue]) -> ExprResult<SlotValue> {
 fn eval_helper_length(args: &[SlotValue]) -> ExprResult<SlotValue> {
     let value = one_arg(args, ExprHelper::Length)?;
     match value {
+        SlotValue::F64(_) => Err(ExprError::TypeMismatch {
+            expected: "list, text, or object".into(),
+            found: "number".into(),
+        }),
         SlotValue::List(_) | SlotValue::Null => Err(ExprError::TypeMismatch {
             expected: "value-store context required for list length".into(),
             found: "list handle without store".into(),
@@ -440,6 +555,10 @@ fn eval_helper_length(args: &[SlotValue]) -> ExprResult<SlotValue> {
 fn eval_helper_empty(args: &[SlotValue]) -> ExprResult<SlotValue> {
     let value = one_arg(args, ExprHelper::Empty)?;
     match *value {
+        SlotValue::F64(_) => Err(ExprError::TypeMismatch {
+            expected: "list, text, object, or null".into(),
+            found: "number".into(),
+        }),
         SlotValue::Null => Ok(SlotValue::Bool(true)),
         SlotValue::List(_) => Err(ExprError::TypeMismatch {
             expected: "value-store context required for list emptiness check".into(),
@@ -467,7 +586,13 @@ fn eval_helper_unique(args: &[SlotValue]) -> ExprResult<SlotValue> {
 }
 
 fn eval_helper_contains(args: &[SlotValue]) -> ExprResult<SlotValue> {
-    let (list_val, _item_val) = two_args(args, ExprHelper::Contains)?;
+    let (list_val, item_val) = two_args(args, ExprHelper::Contains)?;
+    if matches!(*list_val, SlotValue::F64(_)) || matches!(*item_val, SlotValue::F64(_)) {
+        return Err(ExprError::TypeMismatch {
+            expected: "list, text, or object".into(),
+            found: "number".into(),
+        });
+    }
     let _list_id = expect_list(*list_val)?;
     Err(ExprError::TypeMismatch {
         expected: "value-store context required for list contains check".into(),
@@ -661,6 +786,12 @@ fn eval_helper_contains_with_store(
     needle: &SlotValue,
     store: &mut ValueStore,
 ) -> ExprResult<SlotValue> {
+    if matches!(*haystack, SlotValue::F64(_)) || matches!(*needle, SlotValue::F64(_)) {
+        return Err(ExprError::TypeMismatch {
+            expected: "list, text, or object".into(),
+            found: "number".into(),
+        });
+    }
     let haystack_id = expect_symbol(*haystack)?;
     let needle_id = expect_symbol(*needle)?;
     let haystack_str = store

@@ -34,12 +34,15 @@
 pub mod action;
 pub mod admission;
 pub mod counters;
+
 pub mod durability_matrix;
 pub mod engine;
 mod error;
 pub mod frame_pool;
 pub mod idempotency;
 pub mod journal;
+#[cfg(kani)]
+pub mod kani_capability_harnesses;
 pub mod primitives;
 pub mod recovery;
 pub mod runtime;

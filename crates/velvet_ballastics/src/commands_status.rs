@@ -4,6 +4,7 @@
 use vb_runtime::shard::{Shard, ShardConfig, ShardHealth, ShardStatus};
 
 use crate::args::{OutputFormat, StatusOptions};
+use crate::cli_envelope;
 
 /// Serializable status view for CLI output.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -134,30 +135,27 @@ fn print_text(status: &CliStatus) {
 }
 
 fn print_json(status: &CliStatus, output: OutputFormat) {
-    crate::json_out(
-        &serde_json::json!({
-            "schema_version": "velvet-ballastics/v1",
-            "kind": "status",
-            "status": status.health,
-            "running": status.running,
-            "shutting_down": status.shutting_down,
-            "command_queue": {
-                "depth": status.command_queue_depth,
-                "capacity": status.command_queue_capacity
-            },
-            "active_runs": {
-                "active": status.active_runs,
-                "max_active_runs": status.max_active_runs
-            },
-            "trace_ring": {
-                "capacity": status.trace_capacity,
-                "dropped": status.trace_dropped
-            },
-            "step_budget_per_tick": status.step_budget_per_tick,
-            "RuntimePolicy": status.runtime_policy
-        }),
-        output,
-    );
+    let payload = serde_json::json!({
+        "status": status.health,
+        "running": status.running,
+        "shutting_down": status.shutting_down,
+        "command_queue": {
+            "depth": status.command_queue_depth,
+            "capacity": status.command_queue_capacity
+        },
+        "active_runs": {
+            "active": status.active_runs,
+            "max_active_runs": status.max_active_runs
+        },
+        "trace_ring": {
+            "capacity": status.trace_capacity,
+            "dropped": status.trace_dropped
+        },
+        "step_budget_per_tick": status.step_budget_per_tick,
+        "runtime_policy": status.runtime_policy
+    });
+    let envelope = cli_envelope::serialize_with_version(&payload, cli_envelope::Kind::CliStatus);
+    crate::json_out(&envelope, output);
 }
 
 #[cfg(test)]

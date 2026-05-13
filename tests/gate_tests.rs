@@ -3,18 +3,17 @@
 //!
 //! These tests complement the existing gate_tests.rs in vb_validate.
 
-use vb_core::ids::{ConstIdx, ExprIdx, SlotIdx, StepIdx, SymbolId};
-use vb_core::value::ConstValue;
+use vb_core::ids::{ConstIdx, SlotIdx, StepIdx, SymbolId};
 use vb_core::workflow::{
     AccessorProgram, CompiledNode, CompiledNodeKind, ExprOp, ExprProgram, PathSegment,
     ResourceContract, WorkflowParts,
 };
+use vb_validate::ValidationError;
 use vb_validate::gates::{
     validate_gate_07_expression_stack_depth, validate_gate_08_accessor_path_segments,
     validate_gate_09_slot_references, validate_gate_11_loop_body_graph,
     validate_gate_13_no_slot_cycles,
 };
-use vb_validate::ValidationError;
 
 // ---------------------------------------------------------------------------
 // Helper constructors
@@ -431,14 +430,11 @@ fn gate_13_rejects_direct_slot_cycle() {
 }
 
 #[test]
-fn gate_13_rejects_self_copy_cycle() {
-    // A node that reads and writes the same slot is a direct cycle.
+fn gate_13_accepts_self_copy_not_cycle() {
+    // A node that reads and writes the same slot is an in-place update, not a cycle.
     let nodes = vec![copy_node(0, 0, 0)]; // slot 0 reads from slot 0
     let parts = make_parts(nodes, 1);
-    assert!(matches!(
-        validate_gate_13_no_slot_cycles(&parts),
-        Err(ValidationError::SlotDependencyCycle { .. })
-    ));
+    assert_eq!(validate_gate_13_no_slot_cycles(&parts), Ok(()));
 }
 
 #[test]

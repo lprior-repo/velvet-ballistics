@@ -7,6 +7,7 @@ use std::process::ExitCode;
 use serde_json::{Map, Value};
 
 use crate::args::OutputFormat;
+use crate::cli_envelope;
 use crate::exit_code::CliExitCode;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -57,9 +58,7 @@ pub(crate) fn handle(run_id: &str, db: &std::path::Path, output: OutputFormat) -
     };
     let workflow = ai_workflow_summary(&journal, digest);
     let status = run_status_from_events(&events);
-    let packet = serde_json::json!({
-        "schema_version": "1",
-        "kind": "AiContextPacket",
+    let payload = serde_json::json!({
         "run_id": rid.get(),
         "workflow": workflow,
         "journal_event_trail": ai_journal_events(&events, latest_snapshot.as_ref()),
@@ -67,7 +66,9 @@ pub(crate) fn handle(run_id: &str, db: &std::path::Path, output: OutputFormat) -
         "trace_ring_snapshot": trace_ring_snapshot(),
         "suggested_next_cli_commands": suggested_ai_commands(run_id, db, status),
     });
-    json_out(&packet, output);
+    let envelope =
+        cli_envelope::serialize_with_version(&payload, cli_envelope::Kind::AiContextPacket);
+    json_out(&envelope, output);
     ExitCode::SUCCESS
 }
 

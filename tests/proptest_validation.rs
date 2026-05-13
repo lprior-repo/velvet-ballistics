@@ -7,25 +7,17 @@
 
 use proptest::prelude::*;
 use vb_core::action::{ActionContract, Idempotency, RetrySafety, SideEffect};
-use vb_core::ids::{ActionId, ConstIdx, ExprIdx, SlotIdx, StepIdx, SymbolId};
-use vb_core::value::ConstValue;
-use vb_core::workflow::{
-    AccessorProgram, CompiledNode, CompiledNodeKind, ExprOp, ExprProgram, PathSegment,
-    ResourceContract, WorkflowParts,
-};
+use vb_core::ids::{ActionId, SlotIdx, StepIdx};
+use vb_core::workflow::{CompiledNode, CompiledNodeKind, ExprOp, ResourceContract, WorkflowParts};
 
 use vb_validate::gates;
-use vb_validate::shared::{validate, validate_with_contracts, ValidationPipeline};
+use vb_validate::shared::{ValidationPipeline, validate, validate_with_contracts};
 
 // ---------------------------------------------------------------------------
 // Helper constructors
 // ---------------------------------------------------------------------------
 
-fn make_parts(
-    nodes: Vec<CompiledNode>,
-    slot_count: u16,
-    symbols_count: u32,
-) -> WorkflowParts {
+fn make_parts(nodes: Vec<CompiledNode>, slot_count: u16, symbols_count: u32) -> WorkflowParts {
     WorkflowParts {
         name: Box::from("prop"),
         digest: vb_core::ids::WorkflowDigest::from_bytes([0u8; 32]),
@@ -285,32 +277,49 @@ proptest! {
     /// ForEachStart must have body < done (forward span).
     #[test]
     fn proptest_foreach_span_must_be_forward(
-        start_idx in 0u16..10u16,
-        body_offset in 0u16..5u16,
-        done_offset in 5u16..10u16,
+        body_idx in 1u16..5u16,
+        done_idx in 2u16..10u16,
     ) {
-        let body_idx = start_idx.saturating_add(body_offset);
-        let done_idx = start_idx.saturating_add(done_offset);
-
         prop_assume!(body_idx < done_idx);
-        prop_assume!(done_idx < 20);
 
-        let nodes = vec![
-            CompiledNode {
-                id: StepIdx::new(start_idx),
-                output: None,
-                next: Some(StepIdx::new(start_idx + 1)),
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::ForEachStart {
-                    input: SlotIdx::new(0),
-                    item_slot: SlotIdx::new(1),
-                    limit: 10,
-                    body: StepIdx::new(body_idx),
-                    done: StepIdx::new(done_idx),
-                },
-            },
-        ];
+        let nodes: Vec<CompiledNode> = (0..=done_idx)
+            .map(|index| {
+                if index == 0 {
+                    CompiledNode {
+                        id: StepIdx::new(0),
+                        output: None,
+                        next: Some(StepIdx::new(1)),
+                        on_error: None,
+                        error_slot: None,
+                        kind: CompiledNodeKind::ForEachStart {
+                            input: SlotIdx::new(0),
+                            item_slot: SlotIdx::new(1),
+                            limit: 10,
+                            body: StepIdx::new(body_idx),
+                            done: StepIdx::new(done_idx),
+                        },
+                    }
+                } else if index == done_idx {
+                    CompiledNode {
+                        id: StepIdx::new(index),
+                        output: None,
+                        next: None,
+                        on_error: None,
+                        error_slot: None,
+                        kind: CompiledNodeKind::Finish { result: SlotIdx::new(0) },
+                    }
+                } else {
+                    CompiledNode {
+                        id: StepIdx::new(index),
+                        output: None,
+                        next: Some(StepIdx::new(index.saturating_add(1))),
+                        on_error: None,
+                        error_slot: None,
+                        kind: CompiledNodeKind::Nop,
+                    }
+                }
+            })
+            .collect();
         let parts = make_parts(nodes, 2, 0);
 
         let result = gates::validate_gate_11_loop_body_graph(&parts);
@@ -324,48 +333,62 @@ proptest! {
 // ---------------------------------------------------------------------------
 
 proptest! {
-    /// ForEach body subgraph must lead to ForEachJoin (done target must be reachable).
+    /// ForEach body subgraph must lead to the done target.
     #[test]
     fn proptest_foreach_done_reachable(
-        start_idx in 0u16..5u16,
+        done_idx in 2u16..8u16,
     ) {
-        let done_idx = start_idx + 3;
-        let nodes = vec![
-            CompiledNode {
-                id: StepIdx::new(start_idx),
-                output: None,
-                next: Some(StepIdx::new(start_idx + 1)),
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::ForEachStart {
-                    input: SlotIdx::new(0),
-                    item_slot: SlotIdx::new(1),
-                    limit: 10,
-                    body: StepIdx::new(start_idx + 1),
-                    done: StepIdx::new(done_idx),
-                },
-            },
-            CompiledNode {
-                id: StepIdx::new(start_idx + 1),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::ForEachNext {
-                    iterator_slot: SlotIdx::new(0),
-                    body: StepIdx::new(start_idx + 1),
-                    done: StepIdx::new(done_idx),
-                },
-            },
-            CompiledNode {
-                id: StepIdx::new(done_idx),
-                output: None,
-                next: None,
-                on_error: None,
-                error_slot: None,
-                kind: CompiledNodeKind::Finish { result: SlotIdx::new(0) },
-            },
-        ];
+        let nodes: Vec<CompiledNode> = (0..=done_idx)
+            .map(|index| {
+                if index == 0 {
+                    CompiledNode {
+                        id: StepIdx::new(0),
+                        output: None,
+                        next: Some(StepIdx::new(1)),
+                        on_error: None,
+                        error_slot: None,
+                        kind: CompiledNodeKind::ForEachStart {
+                            input: SlotIdx::new(0),
+                            item_slot: SlotIdx::new(1),
+                            limit: 10,
+                            body: StepIdx::new(1),
+                            done: StepIdx::new(done_idx),
+                        },
+                    }
+                } else if index == 1 {
+                    CompiledNode {
+                        id: StepIdx::new(1),
+                        output: None,
+                        next: Some(StepIdx::new(2)),
+                        on_error: None,
+                        error_slot: None,
+                        kind: CompiledNodeKind::ForEachNext {
+                            iterator_slot: SlotIdx::new(0),
+                            body: StepIdx::new(1),
+                            done: StepIdx::new(done_idx),
+                        },
+                    }
+                } else if index == done_idx {
+                    CompiledNode {
+                        id: StepIdx::new(done_idx),
+                        output: None,
+                        next: None,
+                        on_error: None,
+                        error_slot: None,
+                        kind: CompiledNodeKind::Finish { result: SlotIdx::new(0) },
+                    }
+                } else {
+                    CompiledNode {
+                        id: StepIdx::new(index),
+                        output: None,
+                        next: Some(StepIdx::new(index.saturating_add(1))),
+                        on_error: None,
+                        error_slot: None,
+                        kind: CompiledNodeKind::Nop,
+                    }
+                }
+            })
+            .collect();
         let parts = make_parts(nodes, 2, 0);
 
         let result = gates::validate_gate_11_loop_body_graph(&parts);

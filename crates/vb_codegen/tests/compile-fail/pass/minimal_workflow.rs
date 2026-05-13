@@ -28,6 +28,8 @@ pub enum DriveError {
     ExprOutOfBounds { expr: u16 },
     StepBudgetExhausted,
     TaintViolation { step: u16 },
+    JournalOverflow,
+    InvalidResume { step: u16 },
     SlotNull,
     NoBranchMatched,
     ExpressionStackOverflow { max: u8 },
@@ -57,9 +59,137 @@ pub enum DriveError {
     InvalidCompiledWorkflow { reason: &'static str },
 }
 
-enum SuspensionOutcome { ActionPending { step: u16, action_id: u16, input_slot: u16, resume_pc: u16 }, WaitUntil { step: u16, deadline_slot: u16, resume_pc: u16 }, WaitEvent { step: u16, event_slot: u16, timeout_slot: Option<u16>, resume_pc: u16 }, AskPending { step: u16, prompt_slot: u16, timeout_slot: Option<u16>, resume_pc: u16 } }
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum GeneratedSuspension { ActionPending { step: u16, action_id: u16, input_slot: u16, resume_pc: u16 }, WaitUntil { step: u16, deadline_slot: u16, resume_pc: u16 }, WaitEvent { step: u16, event_slot: u16, timeout_slot: Option<u16>, resume_pc: u16 }, AskPending { step: u16, prompt_slot: u16, timeout_slot: Option<u16>, resume_pc: u16 } }
+type SuspensionOutcome = GeneratedSuspension;
 impl SuspensionOutcome { fn into_drive_error(self) -> DriveError { match self { Self::ActionPending { step, action_id, input_slot, resume_pc } => DriveError::ActionSuspend { step, action_id, input_slot, resume_pc }, Self::WaitUntil { step, deadline_slot, resume_pc } => DriveError::WaitUntilSuspend { step, deadline_slot, resume_pc }, Self::WaitEvent { step, event_slot, timeout_slot, resume_pc } => DriveError::WaitEventSuspend { step, event_slot, timeout_slot, resume_pc }, Self::AskPending { step, prompt_slot, timeout_slot, resume_pc } => DriveError::AskSuspend { step, prompt_slot, timeout_slot, resume_pc }, } } }
 enum StepOutcome { Continue(u16), Finished(SlotValue) }
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum JournalEvent {
+    SlotWritten { slot: u16, value: Option<SlotValue>, taint: Taint },
+    ActionScheduled { step: u16, action_id: u16, input_slot: u16, resume_pc: u16 },
+    ActionCompleted { step: u16, action_id: u16, output_slot: u16, value: SlotValue, taint: Taint },
+    AskAnswered { ask_step: u16, resume_step: u16, answer_slot: u16, value: SlotValue, taint: Taint },
+    RunFinished { step: u16, value: SlotValue, taint: Taint },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Journal { events: [Option<JournalEvent>; GENERATED_JOURNAL_CAPACITY], len: u16 }
+impl Journal {
+    pub const fn new() -> Self { Self { events: [None; GENERATED_JOURNAL_CAPACITY], len: 0 } }
+    pub const fn len(&self) -> u16 { self.len }
+    fn ensure_capacity(&self, needed: usize) -> Result<(), DriveError> {
+        let used = usize::from(self.len);
+        let available = GENERATED_JOURNAL_CAPACITY.checked_sub(used).ok_or(DriveError::JournalOverflow)?;
+        if available < needed { return Err(DriveError::JournalOverflow); }
+        Ok(())
+    }
+    pub fn event(&self, index: u16) -> Option<JournalEvent> {
+        if index >= self.len { return None; }
+        self.events.get(usize::from(index)).copied().flatten()
+    }
+    fn push(&mut self, event: JournalEvent) -> Result<(), DriveError> {
+        self.ensure_capacity(1)?;
+        let index = usize::from(self.len);
+        match self.events.get_mut(index) {
+            Some(slot) => *slot = Some(event),
+            None => return Err(DriveError::JournalOverflow),
+        }
+        self.len = self.len.checked_add(1).ok_or(DriveError::JournalOverflow)?;
+        Ok(())
+    }
+}
+
+impl Default for Journal {
+    fn default() -> Self { Self::new() }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct DriveOutput { pub value: SlotValue, pub taint: Taint, pub journal: Journal }
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct SuspendedRun { pub suspension: GeneratedSuspension, pub journal: Journal }
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum GeneratedRunStatus { Finished(DriveOutput), Suspended(SuspendedRun) }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum PendingResume {
+    Action { step: u16, action_id: u16, resume_pc: u16 },
+    Ask { ask_step: u16, resume_pc: u16 },
+}
+
+impl PendingResume {
+    const fn step(self) -> u16 {
+        match self {
+            Self::Action { step, .. } => step,
+            Self::Ask { ask_step, .. } => ask_step,
+        }
+    }
+}
+
+pub struct GeneratedRunState {
+    slots: [Option<SlotValue>; WORKFLOW_SLOT_COUNT],
+    slot_taints: [Taint; WORKFLOW_SLOT_COUNT],
+    pc: u16,
+    step_budget_remaining: u64,
+    list_store: ListStore,
+    object_store: ObjectStore,
+    journal: Journal,
+    pending: Option<PendingResume>,
+}
+
+impl GeneratedRunState {
+    fn record_slot_changes(
+        &mut self,
+        before_slots: &[Option<SlotValue>; WORKFLOW_SLOT_COUNT],
+        before_taints: &[Taint; WORKFLOW_SLOT_COUNT],
+    ) -> Result<(), DriveError> {
+        self.journal.ensure_capacity(WORKFLOW_SLOT_COUNT)?;
+        let mut slot = 0u16;
+        while usize::from(slot) < WORKFLOW_SLOT_COUNT {
+            let index = usize::from(slot);
+            let before_value = before_slots.get(index).copied().ok_or(DriveError::SlotOutOfBounds { slot })?;
+            let after_value = self.slots.get(index).copied().ok_or(DriveError::SlotOutOfBounds { slot })?;
+            let before_taint = before_taints.get(index).copied().ok_or(DriveError::SlotOutOfBounds { slot })?;
+            let after_taint = self.slot_taints.get(index).copied().ok_or(DriveError::SlotOutOfBounds { slot })?;
+            if before_value != after_value || before_taint != after_taint {
+                self.journal.push(JournalEvent::SlotWritten { slot, value: after_value, taint: after_taint })?;
+            }
+            slot = slot.checked_add(1).ok_or(DriveError::SlotOutOfBounds { slot })?;
+        }
+        Ok(())
+    }
+
+    fn write_slot_with_journal(&mut self, slot: u16, value: Option<SlotValue>, taint: Taint) -> Result<(), DriveError> {
+        self.journal.ensure_capacity(1)?;
+        write_slot_with_taint(&mut self.slots, &mut self.slot_taints, slot, value, taint)?;
+        self.journal.push(JournalEvent::SlotWritten { slot, value, taint })
+    }
+
+    fn suspend_from_error(&mut self, error: DriveError) -> Result<GeneratedRunStatus, DriveError> {
+        match error {
+            DriveError::ActionSuspend { step, action_id, input_slot, resume_pc } => {
+                if self.pending.is_some() { return Err(DriveError::InvalidResume { step }); }
+                self.journal.ensure_capacity(1)?;
+                let suspension = GeneratedSuspension::ActionPending { step, action_id, input_slot, resume_pc };
+                self.journal.push(JournalEvent::ActionScheduled { step, action_id, input_slot, resume_pc })?;
+                self.pending = Some(PendingResume::Action { step, action_id, resume_pc });
+                Ok(GeneratedRunStatus::Suspended(SuspendedRun { suspension, journal: self.journal }))
+            }
+            DriveError::WaitUntilSuspend { step, deadline_slot, resume_pc } => Ok(GeneratedRunStatus::Suspended(SuspendedRun { suspension: GeneratedSuspension::WaitUntil { step, deadline_slot, resume_pc }, journal: self.journal })),
+            DriveError::WaitEventSuspend { step, event_slot, timeout_slot, resume_pc } => Ok(GeneratedRunStatus::Suspended(SuspendedRun { suspension: GeneratedSuspension::WaitEvent { step, event_slot, timeout_slot, resume_pc }, journal: self.journal })),
+            DriveError::AskSuspend { step, prompt_slot, timeout_slot, resume_pc } => {
+                if self.pending.is_some() { return Err(DriveError::InvalidResume { step }); }
+                self.pending = Some(PendingResume::Ask { ask_step: step, resume_pc });
+                Ok(GeneratedRunStatus::Suspended(SuspendedRun { suspension: GeneratedSuspension::AskPending { step, prompt_slot, timeout_slot, resume_pc }, journal: self.journal }))
+            }
+            other => Err(other),
+        }
+    }
+}
+
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct RetryState { current_attempt: u16, remaining: u16, current_delay_ms: u32 }
@@ -812,6 +942,9 @@ const LIST_STORE_VALUE_CAPACITY: usize = 1;
 const OBJECT_STORE_RECORD_CAPACITY: usize = 1;
 const OBJECT_STORE_FIELD_CAPACITY: usize = 1;
 
+// --- Generated journal contract ---
+const GENERATED_JOURNAL_CAPACITY: usize = 10;
+
 // --- Constant pool ---
 const CONSTANTS: [SlotValue; 1] = [
     SlotValue::I64(42),
@@ -838,6 +971,74 @@ pub fn drive(mut slots: [Option<SlotValue>; 1]) -> Result<SlotValue, DriveError>
             StepOutcome::Continue(next) => pc = next,
             StepOutcome::Finished(value) => return Ok(value),
         }
+    }
+}
+
+// --- Rich generated runtime API ---
+pub fn drive_with_journal(slots: [Option<SlotValue>; WORKFLOW_SLOT_COUNT]) -> Result<GeneratedRunStatus, DriveError> { let mut state = GeneratedRunState::new(slots); state.run_until_blocked() }
+impl GeneratedRunState {
+    pub fn new(slots: [Option<SlotValue>; WORKFLOW_SLOT_COUNT]) -> Self { Self { slots, slot_taints: [Taint::Clean; WORKFLOW_SLOT_COUNT], pc: 0, step_budget_remaining: CONTRACT_MAX_STEP_BUDGET_PER_TICK, list_store: ListStore::new(), object_store: ObjectStore::new(), journal: Journal::new(), pending: None } }
+    pub fn new_with_taints(slots: [Option<SlotValue>; WORKFLOW_SLOT_COUNT], slot_taints: [Taint; WORKFLOW_SLOT_COUNT]) -> Self { Self { slots, slot_taints, pc: 0, step_budget_remaining: CONTRACT_MAX_STEP_BUDGET_PER_TICK, list_store: ListStore::new(), object_store: ObjectStore::new(), journal: Journal::new(), pending: None } }
+    pub fn run_until_blocked(&mut self) -> Result<GeneratedRunStatus, DriveError> {
+        if let Some(pending) = self.pending { return Err(DriveError::InvalidResume { step: pending.step() }); }
+        loop {
+            if self.step_budget_remaining == 0 { return Err(DriveError::StepBudgetExhausted); }
+            self.journal.ensure_capacity(WORKFLOW_SLOT_COUNT)?;
+            self.step_budget_remaining = self.step_budget_remaining.checked_sub(1).ok_or(DriveError::StepBudgetExhausted)?;
+            let before_slots = self.slots;
+            let before_taints = self.slot_taints;
+            let current_pc = self.pc;
+            let outcome = match current_pc {
+                0 => step_0(&mut self.slots, &mut self.slot_taints, &mut self.list_store, &mut self.object_store),
+                1 => step_1(&mut self.slots, &mut self.slot_taints, &mut self.list_store, &mut self.object_store),
+                _ => Err(DriveError::InvalidProgramCounter),
+            };
+            self.record_slot_changes(&before_slots, &before_taints)?;
+            match outcome {
+                Ok(StepOutcome::Continue(next)) => self.pc = next,
+                Ok(StepOutcome::Finished(value)) => { let taint = read_taint(&self.slot_taints, finish_result_slot(current_pc)?)?; self.journal.ensure_capacity(1)?; self.journal.push(JournalEvent::RunFinished { step: current_pc, value, taint })?; return Ok(GeneratedRunStatus::Finished(DriveOutput { value, taint, journal: self.journal })); }
+                Err(error) => return self.suspend_from_error(error),
+            }
+        }
+    }
+    pub fn complete_action(&mut self, step: u16, action_id: u16, output_slot: u16, value: SlotValue, taint: Taint) -> Result<GeneratedRunStatus, DriveError> {
+        let next = action_completion_next(step, action_id, output_slot)?;
+        match self.pending { Some(PendingResume::Action { step: pending_step, action_id: pending_action_id, resume_pc }) if pending_step == step && pending_action_id == action_id && resume_pc == next => {}, _ => return Err(DriveError::InvalidResume { step }), }
+        self.journal.ensure_capacity(2)?;
+        self.write_slot_with_journal(output_slot, Some(value), taint)?;
+        self.journal.push(JournalEvent::ActionCompleted { step, action_id, output_slot, value, taint })?;
+        self.pending = None;
+        self.pc = next;
+        self.run_until_blocked()
+    }
+    pub fn answer_ask(&mut self, ask_step: u16, resume_step: u16, value: SlotValue, taint: Taint) -> Result<GeneratedRunStatus, DriveError> {
+        let (answer_slot, next) = ask_answer_spec(ask_step, resume_step)?;
+        match self.pending { Some(PendingResume::Ask { ask_step: pending_ask_step, resume_pc }) if pending_ask_step == ask_step && resume_pc == resume_step => {}, _ => return Err(DriveError::InvalidResume { step: ask_step }), }
+        self.journal.ensure_capacity(2)?;
+        self.write_slot_with_journal(answer_slot, Some(value), taint)?;
+        self.journal.push(JournalEvent::AskAnswered { ask_step, resume_step, answer_slot, value, taint })?;
+        self.pending = None;
+        self.pc = next;
+        self.run_until_blocked()
+    }
+}
+
+fn action_completion_next(step: u16, action_id: u16, output_slot: u16) -> Result<u16, DriveError> {
+    match (step, action_id, output_slot) {
+        (step, _, _) => Err(DriveError::InvalidResume { step }),
+    }
+}
+
+fn ask_answer_spec(ask_step: u16, resume_step: u16) -> Result<(u16, u16), DriveError> {
+    match (ask_step, resume_step) {
+        (step, _) => Err(DriveError::InvalidResume { step }),
+    }
+}
+
+fn finish_result_slot(step: u16) -> Result<u16, DriveError> {
+    match step {
+        1 => Ok(0),
+        step => Err(DriveError::InvalidResume { step }),
     }
 }
 

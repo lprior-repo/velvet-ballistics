@@ -11,11 +11,11 @@ use vb_core::capability::Capability;
 use vb_core::ids::{ActionId, ConstIdx, SlotIdx, StepIdx};
 use vb_core::value::ConstValue;
 use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
+use vb_validate::ValidationError;
 use vb_validate::gates::{
     validate_gate_12_action_contract_completeness, validate_gate_14_slot_type_consistency,
     validate_gate_15_determinism_proof,
 };
-use vb_validate::ValidationError;
 
 // ---------------------------------------------------------------------------
 // Helper constructors
@@ -96,10 +96,7 @@ fn gate_12_accepts_empty_do_nodes() {
 
 #[test]
 fn gate_12_accepts_single_do_with_contract() {
-    let nodes = vec![
-        do_node(0, 1, 0, Some(StepIdx::new(1))),
-        finish_node(1, 0),
-    ];
+    let nodes = vec![do_node(0, 1, 0, Some(StepIdx::new(1))), finish_node(1, 0)];
     let parts = make_parts(nodes, 1);
     let contracts = vec![make_contract(1)];
     assert_eq!(
@@ -125,10 +122,7 @@ fn gate_12_accepts_multiple_matching() {
 
 #[test]
 fn gate_12_rejects_missing_contract() {
-    let nodes = vec![
-        do_node(0, 99, 0, Some(StepIdx::new(1))),
-        finish_node(1, 0),
-    ];
+    let nodes = vec![do_node(0, 99, 0, Some(StepIdx::new(1))), finish_node(1, 0)];
     let parts = make_parts(nodes, 1);
     let contracts = vec![make_contract(1)]; // No contract for action 99
     assert!(matches!(
@@ -170,10 +164,7 @@ fn gate_12_duplicate_do_same_action() {
 #[test]
 fn gate_12_contract_capability_validation() {
     // Contract with empty capability name should fail
-    let nodes = vec![
-        do_node(0, 1, 0, Some(StepIdx::new(1))),
-        finish_node(1, 0),
-    ];
+    let nodes = vec![do_node(0, 1, 0, Some(StepIdx::new(1))), finish_node(1, 0)];
     let parts = make_parts(nodes, 1);
     let bad_contract = ActionContract {
         id: ActionId::new(1),
@@ -196,10 +187,7 @@ fn gate_12_contract_capability_validation() {
 
 #[test]
 fn gate_12_deterministic_behavior() {
-    let nodes = vec![
-        do_node(0, 1, 0, Some(StepIdx::new(1))),
-        finish_node(1, 0),
-    ];
+    let nodes = vec![do_node(0, 1, 0, Some(StepIdx::new(1))), finish_node(1, 0)];
     let parts = make_parts(nodes, 1);
     let contracts = vec![make_contract(1)];
 
@@ -324,10 +312,7 @@ fn gate_15_accepts_no_nd_nodes() {
 
 #[test]
 fn gate_15_accepts_single_nd_node() {
-    let nodes = vec![
-        do_node(0, 1, 0, Some(StepIdx::new(1))),
-        finish_node(1, 0),
-    ];
+    let nodes = vec![do_node(0, 1, 0, Some(StepIdx::new(1))), finish_node(1, 0)];
     let parts = make_parts(nodes, 1);
     assert_eq!(validate_gate_15_determinism_proof(&parts), Ok(()));
 }

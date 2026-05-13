@@ -4,16 +4,15 @@
 //! All 62 BDD scenarios from test-plan.md covering behaviors B1-B62.
 
 use vb_core::action::{ActionContract, Idempotency, RetrySafety, SideEffect};
-use vb_core::capability::Capability;
-use vb_core::ids::{ActionId, ConstIdx, ExprIdx, SlotIdx, StepIdx, SymbolId};
+use vb_core::ids::{ActionId, ConstIdx, SlotIdx, StepIdx, SymbolId};
 use vb_core::value::ConstValue;
 use vb_core::workflow::{
     AccessorProgram, CompiledNode, CompiledNodeKind, ExprOp, ExprProgram, PathSegment,
     ResourceContract, WorkflowParts,
 };
 
-use vb_validate::shared::{validate, validate_with_contracts, ValidationPipeline};
 use vb_validate::ValidationError;
+use vb_validate::shared::{ValidationPipeline, validate, validate_with_contracts};
 
 // ---------------------------------------------------------------------------
 // Helper constructors
@@ -213,10 +212,7 @@ fn bdd_validate_does_not_retain_references() {
 #[test]
 fn bdd_validate_with_contracts_accepts_correct_bijection() {
     // Given: WorkflowParts with N Do nodes and N ActionContracts with matching names
-    let nodes = vec![
-        do_node(0, 1, 0, Some(StepIdx::new(1))),
-        finish_node(1, 0),
-    ];
+    let nodes = vec![do_node(0, 1, 0, Some(StepIdx::new(1))), finish_node(1, 0)];
     let parts = make_parts(nodes, 1);
     let contracts = vec![make_contract(1)];
     // When: validate_with_contracts(parts, contracts) is called
@@ -228,17 +224,17 @@ fn bdd_validate_with_contracts_accepts_correct_bijection() {
 #[test]
 fn bdd_validate_with_contracts_rejects_missing_do_node() {
     // Given: WorkflowParts with Do node named "action_foo" but contracts has no "action_foo"
-    let nodes = vec![
-        do_node(0, 99, 0, Some(StepIdx::new(1))),
-        finish_node(1, 0),
-    ];
+    let nodes = vec![do_node(0, 99, 0, Some(StepIdx::new(1))), finish_node(1, 0)];
     let parts = make_parts(nodes, 1);
     let contracts = vec![make_contract(1)]; // No contract for action 99
     // When: validate_with_contracts(parts, contracts) is called
     let result = validate_with_contracts(&parts, &contracts);
     // Then: returns Err(ValidationError) with GATE_12 code
     assert!(result.is_err());
-    assert!(matches!(result, Err(ValidationError::ActionContractMissing { .. })));
+    assert!(matches!(
+        result,
+        Err(ValidationError::ActionContractMissing { .. })
+    ));
 }
 
 #[test]
@@ -251,7 +247,10 @@ fn bdd_validate_with_contracts_rejects_orphan_contract() {
     let result = validate_with_contracts(&parts, &contracts);
     // Then: returns Err(ValidationError) with GATE_12 code
     assert!(result.is_err());
-    assert!(matches!(result, Err(ValidationError::ActionContractOrphan { .. })));
+    assert!(matches!(
+        result,
+        Err(ValidationError::ActionContractOrphan { .. })
+    ));
 }
 
 // ===========================================================================
@@ -309,10 +308,7 @@ fn bdd_validate_returns_ok_when_all_gates_pass() {
 #[test]
 fn bdd_validate_with_contracts_returns_ok_when_all_pass() {
     // Given: valid WorkflowParts with matching contracts
-    let nodes = vec![
-        do_node(0, 1, 0, Some(StepIdx::new(1))),
-        finish_node(1, 0),
-    ];
+    let nodes = vec![do_node(0, 1, 0, Some(StepIdx::new(1))), finish_node(1, 0)];
     let parts = make_parts(nodes, 1);
     let contracts = vec![make_contract(1)];
     // When: validate_with_contracts is called
@@ -503,9 +499,6 @@ fn bdd_g09_rejects_output_slot_out_of_bounds() {
 #[test]
 fn bdd_g09_rejects_entry_out_of_bounds() {
     // Given: WorkflowParts with parts.entry >= parts.nodes.len()
-    let parts = make_parts(vec![finish_node(0, 0)], 1);
-    // Note: entry is set to 0 but nodes.len() is 1, so entry is valid
-    // We need a different setup for this test
     let mut parts = make_parts(vec![finish_node(0, 0)], 1);
     parts.entry = StepIdx::new(99); // Invalid entry
     // When: validate is called
@@ -638,6 +631,7 @@ fn bdd_g10_accepts_reduce_with_matching_finish() {
             kind: CompiledNodeKind::ReduceStart {
                 input: SlotIdx::new(0),
                 accumulator: SlotIdx::new(1),
+                initial: ConstIdx::new(0),
                 body: StepIdx::new(1),
                 done: StepIdx::new(3),
             },
@@ -658,7 +652,8 @@ fn bdd_g10_accepts_reduce_with_matching_finish() {
         },
         finish_node(3, 0),
     ];
-    let parts = make_parts(nodes, 2);
+    let mut parts = make_parts(nodes, 2);
+    parts.constants = Box::new([ConstValue::I64(0)]);
     // When: validate is called
     let result = validate(&parts);
     // Then: returns Ok
@@ -677,7 +672,8 @@ fn bdd_g10_accepts_collect_with_matching_finish() {
             error_slot: None,
             kind: CompiledNodeKind::CollectStart {
                 source: SlotIdx::new(0),
-                collector_slot: SlotIdx::new(1),
+                limit: 10,
+                page_size: 10,
                 body: StepIdx::new(1),
                 done: StepIdx::new(3),
             },
@@ -855,14 +851,12 @@ fn bdd_g11_performs_graph_traversal_without_ub() {
 #[test]
 fn bdd_g12_accepts_complete_bijection() {
     // Given: Do nodes at [0] with action_ids [1] and contracts [1]
-    let nodes = vec![
-        do_node(0, 1, 0, Some(StepIdx::new(1))),
-        finish_node(1, 0),
-    ];
+    let nodes = vec![do_node(0, 1, 0, Some(StepIdx::new(1))), finish_node(1, 0)];
     let parts = make_parts(nodes, 1);
     let contracts = vec![make_contract(1)];
     // When: validate_gate_12_action_contract_completeness is called
-    let result = vb_validate::gates::validate_gate_12_action_contract_completeness(&parts, &contracts);
+    let result =
+        vb_validate::gates::validate_gate_12_action_contract_completeness(&parts, &contracts);
     // Then: returns Ok(())
     assert_eq!(result, Ok(()));
 }
@@ -874,7 +868,8 @@ fn bdd_g12_rejects_missing_do_node_for_contract() {
     let parts = make_parts(nodes, 1);
     let contracts = vec![make_contract(1)]; // No Do node uses action 1
     // When: validate_gate_12_action_contract_completeness is called
-    let result = vb_validate::gates::validate_gate_12_action_contract_completeness(&parts, &contracts);
+    let result =
+        vb_validate::gates::validate_gate_12_action_contract_completeness(&parts, &contracts);
     // Then: returns Err(GATE_12) indicating orphan contract
     assert!(result.is_err());
 }
@@ -882,14 +877,12 @@ fn bdd_g12_rejects_missing_do_node_for_contract() {
 #[test]
 fn bdd_g12_rejects_missing_contract_for_do_node() {
     // Given: Do node at idx 0 has action_id 99 but no contract with action_id 99
-    let nodes = vec![
-        do_node(0, 99, 0, Some(StepIdx::new(1))),
-        finish_node(1, 0),
-    ];
+    let nodes = vec![do_node(0, 99, 0, Some(StepIdx::new(1))), finish_node(1, 0)];
     let parts = make_parts(nodes, 1);
     let contracts = vec![make_contract(1)]; // Contract for action 1, not 99
     // When: validate_gate_12_action_contract_completeness is called
-    let result = vb_validate::gates::validate_gate_12_action_contract_completeness(&parts, &contracts);
+    let result =
+        vb_validate::gates::validate_gate_12_action_contract_completeness(&parts, &contracts);
     // Then: returns Err(GATE_12) indicating missing contract
     assert!(result.is_err());
 }
@@ -1083,10 +1076,7 @@ fn bdd_g14_accepts_compatible_multi_writer_types() {
         },
     ];
     let mut parts = make_parts(nodes, 1);
-    parts.constants = Box::new([
-        ConstValue::I64(42),
-        ConstValue::I64(100),
-    ]);
+    parts.constants = Box::new([ConstValue::I64(42), ConstValue::I64(100)]);
     // When: validate_gate_14_slot_type_consistency is called
     let result = vb_validate::gates::validate_gate_14_slot_type_consistency(&parts);
     // Then: returns Ok(())
@@ -1119,10 +1109,7 @@ fn bdd_g14_rejects_incompatible_multi_writer_types() {
         },
     ];
     let mut parts = make_parts(nodes, 1);
-    parts.constants = Box::new([
-        ConstValue::I64(42),
-        ConstValue::Bool(true),
-    ]);
+    parts.constants = Box::new([ConstValue::I64(42), ConstValue::Bool(true)]);
     // When: validate_gate_14_slot_type_consistency is called
     let result = vb_validate::gates::validate_gate_14_slot_type_consistency(&parts);
     // Then: returns Err(GATE_14) indicating type mismatch
@@ -1223,9 +1210,7 @@ fn bdd_all_37_error_variants_constructible() {
     let _ = ValidationError::DirectRuntimeReference;
     let _ = ValidationError::InvalidThenTarget;
     let _ = ValidationError::ControlFlowCycle;
-    let _ = ValidationError::UnreachableStep {
-        step: "s".into(),
-    };
+    let _ = ValidationError::UnreachableStep { step: "s".into() };
     let _ = ValidationError::InvalidChoose;
     let _ = ValidationError::InvalidForEach;
     let _ = ValidationError::InvalidTogether;
@@ -1253,7 +1238,10 @@ fn bdd_all_37_error_variants_constructible() {
         trigger: "cron".into(),
     };
     let _ = ValidationError::HttpTriggerOutOfCore;
-    let _ = ValidationError::ExpressionStackExceeded { declared: 65, limit: 64 };
+    let _ = ValidationError::ExpressionStackExceeded {
+        declared: 65,
+        limit: 64,
+    };
     let _ = ValidationError::ExpressionStackMismatch {
         expr_index: 0,
         declared: 2,

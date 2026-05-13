@@ -5,6 +5,8 @@
 
 mod agent_context;
 mod args;
+mod cli_envelope;
+mod cli_postcard;
 mod commands_ai_context;
 mod commands_diff;
 mod commands_incident;

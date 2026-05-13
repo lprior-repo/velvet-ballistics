@@ -2803,6 +2803,7 @@ version = "0.1.0"
 dependencies = [
  "bytes",
  "chrono",
+ "crc32fast",
  "postcard",
  "proptest",
  "serde",

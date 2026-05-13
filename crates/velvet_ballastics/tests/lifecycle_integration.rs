@@ -1,4 +1,11 @@
 #![forbid(unsafe_code)]
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    clippy::indexing_slicing,
+    clippy::panic,
+    clippy::let_underscore_must_use
+)]
 //! Lifecycle integration tests — red-phase evidence for bead vb-qi37.16.5
 //!
 //! These tests define the expected lifecycle behavior for cancel, resume, retry,
@@ -1318,22 +1325,20 @@ fn invalid_transition_error_includes_structured_diagnostics() {
     let run = RunId::new(70);
 
     let result = velvet_ballastics::lifecycle::cancel(run, &journal);
-    if let Err(vb_core::errors::CoreError::LifecycleInvalidTransition {
+    let Err(vb_core::errors::CoreError::LifecycleInvalidTransition {
         code,
         context,
         timestamp: _,
         bead_id,
         command,
     }) = result
-    {
-        assert!(code.code() != 0, "code must be non-zero");
-        assert!(!context.is_empty(), "context must be non-empty");
-        // DateTime<Utc> is always valid when constructed via Utc::now()
-        assert_eq!(bead_id, Some(run), "bead_id must match target");
-        assert_eq!(command, Some("cancel"), "command must be Cancel");
-    } else {
+    else {
         panic!("expected LifecycleInvalidTransition with structured diagnostics: {result:?}");
-    }
+    };
+    assert!(code.code() != 0, "code must be non-zero");
+    assert!(!context.is_empty(), "context must be non-empty");
+    assert_eq!(bead_id, Some(run), "bead_id must match target");
+    assert_eq!(command, Some("cancel"), "command must be Cancel");
 }
 
 /// E_DUPLICATE_REQUEST includes all structured diagnostic fields
@@ -1342,29 +1347,25 @@ fn duplicate_request_error_includes_structured_diagnostics() {
     let (_dir, journal) = temp_journal();
     let run = RunId::new(71);
 
-    // Set initial state to Active so first cancel succeeds, second returns DuplicateRequest
     set_lifecycle_state(run, LifecycleState::Active);
 
-    // First cancel succeeds
     let _ = velvet_ballastics::lifecycle::cancel(run, &journal);
 
     let result = velvet_ballastics::lifecycle::cancel(run, &journal);
-    if let Err(vb_core::errors::CoreError::LifecycleDuplicateRequest {
+    let Err(vb_core::errors::CoreError::LifecycleDuplicateRequest {
         code,
         context,
         timestamp: _,
         bead_id,
         command,
     }) = result
-    {
-        assert!(code.code() != 0, "code must be non-zero");
-        assert!(!context.is_empty(), "context must be non-empty");
-        // DateTime<Utc> is always valid when constructed via Utc::now()
-        assert_eq!(bead_id, Some(run), "bead_id must match target");
-        assert_eq!(command, Some("cancel"), "command must be Cancel");
-    } else {
+    else {
         panic!("expected LifecycleDuplicateRequest with structured diagnostics: {result:?}");
-    }
+    };
+    assert!(code.code() != 0, "code must be non-zero");
+    assert!(!context.is_empty(), "context must be non-empty");
+    assert_eq!(bead_id, Some(run), "bead_id must match target");
+    assert_eq!(command, Some("cancel"), "command must be Cancel");
 }
 
 /// E_STALE_REQUEST includes all structured diagnostic fields
@@ -1373,26 +1374,23 @@ fn stale_request_error_includes_structured_diagnostics() {
     let (_dir, journal) = temp_journal();
     let run = RunId::new(72);
 
-    // Set initial state to Completed (terminal) so cancel returns StaleRequest
     set_lifecycle_state(run, LifecycleState::Completed);
 
     let result = velvet_ballastics::lifecycle::cancel(run, &journal);
-    if let Err(vb_core::errors::CoreError::LifecycleStaleRequest {
+    let Err(vb_core::errors::CoreError::LifecycleStaleRequest {
         code,
         context,
         timestamp: _,
         bead_id,
         command,
     }) = result
-    {
-        assert!(code.code() != 0, "code must be non-zero");
-        assert!(!context.is_empty(), "context must be non-empty");
-        // DateTime<Utc> is always valid when constructed via Utc::now()
-        assert_eq!(bead_id, Some(run), "bead_id must match target");
-        assert_eq!(command, Some("cancel"), "command must be Cancel");
-    } else {
+    else {
         panic!("expected LifecycleStaleRequest with structured diagnostics: {result:?}");
-    }
+    };
+    assert!(code.code() != 0, "code must be non-zero");
+    assert!(!context.is_empty(), "context must be non-empty");
+    assert_eq!(bead_id, Some(run), "bead_id must match target");
+    assert_eq!(command, Some("cancel"), "command must be Cancel");
 }
 
 // ============================================================================
@@ -1448,7 +1446,7 @@ fn no_state_has_self_loop_transition() {
     // Cancelling a Pending bead should error, not leave it Pending
     let result = velvet_ballastics::lifecycle::cancel(run, &journal);
     assert!(
-        !matches!(result, Ok(_)),
+        result.is_err(),
         "cancel from Pending must not succeed (no self-loop)"
     );
 }

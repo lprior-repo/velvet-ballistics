@@ -12,7 +12,7 @@
 use vb_core::action::{ActionContract, Idempotency, RetrySafety, SideEffect};
 use vb_core::ids::{ActionId, SlotIdx, StepIdx};
 use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
-use vb_validate::shared::{validate, validate_with_contracts, ValidationPipeline};
+use vb_validate::shared::{ValidationPipeline, validate, validate_with_contracts};
 
 // ---------------------------------------------------------------------------
 // Helper constructors

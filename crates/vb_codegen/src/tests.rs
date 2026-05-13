@@ -12,7 +12,7 @@ mod tests {
     use vb_core::{
         AccessorProgram, ActionId, CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx,
         ConstValue, EngineError, EngineSignal, ExprProgram, PathSegment, ResourceContract, RunId,
-        SlotIdx, SlotValue, StepBudget, StepIdx, ValueStore, WorkflowDigest, WorkflowParts,
+        SlotIdx, SlotValue, StepBudget, StepIdx, Taint, ValueStore, WorkflowDigest, WorkflowParts,
         capability::CapabilitySet, new_run_frame, run_until_blocked, step_once,
     };
     use vb_runtime::{
@@ -513,6 +513,47 @@ mod tests {
         Ok(stdout)
     }
 
+    fn generated_state_run_stdout(
+        workflow: &CompiledWorkflow,
+        name: &str,
+        init_source: &str,
+    ) -> Result<String, String> {
+        let mut body = String::from(
+            "    let mut slots = [None; WORKFLOW_SLOT_COUNT];\n    let mut slot_taints = [Taint::Clean; WORKFLOW_SLOT_COUNT];\n",
+        );
+        body.push_str(init_source);
+        body.push_str(
+            r#"    let mut state = GeneratedRunState::new_with_taints(slots, slot_taints);
+    match state.run_until_blocked() {
+        Ok(GeneratedRunStatus::Finished(output)) => {
+            println!("finished:{:?}:{:?}:events={:?}", output.value, output.taint, output.journal.len());
+            let mut index = 0u16;
+            while index < output.journal.len() {
+                match output.journal.event(index) {
+                    Some(event) => println!("event:{index}:{event:?}"),
+                    None => println!("event:{index}:None"),
+                }
+                index = index.saturating_add(1);
+            }
+        }
+        Ok(GeneratedRunStatus::Suspended(suspended)) => {
+            println!("suspended:{:?}:events={:?}", suspended.suspension, suspended.journal.len());
+            let mut index = 0u16;
+            while index < suspended.journal.len() {
+                match suspended.journal.event(index) {
+                    Some(event) => println!("event:{index}:{event:?}"),
+                    None => println!("event:{index}:None"),
+                }
+                index = index.saturating_add(1);
+            }
+        }
+        Err(error) => println!("err:{error:?}"),
+    }
+"#,
+        );
+        generated_step_stdout(workflow, name, &body)
+    }
+
     fn generated_step_stdout(
         workflow: &CompiledWorkflow,
         name: &str,
@@ -663,6 +704,53 @@ mod tests {
         match signal {
             EngineSignal::Finished(value, _) => Ok(value),
             other => Err(format!("expected finished signal, got {other:?}")),
+        }
+    }
+
+    fn ir_drive_finished_output_with_init(
+        workflow: &CompiledWorkflow,
+        init: &[(SlotIdx, SlotValue, Taint)],
+    ) -> Result<(SlotValue, Taint), String> {
+        let mut run = new_run_frame(RunId::new(22), workflow).map_err(|e| e.to_string())?;
+        init.iter().try_for_each(|(slot, value, taint)| {
+            run.write_slot_with_taint(*slot, *value, *taint)
+                .map_err(|e| e.to_string())
+        })?;
+        let mut store = ValueStore::new();
+        let signal = run_until_blocked(workflow, &mut run, StepBudget::MAX, &mut store)
+            .map_err(|e| e.to_string())?;
+        match signal {
+            EngineSignal::Finished(value, taint) => Ok((value, taint)),
+            other => Err(format!("expected finished signal, got {other:?}")),
+        }
+    }
+
+    fn runtime_drive_error_string_with_init(
+        workflow: &CompiledWorkflow,
+        init: &[(SlotIdx, SlotValue, Taint)],
+    ) -> Result<String, String> {
+        let mut run = new_run_frame(RunId::new(23), workflow).map_err(|e| e.to_string())?;
+        init.iter().try_for_each(|(slot, value, taint)| {
+            run.write_slot_with_taint(*slot, *value, *taint)
+                .map_err(|e| e.to_string())
+        })?;
+        let mut budget = StepBudget::MAX;
+        let mut store = ValueStore::new();
+        let mut evidence = EvidenceCollector::new();
+        let mut collect_states = CollectStates::new();
+        match drive_deterministic_full(
+            workflow,
+            &mut run,
+            &mut budget,
+            &mut store,
+            &[],
+            RetryPolicy::NEVER,
+            &mut evidence,
+            &mut collect_states,
+            &CapabilitySet::empty(),
+        ) {
+            Ok(signal) => Err(format!("expected runtime error, got {signal:?}")),
+            Err(error) => Ok(error.to_string()),
         }
     }
 
@@ -12002,13 +12090,14 @@ mod tests {
     #[test]
     fn post_006_action_result_taint_attaches_to_output_slot() -> Result<(), String> {
         let workflow = action_suspend_workflow(ActionId::new(10), SlotIdx::new(0))?;
-        let stdout =
-            generated_action_suspend_stdout(&workflow, ActionId::new(10), SlotIdx::new(0))?;
-        assert_eq!(stdout, "generated_action_suspend:10:0\n");
-        let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
-        assert!(
-            !source.contains("ActionCompleted") && !source.contains("action result taint"),
-            "generated Do currently supports suspension boundary only; fake action completion must not be claimed: {source}"
+        let stdout = generated_step_stdout(
+            &workflow,
+            "post_action_completion_taint",
+            "    let mut slots = [None; WORKFLOW_SLOT_COUNT];\n    slots[0] = Some(SlotValue::I64(99));\n    let mut state = GeneratedRunState::new(slots);\n    match state.run_until_blocked() {\n        Ok(GeneratedRunStatus::Suspended(suspended)) => println!(\"suspended:{:?}:events={:?}\", suspended.suspension, suspended.journal.len()),\n        Ok(GeneratedRunStatus::Finished(output)) => { println!(\"unexpected_finished:{:?}:{:?}\", output.value, output.taint); return; }\n        Err(error) => { println!(\"unexpected_run_err:{error:?}\"); return; }\n    }\n    match state.complete_action(0, 10, 1, SlotValue::I64(123), Taint::DerivedFromSecret) {\n        Ok(GeneratedRunStatus::Finished(output)) => {\n            println!(\"finished:{:?}:{:?}:events={:?}\", output.value, output.taint, output.journal.len());\n            println!(\"event0={:?}\", output.journal.event(0));\n            println!(\"event1={:?}\", output.journal.event(1));\n            println!(\"event2={:?}\", output.journal.event(2));\n            println!(\"event3={:?}\", output.journal.event(3));\n        }\n        Ok(GeneratedRunStatus::Suspended(suspended)) => println!(\"unexpected_suspended:{:?}\", suspended.suspension),\n        Err(error) => println!(\"unexpected_complete_err:{error:?}\"),\n    }",
+        )?;
+        assert_eq!(
+            stdout,
+            "suspended:ActionPending { step: 0, action_id: 10, input_slot: 0, resume_pc: 1 }:events=1\nfinished:I64(123):DerivedFromSecret:events=4\nevent0=Some(ActionScheduled { step: 0, action_id: 10, input_slot: 0, resume_pc: 1 })\nevent1=Some(SlotWritten { slot: 1, value: Some(I64(123)), taint: DerivedFromSecret })\nevent2=Some(ActionCompleted { step: 0, action_id: 10, output_slot: 1, value: I64(123), taint: DerivedFromSecret })\nevent3=Some(RunFinished { step: 1, value: I64(123), taint: DerivedFromSecret })\n"
         );
         Ok(())
     }
@@ -12088,13 +12177,13 @@ mod tests {
 
     #[test]
     fn post_007_taint_violation_error_preserved() -> Result<(), String> {
-        let workflow = post_eval_add_workflow()?;
+        let workflow = action_suspend_workflow(ActionId::new(10), SlotIdx::new(0))?;
         let stdout = generated_step_stdout(
             &workflow,
-            "post_secret_not_rejected",
-            "    let mut slots = [None; WORKFLOW_SLOT_COUNT];\n    let mut taints = [Taint::Clean; WORKFLOW_SLOT_COUNT];\n    slots[0] = Some(SlotValue::I64(1));\n    slots[1] = Some(SlotValue::I64(2));\n    taints[1] = Taint::Secret;\n    let mut list_store = ListStore::new();\n    let mut object_store = ObjectStore::new();\n    match step_0(&mut slots, &mut taints, &mut list_store, &mut object_store) {\n        Ok(StepOutcome::Continue(1)) => println!(\"ok:{:?}:{:?}\", slots[2], taints[2]),\n        Err(DriveError::TaintViolation { step }) => println!(\"fake_taint_violation:{step}\"),\n        Err(error) => println!(\"unexpected_err:{error:?}\"),\n        Ok(StepOutcome::Continue(next)) => println!(\"unexpected_continue:{next}\"),\n        Ok(StepOutcome::Finished(value)) => println!(\"unexpected_finished:{value:?}\"),\n    }",
+            "post_tainted_do_rejected",
+            "    let mut slots = [None; WORKFLOW_SLOT_COUNT];\n    let mut taints = [Taint::Clean; WORKFLOW_SLOT_COUNT];\n    slots[0] = Some(SlotValue::I64(1));\n    taints[0] = Taint::Secret;\n    let mut state = GeneratedRunState::new_with_taints(slots, taints);\n    match state.run_until_blocked() {\n        Err(DriveError::TaintViolation { step: 0 }) => println!(\"err:TaintViolation:0\"),\n        Err(error) => println!(\"unexpected_err:{error:?}\"),\n        Ok(GeneratedRunStatus::Suspended(suspended)) => println!(\"unexpected_suspended:{:?}\", suspended.suspension),\n        Ok(GeneratedRunStatus::Finished(output)) => println!(\"unexpected_finished:{:?}:{:?}\", output.value, output.taint),\n    }",
         )?;
-        assert_eq!(stdout, "ok:Some(I64(3)):Secret\n");
+        assert_eq!(stdout, "err:TaintViolation:0\n");
         Ok(())
     }
 
@@ -12103,10 +12192,13 @@ mod tests {
         let workflow = post_ask_resume_workflow()?;
         let stdout = generated_step_stdout(
             &workflow,
-            "post_ask_resume_boundary",
-            "    let mut slots = [None; WORKFLOW_SLOT_COUNT];\n    let mut taints = [Taint::Clean; WORKFLOW_SLOT_COUNT];\n    slots[2] = Some(SlotValue::I64(55));\n    taints[2] = Taint::DerivedFromSecret;\n    let mut list_store = ListStore::new();\n    let mut object_store = ObjectStore::new();\n    match step_1(&mut slots, &mut taints, &mut list_store, &mut object_store) {\n        Ok(StepOutcome::Continue(2)) => println!(\"answer={:?};taint={:?}\", slots[2], taints[2]),\n        Ok(StepOutcome::Continue(next)) => println!(\"unexpected_continue:{next}\"),\n        Ok(StepOutcome::Finished(value)) => println!(\"unexpected_finished:{value:?}\"),\n        Err(error) => println!(\"unexpected_err:{error:?}\"),\n    }",
+            "post_ask_answer_api",
+            "    let mut slots = [None; WORKFLOW_SLOT_COUNT];\n    slots[0] = Some(SlotValue::I64(11));\n    slots[1] = Some(SlotValue::I64(30));\n    let mut state = GeneratedRunState::new(slots);\n    match state.run_until_blocked() {\n        Ok(GeneratedRunStatus::Suspended(suspended)) => println!(\"suspended:{:?}:events={:?}\", suspended.suspension, suspended.journal.len()),\n        Ok(GeneratedRunStatus::Finished(output)) => { println!(\"unexpected_finished:{:?}:{:?}\", output.value, output.taint); return; }\n        Err(error) => { println!(\"unexpected_run_err:{error:?}\"); return; }\n    }\n    match state.answer_ask(0, 1, SlotValue::I64(55), Taint::DerivedFromSecret) {\n        Ok(GeneratedRunStatus::Finished(output)) => {\n            println!(\"finished:{:?}:{:?}:events={:?}\", output.value, output.taint, output.journal.len());\n            println!(\"event0={:?}\", output.journal.event(0));\n            println!(\"event1={:?}\", output.journal.event(1));\n            println!(\"event2={:?}\", output.journal.event(2));\n        }\n        Ok(GeneratedRunStatus::Suspended(suspended)) => println!(\"unexpected_suspended:{:?}\", suspended.suspension),\n        Err(error) => println!(\"unexpected_answer_err:{error:?}\"),\n    }",
         )?;
-        assert_eq!(stdout, "answer=Some(I64(55));taint=DerivedFromSecret\n");
+        assert_eq!(
+            stdout,
+            "suspended:AskPending { step: 0, prompt_slot: 0, timeout_slot: Some(1), resume_pc: 1 }:events=0\nfinished:I64(55):DerivedFromSecret:events=3\nevent0=Some(SlotWritten { slot: 2, value: Some(I64(55)), taint: DerivedFromSecret })\nevent1=Some(AskAnswered { ask_step: 0, resume_step: 1, answer_slot: 2, value: I64(55), taint: DerivedFromSecret })\nevent2=Some(RunFinished { step: 2, value: I64(55), taint: DerivedFromSecret })\n"
+        );
         Ok(())
     }
 
@@ -12150,14 +12242,14 @@ mod tests {
     #[test]
     fn post_010_slot_written_journal_event_emitted() -> Result<(), String> {
         let workflow = post_eval_add_workflow()?;
-        let stdout = generated_trace_stdout(
+        let stdout = generated_step_stdout(
             &workflow,
-            "post_slot_written_trace",
-            "    slots[0] = Some(SlotValue::I64(5));\n    slots[1] = Some(SlotValue::I64(6));",
+            "post_slot_written_journal_event",
+            "    let mut slots = [None; WORKFLOW_SLOT_COUNT];\n    slots[0] = Some(SlotValue::I64(5));\n    slots[1] = Some(SlotValue::I64(6));\n    match drive_with_journal(slots) {\n        Ok(GeneratedRunStatus::Finished(output)) => {\n            println!(\"finished:{:?}:{:?}:events={:?}\", output.value, output.taint, output.journal.len());\n            println!(\"event0={:?}\", output.journal.event(0));\n            println!(\"event1={:?}\", output.journal.event(1));\n            println!(\"event2={:?}\", output.journal.event(2));\n        }\n        Ok(GeneratedRunStatus::Suspended(suspended)) => println!(\"unexpected_suspended:{:?}\", suspended.suspension),\n        Err(error) => println!(\"unexpected_err:{error:?}\"),\n    }",
         )?;
         assert_eq!(
             stdout,
-            "result:I64(11)\nfinal_pc:1\nslots:[Some(I64(5)), Some(I64(6)), Some(I64(11))]\njournal:start:0|continue:1|start:1|finished\nretry_attempt_total:0\n"
+            "finished:I64(11):Clean:events=2\nevent0=Some(SlotWritten { slot: 2, value: Some(I64(11)), taint: Clean })\nevent1=Some(RunFinished { step: 1, value: I64(11), taint: Clean })\nevent2=None\n"
         );
         Ok(())
     }
@@ -12165,14 +12257,14 @@ mod tests {
     #[test]
     fn post_010_action_scheduled_journal_event_emitted() -> Result<(), String> {
         let workflow = action_suspend_workflow(ActionId::new(10), SlotIdx::new(0))?;
-        let stdout = generated_drive_stdout(
+        let stdout = generated_step_stdout(
             &workflow,
-            "post_action_boundary",
-            "    slots[0] = Some(SlotValue::I64(99));",
+            "post_action_scheduled_journal_event",
+            "    let mut slots = [None; WORKFLOW_SLOT_COUNT];\n    slots[0] = Some(SlotValue::I64(99));\n    match drive_with_journal(slots) {\n        Ok(GeneratedRunStatus::Suspended(suspended)) => {\n            println!(\"suspended:{:?}:events={:?}\", suspended.suspension, suspended.journal.len());\n            println!(\"event0={:?}\", suspended.journal.event(0));\n            println!(\"event1={:?}\", suspended.journal.event(1));\n        }\n        Ok(GeneratedRunStatus::Finished(output)) => println!(\"unexpected_finished:{:?}:{:?}\", output.value, output.taint),\n        Err(error) => println!(\"unexpected_err:{error:?}\"),\n    }",
         )?;
         assert_eq!(
             stdout,
-            "err:ActionSuspend { step: 0, action_id: 10, input_slot: 0, resume_pc: 1 }\n"
+            "suspended:ActionPending { step: 0, action_id: 10, input_slot: 0, resume_pc: 1 }:events=1\nevent0=Some(ActionScheduled { step: 0, action_id: 10, input_slot: 0, resume_pc: 1 })\nevent1=None\n"
         );
         Ok(())
     }
@@ -12180,15 +12272,14 @@ mod tests {
     #[test]
     fn post_010_action_completed_journal_event_emitted() -> Result<(), String> {
         let workflow = action_suspend_workflow(ActionId::new(10), SlotIdx::new(0))?;
-        let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
-        assert!(
-            source.contains("dispatch_action(action_id: u16) -> Result<(), DriveError>")
-                && source.contains("10 => Ok(())"),
-            "generated action support is dispatch registration plus suspension, got: {source}"
-        );
-        assert!(
-            !source.contains("ActionCompleted"),
-            "generated mode must not claim unsupported ActionCompleted journal events: {source}"
+        let stdout = generated_step_stdout(
+            &workflow,
+            "post_action_completed_journal_event",
+            "    let mut slots = [None; WORKFLOW_SLOT_COUNT];\n    slots[0] = Some(SlotValue::I64(99));\n    let mut state = GeneratedRunState::new(slots);\n    match state.run_until_blocked() {\n        Ok(GeneratedRunStatus::Suspended(_)) => {}\n        Ok(GeneratedRunStatus::Finished(output)) => { println!(\"unexpected_finished:{:?}:{:?}\", output.value, output.taint); return; }\n        Err(error) => { println!(\"unexpected_run_err:{error:?}\"); return; }\n    }\n    match state.complete_action(0, 10, 1, SlotValue::Bool(true), Taint::Secret) {\n        Ok(GeneratedRunStatus::Finished(output)) => {\n            println!(\"finished:{:?}:{:?}:events={:?}\", output.value, output.taint, output.journal.len());\n            println!(\"event1={:?}\", output.journal.event(1));\n            println!(\"event2={:?}\", output.journal.event(2));\n            println!(\"event3={:?}\", output.journal.event(3));\n        }\n        Ok(GeneratedRunStatus::Suspended(suspended)) => println!(\"unexpected_suspended:{:?}\", suspended.suspension),\n        Err(error) => println!(\"unexpected_complete_err:{error:?}\"),\n    }",
+        )?;
+        assert_eq!(
+            stdout,
+            "finished:Bool(true):Secret:events=4\nevent1=Some(SlotWritten { slot: 1, value: Some(Bool(true)), taint: Secret })\nevent2=Some(ActionCompleted { step: 0, action_id: 10, output_slot: 1, value: Bool(true), taint: Secret })\nevent3=Some(RunFinished { step: 1, value: Bool(true), taint: Secret })\n"
         );
         Ok(())
     }
@@ -12196,15 +12287,461 @@ mod tests {
     #[test]
     fn post_010_run_finished_journal_event_emitted() -> Result<(), String> {
         let workflow = post_eval_add_workflow()?;
-        let stdout = generated_trace_stdout(
+        let stdout = generated_step_stdout(
             &workflow,
-            "post_run_finished_trace",
-            "    slots[0] = Some(SlotValue::I64(20));\n    slots[1] = Some(SlotValue::I64(22));",
+            "post_run_finished_journal_event",
+            "    let mut slots = [None; WORKFLOW_SLOT_COUNT];\n    let mut taints = [Taint::Clean; WORKFLOW_SLOT_COUNT];\n    slots[0] = Some(SlotValue::I64(20));\n    slots[1] = Some(SlotValue::I64(22));\n    taints[0] = Taint::DerivedFromSecret;\n    let mut state = GeneratedRunState::new_with_taints(slots, taints);\n    match state.run_until_blocked() {\n        Ok(GeneratedRunStatus::Finished(output)) => {\n            println!(\"finished:{:?}:{:?}:events={:?}\", output.value, output.taint, output.journal.len());\n            println!(\"event0={:?}\", output.journal.event(0));\n            println!(\"event1={:?}\", output.journal.event(1));\n        }\n        Ok(GeneratedRunStatus::Suspended(suspended)) => println!(\"unexpected_suspended:{:?}\", suspended.suspension),\n        Err(error) => println!(\"unexpected_err:{error:?}\"),\n    }",
         )?;
         assert_eq!(
             stdout,
-            "result:I64(42)\nfinal_pc:1\nslots:[Some(I64(20)), Some(I64(22)), Some(I64(42))]\njournal:start:0|continue:1|start:1|finished\nretry_attempt_total:0\n"
+            "finished:I64(42):DerivedFromSecret:events=2\nevent0=Some(SlotWritten { slot: 2, value: Some(I64(42)), taint: DerivedFromSecret })\nevent1=Some(RunFinished { step: 1, value: I64(42), taint: DerivedFromSecret })\n"
         );
+        Ok(())
+    }
+
+    #[test]
+    fn post_010_ask_answered_journal_event_emitted() -> Result<(), String> {
+        let workflow = post_ask_resume_workflow()?;
+        let stdout = generated_step_stdout(
+            &workflow,
+            "post_ask_answered_journal_event",
+            "    let mut slots = [None; WORKFLOW_SLOT_COUNT];\n    slots[0] = Some(SlotValue::I64(11));\n    slots[1] = Some(SlotValue::I64(30));\n    let mut state = GeneratedRunState::new(slots);\n    match state.run_until_blocked() {\n        Ok(GeneratedRunStatus::Suspended(_)) => {}\n        Ok(GeneratedRunStatus::Finished(output)) => { println!(\"unexpected_finished:{:?}:{:?}\", output.value, output.taint); return; }\n        Err(error) => { println!(\"unexpected_run_err:{error:?}\"); return; }\n    }\n    match state.answer_ask(0, 1, SlotValue::Bool(false), Taint::Secret) {\n        Ok(GeneratedRunStatus::Finished(output)) => {\n            println!(\"finished:{:?}:{:?}:events={:?}\", output.value, output.taint, output.journal.len());\n            println!(\"event0={:?}\", output.journal.event(0));\n            println!(\"event1={:?}\", output.journal.event(1));\n            println!(\"event2={:?}\", output.journal.event(2));\n        }\n        Ok(GeneratedRunStatus::Suspended(suspended)) => println!(\"unexpected_suspended:{:?}\", suspended.suspension),\n        Err(error) => println!(\"unexpected_answer_err:{error:?}\"),\n    }",
+        )?;
+        assert_eq!(
+            stdout,
+            "finished:Bool(false):Secret:events=3\nevent0=Some(SlotWritten { slot: 2, value: Some(Bool(false)), taint: Secret })\nevent1=Some(AskAnswered { ask_step: 0, resume_step: 1, answer_slot: 2, value: Bool(false), taint: Secret })\nevent2=Some(RunFinished { step: 2, value: Bool(false), taint: Secret })\n"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn post_010_invalid_action_resume_reports_step() -> Result<(), String> {
+        let workflow = action_suspend_workflow(ActionId::new(10), SlotIdx::new(0))?;
+        let stdout = generated_step_stdout(
+            &workflow,
+            "post_invalid_action_resume",
+            r#"    let mut slots = [None; WORKFLOW_SLOT_COUNT];
+    slots[0] = Some(SlotValue::I64(99));
+    let mut state = GeneratedRunState::new(slots);
+    match state.run_until_blocked() {
+        Ok(GeneratedRunStatus::Suspended(suspended)) => println!("pending:{:?}:events={:?}", suspended.suspension, suspended.journal.len()),
+        Ok(GeneratedRunStatus::Finished(output)) => { println!("unexpected_initial_finished:{:?}:{:?}", output.value, output.taint); return; }
+        Err(error) => { println!("unexpected_initial_err:{error:?}"); return; }
+    }
+    let before_events = state.journal.len();
+    let before_slot = state.slots[1];
+    match state.complete_action(0, 11, 1, SlotValue::I64(1), Taint::Clean) {
+        Err(DriveError::InvalidResume { step: 0 }) => println!("err:InvalidResume:0:events={:?}:slot={:?}", state.journal.len(), state.slots[1]),
+        Err(error) => println!("unexpected_err:{error:?}"),
+        Ok(GeneratedRunStatus::Suspended(suspended)) => println!("unexpected_suspended:{:?}", suspended.suspension),
+        Ok(GeneratedRunStatus::Finished(output)) => println!("unexpected_finished:{:?}:{:?}", output.value, output.taint),
+    }
+    println!("unchanged={:?}:{:?}", state.journal.len() == before_events, state.slots[1] == before_slot);"#,
+        )?;
+        assert_eq!(
+            stdout,
+            "pending:ActionPending { step: 0, action_id: 10, input_slot: 0, resume_pc: 1 }:events=1
+err:InvalidResume:0:events=1:slot=None
+unchanged=true:true
+"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn post_010_invalid_ask_resume_reports_ask_step() -> Result<(), String> {
+        let workflow = post_ask_resume_workflow()?;
+        let stdout = generated_step_stdout(
+            &workflow,
+            "post_invalid_ask_resume",
+            r#"    let mut slots = [None; WORKFLOW_SLOT_COUNT];
+    slots[0] = Some(SlotValue::I64(11));
+    slots[1] = Some(SlotValue::I64(30));
+    let mut state = GeneratedRunState::new(slots);
+    match state.run_until_blocked() {
+        Ok(GeneratedRunStatus::Suspended(suspended)) => println!("pending:{:?}:events={:?}", suspended.suspension, suspended.journal.len()),
+        Ok(GeneratedRunStatus::Finished(output)) => { println!("unexpected_initial_finished:{:?}:{:?}", output.value, output.taint); return; }
+        Err(error) => { println!("unexpected_initial_err:{error:?}"); return; }
+    }
+    let before_events = state.journal.len();
+    let before_slot = state.slots[2];
+    match state.answer_ask(9, 1, SlotValue::I64(1), Taint::Clean) {
+        Err(DriveError::InvalidResume { step: 9 }) => println!("err:InvalidResume:9:events={:?}:slot={:?}", state.journal.len(), state.slots[2]),
+        Err(error) => println!("unexpected_err:{error:?}"),
+        Ok(GeneratedRunStatus::Suspended(suspended)) => println!("unexpected_suspended:{:?}", suspended.suspension),
+        Ok(GeneratedRunStatus::Finished(output)) => println!("unexpected_finished:{:?}:{:?}", output.value, output.taint),
+    }
+    println!("unchanged={:?}:{:?}", state.journal.len() == before_events, state.slots[2] == before_slot);"#,
+        )?;
+        assert_eq!(
+            stdout,
+            "pending:AskPending { step: 0, prompt_slot: 0, timeout_slot: Some(1), resume_pc: 1 }:events=0
+err:InvalidResume:9:events=0:slot=None
+unchanged=true:true
+"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn post_010_fresh_action_resume_without_pending_state_does_not_mutate() -> Result<(), String> {
+        let workflow = action_suspend_workflow(ActionId::new(10), SlotIdx::new(0))?;
+        let stdout = generated_step_stdout(
+            &workflow,
+            "post_fresh_action_resume",
+            r#"    let slots = [None; WORKFLOW_SLOT_COUNT];
+    let mut state = GeneratedRunState::new(slots);
+    match state.complete_action(0, 10, 1, SlotValue::I64(1), Taint::Clean) {
+        Err(DriveError::InvalidResume { step: 0 }) => println!("err:InvalidResume:0:events={:?}:slot={:?}", state.journal.len(), state.slots[1]),
+        Err(error) => println!("unexpected_err:{error:?}"),
+        Ok(GeneratedRunStatus::Suspended(suspended)) => println!("unexpected_suspended:{:?}", suspended.suspension),
+        Ok(GeneratedRunStatus::Finished(output)) => println!("unexpected_finished:{:?}:{:?}", output.value, output.taint),
+    }"#,
+        )?;
+        assert_eq!(stdout, "err:InvalidResume:0:events=0:slot=None\n");
+        Ok(())
+    }
+
+    #[test]
+    fn post_010_fresh_ask_resume_without_pending_state_does_not_mutate() -> Result<(), String> {
+        let workflow = post_ask_resume_workflow()?;
+        let stdout = generated_step_stdout(
+            &workflow,
+            "post_fresh_ask_resume",
+            r#"    let slots = [None; WORKFLOW_SLOT_COUNT];
+    let mut state = GeneratedRunState::new(slots);
+    match state.answer_ask(0, 1, SlotValue::I64(1), Taint::Clean) {
+        Err(DriveError::InvalidResume { step: 0 }) => println!("err:InvalidResume:0:events={:?}:slot={:?}", state.journal.len(), state.slots[2]),
+        Err(error) => println!("unexpected_err:{error:?}"),
+        Ok(GeneratedRunStatus::Suspended(suspended)) => println!("unexpected_suspended:{:?}", suspended.suspension),
+        Ok(GeneratedRunStatus::Finished(output)) => println!("unexpected_finished:{:?}:{:?}", output.value, output.taint),
+    }"#,
+        )?;
+        assert_eq!(stdout, "err:InvalidResume:0:events=0:slot=None\n");
+        Ok(())
+    }
+
+    #[test]
+    fn post_010_wrong_action_output_slot_does_not_mutate_pending_action() -> Result<(), String> {
+        let workflow = action_suspend_workflow(ActionId::new(10), SlotIdx::new(0))?;
+        let stdout = generated_step_stdout(
+            &workflow,
+            "post_wrong_action_output_slot",
+            r#"    let mut slots = [None; WORKFLOW_SLOT_COUNT];
+    slots[0] = Some(SlotValue::I64(99));
+    let mut state = GeneratedRunState::new(slots);
+    match state.run_until_blocked() {
+        Ok(GeneratedRunStatus::Suspended(suspended)) => println!("pending:{:?}:events={:?}", suspended.suspension, suspended.journal.len()),
+        Ok(GeneratedRunStatus::Finished(output)) => { println!("unexpected_initial_finished:{:?}:{:?}", output.value, output.taint); return; }
+        Err(error) => { println!("unexpected_initial_err:{error:?}"); return; }
+    }
+    let before_events = state.journal.len();
+    let before_slot = state.slots[1];
+    match state.complete_action(0, 10, 0, SlotValue::I64(1), Taint::Clean) {
+        Err(DriveError::InvalidResume { step: 0 }) => println!("err:InvalidResume:0:events={:?}:slot={:?}", state.journal.len(), state.slots[1]),
+        Err(error) => println!("unexpected_err:{error:?}"),
+        Ok(GeneratedRunStatus::Suspended(suspended)) => println!("unexpected_suspended:{:?}", suspended.suspension),
+        Ok(GeneratedRunStatus::Finished(output)) => println!("unexpected_finished:{:?}:{:?}", output.value, output.taint),
+    }
+    println!("unchanged={:?}:{:?}", state.journal.len() == before_events, state.slots[1] == before_slot);"#,
+        )?;
+        assert_eq!(
+            stdout,
+            "pending:ActionPending { step: 0, action_id: 10, input_slot: 0, resume_pc: 1 }:events=1\nerr:InvalidResume:0:events=1:slot=None\nunchanged=true:true\n"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn post_010_wrong_ask_resume_step_does_not_mutate_pending_ask() -> Result<(), String> {
+        let workflow = post_ask_resume_workflow()?;
+        let stdout = generated_step_stdout(
+            &workflow,
+            "post_wrong_ask_resume_step",
+            r#"    let mut slots = [None; WORKFLOW_SLOT_COUNT];
+    slots[0] = Some(SlotValue::I64(11));
+    slots[1] = Some(SlotValue::I64(30));
+    let mut state = GeneratedRunState::new(slots);
+    match state.run_until_blocked() {
+        Ok(GeneratedRunStatus::Suspended(suspended)) => println!("pending:{:?}:events={:?}", suspended.suspension, suspended.journal.len()),
+        Ok(GeneratedRunStatus::Finished(output)) => { println!("unexpected_initial_finished:{:?}:{:?}", output.value, output.taint); return; }
+        Err(error) => { println!("unexpected_initial_err:{error:?}"); return; }
+    }
+    let before_events = state.journal.len();
+    let before_slot = state.slots[2];
+    match state.answer_ask(0, 2, SlotValue::I64(1), Taint::Clean) {
+        Err(DriveError::InvalidResume { step: 0 }) => println!("err:InvalidResume:0:events={:?}:slot={:?}", state.journal.len(), state.slots[2]),
+        Err(error) => println!("unexpected_err:{error:?}"),
+        Ok(GeneratedRunStatus::Suspended(suspended)) => println!("unexpected_suspended:{:?}", suspended.suspension),
+        Ok(GeneratedRunStatus::Finished(output)) => println!("unexpected_finished:{:?}:{:?}", output.value, output.taint),
+    }
+    println!("unchanged={:?}:{:?}", state.journal.len() == before_events, state.slots[2] == before_slot);"#,
+        )?;
+        assert_eq!(
+            stdout,
+            "pending:AskPending { step: 0, prompt_slot: 0, timeout_slot: Some(1), resume_pc: 1 }:events=0\nerr:InvalidResume:0:events=0:slot=None\nunchanged=true:true\n"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn post_010_duplicate_action_completion_returns_invalid_resume_without_mutation()
+    -> Result<(), String> {
+        let workflow = action_suspend_workflow(ActionId::new(10), SlotIdx::new(0))?;
+        let stdout = generated_step_stdout(
+            &workflow,
+            "post_duplicate_action_completion",
+            r#"    let mut slots = [None; WORKFLOW_SLOT_COUNT];
+    slots[0] = Some(SlotValue::I64(99));
+    let mut state = GeneratedRunState::new(slots);
+    match state.run_until_blocked() {
+        Ok(GeneratedRunStatus::Suspended(_)) => {}
+        Ok(GeneratedRunStatus::Finished(output)) => { println!("unexpected_initial_finished:{:?}:{:?}", output.value, output.taint); return; }
+        Err(error) => { println!("unexpected_initial_err:{error:?}"); return; }
+    }
+    match state.complete_action(0, 10, 1, SlotValue::I64(1), Taint::Clean) {
+        Ok(GeneratedRunStatus::Finished(output)) => println!("first:{:?}:events={:?}:slot={:?}", output.value, output.journal.len(), state.slots[1]),
+        Ok(GeneratedRunStatus::Suspended(suspended)) => { println!("unexpected_first_suspended:{:?}", suspended.suspension); return; }
+        Err(error) => { println!("unexpected_first_err:{error:?}"); return; }
+    }
+    match state.complete_action(0, 10, 1, SlotValue::I64(2), Taint::Secret) {
+        Err(DriveError::InvalidResume { step: 0 }) => println!("duplicate_err:InvalidResume:0:events={:?}:slot={:?}", state.journal.len(), state.slots[1]),
+        Err(error) => println!("unexpected_duplicate_err:{error:?}"),
+        Ok(GeneratedRunStatus::Suspended(suspended)) => println!("unexpected_duplicate_suspended:{:?}", suspended.suspension),
+        Ok(GeneratedRunStatus::Finished(output)) => println!("unexpected_duplicate_finished:{:?}:{:?}", output.value, output.taint),
+    }
+    let mut action_completed_count = 0u16;
+    let mut index = 0u16;
+    while index < state.journal.len() {
+        match state.journal.event(index) {
+            Some(JournalEvent::ActionCompleted { .. }) => action_completed_count = action_completed_count.saturating_add(1),
+            _ => {}
+        }
+        index = index.saturating_add(1);
+    }
+    println!("action_completed_count={action_completed_count}");"#,
+        )?;
+        assert_eq!(
+            stdout,
+            "first:I64(1):events=4:slot=Some(I64(1))
+duplicate_err:InvalidResume:0:events=4:slot=Some(I64(1))
+action_completed_count=1
+"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn post_010_duplicate_ask_answer_returns_invalid_resume_without_mutation() -> Result<(), String>
+    {
+        let workflow = post_ask_resume_workflow()?;
+        let stdout = generated_step_stdout(
+            &workflow,
+            "post_duplicate_ask_answer",
+            r#"    let mut slots = [None; WORKFLOW_SLOT_COUNT];
+    slots[0] = Some(SlotValue::I64(11));
+    slots[1] = Some(SlotValue::I64(30));
+    let mut state = GeneratedRunState::new(slots);
+    match state.run_until_blocked() {
+        Ok(GeneratedRunStatus::Suspended(_)) => {}
+        Ok(GeneratedRunStatus::Finished(output)) => { println!("unexpected_initial_finished:{:?}:{:?}", output.value, output.taint); return; }
+        Err(error) => { println!("unexpected_initial_err:{error:?}"); return; }
+    }
+    match state.answer_ask(0, 1, SlotValue::I64(55), Taint::DerivedFromSecret) {
+        Ok(GeneratedRunStatus::Finished(output)) => println!("first:{:?}:{:?}:events={:?}:slot={:?}", output.value, output.taint, output.journal.len(), state.slots[2]),
+        Ok(GeneratedRunStatus::Suspended(suspended)) => { println!("unexpected_first_suspended:{:?}", suspended.suspension); return; }
+        Err(error) => { println!("unexpected_first_err:{error:?}"); return; }
+    }
+    match state.answer_ask(0, 1, SlotValue::I64(99), Taint::Secret) {
+        Err(DriveError::InvalidResume { step: 0 }) => println!("duplicate_err:InvalidResume:0:events={:?}:slot={:?}", state.journal.len(), state.slots[2]),
+        Err(error) => println!("unexpected_duplicate_err:{error:?}"),
+        Ok(GeneratedRunStatus::Suspended(suspended)) => println!("unexpected_duplicate_suspended:{:?}", suspended.suspension),
+        Ok(GeneratedRunStatus::Finished(output)) => println!("unexpected_duplicate_finished:{:?}:{:?}", output.value, output.taint),
+    }
+    let mut ask_answered_count = 0u16;
+    let mut index = 0u16;
+    while index < state.journal.len() {
+        match state.journal.event(index) {
+            Some(JournalEvent::AskAnswered { .. }) => ask_answered_count = ask_answered_count.saturating_add(1),
+            _ => {}
+        }
+        index = index.saturating_add(1);
+    }
+    println!("ask_answered_count={ask_answered_count}");"#,
+        )?;
+        assert_eq!(
+            stdout,
+            "first:I64(55):DerivedFromSecret:events=3:slot=Some(I64(55))\nduplicate_err:InvalidResume:0:events=3:slot=Some(I64(55))\nask_answered_count=1\n"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn post_010_journal_overflow_reports_typed_error() -> Result<(), String> {
+        let workflow = action_suspend_workflow(ActionId::new(10), SlotIdx::new(0))?;
+        let stdout = generated_step_stdout(
+            &workflow,
+            "post_journal_overflow",
+            r#"    let mut slots = [None; WORKFLOW_SLOT_COUNT];
+    slots[0] = Some(SlotValue::I64(99));
+    let mut state = GeneratedRunState::new(slots);
+    match state.run_until_blocked() {
+        Ok(GeneratedRunStatus::Suspended(suspended)) => println!("start_events={:?}", suspended.journal.len()),
+        Ok(GeneratedRunStatus::Finished(output)) => { println!("unexpected_initial_finished:{:?}:{:?}", output.value, output.taint); return; }
+        Err(error) => { println!("unexpected_initial_err:{error:?}"); return; }
+    }
+    let capacity = match u16::try_from(GENERATED_JOURNAL_CAPACITY) {
+        Ok(value) => value,
+        Err(_) => { println!("capacity_conversion_failed"); return; }
+    };
+    while state.journal.len() < capacity {
+        match state.journal.push(JournalEvent::RunFinished { step: 99, value: SlotValue::Null, taint: Taint::Clean }) {
+            Ok(()) => {}
+            Err(error) => { println!("unexpected_fill_err:{error:?}"); return; }
+        }
+    }
+    println!("filled_events={:?}:slot={:?}", state.journal.len(), state.slots[1]);
+    match state.complete_action(0, 10, 1, SlotValue::I64(4), Taint::Secret) {
+        Err(DriveError::JournalOverflow) => println!("err:JournalOverflow:events={:?}:slot={:?}:last={:?}", state.journal.len(), state.slots[1], state.journal.event(capacity.saturating_sub(1))),
+        Err(error) => println!("unexpected_complete_err:{error:?}"),
+        Ok(GeneratedRunStatus::Suspended(suspended)) => println!("unexpected_suspended:{:?}", suspended.suspension),
+        Ok(GeneratedRunStatus::Finished(output)) => println!("unexpected_finished:{:?}:{:?}", output.value, output.taint),
+    }"#,
+        )?;
+        assert_eq!(
+            stdout,
+            "start_events=1
+filled_events=12:slot=None
+err:JournalOverflow:events=12:slot=None:last=Some(RunFinished { step: 99, value: Null, taint: Clean })
+"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn post_010_ask_answer_journal_overflow_reports_typed_error_before_mutation()
+    -> Result<(), String> {
+        let workflow = post_ask_resume_workflow()?;
+        let stdout = generated_step_stdout(
+            &workflow,
+            "post_ask_journal_overflow",
+            r#"    let mut slots = [None; WORKFLOW_SLOT_COUNT];
+    slots[0] = Some(SlotValue::I64(11));
+    slots[1] = Some(SlotValue::I64(30));
+    let mut state = GeneratedRunState::new(slots);
+    match state.run_until_blocked() {
+        Ok(GeneratedRunStatus::Suspended(suspended)) => println!("start_events={:?}:pending={:?}", suspended.journal.len(), suspended.suspension),
+        Ok(GeneratedRunStatus::Finished(output)) => { println!("unexpected_initial_finished:{:?}:{:?}", output.value, output.taint); return; }
+        Err(error) => { println!("unexpected_initial_err:{error:?}"); return; }
+    }
+    let capacity = match u16::try_from(GENERATED_JOURNAL_CAPACITY) {
+        Ok(value) => value,
+        Err(_) => { println!("capacity_conversion_failed"); return; }
+    };
+    while state.journal.len() < capacity {
+        match state.journal.push(JournalEvent::RunFinished { step: 99, value: SlotValue::Null, taint: Taint::Clean }) {
+            Ok(()) => {}
+            Err(error) => { println!("unexpected_fill_err:{error:?}"); return; }
+        }
+    }
+    println!("filled_events={:?}:slot={:?}", state.journal.len(), state.slots[2]);
+    match state.answer_ask(0, 1, SlotValue::I64(55), Taint::Secret) {
+        Err(DriveError::JournalOverflow) => println!("err:JournalOverflow:events={:?}:slot={:?}:last={:?}", state.journal.len(), state.slots[2], state.journal.event(capacity.saturating_sub(1))),
+        Err(error) => println!("unexpected_answer_err:{error:?}"),
+        Ok(GeneratedRunStatus::Suspended(suspended)) => println!("unexpected_suspended:{:?}", suspended.suspension),
+        Ok(GeneratedRunStatus::Finished(output)) => println!("unexpected_finished:{:?}:{:?}", output.value, output.taint),
+    }"#,
+        )?;
+        assert_eq!(
+            stdout,
+            "start_events=0:pending=AskPending { step: 0, prompt_slot: 0, timeout_slot: Some(1), resume_pc: 1 }\nfilled_events=18:slot=None\nerr:JournalOverflow:events=18:slot=None:last=Some(RunFinished { step: 99, value: Null, taint: Clean })\n"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn post_011_generated_finished_value_taint_and_journal_match_ir_for_expression()
+    -> Result<(), String> {
+        let workflow = post_eval_add_workflow()?;
+        let init = [
+            (SlotIdx::new(0), SlotValue::I64(40), Taint::Secret),
+            (SlotIdx::new(1), SlotValue::I64(2), Taint::Clean),
+        ];
+        let (ir_value, ir_taint) = ir_drive_finished_output_with_init(&workflow, &init)?;
+        let stdout = generated_state_run_stdout(
+            &workflow,
+            "post_parity_expr_finished_output",
+            r#"    slots[0] = Some(SlotValue::I64(40));
+    slots[1] = Some(SlotValue::I64(2));
+    slot_taints[0] = Taint::Secret;
+    slot_taints[1] = Taint::Clean;
+"#,
+        )?;
+        assert_eq!(
+            stdout,
+            format!(
+                "finished:{ir_value:?}:{ir_taint:?}:events=2\nevent:0:SlotWritten {{ slot: 2, value: Some({ir_value:?}), taint: {ir_taint:?} }}\nevent:1:RunFinished {{ step: 1, value: {ir_value:?}, taint: {ir_taint:?} }}\n"
+            )
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn post_011_generated_finished_value_taint_and_journal_match_ir_for_constant_expression()
+    -> Result<(), String> {
+        let workflow = primitive_expression_workflow()?;
+        let (ir_value, ir_taint) = ir_drive_finished_output_with_init(&workflow, &[])?;
+        let stdout = generated_state_run_stdout(
+            &workflow,
+            "post_parity_primitive_expression_finished_output",
+            "",
+        )?;
+        assert_eq!(
+            stdout,
+            format!(
+                "finished:{ir_value:?}:{ir_taint:?}:events=2\nevent:0:SlotWritten {{ slot: 0, value: Some({ir_value:?}), taint: {ir_taint:?} }}\nevent:1:RunFinished {{ step: 1, value: {ir_value:?}, taint: {ir_taint:?} }}\n"
+            )
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn post_011_generated_suspension_matches_ir_for_action_boundary() -> Result<(), String> {
+        let workflow = action_suspend_workflow(ActionId::new(10), SlotIdx::new(0))?;
+        let ir_signal = ir_action_suspend_signal(&workflow, SlotIdx::new(0))?;
+        assert_eq!(ir_signal, EngineSignal::AwaitingAction);
+        let stdout = generated_state_run_stdout(
+            &workflow,
+            "post_parity_action_suspension",
+            r#"    slots[0] = Some(SlotValue::I64(99));
+"#,
+        )?;
+        assert_eq!(
+            stdout,
+            "suspended:ActionPending { step: 0, action_id: 10, input_slot: 0, resume_pc: 1 }:events=1\nevent:0:ActionScheduled { step: 0, action_id: 10, input_slot: 0, resume_pc: 1 }\n"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn post_011_generated_no_contract_do_taint_violation_matches_runtime_error()
+    -> Result<(), String> {
+        let workflow = action_suspend_workflow(ActionId::new(10), SlotIdx::new(0))?;
+        let runtime_error = runtime_drive_error_string_with_init(
+            &workflow,
+            &[(SlotIdx::new(0), SlotValue::I64(99), Taint::Secret)],
+        )?;
+        assert!(
+            runtime_error.contains("taint violation") || runtime_error.contains("TaintViolation")
+        );
+        let stdout = generated_state_run_stdout(
+            &workflow,
+            "post_parity_no_contract_do_taint_violation",
+            r#"    slots[0] = Some(SlotValue::I64(99));
+    slot_taints[0] = Taint::Secret;
+"#,
+        )?;
+        assert_eq!(stdout, "err:TaintViolation { step: 0 }\n");
         Ok(())
     }
 }

@@ -12,9 +12,11 @@
 
 use vb_core::ids::{ConstIdx, ExprIdx, SlotIdx, StepIdx, SymbolId};
 use vb_core::value::ConstValue;
-use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
-use vb_validate::gates::validate_gate_10_node_kind_specific;
+use vb_core::workflow::{
+    CompiledNode, CompiledNodeKind, ExprBranch, ResourceContract, WorkflowParts,
+};
 use vb_validate::ValidationError;
+use vb_validate::gates::validate_gate_10_node_kind_specific;
 
 // ---------------------------------------------------------------------------
 // Helper constructors
@@ -85,31 +87,31 @@ fn gate_10_rejects_finish_result_out_of_range() {
 #[test]
 fn gate_10_accepts_valid_choose() {
     let mut parts = make_parts(
-        vec![
-            finish_node(0, 0),
-            finish_node(1, 0),
-            finish_node(2, 0),
-        ],
+        vec![finish_node(0, 0), finish_node(1, 0), finish_node(2, 0)],
         1,
     );
     parts.expressions = Box::new([vb_core::workflow::ExprProgram {
         ops: Box::new([vb_core::workflow::ExprOp::LoadSlot(SlotIdx::new(0))]),
         max_stack: 1,
     }]);
-    parts.nodes = Box::new([CompiledNode {
-        id: StepIdx::new(0),
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Choose {
-            branches: Box::new([vb_core::workflow::ChooseBranch {
-                condition: ExprIdx::new(0),
-                target: StepIdx::new(1),
-            }]),
-            otherwise: Some(StepIdx::new(2)),
+    parts.nodes = Box::new([
+        CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Choose {
+                branches: Box::new([ExprBranch {
+                    condition: ExprIdx::new(0),
+                    target: StepIdx::new(1),
+                }]),
+                otherwise: Some(StepIdx::new(2)),
+            },
         },
-    }]);
+        finish_node(1, 0),
+        finish_node(2, 0),
+    ]);
     assert_eq!(validate_gate_10_node_kind_specific(&parts), Ok(()));
 }
 
@@ -124,7 +126,7 @@ fn gate_10_rejects_choose_expr_out_of_range() {
         on_error: None,
         error_slot: None,
         kind: CompiledNodeKind::Choose {
-            branches: Box::new([vb_core::workflow::ChooseBranch {
+            branches: Box::new([ExprBranch {
                 condition: ExprIdx::new(99), // Out of range
                 target: StepIdx::new(1),
             }]),
