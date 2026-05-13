@@ -2864,7 +2864,6 @@ dependencies = [
  "tempfile",
  "vb_core",
  "vb_expr",
- "vb_ipc",
  "vb_storage",
  "vb_validate",
  "vb_yaml",

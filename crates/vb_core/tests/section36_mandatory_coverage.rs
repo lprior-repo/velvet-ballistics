@@ -857,7 +857,8 @@ fn failed_step_does_not_become_succeeded_without_error_handler() -> Result<(), S
 
     // step_once will fail because output slot is None on the Copy node
     let result = step_once(&workflow, &mut frame, &mut store);
-    assert!(result.is_err());
+    assert!(result.is_err(), "step_once must fail for Copy without output");
+    let _ = result.unwrap_err(); // Ensure it's not a false positive
     assert_eq!(
         frame
             .step_state(StepIdx::new(0))
@@ -1217,7 +1218,8 @@ fn validate_resource_contract_rejects_oversized_max_constants() {
     let parts = parts_with_contract(contract);
     // max_constants == u16::MAX == MAX_CONSTANTS (65_535), at-limit passes
     let result = vb_core::validate_resource_contract(&parts);
-    assert!(result.is_ok());
+    assert!(result.is_ok(), "at-limit max_constants must pass validation");
+    let _ = result.unwrap();
     let _ = MAX_CONSTANTS;
 }
 

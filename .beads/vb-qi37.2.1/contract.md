@@ -1,49 +1,77 @@
-# Contract: vb-qi37.2.1 - runtime: Define aggregate resource budget model
+# Contract Specification: vb-qi37.2.1 — Aggregate Resource Budget Model
 
-## 1. Scope
+## Context
 
-Define the contract for an aggregate resource budget model that lets `vb_core` compute and validate a whole-workflow resource requirement, and lets `vb_runtime` reject run admission when the requested aggregate budget cannot fit the configured runtime or shard capacity.
+- **Feature:** Aggregate resource budget model for runtime admission and resource accounting.
+- **Domain terms:**
+  - Aggregate resource budget: conservative whole-workflow resource requirement derived from `ResourceContract` + compiled IR shape.
+  - Capacity: runtime or shard-local resource ceiling for admitted runs.
+  - Requested budget: aggregate budget required by one submitted workflow run.
+  - Available budget: capacity not yet reserved by active/admitted runs.
+  - Reservation: bounded, typed accounting decision that subtracts requested budget from available capacity before execution.
+  - Release: returning reservation to available capacity when run finishes, fails, is cancelled, or is rejected after partial admission.
+  - Dimension: named resource field (steps, action tickets, parallel in-flight, gather items, result bytes, slots, queue depth, journal bytes).
+- **Assumptions:**
+  - Builds on existing `WholeWorkflowBudget` and `BoundednessPolicy` in `crates/vb_core/src/budget.rs`.
+  - Missing explicit aggregate budget means "compute from `CompiledWorkflow`"; does not mean "unbounded".
+  - Runtime enforcement is per shard first; global runtime reporting may sum shard snapshots.
+  - First implementation may validate capacity at submit/tick admission time.
+  - Existing strict/journaled/relaxed artifact admission behavior remains intact.
+- **Open questions:**
+  - Should aggregate capacity be configurable only through `ShardConfig`, or also through runtime-level policy?
+  - Should `RunAdmission` store exact granted aggregate budget for audit/journal replay?
+  - Should `max_step_budget_per_tick` contribute to aggregate capacity or remain execution throttle?
+  - Should result bytes and journal batch bytes be reserved pessimistically at admission?
 
-The model must preserve the current architecture split:
+## Preconditions
 
-- `vb_core::budget` owns pure, deterministic budget value types, checked arithmetic, and policy validation.
-- `vb_core::workflow` exposes compiled workflow resource facts through `CompiledWorkflow`, `ResourceContract`, and validated `WorkflowParts`.
-- `vb_core::validation::resource` remains the structural validation layer for resource contracts and must not gain runtime dependencies.
-- `vb_runtime::admission` performs admission decisions against artifact presence, capabilities, and aggregate capacity.
-- `vb_runtime::shard::types` may carry capacity snapshots or reservation state, but must use core budget/domain types instead of inventing parallel budget dimensions.
+- PRE-001: `CompiledWorkflow` inputs must already be created by `CompiledWorkflow::try_from_parts`, not unchecked production constructors.
+- PRE-002: `WorkflowParts.resource_contract` must structurally cover all required fields before aggregate computation.
+- PRE-003: Entry and target `StepIdx` values must be valid; out-of-bounds or cyclic paths must be rejected.
+- PRE-004: Every aggregate dimension must have a finite integer bound. Unknown, missing, NaN, textual, or dynamic dimensions are invalid by construction.
+- PRE-005: Capacity comparison must receive a fully initialized capacity snapshot. No default "infinite capacity" in production config.
+- PRE-006: Runtime reservation must occur before a run frame is inserted into active shard state.
+- PRE-007: Every fallible constructor or operation must return `Result<T, Error>`; no panic path may encode precondition failures.
 
-## 2. Domain Terms
+## Postconditions
 
-- Aggregate resource budget: a conservative whole-workflow requirement derived from `ResourceContract` plus compiled IR shape.
-- Capacity: the runtime or shard-local resource ceiling available for admitted runs.
-- Requested budget: the aggregate budget required by one submitted workflow run.
-- Available budget: capacity not yet reserved by currently active/admitted runs.
-- Reservation: a bounded, typed accounting decision that subtracts requested budget from available capacity before execution begins.
-- Release: returning a reservation to available capacity when a run finishes, fails, is cancelled, or is rejected after partial admission.
-- Dimension: a named resource field such as steps executable, action tickets, parallel in-flight actions, gather items, result bytes, total slots, queue depth, or journal bytes.
+- POST-001: Successful aggregate construction returns a budget whose all dimensions are known and finite.
+- POST-002: `requested <= available` for every capacity dimension admits the run for budget purposes.
+- POST-003: `requested > available` for any capacity dimension rejects the run with exact failing dimension, requested value, and available/limit value.
+- POST-004: Checked summation failure returns `Overflow { resource }` and never wraps, saturates silently, truncates, or casts lossy values.
+- POST-005: Checked subtraction failure returns `Underflow { resource }` and never wraps, saturates silently, or causes underflow.
+- POST-006: A successful reservation monotonically increases usage by exactly the requested dimensions.
+- POST-007: A successful release monotonically decreases usage by exactly the reserved dimensions and never underflows.
+- POST-008: Rejection leaves active run state, usage counters, frame pools, journals, and trace rings unchanged.
+- POST-009: `RunAdmission` remains immutable after creation; getters expose copies or references without mutation.
 
-## 3. Assumptions
+## Invariants
 
-- The aggregate model builds on the existing `WholeWorkflowBudget` and `BoundednessPolicy` in `crates/vb_core/src/budget.rs`.
-- A missing explicit aggregate budget means "compute from `CompiledWorkflow`"; it does not mean "unbounded".
-- Runtime enforcement is per shard first because `RunId` routes to a shard; global runtime reporting may sum shard snapshots but must not duplicate admission logic.
-- The first implementation may validate capacity at submit/tick admission time, not at cold artifact compilation time, provided `CompiledWorkflow::try_from_parts` still validates boundedness.
-- Existing strict/journaled/relaxed artifact admission behavior remains intact; budget capacity checks are orthogonal and apply regardless of artifact policy unless an explicit test-only bypass is introduced behind a test-only feature.
+- INV-001: No accepted workflow has unknown bounds.
+- INV-002: `ResourceContract` limits apply within one workflow; `BoundednessPolicy` limits are absolute cross-workflow policy ceilings.
+- INV-003: Validation order: structural `ResourceContract` validation, whole-workflow budget computation, boundedness policy validation, runtime capacity comparison, then reservation.
+- INV-004: Capacity comparison is inclusive: equality admits (requested == available is OK).
+- INV-005: Every arithmetic operation is checked; no wrapping, saturating, or panicking arithmetic in budget operations.
+- INV-006: Release is idempotent only with existing reservation; releasing non-existent reservation returns `ReservationNotFound`.
+- INV-007: Active usage never exceeds shard-local capacity.
+- INV-008: All 16 dimensions of `AggregateResourceBudget` are independent; overflow in one dimension does not affect another.
 
-## 4. Open Questions
+## Error Taxonomy
 
-- Should aggregate capacity be configurable only through `ShardConfig`, or also through a runtime-level policy distributed evenly across shards?
-- Should `RunAdmission` store the exact granted aggregate budget for audit/journal replay, or should it store only digest/run/capabilities/policy and rely on recomputation?
-- Should `max_step_budget_per_tick` contribute to aggregate capacity, or remain an execution throttle separate from admission capacity?
-- Should result bytes and journal batch bytes be reserved pessimistically at admission or checked at write boundaries only?
+- `AggregateBudgetError::WorkflowBudget(WorkflowError)` — invalid entry/target/cycle in workflow IR.
+- `AggregateBudgetError::PolicyExceeded { resource, actual, limit }` — budget dimension exceeds `BoundednessPolicy` absolute ceiling.
+- `AggregateBudgetError::CapacityExceeded { resource, requested, available }` — requested budget exceeds shard available capacity.
+- `AggregateBudgetError::Overflow { resource }` — checked addition overflow in dimension `resource`.
+- `AggregateBudgetError::Underflow { resource }` — checked subtraction underflow in dimension `resource`.
+- `AggregateBudgetError::InvalidCapacity { resource }` — zero capacity for production-required dimension.
+- `AggregateBudgetError::ReservationNotFound { run }` — releasing unknown `RunId`.
+- `AggregateBudgetError::StepCeilingExceeded { requested, limit }` — `max_step_budget_per_tick` is zero or exceeds `HARD_MAX_STEP_BUDGET_PER_TICK`.
+- `AggregateBudgetError::PerTickCeilingExceeded { requested, limit }` — `max_transitions_per_tick` is zero or exceeds `HARD_MAX_TRANSITIONS_PER_TICK`.
 
-## 5. Required Contract Types
-
-The implementation must expose or preserve typed Rust data. Runtime core must not parse JSON, YAML, HTTP, or text command payloads for this model.
-
-Recommended signatures, names may vary only if semantic parity is exact:
+## Contract Signatures
 
 ```rust
+// Core budget type — 16-dimension conservative whole-workflow resource requirement.
 pub struct AggregateResourceBudget {
     pub max_steps_executable: u32,
     pub max_action_tickets: u32,
@@ -59,6 +87,8 @@ pub struct AggregateResourceBudget {
     pub max_total_slots_written: u32,
     pub max_queue_depth: u32,
     pub max_journal_batch_bytes: u32,
+    pub max_step_budget_per_tick: u64,
+    pub max_transitions_per_tick: u64,
 }
 
 pub struct AggregateResourceCapacity {
@@ -72,212 +102,78 @@ pub struct AggregateResourceCapacity {
     pub max_active_runs: u64,
     pub max_queue_depth: u64,
     pub max_journal_batch_bytes: u64,
+    pub max_step_budget_per_tick: u64,
+    pub max_transitions_per_tick: u64,
 }
 
-pub struct AggregateResourceUsage { /* same comparable dimensions as capacity */ }
+pub struct AggregateResourceUsage {
+    // Same 14 comparable dimensions as AggregateResourceCapacity,
+    // plus max_step_budget_per_tick and max_transitions_per_tick.
+}
 
 pub struct AggregateReservation {
-    pub run: vb_core::ids::RunId,
+    pub run: RunId,
     pub requested: AggregateResourceBudget,
 }
-```
 
-Fallible operations must be railway-oriented:
+pub enum AggregateBudgetError {
+    WorkflowBudget(WorkflowError),
+    PolicyExceeded { resource: &'static str, actual: u64, limit: u64 },
+    CapacityExceeded { resource: &'static str, requested: u64, available: u64 },
+    Overflow { resource: &'static str },
+    Underflow { resource: &'static str },
+    InvalidCapacity { resource: &'static str },
+    ReservationNotFound { run: RunId },
+    StepCeilingExceeded { requested: u64, limit: u64 },
+    PerTickCeilingExceeded { requested: u64, limit: u64 },
+}
 
-```rust
 impl AggregateResourceBudget {
-    pub fn from_workflow(workflow: &vb_core::workflow::CompiledWorkflow)
-        -> Result<Self, AggregateBudgetError>;
-
-    pub fn from_whole_workflow_budget(
-        budget: vb_core::budget::WholeWorkflowBudget,
-        contract: vb_core::workflow::ResourceContract,
-    ) -> Result<Self, AggregateBudgetError>;
+    pub fn from_workflow(workflow: &CompiledWorkflow) -> Result<Self, AggregateBudgetError>;
+    pub fn from_whole_workflow_budget(budget: WholeWorkflowBudget, contract: ResourceContract) -> Result<Self, AggregateBudgetError>;
 }
 
 impl AggregateResourceUsage {
-    pub fn try_add_budget(&self, budget: &AggregateResourceBudget)
-        -> Result<Self, AggregateBudgetError>;
-
-    pub fn try_subtract_budget(&self, budget: &AggregateResourceBudget)
-        -> Result<Self, AggregateBudgetError>;
-
-    pub fn fits_within(&self, capacity: &AggregateResourceCapacity)
-        -> Result<(), AggregateBudgetError>;
+    pub fn try_add_budget(&self, budget: &AggregateResourceBudget) -> Result<Self, AggregateBudgetError>;
+    pub fn try_subtract_budget(&self, budget: &AggregateResourceBudget) -> Result<Self, AggregateBudgetError>;
+    pub fn fits_within(&self, capacity: &AggregateResourceCapacity) -> Result<(), AggregateBudgetError>;
 }
 
-pub fn validate_aggregate_budget(
-    budget: &AggregateResourceBudget,
-    policy: &vb_core::budget::BoundednessPolicy,
-) -> Result<(), AggregateBudgetError>;
-
-pub fn admit_run_with_budget(
-    store: &dyn vb_runtime::admission::ArtifactStore,
-    policy: vb_core::policy::RuntimePolicy,
-    digest: vb_core::ids::WorkflowDigest,
-    run_id: vb_core::ids::RunId,
-    caps: vb_core::capability::CapabilitySet,
-    requested: AggregateResourceBudget,
-    available: AggregateResourceCapacity,
-) -> Result<vb_runtime::admission::RunAdmission, vb_runtime::admission::AdmissionError>;
+pub fn validate_aggregate_budget(budget: &AggregateResourceBudget, policy: &BoundednessPolicy) -> Result<(), AggregateBudgetError>;
+pub fn validate_step_ceilings(budget: &AggregateResourceBudget) -> Result<(), AggregateBudgetError>;
 ```
 
-## 6. Preconditions
+## Verus-Owned Clauses
 
-- `CompiledWorkflow` inputs must already be created by `CompiledWorkflow::try_from_parts`, not unchecked production constructors.
-- `WorkflowParts.resource_contract` must structurally cover nodes, slots, constants, expressions, accessors, expression stack, fanout, and output bytes before aggregate computation is trusted.
-- Entry and target `StepIdx` values must be valid; out-of-bounds or cyclic paths must be rejected before or during budget computation.
-- Every aggregate dimension must have a finite integer bound. Unknown, missing, NaN, textual, or dynamic dimensions are invalid by construction.
-- Capacity comparison must receive a fully initialized capacity snapshot. No default "infinite capacity" is allowed in production config.
-- Runtime reservation must occur before a run frame is inserted into active shard state or before hot resources are allocated for the run.
-- Every fallible constructor or operation must return `Result<T, Error>`; no panic path may encode precondition failures.
+- INV-005: All `add_dim`/`sub_dim` operations use `checked_add`/`checked_sub` and never wrap or panic.
+- POST-003: `try_add_budget` returns `Ok(new_usage)` exactly when all dimension sums fit in u64; returns `Err(Overflow { resource })` for the first overflowing dimension.
+- POST-004: `try_subtract_budget` returns `Ok(new_usage)` exactly when all dimension differences are non-negative; returns `Err(Underflow { resource })` for the first underflowing dimension.
+- POST-006: `usage.try_add_budget(budget)?.try_subtract_budget(budget)? == usage` for all non-overflowing budgets.
+- INV-004: `fits_within` admits when `usage <= capacity` for all dimensions; equality is admit.
+- INV-001 + INV-003: `from_workflow` rejects invalid workflow IR, cyclic jumps, and unbounded dimensions.
 
-## 7. Postconditions
+## TLA+-Owned Clauses
 
-- Successful aggregate construction returns a budget whose dimensions are all known and finite.
-- `requested <= available` for every capacity dimension admits the run for budget purposes.
-- `requested > available` for any capacity dimension rejects the run with the exact failing dimension, requested value, and available/limit value.
-- Checked summation failure returns an overflow error and never wraps, saturates silently, truncates, or casts lossy values.
-- A successful reservation monotonically increases usage by exactly the requested dimensions.
-- A successful release monotonically decreases usage by exactly the reserved dimensions and never underflows.
-- Rejection leaves active run state, usage counters, frame pools, journals, and trace rings unchanged except for permitted cold diagnostic counters/events that are explicitly documented.
-- `RunAdmission` remains an immutable record after creation; if extended with budget fields, getters must expose copies or references without mutation.
+- None for pure budget arithmetic. Budget model is entirely Rust-local with no temporal/state-over-time behavior. TLA+ verification is not required for arithmetic correctness — Verus + Kani + Lean cover all critical properties.
 
-## 8. Invariants
+## Theorem-Owned Clauses
 
-- No accepted workflow has unknown bounds.
-- `ResourceContract` limits apply within one workflow; `BoundednessPolicy` limits are absolute cross-workflow policy ceilings.
-- Validation order is: structural `ResourceContract` validation, whole-workflow budget computation, boundedness policy validation, runtime capacity comparison, then reservation.
-- Core budget logic has no dependency on runtime, storage, HTTP, JSON, YAML, or allocation-heavy config parsing.
-- Runtime admission must use core aggregate types or lossless conversions from them; no parallel runtime-only dimension vocabulary may drift from core semantics.
-- Capacity comparison is inclusive: equality admits, greater-than rejects.
-- Every arithmetic operation that combines dimensions is checked.
-- Release is idempotency-safe only when tied to an existing reservation; releasing an unknown reservation is a typed error.
-- Shard-local active usage must never exceed shard-local capacity after any public admission, tick, cancel, finish, or shutdown path returns `Ok`.
-- Test-only bypasses must be gated by existing test utilities and cannot affect production admission.
+- THM-ADD-SAFETY: `try_add_budget` is equivalent to component-wise `checked_add`; no wrapping, no saturation.
+- THM-SUB-SAFETY: `try_subtract_budget` is equivalent to component-wise `checked_sub`; no wrapping, no underflow.
+- THM-FITS-INCLUSIVITY: `fits_within(capacity)` succeeds iff usage <= capacity for every dimension.
+- THM-POLICY-EXACT: `validate_aggregate_budget(budget, policy)` succeeds iff every dimension <= corresponding policy limit.
+- THM-ADD-SUB-ROUNDTRIP: add then subtract with same budget recovers original usage.
+- THM-CONV-LOSSLESS: `from_whole_workflow_budget` is lossless when values fit target widths.
 
-## 9. Error Taxonomy
+## Non-goals
 
-Core errors should be represented as a new semantic enum or integrated into existing `BudgetError`/`WorkflowError` without losing information:
+- Runtime admission integration, artifact store trait dispatch, capability set operations, shard state mutation, reservation lifecycle, finish/fail/cancel/shutdown paths, Fjall/Mio integration.
+- External action ABI, timer wheel, trace ring, frame pools, value store arenas.
 
-- `AggregateBudgetError::WorkflowBudget(WorkflowError)` - whole-workflow computation failed due to invalid entry, target, cycle, or structural workflow issue.
-- `AggregateBudgetError::PolicyExceeded { resource: &'static str, actual: u64, limit: u64 }` - computed aggregate exceeds `BoundednessPolicy` or hard per-workflow policy.
-- `AggregateBudgetError::CapacityExceeded { resource: &'static str, requested: u64, available: u64 }` - runtime/shard capacity cannot fit the requested budget.
-- `AggregateBudgetError::Overflow { resource: &'static str }` - checked add/mul or widening conversion failed.
-- `AggregateBudgetError::Underflow { resource: &'static str }` - release/subtraction would make usage negative.
-- `AggregateBudgetError::InvalidCapacity { resource: &'static str }` - capacity snapshot contains zero for dimensions that must be non-zero or otherwise violates hard limits.
-- `AggregateBudgetError::ReservationNotFound { run: RunId }` - release was requested for a run without an active reservation.
-- `AdmissionError::ResourceCapacityExceeded { resource, requested, available }` - runtime-facing rejection variant, if errors remain in `vb_runtime::admission`.
+## Blackhat Findings Addressed
 
-Existing variants such as `AdmissionError::ArtifactNotFound` and `AdmissionError::CapabilityDenied` must remain unchanged and continue to identify their current rejection causes.
-
-## 10. Acceptance Criteria
-
-- `.beads/vb-qi37.2.1/contract.md` exists and is non-empty.
-- The design specifies a single source of truth for aggregate budget semantics in `vb_core`.
-- Capacity comparison semantics are explicit: `requested <= available` admits; `requested > available` rejects.
-- Overflow and underflow behavior is explicit and typed.
-- Every listed precondition, postcondition, and invariant has at least one scenario or proof obligation below.
-- The contract forbids production `unsafe`, `unwrap`, `expect`, `panic`, `todo`, `unimplemented`, `dbg`, unchecked indexing, unchecked slicing, unchecked casts, and unchecked arithmetic.
-- The final implementation must pass `moon ci`; targeted Cargo tests are only local feedback.
-
-## 11. Martin Fowler Given/When/Then Scenarios
-
-### Scenario 1: aggregate budget is computed for a bounded workflow
-Given a `CompiledWorkflow` built through `try_from_parts` with finite loop, fanout, retry, slot, and output limits
-When `AggregateResourceBudget::from_workflow` is called
-Then it returns `Ok(budget)`
-And every budget dimension is finite
-And `budget.max_result_bytes <= workflow.resource_contract().max_output_bytes`
-And no runtime state is accessed.
-
-### Scenario 2: equality with capacity admits
-Given a requested aggregate budget
-And an available capacity with exactly equal values for every comparable dimension
-When admission compares requested budget to capacity
-Then admission succeeds for budget purposes
-And no `CapacityExceeded` error is returned.
-
-### Scenario 3: exceeding capacity by one rejects
-Given a requested aggregate budget whose `max_action_tickets` is one greater than available capacity
-When runtime admission checks aggregate capacity
-Then admission returns `ResourceCapacityExceeded` or `CapacityExceeded`
-And the error identifies `max_action_tickets`, requested value, and available value
-And the run is not inserted into active shard state.
-
-### Scenario 4: checked addition overflow rejects deterministically
-Given current aggregate usage near the integer maximum for a dimension
-And a requested budget that would overflow that dimension when added
-When `try_add_budget` is called
-Then it returns `Overflow { resource }`
-And usage remains unchanged.
-
-### Scenario 5: release cannot underflow
-Given current aggregate usage lower than the reservation being released
-When `try_subtract_budget` is called
-Then it returns `Underflow { resource }`
-And usage remains unchanged.
-
-### Scenario 6: missing explicit aggregate budget is computed, not treated as unbounded
-Given a valid `CompiledWorkflow` without a persisted aggregate budget field
-When runtime admission needs a requested budget
-Then it computes the budget from core workflow data
-And either admits with finite dimensions or rejects with a typed computation/policy error.
-
-### Scenario 7: artifact checks still run under strict policy
-Given strict runtime policy
-And a requested budget that fits capacity
-And an artifact digest absent from the artifact store
-When `admit_run_with_budget` is called
-Then admission returns `ArtifactNotFound`
-And no budget reservation is retained.
-
-### Scenario 8: budget rejection is independent of capability checks
-Given a requested budget that exceeds capacity
-And granted capabilities that would otherwise satisfy all required actions
-When admission checks the run
-Then admission rejects for resource capacity
-And the error taxonomy does not mislabel the rejection as `CapabilityDenied`.
-
-### Scenario 9: active usage never exceeds capacity after cancellation
-Given a run admitted with a budget reservation
-When the run is cancelled and the shard processes cancellation successfully
-Then the reservation is released
-And active usage is less than or equal to capacity for every dimension.
-
-### Scenario 10: no dynamic config parsing enters runtime core
-Given runtime capacity configuration is present as typed `ShardConfig` or typed capacity values
-When runtime admission evaluates aggregate budget
-Then it performs no JSON, YAML, HTTP, or string-command parsing in the runtime core.
-
-## 12. Proof Obligations
-
-- Unit proof: every aggregate constructor rejects overflow and policy violations with exact error variants.
-- Unit proof: capacity equality succeeds and capacity greater-than succeeds for every dimension.
-- Unit proof: capacity less-than by one fails for every dimension.
-- Unit proof: usage add/subtract round-trips exactly for a valid reservation.
-- Unit proof: release of a missing or oversized reservation fails without underflow.
-- Integration proof: `CompiledWorkflow::try_from_parts` still rejects workflows whose computed `WholeWorkflowBudget` exceeds `BoundednessPolicy`.
-- Runtime proof: admission rejection leaves `Shard::runs.len()` and active usage unchanged.
-- Runtime proof: successful admission records enough information to release the exact reservation on finish/fail/cancel.
-- Static proof: implementation contains no `unsafe`, `unwrap`, `expect`, `panic`, `todo`, `unimplemented`, `dbg`, unchecked indexing, unchecked slicing, unchecked casts, or unchecked arithmetic.
-- CI proof: final implementation runs `moon ci` successfully.
-
-## 13. Out-of-Scope Boundaries
-
-- Do not implement production code as part of this bead state.
-- Do not design YAML, JSON, HTTP, or CLI parsing for aggregate budgets.
-- Do not change authoring-language syntax.
-- Do not add generated Rust lowering for the aggregate model in this bead.
-- Do not introduce distributed/multi-server global capacity coordination.
-- Do not make performance claims without benchmark evidence.
-- Do not replace existing artifact/capability admission behavior except to compose budget checks with it.
-
-## 14. Risk Notes
-
-- Existing `budget.rs` uses some saturating conversions and `unwrap_or` fallback patterns; implementation must avoid silent saturation for aggregate capacity accounting unless explicitly retained for cold diagnostics and proven harmless.
-- Runtime currently admits based on artifact presence and capabilities; adding capacity reservation risks partial-admission leaks unless reservation ordering and rollback are specified and tested.
-- Per-shard capacity may surprise operators if runtime-level capacity is expected; documentation must name the scope of each capacity value.
-- Duplicating budget types in runtime would create drift; adapters must be lossless and thin.
-- Result bytes, journal batch bytes, and queue depth may be enforced at multiple layers; aggregate admission must not contradict write-boundary checks.
-- Relaxed policy is useful for tests, but must not become an unbounded-resource bypass in production.
+- BH-BUD-01: u32 saturation — addressed by `validate_step_ceilings` with `HARD_MAX_STEP_BUDGET_PER_TICK` and `HARD_MAX_TRANSITIONS_PER_TICK` hard limits; overflow returns `StepCeilingExceeded` or `PerTickCeilingExceeded`.
+- BH-BUD-02: `max_run_time_seconds` hardcoded to 0 — fixed in `from_whole_workflow_budget`; sourced from `WholeWorkflowBudget.max_run_time_seconds`.
+- BH-BUD-03: information loss — all `from_whole_workflow_budget` conversions use exact integer narrowing; overflow returns `AggregateBudgetError::Overflow`.
+- BH-BUD-06: saturating_add inconsistency — `add_dim` uses `checked_add` only; no `saturating_add` anywhere in budget arithmetic.
+- BH-BUD-07: gather_items saturating — `gather_items` dimension uses `checked_add`/`checked_sub`; overflow returns `Overflow { "max_gather_items" }`.

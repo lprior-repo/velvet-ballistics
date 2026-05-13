@@ -1,59 +1,274 @@
-# Codebase Map: vb-qi37.2.1
+# Codebase Map — vb-qi37.2.1
 
-Bead: `vb-qi37.2.1`
-Title: `runtime: Define aggregate resource budget model`
-State: 2 artifact retry
+## Bead Identity
 
-## Relevant Files
+| Field | Value |
+|-------|-------|
+| bead_id | vb-qi37.2.1 |
+| title | runtime: Define aggregate resource budget model |
+| phase | 2 |
+| source_checkout | /home/lewis/src/Velvet-ballistics |
+| isolated_workspace | /home/lewis/src/vb-qi37-2-1 |
 
-- `crates/vb_core/src/budget.rs`: Existing core resource-budget value types and budget arithmetic are likely here. Treat this as the primary domain-language source for budget limits, resource dimensions, validation helpers, and any checked math patterns.
-- `crates/vb_core/src/workflow/mod.rs`: Workflow model entrypoint. Inspect for workflow-level metadata or resource declarations that an aggregate resource budget model must consume.
-- `crates/vb_core/src/validation/resource.rs`: Existing validation layer for resource-related constraints. Likely home for structural checks that reject invalid per-node or per-workflow resource budgets.
-- `crates/vb_core/src/engine/tests/integration_budget.rs`: Existing behavioral coverage for budget enforcement. Reuse scenario style and fixtures for aggregate budget contract tests.
-- `crates/vb_runtime/src/shard/types.rs`: Runtime shard resource/accounting types. Suspected touchpoint for shard-local budget totals and admission decisions.
-- `crates/vb_runtime/src/runtime.rs`: Runtime orchestration entrypoint. Suspected touchpoint for propagating aggregate limits into admission, scheduling, or execution contexts.
-- `crates/vb_runtime/src/admission.rs`: Admission-control logic. Primary runtime enforcement touchpoint for rejecting workloads that exceed aggregate resource budget.
-- `velvet-ballistics-MASTER.md`: Authoritative architecture and acceptance contract. Use it to confirm naming, phase scope, constraints, and whether aggregate budget behavior belongs in core model, runtime admission, or both.
+## Scope Summary
 
-## Patterns To Reuse
+Design and implement whole-workflow resource accounting that composes primitive costs across nested collect, reduce, repeat, together, waits, asks, and actions. `ResourceContract` has safe non-unbounded defaults; aggregate budgets computed before admission; nested composition cannot bypass caps.
 
-- Keep budget semantics in `vb_core` as pure domain/data logic; keep runtime enforcement in `vb_runtime` admission/orchestration.
-- Prefer checked arithmetic and explicit fallible constructors over implicit primitive math. Repository rules prohibit unchecked arithmetic, casts, indexing, and panic paths.
-- Reuse existing resource validation error style from `crates/vb_core/src/validation/resource.rs` instead of introducing a parallel error vocabulary.
-- Reuse existing budget test fixture style from `crates/vb_core/src/engine/tests/integration_budget.rs` for Given/When/Then-style aggregate scenarios.
-- Keep generated/maxperf runtime constraints in mind: no YAML, JSON, or HTTP dependencies in runtime core; aggregate budget model should remain typed Rust data, not dynamic config parsing.
-- Preserve crate naming conventions from `AGENTS.md`: package/product `velvet-ballastics`, crate/module `velvet_ballastics`; do not introduce `velvet-ballistics` names except where already externally fixed.
+Risk level: **critical** (resource safety)
+Required verifier modes: **type-level resource boundedness proof**, **integration tests for budget enforcement**
 
-## Suspected Touchpoints
+---
 
-- `vb_core::budget`: Define or extend an aggregate resource budget type that can represent the sum/limit across workflow resources without runtime-specific dependencies.
-- `vb_core::workflow`: Attach or expose aggregate budget requirements from workflow definitions if not already present.
-- `vb_core::validation::resource`: Validate aggregate budget invariants, including non-zero/finite limits, no overflow when combining resources, and consistency between per-resource and aggregate constraints.
-- `vb_runtime::admission`: Compare requested aggregate budget against runtime/shard capacity before execution starts.
-- `vb_runtime::shard::types`: Represent available capacity, reserved capacity, or per-shard budget snapshots in terms compatible with the core aggregate model.
-- `vb_runtime::runtime`: Wire validated aggregate budget data into admission without duplicating validation logic.
+## Key Crates and Files
 
-## Test Locations
+### vb_core (pure core, no runtime dependencies)
 
-- Add/extend core integration coverage in `crates/vb_core/src/engine/tests/integration_budget.rs` for aggregate construction, validation success, validation failure, and checked-combine behavior.
-- Add runtime admission tests near `crates/vb_runtime/src/admission.rs` if existing inline/module tests are present, or in the runtime test directory if the crate already uses external integration tests.
-- Cover edge cases: aggregate exactly equals capacity, aggregate exceeds capacity by one unit, multiple resource dimensions combine safely, overflow/invalid totals fail deterministically, and missing aggregate data follows the intended default from the contract.
-- Use `moon ci` as the final canonical gate after implementation, with targeted Cargo tests only as faster local feedback.
+| File | Key Types/Functions |
+|------|---------------------|
+| `crates/vb_core/src/budget.rs` | `WholeWorkflowBudget`, `BoundednessPolicy`, `AggregateResourceBudget`, `AggregateResourceCapacity`, `AggregateResourceUsage`, `AggregateReservation`, `AggregateBudgetError`, `validate_aggregate_budget()`, `validate_step_ceilings()` |
+| `crates/vb_core/src/workflow/mod.rs` | `CompiledWorkflow`, `ResourceContract`, `WorkflowParts`, `CompiledNodeKind`, `WorkflowError` |
+| `crates/vb_core/src/validation/resource.rs` | `validate_resource_contract()`, `validate_resource_counts()` (structural validation layer, no runtime deps) |
+| `crates/vb_core/src/policy.rs` | `RuntimePolicy` enum (Strict, Journaled, Relaxed) |
+| `crates/vb_core/src/ids/mod.rs` | `RunId`, `StepIdx`, `WorkflowDigest` |
+| `crates/vb_core/src/budget/tests.rs` | Comprehensive unit tests including blackhat adversarial cases (BH-BUD-01 through BH-BUD-13) |
 
-## Risks And Dependencies
+### vb_runtime (runtime shell)
 
-- The domain/runtime boundary can drift if runtime defines separate aggregate budget types. Prefer one core model plus runtime adapters/conversions where necessary.
-- Overflow risk is central: aggregate budget summation must not use unchecked `+`, casts, indexing, or assumptions about resource vector shape.
-- Admission behavior may depend on shard capacity definitions in `crates/vb_runtime/src/shard/types.rs`; contract should specify whether aggregate budget is global, per-shard, or both.
-- Existing budget tests may validate per-task budgets only. Aggregate semantics need explicit scenarios to avoid silently accepting overcommitted workflows.
-- The master document is authoritative; if inspected code and docs disagree, rust-contract should record the discrepancy before implementation.
-- Repository rules ban `unwrap`, `expect`, `panic`, `todo`, `unimplemented`, `dbg`, and `unsafe`; contract and later implementation should include these as acceptance constraints.
+| File | Key Types/Functions |
+|------|---------------------|
+| `crates/vb_runtime/src/admission.rs` | `admit_run_with_budget()`, `RunAdmission`, `AdmissionError::ResourceCapacityExceeded`, `ArtifactStore`, `AcceptedArtifactStore` |
+| `crates/vb_runtime/src/shard/types.rs` | `Shard`, `ShardConfig`, `RunState` (with `admission: Option<RunAdmission>`), `ShardStatus` |
+| `crates/vb_runtime/src/lib.rs` | Runtime library root |
 
-## Next-State Notes For rust-contract
+---
 
-- Define the aggregate resource budget contract before implementation: inputs, invariants, error cases, and where enforcement occurs.
-- Clarify whether aggregate budget is computed from child budgets, declared explicitly, or both with parity validation.
-- Specify capacity comparison semantics: `requested <= available` should admit, `requested > available` should reject with a typed error.
-- Specify dimensionality rules: missing resource dimensions, duplicate dimensions, zero limits, and unknown dimensions need deterministic behavior.
-- Specify overflow behavior: any aggregate sum overflow must return a validation/admission error, never wrap or saturate silently unless the master contract explicitly requires saturation.
-- Include BDD scenarios for validation and runtime admission so later State 3/implementation can prove behavior end-to-end.
+## Core Domain Types (Exact Paths)
+
+### Aggregate Budget Types (`crates/vb_core/src/budget.rs`)
+
+```rust
+// Line 287-307: Aggregate budget for runtime admission
+pub struct AggregateResourceBudget {
+    pub max_steps_executable: u32,
+    pub max_action_tickets: u32,
+    pub max_parallel_in_flight: u16,
+    pub max_retries_per_action: u16,
+    pub max_gather_pages: u32,
+    pub max_gather_items: u32,
+    pub max_for_each_iterations: u32,
+    pub max_together_branches: u16,
+    pub max_repeat_attempts: u16,
+    pub max_run_time_seconds: u64,
+    pub max_result_bytes: u32,
+    pub max_total_slots_written: u32,
+    pub max_queue_depth: u32,
+    pub max_journal_batch_bytes: u32,
+    pub max_step_budget_per_tick: u64,
+    pub max_transitions_per_tick: u64,
+}
+
+// Line 310-326: Shard-local aggregate admission capacity
+pub struct AggregateResourceCapacity { /* same dimensions as budget, u64 widths */ }
+
+// Line 329-345: Active shard aggregate usage snapshot
+pub struct AggregateResourceUsage { /* same dimensions as capacity */ }
+
+// Line 348-352: Exact budget reservation associated with a run
+pub struct AggregateReservation {
+    pub run: RunId,
+    pub requested: AggregateResourceBudget,
+}
+
+// Line 355-390: Aggregate resource-accounting failure
+pub enum AggregateBudgetError {
+    WorkflowBudget(WorkflowError),
+    PolicyExceeded { resource: &'static str, actual: u64, limit: u64 },
+    CapacityExceeded { resource: &'static str, requested: u64, available: u64 },
+    Overflow { resource: &'static str },
+    Underflow { resource: &'static str },
+    InvalidCapacity { resource: &'static str },
+    ReservationNotFound { run: RunId },
+    StepCeilingExceeded { requested: u64, limit: u64 },
+    PerTickCeilingExceeded { requested: u64, limit: u64 },
+}
+```
+
+### ResourceContract (`crates/vb_core/src/workflow/mod.rs`, line 172-209)
+
+```rust
+pub struct ResourceContract {
+    pub max_steps: u16,
+    pub max_slots: u16,
+    pub max_constants: u16,
+    pub max_accessors: u16,
+    pub max_expressions: u16,
+    pub max_expr_stack: u8,
+    pub max_step_budget_per_tick: u64,
+    pub max_transitions_per_tick: u64,
+    pub max_input_bytes: u32,
+    pub max_output_bytes: u32,
+    pub max_blob_bytes: u64,
+    pub max_ipc_payload_bytes: u32,
+    pub max_retry_attempts: u16,
+    pub max_fanout: u16,
+    pub max_collect_items: u32,
+    pub max_queue_depth: u32,
+    pub max_journal_batch_bytes: u32,
+    pub allows_secret_results: bool,
+}
+```
+
+### Admission (`crates/vb_runtime/src/admission.rs`)
+
+```rust
+// Line 59-71: RunAdmission record
+pub struct RunAdmission {
+    artifact_digest: WorkflowDigest,
+    run_id: RunId,
+    granted_capabilities: CapabilitySet,
+    policy: RuntimePolicy,
+    budget: Option<AggregateResourceBudget>,  // Carries aggregate budget when budget admission used
+}
+
+// Line 91-105: Constructor with budget
+pub fn with_budget(...) -> Self
+
+// Line 444-471: Main admission function with budget checking
+pub fn admit_run_with_budget(
+    store: &dyn ArtifactStore,
+    policy: RuntimePolicy,
+    digest: WorkflowDigest,
+    run_id: RunId,
+    caps: CapabilitySet,
+    requested: AggregateResourceBudget,
+    available: AggregateResourceCapacity,
+) -> Result<RunAdmission, AdmissionError>
+
+// Line 139-186: AdmissionError including ResourceCapacityExceeded
+pub enum AdmissionError {
+    ResourceCapacityExceeded { resource: &'static str, requested: u64, available: u64 },
+    // ... other variants
+}
+```
+
+---
+
+## Key Methods on AggregateResourceBudget
+
+**Lines 392-428**: `AggregateResourceBudget` constructors:
+- `from_workflow(workflow: &CompiledWorkflow) -> Result<Self, AggregateBudgetError>` — walks IR, computes `WholeWorkflowBudget`, validates step ceilings
+- `from_whole_workflow_budget(budget, contract) -> Result<Self, AggregateBudgetError>` — converts whole-workflow budget plus contract fields
+
+**Lines 431-624**: `AggregateResourceUsage` methods:
+- `try_add_budget(&self, budget: &AggregateResourceBudget) -> Result<Self, AggregateBudgetError>` — checked addition, returns Overflow on failure
+- `try_subtract_budget(&self, budget: &AggregateResourceBudget) -> Result<Self, AggregateBudgetError>` — checked subtraction, returns Underflow on failure
+- `fits_within(&self, capacity: &AggregateResourceCapacity) -> Result<(), AggregateBudgetError>` — capacity comparison, returns CapacityExceeded on failure
+
+**Lines 627-740**: `validate_aggregate_budget(budget, policy) -> Result<(), AggregateBudgetError>` — validates against `BoundednessPolicy`
+
+**Lines 703-740**: `validate_step_ceilings(budget) -> Result<(), AggregateBudgetError>` — validates `max_step_budget_per_tick` and `max_transitions_per_tick` against hard limits (1_000_000 each)
+
+---
+
+## Existing Tests
+
+### budget/tests.rs
+- Unit tests for `WholeWorkflowBudget::compute()` (linear, branching, nested loops, fanout)
+- Unit tests for `BoundednessPolicy::validate()`
+- Unit tests for `StepBudget` (creation, consumption, exhaustion)
+- BLACKHAT adversarial tests BH-BUD-01 through BH-BUD-13 documenting known issues:
+  - BH-BUD-01: `max_steps_executable` silent saturation (u32::MAX)
+  - BH-BUD-02: `max_run_time_seconds` hardcoded to 0
+  - BH-BUD-03: `From<WorkflowError>` loses information
+  - BH-BUD-04: ForEach limit=0 counts as 1 iteration
+  - BH-BUD-05: Step count overflow uses misleading error variant
+  - BH-BUD-06: `action_tickets` saturating_add hides overflow
+  - BH-BUD-07: `gather_items` saturating_add accumulation
+  - BH-BUD-08: `retries_per_action` copied from contract not computed
+  - BH-BUD-09: forward jump does not trigger cycle detection
+  - BH-BUD-10: policy boundary exact vs over
+  - BH-BUD-11: StepBudget clamping is silent
+  - BH-BUD-12: self-referencing loop body graceful handling
+  - BH-BUD-13: ReduceStart uses MAX_LIST_ITEMS_PER_VALUE iterations
+
+### admission.rs tests (line 523-748)
+- Unit tests for `RunAdmission`, `AdmissionError`
+- Tests for `admit_run` (Strict, Journaled, Relaxed)
+- Tests for `check_capability` (granted, denied, hierarchical grants)
+
+---
+
+## Architecture Boundaries
+
+1. **`vb_core::budget`** — Pure, deterministic budget value types, checked arithmetic, policy validation. No runtime, storage, HTTP, JSON, YAML, or allocation-heavy config parsing dependencies.
+
+2. **`vb_core::workflow`** — `CompiledWorkflow` exposes `resource_contract()` and `to_parts()`. `ResourceContract` structurally covers nodes, slots, constants, expressions, accessors, expression stack, fanout, and output bytes.
+
+3. **`vb_core::validation::resource`** — Structural validation layer for resource contracts. Does NOT have runtime dependencies.
+
+4. **`vb_runtime::admission`** — Performs admission decisions against artifact presence, capabilities, and aggregate capacity. Uses core budget/domain types.
+
+5. **`vb_runtime::shard::types`** — May carry capacity snapshots or reservation state but uses core budget/domain types (not parallel budget dimensions).
+
+---
+
+## Open Questions (from contract.md)
+
+1. Should aggregate capacity be configurable only through `ShardConfig`, or also through a runtime-level policy distributed evenly across shards?
+2. Should `RunAdmission` store the exact granted aggregate budget for audit/journal replay, or store only digest/run/capabilities/policy and rely on recomputation?
+3. Should `max_step_budget_per_tick` contribute to aggregate capacity, or remain an execution throttle separate from admission capacity?
+4. Should result bytes and journal batch bytes be reserved pessimistically at admission or checked at write boundaries only?
+
+---
+
+## Risk Tags
+
+| Tag | Description |
+|-----|-------------|
+| `resource-safety` | Aggregate budgets control run admission; overflow/underflow can cause unbounded resource usage |
+| `overflow` | Checked arithmetic required; `checked_add`/`checked_sub` already used in budget.rs |
+| `underflow` | Release/subtraction must not go negative |
+| `capacity-comparison` | `requested <= available` admits; `requested > available` rejects; equality admits |
+| `reservation-lifecycle` | Admission reserves, release must be exact and idempotent-safe |
+| `partial-admission-leak` | If reservation succeeds but subsequent admission fails, rollback must be correct |
+| `shard-scope` | Per-shard capacity is source of truth; global reporting sums shard snapshots |
+
+---
+
+## Recommended Downstream Owners
+
+- **Contract/Proof**: `rust-contract` skill, `proof-planner` skill — for proof obligation ledger
+- **Test**: `test-planner` skill, `test-writer` skill — for integration tests for budget enforcement
+- **Implementation**: `holzman-rust` skill — for NASA/JPL Power-of-Ten enforcement (no unsafe, unwrap, panic, todo)
+- **Verification**: `formal-verifier` skill — for type-level resource boundedness proof
+- **Review**: `black-hat-reviewer` skill — for adversarial review of overflow/underflow paths
+
+---
+
+## Verification Artifacts Present
+
+| Artifact | Path |
+|----------|------|
+| Contract | `.beads/vb-qi37.2.1/contract.md` |
+| Baseline Report | `.beads/vb-qi37.2.1/baseline-report.md` |
+| Implementation (partial) | `.beads/vb-qi37.2.1/implementation.md` |
+| Lean Contract | `.beads/vb-qi37.2.1/lean-contract.md` |
+| Proof Obligations | `.beads/vb-qi37.2.1/proof-obligations.jsonl` |
+| Test Plan | `.beads/vb-qi37.2.1/test-plan.md` |
+| Verification Layers | `.beads/vb-qi37.2.1/verification-layers.md` |
+| Traceability Matrix | `.beads/vb-qi37.2.1/traceability-matrix.jsonl` |
+| Red Phase | `.beads/vb-qi37.2.1/red-phase.md` |
+| Test Plan Review | `.beads/vb-qi37.2.1/test-plan-review.md` |
+| Martin Fowler Tests | `.beads/vb-qi37.2.1/martin-fowler-tests.md` |
+| Manual QA Smoke | `.beads/vb-qi37.2.1/manual-qa-smoke.md` |
+
+---
+
+## Excluded/Out-of-Scope
+
+- Production code edits (this is artifact-writing scout phase)
+- YAML, JSON, HTTP, or CLI parsing for aggregate budgets
+- Generated Rust lowering for the aggregate model
+- Distributed/multi-server global capacity coordination
+- Performance claims without benchmark evidence
+- Replacing existing artifact/capability admission behavior (only composing budget checks with it)
