@@ -13,5 +13,8 @@ pub use core::{eval_expr, eval_expr_with_store};
 #[cfg(kani)]
 mod kani_stack;
 
+#[cfg(kani)]
+mod kani_div_zero;
+
 #[cfg(test)]
 mod tests;
