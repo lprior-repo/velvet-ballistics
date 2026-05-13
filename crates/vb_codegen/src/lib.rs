@@ -297,9 +297,22 @@ pub fn emit_drive_function(out: &mut String, workflow: &CompiledWorkflow) -> Cod
     )
     .map_err(fmt_err)?;
     writeln!(out, "    let mut pc: u16 = {};", workflow.entry().get()).map_err(fmt_err)?;
+    writeln!(
+        out,
+        "    let mut step_budget_remaining: u64 = CONTRACT_MAX_STEP_BUDGET_PER_TICK;"
+    )
+    .map_err(fmt_err)?;
     writeln!(out, "    let mut list_store = ListStore::new();").map_err(fmt_err)?;
     writeln!(out, "    let mut object_store = ObjectStore::new();").map_err(fmt_err)?;
     writeln!(out, "    loop {{").map_err(fmt_err)?;
+    writeln!(out, "        if step_budget_remaining == 0 {{").map_err(fmt_err)?;
+    writeln!(
+        out,
+        "            return Err(DriveError::StepBudgetExhausted);"
+    )
+    .map_err(fmt_err)?;
+    writeln!(out, "        }}").map_err(fmt_err)?;
+    writeln!(out, "        step_budget_remaining = step_budget_remaining.checked_sub(1).ok_or(DriveError::StepBudgetExhausted)?;").map_err(fmt_err)?;
     writeln!(out, "        let outcome = match pc {{").map_err(fmt_err)?;
     for step_idx in 0..workflow.node_count() {
         writeln!(
@@ -522,7 +535,7 @@ fn emit_copy_step(
     if let Some(output_slot) = output {
         writeln!(
             out,
-            "    let copied = read_slot_optional(slots, {});\n    let copied_taint = read_taint(slot_taints, {})?;\n    write_slot_with_taint(slots, slot_taints, {}, copied, copied_taint)?;",
+            "    let copied = read_slot_optional(slots, {})?;\n    let copied_taint = read_taint(slot_taints, {})?;\n    write_slot_with_taint(slots, slot_taints, {}, copied, copied_taint)?;",
             source.get(),
             source.get(),
             output_slot.get()
@@ -880,32 +893,56 @@ fn emit_for_each_step_body(out: &mut String, node: &CompiledNode) -> CodegenResu
             limit,
             body,
             done,
-        } => emit_for_each_start_step(out, *input, *item_slot, *limit, *body, *done, node.output),
+        } => emit_for_each_start_step(
+            out,
+            ForEachStartEmit {
+                step: node.id,
+                input: *input,
+                item_slot: *item_slot,
+                limit: *limit,
+                body: *body,
+                done: *done,
+                output: node.output,
+            },
+        ),
         CompiledNodeKind::ForEachNext {
             iterator_slot,
             body,
             done,
-        } => emit_for_each_next_step(out, *iterator_slot, *body, *done, node.output),
+        } => emit_for_each_next_step(out, node.id, *iterator_slot, *body, *done, node.output),
         CompiledNodeKind::ForEachJoin { output } => {
-            emit_for_each_join_step(out, *output, node.output, node.next)
+            emit_for_each_join_step(out, node.id, *output, node.output, node.next)
         }
         _ => emit_unsupported_step(out, "UnsupportedStep"),
     }
 }
 
-fn emit_for_each_start_step(
-    out: &mut String,
+#[derive(Clone, Copy)]
+struct ForEachStartEmit {
+    step: StepIdx,
     input: SlotIdx,
     item_slot: SlotIdx,
     limit: u32,
     body: StepIdx,
     done: StepIdx,
     output: Option<SlotIdx>,
-) -> CodegenResult<()> {
-    let Some(iterator_slot) = output else {
-        return writeln!(out, "    Err(DriveError::MissingOutputSlot)").map_err(fmt_err);
+}
+
+fn emit_for_each_start_step(out: &mut String, spec: ForEachStartEmit) -> CodegenResult<()> {
+    let Some(iterator_slot) = spec.output else {
+        return writeln!(
+            out,
+            "    Err(DriveError::MissingOutputSlot {{ step: {} }})",
+            spec.step.get()
+        )
+        .map_err(fmt_err);
     };
-    writeln!(out, "    let _input = read_slot(slots, {})?;", input.get()).map_err(fmt_err)?;
+    writeln!(
+        out,
+        "    let _input = read_slot(slots, {})?;",
+        spec.input.get()
+    )
+    .map_err(fmt_err)?;
     writeln!(out, "    let _list = expect_list_value(_input)?;").map_err(fmt_err)?;
     writeln!(
         out,
@@ -914,7 +951,8 @@ fn emit_for_each_start_step(
     .map_err(fmt_err)?;
     writeln!(
         out,
-        "    if _item_count > {limit} {{ return Err(DriveError::IterationLimitExceeded {{ resource: \"for_each_limit\" }}); }}"
+        "    if _item_count > {} {{ return Err(DriveError::IterationLimitExceeded {{ resource: \"for_each_limit\" }}); }}",
+        spec.limit
     )
     .map_err(fmt_err)?;
     writeln!(out, "    if _item_count == 0 {{").map_err(fmt_err)?;
@@ -932,7 +970,7 @@ fn emit_for_each_start_step(
     writeln!(
         out,
         "        return Ok(StepOutcome::Continue({}));",
-        done.get()
+        spec.done.get()
     )
     .map_err(fmt_err)?;
     writeln!(out, "    }}").map_err(fmt_err)?;
@@ -944,7 +982,7 @@ fn emit_for_each_start_step(
     writeln!(
         out,
         "    write_slot(slots, {}, Some(_first))?;",
-        item_slot.get()
+        spec.item_slot.get()
     )
     .map_err(fmt_err)?;
     writeln!(out, "    let _tail = tail_list_handle(list_store, _list)?;").map_err(fmt_err)?;
@@ -954,18 +992,24 @@ fn emit_for_each_start_step(
         iterator_slot.get()
     )
     .map_err(fmt_err)?;
-    emit_continue_step(out, body)
+    emit_continue_step(out, spec.body)
 }
 
 fn emit_for_each_next_step(
     out: &mut String,
+    step: StepIdx,
     iterator_slot: SlotIdx,
     body: StepIdx,
     done: StepIdx,
     output: Option<SlotIdx>,
 ) -> CodegenResult<()> {
     let Some(item_output) = output else {
-        return writeln!(out, "    Err(DriveError::MissingOutputSlot)").map_err(fmt_err);
+        return writeln!(
+            out,
+            "    Err(DriveError::MissingOutputSlot {{ step: {} }})",
+            step.get()
+        )
+        .map_err(fmt_err);
     };
     writeln!(
         out,
@@ -1010,12 +1054,18 @@ fn emit_for_each_next_step(
 
 fn emit_for_each_join_step(
     out: &mut String,
+    step: StepIdx,
     materialized: SlotIdx,
     output: Option<SlotIdx>,
     next: Option<StepIdx>,
 ) -> CodegenResult<()> {
     let Some(output_slot) = output else {
-        return writeln!(out, "    Err(DriveError::MissingOutputSlot)").map_err(fmt_err);
+        return writeln!(
+            out,
+            "    Err(DriveError::MissingOutputSlot {{ step: {} }})",
+            step.get()
+        )
+        .map_err(fmt_err);
     };
     writeln!(
         out,
@@ -1102,6 +1152,20 @@ pub fn emit_expr_function(
     workflow: &CompiledWorkflow,
 ) -> CodegenResult<()> {
     let Some(program) = workflow.expression(expr_idx) else {
+        writeln!(
+            out,
+            "fn eval_expr_{}(_slots: &[Option<SlotValue>; WORKFLOW_SLOT_COUNT], _slot_taints: &[Taint; WORKFLOW_SLOT_COUNT], _list_store: &mut ListStore, _object_store: &mut ObjectStore) -> Result<(SlotValue, Taint), DriveError> {{",
+            expr_idx.get()
+        )
+        .map_err(fmt_err)?;
+        writeln!(
+            out,
+            "    Err(DriveError::ExprOutOfBounds {{ expr: {} }})",
+            expr_idx.get()
+        )
+        .map_err(fmt_err)?;
+        writeln!(out, "}}").map_err(fmt_err)?;
+        writeln!(out).map_err(fmt_err)?;
         return Ok(());
     };
 
@@ -2004,7 +2068,11 @@ fn write_header(out: &mut String) -> CodegenResult<()> {
     writeln!(out, "pub enum DriveError {{").map_err(fmt_err)?;
     writeln!(out, "    InvalidProgramCounter,").map_err(fmt_err)?;
     writeln!(out, "    MissingNextStep,").map_err(fmt_err)?;
-    writeln!(out, "    MissingOutputSlot,").map_err(fmt_err)?;
+    writeln!(out, "    MissingOutputSlot {{ step: u16 }},").map_err(fmt_err)?;
+    writeln!(out, "    SlotOutOfBounds {{ slot: u16 }},").map_err(fmt_err)?;
+    writeln!(out, "    ExprOutOfBounds {{ expr: u16 }},").map_err(fmt_err)?;
+    writeln!(out, "    StepBudgetExhausted,").map_err(fmt_err)?;
+    writeln!(out, "    TaintViolation {{ step: u16 }},").map_err(fmt_err)?;
     writeln!(out, "    SlotNull,").map_err(fmt_err)?;
     writeln!(out, "    NoBranchMatched,").map_err(fmt_err)?;
     writeln!(out, "    ExpressionStackOverflow {{ max: u8 }},").map_err(fmt_err)?;

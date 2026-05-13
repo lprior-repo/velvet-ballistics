@@ -533,18 +533,24 @@ fn checked_offset_index(start: u32, cursor: usize, error: DriveError) -> Result<
 }
 
 fn read_slot(slots: &[Option<SlotValue>; WORKFLOW_SLOT_COUNT], slot: u16) -> Result<SlotValue, DriveError> {
-    read_slot_optional(slots, slot).ok_or(DriveError::SlotNull)
+    match read_slot_optional(slots, slot)? {
+        Some(value) => Ok(value),
+        None => Err(DriveError::SlotNull),
+    }
 }
 
-fn read_slot_optional(slots: &[Option<SlotValue>; WORKFLOW_SLOT_COUNT], slot: u16) -> Option<SlotValue> {
-    slots.get(usize::from(slot)).copied().flatten()
+fn read_slot_optional(slots: &[Option<SlotValue>; WORKFLOW_SLOT_COUNT], slot: u16) -> Result<Option<SlotValue>, DriveError> {
+    slots
+        .get(usize::from(slot))
+        .copied()
+        .ok_or(DriveError::SlotOutOfBounds { slot })
 }
 
 fn read_taint(slot_taints: &[Taint; WORKFLOW_SLOT_COUNT], slot: u16) -> Result<Taint, DriveError> {
     slot_taints
         .get(usize::from(slot))
         .copied()
-        .ok_or(DriveError::InvalidCompiledWorkflow { reason: "slot taint index out of bounds" })
+        .ok_or(DriveError::SlotOutOfBounds { slot })
 }
 
 fn write_slot(
@@ -557,7 +563,7 @@ fn write_slot(
             *target = value;
             Ok(())
         }
-        None => Err(DriveError::InvalidCompiledWorkflow { reason: "slot index out of bounds" }),
+        None => Err(DriveError::SlotOutOfBounds { slot }),
     }
 }
 
@@ -568,12 +574,15 @@ fn write_slot_with_taint(
     value: Option<SlotValue>,
     taint: Taint,
 ) -> Result<(), DriveError> {
-    write_slot(slots, slot, value)?;
-    match slot_taints.get_mut(usize::from(slot)) {
-        Some(target) => {
-            *target = taint;
+    match (
+        slots.get_mut(usize::from(slot)),
+        slot_taints.get_mut(usize::from(slot)),
+    ) {
+        (Some(target), Some(target_taint)) => {
+            *target = value;
+            *target_taint = taint;
             Ok(())
         }
-        None => Err(DriveError::InvalidCompiledWorkflow { reason: "slot taint index out of bounds" }),
+        (_, _) => Err(DriveError::SlotOutOfBounds { slot }),
     }
 }

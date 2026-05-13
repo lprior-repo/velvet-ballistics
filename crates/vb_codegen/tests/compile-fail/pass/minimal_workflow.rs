@@ -23,7 +23,11 @@ fn join_taints(values: &[Taint]) -> Taint { values.iter().copied().fold(Taint::C
 pub enum DriveError {
     InvalidProgramCounter,
     MissingNextStep,
-    MissingOutputSlot,
+    MissingOutputSlot { step: u16 },
+    SlotOutOfBounds { slot: u16 },
+    ExprOutOfBounds { expr: u16 },
+    StepBudgetExhausted,
+    TaintViolation { step: u16 },
     SlotNull,
     NoBranchMatched,
     ExpressionStackOverflow { max: u8 },
@@ -715,18 +719,24 @@ fn checked_offset_index(start: u32, cursor: usize, error: DriveError) -> Result<
 }
 
 fn read_slot(slots: &[Option<SlotValue>; WORKFLOW_SLOT_COUNT], slot: u16) -> Result<SlotValue, DriveError> {
-    read_slot_optional(slots, slot).ok_or(DriveError::SlotNull)
+    match read_slot_optional(slots, slot)? {
+        Some(value) => Ok(value),
+        None => Err(DriveError::SlotNull),
+    }
 }
 
-fn read_slot_optional(slots: &[Option<SlotValue>; WORKFLOW_SLOT_COUNT], slot: u16) -> Option<SlotValue> {
-    slots.get(usize::from(slot)).copied().flatten()
+fn read_slot_optional(slots: &[Option<SlotValue>; WORKFLOW_SLOT_COUNT], slot: u16) -> Result<Option<SlotValue>, DriveError> {
+    slots
+        .get(usize::from(slot))
+        .copied()
+        .ok_or(DriveError::SlotOutOfBounds { slot })
 }
 
 fn read_taint(slot_taints: &[Taint; WORKFLOW_SLOT_COUNT], slot: u16) -> Result<Taint, DriveError> {
     slot_taints
         .get(usize::from(slot))
         .copied()
-        .ok_or(DriveError::InvalidCompiledWorkflow { reason: "slot taint index out of bounds" })
+        .ok_or(DriveError::SlotOutOfBounds { slot })
 }
 
 fn write_slot(
@@ -739,7 +749,7 @@ fn write_slot(
             *target = value;
             Ok(())
         }
-        None => Err(DriveError::InvalidCompiledWorkflow { reason: "slot index out of bounds" }),
+        None => Err(DriveError::SlotOutOfBounds { slot }),
     }
 }
 
@@ -750,13 +760,16 @@ fn write_slot_with_taint(
     value: Option<SlotValue>,
     taint: Taint,
 ) -> Result<(), DriveError> {
-    write_slot(slots, slot, value)?;
-    match slot_taints.get_mut(usize::from(slot)) {
-        Some(target) => {
-            *target = taint;
+    match (
+        slots.get_mut(usize::from(slot)),
+        slot_taints.get_mut(usize::from(slot)),
+    ) {
+        (Some(target), Some(target_taint)) => {
+            *target = value;
+            *target_taint = taint;
             Ok(())
         }
-        None => Err(DriveError::InvalidCompiledWorkflow { reason: "slot taint index out of bounds" }),
+        (_, _) => Err(DriveError::SlotOutOfBounds { slot }),
     }
 }
 
@@ -808,9 +821,14 @@ const CONSTANTS: [SlotValue; 1] = [
 pub fn drive(mut slots: [Option<SlotValue>; 1]) -> Result<SlotValue, DriveError> {
     let mut slot_taints = [Taint::Clean; WORKFLOW_SLOT_COUNT];
     let mut pc: u16 = 0;
+    let mut step_budget_remaining: u64 = CONTRACT_MAX_STEP_BUDGET_PER_TICK;
     let mut list_store = ListStore::new();
     let mut object_store = ObjectStore::new();
     loop {
+        if step_budget_remaining == 0 {
+            return Err(DriveError::StepBudgetExhausted);
+        }
+        step_budget_remaining = step_budget_remaining.checked_sub(1).ok_or(DriveError::StepBudgetExhausted)?;
         let outcome = match pc {
             0 => step_0(&mut slots, &mut slot_taints, &mut list_store, &mut object_store)?,
             1 => step_1(&mut slots, &mut slot_taints, &mut list_store, &mut object_store)?,
