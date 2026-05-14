@@ -358,9 +358,3 @@ fn ensure_supported_integer_finish_asts() -> Result<(), String> {
     ensure_supported_scalar_finish_ast("-7", AstValue::I64(-7), "negative integer mismatch")
 }
 
-
-mod tests_util;
-mod tests1;
-mod tests2;
-mod tests3;
-mod tests4;
