@@ -3,7 +3,7 @@
 use std::path::PathBuf;
 
 use proptest::prelude::*;
-use velvet_ballastics_workspace::boundary_inventory::{
+use crate::boundary_inventory::{
     BoundaryCandidate, BoundaryClass, BoundaryInventory, BoundaryInventoryError, BoundaryRecord,
     BoundaryRecordParts, EvidenceKind, EvidenceReference, EvidenceRequirement, FieldState,
     FreshnessMarker, Owner, ReviewStatus, ThreatStatement, WorkspaceRoot, classify_boundary,

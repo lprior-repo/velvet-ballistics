@@ -2914,6 +2914,7 @@ dependencies = [
  "postcard",
  "proptest",
  "saphyr",
+ "serde_json",
  "tempfile",
  "toml 0.9.12+spec-1.1.0",
  "vb_codegen",
