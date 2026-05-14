@@ -16,7 +16,7 @@
 use crate::events::YamlEvent;
 use crate::{YamlError, YamlLimits, YamlResult};
 
-use crate::profile_dupkeys::reject_duplicate_mapping_keys;
+use super::profile_dupkeys::reject_duplicate_mapping_keys;
 
 /// Validate that the given YAML text conforms to the strict profile.
 ///

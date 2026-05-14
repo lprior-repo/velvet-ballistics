@@ -3,7 +3,7 @@
 
 use crate::YamlResult;
 use crate::events::{EventSpan, YamlEvent};
-use crate::source_map_types::{SourceMap, SourceSpan};
+use super::source_map_types::{SourceMap, SourceSpan};
 
 /// Build a source map from YAML text by parsing the event stream.
 pub fn build_source_map(text: &str) -> YamlResult<SourceMap> {

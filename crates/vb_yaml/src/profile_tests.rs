@@ -1,12 +1,7 @@
 #![forbid(unsafe_code)]
 //! Profile module tests.
 
-use crate::profile_validation::{
-    validate_yaml_profile, validate_yaml_profile_with_limits, check_source_size,
-    reject_forbidden_features, reject_anchors_aliases_merges, reject_multiple_documents,
-    reject_yaml_1_1_ambiguous_scalars,
-};
-use crate::profile_dupkeys::reject_duplicate_keys;
+use super::*;
 use crate::{YamlError, YamlLimits};
 
 fn assertion_failed(_message: std::fmt::Arguments<'_>) -> bool {

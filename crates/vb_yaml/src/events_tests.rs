@@ -1,8 +1,7 @@
 #![forbid(unsafe_code)]
 //! Events module tests.
 
-use crate::events_types::{YamlEvent, ScalarStyle, EventSpan};
-use crate::events_conv::collect_events;
+use super::*;
 
 fn assertion_failed(_message: std::fmt::Arguments<'_>) -> bool {
     false

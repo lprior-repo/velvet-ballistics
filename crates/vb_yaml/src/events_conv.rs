@@ -2,7 +2,7 @@
 //! Event conversion and collection functions.
 
 use crate::{YamlError, YamlResult};
-use crate::events_types::{YamlEvent, EventSpan, ScalarStyle};
+use super::events_types::{YamlEvent, EventSpan, ScalarStyle};
 
 /// Collect all YAML events from the given source text.
 ///
