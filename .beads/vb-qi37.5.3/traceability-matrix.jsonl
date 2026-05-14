@@ -1,0 +1,16 @@
+{"contract_clause":"POST-01","tests":["TEST-POST-03","TEST-POST-04","PROPTEST-POST-01"],"proofs":["VERUS-POST-01","KANI-POST-05"],"review":"contract-verification-review.md"}
+{"contract_clause":"POST-02","tests":["TEST-POST-03"],"proofs":["VERUS-POST-02"],"review":"contract-verification-review.md"}
+{"contract_clause":"POST-03","tests":["TEST-POST-03"],"proofs":[],"review":"contract-verification-review.md"}
+{"contract_clause":"POST-04","tests":["TEST-POST-04"],"proofs":[],"review":"contract-verification-review.md"}
+{"contract_clause":"POST-05","tests":["TEST-POST-05","PROPTEST-INV-03"],"proofs":["KANI-POST-05","KANI-INV-05","MIRI-POST-06"],"review":"contract-verification-review.md"}
+{"contract_clause":"POST-06","tests":["TEST-POST-05"],"proofs":["MIRI-POST-06"],"review":"contract-verification-review.md"}
+{"contract_clause":"PRE-01","tests":["TEST-ERR-01"],"proofs":["KANI-POST-05"],"review":"contract-verification-review.md"}
+{"contract_clause":"PRE-02","tests":["TEST-ERR-01"],"proofs":["KANI-POST-05"],"review":"contract-verification-review.md"}
+{"contract_clause":"PRE-03","tests":["PROPTEST-POST-01"],"proofs":["VERUS-POST-01"],"review":"contract-verification-review.md"}
+{"contract_clause":"INV-01","tests":["PROPTEST-POST-01"],"proofs":["VERUS-INV-01"],"review":"contract-verification-review.md"}
+{"contract_clause":"INV-02","tests":["PROPTEST-POST-01"],"proofs":["VERUS-INV-02"],"review":"contract-verification-review.md"}
+{"contract_clause":"INV-03","tests":["PROPTEST-INV-03","TEST-POST-05"],"proofs":["VERUS-INV-03"],"review":"contract-verification-review.md"}
+{"contract_clause":"INV-04","tests":["TEST-POST-05"],"proofs":["MIRI-INV-04","LOOM-INV-04"],"review":"contract-verification-review.md"}
+{"contract_clause":"INV-05","tests":["TEST-INV-05"],"proofs":["KANI-INV-05"],"review":"contract-verification-review.md"}
+{"contract_clause":"ERR-01","tests":["TEST-ERR-01"],"proofs":["KANI-POST-05"],"review":"contract-verification-review.md"}
+{"contract_clause":"DEFERRED_GLOBAL","tests":[],"proofs":["DEFERRED-GLOBAL-01"],"review":"contract-verification-review.md"}

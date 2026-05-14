@@ -215,12 +215,12 @@ impl<'a> Lexer<'a> {
                 self.bump_current();
             }
             let text = self.slice(start, self.index)?;
-            let value = text
-                .parse::<f64>()
-                .map_err(|_| CompileError::ExpressionFloatOutOfRange {
-                    expression: Box::<str>::from(self.source),
-                    index: start,
-                })?;
+            let value =
+                text.parse::<f64>()
+                    .map_err(|_| CompileError::ExpressionFloatOutOfRange {
+                        expression: Box::<str>::from(self.source),
+                        index: start,
+                    })?;
             return self.push(TokenKind::Float(value), start);
         }
         let text = self.slice(start, self.index)?;
@@ -433,10 +433,11 @@ impl<'a> Parser<'a> {
         match self.current_kind() {
             TokenKind::Integer(value) => self.literal(ExpressionLiteral::I64(value)),
             TokenKind::Float(value) => {
-                let finite = FiniteF64::new(value).map_err(|_| CompileError::ExpressionFloatOutOfRange {
-                    expression: Box::<str>::from(self.source),
-                    index: self.current_index(),
-                })?;
+                let finite =
+                    FiniteF64::new(value).map_err(|_| CompileError::ExpressionFloatOutOfRange {
+                        expression: Box::<str>::from(self.source),
+                        index: self.current_index(),
+                    })?;
                 self.literal(ExpressionLiteral::F64(finite))
             }
             TokenKind::String(value) => self.literal(ExpressionLiteral::Text(value)),

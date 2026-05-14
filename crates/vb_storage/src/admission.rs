@@ -767,4 +767,922 @@ mod tests {
         assert_eq!(warning, back);
         Ok(())
     }
+
+    // =========================================================================
+    // VerificationProof idempotency fields — INV-05 unit tests
+    // =========================================================================
+
+    #[test]
+    fn verification_proof_idempotency_keyed_starts_empty() {
+        let digest = vb_core::WorkflowDigest::from_bytes([0u8; 32]);
+        let proof = VerificationProof::new(digest, 2, true);
+        assert!(
+            proof.idempotency_keyed.is_empty(),
+            "idempotency_keyed must start empty"
+        );
+    }
+
+    #[test]
+    fn verification_proof_idempotency_attested_starts_empty() {
+        let digest = vb_core::WorkflowDigest::from_bytes([0u8; 32]);
+        let proof = VerificationProof::new(digest, 2, true);
+        assert!(
+            proof.idempotency_attested.is_empty(),
+            "idempotency_attested must start empty"
+        );
+    }
+
+    #[test]
+    fn verification_proof_idempotency_keyed_can_be_populated() {
+        let digest = vb_core::WorkflowDigest::from_bytes([0u8; 32]);
+        let mut proof = VerificationProof::new(digest, 2, true);
+        let action_ids = vec![
+            vb_core::ActionId::new(1),
+            vb_core::ActionId::new(2),
+            vb_core::ActionId::new(3),
+        ];
+        proof.idempotency_keyed = action_ids.into_boxed_slice();
+        assert_eq!(proof.idempotency_keyed.len(), 3);
+        assert_eq!(proof.idempotency_keyed[0], vb_core::ActionId::new(1));
+        assert_eq!(proof.idempotency_keyed[2], vb_core::ActionId::new(3));
+    }
+
+    #[test]
+    fn verification_proof_idempotency_attested_can_be_populated() {
+        let digest = vb_core::WorkflowDigest::from_bytes([0u8; 32]);
+        let mut proof = VerificationProof::new(digest, 2, true);
+        let action_ids = vec![vb_core::ActionId::new(5), vb_core::ActionId::new(10)];
+        proof.idempotency_attested = action_ids.into_boxed_slice();
+        assert_eq!(proof.idempotency_attested.len(), 2);
+        assert_eq!(proof.idempotency_attested[0], vb_core::ActionId::new(5));
+    }
+
+    #[test]
+    fn verification_proof_idempotency_keyed_survives_serde() -> Result<(), String> {
+        let digest = vb_core::WorkflowDigest::from_bytes([0xabu8; 32]);
+        let mut proof = VerificationProof::new(digest, 3, true);
+        proof.idempotency_keyed = vec![
+            vb_core::ActionId::new(100),
+            vb_core::ActionId::new(200),
+            vb_core::ActionId::new(300),
+        ]
+        .into_boxed_slice();
+        let bytes = postcard::to_allocvec(&proof).map_err(|e| format!("serialize failed: {e}"))?;
+        let back: VerificationProof =
+            postcard::from_bytes(&bytes).map_err(|e| format!("deserialize failed: {e}"))?;
+        assert_eq!(back.idempotency_keyed.len(), 3);
+        assert_eq!(back.idempotency_keyed[0], vb_core::ActionId::new(100));
+        assert_eq!(back.idempotency_keyed[2], vb_core::ActionId::new(300));
+        Ok(())
+    }
+
+    #[test]
+    fn verification_proof_idempotency_attested_survives_serde() -> Result<(), String> {
+        let digest = vb_core::WorkflowDigest::from_bytes([0xabu8; 32]);
+        let mut proof = VerificationProof::new(digest, 3, true);
+        proof.idempotency_attested =
+            vec![vb_core::ActionId::new(400), vb_core::ActionId::new(500)].into_boxed_slice();
+        let bytes = postcard::to_allocvec(&proof).map_err(|e| format!("serialize failed: {e}"))?;
+        let back: VerificationProof =
+            postcard::from_bytes(&bytes).map_err(|e| format!("deserialize failed: {e}"))?;
+        assert_eq!(back.idempotency_attested.len(), 2);
+        assert_eq!(back.idempotency_attested[0], vb_core::ActionId::new(400));
+        assert_eq!(back.idempotency_attested[1], vb_core::ActionId::new(500));
+        Ok(())
+    }
+
+    #[test]
+    fn verification_proof_both_idempotency_fields_populated_survive_serde() -> Result<(), String> {
+        let digest = vb_core::WorkflowDigest::from_bytes([0xacu8; 32]);
+        let mut proof = VerificationProof::new(digest, 3, true);
+        proof.idempotency_keyed =
+            vec![vb_core::ActionId::new(1), vb_core::ActionId::new(2)].into_boxed_slice();
+        proof.idempotency_attested = vec![vb_core::ActionId::new(3)].into_boxed_slice();
+        let bytes = postcard::to_allocvec(&proof).map_err(|e| format!("serialize failed: {e}"))?;
+        let back: VerificationProof =
+            postcard::from_bytes(&bytes).map_err(|e| format!("deserialize failed: {e}"))?;
+        assert_eq!(back.idempotency_keyed.len(), 2);
+        assert_eq!(back.idempotency_attested.len(), 1);
+        assert_eq!(back.idempotency_keyed[0], vb_core::ActionId::new(1));
+        assert_eq!(back.idempotency_attested[0], vb_core::ActionId::new(3));
+        Ok(())
+    }
+
+    #[test]
+    fn verification_proof_flags_independent_of_idempotency_fields() {
+        let digest = vb_core::WorkflowDigest::from_bytes([0u8; 32]);
+        let mut proof_false = VerificationProof::new(digest, 2, false);
+        proof_false.idempotency_keyed = vec![vb_core::ActionId::new(99)].into_boxed_slice();
+
+        let mut proof_true = VerificationProof::new(digest, 2, true);
+        proof_true.idempotency_keyed = vec![vb_core::ActionId::new(99)].into_boxed_slice();
+
+        assert_eq!(
+            proof_false.idempotency_keyed, proof_true.idempotency_keyed,
+            "idempotency_keyed content must be independent of durable flag"
+        );
+        assert_eq!(
+            proof_false.idempotency_attested, proof_true.idempotency_attested,
+            "idempotency_attested content must be independent of durable flag"
+        );
+    }
+
+    // =========================================================================
+    // VerificationWarning bounds — extended boundary unit tests
+    // =========================================================================
+
+    #[test]
+    fn verification_warning_gate_boundary_at_min_exactly() {
+        let w = VerificationWarning {
+            code: 1,
+            message: Box::from("min gate boundary"),
+            gate: 1,
+        };
+        assert!(w.is_valid(), "gate=1 must be valid (MIN_GATE)");
+    }
+
+    #[test]
+    fn verification_warning_gate_boundary_at_max_exactly() {
+        let w = VerificationWarning {
+            code: 1,
+            message: Box::from("max gate boundary"),
+            gate: 2,
+        };
+        assert!(w.is_valid(), "gate=2 must be valid (MAX_GATE)");
+    }
+
+    #[test]
+    fn verification_warning_gate_below_min_is_invalid() {
+        let w = VerificationWarning {
+            code: 1,
+            message: Box::from("below min gate"),
+            gate: 0,
+        };
+        assert!(!w.is_valid(), "gate=0 must be invalid");
+    }
+
+    #[test]
+    fn verification_warning_gate_above_max_is_invalid() {
+        let w = VerificationWarning {
+            code: 1,
+            message: Box::from("above max gate"),
+            gate: 3,
+        };
+        assert!(!w.is_valid(), "gate=3 must be invalid");
+    }
+
+    #[test]
+    fn verification_warning_display_shows_all_fields() {
+        let w = VerificationWarning {
+            code: 42,
+            message: Box::from("test message"),
+            gate: 1,
+        };
+        let display = format!("{w}");
+        assert!(
+            display.contains("gate 1"),
+            "display must contain gate value"
+        );
+        assert!(display.contains("[42]"), "display must contain code");
+        assert!(
+            display.contains("test message"),
+            "display must contain message"
+        );
+    }
+
+    #[test]
+    fn verification_warning_is_valid_const_values_are_correct() {
+        assert_eq!(VerificationWarning::MIN_GATE, 1, "MIN_GATE must be 1");
+        assert_eq!(VerificationWarning::MAX_GATE, 2, "MAX_GATE must be 2");
+    }
+
+    // =========================================================================
+    // submit_artifact checksum mismatch — MAJOR-1 fix
+    // =========================================================================
+
+    #[test]
+    fn submit_artifact_journaled_rejects_checksum_mismatch() -> Result<(), String> {
+        let journal = temp_journal().map_err(|e| format!("journal open failed: {e}"))?;
+        let workflow = minimal_workflow()?;
+
+        // Corrupt the workflow's digest to cause checksum mismatch
+        let mut corrupted_parts = workflow.to_parts();
+        corrupted_parts.digest = vb_core::WorkflowDigest::from_bytes([0xFF; 32]);
+        let corrupted = vb_core::CompiledWorkflow::try_from_parts(corrupted_parts)
+            .map_err(|e| format!("workflow reconstruct failed: {e}"))?;
+
+        let result = submit_artifact(&journal, &corrupted, vb_core::RuntimePolicy::Journaled);
+
+        assert!(
+            matches!(result, Err(JournalError::ArtifactChecksumMismatch)),
+            "journaled submit with wrong digest must return ArtifactChecksumMismatch, got {:?}",
+            result
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn submit_artifact_strict_rejects_checksum_mismatch() -> Result<(), String> {
+        let journal = temp_journal().map_err(|e| format!("journal open failed: {e}"))?;
+        let workflow = minimal_workflow()?;
+
+        // Corrupt the workflow's digest to cause checksum mismatch
+        let mut corrupted_parts = workflow.to_parts();
+        corrupted_parts.digest = vb_core::WorkflowDigest::from_bytes([0xAA; 32]);
+        let corrupted = vb_core::CompiledWorkflow::try_from_parts(corrupted_parts)
+            .map_err(|e| format!("workflow reconstruct failed: {e}"))?;
+
+        let result = submit_artifact(&journal, &corrupted, vb_core::RuntimePolicy::Strict);
+
+        assert!(
+            matches!(result, Err(JournalError::ArtifactChecksumMismatch)),
+            "strict submit with wrong digest must return ArtifactChecksumMismatch, got {:?}",
+            result
+        );
+        Ok(())
+    }
+
+    // =========================================================================
+    // admit_compiled_artifact checksum mismatch — branch coverage
+    // =========================================================================
+
+    #[test]
+    fn admit_compiled_artifact_rejects_checksum_mismatch() -> Result<(), String> {
+        let journal = temp_journal().map_err(|e| format!("journal open failed: {e}"))?;
+        let workflow = minimal_workflow()?;
+
+        // Corrupt the workflow's digest to cause checksum mismatch
+        let mut corrupted_parts = workflow.to_parts();
+        corrupted_parts.digest = vb_core::WorkflowDigest::from_bytes([0xBB; 32]);
+        let corrupted = vb_core::CompiledWorkflow::try_from_parts(corrupted_parts)
+            .map_err(|e| format!("workflow reconstruct failed: {e}"))?;
+
+        let result = admit_compiled_artifact(&journal, &corrupted);
+
+        assert!(
+            matches!(result, Err(JournalError::ArtifactChecksumMismatch)),
+            "admit_compiled_artifact with wrong digest must return ArtifactChecksumMismatch, got {:?}",
+            result
+        );
+        Ok(())
+    }
+
+    // =========================================================================
+    // submit_artifact Relaxed policy branches
+    // =========================================================================
+
+    #[test]
+    fn submit_artifact_relaxed_returns_correct_digest() -> Result<(), String> {
+        let journal = temp_journal().map_err(|e| format!("journal open failed: {e}"))?;
+        let workflow = minimal_workflow()?;
+        let expected_digest = workflow.digest();
+
+        let artifact = submit_artifact(&journal, &workflow, vb_core::RuntimePolicy::Relaxed)
+            .map_err(|e| format!("relaxed submit failed: {e}"))?;
+
+        assert_eq!(
+            artifact.digest, expected_digest,
+            "relaxed artifact digest must match workflow digest"
+        );
+        assert!(
+            artifact.ir.len() > 0,
+            "relaxed artifact IR must be non-empty"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn submit_artifact_relaxed_skips_checksum_validation() -> Result<(), String> {
+        let journal = temp_journal().map_err(|e| format!("journal open failed: {e}"))?;
+        let workflow = minimal_workflow()?;
+
+        // Even with wrong digest, Relaxed should succeed (no checksum validation)
+        let mut corrupted_parts = workflow.to_parts();
+        corrupted_parts.digest = vb_core::WorkflowDigest::from_bytes([0x01; 32]);
+        let corrupted = vb_core::CompiledWorkflow::try_from_parts(corrupted_parts)
+            .map_err(|e| format!("workflow reconstruct failed: {e}"))?;
+
+        let result = submit_artifact(&journal, &corrupted, vb_core::RuntimePolicy::Relaxed);
+
+        assert!(
+            result.is_ok(),
+            "relaxed policy must accept workflow even with wrong digest, got {:?}",
+            result
+        );
+        Ok(())
+    }
+
+    // =========================================================================
+    // submit_artifact stored artifact read back verification
+    // =========================================================================
+
+    #[test]
+    fn submit_artifact_strict_stored_artifact_can_be_read_back() -> Result<(), String> {
+        let journal = temp_journal().map_err(|e| format!("journal open failed: {e}"))?;
+        let workflow = minimal_workflow()?;
+        let digest = workflow.digest();
+
+        let artifact = submit_artifact(&journal, &workflow, vb_core::RuntimePolicy::Strict)
+            .map_err(|e| format!("strict submit failed: {e}"))?;
+
+        assert_eq!(artifact.digest, digest, "artifact digest must match");
+
+        // Read back the stored artifact and verify it matches
+        let stored = journal
+            .compiled_ir(digest)
+            .map_err(|e| format!("compiled_ir read failed: {e}"))?;
+
+        assert!(
+            stored.is_some(),
+            "artifact must be readable after strict submit"
+        );
+
+        let record = stored.unwrap();
+        assert_eq!(
+            record.digest, digest,
+            "stored record digest must match submitted digest"
+        );
+        assert!(!record.ir.is_empty(), "stored IR must be non-empty");
+        Ok(())
+    }
+
+    // =========================================================================
+    // VerificationWarning display formatting branches
+    // =========================================================================
+
+    #[test]
+    fn verification_warning_display_formatting_zero_code() -> Result<(), String> {
+        let w = VerificationWarning {
+            code: 0,
+            message: Box::from("zero code warning"),
+            gate: 1,
+        };
+        let display = format!("{w}");
+        assert!(
+            display.contains("gate 1"),
+            "display must contain gate value"
+        );
+        assert!(display.contains("[0]"), "display must contain zero code");
+        assert!(
+            display.contains("zero code warning"),
+            "display must contain message"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn verification_warning_display_formatting_max_values() -> Result<(), String> {
+        let w = VerificationWarning {
+            code: u32::MAX,
+            message: Box::from("max code"),
+            gate: VerificationWarning::MAX_GATE,
+        };
+        let display = format!("{w}");
+        assert!(display.contains("gate 2"), "display must contain max gate");
+        Ok(())
+    }
+
+    // =========================================================================
+    // VerificationProof all flags set to false
+    // =========================================================================
+
+    #[test]
+    fn verification_proof_all_flags_false_still_constructs() -> Result<(), String> {
+        let digest = vb_core::WorkflowDigest::from_bytes([0xCC; 32]);
+        // VerificationProof::new sets all flags to true, but we can override them
+        let mut proof = VerificationProof::new(digest, 0, false);
+        proof.bounded = false;
+        proof.taint_safe = false;
+        proof.retry_safe = false;
+        proof.replayable = false;
+
+        assert!(!proof.bounded, "bounded can be set to false");
+        assert!(!proof.taint_safe, "taint_safe can be set to false");
+        assert!(!proof.retry_safe, "retry_safe can be set to false");
+        assert!(!proof.replayable, "replayable can be set to false");
+        assert_eq!(proof.gate_count, 0, "gate_count should be 0");
+        assert!(!proof.durable, "durable should be false");
+        Ok(())
+    }
+
+    // =========================================================================
+    // VerificationWarning edge cases for is_valid coverage
+    // =========================================================================
+
+    #[test]
+    fn verification_warning_is_valid_gate_zero_returns_false() {
+        let w = VerificationWarning {
+            code: 1,
+            message: Box::from("zero gate"),
+            gate: 0,
+        };
+        assert!(!w.is_valid(), "gate 0 must be invalid");
+    }
+
+    #[test]
+    fn verification_warning_is_valid_gate_one_returns_true() {
+        let w = VerificationWarning {
+            code: 1,
+            message: Box::from("gate one"),
+            gate: 1,
+        };
+        assert!(w.is_valid(), "gate 1 must be valid");
+    }
+
+    #[test]
+    fn verification_warning_is_valid_gate_two_returns_true() {
+        let w = VerificationWarning {
+            code: 1,
+            message: Box::from("gate two"),
+            gate: 2,
+        };
+        assert!(w.is_valid(), "gate 2 must be valid");
+    }
+
+    #[test]
+    fn verification_warning_is_valid_gate_three_returns_false() {
+        let w = VerificationWarning {
+            code: 1,
+            message: Box::from("gate three"),
+            gate: 3,
+        };
+        assert!(!w.is_valid(), "gate 3 must be invalid");
+    }
+
+    // =========================================================================
+    // VerificationWarning display edge cases
+    // =========================================================================
+
+    #[test]
+    fn verification_warning_display_single_digit_gate_and_code() -> Result<(), String> {
+        let w = VerificationWarning {
+            code: 5,
+            message: Box::from("short"),
+            gate: 1,
+        };
+        let display = format!("{w}");
+        assert!(display.contains("gate 1"), "display must contain 'gate 1'");
+        assert!(display.contains("[5]"), "display must contain code");
+        Ok(())
+    }
+
+    #[test]
+    fn verification_warning_display_empty_message() -> Result<(), String> {
+        let w = VerificationWarning {
+            code: 0,
+            message: Box::from(""),
+            gate: 2,
+        };
+        let display = format!("{w}");
+        assert!(display.contains("gate 2"), "display must contain gate");
+        assert!(display.contains("[0]"), "display must contain zero code");
+        Ok(())
+    }
+
+    // =========================================================================
+    // VerificationProof with various idempotency configurations
+    // =========================================================================
+
+    #[test]
+    fn verification_proof_empty_idempotency_keyed_and_populated_attested() {
+        let digest = vb_core::WorkflowDigest::from_bytes([0xDD; 32]);
+        let mut proof = VerificationProof::new(digest, 2, true);
+        proof.idempotency_keyed = Box::new([]);
+        proof.idempotency_attested =
+            vec![vb_core::ActionId::new(1), vb_core::ActionId::new(2)].into_boxed_slice();
+
+        assert!(proof.idempotency_keyed.is_empty());
+        assert_eq!(proof.idempotency_attested.len(), 2);
+    }
+
+    #[test]
+    fn verification_proof_populated_idempotency_keyed_and_empty_attested() {
+        let digest = vb_core::WorkflowDigest::from_bytes([0xEE; 32]);
+        let mut proof = VerificationProof::new(digest, 2, true);
+        proof.idempotency_keyed = vec![
+            vb_core::ActionId::new(3),
+            vb_core::ActionId::new(4),
+            vb_core::ActionId::new(5),
+        ]
+        .into_boxed_slice();
+        proof.idempotency_attested = Box::new([]);
+
+        assert_eq!(proof.idempotency_keyed.len(), 3);
+        assert!(proof.idempotency_attested.is_empty());
+    }
+
+    #[test]
+    fn verification_proof_both_idempotency_populated() {
+        let digest = vb_core::WorkflowDigest::from_bytes([0xFF; 32]);
+        let mut proof = VerificationProof::new(digest, 2, true);
+        proof.idempotency_keyed = vec![vb_core::ActionId::new(1)].into_boxed_slice();
+        proof.idempotency_attested = vec![vb_core::ActionId::new(2)].into_boxed_slice();
+
+        assert_eq!(proof.idempotency_keyed.len(), 1);
+        assert_eq!(proof.idempotency_attested.len(), 1);
+    }
+
+    // =========================================================================
+    // submit_artifact with checksum mismatch (all variants)
+    // =========================================================================
+
+    #[test]
+    fn submit_artifact_strict_rejects_spoofed_digest() -> Result<(), String> {
+        let journal = temp_journal().map_err(|e| format!("journal open failed: {e}"))?;
+        let workflow = minimal_workflow()?;
+
+        // Spoof the digest to be completely wrong.
+        let mut parts = workflow.to_parts();
+        parts.digest = vb_core::WorkflowDigest::from_bytes([0xAB; 32]);
+        let spoofed = vb_core::CompiledWorkflow::try_from_parts(parts)
+            .map_err(|e| format!("workflow construct failed: {e}"))?;
+
+        let result = submit_artifact(&journal, &spoofed, vb_core::RuntimePolicy::Strict);
+
+        assert!(
+            matches!(result, Err(JournalError::ArtifactChecksumMismatch)),
+            "strict with spoofed digest must be rejected, got {:?}",
+            result
+        );
+        Ok(())
+    }
+
+    // =========================================================================
+    // VerificationProof display (Debug impl)
+    // =========================================================================
+
+    #[test]
+    fn verification_proof_debug_format_contains_fields() -> Result<(), String> {
+        let digest = vb_core::WorkflowDigest::from_bytes([0x11; 32]);
+        let proof = VerificationProof::new(digest, 2, true);
+        let debug = format!("{:?}", proof);
+        assert!(
+            debug.contains("VerificationProof"),
+            "debug should contain type name"
+        );
+        assert!(
+            debug.contains("bounded"),
+            "debug should contain bounded field"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn accepted_artifact_debug_format_contains_fields() -> Result<(), String> {
+        let journal = temp_journal().map_err(|e| format!("journal open failed: {e}"))?;
+        let workflow = minimal_workflow()?;
+        let artifact = submit_artifact(&journal, &workflow, vb_core::RuntimePolicy::Relaxed)
+            .map_err(|e| format!("submit failed: {e}"))?;
+
+        let debug = format!("{:?}", artifact);
+        assert!(
+            debug.contains("AcceptedArtifact"),
+            "debug should contain type name"
+        );
+        assert!(
+            debug.contains("digest"),
+            "debug should contain digest field"
+        );
+        Ok(())
+    }
+
+    // =========================================================================
+    // ProofFlag enum coverage
+    // =========================================================================
+
+    #[test]
+    fn proof_flag_bounded_debug() {
+        let flag = ProofFlag::Bounded;
+        let debug = format!("{:?}", flag);
+        assert!(debug.contains("Bounded"), "debug should contain Bounded");
+    }
+
+    #[test]
+    fn proof_flag_taint_safe_debug() {
+        let flag = ProofFlag::TaintSafe;
+        let debug = format!("{:?}", flag);
+        assert!(
+            debug.contains("TaintSafe"),
+            "debug should contain TaintSafe"
+        );
+    }
+
+    #[test]
+    fn proof_flag_retry_safe_debug() {
+        let flag = ProofFlag::RetrySafe;
+        let debug = format!("{:?}", flag);
+        assert!(
+            debug.contains("RetrySafe"),
+            "debug should contain RetrySafe"
+        );
+    }
+
+    #[test]
+    fn proof_flag_replayable_debug() {
+        let flag = ProofFlag::Replayable;
+        let debug = format!("{:?}", flag);
+        assert!(
+            debug.contains("Replayable"),
+            "debug should contain Replayable"
+        );
+    }
+
+    #[test]
+    fn proof_flag_all_variants_debug() {
+        let bounded = ProofFlag::Bounded;
+        let taint_safe = ProofFlag::TaintSafe;
+        let retry_safe = ProofFlag::RetrySafe;
+        let replayable = ProofFlag::Replayable;
+
+        let debug_bounded = format!("{:?}", bounded);
+        let debug_taint = format!("{:?}", taint_safe);
+        let debug_retry = format!("{:?}", retry_safe);
+        let debug_replay = format!("{:?}", replayable);
+
+        assert!(debug_bounded.contains("Bounded"));
+        assert!(debug_taint.contains("TaintSafe"));
+        assert!(debug_retry.contains("RetrySafe"));
+        assert!(debug_replay.contains("Replayable"));
+    }
+
+    // =========================================================================
+    // VerificationWarning with various gate values
+    // =========================================================================
+
+    #[test]
+    fn verification_warning_gate_value_at_min_boundary() {
+        let w = VerificationWarning {
+            code: 1,
+            message: Box::from("min gate"),
+            gate: VerificationWarning::MIN_GATE,
+        };
+        assert!(w.is_valid());
+        assert_eq!(w.gate, 1);
+    }
+
+    #[test]
+    fn verification_warning_gate_value_at_max_boundary() {
+        let w = VerificationWarning {
+            code: 1,
+            message: Box::from("max gate"),
+            gate: VerificationWarning::MAX_GATE,
+        };
+        assert!(w.is_valid());
+        assert_eq!(w.gate, 2);
+    }
+
+    #[test]
+    fn verification_warning_equality_with_identical_fields() {
+        let a = VerificationWarning {
+            code: 42,
+            message: Box::from("test"),
+            gate: 1,
+        };
+        let b = VerificationWarning {
+            code: 42,
+            message: Box::from("test"),
+            gate: 1,
+        };
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn verification_warning_inequality_different_code_v2() {
+        let a = VerificationWarning {
+            code: 1,
+            message: Box::from("test"),
+            gate: 1,
+        };
+        let b = VerificationWarning {
+            code: 2,
+            message: Box::from("test"),
+            gate: 1,
+        };
+        assert_ne!(a, b);
+    }
+
+    #[test]
+    fn verification_warning_clone_equality() {
+        let original = VerificationWarning {
+            code: 99,
+            message: Box::from("clone test"),
+            gate: 2,
+        };
+        let cloned = original.clone();
+        assert_eq!(original, cloned);
+        assert_eq!(original.code, cloned.code);
+        assert_eq!(original.gate, cloned.gate);
+    }
+
+    // =========================================================================
+    // VerificationProof with various gate counts
+    // =========================================================================
+
+    #[test]
+    fn verification_proof_new_with_gate_count_zero() {
+        let digest = vb_core::WorkflowDigest::from_bytes([0x01; 32]);
+        let proof = VerificationProof::new(digest, 0, false);
+        assert_eq!(proof.gate_count, 0);
+        assert!(!proof.durable);
+    }
+
+    #[test]
+    fn verification_proof_new_with_gate_count_one() {
+        let digest = vb_core::WorkflowDigest::from_bytes([0x02; 32]);
+        let proof = VerificationProof::new(digest, 1, false);
+        assert_eq!(proof.gate_count, 1);
+    }
+
+    #[test]
+    fn verification_proof_new_with_gate_count_two() {
+        let digest = vb_core::WorkflowDigest::from_bytes([0x03; 32]);
+        let proof = VerificationProof::new(digest, 2, true);
+        assert_eq!(proof.gate_count, 2);
+        assert!(proof.durable);
+    }
+
+    #[test]
+    fn verification_proof_durable_flag_differs() {
+        let digest = vb_core::WorkflowDigest::from_bytes([0x04; 32]);
+        let proof_durable = VerificationProof::new(digest, 2, true);
+        let proof_not_durable = VerificationProof::new(digest, 2, false);
+        assert!(proof_durable.durable);
+        assert!(!proof_not_durable.durable);
+        assert_eq!(proof_durable.gate_count, proof_not_durable.gate_count);
+    }
+
+    #[test]
+    fn verification_proof_idempotency_keyed_single_element() {
+        let digest = vb_core::WorkflowDigest::from_bytes([0x05; 32]);
+        let mut proof = VerificationProof::new(digest, 2, true);
+        proof.idempotency_keyed = vec![vb_core::ActionId::new(42)].into_boxed_slice();
+        assert_eq!(proof.idempotency_keyed.len(), 1);
+        assert_eq!(proof.idempotency_keyed[0], vb_core::ActionId::new(42));
+    }
+
+    #[test]
+    fn verification_proof_idempotency_attested_single_element() {
+        let digest = vb_core::WorkflowDigest::from_bytes([0x06; 32]);
+        let mut proof = VerificationProof::new(digest, 2, true);
+        proof.idempotency_attested = vec![vb_core::ActionId::new(43)].into_boxed_slice();
+        assert_eq!(proof.idempotency_attested.len(), 1);
+        assert_eq!(proof.idempotency_attested[0], vb_core::ActionId::new(43));
+    }
+
+    #[test]
+    fn verification_proof_multiple_warnings() {
+        let digest = vb_core::WorkflowDigest::from_bytes([0x07; 32]);
+        let mut proof = VerificationProof::new(digest, 2, true);
+        proof.warnings.push(VerificationWarning {
+            code: 1,
+            message: Box::from("warning 1"),
+            gate: 1,
+        });
+        proof.warnings.push(VerificationWarning {
+            code: 2,
+            message: Box::from("warning 2"),
+            gate: 2,
+        });
+        assert_eq!(proof.warnings.len(), 2);
+        assert_eq!(proof.warnings[0].code, 1);
+        assert_eq!(proof.warnings[1].code, 2);
+    }
+
+    // =========================================================================
+    // AcceptedArtifact field coverage
+    // =========================================================================
+
+    #[test]
+    fn accepted_artifact_has_non_empty_ir() -> Result<(), String> {
+        let journal = temp_journal().map_err(|e| format!("journal open failed: {e}"))?;
+        let workflow = minimal_workflow()?;
+        let artifact = submit_artifact(&journal, &workflow, vb_core::RuntimePolicy::Journaled)
+            .map_err(|e| format!("submit failed: {e}"))?;
+        assert!(!artifact.ir.is_empty(), "IR bytes must not be empty");
+        Ok(())
+    }
+
+    #[test]
+    fn accepted_artifact_verification_gate_count_for_journaled() -> Result<(), String> {
+        let journal = temp_journal().map_err(|e| format!("journal open failed: {e}"))?;
+        let workflow = minimal_workflow()?;
+        let artifact = submit_artifact(&journal, &workflow, vb_core::RuntimePolicy::Journaled)
+            .map_err(|e| format!("submit failed: {e}"))?;
+        assert_eq!(
+            artifact.verification.gate_count, 2,
+            "journaled should have gate_count=2"
+        );
+        assert!(
+            !artifact.verification.durable,
+            "journaled should not be durable"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn accepted_artifact_verification_gate_count_for_strict() -> Result<(), String> {
+        let journal = temp_journal().map_err(|e| format!("journal open failed: {e}"))?;
+        let workflow = minimal_workflow()?;
+        let artifact = submit_artifact(&journal, &workflow, vb_core::RuntimePolicy::Strict)
+            .map_err(|e| format!("submit failed: {e}"))?;
+        assert_eq!(
+            artifact.verification.gate_count, 2,
+            "strict should have gate_count=2"
+        );
+        assert!(artifact.verification.durable, "strict should be durable");
+        Ok(())
+    }
+
+    #[test]
+    fn accepted_artifact_verification_gate_count_for_relaxed() -> Result<(), String> {
+        let journal = temp_journal().map_err(|e| format!("journal open failed: {e}"))?;
+        let workflow = minimal_workflow()?;
+        let artifact = submit_artifact(&journal, &workflow, vb_core::RuntimePolicy::Relaxed)
+            .map_err(|e| format!("submit failed: {e}"))?;
+        assert_eq!(
+            artifact.verification.gate_count, 0,
+            "relaxed should have gate_count=0"
+        );
+        assert!(
+            !artifact.verification.durable,
+            "relaxed should not be durable"
+        );
+        Ok(())
+    }
+
+    // =========================================================================
+    // Additional serde roundtrip coverage
+    // =========================================================================
+
+    #[test]
+    fn verification_proof_serde_preserves_all_fields() -> Result<(), String> {
+        let digest = vb_core::WorkflowDigest::from_bytes([0xBC; 32]);
+        let mut proof = VerificationProof::new(digest, 2, true);
+        proof.idempotency_keyed =
+            vec![vb_core::ActionId::new(10), vb_core::ActionId::new(20)].into_boxed_slice();
+        proof.idempotency_attested = vec![vb_core::ActionId::new(30)].into_boxed_slice();
+        proof.warnings.push(VerificationWarning {
+            code: 5,
+            message: Box::from("test warning"),
+            gate: 1,
+        });
+
+        let bytes = postcard::to_allocvec(&proof).map_err(|e| format!("serialize failed: {e}"))?;
+        let back: VerificationProof =
+            postcard::from_bytes(&bytes).map_err(|e| format!("deserialize failed: {e}"))?;
+
+        assert_eq!(back.digest, digest);
+        assert_eq!(back.gate_count, 2);
+        assert!(back.durable);
+        assert_eq!(back.idempotency_keyed.len(), 2);
+        assert_eq!(back.idempotency_attested.len(), 1);
+        assert_eq!(back.warnings.len(), 1);
+        Ok(())
+    }
+
+    #[test]
+    fn verification_warning_serde_with_special_chars() -> Result<(), String> {
+        let warning = VerificationWarning {
+            code: 12345,
+            message: Box::from("special chars: <>&\"'"),
+            gate: 2,
+        };
+        let bytes =
+            postcard::to_allocvec(&warning).map_err(|e| format!("serialize failed: {e}"))?;
+        let back: VerificationWarning =
+            postcard::from_bytes(&bytes).map_err(|e| format!("deserialize failed: {e}"))?;
+        assert_eq!(warning, back);
+        Ok(())
+    }
+
+    #[test]
+    fn accepted_artifact_serde_with_warnings() -> Result<(), String> {
+        let journal = temp_journal().map_err(|e| format!("journal open failed: {e}"))?;
+        let workflow = minimal_workflow()?;
+
+        let mut proof = VerificationProof::new(workflow.digest(), 2, true);
+        proof.warnings.push(VerificationWarning {
+            code: 7,
+            message: Box::from("test warning"),
+            gate: 1,
+        });
+
+        let artifact = AcceptedArtifact {
+            digest: workflow.digest(),
+            ir: vec![1, 2, 3],
+            verification: proof,
+            accepted_at_seq: EventSeq::new(42),
+            required_capabilities: Box::new([]),
+        };
+
+        let bytes =
+            postcard::to_allocvec(&artifact).map_err(|e| format!("serialize failed: {e}"))?;
+        let back: AcceptedArtifact =
+            postcard::from_bytes(&bytes).map_err(|e| format!("deserialize failed: {e}"))?;
+
+        assert_eq!(back.digest, artifact.digest);
+        assert_eq!(back.accepted_at_seq.get(), 42);
+        assert_eq!(back.verification.warnings.len(), 1);
+        Ok(())
+    }
 }

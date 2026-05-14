@@ -33,8 +33,12 @@ pub mod indexes;
 pub mod journal;
 #[cfg(kani)]
 pub mod kani_codec;
+#[cfg(kani)]
+pub mod kani_verification_proof_flags;
 pub mod keys;
 pub mod process_lock;
+#[cfg(test)]
+pub mod proptests;
 pub mod queue;
 pub mod records;
 pub mod recovery;

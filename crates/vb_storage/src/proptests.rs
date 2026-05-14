@@ -1,13 +1,20 @@
 #![forbid(unsafe_code)]
+use crate::codec::{decode_record, encode_record};
+use crate::keys::{
+    blob_key, compiled_ir_key, index_action_key, index_status_key, index_workflow_key,
+    run_event_key, run_header_key, run_snapshot_key, workflow_source_key,
+};
 #[cfg(test)]
 #[allow(clippy::as_conversions, clippy::cast_possible_truncation)]
-mod proptests {
-    use crate::{
-        BlobRecord, EventSeq, MAGIC_BLOB, MAGIC_JOURNAL_EVENT, MAGIC_WORKFLOW_SOURCE,
-        MAX_JOURNAL_EVENT_PAYLOAD_BYTES, RecordKind, WorkflowSourceRecord, blob_key,
-        compiled_ir_key, decode_record, encode_record, index_action_key, index_status_key,
-        index_workflow_key, run_event_key, run_header_key, run_snapshot_key, workflow_source_key,
-    };
+use crate::{
+    BlobRecord, CompiledIrRecord, EventSeq, FjallJournal, JournalError, MAGIC_BLOB,
+    MAGIC_JOURNAL_EVENT, MAGIC_WORKFLOW_SOURCE, MAX_JOURNAL_EVENT_PAYLOAD_BYTES, RecordKind,
+    WorkflowSourceRecord,
+};
+use vb_core::WorkflowDigest;
+
+mod tests {
+    use super::*;
     use proptest::prelude::*;
     use vb_core::{ActionId, RunId, StepIdx, WorkflowDigest, WorkflowId};
 
@@ -32,9 +39,6 @@ mod proptests {
             run_val in 1u64..=1000u64,
             seq_val in 0u64..=100u64,
         ) {
-            // Given a RunAccepted event (all journal events share the same encode/decode path)
-            // When encoded with MAGIC_JOURNAL_EVENT and the given kind, then decoded
-            // Then the round trip preserves the original event
             let run = RunId::new(run_val);
             let seq = EventSeq::new(seq_val);
             let event = crate::JournalEvent::RunAccepted {
@@ -81,9 +85,6 @@ mod proptests {
             run_val in 1u64..=10000u64,
             seq_val in 0u64..=1000u64,
         ) {
-            // Given the same run and seq inputs
-            // When run_event_key is called twice
-            // Then both results are identical
             let run = RunId::new(run_val);
             let seq = EventSeq::new(seq_val);
             let key1 = run_event_key(run, seq);
@@ -95,18 +96,12 @@ mod proptests {
 
         #[test]
         fn event_seq_new_never_panics_for_valid_values(val in 0u64..=u64::MAX) {
-            // Given any valid u64
-            // When EventSeq::new is called
-            // Then get() returns the same value
             let seq = EventSeq::new(val);
             prop_assert_eq!(seq.get(), val);
         }
 
         #[test]
         fn record_kind_id_roundtrip(kind_id in 1u16..=50u16) {
-            // Given a valid record kind id
-            // When it matches a known RecordKind variant
-            // Then the id() round-trips correctly
             let kind = match kind_id {
                 1 => RecordKind::WorkflowSource,
                 2 => RecordKind::CompiledIr,
@@ -239,6 +234,49 @@ mod proptests {
             let Ok((_env, decoded_record)) = decoded else { return Ok(()) };
             prop_assert_eq!(decoded_record, record);
         }
+
+        #[test]
+        fn verification_proof_idempotency_keyed_len_is_bounded(
+            keyed_count in 0u32..=1000u32,
+        ) {
+            let digest = WorkflowDigest::from_bytes([0u8; 32]);
+            let mut proof = crate::VerificationProof::new(digest, 2, true);
+            let actions: Vec<vb_core::ActionId> = (0..keyed_count)
+                .map(|i| vb_core::ActionId::new(i as u16))
+                .collect();
+            proof.idempotency_keyed = actions.into_boxed_slice();
+            prop_assert!(proof.idempotency_keyed.len() <= 1000);
+        }
+
+        #[test]
+        fn verification_proof_idempotency_attested_len_is_bounded(
+            attested_count in 0u32..=1000u32,
+        ) {
+            let digest = WorkflowDigest::from_bytes([0u8; 32]);
+            let mut proof = crate::VerificationProof::new(digest, 2, true);
+            let actions: Vec<vb_core::ActionId> = (0..attested_count)
+                .map(|i| vb_core::ActionId::new(i as u16))
+                .collect();
+            proof.idempotency_attested = actions.into_boxed_slice();
+            prop_assert!(proof.idempotency_attested.len() <= 1000);
+        }
+
+        #[test]
+        fn verification_warning_gate_bounds_are_valid_for_all_u8_values(
+            code in 0u32..=u32::MAX,
+            gate in 0u8..=u8::MAX,
+        ) {
+            let w = crate::VerificationWarning {
+                code,
+                message: Box::from("proptest boundary"),
+                gate,
+            };
+            let is_valid = w.is_valid();
+            let in_range = gate >= crate::VerificationWarning::MIN_GATE
+                && gate <= crate::VerificationWarning::MAX_GATE;
+            prop_assert_eq!(is_valid, in_range,
+                "is_valid() must match gate in [MIN_GATE, MAX_GATE]");
+        }
     }
 }
 
@@ -286,6 +324,7 @@ fn events_for_run_uses_snapshot_isolation() -> Result<(), Box<dyn std::error::Er
         run: RunId::new(1),
         seq: EventSeq::new(1),
         step: StepIdx::new(0),
+        attempt: 0,
     };
     journal.append_journaled(&event0)?;
     journal.append_journaled(&event1)?;
@@ -354,8 +393,8 @@ fn admit_compiled_artifact_accepts_valid_workflow() -> Result<(), Box<dyn std::e
     use crate::{FjallJournal, admit_compiled_artifact};
     use vb_core::{
         CompiledWorkflow, SlotIdx, StepIdx, WorkflowDigest, WorkflowParts,
-        workflow::{CompiledNode, CompiledNodeKind, ResourceContract},
         value::ConstValue,
+        workflow::{CompiledNode, CompiledNodeKind, ResourceContract},
     };
 
     let temp_dir = tempfile::tempdir()?;
@@ -393,6 +432,7 @@ fn admit_compiled_artifact_accepts_valid_workflow() -> Result<(), Box<dyn std::e
         symbols_count: 0,
         entry: StepIdx::ZERO,
         resource_contract: ResourceContract::DEFAULT,
+        step_names: Box::new([]),
     };
     let hash_bytes = postcard::to_allocvec(&parts_zeroed)?;
     let computed = blake3::hash(&hash_bytes);
@@ -418,8 +458,8 @@ fn admit_compiled_artifact_rejects_checksum_mismatch() {
     use crate::{FjallJournal, JournalError, admit_compiled_artifact};
     use vb_core::{
         CompiledWorkflow, SlotIdx, StepIdx, WorkflowDigest, WorkflowParts,
-        workflow::{CompiledNode, CompiledNodeKind, ResourceContract},
         value::ConstValue,
+        workflow::{CompiledNode, CompiledNodeKind, ResourceContract},
     };
 
     let temp_dir = tempfile::tempdir().expect("tempdir");
@@ -457,11 +497,15 @@ fn admit_compiled_artifact_rejects_checksum_mismatch() {
         symbols_count: 0,
         entry: StepIdx::ZERO,
         resource_contract: ResourceContract::DEFAULT,
+        step_names: Box::new([]),
     };
     let corrupted = CompiledWorkflow::try_from_parts(parts).expect("still structurally valid");
 
     let result = admit_compiled_artifact(&journal, &corrupted);
-    assert!(matches!(result, Err(JournalError::ArtifactChecksumMismatch)));
+    assert!(matches!(
+        result,
+        Err(JournalError::ArtifactChecksumMismatch)
+    ));
 }
 
 /// Helper: build a valid CompiledWorkflow with a self-consistent BLAKE3 digest.
@@ -471,12 +515,12 @@ fn admit_compiled_artifact_rejects_checksum_mismatch() {
 /// used in `submit_artifact`.
 #[allow(dead_code)]
 fn build_valid_workflow_for_submit() -> vb_core::CompiledWorkflow {
+    use vb_core::ids::ConstIdx;
     use vb_core::{
         CompiledWorkflow, SlotIdx, StepIdx, WorkflowDigest, WorkflowParts,
-        workflow::{CompiledNode, CompiledNodeKind, ResourceContract},
         value::ConstValue,
+        workflow::{CompiledNode, CompiledNodeKind, ResourceContract},
     };
-    use vb_core::ids::ConstIdx;
 
     let node = CompiledNode {
         id: StepIdx::ZERO,
@@ -509,6 +553,7 @@ fn build_valid_workflow_for_submit() -> vb_core::CompiledWorkflow {
         symbols_count: 0,
         entry: StepIdx::ZERO,
         resource_contract: ResourceContract::DEFAULT,
+        step_names: Box::new([]),
     };
 
     // Compute digest from content with digest field zeroed.
@@ -533,7 +578,11 @@ fn submit_artifact_valid_workflow_succeeds() {
     let digest = workflow.digest();
 
     let result = submit_artifact(&journal, &workflow, RuntimePolicy::Journaled);
-    assert!(result.is_ok(), "submit_artifact should succeed: {:?}", result);
+    assert!(
+        result.is_ok(),
+        "submit_artifact should succeed: {:?}",
+        result
+    );
     assert_eq!(result.expect("ok").digest.as_bytes(), digest.as_bytes());
 
     // Verify it was stored.
@@ -546,13 +595,13 @@ fn submit_artifact_valid_workflow_succeeds() {
 #[test]
 fn submit_artifact_checksum_mismatch_rejected() {
     use crate::{FjallJournal, JournalError, submit_artifact};
-    use vb_core::{
-        CompiledWorkflow, SlotIdx, StepIdx, WorkflowDigest, WorkflowParts,
-        workflow::{CompiledNode, CompiledNodeKind, ResourceContract},
-        value::ConstValue,
-    };
     use vb_core::RuntimePolicy;
     use vb_core::ids::ConstIdx;
+    use vb_core::{
+        CompiledWorkflow, SlotIdx, StepIdx, WorkflowDigest, WorkflowParts,
+        value::ConstValue,
+        workflow::{CompiledNode, CompiledNodeKind, ResourceContract},
+    };
 
     let temp_dir = tempfile::tempdir().expect("tempdir");
     let journal = FjallJournal::open(temp_dir.path(), None).expect("journal open");
@@ -589,6 +638,7 @@ fn submit_artifact_checksum_mismatch_rejected() {
         symbols_count: 0,
         entry: StepIdx::ZERO,
         resource_contract: ResourceContract::DEFAULT,
+        step_names: Box::new([]),
     };
     let corrupted = CompiledWorkflow::try_from_parts(parts).expect("structurally valid");
 
@@ -608,9 +658,8 @@ fn submit_artifact_malformed_ir_rejected() {
     // invalid workflows (zero nodes), which is the same gate that submit_artifact
     // uses to return ArtifactMalformed.
     use vb_core::{
-        CompiledWorkflow, StepIdx, WorkflowDigest, WorkflowParts,
+        CompiledWorkflow, StepIdx, WorkflowDigest, WorkflowParts, value::ConstValue,
         workflow::ResourceContract,
-        value::ConstValue,
     };
     let parts = WorkflowParts {
         name: Box::from("empty_test"),
@@ -623,11 +672,15 @@ fn submit_artifact_malformed_ir_rejected() {
         symbols_count: 0,
         entry: StepIdx::ZERO,
         resource_contract: ResourceContract::DEFAULT,
+        step_names: Box::new([]),
     };
     // try_from_parts must reject this -- the same validation gate
     // that submit_artifact uses to produce ArtifactMalformed.
     let result = CompiledWorkflow::try_from_parts(parts);
-    assert!(result.is_err(), "empty nodes should be rejected by try_from_parts");
+    assert!(
+        result.is_err(),
+        "empty nodes should be rejected by try_from_parts"
+    );
 }
 
 #[test]
@@ -661,7 +714,11 @@ fn submit_artifact_journaled_policy_not_durable() {
     let digest = workflow.digest();
 
     let result = submit_artifact(&journal, &workflow, RuntimePolicy::Journaled);
-    assert!(result.is_ok(), "journaled submit should succeed: {:?}", result);
+    assert!(
+        result.is_ok(),
+        "journaled submit should succeed: {:?}",
+        result
+    );
     assert_eq!(result.expect("ok").digest, digest);
 
     // Under Journaled, data is persisted but without SyncAll barrier.
@@ -686,7 +743,11 @@ fn submit_artifact_duplicate_digest_replaces() {
 
     // Second submit with same digest — should succeed (replace/overwrite).
     let result2 = submit_artifact(&journal, &workflow, RuntimePolicy::Journaled);
-    assert!(result2.is_ok(), "duplicate submit should succeed: {:?}", result2);
+    assert!(
+        result2.is_ok(),
+        "duplicate submit should succeed: {:?}",
+        result2
+    );
     assert_eq!(result2.expect("ok").digest, digest);
 
     // Verify only one record exists (replaced, not duplicated).
@@ -708,13 +769,13 @@ fn submit_artifact_returns_accepted_artifact_with_correct_digest() {
     let workflow = build_valid_workflow_for_submit();
     let digest = workflow.digest();
 
-    let artifact = submit_artifact(&journal, &workflow, RuntimePolicy::Strict)
-        .expect("submit should succeed");
-    assert_eq!(artifact.digest, digest, "artifact digest must match workflow digest");
-    assert!(
-        !artifact.ir.is_empty(),
-        "artifact IR must be non-empty"
+    let artifact =
+        submit_artifact(&journal, &workflow, RuntimePolicy::Strict).expect("submit should succeed");
+    assert_eq!(
+        artifact.digest, digest,
+        "artifact digest must match workflow digest"
     );
+    assert!(!artifact.ir.is_empty(), "artifact IR must be non-empty");
     assert!(
         artifact.verification.durable,
         "strict policy must produce durable proof"
@@ -774,13 +835,13 @@ fn submit_artifact_cannot_submit_with_wrong_checksum_even_if_structurally_valid(
     // by constructing a workflow that is structurally valid but has a
     // dishonest digest that doesn't match the serialized content.
     use crate::{FjallJournal, JournalError, submit_artifact};
-    use vb_core::{
-        CompiledWorkflow, SlotIdx, StepIdx, WorkflowDigest, WorkflowParts,
-        workflow::{CompiledNode, CompiledNodeKind, ResourceContract},
-        value::ConstValue,
-    };
     use vb_core::RuntimePolicy;
     use vb_core::ids::ConstIdx;
+    use vb_core::{
+        CompiledWorkflow, SlotIdx, StepIdx, WorkflowDigest, WorkflowParts,
+        value::ConstValue,
+        workflow::{CompiledNode, CompiledNodeKind, ResourceContract},
+    };
 
     let temp_dir = tempfile::tempdir().expect("tempdir");
     let journal = FjallJournal::open(temp_dir.path(), None).expect("journal open");
@@ -815,8 +876,10 @@ fn submit_artifact_cannot_submit_with_wrong_checksum_even_if_structurally_valid(
         accessors: Box::from([]),
         constants: Box::from([ConstValue::Bool(true)]),
         slot_count: 1,
+        symbols_count: 0,
         entry: StepIdx::ZERO,
         resource_contract: ResourceContract::DEFAULT,
+        step_names: Box::new([]),
     };
     let spoofed = CompiledWorkflow::try_from_parts(parts).expect("structurally valid");
     // Under Strict/Journaled, the checksum gate must reject this.
@@ -840,12 +903,12 @@ fn submit_artifact_stale_digest_rejected() {
     // Verify that submitting an artifact with a stale digest (from a different
     // workflow version) is rejected by the checksum gate.
     use crate::{FjallJournal, JournalError, submit_artifact};
+    use vb_core::RuntimePolicy;
     use vb_core::{
         CompiledWorkflow, SlotIdx, StepIdx, WorkflowParts,
-        workflow::{CompiledNode, CompiledNodeKind, ResourceContract},
         value::ConstValue,
+        workflow::{CompiledNode, CompiledNodeKind, ResourceContract},
     };
-    use vb_core::RuntimePolicy;
 
     let temp_dir = tempfile::tempdir().expect("tempdir");
     let journal = FjallJournal::open(temp_dir.path(), None).expect("journal open");
@@ -887,8 +950,10 @@ fn submit_artifact_stale_digest_rejected() {
         accessors: Box::from([]),
         constants: Box::from([ConstValue::I64(9999)]),
         slot_count: 1,
+        symbols_count: 0,
         entry: StepIdx::ZERO,
         resource_contract: ResourceContract::DEFAULT,
+        step_names: Box::new([]),
     };
     let stale = CompiledWorkflow::try_from_parts(parts).expect("structurally valid");
     // The stale workflow claims the same digest as the original but has different
@@ -908,7 +973,9 @@ fn list_artifacts_empty_returns_empty() {
     let temp_dir = tempfile::tempdir().expect("tempdir");
     let journal = FjallJournal::open(temp_dir.path(), None).expect("journal open");
 
-    let artifacts = journal.list_artifacts().expect("list_artifacts should succeed");
+    let artifacts = journal
+        .list_artifacts()
+        .expect("list_artifacts should succeed");
     assert!(
         artifacts.is_empty(),
         "empty journal should have no artifacts"
@@ -943,7 +1010,9 @@ fn list_artifacts_returns_stored_digests() {
         })
         .expect("put d3");
 
-    let mut artifacts = journal.list_artifacts().expect("list_artifacts should succeed");
+    let mut artifacts = journal
+        .list_artifacts()
+        .expect("list_artifacts should succeed");
     artifacts.sort_by(|a, b| a.as_bytes().cmp(&b.as_bytes()));
 
     assert_eq!(artifacts.len(), 3, "should list all 3 artifacts");
@@ -973,14 +1042,15 @@ fn remove_artifact_removes_from_list() {
         })
         .expect("put d2");
 
-    journal.remove_artifact(d1).expect("remove d1 should succeed");
+    journal
+        .remove_artifact(d1)
+        .expect("remove d1 should succeed");
 
-    let artifacts = journal.list_artifacts().expect("list_artifacts should succeed");
+    let artifacts = journal
+        .list_artifacts()
+        .expect("list_artifacts should succeed");
     assert_eq!(artifacts.len(), 1, "should have 1 artifact after removal");
-    assert!(
-        artifacts.contains(&d2),
-        "remaining artifact should be d2"
-    );
+    assert!(artifacts.contains(&d2), "remaining artifact should be d2");
     assert!(
         !artifacts.contains(&d1),
         "removed artifact should not be in list"
@@ -1015,10 +1085,7 @@ fn artifact_exists_returns_true_for_stored() {
     let exists_before = journal
         .artifact_exists(digest)
         .expect("artifact_exists should succeed");
-    assert!(
-        !exists_before,
-        "artifact should not exist before storage"
-    );
+    assert!(!exists_before, "artifact should not exist before storage");
 
     journal
         .put_compiled_ir(&CompiledIrRecord {
@@ -1030,8 +1097,5 @@ fn artifact_exists_returns_true_for_stored() {
     let exists_after = journal
         .artifact_exists(digest)
         .expect("artifact_exists should succeed");
-    assert!(
-        exists_after,
-        "artifact should exist after storage"
-    );
+    assert!(exists_after, "artifact should exist after storage");
 }
