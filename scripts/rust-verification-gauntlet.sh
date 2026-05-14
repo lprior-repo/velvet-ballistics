@@ -224,6 +224,10 @@ verify_kani() {
   log 'cargo-kani unavailable and no Kani marker found; skipped'
 }
 
+verify_verus() {
+  run bash scripts/verify-verus.sh
+}
+
 require_kani_summary() {
   local output_file="$1"
   local harness="$2"
@@ -248,7 +252,7 @@ append_report_file_evidence() {
   {
     printf -- '- %s: `%s` present and non-empty.\n' "$label" "$evidence_file"
     printf '  ```text\n'
-    rg -n 'Verification successful|SUMMARY|harness|proof|layout_|inventory' "$evidence_file"
+    rg -n 'Verification successful|SUMMARY|harness|proof|layout_|inventory|verification results::|VERUS_' "$evidence_file"
     printf '  ```\n'
   } >>"$report_file"
 }
@@ -268,13 +272,18 @@ write_formal_verification_report() {
     printf -- '- verify-proof: PASS.\n'
     printf -- '- verify-all: PASS.\n\n'
     printf '## Five verification lanes\n\n'
+    printf -- '- Verus: Rust-local deductive proofs from `contracts/proof_obligations.yaml`.\n'
     printf -- '- Kani: formal proof (Kani inventory + layout harnesses).\n'
     printf -- '- Miri: undefined behavior (miri test).\n'
     printf -- '- Lockbud: concurrency (waived by WAIVE-CONCURRENCY-UI-RELEASE for vb-nf2u).\n'
     printf -- '- fuzz: coverage (cargo fuzz smoke).\n'
     printf -- '- coverage: llvm-cov nextest.\n\n'
-    printf '## Kani persisted summaries\n\n'
+    printf '## Verus persisted summaries\n\n'
   } >"$FORMAL_REPORT"
+  append_report_file_evidence "$FORMAL_REPORT" '.evidence/verus/summary.txt' 'Verus registry summary'
+  {
+    printf '\n## Kani persisted summaries\n\n'
+  } >>"$FORMAL_REPORT"
   append_report_file_evidence "$FORMAL_REPORT" '.evidence/vb-nf2u/kani-ui.txt' 'Kani inventory summary'
   append_report_file_evidence "$FORMAL_REPORT" '.evidence/vb-nf2u/kani-layout.txt' 'Kani layout summary'
   {
@@ -310,6 +319,7 @@ validate_formal_verification_report() {
     'verify-deep' \
     'verify-proof' \
     'verify-all' \
+    'Verus registry summary' \
     'Kani inventory summary' \
     'Kani layout summary' \
     'Lockbud' \
@@ -337,6 +347,7 @@ verify_deep() {
 }
 
 verify_proof() {
+  verify_verus
   verify_kani
   run bash scripts/verify-lean.sh
 }

@@ -1,25 +1,20 @@
-//! Verus specification for Taint lattice refinement.
-//!
-//! This file contains the Verus formal specification of the Taint lattice
-//! for refinement verification between Rust and Verus.
-//!
-//! TAINT-LATTICE-VERUS: taint_lattice.rs must contain:
-//! - SpecTaint enum matching Rust Taint variants
-//! - spec_join_taint function for formal verification
-//! - Lattice law lemmas (associativity, commutativity, idempotence, identity)
+// Verus proof obligations for the taint lattice.
+//
+// Source model: `crates/vb_proof_kernels/src/taint.rs`.
+// Registry obligations: VB-CORE-TAINT-001 through VB-CORE-TAINT-005.
+// Exact verifier command: `verus verification/verus/taint_lattice.rs`.
 
-use crate::taint::Taint;
+use vstd::prelude::*;
 
-/// SpecTaint - Verus specification enum mirroring Rust Taint.
+verus! {
+
 pub enum SpecTaint {
     Clean,
     DerivedFromSecret,
     Secret,
 }
 
-/// spec_rank - specification for taint rank ordering.
-/// Rank ordering: Clean(0) < DerivedFromSecret(1) < Secret(2)
-pub fn spec_rank(t: SpecTaint) -> u8 {
+pub open spec fn spec_rank(t: SpecTaint) -> nat {
     match t {
         SpecTaint::Clean => 0,
         SpecTaint::DerivedFromSecret => 1,
@@ -27,61 +22,121 @@ pub fn spec_rank(t: SpecTaint) -> u8 {
     }
 }
 
-/// spec_join_taint - formal specification for taint lattice join.
-/// Join returns the element with higher rank (max of ranks).
-pub fn spec_join_taint(a: SpecTaint, b: SpecTaint) -> SpecTaint {
-    if spec_rank(a) >= spec_rank(b) { a } else { b }
+pub open spec fn spec_join_taint(a: SpecTaint, b: SpecTaint) -> SpecTaint {
+    if spec_rank(a) >= spec_rank(b) {
+        a
+    } else {
+        b
+    }
 }
 
-/// lemma_join_associative - Verus lemma verifying join is associative.
-/// join(join(a,b),c) == join(a,join(b,c))
-pub fn lemma_join_associative(a: SpecTaint, b: SpecTaint, c: SpecTaint) -> bool {
-    spec_join_taint(spec_join_taint(a, b), c) == spec_join_taint(a, spec_join_taint(b, c))
+pub proof fn lemma_rank_ordering()
+    ensures
+        spec_rank(SpecTaint::Clean) < spec_rank(SpecTaint::DerivedFromSecret),
+        spec_rank(SpecTaint::DerivedFromSecret) < spec_rank(SpecTaint::Secret),
+{
+    assert(spec_rank(SpecTaint::Clean) < spec_rank(SpecTaint::DerivedFromSecret)) by(compute);
+    assert(spec_rank(SpecTaint::DerivedFromSecret) < spec_rank(SpecTaint::Secret)) by(compute);
 }
 
-/// lemma_join_commutative - Verus lemma verifying join is commutative.
-/// join(a,b) == join(b,a)
-pub fn lemma_join_commutative(a: SpecTaint, b: SpecTaint) -> bool {
-    spec_join_taint(a, b) == spec_join_taint(b, a)
+pub proof fn lemma_join_selects_left_when_rank_ge(a: SpecTaint, b: SpecTaint)
+    requires
+        spec_rank(a) >= spec_rank(b),
+    ensures
+        spec_join_taint(a, b) == a,
+{
 }
 
-/// lemma_join_idempotent - Verus lemma verifying join is idempotent.
-/// join(a,a) == a
-pub fn lemma_join_idempotent(a: SpecTaint) -> bool {
-    spec_join_taint(a, a) == a
+pub proof fn lemma_join_selects_right_when_rank_lt(a: SpecTaint, b: SpecTaint)
+    requires
+        spec_rank(a) < spec_rank(b),
+    ensures
+        spec_join_taint(a, b) == b,
+{
 }
 
-/// lemma_join_identity - Verus lemma verifying Clean is the identity.
-/// join(a, Clean) == a
-pub fn lemma_join_identity(a: SpecTaint) -> bool {
-    spec_join_taint(a, SpecTaint::Clean) == a
+pub proof fn lemma_join_associative(a: SpecTaint, b: SpecTaint, c: SpecTaint)
+    ensures
+        spec_join_taint(spec_join_taint(a, b), c) == spec_join_taint(a, spec_join_taint(b, c)),
+{
+    assert(spec_join_taint(spec_join_taint(a, b), c) == spec_join_taint(a, spec_join_taint(b, c))) by(compute);
 }
 
-/// lemma_secret_top - Verus lemma verifying Secret is the top element.
-/// join(Clean, Secret) == Secret (Secret never downgrades)
-pub fn lemma_secret_top() -> bool {
-    spec_join_taint(SpecTaint::Clean, SpecTaint::Secret) == SpecTaint::Secret
+pub proof fn lemma_join_commutative(a: SpecTaint, b: SpecTaint)
+    ensures
+        spec_join_taint(a, b) == spec_join_taint(b, a),
+{
+    assert(spec_join_taint(a, b) == spec_join_taint(b, a)) by(compute);
 }
 
-/// lemma_derived_never_downgrades - Verus lemma verifying DerivedFromSecret never downgrades.
-/// join(Clean, DerivedFromSecret) == DerivedFromSecret
-pub fn lemma_derived_never_downgrades() -> bool {
-    spec_join_taint(SpecTaint::Clean, SpecTaint::DerivedFromSecret) == SpecTaint::DerivedFromSecret
+pub proof fn lemma_join_idempotent(a: SpecTaint)
+    ensures
+        spec_join_taint(a, a) == a,
+{
+    assert(spec_join_taint(a, a) == a) by(compute);
 }
 
-/// lemma_rank_ordering - Verus lemma verifying the lattice ordering.
-/// Clean < DerivedFromSecret < Secret
-pub fn lemma_rank_ordering() -> bool {
-    spec_rank(SpecTaint::Clean) < spec_rank(SpecTaint::DerivedFromSecret)
-        && spec_rank(SpecTaint::DerivedFromSecret) < spec_rank(SpecTaint::Secret)
+pub proof fn lemma_join_identity(a: SpecTaint)
+    ensures
+        spec_join_taint(a, SpecTaint::Clean) == a,
+        spec_join_taint(SpecTaint::Clean, a) == a,
+{
+    assert(spec_join_taint(a, SpecTaint::Clean) == a) by(compute);
+    assert(spec_join_taint(SpecTaint::Clean, a) == a) by(compute);
 }
 
-/// all_lattice_laws - combined lattice law verification.
-pub fn all_lattice_laws(a: SpecTaint, b: SpecTaint, c: SpecTaint) -> bool {
-    lemma_join_associative(a, b, c)
-        && lemma_join_commutative(a, b)
-        && lemma_join_idempotent(a)
-        && lemma_join_identity(a)
-        && lemma_secret_top()
-        && lemma_derived_never_downgrades()
+pub proof fn lemma_secret_top(a: SpecTaint)
+    ensures
+        spec_join_taint(a, SpecTaint::Secret) == SpecTaint::Secret,
+        spec_join_taint(SpecTaint::Secret, a) == SpecTaint::Secret,
+{
+    assert(spec_join_taint(a, SpecTaint::Secret) == SpecTaint::Secret) by(compute);
+    assert(spec_join_taint(SpecTaint::Secret, a) == SpecTaint::Secret) by(compute);
 }
+
+pub proof fn lemma_derived_never_downgrades(a: SpecTaint)
+    requires
+        spec_rank(a) >= spec_rank(SpecTaint::DerivedFromSecret),
+    ensures
+        spec_rank(spec_join_taint(a, SpecTaint::DerivedFromSecret)) >= spec_rank(SpecTaint::DerivedFromSecret),
+        spec_rank(spec_join_taint(SpecTaint::DerivedFromSecret, a)) >= spec_rank(SpecTaint::DerivedFromSecret),
+{
+    assert(spec_rank(spec_join_taint(a, SpecTaint::DerivedFromSecret)) >= spec_rank(SpecTaint::DerivedFromSecret)) by(compute);
+    assert(spec_rank(spec_join_taint(SpecTaint::DerivedFromSecret, a)) >= spec_rank(SpecTaint::DerivedFromSecret)) by(compute);
+}
+
+pub proof fn lemma_join_never_downgrades_left(a: SpecTaint, b: SpecTaint)
+    ensures
+        spec_rank(spec_join_taint(a, b)) >= spec_rank(a),
+{
+    assert(spec_rank(spec_join_taint(a, b)) >= spec_rank(a)) by(compute);
+}
+
+pub proof fn lemma_join_never_downgrades_right(a: SpecTaint, b: SpecTaint)
+    ensures
+        spec_rank(spec_join_taint(a, b)) >= spec_rank(b),
+{
+    assert(spec_rank(spec_join_taint(a, b)) >= spec_rank(b)) by(compute);
+}
+
+pub proof fn lemma_all_lattice_laws(a: SpecTaint, b: SpecTaint, c: SpecTaint)
+    ensures
+        spec_join_taint(spec_join_taint(a, b), c) == spec_join_taint(a, spec_join_taint(b, c)),
+        spec_join_taint(a, b) == spec_join_taint(b, a),
+        spec_join_taint(a, a) == a,
+        spec_join_taint(a, SpecTaint::Clean) == a,
+        spec_join_taint(SpecTaint::Clean, a) == a,
+        spec_rank(spec_join_taint(a, b)) >= spec_rank(a),
+        spec_rank(spec_join_taint(a, b)) >= spec_rank(b),
+{
+    lemma_join_associative(a, b, c);
+    lemma_join_commutative(a, b);
+    lemma_join_idempotent(a);
+    lemma_join_identity(a);
+    lemma_join_never_downgrades_left(a, b);
+    lemma_join_never_downgrades_right(a, b);
+}
+
+fn main() {}
+
+} // verus!
