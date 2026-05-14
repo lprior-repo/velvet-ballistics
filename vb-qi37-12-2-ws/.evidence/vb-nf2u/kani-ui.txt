@@ -1,0 +1,863 @@
+Kani Rust Verifier 0.67.0 (cargo plugin)
+warning: /home/lewis/src/Velvet-ballistics-vb-nf2u-go/crates/velvet_ballastics/Cargo.toml: file `/home/lewis/src/Velvet-ballistics-vb-nf2u-go/crates/velvet_ballastics/src/main.rs` found to be present in multiple build targets:
+  * `bin` target `vb`
+  * `bin` target `velvet-ballistics`
+warning: skipping duplicate package `bitflags v2.10.0 (https://github.com/makepad/makepad?branch=dev#20b6c53b)`:
+  /cache/cargo-shared/git/checkouts/makepad-ec2f134f34cd9f98/20b6c53/libs/vulkan/bitflags/Cargo.toml
+in favor of /cache/cargo-shared/git/checkouts/makepad-ec2f134f34cd9f98/20b6c53/libs/bitflags/Cargo.toml
+
+warning: Found the following unsupported constructs:
+             - caller_location (1)
+             - foreign function (1)
+         
+         Verification will fail if one or more of these constructs is reachable.
+         See https://model-checking.github.io/kani/rust-feature-support.html for more details.
+
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.08s
+Checking harness kani_harnesses::inventory_exactly_matches_canonical_screens...
+CBMC 6.8.0 (cbmc-6.8.0)
+CBMC version 6.8.0 (cbmc-6.8.0) 64-bit x86_64 linux
+Reading GOTO program from file /home/lewis/src/Velvet-ballistics-vb-nf2u-go/target/kani/x86_64-unknown-linux-gnu/debug/deps/vb_ui_snapshot-ef944768bb703dc6__RNvNtCsdlaIdwnkl3C_14vb_ui_snapshot14kani_harnesses43inventory_exactly_matches_canonical_screens.out
+Generating GOTO Program
+Adding CPROVER library (x86_64)
+Removal of function pointers and virtual functions
+Generic Property Instrumentation
+Running with 16 object bits, 48 offset bits (user-specified)
+Starting Bounded Model Checking
+Unwinding loop memcmp.0 iteration 1 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 2 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 3 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 4 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 5 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 6 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 7 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 8 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 9 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 10 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 11 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 12 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 13 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 14 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 15 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 16 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 17 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 18 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop _RINvXs2E_NtNtCsci0VKyKEi6N_4core5slice4iterINtB7_4IterReENtNtNtNtBb_4iter6traits8iterator8Iterator3anyNCNvNtCsdlaIdwnkl3C_14vb_ui_snapshot14kani_harnesses43inventory_exactly_matches_canonical_screenss_0EB1I_.0 iteration 1 file /home/runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/slice/iter/macros.rs line 307 column 17 function <std::slice::Iter<'_, &str> as std::iter::Iterator>::any::<{closure@crates/vb_ui_snapshot/src/../kani/inventory.rs:5:49: 5:57}> thread 0
+Unwinding loop memcmp.0 iteration 1 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 2 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 3 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 4 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 5 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 6 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 7 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 8 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 9 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 10 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 11 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 12 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 13 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 14 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 15 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 16 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 17 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 18 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 19 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 20 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 21 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 22 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 23 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 24 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop _RINvXs2E_NtNtCsci0VKyKEi6N_4core5slice4iterINtB7_4IterReENtNtNtNtBb_4iter6traits8iterator8Iterator3anyNCNvNtCsdlaIdwnkl3C_14vb_ui_snapshot14kani_harnesses43inventory_exactly_matches_canonical_screenss0_0EB1I_.0 iteration 1 file /home/runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/slice/iter/macros.rs line 307 column 17 function <std::slice::Iter<'_, &str> as std::iter::Iterator>::any::<{closure@crates/vb_ui_snapshot/src/../kani/inventory.rs:6:49: 6:57}> thread 0
+Unwinding loop _RINvXs2E_NtNtCsci0VKyKEi6N_4core5slice4iterINtB7_4IterReENtNtNtNtBb_4iter6traits8iterator8Iterator3anyNCNvNtCsdlaIdwnkl3C_14vb_ui_snapshot14kani_harnesses43inventory_exactly_matches_canonical_screenss0_0EB1I_.0 iteration 2 file /home/runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/slice/iter/macros.rs line 307 column 17 function <std::slice::Iter<'_, &str> as std::iter::Iterator>::any::<{closure@crates/vb_ui_snapshot/src/../kani/inventory.rs:6:49: 6:57}> thread 0
+Unwinding loop memcmp.0 iteration 1 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 2 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 3 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 4 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 5 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 6 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 7 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 8 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 9 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 10 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 11 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 12 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 13 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 14 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 15 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 16 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 17 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop _RINvXs2E_NtNtCsci0VKyKEi6N_4core5slice4iterINtB7_4IterReENtNtNtNtBb_4iter6traits8iterator8Iterator3anyNCNvNtCsdlaIdwnkl3C_14vb_ui_snapshot14kani_harnesses43inventory_exactly_matches_canonical_screenss1_0EB1I_.0 iteration 1 file /home/runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/slice/iter/macros.rs line 307 column 17 function <std::slice::Iter<'_, &str> as std::iter::Iterator>::any::<{closure@crates/vb_ui_snapshot/src/../kani/inventory.rs:7:49: 7:57}> thread 0
+Unwinding loop _RINvXs2E_NtNtCsci0VKyKEi6N_4core5slice4iterINtB7_4IterReENtNtNtNtBb_4iter6traits8iterator8Iterator3anyNCNvNtCsdlaIdwnkl3C_14vb_ui_snapshot14kani_harnesses43inventory_exactly_matches_canonical_screenss1_0EB1I_.0 iteration 2 file /home/runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/slice/iter/macros.rs line 307 column 17 function <std::slice::Iter<'_, &str> as std::iter::Iterator>::any::<{closure@crates/vb_ui_snapshot/src/../kani/inventory.rs:7:49: 7:57}> thread 0
+Unwinding loop _RINvXs2E_NtNtCsci0VKyKEi6N_4core5slice4iterINtB7_4IterReENtNtNtNtBb_4iter6traits8iterator8Iterator3anyNCNvNtCsdlaIdwnkl3C_14vb_ui_snapshot14kani_harnesses43inventory_exactly_matches_canonical_screenss1_0EB1I_.0 iteration 3 file /home/runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/slice/iter/macros.rs line 307 column 17 function <std::slice::Iter<'_, &str> as std::iter::Iterator>::any::<{closure@crates/vb_ui_snapshot/src/../kani/inventory.rs:7:49: 7:57}> thread 0
+Unwinding loop memcmp.0 iteration 1 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 2 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 3 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 4 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 5 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 6 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 7 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 8 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 9 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 10 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 11 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 12 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 13 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 14 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 15 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 16 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 17 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 18 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 19 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 20 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 21 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 22 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 23 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 24 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop _RINvXs2E_NtNtCsci0VKyKEi6N_4core5slice4iterINtB7_4IterReENtNtNtNtBb_4iter6traits8iterator8Iterator3anyNCNvNtCsdlaIdwnkl3C_14vb_ui_snapshot14kani_harnesses43inventory_exactly_matches_canonical_screenss2_0EB1I_.0 iteration 1 file /home/runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/slice/iter/macros.rs line 307 column 17 function <std::slice::Iter<'_, &str> as std::iter::Iterator>::any::<{closure@crates/vb_ui_snapshot/src/../kani/inventory.rs:8:49: 8:57}> thread 0
+Unwinding loop _RINvXs2E_NtNtCsci0VKyKEi6N_4core5slice4iterINtB7_4IterReENtNtNtNtBb_4iter6traits8iterator8Iterator3anyNCNvNtCsdlaIdwnkl3C_14vb_ui_snapshot14kani_harnesses43inventory_exactly_matches_canonical_screenss2_0EB1I_.0 iteration 2 file /home/runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/slice/iter/macros.rs line 307 column 17 function <std::slice::Iter<'_, &str> as std::iter::Iterator>::any::<{closure@crates/vb_ui_snapshot/src/../kani/inventory.rs:8:49: 8:57}> thread 0
+Unwinding loop _RINvXs2E_NtNtCsci0VKyKEi6N_4core5slice4iterINtB7_4IterReENtNtNtNtBb_4iter6traits8iterator8Iterator3anyNCNvNtCsdlaIdwnkl3C_14vb_ui_snapshot14kani_harnesses43inventory_exactly_matches_canonical_screenss2_0EB1I_.0 iteration 3 file /home/runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/slice/iter/macros.rs line 307 column 17 function <std::slice::Iter<'_, &str> as std::iter::Iterator>::any::<{closure@crates/vb_ui_snapshot/src/../kani/inventory.rs:8:49: 8:57}> thread 0
+Unwinding loop _RINvXs2E_NtNtCsci0VKyKEi6N_4core5slice4iterINtB7_4IterReENtNtNtNtBb_4iter6traits8iterator8Iterator3anyNCNvNtCsdlaIdwnkl3C_14vb_ui_snapshot14kani_harnesses43inventory_exactly_matches_canonical_screenss2_0EB1I_.0 iteration 4 file /home/runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/slice/iter/macros.rs line 307 column 17 function <std::slice::Iter<'_, &str> as std::iter::Iterator>::any::<{closure@crates/vb_ui_snapshot/src/../kani/inventory.rs:8:49: 8:57}> thread 0
+Unwinding loop memcmp.0 iteration 1 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 2 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 3 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 4 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 5 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 6 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 7 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 8 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 9 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 10 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 11 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 12 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 13 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 14 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop _RINvXs2E_NtNtCsci0VKyKEi6N_4core5slice4iterINtB7_4IterReENtNtNtNtBb_4iter6traits8iterator8Iterator3anyNCNvNtCsdlaIdwnkl3C_14vb_ui_snapshot14kani_harnesses43inventory_exactly_matches_canonical_screenss3_0EB1I_.0 iteration 1 file /home/runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/slice/iter/macros.rs line 307 column 17 function <std::slice::Iter<'_, &str> as std::iter::Iterator>::any::<{closure@crates/vb_ui_snapshot/src/../kani/inventory.rs:9:49: 9:57}> thread 0
+Unwinding loop _RINvXs2E_NtNtCsci0VKyKEi6N_4core5slice4iterINtB7_4IterReENtNtNtNtBb_4iter6traits8iterator8Iterator3anyNCNvNtCsdlaIdwnkl3C_14vb_ui_snapshot14kani_harnesses43inventory_exactly_matches_canonical_screenss3_0EB1I_.0 iteration 2 file /home/runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/slice/iter/macros.rs line 307 column 17 function <std::slice::Iter<'_, &str> as std::iter::Iterator>::any::<{closure@crates/vb_ui_snapshot/src/../kani/inventory.rs:9:49: 9:57}> thread 0
+Unwinding loop _RINvXs2E_NtNtCsci0VKyKEi6N_4core5slice4iterINtB7_4IterReENtNtNtNtBb_4iter6traits8iterator8Iterator3anyNCNvNtCsdlaIdwnkl3C_14vb_ui_snapshot14kani_harnesses43inventory_exactly_matches_canonical_screenss3_0EB1I_.0 iteration 3 file /home/runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/slice/iter/macros.rs line 307 column 17 function <std::slice::Iter<'_, &str> as std::iter::Iterator>::any::<{closure@crates/vb_ui_snapshot/src/../kani/inventory.rs:9:49: 9:57}> thread 0
+Unwinding loop _RINvXs2E_NtNtCsci0VKyKEi6N_4core5slice4iterINtB7_4IterReENtNtNtNtBb_4iter6traits8iterator8Iterator3anyNCNvNtCsdlaIdwnkl3C_14vb_ui_snapshot14kani_harnesses43inventory_exactly_matches_canonical_screenss3_0EB1I_.0 iteration 4 file /home/runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/slice/iter/macros.rs line 307 column 17 function <std::slice::Iter<'_, &str> as std::iter::Iterator>::any::<{closure@crates/vb_ui_snapshot/src/../kani/inventory.rs:9:49: 9:57}> thread 0
+Unwinding loop _RINvXs2E_NtNtCsci0VKyKEi6N_4core5slice4iterINtB7_4IterReENtNtNtNtBb_4iter6traits8iterator8Iterator3anyNCNvNtCsdlaIdwnkl3C_14vb_ui_snapshot14kani_harnesses43inventory_exactly_matches_canonical_screenss3_0EB1I_.0 iteration 5 file /home/runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/slice/iter/macros.rs line 307 column 17 function <std::slice::Iter<'_, &str> as std::iter::Iterator>::any::<{closure@crates/vb_ui_snapshot/src/../kani/inventory.rs:9:49: 9:57}> thread 0
+Unwinding loop memcmp.0 iteration 1 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 2 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 3 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 4 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 5 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 6 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 7 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 8 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 9 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 10 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 11 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 12 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 13 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 14 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 15 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 16 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop _RINvXs2E_NtNtCsci0VKyKEi6N_4core5slice4iterINtB7_4IterReENtNtNtNtBb_4iter6traits8iterator8Iterator3anyNCNvNtCsdlaIdwnkl3C_14vb_ui_snapshot14kani_harnesses43inventory_exactly_matches_canonical_screenss4_0EB1I_.0 iteration 1 file /home/runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/slice/iter/macros.rs line 307 column 17 function <std::slice::Iter<'_, &str> as std::iter::Iterator>::any::<{closure@crates/vb_ui_snapshot/src/../kani/inventory.rs:10:49: 10:57}> thread 0
+Unwinding loop _RINvXs2E_NtNtCsci0VKyKEi6N_4core5slice4iterINtB7_4IterReENtNtNtNtBb_4iter6traits8iterator8Iterator3anyNCNvNtCsdlaIdwnkl3C_14vb_ui_snapshot14kani_harnesses43inventory_exactly_matches_canonical_screenss4_0EB1I_.0 iteration 2 file /home/runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/slice/iter/macros.rs line 307 column 17 function <std::slice::Iter<'_, &str> as std::iter::Iterator>::any::<{closure@crates/vb_ui_snapshot/src/../kani/inventory.rs:10:49: 10:57}> thread 0
+Unwinding loop _RINvXs2E_NtNtCsci0VKyKEi6N_4core5slice4iterINtB7_4IterReENtNtNtNtBb_4iter6traits8iterator8Iterator3anyNCNvNtCsdlaIdwnkl3C_14vb_ui_snapshot14kani_harnesses43inventory_exactly_matches_canonical_screenss4_0EB1I_.0 iteration 3 file /home/runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/slice/iter/macros.rs line 307 column 17 function <std::slice::Iter<'_, &str> as std::iter::Iterator>::any::<{closure@crates/vb_ui_snapshot/src/../kani/inventory.rs:10:49: 10:57}> thread 0
+Unwinding loop _RINvXs2E_NtNtCsci0VKyKEi6N_4core5slice4iterINtB7_4IterReENtNtNtNtBb_4iter6traits8iterator8Iterator3anyNCNvNtCsdlaIdwnkl3C_14vb_ui_snapshot14kani_harnesses43inventory_exactly_matches_canonical_screenss4_0EB1I_.0 iteration 4 file /home/runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/slice/iter/macros.rs line 307 column 17 function <std::slice::Iter<'_, &str> as std::iter::Iterator>::any::<{closure@crates/vb_ui_snapshot/src/../kani/inventory.rs:10:49: 10:57}> thread 0
+Unwinding loop _RINvXs2E_NtNtCsci0VKyKEi6N_4core5slice4iterINtB7_4IterReENtNtNtNtBb_4iter6traits8iterator8Iterator3anyNCNvNtCsdlaIdwnkl3C_14vb_ui_snapshot14kani_harnesses43inventory_exactly_matches_canonical_screenss4_0EB1I_.0 iteration 5 file /home/runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/slice/iter/macros.rs line 307 column 17 function <std::slice::Iter<'_, &str> as std::iter::Iterator>::any::<{closure@crates/vb_ui_snapshot/src/../kani/inventory.rs:10:49: 10:57}> thread 0
+Unwinding loop _RINvXs2E_NtNtCsci0VKyKEi6N_4core5slice4iterINtB7_4IterReENtNtNtNtBb_4iter6traits8iterator8Iterator3anyNCNvNtCsdlaIdwnkl3C_14vb_ui_snapshot14kani_harnesses43inventory_exactly_matches_canonical_screenss4_0EB1I_.0 iteration 6 file /home/runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/slice/iter/macros.rs line 307 column 17 function <std::slice::Iter<'_, &str> as std::iter::Iterator>::any::<{closure@crates/vb_ui_snapshot/src/../kani/inventory.rs:10:49: 10:57}> thread 0
+Unwinding loop memcmp.0 iteration 1 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 2 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 3 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 4 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 5 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 6 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 7 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 8 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 9 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 10 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 11 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 12 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 13 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 14 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 15 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop _RINvXs2E_NtNtCsci0VKyKEi6N_4core5slice4iterINtB7_4IterReENtNtNtNtBb_4iter6traits8iterator8Iterator3anyNCNvNtCsdlaIdwnkl3C_14vb_ui_snapshot14kani_harnesses43inventory_exactly_matches_canonical_screenss5_0EB1I_.0 iteration 1 file /home/runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/slice/iter/macros.rs line 307 column 17 function <std::slice::Iter<'_, &str> as std::iter::Iterator>::any::<{closure@crates/vb_ui_snapshot/src/../kani/inventory.rs:11:49: 11:57}> thread 0
+Unwinding loop _RINvXs2E_NtNtCsci0VKyKEi6N_4core5slice4iterINtB7_4IterReENtNtNtNtBb_4iter6traits8iterator8Iterator3anyNCNvNtCsdlaIdwnkl3C_14vb_ui_snapshot14kani_harnesses43inventory_exactly_matches_canonical_screenss5_0EB1I_.0 iteration 2 file /home/runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/slice/iter/macros.rs line 307 column 17 function <std::slice::Iter<'_, &str> as std::iter::Iterator>::any::<{closure@crates/vb_ui_snapshot/src/../kani/inventory.rs:11:49: 11:57}> thread 0
+Unwinding loop _RINvXs2E_NtNtCsci0VKyKEi6N_4core5slice4iterINtB7_4IterReENtNtNtNtBb_4iter6traits8iterator8Iterator3anyNCNvNtCsdlaIdwnkl3C_14vb_ui_snapshot14kani_harnesses43inventory_exactly_matches_canonical_screenss5_0EB1I_.0 iteration 3 file /home/runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/slice/iter/macros.rs line 307 column 17 function <std::slice::Iter<'_, &str> as std::iter::Iterator>::any::<{closure@crates/vb_ui_snapshot/src/../kani/inventory.rs:11:49: 11:57}> thread 0
+Unwinding loop _RINvXs2E_NtNtCsci0VKyKEi6N_4core5slice4iterINtB7_4IterReENtNtNtNtBb_4iter6traits8iterator8Iterator3anyNCNvNtCsdlaIdwnkl3C_14vb_ui_snapshot14kani_harnesses43inventory_exactly_matches_canonical_screenss5_0EB1I_.0 iteration 4 file /home/runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/slice/iter/macros.rs line 307 column 17 function <std::slice::Iter<'_, &str> as std::iter::Iterator>::any::<{closure@crates/vb_ui_snapshot/src/../kani/inventory.rs:11:49: 11:57}> thread 0
+Unwinding loop _RINvXs2E_NtNtCsci0VKyKEi6N_4core5slice4iterINtB7_4IterReENtNtNtNtBb_4iter6traits8iterator8Iterator3anyNCNvNtCsdlaIdwnkl3C_14vb_ui_snapshot14kani_harnesses43inventory_exactly_matches_canonical_screenss5_0EB1I_.0 iteration 5 file /home/runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/slice/iter/macros.rs line 307 column 17 function <std::slice::Iter<'_, &str> as std::iter::Iterator>::any::<{closure@crates/vb_ui_snapshot/src/../kani/inventory.rs:11:49: 11:57}> thread 0
+Unwinding loop _RINvXs2E_NtNtCsci0VKyKEi6N_4core5slice4iterINtB7_4IterReENtNtNtNtBb_4iter6traits8iterator8Iterator3anyNCNvNtCsdlaIdwnkl3C_14vb_ui_snapshot14kani_harnesses43inventory_exactly_matches_canonical_screenss5_0EB1I_.0 iteration 6 file /home/runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/slice/iter/macros.rs line 307 column 17 function <std::slice::Iter<'_, &str> as std::iter::Iterator>::any::<{closure@crates/vb_ui_snapshot/src/../kani/inventory.rs:11:49: 11:57}> thread 0
+Unwinding loop _RINvXs2E_NtNtCsci0VKyKEi6N_4core5slice4iterINtB7_4IterReENtNtNtNtBb_4iter6traits8iterator8Iterator3anyNCNvNtCsdlaIdwnkl3C_14vb_ui_snapshot14kani_harnesses43inventory_exactly_matches_canonical_screenss5_0EB1I_.0 iteration 7 file /home/runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/slice/iter/macros.rs line 307 column 17 function <std::slice::Iter<'_, &str> as std::iter::Iterator>::any::<{closure@crates/vb_ui_snapshot/src/../kani/inventory.rs:11:49: 11:57}> thread 0
+Unwinding loop memcmp.0 iteration 1 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 2 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 3 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 4 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 5 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 6 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 7 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 8 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 9 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 10 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 11 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 12 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 13 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 14 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 15 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 16 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 17 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 18 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 19 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 20 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 21 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 22 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 23 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 24 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Unwinding loop memcmp.0 iteration 25 file <builtin-library-memcmp> line 25 function memcmp thread 0
+Runtime Symex: 0.545115s
+size of program expression: 28848 steps
+slicing removed 21152 assignments
+Generated 4240 VCC(s), 45 remaining after simplification
+Runtime Postprocess Equation: 0.00903749s
+Passing problem to propositional reduction
+converting SSA
+Runtime Convert SSA: 0.0544372s
+Running propositional reduction
+Post-processing
+Runtime Post-process: 4.58e-06s
+Solving with CaDiCaL 2.0.0
+133744 variables, 140838 clauses
+SAT checker: instance is SATISFIABLE
+Runtime Solver: 0.000745923s
+Runtime decision procedure: 0.0564068s
+Running propositional reduction
+Solving with CaDiCaL 2.0.0
+133745 variables, 140839 clauses
+SAT checker: instance is UNSATISFIABLE
+Runtime Solver: 0.000176788s
+Runtime decision procedure: 0.000230618s
+
+RESULTS:
+Check 1: kani::rustc_intrinsics::offset::<&str, *const &str, usize>.safety_check.1
+	 - Status: SUCCESS
+	 - Description: "Offset in bytes overflows isize"
+	 - Location: ../../../runner/work/kani/kani/library/kani/src/lib.rs:57:1 in function kani::rustc_intrinsics::offset::<&str, *const &str, usize>
+
+Check 2: kani::rustc_intrinsics::offset::<&str, *const &str, usize>.safety_check.2
+	 - Status: SUCCESS
+	 - Description: "Offset result and original pointer must point to the same allocation"
+	 - Location: ../../../runner/work/kani/kani/library/kani/src/lib.rs:57:1 in function kani::rustc_intrinsics::offset::<&str, *const &str, usize>
+
+Check 3: core::panicking::panic_nounwind_fmt::runtime.unsupported_construct.1
+	 - Status: SUCCESS
+	 - Description: "call to foreign "Rust" function `_RNvCs1hStedNDpZ2_7___rustc17rust_begin_unwind` is not currently supported by Kani. Please post your example at https://github.com/model-checking/kani/issues/new/choose"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/panicking.rs:110:17 in function core::panicking::panic_nounwind_fmt::runtime
+
+Check 4: memcmp.precondition.1
+	 - Status: SUCCESS
+	 - Description: "memcmp region 1 readable"
+	 - Location: <builtin-library-memcmp>:19 in function memcmp
+
+Check 5: memcmp.precondition.2
+	 - Status: SUCCESS
+	 - Description: "memcpy region 2 readable"
+	 - Location: <builtin-library-memcmp>:21 in function memcmp
+
+Check 6: kani_harnesses::inventory_exactly_matches_canonical_screens.assertion.1
+	 - Status: SUCCESS
+	 - Description: "assertion failed: crate::REQUIRED_FIXTURES.len() == 8"
+	 - Location: crates/vb_ui_snapshot/src/../kani/inventory.rs:3:5 in function kani_harnesses::inventory_exactly_matches_canonical_screens
+
+Check 7: kani_harnesses::inventory_exactly_matches_canonical_screens.assertion.2
+	 - Status: SUCCESS
+	 - Description: "assertion failed: crate::REQUIRED_FIXTURES.iter().any(|screen| *screen == "execution_overview")"
+	 - Location: crates/vb_ui_snapshot/src/../kani/inventory.rs:4:5 in function kani_harnesses::inventory_exactly_matches_canonical_screens
+
+Check 8: kani_harnesses::inventory_exactly_matches_canonical_screens.assertion.3
+	 - Status: SUCCESS
+	 - Description: "assertion failed: crate::REQUIRED_FIXTURES.iter().any(|screen| *screen ==
+"workflow_graph_authoring")"
+	 - Location: crates/vb_ui_snapshot/src/../kani/inventory.rs:5:5 in function kani_harnesses::inventory_exactly_matches_canonical_screens
+
+Check 9: kani_harnesses::inventory_exactly_matches_canonical_screens.assertion.4
+	 - Status: SUCCESS
+	 - Description: "assertion failed: crate::REQUIRED_FIXTURES.iter().any(|screen| *screen == "execution_details")"
+	 - Location: crates/vb_ui_snapshot/src/../kani/inventory.rs:6:5 in function kani_harnesses::inventory_exactly_matches_canonical_screens
+
+Check 10: kani_harnesses::inventory_exactly_matches_canonical_screens.assertion.5
+	 - Status: SUCCESS
+	 - Description: "assertion failed: crate::REQUIRED_FIXTURES.iter().any(|screen| *screen ==
+"verification_certificate")"
+	 - Location: crates/vb_ui_snapshot/src/../kani/inventory.rs:7:5 in function kani_harnesses::inventory_exactly_matches_canonical_screens
+
+Check 11: kani_harnesses::inventory_exactly_matches_canonical_screens.assertion.6
+	 - Status: SUCCESS
+	 - Description: "assertion failed: crate::REQUIRED_FIXTURES.iter().any(|screen| *screen == "replay_theater")"
+	 - Location: crates/vb_ui_snapshot/src/../kani/inventory.rs:8:5 in function kani_harnesses::inventory_exactly_matches_canonical_screens
+
+Check 12: kani_harnesses::inventory_exactly_matches_canonical_screens.assertion.7
+	 - Status: SUCCESS
+	 - Description: "assertion failed: crate::REQUIRED_FIXTURES.iter().any(|screen| *screen == "incident_failure")"
+	 - Location: crates/vb_ui_snapshot/src/../kani/inventory.rs:9:5 in function kani_harnesses::inventory_exactly_matches_canonical_screens
+
+Check 13: kani_harnesses::inventory_exactly_matches_canonical_screens.assertion.8
+	 - Status: SUCCESS
+	 - Description: "assertion failed: crate::REQUIRED_FIXTURES.iter().any(|screen| *screen == "action_registry")"
+	 - Location: crates/vb_ui_snapshot/src/../kani/inventory.rs:10:5 in function kani_harnesses::inventory_exactly_matches_canonical_screens
+
+Check 14: kani_harnesses::inventory_exactly_matches_canonical_screens.assertion.9
+	 - Status: SUCCESS
+	 - Description: "assertion failed: crate::REQUIRED_FIXTURES.iter().any(|screen| *screen ==
+"storage_doctor_ai_context")"
+	 - Location: crates/vb_ui_snapshot/src/../kani/inventory.rs:11:5 in function kani_harnesses::inventory_exactly_matches_canonical_screens
+
+Check 15: <std::slice::Iter<'_, &str> as std::iter::Iterator>::any::<{closure@crates/vb_ui_snapshot/src/../kani/inventory.rs:6:49: 6:57}>.unreachable.1
+	 - Status: SUCCESS
+	 - Description: "unreachable code"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/slice/iter/macros.rs:302:13 in function <std::slice::Iter<'_, &str> as std::iter::Iterator>::any::<{closure@crates/vb_ui_snapshot/src/../kani/inventory.rs:6:49: 6:57}>
+
+Check 16: <std::slice::Iter<'_, &str> as std::iter::Iterator>::any::<{closure@crates/vb_ui_snapshot/src/../kani/inventory.rs:7:49: 7:57}>.unreachable.1
+	 - Status: SUCCESS
+	 - Description: "unreachable code"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/slice/iter/macros.rs:302:13 in function <std::slice::Iter<'_, &str> as std::iter::Iterator>::any::<{closure@crates/vb_ui_snapshot/src/../kani/inventory.rs:7:49: 7:57}>
+
+Check 17: kani::mem::cbmc::same_allocation.unsupported_construct.1
+	 - Status: SUCCESS
+	 - Description: "Kani does not support reasoning about pointer to unallocated memory"
+	 - Location: ../../../runner/work/kani/kani/library/kani/src/lib.rs:57:1 in function kani::mem::cbmc::same_allocation
+
+Check 18: std::fmt::Arguments::<'_>::from_str.assertion.1
+	 - Status: UNREACHABLE
+	 - Description: "attempt to shift left with overflow"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/fmt/mod.rs:820:38 in function std::fmt::Arguments::<'_>::from_str
+
+Check 19: core::num::<impl usize>::unchecked_sub.arithmetic_overflow.1
+	 - Status: SUCCESS
+	 - Description: "attempt to compute `unchecked_sub` which would overflow"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/num/uint_macros.rs:908:17 in function core::num::<impl usize>::unchecked_sub
+
+Check 20: <std::slice::Iter<'_, &str> as std::iter::Iterator>::any::<{closure@crates/vb_ui_snapshot/src/../kani/inventory.rs:10:49: 10:57}>.unreachable.1
+	 - Status: SUCCESS
+	 - Description: "unreachable code"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/slice/iter/macros.rs:302:13 in function <std::slice::Iter<'_, &str> as std::iter::Iterator>::any::<{closure@crates/vb_ui_snapshot/src/../kani/inventory.rs:10:49: 10:57}>
+
+Check 21: kani::rustc_intrinsics::size_of_val_raw::<[u8]>.unreachable.1
+	 - Status: SUCCESS
+	 - Description: "unreachable code"
+	 - Location: ../../../runner/work/kani/kani/library/kani_core/src/models.rs:23:13 in function kani::rustc_intrinsics::size_of_val_raw::<[u8]>
+
+Check 22: kani::rustc_intrinsics::size_of_val_raw::<[u8]>.safety_check.1
+	 - Status: SUCCESS
+	 - Description: "failed to compute `size_of_val`"
+	 - Location: ../../../runner/work/kani/kani/library/kani/src/lib.rs:57:1 in function kani::rustc_intrinsics::size_of_val_raw::<[u8]>
+
+Check 23: kani::rustc_intrinsics::size_of_val_raw::<[u8]>.assertion.1
+	 - Status: SUCCESS
+	 - Description: "cannot compute `size_of_val` for extern types"
+	 - Location: ../../../runner/work/kani/kani/library/kani/src/lib.rs:57:1 in function kani::rustc_intrinsics::size_of_val_raw::<[u8]>
+
+Check 24: std::panic::Location::<'_>::caller.unsupported_construct.1
+	 - Status: SUCCESS
+	 - Description: "caller_location is not currently supported by Kani. Please post your example at https://github.com/model-checking/kani/issues/374"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/panic/location.rs:147:9 in function std::panic::Location::<'_>::caller
+
+Check 25: kani::rustc_intrinsics::offset::<&str, *mut &str, usize>.safety_check.1
+	 - Status: SUCCESS
+	 - Description: "Offset in bytes overflows isize"
+	 - Location: ../../../runner/work/kani/kani/library/kani/src/lib.rs:57:1 in function kani::rustc_intrinsics::offset::<&str, *mut &str, usize>
+
+Check 26: kani::rustc_intrinsics::offset::<&str, *mut &str, usize>.safety_check.2
+	 - Status: SUCCESS
+	 - Description: "Offset result and original pointer must point to the same allocation"
+	 - Location: ../../../runner/work/kani/kani/library/kani/src/lib.rs:57:1 in function kani::rustc_intrinsics::offset::<&str, *mut &str, usize>
+
+Check 27: <std::slice::Iter<'_, &str> as std::iter::Iterator>::any::<{closure@crates/vb_ui_snapshot/src/../kani/inventory.rs:5:49: 5:57}>.unreachable.1
+	 - Status: SUCCESS
+	 - Description: "unreachable code"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/slice/iter/macros.rs:302:13 in function <std::slice::Iter<'_, &str> as std::iter::Iterator>::any::<{closure@crates/vb_ui_snapshot/src/../kani/inventory.rs:5:49: 5:57}>
+
+Check 28: <std::slice::Iter<'_, &str> as std::iter::Iterator>::any::<{closure@crates/vb_ui_snapshot/src/../kani/inventory.rs:4:49: 4:57}>.unreachable.1
+	 - Status: SUCCESS
+	 - Description: "unreachable code"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/slice/iter/macros.rs:302:13 in function <std::slice::Iter<'_, &str> as std::iter::Iterator>::any::<{closure@crates/vb_ui_snapshot/src/../kani/inventory.rs:4:49: 4:57}>
+
+Check 29: <std::slice::Iter<'_, &str> as std::iter::Iterator>::any::<{closure@crates/vb_ui_snapshot/src/../kani/inventory.rs:9:49: 9:57}>.unreachable.1
+	 - Status: SUCCESS
+	 - Description: "unreachable code"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/slice/iter/macros.rs:302:13 in function <std::slice::Iter<'_, &str> as std::iter::Iterator>::any::<{closure@crates/vb_ui_snapshot/src/../kani/inventory.rs:9:49: 9:57}>
+
+Check 30: <std::slice::Iter<'_, &str> as std::iter::Iterator>::any::<{closure@crates/vb_ui_snapshot/src/../kani/inventory.rs:11:49: 11:57}>.unreachable.1
+	 - Status: SUCCESS
+	 - Description: "unreachable code"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/slice/iter/macros.rs:302:13 in function <std::slice::Iter<'_, &str> as std::iter::Iterator>::any::<{closure@crates/vb_ui_snapshot/src/../kani/inventory.rs:11:49: 11:57}>
+
+Check 31: <usize as kani::rustc_intrinsics::ToISize>::to_isize.unreachable.1
+	 - Status: SUCCESS
+	 - Description: "unreachable code"
+	 - Location: ../../../runner/work/kani/kani/library/kani_core/src/models.rs:176:17 in function <usize as kani::rustc_intrinsics::ToISize>::to_isize
+
+Check 32: <usize as kani::rustc_intrinsics::ToISize>::to_isize.safety_check.1
+	 - Status: SUCCESS
+	 - Description: "Offset value overflows isize"
+	 - Location: ../../../runner/work/kani/kani/library/kani/src/lib.rs:57:1 in function <usize as kani::rustc_intrinsics::ToISize>::to_isize
+
+Check 33: <usize as kani::rustc_intrinsics::ToISize>::to_isize.assertion.1
+	 - Status: SUCCESS
+	 - Description: "internal error: entered unreachable code"
+	 - Location: ../../../runner/work/kani/kani/library/kani/src/lib.rs:57:1 in function <usize as kani::rustc_intrinsics::ToISize>::to_isize
+
+Check 34: std::ptr::NonNull::<&str>::as_ref::<'_>.safety_check.1
+	 - Status: SUCCESS
+	 - Description: "misaligned pointer to reference cast: address must be a multiple of its type's alignment"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/non_null.rs:445:18 in function std::ptr::NonNull::<&str>::as_ref::<'_>
+
+Check 35: std::ptr::NonNull::<&str>::as_ref::<'_>.safety_check.2
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/non_null.rs:445:18 in function std::ptr::NonNull::<&str>::as_ref::<'_>
+
+Check 36: <std::slice::Iter<'_, &str> as std::iter::Iterator>::any::<{closure@crates/vb_ui_snapshot/src/../kani/inventory.rs:8:49: 8:57}>.unreachable.1
+	 - Status: SUCCESS
+	 - Description: "unreachable code"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/slice/iter/macros.rs:302:13 in function <std::slice::Iter<'_, &str> as std::iter::Iterator>::any::<{closure@crates/vb_ui_snapshot/src/../kani/inventory.rs:8:49: 8:57}>
+
+Check 37: <std::slice::Iter<'_, &str> as std::iter::Iterator>::any::<{closure@crates/vb_ui_snapshot/src/../kani/inventory.rs:8:49: 8:57}>.pointer_dereference.1
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/slice/iter/macros.rs:307:37 in function <std::slice::Iter<'_, &str> as std::iter::Iterator>::any::<{closure@crates/vb_ui_snapshot/src/../kani/inventory.rs:8:49: 8:57}>
+
+Check 38: std::cmp::impls::<impl std::cmp::PartialEq for &[u8]>::eq.pointer_dereference.1
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:2090:27 in function std::cmp::impls::<impl std::cmp::PartialEq for &[u8]>::eq
+
+Check 39: std::cmp::impls::<impl std::cmp::PartialEq for &[u8]>::eq.pointer_dereference.2
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:2090:27 in function std::cmp::impls::<impl std::cmp::PartialEq for &[u8]>::eq
+
+Check 40: std::cmp::impls::<impl std::cmp::PartialEq for &[u8]>::eq.pointer_dereference.3
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:2090:27 in function std::cmp::impls::<impl std::cmp::PartialEq for &[u8]>::eq
+
+Check 41: std::cmp::impls::<impl std::cmp::PartialEq for &[u8]>::eq.pointer_dereference.4
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:2090:27 in function std::cmp::impls::<impl std::cmp::PartialEq for &[u8]>::eq
+
+Check 42: std::cmp::impls::<impl std::cmp::PartialEq for &[u8]>::eq.pointer_dereference.5
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:2090:27 in function std::cmp::impls::<impl std::cmp::PartialEq for &[u8]>::eq
+
+Check 43: std::cmp::impls::<impl std::cmp::PartialEq for &[u8]>::eq.pointer_dereference.6
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:2090:27 in function std::cmp::impls::<impl std::cmp::PartialEq for &[u8]>::eq
+
+Check 44: std::cmp::impls::<impl std::cmp::PartialEq for &[u8]>::eq.pointer_dereference.7
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:2090:34 in function std::cmp::impls::<impl std::cmp::PartialEq for &[u8]>::eq
+
+Check 45: std::cmp::impls::<impl std::cmp::PartialEq for &[u8]>::eq.pointer_dereference.8
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:2090:34 in function std::cmp::impls::<impl std::cmp::PartialEq for &[u8]>::eq
+
+Check 46: std::cmp::impls::<impl std::cmp::PartialEq for &[u8]>::eq.pointer_dereference.9
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:2090:34 in function std::cmp::impls::<impl std::cmp::PartialEq for &[u8]>::eq
+
+Check 47: std::cmp::impls::<impl std::cmp::PartialEq for &[u8]>::eq.pointer_dereference.10
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:2090:34 in function std::cmp::impls::<impl std::cmp::PartialEq for &[u8]>::eq
+
+Check 48: std::cmp::impls::<impl std::cmp::PartialEq for &[u8]>::eq.pointer_dereference.11
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:2090:34 in function std::cmp::impls::<impl std::cmp::PartialEq for &[u8]>::eq
+
+Check 49: std::cmp::impls::<impl std::cmp::PartialEq for &[u8]>::eq.pointer_dereference.12
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:2090:34 in function std::cmp::impls::<impl std::cmp::PartialEq for &[u8]>::eq
+
+Check 50: <std::slice::Iter<'_, &str> as std::iter::Iterator>::any::<{closure@crates/vb_ui_snapshot/src/../kani/inventory.rs:7:49: 7:57}>.pointer_dereference.1
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/slice/iter/macros.rs:307:37 in function <std::slice::Iter<'_, &str> as std::iter::Iterator>::any::<{closure@crates/vb_ui_snapshot/src/../kani/inventory.rs:7:49: 7:57}>
+
+Check 51: <std::slice::Iter<'_, &str> as std::iter::Iterator>::any::<{closure@crates/vb_ui_snapshot/src/../kani/inventory.rs:6:49: 6:57}>.pointer_dereference.1
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/slice/iter/macros.rs:307:37 in function <std::slice::Iter<'_, &str> as std::iter::Iterator>::any::<{closure@crates/vb_ui_snapshot/src/../kani/inventory.rs:6:49: 6:57}>
+
+Check 52: memcmp.pointer_dereference.1
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: <builtin-library-memcmp>:27 in function memcmp
+
+Check 53: memcmp.pointer_dereference.2
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: <builtin-library-memcmp>:27 in function memcmp
+
+Check 54: memcmp.pointer_dereference.3
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: <builtin-library-memcmp>:27 in function memcmp
+
+Check 55: memcmp.pointer_dereference.4
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: <builtin-library-memcmp>:27 in function memcmp
+
+Check 56: memcmp.pointer_dereference.5
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: <builtin-library-memcmp>:27 in function memcmp
+
+Check 57: memcmp.pointer_dereference.6
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: <builtin-library-memcmp>:27 in function memcmp
+
+Check 58: memcmp.pointer_dereference.7
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: <builtin-library-memcmp>:27 in function memcmp
+
+Check 59: memcmp.pointer_dereference.8
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: <builtin-library-memcmp>:27 in function memcmp
+
+Check 60: memcmp.pointer_dereference.9
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: <builtin-library-memcmp>:27 in function memcmp
+
+Check 61: memcmp.pointer_dereference.10
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: <builtin-library-memcmp>:27 in function memcmp
+
+Check 62: memcmp.pointer_dereference.11
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: <builtin-library-memcmp>:27 in function memcmp
+
+Check 63: memcmp.pointer_dereference.12
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: <builtin-library-memcmp>:27 in function memcmp
+
+Check 64: std::ptr::NonNull::<&str>::as_ref::<'_>.pointer_dereference.1
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/non_null.rs:445:20 in function std::ptr::NonNull::<&str>::as_ref::<'_>
+
+Check 65: std::ptr::NonNull::<&str>::as_ref::<'_>.pointer_dereference.2
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/non_null.rs:445:20 in function std::ptr::NonNull::<&str>::as_ref::<'_>
+
+Check 66: std::ptr::NonNull::<&str>::as_ref::<'_>.pointer_dereference.3
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/non_null.rs:445:20 in function std::ptr::NonNull::<&str>::as_ref::<'_>
+
+Check 67: std::ptr::NonNull::<&str>::as_ref::<'_>.pointer_dereference.4
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/non_null.rs:445:20 in function std::ptr::NonNull::<&str>::as_ref::<'_>
+
+Check 68: std::ptr::NonNull::<&str>::as_ref::<'_>.pointer_dereference.5
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/non_null.rs:445:20 in function std::ptr::NonNull::<&str>::as_ref::<'_>
+
+Check 69: std::ptr::NonNull::<&str>::as_ref::<'_>.pointer_dereference.6
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/non_null.rs:445:20 in function std::ptr::NonNull::<&str>::as_ref::<'_>
+
+Check 70: std::cmp::impls::<impl std::cmp::PartialEq for &str>::eq.pointer_dereference.1
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:2090:27 in function std::cmp::impls::<impl std::cmp::PartialEq for &str>::eq
+
+Check 71: std::cmp::impls::<impl std::cmp::PartialEq for &str>::eq.pointer_dereference.2
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:2090:27 in function std::cmp::impls::<impl std::cmp::PartialEq for &str>::eq
+
+Check 72: std::cmp::impls::<impl std::cmp::PartialEq for &str>::eq.pointer_dereference.3
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:2090:27 in function std::cmp::impls::<impl std::cmp::PartialEq for &str>::eq
+
+Check 73: std::cmp::impls::<impl std::cmp::PartialEq for &str>::eq.pointer_dereference.4
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:2090:27 in function std::cmp::impls::<impl std::cmp::PartialEq for &str>::eq
+
+Check 74: std::cmp::impls::<impl std::cmp::PartialEq for &str>::eq.pointer_dereference.5
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:2090:27 in function std::cmp::impls::<impl std::cmp::PartialEq for &str>::eq
+
+Check 75: std::cmp::impls::<impl std::cmp::PartialEq for &str>::eq.pointer_dereference.6
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:2090:27 in function std::cmp::impls::<impl std::cmp::PartialEq for &str>::eq
+
+Check 76: std::cmp::impls::<impl std::cmp::PartialEq for &str>::eq.pointer_dereference.7
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:2090:34 in function std::cmp::impls::<impl std::cmp::PartialEq for &str>::eq
+
+Check 77: std::cmp::impls::<impl std::cmp::PartialEq for &str>::eq.pointer_dereference.8
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:2090:34 in function std::cmp::impls::<impl std::cmp::PartialEq for &str>::eq
+
+Check 78: std::cmp::impls::<impl std::cmp::PartialEq for &str>::eq.pointer_dereference.9
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:2090:34 in function std::cmp::impls::<impl std::cmp::PartialEq for &str>::eq
+
+Check 79: std::cmp::impls::<impl std::cmp::PartialEq for &str>::eq.pointer_dereference.10
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:2090:34 in function std::cmp::impls::<impl std::cmp::PartialEq for &str>::eq
+
+Check 80: std::cmp::impls::<impl std::cmp::PartialEq for &str>::eq.pointer_dereference.11
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:2090:34 in function std::cmp::impls::<impl std::cmp::PartialEq for &str>::eq
+
+Check 81: std::cmp::impls::<impl std::cmp::PartialEq for &str>::eq.pointer_dereference.12
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/cmp.rs:2090:34 in function std::cmp::impls::<impl std::cmp::PartialEq for &str>::eq
+
+Check 82: <std::slice::Iter<'_, &str> as std::iter::Iterator>::any::<{closure@crates/vb_ui_snapshot/src/../kani/inventory.rs:10:49: 10:57}>.pointer_dereference.1
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/slice/iter/macros.rs:307:37 in function <std::slice::Iter<'_, &str> as std::iter::Iterator>::any::<{closure@crates/vb_ui_snapshot/src/../kani/inventory.rs:10:49: 10:57}>
+
+Check 83: <std::slice::Iter<'_, &str> as std::iter::Iterator>::next.pointer_dereference.1
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/slice/iter/macros.rs:160:27 in function <std::slice::Iter<'_, &str> as std::iter::Iterator>::next
+
+Check 84: <std::slice::Iter<'_, &str> as std::iter::Iterator>::next.pointer_dereference.2
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/slice/iter/macros.rs:160:27 in function <std::slice::Iter<'_, &str> as std::iter::Iterator>::next
+
+Check 85: <std::slice::Iter<'_, &str> as std::iter::Iterator>::next.pointer_dereference.3
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/slice/iter/macros.rs:160:27 in function <std::slice::Iter<'_, &str> as std::iter::Iterator>::next
+
+Check 86: <std::slice::Iter<'_, &str> as std::iter::Iterator>::next.pointer_dereference.4
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/slice/iter/macros.rs:160:27 in function <std::slice::Iter<'_, &str> as std::iter::Iterator>::next
+
+Check 87: <std::slice::Iter<'_, &str> as std::iter::Iterator>::next.pointer_dereference.5
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/slice/iter/macros.rs:160:27 in function <std::slice::Iter<'_, &str> as std::iter::Iterator>::next
+
+Check 88: <std::slice::Iter<'_, &str> as std::iter::Iterator>::next.pointer_dereference.6
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/slice/iter/macros.rs:160:27 in function <std::slice::Iter<'_, &str> as std::iter::Iterator>::next
+
+Check 89: <std::slice::Iter<'_, &str> as std::iter::Iterator>::next.pointer_dereference.7
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/slice/iter/macros.rs:161:34 in function <std::slice::Iter<'_, &str> as std::iter::Iterator>::next
+
+Check 90: <std::slice::Iter<'_, &str> as std::iter::Iterator>::next.pointer_dereference.8
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/slice/iter/macros.rs:161:34 in function <std::slice::Iter<'_, &str> as std::iter::Iterator>::next
+
+Check 91: <std::slice::Iter<'_, &str> as std::iter::Iterator>::next.pointer_dereference.9
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/slice/iter/macros.rs:161:34 in function <std::slice::Iter<'_, &str> as std::iter::Iterator>::next
+
+Check 92: <std::slice::Iter<'_, &str> as std::iter::Iterator>::next.pointer_dereference.10
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/slice/iter/macros.rs:161:34 in function <std::slice::Iter<'_, &str> as std::iter::Iterator>::next
+
+Check 93: <std::slice::Iter<'_, &str> as std::iter::Iterator>::next.pointer_dereference.11
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/slice/iter/macros.rs:161:34 in function <std::slice::Iter<'_, &str> as std::iter::Iterator>::next
+
+Check 94: <std::slice::Iter<'_, &str> as std::iter::Iterator>::next.pointer_dereference.12
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/slice/iter/macros.rs:161:34 in function <std::slice::Iter<'_, &str> as std::iter::Iterator>::next
+
+Check 95: <std::slice::Iter<'_, &str> as std::iter::Iterator>::next.pointer_dereference.13
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/slice/iter/macros.rs:174:25 in function <std::slice::Iter<'_, &str> as std::iter::Iterator>::next
+
+Check 96: <std::slice::Iter<'_, &str> as std::iter::Iterator>::next.pointer_dereference.14
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/slice/iter/macros.rs:174:25 in function <std::slice::Iter<'_, &str> as std::iter::Iterator>::next
+
+Check 97: <std::slice::Iter<'_, &str> as std::iter::Iterator>::next.pointer_dereference.15
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/slice/iter/macros.rs:174:25 in function <std::slice::Iter<'_, &str> as std::iter::Iterator>::next
+
+Check 98: <std::slice::Iter<'_, &str> as std::iter::Iterator>::next.pointer_dereference.16
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/slice/iter/macros.rs:174:25 in function <std::slice::Iter<'_, &str> as std::iter::Iterator>::next
+
+Check 99: <std::slice::Iter<'_, &str> as std::iter::Iterator>::next.pointer_dereference.17
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/slice/iter/macros.rs:174:25 in function <std::slice::Iter<'_, &str> as std::iter::Iterator>::next
+
+Check 100: <std::slice::Iter<'_, &str> as std::iter::Iterator>::next.pointer_dereference.18
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/slice/iter/macros.rs:174:25 in function <std::slice::Iter<'_, &str> as std::iter::Iterator>::next
+
+Check 101: <std::slice::Iter<'_, &str> as std::iter::Iterator>::next.pointer_dereference.19
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/slice/iter/macros.rs:168:36 in function <std::slice::Iter<'_, &str> as std::iter::Iterator>::next
+
+Check 102: <std::slice::Iter<'_, &str> as std::iter::Iterator>::next.pointer_dereference.20
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/slice/iter/macros.rs:180:36 in function <std::slice::Iter<'_, &str> as std::iter::Iterator>::next
+
+Check 103: <std::slice::Iter<'_, &str> as std::iter::Iterator>::next.pointer_dereference.21
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/slice/iter/macros.rs:184:25 in function <std::slice::Iter<'_, &str> as std::iter::Iterator>::next
+
+Check 104: <std::slice::Iter<'_, &str> as std::iter::Iterator>::next.pointer_dereference.22
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/slice/iter/macros.rs:184:25 in function <std::slice::Iter<'_, &str> as std::iter::Iterator>::next
+
+Check 105: <std::slice::Iter<'_, &str> as std::iter::Iterator>::next.pointer_dereference.23
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/slice/iter/macros.rs:184:25 in function <std::slice::Iter<'_, &str> as std::iter::Iterator>::next
+
+Check 106: <std::slice::Iter<'_, &str> as std::iter::Iterator>::next.pointer_dereference.24
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/slice/iter/macros.rs:184:25 in function <std::slice::Iter<'_, &str> as std::iter::Iterator>::next
+
+Check 107: <std::slice::Iter<'_, &str> as std::iter::Iterator>::next.pointer_dereference.25
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/slice/iter/macros.rs:184:25 in function <std::slice::Iter<'_, &str> as std::iter::Iterator>::next
+
+Check 108: <std::slice::Iter<'_, &str> as std::iter::Iterator>::next.pointer_dereference.26
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/slice/iter/macros.rs:184:25 in function <std::slice::Iter<'_, &str> as std::iter::Iterator>::next
+
+Check 109: <std::slice::Iter<'_, &str> as std::iter::Iterator>::any::<{closure@crates/vb_ui_snapshot/src/../kani/inventory.rs:5:49: 5:57}>.pointer_dereference.1
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/slice/iter/macros.rs:307:37 in function <std::slice::Iter<'_, &str> as std::iter::Iterator>::any::<{closure@crates/vb_ui_snapshot/src/../kani/inventory.rs:5:49: 5:57}>
+
+Check 110: <std::slice::Iter<'_, &str> as std::iter::Iterator>::any::<{closure@crates/vb_ui_snapshot/src/../kani/inventory.rs:4:49: 4:57}>.pointer_dereference.1
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/slice/iter/macros.rs:307:37 in function <std::slice::Iter<'_, &str> as std::iter::Iterator>::any::<{closure@crates/vb_ui_snapshot/src/../kani/inventory.rs:4:49: 4:57}>
+
+Check 111: <std::slice::Iter<'_, &str> as std::iter::Iterator>::any::<{closure@crates/vb_ui_snapshot/src/../kani/inventory.rs:9:49: 9:57}>.pointer_dereference.1
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/slice/iter/macros.rs:307:37 in function <std::slice::Iter<'_, &str> as std::iter::Iterator>::any::<{closure@crates/vb_ui_snapshot/src/../kani/inventory.rs:9:49: 9:57}>
+
+Check 112: <std::slice::Iter<'_, &str> as std::iter::Iterator>::any::<{closure@crates/vb_ui_snapshot/src/../kani/inventory.rs:11:49: 11:57}>.pointer_dereference.1
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/slice/iter/macros.rs:307:37 in function <std::slice::Iter<'_, &str> as std::iter::Iterator>::any::<{closure@crates/vb_ui_snapshot/src/../kani/inventory.rs:11:49: 11:57}>
+
+Check 113: <std::ptr::NonNull<&str> as std::cmp::PartialEq>::eq.pointer_dereference.1
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/non_null.rs:1692:9 in function <std::ptr::NonNull<&str> as std::cmp::PartialEq>::eq
+
+Check 114: <std::ptr::NonNull<&str> as std::cmp::PartialEq>::eq.pointer_dereference.2
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/non_null.rs:1692:9 in function <std::ptr::NonNull<&str> as std::cmp::PartialEq>::eq
+
+Check 115: <std::ptr::NonNull<&str> as std::cmp::PartialEq>::eq.pointer_dereference.3
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/non_null.rs:1692:9 in function <std::ptr::NonNull<&str> as std::cmp::PartialEq>::eq
+
+Check 116: <std::ptr::NonNull<&str> as std::cmp::PartialEq>::eq.pointer_dereference.4
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/non_null.rs:1692:9 in function <std::ptr::NonNull<&str> as std::cmp::PartialEq>::eq
+
+Check 117: <std::ptr::NonNull<&str> as std::cmp::PartialEq>::eq.pointer_dereference.5
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/non_null.rs:1692:9 in function <std::ptr::NonNull<&str> as std::cmp::PartialEq>::eq
+
+Check 118: <std::ptr::NonNull<&str> as std::cmp::PartialEq>::eq.pointer_dereference.6
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/non_null.rs:1692:9 in function <std::ptr::NonNull<&str> as std::cmp::PartialEq>::eq
+
+Check 119: <std::ptr::NonNull<&str> as std::cmp::PartialEq>::eq.pointer_dereference.7
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/non_null.rs:1692:26 in function <std::ptr::NonNull<&str> as std::cmp::PartialEq>::eq
+
+Check 120: <std::ptr::NonNull<&str> as std::cmp::PartialEq>::eq.pointer_dereference.8
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/non_null.rs:1692:26 in function <std::ptr::NonNull<&str> as std::cmp::PartialEq>::eq
+
+Check 121: <std::ptr::NonNull<&str> as std::cmp::PartialEq>::eq.pointer_dereference.9
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/non_null.rs:1692:26 in function <std::ptr::NonNull<&str> as std::cmp::PartialEq>::eq
+
+Check 122: <std::ptr::NonNull<&str> as std::cmp::PartialEq>::eq.pointer_dereference.10
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/non_null.rs:1692:26 in function <std::ptr::NonNull<&str> as std::cmp::PartialEq>::eq
+
+Check 123: <std::ptr::NonNull<&str> as std::cmp::PartialEq>::eq.pointer_dereference.11
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/non_null.rs:1692:26 in function <std::ptr::NonNull<&str> as std::cmp::PartialEq>::eq
+
+Check 124: <std::ptr::NonNull<&str> as std::cmp::PartialEq>::eq.pointer_dereference.12
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/ptr/non_null.rs:1692:26 in function <std::ptr::NonNull<&str> as std::cmp::PartialEq>::eq
+
+
+SUMMARY:
+ ** 0 of 124 failed (1 unreachable)
+
+VERIFICATION:- SUCCESSFUL
+Verification Time: 1.0635005s
+
+Manual Harness Summary:
+Complete - 1 successfully verified harnesses, 0 failures, 1 total.

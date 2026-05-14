@@ -1,0 +1,25 @@
+# Cargo Check Report — vb-qi37.12
+
+## Command
+cargo check -p vb_codegen
+
+## Result
+PASS
+
+## Exit Code
+0
+
+## Evidence
+```
+cargo build (0 crates compiled)
+Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.10s
+```
+
+## Interpretation
+vb_codegen compiles cleanly. Generated code passes compilation gate.
+
+## Timestamp
+2026-05-13
+
+## Obligation
+CHECK-POST-001

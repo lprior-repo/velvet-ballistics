@@ -1,0 +1,16 @@
+[package]
+name = "vb-78f9-ws"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+
+[workspace]
+
+[dependencies]
+vb_core = { path = "../crates/vb_core" }
+vb_runtime = { path = "../crates/vb_runtime" }
+vb_validate = { path = "../crates/vb_validate" }
+vb_ui = { path = "../crates/vb_ui" }
+
+[dev-dependencies]
+postcard = "1.1"

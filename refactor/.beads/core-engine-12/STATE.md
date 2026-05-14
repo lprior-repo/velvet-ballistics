@@ -1,0 +1,26 @@
+# core-engine-12 GoSkill/Femdation State
+
+- Worktree: `/home/lewis/src/Velvet-ballistics-core-engine-12`
+- Scope: 12 core-engine beads in one remote-based worktree.
+- Current gate: State 15 landing attempted; code/review gates complete; bead close blocked by open upstream dependencies.
+- Supply-chain waiver: only `velvet-ballastics:supply-chain` / cargo-vet store acquisition is waived.
+- Latest focused evidence:
+  - `rtk cargo test -p vb_codegen -p vb_core -p vb_runtime -p vb_storage --all-features` passed: `3902 passed`.
+  - `rtk cargo nextest run -p vb_codegen -p vb_core -p vb_runtime -p vb_storage --all-features --retries 2 --flaky-result fail` passed: `3901 passed`.
+  - Strict production-lib clippy passed: `0 errors`.
+  - Coverage thresholds passed for changed surfaces:
+    - `vb_codegen/src/lib.rs`: 95.02%
+    - `vb_core/src/replay/mod.rs`: 95.96%
+    - `vb_core/src/replay/step.rs`: 95.42%
+    - `vb_storage/src/recovery/replay/summary.rs`: 97.94%
+- Review status:
+  - Black-hat: approved.
+  - QA: passed after generated-junk cleanup.
+  - Architectural drift: approved disposition.
+  - Test-reviewer: approved.
+  - Red Queen: passed focused ratchet.
+- Landing status:
+  - Completion evidence appended to all 12 selected beads in the original repo bead DB.
+  - `bd dolt push` completed.
+  - `bd close` rejected all selected beads because upstream dependency issues remain open; no `--force` close was used.
+  - Beads were marked `blocked` with notes explaining implementation completion and close blocker.

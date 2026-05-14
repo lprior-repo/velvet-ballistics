@@ -1,0 +1,13 @@
+{"clause_id":"P1","description":"Database path exists and writable","tests":["test_first_open_creates_db_directory"],"proof":[],"tools":["cargo test"]}
+{"clause_id":"P2","description":"Lock file can be created","tests":["test_process_lock_creates_lock_file"],"proof":[],"tools":["cargo test"]}
+{"clause_id":"P3","description":"POSIX flock available","tests":["test_second_open_fails_with_process_lock_held"],"proof":[],"tools":["cargo test"]}
+{"clause_id":"PO1","description":"First open succeeds","tests":["test_first_open_succeeds_and_acquires_lock"],"proof":[],"tools":["cargo test"]}
+{"clause_id":"PO2","description":"Second open fails with ProcessLockHeld","tests":["second_journal_open_on_same_path_is_prevented_by_process_lock","test_second_open_returns_exact_process_lock_held_error"],"proof":[],"tools":["cargo test"]}
+{"clause_id":"PO3","description":"Holder PID included in error","tests":["test_process_lock_held_includes_holder_pid"],"proof":[],"tools":["cargo test"]}
+{"clause_id":"PO4","description":"After drop, second open succeeds","tests":["test_lock_releases_on_journal_drop"],"proof":[],"tools":["cargo test"]}
+{"clause_id":"PO5","description":"Lock before keyspaces","tests":["test_no_keyspace_created_when_lock_fails"],"proof":[],"tools":["cargo test"]}
+{"clause_id":"PO6","description":"Doctor reports locked DB","tests":["test_doctor_reports_locked_database"],"proof":[],"tools":["cargo test"]}
+{"clause_id":"I1","description":"At most one holder","tests":["second_journal_open_on_same_path_is_prevented_by_process_lock"],"proof":[],"tools":["cargo test"]}
+{"clause_id":"I2","description":"Error always has path","tests":["test_process_lock_held_includes_path"],"proof":[],"tools":["cargo test"]}
+{"clause_id":"I3","description":"Auto release on Drop","tests":["test_lock_releases_on_journal_drop"],"proof":[],"tools":["cargo test"]}
+{"clause_id":"I4","description":"No keyspace on lock fail","tests":["test_no_keyspace_created_when_lock_fails"],"proof":[],"tools":["cargo test"]}

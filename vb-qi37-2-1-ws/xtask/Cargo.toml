@@ -1,0 +1,26 @@
+[package]
+name = "xtask"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+vb_ui_snapshot = { path = "../crates/vb_ui_snapshot" }
+anyhow = "1"
+clap = { version = "4", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
+serde_yaml = "0.9"
+serde_json = "1"
+serde-saphyr = { workspace = true }
+toml = "0.9"
+image = { version = "0.25", default-features = false, features = ["png"] }
+tempfile = "3"
+blake3.workspace = true
+
+[dev-dependencies]
+serde-saphyr = { workspace = true, features = ["serialize"] }
+saphyr = { workspace = true }
+
+[lints]
+workspace = true

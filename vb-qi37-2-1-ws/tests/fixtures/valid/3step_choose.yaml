@@ -1,0 +1,27 @@
+# 3-Step Choose Workflow Fixture
+# Valid workflow demonstrating current velvet-ballastics/v1 choice semantics.
+---
+version: velvet-ballastics/v1
+name: "three_step_choose"
+
+when:
+  manual: {}
+
+inputs: {}
+vars: {}
+secrets: {}
+
+steps:
+  - id: step_init
+    save:
+      value: 1
+
+  - id: step_choose
+    choose:
+      condition: true
+      on_true: 2
+      on_false: 2
+
+  - id: step_done
+    finish:
+      result: 0

@@ -1,0 +1,328 @@
+impl Shard {
+    pub(crate) fn handle_submit(
+        &mut self,
+        run: RunId,
+        workflow: CompiledWorkflow,
+        caps: CapabilitySet,
+    ) -> RuntimeResult<()> {
+        self.handle_submit_with_inputs_and_header_mode(run, workflow, &[], caps, true)
+    }
+
+    pub(crate) fn handle_submit_pre_persisted(
+        &mut self,
+        run: RunId,
+        workflow: CompiledWorkflow,
+        caps: CapabilitySet,
+    ) -> RuntimeResult<()> {
+        self.handle_submit_with_inputs_and_header_mode(run, workflow, &[], caps, false)
+    }
+
+    pub(crate) fn handle_submit_with_inputs(
+        &mut self,
+        run: RunId,
+        workflow: CompiledWorkflow,
+        inputs: &[(SlotIdx, SlotValue)],
+        caps: CapabilitySet,
+    ) -> RuntimeResult<()> {
+        self.handle_submit_with_inputs_and_header_mode(run, workflow, inputs, caps, true)
+    }
+
+    fn handle_submit_with_inputs_and_header_mode(
+        &mut self,
+        run: RunId,
+        workflow: CompiledWorkflow,
+        inputs: &[(SlotIdx, SlotValue)],
+        caps: CapabilitySet,
+        persist_header: bool,
+    ) -> RuntimeResult<()> {
+        if self.runs.contains_key(&run) {
+            return Err(RuntimeError::RunAlreadyExists);
+        }
+        if self.runs.len() >= self.max_active_runs {
+            return Err(RuntimeError::ActiveRunCapacityExceeded {
+                capacity: self.max_active_runs,
+            });
+        }
+        let digest = workflow.digest();
+        let admission = self.build_admission(run, digest, caps)?;
+        let mut frame = self.take_frame_for(run, &workflow)?;
+        crate::shard::helpers::seed_input_slots(&mut frame, inputs)?;
+        self.trace_ring.push(TraceEvent::RunSubmitted { run });
+        if persist_header {
+            self.journal.append(RuntimeJournalEvent::RunSubmitted {
+                run,
+                workflow: digest,
+            })?;
+        }
+        if let Some(admission) = admission.as_ref() {
+            self.journal.append(RuntimeJournalEvent::RunAdmission {
+                admission: admission.clone(),
+            })?;
+        }
+        self.counters.inc_submitted();
+        let frame_step_count = frame.step_count();
+        let max_slots = workflow.resource_contract().max_slots;
+        let state = RunState {
+            frame,
+            workflow,
+            store: ValueStore::with_max_slots(max_slots),
+            action_attempts: crate::shard::helpers::new_action_attempts(frame_step_count),
+            admission,
+            collect_states: CollectStates::new(),
+        };
+        self.runs.insert(run, state);
+        self.runtime_states.insert(run, RuntimeState::Initial);
+        self.drive_run(run)?;
+        Ok(())
+    }
+
+    fn build_admission(
+        &self,
+        run: RunId,
+        digest: vb_core::ids::WorkflowDigest,
+        caps: CapabilitySet,
+    ) -> RuntimeResult<Option<crate::admission::RunAdmission>> {
+        use crate::admission::{AdmissionError, admit_artifact_run};
+
+        match admit_artifact_run(self.artifact_store.as_ref(), self.policy, run, digest, caps) {
+            Ok(admission) => Ok(Some(admission)),
+            Err(AdmissionError::ArtifactNotFound { digest }) => {
+                Err(RuntimeError::AdmissionArtifactNotFound { digest })
+            }
+            Err(AdmissionError::CapabilityDenied {
+                action,
+                required,
+                granted,
+            }) => Err(RuntimeError::AdmissionCapabilityDenied {
+                action,
+                required,
+                granted,
+            }),
+            Err(AdmissionError::ResourceCapacityExceeded { available, .. }) => {
+                Err(RuntimeError::ActiveRunCapacityExceeded {
+                    capacity: usize::try_from(available).map_or(usize::MAX, |value| value),
+                })
+            }
+            Err(AdmissionError::ArtifactEnvelopeDecodeFailed) => {
+                Err(RuntimeError::AdmissionArtifactInvalid {
+                    digest: vb_core::ids::WorkflowDigest::from_bytes([0u8; 32]),
+                })
+            }
+            Err(AdmissionError::ArtifactInvalidGateCount { .. }) => {
+                Err(RuntimeError::AdmissionArtifactInvalid { digest })
+            }
+            Err(AdmissionError::ArtifactInvalidProofFlag { .. }) => {
+                Err(RuntimeError::AdmissionArtifactInvalid { digest })
+            }
+        }
+    }
+
+    pub fn handle_resume(&mut self, run: RunId) -> Result<ResumeResult, ResumeError> {
+        self.validate_run_exists(run)?;
+        let current_state = self.get_runtime_state_or_running(run);
+        if current_state == RuntimeState::Running {
+            return Ok(ResumeResult {
+                run_id: run,
+                status: ResumeStatus::AlreadyRunning,
+                timestamp: current_timestamp(),
+            });
+        }
+        if current_state != RuntimeState::Resumable {
+            return Err(ResumeError::NotResumable {
+                run_id: run,
+                current_state,
+            });
+        }
+        let timestamp = self.append_resumed_event(run)?;
+        let drive_result = self.drive_run(run);
+        Self::observe_resume_drive_result(drive_result);
+        Ok(ResumeResult {
+            run_id: run,
+            status: ResumeStatus::Resumed,
+            timestamp,
+        })
+    }
+
+    fn validate_run_exists(&self, run: RunId) -> Result<(), ResumeError> {
+        if !self.runs.contains_key(&run) {
+            return Err(ResumeError::RunIdNotFound { run_id: run });
+        }
+        Ok(())
+    }
+
+    fn get_runtime_state_or_running(&self, run: RunId) -> RuntimeState {
+        self.runtime_states
+            .get(&run)
+            .copied()
+            .unwrap_or(RuntimeState::Running)
+    }
+
+    fn append_resumed_event(&mut self, run: RunId) -> Result<u64, ResumeError> {
+        if !self.is_run_tracked(run) {
+            return Err(ResumeError::IncompleteHydration { run_id: run });
+        }
+        self.runtime_states.insert(run, RuntimeState::Resuming);
+        let timestamp = current_timestamp();
+        let resumed_event = RuntimeJournalEvent::Resumed { run, timestamp };
+        if self.journal.append(resumed_event).is_err() {
+            self.runtime_states.insert(run, RuntimeState::Resumable);
+            return Err(ResumeError::JournalAppendFailed);
+        }
+        Ok(timestamp)
+    }
+
+    fn is_run_tracked(&self, run: RunId) -> bool {
+        self.runtime_states.contains_key(&run)
+    }
+
+    fn observe_resume_drive_result(result: RuntimeResult<()>) {
+        match result {
+            Ok(()) | Err(_) => {}
+        }
+    }
+
+    #[allow(clippy::needless_pass_by_value)]
+    pub(crate) fn handle_action_completion(
+        &mut self,
+        ticket: ActionTicket,
+        output: ActionOutputReady,
+    ) -> RuntimeResult<()> {
+        let run = ticket.run;
+        let state = self.runs.get_mut(&run).ok_or(RuntimeError::RunNotFound)?;
+        crate::shard::helpers::validate_action_completion(state, ticket)?;
+        state
+            .frame
+            .write_slot_with_taint(output.output_slot, output.value, output.taint)
+            .map_err(|_| RuntimeError::InvalidActionCompletion)?;
+        state
+            .frame
+            .mark_succeeded(ticket.step)
+            .map_err(|_| RuntimeError::InvalidActionCompletion)?;
+        crate::shard::helpers::advance_after_action_completion(state, ticket.step)?;
+        let encoded_value =
+            postcard::to_allocvec(&output.value).map_err(|_| RuntimeError::EncodeFailed)?;
+        self.trace_ring.push(TraceEvent::SlotWritten {
+            run,
+            slot: output.output_slot,
+            value: encoded_value.clone(),
+        });
+        self.trace_ring.push(TraceEvent::ActionCompleted {
+            run,
+            step: ticket.step,
+        });
+        self.journal.append(RuntimeJournalEvent::SlotWritten {
+            run,
+            slot: output.output_slot,
+            value: encoded_value,
+            taint: output.taint,
+            extra: None,
+        })?;
+        self.journal.append(RuntimeJournalEvent::StepSucceeded {
+            run,
+            step: ticket.step,
+            output: output.output_slot,
+            attempt: ticket.attempt,
+        })?;
+        self.journal.append(RuntimeJournalEvent::ActionCompleted {
+            run,
+            step: ticket.step,
+            action: ticket.action,
+        })?;
+        self.drive_run(run)
+    }
+
+    pub(crate) fn handle_legacy_action_completion(
+        &mut self,
+        run: RunId,
+        step: StepIdx,
+    ) -> RuntimeResult<()> {
+        let state = self.runs.get_mut(&run).ok_or(RuntimeError::RunNotFound)?;
+        state
+            .frame
+            .mark_succeeded(step)
+            .map_err(|_| RuntimeError::RunNotFound)?;
+        self.trace_ring
+            .push(TraceEvent::ActionCompleted { run, step });
+        // Evidence chain: emit StepSucceeded for legacy action completion.
+        // Legacy path has no output slot information.
+        self.journal.append(RuntimeJournalEvent::StepSucceeded {
+            run,
+            step,
+            output: SlotIdx::ZERO,
+            attempt: 1,
+        })?;
+        self.drive_run(run)
+    }
+
+    #[allow(clippy::needless_pass_by_value)]
+    pub(crate) fn handle_action_failure(
+        &mut self,
+        ticket: ActionTicket,
+        failure: ActionFailure,
+    ) -> RuntimeResult<()> {
+        let run = ticket.run;
+        let code = failure.code;
+        let ticket = self.ticket_with_retry_capacity(ticket, failure.retry_policy)?;
+        let outcome = self.apply_action_failure_to_state(ticket, failure)?;
+        self.trace_ring.push(TraceEvent::ActionFailed {
+            run,
+            step: ticket.step,
+            code,
+        });
+        self.journal.append(RuntimeJournalEvent::ActionFailed {
+            run,
+            step: ticket.step,
+            action: ticket.action,
+            attempt: ticket.attempt,
+        })?;
+        match outcome {
+            ActionFailureOutcome::RetryNow | ActionFailureOutcome::DriveHandler => {
+                self.drive_run(run)
+            }
+            ActionFailureOutcome::FailRun => {
+                let state = self.take_run_state(run)?;
+                self.fail_run_state(run, state)
+            }
+        }
+    }
+
+    pub fn ticket_with_retry_capacity(
+        &self,
+        ticket: ActionTicket,
+        retry_policy: VbCoreRetryPolicy,
+    ) -> RuntimeResult<ActionTicket> {
+        let Some(state) = self.runs.get(&ticket.run) else {
+            return Err(RuntimeError::RunNotFound);
+        };
+        if retry_policy != VbCoreRetryPolicy::Retryable
+            || !crate::shard::helpers::retry_metadata_exists(state, ticket.step)
+        {
+            return Ok(ticket);
+        }
+        let policy = crate::shard::helpers::retry_policy_after_action(state, ticket.step)?;
+        Ok(ActionTicket {
+            capacity: ticket.capacity.max(policy.max_attempts),
+            ..ticket
+        })
+    }
+
+    fn apply_action_failure_to_state(
+        &mut self,
+        ticket: ActionTicket,
+        failure: ActionFailure,
+    ) -> RuntimeResult<ActionFailureOutcome> {
+        let state = self
+            .runs
+            .get_mut(&ticket.run)
+            .ok_or(RuntimeError::RunNotFound)?;
+        crate::shard::helpers::validate_action_completion(state, ticket)?;
+        if retry_is_available(state, ticket, failure.retry_policy)? {
+            state
+                .frame
+                .set_pc(ticket.step)
+                .map_err(|_| RuntimeError::InvalidActionCompletion)?;
+            return Ok(ActionFailureOutcome::RetryNow);
+        }
+        apply_error_handler(state, ticket)
+    }
+}

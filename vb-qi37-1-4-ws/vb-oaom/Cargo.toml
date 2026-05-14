@@ -1,0 +1,3 @@
+[workspace]
+members = ["crates/velvet_ballastics"]
+resolver = "2"

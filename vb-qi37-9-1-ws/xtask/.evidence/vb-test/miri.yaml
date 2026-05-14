@@ -1,0 +1,11 @@
+kind: miri
+gate_name: miri
+command: cargo +nightly miri test --workspace
+exit_code: 1
+log: .evidence/vb-test/miri.log
+status:
+  status: Fail
+why_failed:
+  gate_name: miri
+  hint: Miri found undefined behavior or memory issues
+  repair_command: cargo +nightly miri test --workspace

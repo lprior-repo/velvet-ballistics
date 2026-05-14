@@ -1,0 +1,8 @@
+// vb-5xs4-fixture:ambiguous_label_loop
+
+#[test]
+fn ambiguous_cases() {
+    for case in ["", " "] {
+        assert_eq!(case.len(), 0, "behavior=parser rejects invalid ids; case=invalid");
+    }
+}

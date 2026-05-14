@@ -1,0 +1,12 @@
+[package]
+name = "vb-h6ix-kani"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+vb_core = { path = "../../crates/vb_core" }
+vb_storage = { path = "../../crates/vb_storage" }
+
+[lints]
+workspace = true

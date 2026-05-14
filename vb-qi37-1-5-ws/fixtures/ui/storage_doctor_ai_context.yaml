@@ -1,0 +1,50 @@
+name: storage_doctor_ai_context
+screen_kind: StorageDoctorAiContext
+app_snapshot:
+  status:
+    storage_health: Degraded
+    writer_queue_depth: 4
+    journal_batch_healthy: true
+    snapshot_seq: 7200
+    blob_store_ok: true
+    index_healthy: false
+    uptime_seconds: 259200
+    active_run_count: 2
+  active_runs: []
+  selected_run: null
+  selected_workflow: null
+  verification: null
+  replay: null
+  incident: null
+  actions: []
+  storage:
+    run_event_count: 500000
+    snapshot_seq: 7200
+    tail_seq: 7500
+    corrupt_record_status: "Record at seq 7333 has invalid checksum"
+    trim_recommendation: 500
+    digest_checks:
+      - name: journal_header
+        expected: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        actual: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        ok: true
+      - name: blob_index
+        expected: "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        actual: "0xbcbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        ok: false
+  ai_context:
+    run_id: run_ai_ctx_01
+    safe_for_model: true
+    secrets_redacted: true
+    blobs_summarized: true
+    failure_summary: null
+    replay_safe: true
+    suggested_commands:
+      - "velvet storage repair --seq 7333"
+      - "velvet journal trim --keep 7200"
+      - "velvet index rebuild"
+    last_cert_check: 1715400000
+    last_replay_check: 1715400100
+    last_crash_lab_fixture: "crash_seq_7333.yaml"
+    incomplete_evidence_warnings:
+      - "Evidence blob e8f3 missing 2 fragments"

@@ -1,0 +1,8 @@
+{"id":"obl-001","layer":"unit","tool":"cargo test","target":"TrimEligibility variants","clause":"PO1-PO5","owner":"test-writer","status":"pending"}
+{"id":"obl-002","layer":"unit","tool":"cargo test","target":"TrimBlocker variants","clause":"I3","owner":"test-writer","status":"pending"}
+{"id":"obl-003","layer":"integration","tool":"cargo test","target":"cmd_doctor JSON output includes trim_eligibility","clause":"PO1-PO2","owner":"test-writer","status":"pending"}
+{"id":"obl-004","layer":"property","tool":"proptest","target":"diagnostic idempotency","clause":"I4","owner":"test-writer","status":"pending"}
+{"id":"obl-005","layer":"formal","tool":"kani","target":"no panic in trim_eligibility_diagnostic","clause":"I4","owner":"formal-verifier","status":"pending"}
+{"id":"obl-006","layer":"memory","tool":"miri","target":"diagnostic scan loop","clause":"I4","owner":"formal-verifier","status":"pending"}
+{"id":"obl-007","layer":"manual","tool":"hands-on-qa","target":"real doctor output on populated journal","clause":"PO1-PO8","owner":"qa-enforcer","status":"pending"}
+{"id":"obl-008","layer":"mutation","tool":"cargo mutants","target":"trim eligibility logic branches","clause":"I3","owner":"red-queen","status":"pending"}

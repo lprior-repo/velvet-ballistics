@@ -1,0 +1,100 @@
+use super::RuntimeError;
+
+impl std::fmt::Display for RuntimeError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if let Some(message) = runtime_error_static_message(self) {
+            f.write_str(message)
+        } else {
+            write_runtime_error_dynamic(self, f)
+        }
+    }
+}
+
+fn runtime_error_static_message(error: &RuntimeError) -> Option<&'static str> {
+    match error {
+        RuntimeError::QueueFull => Some("queue full"),
+        RuntimeError::RunNotFound => Some("run not found"),
+        RuntimeError::RunAlreadyExists => Some("run already exists"),
+        RuntimeError::ShutdownInProgress => Some("shutdown in progress"),
+        RuntimeError::JournalPoisoned => Some("runtime journal lock poisoned"),
+        RuntimeError::UnsupportedAsyncStrictAck => {
+            Some("queued strict journal ack is unsupported without persisted-before-ack proof")
+        }
+        RuntimeError::FramePoolUnavailable => Some("frame pool unavailable"),
+        RuntimeError::InvalidActionCompletion => Some("invalid action completion"),
+        RuntimeError::InvalidTimerFire => Some("invalid timer fire"),
+        RuntimeError::UnsupportedFullRecoveryHydration => {
+            Some("full run frame recovery hydration is unsupported")
+        }
+        RuntimeError::InvalidRecoveryHydration => Some("invalid recovery frame hydration"),
+        RuntimeError::ActiveRunCapacityZero => Some("active run capacity cannot be zero"),
+        RuntimeError::AdmissionArtifactNotFound { .. } => {
+            Some("admission rejected: artifact not found")
+        }
+        RuntimeError::AdmissionArtifactInvalid { .. } => {
+            Some("admission rejected: artifact invalid")
+        }
+        RuntimeError::AdmissionCapabilityDenied { .. } => {
+            Some("admission rejected: capability denied")
+        }
+        RuntimeError::AdmissionHeaderPersistenceFailed { .. } => {
+            Some("admission durability failed: header persistence failed")
+        }
+        RuntimeError::EncodeFailed => Some("slot value encoding failed"),
+        RuntimeError::SecretResultNotAllowed => {
+            Some("secret-tainted answer payload is not allowed by resource contract")
+        }
+        RuntimeError::IpcPayloadSizeExceeded { .. } => {
+            Some("IPC payload size exceeds maximum allowed by resource contract")
+        }
+        _ => None,
+    }
+}
+
+fn write_runtime_error_dynamic(
+    error: &RuntimeError,
+    f: &mut std::fmt::Formatter<'_>,
+) -> std::fmt::Result {
+    match error {
+        RuntimeError::ActiveRunCapacityExceeded { capacity } => {
+            write!(f, "active run capacity exceeded: {capacity}")
+        }
+        RuntimeError::UnsupportedOperation { operation } => {
+            write!(f, "unsupported runtime operation: {operation}")
+        }
+        RuntimeError::Core { source } => write!(f, "runtime core error: {source}"),
+        RuntimeError::StorageJournalAppend { source } => {
+            write!(f, "storage journal append failed: {source}")
+        }
+        RuntimeError::AdmissionHeaderPersistenceFailed { source } => {
+            write!(f, "admission header persistence failed: {source}")
+        }
+        RuntimeError::CommandQueueCapacityExceeded { capacity, max } => {
+            write!(f, "command queue capacity {capacity} exceeds maximum {max}")
+        }
+        RuntimeError::StaleAttempt { incoming, current } => {
+            write!(
+                f,
+                "stale action attempt: incoming {incoming}, current {current}"
+            )
+        }
+        RuntimeError::AttemptBeyondMax { attempt, max } => {
+            write!(f, "action attempt {attempt} exceeds max attempts {max}")
+        }
+        RuntimeError::IpcPayloadSizeExceeded { size, max } => {
+            write!(f, "IPC payload size {size} exceeds maximum {max}")
+        }
+        _ => Ok(()),
+    }
+}
+
+impl std::error::Error for RuntimeError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Self::Core { source } => Some(source.as_ref()),
+            Self::StorageJournalAppend { source } => Some(source.as_ref()),
+            Self::AdmissionHeaderPersistenceFailed { source } => Some(source.as_ref()),
+            _ => None,
+        }
+    }
+}

@@ -1,0 +1,8 @@
+error[E0599]: no method named `unwrap` found for enum `DriveResult<T, E>` in the current scope
+ --> tests/compile-fail/forbid_unwrap.rs
+  |
+  | pub enum DriveResult<T, E> {
+  | -------------------------- method `unwrap` not found for this enum
+...
+  |     let _val: i32 = res.unwrap();
+  |                         ^^^^^^ method not found in `DriveResult<i32, &str>`

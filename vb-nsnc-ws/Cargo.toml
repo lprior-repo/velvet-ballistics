@@ -1,0 +1,189 @@
+[workspace]
+members = [
+    "crates/vb_core",
+    "crates/vb_yaml",
+    "crates/vb_validate",
+    "crates/vb_expr",
+    "crates/vb_compile",
+    "crates/vb_storage",
+    "crates/vb_runtime",
+    "crates/vb_doc",
+    "crates/vb_ipc",
+    "crates/vb_codegen",
+    "crates/vb_ui_makepad",
+    "crates/vb_ui_snapshot",
+    "crates/vb_proof_kernels",
+    "crates/velvet_ballastics",
+    "crates/workspace_tests",
+    "crates/vb_benchmark",
+    "xtask",
+    "fuzz",
+]
+default-members = ["."]
+resolver = "2"
+exclude = ["target/miri-tmp", "crates/vb_ui"]
+
+# Root package for workspace-level integration tests
+[package]
+name = "velvet-ballastics-workspace"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+version = "0.1.0"
+publish = false
+default-run = "velvet-ballastics-root"
+
+[lints]
+workspace = true
+
+[dependencies]
+chrono.workspace = true
+crc32fast.workspace = true
+postcard.workspace = true
+saphyr.workspace = true
+serde.workspace = true
+serde-saphyr.workspace = true
+serde_json.workspace = true
+toml.workspace = true
+vb_codegen = { path = "crates/vb_codegen" }
+vb_compile = { path = "crates/vb_compile" }
+vb_core = { path = "crates/vb_core" }
+vb_expr = { path = "crates/vb_expr" }
+vb_ipc = { path = "crates/vb_ipc" }
+vb_runtime = { path = "crates/vb_runtime" }
+vb_storage = { path = "crates/vb_storage" }
+vb_validate = { path = "crates/vb_validate" }
+vb_yaml = { path = "crates/vb_yaml" }
+
+[[bin]]
+name = "velvet-ballastics-root"
+path = "crates/velvet_ballastics/src/main.rs"
+
+[dev-dependencies]
+blake3.workspace = true
+bytes.workspace = true
+criterion.workspace = true
+postcard.workspace = true
+proptest.workspace = true
+saphyr.workspace = true
+tempfile.workspace = true
+toml.workspace = true
+xtask = { path = "xtask" }
+vb_benchmark = { path = "crates/vb_benchmark" }
+vb_codegen = { path = "crates/vb_codegen" }
+vb_compile = { path = "crates/vb_compile" }
+vb_core = { path = "crates/vb_core" }
+vb_doc = { path = "crates/vb_doc" }
+vb_expr = { path = "crates/vb_expr" }
+vb_ipc = { path = "crates/vb_ipc" }
+vb_runtime = { path = "crates/vb_runtime" }
+vb_storage = { path = "crates/vb_storage" }
+vb_validate = { path = "crates/vb_validate" }
+vb_yaml = { path = "crates/vb_yaml" }
+velvet_ballastics = { path = "crates/velvet_ballastics" }
+
+[[bench]]
+name = "velvet_ballastics"
+harness = false
+
+[[bench]]
+name = "vb_qi37_1_1_recovery"
+harness = false
+
+[[bench]]
+name = "vb_kkvb_xtask_routing_red"
+harness = false
+
+[[bench]]
+name = "vb_y1zq_boundary_inventory"
+harness = false
+[workspace.package]
+edition = "2024"
+license = "MIT OR Apache-2.0"
+version = "0.1.0"
+
+[workspace.dependencies]
+byteorder = "1.5"
+arrayvec = "0.7"
+blake3 = "1"
+bytes = { version = "1", features = ["serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+crc32c = "0.6"
+crc32fast = "1"
+crossbeam-channel = "0.5"
+crossbeam-queue = "0.3"
+criterion = "0.8"
+trybuild = "1"
+fjall = { version = "3.1", default-features = false, features = ["lz4"] }
+indoc = "2"
+indexmap = "2"
+logos = "0.15"
+libfuzzer-sys = "0.4"
+mio = "1"
+postcard = { version = "1", features = ["alloc"] }
+proptest = "1"
+rtrb = "0.3"
+rustix = { version = "1", features = ["fs"] }
+saphyr = { version = "=0.0.6", default-features = false }
+saphyr-parser = "=0.0.6"
+serde = { version = "1", default-features = false, features = ["derive", "alloc"] }
+serde-saphyr = { version = "=0.0.25", default-features = false, features = ["deserialize", "serialize"] }
+serde_json = { version = "1", default-features = false, features = ["std", "alloc"] }
+thiserror = "2"
+tempfile = "3"
+toml = "0.9"
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+unused_must_use = "deny"
+unreachable_pub = "deny"
+rust_2018_idioms = { level = "deny", priority = -1 }
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(kani)', 'cfg(loom)'] }
+
+[workspace.lints.clippy]
+correctness = { level = "deny", priority = -1 }
+suspicious = { level = "deny", priority = -1 }
+perf = { level = "deny", priority = -1 }
+complexity = { level = "deny", priority = -1 }
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+panic_in_result_fn = "deny"
+todo = "deny"
+unimplemented = "deny"
+dbg_macro = "deny"
+indexing_slicing = "deny"
+string_slice = "deny"
+get_unwrap = "deny"
+arithmetic_side_effects = "deny"
+as_conversions = "deny"
+let_underscore_must_use = "deny"
+await_holding_lock = "deny"
+large_stack_arrays = "warn"
+large_types_passed_by_value = "warn"
+result_large_err = "warn"
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+strip = "symbols"
+
+[profile.hardened]
+inherits = "release"
+debug = true
+debug-assertions = true
+lto = "off"
+overflow-checks = true
+strip = "none"
+
+[profile.maxperf]
+inherits = "release"
+lto = "fat"
+codegen-units = 1
+debug = false
+
+[profile.bench]
+inherits = "release"
+debug = true
+lto = "thin"
+codegen-units = 1

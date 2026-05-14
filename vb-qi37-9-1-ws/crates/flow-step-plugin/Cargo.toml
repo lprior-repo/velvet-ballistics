@@ -1,0 +1,12 @@
+[package]
+name = "flow-step-plugin"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+publish = false
+
+[lib]
+path = "src/lib.rs"
+
+[lints]
+workspace = true

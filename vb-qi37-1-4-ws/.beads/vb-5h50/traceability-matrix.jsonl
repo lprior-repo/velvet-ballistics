@@ -1,0 +1,5 @@
+{"clause":"I1","description":"No acknowledged state is recoverable only from deleted events","tests":["test_trim_after_durable_snapshot_preserves_replay_result","prop_trim_preserves_replay_equivalence"],"proofs":["PO-001","PO-006"],"evidence":"replay comparison before/after trim"}
+{"clause":"I2","description":"Trim idempotency","tests":["test_second_trim_with_same_safe_point_is_idempotent"],"proofs":["PO-002","PO-008"],"evidence":"second trim returns NoOp with deleted_count=0"}
+{"clause":"I3","description":"Terminal retention minimum","tests":["test_terminal_retention_policy_blocks_trim"],"proofs":["PO-005"],"evidence":"retention policy blocks trim for recent terminal runs"}
+{"clause":"I4","description":"Cutoff boundary safety","tests":["test_trim_cannot_delete_events_newer_than_safe_replay_point"],"proofs":["PO-004","PO-007"],"evidence":"events at/after cutoff remain in keyspace"}
+{"clause":"Po5","description":"No durable snapshot fails closed","tests":["test_trim_without_durable_snapshot_fails_closed"],"proofs":["PO-003"],"evidence":"error returned, no keyspace mutations"}
