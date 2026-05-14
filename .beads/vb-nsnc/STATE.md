@@ -1,11 +1,11 @@
 # vb-nsnc STATE
 
-- Current State: State 15 (Landed) — verification artifacts complete
+- Current State: State 15 Complete — all acceptance tests written and passing
 - Title: `verifier/runtime: Define capability contract schema`
 - Branch/Workspace: `/home/lewis/src/Velvet-ballistics`
 - Bookmark: `main`
 - Claim Evidence: `bd update vb-nsnc --claim` succeeded from `/home/lewis/src/Velvet-ballistics`
-- Landing Evidence: Implementation in `crates/vb_validate/src/gates.rs`, `lib.rs`, `diagnostic.rs`, `diag_codes.rs`, `diag_convert.rs`, `diag_render.rs`; 18/18 tests pass
+- Landing Evidence: Implementation in `crates/vb_validate/src/gates.rs`, `lib.rs`, `diagnostic.rs`, `diag_codes.rs`, `diag_convert.rs`, `diag_render.rs`; 990/990 vb_validate tests pass including 4 missing acceptance tests now added to `crates/vb_validate/tests/capability_contract_schema.rs`
 
 ## State 1.5 Verification Artifacts (Supplemented)
 
@@ -58,4 +58,14 @@ vb-7ode implementer must:
 
 - Lean theorem implementation (`VBValidate.Capability` module) not yet encoded — Kani + proptest provide compensating evidence per WAIVER-001
 - Diagnostic string formatting not Lean-proved — unit tests on exact codes per WAIVER-002
-- Full `moon ci` blocked by unrelated `vb_storage` compile errors in this workspace context
+
+## Acceptance Tests Added (This Session)
+
+The following 4 tests were missing and have been added to `crates/vb_validate/tests/capability_contract_schema.rs`:
+
+| Test | Description | Status |
+|------|-------------|--------|
+| `test_declared_capability_passes_verification` | Valid lowercase capability name passes | ✓ Pass |
+| `test_multiple_declared_capabilities_are_preserved` | Multiple distinct capabilities preserved | ✓ Pass |
+| `test_missing_capability_fails_verification` | Empty name fails with CAPABILITY_NAME_EMPTY | ✓ Pass |
+| `test_unknown_capability_kind_fails_verification` | Invalid format fails with CAPABILITY_NAME_INVALID | ✓ Pass |
