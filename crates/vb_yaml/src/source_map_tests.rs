@@ -1,8 +1,7 @@
 #![forbid(unsafe_code)]
 //! Source map module tests.
 
-use crate::source_map_types::{SourceMap, SourceSpan};
-use crate::source_map_build::build_source_map;
+use super::*;
 
 fn assertion_failed(_message: std::fmt::Arguments<'_>) -> bool {
     false

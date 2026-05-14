@@ -1,9 +1,7 @@
 #![forbid(unsafe_code)]
 //! Profile module adversarial tests.
 
-use crate::profile_validation::{
-    validate_yaml_profile, validate_yaml_profile_with_limits, check_source_size,
-};
+use super::*;
 use crate::{YamlError, YamlLimits};
 
 fn assertion_failed(_message: std::fmt::Arguments<'_>) -> bool {
