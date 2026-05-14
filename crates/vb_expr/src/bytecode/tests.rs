@@ -239,6 +239,38 @@ fn compile_expr_to_bytecode_roundtrips_with_eval() -> crate::ExprResult<()> {
 }
 
 #[test]
+fn f64_literal_roundtrips_through_eval() -> crate::ExprResult<()> {
+    let tokens = lex_expr("3.14")?;
+    let ast = parse_expr(&tokens)?;
+    let mut constants = Vec::new();
+    let program = compile_expr_with_pool(&ast, &mut constants)?;
+    let result = crate::eval::eval_expr_program(&program, &[], &constants)?;
+    let vb_core::SlotValue::F64(finite) = result else {
+        return Err(crate::ExprError::UnexpectedToken {
+            token: "expected SlotValue::F64".into(),
+        });
+    };
+    assert_eq!(finite.get(), 3.14);
+    Ok(())
+}
+
+#[test]
+fn f64_arithmetic_roundtrips_through_eval() -> crate::ExprResult<()> {
+    let tokens = lex_expr("1.5 + 2.5")?;
+    let ast = parse_expr(&tokens)?;
+    let mut constants = Vec::new();
+    let program = compile_expr_with_pool(&ast, &mut constants)?;
+    let result = crate::eval::eval_expr_program(&program, &[], &constants)?;
+    let vb_core::SlotValue::F64(finite) = result else {
+        return Err(crate::ExprError::UnexpectedToken {
+            token: "expected SlotValue::F64".into(),
+        });
+    };
+    assert_eq!(finite.get(), 4.0);
+    Ok(())
+}
+
+#[test]
 fn compile_expr_with_pool_uses_constant_pool() -> crate::ExprResult<()> {
     let tokens = lex_expr("10 + 20")?;
     let ast = parse_expr(&tokens)?;
