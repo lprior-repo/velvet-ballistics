@@ -1,6 +1,10 @@
 #![forbid(unsafe_code)]
 use crate::{CompileError, CompileErrors, non_string_key_error, validate_public_name};
 use saphyr::Yaml;
+use validate::{
+    reject_unknown_schema_fields, reject_schema_pattern, validate_schema_from, schema_kind,
+    validate_schema_children, validate_schema_flags, validate_schema_default, validate_schema_bounds,
+};
 
 pub(crate) fn validate_input_schemas(doc: &Yaml<'_>) -> Result<(), CompileErrors> {
     let Some(node) = doc.as_mapping_get("inputs") else {
@@ -129,5 +133,5 @@ fn validate_schema_mapping(mapping: &saphyr::Mapping<'_>, scope: SchemaScope) ->
 }
 
 
-mod validate;
+pub(crate) mod validate;
 mod tests;
