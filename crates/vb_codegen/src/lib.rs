@@ -260,8 +260,8 @@ fn unsupported_expr_feature(op: ExprOp) -> Option<&'static str> {
         ExprOp::Contains => Some("text helper contains requires runtime symbol store"),
         ExprOp::StartsWith => Some("text helper starts_with requires runtime symbol store"),
         ExprOp::EndsWith => Some("text helper ends_with requires runtime symbol store"),
-        ExprOp::Length => Some("helper length requires runtime symbol store or type proof"),
-        ExprOp::Empty => Some("helper empty requires runtime symbol store or type proof"),
+        ExprOp::Length => None,
+        ExprOp::Empty => None,
     }
 }
 

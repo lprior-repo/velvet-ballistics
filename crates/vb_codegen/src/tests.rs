@@ -4806,6 +4806,61 @@ mod tests {
         Ok(())
     }
 
+    // Standalone F64 codegen emission test (F64-B8 from test-plan.md).
+    // Validates that a workflow containing only a F64 constant emits the exact
+    // `SlotValue::F64(v)` pattern in generated Rust source — not bundled with
+    // other constant-pool variants.
+    #[test]
+    fn f64_constant_emits_slot_value_f64_in_codegen() -> Result<(), String> {
+        // Given a workflow with a single F64 constant
+        let f64_val = vb_core::FiniteF64::new(3.25).map_err(|e| e.to_string())?;
+        let parts = WorkflowParts {
+            name: Box::<str>::from("test_f64_codegen"),
+            digest: WorkflowDigest::from_bytes([0xF6; 32]),
+            nodes: vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: Some(SlotIdx::new(0)),
+                    next: Some(StepIdx::new(1)),
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::SetConst {
+                        value: ConstIdx::new(0),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: None,
+                    next: None,
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(0),
+                    },
+                },
+            ]
+            .into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: vec![ConstValue::F64(f64_val)].into_boxed_slice(),
+            slot_count: 1,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+            step_names: Box::new([]),
+        };
+        let workflow = CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())?;
+        // When generating source
+        let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
+        // Then F64 constant appears as SlotValue::F64 with exact value
+        assert!(
+            source.contains("SlotValue::F64(3.25)"),
+            "F64 constant must appear as SlotValue::F64(3.25), got source starting: {}",
+            &source.chars().take(800).collect::<String>()
+        );
+        Ok(())
+    }
+
     // Verify that CompareGeneratedToIR correctly counts steps and rejects mismatches.
     #[test]
     fn compare_rejects_wrong_step_count() -> Result<(), String> {
@@ -7231,23 +7286,29 @@ mod tests {
     }
 
     #[test]
-    fn length_expression_rejects_unproven_symbol_store() -> Result<(), String> {
+    fn length_expression_passes_validation() -> Result<(), String> {
         let workflow = length_expression_workflow()?;
-        assert_unsupported_ir(
-            validate_generated_subset(&workflow),
-            "helper length requires runtime symbol store or type proof",
-            "unsupported generated Rust IR feature: helper length requires runtime symbol store or type proof",
-        )
+        validate_generated_subset(&workflow).map_err(|e| e.to_string())?;
+        Ok(())
     }
 
     #[test]
-    fn length_expression_emit_fails_closed() -> Result<(), String> {
+    fn length_expression_emits_length_operation() -> Result<(), String> {
         let workflow = length_expression_workflow()?;
-        assert_unsupported_ir(
-            emit_rust_workflow(&workflow),
-            "helper length requires runtime symbol store or type proof",
-            "unsupported generated Rust IR feature: helper length requires runtime symbol store or type proof",
-        )
+        let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
+        assert!(
+            source.contains("list_item_count"),
+            "Length must call list_item_count for lists"
+        );
+        assert!(
+            source.contains("object_field_count"),
+            "Length must call object_field_count for objects"
+        );
+        assert!(
+            source.contains("SlotValue::I64"),
+            "Length must produce SlotValue::I64 result"
+        );
+        Ok(())
     }
 
     // --- Helper expression op: Empty ---
@@ -7297,23 +7358,29 @@ mod tests {
     }
 
     #[test]
-    fn empty_expression_rejects_unproven_symbol_store() -> Result<(), String> {
+    fn empty_expression_passes_validation() -> Result<(), String> {
         let workflow = empty_expression_workflow()?;
-        assert_unsupported_ir(
-            validate_generated_subset(&workflow),
-            "helper empty requires runtime symbol store or type proof",
-            "unsupported generated Rust IR feature: helper empty requires runtime symbol store or type proof",
-        )
+        validate_generated_subset(&workflow).map_err(|e| e.to_string())?;
+        Ok(())
     }
 
     #[test]
-    fn empty_expression_emit_fails_closed() -> Result<(), String> {
+    fn empty_expression_emits_empty_check() -> Result<(), String> {
         let workflow = empty_expression_workflow()?;
-        assert_unsupported_ir(
-            emit_rust_workflow(&workflow),
-            "helper empty requires runtime symbol store or type proof",
-            "unsupported generated Rust IR feature: helper empty requires runtime symbol store or type proof",
-        )
+        let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
+        assert!(
+            source.contains("list_item_count"),
+            "Empty must call list_item_count for lists"
+        );
+        assert!(
+            source.contains("object_field_count"),
+            "Empty must call object_field_count for objects"
+        );
+        assert!(
+            source.contains("SlotValue::Bool"),
+            "Empty must produce SlotValue::Bool result"
+        );
+        Ok(())
     }
 
     #[test]
