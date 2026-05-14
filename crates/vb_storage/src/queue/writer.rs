@@ -6,7 +6,8 @@ use crate::{
     events::JournalEvent,
     journal::FjallJournal,
     types::{
-        DurabilityProfile, JournalWriterFlushReport, JournalWriterQueueProfileCounts, StorageLimits,
+        DurabilityProfile, JournalBatchSize, JournalQueueCapacity, JournalWriterFlushReport,
+        JournalWriterQueueProfileCounts, StorageLimits,
     },
 };
 
@@ -35,18 +36,26 @@ impl JournalWriterQueue {
     pub fn new(
         capacity: usize,
         batch_size: usize,
+        limits: StorageLimits,
+    ) -> Result<Self, JournalError> {
+        let capacity = JournalQueueCapacity::try_from_usize(capacity)?;
+        let batch_size = JournalBatchSize::try_from_usize(batch_size)?;
+        Self::with_contracts(capacity, batch_size, limits)
+    }
+
+    /// Creates a bounded writer queue from validated domain contracts.
+    pub fn with_contracts(
+        capacity: JournalQueueCapacity,
+        batch_size: JournalBatchSize,
         _limits: StorageLimits,
     ) -> Result<Self, JournalError> {
-        if capacity == 0 || batch_size == 0 {
-            return Err(JournalError::QueueCapacity);
-        }
         Ok(Self {
             state: Mutex::new(JournalWriterQueueState {
-                pending: VecDeque::with_capacity(capacity),
+                pending: VecDeque::with_capacity(capacity.get()),
                 shutdown: false,
             }),
-            capacity,
-            batch_size,
+            capacity: capacity.get(),
+            batch_size: batch_size.get(),
         })
     }
 

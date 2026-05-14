@@ -2,12 +2,12 @@
 
 #[cfg(test)]
 mod tests {
+    use crate::envelope::OutputEnvelope;
     use crate::envelope::error::EnvelopeError;
     use crate::envelope::types::{
-        DiagnosticEntry, EnvelopeKind, MetadataEnvelope, PayloadEnvelope, SchemaVersion,
-        MAX_DIAGNOSTIC_ENTRIES,
+        DiagnosticEntry, EnvelopeKind, MAX_DIAGNOSTIC_ENTRIES, MetadataEnvelope, PayloadEnvelope,
+        SchemaVersion,
     };
-    use crate::envelope::OutputEnvelope;
     use vb_core::ids::RunId;
 
     #[test]

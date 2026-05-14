@@ -295,6 +295,132 @@ fn text_literal_in_expression_returns_clear_error() -> crate::ExprResult<()> {
     Ok(())
 }
 
+// --- F64 end-to-end roundtrip tests ---
+
+/// BH-F64-001: F64 end-to-end roundtrip through bytecode compile and eval.
+///
+/// Verifies that 3.14 + 2.86 = 6.0 through the full pipeline:
+/// lex → parse → compile → eval, confirming that F64 arithmetic is wired
+/// correctly end-to-end and produces the expected finite result.
+#[test]
+fn blackhat_f64_001_e2e_addition_roundtrip() -> crate::ExprResult<()> {
+    let tokens = lex_expr("3.14 + 2.86")?;
+    let ast = parse_expr(&tokens)?;
+    let mut constants = Vec::new();
+    let program = compile_expr_with_pool(&ast, &mut constants)?;
+    let result = crate::eval::eval_expr_program(&program, &[], &constants)?;
+    let vb_core::SlotValue::F64(finite) = result else {
+        return Err(crate::ExprError::UnexpectedToken {
+            token: "expected SlotValue::F64 from F64 addition".into(),
+        });
+    };
+    let result_val = finite.get();
+    assert!(
+        (result_val - 6.0).abs() < 1e-10,
+        "BH-F64-001: 3.14 + 2.86 should be ~6.0, got {result_val}"
+    );
+    Ok(())
+}
+
+/// BH-F64-002: F64 end-to-end subtraction roundtrip.
+///
+/// Verifies 10.0 - 4.5 = 5.5 through the full pipeline.
+#[test]
+fn blackhat_f64_002_e2e_subtraction_roundtrip() -> crate::ExprResult<()> {
+    let tokens = lex_expr("10.0 - 4.5")?;
+    let ast = parse_expr(&tokens)?;
+    let mut constants = Vec::new();
+    let program = compile_expr_with_pool(&ast, &mut constants)?;
+    let result = crate::eval::eval_expr_program(&program, &[], &constants)?;
+    let vb_core::SlotValue::F64(finite) = result else {
+        return Err(crate::ExprError::UnexpectedToken {
+            token: "expected SlotValue::F64 from F64 subtraction".into(),
+        });
+    };
+    let result_val = finite.get();
+    assert!(
+        (result_val - 5.5).abs() < 1e-10,
+        "BH-F64-002: 10.0 - 4.5 should be ~5.5, got {result_val}"
+    );
+    Ok(())
+}
+
+/// BH-F64-003: F64 end-to-end multiplication roundtrip.
+///
+/// Verifies 2.5 * 4.0 = 10.0 through the full pipeline.
+#[test]
+fn blackhat_f64_003_e2e_multiplication_roundtrip() -> crate::ExprResult<()> {
+    let tokens = lex_expr("2.5 * 4.0")?;
+    let ast = parse_expr(&tokens)?;
+    let mut constants = Vec::new();
+    let program = compile_expr_with_pool(&ast, &mut constants)?;
+    let result = crate::eval::eval_expr_program(&program, &[], &constants)?;
+    let vb_core::SlotValue::F64(finite) = result else {
+        return Err(crate::ExprError::UnexpectedToken {
+            token: "expected SlotValue::F64 from F64 multiplication".into(),
+        });
+    };
+    let result_val = finite.get();
+    assert!(
+        (result_val - 10.0).abs() < 1e-10,
+        "BH-F64-003: 2.5 * 4.0 should be ~10.0, got {result_val}"
+    );
+    Ok(())
+}
+
+/// BH-F64-004: F64 end-to-end division roundtrip.
+///
+/// Verifies 10.0 / 4.0 = 2.5 through the full pipeline.
+#[test]
+fn blackhat_f64_004_e2e_division_roundtrip() -> crate::ExprResult<()> {
+    let tokens = lex_expr("10.0 / 4.0")?;
+    let ast = parse_expr(&tokens)?;
+    let mut constants = Vec::new();
+    let program = compile_expr_with_pool(&ast, &mut constants)?;
+    let result = crate::eval::eval_expr_program(&program, &[], &constants)?;
+    let vb_core::SlotValue::F64(finite) = result else {
+        return Err(crate::ExprError::UnexpectedToken {
+            token: "expected SlotValue::F64 from F64 division".into(),
+        });
+    };
+    let result_val = finite.get();
+    assert!(
+        (result_val - 2.5).abs() < 1e-10,
+        "BH-F64-004: 10.0 / 4.0 should be ~2.5, got {result_val}"
+    );
+    Ok(())
+}
+
+/// BH-F64-005: F64 comparison operators roundtrip.
+///
+/// Verifies that 3.0 < 5.0, 5.0 >= 5.0, 6.0 > 4.0, and 4.0 <= 4.0
+/// all evaluate correctly through the full pipeline.
+#[test]
+fn blackhat_f64_005_e2e_comparison_roundtrip() -> crate::ExprResult<()> {
+    for (source, expected) in [
+        ("3.0 < 5.0", true),
+        ("5.0 < 3.0", false),
+        ("5.0 >= 5.0", true),
+        ("3.0 >= 5.0", false),
+        ("6.0 > 4.0", true),
+        ("4.0 > 6.0", false),
+        ("4.0 <= 4.0", true),
+        ("5.0 <= 4.0", false),
+    ] {
+        let tokens = lex_expr(source)?;
+        let ast = parse_expr(&tokens)?;
+        let mut constants = Vec::new();
+        let program = compile_expr_with_pool(&ast, &mut constants)?;
+        let result = crate::eval::eval_expr_program(&program, &[], &constants)?;
+        assert_eq!(
+            result,
+            vb_core::SlotValue::Bool(expected),
+            "BH-F64-005: {source} should be {expected}"
+        );
+    }
+    Ok(())
+}
+
 #[allow(dead_code)]
 fn compile_with_pool(
     source: &str,

@@ -1,8 +1,8 @@
 #![forbid(unsafe_code)]
 //! Fjall-backed journal implementation.
 
-pub mod core;
 pub(crate) mod admission;
+pub mod core;
 pub(crate) use self::admission::verify_content_digest;
 pub(crate) mod append;
 pub(crate) mod batch;

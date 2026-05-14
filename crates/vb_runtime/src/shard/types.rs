@@ -9,6 +9,7 @@ use vb_core::ids::{RunId, SlotIdx, StepIdx};
 use vb_core::value::{SlotValue, Taint};
 use vb_core::value_store::ValueStore;
 use vb_core::workflow::CompiledWorkflow;
+use vb_storage::EventSeq;
 
 use crate::counters::ShardCounters;
 use crate::frame_pool::FramePool;
@@ -231,6 +232,8 @@ pub struct Shard {
     pub runs: IndexMap<RunId, RunState>,
     /// Per-run lifecycle state tracking for resume eligibility.
     pub(crate) runtime_states: IndexMap<RunId, RuntimeState>,
+    /// Next durable journal sequence by run, owned by this shard.
+    pub(crate) journal_sequences: IndexMap<RunId, EventSeq>,
     pub(crate) pending_timers: IndexMap<RunId, PendingTimer>,
     pub(crate) frame_pools: IndexMap<FramePoolKey, FramePool>,
     pub(crate) trace_ring: TraceRing,

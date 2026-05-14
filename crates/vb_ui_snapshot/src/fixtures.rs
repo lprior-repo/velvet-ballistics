@@ -9,26 +9,24 @@ use alloc::{
 };
 use serde::{Deserialize, Serialize};
 use vb_ui_model::{
+    Capability, UiAppSnapshot, WorkflowDigest,
+    ai::AiContextView,
     ai::{AiContextPanel, ReplaySafety},
+    incident::IncidentReportView,
     incident::IncidentSeverity,
+    replay::ReplayReportView,
     replay::{RecoveryStrategy, RecoverySuggestion},
     run::{RunEventKind, RunEventView, RunStatus, SlotDiffView, StepStateView, StepStatus},
-    storage::{
-        EvidenceCardPanel, JournalDoctorPanel, StorageHealthPanel,
-    },
-    system::StorageHealth,
-    verify::VerificationCertificate,
-    workflow::{WorkflowEdgeView, WorkflowNodeKind, WorkflowNodeView},
-    system::ActionDescriptionView,
-    ai::AiContextView,
-    incident::IncidentReportView,
-    replay::ReplayReportView,
     run::{RunInspectionView, RunSummaryView},
     storage::StorageDoctorView,
+    storage::{EvidenceCardPanel, JournalDoctorPanel, StorageHealthPanel},
+    system::ActionDescriptionView,
+    system::StorageHealth,
     system::SystemStatusView,
+    verify::VerificationCertificate,
     verify::VerificationReportView,
     workflow::WorkflowGraphView,
-    Capability, UiAppSnapshot, WorkflowDigest,
+    workflow::{WorkflowEdgeView, WorkflowNodeKind, WorkflowNodeView},
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

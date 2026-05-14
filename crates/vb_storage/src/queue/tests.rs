@@ -9,11 +9,11 @@
     clippy::unwrap_used
 )]
 mod internal_tests {
-use super::super::*;
-use crate::{
-    constants::DIGEST_BYTES, types::StorageLimits, EventSeq, FjallJournal, JournalError,
-    JournalEvent,
-};
+    use super::super::*;
+    use crate::{
+        EventSeq, FjallJournal, JournalError, JournalEvent, constants::DIGEST_BYTES,
+        types::StorageLimits,
+    };
     use vb_core::{RunId, WorkflowDigest};
 
     fn temp_journal() -> (tempfile::TempDir, FjallJournal) {

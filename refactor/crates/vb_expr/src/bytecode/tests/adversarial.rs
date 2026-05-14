@@ -11,6 +11,8 @@ use crate::bytecode::{
 use crate::lexer::lex_expr;
 use crate::parser::parse_expr;
 
+use super::compile_with_pool;
+
 fn resolve_test_reference(reference: &str) -> Option<vb_core::SlotIdx> {
     match reference {
         "$a" => Some(vb_core::SlotIdx::new(0)),
@@ -539,18 +541,374 @@ fn blackhat_ev_013_cross_type_equality_no_panic() -> crate::ExprResult<()> {
     Ok(())
 }
 
-/// BH-EV-014: Negation of zero and positive values does not overflow.
+// =========================================================================
+// BLACKHAT F64 security regression tests
+// =========================================================================
+
+/// BH-F64-BC-001: F64 literals compile to correct constant pool entries.
+///
+/// Verifies that 3.14 produces a ConstValue::F64 with the correct value.
 #[test]
-fn blackhat_ev_014_neg_zero_no_overflow() -> crate::ExprResult<()> {
+fn blackhat_f64_bc_001_literal_compiles_to_f64_constant() -> crate::ExprResult<()> {
+    let (program, constants) = compile_with_pool("3.14")?;
+    let expected_ops = vec![ExprOp::LoadConst(ConstIdx::new(0))];
+    assert_eq!(program.ops.as_ref(), expected_ops.as_slice());
+    assert_eq!(constants.len(), 1);
+    let ConstValue::F64(finite) = constants.first().unwrap() else {
+        return Err(crate::ExprError::UnexpectedToken {
+            token: "BH-F64-BC-001: expected ConstValue::F64".into(),
+        });
+    };
+    assert!(
+        (finite.get() - 3.14).abs() < 1e-10,
+        "BH-F64-BC-001: 3.14 should be ~3.14, got {}",
+        finite.get()
+    );
+    Ok(())
+}
+
+/// BH-F64-BC-002: F64 arithmetic does NOT constant-fold at compile time.
+///
+/// Unlike I64 arithmetic, F64 binary operations are not folded. This test
+/// confirms the runtime evaluation is required for expressions like 1.5 + 2.5.
+#[test]
+fn blackhat_f64_bc_002_no_constant_fold() -> crate::ExprResult<()> {
+    let tokens = lex_expr("1.5 + 2.5")?;
+    let ast = parse_expr(&tokens)?;
+    let folded = const_fold_expr(&ast);
+    assert_eq!(
+        folded, None,
+        "BH-F64-BC-002: F64 1.5 + 2.5 should NOT constant-fold"
+    );
+    Ok(())
+}
+
+/// BH-F64-BC-003: F64 expressions compile to the expected bytecode ops.
+///
+/// Verifies that 3.0 + 4.0 produces LoadConst, LoadConst, Add ops.
+#[test]
+fn blackhat_f64_bc_003_addition_bytecode_structure() -> crate::ExprResult<()> {
+    let (program, constants) = compile_with_pool("3.0 + 4.0")?;
+    let expected_ops = vec![
+        ExprOp::LoadConst(ConstIdx::new(0)),
+        ExprOp::LoadConst(ConstIdx::new(1)),
+        ExprOp::Add,
+    ];
+    assert_eq!(program.ops.as_ref(), expected_ops.as_slice());
+    assert_eq!(constants.len(), 2);
+    Ok(())
+}
+
+/// BH-F64-EV-001: F64 addition produces correct finite result.
+#[test]
+fn blackhat_f64_ev_001_f64_addition() -> crate::ExprResult<()> {
+    use crate::eval::eval_binary_op;
+    use crate::lexer::BinaryOp;
+    use vb_core::SlotValue;
+
+    let f64_a = vb_core::value::FiniteF64::new(1.5).map_err(|_| ExprError::UnexpectedEof)?;
+    let f64_b = vb_core::value::FiniteF64::new(2.5).map_err(|_| ExprError::UnexpectedEof)?;
+    let result = eval_binary_op(BinaryOp::Add, SlotValue::F64(f64_a), SlotValue::F64(f64_b))?;
+    let SlotValue::F64(finite) = result else {
+        return Err(ExprError::UnexpectedToken {
+            token: "BH-F64-EV-001: expected SlotValue::F64 from F64 + F64".into(),
+        });
+    };
+    assert!(
+        (finite.get() - 4.0).abs() < 1e-10,
+        "BH-F64-EV-001: 1.5 + 2.5 should be ~4.0, got {}",
+        finite.get()
+    );
+    Ok(())
+}
+
+/// BH-F64-EV-002: F64 subtraction produces correct finite result.
+#[test]
+fn blackhat_f64_ev_002_f64_subtraction() -> crate::ExprResult<()> {
+    use crate::eval::eval_binary_op;
+    use crate::lexer::BinaryOp;
+    use vb_core::SlotValue;
+
+    let f64_a = vb_core::value::FiniteF64::new(10.0).map_err(|_| ExprError::UnexpectedEof)?;
+    let f64_b = vb_core::value::FiniteF64::new(3.5).map_err(|_| ExprError::UnexpectedEof)?;
+    let result = eval_binary_op(BinaryOp::Sub, SlotValue::F64(f64_a), SlotValue::F64(f64_b))?;
+    let SlotValue::F64(finite) = result else {
+        return Err(ExprError::UnexpectedToken {
+            token: "BH-F64-EV-002: expected SlotValue::F64 from F64 - F64".into(),
+        });
+    };
+    assert!(
+        (finite.get() - 6.5).abs() < 1e-10,
+        "BH-F64-EV-002: 10.0 - 3.5 should be ~6.5, got {}",
+        finite.get()
+    );
+    Ok(())
+}
+
+/// BH-F64-EV-003: F64 multiplication produces correct finite result.
+#[test]
+fn blackhat_f64_ev_003_f64_multiplication() -> crate::ExprResult<()> {
+    use crate::eval::eval_binary_op;
+    use crate::lexer::BinaryOp;
+    use vb_core::SlotValue;
+
+    let f64_a = vb_core::value::FiniteF64::new(2.5).map_err(|_| ExprError::UnexpectedEof)?;
+    let f64_b = vb_core::value::FiniteF64::new(4.0).map_err(|_| ExprError::UnexpectedEof)?;
+    let result = eval_binary_op(BinaryOp::Mul, SlotValue::F64(f64_a), SlotValue::F64(f64_b))?;
+    let SlotValue::F64(finite) = result else {
+        return Err(ExprError::UnexpectedToken {
+            token: "BH-F64-EV-003: expected SlotValue::F64 from F64 * F64".into(),
+        });
+    };
+    assert!(
+        (finite.get() - 10.0).abs() < 1e-10,
+        "BH-F64-EV-003: 2.5 * 4.0 should be ~10.0, got {}",
+        finite.get()
+    );
+    Ok(())
+}
+
+/// BH-F64-EV-004: F64 division produces correct finite result.
+#[test]
+fn blackhat_f64_ev_004_f64_division() -> crate::ExprResult<()> {
+    use crate::eval::eval_binary_op;
+    use crate::lexer::BinaryOp;
+    use vb_core::SlotValue;
+
+    let f64_a = vb_core::value::FiniteF64::new(10.0).map_err(|_| ExprError::UnexpectedEof)?;
+    let f64_b = vb_core::value::FiniteF64::new(4.0).map_err(|_| ExprError::UnexpectedEof)?;
+    let result = eval_binary_op(BinaryOp::Div, SlotValue::F64(f64_a), SlotValue::F64(f64_b))?;
+    let SlotValue::F64(finite) = result else {
+        return Err(ExprError::UnexpectedToken {
+            token: "BH-F64-EV-004: expected SlotValue::F64 from F64 / F64".into(),
+        });
+    };
+    assert!(
+        (finite.get() - 2.5).abs() < 1e-10,
+        "BH-F64-EV-004: 10.0 / 4.0 should be ~2.5, got {}",
+        finite.get()
+    );
+    Ok(())
+}
+
+/// BH-F64-EV-005: F64 division by zero returns NonFiniteFloat error.
+///
+/// SECURITY: Unlike I64 division by zero which returns DivisionByZero,
+/// F64 division by zero produces IEEE 754 infinity, which then fails
+/// the FiniteF64::new() check and returns NonFiniteFloat.
+#[test]
+fn blackhat_f64_ev_005_f64_div_by_zero() -> crate::ExprResult<()> {
+    use crate::eval::eval_binary_op;
+    use crate::lexer::BinaryOp;
+    use vb_core::SlotValue;
+
+    let f64_one = vb_core::value::FiniteF64::new(1.0).map_err(|_| ExprError::UnexpectedEof)?;
+    let f64_zero = vb_core::value::FiniteF64::new(0.0).map_err(|_| ExprError::UnexpectedEof)?;
+    let result = eval_binary_op(BinaryOp::Div, SlotValue::F64(f64_one), SlotValue::F64(f64_zero));
+    assert!(
+        matches!(result, Err(crate::ExprError::NonFiniteFloat)),
+        "BH-F64-EV-005: 1.0 / 0.0 should produce NonFiniteFloat"
+    );
+    Ok(())
+}
+
+/// BH-F64-EV-006: F64 negation of positive value.
+#[test]
+fn blackhat_f64_ev_006_f64_neg_positive() -> crate::ExprResult<()> {
     use crate::eval::eval_unary_op;
     use crate::lexer::UnaryOp;
     use vb_core::SlotValue;
 
-    let r = eval_unary_op(UnaryOp::Neg, SlotValue::I64(0))?;
-    assert_eq!(r, SlotValue::I64(0));
-    let r = eval_unary_op(UnaryOp::Neg, SlotValue::I64(42))?;
-    assert_eq!(r, SlotValue::I64(-42));
-    let r = eval_unary_op(UnaryOp::Neg, SlotValue::I64(-42))?;
-    assert_eq!(r, SlotValue::I64(42));
+    let f64_val = vb_core::value::FiniteF64::new(42.0).map_err(|_| ExprError::UnexpectedEof)?;
+    let result = eval_unary_op(UnaryOp::Neg, SlotValue::F64(f64_val))?;
+    let SlotValue::F64(finite) = result else {
+        return Err(ExprError::UnexpectedToken {
+            token: "BH-F64-EV-006: expected SlotValue::F64 from neg of positive F64".into(),
+        });
+    };
+    assert!(
+        (finite.get() - (-42.0)).abs() < 1e-10,
+        "BH-F64-EV-006: -42.0 should be -42.0, got {}",
+        finite.get()
+    );
     Ok(())
 }
+
+/// BH-F64-EV-007: F64 negation of negative value.
+#[test]
+fn blackhat_f64_ev_007_f64_neg_negative() -> crate::ExprResult<()> {
+    use crate::eval::eval_unary_op;
+    use crate::lexer::UnaryOp;
+    use vb_core::SlotValue;
+
+    let f64_val = vb_core::value::FiniteF64::new(-15.5).map_err(|_| ExprError::UnexpectedEof)?;
+    let result = eval_unary_op(UnaryOp::Neg, SlotValue::F64(f64_val))?;
+    let SlotValue::F64(finite) = result else {
+        return Err(ExprError::UnexpectedToken {
+            token: "BH-F64-EV-007: expected SlotValue::F64 from neg of negative F64".into(),
+        });
+    };
+    assert!(
+        (finite.get() - 15.5).abs() < 1e-10,
+        "BH-F64-EV-007: -(-15.5) should be 15.5, got {}",
+        finite.get()
+    );
+    Ok(())
+}
+
+/// BH-F64-EV-008: F64 comparison less-than.
+#[test]
+fn blackhat_f64_ev_008_f64_lt() -> crate::ExprResult<()> {
+    use crate::eval::eval_binary_op;
+    use crate::lexer::BinaryOp;
+    use vb_core::SlotValue;
+
+    let f64_a = vb_core::value::FiniteF64::new(3.0).map_err(|_| ExprError::UnexpectedEof)?;
+    let f64_b = vb_core::value::FiniteF64::new(5.0).map_err(|_| ExprError::UnexpectedEof)?;
+    let result = eval_binary_op(BinaryOp::Lt, SlotValue::F64(f64_a), SlotValue::F64(f64_b))?;
+    assert_eq!(result, SlotValue::Bool(true), "BH-F64-EV-008: 3.0 < 5.0 should be true");
+    Ok(())
+}
+
+/// BH-F64-EV-009: F64 comparison greater-than-or-equal.
+#[test]
+fn blackhat_f64_ev_009_f64_gte() -> crate::ExprResult<()> {
+    use crate::eval::eval_binary_op;
+    use crate::lexer::BinaryOp;
+    use vb_core::SlotValue;
+
+    let f64_a = vb_core::value::FiniteF64::new(5.0).map_err(|_| ExprError::UnexpectedEof)?;
+    let f64_b = vb_core::value::FiniteF64::new(5.0).map_err(|_| ExprError::UnexpectedEof)?;
+    let result = eval_binary_op(BinaryOp::Gte, SlotValue::F64(f64_a), SlotValue::F64(f64_b))?;
+    assert_eq!(result, SlotValue::Bool(true), "BH-F64-EV-009: 5.0 >= 5.0 should be true");
+    Ok(())
+}
+
+/// BH-F64-EV-010: F64 equality comparison.
+#[test]
+fn blackhat_f64_ev_010_f64_eq() -> crate::ExprResult<()> {
+    use crate::eval::eval_binary_op;
+    use crate::lexer::BinaryOp;
+    use vb_core::SlotValue;
+
+    let f64_a = vb_core::value::FiniteF64::new(7.5).map_err(|_| ExprError::UnexpectedEof)?;
+    let f64_b = vb_core::value::FiniteF64::new(7.5).map_err(|_| ExprError::UnexpectedEof)?;
+    let result = eval_binary_op(BinaryOp::Eq, SlotValue::F64(f64_a), SlotValue::F64(f64_b))?;
+    assert_eq!(result, SlotValue::Bool(true), "BH-F64-EV-010: 7.5 == 7.5 should be true");
+
+    let f64_c = vb_core::value::FiniteF64::new(7.5).map_err(|_| ExprError::UnexpectedEof)?;
+    let f64_d = vb_core::value::FiniteF64::new(8.0).map_err(|_| ExprError::UnexpectedEof)?;
+    let result_ne = eval_binary_op(BinaryOp::Eq, SlotValue::F64(f64_c), SlotValue::F64(f64_d))?;
+    assert_eq!(result_ne, SlotValue::Bool(false), "BH-F64-EV-010: 7.5 == 8.0 should be false");
+    Ok(())
+}
+
+/// BH-F64-EV-011: F64 type mismatch with I64 in addition.
+#[test]
+fn blackhat_f64_ev_011_f64_i64_add_type_mismatch() -> crate::ExprResult<()> {
+    use crate::eval::eval_binary_op;
+    use crate::lexer::BinaryOp;
+    use vb_core::SlotValue;
+
+    let f64_val = vb_core::value::FiniteF64::new(1.0).map_err(|_| ExprError::UnexpectedEof)?;
+    let result = eval_binary_op(BinaryOp::Add, SlotValue::F64(f64_val), SlotValue::I64(1));
+    assert!(
+        matches!(result, Err(crate::ExprError::TypeMismatch { .. })),
+        "BH-F64-EV-011: F64 + I64 should be TypeMismatch"
+    );
+    Ok(())
+}
+
+/// BH-F64-EV-012: F64 type mismatch with I64 in subtraction.
+#[test]
+fn blackhat_f64_ev_012_f64_i64_sub_type_mismatch() -> crate::ExprResult<()> {
+    use crate::eval::eval_binary_op;
+    use crate::lexer::BinaryOp;
+    use vb_core::SlotValue;
+
+    let f64_val = vb_core::value::FiniteF64::new(5.0).map_err(|_| ExprError::UnexpectedEof)?;
+    let result = eval_binary_op(BinaryOp::Sub, SlotValue::I64(10), SlotValue::F64(f64_val));
+    assert!(
+        matches!(result, Err(crate::ExprError::TypeMismatch { .. })),
+        "BH-F64-EV-012: I64 - F64 should be TypeMismatch"
+    );
+    Ok(())
+}
+
+/// BH-F64-EV-013: F64 very large value addition (no overflow in F64).
+///
+/// F64 has much larger range than I64. Large F64 values can be added
+/// without overflow. This test verifies the system handles large F64 values.
+#[test]
+fn blackhat_f64_ev_013_large_f64_addition() -> crate::ExprResult<()> {
+    use crate::eval::eval_binary_op;
+    use crate::lexer::BinaryOp;
+    use vb_core::SlotValue;
+
+    let f64_a = vb_core::value::FiniteF64::new(1e300).map_err(|_| ExprError::UnexpectedEof)?;
+    let f64_b = vb_core::value::FiniteF64::new(1e300).map_err(|_| ExprError::UnexpectedEof)?;
+    let result = eval_binary_op(BinaryOp::Add, SlotValue::F64(f64_a), SlotValue::F64(f64_b))?;
+    let SlotValue::F64(finite) = result else {
+        return Err(ExprError::UnexpectedToken {
+            token: "BH-F64-EV-013: expected SlotValue::F64 from large F64 + F64".into(),
+        });
+    };
+    // 1e300 + 1e300 = 2e300
+    assert!(
+        (finite.get() - 2e300).abs() < 1e280,
+        "BH-F64-EV-013: 1e300 + 1e300 should be ~2e300, got {}",
+        finite.get()
+    );
+    Ok(())
+}
+
+/// BH-F64-EV-014: F64 subtraction that produces negative result.
+#[test]
+fn blackhat_f64_ev_014_f64_sub_negative_result() -> crate::ExprResult<()> {
+    use crate::eval::eval_binary_op;
+    use crate::lexer::BinaryOp;
+    use vb_core::SlotValue;
+
+    let f64_a = vb_core::value::FiniteF64::new(1.0).map_err(|_| ExprError::UnexpectedEof)?;
+    let f64_b = vb_core::value::FiniteF64::new(2.0).map_err(|_| ExprError::UnexpectedEof)?;
+    let result = eval_binary_op(BinaryOp::Sub, SlotValue::F64(f64_a), SlotValue::F64(f64_b))?;
+    let SlotValue::F64(finite) = result else {
+        return Err(ExprError::UnexpectedToken {
+            token: "BH-F64-EV-014: expected SlotValue::F64 from F64 - F64".into(),
+        });
+    };
+    assert!(
+        (finite.get() - (-1.0)).abs() < 1e-10,
+        "BH-F64-EV-014: 1.0 - 2.0 should be -1.0, got {}",
+        finite.get()
+    );
+    Ok(())
+}
+
+/// BH-F64-EV-015: F64 equality with itself.
+#[test]
+fn blackhat_f64_ev_015_f64_eq_with_self() -> crate::ExprResult<()> {
+    use crate::eval::eval_binary_op;
+    use crate::lexer::BinaryOp;
+    use vb_core::SlotValue;
+
+    let f64_val = vb_core::value::FiniteF64::new(123.456).map_err(|_| ExprError::UnexpectedEof)?;
+    let result = eval_binary_op(BinaryOp::Eq, SlotValue::F64(f64_val), SlotValue::F64(f64_val))?;
+    assert_eq!(result, SlotValue::Bool(true), "BH-F64-EV-015: F64 == itself should be true");
+    Ok(())
+}
+
+/// BH-F64-EV-016: F64 inequality with itself.
+#[test]
+fn blackhat_f64_ev_016_f64_ne_with_self() -> crate::ExprResult<()> {
+    use crate::eval::eval_binary_op;
+    use crate::lexer::BinaryOp;
+    use vb_core::SlotValue;
+
+    let f64_val = vb_core::value::FiniteF64::new(99.9).map_err(|_| ExprError::UnexpectedEof)?;
+    let result = eval_binary_op(BinaryOp::NotEq, SlotValue::F64(f64_val), SlotValue::F64(f64_val))?;
+    assert_eq!(result, SlotValue::Bool(false), "BH-F64-EV-016: F64 != itself should be false");
+    Ok(())
+}
+
+use crate::ExprError;

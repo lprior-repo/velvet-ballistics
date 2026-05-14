@@ -34,7 +34,11 @@ impl FjallJournal {
     /// Injects a sequence gap marker to allow replaying past a known gap.
     ///
     /// DANGER: This is an expert recovery tool.
-    pub fn inject_seq_gap(&self, run: vb_core::RunId, gap_seq: EventSeq) -> Result<(), JournalError> {
+    pub fn inject_seq_gap(
+        &self,
+        run: vb_core::RunId,
+        gap_seq: EventSeq,
+    ) -> Result<(), JournalError> {
         let key = run_event_key(run, gap_seq)?;
         // Injected gaps use an empty record that specifically doesn't match normal
         // event serialization, but we can encode it as a placeholder.

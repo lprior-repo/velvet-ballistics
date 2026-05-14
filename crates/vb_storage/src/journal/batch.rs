@@ -1,7 +1,4 @@
-use crate::{
-    batch::JournalWriteBatch,
-    journal::FjallJournal,
-};
+use crate::{batch::JournalWriteBatch, journal::FjallJournal};
 
 impl FjallJournal {
     /// Creates a new atomic cross-keyspace write batch.

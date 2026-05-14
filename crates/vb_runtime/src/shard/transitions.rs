@@ -29,9 +29,9 @@ impl Shard {
         };
         // Note: StepSucceeded for the Finish step is now emitted by the evidence
         // collector during flush_evidence, before apply_drive_result is called.
-        self.journal
-            .append(RuntimeJournalEvent::RunFinished { run, result })?;
+        self.append_journal_event(RuntimeJournalEvent::RunFinished { run, result })?;
         self.release_frame(state.frame);
+        self.discard_journal_sequence(run);
         Ok(())
     }
 
@@ -58,7 +58,7 @@ impl Shard {
         crate::shard::helpers::record_scheduled_attempt(&mut state, ticket);
         self.trace_ring
             .push(TraceEvent::ActionScheduled { run, step });
-        self.journal.append(RuntimeJournalEvent::ActionScheduled {
+        self.append_journal_event(RuntimeJournalEvent::ActionScheduled {
             run,
             step,
             action: ticket.action,
@@ -80,12 +80,10 @@ impl Shard {
             self.pending_timers.insert(run, PendingTimer { step, kind });
             match kind {
                 PendingTimerKind::Wait => {
-                    self.journal
-                        .append(RuntimeJournalEvent::WaitScheduled { run, step })?;
+                    self.append_journal_event(RuntimeJournalEvent::WaitScheduled { run, step })?;
                 }
                 PendingTimerKind::Ask => {
-                    self.journal
-                        .append(RuntimeJournalEvent::AskScheduled { run, step })?;
+                    self.append_journal_event(RuntimeJournalEvent::AskScheduled { run, step })?;
                 }
             }
         }
@@ -101,9 +99,9 @@ impl Shard {
         // Track Failed state so handle_resume can return NotResumable (not RunIdNotFound)
         self.runtime_states
             .insert(run, crate::shard::types::RuntimeState::Failed);
-        self.journal
-            .append(RuntimeJournalEvent::RunFailed { run })?;
+        self.append_journal_event(RuntimeJournalEvent::RunFailed { run })?;
         self.release_frame(state.frame);
+        self.discard_journal_sequence(run);
         Ok(())
     }
 }

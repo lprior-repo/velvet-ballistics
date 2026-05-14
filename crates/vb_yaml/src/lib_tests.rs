@@ -540,7 +540,8 @@ fn yaml_limits_default_has_expected_values() {
 
 #[test]
 fn parse_workflow_source_returns_error_for_duplicate_step_ids() {
-    let yaml = "version: velvet-ballastics/v1\nname: dup\nwhen:\n  manual: {}\nname: dup2\nsteps: []\n";
+    let yaml =
+        "version: velvet-ballastics/v1\nname: dup\nwhen:\n  manual: {}\nname: dup2\nsteps: []\n";
     let result = parse_workflow_source(yaml);
     assert_eq!(result, Err(YamlError::DuplicateKey { key: "name".into() }));
 }

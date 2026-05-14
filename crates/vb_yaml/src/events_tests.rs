@@ -399,9 +399,7 @@ fn adversarial_events_null_byte_accepted_by_parser_but_rejected_by_profile() {
     match result {
         Ok(events) => {
             let _scalar = events.iter().find_map(|e| match e {
-                YamlEvent::Scalar { value, .. } if value.contains('\x00') => {
-                    Some(value.clone())
-                }
+                YamlEvent::Scalar { value, .. } if value.contains('\x00') => Some(value.clone()),
                 _ => None,
             });
             assert!(!events.is_empty(), "events should not be empty");

@@ -1,17 +1,17 @@
 #![forbid(unsafe_code)]
 //! Storage error types with diagnostic codes.
 
-use std::path::Path;
 use crate::types::EventSeq;
+use std::path::Path;
 use vb_core::{RunId, WorkflowDigest};
 
-pub mod warnings;
-pub(crate) mod codes;
 mod artifact;
+pub(crate) mod codes;
+pub mod warnings;
 
 pub use self::artifact::{ArtifactEnvelopeError, ArtifactInvalidSource};
 pub use self::warnings::{
-    AdmissionWarnings, VerificationWarning, VERIFICATION_WARNING_SCHEMA_MISMATCH_CODE,
+    AdmissionWarnings, VERIFICATION_WARNING_SCHEMA_MISMATCH_CODE, VerificationWarning,
 };
 
 /// Storage and journal operation errors.

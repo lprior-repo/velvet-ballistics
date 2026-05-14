@@ -139,11 +139,10 @@ pub fn encode_postcard<T: Serialize + core::fmt::Debug>(
     let payload_bytes =
         postcard::to_allocvec(payload).map_err(|_| EmitterError::PostcardEncodeFailed)?;
 
-    let payload_len = u32::try_from(payload_bytes.len()).map_err(|_| {
-        EmitterError::PayloadLengthOverflow {
+    let payload_len =
+        u32::try_from(payload_bytes.len()).map_err(|_| EmitterError::PayloadLengthOverflow {
             len: u32::try_from(payload_bytes.len()).unwrap_or(u32::MAX),
-        }
-    })?;
+        })?;
 
     if payload_len > max_payload_len {
         return Err(EmitterError::PayloadTooLarge {
@@ -213,11 +212,10 @@ pub fn decode_postcard<'a, T: Deserialize<'a> + core::fmt::Debug>(
     }
 
     let payload_start = CLI_HEADER_BYTES;
-    let payload_len_usize = usize::try_from(header.payload_len).map_err(|_| {
-        EmitterError::PayloadLengthOverflow {
+    let payload_len_usize =
+        usize::try_from(header.payload_len).map_err(|_| EmitterError::PayloadLengthOverflow {
             len: header.payload_len,
-        }
-    })?;
+        })?;
     let payload_end = payload_start.checked_add(payload_len_usize).ok_or(
         EmitterError::PayloadLengthOverflow {
             len: header.payload_len,

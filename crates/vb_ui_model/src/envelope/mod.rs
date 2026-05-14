@@ -13,8 +13,9 @@ mod types;
 pub use error::EnvelopeError;
 pub use output::OutputEnvelope;
 pub use types::{
-    CURRENT_SCHEMA_VERSION, DiagnosticEnvelope, DiagnosticEntry, EnvelopeKind, MetadataEnvelope,
-    PayloadEnvelope, SchemaVersion, MAX_DIAGNOSTIC_ENTRIES, MAX_DIAGNOSTIC_STRING_LEN,
+    CURRENT_SCHEMA_VERSION, DiagnosticEntry, DiagnosticEnvelope, EnvelopeKind,
+    MAX_DIAGNOSTIC_ENTRIES, MAX_DIAGNOSTIC_STRING_LEN, MetadataEnvelope, PayloadEnvelope,
+    SchemaVersion,
 };
 pub use vb_core::ids::RunId;
 
@@ -22,8 +23,8 @@ pub use vb_core::ids::RunId;
 mod types_tests {
     use crate::envelope::error::EnvelopeError;
     use crate::envelope::types::{
-        DiagnosticEnvelope, DiagnosticEntry, EnvelopeKind, MetadataEnvelope, PayloadEnvelope,
-        SchemaVersion, MAX_DIAGNOSTIC_STRING_LEN,
+        DiagnosticEntry, DiagnosticEnvelope, EnvelopeKind, MAX_DIAGNOSTIC_STRING_LEN,
+        MetadataEnvelope, PayloadEnvelope, SchemaVersion,
     };
     use vb_core::ids::RunId;
 

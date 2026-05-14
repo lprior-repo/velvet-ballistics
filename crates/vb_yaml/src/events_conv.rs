@@ -1,8 +1,8 @@
 #![forbid(unsafe_code)]
 //! Event conversion and collection functions.
 
+use super::events_types::{EventSpan, ScalarStyle, YamlEvent};
 use crate::{YamlError, YamlResult};
-use super::events_types::{YamlEvent, EventSpan, ScalarStyle};
 
 /// Collect all YAML events from the given source text.
 ///
@@ -23,10 +23,7 @@ pub fn collect_events(text: &str) -> YamlResult<Vec<YamlEvent>> {
 }
 
 /// Convert a saphyr-parser event into our owned YamlEvent.
-pub fn convert_event(
-    event: saphyr_parser::Event<'_>,
-    span: saphyr_parser::Span,
-) -> YamlEvent {
+pub fn convert_event(event: saphyr_parser::Event<'_>, span: saphyr_parser::Span) -> YamlEvent {
     let span = EventSpan::from_parser_span(span);
     match event {
         saphyr_parser::Event::StreamStart => YamlEvent::StreamStart { span },

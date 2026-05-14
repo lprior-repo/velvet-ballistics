@@ -1603,4 +1603,123 @@ mod tests {
         );
         Ok(())
     }
+
+    // ===== F64 edge-case tests =====
+
+    /// BH-F64-DIV0-001: F64 division by zero yields NonFiniteFloat, not panic.
+    ///
+    /// When an F64 value is divided by zero, the IEEE 754 result is Inf.
+    /// FiniteF64::new(inf) returns Err, which is mapped to NonFiniteFloat.
+    /// This test verifies the error propagates correctly and is not silently
+    /// swallowed or converted to an incorrect value.
+    #[test]
+    fn blackhat_f64_div0_001_f64_div_by_zero_is_nonfinite() -> ExprResult<()> {
+        use crate::ExprError;
+        use crate::eval::eval_binary_op;
+        use crate::lexer::BinaryOp;
+        use vb_core::SlotValue;
+
+        let f64_one = vb_core::value::FiniteF64::new(1.0).map_err(|_| ExprError::UnexpectedEof)?;
+        let f64_zero = vb_core::value::FiniteF64::new(0.0).map_err(|_| ExprError::UnexpectedEof)?;
+        let result = eval_binary_op(BinaryOp::Div, SlotValue::F64(f64_one), SlotValue::F64(f64_zero));
+        let Err(ExprError::NonFiniteFloat) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "BH-F64-DIV0-001: expected NonFiniteFloat for 1.0 / 0.0".into(),
+            });
+        };
+        Ok(())
+    }
+
+    /// BH-F64-DIV0-002: F64 end-to-end division by zero yields NonFiniteFloat.
+    ///
+    /// Tests the full pipeline: lex → parse → compile → eval with the source
+    /// expression "1.0 / 0.0".
+    #[test]
+    fn blackhat_f64_div0_002_e2e_f64_div_by_zero() -> ExprResult<()> {
+        use crate::ExprError;
+
+        let tokens = crate::lexer::lex_expr("1.0 / 0.0")?;
+        let ast = crate::parser::parse_expr(&tokens)?;
+        let mut constants = Vec::new();
+        let program = crate::bytecode::compile_expr_with_pool(&ast, &mut constants)?;
+        let result = crate::eval::eval_expr_program(&program, &[], &constants);
+        let Err(ExprError::NonFiniteFloat) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "BH-F64-DIV0-002: expected NonFiniteFloat for 1.0 / 0.0 end-to-end"
+                    .into(),
+            });
+        };
+        Ok(())
+    }
+
+    /// BH-F64-NEG-001: F64 negation via eval_unary_op works correctly.
+    ///
+    /// Tests that eval_unary_op correctly handles F64 negation at the evaluator level.
+    /// Note: The bytecode pipeline for F64 negation is broken (see lower_negation bug
+    /// where it uses ConstValue::I64(0) instead of the appropriate zero type for F64).
+    #[test]
+    fn blackhat_f64_neg_001_f64_neg_via_eval_unary_op() -> ExprResult<()> {
+        use crate::eval::eval_unary_op;
+        use crate::lexer::UnaryOp;
+        use vb_core::SlotValue;
+
+        let f64_val = vb_core::value::FiniteF64::new(42.0).map_err(|_| ExprError::UnexpectedEof)?;
+        let result = eval_unary_op(UnaryOp::Neg, SlotValue::F64(f64_val))?;
+        let vb_core::SlotValue::F64(finite) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "BH-F64-NEG-001: expected SlotValue::F64 from neg of F64".into(),
+            });
+        };
+        let result_val = finite.get();
+        assert!(
+            (result_val - (-42.0)).abs() < 1e-10,
+            "BH-F64-NEG-001: -42.0 F64 should be -42.0, got {result_val}"
+        );
+        Ok(())
+    }
+
+    /// BH-F64-NEG-002: F64 negation of negative value via eval_unary_op.
+    #[test]
+    fn blackhat_f64_neg_002_f64_neg_negative_via_eval() -> ExprResult<()> {
+        use crate::eval::eval_unary_op;
+        use crate::lexer::UnaryOp;
+        use vb_core::SlotValue;
+
+        let f64_val = vb_core::value::FiniteF64::new(-15.5).map_err(|_| ExprError::UnexpectedEof)?;
+        let result = eval_unary_op(UnaryOp::Neg, SlotValue::F64(f64_val))?;
+        let vb_core::SlotValue::F64(finite) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "BH-F64-NEG-002: expected SlotValue::F64 from neg of negative F64"
+                    .into(),
+            });
+        };
+        let result_val = finite.get();
+        assert!(
+            (result_val - 15.5).abs() < 1e-10,
+            "BH-F64-NEG-002: -(-15.5) should be 15.5, got {result_val}"
+        );
+        Ok(())
+    }
+
+    /// BH-F64-NEG-003: F64 negation zero via eval_unary_op.
+    #[test]
+    fn blackhat_f64_neg_003_f64_neg_zero_via_eval() -> ExprResult<()> {
+        use crate::eval::eval_unary_op;
+        use crate::lexer::UnaryOp;
+        use vb_core::SlotValue;
+
+        let f64_val = vb_core::value::FiniteF64::new(0.0).map_err(|_| ExprError::UnexpectedEof)?;
+        let result = eval_unary_op(UnaryOp::Neg, SlotValue::F64(f64_val))?;
+        let vb_core::SlotValue::F64(finite) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "BH-F64-NEG-003: expected SlotValue::F64 from neg of 0.0".into(),
+            });
+        };
+        let result_val = finite.get();
+        assert!(
+            (result_val - 0.0).abs() < 1e-10,
+            "BH-F64-NEG-003: -0.0 should be 0.0, got {result_val}"
+        );
+        Ok(())
+    }
 }

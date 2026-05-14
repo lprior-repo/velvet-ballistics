@@ -1,11 +1,11 @@
-use vb_core::RunId;
-use crate::{EventSeq, FjallJournal, JournalError, JournalEvent};
-use crate::trimming::{
-    TrimPolicy, TrimError, TrimResult, TrimmedRunResult, TrimStatus,
-    TrimDiagnostic, TrimEligibility, TrimBlocker,
-};
 use crate::trimming::helpers::snapshot_prefix_key;
+use crate::trimming::{
+    TrimBlocker, TrimDiagnostic, TrimEligibility, TrimError, TrimPolicy, TrimResult, TrimStatus,
+    TrimmedRunResult,
+};
+use crate::{EventSeq, FjallJournal, JournalError, JournalEvent};
 use fjall::Readable;
+use vb_core::RunId;
 
 impl FjallJournal {
     /// Returns the latest durable snapshot sequence for a run.

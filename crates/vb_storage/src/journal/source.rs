@@ -1,14 +1,14 @@
 use crate::{
+    codec::encode_record,
     constants::{
         MAGIC_COMPILED_ARTIFACT, MAGIC_WORKFLOW_SOURCE, MAX_COMPILED_IR_BYTES,
         MAX_WORKFLOW_SOURCE_BYTES,
     },
-    codec::encode_record,
     error::JournalError,
     journal::FjallJournal,
+    journal::admission::verify_content_digest,
     keys::{compiled_ir_key, workflow_source_key},
     records::{CompiledIrRecord, RecordKind, WorkflowSourceRecord},
-    journal::admission::verify_content_digest,
 };
 
 impl FjallJournal {

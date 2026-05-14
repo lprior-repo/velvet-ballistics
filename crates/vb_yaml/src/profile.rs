@@ -5,13 +5,13 @@
 //! This module implements the "strict profile" that rejects YAML features
 //! incompatible with the velvet-ballastics workflow definition language.
 
-#[path = "profile_validation.rs"]
-mod profile_validation;
 #[path = "profile_dupkeys.rs"]
 mod profile_dupkeys;
+#[path = "profile_validation.rs"]
+mod profile_validation;
 
-pub use profile_validation::*;
 pub use profile_dupkeys::*;
+pub use profile_validation::*;
 
 #[cfg(test)]
 #[path = "profile_tests.rs"]

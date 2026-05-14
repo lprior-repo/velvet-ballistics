@@ -8,7 +8,9 @@
     clippy::unwrap_used
 )]
 use super::*;
-use crate::{EventSeq, FjallJournal, JournalEvent, RunHeaderRecord, RunSnapshot, constants::DIGEST_BYTES};
+use crate::{
+    EventSeq, FjallJournal, JournalEvent, RunHeaderRecord, RunSnapshot, constants::DIGEST_BYTES,
+};
 use vb_core::{RunId, SlotIdx, StepIdx, WorkflowDigest, WorkflowId};
 
 fn temp_journal() -> (tempfile::TempDir, FjallJournal) {
@@ -707,14 +709,14 @@ fn diagnostic_reports_correct_safe_point_and_trimmable_count() {
         .trim_eligibility_diagnostic(TrimPolicy::default())
         .expect("diagnostic should succeed");
 
-        let eligible = diag.runs.iter().find_map(|r| match r {
-            TrimEligibility::Eligible {
-                run: r,
-                safe_point,
-                events_trimmable,
-            } if r == &run => Some((*safe_point, *events_trimmable)),
-            _ => None,
-        });
+    let eligible = diag.runs.iter().find_map(|r| match r {
+        TrimEligibility::Eligible {
+            run: r,
+            safe_point,
+            events_trimmable,
+        } if r == &run => Some((*safe_point, *events_trimmable)),
+        _ => None,
+    });
 
     assert!(
         eligible.is_some(),
@@ -873,15 +875,15 @@ fn diagnostic_allows_non_terminal_run_despite_retention() {
 
     let eligible = diag.runs.first().expect("should have one run result");
     match eligible {
-            TrimEligibility::Eligible {
-                run: r,
-                safe_point,
-                events_trimmable,
-            } => {
-                assert_eq!(r, &run);
-                assert_eq!(safe_point, &EventSeq::new(1));
-                assert_eq!(events_trimmable, &1);
-            }
+        TrimEligibility::Eligible {
+            run: r,
+            safe_point,
+            events_trimmable,
+        } => {
+            assert_eq!(r, &run);
+            assert_eq!(safe_point, &EventSeq::new(1));
+            assert_eq!(events_trimmable, &1);
+        }
 
         _ => panic!("non-terminal run should be eligible, got {:?}", eligible),
     }

@@ -18,13 +18,14 @@ proptest! {
 
     #[test]
     fn validate_evidence_bounded_wording_claim_combinations(
-        (sentence, claim_kind) in prop_oneof![
+        pair in prop_oneof![
             Just(("tests prove joined taint".to_owned(), ClaimKind::TestEvidence)),
             Just(("Lean proves implementation parity".to_owned(), ClaimKind::FormalEvidence)),
             Just(("DRIFT-1 generated Rust and IR parity is verified".to_owned(), ClaimKind::GeneratedParity)),
             Just(("DRIFT-1 is release ready".to_owned(), ClaimKind::ReleaseReadiness)),
         ]
     ) {
+        let (sentence, claim_kind) = pair;
         // Given
         let doc = snapshot_with(&sentence);
         let evidence = EvidenceIndex::empty();

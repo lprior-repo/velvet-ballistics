@@ -1,4 +1,3 @@
-use serde::de::DeserializeOwned;
 use crate::{
     codec::{decode_record, encode_record},
     constants::{MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES},
@@ -7,6 +6,7 @@ use crate::{
     journal::FjallJournal,
     keys::run_event_key,
 };
+use serde::de::DeserializeOwned;
 
 impl FjallJournal {
     #[allow(clippy::unused_self)]

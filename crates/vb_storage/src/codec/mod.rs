@@ -1,14 +1,14 @@
 #![forbid(unsafe_code)]
 //! Record encoding and decoding functions.
 
-use serde::Serialize;
-use serde::de::DeserializeOwned;
 use crate::{
     error::JournalError,
-    records::RecordKind,
-    types::{RecordEnvelope, EventSeq},
     events::JournalEvent,
+    records::RecordKind,
+    types::{EventSeq, RecordEnvelope},
 };
+use serde::Serialize;
+use serde::de::DeserializeOwned;
 
 pub(crate) mod header;
 pub(crate) mod payload;
@@ -37,7 +37,8 @@ pub fn decode_record<T: DeserializeOwned>(
     expected_magic: u32,
     max_payload_len: u32,
 ) -> Result<(RecordEnvelope, T), JournalError> {
-    let (envelope, payload) = self::payload::decode_record_payload(bytes, expected_magic, max_payload_len)?;
+    let (envelope, payload) =
+        self::payload::decode_record_payload(bytes, expected_magic, max_payload_len)?;
     let value = postcard::from_bytes(payload).map_err(|_| JournalError::PostcardDecodeFailed)?;
     Ok((envelope, value))
 }

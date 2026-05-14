@@ -40,8 +40,7 @@ impl YamlEnvelope {
 
 #[cfg(feature = "std")]
 pub fn encode_yaml<T: Serialize>(payload: &T) -> Result<String, EmitterError> {
-    let json_value =
-        serde_json::to_value(payload).map_err(|_| EmitterError::YamlEncodeFailed)?;
+    let json_value = serde_json::to_value(payload).map_err(|_| EmitterError::YamlEncodeFailed)?;
     let mut output = String::new();
     let mut emitter = YamlEmitter::new(&mut output);
 
@@ -70,9 +69,7 @@ fn json_value_to_yaml(value: &serde_json::Value) -> Result<Yaml<'static>, Emitte
                 Ok(Yaml::Value(Scalar::Null))
             }
         }
-        serde_json::Value::String(s) => {
-            Ok(Yaml::Value(Scalar::String(Cow::Owned(s.clone()))))
-        }
+        serde_json::Value::String(s) => Ok(Yaml::Value(Scalar::String(Cow::Owned(s.clone())))),
         serde_json::Value::Array(arr) => {
             let items: Result<Vec<_>, _> = arr.iter().map(json_value_to_yaml).collect();
             items.map(Yaml::Sequence)

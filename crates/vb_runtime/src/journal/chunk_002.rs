@@ -4,7 +4,6 @@ impl StorageRuntimeJournal {
     pub fn journaled(journal: Arc<FjallJournal>) -> Self {
         Self {
             journal,
-            next_seq_by_run: Mutex::new(IndexMap::new()),
             profile: DurabilityProfile::Journaled,
         }
     }
@@ -14,7 +13,6 @@ impl StorageRuntimeJournal {
     pub fn strict(journal: Arc<FjallJournal>) -> Self {
         Self {
             journal,
-            next_seq_by_run: Mutex::new(IndexMap::new()),
             profile: DurabilityProfile::Strict,
         }
     }
@@ -52,26 +50,37 @@ impl StorageRuntimeJournal {
                 granted_capabilities: admission.granted_capabilities().clone(),
                 policy: admission.policy(),
             }),
-            RuntimeJournalEvent::RunFinished { run, result } => {
-                Some(JournalEvent::RunFinished { run, seq, result, attempt: 1 })
-            }
-            RuntimeJournalEvent::RunFailed { run } => {
-                Some(JournalEvent::RunFailedEvent { run, seq, attempt: 1 })
-            }
-            RuntimeJournalEvent::RunCancelled { run, reason } => {
-                Some(JournalEvent::RunCancelled { run, seq, attempt: 1, reason })
-            }
-            RuntimeJournalEvent::StepStarted { run, step } => {
-                Some(JournalEvent::StepStarted { run, seq, step, attempt: 1 })
-            }
-            RuntimeJournalEvent::StepSucceeded { run, step, output, .. } => {
-                Some(JournalEvent::StepSucceeded {
-                    run,
-                    seq,
-                    step,
-                    output,
-                })
-            }
+            RuntimeJournalEvent::RunFinished { run, result } => Some(JournalEvent::RunFinished {
+                run,
+                seq,
+                result,
+                attempt: 1,
+            }),
+            RuntimeJournalEvent::RunFailed { run } => Some(JournalEvent::RunFailedEvent {
+                run,
+                seq,
+                attempt: 1,
+            }),
+            RuntimeJournalEvent::RunCancelled { run, reason } => Some(JournalEvent::RunCancelled {
+                run,
+                seq,
+                attempt: 1,
+                reason,
+            }),
+            RuntimeJournalEvent::StepStarted { run, step } => Some(JournalEvent::StepStarted {
+                run,
+                seq,
+                step,
+                attempt: 1,
+            }),
+            RuntimeJournalEvent::StepSucceeded {
+                run, step, output, ..
+            } => Some(JournalEvent::StepSucceeded {
+                run,
+                seq,
+                step,
+                output,
+            }),
             RuntimeJournalEvent::ActionScheduled { .. }
             | RuntimeJournalEvent::ActionCompleted { .. }
             | RuntimeJournalEvent::ActionFailed { .. }
@@ -104,15 +113,18 @@ impl StorageRuntimeJournal {
                     attempt: 1,
                 })
             }
-            RuntimeJournalEvent::ActionFailed { run, step, action, attempt } => {
-                Some(JournalEvent::ActionFailedEvent {
-                    run,
-                    seq,
-                    step,
-                    action,
-                    attempt,
-                })
-            }
+            RuntimeJournalEvent::ActionFailed {
+                run,
+                step,
+                action,
+                attempt,
+            } => Some(JournalEvent::ActionFailedEvent {
+                run,
+                seq,
+                step,
+                action,
+                attempt,
+            }),
             RuntimeJournalEvent::RunSubmitted { .. }
             | RuntimeJournalEvent::RunAdmission { .. }
             | RuntimeJournalEvent::RunFinished { .. }
@@ -132,16 +144,36 @@ impl StorageRuntimeJournal {
     fn boundary_storage_event(event: RuntimeJournalEvent, seq: EventSeq) -> Option<JournalEvent> {
         match event {
             RuntimeJournalEvent::WaitScheduled { run, step } => {
-                Some(JournalEvent::WaitScheduledEvent { run, seq, step, attempt: 1 })
+                Some(JournalEvent::WaitScheduledEvent {
+                    run,
+                    seq,
+                    step,
+                    attempt: 1,
+                })
             }
             RuntimeJournalEvent::WaitResolved { run, step } => {
-                Some(JournalEvent::RetryScheduledEvent { run, seq, step, attempt: 1 })
+                Some(JournalEvent::RetryScheduledEvent {
+                    run,
+                    seq,
+                    step,
+                    attempt: 1,
+                })
             }
             RuntimeJournalEvent::AskScheduled { run, step } => {
-                Some(JournalEvent::AskScheduledEvent { run, seq, step, attempt: 1 })
+                Some(JournalEvent::AskScheduledEvent {
+                    run,
+                    seq,
+                    step,
+                    attempt: 1,
+                })
             }
             RuntimeJournalEvent::AskAnswered { run, step, .. } => {
-                Some(JournalEvent::AskAnsweredEvent { run, seq, step, attempt: 1 })
+                Some(JournalEvent::AskAnsweredEvent {
+                    run,
+                    seq,
+                    step,
+                    attempt: 1,
+                })
             }
             RuntimeJournalEvent::SlotWritten {
                 run,
@@ -194,25 +226,19 @@ fn encoded_slot_taint_extra(taint: Taint, extra: Option<Vec<u8>>) -> Option<Vec<
 }
 
 impl RuntimeJournal for StorageRuntimeJournal {
-    fn append(&self, event: RuntimeJournalEvent) -> RuntimeResult<()> {
-        let run_id = event.run_id();
-        let mut sequences = self
-            .next_seq_by_run
-            .lock()
-            .map_err(|_| RuntimeError::JournalPoisoned)?;
-        let seq = current_seq(&sequences, run_id);
-        let next = next_seq(seq)?;
+    fn append(&self, _event: RuntimeJournalEvent) -> RuntimeResult<()> {
+        Err(RuntimeError::UnsupportedOperation {
+            operation: "unsequenced_storage_journal_append",
+        })
+    }
+
+    fn append_sequenced(&self, event: RuntimeJournalEvent, seq: EventSeq) -> RuntimeResult<()> {
         let storage_event = Self::storage_event(event, seq);
         self.append_storage_event(&storage_event)?;
-        sequences.insert(run_id, next);
         Ok(())
     }
+
     fn probe(&self) -> RuntimeResult<()> {
-        // Verify the mutex is not poisoned.
-        let _guard = self
-            .next_seq_by_run
-            .lock()
-            .map_err(|_| RuntimeError::JournalPoisoned)?;
         Ok(())
     }
 }
@@ -221,7 +247,6 @@ impl RuntimeJournal for StorageRuntimeJournal {
 pub struct QueuedStorageRuntimeJournal {
     journal: Arc<FjallJournal>,
     queue: Arc<JournalWriterQueue>,
-    next_seq_by_run: Mutex<IndexMap<RunId, EventSeq>>,
     profile: DurabilityProfile,
 }
 
@@ -232,7 +257,6 @@ impl QueuedStorageRuntimeJournal {
         Self {
             journal,
             queue,
-            next_seq_by_run: Mutex::new(IndexMap::new()),
             profile: DurabilityProfile::Journaled,
         }
     }
@@ -243,7 +267,6 @@ impl QueuedStorageRuntimeJournal {
         Self {
             journal,
             queue,
-            next_seq_by_run: Mutex::new(IndexMap::new()),
             profile: DurabilityProfile::Strict,
         }
     }

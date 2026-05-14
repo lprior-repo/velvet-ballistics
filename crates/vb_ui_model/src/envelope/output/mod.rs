@@ -7,8 +7,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::envelope::error::EnvelopeError;
 use crate::envelope::types::{
-    DiagnosticEntry, EnvelopeKind, MetadataEnvelope, PayloadEnvelope, SchemaVersion,
-    MAX_DIAGNOSTIC_ENTRIES,
+    DiagnosticEntry, EnvelopeKind, MAX_DIAGNOSTIC_ENTRIES, MetadataEnvelope, PayloadEnvelope,
+    SchemaVersion,
 };
 
 /// A structured output envelope with schema version, kind, metadata,

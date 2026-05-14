@@ -1,10 +1,10 @@
+use crate::codec::header::{build_record_header, decode_record_header};
 use crate::{
     constants::{DIGEST_BYTES, RECORD_HEADER_BYTES},
     error::JournalError,
     records::RecordKind,
     types::RecordEnvelope,
 };
-use crate::codec::header::{build_record_header, decode_record_header};
 
 pub fn verify_digest_match(
     payload: &[u8],

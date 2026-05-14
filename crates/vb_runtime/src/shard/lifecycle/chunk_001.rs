@@ -49,15 +49,27 @@ impl Shard {
         crate::shard::helpers::seed_input_slots(&mut frame, inputs)?;
         self.trace_ring.push(TraceEvent::RunSubmitted { run });
         if persist_header {
-            self.journal.append(RuntimeJournalEvent::RunSubmitted {
+            match self.append_journal_event(RuntimeJournalEvent::RunSubmitted {
                 run,
                 workflow: digest,
-            })?;
+            }) {
+                Ok(()) => {}
+                Err(error) => {
+                    self.discard_journal_sequence(run);
+                    return Err(error);
+                }
+            }
         }
         if let Some(admission) = admission.as_ref() {
-            self.journal.append(RuntimeJournalEvent::RunAdmission {
+            match self.append_journal_event(RuntimeJournalEvent::RunAdmission {
                 admission: admission.clone(),
-            })?;
+            }) {
+                Ok(()) => {}
+                Err(error) => {
+                    self.discard_journal_sequence(run);
+                    return Err(error);
+                }
+            }
         }
         self.counters.inc_submitted();
         let frame_step_count = frame.step_count();
@@ -72,8 +84,15 @@ impl Shard {
         };
         self.runs.insert(run, state);
         self.runtime_states.insert(run, RuntimeState::Initial);
-        self.drive_run(run)?;
-        Ok(())
+        match self.drive_run(run) {
+            Ok(()) => Ok(()),
+            Err(error) => {
+                if !self.runs.contains_key(&run) {
+                    self.discard_journal_sequence(run);
+                }
+                Err(error)
+            }
+        }
     }
 
     fn build_admission(
@@ -164,7 +183,7 @@ impl Shard {
         self.runtime_states.insert(run, RuntimeState::Resuming);
         let timestamp = current_timestamp();
         let resumed_event = RuntimeJournalEvent::Resumed { run, timestamp };
-        if self.journal.append(resumed_event).is_err() {
+        if self.append_journal_event(resumed_event).is_err() {
             self.runtime_states.insert(run, RuntimeState::Resumable);
             return Err(ResumeError::JournalAppendFailed);
         }
@@ -210,20 +229,20 @@ impl Shard {
             run,
             step: ticket.step,
         });
-        self.journal.append(RuntimeJournalEvent::SlotWritten {
+        self.append_journal_event(RuntimeJournalEvent::SlotWritten {
             run,
             slot: output.output_slot,
             value: encoded_value,
             taint: output.taint,
             extra: None,
         })?;
-        self.journal.append(RuntimeJournalEvent::StepSucceeded {
+        self.append_journal_event(RuntimeJournalEvent::StepSucceeded {
             run,
             step: ticket.step,
             output: output.output_slot,
             attempt: ticket.attempt,
         })?;
-        self.journal.append(RuntimeJournalEvent::ActionCompleted {
+        self.append_journal_event(RuntimeJournalEvent::ActionCompleted {
             run,
             step: ticket.step,
             action: ticket.action,
@@ -245,7 +264,7 @@ impl Shard {
             .push(TraceEvent::ActionCompleted { run, step });
         // Evidence chain: emit StepSucceeded for legacy action completion.
         // Legacy path has no output slot information.
-        self.journal.append(RuntimeJournalEvent::StepSucceeded {
+        self.append_journal_event(RuntimeJournalEvent::StepSucceeded {
             run,
             step,
             output: SlotIdx::ZERO,
@@ -269,7 +288,7 @@ impl Shard {
             step: ticket.step,
             code,
         });
-        self.journal.append(RuntimeJournalEvent::ActionFailed {
+        self.append_journal_event(RuntimeJournalEvent::ActionFailed {
             run,
             step: ticket.step,
             action: ticket.action,

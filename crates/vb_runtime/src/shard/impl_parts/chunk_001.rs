@@ -14,6 +14,7 @@ impl Shard {
             command_queue: ArrayQueue::new(config.command_queue_capacity),
             runs: IndexMap::new(),
             runtime_states: IndexMap::new(),
+            journal_sequences: IndexMap::new(),
             pending_timers: IndexMap::new(),
             frame_pools: IndexMap::new(),
             trace_ring: TraceRing::new(config.trace_capacity),
@@ -85,6 +86,34 @@ impl Shard {
     #[must_use]
     pub fn active_run_count(&self) -> usize {
         self.runs.len()
+    }
+
+    pub(crate) fn append_journal_event(&mut self, event: RuntimeJournalEvent) -> RuntimeResult<()> {
+        let run = event.run_id();
+        let seq = self.journal_sequence_for(run);
+        self.journal.append_sequenced(event, seq)?;
+        self.advance_journal_sequence(run, seq)
+    }
+
+    fn journal_sequence_for(&self, run: RunId) -> EventSeq {
+        self.journal_sequences
+            .get(&run)
+            .copied()
+            .unwrap_or(EventSeq::ZERO)
+    }
+
+    fn advance_journal_sequence(&mut self, run: RunId, seq: EventSeq) -> RuntimeResult<()> {
+        let next = seq
+            .get()
+            .checked_add(1)
+            .map(EventSeq::new)
+            .ok_or_else(|| RuntimeError::from(vb_storage::JournalError::SequenceOverflow))?;
+        self.journal_sequences.insert(run, next);
+        Ok(())
+    }
+
+    pub(crate) fn discard_journal_sequence(&mut self, run: RunId) {
+        self.journal_sequences.swap_remove(&run);
     }
 
     /// Returns the number of pending timers on this shard.
@@ -255,8 +284,7 @@ impl Shard {
 
     fn flush_step_started(&mut self, run: RunId, step: StepIdx) -> RuntimeResult<()> {
         self.trace_ring.push(TraceEvent::StepStarted { run, step });
-        self.journal
-            .append(RuntimeJournalEvent::StepStarted { run, step })
+        self.append_journal_event(RuntimeJournalEvent::StepStarted { run, step })
     }
 
     fn flush_step_succeeded(
@@ -265,7 +293,7 @@ impl Shard {
         step: StepIdx,
         output: Option<SlotIdx>,
     ) -> RuntimeResult<()> {
-        self.journal.append(RuntimeJournalEvent::StepSucceeded {
+        self.append_journal_event(RuntimeJournalEvent::StepSucceeded {
             run,
             step,
             output: match output {

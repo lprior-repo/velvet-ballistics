@@ -1,8 +1,8 @@
 #![forbid(unsafe_code)]
 //! Journal trimming with retention policy.
 
-use vb_core::RunId;
 use crate::{EventSeq, JournalError};
+use vb_core::RunId;
 
 /// Retention policy for journal trimming.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

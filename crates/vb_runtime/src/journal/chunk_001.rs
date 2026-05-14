@@ -1,4 +1,3 @@
-use indexmap::IndexMap;
 use std::sync::{Arc, Mutex};
 use vb_core::Taint;
 use vb_core::ids::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest};
@@ -172,6 +171,11 @@ pub trait RuntimeJournal: Send + Sync {
     /// Appends a lifecycle event.
     fn append(&self, event: RuntimeJournalEvent) -> RuntimeResult<()>;
 
+    /// Appends a lifecycle event whose per-run sequence is owned by the shard.
+    fn append_sequenced(&self, event: RuntimeJournalEvent, _seq: EventSeq) -> RuntimeResult<()> {
+        self.append(event)
+    }
+
     /// Probes journal health without side effects.
     /// Returns `JournalPoisoned` if the underlying storage is unavailable.
     fn probe(&self) -> RuntimeResult<()>;
@@ -298,6 +302,5 @@ impl RuntimeJournal for VolatileRuntimeJournal {
 /// Runtime journal adapter that appends lifecycle events into `vb_storage`.
 pub struct StorageRuntimeJournal {
     journal: Arc<FjallJournal>,
-    next_seq_by_run: Mutex<IndexMap<RunId, EventSeq>>,
     profile: DurabilityProfile,
 }

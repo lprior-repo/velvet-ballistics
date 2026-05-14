@@ -481,4 +481,3 @@ fn custom_tag_rejected_exact() {
         other => fail_assert!("expected CustomTag, got {other:?}"),
     }
 }
-

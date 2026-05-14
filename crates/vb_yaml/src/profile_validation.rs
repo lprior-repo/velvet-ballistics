@@ -53,7 +53,10 @@ pub(crate) fn check_source_size(text: &str, max_bytes: usize) -> YamlResult<()> 
 }
 
 /// Collect events from the parser while tracking depth and node counts.
-pub(crate) fn collect_and_validate_events(text: &str, limits: &YamlLimits) -> YamlResult<Vec<YamlEvent>> {
+pub(crate) fn collect_and_validate_events(
+    text: &str,
+    limits: &YamlLimits,
+) -> YamlResult<Vec<YamlEvent>> {
     let mut parser = saphyr_parser::Parser::new_from_str(text);
     let mut events = Vec::new();
     let mut depth: u16 = 0;
@@ -255,12 +258,13 @@ fn is_yaml_1_1_ambiguous(scalar: &str) -> bool {
 /// Check collected scalar events for YAML 1.1 ambiguous values.
 pub(crate) fn check_scalar_ambiguity(events: &[YamlEvent]) -> YamlResult<()> {
     for event in events {
-        if let YamlEvent::Scalar { value, style, .. } = event {
-            if *style == crate::events::ScalarStyle::Plain && is_yaml_1_1_ambiguous(value) {
-                return Err(YamlError::AmbiguousScalar {
-                    scalar: value.clone(),
-                });
-            }
+        if let YamlEvent::Scalar { value, style, .. } = event
+            && *style == crate::events::ScalarStyle::Plain
+            && is_yaml_1_1_ambiguous(value)
+        {
+            return Err(YamlError::AmbiguousScalar {
+                scalar: value.clone(),
+            });
         }
     }
     Ok(())

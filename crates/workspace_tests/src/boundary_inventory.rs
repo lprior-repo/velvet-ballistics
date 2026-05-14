@@ -20,7 +20,7 @@ pub use status::{EvidenceRequirement, UnsafeIsolationStatus};
 pub use types::{
     BoundaryCandidate, BoundaryClass, BoundaryExposure, BoundaryInventoryError, BoundaryRisk,
     ClassifiedBoundary, ClassifiedBoundaryInput, DiscoveryEvidence, EvidenceKind,
-    EvidenceReference, FreshnessMarker, OptionalDiscoveryEvidence, ReviewStatus,
-    ReviewSummary, WorkspaceRoot,
+    EvidenceReference, FreshnessMarker, OptionalDiscoveryEvidence, ReviewStatus, ReviewSummary,
+    WorkspaceRoot,
 };
 pub use validation::validate_evidence_reference_bytes;

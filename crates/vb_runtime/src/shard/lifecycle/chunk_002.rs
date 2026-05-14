@@ -1,5 +1,4 @@
 impl Shard {
-
     pub(crate) fn handle_ask_answer(&mut self, answer: AskAnswer) -> RuntimeResult<()> {
         let run = answer.ticket.run;
         let state = self.runs.get_mut(&run).ok_or(RuntimeError::RunNotFound)?;
@@ -36,7 +35,7 @@ impl Shard {
             .map_err(|_| RuntimeError::RunNotFound)?;
         let encoded_answer_value =
             postcard::to_allocvec(&answer.value).map_err(|_| RuntimeError::EncodeFailed)?;
-        self.journal.append(RuntimeJournalEvent::SlotWritten {
+        self.append_journal_event(RuntimeJournalEvent::SlotWritten {
             run,
             slot: answer.answer_slot,
             value: encoded_answer_value,
@@ -48,12 +47,12 @@ impl Shard {
             step: answer.ticket.ask_step,
             slot: answer.answer_slot,
         });
-        self.journal.append(RuntimeJournalEvent::AskAnswered {
+        self.append_journal_event(RuntimeJournalEvent::AskAnswered {
             run,
             step: answer.ticket.ask_step,
             slot: answer.answer_slot,
         })?;
-        self.journal.append(RuntimeJournalEvent::StepSucceeded {
+        self.append_journal_event(RuntimeJournalEvent::StepSucceeded {
             run,
             step: answer.ticket.ask_step,
             output: answer.answer_slot,
@@ -71,7 +70,7 @@ impl Shard {
         crate::shard::helpers::advance_after_timer_fire(&mut state, timer)?;
         match timer.kind {
             PendingTimerKind::Wait => {
-                self.journal.append(RuntimeJournalEvent::WaitResolved {
+                self.append_journal_event(RuntimeJournalEvent::WaitResolved {
                     run,
                     step: timer.step,
                 })?;
@@ -84,17 +83,21 @@ impl Shard {
         self.apply_drive_result(run, state, result)
     }
 
-    pub(crate) fn handle_cancel(&mut self, run: RunId, reason: Option<String>) -> RuntimeResult<()> {
+    pub(crate) fn handle_cancel(
+        &mut self,
+        run: RunId,
+        reason: Option<String>,
+    ) -> RuntimeResult<()> {
         self.pending_timers.swap_remove(&run);
         if self.runs.contains_key(&run) {
-            self.journal
-                .append(RuntimeJournalEvent::RunCancelled { run, reason })?;
+            self.append_journal_event(RuntimeJournalEvent::RunCancelled { run, reason })?;
         }
         if let Some(state) = self.runs.swap_remove(&run) {
             self.release_frame(state.frame);
             self.counters.inc_failed();
             self.trace_ring.push(TraceEvent::RunCancelled { run });
         }
+        self.discard_journal_sequence(run);
         Ok(())
     }
 
@@ -155,9 +158,15 @@ impl Shard {
                 Ok(())
             }
             Ok(RuntimeSignal::Finished(_)) => self.apply_terminal_finished(run, state),
-            Ok(RuntimeSignal::AwaitingAction(ticket)) => self.apply_awaiting_action(run, state, ticket),
-            Ok(RuntimeSignal::AwaitingWait) => self.apply_awaiting_timer(run, state, PendingTimerKind::Wait),
-            Ok(RuntimeSignal::AwaitingAsk) => self.apply_awaiting_timer(run, state, PendingTimerKind::Ask),
+            Ok(RuntimeSignal::AwaitingAction(ticket)) => {
+                self.apply_awaiting_action(run, state, ticket)
+            }
+            Ok(RuntimeSignal::AwaitingWait) => {
+                self.apply_awaiting_timer(run, state, PendingTimerKind::Wait)
+            }
+            Ok(RuntimeSignal::AwaitingAsk) => {
+                self.apply_awaiting_timer(run, state, PendingTimerKind::Ask)
+            }
             Err(_) => self.apply_terminal_failed(run, state),
         }
     }

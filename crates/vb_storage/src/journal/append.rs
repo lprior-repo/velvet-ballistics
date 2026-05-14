@@ -1,8 +1,4 @@
-use crate::{
-    error::JournalError,
-    events::JournalEvent,
-    journal::FjallJournal,
-};
+use crate::{error::JournalError, events::JournalEvent, journal::FjallJournal};
 
 impl FjallJournal {
     /// Appends one event without forcing a durability barrier.

@@ -1,5 +1,4 @@
 impl Shard {
-
     fn flush_slot_written(
         &mut self,
         run: RunId,
@@ -18,7 +17,7 @@ impl Shard {
             slot,
             value: encoded.clone(),
         });
-        self.journal.append(RuntimeJournalEvent::SlotWritten {
+        self.append_journal_event(RuntimeJournalEvent::SlotWritten {
             run,
             slot,
             value: encoded,

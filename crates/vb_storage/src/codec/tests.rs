@@ -138,8 +138,7 @@ fn encode_decode_roundtrip_journal_event_run_cancelled() -> Result<(), JournalEr
 }
 
 #[test]
-fn encode_decode_roundtrip_journal_event_run_cancelled_with_reason() -> Result<(), JournalError>
-{
+fn encode_decode_roundtrip_journal_event_run_cancelled_with_reason() -> Result<(), JournalError> {
     let event = JournalEvent::RunCancelled {
         run: RunId::new(56),
         seq: EventSeq::new(3),
@@ -222,11 +221,8 @@ fn encode_decode_roundtrip_compiled_ir_record() -> Result<(), JournalError> {
         &record,
         MAX_COMPILED_IR_BYTES,
     )?;
-    let (_, decoded) = decode_record::<CompiledIrRecord>(
-        &bytes,
-        MAGIC_COMPILED_ARTIFACT,
-        MAX_COMPILED_IR_BYTES,
-    )?;
+    let (_, decoded) =
+        decode_record::<CompiledIrRecord>(&bytes, MAGIC_COMPILED_ARTIFACT, MAX_COMPILED_IR_BYTES)?;
     assert_eq!(decoded, record);
     Ok(())
 }
@@ -247,11 +243,8 @@ fn encode_decode_roundtrip_blob_record() -> Result<(), JournalError> {
 
 #[test]
 fn decode_rejects_empty_input() {
-    let result = decode_record::<JournalEvent>(
-        &[],
-        MAGIC_JOURNAL_EVENT,
-        MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
-    );
+    let result =
+        decode_record::<JournalEvent>(&[], MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES);
     assert!(
         matches!(result, Err(JournalError::UnexpectedEof)),
         "empty input must yield UnexpectedEof, got {:?}",
@@ -262,11 +255,8 @@ fn decode_rejects_empty_input() {
 #[test]
 fn decode_rejects_input_shorter_than_header() {
     let short = [0u8; RECORD_HEADER_BYTES - 1];
-    let result = decode_record::<JournalEvent>(
-        &short,
-        MAGIC_JOURNAL_EVENT,
-        MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
-    );
+    let result =
+        decode_record::<JournalEvent>(&short, MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES);
     assert!(
         matches!(result, Err(JournalError::UnexpectedEof)),
         "input shorter than 60-byte header must yield UnexpectedEof, got {:?}",
@@ -288,8 +278,7 @@ fn decode_rejects_wrong_magic() -> Result<(), JournalError> {
         &event,
         MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
     )?;
-    let result =
-        decode_record::<JournalEvent>(&bytes, MAGIC_BLOB, MAX_JOURNAL_EVENT_PAYLOAD_BYTES);
+    let result = decode_record::<JournalEvent>(&bytes, MAGIC_BLOB, MAX_JOURNAL_EVENT_PAYLOAD_BYTES);
     assert!(
         matches!(result, Err(JournalError::BadMagic { .. })),
         "wrong magic must yield BadMagic, got {result:?}"
@@ -318,11 +307,8 @@ fn decode_rejects_corrupted_header_crc() -> Result<(), JournalError> {
     if let Some(byte) = bytes.get_mut(CRC_OFFSET) {
         *byte = byte.wrapping_add(1);
     }
-    let result = decode_record::<JournalEvent>(
-        &bytes,
-        MAGIC_JOURNAL_EVENT,
-        MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
-    );
+    let result =
+        decode_record::<JournalEvent>(&bytes, MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES);
     assert!(
         matches!(result, Err(JournalError::HeaderChecksumMismatch)),
         "corrupt CRC must yield HeaderChecksumMismatch, got {:?}",
@@ -349,11 +335,8 @@ fn decode_rejects_corrupted_payload() -> Result<(), JournalError> {
     if let Some(byte) = bytes.get_mut(RECORD_HEADER_BYTES) {
         *byte = byte.wrapping_add(1);
     }
-    let result = decode_record::<JournalEvent>(
-        &bytes,
-        MAGIC_JOURNAL_EVENT,
-        MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
-    );
+    let result =
+        decode_record::<JournalEvent>(&bytes, MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES);
     assert!(
         matches!(result, Err(JournalError::PayloadDigestMismatch)),
         "corrupt payload must yield PayloadDigestMismatch, got {:?}",
@@ -542,11 +525,8 @@ fn decode_rejects_future_schema_version() -> Result<(), JournalError> {
     if let Some(slice) = bytes.get_mut(CRC_OFFSET..CRC_OFFSET.saturating_add(4)) {
         slice.copy_from_slice(&crc_bytes);
     }
-    let result = decode_record::<JournalEvent>(
-        &bytes,
-        MAGIC_JOURNAL_EVENT,
-        MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
-    );
+    let result =
+        decode_record::<JournalEvent>(&bytes, MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES);
     assert!(
         matches!(result, Err(JournalError::UnsupportedSchemaVersion { .. })),
         "future schema must yield UnsupportedSchemaVersion, got {:?}",
@@ -974,11 +954,8 @@ fn decode_header_rejects_unknown_record_kind() -> Result<(), JournalError> {
     if let Some(slice) = bytes.get_mut(CRC_OFFSET..CRC_OFFSET.saturating_add(4)) {
         slice.copy_from_slice(&crc_bytes);
     }
-    let result = decode_record::<JournalEvent>(
-        &bytes,
-        MAGIC_JOURNAL_EVENT,
-        MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
-    );
+    let result =
+        decode_record::<JournalEvent>(&bytes, MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES);
     assert!(
         matches!(result, Err(JournalError::UnknownRecordKind { .. })),
         "unknown kind must yield UnknownRecordKind, got {:?}",
@@ -1014,11 +991,8 @@ fn decode_header_rejects_header_length_mismatch() -> Result<(), JournalError> {
     if let Some(slice) = bytes.get_mut(CRC_OFFSET..CRC_OFFSET.saturating_add(4)) {
         slice.copy_from_slice(&crc_bytes);
     }
-    let result = decode_record::<JournalEvent>(
-        &bytes,
-        MAGIC_JOURNAL_EVENT,
-        MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
-    );
+    let result =
+        decode_record::<JournalEvent>(&bytes, MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES);
     assert!(
         matches!(result, Err(JournalError::HeaderLengthMismatch { .. })),
         "wrong header len must yield HeaderLengthMismatch, got {:?}",
@@ -1345,11 +1319,8 @@ fn decode_rejects_mismatched_digest_in_header() -> Result<(), JournalError> {
     if let Some(slice) = bytes.get_mut(CRC_OFFSET..CRC_OFFSET.saturating_add(4)) {
         slice.copy_from_slice(&crc_bytes);
     }
-    let result = decode_record::<JournalEvent>(
-        &bytes,
-        MAGIC_JOURNAL_EVENT,
-        MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
-    );
+    let result =
+        decode_record::<JournalEvent>(&bytes, MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES);
     assert!(
         matches!(result, Err(JournalError::PayloadDigestMismatch)),
         "corrupted digest must yield PayloadDigestMismatch, got {:?}",
@@ -1866,11 +1837,8 @@ fn decode_rejects_old_schema_version_with_migration_required() -> Result<(), Jou
     if let Some(slice) = bytes.get_mut(CRC_OFFSET..CRC_OFFSET.saturating_add(4)) {
         slice.copy_from_slice(&crc_bytes);
     }
-    let result = decode_record::<JournalEvent>(
-        &bytes,
-        MAGIC_JOURNAL_EVENT,
-        MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
-    );
+    let result =
+        decode_record::<JournalEvent>(&bytes, MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES);
     assert!(
         matches!(result, Err(JournalError::MigrationRequired { from, to }) if from == 0 && to == CURRENT_SCHEMA_VERSION),
         "old schema must yield MigrationRequired, got {:?}",
@@ -2098,11 +2066,8 @@ fn encode_decode_roundtrip_run_snapshot_record() -> Result<(), JournalError> {
         &snapshot,
         MAX_SNAPSHOT_BYTES,
     )?;
-    let (envelope, decoded) = decode_record::<crate::recovery::RunSnapshot>(
-        &bytes,
-        MAGIC_SNAPSHOT,
-        MAX_SNAPSHOT_BYTES,
-    )?;
+    let (envelope, decoded) =
+        decode_record::<crate::recovery::RunSnapshot>(&bytes, MAGIC_SNAPSHOT, MAX_SNAPSHOT_BYTES)?;
     assert_eq!(envelope.magic, MAGIC_SNAPSHOT);
     assert_eq!(envelope.record_kind, RecordKind::Snapshot.id());
     assert_eq!(envelope.sequence, 42);
@@ -2127,11 +2092,8 @@ fn encode_decode_snapshot_large_slots_empty_taint() -> Result<(), JournalError> 
         &snapshot,
         MAX_SNAPSHOT_BYTES,
     )?;
-    let (_, decoded) = decode_record::<crate::recovery::RunSnapshot>(
-        &bytes,
-        MAGIC_SNAPSHOT,
-        MAX_SNAPSHOT_BYTES,
-    )?;
+    let (_, decoded) =
+        decode_record::<crate::recovery::RunSnapshot>(&bytes, MAGIC_SNAPSHOT, MAX_SNAPSHOT_BYTES)?;
     assert_eq!(decoded.slots, slots);
     assert!(decoded.taint.is_empty());
     Ok(())
@@ -2345,11 +2307,8 @@ fn fully_corrupted_crc_is_detected() -> Result<(), JournalError> {
             *byte = byte.wrapping_add(1);
         }
     }
-    let result = decode_record::<JournalEvent>(
-        &bytes,
-        MAGIC_JOURNAL_EVENT,
-        MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
-    );
+    let result =
+        decode_record::<JournalEvent>(&bytes, MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES);
     assert!(
         matches!(result, Err(JournalError::HeaderChecksumMismatch)),
         "fully corrupted CRC must yield HeaderChecksumMismatch, got {:?}",
@@ -2533,11 +2492,8 @@ fn decode_with_valid_header_but_garbage_payload_fails() -> Result<(), JournalErr
         }
     }
 
-    let result = decode_record::<JournalEvent>(
-        &bytes,
-        MAGIC_JOURNAL_EVENT,
-        MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
-    );
+    let result =
+        decode_record::<JournalEvent>(&bytes, MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES);
     assert!(
         matches!(result, Err(JournalError::PostcardDecodeFailed)),
         "garbage payload with valid header should yield PostcardDecodeFailed, got {:?}",

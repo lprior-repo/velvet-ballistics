@@ -1937,135 +1937,134 @@ mod frame_kani_harnesses {
                     kani::assert(!result, "terminal->other blocked");
                 }
 
-    /// K-PC1: set_pc never panics when StepIdx < step_count.
-    /// Bounds assumption: pc.as_usize() < step_count as usize.
-    #[kani::proof]
-    fn set_pc_no_panic() {
-        let step_count: u16 = kani::any();
-        kani::assume(step_count > 0);
+                /// K-PC1: set_pc never panics when StepIdx < step_count.
+                /// Bounds assumption: pc.as_usize() < step_count as usize.
+                #[kani::proof]
+                fn set_pc_no_panic() {
+                    let step_count: u16 = kani::any();
+                    kani::assume(step_count > 0);
 
-        let pc_raw: u16 = kani::any();
-        kani::assume(pc_raw < step_count);
-        let pc = StepIdx::new(pc_raw);
+                    let pc_raw: u16 = kani::any();
+                    kani::assume(pc_raw < step_count);
+                    let pc = StepIdx::new(pc_raw);
 
-        let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1);
-        kani::assume(frame.is_ok());
-        let mut frame = frame.unwrap();
+                    let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1);
+                    kani::assume(frame.is_ok());
+                    let mut frame = frame.unwrap();
 
-        let result = frame.set_pc(pc);
-        kani::assert(result.is_ok(), "set_pc with valid idx returns Ok");
-    }
+                    let result = frame.set_pc(pc);
+                    kani::assert(result.is_ok(), "set_pc with valid idx returns Ok");
+                }
 
-    /// K-PC2: increment_executed never panics.
-    /// No bounds assumption needed — executed uses checked_add internally.
-    #[kani::proof]
-    fn increment_executed_no_panic() {
-        let step_count: u16 = kani::any();
-        kani::assume(step_count > 0);
+                /// K-PC2: increment_executed never panics.
+                /// No bounds assumption needed — executed uses checked_add internally.
+                #[kani::proof]
+                fn increment_executed_no_panic() {
+                    let step_count: u16 = kani::any();
+                    kani::assume(step_count > 0);
 
-        let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1);
-        kani::assume(frame.is_ok());
-        let mut frame = frame.unwrap();
+                    let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1);
+                    kani::assume(frame.is_ok());
+                    let mut frame = frame.unwrap();
 
-        let _result = frame.increment_executed();
-    }
+                    let _result = frame.increment_executed();
+                }
 
-    /// K-PC3: set_pc returns Err when StepIdx >= step_count (no panic).
-    /// Bounds assumption: pc.as_usize() >= step_count as usize.
-    #[kani::proof]
-    fn set_pc_rejects_out_of_bounds() {
-        let step_count: u16 = kani::any();
-        kani::assume(step_count > 0);
+                /// K-PC3: set_pc returns Err when StepIdx >= step_count (no panic).
+                /// Bounds assumption: pc.as_usize() >= step_count as usize.
+                #[kani::proof]
+                fn set_pc_rejects_out_of_bounds() {
+                    let step_count: u16 = kani::any();
+                    kani::assume(step_count > 0);
 
-        let pc_raw: u16 = kani::any();
-        kani::assume(pc_raw >= step_count);
-        let pc = StepIdx::new(pc_raw);
+                    let pc_raw: u16 = kani::any();
+                    kani::assume(pc_raw >= step_count);
+                    let pc = StepIdx::new(pc_raw);
 
-        let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1);
-        kani::assume(frame.is_ok());
-        let mut frame = frame.unwrap();
+                    let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1);
+                    kani::assume(frame.is_ok());
+                    let mut frame = frame.unwrap();
 
-        let result = frame.set_pc(pc);
-        kani::assert(result.is_err(), "set_pc with out-of-bounds idx returns Err");
-    }
+                    let result = frame.set_pc(pc);
+                    kani::assert(result.is_err(), "set_pc with out-of-bounds idx returns Err");
+                }
 
-    /// pc_kani: combined harness for set_pc and increment_executed proofs.
-    #[kani::proof]
-    fn pc_kani() {
-        // K-PC1
-        {
-            let step_count: u16 = kani::any();
-            kani::assume(step_count > 0);
-            let pc_raw: u16 = kani::any();
-            kani::assume(pc_raw < step_count);
-            let pc = StepIdx::new(pc_raw);
-            let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1);
-            kani::assume(frame.is_ok());
-            let mut frame = frame.unwrap();
-            let _ = frame.set_pc(pc);
-        }
-        // K-PC2
-        {
-            let step_count: u16 = kani::any();
-            kani::assume(step_count > 0);
-            let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1);
-            kani::assume(frame.is_ok());
-            let mut frame = frame.unwrap();
-            let _ = frame.increment_executed();
-        }
-        // K-PC3
-        {
-            let step_count: u16 = kani::any();
-            kani::assume(step_count > 0);
-            let pc_raw: u16 = kani::any();
-            kani::assume(pc_raw >= step_count);
-            let pc = StepIdx::new(pc_raw);
-            let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1);
-            kani::assume(frame.is_ok());
-            let mut frame = frame.unwrap();
-            let _ = frame.set_pc(pc);
-        }
-    }
+                /// pc_kani: combined harness for set_pc and increment_executed proofs.
+                #[kani::proof]
+                fn pc_kani() {
+                    // K-PC1
+                    {
+                        let step_count: u16 = kani::any();
+                        kani::assume(step_count > 0);
+                        let pc_raw: u16 = kani::any();
+                        kani::assume(pc_raw < step_count);
+                        let pc = StepIdx::new(pc_raw);
+                        let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1);
+                        kani::assume(frame.is_ok());
+                        let mut frame = frame.unwrap();
+                        let _ = frame.set_pc(pc);
+                    }
+                    // K-PC2
+                    {
+                        let step_count: u16 = kani::any();
+                        kani::assume(step_count > 0);
+                        let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1);
+                        kani::assume(frame.is_ok());
+                        let mut frame = frame.unwrap();
+                        let _ = frame.increment_executed();
+                    }
+                    // K-PC3
+                    {
+                        let step_count: u16 = kani::any();
+                        kani::assume(step_count > 0);
+                        let pc_raw: u16 = kani::any();
+                        kani::assume(pc_raw >= step_count);
+                        let pc = StepIdx::new(pc_raw);
+                        let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1);
+                        kani::assume(frame.is_ok());
+                        let mut frame = frame.unwrap();
+                        let _ = frame.set_pc(pc);
+                    }
+                }
 
-    /// K-S1: read_slot never panics for SlotIdx within valid bounds.
-    /// Uses concrete slot_count=5 to bound symbolic state space.
-    #[kani::proof]
-    fn read_slot_no_panic() {
-        let slot_count: u16 = 5;
+                /// K-S1: read_slot never panics for SlotIdx within valid bounds.
+                /// Uses concrete slot_count=5 to bound symbolic state space.
+                #[kani::proof]
+                fn read_slot_no_panic() {
+                    let slot_count: u16 = 5;
 
-        let slot_raw: u16 = kani::any();
-        kani::assume(slot_raw < slot_count);
-        let slot = SlotIdx::new(slot_raw);
+                    let slot_raw: u16 = kani::any();
+                    kani::assume(slot_raw < slot_count);
+                    let slot = SlotIdx::new(slot_raw);
 
-        let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
-        kani::assume(frame.is_ok());
-        let mut frame = frame.unwrap();
+                    let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+                    kani::assume(frame.is_ok());
+                    let mut frame = frame.unwrap();
 
-        let init_result = frame.write_slot(slot, SlotValue::Null);
-        kani::assume(init_result.is_ok());
+                    let init_result = frame.write_slot(slot, SlotValue::Null);
+                    kani::assume(init_result.is_ok());
 
-        let result = frame.read_slot(slot);
-        kani::assert(result.is_ok(), "read_slot with valid idx returns Ok");
-    }
+                    let result = frame.read_slot(slot);
+                    kani::assert(result.is_ok(), "read_slot with valid idx returns Ok");
+                }
 
-    /// K-S2: write_slot never panics for SlotIdx within valid bounds.
-    /// Uses concrete slot_count=5 to bound symbolic state space.
-    #[kani::proof]
-    fn write_slot_no_panic() {
-        let slot_count: u16 = 5;
+                /// K-S2: write_slot never panics for SlotIdx within valid bounds.
+                /// Uses concrete slot_count=5 to bound symbolic state space.
+                #[kani::proof]
+                fn write_slot_no_panic() {
+                    let slot_count: u16 = 5;
 
-        let slot_raw: u16 = kani::any();
-        kani::assume(slot_raw < slot_count);
-        let slot = SlotIdx::new(slot_raw);
+                    let slot_raw: u16 = kani::any();
+                    kani::assume(slot_raw < slot_count);
+                    let slot = SlotIdx::new(slot_raw);
 
-        let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
-        kani::assume(frame.is_ok());
-        let mut frame = frame.unwrap();
+                    let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+                    kani::assume(frame.is_ok());
+                    let mut frame = frame.unwrap();
 
-        let result = frame.write_slot(slot, SlotValue::Null);
-        kani::assert(result.is_ok(), "write_slot with valid idx returns Ok");
-    }
-
+                    let result = frame.write_slot(slot, SlotValue::Null);
+                    kani::assert(result.is_ok(), "write_slot with valid idx returns Ok");
+                }
             }
         }
     }

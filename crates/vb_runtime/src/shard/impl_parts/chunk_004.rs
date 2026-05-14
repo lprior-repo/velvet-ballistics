@@ -3,6 +3,7 @@ use indexmap::IndexMap;
 use vb_core::frame::RunFrame;
 use vb_core::ids::{RunId, SlotIdx, StepIdx};
 use vb_core::workflow::CompiledWorkflow;
+use vb_storage::EventSeq;
 
 use crate::counters::ShardCounters;
 use crate::engine::{EvidenceCollector, EvidenceEvent};

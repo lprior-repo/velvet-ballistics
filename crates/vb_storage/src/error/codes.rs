@@ -1,5 +1,5 @@
-use vb_core::DiagnosticCode;
 use crate::error::JournalError;
+use vb_core::DiagnosticCode;
 
 impl JournalError {
     /// Diagnostic code for fjall operation failure.

@@ -1,7 +1,7 @@
 use std::path::Path;
 pub(crate) use std::path::PathBuf;
 
-pub(crate) use crate::boundary_inventory::{
+pub(crate) use velvet_ballastics_workspace_tests::boundary_inventory::{
     BoundaryCandidate, BoundaryClass, BoundaryExposure, BoundaryInventory, BoundaryInventoryError,
     BoundaryRecord, BoundaryRecordParts, BoundaryRisk, ClassifiedBoundary, ClassifiedBoundaryInput,
     EvidenceKind, EvidenceReference, EvidenceRequirement, FieldState, FreshnessMarker, Owner,

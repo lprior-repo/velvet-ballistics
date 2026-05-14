@@ -1,3 +1,6 @@
+use crate::codec::validation::{
+    validate_kind_family, validate_known_kind, validate_schema_version,
+};
 use crate::{
     binary::{read_u16, read_u32, read_u64, write_digest, write_u16, write_u32, write_u64},
     constants::{
@@ -6,9 +9,6 @@ use crate::{
     error::JournalError,
     records::RecordKind,
     types::RecordHeader,
-};
-use crate::codec::validation::{
-    validate_kind_family, validate_known_kind, validate_schema_version,
 };
 
 pub fn encode_record_header(
@@ -77,7 +77,9 @@ pub(crate) fn build_record_header(
     Ok(header)
 }
 
-pub(crate) fn decode_record_header_unchecked_len(header: &[u8]) -> Result<RecordHeader, JournalError> {
+pub(crate) fn decode_record_header_unchecked_len(
+    header: &[u8],
+) -> Result<RecordHeader, JournalError> {
     Ok(RecordHeader {
         magic: read_u32(header, 0)?,
         schema_version: read_u16(header, 4)?,
