@@ -1367,6 +1367,14 @@ pub enum CompileError {
         /// Literal start byte index.
         index: usize,
     },
+    /// Expression float literal is non-finite (inf/nan) or otherwise invalid.
+    #[error("expression float is invalid at byte {index} in {expression}")]
+    ExpressionFloatOutOfRange {
+        /// Full source expression.
+        expression: Box<str>,
+        /// Literal start byte index.
+        index: usize,
+    },
     /// Expression exceeded a compiler-side hard bound.
     #[error("expression exceeds {limit} limit {max} in {expression}")]
     ExpressionLimitExceeded {
@@ -1495,6 +1503,7 @@ impl CompileError {
             Self::ExpressionUnexpectedChar { .. }
             | Self::ExpressionUnterminatedString { .. }
             | Self::ExpressionIntegerOutOfRange { .. }
+            | Self::ExpressionFloatOutOfRange { .. }
             | Self::ExpressionLimitExceeded { .. }
             | Self::ExpressionUnexpectedToken { .. }
             | Self::ExpressionUnknownIdentifier { .. }

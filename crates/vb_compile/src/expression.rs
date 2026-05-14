@@ -2,6 +2,7 @@
 //! Cold expression lexer/parser used by the compiler AST boundary.
 
 use crate::CompileError;
+use vb_core::FiniteF64;
 
 /// Parsed v1 expression tree retained by the cold compiler AST.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -75,6 +76,8 @@ pub enum ExpressionLiteral {
     Bool(bool),
     /// Signed 64-bit integer literal.
     I64(i64),
+    /// IEEE-754 double-precision literal.
+    F64(FiniteF64),
     /// Double-quoted string literal.
     Text(Box<str>),
 }
@@ -123,9 +126,10 @@ const MAX_EXPRESSION_DEPTH: u8 = 64;
 const MAX_EXPRESSION_DEPTH_USIZE: usize = 64;
 const MAX_HELPER_ARGS: usize = 8;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 enum TokenKind {
     Integer(i64),
+    Float(f64),
     String(Box<str>),
     Reference(Box<str>),
     Ident(Box<str>),
@@ -137,7 +141,7 @@ enum TokenKind {
     End,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 struct Token {
     kind: TokenKind,
     index: usize,
@@ -191,7 +195,7 @@ impl<'a> Lexer<'a> {
 
     fn lex_one(&mut self, ch: char) -> Result<(), CompileError> {
         if ch.is_ascii_digit() {
-            self.lex_integer()
+            self.lex_integer_or_float()
         } else if is_ident_start(ch) {
             self.lex_ident()
         } else {
@@ -199,10 +203,25 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    fn lex_integer(&mut self) -> Result<(), CompileError> {
+    fn lex_integer_or_float(&mut self) -> Result<(), CompileError> {
         let start = self.index;
         while self.peek_char().is_some_and(|ch| ch.is_ascii_digit()) {
             self.bump_current();
+        }
+        let has_dot = self.peek_char().is_some_and(|ch| ch == '.');
+        if has_dot {
+            self.bump_current();
+            while self.peek_char().is_some_and(|ch| ch.is_ascii_digit()) {
+                self.bump_current();
+            }
+            let text = self.slice(start, self.index)?;
+            let value = text
+                .parse::<f64>()
+                .map_err(|_| CompileError::ExpressionFloatOutOfRange {
+                    expression: Box::<str>::from(self.source),
+                    index: start,
+                })?;
+            return self.push(TokenKind::Float(value), start);
         }
         let text = self.slice(start, self.index)?;
         let value = text
@@ -413,6 +432,13 @@ impl<'a> Parser<'a> {
     fn parse_prefix(&mut self, depth: u8) -> Result<ParsedExpression, CompileError> {
         match self.current_kind() {
             TokenKind::Integer(value) => self.literal(ExpressionLiteral::I64(value)),
+            TokenKind::Float(value) => {
+                let finite = FiniteF64::new(value).map_err(|_| CompileError::ExpressionFloatOutOfRange {
+                    expression: Box::<str>::from(self.source),
+                    index: self.current_index(),
+                })?;
+                self.literal(ExpressionLiteral::F64(finite))
+            }
             TokenKind::String(value) => self.literal(ExpressionLiteral::Text(value)),
             TokenKind::Reference(value) => self.reference(value),
             TokenKind::Ident(value) => self.ident(value, depth),

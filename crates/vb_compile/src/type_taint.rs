@@ -316,6 +316,7 @@ fn expression_literal_fact(value: &ExpressionLiteral) -> ValueFact {
         ExpressionLiteral::Null => ValueFact::clean(ValueType::Null),
         ExpressionLiteral::Bool(_) => ValueFact::clean(ValueType::Boolean),
         ExpressionLiteral::I64(_) => ValueFact::clean(ValueType::Number),
+        ExpressionLiteral::F64(_) => ValueFact::clean(ValueType::Number),
         ExpressionLiteral::Text(_) => ValueFact::clean(ValueType::Text),
     }
 }

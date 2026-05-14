@@ -227,6 +227,7 @@ fn lower_literal(
         ExpressionLiteral::Null => ConstValue::Null,
         ExpressionLiteral::Bool(value) => ConstValue::Bool(*value),
         ExpressionLiteral::I64(value) => ConstValue::I64(*value),
+        ExpressionLiteral::F64(value) => ConstValue::F64(*value),
         ExpressionLiteral::Text(_) => {
             return Err(CompileError::ExpressionLoweringUnsupported {
                 feature: "text constants".into(),
