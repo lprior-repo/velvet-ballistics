@@ -85,6 +85,10 @@ mod schema_tests;
 #[cfg(test)]
 mod red_phase_proptest;
 
+// Kani harnesses for idempotency gate verification (State 5 proof-writer).
+#[cfg(kani)]
+pub mod kani_idempotency_contract;
+
 /// Validation error codes matching the master contract (Section 16).
 #[derive(Debug, Error, Clone, PartialEq, Eq)]
 pub enum ValidationError {

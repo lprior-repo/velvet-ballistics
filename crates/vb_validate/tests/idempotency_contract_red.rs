@@ -835,3 +835,70 @@ proptest! {
         prop_assert_eq!(result, Err(retry_unsafe_violation(action_id)));
     }
 }
+
+proptest! {
+    #[test]
+    fn proptest_001_decision_table_confluence_10k(
+        side_effect in prop_oneof![
+            Just(SideEffect::None),
+            Just(SideEffect::Writes),
+            Just(SideEffect::Sends),
+            Just(SideEffect::Creates),
+            Just(SideEffect::Destroys),
+        ],
+        retry_safety in prop_oneof![
+            Just(RetrySafety::Safe),
+            Just(RetrySafety::KeyRequired),
+            Just(RetrySafety::Unsafe),
+        ],
+        idempotency in prop_oneof![
+            Just(Idempotency::DeterministicPure),
+            Just(Idempotency::IdempotentExternal),
+            Just(Idempotency::AtLeastOnceExternal),
+        ],
+    ) {
+        let candidate = contract(ActionId::new(0), side_effect, idempotency, retry_safety);
+        let result1 = is_statically_idempotent_contract(&candidate);
+        let result2 = is_statically_idempotent_contract(&candidate);
+        prop_assert_eq!(
+            result1.is_ok(), result2.is_ok(),
+            "Decision table must be confluent"
+        );
+    }
+}
+
+proptest! {
+    #[test]
+    fn proptest_002_runtime_gate_determinism_10k(
+        side_effect in prop_oneof![
+            Just(SideEffect::None),
+            Just(SideEffect::Writes),
+            Just(SideEffect::Sends),
+        ],
+        idempotency in prop_oneof![
+            Just(Idempotency::IdempotentExternal),
+            Just(Idempotency::AtLeastOnceExternal),
+        ],
+        key_count in 0..8u8,
+        taint_pattern in 0..=255u8,
+    ) {
+        let candidate = contract(ActionId::new(0), side_effect, idempotency, RetrySafety::KeyRequired);
+        let key_slots: Vec<SlotIdx> = (0..key_count as u16).map(SlotIdx::new).collect();
+
+        let mut frame = RunFrame::new(RunId::ZERO, StepIdx::ZERO, 8, 8)
+            .unwrap();
+        for (i, &slot_idx) in key_slots.iter().enumerate() {
+            let taint_bit = (taint_pattern >> i) & 1;
+            let taint = if taint_bit == 0 { Taint::Clean } else { Taint::Secret };
+            let _ = frame.write_slot_with_taint(slot_idx, SlotValue::I64(i as i64), taint);
+        }
+
+        let result1 = verify_idempotency(&candidate, &key_slots, &frame);
+        let result2 = verify_idempotency(&candidate, &key_slots, &frame);
+
+        prop_assert_eq!(
+            result1.is_ok(), result2.is_ok(),
+            "Runtime gate must be deterministic"
+        );
+    }
+}
