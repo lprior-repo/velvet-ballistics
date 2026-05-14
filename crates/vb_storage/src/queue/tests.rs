@@ -1,268 +1,3 @@
-#![forbid(unsafe_code)]
-//! Async journal writer queue and batch builder.
-//!
-//! Provides bounded queueing for journal events with durability profiling.
-
-use std::collections::VecDeque;
-use std::sync::Mutex;
-
-use crate::{
-    error::JournalError,
-    events::JournalEvent,
-    journal::FjallJournal,
-    types::{
-        DurabilityProfile, JournalWriterFlushReport, JournalWriterQueueProfileCounts, StorageLimits,
-    },
-};
-
-#[derive(Debug)]
-struct QueuedJournalEvent {
-    event: JournalEvent,
-    profile: DurabilityProfile,
-}
-
-#[derive(Debug)]
-struct JournalWriterQueueState {
-    pending: VecDeque<QueuedJournalEvent>,
-    shutdown: bool,
-}
-
-/// Bounded in-memory queue for journal writer batching.
-#[derive(Debug)]
-pub struct JournalWriterQueue {
-    state: Mutex<JournalWriterQueueState>,
-    capacity: usize,
-    batch_size: usize,
-}
-
-impl JournalWriterQueue {
-    /// Creates a bounded writer queue.
-    pub fn new(
-        capacity: usize,
-        batch_size: usize,
-        _limits: StorageLimits,
-    ) -> Result<Self, JournalError> {
-        if capacity == 0 || batch_size == 0 {
-            return Err(JournalError::QueueCapacity);
-        }
-        Ok(Self {
-            state: Mutex::new(JournalWriterQueueState {
-                pending: VecDeque::with_capacity(capacity),
-                shutdown: false,
-            }),
-            capacity,
-            batch_size,
-        })
-    }
-
-    /// Enqueues an event for journaled append.
-    pub fn enqueue_journaled(&self, event: JournalEvent) -> Result<(), JournalError> {
-        self.enqueue(event, DurabilityProfile::Journaled)
-    }
-
-    /// Enqueues an event for strict append.
-    pub fn enqueue_strict(&self, event: JournalEvent) -> Result<(), JournalError> {
-        self.enqueue(event, DurabilityProfile::Strict)
-    }
-
-    fn enqueue(&self, event: JournalEvent, profile: DurabilityProfile) -> Result<(), JournalError> {
-        let mut state = self
-            .state
-            .lock()
-            .map_err(|_| JournalError::WriteLockPoisoned)?;
-        if state.shutdown {
-            return Err(JournalError::QueueShutdown);
-        }
-        if state.pending.len() >= self.capacity {
-            return Err(JournalError::QueueFull);
-        }
-        state
-            .pending
-            .push_back(QueuedJournalEvent { event, profile });
-        Ok(())
-    }
-
-    /// Returns pending write counts split by durability profile.
-    pub fn pending_profile_counts(&self) -> Result<JournalWriterQueueProfileCounts, JournalError> {
-        let state = self
-            .state
-            .lock()
-            .map_err(|_| JournalError::WriteLockPoisoned)?;
-        let mut counts = JournalWriterQueueProfileCounts {
-            journaled: 0,
-            strict: 0,
-        };
-        for item in &state.pending {
-            match item.profile {
-                DurabilityProfile::Journaled => {
-                    counts.journaled = counts.journaled.saturating_add(1);
-                }
-                DurabilityProfile::Strict => {
-                    counts.strict = counts.strict.saturating_add(1);
-                }
-                DurabilityProfile::Volatile => {}
-            }
-        }
-        Ok(counts)
-    }
-
-    /// Flushes at most one configured batch to the journal.
-    pub fn flush_batch(
-        &self,
-        journal: &FjallJournal,
-    ) -> Result<JournalWriterFlushReport, JournalError> {
-        let mut state = self
-            .state
-            .lock()
-            .map_err(|_| JournalError::WriteLockPoisoned)?;
-        let mut batch_len = 0usize;
-        let mut has_strict = false;
-
-        while batch_len < self.batch_size {
-            let Some(item) = state.pending.get(batch_len) else {
-                break;
-            };
-            if item.profile == DurabilityProfile::Strict {
-                has_strict = true;
-            }
-            batch_len = batch_len.saturating_add(1);
-        }
-
-        if batch_len == 0 {
-            return Ok(JournalWriterFlushReport {
-                drained: 0,
-                written: 0,
-            });
-        }
-
-        if has_strict {
-            let mut written = 0usize;
-            while written < batch_len {
-                let Some(item) = state.pending.get(written) else {
-                    break;
-                };
-                journal.append_queued_unpersisted(&item.event)?;
-                written = written.saturating_add(1);
-            }
-            journal.persist_strict()?;
-            let mut drained = 0usize;
-            while drained < written {
-                match state.pending.pop_front() {
-                    Some(_) => {
-                        drained = drained.saturating_add(1);
-                    }
-                    // LOGIC INVARIANT: `written` counts items we just indexed via
-                    // `get(index)` on the same deque, so `pop_front` cannot return
-                    // None here unless an upstream bug corrupts the counts.  We
-                    // use WriteLockPoisoned only because no dedicated
-                    // queue-drain-inconsistent variant exists.
-                    None => return Err(JournalError::WriteLockPoisoned),
-                }
-            }
-            return Ok(JournalWriterFlushReport { drained, written });
-        }
-
-        let mut written = 0usize;
-        while written < batch_len {
-            let Some(item) = state.pending.get(written) else {
-                break;
-            };
-            journal.append_queued_unpersisted(&item.event)?;
-            written = written.saturating_add(1);
-        }
-
-        // Non-strict batch: skip persist_strict so journaled items are
-        // flushed lazily by the storage engine rather than forcing fsync.
-        let mut drained = 0usize;
-        while drained < written {
-            match state.pending.pop_front() {
-                Some(_) => {
-                    drained = drained.saturating_add(1);
-                }
-                // LOGIC INVARIANT: `written` counts items we just indexed via
-                // `get(index)` on the same deque, so `pop_front` cannot return
-                // None here unless an upstream bug corrupts the counts.  We
-                // use WriteLockPoisoned only because no dedicated
-                // queue-drain-inconsistent variant exists.
-                None => return Err(JournalError::WriteLockPoisoned),
-            }
-        }
-
-        Ok(JournalWriterFlushReport { drained, written })
-    }
-
-    /// Flushes queued journal writes until the queue is empty.
-    pub fn drain_all(
-        &self,
-        journal: &FjallJournal,
-    ) -> Result<JournalWriterFlushReport, JournalError> {
-        let mut total = JournalWriterFlushReport {
-            drained: 0,
-            written: 0,
-        };
-
-        loop {
-            let report = self.flush_batch(journal)?;
-            if report.drained == 0 {
-                return Ok(total);
-            }
-            total.drained = total.drained.saturating_add(report.drained);
-            total.written = total.written.saturating_add(report.written);
-        }
-    }
-
-    /// Closes the queue to new writes and drains all accepted writes durably.
-    pub fn shutdown(
-        &self,
-        journal: &FjallJournal,
-    ) -> Result<JournalWriterFlushReport, JournalError> {
-        {
-            let mut state = self
-                .state
-                .lock()
-                .map_err(|_| JournalError::WriteLockPoisoned)?;
-            state.shutdown = true;
-        }
-        self.drain_all(journal)
-    }
-}
-
-/// Ergonomic builder for batching journal events.
-#[derive(Debug, Default)]
-pub struct BatchBuilder {
-    events: Vec<JournalEvent>,
-}
-
-impl BatchBuilder {
-    /// Creates an empty batch builder.
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    /// Adds an event to the batch.
-    pub fn push(&mut self, event: JournalEvent) {
-        self.events.push(event);
-    }
-
-    /// Returns the number of events in the batch.
-    #[must_use]
-    pub fn len(&self) -> usize {
-        self.events.len()
-    }
-
-    /// Returns true if the batch contains no events.
-    #[must_use]
-    pub fn is_empty(&self) -> bool {
-        self.events.is_empty()
-    }
-
-    /// Returns the built event slice.
-    #[must_use]
-    pub fn as_slice(&self) -> &[JournalEvent] {
-        &self.events
-    }
-}
-
 #[cfg(test)]
 #[allow(
     clippy::as_conversions,
@@ -273,9 +8,12 @@ impl BatchBuilder {
     clippy::panic_in_result_fn,
     clippy::unwrap_used
 )]
-mod tests {
-    use super::*;
-    use crate::{EventSeq, FjallJournal, JournalEvent, StorageLimits, constants::DIGEST_BYTES};
+mod internal_tests {
+use super::super::*;
+use crate::{
+    constants::DIGEST_BYTES, types::StorageLimits, EventSeq, FjallJournal, JournalError,
+    JournalEvent,
+};
     use vb_core::{RunId, WorkflowDigest};
 
     fn temp_journal() -> (tempfile::TempDir, FjallJournal) {
@@ -291,10 +29,6 @@ mod tests {
             workflow: WorkflowDigest::from_bytes([0; DIGEST_BYTES]),
         }
     }
-
-    // =========================================================================
-    // Capacity enforcement
-    // =========================================================================
 
     #[test]
     fn new_rejects_zero_capacity() {
@@ -360,10 +94,6 @@ mod tests {
             .expect("counts should succeed");
         assert_eq!(counts.journaled, 3);
     }
-
-    // =========================================================================
-    // Profile counting (strict vs journaled durability)
-    // =========================================================================
 
     #[test]
     fn pending_profile_counts_tracks_journaled_events() {
@@ -439,10 +169,6 @@ mod tests {
         assert_eq!(counts.strict, 0);
     }
 
-    // =========================================================================
-    // Shutdown drain behavior
-    // =========================================================================
-
     #[test]
     fn shutdown_rejects_new_writes_after_call() {
         let (_temp, journal) = temp_journal();
@@ -509,10 +235,6 @@ mod tests {
         );
     }
 
-    // =========================================================================
-    // Flush batch behavior
-    // =========================================================================
-
     #[test]
     fn flush_batch_on_empty_queue_returns_zero() {
         let (_temp, journal) = temp_journal();
@@ -571,10 +293,6 @@ mod tests {
         assert_eq!(counts.journaled, 0, "queue should be empty after drain_all");
     }
 
-    // =========================================================================
-    // BatchBuilder tests
-    // =========================================================================
-
     #[test]
     fn batch_builder_starts_empty() {
         let builder = BatchBuilder::new();
@@ -604,10 +322,6 @@ mod tests {
         assert_eq!(builder.len(), 3);
         assert_eq!(builder.as_slice(), &[e1, e2, e3]);
     }
-
-    // =========================================================================
-    // Flush writes events to journal correctly
-    // =========================================================================
 
     #[test]
     fn flush_batch_writes_events_readable_from_journal() {
@@ -655,10 +369,6 @@ mod tests {
         let events = journal.events_for_run(run).expect("replay should succeed");
         assert_eq!(events.len(), 3);
     }
-
-    // =========================================================================
-    // Durability tier distinction: strict vs journaled through flush_batch
-    // =========================================================================
 
     #[test]
     fn flush_batch_persists_strict_events_to_journal() {
@@ -802,10 +512,6 @@ mod tests {
         assert_eq!(events.len(), 3, "all journaled events should be in journal");
     }
 
-    // =========================================================================
-    // FIFO ordering across durability tiers
-    // =========================================================================
-
     #[test]
     fn flush_batch_returns_items_in_fifo_order() {
         let (_temp, journal) = temp_journal();
@@ -877,10 +583,6 @@ mod tests {
         }
     }
 
-    // =========================================================================
-    // Mixed-tier batch: strict presence triggers strict flush path
-    // =========================================================================
-
     #[test]
     fn mixed_batch_with_one_strict_among_journaled_writes_all() {
         let (_temp, journal) = temp_journal();
@@ -948,10 +650,6 @@ mod tests {
         }
     }
 
-    // =========================================================================
-    // Capacity limits across durability tiers
-    // =========================================================================
-
     #[test]
     fn capacity_limit_applies_to_strict_events() {
         let queue = JournalWriterQueue::new(2, 2, StorageLimits::DEFAULT)
@@ -995,10 +693,6 @@ mod tests {
             journaled_result
         );
     }
-
-    // =========================================================================
-    // Shutdown drains mixed durability tiers
-    // =========================================================================
 
     #[test]
     fn shutdown_drains_mixed_strict_and_journaled() {
@@ -1065,10 +759,6 @@ mod tests {
         );
     }
 
-    // =========================================================================
-    // drain_all with mixed tiers across multiple batches
-    // =========================================================================
-
     #[test]
     fn drain_all_mixed_tiers_across_multiple_batches() {
         let (_temp, journal) = temp_journal();
@@ -1104,10 +794,6 @@ mod tests {
         }
     }
 
-    // =========================================================================
-    // Counts update correctly after partial flush of mixed tiers
-    // =========================================================================
-
     #[test]
     fn counts_after_partial_strict_flush() {
         let (_temp, journal) = temp_journal();
@@ -1137,10 +823,6 @@ mod tests {
             "should have 1 journaled remaining"
         );
     }
-
-    // =========================================================================
-    // Additional edge-case tests
-    // =========================================================================
 
     #[test]
     fn batch_builder_default_trait_yields_empty() {
