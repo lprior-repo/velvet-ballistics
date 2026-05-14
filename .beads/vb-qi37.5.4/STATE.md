@@ -258,3 +258,18 @@
   - Zero runtime panic surface in gate functions: PASS
 - **final_decision**: APPROVED FOR DELIVERY
 - **next_gate**: State 14 (landing — landing-skill)
+
+## State 14 Log
+
+- **claimed**: true
+- **landing_completed**: true
+- **commit**: `ecb2c0522` — "test(vb-qi37.5.4): add idempotency gate Kani/proptest coverage"
+- **merge_method**: fast-forward git merge from detached HEAD `5ebe7e416`
+- **rebase_required**: true — remote had diverged by 1 commit (`a3849ba3b`)
+- **push_result**: `a3849ba3b..ecb2c0522 main -> origin/main`
+- **remote_head**: `ecb2c0522` (origin/main, origin/HEAD)
+- **landing_report**: `.beads/vb-qi37.5.4/landing-report.md`
+- **state_14_attempts**: 1
+- **current_state**: 14
+- **bead_status**: LANDED
+- **next_gate**: none
