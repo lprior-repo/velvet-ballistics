@@ -14,6 +14,7 @@ vb_core = { path = "../vb_core" }
 vb_storage = { path = "../vb_storage" }
 postcard.workspace = true
 serde.workspace = true
+verus = { workspace = true }
 
 [dev-dependencies]
 proptest = { workspace = true }

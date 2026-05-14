@@ -15,6 +15,7 @@ rustix.workspace = true
 serde.workspace = true
 thiserror.workspace = true
 vb_core = { path = "../vb_core" }
+verus = { workspace = true }
 
 [dev-dependencies]
 proptest = { workspace = true }
