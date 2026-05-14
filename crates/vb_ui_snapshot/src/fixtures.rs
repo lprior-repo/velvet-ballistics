@@ -9,13 +9,26 @@ use alloc::{
 };
 use serde::{Deserialize, Serialize};
 use vb_ui_model::{
-    ActionDescriptionView, AiContextPanel, AiContextView, Capability, EvidenceCardPanel,
-    IncidentReportView, IncidentSeverity, JournalDoctorPanel, RecoveryStrategy, RecoverySuggestion,
-    ReplayReportView, ReplaySafety, RunEventKind, RunEventView, RunInspectionView, RunStatus,
-    RunSummaryView, SlotDiffView, StepStateView, StepStatus, StorageDoctorView, StorageHealth,
-    StorageHealthPanel, SystemStatusView, UiAppSnapshot, VerificationCertificate,
-    VerificationReportView, WorkflowDigest, WorkflowEdgeView, WorkflowGraphView, WorkflowNodeKind,
-    WorkflowNodeView,
+    ai::{AiContextPanel, ReplaySafety},
+    incident::IncidentSeverity,
+    replay::{RecoveryStrategy, RecoverySuggestion},
+    run::{RunEventKind, RunEventView, RunStatus, SlotDiffView, StepStateView, StepStatus},
+    storage::{
+        EvidenceCardPanel, JournalDoctorPanel, StorageHealthPanel,
+    },
+    system::StorageHealth,
+    verify::VerificationCertificate,
+    workflow::{WorkflowEdgeView, WorkflowNodeKind, WorkflowNodeView},
+    system::ActionDescriptionView,
+    ai::AiContextView,
+    incident::IncidentReportView,
+    replay::ReplayReportView,
+    run::{RunInspectionView, RunSummaryView},
+    storage::StorageDoctorView,
+    system::SystemStatusView,
+    verify::VerificationReportView,
+    workflow::WorkflowGraphView,
+    Capability, UiAppSnapshot, WorkflowDigest,
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -652,42 +665,42 @@ fn verification_certificate_fixture() -> DemoFixture {
                     capability: true,
                 },
                 gate_results: vec![
-                    vb_ui_model::GateResult {
+                    vb_ui_model::verify::GateResult {
                         name: "Structure".to_string(),
                         passed: true,
                         detail: None,
                     },
-                    vb_ui_model::GateResult {
+                    vb_ui_model::verify::GateResult {
                         name: "Boundedness".to_string(),
                         passed: true,
                         detail: None,
                     },
-                    vb_ui_model::GateResult {
+                    vb_ui_model::verify::GateResult {
                         name: "Resources".to_string(),
                         passed: true,
                         detail: None,
                     },
-                    vb_ui_model::GateResult {
+                    vb_ui_model::verify::GateResult {
                         name: "Taint".to_string(),
                         passed: true,
                         detail: None,
                     },
-                    vb_ui_model::GateResult {
+                    vb_ui_model::verify::GateResult {
                         name: "ActionPolicy".to_string(),
                         passed: true,
                         detail: None,
                     },
-                    vb_ui_model::GateResult {
+                    vb_ui_model::verify::GateResult {
                         name: "Durability".to_string(),
                         passed: true,
                         detail: None,
                     },
-                    vb_ui_model::GateResult {
+                    vb_ui_model::verify::GateResult {
                         name: "Idempotency".to_string(),
                         passed: true,
                         detail: None,
                     },
-                    vb_ui_model::GateResult {
+                    vb_ui_model::verify::GateResult {
                         name: "Capability".to_string(),
                         passed: true,
                         detail: None,
@@ -1005,7 +1018,7 @@ fn incident_failure_fixture() -> DemoFixture {
                     "Add null-check guard before Transform step".to_string(),
                     "Consider adding a fallback default value".to_string(),
                 ],
-                evidence_chain: vb_ui_model::EvidenceChain {
+                evidence_chain: vb_ui_model::incident::EvidenceChain {
                     scheduled_durable: true,
                     completion_durable: true,
                     side_effect_certainty: 0.99,
@@ -1129,40 +1142,40 @@ fn storage_doctor_ai_context_fixture() -> DemoFixture {
             storage: Some(StorageDoctorView {
                 health: StorageHealthPanel {
                     fjall_keyspaces: vec![
-                        vb_ui_model::KeyspaceMetrics {
+                        vb_ui_model::storage::KeyspaceMetrics {
                             name: "runs".to_string(),
                             key_count: 1500,
                             size_bytes: 104857600,
                             profile: "default".to_string(),
                         },
-                        vb_ui_model::KeyspaceMetrics {
+                        vb_ui_model::storage::KeyspaceMetrics {
                             name: "journal".to_string(),
                             key_count: 500000,
                             size_bytes: 524288000,
                             profile: "journal".to_string(),
                         },
                     ],
-                    writer_queue: vb_ui_model::WriterQueueStatus {
+                    writer_queue: vb_ui_model::storage::WriterQueueStatus {
                         pending_journaled: 3,
                         pending_strict: 1,
                         is_shutdown: false,
                     },
-                    journal_batch: vb_ui_model::JournalBatchHealth {
+                    journal_batch: vb_ui_model::storage::JournalBatchHealth {
                         last_flush_ms: Some(1715400000),
                         flushed_count: 15000,
                         dropped_count: 0,
                     },
-                    snapshot: vb_ui_model::SnapshotStatus {
+                    snapshot: vb_ui_model::storage::SnapshotStatus {
                         latest_seq: Some(vb_ui_model::SeqNo::new(7200)),
                         snapshot_count: 12,
                         is_corrupt: false,
                     },
-                    blob_store: vb_ui_model::BlobStoreStatus {
+                    blob_store: vb_ui_model::storage::BlobStoreStatus {
                         blob_count: 3000,
                         size_bytes: 1073741824,
                         is_accessible: true,
                     },
-                    index: vb_ui_model::IndexHealth {
+                    index: vb_ui_model::storage::IndexHealth {
                         status_count: 1000,
                         workflow_count: 50,
                         action_count: 25,
@@ -1173,15 +1186,15 @@ fn storage_doctor_ai_context_fixture() -> DemoFixture {
                     run_event_count: 500000,
                     snapshot_seq: 7200,
                     tail_seq: 7500,
-                    corrupt_records: vb_ui_model::CorruptRecordStatus::Corrupt {
+                    corrupt_records: vb_ui_model::storage::CorruptRecordStatus::Corrupt {
                         count: 1,
                         first_seq: Some(vb_ui_model::SeqNo::new(7333)),
                     },
-                    trim_recommendation: vb_ui_model::TrimRecommendation::Recommended {
+                    trim_recommendation: vb_ui_model::storage::TrimRecommendation::Recommended {
                         tail_seq: 7200,
                         snapshot_seq: 7200,
                     },
-                    digest_checks: vb_ui_model::DigestCheckResult {
+                    digest_checks: vb_ui_model::storage::DigestCheckResult {
                         workflow_source_ok: true,
                         compiled_ir_ok: false,
                         all_ok: false,
@@ -1192,15 +1205,15 @@ fn storage_doctor_ai_context_fixture() -> DemoFixture {
                     secrets_redacted: true,
                     blobs_summarized: true,
                     suggested_commands: vec![
-                        vb_ui_model::SuggestedCommand {
+                        vb_ui_model::ai::SuggestedCommand {
                             cmd: "velvet storage repair --seq 7333".to_string(),
                             desc: "Repair corrupt record".to_string(),
                         },
-                        vb_ui_model::SuggestedCommand {
+                        vb_ui_model::ai::SuggestedCommand {
                             cmd: "velvet journal trim --keep 7200".to_string(),
                             desc: "Trim journal".to_string(),
                         },
-                        vb_ui_model::SuggestedCommand {
+                        vb_ui_model::ai::SuggestedCommand {
                             cmd: "velvet index rebuild".to_string(),
                             desc: "Rebuild index".to_string(),
                         },
@@ -1212,7 +1225,7 @@ fn storage_doctor_ai_context_fixture() -> DemoFixture {
                     last_cert_check: Some(1715400000),
                     last_replay_check: Some(1715400100),
                     last_crash_lab_fixture: Some(1715400200),
-                    incomplete_warnings: vec![vb_ui_model::IncompleteWarning {
+                    incomplete_warnings: vec![vb_ui_model::storage::IncompleteWarning {
                         kind: "MissingFragments".to_string(),
                         message: "Evidence blob e8f3 missing 2 fragments".to_string(),
                     }],

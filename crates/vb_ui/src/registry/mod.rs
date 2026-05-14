@@ -65,7 +65,7 @@
 
 use vb_core::action::{ActionContract, ActionFailureCode, Idempotency, RetrySafety, SideEffect};
 use vb_core::capability::{Capability, CapabilitySet};
-use vb_ui_model::ActionDescriptionView;
+use vb_ui_model::system::ActionDescriptionView;
 
 // ---------------------------------------------------------------------------
 // Color constants
