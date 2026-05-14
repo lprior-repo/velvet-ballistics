@@ -3,8 +3,8 @@
 ## Identification
 - bead_id: vb-qi37.9.2
 - title: expr: Execute F64 bytecode semantics
-- current_state: 13
-- target_state: 13
+- current_state: 14
+- target_state: 14
 
 ## Checkout Paths
 - source_checkout: /home/lewis/src/Velvet-ballistics
@@ -26,6 +26,9 @@
 - state_12_started: 2026-05-14
 - state_12_completed: 2026-05-14
 - state_13_started: 2026-05-14
+- state_13_completed: 2026-05-14
+- state_14_started: 2026-05-14
+- state_14_completed: 2026-05-14
 - claimed_via: bd update --claim vb-qi37.9.2
 - isolation_method: git worktree (jj unavailable due to missing store/type)
 
@@ -193,3 +196,10 @@
 - All 17 traceability-matrix entries trace to passing evidence
 - All 21 verification-ledger obligations resolved (PASS/WAIVED/blocked_tooling)
 - black-hat reviewer APPROVED (State 12); no code changes post-approval
+
+## State 14 Summary (Landing)
+- Committed: 39 files changed, 4272 insertions
+- Merged to main: git merge --no-ff (ort strategy)
+- Pushed to origin/main: 178b3b873..7d7848e8b
+- landing-report.md produced with remote reachability proof
+- Bead blocks vb-qi37.9 and vb-qi37.9.5 (resolved on merge)
