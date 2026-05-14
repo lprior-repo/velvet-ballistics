@@ -1,4 +1,6 @@
-use crate::value::{Taint, join_taint};
+use crate::frame::RunFrame;
+use crate::ids::{RunId, SlotIdx, StepIdx};
+use crate::value::{SlotValue, Taint, join_taint};
 
 fn taint_from_u8(v: u8) -> Taint {
     match v % 3 {
@@ -60,4 +62,47 @@ fn join_taint_commutative() {
         result_ab == result_ba,
         "join_taint(a, b) == join_taint(b, a)",
     );
+}
+
+#[kani::proof]
+fn read_taint_no_panic() {
+    let slot_count: u16 = kani::any();
+    kani::assume(slot_count > 0);
+
+    let slot_raw: u16 = kani::any();
+    kani::assume(slot_raw < slot_count);
+    let slot = SlotIdx::new(slot_raw);
+
+    let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+    kani::assume(frame.is_ok());
+    let mut frame = frame.unwrap();
+
+    let init_result = frame.write_slot(slot, SlotValue::Null);
+    kani::assume(init_result.is_ok());
+
+    let result = frame.read_taint(slot);
+    kani::assert(result.is_ok(), "read_taint with valid idx returns Ok");
+}
+
+#[kani::proof]
+fn write_taint_no_panic() {
+    let slot_count: u16 = kani::any();
+    kani::assume(slot_count > 0);
+
+    let slot_raw: u16 = kani::any();
+    kani::assume(slot_raw < slot_count);
+    let slot = SlotIdx::new(slot_raw);
+
+    let taint_raw = kani::any::<u8>();
+    let taint = taint_from_u8(taint_raw);
+
+    let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+    kani::assume(frame.is_ok());
+    let mut frame = frame.unwrap();
+
+    let init_result = frame.write_slot(slot, SlotValue::Null);
+    kani::assume(init_result.is_ok());
+
+    let result = frame.write_taint(slot, taint);
+    kani::assert(result.is_ok(), "write_taint with valid idx returns Ok");
 }

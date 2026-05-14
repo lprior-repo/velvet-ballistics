@@ -1289,7 +1289,8 @@ mod tests {
 // Uses a minimal inline transition function to avoid CoreResult (CoreError -> Capability drop loop).
 #[cfg(kani)]
 mod frame_kani_harnesses {
-    use crate::frame::StepState;
+    use crate::frame::{RunFrame, StepIdx, StepState};
+    use crate::ids::RunId;
 
     fn validate_transition_inline(current: StepState, new: StepState) -> bool {
         match (current, new) {
@@ -1935,7 +1936,135 @@ mod frame_kani_harnesses {
                 } else {
                     kani::assert(!result, "terminal->other blocked");
                 }
+
+    /// K-PC1: set_pc never panics when StepIdx < step_count.
+    /// Bounds assumption: pc.as_usize() < step_count as usize.
+    #[kani::proof]
+    fn set_pc_no_panic() {
+        let step_count: u16 = kani::any();
+        kani::assume(step_count > 0);
+
+        let pc_raw: u16 = kani::any();
+        kani::assume(pc_raw < step_count);
+        let pc = StepIdx::new(pc_raw);
+
+        let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1);
+        kani::assume(frame.is_ok());
+        let mut frame = frame.unwrap();
+
+        let result = frame.set_pc(pc);
+        kani::assert(result.is_ok(), "set_pc with valid idx returns Ok");
+    }
+
+    /// K-PC2: increment_executed never panics.
+    /// No bounds assumption needed — executed uses checked_add internally.
+    #[kani::proof]
+    fn increment_executed_no_panic() {
+        let step_count: u16 = kani::any();
+        kani::assume(step_count > 0);
+
+        let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1);
+        kani::assume(frame.is_ok());
+        let mut frame = frame.unwrap();
+
+        let _result = frame.increment_executed();
+    }
+
+    /// K-PC3: set_pc returns Err when StepIdx >= step_count (no panic).
+    /// Bounds assumption: pc.as_usize() >= step_count as usize.
+    #[kani::proof]
+    fn set_pc_rejects_out_of_bounds() {
+        let step_count: u16 = kani::any();
+        kani::assume(step_count > 0);
+
+        let pc_raw: u16 = kani::any();
+        kani::assume(pc_raw >= step_count);
+        let pc = StepIdx::new(pc_raw);
+
+        let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1);
+        kani::assume(frame.is_ok());
+        let mut frame = frame.unwrap();
+
+        let result = frame.set_pc(pc);
+        kani::assert(result.is_err(), "set_pc with out-of-bounds idx returns Err");
+    }
+
+    /// pc_kani: combined harness for set_pc and increment_executed proofs.
+    #[kani::proof]
+    fn pc_kani() {
+        // K-PC1
+        {
+            let step_count: u16 = kani::any();
+            kani::assume(step_count > 0);
+            let pc_raw: u16 = kani::any();
+            kani::assume(pc_raw < step_count);
+            let pc = StepIdx::new(pc_raw);
+            let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1);
+            kani::assume(frame.is_ok());
+            let mut frame = frame.unwrap();
+            let _ = frame.set_pc(pc);
+        }
+        // K-PC2
+        {
+            let step_count: u16 = kani::any();
+            kani::assume(step_count > 0);
+            let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1);
+            kani::assume(frame.is_ok());
+            let mut frame = frame.unwrap();
+            let _ = frame.increment_executed();
+        }
+        // K-PC3
+        {
+            let step_count: u16 = kani::any();
+            kani::assume(step_count > 0);
+            let pc_raw: u16 = kani::any();
+            kani::assume(pc_raw >= step_count);
+            let pc = StepIdx::new(pc_raw);
+            let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1);
+            kani::assume(frame.is_ok());
+            let mut frame = frame.unwrap();
+            let _ = frame.set_pc(pc);
+        }
+    }
+
             }
         }
+    }
+}
+
+#[cfg(kani)]
+mod parallel_in_flight_kani {
+    use crate::frame::{RunFrame, StepIdx};
+    use crate::ids::RunId;
+
+    #[kani::proof]
+    fn add_parallel_in_flight_no_panic() {
+        let count: u16 = kani::any();
+
+        let frame = RunFrame::new(RunId::new(0), StepIdx::ZERO, 2, 4);
+        kani::assume(frame.is_ok());
+        let mut frame = frame.unwrap();
+
+        kani::cover(count == u16::MAX, "max count");
+        kani::cover(count == 0, "zero count");
+        kani::cover(count > 0 && count < u16::MAX, "normal count");
+
+        let result = frame.add_parallel_in_flight(count);
+        kani::assert(result.is_ok(), "add_parallel_in_flight must not panic");
+    }
+
+    #[kani::proof]
+    fn sub_parallel_in_flight_no_panic() {
+        let count: u16 = kani::any();
+
+        let frame = RunFrame::new(RunId::new(0), StepIdx::ZERO, 2, 4);
+        kani::assume(frame.is_ok());
+        let mut frame = frame.unwrap();
+
+        kani::cover(count > 0, "positive count");
+        kani::cover(count == 0, "zero count");
+
+        let result = frame.sub_parallel_in_flight(count);
+        kani::assert(result.is_ok(), "sub_parallel_in_flight must not panic");
     }
 }
