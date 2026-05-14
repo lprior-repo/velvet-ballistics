@@ -33,8 +33,6 @@
 
 #![forbid(unsafe_code)]
 
-use proptest::prelude::*;
-
 /// Test that all 23 CliEnvelopeError variants can be constructed and displayed.
 ///
 /// PO-005: Each of 23 CliEnvelopeError variants is constructible and displayable.

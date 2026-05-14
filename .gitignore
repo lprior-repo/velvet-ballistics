@@ -5,6 +5,12 @@ target/
 .memsearch/
 .claude/worktrees/
 
+# Local workspace snapshots and duplicated export bundles
+/refactor/
+/vb-*/
+/velvet_ballastics_figma_ready_tightened_screens/
+/velvet_ballastics_makepad_ui_master_plan_with_images/
+
 # Moon local cache
 .moon/cache/
 

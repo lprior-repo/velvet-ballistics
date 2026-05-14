@@ -1,4 +1,0 @@
-STATE_8_PASS
-
-moon ci passed after rebase-conflict and formatting repair.
-Evidence: /home/lewis/.local/share/opencode/tool-output/tool_e19a150f1001I6zN6ZgIuCrYGZ

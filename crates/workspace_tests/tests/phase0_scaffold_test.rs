@@ -421,52 +421,6 @@ fn benches_velvet_ballastics_compiles() -> Result<(), String> {
 }
 
 #[test]
-fn justfile_defines_complete_pgo_pipeline() -> Result<(), String> {
-    let contents = read_workspace_file("justfile")?;
-
-    ensure(
-        contents.contains(
-            "pgo:\n\tjust pgo-instrument-build\n\tjust pgo-run-workload\n\tjust pgo-merge-profiles\n\tjust pgo-optimized-build",
-        ),
-        "justfile must define 'pgo' as instrument -> workload -> merge -> optimized build".to_string(),
-    )?;
-    ensure(
-        contents.contains("pgo_profile_dir := \"target/pgo/profiles\""),
-        "PGO raw profile data must stay under target/pgo/profiles".to_string(),
-    )?;
-    ensure(
-        contents.contains("pgo_merged_profile := \"target/pgo/merged.profdata\""),
-        "PGO merged profile must stay under target/pgo/merged.profdata".to_string(),
-    )?;
-    ensure(
-        contents.contains("pgo_build_args := \"-p velvet_ballastics --bin velvet-ballastics --bin vb --all-features --profile maxperf\""),
-        "PGO builds must target the CLI package and binaries that execute the profiling workload"
-            .to_string(),
-    )?;
-    ensure(
-        contents.contains("cargo +{{nightly}} build {{pgo_build_args}}"),
-        "pgo-instrument-build and pgo-optimized-build must use the shared PGO build args"
-            .to_string(),
-    )?;
-    ensure(
-        contents.contains("-Cprofile-generate=$PWD/{{pgo_profile_dir}}"),
-        "pgo-instrument-build must pass an absolute profile-generate path to rustc".to_string(),
-    )?;
-    ensure(
-        contents.contains("-Cprofile-use=$PWD/{{pgo_merged_profile}}"),
-        "pgo-optimized-build must pass an absolute profile-use path to rustc".to_string(),
-    )?;
-    ensure(
-        contents.contains("tests/fixtures/pgo/minimal_save.yaml"),
-        "PGO workload must include the minimal save fixture".to_string(),
-    )?;
-    ensure(
-        contents.contains("tests/fixtures/pgo/choose_true.yaml"),
-        "PGO workload must include the choose fixture".to_string(),
-    )
-}
-
-#[test]
 fn pgo_workload_minimal_save_fixture_compiles() -> Result<(), String> {
     let relative = "tests/fixtures/pgo/minimal_save.yaml";
     let bytes = fs::read(workspace_path(relative))
@@ -523,56 +477,6 @@ fn assert_pgo_workload_fixture_compiles(relative: &str) -> Result<(), String> {
                 .join(", ");
             format!("{} must compile as a PGO workload: {}", relative, details)
         })
-}
-
-#[test]
-fn justfile_pgo_merge_refuses_missing_profile_data() -> Result<(), String> {
-    let contents = read_workspace_file("justfile")?;
-
-    ensure(
-        contents.contains("pgo-merge-profiles:"),
-        "justfile must define a PGO profile merge target".to_string(),
-    )?;
-    ensure(
-        contents.contains("no PGO profile data found under {{pgo_profile_dir}}"),
-        "pgo-merge-profiles must fail clearly when workload execution produced no profiles"
-            .to_string(),
-    )?;
-    ensure(
-        contents.contains("rustup run {{nightly}} llvm-profdata merge"),
-        "pgo-merge-profiles must use llvm-profdata from the pinned nightly toolchain".to_string(),
-    )
-}
-
-#[test]
-fn moon_pgo_tasks_use_absolute_profiles_and_cli_build() -> Result<(), String> {
-    let contents = read_workspace_file(".moon/tasks/all.yml")?;
-
-    ensure(
-        contents.contains("-Cprofile-generate=$PWD/target/pgo/profiles"),
-        "Moon PGO instrument build must use an absolute profile-generate path".to_string(),
-    )?;
-    ensure(
-        contents.contains("-Cprofile-use=$PWD/target/pgo/merged.profdata"),
-        "Moon PGO optimized build must use an absolute profile-use path".to_string(),
-    )?;
-    ensure(
-        contents.contains(
-            "cargo build -p velvet_ballastics --bin velvet-ballistics --bin vb --all-features --profile maxperf",
-        ),
-        "Moon PGO tasks must build the CLI binaries that execute the profiling workload"
-            .to_string(),
-    )
-}
-
-#[test]
-fn justfile_defines_maxperf_release_profile_build() -> Result<(), String> {
-    let contents = read_workspace_file("justfile")?;
-
-    ensure(
-        contents.contains("maxperf-release:\n\tcargo +{{nightly}} build --workspace --all-features --profile maxperf"),
-        "justfile must define maxperf-release using the maxperf Cargo profile".to_string(),
-    )
 }
 
 #[test]

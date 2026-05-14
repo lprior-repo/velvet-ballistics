@@ -1,7 +1,0 @@
-deterministic_capture: passed
-snapshot_timestamp: 2026-05-09T00:00:00Z
-hidden_animation_state: Paused
-clock_source: FixedFixtureTime
-execution_marker: vb-nf2u-deterministic-capture
-fixture_backed: true
-core_runtime_parity_claim: unsupported

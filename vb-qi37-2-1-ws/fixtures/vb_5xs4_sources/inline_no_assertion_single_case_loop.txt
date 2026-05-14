@@ -1,2 +1,0 @@
-// vb-5xs4-fixture:inline_no_assertion_single_case_loop
-for case in [1] { let observed = case; }

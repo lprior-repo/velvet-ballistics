@@ -1,8 +1,0 @@
----
-gates:
-  - kind: fmt
-    gate_name: fmt
-    command: cargo +nightly fmt --all
-    exit_code: 0
-    log: target/evidence/fmt.log
-    status: Pass

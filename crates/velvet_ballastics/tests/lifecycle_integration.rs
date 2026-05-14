@@ -21,6 +21,8 @@ use vb_core::workflow::{
     WorkflowParts,
 };
 use vb_storage::FjallJournal;
+use vb_storage::records::RecordKind;
+use vb_storage::types::EventSeq;
 
 // Test helpers for lifecycle state setup
 use velvet_ballastics::lifecycle::test_helpers::{
@@ -1189,7 +1191,12 @@ fn replay_with_malformed_event_returns_replay_corruption() {
     // Inject malformed bytes at seq=1
     // This corrupts the journal - decode_record will fail on these bytes
     journal
-        .inject_raw_event(run, 1, &[0xDE, 0xAD, 0xBE, 0xEF])
+        .inject_raw_event(
+            run,
+            EventSeq::new(1),
+            RecordKind::RunAccepted,
+            &[0xDE, 0xAD, 0xBE, 0xEF],
+        )
         .expect("malformed event injection must succeed");
 
     let result = velvet_ballastics::lifecycle::replay(&journal);
@@ -1219,7 +1226,7 @@ fn replay_with_missing_event_returns_replay_corruption() {
     // This creates a gap in the sequence that replay will detect when
     // events_for_run_from expects seq=0 but finds seq=1.
     journal
-        .inject_seq_gap(run, 0, 1)
+        .inject_seq_gap(run, EventSeq::new(0))
         .expect("sequence gap injection must succeed");
 
     let result = velvet_ballastics::lifecycle::replay(&journal);

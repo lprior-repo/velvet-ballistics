@@ -1,3 +1,0 @@
-decoder-byte-ingest-boundary
-ipc-frame-boundary
-external-binary-boundary

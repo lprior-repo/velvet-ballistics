@@ -1,8 +1,0 @@
-// vb-5xs4-fixture:assertion_after_closed_loop
-#[test]
-fn closed_loop() {
-    for case in [1, 2] {
-        let observed = case;
-    }
-    assert_eq!(1, 1);
-}

@@ -4,6 +4,7 @@
 //! contracted public API. They are intentionally compile-red until State 3 adds
 //! `quality::test_loop_inventory` and its public domain types.
 
+use proptest::prelude::*;
 use velvet_ballastics_workspace_tests::quality::test_loop_inventory::{
     AssignmentEvidence, BehaviorEvidence, CaseEvidence, CaseLabel, Disposition, DispositionKind,
     DispositionSelection, ExceptionMetadata, ExceptionReason, ExceptionScope, Finding, FindingId,
@@ -13,7 +14,6 @@ use velvet_ballastics_workspace_tests::quality::test_loop_inventory::{
     ValidatedFinding, ValidatedInventory, WorkspaceRoot, assign_disposition, classify_loop_pattern,
     discover_rust_test_files, render_inventory_report, scan_test_file, validate_inventory,
 };
-use proptest::prelude::*;
 
 fn workspace_root(path: &'static str) -> WorkspaceRoot {
     WorkspaceRoot::new(path)

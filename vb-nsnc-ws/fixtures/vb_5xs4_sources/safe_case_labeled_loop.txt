@@ -1,8 +1,0 @@
-// vb-5xs4-fixture:safe_case_labeled_loop
-
-#[test]
-fn safe_cases() {
-    for case in ["empty", "whitespace"] {
-        assert_eq!(case.len(), case.len(), "behavior=parser rejects invalid ids; case={case}");
-    }
-}

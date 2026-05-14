@@ -66,7 +66,9 @@ fn write_parts(path: &Path, parts: &WorkflowParts) {
 }
 
 fn run_vb(args: &[&OsStr]) -> Output {
-    std::process::Command::new(env!("CARGO_BIN_EXE_vb"))
+    let exe = option_env!("CARGO_BIN_EXE_velvet-ballastics")
+        .expect("CARGO_BIN_EXE_velvet-ballastics must be set for test execution");
+    std::process::Command::new(exe)
         .args(args)
         .output()
         .expect("vb test binary executes")

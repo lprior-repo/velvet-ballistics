@@ -1,9 +1,0 @@
-// vb-5xs4-fixture:weak_table_loop_missing_case_label
-
-#[test]
-fn weak_table() {
-    let cases = [1, 2];
-    for case in cases {
-        assert_eq!(case, case);
-    }
-}

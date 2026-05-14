@@ -1,7 +1,0 @@
-// vb-5xs4-fixture:case_without_behavior_for_loop
-#[test]
-fn case_without_behavior() {
-    for case in ["empty", "whitespace"] {
-        assert_eq!(case.len(), case.len(), "case={case}");
-    }
-}
