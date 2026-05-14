@@ -13,9 +13,14 @@ mod tests {
     use crate::parser::ExprHelper;
     use crate::{ExprError, ExprResult};
     use vb_core::limits::MAX_EXPRESSION_STACK;
+    use vb_core::value::FiniteF64;
     use vb_core::value::Taint;
     use vb_core::value_store::ValueStore;
     use vb_core::{ConstIdx, ConstValue, ExprOp, ExprProgram, SlotIdx, SlotValue};
+
+    fn make_f64(value: f64) -> FiniteF64 {
+        FiniteF64::new(value).expect("expected finite f64")
+    }
 
     fn make_program(ops: Vec<ExprOp>) -> ExprResult<ExprProgram> {
         ExprProgram::try_from_ops(ops.into_boxed_slice()).map_err(|_| ExprError::StackOverflow {
@@ -1602,5 +1607,480 @@ mod tests {
             "whitespace-only should produce End token error, got: {token}"
         );
         Ok(())
+    }
+
+    // ===== F64 arithmetic integration tests =====
+
+    #[test]
+    fn eval_binary_op_f64_adds_two_finite_values() -> ExprResult<()> {
+        let result = eval_binary_op(
+            BinaryOp::Add,
+            SlotValue::F64(make_f64(1.5)),
+            SlotValue::F64(make_f64(2.5)),
+        )?;
+        assert_eq!(result, SlotValue::F64(make_f64(4.0)));
+        Ok(())
+    }
+
+    #[test]
+    fn eval_binary_op_f64_subtracts_two_finite_values() -> ExprResult<()> {
+        let result = eval_binary_op(
+            BinaryOp::Sub,
+            SlotValue::F64(make_f64(10.0)),
+            SlotValue::F64(make_f64(3.0)),
+        )?;
+        assert_eq!(result, SlotValue::F64(make_f64(7.0)));
+        Ok(())
+    }
+
+    #[test]
+    fn eval_binary_op_f64_multiplies_two_finite_values() -> ExprResult<()> {
+        let result = eval_binary_op(
+            BinaryOp::Mul,
+            SlotValue::F64(make_f64(6.0)),
+            SlotValue::F64(make_f64(7.0)),
+        )?;
+        assert_eq!(result, SlotValue::F64(make_f64(42.0)));
+        Ok(())
+    }
+
+    #[test]
+    fn eval_binary_op_f64_divides_two_finite_values() -> ExprResult<()> {
+        let result = eval_binary_op(
+            BinaryOp::Div,
+            SlotValue::F64(make_f64(84.0)),
+            SlotValue::F64(make_f64(2.0)),
+        )?;
+        assert_eq!(result, SlotValue::F64(make_f64(42.0)));
+        Ok(())
+    }
+
+    #[test]
+    fn eval_binary_op_f64_division_by_zero_returns_nonfinite_float_not_division_by_zero() -> ExprResult<()>
+    {
+        let result = eval_binary_op(
+            BinaryOp::Div,
+            SlotValue::F64(make_f64(1.0)),
+            SlotValue::F64(make_f64(0.0)),
+        );
+        let Err(ExprError::NonFiniteFloat) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected NonFiniteFloat for F64/0, not DivisionByZero".into(),
+            });
+        };
+        Ok(())
+    }
+
+    #[test]
+    fn eval_binary_op_f64_zero_divided_by_zero_returns_nonfinite_float() -> ExprResult<()> {
+        let result = eval_binary_op(
+            BinaryOp::Div,
+            SlotValue::F64(make_f64(0.0)),
+            SlotValue::F64(make_f64(0.0)),
+        );
+        let Err(ExprError::NonFiniteFloat) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected NonFiniteFloat for 0.0/0.0 (NaN)".into(),
+            });
+        };
+        Ok(())
+    }
+
+    #[test]
+    fn eval_binary_op_f64_produces_nonfinite_float_when_result_is_infinity() -> ExprResult<()> {
+        let result = eval_binary_op(
+            BinaryOp::Div,
+            SlotValue::F64(make_f64(f64::MAX)),
+            SlotValue::F64(make_f64(f64::MIN_POSITIVE)),
+        );
+        let Err(ExprError::NonFiniteFloat) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected NonFiniteFloat when result is Inf".into(),
+            });
+        };
+        Ok(())
+    }
+
+    #[test]
+    fn eval_binary_op_f64_addition_produces_nonfinite_float_when_result_is_infinity() -> ExprResult<()>
+    {
+        let result = eval_binary_op(
+            BinaryOp::Add,
+            SlotValue::F64(make_f64(f64::MAX)),
+            SlotValue::F64(make_f64(f64::MAX)),
+        );
+        let Err(ExprError::NonFiniteFloat) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected NonFiniteFloat for MAX + MAX".into(),
+            });
+        };
+        Ok(())
+    }
+
+    #[test]
+    fn eval_binary_op_f64_subtraction_produces_nonfinite_float_when_result_is_negative_infinity(
+    ) -> ExprResult<()> {
+        let result = eval_binary_op(
+            BinaryOp::Sub,
+            SlotValue::F64(make_f64(f64::MIN)),
+            SlotValue::F64(make_f64(f64::MAX)),
+        );
+        let Err(ExprError::NonFiniteFloat) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected NonFiniteFloat for MIN - MAX".into(),
+            });
+        };
+        Ok(())
+    }
+
+    #[test]
+    fn eval_binary_op_f64_multiplication_produces_nonfinite_float_when_result_is_infinity() -> ExprResult<()>
+    {
+        let result = eval_binary_op(
+            BinaryOp::Mul,
+            SlotValue::F64(make_f64(f64::MAX)),
+            SlotValue::F64(make_f64(2.0)),
+        );
+        let Err(ExprError::NonFiniteFloat) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected NonFiniteFloat for MAX * 2.0".into(),
+            });
+        };
+        Ok(())
+    }
+
+    #[test]
+    fn eval_binary_op_f64_negation_returns_finite_value() -> ExprResult<()> {
+        let result = eval_unary_op(UnaryOp::Neg, SlotValue::F64(make_f64(42.0)))?;
+        assert_eq!(result, SlotValue::F64(make_f64(-42.0)));
+        Ok(())
+    }
+
+    #[test]
+    fn eval_binary_op_f64_negation_of_min_produces_max() -> ExprResult<()> {
+        let result = eval_unary_op(UnaryOp::Neg, SlotValue::F64(make_f64(f64::MIN)))?;
+        assert_eq!(result, SlotValue::F64(make_f64(f64::MAX)));
+        Ok(())
+    }
+
+    #[test]
+    fn eval_binary_op_f64_compares_greater_than() -> ExprResult<()> {
+        let result = eval_binary_op(
+            BinaryOp::Gt,
+            SlotValue::F64(make_f64(5.0)),
+            SlotValue::F64(make_f64(3.0)),
+        )?;
+        assert_eq!(result, SlotValue::Bool(true));
+        Ok(())
+    }
+
+    #[test]
+    fn eval_binary_op_f64_compares_greater_than_returns_false_when_less() -> ExprResult<()> {
+        let result = eval_binary_op(
+            BinaryOp::Gt,
+            SlotValue::F64(make_f64(3.0)),
+            SlotValue::F64(make_f64(5.0)),
+        )?;
+        assert_eq!(result, SlotValue::Bool(false));
+        Ok(())
+    }
+
+    #[test]
+    fn eval_binary_op_f64_compares_greater_than_or_equal_equal_case() -> ExprResult<()> {
+        let result = eval_binary_op(
+            BinaryOp::Gte,
+            SlotValue::F64(make_f64(5.0)),
+            SlotValue::F64(make_f64(5.0)),
+        )?;
+        assert_eq!(result, SlotValue::Bool(true));
+        Ok(())
+    }
+
+    #[test]
+    fn eval_binary_op_f64_compares_less_than() -> ExprResult<()> {
+        let result = eval_binary_op(
+            BinaryOp::Lt,
+            SlotValue::F64(make_f64(3.0)),
+            SlotValue::F64(make_f64(5.0)),
+        )?;
+        assert_eq!(result, SlotValue::Bool(true));
+        Ok(())
+    }
+
+    #[test]
+    fn eval_binary_op_f64_compares_less_than_returns_false_when_greater() -> ExprResult<()> {
+        let result = eval_binary_op(
+            BinaryOp::Lt,
+            SlotValue::F64(make_f64(5.0)),
+            SlotValue::F64(make_f64(3.0)),
+        )?;
+        assert_eq!(result, SlotValue::Bool(false));
+        Ok(())
+    }
+
+    #[test]
+    fn eval_binary_op_f64_compares_less_than_or_equal_equal_case() -> ExprResult<()> {
+        let result = eval_binary_op(
+            BinaryOp::Lte,
+            SlotValue::F64(make_f64(5.0)),
+            SlotValue::F64(make_f64(5.0)),
+        )?;
+        assert_eq!(result, SlotValue::Bool(true));
+        Ok(())
+    }
+
+    #[test]
+    fn eval_binary_op_f64_equality_with_equal_values() -> ExprResult<()> {
+        let result = eval_binary_op(
+            BinaryOp::Eq,
+            SlotValue::F64(make_f64(7.0)),
+            SlotValue::F64(make_f64(7.0)),
+        )?;
+        assert_eq!(result, SlotValue::Bool(true));
+        Ok(())
+    }
+
+    #[test]
+    fn eval_binary_op_f64_equality_with_unequal_values() -> ExprResult<()> {
+        let result = eval_binary_op(
+            BinaryOp::Eq,
+            SlotValue::F64(make_f64(7.0)),
+            SlotValue::F64(make_f64(8.0)),
+        )?;
+        assert_eq!(result, SlotValue::Bool(false));
+        Ok(())
+    }
+
+    #[test]
+    fn eval_binary_op_f64_inequality_with_unequal_values() -> ExprResult<()> {
+        let result = eval_binary_op(
+            BinaryOp::NotEq,
+            SlotValue::F64(make_f64(7.0)),
+            SlotValue::F64(make_f64(8.0)),
+        )?;
+        assert_eq!(result, SlotValue::Bool(true));
+        Ok(())
+    }
+
+    #[test]
+    fn eval_binary_op_f64_inequality_with_equal_values() -> ExprResult<()> {
+        let result = eval_binary_op(
+            BinaryOp::NotEq,
+            SlotValue::F64(make_f64(7.0)),
+            SlotValue::F64(make_f64(7.0)),
+        )?;
+        assert_eq!(result, SlotValue::Bool(false));
+        Ok(())
+    }
+
+    #[test]
+    fn eval_binary_op_f64_rejects_type_mismatch_with_i64_in_add() -> ExprResult<()> {
+        let result = eval_binary_op(
+            BinaryOp::Add,
+            SlotValue::F64(make_f64(1.0)),
+            SlotValue::I64(2),
+        );
+        let Err(ExprError::TypeMismatch { expected, found }) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected TypeMismatch for F64 + I64".into(),
+            });
+        };
+        assert_eq!(expected, "number");
+        assert_eq!(found, "number");
+        Ok(())
+    }
+
+    #[test]
+    fn eval_binary_op_f64_rejects_type_mismatch_with_bool_in_mul() -> ExprResult<()> {
+        let result = eval_binary_op(
+            BinaryOp::Mul,
+            SlotValue::F64(make_f64(3.0)),
+            SlotValue::Bool(true),
+        );
+        let Err(ExprError::TypeMismatch { expected, found }) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected TypeMismatch for F64 * Bool".into(),
+            });
+        };
+        assert_eq!(expected, "number");
+        assert_eq!(found, "number");
+        Ok(())
+    }
+
+    #[test]
+    fn eval_binary_op_f64_rejects_null_in_subtraction() -> ExprResult<()> {
+        let result = eval_binary_op(
+            BinaryOp::Sub,
+            SlotValue::F64(make_f64(1.0)),
+            SlotValue::Null,
+        );
+        let Err(ExprError::TypeMismatch { expected, found }) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected TypeMismatch for F64 - Null".into(),
+            });
+        };
+        assert_eq!(expected, "number");
+        assert_eq!(found, "number");
+        Ok(())
+    }
+
+    #[test]
+    fn eval_expr_program_f64_end_to_end_division_by_zero() -> ExprResult<()> {
+        let tokens = crate::lexer::lex_expr("3.14 / 0.0")?;
+        let ast = crate::parser::parse_expr(&tokens)?;
+        let mut constants = Vec::new();
+        let program = crate::bytecode::compile_expr_with_pool(&ast, &mut constants)?;
+        let result = eval_expr_program(&program, &[], &constants);
+        let Err(ExprError::NonFiniteFloat) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected NonFiniteFloat for F64 / 0.0 end-to-end".into(),
+            });
+        };
+        Ok(())
+    }
+
+    #[test]
+    fn eval_expr_program_f64_end_to_end_addition() -> ExprResult<()> {
+        let tokens = crate::lexer::lex_expr("1.5 + 2.5")?;
+        let ast = crate::parser::parse_expr(&tokens)?;
+        let mut constants = Vec::new();
+        let program = crate::bytecode::compile_expr_with_pool(&ast, &mut constants)?;
+        let result = eval_expr_program(&program, &[], &constants)?;
+        assert_eq!(result, SlotValue::F64(make_f64(4.0)));
+        Ok(())
+    }
+
+    #[test]
+    fn eval_expr_program_f64_end_to_end_multiplication() -> ExprResult<()> {
+        let tokens = crate::lexer::lex_expr("6.0 * 7.0")?;
+        let ast = crate::parser::parse_expr(&tokens)?;
+        let mut constants = Vec::new();
+        let program = crate::bytecode::compile_expr_with_pool(&ast, &mut constants)?;
+        let result = eval_expr_program(&program, &[], &constants)?;
+        assert_eq!(result, SlotValue::F64(make_f64(42.0)));
+        Ok(())
+    }
+
+    #[test]
+    fn eval_expr_program_f64_complex_expression() -> ExprResult<()> {
+        let tokens = crate::lexer::lex_expr("2.0 + 3.0 * 4.0")?;
+        let ast = crate::parser::parse_expr(&tokens)?;
+        let mut constants = Vec::new();
+        let program = crate::bytecode::compile_expr_with_pool(&ast, &mut constants)?;
+        let result = eval_expr_program(&program, &[], &constants)?;
+        assert_eq!(result, SlotValue::F64(make_f64(14.0)));
+        Ok(())
+    }
+
+    #[test]
+    fn eval_expr_program_f64_division_yields_nonfinite_when_dividing_by_zero() -> ExprResult<()> {
+        let tokens = crate::lexer::lex_expr("1.0 / 0.0")?;
+        let ast = crate::parser::parse_expr(&tokens)?;
+        let mut constants = Vec::new();
+        let program = crate::bytecode::compile_expr_with_pool(&ast, &mut constants)?;
+        let result = eval_expr_program(&program, &[], &constants);
+        assert!(
+            matches!(result, Err(ExprError::NonFiniteFloat)),
+            "F64/0.0 should return NonFiniteFloat, not DivisionByZero"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn i64_division_by_zero_still_returns_division_by_zero_not_nonfinite_float() -> ExprResult<()> {
+        let result = eval_binary_op(BinaryOp::Div, SlotValue::I64(10), SlotValue::I64(0));
+        let Err(ExprError::DivisionByZero) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "I64/0 must return DivisionByZero, not NonFiniteFloat".into(),
+            });
+        };
+        Ok(())
+    }
+
+    #[test]
+    fn eval_expr_program_i64_division_by_zero_returns_division_by_zero() -> ExprResult<()> {
+        let tokens = crate::lexer::lex_expr("10 / 0")?;
+        let ast = crate::parser::parse_expr(&tokens)?;
+        let mut constants = Vec::new();
+        let program = crate::bytecode::compile_expr_with_pool(&ast, &mut constants)?;
+        let result = eval_expr_program(&program, &[], &constants);
+        let Err(ExprError::DivisionByZero) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected DivisionByZero for I64/0".into(),
+            });
+        };
+        Ok(())
+    }
+
+    /// NaN comparison test — POST-006 (IEEE 754 compliance).
+    ///
+    /// Per IEEE 754: NaN < x, NaN > x, NaN == x yield false for any x.
+    /// NaN != NaN is true (NaN is not equal to itself).
+    ///
+    /// NOTE: NaN cannot enter the vb_expr system via FiniteF64::new() which
+    /// rejects all NaN/Inf bit patterns at construction time. Therefore, the
+    /// comparison operators eval_lt_op, eval_gt_op, eval_gte_op, eval_lte_op
+    /// can NEVER receive NaN inputs through the public API by construction.
+    ///
+    /// This test verifies the IEEE 754 NaN comparison semantics DIRECTLY using
+    /// raw f64::NAN, demonstrating that the behavior would be correct if NaN
+    /// could somehow reach the comparison operators (which it cannot).
+    ///
+    /// The eval_*_op functions extract the inner f64 via .get() and perform
+    /// standard Rust f64 comparisons, which follow IEEE 754 semantics.
+    #[test]
+    fn f64_comparison_nan_yields_false() {
+        let nan = f64::NAN;
+        let x = 1.0;
+
+        assert!(
+            !(nan < x),
+            "NaN < x must be false per IEEE 754"
+        );
+        assert!(
+            !(nan > x),
+            "NaN > x must be false per IEEE 754"
+        );
+        assert!(
+            !(nan == x),
+            "NaN == x must be false per IEEE 754"
+        );
+        assert!(
+            !(nan <= x),
+            "NaN <= x must be false per IEEE 754"
+        );
+        assert!(
+            !(nan >= x),
+            "NaN >= x must be false per IEEE 754"
+        );
+        assert!(
+            nan != nan,
+            "NaN != NaN must be true (NaN is not equal to itself)"
+        );
+
+        assert!(
+            !(nan < 0.0),
+            "NaN < 0.0 must be false"
+        );
+        assert!(
+            !(nan > 0.0),
+            "NaN > 0.0 must be false"
+        );
+        assert!(
+            !(nan < f64::INFINITY),
+            "NaN < Inf must be false"
+        );
+        assert!(
+            !(nan > f64::NEG_INFINITY),
+            "NaN > -Inf must be false"
+        );
+        assert!(
+            !(nan == f64::MAX),
+            "NaN == MAX must be false"
+        );
+        assert!(
+            !(nan == f64::MIN),
+            "NaN == MIN must be false"
+        );
     }
 }

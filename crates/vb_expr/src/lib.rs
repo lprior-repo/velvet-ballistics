@@ -23,6 +23,9 @@ pub mod lexer;
 pub mod parser;
 pub mod typecheck;
 
+#[cfg(kani)]
+pub mod proofs;
+
 pub use bytecode::{
     ReferenceResolver, check_expr_stack_bound, compile_expr, compile_expr_to_bytecode,
     compile_expr_with_pool, compile_expr_with_resolver,
