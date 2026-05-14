@@ -227,3 +227,10 @@ path = "src/bin/xtask_parse_options_hostile.rs"
 test = false
 doc = false
 bench = false
+
+[[bin]]
+name = "step_budget_new"
+path = "src/bin/step_budget_new.rs"
+test = false
+doc = false
+bench = false

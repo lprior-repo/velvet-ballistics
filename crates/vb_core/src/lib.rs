@@ -38,7 +38,7 @@ pub mod kani_expr_bound;
 pub mod kani_capability_harnesses;
 
 #[cfg(kani)]
-pub mod kani_idempotency_gates;
+pub mod kani;
 
 pub use action::{
     ActionContract, ActionError, ActionFailure, ActionFailureCode, ActionInput, ActionJournalEvent,
