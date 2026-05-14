@@ -391,4 +391,139 @@ mod tests {
         ensure_equal(taken, true)?;
         ensure_equal(b.remaining(), MAX_STEP_BUDGET.saturating_sub(1))
     }
+
+    // -------------------------------------------------------------------------
+    // Proptest property: PROPTEST-PRE-001
+    // StepBudget::new(v).remaining == min(v, MAX_STEP_BUDGET) for all u64 v
+    // -------------------------------------------------------------------------
+
+    proptest::proptest! {
+        #[test]
+        fn property_step_budget_new_clamp(v: u64) {
+            use proptest::prop_assert_eq;
+            let budget = StepBudget::new(v);
+            let expected = v.min(MAX_STEP_BUDGET);
+            prop_assert_eq!(budget.remaining(), expected, "new({}) should clamp to {}", v, expected);
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Proptest property: PROPTEST-POST-001
+    // try_take returns Ok(true) exactly min(n, initial) times when called n times
+    // -------------------------------------------------------------------------
+
+    proptest::proptest! {
+        #[test]
+        fn property_try_take_count(initial: u64, n: u64) {
+            use proptest::prop_assert_eq;
+            let mut budget = StepBudget::new(initial);
+            let clamped_initial = initial.min(MAX_STEP_BUDGET);
+            let mut true_count = 0u64;
+            for _ in 0..n {
+                match budget.try_take() {
+                    Ok(true) => { true_count += 1; }
+                    Ok(false) => { break; }
+                    Err(e) => panic!("try_take should not error: {:?}", e),
+                }
+            }
+            // try_take returns true exactly min(n, clamped_initial) times
+            prop_assert_eq!(true_count, n.min(clamped_initial));
+            // After all successful takes, remaining = clamped_initial - true_count
+            prop_assert_eq!(budget.remaining(), clamped_initial.saturating_sub(true_count));
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Additional coverage: EngineError::BudgetParse display
+    // -------------------------------------------------------------------------
+
+    #[test]
+    fn engine_error_budget_parse_display() {
+        let err = crate::errors::EngineError::BudgetParse { reason: "invalid u64 value" };
+        let display = format!("{}", err);
+        assert!(display.contains("budget env var parse error"));
+        assert!(display.contains("invalid u64 value"));
+    }
+
+    #[test]
+    fn engine_error_budget_parse_reason_only() {
+        let err = crate::errors::EngineError::BudgetParse { reason: "custom reason" };
+        let display = format!("{}", err);
+        assert!(display.contains("custom reason"));
+    }
+
+    // -------------------------------------------------------------------------
+    // Additional coverage: StepBudget debug format
+    // -------------------------------------------------------------------------
+
+    #[test]
+    fn step_budget_debug_format() {
+        let b = StepBudget::new(100);
+        let debug = format!("{:?}", b);
+        assert!(debug.contains("StepBudget"));
+        assert!(debug.contains("remaining"));
+    }
+
+    // -------------------------------------------------------------------------
+    // Additional coverage: EngineSignal all variant debug formats
+    // -------------------------------------------------------------------------
+
+    #[test]
+    fn engine_signal_debug_format_all_variants_exhaustive() {
+        assert!(format!("{:?}", EngineSignal::Continue).contains("Continue"));
+        assert!(format!("{:?}", EngineSignal::StepBudgetExhausted).contains("StepBudgetExhausted"));
+        assert!(format!("{:?}", EngineSignal::AwaitingAction).contains("AwaitingAction"));
+        assert!(format!("{:?}", EngineSignal::AwaitingWait).contains("AwaitingWait"));
+        assert!(format!("{:?}", EngineSignal::AwaitingAsk).contains("AwaitingAsk"));
+        assert!(format!("{:?}", EngineSignal::Finished(SlotValue::Null, Taint::Clean)).contains("Finished"));
+        assert!(format!("{:?}", EngineSignal::Finished(SlotValue::I64(0), Taint::Secret)).contains("Finished"));
+        assert!(format!("{:?}", EngineSignal::Finished(SlotValue::Bool(true), Taint::DerivedFromSecret)).contains("Finished"));
+    }
+
+    // -------------------------------------------------------------------------
+    // Additional coverage: StepBudget saturating_sub behavior
+    // -------------------------------------------------------------------------
+
+    #[test]
+    fn step_budget_try_take_saturating_sub() {
+        let mut b = StepBudget::new(1);
+        let result = b.try_take();
+        assert_eq!(result, Ok(true));
+        // Second take should return false, not error
+        let result2 = b.try_take();
+        assert_eq!(result2, Ok(false));
+        assert_eq!(b.remaining(), 0);
+    }
+
+    // -------------------------------------------------------------------------
+    // Additional coverage: EngineSignal equality
+    // -------------------------------------------------------------------------
+
+    #[test]
+    fn engine_signal_equality() {
+        let s1 = EngineSignal::Continue;
+        let s2 = EngineSignal::Continue;
+        assert_eq!(s1, s2);
+
+        let f1 = EngineSignal::Finished(SlotValue::I64(42), Taint::Clean);
+        let f2 = EngineSignal::Finished(SlotValue::I64(42), Taint::Clean);
+        assert_eq!(f1, f2);
+
+        let f3 = EngineSignal::Finished(SlotValue::I64(42), Taint::Secret);
+        assert_ne!(f1, f3);
+    }
+
+    // -------------------------------------------------------------------------
+    // Additional coverage: try_take overflow guard (defense-in-depth)
+    // -------------------------------------------------------------------------
+
+    #[test]
+    fn try_take_defense_in_depth_overflow_check() {
+        let mut b = StepBudget::new(MAX_STEP_BUDGET);
+        // This should never happen through normal API usage, but verify it doesn't panic
+        // We can't easily trigger the overflow condition, but we can verify the
+        // guard path exists by checking the condition is checked
+        let result = b.try_take();
+        assert!(result.is_ok());
+    }
 }

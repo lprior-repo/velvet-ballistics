@@ -1385,3 +1385,89 @@ fn selected_workflow(data: &[u8]) -> &'static [u8] {
         _ => SMALL_WORKFLOW_B,
     }
 }
+
+// ---------------------------------------------------------------------------
+// Target: StepBudget::new clamping boundary (FUZZ-001)
+// ---------------------------------------------------------------------------
+
+/// Fuzz target: step_budget_new
+///
+/// Specifically targets StepBudget::new clamping behavior with values near
+/// MAX_STEP_BUDGET boundary. Exercises:
+/// - u64::MAX (panic-free clamping)
+/// - MAX_STEP_BUDGET + 1 (exactly at boundary)
+/// - MAX_STEP_BUDGET (exact boundary)
+/// - values near MAX_STEP_BUDGET (boundary adjacency)
+/// - 0 (zero budget)
+///
+/// Obligation: FUZZ-001 (vb-qi37.2.5)
+/// Command: cargo fuzz run step_budget_new -- -runs=10000
+pub fn fuzz_step_budget_new(data: &[u8]) {
+    if data.is_empty() {
+        return;
+    }
+
+    // Derive a u64 budget from fuzz input (full u64 range, not capped)
+    let budget_value = if data.len() >= 8 {
+        let mut bytes = [0u8; 8];
+        let src = &data[..8.min(data.len())];
+        bytes[..src.len()].copy_from_slice(src);
+        u64::from_le_bytes(bytes)
+    } else {
+        u64::from(data[0])
+    };
+
+    // StepBudget::new must never panic for any u64 input
+    let budget = vb_core::StepBudget::new(budget_value);
+    let remaining = budget.remaining();
+
+    // INV-001: remaining must always be in [0, MAX_STEP_BUDGET]
+    assert!(
+        remaining <= vb_core::limits::MAX_STEP_BUDGET,
+        "StepBudget::new({}) produced remaining={}, exceeds MAX_STEP_BUDGET={}",
+        budget_value,
+        remaining,
+        vb_core::limits::MAX_STEP_BUDGET
+    );
+    assert!(
+        remaining >= 0,
+        "StepBudget::new({}) produced negative remaining={}",
+        budget_value,
+        remaining
+    );
+
+    // Boundary checks: clamping must be exact
+    let expected = budget_value.min(vb_core::limits::MAX_STEP_BUDGET);
+    assert!(
+        remaining == expected,
+        "StepBudget::new({}) remaining={}, expected {}",
+        budget_value,
+        remaining,
+        expected
+    );
+
+    // After construction, try_take must work correctly
+    let mut mutable_budget = budget;
+    let result = mutable_budget.try_take();
+    assert!(result.is_ok(), "try_take must not error");
+
+    // If initial budget > 0, try_take must succeed and decrement by 1
+    if expected > 0 {
+        let ok = result.unwrap();
+        assert!(ok, "try_take should succeed when budget > 0");
+        assert_eq!(
+            mutable_budget.remaining(),
+            expected - 1,
+            "remaining should decrement by 1 after successful try_take"
+        );
+    } else {
+        // Zero budget: try_take must return false without panicking
+        let ok = result.unwrap();
+        assert!(!ok, "try_take should return false when budget is 0");
+        assert_eq!(
+            mutable_budget.remaining(),
+            0,
+            "remaining should stay 0 after failed try_take"
+        );
+    }
+}
