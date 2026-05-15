@@ -1,9 +1,9 @@
 ---- MODULE CapabilityLifecycle ----
 EXTENDS Naturals
 
-\* Obligations: CAP-CARD-002, GATE-MISMATCH-003, DRIVE-CONTRACT-006,
-\* LEGACY-BYPASS-007.  Finite lifecycle model for Strict/Journaled
-\* capability admission and Do execution.  Relaxed policy is out of scope.
+\* Obligations: PO-001/TLA-ADMIT-001, PO-002/TLA-GATE-002,
+\* PO-003/TLA-CAP-003, PO-004/TLA-BYPASS-004. Finite safety model for
+\* strict/journaled accepted-artifact admission. Relaxed policy is out of scope.
 
 CONSTANT CanonicalGate
 

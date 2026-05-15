@@ -1,10 +1,16 @@
 impl Shard {
     /// Creates a new shard with the given configuration.
+    ///
+    /// Uses `AlwaysPresentArtifactStore` which is suitable only for Relaxed
+    /// policy. For Strict or Journaled policies, use
+    /// `new_with_journal_and_artifact_store` with a `StorageArtifactStore`.
+    #[must_use]
     pub fn new(config: ShardConfig) -> Self {
         Self::new_with_journal(config, NoopRuntimeJournal::shared())
     }
 
     /// Creates a new shard with the given configuration, journal sink, and artifact store.
+    #[must_use]
     pub fn new_with_journal_and_artifact_store(
         config: ShardConfig,
         journal: SharedRuntimeJournal,
@@ -30,6 +36,7 @@ impl Shard {
     }
 
     /// Creates a new shard with the given configuration and journal sink.
+    #[must_use]
     pub fn new_with_journal(config: ShardConfig, journal: SharedRuntimeJournal) -> Self {
         Self::new_with_journal_and_artifact_store(
             config,

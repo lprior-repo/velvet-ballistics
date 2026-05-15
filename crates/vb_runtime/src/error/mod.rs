@@ -92,6 +92,20 @@ pub enum RuntimeError {
         /// Capabilities that were granted at admission time.
         granted: vb_core::capability::CapabilitySet,
     },
+    /// Admission gate rejected the run because the artifact certificate is stale.
+    AdmissionArtifactStale {
+        /// Digest of the stale artifact.
+        digest: vb_core::ids::WorkflowDigest,
+    },
+    /// Admission gate rejected the run because the artifact digest does not match.
+    AdmissionDigestMismatch {
+        /// Digest that was requested for admission.
+        requested: vb_core::ids::WorkflowDigest,
+        /// Digest found in the stored record.
+        record: vb_core::ids::WorkflowDigest,
+        /// Digest in the accepted artifact envelope.
+        envelope: vb_core::ids::WorkflowDigest,
+    },
     /// Failed to encode a slot value for journal persistence.
     EncodeFailed,
     /// Secret-tainted answer payload is not allowed by the resource contract.
