@@ -44,12 +44,36 @@ impl Shard {
     ) -> RuntimeResult<()> {
         self.counters.add_steps(state.frame.executed());
         let step = state.frame.pc();
-        let capacity = match crate::shard::helpers::retry_policy_after_action(&state, ticket.step) {
-            Ok(policy) => policy.max_attempts,
-            Err(RuntimeError::UnsupportedOperation {
-                operation: "retry_metadata_missing",
-            }) => ticket.capacity,
-            Err(error) => return Err(error),
+        // NOTE: execute_do sets ticket.capacity = retry_policy.max_attempts
+        // based on the RetryPolicy passed from drive_deterministic_full.
+        // This is RetryPolicy::NEVER (max_attempts = 0) for normal execution.
+        // The actual workflow retry policy is in the RetryCheck node's policy_slot,
+        // but that slot is uninitialized until the RetryCheck executes AFTER
+        // the action completes.
+        //
+        // If ticket.capacity > 0, the capacity is valid and we trust it.
+        // If ticket.capacity = 0, we call retry_policy_after_action to check:
+        //   - retry_policy_attempts_zero: propagate (workflow has 0 max attempts)
+        //   - retry_policy_slot_unreadable: slot not written yet, use ticket.capacity
+        //   - other errors: propagate
+        let capacity = if ticket.capacity > 0 {
+            ticket.capacity
+        } else {
+            match crate::shard::helpers::retry_policy_after_action(&state, ticket.step) {
+                Ok(policy) => policy.max_attempts,
+                Err(RuntimeError::UnsupportedOperation {
+                    operation: "retry_metadata_missing",
+                }) => ticket.capacity,
+                Err(RuntimeError::UnsupportedOperation {
+                    operation: "retry_policy_slot_unreadable",
+                }) => {
+                    // Slot not written yet - RetryCheck hasn't run.
+                    // Use ticket.capacity (0) and let RetryCheck enforce
+                    // the actual policy after action completion.
+                    ticket.capacity
+                }
+                Err(error) => return Err(error),
+            }
         };
         let ticket = crate::shard::helpers::normalize_scheduled_ticket(
             &state,

@@ -54,8 +54,8 @@ impl IngressFrame {
 /// Bounded multi-producer, single-consumer memory ingress queue.
 #[derive(Debug, Clone)]
 pub struct MemoryIngress {
-    sender: Sender<IngressFrame>,
-    receiver: Receiver<IngressFrame>,
+    pub(crate) sender: Sender<IngressFrame>,
+    pub(crate) receiver: Receiver<IngressFrame>,
 }
 
 impl MemoryIngress {

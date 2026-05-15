@@ -7,10 +7,6 @@
 //! Model: Timer wheel timer fired vs cancel race.
 //! Invariant: no use-after-free, exactly one handler fires per timer.
 
-#[cfg(loom)]
-use loom::sync::{Arc, Mutex};
-#[cfg(not(loom))]
-use std::sync::{Arc, Mutex};
 use crate::shard::timer_wheel::TimerWheel;
 use vb_core::ids::RunId;
 
@@ -19,7 +15,7 @@ use vb_core::ids::RunId;
 #[test]
 fn timer_fired_cancel_ordering() {
     loom::model(|| {
-        let wheel = Arc::new(Mutex::new(TimerWheel::new()));
+        let wheel = Arc::new(std::sync::Mutex::new(TimerWheel::new()));
         let wheel_fire = wheel.clone();
         let wheel_cancel = wheel.clone();
 

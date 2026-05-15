@@ -148,7 +148,7 @@ impl Shard {
     fn apply_drive_result(
         &mut self,
         run: RunId,
-        state: RunState,
+        mut state: RunState,
         result: RuntimeEngineResult<RuntimeSignal>,
     ) -> RuntimeResult<()> {
         match result {
@@ -167,7 +167,41 @@ impl Shard {
             Ok(RuntimeSignal::AwaitingAsk) => {
                 self.apply_awaiting_timer(run, state, PendingTimerKind::Ask)
             }
-            Err(_) => self.apply_terminal_failed(run, state),
+            Err(e) => {
+                if let crate::engine::types::RuntimeEngineError::Core(vb_core::errors::EngineError::CapabilityDenied { action, .. }) = e
+                {
+                    // CapabilityDenied is not terminal — the run is waiting for
+                    // capabilities to be granted.  Unlike the normal AwaitingAction
+                    // path, execute_do_without_contract never called
+                    // record_scheduled_attempt or mark_running, so neither
+                    // action_attempts nor step_state is set up.  We handle it inline
+                    // here to avoid await_action's retry-policy lookup which would
+                    // fail since the RetryCheck node has not been executed yet.
+                    let step = state.frame.pc();
+                    let ticket = vb_core::action::ActionTicket {
+                        run,
+                        step,
+                        seq: vb_core::ids::SeqNo::MIN,
+                        action,
+                        attempt: 1,
+                        idempotency_key: crate::engine::action::compute_idempotency_key(run, vb_core::ids::SeqNo::MIN, action),
+                        capacity: 1,
+                    };
+                    // Set step state to Running (normally done by execute_do before
+                    // calling execute_do_without_contract, but that call never happens
+                    // in the CapabilityDenied path).
+                    state
+                        .frame
+                        .mark_running(step)
+                        .map_err(|_| RuntimeError::RunNotFound)?;
+                    crate::shard::helpers::record_scheduled_attempt(&mut state, ticket);
+                    self.runtime_states.insert(run, RuntimeState::Resumable);
+                    self.runs.insert(run, state);
+                    Ok(())
+                } else {
+                    self.apply_terminal_failed(run, state)
+                }
+            }
         }
     }
 
