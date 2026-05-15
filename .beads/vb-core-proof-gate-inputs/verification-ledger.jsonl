@@ -1,0 +1,16 @@
+{"id":"V-PF-001","result":"PASS","layer":"verus","evidence":"4 proofs verified in vb_core_verification_proof_new.rs; verus verification/verus/vb_core_verification_proof_new.rs: verification results:: 4 verified, 0 errors"}
+{"id":"V-PF-002","result":"PASS","layer":"verus","evidence":"12 proofs verified in vb_core_verification_warning_is_valid.rs; verus verification/verus/vb_core_verification_warning_is_valid.rs: verification results:: 12 verified, 0 errors"}
+{"id":"V-G1-001","result":"PASS","layer":"verus","evidence":"4 proofs verified in vb_core_try_from_parts.rs; verus verification/verus/vb_core_try_from_parts.rs: verification results:: 4 verified, 0 errors"}
+{"id":"V-G1-002","result":"PASS","layer":"verus","evidence":"7 proofs verified in vb_core_validate_budget.rs; verus verification/verus/vb_core_validate_budget.rs: verification results:: 7 verified, 0 errors"}
+{"id":"V-G2-001","result":"PASS","layer":"verus","evidence":"5 proofs verified in vb_core_checksum_validation.rs; verus verification/verus/vb_core_checksum_validation.rs: verification results:: 5 verified, 0 errors"}
+{"id":"V-POL-001","result":"PASS","layer":"verus","evidence":"7 proofs verified in vb_core_policy_dispatch.rs; verus verification/verus/vb_core_policy_dispatch.rs: verification results:: 7 verified, 0 errors"}
+{"id":"K-G2-001","result":"BLOCKED","layer":"kani","reason":"workspace compilation error: velvet_ballastics/src/cli_postcard.rs uses blake3 but crate cannot resolve it during cargo kani --workspace"}
+{"id":"K-G1-001","result":"DEFERRED_GLOBAL","layer":"kani","reason":"no kani harness in compiled_workflow.rs; cargo kani times out; K-G1-001 is optional (required:false)"}
+{"id":"TEST-POL-001","result":"PASS","layer":"unit","evidence":"cargo test -p vb_storage submit_artifact_relaxed: 3 passed; cargo test -p vb_storage gate_count_zero_for_relaxed: 1 passed"}
+{"id":"TEST-POL-002","result":"PASS","layer":"unit","evidence":"cargo test -p vb_storage submit_artifact_journaled: 3 passed; cargo test -p vb_storage gate_count_two_for_journaled: 1 passed"}
+{"id":"TEST-POL-003","result":"PASS","layer":"unit","evidence":"cargo test -p vb_storage submit_artifact_strict: 3 passed; cargo test -p vb_storage gate_count_two_for_strict: 2 passed"}
+{"id":"TEST-WARN-001","result":"PASS","layer":"unit","evidence":"cargo test -p vb_storage warning: 11 passed"}
+{"id":"TEST-BDD-001","result":"PASS","layer":"unit","evidence":"cargo test -p vb_storage bdd_relaxed: 1 passed; bdd_journaled: 1 passed; bdd_strict: 1 passed"}
+{"id":"MIRI-001","result":"DEFERRED_GLOBAL","layer":"miri","reason":"cargo miri times out; MIRI-001 is optional (required:false)"}
+{"id":"PROP-G1-001","result":"PASS","layer":"proptest","evidence":"cargo test -p vb_core submit_artifact_property_tests: 25 passed; no todo!() stubs found in proptests.rs"}
+{"id":"WAIVER-FLAG-DERIV","result":"WAIVED","layer":"waiver","evidence":"waiver valid with reason, expiry, owner, compensating_evidence; gate_count/durable are primary signals"}
