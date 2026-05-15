@@ -1,0 +1,72 @@
+[
+  {
+    "id": "vb-0253.2",
+    "title": "ipc: Finish ingress modularization and dedupe",
+    "description": "SECTION 0 CLARIFICATIONS\n- Scope is vb_ipc module boundary cleanup; preserve public API compatibility.\n\nSECTION 1 EARS REQUIREMENTS\n- THE SYSTEM SHALL have one canonical MemoryIngress, IngressFrame, QueueCapacity, MaxPayloadBytes, and BoundedPayload implementation.\n- WHEN existing callers import public vb_ipc symbols, THE SYSTEM SHALL preserve stable re-exports or provide compile-time migration inside the workspace.\n- IF duplicate type definitions remain in lib.rs and split modules, THE SYSTEM SHALL NOT consider the refactor complete.\n\nSECTION 2 CONTRACTS\n- Preconditions: read crates/vb_ipc/src/lib.rs, ingress.rs, bounded.rs, tests.rs.\n- Postconditions: lib.rs is a facade/re-export layer for ingress/bounded/error/frame modules where feasible.\n- Invariants: bounded memory ingress remains bounded; Full/Disconnected/Empty behavior remains unchanged; payload size validation remains parse-don't-validate.\n\nSECTION 2.5 RESEARCH\n- Files: crates/vb_ipc/src/lib.rs lines around 654-798; crates/vb_ipc/src/ingress.rs; crates/vb_ipc/src/bounded.rs; crates/vb_ipc/src/tests.rs.\n\nSECTION 3 INVERSION\n- Failure: breaking public imports. Prevention: re-export old public names.\n- Failure: two definitions diverge again. Prevention: delete duplicate implementation and add tests through public API.\n\nSECTION 4 ATDD\n- Happy: MemoryIngress::bounded accepts and receives frames through public API.\n- Happy: payload limit allows valid payloads.\n- Error: full queue maps to IpcError::Full.\n- Error: oversized payload maps to IpcError::PayloadTooLarge.\n\nSECTION 5 E2E\n- IPC tests compile and pass; downstream crates using vb_ipc compile.\n\nSECTION 5.5 VERIFICATION\n- Scoped vb_ipc tests plus moon ci before landing.\n\nSECTION 6 IMPLEMENTATION\n- Make split modules authoritative.\n- Turn lib.rs into facade and re-export stable symbols.\n- Update imports/tests.\n\nSECTION 7 FAILURE MODES\n- Duplicate definitions remain; public API break; disconnected/full mapping changes.\n\nSECTION 8 COMPLETION\n- One canonical implementation only.\n- lib.rs line count reduced substantially.\n",
+    "status": "in_progress",
+    "priority": 0,
+    "issue_type": "task",
+    "assignee": "Lewis",
+    "owner": "priorlewis43@gmail.com",
+    "created_at": "2026-05-14T03:28:19Z",
+    "created_by": "Lewis",
+    "updated_at": "2026-05-15T05:00:11Z",
+    "labels": [
+      "architecture",
+      "drift",
+      "go-skill",
+      "ipc",
+      "modularization",
+      "planner",
+      "standardization"
+    ],
+    "dependencies": [
+      {
+        "id": "vb-0253",
+        "title": "architecture: Standardize queue and state boundaries",
+        "description": "Planner/go-skill parent epic for architecture standardization.\n\nSECTION 0 CLARIFICATIONS\n- Resolved: FSM library selection is deferred. This epic must not add rust-fsm, smlang, statig, flume, kanal, thingbuf, or bbqueue.\n- Resolved: Master document controls architecture choices.\n- Resolved: Use battle-tested library primitives for mechanics, but keep domain wrappers local so queue/state meaning is not erased.\n\nSECTION 1 EARS REQUIREMENTS\n- THE SYSTEM SHALL standardize bounded queue use according to the master document: ArrayQueue for hot bounded MPMC runtime queues, rtrb for true SPSC rings, crossbeam_channel::bounded only for cold/blocking/UI boundaries.\n- THE SYSTEM SHALL keep JournalWriterQueue as a storage-owned bounded batch/durability component, not a generic channel wrapper.\n- WHEN state transitions are applied, THE SYSTEM SHALL route them through explicit transition APIs or canonical transition tables.\n- IF an implementation attempts an unbounded runtime channel, THE SYSTEM SHALL NOT accept the change because it violates bounded-resource architecture.\n\nSECTION 2 CONTRACTS\n- Preconditions: master doc has been read; no production code changes happen outside Go-skill isolated workspace; bd tracks all child work.\n- Postconditions: child beads define atomic implementation work; Go-skill can run each through explore/contract/proof/test/implementation/review/evidence/landing.\n- Invariants: no unbounded queue introduction; no external FSM library addition in this epic; no merged state enum across bounded contexts.\n\nSECTION 2.5 RESEARCH REQUIREMENTS\n- Read velvet-ballistics-MASTER.md Library Choices and Section 45.\n- Read queue/state surfaces before writing code.\n- Verify public API compatibility for vb_ipc and runtime state changes.\n\nSECTION 3 INVERSION\n- Failure: generic queue abstraction erases domain semantics. Prevention: domain wrappers remain local.\n- Failure: proof/runtime state drift persists. Prevention: parity tests and formal/proof artifact updates.\n- Failure: planner work becomes mega-refactor. Prevention: atomic child beads.\n\nSECTION 4 ATDD\n- Child beads must include happy/error tests and contract tests for queue full, shutdown, parity, and illegal transitions.\n\nSECTION 5 E2E\n- Full epic complete only after all child beads pass moon ci, reviews, truth-serum evidence, landing, bd close/sync.\n\nSECTION 5.5 VERIFICATION\n- Go-skill full lifecycle required for each child bead.\n- Dependency audit only if dependency files change.\n\nSECTION 6 IMPLEMENTATION TASKS\n- Execute children independently; do not combine unrelated queue and state changes.\n\nSECTION 7 FAILURE MODES\n- Direct runtime_states mutation remains; duplicate IPC definitions remain; UI unbounded channel remains; JournalWriterQueue semantics weaken.\n\nSECTION 8 COMPLETION CHECKLIST\n- All child beads closed and pushed.\n- No new external FSM/channel dependency added.\n- No unbounded channel remains in scoped IPC bridge path.\n- StepState parity agrees with master Section 45.\n\nSECTION 9 CONTEXT\n- See child beads for exact files and acceptance gates.\n\nSECTION 10 AI HINTS\n- Do not use TodoWrite. Do not implement from source checkout. Use Go-skill isolation.\n",
+        "notes": "Demoted 2026-05-14: umbrella includes non-engine queue/state/UI work; core runtime children remain P0 where they directly support engine completion.",
+        "status": "open",
+        "priority": 2,
+        "issue_type": "epic",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-05-14T03:28:02Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-05-15T04:00:13Z",
+        "labels": [
+          "architecture",
+          "go-skill",
+          "planner",
+          "standardization"
+        ],
+        "dependency_type": "parent-child"
+      }
+    ],
+    "dependents": [
+      {
+        "id": "vb-core-ipc-sync-evidence",
+        "title": "ipc/orchestrator: Prove local binary ingress synchronization",
+        "description": "Prove local binary IPC ingress and runtime orchestration semantics for core engine use: compiled/artifact digest submit, bounded ingress, cancellation versus completion, timer ordering, shutdown drain, and slow-client/backpressure behavior.",
+        "acceptance_criteria": "IPC SubmitRun or equivalent artifact-digest path reaches strict runtime admission; bounded queues reject with typed backpressure; cancel/completion/timer/shutdown races are deterministic and tested; no task-per-step or unbounded buffer behavior appears.",
+        "status": "open",
+        "priority": 0,
+        "issue_type": "task",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-05-15T04:01:13Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-05-15T04:01:13Z",
+        "labels": [
+          "backpressure",
+          "core-priority",
+          "engine",
+          "ipc",
+          "orchestrator",
+          "runtime",
+          "sync"
+        ],
+        "dependency_type": "blocks"
+      }
+    ],
+    "parent": "vb-0253"
+  }
+]

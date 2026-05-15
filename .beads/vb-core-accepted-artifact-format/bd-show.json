@@ -1,0 +1,143 @@
+[
+  {
+    "id": "vb-core-accepted-artifact-format",
+    "title": "artifact: Define stable AcceptedArtifact format",
+    "description": "Planner session core-engine-p0-audit PASS 97/100. Define one stable accepted artifact format for strict runtime admission and persistence. Remove ambiguity between raw WorkflowParts, CompiledWorkflow, and AcceptedArtifact on production paths.",
+    "acceptance_criteria": "Storage, CLI, verifier, and runtime agree on one accepted artifact schema/digest/proof envelope; raw WorkflowParts cannot satisfy strict admission; malformed or legacy formats have explicit rejection behavior and tests.",
+    "status": "in_progress",
+    "priority": 0,
+    "issue_type": "feature",
+    "assignee": "Lewis",
+    "owner": "priorlewis43@gmail.com",
+    "created_at": "2026-05-15T04:26:23Z",
+    "created_by": "Lewis",
+    "updated_at": "2026-05-15T05:00:10Z",
+    "labels": [
+      "admission",
+      "artifact",
+      "core-priority",
+      "durability",
+      "engine"
+    ],
+    "dependents": [
+      {
+        "id": "vb-core-atomic-admission",
+        "title": "runtime/storage: Persist accepted run as atomic Fjall batch",
+        "description": "Persist workflow_source, compiled_ir AcceptedArtifact, run_header, RunAccepted, and required indexes as one accepted-run durability boundary before acknowledgement. Remove mixed raw WorkflowParts versus AcceptedArtifact storage for strict admission paths.",
+        "acceptance_criteria": "Strict accepted-run creation is one durable batch or fails before acknowledgement; source/artifact/header/RunAccepted/index records are all present after success; failure injection leaves no partially accepted run; accepted_at_seq records a real journal sequence.",
+        "status": "open",
+        "priority": 0,
+        "issue_type": "feature",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-05-15T04:01:02Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-05-15T04:01:02Z",
+        "labels": [
+          "admission",
+          "core-priority",
+          "durability",
+          "engine",
+          "fjall",
+          "runtime",
+          "storage"
+        ],
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-core-cli-accepted-path",
+        "title": "cli/runtime: Route YAML run and submit through accepted artifacts",
+        "description": "Make cmd_run, cmd_submit, and strict direct run paths persist verified YAML source and accepted artifacts before runtime admission. Runs must bind by artifact digest, not loose YAML or raw CompiledWorkflow bypass.",
+        "acceptance_criteria": "Strict YAML run/submit persists source, accepted artifact, run header, and RunAccepted; runtime admits by artifact digest through storage-backed admission; raw WorkflowParts or unverified compiled input is rejected in strict mode.",
+        "status": "open",
+        "priority": 0,
+        "issue_type": "feature",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-05-15T04:01:02Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-05-15T04:01:02Z",
+        "labels": [
+          "admission",
+          "cli",
+          "core-priority",
+          "durability",
+          "engine",
+          "runtime",
+          "yaml"
+        ],
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-core-proof-15-gate",
+        "title": "artifact: Emit real 15-gate VerificationProof",
+        "description": "Replace default-true or mismatched accepted-artifact proof data with a real 15-gate VerificationProof derived from boundedness, taint, action contracts, idempotency, durability, capability, observability, and replay/admission checks.",
+        "acceptance_criteria": "Storage and runtime agree on gate count/schema; missing or failed gates reject with typed diagnostics; proof flags are derived from actual gate outputs; accepted artifacts from storage pass strict runtime admission without dummy proof stores.",
+        "status": "open",
+        "priority": 0,
+        "issue_type": "feature",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-05-15T04:00:48Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-05-15T04:00:48Z",
+        "labels": [
+          "admission",
+          "artifact",
+          "core-priority",
+          "engine",
+          "verification"
+        ],
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-core-storage-artifact-store",
+        "title": "runtime/storage: Use StorageArtifactStore for strict admission",
+        "description": "Ensure strict and journaled production runtime construction loads accepted artifacts through StorageArtifactStore instead of AlwaysPresentArtifactStore. Keep dummy stores test-only or relaxed-only.",
+        "acceptance_criteria": "Strict runtime rejects missing/malformed artifacts from storage; CLI strict and journaled paths construct runtime with storage-backed artifact loading; AlwaysPresentArtifactStore cannot satisfy strict production admission.",
+        "status": "open",
+        "priority": 0,
+        "issue_type": "task",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-05-15T04:01:02Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-05-15T04:01:02Z",
+        "labels": [
+          "admission",
+          "core-priority",
+          "durability",
+          "engine",
+          "runtime",
+          "storage"
+        ],
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-engine-yaml",
+        "title": "engine: Durable YAML runtime acceptance without UI or generated Rust",
+        "description": "Scope bead for the user-requested finish line: fully working durable workflow engine from strict YAML authoring through compiled numeric IR, accepted artifact admission, bounded runtime, Fjall/Postcard durability, replay/recovery, direct API and CLI operator evidence, excluding UI and generated Rust/codegen/maxperf. This bead is the engine-only acceptance root; it does not replace full master release beads that still include generated Rust/UI.",
+        "acceptance_criteria": "Close only when all dependency beads are closed and direct evidence proves: strict YAML compile/validate/lowering, no runtime YAML/JSON/HTTP, accepted artifacts with idempotency/capability evidence, bounded deterministic runtime, typed durable recovery/fail-closed replay, CLI diagnostics/emits for operator workflow, IPC/direct API where already scoped, and engine-scoped CI/fuzz/Miri/coverage/mutation/supply/perf evidence. Do not require UI or generated Rust/codegen parity.",
+        "notes": "Planner dependency correction 2026-05-13: converted to epic because it is an acceptance root/milestone, not an implementation feature. bd only permits epics to block epics, and this root must block master epic vb-qi37 so bd ready does not expose the master epic as implementable work.\nPlanner validation 2026-05-13: ran planner session vb-engine-yaml-planner through init, add-task CUE validation, quality-gate, generate-bead, validate, and report. Quality gate PASS 97/100. Generated planner bead spec velvet-ballistics-20260513114348-68dfgoqs and schema .beads/schemas/velvet-ballistics-20260513114348-68dfgoqs.cue. Intentionally did not run planner create because that would duplicate existing vb-engine-yaml and cannot preserve explicit bd id, parent, or dependency edges. vb-engine-yaml now blocks vb-qi37 to keep bd ready focused on implementable work.\nPlanner correction 2026-05-13: removed vb-engine-yaml -> vb-qi37 dependency edge because it suppressed schedulable child work through parent inheritance. vb-engine-yaml remains parented under vb-qi37 and carries the engine-only dependency closure; master epic is status-blocked instead of dependency-blocked.\nDependency hygiene 2026-05-13: converted from epic back to feature because bd prevents epics from depending on task/feature implementation leaves. This bead is an engine-only acceptance gate, not a work item. Implementation leaves are kept schedulable by removing parent links that made open aggregate beads block their own children; explicit dependency edges preserve the aggregate closure.",
+        "status": "open",
+        "priority": 0,
+        "issue_type": "feature",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-05-13T16:38:05Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-05-13T17:04:04Z",
+        "labels": [
+          "admission",
+          "boundedness",
+          "cli",
+          "durability",
+          "engine",
+          "no-codegen",
+          "no-ui",
+          "quality",
+          "recovery",
+          "release-plan",
+          "runtime",
+          "yaml"
+        ],
+        "dependency_type": "blocks"
+      }
+    ]
+  }
+]
