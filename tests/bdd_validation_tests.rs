@@ -1385,8 +1385,11 @@ fn bdd_validation_does_not_panic_on_malformed_input() {
     let parts = make_parts(vec![node], 1);
     // When: validate(parts) is called
     let result = std::panic::catch_unwind(|| validate(&parts));
-    // Then: validation succeeds and does not panic
-    assert!(matches!(result, Ok(Ok(()))));
+    // Then: validate does not panic (outer Ok), and returns Err for invalid slot
+    assert!(
+        matches!(result, Ok(Err(ValidationError::SlotReferenceOutOfRange { .. }))),
+        "validate must not panic and must return SlotReferenceOutOfRange, got: {result:?}"
+    );
 }
 
 #[test]
