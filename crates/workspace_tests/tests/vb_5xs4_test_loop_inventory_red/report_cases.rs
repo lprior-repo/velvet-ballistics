@@ -5,7 +5,7 @@ fn mutant_kills_assertion_only_applies_to_open_loop() {
     // Given
     let file = candidate_file("tests/non_assertion_for_loop.rs");
     let text = SourceText::Text(
-        include_str!("../../fixtures/vb_5xs4_sources/non_assertion_for_loop.txt").to_owned(),
+        include_str!("../../../../fixtures/vb_5xs4_sources/non_assertion_for_loop.txt").to_owned(),
     );
 
     // When
@@ -29,7 +29,8 @@ fn mutant_kills_assertion_requires_open_matching_loop() {
     // Given
     let file = candidate_file("tests/assertion_after_closed_loop.rs");
     let text = SourceText::Text(
-        include_str!("../../fixtures/vb_5xs4_sources/assertion_after_closed_loop.txt").to_owned(),
+        include_str!("../../../../fixtures/vb_5xs4_sources/assertion_after_closed_loop.txt")
+            .to_owned(),
     );
 
     // When
@@ -53,7 +54,7 @@ fn mutant_kills_non_assertion_lines_not_counted() {
     // Given
     let file = candidate_file("tests/non_assertion_for_loop.rs");
     let text = SourceText::Text(
-        include_str!("../../fixtures/vb_5xs4_sources/non_assertion_for_loop.txt").to_owned(),
+        include_str!("../../../../fixtures/vb_5xs4_sources/non_assertion_for_loop.txt").to_owned(),
     );
 
     // When
@@ -77,7 +78,7 @@ fn mutant_kills_assertion_scope_line_matching() {
     // Given
     let file = candidate_file("tests/safe_case_labeled_loop.rs");
     let text = SourceText::Text(
-        include_str!("../../fixtures/vb_5xs4_sources/safe_case_labeled_loop.txt").to_owned(),
+        include_str!("../../../../fixtures/vb_5xs4_sources/safe_case_labeled_loop.txt").to_owned(),
     );
 
     // When
@@ -104,7 +105,7 @@ fn mutant_kills_multiple_assertions_count_exactly() {
     // Given
     let file = candidate_file("tests/two_assertions_for_loop.rs");
     let text = SourceText::Text(
-        include_str!("../../fixtures/vb_5xs4_sources/two_assertions_for_loop.txt").to_owned(),
+        include_str!("../../../../fixtures/vb_5xs4_sources/two_assertions_for_loop.txt").to_owned(),
     );
 
     // When
@@ -128,7 +129,7 @@ fn mutant_kills_single_assertion_count_nonzero() {
     // Given
     let file = candidate_file("tests/inline_single_case_loop.rs");
     let text = SourceText::Text(
-        include_str!("../../fixtures/vb_5xs4_sources/inline_single_case_loop.txt").to_owned(),
+        include_str!("../../../../fixtures/vb_5xs4_sources/inline_single_case_loop.txt").to_owned(),
     );
 
     // When
@@ -155,12 +156,12 @@ fn mutant_kills_label_evidence_requires_behavior_and_case_tokens() {
     // Given
     let behavior_file = candidate_file("tests/behavior_without_case_for_loop.rs");
     let behavior_text = SourceText::Text(
-        include_str!("../../fixtures/vb_5xs4_sources/behavior_without_case_for_loop.txt")
+        include_str!("../../../../fixtures/vb_5xs4_sources/behavior_without_case_for_loop.txt")
             .to_owned(),
     );
     let case_file = candidate_file("tests/case_without_behavior_for_loop.rs");
     let case_text = SourceText::Text(
-        include_str!("../../fixtures/vb_5xs4_sources/case_without_behavior_for_loop.txt")
+        include_str!("../../../../fixtures/vb_5xs4_sources/case_without_behavior_for_loop.txt")
             .to_owned(),
     );
 
@@ -196,7 +197,7 @@ fn mutant_kills_inline_single_case_exception_detection() {
     // Given
     let file = candidate_file("tests/inline_single_case_loop.rs");
     let text = SourceText::Text(
-        include_str!("../../fixtures/vb_5xs4_sources/inline_single_case_loop.txt").to_owned(),
+        include_str!("../../../../fixtures/vb_5xs4_sources/inline_single_case_loop.txt").to_owned(),
     );
 
     // When
@@ -223,7 +224,7 @@ fn mutant_kills_inline_single_case_requires_one_assertion_and_inline_shape() {
     // Given
     let file = candidate_file("tests/inline_multi_case_loop.rs");
     let text = SourceText::Text(
-        include_str!("../../fixtures/vb_5xs4_sources/inline_multi_case_loop.txt").to_owned(),
+        include_str!("../../../../fixtures/vb_5xs4_sources/inline_multi_case_loop.txt").to_owned(),
     );
 
     // When

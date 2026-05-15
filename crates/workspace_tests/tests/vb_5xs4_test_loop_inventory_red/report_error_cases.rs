@@ -5,7 +5,7 @@ fn mutant_kills_inline_single_case_rejects_multiline_body() {
     // Given
     let file = candidate_file("tests/weak_table_loop_missing_case_label.rs");
     let text = SourceText::Text(
-        include_str!("../../fixtures/vb_5xs4_sources/weak_table_loop_missing_case_label.txt")
+        include_str!("../../../../fixtures/vb_5xs4_sources/weak_table_loop_missing_case_label.txt")
             .to_owned(),
     );
 
@@ -30,8 +30,10 @@ fn mutant_kills_inline_single_case_rejects_missing_assertion() {
     // Given
     let file = candidate_file("tests/inline_no_assertion_single_case_loop.rs");
     let text = SourceText::Text(
-        include_str!("../../fixtures/vb_5xs4_sources/inline_no_assertion_single_case_loop.txt")
-            .to_owned(),
+        include_str!(
+            "../../../../fixtures/vb_5xs4_sources/inline_no_assertion_single_case_loop.txt"
+        )
+        .to_owned(),
     );
 
     // When

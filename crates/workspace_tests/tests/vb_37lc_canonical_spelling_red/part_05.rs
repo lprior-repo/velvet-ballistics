@@ -237,8 +237,8 @@ fn discover_scan_inputs_skips_unreadable_child_directory_without_failing_root_sc
 #[test]
 fn discover_scan_inputs_scans_real_fixture_tree_when_root_name_matches_prior_shortcut()
 -> Result<(), Box<dyn std::error::Error>> {
-    let root_path = PathBuf::from("fixtures/unreadable-tree");
-    remove_fixture_tree_if_present(&root_path)?;
+    let temp = tempfile::tempdir()?;
+    let root_path = temp.path().join("unreadable-tree");
     std::fs::create_dir_all(&root_path)?;
     write_fixture_file(
         &root_path,
@@ -253,7 +253,6 @@ fn discover_scan_inputs_scans_real_fixture_tree_when_root_name_matches_prior_sho
     }];
 
     let result = discover_scan_inputs(root, &config);
-    std::fs::remove_dir_all(&root_path)?;
 
     assert_eq_discover_scan_inputs_result(result, Ok(expected));
     Ok(())

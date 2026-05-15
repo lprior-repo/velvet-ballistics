@@ -247,7 +247,8 @@ fn mutant_kills_nested_scope_closure() {
     // Given
     let file = candidate_file("tests/assertion_after_closed_loop.rs");
     let text = SourceText::Text(
-        include_str!("../../fixtures/vb_5xs4_sources/assertion_after_closed_loop.txt").to_owned(),
+        include_str!("../../../../fixtures/vb_5xs4_sources/assertion_after_closed_loop.txt")
+            .to_owned(),
     );
 
     // When

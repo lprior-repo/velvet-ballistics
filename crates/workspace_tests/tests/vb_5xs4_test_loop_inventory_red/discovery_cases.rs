@@ -92,7 +92,7 @@ fn scan_returns_table_loop_pattern_when_for_loop_contains_unlabeled_assertion() 
     // Given
     let file = candidate_file("tests/weak_table_loop_missing_case_label.rs");
     let text = SourceText::Text(
-        include_str!("../../fixtures/vb_5xs4_sources/weak_table_loop_missing_case_label.txt")
+        include_str!("../../../../fixtures/vb_5xs4_sources/weak_table_loop_missing_case_label.txt")
             .to_owned(),
     );
 
@@ -117,8 +117,10 @@ fn scan_returns_iterator_loop_pattern_when_for_each_contains_assertion() {
     // Given
     let file = candidate_file("tests/weak_iterator_for_each_missing_behavior.rs");
     let text = SourceText::Text(
-        include_str!("../../fixtures/vb_5xs4_sources/weak_iterator_for_each_missing_behavior.txt")
-            .to_owned(),
+        include_str!(
+            "../../../../fixtures/vb_5xs4_sources/weak_iterator_for_each_missing_behavior.txt"
+        )
+        .to_owned(),
     );
 
     // When
@@ -142,7 +144,7 @@ fn scan_returns_two_patterns_when_source_contains_nested_loops() {
     // Given
     let file = candidate_file("tests/nested_loops.rs");
     let text = SourceText::Text(
-        include_str!("../../fixtures/vb_5xs4_sources/nested_loops.txt").to_owned(),
+        include_str!("../../../../fixtures/vb_5xs4_sources/nested_loops.txt").to_owned(),
     );
 
     // When
@@ -194,7 +196,8 @@ fn scan_returns_parse_failed_when_source_is_unrecoverable_rust() {
     // Given
     let file = candidate_file("tests/malformed_rust_unrecoverable.rs");
     let text = SourceText::Text(
-        include_str!("../../fixtures/vb_5xs4_sources/malformed_rust_unrecoverable.txt").to_owned(),
+        include_str!("../../../../fixtures/vb_5xs4_sources/malformed_rust_unrecoverable.txt")
+            .to_owned(),
     );
 
     // When
@@ -236,7 +239,8 @@ fn scan_returns_unsupported_generated_source_when_source_location_is_untraceable
     // Given
     let file = candidate_file("tests/untraceable_generated_loop.rs");
     let text = SourceText::Text(
-        include_str!("../../fixtures/vb_5xs4_sources/untraceable_generated_loop.txt").to_owned(),
+        include_str!("../../../../fixtures/vb_5xs4_sources/untraceable_generated_loop.txt")
+            .to_owned(),
     );
 
     // When
