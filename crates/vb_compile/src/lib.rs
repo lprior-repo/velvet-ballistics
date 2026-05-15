@@ -32,9 +32,9 @@ mod schema;
 pub mod strict_yaml;
 mod type_taint;
 
-// Kani harnesses for idempotency gate parity verification (State 5 proof-writer).
+// Kani harnesses for vb_compile bounded model checking.
 #[cfg(kani)]
-pub mod kani_idempotency_parity;
+pub mod kani;
 
 pub use expression_bytecode::{compile_expr_to_bytecode, compile_expr_to_bytecode_with_accessors};
 
