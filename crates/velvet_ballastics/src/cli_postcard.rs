@@ -28,6 +28,8 @@ pub(crate) const MAX_PAYLOAD: usize = 64 * 1024;
 pub(crate) const HEADER_SIZE: usize = 52;
 const HEADER_SIZE_U32: u32 = 52;
 const MAX_PAYLOAD_U32: u32 = 64 * 1024;
+pub(crate) const CLI_SCHEMA_VERSION: u16 = 1;
+pub(crate) const CLI_POSTCARD_KIND: u16 = 2;
 
 /// Postcard header structure for CLI output.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -117,6 +119,14 @@ pub(crate) enum PostcardError {
     InvalidHeaderLength,
     /// Payload length exceeds MAX_PAYLOAD.
     PayloadTooLarge,
+    /// Schema version is older than the supported contract.
+    VersionTooOld,
+    /// Schema version is newer than the supported contract.
+    VersionTooNew,
+    /// Message kind is not the supported CLI postcard payload kind.
+    WrongKind,
+    /// Payload digest check failed.
+    DigestMismatch,
     /// CRC check of header failed.
     CrcMismatch,
     /// Data too short to contain valid header.
@@ -129,10 +139,50 @@ impl std::fmt::Display for PostcardError {
             Self::InvalidMagic => write!(f, "invalid magic bytes in postcard header"),
             Self::InvalidHeaderLength => write!(f, "invalid header length in postcard"),
             Self::PayloadTooLarge => write!(f, "payload length exceeds maximum"),
+            Self::VersionTooOld => write!(f, "postcard schema version is too old"),
+            Self::VersionTooNew => write!(f, "postcard schema version is too new"),
+            Self::WrongKind => write!(f, "postcard kind is not supported"),
+            Self::DigestMismatch => write!(f, "payload digest mismatch"),
             Self::CrcMismatch => write!(f, "header CRC mismatch"),
             Self::DecodeFailed => write!(f, "postcard decode failed: data too short"),
         }
     }
+}
+
+fn payload_digest(payload: &[u8]) -> [u8; 32] {
+    let digest = blake3::hash(payload);
+    let mut out = [0u8; 32];
+    out.copy_from_slice(digest.as_bytes());
+    out
+}
+
+fn validate_header_crc(header_bytes: &[u8]) -> Result<(), PostcardError> {
+    let crc_input = header_bytes.get(0..48).ok_or(PostcardError::DecodeFailed)?;
+    let expected_bytes = header_bytes
+        .get(48..52)
+        .ok_or(PostcardError::DecodeFailed)?;
+    let expected = u32::from_le_bytes(
+        <[u8; 4]>::try_from(expected_bytes).map_err(|_| PostcardError::DecodeFailed)?,
+    );
+    let actual = crc32fast::hash(crc_input);
+    if actual == expected {
+        Ok(())
+    } else {
+        Err(PostcardError::CrcMismatch)
+    }
+}
+
+fn validate_version_and_kind(header: &PostcardHeader) -> Result<(), PostcardError> {
+    if header.schema_version == 0 {
+        return Err(PostcardError::VersionTooOld);
+    }
+    if header.schema_version > CLI_SCHEMA_VERSION {
+        return Err(PostcardError::VersionTooNew);
+    }
+    if header.kind != CLI_POSTCARD_KIND {
+        return Err(PostcardError::WrongKind);
+    }
+    Ok(())
 }
 
 /// Decode a Postcard message from bytes.
@@ -155,6 +205,7 @@ pub(crate) fn decode_postcard(data: &[u8]) -> Result<(&[u8], &[u8]), PostcardErr
 
     let header = PostcardHeader::from_bytes(data)?;
     header.validate()?;
+    validate_version_and_kind(&header)?;
 
     let payload_start = HEADER_SIZE;
     let payload_len =
@@ -173,6 +224,10 @@ pub(crate) fn decode_postcard(data: &[u8]) -> Result<(&[u8], &[u8]), PostcardErr
     let payload = data
         .get(payload_start..payload_end)
         .ok_or(PostcardError::DecodeFailed)?;
+    validate_header_crc(header_bytes)?;
+    if payload_digest(payload) != header.payload_digest {
+        return Err(PostcardError::DigestMismatch);
+    }
     Ok((header_bytes, payload))
 }
 
@@ -206,15 +261,7 @@ pub(crate) fn encode_postcard(
     result.extend_from_slice(&HEADER_SIZE_U32.to_le_bytes());
     result.extend_from_slice(&payload_len.to_le_bytes());
 
-    let mut payload_digest = [0u8; 32];
-    use std::collections::hash_map::DefaultHasher;
-    use std::hash::{Hash, Hasher};
-    let mut hasher = DefaultHasher::new();
-    payload.hash(&mut hasher);
-    let hash = hasher.finish().to_le_bytes();
-    payload_digest[..8].copy_from_slice(&hash);
-
-    result.extend_from_slice(&payload_digest);
+    result.extend_from_slice(&payload_digest(payload));
 
     let header_crc = crc32fast::hash(&result);
     result.extend_from_slice(&header_crc.to_le_bytes());
@@ -246,33 +293,26 @@ mod tests {
 
     #[test]
     fn test_postcard_header_from_bytes() {
-        let mut data = vec![0u8; HEADER_SIZE + 100];
-        data[0..4].copy_from_slice(&CLI_MAGIC);
-        data[4..6].copy_from_slice(&1u16.to_le_bytes());
-        data[6..8].copy_from_slice(&2u16.to_le_bytes());
-        data[8..12].copy_from_slice(&(HEADER_SIZE as u32).to_le_bytes());
-        data[12..16].copy_from_slice(&(100u32).to_le_bytes());
+        let data = encode_postcard(CLI_SCHEMA_VERSION, CLI_POSTCARD_KIND, &[0u8; 100])
+            .unwrap_or_else(|err| panic!("test postcard encodes: {err}"));
 
-        let header = PostcardHeader::from_bytes(&data).unwrap();
+        let header =
+            PostcardHeader::from_bytes(&data).unwrap_or_else(|err| panic!("header decodes: {err}"));
         assert_eq!(header.magic, CLI_MAGIC);
-        assert_eq!(header.schema_version, 1);
-        assert_eq!(header.kind, 2);
-        assert_eq!(header.header_len, HEADER_SIZE as u32);
+        assert_eq!(header.schema_version, CLI_SCHEMA_VERSION);
+        assert_eq!(header.kind, CLI_POSTCARD_KIND);
+        assert_eq!(header.header_len, HEADER_SIZE_U32);
         assert_eq!(header.payload_len, 100);
     }
 
     #[test]
     fn test_decode_valid_postcard() {
-        let mut data = vec![0u8; HEADER_SIZE + 100];
-        data[0..4].copy_from_slice(&CLI_MAGIC);
-        data[4..6].copy_from_slice(&1u16.to_le_bytes());
-        data[6..8].copy_from_slice(&2u16.to_le_bytes());
-        data[8..12].copy_from_slice(&(HEADER_SIZE as u32).to_le_bytes());
-        data[12..16].copy_from_slice(&(100u32).to_le_bytes());
+        let data = encode_postcard(CLI_SCHEMA_VERSION, CLI_POSTCARD_KIND, &[0u8; 100])
+            .unwrap_or_else(|err| panic!("test postcard encodes: {err}"));
 
         let result = decode_postcard(&data);
         assert!(result.is_ok());
-        let (header, payload) = result.unwrap();
+        let (header, payload) = result.unwrap_or_else(|err| panic!("postcard decodes: {err}"));
         assert_eq!(header.len(), HEADER_SIZE);
         assert_eq!(payload.len(), 100);
     }
@@ -291,8 +331,10 @@ mod tests {
     fn test_decode_payload_too_large() {
         let mut data = vec![0u8; HEADER_SIZE + 100];
         data[0..4].copy_from_slice(&CLI_MAGIC);
-        data[8..12].copy_from_slice(&(HEADER_SIZE as u32).to_le_bytes());
-        data[12..16].copy_from_slice(&((MAX_PAYLOAD + 1) as u32).to_le_bytes());
+        data[4..6].copy_from_slice(&CLI_SCHEMA_VERSION.to_le_bytes());
+        data[6..8].copy_from_slice(&CLI_POSTCARD_KIND.to_le_bytes());
+        data[8..12].copy_from_slice(&HEADER_SIZE_U32.to_le_bytes());
+        data[12..16].copy_from_slice(&MAX_PAYLOAD_U32.saturating_add(1).to_le_bytes());
 
         let result = decode_postcard(&data);
         assert_eq!(result.unwrap_err(), PostcardError::PayloadTooLarge);
@@ -302,7 +344,9 @@ mod tests {
     fn test_decode_invalid_header_length() {
         let mut data = vec![0u8; HEADER_SIZE + 100];
         data[0..4].copy_from_slice(&CLI_MAGIC);
-        data[8..12].copy_from_slice(&((HEADER_SIZE + 1) as u32).to_le_bytes());
+        data[4..6].copy_from_slice(&CLI_SCHEMA_VERSION.to_le_bytes());
+        data[6..8].copy_from_slice(&CLI_POSTCARD_KIND.to_le_bytes());
+        data[8..12].copy_from_slice(&HEADER_SIZE_U32.saturating_add(1).to_le_bytes());
         data[12..16].copy_from_slice(&(100u32).to_le_bytes());
 
         let result = decode_postcard(&data);
@@ -319,7 +363,8 @@ mod tests {
     #[test]
     fn test_encode_postcard() {
         let payload = b"test payload";
-        let encoded = encode_postcard(1, 2, payload).unwrap();
+        let encoded = encode_postcard(CLI_SCHEMA_VERSION, CLI_POSTCARD_KIND, payload)
+            .unwrap_or_else(|err| panic!("test postcard encodes: {err}"));
 
         assert_eq!(&encoded[0..4], &CLI_MAGIC);
         assert_eq!(encoded.len(), HEADER_SIZE + payload.len());
@@ -328,10 +373,81 @@ mod tests {
     #[test]
     fn test_roundtrip() {
         let payload = b"Hello, Postcard!";
-        let encoded = encode_postcard(1, 2, payload).unwrap();
+        let encoded = encode_postcard(CLI_SCHEMA_VERSION, CLI_POSTCARD_KIND, payload)
+            .unwrap_or_else(|err| panic!("test postcard encodes: {err}"));
 
-        let (header, extracted_payload) = decode_postcard(&encoded).unwrap();
+        let (header, extracted_payload) =
+            decode_postcard(&encoded).unwrap_or_else(|err| panic!("postcard decodes: {err}"));
         assert_eq!(header.len(), HEADER_SIZE);
         assert_eq!(extracted_payload, payload);
+    }
+
+    #[test]
+    fn decode_rejects_corrupted_crc_before_exposure() {
+        let mut encoded = encode_postcard(CLI_SCHEMA_VERSION, CLI_POSTCARD_KIND, b"payload")
+            .unwrap_or_else(|err| panic!("test postcard encodes: {err}"));
+        encoded[48] ^= 0x01;
+        assert_eq!(decode_postcard(&encoded), Err(PostcardError::CrcMismatch));
+    }
+
+    #[test]
+    fn decode_rejects_corrupted_digest_before_exposure() {
+        let mut encoded = encode_postcard(CLI_SCHEMA_VERSION, CLI_POSTCARD_KIND, b"payload")
+            .unwrap_or_else(|err| panic!("test postcard encodes: {err}"));
+        encoded[16] ^= 0x01;
+        let crc = crc32fast::hash(&encoded[0..48]);
+        encoded[48..52].copy_from_slice(&crc.to_le_bytes());
+        assert_eq!(
+            decode_postcard(&encoded),
+            Err(PostcardError::DigestMismatch)
+        );
+    }
+
+    #[test]
+    fn decode_rejects_old_and_future_versions() {
+        let old = encode_postcard(0, CLI_POSTCARD_KIND, b"payload")
+            .unwrap_or_else(|err| panic!("test postcard encodes: {err}"));
+        let future = encode_postcard(
+            CLI_SCHEMA_VERSION.saturating_add(1),
+            CLI_POSTCARD_KIND,
+            b"payload",
+        )
+        .unwrap_or_else(|err| panic!("test postcard encodes: {err}"));
+        assert_eq!(decode_postcard(&old), Err(PostcardError::VersionTooOld));
+        assert_eq!(decode_postcard(&future), Err(PostcardError::VersionTooNew));
+    }
+
+    #[test]
+    fn decode_rejects_wrong_kind() {
+        let encoded = encode_postcard(
+            CLI_SCHEMA_VERSION,
+            CLI_POSTCARD_KIND.saturating_add(1),
+            b"payload",
+        )
+        .unwrap_or_else(|err| panic!("test postcard encodes: {err}"));
+        assert_eq!(decode_postcard(&encoded), Err(PostcardError::WrongKind));
+    }
+
+    #[test]
+    fn decode_rejects_max_plus_one_payload_before_exposure() {
+        let mut encoded = encode_postcard(CLI_SCHEMA_VERSION, CLI_POSTCARD_KIND, b"payload")
+            .unwrap_or_else(|err| panic!("test postcard encodes: {err}"));
+        encoded[12..16].copy_from_slice(&MAX_PAYLOAD_U32.saturating_add(1).to_le_bytes());
+        let crc = crc32fast::hash(&encoded[0..48]);
+        encoded[48..52].copy_from_slice(&crc.to_le_bytes());
+        assert_eq!(
+            decode_postcard(&encoded),
+            Err(PostcardError::PayloadTooLarge)
+        );
+    }
+
+    #[test]
+    fn decode_rejects_truncated_header() {
+        let encoded = encode_postcard(CLI_SCHEMA_VERSION, CLI_POSTCARD_KIND, b"payload")
+            .unwrap_or_else(|err| panic!("test postcard encodes: {err}"));
+        let truncated = encoded
+            .get(0..HEADER_SIZE.saturating_sub(1))
+            .unwrap_or_else(|| panic!("test slice exists"));
+        assert_eq!(decode_postcard(truncated), Err(PostcardError::DecodeFailed));
     }
 }

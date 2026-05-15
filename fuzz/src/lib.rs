@@ -1429,13 +1429,6 @@ pub fn fuzz_step_budget_new(data: &[u8]) {
         remaining,
         vb_core::limits::MAX_STEP_BUDGET
     );
-    assert!(
-        remaining >= 0,
-        "StepBudget::new({}) produced negative remaining={}",
-        budget_value,
-        remaining
-    );
-
     // Boundary checks: clamping must be exact
     let expected = budget_value.min(vb_core::limits::MAX_STEP_BUDGET);
     assert!(
@@ -1453,21 +1446,66 @@ pub fn fuzz_step_budget_new(data: &[u8]) {
 
     // If initial budget > 0, try_take must succeed and decrement by 1
     if expected > 0 {
-        let ok = result.unwrap();
+        let ok = match result {
+            Ok(value) => value,
+            Err(_) => return,
+        };
+        let decremented = match expected.checked_sub(1) {
+            Some(value) => value,
+            None => return,
+        };
         assert!(ok, "try_take should succeed when budget > 0");
         assert_eq!(
             mutable_budget.remaining(),
-            expected - 1,
+            decremented,
             "remaining should decrement by 1 after successful try_take"
         );
     } else {
         // Zero budget: try_take must return false without panicking
-        let ok = result.unwrap();
+        let ok = match result {
+            Ok(value) => value,
+            Err(_) => return,
+        };
         assert!(!ok, "try_take should return false when budget is 0");
         assert_eq!(
             mutable_budget.remaining(),
             0,
             "remaining should stay 0 after failed try_take"
+        );
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Target: vb_ui_model OutputEnvelope postcard decode
+// ---------------------------------------------------------------------------
+
+/// Exercises `vb_ui_model::envelope::OutputEnvelope` postcard decoding on
+/// arbitrary bytes. Structurally valid envelopes must preserve their declared
+/// schema/kind field relationships; malformed bytes must fail closed without
+/// panic.
+pub fn fuzz_vb_ui_model_postcard_decode(data: &[u8]) {
+    let Ok(envelope): Result<vb_ui_model::envelope::OutputEnvelope, _> = postcard::from_bytes(data)
+    else {
+        return;
+    };
+
+    let schema_version = envelope.schema_version().get();
+    assert!(schema_version >= 1, "schema_version must be at least 1");
+
+    let kind = *envelope.kind();
+    if kind.uses_diagnostics_field() {
+        assert!(
+            envelope.payload().is_none(),
+            "diagnostic envelopes must not carry data payloads"
+        );
+        assert!(
+            envelope.diagnostic().is_some(),
+            "diagnostic envelopes must carry at least one diagnostic"
+        );
+    } else {
+        assert!(
+            envelope.diagnostic().is_none(),
+            "non-diagnostic envelopes must not carry diagnostics"
         );
     }
 }

@@ -1,9 +1,9 @@
 #[cfg(test)]
 mod tests {
     use crate::emitter::binary::{
+        build_cli_header, decode_cli_header, decode_postcard, encode_postcard,
         BINARY_SCHEMA_VERSION, CLI_CRC_OFFSET, CLI_HEADER_BYTES, CLI_HEADER_LEN, CLI_MAGIC,
-        MAX_CLI_PAYLOAD_BYTES, build_cli_header, decode_cli_header, decode_postcard,
-        encode_postcard,
+        MAX_CLI_PAYLOAD_BYTES,
     };
     use crate::emitter::error::EmitterError;
     use crate::envelope::EnvelopeKind;
@@ -177,6 +177,77 @@ mod tests {
 
         let result = decode_postcard::<String>(&bytes, EnvelopeKind::Success, 5);
         assert!(matches!(result, Err(EmitterError::PayloadTooLarge { .. })));
+    }
+
+    #[test]
+    fn postcard_rejects_empty_input_before_payload_exposure() {
+        let result = decode_postcard::<String>(&[], EnvelopeKind::Success, MAX_CLI_PAYLOAD_BYTES);
+        assert_eq!(result, Err(EmitterError::UnexpectedEof));
+    }
+
+    #[test]
+    fn postcard_rejects_truncated_header_before_payload_exposure() {
+        let bytes = vec![0u8; CLI_HEADER_BYTES - 1];
+
+        let result =
+            decode_postcard::<String>(&bytes, EnvelopeKind::Success, MAX_CLI_PAYLOAD_BYTES);
+
+        assert_eq!(result, Err(EmitterError::UnexpectedEof));
+    }
+
+    #[test]
+    fn postcard_rejects_header_length_mismatch_before_payload_exposure() {
+        let payload = b"valid payload";
+        let mut bytes = vec![0u8; CLI_HEADER_BYTES + payload.len()];
+        let header = build_cli_header(EnvelopeKind::Success, payload.len() as u32, payload)
+            .expect("build should succeed");
+        bytes[..CLI_HEADER_BYTES].copy_from_slice(&header);
+        bytes[CLI_HEADER_BYTES..].copy_from_slice(payload);
+
+        bytes[8..12].copy_from_slice(&51u32.to_le_bytes());
+        let checksum = crc32c::crc32c(&bytes[..CLI_CRC_OFFSET]);
+        bytes[CLI_CRC_OFFSET..CLI_CRC_OFFSET.saturating_add(4)]
+            .copy_from_slice(&checksum.to_le_bytes());
+
+        let result =
+            decode_postcard::<String>(&bytes, EnvelopeKind::Success, MAX_CLI_PAYLOAD_BYTES);
+
+        assert_eq!(
+            result,
+            Err(EmitterError::HeaderLengthMismatch { found: 51 })
+        );
+    }
+
+    #[test]
+    fn postcard_payload_bound_accepts_exact_max_and_rejects_max_plus_one() {
+        #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+        struct BoundedPayload {
+            value: u8,
+        }
+
+        let payload = BoundedPayload { value: 7 };
+        let encoded = encode_postcard(&payload, EnvelopeKind::Success, MAX_CLI_PAYLOAD_BYTES)
+            .expect("encode should succeed");
+        let payload_len = encoded.len() - CLI_HEADER_BYTES;
+        let exact_max = match u32::try_from(payload_len) {
+            Ok(value) => value,
+            Err(error) => panic!("payload length must fit u32: {error}"),
+        };
+
+        let accepted: Result<BoundedPayload, EmitterError> =
+            decode_postcard(&encoded, EnvelopeKind::Success, exact_max);
+        assert_eq!(accepted, Ok(BoundedPayload { value: 7 }));
+
+        let below_bound = exact_max.saturating_sub(1);
+        let rejected: Result<BoundedPayload, EmitterError> =
+            decode_postcard(&encoded, EnvelopeKind::Success, below_bound);
+        assert_eq!(
+            rejected,
+            Err(EmitterError::PayloadTooLarge {
+                len: exact_max,
+                max: below_bound
+            })
+        );
     }
 
     #[test]

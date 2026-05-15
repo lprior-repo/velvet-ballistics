@@ -2866,6 +2866,7 @@ dependencies = [
  "vb_expr",
  "vb_ipc",
  "vb_storage",
+ "vb_ui_model",
  "vb_validate",
  "vb_yaml",
  "velvet-ballastics-workspace",
@@ -2936,6 +2937,7 @@ dependencies = [
 name = "velvet_ballastics"
 version = "0.1.0"
 dependencies = [
+ "blake3",
  "bytes",
  "chrono",
  "crc32fast",

@@ -27,6 +27,7 @@ vb_storage = { path = "../crates/vb_storage" }
 vb_validate = { path = "../crates/vb_validate" }
 vb_yaml = { path = "../crates/vb_yaml" }
 vb_ipc = { path = "../crates/vb_ipc" }
+vb_ui_model = { path = "../crates/vb_ui_model" }
 
 [lib]
 name = "fuzz_lib"
@@ -245,6 +246,13 @@ bench = false
 [[bin]]
 name = "step_budget_new"
 path = "src/bin/step_budget_new.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "vb_ui_model_postcard_decode"
+path = "src/bin/vb_ui_model_postcard_decode.rs"
 test = false
 doc = false
 bench = false

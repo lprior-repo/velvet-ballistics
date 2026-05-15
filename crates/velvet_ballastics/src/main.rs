@@ -97,6 +97,7 @@ architecture: nightly Rust, compiled IR, in-memory engine, bounded IPC, Fjall jo
 
 fn main() -> ExitCode {
     let args: Vec<OsString> = std::env::args_os().collect();
+    let requested_output = output_format_from_args(&args);
     let parsed = parse_args(&args);
 
     match parsed {
@@ -118,14 +119,8 @@ fn main() -> ExitCode {
             profile,
             output,
         }) => cmd_verify(&workflow, profile, output),
-        Ok(Command::Validate {
-            workflow,
-            output: _,
-        }) => cmd_validate(&workflow),
-        Ok(Command::Explain {
-            workflow,
-            output: _,
-        }) => cmd_explain(&workflow),
+        Ok(Command::Validate { workflow, output }) => cmd_validate(&workflow, output),
+        Ok(Command::Explain { workflow, output }) => cmd_explain(&workflow, output),
         Ok(Command::Compile {
             workflow,
             emit,
@@ -189,7 +184,7 @@ fn main() -> ExitCode {
             output,
         }) => cmd_cancel(&run_id, &db, reason, output),
         Err(e) => exit_from_io(
-            &write_error_stderr(&e),
+            &write_parse_error_stderr(&e, requested_output),
             CliExitCode::ValidationFailed.into(),
         ),
     }
@@ -197,21 +192,38 @@ fn main() -> ExitCode {
 
 // --- Helpers for reading files and printing errors ---
 
-fn read_file(path: &std::path::Path) -> Result<Vec<u8>, ExitCode> {
+fn read_file(
+    path: &std::path::Path,
+    output: OutputFormat,
+    exit_code: CliExitCode,
+) -> Result<Vec<u8>, ExitCode> {
     match std::fs::read(path) {
         Ok(bytes) => Ok(bytes),
         Err(e) => {
-            errln!("error reading {}: {e}", path.display());
-            Err(CliExitCode::ValidationFailed.into())
+            let message = format!("error reading {}: {e}", path.display());
+            write_failure_message(&message, output, exit_code);
+            Err(exit_code.into())
         }
     }
 }
 
-fn parse_run_id(raw: &str) -> Result<vb_core::RunId, ExitCode> {
+fn write_failure_message(message: &str, output: OutputFormat, exit_code: CliExitCode) {
+    if output == OutputFormat::Text {
+        errln!("{message}");
+    } else {
+        write_diagnostic_message_stderr(message, exit_code, output);
+    }
+}
+
+fn parse_run_id(raw: &str, output: OutputFormat) -> Result<vb_core::RunId, ExitCode> {
     match raw.parse::<u64>() {
         Ok(id) => Ok(vb_core::RunId::new(id)),
         Err(e) => {
-            errln!("invalid run_id '{raw}': {e}");
+            write_failure_message(
+                &format!("invalid run_id '{raw}': {e}"),
+                output,
+                CliExitCode::ValidationFailed,
+            );
             Err(CliExitCode::ValidationFailed.into())
         }
     }
@@ -222,16 +234,11 @@ fn report_storage_open_error(
     db: &std::path::Path,
     output: OutputFormat,
 ) {
+    let message = format!("error opening journal at {}: {e}", db.display());
     if output != OutputFormat::Text {
-        json_error(
-            &serde_json::json!({
-                "success": false,
-                "error": format!("error opening journal at {}: {e}", db.display())
-            }),
-            output,
-        );
+        write_failure_message(&message, output, CliExitCode::StorageError);
     } else {
-        errln!("error opening journal at {}: {e}", db.display());
+        errln!("{message}");
     }
 }
 
@@ -240,15 +247,21 @@ fn read_journal_events(
     db: &std::path::Path,
     output: OutputFormat,
 ) -> Result<Vec<vb_storage::JournalEvent>, ExitCode> {
-    let rid = parse_run_id(run_id)?;
+    let rid = parse_run_id(run_id, output)?;
     let journal = vb_storage::FjallJournal::open(db, None).map_err(|e| -> ExitCode {
         report_storage_open_error(&e, db, output);
         CliExitCode::StorageError.into()
     })?;
     journal.events_for_run(rid).map_err(|e| {
         if output != OutputFormat::Text {
-            json_error(&serde_json::json!({ "success": false, "error": format!("error reading run {run_id}: {e}") }), output);
-        } else { errln!("error reading run {run_id}: {e}"); }
+            write_failure_message(
+                &format!("error reading run {run_id}: {e}"),
+                output,
+                CliExitCode::StorageError,
+            );
+        } else {
+            errln!("error reading run {run_id}: {e}");
+        }
         CliExitCode::StorageError.into()
     })
 }
@@ -698,7 +711,7 @@ fn cmd_verify(
     profile: VerifyProfile,
     output: OutputFormat,
 ) -> ExitCode {
-    let bytes = match read_file(workflow) {
+    let bytes = match read_file(workflow, output, CliExitCode::ValidationFailed) {
         Ok(b) => b,
         Err(code) => return code,
     };
@@ -706,7 +719,11 @@ fn cmd_verify(
     let text = match std::str::from_utf8(&bytes) {
         Ok(t) => t,
         Err(e) => {
-            errln!("file is not valid UTF-8: {e}");
+            write_failure_message(
+                &format!("file is not valid UTF-8: {e}"),
+                output,
+                CliExitCode::ValidationFailed,
+            );
             return CliExitCode::ValidationFailed.into();
         }
     };
@@ -745,6 +762,10 @@ fn cmd_verify(
         }
         Err(err) => {
             let code = commands_verify::exit_code_for_error(&err);
+            if output != OutputFormat::Text {
+                write_failure_message(&verify_error_message(&err), output, code);
+                return code.into();
+            }
             match &err {
                 commands_verify::VerifyError::YamlParse(msg) => {
                     if output != OutputFormat::Text {
@@ -839,8 +860,8 @@ fn cmd_verify(
     }
 }
 
-fn cmd_validate(workflow: &std::path::Path) -> ExitCode {
-    let bytes = match read_file(workflow) {
+fn cmd_validate(workflow: &std::path::Path, output: OutputFormat) -> ExitCode {
+    let bytes = match read_file(workflow, output, CliExitCode::ValidationFailed) {
         Ok(b) => b,
         Err(code) => return code,
     };
@@ -848,7 +869,11 @@ fn cmd_validate(workflow: &std::path::Path) -> ExitCode {
     let text = match std::str::from_utf8(&bytes) {
         Ok(t) => t,
         Err(e) => {
-            errln!("file is not valid UTF-8: {e}");
+            write_failure_message(
+                &format!("file is not valid UTF-8: {e}"),
+                output,
+                CliExitCode::ValidationFailed,
+            );
             return CliExitCode::ValidationFailed.into();
         }
     };
@@ -857,7 +882,11 @@ fn cmd_validate(workflow: &std::path::Path) -> ExitCode {
     match vb_yaml::parse_workflow_source(text) {
         Ok(_ast) => {}
         Err(e) => {
-            errln!("YAML parse error: {e}");
+            write_failure_message(
+                &format!("YAML parse error: {e}"),
+                output,
+                CliExitCode::ValidationFailed,
+            );
             return CliExitCode::ValidationFailed.into();
         }
     }
@@ -866,9 +895,8 @@ fn cmd_validate(workflow: &std::path::Path) -> ExitCode {
     match vb_compile::compile_workflow(&bytes) {
         Ok(_compiled) => {}
         Err(errors) => {
-            for err in &errors.0 {
-                errln!("compile error: {err}");
-            }
+            let message = compile_errors_message(&errors.0);
+            write_failure_message(&message, output, CliExitCode::ValidationFailed);
             return CliExitCode::ValidationFailed.into();
         }
     }
@@ -877,13 +905,31 @@ fn cmd_validate(workflow: &std::path::Path) -> ExitCode {
     ExitCode::SUCCESS
 }
 
+fn verify_error_message(err: &commands_verify::VerifyError) -> String {
+    match err {
+        commands_verify::VerifyError::YamlParse(msg)
+        | commands_verify::VerifyError::IrValidation(msg)
+        | commands_verify::VerifyError::BudgetPolicy(msg)
+        | commands_verify::VerifyError::StorageError(msg)
+        | commands_verify::VerifyError::ReplayDivergence(msg) => msg.clone(),
+        commands_verify::VerifyError::Compile(errors) => {
+            let mut message = String::from("compilation failed");
+            for error in errors {
+                message.push_str("; compile error: ");
+                message.push_str(error);
+            }
+            message
+        }
+    }
+}
+
 fn cmd_compile(
     workflow: &std::path::Path,
     emit: EmitTarget,
     out: &std::path::Path,
     output: OutputFormat,
 ) -> ExitCode {
-    let bytes = match read_file(workflow) {
+    let bytes = match read_file(workflow, output, CliExitCode::CompileFailed) {
         Ok(b) => b,
         Err(code) => return code,
     };
@@ -891,15 +937,11 @@ fn cmd_compile(
     let compiled = match vb_compile::compile_workflow(&bytes) {
         Ok(c) => c,
         Err(errors) => {
-            let error_msgs: Vec<String> = errors.0.iter().map(|err| err.to_string()).collect();
             if output != OutputFormat::Text {
-                json_error(
-                    &serde_json::json!({
-                        "success": false,
-                        "error": "compilation failed",
-                        "errors": error_msgs
-                    }),
+                write_failure_message(
+                    &compile_errors_message(&errors.0),
                     output,
+                    CliExitCode::CompileFailed,
                 );
             } else {
                 for err in &errors.0 {
@@ -919,12 +961,10 @@ fn cmd_compile(
                 Ok(data) => data,
                 Err(e) => {
                     if output != OutputFormat::Text {
-                        json_error(
-                            &serde_json::json!({
-                                "success": false,
-                                "error": format!("IR serialization error: {e}")
-                            }),
+                        write_failure_message(
+                            &format!("IR serialization error: {e}"),
                             output,
+                            CliExitCode::CompileFailed,
                         );
                     } else {
                         errln!("IR serialization error: {e}");
@@ -934,12 +974,10 @@ fn cmd_compile(
             };
             if let Err(e) = std::fs::write(out, &encoded) {
                 if output != OutputFormat::Text {
-                    json_error(
-                        &serde_json::json!({
-                            "success": false,
-                            "error": format!("error writing {}: {e}", out.display())
-                        }),
+                    write_failure_message(
+                        &format!("error writing {}: {e}", out.display()),
                         output,
+                        CliExitCode::CompileFailed,
                     );
                 } else {
                     errln!("error writing {}: {e}", out.display());
@@ -964,12 +1002,10 @@ fn cmd_compile(
                 Ok(s) => s,
                 Err(e) => {
                     if output != OutputFormat::Text {
-                        json_error(
-                            &serde_json::json!({
-                                "success": false,
-                                "error": format!("codegen error: {e}")
-                            }),
+                        write_failure_message(
+                            &format!("codegen error: {e}"),
                             output,
+                            CliExitCode::CompileFailed,
                         );
                     } else {
                         errln!("codegen error: {e}");
@@ -993,12 +1029,10 @@ fn main() {
             );
             if let Err(e) = std::fs::write(out, &source) {
                 if output != OutputFormat::Text {
-                    json_error(
-                        &serde_json::json!({
-                            "success": false,
-                            "error": format!("error writing {}: {e}", out.display())
-                        }),
+                    write_failure_message(
+                        &format!("error writing {}: {e}", out.display()),
                         output,
+                        CliExitCode::CompileFailed,
                     );
                 } else {
                     errln!("error writing {}: {e}", out.display());
@@ -1024,12 +1058,10 @@ fn main() {
                 Ok(s) => s,
                 Err(e) => {
                     if output != OutputFormat::Text {
-                        json_error(
-                            &serde_json::json!({
-                                "success": false,
-                                "error": format!("YAML serialization error: {e}")
-                            }),
+                        write_failure_message(
+                            &format!("YAML serialization error: {e}"),
                             output,
+                            CliExitCode::CompileFailed,
                         );
                     } else {
                         errln!("YAML serialization error: {e}");
@@ -1039,12 +1071,10 @@ fn main() {
             };
             if let Err(e) = std::fs::write(out, yaml_str.as_bytes()) {
                 if output != OutputFormat::Text {
-                    json_error(
-                        &serde_json::json!({
-                            "success": false,
-                            "error": format!("error writing {}: {e}", out.display())
-                        }),
+                    write_failure_message(
+                        &format!("error writing {}: {e}", out.display()),
                         output,
+                        CliExitCode::CompileFailed,
                     );
                 } else {
                     errln!("error writing {}: {e}", out.display());
@@ -1070,12 +1100,10 @@ fn main() {
                 Ok(data) => data,
                 Err(e) => {
                     if output != OutputFormat::Text {
-                        json_error(
-                            &serde_json::json!({
-                                "success": false,
-                                "error": format!("postcard serialization error: {e}")
-                            }),
+                        write_failure_message(
+                            &format!("postcard serialization error: {e}"),
                             output,
+                            CliExitCode::CompileFailed,
                         );
                     } else {
                         errln!("postcard serialization error: {e}");
@@ -1085,12 +1113,10 @@ fn main() {
             };
             if let Err(e) = std::fs::write(out, &encoded) {
                 if output != OutputFormat::Text {
-                    json_error(
-                        &serde_json::json!({
-                            "success": false,
-                            "error": format!("error writing {}: {e}", out.display())
-                        }),
+                    write_failure_message(
+                        &format!("error writing {}: {e}", out.display()),
                         output,
+                        CliExitCode::CompileFailed,
                     );
                 } else {
                     errln!("error writing {}: {e}", out.display());
@@ -1122,12 +1148,12 @@ fn cmd_run(
     db: Option<&std::path::Path>,
     output: OutputFormat,
 ) -> ExitCode {
-    let input_data = match read_file(input_bin) {
+    let input_data = match read_file(input_bin, output, CliExitCode::ValidationFailed) {
         Ok(b) => b,
         Err(code) => return code,
     };
 
-    let bytes = match read_file(workflow) {
+    let bytes = match read_file(workflow, output, CliExitCode::ValidationFailed) {
         Ok(b) => b,
         Err(code) => return code,
     };
@@ -1135,15 +1161,11 @@ fn cmd_run(
     let compiled = match vb_compile::compile_workflow(&bytes) {
         Ok(c) => c,
         Err(errors) => {
-            let error_msgs: Vec<String> = errors.0.iter().map(|err| err.to_string()).collect();
             if output != OutputFormat::Text {
-                json_error(
-                    &serde_json::json!({
-                        "success": false,
-                        "error": "compilation failed",
-                        "errors": error_msgs
-                    }),
+                write_failure_message(
+                    &compile_errors_message(&errors.0),
                     output,
+                    CliExitCode::CompileFailed,
                 );
             } else {
                 for err in &errors.0 {
@@ -1158,13 +1180,7 @@ fn cmd_run(
         Ok(inputs) => inputs,
         Err(error) => {
             if output != OutputFormat::Text {
-                json_error(
-                    &serde_json::json!({
-                        "success": false,
-                        "error": error.to_string()
-                    }),
-                    output,
-                );
+                write_failure_message(&error.to_string(), output, CliExitCode::RuntimeFailed);
             } else {
                 errln!("{error}");
             }
@@ -1231,10 +1247,7 @@ fn store_workflow_artifacts(
 
 fn report_compiled_ir_store_error(args: std::fmt::Arguments<'_>, output: OutputFormat) {
     if output != OutputFormat::Text {
-        json_error(
-            &serde_json::json!({"success": false, "error": args.to_string()}),
-            output,
-        );
+        write_failure_message(&args.to_string(), output, CliExitCode::StorageError);
     } else {
         errln!("{args}");
     }
@@ -1247,12 +1260,12 @@ fn cmd_submit(
     durability: DurabilityMode,
     output: OutputFormat,
 ) -> ExitCode {
-    let _input_data = match read_file(input_bin) {
+    let _input_data = match read_file(input_bin, output, CliExitCode::ValidationFailed) {
         Ok(b) => b,
         Err(code) => return code,
     };
 
-    let bytes = match read_file(workflow) {
+    let bytes = match read_file(workflow, output, CliExitCode::ValidationFailed) {
         Ok(b) => b,
         Err(code) => return code,
     };
@@ -1295,16 +1308,11 @@ fn cmd_submit(
     let journal = match vb_storage::FjallJournal::open(db, None) {
         Ok(j) => j,
         Err(e) => {
+            let message = format!("error opening journal at {}: {e}", db.display());
             if output != OutputFormat::Text {
-                json_error(
-                    &serde_json::json!({
-                        "success": false,
-                        "error": format!("error opening journal at {}: {e}", db.display())
-                    }),
-                    output,
-                );
+                write_failure_message(&message, output, CliExitCode::StorageError);
             } else {
-                errln!("error opening journal at {}: {e}", db.display());
+                errln!("{message}");
             }
             return CliExitCode::StorageError.into();
         }
@@ -1429,7 +1437,7 @@ fn cmd_run_step(
         errln!("step isolation requires --durability none");
         return setup_exit_code();
     }
-    let bytes = match read_file(workflow) {
+    let bytes = match read_file(workflow, OutputFormat::Text, CliExitCode::ValidationFailed) {
         Ok(b) => b,
         Err(code) => return code,
     };
@@ -1445,7 +1453,11 @@ fn cmd_run_step(
             return setup_exit_code();
         }
     };
-    let input_data = match read_file(&target.step_input) {
+    let input_data = match read_file(
+        &target.step_input,
+        OutputFormat::Text,
+        CliExitCode::ValidationFailed,
+    ) {
         Ok(b) => b,
         Err(code) => return code,
     };
@@ -1479,15 +1491,11 @@ fn compile_bytes_json(
     match vb_compile::compile_workflow(bytes) {
         Ok(c) => Ok(c),
         Err(errors) => {
-            let error_msgs: Vec<String> = errors.0.iter().map(|err| err.to_string()).collect();
             if output != OutputFormat::Text {
-                json_error(
-                    &serde_json::json!({
-                        "success": false,
-                        "error": "compilation failed",
-                        "errors": error_msgs
-                    }),
+                write_failure_message(
+                    &compile_errors_message(&errors.0),
                     output,
+                    CliExitCode::CompileFailed,
                 );
             } else {
                 for err in &errors.0 {
@@ -1657,12 +1665,12 @@ fn cmd_run_compiled(
     db: Option<&std::path::Path>,
     output: OutputFormat,
 ) -> ExitCode {
-    let input_data = match read_file(input_bin) {
+    let input_data = match read_file(input_bin, output, CliExitCode::ValidationFailed) {
         Ok(b) => b,
         Err(code) => return code,
     };
 
-    let ir_bytes = match read_file(vbir_path) {
+    let ir_bytes = match read_file(vbir_path, output, CliExitCode::CompileFailed) {
         Ok(b) => b,
         Err(code) => return code,
     };
@@ -2049,7 +2057,7 @@ impl vb_ipc::server::WorkflowResolver for StorageWorkflowResolver {
 }
 
 fn cmd_inspect(run_id: &str, db: &std::path::Path, output: OutputFormat) -> ExitCode {
-    let rid = match parse_run_id(run_id) {
+    let rid = match parse_run_id(run_id, output) {
         Ok(id) => id,
         Err(code) => return code,
     };
@@ -2057,16 +2065,11 @@ fn cmd_inspect(run_id: &str, db: &std::path::Path, output: OutputFormat) -> Exit
     let journal = match vb_storage::FjallJournal::open(db, None) {
         Ok(j) => j,
         Err(e) => {
+            let message = format!("error opening journal at {}: {e}", db.display());
             if output != OutputFormat::Text {
-                json_error(
-                    &serde_json::json!({
-                        "success": false,
-                        "error": format!("error opening journal at {}: {e}", db.display())
-                    }),
-                    output,
-                );
+                write_failure_message(&message, output, CliExitCode::StorageError);
             } else {
-                errln!("error opening journal at {}: {e}", db.display());
+                errln!("{message}");
             }
             return CliExitCode::StorageError.into();
         }
@@ -2113,16 +2116,11 @@ fn cmd_inspect(run_id: &str, db: &std::path::Path, output: OutputFormat) -> Exit
             }
         }
         Err(e) => {
+            let message = format!("error reading run {run_id}: {e}");
             if output != OutputFormat::Text {
-                json_error(
-                    &serde_json::json!({
-                        "success": false,
-                        "error": format!("error reading run {run_id}: {e}")
-                    }),
-                    output,
-                );
+                write_failure_message(&message, output, CliExitCode::StorageError);
             } else {
-                errln!("error reading run {run_id}: {e}");
+                errln!("{message}");
             }
             return CliExitCode::StorageError.into();
         }
@@ -2132,7 +2130,7 @@ fn cmd_inspect(run_id: &str, db: &std::path::Path, output: OutputFormat) -> Exit
 }
 
 fn cmd_events(run_id: &str, db: &std::path::Path, output: OutputFormat) -> ExitCode {
-    let rid = match parse_run_id(run_id) {
+    let rid = match parse_run_id(run_id, output) {
         Ok(id) => id,
         Err(code) => return code,
     };
@@ -2466,7 +2464,7 @@ fn event_to_json(event: &vb_storage::JournalEvent) -> serde_json::Value {
 }
 
 fn cmd_replay(run_id: &str, db: &std::path::Path, output: OutputFormat) -> ExitCode {
-    let rid = match parse_run_id(run_id) {
+    let rid = match parse_run_id(run_id, output) {
         Ok(id) => id,
         Err(code) => return code,
     };
@@ -2954,7 +2952,7 @@ fn cmd_cancel(
     reason: Option<String>,
     output: OutputFormat,
 ) -> ExitCode {
-    let rid = match parse_run_id(run_id) {
+    let rid = match parse_run_id(run_id, output) {
         Ok(id) => id,
         Err(code) => return code,
     };
@@ -2970,16 +2968,11 @@ fn cmd_cancel(
     let events = match journal.events_for_run(rid) {
         Ok(ev) => ev,
         Err(e) => {
+            let message = format!("error reading run {run_id}: {e}");
             if output != OutputFormat::Text {
-                json_error(
-                    &serde_json::json!({
-                        "success": false,
-                        "error": format!("error reading run {run_id}: {e}")
-                    }),
-                    output,
-                );
+                write_failure_message(&message, output, CliExitCode::StorageError);
             } else {
-                errln!("error reading run {run_id}: {e}");
+                errln!("{message}");
             }
             return CliExitCode::StorageError.into();
         }
@@ -3027,7 +3020,7 @@ fn cmd_cancel(
 }
 
 fn cmd_incident(run_id: &str, db: &std::path::Path, output: OutputFormat) -> ExitCode {
-    let rid = match parse_run_id(run_id) {
+    let rid = match parse_run_id(run_id, output) {
         Ok(id) => id,
         Err(code) => return code,
     };
@@ -3151,11 +3144,11 @@ fn cmd_incident(run_id: &str, db: &std::path::Path, output: OutputFormat) -> Exi
 }
 
 fn cmd_diff(run_a: &str, run_b: &str, db: &std::path::Path, output: OutputFormat) -> ExitCode {
-    let rid_a = match parse_run_id(run_a) {
+    let rid_a = match parse_run_id(run_a, output) {
         Ok(id) => id,
         Err(code) => return code,
     };
-    let rid_b = match parse_run_id(run_b) {
+    let rid_b = match parse_run_id(run_b, output) {
         Ok(id) => id,
         Err(code) => return code,
     };
@@ -3304,8 +3297,8 @@ fn print_diff_entry(diff: &serde_json::Value) {
     }
 }
 
-fn cmd_explain(workflow: &std::path::Path) -> ExitCode {
-    let bytes = match read_file(workflow) {
+fn cmd_explain(workflow: &std::path::Path, output: OutputFormat) -> ExitCode {
+    let bytes = match read_file(workflow, output, CliExitCode::ValidationFailed) {
         Ok(b) => b,
         Err(code) => return code,
     };
@@ -3931,7 +3924,7 @@ fn explain_validation_error(err: &vb_validate::ValidationError) {
 }
 
 fn cmd_graph(workflow: &std::path::Path, output: OutputFormat) -> ExitCode {
-    let bytes = match read_file(workflow) {
+    let bytes = match read_file(workflow, output, CliExitCode::ValidationFailed) {
         Ok(b) => b,
         Err(code) => return code,
     };
@@ -3961,7 +3954,7 @@ fn cmd_graph(workflow: &std::path::Path, output: OutputFormat) -> ExitCode {
 }
 
 fn cmd_simulate(workflow: &std::path::Path, output: OutputFormat) -> ExitCode {
-    let bytes = match read_file(workflow) {
+    let bytes = match read_file(workflow, output, CliExitCode::ValidationFailed) {
         Ok(b) => b,
         Err(code) => return code,
     };
@@ -4013,7 +4006,7 @@ fn cmd_simulate(workflow: &std::path::Path, output: OutputFormat) -> ExitCode {
 }
 
 fn cmd_bench_run(workflow: &std::path::Path, output: OutputFormat) -> ExitCode {
-    let bytes = match read_file(workflow) {
+    let bytes = match read_file(workflow, output, CliExitCode::ValidationFailed) {
         Ok(b) => b,
         Err(code) => return code,
     };
@@ -4563,6 +4556,136 @@ fn write_error_stderr(error: &ParseError) -> io::Result<()> {
     }
 }
 
+fn write_parse_error_stderr(error: &ParseError, output: OutputFormat) -> io::Result<()> {
+    match output {
+        OutputFormat::Text => write_error_stderr(error),
+        OutputFormat::Json | OutputFormat::Jsonl => write_diagnostic_report_stderr(error),
+    }
+}
+
+fn write_diagnostic_report_stderr(error: &ParseError) -> io::Result<()> {
+    write_diagnostic_report_stderr_io(&error.to_string(), CliExitCode::ValidationFailed)
+}
+
+fn write_diagnostic_message_stderr(message: &str, code: CliExitCode, output: OutputFormat) {
+    let diagnostic = diagnostic_value(message, code);
+    let stderr = io::stderr();
+    let mut handle = stderr.lock();
+    let write_result = match output {
+        OutputFormat::Json | OutputFormat::Jsonl => serde_json::to_writer(&mut handle, &diagnostic)
+            .map_err(io::Error::other)
+            .and_then(|()| handle.write_all(b"\n")),
+        OutputFormat::Text => writeln!(handle, "{message}"),
+    };
+    match write_result {
+        Ok(()) | Err(_) => {}
+    }
+}
+
+fn diagnostic_value(message: &str, code: CliExitCode) -> serde_json::Value {
+    serde_json::json!({
+        "schema_version": cli_envelope::SCHEMA_VERSION,
+        "kind": cli_envelope::kind::DIAGNOSTIC_REPORT,
+        "code": cli_exit_code_name(code),
+        "exit_code": cli_exit_code_number(code),
+        "message": message,
+    })
+}
+
+fn cli_exit_code_name(code: CliExitCode) -> &'static str {
+    match code {
+        CliExitCode::Success => "Success",
+        CliExitCode::ValidationFailed => "ValidationFailed",
+        CliExitCode::VerificationFailed => "VerificationFailed",
+        CliExitCode::CompileFailed => "CompileFailed",
+        CliExitCode::RuntimeFailed => "RuntimeFailed",
+        CliExitCode::StorageError => "StorageError",
+        CliExitCode::IpcError => "IpcError",
+        CliExitCode::ActionPolicyError => "ActionPolicyError",
+        CliExitCode::ReplayDivergence => "ReplayDivergence",
+    }
+}
+
+fn cli_exit_code_number(code: CliExitCode) -> u8 {
+    match code {
+        CliExitCode::Success => 0,
+        CliExitCode::ValidationFailed => 1,
+        CliExitCode::VerificationFailed => 2,
+        CliExitCode::CompileFailed => 3,
+        CliExitCode::RuntimeFailed => 4,
+        CliExitCode::StorageError => 5,
+        CliExitCode::IpcError => 6,
+        CliExitCode::ActionPolicyError => 7,
+        CliExitCode::ReplayDivergence => 8,
+    }
+}
+
+fn compile_errors_message(errors: &[vb_compile::CompileError]) -> String {
+    let mut message = String::from("compilation failed");
+    for err in errors {
+        message.push_str("; compile error: ");
+        message.push_str(&err.to_string());
+    }
+    message
+}
+
+fn legacy_json_error_message(value: &serde_json::Value) -> String {
+    if let Some(message) = value.get("message").and_then(serde_json::Value::as_str) {
+        return message.to_string();
+    }
+    if let Some(error) = value.get("error").and_then(serde_json::Value::as_str) {
+        return error.to_string();
+    }
+    value.to_string()
+}
+
+fn infer_legacy_json_error_code(message: &str) -> CliExitCode {
+    if message.contains("journal")
+        || message.contains("workflow source write")
+        || message.contains("compiled IR write")
+        || message.contains("error reading run")
+    {
+        return CliExitCode::StorageError;
+    }
+    if message.contains("runtime") || message.contains("INPUT_MAPPING_FAILED") {
+        return CliExitCode::RuntimeFailed;
+    }
+    if message.contains("compilation failed")
+        || message.contains("compile error")
+        || message.contains("compiled IR")
+        || message.contains("serialization error")
+        || message.contains("deserializing compiled IR")
+        || message.contains("codegen error")
+    {
+        return CliExitCode::CompileFailed;
+    }
+    CliExitCode::ValidationFailed
+}
+
+fn write_diagnostic_report_stderr_io(message: &str, code: CliExitCode) -> io::Result<()> {
+    let diagnostic = serde_json::json!({
+        "schema_version": cli_envelope::SCHEMA_VERSION,
+        "kind": cli_envelope::kind::DIAGNOSTIC_REPORT,
+        "code": cli_exit_code_name(code),
+        "exit_code": cli_exit_code_number(code),
+        "message": message,
+    });
+    let stderr = io::stderr();
+    let mut handle = stderr.lock();
+    serde_json::to_writer(&mut handle, &diagnostic).map_err(io::Error::other)?;
+    handle.write_all(b"\n")
+}
+
+fn output_format_from_args(args: &[OsString]) -> OutputFormat {
+    if args.iter().any(|arg| arg == "--jsonl") {
+        OutputFormat::Jsonl
+    } else if args.iter().any(|arg| arg == "--json") {
+        OutputFormat::Json
+    } else {
+        OutputFormat::Text
+    }
+}
+
 fn write_stdout_line(args: std::fmt::Arguments<'_>) {
     let stdout = io::stdout();
     let mut handle = stdout.lock();
@@ -4606,16 +4729,12 @@ fn json_out(value: &serde_json::Value, format: OutputFormat) {
 
 /// Output a JSON error value to stderr in the specified format.
 fn json_error(value: &serde_json::Value, format: OutputFormat) {
-    match format {
-        OutputFormat::Json | OutputFormat::Jsonl => {
-            let json_str = serde_json::to_string(value).unwrap_or_default();
-            errln!("{json_str}");
-        }
-        OutputFormat::Text => {
-            // Should not be called in text mode, but fallback to errln
-            let json_str = serde_json::to_string_pretty(value).unwrap_or_default();
-            errln!("{json_str}");
-        }
+    let message = legacy_json_error_message(value);
+    let code = infer_legacy_json_error_code(&message);
+    if format == OutputFormat::Text {
+        errln!("{message}");
+    } else {
+        write_diagnostic_message_stderr(&message, code, format);
     }
 }
 

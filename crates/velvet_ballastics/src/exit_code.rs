@@ -26,10 +26,9 @@ pub(crate) enum CliExitCode {
     IpcError = 6,
     /// Action policy violation.
     ActionPolicyError = 7,
-    /// Replay divergence detected.
+    /// Replay divergence detected, including domain-specific rule divergence
+    /// after the internal error has been mapped to a public CLI status.
     ReplayDivergence = 8,
-    /// Domain-specific business logic rule violation.
-    DomainError = 9,
 }
 
 impl From<CliExitCode> for ExitCode {
@@ -70,7 +69,6 @@ mod tests {
         assert_eq!(CliExitCode::IpcError as u8, 6);
         assert_eq!(CliExitCode::ActionPolicyError as u8, 7);
         assert_eq!(CliExitCode::ReplayDivergence as u8, 8);
-        assert_eq!(CliExitCode::DomainError as u8, 9);
     }
 
     #[test]
@@ -105,10 +103,6 @@ mod tests {
             ExitCode::from(CliExitCode::ReplayDivergence),
             ExitCode::from(8u8)
         );
-        assert_eq!(
-            ExitCode::from(CliExitCode::DomainError),
-            ExitCode::from(9u8)
-        );
     }
 
     #[test]
@@ -127,7 +121,7 @@ mod tests {
 
     #[test]
     fn all_variants_are_distinct() {
-        let values: [u8; 10] = [
+        let values: [u8; 9] = [
             CliExitCode::Success as u8,
             CliExitCode::ValidationFailed as u8,
             CliExitCode::VerificationFailed as u8,
@@ -137,11 +131,27 @@ mod tests {
             CliExitCode::IpcError as u8,
             CliExitCode::ActionPolicyError as u8,
             CliExitCode::ReplayDivergence as u8,
-            CliExitCode::DomainError as u8,
         ];
         let mut sorted: Vec<u8> = values.to_vec();
         sorted.sort_unstable();
         sorted.dedup();
         assert_eq!(sorted.len(), values.len(), "duplicate discriminant found");
+    }
+
+    #[test]
+    fn all_variants_are_public_range_0_to_8() {
+        let values: [u8; 9] = [
+            CliExitCode::Success as u8,
+            CliExitCode::ValidationFailed as u8,
+            CliExitCode::VerificationFailed as u8,
+            CliExitCode::CompileFailed as u8,
+            CliExitCode::RuntimeFailed as u8,
+            CliExitCode::StorageError as u8,
+            CliExitCode::IpcError as u8,
+            CliExitCode::ActionPolicyError as u8,
+            CliExitCode::ReplayDivergence as u8,
+        ];
+
+        assert!(values.iter().all(|value| *value <= 8));
     }
 }
