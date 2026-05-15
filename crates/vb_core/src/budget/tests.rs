@@ -3432,15 +3432,16 @@ proptest::proptest! {
         };
 
         // If all dimensions are within policy defaults, validation should pass
+        let result = policy.validate(&budget);
         if max_total_steps <= policy.max_total_steps
             && max_total_slots <= policy.max_total_slots
             && max_fanout <= policy.max_fanout
             && max_nesting_depth <= policy.max_nesting_depth
         {
-            prop_assert!(policy.validate(&budget).is_ok());
+            prop_assert!(matches!(result, Ok(())));
         } else {
             // If any dimension exceeds policy, validation should fail
-            prop_assert!(policy.validate(&budget).is_err());
+            prop_assert!(result.is_err());
         }
     }
 }
