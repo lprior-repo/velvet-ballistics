@@ -354,7 +354,10 @@ pub struct AggregateReservation {
 /// Aggregate resource-accounting failure.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AggregateBudgetError {
+    #[cfg(not(kani))]
     WorkflowBudget(WorkflowError),
+    #[cfg(kani)]
+    WorkflowBudget,
     PolicyExceeded {
         resource: &'static str,
         actual: u64,
@@ -389,6 +392,11 @@ pub enum AggregateBudgetError {
     },
 }
 
+#[cfg(kani)]
+impl Drop for AggregateBudgetError {
+    fn drop(&mut self) {}
+}
+
 impl AggregateResourceBudget {
     pub fn from_workflow(workflow: &CompiledWorkflow) -> Result<Self, AggregateBudgetError> {
         let parts = workflow.to_parts();
@@ -397,7 +405,7 @@ impl AggregateResourceBudget {
             workflow.entry(),
             &workflow.resource_contract(),
         )
-        .map_err(AggregateBudgetError::WorkflowBudget)?;
+        .map_err(map_workflow_budget_error)?;
         let aggregate = Self::from_whole_workflow_budget(budget, workflow.resource_contract())?;
         validate_step_ceilings(&aggregate)?;
         Ok(aggregate)
@@ -426,6 +434,16 @@ impl AggregateResourceBudget {
             max_transitions_per_tick: contract.max_transitions_per_tick,
         })
     }
+}
+
+#[cfg(not(kani))]
+fn map_workflow_budget_error(error: WorkflowError) -> AggregateBudgetError {
+    AggregateBudgetError::WorkflowBudget(error)
+}
+
+#[cfg(kani)]
+fn map_workflow_budget_error(_error: WorkflowError) -> AggregateBudgetError {
+    AggregateBudgetError::WorkflowBudget
 }
 
 impl AggregateResourceUsage {
@@ -1568,6 +1586,10 @@ fn update_workflow_metrics(
 // add_dim/sub_dim are pure checked_add/checked_sub — we prove these directly.
 #[cfg(kani)]
 mod kani_harnesses {
+    fn same_static_str(left: &'static str, right: &'static str) -> bool {
+        left.len() == right.len() && core::ptr::eq(left.as_ptr(), right.as_ptr())
+    }
+
     /// Minimal error enum mirroring the Overflow/Underflow variants.
     /// No transitive types — just &'static str for resource naming.
     enum LocalError {
@@ -1698,6 +1720,136 @@ mod kani_harnesses {
             Ok(v) => assert!(v == 100, "200-100=100"),
             Err(_) => assert!(false, "200-100 cannot underflow"),
         }
+    }
+
+    /// PO-010: aggregate usage addition rejects overflow and preserves exact sums.
+    #[kani::proof]
+    fn aggregate_usage_try_add_budget_rejects_overflow_and_sums_fields() {
+        let usage = super::AggregateResourceUsage {
+            max_steps_executable: 10,
+            max_action_tickets: 20,
+            max_parallel_in_flight: 30,
+            max_gather_pages: 40,
+            max_gather_items: 50,
+            max_result_bytes: 60,
+            max_total_slots_written: 70,
+            max_active_runs: 80,
+            max_queue_depth: 90,
+            max_journal_batch_bytes: 100,
+            max_step_budget_per_tick: 110,
+            max_transitions_per_tick: 120,
+        };
+        let budget = super::AggregateResourceBudget {
+            max_steps_executable: 1,
+            max_action_tickets: 2,
+            max_parallel_in_flight: 3,
+            max_retries_per_action: 4,
+            max_gather_pages: 5,
+            max_gather_items: 6,
+            max_for_each_iterations: 7,
+            max_together_branches: 8,
+            max_repeat_attempts: 9,
+            max_run_time_seconds: 10,
+            max_result_bytes: 11,
+            max_total_slots_written: 12,
+            max_queue_depth: 13,
+            max_journal_batch_bytes: 14,
+            max_step_budget_per_tick: 15,
+            max_transitions_per_tick: 16,
+        };
+
+        let summed = usage.try_add_budget(&budget);
+        match &summed {
+            Ok(next) => {
+                assert!(next.max_steps_executable == 11);
+                assert!(next.max_action_tickets == 22);
+                assert!(next.max_parallel_in_flight == 33);
+                assert!(next.max_gather_pages == 45);
+                assert!(next.max_gather_items == 56);
+                assert!(next.max_result_bytes == 71);
+                assert!(next.max_total_slots_written == 82);
+                assert!(next.max_active_runs == 81);
+                assert!(next.max_queue_depth == 103);
+                assert!(next.max_journal_batch_bytes == 114);
+                assert!(next.max_step_budget_per_tick == 125);
+                assert!(next.max_transitions_per_tick == 136);
+            }
+            Err(_) => assert!(false),
+        }
+        core::mem::forget(summed);
+
+        let overflowing = super::AggregateResourceUsage {
+            max_steps_executable: u64::MAX,
+            max_action_tickets: usage.max_action_tickets,
+            max_parallel_in_flight: usage.max_parallel_in_flight,
+            max_gather_pages: usage.max_gather_pages,
+            max_gather_items: usage.max_gather_items,
+            max_result_bytes: usage.max_result_bytes,
+            max_total_slots_written: usage.max_total_slots_written,
+            max_active_runs: usage.max_active_runs,
+            max_queue_depth: usage.max_queue_depth,
+            max_journal_batch_bytes: usage.max_journal_batch_bytes,
+            max_step_budget_per_tick: usage.max_step_budget_per_tick,
+            max_transitions_per_tick: usage.max_transitions_per_tick,
+        };
+        let result = overflowing.try_add_budget(&budget);
+        match &result {
+            Err(super::AggregateBudgetError::Overflow { resource }) => {
+                assert!(same_static_str(resource, "max_steps_executable"));
+            }
+            Ok(_) => assert!(false),
+            Err(_) => assert!(false),
+        }
+        core::mem::forget(result);
+    }
+
+    /// PO-011: aggregate capacity rejection reports exact resource/request/available.
+    #[kani::proof]
+    fn aggregate_usage_fits_within_rejects_over_capacity_fields() {
+        let usage = super::AggregateResourceUsage {
+            max_steps_executable: 11,
+            max_action_tickets: 20,
+            max_parallel_in_flight: 30,
+            max_gather_pages: 40,
+            max_gather_items: 50,
+            max_result_bytes: 60,
+            max_total_slots_written: 70,
+            max_active_runs: 80,
+            max_queue_depth: 90,
+            max_journal_batch_bytes: 100,
+            max_step_budget_per_tick: 110,
+            max_transitions_per_tick: 120,
+        };
+        let capacity = super::AggregateResourceCapacity {
+            max_steps_executable: 10,
+            max_action_tickets: 20,
+            max_parallel_in_flight: 30,
+            max_gather_pages: 40,
+            max_gather_items: 50,
+            max_result_bytes: 60,
+            max_total_slots_written: 70,
+            max_active_runs: 80,
+            max_queue_depth: 90,
+            max_journal_batch_bytes: 100,
+            max_step_budget_per_tick: 110,
+            max_transitions_per_tick: 120,
+        };
+
+        let result = usage.fits_within(&capacity);
+        match &result {
+            Err(super::AggregateBudgetError::CapacityExceeded {
+                resource,
+                requested,
+                available,
+            }) => {
+                assert!(same_static_str(resource, "max_steps_executable"));
+                assert!(*requested == 11);
+                assert!(*available == 10);
+            }
+            Ok(()) => assert!(false),
+            Err(_) => assert!(false),
+        }
+        core::mem::forget(result);
     }
 }
 
