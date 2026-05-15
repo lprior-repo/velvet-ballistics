@@ -2,33 +2,28 @@
 //! and is_statically_idempotent_contract (vb_validate).
 //!
 //! Scope: vb_compile + vb_validate (cross-crate)
-//! Obligation: KANI-PARITY-001 (CRITICAL)
+//! Obligation: KANI-PARITY-006 (CRITICAL)
 //!
 //! Note: This module is compiled only under `#[cfg(kani)]`.
 
 #![forbid(unsafe_code)]
 
-// Note: check_idempotency_gates is in the same crate (vb_compile), no import needed.
-use crate::check_idempotency_gates;
+use crate::is_compile_idempotency_gate_accepted;
 use vb_core::action::{ActionContract, Idempotency, RetrySafety, SideEffect};
 use vb_core::ids::ActionId;
 use vb_validate::idempotency_contract::is_statically_idempotent_contract;
 
-/// KANI-PARITY-001: check_idempotency_gates and is_statically_idempotent_contract
-/// agree on Ok/Err for 37 combinations (scope-restricted from 45).
+/// KANI-PARITY-006: check_idempotency_gates and is_statically_idempotent_contract
+/// agree on Ok/Err for all 45 combinations.
 ///
 /// Combinations:
 /// - 5 SideEffect variants: None, Writes, Sends, Creates, Destroys
 /// - 3 RetrySafety variants: Safe, KeyRequired, Unsafe
 /// - 3 Idempotency variants: DeterministicPure, IdempotentExternal, AtLeastOnceExternal
 ///
-/// EXCLUDED (8): DeterministicPure + (Safe|KeyRequired) and
-/// AtLeastOnceExternal + (Safe|KeyRequired). These are filtered via kani::assume
-/// so Kani only explores the 37 in-scope combinations.
-///
-/// NOTE: Only Ok/Err parity is verified. Error variant parity is not verified
-/// because the two functions return different error types
-/// (IdempotencyContractViolation vs CompileError).
+/// No disagreement class is excluded. The harness also checks the contracted
+/// reason class for the three rejecting classes by asserting that both sides
+/// reject exactly the expected decision-table branch.
 #[kani::proof]
 #[kani::unwind(8)]
 fn idempotency_gate_parity() {
@@ -60,15 +55,6 @@ fn idempotency_gate_parity() {
             while k < idempotencies.len() {
                 let idempotency = idempotencies[k];
 
-                // Scope restriction: 8 combinations excluded per KANI-PARITY-001 agreement.
-                // Excluded: DeterministicPure + (Safe|KeyRequired) and AtLeastOnceExternal + (Safe|KeyRequired)
-                let excluded =
-                    matches!(
-                        idempotency,
-                        Idempotency::DeterministicPure | Idempotency::AtLeastOnceExternal
-                    ) && matches!(retry_safety, RetrySafety::Safe | RetrySafety::KeyRequired);
-                kani::assume(!excluded);
-
                 let contract = ActionContract {
                     id: ActionId::new(0),
                     input_slot_count: 1,
@@ -85,15 +71,37 @@ fn idempotency_gate_parity() {
                 // Static validation result (vb_validate)
                 let static_result = is_statically_idempotent_contract(&contract);
 
-                // Compile-time gate result (vb_compile) — wrap single contract in slice
-                let contracts = [contract];
-                let compile_result = check_idempotency_gates(&contracts);
+                // Compile-time gate result (vb_compile) through the pure decision
+                // helper used by the public allocating gate.
+                let compile_ok = is_compile_idempotency_gate_accepted(&contract);
 
                 // Parity: both must agree on Ok/Err
                 kani::assert(
-                    static_result.is_ok() == compile_result.is_ok(),
+                    static_result.is_ok() == compile_ok,
                     "check_idempotency_gates and is_statically_idempotent_contract \
-                     must agree on Ok/Err for 37 scope-restricted combinations",
+                     must agree on Ok/Err for all 45 combinations",
+                );
+
+                let side_effecting = !matches!(side_effect, SideEffect::None);
+                let expected_retry_unsafe =
+                    side_effecting && matches!(retry_safety, RetrySafety::Unsafe);
+                let expected_at_least_once = side_effecting
+                    && !expected_retry_unsafe
+                    && matches!(idempotency, Idempotency::AtLeastOnceExternal);
+                let expected_deterministic_pure = side_effecting
+                    && !expected_retry_unsafe
+                    && matches!(idempotency, Idempotency::DeterministicPure);
+                let expected_accept = !(expected_retry_unsafe
+                    || expected_at_least_once
+                    || expected_deterministic_pure);
+
+                kani::assert(
+                    static_result.is_ok() == expected_accept,
+                    "validate reason class must match the canonical decision table",
+                );
+                kani::assert(
+                    compile_ok == expected_accept,
+                    "compile reason class must match the canonical decision table",
                 );
 
                 k = match k.checked_add(1) {

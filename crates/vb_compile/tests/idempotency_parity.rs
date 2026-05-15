@@ -114,7 +114,7 @@ fn parity_idempotent_external_safe_or_key_required_accepts() {
 }
 
 #[test]
-fn parity_at_least_once_external_with_safe_or_key_required_disagree() {
+fn parity_at_least_once_external_with_safe_or_key_required_rejected_by_both() {
     let mut id = 300;
     for side_effect in [
         SideEffect::Writes,
@@ -134,14 +134,48 @@ fn parity_at_least_once_external_with_safe_or_key_required_disagree() {
                 !cp_ok,
                 "compile rejects AtLeastOnceExternal+{retry_safety:?}"
             );
+            assert!(
+                !static_ok(&c),
+                "static rejects AtLeastOnceExternal+{retry_safety:?}"
+            );
             id += 1;
         }
     }
 }
 
 #[test]
-fn parity_exhaustive_37_agreed_cases() {
-    let side_effects_non_none = [
+fn parity_deterministic_pure_with_safe_or_key_required_rejected_by_both() {
+    let mut id = 400;
+    for side_effect in [
+        SideEffect::Writes,
+        SideEffect::Sends,
+        SideEffect::Creates,
+        SideEffect::Destroys,
+    ] {
+        for retry_safety in [RetrySafety::Safe, RetrySafety::KeyRequired] {
+            let c = contract(
+                id,
+                side_effect,
+                Idempotency::DeterministicPure,
+                retry_safety,
+            );
+            assert!(
+                !compile_ok(&c),
+                "compile rejects DeterministicPure+{retry_safety:?}"
+            );
+            assert!(
+                !static_ok(&c),
+                "static rejects DeterministicPure+{retry_safety:?}"
+            );
+            id += 1;
+        }
+    }
+}
+
+#[test]
+fn parity_exhaustive_all_45_cases() {
+    let side_effects = [
+        SideEffect::None,
         SideEffect::Writes,
         SideEffect::Sends,
         SideEffect::Creates,
@@ -149,9 +183,8 @@ fn parity_exhaustive_37_agreed_cases() {
     ];
 
     let mut agree_count = 0usize;
-    let mut at_least_once_count = 0usize;
 
-    for side_effect in side_effects_non_none.iter().copied() {
+    for side_effect in side_effects.iter().copied() {
         for retry_safety in [
             RetrySafety::Safe,
             RetrySafety::KeyRequired,
@@ -166,33 +199,16 @@ fn parity_exhaustive_37_agreed_cases() {
                 let s_ok = static_ok(&c);
                 let cp_ok = compile_ok(&c);
 
-                let is_disagreement_case = (retry_safety == RetrySafety::Safe
-                    || retry_safety == RetrySafety::KeyRequired)
-                    && (idempotency == Idempotency::AtLeastOnceExternal
-                        || idempotency == Idempotency::DeterministicPure);
-
-                if is_disagreement_case {
-                    at_least_once_count += 1;
-                } else {
-                    assert_eq!(
-                        s_ok, cp_ok,
-                        "agreed case must match: {side_effect:?}+{retry_safety:?}+{idempotency:?}"
-                    );
-                    agree_count += 1;
-                }
+                assert_eq!(
+                    s_ok, cp_ok,
+                    "all cases must match: {side_effect:?}+{retry_safety:?}+{idempotency:?}"
+                );
+                agree_count += 1;
             }
         }
     }
 
-    assert_eq!(
-        agree_count, 20,
-        "empirical: 20 agreed among non-None (Unsafe 12 + Safe/Key IdempotentExternal 8)"
-    );
-    assert_eq!(
-        at_least_once_count, 16,
-        "empirical: 16 disagreements (AtLeastOnceExternal 8 + DeterministicPure 8 with Safe/KeyRequired)"
-    );
-    // Plus separately verified: 9 None cases (all agree)
+    assert_eq!(agree_count, 45, "full decision table parity");
 }
 
 #[test]

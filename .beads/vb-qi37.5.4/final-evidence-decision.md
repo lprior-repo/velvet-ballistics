@@ -78,3 +78,8 @@ This bead may proceed to landing. All evidence has been audited in the active ex
 - `.beads/vb-qi37.5.4/assurance-bundle.md` — Requirement-to-evidence mapping with waiver/debt table
 - `.beads/vb-qi37.5.4/truth-serum-report.md` — Active-context audit with command evidence
 - `.beads/vb-qi37.5.4/final-evidence-decision.md` — This file
+STATUS: APPROVED
+
+# Current-Source Revalidation Addendum - 2026-05-17
+
+The stale 37-combination approval is superseded. Current isolated source validates all 45 compile/validate idempotency combinations without exclusions. See `revalidation-20260517.md`.
