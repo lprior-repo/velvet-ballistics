@@ -25,6 +25,8 @@ pub mod blobs;
 pub mod codec;
 #[cfg(miri)]
 pub mod codec_miri_tests;
+#[cfg(miri)]
+pub mod admission_miri_tests;
 pub mod constants;
 pub mod error;
 pub mod events;
@@ -33,6 +35,8 @@ pub mod indexes;
 pub mod journal;
 #[cfg(kani)]
 pub mod kani_codec;
+#[cfg(kani)]
+pub mod kani_admission;
 pub mod keys;
 pub mod process_lock;
 pub mod queue;
