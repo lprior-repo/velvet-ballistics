@@ -75,7 +75,9 @@ impl RuntimeRecoveryBoundary for DurableFrameRecoveryBoundary {
 /// POST-002: returns Err when unsupported.pending_actions == true regardless of is_empty.
 #[verus::spec]
 fn reject_unsupported_live_frame_state_spec(seed: &RecoveryFrameSeed) -> bool {
-    !seed.unsupported.slot_taint && !seed.unsupported.pending_actions && !seed.unsupported.slot_values
+    !seed.unsupported.slot_taint
+        && !seed.unsupported.pending_actions
+        && !seed.unsupported.slot_values
 }
 
 fn reject_unsupported_live_frame_state(seed: &RecoveryFrameSeed) -> RuntimeResult<()> {
