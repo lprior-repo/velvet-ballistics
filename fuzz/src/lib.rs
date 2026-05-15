@@ -1509,3 +1509,116 @@ pub fn fuzz_vb_ui_model_postcard_decode(data: &[u8]) {
         );
     }
 }
+
+// ---------------------------------------------------------------------------
+// Target: vb-qi37.12 persisted payload decode
+// ---------------------------------------------------------------------------
+
+/// Exercises persisted journal payload decode on arbitrary, truncated, and
+/// checksum-corrupted bytes. Malformed persisted bytes must stay typed errors;
+/// they must never become an empty successful recovery value.
+pub fn fuzz_vb_qi37_12_persisted_payload_decode(data: &[u8]) {
+    let max_payload_len = vb_storage::MAX_JOURNAL_EVENT_PAYLOAD_BYTES;
+    let decoded = vb_storage::decode_record::<vb_storage::JournalEvent>(
+        data,
+        vb_storage::MAGIC_JOURNAL_EVENT,
+        max_payload_len,
+    );
+    match decoded {
+        Ok((_envelope, _event)) => {}
+        Err(error) => assert_malformed_decode_is_typed(error),
+    }
+
+    exercise_truncated_persisted_payload(max_payload_len);
+    exercise_corrupted_persisted_payload(max_payload_len);
+}
+
+fn exercise_truncated_persisted_payload(max_payload_len: u32) {
+    let event = vb_storage::JournalEvent::RunAccepted {
+        run: vb_core::RunId::new(1),
+        seq: vb_storage::EventSeq::new(0),
+        workflow: vb_core::WorkflowDigest::from_bytes([0x37; 32]),
+    };
+    let Ok(encoded) = vb_storage::encode_record(
+        vb_storage::MAGIC_JOURNAL_EVENT,
+        vb_storage::RecordKind::RunAccepted,
+        0,
+        &event,
+        max_payload_len,
+    ) else {
+        return;
+    };
+    let Some(truncated_len) = encoded.len().checked_sub(1) else {
+        return;
+    };
+    let Some(truncated) = encoded.get(..truncated_len) else {
+        return;
+    };
+    let result = vb_storage::decode_record::<vb_storage::JournalEvent>(
+        truncated,
+        vb_storage::MAGIC_JOURNAL_EVENT,
+        max_payload_len,
+    );
+    assert!(
+        matches!(result, Err(vb_storage::JournalError::UnexpectedEof)),
+        "truncated persisted payload must fail closed as UnexpectedEof"
+    );
+}
+
+fn exercise_corrupted_persisted_payload(max_payload_len: u32) {
+    let event = vb_storage::JournalEvent::RunAccepted {
+        run: vb_core::RunId::new(2),
+        seq: vb_storage::EventSeq::new(0),
+        workflow: vb_core::WorkflowDigest::from_bytes([0x12; 32]),
+    };
+    let Ok(mut encoded) = vb_storage::encode_record(
+        vb_storage::MAGIC_JOURNAL_EVENT,
+        vb_storage::RecordKind::RunAccepted,
+        0,
+        &event,
+        max_payload_len,
+    ) else {
+        return;
+    };
+    let Some(last) = encoded.last_mut() else {
+        return;
+    };
+    *last ^= 0xA5;
+    let result = vb_storage::decode_record::<vb_storage::JournalEvent>(
+        &encoded,
+        vb_storage::MAGIC_JOURNAL_EVENT,
+        max_payload_len,
+    );
+    assert!(
+        matches!(result, Err(vb_storage::JournalError::PayloadDigestMismatch)),
+        "corrupt persisted payload must fail closed as PayloadDigestMismatch"
+    );
+}
+
+/// Asserts that a malformed decode error is a known typed variant.
+///
+/// # Panics
+/// Panics if `error` is an unknown `JournalError` variant not explicitly listed.
+/// This ensures the fuzz oracle is exhaustive over all typed decode error variants
+/// and fails closed when a new untyped variant is introduced.
+fn assert_malformed_decode_is_typed(error: vb_storage::JournalError) {
+    match error {
+        vb_storage::JournalError::UnexpectedEof
+        | vb_storage::JournalError::HeaderChecksumMismatch
+        | vb_storage::JournalError::PayloadDigestMismatch
+        | vb_storage::JournalError::PostcardDecodeFailed
+        | vb_storage::JournalError::BadMagic { .. }
+        | vb_storage::JournalError::PayloadTooLarge { .. }
+        | vb_storage::JournalError::RecordKindFamilyMismatch { .. }
+        | vb_storage::JournalError::UnknownRecordKind { .. }
+        | vb_storage::JournalError::UnsupportedSchemaVersion { .. }
+        | vb_storage::JournalError::HeaderLengthMismatch { .. }
+        | vb_storage::JournalError::SequenceOverflow => {}
+        // Fail closed: unknown error variants must not be silently accepted.
+        // The fuzz oracle must enumerate all known typed decode errors explicitly.
+        unknown => panic!(
+            "unknown typed decode error variant in fuzz oracle: {:?}",
+            unknown
+        ),
+    }
+}

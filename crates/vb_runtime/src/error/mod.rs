@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use vb_core::ids::RunId;
 
 /// Runtime error type.
 #[derive(Debug, Clone)]
@@ -102,6 +103,13 @@ pub enum RuntimeError {
         size: u32,
         /// Maximum allowed payload size in bytes.
         max: u32,
+    },
+    /// Deterministic engine drive failed and the cause must survive terminal failure handling.
+    EngineDriveFailed {
+        /// Run identifier.
+        run: RunId,
+        /// Preserved error source from the engine.
+        source: Box<vb_core::errors::CoreError>,
     },
 }
 

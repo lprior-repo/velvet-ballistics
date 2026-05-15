@@ -256,3 +256,10 @@ path = "src/bin/vb_ui_model_postcard_decode.rs"
 test = false
 doc = false
 bench = false
+
+[[bin]]
+name = "vb_qi37_12_persisted_payload_decode"
+path = "src/bin/vb_qi37_12_persisted_payload_decode.rs"
+test = false
+doc = false
+bench = false

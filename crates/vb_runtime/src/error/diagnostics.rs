@@ -6,6 +6,7 @@ impl RuntimeError {
     pub const STORAGE_ERROR_RUNTIME_CODE: &str = "STORAGE_ERROR";
     pub const ADMISSION_DURABILITY_ERROR_RUNTIME_CODE: &str = "ADMISSION_DURABILITY_ERROR";
     pub const ACTION_FAILED_RUNTIME_CODE: &str = "ACTION_FAILED";
+    pub const ENGINE_DRIVE_FAILED_RUNTIME_CODE: &str = "ENGINE_DRIVE_FAILED";
 
     pub const QUEUE_FULL_CODE: DiagnosticCode = DiagnosticCode::new(0x2001);
     pub const RUN_NOT_FOUND_CODE: DiagnosticCode = DiagnosticCode::new(0x2002);
@@ -32,6 +33,7 @@ impl RuntimeError {
     pub const ENCODE_FAILED_CODE: DiagnosticCode = DiagnosticCode::new(0x2013);
     pub const SECRET_RESULT_NOT_ALLOWED_CODE: DiagnosticCode = DiagnosticCode::new(0x2016);
     pub const IPC_PAYLOAD_SIZE_EXCEEDED_CODE: DiagnosticCode = DiagnosticCode::new(0x2017);
+    pub const ENGINE_DRIVE_FAILED_CODE: DiagnosticCode = DiagnosticCode::new(0x2018);
 
     #[must_use]
     pub fn diagnostic_code(&self) -> DiagnosticCode {
@@ -69,6 +71,7 @@ impl RuntimeError {
             Self::EncodeFailed => Self::ENCODE_FAILED_CODE,
             Self::SecretResultNotAllowed => Self::SECRET_RESULT_NOT_ALLOWED_CODE,
             Self::IpcPayloadSizeExceeded { .. } => Self::IPC_PAYLOAD_SIZE_EXCEEDED_CODE,
+            Self::EngineDriveFailed { .. } => Self::ENGINE_DRIVE_FAILED_CODE,
         }
     }
 
@@ -92,6 +95,7 @@ impl RuntimeError {
             Self::InvalidActionCompletion
             | Self::StaleAttempt { .. }
             | Self::AttemptBeyondMax { .. } => Some(Self::ACTION_FAILED_RUNTIME_CODE),
+            Self::EngineDriveFailed { .. } => Some(Self::ENGINE_DRIVE_FAILED_RUNTIME_CODE),
             _ => None,
         }
     }
