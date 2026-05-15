@@ -1,3 +1,5 @@
+use super::types::ShardCommandQueue;
+
 impl Shard {
     /// Creates a new shard with the given configuration.
     pub fn new(config: ShardConfig) -> Self {
@@ -11,7 +13,8 @@ impl Shard {
         artifact_store: crate::admission::SharedAcceptedArtifactStore,
     ) -> Self {
         Self {
-            command_queue: ArrayQueue::new(config.command_queue_capacity),
+            command_queue: ShardCommandQueue::new(config.command_queue_capacity)
+                .expect("ShardConfig validates command_queue_capacity; qed"),
             runs: IndexMap::new(),
             runtime_states: IndexMap::new(),
             journal_sequences: IndexMap::new(),
@@ -53,8 +56,7 @@ impl Shard {
             _ => {}
         }
         self.command_queue
-            .push(cmd)
-            .map_err(|_| RuntimeError::QueueFull)
+            .enqueue(cmd)
     }
 
     /// Returns the number of commands currently in the queue.
@@ -66,9 +68,7 @@ impl Shard {
     /// Returns the remaining free slots in the command queue.
     #[must_use]
     pub fn remaining_capacity(&self) -> usize {
-        self.command_queue
-            .capacity()
-            .saturating_sub(self.command_queue.len())
+        self.command_queue.remaining_capacity()
     }
 
     /// Returns true if the command queue is full.
