@@ -1,9 +1,9 @@
 # State — vb-core-accepted-artifact-format
 
 bead_id: vb-core-accepted-artifact-format
-status: active
-current_state: 12
-owner_state: 12
+status: closed
+current_state: 15
+owner_state: 15
 created: 2026-05-15
 rerun_from: 3
 
@@ -116,24 +116,57 @@ Formal counterexample confirms gate_count mismatch:
 - BLOCK_LOCAL: NOT TRIGGERED
 - BLOCK_REGRESSION: NOT TRIGGERED
 
-## State History (Updated)
+## S13 Evidence Packaging + Truth-Serum
+
+**STATUS**: COMPLETE
+
+- assurance-bundle.md: written with full requirement coverage (16 clauses mapped)
+- truth-serum-report.md: written with PASS status — all artifacts exist, JSONL valid, approvals confirmed
+- final-evidence-decision.md: written with STATUS: APPROVED
+
+## S14 Landing
+
+**STATUS**: COMPLETE
+
+- landing-report.md: written
+- Git push: SUCCESS (origin/main updated)
+- Git status: clean (up to date with origin/main)
+- Dolt push: SUCCESS (bead data synced to dolt remote)
+- Bead close: PENDING (to be executed by orchestrator)
+
+## S15 Cleanup
+
+**STATUS**: COMPLETE
+
+- cleanup-report.md: written
+- Workspace: clean — no temp files, no untracked files, no stashed changes
+
+## State History (Final)
 
 - state: 3 (Contract complete) — 2026-05-15
 - state: 4 (Proof Planning) — 2026-05-15
 - state: 5 (Proof Writing) — 2026-05-15
 - state: 6 (Proof Review APPROVED) — 2026-05-15
 - state: 10 (Holzman-Rust Implementation No-Op) — 2026-05-15
-- state: 11 (Formal Verification APPROVED) — 2026-05-15 ← COMPLETED
-- state: 12 (Black-Hat Review APPROVED) — 2026-05-15 ← CURRENT
+- state: 11 (Formal Verification APPROVED) — 2026-05-15
+- state: 12 (Black-Hat Review APPROVED) — 2026-05-15
+- state: 13 (Evidence Packaging APPROVED) — 2026-05-15
+- state: 14 (Landing COMPLETE) — 2026-05-15 ← COMPLETED
+- state: 15 (Cleanup COMPLETE) — 2026-05-15 ← CURRENT
 
-## Transition History (Updated)
+## Transition History (Final)
 
 - from: 6 (Proof Review APPROVED) → to: 10 (Holzman-Rust Implementation) — 2026-05-15
 - from: 10 (Holzman-Rust No-Op) → to: 11 (Formal Verification) — 2026-05-15
 - from: 11 (Formal Verification APPROVED) → to: 12 (Black-Hat Review) — 2026-05-15
+- from: 12 (Black-Hat APPROVED) → to: 13 (Evidence Packaging) — 2026-05-15
+- from: 13 (Evidence Packaging APPROVED) → to: 14 (Landing) — 2026-05-15
+- from: 14 (Landing COMPLETE) → to: 15 (Cleanup) — 2026-05-15
 
-## Next State
+## Bead Completion
 
-- state: 13 (Evidence Packaging + Truth-Serum)
-- depends_on: formal-verification-report.md (done), black-hat-review.md (done)
-- Artifacts required: assurance-bundle.md, truth-serum-report.md, final-evidence-decision.md
+**STATUS**: CLOSED
+
+This bead is complete. The AcceptedArtifact format contract has been formally verified. KANI-MISMATCH-001 was confirmed as a specification finding requiring follow-on resolution via `vb-core-gate-count-resolution` (Option D: versioned AcceptedArtifact format recommended).
+
+**Follow-on bead required**: `vb-core-gate-count-resolution`
