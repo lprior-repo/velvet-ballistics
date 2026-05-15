@@ -23,9 +23,9 @@ verus verification/verus/recovery_verification.rs
 ```
 **Result**: 7 verified, 0 errors
 
-### Source Annotations Confirmed
-- `crates/vb_runtime/src/recovery.rs:77`: `reject_unsupported_live_frame_state_spec` — POST-001, POST-002 captured
-- `crates/vb_storage/src/recovery/recover.rs:63`: `verify_digests_spec` — POST-003 documented (GAP-3 deferred)
+### Standalone Proof Model Confirmed
+- `verification/verus/recovery_verification.rs`: `spec_reject_unsupported` captures POST-001 and POST-002.
+- `verification/verus/recovery_verification.rs`: `spec_verify_action_abi_digest` and `spec_verify_policy_digest` document POST-003 with GAP-3 deferred.
 
 ---
 

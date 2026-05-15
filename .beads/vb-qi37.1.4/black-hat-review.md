@@ -34,14 +34,9 @@
 - Scenario name changed from `reject_returns_ok_when_pending_actions_unsupported_but_empty` to `reject_returns_err_when_pending_actions_unsupported_but_empty`
 - Note changed from documenting buggy behavior to documenting correct POST-002 behavior
 
-### Verus spec parity (`recovery.rs:77-79`):
-```rust
-#[verus::spec]
-fn reject_unsupported_live_frame_state_spec(seed: &RecoveryFrameSeed) -> bool {
-    !seed.unsupported.slot_taint && !seed.unsupported.pending_actions && !seed.unsupported.slot_values
-}
-```
-Spec = true ↔ all three unsupported flags are false ↔ function returns `Ok(())`. Implementation checks `any_true → Err`. LOGICALLY EQUIVALENT. ✓
+### Verus proof parity (`verification/verus/recovery_verification.rs`):
+
+`spec_reject_unsupported` is the standalone Verus model for the production fail-closed gate. It rejects `slot_values`, `slot_taint`, `action_payloads`, and `pending_actions`; the production implementation checks the same unsupported-state flags and returns `Err(RuntimeError::InvalidRecoveryHydration)` when any active flag is set. LOGICALLY EQUIVALENT. ✓
 
 ---
 

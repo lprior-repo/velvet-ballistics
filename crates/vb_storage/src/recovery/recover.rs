@@ -50,29 +50,6 @@ pub fn check_compiled_ir_digest(
     }
 }
 
-/// Postcondition spec for verify_digests.
-/// POST-003: returns Ok only when ALL digests match at the requested level:
-///   - WorkflowSourceOnly: workflow source digest matches
-///   - WorkflowAndIr: workflow source AND compiled IR digests match
-///   - Full: workflow source AND compiled IR AND action ABI AND policy digests all match
-///
-/// GAP-3: The current implementation defers action ABI and policy digest verification.
-/// The spec documents the intended POST-003 behavior pending implementation of
-/// lookup_action_abi_digest and lookup_policy_digest functions.
-#[verus::spec]
-fn verify_digests_spec(
-    journal: &FjallJournal,
-    run: RunId,
-    workflow_digest: WorkflowDigest,
-    ir_digest: WorkflowDigest,
-    found_ir_digest: WorkflowDigest,
-    level: DigestCheck,
-    #[spec(skip)] _action_abi_digests: &[(vb_core::ActionId, WorkflowDigest)],
-    #[spec(skip)] _policy_digests: &[(vb_core::StepIdx, WorkflowDigest)],
-) -> bool {
-    true
-}
-
 /// Verifies all digests at the requested check level.
 /// POST-003: returns Ok only when ALL digests match (workflow, compiled IR, action ABI, policy).
 /// GAP-3: Action ABI and policy digest verification is deferred pending lookup function implementation.

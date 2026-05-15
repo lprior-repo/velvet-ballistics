@@ -35,7 +35,7 @@
 ## Verus Scope
 
 ### Rust target
-`crates/vb_runtime/src/recovery.rs` — `reject_unsupported_live_frame_state`, `DurableFrameRecoveryBoundary::hydrate_run_frame`
+`verification/verus/recovery_verification.rs` — standalone Verus model for `reject_unsupported_live_frame_state`, `DurableFrameRecoveryBoundary::hydrate_run_frame`, and `verify_digests` obligations. Production crates remain normal Rust and carry no Cargo dependency on Verus.
 
 ### Spec/proof function
 ```verus
@@ -71,7 +71,7 @@ proof fn proof_reject_unsupported_returns_error(seed: &RecoveryFrameSeed)
 
 ### Evidence command
 ```bash
-verus crates/vb_runtime/src/recovery.rs
+verus verification/verus/recovery_verification.rs
 ```
 Expected: Verus verifies all proof obligations with 0 errors.
 

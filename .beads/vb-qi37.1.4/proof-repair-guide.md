@@ -61,16 +61,11 @@ ls /path/to/source/crates/vb_storage/src/recovery/recover.rs  # must exist
 
 **No other proof repair can proceed until this is done.**
 
-#### PR-002: Rerun verus on restored source
+#### PR-002: Rerun Verus on standalone proof target
 
-Once `crates/vb_runtime/src/recovery.rs` exists, run:
+Production crates are normal Rust and do not carry verifier-only attributes. Run the standalone recovery proof model:
 ```bash
-verus crates/vb_runtime/src/recovery.rs
-```
-
-Once `crates/vb_storage/src/recovery/recover.rs` exists, run:
-```bash
-verus crates/vb_storage/src/recovery/recover.rs
+verus verification/verus/recovery_verification.rs
 ```
 
 #### PR-003: Fix KANI-CODEC harness (FAIL_LOCAL)

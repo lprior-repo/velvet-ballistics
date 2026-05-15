@@ -56,7 +56,7 @@
 
 | Verifier | Available | Command |
 |---|---|---|
-| verus | Available | `verus crates/vb_runtime/src/recovery.rs` |
+| verus | Available | `verus verification/verus/recovery_verification.rs` |
 | tlc | Available (workspace) | `tlc -config RecoveryReplay.cfg RecoveryReplay.tla` |
 | cargo test | Available | `cargo test -p vb_storage --test recovery_integration` |
 | cargo kani | Available | `cargo kani --workspace` |

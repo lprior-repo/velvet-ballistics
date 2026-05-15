@@ -21,53 +21,15 @@
 
 ---
 
-## Inline Verus Annotations Added to Source Files
+## Standalone Verus Proof Boundary
 
-### vb_runtime/src/recovery.rs
+### Production Source Boundary
 
-**Spec function added before `reject_unsupported_live_frame_state`:**
-```rust
-/// Postcondition spec for reject_unsupported_live_frame_state.
-/// POST-001: returns Err when unsupported.slot_taint == true regardless of slot_values.
-/// POST-002: returns Err when unsupported.pending_actions == true regardless of is_empty.
-#[verus::spec]
-fn reject_unsupported_live_frame_state_spec(seed: &RecoveryFrameSeed) -> bool {
-    !seed.unsupported.slot_taint && !seed.unsupported.pending_actions && !seed.unsupported.slot_values
-}
-```
+Production crates remain normal Rust and do not depend on Verus crates or verifier-only attributes. The formal model lives in `verification/verus/recovery_verification.rs` and is verified with the Verus CLI.
 
-**POST-001 captured**: spec returns true only when `slot_taint` is false
-**POST-002 captured**: spec returns true only when `pending_actions` unsupported is false
-
-### vb_storage/src/recovery/recover.rs
-
-**Spec function added before `verify_digests`:**
-```rust
-/// Postcondition spec for verify_digests.
-/// POST-003: returns Ok only when ALL digests match at the requested level:
-///   - WorkflowSourceOnly: workflow source digest matches
-///   - WorkflowAndIr: workflow source AND compiled IR digests match
-///   - Full: workflow source AND compiled IR AND action ABI AND policy digests all match
-///
-/// GAP-3: The current implementation defers action ABI and policy digest verification.
-/// The spec documents the intended POST-003 behavior pending implementation of
-/// lookup_action_abi_digest and lookup_policy_digest functions.
-#[verus::spec]
-fn verify_digests_spec(
-    journal: &FjallJournal,
-    run: RunId,
-    workflow_digest: WorkflowDigest,
-    ir_digest: WorkflowDigest,
-    found_ir_digest: WorkflowDigest,
-    level: DigestCheck,
-    #[spec(skip)] _action_abi_digests: &[(vb_core::ActionId, WorkflowDigest)],
-    #[spec(skip)] _policy_digests: &[(vb_core::StepIdx, WorkflowDigest)],
-) -> bool {
-    true
-}
-```
-
-**POST-003 captured**: spec documents that at `DigestCheck::Full` all digests must match. GAP-3 notes deferred implementation.
+**POST-001 captured**: `spec_reject_unsupported` rejects `slot_taint`.
+**POST-002 captured**: `spec_reject_unsupported` rejects `pending_actions` independent of payload length.
+**POST-003 captured**: `spec_verify_action_abi_digest` and `spec_verify_policy_digest` document the intended `DigestCheck::Full` behavior. GAP-3 notes deferred implementation.
 
 ---
 
@@ -88,13 +50,13 @@ verification results:: 7 verified, 0 errors
 
 ---
 
-## Spec Functions in Source Files
+## Spec Functions in Standalone Verus File
 
-### `reject_unsupported_live_frame_state_spec` (vb_runtime/src/recovery.rs:77)
+### `spec_reject_unsupported` (`verification/verus/recovery_verification.rs`)
 - POST-001: Err when `slot_taint` is true (independent of slot_values)
 - POST-002: Err when `pending_actions` unsupported is true (independent of is_empty)
 
-### `verify_digests_spec` (vb_storage/src/recovery/recover.rs:63)
+### `spec_verify_action_abi_digest` / `spec_verify_policy_digest` (`verification/verus/recovery_verification.rs`)
 - POST-003: returns Ok only when ALL digests match
 - GAP-3: Action ABI and policy digest verification deferred pending lookup function implementation
 
@@ -128,10 +90,7 @@ ensures forall|seed: SpecRecoveryFrameSeedEmpty|
 
 ## Architectural Notes
 
-Source files were modified to add inline `#[verus::spec]` annotations as requested. Note that:
-1. `#[spec(skip)]` is Verus syntax that standard Rust cannot parse
-2. The verification/verus/recovery_verification.rs file contains the full formal verification
-3. Cargo build may fail with source file annotations until processed by verus tool
+Production source intentionally contains no inline Verus attributes. This keeps Cargo builds independent of Verus packaging while the standalone proof model in `verification/verus/recovery_verification.rs` carries the formal obligations.
 
 ---
 
@@ -139,8 +98,8 @@ Source files were modified to add inline `#[verus::spec]` annotations as request
 
 - [x] Verus command actually ran and output "7 verified, 0 errors"
 - [x] Verification/verus/recovery_verification.rs file verified
-- [x] Inline spec functions added to vb_runtime/src/recovery.rs and vb_storage/src/recovery/recover.rs
-- [x] POST-001, POST-002, POST-003 formalized in source file specs
+- [x] Production Cargo dependencies and inline Verus specs removed
+- [x] POST-001, POST-002, POST-003 formalized in standalone Verus specs
 - [x] GAP-3 deferred implementation documented
 
 ---

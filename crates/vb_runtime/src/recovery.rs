@@ -70,19 +70,10 @@ impl RuntimeRecoveryBoundary for DurableFrameRecoveryBoundary {
     }
 }
 
-/// Postcondition spec for reject_unsupported_live_frame_state.
-/// POST-001: returns Err when unsupported.slot_taint == true regardless of slot_values.
-/// POST-002: returns Err when unsupported.pending_actions == true regardless of is_empty.
-#[verus::spec]
-fn reject_unsupported_live_frame_state_spec(seed: &RecoveryFrameSeed) -> bool {
-    !seed.unsupported.slot_taint
-        && !seed.unsupported.pending_actions
-        && !seed.unsupported.slot_values
-}
-
 fn reject_unsupported_live_frame_state(seed: &RecoveryFrameSeed) -> RuntimeResult<()> {
     if seed.unsupported.slot_values
         || seed.unsupported.slot_taint
+        || seed.unsupported.action_payloads
         || seed.unsupported.pending_actions
     {
         Err(RuntimeError::InvalidRecoveryHydration)
@@ -347,6 +338,48 @@ mod tests {
                 slot_values: false,
                 slot_taint: false,
                 action_payloads: false,
+                pending_actions: false,
+            },
+        };
+        let boundary = DurableFrameRecoveryBoundary::from_seed(seed);
+
+        assert_eq!(
+            boundary.hydrate_run_frame(),
+            Err(RuntimeError::InvalidRecoveryHydration)
+        );
+    }
+
+    #[test]
+    fn durable_frame_recovery_boundary_rejects_unsupported_action_payloads() {
+        let summary = RecoveryRuntimeSummary {
+            run: RunId::new(23),
+            first_seq: EventSeq::new(0),
+            last_seq: EventSeq::new(1),
+            workflow: None,
+            steps_started: 1,
+            steps_succeeded: 0,
+            actions_scheduled: 1,
+            actions_resolved: 0,
+            suspensions: 0,
+            slots_written: 0,
+            terminal: None,
+        };
+        let seed = RecoveryFrameSeed {
+            summary,
+            first_step: StepIdx::ZERO,
+            step_count: 1,
+            slot_count: 0,
+            pc: StepIdx::ZERO,
+            steps: vec![RecoveredStepEntry {
+                step: StepIdx::ZERO,
+                state: RecoveredStepState::Running,
+            }],
+            slots: Vec::new(),
+            pending_actions: Vec::new(),
+            unsupported: UnsupportedRecoveryState {
+                slot_values: false,
+                slot_taint: false,
+                action_payloads: true,
                 pending_actions: false,
             },
         };
