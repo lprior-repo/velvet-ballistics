@@ -1,7 +1,7 @@
-# State 13 — vb-core-replay-divergence-recovery
+# State 15 — vb-core-replay-divergence-recovery — COMPLETE
 
 - bead_id: vb-core-replay-divergence-recovery
-- state: 13
+- state: 15 (final)
 - source_checkout: /home/lewis/src/velvet-ballistics
 - isolated_workspace: /tmp/vb-ws/vb-core-replay-divergence-recovery
 - workspace_path_proof: |
@@ -10,44 +10,53 @@
     Is nested under source: NO
 - attempt: 1
 
-## State 12 Completion Summary — black-hat-reviewer
+## State 14 Completion Summary — landing-skill
 
-**STATUS: APPROVED** — `black-hat-review.md` at workspace root says STATUS: APPROVED.
-
-Recovery logic is correct. The 13 miri FAIL_LOCAL results are tooling false positives from miri's strict Stacked Borrows checking on crossbeam-skiplist (Fjall dependency) during test fixture initialization. All failures occur in test setup, not recovery code.
-
-No defects.md required.
-
-## State 13 Completion Summary — evidence-packaging + truth-serum
-
-Evidence packaging complete. All three State 13 artifacts produced:
-
-| Artifact | Status |
+| Gate | Evidence |
 |---|---|
-| assurance-bundle.md | COMPLETE — 13 requirements mapped to evidence |
-| truth-serum-report.md | PASS — all primary claims verified in active execution |
-| final-evidence-decision.md | **STATUS: APPROVED** |
+| Git commit | commit `43l61ot1` + landing-report commit |
+| Git push | `ok main` — origin/main reachable |
+| Dolt close (local) | `status=closed, closed_at=2026-05-15 05:49:11` |
+| Dolt push | BLOCKED — divergent history (no common ancestor) |
+| Bead artifacts | 30 files committed to `.beads/vb-core-replay-divergence-recovery/` |
 
-### Active-Context Evidence Verified
-- `cargo test --package vb_storage` → 983 passed (7 suites, 0.88s) ✓
-- `cargo test --package velvet-ballastics-workspace-tests --test vb_qi37_1_1_red_recovery_contract_test` → 19 passed ✓
-- `cargo clippy --package vb_storage -- -D warnings` → No issues found ✓
-- YAML grep (CC-001): 0 matches ✓
-- verification-ledger.jsonl: 14 entries, valid JSONL ✓
-- traceability-matrix.jsonl: 13 entries, valid JSONL ✓
-- black-hat-review.md: STATUS: APPROVED confirmed ✓
+## State 15 Completion Summary — cleanup
 
-### Gap Register (Non-Blocking)
-- test-plan-review.md: MISSING — compensated by formal-verification-report.md + proof-review.md
-- test-suite-review.md: MISSING — compensated by formal-verification-report.md + proof-review.md
-- test-writer-report.md: MISSING — compensated by confirmed green test artifacts
-- machine-gate-report.md: MISSING — formal-verification-report.md serves this role
-- formal-verification-report.md explicit STATUS line: GAP — black-hat APPROVED is blocking gate
+| Item | Status |
+|---|---|
+| Landing report | `.beads/.../landing-report.md` committed and pushed |
+| Cleanup report | `.beads/.../cleanup-report.md` committed and pushed |
+| Git artifacts | All pushed to `origin/main` |
+| Worktree | PRESERVED — unrelated source changes present |
+| DoltHub sync | INCOMPLETE — divergent history requires force-push or manual resolution |
 
-### Waiver Rationale (13 Miri FAIL_LOCAL)
-All 13 FAIL_LOCAL share identical root cause: miri Stacked Borrows false positive in crossbeam-skiplist during FjallJournal::open in test setup. Compensating evidence: 983 native tests pass, 19 proptest pass, grep CC-001 PASS, black-hat APPROVED.
+## Resolution Required: Dolt Divergence
 
-### Requirement Disposition
-All 13 contract clauses (CC-001–CC-008, INV-001–INV-005): APPROVED (direct PASS or waived with compensating evidence).
+Local Dolt and DoltHub have no common ancestor. To sync:
 
-Next gate: State 14 (landing-skill)
+```bash
+cd ~/.beads/dolt
+dolt push -f origin main  # WARNING: overwrites remote with local history
+```
+
+Or accept the gap: git artifacts are correct, DoltHub shows stale state.
+
+## Bead Close Evidence
+
+```sql
+SELECT id, title, status, closed_at FROM dolt.issues
+WHERE id = 'vb-core-replay-divergence-recovery';
+-- status=closed, closed_at=2026-05-15 05:49:11
+```
+
+## Final Verdict
+
+**STATUS: COMPLETE (with dolt sync caveat)**
+
+The bead's primary deliverable — committed evidence on main — is complete. Source code was not changed (this was an evidence-only bead). The 14 obligations were executed (1 PASS, 13 FAIL_LOCAL waived as tooling false positives), black-hat APPROVED, final-evidence-decision APPROVED.
+
+**Remaining gap**: DoltHub push blocked by divergent history. Requires force-push or manual resolution.
+
+---
+
+*STATE.md — vb-core-replay-divergence-recovery — Terminal state: 15 — COMPLETE*
