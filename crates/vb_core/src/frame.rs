@@ -658,6 +658,21 @@ mod tests {
     }
 
     #[test]
+    fn step_state_invalid_returns_internal_invariant_violation() -> CoreResult<()> {
+        let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, 1)?;
+        frame.mark_succeeded(StepIdx::ZERO)?;
+        let result = frame.mark_running(StepIdx::ZERO);
+        assert_eq!(
+            result,
+            Err(CoreError::InternalInvariantViolation {
+                reason: "invalid_state_transition"
+            })
+        );
+        assert_eq!(frame.step_state(StepIdx::ZERO)?, StepState::Succeeded);
+        Ok(())
+    }
+
+    #[test]
     fn frame_mark_running_out_of_bounds_returns_step_state_out_of_bounds() {
         let mut frame = match RunFrame::new(RunId::new(1), StepIdx::ZERO, 3, 1) {
             Ok(frame) => frame,
@@ -2067,6 +2082,15 @@ mod frame_kani_harnesses {
                 }
             }
         }
+    }
+
+    /// Required vb-qi37.4.2 aggregate harness for INV-010 StepState obligations.
+    #[kani::proof]
+    fn kani_step_state() {
+        validate_transition_exhaustive_64();
+        validate_transition_idempotent();
+        validate_transition_running_to_all_valid_targets();
+        validate_transition_terminal_blocks_all();
     }
 }
 

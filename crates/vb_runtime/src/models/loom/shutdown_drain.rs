@@ -7,6 +7,8 @@
 //! Model: Shutdown drain ordering.
 //! Invariant: all pending work drained after shutdown.
 
+use std::sync::Arc;
+
 /// Verifies that shutdown drains all pending work in correct order.
 /// Loom explores all interleavings of shutdown and work completion.
 #[test]

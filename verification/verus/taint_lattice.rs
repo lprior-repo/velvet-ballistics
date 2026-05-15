@@ -1,7 +1,7 @@
 // Verus proof obligations for the taint lattice.
 //
 // Source model: `crates/vb_proof_kernels/src/taint.rs`.
-// Registry obligations: VB-CORE-TAINT-001 through VB-CORE-TAINT-005.
+// Registry obligations: VB-CORE-TAINT-001 through VB-CORE-TAINT-006.
 // Exact verifier command: `verus verification/verus/taint_lattice.rs`.
 
 use vstd::prelude::*;

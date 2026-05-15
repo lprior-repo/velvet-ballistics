@@ -1,7 +1,7 @@
 // Verus proof obligations for canonical step-state transitions.
 //
 // Source model: `crates/vb_proof_kernels/src/step_state.rs`.
-// Registry obligation: VB-CORE-STATE-001.
+// Registry obligation: VB-CORE-STATE-001-VERUS.
 // Exact verifier command: `verus verification/verus/step_state_machine.rs`.
 
 use vstd::prelude::*;
