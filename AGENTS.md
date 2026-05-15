@@ -34,8 +34,10 @@ bd dolt push         # Push beads data to remote
 
 - Active remote: `https://doltremoteapi.dolthub.com/priorlewis43/velvet-ballistics`
 - Branch: `main`
+- Active backend is server mode only: `.beads/metadata.json` must keep `dolt_mode` as `server` and point at the bd-managed Dolt SQL server.
+- Never use embedded mode in this repository. `.beads/embeddeddolt/` is a trap directory; if it exists, remove it before running `bd`.
+- Run `bash scripts/check-beads-server-mode.sh` if `bd context`, `bd where`, or any `bd dolt` command reports embedded mode.
 - Do not commit `.beads/dolt`, `.beads/backup`, `.beads/embeddeddolt`, locks, or runtime database state.
-- Embedded mode may require serial `bd` commands because only one writer can hold the lock.
 
 ## Build And CI
 

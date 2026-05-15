@@ -60,6 +60,7 @@ tasks:
     deps:
       - 'nightly-feature-gate'
       - 'agent-cli-contract'
+      - 'beads-server-mode'
     toolchains:
       - rust
     inputs:
@@ -88,6 +89,18 @@ tasks:
       - 'crates/velvet_ballastics/src/**/*'
       - 'velvet-ballistics-MASTER.md'
       - 'scripts/check-agent-cli-contract.sh'
+      - '.moon/tasks/all.yml'
+    options:
+      runInCI: true
+
+  beads-server-mode:
+    command: 'bash scripts/check-beads-server-mode.sh'
+    inputs:
+      - 'scripts/check-beads-server-mode.sh'
+      - '.beads/metadata.json'
+      - '.beads/config.yaml'
+      - '.gitignore'
+      - 'AGENTS.md'
       - '.moon/tasks/all.yml'
     options:
       runInCI: true
