@@ -1188,9 +1188,10 @@ fn bh_drive_evidence_step_succeeded_not_emitted_for_awaiting_action() {
     match result {
         Ok(RuntimeSignal::AwaitingAction(_)) => {}
         other => {
-            // If the result is something else, that is still valid behavior,
-            // but we want to check the AwaitingAction path specifically.
-            let _ = other;
+            assert!(
+                other.is_err(),
+                "expected AwaitingAction or error, got {other:?}"
+            );
             return;
         }
     }
@@ -2094,7 +2095,10 @@ mod blackhat_engine {
         match result {
             Ok(RuntimeSignal::AwaitingAction(_)) => {}
             other => {
-                let _ = other;
+                assert!(
+                    other.is_err(),
+                    "expected AwaitingAction or error, got {other:?}"
+                );
                 return;
             }
         }

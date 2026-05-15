@@ -116,14 +116,10 @@ fn bdd_validate_rejects_invalid_parts() {
     // When: validate(parts) is called
     let result = validate(&parts);
     // Then: returns Err(ValidationError) with GATE_09 code
-    assert!(result.is_err());
-    if let Err(e) = result {
-        let msg = format!("{e}");
-        assert!(
-            msg.contains("SLOT") || msg.contains("slot"),
-            "expected slot-related error, got: {e}"
-        );
-    }
+    assert!(matches!(
+        result,
+        Err(ValidationError::SlotReferenceOutOfRange { .. })
+    ));
 }
 
 #[test]
@@ -133,7 +129,7 @@ fn bdd_validate_returns_validation_result_not_option() {
     // When: validate(parts) is called
     let result = validate(&parts);
     // Then: return type is ValidationResult<()>, not Option<()>
-    assert!(result.is_ok() || result.is_err());
+    assert_eq!(result, Ok(()));
 }
 
 // ===========================================================================
@@ -186,8 +182,10 @@ fn bdd_validate_does_not_modify_input() {
     let parts = make_parts(vec![finish_node(0, 0)], 1);
     let original_digest = parts.digest;
     // When: validate(parts) is called
-    let _ = validate(&parts);
-    // Then: parts.digest is unchanged
+    let result = validate(&parts);
+    // Then: parts.digest is unchanged and result is Ok
+    assert_eq!(result, Ok(()));
+    assert_eq!(parts.digest, original_digest);
     assert_eq!(parts.digest, original_digest);
 }
 
@@ -335,14 +333,10 @@ fn bdd_validation_error_contains_step_idx() {
     // When: validate is called
     let result = validate(&parts);
     // Then: error contains step_idx
-    assert!(result.is_err());
-    if let Err(e) = result {
-        let msg = format!("{e}");
-        assert!(
-            msg.contains("3") || msg.contains("slot"),
-            "expected error to reference node index or slot, got: {e}"
-        );
-    }
+    assert!(matches!(
+        result,
+        Err(ValidationError::SlotReferenceOutOfRange { .. })
+    ));
 }
 
 // ===========================================================================
@@ -364,7 +358,10 @@ fn bdd_validation_error_code_in_codes() {
     // When: validate is called
     let result = validate(&parts);
     // Then: error code is a known validation error
-    assert!(result.is_err());
+    assert!(matches!(
+        result,
+        Err(ValidationError::SlotReferenceOutOfRange { .. })
+    ));
 }
 
 // ===========================================================================
@@ -398,7 +395,10 @@ fn bdd_g07_rejects_stack_depth_65() {
     // When: validate_gate_07_expression_stack_depth is called
     let result = vb_validate::gates::validate_gate_07_expression_stack_depth(&parts);
     // Then: returns Err(ValidationError) with GATE_07 code
-    assert!(result.is_err());
+    assert!(matches!(
+        result,
+        Err(ValidationError::ExpressionStackExceeded { .. })
+    ));
 }
 
 #[test]
@@ -446,7 +446,10 @@ fn bdd_g08_rejects_unresolved_symbol() {
     // When: validate_gate_08_accessor_path_segments is called
     let result = vb_validate::gates::validate_gate_08_accessor_path_segments(&parts);
     // Then: returns Err(ValidationError) with GATE_08 code
-    assert!(result.is_err());
+    assert!(matches!(
+        result,
+        Err(ValidationError::AccessorSymbolOutOfBounds { .. })
+    ));
 }
 
 #[test]
@@ -493,7 +496,10 @@ fn bdd_g09_rejects_output_slot_out_of_bounds() {
     // When: validate_gate_09_slot_references is called
     let result = vb_validate::gates::validate_gate_09_slot_references(&parts);
     // Then: returns Err(ValidationError) with GATE_09 code
-    assert!(result.is_err());
+    assert!(matches!(
+        result,
+        Err(ValidationError::SlotReferenceOutOfRange { slot: 99, .. })
+    ));
 }
 
 #[test]
@@ -505,7 +511,10 @@ fn bdd_g09_rejects_entry_out_of_bounds() {
     // Note: entry validation is not in gate 9 per current implementation
     // This is a structural invariant tested elsewhere
     let result = validate(&parts);
-    assert!(result.is_err());
+    assert!(matches!(
+        result,
+        Err(ValidationError::LoopBodyStepOutOfRange { .. })
+    ));
 }
 
 #[test]
@@ -522,8 +531,11 @@ fn bdd_g09_rejects_next_step_out_of_bounds() {
     let parts = make_parts(vec![node], 1);
     // When: validate is called
     let result = validate(&parts);
-    // Then: returns error (either G10 or G11 depending on node kind)
-    assert!(result.is_err());
+    // Then: returns the structural step-range error from G11.
+    assert!(matches!(
+        result,
+        Err(ValidationError::LoopBodyStepOutOfRange { .. })
+    ));
 }
 
 #[test]
@@ -775,7 +787,10 @@ fn bdd_g11_rejects_foreach_with_malformed_body() {
     // When: validate_gate_11_loop_body_graph is called
     let result = vb_validate::gates::validate_gate_11_loop_body_graph(&parts);
     // Then: returns Err(ValidationError) with GATE_11 code
-    assert!(result.is_err());
+    assert!(matches!(
+        result,
+        Err(ValidationError::LoopBodyStepOutOfRange { .. })
+    ));
 }
 
 #[test]
@@ -884,7 +899,13 @@ fn bdd_g12_rejects_missing_contract_for_do_node() {
     let result =
         vb_validate::gates::validate_gate_12_action_contract_completeness(&parts, &contracts);
     // Then: returns Err(GATE_12) indicating missing contract
-    assert!(result.is_err());
+    assert!(matches!(
+        result,
+        Err(ValidationError::ActionContractMissing {
+            action_id: 99,
+            node_index: 0
+        })
+    ));
 }
 
 #[test]
@@ -969,7 +990,10 @@ fn bdd_g13_rejects_direct_cycle() {
     // When: validate_gate_13_no_slot_cycles is called
     let result = vb_validate::gates::validate_gate_13_no_slot_cycles(&parts);
     // Then: returns Err(GATE_13) with cycle description
-    assert!(result.is_err());
+    assert!(matches!(
+        result,
+        Err(ValidationError::SlotDependencyCycle { .. })
+    ));
 }
 
 #[test]
@@ -1011,7 +1035,10 @@ fn bdd_g13_rejects_transitive_cycle() {
     // When: validate_gate_13_no_slot_cycles is called
     let result = vb_validate::gates::validate_gate_13_no_slot_cycles(&parts);
     // Then: returns Err(GATE_13) with cycle description
-    assert!(result.is_err());
+    assert!(matches!(
+        result,
+        Err(ValidationError::SlotDependencyCycle { .. })
+    ));
 }
 
 #[test]
@@ -1113,7 +1140,10 @@ fn bdd_g14_rejects_incompatible_multi_writer_types() {
     // When: validate_gate_14_slot_type_consistency is called
     let result = vb_validate::gates::validate_gate_14_slot_type_consistency(&parts);
     // Then: returns Err(GATE_14) indicating type mismatch
-    assert!(result.is_err());
+    assert!(matches!(
+        result,
+        Err(ValidationError::SlotTypeInconsistency { slot: 0 })
+    ));
 }
 
 #[test]
@@ -1156,7 +1186,13 @@ fn bdd_g15_rejects_adjacent_nd_nodes() {
     // When: validate_gate_15_determinism_proof is called
     let result = vb_validate::gates::validate_gate_15_determinism_proof(&parts);
     // Then: returns Err(GATE_15) indicating missing suspension
-    assert!(result.is_err());
+    assert!(matches!(
+        result,
+        Err(ValidationError::NonDeterministicPath {
+            from_node: 0,
+            to_node: 1
+        })
+    ));
 }
 
 #[test]
@@ -1328,7 +1364,10 @@ fn bdd_validation_returns_specific_error_codes() {
     // When: validate is called
     let result = validate(&parts);
     // Then: returns specific error codes, not generic errors
-    assert!(result.is_err());
+    assert!(matches!(
+        result,
+        Err(ValidationError::SlotReferenceOutOfRange { .. })
+    ));
 }
 
 #[test]
@@ -1364,6 +1403,6 @@ fn bdd_validation_has_no_unwrap_in_pipeline() {
         kind: CompiledNodeKind::Nop,
     };
     let bad_parts = make_parts(vec![node], 1);
-    let _ = validate(&bad_parts);
+    let _result = validate(&bad_parts);
     // Then: no unwrap/expect in pipeline (verified by clippy in CI)
 }

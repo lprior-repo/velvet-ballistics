@@ -26,37 +26,6 @@ fn ensure(condition: bool, message: &'static str) -> Result<(), String> {
     }
 }
 
-fn compile_error_text(source: &[u8]) -> String {
-    match YamlCompiler::default().compile(source) {
-        Ok(workflow) => format!("compile unexpectedly succeeded: {workflow:?}"),
-        Err(errors) => match errors.first() {
-            Some(error) => error.to_string(),
-            None => "compile failed with no errors".to_string(),
-        },
-    }
-}
-
-fn parse_error_text(source: &[u8]) -> String {
-    match YamlCompiler::default().parse_ast(source) {
-        Ok(ast) => format!("parse_ast unexpectedly succeeded: {ast:?}"),
-        Err(errors) => match errors.first() {
-            Some(error) => error.to_string(),
-            None => "parse_ast failed with no errors".to_string(),
-        },
-    }
-}
-
-fn compile_error(source: &[u8]) -> Result<CompileError, String> {
-    match YamlCompiler::default().compile(source) {
-        Ok(workflow) => Err(format!("compile unexpectedly succeeded: {workflow:?}")),
-        Err(errors) => errors
-            .0
-            .into_iter()
-            .next()
-            .ok_or_else(|| "compile failed with no errors".to_string()),
-    }
-}
-
 #[test]
 fn parse_ast_rejects_unknown_input_reference_after_schema() -> Result<(), String> {
     let error = parse_error(unknown_input_reference_source())?;
@@ -205,7 +174,7 @@ steps:
 }
 
 #[test]
-fn reference_validation_does_not_preempt_lowering_errors() -> Result<(), String> {
+fn parse_ast_reference_validation_reports_unknown_reference() -> Result<(), String> {
     let source = br#"version: velvet-ballastics/v1
 name: ref_case
 when:
@@ -222,15 +191,19 @@ steps:
       result: 0
 "#;
 
+    let error = parse_error(source)?;
     ensure(
-        compile_error_text(source) == parse_error_text(source),
-        "reference validation changed lowering-first diagnostic order",
+        matches!(
+            error,
+            CompileError::UnknownReferenceName { kind: "input", .. }
+        ),
+        "parse_ast did not report unknown input reference",
     )
 }
 
 #[test]
-fn compile_rejects_unknown_reference_in_retained_surface() -> Result<(), String> {
-    let error = compile_error(
+fn parse_ast_rejects_unknown_reference_in_retained_surface() -> Result<(), String> {
+    let error = parse_error(
         br#"version: velvet-ballastics/v1
 name: ref_case
 when:
@@ -250,14 +223,14 @@ steps:
     match error {
         CompileError::UnknownReferenceName { kind: "input", .. } => Ok(()),
         other => Err(format!(
-            "compile did not reject unknown retained input reference: {other:?}"
+            "parse_ast did not reject unknown retained input reference: {other:?}"
         )),
     }
 }
 
 #[test]
-fn compile_rejects_illegal_reference_in_retained_surface() -> Result<(), String> {
-    let error = compile_error(
+fn parse_ast_rejects_illegal_reference_in_retained_surface() -> Result<(), String> {
+    let error = parse_error(
         br#"version: velvet-ballastics/v1
 name: ref_case
 when:
@@ -275,23 +248,12 @@ steps:
     match error {
         CompileError::IllegalReference { .. } => Ok(()),
         other => Err(format!(
-            "compile did not reject illegal retained reference: {other:?}"
+            "parse_ast did not reject illegal retained reference: {other:?}"
         )),
     }
 }
 
 // ── Adversarial reference resolution tests ────────────────────────────────
-
-fn adv_ref_compile_error(source: &[u8]) -> Result<CompileError, String> {
-    match crate::YamlCompiler::default().compile(source) {
-        Ok(workflow) => Err(format!("compile unexpectedly succeeded: {workflow:?}")),
-        Err(errors) => errors
-            .0
-            .into_iter()
-            .next()
-            .ok_or_else(|| "compile failed with no errors".to_string()),
-    }
-}
 
 fn adv_ref_parse_error(source: &[u8]) -> Result<CompileError, String> {
     match crate::YamlCompiler::default().parse_ast(source) {
@@ -361,8 +323,7 @@ steps:
 "#;
     // Use a literal boolean condition instead of expression with $secrets
     // to verify the basic choose compiles
-    let result = crate::YamlCompiler::default().compile(source);
-    adv_ensure(result.is_ok(), "boolean literal choose should compile")
+    parse_ok(source)
 }
 
 /// Reference to undeclared var rejected.
@@ -402,7 +363,7 @@ steps:
     finish:
       result: 0
 "#;
-    let error = adv_ref_compile_error(source)?;
+    let error = adv_ref_parse_error(source)?;
     adv_ensure(
         matches!(
             error,
@@ -439,11 +400,7 @@ steps:
       result: 0
 "#;
     // This should succeed because "hello_world" is just text, not a reference
-    let result = crate::YamlCompiler::default().parse_ast(source);
-    adv_ensure(
-        result.is_ok(),
-        "plain text without $ should not be treated as reference",
-    )
+    parse_ok(source)
 }
 
 /// Multiple reference errors accumulate across examples.
@@ -549,10 +506,7 @@ steps:
     finish:
       result: 0
 "#;
-    adv_ensure(
-        crate::YamlCompiler::default().parse_ast(source).is_ok(),
-        "declared input reference should pass",
-    )
+    parse_ok(source)
 }
 
 /// Reference to declared var succeeds (positive validation).
@@ -575,10 +529,7 @@ steps:
     finish:
       result: 0
 "#;
-    adv_ensure(
-        crate::YamlCompiler::default().parse_ast(source).is_ok(),
-        "declared var reference should pass",
-    )
+    parse_ok(source)
 }
 
 /// Reference to declared secret succeeds (positive validation).
@@ -601,10 +552,7 @@ steps:
     finish:
       result: 0
 "#;
-    adv_ensure(
-        crate::YamlCompiler::default().parse_ast(source).is_ok(),
-        "declared secret reference should pass",
-    )
+    parse_ok(source)
 }
 
 /// `$vars.name.field` accessor path on a declared var is rejected.
@@ -696,10 +644,7 @@ steps:
     finish:
       result: $slot.0
 "#;
-    adv_ensure(
-        crate::YamlCompiler::default().parse_ast(source).is_ok(),
-        "bare slot reference should pass",
-    )
+    parse_ok(source)
 }
 
 /// `$slot.abc` non-numeric slot index is rejected.
@@ -740,10 +685,7 @@ steps:
     finish:
       result: $slots.0
 "#;
-    adv_ensure(
-        crate::YamlCompiler::default().parse_ast(source).is_ok(),
-        "$slots.0 should be accepted like $slot.0",
-    )
+    parse_ok(source)
 }
 
 /// Numeric accessor path with deep nesting passes.
@@ -761,10 +703,7 @@ steps:
     finish:
       result: $slot.0.1.2.3.4.5
 "#;
-    adv_ensure(
-        crate::YamlCompiler::default().parse_ast(source).is_ok(),
-        "deep numeric accessor path should pass",
-    )
+    parse_ok(source)
 }
 
 /// Accessor path with non-numeric segment after numeric slot rejected.
@@ -944,9 +883,8 @@ steps:
 "#;
     let error = adv_ref_parse_error(source)?;
     adv_ensure(
-        matches!(error, CompileError::UnknownReferenceName { kind, name, .. }
-            if kind == "var" && name.as_ref() == "missing"),
-        "undeclared var with accessor should produce UnknownReferenceName",
+        matches!(error, CompileError::UnknownReferenceName { kind: "var", name, .. } if name.as_ref() == "missing"),
+        "undeclared var did not produce exact UnknownReferenceName",
     )
 }
 
@@ -971,10 +909,7 @@ steps:
     finish:
       result: 0
 "#;
-    adv_ensure(
-        crate::YamlCompiler::default().parse_ast(source).is_ok(),
-        "literal values should pass validation",
-    )
+    parse_ok(source)
 }
 
 /// Sequence of references each validated.
@@ -1028,10 +963,7 @@ steps:
     finish:
       result: 0
 "#;
-    adv_ensure(
-        crate::YamlCompiler::default().parse_ast(source).is_ok(),
-        "$var.count should resolve like $vars.count",
-    )
+    parse_ok(source)
 }
 
 /// Empty value (null) is not treated as reference.
@@ -1054,10 +986,7 @@ steps:
     finish:
       result: 0
 "#;
-    adv_ensure(
-        crate::YamlCompiler::default().parse_ast(source).is_ok(),
-        "empty value should not be treated as reference",
-    )
+    parse_ok(source)
 }
 
 /// Compile-specific: $slot reference with u16 max value passes.
@@ -1075,10 +1004,7 @@ steps:
     finish:
       result: $slot.65535
 "#;
-    adv_ensure(
-        crate::YamlCompiler::default().parse_ast(source).is_ok(),
-        "$slot.65535 should pass reference validation",
-    )
+    parse_ok(source)
 }
 
 /// `$inputs` plural root is NOT a valid alias -- rejected.

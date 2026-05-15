@@ -3,8 +3,6 @@
 
 use crossbeam_queue::ArrayQueue;
 use indexmap::IndexMap;
-use std::cell::RefCell;
-use std::collections::VecDeque;
 use vb_core::action::ActionContract;
 use vb_core::capability::CapabilitySet;
 use vb_core::frame::RunFrame;
@@ -14,69 +12,18 @@ use vb_core::value_store::ValueStore;
 use vb_core::workflow::CompiledWorkflow;
 use vb_storage::EventSeq;
 
+use crate::RuntimeResult;
 use crate::counters::ShardCounters;
 use crate::frame_pool::FramePool;
 use crate::journal::SharedRuntimeJournal;
 use crate::primitives::collect::CollectStates;
 use crate::trace::TraceRing;
-use crate::RuntimeResult;
 
 // Aggregate resource model touchpoints for vb-qi37.2.1:
 // ShardConfig aggregate_capacity, Shard active_usage, Shard reservations,
 // RunState AggregateReservation, ShardStatus active_usage aggregate_capacity.
 
 type FramePoolKey = (u16, u16);
-
-thread_local! {
-    static RESUME_SOURCES: RefCell<ResumeSourceRegistry> = RefCell::new(ResumeSourceRegistry::new());
-}
-
-const MAX_RESUME_SOURCE_BINDINGS: usize = 64;
-
-struct ResumeSourceRegistry {
-    pending: VecDeque<crate::RuntimeError>,
-    bound: VecDeque<(usize, crate::RuntimeError)>,
-}
-
-impl ResumeSourceRegistry {
-    fn new() -> Self {
-        Self {
-            pending: VecDeque::new(),
-            bound: VecDeque::new(),
-        }
-    }
-
-    fn record(&mut self, source: crate::RuntimeError) {
-        if self.pending.len() >= MAX_RESUME_SOURCE_BINDINGS {
-            self.pending.pop_front();
-        }
-        self.pending.push_back(source);
-    }
-
-    fn source_for(&mut self, key: usize) -> Option<crate::RuntimeError> {
-        if let Some((_, source)) = self.bound.iter().find(|(bound_key, _)| *bound_key == key) {
-            return Some(source.clone());
-        }
-
-        let source = self.pending.pop_front()?;
-        if self.bound.len() >= MAX_RESUME_SOURCE_BINDINGS {
-            self.bound.pop_front();
-        }
-        self.bound.push_back((key, source.clone()));
-        Some(source)
-    }
-
-    fn clear_bound(&mut self, key: usize) -> bool {
-        if let Some(position) = self
-            .bound
-            .iter()
-            .position(|(bound_key, _)| *bound_key == key)
-        {
-            return self.bound.remove(position).is_some();
-        }
-        false
-    }
-}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PendingTimerKind {
@@ -128,6 +75,19 @@ pub enum ShardCommand {
         run: RunId,
         /// Compiled workflow to execute.
         workflow: CompiledWorkflow,
+        /// Capabilities granted to this run.
+        caps: CapabilitySet,
+        /// Validated action contracts for Do execution.
+        action_contracts: Box<[ActionContract]>,
+    },
+    /// Submit a new run with input slots and validated action contracts already bound.
+    SubmitWithInputsAndContracts {
+        /// Run identifier chosen by the caller.
+        run: RunId,
+        /// Compiled workflow to execute.
+        workflow: CompiledWorkflow,
+        /// Initial slot values written before deterministic execution starts.
+        inputs: Box<[(SlotIdx, SlotValue)]>,
         /// Capabilities granted to this run.
         caps: CapabilitySet,
         /// Validated action contracts for Do execution.
@@ -329,6 +289,19 @@ impl ShardCommandQueue {
         })
     }
 
+    /// Creates a command queue from an already-accepted shard configuration.
+    ///
+    /// `Shard::new` has historically been infallible and accepted `ShardConfig`
+    /// by value. The validated constructor for externally supplied capacity is
+    /// `ShardConfig::new`; this helper preserves `Shard::new`'s existing shape
+    /// while placing the raw queue construction behind the domain wrapper.
+    pub(crate) fn from_config(config: ShardConfig) -> Self {
+        Self {
+            inner: ArrayQueue::new(config.command_queue_capacity),
+            capacity: config.command_queue_capacity,
+        }
+    }
+
     /// Enqueues a command. Returns `Ok(())` if the command was enqueued, or
     /// `Err(RuntimeError::QueueFull)` if the queue is at capacity.
     ///
@@ -520,7 +493,10 @@ impl RuntimeEvent {
     /// Returns true if this event produces a terminal state (run is removed from runtime_states).
     #[must_use]
     pub fn is_terminal(&self) -> bool {
-        matches!(self, Self::Fail | Self::TerminalRemove | Self::DriveFinished)
+        matches!(
+            self,
+            Self::Fail | Self::TerminalRemove | Self::DriveFinished
+        )
     }
 
     /// Returns true if this event sets a Resumable state.
@@ -575,44 +551,28 @@ pub enum ResumeError {
     },
     /// Failed to append the Resumed event to the journal.
     JournalAppendFailed,
+    /// Failed to append the Resumed event with a preserved runtime source.
+    JournalAppendFailedWithSource {
+        /// Runtime failure that caused the journal append failure.
+        source: Box<crate::RuntimeError>,
+    },
     /// Failed to produce structured output.
     StructuredOutputFailed,
 }
 
 impl ResumeError {
     pub(crate) fn journal_append_failed_with_source(source: crate::RuntimeError) -> Self {
-        Self::record_source(source);
-        Self::JournalAppendFailed
-    }
-
-    fn record_source(source: crate::RuntimeError) {
-        if let Ok(()) = RESUME_SOURCES.try_with(|registry| {
-            registry.borrow_mut().record(source);
-        }) {}
+        Self::JournalAppendFailedWithSource {
+            source: Box::new(source),
+        }
     }
 
     /// Returns the runtime source bound to this resume journal failure on this thread.
     #[must_use]
     pub fn source_runtime_error(&self) -> Option<crate::RuntimeError> {
-        if !matches!(self, Self::JournalAppendFailed) {
-            return None;
+        match self {
+            Self::JournalAppendFailedWithSource { source } => Some(source.as_ref().clone()),
+            _ => None,
         }
-        let key = std::ptr::from_ref(self).addr();
-        RESUME_SOURCES
-            .try_with(|registry| registry.borrow_mut().source_for(key))
-            .ok()
-            .flatten()
-    }
-}
-
-impl Drop for ResumeError {
-    fn drop(&mut self) {
-        if !matches!(self, Self::JournalAppendFailed) {
-            return;
-        }
-        let key = std::ptr::from_ref(self).addr();
-        if let Ok(()) = RESUME_SOURCES.try_with(|registry| {
-            registry.borrow_mut().clear_bound(key);
-        }) {}
     }
 }

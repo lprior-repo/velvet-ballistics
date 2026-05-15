@@ -2703,6 +2703,7 @@ dependencies = [
  "vb_codegen",
  "vb_core",
  "vb_validate",
+ "vb_yaml",
 ]
 
 [[package]]

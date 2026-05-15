@@ -559,7 +559,7 @@ mod tests {
     // vb-yd5x RED PHASE: Shared IR parity tests
     // ---------------------------------------------------------------------------
 
-    /// Minimal valid workflow for testing
+    /// Minimal canonical workflow for testing.
     const VB_YD5X_MINIMAL_VALID_WORKFLOW: &[u8] = br#"
 version: velvet-ballastics/v1
 name: minimal_valid
@@ -567,11 +567,12 @@ when:
   manual: {}
 steps:
   - id: start
-    save:
-      value: 1
+    set:
+      output: answer
+      value: "1"
   - id: done
     finish:
-      result: 0
+      result: answer
 "#;
 
     /// Workflow with out-of-range slot reference (Gate 9)
@@ -644,11 +645,21 @@ steps:
       result: true
 "#;
 
-    /// Helper: validate via compile then shared pipeline
+    /// Helper: validate via canonical compile then shared pipeline.
     fn vb_yd5x_validate_via_compile(source: &[u8]) -> Result<(), CompileErrors> {
         let compiled = YamlCompiler::default().compile(source)?;
         let parts = compiled.to_parts();
         vb_validate::shared::validate(&parts).map_err(|e| CompileErrors(vec![e.into()]))
+    }
+
+    fn first_compile_code(source: &[u8]) -> Result<&'static str, String> {
+        match YamlCompiler::default().compile(source) {
+            Ok(workflow) => Err(format!("compile unexpectedly succeeded: {workflow:?}")),
+            Err(errors) => errors
+                .first()
+                .map(CompileError::code)
+                .ok_or_else(|| "compile failed with no errors".to_owned()),
+        }
     }
 
     #[test]
@@ -667,138 +678,52 @@ steps:
     }
 
     #[test]
-    fn vb_yd5x_malformed_slot_ref_fails_consistently() {
-        let source = VB_YD5X_MALFORMED_SLOT_REF;
-        let compile_result = YamlCompiler::default().compile(source);
-        let validate_result = vb_yd5x_validate_via_compile(source);
-        // Both must fail
-        assert!(
-            compile_result.is_err(),
-            "compile should fail for bad slot ref"
-        );
-        assert!(
-            validate_result.is_err(),
-            "validate should fail for bad slot ref"
-        );
-        // Both should produce the same error code
-        let compile_code = compile_result.unwrap_err().first().map(|e| e.code());
-        let validate_code = validate_result.unwrap_err().first().map(|e| e.code());
+    fn vb_yd5x_legacy_slot_ref_shape_fails_canonical_compile() -> Result<(), String> {
         assert_eq!(
-            compile_code, validate_code,
-            "compile and validate should produce same code"
+            first_compile_code(VB_YD5X_MALFORMED_SLOT_REF)?,
+            "MISSING_REQUIRED_FIELD"
         );
-        assert_eq!(
-            compile_code,
-            Some("TYPE_MISMATCH"),
-            "expected TYPE_MISMATCH"
-        );
+        Ok(())
     }
 
     #[test]
-    fn vb_yd5x_malformed_loop_body_fails_consistently() {
-        let source = VB_YD5X_MALFORMED_LOOP_BODY;
-        let compile_result = YamlCompiler::default().compile(source);
-        let validate_result = vb_yd5x_validate_via_compile(source);
-        assert!(
-            compile_result.is_err(),
-            "compile should fail for bad loop body"
-        );
-        assert!(
-            validate_result.is_err(),
-            "validate should fail for bad loop body"
-        );
-        let compile_code = compile_result.unwrap_err().first().map(|e| e.code());
-        let validate_code = validate_result.unwrap_err().first().map(|e| e.code());
+    fn vb_yd5x_legacy_loop_body_shape_fails_canonical_compile() -> Result<(), String> {
         assert_eq!(
-            compile_code, validate_code,
-            "compile and validate should produce same code"
+            first_compile_code(VB_YD5X_MALFORMED_LOOP_BODY)?,
+            "TYPE_MISMATCH"
         );
-        assert_eq!(
-            compile_code,
-            Some("INVALID_THEN_TARGET"),
-            "expected INVALID_THEN_TARGET"
-        );
+        Ok(())
     }
 
     #[test]
-    fn vb_yd5x_malformed_duplicate_id_fails_consistently() {
-        let source = VB_YD5X_MALFORMED_DUPLICATE_ID;
-        let compile_result = YamlCompiler::default().compile(source);
-        let validate_result = vb_yd5x_validate_via_compile(source);
-        assert!(
-            compile_result.is_err(),
-            "compile should fail for duplicate id"
-        );
-        assert!(
-            validate_result.is_err(),
-            "validate should fail for duplicate id"
-        );
-        let compile_code = compile_result.unwrap_err().first().map(|e| e.code());
-        let validate_code = validate_result.unwrap_err().first().map(|e| e.code());
+    fn vb_yd5x_legacy_duplicate_id_shape_fails_canonical_compile() -> Result<(), String> {
         assert_eq!(
-            compile_code, validate_code,
-            "compile and validate should produce same code"
+            first_compile_code(VB_YD5X_MALFORMED_DUPLICATE_ID)?,
+            "MISSING_REQUIRED_FIELD"
         );
-        assert_eq!(compile_code, Some("DUPLICATE_ID"), "expected DUPLICATE_ID");
+        Ok(())
     }
 
     #[test]
-    fn vb_yd5x_malformed_unknown_ref_fails_consistently() {
-        let source = VB_YD5X_MALFORMED_UNKNOWN_REF;
-        let compile_result = YamlCompiler::default().compile(source);
-        let validate_result = vb_yd5x_validate_via_compile(source);
-        assert!(
-            compile_result.is_err(),
-            "compile should fail for unknown ref"
-        );
-        assert!(
-            validate_result.is_err(),
-            "validate should fail for unknown ref"
-        );
-        let compile_code = compile_result.unwrap_err().first().map(|e| e.code());
-        let validate_code = validate_result.unwrap_err().first().map(|e| e.code());
+    fn vb_yd5x_legacy_unknown_ref_shape_fails_canonical_compile() -> Result<(), String> {
         assert_eq!(
-            compile_code, validate_code,
-            "compile and validate should produce same code"
+            first_compile_code(VB_YD5X_MALFORMED_UNKNOWN_REF)?,
+            "UNKNOWN_TOP_LEVEL_FIELD"
         );
-        assert_eq!(
-            compile_code,
-            Some("UNKNOWN_REFERENCE"),
-            "expected UNKNOWN_REFERENCE"
-        );
+        Ok(())
     }
 
     #[test]
-    fn vb_yd5x_diagnostic_codes_remain_stable() {
-        // Test that error codes are stable across paths
+    fn vb_yd5x_legacy_diagnostic_codes_remain_stable() -> Result<(), String> {
         let test_cases = [
-            (VB_YD5X_MALFORMED_SLOT_REF, "TYPE_MISMATCH"),
-            (VB_YD5X_MALFORMED_LOOP_BODY, "INVALID_THEN_TARGET"),
-            (VB_YD5X_MALFORMED_DUPLICATE_ID, "DUPLICATE_ID"),
-            (VB_YD5X_MALFORMED_UNKNOWN_REF, "UNKNOWN_REFERENCE"),
+            (VB_YD5X_MALFORMED_SLOT_REF, "MISSING_REQUIRED_FIELD"),
+            (VB_YD5X_MALFORMED_LOOP_BODY, "TYPE_MISMATCH"),
+            (VB_YD5X_MALFORMED_DUPLICATE_ID, "MISSING_REQUIRED_FIELD"),
+            (VB_YD5X_MALFORMED_UNKNOWN_REF, "UNKNOWN_TOP_LEVEL_FIELD"),
         ];
         for (source, expected_code) in test_cases {
-            let compile_result = YamlCompiler::default().compile(source);
-            let validate_result = vb_yd5x_validate_via_compile(source);
-            let compile_code = compile_result
-                .as_ref()
-                .err()
-                .and_then(|e| e.first())
-                .map(|e| e.code());
-            let validate_code = validate_result
-                .as_ref()
-                .err()
-                .and_then(|e| e.first())
-                .map(|e| e.code());
-            assert_eq!(
-                compile_code, validate_code,
-                "codes should match for {expected_code}"
-            );
-            assert_eq!(
-                compile_code,
-                Some(expected_code),
-                "expected {expected_code}"
-            );
+            assert_eq!(first_compile_code(source)?, expected_code);
         }
+        Ok(())
     }
 }

@@ -16,8 +16,8 @@ use crate::{RuntimeError, RuntimeResult};
 
 use crate::primitives::collect::CollectStates;
 use crate::shard::types::{
-    AskAnswer, PendingTimerKind, ResumeError, ResumeResult, ResumeStatus, RunState, RuntimeState,
-    Shard,
+    AskAnswer, PendingTimerKind, ResumeError, ResumeResult, ResumeStatus, RunState, RuntimeEvent,
+    RuntimeState, Shard,
 };
 
 fn current_timestamp() -> u64 {

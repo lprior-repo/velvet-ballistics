@@ -11,12 +11,46 @@
 //! Integration tests for durability matrix: handler persistence-before-ack.
 
 use std::sync::Arc;
-use vb_core::capability::CapabilitySet;
-use vb_core::ids::{RunId, SlotIdx, StepIdx, WorkflowDigest};
+use vb_core::action::{ActionContract, Idempotency, RetrySafety, SideEffect};
+use vb_core::capability::{Capability, CapabilitySet};
+use vb_core::ids::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest};
 use vb_core::value::{SlotValue, Taint};
 use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
 use vb_runtime::journal::{RuntimeJournalEvent, VolatileRuntimeJournal};
 use vb_runtime::shard::{Shard, ShardCommand, ShardConfig};
+
+fn contract_required_capability(action: ActionId) -> Capability {
+    Capability::new("__contract_required__".into(), action)
+}
+
+fn suspended_action_contracts() -> Box<[ActionContract]> {
+    let action = ActionId::new(0);
+    Box::from([ActionContract {
+        id: action,
+        input_slot_count: 1,
+        output_slot_count: 1,
+        max_input_bytes: 1024,
+        max_output_bytes: 1024,
+        timeout_ms: 5000,
+        idempotency: Idempotency::DeterministicPure,
+        side_effect: SideEffect::None,
+        retry_safety: RetrySafety::Safe,
+        required_capabilities: Box::from([contract_required_capability(action)]),
+    }])
+}
+
+fn submit_suspended(shard: &Shard, run: RunId, workflow: vb_core::workflow::CompiledWorkflow) {
+    let action = ActionId::new(0);
+    shard
+        .enqueue(ShardCommand::SubmitWithInputsAndContracts {
+            run,
+            workflow,
+            inputs: Box::from([(SlotIdx::new(0), SlotValue::Bool(false))]),
+            caps: CapabilitySet::from_grants(Box::from([contract_required_capability(action)])),
+            action_contracts: suspended_action_contracts(),
+        })
+        .unwrap();
+}
 
 // ---------------------------------------------------------------------------
 // Workflow fixtures
@@ -228,13 +262,7 @@ fn submit_handler_persists_before_ack() {
     };
     let run = RunId::new(1);
 
-    shard
-        .enqueue(ShardCommand::Submit {
-            run,
-            workflow,
-            caps: CapabilitySet::empty(),
-        })
-        .unwrap();
+    submit_suspended(&shard, run, workflow);
     shard.tick().unwrap();
 
     let events = journal.snapshot().unwrap();
@@ -256,13 +284,7 @@ fn action_completed_persists_before_ack() {
     };
     let run = RunId::new(1);
 
-    shard
-        .enqueue(ShardCommand::Submit {
-            run,
-            workflow,
-            caps: CapabilitySet::empty(),
-        })
-        .unwrap();
+    submit_suspended(&shard, run, workflow);
     shard.tick().unwrap();
 
     // Clear journal from submit phase
@@ -319,13 +341,7 @@ fn action_failed_persists_before_ack() {
     };
     let run = RunId::new(1);
 
-    shard
-        .enqueue(ShardCommand::Submit {
-            run,
-            workflow,
-            caps: CapabilitySet::empty(),
-        })
-        .unwrap();
+    submit_suspended(&shard, run, workflow);
     shard.tick().unwrap();
 
     let _ = journal.snapshot().unwrap();
@@ -370,13 +386,7 @@ fn ask_answered_persists_before_ack() {
     };
     let run = RunId::new(1);
 
-    shard
-        .enqueue(ShardCommand::Submit {
-            run,
-            workflow,
-            caps: CapabilitySet::empty(),
-        })
-        .unwrap();
+    submit_suspended(&shard, run, workflow);
     shard.tick().unwrap();
 
     let _ = journal.snapshot().unwrap();
@@ -423,13 +433,7 @@ fn cancel_persists_before_ack() {
     };
     let run = RunId::new(1);
 
-    shard
-        .enqueue(ShardCommand::Submit {
-            run,
-            workflow,
-            caps: CapabilitySet::empty(),
-        })
-        .unwrap();
+    submit_suspended(&shard, run, workflow);
     shard.tick().unwrap();
 
     let _ = journal.snapshot().unwrap();

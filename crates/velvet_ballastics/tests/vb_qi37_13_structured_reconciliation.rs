@@ -17,10 +17,11 @@ when:
 steps:
   - id: build_result
     save:
-      value: 42
+      output: saved
+      value: '42'
   - id: done
     finish:
-      result: 0
+      result: saved
 ";
 
 fn run_cli(args: &[&OsStr]) -> Output {

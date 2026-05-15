@@ -42,11 +42,9 @@ macro_rules! fail_assert {
 }
 
 /// Valid minimal workflow YAML used across many tests.
-/// Note: vb_compile uses "save" not "set" for the set primitive field name.
-/// save takes a single "value" field; output slot is auto-assigned from step index.
-/// finish takes "result" as a slot index integer (0-based).
+/// Note: the canonical compiler requires explicit output names for save/set.
 fn valid_workflow_yaml() -> &'static [u8] {
-    b"version: velvet-ballastics/v1\nname: test_wf\nwhen:\n  manual: {}\nsteps:\n  - id: s1\n    save:\n      value: 42\n  - id: s2\n    finish:\n      result: 0\n"
+    b"version: velvet-ballastics/v1\nname: test_wf\nwhen:\n  manual: {}\nsteps:\n  - id: s1\n    save:\n      output: saved\n      value: \"42\"\n  - id: s2\n    finish:\n      result: saved\n"
 }
 
 // ===========================================================================
@@ -262,7 +260,7 @@ fn compile_to_core_rejects_non_utf8_input_at_compilation_boundary() {
 #[test]
 fn compile_to_core_step_count_matches_yaml_step_count() {
     // Given: a 3-step workflow
-    let yaml = b"version: velvet-ballastics/v1\nname: three_step\nwhen:\n  manual: {}\nsteps:\n  - id: s1\n    save:\n      value: 1\n  - id: s2\n    save:\n      value: 2\n  - id: s3\n    finish:\n      result: 0\n";
+    let yaml = b"version: velvet-ballastics/v1\nname: three_step\nwhen:\n  manual: {}\nsteps:\n  - id: s1\n    save:\n      output: first\n      value: \"1\"\n  - id: s2\n    save:\n      output: second\n      value: \"2\"\n  - id: s3\n    finish:\n      result: second\n";
     // When: compiling
     let result = vb_compile::compile_workflow(yaml);
     // Then: the compiled workflow has at least 3 nodes (one per step)
@@ -941,7 +939,7 @@ fn error_yaml_to_compile_pipeline_preserves_error_information() {
 #[test]
 fn error_compile_duplicate_step_id_rejected_with_exact_id() {
     // Given: workflow with duplicate step IDs
-    let yaml = b"version: velvet-ballastics/v1\nname: dup\nwhen:\n  manual: {}\nsteps:\n  - id: dup_id\n    save:\n      value: 1\n  - id: dup_id\n    finish:\n      result: 0\n";
+    let yaml = b"version: velvet-ballastics/v1\nname: dup\nwhen:\n  manual: {}\nsteps:\n  - id: dup_id\n    save:\n      output: saved\n      value: \"1\"\n  - id: dup_id\n    finish:\n      result: saved\n";
     // When: compiling
     let result = vb_compile::compile_workflow(yaml);
     // Then: compilation fails mentioning the duplicate

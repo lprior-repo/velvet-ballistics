@@ -45,25 +45,6 @@ fn parse_err(source: &[u8]) -> Result<CompileError, String> {
     }
 }
 
-fn compile_err(source: &[u8]) -> Result<CompileError, String> {
-    match YamlCompiler::default().compile(source) {
-        Ok(workflow) => Err(format!("compile unexpectedly succeeded: {workflow:?}")),
-        Err(errors) => match errors.first() {
-            Some(error) => Ok(error.clone()),
-            None => Err("CompileErrors was empty".to_string()),
-        },
-    }
-}
-
-fn ensure_parse_compile_error_parity(source: &[u8]) -> Result<(), String> {
-    let parse = parse_err(source)?;
-    let compile = compile_err(source)?;
-    ensure(
-        format!("{parse:?}") == format!("{compile:?}"),
-        "parse_ast and compile diagnostics diverged",
-    )
-}
-
 fn first_choose_condition(source: &[u8]) -> Result<AstExpression, String> {
     let ast = parse(source)?;
     match ast.steps.first().map(|step| &step.kind) {
@@ -296,8 +277,8 @@ steps:
 }
 
 #[test]
-fn expression_diagnostics_preserve_compile_parse_ast_parity() -> Result<(), String> {
-    ensure_parse_compile_error_parity(
+fn parse_ast_preserves_expression_diagnostics() -> Result<(), String> {
+    let error = parse_err(
         br#"version: velvet-ballastics/v1
 name: ast_surface
 when:
@@ -312,6 +293,10 @@ steps:
     finish:
       result: true
 "#,
+    )?;
+    ensure(
+        error.code() == "INVALID_EXPRESSION",
+        "parse_ast did not preserve expression parse diagnostic",
     )
 }
 
@@ -349,11 +334,20 @@ steps:
 }
 
 #[test]
-fn symbolic_expression_diagnostics_preserve_compile_parse_ast_parity() -> Result<(), String> {
-    ensure_parse_compile_error_parity(symbolic_condition("$input.flag && true").as_bytes())?;
-    ensure_parse_compile_error_parity(symbolic_condition("$input.flag || true").as_bytes())?;
-    ensure_parse_compile_error_parity(symbolic_condition("!$input.flag").as_bytes())?;
-    ensure_parse_compile_error_parity(symbolic_condition("$input.count % 2 == 0").as_bytes())
+fn parse_ast_rejects_unsupported_symbolic_expression_syntax() -> Result<(), String> {
+    for source in [
+        symbolic_condition("$input.flag && true"),
+        symbolic_condition("$input.flag || true"),
+        symbolic_condition("!$input.flag"),
+        symbolic_condition("$input.count % 2 == 0"),
+    ] {
+        let error = parse_err(source.as_bytes())?;
+        ensure(
+            error.code() == "INVALID_EXPRESSION",
+            "parse_ast did not reject unsupported symbolic expression syntax",
+        )?;
+    }
+    Ok(())
 }
 
 fn symbolic_condition(condition: &'static str) -> String {

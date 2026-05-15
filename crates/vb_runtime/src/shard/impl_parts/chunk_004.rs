@@ -1,4 +1,3 @@
-use crossbeam_queue::ArrayQueue;
 use indexmap::IndexMap;
 use vb_core::frame::RunFrame;
 use vb_core::ids::{RunId, SlotIdx, StepIdx};
@@ -14,5 +13,5 @@ use crate::{RuntimeError, RuntimeResult};
 
 use crate::shard::types::{
     InspectResponse, MAX_COMMAND_QUEUE_CAPACITY, Shard, ShardCommand, ShardConfig, ShardHealth,
-    ShardStatus,
+    ShardCommandQueue, ShardStatus,
 };

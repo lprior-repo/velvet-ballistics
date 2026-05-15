@@ -102,6 +102,25 @@ impl Runtime {
         })
     }
 
+    /// Submits a run with pre-mapped input slots, explicit caller grants, and validated action contracts.
+    pub fn submit_direct_with_inputs_grants_and_contracts(
+        &self,
+        run: RunId,
+        workflow: CompiledWorkflow,
+        inputs: Box<[(SlotIdx, SlotValue)]>,
+        caps: CapabilitySet,
+        action_contracts: Box<[ActionContract]>,
+    ) -> RuntimeResult<()> {
+        let shard = self.shard_for(run)?;
+        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
+            run,
+            workflow,
+            inputs,
+            caps,
+            action_contracts,
+        })
+    }
+
     /// Submits a run with inline workflow (same as submit_direct for now).
     pub fn submit_compiled(&self, run: RunId, workflow: CompiledWorkflow) -> RuntimeResult<()> {
         self.submit_direct(run, workflow)
@@ -423,8 +442,11 @@ mod tests {
     use crate::journal::{RuntimeJournalEvent, VolatileRuntimeJournal};
     use crate::trace::TraceEvent;
     use std::sync::Arc;
-    use vb_core::action::{ActionFailureCode, ActionOutputReady, ActionTicket, RetryPolicy};
-    use vb_core::capability::CapabilitySet;
+    use vb_core::action::{
+        ActionContract, ActionFailureCode, ActionOutputReady, ActionTicket, Idempotency,
+        RetryPolicy, RetrySafety, SideEffect,
+    };
+    use vb_core::capability::{Capability, CapabilitySet};
     use vb_core::ids::{ActionId, ConstIdx, SeqNo, SlotIdx, StepIdx, WorkflowDigest};
     use vb_core::policy::RuntimePolicy;
     use vb_core::value::{SlotValue, Taint};
@@ -504,6 +526,75 @@ mod tests {
             max_active_runs: 4,
             policy: vb_core::policy::RuntimePolicy::Relaxed,
         }
+    }
+
+    fn contract_required_capability(action: ActionId) -> Capability {
+        Capability::new("__contract_required__".into(), action)
+    }
+
+    fn action_contract(action: ActionId, input_slots: u16, output_slots: u16) -> ActionContract {
+        ActionContract {
+            id: action,
+            input_slot_count: input_slots,
+            output_slot_count: output_slots,
+            max_input_bytes: 1024,
+            max_output_bytes: 1024,
+            timeout_ms: 5000,
+            idempotency: Idempotency::DeterministicPure,
+            side_effect: SideEffect::None,
+            retry_safety: RetrySafety::Safe,
+            required_capabilities: Box::from([contract_required_capability(action)]),
+        }
+    }
+
+    fn action_contracts_through(
+        action: ActionId,
+        input_slots: u16,
+        output_slots: u16,
+    ) -> Box<[ActionContract]> {
+        let target = action.get();
+        let mut contracts = Vec::with_capacity(usize::from(target).saturating_add(1));
+        let mut id = 0u16;
+        loop {
+            let current = ActionId::new(id);
+            if id == target {
+                contracts.push(action_contract(current, input_slots, output_slots));
+                break;
+            }
+            contracts.push(action_contract(current, 0, 0));
+            id = id.saturating_add(1);
+        }
+        contracts.into_boxed_slice()
+    }
+
+    fn action_grants(action: ActionId) -> CapabilitySet {
+        CapabilitySet::from_grants(Box::from([contract_required_capability(action)]))
+    }
+
+    fn submit_suspended(runtime: &Runtime, run: RunId, wf: CompiledWorkflow) -> RuntimeResult<()> {
+        let action = ActionId::new(0);
+        runtime.submit_direct_with_inputs_grants_and_contracts(
+            run,
+            wf,
+            Box::from([(SlotIdx::new(0), SlotValue::I64(0))]),
+            action_grants(action),
+            action_contracts_through(action, 1, 0),
+        )
+    }
+
+    fn submit_action_then_finish(
+        runtime: &Runtime,
+        run: RunId,
+        wf: CompiledWorkflow,
+    ) -> RuntimeResult<()> {
+        let action = ActionId::new(7);
+        runtime.submit_direct_with_inputs_grants_and_contracts(
+            run,
+            wf,
+            Box::from([(SlotIdx::new(0), SlotValue::I64(0))]),
+            action_grants(action),
+            action_contracts_through(action, 1, 1),
+        )
     }
 
     #[test]
@@ -641,8 +732,8 @@ mod tests {
         let Some(wf2) = suspended_workflow() else {
             return;
         };
-        assert_eq!(runtime.submit_direct(RunId::new(1), wf1), Ok(()));
-        assert_eq!(runtime.submit_direct(RunId::new(2), wf2), Ok(()));
+        assert_eq!(submit_suspended(&runtime, RunId::new(1), wf1), Ok(()));
+        assert_eq!(submit_suspended(&runtime, RunId::new(2), wf2), Ok(()));
         assert_eq!(runtime.tick_all(), Ok(true));
         let snap = runtime.counters_snapshot();
         assert_eq!(snap.runs_submitted, 2);
@@ -660,8 +751,8 @@ mod tests {
         let Some(wf2) = suspended_workflow() else {
             return;
         };
-        assert_eq!(runtime.submit_direct(RunId::new(1), wf1), Ok(()));
-        assert_eq!(runtime.submit_direct(RunId::new(2), wf2), Ok(()));
+        assert_eq!(submit_suspended(&runtime, RunId::new(1), wf1), Ok(()));
+        assert_eq!(submit_suspended(&runtime, RunId::new(2), wf2), Ok(()));
         assert_eq!(runtime.tick_all(), Ok(true));
         let events = runtime.drain_trace();
         // Each submit produces: RunSubmitted + StepStarted + ActionScheduled = 3 events per run
@@ -718,7 +809,7 @@ mod tests {
         };
         let run = RunId::new(1);
         // When submitting a run
-        assert_eq!(runtime.submit_direct(run, wf), Ok(()));
+        assert_eq!(submit_suspended(&runtime, run, wf), Ok(()));
         assert_eq!(runtime.tick_all(), Ok(true));
         // Then counters show 1 run submitted
         let snap = runtime.counters_snapshot();
@@ -736,7 +827,7 @@ mod tests {
             return;
         };
         let run = RunId::new(1);
-        assert_eq!(runtime.submit_direct(run, wf), Ok(()));
+        assert_eq!(submit_suspended(&runtime, run, wf), Ok(()));
         assert_eq!(runtime.tick_all(), Ok(true));
         // When cancelling the run
         assert_eq!(runtime.cancel_run(run), Ok(()));
@@ -757,7 +848,7 @@ mod tests {
             return;
         };
         let run = RunId::new(1);
-        assert_eq!(runtime.submit_direct(run, wf), Ok(()));
+        assert_eq!(submit_suspended(&runtime, run, wf), Ok(()));
         assert_eq!(runtime.tick_all(), Ok(true));
         // When completing the action
         assert_eq!(runtime.complete_action(run, StepIdx::new(0)), Ok(()));
@@ -791,7 +882,7 @@ mod tests {
             return;
         };
         let run = RunId::new(11);
-        assert_eq!(runtime.submit_direct(run, wf), Ok(()));
+        assert_eq!(submit_action_then_finish(&runtime, run, wf), Ok(()));
         assert_eq!(runtime.tick_all(), Ok(true));
 
         let events = runtime.list_events(run);
@@ -862,7 +953,7 @@ mod tests {
             return;
         };
         let run = RunId::new(12);
-        assert_eq!(runtime.submit_direct(run, wf), Ok(()));
+        assert_eq!(submit_action_then_finish(&runtime, run, wf), Ok(()));
         assert_eq!(runtime.tick_all(), Ok(true));
         let ticket = ActionTicket {
             run,
@@ -897,7 +988,7 @@ mod tests {
             return;
         };
         let run = RunId::new(1);
-        assert_eq!(runtime.submit_direct(run, wf), Ok(()));
+        assert_eq!(submit_suspended(&runtime, run, wf), Ok(()));
         assert_eq!(runtime.tick_all(), Ok(true));
         // When inspecting the run
         assert_eq!(runtime.inspect_run(run, 42), Ok(()));
@@ -958,8 +1049,8 @@ mod tests {
         };
         let run1 = RunId::new(1);
         let run2 = RunId::new(2);
-        assert_eq!(runtime.submit_direct(run1, wf1), Ok(()));
-        assert_eq!(runtime.submit_direct(run2, wf2), Ok(()));
+        assert_eq!(submit_suspended(&runtime, run1, wf1), Ok(()));
+        assert_eq!(submit_suspended(&runtime, run2, wf2), Ok(()));
         assert_eq!(runtime.tick_all(), Ok(true));
         // When listing events for run1
         let events = runtime.list_events(run1);
@@ -1098,7 +1189,7 @@ mod tests {
         };
         let run = RunId::new(1);
         // When submitting then cancelling
-        assert_eq!(runtime.submit_direct(run, wf), Ok(()));
+        assert_eq!(submit_suspended(&runtime, run, wf), Ok(()));
         assert_eq!(runtime.tick_all(), Ok(true));
         assert_eq!(runtime.cancel_run(run), Ok(()));
         assert_eq!(runtime.tick_all(), Ok(true));
@@ -1119,7 +1210,7 @@ mod tests {
             return;
         };
         let run = RunId::new(1);
-        assert_eq!(runtime.submit_direct(run, wf), Ok(()));
+        assert_eq!(submit_suspended(&runtime, run, wf), Ok(()));
         assert_eq!(runtime.tick_all(), Ok(true));
         // When inspecting
         assert_eq!(runtime.inspect_run(run, 99), Ok(()));
@@ -1247,7 +1338,7 @@ mod tests {
             return;
         };
         // When submitting a run
-        assert_eq!(runtime.submit_direct(RunId::new(1), wf), Ok(()));
+        assert_eq!(submit_suspended(&runtime, RunId::new(1), wf), Ok(()));
         assert_eq!(runtime.tick_all(), Ok(true));
         // Then it completes
         let snap = runtime.counters_snapshot();
@@ -1301,7 +1392,7 @@ mod tests {
         let Some(wf) = suspended_workflow() else {
             return;
         };
-        assert_eq!(runtime.submit_direct(RunId::new(1), wf), Ok(()));
+        assert_eq!(submit_suspended(&runtime, RunId::new(1), wf), Ok(()));
         assert_eq!(runtime.tick_all(), Ok(true));
         // When draining trace
         let events = runtime.drain_trace();
@@ -1327,7 +1418,7 @@ mod tests {
             return;
         };
         let run = RunId::new(300);
-        assert_eq!(runtime.submit_direct(run, wf), Ok(()));
+        assert_eq!(submit_suspended(&runtime, run, wf), Ok(()));
         assert_eq!(runtime.tick_all(), Ok(true));
         // When shutting down with a pending run
         assert_eq!(runtime.shutdown_graceful(), Ok(()));
@@ -1347,7 +1438,7 @@ mod tests {
         };
         let run = RunId::new(301);
         // When submitting, then cancelling
-        assert_eq!(runtime.submit_direct(run, wf), Ok(()));
+        assert_eq!(submit_suspended(&runtime, run, wf), Ok(()));
         assert_eq!(runtime.tick_all(), Ok(true));
         assert_eq!(runtime.cancel_run(run), Ok(()));
         assert_eq!(runtime.tick_all(), Ok(true));
@@ -1359,7 +1450,7 @@ mod tests {
         let Some(wf2) = suspended_workflow() else {
             return;
         };
-        assert_eq!(runtime.submit_direct(run, wf2), Ok(()));
+        assert_eq!(submit_suspended(&runtime, run, wf2), Ok(()));
         assert_eq!(runtime.tick_all(), Ok(true));
         let snap2 = runtime.counters_snapshot();
         assert_eq!(snap2.runs_submitted, 2);
@@ -1443,7 +1534,7 @@ mod tests {
         let Some(wf) = suspended_workflow() else {
             return;
         };
-        assert_eq!(runtime.submit_direct(RunId::new(1), wf), Ok(()));
+        assert_eq!(submit_suspended(&runtime, RunId::new(1), wf), Ok(()));
         assert_eq!(runtime.tick_all(), Ok(true));
         // When draining twice
         let first = runtime.drain_trace();
@@ -1474,7 +1565,7 @@ mod tests {
             return;
         };
         // When submitting two runs
-        assert_eq!(runtime.submit_direct(RunId::new(1), wf1), Ok(()));
+        assert_eq!(submit_suspended(&runtime, RunId::new(1), wf1), Ok(()));
         assert_eq!(runtime.tick_all(), Ok(true));
         assert_eq!(runtime.submit_direct(RunId::new(2), wf2), Ok(()));
         // Then second tick returns ActiveRunCapacityExceeded
@@ -1513,7 +1604,7 @@ mod tests {
         let Some(wf) = suspended_workflow() else {
             return;
         };
-        assert_eq!(runtime.submit_direct(RunId::new(1), wf), Ok(()));
+        assert_eq!(submit_suspended(&runtime, RunId::new(1), wf), Ok(()));
         assert_eq!(runtime.tick_all(), Ok(true));
         // When listing events twice without draining
         let first = runtime.list_events(RunId::new(1));
@@ -1589,12 +1680,12 @@ mod tests {
             return;
         };
         let run = RunId::new(400);
-        assert_eq!(runtime.submit_direct(run, wf.clone()), Ok(()));
+        assert_eq!(submit_suspended(&runtime, run, wf.clone()), Ok(()));
         assert_eq!(runtime.tick_all(), Ok(true));
         assert_eq!(runtime.cancel_run(run), Ok(()));
         assert_eq!(runtime.tick_all(), Ok(true));
         // When re-submitting the same run
-        assert_eq!(runtime.submit_direct(run, wf), Ok(()));
+        assert_eq!(submit_suspended(&runtime, run, wf), Ok(()));
         assert_eq!(runtime.tick_all(), Ok(true));
         // Then counters show 2 submissions and 1 failed
         let snap = runtime.counters_snapshot();
@@ -1613,7 +1704,7 @@ mod tests {
             return;
         };
         let run = RunId::new(401);
-        assert_eq!(runtime.submit_direct(run, wf), Ok(()));
+        assert_eq!(submit_suspended(&runtime, run, wf), Ok(()));
         assert_eq!(runtime.tick_all(), Ok(true));
         // When failing the action
         let ticket = ActionTicket {
@@ -1671,7 +1762,7 @@ mod tests {
         };
         let run = RunId::new(403);
         // When submitting and ticking
-        assert_eq!(runtime.submit_direct(run, wf), Ok(()));
+        assert_eq!(submit_suspended(&runtime, run, wf), Ok(()));
         assert_eq!(runtime.tick_all(), Ok(true));
         // Then journal contains RunSubmitted and RunFinished
         let events = journal.snapshot();
@@ -1718,7 +1809,7 @@ mod tests {
         let run1 = RunId::new(500);
         let run2 = RunId::new(501);
         // When submitting run1 (succeeds) then run2 (capacity exceeded)
-        assert_eq!(runtime.submit_direct(run1, wf1), Ok(()));
+        assert_eq!(submit_suspended(&runtime, run1, wf1), Ok(()));
         assert_eq!(runtime.tick_all(), Ok(true));
         assert_eq!(runtime.submit_direct(run2, wf2), Ok(()));
         assert_eq!(
@@ -1794,7 +1885,7 @@ mod tests {
         let target_shard = runtime.shard_index(run);
 
         // When submitting, inspecting, and cancelling the same run
-        assert_eq!(runtime.submit_direct(run, wf), Ok(()));
+        assert_eq!(submit_suspended(&runtime, run, wf), Ok(()));
         assert_eq!(runtime.shard_index(run), target_shard);
         assert_eq!(runtime.tick_all(), Ok(true));
 
@@ -1829,7 +1920,7 @@ mod tests {
         let run = RunId::new(603);
 
         // When submitting and cancelling before tick
-        assert_eq!(runtime.submit_direct(run, wf), Ok(()));
+        assert_eq!(submit_suspended(&runtime, run, wf), Ok(()));
         // Cancel is enqueued before the submit is processed by tick
         assert_eq!(runtime.cancel_run(run), Ok(()));
         // tick_all processes one command per shard per tick, so we need two ticks
@@ -1868,7 +1959,7 @@ mod tests {
         let run = RunId::new(604);
 
         // When submitting a wait workflow and ticking (run enters Wait state)
-        assert_eq!(runtime.submit_direct(run, wf), Ok(()));
+        assert_eq!(submit_suspended(&runtime, run, wf), Ok(()));
         assert_eq!(runtime.tick_all(), Ok(true));
 
         // Then the run is in the runs map (snapshot returns Found)
@@ -1923,7 +2014,7 @@ mod tests {
         let run = RunId::new(605);
 
         // When submitting a suspended run and initiating graceful shutdown
-        assert_eq!(runtime.submit_direct(run, wf), Ok(()));
+        assert_eq!(submit_suspended(&runtime, run, wf), Ok(()));
         assert_eq!(runtime.shutdown_graceful(), Ok(()));
         // drain_for_shutdown processes queued commands
         // Then tick_all returns false (shutdown complete)
@@ -1958,7 +2049,7 @@ mod tests {
         let run = RunId::new(606);
 
         // When submitting a finished workflow and initiating shutdown
-        assert_eq!(runtime.submit_direct(run, wf), Ok(()));
+        assert_eq!(submit_suspended(&runtime, run, wf), Ok(()));
         assert_eq!(runtime.shutdown_graceful(), Ok(()));
         assert_eq!(runtime.tick_all(), Ok(false));
 
@@ -2000,9 +2091,9 @@ mod tests {
         let run1 = RunId::new(607);
         let run2 = RunId::new(608);
 
-        assert_eq!(runtime.submit_direct(run1, wf1), Ok(()));
+        assert_eq!(submit_action_then_finish(&runtime, run1, wf1), Ok(()));
         assert_eq!(runtime.tick_all(), Ok(true));
-        assert_eq!(runtime.submit_direct(run2, wf2), Ok(()));
+        assert_eq!(submit_action_then_finish(&runtime, run2, wf2), Ok(()));
         assert_eq!(runtime.tick_all(), Ok(true));
 
         // Both runs are now in wait state. Fire timer for run1 only.
@@ -2059,11 +2150,11 @@ mod tests {
         let run2 = RunId::new(611);
         let run3 = RunId::new(612);
 
-        assert_eq!(runtime.submit_direct(run1, wf1), Ok(()));
+        assert_eq!(submit_action_then_finish(&runtime, run1, wf1), Ok(()));
         assert_eq!(runtime.tick_all(), Ok(true));
-        assert_eq!(runtime.submit_direct(run2, wf2), Ok(()));
+        assert_eq!(submit_action_then_finish(&runtime, run2, wf2), Ok(()));
         assert_eq!(runtime.tick_all(), Ok(true));
-        assert_eq!(runtime.submit_direct(run3, wf3), Ok(()));
+        assert_eq!(submit_action_then_finish(&runtime, run3, wf3), Ok(()));
         assert_eq!(runtime.tick_all(), Ok(true));
 
         // All three runs are suspended on their Do actions.
@@ -2143,7 +2234,7 @@ mod tests {
         let run = RunId::new(620);
 
         // When submitting the workflow
-        assert_eq!(runtime.submit_direct(run, wf), Ok(()));
+        assert_eq!(submit_suspended(&runtime, run, wf), Ok(()));
         // A single tick processes the submit command and drives to completion
         // The scheduler does NOT spawn a task per step; it drives all steps
         // within the budget of one tick synchronously.
@@ -2169,7 +2260,7 @@ mod tests {
         };
         let run = RunId::new(621);
 
-        assert_eq!(runtime.submit_direct(run, wf), Ok(()));
+        assert_eq!(submit_suspended(&runtime, run, wf), Ok(()));
         assert_eq!(runtime.tick_all(), Ok(true));
 
         // When inspecting the run, it is in a suspended state with deterministic PC

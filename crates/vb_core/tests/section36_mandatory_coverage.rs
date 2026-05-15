@@ -102,7 +102,16 @@ fn finite_f64_overflow_addition_returns_error() {
         vec![ConstValue::I64(i64::MAX), ConstValue::I64(1)].into_boxed_slice(),
     );
     // checked_add returns None on overflow, mapped to a resource limit error
-    assert!(result.is_err(), "overflowing addition must return an error");
+    assert!(
+        matches!(
+            result,
+            Err(CoreError::InvalidCompiledWorkflow {
+                reason: "integer arithmetic overflow",
+                ..
+            })
+        ),
+        "overflowing addition must return an error"
+    );
 }
 
 #[test]
@@ -746,7 +755,7 @@ fn try_from_parts_rejects_empty_branch_table_without_otherwise() {
 #[test]
 fn try_from_parts_accepts_valid_parts() {
     let result = CompiledWorkflow::try_from_parts(valid_parts());
-    assert!(result.is_ok(), "valid parts should be accepted");
+    assert!(matches!(result, Ok(_)), "valid parts should be accepted");
 }
 
 // =========================================================================
@@ -857,7 +866,7 @@ fn failed_step_does_not_become_succeeded_without_error_handler() -> Result<(), S
 
     // step_once will fail because output slot is None on the Copy node
     let result = step_once(&workflow, &mut frame, &mut store);
-    assert!(result.is_err());
+    assert!(matches!(result, Err(CoreError::MissingOutputSlot { .. })));
     assert_eq!(
         frame
             .step_state(StepIdx::new(0))
@@ -1217,7 +1226,7 @@ fn validate_resource_contract_rejects_oversized_max_constants() {
     let parts = parts_with_contract(contract);
     // max_constants == u16::MAX == MAX_CONSTANTS (65_535), at-limit passes
     let result = vb_core::validate_resource_contract(&parts);
-    assert!(result.is_ok());
+    assert_eq!(result, Ok(()));
     let _ = MAX_CONSTANTS;
 }
 
@@ -1233,7 +1242,10 @@ fn validate_resource_contract_rejects_oversized_max_accessors() {
     let parts = parts_with_contract(contract);
     let result = vb_core::validate_resource_contract(&parts);
     if usize::from(oversized) > MAX_ACCESSORS {
-        assert!(result.is_err(), "max_accessors over limit must be rejected");
+        assert!(
+            matches!(result, Err(WorkflowError::ResourceContractTooLarge { .. })),
+            "max_accessors over limit must be rejected"
+        );
     }
 }
 
@@ -1349,7 +1361,10 @@ fn validate_node_bounds_rejects_node_id_out_of_bounds() {
     }]
     .into_boxed_slice();
     let result = vb_core::validate_node_bounds(&parts);
-    assert!(result.is_err(), "node id >= node count must be rejected");
+    assert!(
+        matches!(result, Err(WorkflowError::StepOutOfBounds { .. })),
+        "node id >= node count must be rejected"
+    );
 }
 
 #[test]
@@ -1367,7 +1382,10 @@ fn validate_node_bounds_rejects_next_out_of_bounds() {
     }]
     .into_boxed_slice();
     let result = vb_core::validate_node_bounds(&parts);
-    assert!(result.is_err(), "next step >= node count must be rejected");
+    assert!(
+        matches!(result, Err(WorkflowError::StepOutOfBounds { .. })),
+        "next step >= node count must be rejected"
+    );
 }
 
 #[test]
@@ -2176,7 +2194,7 @@ fn reachability_accepts_linear_chain() {
         ..ResourceContract::DEFAULT
     };
     let result = CompiledWorkflow::try_from_parts(parts);
-    assert!(result.is_ok(), "linear chain should be reachable");
+    assert!(matches!(result, Ok(_)), "linear chain should be reachable");
 }
 
 // =========================================================================

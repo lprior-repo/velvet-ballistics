@@ -277,14 +277,14 @@ fn other_journal_variants_still_work() {
         run: RunId::new(1),
         workflow: vb_core::ids::WorkflowDigest::from_bytes([1; 32]),
     };
-    assert!(journal.append(submitted).is_ok());
+    assert_eq!(journal.append(submitted), Ok(()));
 
     // RunFinished variant
     let finished = RuntimeJournalEvent::RunFinished {
         run: RunId::new(1),
         result: SlotIdx::ZERO,
     };
-    assert!(journal.append(finished).is_ok());
+    assert_eq!(journal.append(finished), Ok(()));
 
     // ActionScheduled variant
     let scheduled = RuntimeJournalEvent::ActionScheduled {
@@ -292,7 +292,7 @@ fn other_journal_variants_still_work() {
         step: StepIdx::ZERO,
         action: ActionId::new(0),
     };
-    assert!(journal.append(scheduled).is_ok());
+    assert_eq!(journal.append(scheduled), Ok(()));
 
     let events = journal.snapshot().expect("snapshot should succeed");
     assert_eq!(events.len(), 3);

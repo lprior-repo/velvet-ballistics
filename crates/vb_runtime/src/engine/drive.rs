@@ -193,6 +193,7 @@ mod tests {
         EvidenceCollector, EvidenceEvent, RetryPolicy, RuntimeEngineError, RuntimeSignal,
     };
     use crate::primitives::collect::CollectStates;
+    use vb_core::action::{ActionContract, Idempotency, RetrySafety, SideEffect};
     use vb_core::capability::{Capability, CapabilitySet};
     use vb_core::engine::StepBudget;
     use vb_core::frame::RunFrame;
@@ -376,28 +377,6 @@ mod tests {
             &mut ev,
             &mut cs,
             &CapabilitySet::empty(),
-        )
-        .map_err(|e| format!("{e}"))
-    }
-    fn ddg(
-        wf: &CompiledWorkflow,
-        r: &mut RunFrame,
-        b: &mut StepBudget,
-        g: &CapabilitySet,
-    ) -> Result<RuntimeSignal, String> {
-        let mut store = ValueStore::new();
-        let mut ev = EvidenceCollector::new();
-        let mut cs = CollectStates::new();
-        drive_deterministic_full(
-            wf,
-            r,
-            b,
-            &mut store,
-            &[],
-            RetryPolicy::NEVER,
-            &mut ev,
-            &mut cs,
-            g,
         )
         .map_err(|e| format!("{e}"))
     }
@@ -805,8 +784,51 @@ mod tests {
         let mut r = mkr(1, 1)?;
         ws(&mut r, 0, SlotValue::I64(0))?;
         let mut b = StepBudget::new(10);
-        let g = gr("t", 1);
-        let sig = ddg(&wf, &mut r, &mut b, &g)?;
+        let contracts = [
+            ActionContract {
+                id: ActionId::new(0),
+                input_slot_count: 0,
+                output_slot_count: 0,
+                max_input_bytes: 0,
+                max_output_bytes: 0,
+                timeout_ms: 0,
+                idempotency: Idempotency::DeterministicPure,
+                side_effect: SideEffect::None,
+                retry_safety: RetrySafety::Safe,
+                required_capabilities: Box::from([]),
+            },
+            ActionContract {
+                id: ActionId::new(1),
+                input_slot_count: 1,
+                output_slot_count: 0,
+                max_input_bytes: 1024,
+                max_output_bytes: 1024,
+                timeout_ms: 5000,
+                idempotency: Idempotency::DeterministicPure,
+                side_effect: SideEffect::None,
+                retry_safety: RetrySafety::Safe,
+                required_capabilities: Box::from([Capability::new(
+                    "__contract_required__".into(),
+                    ActionId::new(1),
+                )]),
+            },
+        ];
+        let g = gr("__contract_required__", 1);
+        let mut store = ValueStore::new();
+        let mut ev = EvidenceCollector::new();
+        let mut cs = CollectStates::new();
+        let sig = drive_deterministic_full(
+            &wf,
+            &mut r,
+            &mut b,
+            &mut store,
+            &contracts,
+            RetryPolicy::NEVER,
+            &mut ev,
+            &mut cs,
+            &g,
+        )
+        .map_err(|e| format!("{e}"))?;
         match sig {
             RuntimeSignal::AwaitingAction(_) => Ok(()),
             other => Err(format!("expected AwaitingAction, got {other:?}")),

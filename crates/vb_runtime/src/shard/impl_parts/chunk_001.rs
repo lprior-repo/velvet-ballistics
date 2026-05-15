@@ -11,7 +11,7 @@ impl Shard {
         artifact_store: crate::admission::SharedAcceptedArtifactStore,
     ) -> Self {
         Self {
-            command_queue: ArrayQueue::new(config.command_queue_capacity),
+            command_queue: ShardCommandQueue::from_config(config),
             runs: IndexMap::new(),
             runtime_states: IndexMap::new(),
             journal_sequences: IndexMap::new(),
@@ -45,16 +45,16 @@ impl Shard {
         match &cmd {
             ShardCommand::Submit { .. }
             | ShardCommand::SubmitPrePersisted { .. }
-            | ShardCommand::SubmitWithInputs { .. }
-            | ShardCommand::SubmitWithContracts { .. } => {
+                | ShardCommand::SubmitWithInputs { .. }
+                | ShardCommand::SubmitWithContracts { .. }
+                | ShardCommand::SubmitWithInputsAndContracts { .. } => {
                 // Probe journal health before accepting the command.
                 self.journal.probe()?;
             }
             _ => {}
         }
         self.command_queue
-            .push(cmd)
-            .map_err(|_| RuntimeError::QueueFull)
+            .enqueue(cmd)
     }
 
     /// Returns the number of commands currently in the queue.
@@ -66,9 +66,7 @@ impl Shard {
     /// Returns the remaining free slots in the command queue.
     #[must_use]
     pub fn remaining_capacity(&self) -> usize {
-        self.command_queue
-            .capacity()
-            .saturating_sub(self.command_queue.len())
+        self.command_queue.remaining_capacity()
     }
 
     /// Returns true if the command queue is full.
@@ -168,6 +166,15 @@ impl Shard {
                 caps,
                 action_contracts,
             } => self.handle_submit_with_contracts(run, workflow, caps, &action_contracts)?,
+            ShardCommand::SubmitWithInputsAndContracts {
+                run,
+                workflow,
+                inputs,
+                caps,
+                action_contracts,
+            } => self.handle_submit_with_inputs_and_contracts(
+                run, workflow, &inputs, caps, &action_contracts,
+            )?,
             ShardCommand::Resume { run } => {
                 self.handle_resume(run).map_err(RuntimeError::from)?;
             }

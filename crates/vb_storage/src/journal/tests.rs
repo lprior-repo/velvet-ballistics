@@ -894,7 +894,7 @@ fn status_index_stores_and_scans_markers() {
     // Scan the entire keyspace
     let mut count = 0usize;
     for item in journal.index_status.iter() {
-        let _ = item.key();
+        assert!(item.key().is_ok());
         count = count.saturating_add(1);
     }
     assert_eq!(count, 3, "should have 3 status index markers");
@@ -916,7 +916,7 @@ fn workflow_index_stores_markers() {
     journal.put_workflow_index(wf2, run_a).expect("wf idx C");
     let mut count = 0usize;
     for item in journal.index_workflow.iter() {
-        let _ = item.key();
+        assert!(item.key().is_ok());
         count = count.saturating_add(1);
     }
     assert_eq!(count, 3, "should have 3 workflow index markers");
@@ -941,7 +941,7 @@ fn action_index_stores_markers() {
         .expect("action idx C");
     let mut count = 0usize;
     for item in journal.index_action.iter() {
-        let _ = item.key();
+        assert!(item.key().is_ok());
         count = count.saturating_add(1);
     }
     assert_eq!(count, 3, "should have 3 action index markers");
@@ -2051,21 +2051,21 @@ fn index_keyspaces_empty_after_regular_writes() {
 
     let mut status_count = 0usize;
     for item in journal.index_status.iter() {
-        let _ = item.key();
+        assert!(item.key().is_ok());
         status_count = status_count.saturating_add(1);
     }
     assert_eq!(status_count, 0, "status index should be empty");
 
     let mut workflow_count = 0usize;
     for item in journal.index_workflow.iter() {
-        let _ = item.key();
+        assert!(item.key().is_ok());
         workflow_count = workflow_count.saturating_add(1);
     }
     assert_eq!(workflow_count, 0, "workflow index should be empty");
 
     let mut action_count = 0usize;
     for item in journal.index_action.iter() {
-        let _ = item.key();
+        assert!(item.key().is_ok());
         action_count = action_count.saturating_add(1);
     }
     assert_eq!(action_count, 0, "action index should be empty");
@@ -2078,13 +2078,13 @@ fn index_keyspaces_empty_after_regular_writes() {
 #[test]
 fn all_declared_keyspaces_are_iterable_after_open() {
     let (_temp, journal) = temp_journal();
-    let _ = journal.workflow_source.iter().count();
-    let _ = journal.compiled_ir.iter().count();
-    let _ = journal.run_header.iter().count();
-    let _ = journal.events.iter().count();
-    let _ = journal.run_snapshot.iter().count();
-    let _ = journal.blob.iter().count();
-    let _ = journal.index_status.iter().count();
-    let _ = journal.index_workflow.iter().count();
-    let _ = journal.index_action.iter().count();
+    assert!(journal.workflow_source.iter().next().is_none());
+    assert!(journal.compiled_ir.iter().next().is_none());
+    assert!(journal.run_header.iter().next().is_none());
+    assert!(journal.events.iter().next().is_none());
+    assert!(journal.run_snapshot.iter().next().is_none());
+    assert!(journal.blob.iter().next().is_none());
+    assert!(journal.index_status.iter().next().is_none());
+    assert!(journal.index_workflow.iter().next().is_none());
+    assert!(journal.index_action.iter().next().is_none());
 }

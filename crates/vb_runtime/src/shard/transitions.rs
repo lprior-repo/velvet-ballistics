@@ -8,7 +8,9 @@ use crate::journal::RuntimeJournalEvent;
 use crate::trace::TraceEvent;
 use crate::{RuntimeError, RuntimeResult};
 
-use crate::shard::types::{PendingTimer, PendingTimerKind, RunState, RuntimeEvent, RuntimeState, Shard};
+use crate::shard::types::{
+    PendingTimer, PendingTimerKind, RunState, RuntimeEvent, RuntimeState, Shard,
+};
 
 impl Shard {
     /// Applies a RuntimeEvent to mutate runtime_states.

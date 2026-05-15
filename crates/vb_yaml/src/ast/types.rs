@@ -11,39 +11,123 @@
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct WorkflowSource {
     /// Language version string (e.g. "velvet-ballastics/v1").
-    pub version: String,
+    pub(crate) version: String,
     /// Workflow name.
-    pub name: String,
+    pub(crate) name: String,
     /// Trigger declaration.
-    pub trigger: TriggerAst,
+    pub(crate) trigger: TriggerAst,
     /// Declared input fields.
-    pub inputs: Vec<InputField>,
+    pub(crate) inputs: Vec<InputField>,
     /// Declared workflow-level variables.
-    pub vars: Vec<VarField>,
+    pub(crate) vars: Vec<VarField>,
     /// Declared secret references.
-    pub secrets: Vec<SecretField>,
+    pub(crate) secrets: Vec<SecretField>,
     /// Ordered step list.
-    pub steps: Vec<StepAst>,
+    pub(crate) steps: Vec<StepAst>,
     /// Optional result mapping.
-    pub result: Option<ResultMapping>,
+    pub(crate) result: Option<ResultMapping>,
     /// Inline examples / test cases.
-    pub examples: Vec<ExampleAst>,
+    pub(crate) examples: Vec<ExampleAst>,
+}
+
+impl WorkflowSource {
+    pub(crate) fn new(parts: WorkflowSourceParts) -> Self {
+        Self {
+            version: parts.version,
+            name: parts.name,
+            trigger: parts.trigger,
+            inputs: parts.inputs,
+            vars: parts.vars,
+            secrets: parts.secrets,
+            steps: parts.steps,
+            result: parts.result,
+            examples: parts.examples,
+        }
+    }
+
+    #[must_use]
+    pub fn version(&self) -> &str {
+        &self.version
+    }
+    #[must_use]
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+    #[must_use]
+    pub fn trigger(&self) -> &TriggerAst {
+        &self.trigger
+    }
+    #[must_use]
+    pub fn inputs(&self) -> &[InputField] {
+        &self.inputs
+    }
+    #[must_use]
+    pub fn vars(&self) -> &[VarField] {
+        &self.vars
+    }
+    #[must_use]
+    pub fn secrets(&self) -> &[SecretField] {
+        &self.secrets
+    }
+    #[must_use]
+    pub fn steps(&self) -> &[StepAst] {
+        &self.steps
+    }
+    #[must_use]
+    pub fn result(&self) -> Option<&ResultMapping> {
+        self.result.as_ref()
+    }
+    #[must_use]
+    pub fn examples(&self) -> &[ExampleAst] {
+        &self.examples
+    }
+}
+
+pub(crate) struct WorkflowSourceParts {
+    pub(crate) version: String,
+    pub(crate) name: String,
+    pub(crate) trigger: TriggerAst,
+    pub(crate) inputs: Vec<InputField>,
+    pub(crate) vars: Vec<VarField>,
+    pub(crate) secrets: Vec<SecretField>,
+    pub(crate) steps: Vec<StepAst>,
+    pub(crate) result: Option<ResultMapping>,
+    pub(crate) examples: Vec<ExampleAst>,
 }
 
 // ---------------------------------------------------------------------------
 // Trigger
 // ---------------------------------------------------------------------------
 
-/// Trigger declaration: manual invocation or IPC.
+/// Trigger declaration.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TriggerAst {
     /// Manual trigger (default).
     Manual,
-    /// IPC trigger with a named channel.
-    Ipc {
-        /// Channel name.
-        name: String,
-    },
+    /// Schedule trigger with cron expression.
+    Schedule { cron: String },
+    /// Named event trigger; YAML field is `type`.
+    Event { event_type: String },
+    /// Empty webhook trigger.
+    Webhook,
+}
+
+/// Recursive cold authoring value.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum AuthorValue {
+    Null,
+    Bool(bool),
+    I64(i64),
+    Text(String),
+    Sequence(Vec<AuthorValue>),
+    Mapping(Vec<AuthorEntry<AuthorValue>>),
+}
+
+/// Key/value entry used for author mappings.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AuthorEntry<T> {
+    pub key: String,
+    pub value: T,
 }
 
 // ---------------------------------------------------------------------------
@@ -219,36 +303,31 @@ pub struct ErrorHandlerAst {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct InputField {
     /// Field name.
-    pub name: String,
-    /// Field type annotation (optional).
-    pub field_type: Option<String>,
-    /// Default value expression (optional).
-    pub default: Option<String>,
+    pub key: String,
+    pub value: AuthorValue,
 }
 
 /// A variable field declaration.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct VarField {
     /// Variable name.
-    pub name: String,
-    /// Initial value expression.
-    pub value: Option<String>,
+    pub key: String,
+    pub value: AuthorValue,
 }
 
 /// A secret reference declaration.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SecretField {
     /// Secret name.
-    pub name: String,
-    /// External key path (optional).
-    pub key: Option<String>,
+    pub key: String,
+    pub value: String,
 }
 
 /// Result mapping at the end of a workflow.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ResultMapping {
     /// Result expression.
-    pub value: String,
+    pub fields: Vec<AuthorEntry<AuthorValue>>,
 }
 
 /// An inline example / test case.
@@ -257,7 +336,7 @@ pub struct ExampleAst {
     /// Example description.
     pub description: Option<String>,
     /// Input bindings for the example.
-    pub input: Option<String>,
+    pub input: Option<AuthorValue>,
     /// Expected result expression.
-    pub expected: Option<String>,
+    pub expected: Option<AuthorValue>,
 }

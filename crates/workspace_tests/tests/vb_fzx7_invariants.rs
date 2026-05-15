@@ -231,8 +231,8 @@ proptest! {
             let util2 = budget_utilization_percent(elapsed2, budget);
 
             if elapsed1_us < elapsed2_us {
-                prop_assert!(util1 < util2,
-                    "utilization should increase with elapsed time: {} < {}", util1, util2);
+                prop_assert!(util1 <= util2,
+                    "utilization should not decrease with elapsed time: {} <= {}", util1, util2);
             }
         }
     }

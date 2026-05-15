@@ -28,12 +28,49 @@
 //!   and `handle_resume` that should convert `RuntimeError` to `ResumeError`.
 
 use std::sync::Arc;
-use vb_core::capability::CapabilitySet;
-use vb_core::ids::{RunId, SlotIdx, StepIdx, WorkflowDigest};
-use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
+use vb_core::action::{ActionContract, Idempotency, RetrySafety, SideEffect};
+use vb_core::capability::{Capability, CapabilitySet};
+use vb_core::ids::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest};
+use vb_core::value::SlotValue;
+use vb_core::workflow::{
+    CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
+};
 use vb_runtime::RuntimeError;
 use vb_runtime::journal::{RuntimeJournal, RuntimeJournalEvent, VolatileRuntimeJournal};
 use vb_runtime::shard::{ResumeError, ResumeStatus, Shard, ShardCommand, ShardConfig};
+
+fn contract_required_capability(action: ActionId) -> Capability {
+    Capability::new("__contract_required__".into(), action)
+}
+
+fn suspended_action_contracts() -> Box<[ActionContract]> {
+    let action = ActionId::new(0);
+    Box::from([ActionContract {
+        id: action,
+        input_slot_count: 1,
+        output_slot_count: 1,
+        max_input_bytes: 1024,
+        max_output_bytes: 1024,
+        timeout_ms: 5000,
+        idempotency: Idempotency::DeterministicPure,
+        side_effect: SideEffect::None,
+        retry_safety: RetrySafety::Safe,
+        required_capabilities: Box::from([contract_required_capability(action)]),
+    }])
+}
+
+fn submit_suspended(shard: &Shard, run: RunId, workflow: CompiledWorkflow) {
+    let action = ActionId::new(0);
+    shard
+        .enqueue(ShardCommand::SubmitWithInputsAndContracts {
+            run,
+            workflow,
+            inputs: Box::from([(SlotIdx::new(0), SlotValue::Bool(false))]),
+            caps: CapabilitySet::from_grants(Box::from([contract_required_capability(action)])),
+            action_contracts: suspended_action_contracts(),
+        })
+        .expect("contracted submit enqueues");
+}
 
 // ---------------------------------------------------------------------------
 // FailingJournal: injects errors after N appends
@@ -158,13 +195,7 @@ fn handle_resume_returns_error_when_drive_run_fails() {
 
     let run_id = RunId::new(1);
     let wf = suspended_workflow().expect("workflow must compile");
-    shard
-        .enqueue(ShardCommand::Submit {
-            run: run_id,
-            workflow: wf,
-            caps: CapabilitySet::empty(),
-        })
-        .expect("submit enqueue must succeed");
+    submit_suspended(&shard, run_id, wf);
     shard.tick().expect("tick must succeed");
 
     // Now run_id is in Resumable state (suspended on action).
@@ -178,14 +209,16 @@ fn handle_resume_returns_error_when_drive_run_fails() {
     // The bug manifests as: result is Ok even though drive_run failed.
     // After the fix, result should be Err because drive_run failed.
     assert!(
-        matches!(&result, Err(ResumeError::JournalAppendFailed))
-            && matches!(
-                result
-                    .as_ref()
-                    .err()
-                    .and_then(ResumeError::source_runtime_error),
-                Some(RuntimeError::StorageJournalAppend { .. })
-            ),
+        matches!(
+            &result,
+            Err(ResumeError::JournalAppendFailedWithSource { .. })
+        ) && matches!(
+            result
+                .as_ref()
+                .err()
+                .and_then(ResumeError::source_runtime_error),
+            Some(RuntimeError::StorageJournalAppend { .. })
+        ),
         "BUG: handle_resume returned {result:?} but drive_run failed. \
          Expected preserved StorageJournalAppend source."
     );
@@ -198,38 +231,36 @@ fn failed_resumed_append_restores_resumable_for_retry() {
 
     let run_id = RunId::new(6);
     let wf = suspended_workflow().expect("workflow must compile");
-    shard
-        .enqueue(ShardCommand::Submit {
-            run: run_id,
-            workflow: wf,
-            caps: CapabilitySet::empty(),
-        })
-        .expect("submit enqueue must succeed");
+    submit_suspended(&shard, run_id, wf);
     shard.tick().expect("tick must succeed");
 
     let result = shard.handle_resume(run_id);
     assert!(
-        matches!(&result, Err(ResumeError::JournalAppendFailed))
-            && matches!(
-                result
-                    .as_ref()
-                    .err()
-                    .and_then(ResumeError::source_runtime_error),
-                Some(RuntimeError::StorageJournalAppend { .. })
-            ),
+        matches!(
+            &result,
+            Err(ResumeError::JournalAppendFailedWithSource { .. })
+        ) && matches!(
+            result
+                .as_ref()
+                .err()
+                .and_then(ResumeError::source_runtime_error),
+            Some(RuntimeError::StorageJournalAppend { .. })
+        ),
         "failed Resumed append must preserve source, got {result:?}"
     );
 
     let retry_result = shard.handle_resume(run_id);
     assert!(
-        matches!(&retry_result, Err(ResumeError::JournalAppendFailed))
-            && matches!(
-                retry_result
-                    .as_ref()
-                    .err()
-                    .and_then(ResumeError::source_runtime_error),
-                Some(RuntimeError::StorageJournalAppend { .. })
-            ),
+        matches!(
+            &retry_result,
+            Err(ResumeError::JournalAppendFailedWithSource { .. })
+        ) && matches!(
+            retry_result
+                .as_ref()
+                .err()
+                .and_then(ResumeError::source_runtime_error),
+            Some(RuntimeError::StorageJournalAppend { .. })
+        ),
         "failed Resumed append must restore Resumable; retry got {retry_result:?}"
     );
 }
@@ -251,13 +282,7 @@ fn observe_resume_drive_result_does_not_drop_drive_run_error() {
 
     let run_id = RunId::new(4);
     let wf = suspended_workflow().expect("workflow must compile");
-    shard
-        .enqueue(ShardCommand::Submit {
-            run: run_id,
-            workflow: wf,
-            caps: CapabilitySet::empty(),
-        })
-        .expect("submit enqueue must succeed");
+    submit_suspended(&shard, run_id, wf);
     shard.tick().expect("tick must succeed");
 
     let result = shard.handle_resume(run_id);
@@ -281,27 +306,23 @@ fn observe_resume_drive_result_does_not_drop_drive_run_error() {
 
     let run_id2 = RunId::new(5);
     let wf2 = suspended_workflow().expect("workflow must compile");
-    shard2
-        .enqueue(ShardCommand::Submit {
-            run: run_id2,
-            workflow: wf2,
-            caps: CapabilitySet::empty(),
-        })
-        .expect("submit enqueue must succeed");
+    submit_suspended(&shard2, run_id2, wf2);
     shard2.tick().expect("tick must succeed");
 
     let result2 = shard2.handle_resume(run_id2);
     // BUG: result2 is Ok because observe_resume_drive_result discards the error.
     // After fix: result2 should be Err(ResumeError::...).
     assert!(
-        matches!(&result2, Err(ResumeError::JournalAppendFailed))
-            && matches!(
-                result2
-                    .as_ref()
-                    .err()
-                    .and_then(ResumeError::source_runtime_error),
-                Some(RuntimeError::StorageJournalAppend { .. })
-            ),
+        matches!(
+            &result2,
+            Err(ResumeError::JournalAppendFailedWithSource { .. })
+        ) && matches!(
+            result2
+                .as_ref()
+                .err()
+                .and_then(ResumeError::source_runtime_error),
+            Some(RuntimeError::StorageJournalAppend { .. })
+        ),
         "BUG CONFIRMED: handle_resume returned {:?} but drive_run failed \
          (journal append failed during resume flush_evidence). \
          observe_resume_drive_result silently dropped the error. \
@@ -467,13 +488,7 @@ fn handle_submit_journal_before_state_insert_noorphan_journal_record() {
     // Use suspended_workflow so the run stays in Resumable state (not finished)
     let wf = suspended_workflow().expect("workflow must compile");
 
-    shard
-        .enqueue(ShardCommand::Submit {
-            run: run_id,
-            workflow: wf,
-            caps: CapabilitySet::empty(),
-        })
-        .expect("submit enqueue must succeed");
+    submit_suspended(&shard, run_id, wf);
     shard.tick().expect("tick must succeed");
 
     // After successful submit+tick, verify both journal AND state exist.
@@ -561,13 +576,7 @@ fn handle_submit_journal_event_ordering_run_submitted_before_admission() {
     let run_id = RunId::new(300);
     let wf = finished_workflow().expect("workflow must compile");
 
-    shard
-        .enqueue(ShardCommand::Submit {
-            run: run_id,
-            workflow: wf,
-            caps: CapabilitySet::empty(),
-        })
-        .expect("submit enqueue must succeed");
+    submit_suspended(&shard, run_id, wf);
     shard.tick().expect("tick must succeed");
 
     let events = journal.snapshot().expect("journal snapshot must succeed");
@@ -706,17 +715,11 @@ fn resume_error_from_resumed_append_failure(run_id: RunId, source: RuntimeError)
     let journal = SourceFailingRuntimeJournal::shared(4, source);
     let mut shard = Shard::new_with_journal(small_config(), journal);
     let wf = suspended_workflow().expect("workflow must compile");
-    shard
-        .enqueue(ShardCommand::Submit {
-            run: run_id,
-            workflow: wf,
-            caps: CapabilitySet::empty(),
-        })
-        .expect("submit enqueue must succeed");
+    submit_suspended(&shard, run_id, wf);
     shard.tick().expect("tick must make run resumable");
 
     match shard.handle_resume(run_id) {
-        Err(error @ ResumeError::JournalAppendFailed) => error,
+        Err(error @ ResumeError::JournalAppendFailedWithSource { .. }) => error,
         other => panic!(
             "resume append failure must return JournalAppendFailed with preserved source, got {other:?}"
         ),

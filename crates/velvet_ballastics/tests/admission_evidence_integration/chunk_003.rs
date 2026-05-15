@@ -23,7 +23,7 @@ fn evidence_chain_after_execution() {
     let run_id = RunId::new(3);
 
     // When: submitting and ticking (suspends on action)
-    match runtime.submit_direct(run_id, workflow) {
+    match submit_do_action_run(&runtime, run_id, workflow) {
         Ok(()) => {}
         Err(err) => {
             fail_assert!("submit_direct failed: {err}");
@@ -187,8 +187,9 @@ fn capability_check_rejects_unauthorized_action() {
         return;
     };
 
-    // The runtime will suspend the run waiting for the action, which demonstrates
-    // that the workflow requires an action that would need capability authorization
+    // The runtime will suspend the run waiting for the action. The scheduling
+    // fixture supplies an explicit contract and grant so the fail-closed action
+    // admission contract remains intact.
     let Some(shard_count) = NonZeroUsize::new(1) else {
         fail_assert!("invalid shard count");
         return;
@@ -199,7 +200,7 @@ fn capability_check_rejects_unauthorized_action() {
         vb_runtime::journal::NoopRuntimeJournal::shared(),
     );
     let run_id = RunId::new(4);
-    match runtime.submit_direct(run_id, workflow) {
+    match submit_do_action_run(&runtime, run_id, workflow) {
         Ok(()) => {}
         Err(err) => {
             fail_assert!("submit_direct failed: {err}");

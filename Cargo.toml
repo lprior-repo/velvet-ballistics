@@ -36,6 +36,7 @@ default-run = "velvet-ballastics"
 workspace = true
 
 [dependencies]
+blake3.workspace = true
 chrono.workspace = true
 crc32fast.workspace = true
 postcard.workspace = true

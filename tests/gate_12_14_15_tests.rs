@@ -182,7 +182,13 @@ fn gate_12_contract_capability_validation() {
         )]),
     };
     let result = validate_gate_12_action_contract_completeness(&parts, &[bad_contract]);
-    assert!(result.is_err());
+    assert!(matches!(
+        result,
+        Err(ValidationError::CapabilityNameEmpty {
+            action_id: 1,
+            capability_index: 0
+        })
+    ));
 }
 
 #[test]

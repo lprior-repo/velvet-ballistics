@@ -20,9 +20,10 @@
 //! These tests are expected to FAIL until vb-jggy implementation is complete.
 
 use vb_core::action::{
-    ActionFailure, ActionFailureCode, ActionOutputReady, ActionTicket, RetryPolicy as VbRetryPolicy,
+    ActionContract, ActionFailure, ActionFailureCode, ActionOutputReady, ActionTicket, Idempotency,
+    RetryPolicy as VbRetryPolicy, RetrySafety, SideEffect,
 };
-use vb_core::capability::CapabilitySet;
+use vb_core::capability::{Capability, CapabilitySet};
 use vb_core::ids::{ActionId, ConstIdx, RunId, SeqNo, SlotIdx, StepIdx, WorkflowDigest};
 use vb_core::value::{ConstValue, SlotValue, Taint};
 use vb_core::workflow::{
@@ -32,6 +33,86 @@ use vb_core::workflow::{
 use vb_runtime::RuntimeError;
 use vb_runtime::journal::{RuntimeJournalEvent, VolatileRuntimeJournal};
 use vb_runtime::shard::{Shard, ShardCommand, ShardConfig};
+
+fn contract_required_capability(action: ActionId) -> Capability {
+    Capability::new("__contract_required__".into(), action)
+}
+
+fn first_do_action(workflow: &CompiledWorkflow) -> Option<ActionId> {
+    let mut index = 0u16;
+    let count = workflow.node_count();
+    while index < count {
+        if let Some(node) = workflow.node(StepIdx::new(index)) {
+            if let CompiledNodeKind::Do { action, .. } = node.kind {
+                return Some(action);
+            }
+        }
+        index = index.saturating_add(1);
+    }
+    None
+}
+
+fn action_contract(action: ActionId, required: bool) -> ActionContract {
+    let required_capabilities = if required {
+        Box::from([contract_required_capability(action)])
+    } else {
+        Box::from([])
+    };
+    ActionContract {
+        id: action,
+        input_slot_count: 1,
+        output_slot_count: 1,
+        max_input_bytes: 1024,
+        max_output_bytes: 1024,
+        timeout_ms: 5000,
+        idempotency: Idempotency::DeterministicPure,
+        side_effect: SideEffect::None,
+        retry_safety: RetrySafety::Safe,
+        required_capabilities,
+    }
+}
+
+fn contracts_through(action: ActionId) -> Box<[ActionContract]> {
+    let target = action.get();
+    let mut contracts = Vec::with_capacity(usize::from(target).saturating_add(1));
+    let mut id = 0u16;
+    loop {
+        let current = ActionId::new(id);
+        contracts.push(action_contract(current, id == target));
+        if id == target {
+            break;
+        }
+        id = id.saturating_add(1);
+    }
+    contracts.into_boxed_slice()
+}
+
+fn submit_with_contracts(shard: &Shard, run: RunId, workflow: CompiledWorkflow) {
+    submit_with_inputs_and_contracts(
+        shard,
+        run,
+        workflow,
+        Box::from([(SlotIdx::new(0), SlotValue::Bool(false))]),
+    );
+}
+
+fn submit_with_inputs_and_contracts(
+    shard: &Shard,
+    run: RunId,
+    workflow: CompiledWorkflow,
+    inputs: Box<[(SlotIdx, SlotValue)]>,
+) {
+    let action = first_do_action(&workflow).unwrap_or(ActionId::new(0));
+    shard
+        .enqueue(ShardCommand::SubmitWithInputsAndContracts {
+            run,
+            workflow,
+            inputs,
+            caps: CapabilitySet::from_grants(Box::from([contract_required_capability(action)])),
+            action_contracts: contracts_through(action),
+        })
+        .expect("contracted submit enqueues");
+}
 
 fn suspended_workflow() -> Option<CompiledWorkflow> {
     let node = CompiledNode {
@@ -215,14 +296,11 @@ fn handle_submit_with_inputs_records_first_action_attempts() {
     };
     let run = RunId::new(1);
 
-    assert_eq!(
-        shard.enqueue(ShardCommand::SubmitWithInputs {
-            run,
-            workflow: wf,
-            inputs: Box::from([]),
-            caps: CapabilitySet::empty(),
-        }),
-        Ok(())
+    submit_with_inputs_and_contracts(
+        &shard,
+        run,
+        wf,
+        Box::from([(SlotIdx::new(0), SlotValue::Bool(false))]),
     );
     assert_eq!(shard.tick(), Ok(true));
 
@@ -252,14 +330,7 @@ fn handle_submit_records_first_action_attempt_single_step() {
     };
     let run = RunId::new(2);
 
-    assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
-            run,
-            workflow: wf,
-            caps: CapabilitySet::empty(),
-        }),
-        Ok(())
-    );
+    submit_with_contracts(&shard, run, wf);
     assert_eq!(shard.tick(), Ok(true));
 
     let Some(state) = shard.runs.get(&run) else {
@@ -290,14 +361,7 @@ fn step_succeeded_carries_attempt_field() {
     let run = RunId::new(10);
 
     // Submit and drive to action
-    assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
-            run,
-            workflow: wf,
-            caps: CapabilitySet::empty(),
-        }),
-        Ok(())
-    );
+    submit_with_contracts(&shard, run, wf);
     assert_eq!(shard.tick(), Ok(true));
 
     // Complete action with attempt=1
@@ -352,14 +416,7 @@ fn action_failed_carries_attempt_field() {
     let run = RunId::new(11);
 
     // Submit and drive to action
-    assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
-            run,
-            workflow: wf,
-            caps: CapabilitySet::empty(),
-        }),
-        Ok(())
-    );
+    submit_with_contracts(&shard, run, wf);
     assert_eq!(shard.tick(), Ok(true));
 
     // Fail action with attempt=2
@@ -411,14 +468,7 @@ fn step_succeeded_carries_retry_attempt_number() {
     let run = RunId::new(12);
 
     // Submit
-    assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
-            run,
-            workflow: wf,
-            caps: CapabilitySet::empty(),
-        }),
-        Ok(())
-    );
+    submit_with_contracts(&shard, run, wf);
     assert_eq!(shard.tick(), Ok(true));
 
     // Simulate: action_attempts[0] was advanced to 3 via record_scheduled_attempt
@@ -482,14 +532,7 @@ fn stale_attempt_completion_rejected_before_journal_write() {
     let run = RunId::new(20);
 
     // Submit
-    assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
-            run,
-            workflow: wf,
-            caps: CapabilitySet::empty(),
-        }),
-        Ok(())
-    );
+    submit_with_contracts(&shard, run, wf);
     assert_eq!(shard.tick(), Ok(true));
 
     // Manually advance action_attempts[0] to 3 (simulating prior attempt)
@@ -561,14 +604,7 @@ fn stale_attempt_failure_rejected_before_journal_write() {
     let run = RunId::new(21);
 
     // Submit
-    assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
-            run,
-            workflow: wf,
-            caps: CapabilitySet::empty(),
-        }),
-        Ok(())
-    );
+    submit_with_contracts(&shard, run, wf);
     assert_eq!(shard.tick(), Ok(true));
 
     // Manually advance action_attempts[0] to 5
@@ -631,14 +667,7 @@ fn action_attempts_advances_after_scheduling() {
     let run = RunId::new(30);
 
     // Initially action_attempts[0] = 0
-    assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
-            run,
-            workflow: wf,
-            caps: CapabilitySet::empty(),
-        }),
-        Ok(())
-    );
+    submit_with_contracts(&shard, run, wf);
     assert_eq!(shard.tick(), Ok(true));
 
     let state = shard.runs.get(&run).expect("run should exist");
@@ -662,14 +691,7 @@ fn action_attempts_monotonically_advances_on_retry() {
     let run = RunId::new(31);
 
     // Submit and drive to action (step 1)
-    assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
-            run,
-            workflow: wf,
-            caps: CapabilitySet::empty(),
-        }),
-        Ok(())
-    );
+    submit_with_contracts(&shard, run, wf);
     assert_eq!(shard.tick(), Ok(true));
 
     // action_attempts[1] should be 1 after first scheduling
@@ -738,14 +760,7 @@ fn action_attempts_never_decreases_across_operations() {
     };
     let run = RunId::new(40);
 
-    assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
-            run,
-            workflow: wf,
-            caps: CapabilitySet::empty(),
-        }),
-        Ok(())
-    );
+    submit_with_contracts(&shard, run, wf);
     assert_eq!(shard.tick(), Ok(true));
 
     let initial_attempt = shard
@@ -792,14 +807,7 @@ fn encode_failed_completion_returns_error_and_leaves_state_unchanged() {
     };
     let run = RunId::new(50);
 
-    assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
-            run,
-            workflow: wf,
-            caps: CapabilitySet::empty(),
-        }),
-        Ok(())
-    );
+    submit_with_contracts(&shard, run, wf);
     assert_eq!(shard.tick(), Ok(true));
 
     // Verify run is active and in correct state
@@ -834,14 +842,7 @@ fn validate_ticket_attempt_accepts_valid_ticket() {
     };
     let run = RunId::new(60);
 
-    assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
-            run,
-            workflow: wf,
-            caps: CapabilitySet::empty(),
-        }),
-        Ok(())
-    );
+    submit_with_contracts(&shard, run, wf);
     assert_eq!(shard.tick(), Ok(true));
 
     // Advance action_attempts[0] to 1
@@ -882,14 +883,7 @@ fn equal_attempt_is_not_stale() {
     };
     let run = RunId::new(70);
 
-    assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
-            run,
-            workflow: wf,
-            caps: CapabilitySet::empty(),
-        }),
-        Ok(())
-    );
+    submit_with_contracts(&shard, run, wf);
     assert_eq!(shard.tick(), Ok(true));
 
     // action_attempts[0] = 1 after scheduling
@@ -926,14 +920,7 @@ fn future_attempt_within_capacity_is_accepted() {
     };
     let run = RunId::new(80);
 
-    assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
-            run,
-            workflow: wf,
-            caps: CapabilitySet::empty(),
-        }),
-        Ok(())
-    );
+    submit_with_contracts(&shard, run, wf);
     assert_eq!(shard.tick(), Ok(true));
 
     // action_attempts[0] = 1
@@ -969,14 +956,7 @@ fn each_step_has_independent_attempt_counter() {
     };
     let run = RunId::new(90);
 
-    assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
-            run,
-            workflow: wf,
-            caps: CapabilitySet::empty(),
-        }),
-        Ok(())
-    );
+    submit_with_contracts(&shard, run, wf);
     assert_eq!(shard.tick(), Ok(true));
 
     // Step 0 should have attempt=1 (first action scheduled)

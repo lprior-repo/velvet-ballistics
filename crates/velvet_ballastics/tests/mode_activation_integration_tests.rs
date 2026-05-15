@@ -25,10 +25,11 @@ when:
 steps:
   - id: save_value
     save:
-      value: 1
+      output: saved
+      value: "1"
   - id: done
     finish:
-      result: 0
+      result: saved
 "#;
 
 const INVALID_WORKFLOW: &str = r#"

@@ -10,6 +10,7 @@ use vb_core::action::{ActionContract, Idempotency, RetrySafety, SideEffect};
 use vb_core::ids::{ActionId, SlotIdx, StepIdx};
 use vb_core::workflow::{CompiledNode, CompiledNodeKind, ExprOp, ResourceContract, WorkflowParts};
 
+use vb_validate::ValidationError;
 use vb_validate::gates;
 use vb_validate::shared::{ValidationPipeline, validate, validate_with_contracts};
 
@@ -236,8 +237,7 @@ proptest! {
         ];
         // Stack: 1, 2, then Eq reduces to 1 => max depth = 2
         let result = gates::compute_stack_depth(&ops);
-        prop_assert!(result.is_ok());
-        prop_assert_eq!(result.unwrap(), 2);
+        prop_assert_eq!(result, Ok(2));
     }
 }
 
@@ -265,7 +265,8 @@ proptest! {
 
         let result = gates::validate_gate_09_slot_references(&parts);
 
-        prop_assert!(result.is_err());
+        let is_slot_out_of_range = matches!(result, Err(ValidationError::SlotReferenceOutOfRange { .. }));
+        prop_assert!(is_slot_out_of_range);
     }
 }
 
@@ -545,10 +546,8 @@ proptest! {
 
         let result = validate(&parts);
 
-        prop_assert!(result.is_err());
-        // Should fail on G9 (slot bounds), not later gates
-        let err_str = format!("{:?}", result);
-        prop_assert!(err_str.contains("slot") || err_str.contains("SLOT") || err_str.contains("Range"));
+        let is_slot_out_of_range = matches!(result, Err(ValidationError::SlotReferenceOutOfRange { .. }));
+        prop_assert!(is_slot_out_of_range);
     }
 }
 

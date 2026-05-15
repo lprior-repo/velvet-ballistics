@@ -15,6 +15,7 @@
 use vb_core::action::{ActionContract, Idempotency, RetrySafety, SideEffect};
 use vb_core::ids::{ActionId, SlotIdx, StepIdx};
 use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
+use vb_validate::ValidationError;
 use vb_validate::shared::{ValidationPipeline, validate, validate_with_contracts};
 
 // ---------------------------------------------------------------------------
@@ -168,7 +169,7 @@ fn integration_schema_calls_validate() {
     // This is what schema.rs:651 should call
     let result = validate(&parts);
 
-    assert!(result.is_ok());
+    assert_eq!(result, Ok(()));
 }
 
 // ===========================================================================
@@ -193,7 +194,7 @@ fn integration_types_calls_validate() {
     // This is what types.rs:155 should call
     let result = validate(&parts);
 
-    assert!(result.is_ok());
+    assert_eq!(result, Ok(()));
 }
 
 // ===========================================================================
@@ -218,7 +219,7 @@ fn integration_verify_command_calls_validate() {
     // This is what commands_verify.rs:76 should call
     let result = validate(&parts);
 
-    assert!(result.is_ok());
+    assert_eq!(result, Ok(()));
 }
 
 // ===========================================================================
@@ -436,7 +437,10 @@ fn integration_error_case_validation() {
     // Should fail validation
     let result = validate(&parts);
 
-    assert!(result.is_err());
+    assert!(matches!(
+        result,
+        Err(ValidationError::SlotReferenceOutOfRange { .. })
+    ));
 
     // Error should be specific
     if let Err(e) = result {
@@ -467,7 +471,10 @@ fn integration_selective_gate_testing() {
 
     // With all gates: should fail
     let all_result = ValidationPipeline::default().validate(&parts);
-    assert!(all_result.is_err());
+    assert!(matches!(
+        all_result,
+        Err(ValidationError::SlotReferenceOutOfRange { .. })
+    ));
 
     // With G9 disabled: should pass (but this is artificial - in real use,
     // you'd want to validate the specific gate you're testing)
@@ -476,5 +483,5 @@ fn integration_selective_gate_testing() {
         ..ValidationPipeline::default()
     };
     let no_g9_result = no_g9.validate(&parts);
-    assert!(no_g9_result.is_ok());
+    assert_eq!(no_g9_result, Ok(()));
 }

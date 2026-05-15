@@ -13,9 +13,10 @@
 // This file is Cargo-discovered evidence of the gap between contract and implementation.
 
 use vb_core::action::{
-    ActionFailure, ActionFailureCode, ActionTicket, RetryPolicy as VbRetryPolicy,
+    ActionContract, ActionFailure, ActionFailureCode, ActionTicket, Idempotency,
+    RetryPolicy as VbRetryPolicy, RetrySafety, SideEffect,
 };
-use vb_core::capability::CapabilitySet;
+use vb_core::capability::{Capability, CapabilitySet};
 use vb_core::ids::{ActionId, ConstIdx, RunId, SeqNo, SlotIdx, StepIdx, WorkflowDigest};
 use vb_core::value::{ConstValue, Taint};
 use vb_core::workflow::{
@@ -295,15 +296,71 @@ fn non_retryable_failure() -> ActionFailure {
 }
 
 fn submit_run(shard: &mut Shard, run: RunId, workflow: CompiledWorkflow) {
+    let action = first_do_action(&workflow).unwrap_or(ActionId::new(0));
     assert_eq!(
-        shard.enqueue(ShardCommand::Submit {
+        shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
             run,
             workflow,
-            caps: CapabilitySet::empty(),
+            inputs: Box::from([(SlotIdx::new(0), vb_core::value::SlotValue::Bool(false))]),
+            caps: CapabilitySet::from_grants(Box::from([contract_required_capability(action)])),
+            action_contracts: contracts_through(action),
         }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
+}
+
+fn first_do_action(workflow: &CompiledWorkflow) -> Option<ActionId> {
+    let mut index = 0u16;
+    let count = workflow.node_count();
+    while index < count {
+        if let Some(node) = workflow.node(StepIdx::new(index)) {
+            if let CompiledNodeKind::Do { action, .. } = node.kind {
+                return Some(action);
+            }
+        }
+        index = index.saturating_add(1);
+    }
+    None
+}
+
+fn contract_required_capability(action: ActionId) -> Capability {
+    Capability::new("__contract_required__".into(), action)
+}
+
+fn action_contract(action: ActionId, required: bool) -> ActionContract {
+    let required_capabilities = if required {
+        Box::from([contract_required_capability(action)])
+    } else {
+        Box::from([])
+    };
+    ActionContract {
+        id: action,
+        input_slot_count: 1,
+        output_slot_count: 1,
+        max_input_bytes: 1024,
+        max_output_bytes: 1024,
+        timeout_ms: 5000,
+        idempotency: Idempotency::DeterministicPure,
+        side_effect: SideEffect::None,
+        retry_safety: RetrySafety::Safe,
+        required_capabilities,
+    }
+}
+
+fn contracts_through(action: ActionId) -> Box<[ActionContract]> {
+    let target = action.get();
+    let mut contracts = Vec::with_capacity(usize::from(target).saturating_add(1));
+    let mut id = 0u16;
+    loop {
+        let current = ActionId::new(id);
+        contracts.push(action_contract(current, id == target));
+        if id == target {
+            break;
+        }
+        id = id.saturating_add(1);
+    }
+    contracts.into_boxed_slice()
 }
 
 // ===== RED-PHASE TEST 1: POST-005 - ticket_with_retry_capacity expands capacity =====

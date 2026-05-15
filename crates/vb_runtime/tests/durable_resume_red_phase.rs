@@ -14,7 +14,9 @@
 //! These tests verify the durable resume contract clauses: PRE-001 through
 //! PRE-003, POST-001 through POST-004, and INV-001 through INV-004.
 
-use vb_core::capability::CapabilitySet;
+use vb_core::action::{ActionContract, Idempotency, RetrySafety, SideEffect};
+use vb_core::capability::{Capability, CapabilitySet};
+use vb_core::ids::ActionId;
 use vb_core::ids::RunId;
 use vb_core::ids::{SlotIdx, StepIdx, WorkflowDigest};
 use vb_core::workflow::CompiledWorkflow;
@@ -24,6 +26,39 @@ use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, Workfl
 // These imports will fail until vb-qi37.16.2 is implemented.
 use vb_runtime::journal::{RuntimeJournalEvent, VolatileRuntimeJournal};
 use vb_runtime::shard::{ResumeStatus, RuntimeState, Shard, ShardCommand, ShardConfig};
+
+fn contract_required_capability(action: ActionId) -> Capability {
+    Capability::new("__contract_required__".into(), action)
+}
+
+fn suspended_action_contracts() -> Box<[ActionContract]> {
+    let action = ActionId::new(0);
+    Box::from([ActionContract {
+        id: action,
+        input_slot_count: 1,
+        output_slot_count: 1,
+        max_input_bytes: 1024,
+        max_output_bytes: 1024,
+        timeout_ms: 5000,
+        idempotency: Idempotency::DeterministicPure,
+        side_effect: SideEffect::None,
+        retry_safety: RetrySafety::Safe,
+        required_capabilities: Box::from([contract_required_capability(action)]),
+    }])
+}
+
+fn submit_suspended(shard: &Shard, run: RunId, workflow: CompiledWorkflow) {
+    let action = ActionId::new(0);
+    shard
+        .enqueue(ShardCommand::SubmitWithInputsAndContracts {
+            run,
+            workflow,
+            inputs: Box::from([(SlotIdx::new(0), vb_core::value::SlotValue::Bool(false))]),
+            caps: CapabilitySet::from_grants(Box::from([contract_required_capability(action)])),
+            action_contracts: suspended_action_contracts(),
+        })
+        .unwrap();
+}
 
 // ----------------------------------------------------------------------------
 // Contract: PRE-001 - run_id must exist in journal
@@ -88,13 +123,7 @@ fn resume_pre002_resumable_after_action_wait_returns_resumed() {
 
     // First, submit a workflow that stays running (suspended on action)
     let wf = suspended_workflow().unwrap();
-    shard
-        .enqueue(ShardCommand::Submit {
-            run: run_id,
-            workflow: wf,
-            caps: CapabilitySet::empty(),
-        })
-        .unwrap();
+    submit_suspended(&shard, run_id, wf);
     shard.tick().unwrap();
 
     // After tick(), suspended_workflow is in Resumable state (suspended on action).
@@ -168,13 +197,7 @@ fn resume_pre002_second_resume_after_action_wait_returns_resumed() {
 
     // Submit a suspended workflow
     let wf = suspended_workflow().unwrap();
-    shard
-        .enqueue(ShardCommand::Submit {
-            run: run_id,
-            workflow: wf,
-            caps: CapabilitySet::empty(),
-        })
-        .unwrap();
+    submit_suspended(&shard, run_id, wf);
     shard.tick().unwrap();
 
     // First resume: Resumable -> Running, returns Resumed (success)
@@ -218,13 +241,7 @@ fn resume_pre002_from_resumable_succeeds() {
 
     // Submit a workflow that we'll mark as Resumable
     let wf = suspended_workflow().unwrap();
-    shard
-        .enqueue(ShardCommand::Submit {
-            run: run_id,
-            workflow: wf,
-            caps: CapabilitySet::empty(),
-        })
-        .unwrap();
+    submit_suspended(&shard, run_id, wf);
     shard.tick().unwrap();
 
     // After completion/suspension, the run should be in Resumable state
@@ -262,13 +279,7 @@ fn resume_pre003_incomplete_hydration_fails() {
 
     // Submit a suspended workflow (suspends after tick, enters Resumable state)
     let wf = suspended_workflow().unwrap();
-    shard
-        .enqueue(ShardCommand::Submit {
-            run: run_id,
-            workflow: wf,
-            caps: CapabilitySet::empty(),
-        })
-        .unwrap();
+    submit_suspended(&shard, run_id, wf);
     shard.tick().unwrap();
 
     // VolatileRuntimeJournal considers a run hydration-complete if it exists
@@ -306,13 +317,7 @@ fn resume_post001_journal_appended_before_success() {
 
     // Submit a suspended workflow
     let wf = suspended_workflow().unwrap();
-    shard
-        .enqueue(ShardCommand::Submit {
-            run: run_id,
-            workflow: wf,
-            caps: CapabilitySet::empty(),
-        })
-        .unwrap();
+    submit_suspended(&shard, run_id, wf);
     shard.tick().unwrap();
 
     // Record journal length before resume
@@ -357,13 +362,7 @@ fn resume_post001_journal_append_failure_returns_error() {
 
     // Submit a suspended workflow
     let wf = suspended_workflow().unwrap();
-    shard
-        .enqueue(ShardCommand::Submit {
-            run: run_id,
-            workflow: wf,
-            caps: CapabilitySet::empty(),
-        })
-        .unwrap();
+    submit_suspended(&shard, run_id, wf);
     shard.tick().unwrap();
 
     // Resume succeeds with VolatileRuntimeJournal (append never fails).
@@ -390,13 +389,7 @@ fn resume_post002_result_contains_required_fields() {
 
     // Submit a suspended workflow
     let wf = suspended_workflow().unwrap();
-    shard
-        .enqueue(ShardCommand::Submit {
-            run: run_id,
-            workflow: wf,
-            caps: CapabilitySet::empty(),
-        })
-        .unwrap();
+    submit_suspended(&shard, run_id, wf);
     shard.tick().unwrap();
 
     // Resume
@@ -435,13 +428,7 @@ fn resume_post003_error_returns_error_for_invalid_run() {
 
     // Submit a workflow
     let wf = suspended_workflow().unwrap();
-    shard
-        .enqueue(ShardCommand::Submit {
-            run: run_id,
-            workflow: wf,
-            caps: CapabilitySet::empty(),
-        })
-        .unwrap();
+    submit_suspended(&shard, run_id, wf);
     shard.tick().unwrap();
 
     // Try to resume with non-existent run_id
@@ -474,13 +461,7 @@ fn resume_post004_resumed_event_is_durable() {
 
     // Submit a suspended workflow
     let wf = suspended_workflow().unwrap();
-    shard
-        .enqueue(ShardCommand::Submit {
-            run: run_id,
-            workflow: wf,
-            caps: CapabilitySet::empty(),
-        })
-        .unwrap();
+    submit_suspended(&shard, run_id, wf);
     shard.tick().unwrap();
 
     // Resume
@@ -576,13 +557,7 @@ fn resume_inv002_journal_append_is_immutable() {
 
     // Submit and resume multiple times
     let wf = suspended_workflow().unwrap();
-    shard
-        .enqueue(ShardCommand::Submit {
-            run: run_id,
-            workflow: wf,
-            caps: CapabilitySet::empty(),
-        })
-        .unwrap();
+    submit_suspended(&shard, run_id, wf);
     shard.tick().unwrap();
 
     let events_before = journal.snapshot().unwrap();
@@ -616,13 +591,7 @@ fn resume_inv003_result_fields_are_present() {
 
     // Submit a suspended workflow
     let wf = suspended_workflow().unwrap();
-    shard
-        .enqueue(ShardCommand::Submit {
-            run: run_id,
-            workflow: wf,
-            caps: CapabilitySet::empty(),
-        })
-        .unwrap();
+    submit_suspended(&shard, run_id, wf);
     shard.tick().unwrap();
 
     // Resume
@@ -665,13 +634,7 @@ fn resume_inv004_failed_run_not_resumable() {
 
     // Submit a workflow that suspends (becomes Resumable)
     let wf = suspended_workflow().unwrap();
-    shard
-        .enqueue(ShardCommand::Submit {
-            run: run_id,
-            workflow: wf,
-            caps: CapabilitySet::empty(),
-        })
-        .unwrap();
+    submit_suspended(&shard, run_id, wf);
     shard.tick().unwrap();
 
     // Verify the run is in Resumable state by successfully resuming it

@@ -122,7 +122,12 @@ fn source_map_span_for_node_returns_correct_range() {
         return;
     };
     assert_eq!(s.start_line, s.end_line);
-    assert_eq!(s.start_col, s.end_col);
+    assert!(s.end_col >= s.start_col);
+    assert!(s.end_offset >= s.start_offset);
+}
+
+fn span_text<'a>(yaml: &'a str, span: SourceSpan) -> &'a str {
+    yaml.get(span.start_offset..span.end_offset).unwrap_or("")
 }
 
 #[test]
@@ -147,7 +152,7 @@ fn source_map_iter_indices_are_sequential() {
 
 #[test]
 fn source_span_new_exact_values() {
-    let span = SourceSpan::new(1, 2, 3, 4);
+    let span = SourceSpan::new(0, 4, 1, 2, 3, 4);
     assert_eq!(span.start_line, 1);
     assert_eq!(span.start_col, 2);
     assert_eq!(span.end_line, 3);
@@ -223,6 +228,36 @@ fn adversarial_source_map_multi_line_scalar_tracks_spans() {
         }
         Err(e) => fail_assert!("expected Ok source map, got Err: {e}"),
     }
+}
+
+#[test]
+fn semantic_source_map_tracks_multi_step_paths_distinctly() {
+    let yaml = "version: velvet-ballastics/v1\nname: paths\nwhen:\n  event:\n    type: invoice.created\nsteps:\n  - id: first\n    set:\n      output: result\n      value: one\n  - id: second\n    finish:\n      result: result\n";
+    let map = build_semantic_source_map(yaml).unwrap_or_default();
+
+    let trigger = map.span_for_path("$.when.event");
+    let first_id = map.span_for_path("$.steps[0].id");
+    let second_id = map.span_for_path("$.steps[1].id");
+    let result = map.span_for_path("$.steps[1].finish.result");
+
+    assert!(matches!(trigger, Some(span) if span_text(yaml, span) == "event"));
+    assert!(matches!(first_id, Some(span) if span_text(yaml, span) == "first"));
+    assert!(matches!(second_id, Some(span) if span_text(yaml, span) == "second"));
+    assert!(matches!(result, Some(span) if span_text(yaml, span) == "result"));
+    assert_ne!(first_id, second_id);
+}
+
+#[test]
+fn semantic_source_map_repeated_fields_use_event_positions_not_text_find() {
+    let yaml = "version: velvet-ballastics/v1\nname: repeated\nwhen:\n  webhook: {}\nsteps:\n  - id: repeated\n    set:\n      output: first\n      value: repeated\n  - id: repeated_later\n    finish:\n      result: repeated\nnext_key: after\n";
+    let map = build_semantic_source_map(yaml).unwrap_or_default();
+
+    let second_id = map.span_for_path("$.steps[1].id");
+    let result = map.span_for_path("$.steps[1].finish.result");
+
+    assert!(matches!(second_id, Some(span) if span_text(yaml, span) == "repeated_later"));
+    assert!(matches!(result, Some(span) if span_text(yaml, span) == "repeated"));
+    assert!(matches!(result, Some(span) if span.end_offset < yaml.len()));
 }
 
 #[test]

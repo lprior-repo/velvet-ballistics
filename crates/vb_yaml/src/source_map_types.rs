@@ -7,6 +7,10 @@
 /// A (line, column) span in the source text.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct SourceSpan {
+    /// Start byte offset in UTF-8 source.
+    pub start_offset: usize,
+    /// Exclusive end byte offset in UTF-8 source.
+    pub end_offset: usize,
     /// One-indexed start line.
     pub start_line: usize,
     /// One-indexed start column.
@@ -20,13 +24,41 @@ pub struct SourceSpan {
 impl SourceSpan {
     /// Creates a new source span.
     #[must_use]
-    pub const fn new(start_line: usize, start_col: usize, end_line: usize, end_col: usize) -> Self {
+    pub const fn new(
+        start_offset: usize,
+        end_offset: usize,
+        start_line: usize,
+        start_col: usize,
+        end_line: usize,
+        end_col: usize,
+    ) -> Self {
         Self {
+            start_offset,
+            end_offset,
             start_line,
             start_col,
             end_line,
             end_col,
         }
+    }
+}
+
+/// Cold semantic source map keyed by JSONPath-like author paths.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct SemanticSourceMap {
+    spans: Vec<(String, SourceSpan)>,
+}
+
+impl SemanticSourceMap {
+    pub(crate) fn push(&mut self, path: String, span: SourceSpan) {
+        self.spans.push((path, span));
+    }
+
+    #[must_use]
+    pub fn span_for_path(&self, path: &str) -> Option<SourceSpan> {
+        self.spans
+            .iter()
+            .find_map(|(candidate, span)| if candidate == path { Some(*span) } else { None })
     }
 }
 

@@ -104,13 +104,13 @@ fn reject_duplicate_keys_returns_duplicate_key_for_same_keys() {
 
 #[test]
 fn reject_forbidden_features_returns_unsupported_feature_for_complex_key() {
-    let yaml = indoc::indoc! {"
+    let yaml = indoc::indoc! {r#"
         version: velvet-ballastics/v1
         name: t
         when:
           http: {}
         steps: []
-    "};
+    "#};
     let result = parse_workflow_source(yaml);
     assert_eq!(
         result,
@@ -241,7 +241,7 @@ fn reject_yaml_profile_returns_ok_for_clean_yaml() {
 
 #[test]
 fn parse_workflow_source_returns_ok_for_minimal_valid_workflow() {
-    let yaml = indoc::indoc! {"
+    let yaml = indoc::indoc! {r#"
         version: velvet-ballastics/v1
         name: minimal
         when:
@@ -251,12 +251,12 @@ fn parse_workflow_source_returns_ok_for_minimal_valid_workflow() {
             set:
               output: x
               value: \"42\"
-    "};
+    "#};
     let result = parse_workflow_source(yaml);
     match result {
         Ok(wf) => {
-            assert_eq!(wf.name, "minimal");
-            assert_eq!(wf.steps.len(), 1);
+            assert_eq!(wf.name(), "minimal");
+            assert_eq!(wf.steps().len(), 1);
         }
         Err(e) => fail_assert!("expected Ok, got Err: {e}"),
     }
@@ -274,7 +274,7 @@ fn parse_workflow_source_returns_ok_for_workflow_with_version() {
     let result = parse_workflow_source(yaml);
     match result {
         Ok(wf) => {
-            assert_eq!(wf.version, "velvet-ballastics/v1");
+            assert_eq!(wf.version(), "velvet-ballastics/v1");
         }
         Err(e) => fail_assert!("expected Ok, got Err: {e}"),
     }
@@ -304,7 +304,7 @@ fn parse_workflow_source_returns_ok_for_multi_step_workflow() {
     let result = parse_workflow_source(yaml);
     match result {
         Ok(wf) => {
-            assert_eq!(wf.steps.len(), 3);
+            assert_eq!(wf.steps().len(), 3);
         }
         Err(e) => fail_assert!("expected Ok, got Err: {e}"),
     }
@@ -413,9 +413,53 @@ fn load_fixture_source_returns_content_for_valid_fixture() {
     "};
     let result = load_fixture_source(yaml);
     match result {
-        Ok(wf) => assert_eq!(wf.name, "fixture"),
+        Ok(wf) => assert_eq!(wf.name(), "fixture"),
         Err(e) => fail_assert!("expected Ok, got Err: {e}"),
     }
+}
+
+#[test]
+fn parse_workflow_source_rejects_step_with_multiple_primitives() {
+    let yaml = indoc::indoc! {r#"
+        version: velvet-ballastics/v1
+        name: duplicate-primitive
+        when:
+          manual: {}
+        steps:
+          - id: s1
+            set: { output: x, value: "1" }
+            do: { action: action.name, input: "x" }
+    "#};
+    let result = parse_workflow_source(yaml);
+    assert_eq!(
+        result,
+        Err(YamlError::FieldShape {
+            field: "step",
+            expected: "exactly one primitive"
+        })
+    );
+}
+
+#[test]
+fn parse_workflow_source_rejects_canonical_and_alias_duplicate_primitives() {
+    let yaml = indoc::indoc! {r#"
+        version: velvet-ballastics/v1
+        name: duplicate-alias-primitive
+        when:
+          manual: {}
+        steps:
+          - id: s1
+            do: { action: action.name, input: "x" }
+            run: { action: action.name, input: "y" }
+    "#};
+    let result = parse_workflow_source(yaml);
+    assert_eq!(
+        result,
+        Err(YamlError::FieldShape {
+            field: "step",
+            expected: "exactly one primitive"
+        })
+    );
 }
 
 #[test]
@@ -615,12 +659,12 @@ fn adversarial_api_workflow_with_unknown_trigger_field_rejected() {
         version: velvet-ballastics/v1
         name: bad-trigger
         when:
-          webhook: {}
+          ipc: {}
         steps: []
     "};
     let result = parse_workflow_source(yaml);
     assert!(
-        matches!(result, Err(YamlError::FieldShape { .. })),
+        matches!(result, Err(YamlError::UnsupportedFeature { .. })),
         "expected FieldShape for unknown trigger, got: {result:?}"
     );
 }
@@ -637,6 +681,267 @@ fn adversarial_api_workflow_with_non_mapping_when_rejected() {
     let yaml = "version: velvet-ballastics/v1\nname: bad\nwhen: manual\nsteps: []\n";
     let result = parse_workflow_source(yaml);
     assert!(result.is_err(), "expected error for non-mapping when");
+}
+
+#[test]
+fn canonical_triggers_and_aliases_parse() {
+    let yaml = indoc::indoc! {r#"
+        version: velvet-ballastics/v1
+        name: canonical
+        when:
+          event:
+            type: invoice.created
+        inputs:
+          payload:
+            nested: [1, "$kept_text"]
+        vars:
+          flag: true
+        secrets:
+          api_key: ENV_API_KEY
+        steps:
+          - id: first
+            save:
+              output: answer
+              value: "42"
+          - id: done
+            finish:
+              result: answer
+    "#};
+    let wf = parse_workflow_source(yaml).expect("canonical workflow parses");
+    assert!(
+        matches!(wf.trigger(), crate::ast::TriggerAst::Event { event_type } if event_type == "invoice.created")
+    );
+    assert_eq!(wf.inputs().len(), 1);
+    assert_eq!(wf.vars().len(), 1);
+    assert_eq!(wf.secrets().len(), 1);
+    assert_eq!(wf.steps().len(), 2);
+}
+
+#[test]
+fn parse_workflow_source_accepts_all_v1_triggers() {
+    let cases = [
+        (
+            "manual",
+            indoc::indoc! {"
+                version: velvet-ballastics/v1
+                name: manual-trigger
+                when:
+                  manual: {}
+                steps: []
+            "},
+        ),
+        (
+            "webhook",
+            indoc::indoc! {"
+                version: velvet-ballastics/v1
+                name: webhook-trigger
+                when:
+                  webhook: {}
+                steps: []
+            "},
+        ),
+        (
+            "event",
+            indoc::indoc! {"
+                version: velvet-ballastics/v1
+                name: event-trigger
+                when:
+                  event:
+                    type: invoice.created
+                steps: []
+            "},
+        ),
+        (
+            "schedule",
+            indoc::indoc! {"
+                version: velvet-ballastics/v1
+                name: schedule-trigger
+                when:
+                  schedule:
+                    cron: '0 0 * * *'
+                steps: []
+            "},
+        ),
+    ];
+
+    for (kind, yaml) in cases {
+        let result = parse_workflow_source(yaml);
+        match result {
+            Ok(wf) => match (kind, wf.trigger()) {
+                ("manual", crate::ast::TriggerAst::Manual)
+                | ("webhook", crate::ast::TriggerAst::Webhook) => {}
+                ("event", crate::ast::TriggerAst::Event { event_type }) => {
+                    assert_eq!(event_type, "invoice.created");
+                }
+                ("schedule", crate::ast::TriggerAst::Schedule { cron }) => {
+                    assert_eq!(cron, "0 0 * * *");
+                }
+                (_, other) => fail_assert!("wrong trigger for {kind}: {other:?}"),
+            },
+            Err(e) => fail_assert!("expected {kind} trigger to parse, got Err: {e}"),
+        }
+    }
+}
+
+#[test]
+fn parse_workflow_source_accepts_schedule_with_cron_mapping() {
+    let yaml = indoc::indoc! {"
+        version: velvet-ballastics/v1
+        name: scheduled
+        when:
+          schedule:
+            cron: '*/5 * * * *'
+        steps: []
+    "};
+    let result = parse_workflow_source(yaml);
+    match result {
+        Ok(wf) => assert!(
+            matches!(wf.trigger(), crate::ast::TriggerAst::Schedule { cron } if cron == "*/5 * * * *")
+        ),
+        Err(e) => fail_assert!("expected schedule trigger to parse, got Err: {e}"),
+    }
+}
+
+#[test]
+fn parse_workflow_source_rejects_schedule_non_mapping_shape() {
+    let yaml = indoc::indoc! {"
+        version: velvet-ballastics/v1
+        name: bad-schedule
+        when:
+          schedule: '*/5 * * * *'
+        steps: []
+    "};
+    let result = parse_workflow_source(yaml);
+    assert_eq!(
+        result,
+        Err(YamlError::FieldShape {
+            field: "mapping",
+            expected: "mapping"
+        })
+    );
+}
+
+#[test]
+fn parse_workflow_source_rejects_schedule_missing_cron() {
+    let yaml = indoc::indoc! {"
+        version: velvet-ballastics/v1
+        name: missing-schedule-cron
+        when:
+          schedule: {}
+        steps: []
+    "};
+    let result = parse_workflow_source(yaml);
+    assert_eq!(
+        result,
+        Err(YamlError::MissingField {
+            field: "when.schedule.cron"
+        })
+    );
+}
+
+#[test]
+fn parse_workflow_source_rejects_schedule_empty_cron() {
+    let yaml = indoc::indoc! {"
+        version: velvet-ballastics/v1
+        name: empty-schedule-cron
+        when:
+          schedule:
+            cron: ''
+        steps: []
+    "};
+    let result = parse_workflow_source(yaml);
+    assert_eq!(
+        result,
+        Err(YamlError::FieldShape {
+            field: "when.schedule.cron",
+            expected: "non-empty string"
+        })
+    );
+}
+
+#[test]
+fn parse_workflow_source_rejects_multiple_triggers() {
+    let yaml = indoc::indoc! {"
+        version: velvet-ballastics/v1
+        name: many-triggers
+        when:
+          manual: {}
+          schedule:
+            cron: '0 0 * * *'
+        steps: []
+    "};
+    let result = parse_workflow_source(yaml);
+    assert_eq!(
+        result,
+        Err(YamlError::FieldShape {
+            field: "when",
+            expected: "exactly one trigger"
+        })
+    );
+}
+
+#[test]
+fn strict_rejects_retry_and_unknown_example_fields() {
+    let retry_yaml = indoc::indoc! {r#"
+        version: velvet-ballastics/v1
+        name: bad_retry
+        when: { manual: {} }
+        steps:
+          - id: first
+            retry: { max_attempts: 2 }
+            set: { output: x, value: "1" }
+    "#};
+    assert!(matches!(
+        parse_workflow_source(retry_yaml),
+        Err(YamlError::UnknownField { .. })
+    ));
+    let example_yaml = indoc::indoc! {"
+        version: velvet-ballastics/v1
+        name: bad_example
+        when: { manual: {} }
+        steps: []
+        examples:
+          - name: legacy
+    "};
+    assert!(matches!(
+        parse_workflow_source(example_yaml),
+        Err(YamlError::UnknownField { .. })
+    ));
+}
+
+#[test]
+fn semantic_source_map_tracks_trigger_and_block_scalar() {
+    let yaml = indoc::indoc! {"
+        version: velvet-ballastics/v1
+        name: spans
+        when:
+          manual: {}
+        steps:
+          - id: first
+            set:
+              output: msg
+              value: |
+                one
+                two
+          - id: done
+            finish: { result: msg }
+    "};
+    let map = crate::source_map::build_semantic_source_map(yaml).expect("source map builds");
+    let manual = map.span_for_path("$.when.manual").expect("manual span");
+    assert_eq!(&yaml[manual.start_offset..manual.end_offset], "manual");
+    let value = map
+        .span_for_path("$.steps[0].set.value")
+        .expect("value span");
+    assert!(value.end_line > value.start_line);
+    assert!(value.end_col >= 1);
+    let block_text = yaml
+        .get(value.start_offset..value.end_offset)
+        .expect("block scalar span is valid UTF-8 slice");
+    assert!(block_text.contains("one"));
+    assert!(block_text.contains("two"));
+    assert!(!block_text.contains("done"));
+    let done = map.span_for_path("$.steps[1].id").expect("done id span");
+    assert_eq!(yaml.get(done.start_offset..done.end_offset), Some("done"));
 }
 
 #[test]

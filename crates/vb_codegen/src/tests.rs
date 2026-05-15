@@ -4889,7 +4889,8 @@ mod tests {
         let result = compare_generated_to_ir(&source, &workflow);
         assert!(
             result.is_err(),
-            "must reject source with wrong expression count"
+            "must reject source with wrong expression count: {:?}",
+            result.ok()
         );
         let err = result.err().ok_or("expected error")?;
         let msg = err.to_string();
@@ -5345,7 +5346,8 @@ mod tests {
         let result = compare_generated_to_ir(&source, &workflow);
         assert!(
             result.is_err(),
-            "must reject source with unchecked slot indexing"
+            "must reject source with unchecked slot indexing: {:?}",
+            result.ok()
         );
         Ok(())
     }
@@ -6416,7 +6418,8 @@ mod tests {
         let result = compare_generated_to_ir(&source, &workflow);
         assert!(
             result.is_ok(),
-            "BuildObject multi-field workflow must pass semantic check"
+            "BuildObject multi-field workflow must pass semantic check: {:?}",
+            result.err()
         );
         Ok(())
     }
@@ -6588,7 +6591,8 @@ mod tests {
         let result = compare_generated_to_ir(&source, &workflow);
         assert!(
             result.is_ok(),
-            "BuildList multi-item workflow must pass semantic check"
+            "BuildList multi-item workflow must pass semantic check: {:?}",
+            result.err()
         );
         Ok(())
     }
@@ -6874,7 +6878,8 @@ mod tests {
         let result = compare_generated_to_ir(&source, &workflow);
         assert!(
             result.is_ok(),
-            "RetryCheck workflow must pass semantic check"
+            "RetryCheck workflow must pass semantic check: {:?}",
+            result.err()
         );
         Ok(())
     }
@@ -7965,7 +7970,8 @@ mod tests {
         let result = compare_generated_to_ir(&source, &workflow);
         assert!(
             result.is_ok(),
-            "all-helper-ops workflow must pass semantic check"
+            "all-helper-ops workflow must pass semantic check: {:?}",
+            result.err()
         );
         Ok(())
     }
@@ -11536,7 +11542,8 @@ mod tests {
 
         assert!(
             result.is_err(),
-            "Together workflows must be rejected by generated mode"
+            "Together workflows must be rejected by generated mode: {:?}",
+            result.ok()
         );
         let err = result.err().ok_or("expected an error but got none")?;
         let msg = err.to_string();
@@ -11560,7 +11567,8 @@ mod tests {
 
         assert!(
             result.is_err(),
-            "Repeat workflows must be rejected by generated mode"
+            "Repeat workflows must be rejected by generated mode: {:?}",
+            result.ok()
         );
         let err = result.err().ok_or("expected an error but got none")?;
         let msg = err.to_string();

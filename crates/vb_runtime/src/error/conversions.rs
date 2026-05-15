@@ -36,6 +36,7 @@ impl From<ResumeError> for RuntimeError {
                         source: Arc::new(vb_storage::JournalError::WriteLockPoisoned),
                     })
             }
+            ResumeError::JournalAppendFailedWithSource { source } => *source,
             ResumeError::StructuredOutputFailed => Self::EncodeFailed,
         }
     }

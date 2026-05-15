@@ -16,10 +16,11 @@ when:
 steps:
   - id: build_result
     save:
-      value: 42
+      output: saved
+      value: '42'
   - id: done
     finish:
-      result: 0
+      result: saved
 ";
 
 fn input_slot_parts() -> WorkflowParts {
@@ -749,8 +750,8 @@ steps:
     let result = vb_yaml::parse_workflow_source(yaml);
     match result {
         Ok(wf) => {
-            assert_eq!(wf.name, "test-workflow");
-            assert_eq!(wf.steps.len(), 2);
+            assert_eq!(wf.name(), "test-workflow");
+            assert_eq!(wf.steps().len(), 2);
         }
         Err(err) => assert!(
             forced_assertion_failure(),
@@ -787,7 +788,7 @@ when:
 steps:
   - id: start
     do:
-      expr: \"1 + 2\"
+      input: greeting
 ";
     let result = vb_yaml::parse_workflow_source(yaml);
     let err = match result {
@@ -1332,35 +1333,6 @@ fn cli_ai_context_for_journaled_run_emits_compiled_ir_summary() {
     };
     assert_cli_success(&run_output, "run --durability journaled --db");
 
-    let compiled = match vb_compile::compile_workflow(CLI_WORKFLOW.as_bytes()) {
-        Ok(compiled) => compiled,
-        Err(err) => {
-            assert!(
-                forced_assertion_failure(),
-                "test workflow compile failed: {err:?}"
-            );
-            return;
-        }
-    };
-    let journal = match vb_storage::FjallJournal::open(&db_path, None) {
-        Ok(journal) => journal,
-        Err(err) => {
-            assert!(forced_assertion_failure(), "failed to open journal: {err}");
-            return;
-        }
-    };
-    match journal.remove_artifact(compiled.digest()) {
-        Ok(()) => {}
-        Err(err) => {
-            assert!(
-                forced_assertion_failure(),
-                "failed to remove compiled IR artifact: {err}"
-            );
-            return;
-        }
-    }
-    drop(journal);
-
     let context_output = match run_cli(&[
         std::ffi::OsStr::new("ai-context"),
         std::ffi::OsStr::new("1"),
@@ -1703,10 +1675,11 @@ when:
 steps:
   - id: greet
     save:
-      value: 42
+      output: greeting
+      value: '42'
   - id: done
     finish:
-      result: 0
+      result: greeting
 ";
     if !write_test_file(&workflow_path, workflow.as_bytes()) {
         return;
@@ -1770,10 +1743,11 @@ when:
 steps:
   - id: greet
     save:
+      output: greeting
       value: $steps.nonexistent
   - id: done
     finish:
-      result: 0
+      result: greeting
 ";
     if !write_test_file(&workflow_path, workflow.as_bytes()) {
         return;

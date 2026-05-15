@@ -3513,7 +3513,7 @@ fn test_step_count_overflow() -> Result<(), String> {
 #[test]
 fn count_total_steps_overflow_returns_step_count_overflow() {
     use crate::ids::StepIdx;
-    use crate::workflow::{CompiledNode, CompiledNodeKind, ResourceContract};
+    use crate::workflow::{CompiledNode, CompiledNodeKind};
 
     let nodes = vec![
         CompiledNode {
@@ -3571,7 +3571,7 @@ fn count_total_steps_overflow_returns_step_count_overflow() {
 #[test]
 fn count_and_push_loop_body_overflow_propagates_budget_error() {
     use crate::ids::StepIdx;
-    use crate::workflow::{CompiledNode, CompiledNodeKind, ResourceContract};
+    use crate::workflow::{CompiledNode, CompiledNodeKind};
 
     let nodes = vec![
         CompiledNode {

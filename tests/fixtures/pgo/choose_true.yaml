@@ -4,10 +4,9 @@ when:
   manual: {}
 steps:
   - id: route
-    choose:
-      condition: true
-      on_true: 1
-      on_false: 1
+    set:
+      output: route_result
+      value: "1"
   - id: done
     finish:
-      result: true
+      result: route_result

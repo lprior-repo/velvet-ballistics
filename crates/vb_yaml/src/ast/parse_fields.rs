@@ -3,7 +3,7 @@
 
 use crate::{YamlError, YamlResult};
 
-use super::parse::{lookup, opt_str, require_str_in};
+use super::parse::{lookup, mapping, reject_unknown_fields, sequence};
 use super::types::*;
 
 // ---------------------------------------------------------------------------
@@ -11,28 +11,23 @@ use super::types::*;
 // ---------------------------------------------------------------------------
 
 pub(super) fn parse_inputs(node: &saphyr::Yaml<'_>) -> YamlResult<Vec<InputField>> {
-    let Some(seq) = lookup(node, "inputs").and_then(|v| v.as_vec()) else {
+    let Some(inputs) = lookup(node, "inputs") else {
         return Ok(Vec::new());
     };
-
-    let mut inputs = Vec::new();
-    for item in seq {
-        if !item.is_mapping() {
+    let mut out = Vec::new();
+    for (key, value) in mapping(inputs, "inputs")? {
+        let Some(key) = key.as_str() else {
             return Err(YamlError::FieldShape {
-                field: "inputs",
-                expected: "mapping",
+                field: "inputs key",
+                expected: "string",
             });
-        }
-        let name = require_str_in(item, "name", "inputs[].name")?;
-        let field_type = opt_str(item, "type");
-        let default = opt_str(item, "default");
-        inputs.push(InputField {
-            name,
-            field_type,
-            default,
+        };
+        out.push(InputField {
+            key: key.to_string(),
+            value: parse_author_value(value)?,
         });
     }
-    Ok(inputs)
+    Ok(out)
 }
 
 // ---------------------------------------------------------------------------
@@ -40,23 +35,23 @@ pub(super) fn parse_inputs(node: &saphyr::Yaml<'_>) -> YamlResult<Vec<InputField
 // ---------------------------------------------------------------------------
 
 pub(super) fn parse_vars(node: &saphyr::Yaml<'_>) -> YamlResult<Vec<VarField>> {
-    let Some(seq) = lookup(node, "vars").and_then(|v| v.as_vec()) else {
+    let Some(vars) = lookup(node, "vars") else {
         return Ok(Vec::new());
     };
-
-    let mut vars = Vec::new();
-    for item in seq {
-        if !item.is_mapping() {
+    let mut out = Vec::new();
+    for (key, value) in mapping(vars, "vars")? {
+        let Some(key) = key.as_str() else {
             return Err(YamlError::FieldShape {
-                field: "vars",
-                expected: "mapping",
+                field: "vars key",
+                expected: "string",
             });
-        }
-        let name = require_str_in(item, "name", "vars[].name")?;
-        let value = opt_str(item, "value");
-        vars.push(VarField { name, value });
+        };
+        out.push(VarField {
+            key: key.to_string(),
+            value: parse_author_value(value)?,
+        });
     }
-    Ok(vars)
+    Ok(out)
 }
 
 // ---------------------------------------------------------------------------
@@ -64,23 +59,35 @@ pub(super) fn parse_vars(node: &saphyr::Yaml<'_>) -> YamlResult<Vec<VarField>> {
 // ---------------------------------------------------------------------------
 
 pub(super) fn parse_secrets(node: &saphyr::Yaml<'_>) -> YamlResult<Vec<SecretField>> {
-    let Some(seq) = lookup(node, "secrets").and_then(|v| v.as_vec()) else {
+    let Some(secrets) = lookup(node, "secrets") else {
         return Ok(Vec::new());
     };
-
-    let mut secrets = Vec::new();
-    for item in seq {
-        if !item.is_mapping() {
+    let mut out = Vec::new();
+    for (key, value) in mapping(secrets, "secrets")? {
+        let Some(key) = key.as_str() else {
+            return Err(YamlError::FieldShape {
+                field: "secrets key",
+                expected: "string",
+            });
+        };
+        let Some(value) = value.as_str() else {
             return Err(YamlError::FieldShape {
                 field: "secrets",
-                expected: "mapping",
+                expected: "mapping of non-empty strings",
+            });
+        };
+        if value.is_empty() {
+            return Err(YamlError::FieldShape {
+                field: "secrets",
+                expected: "mapping of non-empty strings",
             });
         }
-        let name = require_str_in(item, "name", "secrets[].name")?;
-        let key = opt_str(item, "key");
-        secrets.push(SecretField { name, key });
+        out.push(SecretField {
+            key: key.to_string(),
+            value: value.to_string(),
+        });
     }
-    Ok(secrets)
+    Ok(out)
 }
 
 // ---------------------------------------------------------------------------
@@ -91,12 +98,20 @@ pub(super) fn parse_result(node: &saphyr::Yaml<'_>) -> YamlResult<Option<ResultM
     let Some(sub) = lookup(node, "result") else {
         return Ok(None);
     };
-    if !sub.is_mapping() {
-        return Ok(None);
+    let mut fields = Vec::new();
+    for (key, value) in mapping(sub, "result")? {
+        let Some(key) = key.as_str() else {
+            return Err(YamlError::FieldShape {
+                field: "result key",
+                expected: "string",
+            });
+        };
+        fields.push(AuthorEntry {
+            key: key.to_string(),
+            value: parse_author_value(value)?,
+        });
     }
-
-    let value = require_str_in(sub, "value", "result.value")?;
-    Ok(Some(ResultMapping { value }))
+    Ok(Some(ResultMapping { fields }))
 }
 
 // ---------------------------------------------------------------------------
@@ -104,21 +119,32 @@ pub(super) fn parse_result(node: &saphyr::Yaml<'_>) -> YamlResult<Option<ResultM
 // ---------------------------------------------------------------------------
 
 pub(super) fn parse_examples(node: &saphyr::Yaml<'_>) -> YamlResult<Vec<ExampleAst>> {
-    let Some(seq) = lookup(node, "examples").and_then(|v| v.as_vec()) else {
+    let Some(node) = lookup(node, "examples") else {
         return Ok(Vec::new());
     };
 
     let mut examples = Vec::new();
-    for item in seq {
-        if !item.is_mapping() {
-            return Err(YamlError::FieldShape {
-                field: "examples",
-                expected: "mapping",
-            });
-        }
-        let description = opt_str(item, "description");
-        let input = opt_str(item, "input");
-        let expected = opt_str(item, "expected");
+    for item in sequence(node, "examples")? {
+        reject_unknown_fields(item, &["description", "input", "expected"])?;
+        let description = match lookup(item, "description") {
+            Some(v) => Some(
+                v.as_str()
+                    .ok_or(YamlError::FieldShape {
+                        field: "examples.description",
+                        expected: "string",
+                    })?
+                    .to_string(),
+            ),
+            None => None,
+        };
+        let input = match lookup(item, "input") {
+            Some(v) => Some(parse_author_value(v)?),
+            None => None,
+        };
+        let expected = match lookup(item, "expected") {
+            Some(v) => Some(parse_author_value(v)?),
+            None => None,
+        };
         examples.push(ExampleAst {
             description,
             input,
@@ -126,4 +152,42 @@ pub(super) fn parse_examples(node: &saphyr::Yaml<'_>) -> YamlResult<Vec<ExampleA
         });
     }
     Ok(examples)
+}
+
+pub(super) fn parse_author_value(node: &saphyr::Yaml<'_>) -> YamlResult<AuthorValue> {
+    if node.is_null() {
+        Ok(AuthorValue::Null)
+    } else if let Some(value) = node.as_bool() {
+        Ok(AuthorValue::Bool(value))
+    } else if let Some(value) = node.as_integer() {
+        Ok(AuthorValue::I64(value))
+    } else if let Some(value) = node.as_str() {
+        Ok(AuthorValue::Text(value.to_string()))
+    } else if let Some(values) = node.as_sequence() {
+        let mut out = Vec::new();
+        for value in values {
+            out.push(parse_author_value(value)?);
+        }
+        Ok(AuthorValue::Sequence(out))
+    } else if let Some(map) = node.as_mapping() {
+        let mut out = Vec::new();
+        for (key, value) in map {
+            let Some(key) = key.as_str() else {
+                return Err(YamlError::FieldShape {
+                    field: "mapping key",
+                    expected: "string",
+                });
+            };
+            out.push(AuthorEntry {
+                key: key.to_string(),
+                value: parse_author_value(value)?,
+            });
+        }
+        Ok(AuthorValue::Mapping(out))
+    } else {
+        Err(YamlError::FieldShape {
+            field: "value",
+            expected: "author value",
+        })
+    }
 }

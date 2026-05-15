@@ -1228,7 +1228,7 @@ fn store_workflow_artifacts(
         }
     };
     let source_record = vb_storage::WorkflowSourceRecord {
-        digest: compiled.digest(),
+        digest: vb_core::WorkflowDigest::from_bytes(blake3::hash(source).into()),
         source: source.to_vec(),
     };
     if let Err(e) = journal.put_workflow_source(&source_record) {
@@ -1319,8 +1319,9 @@ fn cmd_submit(
     };
 
     // Store the workflow source
+    let source_digest = vb_core::WorkflowDigest::from_bytes(blake3::hash(&bytes).into());
     let source_record = vb_storage::WorkflowSourceRecord {
-        digest,
+        digest: source_digest,
         source: bytes,
     };
     if let Err(e) = vb_storage::put_workflow_source(&journal, &source_record) {

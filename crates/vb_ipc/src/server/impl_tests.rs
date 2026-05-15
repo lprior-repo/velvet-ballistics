@@ -908,8 +908,10 @@ fn workflow_resolver_not_found_is_rejected_by_dispatch() {
                 // Also acceptable for certain code paths.
             }
             Ok(other) => {
-                // The resolver returned NotFound, so we accept any non-panic response.
-                let _ = other;
+                assert!(
+                    !matches!(other, IpcResponse::Healthy),
+                    "Unexpected Healthy response when resolver returned NotFound"
+                );
             }
             Err(e) => {
                 assert!(false, "response payload decode failed: {e}");

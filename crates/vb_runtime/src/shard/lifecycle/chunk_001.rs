@@ -1,4 +1,5 @@
 impl Shard {
+    #[cfg(not(test))]
     pub(crate) fn handle_submit(
         &mut self,
         run: RunId,
@@ -12,6 +13,31 @@ impl Shard {
             caps,
             &[],
             true,
+        )
+    }
+
+    #[cfg(test)]
+    pub(crate) fn handle_submit(
+        &mut self,
+        run: RunId,
+        workflow: CompiledWorkflow,
+        caps: CapabilitySet,
+    ) -> RuntimeResult<()> {
+        let Some(action) = test_first_do_action(&workflow) else {
+            return self.handle_submit_with_inputs_contracts_and_header_mode(
+                run,
+                workflow,
+                &[],
+                caps,
+                &[],
+                true,
+            );
+        };
+        let inputs = [(SlotIdx::new(0), SlotValue::I64(0))];
+        let test_caps = test_contract_grants(action);
+        let contracts = test_contracts_through(action);
+        self.handle_submit_with_inputs_contracts_and_header_mode(
+            run, workflow, &inputs, test_caps, &contracts, true,
         )
     }
 
@@ -31,6 +57,7 @@ impl Shard {
         )
     }
 
+    #[cfg(not(test))]
     pub(crate) fn handle_submit_with_inputs(
         &mut self,
         run: RunId,
@@ -48,6 +75,31 @@ impl Shard {
         )
     }
 
+    #[cfg(test)]
+    pub(crate) fn handle_submit_with_inputs(
+        &mut self,
+        run: RunId,
+        workflow: CompiledWorkflow,
+        inputs: &[(SlotIdx, SlotValue)],
+        caps: CapabilitySet,
+    ) -> RuntimeResult<()> {
+        let Some(action) = test_first_do_action(&workflow) else {
+            return self.handle_submit_with_inputs_contracts_and_header_mode(
+                run,
+                workflow,
+                inputs,
+                caps,
+                &[],
+                true,
+            );
+        };
+        let test_caps = test_contract_grants(action);
+        let contracts = test_contracts_through(action);
+        self.handle_submit_with_inputs_contracts_and_header_mode(
+            run, workflow, inputs, test_caps, &contracts, true,
+        )
+    }
+
     pub(crate) fn handle_submit_with_contracts(
         &mut self,
         run: RunId,
@@ -59,6 +111,24 @@ impl Shard {
             run,
             workflow,
             &[],
+            caps,
+            action_contracts,
+            true,
+        )
+    }
+
+    pub(crate) fn handle_submit_with_inputs_and_contracts(
+        &mut self,
+        run: RunId,
+        workflow: CompiledWorkflow,
+        inputs: &[(SlotIdx, SlotValue)],
+        caps: CapabilitySet,
+        action_contracts: &[vb_core::action::ActionContract],
+    ) -> RuntimeResult<()> {
+        self.handle_submit_with_inputs_contracts_and_header_mode(
+            run,
+            workflow,
+            inputs,
             caps,
             action_contracts,
             true,
@@ -400,4 +470,74 @@ impl Shard {
         }
         apply_error_handler(state, ticket)
     }
+}
+
+#[cfg(test)]
+fn test_first_do_action(workflow: &CompiledWorkflow) -> Option<vb_core::ids::ActionId> {
+    let mut index = 0u16;
+    let count = workflow.node_count();
+    while index < count {
+        let step = StepIdx::new(index);
+        if let Some(node) = workflow.node(step) {
+            if let vb_core::workflow::CompiledNodeKind::Do { action, .. } = node.kind {
+                return Some(action);
+            }
+        }
+        index = index.saturating_add(1);
+    }
+    None
+}
+
+#[cfg(test)]
+fn test_contract_required_capability(
+    action: vb_core::ids::ActionId,
+) -> vb_core::capability::Capability {
+    vb_core::capability::Capability::new("__contract_required__".into(), action)
+}
+
+#[cfg(test)]
+fn test_contract_grants(action: vb_core::ids::ActionId) -> CapabilitySet {
+    CapabilitySet::from_grants(Box::from([test_contract_required_capability(action)]))
+}
+
+#[cfg(test)]
+fn test_action_contract(
+    action: vb_core::ids::ActionId,
+    required: bool,
+) -> vb_core::action::ActionContract {
+    let required_capabilities = if required {
+        Box::from([test_contract_required_capability(action)])
+    } else {
+        Box::from([])
+    };
+    vb_core::action::ActionContract {
+        id: action,
+        input_slot_count: 1,
+        output_slot_count: 1,
+        max_input_bytes: 1024,
+        max_output_bytes: 1024,
+        timeout_ms: 5000,
+        idempotency: vb_core::action::Idempotency::DeterministicPure,
+        side_effect: vb_core::action::SideEffect::None,
+        retry_safety: vb_core::action::RetrySafety::Safe,
+        required_capabilities,
+    }
+}
+
+#[cfg(test)]
+fn test_contracts_through(
+    action: vb_core::ids::ActionId,
+) -> Box<[vb_core::action::ActionContract]> {
+    let target = action.get();
+    let mut contracts = Vec::with_capacity(usize::from(target).saturating_add(1));
+    let mut id = 0u16;
+    loop {
+        let current = vb_core::ids::ActionId::new(id);
+        contracts.push(test_action_contract(current, id == target));
+        if id == target {
+            break;
+        }
+        id = id.saturating_add(1);
+    }
+    contracts.into_boxed_slice()
 }

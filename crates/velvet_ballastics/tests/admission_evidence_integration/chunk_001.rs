@@ -1,6 +1,8 @@
 use std::num::NonZeroUsize;
 use std::sync::Arc;
 
+use vb_core::action::{ActionContract, Idempotency, RetrySafety, SideEffect};
+use vb_core::capability::{Capability, CapabilitySet};
 use vb_core::ids::{ActionId, ConstIdx, ExprIdx, RunId, SlotIdx, StepIdx, WorkflowDigest};
 use vb_core::value::{ConstValue, SlotValue, Taint};
 use vb_core::workflow::{
@@ -161,6 +163,60 @@ fn temp_journal() -> Option<(tempfile::TempDir, Arc<vb_storage::FjallJournal>)> 
     let dir = tempfile::tempdir().ok()?;
     let journal = vb_storage::FjallJournal::open(dir.path(), None).ok()?;
     Some((dir, Arc::new(journal)))
+}
+
+fn action_capability(action: ActionId) -> Capability {
+    Capability::new("__contract_required__".into(), action)
+}
+
+fn action_contract(action: ActionId, required: bool) -> ActionContract {
+    let required_capabilities = if required {
+        Box::from([action_capability(action)])
+    } else {
+        Box::from([])
+    };
+    ActionContract {
+        id: action,
+        input_slot_count: 1,
+        output_slot_count: 1,
+        max_input_bytes: 1024,
+        max_output_bytes: 1024,
+        timeout_ms: 5000,
+        idempotency: Idempotency::DeterministicPure,
+        side_effect: SideEffect::None,
+        retry_safety: RetrySafety::Safe,
+        required_capabilities,
+    }
+}
+
+fn action_contracts_through(action: ActionId) -> Box<[ActionContract]> {
+    let target = action.get();
+    let mut contracts = Vec::with_capacity(usize::from(target).saturating_add(1));
+    let mut id = 0u16;
+    loop {
+        let current = ActionId::new(id);
+        contracts.push(action_contract(current, id == target));
+        if id == target {
+            break;
+        }
+        id = id.saturating_add(1);
+    }
+    contracts.into_boxed_slice()
+}
+
+fn submit_do_action_run(
+    runtime: &vb_runtime::runtime::Runtime,
+    run_id: RunId,
+    workflow: CompiledWorkflow,
+) -> vb_runtime::RuntimeResult<()> {
+    let action = ActionId::new(7);
+    runtime.submit_direct_with_inputs_grants_and_contracts(
+        run_id,
+        workflow,
+        Box::from([(SlotIdx::new(0), SlotValue::I64(0))]),
+        CapabilitySet::from_grants(Box::from([action_capability(action)])),
+        action_contracts_through(action),
+    )
 }
 
 struct FailingBeforeHeaderJournal;

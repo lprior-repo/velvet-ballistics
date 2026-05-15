@@ -743,7 +743,7 @@ mod internal_tests {
             .enqueue_journaled(make_event(run, 0))
             .expect("enqueue before shutdown");
 
-        let _ = queue.shutdown(&journal).expect("shutdown should succeed");
+        queue.shutdown(&journal).expect("shutdown should succeed");
 
         let strict_result = queue.enqueue_strict(make_event(run, 1));
         assert!(
@@ -814,7 +814,7 @@ mod internal_tests {
         assert_eq!(counts_before.journaled, 2);
 
         // batch_size=2, has_strict=true (strict at index 0), drains first 2 items
-        let _ = queue.flush_batch(&journal).expect("flush should succeed");
+        queue.flush_batch(&journal).expect("flush should succeed");
 
         let counts_after = queue.pending_profile_counts().expect("counts after flush");
         assert_eq!(counts_after.strict, 1, "should have 1 strict remaining");
@@ -995,7 +995,7 @@ mod internal_tests {
         assert_eq!(counts_before.strict, 2);
 
         // batch_size=2, first 2 are journaled (no strict in this batch)
-        let _ = queue.flush_batch(&journal).expect("flush");
+        queue.flush_batch(&journal).expect("flush");
 
         let counts_after = queue.pending_profile_counts().expect("counts after");
         assert_eq!(
@@ -1022,7 +1022,7 @@ mod internal_tests {
         queue
             .enqueue_journaled(make_event(run, 1))
             .expect("enqueue 1");
-        let _ = queue.flush_batch(&journal).expect("flush");
+        queue.flush_batch(&journal).expect("flush");
 
         // Add more events then shutdown
         queue.enqueue_strict(make_event(run, 2)).expect("enqueue 2");

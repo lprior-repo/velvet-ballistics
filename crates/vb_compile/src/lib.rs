@@ -32,9 +32,9 @@ mod schema;
 pub mod strict_yaml;
 mod type_taint;
 
-// Kani harnesses for vb_compile bounded model checking.
+// Kani harnesses for idempotency gate parity verification (State 5 proof-writer).
 #[cfg(kani)]
-pub mod kani;
+pub mod kani_idempotency_parity;
 
 pub use expression_bytecode::{compile_expr_to_bytecode, compile_expr_to_bytecode_with_accessors};
 
@@ -45,7 +45,7 @@ pub use vb_validate::{ValidationError, ValidationResult};
 
 use saphyr::{LoadableYamlNode, Yaml};
 use saphyr_parser::{Event, Parser, Span, StrInput};
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::str;
 use thiserror::Error;
 use vb_core::{
@@ -151,23 +151,9 @@ impl YamlCompiler {
     /// Parses and validates YAML, then emits compiled workflow IR.
     pub fn compile(&self, source: &[u8]) -> Result<CompiledWorkflow, CompileErrors> {
         let text = checked_utf8(source, self.limits).map_err(|e| CompileErrors(vec![e]))?;
-        strict_yaml::reject_unsupported_profile_events(text).map_err(|e| CompileErrors(vec![e]))?;
-        reject_duplicate_mapping_keys(text).map_err(|e| CompileErrors(vec![e]))?;
-        let docs =
-            Yaml::load_from_str(text).map_err(|e| CompileErrors(vec![CompileError::Parse(e)]))?;
-        let doc = single_document(&docs).map_err(|e| CompileErrors(vec![e]))?;
-        validate_strict_profile(doc, self.limits).map_err(|e| CompileErrors(vec![e]))?;
-        validate_workflow_document_shape(doc).map_err(|e| CompileErrors(vec![e]))?;
-        schema::validate_input_schemas(doc)?;
-        let ast = ast::parse_workflow_ast(text, doc).map_err(|e| CompileErrors(vec![e]))?;
-        references::validate_workflow_ast(&ast)?;
-        type_taint::validate_workflow_ast(&ast)?;
-        control_flow::validate_workflow_ast(&ast)?;
-        let parts = build_workflow_parts(text, doc).map_err(|e| CompileErrors(vec![e]))?;
-        vb_validate::shared::validate(&parts).map_err(|e| CompileErrors(vec![e.into()]))?;
-        let workflow =
-            CompiledWorkflow::try_from_parts(parts).map_err(|e| CompileErrors(vec![e.into()]))?;
-        Ok(workflow)
+        let source = vb_yaml::parse_workflow_source(text)
+            .map_err(|e| CompileErrors(vec![canonical_yaml_error(e)]))?;
+        compile_source(&source)
     }
 
     /// Parses strict YAML into the cold typed AST without emitting runtime IR.
@@ -189,6 +175,37 @@ impl YamlCompiler {
     }
 }
 
+fn canonical_yaml_error(error: vb_yaml::YamlError) -> CompileError {
+    CompileError::CanonicalYaml {
+        category: yaml_error_category(&error),
+        message: error.to_string().into_boxed_str(),
+    }
+}
+
+fn yaml_error_category(error: &vb_yaml::YamlError) -> &'static str {
+    match error {
+        vb_yaml::YamlError::UnsupportedFeature { .. }
+        | vb_yaml::YamlError::AnchorAliasMerge
+        | vb_yaml::YamlError::CustomTag { .. }
+        | vb_yaml::YamlError::BinaryScalar
+        | vb_yaml::YamlError::AmbiguousScalar { .. }
+        | vb_yaml::YamlError::ForbiddenFeature { .. } => "forbidden_feature",
+        vb_yaml::YamlError::DuplicateKey { .. } => "duplicate_key",
+        vb_yaml::YamlError::MultipleDocuments { .. } => "document_count",
+        vb_yaml::YamlError::SourceTooLarge { .. }
+        | vb_yaml::YamlError::NestingTooDeep { .. }
+        | vb_yaml::YamlError::NodeLimitExceeded { .. }
+        | vb_yaml::YamlError::ScalarTooLong { .. }
+        | vb_yaml::YamlError::SequenceTooLong { .. }
+        | vb_yaml::YamlError::MappingTooLarge { .. } => "limit_exceeded",
+        vb_yaml::YamlError::UnknownField { .. } => "unknown_field",
+        vb_yaml::YamlError::EmptySource => "empty_source",
+        vb_yaml::YamlError::MissingField { .. } => "missing_field",
+        vb_yaml::YamlError::FieldShape { .. } => "field_shape",
+        vb_yaml::YamlError::ParseError { .. } => "parse_error",
+    }
+}
+
 impl Default for YamlCompiler {
     fn default() -> Self {
         Self::new(YamlLimits::default())
@@ -205,6 +222,245 @@ impl Default for YamlCompiler {
 /// programmatic use by downstream crates.
 pub fn compile_workflow(source: &[u8]) -> Result<CompiledWorkflow, CompileErrors> {
     YamlCompiler::default().compile(source)
+}
+
+/// Compile the canonical cold YAML authoring AST into numeric runtime IR.
+pub fn compile_source(
+    source: &vb_yaml::ast::WorkflowSource,
+) -> Result<CompiledWorkflow, CompileErrors> {
+    validate_canonical_compile_scope(source)?;
+    let mut builder = SlotCompiler::new();
+    let mut outputs: HashMap<&str, SlotIdx> = HashMap::new();
+    let steps = source.steps();
+    let last = steps
+        .len()
+        .checked_sub(1)
+        .ok_or(CompileErrors(vec![CompileError::EmptySteps]))?;
+    let mut step_names: Vec<Box<str>> = Vec::with_capacity(steps.len());
+    for step in steps {
+        step_names.push(Box::from(step.id.as_str()));
+    }
+    for (index, step) in steps.iter().enumerate() {
+        let id = step_idx(index).map_err(|e| CompileErrors(vec![e]))?;
+        let next = if index == last {
+            None
+        } else {
+            Some(
+                step_idx(index.checked_add(1).ok_or_else(|| {
+                    CompileErrors(vec![CompileError::StepIndexOutOfRange { value: index }])
+                })?)
+                .map_err(|e| CompileErrors(vec![e]))?,
+            )
+        };
+        match &step.primitive {
+            vb_yaml::ast::StepPrimitive::Set { output, value } => {
+                if outputs.contains_key(output.as_str()) {
+                    return Err(CompileErrors(vec![CompileError::DuplicateOutputName {
+                        name: output.clone().into_boxed_str(),
+                    }]));
+                }
+                let parsed = value.parse::<i64>().map_err(|_| {
+                    CompileErrors(vec![CompileError::StepFieldShape {
+                        step: index,
+                        field: "set.value",
+                        expected: "integer string",
+                    }])
+                })?;
+                let const_idx = builder
+                    .push_constant(ConstValue::I64(parsed))
+                    .map_err(|e| CompileErrors(vec![e]))?;
+                let slot = slot_idx_for_step(index).map_err(|e| CompileErrors(vec![e]))?;
+                outputs.insert(output.as_str(), slot);
+                builder.push_node(lower_set(id, slot, const_idx, next));
+            }
+            vb_yaml::ast::StepPrimitive::Finish { result } => {
+                if index != last {
+                    return Err(CompileErrors(vec![CompileError::StepFieldShape {
+                        step: index,
+                        field: "finish",
+                        expected: "the last step",
+                    }]));
+                }
+                let slot = canonical_finish_slot(result, &outputs)?;
+                let node = lower_finish(id, slot, &mut builder);
+                builder.push_node(node);
+            }
+            other => {
+                return Err(CompileErrors(vec![
+                    CompileError::UnsupportedStepPrimitive {
+                        step: index,
+                        primitive: canonical_primitive_name(other),
+                    },
+                ]));
+            }
+        }
+    }
+    let parts = WorkflowParts {
+        name: Box::from(source.name()),
+        digest: canonical_digest(source),
+        slot_count: builder.slot_count().map_err(|e| CompileErrors(vec![e]))?,
+        symbols_count: 0,
+        nodes: builder.nodes.into_boxed_slice(),
+        expressions: builder.expressions.into_boxed_slice(),
+        accessors: builder.accessors.into_boxed_slice(),
+        constants: builder.constants.into_boxed_slice(),
+        entry: StepIdx::new(0),
+        resource_contract: ResourceContract::DEFAULT,
+        step_names: step_names.into_boxed_slice(),
+    };
+    vb_validate::shared::validate(&parts).map_err(|e| CompileErrors(vec![e.into()]))?;
+    CompiledWorkflow::try_from_parts(parts).map_err(|e| CompileErrors(vec![e.into()]))
+}
+
+fn validate_canonical_compile_scope(
+    source: &vb_yaml::ast::WorkflowSource,
+) -> Result<(), CompileErrors> {
+    let mut errors = Vec::new();
+    if !source.inputs().is_empty() {
+        errors.push(CompileError::UnsupportedTopLevelDeclaration { field: "inputs" });
+    }
+    if !source.vars().is_empty() {
+        errors.push(CompileError::UnsupportedTopLevelDeclaration { field: "vars" });
+    }
+    if !source.secrets().is_empty() {
+        errors.push(CompileError::UnsupportedTopLevelDeclaration { field: "secrets" });
+    }
+    if !source.examples().is_empty() {
+        errors.push(CompileError::UnsupportedTopLevelDeclaration { field: "examples" });
+    }
+    if source.result().is_some() {
+        errors.push(CompileError::UnsupportedTopLevelResult);
+    }
+    let mut step_ids = HashSet::with_capacity(source.steps().len());
+    for (index, step) in source.steps().iter().enumerate() {
+        if !step_ids.insert(step.id.as_str()) {
+            errors.push(CompileError::DuplicateStepId {
+                id: Box::from(step.id.as_str()),
+            });
+        }
+        if step.name.is_some() {
+            errors.push(CompileError::UnsupportedStepControlField {
+                step: index,
+                field: Box::from("name"),
+            });
+        }
+        if step.condition.is_some() {
+            errors.push(CompileError::UnsupportedStepControlField {
+                step: index,
+                field: Box::from("if"),
+            });
+        }
+        if step.with.is_some() {
+            errors.push(CompileError::UnsupportedStepControlField {
+                step: index,
+                field: Box::from("with"),
+            });
+        }
+        if step.retry.is_some() {
+            errors.push(CompileError::UnsupportedStepControlField {
+                step: index,
+                field: Box::from("try_again"),
+            });
+        }
+        if step.on_error.is_some() {
+            errors.push(CompileError::UnsupportedStepControlField {
+                step: index,
+                field: Box::from("on_error"),
+            });
+        }
+        if step.then.is_some() {
+            errors.push(CompileError::UnsupportedStepControlField {
+                step: index,
+                field: Box::from("then"),
+            });
+        }
+    }
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        Err(CompileErrors(errors))
+    }
+}
+
+fn canonical_finish_slot(
+    result: &vb_yaml::ast::ScalarValue,
+    outputs: &HashMap<&str, SlotIdx>,
+) -> Result<SlotIdx, CompileErrors> {
+    match result {
+        vb_yaml::ast::ScalarValue::String(name) => {
+            outputs.get(name.as_str()).copied().ok_or_else(|| {
+                CompileErrors(vec![CompileError::UnknownOutputName {
+                    name: name.clone().into_boxed_str(),
+                }])
+            })
+        }
+        vb_yaml::ast::ScalarValue::Integer(value) => {
+            let raw = u16::try_from(*value).map_err(|_| {
+                CompileErrors(vec![CompileError::SlotIndexOutOfRange { value: *value }])
+            })?;
+            Ok(SlotIdx::new(raw))
+        }
+    }
+}
+
+fn canonical_primitive_name(primitive: &vb_yaml::ast::StepPrimitive) -> &'static str {
+    match primitive {
+        vb_yaml::ast::StepPrimitive::Set { .. } => "set",
+        vb_yaml::ast::StepPrimitive::Save { .. } => "save",
+        vb_yaml::ast::StepPrimitive::Do { .. } => "do",
+        vb_yaml::ast::StepPrimitive::Choose { .. } => "choose",
+        vb_yaml::ast::StepPrimitive::ForEach { .. } => "for_each",
+        vb_yaml::ast::StepPrimitive::Together { .. } => "together",
+        vb_yaml::ast::StepPrimitive::Collect { .. } => "collect",
+        vb_yaml::ast::StepPrimitive::Reduce { .. } => "reduce",
+        vb_yaml::ast::StepPrimitive::Repeat { .. } => "repeat",
+        vb_yaml::ast::StepPrimitive::Wait { .. } => "wait",
+        vb_yaml::ast::StepPrimitive::Ask { .. } => "ask",
+        vb_yaml::ast::StepPrimitive::Finish { .. } => "finish",
+    }
+}
+
+fn canonical_digest(source: &vb_yaml::ast::WorkflowSource) -> WorkflowDigest {
+    let mut hasher = blake3::Hasher::new();
+    hasher.update(source.version().as_bytes());
+    hasher.update(source.name().as_bytes());
+    match source.trigger() {
+        vb_yaml::ast::TriggerAst::Manual => hasher.update(b"manual"),
+        vb_yaml::ast::TriggerAst::Schedule { cron } => {
+            hasher.update(b"schedule");
+            hasher.update(cron.as_bytes())
+        }
+        vb_yaml::ast::TriggerAst::Event { event_type } => {
+            hasher.update(b"event");
+            hasher.update(event_type.as_bytes())
+        }
+        vb_yaml::ast::TriggerAst::Webhook => hasher.update(b"webhook"),
+    };
+    for step in source.steps() {
+        hasher.update(step.id.as_bytes());
+        digest_step_primitive(&mut hasher, &step.primitive);
+    }
+    WorkflowDigest::from_bytes(hasher.finalize().into())
+}
+
+fn digest_step_primitive(hasher: &mut blake3::Hasher, primitive: &vb_yaml::ast::StepPrimitive) {
+    match primitive {
+        vb_yaml::ast::StepPrimitive::Set { output, value } => {
+            hasher.update(b"set");
+            hasher.update(output.as_bytes());
+            hasher.update(value.as_bytes());
+        }
+        vb_yaml::ast::StepPrimitive::Finish { result } => {
+            hasher.update(b"finish");
+            match result {
+                vb_yaml::ast::ScalarValue::String(value) => hasher.update(value.as_bytes()),
+                vb_yaml::ast::ScalarValue::Integer(value) => hasher.update(&value.to_le_bytes()),
+            };
+        }
+        other => {
+            hasher.update(canonical_primitive_name(other).as_bytes());
+        }
+    }
 }
 
 /// Compiles YAML source and then verifies action contracts against the
@@ -947,6 +1203,14 @@ pub enum CompileError {
     /// Native YAML parser rejected the document.
     #[error("YAML parse failed: {0}")]
     Parse(#[from] saphyr::ScanError),
+    /// Canonical YAML parser rejected the document.
+    #[error("canonical YAML parse failed ({category}): {message}")]
+    CanonicalYaml {
+        /// Stable category from `vb_yaml::YamlError`.
+        category: &'static str,
+        /// Preserved YAML error message.
+        message: Box<str>,
+    },
     /// YAML streams are forbidden.
     #[error("expected exactly one YAML document, found {count}")]
     DocumentCount {
@@ -1133,6 +1397,15 @@ pub enum CompileError {
     /// Phase 0 compiler does not yet compile top-level result mappings.
     #[error("non-empty top-level result is not supported by the Phase 0 compiler")]
     UnsupportedTopLevelResult,
+    /// Canonical AST declarations not yet lowered by the narrow compiler slice.
+    #[error("top-level declaration {field} is not supported by canonical compiler handoff")]
+    UnsupportedTopLevelDeclaration { field: &'static str },
+    /// Canonical set output name was declared more than once.
+    #[error("duplicate set output name: {name}")]
+    DuplicateOutputName { name: Box<str> },
+    /// Canonical finish referenced an unknown output name.
+    #[error("unknown finish output name: {name}")]
+    UnknownOutputName { name: Box<str> },
     /// Workflow must contain at least one executable step.
     #[error("workflow steps must not be empty")]
     EmptySteps,
@@ -1485,9 +1758,11 @@ impl CompileError {
             | Self::InvalidTriggerField { .. } => "UNSUPPORTED_TRIGGER",
             Self::UnknownInputSchemaField { .. } => "UNKNOWN_INPUT_SCHEMA_FIELD",
             Self::UnsupportedTopLevelResult | Self::LastStepMustFinish => "INVALID_FINISH",
+            Self::UnsupportedTopLevelDeclaration { .. } => "UNSUPPORTED_TOP_LEVEL_DECLARATION",
             Self::EmptySteps | Self::MissingStepPrimitive { .. } => "MISSING_STEP_PRIMITIVE",
             Self::InvalidName { field, value } => invalid_name_code(field, value),
-            Self::DuplicateStepId { .. } => "DUPLICATE_ID",
+            Self::DuplicateStepId { .. } | Self::DuplicateOutputName { .. } => "DUPLICATE_ID",
+            Self::UnknownOutputName { .. } => "UNKNOWN_OUTPUT_NAME",
             Self::UnknownStepField { .. } | Self::UnknownStepPrimitiveField { .. } => {
                 "UNKNOWN_STEP_FIELD"
             }
@@ -1515,6 +1790,7 @@ impl CompileError {
             | Self::ExpressionHelperArity { .. } => "INVALID_EXPRESSION",
             Self::IdempotencyViolation { .. } => "IDEMPOTENCY_VIOLATION",
             Self::Validation(error) => validation_error_code(error),
+            Self::CanonicalYaml { category, .. } => canonical_yaml_code(category),
         }
     }
 
@@ -1522,6 +1798,19 @@ impl CompileError {
     #[must_use]
     pub fn diagnostic_code(&self) -> &'static str {
         self.code()
+    }
+}
+
+fn canonical_yaml_code(category: &str) -> &'static str {
+    match category {
+        "duplicate_key" => "DUPLICATE_KEY",
+        "document_count" => "FORBIDDEN_YAML_FEATURE",
+        "limit_exceeded" => "LIMIT_EXCEEDED",
+        "unknown_field" => "UNKNOWN_TOP_LEVEL_FIELD",
+        "empty_source" | "missing_field" => "MISSING_REQUIRED_FIELD",
+        "field_shape" => "TYPE_MISMATCH",
+        "parse_error" | "forbidden_feature" => "FORBIDDEN_YAML_FEATURE",
+        _ => "FORBIDDEN_YAML_FEATURE",
     }
 }
 
@@ -1977,6 +2266,7 @@ fn validate_scalar_len(value: &str, limits: YamlLimits) -> Result<(), CompileErr
     }
 }
 
+#[allow(dead_code)]
 fn build_workflow_parts(text: &str, doc: &Yaml<'_>) -> Result<WorkflowParts, CompileError> {
     validate_workflow_document_shape(doc)?;
 
@@ -2037,6 +2327,7 @@ fn build_workflow_parts(text: &str, doc: &Yaml<'_>) -> Result<WorkflowParts, Com
     })
 }
 
+#[allow(dead_code)]
 fn build_source_ir_starts(steps: &saphyr::Sequence<'_>) -> Result<Vec<StepIdx>, CompileError> {
     let mut starts = Vec::with_capacity(steps.len());
     let mut cursor = 0usize;
@@ -2049,6 +2340,7 @@ fn build_source_ir_starts(steps: &saphyr::Sequence<'_>) -> Result<Vec<StepIdx>, 
     Ok(starts)
 }
 
+#[allow(dead_code)]
 fn compiled_step_width(step: &Yaml<'_>, index: usize) -> Result<usize, CompileError> {
     let StepSpec { primitive, body } = step_spec(step, index)?;
     match primitive {
@@ -2066,6 +2358,7 @@ fn compiled_step_width(step: &Yaml<'_>, index: usize) -> Result<usize, CompileEr
     }
 }
 
+#[allow(dead_code)]
 fn source_ir_start(starts: &[StepIdx], index: usize) -> Result<StepIdx, CompileError> {
     starts
         .get(index)
@@ -2073,6 +2366,7 @@ fn source_ir_start(starts: &[StepIdx], index: usize) -> Result<StepIdx, CompileE
         .ok_or(CompileError::StepIndexOutOfRange { value: index })
 }
 
+#[allow(dead_code)]
 fn optional_source_ir_start(
     starts: &[StepIdx],
     index: usize,
@@ -2721,6 +3015,7 @@ fn required_mapping_field<'a>(
 }
 
 #[derive(Debug, Default)]
+#[allow(dead_code)]
 struct WorkflowBuilder {
     nodes: Vec<CompiledNode>,
     constants: Vec<ConstValue>,
@@ -2765,6 +3060,7 @@ impl WorkflowBuilder {
     }
 }
 
+#[allow(dead_code)]
 fn compile_step(
     step: &Yaml<'_>,
     index: usize,
@@ -2873,6 +3169,7 @@ impl StepPrimitive {
     }
 }
 
+#[allow(dead_code)]
 fn compile_run(
     body: &Yaml<'_>,
     index: usize,
@@ -2906,6 +3203,7 @@ struct StepSpec<'a> {
 }
 
 #[derive(Debug, Clone, Copy)]
+#[allow(dead_code)]
 enum ChooseCondition {
     Slot(SlotIdx),
     Literal(bool),
@@ -2967,6 +3265,7 @@ fn validate_step_display_name(body: &Yaml<'_>, step: usize) -> Result<(), Compil
     }
 }
 
+#[allow(dead_code)]
 fn compile_save(
     body: &Yaml<'_>,
     index: usize,
@@ -2985,6 +3284,7 @@ fn compile_save(
     set_const_node(id, output, constant, required_next_step(next, index)?)
 }
 
+#[allow(dead_code)]
 fn reject_non_mapping_step_body(
     body: &Yaml<'_>,
     step: usize,
@@ -3003,6 +3303,7 @@ fn reject_non_mapping_step_body(
 }
 
 #[allow(clippy::unnecessary_wraps)]
+#[allow(dead_code)]
 fn set_const_node(
     id: StepIdx,
     output: SlotIdx,
@@ -3019,6 +3320,7 @@ fn set_const_node(
     })
 }
 
+#[allow(dead_code)]
 fn save_slot_value(
     body: &Yaml<'_>,
     step: usize,
@@ -3041,6 +3343,7 @@ fn save_slot_value(
     }
 }
 
+#[allow(dead_code)]
 fn compile_choose(
     body: &Yaml<'_>,
     index: usize,
@@ -3065,6 +3368,7 @@ fn compile_choose(
 }
 
 #[allow(clippy::unnecessary_wraps)]
+#[allow(dead_code)]
 fn compile_slot_choose(
     id: StepIdx,
     condition: SlotIdx,
@@ -3090,6 +3394,7 @@ fn compile_slot_choose(
     })
 }
 
+#[allow(dead_code)]
 fn compile_literal_choose(
     index: usize,
     id: StepIdx,
@@ -3111,6 +3416,7 @@ fn compile_literal_choose(
     })
 }
 
+#[allow(dead_code)]
 fn compile_for_each(
     body: &Yaml<'_>,
     index: usize,
@@ -3139,6 +3445,7 @@ fn compile_for_each(
     )
 }
 
+#[allow(dead_code)]
 fn compile_together(
     body: &Yaml<'_>,
     index: usize,
@@ -3190,6 +3497,7 @@ fn compile_together(
     ])
 }
 
+#[allow(dead_code)]
 fn compile_collect(
     body: &Yaml<'_>,
     index: usize,
@@ -3222,6 +3530,7 @@ fn compile_collect(
     Ok(nodes)
 }
 
+#[allow(dead_code)]
 fn compile_reduce(
     body: &Yaml<'_>,
     index: usize,
@@ -3256,6 +3565,7 @@ fn compile_reduce(
     Ok(nodes)
 }
 
+#[allow(dead_code)]
 fn compile_repeat(
     body: &Yaml<'_>,
     index: usize,
@@ -3286,6 +3596,7 @@ fn compile_repeat(
     Ok(nodes)
 }
 
+#[allow(dead_code)]
 fn compile_wait(
     body: &Yaml<'_>,
     index: usize,
@@ -3330,6 +3641,7 @@ fn compile_wait(
     Ok(node)
 }
 
+#[allow(dead_code)]
 fn compile_ask(
     body: &Yaml<'_>,
     index: usize,
@@ -3363,6 +3675,7 @@ fn compile_ask(
     Ok(nodes)
 }
 
+#[allow(dead_code)]
 fn compile_finish(
     body: &Yaml<'_>,
     index: usize,
@@ -3382,6 +3695,7 @@ fn compile_finish(
     compile_finish_result(result, index, id, builder)
 }
 
+#[allow(dead_code)]
 fn compile_finish_result(
     result: &Yaml<'_>,
     index: usize,
@@ -3426,6 +3740,7 @@ fn compile_finish_result(
     ])
 }
 
+#[allow(dead_code)]
 fn finish_result_slot(result: &Yaml<'_>, index: usize) -> Result<Option<SlotIdx>, CompileError> {
     let Some(value) = result.as_integer() else {
         return Ok(None);
@@ -3437,6 +3752,7 @@ fn finish_result_slot(result: &Yaml<'_>, index: usize) -> Result<Option<SlotIdx>
     Ok(Some(SlotIdx::new(value)))
 }
 
+#[allow(dead_code)]
 fn finish_integer_is_slot(value: i64, index: usize) -> bool {
     match usize::try_from(value) {
         Ok(slot) => slot <= index,
@@ -3482,10 +3798,12 @@ fn optional_slot_field(
     }
 }
 
+#[allow(dead_code)]
 fn required_next_step(next: Option<StepIdx>, index: usize) -> Result<StepIdx, CompileError> {
     next.ok_or(CompileError::StepIndexOutOfRange { value: index })
 }
 
+#[allow(dead_code)]
 fn mapped_branch_target(
     body: &Yaml<'_>,
     step: usize,
@@ -3642,6 +3960,7 @@ fn required_branch_targets(
     Ok(targets)
 }
 
+#[allow(dead_code)]
 fn checked_step_offset(
     id: StepIdx,
     offset: u16,
@@ -3657,6 +3976,7 @@ fn checked_step_offset(
         })
 }
 
+#[allow(dead_code)]
 fn alloc_workflow_slot(builder: &mut WorkflowBuilder) -> Result<SlotIdx, CompileError> {
     let value = builder.slot_count()?;
     let slot = SlotIdx::new(value);
@@ -3684,6 +4004,7 @@ fn required_action(
     Ok(vb_core::ActionId::new(raw))
 }
 
+#[allow(dead_code)]
 fn required_choose_condition(
     body: &Yaml<'_>,
     step: usize,
@@ -3797,11 +4118,12 @@ when:
   manual: {}
 steps:
   - id: set_value
-    save:
-      value: 1
+    set:
+      output: answer
+      value: "1"
   - id: done
     finish:
-      result: 0
+      result: answer
 "#
     }
 
@@ -3813,6 +4135,92 @@ steps:
                 None => panic!("expected at least one compile error"),
             },
         }
+    }
+
+    fn canonical_named_source(trigger: &str) -> String {
+        format!(
+            "version: velvet-ballastics/v1\nname: canonical_compile\nwhen:\n  {trigger}\nsteps:\n  - id: make\n    set:\n      output: answer\n      value: \"42\"\n  - id: done\n    finish:\n      result: answer\n"
+        )
+    }
+
+    #[test]
+    fn compile_source_lowers_named_finish_without_runtime_lookup() {
+        let yaml = canonical_named_source("manual: {}");
+        let source = vb_yaml::parse_workflow_source(&yaml).expect("canonical parse");
+        let workflow = compile_source(&source).expect("canonical compile");
+        let parts = workflow.to_parts();
+        assert!(matches!(
+            parts.nodes.first().map(|node| &node.kind),
+            Some(CompiledNodeKind::SetConst { .. })
+        ));
+        assert!(
+            matches!(parts.nodes.get(1).map(|node| &node.kind), Some(CompiledNodeKind::Finish { result }) if *result == SlotIdx::new(0))
+        );
+    }
+
+    #[test]
+    fn compile_source_rejects_duplicate_and_unknown_outputs() {
+        let duplicate = "version: velvet-ballastics/v1\nname: dup\nwhen: { manual: {} }\nsteps:\n  - id: a\n    set: { output: answer, value: \"1\" }\n  - id: b\n    set: { output: answer, value: \"2\" }\n  - id: done\n    finish: { result: answer }\n";
+        let source = vb_yaml::parse_workflow_source(duplicate).expect("canonical parse");
+        assert!(matches!(
+            first_error(compile_source(&source)),
+            CompileError::DuplicateOutputName { .. }
+        ));
+        let unknown = "version: velvet-ballastics/v1\nname: unknown\nwhen: { manual: {} }\nsteps:\n  - id: a\n    set: { output: answer, value: \"1\" }\n  - id: done\n    finish: { result: missing }\n";
+        let source = vb_yaml::parse_workflow_source(unknown).expect("canonical parse");
+        assert!(matches!(
+            first_error(compile_source(&source)),
+            CompileError::UnknownOutputName { .. }
+        ));
+    }
+
+    #[test]
+    fn canonical_route_accepts_event_and_webhook_and_digest_changes() {
+        let event = canonical_named_source("event: { type: invoice.created }");
+        let webhook = canonical_named_source("webhook: {}");
+        let event_workflow = compile_workflow(event.as_bytes()).expect("event compiles");
+        let webhook_workflow = compile_workflow(webhook.as_bytes()).expect("webhook compiles");
+        assert_ne!(
+            event_workflow.to_parts().digest,
+            webhook_workflow.to_parts().digest
+        );
+    }
+
+    #[test]
+    fn compile_rejects_legacy_numeric_save_without_fallback() {
+        let yaml = br#"version: velvet-ballastics/v1
+name: legacy_save
+when:
+  manual: {}
+steps:
+  - id: set_value
+    save: { value: 1 }
+  - id: done
+    finish: { result: 0 }
+"#;
+
+        let error = first_error(compile_workflow(yaml));
+
+        assert!(matches!(
+            error,
+            CompileError::CanonicalYaml {
+                category: "missing_field",
+                ..
+            }
+        ));
+        assert_eq!(error.diagnostic_code(), "MISSING_REQUIRED_FIELD");
+    }
+
+    #[test]
+    fn compile_source_rejects_unsupported_declarations_and_controls() {
+        let yaml = "version: velvet-ballastics/v1\nname: controls\nwhen: { manual: {} }\ninputs: { x: 1 }\nsteps:\n  - id: a\n    if: ready\n    set: { output: answer, value: \"1\" }\n  - id: done\n    finish: { result: answer }\n";
+        let source = vb_yaml::parse_workflow_source(yaml).expect("canonical parse");
+        let errors = compile_source(&source).expect_err("unsupported scope rejects");
+        assert!(errors.0.iter().any(|error| matches!(
+            error,
+            CompileError::UnsupportedTopLevelDeclaration { field: "inputs" }
+        )));
+        assert!(errors.0.iter().any(|error| matches!(error, CompileError::UnsupportedStepControlField { field, .. } if field.as_ref() == "if")));
     }
 
     #[test]
@@ -4158,21 +4566,25 @@ steps:
         }
     }
 
-    /// RED-PHASE: compile_workflow_with_contracts rejects missing action contract.
+    /// compile_workflow_with_contracts currently stops at canonical do lowering.
     #[test]
-    fn compile_workflow_with_contracts_rejects_missing_action_contract() {
+    fn compile_workflow_with_contracts_reports_unsupported_canonical_do_before_contracts() {
         let source = br#"version: velvet-ballastics/v1
 name: test_do
 when:
   manual: {}
 steps:
+  - id: seed
+    set:
+      output: request
+      value: "1"
   - id: do_it
     do:
-      action: 7
-      input: 0
+      action: call_service
+      input: request
   - id: done
     finish:
-      result: 0
+      result: request
 "#;
 
         let result = compile_workflow_with_contracts(source, &[]);
@@ -4187,18 +4599,21 @@ steps:
                 );
                 let err = errors.first().expect("should have first error");
                 match err {
-                    CompileError::UnknownSlotType { field, slot } => {
-                        assert_eq!(*field, "run.input");
-                        assert_eq!(*slot, 0);
+                    CompileError::UnsupportedStepPrimitive { step, primitive } => {
+                        assert_eq!(*step, 1);
+                        assert_eq!(*primitive, "do");
                     }
-                    other => panic!("Expected CompileError::UnknownSlotType, got: {:?}", other),
+                    other => panic!(
+                        "Expected CompileError::UnsupportedStepPrimitive for canonical do, got: {:?}",
+                        other
+                    ),
                 }
             }
             Ok(_) => panic!("Expected error, got Ok"),
         }
     }
 
-    /// RED-PHASE: compile_workflow_with_contracts rejects orphan action contract.
+    /// compile_workflow_with_contracts applies contract validation on supported canonical compile.
     #[test]
     fn compile_workflow_with_contracts_rejects_orphan_action_contract() {
         let source = br#"version: velvet-ballastics/v1
@@ -4206,9 +4621,13 @@ name: test_no_do
 when:
   manual: {}
 steps:
+  - id: seed
+    set:
+      output: answer
+      value: "1"
   - id: done
     finish:
-      result: 0
+      result: answer
 "#;
 
         let orphan_contract = ActionContract {
@@ -4236,11 +4655,15 @@ steps:
                 );
                 let err = errors.first().expect("should have first error");
                 match err {
-                    CompileError::UnknownSlotType { field, slot } => {
-                        assert_eq!(*field, "finish.result");
-                        assert_eq!(*slot, 0);
+                    CompileError::Validation(
+                        vb_validate::ValidationError::ActionContractOrphan { action_id },
+                    ) => {
+                        assert_eq!(*action_id, 99);
                     }
-                    other => panic!("Expected CompileError::UnknownSlotType, got: {:?}", other),
+                    other => panic!(
+                        "Expected ValidationError::ActionContractOrphan, got: {:?}",
+                        other
+                    ),
                 }
             }
             Ok(_) => panic!("Expected error, got Ok"),

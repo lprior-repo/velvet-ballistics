@@ -1,23 +1,12 @@
-# Minimal 1-Step Workflow Fixture
-# The smallest possible valid workflow definition
----
 version: velvet-ballastics/v1
 name: "minimal_workflow"
-
 when:
   manual: {}
-
-inputs: {}
-
-vars: {}
-
-secrets: {}
-
 steps:
   - id: step_hello
-    name: "Say Hello"
     save:
-      value: 1
+      output: greeting
+      value: "1"
   - id: done
     finish:
-      result: 0
+      result: greeting

@@ -166,6 +166,7 @@ fn reference_name(tail: &str) -> &str {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ValidationError;
     use crate::type_sigs::{InputDecl, Taint, TypedValue, ValueFact, ValueType, WorkflowTypes};
 
     fn sample_workflow() -> WorkflowTypes {
@@ -289,31 +290,66 @@ mod tests {
     #[test]
     fn require_boolean_rejects_text() {
         let result = require_boolean(ValueType::Text);
-        assert!(result.is_err());
+        assert_eq!(
+            result,
+            Err(ValidationError::TypeMismatch {
+                expected: "boolean".to_owned(),
+                found: "text".to_owned(),
+            }),
+            "require_boolean should reject text type"
+        );
     }
 
     #[test]
     fn require_boolean_rejects_number() {
         let result = require_boolean(ValueType::Number);
-        assert!(result.is_err());
+        assert_eq!(
+            result,
+            Err(ValidationError::TypeMismatch {
+                expected: "boolean".to_owned(),
+                found: "number".to_owned(),
+            }),
+            "require_boolean should reject number type"
+        );
     }
 
     #[test]
     fn require_boolean_rejects_null() {
         let result = require_boolean(ValueType::Null);
-        assert!(result.is_err());
+        assert_eq!(
+            result,
+            Err(ValidationError::TypeMismatch {
+                expected: "boolean".to_owned(),
+                found: "null".to_owned(),
+            }),
+            "require_boolean should reject null type"
+        );
     }
 
     #[test]
     fn require_boolean_rejects_object() {
         let result = require_boolean(ValueType::Object);
-        assert!(result.is_err());
+        assert_eq!(
+            result,
+            Err(ValidationError::TypeMismatch {
+                expected: "boolean".to_owned(),
+                found: "object".to_owned(),
+            }),
+            "require_boolean should reject object type"
+        );
     }
 
     #[test]
     fn require_boolean_rejects_list() {
         let result = require_boolean(ValueType::List);
-        assert!(result.is_err());
+        assert_eq!(
+            result,
+            Err(ValidationError::TypeMismatch {
+                expected: "boolean".to_owned(),
+                found: "list".to_owned(),
+            }),
+            "require_boolean should reject list type"
+        );
     }
 
     // -- resolve_value tests --
