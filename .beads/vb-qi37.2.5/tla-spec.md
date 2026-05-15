@@ -1,75 +1,42 @@
-# TLA+ Specification — vb-qi37.2.5
+# TLA+ Temporal Model Plan - vb-qi37.2.5
 
-## Bead Identity
-- **Bead**: vb-qi37.2.5
-- **Title**: quality: Boundedness adversarial tests
-- **State**: 5 (proof-writer repair)
+## Boundary
+- Temporal/workflow behavior: bounded deterministic execution slice, budget exhaustion, blocked/finished transitions, and admission/rejection of nested composition before runtime.
+- Rust/core behavior excluded from TLA+: arithmetic lemmas for saturation/monotonicity (`verification/verus/resource_budget.rs`) and step budget underflow freedom (`verification/verus/step_budget.rs`).
+- External systems abstracted: action handlers, storage, wall-clock, generated runtime chunks, and OS process memory.
+- Non-applicability rationale: not applicable; this bead contains temporal lifecycle behavior and requires a TLA+ model obligation.
 
-## TLA+ Scope Determination
+## TLA+-Owned Clauses
+- INV-002, POST-001 -> planned module `BoundednessSlice` for execution slice budget consumption and `StepBudgetExhausted` eventuality.
+- POST-006, INV-006 -> planned module `NestedBoundednessAdmission` for finite nested workflow admission/rejection.
 
-### Scope Analysis
-This bead covers **boundedness** properties of vb_core's budget, value store, and engine loop:
+## Model Shape
+- Module/model paths: `specs/vb_qi37_2_5/BoundednessSlice.tla` with config `specs/vb_qi37_2_5/BoundednessSlice.cfg`; `specs/vb_qi37_2_5/NestedBoundednessAdmission.tla` with config `specs/vb_qi37_2_5/NestedBoundednessAdmission.cfg`.
+- Variables: `pc`, `remaining`, `signal`, `workflow_state`, `computed_budget`, `policy`, `store_count`, `max_store_count`, `diagnostic`.
+- Init actions: `InitSlice`, `InitAdmission`.
+- Next/actions: `TakeStep`, `BlockOnAction`, `BlockOnWait`, `Finish`, `ExhaustBudget`, `ComputeBudget`, `RejectOverLimit`, `AcceptWithinLimit`, `InsertValue`, `RejectValueGrowth`.
+- State constraints: finite workflows, finite budget dimensions, finite store cap, finite fanout/repeat/gather bounds for TLC.
+- Symmetry sets: optional symmetry over branch identifiers and value kinds if proof-writer chooses bounded branch/value domains.
+- Bounded model limits: at least budgets `0..3`, fanout `0..3`, nesting `0..3`, store cap `0..3`, and one exceeding value for each limit.
 
-1. **StepBudget** — bounded counter that never exceeds `MAX_STEP_BUDGET` (10,000)
-2. **ValueStore** — arena cap enforcement before exceeding `max_arena_entries`
-3. **run_until_blocked** — deterministic loop that terminates when budget exhausts
+## Properties
+- Safety invariants:
+  - `BudgetNeverNegative`: remaining budget is never negative.
+  - `NoTransitionAfterExhaust`: once exhausted, no deterministic transition consumes further budget.
+  - `StoreCountWithinCap`: capped store count never exceeds configured cap.
+  - `RejectsOverPolicy`: over-policy budget cannot reach accepted state.
+  - `TypedTerminalOutcome`: every terminal adversarial path has a typed signal or diagnostic.
+- Liveness/eventuality:
+  - `EventuallyBlockedFinishedOrExhausted`: under weak fairness, every finite enabled execution slice eventually blocks, finishes, errors, or exhausts budget.
+  - `EventuallyAcceptOrRejectAdmission`: every finite computed budget eventually reaches accept or typed reject.
+- Fairness assumptions: weak fairness on `TakeStep` while budget remains and node can execute; weak fairness on `ComputeBudget` for finite admitted inputs; no fairness assumed for external action completion.
+- Deadlock freedom: model must report no deadlock except explicit terminal states (`Finished`, `Blocked`, `Exhausted`, `Rejected`, `Accepted`).
+- Refinement to Rust/runtime behavior: `remaining` refines `StepBudget::remaining`; `ExhaustBudget` refines `EngineSignal::StepBudgetExhausted`; `RejectValueGrowth` refines `CoreError::BudgetExceeded { budget: "max_slots" }`; admission reject actions refine `BudgetError`/verifier diagnostics.
 
-### Temporal Behavior Assessment
+## Evidence Command
+- `tlc -metadir /tmp/opencode/tlc-vb-qi37-2-5-slice specs/vb_qi37_2_5/BoundednessSlice.tla -config specs/vb_qi37_2_5/BoundednessSlice.cfg`
+- `tlc -metadir /tmp/opencode/tlc-vb-qi37-2-5-nested specs/vb_qi37_2_5/NestedBoundednessAdmission.tla -config specs/vb_qi37_2_5/NestedBoundednessAdmission.cfg`
+- Expected evidence: TLC reports `Model checking completed. No error has been found.` for both configs, with no invariant violations, no unexpected deadlock, and temporal properties checked over the complete finite state spaces.
 
-| Component | Has Temporal Behavior? | Concurrent State? | State Machines? |
-|-----------|----------------------|-------------------|----------------|
-| StepBudget | NO | NO | NO |
-| ValueStore | NO | NO | NO |
-| run_until_blocked | NO | NO | NO |
-| EngineSignal | NO | NO | NO |
-
-### Conclusion: No TLA+ Required
-
-**Rationale**: All boundedness properties are **datalog-style invariant proofs** over deterministic
-finite-state systems. There is no:
-
-- Concurrency or parallelism
-- Nondeterministic scheduling
-- Liveness requirements (termination is a pure bound, not temporal)
-- Fairness or progress properties
-- State-machine workflows with external choices
-
-The `run_until_blocked` loop is a **structurally recursive deterministic loop** with a
-verified upper bound (`MAX_STEP_BUDGET`). The Verus loop invariant `INV-004` proves:
-
-```
-∀budget, iterations • budget.remaining = initial - iterations
-                      ∧ iterations ≤ initial
-                      ∧ budget.remaining ≥ 0
-                      ∧ (budget.remaining = 0 ⇒ loop terminates)
-```
-
-This is not a temporal property — it is a pure first-order invariant over natural numbers.
-
-## Compensation for TLA+ Absence
-
-| Property | Primary Proof | Complementary Evidence |
-|----------|--------------|----------------------|
-| INV-001 (StepBudget bounds) | Verus spec/Proof | Kani harness |
-| INV-002 (ValueStore cap) | Verus spec/Proof | Kani harness |
-| INV-003 (count_total_steps bound) | Verus spec/Proof | Kani harness |
-| INV-004 (loop termination) | Verus loop invariant | Kani harness |
-| INV-005 (budget monotonic) | Verus spec/Proof | proptest |
-| INV-006 (try_take monotonic) | Verus spec/Proof | Kani harness |
-
-## Waiver
-
-**TLA+ waiver granted** per verification-layers.md Section "Waiver":
-- Single-threaded deterministic execution
-- No liveness/deadlock/fairness concerns
-- Termination proven by verified loop bound
-- Compensating evidence: Verus INV-004 + Kani harness structural verification
-
-**Owner**: State 3 (Contract and type model)
-**Reviewer**: proof-reviewer
-
-## Artifact Cross-Reference
-
-- Verus specs: `verification/verus/*.rs`
-- Kani harnesses: `crates/vb_core/src/kani/*.rs`
-- Verification layers: `.beads/vb-qi37.2.5/verification-layers.md`
+## Waivers
+- No TLA+ waiver. Model files are blocked on proof-writer scope, not waived.

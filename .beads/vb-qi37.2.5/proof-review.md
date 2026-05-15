@@ -1,115 +1,51 @@
-# Proof Review — vb-qi37.2.5 (State 6 Re-review)
+# Proof Review - vb-qi37.2.5 State 6 attempt 3
 
 STATUS: APPROVED
 
-## Prior Review Findings — Resolution Check
+## Scope
 
-| Finding | Severity | Status | Evidence |
-|---------|----------|--------|----------|
-| Kani harnesses not cargo-integrated | LETHAL | FIXED | `step_budget_new_clamps` verifies SUCCESSFUL |
-| tla-spec.md missing | LETHAL | FIXED | `.beads/vb-qi37.2.5/tla-spec.md` exists (75 lines) |
-| lean-contract.md missing | LETHAL | FIXED | `.beads/vb-qi37.2.5/lean-contract.md` exists (75 lines) |
-| verification-layers.md mismatched refs | MAJOR | FIXED | Lines 76-78 now reference `crates/vb_core/src/kani/*.rs` |
-| Kani while-loop unwind bounds absent | MAJOR | FIXED | `#[kani::unwind(10001)]` on all MAX-budget loops |
+- Bead: `vb-qi37.2.5`.
+- Role: proof-reviewer skill inside go-skill State 6.
+- Workspace verified by `pwd -P`: `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-qi37-2-5`.
+- Forbidden source checkout for writes: `/home/lewis/src/velvet-ballistics`.
+- Reviewed repaired inputs: contract, traceability, proof obligations, proof plan, proof artifacts, proof-writer report, and proof evidence.
+- Writes performed by this review: `.beads/vb-qi37.2.5/proof-review.md`, `.beads/vb-qi37.2.5/proof-findings.jsonl`, and `.beads/vb-qi37.2.5/STATE.md`.
 
-## Mandatory Verification Gate — Raw Evidence
+## Findings
 
-### Command 1: cargo kani --package vb_core --lib --harness step_budget_new_clamps
-```
-cd /home/lewis/src/vb-qi37-2-5 && cargo kani --package vb_core --lib --harness step_budget_new_clamps
-```
-**Result**: VERIFICATION SUCCESSFUL (0 of 7 checks failed)
-- Check 1: "remaining must be clamped to MAX_STEP_BUDGET" — SUCCESS
-- Checks 2-7: pointer_dereference checks on StepBudget::remaining — SUCCESS
-- Runtime: 0.0108s
-- Harness: `crates/vb_core/src/kani/step_budget.rs:14:5`
+No blocking proof-review findings remain for State 5 proof-owned obligations.
 
-### Command 2: cargo kani --package vb_core --lib --harness step_budget_max_value
-**Result**: VERIFICATION SUCCESSFUL (0 of 7 checks failed)
-- "MAX budget must equal MAX_STEP_BUDGET" — SUCCESS
-- Runtime: 0.0103s
+| ID | Severity | Obligation | Decision | Evidence |
+| --- | --- | --- | --- | --- |
+| `PR-R3-001` | info | `PO-001` / `VERUS-STEP-001` | Approved | `verus verification/verus/step_budget.rs` reran in attempt 3 and returned `verification results:: 6 verified, 0 errors`. |
+| `PR-R3-002` | info | `PO-002` / `VERUS-BUDGET-001` | Approved | `verus verification/verus/resource_budget.rs` reran in attempt 3 and returned `verification results:: 10 verified, 0 errors`. |
+| `PR-R3-003` | info | `PO-003` / `TLA-SLICE-001` | Approved | TLC reran `BoundednessSlice.tla` with `BoundednessSlice.cfg`; complete finite state space checked, 41 states generated, 21 distinct states, no error found. |
+| `PR-R3-004` | info | `PO-004` / `TLA-ADMIT-001` | Approved | TLC reran `NestedBoundednessAdmission.tla` with `NestedBoundednessAdmission.cfg`; complete finite state space checked, 301 states generated, 237 distinct states, no error found. |
+| `PR-R3-005` | info | `PO-005` / `KANI-LOOP-001` | Waiver accepted for proof-review scope | Repaired obligations state no Kani PASS is claimed; waiver names owner, limitation, expiry, and compensating evidence from Verus/TLA/proptest lanes. |
+| `PR-R3-006` | warning | `contract-verification-review.md` | Out of scope for this write pass | Existing contract-verification review still says `STATUS: REJECTED` from the pre-repair artifact state; this proof-review approval does not rewrite or override that artifact. |
 
-### Command 3: cargo kani --package vb_core --lib --harness step_budget_try_take_bounded
-**Result**: VERIFICATION SUCCESSFUL (0 of 164 checks failed, 4 unreachable)
-- "try_take must not error" — SUCCESS
-- "remaining must decrease by 1" — SUCCESS
-- "remaining must stay bounded after second take" — SUCCESS
-- Runtime: 0.62s
+## Command Evidence
 
-### Command 4: cargo check --package vb_core --lib
-**Result**: PASS — no compilation errors
+| Command | Result |
+| --- | --- |
+| `pwd -P` | PASS: `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-qi37-2-5`. |
+| `test -s ... && jq -c . ...` for required State 6 artifacts and JSONL | PASS: contract, proof obligations, planned obligations, traceability, strategy, proof-writer report, and proof evidence exist and parse. |
+| `rtk grep -n 'ASSUME|assume|axiom|admit|sorry|trusted|unimplemented|todo|unwind|invariant|PROPERTY|THEOREM|proof fn|requires|ensures|loom::model|fuzz_target|proptest!|kani::' ...` | PASS as discovery: only expected Verus proof functions/spec clauses and the existing invariant comment matched in reviewed proof artifacts; no admits, axioms, sorry, TODO, or unimplemented proof markers found. |
+| `rtk grep -n 'PASS|passed|verified|discharged|counterexample|unwind|bound|coverage|seed|runs|exit|NOT_RUN|WAIVED|BLOCKED_TOOLING' ...` | PASS as evidence discovery: proof-writer PASS claims are limited to Verus/TLC proof-owned obligations; later lanes are explicitly `NOT_RUN` or waived. |
+| `verus verification/verus/step_budget.rs` | PASS: `verification results:: 6 verified, 0 errors`. |
+| `verus verification/verus/resource_budget.rs` | PASS: `verification results:: 10 verified, 0 errors`. |
+| `tlc -metadir /tmp/opencode/tlc-vb-qi37-2-5-state6-attempt3-slice specs/vb_qi37_2_5/BoundednessSlice.tla -config specs/vb_qi37_2_5/BoundednessSlice.cfg` | PASS: model checking completed, no error found; 41 states generated, 21 distinct states, depth 2. |
+| `tlc -metadir /tmp/opencode/tlc-vb-qi37-2-5-state6-attempt3-nested specs/vb_qi37_2_5/NestedBoundednessAdmission.tla -config specs/vb_qi37_2_5/NestedBoundednessAdmission.cfg` | PASS: model checking completed, no error found; 301 states generated, 237 distinct states, depth 7. |
 
-### Loop Harnesses (High Unwind — Timeout)
+## Obligation Decision
 
-`run_until_blocked_loop_terminates` (#[kani::unwind(10001)]) and `run_until_blocked_various_budgets` time out at 60s.
-`step_budget_repeated_take_bounded` (#[kani::unwind(10001)]) times out at 60s.
+- Approved proof-owned obligations: `PO-001`, `PO-002`, `PO-003`, and `PO-004`.
+- Accepted waiver for proof-review scope: `PO-005`; no Kani discharge is claimed.
+- Not discharged by this State 6 proof-review: `PO-006` through `PO-011`; these remain later owner-state obligations for tests, Miri, fuzz, source lint, and deferred-global classification.
+- No unmapped, vacuous, or unexecuted proof-owned obligation remains in the reviewed State 5 artifact set.
 
-These are structurally verified by `step_budget_try_take_bounded` which exercises the same loop body
-(try_take followed by boundedness check) for 2 iterations. The `#[kani::unwind(10001)]` bound is
-present in source but computationally infeasible for full BMC at 10,000 unwind.
+## Boundary Notes
 
-Primary termination proof is VERUS-INV-004 (run_loop_termination.rs — 7 lemmas PASS).
-Kani provides complementary structural verification.
-
-## Verus Evidence (from State 5 — not re-executed, no changes)
-
-| File | Lemmas | Status |
-|------|--------|--------|
-| verification/verus/signals_invariant.rs | 10 | PASS — 0 errors |
-| verification/verus/value_store_invariant.rs | 8 | PASS — 0 errors |
-| verification/verus/budget_bounded.rs | 6 | PASS — 0 errors |
-| verification/verus/run_loop_termination.rs | 7 | PASS — 0 errors |
-| verification/verus/budget_monotonic.rs | 6 | PASS — 0 errors |
-| verification/verus/signals_try_take.rs | 6 | PASS — 0 errors |
-
-**Total**: 49 lemmas verified, 0 errors.
-
-## Obligation Mapping
-
-| Obligation | Artifact | Verifier | Status |
-|------------|----------|----------|--------|
-| VERUS-INV-001 | signals_invariant.rs | verus | VERIFIED |
-| VERUS-INV-002 | value_store_invariant.rs | verus | VERIFIED |
-| VERUS-INV-003 | budget_bounded.rs | verus | VERIFIED |
-| VERUS-INV-004 | run_loop_termination.rs | verus | VERIFIED |
-| VERUS-INV-005 | budget_monotonic.rs | verus | VERIFIED |
-| VERUS-INV-006 | signals_try_take.rs | verus | VERIFIED |
-| KANI-INV-001 | step_budget.rs (4 harnesses) | cargo kani | PARTIAL — structural PASS, full unwind timeout |
-| KANI-INV-004 | run_until_blocked.rs (2 harnesses) | cargo kani | STRUCTURAL — primary via Verus INV-004 |
-| KANI-POST-004 | value_store_cap.rs (4 harnesses) | cargo kani | STRUCTURAL — compilation OK |
-| MIRI-INV-002 | value_store.rs | cargo miri test | NOT RUN — deferred to State 11 |
-| PROPTEST-PRE-001 | signals.rs proptest | cargo test | NOT RUN — deferred to State 8 |
-| PROPTEST-POST-001 | signals.rs proptest | cargo test | NOT RUN — deferred to State 8 |
-| PROPTEST-PRE-002 | value_store.rs proptest | cargo test | NOT RUN — deferred to State 8 |
-| PROPTEST-POST-006 | budget/tests.rs proptest | cargo test | NOT RUN — deferred to State 8 |
-| FUZZ-001 | step_budget_new.rs | cargo fuzz run | NOT RUN — deferred to State 8 |
-| UNIT-POST-003 | run_loop.rs | cargo test | NOT RUN — deferred to State 8 |
-| UNIT-POST-005 | budget/tests.rs | cargo test | NOT RUN — deferred to State 8 |
-
-## Vacuity Hunt
-
-- No tautological assertions found in verified Kani harnesses. `kani::assume(input >= 0)` and
-  `kani::assert(remaining >= 0)` (trivial u64 bounds) were removed in State 5 repair.
-- No assume-heavy models in verified harnesses.
-- High-unwind loop harnesses (#[kani::unwind(10001)]) are computationally intractable for full BMC
-  but are structurally verified by simpler harnesses that exercise the same code paths.
-- Verus lemmas are non-vacuous — they prove actual invariants about real functions.
-
-## Verus Lemma Quality — PASS
-
-- spec functions correctly bound StepBudget, ValueStore, budget operations
-- proof functions use appropriate loop invariants and mathematical induction
-- trusted boundaries (constructors) are justified — StepBudget::new clamps, ValueStore::with_max_slots sets cap
-- 49 lemmas all pass with 0 errors
-
-## Summary
-
-**Verus**: APPROVED — 6 files, 49 lemmas, 0 errors
-**Kani**: APPROVED (structural) — 3 harnesses verified, high-unwind loops timeout but structural
-         verification provided by simpler harnesses + primary proof via Verus INV-004
-**TLA+**: N/A — waiver justified, tla-spec.md created
-**Lean**: N/A — waiver justified, lean-contract.md created
-**Proptest/Fuzz/Miri**: NOT EXECUTED — deferred correctly per proof-obligations.jsonl
-
-All LETHAL and MAJOR findings from prior review have been resolved. No new findings.
-Proof artifacts are non-vacuous, properly mapped, and correctly integrated.
+- TLA+ proofs are bounded finite model checks, not unbounded runtime proofs or performance evidence.
+- Verus artifacts prove pure arithmetic/spec obligations and do not prove allocation, generated runtime behavior, I/O, diagnostics, or workspace build health.
+- Existing `contract-verification-review.md` remains a separate State 6 artifact and was not edited by this proof-review pass.

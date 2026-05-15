@@ -1,120 +1,68 @@
-# Proof Evidence — vb-qi37.2.5 State 5 (Proof Writer Repair)
+# Proof Evidence - vb-qi37.2.5 State 5 FUZZ-RESOURCE-001 repair
 
-## Repair Summary
+STATUS: READY_FOR_REVIEW
 
-This is a **repair run** from State 6 (proof-reviewer REJECTED). The rejection was due to:
-1. Kani harnesses not cargo-integrated (LETHAL)
-2. Missing tla-spec.md (LETHAL)
-3. Missing lean-contract.md (LETHAL)
-4. verification-layers.md file references mismatched (MAJOR)
-5. Kani while loops need explicit unwind bounds (MAJOR)
-6. run_until_blocked harness doesn't verify actual loop body (MAJOR)
+## Environment
 
-## Fixes Applied
+- Timestamp: `2026-05-16T12:34:46Z`.
+- Working directory: `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-qi37-2-5`.
+- Forbidden source checkout for writes: `/home/lewis/src/velvet-ballistics`.
+- Boundary: `.beads/vb-qi37.2.5/` proof evidence/report/state refresh only.
+- Production edits: none.
+- Test edits: none.
+- Proof/model/harness edits: none.
 
-1. **Kani Integration Fixed**: Moved harnesses from `kani/*.rs` (workspace root) to `crates/vb_core/src/kani/*.rs` as `#[cfg(kani)]` modules. Updated `lib.rs` to include `pub mod kani;`.
+## Raw Command Evidence
 
-2. **tla-spec.md Created**: Rationale documented - no temporal behavior in scope (bounded deterministic loops).
+### Isolation Guard
 
-3. **lean-contract.md Created**: Rationale documented - Verus owns all Rust-local proof obligations.
+Command:
 
-4. **verification-layers.md Fixed**: Updated target harness references from `kani/gate_11_loop.rs` / `kani/gate_12_14_15.rs` to actual files `crates/vb_core/src/kani/step_budget.rs`, `run_until_blocked.rs`, `value_store_cap.rs`.
-
-5. **Unwind Bounds Added**: Added `#[kani::unwind(10001)]` to while loops with MAX_STEP_BUDGET bound.
-
-6. **Trivial Assertions Fixed**: Removed `kani::assume(input >= 0)` (no-op on u64) and `kani::assert(remaining >= 0)` (tautology). Added descriptive messages to all `kani::assert` calls.
-
-## Verus Verification
-
-### Tool Discovery
-```
-verus --version
-Verus Version: 0.2026.05.05.d03e906
-Platform: linux_x86_64
-Toolchain: 1.95.0-x86_64-unknown-linux-gnu
-```
-
-### Verus Files Verified (from State 5)
-
-| File | Lemmas | Status |
-|------|--------|--------|
-| `verification/verus/signals_invariant.rs` | 10 | PASS — 0 errors |
-| `verification/verus/value_store_invariant.rs` | 8 | PASS — 0 errors |
-| `verification/verus/budget_bounded.rs` | 6 | PASS — 0 errors |
-| `verification/verus/run_loop_termination.rs` | 7 | PASS — 0 errors |
-| `verification/verus/budget_monotonic.rs` | 6 | PASS — 0 errors |
-| `verification/verus/signals_try_take.rs` | 6 | PASS — 0 errors |
-
-**Total Verus Lemmas Verified: 49 verified, 0 errors**
-
----
-
-## Kani Integration Test
-
-### Tool Discovery
-```
-cargo-kani 0.67.0
-rustc 1.97.0-nightly
-```
-
-### Compilation Check
 ```bash
-cargo check --package vb_core
+pwd -P && test "$(pwd -P)" = "/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-qi37-2-5" && case "$(pwd -P)" in "/home/lewis/src/velvet-ballistics"|"/home/lewis/src/velvet-ballistics"/*) exit 1;; esac
 ```
-**Result**: PASS — vb_core compiles cleanly with kani modules.
 
-### Harness Integration Evidence
+Exit: 0
 
-The critical issue was that Kani harnesses in the workspace root `kani/` directory could NOT be executed via `cargo kani --package vb_core`. After repair, harnesses are in `crates/vb_core/src/kani/` and are cargo-integrated.
+```text
+/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-qi37-2-5
+```
 
-**Test Run 1: step_budget_new_clamps**
+### FUZZ-RESOURCE-001 Repaired Stdin Replay Plus Companion Proptest
+
+Command:
+
 ```bash
-cargo kani --package vb_core --lib --harness step_budget_new_clamps
-```
-**Result**: VERIFICATION SUCCESSFUL (0 of 7 checks failed)
-```
-Complete - 1 successfully verified harnesses, 0 failures, 1 total.
+mkdir -p target/tmp && RUSTC_WRAPPER= TMPDIR=target/tmp rtk cargo build --manifest-path fuzz/Cargo.toml --features fuzz --bin resource_budget && python3 -c "import subprocess; from pathlib import Path; t=Path('target/debug/resource_budget'); assert t.exists(), f'missing {t}'; fixed=[b'', b'\x00', b'\x00'*32, b'\xff'*32, b'fanout-over-policy', b'nesting-over-policy', b'compact-step-overflow', b'max-slots-cap-one-over', b'payload-length-header-one-over']; cases=fixed+[(i.to_bytes(8,'little') + bytes([(i*31)%256])*(i%64))[:72] for i in range(991)]; [(_ for _ in ()).throw(SystemExit(f'resource_budget stdin replay failed at case {idx} rc={r.returncode}')) for idx,data in enumerate(cases) for r in [subprocess.run([str(t)], input=data, timeout=2)] if r.returncode != 0]; print(f'resource_budget stdin replay PASS cases={len(cases)}')" && RUSTC_WRAPPER= TMPDIR=target/tmp PROPTEST_CASES=10000 rtk cargo test --package vb_core --test vb_qi37_2_5_boundedness_adversarial proptest -- --nocapture
 ```
 
-**Test Run 2: step_budget_max_value**
-```bash
-cargo kani --package vb_core --lib --harness step_budget_max_value
+Exit: 0
+
+```text
+cargo build (0 crates compiled)
+Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.06s
+resource_budget stdin replay PASS cases=1000
+cargo test: 3 passed, 19 filtered out (1 suite, 0.11s)
 ```
-**Result**: VERIFICATION SUCCESSFUL (0 of 7 checks failed)
-```
-Complete - 1 successfully verified harnesses, 0 failures, 1 total.
-```
 
-### Loop-Based Harnesses
+Obligation: `PO-009` / `FUZZ-RESOURCE-001`.
 
-Harnesses with high unwind bounds (`#[kani::unwind(10001)]` for MAX_STEP_BUDGET loops) are computationally intensive and may timeout. The primary termination proof is via Verus loop invariant (VERUS-INV-004).
+## Discharge Decision
 
----
+- `FUZZ-RESOURCE-001`: PASS for the repaired evidence lane.
+- Required evidence present: exact stdout `resource_budget stdin replay PASS cases=1000`.
+- Companion evidence present: `PROPTEST_CASES=10000` adversarial proptest reports `3 passed, 19 filtered out`.
+- No PASS is claimed for `cargo fuzz run resource_budget -- -runs=1000`.
+- The cargo-fuzz command is treated only as invalid evidence for the current stdin-once driver, matching the repaired State 3/4 obligation text.
 
-## Artifact Locations (After Repair)
+## Non-Claims
 
-| Obligation | File | Status |
-|-----------|------|--------|
-| KANI-INV-001 | `crates/vb_core/src/kani/step_budget.rs` | Integrated, 4 harnesses |
-| KANI-INV-004 | `crates/vb_core/src/kani/run_until_blocked.rs` | Integrated, 2 harnesses |
-| KANI-POST-004 | `crates/vb_core/src/kani/value_store_cap.rs` | Integrated, 4 harnesses |
-| TLA+ | `.beads/vb-qi37.2.5/tla-spec.md` | Created (waiver rationale) |
-| Lean | `.beads/vb-qi37.2.5/lean-contract.md` | Created (N/A rationale) |
+- This is not a libFuzzer coverage result.
+- This does not modify or certify production/test source changes.
+- This repair does not rerun Verus, TLA+, Miri, source lint, or full State 11 machine gates.
 
----
+## Anti-Hallucination Notes
 
-## Summary
-
-| Layer | Obligation | Artifact | Status |
-|-------|-----------|----------|--------|
-| verus | VERUS-INV-001 | `verification/verus/signals_invariant.rs` | PASS (10 lemmas) |
-| verus | VERUS-INV-002 | `verification/verus/value_store_invariant.rs` | PASS (8 lemmas) |
-| verus | VERUS-INV-003 | `verification/verus/budget_bounded.rs` | PASS (6 lemmas) |
-| verus | VERUS-INV-004 | `verification/verus/run_loop_termination.rs` | PASS (7 lemmas) |
-| verus | VERUS-INV-005 | `verification/verus/budget_monotonic.rs` | PASS (6 lemmas) |
-| verus | VERUS-INV-006 | `verification/verus/signals_try_take.rs` | PASS (6 lemmas) |
-| kani | KANI-INV-001 | `crates/vb_core/src/kani/step_budget.rs` | INTEGRATED (evidence: step_budget_new_clamps PASS) |
-| kani | KANI-INV-004 | `crates/vb_core/src/kani/run_until_blocked.rs` | INTEGRATED (loop harnesses slow) |
-| kani | KANI-POST-004 | `crates/vb_core/src/kani/value_store_cap.rs` | INTEGRATED (evidence: compilation OK) |
-| tla | TLA+ | `.beads/vb-qi37.2.5/tla-spec.md` | CREATED (waiver rationale) |
-| lean | Lean | `.beads/vb-qi37.2.5/lean-contract.md` | CREATED (N/A rationale) |
+- Every PASS claimed above has command output and exit status from this session.
+- No production, test, dependency, config, Verus, TLA+, Kani, or fuzz harness files were edited.
+- Prior State 5/11 Verus, TLA+, proptest, Miri, and lint evidence remains historical context only; this repair addresses the `FUZZ-RESOURCE-001` failed proof/evidence lane after State 4 plan repair.

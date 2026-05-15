@@ -1,94 +1,83 @@
-# implementation.md — vb-qi37.2.5
+# Implementation Report — vb-qi37.2.5 State 10
 
-## Identity
-- **Bead**: vb-qi37.2.5
-- **Title**: quality: Boundedness adversarial tests
-- **State**: 10 (holzman-rust) → State 11 (evidence-packaging)
-- **Date**: 2026-05-14
+## Status
 
----
+- State: 10 `holzman-rust`
+- Result: COMPLETED_NO_PRODUCTION_CHANGE
+- Workspace: `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-qi37-2-5`
+- Forbidden source checkout: `/home/lewis/src/velvet-ballistics` was not written.
 
-## Implementation Summary
+## Reference Files Read
 
-**No production changes — test coverage bead.**
+- `/home/lewis/.opencode/skill/holzman-rust/SKILL.md`
+- `/home/lewis/.agents/skills/holzman-rust/SKILL.md`
+- `/home/lewis/.agents/skills/holzman-rust/references/nasa-jpl-standards.md`
+- `/home/lewis/.agents/skills/holzman-rust/references/latency-throughput-playbook.md`
+- `/home/lewis/.agents/skills/holzman-rust/references/runtime-performance-architecture.md`
+- `/home/lewis/.agents/skills/holzman-rust/references/zero-cost-abstractions.md`
+- `/home/lewis/.agents/skills/holzman-rust/references/simd-patterns.md`
+- `/home/lewis/.agents/skills/holzman-rust/references/mechanical-empathy-toolchain.md`
 
-This bead is a quality/test-coverage bead. All work was verification and testing; no production source code was modified beyond test and verification artifacts.
+## Inputs Consumed
 
----
+- `.beads/vb-qi37.2.5/test-plan-review.md`: `STATUS: APPROVED`.
+- `.beads/vb-qi37.2.5/test-suite-review.md`: `STATUS: APPROVED`.
+- `.beads/vb-qi37.2.5/test-writer-report.md`.
+- `.beads/vb-qi37.2.5/contract.md`.
+- `.beads/vb-qi37.2.5/proof-evidence.md`.
+- `.beads/vb-qi37.2.5/STATE.md`.
 
-## Evidence
+## Implementation Decision
 
-### Test Execution Results
-| Metric | Value |
-|--------|-------|
-| Tests Passed | 1519 |
-| Test Compilation | PASS |
-| nextest Status | 0 failed, 0 flaky |
-| Clippy | 0 warnings |
+No production Rust change was needed.
 
-### Coverage Results (llvm-cov)
-| Metric | Value |
-|--------|-------|
-| vb_core Line Coverage | 90.13% |
-| Threshold | ≥90% |
-| Status | PASS |
+Reason: State 9 approved the repaired test plan and test suite. The accepted contract for this bead is a quality/boundedness adversarial-test delivery, and the approved downstream evidence shows the required behaviors are already covered by the existing focused integration suite, extended proptests, nextest probes, and repaired deterministic hostile-input replay. The reviewed artifacts mandate no State 10 production repair.
 
-### Files at 100%
-- `limits.rs` — 100.00%
-- `policy.rs` — 100.00%
-- `engine.rs` — 100.00%
-- `span.rs` — 100.00%
-- `errors.rs` — 100.00%
+## Files Touched In State 10
 
-### Documented Coverage Gaps (Justified)
-| File | Coverage | Gap | Constraint |
-|------|----------|-----|------------|
-| `signals.rs` | 86.22% | 39 lines | Env var global-state/test isolation |
-| `budget.rs` | 88.34% | 119 lines | CompiledWorkflow infrastructure required |
-| `value_store.rs` | 84.57% | 283 lines | Billions of allocations to exercise overflow |
+- `.beads/vb-qi37.2.5/implementation.md`: replaced stale implementation report with State 10 no-op rationale and command evidence.
+- `.beads/vb-qi37.2.5/STATE.md`: appended State 10 transition and completion evidence.
 
----
+Production Rust files touched: none.
+Test Rust files touched: none.
+Dependency/config/CI files touched: none.
 
-## holzman-rust Gate: NO REPAIRS NEEDED
+## Power-of-Ten / Zero-Panic Rules Affected
 
-State 9 (test-reviewer) verdict: **APPROVED**
+- `unsafe`: no new or modified production Rust; satisfied by no-op.
+- `unwrap` / `expect` / `panic` / `todo` / `unimplemented` / `dbg`: no new or modified production Rust; satisfied by no-op.
+- Unchecked indexing/arithmetic/lossy casts: no new or modified production Rust; satisfied by no-op.
+- Bounded control flow/resource handling: no production behavior changed; existing behavior is evidenced by approved State 8/9 tests and proof artifacts.
+- Production assert macros: no new or modified production Rust; satisfied by no-op.
 
-All boundedness tests pass, coverage constraints are justified, no code repairs required. The holzman-rust gate confirms production code remains untouched — only test/verification artifacts were added.
+## Command Evidence
 
-### NASA/JPL Power-of-Ten Review
-- **Rule 1** (No complex flow): N/A — no production code changes
-- **Rule 2** (No global state): N/A — no production code changes
-- **Rule 3** (No deep nesting): N/A — no production code changes
-- **Rule 4** (No bare pointers): N/A — no production code changes
-- **Rule 5** (No unrelated types): N/A — no production code changes
-- **Rule 6** (No manual memory): N/A — no production code changes
+All commands were run from `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-qi37-2-5` with source checkout untouched.
 
-**VERDICT**: holzman-rust gate passes. No production code modified.
+| Command | Result |
+|---|---|
+| `pwd -P` | PASS: `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-qi37-2-5` |
+| `RUSTC_WRAPPER= TMPDIR=target/tmp rtk cargo test --package vb_core --test vb_qi37_2_5_boundedness_adversarial --no-run` | PASS, exit 0 |
+| `RUSTC_WRAPPER= TMPDIR=target/tmp rtk cargo test --package vb_core --test vb_qi37_2_5_boundedness_adversarial -- --nocapture` | PASS: `cargo test: 22 passed (1 suite, 0.00s)` |
+| `RUSTC_WRAPPER= TMPDIR=target/tmp PROPTEST_CASES=10000 rtk cargo test --package vb_core --test vb_qi37_2_5_boundedness_adversarial proptest -- --nocapture` | PASS: `cargo test: 3 passed, 19 filtered out (1 suite, 0.11s)` |
+| `RUSTC_WRAPPER= TMPDIR=target/tmp moon run :lint-src` | PASS: `Tasks: 1 completed` |
+| `RUSTC_WRAPPER= TMPDIR=target/tmp rtk cargo build --manifest-path fuzz/Cargo.toml --features fuzz --bin resource_budget && python3 -c ...` | PASS: `resource_budget stdin replay PASS cases=1000` |
 
----
+## Performance Layer Decision
 
-## State Advancement
+No performance claim made. No benchmark/profiler evidence required for this no-production-change implementation state.
 
-- Current: State 10 (holzman-rust)
-- Next: State 11 (evidence-packaging)
-- Implementation artifact: `.beads/vb-qi37.2.5/implementation.md` (this file)
+## Second-Ring Evidence
 
----
+No assembly/IR, vectorization, public API compatibility, or release provenance claim was made. No second-ring tooling required.
 
-## Files Changed (Test Coverage Only)
+## Skipped Gates / Blockers
 
-All changes are test/verification artifacts in `crates/vb_core/src/` and `fuzz/`:
+- Full `moon ci`: skipped because the State 10 request asked for focused State 8/9 compile/tests and lint if practical; no production code was changed.
+- Full Holzman fallback workspace gate: skipped for the same focused-scope reason and because this state made no production Rust changes.
+- Benchmarks/profilers: skipped because no performance claim was made.
 
-**New files:**
-- `verification/verus/*.rs` (6 files, 43 lemmas)
-- `crates/vb_core/src/kani/*.rs` (4 harnesses)
-- `fuzz/src/bin/step_budget_new.rs`
-- `fuzz/src/lib.rs` (added fuzz_step_budget_new)
+## Residual Risks
 
-**Modified files (test-only):**
-- `crates/vb_core/src/engine/signals.rs` (+2 proptest properties)
-- `crates/vb_core/src/value_store.rs` (+1 proptest property)
-- `crates/vb_core/src/budget/tests.rs` (+1 proptest + 1 unit test)
-- `crates/vb_core/src/lib.rs` (+ `#[cfg(kani)] pub mod kani;`)
-
-**No production source code modified.**
+- This State 10 report relies on the approved State 9 review for test-suite adequacy and on focused reruns, not a full release gate.
+- Existing project-wide deferred/global issues remain outside this bead-local State 10 scope.

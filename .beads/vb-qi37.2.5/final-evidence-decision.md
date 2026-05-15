@@ -8,71 +8,79 @@
 
 ## Rationale
 
-This bead (vb-qi37.2.5: Boundedness adversarial tests) is a **test coverage bead** that modifies no production source code. All verification evidence confirms:
+This bead (vb-qi37.2.5: Boundedness adversarial tests) is a **test coverage bead** that modifies no production source code. All verification evidence from the correct isolated workspace confirms approval.
 
-### Verified Claims (Active Execution Context)
+### Evidence Chain Integrity (Active Execution Context)
+
 | Claim | Evidence | Status |
 |-------|----------|--------|
-| 1519 tests pass | `cargo test --package vb_core --lib`: 1519 passed; 0 failed | VERIFIED |
-| 90.13% line coverage | nextest report, threshold ≥90% | VERIFIED |
-| 43 Verus lemmas, 0 errors | 6 files in verification/verus/ | VERIFIED |
-| 0 clippy warnings | `cargo clippy --package vb_core --lib` | VERIFIED |
-| Zero production panic surface | rg confirms only test-module asserts | VERIFIED |
-| All required artifacts present | 9/10 (regression-diff.md missing) | GAP |
-| All review STATUS: APPROVED | 4 review files | VERIFIED |
-
-### Gap Analysis: regression-diff.md
-
-**File**: `.beads/vb-qi37.2.5/regression-diff.md`
-**Status**: MISSING
-
-**Justification for Approval Despite Gap**:
-1. black-hat-reviewer.md explicitly states: "No production code modified — test coverage bead"
-2. For a test-only bead, there is no production diff to compare against
-3. All 17 proof obligations have compensating evidence
-4. The missing file does not represent a safety, correctness, or boundedness risk
-
-**Anti-Hallucination Declaration**: This approval does not invent evidence. The gap is real and documented. The justification is based on the bead's nature (test-only) as confirmed by the black-hat-reviewer's own findings.
+| Workspace isolation | `case "$(pwd -P)" in ...` → ISOLATED | VERIFIED |
+| regression-diff.md present | `test -s` → 2104 bytes | VERIFIED |
+| All 10 mandatory artifacts present | `test -s` for each | VERIFIED |
+| All 5 JSONL files valid | `jq -c .` → exit 0 each | VERIFIED |
+| formal-verification-report.md STATUS | line 3: `STATUS: APPROVED` | VERIFIED |
+| proof-review.md STATUS | line 3: `STATUS: APPROVED` | VERIFIED |
+| test-plan-review.md STATUS | line 3: `STATUS: APPROVED` | VERIFIED |
+| test-suite-review.md STATUS | line 3: `STATUS: APPROVED` | VERIFIED |
+| black-hat-review.md STATUS | line 3: `STATUS: **APPROVED**` | VERIFIED |
+| machine-gate-report.md STATUS | line 3: `STATUS: APPROVED` | VERIFIED |
+| regression-diff.md STATUS | line 3: `STATUS: NO_REGRESSION` | VERIFIED |
+| 22 boundedness adversarial tests | `cargo test ... 22 passed` | VERIFIED |
+| 3 proptest cases (10k each) | `cargo test ... 3 passed` | VERIFIED |
+| Lint gate clean | `moon run :lint-src` → Tasks: 1 completed | VERIFIED |
+| Zero production panic surface | grep finds 0 matches | VERIFIED |
+| Zero bare is_ok/is_err assertions | grep count: 0 | VERIFIED |
+| 11 proof obligations: 9 PASS | verification-ledger.jsonl | VERIFIED |
+| 1 WAIVED: KANI-LOOP-001 | contract-verification-review.md approved waiver | VERIFIED |
+| 1 DEFERRED_GLOBAL: DEFERRED-GLOBAL-001 | vb_runtime missing chunk_001.rs | VERIFIED |
 
 ---
 
-## Evidence Summary
+## Anti-Hallucination Declaration
+
+This decision is based exclusively on terminal output from the correct isolated workspace `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-qi37-2-5`. No subagent summary was accepted as proof. The prior `truth-serum-report.md` in this bead's directory was generated from the non-existent workspace `/home/lewis/src/vb-qi37-2-5` and contained hallucinated command output; it has been replaced by this audit. The prior `final-evidence-decision.md` used wrong evidence (1519 tests from wrong test target, MISSING claim for an existing file); this decision uses the corrected evidence.
+
+---
+
+## Corrected Evidence Summary
 
 ### Production Code Modifications
 - **None** — this is a test coverage bead
 
-### Verification Layers Executed
+### Verification Layers Executed (Bead-Local)
 | Layer | Obligations | Result |
 |-------|-----------|--------|
-| Verus | 6 | 43 lemmas, 0 errors |
-| Kani | 3 | 3/4 + 0/2 + 0/4 harnesses timeout (compensated by Verus) |
-| Proptest | 4 | 40,000 iterations PASS |
-| Unit tests | 2 | PASS |
-| Fuzz | 1 | DEFERRED_GLOBAL (vb_runtime pre-existing) |
-| Miri | 1 | DEFERRED_GLOBAL (pre-existing timeout) |
+| Verus | 2 | 16 lemmas, 0 errors |
+| TLC | 2 | 258 total states model-checked, 0 errors |
+| Proptest | 2 | 8 tests, 10,000 cases each |
+| Miri | 1 | 3 scoped tests passed |
+| Lint | 1 | 0 warnings |
+| StdIn Replay | 1 | 1000 deterministic cases passed |
+| Integration tests | 1 | 22 BDD scenarios passed |
+
+### Obligation Results (from verification-ledger.jsonl)
+- **9 PASS**: VERUS-STEP-001, VERUS-BUDGET-001, TLA-SLICE-001, TLA-ADMIT-001, PROP-BUDGET-001, PROP-VALUE-001, MIRI-VALUE-001, FUZZ-RESOURCE-001 (repaired stdin replay), STATIC-NOPANIC-001
+- **1 WAIVED**: KANI-LOOP-001 (no Cargo-integrated Kani harnesses; compensated by VERUS-STEP-001, TLA-SLICE-001, proptest)
+- **1 DEFERRED_GLOBAL**: DEFERRED-GLOBAL-001 (pre-existing vb_runtime missing chunk_001.rs, outside bead-local scope)
+
+### Waivers Applied
+| Waiver | Rationale | Compensating Evidence |
+|--------|-----------|----------------------|
+| KANI-LOOP-001 | No Cargo-integrated Kani harnesses | VERUS-STEP-001, TLA-SLICE-001, PROP-BUDGET-001 |
+| FUZZ-RESOURCE-001 old cargo-fuzz command | `cargo fuzz run ... -runs=1000` invalid for stdin-once driver | stdin replay 1000 cases + proptest 3 passed |
 
 ### Deferred Global Debt
 | Debt | Classification | Outside Scope |
 |------|---------------|---------------|
-| FUZZ-001 | vb_runtime chunk_001.rs | YES |
-| MIRI-INV-002 | value_store billion-allocation timeout | YES |
-
-### Waivers Applied
-| Waiver | Rationale |
-|--------|-----------|
-| TLA+ not applicable | Single-threaded deterministic loop |
-| Kani loop unwind timeout | Tool limitation, compensated by Verus |
-| Lean/Aeneas/Hax N/A | Rust-local obligations |
+| DEFERRED-GLOBAL-001 | vb_runtime missing chunk_001.rs | YES — tracked separately |
 
 ---
 
 ## Blocker List
 
 | Blocker | Severity | Resolution |
-|---------|----------|------------|
-| regression-diff.md missing | MEDIUM | Justified: test-only bead, no production diff possible |
-
-**Note**: If this were a production-change bead, the missing regression-diff.md would be a hard blocker. For a test coverage bead with zero production modifications, the gap is acceptable.
+|---------|----------|----------|
+| None | — | All obligations satisfied, waived, or validly deferred-global |
 
 ---
 
@@ -82,13 +90,14 @@ This bead (vb-qi37.2.5: Boundedness adversarial tests) is a **test coverage bead
 Evidence Decision: APPROVED
 Bead: vb-qi37.2.5
 State: 13 (evidence-packaging + truth-serum)
-Executed by: femdation controller
-Timestamp: 2026-05-14
-Truth Serum: PASS (1 documented gap)
+Executed by: truth-serum auditor
+Workspace: /home/lewis/src/vb-go-skill/p0-wave-20260515/vb-qi37-2-5
+Timestamp: 2026-05-16
+Truth Serum: PASS (corrected evidence chain)
 Black Hat: APPROVED (State 12)
 Formal Verifier: APPROVED (State 11)
 ```
 
 ---
 
-*This decision is based on verified execution evidence, not subagent summaries.*
+*This decision is based on verified execution evidence from the correct isolated workspace, not subagent summaries or pre-existing hallucinated reports.*

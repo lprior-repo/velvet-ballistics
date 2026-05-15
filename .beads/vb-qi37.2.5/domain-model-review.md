@@ -1,182 +1,32 @@
-# Domain Model Review — vb-qi37.2.5
+# Domain Model Review - vb-qi37.2.5
 
-## Bead Identity
-- **Bead**: vb-qi37.2.5
-- **Title**: quality: Boundedness adversarial tests
-- **State**: 3 (Contract and type model)
-- **Focus**: Type-model analysis of boundedness domain types
+STATUS: READY_FOR_INDEPENDENT_REVIEW
 
----
+## Model Boundaries
+- Core boundedness model: `WholeWorkflowBudget`, `BoundednessPolicy`, `StepBudget`, `ValueStore`, `ResourceContract`.
+- Runtime shell: `run_until_blocked`/`drive_deterministic` plus caller-provided workflow/run/store.
+- Validation shell: `ResourceContract::validate` and nested verifier diagnostics from `vb-qi37.2.4`.
+- Out of scope: `vb_runtime` generated chunk build failure; classified as `DEFERRED_GLOBAL`.
 
-## Type Model Analysis
+## Illegal States To Exclude
+- Unbounded adversarial input sizes before allocation.
+- Uncapped `ValueStore::new()` used as evidence for cap enforcement.
+- Step-budget tests that assert timeout/process kill instead of `StepBudgetExhausted` or typed error.
+- Nested composition tests whose expected growth is implicit rather than encoded as finite parameters.
+- Failure evidence that depends on panic, OOM, or whole-workspace unrelated build failure.
 
-### StepBudget — Bounded Counter
+## Type Model Findings
+- `StepBudget` correctly hides `remaining`; construction clamps at `MAX_STEP_BUDGET`, and `try_take` owns the monotonic transition.
+- `ValueStore::with_max_slots` encodes finite arena capacity; `max_arena_entries == 0` represents uncapped and must not be used for boundedness rejection evidence.
+- `BudgetError` variants are semantic enough for adversarial assertions; tests must assert exact variants and `actual > limit` where available.
+- `EngineSignal::StepBudgetExhausted` is a normal bounded terminal slice signal, not an error.
+- Nested composition requires static budget admission evidence before runtime execution; runtime step budget alone is insufficient to prove whole-workflow boundedness.
 
-```rust
-pub struct StepBudget {
-    remaining: u64,  // private; only mutated via try_take
-}
-```
+## Review Risks
+- Existing `checked_len_to_u64` uses `unwrap_or(u64::MAX)`; this should be covered by tests/proofs as saturating evidence, not treated as a panic risk.
+- `vb-qi37.2.4` final nested-composition diagnostics may change; downstream test-writer must bind to the landed public API.
+- State 3 cannot approve its own contract; `contract-verification-review.md` must be produced by an independent reviewer.
 
-**Observations**:
-- `remaining` field is private — no direct external mutation possible
-- `new(value)` clamps to `MAX_STEP_BUDGET` — caller cannot construct an invalid budget
-- `try_take` uses `saturating_sub` — never panics on subtraction
-- `MAX: Self` constant provides a public ceiling reference
-- Invariant `remaining <= MAX_STEP_BUDGET` is enforced by construction
-
-**Scott Wlaschin Assessment**:
-- ✅ No `bool` flags for domain decisions
-- ✅ No `Option` as state machine
-- ✅ Illegal states unrepresentable (cannot construct `remaining > MAX_STEP_BUDGET`)
-- ✅ `try_take` returns `Result<bool, EngineError>` — exhaustive, railway-oriented
-- ✅ No primitive obsession — `StepBudget` is a named domain type wrapping `u64`
-
-**Type Integrity Gate**: PASS — no primitive obsession, no boolean control flags.
-
----
-
-### ValueStore — Capped Arena
-
-```rust
-pub struct ValueStore {
-    symbols: Vec<Box<str>>,
-    lists: Vec<Box<[SlotValue]>>,
-    objects: Vec<Box<[ObjectField]>>,
-    blobs: Vec<Bytes>,
-    max_arena_entries: u64,  // private cap
-}
-```
-
-**Observations**:
-- `max_arena_entries` is private; only set at construction time via `with_max_slots`
-- All insert paths (`insert_list`, `insert_object`, etc.) go through `check_arena_cap()`
-- `check_arena_cap` computes `total_arena_count` and compares against `max_arena_entries`
-- `CoreError::BudgetExceeded` returned on cap violation — typed error, not panic
-- `total_arena_count()` is a public observer for the current count
-
-**Scott Wlaschin Assessment**:
-- ✅ Cap is set once at construction and never changes — immutability enforced
-- ✅ All insert paths go through the cap check — single validation boundary
-- ✅ Error taxonomy is explicit: `CoreError::BudgetExceeded { budget, limit }`
-- ⚠️ `Vec` internals expose mutability — `symbols`, `lists`, etc. are `pub` fields
-  - **Risk**: Downstream code could bypass the arena cap by direct vector mutation
-  - **Mitigation**: The `ValueStore` struct itself is not `pub` (it's `pub(crate)` or private);
-    construction is only via `ValueStore::new()` and `with_max_slots()`
-
-**Type Integrity Gate**: PASS with note — cap bypass risk is mitigated by crate-level privacy.
-
----
-
-### WholeWorkflowBudget — Computed Aggregate
-
-```rust
-pub struct WholeWorkflowBudget {
-    pub max_total_steps: u64,
-    pub max_total_slots: u64,
-    pub max_fanout: u16,
-    pub max_nesting_depth: u16,
-    pub max_steps_executable: u32,
-    pub max_action_tickets: u32,
-    // ... 15 fields total
-}
-```
-
-**Observations**:
-- All fields are public — this is a **value object** (compute-once, then read)
-- Fields use appropriate integer widths: `u64` for counts, `u16` for bounded dimensions
-- `compute()` is the only constructor; returns `Result<Self, WorkflowError>`
-- No `Option` fields — all dimensions always present
-- `PartialEq, Eq, Clone, Debug` derived — proper value semantics
-
-**Scott Wlaschin Assessment**:
-- ✅ Value object pattern — computed once, immutable after
-- ✅ Domain fields use semantic names, not primitives
-- ✅ `u16` for bounded dimensions (fanout, nesting depth) — correct width for limits
-- ✅ No `bool` state flags
-- ⚠️ `max_total_steps: u64` — could theoretically exceed `MAX_STEPS_PER_WORKFLOW` (65_535)
-  before `compute` returns `WorkflowError::StepCountOverflow`; the error is returned rather
-  than clamping — **this is correct fail-closed behavior**
-
-**Type Integrity Gate**: PASS — value object with explicit error on invalid construction.
-
----
-
-### BoundednessPolicy — Validation Policy
-
-```rust
-pub struct BoundednessPolicy {
-    pub max_total_steps: u64,
-    pub max_fanout: u16,
-    pub max_nesting_depth: u16,
-    // ...
-}
-```
-
-**Observations**:
-- Companion to `WholeWorkflowBudget` — validates computed budget against policy
-- `validate()` returns `Result<(), BudgetError>` — fail-closed on policy violation
-- `DEFAULT` constant provides safe conservative defaults
-
-**Type Integrity Gate**: PASS.
-
----
-
-### EngineSignal — State Enum
-
-```rust
-pub enum EngineSignal {
-    Continue,
-    StepBudgetExhausted,
-    Yielded { ... },
-    Finished { ... },
-    Error { ... },
-}
-```
-
-**Observations**:
-- Enum covers all terminal and non-terminal states
-- `run_until_blocked` matches exhaustively on `EngineSignal`
-- No boolean control flags — explicit variant per behavior
-
-**Type Integrity Gate**: PASS — explicit state transitions, exhaustive matching enforced.
-
----
-
-## Transition Map
-
-| Function | Input Domain | Output Domain | Error Domain |
-|----------|-------------|--------------|--------------|
-| `StepBudget::new` | `u64` (any) | `StepBudget { remaining: clamp(u64, MAX_STEP_BUDGET) }` | — (total, no error) |
-| `StepBudget::try_take` | `&mut self` | `Ok(true)` / `Ok(false)` | `EngineError::StepCounterOverflow` |
-| `ValueStore::with_max_slots` | `u16` cap | `ValueStore { max_arena_entries: u64 }` | — |
-| `ValueStore::insert_*` | `ValueStore + item` | `Ok(id)` | `CoreError::BudgetExceeded` |
-| `WholeWorkflowBudget::compute` | `nodes + entry + contract` | `WholeWorkflowBudget` | `WorkflowError` variants |
-| `BoundednessPolicy::validate` | `&BoundednessPolicy + &WholeWorkflowBudget` | `Ok(())` | `BudgetError` |
-| `run_until_blocked` | `Workflow + RunFrame + StepBudget + ValueStore` | `EngineSignal` | `EngineError` |
-
----
-
-## Type Repair Assessment
-
-**No type repairs required** for this bead's scope. The existing type model:
-
-1. Makes illegal `StepBudget` states unrepresentable (private `remaining`, clamped constructor)
-2. Uses explicit error enums instead of panics for all boundedness failures
-3. Applies `Result` railway-oriented composition throughout
-4. Has no `bool` state flags or `Option`-as-state-machine patterns in the boundedness core
-
-The existing Verus specs in `verification/verus/resource_budget.rs` and `verification/verus/step_budget.rs`
-already cover the critical invariants.
-
----
-
-## Risk Tags Validated
-
-| Risk Tag | Type Evidence |
-|----------|--------------|
-| `boundedness` | `StepBudget` capped to `MAX_STEP_BUDGET`, `ValueStore` capped to `max_arena_entries`, `WholeWorkflowBudget` returns error on overflow |
-| `performance` | `run_until_blocked` bounded by `budget.remaining` iterations |
-| `user-visible-behavior` | All failures are typed `Result` variants returned to caller |
-| `persistence` | `ValueStore` arena growth bounded by `max_arena_entries` cap |
-| `public-api` | All public signatures use domain types, not primitives |
+## Decision
+- Domain model is adequate for contract planning.
+- Required follow-up: independent contract verification review before test planning consumes this contract.

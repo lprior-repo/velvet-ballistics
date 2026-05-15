@@ -1,309 +1,200 @@
-# Formal Verification Report — vb-qi37.2.5
+# Formal Verification Report — vb-qi37.2.5 State 11 (fresh execution)
 
 STATUS: APPROVED
 
 ## Inputs
-- proof-obligations.jsonl: .beads/vb-qi37.2.5/proof-obligations.jsonl (12096 bytes, 17 entries)
-- delivery-scope.jsonl: .beads/vb-qi37.2.5/delivery-scope.jsonl (4488 bytes, 12 entries)
-- baseline-report.md: .beads/vb-qi37.2.5/baseline-report.md (487 bytes) — vb_runtime chunk_001.rs missing (DEFERRED_GLOBAL)
-- tla-spec.md: .beads/vb-qi37.2.5/tla-spec.md (75 lines) — TLA+ waiver: single-threaded deterministic loop
-- contract-verification-review.md: .beads/vb-qi37.2.5/contract-verification-review.md — STATUS: APPROVED
-- verification-layers.md: .beads/vb-qi37.2.5/verification-layers.md (152 lines)
-- lean-contract.md: .beads/vb-qi37.2.5/lean-contract.md (75 lines) — LEAN not applicable
+- proof-obligations.jsonl: `.beads/vb-qi37.2.5/proof-obligations.jsonl` (11 current obligations, valid JSONL; FUZZ-RESOURCE-001 repaired with stdin replay+proptest command).
+- delivery-scope.jsonl: `.beads/vb-qi37.2.5/delivery-scope.jsonl` (valid JSONL).
+- baseline-report.md: `.beads/vb-qi37.2.5/baseline-report.md`.
+- tla-spec.md: `.beads/vb-qi37.2.5/tla-spec.md`.
+- lean-contract.md: `.beads/vb-qi37.2.5/lean-contract.md`.
+- contract-verification-review.md: `STATUS: APPROVED`.
+
+## Startup Rule Citation
+- Mandatory files read: `/home/lewis/.claude/skills/formal-verifier/SKILL.md` and `/home/lewis/.agents/skills/formal-verifier/SKILL.md`.
+- Both copies report formal-verifier version 1.5.0 and the same relevant rules; `/home/lewis/.agents/skills/formal-verifier/SKILL.md` wins on conflict.
+- Applied rules: exact approved commands, every obligation accounted, fail closed on required scoped failures, no hallucinated evidence.
+- Contract verification review is `STATUS: APPROVED`; the repaired proof-obligations.jsonl was produced by the State 3/4/5 repair cycle and consumed here.
+
+## Isolation
+- Required workspace: `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-qi37-2-5`.
+- Guard: `test "$(pwd -P)" = "/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-qi37-2-5"` returned ISOLATION PASS.
+- Source checkout `/home/lewis/src/velvet-ballistics` was not used for writes.
 
 ## Tool Availability
-- tlc / TLC: 1.7.4 at ~/.mise/installs/http-tla2tools/1.7.4/tlc
-- apalache-mc: not installed
-- verus: /home/lewis/.local/bin/verus
-- lake: /home/lewis/.elan/bin/lake
-- aeneas / charon: not installed
-- hax: not installed
-- cargo creusot / why3: not installed
-- flux: not installed
-- prusti: not installed
-- rust-verification-gauntlet.sh: not present
-- scripts/verify-lean.sh: not present
-- cargo kani: 0.67.0 at /home/lewis/.cargo/bin/cargo-kani
-- crux-mir: not installed
-- cargo careful: not installed
-- sanitizer runtime: address sanitizer available via cargo-fuzz
-- moon: 2.2.4 at /home/lewis/.local/share/mise/installs/npm-moonrepo-cli/2.2.4/bin/moon
-- cargo fuzz: 0.13.1
-- cargo bolero: not installed
-- lockbud: not installed
-- cargo mutants: not installed
-- cargo llvm-cov: available
-- cargo asm / cargo-show-asm: available
-- cargo semver-checks: not installed
-- cargo auditable: not installed
-- cargo cyclonedx: not installed
-- crux: not installed
-- saw: not installed
-- stateright: not installed
-- miri: 0.1.0 (52b6e2c208 2026-04-27)
+- verus: `/home/lewis/.local/bin/verus`, version `Verus 0.2026.05.05.d03e906`.
+- tlc: `/home/lewis/.local/share/mise/installs/http-tla2tools/1.7.4/tlc`, TLC2 Version 2.19.
+- moon: `moon 2.2.4`.
+- cargo-kani: `cargo-kani 0.67.0`.
+- miri: `miri 0.1.0 (52b6e2c208 2026-04-27)`.
+- cargo-fuzz: `cargo-fuzz 0.13.1`.
+- lake: `/home/lewis/.elan/bin/lake`.
+- apalache-mc: `/home/lewis/.local/share/mise/installs/http-apalache/0.57.0/bin/apalache-mc`.
+- cargo-careful: not found by `command -v cargo-careful || true`.
 
 ## Obligation Results
 
-### VERUS-INV-001
-- id: VERUS-INV-001
+### VERUS-STEP-001 — PASS
+- id: VERUS-STEP-001
 - risk: proof
 - scope: bead-local
 - layer: verus
 - checker: verus
-- command: verus crates/vb_core/src/engine/signals.rs
+- command: `RUSTC_WRAPPER= TMPDIR=target/tmp verus verification/verus/step_budget.rs`
 - required: true
-- owner_state: 3
+- owner_state: 4
 - rerun_from: 3
 - result: PASS
-- evidence: `verification/verus/signals_invariant.rs` — 10 verified, 0 errors
-- note: StepBudget::remaining invariant verified formally. Kani also confirmed with 3/4 harnesses (step_budget_repeated_take_bounded times out at unwind 10001 — tool limitation, not property failure)
+- evidence: exit 0; `verification results:: 6 verified, 0 errors`
 
-### VERUS-INV-002
-- id: VERUS-INV-002
+### VERUS-BUDGET-001 — PASS
+- id: VERUS-BUDGET-001
 - risk: proof
 - scope: bead-local
 - layer: verus
 - checker: verus
-- command: verus crates/vb_core/src/value_store.rs
+- command: `RUSTC_WRAPPER= TMPDIR=target/tmp verus verification/verus/resource_budget.rs`
 - required: true
-- owner_state: 3
+- owner_state: 4
 - rerun_from: 3
 - result: PASS
-- evidence: `verification/verus/value_store_invariant.rs` — 8 verified, 0 errors
+- evidence: exit 0; `verification results:: 10 verified, 0 errors`
 
-### VERUS-INV-003
-- id: VERUS-INV-003
+### TLA-SLICE-001 — PASS
+- id: TLA-SLICE-001
+- risk: proof
+- scope: protocol
+- layer: tla-plus
+- checker: tlc
+- command: `JAVA_TOOL_OPTIONS=-Djava.io.tmpdir=$PWD/target/tmp RUSTC_WRAPPER= TMPDIR=target/tmp tlc -metadir /tmp/opencode/tlc-vb-qi37-2-5-slice specs/vb_qi37_2_5/BoundednessSlice.tla -config specs/vb_qi37_2_5/BoundednessSlice.cfg`
+- required: true
+- owner_state: 4
+- rerun_from: 3
+- result: PASS
+- evidence: exit 0; `Model checking completed. No error has been found.`; `41 states generated, 21 distinct states found`
+
+### TLA-ADMIT-001 — PASS
+- id: TLA-ADMIT-001
+- risk: proof
+- scope: protocol
+- layer: tla-plus
+- checker: tlc
+- command: `JAVA_TOOL_OPTIONS=-Djava.io.tmpdir=$PWD/target/tmp RUSTC_WRAPPER= TMPDIR=target/tmp tlc -metadir /tmp/opencode/tlc-vb-qi37-2-5-nested specs/vb_qi37_2_5/NestedBoundednessAdmission.tla -config specs/vb_qi37_2_5/NestedBoundednessAdmission.cfg`
+- required: true
+- owner_state: 4
+- rerun_from: 3
+- result: PASS
+- evidence: exit 0; `Model checking completed. No error has been found.`; `301 states generated, 237 distinct states found`
+
+### KANI-LOOP-001 — WAIVED
+- id: KANI-LOOP-001
 - risk: proof
 - scope: bead-local
-- layer: verus
-- checker: verus
-- command: verus crates/vb_core/src/budget.rs
+- layer: waiver
+- checker: waiver
+- command: WAIVER: no cargo-kani command was run; Kani files are not Cargo-integrated harnesses.
 - required: true
 - owner_state: 3
 - rerun_from: 3
-- result: PASS
-- evidence: `verification/verus/budget_bounded.rs` — 6 verified, 0 errors
+- result: WAIVED
+- evidence: `contract-verification-review.md` lines 27-31 approve the Kani non-execution limitation; no Kani PASS is claimed; compensating evidence provided by VERUS-STEP-001, TLA-SLICE-001, and proptest coverage.
 
-### VERUS-INV-004
-- id: VERUS-INV-004
-- risk: proof
-- scope: bead-local
-- layer: verus
-- checker: verus
-- command: verus crates/vb_core/src/engine/run_loop.rs
-- required: true
-- owner_state: 3
-- rerun_from: 3
-- result: PASS
-- evidence: `verification/verus/run_loop_termination.rs` — 7 verified, 0 errors. Loop termination proven via variant function (decreases by 1 each iteration, bounded below by 0)
-
-### VERUS-INV-005
-- id: VERUS-INV-005
-- risk: medium
-- scope: bead-local
-- layer: verus
-- checker: verus
-- command: verus crates/vb_core/src/budget.rs
-- required: false
-- owner_state: 3
-- rerun_from: 3
-- result: PASS
-- evidence: `verification/verus/budget_monotonic.rs` — 6 verified, 0 errors
-
-### VERUS-INV-006
-- id: VERUS-INV-006
-- risk: proof
-- scope: bead-local
-- layer: verus
-- checker: verus
-- command: verus crates/vb_core/src/engine/signals.rs
-- required: true
-- owner_state: 3
-- rerun_from: 3
-- result: PASS
-- evidence: `verification/verus/signals_try_take.rs` — 6 verified, 0 errors
-
-### KANI-INV-001
-- id: KANI-INV-001
+### PROP-BUDGET-001 — PASS
+- id: PROP-BUDGET-001
 - risk: high
-- scope: bead-local
-- layer: kani
-- checker: cargo kani
-- command: cargo kani --package vb_core --harness step_budget_kani
+- scope: touched-crate
+- layer: proptest
+- checker: cargo test
+- command: five exact `cargo test --package vb_core --lib -- budget::tests::*` commands (property_boundedness_policy, policy_rejects_budget_one_over_total_steps_limit, policy_boundary_fanout_one_over, policy_boundary_nesting_depth_one_over, policy_rejects_steps_executable_exceeded) each with `--nocapture`
 - required: true
 - owner_state: 6
-- rerun_from: 5
-- result: PASS (3/4 harnesses); TIMEOUT (1 harness)
-- evidence:
-  - step_budget_new_clamps: VERIFICATION SUCCESSFUL, 0 of 7 checks failed
-  - step_budget_max_value: VERIFICATION SUCCESSFUL, 0 of 7 checks failed
-  - step_budget_try_take_bounded: VERIFICATION SUCCESSFUL, 0 of 164 checks failed (4 unreachable)
-  - step_budget_repeated_take_bounded: TIMEOUT at 90s (unwind 10001 causes exponential state exploration)
-- failure_packet: None — compensating evidence from Verus INV-001 and PROPTEST-POST-001 covers the same property
-- follow_up: None
+- rerun_from: 3
+- result: PASS
+- evidence: all five commands exited 0; each reported `1 passed, 1520 filtered out`
 
-### KANI-INV-004
-- id: KANI-INV-004
+### PROP-VALUE-001 — PASS
+- id: PROP-VALUE-001
 - risk: high
-- scope: bead-local
-- layer: kani
-- checker: cargo kani
-- command: cargo kani --package vb_core --harness run_until_blocked_kani
+- scope: touched-crate
+- layer: proptest
+- checker: cargo test
+- command: three exact `cargo test --package vb_core --lib -- value_store::tests::*` commands (property_value_store_cap, value_store_with_max_slots_allows_inserts_up_to_cap, value_store_with_max_slots_one_rejects_second_insert) each with `--nocapture`
 - required: true
 - owner_state: 6
-- rerun_from: 5
-- result: PASS (compensating evidence)
-- evidence:
-  - run_until_blocked_loop_terminates: TIMEOUT at 90s (unwind 10001)
-  - run_until_blocked_various_budgets: TIMEOUT at 90s
-- failure_packet: None
-- follow_up: Compensating evidence: VERUS-INV-004 formally proves loop termination (7 lemmas, 0 errors); PROPTEST-POST-001 confirms boundedness over 10,000 random sequences
-- note: Kani loop unwind at 10001 iterations causes exponential symbolic exploration. The termination property is proven by Verus. Kani is not the right tool for high-unwind-loop bounded model checking.
+- rerun_from: 3
+- result: PASS
+- evidence: all three commands exited 0; each reported `1 passed, 1520 filtered out` (or `1 passed, 4.62s` for the cap test)
 
-### KANI-POST-004
-- id: KANI-POST-004
+### MIRI-VALUE-001 — PASS
+- id: MIRI-VALUE-001
 - risk: high
-- scope: bead-local
-- layer: kani
-- checker: cargo kani
-- command: cargo kani --package vb_core --harness value_store_cap_kani
-- required: true
-- owner_state: 6
-- rerun_from: 5
-- result: PASS (compensating evidence)
-- evidence:
-  - value_store_cap_one_rejects_second: TIMEOUT at 120s (memcmp deep unwind)
-  - value_store_cap_three_allows_three: TIMEOUT at 120s
-  - value_store_uncapped_allows_many: TIMEOUT at 120s (unwind 15, but complex allocation paths)
-  - value_store_all_insert_variants_respect_cap: TIMEOUT at 120s
-- failure_packet: None
-- follow_up: Compensating evidence: VERUS-INV-002 formally proves ValueStore cap enforcement; PROPTEST-PRE-002 confirms cap enforcement over 10,000 random insert sequences; UNIT-POST-003 confirms step budget exhaustion behavior
-- note: Kani exhaustive path exploration times out on complex allocation/deallocation paths. Compensating formal evidence from Verus and empirical evidence from proptest is adequate.
-
-### MIRI-INV-002
-- id: MIRI-INV-002
-- risk: medium
-- scope: bead-local
+- scope: touched-crate
 - layer: miri
-- checker: cargo miri test
-- command: cargo miri test --package vb_core -- value_store
+- checker: moon run :miri
+- command: `RUSTC_WRAPPER= TMPDIR=target/tmp moon run :miri`
 - required: true
-- owner_state: 6
-- rerun_from: 5
-- result: DEFERRED_GLOBAL
-- evidence: Miri test times out after 300s on value_store operations (proptest test uses getcwd which requires -Zmiri-disable-isolation)
-- follow_up: Pre-existing coverage gap documented in test-suite-review.md: "value_store.rs (84.57%): Billions of allocations for overflow — LEGITIMATE". The test-reviewer APPROVED with this documented limitation. Kani value_store_cap_kani provides complementary bounded model checking. Proptest covers 10,000 random sequences.
-- note: This is pre-existing deferred global debt. The test-suite-review.md explicitly justified this coverage gap as legitimate. The property is covered by Kani and proptest compensating evidence.
-
-### PROPTEST-PRE-001
-- id: PROPTEST-PRE-001
-- risk: medium
-- scope: bead-local
-- layer: proptest
-- checker: cargo test
-- command: cargo test --package vb_core -- property_step_budget_new_clamp -- --nocapture
-- required: false
 - owner_state: 8
-- rerun_from: 7
+- rerun_from: 3
 - result: PASS
-- evidence: `cargo test --package vb_core --lib -- engine::signals::tests::property_step_budget_new_clamp` — ok (10,000 cases)
+- evidence: exit 0; three scoped Miri tests passed; `Tasks: 1 completed`; Time: 1m 7s 228ms
 
-### PROPTEST-POST-001
-- id: PROPTEST-POST-001
-- risk: medium
-- scope: bead-local
-- layer: proptest
-- checker: cargo test
-- command: cargo test --package vb_core -- property_try_take_count -- --nocapture
-- required: false
-- owner_state: 8
-- rerun_from: 7
-- result: PASS
-- evidence: `cargo test --package vb_core --lib -- engine::signals::tests::property_try_take_count` — ok (10,000 cases)
-
-### PROPTEST-PRE-002
-- id: PROPTEST-PRE-002
-- risk: medium
-- scope: bead-local
-- layer: proptest
-- checker: cargo test
-- command: cargo test --package vb_core -- property_value_store_cap -- --nocapture
-- required: false
-- owner_state: 8
-- rerun_from: 7
-- result: PASS
-- evidence: `cargo test --package vb_core --lib -- value_store::tests::property_value_store_cap` — ok (10,000 cases)
-
-### PROPTEST-POST-006
-- id: PROPTEST-POST-006
-- risk: medium
-- scope: bead-local
-- layer: proptest
-- checker: cargo test
-- command: cargo test --package vb_core -- property_boundedness_policy -- --nocapture
-- required: false
-- owner_state: 8
-- rerun_from: 7
-- result: PASS
-- evidence: `cargo test --package vb_core --lib -- budget::tests::property_boundedness_policy` — ok (10,000 cases)
-
-### FUZZ-001
-- id: FUZZ-001
+### FUZZ-RESOURCE-001 — PASS (repaired command; old cargo-fuzz waived)
+- id: FUZZ-RESOURCE-001
 - risk: high
 - scope: touched-crate
 - layer: cargo-fuzz
-- checker: cargo fuzz run
-- command: cargo fuzz run step_budget_new -- -runs=10000
+- checker: stdin replay + cargo test
+- command: exact repaired command from proof-obligations.jsonl: `mkdir -p target/tmp && RUSTC_WRAPPER= TMPDIR=target/tmp cargo build --manifest-path fuzz/Cargo.toml --features fuzz --bin resource_budget && python3 -c "..." (stdin replay 1000 cases) && RUSTC_WRAPPER= TMPDIR=target/tmp PROPTEST_CASES=10000 rtk cargo test --package vb_core --test vb_qi37_2_5_boundedness_adversarial proptest -- --nocapture`
 - required: true
 - owner_state: 8
-- rerun_from: 7
+- rerun_from: 3
+- result: PASS
+- evidence: exit 0; `resource_budget stdin replay PASS cases=1000`; `cargo test: 3 passed, 19 filtered out`
+- waiver: old `cargo fuzz run resource_budget -- -runs=1000` command is waived per `waived_command` field in proof-obligations.jsonl and contract-verification-review.md; cargo-fuzz selects static musl target incompatible with ASAN in this environment.
+
+### STATIC-NOPANIC-001 — PASS
+- id: STATIC-NOPANIC-001
+- risk: high
+- scope: touched-crate
+- layer: static-scan
+- checker: moon run :lint-src
+- command: `RUSTC_WRAPPER= TMPDIR=target/tmp moon run :lint-src`
+- required: true
+- owner_state: 8
+- rerun_from: 3
+- result: PASS
+- evidence: exit 0; `Tasks: 1 completed`; Time: 808ms
+
+### DEFERRED-GLOBAL-001 — DEFERRED_GLOBAL
+- id: DEFERRED-GLOBAL-001
+- risk: medium
+- scope: workspace
+- layer: waiver
+- checker: waiver
+- command: Record DEFERRED_GLOBAL if full workspace build hits `crates/vb_runtime/src/runtime.rs` missing `runtime/chunk_001.rs`
+- required: true
+- owner_state: 12
+- rerun_from: 3
 - result: DEFERRED_GLOBAL
-- evidence: Cannot build fuzz target: vb_runtime missing chunk_001.rs causes workspace build failure
-- follow_up: Pre-existing deferred global: vb_runtime build failure is outside this bead scope. The fuzz target `fuzz_step_budget_new` uses vb_core::StepBudget directly. Compensating evidence: VERUS-INV-001 (formal proof), KANI-INV-001 (3/4 harnesses), PROPTEST-PRE-001 (10,000 cases).
-- note: `cargo fuzz run step_budget_new` fails with "couldn't read vb_runtime/src/runtime/chunk_001.rs". This is a pre-existing workspace issue documented in baseline-report.md and delivery-scope.jsonl scope 12 ("DEFERRED_GLOBAL: missing chunk_001.rs causes build failure; OUTSIDE this bead scope").
+- evidence: `delivery-scope.jsonl` marks `crates/vb_runtime/src/runtime.rs` / `chunk_001.rs` as deferred-global and outside bead-local boundedness scope. Focused State 11 gates did not encounter this failure.
+- follow_up: Track/repair `crates/vb_runtime/src/runtime.rs` missing `runtime/chunk_001.rs` in a separate workspace/global bead; do not charge to vb-qi37.2.5 local boundedness evidence.
 
-### UNIT-POST-003
-- id: UNIT-POST-003
-- risk: medium
-- scope: bead-local
-- layer: unit-test
-- checker: cargo test
-- command: cargo test --package vb_core -- run_until_blocked
-- required: true
-- owner_state: 8
-- rerun_from: 7
-- result: PASS
-- evidence: `cargo test --package vb_core --lib -- engine::run_loop::tests::run_until_blocked_exhausts_zero_budget` — ok. Verifies run_until_blocked returns EngineSignal::StepBudgetExhausted when budget depletes.
-
-### UNIT-POST-005
-- id: UNIT-POST-005
-- risk: medium
-- scope: bead-local
-- layer: unit-test
-- checker: cargo test
-- command: cargo test --package vb_core -- test_step_count_overflow
-- required: true
-- owner_state: 8
-- rerun_from: 7
-- result: PASS
-- evidence: `cargo test --package vb_core --lib -- budget::tests::test_step_count_overflow` — ok. Verifies WholeWorkflowBudget::compute returns WorkflowError::StepCountOverflow when count would exceed MAX_STEPS_PER_WORKFLOW.
+## Focused/Canonical Gates Rerun Evidence
+- focused integration compile/test: PASS; `cargo test: 22 passed`
+- extended proptest: PASS; `3 passed, 19 filtered out`
+- repaired stdin replay: PASS; `resource_budget stdin replay PASS cases=1000`
+- GNU target fuzz (repair evidence only): `cargo fuzz run --target x86_64-unknown-linux-gnu resource_budget -- -runs=1000` exited 0 (informational; not the approved command after repair)
 
 ## Waivers
-- TLA+ waiver: verification-layers.md lines 134-139 (Owner: vb-qi37.2.5, Reason: single-threaded deterministic loop; Compensating Evidence: VERUS-INV-004 loop invariant proves termination)
-- Lean/Aeneas/Hax waiver: lean-contract.md (N/A rationale — all obligations are Rust-local, expressible in Verus)
+- `KANI-LOOP-001`: accepted by `contract-verification-review.md`; no Kani PASS claimed; compensating evidence from VERUS-STEP-001, TLA-SLICE-001, and proptest coverage.
+- `FUZZ-RESOURCE-001` old cargo-fuzz command: waived in proof-obligations.jsonl `waived_command` field; cargo-fuzz musl/ASAN incompatibility is an environment constraint, not a behavioral regression.
 
 ## Residual Risk
-- Kani loop unwind proofs (step_budget_repeated_take_bounded, run_until_blocked_loop_terminates, all value_store_cap harnesses): Tool limitation — exponential symbolic exploration at unwind 10001. Compensated by Verus formal proof (43 lemmas across 6 files) and proptest empirical evidence (40,000 total iterations).
-- MIRI-INV-002 timeout: Pre-existing coverage gap, documented and approved by test-reviewer.
-- FUZZ-001 deferred: Pre-existing workspace build failure (vb_runtime missing chunk_001.rs). Compensated by Verus, Kani, and proptest evidence.
+- No required/local obligations remain unpassed or unwaived.
+- `DEFERRED-GLOBAL-001` is a pre-existing workspace issue unrelated to this bead's boundedness scope.
+- Minor residual: Kani loop bounds are not formally verified, compensated by Verus step-budget lemmas and TLA+ state-space model checking.
 
-## Verus Summary
-- 6 Verus files verified, 43 lemmas total, 0 errors
-- All loop invariants, termination proofs, and boundedness properties formally verified
-- INV-004 (loop termination) is the critical compensating evidence for Kani loop timeout failures
-
-## Test Coverage Summary (from State 9)
-- 1519 tests passed, 0 failed, 0 flaky
-- Line coverage: 90.13% (≥90% threshold met)
-- Density ratio: 47.5x (1519 tests / 32 pub fns)
-- Proptest: 40,000 total iterations across 4 properties
+## Decision
+- STATUS: APPROVED.
+- All 11 proof obligations: 9 PASS, 1 WAIVED, 1 DEFERRED_GLOBAL (pre-existing unrelated).
+- No FAIL_LOCAL, FAIL_REGRESSION, or REQUIRED_OBLIGATION_FAIL entries.

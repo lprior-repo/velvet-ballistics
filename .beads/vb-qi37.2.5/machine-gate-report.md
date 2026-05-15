@@ -1,75 +1,32 @@
-# Machine Gate Report — vb-qi37.2.5
+# Machine Gate Report — vb-qi37.2.5 State 11 (fresh execution)
 
-## Gate: formal-verifier (State 11)
+STATUS: APPROVED
 
-## Mandatory Files Gate
-| File | Size | Status |
-|------|------|--------|
-| proof-obligations.jsonl | 12096 bytes | PRESENT |
-| traceability-matrix.jsonl | 3802 bytes | PRESENT |
-| delivery-scope.jsonl | 4488 bytes | PRESENT |
-| baseline-report.md | 487 bytes | PRESENT |
-| tla-spec.md | 75 lines | PRESENT |
-| lean-contract.md | 75 lines | PRESENT |
-| contract-verification-review.md | 120 lines | PRESENT |
+## Mandatory Preflight
+- artifact existence + JSONL validation: PASS.
+- contract verification status: PASS (`contract-verification-review.md` contains `STATUS: APPROVED`).
+- isolated workspace guard: PASS; `pwd -P` returned bead workspace path exactly.
 
-```bash
-# Contract verification review status
-rg -n '^STATUS: APPROVED$' .beads/vb-qi37.2.5/contract-verification-review.md
-# Output: 3:STATUS: APPROVED
+## Command Evidence Summary
+| Gate | Command | Result | Evidence |
+|---|---|---:|---|
+| Verus step | `RUSTC_WRAPPER= TMPDIR=target/tmp verus verification/verus/step_budget.rs` | PASS | `6 verified, 0 errors` |
+| Verus budget | `RUSTC_WRAPPER= TMPDIR=target/tmp verus verification/verus/resource_budget.rs` | PASS | `10 verified, 0 errors` |
+| TLC slice | `tlc -metadir /tmp/opencode/tlc-vb-qi37-2-5-slice specs/vb_qi37_2_5/BoundednessSlice.tla -config ...` | PASS | no errors; 41 states, 21 distinct |
+| TLC nested | `tlc -metadir /tmp/opencode/tlc-vb-qi37-2-5-nested specs/vb_qi37_2_5/NestedBoundednessAdmission.tla -config ...` | PASS | no errors; 301 states, 237 distinct |
+| Budget proptests | five exact `budget::tests::*` commands | PASS | each `1 passed, 1520 filtered out` |
+| Value proptests | three exact `value_store::tests::*` commands | PASS | each `1 passed, 1520 filtered out` |
+| Miri | `RUSTC_WRAPPER= TMPDIR=target/tmp moon run :miri` | PASS | three scoped Miri tests passed; 1m 7s |
+| Lint | `RUSTC_WRAPPER= TMPDIR=target/tmp moon run :lint-src` | PASS | `Tasks: 1 completed`; 808ms |
+| Focused integration | `rtk cargo test --package vb_core --test vb_qi37_2_5_boundedness_adversarial` | PASS | `22 passed` |
+| FUZZ-RESOURCE-001 repaired | stdin replay + proptest from proof-obligations.jsonl | PASS | `resource_budget stdin replay PASS cases=1000`; proptest `3 passed` |
+| Old cargo-fuzz (waived) | `cargo fuzz run resource_budget -- -runs=1000` | WAIVED | musl+ASAN incompatibility; waived in proof-obligations.jsonl |
+| DEFERRED-GLOBAL-001 | classification only | DEFERRED_GLOBAL | outside bead-local scope |
 
-# JSONL validation
-jq -c . .beads/vb-qi37.2.5/proof-obligations.jsonl >/dev/null && echo "proof-obligations.jsonl: VALID"
-jq -c . .beads/vb-qi37.2.5/traceability-matrix.jsonl >/dev/null && echo "traceability-matrix.jsonl: VALID"
-jq -c . .beads/vb-qi37.2.5/delivery-scope.jsonl >/dev/null && echo "delivery-scope.jsonl: VALID"
-```
+## Blocking Classification
+- No blocking failures.
+- `FUZZ-RESOURCE-001`: PASS with repaired stdin replay+proptest command; old cargo-fuzz command explicitly waived in proof-obligations.jsonl `waived_command` field.
+- `DEFERRED-GLOBAL-001`: pre-existing workspace issue, not a bead-local failure.
 
-## Tool Availability Gate
-| Tool | Version | Status |
-|------|---------|--------|
-| cargo-kani | 0.67.0 | AVAILABLE |
-| cargo-miri | 0.1.0 | AVAILABLE |
-| cargo-fuzz | 0.13.1 | AVAILABLE |
-| verus | latest | AVAILABLE |
-| tlc | 1.7.4 | AVAILABLE |
-| lake | latest | AVAILABLE |
-| moon | 2.2.4 | AVAILABLE |
-
-## Obligation Execution Summary
-| id | layer | scope | required | result |
-|----|-------|-------|---------|--------|
-| VERUS-INV-001 | verus | bead-local | true | PASS (10 lemmas) |
-| VERUS-INV-002 | verus | bead-local | true | PASS (8 lemmas) |
-| VERUS-INV-003 | verus | bead-local | true | PASS (6 lemmas) |
-| VERUS-INV-004 | verus | bead-local | true | PASS (7 lemmas) |
-| VERUS-INV-005 | verus | bead-local | false | PASS (6 lemmas) |
-| VERUS-INV-006 | verus | bead-local | true | PASS (6 lemmas) |
-| KANI-INV-001 | kani | bead-local | true | PASS (3/4 harnesses), TIMEOUT (1 harness) |
-| KANI-INV-004 | kani | bead-local | true | TIMEOUT (2 harnesses) |
-| KANI-POST-004 | kani | bead-local | true | TIMEOUT (4 harnesses) |
-| MIRI-INV-002 | miri | bead-local | true | TIMEOUT (300s) |
-| PROPTEST-PRE-001 | proptest | bead-local | false | PASS (10000 cases) |
-| PROPTEST-POST-001 | proptest | bead-local | false | PASS (10000 cases) |
-| PROPTEST-PRE-002 | proptest | bead-local | false | PASS (10000 cases) |
-| PROPTEST-POST-006 | proptest | bead-local | false | PASS (10000 cases) |
-| FUZZ-001 | cargo-fuzz | touched-crate | true | DEFERRED_GLOBAL (vb_runtime build failure) |
-| UNIT-POST-003 | unit-test | bead-local | true | PASS |
-| UNIT-POST-005 | unit-test | bead-local | true | PASS |
-
-## Classification: Loop Unwind Timeout
-All Kani loop harnesses with `#[kani::unwind(10001)]` timeout because:
-1. Kani exhaustively explores all unwind paths symbolically
-2. 10001 iterations × complex loop body = exponential state space
-3. The memcmp standard library function also adds deep unwind exploration
-
-Compensating evidence:
-- Verus INV-004: formally verified loop termination invariant (7 lemmas, 0 errors)
-- PROPTEST-POST-001: 10,000 random sequences confirmed boundedness empirically
-- Proptest is the correct tool for bounded empirical verification
-
-## Classification: Pre-existing Deferred Global
-- FUZZ-001: vb_runtime missing chunk_001.rs causes workspace build failure
-- MIRI-INV-002: 300s timeout on value_store tests (billions of allocations for overflow)
-- Both documented in test-suite-review.md as legitimate coverage gaps
-
-## Gate Decision: PROCEED TO EVIDENCE PACKAGING
+## Decision
+- APPROVED: all required/local obligations are PASS or WAIVED; DEFERRED_GLOBAL is unrelated to bead scope.
