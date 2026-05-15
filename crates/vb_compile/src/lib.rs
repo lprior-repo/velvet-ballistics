@@ -34,6 +34,8 @@ mod type_taint;
 
 // Kani harnesses for idempotency gate parity verification (State 5 proof-writer).
 #[cfg(kani)]
+pub mod kani;
+#[cfg(kani)]
 pub mod kani_idempotency_parity;
 
 pub use expression_bytecode::{compile_expr_to_bytecode, compile_expr_to_bytecode_with_accessors};

@@ -11,8 +11,10 @@
 
 #![forbid(unsafe_code)]
 
-use vb_compile::{compile_expr_to_bytecode, ExpressionHelper, ExpressionLiteral, ParsedExpression};
-use vb_core::{check_expr_stack_bound, ExprOp, MAX_EXPRESSION_OPS, MAX_EXPRESSION_STACK};
+use crate::compile_expr_to_bytecode;
+use crate::expression::{BinaryOp, ExpressionHelper, ExpressionLiteral, ParsedExpression};
+use vb_core::limits::{MAX_EXPRESSION_OPS, MAX_EXPRESSION_STACK};
+use vb_core::{check_expr_stack_bound, ExprOp};
 
 /// KANI-EXPR-BYTECODE-001: compile_expr_to_bytecode is safe for all bounded inputs.
 ///
@@ -128,7 +130,7 @@ fn compile_expr_to_bytecode_overflow() {
     // Test 6: compile_expr_to_bytecode parity — parse simple expressions
     // ----------------------------------------------------------------
     let expr = ParsedExpression::Binary {
-        op: vb_compile::BinaryOp::Add,
+        op: BinaryOp::Add,
         left: Box::new(ParsedExpression::Literal(ExpressionLiteral::I64(1))),
         right: Box::new(ParsedExpression::Literal(ExpressionLiteral::I64(2))),
     };
