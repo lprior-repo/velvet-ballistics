@@ -1,0 +1,3 @@
+// vb-5xs4-fixture:malformed_rust_unrecoverable
+#[test]
+fn malformed() {

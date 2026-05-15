@@ -1,0 +1,98 @@
+use super::RuntimeError;
+use vb_core::DiagnosticCode;
+
+impl RuntimeError {
+    pub const QUEUE_FULL_RUNTIME_CODE: &str = "QUEUE_FULL";
+    pub const STORAGE_ERROR_RUNTIME_CODE: &str = "STORAGE_ERROR";
+    pub const ADMISSION_DURABILITY_ERROR_RUNTIME_CODE: &str = "ADMISSION_DURABILITY_ERROR";
+    pub const ACTION_FAILED_RUNTIME_CODE: &str = "ACTION_FAILED";
+
+    pub const QUEUE_FULL_CODE: DiagnosticCode = DiagnosticCode::new(0x2001);
+    pub const RUN_NOT_FOUND_CODE: DiagnosticCode = DiagnosticCode::new(0x2002);
+    pub const ACTIVE_RUN_CAPACITY_EXCEEDED_CODE: DiagnosticCode = DiagnosticCode::new(0x2003);
+    pub const RUN_ALREADY_EXISTS_CODE: DiagnosticCode = DiagnosticCode::new(0x2004);
+    pub const UNSUPPORTED_OPERATION_CODE: DiagnosticCode = DiagnosticCode::new(0x2005);
+    pub const SHUTDOWN_IN_PROGRESS_CODE: DiagnosticCode = DiagnosticCode::new(0x2006);
+    pub const JOURNAL_POISONED_CODE: DiagnosticCode = DiagnosticCode::new(0x2007);
+    pub const STORAGE_JOURNAL_APPEND_FAILED_CODE: DiagnosticCode = DiagnosticCode::new(0x2008);
+    pub const ADMISSION_HEADER_PERSISTENCE_FAILED_CODE: DiagnosticCode =
+        DiagnosticCode::new(0x2015);
+    pub const UNSUPPORTED_ASYNC_STRICT_ACK_CODE: DiagnosticCode = DiagnosticCode::new(0x2009);
+    pub const FRAME_POOL_UNAVAILABLE_CODE: DiagnosticCode = DiagnosticCode::new(0x200A);
+    pub const INVALID_ACTION_COMPLETION_CODE: DiagnosticCode = DiagnosticCode::new(0x200B);
+    pub const INVALID_TIMER_FIRE_CODE: DiagnosticCode = DiagnosticCode::new(0x200C);
+    pub const UNSUPPORTED_FULL_RECOVERY_HYDRATION_CODE: DiagnosticCode =
+        DiagnosticCode::new(0x200D);
+    pub const INVALID_RECOVERY_HYDRATION_CODE: DiagnosticCode = DiagnosticCode::new(0x200E);
+    pub const COMMAND_QUEUE_CAPACITY_EXCEEDED_CODE: DiagnosticCode = DiagnosticCode::new(0x200F);
+    pub const ACTIVE_RUN_CAPACITY_ZERO_CODE: DiagnosticCode = DiagnosticCode::new(0x2010);
+    pub const ADMISSION_ARTIFACT_NOT_FOUND_CODE: DiagnosticCode = DiagnosticCode::new(0x2011);
+    pub const ADMISSION_CAPABILITY_DENIED_CODE: DiagnosticCode = DiagnosticCode::new(0x2012);
+    pub const ADMISSION_ARTIFACT_INVALID_CODE: DiagnosticCode = DiagnosticCode::new(0x2014);
+    pub const ENCODE_FAILED_CODE: DiagnosticCode = DiagnosticCode::new(0x2013);
+    pub const SECRET_RESULT_NOT_ALLOWED_CODE: DiagnosticCode = DiagnosticCode::new(0x2016);
+    pub const IPC_PAYLOAD_SIZE_EXCEEDED_CODE: DiagnosticCode = DiagnosticCode::new(0x2017);
+
+    #[must_use]
+    pub fn diagnostic_code(&self) -> DiagnosticCode {
+        match self {
+            Self::QueueFull => Self::QUEUE_FULL_CODE,
+            Self::RunNotFound => Self::RUN_NOT_FOUND_CODE,
+            Self::ActiveRunCapacityExceeded { .. } => Self::ACTIVE_RUN_CAPACITY_EXCEEDED_CODE,
+            Self::RunAlreadyExists => Self::RUN_ALREADY_EXISTS_CODE,
+            Self::UnsupportedOperation { .. } => Self::UNSUPPORTED_OPERATION_CODE,
+            Self::ShutdownInProgress => Self::SHUTDOWN_IN_PROGRESS_CODE,
+            Self::JournalPoisoned => Self::JOURNAL_POISONED_CODE,
+            Self::StorageJournalAppend { .. } => Self::STORAGE_JOURNAL_APPEND_FAILED_CODE,
+            Self::AdmissionHeaderPersistenceFailed { .. } => {
+                Self::ADMISSION_HEADER_PERSISTENCE_FAILED_CODE
+            }
+            Self::Core { source } => match source.as_ref() {
+                vb_core::errors::CoreError::QueueFull => Self::QUEUE_FULL_CODE,
+                _ => Self::STORAGE_JOURNAL_APPEND_FAILED_CODE,
+            },
+            Self::UnsupportedAsyncStrictAck => Self::UNSUPPORTED_ASYNC_STRICT_ACK_CODE,
+            Self::FramePoolUnavailable => Self::FRAME_POOL_UNAVAILABLE_CODE,
+            Self::InvalidActionCompletion
+            | Self::StaleAttempt { .. }
+            | Self::AttemptBeyondMax { .. } => Self::INVALID_ACTION_COMPLETION_CODE,
+            Self::InvalidTimerFire => Self::INVALID_TIMER_FIRE_CODE,
+            Self::UnsupportedFullRecoveryHydration => {
+                Self::UNSUPPORTED_FULL_RECOVERY_HYDRATION_CODE
+            }
+            Self::InvalidRecoveryHydration => Self::INVALID_RECOVERY_HYDRATION_CODE,
+            Self::CommandQueueCapacityExceeded { .. } => Self::COMMAND_QUEUE_CAPACITY_EXCEEDED_CODE,
+            Self::ActiveRunCapacityZero => Self::ACTIVE_RUN_CAPACITY_ZERO_CODE,
+            Self::AdmissionArtifactNotFound { .. } => Self::ADMISSION_ARTIFACT_NOT_FOUND_CODE,
+            Self::AdmissionArtifactInvalid { .. } => Self::ADMISSION_ARTIFACT_INVALID_CODE,
+            Self::AdmissionCapabilityDenied { .. } => Self::ADMISSION_CAPABILITY_DENIED_CODE,
+            Self::EncodeFailed => Self::ENCODE_FAILED_CODE,
+            Self::SecretResultNotAllowed => Self::SECRET_RESULT_NOT_ALLOWED_CODE,
+            Self::IpcPayloadSizeExceeded { .. } => Self::IPC_PAYLOAD_SIZE_EXCEEDED_CODE,
+        }
+    }
+
+    #[must_use]
+    pub fn runtime_code(&self) -> Option<&'static str> {
+        match self {
+            Self::QueueFull | Self::ActiveRunCapacityExceeded { .. } => {
+                Some(Self::QUEUE_FULL_RUNTIME_CODE)
+            }
+            Self::JournalPoisoned | Self::UnsupportedAsyncStrictAck => {
+                Some(Self::STORAGE_ERROR_RUNTIME_CODE)
+            }
+            Self::StorageJournalAppend { .. } => Some(Self::STORAGE_ERROR_RUNTIME_CODE),
+            Self::AdmissionHeaderPersistenceFailed { .. } => {
+                Some(Self::ADMISSION_DURABILITY_ERROR_RUNTIME_CODE)
+            }
+            Self::Core { source } => match source.as_ref() {
+                vb_core::errors::CoreError::QueueFull => Some(Self::QUEUE_FULL_RUNTIME_CODE),
+                _ => Some(Self::STORAGE_ERROR_RUNTIME_CODE),
+            },
+            Self::InvalidActionCompletion
+            | Self::StaleAttempt { .. }
+            | Self::AttemptBeyondMax { .. } => Some(Self::ACTION_FAILED_RUNTIME_CODE),
+            _ => None,
+        }
+    }
+}

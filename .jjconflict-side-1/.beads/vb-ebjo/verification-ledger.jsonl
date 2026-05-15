@@ -1,0 +1,1 @@
+{"id":"vb-ebjo-state-table","command":"verus verification/verus/step_state_machine.rs","result":"PASS","evidence":"verification results:: 9 verified, 0 errors","claim":"Running self-transition rejected; terminal self-transition accepted; registry primary table proven."}

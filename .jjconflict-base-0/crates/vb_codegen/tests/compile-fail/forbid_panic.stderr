@@ -1,0 +1,5 @@
+error[E0080]: evaluation panicked: generated code must not panic
+ --> tests/compile-fail/forbid_panic.rs
+  |
+  | const _: () = panic!("generated code must not panic");
+  |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `_` failed here

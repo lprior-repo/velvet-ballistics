@@ -1,0 +1,5 @@
+error[E0463]: can't find crate for `yaml_rust`
+ --> tests/compile-fail/forbid_yaml_import.rs
+  |
+  | extern crate yaml_rust;
+  | ^^^^^^^^^^^^^^^^^^^^^^^ can't find crate

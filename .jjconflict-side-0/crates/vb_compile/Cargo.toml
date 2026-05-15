@@ -1,0 +1,19 @@
+[package]
+name = "vb_compile"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+
+[dependencies]
+blake3.workspace = true
+postcard.workspace = true
+saphyr.workspace = true
+saphyr-parser.workspace = true
+thiserror.workspace = true
+vb_core = { path = "../vb_core" }
+vb_codegen = { path = "../vb_codegen" }
+vb_validate = { path = "../vb_validate" }
+vb_yaml = { path = "../vb_yaml" }
+
+[lints]
+workspace = true

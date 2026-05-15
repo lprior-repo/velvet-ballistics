@@ -1,0 +1,22 @@
+{"contract_clause":"PRE-EMIT-001","tests":["PROP-EMIT-001: YAML roundtrip property test"],"proofs":["PROP-EMIT-001"],"review":"contract-verification-review.md"}
+{"contract_clause":"PRE-EMIT-002","tests":["KAN-EMIT-005: payload_len bounds check"],"proofs":["KAN-EMIT-005"],"review":"contract-verification-review.md"}
+{"contract_clause":"PRE-EMIT-003","tests":["KAN-EMIT-007: RunId non-zero validation"],"proofs":["KAN-EMIT-007"],"review":"contract-verification-review.md"}
+{"contract_clause":"PRE-EMIT-004","tests":["PROP-EMIT-003: ANSI rejection property test","KAN-EMIT-008: ANSI detection proof"],"proofs":["KAN-EMIT-008","PROP-EMIT-003"],"review":"contract-verification-review.md"}
+{"contract_clause":"PRE-EMIT-005","tests":["unit tests in args.rs parse_status_options"],"proofs":["STATIC-EMIT-001"],"review":"contract-verification-review.md"}
+{"contract_clause":"POST-EMIT-001","tests":["SNAP-YAML-001: YAML output snapshot test"],"proofs":["SNAP-YAML-001"],"review":"contract-verification-review.md"}
+{"contract_clause":"POST-EMIT-002","tests":["SNAP-POSTCARD-001: postcard output snapshot test","PROP-EMIT-002: deterministic encoding property","FUZZ-EMIT-001: arbitrary bytes fuzz test"],"proofs":["PROP-EMIT-002","FUZZ-EMIT-001"],"review":"contract-verification-review.md"}
+{"contract_clause":"POST-EMIT-003","tests":["KAN-EMIT-001: magic constant proof"],"proofs":["KAN-EMIT-001"],"review":"contract-verification-review.md"}
+{"contract_clause":"POST-EMIT-004","tests":["KAN-EMIT-002: header_len constant proof"],"proofs":["KAN-EMIT-002"],"review":"contract-verification-review.md"}
+{"contract_clause":"POST-EMIT-005","tests":["KAN-EMIT-003: CRC scope proof"],"proofs":["KAN-EMIT-003"],"review":"contract-verification-review.md"}
+{"contract_clause":"POST-EMIT-006","tests":["KAN-EMIT-004: digest scope proof"],"proofs":["KAN-EMIT-004"],"review":"contract-verification-review.md"}
+{"contract_clause":"POST-EMIT-007","tests":["PROP-EMIT-003: ANSI rejection property test","KAN-EMIT-008: ANSI detection proof"],"proofs":["KAN-EMIT-008","PROP-EMIT-003"],"review":"contract-verification-review.md"}
+{"contract_clause":"POST-EMIT-008","tests":["SNAP-TEXT-001: text output snapshot test"],"proofs":["SNAP-TEXT-001"],"review":"contract-verification-review.md"}
+{"contract_clause":"INV-EMIT-001","tests":["KAN-EMIT-001: magic constant proof","unit tests in emitter.rs cli_magic_is_vbli"],"proofs":["KAN-EMIT-001"],"review":"contract-verification-review.md"}
+{"contract_clause":"INV-EMIT-002","tests":["KAN-EMIT-002: header_len constant proof","unit tests in emitter.rs cli_header_length_is_52"],"proofs":["KAN-EMIT-002"],"review":"contract-verification-review.md"}
+{"contract_clause":"INV-EMIT-003","tests":["KAN-EMIT-003: CRC scope proof","unit tests in emitter.rs postcard_rejects_bad_crc"],"proofs":["KAN-EMIT-003"],"review":"contract-verification-review.md"}
+{"contract_clause":"INV-EMIT-004","tests":["KAN-EMIT-005: payload_len bounds check","unit tests in emitter.rs postcard_rejects_payload_too_large"],"proofs":["KAN-EMIT-005"],"review":"contract-verification-review.md"}
+{"contract_clause":"INV-EMIT-005","tests":["KAN-EMIT-006: early return on size violation"],"proofs":["KAN-EMIT-006"],"review":"contract-verification-review.md"}
+{"contract_clause":"INV-EMIT-006","tests":["unit tests in emitter.rs postcard_rejects_bad_payload_digest","COV-EMIT-001: >90% coverage"],"proofs":["WAIVER-EMIT-002"],"review":"contract-verification-review.md"}
+{"contract_clause":"INV-EMIT-007","tests":["unit tests in emitter.rs postcard_rejects_bad_crc","COV-EMIT-001: >90% coverage"],"proofs":["WAIVER-EMIT-003"],"review":"contract-verification-review.md"}
+{"contract_clause":"ERR-YamlEncodeFailed","tests":["PROP-EMIT-001: YAML roundtrip property","COV-EMIT-001: >90% coverage"],"proofs":["WAIVER-EMIT-004"],"review":"contract-verification-review.md"}
+{"contract_clause":"GLOBAL","tests":["STATIC-EMIT-001: clippy lint","COV-EMIT-001: >90% coverage","MUT-EMIT-001: mutation testing"],"proofs":["STATIC-EMIT-001","COV-EMIT-001","MUT-EMIT-001"],"review":"contract-verification-review.md"}

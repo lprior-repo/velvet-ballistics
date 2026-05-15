@@ -1,0 +1,12 @@
+version: velvet-ballastics/v1
+name: pgo_choose_true
+when:
+  manual: {}
+steps:
+  - id: route
+    set:
+      output: route_result
+      value: "1"
+  - id: done
+    finish:
+      result: route_result
