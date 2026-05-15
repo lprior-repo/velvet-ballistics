@@ -228,10 +228,9 @@ fn bdd_validate_with_contracts_rejects_missing_do_node() {
     // When: validate_with_contracts(parts, contracts) is called
     let result = validate_with_contracts(&parts, &contracts);
     // Then: returns Err(ValidationError) with GATE_12 code
-    assert!(result.is_err());
     assert!(matches!(
         result,
-        Err(ValidationError::ActionContractMissing { .. })
+        Err(ValidationError::ActionContractMissing { action_id: 99, node_index: 0 })
     ));
 }
 
@@ -244,10 +243,9 @@ fn bdd_validate_with_contracts_rejects_orphan_contract() {
     // When: validate_with_contracts(parts, contracts) is called
     let result = validate_with_contracts(&parts, &contracts);
     // Then: returns Err(ValidationError) with GATE_12 code
-    assert!(result.is_err());
     assert!(matches!(
         result,
-        Err(ValidationError::ActionContractOrphan { .. })
+        Err(ValidationError::ActionContractOrphan { action_id: 42 })
     ));
 }
 
@@ -886,7 +884,10 @@ fn bdd_g12_rejects_missing_do_node_for_contract() {
     let result =
         vb_validate::gates::validate_gate_12_action_contract_completeness(&parts, &contracts);
     // Then: returns Err(GATE_12) indicating orphan contract
-    assert!(result.is_err());
+    assert!(matches!(
+        result,
+        Err(ValidationError::ActionContractOrphan { action_id: 1 })
+    ));
 }
 
 #[test]
@@ -1384,8 +1385,11 @@ fn bdd_validation_does_not_panic_on_malformed_input() {
     let parts = make_parts(vec![node], 1);
     // When: validate(parts) is called
     let result = std::panic::catch_unwind(|| validate(&parts));
-    // Then: returns Err, never panics
-    assert!(result.is_ok()); // validate returns Result, not panic
+    // Then: validate does not panic (outer Ok), and returns Err for invalid slot
+    assert!(
+        matches!(result, Ok(Err(ValidationError::SlotReferenceOutOfRange { .. }))),
+        "validate must not panic and must return SlotReferenceOutOfRange, got: {result:?}"
+    );
 }
 
 #[test]

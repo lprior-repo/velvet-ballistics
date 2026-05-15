@@ -168,7 +168,7 @@ proptest! {
 
         let result = gates::validate_gate_12_action_contract_completeness(&parts, &contracts);
 
-        prop_assert!(result.is_ok(), "bijection should hold, got: {:?}", result);
+        prop_assert!(matches!(result, Ok(())), "bijection should hold, got: {:?}", result);
     }
 
     /// Orphan contract (contract with no Do node) must return Error.
@@ -215,7 +215,7 @@ proptest! {
 
         let result = gates::validate_gate_12_action_contract_completeness(&parts, &contracts);
 
-        prop_assert!(result.is_err(), "orphan contracts should cause error, got: {:?}", result);
+        prop_assert!(matches!(result, Err(ValidationError::ActionContractOrphan { .. })), "orphan contracts should cause error, got: {:?}", result);
     }
 }
 
@@ -325,7 +325,7 @@ proptest! {
 
         let result = gates::validate_gate_11_loop_body_graph(&parts);
 
-        prop_assert!(result.is_ok(), "body < done should be valid: {:?}", result);
+        prop_assert!(matches!(result, Ok(())), "body < done should be valid: {:?}", result);
     }
 }
 
@@ -394,7 +394,7 @@ proptest! {
 
         let result = gates::validate_gate_11_loop_body_graph(&parts);
 
-        prop_assert!(result.is_ok(), "well-formed loop should pass: {:?}", result);
+        prop_assert!(matches!(result, Ok(())), "well-formed loop should pass: {:?}", result);
     }
 }
 
@@ -428,7 +428,7 @@ proptest! {
         let parts = make_parts(nodes, slot_count, 0);
         let result = gates::validate_gate_13_no_slot_cycles(&parts);
 
-        prop_assert!(result.is_ok(), "linear chain should have no cycles: {:?}", result);
+        prop_assert!(matches!(result, Ok(())), "linear chain should have no cycles: {:?}", result);
     }
 }
 
@@ -488,7 +488,7 @@ proptest! {
         let parts = make_parts(nodes, 1, 0);
         let result = gates::validate_gate_15_determinism_proof(&parts);
 
-        prop_assert!(result.is_ok(), "separated ND nodes should pass: {:?}", result);
+        prop_assert!(matches!(result, Ok(())), "separated ND nodes should pass: {:?}", result);
     }
 }
 
