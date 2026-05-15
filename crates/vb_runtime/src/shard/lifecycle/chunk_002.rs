@@ -153,7 +153,7 @@ impl Shard {
     ) -> RuntimeResult<()> {
         match result {
             Ok(RuntimeSignal::Continue | RuntimeSignal::StepBudgetExhausted) => {
-                self.runtime_states.insert(run, RuntimeState::Running);
+                self.apply(run, RuntimeEvent::DriveContinue);
                 self.keep_run(run, state);
                 Ok(())
             }
@@ -177,7 +177,7 @@ impl Shard {
         state: RunState,
         ticket: ActionTicket,
     ) -> RuntimeResult<()> {
-        self.runtime_states.insert(run, RuntimeState::Resumable);
+        self.apply(run, RuntimeEvent::AwaitAction);
         self.await_action(run, state, ticket)
     }
 
@@ -187,17 +187,18 @@ impl Shard {
         state: RunState,
         kind: PendingTimerKind,
     ) -> RuntimeResult<()> {
-        self.runtime_states.insert(run, RuntimeState::Resumable);
+        self.apply(run, RuntimeEvent::AwaitTimer);
         self.await_timer(run, state, kind)
     }
 
     fn apply_terminal_finished(&mut self, run: RunId, state: RunState) -> RuntimeResult<()> {
-        self.runtime_states.swap_remove(&run);
+        self.apply(run, RuntimeEvent::DriveFinished);
         self.finish_run(run, state)
     }
 
     fn apply_terminal_failed(&mut self, run: RunId, state: RunState) -> RuntimeResult<()> {
-        self.runtime_states.swap_remove(&run);
+        // apply() handles runtime_states mutation; fail_run_state handles cleanup only
+        self.apply(run, RuntimeEvent::Fail);
         self.fail_run_state(run, state)
     }
 }

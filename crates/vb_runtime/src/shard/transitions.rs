@@ -8,9 +8,55 @@ use crate::journal::RuntimeJournalEvent;
 use crate::trace::TraceEvent;
 use crate::{RuntimeError, RuntimeResult};
 
-use crate::shard::types::{PendingTimer, PendingTimerKind, RunState, Shard};
+use crate::shard::types::{PendingTimer, PendingTimerKind, RunState, RuntimeEvent, RuntimeState, Shard};
 
 impl Shard {
+    /// Applies a RuntimeEvent to mutate runtime_states.
+    ///
+    /// This is the single routing method for all runtime_states mutations,
+    /// replacing direct insert/swap_remove call sites.
+    ///
+    /// # Arguments
+    /// * `run` - The run identifier
+    /// * `event` - The runtime event variant
+    ///
+    /// # State Transitions
+    /// * `Submit` → `runtime_states.insert(run, RuntimeState::Initial)`
+    /// * `Resume` → `runtime_states.insert(run, RuntimeState::Resuming)`
+    /// * `ResumeRollback` → `runtime_states.insert(run, RuntimeState::Resumable)` (journal failure)
+    /// * `DriveContinue` → `runtime_states.insert(run, RuntimeState::Running)`
+    /// * `AwaitAction` → `runtime_states.insert(run, RuntimeState::Resumable)`
+    /// * `AwaitTimer` → `runtime_states.insert(run, RuntimeState::Resumable)`
+    /// * `Fail` → `runtime_states.insert(run, RuntimeState::Failed)`
+    /// * `TerminalRemove` → `runtime_states.swap_remove(&run)`
+    /// * `DriveFinished` → `runtime_states.swap_remove(&run)`
+    pub(crate) fn apply(&mut self, run: RunId, event: RuntimeEvent) {
+        match event {
+            RuntimeEvent::Submit => {
+                self.runtime_states.insert(run, RuntimeState::Initial);
+            }
+            RuntimeEvent::Resume => {
+                self.runtime_states.insert(run, RuntimeState::Resuming);
+            }
+            RuntimeEvent::ResumeRollback => {
+                // Journal append failed during resume, revert to Resumable
+                self.runtime_states.insert(run, RuntimeState::Resumable);
+            }
+            RuntimeEvent::DriveContinue => {
+                self.runtime_states.insert(run, RuntimeState::Running);
+            }
+            RuntimeEvent::AwaitAction | RuntimeEvent::AwaitTimer => {
+                self.runtime_states.insert(run, RuntimeState::Resumable);
+            }
+            RuntimeEvent::Fail => {
+                self.runtime_states.insert(run, RuntimeState::Failed);
+            }
+            RuntimeEvent::TerminalRemove | RuntimeEvent::DriveFinished => {
+                self.runtime_states.swap_remove(&run);
+            }
+        }
+    }
+
     /// Re-inserts a run that has remaining work into the active runs map.
     pub(crate) fn keep_run(&mut self, run: RunId, state: RunState) {
         self.counters.add_steps(state.frame.executed());
@@ -92,13 +138,12 @@ impl Shard {
     }
 
     /// Marks a run as failed, releases its frame, and updates counters.
+    /// NOTE: runtime_states mutation (inserting Failed) is handled by apply() before this is called.
+    /// This function only handles cleanup: pending_timers, counters, trace, journal, frame, sequence.
     pub(crate) fn fail_run_state(&mut self, run: RunId, state: RunState) -> RuntimeResult<()> {
         self.pending_timers.swap_remove(&run);
         self.counters.inc_failed();
         self.trace_ring.push(TraceEvent::RunFailed { run });
-        // Track Failed state so handle_resume can return NotResumable (not RunIdNotFound)
-        self.runtime_states
-            .insert(run, crate::shard::types::RuntimeState::Failed);
         self.append_journal_event(RuntimeJournalEvent::RunFailed { run })?;
         self.release_frame(state.frame);
         self.discard_journal_sequence(run);

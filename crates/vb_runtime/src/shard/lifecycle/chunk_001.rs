@@ -123,7 +123,7 @@ impl Shard {
             action_contracts: action_contracts.to_vec().into_boxed_slice(),
         };
         self.runs.insert(run, state);
-        self.runtime_states.insert(run, RuntimeState::Initial);
+        self.apply(run, RuntimeEvent::Submit);
         match self.drive_run(run) {
             Ok(()) => Ok(()),
             Err(error) => {
@@ -220,11 +220,11 @@ impl Shard {
         if !self.is_run_tracked(run) {
             return Err(ResumeError::IncompleteHydration { run_id: run });
         }
-        self.runtime_states.insert(run, RuntimeState::Resuming);
+        self.apply(run, RuntimeEvent::Resume);
         let timestamp = current_timestamp();
         let resumed_event = RuntimeJournalEvent::Resumed { run, timestamp };
         if let Err(source) = self.append_journal_event(resumed_event) {
-            self.runtime_states.insert(run, RuntimeState::Resumable);
+            self.apply(run, RuntimeEvent::ResumeRollback);
             return Err(ResumeError::journal_append_failed_with_source(source));
         }
         Ok(timestamp)
@@ -250,7 +250,7 @@ impl Shard {
         run: RunId,
         source: RuntimeError,
     ) -> ResumeError {
-        self.runtime_states.insert(run, RuntimeState::Resumable);
+        self.apply(run, RuntimeEvent::ResumeRollback);
         ResumeError::journal_append_failed_with_source(source)
     }
 
@@ -354,6 +354,8 @@ impl Shard {
             }
             ActionFailureOutcome::FailRun => {
                 let state = self.take_run_state(run)?;
+                // apply() handles runtime_states mutation; fail_run_state handles cleanup only
+                self.apply(run, RuntimeEvent::Fail);
                 self.fail_run_state(run, state)
             }
         }

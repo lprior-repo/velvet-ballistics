@@ -11,8 +11,8 @@ pub mod types;
 
 pub use types::{
     AskAnswer, AskTicket, InspectResponse, InspectSnapshot, MAX_COMMAND_QUEUE_CAPACITY,
-    ResumeError, ResumeResult, ResumeStatus, RunState, RuntimeState, Shard, ShardCommand,
-    ShardConfig, ShardHealth, ShardStatus,
+    ResumeError, ResumeResult, ResumeStatus, RunState, RuntimeEvent, RuntimeState, Shard,
+    ShardCommand, ShardConfig, ShardHealth, ShardStatus,
 };
 
 // Re-export vb_core types needed by tests

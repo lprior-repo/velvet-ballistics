@@ -19,6 +19,7 @@ use crate::frame_pool::FramePool;
 use crate::journal::SharedRuntimeJournal;
 use crate::primitives::collect::CollectStates;
 use crate::trace::TraceRing;
+use crate::RuntimeResult;
 
 // Aggregate resource model touchpoints for vb-qi37.2.1:
 // ShardConfig aggregate_capacity, Shard active_usage, Shard reservations,
@@ -293,9 +294,100 @@ pub enum InspectResponse {
 /// Maximum bounded command queue capacity per shard.
 pub const MAX_COMMAND_QUEUE_CAPACITY: usize = 65_536;
 
+// ============================================================================
+// ShardCommandQueue — domain wrapper around ArrayQueue<ShardCommand>
+// ============================================================================
+
+/// Domain-named wrapper around `crossbeam_queue::ArrayQueue<ShardCommand>`.
+///
+/// Provides a bounded, non-blocking command queue with domain-specific terminology
+/// (`enqueue`, `pop`, `is_full`, `remaining_capacity`) and proper error taxonomy
+/// (`RuntimeError::QueueFull`). This wrapper establishes the `ShardCommand` queue
+/// as a first-class domain boundary rather than a raw field.
+pub struct ShardCommandQueue {
+    inner: ArrayQueue<ShardCommand>,
+    /// Stored capacity to satisfy POST-001 and INV-001 invariants.
+    capacity: usize,
+}
+
+impl ShardCommandQueue {
+    /// Creates a new `ShardCommandQueue` with the given capacity.
+    ///
+    /// # Errors
+    /// Returns `RuntimeError::CommandQueueCapacityExceeded` if `capacity` is 0
+    /// or exceeds `MAX_COMMAND_QUEUE_CAPACITY`.
+    pub fn new(capacity: usize) -> RuntimeResult<Self> {
+        if capacity == 0 || capacity > MAX_COMMAND_QUEUE_CAPACITY {
+            return Err(crate::RuntimeError::CommandQueueCapacityExceeded {
+                capacity,
+                max: MAX_COMMAND_QUEUE_CAPACITY,
+            });
+        }
+        Ok(Self {
+            inner: ArrayQueue::new(capacity),
+            capacity,
+        })
+    }
+
+    /// Enqueues a command. Returns `Ok(())` if the command was enqueued, or
+    /// `Err(RuntimeError::QueueFull)` if the queue is at capacity.
+    ///
+    /// This operation is non-blocking and never allocates on failure.
+    pub fn enqueue(&self, cmd: ShardCommand) -> RuntimeResult<()> {
+        self.inner
+            .push(cmd)
+            .map_err(|_| crate::RuntimeError::QueueFull)
+    }
+
+    /// Dequeues the frontmost command, if any.
+    ///
+    /// Returns `Some(cmd)` in FIFO order, or `None` if the queue is empty.
+    pub fn pop(&self) -> Option<ShardCommand> {
+        self.inner.pop()
+    }
+
+    /// Returns the number of commands currently in the queue.
+    #[must_use]
+    pub fn len(&self) -> usize {
+        self.inner.len()
+    }
+
+    /// Returns `true` if the queue contains no commands.
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.inner.is_empty()
+    }
+
+    /// Returns the capacity of this queue (set at construction).
+    #[must_use]
+    pub fn capacity(&self) -> usize {
+        self.capacity
+    }
+
+    /// Returns the number of remaining free slots in the queue.
+    #[must_use]
+    pub fn remaining_capacity(&self) -> usize {
+        self.capacity.saturating_sub(self.inner.len())
+    }
+
+    /// Returns `true` if the queue is at capacity.
+    #[must_use]
+    pub fn is_full(&self) -> bool {
+        self.inner.len() == self.capacity
+    }
+
+    /// Returns the compile-time bounded capacity limit (65536).
+    ///
+    /// This is the maximum capacity any `ShardCommandQueue` can be configured with.
+    #[must_use]
+    pub const fn bounded_capacity() -> usize {
+        MAX_COMMAND_QUEUE_CAPACITY
+    }
+}
+
 /// Single-threaded shard owning all mutable run state.
 pub struct Shard {
-    pub(crate) command_queue: ArrayQueue<ShardCommand>,
+    pub(crate) command_queue: ShardCommandQueue,
     pub runs: IndexMap<RunId, RunState>,
     /// Per-run lifecycle state tracking for resume eligibility.
     pub(crate) runtime_states: IndexMap<RunId, RuntimeState>,
@@ -397,6 +489,44 @@ impl RuntimeState {
     #[must_use]
     pub fn is_resumable(&self) -> bool {
         matches!(self, Self::Resumable)
+    }
+}
+
+/// Runtime events that drive state transitions in the RuntimeStateMachine.
+/// Each variant corresponds to a distinct operational event in the shard lifecycle.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RuntimeEvent {
+    /// A new run has been submitted and inserted into the shard.
+    Submit,
+    /// An existing run is being resumed from a suspended state.
+    Resume,
+    /// Resume journal append failed, revert to Resumable state.
+    ResumeRollback,
+    /// A run's deterministic execution is continuing after a drive tick.
+    DriveContinue,
+    /// A run has reached a terminal finished state.
+    DriveFinished,
+    /// A run is awaiting an external action response.
+    AwaitAction,
+    /// A run is awaiting a timer (wait or ask timeout).
+    AwaitTimer,
+    /// A run has reached a terminal failed state.
+    Fail,
+    /// Remove run from runtime_states tracking (terminal).
+    TerminalRemove,
+}
+
+impl RuntimeEvent {
+    /// Returns true if this event produces a terminal state (run is removed from runtime_states).
+    #[must_use]
+    pub fn is_terminal(&self) -> bool {
+        matches!(self, Self::Fail | Self::TerminalRemove | Self::DriveFinished)
+    }
+
+    /// Returns true if this event sets a Resumable state.
+    #[must_use]
+    pub fn is_resumable(&self) -> bool {
+        matches!(self, Self::AwaitAction | Self::AwaitTimer | Self::Resume)
     }
 }
 
