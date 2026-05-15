@@ -1,9 +1,9 @@
 #[cfg(test)]
 mod tests {
     use crate::emitter::binary::{
-        build_cli_header, decode_cli_header, decode_postcard, encode_postcard,
         BINARY_SCHEMA_VERSION, CLI_CRC_OFFSET, CLI_HEADER_BYTES, CLI_HEADER_LEN, CLI_MAGIC,
-        MAX_CLI_PAYLOAD_BYTES,
+        MAX_CLI_PAYLOAD_BYTES, build_cli_header, decode_cli_header, decode_postcard,
+        encode_postcard,
     };
     use crate::emitter::error::EmitterError;
     use crate::envelope::EnvelopeKind;
