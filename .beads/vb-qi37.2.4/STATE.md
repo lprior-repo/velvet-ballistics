@@ -175,3 +175,23 @@ evidence:
 - source context read from crates/vb_core/src/budget.rs and existing aggregate budget tests
 next_state: 8
 next_action: State 8 test-writer must write failing-first tests/harnesses without invoking Red Queen
+
+state: 14
+retry_attempt: 1
+status: COMPLETE
+landed_change: pxulmlsp 3a355d5a fix: bound nested workflow budgets
+evidence:
+- jj git push --bookmark main => Bookmark main@origin already matches main; Nothing changed
+- jj git fetch => Nothing changed
+- moon ci => Tasks: 20 completed; 8414 tests run: 8414 passed, 6 skipped
+- bd close vb-qi37.2.4 => closed with completed reason
+- bd dolt push => Push complete
+artifact: .beads/vb-qi37.2.4/landing-report.md
+next_state: 15
+
+state: 15
+retry_attempt: 1
+status: COMPLETE_WITH_WORKSPACE_PRESERVED
+cleanup_decision: isolated workspace preserved for user handoff after final reports
+artifact: .beads/vb-qi37.2.4/cleanup-report.md
+terminal_status: DONE
