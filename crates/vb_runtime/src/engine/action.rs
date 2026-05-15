@@ -95,32 +95,14 @@ pub fn execute_do_without_contract(
         return Err(RuntimeEngineError::TaintViolation { step });
     }
 
-    check_capability_for_action(run, action, granted)?;
-
-    let ticket = ActionTicket {
-        run: run.run_id(),
-        step,
-        seq,
+    let required = vb_core::capability::Capability::new("__contract_required__".into(), action);
+    let _ = retry_policy;
+    let _ = seq;
+    Err(RuntimeEngineError::Core(EngineError::CapabilityDenied {
         action,
-        attempt: 1,
-        idempotency_key: compute_idempotency_key(run.run_id(), seq, action),
-        capacity: retry_policy.max_attempts,
-    };
-    Ok(RuntimeSignal::AwaitingAction(ticket))
-}
-
-/// Checks whether the action's capability requirements are satisfied.
-/// When no specific capabilities are known (empty contract path), this is a
-/// no-op since we don't know what capabilities the action requires.
-fn check_capability_for_action(
-    _run: &RunFrame,
-    _action: ActionId,
-    _granted: &CapabilitySet,
-) -> RuntimeEngineResult<()> {
-    // Without a contract, we cannot enumerate required_capabilities,
-    // so we cannot enforce capability checks. The admission gate at
-    // run submission time is responsible for granting capabilities.
-    Ok(())
+        required,
+        granted: granted.clone(),
+    }))
 }
 
 /// Backward-compatible execute_retry_check.

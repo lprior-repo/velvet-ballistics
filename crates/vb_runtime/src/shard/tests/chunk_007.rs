@@ -1,4 +1,3 @@
-
 #[test]
 fn shard_command_equality_timer_fired() {
     // Given two identical TimerFired commands
@@ -32,7 +31,8 @@ fn shard_cancel_nonexistent_does_not_increment_failed() {
     assert_eq!(
         shard.enqueue(ShardCommand::Cancel {
             run: super::RunId::new(999),
-        reason: None}),
+            reason: None
+        }),
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
@@ -183,6 +183,7 @@ fn run_state_equality() {
         action_attempts: super::new_action_attempts(4),
         admission: None,
         collect_states: crate::primitives::collect::CollectStates::new(),
+        action_contracts: Box::new([]),
     };
     let frame2 = match vb_core::frame::RunFrame::new(
         super::RunId::new(1),
@@ -200,6 +201,7 @@ fn run_state_equality() {
         action_attempts: super::new_action_attempts(4),
         admission: None,
         collect_states: crate::primitives::collect::CollectStates::new(),
+        action_contracts: Box::new([]),
     };
     assert_eq!(state, state2);
 }
@@ -227,7 +229,10 @@ fn shard_cancel_then_inspect_returns_not_found() {
     );
     assert_eq!(shard.tick(), Ok(true));
     // When cancelling then inspecting
-    assert_eq!(shard.enqueue(ShardCommand::Cancel { run, reason: None }), Ok(()));
+    assert_eq!(
+        shard.enqueue(ShardCommand::Cancel { run, reason: None }),
+        Ok(())
+    );
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(
         shard.enqueue(ShardCommand::Inspect {

@@ -54,8 +54,9 @@ impl CapabilitySet {
                     };
                     continue;
                 }
-                let name_match = capability_name_grants(grant.name(), required.name());
-                if name_match && grant.action == required.action {
+                if capability_name_exact(grant.name(), required.name())
+                    && grant.action == required.action
+                {
                     return true;
                 }
             }
@@ -76,17 +77,8 @@ impl CapabilitySet {
     }
 }
 
-fn capability_name_grants(grant_name: &str, required_name: &str) -> bool {
-    if grant_name.is_empty() {
-        return false;
-    }
-    if required_name == grant_name {
-        return true;
-    }
-    match required_name.strip_prefix(grant_name) {
-        Some(suffix) => suffix.starts_with('.'),
-        None => false,
-    }
+fn capability_name_exact(grant_name: &str, required_name: &str) -> bool {
+    !grant_name.is_empty() && grant_name == required_name
 }
 
 #[cfg(test)]
@@ -140,11 +132,11 @@ mod tests {
     }
 
     #[test]
-    fn capability_set_grants_hierarchical_prefix() {
+    fn capability_set_rejects_hierarchical_prefix() {
         let caps = Box::new([cap("network", ActionId::new(1))]);
         let set = CapabilitySet::from_grants(caps);
-        assert!(set.grants(&cap("network.github", ActionId::new(1))));
-        assert!(set.grants(&cap("network.http", ActionId::new(1))));
+        assert!(!set.grants(&cap("network.github", ActionId::new(1))));
+        assert!(!set.grants(&cap("network.http", ActionId::new(1))));
         assert!(!set.grants(&cap("secrets.network", ActionId::new(1))));
     }
 
@@ -185,8 +177,8 @@ mod tests {
         let set = CapabilitySet::from_grants(caps);
         assert!(set.grants(&cap("network", ActionId::new(1))));
         assert!(set.grants(&cap("secrets", ActionId::new(2))));
-        assert!(set.grants(&cap("network.github", ActionId::new(1))));
-        assert!(set.grants(&cap("secrets.read", ActionId::new(2))));
+        assert!(!set.grants(&cap("network.github", ActionId::new(1))));
+        assert!(!set.grants(&cap("secrets.read", ActionId::new(2))));
     }
 
     #[test]
@@ -195,5 +187,37 @@ mod tests {
         let set = CapabilitySet::from_grants(caps);
         assert!(!set.grants(&cap("network", ActionId::new(1))));
         assert!(!set.grants(&cap("", ActionId::new(1))));
+    }
+
+    #[test]
+    fn capability_set_grants_exact_name_and_action_when_required_matches_grant() {
+        // Given
+        let action = ActionId::new(42);
+        let required = cap("network.github", action);
+        let set = CapabilitySet::from_grants(Box::new([cap("network.github", action)]));
+        let expected = true;
+
+        // When / Then
+        assert_eq!(set.grants(&required), expected);
+    }
+
+    #[test]
+    fn capability_set_rejects_non_exact_name_or_action_when_required_differs() {
+        // Given
+        let required = cap("network.github", ActionId::new(1));
+        let cases = [
+            ("network", ActionId::new(1), false),
+            ("network.github.repo", ActionId::new(1), false),
+            ("network.gitlab", ActionId::new(1), false),
+            ("net", ActionId::new(1), false),
+            ("", ActionId::new(1), false),
+            ("network.github", ActionId::new(2), false),
+        ];
+
+        // When / Then
+        for (name, action, expected) in cases {
+            let set = CapabilitySet::from_grants(Box::new([cap(name, action)]));
+            assert_eq!(set.grants(&required), expected, "case {name}:{action:?}");
+        }
     }
 }

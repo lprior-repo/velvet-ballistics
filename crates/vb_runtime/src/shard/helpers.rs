@@ -648,6 +648,7 @@ mod tests {
             action_attempts: new_action_attempts(step_count),
             admission: None,
             collect_states: CollectStates::new(),
+            action_contracts: Box::new([]),
         })
     }
 

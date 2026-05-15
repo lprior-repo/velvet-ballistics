@@ -533,11 +533,11 @@ mod tests {
     }
 
     // =====================================================================
-    // Do node: empty contracts uses execute_do_without_contract
+    // Do node: empty contracts fails closed
     // =====================================================================
 
     #[test]
-    fn execute_do_without_contract_returns_awaiting_action() {
+    fn execute_do_without_contract_rejects_without_ticket() {
         // Do has no kind-specific edges. Single-node workflow with next=None is valid
         // because the validator does not require next for Do (no kind-specific targets).
         let node = CompiledNode {
@@ -572,13 +572,14 @@ mod tests {
             &CapabilitySet::empty(),
         );
         match result {
-            Ok(RuntimeSignal::AwaitingAction(ticket)) => {
-                assert_eq!(ticket.action, ActionId::new(5));
-                assert_eq!(ticket.run, RunId::new(1));
-                assert_eq!(ticket.attempt, 1);
+            Err(RuntimeEngineError::Core(vb_core::EngineError::CapabilityDenied {
+                action,
+                ..
+            })) => {
+                assert_eq!(action, ActionId::new(5));
             }
             other => {
-                let msg = format!("expected AwaitingAction, got {other:?}");
+                let msg = format!("expected CapabilityDenied, got {other:?}");
                 panic!("{msg}");
             }
         }

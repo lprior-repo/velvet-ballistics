@@ -3,6 +3,7 @@
 
 use crossbeam_queue::ArrayQueue;
 use indexmap::IndexMap;
+use vb_core::action::ActionContract;
 use vb_core::capability::CapabilitySet;
 use vb_core::frame::RunFrame;
 use vb_core::ids::{RunId, SlotIdx, StepIdx};
@@ -66,6 +67,17 @@ pub enum ShardCommand {
         inputs: Box<[(SlotIdx, SlotValue)]>,
         /// Capabilities granted to this run.
         caps: CapabilitySet,
+    },
+    /// Submit a new run with validated action contracts already bound.
+    SubmitWithContracts {
+        /// Run identifier chosen by the caller.
+        run: RunId,
+        /// Compiled workflow to execute.
+        workflow: CompiledWorkflow,
+        /// Capabilities granted to this run.
+        caps: CapabilitySet,
+        /// Validated action contracts for Do execution.
+        action_contracts: Box<[ActionContract]>,
     },
     /// Resume a suspended run from its current program counter.
     Resume {
@@ -194,6 +206,8 @@ pub struct RunState {
     pub admission: Option<crate::admission::RunAdmission>,
     /// Per-run collect pagination state side table.
     pub collect_states: CollectStates,
+    /// Validated action contracts used by Do execution.
+    pub action_contracts: Box<[ActionContract]>,
 }
 
 /// Diagnostic snapshot returned by the Inspect command.

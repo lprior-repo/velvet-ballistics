@@ -1,10 +1,10 @@
-// Kani harness for KANI-INV-001: hierarchical matching algorithm
-// vb_core::capability::capability_name_grants panic-free and deterministic
+// Kani harness for KANI-INV-001: exact capability matching algorithm
+// vb_core::capability::CapabilitySet::grants panic-free and deterministic
 //
 // Covers 4 matching cases:
 // 1. exact match: required_name == grant_name
-// 2. prefix+dot: required_name = grant_name + '.' + suffix
-// 3. partial segment: grant_name is lexical prefix but not hierarchy prefix
+// 2. prefix+dot rejected: required_name = grant_name + '.' + suffix
+// 3. partial segment rejected: grant_name is lexical prefix
 // 4. non-prefix: grant_name does not match required_name at all
 
 #![forbid(unsafe_code)]
@@ -58,14 +58,14 @@ mod kani_capability_harnesses {
     }
 
     #[kani::proof]
-    fn capability_name_grants_prefix_dot_case() {
+    fn capability_name_rejects_prefix_dot_case() {
         let action_id = ActionId::new(1);
 
         let cap = Capability::new("network".into(), action_id);
         let required = Capability::new("network.github".into(), action_id);
         let set = CapabilitySet::from_grants(Box::new([cap]));
 
-        assert!(set.grants(&required));
+        assert!(!set.grants(&required));
     }
 
     #[kani::proof]

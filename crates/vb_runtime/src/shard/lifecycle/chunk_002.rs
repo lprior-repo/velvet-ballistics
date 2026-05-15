@@ -137,7 +137,7 @@ impl Shard {
             &mut state.frame,
             &mut budget,
             &mut state.store,
-            &[],
+            &state.action_contracts,
             RetryPolicy::NEVER,
             evidence,
             &mut state.collect_states,

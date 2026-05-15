@@ -813,17 +813,16 @@ mod tests {
         }
     }
 
-    // Do node without contract always succeeds (no capability enforcement without contract)
+    // Do node without contract fails closed.
     #[test]
-    fn cat10_do_without_contract_succeeds() -> Result<(), String> {
+    fn cat10_do_without_contract_rejects() -> Result<(), String> {
         let wf = mkwf(vec![don(0, 1, 0)], 1)?;
         let mut r = mkr(1, 1)?;
         ws(&mut r, 0, SlotValue::I64(0))?;
         let mut b = StepBudget::new(10);
-        let sig = dd(&wf, &mut r, &mut b)?;
-        match sig {
-            RuntimeSignal::AwaitingAction(_) => Ok(()),
-            other => Err(format!("expected AwaitingAction, got {other:?}")),
+        match dd(&wf, &mut r, &mut b) {
+            Err(error) if error.contains("capability denied for action ActionId(1)") => Ok(()),
+            other => Err(format!("expected CapabilityDenied, got {other:?}")),
         }
     }
 

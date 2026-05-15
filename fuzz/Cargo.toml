@@ -145,6 +145,20 @@ doc = false
 bench = false
 
 [[bin]]
+name = "capability_name_schema"
+path = "src/bin/capability_name_schema.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "capability_contract_schema"
+path = "src/bin/capability_contract_schema.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
 name = "replay_events"
 path = "src/bin/replay_events.rs"
 test = false

@@ -169,15 +169,15 @@ fn capability_check_rejects_unauthorized_action() {
         "exact action capability should grant action(7)"
     );
 
-    // Verify hierarchical prefix grants a dotted child capability.
+    // Verify hierarchical prefix does not grant a dotted child capability.
     let child_required = vb_core::Capability::new("action.dispatch".into(), ActionId::new(7));
     let prefix_caps = vb_core::CapabilitySet::from_grants(Box::from([vb_core::Capability::new(
         "action".into(),
         ActionId::new(7),
     )]));
     assert!(
-        prefix_caps.grants(&child_required),
-        "hierarchical action capability should grant action.dispatch(7)"
+        !prefix_caps.grants(&child_required),
+        "hierarchical action capability must not grant action.dispatch(7)"
     );
 
     // Verify the workflow requiring the action can be constructed

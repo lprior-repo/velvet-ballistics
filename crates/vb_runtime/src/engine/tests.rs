@@ -601,7 +601,7 @@ fn execute_do_returns_unknown_action_for_unregistered_action() {
 }
 
 #[test]
-fn execute_do_without_contract_returns_valid_ticket_for_any_action() {
+fn execute_do_without_contract_fails_closed_without_ticket() {
     let mut run = match RunFrame::new(RunId::new(42), StepIdx::new(0), 4, 2) {
         Ok(f) => f,
         Err(_) => return,
@@ -617,18 +617,11 @@ fn execute_do_without_contract_returns_valid_ticket_for_any_action() {
         &vb_core::capability::CapabilitySet::empty(),
         RetryPolicy::DEFAULT,
     );
-    match result {
-        Ok(RuntimeSignal::AwaitingAction(ticket)) => {
-            assert_eq!(ticket.run, RunId::new(42));
-            assert_eq!(ticket.step, StepIdx::new(3));
-            assert_eq!(ticket.action, ActionId::new(7));
-            assert_eq!(ticket.seq, SeqNo::new(5));
-            assert_eq!(ticket.attempt, 1);
-        }
-        other => {
-            assert_eq!(other, Ok(RuntimeSignal::Continue));
-        }
-    }
+    assert!(matches!(
+        result,
+        Err(RuntimeEngineError::Core(vb_core::EngineError::CapabilityDenied { action, .. }))
+            if action == ActionId::new(7)
+    ));
 }
 
 #[cfg(test)]
@@ -1908,7 +1901,7 @@ mod blackhat_engine {
     }
 
     #[test]
-    fn bh_eng_07_do_without_contract_accepts_clean_input() {
+    fn bh_eng_07_do_without_contract_rejects_clean_input() {
         let node = CompiledNode {
             id: StepIdx::ZERO,
             output: None,
@@ -1939,16 +1932,11 @@ mod blackhat_engine {
             &mut cs,
             &CapabilitySet::empty(),
         );
-        // Clean input should succeed even without contracts.
-        match result {
-            Ok(RuntimeSignal::AwaitingAction(ticket)) => {
-                assert_eq!(ticket.action, ActionId::new(0));
-            }
-            other => {
-                let msg = format!("expected AwaitingAction, got {other:?}");
-                panic!("{msg}");
-            }
-        }
+        assert!(matches!(
+            result,
+            Err(RuntimeEngineError::Core(vb_core::EngineError::CapabilityDenied { action, .. }))
+                if action == ActionId::new(0)
+        ));
     }
 
     #[test]
@@ -2369,7 +2357,7 @@ mod blackhat_engine {
     }
 
     #[test]
-    fn bh_eng_16_do_without_contract_accepts_uninitialized_slot() {
+    fn bh_eng_16_do_without_contract_rejects_uninitialized_slot() {
         let run = RunFrame::new(RunId::new(1), StepIdx::ZERO, 4, 2)
             .ok()
             .unwrap_or_else(|| panic!("RunFrame::new failed"));
@@ -2383,19 +2371,15 @@ mod blackhat_engine {
             &CapabilitySet::empty(),
             RetryPolicy::NEVER,
         );
-        match result {
-            Ok(RuntimeSignal::AwaitingAction(ticket)) => {
-                assert_eq!(ticket.action, ActionId::new(0));
-            }
-            other => {
-                let msg = format!("expected AwaitingAction, got {other:?}");
-                panic!("{msg}");
-            }
-        }
+        assert!(matches!(
+            result,
+            Err(RuntimeEngineError::Core(vb_core::EngineError::CapabilityDenied { action, .. }))
+                if action == ActionId::new(0)
+        ));
     }
 
     #[test]
-    fn bh_eng_16_do_without_contract_accepts_clean_input() {
+    fn bh_eng_16_do_without_contract_rejects_clean_input() {
         let mut run = RunFrame::new(RunId::new(1), StepIdx::ZERO, 4, 2)
             .ok()
             .unwrap_or_else(|| panic!("RunFrame::new failed"));
@@ -2409,15 +2393,11 @@ mod blackhat_engine {
             &CapabilitySet::empty(),
             RetryPolicy::NEVER,
         );
-        match result {
-            Ok(RuntimeSignal::AwaitingAction(ticket)) => {
-                assert_eq!(ticket.action, ActionId::new(0));
-            }
-            other => {
-                let msg = format!("expected AwaitingAction, got {other:?}");
-                panic!("{msg}");
-            }
-        }
+        assert!(matches!(
+            result,
+            Err(RuntimeEngineError::Core(vb_core::EngineError::CapabilityDenied { action, .. }))
+                if action == ActionId::new(0)
+        ));
     }
 
     // =====================================================================

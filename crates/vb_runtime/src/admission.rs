@@ -428,6 +428,12 @@ pub fn admit_artifact_run(
                 })?;
 
             // Check that granted capabilities cover the artifact's required capabilities.
+            if caps.len() != artifact.required_capabilities.len() {
+                return Err(capability_count_mismatch_error(
+                    &artifact.required_capabilities,
+                    &caps,
+                ));
+            }
             for required_cap in artifact.required_capabilities.iter() {
                 check_capability(required_cap.action_id(), required_cap, &caps)?;
             }
@@ -520,13 +526,63 @@ pub fn check_capability(
     }
 }
 
+fn capability_count_mismatch_error(
+    required: &[Capability],
+    granted: &CapabilitySet,
+) -> AdmissionError {
+    let fallback = Capability::new("__capability_count_mismatch__".into(), ActionId::new(0));
+    let required_capability = required.first().cloned().unwrap_or(fallback);
+    AdmissionError::CapabilityDenied {
+        action: required_capability.action_id(),
+        required: required_capability,
+        granted: granted.clone(),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use vb_core::ids::WorkflowDigest;
 
+    struct FixedAcceptedStore {
+        artifact: vb_storage::admission::AcceptedArtifact,
+    }
+
+    impl AcceptedArtifactStore for FixedAcceptedStore {
+        fn load_accepted_artifact(
+            &self,
+            _artifact_digest: WorkflowDigest,
+        ) -> Result<vb_storage::admission::AcceptedArtifact, ArtifactEnvelopeError> {
+            Ok(self.artifact.clone())
+        }
+    }
+
     fn test_digest() -> WorkflowDigest {
         WorkflowDigest::from_bytes([0xAB; 32])
+    }
+
+    fn accepted_artifact_with_caps(
+        required_capabilities: Box<[Capability]>,
+    ) -> vb_storage::admission::AcceptedArtifact {
+        let digest = test_digest();
+        vb_storage::admission::AcceptedArtifact {
+            digest,
+            ir: Vec::new(),
+            verification: vb_storage::admission::VerificationProof {
+                digest,
+                gate_count: REQUIRED_GATE_COUNT,
+                durable: true,
+                bounded: true,
+                taint_safe: true,
+                retry_safe: true,
+                replayable: true,
+                idempotency_keyed: Box::new([]),
+                idempotency_attested: Box::new([]),
+                warnings: Vec::new(),
+            },
+            accepted_at_seq: vb_storage::EventSeq::new(0),
+            required_capabilities,
+        }
     }
 
     #[test]
@@ -608,12 +664,19 @@ mod tests {
     }
 
     #[test]
-    fn admission_check_capability_hierarchical_grants_subname() {
+    fn admission_check_capability_rejects_hierarchical_grant() {
         let action = ActionId::new(99);
         let required = Capability::new("network.rpc".into(), action);
         let granted =
             CapabilitySet::from_grants(Box::new([Capability::new("network".into(), action)]));
-        assert_eq!(check_capability(action, &required, &granted), Ok(()));
+        assert_eq!(
+            check_capability(action, &required, &granted),
+            Err(AdmissionError::CapabilityDenied {
+                action,
+                required,
+                granted,
+            })
+        );
     }
 
     #[test]
@@ -635,6 +698,109 @@ mod tests {
                 granted,
             })
         );
+    }
+
+    #[test]
+    fn admit_artifact_run_rejects_excess_grants() {
+        let action = ActionId::new(7);
+        let required = Capability::new("network".into(), action);
+        let extra = Capability::new("storage".into(), ActionId::new(8));
+        let store = FixedAcceptedStore {
+            artifact: accepted_artifact_with_caps(Box::new([required.clone()])),
+        };
+        let granted = CapabilitySet::from_grants(Box::new([required.clone(), extra]));
+
+        let result = admit_artifact_run(
+            &store,
+            RuntimePolicy::Strict,
+            RunId::new(1),
+            test_digest(),
+            granted.clone(),
+        );
+
+        assert_eq!(
+            result,
+            Err(AdmissionError::CapabilityDenied {
+                action,
+                required,
+                granted,
+            })
+        );
+    }
+
+    #[test]
+    fn admit_artifact_run_rejects_missing_grants_without_allocation() {
+        let network = Capability::new("network.github".into(), ActionId::new(7));
+        let filesystem = Capability::new("filesystem.read".into(), ActionId::new(8));
+        let store = FixedAcceptedStore {
+            artifact: accepted_artifact_with_caps(Box::new([network.clone(), filesystem.clone()])),
+        };
+        let granted = CapabilitySet::from_grants(Box::new([network.clone()]));
+
+        let result = admit_artifact_run(
+            &store,
+            RuntimePolicy::Strict,
+            RunId::new(1),
+            test_digest(),
+            granted.clone(),
+        );
+
+        assert_eq!(
+            result,
+            Err(AdmissionError::CapabilityDenied {
+                action: network.action_id(),
+                required: network,
+                granted,
+            })
+        );
+    }
+
+    #[test]
+    fn admit_artifact_run_rejects_non_exact_grant_without_allocation() {
+        let action = ActionId::new(7);
+        let required = Capability::new("network.github".into(), action);
+        let store = FixedAcceptedStore {
+            artifact: accepted_artifact_with_caps(Box::new([required.clone()])),
+        };
+        let granted =
+            CapabilitySet::from_grants(Box::new([Capability::new("network".into(), action)]));
+
+        let result = admit_artifact_run(
+            &store,
+            RuntimePolicy::Strict,
+            RunId::new(1),
+            test_digest(),
+            granted.clone(),
+        );
+
+        assert_eq!(
+            result,
+            Err(AdmissionError::CapabilityDenied {
+                action,
+                required,
+                granted,
+            })
+        );
+    }
+
+    #[test]
+    fn admit_artifact_run_preserves_non_empty_required_capabilities() {
+        let action = ActionId::new(7);
+        let required = Capability::new("network".into(), action);
+        let store = FixedAcceptedStore {
+            artifact: accepted_artifact_with_caps(Box::new([required.clone()])),
+        };
+        let granted = CapabilitySet::from_grants(Box::new([required]));
+
+        let admission = admit_artifact_run(
+            &store,
+            RuntimePolicy::Strict,
+            RunId::new(1),
+            test_digest(),
+            granted.clone(),
+        );
+
+        assert!(matches!(admission, Ok(run) if run.granted_capabilities() == &granted));
     }
 
     #[test]

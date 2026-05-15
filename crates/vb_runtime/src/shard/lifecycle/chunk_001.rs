@@ -5,7 +5,14 @@ impl Shard {
         workflow: CompiledWorkflow,
         caps: CapabilitySet,
     ) -> RuntimeResult<()> {
-        self.handle_submit_with_inputs_and_header_mode(run, workflow, &[], caps, true)
+        self.handle_submit_with_inputs_contracts_and_header_mode(
+            run,
+            workflow,
+            &[],
+            caps,
+            &[],
+            true,
+        )
     }
 
     pub(crate) fn handle_submit_pre_persisted(
@@ -14,7 +21,14 @@ impl Shard {
         workflow: CompiledWorkflow,
         caps: CapabilitySet,
     ) -> RuntimeResult<()> {
-        self.handle_submit_with_inputs_and_header_mode(run, workflow, &[], caps, false)
+        self.handle_submit_with_inputs_contracts_and_header_mode(
+            run,
+            workflow,
+            &[],
+            caps,
+            &[],
+            false,
+        )
     }
 
     pub(crate) fn handle_submit_with_inputs(
@@ -24,15 +38,40 @@ impl Shard {
         inputs: &[(SlotIdx, SlotValue)],
         caps: CapabilitySet,
     ) -> RuntimeResult<()> {
-        self.handle_submit_with_inputs_and_header_mode(run, workflow, inputs, caps, true)
+        self.handle_submit_with_inputs_contracts_and_header_mode(
+            run,
+            workflow,
+            inputs,
+            caps,
+            &[],
+            true,
+        )
     }
 
-    fn handle_submit_with_inputs_and_header_mode(
+    pub(crate) fn handle_submit_with_contracts(
+        &mut self,
+        run: RunId,
+        workflow: CompiledWorkflow,
+        caps: CapabilitySet,
+        action_contracts: &[vb_core::action::ActionContract],
+    ) -> RuntimeResult<()> {
+        self.handle_submit_with_inputs_contracts_and_header_mode(
+            run,
+            workflow,
+            &[],
+            caps,
+            action_contracts,
+            true,
+        )
+    }
+
+    fn handle_submit_with_inputs_contracts_and_header_mode(
         &mut self,
         run: RunId,
         workflow: CompiledWorkflow,
         inputs: &[(SlotIdx, SlotValue)],
         caps: CapabilitySet,
+        action_contracts: &[vb_core::action::ActionContract],
         persist_header: bool,
     ) -> RuntimeResult<()> {
         if self.runs.contains_key(&run) {
@@ -81,6 +120,7 @@ impl Shard {
             action_attempts: crate::shard::helpers::new_action_attempts(frame_step_count),
             admission,
             collect_states: CollectStates::new(),
+            action_contracts: action_contracts.to_vec().into_boxed_slice(),
         };
         self.runs.insert(run, state);
         self.runtime_states.insert(run, RuntimeState::Initial);

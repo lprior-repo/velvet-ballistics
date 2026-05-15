@@ -45,7 +45,8 @@ impl Shard {
         match &cmd {
             ShardCommand::Submit { .. }
             | ShardCommand::SubmitPrePersisted { .. }
-            | ShardCommand::SubmitWithInputs { .. } => {
+            | ShardCommand::SubmitWithInputs { .. }
+            | ShardCommand::SubmitWithContracts { .. } => {
                 // Probe journal health before accepting the command.
                 self.journal.probe()?;
             }
@@ -161,6 +162,12 @@ impl Shard {
                 inputs,
                 caps,
             } => self.handle_submit_with_inputs(run, workflow, &inputs, caps)?,
+            ShardCommand::SubmitWithContracts {
+                run,
+                workflow,
+                caps,
+                action_contracts,
+            } => self.handle_submit_with_contracts(run, workflow, caps, &action_contracts)?,
             ShardCommand::Resume { run } => {
                 self.handle_resume(run).map_err(RuntimeError::from)?;
             }

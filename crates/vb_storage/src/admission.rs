@@ -133,6 +133,18 @@ pub fn submit_artifact(
     workflow: &vb_core::CompiledWorkflow,
     policy: vb_core::RuntimePolicy,
 ) -> Result<AcceptedArtifact, JournalError> {
+    submit_artifact_with_contracts(journal, workflow, policy, &[])
+}
+
+/// Validates, verifies, and persists a compiled workflow artifact with the
+/// required capability profile extracted from validated action contracts.
+pub fn submit_artifact_with_contracts(
+    journal: &FjallJournal,
+    workflow: &vb_core::CompiledWorkflow,
+    policy: vb_core::RuntimePolicy,
+    action_contracts: &[vb_core::action::ActionContract],
+) -> Result<AcceptedArtifact, JournalError> {
+    let required_capabilities = required_capabilities_from_contracts(action_contracts)?;
     match policy {
         vb_core::RuntimePolicy::Relaxed => {
             // Relaxed: skip gate validation, no durability, gate_count=0
@@ -145,7 +157,7 @@ pub fn submit_artifact(
                 ir: ir_bytes,
                 verification: proof,
                 accepted_at_seq: EventSeq::new(0),
-                required_capabilities: Box::new([]),
+                required_capabilities,
             };
             let artifact_bytes =
                 postcard::to_allocvec(&artifact).map_err(|_| JournalError::ArtifactMalformed)?;
@@ -183,7 +195,7 @@ pub fn submit_artifact(
                 ir: ir_bytes,
                 verification: proof,
                 accepted_at_seq: EventSeq::new(0),
-                required_capabilities: Box::new([]),
+                required_capabilities,
             };
 
             let artifact_bytes =
@@ -208,6 +220,27 @@ pub fn submit_artifact(
             Ok(artifact)
         }
     }
+}
+
+fn required_capabilities_from_contracts(
+    action_contracts: &[vb_core::action::ActionContract],
+) -> Result<Box<[vb_core::capability::Capability]>, JournalError> {
+    let mut total = 0usize;
+    for contract in action_contracts {
+        total = total
+            .checked_add(contract.required_capabilities.len())
+            .ok_or(JournalError::ArtifactMalformed)?;
+    }
+    let mut required = Vec::new();
+    required
+        .try_reserve(total)
+        .map_err(|_| JournalError::ArtifactMalformed)?;
+    for contract in action_contracts {
+        for capability in contract.required_capabilities.iter() {
+            required.push(capability.clone());
+        }
+    }
+    Ok(required.into_boxed_slice())
 }
 
 /// Validates and persists a compiled workflow artifact.
@@ -626,6 +659,47 @@ mod tests {
             artifact.required_capabilities.is_empty(),
             "minimal workflow has no capabilities"
         );
+        Ok(())
+    }
+
+    #[test]
+    fn submit_artifact_persists_non_empty_required_capabilities_when_contract_requires_capability()
+    -> Result<(), String> {
+        let journal = temp_journal().map_err(|e| format!("journal open failed: {e}"))?;
+        let workflow = minimal_workflow()?;
+        let required = vb_core::capability::Capability::new(
+            Box::<str>::from("network.github"),
+            vb_core::ActionId::new(7),
+        );
+        let contract = vb_core::action::ActionContract {
+            id: vb_core::ActionId::new(7),
+            input_slot_count: 1,
+            output_slot_count: 1,
+            max_input_bytes: 1024,
+            max_output_bytes: 2048,
+            timeout_ms: 1000,
+            idempotency: vb_core::action::Idempotency::IdempotentExternal,
+            side_effect: vb_core::action::SideEffect::Writes,
+            retry_safety: vb_core::action::RetrySafety::KeyRequired,
+            required_capabilities: Box::new([required.clone()]),
+        };
+
+        let artifact = submit_artifact_with_contracts(
+            &journal,
+            &workflow,
+            vb_core::RuntimePolicy::Journaled,
+            &[contract],
+        )
+        .map_err(|e| format!("submit_artifact_with_contracts failed: {e}"))?;
+        let loaded = journal
+            .compiled_ir(workflow.digest())
+            .map_err(|e| format!("compiled_ir read failed: {e}"))?
+            .ok_or_else(|| String::from("persisted artifact not found"))?;
+        let decoded: AcceptedArtifact = postcard::from_bytes(&loaded.ir)
+            .map_err(|e| format!("decode accepted artifact failed: {e}"))?;
+
+        assert_eq!(artifact.required_capabilities.as_ref(), &[required.clone()]);
+        assert_eq!(decoded.required_capabilities.as_ref(), &[required]);
         Ok(())
     }
 

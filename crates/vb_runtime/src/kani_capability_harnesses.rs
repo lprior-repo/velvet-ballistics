@@ -91,7 +91,7 @@ mod kani_capability_harnesses {
     }
 
     #[kani::proof]
-    fn check_capability_hierarchical_grants_subpath() {
+    fn check_capability_hierarchical_rejects_subpath() {
         let action_id = ActionId::new(1);
         let required = Capability::new("network.api".into(), action_id);
         let grant = Capability::new("network".into(), action_id);
@@ -99,8 +99,8 @@ mod kani_capability_harnesses {
 
         let result = check_capability(action_id, &required, &granted);
         kani::assert(
-            result.is_ok(),
-            "prefix grant must satisfy subpath requirement",
+            result.is_err(),
+            "prefix grant must not satisfy subpath requirement",
         );
     }
 
