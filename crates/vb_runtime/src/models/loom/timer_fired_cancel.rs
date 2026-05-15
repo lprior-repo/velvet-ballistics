@@ -7,6 +7,8 @@
 //! Model: Timer wheel timer fired vs cancel race.
 //! Invariant: no use-after-free, exactly one handler fires per timer.
 
+use std::sync::Arc;
+
 use crate::shard::timer_wheel::TimerWheel;
 use vb_core::ids::RunId;
 

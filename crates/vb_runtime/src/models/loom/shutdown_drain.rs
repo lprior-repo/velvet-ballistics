@@ -5,7 +5,8 @@
 //! Command: RUSTFLAGS="--cfg loom" cargo test -p vb_runtime shutdown_drain
 
 //! Model: Shutdown drain ordering.
-//! Invariant: all pending work drained after shutdown.
+
+use std::sync::Arc;
 
 /// Verifies that shutdown drains all pending work in correct order.
 /// Loom explores all interleavings of shutdown and work completion.

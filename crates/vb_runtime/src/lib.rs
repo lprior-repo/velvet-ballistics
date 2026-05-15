@@ -56,6 +56,7 @@ pub mod engine;
 mod error;
 pub mod frame_pool;
 pub mod idempotency;
+pub mod ipc_refinement;
 pub mod journal;
 #[cfg(kani)]
 pub mod kani_capability_harnesses;
