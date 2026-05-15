@@ -1,5 +1,0 @@
-131d1788 (HEAD -> main) bd init: initialize beads issue tracking
-973e47b2 (origin/main, origin/HEAD) fix(vb-qi37.1.4): decouple verus proof from cargo
-4630df73 style: format rebased recovery proof
-fc4f7d3a style: format integrated postcard tests
-db5f12bf feat(vb-qi37.13): structure CLI diagnostics

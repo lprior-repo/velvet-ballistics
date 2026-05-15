@@ -34,12 +34,7 @@ pub fn execute_do(
         .filter(|c| c.id == action)
         .ok_or(ActionError::UnknownAction { action })?;
 
-    let input_taint = match run.read_taint(input) {
-        Ok(t) => t,
-        // Uninitialized slots are treated as Clean (no data = no taint).
-        Err(CoreError::SlotUninitialized { .. }) => Taint::Clean,
-        Err(e) => return Err(RuntimeEngineError::Core(e)),
-    };
+    let input_taint = run.read_taint(input).map_err(RuntimeEngineError::Core)?;
     if resolved.idempotency == Idempotency::DeterministicPure && input_taint != Taint::Clean {
         return Err(RuntimeEngineError::TaintViolation { step });
     }
