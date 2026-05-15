@@ -113,6 +113,12 @@ impl CompiledWorkflow {
         self.nodes.get(step.as_usize())
     }
 
+    /// Returns a borrowed slice of all compiled nodes.
+    #[must_use]
+    pub fn nodes(&self) -> &[CompiledNode] {
+        &self.nodes
+    }
+
     /// Returns a checked expression program reference.
     #[must_use]
     pub fn expression(&self, expr: ExprIdx) -> Option<&ExprProgram> {
