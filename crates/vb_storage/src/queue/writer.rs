@@ -196,6 +196,9 @@ impl JournalWriterQueue {
     }
 
     /// Flushes queued journal writes until the queue is empty.
+    ///
+    /// Maximum iterations: ceil(capacity / batch_size) + 2.
+    /// This is a static bound - the queue is bounded by construction.
     pub fn drain_all(
         &self,
         journal: &FjallJournal,
@@ -205,7 +208,15 @@ impl JournalWriterQueue {
             written: 0,
         };
 
-        loop {
+        // Static bound: queue capacity divided by minimum batch size, plus buffer.
+        // batch_size is guaranteed >= 1 by JournalBatchSize constructor invariants.
+        // checked_div returns None only on division by zero which is impossible.
+        let max_iterations = self
+            .capacity
+            .checked_div(self.batch_size)
+            .ok_or(JournalError::QueueCapacity)?
+            .saturating_add(2);
+        for _ in 0..max_iterations {
             let report = self.flush_batch(journal)?;
             if report.drained == 0 {
                 return Ok(total);
@@ -213,6 +224,7 @@ impl JournalWriterQueue {
             total.drained = total.drained.saturating_add(report.drained);
             total.written = total.written.saturating_add(report.written);
         }
+        Ok(total)
     }
 
     /// Closes the queue to new writes and drains all accepted writes durably.

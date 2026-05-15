@@ -528,7 +528,16 @@ pub fn handle_verify_workflow(
             vb_validate::gates::validate_gate_15_determinism_proof(&parts),
         ),
     ];
-    let total_checks = u32::try_from(gate_results.len()).unwrap_or(u32::MAX);
+    // gate_results.len() is bounded by the gate_names array (12 entries above),
+    // so conversion to u32 always succeeds. The match makes the invariant explicit.
+    let total_checks = match u32::try_from(gate_results.len()) {
+        Ok(v) => v,
+        Err(_) => {
+            return IpcResponse::RuntimeError {
+                message: String::from("gate results count exceeds u32::MAX"),
+            };
+        }
+    };
     let mut pass_count: u32 = 0;
     let mut fail_count: u32 = 0;
     let mut certificates: Vec<crate::CertificateWire> = Vec::new();
