@@ -30,9 +30,11 @@ pub use vb_core::value::Taint;
 
 // Public modules.
 pub mod ai;
+pub mod canonical;
 pub mod emitter;
 pub mod envelope;
 pub mod incident;
+pub mod redact;
 pub mod replay;
 pub mod run;
 pub mod storage;
