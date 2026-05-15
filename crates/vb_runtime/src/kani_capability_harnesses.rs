@@ -65,7 +65,11 @@ mod kani_capability_harnesses {
         let granted = CapabilitySet::from_grants(Box::new([grant]));
 
         let result = check_capability(action_id, &required, &granted);
-        kani::assert(result.is_err(), "action match + name denies → Err");
+        kani::assert(
+            matches!(&result, Err(AdmissionError::CapabilityDenied { .. })),
+            "action match + name denies -> CapabilityDenied",
+        );
+        std::mem::forget(result);
     }
 
     #[kani::proof]
@@ -76,7 +80,11 @@ mod kani_capability_harnesses {
         let granted = CapabilitySet::from_grants(Box::new([grant]));
 
         let result = check_capability(action_id, &required, &granted);
-        kani::assert(result.is_err(), "action mismatch → Err regardless of name");
+        kani::assert(
+            matches!(&result, Err(AdmissionError::CapabilityDenied { .. })),
+            "action mismatch -> CapabilityDenied regardless of name",
+        );
+        std::mem::forget(result);
     }
 
     #[kani::proof]
@@ -87,7 +95,11 @@ mod kani_capability_harnesses {
         let granted = CapabilitySet::from_grants(Box::new([grant]));
 
         let result = check_capability(action_id, &required, &granted);
-        kani::assert(result.is_err(), "action mismatch + name denies → Err");
+        kani::assert(
+            matches!(&result, Err(AdmissionError::CapabilityDenied { .. })),
+            "action mismatch + name denies -> CapabilityDenied",
+        );
+        std::mem::forget(result);
     }
 
     #[kani::proof]
@@ -99,9 +111,10 @@ mod kani_capability_harnesses {
 
         let result = check_capability(action_id, &required, &granted);
         kani::assert(
-            result.is_err(),
+            matches!(&result, Err(AdmissionError::CapabilityDenied { .. })),
             "prefix grant must not satisfy subpath requirement",
         );
+        std::mem::forget(result);
     }
 
     #[kani::proof]
@@ -112,6 +125,10 @@ mod kani_capability_harnesses {
         let granted = CapabilitySet::from_grants(Box::new([grant]));
 
         let result = check_capability(action_id, &required, &granted);
-        kani::assert(result.is_err(), "partial segment must not grant");
+        kani::assert(
+            matches!(&result, Err(AdmissionError::CapabilityDenied { .. })),
+            "partial segment must not grant",
+        );
+        std::mem::forget(result);
     }
 }

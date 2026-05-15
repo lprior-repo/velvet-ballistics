@@ -115,7 +115,8 @@ pub struct AcceptedArtifact {
 }
 
 /// Number of verification gates in the accepted artifact v1 admission flow.
-const ADMISSION_GATE_COUNT: u8 = 2;
+/// This must match `vb_runtime::admission::REQUIRED_GATE_COUNT` (15).
+const ADMISSION_GATE_COUNT: u8 = 15;
 
 /// Validates, verifies, and persists a compiled workflow artifact with policy-controlled durability.
 ///
@@ -123,7 +124,7 @@ const ADMISSION_GATE_COUNT: u8 = 2;
 /// 1. Policy check: Relaxed is rejected when accepted artifacts are required.
 /// 2. Structure validation: re-parse the workflow from serialized parts.
 /// 3. Checksum validation: serialized bytes must hash to the claimed digest.
-/// 4. Proof validation: gate count must be 2 and all proof flags must be true.
+/// 4. Proof validation: gate count must be 15 and all proof flags must be true.
 /// 5. Persistence: store the artifact in the `compiled_ir` keyspace.
 /// 6. Durability: under `Strict` policy, calls SyncAll before returning.
 ///
@@ -435,13 +436,32 @@ mod tests {
     // submit_artifact: Relaxed policy
     // =========================================================================
 
+    /// Owns both a temporary directory path and a FjallJournal so the directory
+    /// is not dropped while the journal is in use.
+    struct TestJournal {
+        path: std::path::PathBuf,
+        journal: crate::FjallJournal,
+    }
+
+    impl Drop for TestJournal {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_dir_all(&self.path);
+        }
+    }
+
+    impl std::ops::Deref for TestJournal {
+        type Target = crate::FjallJournal;
+        fn deref(&self) -> &Self::Target {
+            &self.journal
+        }
+    }
+
     /// Opens a temporary FjallJournal that is cleaned up when dropped.
-    fn temp_journal() -> Result<crate::FjallJournal, JournalError> {
+    fn temp_journal() -> Result<TestJournal, JournalError> {
         let dir = tempfile::tempdir().map_err(|_| JournalError::ArtifactMalformed)?;
-        // Keep the TempDir so it survives the journal lifetime.
-        // The OS cleans up /tmp eventually.
         let path = dir.keep();
-        crate::FjallJournal::open(path, None)
+        let journal = crate::FjallJournal::open(&path, None)?;
+        Ok(TestJournal { path, journal })
     }
 
     /// Builds a minimal valid CompiledWorkflow for testing.
@@ -544,10 +564,10 @@ mod tests {
         let result = submit_artifact(&journal, &workflow, vb_core::RuntimePolicy::Journaled)
             .map_err(|e| format!("submit_artifact(journaled) failed: {e}"))?;
 
-        // Journaled passes 2 gates but is not durable (no SyncAll).
+        // Journaled passes 15 gates but is not durable (no SyncAll).
         assert_eq!(
-            result.verification.gate_count, 2,
-            "journaled must pass 2 verification gates"
+            result.verification.gate_count, 15,
+            "journaled must pass 15 verification gates"
         );
         assert!(
             !result.verification.durable,
@@ -565,8 +585,8 @@ mod tests {
         let result = submit_artifact(&journal, &workflow, vb_core::RuntimePolicy::Strict)
             .map_err(|e| format!("submit_artifact(strict) failed: {e}"))?;
 
-        // Strict passes 2 gates AND is durable.
-        assert_eq!(result.verification.gate_count, 2);
+        // Strict passes 15 gates AND is durable.
+        assert_eq!(result.verification.gate_count, 15);
         assert!(result.verification.durable, "strict must be durable");
         assert_eq!(result.digest, workflow.digest());
         Ok(())

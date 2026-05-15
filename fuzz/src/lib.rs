@@ -12,6 +12,7 @@ use vb_core::action::{ActionContract, Idempotency, RetrySafety, SideEffect};
 use vb_core::capability::Capability;
 use vb_core::ids::{ActionId, SlotIdx, StepIdx, WorkflowDigest};
 use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract};
+use vb_validate::ValidationError;
 
 const MAX_FUZZ_PAYLOAD: u32 = 4096;
 const SMALL_WORKFLOW_A: &[u8] = b"version: velvet-ballastics/v1\nname: fuzz_a\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    finish:\n      result: 0\n";
@@ -33,7 +34,20 @@ pub fn fuzz_capability_name_schema(data: &[u8]) {
         1,
         Box::new([Capability::new(Box::from(bounded_name), ActionId::new(1))]),
     )];
-    let _result = vb_validate::shared::validate_with_contracts(&parts, &contracts);
+    let result = vb_validate::shared::validate_with_contracts(&parts, &contracts);
+    if bounded_name.is_empty() {
+        assert!(matches!(
+            result,
+            Err(ValidationError::CapabilityNameEmpty { .. })
+        ));
+    } else if !capability_name_is_valid(bounded_name) {
+        assert!(matches!(
+            result,
+            Err(ValidationError::CapabilityNameInvalid { .. })
+        ));
+    } else {
+        assert!(result.is_ok());
+    }
 }
 
 /// Exercises action-contract capability schema validation over bounded inputs.
@@ -53,14 +67,54 @@ pub fn fuzz_capability_contract_schema(data: &[u8]) {
             Capability::new(Box::from(name), ActionId::new(second)),
         ]),
     )];
-    let _result = vb_validate::shared::validate_with_contracts(&parts, &contracts);
+    let result = vb_validate::shared::validate_with_contracts(&parts, &contracts);
+    if name.is_empty() {
+        assert!(matches!(
+            result,
+            Err(ValidationError::CapabilityNameEmpty { .. })
+        ));
+    } else if !capability_name_is_valid(name) {
+        assert!(matches!(
+            result,
+            Err(ValidationError::CapabilityNameInvalid { .. })
+        ));
+    } else if first != second {
+        assert!(matches!(
+            result,
+            Err(ValidationError::CapabilityActionMismatch { .. })
+        ));
+    } else {
+        assert!(matches!(
+            result,
+            Err(ValidationError::CapabilityDuplicate { .. })
+        ));
+    }
 }
 
 fn bounded_capability_name(name: &str) -> &str {
-    match name.get(..name.len().min(256)) {
-        Some(prefix) => prefix,
-        None => name,
+    let mut end = name.len().min(128);
+    while !name.is_char_boundary(end) {
+        end = end.saturating_sub(1);
     }
+    let Some(prefix) = name.get(..end) else {
+        return "";
+    };
+    prefix
+}
+
+fn capability_name_is_valid(name: &str) -> bool {
+    name.split('.').all(capability_segment_is_valid)
+}
+
+fn capability_segment_is_valid(segment: &str) -> bool {
+    let mut chars = segment.chars();
+    let Some(first) = chars.next() else {
+        return false;
+    };
+    if !first.is_ascii_lowercase() {
+        return false;
+    }
+    chars.all(|ch| ch.is_ascii_lowercase() || ch.is_ascii_digit() || ch == '_')
 }
 
 fn fuzz_action_contract(action: u16, required_capabilities: Box<[Capability]>) -> ActionContract {

@@ -1,49 +1,46 @@
-# vb-qi37.6 Proof Review
+# vb-qi37.6 Proof Review Retry 7
 
-STATUS: APPROVED
+STATUS: REJECTED
 
-## Scope Reviewed
+## Scope
 
-- Workspace guard passed in `/home/lewis/src/vb-qi37-6`; forbidden checkout `/home/lewis/src/Velvet-ballistics` was not used.
-- Reviewed `.beads/vb-qi37.6/proof-strategy.md`, `proof-obligations.jsonl`, `proof-obligations.planned.jsonl`, `proof-writer-report.md`, `proof-evidence.md`, `traceability-matrix.jsonl`, `verification-layers.md`, `contract.md`, `verification/tla/CapabilityLifecycle*.cfg`, `verification/tla/CapabilityLifecycle.tla`, and `verification/verus/capability_artifact_model.rs`.
-- This rerun reviewed the post-State-4 mirror repair: `proof-obligations.jsonl` and `proof-obligations.planned.jsonl` are byte-identical 24-row ledgers.
-- Approval is limited to State 5 proof-owned TLA+/Verus artifacts and the State 4/5 ownership replan for blocked Kani/fuzz setup. It is not approval of later implementation, integration, Kani, fuzz, Miri, clippy, or release-gauntlet lanes.
+- Bead: `vb-qi37.6`.
+- State: go-skill State 6 proof-review retry 7 (final attempt).
+- Workspace: `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-qi37-6`.
+- Source checkout exclusion verified: `pwd -P` is `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-qi37-6`; guard confirmed workspace is not source checkout and not nested under it.
+- Review boundary: reviewed proof/evidence artifacts only; no proof, code, test, dependency, or CI artifacts were edited.
+- Attempt: 7-of-7 (final).
 
-## Findings
+## Isolation Verification
 
-- No blocking post-State-4 mirror-repair proof-review findings.
-- Kani remains non-PASS and explicitly deferred: no `crates/vb_core/src/kani.rs` or `crates/vb_core/src/kani/mod.rs` exists. The setup check reported `KANI_SETUP_MISSING`. This is correctly routed to owner_state 8 setup and State 11 execution, not laundered as State 5 PASS.
-- Fuzz remains non-PASS and explicitly deferred: `fuzz/Cargo.toml` does not expose both `capability_name_schema` and `capability_contract_schema` bins for execution. The setup check reported `FUZZ_BINS_MISSING`. This is correctly routed to owner_state 8 setup and State 11 execution, not laundered as State 5 PASS.
-- TLA deadlock checking is disabled by `CHECK_DEADLOCK FALSE` and the model includes explicit stuttering. This is acceptable for this State 5 safety-only proof scope because the approved claims are safety invariants over finite lifecycle states, not liveness/progress claims. Later release evidence must not reuse this TLA result as progress, fairness, or end-to-end execution proof.
+Command: `pwd -P && test "$(pwd -P)" = "/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-qi37-6" && case "$(pwd -P)" in "/home/lewis/src/velvet-ballistics"|"/home/lewis/src/velvet-ballistics"/*) exit 1;; esac`
+Result: PASS, exit 0.
 
-## Rerun Evidence
+## Artifact Gate
 
-- Workspace guard passed: `pwd -P` returned `/home/lewis/src/vb-qi37-6`; the forbidden checkout `/home/lewis/src/Velvet-ballistics` was not used.
-- JSONL validation passed: `.beads/vb-qi37.6/proof-findings.jsonl`, `proof-obligations.jsonl`, and `proof-obligations.planned.jsonl` parsed with `jq -c .`.
-- Mirror validation passed: `cmp -s .beads/vb-qi37.6/proof-obligations.jsonl .beads/vb-qi37.6/proof-obligations.planned.jsonl` reported byte-identical files; both ledgers contain 24 rows, zero `PASS` statuses, and zero `BLOCKED_SETUP` placeholders.
-- Later-owner routing validation passed: `PRE-003-FUZZ-SCHEMA`, `INV-001-KANI-EXACT-SETUP`, and `INV-002-KANI-CARDINALITY-SETUP` route setup to owner_state 8 and execution to owner_state 11; `GAUNTLET-010` remains owner_state 11 blocked on two State 8 setup blockers.
-- TLC rerun passed for all six configs: `CapabilityLifecycleAll.cfg`, `CapabilityLifecycleGateMismatch.cfg`, `CapabilityLifecycleExactProfile.cfg`, `CapabilityLifecycleExcessGrant.cfg`, `CapabilityLifecycleNoContract.cfg`, and `CapabilityLifecycleLegacyBypass.cfg` each reported `Model checking completed. No error has been found.`, `478 states generated, 220 distinct states found, 0 states left on queue`, and complete search depth 3 under `.tmp/state6-proof-review-rerun/tlc-*` metadirs.
-- Verus rerun passed: `TMPDIR=/home/lewis/src/vb-qi37-6/.tmp RUSTC_WRAPPER= verus verification/verus/capability_artifact_model.rs` reported `verification results:: 8 verified, 0 errors`.
-- Kani setup check confirmed deferred blocker: `if test -f crates/vb_core/src/kani.rs || test -f crates/vb_core/src/kani/mod.rs; then printf 'KANI_SETUP_PRESENT\n'; else printf 'KANI_SETUP_MISSING\n'; fi` reported `KANI_SETUP_MISSING`.
-- Fuzz setup check confirmed deferred blocker: `if test -f fuzz/Cargo.toml && rg -q 'name = "capability_name_schema"' fuzz/Cargo.toml && rg -q 'name = "capability_contract_schema"' fuzz/Cargo.toml; then printf 'FUZZ_BINS_PRESENT\n'; else printf 'FUZZ_BINS_MISSING\n'; fi` reported `FUZZ_BINS_MISSING`.
+- All required artifacts non-empty: PASS.
+- JSONL validation for `proof-obligations.jsonl`, `proof-obligations.planned.jsonl`, `traceability-matrix.jsonl`, `proof-findings.jsonl`: PASS.
 
-## Obligation Review
+## Review Consumption
 
-- `CAP-EXACT-001`: APPROVED for State 5 Verus pure exact-match model. Kani implementation harness remains deferred and non-PASS.
-- `CAP-CARD-002`: APPROVED for State 5 TLA+/Verus finite exact-cardinality safety model. Kani implementation harness remains deferred and non-PASS.
-- `GATE-MISMATCH-003`: APPROVED for State 5 TLA+ fail-closed gate mismatch safety under the finite bounds.
-- `REQCAP-PERSIST-004`: APPROVED only for State 5 Verus pure profile-preservation model. Storage/postcard/reload persistence remains later integration evidence.
-- `DRIVE-CONTRACT-006`: APPROVED for State 5 TLA+ no-contract denial and contracted-awaiting safety. Runtime integration remains later evidence.
-- `LEGACY-BYPASS-007`: APPROVED for the State 5 TLA+ protected legacy-bypass safety component. Static scan and integration evidence remain later-owner work.
-- `GATE12-SCHEMA-009`: APPROVED only for the State 5 Verus pure schema predicate model. Fuzz target registration and execution remain deferred and non-PASS.
-- `PUBLIC-API-005`, `UI-PARITY-008`, and `GAUNTLET-010`: no State 5 proof-owned PASS is claimed; they remain later-state obligations.
+Consumed evidence from prior State 5 retry 4 (2026-05-16T04:50:36Z) and all prior State 6 reviews. No new State 5 repair evidence was produced after retry 4. No new State 10/11 evidence exists. The same 3 blockers persist unchanged.
 
-## Assumptions And Bounds
+## Blocking Findings
 
-- TLA bounds are finite and explicit: `gate_count in {0, 2, 15}`, capability counts `0..2`, booleans for contracts and legacy path, `CanonicalGate = 15`, and Strict/Journaled lifecycle only.
-- Verus abstracts capability names/actions and persisted profiles as integers and counts. It does not verify production structs, parser grammar, Fjall I/O, postcard bytes, filesystem durability, or public runtime API behavior.
-- No Kani or fuzz lane is approved by this review.
+1. `INTEG-011` (BLOCKER, FINAL_ATTEMPT): Storage persistence proof still fails with `journal open failed: artifact structure validation failed`. Required command `cargo test -p vb_storage submit_artifact_persists_non_empty_required_capabilities_when_contract_requires_capability --lib` has never passed. Location: `proof-writer-report.md:267`, `proof-evidence.md:252`. Required fix: State 10 implementation must repair the storage/artifact validation path so the test passes. Classification: BLOCK_LOCAL, FAIL_LOCAL.
+2. `INTEG-012` (BLOCKER, FINAL_ATTEMPT): Runtime/storage gate-count mismatch persists. Runtime emits `REQUIRED_GATE_COUNT: u8 = 15`; storage emits `ADMISSION_GATE_COUNT: u8 = 2`. Required command exits 0 but contract expectation fails. Location: `proof-writer-report.md:268`, `proof-evidence.md:253`. Required fix: State 10 implementation must align storage gate emission to canonical 15. Classification: BLOCK_LOCAL, FAIL_LOCAL.
+3. `GATE-016` (BLOCKER, FINAL_ATTEMPT): `moon ci` has never passed in this workspace. Remaining failures: non-git `source-length` environment blocker and `vb_storage` admission failures caused by the same storage defect as `INTEG-011`. No formal-verifier DEFERRED_GLOBAL classification exists. Required fix: State 11 formal-verifier must run `moon ci` pass or classify all failures with raw-log-backed DEFERRED_GLOBAL evidence. Classification: BLOCK_LOCAL, FAIL_LOCAL.
 
-## Decision
+## Accepted Evidence (unchanged, stable)
 
-Post-State-4 mirror-repair proof review approves the repaired State 5 proof artifacts and the explicit Kani/fuzz ownership replan. Later states must repair and execute the deferred lanes before any release-level or end-to-end assurance claim.
+- `VERUS-CAP-001`, `VERUS-CARD-003`, `VERUS-CERT-007`: Verus `verification results:: 8 verified, 0 errors`.
+- `TLA-LIFE-004`, `TLA-DENY-005`, `TLA-DRIVE-006`: TLC no invariant violations, `478 states generated`, `220 distinct states found`, depth `3`.
+- `KANI-CAP-002`: Split harness mapping accepted in retry 4.
+- `RUNTIME-KANI-010`: Split harness mapping accepted in retry 4.
+- `SCHEMA-FUZZ-008`, `SCHEMA-FUZZ-009`: 1000-run cargo-fuzz pass on `x86_64-unknown-linux-gnu` with `TMPDIR=target/tmp`.
+- `INTEG-013`, `INTEG-014`: Exact command pass evidence.
+- `contract-verification-review.md`: STATUS: APPROVED.
+
+## Final Attempt Classification
+
+This is attempt 7-of-7. All 3 blockers are BLOCK_LOCAL/FAIL_LOCAL and cannot be resolved without State 10 (INTEG-011, INTEG-012) and State 11 (GATE-016) repair artifacts. Per retry_policy_7, attempt 7 failure blocks landing.

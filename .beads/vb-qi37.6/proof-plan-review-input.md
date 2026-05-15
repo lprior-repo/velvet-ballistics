@@ -1,42 +1,37 @@
 # vb-qi37.6 Proof Plan Review Input
 
-## Review Scope
+STATUS: READY_FOR_PROOF_PLAN_REVIEW
 
-- Review State 4 proof-planner-owned artifacts after State 3 ledger repair expanded the contract ledger to 24 rows.
-- Inputs consumed: `contract.md`, `delivery-scope.jsonl`, `traceability-matrix.jsonl`, `proof-obligations.jsonl`, and `proof-obligations.planned.jsonl`.
-- Outputs updated: `proof-strategy.md`, `proof-plan-review-input.md`, and `proof-obligations.planned.jsonl`.
+## Scope
 
-## Required Review Checks
+- Role: go-skill State 4 proof-planner attempt 3.
+- Workspace: `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-qi37-6`.
+- Allowed writes: `.beads/vb-qi37.6/proof-strategy.md`, `.beads/vb-qi37.6/proof-plan-review-input.md`, `.beads/vb-qi37.6/proof-obligations.planned.jsonl`, and `STATE.md` evidence only.
+- Disallowed writes observed: production code, tests, proof/model/harness/spec files, dependency/config files, source checkout.
 
-- Confirm `proof-obligations.planned.jsonl` has exactly 24 JSONL rows.
-- Confirm these 24 IDs appear exactly once: `PRE-001-TLA-ENVELOPE`, `PRE-002-TLA-GATE15`, `PRE-003-FUZZ-SCHEMA`, `PRE-004-API-GRANTS`, `PRE-005-TLA-CONTRACT-SLICE`, `PRE-006-UI-SOURCE`, `POST-001-VERUS-EXACT`, `POST-002-TLA-GATE-DENIAL`, `POST-003-TLA-CARDINALITY-DENIAL`, `POST-004-TLA-MISSING-EXACT`, `POST-005-TLA-SUCCESS-JOURNAL`, `POST-006-TLA-DO-CHECKS`, `POST-007-TLA-NO-CONTRACT-DENY`, `POST-008-TLA-LEGACY-BYPASS`, `POST-009-UI-PARITY`, `INV-001-KANI-EXACT-SETUP`, `INV-002-KANI-CARDINALITY-SETUP`, `INV-003-TLA-GATE-CONTRACT`, `INV-004-VERUS-PERSISTENCE`, `INV-005-TLA-DENIAL-ATOMIC`, `INV-006-TLA-SHARD-CONTRACTS`, `INV-007-STATIC-LEGACY`, `INV-008-TLA-PUBLIC-GRANTS`, and `GAUNTLET-010`.
-- Confirm no row status is `PASS` and no row claims completed evidence before State 10/11 execution.
-- Confirm every row has `requirement_id`, `contract_clause`, `layer`, `checker`, `command`, `expected_evidence`, `required`, `mode`, `owner_state`, `rerun_from`, and `status`.
-- Confirm all 23 PRE/POST/INV clauses from `contract.md` plus the release-gate row are covered.
-- Confirm traceability rows and planned rows are aligned by contract clause/proof ID and evidence artifact.
+## Inputs Read
 
-## Formal Lane Checks
+- Repaired State 3: `contract.md`, `verification-layers.md`, `proof-obligations.jsonl`, `traceability-matrix.jsonl`, `delivery-scope.jsonl`, `codebase-map.md`.
+- State 6 rejection context: `proof-review.md`, `proof-findings.jsonl`, `proof-repair-guide.md`, `contract-verification-review.md`.
+- Prior proof context only: `proof-evidence.md`, `proof-writer-report.md`.
 
-- TLA+ rows must use `tlc` commands against `verification/tla/CapabilityLifecycle.tla` and the focused configs: `CapabilityLifecycleAll.cfg`, `CapabilityLifecycleGateMismatch.cfg`, `CapabilityLifecycleExactProfile.cfg`, `CapabilityLifecycleExcessGrant.cfg`, `CapabilityLifecycleNoContract.cfg`, and `CapabilityLifecycleLegacyBypass.cfg`.
-- TLA+ rows must include module/model/config metadata, variables, actions, invariants, finite state constraints, and refinement notes.
-- Verus rows must use `verus verification/verus/capability_artifact_model.rs` and include proof/spec metadata, trusted boundary, and shell exclusions.
-- Kani rows must not be treated as State 5 proof-writer failures. They are State 8 setup obligations with State 11 execution commands after setup.
-- Fuzz rows must not be treated as State 5 proof-writer failures. They are State 8 fuzz-bin setup obligations with State 11 execution commands after setup.
+## Reviewer Focus
 
-## Kani/Fuzz Routing
+- Planned ledger now uses the primary State 3 IDs, eliminating the prior `PO-*` versus legacy-ID mismatch.
+- `INTEG-011`..`INTEG-014` carry the repaired executable commands from State 3; no blocked placeholder remains in planned obligations.
+- Kani and fuzz rows remain required and planned; prior timeout/tooling failures are assumptions, not pass evidence.
+- `UI-015` is optional because UI is non-release-critical in delivery scope, but still carries an executable command.
+- `GATE-016` remains required for release evidence.
 
-- `INV-001-KANI-EXACT-SETUP`: executable setup check verifies `crates/vb_core/src/kani.rs` or `crates/vb_core/src/kani/mod.rs`; State 11 then runs `cargo kani -p vb_core --harness capability_name_grants_harness`.
-- `INV-002-KANI-CARDINALITY-SETUP`: executable setup check verifies the same upstream Kani module wiring; State 11 then runs `cargo kani -p vb_runtime --harness check_capability_grants_exact_match`.
-- `PRE-003-FUZZ-SCHEMA`: executable setup check verifies `fuzz/Cargo.toml` has bins for `capability_name_schema` and `capability_contract_schema`; State 11 then runs both `cargo fuzz run` commands.
-- `GAUNTLET-010`: remains State 11 and is blocked until State 8 Kani/fuzz setup is repaired or explicit waivers are approved by the later verifier owner.
+## Discovery Commands
 
-## Discovery Summary
+- `pwd -P`
+- `test -s ".beads/vb-qi37.6/contract.md" && test -s ".beads/vb-qi37.6/traceability-matrix.jsonl" && test -s ".beads/vb-qi37.6/delivery-scope.jsonl"`
+- `rg -n "unsafe|unwrap\(|expect\(|panic!|todo!|unimplemented!|assert!|spawn|tokio|Mutex|RwLock|Atomic|serialize|deserialize|state|transition|lease|queue|retry|cancel" <scope-paths>`
+- `rg -n "requires|ensures|proof fn|invariant|kani::|loom::|proptest!|fuzz_target|Flux|TLA|Miri|unsafe" <scope-paths>`
 
-- Scoped scan found auth/security, serialization, temporal state, queue/cancel, Kani, TLA+, and Verus triggers in the delivery-scope files.
-- Focused TLA+ and Verus artifacts exist in the isolated checkout.
-- Initial JSONL validation found 24 traceability rows, 24 contract obligation rows, 24 planned rows, no duplicate primary IDs, and no `PASS` statuses.
+Blocked discovery commands: none.
 
-## Expected Reviewer Outcome
+## Review Question
 
-- Approve if the 24-row planned ledger is valid, traceable, and future-evidence-only.
-- Reject if any ID is missing/duplicated, any row claims `PASS`, any TLA+/Verus row lacks executable command metadata, or Kani/fuzz setup is routed back to State 5 instead of State 8/11.
+Approve if every row in `proof-obligations.planned.jsonl` is traceable, executable or explicitly optional, and no row claims proof results before State 5/6 execution.

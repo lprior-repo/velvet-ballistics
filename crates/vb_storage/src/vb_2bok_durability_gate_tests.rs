@@ -129,8 +129,8 @@ mod durability_gate_tests {
             .map_err(|e| format!("submit_artifact(journaled) failed: {e}"))?;
 
         assert_eq!(
-            result.verification.gate_count, 2,
-            "Journaled must pass exactly 2 gates (structure + checksum)"
+            result.verification.gate_count, 15,
+            "Journaled must pass exactly 15 gates (structure + checksum + 13 others)"
         );
         assert!(
             !result.verification.durable,
@@ -141,7 +141,7 @@ mod durability_gate_tests {
 
     /// TEST: submit_artifact Strict policy enforces gates plus SyncAll
     ///
-    /// Contract §2.1 Postcondition (Strict): gate_count=2, durable=true.
+    /// Contract §2.1 Postcondition (Strict): gate_count=15, durable=true.
     #[test]
     fn submit_artifact_strict_enforces_gates_plus_syncall() -> Result<(), String> {
         let (_temp, journal) = temp_journal().map_err(|e| format!("journal open: {e}"))?;
@@ -151,8 +151,8 @@ mod durability_gate_tests {
             .map_err(|e| format!("submit_artifact(strict) failed: {e}"))?;
 
         assert_eq!(
-            result.verification.gate_count, 2,
-            "Strict must pass exactly 2 gates"
+            result.verification.gate_count, 15,
+            "Strict must pass exactly 15 gates"
         );
         assert!(
             result.verification.durable,
@@ -421,15 +421,15 @@ mod durability_gate_tests {
             .map_err(|e| format!("submit failed: {e}"))?;
 
         assert_eq!(
-            result.verification.gate_count, 2,
-            "Journaled policy must have gate_count == 2"
+            result.verification.gate_count, 15,
+            "Journaled policy must have gate_count == 15"
         );
         Ok(())
     }
 
-    /// TEST: gate_count two for Strict
+    /// TEST: gate_count fifteen for Strict
     ///
-    /// Contract §3.2: Strict → gate_count = 2.
+    /// Contract §3.2: Strict → gate_count = 15.
     #[test]
     fn gate_count_two_for_strict() -> Result<(), String> {
         let (_temp, journal) = temp_journal().map_err(|e| format!("journal open: {e}"))?;
@@ -439,8 +439,8 @@ mod durability_gate_tests {
             .map_err(|e| format!("submit failed: {e}"))?;
 
         assert_eq!(
-            result.verification.gate_count, 2,
-            "Strict policy must have gate_count == 2"
+            result.verification.gate_count, 15,
+            "Strict policy must have gate_count == 15"
         );
         Ok(())
     }
@@ -1413,7 +1413,7 @@ mod durability_gate_tests {
         let result = submit_artifact(&journal, &workflow, RuntimePolicy::Journaled)
             .map_err(|e| format!("submit failed: {e}"))?;
 
-        assert_eq!(result.verification.gate_count, 2, "gate_count must be 2");
+        assert_eq!(result.verification.gate_count, 15, "gate_count must be 15");
         assert!(!result.verification.durable, "durable must be false");
 
         Ok(())
@@ -1428,7 +1428,7 @@ mod durability_gate_tests {
         let result = submit_artifact(&journal, &workflow, RuntimePolicy::Strict)
             .map_err(|e| format!("submit failed: {e}"))?;
 
-        assert_eq!(result.verification.gate_count, 2, "gate_count must be 2");
+        assert_eq!(result.verification.gate_count, 15, "gate_count must be 15");
         assert!(result.verification.durable, "durable must be true");
 
         Ok(())

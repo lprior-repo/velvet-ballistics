@@ -2,51 +2,38 @@
 
 STATUS: APPROVED
 
-## Startup Skill Citations
-
-- `/home/lewis/.claude/skills/contract-verification-reviewer/SKILL.md` lines 21-32 require independent review, valid JSONL, TLA+/Verus-first coverage, executable obligation schema, and rejection of non-executable/vague obligations.
-- `/home/lewis/.agents/skills/contract-verification-reviewer/SKILL.md` lines 21-32 contain the same rules and win on conflict; lines 127-152 require every `proof-obligations.jsonl` row to include executable fields, `status=planned`, and TLA metadata.
+## Skill Instructions Cited
+- Read `/home/lewis/.claude/skills/contract-verification-reviewer/SKILL.md` lines 16-32 and 35-50: requires JSONL validation, mandatory TLA+/Verus-first coverage, executable obligations, no hallucinated evidence, and real `test -s`/`jq` gates.
+- Read `/home/lewis/.agents/skills/contract-verification-reviewer/SKILL.md` lines 16-32 and 35-50: same content; per startup rule this copy wins on conflict. No conflict found.
 
 ## Files Reviewed
-
 - `.beads/vb-qi37.6/contract.md`
 - `.beads/vb-qi37.6/tla-spec.md`
 - `.beads/vb-qi37.6/lean-contract.md`
 - `.beads/vb-qi37.6/verification-layers.md`
 - `.beads/vb-qi37.6/proof-obligations.jsonl`
-- `.beads/vb-qi37.6/proof-obligations.planned.jsonl`
 - `.beads/vb-qi37.6/traceability-matrix.jsonl`
+- `.beads/vb-qi37.6/proof-obligations.planned.jsonl`
+- `.beads/vb-qi37.6/proof-writer-report.md`
+- `.beads/vb-qi37.6/proof-evidence.md`
+- `.beads/vb-qi37.6/proof-review.md`
 
 ## Command Evidence
-
-- `test -s ... && jq -c . ... && cmp -s .beads/vb-qi37.6/proof-obligations.jsonl .beads/vb-qi37.6/proof-obligations.planned.jsonl` in `/home/lewis/src/vb-qi37-6` -> exit 0; required artifacts exist, JSONL parses, and primary/planned ledgers are byte-identical.
-- `jq -s 'length' ...` -> primary rows `24`, planned rows `24`, trace rows `24`.
-- `jq -s 'map(select(.status != "planned")) | length' ...` -> `0`; no canonical row is in a result state.
-- `jq -s 'map(tostring) | map(select(contains("BLOCKED_SETUP"))) | length' ...` -> `0`; no `BLOCKED_SETUP` placeholder remains in primary/planned obligations.
-- `jq -s 'map(select((has("layer") and has("checker")) | not)) | length' proof-obligations.jsonl` -> `0`; every proof row has `layer` and `checker`.
-- `jq -s 'map(select(.layer=="tla-plus" and ((has("tla_module") and has("model") and has("config") and has("variables") and has("actions") and has("invariants") and has("temporal_properties") and has("fairness") and has("state_constraints") and has("refinement")) | not))) | length' proof-obligations.jsonl` -> `0`; every TLA+ row has required metadata.
-- Python trace/routing validation -> `missing_trace_proof_refs=0`, `kani_fuzz_setup_routed=True`; Kani/fuzz rows route State 8 setup checks to State 11 execution commands.
+- `test -s .beads/vb-qi37.6/contract.md && test -s .beads/vb-qi37.6/tla-spec.md && test -s .beads/vb-qi37.6/lean-contract.md && test -s .beads/vb-qi37.6/verification-layers.md && test -s .beads/vb-qi37.6/proof-obligations.jsonl && test -s .beads/vb-qi37.6/traceability-matrix.jsonl && jq -c . .beads/vb-qi37.6/proof-obligations.jsonl >/dev/null && jq -c . .beads/vb-qi37.6/traceability-matrix.jsonl >/dev/null && jq -c . .beads/vb-qi37.6/proof-obligations.planned.jsonl >/dev/null` -> exit 0; required artifacts are non-empty and JSONL parses.
+- Required-field/status/TLA-metadata/blocked-command/optionalized-high-risk `jq -s -e` checks over `proof-obligations.jsonl` -> exit 0; schema fields present, all statuses `planned`, TLA+ metadata present, no `BLOCKED` placeholder command remains, and no high/proof/critical/release obligation is optionalized without waiver.
+- Clause trace check -> `22` contract clauses found, `16` obligations, `22` trace rows; every clause is present in traceability, with proof-obligation coverage via direct or traced obligation IDs.
 
 ## Findings
-
-- None blocking. Primary ledger mirror repair is complete.
+- None blocking for contract/proof-obligation adequacy.
+- Note: `proof-review.md` remains `STATUS: REJECTED` for execution/evidence failures in Kani, fuzz, INTEG-011, INTEG-012, and `moon ci`. Those are proof-execution/implementation/formal-verifier blockers, not contract-shape defects after the State 3-5 repairs.
 
 ## Coverage Decision
-
-- Contract clauses traced: YES, all `PRE-001..006`, `POST-001..009`, `INV-001..008`, plus `release-gate` have traceability rows.
-- Primary/planned expected 24 IDs: YES; primary and planned obligation ledgers are byte-identical with 24 rows.
-- No result rows: YES, all primary/planned/traceability statuses are `planned`; uppercase `PASS` appears only in negative guard text, not as a status/evidence claim.
-- `layer` / `checker` present: YES for all primary and planned obligation rows.
-- TLA+ metadata/commands: YES for all `tla-plus` rows.
-- Kani/fuzz setup owner_state 8 and execution State 11 explicit: YES; setup commands are executable checks and `after_setup_commands` provide the State 11 execution routes.
-- Verus scope valid: YES for the listed Verus rows.
-- Lean/Aeneas/Hax scope valid: YES; Lean is waived in favor of Verus-owned pure Rust-local proof obligations.
-- Waivers valid: YES; no blocking waiver defect found.
-
-## Owner / Rerun
-
-- None. Approved for downstream proof/test planning and State 8/State 11 routed execution.
-
-## Artifact Written
-
-- `/home/lewis/src/vb-qi37-6/.beads/vb-qi37.6/contract-verification-review.md`
+- Contract clauses traced: YES; traceability matrix contains PRE-001..PRE-007, POST-001..POST-008, and INV-001..INV-007.
+- TLA+-owned clauses covered: YES; lifecycle/state-over-time clauses are assigned to `CapabilityLifecycle.tla` with configs, variables, actions, invariants, fairness/deadlock stance, constraints, refinement, and TLC commands.
+- Verus-owned clauses covered: YES; exact matching, cardinality, schema abstraction, and certificate preservation have Verus targets, spec/proof functions, trusted boundaries, exclusions, commands, and expected evidence.
+- Theorem-owned clauses covered: YES; Lean is explicitly waived to Verus with owner, reason, expiry trigger, and compensating evidence.
+- Proof obligations traced: YES; repaired `INTEG-011`..`INTEG-014` now have exact executable commands and expected evidence instead of placeholders.
+- TLA+ scope valid: YES for safety-only admission/dispatch lifecycle; liveness waiver is scoped and compensating evidence is named.
+- Verus scope valid: YES for Rust-local pure/core kernels; runtime/storage/UI shells are excluded and assigned realization evidence.
+- Lean/Aeneas/Hax scope valid: YES; no invalid theorem claims over runtime shells.
+- Waivers valid: YES for Lean/liveness and optional non-release UI evidence.

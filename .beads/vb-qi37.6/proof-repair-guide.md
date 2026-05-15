@@ -1,29 +1,29 @@
-# vb-qi37.6 Proof Repair Guide
+# vb-qi37.6 Proof Repair Guide — FINAL ATTEMPT (7-of-7)
 
-STATUS: NO_STATE_5_REPAIR_REQUIRED
+## Exact Nearest Route
 
-## State 5 Proof Artifacts
+State 6 retry 7 (final) confirms the same 3 blockers as all prior retries. No new repair evidence was produced by State 5 after retry 4. No State 10/11 repair artifacts exist. The repair route is unchanged but this is the final attempt — per retry_policy_7, attempt 7 failure blocks landing:
 
-- No repair is required for the State 5 TLA+/Verus proof artifacts reviewed here.
-- `verification/tla/CapabilityLifecycle.tla` plus all six `CapabilityLifecycle*.cfg` review configs passed TLC under repo-local `.tmp/state6-proof-review-rerun/tlc-*` metadirs.
-- `verification/verus/capability_artifact_model.rs` passed Verus with `8 verified, 0 errors`.
-- The repaired ledgers are byte-identical primary/planned files with 24 rows, zero `PASS` statuses, and zero `BLOCKED_SETUP` placeholders.
+1. Route `INTEG-011` to **State 10 implementation**: repair the storage/artifact validation path so `cargo test -p vb_storage submit_artifact_persists_non_empty_required_capabilities_when_contract_requires_capability --lib` passes. The failure is `journal open failed: artifact structure validation failed` — this is a production storage behavior defect, not a proof-writer issue.
+2. Route `INTEG-012` to **State 10 implementation**: align storage `ADMISSION_GATE_COUNT` to canonical `15` (runtime is canonical `15`, storage currently emits `2`). After State 10 repair, rerun the exact planned runtime/storage command and capture output proving storage emits `15`.
+3. Route `GATE-016` to **State 11 formal-verifier** after State 10 repairs: run `moon ci` successfully from a Git-aware, quota-sufficient isolated workspace, OR produce raw-log-backed classification that every remaining failure is `DEFERRED_GLOBAL` with no bead-local proof/lint/unsafe/panic/unwrap/index/arithmetic regression.
 
-## Required Later Repairs
+## Do Not Route Back to State 5
 
-- Kani setup remains required before release-level proof closure. State 8 must fix or correctly gate `crates/vb_core/src/lib.rs:41` so `pub mod kani;` resolves, or otherwise route the intended harnesses through valid module paths.
-- After Kani setup repair, State 11 must rerun at least `TMPDIR=/home/lewis/src/vb-qi37-6/.tmp RUSTC_WRAPPER= cargo kani -p vb_core --harness capability_name_grants_harness` and the planned runtime capability harness, then record raw output, unwind/bound details, and PASS/FAIL status.
-- Fuzz setup remains required before release-level proof closure. State 8 must register `capability_name_schema` and `capability_contract_schema` in `fuzz/Cargo.toml`, or provide equivalent owning fuzz invocations.
-- After fuzz setup repair, State 11 must rerun the planned capability schema fuzz budgets and record raw output with run counts, target names, corpus/seed notes where applicable, and PASS/FAIL status.
+State 5 may only refresh proof evidence if verifier/proof artifacts change or if State 10/11 produce new raw evidence consumed by State 6. No such new evidence exists at this time.
 
-## Do Not Launder
+## Already Acceptable For Next Retry (No Change Needed)
 
-- Do not mark Kani as PASS until the harnesses compile and execute successfully.
-- Do not mark fuzz as PASS until the target bins are registered or equivalent targets execute successfully.
-- Do not reuse the current TLA result as deadlock, liveness, fairness, parser, storage, public API, postcard, Fjall, filesystem, or UI parity proof.
-- Do not convert later implementation/integration obligations into State 5 proof PASS rows.
+- Verus/TLC evidence: `VERUS-CAP-001`, `VERUS-CARD-003`, `VERUS-CERT-007`, `TLA-LIFE-004`, `TLA-DENY-005`, `TLA-DRIVE-006` are proven and stable.
+- Kani split harnesses: `KANI-CAP-002` and `RUNTIME-KANI-010` split harness mapping was accepted in retry 4.
+- Fuzz: `SCHEMA-FUZZ-008` and `SCHEMA-FUZZ-009` passed 1000-run GNU target execution.
+- `INTEG-013`, `INTEG-014`: exact command pass.
+- `contract-verification-review.md`: APPROVED.
 
-## Optional Strengthening
+## Rerun Requirements
 
-- If later states need progress claims, add explicit non-vacuous TLA liveness/fairness properties or executable integration tests that prove progress. The current State 5 TLA approval is safety-only.
-- If later states need production-level capability schema proof, connect the Verus model to executable validators or rely on repaired fuzz/unit/integration evidence with strong oracles.
+After State 10 and State 11 repairs complete:
+1. Validate all JSONL files: `jq -c . .beads/vb-qi37.6/proof-obligations.jsonl >/dev/null && jq -c . .beads/vb-qi37.6/proof-obligations.planned.jsonl >/dev/null && jq -c . .beads/vb-qi37.6/traceability-matrix.jsonl >/dev/null`.
+2. Capture raw command evidence for `INTEG-011`, `INTEG-012`, and `GATE-016`.
+3. Update `proof-writer-report.md` and `proof-evidence.md` with new raw evidence.
+4. Retry State 6 only after fresh evidence is on disk.

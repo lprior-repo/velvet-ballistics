@@ -1,29 +1,20 @@
 # Theorem Kernel Projection
 
 ## Boundary
+- TLA+-owned temporal model: Strict/Journaled admission and Do dispatch lifecycle in `verification/tla/CapabilityLifecycle.tla`.
+- Verus-owned Rust core: exact capability match, profile cardinality, schema-valid abstractions, and accepted-certificate preservation in `verification/verus/capability_artifact_model.rs`.
+- Theorem-owned kernel: none for State 3.
+- Rust/runtime shell: Fjall, postcard, shard scheduling, public runtime APIs, external action dispatch, and UI projection.
+- External systems excluded from theorem proof: filesystem/storage, wall-clock time, Makepad/UI, generated Rust, codegen, CLI shell.
 
-- TLA+-owned: submit/admission/drive temporal behavior and fail-closed sequencing.
-- Verus-owned: exact capability matching, cardinality exactness, validated extraction of required capabilities, and no-prefix grant lattice.
-- Theorem-owned kernel: none currently required.
-- Rust/runtime shell: storage I/O, postcard decode, Fjall persistence, shard queueing, journal append, and UI serialization.
-- External systems excluded: filesystem, Fjall compaction, wall-clock time, async scheduling.
+## Theorem-Owned Clauses
+- None. The algebraic kernel is small enough for Verus and does not require Lean/Aeneas/Hax.
 
-## Theorem-owned clauses
-
-- None for State 3. Verus is the correct first proof surface for the pure Rust-local model.
-
-## Conditional Lean obligation
-
-If Verus cannot express the no-prefix exact-grant lattice with cardinality exactness, introduce only this tiny theorem kernel:
-
-- Contract clauses: INV-001, INV-002.
-- Planned module: `verification/lean/CapabilityGrant.lean`.
-- Theorem shape: `exact_pair_authorizes_iff_name_and_action_equal` and `cardinality_exact_rejects_extra_or_missing`.
-- Model: finite sets/lists of `(CapabilityName, ActionId)` pairs.
-- Refinement: Rust `Capability` validates into the abstract pair model; `CapabilitySet::grants` refines pair membership under exact equality.
-- Shell exclusions: storage, runtime admission I/O, shard drive, UI, and journal effects.
-- Evidence command after proof-writing discovery: `lake build` if a Lean project exists, otherwise the proof planner must record a blocker instead of inventing a command.
+## Verus Projection Instead Of Lean
+- INV-001: exact name/action matching -> `proof_exact_match_requires_name_and_action`, `proof_prefix_or_action_mismatch_denies`.
+- INV-004: cardinality-exact profile -> `proof_exact_profile_requires_cardinality`, `proof_missing_or_excess_grants_deny`.
+- POST-002: certificate preservation -> `proof_certificate_preserves_required_capabilities`, `proof_non_empty_contract_not_erased`.
+- PRE-002/PRE-003: schema abstraction -> `proof_gate12_rejects_invalid_schema`.
 
 ## Waivers
-
-- Lean waived for State 3 because no beyond-Verus theorem kernel is presently necessary.
+- Lean waiver: owner `vb-qi37.6`, reason `no theorem beyond Verus-owned equality/cardinality/schema abstractions is needed`, expiry `if capability semantics change to hierarchy, wildcard, lattice, or non-trivial algebra`, compensating evidence `Verus + Kani + TLA + fuzz/proptest obligations`.
