@@ -14,12 +14,12 @@ vb_core = { path = "../vb_core" }
 vb_storage = { path = "../vb_storage" }
 postcard.workspace = true
 serde.workspace = true
+loom = "0.7"
 
 [dev-dependencies]
 proptest = { workspace = true }
 tempfile.workspace = true
 vb_core = { path = "../vb_core", features = ["test-util"] }
-loom = "0.7"
 
 [lints]
 workspace = true

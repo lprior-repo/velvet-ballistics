@@ -16,6 +16,9 @@ pub mod client;
 pub mod frame;
 pub mod server;
 
+#[cfg(loom)]
+pub mod models;
+
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use bytes::Bytes;
 use crossbeam_channel::{Receiver, Sender, TryRecvError, TrySendError, bounded};

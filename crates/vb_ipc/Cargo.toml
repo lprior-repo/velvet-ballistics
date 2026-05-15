@@ -18,6 +18,7 @@ vb_runtime = { path = "../vb_runtime" }
 vb_validate = { path = "../vb_validate" }
 
 [dev-dependencies]
+loom = "0.7"
 proptest = { workspace = true }
 
 [lints]

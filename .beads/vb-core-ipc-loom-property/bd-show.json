@@ -1,0 +1,79 @@
+[
+  {
+    "id": "vb-core-ipc-loom-property",
+    "title": "ipc/orchestrator: Add production Loom property evidence",
+    "description": "Planner session core-engine-p0-audit PASS 97/100. Add production-connected Loom/property tests for cancel versus completion, shutdown drain reports, timer ordering, bounded queue backpressure, and slow-client IPC behavior.",
+    "acceptance_criteria": "Tests exercise production queue/orchestrator paths or faithful adapters; cancel/completion, shutdown drain, timer ordering, queue backpressure, and slow-client behavior are deterministic and fail with typed errors rather than unbounded buffering.",
+    "status": "in_progress",
+    "priority": 0,
+    "issue_type": "task",
+    "assignee": "Lewis",
+    "owner": "priorlewis43@gmail.com",
+    "created_at": "2026-05-15T04:26:37Z",
+    "created_by": "Lewis",
+    "updated_at": "2026-05-15T05:00:10Z",
+    "labels": [
+      "backpressure",
+      "core-priority",
+      "engine",
+      "ipc",
+      "loom",
+      "orchestrator",
+      "sync"
+    ],
+    "dependents": [
+      {
+        "id": "vb-core-ipc-sync-evidence",
+        "title": "ipc/orchestrator: Prove local binary ingress synchronization",
+        "description": "Prove local binary IPC ingress and runtime orchestration semantics for core engine use: compiled/artifact digest submit, bounded ingress, cancellation versus completion, timer ordering, shutdown drain, and slow-client/backpressure behavior.",
+        "acceptance_criteria": "IPC SubmitRun or equivalent artifact-digest path reaches strict runtime admission; bounded queues reject with typed backpressure; cancel/completion/timer/shutdown races are deterministic and tested; no task-per-step or unbounded buffer behavior appears.",
+        "status": "open",
+        "priority": 0,
+        "issue_type": "task",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-05-15T04:01:13Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-05-15T04:01:13Z",
+        "labels": [
+          "backpressure",
+          "core-priority",
+          "engine",
+          "ipc",
+          "orchestrator",
+          "runtime",
+          "sync"
+        ],
+        "dependency_type": "blocks"
+      },
+      {
+        "id": "vb-engine-yaml",
+        "title": "engine: Durable YAML runtime acceptance without UI or generated Rust",
+        "description": "Scope bead for the user-requested finish line: fully working durable workflow engine from strict YAML authoring through compiled numeric IR, accepted artifact admission, bounded runtime, Fjall/Postcard durability, replay/recovery, direct API and CLI operator evidence, excluding UI and generated Rust/codegen/maxperf. This bead is the engine-only acceptance root; it does not replace full master release beads that still include generated Rust/UI.",
+        "acceptance_criteria": "Close only when all dependency beads are closed and direct evidence proves: strict YAML compile/validate/lowering, no runtime YAML/JSON/HTTP, accepted artifacts with idempotency/capability evidence, bounded deterministic runtime, typed durable recovery/fail-closed replay, CLI diagnostics/emits for operator workflow, IPC/direct API where already scoped, and engine-scoped CI/fuzz/Miri/coverage/mutation/supply/perf evidence. Do not require UI or generated Rust/codegen parity.",
+        "notes": "Planner dependency correction 2026-05-13: converted to epic because it is an acceptance root/milestone, not an implementation feature. bd only permits epics to block epics, and this root must block vb-qi37 so bd ready does not expose the master epic as implementable work.",
+        "status": "open",
+        "priority": 0,
+        "issue_type": "feature",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-05-13T16:38:05Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-05-13T17:04:04Z",
+        "labels": [
+          "admission",
+          "boundedness",
+          "cli",
+          "durability",
+          "engine",
+          "no-codegen",
+          "no-ui",
+          "quality",
+          "recovery",
+          "release-plan",
+          "runtime",
+          "yaml"
+        ],
+        "dependency_type": "blocks"
+      }
+    ]
+  }
+]

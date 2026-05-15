@@ -2744,6 +2744,7 @@ dependencies = [
  "byteorder",
  "bytes",
  "crossbeam-channel",
+ "loom",
  "mio",
  "postcard",
  "proptest",
