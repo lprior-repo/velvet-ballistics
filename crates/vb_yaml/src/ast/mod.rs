@@ -10,13 +10,13 @@
 //! - [`types`] - All AST type definitions
 //! - `parse` - Parsing entry points and helpers
 //! - `parse_steps` - Step parsing logic
-//! - `tests` - Comprehensive test suite
+//!
+//! Active parser tests live in the crate-level test module.
 
 pub(crate) mod parse;
 pub(crate) mod parse_fields;
 pub(crate) mod parse_steps;
 pub(crate) mod parse_trigger;
-// Legacy parser tests targeted the removed pre-canonical AST shape.
 pub mod types;
 
 // Re-export all types from the types submodule

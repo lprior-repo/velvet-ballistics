@@ -494,7 +494,7 @@ fn validate_ids_accepts_valid_step_ids() {
         ("name", FieldValue::String("my_workflow".to_owned())),
         (
             "when",
-            FieldValue::Mapping(vec![("ipc".to_owned(), FieldValue::Empty)]),
+            FieldValue::Mapping(vec![("manual".to_owned(), FieldValue::Empty)]),
         ),
         (
             "steps",
@@ -598,12 +598,70 @@ fn validate_ids_rejects_step_id_with_special_chars() {
 }
 
 #[test]
-fn validate_trigger_accepts_ipc_trigger() {
+fn validate_trigger_rejects_ipc_trigger() {
     let doc = make_workflow(vec![(
         "when",
         FieldValue::Mapping(vec![("ipc".to_owned(), FieldValue::Empty)]),
     )]);
+    assert_eq!(
+        validate_trigger(&doc),
+        Err(ValidationError::UnsupportedTrigger {
+            trigger: "ipc".to_owned(),
+        })
+    );
+}
+
+#[test]
+fn validate_trigger_accepts_schedule_trigger() {
+    let doc = make_workflow(vec![(
+        "when",
+        FieldValue::Mapping(vec![(
+            "schedule".to_owned(),
+            FieldValue::Mapping(vec![(
+                "cron".to_owned(),
+                FieldValue::String("0 0 * * *".to_owned()),
+            )]),
+        )]),
+    )]);
     assert_eq!(validate_trigger(&doc), Ok(()));
+}
+
+#[test]
+fn validate_trigger_accepts_event_trigger() {
+    let doc = make_workflow(vec![(
+        "when",
+        FieldValue::Mapping(vec![(
+            "event".to_owned(),
+            FieldValue::Mapping(vec![(
+                "type".to_owned(),
+                FieldValue::String("job.created".to_owned()),
+            )]),
+        )]),
+    )]);
+    assert_eq!(validate_trigger(&doc), Ok(()));
+}
+
+#[test]
+fn validate_trigger_accepts_webhook_trigger() {
+    let doc = make_workflow(vec![(
+        "when",
+        FieldValue::Mapping(vec![("webhook".to_owned(), FieldValue::Empty)]),
+    )]);
+    assert_eq!(validate_trigger(&doc), Ok(()));
+}
+
+#[test]
+fn validate_trigger_rejects_schedule_without_cron() {
+    let doc = make_workflow(vec![(
+        "when",
+        FieldValue::Mapping(vec![("schedule".to_owned(), FieldValue::Mapping(vec![]))]),
+    )]);
+    assert_eq!(
+        validate_trigger(&doc),
+        Err(ValidationError::UnsupportedTrigger {
+            trigger: "schedule".to_owned(),
+        })
+    );
 }
 
 #[test]
@@ -1286,7 +1344,7 @@ fn adversarial_multiple_triggers_are_rejected() {
         "when",
         FieldValue::Mapping(vec![
             ("manual".to_owned(), FieldValue::Empty),
-            ("ipc".to_owned(), FieldValue::Empty),
+            ("schedule".to_owned(), FieldValue::Mapping(vec![])),
         ]),
     )]);
     assert_eq!(
@@ -1301,12 +1359,12 @@ fn adversarial_multiple_triggers_are_rejected() {
 fn adversarial_unknown_trigger_kind_is_rejected() {
     let doc = make_workflow(vec![(
         "when",
-        FieldValue::Mapping(vec![("webhook".to_owned(), FieldValue::Empty)]),
+        FieldValue::Mapping(vec![("timer".to_owned(), FieldValue::Empty)]),
     )]);
     assert_eq!(
         validate_trigger(&doc),
         Err(ValidationError::UnsupportedTrigger {
-            trigger: "webhook".to_owned(),
+            trigger: "timer".to_owned(),
         })
     );
 }

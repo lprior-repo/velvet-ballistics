@@ -96,17 +96,52 @@ pub fn validate_trigger(doc: &WorkflowDoc) -> ValidationResult<()> {
             trigger: "multiple triggers".to_owned(),
         });
     }
-    let (kind, _body) = trigger
+    let (kind, body) = trigger
         .first()
         .ok_or_else(|| ValidationError::MissingRequiredField {
             field: "when".to_owned(),
         })?;
     match kind.as_str() {
-        "manual" | "ipc" => Ok(()),
+        "manual" | "webhook" => validate_empty_trigger(kind, body),
+        "schedule" => validate_named_string_trigger(kind, body, "cron"),
+        "event" => validate_named_string_trigger(kind, body, "type"),
         "http" => Err(ValidationError::HttpTriggerOutOfCore),
         other => Err(ValidationError::UnsupportedTrigger {
             trigger: other.to_owned(),
         }),
+    }
+}
+
+fn validate_empty_trigger(kind: &str, body: &FieldValue) -> ValidationResult<()> {
+    match body {
+        FieldValue::Empty => Ok(()),
+        FieldValue::Mapping(entries) if entries.is_empty() => Ok(()),
+        _ => Err(ValidationError::UnsupportedTrigger {
+            trigger: kind.to_owned(),
+        }),
+    }
+}
+
+fn validate_named_string_trigger(
+    kind: &str,
+    body: &FieldValue,
+    required_field: &str,
+) -> ValidationResult<()> {
+    let FieldValue::Mapping(entries) = body else {
+        return Err(ValidationError::UnsupportedTrigger {
+            trigger: kind.to_owned(),
+        });
+    };
+    let valid = entries.iter().any(|(field, value)| match value {
+        FieldValue::String(text) => field == required_field && !text.is_empty(),
+        _ => false,
+    });
+    if valid {
+        Ok(())
+    } else {
+        Err(ValidationError::UnsupportedTrigger {
+            trigger: kind.to_owned(),
+        })
     }
 }
 
@@ -363,12 +398,73 @@ mod fields_tests {
     }
 
     #[test]
-    fn validate_trigger_accepts_ipc() {
+    fn validate_trigger_rejects_ipc() {
         let doc = make_workflow(vec![(
             "when",
             FieldValue::Mapping(vec![("ipc".to_owned(), FieldValue::Empty)]),
         )]);
+        assert_eq!(
+            validate_trigger(&doc),
+            Err(ValidationError::UnsupportedTrigger {
+                trigger: "ipc".to_owned()
+            })
+        );
+    }
+
+    #[test]
+    fn validate_trigger_accepts_schedule() {
+        let doc = make_workflow(vec![(
+            "when",
+            FieldValue::Mapping(vec![(
+                "schedule".to_owned(),
+                FieldValue::Mapping(vec![(
+                    "cron".to_owned(),
+                    FieldValue::String("0 0 * * *".to_owned()),
+                )]),
+            )]),
+        )]);
         assert_eq!(validate_trigger(&doc), Ok(()));
+    }
+
+    #[test]
+    fn validate_trigger_accepts_event() {
+        let doc = make_workflow(vec![(
+            "when",
+            FieldValue::Mapping(vec![(
+                "event".to_owned(),
+                FieldValue::Mapping(vec![(
+                    "type".to_owned(),
+                    FieldValue::String("job.created".to_owned()),
+                )]),
+            )]),
+        )]);
+        assert_eq!(validate_trigger(&doc), Ok(()));
+    }
+
+    #[test]
+    fn validate_trigger_accepts_webhook() {
+        let doc = make_workflow(vec![(
+            "when",
+            FieldValue::Mapping(vec![("webhook".to_owned(), FieldValue::Mapping(vec![]))]),
+        )]);
+        assert_eq!(validate_trigger(&doc), Ok(()));
+    }
+
+    #[test]
+    fn validate_trigger_rejects_empty_schedule_cron() {
+        let doc = make_workflow(vec![(
+            "when",
+            FieldValue::Mapping(vec![(
+                "schedule".to_owned(),
+                FieldValue::Mapping(vec![("cron".to_owned(), FieldValue::String(String::new()))]),
+            )]),
+        )]);
+        assert_eq!(
+            validate_trigger(&doc),
+            Err(ValidationError::UnsupportedTrigger {
+                trigger: "schedule".to_owned()
+            })
+        );
     }
 
     #[test]
@@ -425,7 +521,7 @@ mod fields_tests {
             "when",
             FieldValue::Mapping(vec![
                 ("manual".to_owned(), FieldValue::Empty),
-                ("ipc".to_owned(), FieldValue::Empty),
+                ("schedule".to_owned(), FieldValue::Mapping(vec![])),
             ]),
         )]);
         assert_eq!(
