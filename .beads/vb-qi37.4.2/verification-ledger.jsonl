@@ -1,0 +1,11 @@
+{"id":"COMPILE-001","result":"PASS","evidence":"cargo build -p vb_runtime exit 0","obligation":"COMPILE-001","mode":"verify-standard"}
+{"id":"LINT-001","result":"PASS","evidence":"cargo clippy -p vb_runtime --lib --bins -- -D warnings exit 0","obligation":"LINT-001","mode":"verify-standard"}
+{"id":"INT-INV-001","result":"PASS","evidence":"cargo test -p vb_runtime admission_strict_policy_rejects_missing_artifact_run_not_inserted passed","obligation":"INT-INV-001","mode":"verify-standard"}
+{"id":"INT-INV-002","result":"PASS","evidence":"cargo test -p vb_runtime admission_journaled_policy_rejects_missing_artifact_run_not_inserted passed","obligation":"INT-INV-002","mode":"verify-standard"}
+{"id":"INT-ERR-001","result":"PASS","evidence":"cargo test -p vb_runtime admission_capability_mismatch_error_exists passed","obligation":"INT-ERR-001","mode":"verify-standard"}
+{"id":"INT-POST-001","result":"PASS","evidence":"cargo test -p vb_runtime admission_rejection_no_counter_increment_strict passed","obligation":"INT-POST-001","mode":"verify-standard"}
+{"id":"UNIT-ADMIT-001","result":"WAIVED","evidence":"Integration tests (INT-INV-001) provide equivalent coverage at shard level","obligation":"UNIT-ADMIT-001","mode":"verify-standard"}
+{"id":"UNIT-ADMIT-002","result":"WAIVED","evidence":"Integration tests (INT-INV-002) provide equivalent coverage at shard level","obligation":"UNIT-ADMIT-002","mode":"verify-standard"}
+{"id":"WAIVER-TLA-001","result":"WAIVED","evidence":"INV-002 is single atomic step function; no temporal behavior","obligation":"WAIVER-TLA-001","mode":"verify-standard"}
+{"id":"WAIVER-VERUS-001","result":"WAIVED","evidence":"INV-001 is deterministic Rust ? propagation; verified by integration test","obligation":"WAIVER-VERUS-001","mode":"verify-standard"}
+{"id":"MRI-001","result":"DEFERRED_GLOBAL","evidence":"Miri tooling not available in workspace environment","obligation":"MRI-001","mode":"verify-deep"}
