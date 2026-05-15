@@ -1,17 +1,17 @@
 #!/bin/bash
 # Rust verification gauntlet for vb_compile proof obligations.
-//!
-//! Bead: vb-core-lower-values-actions-refs
-//! Workspace: /tmp/vb-ws/vb-core-lower-values-actions-refs
-//!
-//! Usage: scripts/rust-verification-gauntlet.sh <mode>
-//!
-//! Modes:
-//!   fast     — clippy + unit tests (expression_bytecode, slot_compiler, lower)
-//!   standard — fast + Kani expression/slot/constant/accessor harnesses
-//!   deep     — standard + node dedup harness
-//!   proof    — deep + all verification lanes
-//!   all      — proof (currently same as proof)
+#
+# Bead: vb-core-lower-values-actions-refs
+# Workspace: /tmp/vb-ws/vb-core-lower-values-actions-refs
+#
+# Usage: scripts/rust-verification-gauntlet.sh <mode>
+#
+# Modes:
+#   fast     — clippy + unit tests (expression_bytecode, slot_compiler, lower)
+#   standard — fast + Kani expression/slot/constant/accessor harnesses
+#   deep     — standard + node dedup harness
+#   proof    — deep + all verification lanes
+#   all      — proof (currently same as proof)
 
 set -euo pipefail
 

@@ -8,6 +8,7 @@
 //! Invariant: no use-after-free, exactly one handler fires per timer.
 
 use crate::shard::timer_wheel::TimerWheel;
+use std::sync::Arc;
 use vb_core::ids::RunId;
 
 /// Verifies that timer fire and cancel operations are properly ordered.
@@ -21,7 +22,7 @@ fn timer_fired_cancel_ordering() {
 
         let deadline = std::time::Instant::now() + std::time::Duration::from_secs(0);
 
-        loom::thread::spawn(move || {
+        let fire = loom::thread::spawn(move || {
             let mut w = wheel_fire.lock().unwrap();
             w.insert(
                 RunId::new(1),
@@ -30,12 +31,15 @@ fn timer_fired_cancel_ordering() {
             );
         });
 
-        loom::thread::spawn(move || {
+        let cancel = loom::thread::spawn(move || {
             let mut w = wheel_cancel.lock().unwrap();
             w.cancel(RunId::new(1));
         });
 
-        let w = wheel.lock().unwrap();
+        fire.join().unwrap();
+        cancel.join().unwrap();
+
+        let _w = wheel.lock().unwrap();
         // Invariant: after both operations, no panic and consistent state
         // The wheel should be in either "timer inserted" or "timer cancelled" state
         assert!(true, "timer wheel invariant preserved");
