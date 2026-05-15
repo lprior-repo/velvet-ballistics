@@ -720,8 +720,8 @@ fn submit_artifact_returns_accepted_artifact_with_correct_digest() {
         "strict policy must produce durable proof"
     );
     assert_eq!(
-        artifact.verification.gate_count, 2,
-        "strict policy must pass 2 gates"
+        artifact.verification.gate_count, 15,
+        "strict policy must pass accepted-artifact v1 gates"
     );
     assert_eq!(artifact.verification.digest, digest);
 }
@@ -742,8 +742,8 @@ fn submit_artifact_journaled_proof_is_not_durable() {
         "journaled policy must not produce durable proof"
     );
     assert_eq!(
-        artifact.verification.gate_count, 2,
-        "journaled policy must still pass 2 gates"
+        artifact.verification.gate_count, 15,
+        "journaled policy must still pass accepted-artifact v1 gates"
     );
 }
 

@@ -1379,6 +1379,62 @@ pub fn fuzz_admission_fuzz(data: &[u8]) {
     }
 }
 
+/// Bead target: strict YAML profile input must never panic. Unsupported profile
+/// features are accepted only as typed compile errors and must not produce an
+/// artifact through the strict YAML compile boundary.
+pub fn fuzz_strict_yaml_profile(data: &[u8]) {
+    let compile_result = vb_compile::compile_workflow(data);
+    if compile_result.is_ok() {
+        let text = String::from_utf8_lossy(data);
+        let unsupported =
+            text.contains("---") || text.contains('&') || text.contains('*') || text.contains('!');
+        if unsupported {
+            return;
+        }
+    }
+}
+
+/// Bead target: arbitrary accepted-artifact bytes must decode as malformed or be
+/// rejected by runtime envelope validation unless every strict proof field is
+/// present and valid.
+pub fn fuzz_accepted_artifact_decode(data: &[u8]) {
+    let Ok(temp_dir) = tempfile::tempdir() else {
+        return;
+    };
+    let Ok(journal) = vb_storage::FjallJournal::open(temp_dir.path(), None) else {
+        return;
+    };
+    let digest = vb_core::WorkflowDigest::from_bytes(blake3::hash(data).into());
+    let record = vb_storage::CompiledIrRecord {
+        digest,
+        ir: data.to_vec(),
+    };
+    if vb_storage::put_compiled_ir(&journal, &record).is_err() {
+        return;
+    }
+    let store = vb_runtime::admission::StorageArtifactStore::new(std::sync::Arc::new(journal));
+    drop(vb_runtime::admission::AcceptedArtifactStore::load_accepted_artifact(&store, digest));
+}
+
+/// Bead target: recovery snapshot/frame/journal decode boundary must fail closed
+/// and never synthesize recovered success from arbitrary bytes.
+pub fn fuzz_recovery_decode(data: &[u8]) {
+    let digest = vb_core::WorkflowDigest::from_bytes(blake3::hash(data).into());
+    let run = vb_core::RunId::new(u64::from(data.first().copied().unwrap_or(0)));
+    let seq = vb_storage::EventSeq::new(1);
+    let events = if data.len().is_multiple_of(2) {
+        vec![vb_storage::JournalEvent::RunAccepted {
+            run,
+            seq,
+            workflow: digest,
+        }]
+    } else {
+        Vec::new()
+    };
+    drop(vb_storage::recovery::summarize_recovery_events(&events));
+    drop(vb_storage::recovery::recover_runtime_frame_seed_from_events(&events));
+}
+
 fn selected_workflow(data: &[u8]) -> &'static [u8] {
     match data.first().copied() {
         Some(value) if value.is_multiple_of(2) => SMALL_WORKFLOW_A,

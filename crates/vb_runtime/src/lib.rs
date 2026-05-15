@@ -67,6 +67,8 @@ pub mod runtime;
 pub mod shard;
 pub mod taint;
 pub mod trace;
+#[cfg(kani)]
+pub mod yaml_e2e_admission_matrix;
 
 pub use error::{RuntimeError, RuntimeResult};
 pub use shard::{AskAnswer, AskTicket, ResumeError, ResumeResult, ResumeStatus};

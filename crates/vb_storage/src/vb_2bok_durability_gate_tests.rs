@@ -14,7 +14,7 @@
     clippy::unwrap_used
 )]
 mod durability_gate_tests {
-    use crate::admission::{admit_compiled_artifact, submit_artifact};
+    use crate::admission::{ADMISSION_GATE_COUNT, admit_compiled_artifact, submit_artifact};
     use crate::codec::{decode_record, encode_record};
     use crate::constants::{
         CRC_OFFSET, MAGIC_BLOB, MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
@@ -117,11 +117,11 @@ mod durability_gate_tests {
         Ok(())
     }
 
-    /// TEST: submit_artifact Journaled policy enforces both gates
+    /// TEST: submit_artifact Journaled policy enforces the accepted-artifact gate set
     ///
-    /// Contract §2.1 Postcondition (Journaled): gate_count=2, durable=false.
+    /// Contract §2.1 Postcondition (Journaled): gate_count=15, durable=false.
     #[test]
-    fn submit_artifact_journaled_enforces_both_gates() -> Result<(), String> {
+    fn submit_artifact_journaled_enforces_accepted_artifact_gates() -> Result<(), String> {
         let (_temp, journal) = temp_journal().map_err(|e| format!("journal open: {e}"))?;
         let workflow = minimal_valid_workflow()?;
 
@@ -129,8 +129,8 @@ mod durability_gate_tests {
             .map_err(|e| format!("submit_artifact(journaled) failed: {e}"))?;
 
         assert_eq!(
-            result.verification.gate_count, 2,
-            "Journaled must pass exactly 2 gates (structure + checksum)"
+            result.verification.gate_count, ADMISSION_GATE_COUNT,
+            "Journaled must pass the accepted-artifact v1 gate set"
         );
         assert!(
             !result.verification.durable,
@@ -141,7 +141,7 @@ mod durability_gate_tests {
 
     /// TEST: submit_artifact Strict policy enforces gates plus SyncAll
     ///
-    /// Contract §2.1 Postcondition (Strict): gate_count=2, durable=true.
+    /// Contract §2.1 Postcondition (Strict): gate_count=15, durable=true.
     #[test]
     fn submit_artifact_strict_enforces_gates_plus_syncall() -> Result<(), String> {
         let (_temp, journal) = temp_journal().map_err(|e| format!("journal open: {e}"))?;
@@ -151,8 +151,8 @@ mod durability_gate_tests {
             .map_err(|e| format!("submit_artifact(strict) failed: {e}"))?;
 
         assert_eq!(
-            result.verification.gate_count, 2,
-            "Strict must pass exactly 2 gates"
+            result.verification.gate_count, ADMISSION_GATE_COUNT,
+            "Strict must pass the accepted-artifact v1 gate set"
         );
         assert!(
             result.verification.durable,
@@ -409,11 +409,11 @@ mod durability_gate_tests {
         Ok(())
     }
 
-    /// TEST: gate_count two for Journaled
+    /// TEST: accepted-artifact gate count for Journaled
     ///
-    /// Contract §3.2: Journaled → gate_count = 2.
+    /// Contract §3.2: Journaled → gate_count = 15.
     #[test]
-    fn gate_count_two_for_journaled() -> Result<(), String> {
+    fn gate_count_required_for_journaled() -> Result<(), String> {
         let (_temp, journal) = temp_journal().map_err(|e| format!("journal open: {e}"))?;
         let workflow = minimal_valid_workflow()?;
 
@@ -421,17 +421,17 @@ mod durability_gate_tests {
             .map_err(|e| format!("submit failed: {e}"))?;
 
         assert_eq!(
-            result.verification.gate_count, 2,
-            "Journaled policy must have gate_count == 2"
+            result.verification.gate_count, ADMISSION_GATE_COUNT,
+            "Journaled policy must have accepted-artifact v1 gate_count"
         );
         Ok(())
     }
 
-    /// TEST: gate_count two for Strict
+    /// TEST: accepted-artifact gate count for Strict
     ///
-    /// Contract §3.2: Strict → gate_count = 2.
+    /// Contract §3.2: Strict → gate_count = 15.
     #[test]
-    fn gate_count_two_for_strict() -> Result<(), String> {
+    fn gate_count_required_for_strict() -> Result<(), String> {
         let (_temp, journal) = temp_journal().map_err(|e| format!("journal open: {e}"))?;
         let workflow = minimal_valid_workflow()?;
 
@@ -439,8 +439,8 @@ mod durability_gate_tests {
             .map_err(|e| format!("submit failed: {e}"))?;
 
         assert_eq!(
-            result.verification.gate_count, 2,
-            "Strict policy must have gate_count == 2"
+            result.verification.gate_count, ADMISSION_GATE_COUNT,
+            "Strict policy must have accepted-artifact v1 gate_count"
         );
         Ok(())
     }
@@ -1404,16 +1404,19 @@ mod durability_gate_tests {
         Ok(())
     }
 
-    /// BDD Scenario: Journaled policy enforces both gates
+    /// BDD Scenario: Journaled policy enforces accepted-artifact gates
     #[test]
-    fn bdd_journaled_policy_enforces_both_gates() -> Result<(), String> {
+    fn bdd_journaled_policy_enforces_accepted_artifact_gates() -> Result<(), String> {
         let (_temp, journal) = temp_journal().map_err(|e| format!("journal open: {e}"))?;
         let workflow = minimal_valid_workflow()?;
 
         let result = submit_artifact(&journal, &workflow, RuntimePolicy::Journaled)
             .map_err(|e| format!("submit failed: {e}"))?;
 
-        assert_eq!(result.verification.gate_count, 2, "gate_count must be 2");
+        assert_eq!(
+            result.verification.gate_count, ADMISSION_GATE_COUNT,
+            "gate_count must match accepted-artifact v1 requirement"
+        );
         assert!(!result.verification.durable, "durable must be false");
 
         Ok(())
@@ -1428,7 +1431,10 @@ mod durability_gate_tests {
         let result = submit_artifact(&journal, &workflow, RuntimePolicy::Strict)
             .map_err(|e| format!("submit failed: {e}"))?;
 
-        assert_eq!(result.verification.gate_count, 2, "gate_count must be 2");
+        assert_eq!(
+            result.verification.gate_count, ADMISSION_GATE_COUNT,
+            "gate_count must match accepted-artifact v1 requirement"
+        );
         assert!(result.verification.durable, "durable must be true");
 
         Ok(())
