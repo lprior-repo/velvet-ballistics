@@ -76,22 +76,24 @@ pub fn write_error_stderr(error: &ParseError) -> io::Result<()> {
 pub fn write_stdout_line(args: std::fmt::Arguments<'_>) {
     let stdout = io::stdout();
     let mut handle = stdout.lock();
-    match handle.write_fmt(args) {
-        Ok(()) | Err(_) => {}
+    if let Err(error) = handle.write_fmt(args) {
+        eprintln!("stdout write failed: {error}");
+        return;
     }
-    match handle.write_all(b"\n") {
-        Ok(()) | Err(_) => {}
+    if let Err(error) = handle.write_all(b"\n") {
+        eprintln!("stdout newline write failed: {error}");
     }
 }
 
 pub fn write_stderr_line(args: std::fmt::Arguments<'_>) {
     let stderr = io::stderr();
     let mut handle = stderr.lock();
-    match handle.write_fmt(args) {
-        Ok(()) | Err(_) => {}
+    if let Err(error) = handle.write_fmt(args) {
+        eprintln!("stderr write failed: {error}");
+        return;
     }
-    match handle.write_all(b"\n") {
-        Ok(()) | Err(_) => {}
+    if let Err(error) = handle.write_all(b"\n") {
+        eprintln!("stderr newline write failed: {error}");
     }
 }
 

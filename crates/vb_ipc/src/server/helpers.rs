@@ -127,7 +127,7 @@ pub fn send_response(
         Err(source) => return Err(IpcServerError::ResponseWriteFailed { source }),
     };
     if written > 0 {
-        drop(write_buffer.drain(..written));
+        write_buffer.drain(..written).for_each(|_| ());
     }
     if write_buffer.is_empty() {
         match stream.flush() {

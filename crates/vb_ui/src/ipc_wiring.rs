@@ -1453,11 +1453,11 @@ mod tests {
     #[test]
     fn verify_workflow_without_connect_returns_not_connected_error() {
         let mut bridge = IpcBridge::new();
-        bridge
+        assert!(bridge
             .send(IpcRequest::VerifyWorkflow {
                 digest: vb_core::WorkflowDigest::from_bytes([0; 32]),
             })
-            .ok();
+            .is_ok());
 
         let mut replies = Vec::new();
         let deadline = std::time::Instant::now() + std::time::Duration::from_millis(500);
@@ -1482,12 +1482,12 @@ mod tests {
     #[test]
     fn request_taint_report_without_connect_returns_not_connected_error() {
         let mut bridge = IpcBridge::new();
-        bridge
+        assert!(bridge
             .send(IpcRequest::RequestTaintReport {
                 run_id: RunId::new(1),
                 digest: vb_core::WorkflowDigest::from_bytes([0; 32]),
             })
-            .ok();
+            .is_ok());
 
         let mut replies = Vec::new();
         let deadline = std::time::Instant::now() + std::time::Duration::from_millis(500);
@@ -1515,11 +1515,11 @@ mod tests {
     #[test]
     fn request_workflow_graph_without_connect_returns_not_connected_error() {
         let mut bridge = IpcBridge::new();
-        bridge
+        assert!(bridge
             .send(IpcRequest::RequestWorkflowGraph {
                 digest: vb_core::WorkflowDigest::from_bytes([0; 32]),
             })
-            .ok();
+            .is_ok());
 
         let mut replies = Vec::new();
         let deadline = std::time::Instant::now() + std::time::Duration::from_millis(500);

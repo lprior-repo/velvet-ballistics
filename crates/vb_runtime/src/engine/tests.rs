@@ -607,7 +607,10 @@ fn execute_do_without_contract_fails_closed_without_ticket() {
         Err(_) => return,
     };
     // Input slot must be initialized with clean taint.
-    let _ = run.write_slot(SlotIdx::new(0), vb_core::SlotValue::I64(0));
+    assert_eq!(
+        run.write_slot(SlotIdx::new(0), vb_core::SlotValue::I64(0)),
+        Ok(())
+    );
     let result = execute_do_without_contract(
         &run,
         StepIdx::new(3),
@@ -1169,7 +1172,7 @@ fn bh_drive_evidence_step_succeeded_not_emitted_for_awaiting_action() {
         Err(_) => return,
     };
     // Input slot must be initialized with clean taint.
-    let _ = run.write_slot(SlotIdx::new(0), SlotValue::I64(0));
+    assert_eq!(run.write_slot(SlotIdx::new(0), SlotValue::I64(0)), Ok(()));
     let mut store = ValueStore::new();
     let mut budget = vb_core::engine::StepBudget::new(10);
     let mut evidence = EvidenceCollector::new();
@@ -1877,7 +1880,10 @@ mod blackhat_engine {
         };
         let wf = make_workflow(vec![node], 4);
         let mut run = make_run(4, 2);
-        let _ = run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(42), Taint::Secret);
+        assert_eq!(
+            run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(42), Taint::Secret),
+            Ok(())
+        );
         let mut store = ValueStore::new();
         let mut cs = CollectStates::new();
         let n = match wf.node(StepIdx::ZERO) {
@@ -1916,7 +1922,7 @@ mod blackhat_engine {
         };
         let wf = make_workflow(vec![node], 4);
         let mut run = make_run(4, 2);
-        let _ = run.write_slot(SlotIdx::new(0), SlotValue::I64(42));
+        assert_eq!(run.write_slot(SlotIdx::new(0), SlotValue::I64(42)), Ok(()));
         let mut store = ValueStore::new();
         let mut cs = CollectStates::new();
         let n = match wf.node(StepIdx::ZERO) {
@@ -1955,7 +1961,10 @@ mod blackhat_engine {
         };
         let wf = make_workflow(vec![node], 4);
         let mut run = make_run(4, 2);
-        let _ = run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(42), Taint::Secret);
+        assert_eq!(
+            run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(42), Taint::Secret),
+            Ok(())
+        );
         let mut store = ValueStore::new();
         let mut cs = CollectStates::new();
         let n = match wf.node(StepIdx::ZERO) {
@@ -2076,7 +2085,7 @@ mod blackhat_engine {
         };
         let mut run = make_run(4, 2);
         // Input slot must be initialized with clean taint for the no-contract path.
-        let _ = run.write_slot(SlotIdx::new(0), SlotValue::I64(0));
+        assert_eq!(run.write_slot(SlotIdx::new(0), SlotValue::I64(0)), Ok(()));
         let mut store = ValueStore::new();
         let mut budget = vb_core::engine::StepBudget::new(10);
         let mut evidence = EvidenceCollector::new();
@@ -2271,7 +2280,10 @@ mod blackhat_engine {
         let mut run = RunFrame::new(RunId::new(1), StepIdx::ZERO, 4, 2)
             .ok()
             .unwrap_or_else(|| panic!("RunFrame::new failed"));
-        let _ = run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(1), Taint::Secret);
+        assert_eq!(
+            run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(1), Taint::Secret),
+            Ok(())
+        );
         let contract = ActionContract {
             id: ActionId::new(0),
             input_slot_count: 1,
@@ -2344,7 +2356,10 @@ mod blackhat_engine {
         let mut run = RunFrame::new(RunId::new(1), StepIdx::ZERO, 4, 2)
             .ok()
             .unwrap_or_else(|| panic!("RunFrame::new failed"));
-        let _ = run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(42), Taint::Secret);
+        assert_eq!(
+            run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(42), Taint::Secret),
+            Ok(())
+        );
         let result = execute_do_without_contract(
             &run,
             StepIdx::ZERO,
@@ -2387,7 +2402,7 @@ mod blackhat_engine {
         let mut run = RunFrame::new(RunId::new(1), StepIdx::ZERO, 4, 2)
             .ok()
             .unwrap_or_else(|| panic!("RunFrame::new failed"));
-        let _ = run.write_slot(SlotIdx::new(0), SlotValue::I64(42));
+        assert_eq!(run.write_slot(SlotIdx::new(0), SlotValue::I64(42)), Ok(()));
         let result = execute_do_without_contract(
             &run,
             StepIdx::ZERO,

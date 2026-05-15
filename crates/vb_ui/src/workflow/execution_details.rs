@@ -662,7 +662,7 @@ impl ExecutionDetailsState {
     pub fn select_step(&mut self, step_idx: Option<StepIdx>, events: &[vb_ipc::IpcTraceEvent]) {
         self.selected_step = step_idx;
         if let Some(idx) = step_idx {
-            self.step_details = build_step_details(
+            self.step_details = match build_step_details(
                 idx,
                 events,
                 &WorkflowGraph {
@@ -672,8 +672,10 @@ impl ExecutionDetailsState {
                     slot_count: 0,
                     workflow_name: String::new(),
                 },
-            )
-            .ok();
+            ) {
+                Ok(details) => Some(details),
+                Err(_) => None,
+            };
         } else {
             self.step_details = None;
         }

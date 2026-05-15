@@ -1655,7 +1655,7 @@ fn phase22_nested_for_each_outer_and_inner_have_separate_limits() {
 
     // Outer can still advance (its iterator is independent)
     // Reset PC to a valid step for next advance
-    run.set_pc(StepIdx::ZERO).ok();
+    assert!(run.set_pc(StepIdx::ZERO).is_ok());
     let outer_next = for_each_next(
         &mut run,
         &mut store,
