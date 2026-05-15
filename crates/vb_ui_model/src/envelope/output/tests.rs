@@ -71,7 +71,6 @@ mod tests {
             None,
             Vec::new(),
         );
-        assert!(result.is_err());
         assert_eq!(
             result.unwrap_err(),
             EnvelopeError::DiagnosticReportMustHaveDiagnostics
@@ -140,7 +139,6 @@ mod tests {
             None,
             too_many_diagnostics,
         );
-        assert!(result.is_err());
         assert_eq!(
             result.unwrap_err(),
             EnvelopeError::DiagnosticLimitExceeded {
@@ -162,7 +160,7 @@ mod tests {
             Some(data),
             Vec::new(),
         );
-        assert!(envelope.is_ok());
+        assert!(matches!(envelope, Ok(_)), "Workflow kind should allow data field");
     }
 
     #[test]
