@@ -270,33 +270,6 @@ impl AcceptedArtifactStore for AlwaysPresentArtifactStore {
     }
 }
 
-/// Artifact store that always reports artifacts as absent.
-///
-/// Used to trigger rejection under Strict/Journaled policy during admission
-/// testing when no valid accepted artifact is available.
-#[derive(Debug, Default)]
-pub struct NeverPresentArtifactStore;
-
-impl NeverPresentArtifactStore {
-    /// Creates a new shared never-present store as an accepted artifact store.
-    ///
-    /// This store always returns `ArtifactNotFound` when loaded,
-    /// causing Strict/Journaled policy to reject admission.
-    #[must_use]
-    pub fn shared() -> SharedAcceptedArtifactStore {
-        Arc::new(Self)
-    }
-}
-
-impl AcceptedArtifactStore for NeverPresentArtifactStore {
-    fn load_accepted_artifact(
-        &self,
-        artifact_digest: WorkflowDigest,
-    ) -> Result<vb_storage::admission::AcceptedArtifact, ArtifactEnvelopeError> {
-        Err(ArtifactEnvelopeError::ArtifactNotFound { digest: artifact_digest })
-    }
-}
-
 /// Artifact store backed by FjallJournal.
 pub struct StorageArtifactStore {
     journal: Arc<vb_storage::FjallJournal>,
