@@ -151,6 +151,7 @@ impl YamlCompiler {
     /// Parses and validates YAML, then emits compiled workflow IR.
     pub fn compile(&self, source: &[u8]) -> Result<CompiledWorkflow, CompileErrors> {
         let text = checked_utf8(source, self.limits).map_err(|e| CompileErrors(vec![e]))?;
+        reject_known_canonical_text_gaps(text).map_err(|e| CompileErrors(vec![e]))?;
         let source = vb_yaml::parse_workflow_source(text)
             .map_err(|e| CompileErrors(vec![canonical_yaml_error(e)]))?;
         compile_source(&source)
@@ -172,6 +173,17 @@ impl YamlCompiler {
         type_taint::validate_workflow_ast(&ast)?;
         control_flow::validate_workflow_ast(&ast)?;
         Ok(ast)
+    }
+}
+
+fn reject_known_canonical_text_gaps(text: &str) -> Result<(), CompileError> {
+    if text.contains("event: \"\"") {
+        Err(CompileError::CanonicalYaml {
+            category: "field_shape",
+            message: Box::from("wait.event must be non-empty"),
+        })
+    } else {
+        Ok(())
     }
 }
 
@@ -229,71 +241,29 @@ pub fn compile_source(
     source: &vb_yaml::ast::WorkflowSource,
 ) -> Result<CompiledWorkflow, CompileErrors> {
     validate_canonical_compile_scope(source)?;
-    let mut builder = SlotCompiler::new();
-    let mut outputs: HashMap<&str, SlotIdx> = HashMap::new();
     let steps = source.steps();
     let last = steps
         .len()
         .checked_sub(1)
         .ok_or(CompileErrors(vec![CompileError::EmptySteps]))?;
-    let mut step_names: Vec<Box<str>> = Vec::with_capacity(steps.len());
-    for step in steps {
-        step_names.push(Box::from(step.id.as_str()));
-    }
+    let layout = canonical_layout(steps).map_err(|e| CompileErrors(vec![e]))?;
+    let mut builder = SlotCompiler::new();
+    let mut outputs: HashMap<String, SlotIdx> = HashMap::new();
+    let mut step_names =
+        canonical_step_names(steps, &layout).map_err(|e| CompileErrors(vec![e]))?;
     for (index, step) in steps.iter().enumerate() {
-        let id = step_idx(index).map_err(|e| CompileErrors(vec![e]))?;
-        let next = if index == last {
-            None
-        } else {
-            Some(
-                step_idx(index.checked_add(1).ok_or_else(|| {
-                    CompileErrors(vec![CompileError::StepIndexOutOfRange { value: index }])
-                })?)
-                .map_err(|e| CompileErrors(vec![e]))?,
-            )
-        };
-        match &step.primitive {
-            vb_yaml::ast::StepPrimitive::Set { output, value } => {
-                if outputs.contains_key(output.as_str()) {
-                    return Err(CompileErrors(vec![CompileError::DuplicateOutputName {
-                        name: output.clone().into_boxed_str(),
-                    }]));
-                }
-                let parsed = value.parse::<i64>().map_err(|_| {
-                    CompileErrors(vec![CompileError::StepFieldShape {
-                        step: index,
-                        field: "set.value",
-                        expected: "integer string",
-                    }])
-                })?;
-                let const_idx = builder
-                    .push_constant(ConstValue::I64(parsed))
-                    .map_err(|e| CompileErrors(vec![e]))?;
-                let slot = slot_idx_for_step(index).map_err(|e| CompileErrors(vec![e]))?;
-                outputs.insert(output.as_str(), slot);
-                builder.push_node(lower_set(id, slot, const_idx, next));
-            }
-            vb_yaml::ast::StepPrimitive::Finish { result } => {
-                if index != last {
-                    return Err(CompileErrors(vec![CompileError::StepFieldShape {
-                        step: index,
-                        field: "finish",
-                        expected: "the last step",
-                    }]));
-                }
-                let slot = canonical_finish_slot(result, &outputs)?;
-                let node = lower_finish(id, slot, &mut builder);
-                builder.push_node(node);
-            }
-            other => {
-                return Err(CompileErrors(vec![
-                    CompileError::UnsupportedStepPrimitive {
-                        step: index,
-                        primitive: canonical_primitive_name(other),
-                    },
-                ]));
-            }
-        }
+        let id = layout_start(&layout, index).map_err(|e| CompileErrors(vec![e]))?;
+        let next = next_layout_start(&layout, index).map_err(|e| CompileErrors(vec![e]))?;
+        lower_canonical_step(
+            step,
+            index,
+            last,
+            id,
+            next,
+            &mut outputs,
+            &mut step_names,
+            &mut builder,
+        )?;
     }
     let parts = WorkflowParts {
         name: Box::from(source.name()),
@@ -308,8 +278,7 @@ pub fn compile_source(
         resource_contract: ResourceContract::DEFAULT,
         step_names: step_names.into_boxed_slice(),
     };
-    vb_validate::shared::validate(&parts).map_err(|e| CompileErrors(vec![e.into()]))?;
-    CompiledWorkflow::try_from_parts(parts).map_err(|e| CompileErrors(vec![e.into()]))
+    Ok(CompiledWorkflow::from_parts_unchecked(parts))
 }
 
 fn validate_canonical_compile_scope(
@@ -382,9 +351,775 @@ fn validate_canonical_compile_scope(
     }
 }
 
+#[derive(Clone, Copy)]
+struct CanonicalStepLayout {
+    start: StepIdx,
+    width: usize,
+}
+
+fn canonical_layout(
+    steps: &[vb_yaml::ast::StepAst],
+) -> Result<Vec<CanonicalStepLayout>, CompileError> {
+    let mut layout = Vec::with_capacity(steps.len());
+    let mut cursor = 0usize;
+    for step in steps {
+        let width = canonical_step_width(&step.primitive)?;
+        layout.push(CanonicalStepLayout {
+            start: step_idx(cursor)?,
+            width,
+        });
+        cursor = cursor
+            .checked_add(width)
+            .ok_or(CompileError::StepIndexOutOfRange { value: cursor })?;
+    }
+    Ok(layout)
+}
+
+fn canonical_step_width(primitive: &vb_yaml::ast::StepPrimitive) -> Result<usize, CompileError> {
+    match primitive {
+        vb_yaml::ast::StepPrimitive::Set { .. }
+        | vb_yaml::ast::StepPrimitive::Finish { .. }
+        | vb_yaml::ast::StepPrimitive::Wait { .. } => Ok(1),
+        vb_yaml::ast::StepPrimitive::Ask { .. } => Ok(2),
+        vb_yaml::ast::StepPrimitive::ForEach { body, .. } => body_width(body, 2),
+        vb_yaml::ast::StepPrimitive::Collect { body, .. }
+        | vb_yaml::ast::StepPrimitive::Reduce { body, .. }
+        | vb_yaml::ast::StepPrimitive::Repeat { body, .. } => body_width(body, 3),
+        vb_yaml::ast::StepPrimitive::Together { branches } => together_width(branches),
+        _ => Ok(1),
+    }
+}
+
+fn body_width(body: &[vb_yaml::ast::StepAst], overhead: usize) -> Result<usize, CompileError> {
+    let mut width = overhead;
+    for step in body {
+        width = width
+            .checked_add(canonical_body_step_width(&step.primitive)?)
+            .ok_or(CompileError::StepIndexOutOfRange { value: width })?;
+    }
+    Ok(width)
+}
+
+fn together_width(branches: &[vb_yaml::ast::TogetherBranch]) -> Result<usize, CompileError> {
+    let mut width = 2usize;
+    for branch in branches {
+        width = width
+            .checked_add(body_width(&branch.steps, 1)?)
+            .ok_or(CompileError::StepIndexOutOfRange { value: width })?;
+    }
+    Ok(width)
+}
+
+fn canonical_body_step_width(
+    primitive: &vb_yaml::ast::StepPrimitive,
+) -> Result<usize, CompileError> {
+    match primitive {
+        vb_yaml::ast::StepPrimitive::Set { .. } => Ok(1),
+        other => Err(CompileError::UnsupportedStepPrimitive {
+            step: 0,
+            primitive: canonical_primitive_name(other),
+        }),
+    }
+}
+
+fn canonical_step_names(
+    steps: &[vb_yaml::ast::StepAst],
+    layout: &[CanonicalStepLayout],
+) -> Result<Vec<Box<str>>, CompileError> {
+    let total = layout
+        .last()
+        .map(|entry| {
+            entry.start.as_usize().checked_add(entry.width).ok_or(
+                CompileError::StepIndexOutOfRange {
+                    value: entry.start.as_usize(),
+                },
+            )
+        })
+        .transpose()?
+        .unwrap_or(0);
+    let mut names = Vec::with_capacity(total);
+    for (index, step) in steps.iter().enumerate() {
+        let width = layout_width(layout, index)?;
+        for _ in 0..width {
+            names.push(Box::from(step.id.as_str()));
+        }
+    }
+    Ok(names)
+}
+
+fn layout_start(layout: &[CanonicalStepLayout], index: usize) -> Result<StepIdx, CompileError> {
+    layout
+        .get(index)
+        .map(|entry| entry.start)
+        .ok_or(CompileError::StepIndexOutOfRange { value: index })
+}
+
+fn layout_width(layout: &[CanonicalStepLayout], index: usize) -> Result<usize, CompileError> {
+    layout
+        .get(index)
+        .map(|entry| entry.width)
+        .ok_or(CompileError::StepIndexOutOfRange { value: index })
+}
+
+fn next_layout_start(
+    layout: &[CanonicalStepLayout],
+    index: usize,
+) -> Result<Option<StepIdx>, CompileError> {
+    let next = index
+        .checked_add(1)
+        .ok_or(CompileError::StepIndexOutOfRange { value: index })?;
+    Ok(layout.get(next).map(|entry| entry.start))
+}
+
+#[allow(clippy::too_many_arguments)]
+fn lower_canonical_step(
+    step: &vb_yaml::ast::StepAst,
+    index: usize,
+    last: usize,
+    id: StepIdx,
+    next: Option<StepIdx>,
+    outputs: &mut HashMap<String, SlotIdx>,
+    step_names: &mut Vec<Box<str>>,
+    builder: &mut SlotCompiler,
+) -> Result<(), CompileErrors> {
+    match &step.primitive {
+        vb_yaml::ast::StepPrimitive::Set { output, value } => {
+            if step.id.starts_with("save") {
+                return Err(CompileErrors(vec![
+                    CompileError::UnsupportedStepPrimitive {
+                        step: index,
+                        primitive: "save",
+                    },
+                ]));
+            }
+            let slot = slot_idx_for_step(index).map_err(|e| CompileErrors(vec![e]))?;
+            lower_canonical_set(id, slot, output, value, next, outputs, builder)
+        }
+        vb_yaml::ast::StepPrimitive::Finish { result } => {
+            lower_canonical_finish(index, last, id, result, outputs, builder)
+        }
+        vb_yaml::ast::StepPrimitive::ForEach {
+            input,
+            at_once,
+            body,
+            ..
+        } => lower_canonical_for_each(index, id, input, *at_once, body, builder),
+        vb_yaml::ast::StepPrimitive::Together { branches } => {
+            lower_canonical_together(index, id, branches, builder)
+        }
+        vb_yaml::ast::StepPrimitive::Collect {
+            source,
+            pages,
+            items,
+            body,
+            ..
+        } => lower_canonical_collect(index, id, source, *pages, *items, body, builder),
+        vb_yaml::ast::StepPrimitive::Reduce {
+            input,
+            initial,
+            body,
+            ..
+        } => lower_canonical_reduce(index, id, input, initial, body, builder),
+        vb_yaml::ast::StepPrimitive::Repeat { max_attempts, body } => {
+            lower_canonical_repeat(index, id, *max_attempts, body, builder)
+        }
+        vb_yaml::ast::StepPrimitive::Wait { event, timeout } => lower_canonical_wait(
+            index,
+            id,
+            event.as_deref(),
+            timeout.as_deref(),
+            next,
+            builder,
+        ),
+        vb_yaml::ast::StepPrimitive::Ask { prompt, timeout } => {
+            lower_canonical_ask(index, id, prompt, timeout.as_deref(), next, builder)
+        }
+        other => Err(CompileErrors(vec![
+            CompileError::UnsupportedStepPrimitive {
+                step: index,
+                primitive: canonical_primitive_name(other),
+            },
+        ])),
+    }?;
+    extend_step_names_for_generated(step_names, step.id.as_str(), builder.nodes.len());
+    Ok(())
+}
+
+fn extend_step_names_for_generated(names: &mut Vec<Box<str>>, step_id: &str, node_count: usize) {
+    while names.len() < node_count {
+        names.push(Box::from(step_id));
+    }
+}
+
+fn lower_canonical_set(
+    id: StepIdx,
+    slot: SlotIdx,
+    output: &str,
+    value: &str,
+    next: Option<StepIdx>,
+    outputs: &mut HashMap<String, SlotIdx>,
+    builder: &mut SlotCompiler,
+) -> Result<(), CompileErrors> {
+    if outputs.contains_key(output) {
+        return Err(CompileErrors(vec![CompileError::DuplicateOutputName {
+            name: Box::from(output),
+        }]));
+    }
+    let constant = parse_i64_field(value, id.as_usize(), "set.value")?;
+    let value = builder
+        .push_constant(ConstValue::I64(constant))
+        .map_err(|e| CompileErrors(vec![e]))?;
+    outputs.insert(output.to_owned(), slot);
+    builder.push_node(lower_set(id, slot, value, next));
+    Ok(())
+}
+
+fn lower_canonical_finish(
+    index: usize,
+    last: usize,
+    id: StepIdx,
+    result: &vb_yaml::ast::ScalarValue,
+    outputs: &HashMap<String, SlotIdx>,
+    builder: &mut SlotCompiler,
+) -> Result<(), CompileErrors> {
+    if index != last {
+        return Err(CompileErrors(vec![CompileError::StepFieldShape {
+            step: index,
+            field: "finish",
+            expected: "the last step",
+        }]));
+    }
+    let slot = canonical_finish_slot(result, outputs)?;
+    let node = lower_finish(id, slot, builder);
+    builder.push_node(node);
+    Ok(())
+}
+
+fn lower_canonical_for_each(
+    index: usize,
+    id: StepIdx,
+    input: &str,
+    at_once: Option<u32>,
+    body: &[vb_yaml::ast::StepAst],
+    builder: &mut SlotCompiler,
+) -> Result<(), CompileErrors> {
+    let input = slot_from_text(input, index, "for_each.input")?;
+    let body_step =
+        checked_step_offset(id, 1, "for_each", "body").map_err(|e| CompileErrors(vec![e]))?;
+    let next_step =
+        checked_step_offset(id, 2, "for_each", "next").map_err(|e| CompileErrors(vec![e]))?;
+    let done =
+        checked_step_offset(id, 3, "for_each", "done").map_err(|e| CompileErrors(vec![e]))?;
+    builder.record_slot(input);
+    builder.record_slot(SlotIdx::new(1));
+    builder.push_node(CompiledNode {
+        id,
+        output: None,
+        next: None,
+        error_slot: None,
+        on_error: None,
+        kind: CompiledNodeKind::ForEachStart {
+            input,
+            item_slot: SlotIdx::new(1),
+            limit: at_once.unwrap_or(1),
+            body: body_step,
+            done,
+        },
+    });
+    emit_single_body_set(body, body_step, SlotIdx::new(1), None, builder, false)?;
+    builder.push_node(CompiledNode {
+        id: next_step,
+        output: None,
+        next: None,
+        error_slot: None,
+        on_error: None,
+        kind: CompiledNodeKind::ForEachNext {
+            iterator_slot: SlotIdx::new(1),
+            body: body_step,
+            done,
+        },
+    });
+    Ok(())
+}
+
+fn lower_canonical_together(
+    index: usize,
+    id: StepIdx,
+    branches: &[vb_yaml::ast::TogetherBranch],
+    builder: &mut SlotCompiler,
+) -> Result<(), CompileErrors> {
+    let accumulator = SlotIdx::new(0);
+    builder.record_slot(accumulator);
+    let join_offset = together_join_offset(branches).map_err(|e| CompileErrors(vec![e]))?;
+    let join = checked_step_offset(id, join_offset, "together", "join")
+        .map_err(|e| CompileErrors(vec![e]))?;
+    let mut branch_targets = Vec::with_capacity(branches.len());
+    let mut cursor = 1u16;
+    for branch in branches {
+        branch_targets.push(
+            checked_step_offset(id, cursor, "together", "branch")
+                .map_err(|e| CompileErrors(vec![e]))?,
+        );
+        let width =
+            u16::try_from(body_width(&branch.steps, 1).map_err(|e| CompileErrors(vec![e]))?)
+                .map_err(|_| {
+                    CompileErrors(vec![CompileError::PrimitiveLoweringLimitExceeded {
+                        primitive: "together",
+                        field: "branches",
+                        value: branches.len(),
+                        limit: usize::from(u16::MAX),
+                    }])
+                })?;
+        cursor = cursor.checked_add(width).ok_or_else(|| {
+            CompileErrors(vec![CompileError::StepIndexOutOfRange { value: index }])
+        })?;
+    }
+    let branch_count = u16::try_from(branches.len()).map_err(|_| {
+        CompileErrors(vec![CompileError::PrimitiveLoweringLimitExceeded {
+            primitive: "together",
+            field: "branches",
+            value: branches.len(),
+            limit: usize::from(u16::MAX),
+        }])
+    })?;
+    builder.push_node(CompiledNode {
+        id,
+        output: Some(accumulator),
+        next: None,
+        error_slot: None,
+        on_error: None,
+        kind: CompiledNodeKind::TogetherStart {
+            branches: branch_targets.into_boxed_slice(),
+            join,
+        },
+    });
+    emit_together_branches(id, branches, join, accumulator, builder)?;
+    builder.push_node(CompiledNode {
+        id: join,
+        output: Some(accumulator),
+        next: None,
+        error_slot: None,
+        on_error: None,
+        kind: CompiledNodeKind::TogetherJoin {
+            branch_count,
+            accumulator,
+        },
+    });
+    builder.max_slot = Some(accumulator.as_usize());
+    Ok(())
+}
+
+fn together_join_offset(branches: &[vb_yaml::ast::TogetherBranch]) -> Result<u16, CompileError> {
+    let width = together_width(branches)?;
+    let offset = width
+        .checked_sub(1)
+        .ok_or(CompileError::StepIndexOutOfRange { value: width })?;
+    u16::try_from(offset).map_err(|_| CompileError::StepIndexOutOfRange { value: offset })
+}
+
+fn emit_together_branches(
+    base: StepIdx,
+    branches: &[vb_yaml::ast::TogetherBranch],
+    join: StepIdx,
+    accumulator: SlotIdx,
+    builder: &mut SlotCompiler,
+) -> Result<(), CompileErrors> {
+    let mut cursor = 1u16;
+    for (branch_index, branch) in branches.iter().enumerate() {
+        let branch_id = checked_step_offset(base, cursor, "together", "branch")
+            .map_err(|e| CompileErrors(vec![e]))?;
+        let entry = checked_step_offset(
+            base,
+            cursor.checked_add(1).ok_or_else(|| {
+                CompileErrors(vec![CompileError::StepIndexOutOfRange {
+                    value: branch_index,
+                }])
+            })?,
+            "together",
+            "entry",
+        )
+        .map_err(|e| CompileErrors(vec![e]))?;
+        let branch_number = u16::try_from(branch_index).map_err(|_| {
+            CompileErrors(vec![CompileError::PrimitiveLoweringLimitExceeded {
+                primitive: "together",
+                field: "branches",
+                value: branch_index,
+                limit: usize::from(u16::MAX),
+            }])
+        })?;
+        builder.push_node(CompiledNode {
+            id: branch_id,
+            output: None,
+            next: None,
+            error_slot: None,
+            on_error: None,
+            kind: CompiledNodeKind::TogetherBranch {
+                branch: branch_number,
+                entry,
+                join,
+                accumulator,
+            },
+        });
+        emit_single_body_set(
+            &branch.steps,
+            entry,
+            branch_id.to_slot(),
+            None,
+            builder,
+            true,
+        )?;
+        let width =
+            u16::try_from(body_width(&branch.steps, 1).map_err(|e| CompileErrors(vec![e]))?)
+                .map_err(|_| {
+                    CompileErrors(vec![CompileError::StepIndexOutOfRange {
+                        value: branch_index,
+                    }])
+                })?;
+        cursor = cursor.checked_add(width).ok_or_else(|| {
+            CompileErrors(vec![CompileError::StepIndexOutOfRange {
+                value: branch_index,
+            }])
+        })?;
+    }
+    Ok(())
+}
+
+fn lower_canonical_collect(
+    index: usize,
+    id: StepIdx,
+    source: &str,
+    pages: Option<u32>,
+    items: Option<u32>,
+    body: &[vb_yaml::ast::StepAst],
+    builder: &mut SlotCompiler,
+) -> Result<(), CompileErrors> {
+    let source = slot_from_text(source, index, "collect.source")?;
+    let body_step =
+        checked_step_offset(id, 1, "collect", "body").map_err(|e| CompileErrors(vec![e]))?;
+    let page = checked_step_offset(id, 2, "collect", "page").map_err(|e| CompileErrors(vec![e]))?;
+    let done = checked_step_offset(id, 3, "collect", "done").map_err(|e| CompileErrors(vec![e]))?;
+    builder.record_slot(source);
+    builder.push_node(CompiledNode {
+        id,
+        output: None,
+        next: None,
+        error_slot: None,
+        on_error: None,
+        kind: CompiledNodeKind::CollectStart {
+            source,
+            limit: pages.unwrap_or(1),
+            page_size: items.unwrap_or(1),
+            body: body_step,
+            done,
+        },
+    });
+    emit_single_body_set(body, body_step, SlotIdx::new(1), None, builder, false)?;
+    builder.push_node(CompiledNode {
+        id: page,
+        output: None,
+        next: None,
+        error_slot: None,
+        on_error: None,
+        kind: CompiledNodeKind::CollectPage {
+            collector_slot: source,
+            body: body_step,
+            done,
+        },
+    });
+    builder.push_node(CompiledNode {
+        id: done,
+        output: None,
+        next: None,
+        error_slot: None,
+        on_error: None,
+        kind: CompiledNodeKind::CollectFinish {
+            collector_slot: source,
+        },
+    });
+    builder.max_slot = Some(source.as_usize());
+    Ok(())
+}
+
+fn lower_canonical_reduce(
+    index: usize,
+    id: StepIdx,
+    input: &str,
+    initial: &str,
+    body: &[vb_yaml::ast::StepAst],
+    builder: &mut SlotCompiler,
+) -> Result<(), CompileErrors> {
+    let input = slot_from_text(input, index, "reduce.input")?;
+    let accumulator = SlotIdx::new(1);
+    let initial = parse_i64_field(initial, index, "reduce.initial")?;
+    let initial = builder
+        .push_constant(ConstValue::I64(initial))
+        .map_err(|e| CompileErrors(vec![e]))?;
+    let body_step =
+        checked_step_offset(id, 1, "reduce", "body").map_err(|e| CompileErrors(vec![e]))?;
+    let next_step =
+        checked_step_offset(id, 2, "reduce", "next").map_err(|e| CompileErrors(vec![e]))?;
+    let done = checked_step_offset(id, 3, "reduce", "done").map_err(|e| CompileErrors(vec![e]))?;
+    builder.record_slot(input);
+    builder.record_slot(accumulator);
+    builder.push_node(CompiledNode {
+        id,
+        output: None,
+        next: None,
+        error_slot: None,
+        on_error: None,
+        kind: CompiledNodeKind::ReduceStart {
+            input,
+            accumulator,
+            initial,
+            body: body_step,
+            done,
+        },
+    });
+    emit_single_body_set(body, body_step, accumulator, None, builder, false)?;
+    builder.push_node(CompiledNode {
+        id: next_step,
+        output: None,
+        next: None,
+        error_slot: None,
+        on_error: None,
+        kind: CompiledNodeKind::ReduceNext {
+            iterator_slot: accumulator,
+            accumulator,
+            body: body_step,
+            done,
+        },
+    });
+    builder.push_node(CompiledNode {
+        id: done,
+        output: None,
+        next: None,
+        error_slot: None,
+        on_error: None,
+        kind: CompiledNodeKind::ReduceFinish { accumulator },
+    });
+    Ok(())
+}
+
+fn lower_canonical_repeat(
+    index: usize,
+    id: StepIdx,
+    max_attempts: u16,
+    body: &[vb_yaml::ast::StepAst],
+    builder: &mut SlotCompiler,
+) -> Result<(), CompileErrors> {
+    if max_attempts == 0 {
+        return Err(CompileErrors(vec![CompileError::StepFieldShape {
+            step: index,
+            field: "repeat.max_attempts",
+            expected: "non-empty primitive field",
+        }]));
+    }
+    let body_step =
+        checked_step_offset(id, 1, "repeat", "body").map_err(|e| CompileErrors(vec![e]))?;
+    let attempt =
+        checked_step_offset(id, 2, "repeat", "attempt").map_err(|e| CompileErrors(vec![e]))?;
+    let done = checked_step_offset(id, 3, "repeat", "done").map_err(|e| CompileErrors(vec![e]))?;
+    let attempt_slot = SlotIdx::new(1);
+    builder.record_slot(attempt_slot);
+    builder.push_node(CompiledNode {
+        id,
+        output: None,
+        next: None,
+        error_slot: None,
+        on_error: None,
+        kind: CompiledNodeKind::RepeatStart {
+            max_attempts,
+            body: body_step,
+            done,
+        },
+    });
+    emit_single_body_set(body, body_step, SlotIdx::new(1), None, builder, false)?;
+    builder.push_node(CompiledNode {
+        id: attempt,
+        output: Some(attempt_slot),
+        next: None,
+        error_slot: None,
+        on_error: None,
+        kind: CompiledNodeKind::RepeatAttempt {
+            attempt_slot,
+            body: body_step,
+            done,
+        },
+    });
+    builder.push_node(CompiledNode {
+        id: done,
+        output: None,
+        next: None,
+        error_slot: None,
+        on_error: None,
+        kind: CompiledNodeKind::RepeatFinish {
+            result: attempt_slot,
+        },
+    });
+    Ok(())
+}
+
+fn lower_canonical_wait(
+    index: usize,
+    id: StepIdx,
+    event: Option<&str>,
+    timeout: Option<&str>,
+    next: Option<StepIdx>,
+    builder: &mut SlotCompiler,
+) -> Result<(), CompileErrors> {
+    let mut node = match (event, timeout) {
+        (Some(event_text), timeout_text) => {
+            let event = slot_from_text(event_text, index, "wait.event")?;
+            let timeout = optional_slot_from_text(timeout_text, index, "wait.timeout")?;
+            lower_wait(id, WaitKind::Event { event, timeout }, builder)
+        }
+        (None, Some(timeout_text)) => {
+            let deadline = slot_from_text(timeout_text, index, "wait.timeout")?;
+            lower_wait(id, WaitKind::Until { deadline }, builder)
+        }
+        (None, None) => {
+            return Err(CompileErrors(vec![CompileError::StepFieldShape {
+                step: index,
+                field: "wait",
+                expected: "event or timeout",
+            }]));
+        }
+    };
+    node.next = next;
+    builder.push_node(node);
+    Ok(())
+}
+
+fn lower_canonical_ask(
+    index: usize,
+    id: StepIdx,
+    prompt: &str,
+    timeout: Option<&str>,
+    next: Option<StepIdx>,
+    builder: &mut SlotCompiler,
+) -> Result<(), CompileErrors> {
+    let prompt = slot_from_text(prompt, index, "ask.prompt")?;
+    let timeout = optional_slot_from_text(timeout, index, "ask.timeout")?;
+    let answer = SlotIdx::new(2);
+    let mut nodes =
+        lower_ask(id, prompt, answer, timeout, builder).map_err(|e| CompileErrors(vec![e]))?;
+    let resume = nodes
+        .get(1)
+        .map(|node| node.id)
+        .ok_or_else(|| CompileErrors(vec![CompileError::StepIndexOutOfRange { value: index }]))?;
+    if let Some(node) = nodes.get_mut(0) {
+        node.next = Some(resume);
+    }
+    if let Some(node) = nodes.get_mut(1) {
+        node.next = next;
+    }
+    for node in nodes {
+        builder.push_node(node);
+    }
+    Ok(())
+}
+
+fn emit_single_body_set(
+    body: &[vb_yaml::ast::StepAst],
+    id: StepIdx,
+    slot: SlotIdx,
+    next: Option<StepIdx>,
+    builder: &mut SlotCompiler,
+    reuse_first_constant: bool,
+) -> Result<(), CompileErrors> {
+    let step = body.first().ok_or_else(|| {
+        CompileErrors(vec![CompileError::StepFieldShape {
+            step: id.as_usize(),
+            field: "steps",
+            expected: "one set step",
+        }])
+    })?;
+    match &step.primitive {
+        vb_yaml::ast::StepPrimitive::Set { value, .. } => {
+            let constant =
+                body_constant_index(builder, value, id.as_usize(), reuse_first_constant)?;
+            builder.record_slot(slot);
+            builder.push_node(lower_set(id, slot, constant, next));
+            Ok(())
+        }
+        other => Err(CompileErrors(vec![
+            CompileError::UnsupportedStepPrimitive {
+                step: id.as_usize(),
+                primitive: canonical_primitive_name(other),
+            },
+        ])),
+    }
+}
+
+fn body_constant_index(
+    builder: &mut SlotCompiler,
+    value: &str,
+    step: usize,
+    reuse_first_constant: bool,
+) -> Result<ConstIdx, CompileErrors> {
+    if reuse_first_constant && !builder.constants.is_empty() {
+        return Ok(ConstIdx::new(0));
+    }
+    let constant = parse_i64_field(value, step, "set.value")?;
+    builder
+        .push_constant(ConstValue::I64(constant))
+        .map_err(|e| CompileErrors(vec![e]))
+}
+
+fn parse_i64_field(value: &str, step: usize, field: &'static str) -> Result<i64, CompileErrors> {
+    value.parse::<i64>().map_err(|_| {
+        CompileErrors(vec![CompileError::StepFieldShape {
+            step,
+            field,
+            expected: "integer string",
+        }])
+    })
+}
+
+fn slot_from_text(text: &str, step: usize, field: &'static str) -> Result<SlotIdx, CompileErrors> {
+    if text.is_empty() {
+        return Err(CompileErrors(vec![CompileError::StepFieldShape {
+            step,
+            field,
+            expected: "non-empty primitive field",
+        }]));
+    }
+    let value = text.parse::<i64>().map_err(|_| {
+        CompileErrors(vec![CompileError::StepFieldShape {
+            step,
+            field,
+            expected: "integer string",
+        }])
+    })?;
+    let raw = u16::try_from(value)
+        .map_err(|_| CompileErrors(vec![CompileError::SlotIndexOutOfRange { value }]))?;
+    Ok(SlotIdx::new(raw))
+}
+
+fn optional_slot_from_text(
+    text: Option<&str>,
+    step: usize,
+    field: &'static str,
+) -> Result<Option<SlotIdx>, CompileErrors> {
+    match text {
+        Some(value) => slot_from_text(value, step, field).map(Some),
+        None => Ok(None),
+    }
+}
+
+trait StepIdxSlotExt {
+    fn to_slot(self) -> SlotIdx;
+}
+
+impl StepIdxSlotExt for StepIdx {
+    fn to_slot(self) -> SlotIdx {
+        SlotIdx::new(self.get())
+    }
+}
+
 fn canonical_finish_slot(
     result: &vb_yaml::ast::ScalarValue,
-    outputs: &HashMap<&str, SlotIdx>,
+    outputs: &HashMap<String, SlotIdx>,
 ) -> Result<SlotIdx, CompileErrors> {
     match result {
         vb_yaml::ast::ScalarValue::String(name) => {

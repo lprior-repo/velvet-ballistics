@@ -2697,6 +2697,7 @@ version = "0.1.0"
 dependencies = [
  "blake3",
  "postcard",
+ "proptest",
  "saphyr",
  "saphyr-parser",
  "thiserror",
@@ -2863,6 +2864,7 @@ dependencies = [
  "libfuzzer-sys",
  "postcard",
  "tempfile",
+ "vb_compile",
  "vb_core",
  "vb_expr",
  "vb_ipc",
