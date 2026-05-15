@@ -315,6 +315,8 @@ fn decode_record_on_truncated_at_header_boundary_returns_unexpected_eof() {
     let event = JournalEvent::RunCancelled {
         run: RunId::new(1),
         seq: EventSeq::new(0),
+        attempt: 1,
+        reason: None,
     };
     let encoded = crate::codec::encode_record(
         MAGIC_JOURNAL_EVENT,

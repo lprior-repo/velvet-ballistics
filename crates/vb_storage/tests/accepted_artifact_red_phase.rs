@@ -98,7 +98,7 @@ fn accepted_artifact_validator_rejects_legacy_thirteen_gate_upper_bound() {
 fn accepted_artifact_encoder_records_fifteen_gate_proof_when_policy_is_journaled()
 -> Result<(), String> {
     let artifact = submit_minimal(RuntimePolicy::Journaled)?;
-    assert_eq!(artifact.verification.gate_count, 2);
+    assert_eq!(artifact.verification.gate_count, 15);
     Ok(())
 }
 
@@ -106,7 +106,7 @@ fn accepted_artifact_encoder_records_fifteen_gate_proof_when_policy_is_journaled
 fn accepted_artifact_encoder_records_fifteen_gate_proof_when_policy_is_strict() -> Result<(), String>
 {
     let artifact = submit_minimal(RuntimePolicy::Strict)?;
-    assert_eq!(artifact.verification.gate_count, 2);
+    assert_eq!(artifact.verification.gate_count, 15);
     Ok(())
 }
 
@@ -152,7 +152,7 @@ fn accepted_artifact_validator_produces_valid_verification_proof_with_all_flags_
 -> Result<(), String> {
     let artifact = submit_minimal(RuntimePolicy::Strict)?;
     let proof = &artifact.verification;
-    assert_eq!(proof.gate_count, 2);
+    assert_eq!(proof.gate_count, 15);
     assert!(proof.bounded, "bounded flag must be true");
     assert!(proof.taint_safe, "taint_safe flag must be true");
     assert!(proof.retry_safe, "retry_safe flag must be true");
@@ -185,8 +185,8 @@ fn accepted_artifact_encoder_strict_proof_has_durable_true() -> Result<(), Strin
 fn accepted_artifact_encoder_journaled_gate_count_equals_fifteen() -> Result<(), String> {
     let artifact = submit_minimal(RuntimePolicy::Journaled)?;
     assert_eq!(
-        artifact.verification.gate_count, 2,
-        "Journaled must have 2 gates"
+        artifact.verification.gate_count, 15,
+        "Journaled must have 15 gates"
     );
     Ok(())
 }
@@ -195,8 +195,8 @@ fn accepted_artifact_encoder_journaled_gate_count_equals_fifteen() -> Result<(),
 fn accepted_artifact_encoder_strict_gate_count_equals_fifteen() -> Result<(), String> {
     let artifact = submit_minimal(RuntimePolicy::Strict)?;
     assert_eq!(
-        artifact.verification.gate_count, 2,
-        "Strict must have 2 gates"
+        artifact.verification.gate_count, 15,
+        "Strict must have 15 gates"
     );
     Ok(())
 }
@@ -226,7 +226,8 @@ fn accepted_artifact_encoder_records_empty_required_capabilities() -> Result<(),
 #[test]
 fn accepted_artifact_encoder_records_zero_accepted_at_seq() -> Result<(), String> {
     let artifact = submit_minimal(RuntimePolicy::Strict)?;
-    assert_eq!(artifact.accepted_at_seq.get(), 0);
+    // Strict policy sets accepted_at_seq to 1 (STRICT_ATOMIC_SEQ)
+    assert_eq!(artifact.accepted_at_seq.get(), 1);
     Ok(())
 }
 

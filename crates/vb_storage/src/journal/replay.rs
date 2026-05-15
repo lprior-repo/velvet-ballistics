@@ -27,7 +27,7 @@ impl FjallJournal {
         start_seq: EventSeq,
     ) -> Result<Vec<JournalEvent>, JournalError> {
         let mut replay = Vec::new();
-        let mut expected = start_seq;
+        let mut expected = None;
         let snap = self.database.snapshot();
 
         for item in snap.prefix(&self.events, run_prefix_key(run)?) {
@@ -41,8 +41,9 @@ impl FjallJournal {
             if event.seq().get() < start_seq.get() {
                 continue;
             }
-            crate::codec::validate_replayed_event(run, expected, &event)?;
-            expected = crate::codec::next_seq(expected)?;
+            let expected_seq = expected.unwrap_or_else(|| event.seq());
+            crate::codec::validate_replayed_event(run, expected_seq, &event)?;
+            expected = Some(crate::codec::next_seq(expected_seq)?);
             replay.push(event);
         }
 
