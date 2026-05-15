@@ -183,6 +183,14 @@ pub enum AdmissionError {
         /// Name of the false flag.
         flag: &'static str,
     },
+    /// The loaded artifact digest does not match the requested digest.
+    #[error("admission rejected: artifact digest mismatch: requested {requested:?}, found {found:?}")]
+    ArtifactDigestMismatch {
+        /// Digest that was requested at admission.
+        requested: WorkflowDigest,
+        /// Digest found inside the loaded artifact envelope.
+        found: WorkflowDigest,
+    },
 }
 
 /// Trait for checking whether a compiled artifact exists in storage.
@@ -436,6 +444,16 @@ pub fn admit_artifact_run(
             }
             for required_cap in artifact.required_capabilities.iter() {
                 check_capability(required_cap.action_id(), required_cap, &caps)?;
+            }
+
+            // INV-002: digest binding must be total. The loaded artifact's digest
+            // must match the requested digest exactly — a crafted artifact with
+            // valid gates but wrong identity must not be admitted.
+            if artifact.digest != artifact_digest {
+                return Err(AdmissionError::ArtifactDigestMismatch {
+                    requested: artifact_digest,
+                    found: artifact.digest,
+                });
             }
 
             Ok(RunAdmission::new(artifact_digest, run_id, caps, policy))

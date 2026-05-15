@@ -22,4 +22,8 @@ impl RuntimeJournal for QueuedStorageRuntimeJournal {
     fn drain_for_shutdown(&self) -> RuntimeResult<JournalWriterFlushReport> {
         self.drain_all()
     }
+
+    fn storage_journal(&self) -> Option<std::sync::Arc<vb_storage::FjallJournal>> {
+        Some(self.journal.clone())
+    }
 }

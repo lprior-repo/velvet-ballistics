@@ -30,12 +30,25 @@ impl Shard {
     }
 
     /// Creates a new shard with the given configuration and journal sink.
+    ///
+    /// For storage-backed journals (e.g., `StorageRuntimeJournal`), the shard uses
+    /// `StorageArtifactStore` so that strict/journaled admission can validate artifacts
+    /// against real durable storage. For noop/volatile journals, `AlwaysPresentArtifactStore`
+    /// is used since no durable artifact validation is possible.
     pub fn new_with_journal(config: ShardConfig, journal: SharedRuntimeJournal) -> Self {
-        Self::new_with_journal_and_artifact_store(
-            config,
-            journal,
-            crate::admission::AlwaysPresentArtifactStore::shared(),
-        )
+        let artifact_store: crate::admission::SharedAcceptedArtifactStore =
+            if let Some(fjall_journal) = journal.storage_journal() {
+                // Storage-backed journal: use StorageArtifactStore for strict/journaled
+                // artifact validation. This ensures the shard can load and validate
+                // accepted artifacts from durable storage before admission.
+                std::sync::Arc::new(crate::admission::StorageArtifactStore::new(
+                    fjall_journal,
+                ))
+            } else {
+                // Noop/volatile journal: AlwaysPresentArtifactStore (relaxed mode only).
+                crate::admission::AlwaysPresentArtifactStore::shared()
+            };
+        Self::new_with_journal_and_artifact_store(config, journal, artifact_store)
     }
 
     /// Enqueues a command. Returns `QueueFull` on overflow.

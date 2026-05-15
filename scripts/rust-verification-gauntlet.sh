@@ -1,17 +1,17 @@
 #!/bin/bash
 # Rust verification gauntlet for vb_compile proof obligations.
-//!
-//! Bead: vb-core-lower-values-actions-refs
-//! Workspace: /tmp/vb-ws/vb-core-lower-values-actions-refs
-//!
-//! Usage: scripts/rust-verification-gauntlet.sh <mode>
-//!
-//! Modes:
-//!   fast     — clippy + unit tests (expression_bytecode, slot_compiler, lower)
-//!   standard — fast + Kani expression/slot/constant/accessor harnesses
-//!   deep     — standard + node dedup harness
-//!   proof    — deep + all verification lanes
-//!   all      — proof (currently same as proof)
+#
+# Bead: vb-core-cli-accepted-path
+# Workspace: /home/lewis/src/vb-go-skill/p0-wave-20260515/vb-core-cli-accepted-path
+#
+# Usage: scripts/rust-verification-gauntlet.sh <mode>
+#
+# Modes:
+#   fast     - clippy + unit tests (expression_bytecode, slot_compiler, lower)
+#   standard - fast + Kani expression/slot/constant/accessor harnesses
+#   deep     - standard + node dedup harness
+#   proof    - deep + all verification lanes
+#   all      - proof (currently same as proof)
 
 set -euo pipefail
 
@@ -19,6 +19,11 @@ MODE="${1:-fast}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WS_DIR="$(dirname "$SCRIPT_DIR")"
+
+if [ -n "${TMPDIR:-}" ] && [[ "$TMPDIR" != /* ]]; then
+    mkdir -p "$WS_DIR/$TMPDIR"
+    export TMPDIR="$WS_DIR/$TMPDIR"
+fi
 
 # Color output
 RED='\033[0;31m'
@@ -34,7 +39,7 @@ run_cargo() {
     local cmd="$1"
     local label="$2"
     info "Running: $cmd"
-    if cd "$WS_DIR" && $cmd; then
+    if cd "$WS_DIR" && env -u RUSTC_WRAPPER SCCACHE_DISABLE=1 $cmd; then
         pass "$label"
         return 0
     else
@@ -96,6 +101,9 @@ case "$MODE" in
     run_cargo "cargo kani --package vb_compile --harness push_constant_overflow --quiet" "KANI-CONSTANT-POOL-001" || FAILED=1
     run_cargo "cargo kani --package vb_compile --harness lower_accessor_reference_numeric --quiet" "KANI-ACCESSOR-REF-001" || FAILED=1
     run_cargo "cargo kani --package vb_compile --harness node_id_uniqueness --quiet" "INV-007-NODEDUP-001" || FAILED=1
+    run_cargo "cargo kani --package vb_runtime --harness strict_admission_invalid_artifact_cases_reject --default-unwind 1 --quiet" "KANI-ADMISSION-001-MALFORMED-GATE-PROOF-REJECT" || FAILED=1
+    run_cargo "cargo kani --package vb_runtime --harness strict_admission_invalid_capability_rejects --default-unwind 1 --quiet" "KANI-ADMISSION-001-CAPABILITY-REJECT" || FAILED=1
+    run_cargo "cargo kani --package vb_runtime --harness strict_admission_valid_artifact_admits --default-unwind 1 --quiet" "KANI-ADMISSION-001-VALID-ACCEPT" || FAILED=1
     info "NOTE: Verus proofs (VERUS-EXPR-STACK-001, VERUS-SLOT-MAX-001) are WAIVED — toolchain not installed"
     ;;
 

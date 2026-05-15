@@ -243,6 +243,9 @@ impl Shard {
             Err(AdmissionError::ArtifactInvalidProofFlag { .. }) => {
                 Err(RuntimeError::AdmissionArtifactInvalid { digest })
             }
+            Err(AdmissionError::ArtifactDigestMismatch { requested, found }) => {
+                Err(RuntimeError::AdmissionArtifactDigestMismatch { requested, found })
+            }
         }
     }
 

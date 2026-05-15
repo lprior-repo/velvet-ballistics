@@ -171,6 +171,16 @@ pub trait RuntimeJournal: Send + Sync {
     /// Appends a lifecycle event.
     fn append(&self, event: RuntimeJournalEvent) -> RuntimeResult<()>;
 
+    /// Returns the underlying Fjall journal if this is a storage-backed journal.
+    ///
+    /// Returns `Some(Arc<FjallJournal>)` for `StorageRuntimeJournal`, or `None` for
+    /// noop/volatile journals. This allows callers to construct a
+    /// `StorageArtifactStore` from a storage-backed journal for strict/journaled
+    /// artifact admission.
+    fn storage_journal(&self) -> Option<std::sync::Arc<vb_storage::FjallJournal>> {
+        None
+    }
+
     /// Appends a lifecycle event whose per-run sequence is owned by the shard.
     fn append_sequenced(&self, event: RuntimeJournalEvent, _seq: EventSeq) -> RuntimeResult<()> {
         self.append(event)
