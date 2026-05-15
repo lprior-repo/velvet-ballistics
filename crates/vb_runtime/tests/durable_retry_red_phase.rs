@@ -1,4 +1,13 @@
 // Red-phase tests for durable retry vb-qi37.16.3
+#![allow(
+    clippy::arithmetic_side_effects,
+    clippy::as_conversions,
+    clippy::expect_used,
+    clippy::get_first,
+    clippy::indexing_slicing,
+    clippy::panic,
+    clippy::unwrap_used
+)]
 // These tests define expected behavior that is NOT yet implemented or not yet exposed.
 // They are written in RED-phase TDD style: tests FAIL until production code implements/exposes behavior.
 // This file is Cargo-discovered evidence of the gap between contract and implementation.

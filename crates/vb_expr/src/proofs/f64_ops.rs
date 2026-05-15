@@ -8,9 +8,9 @@
 //! - F64/0 → ±Inf → FiniteF64::new fails → NonFiniteFloat (NOT DivisionByZero)
 //! - NaN comparisons yield false (IEEE 754 semantics)
 
-use crate::eval::{eval_binary_op, eval_unary_op, BinaryOp, UnaryOp};
-use vb_core::value::FiniteF64;
+use crate::eval::{BinaryOp, UnaryOp, eval_binary_op, eval_unary_op};
 use vb_core::SlotValue;
+use vb_core::value::FiniteF64;
 
 /// Kani harness for PO-001: F64 addition preserves finiteness.
 ///
@@ -33,15 +33,16 @@ fn kani_f64_add_preserves_finiteness() {
     let left = FiniteF64::new(left_f64).unwrap();
     let right = FiniteF64::new(right_f64).unwrap();
 
-    let result =
-        eval_binary_op(BinaryOp::Add, SlotValue::F64(left), SlotValue::F64(right));
+    let result = eval_binary_op(BinaryOp::Add, SlotValue::F64(left), SlotValue::F64(right));
 
     // PO-001: Result must be Ok and the F64 must be finite
     assert!(
         result.is_ok(),
         "eval_add_op with bounded finite inputs must not error"
     );
-    let Ok(SlotValue::F64(f)) = result else { return };
+    let Ok(SlotValue::F64(f)) = result else {
+        return;
+    };
     assert!(
         f.get().is_finite(),
         "eval_add_op of two bounded finite f64s must produce finite f64"
@@ -64,14 +65,15 @@ fn kani_f64_sub_preserves_finiteness() {
     let left = FiniteF64::new(left_f64).unwrap();
     let right = FiniteF64::new(right_f64).unwrap();
 
-    let result =
-        eval_binary_op(BinaryOp::Sub, SlotValue::F64(left), SlotValue::F64(right));
+    let result = eval_binary_op(BinaryOp::Sub, SlotValue::F64(left), SlotValue::F64(right));
 
     assert!(
         result.is_ok(),
         "eval_sub_op with bounded finite inputs must not error"
     );
-    let Ok(SlotValue::F64(f)) = result else { return };
+    let Ok(SlotValue::F64(f)) = result else {
+        return;
+    };
     assert!(
         f.get().is_finite(),
         "eval_sub_op of two bounded finite f64s must produce finite f64"
@@ -98,14 +100,15 @@ fn kani_f64_mul_preserves_finiteness() {
     let left = FiniteF64::new(left_f64).unwrap();
     let right = FiniteF64::new(right_f64).unwrap();
 
-    let result =
-        eval_binary_op(BinaryOp::Mul, SlotValue::F64(left), SlotValue::F64(right));
+    let result = eval_binary_op(BinaryOp::Mul, SlotValue::F64(left), SlotValue::F64(right));
 
     assert!(
         result.is_ok(),
         "eval_mul_op with bounded finite inputs must not error"
     );
-    let Ok(SlotValue::F64(f)) = result else { return };
+    let Ok(SlotValue::F64(f)) = result else {
+        return;
+    };
     assert!(
         f.get().is_finite(),
         "eval_mul_op of two bounded finite f64s must produce finite f64"
@@ -127,7 +130,9 @@ fn kani_f64_neg_preserves_finiteness() {
         result.is_ok(),
         "eval_neg_op with finite input must not error"
     );
-    let Ok(SlotValue::F64(f)) = result else { return };
+    let Ok(SlotValue::F64(f)) = result else {
+        return;
+    };
     assert!(
         f.get().is_finite(),
         "eval_neg_op of a finite f64 must produce finite f64"

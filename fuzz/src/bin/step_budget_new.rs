@@ -1,5 +1,5 @@
 //! Fuzz target: step_budget_new (FUZZ-001)
-!
+//!
 //! Specifically targets StepBudget::new clamping boundary at MAX_STEP_BUDGET.
 //! Verifies that StepBudget::new never panics for any u64 input and always
 //! produces a remaining value in [0, MAX_STEP_BUDGET].

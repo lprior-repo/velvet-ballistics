@@ -1,3 +1,13 @@
+#![allow(
+    clippy::arithmetic_side_effects,
+    clippy::as_conversions,
+    clippy::expect_used,
+    clippy::get_first,
+    clippy::indexing_slicing,
+    clippy::panic,
+    clippy::unwrap_used
+)]
+
 use proptest::prelude::*;
 use vb_core::{Taint, join_taint};
 use vb_runtime::{

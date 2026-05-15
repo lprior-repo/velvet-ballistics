@@ -1,4 +1,13 @@
 #![forbid(unsafe_code)]
+#![allow(
+    clippy::arithmetic_side_effects,
+    clippy::as_conversions,
+    clippy::expect_used,
+    clippy::get_first,
+    clippy::indexing_slicing,
+    clippy::panic,
+    clippy::unwrap_used
+)]
 //! Integration tests for durability matrix: handler persistence-before-ack.
 
 use std::sync::Arc;

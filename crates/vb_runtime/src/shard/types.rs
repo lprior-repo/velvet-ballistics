@@ -3,6 +3,8 @@
 
 use crossbeam_queue::ArrayQueue;
 use indexmap::IndexMap;
+use std::cell::RefCell;
+use std::collections::VecDeque;
 use vb_core::action::ActionContract;
 use vb_core::capability::CapabilitySet;
 use vb_core::frame::RunFrame;
@@ -23,6 +25,57 @@ use crate::trace::TraceRing;
 // RunState AggregateReservation, ShardStatus active_usage aggregate_capacity.
 
 type FramePoolKey = (u16, u16);
+
+thread_local! {
+    static RESUME_SOURCES: RefCell<ResumeSourceRegistry> = RefCell::new(ResumeSourceRegistry::new());
+}
+
+const MAX_RESUME_SOURCE_BINDINGS: usize = 64;
+
+struct ResumeSourceRegistry {
+    pending: VecDeque<crate::RuntimeError>,
+    bound: VecDeque<(usize, crate::RuntimeError)>,
+}
+
+impl ResumeSourceRegistry {
+    fn new() -> Self {
+        Self {
+            pending: VecDeque::new(),
+            bound: VecDeque::new(),
+        }
+    }
+
+    fn record(&mut self, source: crate::RuntimeError) {
+        if self.pending.len() >= MAX_RESUME_SOURCE_BINDINGS {
+            self.pending.pop_front();
+        }
+        self.pending.push_back(source);
+    }
+
+    fn source_for(&mut self, key: usize) -> Option<crate::RuntimeError> {
+        if let Some((_, source)) = self.bound.iter().find(|(bound_key, _)| *bound_key == key) {
+            return Some(source.clone());
+        }
+
+        let source = self.pending.pop_front()?;
+        if self.bound.len() >= MAX_RESUME_SOURCE_BINDINGS {
+            self.bound.pop_front();
+        }
+        self.bound.push_back((key, source.clone()));
+        Some(source)
+    }
+
+    fn clear_bound(&mut self, key: usize) -> bool {
+        if let Some(position) = self
+            .bound
+            .iter()
+            .position(|(bound_key, _)| *bound_key == key)
+        {
+            return self.bound.remove(position).is_some();
+        }
+        false
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PendingTimerKind {
@@ -394,4 +447,42 @@ pub enum ResumeError {
     JournalAppendFailed,
     /// Failed to produce structured output.
     StructuredOutputFailed,
+}
+
+impl ResumeError {
+    pub(crate) fn journal_append_failed_with_source(source: crate::RuntimeError) -> Self {
+        Self::record_source(source);
+        Self::JournalAppendFailed
+    }
+
+    fn record_source(source: crate::RuntimeError) {
+        if let Ok(()) = RESUME_SOURCES.try_with(|registry| {
+            registry.borrow_mut().record(source);
+        }) {}
+    }
+
+    /// Returns the runtime source bound to this resume journal failure on this thread.
+    #[must_use]
+    pub fn source_runtime_error(&self) -> Option<crate::RuntimeError> {
+        if !matches!(self, Self::JournalAppendFailed) {
+            return None;
+        }
+        let key = std::ptr::from_ref(self).addr();
+        RESUME_SOURCES
+            .try_with(|registry| registry.borrow_mut().source_for(key))
+            .ok()
+            .flatten()
+    }
+}
+
+impl Drop for ResumeError {
+    fn drop(&mut self) {
+        if !matches!(self, Self::JournalAppendFailed) {
+            return;
+        }
+        let key = std::ptr::from_ref(self).addr();
+        if let Ok(()) = RESUME_SOURCES.try_with(|registry| {
+            registry.borrow_mut().clear_bound(key);
+        }) {}
+    }
 }

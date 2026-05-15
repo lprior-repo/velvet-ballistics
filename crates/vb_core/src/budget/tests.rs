@@ -3480,17 +3480,22 @@ fn test_step_count_overflow() -> Result<(), String> {
     };
 
     // Single-node workflow should compute without overflow
-    let budget = crate::budget::WholeWorkflowBudget::compute(&parts.nodes, parts.entry, &parts.resource_contract)
-        .map_err(|e| e.to_string())?;
+    let budget = crate::budget::WholeWorkflowBudget::compute(
+        &parts.nodes,
+        parts.entry,
+        &parts.resource_contract,
+    )
+    .map_err(|e| e.to_string())?;
     // 1 node = 1 step
-    assert_eq!(budget.max_total_steps, 1, "single-node workflow should have 1 step");
+    assert_eq!(
+        budget.max_total_steps, 1,
+        "single-node workflow should have 1 step"
+    );
 
     // Verify WorkflowError::StepCountOverflow can be constructed correctly.
     // This is the error type returned when u32::try_from(max_total_steps) fails
     // (i.e., when step count exceeds u32::MAX).
-    let overflow_err = crate::workflow::WorkflowError::StepCountOverflow {
-        actual: u64::MAX,
-    };
+    let overflow_err = crate::workflow::WorkflowError::StepCountOverflow { actual: u64::MAX };
     match overflow_err {
         crate::workflow::WorkflowError::StepCountOverflow { actual } => {
             assert_eq!(actual, u64::MAX, "StepCountOverflow should carry u64::MAX");
@@ -3662,18 +3667,55 @@ fn whole_workflow_budget_max_parallel_in_flight_from_together() -> Result<(), St
                 join: StepIdx::new(6),
             },
         },
-        CompiledNode { id: StepIdx::new(1), output: None, next: None, on_error: None, error_slot: None, kind: CompiledNodeKind::Nop },
-        CompiledNode { id: StepIdx::new(2), output: None, next: None, on_error: None, error_slot: None, kind: CompiledNodeKind::Nop },
-        CompiledNode { id: StepIdx::new(3), output: None, next: None, on_error: None, error_slot: None, kind: CompiledNodeKind::Nop },
-        CompiledNode { id: StepIdx::new(4), output: None, next: None, on_error: None, error_slot: None, kind: CompiledNodeKind::Nop },
-        CompiledNode { id: StepIdx::new(5), output: None, next: None, on_error: None, error_slot: None, kind: CompiledNodeKind::Nop },
+        CompiledNode {
+            id: StepIdx::new(1),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Nop,
+        },
+        CompiledNode {
+            id: StepIdx::new(2),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Nop,
+        },
+        CompiledNode {
+            id: StepIdx::new(3),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Nop,
+        },
+        CompiledNode {
+            id: StepIdx::new(4),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Nop,
+        },
+        CompiledNode {
+            id: StepIdx::new(5),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Nop,
+        },
         CompiledNode {
             id: StepIdx::new(6),
             output: None,
             next: None,
             on_error: None,
             error_slot: None,
-            kind: CompiledNodeKind::Finish { result: SlotIdx::new(0) },
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
         },
     ];
     let contract = test_contract(7, 1);
@@ -3685,10 +3727,49 @@ fn whole_workflow_budget_max_parallel_in_flight_from_together() -> Result<(), St
 #[test]
 fn whole_workflow_budget_max_action_tickets_from_do_nodes() -> Result<(), String> {
     let nodes = vec![
-        CompiledNode { id: StepIdx::new(0), output: None, next: Some(StepIdx::new(1)), on_error: None, error_slot: None, kind: CompiledNodeKind::Do { action: ActionId::new(0), input: SlotIdx::new(0) } },
-        CompiledNode { id: StepIdx::new(1), output: None, next: Some(StepIdx::new(2)), on_error: None, error_slot: None, kind: CompiledNodeKind::Do { action: ActionId::new(1), input: SlotIdx::new(1) } },
-        CompiledNode { id: StepIdx::new(2), output: None, next: Some(StepIdx::new(3)), on_error: None, error_slot: None, kind: CompiledNodeKind::Do { action: ActionId::new(2), input: SlotIdx::new(2) } },
-        CompiledNode { id: StepIdx::new(3), output: None, next: None, on_error: None, error_slot: None, kind: CompiledNodeKind::Finish { result: SlotIdx::new(0) } },
+        CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: Some(StepIdx::new(1)),
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Do {
+                action: ActionId::new(0),
+                input: SlotIdx::new(0),
+            },
+        },
+        CompiledNode {
+            id: StepIdx::new(1),
+            output: None,
+            next: Some(StepIdx::new(2)),
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Do {
+                action: ActionId::new(1),
+                input: SlotIdx::new(1),
+            },
+        },
+        CompiledNode {
+            id: StepIdx::new(2),
+            output: None,
+            next: Some(StepIdx::new(3)),
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Do {
+                action: ActionId::new(2),
+                input: SlotIdx::new(2),
+            },
+        },
+        CompiledNode {
+            id: StepIdx::new(3),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
+        },
     ];
     let contract = test_contract(4, 3);
     let budget = WholeWorkflowBudget::compute(&nodes, StepIdx::new(0), &contract)
@@ -3713,8 +3794,24 @@ fn whole_workflow_budget_max_gather_pages_and_items() -> Result<(), String> {
                 done: StepIdx::new(2),
             },
         },
-        CompiledNode { id: StepIdx::new(1), output: None, next: None, on_error: None, error_slot: None, kind: CompiledNodeKind::Nop },
-        CompiledNode { id: StepIdx::new(2), output: None, next: None, on_error: None, error_slot: None, kind: CompiledNodeKind::Finish { result: SlotIdx::new(0) } },
+        CompiledNode {
+            id: StepIdx::new(1),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Nop,
+        },
+        CompiledNode {
+            id: StepIdx::new(2),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::new(0),
+            },
+        },
     ];
     let contract = test_contract(3, 3);
     let budget = WholeWorkflowBudget::compute(&nodes, StepIdx::new(0), &contract)
@@ -3730,8 +3827,26 @@ fn whole_workflow_budget_max_gather_pages_and_items() -> Result<(), String> {
 #[test]
 fn whole_workflow_budget_jump_cycle_detected_in_compute() -> Result<(), String> {
     let nodes = vec![
-        CompiledNode { id: StepIdx::new(0), output: None, next: None, on_error: None, error_slot: None, kind: CompiledNodeKind::Jump { target: StepIdx::new(1) } },
-        CompiledNode { id: StepIdx::new(1), output: None, next: None, on_error: None, error_slot: None, kind: CompiledNodeKind::Jump { target: StepIdx::new(0) } },
+        CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Jump {
+                target: StepIdx::new(1),
+            },
+        },
+        CompiledNode {
+            id: StepIdx::new(1),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Jump {
+                target: StepIdx::new(0),
+            },
+        },
     ];
     let contract = test_contract(2, 1);
     let result = WholeWorkflowBudget::compute(&nodes, StepIdx::new(0), &contract);
@@ -3768,7 +3883,16 @@ fn whole_workflow_budget_step_out_of_bounds_in_visit() -> Result<(), String> {
 
 #[test]
 fn aggregate_resource_budget_from_whole_workflow_budget() -> Result<(), String> {
-    let nodes = vec![CompiledNode { id: StepIdx::new(0), output: None, next: None, on_error: None, error_slot: None, kind: CompiledNodeKind::Finish { result: SlotIdx::new(0) } }];
+    let nodes = vec![CompiledNode {
+        id: StepIdx::new(0),
+        output: None,
+        next: None,
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::Finish {
+            result: SlotIdx::new(0),
+        },
+    }];
     let contract = test_contract(1, 1);
     let wfb = WholeWorkflowBudget::compute(&nodes, StepIdx::new(0), &contract)
         .map_err(|e| format!("{:?}", e))?;
@@ -3814,7 +3938,9 @@ fn aggregate_resource_usage_try_add_budget_overflow() -> Result<(), String> {
         max_transitions_per_tick: 0,
     };
     match usage.try_add_budget(&budget) {
-        Err(AggregateBudgetError::Overflow { resource }) => ensure_equal(resource, "max_steps_executable"),
+        Err(AggregateBudgetError::Overflow { resource }) => {
+            ensure_equal(resource, "max_steps_executable")
+        }
         other => Err(format!("expected Overflow, got {:?}", other)),
     }
 }
@@ -3910,7 +4036,9 @@ fn aggregate_resource_usage_fits_within_rejects_insufficient() -> Result<(), Str
         max_transitions_per_tick: 1000,
     };
     match usage.fits_within(&capacity) {
-        Err(AggregateBudgetError::CapacityExceeded { resource, .. }) => ensure_equal(resource, "max_steps_executable"),
+        Err(AggregateBudgetError::CapacityExceeded { resource, .. }) => {
+            ensure_equal(resource, "max_steps_executable")
+        }
         other => Err(format!("expected CapacityExceeded, got {:?}", other)),
     }
 }
@@ -3946,7 +4074,9 @@ fn fits_within_capacity_exceeded_action_tickets() -> Result<(), String> {
         max_transitions_per_tick: 500,
     };
     match usage.fits_within(&capacity) {
-        Err(AggregateBudgetError::CapacityExceeded { resource, .. }) => ensure_equal(resource, "max_action_tickets"),
+        Err(AggregateBudgetError::CapacityExceeded { resource, .. }) => {
+            ensure_equal(resource, "max_action_tickets")
+        }
         other => Err(format!("expected CapacityExceeded, got {:?}", other)),
     }
 }
@@ -3982,7 +4112,9 @@ fn fits_within_capacity_exceeded_parallel_in_flight() -> Result<(), String> {
         max_transitions_per_tick: 500,
     };
     match usage.fits_within(&capacity) {
-        Err(AggregateBudgetError::CapacityExceeded { resource, .. }) => ensure_equal(resource, "max_parallel_in_flight"),
+        Err(AggregateBudgetError::CapacityExceeded { resource, .. }) => {
+            ensure_equal(resource, "max_parallel_in_flight")
+        }
         other => Err(format!("expected CapacityExceeded, got {:?}", other)),
     }
 }
@@ -4018,7 +4150,9 @@ fn fits_within_capacity_exceeded_gather_pages() -> Result<(), String> {
         max_transitions_per_tick: 500,
     };
     match usage.fits_within(&capacity) {
-        Err(AggregateBudgetError::CapacityExceeded { resource, .. }) => ensure_equal(resource, "max_gather_pages"),
+        Err(AggregateBudgetError::CapacityExceeded { resource, .. }) => {
+            ensure_equal(resource, "max_gather_pages")
+        }
         other => Err(format!("expected CapacityExceeded, got {:?}", other)),
     }
 }
@@ -4054,7 +4188,9 @@ fn fits_within_capacity_exceeded_gather_items() -> Result<(), String> {
         max_transitions_per_tick: 500,
     };
     match usage.fits_within(&capacity) {
-        Err(AggregateBudgetError::CapacityExceeded { resource, .. }) => ensure_equal(resource, "max_gather_items"),
+        Err(AggregateBudgetError::CapacityExceeded { resource, .. }) => {
+            ensure_equal(resource, "max_gather_items")
+        }
         other => Err(format!("expected CapacityExceeded, got {:?}", other)),
     }
 }
@@ -4090,7 +4226,9 @@ fn fits_within_capacity_exceeded_result_bytes() -> Result<(), String> {
         max_transitions_per_tick: 500,
     };
     match usage.fits_within(&capacity) {
-        Err(AggregateBudgetError::CapacityExceeded { resource, .. }) => ensure_equal(resource, "max_result_bytes"),
+        Err(AggregateBudgetError::CapacityExceeded { resource, .. }) => {
+            ensure_equal(resource, "max_result_bytes")
+        }
         other => Err(format!("expected CapacityExceeded, got {:?}", other)),
     }
 }
@@ -4126,7 +4264,9 @@ fn fits_within_capacity_exceeded_total_slots_written() -> Result<(), String> {
         max_transitions_per_tick: 500,
     };
     match usage.fits_within(&capacity) {
-        Err(AggregateBudgetError::CapacityExceeded { resource, .. }) => ensure_equal(resource, "max_total_slots_written"),
+        Err(AggregateBudgetError::CapacityExceeded { resource, .. }) => {
+            ensure_equal(resource, "max_total_slots_written")
+        }
         other => Err(format!("expected CapacityExceeded, got {:?}", other)),
     }
 }
@@ -4162,7 +4302,9 @@ fn fits_within_capacity_exceeded_active_runs() -> Result<(), String> {
         max_transitions_per_tick: 500,
     };
     match usage.fits_within(&capacity) {
-        Err(AggregateBudgetError::CapacityExceeded { resource, .. }) => ensure_equal(resource, "max_active_runs"),
+        Err(AggregateBudgetError::CapacityExceeded { resource, .. }) => {
+            ensure_equal(resource, "max_active_runs")
+        }
         other => Err(format!("expected CapacityExceeded, got {:?}", other)),
     }
 }
@@ -4198,7 +4340,9 @@ fn fits_within_capacity_exceeded_queue_depth() -> Result<(), String> {
         max_transitions_per_tick: 500,
     };
     match usage.fits_within(&capacity) {
-        Err(AggregateBudgetError::CapacityExceeded { resource, .. }) => ensure_equal(resource, "max_queue_depth"),
+        Err(AggregateBudgetError::CapacityExceeded { resource, .. }) => {
+            ensure_equal(resource, "max_queue_depth")
+        }
         other => Err(format!("expected CapacityExceeded, got {:?}", other)),
     }
 }
@@ -4234,7 +4378,9 @@ fn fits_within_capacity_exceeded_journal_batch_bytes() -> Result<(), String> {
         max_transitions_per_tick: 500,
     };
     match usage.fits_within(&capacity) {
-        Err(AggregateBudgetError::CapacityExceeded { resource, .. }) => ensure_equal(resource, "max_journal_batch_bytes"),
+        Err(AggregateBudgetError::CapacityExceeded { resource, .. }) => {
+            ensure_equal(resource, "max_journal_batch_bytes")
+        }
         other => Err(format!("expected CapacityExceeded, got {:?}", other)),
     }
 }
@@ -4270,7 +4416,9 @@ fn fits_within_capacity_exceeded_step_budget_per_tick() -> Result<(), String> {
         max_transitions_per_tick: 500,
     };
     match usage.fits_within(&capacity) {
-        Err(AggregateBudgetError::CapacityExceeded { resource, .. }) => ensure_equal(resource, "max_step_budget_per_tick"),
+        Err(AggregateBudgetError::CapacityExceeded { resource, .. }) => {
+            ensure_equal(resource, "max_step_budget_per_tick")
+        }
         other => Err(format!("expected CapacityExceeded, got {:?}", other)),
     }
 }
@@ -4306,7 +4454,9 @@ fn fits_within_capacity_exceeded_transitions_per_tick() -> Result<(), String> {
         max_transitions_per_tick: 500,
     };
     match usage.fits_within(&capacity) {
-        Err(AggregateBudgetError::CapacityExceeded { resource, .. }) => ensure_equal(resource, "max_transitions_per_tick"),
+        Err(AggregateBudgetError::CapacityExceeded { resource, .. }) => {
+            ensure_equal(resource, "max_transitions_per_tick")
+        }
         other => Err(format!("expected CapacityExceeded, got {:?}", other)),
     }
 }
@@ -4336,7 +4486,10 @@ fn validate_aggregate_budget_accepts_valid_budget() -> Result<(), String> {
         max_transitions_per_tick: 500,
     };
     let policy = BoundednessPolicy::DEFAULT;
-    ensure_equal(crate::budget::validate_aggregate_budget(&budget, &policy), Ok(()))
+    ensure_equal(
+        crate::budget::validate_aggregate_budget(&budget, &policy),
+        Ok(()),
+    )
 }
 
 #[test]
@@ -4361,7 +4514,9 @@ fn validate_aggregate_budget_rejects_exceeded_steps() -> Result<(), String> {
     };
     let policy = BoundednessPolicy::DEFAULT;
     match crate::budget::validate_aggregate_budget(&budget, &policy) {
-        Err(AggregateBudgetError::PolicyExceeded { resource, .. }) => ensure_equal(resource, "max_steps_executable"),
+        Err(AggregateBudgetError::PolicyExceeded { resource, .. }) => {
+            ensure_equal(resource, "max_steps_executable")
+        }
         other => Err(format!("expected PolicyExceeded, got {:?}", other)),
     }
 }
@@ -4388,7 +4543,9 @@ fn validate_aggregate_budget_rejects_exceeded_action_tickets() -> Result<(), Str
     };
     let policy = BoundednessPolicy::DEFAULT;
     match crate::budget::validate_aggregate_budget(&budget, &policy) {
-        Err(AggregateBudgetError::PolicyExceeded { resource, .. }) => ensure_equal(resource, "max_action_tickets"),
+        Err(AggregateBudgetError::PolicyExceeded { resource, .. }) => {
+            ensure_equal(resource, "max_action_tickets")
+        }
         other => Err(format!("expected PolicyExceeded, got {:?}", other)),
     }
 }
@@ -4415,7 +4572,9 @@ fn validate_aggregate_budget_rejects_exceeded_parallel_in_flight() -> Result<(),
     };
     let policy = BoundednessPolicy::DEFAULT;
     match crate::budget::validate_aggregate_budget(&budget, &policy) {
-        Err(AggregateBudgetError::PolicyExceeded { resource, .. }) => ensure_equal(resource, "max_parallel_in_flight"),
+        Err(AggregateBudgetError::PolicyExceeded { resource, .. }) => {
+            ensure_equal(resource, "max_parallel_in_flight")
+        }
         other => Err(format!("expected PolicyExceeded, got {:?}", other)),
     }
 }
@@ -4442,7 +4601,9 @@ fn validate_aggregate_budget_rejects_exceeded_run_time() -> Result<(), String> {
     };
     let policy = BoundednessPolicy::DEFAULT;
     match crate::budget::validate_aggregate_budget(&budget, &policy) {
-        Err(AggregateBudgetError::PolicyExceeded { resource, .. }) => ensure_equal(resource, "max_run_time_seconds"),
+        Err(AggregateBudgetError::PolicyExceeded { resource, .. }) => {
+            ensure_equal(resource, "max_run_time_seconds")
+        }
         other => Err(format!("expected PolicyExceeded, got {:?}", other)),
     }
 }
@@ -4469,7 +4630,9 @@ fn validate_aggregate_budget_rejects_exceeded_result_bytes() -> Result<(), Strin
     };
     let policy = BoundednessPolicy::DEFAULT;
     match crate::budget::validate_aggregate_budget(&budget, &policy) {
-        Err(AggregateBudgetError::PolicyExceeded { resource, .. }) => ensure_equal(resource, "max_result_bytes"),
+        Err(AggregateBudgetError::PolicyExceeded { resource, .. }) => {
+            ensure_equal(resource, "max_result_bytes")
+        }
         other => Err(format!("expected PolicyExceeded, got {:?}", other)),
     }
 }
@@ -4506,7 +4669,9 @@ fn validate_aggregate_budget_rejects_exceeded_total_slots() -> Result<(), String
         absolute_max_steps_executable: 1_000_000,
     };
     match crate::budget::validate_aggregate_budget(&budget, &policy) {
-        Err(AggregateBudgetError::PolicyExceeded { resource, .. }) => ensure_equal(resource, "max_total_slots_written"),
+        Err(AggregateBudgetError::PolicyExceeded { resource, .. }) => {
+            ensure_equal(resource, "max_total_slots_written")
+        }
         other => Err(format!("expected PolicyExceeded, got {:?}", other)),
     }
 }
@@ -4543,7 +4708,9 @@ fn validate_aggregate_budget_rejects_exceeded_together_branches() -> Result<(), 
         absolute_max_steps_executable: 1_000_000,
     };
     match crate::budget::validate_aggregate_budget(&budget, &policy) {
-        Err(AggregateBudgetError::PolicyExceeded { resource, .. }) => ensure_equal(resource, "max_together_branches"),
+        Err(AggregateBudgetError::PolicyExceeded { resource, .. }) => {
+            ensure_equal(resource, "max_together_branches")
+        }
         other => Err(format!("expected PolicyExceeded, got {:?}", other)),
     }
 }
@@ -4623,7 +4790,10 @@ fn validate_step_ceilings_rejects_zero_transitions() -> Result<(), String> {
     };
     match crate::budget::validate_step_ceilings(&budget) {
         Err(AggregateBudgetError::PerTickCeilingExceeded { requested: 0, .. }) => Ok(()),
-        other => Err(format!("expected PerTickCeilingExceeded(0), got {:?}", other)),
+        other => Err(format!(
+            "expected PerTickCeilingExceeded(0), got {:?}",
+            other
+        )),
     }
 }
 
@@ -4648,7 +4818,10 @@ fn validate_step_ceilings_rejects_step_over_hard_limit() -> Result<(), String> {
         max_journal_batch_bytes: 4096,
     };
     match crate::budget::validate_step_ceilings(&budget) {
-        Err(AggregateBudgetError::StepCeilingExceeded { requested: 2_000_000, .. }) => Ok(()),
+        Err(AggregateBudgetError::StepCeilingExceeded {
+            requested: 2_000_000,
+            ..
+        }) => Ok(()),
         other => Err(format!("expected StepCeilingExceeded, got {:?}", other)),
     }
 }
@@ -4674,7 +4847,10 @@ fn validate_step_ceilings_rejects_transitions_over_hard_limit() -> Result<(), St
         max_journal_batch_bytes: 4096,
     };
     match crate::budget::validate_step_ceilings(&budget) {
-        Err(AggregateBudgetError::PerTickCeilingExceeded { requested: 2_000_000, .. }) => Ok(()),
+        Err(AggregateBudgetError::PerTickCeilingExceeded {
+            requested: 2_000_000,
+            ..
+        }) => Ok(()),
         other => Err(format!("expected PerTickCeilingExceeded, got {:?}", other)),
     }
 }
@@ -4743,21 +4919,31 @@ fn aggregate_reservation_debug_format() -> Result<(), String> {
 
 #[test]
 fn aggregate_budget_error_workflow_debug() -> Result<(), String> {
-    let err = AggregateBudgetError::WorkflowBudget(WorkflowError::EntryOutOfBounds { entry: StepIdx::new(5) });
+    let err = AggregateBudgetError::WorkflowBudget(WorkflowError::EntryOutOfBounds {
+        entry: StepIdx::new(5),
+    });
     let debug = format!("{:?}", err);
     ensure_equal(debug.is_empty(), false)
 }
 
 #[test]
 fn aggregate_budget_error_policy_exceeded_debug() -> Result<(), String> {
-    let err = AggregateBudgetError::PolicyExceeded { resource: "max_steps", actual: 100, limit: 50 };
+    let err = AggregateBudgetError::PolicyExceeded {
+        resource: "max_steps",
+        actual: 100,
+        limit: 50,
+    };
     let debug = format!("{:?}", err);
     ensure_equal(debug.is_empty(), false)
 }
 
 #[test]
 fn aggregate_budget_error_capacity_exceeded_debug() -> Result<(), String> {
-    let err = AggregateBudgetError::CapacityExceeded { resource: "max_steps", requested: 100, available: 50 };
+    let err = AggregateBudgetError::CapacityExceeded {
+        resource: "max_steps",
+        requested: 100,
+        available: 50,
+    };
     let debug = format!("{:?}", err);
     ensure_equal(debug.is_empty(), false)
 }
@@ -4785,21 +4971,29 @@ fn aggregate_budget_error_invalid_capacity_debug() -> Result<(), String> {
 
 #[test]
 fn aggregate_budget_error_reservation_not_found_debug() -> Result<(), String> {
-    let err = AggregateBudgetError::ReservationNotFound { run: crate::ids::RunId::new(42) };
+    let err = AggregateBudgetError::ReservationNotFound {
+        run: crate::ids::RunId::new(42),
+    };
     let debug = format!("{:?}", err);
     ensure_equal(debug.is_empty(), false)
 }
 
 #[test]
 fn aggregate_budget_error_step_ceiling_exceeded_debug() -> Result<(), String> {
-    let err = AggregateBudgetError::StepCeilingExceeded { requested: 100, limit: 50 };
+    let err = AggregateBudgetError::StepCeilingExceeded {
+        requested: 100,
+        limit: 50,
+    };
     let debug = format!("{:?}", err);
     ensure_equal(debug.is_empty(), false)
 }
 
 #[test]
 fn aggregate_budget_error_per_tick_ceiling_exceeded_debug() -> Result<(), String> {
-    let err = AggregateBudgetError::PerTickCeilingExceeded { requested: 100, limit: 50 };
+    let err = AggregateBudgetError::PerTickCeilingExceeded {
+        requested: 100,
+        limit: 50,
+    };
     let debug = format!("{:?}", err);
     ensure_equal(debug.is_empty(), false)
 }
@@ -4810,27 +5004,38 @@ fn aggregate_budget_error_per_tick_ceiling_exceeded_debug() -> Result<(), String
 
 #[test]
 fn budget_error_from_step_out_of_bounds() -> Result<(), String> {
-    let wf_err = WorkflowError::StepOutOfBounds { step: StepIdx::new(10) };
+    let wf_err = WorkflowError::StepOutOfBounds {
+        step: StepIdx::new(10),
+    };
     let budget_err: BudgetError = wf_err.into();
     match budget_err {
         BudgetError::TotalStepsExceeded { actual, limit } => {
             ensure_equal(actual, u64::MAX)?;
             ensure_equal(limit, u64::MAX)
         }
-        other => Err(format!("expected TotalStepsExceeded sentinel, got {:?}", other)),
+        other => Err(format!(
+            "expected TotalStepsExceeded sentinel, got {:?}",
+            other
+        )),
     }
 }
 
 #[test]
 fn budget_error_from_jump_cycle() -> Result<(), String> {
-    let wf_err = WorkflowError::JumpCycle { step: StepIdx::new(1), target: StepIdx::new(0) };
+    let wf_err = WorkflowError::JumpCycle {
+        step: StepIdx::new(1),
+        target: StepIdx::new(0),
+    };
     let budget_err: BudgetError = wf_err.into();
     match budget_err {
         BudgetError::TotalStepsExceeded { actual, limit } => {
             ensure_equal(actual, u64::MAX)?;
             ensure_equal(limit, u64::MAX)
         }
-        other => Err(format!("expected TotalStepsExceeded sentinel, got {:?}", other)),
+        other => Err(format!(
+            "expected TotalStepsExceeded sentinel, got {:?}",
+            other
+        )),
     }
 }
 

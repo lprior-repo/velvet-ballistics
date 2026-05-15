@@ -1993,9 +1993,15 @@ mod tests {
         let mut store = ValueStore::new();
         let values = vec![SlotValue::I64(1), SlotValue::I64(2)].into_boxed_slice();
         let taints = vec![Taint::Clean, Taint::Clean].into_boxed_slice();
-        let list_id = store.insert_list_with_taint(values, taints).map_err(|e| e.to_string())?;
-        let (_, taint0) = store.list_item_with_taint(list_id, 0).map_err(|e| e.to_string())?;
-        let (_, taint1) = store.list_item_with_taint(list_id, 1).map_err(|e| e.to_string())?;
+        let list_id = store
+            .insert_list_with_taint(values, taints)
+            .map_err(|e| e.to_string())?;
+        let (_, taint0) = store
+            .list_item_with_taint(list_id, 0)
+            .map_err(|e| e.to_string())?;
+        let (_, taint1) = store
+            .list_item_with_taint(list_id, 1)
+            .map_err(|e| e.to_string())?;
         assert_eq!(taint0, Taint::Clean);
         assert_eq!(taint1, Taint::Clean);
         Ok(())
@@ -2006,9 +2012,15 @@ mod tests {
         let mut store = ValueStore::new();
         let values = vec![SlotValue::I64(1), SlotValue::I64(2)].into_boxed_slice();
         let taints = vec![Taint::Secret, Taint::DerivedFromSecret].into_boxed_slice();
-        let list_id = store.insert_list_with_taint(values, taints).map_err(|e| e.to_string())?;
-        let (_, taint0) = store.list_item_with_taint(list_id, 0).map_err(|e| e.to_string())?;
-        let (_, taint1) = store.list_item_with_taint(list_id, 1).map_err(|e| e.to_string())?;
+        let list_id = store
+            .insert_list_with_taint(values, taints)
+            .map_err(|e| e.to_string())?;
+        let (_, taint0) = store
+            .list_item_with_taint(list_id, 0)
+            .map_err(|e| e.to_string())?;
+        let (_, taint1) = store
+            .list_item_with_taint(list_id, 1)
+            .map_err(|e| e.to_string())?;
         assert_eq!(taint0, Taint::Secret);
         assert_eq!(taint1, Taint::DerivedFromSecret);
         Ok(())
@@ -2019,11 +2031,20 @@ mod tests {
         let mut store = ValueStore::new();
         let fields = vec![
             ObjectField::with_taint(SymbolId::new(1), SlotValue::I64(100), Taint::Secret),
-            ObjectField::with_taint(SymbolId::new(2), SlotValue::I64(200), Taint::DerivedFromSecret),
-        ].into_boxed_slice();
+            ObjectField::with_taint(
+                SymbolId::new(2),
+                SlotValue::I64(200),
+                Taint::DerivedFromSecret,
+            ),
+        ]
+        .into_boxed_slice();
         let obj_id = store.insert_object(fields).map_err(|e| e.to_string())?;
-        let (val1, taint1) = store.object_field_with_taint(obj_id, SymbolId::new(1)).map_err(|e| e.to_string())?;
-        let (val2, taint2) = store.object_field_with_taint(obj_id, SymbolId::new(2)).map_err(|e| e.to_string())?;
+        let (val1, taint1) = store
+            .object_field_with_taint(obj_id, SymbolId::new(1))
+            .map_err(|e| e.to_string())?;
+        let (val2, taint2) = store
+            .object_field_with_taint(obj_id, SymbolId::new(2))
+            .map_err(|e| e.to_string())?;
         assert_eq!(val1, SlotValue::I64(100));
         assert_eq!(taint1, Taint::Secret);
         assert_eq!(val2, SlotValue::I64(200));
@@ -2038,8 +2059,12 @@ mod tests {
     #[test]
     fn value_store_list_item_with_taint_on_clean_list() -> Result<(), String> {
         let mut store = ValueStore::new();
-        let list_id = store.insert_list(vec![SlotValue::Bool(true)].into_boxed_slice()).map_err(|e| e.to_string())?;
-        let (value, taint) = store.list_item_with_taint(list_id, 0).map_err(|e| e.to_string())?;
+        let list_id = store
+            .insert_list(vec![SlotValue::Bool(true)].into_boxed_slice())
+            .map_err(|e| e.to_string())?;
+        let (value, taint) = store
+            .list_item_with_taint(list_id, 0)
+            .map_err(|e| e.to_string())?;
         assert_eq!(value, SlotValue::Bool(true));
         assert_eq!(taint, Taint::Clean);
         Ok(())
@@ -2048,9 +2073,12 @@ mod tests {
     #[test]
     fn value_store_object_field_with_taint_on_clean_object() -> Result<(), String> {
         let mut store = ValueStore::new();
-        let fields = vec![ObjectField::clean(SymbolId::new(5), SlotValue::I64(42))].into_boxed_slice();
+        let fields =
+            vec![ObjectField::clean(SymbolId::new(5), SlotValue::I64(42))].into_boxed_slice();
         let obj_id = store.insert_object(fields).map_err(|e| e.to_string())?;
-        let (value, taint) = store.object_field_with_taint(obj_id, SymbolId::new(5)).map_err(|e| e.to_string())?;
+        let (value, taint) = store
+            .object_field_with_taint(obj_id, SymbolId::new(5))
+            .map_err(|e| e.to_string())?;
         assert_eq!(value, SlotValue::I64(42));
         assert_eq!(taint, Taint::Clean);
         Ok(())
@@ -2059,7 +2087,9 @@ mod tests {
     #[test]
     fn value_store_list_item_with_taint_index_out_of_bounds() -> Result<(), String> {
         let mut store = ValueStore::new();
-        let list_id = store.insert_list(vec![SlotValue::Null].into_boxed_slice()).map_err(|e| e.to_string())?;
+        let list_id = store
+            .insert_list(vec![SlotValue::Null].into_boxed_slice())
+            .map_err(|e| e.to_string())?;
         let result = store.list_item_with_taint(list_id, u32::MAX);
         match result {
             Err(CoreError::ListIndexOutOfBounds { .. }) => Ok(()),
@@ -2097,7 +2127,9 @@ mod tests {
     fn value_store_blob_non_empty_data() -> Result<(), String> {
         let mut store = ValueStore::new();
         let data = vec![0xDE, 0xAD, 0xBE, 0xEF];
-        let blob_id = store.insert_blob(Bytes::from(data.clone())).map_err(|e| e.to_string())?;
+        let blob_id = store
+            .insert_blob(Bytes::from(data.clone()))
+            .map_err(|e| e.to_string())?;
         let retrieved = store.blob(blob_id).map_err(|e| e.to_string())?;
         assert_eq!(retrieved, &data[..]);
         Ok(())
@@ -2106,9 +2138,15 @@ mod tests {
     #[test]
     fn value_store_blob_multiple_inserts() -> Result<(), String> {
         let mut store = ValueStore::new();
-        let blob0 = store.insert_blob(Bytes::from_static(b"first")).map_err(|e| e.to_string())?;
-        let blob1 = store.insert_blob(Bytes::from_static(b"second")).map_err(|e| e.to_string())?;
-        let blob2 = store.insert_blob(Bytes::from_static(b"third")).map_err(|e| e.to_string())?;
+        let blob0 = store
+            .insert_blob(Bytes::from_static(b"first"))
+            .map_err(|e| e.to_string())?;
+        let blob1 = store
+            .insert_blob(Bytes::from_static(b"second"))
+            .map_err(|e| e.to_string())?;
+        let blob2 = store
+            .insert_blob(Bytes::from_static(b"third"))
+            .map_err(|e| e.to_string())?;
         assert_eq!(store.blob(blob0).map_err(|e| e.to_string())?, b"first");
         assert_eq!(store.blob(blob1).map_err(|e| e.to_string())?, b"second");
         assert_eq!(store.blob(blob2).map_err(|e| e.to_string())?, b"third");
@@ -2119,7 +2157,9 @@ mod tests {
     fn value_store_blob_zero_byte_insert() -> Result<(), String> {
         let mut store = ValueStore::new();
         let data = vec![0u8; 100];
-        let blob_id = store.insert_blob(Bytes::from(data.clone())).map_err(|e| e.to_string())?;
+        let blob_id = store
+            .insert_blob(Bytes::from(data.clone()))
+            .map_err(|e| e.to_string())?;
         let retrieved = store.blob(blob_id).map_err(|e| e.to_string())?;
         assert_eq!(retrieved.len(), 100);
         assert!(retrieved.iter().all(|&b| b == 0));
@@ -2140,10 +2180,18 @@ mod tests {
     #[test]
     fn value_store_total_arena_count_with_entries() -> Result<(), String> {
         let mut store = ValueStore::new();
-        store.insert_symbol(Box::<str>::from("sym")).map_err(|e| e.to_string())?;
-        store.insert_list(vec![SlotValue::Null].into_boxed_slice()).map_err(|e| e.to_string())?;
-        store.insert_object(vec![].into_boxed_slice()).map_err(|e| e.to_string())?;
-        store.insert_blob(Bytes::from_static(b"x")).map_err(|e| e.to_string())?;
+        store
+            .insert_symbol(Box::<str>::from("sym"))
+            .map_err(|e| e.to_string())?;
+        store
+            .insert_list(vec![SlotValue::Null].into_boxed_slice())
+            .map_err(|e| e.to_string())?;
+        store
+            .insert_object(vec![].into_boxed_slice())
+            .map_err(|e| e.to_string())?;
+        store
+            .insert_blob(Bytes::from_static(b"x"))
+            .map_err(|e| e.to_string())?;
         assert_eq!(store.total_arena_count(), 4);
         Ok(())
     }
@@ -2166,7 +2214,9 @@ mod tests {
     fn value_store_total_arena_count_saturating() -> Result<(), String> {
         let mut store = ValueStore::new();
         for _ in 0..1000 {
-            store.insert_symbol(Box::<str>::from("x")).map_err(|e| e.to_string())?;
+            store
+                .insert_symbol(Box::<str>::from("x"))
+                .map_err(|e| e.to_string())?;
         }
         assert_eq!(store.total_arena_count(), 1000);
         Ok(())
@@ -2179,10 +2229,17 @@ mod tests {
     #[test]
     fn value_store_arena_cap_fills_and_rejects() -> Result<(), String> {
         let mut store = ValueStore::with_max_slots(2);
-        store.insert_symbol(Box::<str>::from("a")).map_err(|e| e.to_string())?;
-        store.insert_list(vec![SlotValue::Null].into_boxed_slice()).map_err(|e| e.to_string())?;
+        store
+            .insert_symbol(Box::<str>::from("a"))
+            .map_err(|e| e.to_string())?;
+        store
+            .insert_list(vec![SlotValue::Null].into_boxed_slice())
+            .map_err(|e| e.to_string())?;
         match store.insert_object(vec![].into_boxed_slice()) {
-            Err(CoreError::BudgetExceeded { budget: "max_slots", limit: 2 }) => Ok(()),
+            Err(CoreError::BudgetExceeded {
+                budget: "max_slots",
+                limit: 2,
+            }) => Ok(()),
             other => Err(format!("expected BudgetExceeded, got {:?}", other)),
         }
     }
@@ -2236,8 +2293,12 @@ mod tests {
     #[test]
     fn value_store_symbol_id_allocates_sequential() -> Result<(), String> {
         let mut store = ValueStore::new();
-        let id0 = store.insert_symbol(Box::<str>::from("a")).map_err(|e| e.to_string())?;
-        let id1 = store.insert_symbol(Box::<str>::from("b")).map_err(|e| e.to_string())?;
+        let id0 = store
+            .insert_symbol(Box::<str>::from("a"))
+            .map_err(|e| e.to_string())?;
+        let id1 = store
+            .insert_symbol(Box::<str>::from("b"))
+            .map_err(|e| e.to_string())?;
         assert_eq!(id0.get(), 0);
         assert_eq!(id1.get(), 1);
         Ok(())
@@ -2246,8 +2307,12 @@ mod tests {
     #[test]
     fn value_store_list_id_allocates_sequential() -> Result<(), String> {
         let mut store = ValueStore::new();
-        let id0 = store.insert_list(vec![].into_boxed_slice()).map_err(|e| e.to_string())?;
-        let id1 = store.insert_list(vec![SlotValue::Null].into_boxed_slice()).map_err(|e| e.to_string())?;
+        let id0 = store
+            .insert_list(vec![].into_boxed_slice())
+            .map_err(|e| e.to_string())?;
+        let id1 = store
+            .insert_list(vec![SlotValue::Null].into_boxed_slice())
+            .map_err(|e| e.to_string())?;
         assert_eq!(id0.get(), 0);
         assert_eq!(id1.get(), 1);
         Ok(())
@@ -2256,8 +2321,12 @@ mod tests {
     #[test]
     fn value_store_object_id_allocates_sequential() -> Result<(), String> {
         let mut store = ValueStore::new();
-        let id0 = store.insert_object(vec![].into_boxed_slice()).map_err(|e| e.to_string())?;
-        let id1 = store.insert_object(vec![].into_boxed_slice()).map_err(|e| e.to_string())?;
+        let id0 = store
+            .insert_object(vec![].into_boxed_slice())
+            .map_err(|e| e.to_string())?;
+        let id1 = store
+            .insert_object(vec![].into_boxed_slice())
+            .map_err(|e| e.to_string())?;
         assert_eq!(id0.get(), 0);
         assert_eq!(id1.get(), 1);
         Ok(())
@@ -2267,7 +2336,9 @@ mod tests {
     fn value_store_blob_id_allocates_sequential() -> Result<(), String> {
         let mut store = ValueStore::new();
         let id0 = store.insert_blob(Bytes::new()).map_err(|e| e.to_string())?;
-        let id1 = store.insert_blob(Bytes::from_static(b"x")).map_err(|e| e.to_string())?;
+        let id1 = store
+            .insert_blob(Bytes::from_static(b"x"))
+            .map_err(|e| e.to_string())?;
         assert_eq!(id0.get(), 0);
         assert_eq!(id1.get(), 1);
         Ok(())
@@ -2281,7 +2352,9 @@ mod tests {
     fn validate_list_len_rejects_over_max() -> Result<(), String> {
         let too_many = MAX_LIST_ITEMS_PER_VALUE + 1;
         match super::validate_list_len(too_many) {
-            Err(CoreError::ResourceLimitExceeded { resource: "list_items" }) => Ok(()),
+            Err(CoreError::ResourceLimitExceeded {
+                resource: "list_items",
+            }) => Ok(()),
             other => Err(format!("expected error, got {:?}", other)),
         }
     }
@@ -2290,7 +2363,9 @@ mod tests {
     fn validate_symbol_len_rejects_over_max() -> Result<(), String> {
         let too_long = MAX_SYMBOL_BYTES_PER_VALUE + 1;
         match super::validate_symbol_len(too_long) {
-            Err(CoreError::ResourceLimitExceeded { resource: "symbol_bytes" }) => Ok(()),
+            Err(CoreError::ResourceLimitExceeded {
+                resource: "symbol_bytes",
+            }) => Ok(()),
             other => Err(format!("expected error, got {:?}", other)),
         }
     }
@@ -2299,7 +2374,9 @@ mod tests {
     fn validate_blob_len_rejects_over_max() -> Result<(), String> {
         let too_big = MAX_BLOB_BYTES_PER_VALUE + 1;
         match super::validate_blob_len(too_big) {
-            Err(CoreError::ResourceLimitExceeded { resource: "blob_bytes" }) => Ok(()),
+            Err(CoreError::ResourceLimitExceeded {
+                resource: "blob_bytes",
+            }) => Ok(()),
             other => Err(format!("expected error, got {:?}", other)),
         }
     }
@@ -2308,7 +2385,9 @@ mod tests {
     fn validate_object_len_rejects_over_max() -> Result<(), String> {
         let too_many = MAX_OBJECT_FIELDS_PER_VALUE + 1;
         match super::validate_object_len(too_many) {
-            Err(CoreError::ResourceLimitExceeded { resource: "object_fields" }) => Ok(()),
+            Err(CoreError::ResourceLimitExceeded {
+                resource: "object_fields",
+            }) => Ok(()),
             other => Err(format!("expected error, got {:?}", other)),
         }
     }
@@ -2320,7 +2399,9 @@ mod tests {
     #[test]
     fn next_symbol_id_overflow_returns_error() -> Result<(), String> {
         match super::next_symbol_id(u32::MAX as usize + 1) {
-            Err(CoreError::ResourceLimitExceeded { resource: "symbols" }) => Ok(()),
+            Err(CoreError::ResourceLimitExceeded {
+                resource: "symbols",
+            }) => Ok(()),
             other => Err(format!("expected error, got {:?}", other)),
         }
     }
@@ -2336,7 +2417,9 @@ mod tests {
     #[test]
     fn next_object_id_overflow_returns_error() -> Result<(), String> {
         match super::next_object_id(u32::MAX as usize + 1) {
-            Err(CoreError::ResourceLimitExceeded { resource: "objects" }) => Ok(()),
+            Err(CoreError::ResourceLimitExceeded {
+                resource: "objects",
+            }) => Ok(()),
             other => Err(format!("expected error, got {:?}", other)),
         }
     }
@@ -2345,7 +2428,11 @@ mod tests {
     fn next_blob_id_returns_valid_id() -> Result<(), String> {
         match super::next_blob_id(100) {
             Ok(id) => {
-                if id.get() == 100 { Ok(()) } else { Err(format!("expected 100, got {}", id.get())) }
+                if id.get() == 100 {
+                    Ok(())
+                } else {
+                    Err(format!("expected 100, got {}", id.get()))
+                }
             }
             other => Err(format!("expected Ok(BlobId(100)), got {:?}", other)),
         }
@@ -2359,35 +2446,55 @@ mod tests {
     fn symbol_index_converts_id_to_usize() -> Result<(), String> {
         let id = SymbolId::new(42);
         let idx = super::symbol_index(id).map_err(|e| format!("{:?}", e))?;
-        if idx == 42 { Ok(()) } else { Err(format!("expected 42, got {}", idx)) }
+        if idx == 42 {
+            Ok(())
+        } else {
+            Err(format!("expected 42, got {}", idx))
+        }
     }
 
     #[test]
     fn list_index_converts_id_to_usize() -> Result<(), String> {
         let id = ListId::new(42);
         let idx = super::list_index(id).map_err(|e| format!("{:?}", e))?;
-        if idx == 42 { Ok(()) } else { Err(format!("expected 42, got {}", idx)) }
+        if idx == 42 {
+            Ok(())
+        } else {
+            Err(format!("expected 42, got {}", idx))
+        }
     }
 
     #[test]
     fn object_index_converts_id_to_usize() -> Result<(), String> {
         let id = ObjectId::new(42);
         let idx = super::object_index(id).map_err(|e| format!("{:?}", e))?;
-        if idx == 42 { Ok(()) } else { Err(format!("expected 42, got {}", idx)) }
+        if idx == 42 {
+            Ok(())
+        } else {
+            Err(format!("expected 42, got {}", idx))
+        }
     }
 
     #[test]
     fn blob_index_converts_id_to_usize() -> Result<(), String> {
         let id = BlobId::new(42);
         let idx = super::blob_index(id).map_err(|e| format!("{:?}", e))?;
-        if idx == 42 { Ok(()) } else { Err(format!("expected 42, got {}", idx)) }
+        if idx == 42 {
+            Ok(())
+        } else {
+            Err(format!("expected 42, got {}", idx))
+        }
     }
 
     #[test]
     fn symbol_index_accepts_valid_id() -> Result<(), String> {
         let id = SymbolId::new(100);
         let idx = super::symbol_index(id).map_err(|e| format!("{:?}", e))?;
-        if idx == 100 { Ok(()) } else { Err(format!("expected 100, got {}", idx)) }
+        if idx == 100 {
+            Ok(())
+        } else {
+            Err(format!("expected 100, got {}", idx))
+        }
     }
 
     // =========================================================================

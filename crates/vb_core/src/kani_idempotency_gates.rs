@@ -9,7 +9,7 @@
 
 #![forbid(unsafe_code)]
 
-use crate::action::{verify_idempotency, ActionContract, Idempotency, RetrySafety, SideEffect};
+use crate::action::{ActionContract, Idempotency, RetrySafety, SideEffect, verify_idempotency};
 use crate::frame::RunFrame;
 use crate::ids::{RunId, SlotIdx, StepIdx};
 use crate::value::{SlotValue, Taint};
@@ -128,18 +128,15 @@ fn verify_idempotency_secret_in_key() {
     let mut frame = frame.ok().unwrap();
 
     {
-        let r =
-            frame.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(10), Taint::Clean);
+        let r = frame.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(10), Taint::Clean);
         kani::assume(r.is_ok());
     }
     {
-        let r =
-            frame.write_slot_with_taint(SlotIdx::new(1), SlotValue::I64(20), Taint::Secret);
+        let r = frame.write_slot_with_taint(SlotIdx::new(1), SlotValue::I64(20), Taint::Secret);
         kani::assume(r.is_ok());
     }
     {
-        let r =
-            frame.write_slot_with_taint(SlotIdx::new(2), SlotValue::I64(30), Taint::Clean);
+        let r = frame.write_slot_with_taint(SlotIdx::new(2), SlotValue::I64(30), Taint::Clean);
         kani::assume(r.is_ok());
     }
     {
@@ -284,23 +281,19 @@ fn verify_idempotency_single_error() {
     let mut frame = frame.ok().unwrap();
 
     {
-        let r =
-            frame.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(10), Taint::Clean);
+        let r = frame.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(10), Taint::Clean);
         kani::assume(r.is_ok());
     }
     {
-        let r =
-            frame.write_slot_with_taint(SlotIdx::new(1), SlotValue::I64(20), Taint::Secret);
+        let r = frame.write_slot_with_taint(SlotIdx::new(1), SlotValue::I64(20), Taint::Secret);
         kani::assume(r.is_ok());
     }
     {
-        let r =
-            frame.write_slot_with_taint(SlotIdx::new(2), SlotValue::I64(30), Taint::Secret);
+        let r = frame.write_slot_with_taint(SlotIdx::new(2), SlotValue::I64(30), Taint::Secret);
         kani::assume(r.is_ok());
     }
     {
-        let r =
-            frame.write_slot_with_taint(SlotIdx::new(3), SlotValue::I64(40), Taint::Clean);
+        let r = frame.write_slot_with_taint(SlotIdx::new(3), SlotValue::I64(40), Taint::Clean);
         kani::assume(r.is_ok());
     }
 
@@ -320,16 +313,15 @@ fn verify_idempotency_single_error() {
 
     // Exactly one error variant (short-circuit guarantee)
     if let Err(err) = &result {
-        let is_missing =
-            matches!(err, crate::action::IdempotencyViolation::MissingKey(_));
-        let is_secret =
-            matches!(err, crate::action::IdempotencyViolation::SecretInKey(_));
-        let is_random =
-            matches!(err, crate::action::IdempotencyViolation::RandomInKey(_));
+        let is_missing = matches!(err, crate::action::IdempotencyViolation::MissingKey(_));
+        let is_secret = matches!(err, crate::action::IdempotencyViolation::SecretInKey(_));
+        let is_random = matches!(err, crate::action::IdempotencyViolation::RandomInKey(_));
         let is_time = matches!(err, crate::action::IdempotencyViolation::TimeInKey(_));
 
-        let variant_count =
-            [is_missing, is_secret, is_random, is_time].iter().filter(|&&b| b).count();
+        let variant_count = [is_missing, is_secret, is_random, is_time]
+            .iter()
+            .filter(|&&b| b)
+            .count();
 
         kani::assert(
             variant_count == 1,

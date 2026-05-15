@@ -439,7 +439,9 @@ mod tests {
 
     #[test]
     fn engine_error_budget_parse_display() {
-        let err = crate::errors::EngineError::BudgetParse { reason: "invalid u64 value" };
+        let err = crate::errors::EngineError::BudgetParse {
+            reason: "invalid u64 value",
+        };
         let display = format!("{}", err);
         assert!(display.contains("budget env var parse error"));
         assert!(display.contains("invalid u64 value"));
@@ -447,7 +449,9 @@ mod tests {
 
     #[test]
     fn engine_error_budget_parse_reason_only() {
-        let err = crate::errors::EngineError::BudgetParse { reason: "custom reason" };
+        let err = crate::errors::EngineError::BudgetParse {
+            reason: "custom reason",
+        };
         let display = format!("{}", err);
         assert!(display.contains("custom reason"));
     }
@@ -475,9 +479,27 @@ mod tests {
         assert!(format!("{:?}", EngineSignal::AwaitingAction).contains("AwaitingAction"));
         assert!(format!("{:?}", EngineSignal::AwaitingWait).contains("AwaitingWait"));
         assert!(format!("{:?}", EngineSignal::AwaitingAsk).contains("AwaitingAsk"));
-        assert!(format!("{:?}", EngineSignal::Finished(SlotValue::Null, Taint::Clean)).contains("Finished"));
-        assert!(format!("{:?}", EngineSignal::Finished(SlotValue::I64(0), Taint::Secret)).contains("Finished"));
-        assert!(format!("{:?}", EngineSignal::Finished(SlotValue::Bool(true), Taint::DerivedFromSecret)).contains("Finished"));
+        assert!(
+            format!(
+                "{:?}",
+                EngineSignal::Finished(SlotValue::Null, Taint::Clean)
+            )
+            .contains("Finished")
+        );
+        assert!(
+            format!(
+                "{:?}",
+                EngineSignal::Finished(SlotValue::I64(0), Taint::Secret)
+            )
+            .contains("Finished")
+        );
+        assert!(
+            format!(
+                "{:?}",
+                EngineSignal::Finished(SlotValue::Bool(true), Taint::DerivedFromSecret)
+            )
+            .contains("Finished")
+        );
     }
 
     // -------------------------------------------------------------------------

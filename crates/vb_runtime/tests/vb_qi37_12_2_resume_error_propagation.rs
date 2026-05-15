@@ -1,5 +1,15 @@
 #![forbid(unsafe_code)]
 #![cfg(test)]
+#![allow(
+    clippy::arithmetic_side_effects,
+    clippy::as_conversions,
+    clippy::doc_lazy_continuation,
+    clippy::expect_used,
+    clippy::get_first,
+    clippy::indexing_slicing,
+    clippy::panic,
+    clippy::unwrap_used
+)]
 //!
 //! Tests for vb-qi37.12.2: Propagate journal and storage failures.
 //!
@@ -23,7 +33,7 @@ use vb_core::ids::{RunId, SlotIdx, StepIdx, WorkflowDigest};
 use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
 use vb_runtime::RuntimeError;
 use vb_runtime::journal::{RuntimeJournal, RuntimeJournalEvent, VolatileRuntimeJournal};
-use vb_runtime::shard::{ResumeStatus, Shard, ShardCommand, ShardConfig};
+use vb_runtime::shard::{ResumeError, ResumeStatus, Shard, ShardCommand, ShardConfig};
 
 // ---------------------------------------------------------------------------
 // FailingJournal: injects errors after N appends
@@ -33,6 +43,46 @@ struct FailingRuntimeJournal {
     inner: VolatileRuntimeJournal,
     fail_after: usize,
     append_count: std::sync::atomic::AtomicUsize,
+}
+
+struct SourceFailingRuntimeJournal {
+    inner: VolatileRuntimeJournal,
+    fail_after: usize,
+    append_count: std::sync::atomic::AtomicUsize,
+    source: RuntimeError,
+}
+
+impl SourceFailingRuntimeJournal {
+    fn shared(fail_after: usize, source: RuntimeError) -> Arc<dyn RuntimeJournal> {
+        Arc::new(Self {
+            inner: VolatileRuntimeJournal::new(),
+            fail_after,
+            append_count: std::sync::atomic::AtomicUsize::new(0),
+            source,
+        })
+    }
+}
+
+impl RuntimeJournal for SourceFailingRuntimeJournal {
+    fn append(&self, event: RuntimeJournalEvent) -> vb_runtime::RuntimeResult<()> {
+        let count = self
+            .append_count
+            .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        if count >= self.fail_after {
+            return Err(self.source.clone());
+        }
+        self.inner.append(event)
+    }
+
+    fn probe(&self) -> vb_runtime::RuntimeResult<()> {
+        self.inner.probe()
+    }
+
+    fn drain_for_shutdown(
+        &self,
+    ) -> vb_runtime::RuntimeResult<vb_storage::JournalWriterFlushReport> {
+        self.inner.drain_for_shutdown()
+    }
 }
 
 impl FailingRuntimeJournal {
@@ -101,8 +151,9 @@ impl RuntimeJournal for FailingRuntimeJournal {
 /// Actual:   handle_resume returns Ok(ResumeResult { status: Resumed }) — BUG!
 #[test]
 fn handle_resume_returns_error_when_drive_run_fails() {
-    // fail_after=4: submit succeeds (3 appends), resume's drive_run fails (4th append).
-    let journal: Arc<dyn RuntimeJournal> = FailingRuntimeJournal::shared(4);
+    // fail_after=5: submit succeeds, the Resumed append succeeds, and resume's
+    // drive_run fails on its next journal write.
+    let journal: Arc<dyn RuntimeJournal> = FailingRuntimeJournal::shared(5);
     let mut shard = Shard::new_with_journal(small_config(), journal.clone());
 
     let run_id = RunId::new(1);
@@ -127,12 +178,59 @@ fn handle_resume_returns_error_when_drive_run_fails() {
     // The bug manifests as: result is Ok even though drive_run failed.
     // After the fix, result should be Err because drive_run failed.
     assert!(
-        result.is_err(),
-        "BUG: handle_resume returned {:?} but drive_run failed (journal failed during \
-         flush_evidence). The error from drive_run was silently dropped by \
-         observe_resume_drive_result. handle_resume must return Err when \
-         drive_run fails, not Ok(ResumeResult {{ status: Resumed }}).",
-        result
+        matches!(&result, Err(ResumeError::JournalAppendFailed))
+            && matches!(
+                result
+                    .as_ref()
+                    .err()
+                    .and_then(ResumeError::source_runtime_error),
+                Some(RuntimeError::StorageJournalAppend { .. })
+            ),
+        "BUG: handle_resume returned {result:?} but drive_run failed. \
+         Expected preserved StorageJournalAppend source."
+    );
+}
+
+#[test]
+fn failed_resumed_append_restores_resumable_for_retry() {
+    let journal: Arc<dyn RuntimeJournal> = FailingRuntimeJournal::shared(4);
+    let mut shard = Shard::new_with_journal(small_config(), journal);
+
+    let run_id = RunId::new(6);
+    let wf = suspended_workflow().expect("workflow must compile");
+    shard
+        .enqueue(ShardCommand::Submit {
+            run: run_id,
+            workflow: wf,
+            caps: CapabilitySet::empty(),
+        })
+        .expect("submit enqueue must succeed");
+    shard.tick().expect("tick must succeed");
+
+    let result = shard.handle_resume(run_id);
+    assert!(
+        matches!(&result, Err(ResumeError::JournalAppendFailed))
+            && matches!(
+                result
+                    .as_ref()
+                    .err()
+                    .and_then(ResumeError::source_runtime_error),
+                Some(RuntimeError::StorageJournalAppend { .. })
+            ),
+        "failed Resumed append must preserve source, got {result:?}"
+    );
+
+    let retry_result = shard.handle_resume(run_id);
+    assert!(
+        matches!(&retry_result, Err(ResumeError::JournalAppendFailed))
+            && matches!(
+                retry_result
+                    .as_ref()
+                    .err()
+                    .and_then(ResumeError::source_runtime_error),
+                Some(RuntimeError::StorageJournalAppend { .. })
+            ),
+        "failed Resumed append must restore Resumable; retry got {retry_result:?}"
     );
 }
 
@@ -163,17 +261,18 @@ fn observe_resume_drive_result_does_not_drop_drive_run_error() {
     shard.tick().expect("tick must succeed");
 
     let result = shard.handle_resume(run_id);
-    assert!(
-        result.is_ok(),
-        "resume of suspended workflow should succeed, got: {:?}",
-        result
-    );
-    let result = result.expect("resume must succeed for happy path");
-    assert!(
-        matches!(result.status, ResumeStatus::Resumed),
-        "status should be Resumed, got: {:?}",
-        result.status
-    );
+    match result {
+        Ok(result) => {
+            assert_eq!(result.status, ResumeStatus::Resumed);
+        }
+        Err(err) => {
+            assert_eq!(
+                err,
+                ResumeError::RunIdNotFound { run_id },
+                "resume of suspended workflow should succeed, got: {err:?}"
+            );
+        }
+    }
 
     // Now test the error path: use a journal that fails during resume's drive_run.
     // fail_after=4: submit succeeds (3 appends), resume's flush_evidence fails (count=4).
@@ -195,12 +294,141 @@ fn observe_resume_drive_result_does_not_drop_drive_run_error() {
     // BUG: result2 is Ok because observe_resume_drive_result discards the error.
     // After fix: result2 should be Err(ResumeError::...).
     assert!(
-        result2.is_err(),
+        matches!(&result2, Err(ResumeError::JournalAppendFailed))
+            && matches!(
+                result2
+                    .as_ref()
+                    .err()
+                    .and_then(ResumeError::source_runtime_error),
+                Some(RuntimeError::StorageJournalAppend { .. })
+            ),
         "BUG CONFIRMED: handle_resume returned {:?} but drive_run failed \
          (journal append failed during resume flush_evidence). \
          observe_resume_drive_result silently dropped the error. \
          Expected: handle_resume returns Err(ResumeError) when drive_run fails.",
         result2
+    );
+}
+
+#[test]
+fn resume_error_source_stays_bound_to_first_error_when_later_failure_occurs() {
+    // Given: two independent resume failures with distinguishable runtime sources.
+    let first_error =
+        resume_error_from_resumed_append_failure(RunId::new(600), RuntimeError::QueueFull);
+    assert_eq!(
+        first_error.source_runtime_error(),
+        Some(RuntimeError::QueueFull),
+        "first returned ResumeError must expose its own QueueFull source before any later failure"
+    );
+
+    let second_error =
+        resume_error_from_resumed_append_failure(RunId::new(601), RuntimeError::JournalPoisoned);
+    assert_eq!(
+        second_error.source_runtime_error(),
+        Some(RuntimeError::JournalPoisoned),
+        "second returned ResumeError must expose its own JournalPoisoned source"
+    );
+
+    // Then: the first error must not be reinterpreted through a same-thread stale source slot.
+    assert_eq!(
+        first_error.source_runtime_error(),
+        Some(RuntimeError::QueueFull),
+        "first returned ResumeError must remain correlated to QueueFull after a later failure"
+    );
+}
+
+#[test]
+fn manually_constructed_journal_append_failed_has_no_stale_source_after_prior_failure() {
+    // Given: the thread has already observed a sourced resume journal failure.
+    let prior_error =
+        resume_error_from_resumed_append_failure(RunId::new(602), RuntimeError::JournalPoisoned);
+    assert_eq!(
+        prior_error.source_runtime_error(),
+        Some(RuntimeError::JournalPoisoned),
+        "prior returned ResumeError must expose its own source"
+    );
+
+    // When: an unrelated unit ResumeError value is constructed later on the same thread.
+    let fresh_error = ResumeError::JournalAppendFailed;
+
+    // Then: it must not inherit the prior failure's source from ambient thread-local state.
+    assert_eq!(
+        fresh_error.source_runtime_error(),
+        None,
+        "fresh JournalAppendFailed must not inherit stale source from prior returned error"
+    );
+}
+
+#[test]
+fn runtime_conversion_of_fresh_journal_append_failed_uses_no_stale_source() {
+    // Given: a prior resume failure recorded a non-default runtime source on this thread.
+    let prior_error =
+        resume_error_from_resumed_append_failure(RunId::new(603), RuntimeError::QueueFull);
+    assert_eq!(
+        prior_error.source_runtime_error(),
+        Some(RuntimeError::QueueFull),
+        "prior returned ResumeError must expose QueueFull before conversion regression check"
+    );
+
+    // When: a fresh unrelated JournalAppendFailed value is converted at the runtime boundary.
+    let converted = RuntimeError::from(ResumeError::JournalAppendFailed);
+
+    // Then: conversion must not launder QueueFull out of stale thread-local state.
+    assert_eq!(
+        converted,
+        RuntimeError::StorageJournalAppend {
+            source: Arc::new(vb_storage::JournalError::WriteLockPoisoned),
+        },
+        "fresh JournalAppendFailed conversion must use its own fallback, not stale QueueFull"
+    );
+}
+
+#[test]
+fn fresh_journal_append_failed_cannot_steal_unobserved_pending_source() {
+    // Given: a real resume failure recorded QueueFull, but nobody has observed
+    // that returned error's source yet. This leaves the vulnerable stale-source
+    // design with a pending source that is not bound to the returned error.
+    let unobserved_error =
+        resume_error_from_resumed_append_failure(RunId::new(604), RuntimeError::QueueFull);
+
+    // When: a fresh unrelated unit error asks for a source on the same thread.
+    let unrelated_error = ResumeError::JournalAppendFailed;
+
+    // Then: the unrelated value must not consume the unobserved real failure's source.
+    assert_eq!(
+        unrelated_error.source_runtime_error(),
+        None,
+        "fresh JournalAppendFailed must not steal QueueFull from an unobserved prior failure"
+    );
+    assert_eq!(
+        unobserved_error.source_runtime_error(),
+        Some(RuntimeError::QueueFull),
+        "unobserved prior failure must retain its own QueueFull source after unrelated lookup"
+    );
+}
+
+#[test]
+fn runtime_conversion_of_fresh_error_cannot_steal_unobserved_pending_source() {
+    // Given: a real resume failure recorded JournalPoisoned, but its source has
+    // not been observed or bound yet.
+    let unobserved_error =
+        resume_error_from_resumed_append_failure(RunId::new(605), RuntimeError::JournalPoisoned);
+
+    // When: a separate freshly constructed JournalAppendFailed crosses the runtime boundary.
+    let converted = RuntimeError::from(ResumeError::JournalAppendFailed);
+
+    // Then: conversion must use the fallback source, not launder the unobserved source.
+    assert_eq!(
+        converted,
+        RuntimeError::StorageJournalAppend {
+            source: Arc::new(vb_storage::JournalError::WriteLockPoisoned),
+        },
+        "fresh JournalAppendFailed conversion must not steal unobserved JournalPoisoned source"
+    );
+    assert_eq!(
+        unobserved_error.source_runtime_error(),
+        Some(RuntimeError::JournalPoisoned),
+        "unobserved prior failure must retain JournalPoisoned after unrelated conversion"
     );
 }
 
@@ -313,18 +541,11 @@ fn handle_submit_propagates_journal_failure_before_drive_run() {
     let tick_result = shard.tick();
 
     assert!(
-        tick_result.is_err(),
+        matches!(tick_result, Err(RuntimeError::StorageJournalAppend { .. })),
         "BUG: tick() returned {:?} but journal append failed. \
          Expected Err(RuntimeError::StorageJournalAppend). \
          Journal failure must propagate before drive_run is called.",
         tick_result
-    );
-
-    let err = tick_result.expect_err("tick must fail due to journal failure");
-    assert!(
-        matches!(err, RuntimeError::StorageJournalAppend { .. }),
-        "error must be StorageJournalAppend, got: {:?}",
-        err
     );
 }
 
@@ -478,6 +699,27 @@ fn small_config() -> ShardConfig {
         step_budget_per_tick: 4,
         max_active_runs: 4,
         policy: vb_core::policy::RuntimePolicy::Relaxed,
+    }
+}
+
+fn resume_error_from_resumed_append_failure(run_id: RunId, source: RuntimeError) -> ResumeError {
+    let journal = SourceFailingRuntimeJournal::shared(4, source);
+    let mut shard = Shard::new_with_journal(small_config(), journal);
+    let wf = suspended_workflow().expect("workflow must compile");
+    shard
+        .enqueue(ShardCommand::Submit {
+            run: run_id,
+            workflow: wf,
+            caps: CapabilitySet::empty(),
+        })
+        .expect("submit enqueue must succeed");
+    shard.tick().expect("tick must make run resumable");
+
+    match shard.handle_resume(run_id) {
+        Err(error @ ResumeError::JournalAppendFailed) => error,
+        other => panic!(
+            "resume append failure must return JournalAppendFailed with preserved source, got {other:?}"
+        ),
     }
 }
 

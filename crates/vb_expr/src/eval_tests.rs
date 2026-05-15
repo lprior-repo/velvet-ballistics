@@ -1656,8 +1656,8 @@ mod tests {
     }
 
     #[test]
-    fn eval_binary_op_f64_division_by_zero_returns_nonfinite_float_not_division_by_zero() -> ExprResult<()>
-    {
+    fn eval_binary_op_f64_division_by_zero_returns_nonfinite_float_not_division_by_zero()
+    -> ExprResult<()> {
         let result = eval_binary_op(
             BinaryOp::Div,
             SlotValue::F64(make_f64(1.0)),
@@ -1702,8 +1702,8 @@ mod tests {
     }
 
     #[test]
-    fn eval_binary_op_f64_addition_produces_nonfinite_float_when_result_is_infinity() -> ExprResult<()>
-    {
+    fn eval_binary_op_f64_addition_produces_nonfinite_float_when_result_is_infinity()
+    -> ExprResult<()> {
         let result = eval_binary_op(
             BinaryOp::Add,
             SlotValue::F64(make_f64(f64::MAX)),
@@ -1718,8 +1718,8 @@ mod tests {
     }
 
     #[test]
-    fn eval_binary_op_f64_subtraction_produces_nonfinite_float_when_result_is_negative_infinity(
-    ) -> ExprResult<()> {
+    fn eval_binary_op_f64_subtraction_produces_nonfinite_float_when_result_is_negative_infinity()
+    -> ExprResult<()> {
         let result = eval_binary_op(
             BinaryOp::Sub,
             SlotValue::F64(make_f64(f64::MIN)),
@@ -1734,8 +1734,8 @@ mod tests {
     }
 
     #[test]
-    fn eval_binary_op_f64_multiplication_produces_nonfinite_float_when_result_is_infinity() -> ExprResult<()>
-    {
+    fn eval_binary_op_f64_multiplication_produces_nonfinite_float_when_result_is_infinity()
+    -> ExprResult<()> {
         let result = eval_binary_op(
             BinaryOp::Mul,
             SlotValue::F64(make_f64(f64::MAX)),
@@ -2033,54 +2033,21 @@ mod tests {
         let nan = f64::NAN;
         let x = 1.0;
 
-        assert!(
-            !(nan < x),
-            "NaN < x must be false per IEEE 754"
-        );
-        assert!(
-            !(nan > x),
-            "NaN > x must be false per IEEE 754"
-        );
-        assert!(
-            !(nan == x),
-            "NaN == x must be false per IEEE 754"
-        );
-        assert!(
-            !(nan <= x),
-            "NaN <= x must be false per IEEE 754"
-        );
-        assert!(
-            !(nan >= x),
-            "NaN >= x must be false per IEEE 754"
-        );
+        assert!(!(nan < x), "NaN < x must be false per IEEE 754");
+        assert!(!(nan > x), "NaN > x must be false per IEEE 754");
+        assert!(!(nan == x), "NaN == x must be false per IEEE 754");
+        assert!(!(nan <= x), "NaN <= x must be false per IEEE 754");
+        assert!(!(nan >= x), "NaN >= x must be false per IEEE 754");
         assert!(
             nan != nan,
             "NaN != NaN must be true (NaN is not equal to itself)"
         );
 
-        assert!(
-            !(nan < 0.0),
-            "NaN < 0.0 must be false"
-        );
-        assert!(
-            !(nan > 0.0),
-            "NaN > 0.0 must be false"
-        );
-        assert!(
-            !(nan < f64::INFINITY),
-            "NaN < Inf must be false"
-        );
-        assert!(
-            !(nan > f64::NEG_INFINITY),
-            "NaN > -Inf must be false"
-        );
-        assert!(
-            !(nan == f64::MAX),
-            "NaN == MAX must be false"
-        );
-        assert!(
-            !(nan == f64::MIN),
-            "NaN == MIN must be false"
-        );
+        assert!(!(nan < 0.0), "NaN < 0.0 must be false");
+        assert!(!(nan > 0.0), "NaN > 0.0 must be false");
+        assert!(!(nan < f64::INFINITY), "NaN < Inf must be false");
+        assert!(!(nan > f64::NEG_INFINITY), "NaN > -Inf must be false");
+        assert!(!(nan == f64::MAX), "NaN == MAX must be false");
+        assert!(!(nan == f64::MIN), "NaN == MIN must be false");
     }
 }

@@ -1,4 +1,13 @@
 #![forbid(unsafe_code)]
+#![allow(
+    clippy::arithmetic_side_effects,
+    clippy::as_conversions,
+    clippy::expect_used,
+    clippy::get_first,
+    clippy::indexing_slicing,
+    clippy::panic,
+    clippy::unwrap_used
+)]
 //! Property-based tests for vb-jggy invariants.
 //!
 //! These tests verify:

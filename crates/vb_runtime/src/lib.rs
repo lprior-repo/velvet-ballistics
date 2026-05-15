@@ -17,12 +17,28 @@
         clippy::as_conversions,
         clippy::assertions_on_constants,
         clippy::bool_assert_comparison,
+        clippy::boxed_local,
         clippy::clone_on_copy,
+        clippy::cloned_ref_to_slice_refs,
+        clippy::expect_used,
         clippy::get_first,
+        clippy::indexing_slicing,
+        clippy::let_underscore_must_use,
+        clippy::len_zero,
         clippy::manual_contains,
+        clippy::manual_repeat_n,
         clippy::map_clone,
+        clippy::map_flatten,
+        clippy::needless_return,
+        clippy::ok_expect,
         clippy::panic,
-        clippy::redundant_locals
+        clippy::panic_in_result_fn,
+        clippy::redundant_closure,
+        clippy::redundant_locals,
+        clippy::type_complexity,
+        clippy::unnecessary_fallible_conversions,
+        clippy::unwrap_used,
+        clippy::approx_constant
     )
 )]
 

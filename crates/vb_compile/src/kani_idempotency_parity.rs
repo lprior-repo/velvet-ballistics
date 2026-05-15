@@ -62,8 +62,11 @@ fn idempotency_gate_parity() {
 
                 // Scope restriction: 8 combinations excluded per KANI-PARITY-001 agreement.
                 // Excluded: DeterministicPure + (Safe|KeyRequired) and AtLeastOnceExternal + (Safe|KeyRequired)
-                let excluded = matches!(idempotency, Idempotency::DeterministicPure | Idempotency::AtLeastOnceExternal)
-                    && matches!(retry_safety, RetrySafety::Safe | RetrySafety::KeyRequired);
+                let excluded =
+                    matches!(
+                        idempotency,
+                        Idempotency::DeterministicPure | Idempotency::AtLeastOnceExternal
+                    ) && matches!(retry_safety, RetrySafety::Safe | RetrySafety::KeyRequired);
                 kani::assume(!excluded);
 
                 let contract = ActionContract {

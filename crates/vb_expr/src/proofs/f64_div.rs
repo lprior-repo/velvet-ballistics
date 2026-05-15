@@ -11,10 +11,10 @@
 //! - eval_div_op maps this to ExprError::NonFiniteFloat
 //! - I64/0 path is separate and returns DivisionByZero
 
-use crate::eval::{eval_binary_op, BinaryOp};
 use crate::ExprError;
-use vb_core::value::FiniteF64;
+use crate::eval::{BinaryOp, eval_binary_op};
 use vb_core::SlotValue;
+use vb_core::value::FiniteF64;
 
 /// Kani harness for PO-002: F64/non-zero-finite/0 returns NonFiniteFloat (NOT DivisionByZero).
 ///
@@ -36,8 +36,11 @@ fn kani_f64_div_by_zero_returns_non_finite_float() {
     // The divisor is zero
     let divisor = FiniteF64::new(0.0_f64).unwrap();
 
-    let result =
-        eval_binary_op(BinaryOp::Div, SlotValue::F64(dividend), SlotValue::F64(divisor));
+    let result = eval_binary_op(
+        BinaryOp::Div,
+        SlotValue::F64(dividend),
+        SlotValue::F64(divisor),
+    );
 
     // PO-002: Result must be Err with NonFiniteFloat
     assert!(
@@ -78,8 +81,11 @@ fn kani_f64_div_by_nonzero_finite_succeeds() {
     let dividend = FiniteF64::new(dividend_f64).unwrap();
     let divisor = FiniteF64::new(divisor_f64).unwrap();
 
-    let result =
-        eval_binary_op(BinaryOp::Div, SlotValue::F64(dividend), SlotValue::F64(divisor));
+    let result = eval_binary_op(
+        BinaryOp::Div,
+        SlotValue::F64(dividend),
+        SlotValue::F64(divisor),
+    );
 
     // F64/non-zero must succeed
     assert!(
@@ -87,7 +93,9 @@ fn kani_f64_div_by_nonzero_finite_succeeds() {
         "F64/non-zero-finite must succeed. Got: {:?}",
         result
     );
-    let Ok(SlotValue::F64(f)) = result else { return };
+    let Ok(SlotValue::F64(f)) = result else {
+        return;
+    };
 
     // The quotient must be finite
     assert!(
@@ -108,8 +116,11 @@ fn kani_i64_div_by_zero_returns_division_by_zero() {
     let divisor: i64 = kani::any();
     kani::assume(divisor == 0);
 
-    let result =
-        eval_binary_op(BinaryOp::Div, SlotValue::I64(dividend), SlotValue::I64(divisor));
+    let result = eval_binary_op(
+        BinaryOp::Div,
+        SlotValue::I64(dividend),
+        SlotValue::I64(divisor),
+    );
 
     // I64/0 must be DivisionByZero
     assert!(result.is_err(), "I64/0 must return an error");

@@ -194,7 +194,7 @@ impl Shard {
         }
         let timestamp = self.append_resumed_event(run)?;
         let drive_result = self.drive_run(run);
-        Self::observe_resume_drive_result(drive_result);
+        self.observe_resume_drive_result(run, drive_result)?;
         Ok(ResumeResult {
             run_id: run,
             status: ResumeStatus::Resumed,
@@ -223,9 +223,9 @@ impl Shard {
         self.runtime_states.insert(run, RuntimeState::Resuming);
         let timestamp = current_timestamp();
         let resumed_event = RuntimeJournalEvent::Resumed { run, timestamp };
-        if self.append_journal_event(resumed_event).is_err() {
+        if let Err(source) = self.append_journal_event(resumed_event) {
             self.runtime_states.insert(run, RuntimeState::Resumable);
-            return Err(ResumeError::JournalAppendFailed);
+            return Err(ResumeError::journal_append_failed_with_source(source));
         }
         Ok(timestamp)
     }
@@ -234,10 +234,24 @@ impl Shard {
         self.runtime_states.contains_key(&run)
     }
 
-    fn observe_resume_drive_result(result: RuntimeResult<()>) {
-        match result {
-            Ok(()) | Err(_) => {}
+    fn observe_resume_drive_result(
+        &mut self,
+        run: RunId,
+        result: RuntimeResult<()>,
+    ) -> Result<(), ResumeError> {
+        if let Err(source) = result {
+            return Err(self.restore_resumable_after_drive_failure(run, source));
         }
+        Ok(())
+    }
+
+    fn restore_resumable_after_drive_failure(
+        &mut self,
+        run: RunId,
+        source: RuntimeError,
+    ) -> ResumeError {
+        self.runtime_states.insert(run, RuntimeState::Resumable);
+        ResumeError::journal_append_failed_with_source(source)
     }
 
     #[allow(clippy::needless_pass_by_value)]

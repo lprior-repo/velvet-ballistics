@@ -1,5 +1,14 @@
 #![forbid(unsafe_code)]
 #![cfg(test)]
+#![allow(
+    clippy::arithmetic_side_effects,
+    clippy::as_conversions,
+    clippy::expect_used,
+    clippy::get_first,
+    clippy::indexing_slicing,
+    clippy::panic,
+    clippy::unwrap_used
+)]
 //! Red-phase tests for vb-qi37.16.2: durable resume transition.
 //!
 //! These tests verify the durable resume contract clauses: PRE-001 through
