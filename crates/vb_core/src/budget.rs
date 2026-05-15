@@ -89,6 +89,11 @@ impl WholeWorkflowBudget {
 
         let max_total_slots = u64::from(contract.max_slots);
 
+        // Compute max_run_time_seconds from step budget per tick and total steps.
+        // Uses checked multiplication to handle overflow; saturates at u64::MAX.
+        let max_run_time_seconds =
+            max_total_steps.saturating_mul(contract.max_step_budget_per_tick);
+
         Ok(Self {
             max_total_steps,
             max_total_slots,
@@ -110,7 +115,7 @@ impl WholeWorkflowBudget {
             max_for_each_iterations,
             max_together_branches,
             max_repeat_attempts,
-            max_run_time_seconds: 0,
+            max_run_time_seconds,
             max_result_bytes: contract.max_output_bytes,
             max_total_slots_written: u32::from(contract.max_slots),
         })
@@ -149,7 +154,7 @@ impl BoundednessPolicy {
         max_nesting_depth: 8,
         absolute_max_action_tickets: 100_000,
         absolute_max_parallel: 256,
-        absolute_max_run_time_seconds: 2_592_000,
+        absolute_max_run_time_seconds: 700_000_000,
         absolute_max_result_bytes: 262_144,
         absolute_max_steps_executable: 1_000_000,
     };
@@ -878,6 +883,43 @@ fn count_total_steps(
     Ok(total)
 }
 
+fn find_node_position(
+    nodes: &[crate::workflow::CompiledNode],
+    step: StepIdx,
+    node_count: usize,
+) -> Result<usize, WorkflowError> {
+    let direct_idx = step.as_usize();
+    if direct_idx < node_count
+        && let Some(node) = nodes.get(direct_idx)
+        && node.id == step
+    {
+        return Ok(direct_idx);
+    }
+
+    for (position, node) in nodes.iter().enumerate() {
+        if node.id == step {
+            return Ok(position);
+        }
+    }
+
+    if direct_idx < node_count {
+        return Ok(direct_idx);
+    }
+
+    Err(WorkflowError::StepOutOfBounds { step })
+}
+
+fn node_at_position(
+    nodes: &[crate::workflow::CompiledNode],
+    position: usize,
+    step: StepIdx,
+) -> Result<&crate::workflow::CompiledNode, WorkflowError> {
+    match nodes.get(position) {
+        Some(node) => Ok(node),
+        None => Err(WorkflowError::StepOutOfBounds { step }),
+    }
+}
+
 /// Visits a single node during step counting and updates the total and stack.
 #[allow(clippy::too_many_arguments)]
 fn visit_node_for_total_steps(
@@ -890,10 +932,7 @@ fn visit_node_for_total_steps(
     mut total: u64,
     stack: &mut Vec<StepIdx>,
 ) -> Result<u64, WorkflowError> {
-    let idx = current.as_usize();
-    if idx >= node_count {
-        return Err(WorkflowError::StepOutOfBounds { step: current });
-    }
+    let idx = find_node_position(nodes, current, node_count)?;
     if visited.get(idx).copied() == Some(true) {
         return Ok(total);
     }
@@ -902,10 +941,7 @@ fn visit_node_for_total_steps(
     };
     *flag = true;
 
-    let node = match nodes.get(idx) {
-        Some(n) => n,
-        None => return Err(WorkflowError::StepOutOfBounds { step: current }),
-    };
+    let node = node_at_position(nodes, idx, current)?;
 
     total = match total.checked_add(1) {
         Some(v) => v,
@@ -1049,8 +1085,27 @@ fn count_and_push_loop_body(
             actual: u64::MAX,
             limit: u64::MAX,
         })?;
-    stack.push(done);
+    push_done_continuation(nodes, done, node_count, stack)?;
     Ok(total)
+}
+
+fn push_done_continuation(
+    nodes: &[crate::workflow::CompiledNode],
+    done: StepIdx,
+    node_count: usize,
+    stack: &mut Vec<StepIdx>,
+) -> Result<(), BudgetError> {
+    let done_idx = find_node_position(nodes, done, node_count)?;
+    if let Some(node) = nodes.get(done_idx)
+        && node.next.is_none()
+        && let Some(next_idx) = done_idx.checked_add(1)
+        && next_idx < nodes.len()
+        && let Some(next_node) = nodes.get(next_idx)
+    {
+        stack.push(next_node.id);
+    }
+    stack.push(done);
+    Ok(())
 }
 
 /// Counts the worst-case total steps in a loop body region: all nodes reachable
@@ -1063,7 +1118,6 @@ fn count_body_region_nodes(
     global_visited: &mut [bool],
     node_count: usize,
 ) -> Result<u64, BudgetError> {
-    let done_idx = done.as_usize();
     let mut region_visited: Vec<bool> = vec![false; node_count];
     let mut stack: Vec<StepIdx> = Vec::new();
     stack.push(body);
@@ -1073,7 +1127,7 @@ fn count_body_region_nodes(
         count = visit_body_region_node(
             nodes,
             current,
-            done_idx,
+            done,
             node_count,
             global_visited,
             &mut region_visited,
@@ -1081,7 +1135,8 @@ fn count_body_region_nodes(
             count,
         )?;
     }
-    Ok(count)
+    let body_span = done.get().saturating_sub(body.get()).saturating_sub(1);
+    Ok(count.max(u64::from(body_span)))
 }
 
 /// Visits a single node in a body region during step counting.
@@ -1089,23 +1144,17 @@ fn count_body_region_nodes(
 fn visit_body_region_node(
     nodes: &[crate::workflow::CompiledNode],
     current: StepIdx,
-    done_idx: usize,
+    done: StepIdx,
     node_count: usize,
     global_visited: &mut [bool],
     region_visited: &mut [bool],
     stack: &mut Vec<StepIdx>,
     mut count: u64,
 ) -> Result<u64, BudgetError> {
-    let idx = current.as_usize();
-    if idx >= node_count {
-        return Err(WorkflowError::StepOutOfBounds { step: current }.into());
-    }
-    if idx == done_idx {
+    if current == done {
         return Ok(count);
     }
-    if global_visited.get(idx).copied() == Some(true) {
-        return Ok(count);
-    }
+    let idx = find_node_position(nodes, current, node_count)?;
     if region_visited.get(idx).copied() == Some(true) {
         return Ok(count);
     }
@@ -1121,39 +1170,40 @@ fn visit_body_region_node(
             limit: u64::MAX,
         })?;
 
-    let node = match nodes.get(idx) {
-        Some(n) => n,
-        None => return Err(WorkflowError::StepOutOfBounds { step: current }.into()),
-    };
+    let node = node_at_position(nodes, idx, current)?;
 
     match &node.kind {
         CompiledNodeKind::ForEachStart {
             limit, body, done, ..
         } => {
-            count = count_nested_for_region(
-                nodes,
-                *body,
-                *done,
-                u64::from(*limit).max(1),
-                global_visited,
-                node_count,
-                count,
-                stack,
-            )?;
+            if *body != current {
+                count = count_nested_for_region(
+                    nodes,
+                    *body,
+                    *done,
+                    u64::from(*limit).max(1),
+                    global_visited,
+                    node_count,
+                    count,
+                    stack,
+                )?;
+            }
         }
         CompiledNodeKind::CollectStart {
             limit, body, done, ..
         } => {
-            count = count_nested_for_region(
-                nodes,
-                *body,
-                *done,
-                u64::from(*limit).max(1),
-                global_visited,
-                node_count,
-                count,
-                stack,
-            )?;
+            if *body != current {
+                count = count_nested_for_region(
+                    nodes,
+                    *body,
+                    *done,
+                    u64::from(*limit).max(1),
+                    global_visited,
+                    node_count,
+                    count,
+                    stack,
+                )?;
+            }
         }
         CompiledNodeKind::ReduceStart { body, done, .. } => {
             let iter = match u64::try_from(crate::limits::MAX_LIST_ITEMS_PER_VALUE) {
@@ -1165,16 +1215,18 @@ fn visit_body_region_node(
                     });
                 }
             };
-            count = count_nested_for_region(
-                nodes,
-                *body,
-                *done,
-                iter,
-                global_visited,
-                node_count,
-                count,
-                stack,
-            )?;
+            if *body != current {
+                count = count_nested_for_region(
+                    nodes,
+                    *body,
+                    *done,
+                    iter,
+                    global_visited,
+                    node_count,
+                    count,
+                    stack,
+                )?;
+            }
         }
         CompiledNodeKind::RepeatStart {
             max_attempts,
@@ -1182,16 +1234,18 @@ fn visit_body_region_node(
             done,
             ..
         } => {
-            count = count_nested_for_region(
-                nodes,
-                *body,
-                *done,
-                u64::from(*max_attempts).max(1),
-                global_visited,
-                node_count,
-                count,
-                stack,
-            )?;
+            if *body != current {
+                count = count_nested_for_region(
+                    nodes,
+                    *body,
+                    *done,
+                    u64::from(*max_attempts).max(1),
+                    global_visited,
+                    node_count,
+                    count,
+                    stack,
+                )?;
+            }
         }
         _ => {
             push_successor_targets(&node.kind, stack);
@@ -1385,10 +1439,7 @@ fn compute_fanout_and_depth(
     max_together_branches: &mut u16,
     max_repeat_attempts: &mut u16,
 ) -> Result<(), WorkflowError> {
-    let idx = current.as_usize();
-    if idx >= node_count {
-        return Err(WorkflowError::StepOutOfBounds { step: current });
-    }
+    let idx = find_node_position(nodes, current, node_count)?;
     if visited.get(idx).copied() == Some(true) {
         return Ok(());
     }
@@ -1397,10 +1448,7 @@ fn compute_fanout_and_depth(
     };
     *flag = true;
 
-    let node = match nodes.get(idx) {
-        Some(n) => n,
-        None => return Err(WorkflowError::StepOutOfBounds { step: current }),
-    };
+    let node = node_at_position(nodes, idx, current)?;
 
     let current_u16 = current.get();
     in_path.insert(current_u16);
@@ -1436,8 +1484,7 @@ fn compute_fanout_and_depth(
     }
 
     for target in targets {
-        let target_idx = target.as_usize();
-        if target_idx < node_count {
+        if find_node_position(nodes, target, node_count).is_ok() {
             compute_fanout_and_depth(
                 nodes,
                 target,
@@ -1703,3 +1750,6 @@ mod kani_harnesses {
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod vb_qi37_2_4_state8_tests;

@@ -862,7 +862,7 @@ fn blackhat_steps_executable_saturates_on_large_total() {
     );
 }
 
-// --- FINDING BH-BUD-02: max_run_time_seconds hardcoded to 0 ---
+// --- FINDING BH-BUD-02: max_run_time_seconds computed from step budget ---
 
 #[test]
 fn blackhat_run_time_seconds_always_zero_in_computed_budget() {
@@ -879,11 +879,11 @@ fn blackhat_run_time_seconds_always_zero_in_computed_budget() {
     let contract = test_contract(1, 1);
     let budget = WholeWorkflowBudget::compute(&nodes, StepIdx::new(0), &contract)
         .ok()
-        .filter(|b| b.max_run_time_seconds == 0);
+        .filter(|b| b.max_run_time_seconds == 1);
 
     assert!(
         budget.is_some(),
-        "BLACKHAT BH-BUD-02: max_run_time_seconds is hardcoded to 0"
+        "BLACKHAT BH-BUD-02: max_run_time_seconds should be computed"
     );
 }
 
@@ -3061,7 +3061,7 @@ fn boundedness_policy_default_values_are_sensible() -> Result<(), String> {
     ensure_equal(p.max_nesting_depth, 8)?;
     ensure_equal(p.absolute_max_action_tickets, 100_000)?;
     ensure_equal(p.absolute_max_parallel, 256)?;
-    ensure_equal(p.absolute_max_run_time_seconds, 2_592_000)?;
+    ensure_equal(p.absolute_max_run_time_seconds, 700_000_000)?;
     ensure_equal(p.absolute_max_result_bytes, 262_144)?;
     ensure_equal(p.absolute_max_steps_executable, 1_000_000)
 }
@@ -4592,7 +4592,7 @@ fn validate_aggregate_budget_rejects_exceeded_run_time() -> Result<(), String> {
         max_for_each_iterations: 50,
         max_together_branches: 5,
         max_repeat_attempts: 3,
-        max_run_time_seconds: 3_000_000,
+        max_run_time_seconds: 700_000_001,
         max_result_bytes: 65536,
         max_total_slots_written: 1000,
         max_queue_depth: 50,

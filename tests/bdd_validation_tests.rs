@@ -230,7 +230,10 @@ fn bdd_validate_with_contracts_rejects_missing_do_node() {
     // Then: returns Err(ValidationError) with GATE_12 code
     assert!(matches!(
         result,
-        Err(ValidationError::ActionContractMissing { action_id: 99, node_index: 0 })
+        Err(ValidationError::ActionContractMissing {
+            action_id: 99,
+            node_index: 0
+        })
     ));
 }
 
@@ -1387,7 +1390,10 @@ fn bdd_validation_does_not_panic_on_malformed_input() {
     let result = std::panic::catch_unwind(|| validate(&parts));
     // Then: validate does not panic (outer Ok), and returns Err for invalid slot
     assert!(
-        matches!(result, Ok(Err(ValidationError::SlotReferenceOutOfRange { .. }))),
+        matches!(
+            result,
+            Ok(Err(ValidationError::SlotReferenceOutOfRange { .. }))
+        ),
         "validate must not panic and must return SlotReferenceOutOfRange, got: {result:?}"
     );
 }

@@ -26,11 +26,15 @@ check_mutants_residue() {
   local grep_status
 
   set +e
-  matches=$(git grep -n -I -E 'changed by cargo[-]mutants' -- . ':!target' ':!.moon/cache' ':!.beads')
+  if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    matches=$(git grep -n -I -E 'changed by cargo[-]mutants' -- . ':!target' ':!.moon/cache' ':!.beads')
+  else
+    matches=$(rg -n -I 'changed by cargo[-]mutants' --glob '!target/**' --glob '!.moon/cache/**' --glob '!.beads/**' || true)
+  fi
   grep_status=$?
   set -e
 
-  if [[ "$grep_status" -eq 0 ]]; then
+  if [[ "$grep_status" -eq 0 && -n "$matches" ]]; then
     printf 'cargo-mutants residue markers found:\n' >&2
     printf '%s\n' "$matches" >&2
     status=1
