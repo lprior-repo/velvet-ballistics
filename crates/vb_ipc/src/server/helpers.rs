@@ -92,6 +92,14 @@ pub fn borrow_workflow_resolver<'a>(
     }
 }
 
+#[cfg(test)]
+mod test_hooks {
+    use std::sync::atomic::{AtomicBool, Ordering};
+    pub(crate) static FORCE_POSTCARD_FAIL: AtomicBool = AtomicBool::new(false);
+    pub(crate) static FORCE_HEADER_ENCODE_FAIL: AtomicBool = AtomicBool::new(false);
+    pub(crate) static FORCE_FLUSH_FAIL: AtomicBool = AtomicBool::new(false);
+}
+
 /// Sends a response frame to the client.
 pub fn send_response(
     stream: &mut UnixStream,
@@ -101,6 +109,16 @@ pub fn send_response(
     request_header: &IpcFrameHeader,
     response: &IpcResponse,
 ) -> Result<(), IpcServerError> {
+    #[cfg(test)]
+    let payload_bytes = if test_hooks::FORCE_POSTCARD_FAIL.load(std::sync::atomic::Ordering::Relaxed)
+    {
+        Err(postcard::Error::SerializeBufferFull)
+    } else {
+        postcard::to_allocvec(response)
+    }
+    .map_err(|_| IpcServerError::ResponseEncodeFailed)?;
+
+    #[cfg(not(test))]
     let payload_bytes =
         postcard::to_allocvec(response).map_err(|_| IpcServerError::ResponseEncodeFailed)?;
 
@@ -113,6 +131,17 @@ pub fn send_response(
         request_header.correlation,
         payload_len,
     );
+
+    #[cfg(test)]
+    let header_bytes = if test_hooks::FORCE_HEADER_ENCODE_FAIL.load(std::sync::atomic::Ordering::Relaxed)
+    {
+        Err(crate::IpcError::HeaderEncodeFailed)
+    } else {
+        header.encode()
+    }
+    .map_err(|_| IpcServerError::ResponseEncodeFailed)?;
+
+    #[cfg(not(test))]
     let header_bytes = header
         .encode()
         .map_err(|_| IpcServerError::ResponseEncodeFailed)?;
@@ -130,7 +159,18 @@ pub fn send_response(
         drop(write_buffer.drain(..written));
     }
     if write_buffer.is_empty() {
-        match stream.flush() {
+        #[cfg(test)]
+        let flush_result = if test_hooks::FORCE_FLUSH_FAIL.load(std::sync::atomic::Ordering::Relaxed)
+        {
+            Err(std::io::Error::new(std::io::ErrorKind::BrokenPipe, "flush fail"))
+        } else {
+            stream.flush()
+        };
+
+        #[cfg(not(test))]
+        let flush_result = stream.flush();
+
+        match flush_result {
             Ok(()) => {}
             Err(ref source) if source.kind() == std::io::ErrorKind::WouldBlock => {}
             Err(source) => return Err(IpcServerError::ResponseWriteFailed { source }),
@@ -146,6 +186,19 @@ pub fn send_response(
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+pub(crate) fn append_read_bytes_checked_add(a: usize, b: usize) -> Result<usize, IpcServerError> {
+    a.checked_add(b).ok_or(IpcServerError::ReadBufferTooLarge)
+}
+
+#[cfg(test)]
+pub(crate) fn frame_total_len_checked_add(
+    header_len: usize,
+    payload_len: usize,
+) -> Result<usize, IpcServerError> {
+    header_len.checked_add(payload_len).ok_or(IpcServerError::ReadBufferTooLarge)
 }
 
 #[cfg(test)]
@@ -170,7 +223,7 @@ mod tests {
         let mut read_buffer = vec![1, 2, 3];
         let temp_buf = [4u8; 4096];
         let result = append_read_bytes(&mut read_buffer, &temp_buf, 3);
-        assert!(result.is_ok());
+        let Ok(()) = result else { panic!("appending 3 bytes should succeed"); };
         assert_eq!(read_buffer.len(), 6);
         assert_eq!(read_buffer.as_slice(), &[1, 2, 3, 4, 4, 4]);
     }
@@ -180,7 +233,7 @@ mod tests {
         let mut read_buffer = Vec::new();
         let temp_buf = [0u8; 4096];
         let result = append_read_bytes(&mut read_buffer, &temp_buf, 0);
-        assert!(result.is_ok(), "zero bytes should succeed");
+        let Ok(()) = result else { panic!("zero bytes should succeed"); };
         assert!(read_buffer.is_empty());
     }
 
@@ -190,7 +243,8 @@ mod tests {
         let temp_buf = [0u8; 4096];
         // bytes_read > 4096 is impossible in practice but tests the guard
         let result = append_read_bytes(&mut read_buffer, &temp_buf, 5000);
-        assert!(result.is_err(), "bytes_read > temp_buf size should fail");
+        let Err(e) = result else { panic!("bytes_read > temp_buf size should fail"); };
+        assert!(matches!(e, IpcServerError::FrameInvalid { .. }), "expected FrameInvalid, got {e:?}");
     }
 
     // ── read_buffer_header tests ──
@@ -199,8 +253,7 @@ mod tests {
     fn read_buffer_header_returns_incomplete_frame_for_short_buffer() {
         let short_buf = vec![0u8; 10];
         let result = read_buffer_header(&short_buf);
-        assert!(result.is_err(), "short buffer should fail");
-        let Err(err) = result else { return };
+        let Err(err) = result else { panic!("short buffer should fail"); };
         let msg = err.to_string();
         assert!(
             msg.contains("incomplete"),
@@ -212,33 +265,29 @@ mod tests {
     fn read_buffer_header_returns_incomplete_frame_for_empty_buffer() {
         let empty_buf: Vec<u8> = Vec::new();
         let result = read_buffer_header(&empty_buf);
-        assert!(result.is_err());
+        let Err(e) = result else { panic!("expected IncompleteFrame for empty buffer"); };
+        assert!(matches!(e, IpcServerError::IncompleteFrame), "expected IncompleteFrame, got {e:?}");
     }
 
     #[test]
     fn read_buffer_header_succeeds_with_exact_header_length() {
         let header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, 0);
         let encoded = header.encode();
-        assert!(encoded.is_ok(), "header should encode");
-        let Ok(encoded) = encoded else { return };
+        let Ok(encoded) = encoded else { panic!("header should encode"); };
         let buf = encoded.to_vec();
         let result = read_buffer_header(&buf);
-        assert!(result.is_ok(), "exact header length should succeed");
+        let Ok(_) = result else { panic!("exact header length should succeed"); };
     }
 
     #[test]
     fn read_buffer_header_succeeds_with_extra_bytes() {
         let header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, 0);
         let encoded = header.encode();
-        assert!(encoded.is_ok());
-        let Ok(encoded) = encoded else { return };
+        let Ok(encoded) = encoded else { panic!("header should encode"); };
         let mut buf = encoded.to_vec();
         buf.extend_from_slice(&[0xFF; 100]); // extra payload bytes
         let result = read_buffer_header(&buf);
-        assert!(
-            result.is_ok(),
-            "extra bytes after header should still succeed"
-        );
+        let Ok(_) = result else { panic!("extra bytes after header should still succeed"); };
     }
 
     // ── frame_total_len tests ──
@@ -247,8 +296,7 @@ mod tests {
     fn frame_total_len_header_only_zero_payload() {
         let header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, 0);
         let result = frame_total_len(&header);
-        assert!(result.is_ok());
-        let Ok(val) = result else { return };
+        let Ok(val) = result else { panic!("frame_total_len should succeed"); };
         assert_eq!(val, IPC_HEADER_LEN);
     }
 
@@ -256,8 +304,7 @@ mod tests {
     fn frame_total_len_with_payload() {
         let header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, 100);
         let result = frame_total_len(&header);
-        assert!(result.is_ok());
-        let Ok(val) = result else { return };
+        let Ok(val) = result else { panic!("frame_total_len should succeed"); };
         assert_eq!(val, IPC_HEADER_LEN + 100);
     }
 
@@ -265,8 +312,7 @@ mod tests {
     fn frame_total_len_with_max_reasonable_payload() {
         let header = IpcFrameHeader::new(IpcCommand::SubmitRun, 0, 1, 1000);
         let result = frame_total_len(&header);
-        assert!(result.is_ok());
-        let Ok(val) = result else { return };
+        let Ok(val) = result else { panic!("frame_total_len should succeed"); };
         assert_eq!(val, IPC_HEADER_LEN + 1000);
     }
 
@@ -276,22 +322,21 @@ mod tests {
     fn extract_payload_returns_incomplete_when_buffer_too_short() {
         let mut read_buffer = vec![0u8; 10];
         let result = extract_payload(&mut read_buffer, 50);
-        assert!(result.is_err());
+        let Err(e) = result else { panic!("expected IncompleteFrame for short buffer"); };
+        assert!(matches!(e, IpcServerError::IncompleteFrame), "expected IncompleteFrame, got {e:?}");
     }
 
     #[test]
     fn extract_payload_extracts_header_plus_payload() {
         let header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, 4);
         let encoded = header.encode();
-        assert!(encoded.is_ok());
-        let Ok(encoded) = encoded else { return };
+        let Ok(encoded) = encoded else { panic!("header should encode"); };
         let mut read_buffer = encoded.to_vec();
         read_buffer.extend_from_slice(b"test");
         let total_len = IPC_HEADER_LEN + 4;
 
         let result = extract_payload(&mut read_buffer, total_len);
-        assert!(result.is_ok(), "extract should succeed");
-        let Ok(payload) = result else { return };
+        let Ok(payload) = result else { panic!("extract should succeed"); };
         assert_eq!(payload.as_slice(), b"test");
     }
 
@@ -299,15 +344,14 @@ mod tests {
     fn extract_payload_preserves_remaining_bytes_in_buffer() {
         let header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, 4);
         let encoded = header.encode();
-        assert!(encoded.is_ok());
-        let Ok(encoded) = encoded else { return };
+        let Ok(encoded) = encoded else { panic!("header should encode"); };
         let mut read_buffer = encoded.to_vec();
         read_buffer.extend_from_slice(b"test");
         read_buffer.extend_from_slice(b"extra");
         let total_len = IPC_HEADER_LEN + 4;
 
         let result = extract_payload(&mut read_buffer, total_len);
-        assert!(result.is_ok());
+        let Ok(_) = result else { panic!("extract should succeed"); };
         assert_eq!(
             read_buffer.as_slice(),
             b"extra",
@@ -319,12 +363,10 @@ mod tests {
     fn extract_payload_returns_empty_for_zero_payload_len() {
         let header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, 0);
         let encoded = header.encode();
-        assert!(encoded.is_ok());
-        let Ok(encoded) = encoded else { return };
+        let Ok(encoded) = encoded else { panic!("header should encode"); };
         let mut read_buffer = encoded.to_vec();
         let result = extract_payload(&mut read_buffer, IPC_HEADER_LEN);
-        assert!(result.is_ok());
-        let Ok(payload) = result else { return };
+        let Ok(payload) = result else { panic!("extract should succeed"); };
         assert!(payload.is_empty());
     }
 
@@ -385,5 +427,201 @@ mod tests {
         let mut outer: Option<&mut dyn crate::server::WorkflowResolver> = Some(&mut resolver);
         let result = borrow_workflow_resolver(&mut outer);
         assert!(result.is_some());
+    }
+
+    // ── append_read_bytes overflow / bounds tests ──
+
+    #[test]
+    fn append_read_bytes_rejects_when_buffer_would_exceed_max() {
+        let max = IPC_HEADER_LEN + MaxPayloadBytes::DEFAULT.get();
+        let mut read_buffer = vec![0u8; max - 5];
+        let temp_buf = [1u8; 4096];
+        let result = append_read_bytes(&mut read_buffer, &temp_buf, 10);
+        assert!(
+            matches!(result, Err(IpcServerError::ReadBufferTooLarge)),
+            "expected ReadBufferTooLarge when max exceeded"
+        );
+    }
+
+    #[test]
+    fn append_read_bytes_checked_add_overflow_returns_too_large() {
+        let result = append_read_bytes_checked_add(usize::MAX, 1);
+        assert!(
+            matches!(result, Err(IpcServerError::ReadBufferTooLarge)),
+            "expected ReadBufferTooLarge on usize overflow"
+        );
+    }
+
+    // ── frame_total_len overflow test ──
+
+    #[test]
+    fn frame_total_len_checked_add_overflow_returns_too_large() {
+        let result = frame_total_len_checked_add(usize::MAX, 1);
+        assert!(
+            matches!(result, Err(IpcServerError::ReadBufferTooLarge)),
+            "expected ReadBufferTooLarge on usize overflow"
+        );
+    }
+
+    // ── extract_payload exact-length test ──
+
+    #[test]
+    fn extract_payload_exact_length_clears_buffer() {
+        let header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, 4);
+        let encoded = header.encode().expect("encode");
+        let mut read_buffer = encoded.to_vec();
+        read_buffer.extend_from_slice(b"test");
+        let total_len = IPC_HEADER_LEN + 4;
+
+        let result = extract_payload(&mut read_buffer, total_len);
+        let Ok(payload) = result else { panic!("extract should succeed"); };
+        assert_eq!(payload.as_slice(), b"test");
+        assert!(
+            read_buffer.is_empty(),
+            "read_buffer should be empty after exact extraction"
+        );
+    }
+
+    // ── send_response error-path tests ──
+
+    use mio::Poll;
+    use std::sync::atomic::Ordering;
+
+    struct HookGuard(&'static std::sync::atomic::AtomicBool);
+    impl Drop for HookGuard {
+        fn drop(&mut self) {
+            self.0.store(false, Ordering::Relaxed);
+        }
+    }
+
+    fn setup_mio_stream_with_peer() -> (
+        mio::net::UnixStream,
+        std::os::unix::net::UnixStream,
+        Poll,
+        mio::Token,
+    ) {
+        let (std_a, std_b) = std::os::unix::net::UnixStream::pair().unwrap();
+        std_a.set_nonblocking(true).unwrap();
+        std_b.set_nonblocking(true).unwrap();
+        let mut stream = mio::net::UnixStream::from_std(std_a);
+        let poll = Poll::new().unwrap();
+        let token = mio::Token(1);
+        poll.registry()
+            .register(&mut stream, token, mio::Interest::READABLE)
+            .unwrap();
+        (stream, std_b, poll, token)
+    }
+
+    #[test]
+    fn send_response_reregisters_when_written_zero_and_buffer_not_empty() {
+        let (mut stream, _peer, poll, token) = setup_mio_stream_with_peer();
+        let registry = poll.registry().try_clone().unwrap();
+
+        // Fill the stream's send buffer so the next write returns WouldBlock.
+        let buf = [0u8; 4096];
+        loop {
+            match stream.write(&buf) {
+                Ok(0) => break,
+                Ok(_) => continue,
+                Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => break,
+                Err(_) => break,
+            }
+        }
+
+        let mut write_buffer = Vec::new();
+        let request_header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, 0);
+        let response = crate::server::IpcResponse::Healthy;
+
+        let result = send_response(
+            &mut stream,
+            &mut write_buffer,
+            &registry,
+            token,
+            &request_header,
+            &response,
+        );
+
+        let Ok(()) = result else {
+            panic!("send_response should succeed after reregister: {:?}", result.err());
+        };
+        assert!(
+            !write_buffer.is_empty(),
+            "write_buffer should still contain data after WouldBlock"
+        );
+    }
+
+    #[test]
+    fn send_response_returns_error_when_postcard_encode_fails() {
+        let (mut stream, _peer, poll, token) = setup_mio_stream_with_peer();
+        let registry = poll.registry().try_clone().unwrap();
+
+        test_hooks::FORCE_POSTCARD_FAIL.store(true, Ordering::Relaxed);
+        let _guard = HookGuard(&test_hooks::FORCE_POSTCARD_FAIL);
+
+        let mut write_buffer = Vec::new();
+        let request_header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, 0);
+        let response = crate::server::IpcResponse::Healthy;
+
+        let result = send_response(
+            &mut stream,
+            &mut write_buffer,
+            &registry,
+            token,
+            &request_header,
+            &response,
+        );
+
+        let Err(e) = result else { panic!("expected ResponseEncodeFailed"); };
+        assert!(matches!(e, IpcServerError::ResponseEncodeFailed), "expected ResponseEncodeFailed, got {e:?}");
+    }
+
+    #[test]
+    fn send_response_returns_error_when_header_encode_fails() {
+        let (mut stream, _peer, poll, token) = setup_mio_stream_with_peer();
+        let registry = poll.registry().try_clone().unwrap();
+
+        test_hooks::FORCE_HEADER_ENCODE_FAIL.store(true, Ordering::Relaxed);
+        let _guard = HookGuard(&test_hooks::FORCE_HEADER_ENCODE_FAIL);
+
+        let mut write_buffer = Vec::new();
+        let request_header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, 0);
+        let response = crate::server::IpcResponse::Healthy;
+
+        let result = send_response(
+            &mut stream,
+            &mut write_buffer,
+            &registry,
+            token,
+            &request_header,
+            &response,
+        );
+
+        let Err(e) = result else { panic!("expected ResponseEncodeFailed"); };
+        assert!(matches!(e, IpcServerError::ResponseEncodeFailed), "expected ResponseEncodeFailed, got {e:?}");
+    }
+
+    #[test]
+    fn send_response_returns_error_when_flush_fails_non_wouldblock() {
+        let (mut stream, _peer, poll, token) = setup_mio_stream_with_peer();
+        let registry = poll.registry().try_clone().unwrap();
+
+        test_hooks::FORCE_FLUSH_FAIL.store(true, Ordering::Relaxed);
+        let _guard = HookGuard(&test_hooks::FORCE_FLUSH_FAIL);
+
+        let mut write_buffer = Vec::new();
+        let request_header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, 0);
+        let response = crate::server::IpcResponse::Healthy;
+
+        let result = send_response(
+            &mut stream,
+            &mut write_buffer,
+            &registry,
+            token,
+            &request_header,
+            &response,
+        );
+
+        let Err(e) = result else { panic!("expected ResponseWriteFailed"); };
+        assert!(matches!(e, IpcServerError::ResponseWriteFailed { .. }), "expected ResponseWriteFailed, got {e:?}");
     }
 }

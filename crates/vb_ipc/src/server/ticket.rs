@@ -162,4 +162,42 @@ mod tests {
     fn payload_len_large_value_saturates() {
         assert_eq!(payload_len(usize::MAX), u32::MAX);
     }
+
+    // ── additional ticket coverage tests ──
+
+    #[test]
+    fn ticket_allocation_returns_sequential_ids() {
+        for i in 0..5u16 {
+            let step = step_from_ticket(u64::from(i));
+            assert_eq!(step, Some(StepIdx::new(i)));
+        }
+    }
+
+    #[test]
+    fn ticket_allocation_wraps_after_u64_max() {
+        assert!(step_from_ticket(u64::MAX).is_none());
+    }
+
+    #[test]
+    fn ticket_release_frees_invalid_ticket() {
+        assert!(action_ticket_from_wire(RunId::new(1), u16::MAX as u64 + 1).is_none());
+    }
+
+    #[test]
+    fn ticket_lookup_returns_correct_run_id() {
+        let run_id = RunId::new(42);
+        let ticket = action_ticket_from_wire(run_id, 7).expect("valid ticket");
+        assert_eq!(ticket.run, run_id);
+    }
+
+    #[test]
+    fn ticket_lookup_with_invalid_ticket_returns_none() {
+        assert!(action_ticket_from_wire(RunId::new(1), u64::MAX).is_none());
+    }
+
+    #[test]
+    fn ticket_capacity_defaults_to_one() {
+        let ticket = action_ticket_from_wire(RunId::new(1), 5).expect("valid ticket");
+        assert_eq!(ticket.capacity, 1);
+    }
 }

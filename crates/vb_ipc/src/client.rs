@@ -11,7 +11,7 @@ use vb_core::WorkflowDigest;
 
 /// IPC client connected to a Unix domain socket.
 pub struct IpcClient {
-    stream: std::os::unix::net::UnixStream,
+    pub(crate) stream: std::os::unix::net::UnixStream,
 }
 
 impl IpcClient {
@@ -40,8 +40,11 @@ impl IpcClient {
         correlation: u64,
         payload: &[u8],
     ) -> Result<(), IpcClientError> {
-        write_frame(&mut self.stream, command, 0, correlation, payload)
+        let frame = crate::frame::encode_frame(command, 0, correlation, payload)
             .map_err(|source| IpcClientError::FrameError { source })?;
+        self.stream
+            .write_all(&frame)
+            .map_err(|source| IpcClientError::IoError { source })?;
         self.stream
             .flush()
             .map_err(|source| IpcClientError::IoError { source })?;
@@ -155,7 +158,13 @@ pub enum IpcClientError {
 #[cfg(test)]
 mod tests {
     use super::{IpcClient, IpcClientError};
+    use std::io::{Read, Write};
+    use std::num::NonZeroUsize;
     use std::path::PathBuf;
+    use std::time::Duration;
+    use vb_runtime::runtime::Runtime;
+    use vb_runtime::shard::ShardConfig;
+    use crate::server::{IpcResponse, IpcServer};
 
     #[test]
     fn connect_ipc_rejects_nonexistent_socket() {
@@ -346,5 +355,239 @@ mod tests {
         assert!(io_err.to_string().contains("io error"));
         assert!(frame_err.to_string().contains("frame error"));
         assert!(encode_err.to_string().contains("payload encode failed"));
+    }
+
+    // ── helpers ─────────────────────────────────────────────────────────────────
+
+    fn temp_socket_path(name: &str) -> PathBuf {
+        std::env::temp_dir().join(format!("vb_ipc_client_test_{name}_{}", std::process::id()))
+    }
+
+    struct CleanupPath<'a>(&'a std::path::Path);
+    impl Drop for CleanupPath<'_> {
+        fn drop(&mut self) {
+            drop(std::fs::remove_file(self.0));
+        }
+    }
+
+    fn make_runtime() -> Runtime {
+        Runtime::new(NonZeroUsize::MIN, ShardConfig::default())
+    }
+
+    // ── success path tests ──────────────────────────────────────────────────────
+
+    #[test]
+    fn send_command_with_valid_payload_succeeds() {
+        let path = temp_socket_path("send_command_ok");
+        let _cleanup = CleanupPath(&path);
+        let mut server = IpcServer::bind(&path).unwrap();
+        let mut runtime = make_runtime();
+        let mut client = IpcClient::connect(&path).unwrap();
+
+        server.poll_once(&mut runtime, Some(Duration::from_millis(100))).unwrap();
+        let payload = crate::IpcPayload::Health;
+        client.send_command(crate::IpcCommand::Health, 1, &payload).unwrap();
+        server.poll_once(&mut runtime, Some(Duration::from_millis(100))).unwrap();
+
+        let (header, response) = client.recv_response(crate::MaxPayloadBytes::DEFAULT).unwrap();
+        assert_eq!(header.command, crate::IpcCommand::Health);
+        assert_eq!(header.correlation, 1);
+        assert_eq!(response, IpcResponse::Healthy);
+    }
+
+    #[test]
+    fn send_raw_sends_bytes_correctly() {
+        let (client_stream, mut server_stream) = std::os::unix::net::UnixStream::pair().unwrap();
+        let mut client = IpcClient { stream: client_stream };
+        let payload = b"hello raw";
+        client.send_raw(crate::IpcCommand::Health, 42, payload).unwrap();
+
+        let mut buf = vec![0u8; crate::IPC_HEADER_LEN + payload.len()];
+        server_stream.read_exact(&mut buf).unwrap();
+
+        let header = crate::IpcFrameHeader::decode(
+            &buf[..crate::IPC_HEADER_LEN].try_into().unwrap(),
+            crate::MaxPayloadBytes::DEFAULT,
+        ).unwrap();
+        assert_eq!(header.command, crate::IpcCommand::Health);
+        assert_eq!(header.correlation, 42);
+        assert_eq!(header.payload_len, payload.len() as u32);
+        assert_eq!(&buf[crate::IPC_HEADER_LEN..], payload.as_slice());
+    }
+
+    #[test]
+    fn recv_response_header_reads_valid_header() {
+        let (client_stream, mut server_stream) = std::os::unix::net::UnixStream::pair().unwrap();
+        let mut client = IpcClient { stream: client_stream };
+
+        let header = crate::IpcFrameHeader::new(crate::IpcCommand::Health, 0, 7, 0);
+        let encoded = header.encode().unwrap();
+        server_stream.write_all(&encoded).unwrap();
+        server_stream.flush().unwrap();
+
+        let received = client.recv_response_header().unwrap();
+        assert_eq!(received.command, crate::IpcCommand::Health);
+        assert_eq!(received.correlation, 7);
+        assert_eq!(received.payload_len, 0);
+    }
+
+    #[test]
+    fn recv_response_payload_reads_matching_payload() {
+        let (client_stream, mut server_stream) = std::os::unix::net::UnixStream::pair().unwrap();
+        let mut client = IpcClient { stream: client_stream };
+
+        let payload = b"payload data";
+        let header = crate::IpcFrameHeader::new(crate::IpcCommand::Health, 0, 1, payload.len() as u32);
+        let encoded = header.encode().unwrap();
+        server_stream.write_all(&encoded).unwrap();
+        server_stream.write_all(payload).unwrap();
+        server_stream.flush().unwrap();
+
+        let received_header = client.recv_response_header().unwrap();
+        let received_payload = client.recv_response_payload(&received_header).unwrap();
+        assert_eq!(received_payload, payload);
+    }
+
+    #[test]
+    fn recv_response_returns_full_frame() {
+        let path = temp_socket_path("recv_response_full");
+        let _cleanup = CleanupPath(&path);
+        let mut server = IpcServer::bind(&path).unwrap();
+        let mut runtime = make_runtime();
+        let mut client = IpcClient::connect(&path).unwrap();
+
+        server.poll_once(&mut runtime, Some(Duration::from_millis(100))).unwrap();
+        client.health(99).unwrap();
+        server.poll_once(&mut runtime, Some(Duration::from_millis(100))).unwrap();
+
+        let (header, response) = client.recv_response(crate::MaxPayloadBytes::DEFAULT).unwrap();
+        assert_eq!(header.command, crate::IpcCommand::Health);
+        assert_eq!(header.correlation, 99);
+        assert_eq!(response, IpcResponse::Healthy);
+    }
+
+    #[test]
+    fn health_sends_command_and_receives_healthy() {
+        let path = temp_socket_path("health_roundtrip");
+        let _cleanup = CleanupPath(&path);
+        let mut server = IpcServer::bind(&path).unwrap();
+        let mut runtime = make_runtime();
+        let mut client = IpcClient::connect(&path).unwrap();
+
+        server.poll_once(&mut runtime, Some(Duration::from_millis(100))).unwrap();
+        client.health(101).unwrap();
+        server.poll_once(&mut runtime, Some(Duration::from_millis(100))).unwrap();
+
+        let (header, response) = client.recv_response(crate::MaxPayloadBytes::DEFAULT).unwrap();
+        assert_eq!(header.command, crate::IpcCommand::Health);
+        assert_eq!(header.correlation, 101);
+        assert_eq!(response, IpcResponse::Healthy);
+    }
+
+    #[test]
+    fn shutdown_sends_shutdown_command() {
+        let path = temp_socket_path("shutdown_cmd");
+        let _cleanup = CleanupPath(&path);
+        let mut server = IpcServer::bind(&path).unwrap();
+        let mut runtime = make_runtime();
+        let mut client = IpcClient::connect(&path).unwrap();
+
+        server.poll_once(&mut runtime, Some(Duration::from_millis(100))).unwrap();
+        client.shutdown(202).unwrap();
+        server.poll_once(&mut runtime, Some(Duration::from_millis(100))).unwrap();
+
+        let (header, response) = client.recv_response(crate::MaxPayloadBytes::DEFAULT).unwrap();
+        assert_eq!(header.command, crate::IpcCommand::Shutdown);
+        assert_eq!(header.correlation, 202);
+        assert_eq!(response, IpcResponse::ShuttingDown);
+    }
+
+    #[test]
+    fn list_runs_sends_list_runs_command() {
+        let path = temp_socket_path("list_runs_cmd");
+        let _cleanup = CleanupPath(&path);
+        let mut server = IpcServer::bind(&path).unwrap();
+        let mut runtime = make_runtime();
+        let mut client = IpcClient::connect(&path).unwrap();
+
+        server.poll_once(&mut runtime, Some(Duration::from_millis(100))).unwrap();
+        client.list_runs(303, 10, None).unwrap();
+        server.poll_once(&mut runtime, Some(Duration::from_millis(100))).unwrap();
+
+        let (header, response) = client.recv_response(crate::MaxPayloadBytes::DEFAULT).unwrap();
+        assert_eq!(header.command, crate::IpcCommand::ListRuns);
+        assert_eq!(header.correlation, 303);
+        match response {
+            IpcResponse::RunList { runs } => assert!(runs.is_empty()),
+            other => panic!("expected RunList, got {other:?}"),
+        }
+    }
+
+    // ── failure path tests ──────────────────────────────────────────────────────
+
+    #[test]
+    fn recv_response_header_fails_with_frame_error_on_bad_magic() {
+        let (client_stream, mut server_stream) = std::os::unix::net::UnixStream::pair().unwrap();
+        let mut client = IpcClient { stream: client_stream };
+
+        let mut bad_header = [0u8; crate::IPC_HEADER_LEN];
+        bad_header[..4].copy_from_slice(&0xDEAD_BEEF_u32.to_le_bytes());
+        server_stream.write_all(&bad_header).unwrap();
+        server_stream.flush().unwrap();
+
+        let result = client.recv_response_header();
+        let err = result.unwrap_err();
+        let msg = err.to_string();
+        assert!(msg.contains("frame error"), "expected frame error, got {msg}");
+    }
+
+    #[test]
+    fn recv_response_payload_fails_on_short_read() {
+        let (client_stream, mut server_stream) = std::os::unix::net::UnixStream::pair().unwrap();
+        let mut client = IpcClient { stream: client_stream };
+
+        let header = crate::IpcFrameHeader::new(crate::IpcCommand::Health, 0, 1, 10);
+        let encoded = header.encode().unwrap();
+        server_stream.write_all(&encoded).unwrap();
+        server_stream.write_all(b"abc").unwrap();
+        server_stream.flush().unwrap();
+        drop(server_stream);
+
+        let received_header = client.recv_response_header().unwrap();
+        let result = client.recv_response_payload(&received_header);
+        let Err(IpcClientError::FrameError { source }) = result else {
+            panic!("expected FrameError, got {:?}", result);
+        };
+        assert_eq!(source, crate::IpcError::PayloadDecodeFailed);
+    }
+
+    #[test]
+    fn send_command_fails_with_io_error_on_broken_pipe() {
+        let (client_stream, server_stream) = std::os::unix::net::UnixStream::pair().unwrap();
+        let mut client = IpcClient { stream: client_stream };
+        drop(server_stream);
+
+        let payload = crate::IpcPayload::Health;
+        let result = client.send_command(crate::IpcCommand::Health, 1, &payload);
+        let Err(IpcClientError::IoError { source }) = result else {
+            panic!("expected IoError, got {:?}", result);
+        };
+        assert_eq!(source.kind(), std::io::ErrorKind::BrokenPipe);
+    }
+
+    #[test]
+    fn recv_response_fails_when_header_decode_fails() {
+        let (client_stream, mut server_stream) = std::os::unix::net::UnixStream::pair().unwrap();
+        let mut client = IpcClient { stream: client_stream };
+
+        let mut bad_header = [0u8; crate::IPC_HEADER_LEN];
+        bad_header[..4].copy_from_slice(&0xDEAD_BEEF_u32.to_le_bytes());
+        server_stream.write_all(&bad_header).unwrap();
+        server_stream.flush().unwrap();
+
+        let result = client.recv_response(crate::MaxPayloadBytes::DEFAULT);
+        let err = result.unwrap_err();
+        let msg = err.to_string();
+        assert!(msg.contains("frame error"), "expected frame error, got {msg}");
     }
 }

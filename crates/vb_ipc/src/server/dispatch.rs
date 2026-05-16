@@ -69,3 +69,76 @@ pub fn dispatch_command_with_resolver(
         IpcCommand::GetTaintReport => handle_get_taint_report(payload, resolver),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::num::NonZeroUsize;
+    use std::path::PathBuf;
+    use std::time::Duration;
+    use vb_runtime::runtime::Runtime;
+    use vb_runtime::shard::ShardConfig;
+
+    fn temp_socket_path(name: &str) -> PathBuf {
+        std::env::temp_dir().join(format!("vb_dispatch_test_{name}_{}", std::process::id()))
+    }
+
+    struct CleanupPath<'a>(&'a std::path::Path);
+    impl Drop for CleanupPath<'_> {
+        fn drop(&mut self) {
+            drop(std::fs::remove_file(self.0));
+        }
+    }
+
+    fn make_runtime() -> Runtime {
+        Runtime::new(NonZeroUsize::MIN, ShardConfig::default())
+    }
+
+    #[test]
+    fn serve_ipc_returns_true_when_server_should_continue() {
+        let path = temp_socket_path("continue");
+        let _cleanup = CleanupPath(&path);
+        let mut server = IpcServer::bind(&path).expect("bind should succeed");
+        let mut runtime = make_runtime();
+        server.set_test_poll_once_result(Ok(true));
+        let result = serve_ipc(&mut server, &mut runtime, Some(Duration::ZERO));
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), true);
+    }
+
+    #[test]
+    fn serve_ipc_returns_false_on_shutdown() {
+        let path = temp_socket_path("shutdown");
+        let _cleanup = CleanupPath(&path);
+        let mut server = IpcServer::bind(&path).expect("bind should succeed");
+        let mut runtime = make_runtime();
+        server.set_test_poll_once_result(Ok(false));
+        let result = serve_ipc(&mut server, &mut runtime, Some(Duration::ZERO));
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), false);
+    }
+
+    #[test]
+    fn serve_ipc_propagates_poll_once_errors() {
+        let path = temp_socket_path("error");
+        let _cleanup = CleanupPath(&path);
+        let mut server = IpcServer::bind(&path).expect("bind should succeed");
+        let mut runtime = make_runtime();
+        server.set_test_poll_once_result(Err(IpcServerError::TooManyClients));
+        let result = serve_ipc(&mut server, &mut runtime, Some(Duration::ZERO));
+        assert!(result.is_err());
+        assert!(matches!(result.unwrap_err(), IpcServerError::TooManyClients));
+    }
+
+    #[test]
+    fn serve_ipc_with_resolver_forwards_to_poll_once_with_resolver() {
+        let path = temp_socket_path("resolver");
+        let _cleanup = CleanupPath(&path);
+        let mut server = IpcServer::bind(&path).expect("bind should succeed");
+        let mut runtime = make_runtime();
+        server.set_test_poll_once_result(Ok(true));
+        let result = serve_ipc_with_resolver(&mut server, &mut runtime, Some(Duration::ZERO), None);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), true);
+    }
+}

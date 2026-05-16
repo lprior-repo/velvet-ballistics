@@ -120,8 +120,10 @@ mod tests {
             taint: Taint::Clean,
         };
         let encoded = postcard::to_allocvec(&payload);
-        assert!(encoded.is_ok(), "postcard encoding should succeed");
-        let Ok(encoded) = encoded else { return };
+        let Ok(encoded) = encoded else {
+            assert!(false, "postcard encoding should succeed");
+            return;
+        };
         let decoded: Result<IpcActionOutputPayload, _> = postcard::from_bytes(&encoded);
         let Ok(decoded) = decoded else {
             assert!(false, "postcard decoding should succeed");

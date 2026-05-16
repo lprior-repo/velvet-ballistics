@@ -1,7 +1,7 @@
 #![no_main]
 
 use libfuzzer_sys::fuzz_target;
-use velvet_ballastics_workspace::quality::test_loop_inventory::{
+use vb_boundary_inventory::quality::test_loop_inventory::{
     CaseLabel, LabelEvidence, LabelingPolicy, Location, LoopPattern, LoopPatternKind,
     classify_loop_pattern,
 };

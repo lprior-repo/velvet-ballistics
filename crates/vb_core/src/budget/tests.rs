@@ -1179,18 +1179,16 @@ fn blackhat_reduce_start_uses_max_list_items_as_iteration_count() {
         },
     ];
     let contract = test_contract(3, 3);
-    let budget = WholeWorkflowBudget::compute(&nodes, StepIdx::new(0), &contract).ok();
+    let budget = match WholeWorkflowBudget::compute(&nodes, StepIdx::new(0), &contract) {
+        Ok(b) => b,
+        Err(e) => panic!("BLACKHAT BH-BUD-13: ReduceStart should compute, got {e:?}"),
+    };
 
     let expected_iters = u64::try_from(crate::limits::MAX_LIST_ITEMS_PER_VALUE).unwrap_or(u64::MAX);
     let expected = 1 + expected_iters + 1;
 
-    assert!(
-        budget.is_some(),
-        "BLACKHAT BH-BUD-13: ReduceStart should compute with MAX_LIST_ITEMS iterations"
-    );
     assert_eq!(
-        budget.as_ref().map(|b| b.max_total_steps),
-        Some(expected),
+        budget.max_total_steps, expected,
         "BLACKHAT BH-BUD-13: expected {expected} steps"
     );
 }
@@ -3441,7 +3439,7 @@ proptest::proptest! {
             prop_assert!(matches!(result, Ok(())));
         } else {
             // If any dimension exceeds policy, validation should fail
-            prop_assert!(result.is_err());
+            prop_assert!(matches!(result, Err(_)));
         }
     }
 }

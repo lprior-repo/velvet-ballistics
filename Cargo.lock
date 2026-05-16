@@ -2680,6 +2680,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "vb_boundary_inventory"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "vb_codegen"
 version = "0.1.0"
 dependencies = [
@@ -2863,6 +2872,7 @@ dependencies = [
  "libfuzzer-sys",
  "postcard",
  "tempfile",
+ "vb_boundary_inventory",
  "vb_core",
  "vb_expr",
  "vb_ipc",
@@ -2870,39 +2880,6 @@ dependencies = [
  "vb_ui_model",
  "vb_validate",
  "vb_yaml",
- "velvet-ballastics-workspace",
- "xtask",
-]
-
-[[package]]
-name = "velvet-ballastics-workspace"
-version = "0.1.0"
-dependencies = [
- "blake3",
- "bytes",
- "chrono",
- "crc32fast",
- "criterion",
- "postcard",
- "proptest",
- "saphyr",
- "serde",
- "serde-saphyr",
- "serde_json",
- "tempfile",
- "toml 0.9.12+spec-1.1.0",
- "vb_benchmark",
- "vb_codegen",
- "vb_compile",
- "vb_core",
- "vb_doc",
- "vb_expr",
- "vb_ipc",
- "vb_runtime",
- "vb_storage",
- "vb_validate",
- "vb_yaml",
- "velvet_ballastics",
  "xtask",
 ]
 
@@ -2920,6 +2897,7 @@ dependencies = [
  "tempfile",
  "toml 0.9.12+spec-1.1.0",
  "vb_benchmark",
+ "vb_boundary_inventory",
  "vb_codegen",
  "vb_compile",
  "vb_core",
@@ -3447,6 +3425,7 @@ dependencies = [
  "blake3",
  "clap",
  "image",
+ "regex",
  "saphyr",
  "serde",
  "serde-saphyr",

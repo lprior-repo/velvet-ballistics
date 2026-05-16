@@ -42,7 +42,7 @@ use super::{
 
 const SERVER_TOKEN: Token = Token(0);
 const FIRST_CLIENT_TOKEN: usize = 1;
-const MAX_CLIENTS: usize = 256;
+pub(crate) const MAX_CLIENTS: usize = 256;
 const READ_CHUNK_BYTES: usize = 4096;
 
 impl IpcServer {
@@ -70,6 +70,8 @@ impl IpcServer {
             events,
             clients: HashMap::new(),
             next_token: FIRST_CLIENT_TOKEN,
+            #[cfg(test)]
+            test_poll_result: None,
         })
     }
 
@@ -125,10 +127,14 @@ impl IpcServer {
             }
         }
 
+        #[cfg(test)]
+        if let Some(result) = self.test_poll_result.take() {
+            return result;
+        }
         Ok(true)
     }
 
-    fn accept_client(&mut self) -> Result<(), IpcServerError> {
+    pub(crate) fn accept_client(&mut self) -> Result<(), IpcServerError> {
         if self.clients.len() >= MAX_CLIENTS {
             return Err(IpcServerError::TooManyClients);
         }
@@ -160,7 +166,7 @@ impl IpcServer {
         Ok(())
     }
 
-    fn handle_readable(
+    pub(crate) fn handle_readable(
         &mut self,
         token_index: usize,
         runtime: &mut Runtime,
@@ -233,7 +239,7 @@ impl IpcServer {
         Ok(false)
     }
 
-    fn handle_writable(&mut self, token_index: usize) -> Result<bool, IpcServerError> {
+    pub(crate) fn handle_writable(&mut self, token_index: usize) -> Result<bool, IpcServerError> {
         let Some(client) = self.clients.get_mut(&token_index) else {
             return Ok(true);
         };
@@ -261,7 +267,7 @@ impl IpcServer {
         Ok(false)
     }
 
-    fn remove_client(&mut self, token_index: usize) {
+    pub(crate) fn remove_client(&mut self, token_index: usize) {
         if let Some(mut client) = self.clients.remove(&token_index) {
             drop(self.poll.registry().deregister(&mut client.stream));
         }

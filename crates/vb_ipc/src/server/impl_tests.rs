@@ -73,7 +73,7 @@ fn read_exact_timeout(stream: &mut dyn Read, n: usize) -> Result<Vec<u8>, std::i
             }
             Ok(count) => read_total = read_total.saturating_add(count),
             Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
-                std::thread::sleep(Duration::from_millis(1));
+                std::thread::yield_now();
             }
             Err(e) => return Err(e),
         }
@@ -1661,6 +1661,357 @@ fn run_list_state_roundtrip_cancelled() {
     let encoded = postcard::to_allocvec(&original).expect("encode Cancelled");
     let decoded: crate::RunListState = postcard::from_bytes(&encoded).expect("decode Cancelled");
     assert_eq!(decoded, original);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Coverage tests for impl_.rs branches
+// ══════════════════════════════════════════════════════════════════════════════
+
+use super::impl_::MAX_CLIENTS;
+
+// ── 1. accept_client when max clients reached ────────────────────────────────
+
+#[test]
+fn accept_client_returns_too_many_clients_when_at_capacity() {
+    let path = temp_socket_path("max_clients");
+    let _cleanup = CleanupPath(&path);
+    let mut server = IpcServer::bind(&path).expect("bind should succeed");
+    let mut runtime = make_runtime();
+    let mut clients = Vec::with_capacity(MAX_CLIENTS);
+
+    for _ in 0..MAX_CLIENTS {
+        clients.push(make_client(&path));
+        server
+            .poll_once(&mut runtime, Some(Duration::from_millis(50)))
+            .expect("accept should succeed");
+    }
+
+    let _extra = make_client(&path);
+    let result = server.poll_once(&mut runtime, Some(Duration::from_millis(100)));
+    assert!(result.is_err(), "should fail when max clients reached");
+    assert!(matches!(result.unwrap_err(), IpcServerError::TooManyClients));
+}
+
+// ── 2. handle_readable when WouldBlock ───────────────────────────────────────
+
+#[test]
+fn handle_readable_returns_false_on_would_block() {
+    let path = temp_socket_path("read_would_block");
+    let _cleanup = CleanupPath(&path);
+    let mut server = IpcServer::bind(&path).expect("bind should succeed");
+    let mut runtime = make_runtime();
+
+    let mut client = make_client(&path);
+    server.accept_client().expect("accept should succeed");
+
+    client.write_all(&[0x56, 0x42, 0x4C]).expect("write partial");
+    client.flush().expect("flush");
+
+    server
+        .poll_once(&mut runtime, Some(Duration::from_millis(100)))
+        .expect("poll should succeed");
+
+    let result = server.handle_readable(1, &mut runtime, None);
+    assert!(result.is_ok(), "handle_readable should not error");
+    assert_eq!(result.unwrap(), false, "should return false on WouldBlock");
+}
+
+// ── 3. handle_readable when partial header ───────────────────────────────────
+
+#[test]
+fn handle_readable_returns_false_for_partial_header() {
+    let path = temp_socket_path("partial_header");
+    let _cleanup = CleanupPath(&path);
+    let mut server = IpcServer::bind(&path).expect("bind should succeed");
+    let mut runtime = make_runtime();
+
+    let mut client = make_client(&path);
+    server.accept_client().expect("accept should succeed");
+
+    let partial = &[0x56, 0x42, 0x4C, 0x54, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00];
+    client.write_all(partial).expect("write partial header");
+    client.flush().expect("flush");
+
+    server
+        .poll_once(&mut runtime, Some(Duration::from_millis(100)))
+        .expect("poll should succeed");
+
+    let result = server.handle_readable(1, &mut runtime, None);
+    assert!(result.is_ok());
+    assert_eq!(result.unwrap(), false, "should return false for partial header");
+}
+
+// ── 4. handle_readable when complete header but partial payload ──────────────
+
+#[test]
+fn handle_readable_returns_false_for_complete_header_partial_payload() {
+    let path = temp_socket_path("partial_payload");
+    let _cleanup = CleanupPath(&path);
+    let mut server = IpcServer::bind(&path).expect("bind should succeed");
+    let mut runtime = make_runtime();
+
+    let mut client = make_client(&path);
+    server.accept_client().expect("accept should succeed");
+
+    let header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, 10);
+    let header_bytes = header.encode().expect("encode header");
+    client.write_all(&header_bytes).expect("write header");
+    client.flush().expect("flush");
+
+    server
+        .poll_once(&mut runtime, Some(Duration::from_millis(100)))
+        .expect("poll should succeed");
+
+    let result = server.handle_readable(1, &mut runtime, None);
+    assert!(result.is_ok());
+    assert_eq!(
+        result.unwrap(),
+        false,
+        "should return false when payload incomplete"
+    );
+}
+
+// ── 5. handle_readable when read returns 0 ───────────────────────────────────
+
+#[test]
+fn handle_readable_returns_true_when_client_disconnected() {
+    let path = temp_socket_path("read_zero");
+    let _cleanup = CleanupPath(&path);
+    let mut server = IpcServer::bind(&path).expect("bind should succeed");
+    let mut runtime = make_runtime();
+
+    {
+        let _client = make_client(&path);
+        server.accept_client().expect("accept should succeed");
+    }
+
+    let result = server.handle_readable(1, &mut runtime, None);
+    assert!(result.is_ok());
+    assert_eq!(
+        result.unwrap(),
+        true,
+        "should return true when client disconnected"
+    );
+}
+
+// ── 6. handle_writable when WouldBlock ───────────────────────────────────────
+
+#[test]
+fn handle_writable_returns_false_on_would_block() {
+    let path = temp_socket_path("write_would_block");
+    let _cleanup = CleanupPath(&path);
+    let mut server = IpcServer::bind(&path).expect("bind should succeed");
+    let _runtime = make_runtime();
+
+    let _client = make_client(&path);
+    server.accept_client().expect("accept should succeed");
+
+    let stream = server.client_stream_mut(1).expect("client should exist");
+    let big_buf = vec![0u8; 1024 * 1024];
+    let mut total = 0;
+    loop {
+        match stream.write(&big_buf[total..]) {
+            Ok(0) => break,
+            Ok(n) => {
+                total += n;
+                if total >= big_buf.len() {
+                    break;
+                }
+            }
+            Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => break,
+            Err(_) => break,
+        }
+    }
+
+    let write_buf = server.client_write_buffer_mut(1).expect("client should exist");
+    write_buf.extend_from_slice(&[0xFF; 100]);
+
+    let result = server.handle_writable(1);
+    assert!(result.is_ok(), "handle_writable should not error");
+    assert_eq!(result.unwrap(), false, "should return false on WouldBlock");
+}
+
+// ── 7. handle_writable when write succeeds and buffer is empty ───────────────
+
+#[test]
+fn handle_writable_drains_buffer_and_reregisters_readable() {
+    let path = temp_socket_path("write_drain");
+    let _cleanup = CleanupPath(&path);
+    let mut server = IpcServer::bind(&path).expect("bind should succeed");
+    let _runtime = make_runtime();
+
+    let mut client = make_client(&path);
+    server.accept_client().expect("accept should succeed");
+
+    let write_buf = server.client_write_buffer_mut(1).expect("client should exist");
+    write_buf.extend_from_slice(&[0xAB; 10]);
+
+    let result = server.handle_writable(1);
+    assert!(result.is_ok(), "handle_writable should not error");
+    assert_eq!(result.unwrap(), false, "should return false after draining");
+
+    assert_eq!(
+        server.client_write_buffer_mut(1).map(|b| b.len()),
+        Some(0),
+        "write_buffer should be empty"
+    );
+
+    let mut client_buf = [0u8; 10];
+    let n = client.read(&mut client_buf).expect("client should read data");
+    assert_eq!(n, 10, "client should receive 10 bytes");
+    assert_eq!(&client_buf, &[0xAB; 10], "client should receive correct data");
+}
+
+// ── 8. handle_writable when write succeeds but buffer has remaining bytes ────
+
+#[test]
+fn handle_writable_partial_write_leaves_remaining_bytes() {
+    let path = temp_socket_path("write_partial");
+    let _cleanup = CleanupPath(&path);
+    let mut server = IpcServer::bind(&path).expect("bind should succeed");
+    let _runtime = make_runtime();
+
+    let mut client = make_client(&path);
+    server.accept_client().expect("accept should succeed");
+
+    let stream = server.client_stream_mut(1).expect("client should exist");
+    let big_buf = vec![0u8; 1024 * 1024];
+    let mut total = 0;
+    loop {
+        match stream.write(&big_buf[total..]) {
+            Ok(0) => break,
+            Ok(n) => {
+                total += n;
+                if total >= big_buf.len() {
+                    break;
+                }
+            }
+            Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => break,
+            Err(_) => break,
+        }
+    }
+
+    let mut small_buf = [0u8; 1];
+    let _ = client.read(&mut small_buf);
+
+    let write_buf = server.client_write_buffer_mut(1).expect("client should exist");
+    write_buf.extend_from_slice(&[0xCD; 10 * 1024 * 1024]);
+
+    let result = server.handle_writable(1);
+    assert!(result.is_ok(), "handle_writable should not error");
+    assert_eq!(result.unwrap(), false, "should return false after partial write");
+
+    let remaining = server.client_write_buffer_mut(1).expect("client should exist").len();
+    assert!(
+        remaining > 0,
+        "write_buffer should have remaining bytes after partial write"
+    );
+    // Note: depending on kernel buffer state, write may return Ok(0) or a partial
+    // count. The key invariant is that the buffer is not empty after the call.
+}
+
+// ── 9. handle_writable when write fails with non-WouldBlock error ────────────
+
+#[test]
+fn handle_writable_returns_true_on_broken_pipe() {
+    let path = temp_socket_path("write_broken");
+    let _cleanup = CleanupPath(&path);
+    let mut server = IpcServer::bind(&path).expect("bind should succeed");
+    let _runtime = make_runtime();
+
+    {
+        let _client = make_client(&path);
+        server.accept_client().expect("accept should succeed");
+    }
+
+    let write_buf = server.client_write_buffer_mut(1).expect("client should exist");
+    write_buf.extend_from_slice(&[0xFF; 10]);
+
+    let result = server.handle_writable(1);
+    assert!(result.is_ok(), "handle_writable should not error");
+    assert_eq!(result.unwrap(), true, "should return true on broken pipe");
+}
+
+// ── 10. remove_client actually removes from internal maps ────────────────────
+
+#[test]
+fn remove_client_removes_from_internal_maps() {
+    let path = temp_socket_path("remove_client");
+    let _cleanup = CleanupPath(&path);
+    let mut server = IpcServer::bind(&path).expect("bind should succeed");
+    let _runtime = make_runtime();
+
+    let _client = make_client(&path);
+    server.accept_client().expect("accept should succeed");
+
+    assert_eq!(server.client_count(), 1, "should have 1 client");
+
+    server.remove_client(1);
+
+    assert_eq!(
+        server.client_count(),
+        0,
+        "should have 0 clients after removal"
+    );
+}
+
+// ── 11. poll_once when a client is readable AND writable in same poll ────────
+
+#[test]
+fn poll_once_processes_readable_and_writable_for_same_client() {
+    let path = temp_socket_path("poll_rw_same");
+    let _cleanup = CleanupPath(&path);
+    let mut server = IpcServer::bind(&path).expect("bind should succeed");
+    let mut runtime = make_runtime();
+
+    let mut client = make_client(&path);
+    server.accept_client().expect("accept should succeed");
+
+    server
+        .reregister_client(1, mio::Interest::READABLE | mio::Interest::WRITABLE)
+        .expect("reregister should succeed");
+
+    let frame = build_frame(IpcCommand::Health, 1, &[]);
+    client.write_all(&frame).expect("write health frame");
+    client.flush().expect("flush");
+
+    let result = server.poll_once(&mut runtime, Some(Duration::from_millis(100)));
+    assert!(
+        result.is_ok(),
+        "poll with readable+writable should succeed"
+    );
+}
+
+// ── 12. poll_once with multiple simultaneous events ──────────────────────────
+
+#[test]
+fn poll_once_processes_multiple_simultaneous_events() {
+    let path = temp_socket_path("poll_multi");
+    let _cleanup = CleanupPath(&path);
+    let mut server = IpcServer::bind(&path).expect("bind should succeed");
+    let mut runtime = make_runtime();
+
+    let mut client1 = make_client(&path);
+    let mut client2 = make_client(&path);
+
+    server.accept_client().expect("accept client 1");
+    server.accept_client().expect("accept client 2");
+
+    let frame1 = build_frame(IpcCommand::Health, 1, &[]);
+    let frame2 = build_frame(IpcCommand::Health, 2, &[]);
+    client1.write_all(&frame1).expect("write frame 1");
+    client2.write_all(&frame2).expect("write frame 2");
+    client1.flush().expect("flush 1");
+    client2.flush().expect("flush 2");
+
+    let result = server.poll_once(&mut runtime, Some(Duration::from_millis(100)));
+    assert!(result.is_ok(), "poll with multiple clients should succeed");
+
+    let header1 = read_exact_timeout(&mut client1, IPC_HEADER_LEN);
+    assert!(header1.is_ok(), "client 1 should get response");
+
+    let header2 = read_exact_timeout(&mut client2, IPC_HEADER_LEN);
+    assert!(header2.is_ok(), "client 2 should get response");
 }
 
 // ── cleanup helpers ──────────────────────────────────────────────────────────

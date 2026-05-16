@@ -43,6 +43,8 @@ pub struct IpcServer {
     events: mio::Events,
     clients: std::collections::HashMap<usize, ClientConnection>,
     next_token: usize,
+    #[cfg(test)]
+    test_poll_result: Option<Result<bool, IpcServerError>>,
 }
 
 struct ClientConnection {
@@ -145,4 +147,52 @@ pub fn serve_ipc(
     timeout: Option<std::time::Duration>,
 ) -> Result<bool, IpcServerError> {
     server.poll_once(runtime, timeout)
+}
+
+#[cfg(test)]
+impl IpcServer {
+    pub(crate) fn client_count(&self) -> usize {
+        self.clients.len()
+    }
+
+    pub(crate) fn client_stream_mut(
+        &mut self,
+        token_index: usize,
+    ) -> Option<&mut mio::net::UnixStream> {
+        self.clients.get_mut(&token_index).map(|c| &mut c.stream)
+    }
+
+    pub(crate) fn client_write_buffer_mut(
+        &mut self,
+        token_index: usize,
+    ) -> Option<&mut Vec<u8>> {
+        self.clients.get_mut(&token_index).map(|c| &mut c.write_buffer)
+    }
+
+    pub(crate) fn set_test_poll_once_result(
+        &mut self,
+        result: Result<bool, IpcServerError>,
+    ) {
+        self.test_poll_result = Some(result);
+    }
+
+    pub(crate) fn reregister_client(
+        &mut self,
+        token_index: usize,
+        interest: mio::Interest,
+    ) -> Result<(), IpcServerError> {
+        let token = mio::Token(token_index);
+        let client = self.clients.get_mut(&token_index).ok_or_else(|| {
+            IpcServerError::PollFailed {
+                source: std::io::Error::new(
+                    std::io::ErrorKind::NotFound,
+                    "client not found",
+                ),
+            }
+        })?;
+        self.poll
+            .registry()
+            .reregister(&mut client.stream, token, interest)
+            .map_err(|source| IpcServerError::PollFailed { source })
+    }
 }

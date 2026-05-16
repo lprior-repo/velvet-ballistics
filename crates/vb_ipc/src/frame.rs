@@ -1187,4 +1187,289 @@ mod tests {
             })
         );
     }
+
+    // ══ codec.rs coverage tests ════════════════════════════════════════════════════
+
+    #[test]
+    fn encode_frame_with_list_runs_command() {
+        assert_command_roundtrip(IpcCommand::ListRuns);
+    }
+
+    #[test]
+    fn encode_frame_with_get_metrics_command() {
+        assert_command_roundtrip(IpcCommand::GetMetrics);
+    }
+
+    #[test]
+    fn encode_frame_with_get_workflow_graph_command() {
+        assert_command_roundtrip(IpcCommand::GetWorkflowGraph);
+    }
+
+    #[test]
+    fn encode_frame_with_get_taint_report_command() {
+        assert_command_roundtrip(IpcCommand::GetTaintReport);
+    }
+
+    #[test]
+    fn encode_frame_with_verify_workflow_command() {
+        assert_command_roundtrip(IpcCommand::VerifyWorkflow);
+    }
+
+    #[test]
+    fn encode_frame_with_large_u32_payload_length() {
+        let payload = vec![0xCC_u8; 70000];
+        let result = encode_frame(IpcCommand::SubmitRun, 0, 1, &payload);
+        assert_ok!(result, "encode should succeed for large payload");
+        let Ok(frame) = result else { return };
+        let len_slice = frame.get(20..24);
+        assert_eq!(len_slice, Some(70000u32.to_le_bytes().as_slice()));
+    }
+
+    #[test]
+    fn decode_frame_header_with_valid_list_runs_header() {
+        let header = IpcFrameHeader::new(IpcCommand::ListRuns, 0, 1, 0);
+        let encoded = header.encode();
+        assert_ok!(encoded);
+        let Ok(encoded) = encoded else { return };
+        let decoded = decode_frame_header(&encoded);
+        assert_ok!(decoded);
+        let Ok(decoded) = decoded else { return };
+        assert_eq!(decoded.command, IpcCommand::ListRuns);
+    }
+
+    #[test]
+    fn decode_frame_header_with_valid_get_metrics_header() {
+        let header = IpcFrameHeader::new(IpcCommand::GetMetrics, 0, 1, 0);
+        let encoded = header.encode();
+        assert_ok!(encoded);
+        let Ok(encoded) = encoded else { return };
+        let decoded = decode_frame_header(&encoded);
+        assert_ok!(decoded);
+        let Ok(decoded) = decoded else { return };
+        assert_eq!(decoded.command, IpcCommand::GetMetrics);
+    }
+
+    #[test]
+    fn decode_frame_header_with_valid_get_workflow_graph_header() {
+        let header = IpcFrameHeader::new(IpcCommand::GetWorkflowGraph, 0, 1, 0);
+        let encoded = header.encode();
+        assert_ok!(encoded);
+        let Ok(encoded) = encoded else { return };
+        let decoded = decode_frame_header(&encoded);
+        assert_ok!(decoded);
+        let Ok(decoded) = decoded else { return };
+        assert_eq!(decoded.command, IpcCommand::GetWorkflowGraph);
+    }
+
+    #[test]
+    fn decode_frame_header_with_valid_get_taint_report_header() {
+        let header = IpcFrameHeader::new(IpcCommand::GetTaintReport, 0, 1, 0);
+        let encoded = header.encode();
+        assert_ok!(encoded);
+        let Ok(encoded) = encoded else { return };
+        let decoded = decode_frame_header(&encoded);
+        assert_ok!(decoded);
+        let Ok(decoded) = decoded else { return };
+        assert_eq!(decoded.command, IpcCommand::GetTaintReport);
+    }
+
+    #[test]
+    fn decode_frame_header_with_valid_verify_workflow_header() {
+        let header = IpcFrameHeader::new(IpcCommand::VerifyWorkflow, 0, 1, 0);
+        let encoded = header.encode();
+        assert_ok!(encoded);
+        let Ok(encoded) = encoded else { return };
+        let decoded = decode_frame_header(&encoded);
+        assert_ok!(decoded);
+        let Ok(decoded) = decoded else { return };
+        assert_eq!(decoded.command, IpcCommand::VerifyWorkflow);
+    }
+
+    #[test]
+    fn decode_frame_header_rejects_truncated_input_via_reader() {
+        let data: Vec<u8> = vec![];
+        let mut cursor = std::io::Cursor::new(data);
+        let result = read_frame_header(&mut cursor);
+        assert_eq!(result, Err(IpcError::HeaderDecodeFailed));
+    }
+
+    // ══ validate.rs coverage tests ═════════════════════════════════════════════════
+
+    #[test]
+    fn validate_frame_magic_with_exactly_four_bytes_wrong_magic() {
+        let wrong_magic: u32 = 0xDEAD_BEEF;
+        let bytes = wrong_magic.to_le_bytes();
+        assert_eq!(
+            validate_frame_magic(&bytes),
+            Err(IpcError::InvalidMagic { actual: wrong_magic })
+        );
+    }
+
+    #[test]
+    fn validate_frame_bounds_with_exactly_max_payload() {
+        let max = MaxPayloadBytes::DEFAULT.get();
+        let payload_len = match u32::try_from(max) {
+            Ok(v) => v,
+            Err(_) => return,
+        };
+        let header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, payload_len);
+        assert_eq!(validate_frame_bounds(&header, MaxPayloadBytes::DEFAULT), Ok(()));
+    }
+
+    #[test]
+    fn validate_frame_bounds_with_default_max_plus_one() {
+        let default_max = MaxPayloadBytes::DEFAULT.get();
+        let over_limit = match u32::try_from(default_max.saturating_add(1)) {
+            Ok(v) => v,
+            Err(_) => return,
+        };
+        let header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, over_limit);
+        assert_eq!(
+            validate_frame_bounds(&header, MaxPayloadBytes::DEFAULT),
+            Err(IpcError::PayloadTooLarge {
+                actual: default_max.saturating_add(1),
+                limit: default_max,
+            })
+        );
+    }
+
+    // ══ io.rs coverage tests ═══════════════════════════════════════════════════════
+
+    #[test]
+    fn read_frame_header_with_exact_header_bytes() {
+        let header = IpcFrameHeader::new(IpcCommand::Health, 0, 42, 0);
+        let encoded = header.encode();
+        assert_ok!(encoded);
+        let Ok(encoded) = encoded else { return };
+        let mut cursor = std::io::Cursor::new(encoded.as_slice());
+        let result = read_frame_header(&mut cursor);
+        assert_ok!(result);
+        let Ok(decoded) = result else { return };
+        assert_eq!(decoded.command, IpcCommand::Health);
+        assert_eq!(decoded.correlation, 42);
+    }
+
+    #[test]
+    fn read_frame_header_with_zero_bytes() {
+        let data: Vec<u8> = vec![];
+        let mut cursor = std::io::Cursor::new(data);
+        let result = read_frame_header(&mut cursor);
+        assert_eq!(result, Err(IpcError::HeaderDecodeFailed));
+    }
+
+    #[test]
+    fn read_frame_header_bounded_with_payload_within_max() {
+        let header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, 100);
+        let encoded = header.encode();
+        assert_ok!(encoded);
+        let Ok(encoded) = encoded else { return };
+        let mut cursor = std::io::Cursor::new(encoded.as_slice());
+        let result = read_frame_header_bounded(&mut cursor, MaxPayloadBytes::DEFAULT);
+        assert_ok!(result);
+        let Ok(decoded) = result else { return };
+        assert_eq!(decoded.payload_len, 100);
+    }
+
+    #[test]
+    fn read_frame_payload_bounded_with_payload_within_max() {
+        let header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, 4);
+        let payload_data = b"test";
+        let mut cursor = std::io::Cursor::new(payload_data.as_slice());
+        let result = read_frame_payload_bounded(&mut cursor, &header, MaxPayloadBytes::DEFAULT);
+        assert_ok!(result);
+        let Ok(payload) = result else { return };
+        assert_eq!(payload.as_slice(), b"test");
+    }
+
+    #[test]
+    fn write_frame_produces_correct_frame_bytes() {
+        let mut writer = Vec::new();
+        let payload = b"hello";
+        let result = write_frame(&mut writer, IpcCommand::Health, 0x1234, 42, payload);
+        assert_ok!(result);
+        assert_eq!(writer.len(), IPC_HEADER_LEN + payload.len());
+        let magic_slice = writer.get(..4);
+        assert_eq!(magic_slice, Some(crate::IPC_MAGIC.to_le_bytes().as_slice()));
+        let flags_slice = writer.get(8..10);
+        assert_eq!(flags_slice, Some(0x1234u16.to_le_bytes().as_slice()));
+        let corr_slice = writer.get(12..20);
+        assert_eq!(corr_slice, Some(42u64.to_le_bytes().as_slice()));
+        let len_slice = writer.get(20..24);
+        assert_eq!(len_slice, Some(5u32.to_le_bytes().as_slice()));
+        let payload_slice = writer.get(IPC_HEADER_LEN..);
+        assert_eq!(payload_slice, Some(payload.as_slice()));
+    }
+
+    #[test]
+    fn write_frame_with_empty_payload_produces_header_only_frame() {
+        let mut writer = Vec::new();
+        let result = write_frame(&mut writer, IpcCommand::Shutdown, 0, 99, b"");
+        assert_ok!(result);
+        assert_eq!(writer.len(), IPC_HEADER_LEN);
+        let header_slice = match writer.get(..IPC_HEADER_LEN) {
+            Some(s) => s,
+            None => return,
+        };
+        let header_arr: [u8; IPC_HEADER_LEN] = match header_slice.try_into() {
+            Ok(h) => h,
+            Err(_) => return,
+        };
+        let header = decode_frame_header(&header_arr);
+        assert_ok!(header);
+        let Ok(header) = header else { return };
+        assert_eq!(header.command, IpcCommand::Shutdown);
+        assert_eq!(header.correlation, 99);
+        assert_eq!(header.payload_len, 0);
+    }
+
+    #[test]
+    fn read_frame_payload_with_zero_length_payload() {
+        let header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, 0);
+        let empty_data: &[u8] = b"";
+        let mut cursor = std::io::Cursor::new(empty_data);
+        let result = read_frame_payload(&mut cursor, &header);
+        assert_ok!(result);
+        let Ok(payload) = result else { return };
+        assert_eq!(payload.len(), 0);
+    }
+
+    #[test]
+    fn encode_frame_with_all_flags_set() {
+        let result = encode_frame(IpcCommand::Health, u16::MAX, 1, b"");
+        assert_ok!(result);
+        let Ok(frame) = result else { return };
+        let flags_slice = frame.get(8..10);
+        assert_eq!(flags_slice, Some(u16::MAX.to_le_bytes().as_slice()));
+    }
+
+    #[test]
+    fn decode_frame_header_preserves_all_fields() {
+        let header = IpcFrameHeader::new(IpcCommand::SubmitRun, 0xABCD, 0x1234_5678_9ABC_DEF0, 4096);
+        let encoded = header.encode();
+        assert_ok!(encoded);
+        let Ok(encoded) = encoded else { return };
+        let decoded = decode_frame_header(&encoded);
+        assert_ok!(decoded);
+        let Ok(decoded) = decoded else { return };
+        assert_eq!(decoded.command, IpcCommand::SubmitRun);
+        assert_eq!(decoded.flags, 0xABCD);
+        assert_eq!(decoded.correlation, 0x1234_5678_9ABC_DEF0);
+        assert_eq!(decoded.payload_len, 4096);
+    }
+
+    #[test]
+    fn read_frame_payload_bounded_rejects_oversized_payload() {
+        let header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, 100);
+        let tiny_max = MaxPayloadBytes::new(std::num::NonZeroUsize::MIN);
+        let payload_data = vec![0u8; 100];
+        let mut cursor = std::io::Cursor::new(payload_data.as_slice());
+        let result = read_frame_payload_bounded(&mut cursor, &header, tiny_max);
+        assert_eq!(
+            result,
+            Err(IpcError::PayloadTooLarge {
+                actual: 100,
+                limit: 1,
+            })
+        );
+    }
 }

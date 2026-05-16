@@ -1,6 +1,6 @@
 use criterion::{Criterion, criterion_group, criterion_main};
 use std::hint::black_box;
-use velvet_ballastics_workspace::boundary_inventory::{
+use vb_boundary_inventory::boundary_inventory::{
     BoundaryCandidate, classify_boundary, parse_inventory,
 };
 

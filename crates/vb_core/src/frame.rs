@@ -2002,7 +2002,8 @@ mod frame_kani_harnesses {
                         let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1);
                         kani::assume(frame.is_ok());
                         let mut frame = frame.unwrap();
-                        let _ = frame.set_pc(pc);
+                        let result = frame.set_pc(pc);
+                        assert!(matches!(result, Ok(())));
                     }
                     // K-PC2
                     {
@@ -2011,7 +2012,8 @@ mod frame_kani_harnesses {
                         let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1);
                         kani::assume(frame.is_ok());
                         let mut frame = frame.unwrap();
-                        let _ = frame.increment_executed();
+                        let result = frame.increment_executed();
+                        assert!(matches!(result, Ok(())));
                     }
                     // K-PC3
                     {
@@ -2023,7 +2025,8 @@ mod frame_kani_harnesses {
                         let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1);
                         kani::assume(frame.is_ok());
                         let mut frame = frame.unwrap();
-                        let _ = frame.set_pc(pc);
+                        let result = frame.set_pc(pc);
+                        assert!(matches!(result, Err(CoreError::InvalidProgramCounter { .. })));
                     }
                 }
 

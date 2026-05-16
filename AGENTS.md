@@ -11,6 +11,17 @@
 - Language version: `velvet-ballastics/v1`
 - `velvet-ballistics` is invalid except in external migration artifacts.
 
+## Workspace Structure
+
+This repository uses a pure virtual workspace pattern.
+
+- `crates/`: Contains all production code crates (e.g., `vb_core`, `vb_boundary_inventory`).
+- `crates/workspace_tests/`: Contains all cross-crate integration tests and benchmarks. Do not place `tests/` or `benches/` at the repository root.
+- `fuzz/`: Fuzzing targets.
+- `xtask/`: Automation and tooling.
+
+Never place production code, tests, or benchmarks at the repository root.
+
 ## Beads Workflow
 
 

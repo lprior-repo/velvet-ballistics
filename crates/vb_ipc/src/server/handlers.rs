@@ -71,7 +71,7 @@ const MAX_WORKFLOW_GRAPH_NODES: usize = 8192;
 /// leakage of large internal diagnostics over the IPC channel.  The truncation
 /// preserves the first `MAX_RUNTIME_ERROR_LEN` characters and appends an
 /// ellipsis indicator when the original message was longer.
-fn sanitize_runtime_error(e: &dyn std::fmt::Display) -> String {
+pub(crate) fn sanitize_runtime_error(e: &dyn std::fmt::Display) -> String {
     let full = e.to_string();
     if full.len() <= MAX_RUNTIME_ERROR_LEN {
         return full;
@@ -1127,8 +1127,10 @@ mod tests {
     fn decode_payload_succeeds_for_valid_postcard_bytes() {
         let payload = crate::IpcPayload::Health;
         let encoded = postcard::to_allocvec(&payload);
-        assert!(encoded.is_ok(), "postcard encoding should succeed");
-        let Ok(encoded) = encoded else { return };
+        let Ok(encoded) = encoded else {
+            assert!(false, "postcard encoding should succeed");
+            return;
+        };
 
         let result = decode_payload::<crate::IpcPayload>(&encoded);
         match result {
@@ -2127,5 +2129,627 @@ mod tests {
         // A small count should not be changed
         let small_capped = 100u16.min(u16::try_from(MAX_WORKFLOW_GRAPH_NODES).unwrap_or(u16::MAX));
         assert_eq!(small_capped, 100, "small node count should pass through");
+    }
+
+    // -- Runtime integration tests --
+
+    use vb_runtime::runtime::Runtime;
+    use vb_runtime::shard::ShardConfig;
+    use std::num::NonZeroUsize;
+
+    fn make_runtime() -> Runtime {
+        Runtime::new(NonZeroUsize::MIN, ShardConfig::default())
+    }
+
+    fn make_minimal_workflow(digest: vb_core::WorkflowDigest) -> vb_core::workflow::CompiledWorkflow {
+        use vb_core::workflow::{CompiledNode, CompiledNodeKind, WorkflowParts, ResourceContract};
+        use vb_core::ids::StepIdx;
+
+        let parts = WorkflowParts {
+            name: Box::from("test"),
+            digest,
+            nodes: vec![CompiledNode {
+                id: StepIdx::new(0),
+                output: None,
+                next: None,
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::Nop,
+            }].into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: Box::new([]),
+            slot_count: 0,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+            step_names: Box::new([]),
+        };
+        vb_core::workflow::CompiledWorkflow::try_from_parts(parts)
+            .expect("minimal workflow should be valid")
+    }
+
+    struct OkResolver {
+        workflow: vb_core::workflow::CompiledWorkflow,
+    }
+
+    impl WorkflowResolver for OkResolver {
+        fn resolve_workflow(
+            &mut self,
+            _digest: vb_core::WorkflowDigest,
+        ) -> Result<vb_core::workflow::CompiledWorkflow, WorkflowResolutionError> {
+            Ok(self.workflow.clone())
+        }
+    }
+
+    struct MismatchResolver;
+
+    impl WorkflowResolver for MismatchResolver {
+        fn resolve_workflow(
+            &mut self,
+            _digest: vb_core::WorkflowDigest,
+        ) -> Result<vb_core::workflow::CompiledWorkflow, WorkflowResolutionError> {
+            Ok(make_minimal_workflow(vb_core::WorkflowDigest::from_bytes([0xFF; 32])))
+        }
+    }
+
+    // 1. handle_ping returns Healthy (already covered above, but kept for completeness)
+    // 2. handle_health returns Healthy (already covered above)
+
+    // 3. handle_shutdown returns ShuttingDown and sets runtime shutdown flag
+    #[test]
+    fn handle_shutdown_returns_shutting_down() {
+        let mut runtime = make_runtime();
+        let response = handle_shutdown(&mut runtime);
+        assert_eq!(response, IpcResponse::ShuttingDown);
+    }
+
+    // 4. handle_submit_run with valid payload returns AcceptedRun
+    #[test]
+    fn handle_submit_run_with_valid_payload_returns_accepted() {
+        let mut runtime = make_runtime();
+        let digest = vb_core::WorkflowDigest::from_bytes([0x42; 32]);
+        let workflow = make_minimal_workflow(digest);
+        let mut resolver = OkResolver { workflow };
+        let submit = SubmitRunPayload {
+            run_id: vb_core::RunId::new(1),
+            workflow: digest,
+            input: vec![],
+        };
+        let ipc_payload = crate::IpcPayload::SubmitRun(submit);
+        let encoded = postcard::to_allocvec(&ipc_payload).expect("encode payload");
+        let header = crate::IpcFrameHeader::new(IpcCommand::SubmitRun, 0, 0, 0);
+        let response = handle_submit_run(&header, &encoded, &mut runtime, Some(&mut resolver));
+        match response {
+            IpcResponse::AcceptedRun { run_id } => assert_eq!(run_id, 1),
+            other => panic!("expected AcceptedRun, got {other:?}"),
+        }
+    }
+
+    // 5. handle_submit_run with invalid payload returns BadRequest or PayloadError
+    #[test]
+    fn handle_submit_run_with_invalid_payload_returns_bad_request() {
+        let mut runtime = make_runtime();
+        let garbage: &[u8] = &[0xFF, 0xFE, 0xFD];
+        let header = crate::IpcFrameHeader::new(IpcCommand::SubmitRun, 0, 0, 0);
+        let response = handle_submit_run(&header, garbage, &mut runtime, None);
+        match response {
+            IpcResponse::PayloadError { .. } | IpcResponse::BadRequest => {}
+            other => panic!("expected PayloadError or BadRequest, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn handle_submit_run_with_command_payload_mismatch() {
+        let mut runtime = make_runtime();
+        let submit = SubmitRunPayload {
+            run_id: vb_core::RunId::new(1),
+            workflow: vb_core::WorkflowDigest::from_bytes([0x00; 32]),
+            input: vec![],
+        };
+        let ipc_payload = crate::IpcPayload::SubmitRun(submit);
+        let encoded = postcard::to_allocvec(&ipc_payload).expect("encode payload");
+        // Send with wrong command
+        let header = crate::IpcFrameHeader::new(IpcCommand::Health, 0, 0, 0);
+        let response = handle_submit_run(&header, &encoded, &mut runtime, None);
+        assert_eq!(response, IpcResponse::CommandPayloadMismatch);
+    }
+
+    // 6. handle_cancel_run with valid run_id returns success (or RuntimeError for non-existent)
+    #[test]
+    fn handle_cancel_run_with_existing_run_returns_accepted() {
+        let mut runtime = make_runtime();
+        let digest = vb_core::WorkflowDigest::from_bytes([0x42; 32]);
+        let workflow = make_minimal_workflow(digest);
+        let mut resolver = OkResolver { workflow };
+        // Submit a run first
+        let submit = SubmitRunPayload {
+            run_id: vb_core::RunId::new(42),
+            workflow: digest,
+            input: vec![],
+        };
+        let ipc_payload = crate::IpcPayload::SubmitRun(submit);
+        let encoded = postcard::to_allocvec(&ipc_payload).expect("encode payload");
+        let header = crate::IpcFrameHeader::new(IpcCommand::SubmitRun, 0, 0, 0);
+        let submit_response = handle_submit_run(&header, &encoded, &mut runtime, Some(&mut resolver));
+        match submit_response {
+            IpcResponse::AcceptedRun { run_id } => assert_eq!(run_id, 42),
+            other => panic!("expected AcceptedRun, got {other:?}"),
+        }
+        // Now cancel it
+        let payload = crate::IpcPayload::CancelRun {
+            run_id: vb_core::RunId::new(42),
+        };
+        let cancel_encoded = postcard::to_allocvec(&payload).expect("encode payload");
+        let response = handle_cancel_run(&cancel_encoded, &mut runtime);
+        match response {
+            IpcResponse::AcceptedRun { run_id } => assert_eq!(run_id, 42),
+            other => panic!("expected AcceptedRun for cancel, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn handle_cancel_run_with_invalid_payload_returns_bad_request() {
+        let mut runtime = make_runtime();
+        let garbage: &[u8] = &[0xFF, 0xFE];
+        let response = handle_cancel_run(garbage, &mut runtime);
+        assert_eq!(response, IpcResponse::BadRequest);
+    }
+
+    // 7. handle_inspect_run returns Inspected or RuntimeError
+    #[test]
+    fn handle_inspect_run_with_nonexistent_run_returns_runtime_error() {
+        let mut runtime = make_runtime();
+        let payload = crate::IpcPayload::InspectRun {
+            run_id: vb_core::RunId::new(9999),
+        };
+        let encoded = postcard::to_allocvec(&payload).expect("encode payload");
+        let response = handle_inspect_run(&encoded, &mut runtime);
+        match response {
+            IpcResponse::RuntimeError { message } => {
+                assert_eq!(message, "run not found");
+            }
+            other => panic!("expected RuntimeError for non-existent run, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn handle_inspect_run_with_invalid_payload_returns_bad_request() {
+        let mut runtime = make_runtime();
+        let garbage: &[u8] = &[0xFF, 0xFE];
+        let response = handle_inspect_run(garbage, &mut runtime);
+        assert_eq!(response, IpcResponse::BadRequest);
+    }
+
+    // 8. handle_list_events returns Events or error
+    #[test]
+    fn handle_list_events_with_nonexistent_run_returns_empty_events() {
+        let mut runtime = make_runtime();
+        let payload = crate::IpcPayload::ListEvents {
+            run_id: vb_core::RunId::new(9999),
+            from_sequence: 0,
+        };
+        let encoded = postcard::to_allocvec(&payload).expect("encode payload");
+        let response = handle_list_events(&encoded, &mut runtime);
+        match response {
+            IpcResponse::Events { events } => {
+                assert!(events.is_empty(), "non-existent run should return empty events");
+            }
+            other => panic!("expected Events, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn handle_list_events_with_invalid_payload_returns_bad_request() {
+        let mut runtime = make_runtime();
+        let garbage: &[u8] = &[0xFF, 0xFE];
+        let response = handle_list_events(garbage, &mut runtime);
+        assert_eq!(response, IpcResponse::BadRequest);
+    }
+
+    // 9. handle_answer_ask validates ticket bounds (ticket > u16::MAX returns BadRequest)
+    #[test]
+    fn handle_answer_ask_with_invalid_ticket_returns_bad_request() {
+        let mut runtime = make_runtime();
+        let payload = crate::IpcPayload::AnswerAsk {
+            run_id: vb_core::RunId::new(1),
+            ticket: u64::MAX,
+            answer: Vec::from(&b"test"[..]),
+            taint: None,
+        };
+        let encoded = postcard::to_allocvec(&payload).expect("encode payload");
+        let response = handle_answer_ask(&encoded, &mut runtime);
+        assert_eq!(response, IpcResponse::BadRequest);
+    }
+
+    #[test]
+    fn handle_answer_ask_with_invalid_payload_returns_bad_request() {
+        let mut runtime = make_runtime();
+        let garbage: &[u8] = &[0xFF, 0xFE];
+        let response = handle_answer_ask(garbage, &mut runtime);
+        assert_eq!(response, IpcResponse::BadRequest);
+    }
+
+    // 10. handle_complete_action validates ticket bounds
+    #[test]
+    fn handle_complete_action_with_invalid_ticket_returns_bad_request() {
+        let mut runtime = make_runtime();
+        let payload = crate::IpcPayload::CompleteAction {
+            run_id: vb_core::RunId::new(1),
+            ticket: u64::MAX,
+            output: Vec::from(&b"result"[..]),
+        };
+        let encoded = postcard::to_allocvec(&payload).expect("encode payload");
+        let response = handle_complete_action(&encoded, &mut runtime);
+        assert_eq!(response, IpcResponse::BadRequest);
+    }
+
+    #[test]
+    fn handle_complete_action_with_invalid_payload_returns_bad_request() {
+        let mut runtime = make_runtime();
+        let garbage: &[u8] = &[0xFF, 0xFE];
+        let response = handle_complete_action(garbage, &mut runtime);
+        assert_eq!(response, IpcResponse::BadRequest);
+    }
+
+    // 11. handle_fail_action validates ticket bounds
+    #[test]
+    fn handle_fail_action_with_invalid_ticket_returns_bad_request() {
+        let mut runtime = make_runtime();
+        let payload = crate::IpcPayload::FailAction {
+            run_id: vb_core::RunId::new(1),
+            ticket: u64::MAX,
+            error: Vec::from(&b"failure"[..]),
+        };
+        let encoded = postcard::to_allocvec(&payload).expect("encode payload");
+        let response = handle_fail_action(&encoded, &mut runtime);
+        assert_eq!(response, IpcResponse::BadRequest);
+    }
+
+    #[test]
+    fn handle_fail_action_with_invalid_payload_returns_bad_request() {
+        let mut runtime = make_runtime();
+        let garbage: &[u8] = &[0xFF, 0xFE];
+        let response = handle_fail_action(garbage, &mut runtime);
+        assert_eq!(response, IpcResponse::BadRequest);
+    }
+
+    // 12. handle_list_runs with limit=0 returns empty list
+    #[test]
+    fn handle_list_runs_with_limit_zero_returns_empty() {
+        let mut runtime = make_runtime();
+        let payload = crate::IpcPayload::ListRuns {
+            limit: 0,
+            workflow: None,
+        };
+        let encoded = postcard::to_allocvec(&payload).expect("encode payload");
+        let response = handle_list_runs(&encoded, &mut runtime);
+        match response {
+            IpcResponse::RunList { runs } => {
+                assert!(runs.is_empty(), "limit=0 should return empty list");
+            }
+            other => panic!("expected RunList, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn handle_list_runs_with_invalid_payload_returns_bad_request() {
+        let mut runtime = make_runtime();
+        let garbage: &[u8] = &[0xFF, 0xFE];
+        let response = handle_list_runs(garbage, &mut runtime);
+        assert_eq!(response, IpcResponse::BadRequest);
+    }
+
+    // 13. handle_get_metrics returns Metrics
+    #[test]
+    fn handle_get_metrics_returns_metrics_response() {
+        let runtime = make_runtime();
+        let response = handle_get_metrics(&runtime);
+        match response {
+            IpcResponse::Metrics(metrics) => {
+                assert_eq!(metrics.ipc.connected_clients, 0);
+                assert_eq!(metrics.ipc.commands_processed, 0);
+            }
+            other => panic!("expected Metrics, got {other:?}"),
+        }
+    }
+
+    // 14. handle_verify_workflow with mismatched digest returns error
+    #[test]
+    fn handle_verify_workflow_with_mismatched_digest_returns_mismatch() {
+        let digest = vb_core::WorkflowDigest::from_bytes([0x00; 32]);
+        let payload = crate::IpcPayload::VerifyWorkflow { digest };
+        let encoded = postcard::to_allocvec(&payload).expect("encode payload");
+        let mut resolver = MismatchResolver;
+        let response = handle_verify_workflow(&encoded, Some(&mut resolver));
+        assert_eq!(response, IpcResponse::WorkflowDigestMismatch);
+    }
+
+    #[test]
+    fn handle_verify_workflow_no_resolver_returns_resolution_required() {
+        let digest = vb_core::WorkflowDigest::from_bytes([0x00; 32]);
+        let payload = crate::IpcPayload::VerifyWorkflow { digest };
+        let encoded = postcard::to_allocvec(&payload).expect("encode payload");
+        let response = handle_verify_workflow(&encoded, None);
+        assert_eq!(response, IpcResponse::WorkflowResolutionRequired);
+    }
+
+    #[test]
+    fn handle_verify_workflow_with_invalid_payload_returns_bad_request() {
+        let garbage: &[u8] = &[0xFF, 0xFE];
+        let response = handle_verify_workflow(garbage, None);
+        assert_eq!(response, IpcResponse::BadRequest);
+    }
+
+    // 15. handle_get_workflow_graph with valid workflow returns graph
+    #[test]
+    fn handle_get_workflow_graph_with_valid_workflow_returns_graph() {
+        use vb_core::workflow::{CompiledNode, CompiledNodeKind, WorkflowParts, ResourceContract};
+        use vb_core::ids::StepIdx;
+
+        // Workflow with two nodes: Nop -> Finish
+        let digest = vb_core::WorkflowDigest::from_bytes([0xAB; 32]);
+        let parts = WorkflowParts {
+            name: Box::from("test"),
+            digest,
+            nodes: vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: None,
+                    next: Some(StepIdx::new(1)),
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::Nop,
+                },
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: None,
+                    next: None,
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::Finish {
+                        result: vb_core::ids::SlotIdx::ZERO,
+                    },
+                },
+            ].into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: Box::new([]),
+            slot_count: 1,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+            step_names: Box::new([]),
+        };
+        let workflow = vb_core::workflow::CompiledWorkflow::try_from_parts(parts)
+            .expect("workflow should be valid");
+        let mut resolver = OkResolver { workflow };
+        let payload = crate::IpcPayload::GetWorkflowGraph { digest };
+        let encoded = postcard::to_allocvec(&payload).expect("encode payload");
+        let response = handle_get_workflow_graph(&encoded, Some(&mut resolver));
+        match response {
+            IpcResponse::WorkflowGraph { nodes, edges } => {
+                assert_eq!(nodes.len(), 2);
+                // Should have fallthrough edge from Nop to Finish
+                assert!(
+                    edges.iter().any(|e| e.from == 0 && e.to == 1 && e.edge_type == "fallthrough"),
+                    "should have fallthrough edge from Nop to Finish"
+                );
+            }
+            other => panic!("expected WorkflowGraph, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn handle_get_workflow_graph_no_resolver_returns_resolution_required() {
+        let digest = vb_core::WorkflowDigest::from_bytes([0x00; 32]);
+        let payload = crate::IpcPayload::GetWorkflowGraph { digest };
+        let encoded = postcard::to_allocvec(&payload).expect("encode payload");
+        let response = handle_get_workflow_graph(&encoded, None);
+        assert_eq!(response, IpcResponse::WorkflowResolutionRequired);
+    }
+
+    #[test]
+    fn handle_get_workflow_graph_with_mismatched_digest_returns_mismatch() {
+        let digest = vb_core::WorkflowDigest::from_bytes([0x00; 32]);
+        let payload = crate::IpcPayload::GetWorkflowGraph { digest };
+        let encoded = postcard::to_allocvec(&payload).expect("encode payload");
+        let mut resolver = MismatchResolver;
+        let response = handle_get_workflow_graph(&encoded, Some(&mut resolver));
+        assert_eq!(response, IpcResponse::WorkflowDigestMismatch);
+    }
+
+    // 16. handle_get_taint_report with valid workflow containing sources and sinks
+    #[test]
+    fn handle_get_taint_report_with_sources_and_sinks() {
+        use vb_core::workflow::{CompiledNode, CompiledNodeKind, WorkflowParts, ResourceContract};
+        use vb_core::ids::StepIdx;
+
+        // Workflow: WaitEvent (source) -> Finish (sink)
+        let digest = vb_core::WorkflowDigest::from_bytes([0xCD; 32]);
+        let parts = WorkflowParts {
+            name: Box::from("test"),
+            digest,
+            nodes: vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: None,
+                    next: Some(StepIdx::new(1)),
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::WaitEvent {
+                        event: vb_core::ids::SlotIdx::ZERO,
+                        timeout_slot: None,
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: None,
+                    next: None,
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::Finish {
+                        result: vb_core::ids::SlotIdx::ZERO,
+                    },
+                },
+            ].into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: Box::new([]),
+            slot_count: 1,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+            step_names: Box::new([]),
+        };
+        let workflow = vb_core::workflow::CompiledWorkflow::try_from_parts(parts)
+            .expect("workflow should be valid");
+        let mut resolver = OkResolver { workflow };
+        let payload = crate::IpcPayload::GetTaintReport { digest };
+        let encoded = postcard::to_allocvec(&payload).expect("encode payload");
+        let response = handle_get_taint_report(&encoded, Some(&mut resolver));
+        match response {
+            IpcResponse::TaintReport { sources, sinks, finish_safe, paths } => {
+                assert_eq!(sources, vec![0]);
+                assert_eq!(sinks, vec![1]);
+                assert!(!finish_safe, "source reaching sink should not be finish-safe");
+                // Paths should contain the reachable sink
+                assert!(
+                    paths.iter().any(|p| p.from == 0 && p.to == 1 && p.status == "dangerous"),
+                    "should have dangerous path from source to sink"
+                );
+            }
+            other => panic!("expected TaintReport, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn handle_get_taint_report_no_resolver_returns_resolution_required() {
+        let digest = vb_core::WorkflowDigest::from_bytes([0x00; 32]);
+        let payload = crate::IpcPayload::GetTaintReport { digest };
+        let encoded = postcard::to_allocvec(&payload).expect("encode payload");
+        let response = handle_get_taint_report(&encoded, None);
+        assert_eq!(response, IpcResponse::WorkflowResolutionRequired);
+    }
+
+    #[test]
+    fn handle_get_taint_report_with_mismatched_digest_returns_mismatch() {
+        let digest = vb_core::WorkflowDigest::from_bytes([0x00; 32]);
+        let payload = crate::IpcPayload::GetTaintReport { digest };
+        let encoded = postcard::to_allocvec(&payload).expect("encode payload");
+        let mut resolver = MismatchResolver;
+        let response = handle_get_taint_report(&encoded, Some(&mut resolver));
+        assert_eq!(response, IpcResponse::WorkflowDigestMismatch);
+    }
+
+    #[test]
+    fn handle_get_taint_report_with_invalid_payload_returns_bad_request() {
+        let garbage: &[u8] = &[0xFF, 0xFE];
+        let response = handle_get_taint_report(garbage, None);
+        assert_eq!(response, IpcResponse::BadRequest);
+    }
+
+    // Additional tests for handler branches
+
+    #[test]
+    fn handle_submit_run_inline_delegates_to_handle_submit_run() {
+        let mut runtime = make_runtime();
+        let digest = vb_core::WorkflowDigest::from_bytes([0x42; 32]);
+        let workflow = make_minimal_workflow(digest);
+        let mut resolver = OkResolver { workflow };
+        let submit = SubmitRunPayload {
+            run_id: vb_core::RunId::new(1),
+            workflow: digest,
+            input: vec![],
+        };
+        let ipc_payload = crate::IpcPayload::SubmitRunInline(submit);
+        let encoded = postcard::to_allocvec(&ipc_payload).expect("encode payload");
+        let response = handle_submit_run_inline(&encoded, &mut runtime, Some(&mut resolver));
+        match response {
+            IpcResponse::AcceptedRun { run_id } => assert_eq!(run_id, 1),
+            other => panic!("expected AcceptedRun, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn handle_submit_run_no_resolver_returns_resolution_required() {
+        let mut runtime = make_runtime();
+        let submit = SubmitRunPayload {
+            run_id: vb_core::RunId::new(1),
+            workflow: vb_core::WorkflowDigest::from_bytes([0x00; 32]),
+            input: vec![],
+        };
+        let ipc_payload = crate::IpcPayload::SubmitRun(submit);
+        let encoded = postcard::to_allocvec(&ipc_payload).expect("encode payload");
+        let header = crate::IpcFrameHeader::new(IpcCommand::SubmitRun, 0, 0, 0);
+        let response = handle_submit_run(&header, &encoded, &mut runtime, None);
+        assert_eq!(response, IpcResponse::WorkflowResolutionRequired);
+    }
+
+    #[test]
+    fn handle_answer_ask_with_oversized_answer_returns_payload_error() {
+        let mut runtime = make_runtime();
+        let payload = crate::IpcPayload::AnswerAsk {
+            run_id: vb_core::RunId::new(1),
+            ticket: 1,
+            answer: vec![0xAA_u8; MAX_ANSWER_ASK_BYTES + 1],
+            taint: None,
+        };
+        let encoded = postcard::to_allocvec(&payload).expect("encode payload");
+        let response = handle_answer_ask(&encoded, &mut runtime);
+        match response {
+            IpcResponse::PayloadError { .. } => {}
+            other => panic!("expected PayloadError for oversized answer, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn handle_complete_action_with_oversized_output_returns_payload_error() {
+        let mut runtime = make_runtime();
+        let payload = crate::IpcPayload::CompleteAction {
+            run_id: vb_core::RunId::new(1),
+            ticket: 1,
+            output: vec![0xBB_u8; MAX_ACTION_OUTPUT_LEN + 1],
+        };
+        let encoded = postcard::to_allocvec(&payload).expect("encode payload");
+        let response = handle_complete_action(&encoded, &mut runtime);
+        match response {
+            IpcResponse::PayloadError { .. } => {}
+            other => panic!("expected PayloadError for oversized output, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn handle_fail_action_with_oversized_error_returns_payload_error() {
+        let mut runtime = make_runtime();
+        let payload = crate::IpcPayload::FailAction {
+            run_id: vb_core::RunId::new(1),
+            ticket: 1,
+            error: vec![0xCC_u8; MAX_ACTION_ERROR_LEN + 1],
+        };
+        let encoded = postcard::to_allocvec(&payload).expect("encode payload");
+        let response = handle_fail_action(&encoded, &mut runtime);
+        match response {
+            IpcResponse::PayloadError { .. } => {}
+            other => panic!("expected PayloadError for oversized error, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn handle_submit_run_with_oversized_input_returns_payload_error() {
+        let mut runtime = make_runtime();
+        let submit = SubmitRunPayload {
+            run_id: vb_core::RunId::new(1),
+            workflow: vb_core::WorkflowDigest::from_bytes([0x00; 32]),
+            input: vec![0xDD_u8; MAX_SUBMIT_INPUT_LEN + 1],
+        };
+        let ipc_payload = crate::IpcPayload::SubmitRun(submit);
+        let encoded = postcard::to_allocvec(&ipc_payload).expect("encode payload");
+        let header = crate::IpcFrameHeader::new(IpcCommand::SubmitRun, 0, 0, 0);
+        let response = handle_submit_run(&header, &encoded, &mut runtime, None);
+        match response {
+            IpcResponse::PayloadError { .. } => {}
+            other => panic!("expected PayloadError for oversized input, got {other:?}"),
+        }
     }
 }

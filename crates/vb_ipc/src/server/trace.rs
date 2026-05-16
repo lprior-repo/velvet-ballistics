@@ -4,7 +4,7 @@
 use vb_runtime::runtime::Runtime;
 use vb_runtime::trace::TraceEvent;
 
-use super::handlers::decode_payload;
+use super::handlers::{decode_payload, sanitize_runtime_error};
 use crate::IpcPayload;
 use crate::server::IpcResponse;
 use crate::{IpcTraceEvent, IpcTraceEventKind};
@@ -116,6 +116,20 @@ pub fn handle_drain_trace(payload: &[u8], runtime: &mut Runtime) -> IpcResponse 
         return IpcResponse::BadRequest;
     };
 
+    match runtime.snapshot_run(run_id, 0) {
+        Ok(vb_runtime::shard::InspectResponse::Found(_)) => {}
+        Ok(vb_runtime::shard::InspectResponse::NotFound { .. }) => {
+            return IpcResponse::RuntimeError {
+                message: String::from("run not found"),
+            };
+        }
+        Err(e) => {
+            return IpcResponse::RuntimeError {
+                message: sanitize_runtime_error(&e),
+            };
+        }
+    }
+
     let all_events = runtime.drain_trace();
     let max = match usize::try_from(max_records) {
         Ok(value) => value,
@@ -132,11 +146,80 @@ pub fn handle_drain_trace(payload: &[u8], runtime: &mut Runtime) -> IpcResponse 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::num::NonZeroUsize;
     use vb_core::RunId;
     use vb_core::ids::{SlotIdx, StepIdx};
+    use vb_runtime::runtime::Runtime;
+    use vb_runtime::shard::ShardConfig;
 
     fn run_id(val: u64) -> RunId {
         RunId::new(val)
+    }
+
+    fn make_runtime() -> Runtime {
+        Runtime::new(
+            NonZeroUsize::MIN,
+            ShardConfig {
+                step_budget_per_tick: 4,
+                ..ShardConfig::default()
+            },
+        )
+    }
+
+    fn chain_workflow() -> vb_core::workflow::CompiledWorkflow {
+        use vb_core::ids::{SlotIdx, StepIdx};
+        use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
+        use vb_core::WorkflowDigest;
+
+        let mut nodes = Vec::new();
+        for i in 0..10 {
+            nodes.push(CompiledNode {
+                id: StepIdx::new(i),
+                output: None,
+                next: Some(StepIdx::new(i + 1)),
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::Nop,
+            });
+        }
+        nodes.push(CompiledNode {
+            id: StepIdx::new(10),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Finish { result: SlotIdx::ZERO },
+        });
+        let parts = WorkflowParts {
+            name: Box::from("chain"),
+            digest: WorkflowDigest::from_bytes([4; 32]),
+            nodes: Box::from(nodes),
+            expressions: Box::from([]),
+            accessors: Box::from([]),
+            constants: Box::from([]),
+            slot_count: 1,
+            symbols_count: 0,
+            entry: StepIdx::ZERO,
+            step_names: Box::from([]),
+            resource_contract: ResourceContract::DEFAULT,
+        };
+        vb_core::workflow::CompiledWorkflow::try_from_parts(parts).expect("valid workflow")
+    }
+
+    fn submit_and_tick(runtime: &mut Runtime, run_id: RunId) {
+        runtime.submit_direct(run_id, chain_workflow()).expect("submit");
+        runtime.tick_all().expect("tick");
+    }
+
+    fn encode_drain_trace(run_id: RunId, max_records: u32) -> Vec<u8> {
+        let payload = IpcPayload::DrainTrace { run_id, max_records };
+        postcard::to_allocvec(&payload).expect("encode")
+    }
+
+    fn roundtrip_ipc_trace_event_kind(kind: IpcTraceEventKind) {
+        let encoded = postcard::to_allocvec(&kind).expect("encode");
+        let decoded: IpcTraceEventKind = postcard::from_bytes(&encoded).expect("decode");
+        assert_eq!(decoded, kind);
     }
 
     // ── trace_event_kind mapping tests ──
@@ -409,5 +492,166 @@ mod tests {
                 assert!(false, "expected CountOutOfRange, got {other:?}");
             }
         }
+    }
+
+    // ── handle_drain_trace tests ──
+
+    #[test]
+    fn handle_drain_trace_empty_trace_returns_count_zero() {
+        let mut runtime = make_runtime();
+        let run_id = RunId::new(1);
+        submit_and_tick(&mut runtime, run_id);
+        runtime.drain_trace();
+        let payload = encode_drain_trace(run_id, 100);
+        let response = handle_drain_trace(&payload, &mut runtime);
+        assert_eq!(response, IpcResponse::TraceCount { count: 0 });
+    }
+
+    #[test]
+    fn handle_drain_trace_max_records_zero_returns_count_zero() {
+        let mut runtime = make_runtime();
+        let run_id = RunId::new(1);
+        submit_and_tick(&mut runtime, run_id);
+        let payload = encode_drain_trace(run_id, 0);
+        let response = handle_drain_trace(&payload, &mut runtime);
+        assert_eq!(response, IpcResponse::TraceCount { count: 0 });
+    }
+
+    #[test]
+    fn handle_drain_trace_max_records_greater_than_trace_length() {
+        let mut runtime = make_runtime();
+        let run_id = RunId::new(1);
+        submit_and_tick(&mut runtime, run_id);
+        let all_events = runtime.drain_trace();
+        let count = all_events.iter().filter(|e| e.run_id() == run_id).count();
+
+        let run_id2 = RunId::new(2);
+        submit_and_tick(&mut runtime, run_id2);
+        let payload = encode_drain_trace(run_id2, 1000);
+        let response = handle_drain_trace(&payload, &mut runtime);
+        assert_eq!(
+            response,
+            IpcResponse::TraceCount {
+                count: u32::try_from(count).expect("count fits u32"),
+            }
+        );
+    }
+
+    #[test]
+    fn handle_drain_trace_max_records_less_than_trace_length() {
+        let mut runtime = make_runtime();
+        let run_id = RunId::new(1);
+        submit_and_tick(&mut runtime, run_id);
+        let all_events = runtime.drain_trace();
+        let count = all_events.iter().filter(|e| e.run_id() == run_id).count();
+        assert!(count > 2, "need more than 2 events for this test");
+
+        let run_id2 = RunId::new(2);
+        submit_and_tick(&mut runtime, run_id2);
+        let payload = encode_drain_trace(run_id2, 2);
+        let response = handle_drain_trace(&payload, &mut runtime);
+        assert_eq!(response, IpcResponse::TraceCount { count: 2 });
+    }
+
+    #[test]
+    fn handle_drain_trace_invalid_payload_returns_bad_request() {
+        let mut runtime = make_runtime();
+        let response = handle_drain_trace(b"not-a-valid-payload", &mut runtime);
+        assert_eq!(response, IpcResponse::BadRequest);
+    }
+
+    #[test]
+    fn handle_drain_trace_nonexistent_run_returns_runtime_error() {
+        let mut runtime = make_runtime();
+        let run_id = RunId::new(999);
+        let payload = encode_drain_trace(run_id, 100);
+        let response = handle_drain_trace(&payload, &mut runtime);
+        match response {
+            IpcResponse::RuntimeError { message } => {
+                assert!(message.contains("not found"), "expected 'not found' in '{message}'");
+            }
+            other => panic!("expected RuntimeError, got {other:?}"),
+        }
+    }
+
+    // ── IpcTraceEventKind serialization roundtrip tests ──
+
+    #[test]
+    fn ipc_trace_event_kind_roundtrip_step_started() {
+        roundtrip_ipc_trace_event_kind(IpcTraceEventKind::StepStarted {
+            run: run_id(1),
+            step: StepIdx::new(5),
+        });
+    }
+
+    #[test]
+    fn ipc_trace_event_kind_roundtrip_step_ended() {
+        roundtrip_ipc_trace_event_kind(IpcTraceEventKind::StepEnded {
+            run: run_id(2),
+            step: StepIdx::new(3),
+        });
+    }
+
+    #[test]
+    fn ipc_trace_event_kind_roundtrip_slot_written() {
+        roundtrip_ipc_trace_event_kind(IpcTraceEventKind::SlotWritten {
+            run: run_id(4),
+            slot: SlotIdx::ZERO,
+            value: vec![1, 2, 3],
+        });
+    }
+
+    #[test]
+    fn ipc_trace_event_kind_roundtrip_action_scheduled() {
+        roundtrip_ipc_trace_event_kind(IpcTraceEventKind::ActionScheduled {
+            run: run_id(7),
+            step: StepIdx::new(1),
+        });
+    }
+
+    #[test]
+    fn ipc_trace_event_kind_roundtrip_action_completed() {
+        roundtrip_ipc_trace_event_kind(IpcTraceEventKind::ActionCompleted {
+            run: run_id(8),
+            step: StepIdx::new(2),
+        });
+    }
+
+    #[test]
+    fn ipc_trace_event_kind_roundtrip_action_failed() {
+        roundtrip_ipc_trace_event_kind(IpcTraceEventKind::ActionFailed {
+            run: run_id(9),
+            step: StepIdx::new(3),
+            code: vb_core::action::ActionFailureCode::Unknown,
+        });
+    }
+
+    #[test]
+    fn ipc_trace_event_kind_roundtrip_ask_answered() {
+        roundtrip_ipc_trace_event_kind(IpcTraceEventKind::AskAnswered {
+            run: run_id(10),
+            step: StepIdx::new(4),
+            slot: SlotIdx::ZERO,
+        });
+    }
+
+    #[test]
+    fn ipc_trace_event_kind_roundtrip_run_submitted() {
+        roundtrip_ipc_trace_event_kind(IpcTraceEventKind::RunSubmitted { run: run_id(11) });
+    }
+
+    #[test]
+    fn ipc_trace_event_kind_roundtrip_run_finished() {
+        roundtrip_ipc_trace_event_kind(IpcTraceEventKind::RunFinished { run: run_id(12) });
+    }
+
+    #[test]
+    fn ipc_trace_event_kind_roundtrip_run_failed() {
+        roundtrip_ipc_trace_event_kind(IpcTraceEventKind::RunFailed { run: run_id(13) });
+    }
+
+    #[test]
+    fn ipc_trace_event_kind_roundtrip_run_cancelled() {
+        roundtrip_ipc_trace_event_kind(IpcTraceEventKind::RunCancelled { run: run_id(14) });
     }
 }

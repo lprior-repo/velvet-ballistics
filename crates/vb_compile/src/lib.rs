@@ -4771,4 +4771,22 @@ steps:
             Ok(_) => panic!("Expected error, got Ok"),
         }
     }
+
+    #[test]
+    fn compile_workflow_rejects_invalid_utf8() {
+        let invalid = [0x80, 0x81, 0x82];
+        let result = compile_workflow(&invalid);
+
+        match result {
+            Err(CompileErrors(ref errors)) => {
+                assert_eq!(errors.len(), 1, "Expected exactly 1 error, got {}", errors.len());
+                assert!(
+                    matches!(errors[0], CompileError::Utf8(_)),
+                    "Expected CompileError::Utf8, got {:?}",
+                    errors[0]
+                );
+            }
+            Ok(_) => panic!("Expected error for invalid UTF-8, got Ok"),
+        }
+    }
 }

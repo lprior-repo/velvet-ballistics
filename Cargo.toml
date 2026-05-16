@@ -1,5 +1,6 @@
 [workspace]
 members = [
+    "crates/vb_boundary_inventory",
     "crates/vb_core",
     "crates/vb_yaml",
     "crates/vb_validate",
@@ -23,80 +24,6 @@ default-members = ["."]
 resolver = "2"
 exclude = ["target/miri-tmp", "crates/vb_ui"]
 
-# Root package for workspace-level integration tests
-[package]
-name = "velvet-ballastics-workspace"
-edition = "2024"
-license = "MIT OR Apache-2.0"
-version = "0.1.0"
-publish = false
-default-run = "velvet-ballastics"
-
-[lints]
-workspace = true
-
-[dependencies]
-blake3.workspace = true
-chrono.workspace = true
-crc32fast.workspace = true
-postcard.workspace = true
-saphyr.workspace = true
-serde.workspace = true
-serde-saphyr.workspace = true
-serde_json.workspace = true
-toml.workspace = true
-vb_codegen = { path = "crates/vb_codegen" }
-vb_compile = { path = "crates/vb_compile" }
-vb_core = { path = "crates/vb_core" }
-vb_expr = { path = "crates/vb_expr" }
-vb_ipc = { path = "crates/vb_ipc" }
-vb_runtime = { path = "crates/vb_runtime" }
-vb_storage = { path = "crates/vb_storage" }
-vb_validate = { path = "crates/vb_validate" }
-vb_yaml = { path = "crates/vb_yaml" }
-
-[[bin]]
-name = "velvet-ballastics"
-path = "crates/velvet_ballastics/src/main.rs"
-
-[dev-dependencies]
-blake3.workspace = true
-bytes.workspace = true
-criterion.workspace = true
-postcard.workspace = true
-proptest.workspace = true
-saphyr.workspace = true
-tempfile.workspace = true
-toml.workspace = true
-xtask = { path = "xtask" }
-vb_benchmark = { path = "crates/vb_benchmark" }
-vb_codegen = { path = "crates/vb_codegen" }
-vb_compile = { path = "crates/vb_compile" }
-vb_core = { path = "crates/vb_core" }
-vb_doc = { path = "crates/vb_doc" }
-vb_expr = { path = "crates/vb_expr" }
-vb_ipc = { path = "crates/vb_ipc" }
-vb_runtime = { path = "crates/vb_runtime" }
-vb_storage = { path = "crates/vb_storage" }
-vb_validate = { path = "crates/vb_validate" }
-vb_yaml = { path = "crates/vb_yaml" }
-velvet_ballastics = { path = "crates/velvet_ballastics" }
-
-[[bench]]
-name = "velvet_ballastics"
-harness = false
-
-[[bench]]
-name = "vb_qi37_1_1_recovery"
-harness = false
-
-[[bench]]
-name = "vb_kkvb_xtask_routing_red"
-harness = false
-
-[[bench]]
-name = "vb_y1zq_boundary_inventory"
-harness = false
 [workspace.package]
 edition = "2024"
 license = "MIT OR Apache-2.0"

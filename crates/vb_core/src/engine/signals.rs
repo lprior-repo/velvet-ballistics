@@ -546,6 +546,6 @@ mod tests {
         // We can't easily trigger the overflow condition, but we can verify the
         // guard path exists by checking the condition is checked
         let result = b.try_take();
-        assert!(result.is_ok());
+        assert_eq!(result, Ok(true));
     }
 }
