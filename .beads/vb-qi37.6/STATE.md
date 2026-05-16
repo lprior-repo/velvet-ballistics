@@ -3,12 +3,12 @@
 bead_id: vb-qi37.6
 source_checkout: /home/lewis/src/velvet-ballistics
 isolated_workspace: /home/lewis/src/vb-ws/vb-qi37.6-integration
-current_state: 13
-highest_approved_state: 13
-status: APPROVED_FOR_LANDING
+current_state: 15
+highest_approved_state: 15
+status: DONE
 failure_category: NONE
-owner_state: 14
-rerun_from: 14
+owner_state: none
+rerun_from: none
 
 ## Startup doctrine cited
 
@@ -43,6 +43,17 @@ Current integration repair workspace was freshly created from `origin/main` at `
 - `assurance-bundle.md`: `STATUS: APPROVED`.
 - `truth-serum-report.md`: `STATUS: APPROVED`.
 - `final-evidence-decision.md`: `STATUS: APPROVED`.
+
+## State 14 landing evidence
+
+- `landing-report.md`: `STATUS: LANDED`.
+- Commit `35d4c764` pushed to `origin/main`.
+- Bead `vb-qi37.6` closed and `bd dolt push` completed.
+
+## State 15 cleanup evidence
+
+- `cleanup-report.md`: `STATUS: COMPLETE_WITH_PRESERVED_WORKSPACE`.
+- Workspace preserved for raw evidence.
 
 - Command: `pwd -P && test "$(pwd -P)" = "/home/lewis/src/vb-qi37-6" && case "$(pwd -P)" in "/home/lewis/src/Velvet-ballistics"|"/home/lewis/src/Velvet-ballistics"/*) exit 1;; esac && printf 'PATH_GUARD_PASS\n'`
 - Output: `/home/lewis/src/vb-qi37-6`; `PATH_GUARD_PASS`
