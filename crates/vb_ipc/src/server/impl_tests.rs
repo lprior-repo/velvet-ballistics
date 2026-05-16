@@ -63,6 +63,7 @@ fn build_frame(command: IpcCommand, correlation: u64, payload_bytes: &[u8]) -> V
 fn read_exact_timeout(stream: &mut dyn Read, n: usize) -> Result<Vec<u8>, std::io::Error> {
     let mut buf = vec![0u8; n];
     let mut read_total = 0usize;
+    let mut retries = 0usize;
     while read_total < n {
         match stream.read(&mut buf[read_total..]) {
             Ok(0) => {
@@ -71,9 +72,19 @@ fn read_exact_timeout(stream: &mut dyn Read, n: usize) -> Result<Vec<u8>, std::i
                     "eof",
                 ));
             }
-            Ok(count) => read_total = read_total.saturating_add(count),
+            Ok(count) => {
+                read_total = read_total.saturating_add(count);
+                retries = 0;
+            }
             Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
-                std::thread::sleep(Duration::from_millis(1));
+                retries = retries.saturating_add(1);
+                if retries > 10_000 {
+                    return Err(std::io::Error::new(
+                        std::io::ErrorKind::TimedOut,
+                        "read_exact_timeout exceeded retry limit",
+                    ));
+                }
+                std::hint::spin_loop();
             }
             Err(e) => return Err(e),
         }
