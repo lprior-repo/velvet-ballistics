@@ -47,6 +47,19 @@ mod kani_capability_harnesses {
     }
 
     #[kani::proof]
+    fn check_capability_grants_exact_match() {
+        let action_id = ActionId::new(7);
+        let required = Capability::new("action".into(), action_id);
+        let exact =
+            CapabilitySet::from_grants(Box::new([Capability::new("action".into(), action_id)]));
+
+        kani::assert(
+            check_capability(action_id, &required, &exact).is_ok(),
+            "exact grant is accepted",
+        );
+    }
+
+    #[kani::proof]
     fn check_capability_action_match_name_grants() {
         let action_id = ActionId::new(1);
         let required = Capability::new("network".into(), action_id);

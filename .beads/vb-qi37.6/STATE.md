@@ -1,14 +1,14 @@
 # vb-qi37.6 Go-skill state
 
 bead_id: vb-qi37.6
-source_checkout: /home/lewis/src/Velvet-ballistics
-isolated_workspace: /home/lewis/src/vb-qi37-6
-current_state: 10
-highest_approved_state: 9
-status: IN_PROGRESS
-failure_category: CONTRACT_PARITY
-owner_state: 10
-rerun_from: 10
+source_checkout: /home/lewis/src/velvet-ballistics
+isolated_workspace: /home/lewis/src/vb-ws/vb-qi37.6-integration
+current_state: 13
+highest_approved_state: 13
+status: APPROVED_FOR_LANDING
+failure_category: NONE
+owner_state: 14
+rerun_from: 14
 
 ## Startup doctrine cited
 
@@ -19,6 +19,30 @@ rerun_from: 10
 - `/home/lewis/.agents/skills/go-skill/artifacts.md`: canonical artifact root `.beads/<bead-id>/`; missing/non-empty/status rules.
 
 ## State 1 evidence
+
+Current integration repair workspace was freshly created from `origin/main` at `6cb83882` under `/home/lewis/src/vb-ws/vb-qi37.6-integration`; path guard passed because it is not equal to or nested under `/home/lewis/src/velvet-ballistics`.
+
+## State 10 integration repair evidence
+
+- Previous blocker: stale whole-workspace landing overwrote newer main runtime/shard APIs.
+- Repair: ported only minimal accepted Kani capability harness changes from `/home/lewis/src/vb-ws/vb-qi37.6` into fresh current-main workspace.
+- Modified files: `crates/vb_core/src/kani_capability_harnesses.rs`, `crates/vb_runtime/src/kani_capability_harnesses.rs`.
+
+## State 11 evidence — current repair
+
+- `TMPDIR=/home/lewis/src/tmp_build/vb-qi37.6-integration-moon CXXFLAGS=-pipe CFLAGS=-pipe RUSTC_WRAPPER= moon ci --force` -> PASS; `Tasks: 20 completed`; `8414 tests run: 8414 passed, 6 skipped`.
+- `moon run :verify-proof --force` -> PASS; `All proof checks passed`.
+- Capability TLA, Verus, Kani, fuzz, and focused cargo tests passed; see `formal-verification-report.md` and `verification-ledger.jsonl`.
+
+## State 12 evidence — current repair
+
+- `black-hat-review.md`: `STATUS: APPROVED`.
+
+## State 13 evidence — current repair
+
+- `assurance-bundle.md`: `STATUS: APPROVED`.
+- `truth-serum-report.md`: `STATUS: APPROVED`.
+- `final-evidence-decision.md`: `STATUS: APPROVED`.
 
 - Command: `pwd -P && test "$(pwd -P)" = "/home/lewis/src/vb-qi37-6" && case "$(pwd -P)" in "/home/lewis/src/Velvet-ballistics"|"/home/lewis/src/Velvet-ballistics"/*) exit 1;; esac && printf 'PATH_GUARD_PASS\n'`
 - Output: `/home/lewis/src/vb-qi37-6`; `PATH_GUARD_PASS`

@@ -18,32 +18,40 @@ mod kani_capability_harnesses {
 
     #[kani::proof]
     fn capability_name_grants_harness() {
-        let grant_name: [u8; 32] = kani::any();
-        let required_name: [u8; 32] = kani::any();
+        let action_id = ActionId::new(7);
+        let exact =
+            CapabilitySet::from_grants(Box::new([Capability::new("action".into(), action_id)]));
+        let prefix =
+            CapabilitySet::from_grants(Box::new([Capability::new("action".into(), action_id)]));
+        let partial =
+            CapabilitySet::from_grants(Box::new([Capability::new("act".into(), action_id)]));
+        let sibling =
+            CapabilitySet::from_grants(Box::new([Capability::new("storage".into(), action_id)]));
+        let wrong_action = CapabilitySet::from_grants(Box::new([Capability::new(
+            "action".into(),
+            ActionId::new(8),
+        )]));
+        let required = Capability::new("action".into(), action_id);
+        let child_required = Capability::new("action.dispatch".into(), action_id);
 
-        let grant_lossy = String::from_utf8_lossy(&grant_name);
-        let grant_str = match grant_lossy.split('\0').next() {
-            Some(value) => value,
-            None => "",
-        };
-        let required_lossy = String::from_utf8_lossy(&required_name);
-        let required_str = match required_lossy.split('\0').next() {
-            Some(value) => value,
-            None => "",
-        };
-
-        let action: u16 = kani::any();
-        let action_id = ActionId::new(action);
-
-        let cap = Capability::new(grant_str.into(), action_id);
-        let required = Capability::new(required_str.into(), action_id);
-        let set = CapabilitySet::from_grants(Box::new([cap]));
-
-        let _result = set.grants(&required);
-
-        let empty_cap = Capability::new("".into(), action_id);
-        let empty_set = CapabilitySet::from_grants(Box::new([empty_cap]));
-        let _ = empty_set.grants(&required);
+        kani::assert(exact.grants(&required), "exact name and action grants");
+        kani::assert(
+            !prefix.grants(&child_required),
+            "parent prefix does not grant child capability",
+        );
+        kani::assert(
+            !partial.grants(&required),
+            "partial lexical prefix does not grant",
+        );
+        kani::assert(!sibling.grants(&required), "sibling name does not grant");
+        kani::assert(
+            !wrong_action.grants(&required),
+            "matching name with wrong action does not grant",
+        );
+        kani::assert(
+            !CapabilitySet::empty().grants(&required),
+            "empty set does not grant",
+        );
     }
 
     #[kani::proof]
