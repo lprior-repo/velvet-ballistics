@@ -34,8 +34,10 @@ pub(crate) fn lower_steps_to_ir(
         accessors: accessors.into_boxed_slice(),
         constants: constants.into_boxed_slice(),
         slot_count,
+        symbols_count: 0,
         entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
+        step_names: Box::new([]),
     };
     CompiledWorkflow::try_from_parts(parts).map_err(|e| CompileErrors(vec![e.into()]))
 }
@@ -46,6 +48,8 @@ pub fn lower_set(id: StepIdx, output: SlotIdx, value: ConstIdx, next: Option<Ste
         id,
         output: Some(output),
         next,
+        on_error: None,
+        error_slot: None,
         kind: CompiledNodeKind::SetConst { value },
     }
 }
@@ -64,6 +68,8 @@ pub fn lower_do(
         id,
         output,
         next,
+        on_error: None,
+        error_slot: None,
         kind: CompiledNodeKind::Do { action, input },
     }
 }
@@ -87,6 +93,8 @@ pub(crate) fn lower_choose(
         id,
         output: None,
         next: None,
+        on_error: None,
+        error_slot: None,
         kind: CompiledNodeKind::ChooseSlot {
             branches,
             otherwise,
@@ -112,6 +120,8 @@ pub fn lower_for_each(
             id,
             output: None,
             next: None,
+        on_error: None,
+        error_slot: None,
             kind: CompiledNodeKind::ForEachStart {
                 input,
                 item_slot,
@@ -124,6 +134,8 @@ pub fn lower_for_each(
             id: body,
             output: None,
             next: None,
+        on_error: None,
+        error_slot: None,
             kind: CompiledNodeKind::ForEachNext {
                 iterator_slot,
                 body,
@@ -153,6 +165,8 @@ pub fn lower_together(
         id,
         output: Some(accumulator),
         next: None,
+        on_error: None,
+        error_slot: None,
         kind: CompiledNodeKind::TogetherStart {
             branches: branches.into_boxed_slice(),
             join,
@@ -162,6 +176,8 @@ pub fn lower_together(
         id: join,
         output: Some(accumulator),
         next: None,
+        on_error: None,
+        error_slot: None,
         kind: CompiledNodeKind::TogetherJoin {
             branch_count,
             accumulator,
@@ -195,6 +211,8 @@ pub(crate) fn lower_collect(
             id,
             output: None,
             next: None,
+        on_error: None,
+        error_slot: None,
             kind: CompiledNodeKind::CollectStart {
                 source,
                 limit,
@@ -207,6 +225,8 @@ pub(crate) fn lower_collect(
             id: body,
             output: None,
             next: None,
+        on_error: None,
+        error_slot: None,
             kind: CompiledNodeKind::CollectPage {
                 collector_slot,
                 body,
@@ -217,6 +237,8 @@ pub(crate) fn lower_collect(
             id: done,
             output: None,
             next: None,
+        on_error: None,
+        error_slot: None,
             kind: CompiledNodeKind::CollectFinish { collector_slot },
         },
     ])
@@ -240,6 +262,8 @@ pub fn lower_reduce(
             id,
             output: None,
             next: None,
+        on_error: None,
+        error_slot: None,
             kind: CompiledNodeKind::ReduceStart {
                 input,
                 accumulator,
@@ -252,6 +276,8 @@ pub fn lower_reduce(
             id: body,
             output: None,
             next: None,
+        on_error: None,
+        error_slot: None,
             kind: CompiledNodeKind::ReduceNext {
                 iterator_slot,
                 accumulator,
@@ -263,6 +289,8 @@ pub fn lower_reduce(
             id: done,
             output: None,
             next: None,
+        on_error: None,
+        error_slot: None,
             kind: CompiledNodeKind::ReduceFinish { accumulator },
         },
     ])
@@ -287,6 +315,8 @@ pub fn lower_repeat(
             id,
             output: None,
             next: None,
+        on_error: None,
+        error_slot: None,
             kind: CompiledNodeKind::RepeatStart {
                 max_attempts,
                 body,
@@ -297,6 +327,8 @@ pub fn lower_repeat(
             id: body,
             output: Some(attempt_slot),
             next: None,
+        on_error: None,
+        error_slot: None,
             kind: CompiledNodeKind::RepeatAttempt {
                 attempt_slot,
                 body,
@@ -307,6 +339,8 @@ pub fn lower_repeat(
             id: done,
             output: None,
             next: None,
+        on_error: None,
+        error_slot: None,
             kind: CompiledNodeKind::RepeatFinish {
                 result: attempt_slot,
             },
@@ -337,6 +371,8 @@ pub fn lower_wait(
         id,
         output: None,
         next: None,
+        on_error: None,
+        error_slot: None,
         kind,
     }
 }
@@ -364,6 +400,8 @@ pub fn lower_ask(
             id,
             output: None,
             next: None,
+        on_error: None,
+        error_slot: None,
             kind: CompiledNodeKind::Ask {
                 prompt,
                 timeout_slot,
@@ -373,6 +411,8 @@ pub fn lower_ask(
             id: resume,
             output: Some(answer),
             next: None,
+        on_error: None,
+        error_slot: None,
             kind: CompiledNodeKind::AskResume { answer },
         },
     ])
@@ -385,6 +425,8 @@ pub fn lower_finish(id: StepIdx, result: SlotIdx, builder: &mut SlotCompiler) ->
         id,
         output: None,
         next: None,
+        on_error: None,
+        error_slot: None,
         kind: CompiledNodeKind::Finish { result },
     }
 }
@@ -484,12 +526,14 @@ impl SlotCompiler {
             name: Box::from(name),
             digest,
             slot_count: self.slot_count()?,
+            symbols_count: 0,
             nodes: self.nodes.into_boxed_slice(),
             expressions: self.expressions.into_boxed_slice(),
             accessors: self.accessors.into_boxed_slice(),
             constants: self.constants.into_boxed_slice(),
             entry: StepIdx::new(0),
             resource_contract: ResourceContract::DEFAULT,
+            step_names: Box::new([]),
         })
     }
 }

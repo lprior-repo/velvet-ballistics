@@ -55,7 +55,7 @@ pub(crate) fn emit_boundary_step_body(out: &mut String, node: &CompiledNode) -> 
             timeout_slot,
         } => emit_ask_step(out, *prompt, *timeout_slot, node.next),
         CompiledNodeKind::AskResume { answer } => emit_ask_resume_step(out, *answer, node.next),
-        CompiledNodeKind::ErrorHandler { body, handler } => {
+        CompiledNodeKind::ErrorHandler { body, handler, error_slot: _ } => {
             emit_error_handler_step(out, *body, *handler)
         }
         _ => emit_unsupported_step(out, "UnsupportedStep"),

@@ -452,6 +452,14 @@ pub enum CompileError {
         /// Literal start byte index.
         index: usize,
     },
+    /// Expression float literal is not representable as f64.
+    #[error("expression float is not finite at byte {index} in {expression}")]
+    ExpressionFloatOutOfRange {
+        /// Full source expression.
+        expression: Box<str>,
+        /// Literal start byte index.
+        index: usize,
+    },
     /// Expression exceeded a compiler-side hard bound.
     #[error("expression exceeds {limit} limit {max} in {expression}")]
     ExpressionLimitExceeded {
@@ -580,6 +588,7 @@ impl CompileError {
             Self::ExpressionUnexpectedChar { .. }
             | Self::ExpressionUnterminatedString { .. }
             | Self::ExpressionIntegerOutOfRange { .. }
+            | Self::ExpressionFloatOutOfRange { .. }
             | Self::ExpressionLimitExceeded { .. }
             | Self::ExpressionUnexpectedToken { .. }
             | Self::ExpressionUnknownIdentifier { .. }
@@ -601,9 +610,12 @@ fn workflow_error_code(error: &WorkflowError) -> &'static str {
     match error {
         WorkflowError::ResourceContractExceeded { .. }
         | WorkflowError::ResourceContractTooLarge { .. }
-        | WorkflowError::BudgetPolicyExceeded { .. } => "LIMIT_EXCEEDED",
+        | WorkflowError::BudgetPolicyExceeded { .. }
+        | WorkflowError::StepCountOverflow { .. } => "LIMIT_EXCEEDED",
         WorkflowError::StepOutOfBounds { .. } => "INVALID_THEN_TARGET",
-        WorkflowError::SlotOutOfBounds { .. } => "TYPE_MISMATCH",
+        WorkflowError::SlotOutOfBounds { .. }
+        | WorkflowError::SymbolOutOfBounds { .. }
+        | WorkflowError::AccessorPathTooDeep { .. } => "TYPE_MISMATCH",
         WorkflowError::ConstOutOfBounds { .. } => "CONST_OUT_OF_BOUNDS",
         WorkflowError::Expression(_) => "INVALID_EXPRESSION",
         WorkflowError::EmptyNodes
@@ -612,7 +624,8 @@ fn workflow_error_code(error: &WorkflowError) -> &'static str {
         | WorkflowError::EmptyBranchTable
         | WorkflowError::UnreachableNode { .. }
         | WorkflowError::BackwardEdge { .. }
-        | WorkflowError::ImproperLoopNesting { .. } => "INVALID_COMPILED_WORKFLOW",
+        | WorkflowError::ImproperLoopNesting { .. }
+        | WorkflowError::JumpCycle { .. } => "INVALID_COMPILED_WORKFLOW",
     }
 }
 

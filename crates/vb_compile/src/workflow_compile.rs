@@ -111,12 +111,14 @@ pub fn build_workflow_parts(
         name: Box::<str>::from(name),
         digest,
         slot_count: builder.slot_count()?,
+        symbols_count: 0,
         nodes: builder.nodes.into_boxed_slice(),
         expressions: Box::new([]),
         accessors: Box::new([]),
         constants: builder.constants.into_boxed_slice(),
         entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
+        step_names: Box::new([]),
     })
 }
 
@@ -1057,6 +1059,8 @@ fn set_const_node(
         id,
         output: Some(output),
         next: Some(next),
+        on_error: None,
+        error_slot: None,
         kind: CompiledNodeKind::SetConst { value },
     })
 }
@@ -1124,6 +1128,8 @@ fn compile_slot_choose(
         id,
         output: None,
         next: None,
+        on_error: None,
+        error_slot: None,
         kind: CompiledNodeKind::ChooseSlot {
             branches: vec![vb_core::SlotBranch {
                 condition,
@@ -1150,6 +1156,8 @@ fn compile_literal_choose(
         id,
         output: Some(output),
         next: Some(if value { on_true } else { on_false }),
+        on_error: None,
+        error_slot: None,
         kind: CompiledNodeKind::SetConst { value: constant },
     })
 }
@@ -1212,6 +1220,8 @@ fn compile_together(
             id,
             output: Some(accumulator),
             next: None,
+        on_error: None,
+        error_slot: None,
             kind: CompiledNodeKind::TogetherStart {
                 branches: branches.into_boxed_slice(),
                 join,
@@ -1221,6 +1231,8 @@ fn compile_together(
             id: join,
             output: Some(accumulator),
             next: None,
+        on_error: None,
+        error_slot: None,
             kind: CompiledNodeKind::TogetherJoin {
                 branch_count,
                 accumulator,
@@ -1441,6 +1453,8 @@ fn compile_finish_result(
             id,
             output: None,
             next: None,
+        on_error: None,
+        error_slot: None,
             kind: CompiledNodeKind::Finish { result: slot },
         }]);
     }
@@ -1456,12 +1470,16 @@ fn compile_finish_result(
             id,
             output: Some(output),
             next: Some(finish_id),
+        on_error: None,
+        error_slot: None,
             kind: CompiledNodeKind::SetConst { value },
         },
         CompiledNode {
             id: finish_id,
             output: None,
             next: None,
+        on_error: None,
+        error_slot: None,
             kind: CompiledNodeKind::Finish { result: output },
         },
     ])
