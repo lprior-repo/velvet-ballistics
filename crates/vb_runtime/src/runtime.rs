@@ -10,7 +10,8 @@ use vb_core::workflow::CompiledWorkflow;
 
 use crate::counters::{CounterSnapshot, RuntimeMetricsSnapshot, ShardMetricsSnapshot};
 use crate::journal::SharedRuntimeJournal;
-use crate::shard::{AskAnswer, InspectResponse, Shard, ShardCommand, ShardConfig};
+use crate::command::{AskAnswer, InspectResponse, ShardCommand};
+use crate::shard::{Shard, ShardConfig};
 use crate::trace::TraceEvent;
 use crate::{RuntimeError, RuntimeResult};
 
