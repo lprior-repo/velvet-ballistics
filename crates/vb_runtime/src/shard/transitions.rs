@@ -1,8 +1,8 @@
 #![forbid(unsafe_code)]
 //! Run state transition helpers: keep, finish, await action, await timer, fail.
 
-use vb_core::action::ActionTicket;
-use vb_core::ids::{RunId, SlotIdx};
+use vb_core::action::{ActionContract, ActionTicket, Idempotency};
+use vb_core::ids::{ActionId, RunId, SlotIdx, StepIdx};
 
 use crate::journal::RuntimeJournalEvent;
 use crate::trace::TraceEvent;
@@ -90,6 +90,10 @@ impl Shard {
         mut state: RunState,
         ticket: ActionTicket,
     ) -> RuntimeResult<()> {
+        // GAP-4: Enforce NoDuplicateNonIdempotent invariant by checking
+        // if an AtLeastOnceExternal action is already resolved before scheduling.
+        self.check_action_not_already_resolved(ticket.action, ticket.step)?;
+
         self.counters.add_steps(state.frame.executed());
         let step = state.frame.pc();
         let capacity = match crate::shard::helpers::retry_policy_after_action(&state, ticket.step) {
@@ -112,6 +116,40 @@ impl Shard {
             action: ticket.action,
         })?;
         self.runs.insert(run, state);
+        Ok(())
+    }
+
+    /// Looks up the action contract for a given action ID.
+    fn resolve_action_contract(&self, action: ActionId) -> Option<&ActionContract> {
+        let index = usize::from(action.get());
+        self.action_contracts.get(index).filter(|c| c.id == action)
+    }
+
+    /// Checks if an action with AtLeastOnceExternal idempotency is already resolved.
+    ///
+    /// Returns `Ok(())` if scheduling is allowed, or `Err(NonIdempotentActionReplayed)`
+    /// if the action is `AtLeastOnceExternal` and already resolved.
+    fn check_action_not_already_resolved(
+        &self,
+        action: ActionId,
+        step: StepIdx,
+    ) -> RuntimeResult<()> {
+        // Look up the action contract to check idempotency
+        let Some(contract) = self.resolve_action_contract(action) else {
+            // No contract found - can't determine idempotency, allow scheduling
+            return Ok(());
+        };
+
+        // Only block for AtLeastOnceExternal policy
+        if contract.idempotency != Idempotency::AtLeastOnceExternal {
+            return Ok(());
+        }
+
+        // Check if already resolved in the replay tracker
+        if self.replay_tracker.is_resolved(action, step) {
+            return Err(RuntimeError::NonIdempotentActionReplayed { action, step });
+        }
+
         Ok(())
     }
 

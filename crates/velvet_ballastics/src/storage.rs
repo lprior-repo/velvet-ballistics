@@ -2,9 +2,11 @@
 #![forbid(unsafe_code)]
 
 use crate::io::{errln, outln};
+use std::collections::HashSet;
 use std::path::Path;
 use std::process::ExitCode;
 use std::sync::Arc;
+use vb_core::ids::RunId;
 use vb_core::{WorkflowDigest, WorkflowParts};
 use vb_ipc::server::{IpcServer, WorkflowResolutionError, WorkflowResolver};
 use vb_runtime::journal::RuntimeJournalConfig;
@@ -23,9 +25,7 @@ pub fn cmd_ipc_serve(socket: &Path, db: &Path) -> ExitCode {
         }
     };
     let journal = Arc::new(journal);
-    let mut resolver = StorageWorkflowResolver {
-        journal: Arc::clone(&journal),
-    };
+    let resolver = StorageWorkflowResolver::new(Arc::clone(&journal));
     let queue = match JournalWriterQueue::new(1024, 64, StorageLimits::DEFAULT) {
         Ok(q) => Arc::new(q),
         Err(e) => {
@@ -83,8 +83,97 @@ pub fn cmd_ipc_serve(socket: &Path, db: &Path) -> ExitCode {
     ExitCode::SUCCESS
 }
 
+/// Tracks two-phase admission state for IPC-submitted runs.
+///
+/// Phase 1: `request_admission` adds the run to pending state
+/// Phase 2: `admit_run` removes from pending and marks as admitted
+///
+/// This enforces the `BoundedAdmission.OnlyAdmittedFromPending` invariant:
+/// a run cannot be admitted unless it was first requested.
+#[derive(Default)]
+struct AdmissionTracker {
+    /// Runs that have requested admission but not yet admitted.
+    pending: HashSet<RunId>,
+    /// Runs that have completed two-phase admission.
+    admitted: HashSet<RunId>,
+}
+
+impl AdmissionTracker {
+    /// Phase 1: Request admission for a run (adds to pending).
+    fn request_admission(&mut self, run: RunId) {
+        self.pending.insert(run);
+    }
+
+    /// Phase 2: Admit a run (removes from pending, adds to admitted).
+    /// Returns true if the run was in pending state and is now admitted.
+    fn admit_run(&mut self, run: RunId) -> bool {
+        if self.pending.remove(&run) {
+            self.admitted.insert(run);
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Check if a run has completed two-phase admission.
+    fn is_admitted(&self, run: RunId) -> bool {
+        self.admitted.contains(&run)
+    }
+
+    /// Check if a run is in pending state.
+    fn is_pending(&self, run: RunId) -> bool {
+        self.pending.contains(&run)
+    }
+}
+
+/// Storage workflow resolver with two-phase admission tracking.
+///
+/// This resolver enforces that IPC-submitted runs go through:
+/// 1. `request_admission` (pending)
+/// 2. `admit_run` (committed)
+///
+/// Before workflow resolution, the resolver checks that the run was admitted.
 pub struct StorageWorkflowResolver {
-    pub journal: Arc<FjallJournal>,
+    journal: Arc<FjallJournal>,
+    admission: AdmissionTracker,
+    /// Run ID for the current submission context.
+    /// Set during submit workflow before calling resolve_workflow.
+    current_run_id: Option<RunId>,
+}
+
+impl StorageWorkflowResolver {
+    /// Create a new resolver with empty admission tracker.
+    pub fn new(journal: Arc<FjallJournal>) -> Self {
+        Self {
+            journal,
+            admission: AdmissionTracker::default(),
+            current_run_id: None,
+        }
+    }
+
+    /// Phase 1: Request admission for a run (pending).
+    /// Must be called before `admit_run`.
+    pub fn request_admission(&mut self, run: RunId) {
+        self.admission.request_admission(run);
+    }
+
+    /// Phase 2: Admit a run (commits the admission).
+    /// Must be called after `request_admission` and before `resolve_workflow`.
+    /// Returns true if admission succeeded.
+    pub fn admit_run(&mut self, run: RunId) -> bool {
+        self.admission.admit_run(run)
+    }
+
+    /// Set the current run ID context for workflow resolution.
+    /// This run ID will be checked during `resolve_workflow`.
+    pub fn set_current_run(&mut self, run: RunId) {
+        self.current_run_id = Some(run);
+    }
+
+    /// Clear the current run ID context.
+    pub fn clear_current_run(&mut self) {
+        self.current_run_id = None;
+    }
 }
 
 impl WorkflowResolver for StorageWorkflowResolver {
@@ -92,6 +181,17 @@ impl WorkflowResolver for StorageWorkflowResolver {
         &mut self,
         digest: WorkflowDigest,
     ) -> Result<vb_core::CompiledWorkflow, WorkflowResolutionError> {
+        // Enforce two-phase admission: the run must be admitted before
+        // we can resolve its workflow. This prevents bypassing pending-admission.
+        if let Some(run_id) = self.current_run_id {
+            if !self.admission.is_admitted(run_id) {
+                // Run was not admitted through two-phase flow.
+                // Reject to enforce BoundedAdmission.OnlyAdmittedFromPending.
+                return Err(WorkflowResolutionError::InvalidArtifact);
+            }
+        }
+        self.clear_current_run();
+
         let record = match self.journal.compiled_ir(digest) {
             Ok(Some(record)) => record,
             Ok(None) => return Err(WorkflowResolutionError::NotFound),

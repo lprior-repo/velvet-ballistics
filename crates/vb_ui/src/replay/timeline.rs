@@ -356,7 +356,7 @@ mod tests {
         }
     }
     fn je_action_scheduled(seq: u64, step: u16) -> JournalEvent {
-        JournalEvent::ActionScheduled {
+        JournalEvent::ActionScheduled { attempt: 0, 
             run: make_run_id(),
             seq: make_event_seq(seq),
             step: make_step(step),
@@ -365,7 +365,7 @@ mod tests {
         }
     }
     fn je_action_completed(seq: u64, step: u16) -> JournalEvent {
-        JournalEvent::ActionCompletedEvent {
+        JournalEvent::ActionCompletedEvent { attempt: 0, 
             run: make_run_id(),
             seq: make_event_seq(seq),
             step: make_step(step),
@@ -374,7 +374,7 @@ mod tests {
         }
     }
     fn je_action_failed(seq: u64, step: u16) -> JournalEvent {
-        JournalEvent::ActionFailedEvent {
+        JournalEvent::ActionFailedEvent { attempt: 0, 
             run: make_run_id(),
             seq: make_event_seq(seq),
             step: make_step(step),

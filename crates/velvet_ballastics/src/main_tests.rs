@@ -3,13 +3,13 @@
 #![allow(clippy::doc_markdown)]
 
 use super::{
-    ActionRegistryMode, Command, DurabilityMode, INPUT_MAPPING_DECODE_FAILED_MESSAGE,
-    INPUT_MAPPING_SLOT_COUNT_EXCEEDED_MESSAGE, INPUT_MAPPING_SLOT_INDEX_OUT_OF_RANGE_MESSAGE,
-    InputMappingError, OutputFormat, ParseError, RunStatus, StepTarget, StorageWorkflowResolver,
     action_contract_detail, action_idempotency_name, action_table_rows, build_step_frame,
     decode_step_inputs, execute_step_isolated, map_runtime_inputs, node_kind_name, parse_args,
     redacted_slot_value, registered_cli_actions, run_compiled_workflow, setup_exit_code,
-    signal_name, suggested_ai_commands, write_step_inputs,
+    signal_name, suggested_ai_commands, write_step_inputs, ActionRegistryMode, Command,
+    DurabilityMode, InputMappingError, ParseError, RunStatus, StepTarget, StorageWorkflowResolver,
+    INPUT_MAPPING_DECODE_FAILED_MESSAGE, INPUT_MAPPING_SLOT_COUNT_EXCEEDED_MESSAGE,
+    INPUT_MAPPING_SLOT_INDEX_OUT_OF_RANGE_MESSAGE,
 };
 use std::ffi::OsString;
 use std::path::PathBuf;
@@ -71,11 +71,9 @@ fn ai_context_redacts_secret_snapshot_slot_value() {
 fn ai_context_failed_run_suggests_incident_command() {
     let commands = suggested_ai_commands("7", std::path::Path::new("db-path"), RunStatus::Failed);
 
-    assert!(
-        commands
-            .iter()
-            .any(|command| command.contains("incident 7 --db db-path --json"))
-    );
+    assert!(commands
+        .iter()
+        .any(|command| command.contains("incident 7 --db db-path --json")));
 }
 
 fn args(parts: &[&str]) -> Vec<OsString> {
@@ -532,7 +530,6 @@ fn journaled_run_writes_storage_events() {
             Box::from([]),
             DurabilityMode::Journaled,
             Some(dir.path()),
-            OutputFormat::Text,
         );
         assert_eq!(code, std::process::ExitCode::SUCCESS);
 

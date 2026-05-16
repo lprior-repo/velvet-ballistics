@@ -498,7 +498,7 @@ pub fn trace_to_journal(trace: IpcTraceEvent) -> Option<JournalEvent> {
             extra: None,
             attempt: 1,
         }),
-        IpcTraceEventKind::ActionScheduled { run, step } => Some(JournalEvent::ActionScheduled {
+        IpcTraceEventKind::ActionScheduled { run, step } => Some(JournalEvent::ActionScheduled { attempt: 0, 
             run,
             seq,
             step,
@@ -507,7 +507,7 @@ pub fn trace_to_journal(trace: IpcTraceEvent) -> Option<JournalEvent> {
             attempt: 1,
         }),
         IpcTraceEventKind::ActionCompleted { run, step } => {
-            Some(JournalEvent::ActionCompletedEvent {
+            Some(JournalEvent::ActionCompletedEvent { attempt: 0, 
                 run,
                 seq,
                 step,
@@ -516,7 +516,7 @@ pub fn trace_to_journal(trace: IpcTraceEvent) -> Option<JournalEvent> {
             })
         }
         IpcTraceEventKind::ActionFailed { run, step, .. } => {
-            Some(JournalEvent::ActionFailedEvent {
+            Some(JournalEvent::ActionFailedEvent { attempt: 0, 
                 run,
                 seq,
                 step,
@@ -1032,7 +1032,7 @@ mod tests {
         step: StepIdx,
         action: ActionId,
     ) -> JournalEvent {
-        JournalEvent::ActionScheduled {
+        JournalEvent::ActionScheduled { attempt: 0, 
             run,
             seq: EventSeq::new(seq),
             step,
@@ -1042,7 +1042,7 @@ mod tests {
     }
 
     fn make_action_failed(run: RunId, seq: u64, step: StepIdx, action: ActionId) -> JournalEvent {
-        JournalEvent::ActionFailedEvent {
+        JournalEvent::ActionFailedEvent { attempt: 0, 
             run,
             seq: EventSeq::new(seq),
             step,

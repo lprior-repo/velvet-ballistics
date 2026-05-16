@@ -1070,8 +1070,8 @@ impl std::fmt::Display for ParseError {
 #[cfg(test)]
 mod tests {
     use super::{
-        ActionRegistryMode, Command, DurabilityMode, EmitTarget, OutputFormat, ParseError,
-        StepTarget, VerifyProfile, parse_args,
+        parse_args, ActionRegistryMode, Command, DurabilityMode, EmitTarget, OutputFormat,
+        ParseError, StepTarget, VerifyProfile,
     };
     use std::ffi::OsString;
     use std::path::PathBuf;

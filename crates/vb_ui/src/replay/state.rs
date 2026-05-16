@@ -397,7 +397,7 @@ mod tests {
     }
 
     fn action_scheduled(step: u16, action: u16, seq_val: u64) -> JournalEvent {
-        JournalEvent::ActionScheduled {
+        JournalEvent::ActionScheduled { attempt: 0, 
             run: TEST_RUN,
             seq: seq(seq_val),
             step: StepIdx::new(step),
@@ -407,7 +407,7 @@ mod tests {
     }
 
     fn action_completed(step: u16, action: u16, seq_val: u64) -> JournalEvent {
-        JournalEvent::ActionCompletedEvent {
+        JournalEvent::ActionCompletedEvent { attempt: 0, 
             run: TEST_RUN,
             seq: seq(seq_val),
             step: StepIdx::new(step),
@@ -417,7 +417,7 @@ mod tests {
     }
 
     fn action_failed(step: u16, action: u16, seq_val: u64) -> JournalEvent {
-        JournalEvent::ActionFailedEvent {
+        JournalEvent::ActionFailedEvent { attempt: 0, 
             run: TEST_RUN,
             seq: seq(seq_val),
             step: StepIdx::new(step),

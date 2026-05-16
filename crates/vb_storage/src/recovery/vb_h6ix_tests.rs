@@ -41,14 +41,14 @@ mod vb_h6ix_tests {
         // Events from attempt 1 (stale) and attempt 2 (latest)
         let events = vec![
             // Attempt 1 events
-            JournalEvent::ActionScheduled {
+            JournalEvent::ActionScheduled { attempt: 1, 
                 run,
                 seq: EventSeq::new(0),
                 step: StepIdx::ZERO,
                 action: ActionId::new(1),
                 attempt: 1,
             },
-            JournalEvent::ActionCompletedEvent {
+            JournalEvent::ActionCompletedEvent { attempt: 1, 
                 run,
                 seq: EventSeq::new(1),
                 step: StepIdx::ZERO,
@@ -56,14 +56,14 @@ mod vb_h6ix_tests {
                 attempt: 1,
             },
             // Attempt 2 events (latest)
-            JournalEvent::ActionScheduled {
+            JournalEvent::ActionScheduled { attempt: 1, 
                 run,
                 seq: EventSeq::new(2),
                 step: StepIdx::ZERO,
                 action: ActionId::new(2),
                 attempt: 1,
             },
-            JournalEvent::ActionCompletedEvent {
+            JournalEvent::ActionCompletedEvent { attempt: 1, 
                 run,
                 seq: EventSeq::new(3),
                 step: StepIdx::ZERO,
@@ -96,28 +96,28 @@ mod vb_h6ix_tests {
     fn all_events_returned_including_stale() {
         let run = RunId::new(1);
         let events = vec![
-            JournalEvent::ActionScheduled {
+            JournalEvent::ActionScheduled { attempt: 1, 
                 run,
                 seq: EventSeq::new(0),
                 step: StepIdx::ZERO,
                 action: ActionId::new(1),
                 attempt: 1,
             },
-            JournalEvent::ActionCompletedEvent {
+            JournalEvent::ActionCompletedEvent { attempt: 1, 
                 run,
                 seq: EventSeq::new(1),
                 step: StepIdx::ZERO,
                 action: ActionId::new(1),
                 attempt: 1,
             },
-            JournalEvent::ActionScheduled {
+            JournalEvent::ActionScheduled { attempt: 1, 
                 run,
                 seq: EventSeq::new(2),
                 step: StepIdx::ZERO,
                 action: ActionId::new(2),
                 attempt: 1,
             },
-            JournalEvent::ActionCompletedEvent {
+            JournalEvent::ActionCompletedEvent { attempt: 1, 
                 run,
                 seq: EventSeq::new(3),
                 step: StepIdx::ZERO,
@@ -152,28 +152,28 @@ mod vb_h6ix_tests {
                 seq: EventSeq::new(0),
                 workflow: sample_digest(1),
             },
-            JournalEvent::ActionScheduled {
+            JournalEvent::ActionScheduled { attempt: 1, 
                 run,
                 seq: EventSeq::new(1),
                 step: StepIdx::ZERO,
                 action: ActionId::new(1),
                 attempt: 1,
             },
-            JournalEvent::ActionCompletedEvent {
+            JournalEvent::ActionCompletedEvent { attempt: 1, 
                 run,
                 seq: EventSeq::new(2),
                 step: StepIdx::ZERO,
                 action: ActionId::new(1),
                 attempt: 1,
             },
-            JournalEvent::ActionScheduled {
+            JournalEvent::ActionScheduled { attempt: 1, 
                 run,
                 seq: EventSeq::new(3),
                 step: StepIdx::ZERO,
                 action: ActionId::new(2),
                 attempt: 1,
             },
-            JournalEvent::ActionCompletedEvent {
+            JournalEvent::ActionCompletedEvent { attempt: 1, 
                 run,
                 seq: EventSeq::new(4),
                 step: StepIdx::ZERO,
@@ -207,14 +207,14 @@ mod vb_h6ix_tests {
         let run = RunId::new(1);
         let events = vec![
             // Attempt 1: action 1 completed
-            JournalEvent::ActionScheduled {
+            JournalEvent::ActionScheduled { attempt: 1, 
                 run,
                 seq: EventSeq::new(0),
                 step: StepIdx::ZERO,
                 action: ActionId::new(1),
                 attempt: 1,
             },
-            JournalEvent::ActionCompletedEvent {
+            JournalEvent::ActionCompletedEvent { attempt: 1, 
                 run,
                 seq: EventSeq::new(1),
                 step: StepIdx::ZERO,
@@ -222,14 +222,14 @@ mod vb_h6ix_tests {
                 attempt: 1,
             },
             // Attempt 2: action 2 completed (should be recorded, action 1 should NOT)
-            JournalEvent::ActionScheduled {
+            JournalEvent::ActionScheduled { attempt: 1, 
                 run,
                 seq: EventSeq::new(2),
                 step: StepIdx::ZERO,
                 action: ActionId::new(2),
                 attempt: 1,
             },
-            JournalEvent::ActionCompletedEvent {
+            JournalEvent::ActionCompletedEvent { attempt: 1, 
                 run,
                 seq: EventSeq::new(3),
                 step: StepIdx::ZERO,
@@ -577,28 +577,28 @@ mod vb_h6ix_tests {
                 seq: EventSeq::new(0),
                 workflow: sample_digest(1),
             },
-            JournalEvent::ActionScheduled {
+            JournalEvent::ActionScheduled { attempt: 1, 
                 run,
                 seq: EventSeq::new(1),
                 step: StepIdx::ZERO,
                 action: ActionId::new(1),
                 attempt: 1,
             },
-            JournalEvent::ActionCompletedEvent {
+            JournalEvent::ActionCompletedEvent { attempt: 1, 
                 run,
                 seq: EventSeq::new(2),
                 step: StepIdx::ZERO,
                 action: ActionId::new(1),
                 attempt: 1,
             },
-            JournalEvent::ActionScheduled {
+            JournalEvent::ActionScheduled { attempt: 1, 
                 run,
                 seq: EventSeq::new(3),
                 step: StepIdx::ZERO,
                 action: ActionId::new(2),
                 attempt: 1,
             },
-            JournalEvent::ActionCompletedEvent {
+            JournalEvent::ActionCompletedEvent { attempt: 1, 
                 run,
                 seq: EventSeq::new(4),
                 step: StepIdx::ZERO,
@@ -693,14 +693,14 @@ mod vb_h6ix_tests {
 
         // Attempt 1: action completed
         let events = vec![
-            JournalEvent::ActionScheduled {
+            JournalEvent::ActionScheduled { attempt: 1, 
                 run,
                 seq: EventSeq::new(0),
                 step,
                 action,
                 attempt: 1,
             },
-            JournalEvent::ActionCompletedEvent {
+            JournalEvent::ActionCompletedEvent { attempt: 1, 
                 run,
                 seq: EventSeq::new(1),
                 step,
@@ -708,7 +708,7 @@ mod vb_h6ix_tests {
                 attempt: 1,
             },
             // Attempt 2: same action scheduled again (stale duplicate from older attempt re-using action id)
-            JournalEvent::ActionScheduled {
+            JournalEvent::ActionScheduled { attempt: 1, 
                 run,
                 seq: EventSeq::new(2),
                 step,
@@ -750,28 +750,28 @@ mod vb_h6ix_tests {
                 seq: EventSeq::new(0),
                 workflow: sample_digest(1),
             },
-            JournalEvent::ActionScheduled {
+            JournalEvent::ActionScheduled { attempt: 1, 
                 run,
                 seq: EventSeq::new(1),
                 step: StepIdx::ZERO,
                 action: ActionId::new(1),
                 attempt: 1,
             },
-            JournalEvent::ActionCompletedEvent {
+            JournalEvent::ActionCompletedEvent { attempt: 1, 
                 run,
                 seq: EventSeq::new(2),
                 step: StepIdx::ZERO,
                 action: ActionId::new(1),
                 attempt: 1,
             },
-            JournalEvent::ActionScheduled {
+            JournalEvent::ActionScheduled { attempt: 1, 
                 run,
                 seq: EventSeq::new(3),
                 step: StepIdx::ZERO,
                 action: ActionId::new(2),
                 attempt: 1,
             },
-            JournalEvent::ActionCompletedEvent {
+            JournalEvent::ActionCompletedEvent { attempt: 1, 
                 run,
                 seq: EventSeq::new(4),
                 step: StepIdx::ZERO,
@@ -911,7 +911,7 @@ mod vb_h6ix_tests {
             step: StepIdx::ZERO,
             attempt: 1,
         }));
-        assert!(!is_terminal_event(&JournalEvent::ActionScheduled {
+        assert!(!is_terminal_event(&JournalEvent::ActionScheduled { attempt: 1, 
             run,
             seq: EventSeq::new(0),
             step: StepIdx::ZERO,

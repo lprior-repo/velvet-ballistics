@@ -70,6 +70,19 @@ impl EnvelopeHeader {
         }
         ValidationResult::Ok
     }
+
+    /// Compute CRC-32C over this header's bytes.
+    /// The CRC field is set to zero during computation.
+    pub fn compute_crc(&self) -> u32 {
+        let mut header = *self;
+        header.header_crc32 = 0;
+        compute_header_crc(&header)
+    }
+
+    /// Validate that this header's stored CRC matches the computed CRC.
+    pub fn validate_crc(&self) -> bool {
+        validate_header_crc(self)
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -93,12 +106,85 @@ pub fn validate_header_before_alloc(header: &EnvelopeHeader, max_payload: u64) -
     header.validate_before_alloc(max_payload)
 }
 
-pub fn compute_header_crc(_header: &EnvelopeHeader) -> u32 {
-    0
+/// CRC-32C lookup table for fast computation.
+const CRC32C_TABLE: [u32; 256] = make_crc32c_table();
+
+/// Constructs the CRC-32C lookup table at compile time.
+const fn make_crc32c_table() -> [u32; 256] {
+    let mut table = [0u32; 256];
+    let mut i = 0usize;
+    while i < 256 {
+        let mut c = i as u32;
+        let mut j = 0usize;
+        while j < 8 {
+            if c & 1 != 0 {
+                c = 0x82F63B78 ^ (c >> 1);
+            } else {
+                c = c >> 1;
+            }
+            j += 1;
+        }
+        table[i] = c;
+        i += 1;
+    }
+    table
 }
 
-pub fn validate_header_crc(_header: &EnvelopeHeader) -> bool {
-    true
+/// Update CRC-32C state with a single byte.
+#[inline]
+const fn crc32c_update(crc: u32, byte: u8) -> u32 {
+    let index = ((crc ^ byte as u32) & 0xFF) as usize;
+    CRC32C_TABLE[index] ^ (crc >> 8)
+}
+
+/// Compute CRC-32C (Castagnoli) over a byte slice.
+fn crc32c_slice(data: &[u8]) -> u32 {
+    let mut crc = 0xFFFFFFFF;
+    let mut i = 0usize;
+    while i < data.len() {
+        crc = crc32c_update(crc, data[i]);
+        i += 1;
+    }
+    crc ^ 0xFFFFFFFF
+}
+
+/// Compute CRC-32C (Castagnoli) over the header fields before the CRC field.
+///
+/// The CRC field itself (bytes 20..24 in the header) is excluded from computation
+/// and should be set to zero when computing. Uses the Castagnoli polynomial 0x82F63B78.
+///
+/// Layout: magic(4) + version(1) + kind(1) + flags(1) + reserved(1) +
+///         schema(4) + payload_len_u32(4) + payload_len_hi(4) = 20 bytes
+///         then header_crc32(4) + payload_crc32(4) + blake3_digest(32) = 40 bytes
+/// CRC is over the first 20 bytes (excluding header_crc32 field).
+pub fn compute_header_crc(header: &EnvelopeHeader) -> u32 {
+    // Build header bytes for CRC computation, excluding the 4-byte CRC field at offset 20.
+    // All multi-byte fields are in little-endian byte order.
+    let mut buf = [0u8; 20];
+    // Magic (4 bytes, offset 0)
+    buf[0..4].copy_from_slice(&header.magic.to_le_bytes());
+    // Version (1 byte, offset 4)
+    buf[4] = header.version;
+    // Kind (1 byte, offset 5)
+    buf[5] = header.kind;
+    // Flags (1 byte, offset 6)
+    buf[6] = header.flags;
+    // Reserved (1 byte, offset 7)
+    buf[7] = header.reserved;
+    // Schema (4 bytes, offset 8)
+    buf[8..12].copy_from_slice(&header.schema.to_le_bytes());
+    // Payload len lo (4 bytes, offset 12)
+    buf[12..16].copy_from_slice(&header.payload_len_u32.to_le_bytes());
+    // Payload len hi (4 bytes, offset 16)
+    buf[16..20].copy_from_slice(&header.payload_len_hi.to_le_bytes());
+    crc32c_slice(&buf)
+}
+
+/// Validate that the stored header CRC matches the computed CRC.
+/// Returns true if CRC is valid, false otherwise.
+pub fn validate_header_crc(header: &EnvelopeHeader) -> bool {
+    let computed = compute_header_crc(header);
+    computed == header.header_crc32
 }
 
 #[cfg(test)]
@@ -154,5 +240,64 @@ mod tests {
         let header = EnvelopeHeader::new();
         let result = header.validate_before_alloc(1024 * 1024);
         assert!(matches!(result, ValidationResult::Ok));
+    }
+
+    #[test]
+    fn test_compute_header_crc_not_zero() {
+        let header = EnvelopeHeader::new();
+        let crc = compute_header_crc(&header);
+        // CRC should not be zero for a non-empty header
+        assert_ne!(crc, 0, "CRC should not be zero for a valid header");
+    }
+
+    #[test]
+    fn test_validate_header_crc_with_correct_crc() {
+        let header = EnvelopeHeader::new();
+        let crc = compute_header_crc(&header);
+        let mut header_with_crc = header;
+        header_with_crc.header_crc32 = crc;
+        assert!(validate_header_crc(&header_with_crc));
+    }
+
+    #[test]
+    fn test_validate_header_crc_with_incorrect_crc() {
+        let header = EnvelopeHeader::new();
+        let mut header_with_wrong_crc = header;
+        header_with_wrong_crc.header_crc32 = 0xDEADBEEF;
+        assert!(!validate_header_crc(&header_with_wrong_crc));
+    }
+
+    #[test]
+    fn test_envelope_header_compute_crc() {
+        let header = EnvelopeHeader::new();
+        let crc = header.compute_crc();
+        assert_ne!(crc, 0);
+    }
+
+    #[test]
+    fn test_envelope_header_validate_crc_with_correct_crc() {
+        let header = EnvelopeHeader::new();
+        let crc = header.compute_crc();
+        let mut header_with_crc = header;
+        header_with_crc.header_crc32 = crc;
+        assert!(header_with_crc.validate_crc());
+    }
+
+    #[test]
+    fn test_envelope_header_validate_crc_with_incorrect_crc() {
+        let header = EnvelopeHeader::new();
+        let mut header_with_wrong_crc = header;
+        header_with_wrong_crc.header_crc32 = 0xDEADBEEF;
+        assert!(!header_with_wrong_crc.validate_crc());
+    }
+
+    #[test]
+    fn test_crc_changes_with_header_content() {
+        let header1 = EnvelopeHeader::new();
+        let mut header2 = EnvelopeHeader::new();
+        header2.magic = 0xFFFFFFFF;
+        let crc1 = compute_header_crc(&header1);
+        let crc2 = compute_header_crc(&header2);
+        assert_ne!(crc1, crc2, "CRC should differ when header content changes");
     }
 }
