@@ -4,8 +4,8 @@
 //! Submodules contain types, codec functions, validation, and I/O operations.
 
 pub mod codec;
-pub mod validate;
 pub mod io;
+pub mod validate;
 
 // Re-export commonly used items for convenience
 pub use codec::{decode_frame_header, decode_frame_payload, encode_frame};

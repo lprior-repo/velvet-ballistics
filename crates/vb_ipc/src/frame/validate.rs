@@ -4,7 +4,7 @@
 use byteorder::{LittleEndian, ReadBytesExt};
 use std::io::Cursor;
 
-use crate::{IpcError, IpcFrameHeader, MaxPayloadBytes, IPC_MAGIC};
+use crate::{IPC_MAGIC, IpcError, IpcFrameHeader, MaxPayloadBytes};
 
 /// Validates that the magic bytes are correct before any allocation occurs.
 pub fn validate_frame_magic(bytes: &[u8]) -> Result<(), IpcError> {

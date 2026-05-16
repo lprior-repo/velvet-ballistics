@@ -108,10 +108,7 @@ pub fn advance_after_action_completion(
 }
 
 /// Returns true if a timer must be registered for the given step.
-pub fn timer_registration_required(
-    state: &crate::shard::types::RunState,
-    step: StepIdx,
-) -> bool {
+pub fn timer_registration_required(state: &crate::shard::types::RunState, step: StepIdx) -> bool {
     let Some(node) = state.workflow.node(step) else {
         return false;
     };
@@ -163,10 +160,7 @@ pub fn new_action_attempts(step_count: u16) -> Box<[u16]> {
 }
 
 /// Records a scheduled action attempt.
-pub fn record_scheduled_attempt(
-    state: &mut crate::shard::types::RunState,
-    ticket: ActionTicket,
-) {
+pub fn record_scheduled_attempt(state: &mut crate::shard::types::RunState, ticket: ActionTicket) {
     if ticket.attempt == 0 {
         return;
     }
@@ -188,10 +182,7 @@ fn validate_retry_attempt(ticket: ActionTicket, policy: RetryPolicy) -> RuntimeR
 }
 
 /// Returns true if retry metadata exists for the given step.
-pub fn retry_metadata_exists(
-    state: &crate::shard::types::RunState,
-    step: StepIdx,
-) -> bool {
+pub fn retry_metadata_exists(state: &crate::shard::types::RunState, step: StepIdx) -> bool {
     let Some(node) = state.workflow.node(step) else {
         return false;
     };
@@ -324,9 +315,7 @@ fn error_handler_on_node(
 }
 
 /// Returns the result slot for a finished run.
-pub fn result_slot_for_finished_run(
-    state: &crate::shard::types::RunState,
-) -> Option<SlotIdx> {
+pub fn result_slot_for_finished_run(state: &crate::shard::types::RunState) -> Option<SlotIdx> {
     state
         .workflow
         .node(state.frame.pc())
