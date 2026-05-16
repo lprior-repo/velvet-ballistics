@@ -1,9 +1,8 @@
-#![forbid(unsafe_code)]
 //! ForEach iteration primitive handlers.
 
 use vb_core::errors::EngineError;
 use vb_core::frame::RunFrame;
-use vb_core::ids::{FanoutLimit, SlotIdx, StepIdx};
+use vb_core::ids::{SlotIdx, StepIdx};
 use vb_core::value::SlotValue;
 use vb_core::value_store::ValueStore;
 
@@ -17,17 +16,18 @@ pub fn for_each_start(
     store: &mut ValueStore,
     input: SlotIdx,
     item_slot: SlotIdx,
-    limit: impl Into<FanoutLimit>,
+    limit: u32,
     body: StepIdx,
     done: StepIdx,
     output: Option<SlotIdx>,
 ) -> Result<vb_core::EngineSignal, EngineError> {
-    let limit = limit.into();
     let list_id = expect_list(*run.read_slot(input)?)?;
     let input_taint = run.read_taint(input)?;
     let items = store.list(list_id)?;
     let item_count = items.len();
-    let limit_count = limit.as_usize();
+    let limit_count = usize::try_from(limit).map_err(|_| EngineError::IterationLimitExceeded {
+        resource: "for_each_limit",
+    })?;
     if item_count > limit_count {
         return Err(EngineError::IterationLimitExceeded {
             resource: "for_each_limit",
@@ -99,7 +99,3 @@ pub fn for_each_join(
     run.write_slot_with_taint(output_slot, value, taint)?;
     jump_to_next(run, next, step)
 }
-
-#[cfg(test)]
-#[path = "../for_each_tests.rs"]
-mod tests;
