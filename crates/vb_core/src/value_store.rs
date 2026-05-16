@@ -1957,7 +1957,13 @@ mod tests {
         fn property_value_store_cap(cap: u16, insert_count: u16) {
             use proptest::{prop_assert, prop_assert_eq};
             let mut store = ValueStore::with_max_slots(cap);
-            let max_entries = u64::from(cap);
+            // cap = 0 means uncapped (check_arena_cap returns Ok immediately),
+            // so we use u64::MAX as the effective limit for the assertion.
+            let max_entries = if cap == 0 {
+                u64::MAX
+            } else {
+                u64::from(cap)
+            };
 
             // Insert insert_count symbols (each counts as 1 arena entry)
             let mut succeeded = 0u64;
@@ -1970,14 +1976,14 @@ mod tests {
                     }
                     Err(e) => panic!("unexpected error: {:?}", e),
                 }
-                // Arena count must never exceed cap
+                // Arena count must never exceed cap (or be uncapped)
                 prop_assert!(store.total_arena_count() <= max_entries);
             }
 
             // If cap > 0: succeeded == min(insert_count, cap)
             // If cap == 0: all inserts succeed (uncapped)
             if cap > 0 {
-                prop_assert_eq!(succeeded, (insert_count as u64).min(max_entries));
+                prop_assert_eq!(succeeded, (insert_count as u64).min(u64::from(cap)));
             } else {
                 prop_assert_eq!(succeeded, insert_count as u64);
             }
