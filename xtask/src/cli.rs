@@ -90,4 +90,13 @@ pub(crate) enum Commands {
         #[arg(long)]
         model: String,
     },
+    #[command(name = "forbidden-scan")]
+    ForbiddenScan {
+        /// Crate/package globs to scan. If not provided, scans all first-party crates.
+        #[arg(long)]
+        crates: Option<Vec<String>>,
+        /// Path to an allowlist file with false-positive exemptions (one pattern per line).
+        #[arg(long)]
+        allowlist: Option<String>,
+    },
 }

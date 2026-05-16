@@ -4,6 +4,7 @@
 mod ai_profile;
 mod cli;
 mod evidence;
+mod forbidden_scan;
 mod gates;
 mod loom;
 mod proof;
@@ -64,6 +65,9 @@ fn run_legacy_cli(cli: Cli) -> anyhow::Result<()> {
         Commands::ProofEvidence { bead } => cmd_proof_evidence(&bead),
         Commands::ProofDrift { sections } => cmd_proof_drift(sections.as_deref()),
         Commands::Loom { model } => loom::cmd_loom(&model),
+        Commands::ForbiddenScan { crates, allowlist } => {
+            forbidden_scan::cmd_forbidden_scan(crates.as_deref(), allowlist.as_deref())
+        }
     }
 }
 

@@ -76,6 +76,7 @@ fn parse_legacy(command: &str) -> Option<&'static str> {
         "ai-fast" => Some("ai-fast"),
         "ai-deep" => Some("ai-deep"),
         "ai-release" => Some("ai-release"),
+        "forbidden-scan" => Some("forbidden-scan"),
         _ => None,
     }
 }
