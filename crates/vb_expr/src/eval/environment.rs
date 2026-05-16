@@ -1,0 +1,290 @@
+#![forbid(unsafe_code)]
+//! Evaluation environment: stack operations and type expectations.
+
+use arrayvec::ArrayVec;
+use vb_core::limits::MAX_EXPRESSION_STACK_USIZE;
+use vb_core::SlotValue;
+
+pub use crate::lexer::{BinaryOp, UnaryOp};
+pub use crate::parser::ExprHelper;
+pub use crate::{ExprError, ExprResult};
+pub use vb_core::limits::MAX_EXPRESSION_STACK;
+
+pub(crate) fn push_value(
+    stack: &mut ArrayVec<SlotValue, MAX_EXPRESSION_STACK_USIZE>,
+    value: SlotValue,
+) -> ExprResult<()> {
+    stack.try_push(value).map_err(|_| ExprError::StackOverflow {
+        max: MAX_EXPRESSION_STACK,
+    })
+}
+
+pub(crate) fn pop_value(
+    stack: &mut ArrayVec<SlotValue, MAX_EXPRESSION_STACK_USIZE>,
+) -> ExprResult<SlotValue> {
+    stack.pop().ok_or(ExprError::StackUnderflow)
+}
+
+pub(crate) fn pop_pair(
+    stack: &mut ArrayVec<SlotValue, MAX_EXPRESSION_STACK_USIZE>,
+) -> ExprResult<(SlotValue, SlotValue)> {
+    let right = pop_value(stack)?;
+    let left = pop_value(stack)?;
+    Ok((left, right))
+}
+
+pub(crate) fn pop_triple(
+    stack: &mut ArrayVec<SlotValue, MAX_EXPRESSION_STACK_USIZE>,
+) -> ExprResult<(SlotValue, SlotValue, SlotValue)> {
+    let third = pop_value(stack)?;
+    let second = pop_value(stack)?;
+    let first = pop_value(stack)?;
+    Ok((first, second, third))
+}
+
+pub fn expect_bool(value: SlotValue) -> ExprResult<bool> {
+    match value {
+        SlotValue::Bool(b) => Ok(b),
+        other => Err(ExprError::TypeMismatch {
+            expected: "boolean".into(),
+            found: other.type_name().into(),
+        }),
+    }
+}
+
+pub fn expect_i64(value: SlotValue) -> ExprResult<i64> {
+    match value {
+        SlotValue::I64(n) => Ok(n),
+        other => Err(ExprError::TypeMismatch {
+            expected: "number".into(),
+            found: other.type_name().into(),
+        }),
+    }
+}
+
+pub fn expect_symbol(value: SlotValue) -> ExprResult<vb_core::ids::SymbolId> {
+    match value {
+        SlotValue::Symbol(id) => Ok(id),
+        other => Err(ExprError::TypeMismatch {
+            expected: "text".into(),
+            found: other.type_name().into(),
+        }),
+    }
+}
+
+pub fn expect_list(value: SlotValue) -> ExprResult<vb_core::ids::ListId> {
+    match value {
+        SlotValue::List(id) => Ok(id),
+        other => Err(ExprError::TypeMismatch {
+            expected: "list".into(),
+            found: other.type_name().into(),
+        }),
+    }
+}
+
+pub fn expect_object(value: SlotValue) -> ExprResult<vb_core::ids::ObjectId> {
+    match value {
+        SlotValue::Object(id) => Ok(id),
+        other => Err(ExprError::TypeMismatch {
+            expected: "object".into(),
+            found: other.type_name().into(),
+        }),
+    }
+}
+
+pub fn eval_helper(helper: ExprHelper, args: &[SlotValue]) -> ExprResult<SlotValue> {
+    match helper {
+        ExprHelper::Exists => eval_helper_exists(args),
+        ExprHelper::Length | ExprHelper::Count => eval_helper_length(args),
+        ExprHelper::Empty => eval_helper_empty(args),
+        ExprHelper::Unique => eval_helper_unique(args),
+        ExprHelper::Contains => eval_helper_contains(args),
+        ExprHelper::StartsWith => eval_helper_starts_with(args),
+        ExprHelper::EndsWith => eval_helper_ends_with(args),
+        ExprHelper::Has => eval_helper_has(args),
+        ExprHelper::Append => eval_helper_append(args),
+        ExprHelper::AppendIf => eval_helper_append_if(args),
+        ExprHelper::Merge => eval_helper_merge(args),
+        ExprHelper::Sum => eval_helper_sum(args),
+    }
+}
+
+fn eval_helper_exists(args: &[SlotValue]) -> ExprResult<SlotValue> {
+    let value = one_arg(args, ExprHelper::Exists)?;
+    Ok(SlotValue::Bool(!matches!(*value, SlotValue::Null)))
+}
+
+fn eval_helper_length(args: &[SlotValue]) -> ExprResult<SlotValue> {
+    let value = one_arg(args, ExprHelper::Length)?;
+    match value {
+        SlotValue::F64(_) => Err(ExprError::TypeMismatch {
+            expected: "list, text, or object".into(),
+            found: "number".into(),
+        }),
+        SlotValue::List(_) | SlotValue::Null => Err(ExprError::TypeMismatch {
+            expected: "value-store context required for list length".into(),
+            found: "list handle without store".into(),
+        }),
+        other => Err(ExprError::TypeMismatch {
+            expected: "list".into(),
+            found: other.type_name().into(),
+        }),
+    }
+}
+
+fn eval_helper_empty(args: &[SlotValue]) -> ExprResult<SlotValue> {
+    let value = one_arg(args, ExprHelper::Empty)?;
+    match *value {
+        SlotValue::F64(_) => Err(ExprError::TypeMismatch {
+            expected: "list, text, object, or null".into(),
+            found: "number".into(),
+        }),
+        SlotValue::Null => Ok(SlotValue::Bool(true)),
+        SlotValue::List(_) => Err(ExprError::TypeMismatch {
+            expected: "value-store context required for list emptiness check".into(),
+            found: "list handle without store".into(),
+        }),
+        other => Err(ExprError::TypeMismatch {
+            expected: "list or null".into(),
+            found: other.type_name().into(),
+        }),
+    }
+}
+
+fn eval_helper_unique(args: &[SlotValue]) -> ExprResult<SlotValue> {
+    let value = one_arg(args, ExprHelper::Unique)?;
+    match *value {
+        SlotValue::List(_) => Err(ExprError::TypeMismatch {
+            expected: "value-store context required for list deduplication".into(),
+            found: "list handle without store".into(),
+        }),
+        other => Err(ExprError::TypeMismatch {
+            expected: "list".into(),
+            found: other.type_name().into(),
+        }),
+    }
+}
+
+fn eval_helper_contains(args: &[SlotValue]) -> ExprResult<SlotValue> {
+    let (list_val, item_val) = two_args(args, ExprHelper::Contains)?;
+    if matches!(*list_val, SlotValue::F64(_)) || matches!(*item_val, SlotValue::F64(_)) {
+        return Err(ExprError::TypeMismatch {
+            expected: "list, text, or object".into(),
+            found: "number".into(),
+        });
+    }
+    let _list_id = expect_list(*list_val)?;
+    Err(ExprError::TypeMismatch {
+        expected: "value-store context required for list contains check".into(),
+        found: "list handle without store".into(),
+    })
+}
+
+fn eval_helper_starts_with(args: &[SlotValue]) -> ExprResult<SlotValue> {
+    let (text_val, prefix_val) = two_args(args, ExprHelper::StartsWith)?;
+    let _text_id = expect_symbol(*text_val)?;
+    let _prefix_id = expect_symbol(*prefix_val)?;
+    Err(ExprError::TypeMismatch {
+        expected: "value-store context required for text operations".into(),
+        found: "symbol handle without store".into(),
+    })
+}
+
+fn eval_helper_ends_with(args: &[SlotValue]) -> ExprResult<SlotValue> {
+    let (text_val, suffix_val) = two_args(args, ExprHelper::EndsWith)?;
+    let _text_id = expect_symbol(*text_val)?;
+    let _suffix_id = expect_symbol(*suffix_val)?;
+    Err(ExprError::TypeMismatch {
+        expected: "value-store context required for text operations".into(),
+        found: "symbol handle without store".into(),
+    })
+}
+
+fn eval_helper_has(args: &[SlotValue]) -> ExprResult<SlotValue> {
+    let (obj_val, key_val) = two_args(args, ExprHelper::Has)?;
+    let _obj_id = expect_object(*obj_val)?;
+    let _key_id = expect_symbol(*key_val)?;
+    Err(ExprError::TypeMismatch {
+        expected: "value-store context required for object field lookup".into(),
+        found: "object handle without store".into(),
+    })
+}
+
+fn eval_helper_append(args: &[SlotValue]) -> ExprResult<SlotValue> {
+    let (list_val, _item_val) = two_args(args, ExprHelper::Append)?;
+    let _list_id = expect_list(*list_val)?;
+    Err(ExprError::TypeMismatch {
+        expected: "value-store context required for list append".into(),
+        found: "list handle without store".into(),
+    })
+}
+
+fn eval_helper_append_if(args: &[SlotValue]) -> ExprResult<SlotValue> {
+    let (list_val, _item_val, cond_val) = three_args(args, ExprHelper::AppendIf)?;
+    let _list_id = expect_list(*list_val)?;
+    let _ = expect_bool(*cond_val)?;
+    Err(ExprError::TypeMismatch {
+        expected: "value-store context required for list append".into(),
+        found: "list handle without store".into(),
+    })
+}
+
+fn eval_helper_merge(args: &[SlotValue]) -> ExprResult<SlotValue> {
+    let (left_val, right_val) = two_args(args, ExprHelper::Merge)?;
+    let _left_id = expect_object(*left_val)?;
+    let _right_id = expect_object(*right_val)?;
+    Err(ExprError::TypeMismatch {
+        expected: "value-store context required for object merge".into(),
+        found: "object handle without store".into(),
+    })
+}
+
+fn eval_helper_sum(args: &[SlotValue]) -> ExprResult<SlotValue> {
+    let value = one_arg(args, ExprHelper::Sum)?;
+    let _list_id = expect_list(*value)?;
+    Err(ExprError::TypeMismatch {
+        expected: "value-store context required for list sum".into(),
+        found: "list handle without store".into(),
+    })
+}
+
+fn one_arg(args: &[SlotValue], helper: ExprHelper) -> ExprResult<&SlotValue> {
+    if args.len() != 1 {
+        return Err(ExprError::HelperArityMismatch {
+            helper: crate::parser::helper_name(helper).into(),
+            expected: 1,
+            actual: args.len(),
+        });
+    }
+    args.first().ok_or(ExprError::StackUnderflow)
+}
+
+fn two_args(args: &[SlotValue], helper: ExprHelper) -> ExprResult<(&SlotValue, &SlotValue)> {
+    if args.len() != 2 {
+        return Err(ExprError::HelperArityMismatch {
+            helper: crate::parser::helper_name(helper).into(),
+            expected: 2,
+            actual: args.len(),
+        });
+    }
+    let left = args.first().ok_or(ExprError::StackUnderflow)?;
+    let right = args.get(1).ok_or(ExprError::StackUnderflow)?;
+    Ok((left, right))
+}
+
+fn three_args(
+    args: &[SlotValue],
+    helper: ExprHelper,
+) -> ExprResult<(&SlotValue, &SlotValue, &SlotValue)> {
+    if args.len() != 3 {
+        return Err(ExprError::HelperArityMismatch {
+            helper: crate::parser::helper_name(helper).into(),
+            expected: 3,
+            actual: args.len(),
+        });
+    }
+    let first = args.first().ok_or(ExprError::StackUnderflow)?;
+    let second = args.get(1).ok_or(ExprError::StackUnderflow)?;
+    let third = args.get(2).ok_or(ExprError::StackUnderflow)?;
+    Ok((first, second, third))
+}
