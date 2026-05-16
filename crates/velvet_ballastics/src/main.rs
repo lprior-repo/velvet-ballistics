@@ -13,6 +13,7 @@ mod commands_status;
 mod commands_verify;
 mod commands_workflow;
 mod exit_code;
+mod cli_envelope;
 
 use std::ffi::OsString;
 use std::io::{self, Write};
@@ -153,7 +154,7 @@ fn main() -> ExitCode {
         Ok(Command::Retry { run_id, db, output }) => cmd_retry(&run_id, &db, output),
         Ok(Command::Resume { run_id, db, output }) => cmd_resume(&run_id, &db, output),
         Ok(Command::BenchRun { workflow, output }) => cmd_bench_run(&workflow, output),
-        Ok(Command::Doctor { db, output }) => cmd_doctor(&db, output),
+        Ok(Command::Doctor { db, output }) => cmd_doctor(db.as_ref().map(|p| p.as_path()), output),
         Ok(Command::Answer {
             run_id,
             step,
@@ -169,6 +170,12 @@ fn main() -> ExitCode {
             output,
         }) => cmd_diff(&run_a, &run_b, &db, output),
         Ok(Command::Incident { run_id, db, output }) => cmd_incident(&run_id, &db, output),
+        Ok(Command::Cancel {
+            run_id,
+            db,
+            reason,
+            output,
+        }) => cmd_cancel(&run_id, &db, reason, output),
         Ok(Command::Submit {
             workflow,
             input_bin,
@@ -788,6 +795,34 @@ fn cmd_verify(
                         );
                     } else {
                         errln!("{msg}");
+                    }
+                }
+                commands_verify::VerifyError::StorageError(msg) => {
+                    if output != OutputFormat::Text {
+                        json_error(
+                            &serde_json::json!({
+                                "success": false,
+                                "profile": profile.as_str(),
+                                "error": msg
+                            }),
+                            output,
+                        );
+                    } else {
+                        errln!("storage error: {msg}");
+                    }
+                }
+                commands_verify::VerifyError::ReplayDivergence(msg) => {
+                    if output != OutputFormat::Text {
+                        json_error(
+                            &serde_json::json!({
+                                "success": false,
+                                "profile": profile.as_str(),
+                                "error": msg
+                            }),
+                            output,
+                        );
+                    } else {
+                        errln!("replay divergence: {msg}");
                     }
                 }
             }
@@ -2240,6 +2275,15 @@ fn print_event(event: &vb_storage::JournalEvent) {
         vb_storage::JournalEvent::RunFailedEvent { seq, .. } => {
             outln!("  seq={}: RunFailed", seq.get());
         }
+        vb_storage::JournalEvent::RunResumed { run, .. } => {
+            outln!("  RunResumed run={}", run.get());
+        }
+        vb_storage::JournalEvent::RunRetried { run, .. } => {
+            outln!("  RunRetried run={}", run.get());
+        }
+        vb_storage::JournalEvent::RunAnswered { run, .. } => {
+            outln!("  RunAnswered run={}", run.get());
+        }
     }
 }
 
@@ -2369,6 +2413,24 @@ fn event_to_json(event: &vb_storage::JournalEvent) -> serde_json::Value {
             serde_json::json!({
                 "seq": seq.get(),
                 "type": "RunFailed"
+            })
+        }
+        vb_storage::JournalEvent::RunResumed { run, .. } => {
+            serde_json::json!({
+                "type": "RunResumed",
+                "run": run.get()
+            })
+        }
+        vb_storage::JournalEvent::RunRetried { run, .. } => {
+            serde_json::json!({
+                "type": "RunRetried",
+                "run": run.get()
+            })
+        }
+        vb_storage::JournalEvent::RunAnswered { run, .. } => {
+            serde_json::json!({
+                "type": "RunAnswered",
+                "run": run.get()
             })
         }
     }
@@ -2650,6 +2712,136 @@ fn cmd_answer(
         errln!("answer command not yet implemented");
     }
     CliExitCode::RuntimeFailed.into()
+}
+
+fn run_is_terminal(events: &[vb_storage::JournalEvent]) -> bool {
+    events.iter().any(|e| {
+        matches!(
+            e,
+            vb_storage::JournalEvent::RunFinished { .. }
+                | vb_storage::JournalEvent::RunFailedEvent { .. }
+                | vb_storage::JournalEvent::RunCancelled { .. }
+        )
+    })
+}
+
+fn format_cancel_output(run_id: &str, reason: Option<&str>, note: &str, output: OutputFormat) {
+    if output != OutputFormat::Text {
+        json_out(
+            &serde_json::json!({
+                "success": true,
+                "run_id": run_id,
+                "status": "cancelled",
+                "reason": reason,
+                "note": note,
+            }),
+            output,
+        );
+    } else {
+        let detail = match reason {
+            Some(r) => format!(" (reason: {r})"),
+            None => String::new(),
+        };
+        outln!("Run {run_id} cancelled{detail} ({note})");
+    }
+}
+
+fn write_cancel_event(
+    journal: &vb_storage::FjallJournal,
+    rid: vb_core::RunId,
+    reason: Option<String>,
+    events: &[vb_storage::JournalEvent],
+) -> Result<(), vb_storage::JournalError> {
+    let next_seq = events
+        .last()
+        .map(|e| e.seq().get().saturating_add(1))
+        .unwrap_or(0);
+    let event = vb_storage::JournalEvent::RunCancelled {
+        run: rid,
+        seq: vb_storage::EventSeq::new(next_seq),
+        attempt: 1,
+        reason,
+    };
+    journal.append_journaled(&event)
+}
+
+fn cmd_cancel(
+    run_id: &str,
+    db: &std::path::Path,
+    reason: Option<String>,
+    output: OutputFormat,
+) -> ExitCode {
+    let rid = match parse_run_id(run_id) {
+        Ok(id) => id,
+        Err(code) => return code,
+    };
+
+    let journal = match vb_storage::FjallJournal::open(db, None) {
+        Ok(j) => j,
+        Err(e) => {
+            report_storage_open_error(&e, db, output);
+            return CliExitCode::StorageError.into();
+        }
+    };
+
+    let events = match journal.events_for_run(rid) {
+        Ok(ev) => ev,
+        Err(e) => {
+            let message = format!("error reading run {run_id}: {e}");
+            if output != OutputFormat::Text {
+                json_error(
+                    &serde_json::json!({
+                        "success": false,
+                        "error": message
+                    }),
+                    output,
+                );
+            } else {
+                errln!("{message}");
+            }
+            return CliExitCode::StorageError.into();
+        }
+    };
+
+    // Idempotent: no events means run never existed.
+    if events.is_empty() {
+        format_cancel_output(
+            run_id,
+            reason.as_deref(),
+            "run not found, idempotent",
+            output,
+        );
+        return ExitCode::SUCCESS;
+    }
+
+    // Idempotent: already terminal.
+    if run_is_terminal(&events) {
+        format_cancel_output(
+            run_id,
+            reason.as_deref(),
+            "already terminal, idempotent",
+            output,
+        );
+        return ExitCode::SUCCESS;
+    }
+
+    if let Err(e) = write_cancel_event(&journal, rid, reason.clone(), &events) {
+        if output != OutputFormat::Text {
+            json_error(
+                &serde_json::json!({
+                    "success": false,
+                    "error": format!("error writing cancel event: {e}")
+                }),
+                output,
+            );
+        } else {
+            errln!("error writing cancel event: {e}");
+        }
+        return CliExitCode::StorageError.into();
+    }
+
+    format_cancel_output(run_id, reason.as_deref(), "cancelled", output);
+    ExitCode::SUCCESS
 }
 
 fn cmd_incident(run_id: &str, db: &std::path::Path, output: OutputFormat) -> ExitCode {
@@ -3532,6 +3724,9 @@ fn explain_validation_error(err: &vb_validate::ValidationError) {
                 "  Action {action_id}: capability '{name}' first at {first_index}, duplicate at {duplicate_index}."
             );
         }
+        _ => {
+            outln!("Unknown validation error");
+        }
     }
 }
 
@@ -3734,7 +3929,11 @@ fn cmd_bench_run(workflow: &std::path::Path, output: OutputFormat) -> ExitCode {
     ExitCode::SUCCESS
 }
 
-fn cmd_doctor(db: &std::path::Path, output: OutputFormat) -> ExitCode {
+fn cmd_doctor(db: Option<&std::path::Path>, output: OutputFormat) -> ExitCode {
+    let Some(db) = db else {
+        return cmd_doctor_without_db(output);
+    };
+
     let mut checks = Vec::new();
     let _success = true;
 
@@ -4003,6 +4202,35 @@ fn cmd_doctor(db: &std::path::Path, output: OutputFormat) -> ExitCode {
     ExitCode::SUCCESS
 }
 
+fn cmd_doctor_without_db(output: OutputFormat) -> ExitCode {
+    let remediation = "rerun with `doctor --db <path>` to verify Fjall journal storage";
+    let checks = vec![serde_json::json!({
+        "check": "database_path",
+        "status": "skip",
+        "category": "missing_db",
+        "message": "no --db <path> provided; persistent journal checks skipped",
+        "remediation": remediation
+    })];
+
+    if output != OutputFormat::Text {
+        json_out(
+            &serde_json::json!({
+                "success": true,
+                "mode": "stateless",
+                "category": "missing_db",
+                "checks": checks,
+                "remediation": remediation
+            }),
+            output,
+        );
+    } else {
+        outln!("doctor: no --db <path> provided; persistent journal checks skipped");
+        outln!("doctor: {remediation}");
+    }
+
+    ExitCode::SUCCESS
+}
+
 fn unique_doctor_run_id() -> u64 {
     let Ok(now) = SystemTime::now().duration_since(UNIX_EPOCH) else {
         return u64::MAX;
@@ -4106,6 +4334,9 @@ fn write_error_stderr(error: &ParseError) -> io::Result<()> {
                 handle,
                 "unknown verify profile: {profile} (expected: quick, standard, full)\n\n{HELP}"
             )
+        }
+        ParseError::ReasonTooLong => {
+            writeln!(handle, "reason exceeds maximum allowed length\n\n{HELP}")
         }
     }
 }

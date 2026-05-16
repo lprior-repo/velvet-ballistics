@@ -26,6 +26,8 @@ impl Shard {
             inspect_response: None,
             shutting_down: false,
             journal,
+            action_contracts: Vec::new(),
+            replay_tracker: vb_storage::recovery::ActionReplayTracker::new(),
         }
     }
 

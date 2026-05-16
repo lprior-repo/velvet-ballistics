@@ -147,7 +147,9 @@ impl Shard {
 
         // Check if already resolved in the replay tracker
         if self.replay_tracker.is_resolved(action, step) {
-            return Err(RuntimeError::NonIdempotentActionReplayed { action, step });
+            return Err(RuntimeError::UnsupportedOperation {
+                operation: "non-idempotent action replay",
+            });
         }
 
         Ok(())

@@ -92,7 +92,11 @@ pub fn validate_gate_11_loop_body_graph(parts: &WorkflowParts) -> ValidationResu
                 check_step_in_range(*body, node_count, index, "retry_check body")?;
                 check_step_in_range(*exhausted, node_count, index, "retry_check exhausted")?;
             }
-            CompiledNodeKind::ErrorHandler { body, handler } => {
+            CompiledNodeKind::ErrorHandler {
+                body,
+                handler,
+                error_slot: _,
+            } => {
                 check_step_in_range(*body, node_count, index, "error_handler body")?;
                 check_step_in_range(*handler, node_count, index, "error_handler handler")?;
             }
