@@ -3,31 +3,62 @@
 
 use crate::errors::{CoreError, CoreResult};
 use crate::ids::{BlobId, ListId, ObjectId, SymbolId};
-
+use crate::limits::{
+    MAX_BLOB_BYTES_PER_VALUE, MAX_LIST_ITEMS_PER_VALUE, MAX_OBJECT_FIELDS_PER_VALUE,
+    MAX_SYMBOL_BYTES_PER_VALUE,
+};
 use crate::value::{SlotValue, Taint};
 use bytes::Bytes;
 use indexmap::IndexMap;
 
-pub use objects::ObjectField;
+/// Deterministic object field stored in insertion order.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ObjectField {
+    /// Interned field name.
+    pub key: SymbolId,
+    /// Handle-only field value.
+    pub value: SlotValue,
+    /// Taint level of the field value.
+    pub taint: Taint,
+}
 
-mod blobs;
-mod lists;
-mod objects;
-mod symbols;
+impl ObjectField {
+    /// Creates a clean-tainted object field.
+    #[must_use]
+    pub const fn clean(key: SymbolId, value: SlotValue) -> Self {
+        Self {
+            key,
+            value,
+            taint: Taint::Clean,
+        }
+    }
 
+    /// Creates an object field with explicit taint.
+    #[must_use]
+    pub const fn with_taint(key: SymbolId, value: SlotValue, taint: Taint) -> Self {
+        Self { key, value, taint }
+    }
+}
+
+/// Cold value arenas for strings, lists, objects, and blobs.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ValueStore {
     symbols: Vec<Box<str>>,
     lists: Vec<Box<[SlotValue]>>,
+    /// Per-item taint parallel to `lists`, same indexing.
     list_taints: Vec<Box<[Taint]>>,
     objects: Vec<Box<[ObjectField]>>,
+    /// Secondary index for O(1) object field lookup, mirroring `objects`.
     object_field_index: Vec<IndexMap<SymbolId, SlotValue>>,
+    /// Per-field taint parallel to `object_field_index`, keyed the same way.
     object_taint_index: Vec<IndexMap<SymbolId, Taint>>,
     blobs: Vec<Bytes>,
+    /// Hard cap on total arena entries (sum of all arena lengths).
     max_arena_entries: u64,
 }
 
 impl ValueStore {
+    /// Creates an empty cold value store with no arena cap.
     #[must_use]
     pub const fn new() -> Self {
         Self {
@@ -42,6 +73,7 @@ impl ValueStore {
         }
     }
 
+    /// Creates a cold value store with a hard cap on total arena entries.
     #[must_use]
     pub fn with_max_slots(max_slots: u16) -> Self {
         Self {
@@ -56,93 +88,120 @@ impl ValueStore {
         }
     }
 
+    /// Inserts an interned symbol and returns its deterministic insertion ID.
     pub fn insert_symbol(&mut self, value: impl Into<Box<str>>) -> CoreResult<SymbolId> {
         let value = value.into();
-        symbols::validate_symbol_len(value.len())?;
+        validate_symbol_len(value.len())?;
         self.check_arena_cap()?;
-        let id = symbols::next_symbol_id(self.symbols.len())?;
+        let id = next_symbol_id(self.symbols.len())?;
         self.symbols.push(value);
         Ok(id)
     }
 
+    /// Inserts a list payload and returns its deterministic insertion ID.
+    /// All items are stored with `Taint::Clean`.
     pub fn insert_list(&mut self, values: impl Into<Box<[SlotValue]>>) -> CoreResult<ListId> {
         let values = values.into();
-        lists::validate_list_len(values.len())?;
+        validate_list_len(values.len())?;
         self.check_arena_cap()?;
-        let id = lists::next_list_id(self.lists.len())?;
+        let id = next_list_id(self.lists.len())?;
         let taints = vec![Taint::Clean; values.len()].into_boxed_slice();
         self.list_taints.push(taints);
         self.lists.push(values);
         Ok(id)
     }
 
+    /// Inserts a list payload with per-item taint and returns its deterministic insertion ID.
     pub fn insert_list_with_taint(
         &mut self,
         values: Box<[SlotValue]>,
         taints: Box<[Taint]>,
     ) -> CoreResult<ListId> {
-        lists::validate_list_len(values.len())?;
+        validate_list_len(values.len())?;
         if taints.len() != values.len() {
             return Err(CoreError::InternalInvariantViolation {
                 reason: "list values and taints length mismatch",
             });
         }
         self.check_arena_cap()?;
-        let id = lists::next_list_id(self.lists.len())?;
+        let id = next_list_id(self.lists.len())?;
         self.list_taints.push(taints);
         self.lists.push(values);
         Ok(id)
     }
 
+    /// Inserts object fields in caller-provided deterministic order.
     pub fn insert_object(&mut self, fields: impl Into<Box<[ObjectField]>>) -> CoreResult<ObjectId> {
         let fields = fields.into();
-        objects::validate_object_len(fields.len())?;
+        validate_object_len(fields.len())?;
         self.check_arena_cap()?;
-        let id = objects::next_object_id(self.objects.len())?;
-        let (index, taint_index) = build_object_indexes(&fields)?;
+        let id = next_object_id(self.objects.len())?;
+        let mut index = IndexMap::new();
+        let mut taint_index = IndexMap::new();
+        let mut field_pos = 0usize;
+        while field_pos < fields.len() {
+            let field = fields
+                .get(field_pos)
+                .ok_or(CoreError::InternalInvariantViolation {
+                    reason: "object field index checked by loop bound",
+                })?;
+            index.entry(field.key).or_insert(field.value);
+            taint_index.entry(field.key).or_insert(field.taint);
+            field_pos = field_pos
+                .checked_add(1)
+                .ok_or(CoreError::InternalInvariantViolation {
+                    reason: "object field index overflow",
+                })?;
+        }
         self.object_field_index.push(index);
         self.object_taint_index.push(taint_index);
         self.objects.push(fields);
         Ok(id)
     }
 
+    /// Inserts a byte blob and returns its deterministic insertion ID.
     pub fn insert_blob(&mut self, bytes: impl Into<Bytes>) -> CoreResult<BlobId> {
         let bytes = bytes.into();
-        blobs::validate_blob_len(bytes.len())?;
+        validate_blob_len(bytes.len())?;
         self.check_arena_cap()?;
-        let id = blobs::next_blob_id(self.blobs.len())?;
+        let id = next_blob_id(self.blobs.len())?;
         self.blobs.push(bytes);
         Ok(id)
     }
 
+    /// Resolves a symbol handle to its stored string payload.
     pub fn symbol(&self, id: SymbolId) -> CoreResult<&str> {
         self.symbols
-            .get(symbols::symbol_index(id)?)
+            .get(symbol_index(id)?)
             .map(Box::as_ref)
             .ok_or(CoreError::SymbolOutOfBounds { symbol: id })
     }
 
+    /// Resolves a list handle to its stored slot-value slice.
     pub fn list(&self, id: ListId) -> CoreResult<&[SlotValue]> {
         self.lists
-            .get(lists::list_index(id)?)
+            .get(list_index(id)?)
             .map(Box::as_ref)
             .ok_or(CoreError::ListOutOfBounds { list: id })
     }
 
+    /// Resolves an object handle to its deterministic field slice.
     pub fn object(&self, id: ObjectId) -> CoreResult<&[ObjectField]> {
         self.objects
-            .get(objects::object_index(id)?)
+            .get(object_index(id)?)
             .map(Box::as_ref)
             .ok_or(CoreError::ObjectOutOfBounds { object: id })
     }
 
+    /// Resolves a blob handle to its stored byte payload.
     pub fn blob(&self, id: BlobId) -> CoreResult<&[u8]> {
         self.blobs
-            .get(blobs::blob_index(id)?)
+            .get(blob_index(id)?)
             .map(Bytes::as_ref)
             .ok_or(CoreError::BlobOutOfBounds { blob: id })
     }
 
+    /// Resolves one list element from a list arena handle.
     pub fn list_item(&self, id: ListId, index: u32) -> CoreResult<SlotValue> {
         let item_index =
             usize::try_from(index).map_err(|_| CoreError::ListIndexOutOfBounds { index })?;
@@ -152,10 +211,11 @@ impl ValueStore {
             .ok_or(CoreError::ListIndexOutOfBounds { index })
     }
 
+    /// Resolves one list element with its stored taint from a list arena handle.
     pub fn list_item_with_taint(&self, id: ListId, index: u32) -> CoreResult<(SlotValue, Taint)> {
         let item_index =
             usize::try_from(index).map_err(|_| CoreError::ListIndexOutOfBounds { index })?;
-        let list_idx = lists::list_index(id)?;
+        let list_idx = list_index(id)?;
         let value = self
             .lists
             .get(list_idx)
@@ -173,8 +233,9 @@ impl ValueStore {
         Ok((value, taint))
     }
 
+    /// Resolves one object field from an object arena handle.
     pub fn object_field(&self, id: ObjectId, key: SymbolId) -> CoreResult<SlotValue> {
-        let idx = objects::object_index(id)?;
+        let idx = object_index(id)?;
         let index = self
             .object_field_index
             .get(idx)
@@ -185,12 +246,13 @@ impl ValueStore {
             .ok_or(CoreError::ObjectFieldNotFound { field: key })
     }
 
+    /// Resolves one object field with its stored taint from an object arena handle.
     pub fn object_field_with_taint(
         &self,
         id: ObjectId,
         key: SymbolId,
     ) -> CoreResult<(SlotValue, Taint)> {
-        let idx = objects::object_index(id)?;
+        let idx = object_index(id)?;
         let index = self
             .object_field_index
             .get(idx)
@@ -210,26 +272,31 @@ impl ValueStore {
         Ok((value, taint))
     }
 
+    /// Number of stored symbols.
     #[must_use]
     pub fn symbol_count(&self) -> usize {
         self.symbols.len()
     }
 
+    /// Number of stored lists.
     #[must_use]
     pub fn list_count(&self) -> usize {
         self.lists.len()
     }
 
+    /// Number of stored objects.
     #[must_use]
     pub fn object_count(&self) -> usize {
         self.objects.len()
     }
 
+    /// Number of stored blobs.
     #[must_use]
     pub fn blob_count(&self) -> usize {
         self.blobs.len()
     }
 
+    /// Total number of entries across all arenas.
     #[must_use]
     pub fn total_arena_count(&self) -> u64 {
         let mut total = 0u64;
@@ -240,11 +307,13 @@ impl ValueStore {
         total
     }
 
+    /// Returns the configured max arena entries (0 means uncapped).
     #[must_use]
     pub const fn max_arena_entries(&self) -> u64 {
         self.max_arena_entries
     }
 
+    /// Checks whether a new arena entry would exceed the cap.
     fn check_arena_cap(&self) -> CoreResult<()> {
         if self.max_arena_entries == 0 {
             return Ok(());
@@ -264,41 +333,89 @@ fn checked_len_to_u64(len: usize) -> u64 {
     u64::try_from(len).unwrap_or(u64::MAX)
 }
 
-fn build_object_indexes(
-    fields: &[ObjectField],
-) -> CoreResult<(IndexMap<SymbolId, SlotValue>, IndexMap<SymbolId, Taint>)> {
-    let mut index = IndexMap::new();
-    let mut taint_index = IndexMap::new();
-    let mut field_pos = 0usize;
-    while field_pos < fields.len() {
-        let field = fields
-            .get(field_pos)
-            .ok_or(CoreError::InternalInvariantViolation {
-                reason: "object field index checked by loop bound",
-            })?;
-        index.entry(field.key).or_insert(field.value);
-        taint_index.entry(field.key).or_insert(field.taint);
-        field_pos = field_pos
-            .checked_add(1)
-            .ok_or(CoreError::InternalInvariantViolation {
-                reason: "object field index overflow",
-            })?;
-    }
-    Ok((index, taint_index))
+fn next_symbol_id(len: usize) -> CoreResult<SymbolId> {
+    u32::try_from(len)
+        .map(SymbolId::new)
+        .map_err(|_| CoreError::ResourceLimitExceeded {
+            resource: "symbols",
+        })
 }
 
-pub use lists::validate_list_len;
-pub use symbols::validate_symbol_len;
-pub use blobs::validate_blob_len;
-pub use objects::validate_object_len;
-pub use symbols::next_symbol_id;
-pub use lists::next_list_id;
-pub use objects::next_object_id;
-pub use blobs::next_blob_id;
-pub use symbols::symbol_index;
-pub use lists::list_index;
-pub use objects::object_index;
-pub use blobs::blob_index;
+fn next_list_id(len: usize) -> CoreResult<ListId> {
+    u32::try_from(len)
+        .map(ListId::new)
+        .map_err(|_| CoreError::ResourceLimitExceeded { resource: "lists" })
+}
+
+fn next_object_id(len: usize) -> CoreResult<ObjectId> {
+    u32::try_from(len)
+        .map(ObjectId::new)
+        .map_err(|_| CoreError::ResourceLimitExceeded {
+            resource: "objects",
+        })
+}
+
+fn next_blob_id(len: usize) -> CoreResult<BlobId> {
+    u64::try_from(len)
+        .map(BlobId::new)
+        .map_err(|_| CoreError::ResourceLimitExceeded { resource: "blobs" })
+}
+
+fn validate_list_len(len: usize) -> CoreResult<()> {
+    if len > MAX_LIST_ITEMS_PER_VALUE {
+        Err(CoreError::ResourceLimitExceeded {
+            resource: "list_items",
+        })
+    } else {
+        Ok(())
+    }
+}
+
+fn validate_symbol_len(len: usize) -> CoreResult<()> {
+    if len > MAX_SYMBOL_BYTES_PER_VALUE {
+        Err(CoreError::ResourceLimitExceeded {
+            resource: "symbol_bytes",
+        })
+    } else {
+        Ok(())
+    }
+}
+
+fn validate_blob_len(len: usize) -> CoreResult<()> {
+    if len > MAX_BLOB_BYTES_PER_VALUE {
+        Err(CoreError::ResourceLimitExceeded {
+            resource: "blob_bytes",
+        })
+    } else {
+        Ok(())
+    }
+}
+
+fn validate_object_len(len: usize) -> CoreResult<()> {
+    if len > MAX_OBJECT_FIELDS_PER_VALUE {
+        Err(CoreError::ResourceLimitExceeded {
+            resource: "object_fields",
+        })
+    } else {
+        Ok(())
+    }
+}
+
+fn symbol_index(id: SymbolId) -> CoreResult<usize> {
+    usize::try_from(id.get()).map_err(|_| CoreError::SymbolOutOfBounds { symbol: id })
+}
+
+fn list_index(id: ListId) -> CoreResult<usize> {
+    usize::try_from(id.get()).map_err(|_| CoreError::ListOutOfBounds { list: id })
+}
+
+fn object_index(id: ObjectId) -> CoreResult<usize> {
+    usize::try_from(id.get()).map_err(|_| CoreError::ObjectOutOfBounds { object: id })
+}
+
+fn blob_index(id: BlobId) -> CoreResult<usize> {
+    usize::try_from(id.get()).map_err(|_| CoreError::BlobOutOfBounds { blob: id })
+}
 
 #[cfg(test)]
 mod tests {
@@ -469,6 +586,10 @@ mod tests {
         Ok(())
     }
 
+    // =========================================================================
+    // Adversarial BDD tests — ValueStore handle corruption and boundary attacks
+    // =========================================================================
+
     #[test]
     fn value_store_empty_store_rejects_symbol_id_zero() {
         let store = ValueStore::new();
@@ -520,7 +641,7 @@ mod tests {
     #[test]
     fn value_store_symbol_handle_high_id_rejected() -> Result<(), String> {
         let mut store = ValueStore::new();
-        let _id0 = store
+        let id0 = store
             .insert_symbol(Box::<str>::from("first"))
             .map_err(|e| e.to_string())?;
         let result = store.symbol(SymbolId::new(1));
@@ -531,7 +652,7 @@ mod tests {
         {
             return Err(String::from("id 1 must fail when only id 0 exists"));
         }
-        if store.symbol(super::next_symbol_id(0).unwrap()).map_err(|e| e.to_string())? != "first" {
+        if store.symbol(id0).map_err(|e| e.to_string())? != "first" {
             return Err(String::from("valid id must resolve"));
         }
         Ok(())
@@ -663,6 +784,7 @@ mod tests {
 
     #[test]
     fn value_store_object_field_returns_first_duplicate_key() -> Result<(), String> {
+        // If the same key appears twice, linear scan finds the FIRST one.
         let mut store = ValueStore::new();
         let dup_key = SymbolId::new(1);
         let obj_id = store
@@ -960,6 +1082,8 @@ mod tests {
 
     #[test]
     fn value_store_object_field_linear_scan_respects_insertion_order() -> Result<(), String> {
+        // Object with three fields; the second has the same key as the first.
+        // Linear scan must find the first occurrence.
         let mut store = ValueStore::new();
         let shared_key = SymbolId::new(5);
         let unique_key = SymbolId::new(10);
@@ -1002,6 +1126,12 @@ mod tests {
         Ok(())
     }
 
+    // =========================================================================
+    // Phase 2 adversarial BDD tests — value store overflow & security
+    // =========================================================================
+
+    // --- Blob at one byte over the limit is rejected ---
+
     #[test]
     fn value_store_blob_one_byte_over_limit_is_rejected() -> Result<(), String> {
         let mut store = ValueStore::new();
@@ -1015,6 +1145,8 @@ mod tests {
         }
     }
 
+    // --- Blob reference after store drop is impossible (handle is Copy, resolved at access) ---
+
     #[test]
     fn value_store_blob_id_that_was_never_inserted_returns_out_of_bounds() -> Result<(), String> {
         let store = ValueStore::new();
@@ -1025,6 +1157,8 @@ mod tests {
         }
     }
 
+    // --- List index exactly at list length is rejected ---
+
     #[test]
     fn value_store_list_index_at_exact_length_is_rejected() -> Result<(), String> {
         let mut store = ValueStore::new();
@@ -1033,6 +1167,7 @@ mod tests {
                 vec![SlotValue::I64(1), SlotValue::I64(2), SlotValue::I64(3)].into_boxed_slice(),
             )
             .map_err(|e| e.to_string())?;
+        // Index 3 is exactly the length (0, 1, 2 are valid)
         let result = store.list_item(list_id, 3);
         match result {
             Err(CoreError::ListIndexOutOfBounds { index: 3 }) => Ok(()),
@@ -1041,6 +1176,8 @@ mod tests {
             )),
         }
     }
+
+    // --- Object field on a different object does not leak ---
 
     #[test]
     fn value_store_object_field_on_wrong_object_returns_not_found() -> Result<(), String> {
@@ -1059,6 +1196,7 @@ mod tests {
         let obj2 = store
             .insert_object(vec![].into_boxed_slice())
             .map_err(|e| e.to_string())?;
+        // Key 42 is in obj1 but not in obj2
         let result = store.object_field(obj2, key_only_in_first);
         match result {
             Err(CoreError::ObjectFieldNotFound { field }) if field == key_only_in_first => Ok(()),
@@ -1175,7 +1313,8 @@ mod tests {
     }
 
     #[test]
-    fn value_store_exact_max_list_accesses_edges_without_unchecked_indexing() -> Result<(), String> {
+    fn value_store_exact_max_list_accesses_edges_without_unchecked_indexing() -> Result<(), String>
+    {
         let mut store = ValueStore::new();
         let values = vec![SlotValue::I64(5); MAX_LIST_ITEMS_PER_VALUE];
         let id = store
@@ -1248,12 +1387,17 @@ mod tests {
         Ok(())
     }
 
+    // =========================================================================
+    // Phase 45 tests — ValueStore arena cap enforcement
+    // =========================================================================
+
     #[test]
     fn value_store_with_max_slots_allows_inserts_up_to_cap() -> Result<(), String> {
         let mut store = ValueStore::with_max_slots(3);
         assert_eq!(store.max_arena_entries(), 3);
         assert_eq!(store.total_arena_count(), 0);
 
+        // Insert 3 entries total (1 symbol + 1 list + 1 blob) -- should succeed
         store
             .insert_symbol(Box::<str>::from("a"))
             .map_err(|e| e.to_string())?;
@@ -1269,6 +1413,7 @@ mod tests {
             .map_err(|e| e.to_string())?;
         assert_eq!(store.total_arena_count(), 3);
 
+        // 4th insert should fail
         match store.insert_symbol(Box::<str>::from("b")) {
             Err(CoreError::BudgetExceeded {
                 budget: "max_slots",
@@ -1281,10 +1426,12 @@ mod tests {
     #[test]
     fn value_store_with_max_slots_one_rejects_second_insert() -> Result<(), String> {
         let mut store = ValueStore::with_max_slots(1);
+        // First insert succeeds
         store
             .insert_symbol(Box::<str>::from("a"))
             .map_err(|e| e.to_string())?;
         assert_eq!(store.total_arena_count(), 1);
+        // Second insert fails because cap is reached
         match store.insert_symbol(Box::<str>::from("b")) {
             Err(CoreError::BudgetExceeded {
                 budget: "max_slots",
@@ -1320,6 +1467,12 @@ mod tests {
         let constructed = ValueStore::new();
         assert_eq!(default, constructed);
     }
+
+    // =========================================================================
+    // Security regression tests — handle forgery, overflow, type confusion
+    // =========================================================================
+
+    // --- Attack 1: Handle forgery (forged IDs must fail safely, not panic) ---
 
     #[test]
     fn security_forged_symbol_id_max_u32_returns_error_not_panic() {
@@ -1385,11 +1538,13 @@ mod tests {
             .insert_blob(Bytes::from_static(b"x"))
             .map_err(|e| e.to_string())?;
 
+        // Verify valid handles work
         assert_eq!(store.symbol(sym).map_err(|e| e.to_string())?, "a");
         assert_eq!(store.list(list).map_err(|e| e.to_string())?.len(), 1);
         assert_eq!(store.object(obj).map_err(|e| e.to_string())?.len(), 0);
         assert_eq!(store.blob(blob).map_err(|e| e.to_string())?.len(), 1);
 
+        // Forged one-past handles must fail
         let forged_sym = SymbolId::new(sym.get().saturating_add(1));
         assert_eq!(
             store.symbol(forged_sym),
@@ -1417,6 +1572,8 @@ mod tests {
         Ok(())
     }
 
+    // --- Attack 2: Arena overflow cannot corrupt existing entries ---
+
     #[test]
     fn security_arena_overflow_preserves_existing_entries() -> Result<(), String> {
         let mut store = ValueStore::with_max_slots(2);
@@ -1427,6 +1584,7 @@ mod tests {
             .insert_list(vec![SlotValue::I64(42)].into_boxed_slice())
             .map_err(|e| e.to_string())?;
 
+        // Third insert must fail
         assert_eq!(
             store.insert_symbol(Box::<str>::from("overflow")),
             Err(CoreError::BudgetExceeded {
@@ -1435,6 +1593,7 @@ mod tests {
             })
         );
 
+        // Existing entries must be untouched
         assert_eq!(store.symbol(sym).map_err(|e| e.to_string())?, "preserved");
         assert_eq!(
             store.list_item(list, 0).map_err(|e| e.to_string())?,
@@ -1445,24 +1604,30 @@ mod tests {
         Ok(())
     }
 
+    // --- Attack 5: Type confusion (cross-arena index has same numeric value) ---
+
     #[test]
     fn security_symbol_id_zero_does_not_leak_list_data() -> Result<(), String> {
         let mut store = ValueStore::new();
+        // Insert a symbol at index 0
         let sym_id = store
             .insert_symbol(Box::<str>::from("symbol_zero"))
             .map_err(|e| e.to_string())?;
         assert_eq!(sym_id.get(), 0);
 
+        // Insert a list at index 0
         let list_id = store
             .insert_list(vec![SlotValue::Bool(true)].into_boxed_slice())
             .map_err(|e| e.to_string())?;
         assert_eq!(list_id.get(), 0);
 
+        // SymbolId(0) resolves to the symbol, not the list
         assert_eq!(
             store.symbol(sym_id).map_err(|e| e.to_string())?,
             "symbol_zero"
         );
 
+        // ListId(0) resolves to the list, not the symbol
         assert_eq!(
             store.list_item(list_id, 0).map_err(|e| e.to_string())?,
             SlotValue::Bool(true)
@@ -1476,6 +1641,7 @@ mod tests {
         let mut store = ValueStore::new();
         let key = SymbolId::new(7);
 
+        // Insert first object
         let obj0 = store
             .insert_object(
                 vec![ObjectField {
@@ -1487,6 +1653,7 @@ mod tests {
             )
             .map_err(|e| e.to_string())?;
 
+        // Insert second object
         let obj1 = store
             .insert_object(
                 vec![ObjectField {
@@ -1498,6 +1665,7 @@ mod tests {
             )
             .map_err(|e| e.to_string())?;
 
+        // Each object must resolve its own field
         assert_eq!(
             store.object_field(obj0, key).map_err(|e| e.to_string())?,
             SlotValue::I64(100)
@@ -1507,6 +1675,7 @@ mod tests {
             SlotValue::I64(200)
         );
 
+        // Raw field slices must also be distinct
         let fields0 = store.object(obj0).map_err(|e| e.to_string())?;
         let fields1 = store.object(obj1).map_err(|e| e.to_string())?;
         assert_eq!(fields0.len(), 1);
@@ -1517,6 +1686,8 @@ mod tests {
         Ok(())
     }
 
+    // --- Attack 7: Taint array length invariants (verified via RunFrame, not ValueStore) ---
+
     #[test]
     fn security_write_slot_with_taint_maintains_same_length_arrays() -> Result<(), String> {
         use crate::frame::RunFrame;
@@ -1524,6 +1695,7 @@ mod tests {
         let mut frame = RunFrame::new(crate::ids::RunId::new(1), crate::ids::StepIdx::ZERO, 2, 4)
             .map_err(|e| e.to_string())?;
 
+        // Write all slots with different taint levels
         let taints = [
             Taint::Clean,
             Taint::DerivedFromSecret,
@@ -1535,14 +1707,11 @@ mod tests {
                 u16::try_from(i).map_err(|_| String::from("index overflow"))?,
             );
             frame
-                .write_slot_with_taint(
-                    slot,
-                    SlotValue::I64(i64::try_from(i).unwrap_or(0)),
-                    *taint,
-                )
+                .write_slot_with_taint(slot, SlotValue::I64(i64::try_from(i).unwrap_or(0)), *taint)
                 .map_err(|e| e.to_string())?;
         }
 
+        // Verify all slot/taint pairs are consistent
         for (i, expected_taint) in taints.iter().enumerate() {
             let slot = crate::ids::SlotIdx::new(
                 u16::try_from(i).map_err(|_| String::from("index overflow"))?,
@@ -1563,6 +1732,8 @@ mod tests {
         Ok(())
     }
 
+    // --- Defensive: list_item on forged list handle ---
+
     #[test]
     fn security_list_item_on_forged_list_id_returns_list_out_of_bounds() {
         let store = ValueStore::new();
@@ -1574,6 +1745,8 @@ mod tests {
             })
         );
     }
+
+    // --- Defensive: object_field on forged object handle ---
 
     #[test]
     fn security_object_field_on_forged_object_id_returns_object_out_of_bounds() {
@@ -1587,10 +1760,13 @@ mod tests {
         );
     }
 
+    // --- Defensive: large arena cap edge case ---
+
     #[test]
     fn security_with_max_slots_u16_max_allows_inserts() -> Result<(), String> {
         let mut store = ValueStore::with_max_slots(u16::MAX);
         assert_eq!(store.max_arena_entries(), u64::from(u16::MAX));
+        // Insert should succeed -- arena is not full
         store
             .insert_symbol(Box::<str>::from("ok"))
             .map_err(|e| e.to_string())?;
@@ -1598,16 +1774,24 @@ mod tests {
         Ok(())
     }
 
+    // =========================================================================
+    // BLACKHAT security regression tests — value_store
+    // =========================================================================
+
+    // --- Attack: list_with_taint length mismatch must not partially mutate ---
+
     #[test]
     fn security_insert_list_with_taint_mismatch_does_not_mutate() -> Result<(), String> {
         let mut store = ValueStore::new();
 
+        // Insert a baseline list to verify it's not corrupted
         let baseline = store
             .insert_list(vec![SlotValue::I64(1)].into_boxed_slice())
             .map_err(|e| e.to_string())?;
 
+        // Attempt to insert a list with mismatched taint length
         let values = vec![SlotValue::I64(10), SlotValue::I64(20)].into_boxed_slice();
-        let taints = vec![Taint::Clean].into_boxed_slice();
+        let taints = vec![Taint::Clean].into_boxed_slice(); // wrong length
 
         match store.insert_list_with_taint(values, taints) {
             Err(CoreError::InternalInvariantViolation {
@@ -1616,6 +1800,7 @@ mod tests {
             other => return Err(format!("expected length mismatch error, got {other:?}")),
         }
 
+        // Baseline must be untouched
         assert_eq!(store.list_count(), 1, "failed insert must not change count");
         assert_eq!(
             store.list_item(baseline, 0).map_err(|e| e.to_string())?,
@@ -1625,21 +1810,29 @@ mod tests {
         Ok(())
     }
 
+    // --- Attack: arena cap check happens before ID allocation ---
+
     #[test]
     fn security_arena_cap_prevents_id_allocation_on_full() -> Result<(), String> {
         let mut store = ValueStore::with_max_slots(1);
 
+        // Fill the cap
         let sym = store
             .insert_symbol(Box::<str>::from("only"))
             .map_err(|e| e.to_string())?;
 
+        // Verify the first symbol got ID 0
         assert_eq!(sym.get(), 0);
 
+        // Second insert must fail with BudgetExceeded, not ResourceLimitExceeded
+        // (arena cap check happens before ID overflow check)
         match store.insert_symbol(Box::<str>::from("overflow")) {
             Err(CoreError::BudgetExceeded { .. }) => Ok(()),
             other => Err(format!("expected BudgetExceeded, got {other:?}")),
         }
     }
+
+    // --- Attack: empty list taint array consistency ---
 
     #[test]
     fn security_empty_list_has_consistent_taint_array() -> Result<(), String> {
@@ -1649,13 +1842,16 @@ mod tests {
             .insert_list(vec![].into_boxed_slice())
             .map_err(|e| e.to_string())?;
 
+        // Empty list resolves to empty slice
         assert_eq!(store.list(list_id).map_err(|e| e.to_string())?.len(), 0);
 
+        // Any index must fail
         assert_eq!(
             store.list_item(list_id, 0),
             Err(CoreError::ListIndexOutOfBounds { index: 0 })
         );
 
+        // list_item_with_taint also fails on empty list
         assert_eq!(
             store.list_item_with_taint(list_id, 0),
             Err(CoreError::ListIndexOutOfBounds { index: 0 })
@@ -1663,6 +1859,8 @@ mod tests {
 
         Ok(())
     }
+
+    // --- Attack: object with duplicate keys -- first-wins semantics for taint ---
 
     #[test]
     fn security_object_duplicate_key_first_wins_for_taint() -> Result<(), String> {
@@ -1687,11 +1885,13 @@ mod tests {
             )
             .map_err(|e| e.to_string())?;
 
+        // object_field returns the first value
         assert_eq!(
             store.object_field(obj_id, key).map_err(|e| e.to_string())?,
             SlotValue::I64(100)
         );
 
+        // object_field_with_taint must also return the first taint
         let (value, taint) = store
             .object_field_with_taint(obj_id, key)
             .map_err(|e| e.to_string())?;
@@ -1704,6 +1904,8 @@ mod tests {
 
         Ok(())
     }
+
+    // --- Attack: value confusion between list_taints and lists arrays ---
 
     #[test]
     fn security_list_taints_are_per_list_not_global() -> Result<(), String> {
@@ -1720,6 +1922,7 @@ mod tests {
             )
             .map_err(|e| e.to_string())?;
 
+        // Verify each list has its own taint
         let (_, clean_taint) = store
             .list_item_with_taint(clean_list, 0)
             .map_err(|e| e.to_string())?;
@@ -1733,39 +1936,63 @@ mod tests {
         Ok(())
     }
 
+    // --- Attack: total_arena_count saturating_add safety ---
+
     #[test]
     fn security_total_arena_count_uses_saturating_add() -> Result<(), String> {
+        // Verify that total_arena_count doesn't overflow with large counts
         let store = ValueStore::new();
+        // Empty store should report 0
         assert_eq!(store.total_arena_count(), 0);
         Ok(())
     }
+
+    // -------------------------------------------------------------------------
+    // Proptest property: PROPTEST-PRE-002
+    // ValueStore inserts return BudgetExceeded when total_arena_count >= max_arena_entries
+    // -------------------------------------------------------------------------
 
     proptest::proptest! {
         #[test]
         fn property_value_store_cap(cap: u16, insert_count: u16) {
             use proptest::{prop_assert, prop_assert_eq};
             let mut store = ValueStore::with_max_slots(cap);
-            let max_entries = u64::from(cap);
+            // cap = 0 means uncapped (check_arena_cap returns Ok immediately),
+            // so we use u64::MAX as the effective limit for the assertion.
+            let max_entries = if cap == 0 {
+                u64::MAX
+            } else {
+                u64::from(cap)
+            };
 
+            // Insert insert_count symbols (each counts as 1 arena entry)
             let mut succeeded = 0u64;
             for i in 0..insert_count {
                 let sym = format!("sym_{}", i);
                 match store.insert_symbol(sym.into_boxed_str()) {
                     Ok(_) => { succeeded += 1; }
                     Err(CoreError::BudgetExceeded { .. }) => {
+                        // Expected once cap is reached
                     }
                     Err(e) => panic!("unexpected error: {:?}", e),
                 }
+                // Arena count must never exceed cap (or be uncapped)
                 prop_assert!(store.total_arena_count() <= max_entries);
             }
 
+            // If cap > 0: succeeded == min(insert_count, cap)
+            // If cap == 0: all inserts succeed (uncapped)
             if cap > 0 {
-                prop_assert_eq!(succeeded, (insert_count as u64).min(max_entries));
+                prop_assert_eq!(succeeded, (insert_count as u64).min(u64::from(cap)));
             } else {
                 prop_assert_eq!(succeeded, insert_count as u64);
             }
         }
     }
+
+    // =========================================================================
+    // Additional coverage: Taint propagation paths
+    // =========================================================================
 
     #[test]
     fn value_store_list_with_explicit_taint_clean() -> Result<(), String> {
@@ -1831,6 +2058,10 @@ mod tests {
         Ok(())
     }
 
+    // =========================================================================
+    // Additional coverage: list_taints and object_taint_index access paths
+    // =========================================================================
+
     #[test]
     fn value_store_list_item_with_taint_on_clean_list() -> Result<(), String> {
         let mut store = ValueStore::new();
@@ -1894,6 +2125,10 @@ mod tests {
         }
     }
 
+    // =========================================================================
+    // Additional coverage: Blob operations
+    // =========================================================================
+
     #[test]
     fn value_store_blob_non_empty_data() -> Result<(), String> {
         let mut store = ValueStore::new();
@@ -1936,6 +2171,10 @@ mod tests {
         assert!(retrieved.iter().all(|&b| b == 0));
         Ok(())
     }
+
+    // =========================================================================
+    // Additional coverage: total_arena_count and max_arena_entries
+    // =========================================================================
 
     #[test]
     fn value_store_total_arena_count_empty() -> Result<(), String> {
@@ -1989,6 +2228,10 @@ mod tests {
         Ok(())
     }
 
+    // =========================================================================
+    // Additional coverage: Arena cap near limit
+    // =========================================================================
+
     #[test]
     fn value_store_arena_cap_fills_and_rejects() -> Result<(), String> {
         let mut store = ValueStore::with_max_slots(2);
@@ -2007,6 +2250,10 @@ mod tests {
         }
     }
 
+    // =========================================================================
+    // Additional coverage: ObjectField accessors
+    // =========================================================================
+
     #[test]
     fn object_field_clean_creates_clean_taint() -> Result<(), String> {
         let field = ObjectField::clean(SymbolId::new(1), SlotValue::I64(42));
@@ -2018,16 +2265,16 @@ mod tests {
 
     #[test]
     fn object_field_with_taint_preserves_taint() -> Result<(), String> {
-        let field = ObjectField::with_taint(
-            SymbolId::new(2),
-            SlotValue::Bool(true),
-            Taint::Secret,
-        );
+        let field = ObjectField::with_taint(SymbolId::new(2), SlotValue::Bool(true), Taint::Secret);
         assert_eq!(field.taint, Taint::Secret);
         assert_eq!(field.key, SymbolId::new(2));
         assert_eq!(field.value, SlotValue::Bool(true));
         Ok(())
     }
+
+    // =========================================================================
+    // Additional coverage: Debug formatting
+    // =========================================================================
 
     #[test]
     fn value_store_debug_format() -> Result<(), String> {
@@ -2044,6 +2291,10 @@ mod tests {
         assert!(debug.contains("ObjectField"));
         Ok(())
     }
+
+    // =========================================================================
+    // Additional coverage: checked_len_to_u64 via store operations
+    // =========================================================================
 
     #[test]
     fn value_store_symbol_id_allocates_sequential() -> Result<(), String> {
@@ -2099,6 +2350,10 @@ mod tests {
         Ok(())
     }
 
+    // =========================================================================
+    // Additional coverage: validate_* functions
+    // =========================================================================
+
     #[test]
     fn validate_list_len_rejects_over_max() -> Result<(), String> {
         let too_many = MAX_LIST_ITEMS_PER_VALUE + 1;
@@ -2143,6 +2398,10 @@ mod tests {
         }
     }
 
+    // =========================================================================
+    // Additional coverage: next_*_id overflow
+    // =========================================================================
+
     #[test]
     fn next_symbol_id_overflow_returns_error() -> Result<(), String> {
         match super::next_symbol_id(u32::MAX as usize + 1) {
@@ -2184,6 +2443,10 @@ mod tests {
             other => Err(format!("expected Ok(BlobId(100)), got {:?}", other)),
         }
     }
+
+    // =========================================================================
+    // Additional coverage: symbol_index, list_index, object_index, blob_index
+    // =========================================================================
 
     #[test]
     fn symbol_index_converts_id_to_usize() -> Result<(), String> {
@@ -2239,6 +2502,10 @@ mod tests {
             Err(format!("expected 100, got {}", idx))
         }
     }
+
+    // =========================================================================
+    // Additional coverage: Default for ValueStore
+    // =========================================================================
 
     #[test]
     fn value_store_default_has_zero_arena_entries() -> Result<(), String> {

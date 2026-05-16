@@ -1,7 +1,7 @@
 // Verus proof obligations for step-budget consumption.
 //
 // Source model: master-doc step budget invariant and VB-CORE-BUDGET-003.
-// Registry obligation: VB-CORE-BUDGET-003-VERUS.
+// Registry obligation: VB-CORE-BUDGET-003.
 // Exact verifier command: `verus verification/verus/step_budget.rs`.
 
 use vstd::prelude::*;

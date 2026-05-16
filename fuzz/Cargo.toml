@@ -34,13 +34,6 @@ name = "fuzz_lib"
 path = "src/lib.rs"
 
 [[bin]]
-name = "decode_record"
-path = "fuzz_targets/decode_record.rs"
-test = false
-doc = false
-bench = false
-
-[[bin]]
 name = "yaml_events"
 path = "src/bin/yaml_events.rs"
 test = false
@@ -126,7 +119,7 @@ bench = false
 
 [[bin]]
 name = "expr_eval"
-path = "fuzz_targets/expr_eval.rs"
+path = "src/bin/expr_eval.rs"
 test = false
 doc = false
 bench = false

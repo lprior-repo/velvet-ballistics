@@ -29,11 +29,7 @@ pub mod control_flow;
 pub mod diagnostic;
 pub mod gates;
 pub mod idempotency_contract;
-pub use gates::{validate_gate_07_expression_stack_depth, validate_gate_08_accessor_path_segments,
-    validate_gate_09_slot_references, validate_gate_10_node_kind_specific,
-    validate_gate_11_loop_body_graph, validate_gate_12_action_contract_completeness,
-    validate_gate_13_no_slot_cycles, validate_gate_14_slot_type_consistency,
-    validate_gate_15_determinism_proof, MAX_CAPABILITY_NAME_BYTES, compute_stack_depth};
+pub use gates::*;
 pub mod references;
 pub mod schema;
 pub mod shared;

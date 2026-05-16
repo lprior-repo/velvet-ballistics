@@ -50,31 +50,6 @@ pub enum IpcServerError {
     },
 }
 
-impl PartialEq for IpcServerError {
-    fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (Self::BindFailed { source: a }, Self::BindFailed { source: b }) => {
-                a.kind() == b.kind() && a.to_string() == b.to_string()
-            }
-            (Self::PollFailed { source: a }, Self::PollFailed { source: b }) => {
-                a.kind() == b.kind() && a.to_string() == b.to_string()
-            }
-            (Self::AcceptFailed { source: a }, Self::AcceptFailed { source: b }) => {
-                a.kind() == b.kind() && a.to_string() == b.to_string()
-            }
-            (Self::TooManyClients, Self::TooManyClients) => true,
-            (Self::ResponseEncodeFailed, Self::ResponseEncodeFailed) => true,
-            (Self::ResponseWriteFailed { source: a }, Self::ResponseWriteFailed { source: b }) => {
-                a.kind() == b.kind() && a.to_string() == b.to_string()
-            }
-            (Self::IncompleteFrame, Self::IncompleteFrame) => true,
-            (Self::ReadBufferTooLarge, Self::ReadBufferTooLarge) => true,
-            (Self::FrameInvalid { source: a }, Self::FrameInvalid { source: b }) => a == b,
-            _ => false,
-        }
-    }
-}
-
 impl IpcServerError {
     /// Returns the stable section 17 runtime code when this server error has a direct mapping.
     #[must_use]

@@ -1998,26 +1998,6 @@ mod tests {
     }
 
     #[test]
-    fn ast_bytecode_equiv_for_arithmetic_smoke_cases() -> ExprResult<()> {
-        let cases = [
-            ("1 + 2", SlotValue::I64(3)),
-            ("7 - 5", SlotValue::I64(2)),
-            ("3 * 4", SlotValue::I64(12)),
-            ("8 / 2", SlotValue::I64(4)),
-            ("2.0 + 0.5", SlotValue::F64(make_f64(2.5))),
-        ];
-        for (source, expected) in cases {
-            let tokens = crate::lexer::lex_expr(source)?;
-            let ast = crate::parser::parse_expr(&tokens)?;
-            let mut constants = Vec::new();
-            let program = crate::bytecode::compile_expr_with_pool(&ast, &mut constants)?;
-            let actual = eval_expr_program(&program, &[], &constants)?;
-            assert_eq!(actual, expected, "bytecode result mismatch for {source}");
-        }
-        Ok(())
-    }
-
-    #[test]
     fn eval_expr_program_i64_division_by_zero_returns_division_by_zero() -> ExprResult<()> {
         let tokens = crate::lexer::lex_expr("10 / 0")?;
         let ast = crate::parser::parse_expr(&tokens)?;

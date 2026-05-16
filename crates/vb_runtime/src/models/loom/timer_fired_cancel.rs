@@ -8,7 +8,6 @@
 //! Invariant: no use-after-free, exactly one handler fires per timer.
 
 use crate::shard::timer_wheel::TimerWheel;
-use std::sync::Arc;
 use vb_core::ids::RunId;
 
 /// Verifies that timer fire and cancel operations are properly ordered.

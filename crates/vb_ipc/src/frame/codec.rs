@@ -10,14 +10,17 @@ pub fn encode_frame(
     correlation: u64,
     payload: &[u8],
 ) -> Result<Vec<u8>, IpcError> {
-    let header = IpcFrameHeader::new(command, flags, correlation, payload_len_u32(payload.len())?);
+    let header =
+        IpcFrameHeader::new(command, flags, correlation, payload_len_u32(payload.len())?);
     let header_bytes = header.encode()?;
-    let mut frame = Vec::with_capacity(IPC_HEADER_LEN.checked_add(payload.len()).ok_or(
-        IpcError::PayloadTooLarge {
-            actual: payload.len(),
-            limit: usize::MAX,
-        },
-    )?);
+    let mut frame = Vec::with_capacity(
+        IPC_HEADER_LEN
+            .checked_add(payload.len())
+            .ok_or(IpcError::PayloadTooLarge {
+                actual: payload.len(),
+                limit: usize::MAX,
+            })?,
+    );
     frame.extend_from_slice(&header_bytes);
     frame.extend_from_slice(payload);
     Ok(frame)

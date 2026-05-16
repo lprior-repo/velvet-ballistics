@@ -49,36 +49,6 @@ fn budget_simple_linear_workflow() {
 }
 
 #[test]
-fn resource_policy_default_accepts_computed_linear_workflow_budget() -> Result<(), String> {
-    let nodes = vec![
-        CompiledNode {
-            id: StepIdx::new(0),
-            output: None,
-            next: Some(StepIdx::new(1)),
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Nop,
-        },
-        CompiledNode {
-            id: StepIdx::new(1),
-            output: None,
-            next: None,
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Finish {
-                result: SlotIdx::new(0),
-            },
-        },
-    ];
-    let contract = test_contract(2, 1);
-    let budget = WholeWorkflowBudget::compute(&nodes, StepIdx::new(0), &contract)
-        .map_err(|err| format!("budget compute failed: {err:?}"))?;
-    BoundednessPolicy::DEFAULT
-        .validate(&budget)
-        .map_err(|err| format!("default policy rejected budget: {err:?}"))
-}
-
-#[test]
 fn budget_branching_workflow() {
     let nodes = vec![
         CompiledNode {

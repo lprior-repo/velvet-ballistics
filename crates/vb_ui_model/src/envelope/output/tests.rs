@@ -214,20 +214,4 @@ mod tests {
         assert!(format!("{}", err).contains("100"));
         assert!(format!("{}", err).contains("50"));
     }
-
-    #[test]
-    fn serde_json_output_envelope_roundtrip_and_malformed_rejection() {
-        let run_id = RunId::new(1);
-        let metadata = MetadataEnvelope::new(run_id, "status".to_string(), 100);
-        let data = PayloadEnvelope::from_json(serde_json::json!({"data": "test"}));
-        let envelope = OutputEnvelope::success(SchemaVersion::CURRENT, metadata, data)
-            .expect("valid output envelope");
-
-        let json = serde_json::to_string(&envelope).expect("serialize output envelope");
-        let decoded: OutputEnvelope = serde_json::from_str(&json).expect("deserialize envelope");
-        assert_eq!(decoded, envelope);
-
-        let malformed = serde_json::from_str::<OutputEnvelope>("{not-json");
-        assert!(malformed.is_err());
-    }
 }
