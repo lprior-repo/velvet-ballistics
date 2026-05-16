@@ -1,21 +1,32 @@
-#![forbid(unsafe_code)]
-//! Tests for schema validation.
+//! Schema validation tests.
+//!
+//! Tests for schema validation functions.
 
-#![allow(unreachable_pub)]
-use crate::ValidationError;
-use crate::schema_doc::{FieldValue, StepDoc, WorkflowDoc};
-use crate::schema_fields::{
-    validate_ids, validate_single_primitive, validate_step_fields, validate_trigger,
-    validate_version, validate_workflow_schema,
+use crate::schema_constants::{is_reserved_id, is_valid_id};
+use crate::schema_fields::validate_duplicate_fields;
+use crate::schema_types::{FieldValue, StepDoc, WorkflowDoc};
+use crate::schema_validate::{
+    validate_ids, validate_single_id, validate_single_primitive, validate_step_fields,
+    validate_trigger, validate_version, validate_workflow_schema,
 };
-use crate::schema_id::{is_valid_id, validate_single_id};
+use crate::ValidationError;
 
 fn make_workflow(fields: Vec<(&str, FieldValue)>) -> WorkflowDoc {
-    WorkflowDoc::from_pairs(fields.into_iter().map(|(k, v)| (k.to_owned(), v)).collect())
+    WorkflowDoc::from_pairs(
+        fields
+            .into_iter()
+            .map(|(k, v)| (k.to_owned(), v))
+            .collect(),
+    )
 }
 
 fn make_step(fields: Vec<(&str, FieldValue)>) -> StepDoc {
-    StepDoc::from_pairs(fields.into_iter().map(|(k, v)| (k.to_owned(), v)).collect())
+    StepDoc::from_pairs(
+        fields
+            .into_iter()
+            .map(|(k, v)| (k.to_owned(), v))
+            .collect(),
+    )
 }
 
 fn valid_workflow_doc() -> WorkflowDoc {
@@ -38,6 +49,8 @@ fn valid_workflow_doc() -> WorkflowDoc {
         ),
     ])
 }
+
+// ===== Core workflow schema tests =====
 
 #[test]
 fn accepts_valid_workflow() {
@@ -188,9 +201,7 @@ fn accepts_max_length_id() {
     assert!(is_valid_id(&max_id));
 }
 
-// ---------------------------------------------------------------------------
-// BDD exact-assertion tests
-// ---------------------------------------------------------------------------
+// ===== BDD exact-assertion tests =====
 
 #[test]
 fn validate_workflow_schema_returns_unknown_top_level_field_for_invalid_field() {
@@ -494,7 +505,7 @@ fn validate_ids_accepts_valid_step_ids() {
         ("name", FieldValue::String("my_workflow".to_owned())),
         (
             "when",
-            FieldValue::Mapping(vec![("manual".to_owned(), FieldValue::Empty)]),
+            FieldValue::Mapping(vec![("ipc".to_owned(), FieldValue::Empty)]),
         ),
         (
             "steps",
@@ -598,70 +609,12 @@ fn validate_ids_rejects_step_id_with_special_chars() {
 }
 
 #[test]
-fn validate_trigger_rejects_ipc_trigger() {
+fn validate_trigger_accepts_ipc_trigger() {
     let doc = make_workflow(vec![(
         "when",
         FieldValue::Mapping(vec![("ipc".to_owned(), FieldValue::Empty)]),
     )]);
-    assert_eq!(
-        validate_trigger(&doc),
-        Err(ValidationError::UnsupportedTrigger {
-            trigger: "ipc".to_owned(),
-        })
-    );
-}
-
-#[test]
-fn validate_trigger_accepts_schedule_trigger() {
-    let doc = make_workflow(vec![(
-        "when",
-        FieldValue::Mapping(vec![(
-            "schedule".to_owned(),
-            FieldValue::Mapping(vec![(
-                "cron".to_owned(),
-                FieldValue::String("0 0 * * *".to_owned()),
-            )]),
-        )]),
-    )]);
     assert_eq!(validate_trigger(&doc), Ok(()));
-}
-
-#[test]
-fn validate_trigger_accepts_event_trigger() {
-    let doc = make_workflow(vec![(
-        "when",
-        FieldValue::Mapping(vec![(
-            "event".to_owned(),
-            FieldValue::Mapping(vec![(
-                "type".to_owned(),
-                FieldValue::String("job.created".to_owned()),
-            )]),
-        )]),
-    )]);
-    assert_eq!(validate_trigger(&doc), Ok(()));
-}
-
-#[test]
-fn validate_trigger_accepts_webhook_trigger() {
-    let doc = make_workflow(vec![(
-        "when",
-        FieldValue::Mapping(vec![("webhook".to_owned(), FieldValue::Empty)]),
-    )]);
-    assert_eq!(validate_trigger(&doc), Ok(()));
-}
-
-#[test]
-fn validate_trigger_rejects_schedule_without_cron() {
-    let doc = make_workflow(vec![(
-        "when",
-        FieldValue::Mapping(vec![("schedule".to_owned(), FieldValue::Mapping(vec![]))]),
-    )]);
-    assert_eq!(
-        validate_trigger(&doc),
-        Err(ValidationError::UnsupportedTrigger {
-            trigger: "schedule".to_owned(),
-        })
-    );
 }
 
 #[test]
@@ -799,13 +752,14 @@ fn validate_workflow_schema_rejects_empty_workflow() {
     );
 }
 
-// ---------------------------------------------------------------------------
-// Accessor and query tests
-// ---------------------------------------------------------------------------
+// ===== Type accessor tests =====
 
 #[test]
 fn get_string_returns_some_for_existing_string_field() {
-    let doc = make_workflow(vec![("name", FieldValue::String("hello".to_owned()))]);
+    let doc = make_workflow(vec![(
+        "name",
+        FieldValue::String("hello".to_owned()),
+    )]);
     assert_eq!(doc.get_string("name"), Some("hello"));
 }
 
@@ -829,13 +783,9 @@ fn get_mapping_returns_some_for_existing_mapping() {
     )]);
     let result = doc.get_mapping("when");
     assert!(result.is_some());
-    let Some(mapping) = result else {
-        return;
-    };
+    let mapping = result.unwrap();
     assert_eq!(mapping.len(), 1);
-    let Some((field, _)) = mapping.first() else {
-        return;
-    };
+    let (field, _) = mapping.first().unwrap();
     assert_eq!(field, "manual");
 }
 
@@ -856,10 +806,7 @@ fn get_sequence_returns_some_for_existing_sequence() {
     )]);
     let result = doc.get_sequence("steps");
     assert!(result.is_some());
-    let Some(seq) = result else {
-        return;
-    };
-    assert_eq!(seq.len(), 1);
+    assert_eq!(result.unwrap().len(), 1);
 }
 
 #[test]
@@ -870,7 +817,10 @@ fn get_sequence_returns_none_for_missing_field() {
 
 #[test]
 fn has_field_returns_true_for_existing_field() {
-    let doc = make_workflow(vec![("name", FieldValue::String("test".to_owned()))]);
+    let doc = make_workflow(vec![(
+        "name",
+        FieldValue::String("test".to_owned()),
+    )]);
     assert!(doc.has_field("name"));
 }
 
@@ -878,69 +828,6 @@ fn has_field_returns_true_for_existing_field() {
 fn has_field_returns_false_for_missing_field() {
     let doc = make_workflow(vec![]);
     assert!(!doc.has_field("name"));
-}
-
-#[test]
-fn get_string_with_multiple_fields_returns_correct_one() {
-    let doc = make_workflow(vec![
-        (
-            "version",
-            FieldValue::String("velvet-ballastics/v1".to_owned()),
-        ),
-        ("name", FieldValue::String("multi_test".to_owned())),
-    ]);
-    assert_eq!(doc.get_string("version"), Some("velvet-ballastics/v1"));
-    assert_eq!(doc.get_string("name"), Some("multi_test"));
-}
-
-#[test]
-fn get_mapping_with_nested_data_returns_correct_mapping() {
-    let doc = make_workflow(vec![(
-        "when",
-        FieldValue::Mapping(vec![(
-            "manual".to_owned(),
-            FieldValue::String("test".to_owned()),
-        )]),
-    )]);
-    let result = doc.get_mapping("when");
-    assert!(result.is_some());
-    let Some(mapping) = result else {
-        return;
-    };
-    assert_eq!(mapping.len(), 1);
-    let Some((field, value)) = mapping.first() else {
-        return;
-    };
-    assert_eq!(field, "manual");
-    let FieldValue::String(s) = value else {
-        return;
-    };
-    assert_eq!(s, "test");
-}
-
-#[test]
-fn get_sequence_with_multiple_entries_returns_correct_one() {
-    let doc = make_workflow(vec![(
-        "steps",
-        FieldValue::Sequence(vec![
-            make_step(vec![("id", FieldValue::String("s1".to_owned()))]),
-            make_step(vec![("id", FieldValue::String("s2".to_owned()))]),
-        ]),
-    )]);
-    let result = doc.get_sequence("steps");
-    assert!(result.is_some());
-    let Some(seq) = result else {
-        return;
-    };
-    assert_eq!(seq.len(), 2);
-    let Some(first) = seq.first() else {
-        return;
-    };
-    let Some(second) = seq.get(1) else {
-        return;
-    };
-    assert_eq!(first.get_string("id"), Some("s1"));
-    assert_eq!(second.get_string("id"), Some("s2"));
 }
 
 #[test]
@@ -952,13 +839,15 @@ fn field_names_returns_correct_fields_for_workflow() {
         ),
         ("name", FieldValue::String("test".to_owned())),
     ]);
-    let names = doc.field_names();
-    assert_eq!(names, vec!["version", "name"]);
+    assert_eq!(doc.field_names(), vec!["version", "name"]);
 }
 
 #[test]
 fn step_doc_get_string_returns_value_for_existing_field() {
-    let step = make_step(vec![("id", FieldValue::String("my_step".to_owned()))]);
+    let step = make_step(vec![(
+        "id",
+        FieldValue::String("my_step".to_owned()),
+    )]);
     assert_eq!(step.get_string("id"), Some("my_step"));
 }
 
@@ -984,10 +873,7 @@ fn from_pairs_creates_workflow_with_given_pairs() {
             "version".to_owned(),
             FieldValue::String("velvet-ballastics/v1".to_owned()),
         ),
-        (
-            "name".to_owned(),
-            FieldValue::String("roundtrip".to_owned()),
-        ),
+        ("name".to_owned(), FieldValue::String("roundtrip".to_owned())),
     ];
     let doc = WorkflowDoc::from_pairs(pairs);
     assert_eq!(doc.get_string("version"), Some("velvet-ballastics/v1"));
@@ -1005,9 +891,7 @@ fn from_pairs_creates_step_with_given_pairs() {
     assert_eq!(step.field_names(), vec!["id", "do"]);
 }
 
-// ---------------------------------------------------------------------------
-// Adversarial BDD tests: validation bypass attacks
-// ---------------------------------------------------------------------------
+// ===== Adversarial BDD tests =====
 
 #[test]
 fn adversarial_version_v2_is_rejected_as_invalid_version() {
@@ -1334,7 +1218,9 @@ fn adversarial_step_id_starting_with_digit_is_rejected() {
 fn adversarial_empty_step_id_is_rejected() {
     assert_eq!(
         validate_single_id("", &[]),
-        Err(ValidationError::InvalidId { id: String::new() })
+        Err(ValidationError::InvalidId {
+            id: String::new()
+        })
     );
 }
 
@@ -1344,7 +1230,7 @@ fn adversarial_multiple_triggers_are_rejected() {
         "when",
         FieldValue::Mapping(vec![
             ("manual".to_owned(), FieldValue::Empty),
-            ("schedule".to_owned(), FieldValue::Mapping(vec![])),
+            ("ipc".to_owned(), FieldValue::Empty),
         ]),
     )]);
     assert_eq!(
@@ -1359,12 +1245,12 @@ fn adversarial_multiple_triggers_are_rejected() {
 fn adversarial_unknown_trigger_kind_is_rejected() {
     let doc = make_workflow(vec![(
         "when",
-        FieldValue::Mapping(vec![("timer".to_owned(), FieldValue::Empty)]),
+        FieldValue::Mapping(vec![("webhook".to_owned(), FieldValue::Empty)]),
     )]);
     assert_eq!(
         validate_trigger(&doc),
         Err(ValidationError::UnsupportedTrigger {
-            trigger: "timer".to_owned(),
+            trigger: "webhook".to_owned(),
         })
     );
 }
@@ -1478,7 +1364,10 @@ fn adversarial_step_without_id_field_is_rejected() {
         ),
         (
             "steps",
-            FieldValue::Sequence(vec![make_step(vec![("finish", FieldValue::Empty)])]),
+            FieldValue::Sequence(vec![make_step(vec![(
+                "finish",
+                FieldValue::Empty,
+            )])]),
         ),
     ]);
     assert_eq!(

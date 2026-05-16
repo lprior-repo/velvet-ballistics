@@ -7,7 +7,6 @@
 #![allow(clippy::missing_errors_doc)]
 #![allow(clippy::must_use_candidate)]
 #![allow(clippy::doc_markdown)]
-#![allow(clippy::too_many_lines)]
 #![allow(clippy::return_self_not_must_use)]
 
 //! Cold-path workflow validation for velvet-ballastics.
@@ -27,11 +26,25 @@ use thiserror::Error;
 
 pub mod control_flow;
 pub mod diagnostic;
+pub mod gate_action;
+pub mod gate_accessor;
+pub mod gate_cycle;
+pub mod gate_expr;
+pub mod gate_loop;
+pub mod gate_node;
+pub mod gate_slot;
+pub mod gate_type;
 pub mod gates;
 pub mod idempotency_contract;
 pub use gates::*;
 pub mod references;
 pub mod schema;
+pub mod schema_constants;
+pub mod schema_fields;
+#[cfg(test)]
+pub mod schema_tests;
+pub mod schema_types;
+pub mod schema_validate;
 pub mod shared;
 pub mod type_taint;
 
