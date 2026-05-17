@@ -7,6 +7,9 @@ use thiserror::Error;
 /// YAML parsing error type.
 #[derive(Debug, Error, Clone, PartialEq, Eq)]
 pub enum YamlError {
+    #[error("unsupported trigger: {trigger}")]
+    UnsupportedTrigger { trigger: &'static str },
+
     #[error("unsupported YAML feature: {feature}")]
     UnsupportedFeature { feature: &'static str },
 

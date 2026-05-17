@@ -633,7 +633,7 @@ fn validate_trigger_accepts_event_trigger() {
         FieldValue::Mapping(vec![(
             "event".to_owned(),
             FieldValue::Mapping(vec![(
-                "type".to_owned(),
+                "name".to_owned(),
                 FieldValue::String("job.created".to_owned()),
             )]),
         )]),

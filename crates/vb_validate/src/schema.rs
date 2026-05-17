@@ -149,7 +149,7 @@ pub fn validate_trigger(doc: &WorkflowDoc) -> ValidationResult<()> {
     match kind.as_str() {
         "manual" | "webhook" => validate_empty_trigger(kind, body),
         "schedule" => validate_named_string_trigger(kind, body, "cron"),
-        "event" => validate_named_string_trigger(kind, body, "type"),
+        "event" => validate_named_string_trigger(kind, body, "name"),
         "http" => Err(ValidationError::HttpTriggerOutOfCore),
         other => Err(ValidationError::UnsupportedTrigger {
             trigger: other.to_owned(),
@@ -1141,13 +1141,13 @@ mod tests {
 
     #[test]
     fn validate_trigger_accepts_event_trigger() {
-        // Given a workflow doc with an event trigger carrying type
+        // Given a workflow doc with an event trigger carrying name
         let doc = make_workflow(vec![(
             "when",
             FieldValue::Mapping(vec![(
                 "event".to_owned(),
                 FieldValue::Mapping(vec![(
-                    "type".to_owned(),
+                    "name".to_owned(),
                     FieldValue::String("job.created".to_owned()),
                 )]),
             )]),
@@ -1172,8 +1172,8 @@ mod tests {
     }
 
     #[test]
-    fn validate_trigger_rejects_event_without_type() {
-        // Given a workflow doc with an event trigger missing type
+    fn validate_trigger_rejects_event_without_name() {
+        // Given a workflow doc with an event trigger missing name
         let doc = make_workflow(vec![(
             "when",
             FieldValue::Mapping(vec![("event".to_owned(), FieldValue::Mapping(vec![]))]),

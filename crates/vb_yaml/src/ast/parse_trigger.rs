@@ -39,11 +39,11 @@ fn parse_when_trigger(when_val: &saphyr::Yaml<'_>) -> YamlResult<TriggerAst> {
         "webhook" => empty_body(body, "when.webhook").map(|()| TriggerAst::Webhook),
         "schedule" => parse_schedule(body),
         "event" => parse_event(body),
-        "ipc" => Err(YamlError::UnsupportedFeature {
-            feature: "ipc trigger",
+        "ipc" => Err(YamlError::UnsupportedTrigger {
+            trigger: "ipc",
         }),
-        "http" => Err(YamlError::UnsupportedFeature {
-            feature: "http trigger",
+        "http" => Err(YamlError::UnsupportedTrigger {
+            trigger: "http",
         }),
         other => Err(YamlError::UnknownField {
             field: other.into(),
@@ -82,19 +82,19 @@ fn parse_schedule(body: &saphyr::Yaml<'_>) -> YamlResult<TriggerAst> {
 }
 
 fn parse_event(body: &saphyr::Yaml<'_>) -> YamlResult<TriggerAst> {
-    reject_unknown_fields(body, &["type"])?;
-    let Some(event_type) = lookup(body, "type").and_then(saphyr::Yaml::as_str) else {
+    reject_unknown_fields(body, &["name"])?;
+    let Some(event_name) = lookup(body, "name").and_then(saphyr::Yaml::as_str) else {
         return Err(YamlError::MissingField {
-            field: "when.event.type",
+            field: "when.event.name",
         });
     };
-    if event_type.is_empty() {
+    if event_name.is_empty() {
         return Err(YamlError::FieldShape {
-            field: "when.event.type",
+            field: "when.event.name",
             expected: "non-empty string",
         });
     }
     Ok(TriggerAst::Event {
-        event_type: event_type.to_string(),
+        event_type: event_name.to_string(),
     })
 }

@@ -4911,7 +4911,7 @@ steps:
 
     #[test]
     fn canonical_route_accepts_event_and_webhook_and_digest_changes() {
-        let event = canonical_named_source("event: { type: invoice.created }");
+        let event = canonical_named_source("event: { name: invoice.created }");
         let webhook = canonical_named_source("webhook: {}");
         let event_workflow = compile_workflow(event.as_bytes()).expect("event compiles");
         let webhook_workflow = compile_workflow(webhook.as_bytes()).expect("webhook compiles");

@@ -114,8 +114,8 @@ fn reject_forbidden_features_returns_unsupported_feature_for_complex_key() {
     let result = parse_workflow_source(yaml);
     assert_eq!(
         result,
-        Err(YamlError::UnsupportedFeature {
-            feature: "http trigger"
+        Err(YamlError::UnsupportedTrigger {
+            trigger: "http"
         })
     );
 }
@@ -654,7 +654,7 @@ fn adversarial_api_scalar_one_over_limit_rejected() {
 }
 
 #[test]
-fn adversarial_api_workflow_with_unknown_trigger_field_rejected() {
+fn adversarial_api_workflow_with_unsupported_trigger_rejected() {
     let yaml = indoc::indoc! {"
         version: velvet-ballastics/v1
         name: bad-trigger
@@ -664,8 +664,8 @@ fn adversarial_api_workflow_with_unknown_trigger_field_rejected() {
     "};
     let result = parse_workflow_source(yaml);
     assert!(
-        matches!(result, Err(YamlError::UnsupportedFeature { .. })),
-        "expected FieldShape for unknown trigger, got: {result:?}"
+        matches!(result, Err(YamlError::UnsupportedTrigger { trigger: "ipc" })),
+        "expected UnsupportedTrigger for ipc trigger, got: {result:?}"
     );
 }
 
@@ -690,7 +690,7 @@ fn canonical_triggers_and_aliases_parse() {
         name: canonical
         when:
           event:
-            type: invoice.created
+            name: invoice.created
         inputs:
           payload:
             nested: [1, "$kept_text"]
@@ -747,7 +747,7 @@ fn parse_workflow_source_accepts_all_v1_triggers() {
                 name: event-trigger
                 when:
                   event:
-                    type: invoice.created
+                    name: invoice.created
                 steps: []
             "},
         ),

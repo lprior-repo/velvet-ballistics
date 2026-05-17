@@ -232,7 +232,7 @@ fn adversarial_source_map_multi_line_scalar_tracks_spans() {
 
 #[test]
 fn semantic_source_map_tracks_multi_step_paths_distinctly() {
-    let yaml = "version: velvet-ballastics/v1\nname: paths\nwhen:\n  event:\n    type: invoice.created\nsteps:\n  - id: first\n    set:\n      output: result\n      value: one\n  - id: second\n    finish:\n      result: result\n";
+    let yaml = "version: velvet-ballastics/v1\nname: paths\nwhen:\n  event:\n    name: invoice.created\nsteps:\n  - id: first\n    set:\n      output: result\n      value: one\n  - id: second\n    finish:\n      result: result\n";
     let map = build_semantic_source_map(yaml).unwrap_or_default();
 
     let trigger = map.span_for_path("$.when.event");
