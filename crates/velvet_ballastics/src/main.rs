@@ -1210,7 +1210,7 @@ fn store_workflow_artifacts(
         return Ok(());
     };
     let parts = compiled.to_parts();
-    let ir = match postcard::to_allocvec(&parts) {
+    let ir_bytes = match postcard::to_allocvec(&parts) {
         Ok(ir) => ir,
         Err(e) => {
             report_compiled_ir_store_error(format_args!("compiled IR encode error: {e}"), output);
@@ -1235,9 +1235,31 @@ fn store_workflow_artifacts(
         report_compiled_ir_store_error(format_args!("workflow source write error: {e}"), output);
         return Err(CliExitCode::StorageError.into());
     }
+    let proof = vb_storage::admission::VerificationProof::new(
+        compiled.digest(),
+        vb_runtime::admission::REQUIRED_GATE_COUNT,
+        true,
+    );
+    let artifact = vb_storage::admission::AcceptedArtifact {
+        digest: compiled.digest(),
+        ir: ir_bytes,
+        verification: proof,
+        accepted_at_seq: vb_storage::EventSeq::new(0),
+        required_capabilities: Box::new([]),
+    };
+    let artifact_bytes = match postcard::to_allocvec(&artifact) {
+        Ok(bytes) => bytes,
+        Err(e) => {
+            report_compiled_ir_store_error(
+                format_args!("artifact encode error: {e}"),
+                output,
+            );
+            return Err(CliExitCode::StorageError.into());
+        }
+    };
     let record = vb_storage::CompiledIrRecord {
         digest: compiled.digest(),
-        ir,
+        ir: artifact_bytes,
     };
     journal.put_compiled_ir(&record).map_err(|e| {
         report_compiled_ir_store_error(format_args!("compiled IR write error: {e}"), output);

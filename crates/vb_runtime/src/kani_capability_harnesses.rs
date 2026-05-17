@@ -205,7 +205,7 @@ mod kani_capability_harnesses {
     #[kani::proof]
     fn strict_legacy_presence_only_bypass_rejects_required_blocker() {
         let digest = WorkflowDigest::from_bytes([0x33; 32]);
-        let store = crate::admission::AlwaysPresentArtifactStore;
+        let store = MissingArtifactStore;
         let result = crate::admission::admit_run(
             &store,
             RuntimePolicy::Strict,

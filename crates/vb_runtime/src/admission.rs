@@ -365,7 +365,7 @@ impl AcceptedArtifactStore for StorageArtifactStore {
 ///
 /// Returns a `RunAdmission` on success or an `AdmissionError` on rejection.
 pub fn admit_run(
-    store: &dyn ArtifactStore,
+    store: &dyn AcceptedArtifactStore,
     policy: RuntimePolicy,
     digest: WorkflowDigest,
     run_id: RunId,
@@ -373,9 +373,34 @@ pub fn admit_run(
 ) -> Result<RunAdmission, AdmissionError> {
     match policy {
         RuntimePolicy::Strict | RuntimePolicy::Journaled => {
-            if !store.compiled_ir_exists(digest) {
-                return Err(AdmissionError::ArtifactNotFound { digest });
-            }
+            store
+                .load_accepted_artifact(digest)
+                .map_err(|source| match source {
+                    ArtifactEnvelopeError::ArtifactNotFound { digest } => {
+                        AdmissionError::ArtifactNotFound { digest }
+                    }
+                    ArtifactEnvelopeError::PostcardDecodeFailed => {
+                        AdmissionError::ArtifactEnvelopeDecodeFailed
+                    }
+                    ArtifactEnvelopeError::InvalidGateCount { found, required } => {
+                        AdmissionError::ArtifactInvalidGateCount { found, required }
+                    }
+                    ArtifactEnvelopeError::MissingRequiredProofFlagBounded => {
+                        AdmissionError::ArtifactInvalidProofFlag { flag: "bounded" }
+                    }
+                    ArtifactEnvelopeError::MissingRequiredProofFlagTaintSafe => {
+                        AdmissionError::ArtifactInvalidProofFlag { flag: "taint_safe" }
+                    }
+                    ArtifactEnvelopeError::MissingRequiredProofFlagRetrySafe => {
+                        AdmissionError::ArtifactInvalidProofFlag { flag: "retry_safe" }
+                    }
+                    ArtifactEnvelopeError::MissingRequiredProofFlagDurable => {
+                        AdmissionError::ArtifactInvalidProofFlag { flag: "durable" }
+                    }
+                    ArtifactEnvelopeError::MissingRequiredProofFlagReplayable => {
+                        AdmissionError::ArtifactInvalidProofFlag { flag: "replayable" }
+                    }
+                })?;
         }
         RuntimePolicy::Relaxed => {}
     }
@@ -852,7 +877,7 @@ mod tests {
 
     #[test]
     fn admission_admit_run_strict_with_present_artifact() {
-        let store = AlwaysPresentArtifactStore::shared_artifact();
+        let store = AlwaysPresentArtifactStore::shared();
         let digest = test_digest();
         let run_id = RunId::new(1);
         let caps =
@@ -875,9 +900,14 @@ mod tests {
     fn admission_admit_run_relaxed_without_artifact() {
         /// An artifact store that always reports artifacts as absent.
         struct NeverPresentStore;
-        impl ArtifactStore for NeverPresentStore {
-            fn compiled_ir_exists(&self, _digest: WorkflowDigest) -> bool {
-                false
+        impl AcceptedArtifactStore for NeverPresentStore {
+            fn load_accepted_artifact(
+                &self,
+                _digest: WorkflowDigest,
+            ) -> Result<vb_storage::admission::AcceptedArtifact, ArtifactEnvelopeError> {
+                Err(ArtifactEnvelopeError::ArtifactNotFound {
+                    digest: WorkflowDigest::from_bytes([0u8; 32]),
+                })
             }
         }
         let store = NeverPresentStore;
@@ -900,9 +930,12 @@ mod tests {
     fn admission_admit_run_strict_without_artifact_rejected() {
         /// An artifact store that always reports artifacts as absent.
         struct NeverPresentStore;
-        impl ArtifactStore for NeverPresentStore {
-            fn compiled_ir_exists(&self, _digest: WorkflowDigest) -> bool {
-                false
+        impl AcceptedArtifactStore for NeverPresentStore {
+            fn load_accepted_artifact(
+                &self,
+                digest: WorkflowDigest,
+            ) -> Result<vb_storage::admission::AcceptedArtifact, ArtifactEnvelopeError> {
+                Err(ArtifactEnvelopeError::ArtifactNotFound { digest })
             }
         }
         let store = NeverPresentStore;
@@ -917,9 +950,12 @@ mod tests {
     fn admission_admit_run_journaled_without_artifact_rejected() {
         /// An artifact store that always reports artifacts as absent.
         struct NeverPresentStore;
-        impl ArtifactStore for NeverPresentStore {
-            fn compiled_ir_exists(&self, _digest: WorkflowDigest) -> bool {
-                false
+        impl AcceptedArtifactStore for NeverPresentStore {
+            fn load_accepted_artifact(
+                &self,
+                digest: WorkflowDigest,
+            ) -> Result<vb_storage::admission::AcceptedArtifact, ArtifactEnvelopeError> {
+                Err(ArtifactEnvelopeError::ArtifactNotFound { digest })
             }
         }
         let store = NeverPresentStore;
