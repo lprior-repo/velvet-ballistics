@@ -53,6 +53,15 @@ pub enum ArtifactEnvelopeError {
     /// A required proof flag is false.
     #[error("missing required proof flag: replayable")]
     MissingRequiredProofFlagReplayable,
+    /// A required proof flag is false.
+    #[error("missing required proof flag: idempotency_verified")]
+    MissingRequiredProofFlagIdempotencyVerified,
+    /// A keyed action was not present in the attested idempotency evidence.
+    #[error("missing idempotency attestation for action {action:?}")]
+    MissingIdempotencyAttestation {
+        /// Action requiring idempotency attestation.
+        action: ActionId,
+    },
 }
 
 /// Accepted run admission record, attached to a run frame after passing the admission gate.
@@ -68,6 +77,8 @@ pub struct RunAdmission {
     policy: RuntimePolicy,
     /// Aggregate budget admitted for this run, when budget admission is used.
     budget: Option<AggregateResourceBudget>,
+    /// Actions whose idempotency evidence passed artifact admission.
+    idempotency_attested: Box<[ActionId]>,
 }
 
 impl RunAdmission {
@@ -84,6 +95,25 @@ impl RunAdmission {
             granted_capabilities: caps,
             policy,
             budget: None,
+            idempotency_attested: Box::new([]),
+        }
+    }
+
+    /// Creates a new admission record carrying accepted idempotency evidence.
+    pub fn with_idempotency_evidence(
+        digest: WorkflowDigest,
+        run_id: RunId,
+        caps: CapabilitySet,
+        policy: RuntimePolicy,
+        idempotency_attested: Box<[ActionId]>,
+    ) -> Self {
+        Self {
+            artifact_digest: digest,
+            run_id,
+            granted_capabilities: caps,
+            policy,
+            budget: None,
+            idempotency_attested,
         }
     }
 
@@ -101,6 +131,7 @@ impl RunAdmission {
             granted_capabilities: caps,
             policy,
             budget: Some(budget),
+            idempotency_attested: Box::new([]),
         }
     }
 
@@ -132,6 +163,12 @@ impl RunAdmission {
     #[must_use]
     pub const fn budget(&self) -> Option<AggregateResourceBudget> {
         self.budget
+    }
+
+    /// Returns the idempotency-attested action IDs available to dispatch.
+    #[must_use]
+    pub fn idempotency_attested(&self) -> &[ActionId] {
+        &self.idempotency_attested
     }
 }
 
@@ -255,6 +292,7 @@ impl AcceptedArtifactStore for AlwaysPresentArtifactStore {
             bounded: true,
             taint_safe: true,
             retry_safe: true,
+            idempotency_verified: true,
             replayable: true,
             idempotency_keyed: Box::new([]),
             idempotency_attested: Box::new([]),
@@ -321,32 +359,89 @@ impl AcceptedArtifactStore for StorageArtifactStore {
         let artifact: vb_storage::admission::AcceptedArtifact = postcard::from_bytes(&record.ir)
             .map_err(|_decode_err| ArtifactEnvelopeError::PostcardDecodeFailed)?;
 
-        // Validate gate count (must be 15 for v1 accepted artifact).
-        if artifact.verification.gate_count != REQUIRED_GATE_COUNT {
-            return Err(ArtifactEnvelopeError::InvalidGateCount {
-                found: artifact.verification.gate_count,
-                required: REQUIRED_GATE_COUNT,
-            });
-        }
-
-        // Validate required proof flags are all true.
-        if !artifact.verification.bounded {
-            return Err(ArtifactEnvelopeError::MissingRequiredProofFlagBounded);
-        }
-        if !artifact.verification.taint_safe {
-            return Err(ArtifactEnvelopeError::MissingRequiredProofFlagTaintSafe);
-        }
-        if !artifact.verification.retry_safe {
-            return Err(ArtifactEnvelopeError::MissingRequiredProofFlagRetrySafe);
-        }
-        if !artifact.verification.durable {
-            return Err(ArtifactEnvelopeError::MissingRequiredProofFlagDurable);
-        }
-        if !artifact.verification.replayable {
-            return Err(ArtifactEnvelopeError::MissingRequiredProofFlagReplayable);
-        }
+        validate_accepted_artifact_envelope(&artifact)?;
 
         Ok(artifact)
+    }
+}
+
+fn validate_accepted_artifact_envelope(
+    artifact: &vb_storage::admission::AcceptedArtifact,
+) -> Result<(), ArtifactEnvelopeError> {
+    if artifact.verification.gate_count != REQUIRED_GATE_COUNT {
+        return Err(ArtifactEnvelopeError::InvalidGateCount {
+            found: artifact.verification.gate_count,
+            required: REQUIRED_GATE_COUNT,
+        });
+    }
+    if !artifact.verification.bounded {
+        return Err(ArtifactEnvelopeError::MissingRequiredProofFlagBounded);
+    }
+    if !artifact.verification.taint_safe {
+        return Err(ArtifactEnvelopeError::MissingRequiredProofFlagTaintSafe);
+    }
+    if !artifact.verification.retry_safe {
+        return Err(ArtifactEnvelopeError::MissingRequiredProofFlagRetrySafe);
+    }
+    if !artifact.verification.durable {
+        return Err(ArtifactEnvelopeError::MissingRequiredProofFlagDurable);
+    }
+    if !artifact.verification.replayable {
+        return Err(ArtifactEnvelopeError::MissingRequiredProofFlagReplayable);
+    }
+    if !artifact.verification.idempotency_verified {
+        return Err(ArtifactEnvelopeError::MissingRequiredProofFlagIdempotencyVerified);
+    }
+    first_missing_idempotency_attestation(artifact).map_or(Ok(()), |action| {
+        Err(ArtifactEnvelopeError::MissingIdempotencyAttestation { action })
+    })
+}
+
+fn first_missing_idempotency_attestation(
+    artifact: &vb_storage::admission::AcceptedArtifact,
+) -> Option<ActionId> {
+    artifact
+        .verification
+        .idempotency_keyed
+        .iter()
+        .copied()
+        .find(|action| !artifact.verification.idempotency_attested.contains(action))
+}
+
+fn map_artifact_envelope_error(source: ArtifactEnvelopeError) -> AdmissionError {
+    match source {
+        ArtifactEnvelopeError::ArtifactNotFound { digest } => {
+            AdmissionError::ArtifactNotFound { digest }
+        }
+        ArtifactEnvelopeError::PostcardDecodeFailed => AdmissionError::ArtifactEnvelopeDecodeFailed,
+        ArtifactEnvelopeError::InvalidGateCount { found, required } => {
+            AdmissionError::ArtifactInvalidGateCount { found, required }
+        }
+        ArtifactEnvelopeError::MissingRequiredProofFlagBounded => {
+            AdmissionError::ArtifactInvalidProofFlag { flag: "bounded" }
+        }
+        ArtifactEnvelopeError::MissingRequiredProofFlagTaintSafe => {
+            AdmissionError::ArtifactInvalidProofFlag { flag: "taint_safe" }
+        }
+        ArtifactEnvelopeError::MissingRequiredProofFlagRetrySafe => {
+            AdmissionError::ArtifactInvalidProofFlag { flag: "retry_safe" }
+        }
+        ArtifactEnvelopeError::MissingRequiredProofFlagDurable => {
+            AdmissionError::ArtifactInvalidProofFlag { flag: "durable" }
+        }
+        ArtifactEnvelopeError::MissingRequiredProofFlagReplayable => {
+            AdmissionError::ArtifactInvalidProofFlag { flag: "replayable" }
+        }
+        ArtifactEnvelopeError::MissingRequiredProofFlagIdempotencyVerified => {
+            AdmissionError::ArtifactInvalidProofFlag {
+                flag: "idempotency_verified",
+            }
+        }
+        ArtifactEnvelopeError::MissingIdempotencyAttestation { .. } => {
+            AdmissionError::ArtifactInvalidProofFlag {
+                flag: "idempotency_attested",
+            }
+        }
     }
 }
 
@@ -400,32 +495,8 @@ pub fn admit_artifact_run(
             // Load and validate the full artifact.
             let artifact = store
                 .load_accepted_artifact(artifact_digest)
-                .map_err(|source| match source {
-                    ArtifactEnvelopeError::ArtifactNotFound { digest } => {
-                        AdmissionError::ArtifactNotFound { digest }
-                    }
-                    ArtifactEnvelopeError::PostcardDecodeFailed => {
-                        AdmissionError::ArtifactEnvelopeDecodeFailed
-                    }
-                    ArtifactEnvelopeError::InvalidGateCount { found, required } => {
-                        AdmissionError::ArtifactInvalidGateCount { found, required }
-                    }
-                    ArtifactEnvelopeError::MissingRequiredProofFlagBounded => {
-                        AdmissionError::ArtifactInvalidProofFlag { flag: "bounded" }
-                    }
-                    ArtifactEnvelopeError::MissingRequiredProofFlagTaintSafe => {
-                        AdmissionError::ArtifactInvalidProofFlag { flag: "taint_safe" }
-                    }
-                    ArtifactEnvelopeError::MissingRequiredProofFlagRetrySafe => {
-                        AdmissionError::ArtifactInvalidProofFlag { flag: "retry_safe" }
-                    }
-                    ArtifactEnvelopeError::MissingRequiredProofFlagDurable => {
-                        AdmissionError::ArtifactInvalidProofFlag { flag: "durable" }
-                    }
-                    ArtifactEnvelopeError::MissingRequiredProofFlagReplayable => {
-                        AdmissionError::ArtifactInvalidProofFlag { flag: "replayable" }
-                    }
-                })?;
+                .map_err(map_artifact_envelope_error)?;
+            validate_accepted_artifact_envelope(&artifact).map_err(map_artifact_envelope_error)?;
 
             // Check that granted capabilities cover the artifact's required capabilities.
             if caps.len() != artifact.required_capabilities.len() {
@@ -438,7 +509,13 @@ pub fn admit_artifact_run(
                 check_capability(required_cap.action_id(), required_cap, &caps)?;
             }
 
-            Ok(RunAdmission::new(artifact_digest, run_id, caps, policy))
+            Ok(RunAdmission::with_idempotency_evidence(
+                artifact_digest,
+                run_id,
+                caps,
+                policy,
+                artifact.verification.idempotency_attested,
+            ))
         }
         RuntimePolicy::Relaxed => {
             // Relaxed: skip artifact loading and capability checking.
@@ -575,6 +652,7 @@ mod tests {
                 bounded: true,
                 taint_safe: true,
                 retry_safe: true,
+                idempotency_verified: true,
                 replayable: true,
                 idempotency_keyed: Box::new([]),
                 idempotency_attested: Box::new([]),
@@ -801,6 +879,71 @@ mod tests {
         );
 
         assert!(matches!(admission, Ok(run) if run.granted_capabilities() == &granted));
+    }
+
+    #[test]
+    fn admit_artifact_run_rejects_missing_idempotency_gate() {
+        let mut artifact = accepted_artifact_with_caps(Box::new([]));
+        artifact.verification.idempotency_verified = false;
+        let store = FixedAcceptedStore { artifact };
+
+        let result = admit_artifact_run(
+            &store,
+            RuntimePolicy::Strict,
+            RunId::new(1),
+            test_digest(),
+            CapabilitySet::empty(),
+        );
+
+        assert_eq!(
+            result,
+            Err(AdmissionError::ArtifactInvalidProofFlag {
+                flag: "idempotency_verified",
+            })
+        );
+    }
+
+    #[test]
+    fn admit_artifact_run_rejects_keyed_action_without_attestation() {
+        let action = ActionId::new(9);
+        let mut artifact = accepted_artifact_with_caps(Box::new([]));
+        artifact.verification.idempotency_keyed = Box::new([action]);
+        artifact.verification.idempotency_attested = Box::new([]);
+        let store = FixedAcceptedStore { artifact };
+
+        let result = admit_artifact_run(
+            &store,
+            RuntimePolicy::Strict,
+            RunId::new(1),
+            test_digest(),
+            CapabilitySet::empty(),
+        );
+
+        assert_eq!(
+            result,
+            Err(AdmissionError::ArtifactInvalidProofFlag {
+                flag: "idempotency_attested",
+            })
+        );
+    }
+
+    #[test]
+    fn admit_artifact_run_carries_idempotency_evidence_to_dispatch() {
+        let action = ActionId::new(9);
+        let mut artifact = accepted_artifact_with_caps(Box::new([]));
+        artifact.verification.idempotency_keyed = Box::new([action]);
+        artifact.verification.idempotency_attested = Box::new([action]);
+        let store = FixedAcceptedStore { artifact };
+
+        let admission = admit_artifact_run(
+            &store,
+            RuntimePolicy::Strict,
+            RunId::new(1),
+            test_digest(),
+            CapabilitySet::empty(),
+        );
+
+        assert!(matches!(admission, Ok(run) if run.idempotency_attested() == [action]));
     }
 
     #[test]

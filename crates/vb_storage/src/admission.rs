@@ -8,6 +8,7 @@ use std::fmt;
 use crate::{error::JournalError, records::CompiledIrRecord, types::EventSeq};
 
 use crate::journal::FjallJournal;
+use vb_core::action::{ActionContract, Idempotency, RetrySafety, SideEffect};
 
 /// A soft verification failure that does not block admission but should be reported.
 ///
@@ -70,6 +71,8 @@ pub struct VerificationProof {
     pub taint_safe: bool,
     /// Artifact actions are safe to retry.
     pub retry_safe: bool,
+    /// Artifact idempotency evidence was verified by the acceptance gate.
+    pub idempotency_verified: bool,
     /// Artifact can be replayed.
     pub replayable: bool,
     /// Actions keyed by idempotency key.
@@ -91,6 +94,7 @@ impl VerificationProof {
             bounded: true,
             taint_safe: true,
             retry_safe: true,
+            idempotency_verified: true,
             replayable: true,
             idempotency_keyed: Box::new([]),
             idempotency_attested: Box::new([]),
@@ -142,16 +146,19 @@ pub fn submit_artifact_with_contracts(
     journal: &FjallJournal,
     workflow: &vb_core::CompiledWorkflow,
     policy: vb_core::RuntimePolicy,
-    action_contracts: &[vb_core::action::ActionContract],
+    action_contracts: &[ActionContract],
 ) -> Result<AcceptedArtifact, JournalError> {
     let required_capabilities = required_capabilities_from_contracts(action_contracts)?;
+    let idempotency_evidence = idempotency_evidence_from_contracts(action_contracts)?;
     match policy {
         vb_core::RuntimePolicy::Relaxed => {
             // Relaxed: skip gate validation, no durability, gate_count=0
             let parts = workflow.to_parts();
             let ir_bytes =
                 postcard::to_allocvec(&parts).map_err(|_| JournalError::ArtifactMalformed)?;
-            let proof = VerificationProof::new(workflow.digest(), 0, false);
+            let mut proof = VerificationProof::new(workflow.digest(), 0, false);
+            proof.idempotency_keyed = idempotency_evidence.keyed.clone();
+            proof.idempotency_attested = idempotency_evidence.attested.clone();
             let artifact = AcceptedArtifact {
                 digest: workflow.digest(),
                 ir: ir_bytes,
@@ -185,7 +192,10 @@ pub fn submit_artifact_with_contracts(
 
             let durable = policy == vb_core::RuntimePolicy::Strict;
 
-            let proof = VerificationProof::new(workflow.digest(), ADMISSION_GATE_COUNT, durable);
+            let mut proof =
+                VerificationProof::new(workflow.digest(), ADMISSION_GATE_COUNT, durable);
+            proof.idempotency_keyed = idempotency_evidence.keyed;
+            proof.idempotency_attested = idempotency_evidence.attested;
 
             let ir_bytes =
                 postcard::to_allocvec(&parts).map_err(|_| JournalError::ArtifactMalformed)?;
@@ -223,7 +233,7 @@ pub fn submit_artifact_with_contracts(
 }
 
 fn required_capabilities_from_contracts(
-    action_contracts: &[vb_core::action::ActionContract],
+    action_contracts: &[ActionContract],
 ) -> Result<Box<[vb_core::capability::Capability]>, JournalError> {
     let mut total = 0usize;
     for contract in action_contracts {
@@ -241,6 +251,55 @@ fn required_capabilities_from_contracts(
         }
     }
     Ok(required.into_boxed_slice())
+}
+
+#[derive(Debug, Clone)]
+struct IdempotencyEvidence {
+    keyed: Box<[vb_core::ActionId]>,
+    attested: Box<[vb_core::ActionId]>,
+}
+
+fn idempotency_evidence_from_contracts(
+    action_contracts: &[ActionContract],
+) -> Result<IdempotencyEvidence, JournalError> {
+    let keyed = action_contracts
+        .iter()
+        .filter(|contract| requires_idempotency_key(contract))
+        .map(|contract| contract.id)
+        .collect::<Vec<_>>()
+        .into_boxed_slice();
+    let attested = action_contracts
+        .iter()
+        .map(attested_action_id)
+        .collect::<Result<Vec<_>, _>>()?
+        .into_boxed_slice();
+    Ok(IdempotencyEvidence { keyed, attested })
+}
+
+fn attested_action_id(contract: &ActionContract) -> Result<vb_core::ActionId, JournalError> {
+    is_contract_idempotency_accepted(contract)
+        .then_some(contract.id)
+        .ok_or(JournalError::ArtifactMalformed)
+}
+
+fn requires_idempotency_key(contract: &ActionContract) -> bool {
+    matches!(
+        (contract.retry_safety, contract.idempotency),
+        (RetrySafety::KeyRequired, _) | (_, Idempotency::AtLeastOnceExternal)
+    )
+}
+
+fn is_contract_idempotency_accepted(contract: &ActionContract) -> bool {
+    match (
+        contract.side_effect,
+        contract.retry_safety,
+        contract.idempotency,
+    ) {
+        (SideEffect::None, _, _) => true,
+        (_, RetrySafety::Unsafe, _) => false,
+        (_, _, Idempotency::AtLeastOnceExternal | Idempotency::DeterministicPure) => false,
+        (_, RetrySafety::Safe | RetrySafety::KeyRequired, Idempotency::IdempotentExternal) => true,
+    }
 }
 
 /// Validates and persists a compiled workflow artifact.
@@ -700,6 +759,69 @@ mod tests {
 
         assert_eq!(artifact.required_capabilities.as_ref(), &[required.clone()]);
         assert_eq!(decoded.required_capabilities.as_ref(), &[required]);
+        Ok(())
+    }
+
+    #[test]
+    fn submit_artifact_carries_idempotency_evidence_from_contracts() -> Result<(), String> {
+        let journal = temp_journal().map_err(|e| format!("journal open failed: {e}"))?;
+        let workflow = minimal_workflow()?;
+        let action = vb_core::ActionId::new(11);
+        let contract = vb_core::action::ActionContract {
+            id: action,
+            input_slot_count: 1,
+            output_slot_count: 1,
+            max_input_bytes: 1024,
+            max_output_bytes: 2048,
+            timeout_ms: 1000,
+            idempotency: vb_core::action::Idempotency::IdempotentExternal,
+            side_effect: vb_core::action::SideEffect::Writes,
+            retry_safety: vb_core::action::RetrySafety::KeyRequired,
+            required_capabilities: Box::new([]),
+        };
+
+        let artifact = submit_artifact_with_contracts(
+            &journal,
+            &workflow,
+            vb_core::RuntimePolicy::Journaled,
+            &[contract],
+        )
+        .map_err(|e| format!("submit_artifact_with_contracts failed: {e}"))?;
+
+        assert!(artifact.verification.idempotency_verified);
+        assert_eq!(artifact.verification.idempotency_keyed.as_ref(), &[action]);
+        assert_eq!(
+            artifact.verification.idempotency_attested.as_ref(),
+            &[action]
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn submit_artifact_rejects_failed_idempotency_contract() -> Result<(), String> {
+        let journal = temp_journal().map_err(|e| format!("journal open failed: {e}"))?;
+        let workflow = minimal_workflow()?;
+        let contract = vb_core::action::ActionContract {
+            id: vb_core::ActionId::new(12),
+            input_slot_count: 1,
+            output_slot_count: 1,
+            max_input_bytes: 1024,
+            max_output_bytes: 2048,
+            timeout_ms: 1000,
+            idempotency: vb_core::action::Idempotency::DeterministicPure,
+            side_effect: vb_core::action::SideEffect::Writes,
+            retry_safety: vb_core::action::RetrySafety::Safe,
+            required_capabilities: Box::new([]),
+        };
+
+        let result = submit_artifact_with_contracts(
+            &journal,
+            &workflow,
+            vb_core::RuntimePolicy::Journaled,
+            &[contract],
+        );
+
+        assert!(matches!(result, Err(JournalError::ArtifactMalformed)));
         Ok(())
     }
 
