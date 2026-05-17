@@ -12,7 +12,7 @@ Xtask is not a generic task runner, CI wrapper, or agent chat shell. It is the s
 
 The product standard is:
 
-> Latest stable Rust for production code, safe first-party code, audited high-performance dependencies, typed railway errors, Holzmann-bounded resources, formal proof lanes where warranted, static analysis, mutation testing, fuzzing, Miri, Loom, Kani, Verus, TLA+, benchmark gates, and fail-closed evidence.
+> Latest stable Rust for production code, safe first-party code, blessed.rs-first dependency selection, audited high-performance dependencies, typed railway errors, Holzmann-bounded resources, the full go-skill delivery lifecycle, formal proof lanes where warranted, static analysis, mutation testing, fuzzing, Miri, Loom, Kani, Verus, TLA+, benchmark gates, and fail-closed evidence.
 
 ## Problem
 
@@ -79,6 +79,8 @@ The core product object is not a command. It is a `ChangeAdmission` record.
 10. Static analysis, mutation testing, fuzzing, and formal methods are first-class gates, not optional polish.
 11. Configuration can select scope and adapters, but cannot disable the safety model without an explicit waiver artifact.
 12. The CLI should dictate the lifecycle rather than expose a bag of unrelated commands.
+13. The go-skill state machine is the normative delivery lifecycle for non-trivial changes.
+14. blessed.rs is the default crate discovery baseline, not a substitute for local audit and measurement.
 
 ## Stable Rust Policy
 
@@ -188,6 +190,77 @@ xtask replay <run-id>
 - Exit codes are stable and documented.
 - `--dry-run` may render planned commands but must never emit passing evidence.
 - Fixture-backed evidence must be labeled `fixture`, never `pass`.
+
+## Go-Skill Lifecycle
+
+Xtask should encode the full go-skill delivery pipeline as a first-class state machine. The CLI may expose shorter aliases, but the persisted run state uses the canonical state IDs below.
+
+```text
+State 1: Claim work, isolate workspace, capture baseline, record path proof.
+State 2: Explore codebase, map touched files/APIs/crates, write delivery scope.
+State 3: Write contract, assumptions, invariants, verification layers, traceability.
+State 4: Plan proof obligations and verifier lanes.
+State 5: Write or repair verification artifacts only.
+State 6: Review proofs and contract parity; reject weak or vacuous proofs.
+State 7: Plan tests from contract, scope, and approved proof obligations.
+State 8: Write failing-first tests.
+State 9: Review test plan and suite; reject weak assertions or missing behavior.
+State 10: Implement safe Rust against accepted contract, proofs, and tests.
+State 11: Execute formal obligations and machine gates, then classify failures.
+State 12: Run adversarial black-hat review and route defects to owning state.
+State 13: Package evidence and run truth-serum audit.
+State 14: Land accepted work, sync issue state, and push to remote.
+State 15: Verify landing, cleanup, and final handoff state.
+```
+
+### Lifecycle Rules
+
+- State transitions require raw evidence, not conversational claims.
+- Every required artifact must exist and be non-empty before the next state consumes it.
+- Proof review rejection routes back to State 5.
+- Test review rejection routes back to State 7 or State 8.
+- Black-hat defects route back to the owning state and invalidate affected downstream approvals.
+- Each failed gate or review loop gets at most seven attempts.
+- Failures are classified as `block-local`, `block-regression`, `block-release`, `required-obligation-fail`, `deferred-global`, or `waived`.
+- Red Queen is not part of the default lifecycle.
+- Truth-serum approval is mandatory before landing.
+- Landing is not complete until the accepted code and issue state are pushed to their remotes.
+
+### Required Go-Skill Artifacts
+
+Xtask must be able to persist and validate the canonical artifacts for each state:
+
+- `STATE.md`
+- `baseline-report.md`
+- `codebase-map.md`
+- `delivery-scope.jsonl`
+- `contract.md`
+- `domain-model-review.md`
+- `verification-layers.md`
+- `proof-obligations.jsonl`
+- `traceability-matrix.jsonl`
+- `proof-strategy.md`
+- `proof-writer-report.md`
+- `proof-evidence.md`
+- `proof-review.md`
+- `contract-verification-review.md`
+- `test-plan.md`
+- `test-writer-report.md`
+- `test-plan-review.md`
+- `test-suite-review.md`
+- `implementation.md`
+- `formal-verification-report.md`
+- `verification-ledger.jsonl`
+- `machine-gate-report.md`
+- `regression-diff.md`
+- `black-hat-review.md`
+- `assurance-bundle.md`
+- `truth-serum-report.md`
+- `final-evidence-decision.md`
+- `landing-report.md`
+- `cleanup-report.md`
+
+Xtask may store these as Markdown/JSONL files for local transparency, but the internal model should treat them as typed artifacts with schema validation and provenance.
 
 ## CommandSpec
 
@@ -441,6 +514,50 @@ SIMD policy under stable Rust:
 ## Dependency Policy
 
 Xtask is library-heavy but dependency-strict.
+
+blessed.rs is the default crate shortlist for common Rust ecosystem needs. A blessed.rs recommendation is not automatic approval. It means the candidate starts in the preferred evaluation lane instead of the exception lane.
+
+### blessed.rs Selection Rules
+
+- Prefer blessed.rs-recommended crates for common categories before searching crates.io broadly.
+- Use latest compatible crate versions by default.
+- Commit `Cargo.lock` for binaries and harness workspaces.
+- Record whether a dependency is blessed.rs-recommended, house-standard, or exception-approved.
+- House-standard crates may override blessed.rs when Xtask has stricter evidence or domain needs.
+- Exception-approved crates require a written reason, maintenance check, license check, unsafe/dependency review, and replacement plan.
+- blessed.rs does not bypass cargo-audit, cargo-deny, cargo-vet, cargo-geiger, cargo-machete, feature review, or benchmark gates.
+
+### Initial Dependency Baseline
+
+| Need | blessed.rs baseline | Xtask policy |
+| --- | --- | --- |
+| CLI parsing | `clap`, `lexopt`, `pico-args` | Default to `clap` for UX; use `lexopt` for tiny hot tools. |
+| Errors | `thiserror`, `anyhow`, `color-eyre` | Use `thiserror` in libraries; prefer typed errors over `anyhow` in core; allow rich app diagnostics at CLI boundary. |
+| Logging/tracing | `tracing`, `log` | Default to `tracing`; `log` only for compatibility. |
+| Serialization | `serde`, `serde_json`, `toml`, `postcard`, `rkyv` | Use JSONL for agent output, TOML for local config, `postcard` for compact internal artifacts; `rkyv` requires audit. |
+| Filesystem walking | `ignore`, `walkdir`, `globset` | Prefer `ignore` plus `globset` for repo-aware scans. |
+| Temp files | `tempfile` | Allowed for tests and controlled local scratch. |
+| IDs | `uuid` | Allowed; sortable IDs need separate house standard. |
+| Digests | `blake3`, `sha2` | Prefer `blake3` for artifact identity unless interoperability requires `sha2`. |
+| Secrets | `zeroize` | Pair with house-standard secret wrapper such as `secrecy`. |
+| Async runtime | `tokio` | I/O shell only; no CPU-heavy work on async workers. |
+| HTTP client | `reqwest`, `ureq` | Prefer `ureq` for simple sync calls and `reqwest` for async/Tokio adapters. |
+| HTTP server | `axum`, `actix-web` | Prefer `axum` for service mode; benchmark before choosing performance-specific alternatives. |
+| Channels | `crossbeam-channel`, `flume`, `tokio` | Use bounded channels only unless waiver explains the bound substitute. |
+| CPU parallelism | `rayon` | Use only with workload and scaling evidence. |
+| Fixed/inline buffers | `arrayvec`, `smallvec`, `tinyvec` | Prefer fixed capacity when bounds are known; justify spill-to-heap behavior. |
+| Benchmarking | `criterion`, `divan`, `gungraun`, `hyperfine` | Use Criterion or Divan for local benches; use Gungraun/Iai-style tools for stable instruction regression where practical. |
+| Profiling | `cargo-flamegraph`, `dhat`, `cargo-show-asm` | Use when performance claims need CPU, heap, or assembly evidence. |
+| Testing | `cargo-nextest`, `insta` | Default to nextest; use snapshots only for stable contracts and reports. |
+| Release automation | `cargo-release`, `release-plz` | Optional; Xtask admission remains separate from publish automation. |
+| Cross compilation | `cross`, `cargo-zigbuild` | Optional adapter tools; do not assume cross-target behavior without CI evidence. |
+
+### House-Standard Overrides
+
+- `miette` is allowed at CLI/user diagnostic boundaries even though the blessed.rs error section highlights `anyhow` and `color-eyre`.
+- `fjall` is the preferred local durable store when append-only files are not enough.
+- `cargo-mutants`, `cargo-fuzz`, Kani, Verus, TLA+, Loom, and Miri are required verification tools even when not represented as blessed.rs application dependencies.
+- `Dylint` is the preferred custom static-analysis path for Xtask-specific Rust policy.
 
 Preferred crates by role:
 
