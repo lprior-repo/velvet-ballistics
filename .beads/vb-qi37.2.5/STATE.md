@@ -1902,3 +1902,74 @@ status: COMPLETED
 - All work in isolated workspace `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-qi37-2-5`
 
 next_gate: Landing — push to remote and close bead
+
+---
+
+bead_id: vb-qi37.2.5
+phase: 14
+updated_at: 2026-05-16T19:25:00Z
+attempt: 1-of-7
+
+# State 14 landing
+
+current_state: 14
+state_name: Landing
+status: COMPLETED
+
+## Isolation verification
+
+- Workspace path: `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-qi37-2-5`
+- Source checkout: `/home/lewis/src/velvet-ballistics`
+- Isolation check: `case "$(pwd -P)" in ...` → ISOLATED
+- Workspace is NOT nested under source checkout.
+
+## jj merge and push
+
+### Rebase working copy onto main
+```
+jj rebase -r @ -d main
+# Rebased 1 commits to destination
+# Working copy now at: knkwvvrt fb75dcc9 vb-qi37.2.5: add boundedness adversarial tests
+# Parent commit (@-): vokpsrlo d659ba9c main | docs(agents): formal verification mandates
+```
+
+### Update main bookmark
+```
+jj bookmark set main -r @
+# Moved 1 bookmarks to knkwvvrt fb75dcc9 main* | vb-qi37.2.5: add boundedness adversarial tests
+```
+
+### Push to remote
+```
+jj git push
+# Changes to push to origin:
+#   bookmark: main [move forward from d659ba9ca3c2 to fb75dcc9da8c]
+```
+
+### Remote reachability
+- `main` local: `fb75dcc9da8c` — vb-qi37.2.5: add boundedness adversarial tests
+- `main` origin: `fb75dcc9da8c` — pushed successfully
+- Parent: `d659ba9ca3c2` — docs(agents): formal verification mandates
+
+## bd close
+```
+bd --db /home/lewis/src/velvet-ballistics/.beads/dolt close vb-qi37.2.5
+# ✓ Closed vb-qi37.2.5 — quality: Boundedness adversarial tests: Closed
+```
+
+## Landing artifacts
+
+- `.beads/vb-qi37.2.5/landing-report.md` — written with jj push output, bd close output, main/remote reachability proof
+
+## State 14 gate outcome
+
+| Check | Result |
+|-------|--------|
+| Isolation | PASS — ISOLATED |
+| jj rebase onto main | PASS |
+| jj bookmark set main | PASS |
+| jj git push to origin | PASS — main moved forward |
+| bd close | PASS — bead closed |
+| landing-report.md | Written |
+
+**STATUS: COMPLETED — bead landed and closed**
