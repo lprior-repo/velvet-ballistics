@@ -139,6 +139,28 @@ mod tests {
     }
 
     #[test]
+    fn serve_ipc_with_resolver_returns_false_when_server_should_shutdown() {
+        let path = temp_socket_path("resolver_shutdown");
+        let _cleanup = CleanupPath(&path);
+        let mut server = IpcServer::bind(&path).expect("bind should succeed");
+        let mut runtime = make_runtime();
+        server.set_test_poll_once_result(Ok(false));
+        let result = serve_ipc_with_resolver(&mut server, &mut runtime, Some(Duration::ZERO), None);
+        assert_eq!(result, Ok(false));
+    }
+
+    #[test]
+    fn serve_ipc_with_resolver_propagates_poll_once_errors() {
+        let path = temp_socket_path("resolver_error");
+        let _cleanup = CleanupPath(&path);
+        let mut server = IpcServer::bind(&path).expect("bind should succeed");
+        let mut runtime = make_runtime();
+        server.set_test_poll_once_result(Err(IpcServerError::TooManyClients));
+        let result = serve_ipc_with_resolver(&mut server, &mut runtime, Some(Duration::ZERO), None);
+        assert_eq!(result, Err(IpcServerError::TooManyClients));
+    }
+
+    #[test]
     fn dispatch_command_wrapper_delegates_to_dispatch_command_with_resolver() {
         let mut runtime = make_runtime();
         let header = crate::IpcFrameHeader::new(IpcCommand::Health, 0, 0, 0);

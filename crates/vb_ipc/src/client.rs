@@ -796,4 +796,69 @@ mod tests {
         assert_eq!(received_header.command, crate::IpcCommand::Health);
         assert_eq!(received_response, crate::server::IpcResponse::Healthy);
     }
+
+    #[test]
+    fn send_command_writes_bytes_to_server_accepted_stream() {
+        let path = temp_socket_path("send_command_server");
+        let _cleanup = CleanupPath(&path);
+        let mut server = IpcServer::bind(&path).unwrap();
+        let mut runtime = make_runtime();
+        let mut client = IpcClient::connect(&path).unwrap();
+
+        server
+            .poll_once(&mut runtime, Some(Duration::from_millis(100)))
+            .unwrap();
+        assert_eq!(server.client_count(), 1);
+
+        let payload = crate::IpcPayload::Health;
+        let encoded_payload = postcard::to_allocvec(&payload).unwrap();
+        client
+            .send_command(crate::IpcCommand::Health, 1, &payload)
+            .unwrap();
+
+        let server_stream = server.client_stream_mut(1).unwrap();
+        let mut buf = vec![0u8; crate::IPC_HEADER_LEN];
+        let mut total_read = 0usize;
+        let deadline = std::time::Instant::now() + Duration::from_millis(500);
+        while total_read < crate::IPC_HEADER_LEN {
+            if std::time::Instant::now() > deadline {
+                panic!("timeout reading from server stream");
+            }
+            match server_stream.read(&mut buf[total_read..]) {
+                Ok(0) => panic!("unexpected EOF reading from server stream"),
+                Ok(n) => total_read += n,
+                Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                    std::thread::sleep(Duration::from_millis(5));
+                }
+                Err(e) => panic!("read error from server stream: {e}"),
+            }
+        }
+        assert_eq!(total_read, crate::IPC_HEADER_LEN);
+
+        let header = crate::IpcFrameHeader::decode(
+            &buf.try_into().unwrap(),
+            crate::MaxPayloadBytes::DEFAULT,
+        )
+        .unwrap();
+        assert_eq!(header.command, crate::IpcCommand::Health);
+        assert_eq!(header.correlation, 1);
+        assert_eq!(header.payload_len, encoded_payload.len() as u32);
+
+        let mut payload_buf = vec![0u8; encoded_payload.len()];
+        total_read = 0;
+        while total_read < encoded_payload.len() {
+            if std::time::Instant::now() > deadline {
+                panic!("timeout reading payload from server stream");
+            }
+            match server_stream.read(&mut payload_buf[total_read..]) {
+                Ok(0) => panic!("unexpected EOF reading payload from server stream"),
+                Ok(n) => total_read += n,
+                Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                    std::thread::sleep(Duration::from_millis(5));
+                }
+                Err(e) => panic!("read error from server stream payload: {e}"),
+            }
+        }
+        assert_eq!(payload_buf, encoded_payload);
+    }
 }

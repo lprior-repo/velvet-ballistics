@@ -1,0 +1,1 @@
+exclude_globs = ["**/target/**", "**/fuzz/**", "**/*.bak", "**/.beads/**", "**/.moon/**"]
