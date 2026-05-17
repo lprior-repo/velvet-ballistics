@@ -89,6 +89,11 @@ fn runtime_error_core_field_eq(left: &RuntimeError, right: &RuntimeError) -> boo
 }
 
 fn runtime_error_admission_field_eq(left: &RuntimeError, right: &RuntimeError) -> bool {
+    runtime_error_admission_digest_eq(left, right)
+        || runtime_error_admission_capability_eq(left, right)
+}
+
+fn runtime_error_admission_digest_eq(left: &RuntimeError, right: &RuntimeError) -> bool {
     match (left, right) {
         (
             RuntimeError::AdmissionArtifactNotFound { digest: a },
@@ -108,6 +113,16 @@ fn runtime_error_admission_field_eq(left: &RuntimeError, right: &RuntimeError) -
                 found: d,
             },
         ) => a == b && c == d,
+        (
+            RuntimeError::AdmissionArtifactStale { digest: a },
+            RuntimeError::AdmissionArtifactStale { digest: b },
+        ) => a == b,
+        _ => false,
+    }
+}
+
+fn runtime_error_admission_capability_eq(left: &RuntimeError, right: &RuntimeError) -> bool {
+    match (left, right) {
         (
             RuntimeError::AdmissionCapabilityDenied {
                 action: a,

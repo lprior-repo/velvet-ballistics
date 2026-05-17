@@ -22,7 +22,7 @@ members = [
 ]
 default-members = ["."]
 resolver = "2"
-exclude = ["target/miri-tmp", "crates/vb_ui"]
+exclude = ["target/miri-tmp", "crates/vb_ui", "fuzz"]
 
 [workspace.package]
 edition = "2024"

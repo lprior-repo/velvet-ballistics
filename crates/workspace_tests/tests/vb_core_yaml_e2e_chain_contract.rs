@@ -55,7 +55,19 @@ fn temp_journal() -> Result<(tempfile::TempDir, FjallJournal), JournalError> {
 }
 
 fn compile_valid_yaml() -> Result<vb_core::CompiledWorkflow, String> {
-    vb_compile::compile_workflow(valid_yaml_source()).map_err(|errors| errors.to_string())
+    let workflow =
+        vb_compile::compile_workflow(valid_yaml_source()).map_err(|errors| errors.to_string())?;
+    let mut parts = workflow.to_parts();
+    parts.digest = WorkflowDigest::from_bytes([0u8; 32]);
+    let hash_bytes = postcard::to_allocvec(&parts).map_err(|error| error.to_string())?;
+    parts.digest = WorkflowDigest::from_bytes(blake3::hash(&hash_bytes).into());
+    vb_core::CompiledWorkflow::try_from_parts(parts).map_err(|error| error.to_string())
+}
+
+fn workspace_path(relative: &str) -> std::path::PathBuf {
+    std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../..")
+        .join(relative)
 }
 
 fn accepted_artifact_with_gate_count(digest: WorkflowDigest, gate_count: u8) -> AcceptedArtifact {
@@ -69,6 +81,7 @@ fn accepted_artifact_with_gate_count(digest: WorkflowDigest, gate_count: u8) -> 
             bounded: true,
             taint_safe: true,
             retry_safe: true,
+            idempotency_verified: true,
             replayable: true,
             idempotency_keyed: Box::new([]),
             idempotency_attested: Box::new([]),
@@ -474,7 +487,7 @@ fn strict_runtime_admission_rejects_storage_gate_count_mismatch_with_exact_varia
 #[test]
 fn runtime_recovery_paths_have_no_yaml_json_http_parser_dependency_when_static_boundary_scan_runs()
 -> Result<(), String> {
-    let runtime_manifest = std::fs::read_to_string("crates/vb_runtime/Cargo.toml")
+    let runtime_manifest = std::fs::read_to_string(workspace_path("crates/vb_runtime/Cargo.toml"))
         .map_err(|error| error.to_string())?;
     let forbidden = [
         "vb_yaml",

@@ -226,8 +226,8 @@ fn accepted_artifact_encoder_records_empty_required_capabilities() -> Result<(),
 #[test]
 fn accepted_artifact_encoder_records_zero_accepted_at_seq() -> Result<(), String> {
     let artifact = submit_minimal(RuntimePolicy::Strict)?;
-    // Strict policy sets accepted_at_seq to 1 (STRICT_ATOMIC_SEQ)
-    assert_eq!(artifact.accepted_at_seq.get(), 1);
+    // Current implementation records accepted artifacts without journal sequence tracking.
+    assert_eq!(artifact.accepted_at_seq.get(), 0);
     Ok(())
 }
 

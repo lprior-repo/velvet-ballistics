@@ -7,7 +7,9 @@
 //! This harness verifies kind validation in record header decoding.
 
 use crate::codec::header::decode_record_header;
-use crate::constants::{CRC_OFFSET, RECORD_HEADER_BYTES, RECORD_HEADER_LEN, CURRENT_SCHEMA_VERSION};
+use crate::constants::{
+    CRC_OFFSET, CURRENT_SCHEMA_VERSION, RECORD_HEADER_BYTES, RECORD_HEADER_LEN,
+};
 use crate::error::JournalError;
 use crate::records::RecordKind;
 
@@ -17,11 +19,12 @@ use crate::records::RecordKind;
 fn kani_record_kind_accepts_known_kinds() {
     let expected_magic: u32 = 0x5650424Cu32;
     let known_kinds: &[u16] = &[
-        1, 2, 3,                           // WorkflowSource, CompiledArtifact, Snapshot
-        10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, // JournalEvent variants
-        30,                                 // Blob
-        40,                                 // IndexRecord
-        50,                                 // Another valid kind
+        1, 2, 3, // WorkflowSource, CompiledArtifact, Snapshot
+        10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26,
+        27, // JournalEvent variants
+        30, // Blob
+        40, // IndexRecord
+        50, // Another valid kind
     ];
 
     for &kind_id in known_kinds {
@@ -34,12 +37,14 @@ fn kani_record_kind_accepts_known_kinds() {
         header_bytes[16..24].copy_from_slice(&0u64.to_le_bytes());
 
         let crc = crc32c::crc32c(&header_bytes[0..CRC_OFFSET]);
-        header_bytes[CRC_OFFSET..CRC_OFFSET+4].copy_from_slice(&crc.to_le_bytes());
+        header_bytes[CRC_OFFSET..CRC_OFFSET + 4].copy_from_slice(&crc.to_le_bytes());
 
         let result = decode_record_header(&header_bytes, expected_magic, u32::MAX);
         match result {
             Ok(_) => kani::assert(true, "known kind passes kind check"),
-            Err(JournalError::UnknownRecordKind { .. }) => kani::assert(false, "known kind should not be rejected"),
+            Err(JournalError::UnknownRecordKind { .. }) => {
+                kani::assert(false, "known kind should not be rejected")
+            }
             Err(_) => kani::assert(true, "known kind passes kind check"),
         }
     }
@@ -60,7 +65,7 @@ fn kani_record_kind_rejects_unknown() {
     header_bytes[16..24].copy_from_slice(&0u64.to_le_bytes());
 
     let crc = crc32c::crc32c(&header_bytes[0..CRC_OFFSET]);
-    header_bytes[CRC_OFFSET..CRC_OFFSET+4].copy_from_slice(&crc.to_le_bytes());
+    header_bytes[CRC_OFFSET..CRC_OFFSET + 4].copy_from_slice(&crc.to_le_bytes());
 
     let result = decode_record_header(&header_bytes, expected_magic, u32::MAX);
     kani::assert(result.is_err(), "unknown kind should return error");
@@ -81,7 +86,7 @@ fn kani_record_kind_rejects_zero() {
     header_bytes[16..24].copy_from_slice(&0u64.to_le_bytes());
 
     let crc = crc32c::crc32c(&header_bytes[0..CRC_OFFSET]);
-    header_bytes[CRC_OFFSET..CRC_OFFSET+4].copy_from_slice(&crc.to_le_bytes());
+    header_bytes[CRC_OFFSET..CRC_OFFSET + 4].copy_from_slice(&crc.to_le_bytes());
 
     let result = decode_record_header(&header_bytes, expected_magic, u32::MAX);
     kani::assert(result.is_err(), "zero kind should return error");
@@ -102,7 +107,7 @@ fn kani_record_kind_rejects_max() {
     header_bytes[16..24].copy_from_slice(&0u64.to_le_bytes());
 
     let crc = crc32c::crc32c(&header_bytes[0..CRC_OFFSET]);
-    header_bytes[CRC_OFFSET..CRC_OFFSET+4].copy_from_slice(&crc.to_le_bytes());
+    header_bytes[CRC_OFFSET..CRC_OFFSET + 4].copy_from_slice(&crc.to_le_bytes());
 
     let result = decode_record_header(&header_bytes, expected_magic, u32::MAX);
     kani::assert(result.is_err(), "max kind should return error");

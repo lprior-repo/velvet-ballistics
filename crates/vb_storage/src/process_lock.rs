@@ -52,15 +52,7 @@ impl ProcessLock {
                 // Write our own PID into the lock file so a later contender
                 // can report who holds the lock.
                 let pid = std::process::id();
-                file.set_len(0)
-                    .map_err(|source| JournalError::ProcessLockIo {
-                        path: lock_path.clone().into_boxed_path(),
-                        source,
-                    })?;
-                write!(file, "{pid}").map_err(|source| JournalError::ProcessLockIo {
-                    path: lock_path.clone().into_boxed_path(),
-                    source,
-                })?;
+                write_best_effort_holder_pid(&mut file, pid);
 
                 Ok(Self {
                     _file: file,
@@ -107,4 +99,12 @@ fn read_holder_pid(file: &File) -> Option<u32> {
         return None;
     }
     buf.trim().parse::<u32>().ok()
+}
+
+fn write_best_effort_holder_pid(file: &mut File, pid: u32) {
+    // PID metadata is diagnostic only; the flock itself is the authority.
+    let _metadata_write_failed = file
+        .set_len(0)
+        .and_then(|()| write!(file, "{pid}"))
+        .is_err();
 }

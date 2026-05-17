@@ -66,12 +66,11 @@ fn ai_profiles_emit_yaml_or_evidence_for_valid_scopes() {
     assert_eq!(unit_result_label(cmd_ai_deep(None)), "accepted");
     let bead_id = "vb_main_test_ai_fast";
     assert_eq!(unit_result_label(cmd_ai_fast(Some(bead_id))), "accepted");
-    assert_eq!(
+    assert!(
         PathBuf::from(".evidence")
             .join(bead_id)
             .join("ai-fast.yaml")
-            .exists(),
-        true
+            .exists()
     );
     assert_eq!(
         error_text(cmd_ai_fast(Some("../bad"))),
@@ -108,15 +107,12 @@ fn snapshot_commands_capture_fixtures_and_reject_bad_selection() {
         None,
         output_arg,
     ));
-    assert_eq!(dir.path().join("execution_overview.png").exists(), true);
-    assert_eq!(dir.path().join("ui_snapshot_report.yaml").exists(), true);
+    assert!(dir.path().join("execution_overview.png").exists());
+    assert!(dir.path().join("ui_snapshot_report.yaml").exists());
 
     let mut report = vb_ui_snapshot::UiSnapshotReport::new();
     let error = error_text(capture_fixture("missing_fixture", dir.path(), &mut report));
-    assert_eq!(
-        error.contains("Failed to load fixture: missing_fixture"),
-        true
-    );
+    assert!(error.contains("Failed to load fixture: missing_fixture"));
 }
 
 #[test]
@@ -128,7 +124,7 @@ fn generated_fixture_screenshot_has_baseline_dimensions() {
         "execution_overview",
         None,
     ));
-    assert_eq!(png_path.exists(), true);
+    assert!(png_path.exists());
     assert_eq!(png_dimensions_label(&png_path), "1920x1080");
 }
 
@@ -143,16 +139,15 @@ fn ui_token_command_writes_checks_and_reports_parse_errors() {
         Some("json".to_string()),
         false,
     ));
-    assert_eq!(must_read_to_string(&output).contains("TokenColors"), true);
+    assert!(must_read_to_string(&output).contains("TokenColors"));
     assert_eq!(
         unit_result_label(cmd_ui_tokens(TOKENS_FILE, &output_arg, None, true)),
         "accepted"
     );
     must_write(&output, "stale");
-    assert_eq!(
+    assert!(
         error_text(cmd_ui_tokens(TOKENS_FILE, &output_arg, None, true))
-            .contains("Generated UI tokens are stale"),
-        true
+            .contains("Generated UI tokens are stale")
     );
 }
 
@@ -189,13 +184,12 @@ fn partial_profile_evidence_fails_closed_when_yaml_set_is_incomplete() {
         "accepted"
     );
     must_write(&dir.path().join("fmt.yaml"), "gate: fmt");
-    assert_eq!(
+    assert!(
         error_text(fail_on_partial_profile_evidence(
             dir.path(),
             evidence::GateProfile::AiFast
         ))
-        .contains("Missing required gate evidence"),
-        true
+        .contains("Missing required gate evidence")
     );
 }
 
@@ -210,13 +204,16 @@ fn normalize_args_for_test(args: Vec<OsString>) -> Vec<OsString> {
 }
 
 fn must_tempdir() -> tempfile::TempDir {
-    tempfile::TempDir::new().unwrap_or_else(|error| panic!("tempdir: {error}"))
+    let dir = tempfile::TempDir::new();
+    assert!(dir.is_ok(), "tempdir: {dir:?}");
+    match dir {
+        Ok(dir) => dir,
+        Err(_) => std::process::abort(),
+    }
 }
 
 fn must_ok(result: anyhow::Result<()>) {
-    if let Err(error) = result {
-        panic!("unexpected error: {error}");
-    }
+    assert!(result.is_ok(), "unexpected error: {result:?}");
 }
 
 fn error_text(result: anyhow::Result<()>) -> String {
@@ -239,10 +236,12 @@ fn png_dimensions_label(path: &Path) -> String {
 }
 
 fn must_read_to_string(path: &Path) -> String {
-    std::fs::read_to_string(path).unwrap_or_else(|error| panic!("read {}: {error}", path.display()))
+    let content = std::fs::read_to_string(path);
+    assert!(content.is_ok(), "read {}: {content:?}", path.display());
+    content.unwrap_or_default()
 }
 
 fn must_write(path: &Path, contents: &str) {
-    std::fs::write(path, contents)
-        .unwrap_or_else(|error| panic!("write {}: {error}", path.display()))
+    let written = std::fs::write(path, contents);
+    assert!(written.is_ok(), "write {}: {written:?}", path.display());
 }

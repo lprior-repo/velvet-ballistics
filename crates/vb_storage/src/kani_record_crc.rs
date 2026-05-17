@@ -7,7 +7,9 @@
 //! This harness verifies CRC validation in record header decoding.
 
 use crate::codec::header::decode_record_header;
-use crate::constants::{CRC_OFFSET, RECORD_HEADER_BYTES, RECORD_HEADER_LEN, CURRENT_SCHEMA_VERSION};
+use crate::constants::{
+    CRC_OFFSET, CURRENT_SCHEMA_VERSION, RECORD_HEADER_BYTES, RECORD_HEADER_LEN,
+};
 use crate::error::JournalError;
 use crate::records::RecordKind;
 
@@ -26,12 +28,14 @@ fn kani_record_crc_accepts_matching() {
 
     // Compute correct CRC over header prefix
     let crc = crc32c::crc32c(&header_bytes[0..CRC_OFFSET]);
-    header_bytes[CRC_OFFSET..CRC_OFFSET+4].copy_from_slice(&crc.to_le_bytes());
+    header_bytes[CRC_OFFSET..CRC_OFFSET + 4].copy_from_slice(&crc.to_le_bytes());
 
     let result = decode_record_header(&header_bytes, expected_magic, u32::MAX);
     match result {
         Ok(_) => kani::assert(true, "matching CRC accepted"),
-        Err(JournalError::HeaderChecksumMismatch) => kani::assert(false, "matching CRC should not be rejected"),
+        Err(JournalError::HeaderChecksumMismatch) => {
+            kani::assert(false, "matching CRC should not be rejected")
+        }
         Err(_) => kani::assert(true, "matching CRC passes checksum check"),
     }
 }
@@ -50,7 +54,7 @@ fn kani_record_crc_rejects_mismatch() {
     header_bytes[16..24].copy_from_slice(&0u64.to_le_bytes());
 
     // Write wrong CRC at offset 28
-    header_bytes[CRC_OFFSET..CRC_OFFSET+4].copy_from_slice(&0xDEADBEEFu32.to_le_bytes());
+    header_bytes[CRC_OFFSET..CRC_OFFSET + 4].copy_from_slice(&0xDEADBEEFu32.to_le_bytes());
 
     let result = decode_record_header(&header_bytes, expected_magic, u32::MAX);
     kani::assert(result.is_err(), "mismatched CRC should return error");
@@ -76,10 +80,13 @@ fn kani_record_crc_rejects_zero() {
     // Compute correct CRC
     let correct_crc = crc32c::crc32c(&header_bytes[0..CRC_OFFSET]);
     // Store zero instead
-    header_bytes[CRC_OFFSET..CRC_OFFSET+4].copy_from_slice(&0u32.to_le_bytes());
+    header_bytes[CRC_OFFSET..CRC_OFFSET + 4].copy_from_slice(&0u32.to_le_bytes());
 
     let result = decode_record_header(&header_bytes, expected_magic, u32::MAX);
-    kani::assert(result.is_err(), "zero CRC should return error when correct is non-zero");
+    kani::assert(
+        result.is_err(),
+        "zero CRC should return error when correct is non-zero",
+    );
 }
 
 /// VB-STORAGE-DECODE-005 H4: decode accepts CRC with all-ones header
@@ -90,7 +97,7 @@ fn kani_record_crc_all_ones_header() {
     let mut header_bytes = [0xFFu8; RECORD_HEADER_BYTES];
     // Override CRC_OFFSET to compute correct CRC
     let crc = crc32c::crc32c(&header_bytes[0..CRC_OFFSET]);
-    header_bytes[CRC_OFFSET..CRC_OFFSET+4].copy_from_slice(&crc.to_le_bytes());
+    header_bytes[CRC_OFFSET..CRC_OFFSET + 4].copy_from_slice(&crc.to_le_bytes());
 
     let result = decode_record_header(&header_bytes, expected_magic, u32::MAX);
     match result {
@@ -115,7 +122,7 @@ fn kani_record_crc_detects_single_bit_flip() {
 
     // Compute correct CRC
     let correct_crc = crc32c::crc32c(&header_bytes[0..CRC_OFFSET]);
-    header_bytes[CRC_OFFSET..CRC_OFFSET+4].copy_from_slice(&correct_crc.to_le_bytes());
+    header_bytes[CRC_OFFSET..CRC_OFFSET + 4].copy_from_slice(&correct_crc.to_le_bytes());
 
     // Now flip one bit in the header (at offset 10)
     header_bytes[10] ^= 0x01;

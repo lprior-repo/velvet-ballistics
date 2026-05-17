@@ -882,8 +882,8 @@ fn blackhat_run_time_seconds_always_zero_in_computed_budget() {
         .filter(|b| b.max_run_time_seconds == 0);
 
     assert!(
-        budget.is_some(),
-        "BLACKHAT BH-BUD-02: max_run_time_seconds is hardcoded to 0"
+        budget.is_none(),
+        "BLACKHAT BH-BUD-02: max_run_time_seconds must not be hardcoded to 0"
     );
 }
 

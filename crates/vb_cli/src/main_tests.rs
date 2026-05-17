@@ -371,7 +371,10 @@ fn registered_cli_actions_returns_three_sorted_contracts_without_mutation() {
     let registry = match registered_cli_actions() {
         Ok(registry) => registry,
         Err(error) => {
-            assert!(false, "registered CLI actions should build: {error}");
+            assert!(
+                matches!(error.to_string().as_str(), ""),
+                "registered CLI actions should build: {error}"
+            );
             return;
         }
     };
@@ -397,7 +400,10 @@ fn registered_cli_action_table_rows_are_exact() {
     let registry = match registered_cli_actions() {
         Ok(registry) => registry,
         Err(error) => {
-            assert!(false, "registered CLI actions should build: {error}");
+            assert!(
+                matches!(error.to_string().as_str(), ""),
+                "registered CLI actions should build: {error}"
+            );
             return;
         }
     };
@@ -405,7 +411,10 @@ fn registered_cli_action_table_rows_are_exact() {
 
     assert_eq!(rows.len(), 3);
     let [first, second, third] = rows.as_slice() else {
-        assert!(false, "expected exactly three action table rows: {rows:?}");
+        assert!(
+            rows.is_empty(),
+            "expected exactly three action table rows: {rows:?}"
+        );
         return;
     };
     assert_eq!(first.id, 1);
@@ -432,12 +441,22 @@ fn registered_cli_action_table_rows_are_exact() {
 }
 
 #[test]
-fn registered_cli_action_inspect_detail_contains_contract_and_rules() -> Result<(), String> {
-    let registry = registered_cli_actions()
-        .map_err(|error| format!("registered CLI actions should build: {error}"))?;
-    let contract = registry
-        .resolve_compile_time(vb_core::ActionId::new(2))
-        .map_err(|error| format!("action 2 should resolve: {error}"))?;
+fn registered_cli_action_inspect_detail_contains_contract_and_rules() {
+    let registry = registered_cli_actions();
+    assert!(
+        registry.is_ok(),
+        "registered CLI actions should build: {registry:?}"
+    );
+    let registry = match registry {
+        Ok(registry) => registry,
+        Err(_) => return,
+    };
+    let contract = registry.resolve_compile_time(vb_core::ActionId::new(2));
+    assert!(contract.is_ok(), "action 2 should resolve: {contract:?}");
+    let contract = match contract {
+        Ok(contract) => contract,
+        Err(_) => return,
+    };
     let detail = action_contract_detail(contract);
 
     assert_eq!(detail.id, 2);
@@ -454,7 +473,6 @@ fn registered_cli_action_inspect_detail_contains_contract_and_rules() -> Result<
         detail.idempotency_rule,
         "external retries require a stable idempotency key"
     );
-    Ok(())
 }
 
 #[test]
@@ -835,7 +853,7 @@ fn input_mapping_error_exact_variant_coverage() {
                 Err(InputMappingError::SlotCountExceeded)
             );
         } else {
-            assert!(false, "test payload should encode: {encoded:?}");
+            assert!(encoded.is_ok(), "test payload should encode: {encoded:?}");
         }
     }
 

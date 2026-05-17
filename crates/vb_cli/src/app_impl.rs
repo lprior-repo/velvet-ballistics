@@ -241,7 +241,7 @@ fn read_journal_events(
     let rid = parse_run_id(run_id, output)?;
     let journal = vb_storage::FjallJournal::open(db, None).map_err(|e| -> ExitCode {
         report_storage_open_error(&e, db, output);
-        ExitCode::from(CliExitCode::StorageError)
+        CliExitCode::StorageError.into()
     })?;
     journal.events_for_run(rid).map_err(|e| {
         if output != OutputFormat::Text {
@@ -253,7 +253,7 @@ fn read_journal_events(
         } else {
             errln!("error reading run {run_id}: {e}");
         }
-        ExitCode::from(CliExitCode::StorageError)
+        CliExitCode::StorageError.into()
     })
 }
 
@@ -723,30 +723,13 @@ fn cmd_verify(
         Ok(result) => {
             if output != OutputFormat::Text {
                 let warning_strs: Vec<&str> = result.warnings.iter().map(String::as_str).collect();
-                let source_digest_hex = bytes_digest_hex(&bytes);
                 json_out(
                     &serde_json::json!({
                         "success": true,
                         "profile": profile.as_str(),
                         "digest": result.digest_hex,
                         "checks": result.checks,
-                        "warnings": warning_strs,
-                        "artifact": {
-                            "source_digest_hex": source_digest_hex,
-                            "ir_digest_hex": result.digest_hex,
-                            "node_count": result.node_count,
-                        },
-                        "replay": {
-                            "gates_passed": result.checks,
-                            "gate_sequence": result.checks,
-                            "replay_safe": true,
-                        },
-                        "durability": {
-                            "profile": "none",
-                            "journal_written": false,
-                        },
-                        "repair_hints": [],
-                        "exit_code": 0,
+                        "warnings": warning_strs
                     }),
                     output,
                 );
@@ -913,14 +896,6 @@ fn cmd_validate(workflow: &std::path::Path, output: OutputFormat) -> ExitCode {
     ExitCode::SUCCESS
 }
 
-fn bytes_digest_hex(bytes: &[u8]) -> String {
-    blake3::hash(bytes)
-        .as_bytes()
-        .iter()
-        .map(|b| format!("{b:02x}"))
-        .collect()
-}
-
 fn verify_error_message(err: &commands_verify::VerifyError) -> String {
     match err {
         commands_verify::VerifyError::YamlParse(msg)
@@ -1032,11 +1007,18 @@ fn cmd_compile(
             source.push_str(
                 r#"
 fn main() {
+    use std::io::Write as _;
     let slots = [None; WORKFLOW_SLOT_COUNT];
     match drive(slots) {
-        Ok(value) => println!("{:?}", value),
+        Ok(value) => {
+            let stdout = std::io::stdout();
+            let mut handle = stdout.lock();
+            let _ = writeln!(handle, "{:?}", value);
+        }
         Err(error) => {
-            eprintln!("{:?}", error);
+            let stderr = std::io::stderr();
+            let mut handle = stderr.lock();
+            let _ = writeln!(handle, "{:?}", error);
             std::process::exit(1);
         }
     }
@@ -1251,18 +1233,6 @@ fn store_workflow_artifacts(
         report_compiled_ir_store_error(format_args!("workflow source write error: {e}"), output);
         return Err(CliExitCode::StorageError.into());
     }
-    let record = accepted_artifact_record(compiled, ir_bytes, output)?;
-    journal.put_compiled_ir(&record).map_err(|e| {
-        report_compiled_ir_store_error(format_args!("compiled IR write error: {e}"), output);
-        ExitCode::from(CliExitCode::StorageError)
-    })
-}
-
-fn accepted_artifact_record(
-    compiled: &vb_core::CompiledWorkflow,
-    ir_bytes: Vec<u8>,
-    output: OutputFormat,
-) -> Result<vb_storage::CompiledIrRecord, ExitCode> {
     let proof = vb_storage::admission::VerificationProof::new(
         compiled.digest(),
         vb_runtime::admission::REQUIRED_GATE_COUNT,
@@ -1282,9 +1252,13 @@ fn accepted_artifact_record(
             return Err(CliExitCode::StorageError.into());
         }
     };
-    Ok(vb_storage::CompiledIrRecord {
+    let record = vb_storage::CompiledIrRecord {
         digest: compiled.digest(),
         ir: artifact_bytes,
+    };
+    journal.put_compiled_ir(&record).map_err(|e| {
+        report_compiled_ir_store_error(format_args!("compiled IR write error: {e}"), output);
+        CliExitCode::StorageError.into()
     })
 }
 
@@ -1883,7 +1857,10 @@ fn run_compiled_workflow(
         return CliExitCode::RuntimeFailed.into();
     };
     let config = vb_runtime::shard::ShardConfig::default();
-    if let Err(code) = store_runtime_artifact_if_required(compiled, durability, db, output) {
+    if durability != DurabilityMode::None
+        && let Some(db_path) = db
+        && let Err(code) = store_compiled_artifact(compiled, db_path, output)
+    {
         return code;
     }
     let journal = match runtime_journal_for_mode(durability, db, output) {
@@ -1955,34 +1932,54 @@ fn run_compiled_workflow(
     ExitCode::SUCCESS
 }
 
-fn store_runtime_artifact_if_required(
+fn store_compiled_artifact(
     compiled: &vb_core::CompiledWorkflow,
-    durability: DurabilityMode,
-    db: Option<&std::path::Path>,
+    db: &std::path::Path,
     output: OutputFormat,
 ) -> Result<(), ExitCode> {
-    if durability == DurabilityMode::None {
-        return Ok(());
-    }
-    let Some(db) = db else {
-        return Ok(());
-    };
-    let journal = vb_storage::FjallJournal::open(db, None).map_err(|e| {
-        report_compiled_ir_store_error(
-            format_args!("error opening journal at {}: {e}", db.display()),
-            output,
-        );
-        ExitCode::from(CliExitCode::StorageError)
-    })?;
     let parts = compiled.to_parts();
-    let ir_bytes = postcard::to_allocvec(&parts).map_err(|e| {
-        report_compiled_ir_store_error(format_args!("compiled IR encode error: {e}"), output);
-        ExitCode::from(CliExitCode::StorageError)
-    })?;
-    let record = accepted_artifact_record(compiled, ir_bytes, output)?;
+    let ir_bytes = match postcard::to_allocvec(&parts) {
+        Ok(ir) => ir,
+        Err(e) => {
+            report_compiled_ir_store_error(format_args!("compiled IR encode error: {e}"), output);
+            return Err(CliExitCode::StorageError.into());
+        }
+    };
+    let journal = match vb_storage::FjallJournal::open(db, None) {
+        Ok(journal) => journal,
+        Err(e) => {
+            report_compiled_ir_store_error(
+                format_args!("error opening journal at {}: {e}", db.display()),
+                output,
+            );
+            return Err(CliExitCode::StorageError.into());
+        }
+    };
+    let artifact = vb_storage::admission::AcceptedArtifact {
+        digest: compiled.digest(),
+        ir: ir_bytes,
+        verification: vb_storage::admission::VerificationProof::new(
+            compiled.digest(),
+            vb_runtime::admission::REQUIRED_GATE_COUNT,
+            true,
+        ),
+        accepted_at_seq: vb_storage::EventSeq::new(0),
+        required_capabilities: Box::new([]),
+    };
+    let artifact_bytes = match postcard::to_allocvec(&artifact) {
+        Ok(bytes) => bytes,
+        Err(e) => {
+            report_compiled_ir_store_error(format_args!("artifact encode error: {e}"), output);
+            return Err(CliExitCode::StorageError.into());
+        }
+    };
+    let record = vb_storage::CompiledIrRecord {
+        digest: compiled.digest(),
+        ir: artifact_bytes,
+    };
     journal.put_compiled_ir(&record).map_err(|e| {
         report_compiled_ir_store_error(format_args!("compiled IR write error: {e}"), output);
-        ExitCode::from(CliExitCode::StorageError)
+        CliExitCode::StorageError.into()
     })
 }
 
@@ -4665,7 +4662,7 @@ fn write_diagnostic_message_stderr(message: &str, code: CliExitCode, output: Out
         OutputFormat::Text => writeln!(handle, "{message}"),
     };
     if let Err(error) = write_result {
-        eprintln!("diagnostic write failed: {error}");
+        write_stderr_best_effort(format_args!("diagnostic write failed: {error}"));
     }
 }
 
@@ -4777,11 +4774,11 @@ pub(crate) fn write_stdout_line(args: std::fmt::Arguments<'_>) {
     let stdout = io::stdout();
     let mut handle = stdout.lock();
     if let Err(error) = handle.write_fmt(args) {
-        eprintln!("stdout write failed: {error}");
+        write_stderr_best_effort(format_args!("stdout write failed: {error}"));
         return;
     }
     if let Err(error) = handle.write_all(b"\n") {
-        eprintln!("stdout newline write failed: {error}");
+        write_stderr_best_effort(format_args!("stdout newline write failed: {error}"));
     }
 }
 
@@ -4789,11 +4786,22 @@ fn write_stderr_line(args: std::fmt::Arguments<'_>) {
     let stderr = io::stderr();
     let mut handle = stderr.lock();
     if let Err(error) = handle.write_fmt(args) {
-        eprintln!("stderr write failed: {error}");
+        write_stderr_best_effort(format_args!("stderr write failed: {error}"));
         return;
     }
     if let Err(error) = handle.write_all(b"\n") {
-        eprintln!("stderr newline write failed: {error}");
+        write_stderr_best_effort(format_args!("stderr newline write failed: {error}"));
+    }
+}
+
+fn write_stderr_best_effort(args: std::fmt::Arguments<'_>) {
+    let stderr = io::stderr();
+    let mut handle = stderr.lock();
+    match handle
+        .write_fmt(args)
+        .and_then(|()| handle.write_all(b"\n"))
+    {
+        Ok(()) | Err(_) => {}
     }
 }
 

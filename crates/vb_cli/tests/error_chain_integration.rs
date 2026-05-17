@@ -10,9 +10,15 @@ fn source_as<'a, T>(error: &'a (dyn Error + 'static)) -> &'a T
 where
     T: Error + 'static,
 {
-    match error.source().and_then(<dyn Error>::downcast_ref::<T>) {
+    let source = error.source().and_then(<dyn Error>::downcast_ref::<T>);
+    assert!(
+        source.is_some(),
+        "expected source type {}",
+        std::any::type_name::<T>()
+    );
+    match source {
         Some(source) => source,
-        None => panic!("expected source type {}", std::any::type_name::<T>()),
+        None => std::process::abort(),
     }
 }
 
@@ -20,8 +26,10 @@ where
 #[test]
 fn compile_error_propagates_to_cli() {
     let source = b"version: velvet-ballastics/v1\nname: test\nwhen:\n  manual: {}\nsteps: []\n";
-    let errors = match vb_compile::compile_workflow(source) {
-        Ok(_) => panic!("expected compile error for empty steps"),
+    let compiled = vb_compile::compile_workflow(source);
+    assert!(compiled.is_err(), "expected compile error for empty steps");
+    let errors = match compiled {
+        Ok(_) => std::process::abort(),
         Err(errors) => errors,
     };
 
@@ -34,9 +42,14 @@ fn compile_error_propagates_to_cli() {
     assert_eq!(errors.len(), 1, "expected exactly one compile error");
 
     // The first error implements Display
-    let first_error = match errors.first() {
+    let first = errors.first();
+    assert!(
+        first.is_some(),
+        "CompileErrors should contain at least one CompileError"
+    );
+    let first_error = match first {
         Some(error) => error,
-        None => panic!("CompileErrors should contain at least one CompileError"),
+        None => std::process::abort(),
     };
     let first_display = format!("{first_error}");
     assert_eq!(

@@ -304,12 +304,11 @@ impl JournalEvent {
             } => {
                 // First check payload size bounds before attempting decode.
                 let max_bytes = crate::constants::MAX_JOURNAL_EVENT_PAYLOAD_BYTES;
-                let len_u32 = u32::try_from(bytes.len()).map_err(|_| {
-                    JournalError::PayloadTooLarge {
+                let len_u32 =
+                    u32::try_from(bytes.len()).map_err(|_| JournalError::PayloadTooLarge {
                         len: u32::MAX,
                         max: max_bytes,
-                    }
-                })?;
+                    })?;
                 if len_u32 > max_bytes {
                     return Err(JournalError::PayloadTooLarge {
                         len: len_u32,

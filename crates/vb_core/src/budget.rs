@@ -89,10 +89,8 @@ impl WholeWorkflowBudget {
 
         let max_total_slots = u64::from(contract.max_slots);
 
-        // Compute max_run_time_seconds from step budget per tick and total steps.
-        // Uses checked multiplication to handle overflow; saturates at u64::MAX.
-        let max_run_time_seconds =
-            max_total_steps.saturating_mul(contract.max_step_budget_per_tick);
+        // Phase 0 executes at most one step per runtime tick, so steps bound time.
+        let max_run_time_seconds = max_total_steps;
 
         Ok(Self {
             max_total_steps,
@@ -154,7 +152,7 @@ impl BoundednessPolicy {
         max_nesting_depth: 8,
         absolute_max_action_tickets: 100_000,
         absolute_max_parallel: 256,
-        absolute_max_run_time_seconds: 700_000_000,
+        absolute_max_run_time_seconds: 2_592_000,
         absolute_max_result_bytes: 262_144,
         absolute_max_steps_executable: 1_000_000,
     };

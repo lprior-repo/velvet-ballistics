@@ -53,25 +53,32 @@ fn base_parts(nodes: Box<[CompiledNode]>) -> WorkflowParts {
 
 fn valid_input_payload(value: SlotValue) -> Vec<u8> {
     let values: Box<[SlotValue]> = Box::from([value]);
-    postcard::to_allocvec(&values).expect("test input payload encodes")
+    let encoded = postcard::to_allocvec(&values);
+    assert!(encoded.is_ok(), "test input payload encodes: {encoded:?}");
+    encoded.unwrap_or_default()
 }
 
 fn write_bytes(path: &Path, bytes: &[u8]) {
-    std::fs::write(path, bytes).expect("test fixture write succeeds");
+    let written = std::fs::write(path, bytes);
+    assert!(written.is_ok(), "test fixture write succeeds: {written:?}");
 }
 
 fn write_parts(path: &Path, parts: &WorkflowParts) {
-    let payload = postcard::to_allocvec(parts).expect("test WorkflowParts encodes");
+    let encoded = postcard::to_allocvec(parts);
+    assert!(encoded.is_ok(), "test WorkflowParts encodes: {encoded:?}");
+    let payload = encoded.unwrap_or_default();
     write_bytes(path, &payload);
 }
 
 fn run_vb(args: &[&OsStr]) -> Output {
-    let exe = option_env!("CARGO_BIN_EXE_velvet-ballastics")
-        .expect("CARGO_BIN_EXE_velvet-ballastics must be set for test execution");
-    std::process::Command::new(exe)
+    let output = std::process::Command::new(env!("CARGO_BIN_EXE_velvet-ballastics"))
         .args(args)
-        .output()
-        .expect("vb test binary executes")
+        .output();
+    assert!(output.is_ok(), "vb test binary executes: {output:?}");
+    match output {
+        Ok(output) => output,
+        Err(_) => std::process::abort(),
+    }
 }
 
 fn stderr(output: &Output) -> String {
@@ -94,7 +101,7 @@ fn run_compiled(ir_path: &Path, input_path: &Path) -> Output {
 }
 
 fn assert_run_compiled_rejects(parts: WorkflowParts, expected: &str) {
-    let dir = tempfile::tempdir().expect("tempdir succeeds");
+    let dir = must_tempdir();
     let ir_path = dir.path().join("malformed.vbir");
     let input_path = dir.path().join("input.bin");
     write_parts(&ir_path, &parts);
@@ -120,7 +127,7 @@ fn assert_run_compiled_rejects(parts: WorkflowParts, expected: &str) {
 
 #[test]
 fn run_compiled_accepts_valid_handcrafted_ir_artifact() {
-    let dir = tempfile::tempdir().expect("tempdir succeeds");
+    let dir = must_tempdir();
     let ir_path = dir.path().join("valid.vbir");
     let input_path = dir.path().join("input.bin");
     write_parts(&ir_path, &base_parts(Box::from([finish_node(0, 0)])));
@@ -142,7 +149,7 @@ fn run_compiled_accepts_valid_handcrafted_ir_artifact() {
 
 #[test]
 fn run_compiled_rejects_non_postcard_ir_artifact() {
-    let dir = tempfile::tempdir().expect("tempdir succeeds");
+    let dir = must_tempdir();
     let ir_path = dir.path().join("not-postcard.vbir");
     let input_path = dir.path().join("input.bin");
     write_bytes(&ir_path, b"not-postcard");
@@ -199,8 +206,15 @@ fn run_compiled_rejects_handcrafted_bad_constant_reference_ir() {
 #[test]
 fn run_compiled_rejects_handcrafted_bad_accessor_reference_ir() {
     let expression =
-        ExprProgram::try_from_ops(Box::from([ExprOp::LoadAccessor(AccessorIdx::new(0))]))
-            .expect("single load-accessor expression is stack-valid");
+        ExprProgram::try_from_ops(Box::from([ExprOp::LoadAccessor(AccessorIdx::new(0))]));
+    assert!(
+        expression.is_ok(),
+        "single load-accessor expression is stack-valid: {expression:?}"
+    );
+    let expression = match expression {
+        Ok(expression) => expression,
+        Err(_) => std::process::abort(),
+    };
     let mut parts = base_parts(Box::from([
         CompiledNode {
             id: StepIdx::ZERO,
@@ -230,6 +244,15 @@ fn run_compiled_rejects_handcrafted_bad_accessor_path_ir() {
     parts.symbols_count = 0;
 
     assert_run_compiled_rejects(parts, "symbol");
+}
+
+fn must_tempdir() -> tempfile::TempDir {
+    let dir = tempfile::tempdir();
+    assert!(dir.is_ok(), "tempdir succeeds: {dir:?}");
+    match dir {
+        Ok(dir) => dir,
+        Err(_) => std::process::abort(),
+    }
 }
 
 #[test]

@@ -1708,7 +1708,8 @@ mod tests {
             collector_slot,
             expected_page,
             observed_page,
-        } = error else {
+        } = error
+        else {
             panic!("expected CollectPageOrderViolation variant");
         };
         assert_eq!(kind, CollectPageOrderViolationKind::OutOfOrder);
@@ -1731,7 +1732,8 @@ mod tests {
             run_id,
             collector_slot,
             event_seq,
-        } = error else {
+        } = error
+        else {
             panic!("expected CollectExtraHydrationFailed variant");
         };
         assert_eq!(kind, CollectExtraHydrationFailureKind::EmptyExtra);
@@ -1755,7 +1757,8 @@ mod tests {
             capacity,
             len,
             required,
-        } = error else {
+        } = error
+        else {
             panic!("expected CollectEvidenceCapacityExceeded variant");
         };
         assert_eq!(run_id, RunId::new(1));
@@ -1779,7 +1782,8 @@ mod tests {
             context,
             timestamp,
             bead_id,
-        } = error else {
+        } = error
+        else {
             panic!("expected LifecycleStorageUnavailable variant");
         };
         assert_eq!(code, DiagnosticCode::new(0x1501));
@@ -1804,7 +1808,8 @@ mod tests {
             timestamp,
             bead_id,
             command,
-        } = error else {
+        } = error
+        else {
             panic!("expected LifecycleDuplicateRequest variant");
         };
         assert_eq!(code, DiagnosticCode::new(0x1502));
@@ -1830,7 +1835,8 @@ mod tests {
             timestamp,
             bead_id,
             command,
-        } = error else {
+        } = error
+        else {
             panic!("expected LifecycleStaleRequest variant");
         };
         assert_eq!(code, DiagnosticCode::new(0x1503));
@@ -1856,7 +1862,8 @@ mod tests {
             timestamp,
             bead_id,
             command,
-        } = error else {
+        } = error
+        else {
             panic!("expected LifecycleInvalidTransition variant");
         };
         assert_eq!(code, DiagnosticCode::new(0x1504));
@@ -1880,7 +1887,8 @@ mod tests {
             context,
             timestamp,
             bead_id,
-        } = error else {
+        } = error
+        else {
             panic!("expected JournalWriteFailure variant");
         };
         assert_eq!(code, DiagnosticCode::new(0x1505));
@@ -1903,7 +1911,8 @@ mod tests {
             context,
             timestamp,
             bead_id,
-        } = error else {
+        } = error
+        else {
             panic!("expected ReplayCorruption variant");
         };
         assert_eq!(code, DiagnosticCode::new(0x1506));

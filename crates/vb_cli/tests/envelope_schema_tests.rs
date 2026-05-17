@@ -9,20 +9,27 @@ use vb_ui_model::envelope::{
 };
 
 fn schema_version(value: u16) -> SchemaVersion {
-    match SchemaVersion::new(value) {
+    let version = SchemaVersion::new(value);
+    assert!(
+        version.is_ok(),
+        "valid schema version rejected: {version:?}"
+    );
+    match version {
         Ok(version) => version,
-        Err(error) => panic!("valid schema version rejected: {error}"),
+        Err(_) => std::process::abort(),
     }
 }
 
 fn diagnostic_entry(code: &str, message: &str, detail: Option<&str>) -> DiagnosticEntry {
-    match DiagnosticEntry::new(
+    let entry = DiagnosticEntry::new(
         code.to_string(),
         message.to_string(),
         detail.map(str::to_string),
-    ) {
+    );
+    assert!(entry.is_ok(), "valid diagnostic entry rejected: {entry:?}");
+    match entry {
         Ok(entry) => entry,
-        Err(error) => panic!("valid diagnostic entry rejected: {error}"),
+        Err(_) => std::process::abort(),
     }
 }
 
@@ -36,10 +43,39 @@ fn output_envelope(
     payload: Option<PayloadEnvelope>,
     diagnostics: Vec<DiagnosticEntry>,
 ) -> OutputEnvelope {
-    match OutputEnvelope::new(schema_version(1), kind, metadata, payload, diagnostics) {
+    let envelope = OutputEnvelope::new(schema_version(1), kind, metadata, payload, diagnostics);
+    assert!(
+        envelope.is_ok(),
+        "valid output envelope rejected: {envelope:?}"
+    );
+    match envelope {
         Ok(envelope) => envelope,
-        Err(error) => panic!("valid output envelope rejected: {error}"),
+        Err(_) => std::process::abort(),
     }
+}
+
+fn to_json<T: serde::Serialize>(value: &T) -> String {
+    let encoded = serde_json::to_string(value);
+    assert!(encoded.is_ok(), "value must serialize to JSON: {encoded:?}");
+    encoded.unwrap_or_default()
+}
+
+fn from_json<T: serde::de::DeserializeOwned>(encoded: &str) -> T {
+    let decoded = serde_json::from_str(encoded);
+    assert!(decoded.is_ok(), "value must deserialize from JSON");
+    match decoded {
+        Ok(decoded) => decoded,
+        Err(_) => std::process::abort(),
+    }
+}
+
+fn to_postcard<T: serde::Serialize>(value: &T) -> Vec<u8> {
+    let encoded = postcard::to_allocvec(value);
+    assert!(
+        encoded.is_ok(),
+        "value must serialize to postcard: {encoded:?}"
+    );
+    encoded.unwrap_or_default()
 }
 
 #[test]
@@ -86,7 +122,7 @@ fn metadata_envelope_constructs_and_serializes_with_required_fields() {
     assert_eq!(metadata.command(), "validate");
     assert_eq!(metadata.timestamp(), 9_999_999_999);
 
-    let encoded = serde_json::to_string(&metadata).expect("metadata must serialize to JSON");
+    let encoded = to_json(&metadata);
     assert!(encoded.contains("\"run_id\":"));
     assert!(encoded.contains("\"command\":\"validate\""));
     assert!(encoded.contains("\"timestamp\":"));
@@ -107,7 +143,7 @@ fn diagnostic_envelope_constructs_and_serializes_with_optional_detail() {
         Some(&"field X is required".to_string())
     );
 
-    let encoded = serde_json::to_string(&diagnostic).expect("diagnostic must serialize to JSON");
+    let encoded = to_json(&diagnostic);
     assert!(encoded.contains("\"code\":\"VALIDATION_FAILED\""));
     assert!(encoded.contains("\"message\":\"Validation error\""));
     assert!(encoded.contains("\"detail\":\"field X is required\""));
@@ -130,9 +166,8 @@ fn payload_envelope_accepts_json_value_and_roundtrips() {
     assert!(original.as_json().is_object());
     assert_eq!(original.as_json().get("status"), Some(&json!("running")));
 
-    let encoded = serde_json::to_string(&original).expect("payload must serialize to JSON");
-    let decoded: PayloadEnvelope =
-        serde_json::from_str(&encoded).expect("payload must deserialize from JSON");
+    let encoded = to_json(&original);
+    let decoded: PayloadEnvelope = from_json(&encoded);
     assert_eq!(original.as_json(), decoded.as_json());
 }
 
@@ -206,13 +241,12 @@ fn output_envelope_serializes_to_json_with_schema_kind_and_payload() {
         Vec::new(),
     );
 
-    let encoded = serde_json::to_string(&envelope).expect("envelope must serialize to JSON");
+    let encoded = to_json(&envelope);
     assert!(encoded.contains("\"schema_version\":1"));
     assert!(encoded.contains("\"kind\":\"Workflow\""));
     assert!(encoded.contains("\"data\":{"));
 
-    let decoded: OutputEnvelope =
-        serde_json::from_str(&encoded).expect("envelope must deserialize from JSON");
+    let decoded: OutputEnvelope = from_json(&encoded);
     assert_eq!(envelope.kind(), decoded.kind());
     assert_eq!(
         envelope.schema_version().value(),
@@ -229,8 +263,8 @@ fn output_envelope_postcard_serialization_is_deterministic() {
         vec![diagnostic_entry("INFO", "ok", Some("stable"))],
     );
 
-    let first = postcard::to_allocvec(&envelope).expect("first serialize must succeed");
-    let second = postcard::to_allocvec(&envelope).expect("second serialize must succeed");
+    let first = to_postcard(&envelope);
+    let second = to_postcard(&envelope);
 
     assert!(!first.is_empty(), "postcard bytes must not be empty");
     assert_eq!(
@@ -256,7 +290,7 @@ fn each_envelope_kind_serializes_to_json() {
             Some(PayloadEnvelope::from_json(json!({}))),
             Vec::new(),
         );
-        let encoded = serde_json::to_string(&envelope).expect("envelope must serialize to JSON");
+        let encoded = to_json(&envelope);
         assert!(encoded.contains(&format!("\"kind\":\"{}\"", kind.as_str())));
     }
 
@@ -266,6 +300,6 @@ fn each_envelope_kind_serializes_to_json() {
         None,
         vec![diagnostic_entry("INFO", "ok", None)],
     );
-    let encoded = serde_json::to_string(&diagnostic).expect("diagnostic must serialize to JSON");
+    let encoded = to_json(&diagnostic);
     assert!(encoded.contains("\"kind\":\"DiagnosticReport\""));
 }

@@ -9,12 +9,12 @@
 
 #![forbid(unsafe_code)]
 
+use crate::admission::{VerificationProof, submit_artifact};
 use vb_core::workflow::{ResourceContract, WorkflowParts};
 use vb_core::{
     CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, SlotIdx, StepIdx, WorkflowDigest,
     value::ConstValue,
 };
-use crate::admission::{submit_artifact, VerificationProof};
 
 /// Creates a minimal workflow for testing.
 fn minimal_workflow() -> CompiledWorkflow {

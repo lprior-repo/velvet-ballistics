@@ -87,3 +87,27 @@
 
 ### State 15: Cleanup ✓
 - Workspace complete
+
+---
+
+## vb-wg64 State 3 Transition — Clean-Clone CI Repair
+
+- bead_id: vb-wg64
+- source_checkout: /home/lewis/src/velvet-ballistics
+- isolated_workspace: /home/lewis/src/vb-go-skill/p0-wave-20260515/vb-wg64
+- state: 3
+- status: COMPLETE
+- artifacts:
+  - `.beads/vb-wg64/contract.md`
+  - `.beads/vb-wg64/domain-model-review.md`
+  - `.beads/vb-wg64/tla-spec.md`
+  - `.beads/vb-wg64/lean-contract.md`
+  - `.beads/vb-wg64/verification-layers.md`
+  - `.beads/vb-wg64/proof-obligations.jsonl`
+  - `.beads/vb-wg64/traceability-matrix.jsonl`
+- invariants:
+  - no production behavior change except lint-safe output helpers/import/module exposure
+  - test-only unused cleanup must preserve assertions and setup effects
+  - no broad allowlist unless locally justified by evidence
+  - canonical forced CI `moon ci --base HEAD --head HEAD --force` must pass in a clean workspace
+- note: State 3 is artifact-only; no production or test code was modified.

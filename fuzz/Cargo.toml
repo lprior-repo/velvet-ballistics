@@ -8,6 +8,27 @@ autobins = false
 [package.metadata]
 cargo-fuzz = true
 
+[workspace]
+
+[workspace.dependencies]
+blake3 = "1"
+libfuzzer-sys = "0.4"
+postcard = { version = "1", features = ["alloc"] }
+tempfile = "3"
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+unused_must_use = "deny"
+
+[workspace.lints.clippy]
+correctness = { level = "deny", priority = -1 }
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+todo = "deny"
+unimplemented = "deny"
+dbg_macro = "deny"
+
 [features]
 fuzz = []
 
@@ -21,14 +42,14 @@ blake3.workspace = true
 tempfile.workspace = true
 xtask = { path = "../xtask" }
 vb_boundary_inventory = { path = "../crates/vb_boundary_inventory" }
-vb_compile = { path = "../crates/vb_compile" }
 vb_core = { path = "../crates/vb_core" }
 vb_expr = { path = "../crates/vb_expr" }
 vb_storage = { path = "../crates/vb_storage" }
+vb_runtime = { path = "../crates/vb_runtime" }
 vb_validate = { path = "../crates/vb_validate" }
 vb_yaml = { path = "../crates/vb_yaml" }
+vb_compile = { path = "../crates/vb_compile" }
 vb_ipc = { path = "../crates/vb_ipc" }
-vb_runtime = { path = "../crates/vb_runtime" }
 vb_ui_model = { path = "../crates/vb_ui_model" }
 
 [lib]

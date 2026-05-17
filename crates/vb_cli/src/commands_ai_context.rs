@@ -192,7 +192,7 @@ fn ai_workflow_summary(
             });
         }
     };
-    match compiled_workflow_from_ir_record(&record.ir) {
+    match decode_compiled_workflow_from_ir(&record.ir) {
         Some(compiled) => compiled_workflow_summary(digest, &compiled),
         None => serde_json::json!({
             "digest": digest_hex(digest),
@@ -202,20 +202,18 @@ fn ai_workflow_summary(
     }
 }
 
-fn compiled_workflow_from_ir_record(bytes: &[u8]) -> Option<vb_core::CompiledWorkflow> {
-    compiled_workflow_from_accepted_artifact(bytes).or_else(|| compiled_workflow_from_parts(bytes))
-}
-
-fn compiled_workflow_from_accepted_artifact(bytes: &[u8]) -> Option<vb_core::CompiledWorkflow> {
-    postcard::from_bytes::<vb_storage::admission::AcceptedArtifact>(bytes)
-        .ok()
-        .and_then(|artifact| compiled_workflow_from_parts(&artifact.ir))
-}
-
-fn compiled_workflow_from_parts(bytes: &[u8]) -> Option<vb_core::CompiledWorkflow> {
-    postcard::from_bytes::<vb_core::WorkflowParts>(bytes)
+fn decode_compiled_workflow_from_ir(ir: &[u8]) -> Option<vb_core::CompiledWorkflow> {
+    postcard::from_bytes::<vb_core::WorkflowParts>(ir)
         .ok()
         .and_then(|parts| vb_core::CompiledWorkflow::try_from_parts(parts).ok())
+        .or_else(|| {
+            postcard::from_bytes::<vb_storage::admission::AcceptedArtifact>(ir)
+                .ok()
+                .and_then(|artifact| {
+                    postcard::from_bytes::<vb_core::WorkflowParts>(&artifact.ir).ok()
+                })
+                .and_then(|parts| vb_core::CompiledWorkflow::try_from_parts(parts).ok())
+        })
 }
 
 fn workflow_summary_from_source(
@@ -602,7 +600,7 @@ fn write_stderr_line(args: std::fmt::Arguments<'_>) {
         .write_fmt(args)
         .and_then(|()| handle.write_all(b"\n"))
     {
-        eprintln!("stderr write failed: {error}");
+        write_stderr_best_effort(format_args!("stderr write failed: {error}"));
     }
 }
 
@@ -622,6 +620,17 @@ fn json_out(value: &Value, format: OutputFormat) {
                 write_stderr_line(format_args!("stdout write failed: {error}"));
             }
         }
+    }
+}
+
+fn write_stderr_best_effort(args: std::fmt::Arguments<'_>) {
+    let stderr = io::stderr();
+    let mut handle = stderr.lock();
+    match handle
+        .write_fmt(args)
+        .and_then(|()| handle.write_all(b"\n"))
+    {
+        Ok(()) | Err(_) => {}
     }
 }
 
