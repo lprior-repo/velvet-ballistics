@@ -157,7 +157,10 @@ mod tests {
         assert_ne!(ShardDirective::Continue, ShardDirective::Suspend);
         assert_ne!(ShardDirective::Continue, ShardDirective::Cancel);
         assert_ne!(ShardDirective::Continue, ShardDirective::Barrier);
-        assert_ne!(ShardDirective::Continue, ShardDirective::Migrate { target: 0 });
+        assert_ne!(
+            ShardDirective::Continue,
+            ShardDirective::Migrate { target: 0 }
+        );
         assert_ne!(ShardDirective::Continue, ShardDirective::Shutdown);
     }
 
@@ -167,7 +170,10 @@ mod tests {
         assert_ne!(ShardDirective::Suspend, ShardDirective::Continue);
         assert_ne!(ShardDirective::Suspend, ShardDirective::Cancel);
         assert_ne!(ShardDirective::Suspend, ShardDirective::Barrier);
-        assert_ne!(ShardDirective::Suspend, ShardDirective::Migrate { target: 0 });
+        assert_ne!(
+            ShardDirective::Suspend,
+            ShardDirective::Migrate { target: 0 }
+        );
         assert_ne!(ShardDirective::Suspend, ShardDirective::Shutdown);
     }
 
@@ -177,7 +183,10 @@ mod tests {
         assert_ne!(ShardDirective::Cancel, ShardDirective::Continue);
         assert_ne!(ShardDirective::Cancel, ShardDirective::Suspend);
         assert_ne!(ShardDirective::Cancel, ShardDirective::Barrier);
-        assert_ne!(ShardDirective::Cancel, ShardDirective::Migrate { target: 0 });
+        assert_ne!(
+            ShardDirective::Cancel,
+            ShardDirective::Migrate { target: 0 }
+        );
         assert_ne!(ShardDirective::Cancel, ShardDirective::Shutdown);
     }
 
@@ -187,7 +196,10 @@ mod tests {
         assert_ne!(ShardDirective::Barrier, ShardDirective::Continue);
         assert_ne!(ShardDirective::Barrier, ShardDirective::Suspend);
         assert_ne!(ShardDirective::Barrier, ShardDirective::Cancel);
-        assert_ne!(ShardDirective::Barrier, ShardDirective::Migrate { target: 0 });
+        assert_ne!(
+            ShardDirective::Barrier,
+            ShardDirective::Migrate { target: 0 }
+        );
         assert_ne!(ShardDirective::Barrier, ShardDirective::Shutdown);
     }
 

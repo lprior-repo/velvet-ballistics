@@ -12,13 +12,13 @@ mod tests {
     use crate::lexer::{BinaryOp, UnaryOp};
     use crate::parser::ExprHelper;
     use crate::{ExprError, ExprResult};
+    use proptest;
+    use proptest::prelude::*;
     use vb_core::limits::MAX_EXPRESSION_STACK;
     use vb_core::value::FiniteF64;
     use vb_core::value::Taint;
     use vb_core::value_store::ValueStore;
     use vb_core::{ConstIdx, ConstValue, ExprOp, ExprProgram, SlotIdx, SlotValue};
-    use proptest::prelude::*;
-    use proptest;
 
     fn make_f64(value: f64) -> FiniteF64 {
         FiniteF64::new(value).expect("expected finite f64")
@@ -2061,8 +2061,7 @@ mod tests {
 
     #[test]
     fn and_returns_true_when_both_operands_are_true() -> ExprResult<()> {
-        let result =
-            eval_binary_op(BinaryOp::And, SlotValue::Bool(true), SlotValue::Bool(true))?;
+        let result = eval_binary_op(BinaryOp::And, SlotValue::Bool(true), SlotValue::Bool(true))?;
         assert_eq!(result, SlotValue::Bool(true));
         Ok(())
     }
@@ -2073,8 +2072,7 @@ mod tests {
     #[test]
     fn and_returns_false_when_first_is_false_and_evaluates_right() -> ExprResult<()> {
         // Section 46: left=false, right=non-bool → both evaluated → TypeMismatch
-        let result =
-            eval_binary_op(BinaryOp::And, SlotValue::Bool(false), SlotValue::I64(0));
+        let result = eval_binary_op(BinaryOp::And, SlotValue::Bool(false), SlotValue::I64(0));
         let Err(ExprError::TypeMismatch { expected, found }) = result else {
             return Err(ExprError::UnexpectedToken {
                 token: "expected TypeMismatch since both operands evaluated".into(),
@@ -2089,8 +2087,7 @@ mod tests {
 
     #[test]
     fn and_returns_false_when_first_is_true_and_second_is_false() -> ExprResult<()> {
-        let result =
-            eval_binary_op(BinaryOp::And, SlotValue::Bool(true), SlotValue::Bool(false))?;
+        let result = eval_binary_op(BinaryOp::And, SlotValue::Bool(true), SlotValue::Bool(false))?;
         assert_eq!(result, SlotValue::Bool(false));
         Ok(())
     }
@@ -2099,8 +2096,7 @@ mod tests {
 
     #[test]
     fn or_returns_false_when_both_operands_are_false() -> ExprResult<()> {
-        let result =
-            eval_binary_op(BinaryOp::Or, SlotValue::Bool(false), SlotValue::Bool(false))?;
+        let result = eval_binary_op(BinaryOp::Or, SlotValue::Bool(false), SlotValue::Bool(false))?;
         assert_eq!(result, SlotValue::Bool(false));
         Ok(())
     }
@@ -2111,8 +2107,7 @@ mod tests {
     #[test]
     fn or_returns_true_when_first_is_true_and_evaluates_right() -> ExprResult<()> {
         // Section 46: left=true, right=non-bool → both evaluated → TypeMismatch
-        let result =
-            eval_binary_op(BinaryOp::Or, SlotValue::Bool(true), SlotValue::I64(0));
+        let result = eval_binary_op(BinaryOp::Or, SlotValue::Bool(true), SlotValue::I64(0));
         let Err(ExprError::TypeMismatch { expected, found }) = result else {
             return Err(ExprError::UnexpectedToken {
                 token: "expected TypeMismatch since both operands evaluated".into(),
@@ -2127,8 +2122,7 @@ mod tests {
 
     #[test]
     fn or_returns_true_when_first_is_false_and_second_is_true() -> ExprResult<()> {
-        let result =
-            eval_binary_op(BinaryOp::Or, SlotValue::Bool(false), SlotValue::Bool(true))?;
+        let result = eval_binary_op(BinaryOp::Or, SlotValue::Bool(false), SlotValue::Bool(true))?;
         assert_eq!(result, SlotValue::Bool(true));
         Ok(())
     }
@@ -2203,32 +2197,32 @@ mod tests {
 
     #[test]
     fn and_false_false_returns_false() -> ExprResult<()> {
-        let result =
-            eval_binary_op(BinaryOp::And, SlotValue::Bool(false), SlotValue::Bool(false))?;
+        let result = eval_binary_op(
+            BinaryOp::And,
+            SlotValue::Bool(false),
+            SlotValue::Bool(false),
+        )?;
         assert_eq!(result, SlotValue::Bool(false));
         Ok(())
     }
 
     #[test]
     fn and_false_true_returns_false() -> ExprResult<()> {
-        let result =
-            eval_binary_op(BinaryOp::And, SlotValue::Bool(false), SlotValue::Bool(true))?;
+        let result = eval_binary_op(BinaryOp::And, SlotValue::Bool(false), SlotValue::Bool(true))?;
         assert_eq!(result, SlotValue::Bool(false));
         Ok(())
     }
 
     #[test]
     fn and_true_false_returns_false() -> ExprResult<()> {
-        let result =
-            eval_binary_op(BinaryOp::And, SlotValue::Bool(true), SlotValue::Bool(false))?;
+        let result = eval_binary_op(BinaryOp::And, SlotValue::Bool(true), SlotValue::Bool(false))?;
         assert_eq!(result, SlotValue::Bool(false));
         Ok(())
     }
 
     #[test]
     fn and_true_true_returns_true() -> ExprResult<()> {
-        let result =
-            eval_binary_op(BinaryOp::And, SlotValue::Bool(true), SlotValue::Bool(true))?;
+        let result = eval_binary_op(BinaryOp::And, SlotValue::Bool(true), SlotValue::Bool(true))?;
         assert_eq!(result, SlotValue::Bool(true));
         Ok(())
     }
@@ -2239,32 +2233,28 @@ mod tests {
 
     #[test]
     fn or_false_false_returns_false() -> ExprResult<()> {
-        let result =
-            eval_binary_op(BinaryOp::Or, SlotValue::Bool(false), SlotValue::Bool(false))?;
+        let result = eval_binary_op(BinaryOp::Or, SlotValue::Bool(false), SlotValue::Bool(false))?;
         assert_eq!(result, SlotValue::Bool(false));
         Ok(())
     }
 
     #[test]
     fn or_false_true_returns_true() -> ExprResult<()> {
-        let result =
-            eval_binary_op(BinaryOp::Or, SlotValue::Bool(false), SlotValue::Bool(true))?;
+        let result = eval_binary_op(BinaryOp::Or, SlotValue::Bool(false), SlotValue::Bool(true))?;
         assert_eq!(result, SlotValue::Bool(true));
         Ok(())
     }
 
     #[test]
     fn or_true_false_returns_true() -> ExprResult<()> {
-        let result =
-            eval_binary_op(BinaryOp::Or, SlotValue::Bool(true), SlotValue::Bool(false))?;
+        let result = eval_binary_op(BinaryOp::Or, SlotValue::Bool(true), SlotValue::Bool(false))?;
         assert_eq!(result, SlotValue::Bool(true));
         Ok(())
     }
 
     #[test]
     fn or_true_true_returns_true() -> ExprResult<()> {
-        let result =
-            eval_binary_op(BinaryOp::Or, SlotValue::Bool(true), SlotValue::Bool(true))?;
+        let result = eval_binary_op(BinaryOp::Or, SlotValue::Bool(true), SlotValue::Bool(true))?;
         assert_eq!(result, SlotValue::Bool(true));
         Ok(())
     }
@@ -2662,17 +2652,14 @@ mod tests {
         // With non-bool right, Section 46 mandates evaluation → TypeMismatch.
         let left = SlotValue::Bool(false);
         // Test with valid bool right - should return false
-        let result =
-            eval_binary_op(BinaryOp::And, left, SlotValue::Bool(true)).unwrap();
+        let result = eval_binary_op(BinaryOp::And, left, SlotValue::Bool(true)).unwrap();
         assert_eq!(result, SlotValue::Bool(false));
 
         // Section 46: non-bool right must be evaluated → TypeMismatch
-        let result2 =
-            eval_binary_op(BinaryOp::And, left, SlotValue::I64(0));
+        let result2 = eval_binary_op(BinaryOp::And, left, SlotValue::I64(0));
         assert!(matches!(result2, Err(ExprError::TypeMismatch { .. })));
 
-        let result3 =
-            eval_binary_op(BinaryOp::And, left, SlotValue::Null);
+        let result3 = eval_binary_op(BinaryOp::And, left, SlotValue::Null);
         assert!(matches!(result3, Err(ExprError::TypeMismatch { .. })));
     }
 
@@ -2682,17 +2669,14 @@ mod tests {
         // With non-bool right, Section 46 mandates evaluation → TypeMismatch.
         let left = SlotValue::Bool(true);
         // Test with valid bool right - should return true
-        let result =
-            eval_binary_op(BinaryOp::Or, left, SlotValue::Bool(false)).unwrap();
+        let result = eval_binary_op(BinaryOp::Or, left, SlotValue::Bool(false)).unwrap();
         assert_eq!(result, SlotValue::Bool(true));
 
         // Section 46: non-bool right must be evaluated → TypeMismatch
-        let result2 =
-            eval_binary_op(BinaryOp::Or, left, SlotValue::I64(0));
+        let result2 = eval_binary_op(BinaryOp::Or, left, SlotValue::I64(0));
         assert!(matches!(result2, Err(ExprError::TypeMismatch { .. })));
 
-        let result3 =
-            eval_binary_op(BinaryOp::Or, left, SlotValue::Null);
+        let result3 = eval_binary_op(BinaryOp::Or, left, SlotValue::Null);
         assert!(matches!(result3, Err(ExprError::TypeMismatch { .. })));
     }
 

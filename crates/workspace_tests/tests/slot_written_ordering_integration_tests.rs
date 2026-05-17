@@ -119,13 +119,7 @@ fn copy_node(id: u16, source: u16, output: u16, next: u16) -> CompiledNode {
 }
 
 /// Creates a CollectStart node for multi-slot writes.
-fn collect_start_node(
-    id: u16,
-    source: u16,
-    output: u16,
-    body: u16,
-    done: u16,
-) -> CompiledNode {
+fn collect_start_node(id: u16, source: u16, output: u16, body: u16, done: u16) -> CompiledNode {
     CompiledNode {
         id: StepIdx::new(id),
         output: Some(SlotIdx::new(output)),
@@ -188,13 +182,8 @@ fn slot_written_appears_before_next_step_started_in_evidence_stream() {
     )
     .expect("workflow construction should succeed");
 
-    let mut run = vb_core::frame::RunFrame::new(
-        RunId::new(1),
-        StepIdx::new(0),
-        3,
-        2,
-    )
-    .expect("run frame creation should succeed");
+    let mut run = vb_core::frame::RunFrame::new(RunId::new(1), StepIdx::new(0), 3, 2)
+        .expect("run frame creation should succeed");
 
     let mut budget = vb_core::engine::StepBudget::new(10);
     let mut store = vb_core::value_store::ValueStore::new();
@@ -280,13 +269,8 @@ fn evidence_collector_emits_slot_before_next_step_begins() {
     )
     .expect("workflow construction should succeed");
 
-    let mut run = vb_core::frame::RunFrame::new(
-        RunId::new(2),
-        StepIdx::new(0),
-        2,
-        1,
-    )
-    .expect("run frame creation should succeed");
+    let mut run = vb_core::frame::RunFrame::new(RunId::new(2), StepIdx::new(0), 2, 1)
+        .expect("run frame creation should succeed");
 
     let mut budget = vb_core::engine::StepBudget::new(10);
     let mut store = vb_core::value_store::ValueStore::new();
@@ -361,13 +345,8 @@ fn multi_slot_node_emit_order_preserved() {
     )
     .expect("workflow construction should succeed");
 
-    let mut run = vb_core::frame::RunFrame::new(
-        RunId::new(3),
-        StepIdx::new(0),
-        3,
-        2,
-    )
-    .expect("run frame creation should succeed");
+    let mut run = vb_core::frame::RunFrame::new(RunId::new(3), StepIdx::new(0), 3, 2)
+        .expect("run frame creation should succeed");
 
     // Pre-populate source list
     let list_id = {
@@ -406,7 +385,10 @@ fn multi_slot_node_emit_order_preserved() {
         .iter()
         .enumerate()
         .filter(|(_, e)| {
-            matches!(e, vb_runtime::engine::types::EvidenceEvent::SlotWritten { .. })
+            matches!(
+                e,
+                vb_runtime::engine::types::EvidenceEvent::SlotWritten { .. }
+            )
         })
         .map(|(i, _)| i)
         .collect();
@@ -451,13 +433,8 @@ fn no_slot_written_node_omits_slot_event() {
     let wf = make_workflow(vec![nop_node(0, 1), finish_node(1, 0)], 1, vec![])
         .expect("workflow construction should succeed");
 
-    let mut run = vb_core::frame::RunFrame::new(
-        RunId::new(4),
-        StepIdx::new(0),
-        2,
-        1,
-    )
-    .expect("run frame creation should succeed");
+    let mut run = vb_core::frame::RunFrame::new(RunId::new(4), StepIdx::new(0), 2, 1)
+        .expect("run frame creation should succeed");
 
     // Pre-condition: slot 0 has a value (finish will use it)
     run.write_slot(SlotIdx::new(0), SlotValue::I64(99))
@@ -537,13 +514,8 @@ fn copy_node_emits_slot_written_with_correct_value() {
     let wf = make_workflow(vec![copy_node(0, 1, 0, 1), finish_node(1, 0)], 2, vec![])
         .expect("workflow construction should succeed");
 
-    let mut run = vb_core::frame::RunFrame::new(
-        RunId::new(5),
-        StepIdx::new(0),
-        2,
-        2,
-    )
-    .expect("run frame creation should succeed");
+    let mut run = vb_core::frame::RunFrame::new(RunId::new(5), StepIdx::new(0), 2, 2)
+        .expect("run frame creation should succeed");
 
     // Pre-condition: slot 1 has a value
     run.write_slot(SlotIdx::new(1), SlotValue::I64(77))
@@ -1144,10 +1116,7 @@ fn recover_full_journal_returns_no_recovery_data_when_journal_is_empty() {
                 "NoRecoveryData should report the correct run ID"
             );
         }
-        other => panic!(
-            "expected NoRecoveryData for empty journal, got {:?}",
-            other
-        ),
+        other => panic!("expected NoRecoveryData for empty journal, got {:?}", other),
     }
 }
 
@@ -1183,15 +1152,9 @@ fn recover_full_journal_returns_no_recovery_data_for_wrong_run() {
     // Then: Should return NoRecoveryData for run B
     match result {
         Err(RecoveryError::NoRecoveryData { run }) => {
-            assert_eq!(
-                run, run_b,
-                "NoRecoveryData should report run B as missing"
-            );
+            assert_eq!(run, run_b, "NoRecoveryData should report run B as missing");
         }
-        other => panic!(
-            "expected NoRecoveryData for wrong run, got {:?}",
-            other
-        ),
+        other => panic!("expected NoRecoveryData for wrong run, got {:?}", other),
     }
 }
 

@@ -17,9 +17,12 @@ toml.workspace = true
 blake3.workspace = true
 bytes.workspace = true
 criterion.workspace = true
+crossbeam-queue.workspace = true
 postcard.workspace = true
 proptest.workspace = true
+rtrb.workspace = true
 saphyr.workspace = true
+serde.workspace = true
 tempfile.workspace = true
 toml.workspace = true
 xtask = { path = "../../xtask" }

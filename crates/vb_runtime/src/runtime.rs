@@ -213,7 +213,11 @@ impl Runtime {
     /// Returns `Ok(true)` if the shard is alive (continuing), `Ok(false)` if the
     /// shard has shut down, or an error if the shard index is invalid or migration
     /// failed.
-    pub fn tick_shard(&mut self, shard_index: u32, directive: ShardDirective) -> RuntimeResult<bool> {
+    pub fn tick_shard(
+        &mut self,
+        shard_index: u32,
+        directive: ShardDirective,
+    ) -> RuntimeResult<bool> {
         let shard_index_usize = usize::try_from(shard_index)
             .map_err(|_| RuntimeError::ShardNotFound { shard: shard_index })?;
 
@@ -224,7 +228,9 @@ impl Runtime {
 
         match directive {
             ShardDirective::Continue => {
-                let shard = self.shards.get_mut(shard_index_usize)
+                let shard = self
+                    .shards
+                    .get_mut(shard_index_usize)
                     .ok_or(RuntimeError::ShardNotFound { shard: shard_index })?;
                 shard.tick()
             }
@@ -232,11 +238,11 @@ impl Runtime {
                 // Suspend: skip processing, preserve queue, return alive
                 Ok(true)
             }
-            ShardDirective::Migrate { target } => {
-                self.migrate_shard(shard_index_usize, target)
-            }
+            ShardDirective::Migrate { target } => self.migrate_shard(shard_index_usize, target),
             ShardDirective::Shutdown => {
-                let shard = self.shards.get_mut(shard_index_usize)
+                let shard = self
+                    .shards
+                    .get_mut(shard_index_usize)
                     .ok_or(RuntimeError::ShardNotFound { shard: shard_index })?;
                 shard.drain_for_shutdown()?;
                 Ok(false)
@@ -244,7 +250,9 @@ impl Runtime {
             ShardDirective::Cancel | ShardDirective::Barrier => {
                 // Cancel and Barrier are not yet implemented as directives
                 // Fall back to normal tick behavior
-                let shard = self.shards.get_mut(shard_index_usize)
+                let shard = self
+                    .shards
+                    .get_mut(shard_index_usize)
                     .ok_or(RuntimeError::ShardNotFound { shard: shard_index })?;
                 shard.tick()
             }
@@ -256,12 +264,12 @@ impl Runtime {
     /// Returns `Ok(true)` if the source shard is still alive (has runs or pending commands),
     /// `Ok(false)` if the source shard is empty and can be shut down.
     fn migrate_shard(&mut self, source_idx: usize, target: u32) -> RuntimeResult<bool> {
-        let target_usize = usize::try_from(target)
-            .map_err(|_| RuntimeError::ShardNotFound { shard: target })?;
+        let target_usize =
+            usize::try_from(target).map_err(|_| RuntimeError::ShardNotFound { shard: target })?;
 
         // Self-migrate check (already validated in caller, but double-check for safety)
-        let source_u32 = u32::try_from(source_idx)
-            .map_err(|_| RuntimeError::ShardNotFound { shard: target })?;
+        let source_u32 =
+            u32::try_from(source_idx).map_err(|_| RuntimeError::ShardNotFound { shard: target })?;
         if target == source_u32 {
             return Err(RuntimeError::MigrateSelf);
         }
@@ -273,7 +281,9 @@ impl Runtime {
 
         // Collect all commands from source shard
         let commands: Vec<ShardCommand> = {
-            let shard = self.shards.get_mut(source_idx)
+            let shard = self
+                .shards
+                .get_mut(source_idx)
                 .ok_or(RuntimeError::ShardNotFound { shard: source_u32 })?;
             let mut cmds = Vec::new();
             while let Some(cmd) = shard.command_queue.pop() {
@@ -284,7 +294,9 @@ impl Runtime {
 
         // Push all commands to target shard
         {
-            let target_shard = self.shards.get_mut(target_usize)
+            let target_shard = self
+                .shards
+                .get_mut(target_usize)
                 .ok_or(RuntimeError::ShardNotFound { shard: target })?;
             for cmd in commands {
                 target_shard.enqueue(cmd)?;
@@ -292,7 +304,9 @@ impl Runtime {
         }
 
         // Return true if source shard still has runs (alive)
-        let shard = self.shards.get_mut(source_idx)
+        let shard = self
+            .shards
+            .get_mut(source_idx)
             .ok_or(RuntimeError::ShardNotFound { shard: source_u32 })?;
         let alive = shard.active_run_count() > 0 || !shard.command_queue.is_empty();
         Ok(alive)

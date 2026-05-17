@@ -22,7 +22,10 @@ fn be_check_expr_stack_bound_rejects_100_loads_no_pop() {
         .collect();
     let result = crate::bytecode::check_expr_stack_bound(&ops);
     // This should fail because either the stack overflows OR final depth != 1
-    assert!(result.is_err(), "100 LoadConst ops with no pops must be rejected");
+    assert!(
+        result.is_err(),
+        "100 LoadConst ops with no pops must be rejected"
+    );
 }
 
 #[test]
@@ -36,7 +39,10 @@ fn be_check_expr_stack_bound_accepts_proper_program_depth_2() {
         ExprOp::Add,
     ];
     let result = crate::bytecode::check_expr_stack_bound(&ops);
-    assert!(result.is_ok(), "proper program with max depth 2 should be accepted");
+    assert!(
+        result.is_ok(),
+        "proper program with max depth 2 should be accepted"
+    );
 }
 
 #[test]
@@ -49,7 +55,10 @@ fn be_check_expr_stack_bound_rejects_too_many_ops() {
         .map(|i| ExprOp::LoadConst(vb_core::ConstIdx::new(i as u16 % 256)))
         .collect();
     let result = crate::bytecode::check_expr_stack_bound(&ops);
-    assert!(result.is_err(), "300 ops must be rejected (exceeds MAX_EXPRESSION_OPS)");
+    assert!(
+        result.is_err(),
+        "300 ops must be rejected (exceeds MAX_EXPRESSION_OPS)"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -59,10 +68,7 @@ fn be_check_expr_stack_bound_rejects_too_many_ops() {
 #[test]
 fn be_not_operation_depth_is_one() {
     // LoadConst, Not — stack: [val] → [result], depth = 1 throughout.
-    let ops = vec![
-        ExprOp::LoadConst(vb_core::ConstIdx::new(0)),
-        ExprOp::Not,
-    ];
+    let ops = vec![ExprOp::LoadConst(vb_core::ConstIdx::new(0)), ExprOp::Not];
     let result = crate::bytecode::check_expr_stack_bound(&ops);
     assert!(result.is_ok());
 }

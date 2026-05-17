@@ -1500,9 +1500,7 @@ fn taint_propagates_through_logic_style_composite() -> Result<(), String> {
     wf.secrets.push("logic_val".to_owned());
     let result = validate_taint(&wf);
     if result != Ok(()) {
-        return Err(format!(
-            "expected Ok for logic composite, got {result:?}"
-        ));
+        return Err(format!("expected Ok for logic composite, got {result:?}"));
     }
     Ok(())
 }
@@ -1650,9 +1648,7 @@ fn slot_to_slot_single_relay_propagates_taint() -> Result<(), String> {
     wf.secrets.push("db_url".to_owned());
     let result = validate_taint(&wf);
     if result != Ok(()) {
-        return Err(format!(
-            "expected Ok for single slot relay, got {result:?}"
-        ));
+        return Err(format!("expected Ok for single slot relay, got {result:?}"));
     }
     Ok(())
 }
@@ -1683,9 +1679,7 @@ fn slot_to_slot_branching_relays_both_tainted() -> Result<(), String> {
     wf.secrets.push("master_key".to_owned());
     let result = validate_taint(&wf);
     if result != Ok(()) {
-        return Err(format!(
-            "expected Ok for branching relay, got {result:?}"
-        ));
+        return Err(format!("expected Ok for branching relay, got {result:?}"));
     }
     Ok(())
 }
@@ -1700,9 +1694,7 @@ fn slot_to_slot_two_hop_relay_carries_taint() -> Result<(), String> {
     wf.secrets.push("cred".to_owned());
     let result = validate_taint(&wf);
     if result != Ok(()) {
-        return Err(format!(
-            "expected Ok for two-hop relay, got {result:?}"
-        ));
+        return Err(format!("expected Ok for two-hop relay, got {result:?}"));
     }
     Ok(())
 }
@@ -1890,9 +1882,7 @@ fn accessor_secret_field_via_secrets_namespace() -> Result<(), String> {
     wf.secrets.push("db".to_owned());
     let result = validate_taint(&wf);
     if result != Ok(()) {
-        return Err(format!(
-            "expected Ok for secret accessor, got {result:?}"
-        ));
+        return Err(format!("expected Ok for secret accessor, got {result:?}"));
     }
     Ok(())
 }
@@ -2148,9 +2138,7 @@ fn taint_merge_composite_of_two_secret_sources() -> Result<(), String> {
     });
     let result = validate_taint(&wf);
     if result != Ok(()) {
-        return Err(format!(
-            "expected Ok for merged secrets, got {result:?}"
-        ));
+        return Err(format!("expected Ok for merged secrets, got {result:?}"));
     }
     Ok(())
 }

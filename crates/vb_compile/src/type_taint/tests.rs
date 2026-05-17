@@ -230,22 +230,6 @@ fn ensure_choose_rejects_type(source: &[u8], expected_found: &'static str) -> Re
     ensure_choose_type_found(parse_error(source)?, expected_found)
 }
 
-fn ensure_secret_result(error: CompileError) -> Result<(), String> {
-    ensure(
-        matches!(
-            error,
-            CompileError::SecretTaintLeak {
-                field: "finish.result"
-            }
-        ),
-        "secret result did not use taint diagnostic",
-    )
-}
-
-fn ensure_secret_result_pair(source: &[u8]) -> Result<(), String> {
-    ensure_secret_result(parse_error(source)?)
-}
-
 fn ensure_reference_error(error: CompileError) -> Result<(), String> {
     ensure(
         matches!(

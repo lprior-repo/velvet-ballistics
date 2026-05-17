@@ -4,8 +4,8 @@
 
 use crate::eval::{eval_binary_op, eval_unary_op};
 use crate::lexer::{BinaryOp, UnaryOp};
-use vb_core::value::FiniteF64;
 use vb_core::SlotValue;
+use vb_core::value::FiniteF64;
 
 use proptest::prelude::*;
 

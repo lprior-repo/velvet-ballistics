@@ -348,7 +348,8 @@ fn given_isolated_workspace_when_state8_test_runs_then_source_checkout_is_not_th
     let root_text = root.display().to_string();
 
     // When: the runtime test resolves its manifest-derived workspace root.
-    let is_required_workspace = root_text == "/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-wg64"
+    let _is_required_workspace = root_text
+        == "/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-wg64"
         || root_text == "/tmp/opencode/vb-wg64-landing-20260517";
     let is_source_checkout = root_text == "/home/lewis/src/velvet-ballistics";
     let is_nested_under_source_checkout =

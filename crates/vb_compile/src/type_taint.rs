@@ -52,7 +52,9 @@ impl ValueFact {
     const fn merge(self, other: Self) -> Self {
         let taint = match (self.taint, other.taint) {
             (Taint::Secret, _) | (_, Taint::Secret) => Taint::Secret,
-            (Taint::DerivedFromSecret, _) | (_, Taint::DerivedFromSecret) => Taint::DerivedFromSecret,
+            (Taint::DerivedFromSecret, _) | (_, Taint::DerivedFromSecret) => {
+                Taint::DerivedFromSecret
+            }
             (Taint::Clean, Taint::Clean) => Taint::Clean,
         };
         Self {

@@ -4,14 +4,17 @@
 
 #![allow(missing_docs)]
 
-use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
+use criterion::{Criterion, Throughput, criterion_group, criterion_main};
 use std::hint::black_box;
 use vb_core::ids::RunId;
-use vb_runtime::shard::types::{ShardCommand, ShardCommandQueue};
+use vb_core::{
+    CapabilitySet, CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, SlotIdx,
+    StepIdx, WorkflowDigest, WorkflowParts,
+};
 use vb_runtime::RuntimeError;
+use vb_runtime::shard::types::{ShardCommand, ShardCommandQueue};
 
-const BENCH_METADATA: &str =
-    "profile=bench;tool=criterion-0.8;durability=mixed;mode=ir-and-generated;latency=p50-p95-p99-by-criterion;allocations=allocator-external;instructions=not-collected";
+const BENCH_METADATA: &str = "profile=bench;tool=criterion-0.8;durability=mixed;mode=ir-and-generated;latency=p50-p95-p99-by-criterion;allocations=allocator-external;instructions=not-collected";
 
 fn metadata(name: &str, fixture_bytes: usize, extra: &str) -> String {
     format!(
@@ -24,10 +27,37 @@ fn metadata(name: &str, fixture_bytes: usize, extra: &str) -> String {
 /// Creates a ShardCommand::Submit for benchmarking.
 fn make_submit_command(run_id: u64) -> ShardCommand {
     ShardCommand::Submit {
-        run_id: RunId::new(run_id),
-        workflow: vb_core::WorkflowDigest::from_bytes([0x11; 32]),
-        input: vec![1, 2, 3, 4],
+        run: RunId::new(run_id),
+        workflow: simple_workflow(),
+        caps: CapabilitySet::empty(),
     }
+}
+
+fn simple_workflow() -> CompiledWorkflow {
+    let nodes = vec![CompiledNode {
+        id: StepIdx::new(0),
+        output: None,
+        next: None,
+        on_error: None,
+        error_slot: None,
+        kind: CompiledNodeKind::Finish {
+            result: SlotIdx::new(0),
+        },
+    }];
+    CompiledWorkflow::try_from_parts(WorkflowParts {
+        name: Box::from("bench_action_queue"),
+        digest: WorkflowDigest::from_bytes([0x11; 32]),
+        nodes: nodes.into_boxed_slice(),
+        expressions: Box::from([]),
+        accessors: Box::from([]),
+        constants: Box::from([]),
+        slot_count: 1,
+        entry: StepIdx::new(0),
+        resource_contract: ResourceContract::DEFAULT,
+        step_names: Box::default(),
+        symbols_count: 0,
+    })
+    .expect("workflow")
 }
 
 /// Creates an empty queue with capacity 1024.
@@ -86,14 +116,8 @@ fn bench_action_queuing(c: &mut Criterion) {
                     let cmd = make_submit_command(42);
                     let result = queue.enqueue(cmd);
                     // Exact assertion: enqueue must succeed, len must be 1
-                    assert!(
-                        result.is_ok(),
-                        "enqueue on empty queue must succeed"
-                    );
-                    assert_eq!(
-                        queue.len(), 1,
-                        "queue len must be 1 after single enqueue"
-                    );
+                    assert!(result.is_ok(), "enqueue on empty queue must succeed");
+                    assert_eq!(queue.len(), 1, "queue len must be 1 after single enqueue");
                     black_box(queue)
                 });
             },
@@ -115,20 +139,14 @@ fn bench_action_queuing(c: &mut Criterion) {
                     let queue = queue_100_items();
                     let initial_len = queue.len();
                     // Exact assertion: initial len must be 100
-                    assert_eq!(
-                        initial_len, 100,
-                        "pre-filled queue must have len=100"
-                    );
+                    assert_eq!(initial_len, 100, "pre-filled queue must have len=100");
                     let mut dequeued = 0usize;
                     while let Some(cmd) = queue.pop() {
                         black_box(cmd);
                         dequeued = dequeued.saturating_add(1);
                     }
                     // Exact assertion: all 100 items dequeued in FIFO order
-                    assert_eq!(
-                        dequeued, 100,
-                        "must dequeue exactly 100 items"
-                    );
+                    assert_eq!(dequeued, 100, "must dequeue exactly 100 items");
                     assert!(
                         queue.is_empty(),
                         "queue must be empty after dequeuing all items"
@@ -154,17 +172,15 @@ fn bench_action_queuing(c: &mut Criterion) {
                     let cmd = make_submit_command(999);
                     let result = queue.enqueue(cmd);
                     // Exact assertion: full queue must reject with QueueFull
-                    assert!(
-                        result.is_err(),
-                        "enqueue on full queue must return Err"
-                    );
+                    assert!(result.is_err(), "enqueue on full queue must return Err");
                     match result.expect_err("err") {
                         RuntimeError::QueueFull => {}
                         other => panic!("expected RuntimeError::QueueFull, got {:?}", other),
                     }
                     // Queue unchanged
                     assert_eq!(
-                        queue.len(), 1,
+                        queue.len(),
+                        1,
                         "queue len must remain 1 after rejected enqueue"
                     );
                     // Item not lost
@@ -196,16 +212,13 @@ fn bench_action_queuing(c: &mut Criterion) {
                     while i < 100 {
                         let cmd = make_submit_command(i);
                         let result = queue.enqueue(cmd);
-                        assert!(
-                            result.is_ok(),
-                            "enqueue {} must succeed",
-                            i
-                        );
+                        assert!(result.is_ok(), "enqueue {} must succeed", i);
                         i = i.saturating_add(1);
                     }
                     // Exact assertion: 100 items enqueued
                     assert_eq!(
-                        queue.len(), 100,
+                        queue.len(),
+                        100,
                         "queue must have exactly 100 items after batch enqueue"
                     );
                     black_box(queue)
@@ -228,20 +241,12 @@ fn bench_action_queuing(c: &mut Criterion) {
                 b.iter(|| {
                     let queue = queue_1024_items();
                     // Exact assertions on full queue state
-                    assert!(
-                        queue.is_full(),
-                        "queue with 1024 items must be full"
-                    );
+                    assert!(queue.is_full(), "queue with 1024 items must be full");
+                    assert_eq!(queue.len(), 1024, "queue len must be 1024");
+                    assert_eq!(queue.capacity(), 1024, "queue capacity must be 1024");
                     assert_eq!(
-                        queue.len(), 1024,
-                        "queue len must be 1024"
-                    );
-                    assert_eq!(
-                        queue.capacity(), 1024,
-                        "queue capacity must be 1024"
-                    );
-                    assert_eq!(
-                        queue.remaining_capacity(), 0,
+                        queue.remaining_capacity(),
+                        0,
                         "remaining capacity must be 0 when full"
                     );
                     black_box(queue)

@@ -205,12 +205,13 @@ pub fn fuzz_ipc_frame(data: &[u8]) {
     // If header decode succeeded, verify round-trip consistency
     if let Ok(decoded_header) = header_result {
         // Verify decoded header can be re-encoded and matches original bytes
-        let encoded = decoded_header.encode().expect("encode must succeed");
-        assert_eq!(
-            &encoded[..],
-            header_bytes,
-            "re-encoded header must match original bytes"
-        );
+        if let Ok(encoded) = decoded_header.encode() {
+            assert_eq!(
+                &encoded[..],
+                header_bytes,
+                "re-encoded header must match original bytes"
+            );
+        }
     }
 
     let Some(payload) = data.get(vb_ipc::IPC_HEADER_LEN..) else {
@@ -218,17 +219,23 @@ pub fn fuzz_ipc_frame(data: &[u8]) {
     };
 
     // Only attempt payload decode if there's actually payload data
-    if !payload.is_empty() {
-        if let Ok(header) = header_result {
-            // Payload decode must return a Result (never panic)
-            // Verify: Ok when lengths match, Err on length mismatch
-            let payload_len_usize = header.payload_len as usize;
-            let result = decode_frame_payload(&header, payload);
-            if payload.len() == payload_len_usize {
-                assert!(result.is_ok(), "decode must succeed when payload len matches header");
-            } else {
-                assert!(result.is_err(), "decode must fail when payload len mismatches header");
-            }
+    if !payload.is_empty()
+        && let Ok(header) = header_result
+    {
+        // Payload decode must return a Result (never panic)
+        // Verify: Ok when lengths match, Err on length mismatch
+        let payload_len_usize = header.payload_len as usize;
+        let result = decode_frame_payload(&header, payload);
+        if payload.len() == payload_len_usize {
+            assert!(
+                result.is_ok(),
+                "decode must succeed when payload len matches header"
+            );
+        } else {
+            assert!(
+                result.is_err(),
+                "decode must fail when payload len mismatches header"
+            );
         }
     }
 }

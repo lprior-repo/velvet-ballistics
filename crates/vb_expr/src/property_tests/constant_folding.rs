@@ -266,7 +266,11 @@ proptest! {
 fn cf_div_i64_min_by_neg_one_returns_none() {
     let left = ExprAst::Literal(ExprLiteral::I64(i64::MIN));
     let right = ExprAst::Literal(ExprLiteral::I64(-1));
-    let ast = ExprAst::Binary { op: BinaryOp::Div, left: Box::new(left), right: Box::new(right) };
+    let ast = ExprAst::Binary {
+        op: BinaryOp::Div,
+        left: Box::new(left),
+        right: Box::new(right),
+    };
     // i64::MIN / -1 overflows
     let result = crate::bytecode::const_fold_expr(&ast);
     assert_eq!(result, None);
@@ -275,7 +279,10 @@ fn cf_div_i64_min_by_neg_one_returns_none() {
 #[test]
 fn cf_neg_i64_min_returns_none() {
     let inner = ExprAst::Literal(ExprLiteral::I64(i64::MIN));
-    let ast = ExprAst::Unary { op: UnaryOp::Neg, expr: Box::new(inner) };
+    let ast = ExprAst::Unary {
+        op: UnaryOp::Neg,
+        expr: Box::new(inner),
+    };
     // -i64::MIN overflows
     let result = crate::bytecode::const_fold_expr(&ast);
     assert_eq!(result, None);
@@ -303,7 +310,10 @@ fn cf_neg_f64_does_not_fold() {
     // F64 negation is not constant-folded (fold_unary only handles I64)
     let f64_val = FiniteF64::new(1.5).expect("valid finite f64");
     let inner = ExprAst::Literal(ExprLiteral::F64(f64_val));
-    let ast = ExprAst::Unary { op: UnaryOp::Neg, expr: Box::new(inner) };
+    let ast = ExprAst::Unary {
+        op: UnaryOp::Neg,
+        expr: Box::new(inner),
+    };
     let result = crate::bytecode::const_fold_expr(&ast);
     // fold_unary only handles Neg on I64, not F64
     assert_eq!(result, None);
