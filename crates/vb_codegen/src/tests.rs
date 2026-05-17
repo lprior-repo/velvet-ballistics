@@ -11,13 +11,16 @@ mod tests {
     };
     use vb_core::{
         AccessorProgram, ActionId, CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx,
-        ConstValue, EngineError, EngineSignal, ExprProgram, PathSegment, ResourceContract, RunId,
-        SlotIdx, SlotValue, StepBudget, StepIdx, Taint, ValueStore, WorkflowDigest, WorkflowParts,
-        capability::CapabilitySet, new_run_frame, run_until_blocked, step_once,
+        ConstValue, EngineError, EngineSignal, ExprProgram, PathSegment, ResourceContract,
+        RunFrame, RunId, SlotIdx, SlotValue, StepBudget, StepIdx, Taint, ValueStore,
+        WorkflowDigest, WorkflowParts, capability::CapabilitySet, new_run_frame, run_until_blocked,
+        step_once,
     };
     use vb_runtime::{
-        engine::{EvidenceCollector, RetryPolicy, RuntimeSignal, drive_deterministic_full},
-        primitives::collect::CollectStates,
+        engine::{
+            EvidenceCollector, EvidenceEvent, RetryPolicy, RuntimeSignal, drive_deterministic_full,
+        },
+        primitives::collect::{CollectPaginationState, CollectStates},
     };
 
     // --- Workflow helpers ---
@@ -638,7 +641,7 @@ mod tests {
         init_source: &str,
     ) -> Result<String, String> {
         Ok(format!(
-            "{generated}\nfn main() {{\n    const TRACE_STEP_LIMIT: usize = {};\n    let mut slots = [None; WORKFLOW_SLOT_COUNT];\n    let mut slot_taints = [Taint::Clean; WORKFLOW_SLOT_COUNT];\n{init_source}\n    let mut list_store = ListStore::new();\n    let mut object_store = ObjectStore::new();\n    let mut pc: u16 = {};\n    let mut journal = String::new();\n    let mut retry_attempt_total: u16 = 0;\n    let mut terminal = false;\n    for _step_index in 0..TRACE_STEP_LIMIT {{\n        journal.push_str(\"start:\");\n        journal.push_str(&pc.to_string());\n        journal.push('|');\n        let retry_attempt_before = retry_attempt_for_pc(pc, &slots).unwrap_or(0);\n        let outcome = match pc {{\n{}            _ => Err(DriveError::InvalidProgramCounter),\n        }};\n        match outcome {{\n            Ok(StepOutcome::Continue(next)) => {{\n                retry_attempt_total = retry_attempt_total.saturating_add(retry_attempt_before);\n                journal.push_str(\"continue:\");\n                journal.push_str(&next.to_string());\n                journal.push('|');\n                pc = next;\n            }}\n            Ok(StepOutcome::Finished(value)) => {{\n                journal.push_str(\"finished\");\n                println!(\"result:{{value:?}}\");\n                println!(\"final_pc:{{pc}}\");\n                println!(\"slots:{{slots:?}}\");\n                println!(\"journal:{{journal}}\");\n                println!(\"retry_attempt_total:{{retry_attempt_total}}\");\n                terminal = true;\n                break;\n            }}\n            Err(error) => {{\n                journal.push_str(\"error\");\n                println!(\"error:{{error:?}}\");\n                println!(\"final_pc:{{pc}}\");\n                println!(\"slots:{{slots:?}}\");\n                println!(\"journal:{{journal}}\");\n                println!(\"retry_attempt_total:{{retry_attempt_total}}\");\n                terminal = true;\n                break;\n            }}\n        }}\n    }}\n    if !terminal {{\n        journal.push_str(\"step_limit\");\n        println!(\"error:StepLimitExceeded\");\n        println!(\"final_pc:{{pc}}\");\n        println!(\"slots:{{slots:?}}\");\n        println!(\"journal:{{journal}}\");\n        println!(\"retry_attempt_total:{{retry_attempt_total}}\");\n        std::process::exit(22);\n    }}\n}}\n\nfn retry_attempt_for_pc(pc: u16, slots: &[Option<SlotValue>; WORKFLOW_SLOT_COUNT]) -> Result<u16, DriveError> {{\n    match pc {{\n{}        _ => Ok(0),\n    }}\n}}\n",
+            "{generated}\nfn main() {{\n    const TRACE_STEP_LIMIT: usize = {};\n    let mut slots = [None; WORKFLOW_SLOT_COUNT];\n    let mut slot_taints = [Taint::Clean; WORKFLOW_SLOT_COUNT];\n{init_source}\n    let mut list_store = ListStore::new();\n    let mut object_store = ObjectStore::new();\n    let mut collect_states = CollectStateStore::new();\n    let mut pc: u16 = {};\n    let mut journal = String::new();\n    let mut retry_attempt_total: u16 = 0;\n    let mut terminal = false;\n    for _step_index in 0..TRACE_STEP_LIMIT {{\n        journal.push_str(\"start:\");\n        journal.push_str(&pc.to_string());\n        journal.push('|');\n        let retry_attempt_before = retry_attempt_for_pc(pc, &slots).unwrap_or(0);\n        let outcome = match pc {{\n{}            _ => Err(DriveError::InvalidProgramCounter),\n        }};\n        match outcome {{\n            Ok(StepOutcome::Continue(next)) => {{\n                retry_attempt_total = retry_attempt_total.saturating_add(retry_attempt_before);\n                journal.push_str(\"continue:\");\n                journal.push_str(&next.to_string());\n                journal.push('|');\n                pc = next;\n            }}\n            Ok(StepOutcome::Finished(value)) => {{\n                journal.push_str(\"finished\");\n                println!(\"result:{{value:?}}\");\n                println!(\"final_pc:{{pc}}\");\n                println!(\"slots:{{slots:?}}\");\n                println!(\"journal:{{journal}}\");\n                println!(\"retry_attempt_total:{{retry_attempt_total}}\");\n                terminal = true;\n                break;\n            }}\n            Err(error) => {{\n                journal.push_str(\"error\");\n                println!(\"error:{{error:?}}\");\n                println!(\"final_pc:{{pc}}\");\n                println!(\"slots:{{slots:?}}\");\n                println!(\"journal:{{journal}}\");\n                println!(\"retry_attempt_total:{{retry_attempt_total}}\");\n                terminal = true;\n                break;\n            }}\n        }}\n    }}\n    if !terminal {{\n        journal.push_str(\"step_limit\");\n        println!(\"error:StepLimitExceeded\");\n        println!(\"final_pc:{{pc}}\");\n        println!(\"slots:{{slots:?}}\");\n        println!(\"journal:{{journal}}\");\n        println!(\"retry_attempt_total:{{retry_attempt_total}}\");\n        std::process::exit(22);\n    }}\n}}\n\nfn retry_attempt_for_pc(pc: u16, slots: &[Option<SlotValue>; WORKFLOW_SLOT_COUNT]) -> Result<u16, DriveError> {{\n    match pc {{\n{}        _ => Ok(0),\n    }}\n}}\n",
             trace_step_limit(workflow)?,
             workflow.entry().get(),
             generated_trace_arms(workflow),
@@ -658,7 +661,7 @@ mod tests {
             arms.push_str(&idx.to_string());
             arms.push_str(" => step_");
             arms.push_str(&idx.to_string());
-            arms.push_str("(&mut slots, &mut slot_taints, &mut list_store, &mut object_store),\n");
+            arms.push_str("(&mut slots, &mut slot_taints, &mut list_store, &mut object_store, &mut collect_states),\n");
             arms
         })
     }
@@ -1975,12 +1978,12 @@ mod tests {
         emit_step_function(&mut out, node, &workflow).map_err(|e| e.to_string())?;
         // Then the output reports unsupported primitive
         assert!(
-            out.contains("UnsupportedPrimitive"),
-            "TogetherStart must emit UnsupportedPrimitive, got: {out}"
+            !out.contains("UnsupportedPrimitive"),
+            "TogetherStart must emit concrete support, got: {out}"
         );
         assert!(
-            out.contains("TogetherStart"),
-            "UnsupportedPrimitive must name TogetherStart, got: {out}"
+            !out.contains("UnsupportedPrimitive"),
+            "concrete support should not name unsupported TogetherStart, got: {out}"
         );
         Ok(())
     }
@@ -1995,12 +1998,12 @@ mod tests {
         emit_step_function(&mut out, node, &workflow).map_err(|e| e.to_string())?;
         // Then the output reports unsupported primitive
         assert!(
-            out.contains("UnsupportedPrimitive"),
-            "CollectStart must emit UnsupportedPrimitive, got: {out}"
+            !out.contains("UnsupportedPrimitive"),
+            "CollectStart must emit concrete support, got: {out}"
         );
         assert!(
-            out.contains("CollectStart"),
-            "UnsupportedPrimitive must name CollectStart, got: {out}"
+            !out.contains("UnsupportedPrimitive"),
+            "concrete support should not name unsupported CollectStart, got: {out}"
         );
         Ok(())
     }
@@ -2015,12 +2018,12 @@ mod tests {
         emit_step_function(&mut out, node, &workflow).map_err(|e| e.to_string())?;
         // Then the output reports unsupported primitive
         assert!(
-            out.contains("UnsupportedPrimitive"),
-            "ReduceStart must emit UnsupportedPrimitive, got: {out}"
+            !out.contains("UnsupportedPrimitive"),
+            "ReduceStart must emit concrete support, got: {out}"
         );
         assert!(
-            out.contains("ReduceStart"),
-            "UnsupportedPrimitive must name ReduceStart, got: {out}"
+            !out.contains("UnsupportedPrimitive"),
+            "concrete support should not name unsupported ReduceStart, got: {out}"
         );
         Ok(())
     }
@@ -2035,12 +2038,12 @@ mod tests {
         emit_step_function(&mut out, node, &workflow).map_err(|e| e.to_string())?;
         // Then the output reports unsupported primitive
         assert!(
-            out.contains("UnsupportedPrimitive"),
-            "RepeatStart must emit UnsupportedPrimitive, got: {out}"
+            !out.contains("UnsupportedPrimitive"),
+            "RepeatStart must emit concrete support, got: {out}"
         );
         assert!(
-            out.contains("RepeatStart"),
-            "UnsupportedPrimitive must name RepeatStart, got: {out}"
+            !out.contains("UnsupportedPrimitive"),
+            "concrete support should not name unsupported RepeatStart, got: {out}"
         );
         Ok(())
     }
@@ -2510,29 +2513,9 @@ mod tests {
     #[test]
     fn generated_subset_rejects_unsupported_control_primitives_with_exact_feature()
     -> Result<(), String> {
-        let together_error = validate_generated_subset(&together_workflow()?)
-            .err()
-            .ok_or("TogetherStart unexpectedly accepted")?;
-        assert_eq!(
-            together_error.to_string(),
-            "unsupported generated Rust IR feature: TogetherStart"
-        );
-
-        let reduce_error = validate_generated_subset(&reduce_workflow()?)
-            .err()
-            .ok_or("ReduceStart unexpectedly accepted")?;
-        assert_eq!(
-            reduce_error.to_string(),
-            "unsupported generated Rust IR feature: ReduceStart"
-        );
-
-        let repeat_error = validate_generated_subset(&repeat_workflow()?)
-            .err()
-            .ok_or("RepeatStart unexpectedly accepted")?;
-        assert_eq!(
-            repeat_error.to_string(),
-            "unsupported generated Rust IR feature: RepeatStart"
-        );
+        validate_generated_subset(&together_workflow()?).map_err(|e| e.to_string())?;
+        validate_generated_subset(&reduce_workflow()?).map_err(|e| e.to_string())?;
+        validate_generated_subset(&repeat_workflow()?).map_err(|e| e.to_string())?;
         Ok(())
     }
 
@@ -4321,6 +4304,7 @@ mod tests {
         CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())
     }
 
+    #[allow(dead_code)]
     fn unsupported_single_node_workflow(
         name: &'static str,
         digest_byte: u8,
@@ -4364,6 +4348,7 @@ mod tests {
         CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())
     }
 
+    #[allow(dead_code)]
     fn unsupported_terminal_node_workflow(
         name: &'static str,
         digest_byte: u8,
@@ -4397,142 +4382,7 @@ mod tests {
     #[test]
     fn generated_support_matrix_totality_rejects_no_final_ir_variant_silently() -> Result<(), String>
     {
-        let cases = [
-            ("TogetherStart", together_workflow()?),
-            (
-                "TogetherBranch",
-                unsupported_single_node_workflow(
-                    "test_together_branch_unsupported",
-                    0x31,
-                    CompiledNodeKind::TogetherBranch {
-                        branch: 0,
-                        entry: StepIdx::new(1),
-                        join: StepIdx::new(1),
-                        accumulator: SlotIdx::new(0),
-                    },
-                    1,
-                    Box::new([]),
-                )?,
-            ),
-            (
-                "TogetherJoin",
-                unsupported_terminal_node_workflow(
-                    "test_together_join_unsupported",
-                    0x32,
-                    CompiledNodeKind::TogetherJoin {
-                        branch_count: 1,
-                        accumulator: SlotIdx::new(0),
-                    },
-                    1,
-                )?,
-            ),
-            ("ReduceStart", reduce_workflow()?),
-            (
-                "ReduceNext",
-                unsupported_single_node_workflow(
-                    "test_reduce_next_unsupported",
-                    0x33,
-                    CompiledNodeKind::ReduceNext {
-                        iterator_slot: SlotIdx::new(0),
-                        accumulator: SlotIdx::new(1),
-                        body: StepIdx::new(1),
-                        done: StepIdx::new(1),
-                    },
-                    2,
-                    Box::new([]),
-                )?,
-            ),
-            (
-                "ReduceFinish",
-                unsupported_terminal_node_workflow(
-                    "test_reduce_finish_unsupported",
-                    0x34,
-                    CompiledNodeKind::ReduceFinish {
-                        accumulator: SlotIdx::new(0),
-                    },
-                    1,
-                )?,
-            ),
-            ("RepeatStart", repeat_workflow()?),
-            (
-                "RepeatAttempt",
-                unsupported_single_node_workflow(
-                    "test_repeat_attempt_unsupported",
-                    0x35,
-                    CompiledNodeKind::RepeatAttempt {
-                        attempt_slot: SlotIdx::new(0),
-                        body: StepIdx::new(1),
-                        done: StepIdx::new(1),
-                    },
-                    1,
-                    Box::new([]),
-                )?,
-            ),
-            (
-                "RepeatCheck",
-                unsupported_single_node_workflow(
-                    "test_repeat_check_unsupported",
-                    0x36,
-                    CompiledNodeKind::RepeatCheck {
-                        attempt_slot: SlotIdx::new(0),
-                        done: StepIdx::new(1),
-                    },
-                    1,
-                    Box::new([]),
-                )?,
-            ),
-            (
-                "RepeatFinish",
-                unsupported_terminal_node_workflow(
-                    "test_repeat_finish_unsupported",
-                    0x37,
-                    CompiledNodeKind::RepeatFinish {
-                        result: SlotIdx::new(0),
-                    },
-                    1,
-                )?,
-            ),
-            ("CollectStart", collect_workflow()?),
-            (
-                "CollectPage",
-                unsupported_single_node_workflow(
-                    "test_collect_page_unsupported",
-                    0x38,
-                    CompiledNodeKind::CollectPage {
-                        collector_slot: SlotIdx::new(0),
-                        body: StepIdx::new(1),
-                        done: StepIdx::new(1),
-                    },
-                    1,
-                    Box::new([]),
-                )?,
-            ),
-            (
-                "CollectNext",
-                unsupported_single_node_workflow(
-                    "test_collect_next_unsupported",
-                    0x39,
-                    CompiledNodeKind::CollectNext {
-                        collector_slot: SlotIdx::new(0),
-                        body: StepIdx::new(1),
-                        done: StepIdx::new(1),
-                    },
-                    1,
-                    Box::new([]),
-                )?,
-            ),
-            (
-                "CollectFinish",
-                unsupported_terminal_node_workflow(
-                    "test_collect_finish_unsupported",
-                    0x3A,
-                    CompiledNodeKind::CollectFinish {
-                        collector_slot: SlotIdx::new(0),
-                    },
-                    1,
-                )?,
-            ),
-        ];
+        let cases: [(&str, CompiledWorkflow); 0] = [];
 
         cases.iter().try_for_each(|(expected_feature, workflow)| {
             assert_unsupported_feature_from_validate_and_emit(workflow, expected_feature)
@@ -4639,6 +4489,62 @@ mod tests {
                 "ForEachJoin",
                 "generated_for_each_single_item_matches_interpreter_binding",
             ),
+            (
+                "RepeatStart",
+                "repeat_generated_parity_matches_runtime_for_first_attempt",
+            ),
+            (
+                "RepeatAttempt",
+                "repeat_generated_parity_matches_runtime_for_first_attempt",
+            ),
+            (
+                "RepeatCheck",
+                "repeat_generated_parity_matches_runtime_for_first_attempt",
+            ),
+            (
+                "RepeatFinish",
+                "repeat_generated_parity_matches_runtime_for_first_attempt",
+            ),
+            (
+                "ReduceStart",
+                "reduce_generated_parity_matches_runtime_for_empty_input",
+            ),
+            (
+                "ReduceNext",
+                "reduce_generated_parity_matches_runtime_for_empty_input",
+            ),
+            (
+                "ReduceFinish",
+                "reduce_generated_parity_matches_runtime_for_empty_input",
+            ),
+            (
+                "TogetherStart",
+                "together_generated_parity_matches_runtime_for_all_successful_branches",
+            ),
+            (
+                "TogetherBranch",
+                "together_generated_parity_matches_runtime_for_all_successful_branches",
+            ),
+            (
+                "TogetherJoin",
+                "together_generated_parity_matches_runtime_for_all_successful_branches",
+            ),
+            (
+                "CollectStart",
+                "collect_generated_parity_matches_runtime_for_single_page",
+            ),
+            (
+                "CollectPage",
+                "collect_generated_parity_matches_runtime_for_single_page",
+            ),
+            (
+                "CollectNext",
+                "collect_generated_parity_matches_runtime_for_single_page",
+            ),
+            (
+                "CollectFinish",
+                "collect_generated_parity_matches_runtime_for_single_page",
+            ),
             ("Jump", "emit_step_match_produces_correct_arm_for_jump_node"),
             (
                 "Finish",
@@ -4720,18 +4626,24 @@ mod tests {
 
     #[test]
     fn generated_source_contract_contains_no_forbidden_constructs() -> Result<(), String> {
-        let workflow = minimal_workflow()?;
-        let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
-        let violations = forbidden_generated_source_violations(&source);
-        assert_eq!(violations, Vec::<(&'static str, String)>::new());
-        Ok(())
+        target_family_workflows()?
+            .iter()
+            .try_for_each(|(name, workflow)| {
+                let source = emit_rust_workflow(workflow).map_err(|e| e.to_string())?;
+                let violations = forbidden_generated_source_violations(&source);
+                assert_eq!(violations, Vec::<(&'static str, String)>::new(), "{name}");
+                if source.contains("not_yet_implemented")
+                    || source.contains("Err(DriveError::UnsupportedPrimitive")
+                {
+                    return Err(format!("{name} source contains unsupported stub"));
+                }
+                Ok(())
+            })
     }
 
     #[test]
     fn generated_source_contract_contains_no_unchecked_indexing_slicing_casts_or_arithmetic()
     -> Result<(), String> {
-        let workflow = minimal_workflow()?;
-        let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
         let forbidden_patterns = [
             ("slots[", "unchecked slot indexing"),
             ("CONSTANTS[", "unchecked const indexing"),
@@ -4741,19 +4653,22 @@ mod tests {
             ("overflowing_", "overflowing arithmetic"),
             ("unchecked_", "unchecked operation"),
         ];
-        let violations = forbidden_patterns
+        target_family_workflows()?
             .iter()
-            .filter_map(|(pattern, label)| source.contains(pattern).then_some(*label))
-            .collect::<Vec<_>>();
-        assert_eq!(violations, Vec::<&'static str>::new());
-        Ok(())
+            .try_for_each(|(name, workflow)| {
+                let source = emit_rust_workflow(workflow).map_err(|e| e.to_string())?;
+                let violations = forbidden_patterns
+                    .iter()
+                    .filter_map(|(pattern, label)| source.contains(pattern).then_some(*label))
+                    .collect::<Vec<_>>();
+                assert_eq!(violations, Vec::<&'static str>::new(), "{name}");
+                Ok(())
+            })
     }
 
     #[test]
     fn generated_source_contract_contains_no_runtime_yaml_json_http_or_string_action_lookup()
     -> Result<(), String> {
-        let workflow = minimal_workflow()?;
-        let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
         let forbidden_patterns = [
             "serde_yaml",
             "serde_json",
@@ -4762,19 +4677,34 @@ mod tests {
             "http::",
             "HashMap<String",
         ];
-        let violations = forbidden_patterns
+        target_family_workflows()?
             .iter()
-            .filter(|pattern| source.contains(**pattern))
-            .copied()
-            .collect::<Vec<_>>();
-        assert_eq!(violations, Vec::<&'static str>::new());
-        Ok(())
+            .try_for_each(|(name, workflow)| {
+                let source = emit_rust_workflow(workflow).map_err(|e| e.to_string())?;
+                let violations = forbidden_patterns
+                    .iter()
+                    .filter(|pattern| source.contains(**pattern))
+                    .copied()
+                    .collect::<Vec<_>>();
+                assert_eq!(violations, Vec::<&'static str>::new(), "{name}");
+                Ok(())
+            })
+    }
+
+    fn target_family_workflows() -> Result<Vec<(&'static str, CompiledWorkflow)>, String> {
+        Ok(vec![
+            ("minimal", minimal_workflow()?),
+            ("repeat", repeat_workflow()?),
+            ("reduce", reduce_workflow()?),
+            ("together", together_workflow()?),
+            ("collect", collect_paged_workflow(2)?),
+        ])
     }
 
     #[test]
     fn repeat_generated_parity_fails_closed_with_non_closure_blocker_note() -> Result<(), String> {
         let workflow = repeat_workflow()?;
-        assert_unsupported_feature_from_validate_and_emit(&workflow, "RepeatStart")
+        validate_generated_subset(&workflow).map_err(|e| e.to_string())
     }
 
     fn assert_generated_state_matches_ir_finished(
@@ -4805,29 +4735,1175 @@ mod tests {
         }
     }
 
+    fn normalize_runtime_value(store: &ValueStore, value: SlotValue) -> Result<String, String> {
+        match value {
+            SlotValue::List(id) => {
+                let values = store.list(id).map_err(|e| e.to_string())?;
+                let inner = values
+                    .iter()
+                    .copied()
+                    .map(|item| normalize_runtime_value(store, item))
+                    .collect::<Result<Vec<_>, _>>()?
+                    .join(",");
+                Ok(format!("List([{inner}])"))
+            }
+            other => Ok(format!("{other:?}")),
+        }
+    }
+
+    fn normalize_observation_text(text: String) -> String {
+        text.lines()
+            .map(|line| {
+                let mut normalized = line.to_string();
+                if normalized.contains("CollectPageOrderViolation") {
+                    normalized = normalize_collect_error_wrappers(normalized);
+                }
+                if normalized.starts_with("status=Err(") {
+                    normalized = wrap_numeric_debug_field(normalized, "step: ", "StepIdx");
+                }
+                normalized = normalize_collect_start_millis(normalized);
+                format!("{normalized}\n")
+            })
+            .collect()
+    }
+
+    fn runtime_finished_journal_line(
+        workflow: &CompiledWorkflow,
+        run: &RunFrame,
+        store: &ValueStore,
+        value: SlotValue,
+        journal_index: u16,
+    ) -> Result<String, String> {
+        let finish_step = run.pc();
+        let finish_node = workflow
+            .node(finish_step)
+            .ok_or_else(|| format!("finish step {} missing", finish_step.get()))?;
+        let result_slot = match &finish_node.kind {
+            CompiledNodeKind::Finish { result } => *result,
+            other => {
+                return Err(format!(
+                    "terminal pc {} is not Finish: {other:?}",
+                    finish_step.get()
+                ));
+            }
+        };
+        let taint = run.read_taint(result_slot).map_err(|e| e.to_string())?;
+        let value_text = normalize_runtime_value(store, value)?;
+        Ok(format!(
+            "journal:{journal_index}:RunFinished:{}:{value_text}:{taint:?}\n",
+            finish_step.get()
+        ))
+    }
+
+    fn normalize_collect_error_wrappers(line: String) -> String {
+        let line = wrap_numeric_debug_field(line, "run_id: ", "RunId");
+        let line = wrap_numeric_debug_field(line, "collector_slot: ", "SlotIdx");
+        let line = wrap_numeric_debug_field(line, "expected_page: ", "ListId");
+        wrap_numeric_debug_field(line, "observed_page: ", "ListId")
+    }
+
+    fn wrap_numeric_debug_field(line: String, label: &str, wrapper: &str) -> String {
+        let Some(pos) = line.find(label) else {
+            return line;
+        };
+        let value_start = pos.saturating_add(label.len());
+        if line
+            .get(value_start..)
+            .is_some_and(|rest| rest.starts_with(wrapper))
+        {
+            return line;
+        }
+        let Some(rest) = line.get(value_start..) else {
+            return line;
+        };
+        let value_end = rest
+            .find(|ch: char| !ch.is_ascii_digit())
+            .unwrap_or(rest.len());
+        if value_end == 0 {
+            return line;
+        }
+        let Some(prefix) = line.get(..value_start) else {
+            return line;
+        };
+        let Some(value) = rest.get(..value_end) else {
+            return line;
+        };
+        let Some(suffix) = rest.get(value_end..) else {
+            return line;
+        };
+        format!("{prefix}{wrapper}({value}){suffix}")
+    }
+
+    fn normalize_collect_start_millis(line: String) -> String {
+        let Some(pos) = line.find("start_millis: ") else {
+            return line;
+        };
+        let after_key = pos.saturating_add("start_millis: ".len());
+        let Some(prefix) = line.get(..after_key) else {
+            return line;
+        };
+        let suffix = line
+            .get(after_key..)
+            .and_then(|rest| rest.find('}').and_then(|end| rest.get(end..)))
+            .unwrap_or_default();
+        format!("{prefix}<ts>{suffix}")
+    }
+
+    fn runtime_full_observation<F>(
+        workflow: &CompiledWorkflow,
+        run_id: u64,
+        setup: F,
+    ) -> Result<String, String>
+    where
+        F: FnOnce(&mut RunFrame, &mut ValueStore, &mut CollectStates) -> Result<(), String>,
+    {
+        let mut run = new_run_frame(RunId::new(run_id), workflow).map_err(|e| e.to_string())?;
+        let mut budget = StepBudget::MAX;
+        let mut store = ValueStore::new();
+        let mut evidence = EvidenceCollector::new();
+        let mut collect_states = CollectStates::new();
+        setup(&mut run, &mut store, &mut collect_states)?;
+        let drive_result = drive_deterministic_full(
+            workflow,
+            &mut run,
+            &mut budget,
+            &mut store,
+            &[],
+            RetryPolicy::NEVER,
+            &mut evidence,
+            &mut collect_states,
+            &CapabilitySet::empty(),
+        );
+        let terminal_value = match &drive_result {
+            Ok(RuntimeSignal::Finished(value)) => Some(*value),
+            Ok(_) | Err(_) => None,
+        };
+        let status = match drive_result {
+            Ok(RuntimeSignal::Finished(value)) => {
+                format!("status=Ok({})", normalize_runtime_value(&store, value)?)
+            }
+            Ok(other) => format!("status=Signal({other:?})"),
+            Err(error) => format!("status=Err({error:?})"),
+        };
+        let mut out = String::new();
+        out.push_str(&status);
+        out.push('\n');
+        out.push_str(&format!("pc={}\n", run.pc().get()));
+        for step in 0..workflow.node_count() {
+            let state = run
+                .step_state(StepIdx::new(step))
+                .map_err(|e| e.to_string())?;
+            out.push_str(&format!("step:{step}:{state:?}\n"));
+        }
+        for slot in 0..workflow.slot_count() {
+            let slot_idx = SlotIdx::new(slot);
+            match run.read_slot(slot_idx) {
+                Ok(value) => {
+                    let value_text = normalize_runtime_value(&store, *value)?;
+                    let taint = run.read_taint(slot_idx).map_err(|e| e.to_string())?;
+                    out.push_str(&format!("slot:{slot}:{value_text}:{taint:?}\n"));
+                }
+                Err(_) => out.push_str(&format!("slot:{slot}:None:Clean\n")),
+            }
+            if let Some(state) = collect_states.capture_state(run.run_id(), slot_idx) {
+                out.push_str(&format!(
+                    "collect:{slot}:source={}:page={}:cursor={}:page_size={}:count={}:limit={}\n",
+                    state.source.get(),
+                    state.current_page.get(),
+                    state.cursor,
+                    state.page_size,
+                    state.item_count,
+                    state.limit
+                ));
+            } else {
+                out.push_str(&format!("collect:{slot}:None\n"));
+            }
+        }
+        let mut journal_index = 0u16;
+        for event in evidence.drain() {
+            match event {
+                EvidenceEvent::StepStarted { step } => {
+                    out.push_str(&format!(
+                        "journal:{journal_index}:StepStarted:{}\n",
+                        step.get()
+                    ));
+                }
+                EvidenceEvent::StepSucceeded { step, output } => {
+                    out.push_str(&format!(
+                        "journal:{journal_index}:StepSucceeded:{}:{output:?}\n",
+                        step.get()
+                    ));
+                }
+                EvidenceEvent::SlotWritten {
+                    slot,
+                    value,
+                    taint,
+                    extra,
+                } => {
+                    let value_text = normalize_runtime_value(&store, value)?;
+                    out.push_str(&format!(
+                        "journal:{journal_index}:SlotWritten:{}:{value_text}:{taint:?}:{extra:?}\n",
+                        slot.get()
+                    ));
+                }
+            }
+            journal_index = journal_index
+                .checked_add(1)
+                .ok_or_else(|| String::from("runtime journal index overflow"))?;
+        }
+        if let Some(value) = terminal_value {
+            out.push_str(&runtime_finished_journal_line(
+                workflow,
+                &run,
+                &store,
+                value,
+                journal_index,
+            )?);
+        }
+        if out.contains("not_yet_implemented") {
+            return Err(format!(
+                "runtime oracle returned unsupported sentinel:\n{out}"
+            ));
+        }
+        Ok(normalize_observation_text(out))
+    }
+
+    fn generated_full_observation(
+        workflow: &CompiledWorkflow,
+        run_id: u64,
+        name: &str,
+        init_source: &str,
+    ) -> Result<String, String> {
+        let generated = emit_rust_workflow(workflow).map_err(|e| e.to_string())?;
+        let temp_dir = tempfile::Builder::new()
+            .prefix(&format!(
+                "vb_codegen_full_obs_{}_{}",
+                std::process::id(),
+                name
+            ))
+            .tempdir()
+            .map_err(|e| e.to_string())?;
+        let source_path = temp_dir.path().join("generated_full_obs.rs");
+        let binary_path = temp_dir.path().join("generated_full_obs_bin");
+        let helper = r#"
+fn norm_value(value: SlotValue, list_store: &ListStore) -> String {
+    match value {
+        SlotValue::List(id) => {
+            let count = match list_item_count(list_store, id) { Ok(value) => value, Err(error) => return format!("ListError({error:?})") };
+            let mut index = 0u32;
+            let mut text = String::new();
+            while index < count {
+                match list_store.value_at(id, index) {
+                    Ok((item, _)) => {
+                        if index > 0 { text.push(','); }
+                        text.push_str(&norm_value(item, list_store));
+                    }
+                    Err(error) => return format!("ListItemError({error:?})"),
+                }
+                index = match index.checked_add(1) { Some(next) => next, None => return String::from("ListIndexOverflow") };
+            }
+            format!("List([{text}])")
+        }
+        other => format!("{other:?}"),
+    }
+}
+
+fn setup_insert_items(list_store: &mut ListStore, case_name: &str, values: &[SlotValue], taints: &[Taint]) -> u32 {
+    match list_store.insert_items_with_taints(values, taints) {
+        Ok(handle) => handle,
+        Err(error) => {
+            println!("setup:{case_name}:insert_items_with_taints:{error:?}");
+            std::process::exit(2);
+        }
+    }
+}
+
+fn setup_collect_upsert(collect_states: &mut CollectStateStore, case_name: &str, collector_slot: u16, state: CollectState) {
+    match collect_states.upsert(collector_slot, state) {
+        Ok(()) => {}
+        Err(error) => {
+            println!("setup:{case_name}:collect_states.upsert:{error:?}");
+            std::process::exit(2);
+        }
+    }
+}
+
+fn print_generated_observation(state: &GeneratedRunState, status: &str) {
+    println!("{status}");
+    println!("pc={}", state.pc);
+    let mut step = 0usize;
+    while step < WORKFLOW_NODE_COUNT_USIZE {
+        match state.step_states.get(step) {
+            Some(step_state) => println!("step:{step}:{step_state:?}"),
+            None => println!("step:{step}:Missing"),
+        }
+        step = match step.checked_add(1) { Some(next) => next, None => return };
+    }
+    let mut slot = 0u16;
+    while usize::from(slot) < WORKFLOW_SLOT_COUNT {
+        let index = usize::from(slot);
+        match state.slots.get(index).copied().flatten() {
+            Some(value) => println!("slot:{slot}:{}:{:?}", norm_value(value, &state.list_store), state.slot_taints[index]),
+            None => println!("slot:{slot}:None:Clean"),
+        }
+        match state.collect_states.entry_index(slot) {
+            Some(entry_index) => match state.collect_states.entries.get(entry_index).copied().flatten() {
+                Some(record) => println!("collect:{slot}:source={}:page={}:cursor={}:page_size={}:count={}:limit={}", record.state.source, record.state.current_page, record.state.cursor, record.state.page_size, record.state.item_count, record.state.limit),
+                None => println!("collect:{slot}:None"),
+            },
+            None => println!("collect:{slot}:None"),
+        }
+        slot = match slot.checked_add(1) { Some(next) => next, None => return };
+    }
+    let mut event_index = 0u16;
+    while event_index < state.journal.len() {
+        match state.journal.event(event_index) {
+            Some(JournalEvent::StepStarted { step }) => println!("journal:{event_index}:StepStarted:{step}"),
+            Some(JournalEvent::SlotWritten { slot, value: Some(value), taint, extra }) => println!("journal:{event_index}:SlotWritten:{slot}:{}:{taint:?}:{}", norm_value(value, &state.list_store), collect_extra_text(extra, state.collect_states.run_id, slot)),
+            Some(JournalEvent::SlotWritten { slot, value: None, taint, extra }) => println!("journal:{event_index}:SlotWritten:{slot}:None:{taint:?}:{}", collect_extra_text(extra, state.collect_states.run_id, slot)),
+            Some(JournalEvent::StepSucceeded { step, output }) => match output {
+                Some(slot) => println!("journal:{event_index}:StepSucceeded:{step}:Some(SlotIdx({slot}))"),
+                None => println!("journal:{event_index}:StepSucceeded:{step}:None"),
+            },
+            Some(JournalEvent::RunFinished { step, value, taint }) => println!("journal:{event_index}:RunFinished:{step}:{}:{taint:?}", norm_value(value, &state.list_store)),
+            Some(other) => println!("journal:{event_index}:{other:?}"),
+            None => println!("journal:{event_index}:Missing"),
+        }
+        event_index = match event_index.checked_add(1) { Some(next) => next, None => return };
+    }
+}
+
+fn collect_extra_text(extra: Option<CollectState>, run_id: u64, collector_slot: u16) -> String {
+    match extra {
+        Some(state) => format!("Some(CollectPaginationState {{ run_id: RunId({run_id}), collector_slot: SlotIdx({collector_slot}), source: ListId({}), current_page: ListId({}), cursor: {}, page_size: {}, item_count: {}, limit: {}, time_limit_ms: None, start_millis: <ts> }})", state.source, state.current_page, state.cursor, state.page_size, state.item_count, state.limit),
+        None => String::from("None"),
+    }
+}
+"#;
+        let harness = format!(
+            "{generated}\n{helper}\nfn main() {{\n    let slots = [None; WORKFLOW_SLOT_COUNT];\n    let slot_taints = [Taint::Clean; WORKFLOW_SLOT_COUNT];\n    let mut state = GeneratedRunState::new_with_run_id({run_id}, slots, slot_taints);\n{init_source}\n    let status = match state.run_until_blocked() {{\n        Ok(GeneratedRunStatus::Finished(output)) => format!(\"status=Ok({{}})\", norm_value(output.value, &state.list_store)),\n        Ok(other) => format!(\"status=Signal({{other:?}})\"),\n        Err(error) => format!(\"status=Err(Core({{error:?}}))\"),\n    }};\n    print_generated_observation(&state, &status);\n}}\n"
+        );
+        std::fs::write(&source_path, harness).map_err(|e| e.to_string())?;
+        let compile = std::process::Command::new("rustc")
+            .arg("--edition")
+            .arg("2024")
+            .arg("-o")
+            .arg(&binary_path)
+            .arg(&source_path)
+            .output()
+            .map_err(|e| e.to_string())?;
+        if !compile.status.success() {
+            return Err(String::from_utf8_lossy(&compile.stderr).into_owned());
+        }
+        let run = std::process::Command::new(&binary_path)
+            .output()
+            .map_err(|e| e.to_string())?;
+        let stdout = String::from_utf8_lossy(&run.stdout).into_owned();
+        if !run.status.success() {
+            let stderr = String::from_utf8_lossy(&run.stderr);
+            return Err(format!("generated observation failed: {stdout}{stderr}"));
+        }
+        if stdout.contains("not_yet_implemented") {
+            return Err(format!(
+                "generated execution returned unsupported sentinel:\n{stdout}"
+            ));
+        }
+        Ok(normalize_observation_text(stdout))
+    }
+
+    fn node(
+        id: u16,
+        output: Option<u16>,
+        next: Option<u16>,
+        kind: CompiledNodeKind,
+    ) -> CompiledNode {
+        CompiledNode {
+            id: StepIdx::new(id),
+            output: output.map(SlotIdx::new),
+            next: next.map(StepIdx::new),
+            on_error: None,
+            error_slot: None,
+            kind,
+        }
+    }
+
+    fn workflow_from_nodes(
+        name: &'static str,
+        digest: u8,
+        nodes: Vec<CompiledNode>,
+        constants: Vec<ConstValue>,
+        slot_count: u16,
+        resource_contract: ResourceContract,
+    ) -> Result<CompiledWorkflow, String> {
+        let parts = WorkflowParts {
+            name: Box::<str>::from(name),
+            digest: WorkflowDigest::from_bytes([digest; 32]),
+            nodes: nodes.into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: constants.into_boxed_slice(),
+            slot_count,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract,
+            step_names: Box::new([]),
+        };
+        CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())
+    }
+
+    fn repeat_success_unrolled_workflow() -> Result<CompiledWorkflow, String> {
+        workflow_from_nodes(
+            "repeat_success_unrolled",
+            0xB2,
+            vec![
+                node(
+                    0,
+                    Some(0),
+                    None,
+                    CompiledNodeKind::RepeatStart {
+                        max_attempts: 1,
+                        body: StepIdx::new(1),
+                        done: StepIdx::new(4),
+                    },
+                ),
+                node(
+                    1,
+                    None,
+                    None,
+                    CompiledNodeKind::RepeatAttempt {
+                        attempt_slot: SlotIdx::new(0),
+                        body: StepIdx::new(2),
+                        done: StepIdx::new(4),
+                    },
+                ),
+                node(
+                    2,
+                    Some(1),
+                    Some(3),
+                    CompiledNodeKind::SetConst {
+                        value: ConstIdx::new(0),
+                    },
+                ),
+                node(
+                    3,
+                    None,
+                    Some(4),
+                    CompiledNodeKind::RepeatCheck {
+                        attempt_slot: SlotIdx::new(0),
+                        done: StepIdx::new(4),
+                    },
+                ),
+                node(
+                    4,
+                    Some(2),
+                    Some(5),
+                    CompiledNodeKind::RepeatFinish {
+                        result: SlotIdx::new(1),
+                    },
+                ),
+                node(
+                    5,
+                    None,
+                    None,
+                    CompiledNodeKind::Finish {
+                        result: SlotIdx::new(2),
+                    },
+                ),
+            ],
+            vec![ConstValue::I64(77)],
+            3,
+            ResourceContract {
+                max_step_budget_per_tick: 20,
+                ..ResourceContract::DEFAULT
+            },
+        )
+    }
+
+    fn repeat_non_i64_attempt_workflow() -> Result<CompiledWorkflow, String> {
+        workflow_from_nodes(
+            "repeat_non_i64_attempt",
+            0xB3,
+            vec![
+                node(
+                    0,
+                    None,
+                    None,
+                    CompiledNodeKind::RepeatAttempt {
+                        attempt_slot: SlotIdx::new(0),
+                        body: StepIdx::new(1),
+                        done: StepIdx::new(2),
+                    },
+                ),
+                node(
+                    1,
+                    Some(1),
+                    Some(2),
+                    CompiledNodeKind::SetConst {
+                        value: ConstIdx::new(0),
+                    },
+                ),
+                node(
+                    2,
+                    None,
+                    None,
+                    CompiledNodeKind::Finish {
+                        result: SlotIdx::new(1),
+                    },
+                ),
+            ],
+            vec![ConstValue::I64(1)],
+            2,
+            ResourceContract::DEFAULT,
+        )
+    }
+
+    fn reduce_unrolled_workflow() -> Result<CompiledWorkflow, String> {
+        workflow_from_nodes(
+            "reduce_unrolled",
+            0xA2,
+            vec![
+                node(
+                    0,
+                    Some(2),
+                    None,
+                    CompiledNodeKind::ReduceStart {
+                        input: SlotIdx::new(0),
+                        accumulator: SlotIdx::new(1),
+                        initial: ConstIdx::new(0),
+                        body: StepIdx::new(1),
+                        done: StepIdx::new(6),
+                    },
+                ),
+                node(
+                    1,
+                    Some(1),
+                    Some(2),
+                    CompiledNodeKind::Copy {
+                        source: SlotIdx::new(0),
+                    },
+                ),
+                node(
+                    2,
+                    Some(0),
+                    None,
+                    CompiledNodeKind::ReduceNext {
+                        iterator_slot: SlotIdx::new(2),
+                        accumulator: SlotIdx::new(1),
+                        body: StepIdx::new(3),
+                        done: StepIdx::new(6),
+                    },
+                ),
+                node(
+                    3,
+                    Some(1),
+                    Some(4),
+                    CompiledNodeKind::Copy {
+                        source: SlotIdx::new(0),
+                    },
+                ),
+                node(
+                    4,
+                    Some(0),
+                    None,
+                    CompiledNodeKind::ReduceNext {
+                        iterator_slot: SlotIdx::new(2),
+                        accumulator: SlotIdx::new(1),
+                        body: StepIdx::new(5),
+                        done: StepIdx::new(6),
+                    },
+                ),
+                node(
+                    5,
+                    Some(1),
+                    Some(6),
+                    CompiledNodeKind::Copy {
+                        source: SlotIdx::new(0),
+                    },
+                ),
+                node(
+                    6,
+                    Some(3),
+                    Some(7),
+                    CompiledNodeKind::ReduceFinish {
+                        accumulator: SlotIdx::new(1),
+                    },
+                ),
+                node(
+                    7,
+                    None,
+                    None,
+                    CompiledNodeKind::Finish {
+                        result: SlotIdx::new(3),
+                    },
+                ),
+            ],
+            vec![ConstValue::I64(100)],
+            4,
+            ResourceContract {
+                max_step_budget_per_tick: 30,
+                ..ResourceContract::DEFAULT
+            },
+        )
+    }
+
+    fn target_together_two_branch_workflow() -> Result<CompiledWorkflow, String> {
+        workflow_from_nodes(
+            "together_two_branch",
+            0x89,
+            vec![
+                node(
+                    0,
+                    Some(0),
+                    None,
+                    CompiledNodeKind::TogetherStart {
+                        branches: vec![StepIdx::new(1), StepIdx::new(3)].into_boxed_slice(),
+                        join: StepIdx::new(5),
+                    },
+                ),
+                node(
+                    1,
+                    Some(1),
+                    None,
+                    CompiledNodeKind::TogetherBranch {
+                        branch: 0,
+                        entry: StepIdx::new(2),
+                        join: StepIdx::new(5),
+                        accumulator: SlotIdx::new(0),
+                    },
+                ),
+                node(
+                    2,
+                    Some(1),
+                    Some(3),
+                    CompiledNodeKind::SetConst {
+                        value: ConstIdx::new(0),
+                    },
+                ),
+                node(
+                    3,
+                    Some(1),
+                    None,
+                    CompiledNodeKind::TogetherBranch {
+                        branch: 1,
+                        entry: StepIdx::new(4),
+                        join: StepIdx::new(5),
+                        accumulator: SlotIdx::new(0),
+                    },
+                ),
+                node(
+                    4,
+                    Some(1),
+                    Some(5),
+                    CompiledNodeKind::SetConst {
+                        value: ConstIdx::new(1),
+                    },
+                ),
+                node(
+                    5,
+                    Some(1),
+                    Some(6),
+                    CompiledNodeKind::TogetherJoin {
+                        branch_count: 2,
+                        accumulator: SlotIdx::new(0),
+                    },
+                ),
+                node(
+                    6,
+                    None,
+                    None,
+                    CompiledNodeKind::Finish {
+                        result: SlotIdx::new(1),
+                    },
+                ),
+            ],
+            vec![ConstValue::I64(10), ConstValue::I64(20)],
+            2,
+            ResourceContract {
+                max_step_budget_per_tick: 30,
+                ..ResourceContract::DEFAULT
+            },
+        )
+    }
+
+    fn collect_finish_workflow(page_size: u32, limit: u32) -> Result<CompiledWorkflow, String> {
+        workflow_from_nodes(
+            "collect_finish",
+            0x9B,
+            vec![
+                node(
+                    0,
+                    Some(1),
+                    None,
+                    CompiledNodeKind::CollectStart {
+                        source: SlotIdx::new(0),
+                        limit,
+                        page_size,
+                        body: StepIdx::new(1),
+                        done: StepIdx::new(5),
+                    },
+                ),
+                node(
+                    1,
+                    None,
+                    None,
+                    CompiledNodeKind::CollectPage {
+                        collector_slot: SlotIdx::new(1),
+                        body: StepIdx::new(2),
+                        done: StepIdx::new(5),
+                    },
+                ),
+                node(
+                    2,
+                    None,
+                    None,
+                    CompiledNodeKind::CollectNext {
+                        collector_slot: SlotIdx::new(1),
+                        body: StepIdx::new(3),
+                        done: StepIdx::new(5),
+                    },
+                ),
+                node(
+                    3,
+                    None,
+                    None,
+                    CompiledNodeKind::CollectPage {
+                        collector_slot: SlotIdx::new(1),
+                        body: StepIdx::new(4),
+                        done: StepIdx::new(5),
+                    },
+                ),
+                node(
+                    4,
+                    None,
+                    None,
+                    CompiledNodeKind::CollectNext {
+                        collector_slot: SlotIdx::new(1),
+                        body: StepIdx::new(5),
+                        done: StepIdx::new(5),
+                    },
+                ),
+                node(
+                    5,
+                    Some(2),
+                    Some(6),
+                    CompiledNodeKind::CollectFinish {
+                        collector_slot: SlotIdx::new(1),
+                    },
+                ),
+                node(
+                    6,
+                    None,
+                    None,
+                    CompiledNodeKind::Finish {
+                        result: SlotIdx::new(2),
+                    },
+                ),
+            ],
+            Vec::new(),
+            3,
+            ResourceContract {
+                max_collect_items: limit,
+                max_step_budget_per_tick: 40,
+                ..ResourceContract::DEFAULT
+            },
+        )
+    }
+
+    fn collect_next_only_workflow() -> Result<CompiledWorkflow, String> {
+        workflow_from_nodes(
+            "collect_next_only",
+            0x9C,
+            vec![
+                node(
+                    0,
+                    None,
+                    None,
+                    CompiledNodeKind::CollectNext {
+                        collector_slot: SlotIdx::new(1),
+                        body: StepIdx::new(1),
+                        done: StepIdx::new(2),
+                    },
+                ),
+                node(
+                    1,
+                    None,
+                    None,
+                    CompiledNodeKind::Finish {
+                        result: SlotIdx::new(1),
+                    },
+                ),
+                node(
+                    2,
+                    None,
+                    None,
+                    CompiledNodeKind::Finish {
+                        result: SlotIdx::new(1),
+                    },
+                ),
+            ],
+            Vec::new(),
+            2,
+            ResourceContract {
+                max_collect_items: 10,
+                max_step_budget_per_tick: 10,
+                ..ResourceContract::DEFAULT
+            },
+        )
+    }
+
     #[test]
     fn repeat_generated_parity_matches_runtime_for_first_attempt() -> Result<(), String> {
-        let workflow = repeat_workflow()?;
-        assert_unsupported_feature_from_validate_and_emit(&workflow, "RepeatStart")
+        let workflow = repeat_success_unrolled_workflow()?;
+        let runtime = runtime_full_observation(&workflow, 1001, |_, _, _| Ok(()))?;
+        let generated = generated_full_observation(&workflow, 1001, "repeat_success", "")?;
+        assert_eq!(generated, runtime);
+        Ok(())
+    }
+
+    #[test]
+    fn repeat_generated_parity_matches_runtime_for_non_i64_attempt_error() -> Result<(), String> {
+        let workflow = repeat_non_i64_attempt_workflow()?;
+        let runtime = runtime_full_observation(&workflow, 1002, |run, _, _| {
+            run.write_slot(SlotIdx::new(0), SlotValue::Bool(true))
+                .map_err(|e| e.to_string())
+        })?;
+        let generated = generated_full_observation(
+            &workflow,
+            1002,
+            "repeat_non_i64_attempt",
+            "    state.slots[0] = Some(SlotValue::Bool(true));",
+        )?;
+        assert_eq!(generated, runtime);
+        Ok(())
     }
 
     #[test]
     fn reduce_generated_parity_matches_runtime_for_empty_input() -> Result<(), String> {
-        let workflow = reduce_workflow()?;
-        assert_unsupported_feature_from_validate_and_emit(&workflow, "ReduceStart")
+        let workflow = reduce_unrolled_workflow()?;
+        assert_reduce_generated_runtime_parity(&workflow, "reduce_empty", &[])
+    }
+
+    #[test]
+    fn reduce_generated_parity_matches_runtime_for_single_and_multi_input() -> Result<(), String> {
+        let workflow = reduce_unrolled_workflow()?;
+        assert_reduce_generated_runtime_parity(&workflow, "reduce_single", &[SlotValue::I64(10)])?;
+        assert_reduce_generated_runtime_parity(
+            &workflow,
+            "reduce_multi",
+            &[SlotValue::I64(10), SlotValue::I64(20), SlotValue::I64(30)],
+        )
+    }
+
+    #[test]
+    fn reduce_generated_parity_matches_runtime_for_non_list_error() -> Result<(), String> {
+        let workflow = reduce_unrolled_workflow()?;
+        let runtime = runtime_full_observation(&workflow, 2004, |run, _, _| {
+            run.write_slot_with_taint(SlotIdx::new(0), SlotValue::Bool(true), Taint::Secret)
+                .map_err(|e| e.to_string())
+        })?;
+        let generated = generated_full_observation(
+            &workflow,
+            2004,
+            "reduce_non_list",
+            "    state.slots[0] = Some(SlotValue::Bool(true));\n    state.slot_taints[0] = Taint::Secret;",
+        )?;
+        assert_eq!(generated, runtime);
+        Ok(())
+    }
+
+    fn assert_reduce_generated_runtime_parity(
+        workflow: &CompiledWorkflow,
+        name: &str,
+        items: &[SlotValue],
+    ) -> Result<(), String> {
+        let runtime = runtime_full_observation(workflow, 2001, |run, store, _| {
+            let list_id = store
+                .insert_list(items.to_vec().into_boxed_slice())
+                .map_err(|e| e.to_string())?;
+            run.write_slot_with_taint(SlotIdx::new(0), SlotValue::List(list_id), Taint::Secret)
+                .map_err(|e| e.to_string())
+        })?;
+        let generated_items = generated_collect_items_source(items)?;
+        let generated = generated_full_observation(
+            workflow,
+            2001,
+            name,
+            &format!(
+                "    let values = [{generated_items}];\n    let taints = [Taint::Secret; {}];\n    let source = match state.list_store.insert_items_with_taints(&values, &taints) {{ Ok(handle) => handle, Err(error) => {{ println!(\"setup:{{error:?}}\"); return; }} }};\n    state.slots[0] = Some(SlotValue::List(source));\n    state.slot_taints[0] = Taint::Secret;",
+                items.len()
+            ),
+        )?;
+        assert_eq!(generated, runtime);
+        Ok(())
     }
 
     #[test]
     fn together_generated_parity_matches_runtime_for_all_successful_branches() -> Result<(), String>
     {
+        let workflow = target_together_two_branch_workflow()?;
+        let runtime = runtime_full_observation(&workflow, 3001, |_, _, _| Ok(()))?;
+        let generated = generated_full_observation(&workflow, 3001, "together_two_branch", "")?;
+        assert_eq!(generated, runtime);
+        Ok(())
+    }
+
+    #[test]
+    fn together_generated_parity_matches_runtime_for_missing_output_error() -> Result<(), String> {
         let workflow = together_workflow()?;
-        assert_unsupported_feature_from_validate_and_emit(&workflow, "TogetherStart")
+        let runtime = runtime_full_observation(&workflow, 3002, |run, _, _| {
+            run.write_slot(SlotIdx::new(0), SlotValue::I64(9))
+                .map_err(|e| e.to_string())
+        })?;
+        let generated = generated_full_observation(
+            &workflow,
+            3002,
+            "together_missing_output_full",
+            "    state.slots[0] = Some(SlotValue::I64(9));",
+        )?;
+        assert_eq!(generated, runtime);
+        Ok(())
     }
 
     #[test]
     fn collect_generated_parity_matches_runtime_for_single_page() -> Result<(), String> {
-        let workflow = collect_workflow()?;
-        assert_unsupported_feature_from_validate_and_emit(&workflow, "CollectStart")
+        let workflow = collect_finish_workflow(2, 10)?;
+        assert_collect_generated_runtime_parity(&workflow, "collect_empty", &[])?;
+        assert_collect_generated_runtime_parity(&workflow, "collect_single", &[SlotValue::I64(7)])?;
+        assert_collect_generated_runtime_parity(
+            &workflow,
+            "collect_multi",
+            &[SlotValue::I64(7), SlotValue::I64(8), SlotValue::I64(9)],
+        )
+    }
+
+    #[test]
+    fn collect_generated_parity_matches_runtime_for_capacity_errors() -> Result<(), String> {
+        let item_limit_workflow = collect_finish_workflow(2, 2)?;
+        assert_collect_generated_runtime_parity(
+            &item_limit_workflow,
+            "collect_item_limit",
+            &[SlotValue::I64(1), SlotValue::I64(2), SlotValue::I64(3)],
+        )?;
+        let page_limit_workflow = collect_finish_workflow(3, 2)?;
+        assert_collect_generated_runtime_parity(
+            &page_limit_workflow,
+            "collect_page_limit",
+            &[SlotValue::I64(1), SlotValue::I64(2)],
+        )
+    }
+
+    #[test]
+    fn collect_generated_parity_matches_runtime_for_duplicate_stale_out_of_order_page_errors()
+    -> Result<(), String> {
+        let workflow = collect_next_only_workflow()?;
+        for (name, generated_setup, runtime_case) in [
+            (
+                "collect_duplicate_page",
+                "    let source = setup_insert_items(&mut state.list_store, \"collect_duplicate_page\", &[SlotValue::I64(1), SlotValue::I64(2), SlotValue::I64(3)], &[Taint::Clean, Taint::Clean, Taint::Clean]);\n    let observed = setup_insert_items(&mut state.list_store, \"collect_duplicate_page\", &[SlotValue::I64(1)], &[Taint::Clean]);\n    let expected = setup_insert_items(&mut state.list_store, \"collect_duplicate_page\", &[SlotValue::I64(2)], &[Taint::Clean]);\n    setup_collect_upsert(&mut state.collect_states, \"collect_duplicate_page\", 1, CollectState { source, current_page: observed, cursor: 1, page_size: 1, item_count: 3, limit: 10 });\n    setup_collect_upsert(&mut state.collect_states, \"collect_duplicate_page\", 1, CollectState { source, current_page: expected, cursor: 2, page_size: 1, item_count: 3, limit: 10 });\n    state.slots[1] = Some(SlotValue::List(observed));",
+                0u8,
+            ),
+            (
+                "collect_stale_page",
+                "    let source = setup_insert_items(&mut state.list_store, \"collect_stale_page\", &[SlotValue::I64(1), SlotValue::I64(2), SlotValue::I64(3)], &[Taint::Clean, Taint::Clean, Taint::Clean]);\n    let stale = setup_insert_items(&mut state.list_store, \"collect_stale_page\", &[SlotValue::I64(1)], &[Taint::Clean]);\n    let prev = setup_insert_items(&mut state.list_store, \"collect_stale_page\", &[SlotValue::I64(2)], &[Taint::Clean]);\n    let expected = setup_insert_items(&mut state.list_store, \"collect_stale_page\", &[SlotValue::I64(3)], &[Taint::Clean]);\n    setup_collect_upsert(&mut state.collect_states, \"collect_stale_page\", 1, CollectState { source, current_page: stale, cursor: 1, page_size: 1, item_count: 3, limit: 10 });\n    setup_collect_upsert(&mut state.collect_states, \"collect_stale_page\", 1, CollectState { source, current_page: prev, cursor: 2, page_size: 1, item_count: 3, limit: 10 });\n    setup_collect_upsert(&mut state.collect_states, \"collect_stale_page\", 1, CollectState { source, current_page: expected, cursor: 3, page_size: 1, item_count: 3, limit: 10 });\n    state.slots[1] = Some(SlotValue::List(stale));",
+                1u8,
+            ),
+            (
+                "collect_out_of_order_page",
+                "    let source = setup_insert_items(&mut state.list_store, \"collect_out_of_order_page\", &[SlotValue::I64(1), SlotValue::I64(2), SlotValue::I64(3)], &[Taint::Clean, Taint::Clean, Taint::Clean]);\n    let expected = setup_insert_items(&mut state.list_store, \"collect_out_of_order_page\", &[SlotValue::I64(1)], &[Taint::Clean]);\n    let _dummy = setup_insert_items(&mut state.list_store, \"collect_out_of_order_page\", &[SlotValue::I64(2)], &[Taint::Clean]);\n    let future = setup_insert_items(&mut state.list_store, \"collect_out_of_order_page\", &[SlotValue::I64(3)], &[Taint::Clean]);\n    setup_collect_upsert(&mut state.collect_states, \"collect_out_of_order_page\", 1, CollectState { source, current_page: expected, cursor: 1, page_size: 1, item_count: 3, limit: 10 });\n    state.slots[1] = Some(SlotValue::List(future));",
+                2u8,
+            ),
+        ] {
+            let runtime = runtime_full_observation(
+                &workflow,
+                4100 + u64::from(runtime_case),
+                |run, store, states| {
+                    let source = store
+                        .insert_list(Box::from([
+                            SlotValue::I64(1),
+                            SlotValue::I64(2),
+                            SlotValue::I64(3),
+                        ]))
+                        .map_err(|e| e.to_string())?;
+                    let page_a = store
+                        .insert_list(Box::from([SlotValue::I64(1)]))
+                        .map_err(|e| e.to_string())?;
+                    let page_b = store
+                        .insert_list(Box::from([SlotValue::I64(2)]))
+                        .map_err(|e| e.to_string())?;
+                    let page_c = store
+                        .insert_list(Box::from([SlotValue::I64(3)]))
+                        .map_err(|e| e.to_string())?;
+                    let (observed, states_to_write) = match runtime_case {
+                        0 => (page_a, vec![(page_a, 1), (page_b, 2)]),
+                        1 => (page_a, vec![(page_a, 1), (page_b, 2), (page_c, 3)]),
+                        _ => (page_c, vec![(page_a, 1)]),
+                    };
+                    for (current_page, cursor) in states_to_write {
+                        states
+                            .upsert(CollectPaginationState {
+                                run_id: run.run_id(),
+                                collector_slot: SlotIdx::new(1),
+                                source,
+                                current_page,
+                                cursor,
+                                page_size: 1,
+                                item_count: 3,
+                                limit: 10,
+                                time_limit_ms: None,
+                                start_millis: 0,
+                            })
+                            .map_err(|e| e.to_string())?;
+                    }
+                    run.write_slot(SlotIdx::new(1), SlotValue::List(observed))
+                        .map_err(|e| e.to_string())
+                },
+            )?;
+            let generated = generated_full_observation(
+                &workflow,
+                4100 + u64::from(runtime_case),
+                name,
+                generated_setup,
+            )?;
+            assert_eq!(generated, runtime, "{name}");
+        }
+        Ok(())
+    }
+
+    fn collect_paged_workflow(page_size: u32) -> Result<CompiledWorkflow, String> {
+        let parts = WorkflowParts {
+            name: Box::<str>::from("test_collect_paged"),
+            digest: WorkflowDigest::from_bytes([0x9A; 32]),
+            nodes: vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: Some(SlotIdx::new(1)),
+                    next: None,
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::CollectStart {
+                        source: SlotIdx::new(0),
+                        limit: 10,
+                        page_size,
+                        body: StepIdx::new(1),
+                        done: StepIdx::new(5),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: None,
+                    next: None,
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::CollectPage {
+                        collector_slot: SlotIdx::new(1),
+                        body: StepIdx::new(2),
+                        done: StepIdx::new(5),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(2),
+                    output: None,
+                    next: None,
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::CollectNext {
+                        collector_slot: SlotIdx::new(1),
+                        body: StepIdx::new(3),
+                        done: StepIdx::new(5),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(3),
+                    output: None,
+                    next: None,
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::CollectPage {
+                        collector_slot: SlotIdx::new(1),
+                        body: StepIdx::new(4),
+                        done: StepIdx::new(5),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(4),
+                    output: None,
+                    next: None,
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::CollectNext {
+                        collector_slot: SlotIdx::new(1),
+                        body: StepIdx::new(5),
+                        done: StepIdx::new(5),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(5),
+                    output: None,
+                    next: None,
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(1),
+                    },
+                },
+            ]
+            .into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: Box::new([]),
+            slot_count: 2,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract {
+                max_collect_items: 10,
+                max_step_budget_per_tick: 50,
+                ..ResourceContract::DEFAULT
+            },
+            step_names: Box::new([]),
+        };
+        CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())
+    }
+
+    fn assert_collect_generated_runtime_parity(
+        workflow: &CompiledWorkflow,
+        name: &str,
+        items: &[SlotValue],
+    ) -> Result<(), String> {
+        let runtime = runtime_full_observation(workflow, 4001, |run, store, _| {
+            let list_id = store
+                .insert_list(items.to_vec().into_boxed_slice())
+                .map_err(|e| e.to_string())?;
+            run.write_slot_with_taint(SlotIdx::new(0), SlotValue::List(list_id), Taint::Secret)
+                .map_err(|e| e.to_string())
+        })?;
+        let generated_items = generated_collect_items_source(items)?;
+        let generated = generated_full_observation(
+            workflow,
+            4001,
+            name,
+            &format!(
+                "    let values = [{generated_items}];\n    let taints = [Taint::Secret; {}];\n    let source = match state.list_store.insert_items_with_taints(&values, &taints) {{ Ok(handle) => handle, Err(error) => {{ println!(\"setup:{{error:?}}\"); return; }} }};\n    state.slots[0] = Some(SlotValue::List(source));\n    state.slot_taints[0] = Taint::Secret;",
+                items.len()
+            ),
+        )?;
+        assert_eq!(generated, runtime);
+        Ok(())
+    }
+
+    fn generated_collect_items_source(items: &[SlotValue]) -> Result<String, String> {
+        let mut out = String::new();
+        let mut index = 0usize;
+        while index < items.len() {
+            if index > 0 {
+                out.push_str(", ");
+            }
+            match items.get(index).copied().ok_or("collect item index")? {
+                SlotValue::I64(value) => out.push_str(&format!("SlotValue::I64({value})")),
+                other => return Err(format!("unsupported collect test item {other:?}")),
+            }
+            index = index.checked_add(1).ok_or("collect item index overflow")?;
+        }
+        Ok(out)
     }
 
     #[test]
@@ -4876,16 +5952,37 @@ mod tests {
     #[test]
     fn journal_signature_generated_parity_matches_action_wait_ask_boundary_signatures_already_in_scope()
     -> Result<(), String> {
-        let workflow = action_suspend_workflow(ActionId::new(10), SlotIdx::new(0))?;
-        let stdout = generated_step_stdout(
-            &workflow,
-            "journal_signature_action_scheduled",
-            "    let mut slots = [None; WORKFLOW_SLOT_COUNT];\n    slots[0] = Some(SlotValue::I64(99));\n    match drive_with_journal(slots) {\n        Ok(GeneratedRunStatus::Suspended(suspended)) => {\n            println!(\"suspended:{:?}:events={:?}\", suspended.suspension, suspended.journal.len());\n            println!(\"event0={:?}\", suspended.journal.event(0));\n            println!(\"event1={:?}\", suspended.journal.event(1));\n        }\n        Ok(GeneratedRunStatus::Finished(output)) => println!(\"unexpected_finished:{:?}:{:?}\", output.value, output.taint),\n        Err(error) => println!(\"unexpected_err:{error:?}\"),\n    }",
-        )?;
+        let repeat = repeat_success_unrolled_workflow()?;
+        let reduce = reduce_unrolled_workflow()?;
+        let together = target_together_two_branch_workflow()?;
+        let collect = collect_finish_workflow(2, 10)?;
+
+        let repeat_runtime = runtime_full_observation(&repeat, 5001, |_, _, _| Ok(()))?;
+        let repeat_generated = generated_full_observation(&repeat, 5001, "journal_repeat", "")?;
         assert_eq!(
-            stdout,
-            "suspended:ActionPending { step: 0, action_id: 10, input_slot: 0, resume_pc: 1 }:events=1\nevent0=Some(ActionScheduled { step: 0, action_id: 10, input_slot: 0, resume_pc: 1 })\nevent1=None\n"
+            repeat_generated, repeat_runtime,
+            "repeat journal/evidence parity"
         );
+
+        assert_reduce_generated_runtime_parity(
+            &reduce,
+            "journal_reduce",
+            &[SlotValue::I64(3), SlotValue::I64(4)],
+        )?;
+
+        let together_runtime = runtime_full_observation(&together, 5003, |_, _, _| Ok(()))?;
+        let together_generated =
+            generated_full_observation(&together, 5003, "journal_together", "")?;
+        assert_eq!(
+            together_generated, together_runtime,
+            "together journal/evidence parity"
+        );
+
+        assert_collect_generated_runtime_parity(
+            &collect,
+            "journal_collect",
+            &[SlotValue::I64(5), SlotValue::I64(6), SlotValue::I64(7)],
+        )?;
         Ok(())
     }
 
@@ -6657,53 +7754,32 @@ mod tests {
         Ok(())
     }
 
-    // --- Together validation rejection tests ---
+    // --- Together validation support tests ---
 
     #[test]
     fn together_start_codegen_is_typed_error() -> Result<(), String> {
         let workflow = together_workflow()?;
-        assert_unsupported_ir(
-            validate_generated_subset(&workflow),
-            "TogetherStart",
-            "unsupported generated Rust IR feature: TogetherStart",
-        )?;
-        assert_unsupported_ir(
-            emit_rust_workflow(&workflow),
-            "TogetherStart",
-            "unsupported generated Rust IR feature: TogetherStart",
-        )?;
+        validate_generated_subset(&workflow).map_err(|e| e.to_string())?;
+        let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
+        assert!(!source.contains("Err(DriveError::UnsupportedPrimitive"));
         Ok(())
     }
 
     #[test]
     fn together_branch_codegen_is_typed_error() -> Result<(), String> {
         let workflow = together_branch_workflow()?;
-        assert_unsupported_ir(
-            validate_generated_subset(&workflow),
-            "TogetherBranch",
-            "unsupported generated Rust IR feature: TogetherBranch",
-        )?;
-        assert_unsupported_ir(
-            emit_rust_workflow(&workflow),
-            "TogetherBranch",
-            "unsupported generated Rust IR feature: TogetherBranch",
-        )?;
+        validate_generated_subset(&workflow).map_err(|e| e.to_string())?;
+        let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
+        assert!(!source.contains("Err(DriveError::UnsupportedPrimitive"));
         Ok(())
     }
 
     #[test]
     fn together_join_codegen_is_typed_error() -> Result<(), String> {
         let workflow = together_join_workflow()?;
-        assert_unsupported_ir(
-            validate_generated_subset(&workflow),
-            "TogetherJoin",
-            "unsupported generated Rust IR feature: TogetherJoin",
-        )?;
-        assert_unsupported_ir(
-            emit_rust_workflow(&workflow),
-            "TogetherJoin",
-            "unsupported generated Rust IR feature: TogetherJoin",
-        )?;
+        validate_generated_subset(&workflow).map_err(|e| e.to_string())?;
+        let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
+        assert!(!source.contains("Err(DriveError::UnsupportedPrimitive"));
         Ok(())
     }
 
@@ -6711,18 +7787,9 @@ mod tests {
     fn together_two_branch_workflow_is_rejected_by_codegen() -> Result<(), String> {
         // Given a complete Together workflow with TogetherStart, TogetherBranch, and TogetherJoin
         let workflow = together_two_branch_workflow()?;
-        // When validate_generated_subset checks it
-        // Then it rejects with TogetherStart (first unsupported node encountered)
-        assert_unsupported_ir(
-            validate_generated_subset(&workflow),
-            "TogetherStart",
-            "unsupported generated Rust IR feature: TogetherStart",
-        )?;
-        assert_unsupported_ir(
-            emit_rust_workflow(&workflow),
-            "TogetherStart",
-            "unsupported generated Rust IR feature: TogetherStart",
-        )?;
+        validate_generated_subset(&workflow).map_err(|e| e.to_string())?;
+        let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
+        assert!(!source.contains("Err(DriveError::UnsupportedPrimitive"));
         Ok(())
     }
 
@@ -6844,9 +7911,8 @@ mod tests {
             ),
         ];
 
-        cases.iter().try_for_each(|(workflow, feature)| {
-            let expected = format!("unsupported generated Rust IR feature: {feature}");
-            assert_unsupported_ir(validate_generated_subset(workflow), feature, &expected)
+        cases.iter().try_for_each(|(workflow, _feature)| {
+            validate_generated_subset(workflow).map_err(|e| e.to_string())
         })
     }
 
@@ -6913,12 +7979,12 @@ mod tests {
         emit_step_function(&mut out, node, &workflow).map_err(|e| e.to_string())?;
         // Then the output reports unsupported primitive
         assert!(
-            out.contains("UnsupportedPrimitive"),
-            "TogetherBranch must emit UnsupportedPrimitive, got: {out}"
+            !out.contains("UnsupportedPrimitive"),
+            "TogetherBranch must emit concrete support, got: {out}"
         );
         assert!(
-            out.contains("TogetherBranch"),
-            "UnsupportedPrimitive must name TogetherBranch, got: {out}"
+            !out.contains("UnsupportedPrimitive"),
+            "concrete support should not name unsupported TogetherBranch, got: {out}"
         );
         Ok(())
     }
@@ -6933,12 +7999,12 @@ mod tests {
         emit_step_function(&mut out, node, &workflow).map_err(|e| e.to_string())?;
         // Then the output reports unsupported primitive
         assert!(
-            out.contains("UnsupportedPrimitive"),
-            "TogetherJoin must emit UnsupportedPrimitive, got: {out}"
+            !out.contains("UnsupportedPrimitive"),
+            "TogetherJoin must emit concrete support, got: {out}"
         );
         assert!(
-            out.contains("TogetherJoin"),
-            "UnsupportedPrimitive must name TogetherJoin, got: {out}"
+            !out.contains("UnsupportedPrimitive"),
+            "concrete support should not name unsupported TogetherJoin, got: {out}"
         );
         Ok(())
     }
@@ -7067,7 +8133,7 @@ mod tests {
         let stdout = generated_step_stdout(
             &workflow,
             "build_object_taint",
-            "    let mut slots = [None; WORKFLOW_SLOT_COUNT];\n    let mut taints = [Taint::Clean; WORKFLOW_SLOT_COUNT];\n    slots[0] = Some(SlotValue::I64(10));\n    slots[1] = Some(SlotValue::Bool(true));\n    slots[2] = Some(SlotValue::Symbol(2));\n    taints[0] = Taint::Clean;\n    taints[1] = Taint::DerivedFromSecret;\n    taints[2] = Taint::Secret;\n    let mut list_store = ListStore::new();\n    let mut object_store = ObjectStore::new();\n    match step_0(&mut slots, &mut taints, &mut list_store, &mut object_store) {\n        Ok(_) => println!(\"slot={:?};taint={:?}\", slots[3], taints[3]),\n        Err(error) => println!(\"err:{error:?}\"),\n    }",
+            "    let mut slots = [None; WORKFLOW_SLOT_COUNT];\n    let mut taints = [Taint::Clean; WORKFLOW_SLOT_COUNT];\n    slots[0] = Some(SlotValue::I64(10));\n    slots[1] = Some(SlotValue::Bool(true));\n    slots[2] = Some(SlotValue::Symbol(2));\n    taints[0] = Taint::Clean;\n    taints[1] = Taint::DerivedFromSecret;\n    taints[2] = Taint::Secret;\n    let mut list_store = ListStore::new();\n    let mut object_store = ObjectStore::new();\n    let mut collect_states = CollectStateStore::new();\n    match step_0(&mut slots, &mut taints, &mut list_store, &mut object_store, &mut collect_states) {\n        Ok(_) => println!(\"slot={:?};taint={:?}\", slots[3], taints[3]),\n        Err(error) => println!(\"err:{error:?}\"),\n    }",
         )?;
         assert!(
             stdout.contains("slot=Some(Object(0));taint=Secret"),
@@ -7082,7 +8148,7 @@ mod tests {
         let stdout = generated_step_stdout(
             &workflow,
             "build_object_missing_field",
-            "    let mut slots = [None; WORKFLOW_SLOT_COUNT];\n    let mut taints = [Taint::Clean; WORKFLOW_SLOT_COUNT];\n    slots[0] = Some(SlotValue::I64(10));\n    slots[2] = Some(SlotValue::Symbol(2));\n    let mut list_store = ListStore::new();\n    let mut object_store = ObjectStore::new();\n    match step_0(&mut slots, &mut taints, &mut list_store, &mut object_store) {\n        Err(DriveError::SlotNull) => println!(\"err:SlotNull\"),\n        Err(error) => println!(\"unexpected_err:{error:?}\"),\n        Ok(_) => println!(\"unexpected_ok\"),\n    }",
+            "    let mut slots = [None; WORKFLOW_SLOT_COUNT];\n    let mut taints = [Taint::Clean; WORKFLOW_SLOT_COUNT];\n    slots[0] = Some(SlotValue::I64(10));\n    slots[2] = Some(SlotValue::Symbol(2));\n    let mut list_store = ListStore::new();\n    let mut object_store = ObjectStore::new();\n    let mut collect_states = CollectStateStore::new();\n    match step_0(&mut slots, &mut taints, &mut list_store, &mut object_store, &mut collect_states) {\n        Err(DriveError::SlotNull) => println!(\"err:SlotNull\"),\n        Err(error) => println!(\"unexpected_err:{error:?}\"),\n        Ok(_) => println!(\"unexpected_ok\"),\n    }",
         )?;
         assert_eq!(stdout, "err:SlotNull\n");
         Ok(())
@@ -7094,7 +8160,7 @@ mod tests {
         let stdout = generated_step_stdout(
             &workflow,
             "build_object_store_bounds",
-            "    let mut object_store = ObjectStore::new();\n    let field = ObjectField { key: 0, value: SlotValue::Null, taint: Taint::Clean };\n    match object_store.insert_fields(&[field, field, field, field]) {\n        Err(DriveError::ObjectStoreOverflow) => println!(\"err:ObjectStoreOverflow\"),\n        other => println!(\"unexpected:{other:?}\"),\n    }",
+            "    let mut object_store = ObjectStore::new();\n    let mut collect_states = CollectStateStore::new();\n    let field = ObjectField { key: 0, value: SlotValue::Null, taint: Taint::Clean };\n    match object_store.insert_fields(&[field, field, field, field]) {\n        Err(DriveError::ObjectStoreOverflow) => println!(\"err:ObjectStoreOverflow\"),\n        other => println!(\"unexpected:{other:?}\"),\n    }",
         )?;
         assert_eq!(stdout, "err:ObjectStoreOverflow\n");
         Ok(())
@@ -7258,7 +8324,7 @@ mod tests {
         let stdout = generated_step_stdout(
             &workflow,
             "build_list_clean_taint",
-            "    let mut slots = [None; WORKFLOW_SLOT_COUNT];\n    let mut taints = [Taint::Clean; WORKFLOW_SLOT_COUNT];\n    slots[0] = Some(SlotValue::I64(10));\n    slots[1] = Some(SlotValue::Bool(true));\n    slots[2] = Some(SlotValue::Symbol(2));\n    let mut list_store = ListStore::new();\n    let mut object_store = ObjectStore::new();\n    match step_0(&mut slots, &mut taints, &mut list_store, &mut object_store) {\n        Ok(_) => println!(\"slot={:?};taint={:?}\", slots[3], taints[3]),\n        Err(error) => println!(\"err:{error:?}\"),\n    }",
+            "    let mut slots = [None; WORKFLOW_SLOT_COUNT];\n    let mut taints = [Taint::Clean; WORKFLOW_SLOT_COUNT];\n    slots[0] = Some(SlotValue::I64(10));\n    slots[1] = Some(SlotValue::Bool(true));\n    slots[2] = Some(SlotValue::Symbol(2));\n    let mut list_store = ListStore::new();\n    let mut object_store = ObjectStore::new();\n    let mut collect_states = CollectStateStore::new();\n    match step_0(&mut slots, &mut taints, &mut list_store, &mut object_store, &mut collect_states) {\n        Ok(_) => println!(\"slot={:?};taint={:?}\", slots[3], taints[3]),\n        Err(error) => println!(\"err:{error:?}\"),\n    }",
         )?;
         assert!(
             stdout.contains("slot=Some(List(0));taint=Clean"),
@@ -7273,7 +8339,7 @@ mod tests {
         let stdout = generated_step_stdout(
             &workflow,
             "build_list_secret_taint",
-            "    let mut slots = [None; WORKFLOW_SLOT_COUNT];\n    let mut taints = [Taint::Clean; WORKFLOW_SLOT_COUNT];\n    slots[0] = Some(SlotValue::I64(10));\n    slots[1] = Some(SlotValue::Bool(true));\n    slots[2] = Some(SlotValue::Symbol(2));\n    taints[1] = Taint::Secret;\n    let mut list_store = ListStore::new();\n    let mut object_store = ObjectStore::new();\n    match step_0(&mut slots, &mut taints, &mut list_store, &mut object_store) {\n        Ok(_) => println!(\"slot={:?};taint={:?}\", slots[3], taints[3]),\n        Err(error) => println!(\"err:{error:?}\"),\n    }",
+            "    let mut slots = [None; WORKFLOW_SLOT_COUNT];\n    let mut taints = [Taint::Clean; WORKFLOW_SLOT_COUNT];\n    slots[0] = Some(SlotValue::I64(10));\n    slots[1] = Some(SlotValue::Bool(true));\n    slots[2] = Some(SlotValue::Symbol(2));\n    taints[1] = Taint::Secret;\n    let mut list_store = ListStore::new();\n    let mut object_store = ObjectStore::new();\n    let mut collect_states = CollectStateStore::new();\n    match step_0(&mut slots, &mut taints, &mut list_store, &mut object_store, &mut collect_states) {\n        Ok(_) => println!(\"slot={:?};taint={:?}\", slots[3], taints[3]),\n        Err(error) => println!(\"err:{error:?}\"),\n    }",
         )?;
         assert!(
             stdout.contains("slot=Some(List(0));taint=Secret"),
@@ -7288,7 +8354,7 @@ mod tests {
         let stdout = generated_step_stdout(
             &workflow,
             "build_list_missing_item",
-            "    let mut slots = [None; WORKFLOW_SLOT_COUNT];\n    let mut taints = [Taint::Clean; WORKFLOW_SLOT_COUNT];\n    slots[0] = Some(SlotValue::I64(10));\n    slots[2] = Some(SlotValue::Symbol(2));\n    let mut list_store = ListStore::new();\n    let mut object_store = ObjectStore::new();\n    match step_0(&mut slots, &mut taints, &mut list_store, &mut object_store) {\n        Err(DriveError::SlotNull) => println!(\"err:SlotNull\"),\n        Err(error) => println!(\"unexpected_err:{error:?}\"),\n        Ok(_) => println!(\"unexpected_ok\"),\n    }",
+            "    let mut slots = [None; WORKFLOW_SLOT_COUNT];\n    let mut taints = [Taint::Clean; WORKFLOW_SLOT_COUNT];\n    slots[0] = Some(SlotValue::I64(10));\n    slots[2] = Some(SlotValue::Symbol(2));\n    let mut list_store = ListStore::new();\n    let mut object_store = ObjectStore::new();\n    let mut collect_states = CollectStateStore::new();\n    match step_0(&mut slots, &mut taints, &mut list_store, &mut object_store, &mut collect_states) {\n        Err(DriveError::SlotNull) => println!(\"err:SlotNull\"),\n        Err(error) => println!(\"unexpected_err:{error:?}\"),\n        Ok(_) => println!(\"unexpected_ok\"),\n    }",
         )?;
         assert_eq!(stdout, "err:SlotNull\n");
         Ok(())
@@ -7300,7 +8366,7 @@ mod tests {
         let stdout = generated_step_stdout(
             &workflow,
             "build_list_store_bounds",
-            "    let mut list_store = ListStore::new();\n    match list_store.insert_items_with_taints(\n        &[SlotValue::I64(1), SlotValue::I64(2), SlotValue::I64(3), SlotValue::I64(4)],\n        &[Taint::Clean, Taint::Clean, Taint::Clean, Taint::Clean],\n    ) {\n        Err(DriveError::ListStoreOverflow) => println!(\"err:ListStoreOverflow\"),\n        other => println!(\"unexpected:{other:?}\"),\n    }",
+            "    let mut list_store = ListStore::new();\n    let values = [SlotValue::I64(1); LIST_STORE_VALUE_CAPACITY];\n    let taints = [Taint::Clean; LIST_STORE_VALUE_CAPACITY];\n    match list_store.insert_items_with_taints(&values, &taints) {\n        Ok(_) => match list_store.insert_items_with_taints(&[SlotValue::I64(2)], &[Taint::Clean]) {\n            Err(DriveError::ListStoreOverflow) => println!(\"err:ListStoreOverflow\"),\n            other => println!(\"unexpected:{other:?}\"),\n        },\n        Err(error) => println!(\"setup:{error:?}\"),\n    }",
         )?;
         assert_eq!(stdout, "err:ListStoreOverflow\n");
         Ok(())
@@ -9478,7 +10544,7 @@ mod tests {
         let stdout = generated_step_stdout(
             &wf,
             "field_accessor_taint_join",
-            "    let mut slots = [None; WORKFLOW_SLOT_COUNT];\n    let mut taints = [Taint::Clean; WORKFLOW_SLOT_COUNT];\n    let mut list_store = ListStore::new();\n    let mut object_store = ObjectStore::new();\n    let field = ObjectField { key: 0, value: SlotValue::I64(7), taint: Taint::Secret };\n    let object = object_store.insert_fields(&[field]).map_err(|error| format!(\"setup:{error:?}\"));\n    match object {\n        Ok(handle) => {\n            slots[0] = Some(SlotValue::Object(handle));\n            taints[0] = Taint::DerivedFromSecret;\n            match step_0(&mut slots, &mut taints, &mut list_store, &mut object_store) {\n                Ok(_) => println!(\"slot={:?};taint={:?}\", slots[1], taints[1]),\n                Err(error) => println!(\"err:{error:?}\"),\n            }\n        }\n        Err(error) => println!(\"{error}\"),\n    }",
+            "    let mut slots = [None; WORKFLOW_SLOT_COUNT];\n    let mut taints = [Taint::Clean; WORKFLOW_SLOT_COUNT];\n    let mut list_store = ListStore::new();\n    let mut object_store = ObjectStore::new();\n    let mut collect_states = CollectStateStore::new();\n    let field = ObjectField { key: 0, value: SlotValue::I64(7), taint: Taint::Secret };\n    let object = object_store.insert_fields(&[field]).map_err(|error| format!(\"setup:{error:?}\"));\n    match object {\n        Ok(handle) => {\n            slots[0] = Some(SlotValue::Object(handle));\n            taints[0] = Taint::DerivedFromSecret;\n            match step_0(&mut slots, &mut taints, &mut list_store, &mut object_store, &mut collect_states) {\n                Ok(_) => println!(\"slot={:?};taint={:?}\", slots[1], taints[1]),\n                Err(error) => println!(\"err:{error:?}\"),\n            }\n        }\n        Err(error) => println!(\"{error}\"),\n    }",
         )?;
         assert_eq!(stdout, "slot=Some(I64(7));taint=Secret\n");
         Ok(())
@@ -9517,7 +10583,7 @@ mod tests {
         let stdout = generated_step_stdout(
             &wf,
             "list_accessor_taint_join",
-            "    let mut slots = [None; WORKFLOW_SLOT_COUNT];\n    let mut taints = [Taint::Clean; WORKFLOW_SLOT_COUNT];\n    let mut list_store = ListStore::new();\n    let mut object_store = ObjectStore::new();\n    let list = list_store.insert_items_with_taints(&[SlotValue::I64(9)], &[Taint::Secret]).map_err(|error| format!(\"setup:{error:?}\"));\n    match list {\n        Ok(handle) => {\n            slots[0] = Some(SlotValue::List(handle));\n            taints[0] = Taint::DerivedFromSecret;\n            match step_0(&mut slots, &mut taints, &mut list_store, &mut object_store) {\n                Ok(_) => println!(\"slot={:?};taint={:?}\", slots[1], taints[1]),\n                Err(error) => println!(\"err:{error:?}\"),\n            }\n        }\n        Err(error) => println!(\"{error}\"),\n    }",
+            "    let mut slots = [None; WORKFLOW_SLOT_COUNT];\n    let mut taints = [Taint::Clean; WORKFLOW_SLOT_COUNT];\n    let mut list_store = ListStore::new();\n    let mut object_store = ObjectStore::new();\n    let mut collect_states = CollectStateStore::new();\n    let list = list_store.insert_items_with_taints(&[SlotValue::I64(9)], &[Taint::Secret]).map_err(|error| format!(\"setup:{error:?}\"));\n    match list {\n        Ok(handle) => {\n            slots[0] = Some(SlotValue::List(handle));\n            taints[0] = Taint::DerivedFromSecret;\n            match step_0(&mut slots, &mut taints, &mut list_store, &mut object_store, &mut collect_states) {\n                Ok(_) => println!(\"slot={:?};taint={:?}\", slots[1], taints[1]),\n                Err(error) => println!(\"err:{error:?}\"),\n            }\n        }\n        Err(error) => println!(\"{error}\"),\n    }",
         )?;
         assert_eq!(stdout, "slot=Some(I64(9));taint=Secret\n");
         Ok(())
@@ -9529,7 +10595,7 @@ mod tests {
         let stdout = generated_step_stdout(
             &workflow,
             "append_helper_overflow",
-            "    let mut list_store = ListStore::new();\n    let list = list_store.insert_items_with_taints(\n        &[SlotValue::I64(1), SlotValue::I64(2), SlotValue::I64(3)],\n        &[Taint::Clean, Taint::Clean, Taint::Clean],\n    );\n    match list {\n        Ok(handle) => match append_list_item(&mut list_store, handle, SlotValue::I64(4), Taint::Clean) {\n            Err(DriveError::ListStoreOverflow) => println!(\"err:ListStoreOverflow\"),\n            other => println!(\"unexpected:{other:?}\"),\n        },\n        Err(error) => println!(\"setup:{error:?}\"),\n    }",
+            "    let mut list_store = ListStore::new();\n    let values = [SlotValue::I64(1); LIST_STORE_VALUE_CAPACITY];\n    let taints = [Taint::Clean; LIST_STORE_VALUE_CAPACITY];\n    let filler = list_store.insert_items_with_taints(&values, &taints);\n    match filler {\n        Ok(_) => match list_store.insert_items_with_taints(&[SlotValue::I64(3)], &[Taint::Clean]) {\n            Err(DriveError::ListStoreOverflow) => println!(\"err:ListStoreOverflow\"),\n            other => println!(\"unexpected:{other:?}\"),\n        },\n        Err(error) => println!(\"setup:{error:?}\"),\n    }",
         )?;
         assert_eq!(stdout, "err:ListStoreOverflow\n");
         Ok(())
@@ -9563,17 +10629,13 @@ mod tests {
     }
 
     #[test]
-    fn collect_nodes_are_rejected_by_generated_subset_validation() -> Result<(), String> {
-        let error = validate_generated_subset(&collect_workflow()?)
-            .err()
-            .ok_or("CollectStart unexpectedly accepted")?;
+    fn collect_nodes_are_accepted_by_generated_subset_validation() -> Result<(), String> {
+        let workflow = collect_paged_workflow(2)?;
+        validate_generated_subset(&workflow).map_err(|e| e.to_string())?;
+        let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
         assert!(
-            matches!(error, CodegenError::UnsupportedIr { feature } if feature == "CollectStart"),
-            "CollectStart must return exact UnsupportedIr feature, got: {error}"
-        );
-        assert_eq!(
-            error.to_string(),
-            "unsupported generated Rust IR feature: CollectStart"
+            source.contains("CollectStateStore") && source.contains("require_current_page"),
+            "Collect codegen must emit bounded side state: {source}"
         );
         Ok(())
     }
@@ -9751,11 +10813,11 @@ mod tests {
         let wf = make_step_workflow(nodes, 2);
         let code = emit_node_in_wf(StepIdx::new(0), &wf);
         assert!(
-            code.contains("UnsupportedPrimitive"),
+            !code.contains("UnsupportedPrimitive"),
             "CollectStart should emit unsupported: {code}"
         );
         assert!(
-            code.contains("CollectStart"),
+            !code.contains("UnsupportedPrimitive"),
             "should name CollectStart: {code}"
         );
     }
@@ -9781,11 +10843,11 @@ mod tests {
         let wf = make_step_workflow(nodes, 2);
         let code = emit_node_in_wf(StepIdx::new(0), &wf);
         assert!(
-            code.contains("UnsupportedPrimitive"),
+            !code.contains("UnsupportedPrimitive"),
             "CollectPage should emit unsupported: {code}"
         );
         assert!(
-            code.contains("CollectPage"),
+            !code.contains("UnsupportedPrimitive"),
             "should name CollectPage: {code}"
         );
     }
@@ -9811,11 +10873,11 @@ mod tests {
         let wf = make_step_workflow(nodes, 2);
         let code = emit_node_in_wf(StepIdx::new(0), &wf);
         assert!(
-            code.contains("UnsupportedPrimitive"),
+            !code.contains("UnsupportedPrimitive"),
             "CollectNext should emit unsupported: {code}"
         );
         assert!(
-            code.contains("CollectNext"),
+            !code.contains("UnsupportedPrimitive"),
             "should name CollectNext: {code}"
         );
     }
@@ -9838,11 +10900,11 @@ mod tests {
         let wf = make_step_workflow(nodes, 2);
         let code = emit_node_in_wf(StepIdx::new(0), &wf);
         assert!(
-            code.contains("UnsupportedPrimitive"),
+            !code.contains("UnsupportedPrimitive"),
             "CollectFinish should emit unsupported: {code}"
         );
         assert!(
-            code.contains("CollectFinish"),
+            !code.contains("UnsupportedPrimitive"),
             "should name CollectFinish: {code}"
         );
     }
@@ -9956,11 +11018,11 @@ mod tests {
         let wf = make_step_workflow(nodes, 2);
         let code = emit_node_in_wf(StepIdx::new(0), &wf);
         assert!(
-            code.contains("UnsupportedPrimitive"),
+            !code.contains("UnsupportedPrimitive"),
             "TogetherStart should emit unsupported: {code}"
         );
         assert!(
-            code.contains("TogetherStart"),
+            !code.contains("UnsupportedPrimitive"),
             "should name TogetherStart: {code}"
         );
     }
@@ -9987,11 +11049,11 @@ mod tests {
         let wf = make_step_workflow(nodes, 2);
         let code = emit_node_in_wf(StepIdx::new(0), &wf);
         assert!(
-            code.contains("UnsupportedPrimitive"),
+            !code.contains("UnsupportedPrimitive"),
             "TogetherBranch should emit unsupported: {code}"
         );
         assert!(
-            code.contains("TogetherBranch"),
+            !code.contains("UnsupportedPrimitive"),
             "should name TogetherBranch: {code}"
         );
     }
@@ -10015,11 +11077,11 @@ mod tests {
         let wf = make_step_workflow(nodes, 2);
         let code = emit_node_in_wf(StepIdx::new(0), &wf);
         assert!(
-            code.contains("UnsupportedPrimitive"),
+            !code.contains("UnsupportedPrimitive"),
             "TogetherJoin should emit unsupported: {code}"
         );
         assert!(
-            code.contains("TogetherJoin"),
+            !code.contains("UnsupportedPrimitive"),
             "should name TogetherJoin: {code}"
         );
     }
@@ -10047,11 +11109,11 @@ mod tests {
         let wf = make_step_workflow_with_const(nodes, 3, vec![ConstValue::I64(0)]);
         let code = emit_node_in_wf(StepIdx::new(0), &wf);
         assert!(
-            code.contains("UnsupportedPrimitive"),
+            !code.contains("UnsupportedPrimitive"),
             "ReduceStart should emit unsupported: {code}"
         );
         assert!(
-            code.contains("ReduceStart"),
+            !code.contains("UnsupportedPrimitive"),
             "should name ReduceStart: {code}"
         );
     }
@@ -10078,11 +11140,11 @@ mod tests {
         let wf = make_step_workflow(nodes, 3);
         let code = emit_node_in_wf(StepIdx::new(0), &wf);
         assert!(
-            code.contains("UnsupportedPrimitive"),
+            !code.contains("UnsupportedPrimitive"),
             "ReduceNext should emit unsupported: {code}"
         );
         assert!(
-            code.contains("ReduceNext"),
+            !code.contains("UnsupportedPrimitive"),
             "should name ReduceNext: {code}"
         );
     }
@@ -10105,11 +11167,11 @@ mod tests {
         let wf = make_step_workflow(nodes, 2);
         let code = emit_node_in_wf(StepIdx::new(0), &wf);
         assert!(
-            code.contains("UnsupportedPrimitive"),
+            !code.contains("UnsupportedPrimitive"),
             "ReduceFinish should emit unsupported: {code}"
         );
         assert!(
-            code.contains("ReduceFinish"),
+            !code.contains("UnsupportedPrimitive"),
             "should name ReduceFinish: {code}"
         );
     }
@@ -10135,11 +11197,11 @@ mod tests {
         let wf = make_step_workflow(nodes, 2);
         let code = emit_node_in_wf(StepIdx::new(0), &wf);
         assert!(
-            code.contains("UnsupportedPrimitive"),
+            !code.contains("UnsupportedPrimitive"),
             "RepeatStart should emit unsupported: {code}"
         );
         assert!(
-            code.contains("RepeatStart"),
+            !code.contains("UnsupportedPrimitive"),
             "should name RepeatStart: {code}"
         );
     }
@@ -10165,11 +11227,11 @@ mod tests {
         let wf = make_step_workflow(nodes, 2);
         let code = emit_node_in_wf(StepIdx::new(0), &wf);
         assert!(
-            code.contains("UnsupportedPrimitive"),
+            !code.contains("UnsupportedPrimitive"),
             "RepeatAttempt should emit unsupported: {code}"
         );
         assert!(
-            code.contains("RepeatAttempt"),
+            !code.contains("UnsupportedPrimitive"),
             "should name RepeatAttempt: {code}"
         );
     }
@@ -10193,11 +11255,11 @@ mod tests {
         let wf = make_step_workflow(nodes, 2);
         let code = emit_node_in_wf(StepIdx::new(0), &wf);
         assert!(
-            code.contains("UnsupportedPrimitive"),
+            !code.contains("UnsupportedPrimitive"),
             "RepeatCheck should emit unsupported: {code}"
         );
         assert!(
-            code.contains("RepeatCheck"),
+            !code.contains("UnsupportedPrimitive"),
             "should name RepeatCheck: {code}"
         );
     }
@@ -10220,11 +11282,11 @@ mod tests {
         let wf = make_step_workflow(nodes, 2);
         let code = emit_node_in_wf(StepIdx::new(0), &wf);
         assert!(
-            code.contains("UnsupportedPrimitive"),
+            !code.contains("UnsupportedPrimitive"),
             "RepeatFinish should emit unsupported: {code}"
         );
         assert!(
-            code.contains("RepeatFinish"),
+            !code.contains("UnsupportedPrimitive"),
             "should name RepeatFinish: {code}"
         );
     }
@@ -10491,7 +11553,7 @@ mod tests {
         let mut out = String::new();
         crate::emit_unsupported_step(&mut out, "RepeatCheck").map_err(|e| e.to_string())?;
         assert!(
-            out.contains("RepeatCheck"),
+            out.contains("UnsupportedPrimitive") && out.contains("RepeatCheck"),
             "should embed RepeatCheck, got: {out}"
         );
         assert!(
@@ -11360,7 +12422,7 @@ mod tests {
         Ok(())
     }
 
-    /// A CollectStart node must emit UnsupportedPrimitive.
+    /// A CollectStart node must emit concrete support.
     #[test]
     fn collect_start_emits_unsupported() -> Result<(), String> {
         let node = CompiledNode {
@@ -11380,17 +12442,17 @@ mod tests {
         let mut out = String::new();
         emit_step_function(&mut out, &node, &minimal_workflow()?).map_err(|e| e.to_string())?;
         assert!(
-            out.contains("UnsupportedPrimitive"),
-            "CollectStart should emit UnsupportedPrimitive, got: {out}"
+            !out.contains("UnsupportedPrimitive"),
+            "CollectStart should emit concrete support, got: {out}"
         );
         assert!(
-            out.contains("CollectStart"),
+            !out.contains("UnsupportedPrimitive"),
             "primitive name should be CollectStart, got: {out}"
         );
         Ok(())
     }
 
-    /// A RepeatStart node must emit UnsupportedPrimitive.
+    /// A RepeatStart node must emit concrete support.
     #[test]
     fn repeat_start_emits_unsupported() -> Result<(), String> {
         let node = CompiledNode {
@@ -11408,17 +12470,17 @@ mod tests {
         let mut out = String::new();
         emit_step_function(&mut out, &node, &minimal_workflow()?).map_err(|e| e.to_string())?;
         assert!(
-            out.contains("UnsupportedPrimitive"),
-            "RepeatStart should emit UnsupportedPrimitive, got: {out}"
+            !out.contains("UnsupportedPrimitive"),
+            "RepeatStart should emit concrete support, got: {out}"
         );
         assert!(
-            out.contains("RepeatStart"),
+            !out.contains("UnsupportedPrimitive"),
             "primitive name should be RepeatStart, got: {out}"
         );
         Ok(())
     }
 
-    /// A TogetherStart node must emit UnsupportedPrimitive.
+    /// A TogetherStart node must emit concrete support.
     #[test]
     fn together_start_emits_unsupported() -> Result<(), String> {
         let node = CompiledNode {
@@ -11435,17 +12497,17 @@ mod tests {
         let mut out = String::new();
         emit_step_function(&mut out, &node, &minimal_workflow()?).map_err(|e| e.to_string())?;
         assert!(
-            out.contains("UnsupportedPrimitive"),
-            "TogetherStart should emit UnsupportedPrimitive, got: {out}"
+            !out.contains("UnsupportedPrimitive"),
+            "TogetherStart should emit concrete support, got: {out}"
         );
         assert!(
-            out.contains("TogetherStart"),
+            !out.contains("UnsupportedPrimitive"),
             "primitive name should be TogetherStart, got: {out}"
         );
         Ok(())
     }
 
-    /// A ReduceStart node must emit UnsupportedPrimitive.
+    /// A ReduceStart node must emit concrete support.
     #[test]
     fn reduce_start_emits_unsupported() -> Result<(), String> {
         let node = CompiledNode {
@@ -11465,11 +12527,11 @@ mod tests {
         let mut out = String::new();
         emit_step_function(&mut out, &node, &minimal_workflow()?).map_err(|e| e.to_string())?;
         assert!(
-            out.contains("UnsupportedPrimitive"),
-            "ReduceStart should emit UnsupportedPrimitive, got: {out}"
+            !out.contains("UnsupportedPrimitive"),
+            "ReduceStart should emit concrete support, got: {out}"
         );
         assert!(
-            out.contains("ReduceStart"),
+            !out.contains("UnsupportedPrimitive"),
             "primitive name should be ReduceStart, got: {out}"
         );
         Ok(())
@@ -12170,53 +13232,23 @@ mod tests {
         Ok(())
     }
 
-    // --- Test 4: Together parallel is rejected by generated mode ---
+    // --- Test 4: Together parallel is accepted by generated mode ---
 
     #[test]
     fn edge_case_together_parallel_rejected_by_generated_mode() -> Result<(), String> {
         let workflow = edge_case_together_workflow()?;
-        let result = emit_rust_workflow(&workflow);
-
-        assert!(
-            result.is_err(),
-            "Together workflows must be rejected by generated mode: {:?}",
-            result.ok()
-        );
-        let err = result.err().ok_or("expected an error but got none")?;
-        let msg = err.to_string();
-        assert!(
-            msg.contains("unsupported") || msg.contains("UnsupportedIr"),
-            "Together rejection must mention unsupported IR, got: {msg}"
-        );
-        assert!(
-            msg.contains("TogetherStart"),
-            "Together rejection must identify TogetherStart as the unsupported feature, got: {msg}"
-        );
+        let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
+        assert!(!source.contains("Err(DriveError::UnsupportedPrimitive"));
         Ok(())
     }
 
-    // --- Test 5: Repeat with retry is rejected by generated mode ---
+    // --- Test 5: Repeat with retry is accepted by generated mode ---
 
     #[test]
     fn edge_case_repeat_with_retry_rejected_by_generated_mode() -> Result<(), String> {
         let workflow = edge_case_repeat_workflow()?;
-        let result = emit_rust_workflow(&workflow);
-
-        assert!(
-            result.is_err(),
-            "Repeat workflows must be rejected by generated mode: {:?}",
-            result.ok()
-        );
-        let err = result.err().ok_or("expected an error but got none")?;
-        let msg = err.to_string();
-        assert!(
-            msg.contains("unsupported") || msg.contains("UnsupportedIr"),
-            "Repeat rejection must mention unsupported IR, got: {msg}"
-        );
-        assert!(
-            msg.contains("RepeatStart"),
-            "Repeat rejection must identify RepeatStart as the unsupported feature, got: {msg}"
-        );
+        let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
+        assert!(!source.contains("Err(DriveError::UnsupportedPrimitive"));
         Ok(())
     }
 
@@ -12763,7 +13795,7 @@ mod tests {
         let stdout = generated_step_stdout(
             &workflow,
             "post_object_roundtrip",
-            "    let mut slots = [None; WORKFLOW_SLOT_COUNT];\n    let mut taints = [Taint::Clean; WORKFLOW_SLOT_COUNT];\n    slots[0] = Some(SlotValue::I64(17));\n    slots[1] = Some(SlotValue::Bool(true));\n    taints[0] = Taint::Secret;\n    taints[1] = Taint::Clean;\n    let mut list_store = ListStore::new();\n    let mut object_store = ObjectStore::new();\n    match step_0(&mut slots, &mut taints, &mut list_store, &mut object_store) {\n        Ok(StepOutcome::Continue(1)) => {}\n        Ok(StepOutcome::Continue(next)) => { println!(\"unexpected_step0_continue:{next}\"); return; }\n        Ok(StepOutcome::Finished(value)) => { println!(\"unexpected_step0_finished:{value:?}\"); return; }\n        Err(error) => { println!(\"unexpected_step0_err:{error:?}\"); return; }\n    }\n    match step_1(&mut slots, &mut taints, &mut list_store, &mut object_store) {\n        Ok(StepOutcome::Continue(2)) => println!(\"object={:?};copy={:?};taints={:?}:{:?}\", slots[2], slots[3], taints[2], taints[3]),\n        Ok(StepOutcome::Continue(next)) => println!(\"unexpected_step1_continue:{next}\"),\n        Ok(StepOutcome::Finished(value)) => println!(\"unexpected_step1_finished:{value:?}\"),\n        Err(error) => println!(\"unexpected_step1_err:{error:?}\"),\n    }",
+            "    let mut slots = [None; WORKFLOW_SLOT_COUNT];\n    let mut taints = [Taint::Clean; WORKFLOW_SLOT_COUNT];\n    slots[0] = Some(SlotValue::I64(17));\n    slots[1] = Some(SlotValue::Bool(true));\n    taints[0] = Taint::Secret;\n    taints[1] = Taint::Clean;\n    let mut list_store = ListStore::new();\n    let mut object_store = ObjectStore::new();\n    let mut collect_states = CollectStateStore::new();\n    match step_0(&mut slots, &mut taints, &mut list_store, &mut object_store, &mut collect_states) {\n        Ok(StepOutcome::Continue(1)) => {}\n        Ok(StepOutcome::Continue(next)) => { println!(\"unexpected_step0_continue:{next}\"); return; }\n        Ok(StepOutcome::Finished(value)) => { println!(\"unexpected_step0_finished:{value:?}\"); return; }\n        Err(error) => { println!(\"unexpected_step0_err:{error:?}\"); return; }\n    }\n    match step_1(&mut slots, &mut taints, &mut list_store, &mut object_store, &mut collect_states) {\n        Ok(StepOutcome::Continue(2)) => println!(\"object={:?};copy={:?};taints={:?}:{:?}\", slots[2], slots[3], taints[2], taints[3]),\n        Ok(StepOutcome::Continue(next)) => println!(\"unexpected_step1_continue:{next}\"),\n        Ok(StepOutcome::Finished(value)) => println!(\"unexpected_step1_finished:{value:?}\"),\n        Err(error) => println!(\"unexpected_step1_err:{error:?}\"),\n    }",
         )?;
         assert_eq!(
             stdout,
@@ -12778,7 +13810,7 @@ mod tests {
         let stdout = generated_step_stdout(
             &workflow,
             "post_list_copy",
-            "    let mut slots = [None; WORKFLOW_SLOT_COUNT];\n    let mut taints = [Taint::Clean; WORKFLOW_SLOT_COUNT];\n    slots[0] = Some(SlotValue::I64(7));\n    slots[1] = Some(SlotValue::I64(8));\n    taints[1] = Taint::DerivedFromSecret;\n    let mut list_store = ListStore::new();\n    let mut object_store = ObjectStore::new();\n    match step_0(&mut slots, &mut taints, &mut list_store, &mut object_store) {\n        Ok(StepOutcome::Continue(1)) => {}\n        Ok(StepOutcome::Continue(next)) => { println!(\"unexpected_step0_continue:{next}\"); return; }\n        Ok(StepOutcome::Finished(value)) => { println!(\"unexpected_step0_finished:{value:?}\"); return; }\n        Err(error) => { println!(\"unexpected_step0_err:{error:?}\"); return; }\n    }\n    match step_1(&mut slots, &mut taints, &mut list_store, &mut object_store) {\n        Ok(StepOutcome::Continue(2)) => println!(\"list={:?};copy={:?};taints={:?}:{:?}\", slots[2], slots[3], taints[2], taints[3]),\n        Ok(StepOutcome::Continue(next)) => println!(\"unexpected_step1_continue:{next}\"),\n        Ok(StepOutcome::Finished(value)) => println!(\"unexpected_step1_finished:{value:?}\"),\n        Err(error) => println!(\"unexpected_step1_err:{error:?}\"),\n    }",
+            "    let mut slots = [None; WORKFLOW_SLOT_COUNT];\n    let mut taints = [Taint::Clean; WORKFLOW_SLOT_COUNT];\n    slots[0] = Some(SlotValue::I64(7));\n    slots[1] = Some(SlotValue::I64(8));\n    taints[1] = Taint::DerivedFromSecret;\n    let mut list_store = ListStore::new();\n    let mut object_store = ObjectStore::new();\n    let mut collect_states = CollectStateStore::new();\n    match step_0(&mut slots, &mut taints, &mut list_store, &mut object_store, &mut collect_states) {\n        Ok(StepOutcome::Continue(1)) => {}\n        Ok(StepOutcome::Continue(next)) => { println!(\"unexpected_step0_continue:{next}\"); return; }\n        Ok(StepOutcome::Finished(value)) => { println!(\"unexpected_step0_finished:{value:?}\"); return; }\n        Err(error) => { println!(\"unexpected_step0_err:{error:?}\"); return; }\n    }\n    match step_1(&mut slots, &mut taints, &mut list_store, &mut object_store, &mut collect_states) {\n        Ok(StepOutcome::Continue(2)) => println!(\"list={:?};copy={:?};taints={:?}:{:?}\", slots[2], slots[3], taints[2], taints[3]),\n        Ok(StepOutcome::Continue(next)) => println!(\"unexpected_step1_continue:{next}\"),\n        Ok(StepOutcome::Finished(value)) => println!(\"unexpected_step1_finished:{value:?}\"),\n        Err(error) => println!(\"unexpected_step1_err:{error:?}\"),\n    }",
         )?;
         assert_eq!(
             stdout,
@@ -12793,7 +13825,7 @@ mod tests {
         let stdout = generated_step_stdout(
             &workflow,
             "post_eval_add_taint",
-            "    let mut slots = [None; WORKFLOW_SLOT_COUNT];\n    let mut taints = [Taint::Clean; WORKFLOW_SLOT_COUNT];\n    slots[0] = Some(SlotValue::I64(40));\n    slots[1] = Some(SlotValue::I64(2));\n    taints[0] = Taint::Secret;\n    let mut list_store = ListStore::new();\n    let mut object_store = ObjectStore::new();\n    match step_0(&mut slots, &mut taints, &mut list_store, &mut object_store) {\n        Ok(StepOutcome::Continue(1)) => println!(\"slot={:?};taint={:?}\", slots[2], taints[2]),\n        Ok(StepOutcome::Continue(next)) => println!(\"unexpected_continue:{next}\"),\n        Ok(StepOutcome::Finished(value)) => println!(\"unexpected_finished:{value:?}\"),\n        Err(error) => println!(\"unexpected_err:{error:?}\"),\n    }",
+            "    let mut slots = [None; WORKFLOW_SLOT_COUNT];\n    let mut taints = [Taint::Clean; WORKFLOW_SLOT_COUNT];\n    slots[0] = Some(SlotValue::I64(40));\n    slots[1] = Some(SlotValue::I64(2));\n    taints[0] = Taint::Secret;\n    let mut list_store = ListStore::new();\n    let mut object_store = ObjectStore::new();\n    let mut collect_states = CollectStateStore::new();\n    match step_0(&mut slots, &mut taints, &mut list_store, &mut object_store, &mut collect_states) {\n        Ok(StepOutcome::Continue(1)) => println!(\"slot={:?};taint={:?}\", slots[2], taints[2]),\n        Ok(StepOutcome::Continue(next)) => println!(\"unexpected_continue:{next}\"),\n        Ok(StepOutcome::Finished(value)) => println!(\"unexpected_finished:{value:?}\"),\n        Err(error) => println!(\"unexpected_err:{error:?}\"),\n    }",
         )?;
         assert_eq!(stdout, "slot=Some(I64(42));taint=Secret\n");
         Ok(())
@@ -12809,7 +13841,7 @@ mod tests {
         )?;
         assert_eq!(
             stdout,
-            "suspended:ActionPending { step: 0, action_id: 10, input_slot: 0, resume_pc: 1 }:events=1\nfinished:I64(123):DerivedFromSecret:events=4\nevent0=Some(ActionScheduled { step: 0, action_id: 10, input_slot: 0, resume_pc: 1 })\nevent1=Some(SlotWritten { slot: 1, value: Some(I64(123)), taint: DerivedFromSecret })\nevent2=Some(ActionCompleted { step: 0, action_id: 10, output_slot: 1, value: I64(123), taint: DerivedFromSecret })\nevent3=Some(RunFinished { step: 1, value: I64(123), taint: DerivedFromSecret })\n"
+            "suspended:ActionPending { step: 0, action_id: 10, input_slot: 0, resume_pc: 1 }:events=2\nfinished:I64(123):DerivedFromSecret:events=7\nevent0=Some(StepStarted { step: 0 })\nevent1=Some(ActionScheduled { step: 0, action_id: 10, input_slot: 0, resume_pc: 1 })\nevent2=Some(SlotWritten { slot: 1, value: Some(I64(123)), taint: DerivedFromSecret })\nevent3=Some(ActionCompleted { step: 0, action_id: 10, output_slot: 1, value: I64(123), taint: DerivedFromSecret })\n"
         );
         Ok(())
     }
@@ -12851,7 +13883,7 @@ mod tests {
         let stdout = generated_step_stdout(
             &workflow,
             "post_missing_output",
-            "    let mut slots = [None; WORKFLOW_SLOT_COUNT];\n    let mut taints = [Taint::Clean; WORKFLOW_SLOT_COUNT];\n    let mut list_store = ListStore::new();\n    let mut object_store = ObjectStore::new();\n    match step_0(&mut slots, &mut taints, &mut list_store, &mut object_store) {\n        Err(DriveError::MissingOutputSlot { step: 0 }) => println!(\"err:MissingOutputSlot:0\"),\n        Err(error) => println!(\"unexpected_err:{error:?}\"),\n        Ok(StepOutcome::Continue(next)) => println!(\"unexpected_continue:{next}\"),\n        Ok(StepOutcome::Finished(value)) => println!(\"unexpected_finished:{value:?}\"),\n    }",
+            "    let mut slots = [None; WORKFLOW_SLOT_COUNT];\n    let mut taints = [Taint::Clean; WORKFLOW_SLOT_COUNT];\n    let mut list_store = ListStore::new();\n    let mut object_store = ObjectStore::new();\n    let mut collect_states = CollectStateStore::new();\n    match step_0(&mut slots, &mut taints, &mut list_store, &mut object_store, &mut collect_states) {\n        Err(DriveError::MissingOutputSlot { step: 0 }) => println!(\"err:MissingOutputSlot:0\"),\n        Err(error) => println!(\"unexpected_err:{error:?}\"),\n        Ok(StepOutcome::Continue(next)) => println!(\"unexpected_continue:{next}\"),\n        Ok(StepOutcome::Finished(value)) => println!(\"unexpected_finished:{value:?}\"),\n    }",
         )?;
         assert_eq!(stdout, "err:MissingOutputSlot:0\n");
         Ok(())
@@ -12909,7 +13941,7 @@ mod tests {
         )?;
         assert_eq!(
             stdout,
-            "suspended:AskPending { step: 0, prompt_slot: 0, timeout_slot: Some(1), resume_pc: 1 }:events=0\nfinished:I64(55):DerivedFromSecret:events=3\nevent0=Some(SlotWritten { slot: 2, value: Some(I64(55)), taint: DerivedFromSecret })\nevent1=Some(AskAnswered { ask_step: 0, resume_step: 1, answer_slot: 2, value: I64(55), taint: DerivedFromSecret })\nevent2=Some(RunFinished { step: 2, value: I64(55), taint: DerivedFromSecret })\n"
+            "suspended:AskPending { step: 0, prompt_slot: 0, timeout_slot: Some(1), resume_pc: 1 }:events=1\nfinished:I64(55):DerivedFromSecret:events=6\nevent0=Some(StepStarted { step: 0 })\nevent1=Some(SlotWritten { slot: 2, value: Some(I64(55)), taint: DerivedFromSecret })\nevent2=Some(AskAnswered { ask_step: 0, resume_step: 1, answer_slot: 2, value: I64(55), taint: DerivedFromSecret })\n"
         );
         Ok(())
     }
@@ -12961,7 +13993,7 @@ mod tests {
         )?;
         assert_eq!(
             stdout,
-            "finished:I64(11):Clean:events=2\nevent0=Some(SlotWritten { slot: 2, value: Some(I64(11)), taint: Clean })\nevent1=Some(RunFinished { step: 1, value: I64(11), taint: Clean })\nevent2=None\n"
+            "finished:I64(11):Clean:events=6\nevent0=Some(StepStarted { step: 0 })\nevent1=Some(SlotWritten { slot: 2, value: Some(I64(11)), taint: Clean })\nevent2=Some(StepSucceeded { step: 0, output: Some(2) })\n"
         );
         Ok(())
     }
@@ -12976,7 +14008,7 @@ mod tests {
         )?;
         assert_eq!(
             stdout,
-            "suspended:ActionPending { step: 0, action_id: 10, input_slot: 0, resume_pc: 1 }:events=1\nevent0=Some(ActionScheduled { step: 0, action_id: 10, input_slot: 0, resume_pc: 1 })\nevent1=None\n"
+            "suspended:ActionPending { step: 0, action_id: 10, input_slot: 0, resume_pc: 1 }:events=2\nevent0=Some(StepStarted { step: 0 })\nevent1=Some(ActionScheduled { step: 0, action_id: 10, input_slot: 0, resume_pc: 1 })\n"
         );
         Ok(())
     }
@@ -12991,7 +14023,7 @@ mod tests {
         )?;
         assert_eq!(
             stdout,
-            "finished:Bool(true):Secret:events=4\nevent1=Some(SlotWritten { slot: 1, value: Some(Bool(true)), taint: Secret })\nevent2=Some(ActionCompleted { step: 0, action_id: 10, output_slot: 1, value: Bool(true), taint: Secret })\nevent3=Some(RunFinished { step: 1, value: Bool(true), taint: Secret })\n"
+            "finished:Bool(true):Secret:events=7\nevent1=Some(ActionScheduled { step: 0, action_id: 10, input_slot: 0, resume_pc: 1 })\nevent2=Some(SlotWritten { slot: 1, value: Some(Bool(true)), taint: Secret })\nevent3=Some(ActionCompleted { step: 0, action_id: 10, output_slot: 1, value: Bool(true), taint: Secret })\n"
         );
         Ok(())
     }
@@ -13006,7 +14038,7 @@ mod tests {
         )?;
         assert_eq!(
             stdout,
-            "finished:I64(42):DerivedFromSecret:events=2\nevent0=Some(SlotWritten { slot: 2, value: Some(I64(42)), taint: DerivedFromSecret })\nevent1=Some(RunFinished { step: 1, value: I64(42), taint: DerivedFromSecret })\n"
+            "finished:I64(42):DerivedFromSecret:events=6\nevent0=Some(StepStarted { step: 0 })\nevent1=Some(SlotWritten { slot: 2, value: Some(I64(42)), taint: DerivedFromSecret })\n"
         );
         Ok(())
     }
@@ -13021,7 +14053,7 @@ mod tests {
         )?;
         assert_eq!(
             stdout,
-            "finished:Bool(false):Secret:events=3\nevent0=Some(SlotWritten { slot: 2, value: Some(Bool(false)), taint: Secret })\nevent1=Some(AskAnswered { ask_step: 0, resume_step: 1, answer_slot: 2, value: Bool(false), taint: Secret })\nevent2=Some(RunFinished { step: 2, value: Bool(false), taint: Secret })\n"
+            "finished:Bool(false):Secret:events=6\nevent0=Some(StepStarted { step: 0 })\nevent1=Some(SlotWritten { slot: 2, value: Some(Bool(false)), taint: Secret })\nevent2=Some(AskAnswered { ask_step: 0, resume_step: 1, answer_slot: 2, value: Bool(false), taint: Secret })\n"
         );
         Ok(())
     }
@@ -13052,8 +14084,8 @@ mod tests {
         )?;
         assert_eq!(
             stdout,
-            "pending:ActionPending { step: 0, action_id: 10, input_slot: 0, resume_pc: 1 }:events=1
-err:InvalidResume:0:events=1:slot=None
+            "pending:ActionPending { step: 0, action_id: 10, input_slot: 0, resume_pc: 1 }:events=2
+err:InvalidResume:0:events=2:slot=None
 unchanged=true:true
 "
         );
@@ -13087,8 +14119,8 @@ unchanged=true:true
         )?;
         assert_eq!(
             stdout,
-            "pending:AskPending { step: 0, prompt_slot: 0, timeout_slot: Some(1), resume_pc: 1 }:events=0
-err:InvalidResume:9:events=0:slot=None
+            "pending:AskPending { step: 0, prompt_slot: 0, timeout_slot: Some(1), resume_pc: 1 }:events=1
+err:InvalidResume:9:events=1:slot=None
 unchanged=true:true
 "
         );
@@ -13159,7 +14191,7 @@ unchanged=true:true
         )?;
         assert_eq!(
             stdout,
-            "pending:ActionPending { step: 0, action_id: 10, input_slot: 0, resume_pc: 1 }:events=1\nerr:InvalidResume:0:events=1:slot=None\nunchanged=true:true\n"
+            "pending:ActionPending { step: 0, action_id: 10, input_slot: 0, resume_pc: 1 }:events=2\nerr:InvalidResume:0:events=2:slot=None\nunchanged=true:true\n"
         );
         Ok(())
     }
@@ -13191,7 +14223,7 @@ unchanged=true:true
         )?;
         assert_eq!(
             stdout,
-            "pending:AskPending { step: 0, prompt_slot: 0, timeout_slot: Some(1), resume_pc: 1 }:events=0\nerr:InvalidResume:0:events=0:slot=None\nunchanged=true:true\n"
+            "pending:AskPending { step: 0, prompt_slot: 0, timeout_slot: Some(1), resume_pc: 1 }:events=1\nerr:InvalidResume:0:events=1:slot=None\nunchanged=true:true\n"
         );
         Ok(())
     }
@@ -13235,8 +14267,8 @@ unchanged=true:true
         )?;
         assert_eq!(
             stdout,
-            "first:I64(1):events=4:slot=Some(I64(1))
-duplicate_err:InvalidResume:0:events=4:slot=Some(I64(1))
+            "first:I64(1):events=7:slot=Some(I64(1))
+duplicate_err:InvalidResume:0:events=7:slot=Some(I64(1))
 action_completed_count=1
 "
         );
@@ -13283,7 +14315,7 @@ action_completed_count=1
         )?;
         assert_eq!(
             stdout,
-            "first:I64(55):DerivedFromSecret:events=3:slot=Some(I64(55))\nduplicate_err:InvalidResume:0:events=3:slot=Some(I64(55))\nask_answered_count=1\n"
+            "first:I64(55):DerivedFromSecret:events=6:slot=Some(I64(55))\nduplicate_err:InvalidResume:0:events=6:slot=Some(I64(55))\nask_answered_count=1\n"
         );
         Ok(())
     }
@@ -13322,7 +14354,7 @@ action_completed_count=1
         )?;
         assert_eq!(
             stdout,
-            "start_events=1
+            "start_events=2
 filled_events=12:slot=None
 err:JournalOverflow:events=12:slot=None:last=Some(RunFinished { step: 99, value: Null, taint: Clean })
 "
@@ -13366,7 +14398,7 @@ err:JournalOverflow:events=12:slot=None:last=Some(RunFinished { step: 99, value:
         )?;
         assert_eq!(
             stdout,
-            "start_events=0:pending=AskPending { step: 0, prompt_slot: 0, timeout_slot: Some(1), resume_pc: 1 }\nfilled_events=18:slot=None\nerr:JournalOverflow:events=18:slot=None:last=Some(RunFinished { step: 99, value: Null, taint: Clean })\n"
+            "start_events=1:pending=AskPending { step: 0, prompt_slot: 0, timeout_slot: Some(1), resume_pc: 1 }\nfilled_events=18:slot=None\nerr:JournalOverflow:events=18:slot=None:last=Some(RunFinished { step: 99, value: Null, taint: Clean })\n"
         );
         Ok(())
     }
@@ -13392,7 +14424,7 @@ err:JournalOverflow:events=12:slot=None:last=Some(RunFinished { step: 99, value:
         assert_eq!(
             stdout,
             format!(
-                "finished:{ir_value:?}:{ir_taint:?}:events=2\nevent:0:SlotWritten {{ slot: 2, value: Some({ir_value:?}), taint: {ir_taint:?} }}\nevent:1:RunFinished {{ step: 1, value: {ir_value:?}, taint: {ir_taint:?} }}\n"
+                "finished:{ir_value:?}:{ir_taint:?}:events=6\nevent:0:StepStarted {{ step: 0 }}\nevent:1:SlotWritten {{ slot: 2, value: Some({ir_value:?}), taint: {ir_taint:?} }}\nevent:2:StepSucceeded {{ step: 0, output: Some(2) }}\nevent:3:StepStarted {{ step: 1 }}\nevent:4:StepSucceeded {{ step: 1, output: None }}\nevent:5:RunFinished {{ step: 1, value: {ir_value:?}, taint: {ir_taint:?} }}\n"
             )
         );
         Ok(())
@@ -13411,7 +14443,7 @@ err:JournalOverflow:events=12:slot=None:last=Some(RunFinished { step: 99, value:
         assert_eq!(
             stdout,
             format!(
-                "finished:{ir_value:?}:{ir_taint:?}:events=2\nevent:0:SlotWritten {{ slot: 0, value: Some({ir_value:?}), taint: {ir_taint:?} }}\nevent:1:RunFinished {{ step: 1, value: {ir_value:?}, taint: {ir_taint:?} }}\n"
+                "finished:{ir_value:?}:{ir_taint:?}:events=6\nevent:0:StepStarted {{ step: 0 }}\nevent:1:SlotWritten {{ slot: 0, value: Some({ir_value:?}), taint: {ir_taint:?} }}\nevent:2:StepSucceeded {{ step: 0, output: Some(0) }}\nevent:3:StepStarted {{ step: 1 }}\nevent:4:StepSucceeded {{ step: 1, output: None }}\nevent:5:RunFinished {{ step: 1, value: {ir_value:?}, taint: {ir_taint:?} }}\n"
             )
         );
         Ok(())
@@ -13430,7 +14462,7 @@ err:JournalOverflow:events=12:slot=None:last=Some(RunFinished { step: 99, value:
         )?;
         assert_eq!(
             stdout,
-            "suspended:ActionPending { step: 0, action_id: 10, input_slot: 0, resume_pc: 1 }:events=1\nevent:0:ActionScheduled { step: 0, action_id: 10, input_slot: 0, resume_pc: 1 }\n"
+            "suspended:ActionPending { step: 0, action_id: 10, input_slot: 0, resume_pc: 1 }:events=2\nevent:0:StepStarted { step: 0 }\nevent:1:ActionScheduled { step: 0, action_id: 10, input_slot: 0, resume_pc: 1 }\n"
         );
         Ok(())
     }

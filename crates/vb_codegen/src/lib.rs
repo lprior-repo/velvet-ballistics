@@ -212,22 +212,22 @@ fn unsupported_node_feature(kind: &CompiledNodeKind) -> Option<&'static str> {
         | CompiledNodeKind::ForEachStart { .. }
         | CompiledNodeKind::ForEachNext { .. }
         | CompiledNodeKind::ForEachJoin { .. }
+        | CompiledNodeKind::TogetherStart { .. }
+        | CompiledNodeKind::TogetherBranch { .. }
+        | CompiledNodeKind::TogetherJoin { .. }
+        | CompiledNodeKind::ReduceStart { .. }
+        | CompiledNodeKind::ReduceNext { .. }
+        | CompiledNodeKind::ReduceFinish { .. }
+        | CompiledNodeKind::RepeatStart { .. }
+        | CompiledNodeKind::RepeatAttempt { .. }
+        | CompiledNodeKind::RepeatCheck { .. }
+        | CompiledNodeKind::RepeatFinish { .. }
+        | CompiledNodeKind::CollectStart { .. }
+        | CompiledNodeKind::CollectPage { .. }
+        | CompiledNodeKind::CollectNext { .. }
+        | CompiledNodeKind::CollectFinish { .. }
         | CompiledNodeKind::Jump { .. }
         | CompiledNodeKind::Finish { .. } => None,
-        CompiledNodeKind::TogetherStart { .. } => Some("TogetherStart"),
-        CompiledNodeKind::TogetherBranch { .. } => Some("TogetherBranch"),
-        CompiledNodeKind::TogetherJoin { .. } => Some("TogetherJoin"),
-        CompiledNodeKind::ReduceStart { .. } => Some("ReduceStart"),
-        CompiledNodeKind::ReduceNext { .. } => Some("ReduceNext"),
-        CompiledNodeKind::ReduceFinish { .. } => Some("ReduceFinish"),
-        CompiledNodeKind::RepeatStart { .. } => Some("RepeatStart"),
-        CompiledNodeKind::RepeatAttempt { .. } => Some("RepeatAttempt"),
-        CompiledNodeKind::RepeatCheck { .. } => Some("RepeatCheck"),
-        CompiledNodeKind::RepeatFinish { .. } => Some("RepeatFinish"),
-        CompiledNodeKind::CollectStart { .. } => Some("CollectStart"),
-        CompiledNodeKind::CollectPage { .. } => Some("CollectPage"),
-        CompiledNodeKind::CollectNext { .. } => Some("CollectNext"),
-        CompiledNodeKind::CollectFinish { .. } => Some("CollectFinish"),
     }
 }
 
@@ -280,6 +280,12 @@ pub fn emit_ids(out: &mut String, workflow: &CompiledWorkflow) -> CodegenResult<
         workflow.node_count()
     )
     .map_err(fmt_err)?;
+    writeln!(
+        out,
+        "const WORKFLOW_NODE_COUNT_USIZE: usize = {};",
+        workflow.node_count()
+    )
+    .map_err(fmt_err)?;
     for symbol in 0..workflow.symbols_count() {
         writeln!(out, "const _sym_{symbol}: u32 = {symbol};").map_err(fmt_err)?;
     }
@@ -309,6 +315,11 @@ pub fn emit_drive_function(out: &mut String, workflow: &CompiledWorkflow) -> Cod
     .map_err(fmt_err)?;
     writeln!(out, "    let mut list_store = ListStore::new();").map_err(fmt_err)?;
     writeln!(out, "    let mut object_store = ObjectStore::new();").map_err(fmt_err)?;
+    writeln!(
+        out,
+        "    let mut collect_states = CollectStateStore::new();"
+    )
+    .map_err(fmt_err)?;
     writeln!(out, "    loop {{").map_err(fmt_err)?;
     writeln!(out, "        if step_budget_remaining == 0 {{").map_err(fmt_err)?;
     writeln!(
@@ -322,7 +333,7 @@ pub fn emit_drive_function(out: &mut String, workflow: &CompiledWorkflow) -> Cod
     for step_idx in 0..workflow.node_count() {
         writeln!(
             out,
-            "            {step_idx} => step_{step_idx}(&mut slots, &mut slot_taints, &mut list_store, &mut object_store)?,"
+            "            {step_idx} => step_{step_idx}(&mut slots, &mut slot_taints, &mut list_store, &mut object_store, &mut collect_states)?,"
         )
         .map_err(fmt_err)?;
     }
@@ -374,14 +385,17 @@ fn emit_generated_runtime_api(out: &mut String, workflow: &CompiledWorkflow) -> 
     writeln!(out, "// --- Rich generated runtime API ---").map_err(fmt_err)?;
     writeln!(out, "pub fn drive_with_journal(slots: [Option<SlotValue>; WORKFLOW_SLOT_COUNT]) -> Result<GeneratedRunStatus, DriveError> {{ let mut state = GeneratedRunState::new(slots); state.run_until_blocked() }}").map_err(fmt_err)?;
     writeln!(out, "impl GeneratedRunState {{").map_err(fmt_err)?;
-    writeln!(out, "    pub fn new(slots: [Option<SlotValue>; WORKFLOW_SLOT_COUNT]) -> Self {{ Self {{ slots, slot_taints: [Taint::Clean; WORKFLOW_SLOT_COUNT], pc: {}, step_budget_remaining: CONTRACT_MAX_STEP_BUDGET_PER_TICK, list_store: ListStore::new(), object_store: ObjectStore::new(), journal: Journal::new(), pending: None }} }}", workflow.entry().get()).map_err(fmt_err)?;
-    writeln!(out, "    pub fn new_with_taints(slots: [Option<SlotValue>; WORKFLOW_SLOT_COUNT], slot_taints: [Taint; WORKFLOW_SLOT_COUNT]) -> Self {{ Self {{ slots, slot_taints, pc: {}, step_budget_remaining: CONTRACT_MAX_STEP_BUDGET_PER_TICK, list_store: ListStore::new(), object_store: ObjectStore::new(), journal: Journal::new(), pending: None }} }}", workflow.entry().get()).map_err(fmt_err)?;
+    writeln!(out, "    pub fn new(slots: [Option<SlotValue>; WORKFLOW_SLOT_COUNT]) -> Self {{ Self::new_with_run_id(0, slots, [Taint::Clean; WORKFLOW_SLOT_COUNT]) }}").map_err(fmt_err)?;
+    writeln!(out, "    pub fn new_with_taints(slots: [Option<SlotValue>; WORKFLOW_SLOT_COUNT], slot_taints: [Taint; WORKFLOW_SLOT_COUNT]) -> Self {{ Self::new_with_run_id(0, slots, slot_taints) }}").map_err(fmt_err)?;
+    writeln!(out, "    pub fn new_with_run_id(run_id: u64, slots: [Option<SlotValue>; WORKFLOW_SLOT_COUNT], slot_taints: [Taint; WORKFLOW_SLOT_COUNT]) -> Self {{ let mut collect_states = CollectStateStore::new(); collect_states.set_run_id(run_id); Self {{ run_id, slots, slot_taints, step_states: [StepState::Pending; WORKFLOW_NODE_COUNT_USIZE], pc: {}, step_budget_remaining: CONTRACT_MAX_STEP_BUDGET_PER_TICK, list_store: ListStore::new(), object_store: ObjectStore::new(), collect_states, journal: Journal::new(), pending: None }} }}", workflow.entry().get()).map_err(fmt_err)?;
     emit_run_until_blocked(out, workflow)?;
     emit_action_resume_api(out)?;
     emit_ask_resume_api(out)?;
     writeln!(out, "}}\n").map_err(fmt_err)?;
     emit_action_completion_spec(out, workflow)?;
     emit_ask_answer_spec(out, workflow)?;
+    emit_step_output_slot(out, workflow)?;
+    emit_journal_observed_slot(out, workflow)?;
     emit_finish_result_slot(out, workflow)?;
     Ok(())
 }
@@ -404,9 +418,20 @@ fn emit_run_until_blocked(out: &mut String, workflow: &CompiledWorkflow) -> Code
     writeln!(out, "            let before_slots = self.slots;").map_err(fmt_err)?;
     writeln!(out, "            let before_taints = self.slot_taints;").map_err(fmt_err)?;
     writeln!(out, "            let current_pc = self.pc;").map_err(fmt_err)?;
+    writeln!(out, "            self.journal.ensure_capacity(1)?;").map_err(fmt_err)?;
+    writeln!(
+        out,
+        "            self.journal.push(JournalEvent::StepStarted {{ step: current_pc }})?;"
+    )
+    .map_err(fmt_err)?;
+    writeln!(
+        out,
+        "            set_step_state(&mut self.step_states, current_pc, StepState::Running)?;"
+    )
+    .map_err(fmt_err)?;
     writeln!(out, "            let outcome = match current_pc {{").map_err(fmt_err)?;
     for step_idx in 0..workflow.node_count() {
-        writeln!(out, "                {step_idx} => step_{step_idx}(&mut self.slots, &mut self.slot_taints, &mut self.list_store, &mut self.object_store),").map_err(fmt_err)?;
+        writeln!(out, "                {step_idx} => step_{step_idx}(&mut self.slots, &mut self.slot_taints, &mut self.list_store, &mut self.object_store, &mut self.collect_states),").map_err(fmt_err)?;
     }
     writeln!(
         out,
@@ -414,18 +439,13 @@ fn emit_run_until_blocked(out: &mut String, workflow: &CompiledWorkflow) -> Code
     )
     .map_err(fmt_err)?;
     writeln!(out, "            }};").map_err(fmt_err)?;
-    writeln!(
-        out,
-        "            self.record_slot_changes(&before_slots, &before_taints)?;"
-    )
-    .map_err(fmt_err)?;
     writeln!(out, "            match outcome {{").map_err(fmt_err)?;
     writeln!(
         out,
-        "                Ok(StepOutcome::Continue(next)) => self.pc = next,"
+        "                Ok(StepOutcome::Continue(next)) => {{ self.record_slot_changes(current_pc, &before_slots, &before_taints)?; set_step_state(&mut self.step_states, current_pc, StepState::Succeeded)?; self.journal.ensure_capacity(1)?; self.journal.push(JournalEvent::StepSucceeded {{ step: current_pc, output: output_slot_for_step(current_pc)? }})?; self.pc = next; }},"
     )
     .map_err(fmt_err)?;
-    writeln!(out, "                Ok(StepOutcome::Finished(value)) => {{ let taint = read_taint(&self.slot_taints, finish_result_slot(current_pc)?)?; self.journal.ensure_capacity(1)?; self.journal.push(JournalEvent::RunFinished {{ step: current_pc, value, taint }})?; return Ok(GeneratedRunStatus::Finished(DriveOutput {{ value, taint, journal: self.journal }})); }}").map_err(fmt_err)?;
+    writeln!(out, "                Ok(StepOutcome::Finished(value)) => {{ self.record_slot_changes(current_pc, &before_slots, &before_taints)?; set_step_state(&mut self.step_states, current_pc, StepState::Succeeded)?; let taint = read_taint(&self.slot_taints, finish_result_slot(current_pc)?)?; self.journal.ensure_capacity(2)?; self.journal.push(JournalEvent::StepSucceeded {{ step: current_pc, output: output_slot_for_step(current_pc)? }})?; self.journal.push(JournalEvent::RunFinished {{ step: current_pc, value, taint }})?; return Ok(GeneratedRunStatus::Finished(DriveOutput {{ value, taint, journal: self.journal }})); }}").map_err(fmt_err)?;
     writeln!(
         out,
         "                Err(error) => return self.suspend_from_error(error),"
@@ -567,6 +587,58 @@ fn emit_finish_result_slot(out: &mut String, workflow: &CompiledWorkflow) -> Cod
     writeln!(out, "}}\n").map_err(fmt_err)
 }
 
+fn emit_step_output_slot(out: &mut String, workflow: &CompiledWorkflow) -> CodegenResult<()> {
+    writeln!(
+        out,
+        "fn output_slot_for_step(step: u16) -> Result<Option<u16>, DriveError> {{"
+    )
+    .map_err(fmt_err)?;
+    writeln!(out, "    match step {{").map_err(fmt_err)?;
+    for step_idx in 0..workflow.node_count() {
+        let step = StepIdx::new(step_idx);
+        if let Some(node) = workflow.node(step) {
+            match node.output {
+                Some(output) => {
+                    writeln!(out, "        {} => Ok(Some({})),", step.get(), output.get())
+                        .map_err(fmt_err)?
+                }
+                None => writeln!(out, "        {} => Ok(None),", step.get()).map_err(fmt_err)?,
+            }
+        }
+    }
+    writeln!(out, "        _ => Err(DriveError::InvalidProgramCounter),").map_err(fmt_err)?;
+    writeln!(out, "    }}").map_err(fmt_err)?;
+    writeln!(out, "}}\n").map_err(fmt_err)
+}
+
+fn emit_journal_observed_slot(out: &mut String, workflow: &CompiledWorkflow) -> CodegenResult<()> {
+    writeln!(
+        out,
+        "fn journal_observed_slot(step: u16) -> Result<Option<u16>, DriveError> {{"
+    )
+    .map_err(fmt_err)?;
+    writeln!(out, "    match step {{").map_err(fmt_err)?;
+    for step_idx in 0..workflow.node_count() {
+        let step = StepIdx::new(step_idx);
+        if let Some(node) = workflow.node(step) {
+            let observed = match &node.kind {
+                CompiledNodeKind::CollectStart { source, .. } => node.output.or(Some(*source)),
+                CompiledNodeKind::CollectNext { collector_slot, .. }
+                | CompiledNodeKind::CollectFinish { collector_slot } => Some(*collector_slot),
+                _ => node.output,
+            };
+            match observed {
+                Some(slot) => writeln!(out, "        {} => Ok(Some({})),", step.get(), slot.get())
+                    .map_err(fmt_err)?,
+                None => writeln!(out, "        {} => Ok(None),", step.get()).map_err(fmt_err)?,
+            }
+        }
+    }
+    writeln!(out, "        _ => Err(DriveError::InvalidProgramCounter),").map_err(fmt_err)?;
+    writeln!(out, "    }}").map_err(fmt_err)?;
+    writeln!(out, "}}\n").map_err(fmt_err)
+}
+
 /// Generate a per-step function for one compiled node.
 pub fn emit_step_function(
     out: &mut String,
@@ -578,9 +650,10 @@ pub fn emit_step_function(
     let slot_taints_param = step_slot_taints_param(node);
     let list_store_param = step_list_store_param(node);
     let object_store_param = step_object_store_param(node);
+    let collect_states_param = step_collect_states_param(node);
     writeln!(
         out,
-        "fn step_{step_id}({slots_param}: &mut [Option<SlotValue>; WORKFLOW_SLOT_COUNT], {slot_taints_param}: &mut [Taint; WORKFLOW_SLOT_COUNT], {list_store_param}: &mut ListStore, {object_store_param}: &mut ObjectStore) -> Result<StepOutcome, DriveError> {{"
+        "fn step_{step_id}({slots_param}: &mut [Option<SlotValue>; WORKFLOW_SLOT_COUNT], {slot_taints_param}: &mut [Taint; WORKFLOW_SLOT_COUNT], {list_store_param}: &mut ListStore, {object_store_param}: &mut ObjectStore, {collect_states_param}: &mut CollectStateStore) -> Result<StepOutcome, DriveError> {{"
     )
     .map_err(fmt_err)?;
 
@@ -611,6 +684,7 @@ fn step_slot_taints_param(node: &CompiledNode) -> &'static str {
         | CompiledNodeKind::Do { .. }
         | CompiledNodeKind::BuildObject { .. }
         | CompiledNodeKind::BuildList { .. }
+        | CompiledNodeKind::TogetherStart { .. }
         | CompiledNodeKind::TogetherBranch { .. }
         | CompiledNodeKind::TogetherJoin { .. }
         | CompiledNodeKind::ReduceStart { .. }
@@ -657,6 +731,15 @@ fn step_object_store_param(node: &CompiledNode) -> &'static str {
         | CompiledNodeKind::BuildObject { .. }
         | CompiledNodeKind::ErrorHandler { .. } => "object_store",
         _ => "_object_store",
+    }
+}
+
+fn step_collect_states_param(node: &CompiledNode) -> &'static str {
+    match &node.kind {
+        CompiledNodeKind::CollectStart { .. }
+        | CompiledNodeKind::CollectNext { .. }
+        | CompiledNodeKind::CollectFinish { .. } => "collect_states",
+        _ => "_collect_states",
     }
 }
 
@@ -998,7 +1081,7 @@ fn emit_error_handler_step(out: &mut String, body: StepIdx, handler: StepIdx) ->
     writeln!(out, "    // step_{}(slots, list_store)", body.get()).map_err(fmt_err)?;
     writeln!(
         out,
-        "    match step_{}(slots, slot_taints, list_store, object_store) {{",
+        "    match step_{}(slots, slot_taints, list_store, object_store, _collect_states) {{",
         body.get()
     )
     .map_err(fmt_err)?;
@@ -1352,7 +1435,7 @@ fn emit_for_each_join_step(
 fn emit_together_step_body(out: &mut String, node: &CompiledNode) -> CodegenResult<()> {
     match &node.kind {
         CompiledNodeKind::TogetherStart { branches, .. } => {
-            emit_together_start_step(out, branches, node.output)
+            emit_together_start_step(out, node.id, branches, node.output)
         }
         CompiledNodeKind::TogetherBranch {
             branch,
@@ -1370,20 +1453,27 @@ fn emit_together_step_body(out: &mut String, node: &CompiledNode) -> CodegenResu
 
 fn emit_together_start_step(
     out: &mut String,
+    step: StepIdx,
     branches: &[StepIdx],
     output: Option<SlotIdx>,
 ) -> CodegenResult<()> {
     let Some(first_branch) = branches.first().copied() else {
         return writeln!(out, "    Err(DriveError::InvalidCompiledWorkflow {{ reason: \"together_start requires at least one branch\" }})").map_err(fmt_err);
     };
-    if let Some(output_slot) = output {
-        writeln!(
+    let Some(output_slot) = output else {
+        return writeln!(
             out,
-            "    let _accumulator = list_store.insert_items_with_taints(&[], &[])?;"
+            "    Err(DriveError::MissingOutputSlot {{ step: {} }})",
+            step.get()
         )
-        .map_err(fmt_err)?;
-        writeln!(out, "    write_slot_with_taint(slots, slot_taints, {}, Some(SlotValue::List(_accumulator)), Taint::Clean)?;", output_slot.get()).map_err(fmt_err)?;
-    }
+        .map_err(fmt_err);
+    };
+    writeln!(
+        out,
+        "    let _accumulator = list_store.insert_items_with_taints(&[], &[])?;"
+    )
+    .map_err(fmt_err)?;
+    writeln!(out, "    write_slot_with_taint(slots, slot_taints, {}, Some(SlotValue::List(_accumulator)), Taint::Clean)?;", output_slot.get()).map_err(fmt_err)?;
     emit_continue_step(out, first_branch)
 }
 
@@ -1437,12 +1527,19 @@ fn emit_together_join_step(
     if let Some(output_slot) = output {
         writeln!(
             out,
-            "    let _accumulator_value = read_slot(slots, {})?;",
+            "    let _accumulator_handle = expect_list_value(read_slot(slots, {})?)?;",
             accumulator.get()
         )
         .map_err(fmt_err)?;
+        writeln!(
+            out,
+            "    let _last_result = read_slot(slots, {})?;",
+            output_slot.get()
+        )
+        .map_err(fmt_err)?;
+        writeln!(out, "    let _final_value = match _last_result {{ SlotValue::List(_) | SlotValue::Null => SlotValue::List(_accumulator_handle), other => {{ let _last_taint = read_taint(slot_taints, {})?; let _updated = append_list_item(list_store, _accumulator_handle, other, _last_taint)?; write_slot_with_taint(slots, slot_taints, {}, Some(SlotValue::List(_updated)), join_taint(read_taint(slot_taints, {})?, _last_taint))?; SlotValue::List(_updated) }} }};", output_slot.get(), accumulator.get(), accumulator.get()).map_err(fmt_err)?;
         writeln!(out, "    let _joined_taint = join_taint(read_taint(slot_taints, {})?, read_taint(slot_taints, {})?);", accumulator.get(), output_slot.get()).map_err(fmt_err)?;
-        writeln!(out, "    write_slot_with_taint(slots, slot_taints, {}, Some(_accumulator_value), _joined_taint)?;", output_slot.get()).map_err(fmt_err)?;
+        writeln!(out, "    write_slot_with_taint(slots, slot_taints, {}, Some(_final_value), _joined_taint)?;", output_slot.get()).map_err(fmt_err)?;
     }
     write_next_or_error(out, next)
 }
@@ -1457,19 +1554,22 @@ fn emit_reduce_step_body(out: &mut String, node: &CompiledNode) -> CodegenResult
             done,
         } => emit_reduce_start_step(
             out,
-            *input,
-            *accumulator,
-            *initial,
-            *body,
-            *done,
-            node.output,
+            ReduceStartStep {
+                step: node.id,
+                input: *input,
+                accumulator: *accumulator,
+                initial: *initial,
+                body: *body,
+                done: *done,
+                output: node.output,
+            },
         ),
         CompiledNodeKind::ReduceNext {
             iterator_slot,
             body,
             done,
             ..
-        } => emit_reduce_next_step(out, *iterator_slot, *body, *done, node.output),
+        } => emit_reduce_next_step(out, node.id, *iterator_slot, *body, *done, node.output),
         CompiledNodeKind::ReduceFinish { accumulator } => {
             emit_copy_to_output_then_next(out, *accumulator, node.output, node.next, node.id)
         }
@@ -1477,15 +1577,26 @@ fn emit_reduce_step_body(out: &mut String, node: &CompiledNode) -> CodegenResult
     }
 }
 
-fn emit_reduce_start_step(
-    out: &mut String,
+struct ReduceStartStep {
+    step: StepIdx,
     input: SlotIdx,
     accumulator: SlotIdx,
     initial: ConstIdx,
     body: StepIdx,
     done: StepIdx,
     output: Option<SlotIdx>,
-) -> CodegenResult<()> {
+}
+
+fn emit_reduce_start_step(out: &mut String, step: ReduceStartStep) -> CodegenResult<()> {
+    let ReduceStartStep {
+        step,
+        input,
+        accumulator,
+        initial,
+        body,
+        done,
+        output,
+    } = step;
     writeln!(out, "    let _initial = read_const({})?;", initial.get()).map_err(fmt_err)?;
     writeln!(
         out,
@@ -1493,8 +1604,12 @@ fn emit_reduce_start_step(
         accumulator.get()
     )
     .map_err(fmt_err)?;
-    writeln!(out, "    let _list = match read_slot(slots, {})? {{ SlotValue::List(handle) => handle, _ => return Ok(StepOutcome::Continue({})), }};", input.get(), done.get())
-        .map_err(fmt_err)?;
+    writeln!(
+        out,
+        "    let _list = expect_list_value(read_slot(slots, {})?)?;",
+        input.get()
+    )
+    .map_err(fmt_err)?;
     writeln!(
         out,
         "    let _list_taint = read_taint(slot_taints, {})?;",
@@ -1528,12 +1643,18 @@ fn emit_reduce_start_step(
         writeln!(out, "    write_slot_with_taint(slots, slot_taints, {}, Some(SlotValue::List(_tail)), _list_taint)?;", output_slot.get()).map_err(fmt_err)?;
         emit_continue_step(out, body)
     } else {
-        writeln!(out, "    Err(DriveError::MissingOutputSlot {{ step: 0 }})").map_err(fmt_err)
+        writeln!(
+            out,
+            "    Err(DriveError::MissingOutputSlot {{ step: {} }})",
+            step.get()
+        )
+        .map_err(fmt_err)
     }
 }
 
 fn emit_reduce_next_step(
     out: &mut String,
+    step: StepIdx,
     iterator_slot: SlotIdx,
     body: StepIdx,
     done: StepIdx,
@@ -1578,7 +1699,12 @@ fn emit_reduce_next_step(
         writeln!(out, "    write_slot_with_taint(slots, slot_taints, {}, Some(SlotValue::List(_tail)), _list_taint)?;", iterator_slot.get()).map_err(fmt_err)?;
         emit_continue_step(out, body)
     } else {
-        writeln!(out, "    Err(DriveError::MissingOutputSlot {{ step: 0 }})").map_err(fmt_err)
+        writeln!(
+            out,
+            "    Err(DriveError::MissingOutputSlot {{ step: {} }})",
+            step.get()
+        )
+        .map_err(fmt_err)
     }
 }
 
@@ -1586,7 +1712,7 @@ fn emit_repeat_step_body(out: &mut String, node: &CompiledNode) -> CodegenResult
     match &node.kind {
         CompiledNodeKind::RepeatStart {
             max_attempts, body, ..
-        } => emit_repeat_start_step(out, *max_attempts, *body, node.output),
+        } => emit_repeat_start_step(out, node.id, *max_attempts, *body, node.output),
         CompiledNodeKind::RepeatAttempt {
             attempt_slot, body, ..
         } => emit_repeat_attempt_step(out, *attempt_slot, *body),
@@ -1602,6 +1728,7 @@ fn emit_repeat_step_body(out: &mut String, node: &CompiledNode) -> CodegenResult
 
 fn emit_repeat_start_step(
     out: &mut String,
+    step: StepIdx,
     max_attempts: u16,
     body: StepIdx,
     output: Option<SlotIdx>,
@@ -1612,9 +1739,15 @@ fn emit_repeat_start_step(
         max_attempts
     )
     .map_err(fmt_err)?;
-    if let Some(output_slot) = output {
-        writeln!(out, "    write_slot_with_taint(slots, slot_taints, {}, Some(SlotValue::I64(_repeat_state)), Taint::Clean)?;", output_slot.get()).map_err(fmt_err)?;
-    }
+    let Some(output_slot) = output else {
+        return writeln!(
+            out,
+            "    Err(DriveError::MissingOutputSlot {{ step: {} }})",
+            step.get()
+        )
+        .map_err(fmt_err);
+    };
+    writeln!(out, "    write_slot_with_taint(slots, slot_taints, {}, Some(SlotValue::I64(_repeat_state)), Taint::Clean)?;", output_slot.get()).map_err(fmt_err)?;
     emit_continue_step(out, body)
 }
 
@@ -1653,7 +1786,7 @@ fn emit_repeat_check_step_body(
         "    let (_max_attempts, _current_attempt) = decode_repeat_state(_packed)?;"
     )
     .map_err(fmt_err)?;
-    writeln!(out, "    let _next_attempt = _current_attempt.checked_add(1).ok_or(DriveError::InvalidRetryState)?;").map_err(fmt_err)?;
+    writeln!(out, "    let _next_attempt = match _current_attempt.checked_add(1) {{ Some(value) => value, None => _current_attempt }};").map_err(fmt_err)?;
     writeln!(
         out,
         "    let _updated = encode_repeat_state(_max_attempts, _next_attempt)?;"
@@ -1687,19 +1820,12 @@ fn emit_collect_step_body(out: &mut String, node: &CompiledNode) -> CodegenResul
         }
         CompiledNodeKind::CollectNext {
             collector_slot,
+            body,
             done,
             ..
-        } => {
-            writeln!(
-                out,
-                "    let _collector = expect_list_value(read_slot(slots, {})?)?;",
-                collector_slot.get()
-            )
-            .map_err(fmt_err)?;
-            emit_continue_step(out, *done)
-        }
+        } => emit_collect_next_step(out, *collector_slot, *body, *done),
         CompiledNodeKind::CollectFinish { collector_slot } => {
-            emit_copy_to_output_then_next(out, *collector_slot, node.output, node.next, node.id)
+            emit_collect_finish_step(out, *collector_slot, node.output, node.next, node.id)
         }
         _ => emit_unsupported_step(out, "Collect"),
     }
@@ -1715,7 +1841,12 @@ fn emit_collect_start_step(
     output: Option<SlotIdx>,
 ) -> CodegenResult<()> {
     let collector = output.unwrap_or(source);
-    writeln!(out, "    let _source = match read_slot(slots, {})? {{ SlotValue::List(handle) => handle, _ => return Ok(StepOutcome::Continue({})), }};", source.get(), done.get()).map_err(fmt_err)?;
+    writeln!(
+        out,
+        "    let _source = expect_list_value(read_slot(slots, {})?)?;",
+        source.get()
+    )
+    .map_err(fmt_err)?;
     writeln!(
         out,
         "    let _source_taint = read_taint(slot_taints, {})?;",
@@ -1727,8 +1858,19 @@ fn emit_collect_start_step(
         "    let _item_count = list_item_count(list_store, _source)?;"
     )
     .map_err(fmt_err)?;
-    writeln!(out, "    if _item_count > {} {{ return Err(DriveError::IterationLimitExceeded {{ resource: \"collect_limit\" }}); }}", limit).map_err(fmt_err)?;
+    writeln!(
+        out,
+        "    if _item_count > {} {{ return Err(DriveError::CollectItemLimitExceeded); }}",
+        limit
+    )
+    .map_err(fmt_err)?;
     writeln!(out, "    if {} == 0 {{ return Err(DriveError::InvalidCompiledWorkflow {{ reason: \"collect page_size must be nonzero\" }}); }}", page_size).map_err(fmt_err)?;
+    writeln!(
+        out,
+        "    if {} > {} {{ return Err(DriveError::CollectPageLimitExceeded); }}",
+        page_size, limit
+    )
+    .map_err(fmt_err)?;
     writeln!(
         out,
         "    let _page = collect_page_handle(list_store, _source, 0, {})?;",
@@ -1736,7 +1878,92 @@ fn emit_collect_start_step(
     )
     .map_err(fmt_err)?;
     writeln!(out, "    write_slot_with_taint(slots, slot_taints, {}, Some(SlotValue::List(_page)), _source_taint)?;", collector.get()).map_err(fmt_err)?;
-    writeln!(out, "    if list_item_count(list_store, _page)? == 0 {{ Ok(StepOutcome::Continue({})) }} else {{ Ok(StepOutcome::Continue({})) }}", done.get(), body.get()).map_err(fmt_err)
+    writeln!(
+        out,
+        "    let _page_len = list_item_count(list_store, _page)?;"
+    )
+    .map_err(fmt_err)?;
+    writeln!(
+        out,
+        "    let _cursor = checked_add_u32(0, _page_len, DriveError::CollectItemLimitExceeded)?;"
+    )
+    .map_err(fmt_err)?;
+    writeln!(out, "    if _page_len == 0 || _cursor >= _item_count {{ collect_states.remove({}); Ok(StepOutcome::Continue({})) }} else {{ collect_states.upsert({}, CollectState {{ source: _source, current_page: _page, cursor: _cursor, page_size: {}, item_count: _item_count, limit: {} }})?; Ok(StepOutcome::Continue({})) }}", collector.get(), done.get(), collector.get(), page_size, limit, body.get()).map_err(fmt_err)
+}
+
+fn emit_collect_next_step(
+    out: &mut String,
+    collector_slot: SlotIdx,
+    body: StepIdx,
+    done: StepIdx,
+) -> CodegenResult<()> {
+    writeln!(
+        out,
+        "    let _current_page = expect_list_value(read_slot(slots, {})?)?;",
+        collector_slot.get()
+    )
+    .map_err(fmt_err)?;
+    writeln!(
+        out,
+        "    let _collector_taint = read_taint(slot_taints, {})?;",
+        collector_slot.get()
+    )
+    .map_err(fmt_err)?;
+    writeln!(out, "    if list_item_count(list_store, _current_page)? == 0 {{ collect_states.remove({}); return Ok(StepOutcome::Continue({})); }}", collector_slot.get(), done.get()).map_err(fmt_err)?;
+    writeln!(
+        out,
+        "    let _state = collect_states.require_current_page({}, _current_page)?;",
+        collector_slot.get()
+    )
+    .map_err(fmt_err)?;
+    writeln!(out, "    if _state.cursor >= _state.item_count {{ let _terminal = collect_page_handle(list_store, _state.source, _state.item_count, _state.page_size)?; write_slot_with_taint(slots, slot_taints, {}, Some(SlotValue::List(_terminal)), Taint::Clean)?; collect_states.remove({}); return Ok(StepOutcome::Continue({})); }}", collector_slot.get(), collector_slot.get(), done.get()).map_err(fmt_err)?;
+    writeln!(out, "    let _page = collect_page_handle(list_store, _state.source, _state.cursor, _state.page_size)?;").map_err(fmt_err)?;
+    writeln!(
+        out,
+        "    let _page_len = list_item_count(list_store, _page)?;"
+    )
+    .map_err(fmt_err)?;
+    writeln!(out, "    let _cursor = checked_add_u32(_state.cursor, _page_len, DriveError::CollectItemLimitExceeded)?;").map_err(fmt_err)?;
+    writeln!(out, "    write_slot_with_taint(slots, slot_taints, {}, Some(SlotValue::List(_page)), Taint::Clean)?;", collector_slot.get()).map_err(fmt_err)?;
+    writeln!(out, "    collect_states.upsert({}, CollectState {{ current_page: _page, cursor: _cursor, .._state }})?;", collector_slot.get()).map_err(fmt_err)?;
+    emit_continue_step(out, body)
+}
+
+fn emit_collect_finish_step(
+    out: &mut String,
+    collector_slot: SlotIdx,
+    output: Option<SlotIdx>,
+    next: Option<StepIdx>,
+    step: StepIdx,
+) -> CodegenResult<()> {
+    let Some(output_slot) = output else {
+        return writeln!(
+            out,
+            "    Err(DriveError::MissingOutputSlot {{ step: {} }})",
+            step.get()
+        )
+        .map_err(fmt_err);
+    };
+    writeln!(
+        out,
+        "    let _value = read_slot(slots, {})?;",
+        collector_slot.get()
+    )
+    .map_err(fmt_err)?;
+    writeln!(
+        out,
+        "    let _taint = read_taint(slot_taints, {})?;",
+        collector_slot.get()
+    )
+    .map_err(fmt_err)?;
+    writeln!(
+        out,
+        "    write_slot_with_taint(slots, slot_taints, {}, Some(_value), _taint)?;",
+        output_slot.get()
+    )
+    .map_err(fmt_err)?;
+    writeln!(out, "    collect_states.remove({});", collector_slot.get()).map_err(fmt_err)?;
+    write_next_or_error(out, next)
 }
 
 fn emit_copy_to_output_then_next(
@@ -2240,6 +2467,12 @@ pub fn emit_value_store_contract(
         object_store_field_capacity(workflow)?
     )
     .map_err(fmt_err)?;
+    writeln!(
+        out,
+        "const COLLECT_STATE_CAPACITY: usize = {};",
+        collect_state_capacity(workflow)?
+    )
+    .map_err(fmt_err)?;
     writeln!(out).map_err(fmt_err)?;
     Ok(())
 }
@@ -2260,6 +2493,7 @@ fn list_store_record_capacity(workflow: &CompiledWorkflow) -> CodegenResult<usiz
         metrics.total_build_list_items.max(1),
         "list store foreach tail capacity overflow",
     )?;
+    let collect_capacity = collect_list_record_capacity(workflow)?;
     checked_metric_add(
         checked_metric_add(
             checked_metric_add(
@@ -2270,7 +2504,7 @@ fn list_store_record_capacity(workflow: &CompiledWorkflow) -> CodegenResult<usiz
             expr_metrics.list_allocating_ops,
             "list store record capacity overflow",
         )?,
-        1,
+        checked_metric_add(1, collect_capacity, "list store record capacity overflow")?,
         "list store record capacity overflow",
     )
     .map(|capacity| capacity.max(1))
@@ -2288,6 +2522,7 @@ fn list_store_value_capacity(workflow: &CompiledWorkflow) -> CodegenResult<usize
         )?,
         "list store expression value capacity overflow",
     )?;
+    let collect_capacity = collect_list_value_capacity(workflow)?;
     checked_metric_add(
         checked_metric_mul(
             metrics.build_list_count,
@@ -2297,7 +2532,59 @@ fn list_store_value_capacity(workflow: &CompiledWorkflow) -> CodegenResult<usize
         expression_value_capacity,
         "list store value capacity overflow",
     )
+    .and_then(|capacity| {
+        checked_metric_add(
+            capacity,
+            collect_capacity,
+            "list store value capacity overflow",
+        )
+    })
     .map(|capacity| capacity.max(1))
+}
+
+fn collect_state_capacity(workflow: &CompiledWorkflow) -> CodegenResult<usize> {
+    let mut count = 0usize;
+    for step_idx in 0..workflow.node_count() {
+        let step = StepIdx::new(step_idx);
+        if let Some(node) = workflow.node(step)
+            && matches!(node.kind, CompiledNodeKind::CollectStart { .. })
+        {
+            count = checked_metric_add(count, 1, "collect state capacity overflow")?;
+        }
+    }
+    Ok(count.max(1))
+}
+
+fn collect_list_record_capacity(workflow: &CompiledWorkflow) -> CodegenResult<usize> {
+    checked_metric_mul(
+        collect_state_capacity(workflow)?,
+        checked_metric_add(
+            usize::try_from(workflow.resource_contract().max_collect_items).map_err(|_| {
+                CodegenError::SemanticMismatch {
+                    detail: "collect item capacity overflow".into(),
+                }
+            })?,
+            3,
+            "collect record capacity overflow",
+        )?,
+        "collect record capacity overflow",
+    )
+}
+
+fn collect_list_value_capacity(workflow: &CompiledWorkflow) -> CodegenResult<usize> {
+    checked_metric_mul(
+        collect_state_capacity(workflow)?,
+        checked_metric_add(
+            usize::try_from(workflow.resource_contract().max_collect_items).map_err(|_| {
+                CodegenError::SemanticMismatch {
+                    detail: "collect item capacity overflow".into(),
+                }
+            })?,
+            1,
+            "collect value capacity overflow",
+        )?,
+        "collect value capacity overflow",
+    )
 }
 
 fn object_store_record_capacity(workflow: &CompiledWorkflow) -> CodegenResult<usize> {
@@ -2769,6 +3056,9 @@ fn write_header(out: &mut String) -> CodegenResult<()> {
     writeln!(out, "    AccessorPathTooDeep {{ depth: u16, max: u16 }},").map_err(fmt_err)?;
     writeln!(out, "    InvalidRetryState,").map_err(fmt_err)?;
     writeln!(out, "    InvalidRetryPolicy,").map_err(fmt_err)?;
+    writeln!(out, "    CollectItemLimitExceeded,").map_err(fmt_err)?;
+    writeln!(out, "    CollectPageLimitExceeded,").map_err(fmt_err)?;
+    writeln!(out, "    CollectPageOrderViolation {{ kind: CollectPageOrderViolationKind, run_id: u64, collector_slot: u16, expected_page: u32, observed_page: u32 }},").map_err(fmt_err)?;
     writeln!(
         out,
         "    ActionSuspend {{ step: u16, action_id: u16, input_slot: u16, resume_pc: u16 }},"
@@ -2796,6 +3086,13 @@ fn write_header(out: &mut String) -> CodegenResult<()> {
     writeln!(out, "}}").map_err(fmt_err)?;
     writeln!(out).map_err(fmt_err)?;
     writeln!(out, "#[derive(Debug, Clone, Copy, PartialEq, Eq)]").map_err(fmt_err)?;
+    writeln!(
+        out,
+        "pub enum CollectPageOrderViolationKind {{ Duplicate, Stale, OutOfOrder }}"
+    )
+    .map_err(fmt_err)?;
+    writeln!(out).map_err(fmt_err)?;
+    writeln!(out, "#[derive(Debug, Clone, Copy, PartialEq, Eq)]").map_err(fmt_err)?;
     writeln!(out, "pub enum GeneratedSuspension {{ ActionPending {{ step: u16, action_id: u16, input_slot: u16, resume_pc: u16 }}, WaitUntil {{ step: u16, deadline_slot: u16, resume_pc: u16 }}, WaitEvent {{ step: u16, event_slot: u16, timeout_slot: Option<u16>, resume_pc: u16 }}, AskPending {{ step: u16, prompt_slot: u16, timeout_slot: Option<u16>, resume_pc: u16 }} }}").map_err(fmt_err)?;
     writeln!(out, "type SuspensionOutcome = GeneratedSuspension;").map_err(fmt_err)?;
     writeln!(out, "impl SuspensionOutcome {{ fn into_drive_error(self) -> DriveError {{ match self {{ Self::ActionPending {{ step, action_id, input_slot, resume_pc }} => DriveError::ActionSuspend {{ step, action_id, input_slot, resume_pc }}, Self::WaitUntil {{ step, deadline_slot, resume_pc }} => DriveError::WaitUntilSuspend {{ step, deadline_slot, resume_pc }}, Self::WaitEvent {{ step, event_slot, timeout_slot, resume_pc }} => DriveError::WaitEventSuspend {{ step, event_slot, timeout_slot, resume_pc }}, Self::AskPending {{ step, prompt_slot, timeout_slot, resume_pc }} => DriveError::AskSuspend {{ step, prompt_slot, timeout_slot, resume_pc }}, }} }} }}").map_err(fmt_err)?;
@@ -2804,14 +3101,37 @@ fn write_header(out: &mut String) -> CodegenResult<()> {
         "enum StepOutcome {{ Continue(u16), Finished(SlotValue) }}"
     )
     .map_err(fmt_err)?;
-    out.write_str(r"
-#[derive(Debug, Clone, Copy, PartialEq)]
+    out.write_str(r#"
+#[derive(Clone, Copy, PartialEq)]
 pub enum JournalEvent {
-    SlotWritten { slot: u16, value: Option<SlotValue>, taint: Taint },
+    StepStarted { step: u16 },
+    SlotWritten { slot: u16, value: Option<SlotValue>, taint: Taint, extra: Option<CollectState> },
+    StepSucceeded { step: u16, output: Option<u16> },
     ActionScheduled { step: u16, action_id: u16, input_slot: u16, resume_pc: u16 },
     ActionCompleted { step: u16, action_id: u16, output_slot: u16, value: SlotValue, taint: Taint },
     AskAnswered { ask_step: u16, resume_step: u16, answer_slot: u16, value: SlotValue, taint: Taint },
     RunFinished { step: u16, value: SlotValue, taint: Taint },
+}
+
+impl core::fmt::Debug for JournalEvent {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            Self::StepStarted { step } => f.debug_struct("StepStarted").field("step", step).finish(),
+            Self::SlotWritten { slot, value, taint, extra } => {
+                let mut event = f.debug_struct("SlotWritten");
+                event.field("slot", slot).field("value", value).field("taint", taint);
+                if let Some(state) = extra {
+                    event.field("extra", state);
+                }
+                event.finish()
+            }
+            Self::StepSucceeded { step, output } => f.debug_struct("StepSucceeded").field("step", step).field("output", output).finish(),
+            Self::ActionScheduled { step, action_id, input_slot, resume_pc } => f.debug_struct("ActionScheduled").field("step", step).field("action_id", action_id).field("input_slot", input_slot).field("resume_pc", resume_pc).finish(),
+            Self::ActionCompleted { step, action_id, output_slot, value, taint } => f.debug_struct("ActionCompleted").field("step", step).field("action_id", action_id).field("output_slot", output_slot).field("value", value).field("taint", taint).finish(),
+            Self::AskAnswered { ask_step, resume_step, answer_slot, value, taint } => f.debug_struct("AskAnswered").field("ask_step", ask_step).field("resume_step", resume_step).field("answer_slot", answer_slot).field("value", value).field("taint", taint).finish(),
+            Self::RunFinished { step, value, taint } => f.debug_struct("RunFinished").field("step", step).field("value", value).field("taint", taint).finish(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -2860,6 +3180,9 @@ enum PendingResume {
     Ask { ask_step: u16, resume_pc: u16 },
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StepState { Pending, Running, Succeeded, Failed, Skipped, Waiting, Asking, Cancelled }
+
 impl PendingResume {
     const fn step(self) -> u16 {
         match self {
@@ -2869,13 +3192,151 @@ impl PendingResume {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CollectState { source: u32, current_page: u32, cursor: u32, page_size: u32, item_count: u32, limit: u32 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct CollectStateRecord { collector_slot: u16, state: CollectState }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct CollectLineage { collector_slot: u16, previous_page: Option<u32>, stale_pages: [Option<u32>; COLLECT_STATE_CAPACITY], stale_len: u16 }
+
+impl CollectLineage {
+    const fn empty() -> Self { Self { collector_slot: 0, previous_page: None, stale_pages: [None; COLLECT_STATE_CAPACITY], stale_len: 0 } }
+
+    fn record_transition(&mut self, next_page: u32, current_page: Option<u32>) -> Result<(), DriveError> {
+        let Some(current) = current_page else { return Ok(()); };
+        if current == next_page { return Ok(()); }
+        if let Some(previous) = self.previous_page {
+            let index = usize::from(self.stale_len);
+            match self.stale_pages.get_mut(index) {
+                Some(slot) => *slot = Some(previous),
+                None => return Err(DriveError::CollectItemLimitExceeded),
+            }
+            self.stale_len = self.stale_len.checked_add(1).ok_or(DriveError::CollectItemLimitExceeded)?;
+        }
+        self.previous_page = Some(current);
+        Ok(())
+    }
+
+    fn is_stale(&self, page: u32) -> Result<bool, DriveError> {
+        let mut index = 0u16;
+        while index < self.stale_len {
+            let page_slot = self.stale_pages.get(usize::from(index)).copied().flatten();
+            if page_slot == Some(page) { return Ok(true); }
+            index = index.checked_add(1).ok_or(DriveError::CollectItemLimitExceeded)?;
+        }
+        Ok(false)
+    }
+}
+
+pub struct CollectStateStore { run_id: u64, entries: [Option<CollectStateRecord>; COLLECT_STATE_CAPACITY], lineages: [CollectLineage; COLLECT_STATE_CAPACITY] }
+
+impl CollectStateStore {
+    const fn new() -> Self { Self { run_id: 0, entries: [None; COLLECT_STATE_CAPACITY], lineages: [CollectLineage::empty(); COLLECT_STATE_CAPACITY] } }
+
+    fn set_run_id(&mut self, run_id: u64) { self.run_id = run_id; }
+
+    fn entry_index(&self, collector_slot: u16) -> Option<usize> {
+        let mut index = 0usize;
+        while index < COLLECT_STATE_CAPACITY {
+            match self.entries.get(index).copied().flatten() {
+                Some(record) if record.collector_slot == collector_slot => return Some(index),
+                _ => {}
+            }
+            match index.checked_add(1) { Some(next) => index = next, None => return None }
+        }
+        None
+    }
+
+    fn lineage_mut(&mut self, collector_slot: u16) -> Result<&mut CollectLineage, DriveError> {
+        let mut empty_index: Option<usize> = None;
+        let mut index = 0usize;
+        while index < COLLECT_STATE_CAPACITY {
+            let lineage = self.lineages.get(index).copied().ok_or(DriveError::CollectItemLimitExceeded)?;
+            if lineage.collector_slot == collector_slot { return self.lineages.get_mut(index).ok_or(DriveError::CollectItemLimitExceeded); }
+            if lineage.previous_page.is_none() && lineage.stale_len == 0 && empty_index.is_none() { empty_index = Some(index); }
+            index = index.checked_add(1).ok_or(DriveError::CollectItemLimitExceeded)?;
+        }
+        let slot_index = empty_index.ok_or(DriveError::CollectItemLimitExceeded)?;
+        let slot = self.lineages.get_mut(slot_index).ok_or(DriveError::CollectItemLimitExceeded)?;
+        slot.collector_slot = collector_slot;
+        Ok(slot)
+    }
+
+    fn upsert(&mut self, collector_slot: u16, state: CollectState) -> Result<(), DriveError> {
+        let old_page = self.entry_index(collector_slot).and_then(|index| self.entries.get(index).copied().flatten().map(|record| record.state.current_page));
+        self.lineage_mut(collector_slot)?.record_transition(state.current_page, old_page)?;
+        if let Some(index) = self.entry_index(collector_slot) {
+            match self.entries.get_mut(index) { Some(slot) => *slot = Some(CollectStateRecord { collector_slot, state }), None => return Err(DriveError::CollectItemLimitExceeded) }
+            return Ok(());
+        }
+        let mut index = 0usize;
+        while index < COLLECT_STATE_CAPACITY {
+            match self.entries.get_mut(index) {
+                Some(slot @ None) => { *slot = Some(CollectStateRecord { collector_slot, state }); return Ok(()); }
+                Some(Some(_)) => {}
+                None => return Err(DriveError::CollectItemLimitExceeded),
+            }
+            index = index.checked_add(1).ok_or(DriveError::CollectItemLimitExceeded)?;
+        }
+        Err(DriveError::CollectItemLimitExceeded)
+    }
+
+    fn require_current_page(&self, collector_slot: u16, observed_page: u32) -> Result<CollectState, DriveError> {
+        if let Some(index) = self.entry_index(collector_slot) {
+            let record = self.entries.get(index).copied().flatten().ok_or(DriveError::CollectItemLimitExceeded)?;
+            if record.state.current_page == observed_page { return Ok(record.state); }
+            return Err(DriveError::CollectPageOrderViolation { kind: self.classify_observed_page(collector_slot, observed_page)?, run_id: self.run_id, collector_slot, expected_page: record.state.current_page, observed_page });
+        }
+        Err(DriveError::InvalidCompiledWorkflow { reason: "collect pagination state missing" })
+    }
+
+    fn classify_observed_page(&self, collector_slot: u16, observed_page: u32) -> Result<CollectPageOrderViolationKind, DriveError> {
+        let mut index = 0usize;
+        while index < COLLECT_STATE_CAPACITY {
+            let lineage = self.lineages.get(index).copied().ok_or(DriveError::CollectItemLimitExceeded)?;
+            if lineage.collector_slot == collector_slot {
+                if lineage.previous_page == Some(observed_page) { return Ok(CollectPageOrderViolationKind::Duplicate); }
+                if lineage.is_stale(observed_page)? { return Ok(CollectPageOrderViolationKind::Stale); }
+                return Ok(CollectPageOrderViolationKind::OutOfOrder);
+            }
+            index = index.checked_add(1).ok_or(DriveError::CollectItemLimitExceeded)?;
+        }
+        Ok(CollectPageOrderViolationKind::OutOfOrder)
+    }
+
+    fn remove(&mut self, collector_slot: u16) {
+        if let Some(index) = self.entry_index(collector_slot) {
+            if let Some(slot) = self.entries.get_mut(index) { *slot = None; }
+        }
+    }
+
+    fn capture_state(&self, collector_slot: u16) -> Option<CollectState> {
+        self.entry_index(collector_slot)
+            .and_then(|index| self.entries.get(index).copied().flatten())
+            .map(|record| record.state)
+    }
+}
+
+fn set_step_state(states: &mut [StepState; WORKFLOW_NODE_COUNT_USIZE], step: u16, state: StepState) -> Result<(), DriveError> {
+    let index = usize::from(step);
+    match states.get_mut(index) {
+        Some(slot) => { *slot = state; Ok(()) }
+        None => Err(DriveError::InvalidProgramCounter),
+    }
+}
+
 pub struct GeneratedRunState {
+    run_id: u64,
     slots: [Option<SlotValue>; WORKFLOW_SLOT_COUNT],
     slot_taints: [Taint; WORKFLOW_SLOT_COUNT],
+    step_states: [StepState; WORKFLOW_NODE_COUNT_USIZE],
     pc: u16,
     step_budget_remaining: u64,
     list_store: ListStore,
     object_store: ObjectStore,
+    collect_states: CollectStateStore,
     journal: Journal,
     pending: Option<PendingResume>,
 }
@@ -2883,21 +3344,20 @@ pub struct GeneratedRunState {
 impl GeneratedRunState {
     fn record_slot_changes(
         &mut self,
+        current_pc: u16,
         before_slots: &[Option<SlotValue>; WORKFLOW_SLOT_COUNT],
         before_taints: &[Taint; WORKFLOW_SLOT_COUNT],
     ) -> Result<(), DriveError> {
-        self.journal.ensure_capacity(WORKFLOW_SLOT_COUNT)?;
-        let mut slot = 0u16;
-        while usize::from(slot) < WORKFLOW_SLOT_COUNT {
-            let index = usize::from(slot);
-            let before_value = before_slots.get(index).copied().ok_or(DriveError::SlotOutOfBounds { slot })?;
-            let after_value = self.slots.get(index).copied().ok_or(DriveError::SlotOutOfBounds { slot })?;
-            let before_taint = before_taints.get(index).copied().ok_or(DriveError::SlotOutOfBounds { slot })?;
-            let after_taint = self.slot_taints.get(index).copied().ok_or(DriveError::SlotOutOfBounds { slot })?;
-            if before_value != after_value || before_taint != after_taint {
-                self.journal.push(JournalEvent::SlotWritten { slot, value: after_value, taint: after_taint })?;
-            }
-            slot = slot.checked_add(1).ok_or(DriveError::SlotOutOfBounds { slot })?;
+        let Some(slot) = journal_observed_slot(current_pc)? else { return Ok(()); };
+        self.journal.ensure_capacity(1)?;
+        let index = usize::from(slot);
+        let before_value = before_slots.get(index).copied().ok_or(DriveError::SlotOutOfBounds { slot })?;
+        let after_value = self.slots.get(index).copied().ok_or(DriveError::SlotOutOfBounds { slot })?;
+        let before_taint = before_taints.get(index).copied().ok_or(DriveError::SlotOutOfBounds { slot })?;
+        let after_taint = self.slot_taints.get(index).copied().ok_or(DriveError::SlotOutOfBounds { slot })?;
+        if after_value.is_some() || before_value != after_value || before_taint != after_taint {
+            let extra = self.collect_states.capture_state(slot);
+            self.journal.push(JournalEvent::SlotWritten { slot, value: after_value, taint: after_taint, extra })?;
         }
         Ok(())
     }
@@ -2905,7 +3365,7 @@ impl GeneratedRunState {
     fn write_slot_with_journal(&mut self, slot: u16, value: Option<SlotValue>, taint: Taint) -> Result<(), DriveError> {
         self.journal.ensure_capacity(1)?;
         write_slot_with_taint(&mut self.slots, &mut self.slot_taints, slot, value, taint)?;
-        self.journal.push(JournalEvent::SlotWritten { slot, value, taint })
+        self.journal.push(JournalEvent::SlotWritten { slot, value, taint, extra: None })
     }
 
     fn suspend_from_error(&mut self, error: DriveError) -> Result<GeneratedRunStatus, DriveError> {
@@ -2930,7 +3390,7 @@ impl GeneratedRunState {
     }
 }
 
-").map_err(fmt_err)?;
+"#).map_err(fmt_err)?;
     writeln!(out).map_err(fmt_err)?;
     out.write_str(r"#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct RetryState { current_attempt: u16, remaining: u16, current_delay_ms: u32 }
