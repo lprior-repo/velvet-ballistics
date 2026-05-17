@@ -11,3 +11,5 @@ discarded_duplicates: sub1/sub3/sub4 left unmerged; no blind merge. Fresh owner 
 base: rebased non-destructively from main 63917991 to current main 51aec14e after concurrent workspace-assertions landing.
 path_guard: isolated workspace is not source checkout and not nested under it.
 terminal_state: State 15 ready after moon ci PASS on current main; landing and push evidence recorded in landing-report after commit/push.
+
+landing_update: implementation commit 80525554 pushed to main; bd close succeeded; landing/cleanup evidence added in follow-up evidence commit.
