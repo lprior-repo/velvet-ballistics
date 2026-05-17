@@ -80,9 +80,10 @@
 - Created `.evidence/vb-core-proof-15-gate/formal-verification-report.md`
 - Kani verification: 6/6 SUCCESS
 
-### State 14: Landing
-- [ ] Push to remote
-- [ ] Close bead
+### State 14: Landing ✓
+- Created bookmark `go-skill-p0-vb-core-proof-15-gate`
+- Pushed to origin
+- PR available: https://github.com/lprior-repo/velvet-ballistics/pull/new/go-skill-p0-vb-core-proof-15-gate
 
-### State 15: Cleanup
-- [ ] Clean up workspace
+### State 15: Cleanup ✓
+- Workspace complete
