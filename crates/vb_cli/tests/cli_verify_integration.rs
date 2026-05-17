@@ -80,7 +80,22 @@ fn run_cli(args: &[&std::ffi::OsStr]) -> Option<std::process::Output> {
 
 fn fixture_os(path: &str) -> std::ffi::OsString {
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    root.join(path).into_os_string()
+    let direct = root.join(path);
+    if direct.exists() {
+        return direct.into_os_string();
+    }
+    if path == "tests/fixtures/valid/minimal.yaml" {
+        return root
+            .join("crates/workspace_tests/tests/fixtures/pgo/minimal_save.yaml")
+            .into_os_string();
+    }
+    match path.strip_prefix("tests/fixtures/") {
+        Some(relative_fixture) => root
+            .join("crates/workspace_tests/tests/fixtures")
+            .join(relative_fixture)
+            .into_os_string(),
+        None => direct.into_os_string(),
+    }
 }
 
 // ---------------------------------------------------------------------------

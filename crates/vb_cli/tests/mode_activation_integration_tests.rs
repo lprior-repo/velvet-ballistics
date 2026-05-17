@@ -23,8 +23,8 @@ name: test
 when:
   manual: {}
 steps:
-  - id: save_value
-    save:
+  - id: capture_value
+    set:
       output: saved
       value: "1"
   - id: done

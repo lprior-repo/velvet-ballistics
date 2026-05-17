@@ -192,10 +192,7 @@ fn ai_workflow_summary(
             });
         }
     };
-    match postcard::from_bytes::<vb_core::WorkflowParts>(&record.ir)
-        .ok()
-        .and_then(|parts| vb_core::CompiledWorkflow::try_from_parts(parts).ok())
-    {
+    match compiled_workflow_from_ir_record(&record.ir) {
         Some(compiled) => compiled_workflow_summary(digest, &compiled),
         None => serde_json::json!({
             "digest": digest_hex(digest),
@@ -203,6 +200,22 @@ fn ai_workflow_summary(
             "source_included": false,
         }),
     }
+}
+
+fn compiled_workflow_from_ir_record(bytes: &[u8]) -> Option<vb_core::CompiledWorkflow> {
+    compiled_workflow_from_accepted_artifact(bytes).or_else(|| compiled_workflow_from_parts(bytes))
+}
+
+fn compiled_workflow_from_accepted_artifact(bytes: &[u8]) -> Option<vb_core::CompiledWorkflow> {
+    postcard::from_bytes::<vb_storage::admission::AcceptedArtifact>(bytes)
+        .ok()
+        .and_then(|artifact| compiled_workflow_from_parts(&artifact.ir))
+}
+
+fn compiled_workflow_from_parts(bytes: &[u8]) -> Option<vb_core::CompiledWorkflow> {
+    postcard::from_bytes::<vb_core::WorkflowParts>(bytes)
+        .ok()
+        .and_then(|parts| vb_core::CompiledWorkflow::try_from_parts(parts).ok())
 }
 
 fn workflow_summary_from_source(
@@ -596,17 +609,17 @@ fn write_stderr_line(args: std::fmt::Arguments<'_>) {
 fn json_out(value: &Value, format: OutputFormat) {
     match format {
         OutputFormat::Json | OutputFormat::Jsonl => {
-            if let Ok(text) = serde_json::to_string(value) {
-                if let Err(error) = write_stdout_line(format_args!("{text}")) {
-                    write_stderr_line(format_args!("stdout write failed: {error}"));
-                }
+            if let Ok(text) = serde_json::to_string(value)
+                && let Err(error) = write_stdout_line(format_args!("{text}"))
+            {
+                write_stderr_line(format_args!("stdout write failed: {error}"));
             }
         }
         OutputFormat::Text => {
-            if let Ok(text) = serde_json::to_string_pretty(value) {
-                if let Err(error) = write_stdout_line(format_args!("{text}")) {
-                    write_stderr_line(format_args!("stdout write failed: {error}"));
-                }
+            if let Ok(text) = serde_json::to_string_pretty(value)
+                && let Err(error) = write_stdout_line(format_args!("{text}"))
+            {
+                write_stderr_line(format_args!("stdout write failed: {error}"));
             }
         }
     }

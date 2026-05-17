@@ -8,6 +8,8 @@ use crate::exit_code::CliExitCode;
 pub(crate) struct VerifyOk {
     /// Hex-encoded workflow digest.
     pub digest_hex: String,
+    /// Number of compiled workflow nodes.
+    pub node_count: u16,
     /// Check names that passed.
     pub checks: Vec<&'static str>,
     /// Non-fatal warnings produced during verification.
@@ -125,6 +127,7 @@ pub(crate) fn run_verification(
 
     Ok(VerifyOk {
         digest_hex,
+        node_count: compiled.node_count(),
         checks,
         warnings,
     })

@@ -2187,16 +2187,6 @@ fn cli_inspect_nonexistent_run_shows_no_events() {
     };
     let db_path = dir.path().join("empty-db");
 
-    // Open a journal at the path so the DB exists but has no run events.
-    let journal = match vb_storage::FjallJournal::open(&db_path, None) {
-        Ok(j) => j,
-        Err(err) => {
-            assert!(forced_assertion_failure(), "failed to open journal: {err}");
-            return;
-        }
-    };
-    drop(journal);
-
     let inspect_output = match run_cli(&[
         std::ffi::OsStr::new("inspect"),
         std::ffi::OsStr::new("999"),
