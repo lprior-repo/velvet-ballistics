@@ -409,6 +409,40 @@ fn sum_list_items(list_store: &ListStore, handle: u32) -> Result<i64, DriveError
     Ok(total)
 }
 
+fn collect_page_handle(
+    list_store: &mut ListStore,
+    handle: u32,
+    start: u32,
+    page_size: u32,
+) -> Result<u32, DriveError> {
+    let Some(record) = list_store.record(handle)? else {
+        return Err(DriveError::InvalidListHandle);
+    };
+    if start > record.len {
+        return Err(DriveError::ListStoreOverflow);
+    }
+    let remaining = record.len.checked_sub(start).ok_or(DriveError::ListStoreOverflow)?;
+    let page_len = remaining.min(page_size);
+    let count = usize::try_from(page_len).map_err(|_| DriveError::ListStoreOverflow)?;
+    let mut values = [SlotValue::Null; LIST_STORE_VALUE_CAPACITY];
+    let mut taints = [Taint::Clean; LIST_STORE_VALUE_CAPACITY];
+    let mut cursor = 0u32;
+    while cursor < page_len {
+        let source_index = checked_add_u32(start, cursor, DriveError::ListStoreOverflow)?;
+        let (value, taint) = list_store.value_at(handle, source_index)?;
+        let target_index = usize::try_from(cursor).map_err(|_| DriveError::ListStoreOverflow)?;
+        match (values.get_mut(target_index), taints.get_mut(target_index)) {
+            (Some(target_value), Some(target_taint)) => {
+                *target_value = value;
+                *target_taint = taint;
+            }
+            (_, _) => return Err(DriveError::ListStoreOverflow),
+        }
+        cursor = checked_add_u32(cursor, 1, DriveError::ListStoreOverflow)?;
+    }
+    list_store.insert_items_prefix(&values, &taints, count)
+}
+
 fn object_field_count(object_store: &ObjectStore, handle: u32) -> Result<u32, DriveError> {
     object_store.record(handle).map(|record| record.len)
 }
