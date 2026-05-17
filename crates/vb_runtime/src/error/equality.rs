@@ -84,10 +84,6 @@ fn runtime_error_core_field_eq(left: &RuntimeError, right: &RuntimeError) -> boo
             RuntimeError::IpcPayloadSizeExceeded { size: a, max: b },
             RuntimeError::IpcPayloadSizeExceeded { size: c, max: d },
         ) => a == c && b == d,
-        (
-            RuntimeError::EngineDriveFailed { run: a, source: b },
-            RuntimeError::EngineDriveFailed { run: c, source: d },
-        ) => a == c && b.diagnostic_code() == d.diagnostic_code(),
         _ => false,
     }
 }
@@ -103,21 +99,9 @@ fn runtime_error_admission_field_eq(left: &RuntimeError, right: &RuntimeError) -
             RuntimeError::AdmissionArtifactInvalid { digest: b },
         ) => a == b,
         (
-            RuntimeError::AdmissionArtifactStale { digest: a },
-            RuntimeError::AdmissionArtifactStale { digest: b },
-        ) => a == b,
-        (
-            RuntimeError::AdmissionDigestMismatch {
-                requested: a,
-                record: b,
-                envelope: c,
-            },
-            RuntimeError::AdmissionDigestMismatch {
-                requested: d,
-                record: e,
-                envelope: f,
-            },
-        ) => a == d && b == e && c == f,
+            RuntimeError::AdmissionArtifactDigestMismatch { requested: a, found: c },
+            RuntimeError::AdmissionArtifactDigestMismatch { requested: b, found: d },
+        ) => a == b && c == d,
         (
             RuntimeError::AdmissionCapabilityDenied {
                 action: a,

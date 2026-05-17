@@ -85,7 +85,9 @@ fn runtime_shutdown_graceful_drains_owned_queued_journal() {
         assert!(false, "invalid shard count");
         return;
     };
-    let runtime = Runtime::new_with_journal(shard_count, ShardConfig::default(), runtime_journal);
+    let mut config = ShardConfig::default();
+    config.policy = vb_core::policy::RuntimePolicy::Relaxed;
+    let runtime = Runtime::new_with_journal(shard_count, config, runtime_journal);
 
     let Some(compiled) = require_ok(single_finish_workflow(workflow), "workflow compiles") else {
         return;

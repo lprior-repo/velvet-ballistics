@@ -84,6 +84,13 @@ pub enum RuntimeError {
         /// Digest of the invalid artifact.
         digest: vb_core::ids::WorkflowDigest,
     },
+    /// Admission gate rejected because the artifact digest did not match the requested digest.
+    AdmissionArtifactDigestMismatch {
+        /// Digest that was requested at admission.
+        requested: vb_core::ids::WorkflowDigest,
+        /// Digest found inside the loaded artifact envelope.
+        found: vb_core::ids::WorkflowDigest,
+    },
     /// Admission gate rejected the run because the required capability was not granted.
     AdmissionCapabilityDenied {
         /// Action that required the capability.

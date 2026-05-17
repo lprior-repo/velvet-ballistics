@@ -241,6 +241,10 @@ impl RuntimeJournal for StorageRuntimeJournal {
     fn probe(&self) -> RuntimeResult<()> {
         Ok(())
     }
+
+    fn storage_journal(&self) -> Option<std::sync::Arc<vb_storage::FjallJournal>> {
+        Some(self.journal.clone())
+    }
 }
 
 /// Runtime journal adapter that stages lifecycle events through `JournalWriterQueue`.

@@ -34,6 +34,9 @@ fn runtime_error_static_message(error: &RuntimeError) -> Option<&'static str> {
         RuntimeError::AdmissionArtifactInvalid { .. } => {
             Some("admission rejected: artifact invalid")
         }
+        RuntimeError::AdmissionArtifactDigestMismatch { .. } => {
+            Some("admission rejected: artifact digest mismatch")
+        }
         RuntimeError::AdmissionCapabilityDenied { .. } => {
             Some("admission rejected: capability denied")
         }
