@@ -1121,6 +1121,9 @@ fn enqueue_successors(
 mod tests {
     use super::*;
 
+    use vb_core::ids::StepIdx;
+    use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
+
     // -- decode_payload tests --
 
     #[test]
@@ -3719,5 +3722,243 @@ mod tests {
             reachable.is_empty(),
             "out-of-bounds successor should not be followed"
         );
+    }
+
+    // ── Mutation kill: handle_get_workflow_graph boundary (< vs <=) ─────────────
+
+    #[test]
+    fn handle_get_workflow_graph_returns_exact_node_count_with_one_node() {
+        let digest = vb_core::WorkflowDigest::from_bytes([0x42; 32]);
+        let workflow = make_workflow_with_nodes(digest, 1);
+        let mut resolver = OkResolver { workflow };
+
+        let payload_bytes =
+            postcard::to_allocvec(&IpcPayload::GetWorkflowGraph { digest })
+                .expect("encode payload");
+        let response = handle_get_workflow_graph(&payload_bytes, Some(&mut resolver));
+
+        match response {
+            IpcResponse::WorkflowGraph { nodes, .. } => {
+                assert_eq!(
+                    nodes.len(),
+                    1,
+                    "exactly 1 node should be returned when workflow has 1 node"
+                );
+                assert_eq!(nodes[0].step_idx, 0);
+            }
+            other => panic!("expected WorkflowGraph, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn handle_get_workflow_graph_returns_two_nodes_with_two_node_workflow() {
+        let digest = vb_core::WorkflowDigest::from_bytes([0x43; 32]);
+        let workflow = make_workflow_with_nodes(digest, 2);
+        let mut resolver = OkResolver { workflow };
+
+        let payload_bytes =
+            postcard::to_allocvec(&IpcPayload::GetWorkflowGraph { digest })
+                .expect("encode payload");
+        let response = handle_get_workflow_graph(&payload_bytes, Some(&mut resolver));
+
+        match response {
+            IpcResponse::WorkflowGraph { nodes, .. } => {
+                assert_eq!(
+                    nodes.len(),
+                    2,
+                    "exactly 2 nodes should be returned when workflow has 2 nodes"
+                );
+                assert_eq!(nodes[0].step_idx, 0);
+                assert_eq!(nodes[1].step_idx, 1);
+            }
+            other => panic!("expected WorkflowGraph, got {other:?}"),
+        }
+    }
+
+    // ── Mutation kill: handle_get_taint_report boundary (>= vs <) ───────────────
+
+    #[test]
+    fn handle_get_taint_report_returns_exact_path_count_for_linear_chain() {
+        let digest = vb_core::WorkflowDigest::from_bytes([0x44; 32]);
+        let parts = WorkflowParts {
+            name: Box::from("taint_boundary"),
+            digest,
+            nodes: vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: None,
+                    next: Some(StepIdx::new(1)),
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::WaitEvent {
+                        event: vb_core::ids::SlotIdx::new(0),
+                        timeout_slot: None,
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: None,
+                    next: Some(StepIdx::new(2)),
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::Nop,
+                },
+                CompiledNode {
+                    id: StepIdx::new(2),
+                    output: Some(vb_core::ids::SlotIdx::new(0)),
+                    next: None,
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::Finish {
+                        result: vb_core::ids::SlotIdx::new(0),
+                    },
+                },
+            ]
+            .into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: Box::new([]),
+            slot_count: 1,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+            step_names: Box::new([]),
+        };
+        let workflow = CompiledWorkflow::try_from_parts(parts).expect("valid workflow");
+        let mut resolver = OkResolver { workflow };
+
+        let payload_bytes =
+            postcard::to_allocvec(&IpcPayload::GetTaintReport { digest })
+                .expect("encode payload");
+        let response = handle_get_taint_report(&payload_bytes, Some(&mut resolver));
+
+        match response {
+            IpcResponse::TaintReport {
+                sources,
+                sinks,
+                finish_safe,
+                paths,
+            } => {
+                assert_eq!(sources, vec![0]);
+                assert_eq!(sinks, vec![2]);
+                assert_eq!(paths.len(), 2, "expected 2 taint paths for 3-node linear chain");
+                assert!(!finish_safe, "finish should not be safe when source reaches sink");
+            }
+            other => panic!("expected TaintReport, got {other:?}"),
+        }
+    }
+
+    // ── Mutation kill: enqueue_successors boundary (< vs <=, < vs ==) ───────────
+
+    #[test]
+    fn enqueue_successors_rejects_out_of_bounds_next() {
+        let node = CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: Some(StepIdx::new(1)), // node_count = 1, so next=1 is out-of-bounds
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Nop,
+        };
+        let mut visited = std::collections::HashSet::new();
+        let mut queue = std::collections::VecDeque::new();
+
+        enqueue_successors(&node, 1, &mut visited, &mut queue);
+
+        assert!(visited.is_empty(), "out-of-bounds next should not be inserted");
+        assert!(queue.is_empty(), "out-of-bounds next should not be enqueued");
+    }
+
+    #[test]
+    fn enqueue_successors_rejects_out_of_bounds_structural_successor() {
+        let node = CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::RepeatStart {
+                max_attempts: 1,
+                body: StepIdx::new(1), // out-of-bounds
+                done: StepIdx::new(1), // also out-of-bounds
+            },
+        };
+        let mut visited = std::collections::HashSet::new();
+        let mut queue = std::collections::VecDeque::new();
+
+        enqueue_successors(&node, 1, &mut visited, &mut queue);
+
+        assert!(visited.is_empty(), "out-of-bounds structural successors should not be inserted");
+        assert!(queue.is_empty(), "out-of-bounds structural successors should not be enqueued");
+    }
+
+    #[test]
+    fn enqueue_successors_accepts_valid_successor_at_last_index() {
+        let node = CompiledNode {
+            id: StepIdx::new(0),
+            output: None,
+            next: Some(StepIdx::new(1)), // node_count = 2, next=1 is valid
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Nop,
+        };
+        let mut visited = std::collections::HashSet::new();
+        let mut queue = std::collections::VecDeque::new();
+
+        enqueue_successors(&node, 2, &mut visited, &mut queue);
+
+        assert!(visited.contains(&1), "valid next should be inserted");
+        assert_eq!(queue.len(), 1, "valid next should be enqueued");
+    }
+
+    // ── Helper: build a linear-chain workflow ──────────────────────────────────
+
+    fn make_workflow_with_nodes(
+        d: vb_core::WorkflowDigest,
+        count: usize,
+    ) -> vb_core::workflow::CompiledWorkflow {
+        let nodes: Vec<CompiledNode> = (0..count)
+            .map(|i| {
+                let kind = if i == count - 1 {
+                    CompiledNodeKind::Finish {
+                        result: vb_core::ids::SlotIdx::ZERO,
+                    }
+                } else if i == 0 {
+                    CompiledNodeKind::WaitEvent {
+                        event: vb_core::ids::SlotIdx::new(0),
+                        timeout_slot: None,
+                    }
+                } else {
+                    CompiledNodeKind::Nop
+                };
+                CompiledNode {
+                    id: StepIdx::new(i as u16),
+                    output: None,
+                    next: if i < count - 1 {
+                        Some(StepIdx::new((i + 1) as u16))
+                    } else {
+                        None
+                    },
+                    on_error: None,
+                    error_slot: None,
+                    kind,
+                }
+            })
+            .collect();
+
+        let parts = WorkflowParts {
+            name: Box::from("test_linear"),
+            digest: d,
+            nodes: nodes.into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: Box::new([]),
+            slot_count: 1,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+            step_names: Box::new([]),
+        };
+        CompiledWorkflow::try_from_parts(parts).expect("linear workflow should be valid")
     }
 }

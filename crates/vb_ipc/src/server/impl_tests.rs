@@ -54,7 +54,7 @@ fn build_frame(command: IpcCommand, correlation: u64, payload_bytes: &[u8]) -> V
             Err(_) => 0,
         },
     );
-    let encoded = header.encode().expect("header should encode");
+    let encoded = header.encode();
     let mut frame = encoded.to_vec();
     frame.extend_from_slice(payload_bytes);
     frame
@@ -320,7 +320,7 @@ fn slow_client_partial_frame_keeps_read_buffer_bounded() {
             Err(_) => return,
         },
     );
-    let header_bytes = header.encode().expect("header should encode");
+    let header_bytes = header.encode();
     client
         .write_all(&header_bytes)
         .expect("client should write partial header-only frame");
@@ -369,7 +369,7 @@ fn slow_client_oversized_frame_disconnects_without_unbounded_growth() {
         Err(_) => return,
     };
     let header = IpcFrameHeader::new(IpcCommand::Health, 0, 78, oversized);
-    let header_bytes = header.encode().expect("header should encode");
+    let header_bytes = header.encode();
     client
         .write_all(&header_bytes)
         .expect("client should write oversized header");
@@ -1885,7 +1885,7 @@ fn handle_readable_returns_false_for_complete_header_partial_payload() {
     server.accept_client().expect("accept should succeed");
 
     let header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, 10);
-    let header_bytes = header.encode().expect("encode header");
+    let header_bytes = header.encode();
     client.write_all(&header_bytes).expect("write header");
     client.flush().expect("flush");
 
@@ -2443,6 +2443,26 @@ fn server_rejects_client_when_read_buffer_exceeds_max() {
     assert!(
         server.client_count() == 0 || poll_count < max_polls,
         "client should be removed or ReadBufferTooLarge should be raised within {max_polls} polls, total_written={total_written}"
+    );
+}
+
+// ── serve_ipc returns Ok(false) when poll_once indicates shutdown ─────────────
+
+#[test]
+fn serve_ipc_returns_ok_false_when_poll_once_indicates_shutdown() {
+    let path = temp_socket_path("serve_shutdown");
+    let _cleanup = CleanupPath(&path);
+    let mut server = IpcServer::bind(&path).expect("bind should succeed");
+    let mut runtime = make_runtime();
+
+    server.set_test_poll_once_result(Ok(false));
+
+    let result = serve_ipc(&mut server, &mut runtime, Some(Duration::ZERO));
+
+    assert_eq!(
+        result,
+        Ok(false),
+        "serve_ipc should return Ok(false) when poll_once indicates shutdown"
     );
 }
 
