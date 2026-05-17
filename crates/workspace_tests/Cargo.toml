@@ -48,3 +48,51 @@ harness = false
 [[bench]]
 name = "vb_kkvb_xtask_routing_red"
 harness = false
+
+[[bench]]
+name = "ir_traversal"
+harness = false
+
+[[bench]]
+name = "collect_page"
+harness = false
+
+[[bench]]
+name = "action_dispatch"
+harness = false
+
+[[bench]]
+name = "memory_footprint"
+harness = false
+
+[[bench]]
+name = "cold_start"
+harness = false
+
+[[bench]]
+name = "pagination_cost"
+harness = false
+
+[[bench]]
+name = "action_queuing"
+harness = false
+
+[[bench]]
+name = "timer_wheel_tick"
+harness = false
+
+[[bench]]
+name = "snapshot_save"
+harness = false
+
+[[bench]]
+name = "snapshot_restore"
+harness = false
+
+[[bench]]
+name = "array_queue"
+harness = false
+
+[[bench]]
+name = "rtrb"
+harness = false
