@@ -37,6 +37,9 @@ fn runtime_error_static_message(error: &RuntimeError) -> Option<&'static str> {
         RuntimeError::AdmissionCapabilityDenied { .. } => {
             Some("admission rejected: capability denied")
         }
+        RuntimeError::AdmissionDigestMismatch { .. } => {
+            Some("admission rejected: artifact digest mismatch")
+        }
         RuntimeError::AdmissionHeaderPersistenceFailed { .. } => {
             Some("admission durability failed: header persistence failed")
         }

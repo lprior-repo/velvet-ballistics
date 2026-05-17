@@ -36,6 +36,7 @@ pub struct Runtime {
 
 impl Runtime {
     /// Creates a new runtime with the given number of shards and per-shard configuration.
+    #[must_use]
     pub fn new(shard_count: NonZeroUsize, config: ShardConfig) -> Self {
         Self::new_with_journal(
             shard_count,
@@ -46,6 +47,7 @@ impl Runtime {
 
     /// Creates a new runtime with an explicit runtime journal sink.
     #[allow(clippy::needless_pass_by_value)]
+    #[must_use]
     pub fn new_with_journal(
         shard_count: NonZeroUsize,
         config: ShardConfig,

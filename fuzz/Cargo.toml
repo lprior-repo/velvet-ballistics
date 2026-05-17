@@ -146,6 +146,13 @@ doc = false
 bench = false
 
 [[bin]]
+name = "accepted_artifact_envelope_qi37_4_2"
+path = "src/bin/accepted_artifact_envelope_qi37_4_2.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
 name = "capability_name_schema"
 path = "src/bin/capability_name_schema.rs"
 test = false

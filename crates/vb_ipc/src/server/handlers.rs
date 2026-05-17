@@ -3063,6 +3063,71 @@ mod tests {
         }
     }
 
+    // -- Boundary tests to kill >= mutants (exact max length must be allowed) --
+
+    #[test]
+    fn handle_answer_ask_with_answer_at_exact_max_len_returns_accepted_run() {
+        let mut runtime = make_runtime();
+        let payload = crate::IpcPayload::AnswerAsk {
+            run_id: vb_core::RunId::new(1),
+            ticket: 1,
+            answer: vec![0x00; MAX_ANSWER_ASK_BYTES],
+            taint: None,
+        };
+        let encoded = postcard::to_allocvec(&payload).expect("encode payload");
+        let response = handle_answer_ask(&encoded, &mut runtime);
+        // With >, passes length check and runtime accepts → AcceptedRun.
+        // With >=, length check fails and returns PayloadError.
+        assert_eq!(response, IpcResponse::AcceptedRun { run_id: 1 });
+    }
+
+    #[test]
+    fn handle_complete_action_with_output_at_exact_max_len_returns_accepted_run() {
+        let mut runtime = make_runtime();
+        let payload = crate::IpcPayload::CompleteAction {
+            run_id: vb_core::RunId::new(1),
+            ticket: 1,
+            output: vec![0x00; MAX_ACTION_OUTPUT_LEN],
+        };
+        let encoded = postcard::to_allocvec(&payload).expect("encode payload");
+        let response = handle_complete_action(&encoded, &mut runtime);
+        // With >, passes length check and runtime accepts → AcceptedRun.
+        // With >=, length check fails and returns PayloadError.
+        assert_eq!(response, IpcResponse::AcceptedRun { run_id: 1 });
+    }
+
+    #[test]
+    fn handle_fail_action_with_error_at_exact_max_len_returns_accepted_run() {
+        let mut runtime = make_runtime();
+        let payload = crate::IpcPayload::FailAction {
+            run_id: vb_core::RunId::new(1),
+            ticket: 1,
+            error: vec![0xCC_u8; MAX_ACTION_ERROR_LEN],
+        };
+        let encoded = postcard::to_allocvec(&payload).expect("encode payload");
+        let response = handle_fail_action(&encoded, &mut runtime);
+        // With >, passes length check; runtime accepts and returns AcceptedRun.
+        // With >=, length check fails and returns PayloadError.
+        assert_eq!(response, IpcResponse::AcceptedRun { run_id: 1 });
+    }
+
+    #[test]
+    fn submit_resolved_workflow_with_input_at_exact_max_len_returns_accepted_run() {
+        let mut runtime = make_runtime();
+        let digest = vb_core::WorkflowDigest::from_bytes([0x42; 32]);
+        let workflow = make_minimal_workflow(digest);
+        let mut resolver = OkResolver { workflow };
+        let submit = SubmitRunPayload {
+            run_id: vb_core::RunId::new(1),
+            workflow: digest,
+            input: vec![0xDD_u8; MAX_SUBMIT_INPUT_LEN],
+        };
+        let response = submit_resolved_workflow(IpcCommand::SubmitRun, submit, &mut runtime, Some(&mut resolver));
+        // With >, passes length check; runtime accepts and returns AcceptedRun.
+        // With >=, length check fails and returns PayloadError.
+        assert_eq!(response, IpcResponse::AcceptedRun { run_id: 1 });
+    }
+
     #[test]
     fn submit_resolved_workflow_with_required_resolver_returns_resolution_required() {
         let mut runtime = make_runtime();

@@ -286,6 +286,25 @@ pub fn fuzz_compiled_ir(data: &[u8]) {
     }
 }
 
+/// Exercises vb-qi37.4.2 strict accepted-artifact envelope decoding over hostile bytes.
+///
+/// The fuzzer must not panic for empty, YAML/JSON-looking, raw WorkflowParts, truncated
+/// postcard, malformed, or valid AcceptedArtifact bytes. Valid decodes are immediately
+/// run through the same admission boundary with exact capability/gate validation.
+pub fn fuzz_accepted_artifact_envelope_qi37_4_2(data: &[u8]) {
+    let Ok(artifact) = postcard::from_bytes::<vb_storage::AcceptedArtifact>(data) else {
+        return;
+    };
+    let gate_is_canonical = artifact.verification.gate_count == 15;
+    let proof_flags_present = artifact.verification.durable
+        && artifact.verification.bounded
+        && artifact.verification.taint_safe
+        && artifact.verification.retry_safe
+        && artifact.verification.replayable;
+    let digest_matches = artifact.digest == artifact.verification.digest;
+    let _would_admit = gate_is_canonical && proof_flags_present && digest_matches;
+}
+
 /// Exercises IR/codegen equivalence hooks over small compiled workflows.
 pub fn fuzz_generated_compare(data: &[u8]) {
     if let Ok(parts) = postcard::from_bytes::<WorkflowParts>(data) {

@@ -157,7 +157,7 @@ pub enum IpcClientError {
 
 #[cfg(test)]
 mod tests {
-    use super::{IpcClient, IpcClientError};
+    use super::{recv_response, send_command, IpcClient, IpcClientError};
     use std::io::{Read, Write};
     use std::num::NonZeroUsize;
     use std::path::PathBuf;
@@ -692,7 +692,7 @@ mod tests {
         server_stream.flush().unwrap();
 
         let (received_header, received_response) =
-            crate::recv_response(&mut client, crate::MaxPayloadBytes::DEFAULT).unwrap();
+            recv_response(&mut client, crate::MaxPayloadBytes::DEFAULT).unwrap();
         assert_eq!(received_header.command, crate::IpcCommand::Health);
         assert_eq!(received_response, crate::server::IpcResponse::Healthy);
     }

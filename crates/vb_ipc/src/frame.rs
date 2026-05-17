@@ -1458,7 +1458,7 @@ mod tests {
         let mut writer = FailingWriter;
         let result = write_frame(&mut writer, IpcCommand::Health, 0, 1, b"");
         assert_eq!(result, Err(IpcError::HeaderEncodeFailed));
-        assert_eq!(writer.flush(), Ok(()));
+        let Ok(()) = writer.flush() else { panic!("FailingWriter flush should succeed after write_frame error"); };
     }
 
     #[test]
