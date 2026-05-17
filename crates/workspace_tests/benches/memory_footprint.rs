@@ -10,17 +10,14 @@
 
 #![allow(missing_docs)]
 
-use criterion::{criterion_group, criterion_main, Criterion, Throughput};
+use criterion::{Criterion, Throughput, criterion_group, criterion_main};
 use std::hint::black_box;
 use vb_core::{
-    ConstValue, SlotValue,
-    ResourceContract, RunId, StepIdx, SlotIdx, WorkflowDigest, WorkflowParts,
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx,
-    new_run_frame,
+    CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, ConstValue, ResourceContract,
+    RunId, SlotIdx, SlotValue, StepIdx, WorkflowDigest, WorkflowParts, new_run_frame,
 };
 
-const BENCH_METADATA: &str =
-    "profile=bench;tool=criterion-0.8;durability=mixed;mode=ir-and-generated;latency=p50-p95-p99-by-criterion;allocations=allocator-external;instructions=not-collected";
+const BENCH_METADATA: &str = "profile=bench;tool=criterion-0.8;durability=mixed;mode=ir-and-generated;latency=p50-p95-p99-by-criterion;allocations=allocator-external;instructions=not-collected";
 
 fn metadata(name: &str, fixture_bytes: usize, extra: &str) -> String {
     format!(
@@ -121,7 +118,9 @@ fn bench_memory_footprint(c: &mut Criterion) {
                         while i < 10 {
                             let val = SlotValue::I64(i as i64);
                             // These allocations contribute to memory footprint
-                            let list_id = store.insert_list(vec![val].into_boxed_slice()).expect("list");
+                            let list_id = store
+                                .insert_list(vec![val].into_boxed_slice())
+                                .expect("list");
                             black_box(list_id);
                         }
                         // Get approximate allocation count as memory proxy

@@ -189,6 +189,8 @@ pub enum JournalEvent {
     RunResumed {
         /// Run identifier.
         run: RunId,
+        /// Per-run sequence.
+        seq: EventSeq,
         /// When the run was resumed.
         timestamp: DateTime<Utc>,
     },
@@ -196,6 +198,8 @@ pub enum JournalEvent {
     RunRetried {
         /// Run identifier.
         run: RunId,
+        /// Per-run sequence.
+        seq: EventSeq,
         /// When the run was retried.
         timestamp: DateTime<Utc>,
     },
@@ -207,6 +211,8 @@ pub enum JournalEvent {
         slot_idx: SlotIdx,
         /// The answer value.
         answer: ConstValue,
+        /// Per-run sequence.
+        seq: EventSeq,
         /// When the answer was received.
         timestamp: DateTime<Utc>,
     },
@@ -239,9 +245,6 @@ impl JournalEvent {
     }
 
     /// Event sequence carried by this event.
-    ///
-    /// Lifecycle events (RunResumed, RunRetried, RunAnswered) do not carry sequence numbers
-    /// as they are not part of the durable event log ordering.
     #[must_use]
     pub const fn seq(&self) -> EventSeq {
         match self {
@@ -259,10 +262,10 @@ impl JournalEvent {
             | Self::RetryScheduledEvent { seq, .. }
             | Self::RunCancelled { seq, .. }
             | Self::RunFinished { seq, .. }
-            | Self::RunFailedEvent { seq, .. } => *seq,
-            Self::RunResumed { .. } | Self::RunRetried { .. } | Self::RunAnswered { .. } => {
-                EventSeq::ZERO
-            }
+            | Self::RunFailedEvent { seq, .. }
+            | Self::RunResumed { seq, .. }
+            | Self::RunRetried { seq, .. }
+            | Self::RunAnswered { seq, .. } => *seq,
         }
     }
 

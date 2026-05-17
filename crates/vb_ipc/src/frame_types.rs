@@ -178,8 +178,8 @@ pub fn decode_frame(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::constants::IPC_HEADER_LEN;
     use crate::IpcCommand;
+    use crate::constants::IPC_HEADER_LEN;
     use bytes::Bytes;
 
     fn make_valid_header_bytes() -> [u8; IPC_HEADER_LEN] {
@@ -207,10 +207,7 @@ mod tests {
         bytes[4..6].copy_from_slice(&99u16.to_le_bytes());
 
         let result = IpcFrameHeader::decode(&bytes, MaxPayloadBytes::DEFAULT);
-        assert_eq!(
-            result,
-            Err(IpcError::UnsupportedVersion { actual: 99 })
-        );
+        assert_eq!(result, Err(IpcError::UnsupportedVersion { actual: 99 }));
     }
 
     #[test]
@@ -219,10 +216,7 @@ mod tests {
         bytes[10..12].copy_from_slice(&7u16.to_le_bytes());
 
         let result = IpcFrameHeader::decode(&bytes, MaxPayloadBytes::DEFAULT);
-        assert_eq!(
-            result,
-            Err(IpcError::ReservedNonZero { actual: 7 })
-        );
+        assert_eq!(result, Err(IpcError::ReservedNonZero { actual: 7 }));
     }
 
     #[test]
@@ -260,12 +254,8 @@ mod tests {
     #[test]
     fn header_getter_returns_expected_value() {
         let expected = IpcFrameHeader::new(IpcCommand::Health, 0, 1, 0);
-        let frame = IpcFrame::new(
-            expected,
-            Bytes::new(),
-            MaxPayloadBytes::DEFAULT,
-        )
-        .expect("frame should build");
+        let frame = IpcFrame::new(expected, Bytes::new(), MaxPayloadBytes::DEFAULT)
+            .expect("frame should build");
 
         assert_eq!(frame.header(), expected);
     }
@@ -290,10 +280,7 @@ mod tests {
         bytes[0..4].copy_from_slice(&0u32.to_le_bytes());
 
         let result = decode_frame(&bytes, Bytes::new(), MaxPayloadBytes::DEFAULT);
-        assert_eq!(
-            result,
-            Err(IpcError::InvalidMagic { actual: 0 })
-        );
+        assert_eq!(result, Err(IpcError::InvalidMagic { actual: 0 }));
     }
 
     #[test]
@@ -302,7 +289,11 @@ mod tests {
         let header = IpcFrameHeader::new(IpcCommand::Health, 0, 7, payload_data.len() as u32);
         let header_bytes = header.encode().expect("encode should succeed");
 
-        let result = decode_frame(&header_bytes, Bytes::from(payload_data.clone()), MaxPayloadBytes::DEFAULT);
+        let result = decode_frame(
+            &header_bytes,
+            Bytes::from(payload_data.clone()),
+            MaxPayloadBytes::DEFAULT,
+        );
         let frame = result.expect("decode_frame should succeed");
         assert_eq!(frame.header(), header);
         assert_eq!(frame.payload().bytes().as_ref(), payload_data.as_slice());

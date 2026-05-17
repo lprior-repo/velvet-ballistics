@@ -5,12 +5,11 @@
 
 #![allow(missing_docs)]
 
-use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
-use std::hint::black_box;
+use criterion::{BenchmarkId, Criterion, Throughput, criterion_group, criterion_main};
 use crossbeam_queue::ArrayQueue;
+use std::hint::black_box;
 
-const BENCH_METADATA: &str =
-    "profile=bench;tool=criterion-0.8;durability=mixed;mode=ir-and-generated;latency=p50-p95-p99-by-criterion;allocations=allocator-external;instructions=not-collected";
+const BENCH_METADATA: &str = "profile=bench;tool=criterion-0.8;durability=mixed;mode=ir-and-generated;latency=p50-p95-p99-by-criterion;allocations=allocator-external;instructions=not-collected";
 
 fn metadata(name: &str, fixture_bytes: usize, extra: &str) -> String {
     format!(
@@ -43,14 +42,8 @@ fn bench_array_queue(c: &mut Criterion) {
                     let item = QueueItem(42);
                     let result = queue.push(item);
                     // Exact assertion: push on non-full queue must succeed
-                    assert!(
-                        result.is_ok(),
-                        "push on empty ArrayQueue must succeed"
-                    );
-                    assert_eq!(
-                        queue.len(), 1,
-                        "queue len must be 1 after push"
-                    );
+                    assert!(result.is_ok(), "push on empty ArrayQueue must succeed");
+                    assert_eq!(queue.len(), 1, "queue len must be 1 after push");
                     black_box(queue)
                 });
             },
@@ -79,18 +72,13 @@ fn bench_array_queue(c: &mut Criterion) {
                     // Pop one
                     let popped = queue.pop();
                     // Exact assertion: popped item must be first (FIFO)
-                    assert!(
-                        popped.is_some(),
-                        "pop on non-empty queue must return Some"
-                    );
+                    assert!(popped.is_some(), "pop on non-empty queue must return Some");
                     assert_eq!(
-                        popped.expect("item").0, 0,
+                        popped.expect("item").0,
+                        0,
                         "first popped item must be QueueItem(0) — FIFO order"
                     );
-                    assert_eq!(
-                        queue.len(), 99,
-                        "queue len must be 99 after one pop"
-                    );
+                    assert_eq!(queue.len(), 99, "queue len must be 99 after one pop");
                     black_box(popped)
                 });
             },
@@ -118,10 +106,7 @@ fn bench_array_queue(c: &mut Criterion) {
                     // Push second item — must return Err with item
                     let item = QueueItem(999);
                     let result = queue.push(item);
-                    assert!(
-                        result.is_err(),
-                        "push on full ArrayQueue must return Err"
-                    );
+                    assert!(result.is_err(), "push on full ArrayQueue must return Err");
                     // Item NOT lost — returned in Err
                     let returned_item = result.expect_err("err");
                     assert_eq!(
@@ -130,12 +115,14 @@ fn bench_array_queue(c: &mut Criterion) {
                     );
                     // Original item still in queue
                     assert_eq!(
-                        queue.len(), 1,
+                        queue.len(),
+                        1,
                         "queue must still contain 1 item after rejected push"
                     );
                     let original = queue.pop();
                     assert_eq!(
-                        original.expect("item").0, 0,
+                        original.expect("item").0,
+                        0,
                         "original item QueueItem(0) must still be in queue"
                     );
                     black_box(result)
@@ -160,28 +147,15 @@ fn bench_array_queue(c: &mut Criterion) {
                     let mut i = 0u64;
                     while i < 1024 {
                         let result = queue.push(QueueItem(i));
-                        assert!(
-                            result.is_ok(),
-                            "push {} must succeed (within capacity)",
-                            i
-                        );
+                        assert!(result.is_ok(), "push {} must succeed (within capacity)", i);
                         i = i.saturating_add(1);
                     }
                     // Exact assertion: exactly full
-                    assert_eq!(
-                        queue.len(), 1024,
-                        "queue must have exactly 1024 items"
-                    );
-                    assert!(
-                        queue.is_full(),
-                        "queue must be full after 1024 pushes"
-                    );
+                    assert_eq!(queue.len(), 1024, "queue must have exactly 1024 items");
+                    assert!(queue.is_full(), "queue must be full after 1024 pushes");
                     // 1025th push fails
                     let overflow = queue.push(QueueItem(9999));
-                    assert!(
-                        overflow.is_err(),
-                        "1025th push must fail"
-                    );
+                    assert!(overflow.is_err(), "1025th push must fail");
                     black_box(queue)
                 });
             },
@@ -206,20 +180,12 @@ fn bench_array_queue(c: &mut Criterion) {
                         i = i.saturating_add(1);
                     }
                     // Exact assertions: half-full state
-                    assert!(
-                        !queue.is_full(),
-                        "512/1024 queue must NOT be full"
-                    );
+                    assert!(!queue.is_full(), "512/1024 queue must NOT be full");
+                    assert_eq!(queue.len(), 512, "queue len must be 512");
+                    assert_eq!(queue.capacity(), 1024, "queue capacity must be 1024");
                     assert_eq!(
-                        queue.len(), 512,
-                        "queue len must be 512"
-                    );
-                    assert_eq!(
-                        queue.capacity(), 1024,
-                        "queue capacity must be 1024"
-                    );
-                    assert_eq!(
-                        queue.len(), queue.capacity() / 2,
+                        queue.len(),
+                        queue.capacity() / 2,
                         "len must be exactly half of capacity"
                     );
                     black_box(queue)
@@ -260,14 +226,8 @@ fn bench_array_queue(c: &mut Criterion) {
                         popped = popped.saturating_add(1);
                     }
                     // Exact assertion: exactly 1000 items popped
-                    assert_eq!(
-                        popped, 1000,
-                        "must pop exactly 1000 items"
-                    );
-                    assert!(
-                        queue.is_empty(),
-                        "queue must be empty after draining"
-                    );
+                    assert_eq!(popped, 1000, "must pop exactly 1000 items");
+                    assert!(queue.is_empty(), "queue must be empty after draining");
                     black_box(popped)
                 });
             },

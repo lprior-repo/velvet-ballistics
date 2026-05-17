@@ -5,16 +5,15 @@
 
 #![allow(missing_docs)]
 
-use criterion::{criterion_group, criterion_main, Criterion, Throughput};
+use criterion::{Criterion, Throughput, criterion_group, criterion_main};
 use std::hint::black_box;
 use vb_core::{
     CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, ExprIdx, ExprOp, ExprProgram,
-    ResourceContract, StepIdx, SlotIdx, WorkflowDigest, WorkflowParts,
+    ResourceContract, SlotIdx, StepIdx, WorkflowDigest, WorkflowParts,
 };
 
 /// Metadata string for all benchmarks in this group.
-const BENCH_METADATA: &str =
-    "profile=bench;tool=criterion-0.8;durability=mixed;mode=ir-and-generated;latency=p50-p95-p99-by-criterion;allocations=allocator-external;instructions=not-collected";
+const BENCH_METADATA: &str = "profile=bench;tool=criterion-0.8;durability=mixed;mode=ir-and-generated;latency=p50-p95-p99-by-criterion;allocations=allocator-external;instructions=not-collected";
 
 fn metadata(name: &str, fixture_bytes: usize, extra: &str) -> String {
     format!(
@@ -304,7 +303,11 @@ fn bench_ir_traversal(c: &mut Criterion) {
         let wf_bytes = 64usize;
         group.throughput(Throughput::Bytes(wf_bytes as u64));
         group.bench_function(
-            metadata("ir_traverse_df_small", wf_bytes, "fixture=chain_2;surface=ir_traverse_df"),
+            metadata(
+                "ir_traverse_df_small",
+                wf_bytes,
+                "fixture=chain_2;surface=ir_traverse_df",
+            ),
             |b| {
                 b.iter(|| {
                     let count = count_nodes_df(black_box(wf));

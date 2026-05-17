@@ -112,13 +112,12 @@ pub fn send_response(
     response: &IpcResponse,
 ) -> Result<(), IpcServerError> {
     #[cfg(test)]
-    let payload_bytes =
-        if test_hooks::FORCE_POSTCARD_FAIL.get() {
-            Err(postcard::Error::SerializeBufferFull)
-        } else {
-            postcard::to_allocvec(response)
-        }
-        .map_err(|_| IpcServerError::ResponseEncodeFailed)?;
+    let payload_bytes = if test_hooks::FORCE_POSTCARD_FAIL.get() {
+        Err(postcard::Error::SerializeBufferFull)
+    } else {
+        postcard::to_allocvec(response)
+    }
+    .map_err(|_| IpcServerError::ResponseEncodeFailed)?;
 
     #[cfg(not(test))]
     let payload_bytes =
@@ -135,13 +134,12 @@ pub fn send_response(
     );
 
     #[cfg(test)]
-    let header_bytes =
-        if test_hooks::FORCE_HEADER_ENCODE_FAIL.get() {
-            Err(crate::IpcError::HeaderEncodeFailed)
-        } else {
-            header.encode()
-        }
-        .map_err(|_| IpcServerError::ResponseEncodeFailed)?;
+    let header_bytes = if test_hooks::FORCE_HEADER_ENCODE_FAIL.get() {
+        Err(crate::IpcError::HeaderEncodeFailed)
+    } else {
+        header.encode()
+    }
+    .map_err(|_| IpcServerError::ResponseEncodeFailed)?;
 
     #[cfg(not(test))]
     let header_bytes = header
@@ -162,15 +160,14 @@ pub fn send_response(
     }
     if write_buffer.is_empty() {
         #[cfg(test)]
-        let flush_result =
-            if test_hooks::FORCE_FLUSH_FAIL.get() {
-                Err(std::io::Error::new(
-                    std::io::ErrorKind::BrokenPipe,
-                    "flush fail",
-                ))
-            } else {
-                stream.flush()
-            };
+        let flush_result = if test_hooks::FORCE_FLUSH_FAIL.get() {
+            Err(std::io::Error::new(
+                std::io::ErrorKind::BrokenPipe,
+                "flush fail",
+            ))
+        } else {
+            stream.flush()
+        };
 
         #[cfg(not(test))]
         let flush_result = stream.flush();

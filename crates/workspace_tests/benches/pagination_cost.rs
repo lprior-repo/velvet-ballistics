@@ -4,13 +4,12 @@
 
 #![allow(missing_docs)]
 
-use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
+use criterion::{BenchmarkId, Criterion, Throughput, criterion_group, criterion_main};
 use std::hint::black_box;
 use vb_core::ids::{ListId, RunId, SlotIdx};
 use vb_runtime::primitives::collect::{CollectPaginationState, CollectStates};
 
-const BENCH_METADATA: &str =
-    "profile=bench;tool=criterion-0.8;durability=mixed;mode=ir-and-generated;latency=p50-p95-p99-by-criterion;allocations=allocator-external;instructions=not-collected";
+const BENCH_METADATA: &str = "profile=bench;tool=criterion-0.8;durability=mixed;mode=ir-and-generated;latency=p50-p95-p99-by-criterion;allocations=allocator-external;instructions=not-collected";
 
 fn metadata(name: &str, fixture_bytes: usize, extra: &str) -> String {
     format!(
@@ -123,21 +122,12 @@ fn bench_pagination_cost(c: &mut Criterion) {
                     };
                     let result = states.upsert(state);
                     // Exact assertion: insert must succeed
-                    assert!(
-                        result.is_ok(),
-                        "first insert into empty table must succeed"
-                    );
+                    assert!(result.is_ok(), "first insert into empty table must succeed");
                     // Exact assertion: state must be retrievable with exact values
                     let found = states.find(run_id, slot, ListId::new(2));
-                    assert!(
-                        found.is_some(),
-                        "inserted state must be findable"
-                    );
+                    assert!(found.is_some(), "inserted state must be findable");
                     let found_state = found.expect("exists");
-                    assert_eq!(
-                        found_state.cursor, 0,
-                        "inserted state cursor must be 0"
-                    );
+                    assert_eq!(found_state.cursor, 0, "inserted state cursor must be 0");
                     assert_eq!(
                         found_state.page_size, 50,
                         "inserted state page_size must be 50"
@@ -181,22 +171,13 @@ fn bench_pagination_cost(c: &mut Criterion) {
                     };
                     let result = states.upsert(second_state);
                     // Exact assertion: upsert must succeed
-                    assert!(
-                        result.is_ok(),
-                        "second page upsert must succeed"
-                    );
+                    assert!(result.is_ok(), "second page upsert must succeed");
 
                     // Find second page — exact cursor value
                     let found = states.find(run_id, slot, second_page);
-                    assert!(
-                        found.is_some(),
-                        "second page must be findable after upsert"
-                    );
+                    assert!(found.is_some(), "second page must be findable after upsert");
                     let found_state = found.expect("exists");
-                    assert_eq!(
-                        found_state.cursor, 50,
-                        "second page cursor must be 50"
-                    );
+                    assert_eq!(found_state.cursor, 50, "second page cursor must be 50");
                     assert_eq!(
                         found_state.current_page, second_page,
                         "current_page must be ListId(3)"
@@ -238,18 +219,9 @@ fn bench_pagination_cost(c: &mut Criterion) {
                         "entry at (50, slot) must be findable in 100-entry table"
                     );
                     let s = found.expect("exists");
-                    assert_eq!(
-                        s.cursor, 2500,
-                        "cursor must equal 50 * 50 = 2500"
-                    );
-                    assert_eq!(
-                        s.page_size, 50,
-                        "page_size must be 50"
-                    );
-                    assert_eq!(
-                        s.item_count, 100,
-                        "item_count must be 100"
-                    );
+                    assert_eq!(s.cursor, 2500, "cursor must equal 50 * 50 = 2500");
+                    assert_eq!(s.page_size, 50, "page_size must be 50");
+                    assert_eq!(s.item_count, 100, "item_count must be 100");
                     black_box(found);
                 });
             },
@@ -304,12 +276,10 @@ fn bench_pagination_cost(c: &mut Criterion) {
                         "10th page state must exist in lineage table"
                     );
                     let s = found.expect("exists");
+                    assert_eq!(s.cursor, 450, "10th page cursor must be 450 (9 * 50)");
                     assert_eq!(
-                        s.cursor, 450,
-                        "10th page cursor must be 450 (9 * 50)"
-                    );
-                    assert_eq!(
-                        s.current_page, ListId::new(9),
+                        s.current_page,
+                        ListId::new(9),
                         "current_page must be ListId(9)"
                     );
                     black_box(found);

@@ -5,12 +5,11 @@
 
 #![allow(missing_docs)]
 
-use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
-use std::hint::black_box;
+use criterion::{BenchmarkId, Criterion, Throughput, criterion_group, criterion_main};
 use rtrb::RingBuffer;
+use std::hint::black_box;
 
-const BENCH_METADATA: &str =
-    "profile=bench;tool=criterion-0.8;durability=mixed;mode=ir-and-generated;latency=p50-p95-p99-by-criterion;allocations=allocator-external;instructions=not-collected";
+const BENCH_METADATA: &str = "profile=bench;tool=criterion-0.8;durability=mixed;mode=ir-and-generated;latency=p50-p95-p99-by-criterion;allocations=allocator-external;instructions=not-collected";
 
 fn metadata(name: &str, fixture_bytes: usize, extra: &str) -> String {
     format!(
@@ -96,10 +95,7 @@ fn bench_rtrb(c: &mut Criterion) {
                     let item = TraceEvent(42);
                     let result = prod.push(item);
                     // Exact assertion: push on non-full buffer succeeds
-                    assert!(
-                        result.is_ok(),
-                        "push on empty rtrb buffer must succeed"
-                    );
+                    assert!(result.is_ok(), "push on empty rtrb buffer must succeed");
                     black_box(result)
                 });
             },
@@ -121,12 +117,10 @@ fn bench_rtrb(c: &mut Criterion) {
                     let (prod, mut cons) = ringbuffer_100_items();
                     let popped = cons.pop();
                     // Exact assertion: pop returns first item in FIFO order
-                    assert!(
-                        popped.is_some(),
-                        "pop on non-empty buffer must return Some"
-                    );
+                    assert!(popped.is_some(), "pop on non-empty buffer must return Some");
                     assert_eq!(
-                        popped.expect("item").0, 0,
+                        popped.expect("item").0,
+                        0,
                         "first popped item must be TraceEvent(0) — FIFO order"
                     );
                     black_box(popped)
@@ -150,10 +144,7 @@ fn bench_rtrb(c: &mut Criterion) {
                     let item = TraceEvent(999);
                     let result = prod.push(item);
                     // Exact assertion: push on full buffer returns Err with item
-                    assert!(
-                        result.is_err(),
-                        "push on full rtrb buffer must return Err"
-                    );
+                    assert!(result.is_err(), "push on full rtrb buffer must return Err");
                     let returned_item = result.expect_err("err");
                     assert_eq!(
                         returned_item.0, 999,
@@ -179,10 +170,7 @@ fn bench_rtrb(c: &mut Criterion) {
                     let (prod, mut cons) = ringbuffer_100_items();
                     let peeked = cons.peek();
                     // Exact assertion: peek returns reference to head without removing
-                    assert!(
-                        peeked.is_ok(),
-                        "peek on non-empty buffer must return Ok"
-                    );
+                    assert!(peeked.is_ok(), "peek on non-empty buffer must return Ok");
                     let item_ref = peeked.expect("item");
                     assert_eq!(
                         item_ref.0, 0,
@@ -190,7 +178,8 @@ fn bench_rtrb(c: &mut Criterion) {
                     );
                     // Buffer unchanged after peek
                     assert_eq!(
-                        cons.pop().expect("item").0, 0,
+                        cons.pop().expect("item").0,
+                        0,
                         "first pop after peek must still be TraceEvent(0)"
                     );
                     black_box(peeked)
@@ -213,14 +202,8 @@ fn bench_rtrb(c: &mut Criterion) {
                     let (prod, cons) = ringbuffer_50_items();
                     drop(prod); // Drop producer to avoid borrow issues
                     // Exact assertions on half-full buffer
-                    assert!(
-                        !cons.is_full(),
-                        "50/128 buffer must NOT be full"
-                    );
-                    assert!(
-                        !cons.is_empty(),
-                        "50/128 buffer must NOT be empty"
-                    );
+                    assert!(!cons.is_full(), "50/128 buffer must NOT be full");
+                    assert!(!cons.is_empty(), "50/128 buffer must NOT be empty");
                     // Default capacity is 128 (const generic)
                     black_box(cons)
                 });
@@ -257,14 +240,8 @@ fn bench_rtrb(c: &mut Criterion) {
                         popped += 1;
                     }
                     // Exact assertion: 1000 total items processed
-                    assert_eq!(
-                        popped, 1000,
-                        "must process exactly 1000 items"
-                    );
-                    assert!(
-                        cons.is_empty(),
-                        "buffer must be empty after draining"
-                    );
+                    assert_eq!(popped, 1000, "must process exactly 1000 items");
+                    assert!(cons.is_empty(), "buffer must be empty after draining");
                     black_box(popped)
                 });
             },

@@ -4,15 +4,14 @@
 
 #![allow(missing_docs)]
 
-use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
+use criterion::{BenchmarkId, Criterion, Throughput, criterion_group, criterion_main};
 use std::hint::black_box;
 use std::time::{Duration, Instant};
 use vb_core::ids::RunId;
 use vb_runtime::shard::timer_wheel::TimerWheel;
 use vb_runtime::shard::types::PendingTimerKind;
 
-const BENCH_METADATA: &str =
-    "profile=bench;tool=criterion-0.8;durability=mixed;mode=ir-and-generated;latency=p50-p95-p99-by-criterion;allocations=allocator-external;instructions=not-collected";
+const BENCH_METADATA: &str = "profile=bench;tool=criterion-0.8;durability=mixed;mode=ir-and-generated;latency=p50-p95-p99-by-criterion;allocations=allocator-external;instructions=not-collected";
 
 fn metadata(name: &str, fixture_bytes: usize, extra: &str) -> String {
     format!(
@@ -109,13 +108,11 @@ fn bench_timer_wheel_tick(c: &mut Criterion) {
                     let fired = wheel.fire_expired(now);
                     // Exact assertion: empty wheel fires exactly 0 timers
                     assert_eq!(
-                        fired.len(), 0,
+                        fired.len(),
+                        0,
                         "fire_expired on empty wheel must return 0 entries"
                     );
-                    assert!(
-                        wheel.is_empty(),
-                        "wheel must be empty after firing"
-                    );
+                    assert!(wheel.is_empty(), "wheel must be empty after firing");
                     black_box(fired)
                 });
             },
@@ -137,12 +134,10 @@ fn bench_timer_wheel_tick(c: &mut Criterion) {
                     let mut wheel = wheel_1_expired(now);
                     let fired = wheel.fire_expired(now);
                     // Exact assertion: 1 expired timer fired
+                    assert_eq!(fired.len(), 1, "fire_expired must return exactly 1 entry");
                     assert_eq!(
-                        fired.len(), 1,
-                        "fire_expired must return exactly 1 entry"
-                    );
-                    assert_eq!(
-                        fired[0].run, RunId::new(1),
+                        fired[0].run,
+                        RunId::new(1),
                         "fired timer must have run_id=1"
                     );
                     // Timer removed from both indexes
@@ -172,7 +167,8 @@ fn bench_timer_wheel_tick(c: &mut Criterion) {
                     let fired = wheel.fire_expired(now);
                     // Exact assertion: all 10 expired timers fired
                     assert_eq!(
-                        fired.len(), 10,
+                        fired.len(),
+                        10,
                         "fire_expired must return exactly 10 entries"
                     );
                     // Timers removed
@@ -202,7 +198,8 @@ fn bench_timer_wheel_tick(c: &mut Criterion) {
                     let fired = wheel.fire_expired(now);
                     // Exact assertion: exactly 90 expired timers fired
                     assert_eq!(
-                        fired.len(), 90,
+                        fired.len(),
+                        90,
                         "fire_expired must return exactly 90 expired entries"
                     );
                     // 10 future timers remain
@@ -231,10 +228,7 @@ fn bench_timer_wheel_tick(c: &mut Criterion) {
                     let mut wheel = wheel_100(now);
                     let cancelled = wheel.cancel(RunId::new(50));
                     // Exact assertion: cancel returns true for existing timer
-                    assert!(
-                        cancelled,
-                        "cancel of existing timer 50 must return true"
-                    );
+                    assert!(cancelled, "cancel of existing timer 50 must return true");
                     // Cancelled timer no longer fires
                     let fired = wheel.fire_expired(now + Duration::from_secs(1));
                     assert!(
@@ -272,10 +266,7 @@ fn bench_timer_wheel_tick(c: &mut Criterion) {
                         "wheel with 10 timers must have a next deadline"
                     );
                     let d = deadline.expect("some");
-                    assert!(
-                        d > now,
-                        "next deadline must be in the future"
-                    );
+                    assert!(d > now, "next deadline must be in the future");
                     black_box(deadline)
                 });
             },

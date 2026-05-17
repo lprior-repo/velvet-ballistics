@@ -4,19 +4,16 @@
 
 #![allow(missing_docs)]
 
-use criterion::{criterion_group, criterion_main, Criterion, Throughput};
+use criterion::{Criterion, Throughput, criterion_group, criterion_main};
 use std::hint::black_box;
-use vb_core::{
-    StepIdx, SlotIdx, SlotValue, Taint,
-};
-use vb_core::ids::ListId;
-use vb_runtime::primitives::collect::{CollectPaginationState, CollectStates};
-use vb_runtime::primitives::collect::collect_page;
 use vb_core::frame::RunFrame;
+use vb_core::ids::ListId;
 use vb_core::ids::RunId;
+use vb_core::{SlotIdx, SlotValue, StepIdx, Taint};
+use vb_runtime::primitives::collect::collect_page;
+use vb_runtime::primitives::collect::{CollectPaginationState, CollectStates};
 
-const BENCH_METADATA: &str =
-    "profile=bench;tool=criterion-0.8;durability=mixed;mode=ir-and-generated;latency=p50-p95-p99-by-criterion;allocations=allocator-external;instructions=not-collected";
+const BENCH_METADATA: &str = "profile=bench;tool=criterion-0.8;durability=mixed;mode=ir-and-generated;latency=p50-p95-p99-by-criterion;allocations=allocator-external;instructions=not-collected";
 
 fn metadata(name: &str, fixture_bytes: usize, extra: &str) -> String {
     format!(
@@ -119,19 +116,10 @@ fn bench_collect_page(c: &mut Criterion) {
                     // Find it back
                     let found = states.find(run_id, slot, ListId::new(2));
                     // Exact assertion: must find the exact state we inserted
-                    assert!(
-                        found.is_some(),
-                        "first page state must be findable"
-                    );
+                    assert!(found.is_some(), "first page state must be findable");
                     let found_state = found.expect("state exists");
-                    assert_eq!(
-                        found_state.cursor, 0,
-                        "cursor must be 0 on first page"
-                    );
-                    assert_eq!(
-                        found_state.page_size, 50,
-                        "page_size must be 50"
-                    );
+                    assert_eq!(found_state.cursor, 0, "cursor must be 0 on first page");
+                    assert_eq!(found_state.page_size, 50, "page_size must be 50");
                     black_box(found);
                 });
             },
@@ -185,17 +173,15 @@ fn bench_collect_page(c: &mut Criterion) {
 
                     // Find second page — exact assertion on cursor
                     let found = states.find(run_id, slot, ListId::new(3));
-                    assert!(
-                        found.is_some(),
-                        "second page state must be findable"
-                    );
+                    assert!(found.is_some(), "second page state must be findable");
                     let found_state = found.expect("state exists");
                     assert_eq!(
                         found_state.cursor, 50,
                         "cursor must advance to 50 on second page"
                     );
                     assert_eq!(
-                        found_state.current_page, ListId::new(3),
+                        found_state.current_page,
+                        ListId::new(3),
                         "current_page must be ListId(3)"
                     );
                     black_box(found);
@@ -285,10 +271,7 @@ fn bench_collect_page(c: &mut Criterion) {
                     }
                     // Exact assertion: 10 entries must exist
                     let final_found = states.find(run_id, slot, ListId::new(9));
-                    assert!(
-                        final_found.is_some(),
-                        "page 9 state must be findable"
-                    );
+                    assert!(final_found.is_some(), "page 9 state must be findable");
                     let final_state = final_found.expect("state");
                     assert_eq!(
                         final_state.cursor, 900,
@@ -316,17 +299,15 @@ fn bench_collect_page(c: &mut Criterion) {
                     // Find entry at RunId(50), SlotIdx(50 % 256)
                     let run_id = RunId::new(50);
                     let slot = SlotIdx::new(u16::try_from(50 % 256).unwrap_or(0));
-                    let found = states.find(run_id, slot, ListId::new(u32::try_from(50).unwrap_or(0)));
+                    let found =
+                        states.find(run_id, slot, ListId::new(u32::try_from(50).unwrap_or(0)));
                     // Exact assertion: must return Some with exact cursor value
                     assert!(
                         found.is_some(),
                         "entry at (50, slot) must be findable in 100-entry table"
                     );
                     let s = found.expect("exists");
-                    assert_eq!(
-                        s.cursor, 50 * 50,
-                        "cursor must equal run_id * 50"
-                    );
+                    assert_eq!(s.cursor, 50 * 50, "cursor must equal run_id * 50");
                     black_box(found);
                 });
             },

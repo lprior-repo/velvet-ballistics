@@ -1,11 +1,44 @@
 {
   "kani-version": "0.67.0",
   "file-version": "0.1",
-  "standard-harnesses": {},
+  "standard-harnesses": {
+    "vb_0253_7_lifecycle_commands": {
+      "path": "verification/kani/vb_0253_7_lifecycle_commands.rs",
+      "description": "Kani harnesses for lifecycle command sequences (KANI-001)",
+      "harnesses": [
+        "harness_cancel_never_panics",
+        "harness_resume_never_panics",
+        "harness_retry_never_panics",
+        "harness_answer_never_panics",
+        "harness_state_transitions_never_panics",
+        "harness_derive_never_panics",
+        "harness_lifecycle_preconditions",
+        "harness_terminal_states_block_all",
+        "coverage_cancel_paths",
+        "coverage_answer_paths"
+      ]
+    },
+    "vb_0253_7_lifecycle_preconditions": {
+      "path": "verification/kani/vb_0253_7_lifecycle_preconditions.rs",
+      "description": "Kani harnesses for lifecycle preconditions (KANI-002)",
+      "harnesses": [
+        "harness_valid_transitions_pass",
+        "harness_invalid_transitions_fail",
+        "harness_transition_is_total",
+        "harness_all_combinations_covered",
+        "harness_answer_requires_waiting",
+        "harness_mutating_commands_require_non_terminal",
+        "harness_terminal_blocks_all",
+        "harness_non_terminal_allows_some_command",
+        "harness_pending_blocks_all",
+        "coverage_valid_edges"
+      ]
+    }
+  },
   "contract-harnesses": {},
   "contracts": [],
   "totals": {
-    "standard-harnesses": 0,
+    "standard-harnesses": 2,
     "contract-harnesses": 0,
     "functions-under-contract": 0
   }

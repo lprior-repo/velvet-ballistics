@@ -15,17 +15,18 @@
 //! Evidence command: `cargo test --test lifecycle_integration -- --test-threads=1`
 //! Expected result: compilation errors OR test failures until lifecycle commands exist.
 
-use vb_core::ids::{RunId, StepIdx, WorkflowDigest};
+use vb_core::ids::{RunId, SlotIdx, StepIdx, WorkflowDigest};
 use vb_core::workflow::{
     CompiledNode, CompiledNodeKind, CompiledWorkflow, LifecycleState, ResourceContract,
     WorkflowParts,
 };
 use vb_storage::FjallJournal;
+use vb_storage::JournalEvent;
 use vb_storage::records::RecordKind;
 use vb_storage::types::EventSeq;
 
 // Test helpers for lifecycle state setup
-use vb_cli::lifecycle::test_helpers::{create_run_header, reset_tracker, set_lifecycle_state};
+use vb_cli::lifecycle::test_helpers::{create_run_header, reset_tracker};
 
 // ============================================================================
 // Test Fixtures
@@ -76,6 +77,108 @@ fn temp_journal() -> (tempfile::TempDir, FjallJournal) {
 }
 
 // ============================================================================
+// Journal Event Helpers — replace TRACKER-based set_lifecycle_state()
+//
+// After journal-derivation, commands derive state from journal events.
+// These helpers write the correct event sequences to derive target states.
+// ============================================================================
+
+/// Writes RunAccepted event to journal — derives to Active state.
+fn write_run_accepted(journal: &FjallJournal, run: RunId) {
+    let event = JournalEvent::RunAccepted {
+        run,
+        seq: EventSeq::ZERO,
+        workflow: WorkflowDigest::from_bytes([0x42u8; 32]),
+    };
+    journal
+        .append_journaled(&event)
+        .expect("append RunAccepted must succeed");
+}
+
+/// Writes RunAccepted at specific sequence, then AskScheduledEvent — derives to WaitingAnswer.
+fn write_waiting_answer(journal: &FjallJournal, run: RunId) {
+    let event0 = JournalEvent::RunAccepted {
+        run,
+        seq: EventSeq::ZERO,
+        workflow: WorkflowDigest::from_bytes([0x42u8; 32]),
+    };
+    journal
+        .append_journaled(&event0)
+        .expect("append RunAccepted must succeed");
+    let event1 = JournalEvent::AskScheduledEvent {
+        run,
+        seq: EventSeq::new(1),
+        step: StepIdx::ZERO,
+        attempt: 1,
+    };
+    journal
+        .append_journaled(&event1)
+        .expect("append AskScheduledEvent must succeed");
+}
+
+/// Writes RunAccepted at seq=0, RunCancelled at seq=1 — derives to Cancelled state.
+fn write_cancelled(journal: &FjallJournal, run: RunId) {
+    let event0 = JournalEvent::RunAccepted {
+        run,
+        seq: EventSeq::ZERO,
+        workflow: WorkflowDigest::from_bytes([0x42u8; 32]),
+    };
+    journal
+        .append_journaled(&event0)
+        .expect("append RunAccepted must succeed");
+    let event1 = JournalEvent::RunCancelled {
+        run,
+        seq: EventSeq::new(1),
+        attempt: 1,
+        reason: None,
+    };
+    journal
+        .append_journaled(&event1)
+        .expect("append RunCancelled must succeed");
+}
+
+/// Writes RunAccepted at seq=0, RunFailedEvent at seq=1 — derives to Failed state.
+fn write_failed(journal: &FjallJournal, run: RunId) {
+    let event0 = JournalEvent::RunAccepted {
+        run,
+        seq: EventSeq::ZERO,
+        workflow: WorkflowDigest::from_bytes([0x42u8; 32]),
+    };
+    journal
+        .append_journaled(&event0)
+        .expect("append RunAccepted must succeed");
+    let event1 = JournalEvent::RunFailedEvent {
+        run,
+        seq: EventSeq::new(1),
+        attempt: 1,
+    };
+    journal
+        .append_journaled(&event1)
+        .expect("append RunFailedEvent must succeed");
+}
+
+/// Writes RunAccepted at seq=0, RunFinished at seq=1 — derives to Completed state.
+fn write_completed(journal: &FjallJournal, run: RunId) {
+    let event0 = JournalEvent::RunAccepted {
+        run,
+        seq: EventSeq::ZERO,
+        workflow: WorkflowDigest::from_bytes([0x42u8; 32]),
+    };
+    journal
+        .append_journaled(&event0)
+        .expect("append RunAccepted must succeed");
+    let event1 = JournalEvent::RunFinished {
+        run,
+        seq: EventSeq::new(1),
+        result: SlotIdx::ZERO,
+        attempt: 1,
+    };
+    journal
+        .append_journaled(&event1)
+        .expect("append RunFinished must succeed");
+}
+
+// ============================================================================
 // Group A: Happy Path Lifecycle Commands
 //
 // Tests from test-plan.md Group A: cancel, resume, retry, answer from valid states
@@ -86,12 +189,13 @@ fn temp_journal() -> (tempfile::TempDir, FjallJournal) {
 /// POST-002: bead transitions to Cancelled
 #[test]
 fn cancel_succeeds_when_bead_is_active() {
+    reset_tracker();
     let (_dir, journal) = temp_journal();
     let run = RunId::new(1);
     create_run_header(&journal, run);
 
-    // Set initial state to Active (PRE-002: valid prior state required)
-    set_lifecycle_state(run, LifecycleState::Active);
+    // Write journal events to derive Active state (replaces set_lifecycle_state)
+    write_run_accepted(&journal, run);
 
     let result = vb_cli::lifecycle::cancel(run, &journal);
     assert!(
@@ -103,11 +207,15 @@ fn cancel_succeeds_when_bead_is_active() {
     let events = journal
         .events_for_run(run)
         .expect("events_for_run must succeed");
-    assert_eq!(events.len(), 1, "cancel must append exactly 1 event");
+    assert_eq!(
+        events.len(),
+        2,
+        "cancel must append exactly 1 event (setup + cancel)"
+    );
     assert!(
-        matches!(events[0], vb_storage::JournalEvent::RunCancelled { run: r, .. } if r == run),
+        matches!(events[1], vb_storage::JournalEvent::RunCancelled { run: r, .. } if r == run),
         "journal event must be RunCancelled: {:?}",
-        events[0]
+        events[1]
     );
 
     // POST-002: verify state transition via replay
@@ -130,12 +238,13 @@ fn cancel_succeeds_when_bead_is_active() {
 /// POST-002: bead transitions to Cancelled
 #[test]
 fn cancel_succeeds_when_bead_is_waiting_answer() {
+    reset_tracker();
     let (_dir, journal) = temp_journal();
     let run = RunId::new(2);
     create_run_header(&journal, run);
 
-    // Set initial state to WaitingAnswer (PRE-002: valid prior state required)
-    set_lifecycle_state(run, LifecycleState::WaitingAnswer);
+    // Write journal events to derive WaitingAnswer state (replaces set_lifecycle_state)
+    write_waiting_answer(&journal, run);
 
     let result = vb_cli::lifecycle::cancel(run, &journal);
     assert!(
@@ -143,15 +252,19 @@ fn cancel_succeeds_when_bead_is_waiting_answer() {
         "cancel from WaitingAnswer state must succeed: {result:?}"
     );
 
-    // POST-001: verify exactly one RunCancelled event in journal
+    // POST-001: verify RunCancelled event appended (3 total: setup + AskScheduled + cancel)
     let events = journal
         .events_for_run(run)
         .expect("events_for_run must succeed");
-    assert_eq!(events.len(), 1, "cancel must append exactly 1 event");
+    assert_eq!(
+        events.len(),
+        3,
+        "cancel must append exactly 1 event (setup + AskScheduled + cancel)"
+    );
     assert!(
-        matches!(events[0], vb_storage::JournalEvent::RunCancelled { run: r, .. } if r == run),
+        matches!(events[2], vb_storage::JournalEvent::RunCancelled { run: r, .. } if r == run),
         "journal event must be RunCancelled: {:?}",
-        events[0]
+        events[2]
     );
 
     // POST-002: verify state transition via replay
@@ -173,12 +286,13 @@ fn cancel_succeeds_when_bead_is_waiting_answer() {
 /// POST-001: exactly one RuntimeJournalEvent::Resumed appended, bead transitions to Active
 #[test]
 fn resume_succeeds_when_bead_is_cancelled() {
+    reset_tracker();
     let (_dir, journal) = temp_journal();
     let run = RunId::new(3);
     create_run_header(&journal, run);
 
-    // Set initial state to Cancelled (PRE-002: valid prior state required)
-    set_lifecycle_state(run, LifecycleState::Cancelled);
+    // Write journal events to derive Cancelled state (replaces set_lifecycle_state)
+    write_cancelled(&journal, run);
 
     let result = vb_cli::lifecycle::resume(run, &journal);
     assert!(
@@ -186,15 +300,19 @@ fn resume_succeeds_when_bead_is_cancelled() {
         "resume from Cancelled state must succeed: {result:?}"
     );
 
-    // POST-001: verify exactly one RunResumed event in journal
+    // POST-001: verify exactly one RunResumed event in journal (3 total: setup + cancel + resume)
     let events = journal
         .events_for_run(run)
         .expect("events_for_run must succeed");
-    assert_eq!(events.len(), 1, "resume must append exactly 1 event");
+    assert_eq!(
+        events.len(),
+        3,
+        "resume must append exactly 1 event (setup + cancel + resume)"
+    );
     assert!(
-        matches!(events[0], vb_storage::JournalEvent::RunResumed { run: r, .. } if r == run),
+        matches!(events[2], vb_storage::JournalEvent::RunResumed { run: r, .. } if r == run),
         "journal event must be RunResumed: {:?}",
-        events[0]
+        events[2]
     );
 
     // POST-002: verify state transition to Active via replay
@@ -216,12 +334,13 @@ fn resume_succeeds_when_bead_is_cancelled() {
 /// POST-001: exactly one RuntimeJournalEvent::Retried appended, bead transitions to Active
 #[test]
 fn retry_succeeds_when_bead_is_failed() {
+    reset_tracker();
     let (_dir, journal) = temp_journal();
     let run = RunId::new(4);
     create_run_header(&journal, run);
 
-    // Set initial state to Failed (PRE-002: valid prior state required)
-    set_lifecycle_state(run, LifecycleState::Failed);
+    // Write journal events to derive Failed state (replaces set_lifecycle_state)
+    write_failed(&journal, run);
 
     let result = vb_cli::lifecycle::retry(run, &journal);
     assert!(
@@ -229,15 +348,19 @@ fn retry_succeeds_when_bead_is_failed() {
         "retry from Failed state must succeed: {result:?}"
     );
 
-    // POST-001: verify exactly one RunRetried event in journal
+    // POST-001: verify exactly one RunRetried event in journal (3 total: setup + Failed + retry)
     let events = journal
         .events_for_run(run)
         .expect("events_for_run must succeed");
-    assert_eq!(events.len(), 1, "retry must append exactly 1 event");
+    assert_eq!(
+        events.len(),
+        3,
+        "retry must append exactly 1 event (setup + Failed + retry)"
+    );
     assert!(
-        matches!(events[0], vb_storage::JournalEvent::RunRetried { run: r, .. } if r == run),
+        matches!(events[2], vb_storage::JournalEvent::RunRetried { run: r, .. } if r == run),
         "journal event must be RunRetried: {:?}",
-        events[0]
+        events[2]
     );
 
     // POST-002: verify state transition to Active via replay
@@ -259,13 +382,14 @@ fn retry_succeeds_when_bead_is_failed() {
 /// POST-001: exactly one RuntimeJournalEvent::Answered appended, bead transitions to Completed
 #[test]
 fn answer_succeeds_when_bead_is_waiting_answer() {
+    reset_tracker();
     let (_dir, journal) = temp_journal();
     let run = RunId::new(5);
     let answer_content = "the answer is 42".to_string();
     create_run_header(&journal, run);
 
-    // Set initial state to WaitingAnswer (PRE-002: valid prior state required)
-    set_lifecycle_state(run, LifecycleState::WaitingAnswer);
+    // Write journal events to derive WaitingAnswer state (replaces set_lifecycle_state)
+    write_waiting_answer(&journal, run);
 
     let result = vb_cli::lifecycle::answer(run, answer_content, &journal);
     assert!(
@@ -273,15 +397,19 @@ fn answer_succeeds_when_bead_is_waiting_answer() {
         "answer from WaitingAnswer state must succeed: {result:?}"
     );
 
-    // POST-001: verify exactly one RunAnswered event in journal
+    // POST-001: verify exactly one RunAnswered event in journal (3 total: setup + AskScheduled + answer)
     let events = journal
         .events_for_run(run)
         .expect("events_for_run must succeed");
-    assert_eq!(events.len(), 1, "answer must append exactly 1 event");
+    assert_eq!(
+        events.len(),
+        3,
+        "answer must append exactly 1 event (setup + AskScheduled + answer)"
+    );
     assert!(
-        matches!(events[0], vb_storage::JournalEvent::RunAnswered { run: r, .. } if r == run),
+        matches!(events[2], vb_storage::JournalEvent::RunAnswered { run: r, .. } if r == run),
         "journal event must be RunAnswered: {:?}",
-        events[0]
+        events[2]
     );
 
     // POST-002: verify state transition to Completed via replay
@@ -820,11 +948,13 @@ fn answer_returns_invalid_transition_when_bead_is_failed() {
 /// duplicate cancel request returns E_DUPLICATE_REQUEST and does not double-write journal
 #[test]
 fn cancel_returns_duplicate_request_when_called_twice() {
+    reset_tracker();
     let (_dir, journal) = temp_journal();
     let run = RunId::new(30);
+    create_run_header(&journal, run);
 
-    // Set initial state to Active (PRE-002: valid prior state required)
-    set_lifecycle_state(run, LifecycleState::Active);
+    // Write journal events to derive Active state (replaces set_lifecycle_state)
+    write_run_accepted(&journal, run);
 
     // First cancel - should succeed
     let first = vb_cli::lifecycle::cancel(run, &journal);
@@ -858,24 +988,25 @@ fn cancel_returns_duplicate_request_when_called_twice() {
 /// POST-004: duplicate request returns error and never double-writes journal
 #[test]
 fn resume_returns_duplicate_request_when_called_twice() {
+    reset_tracker();
     let (_dir, journal) = temp_journal();
     let run = RunId::new(31);
     create_run_header(&journal, run);
 
-    // Set initial state to Cancelled (PRE-002: valid prior state required)
-    set_lifecycle_state(run, LifecycleState::Cancelled);
+    // Write journal events to derive Cancelled state (replaces set_lifecycle_state)
+    write_cancelled(&journal, run);
 
     let first = vb_cli::lifecycle::resume(run, &journal);
     assert!(first.is_ok(), "first resume must succeed: {first:?}");
 
-    // POST-004: verify exactly one event after first resume
+    // POST-004: verify exactly one event after first resume (3 total: setup + cancel + resume)
     let events_after_first = journal
         .events_for_run(run)
         .expect("events_for_run must succeed");
     assert_eq!(
         events_after_first.len(),
-        1,
-        "first resume must append exactly 1 event"
+        3,
+        "first resume must append exactly 1 event (setup + cancel + resume)"
     );
 
     let second = vb_cli::lifecycle::resume(run, &journal);
@@ -887,13 +1018,13 @@ fn resume_returns_duplicate_request_when_called_twice() {
         "duplicate resume must return DuplicateRequest: {second:?}"
     );
 
-    // POST-004: verify journal was not double-written
+    // POST-004: verify journal was not double-written (still 3, no new events)
     let events_after_second = journal
         .events_for_run(run)
         .expect("events_for_run must succeed");
     assert_eq!(
         events_after_second.len(),
-        1,
+        3,
         "duplicate resume must not double-write journal"
     );
 }
@@ -902,24 +1033,25 @@ fn resume_returns_duplicate_request_when_called_twice() {
 /// POST-004: duplicate request returns error and never double-writes journal
 #[test]
 fn retry_returns_duplicate_request_when_called_twice() {
+    reset_tracker();
     let (_dir, journal) = temp_journal();
     let run = RunId::new(32);
     create_run_header(&journal, run);
 
-    // Set initial state to Failed (PRE-002: valid prior state required)
-    set_lifecycle_state(run, LifecycleState::Failed);
+    // Write journal events to derive Failed state (replaces set_lifecycle_state)
+    write_failed(&journal, run);
 
     let first = vb_cli::lifecycle::retry(run, &journal);
     assert!(first.is_ok(), "first retry must succeed: {first:?}");
 
-    // POST-004: verify exactly one event after first retry
+    // POST-004: verify exactly one event after first retry (3 total: setup + Failed + retry)
     let events_after_first = journal
         .events_for_run(run)
         .expect("events_for_run must succeed");
     assert_eq!(
         events_after_first.len(),
-        1,
-        "first retry must append exactly 1 event"
+        3,
+        "first retry must append exactly 1 event (setup + Failed + retry)"
     );
 
     let second = vb_cli::lifecycle::retry(run, &journal);
@@ -931,13 +1063,13 @@ fn retry_returns_duplicate_request_when_called_twice() {
         "duplicate retry must return DuplicateRequest: {second:?}"
     );
 
-    // POST-004: verify journal was not double-written
+    // POST-004: verify journal was not double-written (still 3, no new events)
     let events_after_second = journal
         .events_for_run(run)
         .expect("events_for_run must succeed");
     assert_eq!(
         events_after_second.len(),
-        1,
+        3,
         "duplicate retry must not double-write journal"
     );
 }
@@ -946,24 +1078,25 @@ fn retry_returns_duplicate_request_when_called_twice() {
 /// POST-004: duplicate request returns error and never double-writes journal
 #[test]
 fn answer_returns_duplicate_request_when_called_twice() {
+    reset_tracker();
     let (_dir, journal) = temp_journal();
     let run = RunId::new(33);
     create_run_header(&journal, run);
 
-    // Set initial state to WaitingAnswer (PRE-002: valid prior state required)
-    set_lifecycle_state(run, LifecycleState::WaitingAnswer);
+    // Write journal events to derive WaitingAnswer state (replaces set_lifecycle_state)
+    write_waiting_answer(&journal, run);
 
     let first = vb_cli::lifecycle::answer(run, "answer1".to_string(), &journal);
     assert!(first.is_ok(), "first answer must succeed: {first:?}");
 
-    // POST-004: verify exactly one event after first answer
+    // POST-004: verify exactly one event after first answer (3 total: setup + AskScheduled + answer)
     let events_after_first = journal
         .events_for_run(run)
         .expect("events_for_run must succeed");
     assert_eq!(
         events_after_first.len(),
-        1,
-        "first answer must append exactly 1 event"
+        3,
+        "first answer must append exactly 1 event (setup + AskScheduled + answer)"
     );
 
     let second = vb_cli::lifecycle::answer(run, "answer2".to_string(), &journal);
@@ -975,13 +1108,13 @@ fn answer_returns_duplicate_request_when_called_twice() {
         "duplicate answer must return DuplicateRequest: {second:?}"
     );
 
-    // POST-004: verify journal was not double-written
+    // POST-004: verify journal was not double-written (still 3, no new events)
     let events_after_second = journal
         .events_for_run(run)
         .expect("events_for_run must succeed");
     assert_eq!(
         events_after_second.len(),
-        1,
+        3,
         "duplicate answer must not double-write journal"
     );
 }
@@ -996,12 +1129,13 @@ fn answer_returns_duplicate_request_when_called_twice() {
 /// stale cancel returns E_STALE_REQUEST when state has already advanced to terminal
 #[test]
 fn cancel_returns_stale_request_when_state_already_advanced() {
+    reset_tracker();
     let (_dir, journal) = temp_journal();
     let run = RunId::new(40);
+    create_run_header(&journal, run);
 
-    // Set initial state to Completed (terminal) so cancel returns StaleRequest
-    // PRE-002: valid prior state required; terminal state triggers StaleRequest
-    set_lifecycle_state(run, LifecycleState::Completed);
+    // Write journal events to derive Completed state (replaces set_lifecycle_state)
+    write_completed(&journal, run);
 
     let result = vb_cli::lifecycle::cancel(run, &journal);
     assert!(
@@ -1016,11 +1150,13 @@ fn cancel_returns_stale_request_when_state_already_advanced() {
 /// stale resume returns E_STALE_REQUEST when bead is not in Cancelled state
 #[test]
 fn resume_returns_stale_request_when_not_in_cancelled_state() {
+    reset_tracker();
     let (_dir, journal) = temp_journal();
     let run = RunId::new(41);
+    create_run_header(&journal, run);
 
-    // Set initial state to Completed (terminal) so resume returns StaleRequest
-    set_lifecycle_state(run, LifecycleState::Completed);
+    // Write journal events to derive Completed state (replaces set_lifecycle_state)
+    write_completed(&journal, run);
 
     let result = vb_cli::lifecycle::resume(run, &journal);
     assert!(
@@ -1035,11 +1171,13 @@ fn resume_returns_stale_request_when_not_in_cancelled_state() {
 /// stale retry returns E_STALE_REQUEST when bead is not in Failed state
 #[test]
 fn retry_returns_stale_request_when_not_in_failed_state() {
+    reset_tracker();
     let (_dir, journal) = temp_journal();
     let run = RunId::new(42);
+    create_run_header(&journal, run);
 
-    // Set initial state to Completed (terminal) so retry returns StaleRequest
-    set_lifecycle_state(run, LifecycleState::Completed);
+    // Write journal events to derive Completed state (replaces set_lifecycle_state)
+    write_completed(&journal, run);
 
     let result = vb_cli::lifecycle::retry(run, &journal);
     assert!(
@@ -1062,13 +1200,13 @@ fn retry_returns_stale_request_when_not_in_failed_state() {
 ///           Pending → InvalidTransition (never reached WaitingAnswer)
 #[test]
 fn answer_returns_stale_request_when_not_in_waiting_answer_state() {
+    reset_tracker();
     let (_dir, journal) = temp_journal();
     let run = RunId::new(43);
+    create_run_header(&journal, run);
 
-    // Set initial state to Active (passed WaitingAnswer but not Completed).
-    // This triggers StaleRequest because the run has moved past the point where
-    // answer is valid, but hasn't reached Completed (duplicate) yet.
-    set_lifecycle_state(run, LifecycleState::Active);
+    // Write journal events to derive Active state (replaces set_lifecycle_state)
+    write_run_accepted(&journal, run);
 
     let result = vb_cli::lifecycle::answer(run, "stale answer".to_string(), &journal);
     assert!(
@@ -1124,12 +1262,13 @@ fn replay_from_empty_journal_produces_valid_initial_state() {
 /// 4. Replays and compares state
 #[test]
 fn replay_full_journal_reconstructs_bit_identical_state() {
+    reset_tracker();
     let (_dir, journal) = temp_journal();
     let run = RunId::new(50);
     create_run_header(&journal, run);
 
-    // Drive run through Pending -> Active -> Cancelled
-    set_lifecycle_state(run, LifecycleState::Active);
+    // Drive run through Pending -> Active -> Cancelled via journal events
+    write_run_accepted(&journal, run);
     let _ = vb_cli::lifecycle::cancel(run, &journal);
 
     // Capture pre-crash state via replay
@@ -1173,16 +1312,17 @@ fn replay_full_journal_reconstructs_bit_identical_state() {
 /// CONTRACT: E_REPLAY_CORRUPTION when journal contains malformed event bytes.
 #[test]
 fn replay_with_malformed_event_returns_replay_corruption() {
+    reset_tracker();
     let (_dir, journal) = temp_journal();
     let run = RunId::new(90);
 
     // Create a run header so replay's run_headers() iteration finds this run
     create_run_header(&journal, run);
 
-    // Set initial state to Active (required for cancel to succeed)
-    set_lifecycle_state(run, LifecycleState::Active);
+    // Write journal events to derive Active state (required for cancel to succeed)
+    write_run_accepted(&journal, run);
 
-    // Write a valid cancel event at seq=0
+    // Write a valid cancel event at seq=1
     let _ = vb_cli::lifecycle::cancel(run, &journal);
 
     // Inject malformed bytes at seq=1
@@ -1262,6 +1402,7 @@ fn replay_with_missing_event_returns_replay_corruption() {
 ///   the lifecycle command cannot proceed
 #[test]
 fn lifecycle_command_returns_storage_unavailable_when_not_connected() {
+    reset_tracker();
     // Try with a path that cannot be created (FjallJournal will create it)
     // This test documents the infeasibility of triggering E_STORAGE_UNAVAILABLE
     // in the current architecture without production changes.
@@ -1276,7 +1417,7 @@ fn lifecycle_command_returns_storage_unavailable_when_not_connected() {
         // (This proves a connected journal is required for lifecycle operations)
         let run = RunId::new(999);
         create_run_header(&journal, run);
-        set_lifecycle_state(run, LifecycleState::Active);
+        write_run_accepted(&journal, run);
 
         // This should succeed because journal IS connected
         let result = vb_cli::lifecycle::cancel(run, &journal);
@@ -1295,11 +1436,13 @@ fn lifecycle_command_returns_storage_unavailable_when_not_connected() {
 /// journal write failure returns E_JOURNAL_WRITE_FAILURE
 #[test]
 fn lifecycle_command_returns_journal_write_failure_on_io_error() {
+    reset_tracker();
     let (_dir, journal) = temp_journal();
     let run = RunId::new(60);
+    create_run_header(&journal, run);
 
-    // Set initial state to Active so cancel reaches journal write
-    set_lifecycle_state(run, LifecycleState::Active);
+    // Write journal events to derive Active state so cancel reaches journal write
+    write_run_accepted(&journal, run);
 
     // Note: I/O fault injection not implemented in test - this documents expected behavior.
     // Test will pass if cancel succeeds (no I/O error). To test JournalWriteFailure,
@@ -1348,10 +1491,13 @@ fn invalid_transition_error_includes_structured_diagnostics() {
 /// E_DUPLICATE_REQUEST includes all structured diagnostic fields
 #[test]
 fn duplicate_request_error_includes_structured_diagnostics() {
+    reset_tracker();
     let (_dir, journal) = temp_journal();
     let run = RunId::new(71);
+    create_run_header(&journal, run);
 
-    set_lifecycle_state(run, LifecycleState::Active);
+    // Write journal events to derive Active state (replaces set_lifecycle_state)
+    write_run_accepted(&journal, run);
 
     let _ = vb_cli::lifecycle::cancel(run, &journal);
 
@@ -1375,10 +1521,13 @@ fn duplicate_request_error_includes_structured_diagnostics() {
 /// E_STALE_REQUEST includes all structured diagnostic fields
 #[test]
 fn stale_request_error_includes_structured_diagnostics() {
+    reset_tracker();
     let (_dir, journal) = temp_journal();
     let run = RunId::new(72);
+    create_run_header(&journal, run);
 
-    set_lifecycle_state(run, LifecycleState::Completed);
+    // Write journal events to derive Completed state (replaces set_lifecycle_state)
+    write_completed(&journal, run);
 
     let result = vb_cli::lifecycle::cancel(run, &journal);
     let Err(vb_core::errors::CoreError::LifecycleStaleRequest {

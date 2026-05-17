@@ -1,0 +1,17 @@
+{
+  "bead_id": "vb-0253.7",
+  "state": 2,
+  "sublane": "explore",
+  "delegate": "explore",
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/femdation-vb-0253-7",
+  "input_artifacts": [
+    "/home/lewis/src/femdation-vb-0253-7/.beads/vb-0253.7/STATE.md",
+    "/home/lewis/src/femdation-vb-0253-7/.beads/vb-0253.7/baseline-report.md"
+  ],
+  "output_artifacts": [
+    "/home/lewis/src/femdation-vb-0253-7/.beads/vb-0253.7/codebase-map.md",
+    "/home/lewis/src/femdation-vb-0253-7/.beads/vb-0253.7/delivery-scope.jsonl"
+  ],
+  "attempt": 1
+}

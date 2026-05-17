@@ -54,7 +54,7 @@ fn build_frame(command: IpcCommand, correlation: u64, payload_bytes: &[u8]) -> V
             Err(_) => 0,
         },
     );
-    let encoded = header.encode();
+    let encoded = header.encode().expect("encode header");
     let mut frame = encoded.to_vec();
     frame.extend_from_slice(payload_bytes);
     frame
@@ -320,7 +320,7 @@ fn slow_client_partial_frame_keeps_read_buffer_bounded() {
             Err(_) => return,
         },
     );
-    let header_bytes = header.encode();
+    let header_bytes = header.encode().expect("encode header");
     client
         .write_all(&header_bytes)
         .expect("client should write partial header-only frame");
@@ -369,7 +369,7 @@ fn slow_client_oversized_frame_disconnects_without_unbounded_growth() {
         Err(_) => return,
     };
     let header = IpcFrameHeader::new(IpcCommand::Health, 0, 78, oversized);
-    let header_bytes = header.encode();
+    let header_bytes = header.encode().expect("encode header");
     client
         .write_all(&header_bytes)
         .expect("client should write oversized header");
@@ -1143,8 +1143,6 @@ fn bind_fails_when_path_is_existing_directory() {
     );
 }
 
-
-
 // ── 3. client lifecycle: connect, health, disconnect, reconnect ──────────────
 
 #[test]
@@ -1885,7 +1883,7 @@ fn handle_readable_returns_false_for_complete_header_partial_payload() {
     server.accept_client().expect("accept should succeed");
 
     let header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, 10);
-    let header_bytes = header.encode();
+    let header_bytes = header.encode().expect("encode header");
     client.write_all(&header_bytes).expect("write header");
     client.flush().expect("flush");
 
@@ -2191,11 +2189,7 @@ fn poll_once_with_resolver_uses_test_poll_error_when_set() {
 
     server.set_test_poll_once_result(Err(IpcServerError::TooManyClients));
 
-    let result = server.poll_once_with_resolver(
-        &mut runtime,
-        Some(Duration::ZERO),
-        None,
-    );
+    let result = server.poll_once_with_resolver(&mut runtime, Some(Duration::ZERO), None);
     assert_eq!(
         result,
         Err(IpcServerError::TooManyClients),
@@ -2465,5 +2459,3 @@ fn serve_ipc_returns_ok_false_when_poll_once_indicates_shutdown() {
         "serve_ipc should return Ok(false) when poll_once indicates shutdown"
     );
 }
-
-

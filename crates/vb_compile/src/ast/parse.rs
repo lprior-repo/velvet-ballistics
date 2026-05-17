@@ -670,13 +670,13 @@ mod tests {
     fn parse_u16_field_accepts_boundary_values() {
         let zero_node = parse_yaml("max_attempts: 0");
         match parse_u16_field(&zero_node, 0, "max_attempts") {
-            Ok(0) => {},
+            Ok(0) => {}
             v => panic!("expected Ok(0), got {v:?}"),
         }
 
         let max_node = parse_yaml("max_attempts: 65535");
         match parse_u16_field(&max_node, 0, "max_attempts") {
-            Ok(u16::MAX) => {},
+            Ok(u16::MAX) => {}
             v => panic!("expected Ok(u16::MAX), got {v:?}"),
         }
     }
@@ -685,7 +685,7 @@ mod tests {
     fn parse_u16_field_rejects_over_max() {
         let over_node = parse_yaml("max_attempts: 65536");
         match parse_u16_field(&over_node, 0, "max_attempts") {
-            Err(CompileError::PrimitiveLoweringLimitExceeded { .. }) => {},
+            Err(CompileError::PrimitiveLoweringLimitExceeded { .. }) => {}
             v => panic!("expected PrimitiveLoweringLimitExceeded, got {v:?}"),
         }
     }
@@ -694,7 +694,7 @@ mod tests {
     fn parse_u16_field_rejects_negative_integer() {
         let neg_node = parse_yaml("max_attempts: -1");
         match parse_u16_field(&neg_node, 0, "max_attempts") {
-            Err(CompileError::PrimitiveLoweringLimitExceeded { .. }) => {},
+            Err(CompileError::PrimitiveLoweringLimitExceeded { .. }) => {}
             v => panic!("expected PrimitiveLoweringLimitExceeded, got {v:?}"),
         }
     }
@@ -703,7 +703,7 @@ mod tests {
     fn parse_u16_field_rejects_non_integer() {
         let str_node = parse_yaml("max_attempts: hello");
         match parse_u16_field(&str_node, 0, "max_attempts") {
-            Err(CompileError::StepFieldShape { .. }) => {},
+            Err(CompileError::StepFieldShape { .. }) => {}
             v => panic!("expected StepFieldShape, got {v:?}"),
         }
     }

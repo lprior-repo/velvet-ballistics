@@ -1511,10 +1511,12 @@ fn unsequenced_lifecycle_events_do_not_change_recovered_state() {
         // GA-020a: RunResumed, RunRetried, RunAnswered are unsequenced diagnostics
         JournalEvent::RunResumed {
             run,
+            seq: EventSeq::new(1),
             timestamp: Utc::now(),
         },
         JournalEvent::RunRetried {
             run,
+            seq: EventSeq::new(1),
             timestamp: Utc::now(),
         },
         JournalEvent::StepStarted {
@@ -1527,6 +1529,7 @@ fn unsequenced_lifecycle_events_do_not_change_recovered_state() {
             run,
             slot_idx: SlotIdx::ZERO,
             answer: vb_core::value::ConstValue::Null,
+            seq: EventSeq::new(1),
             timestamp: Utc::now(),
         },
         JournalEvent::RunFinished {
