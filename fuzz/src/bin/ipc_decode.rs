@@ -1,25 +1,30 @@
 //! Fuzz target: ipc_decode.
 
 #[cfg(feature = "fuzz")]
-fn main() {
-    // Hand off to the libfuzzer entry point directly
-    // The ipc_decode module is compiled into the fuzz binary via the lib.rs module include
-    extern "C" {
-        fn LLVMFuzzerTestOneInputIpcDecodeHeader(data: *const u8, len: usize) -> i32;
-        fn LLVMFuzzerTestOneInputIpcDecodeFrame(data: *const u8, len: usize) -> i32;
-        fn LLVMFuzzerTestOneInputIpcDecodeEdgeCases(data: *const u8, len: usize) -> i32;
-    }
+fn main() -> std::process::ExitCode {
+    run_with_stdin(fuzz_lib::fuzz_ipc_decode)
+}
 
+#[cfg(feature = "fuzz")]
+fn run_with_stdin(target: fn(&[u8])) -> std::process::ExitCode {
     let mut input = Vec::new();
-    if std::io::Read::read_to_end(&mut std::io::stdin(), &mut input).is_ok() {
-        if !input.is_empty() {
-            unsafe {
-                LLVMFuzzerTestOneInputIpcDecodeHeader(input.as_ptr(), input.len());
-                LLVMFuzzerTestOneInputIpcDecodeFrame(input.as_ptr(), input.len());
-                LLVMFuzzerTestOneInputIpcDecodeEdgeCases(input.as_ptr(), input.len());
-            }
+    match std::io::Read::read_to_end(&mut std::io::stdin(), &mut input) {
+        Ok(_) => {
+            target(&input);
+            std::process::ExitCode::SUCCESS
         }
+        Err(error) => write_stderr(error),
     }
+}
+
+#[cfg(feature = "fuzz")]
+fn write_stderr(error: std::io::Error) -> std::process::ExitCode {
+    let stderr = std::io::stderr();
+    let mut handle = stderr.lock();
+    match std::io::Write::write_fmt(&mut handle, format_args!("stdin read error: {error}\n")) {
+        Ok(()) | Err(_) => {}
+    }
+    std::process::ExitCode::FAILURE
 }
 
 #[cfg(not(feature = "fuzz"))]

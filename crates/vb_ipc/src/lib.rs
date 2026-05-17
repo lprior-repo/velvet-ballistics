@@ -17,6 +17,12 @@ pub mod frame;
 pub mod server;
 pub mod ingress;
 
+#[cfg(kani)]
+pub mod kani_ipc_header;
+
+#[cfg(kani)]
+pub mod kani_ipc_header_rejects_oversize;
+
 pub use crate::ingress::{IngressFrame, MemoryIngress};
 
 #[cfg(kani)]

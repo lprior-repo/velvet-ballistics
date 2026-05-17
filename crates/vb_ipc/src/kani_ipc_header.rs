@@ -25,10 +25,10 @@ fn kani_ipc_header_decode_valid() {
     kani::assert(decoded.is_ok(), "valid header decodes successfully");
 
     if let Ok(h) = decoded {
-        kani::assert(h.command == command, "command matches");
-        kani::assert(h.flags == flags, "flags match");
-        kani::assert(h.correlation == correlation, "correlation matches");
-        kani::assert(h.payload_len == payload_len, "payload_len matches");
+        kani::assert(h.command == command);
+        kani::assert(h.flags == flags);
+        kani::assert(h.correlation == correlation);
+        kani::assert(h.payload_len == payload_len);
     }
 }
 
@@ -100,7 +100,7 @@ fn kani_ipc_header_decode_various_commands() {
 fn kani_ipc_header_preserves_all_fields() {
     let command = IpcCommand::SubmitRun;
     let flags: u16 = 0x00FF;
-    let correlation: u64 = 0xDEADBEEF_CAFE_u64;
+    let correlation: u64 = 0xDEADBEEFCAFEL;
     let payload_len: u32 = 256;
 
     let header = IpcFrameHeader::new(command, flags, correlation, payload_len);
@@ -112,8 +112,8 @@ fn kani_ipc_header_preserves_all_fields() {
     kani::assume(decoded.is_ok());
     let decoded = decoded.unwrap();
 
-    kani::assert(decoded.command == command, "command matches");
-    kani::assert(decoded.flags == flags, "flags match");
-    kani::assert(decoded.correlation == correlation, "correlation matches");
-    kani::assert(decoded.payload_len == payload_len, "payload_len matches");
+    kani::assert(decoded.command == command);
+    kani::assert(decoded.flags == flags);
+    kani::assert(decoded.correlation == correlation);
+    kani::assert(decoded.payload_len == payload_len);
 }

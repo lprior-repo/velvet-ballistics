@@ -392,4 +392,56 @@ mod tests {
             other => Err(format!("unexpected result: {other:?}")),
         }
     }
+
+    #[test]
+    fn stack_new_with_excessive_capacity_fails() {
+        let capacity = u8::MAX;
+        let result = ExprStack::new(capacity);
+        assert!(
+            matches!(
+                result,
+                Err(EngineError::ExpressionStackOverflow { max }) if max == capacity
+            ),
+            "expected ExpressionStackOverflow({capacity})"
+        );
+    }
+
+    #[test]
+    fn stack_push_exactly_at_capacity_fails() {
+        let mut stack = ExprStack::new(1).expect("valid");
+        push_value(&mut stack, SlotValue::I64(1)).expect("first push");
+        let result = push_value(&mut stack, SlotValue::I64(2));
+        assert!(
+            matches!(
+                result,
+                Err(EngineError::ExpressionStackOverflow { max: 1 })
+            ),
+            "expected ExpressionStackOverflow(1)"
+        );
+    }
+
+    #[test]
+    fn stack_pop_checked_sub_underflow_returns_underflow() {
+        let mut stack = ExprStack::new(4).expect("valid");
+        // Directly set len to 0 and attempt pop; len==0 guard fires first.
+        let result = pop_value(&mut stack);
+        assert_eq!(result, Err(EngineError::ExpressionStackUnderflow));
+    }
+
+    #[test]
+    fn stack_pop_get_failure_returns_invariant_violation() {
+        // This path is unreachable in normal use because len is clamped to
+        // capacity which is <= MAX_EXPRESSION_STACK_USIZE. We exercise the
+        // .get() failure branch by pushing then manually corrupting len.
+        let mut stack = ExprStack::new(4).expect("valid");
+        push_value(&mut stack, SlotValue::I64(1)).expect("push");
+        stack.len = 255; // corrupt len so get() fails
+        let result = pop_value(&mut stack);
+        assert_eq!(
+            result,
+            Err(EngineError::InternalInvariantViolation {
+                reason: "expression stack pop index checked by length",
+            })
+        );
+    }
 }

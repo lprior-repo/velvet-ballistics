@@ -131,7 +131,10 @@ fn kani_resource_sub_underflow() {
     };
 
     let result = usage.try_subtract_budget(&budget);
-    kani::assert(result.is_err(), "subtracting more than available returns error");
+    kani::assert(
+        result.is_err(),
+        "subtracting more than available returns error",
+    );
 }
 
 /// VB-CORE-RESOURCE-004 H4: try_subtract_budget with exact match succeeds
@@ -215,5 +218,8 @@ fn kani_resource_add_max_values() {
     };
 
     let result = usage.try_add_budget(&budget);
-    kani::assert(result.is_ok(), "MAX/2 + MAX/2 succeeds and stays within bounds");
+    kani::assert(
+        result.is_ok(),
+        "MAX/2 + MAX/2 succeeds and stays within bounds",
+    );
 }

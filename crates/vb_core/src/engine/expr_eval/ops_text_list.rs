@@ -224,8 +224,9 @@ pub(super) fn eval_unique(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ids::{ConstIdx, ExprIdx, RunId, SlotIdx, StepIdx, SymbolId, WorkflowDigest};
+    use crate::ids::{ConstIdx, ExprIdx, ListId, ObjectId, RunId, SlotIdx, StepIdx, SymbolId, WorkflowDigest};
     use crate::limits::MAX_EXPRESSION_STACK;
+    use crate::errors::EngineError;
     use crate::value::{ConstValue, SlotValue, Taint};
     use crate::workflow::{
         CompiledNode, CompiledNodeKind, CompiledWorkflow, ExprOp, ExprProgram, ResourceContract,
@@ -769,5 +770,274 @@ mod tests {
             Err(msg) if msg.contains("overflow") => Ok(()),
             other => Err(format!("expected overflow error, got {other:?}")),
         }
+    }
+
+    // ===== Error branches for store lookups =====
+
+    #[test]
+    fn contains_symbol_out_of_bounds_haystack() {
+        let mut stack = ExprStack::new(4).expect("valid");
+        let mut store = ValueStore::new();
+        let needle = store.insert_symbol("a").expect("insert");
+        // Push a SymbolId that does not exist in store
+        push_value(&mut stack, SlotValue::Symbol(SymbolId::new(99))).expect("push");
+        push_value(&mut stack, SlotValue::Symbol(needle)).expect("push");
+        let result = eval_contains(&mut stack, &store);
+        assert_eq!(
+            result,
+            Err(EngineError::SymbolOutOfBounds {
+                symbol: SymbolId::new(99)
+            })
+        );
+    }
+
+    #[test]
+    fn contains_symbol_out_of_bounds_needle() {
+        let mut stack = ExprStack::new(4).expect("valid");
+        let mut store = ValueStore::new();
+        let hay = store.insert_symbol("hello").expect("insert");
+        push_value(&mut stack, SlotValue::Symbol(hay)).expect("push");
+        push_value(&mut stack, SlotValue::Symbol(SymbolId::new(99))).expect("push");
+        let result = eval_contains(&mut stack, &store);
+        assert_eq!(
+            result,
+            Err(EngineError::SymbolOutOfBounds {
+                symbol: SymbolId::new(99)
+            })
+        );
+    }
+
+    #[test]
+    fn starts_with_symbol_out_of_bounds_text() {
+        let mut stack = ExprStack::new(4).expect("valid");
+        let mut store = ValueStore::new();
+        let prefix = store.insert_symbol("a").expect("insert");
+        push_value(&mut stack, SlotValue::Symbol(SymbolId::new(99))).expect("push");
+        push_value(&mut stack, SlotValue::Symbol(prefix)).expect("push");
+        let result = eval_starts_with(&mut stack, &store);
+        assert_eq!(
+            result,
+            Err(EngineError::SymbolOutOfBounds {
+                symbol: SymbolId::new(99)
+            })
+        );
+    }
+
+    #[test]
+    fn ends_with_symbol_out_of_bounds_suffix() {
+        let mut stack = ExprStack::new(4).expect("valid");
+        let mut store = ValueStore::new();
+        let text = store.insert_symbol("hello").expect("insert");
+        push_value(&mut stack, SlotValue::Symbol(text)).expect("push");
+        push_value(&mut stack, SlotValue::Symbol(SymbolId::new(99))).expect("push");
+        let result = eval_ends_with(&mut stack, &store);
+        assert_eq!(
+            result,
+            Err(EngineError::SymbolOutOfBounds {
+                symbol: SymbolId::new(99)
+            })
+        );
+    }
+
+    #[test]
+    fn has_list_out_of_bounds() {
+        let mut stack = ExprStack::new(4).expect("valid");
+        let store = ValueStore::new();
+        push_value(&mut stack, SlotValue::List(ListId::new(99))).expect("push");
+        push_value(&mut stack, SlotValue::I64(1)).expect("push");
+        let result = eval_has(&mut stack, &store);
+        assert_eq!(
+            result,
+            Err(EngineError::ListOutOfBounds {
+                list: ListId::new(99)
+            })
+        );
+    }
+
+    #[test]
+    fn length_symbol_out_of_bounds() {
+        let mut stack = ExprStack::new(4).expect("valid");
+        let store = ValueStore::new();
+        push_value(&mut stack, SlotValue::Symbol(SymbolId::new(99))).expect("push");
+        let result = eval_length(&mut stack, &store);
+        assert_eq!(
+            result,
+            Err(EngineError::SymbolOutOfBounds {
+                symbol: SymbolId::new(99)
+            })
+        );
+    }
+
+    #[test]
+    fn length_list_out_of_bounds() {
+        let mut stack = ExprStack::new(4).expect("valid");
+        let store = ValueStore::new();
+        push_value(&mut stack, SlotValue::List(ListId::new(99))).expect("push");
+        let result = eval_length(&mut stack, &store);
+        assert_eq!(
+            result,
+            Err(EngineError::ListOutOfBounds {
+                list: ListId::new(99)
+            })
+        );
+    }
+
+    #[test]
+    fn length_object_out_of_bounds() {
+        let mut stack = ExprStack::new(4).expect("valid");
+        let store = ValueStore::new();
+        push_value(&mut stack, SlotValue::Object(ObjectId::new(99))).expect("push");
+        let result = eval_length(&mut stack, &store);
+        assert_eq!(
+            result,
+            Err(EngineError::ObjectOutOfBounds {
+                object: ObjectId::new(99)
+            })
+        );
+    }
+
+    #[test]
+    fn length_type_mismatch_on_bool() {
+        let mut stack = ExprStack::new(4).expect("valid");
+        let store = ValueStore::new();
+        push_value(&mut stack, SlotValue::Bool(true)).expect("push");
+        let result = eval_length(&mut stack, &store);
+        assert_eq!(
+            result,
+            Err(EngineError::TypeMismatch {
+                expected: "text, list, or object",
+                found: "boolean",
+            })
+        );
+    }
+
+    #[test]
+    fn empty_symbol_out_of_bounds() {
+        let mut stack = ExprStack::new(4).expect("valid");
+        let store = ValueStore::new();
+        push_value(&mut stack, SlotValue::Symbol(SymbolId::new(99))).expect("push");
+        let result = eval_empty(&mut stack, &store);
+        assert_eq!(
+            result,
+            Err(EngineError::SymbolOutOfBounds {
+                symbol: SymbolId::new(99)
+            })
+        );
+    }
+
+    #[test]
+    fn empty_list_out_of_bounds() {
+        let mut stack = ExprStack::new(4).expect("valid");
+        let store = ValueStore::new();
+        push_value(&mut stack, SlotValue::List(ListId::new(99))).expect("push");
+        let result = eval_empty(&mut stack, &store);
+        assert_eq!(
+            result,
+            Err(EngineError::ListOutOfBounds {
+                list: ListId::new(99)
+            })
+        );
+    }
+
+    #[test]
+    fn empty_object_out_of_bounds() {
+        let mut stack = ExprStack::new(4).expect("valid");
+        let store = ValueStore::new();
+        push_value(&mut stack, SlotValue::Object(ObjectId::new(99))).expect("push");
+        let result = eval_empty(&mut stack, &store);
+        assert_eq!(
+            result,
+            Err(EngineError::ObjectOutOfBounds {
+                object: ObjectId::new(99)
+            })
+        );
+    }
+
+    #[test]
+    fn empty_type_mismatch_on_number() {
+        let mut stack = ExprStack::new(4).expect("valid");
+        let store = ValueStore::new();
+        push_value(&mut stack, SlotValue::I64(42)).expect("push");
+        let result = eval_empty(&mut stack, &store);
+        assert_eq!(
+            result,
+            Err(EngineError::TypeMismatch {
+                expected: "text, list, object, or null",
+                found: "number",
+            })
+        );
+    }
+
+    #[test]
+    fn sum_list_out_of_bounds() {
+        let mut stack = ExprStack::new(4).expect("valid");
+        let store = ValueStore::new();
+        push_value(&mut stack, SlotValue::List(ListId::new(99))).expect("push");
+        let result = eval_sum(&mut stack, &store);
+        assert_eq!(
+            result,
+            Err(EngineError::ListOutOfBounds {
+                list: ListId::new(99)
+            })
+        );
+    }
+
+    #[test]
+    fn count_list_out_of_bounds() {
+        let mut stack = ExprStack::new(4).expect("valid");
+        let store = ValueStore::new();
+        push_value(&mut stack, SlotValue::List(ListId::new(99))).expect("push");
+        let result = eval_count(&mut stack, &store);
+        assert_eq!(
+            result,
+            Err(EngineError::ListOutOfBounds {
+                list: ListId::new(99)
+            })
+        );
+    }
+
+    #[test]
+    fn append_list_out_of_bounds() {
+        let mut stack = ExprStack::new(4).expect("valid");
+        let mut store = ValueStore::new();
+        push_value(&mut stack, SlotValue::List(ListId::new(99))).expect("push");
+        push_value(&mut stack, SlotValue::I64(1)).expect("push");
+        let result = eval_append(&mut stack, &mut store);
+        assert_eq!(
+            result,
+            Err(EngineError::ListOutOfBounds {
+                list: ListId::new(99)
+            })
+        );
+    }
+
+    #[test]
+    fn append_if_list_out_of_bounds() {
+        let mut stack = ExprStack::new(4).expect("valid");
+        let mut store = ValueStore::new();
+        push_value(&mut stack, SlotValue::List(ListId::new(99))).expect("push");
+        push_value(&mut stack, SlotValue::I64(1)).expect("push");
+        push_value(&mut stack, SlotValue::Bool(true)).expect("push");
+        let result = eval_append_if(&mut stack, &mut store);
+        assert_eq!(
+            result,
+            Err(EngineError::ListOutOfBounds {
+                list: ListId::new(99)
+            })
+        );
+    }
+
+    #[test]
+    fn unique_list_out_of_bounds() {
+        let mut stack = ExprStack::new(4).expect("valid");
+        let mut store = ValueStore::new();
+        push_value(&mut stack, SlotValue::List(ListId::new(99))).expect("push");
+        let result = eval_unique(&mut stack, &mut store);
+        assert_eq!(
+            result,
+            Err(EngineError::ListOutOfBounds {
+                list: ListId::new(99)
+            })
+        );
     }
 }

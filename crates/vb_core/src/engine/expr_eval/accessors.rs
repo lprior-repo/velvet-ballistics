@@ -190,6 +190,7 @@ pub fn eval_accessor_with_store(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::engine::expr_eval::stack::{ExprStack, pop_value};
     use crate::ids::{ListId, ObjectId, RunId, SlotIdx, StepIdx, SymbolId, WorkflowDigest};
     use crate::value::{SlotValue, Taint};
     use crate::value_store::{ObjectField, ValueStore};
@@ -559,6 +560,171 @@ mod tests {
                 segment: "field",
                 found: "number",
             }) => Ok(()),
+            other => Err(format!("unexpected result: {other:?}")),
+        }
+    }
+
+    // ===== eval_accessor_with_taint_inner coverage =====
+
+    #[test]
+    fn eval_accessor_with_taint_empty_path_returns_root_and_taint() -> Result<(), String> {
+        let workflow = accessor_workflow(Box::new([]))?;
+        let mut run = test_frame()?;
+        run.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(42), Taint::Secret)
+            .map_err(|e| e.to_string())?;
+        let mut store = ValueStore::new();
+
+        let (value, taint) =
+            eval_accessor_with_taint_inner(&workflow, &run, &mut store, AccessorIdx::new(0))
+                .map_err(|e| e.to_string())?;
+        ensure_equal(value, SlotValue::I64(42))?;
+        ensure_equal(taint, Taint::Secret)
+    }
+
+    #[test]
+    fn eval_accessor_with_taint_object_field_traversal() -> Result<(), String> {
+        let workflow =
+            accessor_workflow(vec![PathSegment::Field(SymbolId::new(3))].into_boxed_slice())?;
+        let mut run = test_frame()?;
+        let mut store = ValueStore::new();
+        let obj = store
+            .insert_object(
+                vec![ObjectField::with_taint(
+                    SymbolId::new(3),
+                    SlotValue::I64(123),
+                    Taint::DerivedFromSecret,
+                )]
+                .into_boxed_slice(),
+            )
+            .map_err(|e| e.to_string())?;
+        run.write_slot_with_taint(SlotIdx::new(0), SlotValue::Object(obj), Taint::Clean)
+            .map_err(|e| e.to_string())?;
+
+        let (value, taint) =
+            eval_accessor_with_taint_inner(&workflow, &run, &mut store, AccessorIdx::new(0))
+                .map_err(|e| e.to_string())?;
+        ensure_equal(value, SlotValue::I64(123))?;
+        ensure_equal(taint, Taint::DerivedFromSecret)
+    }
+
+    #[test]
+    fn eval_accessor_with_taint_list_index_traversal() -> Result<(), String> {
+        let workflow = accessor_workflow(vec![PathSegment::Index(0)].into_boxed_slice())?;
+        let mut run = test_frame()?;
+        let mut store = ValueStore::new();
+        let list = store
+            .insert_list_with_taint(
+                vec![SlotValue::I64(10)].into_boxed_slice(),
+                vec![Taint::Secret].into_boxed_slice(),
+            )
+            .map_err(|e| e.to_string())?;
+        run.write_slot_with_taint(SlotIdx::new(0), SlotValue::List(list), Taint::Clean)
+            .map_err(|e| e.to_string())?;
+
+        let (value, taint) =
+            eval_accessor_with_taint_inner(&workflow, &run, &mut store, AccessorIdx::new(0))
+                .map_err(|e| e.to_string())?;
+        ensure_equal(value, SlotValue::I64(10))?;
+        ensure_equal(taint, Taint::Secret)
+    }
+
+    #[test]
+    fn eval_accessor_with_taint_multi_segment_joins_taints() -> Result<(), String> {
+        let workflow = accessor_workflow(
+            vec![PathSegment::Field(SymbolId::new(5)), PathSegment::Index(0)].into_boxed_slice(),
+        )?;
+        let mut run = test_frame()?;
+        let mut store = ValueStore::new();
+        let inner_list = store
+            .insert_list_with_taint(
+                vec![SlotValue::I64(777)].into_boxed_slice(),
+                vec![Taint::Secret].into_boxed_slice(),
+            )
+            .map_err(|e| e.to_string())?;
+        let obj = store
+            .insert_object(
+                vec![ObjectField::with_taint(
+                    SymbolId::new(5),
+                    SlotValue::List(inner_list),
+                    Taint::DerivedFromSecret,
+                )]
+                .into_boxed_slice(),
+            )
+            .map_err(|e| e.to_string())?;
+        run.write_slot_with_taint(SlotIdx::new(0), SlotValue::Object(obj), Taint::Clean)
+            .map_err(|e| e.to_string())?;
+
+        let (value, taint) =
+            eval_accessor_with_taint_inner(&workflow, &run, &mut store, AccessorIdx::new(0))
+                .map_err(|e| e.to_string())?;
+        ensure_equal(value, SlotValue::I64(777))?;
+        // Taint should be joined: Clean -> DerivedFromSecret -> Secret
+        ensure_equal(taint, Taint::Secret)
+    }
+
+    #[test]
+    fn eval_accessor_with_taint_out_of_bounds_accessor_index_returns_error() -> Result<(), String> {
+        let workflow = accessor_workflow(Box::new([]))?;
+        let run = test_frame()?;
+        let mut store = ValueStore::new();
+
+        let result = eval_accessor_with_taint_inner(&workflow, &run, &mut store, AccessorIdx::new(1));
+        match result {
+            Err(EngineError::InvalidCompiledWorkflow { reason })
+                if reason.contains("accessor index out of bounds") =>
+            {
+                Ok(())
+            }
+            other => Err(format!("unexpected result: {other:?}")),
+        }
+    }
+
+    // ===== eval_load_accessor coverage =====
+
+    #[test]
+    fn eval_load_accessor_pushes_value_and_accumulates_taint() -> Result<(), String> {
+        let workflow =
+            accessor_workflow(vec![PathSegment::Field(SymbolId::new(3))].into_boxed_slice())?;
+        let mut run = test_frame()?;
+        let mut store = ValueStore::new();
+        let obj = store
+            .insert_object(
+                vec![ObjectField::clean(SymbolId::new(3), SlotValue::I64(42))]
+                    .into_boxed_slice(),
+            )
+            .map_err(|e| e.to_string())?;
+        run.write_slot_with_taint(SlotIdx::new(0), SlotValue::Object(obj), Taint::Clean)
+            .map_err(|e| e.to_string())?;
+
+        let mut stack = ExprStack::new(4).map_err(|e| e.to_string())?;
+        let mut taint_accum = Taint::Clean;
+        eval_load_accessor(
+            &workflow,
+            &run,
+            &mut store,
+            &mut stack,
+            AccessorIdx::new(0),
+            &mut taint_accum,
+        )
+        .map_err(|e| e.to_string())?;
+        let popped = pop_value(&mut stack).map_err(|e| e.to_string())?;
+        ensure_equal(popped, SlotValue::I64(42))?;
+        ensure_equal(taint_accum, Taint::Clean)
+    }
+
+    #[test]
+    fn eval_accessor_inner_out_of_bounds_accessor_index_returns_error() -> Result<(), String> {
+        let workflow = accessor_workflow(Box::new([]))?;
+        let run = test_frame()?;
+        let mut store = ValueStore::new();
+
+        let result = eval_accessor_inner(&workflow, &run, &mut store, AccessorIdx::new(1));
+        match result {
+            Err(EngineError::InvalidCompiledWorkflow { reason })
+                if reason.contains("accessor index out of bounds") =>
+            {
+                Ok(())
+            }
             other => Err(format!("unexpected result: {other:?}")),
         }
     }

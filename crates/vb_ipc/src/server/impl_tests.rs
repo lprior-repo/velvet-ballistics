@@ -180,7 +180,7 @@ fn serve_ipc_delegates_to_poll_once() {
 
     let result = serve_ipc(&mut server, &mut runtime, Some(Duration::ZERO));
 
-    let Ok(_) = result else { panic!("serve_ipc should succeed") };
+    assert_eq!(result, Ok(true), "serve_ipc with no events should return Ok(true)");
 }
 
 // ── client accept + health command round-trip ───────────────────────────────
@@ -213,8 +213,7 @@ fn server_processes_health_command_from_client() {
 
     // Read the response header.
     let response_header_bytes = read_exact_timeout(&mut client, IPC_HEADER_LEN);
-    assert!(response_header_bytes.is_ok(), "should read response header");
-    let response_header = response_header_bytes.expect("read header");
+    let response_header = response_header_bytes.expect("should read response header");
 
     // Verify magic and version.
     let magic = u32::from_le_bytes(
@@ -491,7 +490,7 @@ fn server_waits_for_complete_frame_when_partial_sent() {
 
     // Server should handle the partial read without error.
     let result = server.poll_once(&mut runtime, Some(Duration::from_millis(100)));
-    assert!(result.is_ok(), "poll with partial frame should not error");
+    assert!(matches!(result, Ok(_)), "poll with partial frame should not error");
 }
 
 // ── garbage payload handling ────────────────────────────────────────────────
@@ -525,10 +524,9 @@ fn server_responds_with_error_for_garbage_payload() {
 
     // Read response header.
     let response_header_bytes = read_exact_timeout(&mut client, IPC_HEADER_LEN);
-    assert!(response_header_bytes.is_ok(), "should read response header");
 
     // Read response payload and verify it is not a panic.
-    let response_header = response_header_bytes.expect("header");
+    let response_header = response_header_bytes.expect("should read response header");
     let payload_len = u32::from_le_bytes(
         response_header
             .get(20..24)
@@ -542,7 +540,7 @@ fn server_responds_with_error_for_garbage_payload() {
     };
     if payload_len_usize > 0 {
         let response_payload = read_exact_timeout(&mut client, payload_len_usize);
-        assert!(response_payload.is_ok(), "should read response payload");
+        assert!(matches!(response_payload, Ok(_)), "should read response payload");
     }
 }
 
@@ -641,10 +639,9 @@ fn server_responds_with_error_for_nonzero_reserved_field() {
 
     // Read response header.
     let response_header_bytes = read_exact_timeout(&mut client, IPC_HEADER_LEN);
-    assert!(response_header_bytes.is_ok(), "should read response header");
 
     // Read response payload.
-    let response_header = response_header_bytes.expect("header");
+    let response_header = response_header_bytes.expect("should read response header");
     let payload_len = u32::from_le_bytes(
         response_header
             .get(20..24)
@@ -748,14 +745,10 @@ fn serve_ipc_with_none_timeout_returns_ok_when_client_connected() {
 
     let result = serve_ipc(&mut server, &mut runtime, None);
 
-    assert!(
-        result.is_ok(),
-        "serve_ipc with None timeout should succeed without error"
-    );
-    let continuing = result.expect("ok");
-    assert!(
-        continuing,
-        "serve_ipc with None timeout should return continue (not shutdown)"
+    assert_eq!(
+        result,
+        Ok(true),
+        "serve_ipc with None timeout should succeed and return continue"
     );
 }
 
@@ -773,9 +766,10 @@ fn serve_ipc_with_resolver_none_timeout_none_resolver_returns_ok_when_client_con
 
     let result = serve_ipc_with_resolver(&mut server, &mut runtime, None, None);
 
-    assert!(
-        result.is_ok(),
-        "serve_ipc_with_resolver with None timeout and None resolver should succeed"
+    assert_eq!(
+        result,
+        Ok(true),
+        "serve_ipc_with_resolver with None timeout and None resolver should return Ok(true)"
     );
 }
 
@@ -872,7 +866,7 @@ fn workflow_resolver_not_found_is_rejected_by_dispatch() {
         Some(Duration::from_millis(100)),
         Some(&mut resolver),
     );
-    assert!(result.is_ok(), "poll_once_with_resolver should succeed");
+    assert!(matches!(result, Ok(_)), "poll_once_with_resolver should succeed");
 
     // Read response header.
     let response_header_bytes = read_exact_timeout(&mut client, IPC_HEADER_LEN);
@@ -1022,7 +1016,14 @@ fn bind_fails_when_path_is_existing_directory() {
     std::fs::create_dir_all(&dir).expect("should create temp dir");
 
     let result = IpcServer::bind(&dir);
-    assert!(result.is_err(), "bind to a directory path should fail");
+    assert!(
+        matches!(result, Err(IpcServerError::BindFailed { .. })),
+        "bind to a directory path should fail with BindFailed, got {}",
+        match result {
+            Ok(_) => "Ok".to_string(),
+            Err(ref e) => e.to_string(),
+        }
+    );
 }
 
 // ── 3. client lifecycle: connect, health, disconnect, reconnect ──────────────
@@ -1152,9 +1153,8 @@ fn health_command_with_zero_correlation_round_trips() {
         .expect("process health");
 
     let response_header_bytes = read_exact_timeout(&mut client, IPC_HEADER_LEN);
-    assert!(response_header_bytes.is_ok(), "should read response header");
 
-    let response_header = response_header_bytes.expect("header");
+    let response_header = response_header_bytes.expect("should read response header");
     // Verify correlation field (bytes 12..20) is zero.
     let correlation = u64::from_le_bytes(
         response_header
@@ -1691,8 +1691,7 @@ fn accept_client_returns_too_many_clients_when_at_capacity() {
 
     let _extra = make_client(&path);
     let result = server.poll_once(&mut runtime, Some(Duration::from_millis(100)));
-    assert!(result.is_err(), "should fail when max clients reached");
-    assert!(matches!(result.unwrap_err(), IpcServerError::TooManyClients));
+    assert_eq!(result, Err(IpcServerError::TooManyClients), "should fail when max clients reached");
 }
 
 // ── 2. handle_readable when WouldBlock ───────────────────────────────────────
@@ -2008,13 +2007,13 @@ fn poll_once_processes_multiple_simultaneous_events() {
     client2.flush().expect("flush 2");
 
     let result = server.poll_once(&mut runtime, Some(Duration::from_millis(100)));
-    assert!(result.is_ok(), "poll with multiple clients should succeed");
+    assert!(matches!(result, Ok(_)), "poll with multiple clients should succeed");
 
     let header1 = read_exact_timeout(&mut client1, IPC_HEADER_LEN);
-    assert!(header1.is_ok(), "client 1 should get response");
+    assert!(matches!(header1, Ok(_)), "client 1 should get response");
 
     let header2 = read_exact_timeout(&mut client2, IPC_HEADER_LEN);
-    assert!(header2.is_ok(), "client 2 should get response");
+    assert!(matches!(header2, Ok(_)), "client 2 should get response");
 }
 
 // ── cleanup helpers ──────────────────────────────────────────────────────────

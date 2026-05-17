@@ -50,6 +50,9 @@ const VALID_TRANSITIONS: &[(StepState, StepState)] = &[
 ];
 
 pub fn is_valid_transition(from: StepState, to: StepState) -> bool {
+    if from == to {
+        return true;
+    }
     for &(f, t) in VALID_TRANSITIONS {
         if f == from && t == to {
             return true;
@@ -67,9 +70,9 @@ pub fn validate_transition(from: StepState, to: StepState) -> Result<StepState, 
 }
 
 pub fn next_states(from: StepState) -> Vec<StepState> {
-    let mut result = Vec::new();
+    let mut result = vec![from];
     for &(f, t) in VALID_TRANSITIONS {
-        if f == from {
+        if f == from && !result.contains(&t) {
             result.push(t);
         }
     }
@@ -125,24 +128,42 @@ mod tests {
     #[test]
     fn test_pending_valid_transitions() {
         let next = next_states(StepState::Pending);
+        assert!(next.contains(&StepState::Pending));
         assert!(next.contains(&StepState::Running));
         assert!(next.contains(&StepState::Succeeded));
         assert!(next.contains(&StepState::Failed));
         assert!(next.contains(&StepState::Cancelled));
         assert!(next.contains(&StepState::Skipped));
-        assert_eq!(next.len(), 5);
+        assert_eq!(next.len(), 6);
     }
 
     #[test]
     fn test_running_valid_transitions() {
         let next = next_states(StepState::Running);
+        assert!(next.contains(&StepState::Running));
         assert!(next.contains(&StepState::Succeeded));
         assert!(next.contains(&StepState::Failed));
         assert!(next.contains(&StepState::Waiting));
         assert!(next.contains(&StepState::Asking));
         assert!(next.contains(&StepState::Cancelled));
         assert!(next.contains(&StepState::Skipped));
-        assert_eq!(next.len(), 6);
+        assert_eq!(next.len(), 7);
+    }
+
+    #[test]
+    fn test_all_idempotent_transitions() {
+        for state in [
+            StepState::Pending,
+            StepState::Running,
+            StepState::Waiting,
+            StepState::Asking,
+            StepState::Succeeded,
+            StepState::Failed,
+            StepState::Cancelled,
+            StepState::Skipped,
+        ] {
+            assert!(is_valid_transition(state, state));
+        }
     }
 
     #[test]
@@ -171,7 +192,6 @@ mod tests {
 
     #[test]
     fn test_invalid_transitions() {
-        assert!(!is_valid_transition(StepState::Pending, StepState::Pending));
         assert!(!is_valid_transition(StepState::Running, StepState::Pending));
         assert!(!is_valid_transition(
             StepState::Succeeded,

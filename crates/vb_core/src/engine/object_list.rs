@@ -375,4 +375,68 @@ mod tests {
                 .map_err(|e| e.to_string())?;
         ensure_equal(taint, Taint::DerivedFromSecret)
     }
+
+    #[test]
+    fn build_object_with_taint_rejects_out_of_bounds_slot() {
+        let mut store = ValueStore::new();
+        let run = test_frame(1).expect("frame");
+        let result = build_object_with_taint(
+            &mut store,
+            &run,
+            &[(SymbolId::new(0), SlotIdx::new(5))],
+        );
+        assert_eq!(
+            result,
+            Err(EngineError::SlotOutOfBounds {
+                slot: SlotIdx::new(5),
+            })
+        );
+        assert_eq!(store.object_count(), 0);
+    }
+
+    #[test]
+    fn build_list_with_taint_rejects_out_of_bounds_slot() {
+        let mut store = ValueStore::new();
+        let run = test_frame(1).expect("frame");
+        let result = build_list_with_taint(&mut store, &run, &[SlotIdx::new(10)]);
+        assert_eq!(
+            result,
+            Err(EngineError::SlotOutOfBounds {
+                slot: SlotIdx::new(10),
+            })
+        );
+        assert_eq!(store.list_count(), 0);
+    }
+
+    #[test]
+    fn build_object_with_taint_rejects_uninitialized_slot() {
+        let mut store = ValueStore::new();
+        let run = test_frame(2).expect("frame");
+        // Slot 0 is uninitialized
+        let result = build_object_with_taint(
+            &mut store,
+            &run,
+            &[(SymbolId::new(0), SlotIdx::new(0))],
+        );
+        assert_eq!(
+            result,
+            Err(EngineError::SlotUninitialized {
+                slot: SlotIdx::new(0),
+            })
+        );
+    }
+
+    #[test]
+    fn build_list_with_taint_rejects_uninitialized_slot() {
+        let mut store = ValueStore::new();
+        let run = test_frame(2).expect("frame");
+        // Slot 0 is uninitialized
+        let result = build_list_with_taint(&mut store, &run, &[SlotIdx::new(0)]);
+        assert_eq!(
+            result,
+            Err(EngineError::SlotUninitialized {
+                slot: SlotIdx::new(0),
+            })
+        );
+    }
 }

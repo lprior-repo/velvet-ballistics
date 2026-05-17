@@ -89,6 +89,9 @@ mod red_phase_proptest;
 #[cfg(kani)]
 pub mod kani_idempotency_contract;
 
+#[cfg(kani)]
+pub mod kani_gate_08_accessor;
+
 /// Validation error codes matching the master contract (Section 16).
 #[derive(Debug, Error, Clone, PartialEq, Eq)]
 pub enum ValidationError {

@@ -2475,7 +2475,7 @@ fn evidence_chain_benches(c: &mut Criterion) {
 fn admission_gate_benches(c: &mut Criterion) {
     let mut group = c.benchmark_group("admission_gate");
     let digest = WorkflowDigest::from_bytes([0xAB; 32]);
-    let always_present = vb_runtime::admission::AlwaysPresentArtifactStore::shared_artifact();
+    let always_present = vb_runtime::admission::AlwaysPresentArtifactStore::shared();
     let any_workflow_caps = vb_core::CapabilitySet::from_grants(Box::new([any_workflow_cap()]));
     let action_caps = vb_core::CapabilitySet::from_grants(Box::new([
         cap(ActionId::new(1)),

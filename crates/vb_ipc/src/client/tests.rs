@@ -8,8 +8,9 @@ fn connect_ipc_rejects_nonexistent_socket() {
     let path = std::path::PathBuf::from("/tmp/vb_ipc_test_nonexistent_39f2.socket");
     let result = IpcClient::connect(&path);
 
-    assert!(result.is_err(), "connecting to a nonexistent socket must fail");
-    let Err(error) = result else { return };
+    let Err(error) = result else {
+        panic!("connecting to a nonexistent socket must fail, got Ok");
+    };
     let message = error.to_string();
     assert!(message.contains("connect failed"), "error message should mention connect failed, got: {message}");
 }

@@ -58,6 +58,12 @@ pub mod kani_index_access;
 #[cfg(kani)]
 pub mod kani_resource_budget_bounded;
 
+#[cfg(kani)]
+pub mod kani_workflow_arbitrary;
+
+#[cfg(kani)]
+pub mod kani_step_state_transition;
+
 pub use action::{
     ActionContract, ActionError, ActionFailure, ActionFailureCode, ActionInput, ActionJournalEvent,
     ActionOutcome, ActionOutput, ActionOutputReady, ActionResult, ActionTicket, Idempotency,

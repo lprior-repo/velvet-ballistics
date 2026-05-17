@@ -999,6 +999,122 @@ mod tests {
             SlotValue::Blob(BlobId::new(0)).type_name()
         );
     }
+
+    // -- SlotValueDisplay / display_with_store tests --
+
+    #[test]
+    fn display_with_store_null_returns_null() {
+        let store = crate::value_store::ValueStore::new();
+        assert_eq!(SlotValue::Null.display_with_store(&store), "null");
+    }
+
+    #[test]
+    fn display_with_store_bool_true_returns_true() {
+        let store = crate::value_store::ValueStore::new();
+        assert_eq!(SlotValue::Bool(true).display_with_store(&store), "true");
+    }
+
+    #[test]
+    fn display_with_store_i64_returns_number() {
+        let store = crate::value_store::ValueStore::new();
+        assert_eq!(SlotValue::I64(42).display_with_store(&store), "42");
+    }
+
+    #[test]
+    fn display_with_store_symbol_resolves() {
+        let mut store = crate::value_store::ValueStore::new();
+        let id = store.insert_symbol("hello").expect("insert");
+        assert_eq!(SlotValue::Symbol(id).display_with_store(&store), "symbol:hello");
+    }
+
+    #[test]
+    fn display_with_store_symbol_out_of_bounds_falls_back() {
+        let store = crate::value_store::ValueStore::new();
+        assert_eq!(
+            SlotValue::Symbol(SymbolId::new(99)).display_with_store(&store),
+            "symbol:99"
+        );
+    }
+
+    #[test]
+    fn display_with_store_list_resolves() {
+        let mut store = crate::value_store::ValueStore::new();
+        let id = store
+            .insert_list(vec![SlotValue::I64(1), SlotValue::I64(2)].into_boxed_slice())
+            .expect("insert");
+        assert_eq!(SlotValue::List(id).display_with_store(&store), "[1, 2]");
+    }
+
+    #[test]
+    fn display_with_store_list_out_of_bounds_falls_back() {
+        let store = crate::value_store::ValueStore::new();
+        assert_eq!(
+            SlotValue::List(ListId::new(99)).display_with_store(&store),
+            "list:99"
+        );
+    }
+
+    #[test]
+    fn display_with_store_object_resolves() {
+        let mut store = crate::value_store::ValueStore::new();
+        // Insert the field key as a symbol so it resolves during display.
+        let _sym_id = store.insert_symbol("field_key").expect("insert");
+        let id = store
+            .insert_object(
+                vec![crate::value_store::ObjectField {
+                    key: SymbolId::new(0),
+                    value: SlotValue::I64(42),
+                    taint: crate::value::Taint::Clean,
+                }]
+                .into_boxed_slice(),
+            )
+            .expect("insert");
+        let result = SlotValue::Object(id).display_with_store(&store);
+        assert_eq!(result, "{field_key: 42}");
+    }
+
+    #[test]
+    fn display_with_store_object_out_of_bounds_falls_back() {
+        let store = crate::value_store::ValueStore::new();
+        assert_eq!(
+            SlotValue::Object(ObjectId::new(99)).display_with_store(&store),
+            "object:99"
+        );
+    }
+
+    #[test]
+    fn display_with_store_blob_resolves() {
+        let mut store = crate::value_store::ValueStore::new();
+        let id = store.insert_blob(bytes::Bytes::from_static(b"abc")).expect("insert");
+        assert_eq!(
+            SlotValue::Blob(id).display_with_store(&store),
+            "blob:<3 bytes>"
+        );
+    }
+
+    #[test]
+    fn display_with_store_blob_out_of_bounds_falls_back() {
+        let store = crate::value_store::ValueStore::new();
+        assert_eq!(
+            SlotValue::Blob(BlobId::new(99)).display_with_store(&store),
+            "blob:99"
+        );
+    }
+
+    #[test]
+    fn display_with_store_nested_list() {
+        let mut store = crate::value_store::ValueStore::new();
+        let inner = store
+            .insert_list(vec![SlotValue::I64(1)].into_boxed_slice())
+            .expect("insert");
+        let outer = store
+            .insert_list(vec![SlotValue::List(inner)].into_boxed_slice())
+            .expect("insert");
+        assert_eq!(
+            SlotValue::List(outer).display_with_store(&store),
+            "[[1]]"
+        );
+    }
 }
 
 impl SlotValue {

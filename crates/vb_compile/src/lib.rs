@@ -4789,4 +4789,618 @@ steps:
             Ok(_) => panic!("Expected error for invalid UTF-8, got Ok"),
         }
     }
+
+    // -----------------------------------------------------------------------
+    // End-to-end CompileError variant completeness tests
+    // -----------------------------------------------------------------------
+
+    fn first_ast_error(result: Result<ast::WorkflowAst, CompileErrors>) -> CompileError {
+        match result {
+            Ok(_) => panic!("expected compile error"),
+            Err(errors) => match errors.0.into_iter().next() {
+                Some(error) => error,
+                None => panic!("expected at least one compile error"),
+            },
+        }
+    }
+
+    fn tiny_limits() -> YamlLimits {
+        YamlLimits {
+            max_source_bytes: 100,
+            max_depth: 4,
+            max_nodes: 20,
+            max_sequence_len: 5,
+            max_mapping_entries: 5,
+            max_scalar_bytes: 20,
+        }
+    }
+
+    // --- compile_workflow path (CanonicalYaml wrappers + compile_source) ---
+
+    #[test]
+    fn compile_workflow_rejects_source_too_large() {
+        let compiler = YamlCompiler::new(tiny_limits());
+        let source = "a".repeat(101);
+        let result = compiler.compile(source.as_bytes());
+        let err = first_error(result);
+        assert!(matches!(err, CompileError::SourceTooLarge { .. }));
+    }
+
+    #[test]
+    fn compile_workflow_rejects_empty_source() {
+        let result = compile_workflow(b"");
+        let err = first_error(result);
+        assert!(matches!(err, CompileError::EmptySource));
+    }
+
+    #[test]
+    fn compile_workflow_rejects_malformed_yaml() {
+        let result = compile_workflow(b"{[");
+        let err = first_error(result);
+        assert!(matches!(err, CompileError::CanonicalYaml { category: "parse_error", .. }));
+    }
+
+    #[test]
+    fn compile_workflow_rejects_multi_document() {
+        let result = compile_workflow(b"---\nversion: velvet-ballastics/v1\n---\nname: test\n");
+        let err = first_error(result);
+        assert!(matches!(err, CompileError::CanonicalYaml { category: "document_count", .. }));
+    }
+
+    #[test]
+    fn compile_workflow_rejects_custom_tag() {
+        let result = compile_workflow(b"!custom value\n");
+        let err = first_error(result);
+        assert!(matches!(err, CompileError::CanonicalYaml { category: "forbidden_feature", .. }));
+    }
+
+    #[test]
+    fn compile_workflow_rejects_ambiguous_scalar() {
+        let result = compile_workflow(b"yes\n");
+        let err = first_error(result);
+        assert!(matches!(err, CompileError::CanonicalYaml { category: "forbidden_feature", .. }));
+    }
+
+    #[test]
+    fn compile_workflow_rejects_duplicate_key() {
+        let yaml = b"version: velvet-ballastics/v1\nversion: velvet-ballastics/v1\n";
+        let result = compile_workflow(yaml);
+        let err = first_error(result);
+        assert!(matches!(err, CompileError::CanonicalYaml { category: "duplicate_key", .. }));
+    }
+
+    #[test]
+    fn compile_workflow_rejects_missing_field() {
+        let yaml = b"name: test\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    finish:\n      result: 0\n";
+        let result = compile_workflow(yaml);
+        let err = first_error(result);
+        assert!(matches!(err, CompileError::CanonicalYaml { category: "missing_field", .. }));
+    }
+
+    #[test]
+    fn compile_workflow_rejects_unknown_top_level_field() {
+        let yaml = b"version: velvet-ballastics/v1\nname: test\nunknown: true\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    finish:\n      result: 0\n";
+        let result = compile_workflow(yaml);
+        let err = first_error(result);
+        assert!(matches!(err, CompileError::CanonicalYaml { category: "unknown_field", .. }));
+    }
+
+    #[test]
+    fn compile_workflow_rejects_unsupported_top_level_declaration_inputs() {
+        let yaml = br#"version: velvet-ballastics/v1
+name: test
+when:
+  manual: {}
+inputs:
+  x: 1
+steps:
+  - id: done
+    finish:
+      result: 0
+"#;
+        let result = compile_workflow(yaml);
+        let err = first_error(result);
+        assert!(matches!(err, CompileError::UnsupportedTopLevelDeclaration { field: "inputs" }));
+    }
+
+    #[test]
+    fn compile_workflow_rejects_unsupported_top_level_result() {
+        let yaml = br#"version: velvet-ballastics/v1
+name: test
+when:
+  manual: {}
+result:
+  output: answer
+steps:
+  - id: done
+    finish:
+      result: 0
+"#;
+        let result = compile_workflow(yaml);
+        let err = first_error(result);
+        assert!(matches!(err, CompileError::UnsupportedTopLevelResult));
+    }
+
+    #[test]
+    fn compile_workflow_rejects_empty_steps() {
+        let yaml = b"version: velvet-ballastics/v1\nname: test\nwhen:\n  manual: {}\nsteps: []\n";
+        let result = compile_workflow(yaml);
+        let err = first_error(result);
+        assert!(matches!(err, CompileError::EmptySteps));
+    }
+
+    #[test]
+    fn compile_workflow_rejects_duplicate_output_name() {
+        let yaml = br#"version: velvet-ballastics/v1
+name: dup
+when:
+  manual: {}
+steps:
+  - id: a
+    set:
+      output: answer
+      value: "1"
+  - id: b
+    set:
+      output: answer
+      value: "2"
+  - id: done
+    finish:
+      result: answer
+"#;
+        let result = compile_workflow(yaml);
+        let err = first_error(result);
+        assert!(matches!(err, CompileError::DuplicateOutputName { .. }));
+    }
+
+    #[test]
+    fn compile_workflow_rejects_unknown_output_name() {
+        let yaml = br#"version: velvet-ballastics/v1
+name: unknown
+when:
+  manual: {}
+steps:
+  - id: a
+    set:
+      output: answer
+      value: "1"
+  - id: done
+    finish:
+      result: missing
+"#;
+        let result = compile_workflow(yaml);
+        let err = first_error(result);
+        assert!(matches!(err, CompileError::UnknownOutputName { .. }));
+    }
+
+    #[test]
+    fn compile_workflow_rejects_unsupported_step_primitive_run() {
+        let yaml = br#"version: velvet-ballastics/v1
+name: test
+when:
+  manual: {}
+steps:
+  - id: a
+    run:
+      action: test
+      input: "0"
+  - id: done
+    finish:
+      result: 0
+"#;
+        let result = compile_workflow(yaml);
+        let err = first_error(result);
+        assert!(matches!(err, CompileError::UnsupportedStepPrimitive { primitive: "do", .. }));
+    }
+
+    #[test]
+    fn compile_workflow_rejects_step_field_shape_non_integer_set_value() {
+        let yaml = br#"version: velvet-ballastics/v1
+name: test
+when:
+  manual: {}
+steps:
+  - id: a
+    set:
+      output: answer
+      value: not_an_integer
+  - id: done
+    finish:
+      result: answer
+"#;
+        let result = compile_workflow(yaml);
+        let err = first_error(result);
+        assert!(matches!(err, CompileError::StepFieldShape { field: "set.value", .. }));
+    }
+
+    #[test]
+    fn compile_workflow_rejects_finish_not_last_step() {
+        let yaml = br#"version: velvet-ballastics/v1
+name: test
+when:
+  manual: {}
+steps:
+  - id: done
+    finish:
+      result: 0
+  - id: extra
+    set:
+      output: answer
+      value: "1"
+"#;
+        let result = compile_workflow(yaml);
+        let err = first_error(result);
+        assert!(matches!(err, CompileError::StepFieldShape { field: "finish", .. }));
+    }
+
+    #[test]
+    fn compile_workflow_rejects_slot_index_out_of_range() {
+        let yaml = format!(
+            "version: velvet-ballastics/v1\nname: test\nwhen:\n  manual: {{}}\nsteps:\n  - id: done\n    finish:\n      result: {}\n",
+            u32::from(u16::MAX) + 1
+        );
+        let result = compile_workflow(yaml.as_bytes());
+        let err = first_error(result);
+        assert!(matches!(err, CompileError::SlotIndexOutOfRange { .. }));
+    }
+
+    #[test]
+    fn check_idempotency_gates_rejects_at_least_once_external_with_side_effects() {
+        let bad_contract = ActionContract {
+            id: ActionId::new(1),
+            input_slot_count: 0,
+            output_slot_count: 0,
+            max_input_bytes: 0,
+            max_output_bytes: 0,
+            timeout_ms: 0,
+            idempotency: Idempotency::AtLeastOnceExternal,
+            side_effect: SideEffect::Writes,
+            retry_safety: RetrySafety::Safe,
+            required_capabilities: Box::new([]),
+        };
+        let result = check_idempotency_gates(&[bad_contract]);
+        let err = match result {
+            Ok(_) => panic!("expected idempotency violation"),
+            Err(errors) => errors.0.into_iter().next().expect("expected at least one error"),
+        };
+        assert!(matches!(err, CompileError::IdempotencyViolation { .. }));
+    }
+
+    // --- parse_ast path (direct CompileError variants) ---
+
+    #[test]
+    fn parse_ast_rejects_top_level_not_mapping() {
+        let yaml = b"hello world";
+        let result = YamlCompiler::default().parse_ast(yaml);
+        let err = first_ast_error(result);
+        assert!(matches!(err, CompileError::TopLevelNotMapping));
+    }
+
+    #[test]
+    fn parse_ast_rejects_alias() {
+        // Aliases without a matching anchor cause saphyr to error before
+        // strict_yaml can catch them as AliasForbidden. Test the Parse path.
+        let yaml = b"*alias\n";
+        let result = YamlCompiler::default().parse_ast(yaml);
+        let err = first_ast_error(result);
+        assert!(matches!(err, CompileError::Parse(_)));
+    }
+
+    #[test]
+    fn parse_ast_rejects_anchor() {
+        let yaml = b"&anchor value\n";
+        let result = YamlCompiler::default().parse_ast(yaml);
+        let err = first_ast_error(result);
+        assert!(matches!(err, CompileError::AnchorForbidden { .. }));
+    }
+
+    #[test]
+    fn parse_ast_rejects_duplicate_key() {
+        let yaml = b"version: velvet-ballastics/v1\nversion: velvet-ballastics/v1\n";
+        let result = YamlCompiler::default().parse_ast(yaml);
+        let err = first_ast_error(result);
+        assert!(matches!(err, CompileError::DuplicateKey { .. }));
+    }
+
+    #[test]
+    fn parse_ast_rejects_merge_key() {
+        let yaml = b"<<: {a: b}\n";
+        let result = YamlCompiler::default().parse_ast(yaml);
+        let err = first_ast_error(result);
+        assert!(matches!(err, CompileError::MergeKeyForbidden { .. }));
+    }
+
+    #[test]
+    fn parse_ast_rejects_tag() {
+        let yaml = b"!custom value\n";
+        let result = YamlCompiler::default().parse_ast(yaml);
+        let err = first_ast_error(result);
+        assert!(matches!(err, CompileError::TagForbidden { .. }));
+    }
+
+    #[test]
+    fn parse_ast_rejects_float() {
+        let yaml = b"version: velvet-ballastics/v1\nname: test\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    finish:\n      result: 3.14\n";
+        let result = YamlCompiler::default().parse_ast(yaml);
+        let err = first_ast_error(result);
+        assert!(matches!(err, CompileError::FloatForbidden));
+    }
+
+    #[test]
+    fn parse_ast_rejects_depth_limit() {
+        let compiler = YamlCompiler::new(YamlLimits {
+            max_depth: 3,
+            ..tiny_limits()
+        });
+        let yaml = b"version: velvet-ballastics/v1\nname: t\nwhen:\n  manual: {}\nsteps:\n- id: d\n  finish:\n    result: 0\n";
+        let result = compiler.parse_ast(yaml);
+        let err = first_ast_error(result);
+        assert!(matches!(err, CompileError::DepthLimit { .. }));
+    }
+
+    #[test]
+    fn parse_ast_rejects_node_limit() {
+        let compiler = YamlCompiler::new(YamlLimits {
+            max_nodes: 9,
+            ..YamlLimits::default()
+        });
+        let yaml = b"version: velvet-ballastics/v1\nname: t\nwhen:\n  manual: {}\nsteps:\n- id: d\n  finish:\n    result: 0\n";
+        let result = compiler.parse_ast(yaml);
+        let err = first_ast_error(result);
+        assert!(matches!(err, CompileError::NodeLimit { .. }));
+    }
+
+    #[test]
+    fn parse_ast_rejects_sequence_limit() {
+        let compiler = YamlCompiler::new(YamlLimits {
+            max_sequence_len: 5,
+            ..YamlLimits::default()
+        });
+        let yaml = b"version: velvet-ballastics/v1\nname: t\nwhen:\n  manual: {}\nsteps:\n- id: a\n  finish:\n    result: 0\n- id: b\n  finish:\n    result: 0\n- id: c\n  finish:\n    result: 0\n- id: d\n  finish:\n    result: 0\n- id: e\n  finish:\n    result: 0\n- id: f\n  finish:\n    result: 0\n";
+        let result = compiler.parse_ast(yaml);
+        let err = first_ast_error(result);
+        assert!(matches!(err, CompileError::SequenceLimit { .. }));
+    }
+
+    #[test]
+    fn parse_ast_rejects_mapping_limit() {
+        let compiler = YamlCompiler::new(YamlLimits {
+            max_mapping_entries: 5,
+            ..YamlLimits::default()
+        });
+        let yaml = b"version: velvet-ballastics/v1\nname: t\nwhen:\n  manual: {}\ninputs: {}\nvars: {}\nsteps:\n- id: d\n  finish:\n    result: 0\n";
+        let result = compiler.parse_ast(yaml);
+        let err = first_ast_error(result);
+        assert!(matches!(err, CompileError::MappingLimit { .. }));
+    }
+
+    #[test]
+    fn parse_ast_rejects_scalar_limit() {
+        let compiler = YamlCompiler::new(YamlLimits {
+            max_scalar_bytes: 20,
+            ..YamlLimits::default()
+        });
+        let yaml = b"version: velvet-ballastics/v1\nname: test_with_very_long_name\nwhen:\n  manual: {}\nsteps:\n- id: d\n  finish:\n    result: 0\n";
+        let result = compiler.parse_ast(yaml);
+        let err = first_ast_error(result);
+        assert!(matches!(err, CompileError::ScalarLimit { .. }));
+    }
+
+    #[test]
+    fn parse_ast_rejects_missing_field() {
+        let yaml = b"name: test\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    finish:\n      result: 0\n";
+        let result = YamlCompiler::default().parse_ast(yaml);
+        let err = first_ast_error(result);
+        assert!(matches!(err, CompileError::MissingField { field: "version" }));
+    }
+
+    #[test]
+    fn parse_ast_rejects_unknown_top_level_field() {
+        let yaml = b"version: velvet-ballastics/v1\nname: test\nunknown: true\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    finish:\n      result: 0\n";
+        let result = YamlCompiler::default().parse_ast(yaml);
+        let err = first_ast_error(result);
+        assert!(matches!(err, CompileError::UnknownTopLevelField { .. }));
+    }
+
+    #[test]
+    fn parse_ast_rejects_invalid_version() {
+        let yaml = b"version: v2\nname: test\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    finish:\n      result: 0\n";
+        let result = YamlCompiler::default().parse_ast(yaml);
+        let err = first_ast_error(result);
+        assert!(matches!(err, CompileError::InvalidVersion { .. }));
+    }
+
+    #[test]
+    fn parse_ast_rejects_invalid_trigger_count_empty() {
+        let yaml = b"version: velvet-ballastics/v1\nname: test\nwhen: {}\nsteps:\n  - id: done\n    finish:\n      result: 0\n";
+        let result = YamlCompiler::default().parse_ast(yaml);
+        let err = first_ast_error(result);
+        assert!(matches!(err, CompileError::InvalidTriggerCount { .. }));
+    }
+
+    #[test]
+    fn parse_ast_rejects_invalid_trigger_count_multiple() {
+        let yaml = b"version: velvet-ballastics/v1\nname: test\nwhen:\n  manual: {}\n  webhook: {}\nsteps:\n  - id: done\n    finish:\n      result: 0\n";
+        let result = YamlCompiler::default().parse_ast(yaml);
+        let err = first_ast_error(result);
+        assert!(matches!(err, CompileError::InvalidTriggerCount { .. }));
+    }
+
+    #[test]
+    fn parse_ast_rejects_trigger_shape() {
+        let yaml = b"version: velvet-ballastics/v1\nname: test\nwhen:\n  webhook: not_a_mapping\nsteps:\n  - id: done\n    finish:\n      result: 0\n";
+        let result = YamlCompiler::default().parse_ast(yaml);
+        let err = first_ast_error(result);
+        assert!(matches!(err, CompileError::TriggerShape { .. }));
+    }
+
+    #[test]
+    fn parse_ast_rejects_unknown_trigger_field() {
+        let yaml = b"version: velvet-ballastics/v1\nname: test\nwhen:\n  webhook:\n    path: /test\n    method: POST\n    unknown: true\nsteps:\n  - id: done\n    finish:\n      result: 0\n";
+        let result = YamlCompiler::default().parse_ast(yaml);
+        let err = first_ast_error(result);
+        assert!(matches!(err, CompileError::UnknownTriggerField { .. }));
+    }
+
+    #[test]
+    fn parse_ast_rejects_missing_trigger_field() {
+        let yaml = b"version: velvet-ballastics/v1\nname: test\nwhen:\n  webhook: {}\nsteps:\n  - id: done\n    finish:\n      result: 0\n";
+        let result = YamlCompiler::default().parse_ast(yaml);
+        let err = first_ast_error(result);
+        assert!(matches!(err, CompileError::MissingTriggerField { trigger: "webhook", .. }));
+    }
+
+    #[test]
+    fn parse_ast_rejects_invalid_trigger_field() {
+        let yaml = b"version: velvet-ballastics/v1\nname: test\nwhen:\n  webhook:\n    path: test\n    method: POST\nsteps:\n  - id: done\n    finish:\n      result: 0\n";
+        let result = YamlCompiler::default().parse_ast(yaml);
+        let err = first_ast_error(result);
+        assert!(matches!(err, CompileError::InvalidTriggerField { trigger: "webhook", field: "path", .. }));
+    }
+
+    #[test]
+    fn parse_ast_rejects_invalid_name() {
+        let yaml = b"version: velvet-ballastics/v1\nname: Invalid-Name\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    finish:\n      result: 0\n";
+        let result = YamlCompiler::default().parse_ast(yaml);
+        let err = first_ast_error(result);
+        assert!(matches!(err, CompileError::InvalidName { .. }));
+    }
+
+    #[test]
+    fn parse_ast_rejects_missing_step_id() {
+        let yaml = b"version: velvet-ballastics/v1\nname: test\nwhen:\n  manual: {}\nsteps:\n  - finish:\n      result: 0\n";
+        let result = YamlCompiler::default().parse_ast(yaml);
+        let err = first_ast_error(result);
+        assert!(matches!(err, CompileError::MissingStepId { .. }));
+    }
+
+    #[test]
+    fn parse_ast_rejects_duplicate_step_id() {
+        let yaml = b"version: velvet-ballastics/v1\nname: test\nwhen:\n  manual: {}\nsteps:\n  - id: a\n    finish:\n      result: 0\n  - id: a\n    finish:\n      result: 0\n";
+        let result = YamlCompiler::default().parse_ast(yaml);
+        let err = first_ast_error(result);
+        assert!(matches!(err, CompileError::DuplicateStepId { .. }));
+    }
+
+    #[test]
+    fn parse_ast_rejects_step_shape() {
+        let yaml = b"version: velvet-ballastics/v1\nname: test\nwhen:\n  manual: {}\nsteps:\n  - not a mapping\n";
+        let result = YamlCompiler::default().parse_ast(yaml);
+        let err = first_ast_error(result);
+        assert!(matches!(err, CompileError::StepShape { .. }));
+    }
+
+    #[test]
+    fn parse_ast_rejects_unknown_step_field() {
+        let yaml = b"version: velvet-ballastics/v1\nname: test\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    unknown_field: true\n    finish:\n      result: 0\n";
+        let result = YamlCompiler::default().parse_ast(yaml);
+        let err = first_ast_error(result);
+        assert!(matches!(err, CompileError::UnknownStepField { .. }));
+    }
+
+    #[test]
+    fn parse_ast_rejects_missing_step_field() {
+        let yaml = b"version: velvet-ballastics/v1\nname: test\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    finish: {}\n";
+        let result = YamlCompiler::default().parse_ast(yaml);
+        let err = first_ast_error(result);
+        assert!(matches!(err, CompileError::MissingStepField { .. }));
+    }
+
+    #[test]
+    fn parse_ast_rejects_step_field_shape() {
+        let yaml = b"version: velvet-ballastics/v1\nname: test\nwhen:\n  manual: {}\nsteps:\n  - id: a\n    run:\n      action: bad\n      input: 0\n  - id: done\n    finish:\n      result: 0\n";
+        let result = YamlCompiler::default().parse_ast(yaml);
+        let err = first_ast_error(result);
+        assert!(matches!(err, CompileError::StepFieldShape { field: "action", .. }));
+    }
+
+    #[test]
+    fn parse_ast_rejects_unknown_input_schema_field() {
+        let yaml = br#"version: velvet-ballastics/v1
+name: test
+when:
+  manual: {}
+inputs:
+  x:
+    is: text
+    kind: text
+steps:
+  - id: done
+    finish:
+      result: 0
+"#;
+        let result = YamlCompiler::default().parse_ast(yaml);
+        let err = first_ast_error(result);
+        assert!(matches!(err, CompileError::UnknownInputSchemaField { .. }));
+    }
+
+    #[test]
+    fn parse_ast_rejects_invalid_input_schema() {
+        let yaml = br#"version: velvet-ballastics/v1
+name: test
+when:
+  manual: {}
+inputs:
+  x:
+    is: text
+    min_length: 9
+    max_length: 1
+steps:
+  - id: done
+    finish:
+      result: 0
+"#;
+        let result = YamlCompiler::default().parse_ast(yaml);
+        let err = first_ast_error(result);
+        assert!(matches!(err, CompileError::InvalidInputSchema { .. }));
+    }
+
+    #[test]
+    fn parse_ast_rejects_unsupported_constant_value() {
+        let yaml = br#"version: velvet-ballastics/v1
+name: test
+when:
+  manual: {}
+steps:
+  - id: reduce_step
+    reduce:
+      input: 0
+      accumulator: 1
+      initial: [1, 2]
+  - id: done
+    finish:
+      result: 0
+"#;
+        let result = YamlCompiler::default().parse_ast(yaml);
+        let err = first_ast_error(result);
+        assert!(matches!(err, CompileError::UnsupportedConstantValue { .. }));
+    }
+
+    #[test]
+    fn parse_ast_rejects_non_string_key() {
+        let yaml = b"1: value\n";
+        let result = YamlCompiler::default().parse_ast(yaml);
+        let err = first_ast_error(result);
+        assert!(matches!(err, CompileError::NonStringKey { .. }));
+    }
+
+    // --- Expression errors (direct parse_expression) ---
+
+    #[test]
+    fn parse_expression_rejects_integer_out_of_range() {
+        let result = crate::expression::parse_expression("999999999999999999999999999999");
+        assert!(matches!(result, Err(CompileError::ExpressionIntegerOutOfRange { .. })));
+    }
+
+    #[test]
+    fn parse_expression_rejects_unterminated_string() {
+        let result = crate::expression::parse_expression("\"hello");
+        assert!(matches!(result, Err(CompileError::ExpressionUnterminatedString { .. })));
+    }
+
+    #[test]
+    fn parse_expression_rejects_unknown_identifier() {
+        let result = crate::expression::parse_expression("unknown_var");
+        assert!(matches!(result, Err(CompileError::ExpressionUnknownIdentifier { .. })));
+    }
 }

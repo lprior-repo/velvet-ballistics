@@ -170,24 +170,18 @@ mod tests {
     fn assert_command_roundtrip(command: IpcCommand) {
         let frame_result = encode_frame(command, 0, 7, b"");
         assert_ok!(frame_result, "encode should succeed for {command:?}");
-        let Ok(frame_bytes) = frame_result else {
-            return;
-        };
+        let frame_bytes = frame_result
+            .unwrap_or_else(|e| panic!("encode should succeed for {command:?}: {e:?}"));
 
-        let header_slice = match frame_bytes.get(..IPC_HEADER_LEN) {
-            Some(s) => s,
-            None => return,
-        };
-        let header_arr: [u8; IPC_HEADER_LEN] = match header_slice.try_into() {
-            Ok(h) => h,
-            Err(_) => return,
-        };
+        let header_slice = frame_bytes.get(..IPC_HEADER_LEN)
+            .unwrap_or_else(|| panic!("frame too short for {command:?}"));
+        let header_arr: [u8; IPC_HEADER_LEN] = header_slice.try_into()
+            .unwrap_or_else(|_| panic!("header slice wrong size for {command:?}"));
         let header = decode_frame_header(&header_arr);
 
         assert_ok!(header, "header should decode for {command:?}");
-        let Ok(header) = header else {
-            return;
-        };
+        let header = header
+            .unwrap_or_else(|e| panic!("header should decode for {command:?}: {e:?}"));
         assert_eq!(header.command, command, "command should roundtrip");
     }
 
@@ -195,28 +189,25 @@ mod tests {
         let payload = b"test";
         let frame = encode_frame(command, 0, 42, payload);
         assert_ok!(frame, "encode should succeed for {command:?}");
-        let Ok(frame_bytes) = frame else { return };
+        let frame_bytes = frame
+            .unwrap_or_else(|e| panic!("encode should succeed for {command:?}: {e:?}"));
 
-        let header_arr: [u8; IPC_HEADER_LEN] = match frame_bytes.get(..IPC_HEADER_LEN) {
-            Some(s) => match s.try_into() {
-                Ok(a) => a,
-                Err(_) => return,
-            },
-            None => return,
-        };
+        let header_arr: [u8; IPC_HEADER_LEN] = frame_bytes.get(..IPC_HEADER_LEN)
+            .unwrap_or_else(|| panic!("frame too short for {command:?}"))
+            .try_into()
+            .unwrap_or_else(|_| panic!("header slice wrong size for {command:?}"));
         let decoded = decode_frame_header(&header_arr);
 
         assert_ok!(decoded, "decode should succeed for {command:?}");
-        let Ok(header) = decoded else { return };
+        let header = decoded
+            .unwrap_or_else(|e| panic!("decode should succeed for {command:?}: {e:?}"));
         assert_eq!(
             header.command, command,
             "command should roundtrip for {command:?}"
         );
         assert_eq!(header.correlation, 42);
-        let payload_len = match usize::try_from(header.payload_len) {
-            Ok(v) => v,
-            Err(_) => return,
-        };
+        let payload_len = usize::try_from(header.payload_len)
+            .unwrap_or_else(|_| panic!("payload_len should fit usize for {command:?}"));
         assert_eq!(payload_len, 4);
         assert_eq!(frame_bytes.get(IPC_HEADER_LEN..), Some(payload.as_slice()));
     }
@@ -247,23 +238,18 @@ mod tests {
             "frame should contain header plus payload"
         );
         let header_slice = match frame.get(..IPC_HEADER_LEN) {
-            Some(s) => s,
-            None => return,
+            Some(s) => s, None => panic!("frame too short"),
         };
         let header_bytes: [u8; IPC_HEADER_LEN] = match header_slice.try_into() {
-            Ok(h) => h,
-            Err(_) => return,
+            Ok(h) => h, Err(_) => panic!("header slice wrong size"),
         };
         let header_result = decode_frame_header(&header_bytes);
         assert_ok!(header_result, "header should decode");
-        let Ok(header) = header_result else {
-            return;
-        };
+        let Ok(header) = header_result else { panic!("header should decode") };
         assert_eq!(header.command, IpcCommand::Health);
         assert_eq!(header.correlation, 99);
         let payload_len = match usize::try_from(header.payload_len) {
-            Ok(v) => v,
-            Err(_) => return,
+            Ok(v) => v, Err(_) => panic!("payload_len should fit usize"),
         };
         assert_eq!(payload_len, payload.len());
         assert_eq!(frame.get(IPC_HEADER_LEN..), Some(payload.as_slice()));
@@ -410,23 +396,17 @@ mod tests {
         // When: encoding then decoding
         let frame_result = encode_frame(IpcCommand::Health, 0, 42, payload);
         assert_ok!(frame_result, "encode should succeed");
-        let Ok(frame_bytes) = frame_result else {
-            return;
-        };
+        let Ok(frame_bytes) = frame_result else { panic!("encode should succeed") };
 
         let header_bytes_slice = match frame_bytes.get(..IPC_HEADER_LEN) {
-            Some(s) => s,
-            None => return,
+            Some(s) => s, None => panic!("frame too short"),
         };
         let header_arr: [u8; IPC_HEADER_LEN] = match header_bytes_slice.try_into() {
-            Ok(h) => h,
-            Err(_) => return,
+            Ok(h) => h, Err(_) => panic!("header slice wrong size"),
         };
         let header = decode_frame_header(&header_arr);
         assert_ok!(header, "header should decode");
-        let Ok(header) = header else {
-            return;
-        };
+        let Ok(header) = header else { panic!("header should decode") };
 
         // Then: command, correlation, and payload_len match
         assert_eq!(header.command, IpcCommand::Health);
@@ -444,23 +424,17 @@ mod tests {
         // When: encoding then decoding
         let frame_result = encode_frame(IpcCommand::SubmitRun, 0, 99, &payload);
         assert_ok!(frame_result, "encode should succeed");
-        let Ok(frame_bytes) = frame_result else {
-            return;
-        };
+        let Ok(frame_bytes) = frame_result else { panic!("encode should succeed") };
 
         let header_bytes_slice = match frame_bytes.get(..IPC_HEADER_LEN) {
-            Some(s) => s,
-            None => return,
+            Some(s) => s, None => panic!("frame too short"),
         };
         let header_arr: [u8; IPC_HEADER_LEN] = match header_bytes_slice.try_into() {
-            Ok(h) => h,
-            Err(_) => return,
+            Ok(h) => h, Err(_) => panic!("header slice wrong size"),
         };
         let header = decode_frame_header(&header_arr);
         assert_ok!(header, "header should decode");
-        let Ok(header) = header else {
-            return;
-        };
+        let Ok(header) = header else { panic!("header should decode") };
 
         // Then: all header fields and payload match
         assert_eq!(header.command, IpcCommand::SubmitRun);
@@ -698,25 +672,18 @@ mod tests {
     fn decode_frame_payload_succeeds_for_matching_length() {
         // Given: a valid IpcPayload encoded as postcard bytes
         let payload = crate::IpcPayload::Health;
-        let payload_bytes = postcard::to_allocvec(&payload);
-        assert_ok!(payload_bytes, "payload should encode");
-        let Ok(payload_bytes) = payload_bytes else {
-            return;
-        };
+        let payload_bytes = postcard::to_allocvec(&payload)
+            .unwrap_or_else(|e| panic!("payload should encode: {e:?}"));
         let payload_len = match u32::try_from(payload_bytes.len()) {
-            Ok(v) => v,
-            Err(_) => return,
+            Ok(v) => v, Err(_) => panic!("payload_len should fit u32"),
         };
         let header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, payload_len);
 
         // When: decoding the frame payload
-        let result = decode_frame_payload(&header, &payload_bytes);
+        let decoded = decode_frame_payload(&header, &payload_bytes)
+            .unwrap_or_else(|e| panic!("payload should decode: {e:?}"));
 
         // Then: it decodes to the correct payload
-        assert_ok!(result, "payload should decode");
-        let Ok(decoded) = result else {
-            return;
-        };
         assert_eq!(decoded, crate::IpcPayload::Health);
     }
 
@@ -727,9 +694,7 @@ mod tests {
 
         // When: encoding
         assert_ok!(result, "encode should succeed");
-        let Ok(frame) = result else {
-            return;
-        };
+        let Ok(frame) = result else { panic!("encode should succeed") };
 
         // Then: flags bytes at offset 8..10 match
         let flags_slice = frame.get(8..10);
@@ -744,9 +709,7 @@ mod tests {
 
         // When: encoding
         assert_ok!(result, "encode should succeed");
-        let Ok(frame) = result else {
-            return;
-        };
+        let Ok(frame) = result else { panic!("encode should succeed") };
 
         // Then: correlation bytes at offset 12..20 match
         let corr_slice = frame.get(12..20);
@@ -957,7 +920,7 @@ mod tests {
     fn adversarial_truncated_header_23_bytes_rejected() {
         // Given: a reader with 23 bytes (one short of full header)
         let Some(short_len) = IPC_HEADER_LEN.checked_sub(1) else {
-            return;
+            panic!("IPC_HEADER_LEN should be > 0")
         };
         let data = vec![0u8; short_len];
         let mut cursor = std::io::Cursor::new(data);
@@ -1340,11 +1303,11 @@ mod tests {
         let header = IpcFrameHeader::new(IpcCommand::Health, 0, 42, 0);
         let encoded = header.encode();
         assert_ok!(encoded);
-        let Ok(encoded) = encoded else { return };
+        let Ok(encoded) = encoded else { panic!("header should encode") };
         let mut cursor = std::io::Cursor::new(encoded.as_slice());
         let result = read_frame_header(&mut cursor);
         assert_ok!(result);
-        let Ok(decoded) = result else { return };
+        let Ok(decoded) = result else { panic!("header should decode") };
         assert_eq!(decoded.command, IpcCommand::Health);
         assert_eq!(decoded.correlation, 42);
     }
@@ -1362,11 +1325,11 @@ mod tests {
         let header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, 100);
         let encoded = header.encode();
         assert_ok!(encoded);
-        let Ok(encoded) = encoded else { return };
+        let Ok(encoded) = encoded else { panic!("header should encode") };
         let mut cursor = std::io::Cursor::new(encoded.as_slice());
         let result = read_frame_header_bounded(&mut cursor, MaxPayloadBytes::DEFAULT);
         assert_ok!(result);
-        let Ok(decoded) = result else { return };
+        let Ok(decoded) = result else { panic!("header should decode") };
         assert_eq!(decoded.payload_len, 100);
     }
 
@@ -1429,7 +1392,7 @@ mod tests {
         let mut cursor = std::io::Cursor::new(empty_data);
         let result = read_frame_payload(&mut cursor, &header);
         assert_ok!(result);
-        let Ok(payload) = result else { return };
+        let Ok(payload) = result else { panic!("payload should read") };
         assert_eq!(payload.len(), 0);
     }
 
@@ -1437,7 +1400,7 @@ mod tests {
     fn encode_frame_with_all_flags_set() {
         let result = encode_frame(IpcCommand::Health, u16::MAX, 1, b"");
         assert_ok!(result);
-        let Ok(frame) = result else { return };
+        let Ok(frame) = result else { panic!("encode should succeed") };
         let flags_slice = frame.get(8..10);
         assert_eq!(flags_slice, Some(u16::MAX.to_le_bytes().as_slice()));
     }
@@ -1447,10 +1410,10 @@ mod tests {
         let header = IpcFrameHeader::new(IpcCommand::SubmitRun, 0xABCD, 0x1234_5678_9ABC_DEF0, 4096);
         let encoded = header.encode();
         assert_ok!(encoded);
-        let Ok(encoded) = encoded else { return };
+        let Ok(encoded) = encoded else { panic!("header should encode") };
         let decoded = decode_frame_header(&encoded);
         assert_ok!(decoded);
-        let Ok(decoded) = decoded else { return };
+        let Ok(decoded) = decoded else { panic!("header should decode") };
         assert_eq!(decoded.command, IpcCommand::SubmitRun);
         assert_eq!(decoded.flags, 0xABCD);
         assert_eq!(decoded.correlation, 0x1234_5678_9ABC_DEF0);
@@ -1469,6 +1432,43 @@ mod tests {
             Err(IpcError::PayloadTooLarge {
                 actual: 100,
                 limit: 1,
+            })
+        );
+    }
+
+    #[test]
+    fn read_frame_header_bounded_rejects_short_reader() {
+        let data = vec![0u8; 10];
+        let mut cursor = std::io::Cursor::new(data);
+        let result = read_frame_header_bounded(&mut cursor, MaxPayloadBytes::DEFAULT);
+        assert_eq!(result, Err(IpcError::HeaderDecodeFailed));
+    }
+
+    #[test]
+    fn write_frame_rejects_failing_writer() {
+        struct FailingWriter;
+        impl std::io::Write for FailingWriter {
+            fn write(&mut self, _buf: &[u8]) -> std::io::Result<usize> {
+                Err(std::io::Error::new(std::io::ErrorKind::Other, "write failed"))
+            }
+            fn flush(&mut self) -> std::io::Result<()> {
+                Ok(())
+            }
+        }
+        let mut writer = FailingWriter;
+        let result = write_frame(&mut writer, IpcCommand::Health, 0, 1, b"");
+        assert_eq!(result, Err(IpcError::HeaderEncodeFailed));
+        assert_eq!(writer.flush(), Ok(()));
+    }
+
+    #[test]
+    fn payload_len_u32_rejects_usize_max() {
+        let result = payload_len_u32(usize::MAX);
+        assert_eq!(
+            result,
+            Err(IpcError::PayloadTooLarge {
+                actual: usize::MAX,
+                limit: usize::MAX,
             })
         );
     }

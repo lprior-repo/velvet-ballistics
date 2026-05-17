@@ -24,8 +24,7 @@ impl AskTicketId {
     /// a valid 64-bit integer, but validates the encoding invariant).
     #[must_use]
     pub const fn from_wire(raw: u64) -> Self {
-        // Invariant: lower 16 bits must fit in u16 (always true for u64)
-        let _ = raw & 0xFFFF;
+        // Invariant: lower 16 bits always fit in u16 for any u64 value.
         Self(raw)
     }
 
@@ -59,8 +58,7 @@ impl ActionTicketId {
     /// a valid 64-bit integer, but validates the encoding invariant).
     #[must_use]
     pub const fn from_wire(raw: u64) -> Self {
-        // Invariant: lower 16 bits must fit in u16 (always true for u64)
-        let _ = raw & 0xFFFF;
+        // Invariant: lower 16 bits always fit in u16 for any u64 value.
         Self(raw)
     }
 

@@ -27,6 +27,28 @@ pub enum StepState {
     Cancelled,
 }
 
+/// Pure transition predicate shared by runtime validation and proof harnesses.
+#[must_use]
+pub fn is_valid_step_state_transition(current: StepState, new: StepState) -> bool {
+    vb_proof_kernels::step_state::is_valid_transition(
+        proof_kernel_step_state(current),
+        proof_kernel_step_state(new),
+    )
+}
+
+fn proof_kernel_step_state(state: StepState) -> vb_proof_kernels::step_state::StepState {
+    match state {
+        StepState::Pending => vb_proof_kernels::step_state::StepState::Pending,
+        StepState::Running => vb_proof_kernels::step_state::StepState::Running,
+        StepState::Succeeded => vb_proof_kernels::step_state::StepState::Succeeded,
+        StepState::Failed => vb_proof_kernels::step_state::StepState::Failed,
+        StepState::Skipped => vb_proof_kernels::step_state::StepState::Skipped,
+        StepState::Waiting => vb_proof_kernels::step_state::StepState::Waiting,
+        StepState::Asking => vb_proof_kernels::step_state::StepState::Asking,
+        StepState::Cancelled => vb_proof_kernels::step_state::StepState::Cancelled,
+    }
+}
+
 /// Runtime state for one workflow run.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RunFrame {
@@ -390,38 +412,8 @@ impl RunFrame {
     }
 
     /// Validates that a state transition is legal under the frame state machine.
-    #[allow(clippy::match_same_arms)] // Arms grouped by semantic transition category for readability
     fn validate_transition(current: StepState, new: StepState) -> CoreResult<()> {
-        let valid = match (current, new) {
-            // Pending -> Running is the initial activation
-            (StepState::Pending, StepState::Running) => true,
-            // Deterministic engine paths can complete or skip simple nodes without a separate Running mark.
-            (
-                StepState::Pending,
-                StepState::Succeeded
-                | StepState::Failed
-                | StepState::Cancelled
-                | StepState::Skipped,
-            ) => true,
-            // Running can transition to any terminal or suspend state
-            (
-                StepState::Running,
-                StepState::Succeeded
-                | StepState::Failed
-                | StepState::Waiting
-                | StepState::Asking
-                | StepState::Cancelled
-                | StepState::Skipped,
-            ) => true,
-            // Suspend states can resume back to Running
-            (StepState::Waiting | StepState::Asking, StepState::Running) => true,
-            // Repeated marking is idempotent across engine bookkeeping boundaries.
-            (state, next) if state == next => true,
-            // Terminal states (Succeeded, Failed, Cancelled) allow no transitions out.
-            // Skipped is also terminal for practical purposes.
-            _ => false,
-        };
-        if valid {
+        if is_valid_step_state_transition(current, new) {
             Ok(())
         } else {
             Err(CoreError::InternalInvariantViolation {
@@ -1289,32 +1281,13 @@ mod tests {
 // Uses a minimal inline transition function to avoid CoreResult (CoreError -> Capability drop loop).
 #[cfg(kani)]
 mod frame_kani_harnesses {
-    use crate::frame::{RunFrame, SlotIdx, SlotValue, StepIdx, StepState};
+    use crate::frame::{
+        RunFrame, SlotIdx, SlotValue, StepIdx, StepState, is_valid_step_state_transition,
+    };
     use crate::ids::RunId;
 
     fn validate_transition_inline(current: StepState, new: StepState) -> bool {
-        match (current, new) {
-            (StepState::Pending, StepState::Running) => true,
-            (
-                StepState::Pending,
-                StepState::Succeeded
-                | StepState::Failed
-                | StepState::Cancelled
-                | StepState::Skipped,
-            ) => true,
-            (
-                StepState::Running,
-                StepState::Succeeded
-                | StepState::Failed
-                | StepState::Waiting
-                | StepState::Asking
-                | StepState::Cancelled
-                | StepState::Skipped,
-            ) => true,
-            (StepState::Waiting | StepState::Asking, StepState::Running) => true,
-            (state, next) if state == next => true,
-            _ => false,
-        }
+        is_valid_step_state_transition(current, new)
     }
 
     fn step_state_from_u8(v: u8) -> StepState {
@@ -2026,7 +1999,10 @@ mod frame_kani_harnesses {
                         kani::assume(frame.is_ok());
                         let mut frame = frame.unwrap();
                         let result = frame.set_pc(pc);
-                        assert!(matches!(result, Err(CoreError::InvalidProgramCounter { .. })));
+                        assert!(matches!(
+                            result,
+                            Err(crate::CoreError::InvalidProgramCounter { .. })
+                        ));
                     }
                 }
 

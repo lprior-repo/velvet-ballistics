@@ -294,4 +294,153 @@ mod tests {
         };
         assert_eq!(err.runtime_code(), None);
     }
+
+    // ── PartialEq tests ──
+
+    #[test]
+    fn partial_eq_bind_failed_same_error() {
+        let a = IpcServerError::BindFailed {
+            source: io_error(io::ErrorKind::AddrInUse, "addr"),
+        };
+        let b = IpcServerError::BindFailed {
+            source: io_error(io::ErrorKind::AddrInUse, "addr"),
+        };
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn partial_eq_bind_failed_different_message() {
+        let a = IpcServerError::BindFailed {
+            source: io_error(io::ErrorKind::AddrInUse, "addr1"),
+        };
+        let b = IpcServerError::BindFailed {
+            source: io_error(io::ErrorKind::AddrInUse, "addr2"),
+        };
+        assert_ne!(a, b);
+    }
+
+    #[test]
+    fn partial_eq_poll_failed_same_error() {
+        let a = IpcServerError::PollFailed {
+            source: io_error(io::ErrorKind::Interrupted, "intr"),
+        };
+        let b = IpcServerError::PollFailed {
+            source: io_error(io::ErrorKind::Interrupted, "intr"),
+        };
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn partial_eq_poll_failed_different_message() {
+        let a = IpcServerError::PollFailed {
+            source: io_error(io::ErrorKind::Interrupted, "intr1"),
+        };
+        let b = IpcServerError::PollFailed {
+            source: io_error(io::ErrorKind::Interrupted, "intr2"),
+        };
+        assert_ne!(a, b);
+    }
+
+    #[test]
+    fn partial_eq_accept_failed_same_error() {
+        let a = IpcServerError::AcceptFailed {
+            source: io_error(io::ErrorKind::ConnectionRefused, "ref"),
+        };
+        let b = IpcServerError::AcceptFailed {
+            source: io_error(io::ErrorKind::ConnectionRefused, "ref"),
+        };
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn partial_eq_accept_failed_different_message() {
+        let a = IpcServerError::AcceptFailed {
+            source: io_error(io::ErrorKind::ConnectionRefused, "ref1"),
+        };
+        let b = IpcServerError::AcceptFailed {
+            source: io_error(io::ErrorKind::ConnectionRefused, "ref2"),
+        };
+        assert_ne!(a, b);
+    }
+
+    #[test]
+    fn partial_eq_response_write_failed_same_error() {
+        let a = IpcServerError::ResponseWriteFailed {
+            source: io_error(io::ErrorKind::BrokenPipe, "pipe"),
+        };
+        let b = IpcServerError::ResponseWriteFailed {
+            source: io_error(io::ErrorKind::BrokenPipe, "pipe"),
+        };
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn partial_eq_response_write_failed_different_message() {
+        let a = IpcServerError::ResponseWriteFailed {
+            source: io_error(io::ErrorKind::BrokenPipe, "pipe1"),
+        };
+        let b = IpcServerError::ResponseWriteFailed {
+            source: io_error(io::ErrorKind::BrokenPipe, "pipe2"),
+        };
+        assert_ne!(a, b);
+    }
+
+    #[test]
+    fn partial_eq_too_many_clients_equal() {
+        assert_eq!(
+            IpcServerError::TooManyClients,
+            IpcServerError::TooManyClients
+        );
+    }
+
+    #[test]
+    fn partial_eq_response_encode_failed_equal() {
+        assert_eq!(
+            IpcServerError::ResponseEncodeFailed,
+            IpcServerError::ResponseEncodeFailed
+        );
+    }
+
+    #[test]
+    fn partial_eq_incomplete_frame_equal() {
+        assert_eq!(
+            IpcServerError::IncompleteFrame,
+            IpcServerError::IncompleteFrame
+        );
+    }
+
+    #[test]
+    fn partial_eq_read_buffer_too_large_equal() {
+        assert_eq!(
+            IpcServerError::ReadBufferTooLarge,
+            IpcServerError::ReadBufferTooLarge
+        );
+    }
+
+    #[test]
+    fn partial_eq_frame_invalid_same_source() {
+        let a = IpcServerError::FrameInvalid {
+            source: IpcError::InvalidMagic { actual: 0 },
+        };
+        let b = IpcServerError::FrameInvalid {
+            source: IpcError::InvalidMagic { actual: 0 },
+        };
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn partial_eq_different_variants_not_equal() {
+        assert_ne!(
+            IpcServerError::TooManyClients,
+            IpcServerError::IncompleteFrame
+        );
+        assert_ne!(
+            IpcServerError::BindFailed {
+                source: io_error(io::ErrorKind::AddrInUse, "addr"),
+            },
+            IpcServerError::PollFailed {
+                source: io_error(io::ErrorKind::Interrupted, "intr"),
+            }
+        );
+    }
 }

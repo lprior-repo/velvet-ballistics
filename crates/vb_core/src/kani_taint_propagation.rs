@@ -122,4 +122,3 @@ fn kani_write_taint_no_panic() {
     let result = frame.write_taint(slot, taint);
     kani::assert(result.is_ok(), "write_taint with valid idx returns Ok");
 }
-

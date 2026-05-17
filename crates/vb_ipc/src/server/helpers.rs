@@ -213,7 +213,7 @@ mod tests {
         let mut read_buffer = Vec::new();
         let temp_buf = [0xAB_u8; 4096];
         let result = append_read_bytes(&mut read_buffer, &temp_buf, 10);
-        assert!(result.is_ok(), "appending 10 bytes should succeed");
+        assert_eq!(result, Ok(()), "appending 10 bytes should succeed");
         assert_eq!(read_buffer.len(), 10);
         assert_eq!(read_buffer.as_slice(), &[0xAB; 10]);
     }
@@ -432,6 +432,16 @@ mod tests {
     // ── append_read_bytes overflow / bounds tests ──
 
     #[test]
+    fn append_read_bytes_accepts_exactly_at_max() {
+        let max = IPC_HEADER_LEN + MaxPayloadBytes::DEFAULT.get();
+        let mut read_buffer = vec![0u8; max - 1];
+        let temp_buf = [1u8; 4096];
+        let result = append_read_bytes(&mut read_buffer, &temp_buf, 1);
+        assert_eq!(result, Ok(()), "expected Ok when appending exactly to max");
+        assert_eq!(read_buffer.len(), max);
+    }
+
+    #[test]
     fn append_read_bytes_rejects_when_buffer_would_exceed_max() {
         let max = IPC_HEADER_LEN + MaxPayloadBytes::DEFAULT.get();
         let mut read_buffer = vec![0u8; max - 5];
@@ -440,6 +450,18 @@ mod tests {
         assert!(
             matches!(result, Err(IpcServerError::ReadBufferTooLarge)),
             "expected ReadBufferTooLarge when max exceeded"
+        );
+    }
+
+    #[test]
+    fn append_read_bytes_rejects_at_exactly_one_over_max() {
+        let max = IPC_HEADER_LEN + MaxPayloadBytes::DEFAULT.get();
+        let mut read_buffer = vec![0u8; max];
+        let temp_buf = [1u8; 4096];
+        let result = append_read_bytes(&mut read_buffer, &temp_buf, 1);
+        assert!(
+            matches!(result, Err(IpcServerError::ReadBufferTooLarge)),
+            "expected ReadBufferTooLarge when exactly one over max"
         );
     }
 
@@ -622,6 +644,29 @@ mod tests {
         );
 
         let Err(e) = result else { panic!("expected ResponseWriteFailed"); };
+        assert!(matches!(e, IpcServerError::ResponseWriteFailed { .. }), "expected ResponseWriteFailed, got {e:?}");
+    }
+
+    #[test]
+    fn send_response_returns_error_when_write_fails_broken_pipe() {
+        let (mut stream, peer, poll, token) = setup_mio_stream_with_peer();
+        let registry = poll.registry().try_clone().unwrap();
+        drop(peer);
+
+        let mut write_buffer = Vec::new();
+        let request_header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, 0);
+        let response = crate::server::IpcResponse::Healthy;
+
+        let result = send_response(
+            &mut stream,
+            &mut write_buffer,
+            &registry,
+            token,
+            &request_header,
+            &response,
+        );
+
+        let Err(e) = result else { panic!("expected ResponseWriteFailed after dropping peer"); };
         assert!(matches!(e, IpcServerError::ResponseWriteFailed { .. }), "expected ResponseWriteFailed, got {e:?}");
     }
 }

@@ -715,10 +715,14 @@ impl CoreError {
 
 #[cfg(test)]
 mod tests {
-    use super::{CoreError, DiagnosticCode, EngineError};
-    use crate::ids::{
-        ActionId, BlobId, ConstIdx, ExprIdx, ListId, ObjectId, SlotIdx, StepIdx, SymbolId,
+    use super::{
+        CollectExtraHydrationFailureKind, CollectPageOrderViolationKind, CoreError, DiagnosticCode,
+        EngineError,
     };
+    use crate::ids::{
+        ActionId, BlobId, ConstIdx, ExprIdx, ListId, ObjectId, RunId, SlotIdx, StepIdx, SymbolId,
+    };
+    use chrono::Utc;
 
     // -- diagnostic_code is correct for every variant --
 
@@ -1673,5 +1677,350 @@ mod tests {
             slot: SlotIdx::new(0),
         };
         assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x1012));
+    }
+
+    // -- Missing exact variant tests from review --
+
+    #[test]
+    fn core_error_budget_parse_exact_variant() {
+        let error = CoreError::BudgetParse {
+            reason: "invalid u64 value",
+        };
+        let CoreError::BudgetParse { reason } = error else {
+            panic!("expected BudgetParse variant");
+        };
+        assert_eq!(reason, "invalid u64 value");
+        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x140A));
+    }
+
+    #[test]
+    fn core_error_collect_page_order_violation_exact_variant() {
+        let error = CoreError::CollectPageOrderViolation {
+            kind: CollectPageOrderViolationKind::OutOfOrder,
+            run_id: RunId::new(1),
+            collector_slot: SlotIdx::new(2),
+            expected_page: ListId::new(3),
+            observed_page: ListId::new(4),
+        };
+        let CoreError::CollectPageOrderViolation {
+            kind,
+            run_id,
+            collector_slot,
+            expected_page,
+            observed_page,
+        } = error else {
+            panic!("expected CollectPageOrderViolation variant");
+        };
+        assert_eq!(kind, CollectPageOrderViolationKind::OutOfOrder);
+        assert_eq!(run_id, RunId::new(1));
+        assert_eq!(collector_slot, SlotIdx::new(2));
+        assert_eq!(expected_page, ListId::new(3));
+        assert_eq!(observed_page, ListId::new(4));
+    }
+
+    #[test]
+    fn core_error_collect_extra_hydration_failed_exact_variant() {
+        let error = CoreError::CollectExtraHydrationFailed {
+            kind: CollectExtraHydrationFailureKind::EmptyExtra,
+            run_id: RunId::new(1),
+            collector_slot: SlotIdx::new(2),
+            event_seq: None,
+        };
+        let CoreError::CollectExtraHydrationFailed {
+            kind,
+            run_id,
+            collector_slot,
+            event_seq,
+        } = error else {
+            panic!("expected CollectExtraHydrationFailed variant");
+        };
+        assert_eq!(kind, CollectExtraHydrationFailureKind::EmptyExtra);
+        assert_eq!(run_id, RunId::new(1));
+        assert_eq!(collector_slot, SlotIdx::new(2));
+        assert_eq!(event_seq, None);
+    }
+
+    #[test]
+    fn core_error_collect_evidence_capacity_exceeded_exact_variant() {
+        let error = CoreError::CollectEvidenceCapacityExceeded {
+            run_id: RunId::new(1),
+            slot: SlotIdx::new(2),
+            capacity: 100,
+            len: 200,
+            required: "extra slots",
+        };
+        let CoreError::CollectEvidenceCapacityExceeded {
+            run_id,
+            slot,
+            capacity,
+            len,
+            required,
+        } = error else {
+            panic!("expected CollectEvidenceCapacityExceeded variant");
+        };
+        assert_eq!(run_id, RunId::new(1));
+        assert_eq!(slot, SlotIdx::new(2));
+        assert_eq!(capacity, 100);
+        assert_eq!(len, 200);
+        assert_eq!(required, "extra slots");
+    }
+
+    #[test]
+    fn core_error_lifecycle_storage_unavailable_exact_variant() {
+        let ts = Utc::now();
+        let error = CoreError::LifecycleStorageUnavailable {
+            code: DiagnosticCode::new(0x1501),
+            context: String::from("disk full"),
+            timestamp: ts,
+            bead_id: Some(RunId::new(1)),
+        };
+        let CoreError::LifecycleStorageUnavailable {
+            code,
+            context,
+            timestamp,
+            bead_id,
+        } = error else {
+            panic!("expected LifecycleStorageUnavailable variant");
+        };
+        assert_eq!(code, DiagnosticCode::new(0x1501));
+        assert_eq!(context, "disk full");
+        assert_eq!(timestamp, ts);
+        assert_eq!(bead_id, Some(RunId::new(1)));
+    }
+
+    #[test]
+    fn core_error_lifecycle_duplicate_request_exact_variant() {
+        let ts = Utc::now();
+        let error = CoreError::LifecycleDuplicateRequest {
+            code: DiagnosticCode::new(0x1502),
+            context: String::from("dup"),
+            timestamp: ts,
+            bead_id: None,
+            command: Some("run"),
+        };
+        let CoreError::LifecycleDuplicateRequest {
+            code,
+            context,
+            timestamp,
+            bead_id,
+            command,
+        } = error else {
+            panic!("expected LifecycleDuplicateRequest variant");
+        };
+        assert_eq!(code, DiagnosticCode::new(0x1502));
+        assert_eq!(context, "dup");
+        assert_eq!(timestamp, ts);
+        assert_eq!(bead_id, None);
+        assert_eq!(command, Some("run"));
+    }
+
+    #[test]
+    fn core_error_lifecycle_stale_request_exact_variant() {
+        let ts = Utc::now();
+        let error = CoreError::LifecycleStaleRequest {
+            code: DiagnosticCode::new(0x1503),
+            context: String::from("stale"),
+            timestamp: ts,
+            bead_id: Some(RunId::new(2)),
+            command: None,
+        };
+        let CoreError::LifecycleStaleRequest {
+            code,
+            context,
+            timestamp,
+            bead_id,
+            command,
+        } = error else {
+            panic!("expected LifecycleStaleRequest variant");
+        };
+        assert_eq!(code, DiagnosticCode::new(0x1503));
+        assert_eq!(context, "stale");
+        assert_eq!(timestamp, ts);
+        assert_eq!(bead_id, Some(RunId::new(2)));
+        assert_eq!(command, None);
+    }
+
+    #[test]
+    fn core_error_lifecycle_invalid_transition_exact_variant() {
+        let ts = Utc::now();
+        let error = CoreError::LifecycleInvalidTransition {
+            code: DiagnosticCode::new(0x1504),
+            context: String::from("bad transition"),
+            timestamp: ts,
+            bead_id: None,
+            command: Some("step"),
+        };
+        let CoreError::LifecycleInvalidTransition {
+            code,
+            context,
+            timestamp,
+            bead_id,
+            command,
+        } = error else {
+            panic!("expected LifecycleInvalidTransition variant");
+        };
+        assert_eq!(code, DiagnosticCode::new(0x1504));
+        assert_eq!(context, "bad transition");
+        assert_eq!(timestamp, ts);
+        assert_eq!(bead_id, None);
+        assert_eq!(command, Some("step"));
+    }
+
+    #[test]
+    fn core_error_journal_write_failure_exact_variant() {
+        let ts = Utc::now();
+        let error = CoreError::JournalWriteFailure {
+            code: DiagnosticCode::new(0x1505),
+            context: String::from("io error"),
+            timestamp: ts,
+            bead_id: Some(RunId::new(3)),
+        };
+        let CoreError::JournalWriteFailure {
+            code,
+            context,
+            timestamp,
+            bead_id,
+        } = error else {
+            panic!("expected JournalWriteFailure variant");
+        };
+        assert_eq!(code, DiagnosticCode::new(0x1505));
+        assert_eq!(context, "io error");
+        assert_eq!(timestamp, ts);
+        assert_eq!(bead_id, Some(RunId::new(3)));
+    }
+
+    #[test]
+    fn core_error_replay_corruption_exact_variant() {
+        let ts = Utc::now();
+        let error = CoreError::ReplayCorruption {
+            code: DiagnosticCode::new(0x1506),
+            context: String::from("checksum mismatch"),
+            timestamp: ts,
+            bead_id: None,
+        };
+        let CoreError::ReplayCorruption {
+            code,
+            context,
+            timestamp,
+            bead_id,
+        } = error else {
+            panic!("expected ReplayCorruption variant");
+        };
+        assert_eq!(code, DiagnosticCode::new(0x1506));
+        assert_eq!(context, "checksum mismatch");
+        assert_eq!(timestamp, ts);
+        assert_eq!(bead_id, None);
+    }
+
+    #[test]
+    fn core_error_diagnostic_code_budget_parse() {
+        let error = CoreError::BudgetParse {
+            reason: "bad value",
+        };
+        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x140A));
+    }
+
+    #[test]
+    fn core_error_diagnostic_code_collect_page_order_violation() {
+        let error = CoreError::CollectPageOrderViolation {
+            kind: CollectPageOrderViolationKind::Duplicate,
+            run_id: RunId::new(1),
+            collector_slot: SlotIdx::new(0),
+            expected_page: ListId::new(0),
+            observed_page: ListId::new(0),
+        };
+        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x140B));
+    }
+
+    #[test]
+    fn core_error_diagnostic_code_collect_extra_hydration_failed() {
+        let error = CoreError::CollectExtraHydrationFailed {
+            kind: CollectExtraHydrationFailureKind::DecodeFailed,
+            run_id: RunId::new(1),
+            collector_slot: SlotIdx::new(0),
+            event_seq: None,
+        };
+        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x140C));
+    }
+
+    #[test]
+    fn core_error_diagnostic_code_collect_evidence_capacity_exceeded() {
+        let error = CoreError::CollectEvidenceCapacityExceeded {
+            run_id: RunId::new(1),
+            slot: SlotIdx::new(0),
+            capacity: 1,
+            len: 2,
+            required: "test",
+        };
+        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x140D));
+    }
+
+    #[test]
+    fn core_error_diagnostic_code_lifecycle_storage_unavailable() {
+        let error = CoreError::LifecycleStorageUnavailable {
+            code: DiagnosticCode::new(0x1501),
+            context: String::new(),
+            timestamp: Utc::now(),
+            bead_id: None,
+        };
+        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x1501));
+    }
+
+    #[test]
+    fn core_error_diagnostic_code_lifecycle_duplicate_request() {
+        let error = CoreError::LifecycleDuplicateRequest {
+            code: DiagnosticCode::new(0x1502),
+            context: String::new(),
+            timestamp: Utc::now(),
+            bead_id: None,
+            command: None,
+        };
+        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x1502));
+    }
+
+    #[test]
+    fn core_error_diagnostic_code_lifecycle_stale_request() {
+        let error = CoreError::LifecycleStaleRequest {
+            code: DiagnosticCode::new(0x1503),
+            context: String::new(),
+            timestamp: Utc::now(),
+            bead_id: None,
+            command: None,
+        };
+        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x1503));
+    }
+
+    #[test]
+    fn core_error_diagnostic_code_lifecycle_invalid_transition() {
+        let error = CoreError::LifecycleInvalidTransition {
+            code: DiagnosticCode::new(0x1504),
+            context: String::new(),
+            timestamp: Utc::now(),
+            bead_id: None,
+            command: None,
+        };
+        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x1504));
+    }
+
+    #[test]
+    fn core_error_diagnostic_code_journal_write_failure() {
+        let error = CoreError::JournalWriteFailure {
+            code: DiagnosticCode::new(0x1505),
+            context: String::new(),
+            timestamp: Utc::now(),
+            bead_id: None,
+        };
+        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x1505));
+    }
+
+    #[test]
+    fn core_error_diagnostic_code_replay_corruption() {
+        let error = CoreError::ReplayCorruption {
+            code: DiagnosticCode::new(0x1506),
+            context: String::new(),
+            timestamp: Utc::now(),
+            bead_id: None,
+        };
+        assert_eq!(error.diagnostic_code(), DiagnosticCode::new(0x1506));
     }
 }

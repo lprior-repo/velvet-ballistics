@@ -26,8 +26,8 @@ fn kani_ipc_header_rejects_oversize_payload() {
     kani::assert(decoded.is_err(), "payload exceeding bound should return error");
 
     if let Err(IpcError::PayloadTooLarge { actual, limit }) = decoded {
-        kani::assert(actual == payload_len as usize, "actual matches");
-        kani::assert(limit == 16, "limit is 16");
+        kani::assert(actual == payload_len as usize);
+        kani::assert(limit == 16);
     }
 }
 

@@ -48,7 +48,10 @@ fn kani_read_slot_in_bounds() {
     let read_result = frame.read_slot(slot);
     kani::assert(read_result.is_ok(), "read_slot with valid idx returns Ok");
     if let Ok(val) = read_result {
-        kani::assert(matches!(val, SlotValue::I64(42)), "read_slot returns written value");
+        kani::assert(
+            matches!(val, SlotValue::I64(42)),
+            "read_slot returns written value",
+        );
     }
 }
 

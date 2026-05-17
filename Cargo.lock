@@ -2727,6 +2727,7 @@ dependencies = [
  "proptest",
  "serde",
  "thiserror",
+ "vb_proof_kernels",
 ]
 
 [[package]]

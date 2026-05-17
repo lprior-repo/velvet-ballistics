@@ -390,4 +390,30 @@ mod tests {
             .map_err(|e| e.to_string())?;
         ensure_equal(value, SlotValue::I64(90))
     }
+
+    // ===== eval_load_slot error branches =====
+
+    #[test]
+    fn eval_load_slot_rejects_out_of_bounds_slot() -> Result<(), String> {
+        let workflow = make_workflow(vec![ExprOp::LoadSlot(SlotIdx::new(5))], vec![], 1)?;
+        let run = make_run(1)?;
+        let mut store = ValueStore::new();
+        let result = eval_expr_with_store(&workflow, &run, &mut store, ExprIdx::new(0));
+        match result {
+            Err(EngineError::SlotOutOfBounds { slot }) if slot == SlotIdx::new(5) => Ok(()),
+            other => Err(format!("expected SlotOutOfBounds, got {other:?}")),
+        }
+    }
+
+    #[test]
+    fn eval_load_slot_rejects_uninitialized_slot() -> Result<(), String> {
+        let workflow = make_workflow(vec![ExprOp::LoadSlot(SlotIdx::new(0))], vec![], 2)?;
+        let run = make_run(2)?; // slot 0 is uninitialized
+        let mut store = ValueStore::new();
+        let result = eval_expr_with_store(&workflow, &run, &mut store, ExprIdx::new(0));
+        match result {
+            Err(EngineError::SlotUninitialized { slot }) if slot == SlotIdx::new(0) => Ok(()),
+            other => Err(format!("expected SlotUninitialized, got {other:?}")),
+        }
+    }
 }

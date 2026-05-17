@@ -98,7 +98,7 @@ impl MemoryIngress {
     #[cfg(test)]
     pub(crate) fn disconnect_sender(&mut self) {
         let (new_sender, _) = crossbeam_channel::bounded(1);
-        let _ = std::mem::replace(&mut self.sender, new_sender);
+        self.sender = new_sender;
     }
 }
 
@@ -156,7 +156,7 @@ mod tests {
         )
         .unwrap();
 
-        assert!(ingress.try_submit(frame.clone()).is_ok());
+        assert_eq!(ingress.try_submit(frame.clone()), Ok(()));
         assert!(matches!(ingress.try_submit(frame), Err(IpcError::Full)));
     }
 
