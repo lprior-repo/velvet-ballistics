@@ -3,6 +3,8 @@ use std::path::PathBuf;
 
 use super::ParseError;
 
+const FORMAT_FLAG: &str = "--format";
+
 /// Parse --json or --jsonl output format flags.
 /// Returns OutputFormat::Text by default.
 pub(super) fn parse_output_format(args: &[OsString]) -> super::OutputFormat {
@@ -11,7 +13,7 @@ pub(super) fn parse_output_format(args: &[OsString]) -> super::OutputFormat {
     } else if contains_flag(args, "--json") {
         super::OutputFormat::Json
     } else {
-        match named_flag(args, "--format").as_deref() {
+        match named_flag(args, FORMAT_FLAG).as_deref() {
             Some("jsonl") => super::OutputFormat::Jsonl,
             Some("json") => super::OutputFormat::Json,
             Some("text") | Some(_) | None => super::OutputFormat::Text,

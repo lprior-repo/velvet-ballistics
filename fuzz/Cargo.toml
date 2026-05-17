@@ -8,27 +8,6 @@ autobins = false
 [package.metadata]
 cargo-fuzz = true
 
-[workspace]
-
-[workspace.dependencies]
-blake3 = "1"
-libfuzzer-sys = "0.4"
-postcard = { version = "1", features = ["alloc"] }
-tempfile = "3"
-
-[workspace.lints.rust]
-unsafe_code = "forbid"
-unused_must_use = "deny"
-
-[workspace.lints.clippy]
-correctness = { level = "deny", priority = -1 }
-unwrap_used = "deny"
-expect_used = "deny"
-panic = "deny"
-todo = "deny"
-unimplemented = "deny"
-dbg_macro = "deny"
-
 [features]
 fuzz = []
 

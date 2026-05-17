@@ -728,6 +728,7 @@ fn cmd_verify(
                         "success": true,
                         "profile": profile.as_str(),
                         "digest": result.digest_hex,
+                        "node_count": result.node_count,
                         "checks": result.checks,
                         "warnings": warning_strs
                     }),
@@ -737,6 +738,7 @@ fn cmd_verify(
                 outln!("verification certificate");
                 outln!("  digest:  {}", result.digest_hex);
                 outln!("  profile: {}", profile.as_str());
+                outln!("  nodes:   {}", result.node_count);
                 outln!("  checks:  {}", result.checks.len());
                 for check in &result.checks {
                     outln!("    - {check}");
