@@ -97,4 +97,24 @@ mod kani_capability_harnesses {
 
         assert!(!set.grants(&required));
     }
+
+    #[kani::proof]
+    fn capability_name_empty_grant_rejected() {
+        let action_id = ActionId::new(1);
+
+        let cap = Capability::new("".into(), action_id);
+        let required = Capability::new("network".into(), action_id);
+        let set = CapabilitySet::from_grants(Box::new([cap]));
+
+        assert!(!set.grants(&required));
+    }
+
+    #[kani::proof]
+    fn capability_name_action_mismatch_rejected() {
+        let cap = Capability::new("network".into(), ActionId::new(2));
+        let required = Capability::new("network".into(), ActionId::new(1));
+        let set = CapabilitySet::from_grants(Box::new([cap]));
+
+        assert!(!set.grants(&required));
+    }
 }

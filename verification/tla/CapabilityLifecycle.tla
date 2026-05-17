@@ -1,9 +1,8 @@
 ---- MODULE CapabilityLifecycle ----
 EXTENDS Naturals
 
-\* Obligations: PO-001/TLA-ADMIT-001, PO-002/TLA-GATE-002,
-\* PO-003/TLA-CAP-003, PO-004/TLA-BYPASS-004. Finite safety model for
-\* strict/journaled accepted-artifact admission. Relaxed policy is out of scope.
+\* Obligations: TLA-LIFE-004, TLA-DENY-005, TLA-DRIVE-006.  Finite lifecycle model for Strict/Journaled
+\* capability admission and Do execution.  Relaxed policy is out of scope.
 
 CONSTANT CanonicalGate
 

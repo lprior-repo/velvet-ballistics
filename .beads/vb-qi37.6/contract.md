@@ -1,96 +1,91 @@
-# vb-qi37.6 Contract Specification
-
-## Startup citations
-
-- `/home/lewis/.agents/skills/rust-contract/SKILL.md` lines 12-26 require contract-first design, TLA+ for temporal behavior, Verus-first Rust core obligations, machine-readable proof obligations, review, and no implementation/proof/test code. `.agents` wins.
-- `/home/lewis/.claude/skills/rust-contract/SKILL.md` contains the same version 2.6.0 content and rules.
+# Contract Specification: vb-qi37.6 Capability Model Enforcement
 
 ## Context
+- Bead: `vb-qi37.6` - verifier/runtime capability model enforcement.
+- Source of truth read for State 3: State 2 `codebase-map.md`, `delivery-scope.jsonl`, `baseline-report.md`, `STATE.md`, and `bd --db /home/lewis/src/velvet-ballistics/.beads/dolt show vb-qi37.6 --json`.
+- Feature contract from bead: action contracts declare required capabilities; verifier rejects missing or excessive grants; accepted artifacts carry capability certificates; runtime dispatch checks typed capabilities; UI consumes the same typed capability data.
+- Release stance: Strict/Journaled accepted-artifact paths are release-critical. Relaxed policy may remain a compatibility mode, but it must not be used as release evidence for capability-protected actions.
 
-- Bead: `vb-qi37.6`, verifier/runtime capability model enforcement.
-- Workspace: `/home/lewis/src/vb-qi37-6` only.
-- Inputs read: State 2 `STATE.md`, `baseline-report.md`, `codebase-map.md`, and `delivery-scope.jsonl`.
-- Current code facts: `CapabilitySet::grants` is exact-name and exact-action only; runtime admission requires gate count 15; storage `submit_artifact` writes gate count 2 and empty `AcceptedArtifact.required_capabilities`; public `Runtime` submit APIs pass `CapabilitySet::empty()`; shard drive forwards `&[]` action contracts; UI view carries `required_capabilities`.
-
-## Domain terms
-
-- Required capability: `(name, action_id)` pair declared by an `ActionContract` and persisted into `AcceptedArtifact.required_capabilities`.
-- Grant: caller-provided `(name, action_id)` in a `CapabilitySet`.
-- Exact grant: grant name equals required name byte-for-byte and grant action equals required action.
-- Hierarchical grant: parent prefix such as `network` for `network.github`; forbidden by this contract.
-- Accepted artifact: storage record containing digest, IR bytes, verification proof, sequence, and required capabilities.
+## Domain Terms
+- Capability: typed grant/requirement pair `(name, action_id)` represented by `vb_core::capability::Capability`.
+- CapabilitySet: immutable run grant profile represented by `vb_core::capability::CapabilitySet`.
+- ActionContract: declared contract for a Do action, including `required_capabilities`.
+- AcceptedArtifact: storage-side certificate envelope carrying compiled IR, proof flags/gate count, digest, sequence, and required capabilities.
+- RunAdmission: runtime admission record carrying artifact digest, run id, policy, and granted capability profile.
+- External action dispatch: any Do action path that can suspend, invoke, or await an external action.
 
 ## Assumptions
+- Canonical capability match is exact `(name, action_id)` equality. Hierarchical prefixes and partial lexical prefixes are not grants.
+- Empty capability names are invalid schema inputs and also grant nothing if a malformed grant reaches `CapabilitySet::grants`.
+- Strict/Journaled release admission requires the runtime canonical gate count of 15; the mapped storage gate count of 2 is a blocker until aligned by implementation or an approved release waiver.
+- Count-exact grants are intentional least-privilege behavior: missing grants and excessive grants both deny admission for capability-protected artifacts.
 
-- Strict least privilege is intentional: no hierarchical/prefix grants and no extra grants at runtime admission.
-- Strict/Journaled runtime admission remains fail-closed until storage and runtime agree on canonical gate count.
-- Relaxed policy may skip accepted-artifact capability checks but must not be used as evidence for Strict/Journaled capability enforcement.
+## Open Questions / Blockers
+- REPAIRED_GATE_COUNT_ALIGNMENT: State 3 repair routes INTEG-012 to an executable runtime/storage gate-count command; failure remains State 8 implementation debt, not a blocked contract placeholder.
+- REPAIRED_REQUIRED_CAPABILITY_SOURCE: State 3 repair routes INTEG-011 to the exact storage required-capability persistence test command.
+- REPAIRED_RUNTIME_GRANT_API: State 3 repair routes INTEG-013 to executable public-grant API presence plus runtime admission exact-profile commands.
+- REPAIRED_ACTION_CONTRACT_THREADING: State 3 repair routes INTEG-014 to executable engine/drive contract-threading commands.
 
 ## Preconditions
-
-- PRE-001: Every non-Relaxed submitted workflow artifact must have a persisted `AcceptedArtifact` envelope for its digest.
-- PRE-002: Every `AcceptedArtifact.verification.gate_count` admitted under Strict/Journaled runtime policy must equal the canonical gate count `15`; any other value, including storage's current `2`, is rejected.
-- PRE-003: Every `AcceptedArtifact.required_capabilities` value must be derived from validated `ActionContract.required_capabilities`, not defaulted to empty when any action requires capabilities.
-- PRE-004: Every public runtime submit path for Strict/Journaled capability-protected workflows must accept or otherwise bind a non-empty caller grant set before admission.
-- PRE-005: Every runtime Do execution path must receive the validated action-contract slice corresponding to the compiled workflow.
-- PRE-006: UI `ActionDescriptionView.required_capabilities` must come from the same action-contract source as storage persistence and runtime enforcement.
+- PRE-001: Every Do action in a verified workflow has exactly one validated `ActionContract` before Strict/Journaled acceptance.
+- PRE-002: Every required capability has a non-empty schema-valid name and an `action_id` equal to the owning action contract id.
+- PRE-003: Duplicate required capabilities within one action contract are rejected before artifact acceptance.
+- PRE-004: Accepted artifacts for Strict/Journaled admission carry the complete required-capability profile derived from validated action contracts.
+- PRE-005: Accepted artifacts for Strict/Journaled admission carry the canonical 15-gate proof certificate or fail admission with a typed gate-count/proof-flag error.
+- PRE-006: Run admission receives an explicit, immutable `CapabilitySet` from the caller/profile before allocating runnable state.
+- PRE-007: Engine Do execution receives the validated action-contract set and the admitted run capability profile.
 
 ## Postconditions
-
-- POST-001: `CapabilitySet::grants(required)` returns true only for exact name equality and exact action equality; hierarchical, partial-prefix, sibling-prefix, empty-name, and action-mismatch grants return false.
-- POST-002: Strict/Journaled admission returns `ArtifactInvalidGateCount` and allocates no run frame when the accepted artifact gate count is not `15`.
-- POST-003: Strict/Journaled admission returns `CapabilityDenied` and allocates no run frame when grant cardinality differs from required-capability cardinality.
-- POST-004: Strict/Journaled admission returns `CapabilityDenied` and allocates no run frame when any required capability lacks an exact grant.
-- POST-005: Successful Strict/Journaled admission stores the admitted digest, run id, policy, and exact granted capabilities in `RunAdmission` and journals `RunAdmission` only after admission succeeds.
-- POST-006: Do execution with a contract checks all required capabilities before emitting an action ticket.
-- POST-007: Do execution without an action contract fails closed with `CapabilityDenied` requiring `__contract_required__` and does not produce `AwaitingAction`.
-- POST-008: Legacy admission/existence-only paths must not bypass denial or delegation for Strict/Journaled runtime submit flows.
-- POST-009: UI action descriptions serialize the same required capability set enforced by storage/runtime.
+- POST-001: Validation rejects missing action contracts, unused contracts, invalid capability names, action mismatches, and duplicate capability requirements with exact typed diagnostics.
+- POST-002: Artifact acceptance preserves the required-capability profile exactly; non-empty requirements are never erased to an empty certificate.
+- POST-003: Strict/Journaled admission accepts only if artifact proof gates are valid, grant count equals required count, and each required capability has an exact grant.
+- POST-004: Missing grants, excess grants, action mismatches, prefix grants, partial-prefix grants, legacy bypass attempts, malformed envelopes, and bad proof gates deny admission with typed errors.
+- POST-005: Admission denial allocates no run frame, creates no runnable state, and journals no successful `RunAdmission`/`RunAccepted` event.
+- POST-006: Do execution without a resolved contract denies with a typed capability/contract-required error before external dispatch.
+- POST-007: Do execution with a resolved contract checks every required capability before suspension, await, or external side effect.
+- POST-008: UI action registry data is a projection of the same typed capability requirements used by validation, storage, and runtime; UI display cannot be a separate authority.
 
 ## Invariants
+- INV-001: Capability identity is exact `(name, action_id)` equality; no hierarchical, lexical-prefix, wildcard, empty-name, or action-mismatched grant can satisfy a requirement.
+- INV-002: No capability amplification: compile, validation, accepted artifact persistence, admission, runtime dispatch, CLI, and UI must never add capabilities that were not present in validated action contracts and the explicit run grant profile.
+- INV-003: For Strict/Journaled release admission, accepted-artifact proof gate count is canonical 15 and all required proof flags are true.
+- INV-004: Capability profile cardinality is exact at admission: `granted.len() == required.len()` and every required capability is exactly granted.
+- INV-005: Fail-closed lifecycle: any capability, contract, proof, or envelope denial leaves the run non-runnable and non-journaled as accepted.
+- INV-006: External Do dispatch is reachable only after admission success, action-contract resolution, taint checks for deterministic-pure actions, and capability checks.
+- INV-007: Capability-denial diagnostics retain action id, required capability, and granted profile sufficient for operator evidence without granting side effects.
 
-- INV-001: Capability grant semantics are exact-only; no parent, child, lexical prefix, sibling prefix, or empty-name grant confers authority.
-- INV-002: Runtime least privilege is cardinality-exact; extra grants and missing grants are both denial cases.
-- INV-003: Strict/Journaled accepted-artifact gate count is a single runtime/storage contract value; mismatch fails closed until repaired.
-- INV-004: Required capabilities are never silently erased between action-contract validation, accepted-artifact persistence, admission, shard state, engine execution, and UI projection.
-- INV-005: Admission denial is atomic: no run frame, no run state insertion, and no `RunAdmission` journal event.
-- INV-006: Shard drive must never execute a Do node by bypassing contracts; missing contracts deny by construction.
-- INV-007: Legacy `admit_run` / artifact-exists-only APIs are not acceptable evidence for capability-protected Strict/Journaled admission.
-- INV-008: Public Runtime APIs expose a grant path or reject capability-protected workflows; `CapabilitySet::empty()` is valid only for artifacts with zero required capabilities.
+## Error Taxonomy
+- `ValidationError::CapabilityNameEmpty` - required capability name is empty.
+- `ValidationError::CapabilityNameTooLong` - capability name exceeds the schema byte limit.
+- `ValidationError::CapabilityNameInvalid` - capability name violates lowercase dot-segment grammar.
+- `ValidationError::CapabilityActionMismatch` - capability action id differs from the owning action contract.
+- `ValidationError::CapabilityDuplicate` - an action contract repeats the same required capability.
+- `AdmissionError::CapabilityDenied` - required capability is missing, mismatched, prefix-only, or grant profile is not exact.
+- `AdmissionError::ArtifactInvalidGateCount` - accepted artifact proof gate count differs from 15.
+- `AdmissionError::ArtifactInvalidProofFlag` - required proof flag is false.
+- `AdmissionError::ArtifactEnvelopeDecodeFailed` / `ArtifactEnvelopeError::*` - accepted artifact is absent or malformed.
+- `RuntimeError::AdmissionCapabilityDenied` - shard/runtime submit maps admission denial to public runtime error.
+- `EngineError::CapabilityDenied` - Do execution denies before external dispatch.
 
-## Error taxonomy
-
-- `AdmissionError::ArtifactInvalidGateCount { found, required }`: PRE-002 / INV-003 violation.
-- `AdmissionError::CapabilityDenied { action, required, granted }`: missing, extra, hierarchical, action-mismatch, no-contract, or count-mismatch denial.
-- `AdmissionError::ArtifactEnvelopeDecodeFailed`: persisted accepted artifact cannot be decoded.
-- `AdmissionError::ArtifactInvalidProofFlag { flag }`: required proof flag false.
-- `RuntimeError::AdmissionCapabilityDenied`: shard-level mapping of admission denial.
-- `EngineError::CapabilityDenied`: engine-level Do denial.
-
-## Contract signatures
-
-- `fn grants(granted: &CapabilitySet, required: &Capability) -> bool`
+## Contract Signatures
+- `fn validate_action_contract_capability_schema(contract: &ActionContract, workflow: &WorkflowParts) -> Result<(), ValidationError>`
+- `fn submit_artifact(..., contracts: &[ActionContract], policy: RuntimePolicy) -> Result<AcceptedArtifact, StorageError>`
+- `fn admit_artifact_run(store: &dyn AcceptedArtifactStore, policy: RuntimePolicy, run: RunId, digest: WorkflowDigest, caps: CapabilitySet) -> Result<RunAdmission, AdmissionError>`
 - `fn check_capability(action: ActionId, required: &Capability, granted: &CapabilitySet) -> Result<(), AdmissionError>`
-- `fn submit_artifact(journal: &FjallJournal, workflow: &CompiledWorkflow, policy: RuntimePolicy) -> Result<AcceptedArtifact, JournalError>`
-- `fn admit_artifact_run(store: &dyn AcceptedArtifactStore, policy: RuntimePolicy, run_id: RunId, digest: WorkflowDigest, caps: CapabilitySet) -> Result<RunAdmission, AdmissionError>`
-- `fn execute_do(..., registry_contracts: &[ActionContract], granted: &CapabilitySet, ...) -> Result<RuntimeSignal, RuntimeEngineError>`
-- `fn execute_do_without_contract(..., granted: &CapabilitySet, ...) -> Result<RuntimeSignal, RuntimeEngineError>`
+- `fn execute_do(node: ..., contracts: &[ActionContract], granted: &CapabilitySet) -> Result<ActionOutcome, EngineError>`
+- `fn render_action_registry(actions: &[ActionDescriptionView]) -> Result<SystemStatusView, UiModelError>`
 
-## Verus-owned clauses
+## Verus-Owned Clauses
+- INV-001, INV-002, INV-004, POST-002, and PRE-002/PRE-003 schema abstractions are Rust-local pure/core obligations.
+- Existing model target: `verification/verus/capability_artifact_model.rs`.
 
-- INV-001, INV-002, POST-001, POST-003, POST-004: pure capability matching/cardinality model.
-- PRE-003, INV-004: pure extraction model from action contracts to required-capability multiset.
+## TLA+-Owned Clauses
+- POST-003, POST-004, POST-005, POST-006, POST-007, INV-003, INV-005, INV-006 are lifecycle/state-over-time obligations.
+- Existing model target: `verification/tla/CapabilityLifecycle.tla` with `CapabilityLifecycleAll.cfg`.
 
-## TLA+-owned clauses
-
-- INV-003, INV-005, INV-006, INV-008, POST-002, POST-005, POST-006, POST-007, POST-008: admission-to-run lifecycle and fail-closed sequencing.
-
-## Theorem-owned clauses
-
-- None required beyond Verus. Lean is reserved only if Verus cannot express the exact grant lattice/cardinality theorem after proof-writing discovery.
+## Theorem-Owned Clauses
+- None for State 3. Verus owns the tiny algebraic kernel for exact matching, profile cardinality, and certificate preservation.
 
 ## Non-goals
-
-- No hierarchical grants.
-- No wildcard grants.
-- No proof claim is PASS in State 3; all verification rows are planned.
+- No UI implementation, Makepad layout, production code, test code, or proof-code changes in State 3.
+- No generated Rust/maxperf/codegen acceptance in this engine-only capability contract.

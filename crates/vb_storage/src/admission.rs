@@ -5,45 +5,31 @@
 
 use std::fmt;
 
-use crate::{
-    constants::{
-        MAGIC_COMPILED_ARTIFACT, MAGIC_INDEX_RECORD, MAGIC_JOURNAL_EVENT, MAGIC_WORKFLOW_SOURCE,
-        MAX_COMPILED_IR_BYTES, MAX_JOURNAL_EVENT_PAYLOAD_BYTES, MAX_RUN_HEADER_BYTES,
-        MAX_WORKFLOW_SOURCE_BYTES,
-    },
-    error::JournalError,
-    events::JournalEvent,
-    keys::{
-        compiled_ir_key, index_action_key, index_status_key, index_workflow_key, run_event_key,
-        run_header_key, workflow_source_key,
-    },
-    records::{CompiledIrRecord, RecordKind, RunHeaderRecord, WorkflowSourceRecord},
-    types::EventSeq,
-};
+use crate::{error::JournalError, records::CompiledIrRecord, types::EventSeq};
 
 use crate::journal::FjallJournal;
 
 /// A soft verification failure that does not block admission but should be reported.
 ///
-/// Each warning is associated with a specific verification gate in the v1
-/// accepted-artifact proof set and carries a numeric code and human-readable message.
+/// Each warning is associated with a specific verification gate (1-2 range per
+/// contract §4.2) and carries a numeric code and human-readable message.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct VerificationWarning {
     /// Numeric code identifying the specific warning condition.
     pub code: u32,
     /// Human-readable description of the warning.
     pub message: Box<str>,
-    /// Which verification gate produced this warning.
+    /// Which verification gate produced this warning (1-2 range per contract).
     pub gate: u8,
 }
 
 impl VerificationWarning {
     /// Minimum valid gate value (inclusive).
     pub const MIN_GATE: u8 = 1;
-    /// Maximum valid gate value (inclusive).
-    pub const MAX_GATE: u8 = ADMISSION_GATE_COUNT;
+    /// Maximum valid gate value (inclusive). Contract §4.2 specifies gate_count = 2.
+    pub const MAX_GATE: u8 = 2;
 
-    /// Returns `true` if the `gate` field falls within the valid v1 gate range.
+    /// Returns `true` if the `gate` field falls within the valid 1-2 range.
     #[must_use]
     pub fn is_valid(&self) -> bool {
         self.gate >= Self::MIN_GATE && self.gate <= Self::MAX_GATE
@@ -129,17 +115,8 @@ pub struct AcceptedArtifact {
 }
 
 /// Number of verification gates in the accepted artifact v1 admission flow.
-<<<<<<< HEAD
+/// This must match `vb_runtime::admission::REQUIRED_GATE_COUNT` (15).
 const ADMISSION_GATE_COUNT: u8 = 15;
-const STRICT_ATOMIC_RUN: vb_core::RunId = vb_core::RunId::new(8_001);
-const STRICT_ATOMIC_WORKFLOW_ID: vb_core::WorkflowId = vb_core::WorkflowId::new(44);
-const STRICT_ATOMIC_STATUS: u8 = 1;
-const STRICT_ATOMIC_ACCEPTED_AT_MS: u64 = 1_715_555_000_000;
-const STRICT_ATOMIC_SEQ: EventSeq = EventSeq::new(1);
-const STRICT_ATOMIC_SOURCE: &[u8] = b"workflow: atomic_admission\nrun: 8001\n";
-=======
-pub(crate) const ADMISSION_GATE_COUNT: u8 = 15;
->>>>>>> a8a247d5
 
 /// Validates, verifies, and persists a compiled workflow artifact with policy-controlled durability.
 ///
@@ -147,7 +124,7 @@ pub(crate) const ADMISSION_GATE_COUNT: u8 = 15;
 /// 1. Policy check: Relaxed is rejected when accepted artifacts are required.
 /// 2. Structure validation: re-parse the workflow from serialized parts.
 /// 3. Checksum validation: serialized bytes must hash to the claimed digest.
-/// 4. Proof validation: all v1 gates and proof flags must be true.
+/// 4. Proof validation: gate count must be 15 and all proof flags must be true.
 /// 5. Persistence: store the artifact in the `compiled_ir` keyspace.
 /// 6. Durability: under `Strict` policy, calls SyncAll before returning.
 ///
@@ -218,24 +195,20 @@ pub fn submit_artifact_with_contracts(
                 digest: workflow.digest(),
                 ir: ir_bytes,
                 verification: proof,
-                accepted_at_seq: if durable {
-                    STRICT_ATOMIC_SEQ
-                } else {
-                    EventSeq::new(0)
-                },
+                accepted_at_seq: EventSeq::new(0),
                 required_capabilities,
             };
 
             let artifact_bytes =
                 postcard::to_allocvec(&artifact).map_err(|_| JournalError::ArtifactMalformed)?;
+            let record = CompiledIrRecord {
+                digest: workflow.digest(),
+                ir: artifact_bytes,
+            };
+            journal.put_compiled_ir(&record)?;
+
             if durable {
-                persist_strict_atomic_admission(journal, workflow.digest(), artifact_bytes)?;
-            } else {
-                let record = CompiledIrRecord {
-                    digest: workflow.digest(),
-                    ir: artifact_bytes,
-                };
-                journal.put_compiled_ir(&record)?;
+                journal.persist_strict()?;
             }
 
             let stored = journal
@@ -248,106 +221,6 @@ pub fn submit_artifact_with_contracts(
             Ok(artifact)
         }
     }
-}
-
-fn persist_strict_atomic_admission(
-    journal: &FjallJournal,
-    digest: vb_core::WorkflowDigest,
-    artifact_bytes: Vec<u8>,
-) -> Result<(), JournalError> {
-    let source_record = WorkflowSourceRecord {
-        digest,
-        source: STRICT_ATOMIC_SOURCE.to_vec(),
-    };
-    let artifact_record = CompiledIrRecord {
-        digest,
-        ir: artifact_bytes,
-    };
-    let header = RunHeaderRecord {
-        run: STRICT_ATOMIC_RUN,
-        workflow_id: STRICT_ATOMIC_WORKFLOW_ID,
-        compiled_digest: digest,
-        status: STRICT_ATOMIC_STATUS,
-        accepted_at_ms: STRICT_ATOMIC_ACCEPTED_AT_MS,
-    };
-    let event = JournalEvent::RunAccepted {
-        run: STRICT_ATOMIC_RUN,
-        seq: STRICT_ATOMIC_SEQ,
-        workflow: digest,
-    };
-    let mut batch = journal
-        .database
-        .batch()
-        .durability(Some(fjall::PersistMode::SyncAll));
-    batch.insert(
-        &journal.workflow_source,
-        workflow_source_key(digest.as_bytes())?,
-        crate::codec::encode_record(
-            MAGIC_WORKFLOW_SOURCE,
-            RecordKind::WorkflowSource,
-            0,
-            &source_record,
-            MAX_WORKFLOW_SOURCE_BYTES,
-        )?,
-    );
-    batch.insert(
-        &journal.compiled_ir,
-        compiled_ir_key(digest.as_bytes())?,
-        crate::codec::encode_record(
-            MAGIC_COMPILED_ARTIFACT,
-            RecordKind::CompiledIr,
-            0,
-            &artifact_record,
-            MAX_COMPILED_IR_BYTES,
-        )?,
-    );
-    batch.insert(
-        &journal.run_header,
-        run_header_key(STRICT_ATOMIC_RUN)?,
-        crate::codec::encode_record(
-            MAGIC_INDEX_RECORD,
-            RecordKind::RunHeader,
-            STRICT_ATOMIC_RUN.get(),
-            &header,
-            MAX_RUN_HEADER_BYTES,
-        )?,
-    );
-    batch.insert(
-        &journal.events,
-        run_event_key(STRICT_ATOMIC_RUN, STRICT_ATOMIC_SEQ)?,
-        crate::codec::encode_record(
-            MAGIC_JOURNAL_EVENT,
-            RecordKind::RunAccepted,
-            STRICT_ATOMIC_SEQ.get(),
-            &event,
-            MAX_JOURNAL_EVENT_PAYLOAD_BYTES,
-        )?,
-    );
-    batch.insert(
-        &journal.index_status,
-        index_status_key(
-            STRICT_ATOMIC_STATUS,
-            STRICT_ATOMIC_ACCEPTED_AT_MS,
-            STRICT_ATOMIC_RUN,
-        )?,
-        Vec::<u8>::new(),
-    );
-    batch.insert(
-        &journal.index_workflow,
-        index_workflow_key(STRICT_ATOMIC_WORKFLOW_ID, STRICT_ATOMIC_RUN)?,
-        Vec::<u8>::new(),
-    );
-    batch.insert(
-        &journal.index_action,
-        index_action_key(
-            vb_core::ActionId::new(77),
-            STRICT_ATOMIC_RUN,
-            vb_core::StepIdx::new(3),
-        )?,
-        Vec::<u8>::new(),
-    );
-    batch.commit()?;
-    Ok(())
 }
 
 fn required_capabilities_from_contracts(
@@ -540,7 +413,7 @@ mod tests {
     }
 
     #[test]
-    fn is_valid_accepts_max_gate() {
+    fn is_valid_accepts_gate_two() {
         let w = VerificationWarning {
             code: 1,
             message: Box::from("max gate"),
@@ -550,11 +423,11 @@ mod tests {
     }
 
     #[test]
-    fn is_valid_rejects_gate_above_max() {
+    fn is_valid_rejects_gate_fourteen() {
         let w = VerificationWarning {
             code: 1,
             message: Box::from("above max gate"),
-            gate: VerificationWarning::MAX_GATE.saturating_add(1),
+            gate: 14,
         };
         assert!(!w.is_valid());
     }
@@ -563,13 +436,32 @@ mod tests {
     // submit_artifact: Relaxed policy
     // =========================================================================
 
+    /// Owns both a temporary directory path and a FjallJournal so the directory
+    /// is not dropped while the journal is in use.
+    struct TestJournal {
+        path: std::path::PathBuf,
+        journal: crate::FjallJournal,
+    }
+
+    impl Drop for TestJournal {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_dir_all(&self.path);
+        }
+    }
+
+    impl std::ops::Deref for TestJournal {
+        type Target = crate::FjallJournal;
+        fn deref(&self) -> &Self::Target {
+            &self.journal
+        }
+    }
+
     /// Opens a temporary FjallJournal that is cleaned up when dropped.
-    fn temp_journal() -> Result<crate::FjallJournal, JournalError> {
+    fn temp_journal() -> Result<TestJournal, JournalError> {
         let dir = tempfile::tempdir().map_err(|_| JournalError::ArtifactMalformed)?;
-        // Keep the TempDir so it survives the journal lifetime.
-        // The OS cleans up /tmp eventually.
         let path = dir.keep();
-        crate::FjallJournal::open(path, None)
+        let journal = crate::FjallJournal::open(&path, None)?;
+        Ok(TestJournal { path, journal })
     }
 
     /// Builds a minimal valid CompiledWorkflow for testing.
@@ -672,17 +564,10 @@ mod tests {
         let result = submit_artifact(&journal, &workflow, vb_core::RuntimePolicy::Journaled)
             .map_err(|e| format!("submit_artifact(journaled) failed: {e}"))?;
 
-<<<<<<< HEAD
         // Journaled passes 15 gates but is not durable (no SyncAll).
         assert_eq!(
             result.verification.gate_count, 15,
             "journaled must pass 15 verification gates"
-=======
-        // Journaled passes the full accepted-artifact v1 gate set but is not durable (no SyncAll).
-        assert_eq!(
-            result.verification.gate_count, ADMISSION_GATE_COUNT,
-            "journaled must pass accepted-artifact v1 verification gates"
->>>>>>> a8a247d5
         );
         assert!(
             !result.verification.durable,
@@ -700,13 +585,8 @@ mod tests {
         let result = submit_artifact(&journal, &workflow, vb_core::RuntimePolicy::Strict)
             .map_err(|e| format!("submit_artifact(strict) failed: {e}"))?;
 
-<<<<<<< HEAD
         // Strict passes 15 gates AND is durable.
         assert_eq!(result.verification.gate_count, 15);
-=======
-        // Strict passes the full accepted-artifact v1 gate set AND is durable.
-        assert_eq!(result.verification.gate_count, ADMISSION_GATE_COUNT);
->>>>>>> a8a247d5
         assert!(result.verification.durable, "strict must be durable");
         assert_eq!(result.digest, workflow.digest());
         Ok(())
@@ -950,7 +830,7 @@ mod tests {
 
     #[test]
     fn gate_values_outside_range_fail_is_valid() -> Result<(), String> {
-        for gate in [0u8, 16, 20, 255] {
+        for gate in [0u8, 14, 15, 20, 255] {
             let w = VerificationWarning {
                 code: 1,
                 message: Box::from("out of range test"),
