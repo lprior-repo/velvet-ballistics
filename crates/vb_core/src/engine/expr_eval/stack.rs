@@ -412,10 +412,7 @@ mod tests {
         push_value(&mut stack, SlotValue::I64(1)).expect("first push");
         let result = push_value(&mut stack, SlotValue::I64(2));
         assert!(
-            matches!(
-                result,
-                Err(EngineError::ExpressionStackOverflow { max: 1 })
-            ),
+            matches!(result, Err(EngineError::ExpressionStackOverflow { max: 1 })),
             "expected ExpressionStackOverflow(1)"
         );
     }

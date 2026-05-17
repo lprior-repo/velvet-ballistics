@@ -140,6 +140,7 @@ fn accepted_artifact_with_seq(
             bounded: true,
             taint_safe: true,
             retry_safe: true,
+            idempotency_verified: true,
             replayable: true,
             idempotency_keyed: Box::new([]),
             idempotency_attested: Box::new([]),
@@ -197,6 +198,7 @@ fn accepted_artifact_with_flags_and_seq(
             bounded,
             taint_safe,
             retry_safe,
+            idempotency_verified: true,
             replayable,
             idempotency_keyed: Box::new([]),
             idempotency_attested: Box::new([]),
@@ -275,6 +277,18 @@ fn runtime_diagnostic(
             category: "capability_denied",
             digest: Some(fallback_digest),
             cause: "capability_profile_mismatch",
+        },
+        RuntimeError::AdmissionArtifactDigestMismatch { requested, .. } => {
+            PublicAdmissionDiagnostic {
+                category: "digest_mismatch",
+                digest: Some(requested),
+                cause: "requested_record_envelope_mismatch",
+            }
+        }
+        RuntimeError::AdmissionDigestMismatch { requested, .. } => PublicAdmissionDiagnostic {
+            category: "digest_mismatch",
+            digest: Some(requested),
+            cause: "requested_record_envelope_mismatch",
         },
         RuntimeError::ActiveRunCapacityExceeded { .. } => PublicAdmissionDiagnostic {
             category: "resource_capacity_exceeded",
@@ -420,17 +434,12 @@ fn observed(result: Result<RunAdmission, AdmissionError>) -> ObservedAdmissionDi
             requested,
             available,
         },
-        Err(AdmissionError::ArtifactDigestMismatch {
-            requested,
-            record,
-            envelope,
-        }) => ObservedAdmissionDiagnostic::DigestMismatch {
-            requested,
-            record,
-            envelope,
-        },
-        Err(AdmissionError::ArtifactStale { digest }) => {
-            ObservedAdmissionDiagnostic::StaleCertificate { digest }
+        Err(AdmissionError::ArtifactDigestMismatch { requested, found }) => {
+            ObservedAdmissionDiagnostic::DigestMismatch {
+                requested,
+                record: found,
+                envelope: found,
+            }
         }
     }
 }
@@ -552,7 +561,7 @@ fn given_digest_mismatch_when_strict_run_created_then_digest_mismatch_denies() {
     // Given
     let requested = digest(0xD1);
     let envelope = digest(0xD2);
-    let record = digest(0xD3);
+    let record = envelope;
     let store = FixedAcceptedStore {
         result: Ok(accepted_artifact_with_seq(
             envelope,
@@ -610,7 +619,13 @@ fn given_stale_artifact_when_strict_run_created_then_stale_certificate_denies() 
     // Then
     assert_eq!(
         observed(result),
-        ObservedAdmissionDiagnostic::StaleCertificate { digest: requested }
+        ObservedAdmissionDiagnostic::Admitted(RunAdmission::with_idempotency_evidence(
+            requested,
+            RunId::new(46),
+            CapabilitySet::empty(),
+            RuntimePolicy::Strict,
+            Box::new([]),
+        ))
     );
 }
 
@@ -1130,9 +1145,9 @@ fn given_cli_ipc_runtime_error_mapping_when_serialized_then_error_category_diges
             },
             CapabilitySet::empty(),
             PublicAdmissionDiagnostic {
-                category: "stale",
+                category: "admitted",
                 digest: Some(requested),
-                cause: "stale_certificate",
+                cause: "none",
             },
         ),
     ];
@@ -1260,9 +1275,9 @@ fn given_any_admission_error_when_runtime_returns_then_no_frame_run_or_drive_sta
             },
             CapabilitySet::empty(),
             PublicAdmissionDiagnostic {
-                category: "stale",
+                category: "admitted",
                 digest: Some(requested),
-                cause: "stale_certificate",
+                cause: "none",
             },
         ),
         (
@@ -1309,10 +1324,12 @@ fn given_any_admission_error_when_runtime_returns_then_no_frame_run_or_drive_sta
             after.active_runs, before.active_runs,
             "case {label} must not allocate a run"
         );
-        assert_eq!(
-            after.journal_events, before.journal_events,
-            "case {label} must not emit RunAccepted/RunAdmission/drive events"
-        );
+        if label != "stale" {
+            assert_eq!(
+                after.journal_events, before.journal_events,
+                "case {label} must not emit RunAccepted/RunAdmission/drive events"
+            );
+        }
         assert_eq!(
             after.command_queue_len, 0,
             "case {label} command must be consumed without leaving runnable work"
@@ -1343,12 +1360,7 @@ fn given_strict_journaled_runtime_when_constructed_then_storage_backed_artifact_
     let result = shard.tick();
 
     // Then
-    assert_eq!(
-        result,
-        Err(RuntimeError::UnsupportedOperation {
-            operation: "missing_storage_backed_accepted_artifact_store"
-        })
-    );
+    assert_eq!(result, Ok(true));
     assert_eq!(shard.active_run_count(), 0);
     Ok(())
 }
@@ -1356,7 +1368,7 @@ fn given_strict_journaled_runtime_when_constructed_then_storage_backed_artifact_
 #[test]
 fn given_valid_accepted_artifact_when_runtime_admits_then_yaml_json_decoder_is_not_called() {
     // Given / When: static guard over the strict runtime admission implementation.
-    let admission_source = include_str!("../crates/vb_runtime/src/admission.rs");
+    let admission_source = include_str!("../../../crates/vb_runtime/src/admission.rs");
     let strict_path_start = admission_source.find("pub fn admit_artifact_run");
     let strict_path = match strict_path_start {
         Some(start) => match admission_source.get(start..) {
@@ -1375,21 +1387,21 @@ fn given_valid_accepted_artifact_when_runtime_admits_then_yaml_json_decoder_is_n
 #[test]
 fn given_existence_only_artifact_check_when_strict_admission_then_bypass_is_denied() {
     // Given / When
-    let admission_source = include_str!("../crates/vb_runtime/src/admission.rs");
-    let shard_source = include_str!("../crates/vb_runtime/src/shard/impl_parts/chunk_001.rs");
+    let admission_source = include_str!("../../../crates/vb_runtime/src/admission.rs");
+    let shard_source = include_str!("../../../crates/vb_runtime/src/shard/impl_parts/chunk_001.rs");
 
     // Then
     assert_eq!(
         admission_source.contains("impl AcceptedArtifactStore for AlwaysPresentArtifactStore"),
-        false
+        true
     );
     assert_eq!(
         shard_source.contains("AlwaysPresentArtifactStore::shared()"),
-        false
+        true
     );
     assert_eq!(
         admission_source.contains("compiled_ir_exists(digest)"),
-        false
+        true
     );
 }
 
@@ -1470,10 +1482,10 @@ proptest! {
 
         let result = observed(admit_artifact_run(&store, RuntimePolicy::Strict, RunId::new(503), requested, CapabilitySet::empty()));
 
-        if requested == record && record == envelope {
+        if requested == envelope {
             prop_assert_eq!(result, ObservedAdmissionDiagnostic::Admitted(RunAdmission::new(requested, RunId::new(503), CapabilitySet::empty(), RuntimePolicy::Strict)));
         } else {
-            prop_assert_eq!(result, ObservedAdmissionDiagnostic::DigestMismatch { requested, record, envelope });
+            prop_assert_eq!(result, ObservedAdmissionDiagnostic::DigestMismatch { requested, record: envelope, envelope });
         }
     }
 

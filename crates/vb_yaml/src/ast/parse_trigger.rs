@@ -39,12 +39,8 @@ fn parse_when_trigger(when_val: &saphyr::Yaml<'_>) -> YamlResult<TriggerAst> {
         "webhook" => empty_body(body, "when.webhook").map(|()| TriggerAst::Webhook),
         "schedule" => parse_schedule(body),
         "event" => parse_event(body),
-        "ipc" => Err(YamlError::UnsupportedTrigger {
-            trigger: "ipc",
-        }),
-        "http" => Err(YamlError::UnsupportedTrigger {
-            trigger: "http",
-        }),
+        "ipc" => Err(YamlError::UnsupportedTrigger { trigger: "ipc" }),
+        "http" => Err(YamlError::UnsupportedTrigger { trigger: "http" }),
         other => Err(YamlError::UnknownField {
             field: other.into(),
         }),

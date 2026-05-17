@@ -63,7 +63,9 @@ fn render_scan_report_orders_duplicate_sort_keys_deterministically_when_findings
     assert_eq!(
         result,
         Ok(RenderedReport {
-            body: "docs/naming.md:3:7 LegacyProjectSpelling -> velvet-ballastics\ndocs/naming.md:3:7 LegacyCrateModuleSpelling -> velvet_ballastics\n".to_string(),
+            body: format!(
+                "docs/naming.md:3:7 LegacyProjectSpelling -> velvet-ballastics\ndocs/naming.md:3:7 LegacyCrateModuleSpelling -> {CANONICAL_UNDERSCORE}\n"
+            ),
         })
     );
 }

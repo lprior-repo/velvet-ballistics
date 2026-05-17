@@ -213,8 +213,8 @@ mod tests {
         let data = serde_json::json!({"status": "ok"});
         let envelope = build_envelope(data, Kind::CliStatus);
         assert_eq!(
-            envelope["schema_version"],
-            "velvet-ballastics/cli-output/v1"
+            envelope.get("schema_version"),
+            Some(&serde_json::json!("velvet-ballastics/cli-output/v1"))
         );
     }
 
@@ -222,23 +222,26 @@ mod tests {
     fn test_build_envelope_has_kind() {
         let data = serde_json::json!({"status": "ok"});
         let envelope = build_envelope(data, Kind::CliStatus);
-        assert_eq!(envelope["kind"], "CliStatus");
+        assert_eq!(envelope.get("kind"), Some(&serde_json::json!("CliStatus")));
     }
 
     #[test]
     fn test_build_envelope_has_data() {
         let data = serde_json::json!({"status": "ok", "count": 42});
         let envelope = build_envelope(data.clone(), Kind::CliStatus);
-        assert_eq!(envelope["data"], data);
+        assert_eq!(envelope.get("data"), Some(&data));
     }
 
     #[test]
     fn test_serialize_with_version() {
         let data = serde_json::json!({"status": "ok"});
         let result = serialize_with_version(&data, Kind::CliStatus);
-        assert_eq!(result["schema_version"], "velvet-ballastics/cli-output/v1");
-        assert_eq!(result["kind"], "CliStatus");
-        assert_eq!(result["status"], "ok");
+        assert_eq!(
+            result.get("schema_version"),
+            Some(&serde_json::json!("velvet-ballastics/cli-output/v1"))
+        );
+        assert_eq!(result.get("kind"), Some(&serde_json::json!("CliStatus")));
+        assert_eq!(result.get("status"), Some(&serde_json::json!("ok")));
     }
 
     #[test]

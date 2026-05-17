@@ -380,11 +380,8 @@ mod tests {
     fn build_object_with_taint_rejects_out_of_bounds_slot() {
         let mut store = ValueStore::new();
         let run = test_frame(1).expect("frame");
-        let result = build_object_with_taint(
-            &mut store,
-            &run,
-            &[(SymbolId::new(0), SlotIdx::new(5))],
-        );
+        let result =
+            build_object_with_taint(&mut store, &run, &[(SymbolId::new(0), SlotIdx::new(5))]);
         assert_eq!(
             result,
             Err(EngineError::SlotOutOfBounds {
@@ -413,11 +410,8 @@ mod tests {
         let mut store = ValueStore::new();
         let run = test_frame(2).expect("frame");
         // Slot 0 is uninitialized
-        let result = build_object_with_taint(
-            &mut store,
-            &run,
-            &[(SymbolId::new(0), SlotIdx::new(0))],
-        );
+        let result =
+            build_object_with_taint(&mut store, &run, &[(SymbolId::new(0), SlotIdx::new(0))]);
         assert_eq!(
             result,
             Err(EngineError::SlotUninitialized {

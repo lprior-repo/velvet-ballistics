@@ -224,9 +224,11 @@ pub(super) fn eval_unique(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ids::{ConstIdx, ExprIdx, ListId, ObjectId, RunId, SlotIdx, StepIdx, SymbolId, WorkflowDigest};
-    use crate::limits::MAX_EXPRESSION_STACK;
     use crate::errors::EngineError;
+    use crate::ids::{
+        ConstIdx, ExprIdx, ListId, ObjectId, RunId, SlotIdx, StepIdx, SymbolId, WorkflowDigest,
+    };
+    use crate::limits::MAX_EXPRESSION_STACK;
     use crate::value::{ConstValue, SlotValue, Taint};
     use crate::workflow::{
         CompiledNode, CompiledNodeKind, CompiledWorkflow, ExprOp, ExprProgram, ResourceContract,

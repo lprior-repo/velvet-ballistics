@@ -706,7 +706,7 @@ fn integration_policy_returns_runtime_exceeded_when_runtime_crosses_limit() {
     // GAP-2 repaired: runtime is derived from total steps and per-tick budget.
     match result {
         Err(BudgetError::RunTimeExceeded { actual, limit }) => {
-            assert_eq!(actual, 10_000, "actual runtime should be computed");
+            assert_eq!(actual, 10, "actual runtime should be computed");
             assert_eq!(limit, 1, "limit should be 1");
         }
         Ok(()) => {

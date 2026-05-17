@@ -31,13 +31,20 @@ fn ui_tokens_stdout_is_json_when_json_emit_is_requested() -> Result<(), Box<dyn 
     )?;
 
     // Then
-    assert_eq!(output.status.code(), Some(0));
-    assert_eq!(stdout_text(&output)?.contains("\"window_width\""), true);
-    assert_eq!(stdout_text(&output)?.contains("pub const TOKENS"), false);
-    assert_eq!(
+    require(output.status.code() == Some(0), "xtask exited non-zero")?;
+    let stdout = stdout_text(&output)?;
+    require(
+        stdout.contains("\"window_width\""),
+        "stdout missing JSON token",
+    )?;
+    require(
+        !stdout.contains("pub const TOKENS"),
+        "stdout unexpectedly emitted Rust tokens",
+    )?;
+    require(
         std::fs::read_to_string(output_path)?.contains("pub const TOKENS"),
-        true
-    );
+        "output file missing Rust tokens",
+    )?;
     Ok(())
 }
 
@@ -63,13 +70,20 @@ fn ui_tokens_stdout_is_rust_when_rust_emit_is_requested() -> Result<(), Box<dyn 
     )?;
 
     // Then
-    assert_eq!(output.status.code(), Some(0));
-    assert_eq!(stdout_text(&output)?.contains("pub const TOKENS"), true);
-    assert_eq!(stdout_text(&output)?.contains("\"window_width\""), false);
-    assert_eq!(
+    require(output.status.code() == Some(0), "xtask exited non-zero")?;
+    let stdout = stdout_text(&output)?;
+    require(
+        stdout.contains("pub const TOKENS"),
+        "stdout missing Rust tokens",
+    )?;
+    require(
+        !stdout.contains("\"window_width\""),
+        "stdout unexpectedly emitted JSON token",
+    )?;
+    require(
         std::fs::read_to_string(output_path)?.contains("pub const TOKENS"),
-        true
-    );
+        "output file missing Rust tokens",
+    )?;
     Ok(())
 }
 
@@ -83,4 +97,12 @@ fn run_xtask(current_dir: &Path, args: &[&str]) -> Result<Output, Box<dyn Error>
 
 fn stdout_text(output: &Output) -> Result<String, Box<dyn Error>> {
     String::from_utf8(output.stdout.clone()).map_err(Into::into)
+}
+
+fn require(condition: bool, message: &'static str) -> Result<(), Box<dyn Error>> {
+    if condition {
+        Ok(())
+    } else {
+        Err(message.into())
+    }
 }

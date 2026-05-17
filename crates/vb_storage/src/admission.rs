@@ -27,8 +27,8 @@ pub struct VerificationWarning {
 impl VerificationWarning {
     /// Minimum valid gate value (inclusive).
     pub const MIN_GATE: u8 = 1;
-    /// Maximum valid gate value (inclusive). Contract §4.2 specifies gate_count = 2.
-    pub const MAX_GATE: u8 = 2;
+    /// Maximum valid gate value (inclusive). Contract §4.2 specifies gate_count = 15.
+    pub const MAX_GATE: u8 = 15;
 
     /// Returns `true` if the `gate` field falls within the valid 1-2 range.
     #[must_use]
@@ -482,13 +482,13 @@ mod tests {
     }
 
     #[test]
-    fn is_valid_rejects_gate_fourteen() {
+    fn is_valid_accepts_gate_fourteen() {
         let w = VerificationWarning {
             code: 1,
-            message: Box::from("above max gate"),
+            message: Box::from("within gate range"),
             gate: 14,
         };
-        assert!(!w.is_valid());
+        assert!(w.is_valid());
     }
 
     // =========================================================================
@@ -742,8 +742,8 @@ mod tests {
     }
 
     #[test]
-    fn submit_artifact_persists_non_empty_required_capabilities_when_contract_requires_capability(
-    ) -> Result<(), String> {
+    fn submit_artifact_persists_non_empty_required_capabilities_when_contract_requires_capability()
+    -> Result<(), String> {
         let journal = temp_journal().map_err(|e| format!("journal open failed: {e}"))?;
         let workflow = minimal_workflow()?;
         let required = vb_core::capability::Capability::new(
@@ -952,7 +952,7 @@ mod tests {
 
     #[test]
     fn gate_values_outside_range_fail_is_valid() -> Result<(), String> {
-        for gate in [0u8, 14, 15, 20, 255] {
+        for gate in [0u8, 16, 20, 255] {
             let w = VerificationWarning {
                 code: 1,
                 message: Box::from("out of range test"),

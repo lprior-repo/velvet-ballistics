@@ -668,7 +668,8 @@ mod tests {
         let run = test_frame()?;
         let mut store = ValueStore::new();
 
-        let result = eval_accessor_with_taint_inner(&workflow, &run, &mut store, AccessorIdx::new(1));
+        let result =
+            eval_accessor_with_taint_inner(&workflow, &run, &mut store, AccessorIdx::new(1));
         match result {
             Err(EngineError::InvalidCompiledWorkflow { reason })
                 if reason.contains("accessor index out of bounds") =>
@@ -689,8 +690,7 @@ mod tests {
         let mut store = ValueStore::new();
         let obj = store
             .insert_object(
-                vec![ObjectField::clean(SymbolId::new(3), SlotValue::I64(42))]
-                    .into_boxed_slice(),
+                vec![ObjectField::clean(SymbolId::new(3), SlotValue::I64(42))].into_boxed_slice(),
             )
             .map_err(|e| e.to_string())?;
         run.write_slot_with_taint(SlotIdx::new(0), SlotValue::Object(obj), Taint::Clean)

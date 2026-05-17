@@ -7,7 +7,9 @@
 //! This harness verifies payload length validation in record header decoding.
 
 use crate::codec::header::decode_record_header;
-use crate::constants::{CRC_OFFSET, RECORD_HEADER_BYTES, RECORD_HEADER_LEN, CURRENT_SCHEMA_VERSION};
+use crate::constants::{
+    CRC_OFFSET, CURRENT_SCHEMA_VERSION, RECORD_HEADER_BYTES, RECORD_HEADER_LEN,
+};
 use crate::error::JournalError;
 use crate::records::RecordKind;
 
@@ -27,12 +29,14 @@ fn kani_record_payload_len_within_max() {
     header_bytes[16..24].copy_from_slice(&0u64.to_le_bytes());
 
     let crc = crc32c::crc32c(&header_bytes[0..CRC_OFFSET]);
-    header_bytes[CRC_OFFSET..CRC_OFFSET+4].copy_from_slice(&crc.to_le_bytes());
+    header_bytes[CRC_OFFSET..CRC_OFFSET + 4].copy_from_slice(&crc.to_le_bytes());
 
     let result = decode_record_header(&header_bytes, expected_magic, max_payload);
     match result {
         Ok(_) => kani::assert(true, "payload within max accepted"),
-        Err(JournalError::PayloadTooLarge { .. }) => kani::assert(false, "payload within max should not be rejected"),
+        Err(JournalError::PayloadTooLarge { .. }) => {
+            kani::assert(false, "payload within max should not be rejected")
+        }
         Err(_) => kani::assert(true, "payload within max passes length check"),
     }
 }
@@ -53,7 +57,7 @@ fn kani_record_payload_len_exceeds_max() {
     header_bytes[16..24].copy_from_slice(&0u64.to_le_bytes());
 
     let crc = crc32c::crc32c(&header_bytes[0..CRC_OFFSET]);
-    header_bytes[CRC_OFFSET..CRC_OFFSET+4].copy_from_slice(&crc.to_le_bytes());
+    header_bytes[CRC_OFFSET..CRC_OFFSET + 4].copy_from_slice(&crc.to_le_bytes());
 
     let result = decode_record_header(&header_bytes, expected_magic, max_payload);
     kani::assert(result.is_err(), "payload exceeding max should return error");
@@ -80,10 +84,13 @@ fn kani_record_payload_len_exactly_over_max() {
     header_bytes[16..24].copy_from_slice(&0u64.to_le_bytes());
 
     let crc = crc32c::crc32c(&header_bytes[0..CRC_OFFSET]);
-    header_bytes[CRC_OFFSET..CRC_OFFSET+4].copy_from_slice(&crc.to_le_bytes());
+    header_bytes[CRC_OFFSET..CRC_OFFSET + 4].copy_from_slice(&crc.to_le_bytes());
 
     let result = decode_record_header(&header_bytes, expected_magic, max_payload);
-    kani::assert(result.is_err(), "payload exactly over max should return error");
+    kani::assert(
+        result.is_err(),
+        "payload exactly over max should return error",
+    );
 }
 
 /// VB-STORAGE-DECODE-004 H4: decode accepts payload_len exactly at max
@@ -102,12 +109,14 @@ fn kani_record_payload_len_exactly_at_max() {
     header_bytes[16..24].copy_from_slice(&0u64.to_le_bytes());
 
     let crc = crc32c::crc32c(&header_bytes[0..CRC_OFFSET]);
-    header_bytes[CRC_OFFSET..CRC_OFFSET+4].copy_from_slice(&crc.to_le_bytes());
+    header_bytes[CRC_OFFSET..CRC_OFFSET + 4].copy_from_slice(&crc.to_le_bytes());
 
     let result = decode_record_header(&header_bytes, expected_magic, max_payload);
     match result {
         Ok(_) => kani::assert(true, "payload at max accepted"),
-        Err(JournalError::PayloadTooLarge { .. }) => kani::assert(false, "payload at max should not be rejected"),
+        Err(JournalError::PayloadTooLarge { .. }) => {
+            kani::assert(false, "payload at max should not be rejected")
+        }
         Err(_) => kani::assert(true, "payload at max passes length check"),
     }
 }
@@ -128,8 +137,11 @@ fn kani_record_payload_len_rejects_nonzero_when_max_zero() {
     header_bytes[16..24].copy_from_slice(&0u64.to_le_bytes());
 
     let crc = crc32c::crc32c(&header_bytes[0..CRC_OFFSET]);
-    header_bytes[CRC_OFFSET..CRC_OFFSET+4].copy_from_slice(&crc.to_le_bytes());
+    header_bytes[CRC_OFFSET..CRC_OFFSET + 4].copy_from_slice(&crc.to_le_bytes());
 
     let result = decode_record_header(&header_bytes, expected_magic, max_payload);
-    kani::assert(result.is_err(), "non-zero payload with zero max should return error");
+    kani::assert(
+        result.is_err(),
+        "non-zero payload with zero max should return error",
+    );
 }

@@ -43,7 +43,7 @@ fn mode_error_invalid_mode_maps_to_validation_failed() {
     let err = ModeError::InvalidMode;
     let code = CliExitCode::from(err);
     assert_eq!(code, CliExitCode::ValidationFailed);
-    assert_eq!(CliExitCode::from(ModeError::InvalidMode) as u8, 1u8);
+    assert_eq!(u8::from(CliExitCode::from(ModeError::InvalidMode)), 1u8);
 }
 
 #[test]
@@ -55,7 +55,7 @@ fn mode_error_storage_init_failed_maps_to_storage_error() {
     };
     let code = CliExitCode::from(err);
     assert_eq!(code, CliExitCode::StorageError);
-    assert_eq!(code as u8, 5u8);
+    assert_eq!(u8::from(code), 5u8);
 }
 
 #[test]
@@ -83,7 +83,7 @@ fn mode_error_runtime_init_failed_maps_to_runtime_failed() {
     };
     let code = CliExitCode::from(err);
     assert_eq!(code, CliExitCode::RuntimeFailed);
-    assert_eq!(code as u8, 4u8);
+    assert_eq!(u8::from(code), 4u8);
 }
 
 #[test]
@@ -106,7 +106,7 @@ fn mode_error_ui_init_failed_maps_to_action_policy_error() {
     };
     let code = CliExitCode::from(err);
     assert_eq!(code, CliExitCode::ActionPolicyError);
-    assert_eq!(code as u8, 7u8);
+    assert_eq!(u8::from(code), 7u8);
 }
 
 #[test]
@@ -130,7 +130,7 @@ fn mode_error_pure_command_storage_access_attempted_maps_to_storage_error() {
     };
     let code = CliExitCode::from(err);
     assert_eq!(code, CliExitCode::StorageError);
-    assert_eq!(code as u8, 5u8);
+    assert_eq!(u8::from(code), 5u8);
 }
 
 #[test]
@@ -149,20 +149,22 @@ fn mode_error_pure_command_storage_access_attempted_display_includes_command() {
 fn mode_error_all_variants_have_distinct_exit_codes() {
     // Exit code uniqueness invariant: all 5 ModeError variants must map to distinct exit codes
     let codes: Vec<u8> = vec![
-        CliExitCode::from(ModeError::InvalidMode) as u8,
-        CliExitCode::from(ModeError::StorageInitFailed {
+        u8::from(CliExitCode::from(ModeError::InvalidMode)),
+        u8::from(CliExitCode::from(ModeError::StorageInitFailed {
             path: PathBuf::from("/tmp"),
             cause: "test".to_string(),
-        }) as u8,
-        CliExitCode::from(ModeError::RuntimeInitFailed {
+        })),
+        u8::from(CliExitCode::from(ModeError::RuntimeInitFailed {
             cause: "test".to_string(),
-        }) as u8,
-        CliExitCode::from(ModeError::UiInitFailed {
+        })),
+        u8::from(CliExitCode::from(ModeError::UiInitFailed {
             cause: "test".to_string(),
-        }) as u8,
-        CliExitCode::from(ModeError::PureCommandStorageAccessAttempted {
-            command: "test".to_string(),
-        }) as u8,
+        })),
+        u8::from(CliExitCode::from(
+            ModeError::PureCommandStorageAccessAttempted {
+                command: "test".to_string(),
+            },
+        )),
     ];
     // Per contract: StorageInitFailed and PureCommandStorageAccessAttempted both map to 5
     // RuntimeInitFailed maps to 4, UiInitFailed maps to 7, InvalidMode maps to 1
@@ -176,26 +178,22 @@ fn mode_error_all_variants_have_distinct_exit_codes() {
 
 #[test]
 fn command_mode_enum_has_pure_variant() {
-    let _ = CommandMode::Pure;
-    assert!(true, "CommandMode::Pure must exist");
+    let _mode = CommandMode::Pure;
 }
 
 #[test]
 fn command_mode_enum_has_storage_variant() {
-    let _ = CommandMode::Storage;
-    assert!(true, "CommandMode::Storage must exist");
+    let _mode = CommandMode::Storage;
 }
 
 #[test]
 fn command_mode_enum_has_runtime_variant() {
-    let _ = CommandMode::Runtime;
-    assert!(true, "CommandMode::Runtime must exist");
+    let _mode = CommandMode::Runtime;
 }
 
 #[test]
 fn command_mode_enum_has_ui_variant() {
-    let _ = CommandMode::UI;
-    assert!(true, "CommandMode::UI must exist");
+    let _mode = CommandMode::UI;
 }
 
 #[test]
@@ -840,15 +838,15 @@ fn runtime_commands_are_not_pure_nor_storage_nor_ui() {
 fn cli_exit_code_all_9_variants_distinct() {
     // INV-003: All 9 CliExitCode variants have distinct discriminant values
     let codes: [u8; 9] = [
-        CliExitCode::Success as u8,
-        CliExitCode::ValidationFailed as u8,
-        CliExitCode::VerificationFailed as u8,
-        CliExitCode::CompileFailed as u8,
-        CliExitCode::RuntimeFailed as u8,
-        CliExitCode::StorageError as u8,
-        CliExitCode::IpcError as u8,
-        CliExitCode::ActionPolicyError as u8,
-        CliExitCode::ReplayDivergence as u8,
+        u8::from(CliExitCode::Success),
+        u8::from(CliExitCode::ValidationFailed),
+        u8::from(CliExitCode::VerificationFailed),
+        u8::from(CliExitCode::CompileFailed),
+        u8::from(CliExitCode::RuntimeFailed),
+        u8::from(CliExitCode::StorageError),
+        u8::from(CliExitCode::IpcError),
+        u8::from(CliExitCode::ActionPolicyError),
+        u8::from(CliExitCode::ReplayDivergence),
     ];
     let mut sorted = codes.to_vec();
     sorted.sort_unstable();

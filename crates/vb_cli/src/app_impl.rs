@@ -1007,11 +1007,18 @@ fn cmd_compile(
             source.push_str(
                 r#"
 fn main() {
+    use std::io::Write as _;
     let slots = [None; WORKFLOW_SLOT_COUNT];
     match drive(slots) {
-        Ok(value) => println!("{:?}", value),
+        Ok(value) => {
+            let stdout = std::io::stdout();
+            let mut handle = stdout.lock();
+            let _ = writeln!(handle, "{:?}", value);
+        }
         Err(error) => {
-            eprintln!("{:?}", error);
+            let stderr = std::io::stderr();
+            let mut handle = stderr.lock();
+            let _ = writeln!(handle, "{:?}", error);
             std::process::exit(1);
         }
     }
@@ -1850,6 +1857,12 @@ fn run_compiled_workflow(
         return CliExitCode::RuntimeFailed.into();
     };
     let config = vb_runtime::shard::ShardConfig::default();
+    if durability != DurabilityMode::None
+        && let Some(db_path) = db
+        && let Err(code) = store_compiled_artifact(compiled, db_path, output)
+    {
+        return code;
+    }
     let journal = match runtime_journal_for_mode(durability, db, output) {
         Ok(journal) => journal,
         Err(code) => return code,
@@ -1917,6 +1930,57 @@ fn run_compiled_workflow(
     }
 
     ExitCode::SUCCESS
+}
+
+fn store_compiled_artifact(
+    compiled: &vb_core::CompiledWorkflow,
+    db: &std::path::Path,
+    output: OutputFormat,
+) -> Result<(), ExitCode> {
+    let parts = compiled.to_parts();
+    let ir_bytes = match postcard::to_allocvec(&parts) {
+        Ok(ir) => ir,
+        Err(e) => {
+            report_compiled_ir_store_error(format_args!("compiled IR encode error: {e}"), output);
+            return Err(CliExitCode::StorageError.into());
+        }
+    };
+    let journal = match vb_storage::FjallJournal::open(db, None) {
+        Ok(journal) => journal,
+        Err(e) => {
+            report_compiled_ir_store_error(
+                format_args!("error opening journal at {}: {e}", db.display()),
+                output,
+            );
+            return Err(CliExitCode::StorageError.into());
+        }
+    };
+    let artifact = vb_storage::admission::AcceptedArtifact {
+        digest: compiled.digest(),
+        ir: ir_bytes,
+        verification: vb_storage::admission::VerificationProof::new(
+            compiled.digest(),
+            vb_runtime::admission::REQUIRED_GATE_COUNT,
+            true,
+        ),
+        accepted_at_seq: vb_storage::EventSeq::new(0),
+        required_capabilities: Box::new([]),
+    };
+    let artifact_bytes = match postcard::to_allocvec(&artifact) {
+        Ok(bytes) => bytes,
+        Err(e) => {
+            report_compiled_ir_store_error(format_args!("artifact encode error: {e}"), output);
+            return Err(CliExitCode::StorageError.into());
+        }
+    };
+    let record = vb_storage::CompiledIrRecord {
+        digest: compiled.digest(),
+        ir: artifact_bytes,
+    };
+    journal.put_compiled_ir(&record).map_err(|e| {
+        report_compiled_ir_store_error(format_args!("compiled IR write error: {e}"), output);
+        CliExitCode::StorageError.into()
+    })
 }
 
 fn report_runtime_error(args: std::fmt::Arguments<'_>, output: OutputFormat) {
@@ -4598,7 +4662,7 @@ fn write_diagnostic_message_stderr(message: &str, code: CliExitCode, output: Out
         OutputFormat::Text => writeln!(handle, "{message}"),
     };
     if let Err(error) = write_result {
-        eprintln!("diagnostic write failed: {error}");
+        write_stderr_best_effort(format_args!("diagnostic write failed: {error}"));
     }
 }
 
@@ -4710,11 +4774,11 @@ pub(crate) fn write_stdout_line(args: std::fmt::Arguments<'_>) {
     let stdout = io::stdout();
     let mut handle = stdout.lock();
     if let Err(error) = handle.write_fmt(args) {
-        eprintln!("stdout write failed: {error}");
+        write_stderr_best_effort(format_args!("stdout write failed: {error}"));
         return;
     }
     if let Err(error) = handle.write_all(b"\n") {
-        eprintln!("stdout newline write failed: {error}");
+        write_stderr_best_effort(format_args!("stdout newline write failed: {error}"));
     }
 }
 
@@ -4722,11 +4786,22 @@ fn write_stderr_line(args: std::fmt::Arguments<'_>) {
     let stderr = io::stderr();
     let mut handle = stderr.lock();
     if let Err(error) = handle.write_fmt(args) {
-        eprintln!("stderr write failed: {error}");
+        write_stderr_best_effort(format_args!("stderr write failed: {error}"));
         return;
     }
     if let Err(error) = handle.write_all(b"\n") {
-        eprintln!("stderr newline write failed: {error}");
+        write_stderr_best_effort(format_args!("stderr newline write failed: {error}"));
+    }
+}
+
+fn write_stderr_best_effort(args: std::fmt::Arguments<'_>) {
+    let stderr = io::stderr();
+    let mut handle = stderr.lock();
+    match handle
+        .write_fmt(args)
+        .and_then(|()| handle.write_all(b"\n"))
+    {
+        Ok(()) | Err(_) => {}
     }
 }
 
@@ -4759,9 +4834,6 @@ fn json_error(value: &serde_json::Value, format: OutputFormat) {
         write_diagnostic_message_stderr(&message, code, format);
     }
 }
-
-#[cfg(test)]
-mod mode_error;
 
 #[cfg(test)]
 #[path = "main_tests.rs"]

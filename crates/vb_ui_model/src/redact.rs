@@ -6,6 +6,7 @@
 
 #![forbid(unsafe_code)]
 
+use alloc::format;
 use alloc::string::{String, ToString};
 use serde::{Deserialize, Serialize};
 
@@ -70,7 +71,10 @@ pub fn classify_secret_sensitivity(field_path: &str) -> SensitivityClass {
     {
         return SensitivityClass {
             classification: SecretSensitivity::Sensitive,
-            reason: Some(format!("field path matches sensitive pattern: {}", field_path)),
+            reason: Some(format!(
+                "field path matches sensitive pattern: {}",
+                field_path
+            )),
         };
     }
 
@@ -86,7 +90,10 @@ pub fn classify_secret_sensitivity(field_path: &str) -> SensitivityClass {
     {
         return SensitivityClass {
             classification: SecretSensitivity::NonSensitive,
-            reason: Some(format!("field path matches non-sensitive pattern: {}", field_path)),
+            reason: Some(format!(
+                "field path matches non-sensitive pattern: {}",
+                field_path
+            )),
         };
     }
 
@@ -126,7 +133,8 @@ pub fn redact_secret_value(
 
             // Unknown values get a bounded summary for diagnostics;
             // Sensitive values get no summary (only digest for verification)
-            let (summary, summary_len) = if sensitivity.classification == SecretSensitivity::Unknown {
+            let (summary, summary_len) = if sensitivity.classification == SecretSensitivity::Unknown
+            {
                 let len = core::cmp::min(value.len(), MAX_REDACTION_SUMMARY_LEN);
                 let s = value
                     .get(..len)
@@ -185,10 +193,13 @@ pub fn redact_json_object(
             }
             SecretSensitivity::Sensitive | SecretSensitivity::Unknown => {
                 // Redact sensitive and unknown values
-                if let Some(redacted) = redact_json_value_as_redacted(value, sensitivity.classification) {
+                if let Some(redacted) =
+                    redact_json_value_as_redacted(value, sensitivity.classification)
+                {
                     let mut redacted_map = serde_json::Map::new();
                     redacted_map.insert("__redacted".to_string(), serde_json::json!(true));
-                    redacted_map.insert("taint".to_string(), serde_json::json!(redacted.is_tainted));
+                    redacted_map
+                        .insert("taint".to_string(), serde_json::json!(redacted.is_tainted));
                     redacted_map.insert(
                         "taint_marker".to_string(),
                         serde_json::json!(redacted.taint_marker),
@@ -200,10 +211,8 @@ pub fn redact_json_object(
                     // If redaction fails (should not happen for sensitive), replace with null
                     let mut redacted_map = serde_json::Map::new();
                     redacted_map.insert("__redacted".to_string(), serde_json::json!(true));
-                    redacted_map.insert(
-                        "taint_marker".to_string(),
-                        serde_json::json!("REDACT_FAIL"),
-                    );
+                    redacted_map
+                        .insert("taint_marker".to_string(), serde_json::json!("REDACT_FAIL"));
                     result.insert(key.clone(), serde_json::Value::Object(redacted_map));
                 }
             }
@@ -213,7 +222,10 @@ pub fn redact_json_object(
     result
 }
 
-fn redact_json_value(value: &serde_json::Value, sensitivity: SecretSensitivity) -> serde_json::Value {
+fn redact_json_value(
+    value: &serde_json::Value,
+    sensitivity: SecretSensitivity,
+) -> serde_json::Value {
     match value {
         serde_json::Value::Object(obj) => {
             if sensitivity == SecretSensitivity::NonSensitive {
@@ -269,19 +281,31 @@ mod tests {
     #[test]
     fn sensitive_field_classification() {
         let result = classify_secret_sensitivity("password");
-        assert!(matches!(result.classification, SecretSensitivity::Sensitive));
+        assert!(matches!(
+            result.classification,
+            SecretSensitivity::Sensitive
+        ));
 
         let result = classify_secret_sensitivity("api_token");
-        assert!(matches!(result.classification, SecretSensitivity::Sensitive));
+        assert!(matches!(
+            result.classification,
+            SecretSensitivity::Sensitive
+        ));
     }
 
     #[test]
     fn non_sensitive_field_classification() {
         let result = classify_secret_sensitivity("user_id");
-        assert!(matches!(result.classification, SecretSensitivity::NonSensitive));
+        assert!(matches!(
+            result.classification,
+            SecretSensitivity::NonSensitive
+        ));
 
         let result = classify_secret_sensitivity("name");
-        assert!(matches!(result.classification, SecretSensitivity::NonSensitive));
+        assert!(matches!(
+            result.classification,
+            SecretSensitivity::NonSensitive
+        ));
     }
 
     #[test]

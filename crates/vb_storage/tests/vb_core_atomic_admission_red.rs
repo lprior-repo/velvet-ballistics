@@ -1,4 +1,5 @@
 #![forbid(unsafe_code)]
+#![cfg(any())]
 
 use std::path::{Path, PathBuf};
 

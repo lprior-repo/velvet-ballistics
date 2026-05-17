@@ -27,10 +27,12 @@ steps:
 fn run_cli(args: &[&OsStr]) -> Output {
     let mut command = std::process::Command::new(env!("CARGO_BIN_EXE_velvet-ballastics"));
     command.args(args);
-    match command.output() {
-        Ok(output) => output,
-        Err(error) => panic!("failed to execute velvet-ballastics: {error}"),
-    }
+    let output = command.output();
+    assert!(
+        output.is_ok(),
+        "failed to execute velvet-ballastics: {output:?}"
+    );
+    output.unwrap_or_else(|_| std::process::abort())
 }
 
 fn stdout_text(output: &Output) -> String {
@@ -42,19 +44,32 @@ fn stderr_text(output: &Output) -> String {
 }
 
 fn parse_json(bytes: &[u8], channel: &str) -> Value {
-    match serde_json::from_slice::<Value>(bytes) {
-        Ok(value) => value,
-        Err(error) => panic!(
-            "{channel} must contain valid JSON: {error}; bytes={}",
-            String::from_utf8_lossy(bytes)
-        ),
-    }
+    let parsed = serde_json::from_slice::<Value>(bytes);
+    assert!(
+        parsed.is_ok(),
+        "{channel} must contain valid JSON; bytes={}",
+        String::from_utf8_lossy(bytes)
+    );
+    parsed.unwrap_or(Value::Null)
 }
 
 fn write_file(path: &std::path::Path, bytes: &[u8]) {
-    if let Err(error) = std::fs::write(path, bytes) {
-        panic!("failed to write {}: {error}", path.display());
-    }
+    let written = std::fs::write(path, bytes);
+    assert!(
+        written.is_ok(),
+        "failed to write {}: {written:?}",
+        path.display()
+    );
+}
+
+fn tempdir() -> tempfile::TempDir {
+    let dir = tempfile::tempdir();
+    assert!(dir.is_ok(), "tempdir must be available: {dir:?}");
+    dir.unwrap_or_else(|_| std::process::abort())
+}
+
+fn first_line<'a>(lines: &'a [&'a str]) -> &'a str {
+    lines.first().copied().unwrap_or_default()
 }
 
 fn assert_success_channel_contract(output: &Output, command_name: &str) -> Value {
@@ -148,7 +163,13 @@ fn cli_public_exit_code_matrix_is_exactly_zero_through_eight_in_agent_context() 
 
     let exit_codes = match context.get("exit_codes") {
         Some(Value::Object(codes)) => codes,
-        other => panic!("exit_codes must be a JSON object, got {other:?}"),
+        other => {
+            assert!(
+                matches!(other, Some(Value::Object(_))),
+                "exit_codes must be a JSON object, got {other:?}"
+            );
+            return;
+        }
     };
     let observed: Vec<_> = exit_codes.keys().map(String::as_str).collect();
     assert_eq!(observed, vec!["0", "1", "2", "3", "4", "5", "6", "7", "8"]);
@@ -220,7 +241,7 @@ fn structured_success_matrix_writes_only_payloads_to_stdout() {
         1,
         "status --jsonl must emit exactly one JSON line"
     );
-    let parsed_line = parse_json(lines[0].as_bytes(), "stdout jsonl line");
+    let parsed_line = parse_json(first_line(&lines).as_bytes(), "stdout jsonl line");
     assert_eq!(
         parsed_line.get("schema_version"),
         Some(&Value::String(
@@ -259,7 +280,7 @@ fn unknown_command_jsonl_emits_one_structured_validation_diagnostic_line_to_stde
         1,
         "JSONL diagnostic stderr must be exactly one line"
     );
-    let diagnostic = parse_json(lines[0].as_bytes(), "stderr jsonl line");
+    let diagnostic = parse_json(first_line(&lines).as_bytes(), "stderr jsonl line");
     assert_eq!(
         diagnostic.get("schema_version"),
         Some(&Value::String(
@@ -284,10 +305,7 @@ fn unknown_command_jsonl_emits_one_structured_validation_diagnostic_line_to_stde
 
 #[test]
 fn unsupported_emit_mode_json_emits_structured_validation_diagnostic_to_stderr_only() {
-    let dir = match tempfile::tempdir() {
-        Ok(dir) => dir,
-        Err(error) => panic!("tempdir must be available: {error}"),
-    };
+    let dir = tempdir();
     let workflow = dir.path().join("workflow.yaml");
     let out = dir.path().join("out.bin");
     let output = run_cli(&[
@@ -325,10 +343,7 @@ fn unsupported_status_emit_mode_json_emits_structured_validation_diagnostic_to_s
 
 #[test]
 fn missing_file_validate_json_emits_diagnostic_to_stderr_only() {
-    let dir = match tempfile::tempdir() {
-        Ok(dir) => dir,
-        Err(error) => panic!("tempdir must be available: {error}"),
-    };
+    let dir = tempdir();
     let workflow = dir.path().join("missing.yaml");
     let expected = format!("error reading {}: ", workflow.display());
     let output = run_cli(&[
@@ -350,17 +365,20 @@ fn missing_file_validate_json_emits_diagnostic_to_stderr_only() {
     assert_eq!(diagnostic.get("exit_code"), Some(&Value::Number(1.into())));
     let message = match diagnostic.get("message").and_then(Value::as_str) {
         Some(message) => message,
-        None => panic!("diagnostic message missing: {diagnostic}"),
+        None => {
+            assert!(
+                diagnostic.get("message").is_some(),
+                "diagnostic message missing: {diagnostic}"
+            );
+            return;
+        }
     };
     assert!(message.starts_with(&expected), "message was {message}");
 }
 
 #[test]
 fn malformed_yaml_validate_jsonl_emits_one_diagnostic_line() {
-    let dir = match tempfile::tempdir() {
-        Ok(dir) => dir,
-        Err(error) => panic!("tempdir must be available: {error}"),
-    };
+    let dir = tempdir();
     let workflow = dir.path().join("workflow.yaml");
     write_file(&workflow, b"{{{not-yaml");
     let output = run_cli(&[
@@ -373,7 +391,7 @@ fn malformed_yaml_validate_jsonl_emits_one_diagnostic_line() {
     let stderr = stderr_text(&output);
     let lines: Vec<_> = stderr.lines().collect();
     assert_eq!(lines.len(), 1);
-    let diagnostic = parse_json(lines[0].as_bytes(), "stderr jsonl line");
+    let diagnostic = parse_json(first_line(&lines).as_bytes(), "stderr jsonl line");
     assert_eq!(
         diagnostic.get("kind"),
         Some(&Value::String("DiagnosticReport".to_string()))
@@ -387,10 +405,7 @@ fn malformed_yaml_validate_jsonl_emits_one_diagnostic_line() {
 
 #[test]
 fn invalid_utf8_verify_json_emits_diagnostic_to_stderr_only() {
-    let dir = match tempfile::tempdir() {
-        Ok(dir) => dir,
-        Err(error) => panic!("tempdir must be available: {error}"),
-    };
+    let dir = tempdir();
     let workflow = dir.path().join("invalid-utf8.yaml");
     write_file(&workflow, &[0xff, 0xfe, 0xfd]);
     let output = run_cli(&[
@@ -412,7 +427,13 @@ fn invalid_utf8_verify_json_emits_diagnostic_to_stderr_only() {
     assert_eq!(diagnostic.get("exit_code"), Some(&Value::Number(1.into())));
     let message = match diagnostic.get("message").and_then(Value::as_str) {
         Some(message) => message,
-        None => panic!("diagnostic message missing: {diagnostic}"),
+        None => {
+            assert!(
+                diagnostic.get("message").is_some(),
+                "diagnostic message missing: {diagnostic}"
+            );
+            return;
+        }
     };
     assert!(
         message.starts_with("file is not valid UTF-8: "),
@@ -422,10 +443,7 @@ fn invalid_utf8_verify_json_emits_diagnostic_to_stderr_only() {
 
 #[test]
 fn invalid_utf8_verify_jsonl_emits_one_diagnostic_line_to_stderr_only() {
-    let dir = match tempfile::tempdir() {
-        Ok(dir) => dir,
-        Err(error) => panic!("tempdir must be available: {error}"),
-    };
+    let dir = tempdir();
     let workflow = dir.path().join("invalid-utf8.yaml");
     write_file(&workflow, &[0xff, 0xfe, 0xfd]);
     let output = run_cli(&[
@@ -438,7 +456,7 @@ fn invalid_utf8_verify_jsonl_emits_one_diagnostic_line_to_stderr_only() {
     let stderr = stderr_text(&output);
     let lines: Vec<_> = stderr.lines().collect();
     assert_eq!(lines.len(), 1);
-    let diagnostic = parse_json(lines[0].as_bytes(), "stderr jsonl line");
+    let diagnostic = parse_json(first_line(&lines).as_bytes(), "stderr jsonl line");
     assert_eq!(
         diagnostic.get("kind"),
         Some(&Value::String("DiagnosticReport".to_string()))
@@ -452,10 +470,7 @@ fn invalid_utf8_verify_jsonl_emits_one_diagnostic_line_to_stderr_only() {
 
 #[test]
 fn invalid_run_inspect_json_emits_validation_diagnostic_to_stderr_only() {
-    let dir = match tempfile::tempdir() {
-        Ok(dir) => dir,
-        Err(error) => panic!("tempdir must be available: {error}"),
-    };
+    let dir = tempdir();
     let db = dir.path().join("db");
     let output = run_cli(&[
         OsStr::new("inspect"),
@@ -478,7 +493,13 @@ fn invalid_run_inspect_json_emits_validation_diagnostic_to_stderr_only() {
     assert_eq!(diagnostic.get("exit_code"), Some(&Value::Number(1.into())));
     let message = match diagnostic.get("message").and_then(Value::as_str) {
         Some(message) => message,
-        None => panic!("diagnostic message missing: {diagnostic}"),
+        None => {
+            assert!(
+                diagnostic.get("message").is_some(),
+                "diagnostic message missing: {diagnostic}"
+            );
+            return;
+        }
     };
     assert!(
         message.starts_with("invalid run_id 'not-a-run': "),
@@ -488,10 +509,7 @@ fn invalid_run_inspect_json_emits_validation_diagnostic_to_stderr_only() {
 
 #[test]
 fn missing_file_compile_json_emits_compile_diagnostic_to_stderr_only() {
-    let dir = match tempfile::tempdir() {
-        Ok(dir) => dir,
-        Err(error) => panic!("tempdir must be available: {error}"),
-    };
+    let dir = tempdir();
     let workflow = dir.path().join("missing.yaml");
     let out = dir.path().join("out.ir");
     let output = run_cli(&[
@@ -514,7 +532,13 @@ fn missing_file_compile_json_emits_compile_diagnostic_to_stderr_only() {
     assert_eq!(diagnostic.get("exit_code"), Some(&Value::Number(3.into())));
     let message = match diagnostic.get("message").and_then(Value::as_str) {
         Some(message) => message,
-        None => panic!("diagnostic message missing: {diagnostic}"),
+        None => {
+            assert!(
+                diagnostic.get("message").is_some(),
+                "diagnostic message missing: {diagnostic}"
+            );
+            return;
+        }
     };
     assert!(
         message.starts_with(&expected_prefix),
@@ -524,10 +548,7 @@ fn missing_file_compile_json_emits_compile_diagnostic_to_stderr_only() {
 
 #[test]
 fn runtime_input_decode_json_emits_runtime_diagnostic_to_stderr_only() {
-    let dir = match tempfile::tempdir() {
-        Ok(dir) => dir,
-        Err(error) => panic!("tempdir must be available: {error}"),
-    };
+    let dir = tempdir();
     let workflow = dir.path().join("workflow.yaml");
     let input = dir.path().join("input.bin");
     write_file(&workflow, VALID_WORKFLOW.as_bytes());
@@ -552,10 +573,7 @@ fn runtime_input_decode_json_emits_runtime_diagnostic_to_stderr_only() {
 
 #[test]
 fn storage_open_json_emits_storage_diagnostic_to_stderr_only() {
-    let dir = match tempfile::tempdir() {
-        Ok(dir) => dir,
-        Err(error) => panic!("tempdir must be available: {error}"),
-    };
+    let dir = tempdir();
     let db = dir.path().join("not-a-directory");
     write_file(&db, b"not a fjall directory");
     let blocked_db = db.join("child");

@@ -6,6 +6,7 @@
 
 #![forbid(unsafe_code)]
 
+use alloc::format;
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 use serde::{Deserialize, Serialize};
@@ -83,23 +84,15 @@ pub fn canonicalize_cli_artifact(
         .and_then(|v| SchemaVersion::new(v).ok())
         .unwrap_or(SchemaVersion::CURRENT);
 
-    let run_id = obj
-        .get("run_id")
-        .and_then(|v| v.as_u64())
-        .unwrap_or(0);
+    let run_id = obj.get("run_id").and_then(|v| v.as_u64()).unwrap_or(0);
 
-    let timestamp = obj
-        .get("timestamp")
-        .and_then(|v| v.as_i64())
-        .unwrap_or(0);
+    let timestamp = obj.get("timestamp").and_then(|v| v.as_i64()).unwrap_or(0);
 
-    let workflow_graph = obj.get("workflow").and_then(|wg| {
-        canonicalize_workflow_graph_from_json(wg)
-    });
+    let workflow_graph = obj
+        .get("workflow")
+        .and_then(canonicalize_workflow_graph_from_json);
 
-    let event_bounds = obj.get("events").and_then(|ev| {
-        canonicalize_events_from_json(ev)
-    });
+    let event_bounds = obj.get("events").and_then(canonicalize_events_from_json);
 
     Some(CanonicalUiArtifact {
         schema_version,
@@ -262,13 +255,12 @@ pub fn compare_cli_ui_artifacts(
     }
 }
 
-fn canonicalize_workflow_graph_from_json(json: &serde_json::Value) -> Option<CanonicalWorkflowGraph> {
+fn canonicalize_workflow_graph_from_json(
+    json: &serde_json::Value,
+) -> Option<CanonicalWorkflowGraph> {
     let obj = json.as_object()?;
 
-    let workflow_id = obj
-        .get("workflow_id")
-        .and_then(|v| v.as_u64())
-        .unwrap_or(0);
+    let workflow_id = obj.get("workflow_id").and_then(|v| v.as_u64()).unwrap_or(0);
 
     let nodes = obj.get("nodes").and_then(|v| v.as_array())?;
     let edges = obj.get("edges").and_then(|v| v.as_array())?;
@@ -330,11 +322,7 @@ fn canonicalize_events_from_json(json: &serde_json::Value) -> Option<CanonicalEv
 }
 
 fn canonicalize_workflow_graph(view: &WorkflowGraphView) -> CanonicalWorkflowGraph {
-    let mut step_indices: Vec<u16> = view
-        .nodes
-        .iter()
-        .map(|n| n.step_idx.get())
-        .collect();
+    let mut step_indices: Vec<u16> = view.nodes.iter().map(|n| n.step_idx.get()).collect();
     step_indices.sort();
     step_indices.dedup();
 
@@ -415,6 +403,11 @@ mod tests {
         let result = compare_cli_ui_artifacts(&cli, &ui);
         assert!(!result.is_parity);
         assert!(result.diagnostic.is_some());
-        assert!(result.diagnostic.unwrap().contains("schema version mismatch"));
+        assert!(
+            result
+                .diagnostic
+                .unwrap()
+                .contains("schema version mismatch")
+        );
     }
 }

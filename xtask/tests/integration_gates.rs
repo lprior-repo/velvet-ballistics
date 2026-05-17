@@ -95,12 +95,9 @@ fn ai_release_fails_closed_for_unknown_bead_without_writing_evidence() {
     let bead_id = "vb-itest-release";
     cleanup_evidence(bead_id);
     let output = run_xtask(&["ai-release", "--bead", bead_id]);
-    assert_eq!(output.status.success(), false);
-    assert_eq!(
-        String::from_utf8_lossy(&output.stderr).contains("unknown ai-release bead id"),
-        true
-    );
-    assert_eq!(evidence_root().join(bead_id).exists(), false);
+    assert!(!output.status.success());
+    assert!(String::from_utf8_lossy(&output.stderr).contains("unknown ai-release bead id"));
+    assert!(!evidence_root().join(bead_id).exists());
 }
 
 #[test]
@@ -112,25 +109,19 @@ fn ai_fast_stdout_mode_outputs_structured_yaml_without_evidence_dir() {
         String::from_utf8_lossy(&output.stderr)
     );
     let stdout = String::from_utf8_lossy(&output.stdout);
-    assert_eq!(stdout.contains("profile: ai-fast"), true);
-    assert_eq!(stdout.contains("gates:"), true);
+    assert!(stdout.contains("profile: ai-fast"));
+    assert!(stdout.contains("gates:"));
 }
 
 #[test]
 fn invalid_bead_and_unknown_subcommand_fail_closed() {
     let invalid = run_xtask(&["ai-fast", "--bead", "../bad"]);
-    assert_eq!(invalid.status.success(), false);
-    assert_eq!(
-        String::from_utf8_lossy(&invalid.stderr).contains("Invalid bead id"),
-        true
-    );
+    assert!(!invalid.status.success());
+    assert!(String::from_utf8_lossy(&invalid.stderr).contains("Invalid bead id"));
 
     let unknown = run_xtask(&["unknown-gate"]);
-    assert_eq!(unknown.status.success(), false);
-    assert_eq!(
-        String::from_utf8_lossy(&unknown.stderr).contains("UnknownCommand"),
-        true
-    );
+    assert!(!unknown.status.success());
+    assert!(String::from_utf8_lossy(&unknown.stderr).contains("UnknownCommand"));
 }
 
 #[test]
@@ -138,7 +129,7 @@ fn cleanup_rejects_traversal_without_removing_outside_directory() {
     let outside = evidence_root().join("outside-sentinel");
     create_dir_or_fail(&outside);
     cleanup_evidence("../outside-sentinel");
-    assert_eq!(outside.exists(), true);
+    assert!(outside.exists());
     remove_dir_if_present(&outside);
 }
 
@@ -160,8 +151,7 @@ fn existing_failed_yaml_evidence_has_diagnostic_or_repair_context() {
 }
 
 fn read_text_or_empty(path: &Path) -> String {
-    fs::read_to_string(path)
-        .unwrap_or_else(|error| panic!("failed to read evidence file {path:?}: {error}"))
+    fs::read_to_string(path).unwrap_or_default()
 }
 
 fn yaml_file_contains_failed_gate_without_diagnostic(entry: &fs::DirEntry) -> bool {
@@ -190,19 +180,29 @@ fn count_failed_yaml_files_without_diagnostics(evidence_dir: &Path) -> usize {
 }
 
 fn remove_dir_if_present(path: &Path) {
-    match fs::remove_dir_all(path) {
-        Ok(()) => {}
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
-        Err(error) => panic!("remove dir {}: {error}", path.display()),
-    }
+    let removed = fs::remove_dir_all(path);
+    let not_found = removed
+        .as_ref()
+        .is_err_and(|error| error.kind() == std::io::ErrorKind::NotFound);
+    assert!(
+        removed.is_ok() || not_found,
+        "remove dir {}: {removed:?}",
+        path.display()
+    );
 }
 
 fn create_dir_or_fail(path: &Path) {
-    fs::create_dir_all(path)
-        .unwrap_or_else(|error| panic!("create dir {}: {error}", path.display()));
+    assert!(
+        fs::create_dir_all(path).is_ok(),
+        "create dir {}",
+        path.display()
+    );
 }
 
 fn write_file_or_fail(path: &Path, content: &str) {
-    fs::write(path, content)
-        .unwrap_or_else(|error| panic!("write file {}: {error}", path.display()));
+    assert!(
+        fs::write(path, content).is_ok(),
+        "write file {}",
+        path.display()
+    );
 }

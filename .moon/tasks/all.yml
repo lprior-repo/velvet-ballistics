@@ -372,7 +372,7 @@ tasks:
       set -euo pipefail
       mkdir -p target/moon-locks
       export CARGO_TARGET_DIR=target/bench-build
-      flock --shared target/moon-locks/source-mutation.lock env RUSTFLAGS="-Dwarnings" rustup run nightly-2026-04-28 cargo bench --quiet -p velvet-ballastics-workspace --bench velvet_ballastics --bench vb_qi37_1_1_recovery --all-features --no-run
+      flock --shared target/moon-locks/source-mutation.lock env RUSTFLAGS="-Dwarnings" rustup run nightly-2026-04-28 cargo bench --quiet -p velvet-ballastics-workspace-tests --bench velvet_ballastics --bench vb_qi37_1_1_recovery --all-features --no-run
     deps:
       - 'check'
     toolchains:

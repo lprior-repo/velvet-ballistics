@@ -1024,7 +1024,10 @@ mod tests {
     fn display_with_store_symbol_resolves() {
         let mut store = crate::value_store::ValueStore::new();
         let id = store.insert_symbol("hello").expect("insert");
-        assert_eq!(SlotValue::Symbol(id).display_with_store(&store), "symbol:hello");
+        assert_eq!(
+            SlotValue::Symbol(id).display_with_store(&store),
+            "symbol:hello"
+        );
     }
 
     #[test]
@@ -1085,7 +1088,9 @@ mod tests {
     #[test]
     fn display_with_store_blob_resolves() {
         let mut store = crate::value_store::ValueStore::new();
-        let id = store.insert_blob(bytes::Bytes::from_static(b"abc")).expect("insert");
+        let id = store
+            .insert_blob(bytes::Bytes::from_static(b"abc"))
+            .expect("insert");
         assert_eq!(
             SlotValue::Blob(id).display_with_store(&store),
             "blob:<3 bytes>"
@@ -1110,10 +1115,7 @@ mod tests {
         let outer = store
             .insert_list(vec![SlotValue::List(inner)].into_boxed_slice())
             .expect("insert");
-        assert_eq!(
-            SlotValue::List(outer).display_with_store(&store),
-            "[[1]]"
-        );
+        assert_eq!(SlotValue::List(outer).display_with_store(&store), "[[1]]");
     }
 }
 

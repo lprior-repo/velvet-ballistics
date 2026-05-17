@@ -23,8 +23,8 @@ name: test
 when:
   manual: {}
 steps:
-  - id: save_value
-    save:
+  - id: first
+    set:
       output: saved
       value: "1"
   - id: done
@@ -87,25 +87,54 @@ where
         command.arg(arg);
     }
 
-    command
-        .output()
-        .expect("velvet-ballastics binary must be built")
+    let output = command.output();
+    assert!(
+        output.is_ok(),
+        "velvet-ballastics binary must be built: {output:?}"
+    );
+    match output {
+        Ok(output) => output,
+        Err(_) => std::process::abort(),
+    }
 }
 
 /// Create a minimal valid workflow YAML in a temp directory.
 fn temp_workflow(contents: &str) -> tempfile::TempDir {
-    let dir = tempfile::tempdir().expect("tempdir available");
+    let dir = must_tempdir("tempdir available");
     let workflow_path = dir.path().join("workflow.yaml");
-    fs::write(&workflow_path, contents).expect("workflow writable");
+    must_write(&workflow_path, contents.as_bytes(), "workflow writable");
     dir
 }
 
 /// Create an empty input bin file in a temp directory.
 fn temp_input_bin() -> tempfile::TempDir {
-    let dir = tempfile::tempdir().expect("tempdir available");
+    let dir = must_tempdir("tempdir available");
     let input_path = dir.path().join("input.bin");
-    fs::write(&input_path, b"").expect("input bin writable");
+    must_write(&input_path, b"", "input bin writable");
     dir
+}
+
+fn must_tempdir(message: &str) -> tempfile::TempDir {
+    let dir = tempfile::tempdir();
+    assert!(dir.is_ok(), "{message}: {dir:?}");
+    match dir {
+        Ok(dir) => dir,
+        Err(_) => std::process::abort(),
+    }
+}
+
+fn must_write(path: &std::path::Path, bytes: &[u8], message: &str) {
+    let written = fs::write(path, bytes);
+    assert!(written.is_ok(), "{message}: {written:?}");
+}
+
+fn must_metadata(path: &std::path::Path) -> std::fs::Metadata {
+    let metadata = fs::metadata(path);
+    assert!(metadata.is_ok(), "output metadata: {metadata:?}");
+    match metadata {
+        Ok(metadata) => metadata,
+        Err(_) => std::process::abort(),
+    }
 }
 
 // =============================================================================
@@ -278,7 +307,7 @@ fn compile_produces_ir_without_storage() {
         String::from_utf8_lossy(&output.stderr)
     );
     assert!(output_path.exists(), "compile must produce output file");
-    let meta = fs::metadata(&output_path).expect("output metadata");
+    let meta = must_metadata(&output_path);
     assert!(meta.len() > 0, "compile output must be non-empty");
 }
 
@@ -496,9 +525,13 @@ fn run_durability_none_skips_storage() {
 fn inspect_fails_fast_with_storage_error_on_invalid_path() {
     // POST-004: Mode activation is fail-fast before any subsystem init
     // ERR-STORAGE-INIT: Invalid --db path produces CliExitCode::StorageError (5)
-    let dir = tempfile::tempdir().expect("invalid db tempdir");
+    let dir = must_tempdir("invalid db tempdir");
     let invalid_db = dir.path().join("not-a-directory");
-    fs::write(&invalid_db, b"not a fjall directory").expect("invalid db sentinel writable");
+    must_write(
+        &invalid_db,
+        b"not a fjall directory",
+        "invalid db sentinel writable",
+    );
 
     let output = run_bin([
         "velvet-ballastics",
@@ -527,9 +560,13 @@ fn inspect_fails_fast_with_storage_error_on_invalid_path() {
 
 #[test]
 fn doctor_fails_fast_on_invalid_path() {
-    let dir = tempfile::tempdir().expect("invalid db tempdir");
+    let dir = must_tempdir("invalid db tempdir");
     let invalid_db = dir.path().join("not-a-directory");
-    fs::write(&invalid_db, b"not a fjall directory").expect("invalid db sentinel writable");
+    must_write(
+        &invalid_db,
+        b"not a fjall directory",
+        "invalid db sentinel writable",
+    );
 
     let output = run_bin([
         "velvet-ballastics",
@@ -557,7 +594,7 @@ fn submit_opens_fjall_journal() {
     let workflow = dir.path().join("workflow.yaml");
     let input_dir = temp_input_bin();
     let input = input_dir.path().join("input.bin");
-    let journal_dir = tempfile::tempdir().expect("journal dir");
+    let journal_dir = must_tempdir("journal dir");
     let journal = journal_dir.path().join("fjall-db");
 
     let output = run_bin([

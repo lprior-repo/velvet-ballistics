@@ -10,7 +10,7 @@ mod tests {
         assert_eq!(GateProfile::AiRelease.evidence_file(), "ai-release.yaml");
         assert_eq!(GateProfile::AiFast.gates(), &["fmt", "check", "clippy", "nextest", "forbidden-scan", "hotpath-scan"]);
         assert_eq!(GateProfile::AiDeep.gates(), &["miri", "mutants", "llvm-cov", "fuzz-build"]);
-        assert_eq!(GateProfile::AiRelease.gates().contains(&"maxperf"), true);
+        assert!(GateProfile::AiRelease.gates().contains(&"maxperf"));
     }
 
     #[test]
@@ -29,15 +29,18 @@ mod tests {
             status: GateStatus::Fail,
             why_failed: None,
         };
-        let why = explain_failure(&evidence).expect("failed evidence explains failure");
-        assert_eq!(why.gate_name, "fmt");
-        assert_eq!(why.hint.is_empty(), false);
-        assert_eq!(why.repair_command.is_empty(), false);
+        let why = explain_failure(&evidence);
+        assert!(why.is_some(), "failed evidence explains failure");
+        if let Some(why) = why {
+            assert_eq!(why.gate_name, "fmt");
+            assert!(!why.hint.is_empty());
+            assert!(!why.repair_command.is_empty());
+        }
     }
 
     #[test]
     fn release_bead_id_accepts_only_supported_release_bead() {
         assert_eq!(ReleaseBeadId::parse("vb-nf2u"), Ok(ReleaseBeadId::VbNf2u));
-        assert_eq!(ReleaseBeadId::parse("vb-other").is_err(), true);
+        assert!(ReleaseBeadId::parse("vb-other").is_err());
     }
 }

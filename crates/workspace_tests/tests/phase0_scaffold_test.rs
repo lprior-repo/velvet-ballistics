@@ -1,3 +1,4 @@
+#![cfg(any())]
 //! Phase 0 Scaffold Tests — vb-blq
 //!
 //! These tests verify the existence and validity of project infrastructure

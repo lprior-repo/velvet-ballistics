@@ -64,23 +64,32 @@ fn write_test_file(path: &std::path::Path, contents: &[u8]) -> bool {
 }
 
 fn run_cli(args: &[&std::ffi::OsStr]) -> Option<std::process::Output> {
-    let exe = option_env!("CARGO_BIN_EXE_velvet-ballastics")?;
+    let exe = env!("CARGO_BIN_EXE_velvet-ballastics");
     let mut command = std::process::Command::new(exe);
     command.args(args);
 
-    match command.output() {
-        Ok(output) => Some(output),
-        Err(err) => {
-            // CLI binary not available
-            eprintln!("WARNING: vb CLI binary unavailable ({err}), skipping CLI tests");
-            None
-        }
+    command.output().ok()
+}
+
+fn must_run_cli(args: &[&std::ffi::OsStr]) -> std::process::Output {
+    let output = run_cli(args);
+    assert!(output.is_some(), "vb command must run");
+    match output {
+        Some(output) => output,
+        None => std::process::abort(),
     }
 }
 
 fn fixture_os(path: &str) -> std::ffi::OsString {
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    root.join(path).into_os_string()
+    let root_fixture = root.join(path);
+    if root_fixture.exists() {
+        root_fixture.into_os_string()
+    } else {
+        root.join("crates/workspace_tests")
+            .join(path)
+            .into_os_string()
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -101,7 +110,11 @@ fn bdd_happy_quick_profile_returns_ok_with_checks() {
         &fixture_os("tests/fixtures/valid/minimal.yaml"),
     ]);
 
-    let output = output.expect("vb command must succeed");
+    assert!(output.is_some(), "vb command must succeed");
+    let output = match output {
+        Some(output) => output,
+        None => std::process::abort(),
+    };
     let status = output.status;
 
     // Quick profile with valid workflow must succeed (exit 0)
@@ -129,37 +142,34 @@ fn bdd_happy_quick_profile_returns_ok_with_checks() {
 #[test]
 fn bdd_format_parity_exit_code_identical_across_formats() {
     // Text format
-    let text_output = run_cli(&[
+    let text_output = must_run_cli(&[
         std::ffi::OsStr::new("verify"),
         std::ffi::OsStr::new("--profile"),
         std::ffi::OsStr::new("quick"),
         std::ffi::OsStr::new("--format"),
         std::ffi::OsStr::new("text"),
         &fixture_os("tests/fixtures/valid/minimal.yaml"),
-    ])
-    .expect("vb command must run");
+    ]);
 
     // Json format
-    let json_output = run_cli(&[
+    let json_output = must_run_cli(&[
         std::ffi::OsStr::new("verify"),
         std::ffi::OsStr::new("--profile"),
         std::ffi::OsStr::new("quick"),
         std::ffi::OsStr::new("--format"),
         std::ffi::OsStr::new("json"),
         &fixture_os("tests/fixtures/valid/minimal.yaml"),
-    ])
-    .expect("vb command must run");
+    ]);
 
     // Jsonl format
-    let jsonl_output = run_cli(&[
+    let jsonl_output = must_run_cli(&[
         std::ffi::OsStr::new("verify"),
         std::ffi::OsStr::new("--profile"),
         std::ffi::OsStr::new("quick"),
         std::ffi::OsStr::new("--format"),
         std::ffi::OsStr::new("jsonl"),
         &fixture_os("tests/fixtures/valid/minimal.yaml"),
-    ])
-    .expect("vb command must run");
+    ]);
 
     let text_code = text_output.status.code();
     let json_code = json_output.status.code();
@@ -191,13 +201,12 @@ fn bdd_yaml_parse_error_returns_classified_error() {
     let temp_file = temp_dir.join("vb_test_malformed.yaml");
     write_test_file(&temp_file, MALFORMED_YAML.as_bytes());
 
-    let output = run_cli(&[
+    let output = must_run_cli(&[
         std::ffi::OsStr::new("verify"),
         std::ffi::OsStr::new("--profile"),
         std::ffi::OsStr::new("quick"),
         temp_file.as_os_str(),
-    ])
-    .expect("vb command must run");
+    ]);
 
     let status = output.status;
     // YAML parse error must result in exit code 1 (ValidationFailed)
@@ -225,13 +234,12 @@ fn bdd_yaml_parse_exit_code_is_validation_failed() {
     let temp_file = temp_dir.join("vb_test_malformed2.yaml");
     write_test_file(&temp_file, b"invalid: yaml: content: here:");
 
-    let output = run_cli(&[
+    let output = must_run_cli(&[
         std::ffi::OsStr::new("verify"),
         std::ffi::OsStr::new("--profile"),
         std::ffi::OsStr::new("quick"),
         temp_file.as_os_str(),
-    ])
-    .expect("vb command must run");
+    ]);
 
     assert_eq!(
         output.status.code(),
@@ -251,15 +259,14 @@ fn bdd_yaml_parse_exit_code_is_validation_failed() {
 /// And: JSON output contains the same gate name in the error field
 #[test]
 fn bdd_json_output_contains_all_certificate_fields() {
-    let output = run_cli(&[
+    let output = must_run_cli(&[
         std::ffi::OsStr::new("verify"),
         std::ffi::OsStr::new("--profile"),
         std::ffi::OsStr::new("full"),
         std::ffi::OsStr::new("--format"),
         std::ffi::OsStr::new("json"),
         &fixture_os("tests/fixtures/valid/minimal.yaml"),
-    ])
-    .expect("vb command must run");
+    ]);
 
     let stdout = String::from_utf8_lossy(&output.stdout);
 
@@ -298,7 +305,9 @@ fn bdd_json_output_contains_all_certificate_fields() {
     );
 
     // Artifact subfields
-    let artifact = json.get("artifact").unwrap();
+    let artifact = json
+        .get("artifact")
+        .map_or(&serde_json::Value::Null, |value| value);
     assert!(
         artifact.get("source_digest_hex").is_some(),
         "artifact must contain source_digest_hex"
@@ -313,7 +322,9 @@ fn bdd_json_output_contains_all_certificate_fields() {
     );
 
     // Replay subfields
-    let replay = json.get("replay").unwrap();
+    let replay = json
+        .get("replay")
+        .map_or(&serde_json::Value::Null, |value| value);
     assert!(
         replay.get("gates_passed").is_some(),
         "replay must contain gates_passed"
@@ -328,7 +339,9 @@ fn bdd_json_output_contains_all_certificate_fields() {
     );
 
     // Durability subfields
-    let durability = json.get("durability").unwrap();
+    let durability = json
+        .get("durability")
+        .map_or(&serde_json::Value::Null, |value| value);
     assert!(
         durability.get("profile").is_some(),
         "durability must contain profile"
@@ -342,15 +355,14 @@ fn bdd_json_output_contains_all_certificate_fields() {
 /// ### Behavior: JSON output is valid parseable JSON
 #[test]
 fn bdd_json_output_is_valid_utf8_and_parseable() {
-    let output = run_cli(&[
+    let output = must_run_cli(&[
         std::ffi::OsStr::new("verify"),
         std::ffi::OsStr::new("--profile"),
         std::ffi::OsStr::new("standard"),
         std::ffi::OsStr::new("--format"),
         std::ffi::OsStr::new("json"),
         &fixture_os("tests/fixtures/valid/minimal.yaml"),
-    ])
-    .expect("vb command must run");
+    ]);
 
     let stdout = String::from_utf8_lossy(&output.stdout);
 
@@ -376,13 +388,12 @@ fn bdd_json_output_is_valid_utf8_and_parseable() {
 #[test]
 fn bdd_full_profile_fails_closed_on_budget_violation() {
     // The invalid workflow fixture should trigger a budget policy error at Full profile
-    let output = run_cli(&[
+    let output = must_run_cli(&[
         std::ffi::OsStr::new("verify"),
         std::ffi::OsStr::new("--profile"),
         std::ffi::OsStr::new("full"),
         &fixture_os("tests/fixtures/invalid/invalid_cyclic_dep.yaml"),
-    ])
-    .expect("vb command must run");
+    ]);
 
     let status = output.status;
     assert!(
@@ -398,13 +409,12 @@ fn bdd_full_profile_fails_closed_on_budget_violation() {
 /// ### Behavior: run_verification returns warnings at Standard profile for budget violations
 #[test]
 fn bdd_standard_profile_warns_not_fails_on_budget() {
-    let output = run_cli(&[
+    let output = must_run_cli(&[
         std::ffi::OsStr::new("verify"),
         std::ffi::OsStr::new("--profile"),
         std::ffi::OsStr::new("standard"),
         &fixture_os("tests/fixtures/invalid/invalid_cyclic_dep.yaml"),
-    ])
-    .expect("vb command must run");
+    ]);
 
     // Standard profile must NOT fail with exit code 2 for budget issues
     // It should either succeed (with warnings) or fail with exit code 1 (ValidationFailed)
@@ -430,35 +440,32 @@ fn bdd_inv001_exit_code_stable_across_formats_on_error() {
     let temp_file = temp_dir.join("vb_test_format_parity.yaml");
     write_test_file(&temp_file, MALFORMED_YAML.as_bytes());
 
-    let text_output = run_cli(&[
+    let text_output = must_run_cli(&[
         std::ffi::OsStr::new("verify"),
         std::ffi::OsStr::new("--profile"),
         std::ffi::OsStr::new("quick"),
         std::ffi::OsStr::new("--format"),
         std::ffi::OsStr::new("text"),
         temp_file.as_os_str(),
-    ])
-    .expect("vb command must run");
+    ]);
 
-    let json_output = run_cli(&[
+    let json_output = must_run_cli(&[
         std::ffi::OsStr::new("verify"),
         std::ffi::OsStr::new("--profile"),
         std::ffi::OsStr::new("quick"),
         std::ffi::OsStr::new("--format"),
         std::ffi::OsStr::new("json"),
         temp_file.as_os_str(),
-    ])
-    .expect("vb command must run");
+    ]);
 
-    let jsonl_output = run_cli(&[
+    let jsonl_output = must_run_cli(&[
         std::ffi::OsStr::new("verify"),
         std::ffi::OsStr::new("--profile"),
         std::ffi::OsStr::new("quick"),
         std::ffi::OsStr::new("--format"),
         std::ffi::OsStr::new("jsonl"),
         temp_file.as_os_str(),
-    ])
-    .expect("vb command must run");
+    ]);
 
     assert_eq!(
         text_output.status.code(),
@@ -483,29 +490,27 @@ fn bdd_inv001_exit_code_stable_across_formats_on_error() {
 #[test]
 fn bdd_inv002_gate_parity_between_text_and_json() {
     // Use invalid workflow that triggers Compile error
-    let output = run_cli(&[
+    let output = must_run_cli(&[
         std::ffi::OsStr::new("verify"),
         std::ffi::OsStr::new("--profile"),
         std::ffi::OsStr::new("quick"),
         std::ffi::OsStr::new("--format"),
         std::ffi::OsStr::new("json"),
         std::ffi::OsStr::new("tests/fixtures/invalid/invalid_invalid_step_type.yaml"),
-    ])
-    .expect("vb command must run");
+    ]);
 
     // Both should fail with same error
     let json_code = output.status.code();
 
     // Run again with text format
-    let text_output = run_cli(&[
+    let text_output = must_run_cli(&[
         std::ffi::OsStr::new("verify"),
         std::ffi::OsStr::new("--profile"),
         std::ffi::OsStr::new("quick"),
         std::ffi::OsStr::new("--format"),
         std::ffi::OsStr::new("text"),
         std::ffi::OsStr::new("tests/fixtures/invalid/invalid_invalid_step_type.yaml"),
-    ])
-    .expect("vb command must run");
+    ]);
 
     let text_code = text_output.status.code();
 
@@ -536,7 +541,10 @@ fn integration_verify_all_profiles_complete_without_panic() {
             profile
         );
 
-        let out = output.unwrap();
+        let out = match output {
+            Some(output) => output,
+            None => std::process::abort(),
+        };
         // Must not panic - any exit code is valid (could be 0 or 1 depending on validation)
         let _code = out.status.code();
     }
@@ -548,15 +556,14 @@ fn integration_verify_all_profiles_complete_without_panic() {
 
 #[test]
 fn integration_standard_profile_runs_ir_validation_gate() {
-    let output = run_cli(&[
+    let output = must_run_cli(&[
         std::ffi::OsStr::new("verify"),
         std::ffi::OsStr::new("--profile"),
         std::ffi::OsStr::new("standard"),
         std::ffi::OsStr::new("--format"),
         std::ffi::OsStr::new("json"),
         &fixture_os("tests/fixtures/valid/minimal.yaml"),
-    ])
-    .expect("vb command must run");
+    ]);
 
     let stdout = String::from_utf8_lossy(&output.stdout);
     let Ok(json) = serde_json::from_str::<serde_json::Value>(&stdout) else {
@@ -578,7 +585,7 @@ fn integration_standard_profile_runs_ir_validation_gate() {
         "replay.gates_passed must be present in JSON"
     );
 
-    let gates = gates_passed.unwrap();
+    let gates = gates_passed.map_or(&[][..], |gates| gates.as_slice());
     let has_ir_validation = gates.iter().any(|g| {
         g.as_str()
             .map(|s| s.contains("ir_validation"))
@@ -598,15 +605,14 @@ fn integration_standard_profile_runs_ir_validation_gate() {
 
 #[test]
 fn integration_full_profile_runs_budget_gates() {
-    let output = run_cli(&[
+    let output = must_run_cli(&[
         std::ffi::OsStr::new("verify"),
         std::ffi::OsStr::new("--profile"),
         std::ffi::OsStr::new("full"),
         std::ffi::OsStr::new("--format"),
         std::ffi::OsStr::new("json"),
         &fixture_os("tests/fixtures/valid/minimal.yaml"),
-    ])
-    .expect("vb command must run");
+    ]);
 
     let stdout = String::from_utf8_lossy(&output.stdout);
     let Ok(json) = serde_json::from_str::<serde_json::Value>(&stdout) else {
@@ -627,7 +633,7 @@ fn integration_full_profile_runs_budget_gates() {
         "replay.gates_passed must be present in JSON"
     );
 
-    let gates = gates_passed.unwrap();
+    let gates = gates_passed.map_or(&[][..], |gates| gates.as_slice());
     let gate_names: Vec<&str> = gates.iter().filter_map(|g| g.as_str()).collect();
 
     // Full profile must have budget_computation and boundedness_policy
@@ -649,15 +655,14 @@ fn integration_full_profile_runs_budget_gates() {
 
 #[test]
 fn integration_quick_profile_skips_expensive_gates() {
-    let output = run_cli(&[
+    let output = must_run_cli(&[
         std::ffi::OsStr::new("verify"),
         std::ffi::OsStr::new("--profile"),
         std::ffi::OsStr::new("quick"),
         std::ffi::OsStr::new("--format"),
         std::ffi::OsStr::new("json"),
         &fixture_os("tests/fixtures/valid/minimal.yaml"),
-    ])
-    .expect("vb command must run");
+    ]);
 
     let stdout = String::from_utf8_lossy(&output.stdout);
     let Ok(json) = serde_json::from_str::<serde_json::Value>(&stdout) else {
@@ -678,7 +683,7 @@ fn integration_quick_profile_skips_expensive_gates() {
         "replay.gates_passed must be present in JSON"
     );
 
-    let gates = gates_passed.unwrap();
+    let gates = gates_passed.map_or(&[][..], |gates| gates.as_slice());
     let gate_names: Vec<&str> = gates.iter().filter_map(|g| g.as_str()).collect();
 
     // Quick profile must NOT have budget gates

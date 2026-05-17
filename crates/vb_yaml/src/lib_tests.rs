@@ -114,9 +114,7 @@ fn reject_forbidden_features_returns_unsupported_feature_for_complex_key() {
     let result = parse_workflow_source(yaml);
     assert_eq!(
         result,
-        Err(YamlError::UnsupportedTrigger {
-            trigger: "http"
-        })
+        Err(YamlError::UnsupportedTrigger { trigger: "http" })
     );
 }
 
@@ -664,7 +662,10 @@ fn adversarial_api_workflow_with_unsupported_trigger_rejected() {
     "};
     let result = parse_workflow_source(yaml);
     assert!(
-        matches!(result, Err(YamlError::UnsupportedTrigger { trigger: "ipc" })),
+        matches!(
+            result,
+            Err(YamlError::UnsupportedTrigger { trigger: "ipc" })
+        ),
         "expected UnsupportedTrigger for ipc trigger, got: {result:?}"
     );
 }

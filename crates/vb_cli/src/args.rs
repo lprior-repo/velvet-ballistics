@@ -1860,7 +1860,7 @@ mod tests {
         if let Ok(Command::Cancel { output, .. }) = parsed {
             assert_eq!(output, OutputFormat::Json);
         } else {
-            panic!("expected Ok, got {parsed:?}");
+            assert!(parsed.is_ok(), "expected Ok, got {parsed:?}");
         }
     }
 

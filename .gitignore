@@ -1,5 +1,6 @@
 # Rust build output
 target/
+fuzz/target/
 
 # Local agent/search state
 .memsearch/
