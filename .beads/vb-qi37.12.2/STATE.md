@@ -60,3 +60,30 @@ updated_at: 2026-05-14T23:40:00Z
 - State 4 proof-plan repair completed: `PO-TLA-RESUME-WORKFLOW-001` is now a concrete planned TLA waiver, not an optional unwaived obligation. `formal-waivers.jsonl` validates; no stale source-identity requirement was reintroduced.
 - State 5 proof/evidence re-alignment completed: `STATUS: EVIDENCE_ALIGNED_FOR_STATE6_RERUN`. `formal-waivers.jsonl` validates, `PO-TLA-RESUME-WORKFLOW-001` is `mode=waived-by-plan`, and stale `PO-SOURCE-PRESERVE-001` ledger/report entries are superseded rather than active PASS evidence.
 - Current gate: State 6 contract-verification and proof-review rerun.
+
+---
+
+bead_id: vb-qi37.12.2
+phase: 13
+updated_at: 2026-05-17T00:00:00Z
+attempt: state-12-13-recovery-rerun
+
+# State 12/13 approval
+
+current_state: 13
+state_name: Evidence packaging and truth-serum
+status: APPROVED
+next_state: bookmark-ready; stop before merging main
+
+## Evidence
+
+- Recreated compliant jj workspace under `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-qi37-12-2` from populated project workspace.
+- Current black-hat re-review superseded the stale rejection: current code uses explicit `ResumeError::JournalAppendFailedWithSource` and no `ResumeSourceRegistry`/thread-local source side channel.
+- Focused tests passed: `TMPDIR=target/tmp rtk cargo test -p vb_runtime --test vb_qi37_12_2_resume_error_propagation --all-features` -> 12/12.
+- Focused lib tests passed: `TMPDIR=target/tmp rtk cargo test -p vb_runtime --lib is_resumable` -> 2/2.
+- JSONL artifacts validated with `jq -c .` for proof obligations, planned obligations, traceability, verification ledger, and formal waiver.
+- Wrote `assurance-bundle.md`, `truth-serum-report.md`, and `final-evidence-decision.md`; all say `STATUS: APPROVED`.
+
+## Stop rule
+
+- Do not merge main. Bookmark-ready only.

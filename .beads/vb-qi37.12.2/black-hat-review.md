@@ -1,6 +1,29 @@
 # Black Hat Review — vb-qi37.12.2
 
-STATUS: REJECTED
+STATUS: APPROVED
+
+Supersedes prior rejection after contract narrowing and implementation repair.
+
+## Current Session Re-Review
+
+- Workspace: `/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-qi37-12-2`.
+- Path guard: work stayed outside `/home/lewis/src/velvet-ballistics`.
+- Source scan: `rg 'ResumeSourceRegistry|source_runtime_error|JournalAppendFailed|thread_local|SOURCE' crates/vb_runtime/src --glob '*.rs'` found no `ResumeSourceRegistry` or `thread_local` source side channel.
+- Current implementation: `crates/vb_runtime/src/shard/types.rs` defines `ResumeError::JournalAppendFailedWithSource { source: Box<RuntimeError> }`; `source_runtime_error()` returns only the bound boxed source and returns `None` for the unit fallback.
+- Current conversion: `crates/vb_runtime/src/error/conversions.rs` maps `JournalAppendFailedWithSource` to the carried source and maps the unit fallback to deterministic storage fallback.
+- Focused tests: `TMPDIR=target/tmp rtk cargo test -p vb_runtime --test vb_qi37_12_2_resume_error_propagation --all-features` passed 12/12.
+- Focused lib tests: `TMPDIR=target/tmp rtk cargo test -p vb_runtime --lib is_resumable` passed 2/2.
+- JSONL gate: `jq -c .` passed for `proof-obligations.jsonl`, `proof-obligations.planned.jsonl`, `traceability-matrix.jsonl`, `verification-ledger.jsonl`, and `formal-waivers.jsonl`.
+
+## Approval Decision
+
+The prior black-hat blocker was an ambient same-thread source side channel. The current implementation binds source data to `JournalAppendFailedWithSource` and keeps `JournalAppendFailed` as deterministic no-source fallback under the narrowed contract. The prior defect is not present in the current workspace.
+
+APPROVED for State 13 evidence packaging.
+
+---
+
+# Historical Rejection Superseded Below
 
 Startup authority read and applied:
 - `/home/lewis/.claude/skills/black-hat-reviewer/SKILL.md` lines 12-16 require exact contract parity and immediate rejection on parity failure; lines 18-21 require rigor and meaningful tests.
