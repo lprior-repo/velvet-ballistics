@@ -194,16 +194,6 @@ fn validate_generated_accessors(workflow: &CompiledWorkflow) -> CodegenResult<()
 
 fn unsupported_node_feature(kind: &CompiledNodeKind) -> Option<&'static str> {
     match kind {
-        CompiledNodeKind::TogetherStart { .. } => Some("TogetherStart"),
-        CompiledNodeKind::TogetherBranch { .. } => Some("TogetherBranch"),
-        CompiledNodeKind::TogetherJoin { .. } => Some("TogetherJoin"),
-        CompiledNodeKind::ReduceStart { .. } => Some("ReduceStart"),
-        CompiledNodeKind::ReduceNext { .. } => Some("ReduceNext"),
-        CompiledNodeKind::ReduceFinish { .. } => Some("ReduceFinish"),
-        CompiledNodeKind::RepeatStart { .. } => Some("RepeatStart"),
-        CompiledNodeKind::RepeatAttempt { .. } => Some("RepeatAttempt"),
-        CompiledNodeKind::RepeatCheck { .. } => Some("RepeatCheck"),
-        CompiledNodeKind::RepeatFinish { .. } => Some("RepeatFinish"),
         CompiledNodeKind::Nop
         | CompiledNodeKind::SetConst { .. }
         | CompiledNodeKind::Copy { .. }
@@ -224,6 +214,16 @@ fn unsupported_node_feature(kind: &CompiledNodeKind) -> Option<&'static str> {
         | CompiledNodeKind::ForEachJoin { .. }
         | CompiledNodeKind::Jump { .. }
         | CompiledNodeKind::Finish { .. } => None,
+        CompiledNodeKind::TogetherStart { .. } => Some("TogetherStart"),
+        CompiledNodeKind::TogetherBranch { .. } => Some("TogetherBranch"),
+        CompiledNodeKind::TogetherJoin { .. } => Some("TogetherJoin"),
+        CompiledNodeKind::ReduceStart { .. } => Some("ReduceStart"),
+        CompiledNodeKind::ReduceNext { .. } => Some("ReduceNext"),
+        CompiledNodeKind::ReduceFinish { .. } => Some("ReduceFinish"),
+        CompiledNodeKind::RepeatStart { .. } => Some("RepeatStart"),
+        CompiledNodeKind::RepeatAttempt { .. } => Some("RepeatAttempt"),
+        CompiledNodeKind::RepeatCheck { .. } => Some("RepeatCheck"),
+        CompiledNodeKind::RepeatFinish { .. } => Some("RepeatFinish"),
         CompiledNodeKind::CollectStart { .. } => Some("CollectStart"),
         CompiledNodeKind::CollectPage { .. } => Some("CollectPage"),
         CompiledNodeKind::CollectNext { .. } => Some("CollectNext"),
@@ -611,6 +611,19 @@ fn step_slot_taints_param(node: &CompiledNode) -> &'static str {
         | CompiledNodeKind::Do { .. }
         | CompiledNodeKind::BuildObject { .. }
         | CompiledNodeKind::BuildList { .. }
+        | CompiledNodeKind::TogetherBranch { .. }
+        | CompiledNodeKind::TogetherJoin { .. }
+        | CompiledNodeKind::ReduceStart { .. }
+        | CompiledNodeKind::ReduceNext { .. }
+        | CompiledNodeKind::ReduceFinish { .. }
+        | CompiledNodeKind::RepeatStart { .. }
+        | CompiledNodeKind::RepeatAttempt { .. }
+        | CompiledNodeKind::RepeatCheck { .. }
+        | CompiledNodeKind::RepeatFinish { .. }
+        | CompiledNodeKind::CollectStart { .. }
+        | CompiledNodeKind::CollectPage { .. }
+        | CompiledNodeKind::CollectNext { .. }
+        | CompiledNodeKind::CollectFinish { .. }
         | CompiledNodeKind::ErrorHandler { .. } => "slot_taints",
         _ => "_slot_taints",
     }
@@ -624,6 +637,14 @@ fn step_list_store_param(node: &CompiledNode) -> &'static str {
         | CompiledNodeKind::ForEachStart { .. }
         | CompiledNodeKind::ForEachNext { .. }
         | CompiledNodeKind::ForEachJoin { .. }
+        | CompiledNodeKind::TogetherStart { .. }
+        | CompiledNodeKind::TogetherBranch { .. }
+        | CompiledNodeKind::TogetherJoin { .. }
+        | CompiledNodeKind::ReduceStart { .. }
+        | CompiledNodeKind::ReduceNext { .. }
+        | CompiledNodeKind::CollectStart { .. }
+        | CompiledNodeKind::CollectPage { .. }
+        | CompiledNodeKind::CollectNext { .. }
         | CompiledNodeKind::ErrorHandler { .. } => "list_store",
         _ => "_list_store",
     }
@@ -656,6 +677,20 @@ fn emit_step_body(out: &mut String, node: &CompiledNode) -> CodegenResult<()> {
         CompiledNodeKind::ForEachStart { .. }
         | CompiledNodeKind::ForEachNext { .. }
         | CompiledNodeKind::ForEachJoin { .. } => emit_for_each_step_body(out, node),
+        CompiledNodeKind::TogetherStart { .. }
+        | CompiledNodeKind::TogetherBranch { .. }
+        | CompiledNodeKind::TogetherJoin { .. } => emit_together_step_body(out, node),
+        CompiledNodeKind::ReduceStart { .. }
+        | CompiledNodeKind::ReduceNext { .. }
+        | CompiledNodeKind::ReduceFinish { .. } => emit_reduce_step_body(out, node),
+        CompiledNodeKind::RepeatStart { .. }
+        | CompiledNodeKind::RepeatAttempt { .. }
+        | CompiledNodeKind::RepeatCheck { .. }
+        | CompiledNodeKind::RepeatFinish { .. } => emit_repeat_step_body(out, node),
+        CompiledNodeKind::CollectStart { .. }
+        | CompiledNodeKind::CollectPage { .. }
+        | CompiledNodeKind::CollectNext { .. }
+        | CompiledNodeKind::CollectFinish { .. } => emit_collect_step_body(out, node),
         CompiledNodeKind::Do { .. }
         | CompiledNodeKind::WaitUntil { .. }
         | CompiledNodeKind::WaitEvent { .. }
@@ -663,7 +698,6 @@ fn emit_step_body(out: &mut String, node: &CompiledNode) -> CodegenResult<()> {
         | CompiledNodeKind::AskResume { .. }
         | CompiledNodeKind::ErrorHandler { .. } => emit_boundary_step_body(out, node),
         CompiledNodeKind::RetryCheck { .. } => emit_retry_check_step_body(out, &node.kind),
-        unsupported => emit_unsupported_node_step(out, unsupported),
     }
 }
 
@@ -1315,6 +1349,427 @@ fn emit_for_each_join_step(
     write_next_or_error(out, next)
 }
 
+fn emit_together_step_body(out: &mut String, node: &CompiledNode) -> CodegenResult<()> {
+    match &node.kind {
+        CompiledNodeKind::TogetherStart { branches, .. } => {
+            emit_together_start_step(out, branches, node.output)
+        }
+        CompiledNodeKind::TogetherBranch {
+            branch,
+            entry,
+            accumulator,
+            ..
+        } => emit_together_branch_step(out, *branch, *entry, *accumulator, node.output),
+        CompiledNodeKind::TogetherJoin {
+            branch_count,
+            accumulator,
+        } => emit_together_join_step(out, *branch_count, *accumulator, node.output, node.next),
+        _ => emit_unsupported_step(out, "Together"),
+    }
+}
+
+fn emit_together_start_step(
+    out: &mut String,
+    branches: &[StepIdx],
+    output: Option<SlotIdx>,
+) -> CodegenResult<()> {
+    let Some(first_branch) = branches.first().copied() else {
+        return writeln!(out, "    Err(DriveError::InvalidCompiledWorkflow {{ reason: \"together_start requires at least one branch\" }})").map_err(fmt_err);
+    };
+    if let Some(output_slot) = output {
+        writeln!(
+            out,
+            "    let _accumulator = list_store.insert_items_with_taints(&[], &[])?;"
+        )
+        .map_err(fmt_err)?;
+        writeln!(out, "    write_slot_with_taint(slots, slot_taints, {}, Some(SlotValue::List(_accumulator)), Taint::Clean)?;", output_slot.get()).map_err(fmt_err)?;
+    }
+    emit_continue_step(out, first_branch)
+}
+
+fn emit_together_branch_step(
+    out: &mut String,
+    branch: u16,
+    entry: StepIdx,
+    accumulator: SlotIdx,
+    output: Option<SlotIdx>,
+) -> CodegenResult<()> {
+    if branch != 0
+        && let Some(output_slot) = output
+    {
+        writeln!(
+            out,
+            "    let _branch_value = read_slot(slots, {})?;",
+            output_slot.get()
+        )
+        .map_err(fmt_err)?;
+        writeln!(
+            out,
+            "    let _branch_taint = read_taint(slot_taints, {})?;",
+            output_slot.get()
+        )
+        .map_err(fmt_err)?;
+        writeln!(
+            out,
+            "    let _accumulator = expect_list_value(read_slot(slots, {})?)?;",
+            accumulator.get()
+        )
+        .map_err(fmt_err)?;
+        writeln!(out, "    let _updated = append_list_item(list_store, _accumulator, _branch_value, _branch_taint)?;").map_err(fmt_err)?;
+        writeln!(
+            out,
+            "    let _accumulator_taint = join_taint(read_taint(slot_taints, {})?, _branch_taint);",
+            accumulator.get()
+        )
+        .map_err(fmt_err)?;
+        writeln!(out, "    write_slot_with_taint(slots, slot_taints, {}, Some(SlotValue::List(_updated)), _accumulator_taint)?;", accumulator.get()).map_err(fmt_err)?;
+    }
+    emit_continue_step(out, entry)
+}
+
+fn emit_together_join_step(
+    out: &mut String,
+    _branch_count: u16,
+    accumulator: SlotIdx,
+    output: Option<SlotIdx>,
+    next: Option<StepIdx>,
+) -> CodegenResult<()> {
+    if let Some(output_slot) = output {
+        writeln!(
+            out,
+            "    let _accumulator_value = read_slot(slots, {})?;",
+            accumulator.get()
+        )
+        .map_err(fmt_err)?;
+        writeln!(out, "    let _joined_taint = join_taint(read_taint(slot_taints, {})?, read_taint(slot_taints, {})?);", accumulator.get(), output_slot.get()).map_err(fmt_err)?;
+        writeln!(out, "    write_slot_with_taint(slots, slot_taints, {}, Some(_accumulator_value), _joined_taint)?;", output_slot.get()).map_err(fmt_err)?;
+    }
+    write_next_or_error(out, next)
+}
+
+fn emit_reduce_step_body(out: &mut String, node: &CompiledNode) -> CodegenResult<()> {
+    match &node.kind {
+        CompiledNodeKind::ReduceStart {
+            input,
+            accumulator,
+            initial,
+            body,
+            done,
+        } => emit_reduce_start_step(
+            out,
+            *input,
+            *accumulator,
+            *initial,
+            *body,
+            *done,
+            node.output,
+        ),
+        CompiledNodeKind::ReduceNext {
+            iterator_slot,
+            body,
+            done,
+            ..
+        } => emit_reduce_next_step(out, *iterator_slot, *body, *done, node.output),
+        CompiledNodeKind::ReduceFinish { accumulator } => {
+            emit_copy_to_output_then_next(out, *accumulator, node.output, node.next, node.id)
+        }
+        _ => emit_unsupported_step(out, "Reduce"),
+    }
+}
+
+fn emit_reduce_start_step(
+    out: &mut String,
+    input: SlotIdx,
+    accumulator: SlotIdx,
+    initial: ConstIdx,
+    body: StepIdx,
+    done: StepIdx,
+    output: Option<SlotIdx>,
+) -> CodegenResult<()> {
+    writeln!(out, "    let _initial = read_const({})?;", initial.get()).map_err(fmt_err)?;
+    writeln!(
+        out,
+        "    write_slot_with_taint(slots, slot_taints, {}, Some(_initial), Taint::Clean)?;",
+        accumulator.get()
+    )
+    .map_err(fmt_err)?;
+    writeln!(out, "    let _list = match read_slot(slots, {})? {{ SlotValue::List(handle) => handle, _ => return Ok(StepOutcome::Continue({})), }};", input.get(), done.get())
+        .map_err(fmt_err)?;
+    writeln!(
+        out,
+        "    let _list_taint = read_taint(slot_taints, {})?;",
+        input.get()
+    )
+    .map_err(fmt_err)?;
+    writeln!(
+        out,
+        "    let _item_count = list_item_count(list_store, _list)?;"
+    )
+    .map_err(fmt_err)?;
+    writeln!(
+        out,
+        "    if _item_count == 0 {{ return Ok(StepOutcome::Continue({})); }}",
+        done.get()
+    )
+    .map_err(fmt_err)?;
+    if let Some(output_slot) = output {
+        writeln!(
+            out,
+            "    let _first = first_list_item(list_store, _list, _item_count)?;"
+        )
+        .map_err(fmt_err)?;
+        writeln!(
+            out,
+            "    write_slot_with_taint(slots, slot_taints, {}, Some(_first), _list_taint)?;",
+            input.get()
+        )
+        .map_err(fmt_err)?;
+        writeln!(out, "    let _tail = tail_list_handle(list_store, _list)?;").map_err(fmt_err)?;
+        writeln!(out, "    write_slot_with_taint(slots, slot_taints, {}, Some(SlotValue::List(_tail)), _list_taint)?;", output_slot.get()).map_err(fmt_err)?;
+        emit_continue_step(out, body)
+    } else {
+        writeln!(out, "    Err(DriveError::MissingOutputSlot {{ step: 0 }})").map_err(fmt_err)
+    }
+}
+
+fn emit_reduce_next_step(
+    out: &mut String,
+    iterator_slot: SlotIdx,
+    body: StepIdx,
+    done: StepIdx,
+    output: Option<SlotIdx>,
+) -> CodegenResult<()> {
+    writeln!(
+        out,
+        "    let _list = expect_list_value(read_slot(slots, {})?)?;",
+        iterator_slot.get()
+    )
+    .map_err(fmt_err)?;
+    writeln!(
+        out,
+        "    let _list_taint = read_taint(slot_taints, {})?;",
+        iterator_slot.get()
+    )
+    .map_err(fmt_err)?;
+    writeln!(
+        out,
+        "    let _item_count = list_item_count(list_store, _list)?;"
+    )
+    .map_err(fmt_err)?;
+    writeln!(
+        out,
+        "    if _item_count == 0 {{ return Ok(StepOutcome::Continue({})); }}",
+        done.get()
+    )
+    .map_err(fmt_err)?;
+    if let Some(output_slot) = output {
+        writeln!(
+            out,
+            "    let _first = first_list_item(list_store, _list, _item_count)?;"
+        )
+        .map_err(fmt_err)?;
+        writeln!(
+            out,
+            "    write_slot_with_taint(slots, slot_taints, {}, Some(_first), _list_taint)?;",
+            output_slot.get()
+        )
+        .map_err(fmt_err)?;
+        writeln!(out, "    let _tail = tail_list_handle(list_store, _list)?;").map_err(fmt_err)?;
+        writeln!(out, "    write_slot_with_taint(slots, slot_taints, {}, Some(SlotValue::List(_tail)), _list_taint)?;", iterator_slot.get()).map_err(fmt_err)?;
+        emit_continue_step(out, body)
+    } else {
+        writeln!(out, "    Err(DriveError::MissingOutputSlot {{ step: 0 }})").map_err(fmt_err)
+    }
+}
+
+fn emit_repeat_step_body(out: &mut String, node: &CompiledNode) -> CodegenResult<()> {
+    match &node.kind {
+        CompiledNodeKind::RepeatStart {
+            max_attempts, body, ..
+        } => emit_repeat_start_step(out, *max_attempts, *body, node.output),
+        CompiledNodeKind::RepeatAttempt {
+            attempt_slot, body, ..
+        } => emit_repeat_attempt_step(out, *attempt_slot, *body),
+        CompiledNodeKind::RepeatCheck { attempt_slot, done } => {
+            emit_repeat_check_step_body(out, *attempt_slot, *done, node.next)
+        }
+        CompiledNodeKind::RepeatFinish { result } => {
+            emit_copy_to_output_then_next(out, *result, node.output, node.next, node.id)
+        }
+        _ => emit_unsupported_step(out, "Repeat"),
+    }
+}
+
+fn emit_repeat_start_step(
+    out: &mut String,
+    max_attempts: u16,
+    body: StepIdx,
+    output: Option<SlotIdx>,
+) -> CodegenResult<()> {
+    writeln!(
+        out,
+        "    let _repeat_state = encode_repeat_state({}, 0)?;",
+        max_attempts
+    )
+    .map_err(fmt_err)?;
+    if let Some(output_slot) = output {
+        writeln!(out, "    write_slot_with_taint(slots, slot_taints, {}, Some(SlotValue::I64(_repeat_state)), Taint::Clean)?;", output_slot.get()).map_err(fmt_err)?;
+    }
+    emit_continue_step(out, body)
+}
+
+fn emit_repeat_attempt_step(
+    out: &mut String,
+    attempt_slot: SlotIdx,
+    body: StepIdx,
+) -> CodegenResult<()> {
+    writeln!(
+        out,
+        "    let _packed = expect_i64_value(read_slot(slots, {})?)?;",
+        attempt_slot.get()
+    )
+    .map_err(fmt_err)?;
+    writeln!(out, "    let _state = decode_repeat_state(_packed)?;").map_err(fmt_err)?;
+    emit_continue_step(out, body)
+}
+
+fn emit_repeat_check_step_body(
+    out: &mut String,
+    attempt_slot: SlotIdx,
+    done: StepIdx,
+    next: Option<StepIdx>,
+) -> CodegenResult<()> {
+    let Some(body) = next else {
+        return writeln!(out, "    Err(DriveError::MissingNextStep)").map_err(fmt_err);
+    };
+    writeln!(
+        out,
+        "    let _packed = expect_i64_value(read_slot(slots, {})?)?;",
+        attempt_slot.get()
+    )
+    .map_err(fmt_err)?;
+    writeln!(
+        out,
+        "    let (_max_attempts, _current_attempt) = decode_repeat_state(_packed)?;"
+    )
+    .map_err(fmt_err)?;
+    writeln!(out, "    let _next_attempt = _current_attempt.checked_add(1).ok_or(DriveError::InvalidRetryState)?;").map_err(fmt_err)?;
+    writeln!(
+        out,
+        "    let _updated = encode_repeat_state(_max_attempts, _next_attempt)?;"
+    )
+    .map_err(fmt_err)?;
+    writeln!(out, "    write_slot_with_taint(slots, slot_taints, {}, Some(SlotValue::I64(_updated)), read_taint(slot_taints, {})?)?;", attempt_slot.get(), attempt_slot.get()).map_err(fmt_err)?;
+    writeln!(out, "    if _next_attempt >= _max_attempts {{ Ok(StepOutcome::Continue({})) }} else {{ Ok(StepOutcome::Continue({})) }}", done.get(), body.get()).map_err(fmt_err)
+}
+
+fn emit_collect_step_body(out: &mut String, node: &CompiledNode) -> CodegenResult<()> {
+    match &node.kind {
+        CompiledNodeKind::CollectStart {
+            source,
+            limit,
+            page_size,
+            body,
+            done,
+        } => emit_collect_start_step(out, *source, *limit, *page_size, *body, *done, node.output),
+        CompiledNodeKind::CollectPage {
+            collector_slot,
+            body,
+            ..
+        } => {
+            writeln!(
+                out,
+                "    let _collector = expect_list_value(read_slot(slots, {})?)?;",
+                collector_slot.get()
+            )
+            .map_err(fmt_err)?;
+            emit_continue_step(out, *body)
+        }
+        CompiledNodeKind::CollectNext {
+            collector_slot,
+            done,
+            ..
+        } => {
+            writeln!(
+                out,
+                "    let _collector = expect_list_value(read_slot(slots, {})?)?;",
+                collector_slot.get()
+            )
+            .map_err(fmt_err)?;
+            emit_continue_step(out, *done)
+        }
+        CompiledNodeKind::CollectFinish { collector_slot } => {
+            emit_copy_to_output_then_next(out, *collector_slot, node.output, node.next, node.id)
+        }
+        _ => emit_unsupported_step(out, "Collect"),
+    }
+}
+
+fn emit_collect_start_step(
+    out: &mut String,
+    source: SlotIdx,
+    limit: u32,
+    page_size: u32,
+    body: StepIdx,
+    done: StepIdx,
+    output: Option<SlotIdx>,
+) -> CodegenResult<()> {
+    let collector = output.unwrap_or(source);
+    writeln!(out, "    let _source = match read_slot(slots, {})? {{ SlotValue::List(handle) => handle, _ => return Ok(StepOutcome::Continue({})), }};", source.get(), done.get()).map_err(fmt_err)?;
+    writeln!(
+        out,
+        "    let _source_taint = read_taint(slot_taints, {})?;",
+        source.get()
+    )
+    .map_err(fmt_err)?;
+    writeln!(
+        out,
+        "    let _item_count = list_item_count(list_store, _source)?;"
+    )
+    .map_err(fmt_err)?;
+    writeln!(out, "    if _item_count > {} {{ return Err(DriveError::IterationLimitExceeded {{ resource: \"collect_limit\" }}); }}", limit).map_err(fmt_err)?;
+    writeln!(out, "    if {} == 0 {{ return Err(DriveError::InvalidCompiledWorkflow {{ reason: \"collect page_size must be nonzero\" }}); }}", page_size).map_err(fmt_err)?;
+    writeln!(
+        out,
+        "    let _page = collect_page_handle(list_store, _source, 0, {})?;",
+        page_size
+    )
+    .map_err(fmt_err)?;
+    writeln!(out, "    write_slot_with_taint(slots, slot_taints, {}, Some(SlotValue::List(_page)), _source_taint)?;", collector.get()).map_err(fmt_err)?;
+    writeln!(out, "    if list_item_count(list_store, _page)? == 0 {{ Ok(StepOutcome::Continue({})) }} else {{ Ok(StepOutcome::Continue({})) }}", done.get(), body.get()).map_err(fmt_err)
+}
+
+fn emit_copy_to_output_then_next(
+    out: &mut String,
+    source: SlotIdx,
+    output: Option<SlotIdx>,
+    next: Option<StepIdx>,
+    step: StepIdx,
+) -> CodegenResult<()> {
+    let Some(output_slot) = output else {
+        return writeln!(
+            out,
+            "    Err(DriveError::MissingOutputSlot {{ step: {} }})",
+            step.get()
+        )
+        .map_err(fmt_err);
+    };
+    writeln!(out, "    let _value = read_slot(slots, {})?;", source.get()).map_err(fmt_err)?;
+    writeln!(
+        out,
+        "    let _taint = read_taint(slot_taints, {})?;",
+        source.get()
+    )
+    .map_err(fmt_err)?;
+    writeln!(
+        out,
+        "    write_slot_with_taint(slots, slot_taints, {}, Some(_value), _taint)?;",
+        output_slot.get()
+    )
+    .map_err(fmt_err)?;
+    write_next_or_error(out, next)
+}
+
 fn emit_retry_check_step_body(out: &mut String, kind: &CompiledNodeKind) -> CodegenResult<()> {
     let CompiledNodeKind::RetryCheck {
         policy_slot,
@@ -1346,30 +1801,6 @@ fn emit_retry_check_step(
         exhausted.get()
     )
     .map_err(fmt_err)
-}
-
-fn emit_unsupported_node_step(out: &mut String, kind: &CompiledNodeKind) -> CodegenResult<()> {
-    let name = match kind {
-        CompiledNodeKind::ForEachStart { .. } => "ForEachStart",
-        CompiledNodeKind::ForEachNext { .. } => "ForEachNext",
-        CompiledNodeKind::ForEachJoin { .. } => "ForEachJoin",
-        CompiledNodeKind::TogetherStart { .. } => "TogetherStart",
-        CompiledNodeKind::TogetherBranch { .. } => "TogetherBranch",
-        CompiledNodeKind::TogetherJoin { .. } => "TogetherJoin",
-        CompiledNodeKind::CollectStart { .. } => "CollectStart",
-        CompiledNodeKind::CollectPage { .. } => "CollectPage",
-        CompiledNodeKind::CollectNext { .. } => "CollectNext",
-        CompiledNodeKind::CollectFinish { .. } => "CollectFinish",
-        CompiledNodeKind::ReduceStart { .. } => "ReduceStart",
-        CompiledNodeKind::ReduceNext { .. } => "ReduceNext",
-        CompiledNodeKind::ReduceFinish { .. } => "ReduceFinish",
-        CompiledNodeKind::RepeatStart { .. } => "RepeatStart",
-        CompiledNodeKind::RepeatAttempt { .. } => "RepeatAttempt",
-        CompiledNodeKind::RepeatCheck { .. } => "RepeatCheck",
-        CompiledNodeKind::RepeatFinish { .. } => "RepeatFinish",
-        _ => "UnsupportedStep",
-    };
-    emit_unsupported_step(out, name)
 }
 
 /// Generate an expression evaluator function.
@@ -2573,6 +3004,35 @@ fn retry_attempt_bits(unsigned: u64) -> Result<u16, DriveError> {
 
 fn retry_remaining_bits(unsigned: u64) -> Result<u16, DriveError> {
     u16::try_from(unsigned & 65_535_u64).map_err(|_| DriveError::InvalidRetryState)
+}
+
+const REPEAT_STATE_SHIFT: u32 = 32;
+
+fn encode_repeat_state(max_attempts: u16, current_attempt: u16) -> Result<i64, DriveError> {
+    if max_attempts == 0 || current_attempt > max_attempts {
+        return Err(DriveError::InvalidRetryState);
+    }
+    let high = i64::from(max_attempts)
+        .checked_shl(REPEAT_STATE_SHIFT)
+        .ok_or(DriveError::IntegerOverflow)?;
+    high.checked_add(i64::from(current_attempt))
+        .ok_or(DriveError::IntegerOverflow)
+}
+
+fn decode_repeat_state(packed: i64) -> Result<(u16, u16), DriveError> {
+    let bits = u64::try_from(packed).map_err(|_| DriveError::InvalidRetryState)?;
+    let max_bits = bits >> REPEAT_STATE_SHIFT;
+    let low_bits = bits & 65_535_u64;
+    let reserved_bits = bits & 4_294_901_760_u64;
+    if reserved_bits != 0 {
+        return Err(DriveError::InvalidRetryState);
+    }
+    let max_attempts = u16::try_from(max_bits).map_err(|_| DriveError::InvalidRetryState)?;
+    let current_attempt = u16::try_from(low_bits).map_err(|_| DriveError::InvalidRetryState)?;
+    if max_attempts == 0 || current_attempt > max_attempts {
+        return Err(DriveError::InvalidRetryState);
+    }
+    Ok((max_attempts, current_attempt))
 }
 ")
     .map_err(fmt_err)?;

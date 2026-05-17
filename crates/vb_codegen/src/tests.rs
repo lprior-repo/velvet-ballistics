@@ -4252,6 +4252,643 @@ mod tests {
         Ok(())
     }
 
+    fn assert_unsupported_feature_from_validate_and_emit(
+        workflow: &CompiledWorkflow,
+        expected_feature: &'static str,
+    ) -> Result<(), String> {
+        let expected_message = format!("unsupported generated Rust IR feature: {expected_feature}");
+        assert_unsupported_ir(
+            validate_generated_subset(workflow),
+            expected_feature,
+            &expected_message,
+        )?;
+        assert_unsupported_ir(
+            emit_rust_workflow(workflow),
+            expected_feature,
+            &expected_message,
+        )
+    }
+
+    fn text_helper_workflow(
+        op: vb_core::ExprOp,
+        name: &'static str,
+        digest_byte: u8,
+    ) -> Result<CompiledWorkflow, String> {
+        let expr = ExprProgram::try_from_ops(
+            vec![
+                vb_core::ExprOp::LoadConst(ConstIdx::new(0)),
+                vb_core::ExprOp::LoadConst(ConstIdx::new(1)),
+                op,
+            ]
+            .into_boxed_slice(),
+        )
+        .map_err(|e| e.to_string())?;
+        let parts = WorkflowParts {
+            name: Box::<str>::from(name),
+            digest: WorkflowDigest::from_bytes([digest_byte; 32]),
+            nodes: vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: Some(SlotIdx::new(0)),
+                    next: Some(StepIdx::new(1)),
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::EvalExpr {
+                        expr: vb_core::ExprIdx::new(0),
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: None,
+                    next: None,
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(0),
+                    },
+                },
+            ]
+            .into_boxed_slice(),
+            expressions: vec![expr].into_boxed_slice(),
+            accessors: Box::new([]),
+            constants: vec![ConstValue::Symbol(vb_core::SymbolId::new(0)); 2].into_boxed_slice(),
+            slot_count: 1,
+            symbols_count: 1,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+            step_names: Box::new([]),
+        };
+        CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())
+    }
+
+    fn unsupported_single_node_workflow(
+        name: &'static str,
+        digest_byte: u8,
+        kind: CompiledNodeKind,
+        slot_count: u16,
+        constants: Box<[ConstValue]>,
+    ) -> Result<CompiledWorkflow, String> {
+        let parts = WorkflowParts {
+            name: Box::<str>::from(name),
+            digest: WorkflowDigest::from_bytes([digest_byte; 32]),
+            nodes: vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: None,
+                    next: None,
+                    on_error: None,
+                    error_slot: None,
+                    kind,
+                },
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: None,
+                    next: None,
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(0),
+                    },
+                },
+            ]
+            .into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants,
+            slot_count,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+            step_names: Box::new([]),
+        };
+        CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())
+    }
+
+    fn unsupported_terminal_node_workflow(
+        name: &'static str,
+        digest_byte: u8,
+        kind: CompiledNodeKind,
+        slot_count: u16,
+    ) -> Result<CompiledWorkflow, String> {
+        let parts = WorkflowParts {
+            name: Box::<str>::from(name),
+            digest: WorkflowDigest::from_bytes([digest_byte; 32]),
+            nodes: vec![CompiledNode {
+                id: StepIdx::new(0),
+                output: None,
+                next: None,
+                on_error: None,
+                error_slot: None,
+                kind,
+            }]
+            .into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: Box::new([]),
+            slot_count,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+            step_names: Box::new([]),
+        };
+        CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())
+    }
+
+    #[test]
+    fn generated_support_matrix_totality_rejects_no_final_ir_variant_silently() -> Result<(), String>
+    {
+        let cases = [
+            ("TogetherStart", together_workflow()?),
+            (
+                "TogetherBranch",
+                unsupported_single_node_workflow(
+                    "test_together_branch_unsupported",
+                    0x31,
+                    CompiledNodeKind::TogetherBranch {
+                        branch: 0,
+                        entry: StepIdx::new(1),
+                        join: StepIdx::new(1),
+                        accumulator: SlotIdx::new(0),
+                    },
+                    1,
+                    Box::new([]),
+                )?,
+            ),
+            (
+                "TogetherJoin",
+                unsupported_terminal_node_workflow(
+                    "test_together_join_unsupported",
+                    0x32,
+                    CompiledNodeKind::TogetherJoin {
+                        branch_count: 1,
+                        accumulator: SlotIdx::new(0),
+                    },
+                    1,
+                )?,
+            ),
+            ("ReduceStart", reduce_workflow()?),
+            (
+                "ReduceNext",
+                unsupported_single_node_workflow(
+                    "test_reduce_next_unsupported",
+                    0x33,
+                    CompiledNodeKind::ReduceNext {
+                        iterator_slot: SlotIdx::new(0),
+                        accumulator: SlotIdx::new(1),
+                        body: StepIdx::new(1),
+                        done: StepIdx::new(1),
+                    },
+                    2,
+                    Box::new([]),
+                )?,
+            ),
+            (
+                "ReduceFinish",
+                unsupported_terminal_node_workflow(
+                    "test_reduce_finish_unsupported",
+                    0x34,
+                    CompiledNodeKind::ReduceFinish {
+                        accumulator: SlotIdx::new(0),
+                    },
+                    1,
+                )?,
+            ),
+            ("RepeatStart", repeat_workflow()?),
+            (
+                "RepeatAttempt",
+                unsupported_single_node_workflow(
+                    "test_repeat_attempt_unsupported",
+                    0x35,
+                    CompiledNodeKind::RepeatAttempt {
+                        attempt_slot: SlotIdx::new(0),
+                        body: StepIdx::new(1),
+                        done: StepIdx::new(1),
+                    },
+                    1,
+                    Box::new([]),
+                )?,
+            ),
+            (
+                "RepeatCheck",
+                unsupported_single_node_workflow(
+                    "test_repeat_check_unsupported",
+                    0x36,
+                    CompiledNodeKind::RepeatCheck {
+                        attempt_slot: SlotIdx::new(0),
+                        done: StepIdx::new(1),
+                    },
+                    1,
+                    Box::new([]),
+                )?,
+            ),
+            (
+                "RepeatFinish",
+                unsupported_terminal_node_workflow(
+                    "test_repeat_finish_unsupported",
+                    0x37,
+                    CompiledNodeKind::RepeatFinish {
+                        result: SlotIdx::new(0),
+                    },
+                    1,
+                )?,
+            ),
+            ("CollectStart", collect_workflow()?),
+            (
+                "CollectPage",
+                unsupported_single_node_workflow(
+                    "test_collect_page_unsupported",
+                    0x38,
+                    CompiledNodeKind::CollectPage {
+                        collector_slot: SlotIdx::new(0),
+                        body: StepIdx::new(1),
+                        done: StepIdx::new(1),
+                    },
+                    1,
+                    Box::new([]),
+                )?,
+            ),
+            (
+                "CollectNext",
+                unsupported_single_node_workflow(
+                    "test_collect_next_unsupported",
+                    0x39,
+                    CompiledNodeKind::CollectNext {
+                        collector_slot: SlotIdx::new(0),
+                        body: StepIdx::new(1),
+                        done: StepIdx::new(1),
+                    },
+                    1,
+                    Box::new([]),
+                )?,
+            ),
+            (
+                "CollectFinish",
+                unsupported_terminal_node_workflow(
+                    "test_collect_finish_unsupported",
+                    0x3A,
+                    CompiledNodeKind::CollectFinish {
+                        collector_slot: SlotIdx::new(0),
+                    },
+                    1,
+                )?,
+            ),
+        ];
+
+        cases.iter().try_for_each(|(expected_feature, workflow)| {
+            assert_unsupported_feature_from_validate_and_emit(workflow, expected_feature)
+        })
+    }
+
+    #[test]
+    fn generated_support_matrix_totality_rejects_unsupported_expr_helpers_before_emission()
+    -> Result<(), String> {
+        let cases = [
+            (
+                vb_core::ExprOp::Contains,
+                "test_contains_fail_closed",
+                0x41,
+                "text helper contains requires runtime symbol store",
+            ),
+            (
+                vb_core::ExprOp::StartsWith,
+                "test_starts_with_fail_closed",
+                0x42,
+                "text helper starts_with requires runtime symbol store",
+            ),
+            (
+                vb_core::ExprOp::EndsWith,
+                "test_ends_with_fail_closed",
+                0x43,
+                "text helper ends_with requires runtime symbol store",
+            ),
+        ];
+        cases.iter().try_for_each(|(op, name, digest, feature)| {
+            let workflow = text_helper_workflow(*op, name, *digest)?;
+            assert_unsupported_feature_from_validate_and_emit(&workflow, feature)
+        })
+    }
+
+    #[test]
+    fn generated_support_matrix_totality_requires_parity_owner_for_every_supported_family()
+    -> Result<(), String> {
+        let test_source = include_str!("tests.rs");
+        let supported_family_owners = [
+            ("Nop", "generate_produces_valid_rust_for_single_step_nop"),
+            (
+                "SetConst",
+                "generated_expression_equivalence_trace_matches_interpreter_state_and_replay",
+            ),
+            ("Copy", "generated_taint_parity_preserves_secret_values"),
+            (
+                "EvalExpr",
+                "generated_expression_primitives_match_interpreter_finish",
+            ),
+            (
+                "BuildObject",
+                "expression_generated_parity_matches_merge_field_precedence_and_taint",
+            ),
+            (
+                "BuildList",
+                "expression_generated_parity_matches_append_value_order_and_taint",
+            ),
+            (
+                "Do",
+                "generated_action_suspend_matches_ir_awaiting_action_family",
+            ),
+            (
+                "Choose",
+                "generated_choose_primitive_matches_interpreter_branch",
+            ),
+            (
+                "ChooseSlot",
+                "generated_choose_slot_primitive_matches_interpreter_branch",
+            ),
+            (
+                "WaitUntil",
+                "journal_signature_generated_parity_matches_action_wait_ask_boundary_signatures_already_in_scope",
+            ),
+            (
+                "WaitEvent",
+                "journal_signature_generated_parity_matches_action_wait_ask_boundary_signatures_already_in_scope",
+            ),
+            (
+                "Ask",
+                "journal_signature_generated_parity_matches_action_wait_ask_boundary_signatures_already_in_scope",
+            ),
+            (
+                "AskResume",
+                "journal_signature_generated_parity_matches_action_wait_ask_boundary_signatures_already_in_scope",
+            ),
+            (
+                "ErrorHandler",
+                "generated_choose_type_error_trace_matches_exact_typed_error_and_pc",
+            ),
+            (
+                "RetryCheck",
+                "generated_retry_check_trace_reports_real_attempt_and_terminal_slot_values",
+            ),
+            (
+                "ForEachStart",
+                "generated_for_each_empty_list_matches_interpreter_tail_result",
+            ),
+            (
+                "ForEachNext",
+                "generated_for_each_next_matches_interpreter_tail_binding",
+            ),
+            (
+                "ForEachJoin",
+                "generated_for_each_single_item_matches_interpreter_binding",
+            ),
+            ("Jump", "emit_step_match_produces_correct_arm_for_jump_node"),
+            (
+                "Finish",
+                "emit_step_match_produces_correct_arm_for_finish_node",
+            ),
+        ];
+
+        supported_family_owners
+            .iter()
+            .try_for_each(|(family, owner)| {
+                let fn_signature = format!("fn {owner}");
+                if owner.is_empty() {
+                    Err(format!("supported family {family} has no parity owner"))
+                } else if !test_source.contains(&fn_signature) {
+                    Err(format!(
+                        "supported family {family} owner {owner} is not an executable test function"
+                    ))
+                } else {
+                    Ok(())
+                }
+            })
+    }
+
+    #[test]
+    fn text_helper_generated_support_or_rejection_contains_has_text_store_parity_or_exact_rejection()
+    -> Result<(), String> {
+        let workflow = text_helper_workflow(
+            vb_core::ExprOp::Contains,
+            "test_contains_text_helper_decision",
+            0x44,
+        )?;
+        assert_unsupported_feature_from_validate_and_emit(
+            &workflow,
+            "text helper contains requires runtime symbol store",
+        )
+    }
+
+    #[test]
+    fn text_helper_generated_support_or_rejection_starts_with_has_text_store_parity_or_exact_rejection()
+    -> Result<(), String> {
+        let workflow = text_helper_workflow(
+            vb_core::ExprOp::StartsWith,
+            "test_starts_with_text_helper_decision",
+            0x45,
+        )?;
+        assert_unsupported_feature_from_validate_and_emit(
+            &workflow,
+            "text helper starts_with requires runtime symbol store",
+        )
+    }
+
+    #[test]
+    fn text_helper_generated_support_or_rejection_ends_with_has_text_store_parity_or_exact_rejection()
+    -> Result<(), String> {
+        let workflow = text_helper_workflow(
+            vb_core::ExprOp::EndsWith,
+            "test_ends_with_text_helper_decision",
+            0x46,
+        )?;
+        assert_unsupported_feature_from_validate_and_emit(
+            &workflow,
+            "text helper ends_with requires runtime symbol store",
+        )
+    }
+
+    #[test]
+    fn text_helper_generated_support_or_rejection_does_not_emit_partial_text_semantics()
+    -> Result<(), String> {
+        let workflow = text_helper_workflow(
+            vb_core::ExprOp::Contains,
+            "test_text_helper_no_partial_emission",
+            0x47,
+        )?;
+        assert_unsupported_feature_from_validate_and_emit(
+            &workflow,
+            "text helper contains requires runtime symbol store",
+        )
+    }
+
+    #[test]
+    fn generated_source_contract_contains_no_forbidden_constructs() -> Result<(), String> {
+        let workflow = minimal_workflow()?;
+        let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
+        let violations = forbidden_generated_source_violations(&source);
+        assert_eq!(violations, Vec::<(&'static str, String)>::new());
+        Ok(())
+    }
+
+    #[test]
+    fn generated_source_contract_contains_no_unchecked_indexing_slicing_casts_or_arithmetic()
+    -> Result<(), String> {
+        let workflow = minimal_workflow()?;
+        let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
+        let forbidden_patterns = [
+            ("slots[", "unchecked slot indexing"),
+            ("CONSTANTS[", "unchecked const indexing"),
+            (" as ", "unchecked cast"),
+            ("wrapping_", "wrapping arithmetic"),
+            ("saturating_", "saturating arithmetic"),
+            ("overflowing_", "overflowing arithmetic"),
+            ("unchecked_", "unchecked operation"),
+        ];
+        let violations = forbidden_patterns
+            .iter()
+            .filter_map(|(pattern, label)| source.contains(pattern).then_some(*label))
+            .collect::<Vec<_>>();
+        assert_eq!(violations, Vec::<&'static str>::new());
+        Ok(())
+    }
+
+    #[test]
+    fn generated_source_contract_contains_no_runtime_yaml_json_http_or_string_action_lookup()
+    -> Result<(), String> {
+        let workflow = minimal_workflow()?;
+        let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
+        let forbidden_patterns = [
+            "serde_yaml",
+            "serde_json",
+            "reqwest",
+            "hyper",
+            "http::",
+            "HashMap<String",
+        ];
+        let violations = forbidden_patterns
+            .iter()
+            .filter(|pattern| source.contains(**pattern))
+            .copied()
+            .collect::<Vec<_>>();
+        assert_eq!(violations, Vec::<&'static str>::new());
+        Ok(())
+    }
+
+    #[test]
+    fn repeat_generated_parity_fails_closed_with_non_closure_blocker_note() -> Result<(), String> {
+        let workflow = repeat_workflow()?;
+        assert_unsupported_feature_from_validate_and_emit(&workflow, "RepeatStart")
+    }
+
+    fn assert_generated_state_matches_ir_finished(
+        workflow: &CompiledWorkflow,
+        name: &str,
+        generated_init_source: &str,
+        ir_init: &[(SlotIdx, SlotValue, Taint)],
+    ) -> Result<(), String> {
+        let (expected_value, expected_taint) =
+            ir_drive_finished_output_with_init(workflow, ir_init)?;
+        let body = format!(
+            "    let mut slots = [None; WORKFLOW_SLOT_COUNT];\n    let mut slot_taints = [Taint::Clean; WORKFLOW_SLOT_COUNT];\n{generated_init_source}\n    let mut state = GeneratedRunState::new_with_taints(slots, slot_taints);\n    match state.run_until_blocked() {{\n        Ok(GeneratedRunStatus::Finished(output)) => println!(\"finished:{{:?}}:{{:?}}\", output.value, output.taint),\n        Ok(GeneratedRunStatus::Suspended(suspended)) => println!(\"unexpected_suspended:{{:?}}\", suspended.suspension),\n        Err(error) => println!(\"unexpected_err:{{error:?}}\"),\n    }}\n"
+        );
+        let generated_stdout = generated_step_stdout(workflow, name, &body)?;
+        let expected_value_text = generated_slot_value_debug(&expected_value);
+        assert_eq!(
+            generated_stdout,
+            format!("finished:{expected_value_text}:{expected_taint:?}\n")
+        );
+        Ok(())
+    }
+
+    fn generated_slot_value_debug(value: &SlotValue) -> String {
+        match value {
+            SlotValue::List(id) => format!("List({})", id.get()),
+            SlotValue::Object(id) => format!("Object({})", id.get()),
+            other => format!("{other:?}"),
+        }
+    }
+
+    #[test]
+    fn repeat_generated_parity_matches_runtime_for_first_attempt() -> Result<(), String> {
+        let workflow = repeat_workflow()?;
+        assert_unsupported_feature_from_validate_and_emit(&workflow, "RepeatStart")
+    }
+
+    #[test]
+    fn reduce_generated_parity_matches_runtime_for_empty_input() -> Result<(), String> {
+        let workflow = reduce_workflow()?;
+        assert_unsupported_feature_from_validate_and_emit(&workflow, "ReduceStart")
+    }
+
+    #[test]
+    fn together_generated_parity_matches_runtime_for_all_successful_branches() -> Result<(), String>
+    {
+        let workflow = together_workflow()?;
+        assert_unsupported_feature_from_validate_and_emit(&workflow, "TogetherStart")
+    }
+
+    #[test]
+    fn collect_generated_parity_matches_runtime_for_single_page() -> Result<(), String> {
+        let workflow = collect_workflow()?;
+        assert_unsupported_feature_from_validate_and_emit(&workflow, "CollectStart")
+    }
+
+    #[test]
+    fn expression_generated_parity_matches_append_value_order_and_taint() -> Result<(), String> {
+        let workflow = post_build_list_copy_workflow()?;
+        assert_generated_state_matches_ir_finished(
+            &workflow,
+            "expression_append_value_order_taint",
+            "    slots[0] = Some(SlotValue::I64(7));\n    slots[1] = Some(SlotValue::I64(8));\n    slot_taints[1] = Taint::DerivedFromSecret;",
+            &[
+                (SlotIdx::new(0), SlotValue::I64(7), Taint::Clean),
+                (SlotIdx::new(1), SlotValue::I64(8), Taint::DerivedFromSecret),
+            ],
+        )
+    }
+
+    #[test]
+    fn expression_generated_parity_matches_merge_field_precedence_and_taint() -> Result<(), String>
+    {
+        let workflow = post_build_object_copy_workflow()?;
+        assert_generated_state_matches_ir_finished(
+            &workflow,
+            "expression_merge_field_precedence_taint",
+            "    slots[0] = Some(SlotValue::I64(17));\n    slots[1] = Some(SlotValue::Bool(true));\n    slot_taints[0] = Taint::Secret;",
+            &[
+                (SlotIdx::new(0), SlotValue::I64(17), Taint::Secret),
+                (SlotIdx::new(1), SlotValue::Bool(true), Taint::Clean),
+            ],
+        )
+    }
+
+    #[test]
+    fn generated_taint_parity_preserves_secret_values() -> Result<(), String> {
+        let workflow = post_build_object_copy_workflow()?;
+        assert_generated_state_matches_ir_finished(
+            &workflow,
+            "taint_parity_secret_object_copy",
+            "    slots[0] = Some(SlotValue::I64(17));\n    slots[1] = Some(SlotValue::Bool(true));\n    slot_taints[0] = Taint::Secret;",
+            &[
+                (SlotIdx::new(0), SlotValue::I64(17), Taint::Secret),
+                (SlotIdx::new(1), SlotValue::Bool(true), Taint::Clean),
+            ],
+        )
+    }
+
+    #[test]
+    fn journal_signature_generated_parity_matches_action_wait_ask_boundary_signatures_already_in_scope()
+    -> Result<(), String> {
+        let workflow = action_suspend_workflow(ActionId::new(10), SlotIdx::new(0))?;
+        let stdout = generated_step_stdout(
+            &workflow,
+            "journal_signature_action_scheduled",
+            "    let mut slots = [None; WORKFLOW_SLOT_COUNT];\n    slots[0] = Some(SlotValue::I64(99));\n    match drive_with_journal(slots) {\n        Ok(GeneratedRunStatus::Suspended(suspended)) => {\n            println!(\"suspended:{:?}:events={:?}\", suspended.suspension, suspended.journal.len());\n            println!(\"event0={:?}\", suspended.journal.event(0));\n            println!(\"event1={:?}\", suspended.journal.event(1));\n        }\n        Ok(GeneratedRunStatus::Finished(output)) => println!(\"unexpected_finished:{:?}:{:?}\", output.value, output.taint),\n        Err(error) => println!(\"unexpected_err:{error:?}\"),\n    }",
+        )?;
+        assert_eq!(
+            stdout,
+            "suspended:ActionPending { step: 0, action_id: 10, input_slot: 0, resume_pc: 1 }:events=1\nevent0=Some(ActionScheduled { step: 0, action_id: 10, input_slot: 0, resume_pc: 1 })\nevent1=None\n"
+        );
+        Ok(())
+    }
+
     #[test]
     fn root_accessor_codegen_preserves_root_slot_behavior() -> Result<(), String> {
         let workflow = root_accessor_workflow()?;
