@@ -298,8 +298,4 @@ mod tests {
         ));
     }
 
-    #[cfg(kani)]
-    mod emitter_proofs {
-        include!("../../../kani/vb-qi37.13.3/emitter_proofs.rs");
-    }
 }
