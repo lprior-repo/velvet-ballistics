@@ -128,12 +128,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7f202df86484c868dbad7eaa557ef785d5c66295e41b460ef922eca0723b842c"
 
 [[package]]
-name = "arbitrary"
-version = "1.4.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c3d036a3c4ab069c7b410a2ce876bd74808d2d0888a82667669f8e783a898bf1"
-
-[[package]]
 name = "arraydeque"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -271,8 +265,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a1dce859f0832a7d088c4f1119888ab94ef4b5d6795d1ce05afb7fe159d79f98"
 dependencies = [
  "find-msvc-tools",
- "jobserver",
- "libc",
  "shlex",
 ]
 
@@ -974,16 +966,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8f42a60cbdf9a97f5d2305f08a87dc4e09308d1276d28c869c684d7777685682"
 
 [[package]]
-name = "jobserver"
-version = "0.1.34"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9afb3de4395d6b3e67a780b6de64b51c978ecf11cb9a462c66be7d4ca9039d33"
-dependencies = [
- "getrandom 0.3.4",
- "libc",
-]
-
-[[package]]
 name = "js-sys"
 version = "0.3.98"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1023,16 +1005,6 @@ name = "libc"
 version = "0.2.186"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "68ab91017fe16c622486840e4c83c9a37afeff978bd239b5293d61ece587de66"
-
-[[package]]
-name = "libfuzzer-sys"
-version = "0.4.12"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f12a681b7dd8ce12bff52488013ba614b869148d54dd79836ab85aafdd53f08d"
-dependencies = [
- "arbitrary",
- "cc",
-]
 
 [[package]]
 name = "libloading"
@@ -2680,6 +2652,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "vb_boundary_inventory"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "vb_codegen"
 version = "0.1.0"
 dependencies = [
@@ -2719,6 +2700,7 @@ dependencies = [
  "proptest",
  "serde",
  "thiserror",
+ "vb_proof_kernels",
 ]
 
 [[package]]
@@ -2794,6 +2776,7 @@ dependencies = [
  "tempfile",
  "thiserror",
  "vb_core",
+ "vb_runtime",
 ]
 
 [[package]]
@@ -2857,58 +2840,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "velvet-ballastics-fuzz"
-version = "0.1.0"
-dependencies = [
- "blake3",
- "libfuzzer-sys",
- "postcard",
- "tempfile",
- "vb_compile",
- "vb_core",
- "vb_expr",
- "vb_ipc",
- "vb_storage",
- "vb_ui_model",
- "vb_validate",
- "vb_yaml",
- "velvet-ballastics-workspace",
- "xtask",
-]
-
-[[package]]
-name = "velvet-ballastics-workspace"
-version = "0.1.0"
-dependencies = [
- "blake3",
- "bytes",
- "chrono",
- "crc32fast",
- "criterion",
- "postcard",
- "proptest",
- "saphyr",
- "serde",
- "serde-saphyr",
- "serde_json",
- "tempfile",
- "toml 0.9.12+spec-1.1.0",
- "vb_benchmark",
- "vb_codegen",
- "vb_compile",
- "vb_core",
- "vb_doc",
- "vb_expr",
- "vb_ipc",
- "vb_runtime",
- "vb_storage",
- "vb_validate",
- "vb_yaml",
- "velvet_ballastics",
- "xtask",
-]
-
-[[package]]
 name = "velvet-ballastics-workspace-tests"
 version = "0.1.0"
 dependencies = [
@@ -2922,6 +2853,7 @@ dependencies = [
  "tempfile",
  "toml 0.9.12+spec-1.1.0",
  "vb_benchmark",
+ "vb_boundary_inventory",
  "vb_codegen",
  "vb_compile",
  "vb_core",
@@ -3449,6 +3381,7 @@ dependencies = [
  "blake3",
  "clap",
  "image",
+ "regex",
  "saphyr",
  "serde",
  "serde-saphyr",

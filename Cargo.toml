@@ -18,7 +18,6 @@ members = [
     "crates/workspace_tests",
     "crates/vb_benchmark",
     "xtask",
-    "fuzz",
 ]
 default-members = ["."]
 resolver = "2"
