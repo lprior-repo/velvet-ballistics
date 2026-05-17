@@ -93,11 +93,13 @@ pub fn borrow_workflow_resolver<'a>(
 }
 
 #[cfg(test)]
-mod test_hooks {
-    use std::sync::atomic::{AtomicBool, Ordering};
-    pub(crate) static FORCE_POSTCARD_FAIL: AtomicBool = AtomicBool::new(false);
-    pub(crate) static FORCE_HEADER_ENCODE_FAIL: AtomicBool = AtomicBool::new(false);
-    pub(crate) static FORCE_FLUSH_FAIL: AtomicBool = AtomicBool::new(false);
+pub(crate) mod test_hooks {
+    use std::cell::Cell;
+    thread_local! {
+        pub(crate) static FORCE_POSTCARD_FAIL: Cell<bool> = const { Cell::new(false) };
+        pub(crate) static FORCE_HEADER_ENCODE_FAIL: Cell<bool> = const { Cell::new(false) };
+        pub(crate) static FORCE_FLUSH_FAIL: Cell<bool> = const { Cell::new(false) };
+    }
 }
 
 /// Sends a response frame to the client.
@@ -111,7 +113,7 @@ pub fn send_response(
 ) -> Result<(), IpcServerError> {
     #[cfg(test)]
     let payload_bytes =
-        if test_hooks::FORCE_POSTCARD_FAIL.load(std::sync::atomic::Ordering::Relaxed) {
+        if test_hooks::FORCE_POSTCARD_FAIL.get() {
             Err(postcard::Error::SerializeBufferFull)
         } else {
             postcard::to_allocvec(response)
@@ -134,7 +136,7 @@ pub fn send_response(
 
     #[cfg(test)]
     let header_bytes =
-        if test_hooks::FORCE_HEADER_ENCODE_FAIL.load(std::sync::atomic::Ordering::Relaxed) {
+        if test_hooks::FORCE_HEADER_ENCODE_FAIL.get() {
             Err(crate::IpcError::HeaderEncodeFailed)
         } else {
             header.encode()
@@ -161,7 +163,7 @@ pub fn send_response(
     if write_buffer.is_empty() {
         #[cfg(test)]
         let flush_result =
-            if test_hooks::FORCE_FLUSH_FAIL.load(std::sync::atomic::Ordering::Relaxed) {
+            if test_hooks::FORCE_FLUSH_FAIL.get() {
                 Err(std::io::Error::new(
                     std::io::ErrorKind::BrokenPipe,
                     "flush fail",
@@ -561,12 +563,13 @@ mod tests {
     // ── send_response error-path tests ──
 
     use mio::Poll;
-    use std::sync::atomic::Ordering;
 
-    struct HookGuard(&'static std::sync::atomic::AtomicBool);
-    impl Drop for HookGuard {
+    struct ResetOnDrop;
+    impl Drop for ResetOnDrop {
         fn drop(&mut self) {
-            self.0.store(false, Ordering::Relaxed);
+            test_hooks::FORCE_POSTCARD_FAIL.set(false);
+            test_hooks::FORCE_HEADER_ENCODE_FAIL.set(false);
+            test_hooks::FORCE_FLUSH_FAIL.set(false);
         }
     }
 
@@ -634,8 +637,8 @@ mod tests {
         let (mut stream, _peer, poll, token) = setup_mio_stream_with_peer();
         let registry = poll.registry().try_clone().unwrap();
 
-        test_hooks::FORCE_POSTCARD_FAIL.store(true, Ordering::Relaxed);
-        let _guard = HookGuard(&test_hooks::FORCE_POSTCARD_FAIL);
+        test_hooks::FORCE_POSTCARD_FAIL.set(true);
+        let _guard = ResetOnDrop;
 
         let mut write_buffer = Vec::new();
         let request_header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, 0);
@@ -664,8 +667,8 @@ mod tests {
         let (mut stream, _peer, poll, token) = setup_mio_stream_with_peer();
         let registry = poll.registry().try_clone().unwrap();
 
-        test_hooks::FORCE_HEADER_ENCODE_FAIL.store(true, Ordering::Relaxed);
-        let _guard = HookGuard(&test_hooks::FORCE_HEADER_ENCODE_FAIL);
+        test_hooks::FORCE_HEADER_ENCODE_FAIL.set(true);
+        let _guard = ResetOnDrop;
 
         let mut write_buffer = Vec::new();
         let request_header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, 0);
@@ -694,8 +697,8 @@ mod tests {
         let (mut stream, _peer, poll, token) = setup_mio_stream_with_peer();
         let registry = poll.registry().try_clone().unwrap();
 
-        test_hooks::FORCE_FLUSH_FAIL.store(true, Ordering::Relaxed);
-        let _guard = HookGuard(&test_hooks::FORCE_FLUSH_FAIL);
+        test_hooks::FORCE_FLUSH_FAIL.set(true);
+        let _guard = ResetOnDrop;
 
         let mut write_buffer = Vec::new();
         let request_header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, 0);

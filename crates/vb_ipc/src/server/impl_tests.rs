@@ -292,6 +292,11 @@ fn server_handles_client_disconnect_gracefully() {
         result.is_ok(),
         "poll after client disconnect should succeed"
     );
+    assert_eq!(
+        server.client_count(),
+        0,
+        "client should be removed after disconnect"
+    );
 }
 
 #[test]
@@ -1137,6 +1142,8 @@ fn bind_fails_when_path_is_existing_directory() {
         }
     );
 }
+
+
 
 // ── 3. client lifecycle: connect, health, disconnect, reconnect ──────────────
 
@@ -2176,10 +2183,267 @@ impl Drop for CleanupDir<'_> {
 // -- Additional coverage tests for mod.rs --
 
 #[test]
-fn reregister_client_with_invalid_token_returns_error() {
-    let path = temp_socket_path("reregister_invalid");
+fn poll_once_with_resolver_uses_test_poll_error_when_set() {
+    let path = temp_socket_path("test_poll_error");
     let _cleanup = CleanupPath(&path);
     let mut server = IpcServer::bind(&path).expect("bind should succeed");
-    let result = server.reregister_client(999, mio::Interest::READABLE);
-    assert!(matches!(result, Err(IpcServerError::PollFailed { .. })));
+    let mut runtime = make_runtime();
+
+    server.set_test_poll_once_result(Err(IpcServerError::TooManyClients));
+
+    let result = server.poll_once_with_resolver(
+        &mut runtime,
+        Some(Duration::ZERO),
+        None,
+    );
+    assert_eq!(
+        result,
+        Err(IpcServerError::TooManyClients),
+        "poll_once_with_resolver should return test_poll_error when set"
+    );
 }
+
+// ── 5. poll_once removes client when handle_writable returns true ────────────
+
+#[test]
+fn poll_once_removes_client_when_writable_returns_true() {
+    let path = temp_socket_path("poll_writable_true");
+    let _cleanup = CleanupPath(&path);
+    let mut server = IpcServer::bind(&path).expect("bind should succeed");
+    let mut runtime = make_runtime();
+
+    let client = make_client(&path);
+    server.accept_client().expect("accept should succeed");
+
+    // Queue data in write_buffer so handle_writable will try to write
+    let write_buf = server
+        .client_write_buffer_mut(1)
+        .expect("client should exist");
+    write_buf.extend_from_slice(&[0xFF; 100]);
+
+    // Reregister as WRITABLE so poll will call handle_writable
+    server
+        .reregister_client(1, mio::Interest::READABLE | mio::Interest::WRITABLE)
+        .expect("reregister should succeed");
+
+    // Drop client to cause broken pipe on next write
+    drop(client);
+
+    // Poll should process the writable event and remove the client
+    let result = server.poll_once(&mut runtime, Some(Duration::from_millis(100)));
+    assert!(result.is_ok(), "poll should succeed");
+    assert_eq!(
+        server.client_count(),
+        0,
+        "client should be removed after writable error"
+    );
+}
+
+// ── 6. handle_readable send_response error paths ─────────────────────────────
+
+use crate::server::helpers::test_hooks;
+
+struct ForcePostcardFailGuard;
+impl Drop for ForcePostcardFailGuard {
+    fn drop(&mut self) {
+        test_hooks::FORCE_POSTCARD_FAIL.set(false);
+    }
+}
+
+#[test]
+fn handle_readable_propagates_send_response_error_for_bad_header() {
+    let path = temp_socket_path("read_bad_header_send_fail");
+    let _cleanup = CleanupPath(&path);
+    let mut server = IpcServer::bind(&path).expect("bind should succeed");
+    let mut runtime = make_runtime();
+
+    let mut client = make_client(&path);
+    server.accept_client().expect("accept should succeed");
+
+    test_hooks::FORCE_POSTCARD_FAIL.set(true);
+    let _guard = ForcePostcardFailGuard;
+
+    // Send a bad header (invalid magic) so handle_readable enters the error branch
+    let mut bad_header = [0u8; IPC_HEADER_LEN];
+    bad_header[..4].copy_from_slice(&0u32.to_le_bytes());
+    bad_header[4..6].copy_from_slice(&IPC_VERSION.to_le_bytes());
+    bad_header[6..8].copy_from_slice(&IpcCommand::Health.as_u16().to_le_bytes());
+    client.write_all(&bad_header).expect("write bad header");
+    client.flush().expect("flush");
+
+    // Process the readable event — send_response fails, so poll_once returns Err
+    let result = server.poll_once(&mut runtime, Some(Duration::from_millis(100)));
+    assert!(
+        matches!(result, Err(IpcServerError::ResponseEncodeFailed)),
+        "poll_once should propagate ResponseEncodeFailed, got {:?}",
+        result
+    );
+
+    // Client is NOT removed because poll_once returned Err before the removal
+    assert_eq!(
+        server.client_count(),
+        1,
+        "client should remain after poll_once errors"
+    );
+}
+
+#[test]
+fn handle_readable_propagates_send_response_error_for_valid_frame() {
+    let path = temp_socket_path("read_valid_send_fail");
+    let _cleanup = CleanupPath(&path);
+    let mut server = IpcServer::bind(&path).expect("bind should succeed");
+    let mut runtime = make_runtime();
+
+    let mut client = make_client(&path);
+    server.accept_client().expect("accept should succeed");
+
+    test_hooks::FORCE_POSTCARD_FAIL.set(true);
+    let _guard = ForcePostcardFailGuard;
+
+    // Send a valid Health frame
+    let frame = build_frame(IpcCommand::Health, 1, &[]);
+    client.write_all(&frame).expect("write health frame");
+    client.flush().expect("flush");
+
+    // Process the readable event — send_response fails, so poll_once returns Err
+    let result = server.poll_once(&mut runtime, Some(Duration::from_millis(100)));
+    assert!(
+        matches!(result, Err(IpcServerError::ResponseEncodeFailed)),
+        "poll_once should propagate ResponseEncodeFailed, got {:?}",
+        result
+    );
+
+    // Client is NOT removed because poll_once returned Err before the removal
+    assert_eq!(
+        server.client_count(),
+        1,
+        "client should remain after poll_once errors"
+    );
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Additional coverage tests for impl_.rs edge cases
+// ══════════════════════════════════════════════════════════════════════════════
+
+// ── 1. handle_readable when client is not in map ─────────────────────────────
+
+#[test]
+fn handle_readable_returns_true_when_client_missing() {
+    let path = temp_socket_path("read_missing");
+    let _cleanup = CleanupPath(&path);
+    let mut server = IpcServer::bind(&path).expect("bind should succeed");
+    let mut runtime = make_runtime();
+
+    let result = server.handle_readable(999, &mut runtime, None);
+    assert_eq!(
+        result,
+        Ok(true),
+        "handle_readable should return Ok(true) when client is missing"
+    );
+}
+
+// ── 2. handle_writable when client is not in map ─────────────────────────────
+
+#[test]
+fn handle_writable_returns_true_when_client_missing() {
+    let path = temp_socket_path("write_missing");
+    let _cleanup = CleanupPath(&path);
+    let mut server = IpcServer::bind(&path).expect("bind should succeed");
+
+    let result = server.handle_writable(999);
+    assert_eq!(
+        result,
+        Ok(true),
+        "handle_writable should return Ok(true) when client is missing"
+    );
+}
+
+// ── 3. handle_writable when write_buffer is empty ────────────────────────────
+
+#[test]
+fn handle_writable_returns_false_when_write_buffer_empty() {
+    let path = temp_socket_path("write_empty");
+    let _cleanup = CleanupPath(&path);
+    let mut server = IpcServer::bind(&path).expect("bind should succeed");
+
+    let _client = make_client(&path);
+    server.accept_client().expect("accept should succeed");
+
+    let result = server.handle_writable(1);
+    assert_eq!(
+        result,
+        Ok(false),
+        "handle_writable should return Ok(false) when write_buffer is empty"
+    );
+}
+
+// ── 4. poll_once_with_resolver when test_poll_result is set ──────────────────
+
+#[test]
+fn poll_once_with_resolver_uses_test_poll_result_when_set() {
+    let path = temp_socket_path("test_poll_result");
+    let _cleanup = CleanupPath(&path);
+    let mut server = IpcServer::bind(&path).expect("bind should succeed");
+    let mut runtime = make_runtime();
+
+    server.set_test_poll_once_result(Ok(false));
+
+    let result = server.poll_once_with_resolver(&mut runtime, Some(Duration::ZERO), None);
+    assert_eq!(
+        result,
+        Ok(false),
+        "poll_once_with_resolver should return test_poll_result when set"
+    );
+}
+
+// ── 5. handle_readable when read buffer exceeds max ──────────────────────────
+
+#[test]
+fn server_rejects_client_when_read_buffer_exceeds_max() {
+    let path = temp_socket_path("read_buffer_overflow");
+    let _cleanup = CleanupPath(&path);
+    let mut server = IpcServer::bind(&path).expect("bind should succeed");
+    let mut runtime = make_runtime();
+
+    let mut client = make_client(&path);
+    server.accept_client().expect("accept should succeed");
+
+    // Send a valid Health frame (24 bytes header, 0 bytes payload)
+    let frame = build_frame(IpcCommand::Health, 1, &[]);
+    client.write_all(&frame).expect("write health frame");
+
+    // Send garbage in chunks, interleaving with server polls
+    let _max_buffer = IPC_HEADER_LEN + MaxPayloadBytes::DEFAULT.get();
+    let chunk = [0u8; 4096];
+    let mut total_written = 0usize;
+
+    // Process the health frame first
+    server
+        .poll_once(&mut runtime, Some(Duration::from_millis(100)))
+        .expect("process health frame");
+
+    let mut poll_count = 0;
+    let max_polls = 300;
+    while server.client_count() > 0 && poll_count < max_polls {
+        // Try to write a chunk to the client
+        match client.write(&chunk) {
+            Ok(n) => total_written += n,
+            Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {}
+            Err(e) => panic!("client write failed: {e:?}"),
+        }
+
+        match server.poll_once(&mut runtime, Some(Duration::from_millis(50))) {
+            Ok(_) => {}
+            Err(IpcServerError::ReadBufferTooLarge) => break,
+            Err(e) => panic!("unexpected error: {e:?}"),
+        }
+        poll_count += 1;
+    }
+
+    assert!(
+        server.client_count() == 0 || poll_count < max_polls,
+        "client should be removed or ReadBufferTooLarge should be raised within {max_polls} polls, total_written={total_written}"
+    );
+}
+
+

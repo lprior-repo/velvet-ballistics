@@ -819,16 +819,19 @@ mod tests {
         let server_stream = server.client_stream_mut(1).unwrap();
         let mut buf = vec![0u8; crate::IPC_HEADER_LEN];
         let mut total_read = 0usize;
-        let deadline = std::time::Instant::now() + Duration::from_millis(500);
-        while total_read < crate::IPC_HEADER_LEN {
-            if std::time::Instant::now() > deadline {
-                panic!("timeout reading from server stream");
-            }
+        for _ in 0..100_000 {
             match server_stream.read(&mut buf[total_read..]) {
                 Ok(0) => panic!("unexpected EOF reading from server stream"),
-                Ok(n) => total_read += n,
+                Ok(n) => {
+                    total_read += n;
+                    if total_read >= crate::IPC_HEADER_LEN {
+                        break;
+                    }
+                    continue;
+                }
                 Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
-                    std::thread::sleep(Duration::from_millis(5));
+                    std::hint::spin_loop();
+                    continue;
                 }
                 Err(e) => panic!("read error from server stream: {e}"),
             }
@@ -846,15 +849,19 @@ mod tests {
 
         let mut payload_buf = vec![0u8; encoded_payload.len()];
         total_read = 0;
-        while total_read < encoded_payload.len() {
-            if std::time::Instant::now() > deadline {
-                panic!("timeout reading payload from server stream");
-            }
+        for _ in 0..100_000 {
             match server_stream.read(&mut payload_buf[total_read..]) {
                 Ok(0) => panic!("unexpected EOF reading payload from server stream"),
-                Ok(n) => total_read += n,
+                Ok(n) => {
+                    total_read += n;
+                    if total_read >= encoded_payload.len() {
+                        break;
+                    }
+                    continue;
+                }
                 Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
-                    std::thread::sleep(Duration::from_millis(5));
+                    std::hint::spin_loop();
+                    continue;
                 }
                 Err(e) => panic!("read error from server stream payload: {e}"),
             }
