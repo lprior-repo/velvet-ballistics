@@ -1,0 +1,5 @@
+error[E0608]: cannot index into a value of type `SlotBank<i32, 4>`
+ --> tests/compile-fail/forbid_unchecked_indexing.rs
+  |
+  |     let _val: i32 = bank[idx];
+  |                         ^^^^^

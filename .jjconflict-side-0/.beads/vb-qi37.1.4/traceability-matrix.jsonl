@@ -1,0 +1,15 @@
+{"contract_clause":"INV-RC-001","tests":["integ_rc_boundary_action_payloads_001"],"proofs":["VERUS-INV-RC-001","TLA-RC-SAFE"],"review":"contract-verification-review.md"}
+{"contract_clause":"INV-RC-002","tests":["integ_rc_boundary_slot_taint_002"],"proofs":["VERUS-INV-RC-002","TLA-RC-SAFE"],"review":"contract-verification-review.md"}
+{"contract_clause":"INV-RC-003","tests":["integ_rc_gap_action_payloads_001","integ_rc_boundary_action_payloads_003"],"proofs":["VERUS-INV-RC-003","TLA-RC-SAFE","INTEG-RC-GAP-001"],"review":"contract-verification-review.md"}
+{"contract_clause":"INV-RC-004","tests":["integ_rc_boundary_pending_actions_004"],"proofs":["VERUS-INV-RC-004","TLA-RC-SAFE"],"review":"contract-verification-review.md"}
+{"contract_clause":"INV-RC-005","tests":["integ_rc_gap_action_payloads_001"],"proofs":["VERUS-INV-RC-005"],"review":"contract-verification-review.md"}
+{"contract_clause":"INV-RC-006","tests":["integ_rc_gap_digest_check_full_002"],"proofs":["VERUS-INV-RC-008"],"review":"contract-verification-review.md"}
+{"contract_clause":"INV-RC-007","tests":["integ_rc_lifecycle_001"],"proofs":["TLA-RC-007","INTEG-RC-LIFECYCLE"],"review":"contract-verification-review.md"}
+{"contract_clause":"INV-RC-008","tests":["integ_rc_gap_digest_check_full_002"],"proofs":["VERUS-INV-RC-008","INTEG-RC-GAP-002"],"review":"contract-verification-review.md"}
+{"contract_clause":"INV-RC-009","tests":["integ_rc_gap_digest_check_full_003"],"proofs":["VERUS-INV-RC-009","INTEG-RC-GAP-003"],"review":"contract-verification-review.md"}
+{"contract_clause":"PRE-RC-001","tests":["kani_codec_001"],"proofs":["KANI-CODEC"],"review":"contract-verification-review.md"}
+{"contract_clause":"PRE-RC-002","tests":["integ_rc_gap_digest_check_full_002","integ_rc_gap_digest_check_full_003"],"proofs":["VERUS-INV-RC-008","VERUS-INV-RC-009"],"review":"contract-verification-review.md"}
+{"contract_clause":"POST-RC-001","tests":["integ_rc_boundary_all_flags_001"],"proofs":["VERUS-POST-RC-001","TLA-RC-SAFE"],"review":"contract-verification-review.md"}
+{"contract_clause":"POST-RC-002","tests":["integ_rc_gap_digest_check_full_002","integ_rc_gap_digest_check_full_003"],"proofs":["VERUS-INV-RC-008","VERUS-INV-RC-009"],"review":"contract-verification-review.md"}
+{"contract_clause":"POST-RC-003","tests":["integ_rc_lifecycle_001"],"proofs":["TLA-RC-007","INTEG-RC-LIFECYCLE"],"review":"contract-verification-review.md"}
+{"contract_clause":"POST-RC-004","tests":["integ_rc_boundary_action_payloads_003","integ_rc_gap_action_payloads_001"],"proofs":["VERUS-POST-RC-004","INTEG-RC-GAP-001"],"review":"contract-verification-review.md"}

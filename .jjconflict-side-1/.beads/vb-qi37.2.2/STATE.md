@@ -1,0 +1,27 @@
+# vb-qi37.2.2 STATE
+
+- Current State: State 15 (Landing and cleanup)
+- Title: runtime: Enforce per-run value arena caps
+- Branch/Workspace: `/home/lewis/src/Velvet-ballistics`
+- Artifact Status (as of 2026-05-10):
+  - `contract.md` — CREATED ✓ (11.7K)
+  - `lean-contract.md` — CREATED ✓ (3.3K) — WAIVER-001: ValueStore mutable Rust
+  - `verification-layers.md` — CREATED ✓ (7.3K)
+  - `proof-obligations.jsonl` — CREATED ✓ (12.3K)
+  - `traceability-matrix.jsonl` — CREATED ✓ (10.5K)
+  - `martin-fowler-tests.md` — CREATED ✓ (12.2K)
+  - `test-plan.md` — CREATED ✓ (7.1K)
+  - `contract-verification-review.md` — APPROVED ✓
+  - `test-plan-review.md` — APPROVED ✓ (2026-05-10)
+- Implementation Status:
+  - `crates/vb_core/src/value_store.rs` — EXISTS with arena cap enforcement
+  - Tests: 69 value_store tests pass in vb_core
+  - Integration: 2 vb_runtime value_store tests pass
+  - Moon :check — PASS ✓
+  - Moon :test — 9770 tests PASS ✓
+  - Moon :verify-fast — PASS ✓
+  - Moon :verify-standard — PASS ✓
+  - verify-deep — FAILS (pre-existing `vb_nf2u_ui_release_acceptance` unrelated to this bead)
+  - verify-all — FAILS (pre-existing `vb_nf2u_ui_release_acceptance` unrelated to this bead)
+- Note: Kani proof harnesses are not present in the codebase (pre-existing gap, not introduced by vb-qi37.2.2)
+- Landing: 2026-05-10
