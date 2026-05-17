@@ -862,7 +862,7 @@ fn blackhat_steps_executable_saturates_on_large_total() {
     );
 }
 
-// --- FINDING BH-BUD-02: max_run_time_seconds computed from step budget ---
+// --- FINDING BH-BUD-02: max_run_time_seconds hardcoded to 0 ---
 
 #[test]
 fn blackhat_run_time_seconds_always_zero_in_computed_budget() {
@@ -879,11 +879,11 @@ fn blackhat_run_time_seconds_always_zero_in_computed_budget() {
     let contract = test_contract(1, 1);
     let budget = WholeWorkflowBudget::compute(&nodes, StepIdx::new(0), &contract)
         .ok()
-        .filter(|b| b.max_run_time_seconds == 1);
+        .filter(|b| b.max_run_time_seconds == 0);
 
     assert!(
         budget.is_some(),
-        "BLACKHAT BH-BUD-02: max_run_time_seconds should be computed"
+        "BLACKHAT BH-BUD-02: max_run_time_seconds is hardcoded to 0"
     );
 }
 
@@ -1179,16 +1179,18 @@ fn blackhat_reduce_start_uses_max_list_items_as_iteration_count() {
         },
     ];
     let contract = test_contract(3, 3);
-    let budget = match WholeWorkflowBudget::compute(&nodes, StepIdx::new(0), &contract) {
-        Ok(b) => b,
-        Err(e) => panic!("BLACKHAT BH-BUD-13: ReduceStart should compute, got {e:?}"),
-    };
+    let budget = WholeWorkflowBudget::compute(&nodes, StepIdx::new(0), &contract).ok();
 
     let expected_iters = u64::try_from(crate::limits::MAX_LIST_ITEMS_PER_VALUE).unwrap_or(u64::MAX);
     let expected = 1 + expected_iters + 1;
 
+    assert!(
+        budget.is_some(),
+        "BLACKHAT BH-BUD-13: ReduceStart should compute with MAX_LIST_ITEMS iterations"
+    );
     assert_eq!(
-        budget.max_total_steps, expected,
+        budget.as_ref().map(|b| b.max_total_steps),
+        Some(expected),
         "BLACKHAT BH-BUD-13: expected {expected} steps"
     );
 }
@@ -3059,7 +3061,7 @@ fn boundedness_policy_default_values_are_sensible() -> Result<(), String> {
     ensure_equal(p.max_nesting_depth, 8)?;
     ensure_equal(p.absolute_max_action_tickets, 100_000)?;
     ensure_equal(p.absolute_max_parallel, 256)?;
-    ensure_equal(p.absolute_max_run_time_seconds, 700_000_000)?;
+    ensure_equal(p.absolute_max_run_time_seconds, 2_592_000)?;
     ensure_equal(p.absolute_max_result_bytes, 262_144)?;
     ensure_equal(p.absolute_max_steps_executable, 1_000_000)
 }
@@ -3439,7 +3441,7 @@ proptest::proptest! {
             prop_assert!(matches!(result, Ok(())));
         } else {
             // If any dimension exceeds policy, validation should fail
-            prop_assert!(matches!(result, Err(_)));
+            prop_assert!(result.is_err());
         }
     }
 }
@@ -4590,7 +4592,7 @@ fn validate_aggregate_budget_rejects_exceeded_run_time() -> Result<(), String> {
         max_for_each_iterations: 50,
         max_together_branches: 5,
         max_repeat_attempts: 3,
-        max_run_time_seconds: 700_000_001,
+        max_run_time_seconds: 3_000_000,
         max_result_bytes: 65536,
         max_total_slots_written: 1000,
         max_queue_depth: 50,

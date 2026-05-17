@@ -160,10 +160,7 @@ mod tests {
             Some(data),
             Vec::new(),
         );
-        assert!(
-            matches!(envelope, Ok(_)),
-            "Workflow kind should allow data field"
-        );
+        assert!(matches!(envelope, Ok(_)), "Workflow kind should allow data field");
     }
 
     #[test]
