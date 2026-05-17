@@ -311,7 +311,7 @@
 
 **Remote Proof**:
 - `origin/main` before evidence commit: `39df7f43ad59e15898c2aa773d34be781d6754e1`
-- Final pushed evidence commit is recorded in `landing-report.md`/session handoff after push.
+- Pushed evidence commit: `27494fe13cd8e61b27e6d34b8b017b1304de58d8`
 
 **Next Gate**: State 15 — Cleanup
 
@@ -324,9 +324,10 @@
 - Wrote `.beads/vb-core-lower-coverage-matrix/landing-report.md`.
 - Wrote `.beads/vb-core-lower-coverage-matrix/cleanup-report.md`.
 - Preserved unrelated source checkout files.
-- Planned bead close only after remote main proof exists, followed by `bd dolt push`.
+- Ran `bd close vb-core-lower-coverage-matrix --force` after remote main proof existed.
+- Ran `bd dolt push` successfully.
 
-**Result**: Ready for final remote proof, bead close, and bead Dolt sync.
+**Result**: Remote proof exists, bead closed, and bead Dolt sync complete.
 
 ---
 

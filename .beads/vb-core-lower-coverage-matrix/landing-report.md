@@ -24,7 +24,8 @@
 ## Remote Main Evidence
 - `origin/main` before evidence commit: `39df7f43ad59e15898c2aa773d34be781d6754e1`
 - Evidence artifacts staged for remote main under `.beads/vb-core-lower-coverage-matrix/`.
-- Final pushed commit hash is recorded in the session handoff output after `git push`.
+- Pushed evidence commit: `27494fe13cd8e61b27e6d34b8b017b1304de58d8`
 
 ## Bead Close Rule
-- `bd close vb-core-lower-coverage-matrix --force` may run only after remote main contains the evidence artifacts.
+- `bd close vb-core-lower-coverage-matrix --force` ran after remote main contained the evidence artifacts.
+- `bd dolt push` completed successfully.

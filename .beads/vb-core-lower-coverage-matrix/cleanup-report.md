@@ -17,4 +17,6 @@
 - No cleanup is required in `/home/lewis/src/velvet-ballistics`; no intentional mutations were made there.
 
 ## Bead Sync
-- Bead close and `bd dolt push` are executed only after remote main proof exists.
+- Remote main proof existed before close: `27494fe13cd8e61b27e6d34b8b017b1304de58d8`.
+- `bd close vb-core-lower-coverage-matrix --force`: SUCCESS.
+- `bd dolt push`: SUCCESS.
