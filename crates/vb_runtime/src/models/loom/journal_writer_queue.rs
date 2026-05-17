@@ -66,7 +66,9 @@ fn journal_writer_queue_append_drain() {
             q2.drain(1);
         });
 
-        let _ = q1.try_append();
+        if q1.try_append() {
+            q1.check_invariants();
+        }
         q1.check_invariants();
     });
 }
@@ -81,17 +83,23 @@ fn journal_writer_queue_concurrent_append() {
 
         loom::thread::spawn(move || {
             for _ in 0..3 {
-                let _ = q1.try_append();
+                if q1.try_append() {
+                    q1.check_invariants();
+                }
             }
         });
         loom::thread::spawn(move || {
             for _ in 0..2 {
-                let _ = q2.try_append();
+                if q2.try_append() {
+                    q2.check_invariants();
+                }
             }
         });
 
         for _ in 0..5 {
-            let _ = q3.try_append();
+            if q3.try_append() {
+                q3.check_invariants();
+            }
         }
 
         queue.check_invariants();
@@ -107,12 +115,18 @@ fn journal_writer_queue_at_capacity() {
 
         loom::thread::spawn(move || {
             for _ in 0..2 {
-                let _ = q1.try_append();
+                if q1.try_append() {
+                    q1.check_invariants();
+                }
             }
         });
         loom::thread::spawn(move || {
-            let _ = q2.try_append();
-            let _ = q2.try_append();
+            if q2.try_append() {
+                q2.check_invariants();
+            }
+            if q2.try_append() {
+                q2.check_invariants();
+            }
         });
 
         queue.check_invariants();

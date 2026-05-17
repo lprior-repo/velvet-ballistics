@@ -826,7 +826,9 @@ struct CleanupPath<'a>(&'a std::path::Path);
 
 impl Drop for CleanupPath<'_> {
     fn drop(&mut self) {
-        drop(std::fs::remove_file(self.0));
+        if let Err(error) = std::fs::remove_file(self.0) {
+            eprintln!("cleanup remove_file failed: {error}");
+        }
     }
 }
 
@@ -2165,7 +2167,9 @@ struct CleanupDir<'a>(&'a std::path::Path);
 
 impl Drop for CleanupDir<'_> {
     fn drop(&mut self) {
-        drop(std::fs::remove_dir_all(self.0));
+        if let Err(error) = std::fs::remove_dir_all(self.0) {
+            eprintln!("cleanup remove_dir_all failed: {error}");
+        }
     }
 }
 

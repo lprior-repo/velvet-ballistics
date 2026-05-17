@@ -521,7 +521,10 @@ mod tests {
     #[test]
     fn execute_do_returns_capability_denied_when_required_capability_not_granted() {
         let mut run = RunFrame::new(RunId::new(1), StepIdx::new(0), 4, 2).unwrap();
-        let _ = run.write_slot(SlotIdx::new(0), vb_core::value::SlotValue::I64(0));
+        assert_eq!(
+            run.write_slot(SlotIdx::new(0), vb_core::value::SlotValue::I64(0)),
+            Ok(())
+        );
         let action = ActionId::new(0);
         let required_cap = Capability::new("secrets".into(), action);
         let contract = make_contract_with_capability(action, required_cap);
@@ -550,7 +553,10 @@ mod tests {
     #[test]
     fn execute_do_succeeds_when_required_capability_is_granted() {
         let mut run = RunFrame::new(RunId::new(1), StepIdx::new(0), 4, 2).unwrap();
-        let _ = run.write_slot(SlotIdx::new(0), vb_core::value::SlotValue::I64(0));
+        assert_eq!(
+            run.write_slot(SlotIdx::new(0), vb_core::value::SlotValue::I64(0)),
+            Ok(())
+        );
         let action = ActionId::new(0);
         let required_cap = Capability::new("secrets".into(), action);
         let contract = make_contract_with_capability(action, required_cap);

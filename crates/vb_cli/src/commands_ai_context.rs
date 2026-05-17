@@ -585,26 +585,27 @@ fn write_stdout_line(args: std::fmt::Arguments<'_>) -> io::Result<()> {
 fn write_stderr_line(args: std::fmt::Arguments<'_>) {
     let stderr = io::stderr();
     let mut handle = stderr.lock();
-    if handle
+    if let Err(error) = handle
         .write_fmt(args)
         .and_then(|()| handle.write_all(b"\n"))
-        .is_err()
-    {}
+    {
+        eprintln!("stderr write failed: {error}");
+    }
 }
 
 fn json_out(value: &Value, format: OutputFormat) {
     match format {
         OutputFormat::Json | OutputFormat::Jsonl => {
             if let Ok(text) = serde_json::to_string(value) {
-                match write_stdout_line(format_args!("{text}")) {
-                    Ok(()) | Err(_) => {}
+                if let Err(error) = write_stdout_line(format_args!("{text}")) {
+                    write_stderr_line(format_args!("stdout write failed: {error}"));
                 }
             }
         }
         OutputFormat::Text => {
             if let Ok(text) = serde_json::to_string_pretty(value) {
-                match write_stdout_line(format_args!("{text}")) {
-                    Ok(()) | Err(_) => {}
+                if let Err(error) = write_stdout_line(format_args!("{text}")) {
+                    write_stderr_line(format_args!("stdout write failed: {error}"));
                 }
             }
         }

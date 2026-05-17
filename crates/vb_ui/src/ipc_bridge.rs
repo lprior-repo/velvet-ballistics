@@ -142,12 +142,18 @@ impl Default for IpcBridge {
         let (req_tx, req_rx) = mpsc::channel::<IpcRequest>();
         let (rep_tx, rep_rx) = mpsc::channel::<IpcReply>();
 
-        let handle = thread::Builder::new()
+        let handle = match thread::Builder::new()
             .name("vb-ipc".to_string())
             .spawn(move || {
                 ipc_thread(req_rx, rep_tx);
             })
-            .ok();
+        {
+            Ok(handle) => Some(handle),
+            Err(error) => {
+                eprintln!("ipc bridge thread spawn failed: {error}");
+                None
+            }
+        };
 
         Self {
             tx: req_tx,
@@ -633,7 +639,7 @@ mod tests {
     fn bridge_connect_to_nonexistent_socket_fails() {
         let mut bridge = IpcBridge::new();
         let path = PathBuf::from("/tmp/vb_ipc_bridge_test_nonexistent_7f3a.socket");
-        bridge.send(IpcRequest::Connect { socket_path: path }).ok();
+        assert!(bridge.send(IpcRequest::Connect { socket_path: path }).is_ok());
 
         // Give the background thread time to process.
         let mut replies = Vec::new();
@@ -659,7 +665,7 @@ mod tests {
     #[test]
     fn bridge_send_without_connect_returns_not_connected_error() {
         let mut bridge = IpcBridge::new();
-        bridge.send(IpcRequest::Health).ok();
+        assert!(bridge.send(IpcRequest::Health).is_ok());
 
         let mut replies = Vec::new();
         let deadline = std::time::Instant::now() + Duration::from_millis(500);
@@ -680,13 +686,13 @@ mod tests {
     #[test]
     fn bridge_submit_run_without_connect_returns_not_connected_error() {
         let mut bridge = IpcBridge::new();
-        bridge
+        assert!(bridge
             .send(IpcRequest::SubmitRun {
                 run_id: RunId::new(1),
                 workflow: WorkflowDigest::from_bytes([0; 32]),
                 input: Vec::new(),
             })
-            .ok();
+            .is_ok());
 
         let mut replies = Vec::new();
         let deadline = std::time::Instant::now() + Duration::from_millis(500);
@@ -707,13 +713,12 @@ mod tests {
     #[test]
     fn bridge_answer_ask_without_connect_returns_not_connected_error() {
         let mut bridge = IpcBridge::new();
-        bridge
+        assert!(bridge
             .send(IpcRequest::AnswerAsk {
                 run_id: RunId::new(1),
                 ticket: 0,
                 answer: Vec::new(),
-            })
-            .ok();
+            }).is_ok());
 
         let mut replies = Vec::new();
         let deadline = std::time::Instant::now() + Duration::from_millis(500);
@@ -734,12 +739,11 @@ mod tests {
     #[test]
     fn bridge_drain_trace_without_connect_returns_not_connected_error() {
         let mut bridge = IpcBridge::new();
-        bridge
+        assert!(bridge
             .send(IpcRequest::DrainTrace {
                 run_id: RunId::new(1),
                 max_records: 10,
-            })
-            .ok();
+            }).is_ok());
 
         let mut replies = Vec::new();
         let deadline = std::time::Instant::now() + Duration::from_millis(500);

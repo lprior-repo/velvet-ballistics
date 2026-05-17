@@ -83,7 +83,9 @@ fn bounded_queue_invariants() {
             q2.release();
         });
 
-        let _ = q1.try_take();
+        if q1.try_take() {
+            q1.check_invariants();
+        }
         q1.check_invariants();
     });
 }
@@ -104,12 +106,16 @@ fn bounded_queue_multiple_operations() {
         });
         loom::thread::spawn(move || {
             for _ in 0..2 {
-                let _ = q3.try_take();
+                if q3.try_take() {
+                    q3.check_invariants();
+                }
             }
         });
 
         for _ in 0..2 {
-            let _ = q1.try_take();
+            if q1.try_take() {
+                q1.check_invariants();
+            }
         }
 
         queue.check_invariants();

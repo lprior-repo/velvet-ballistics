@@ -63,10 +63,14 @@ fn action_completion_cancel_race() {
         let t2 = ticket.clone();
 
         loom::thread::spawn(move || {
-            let _ = t1.try_complete();
+            if t1.try_complete() {
+                t1.check_invariants();
+            }
         });
 
-        let _ = t2.try_cancel();
+        if t2.try_cancel() {
+            t2.check_invariants();
+        }
         ticket.check_invariants();
     });
 }
@@ -80,13 +84,19 @@ fn action_completion_cancel_concurrent() {
         let t3 = ticket.clone();
 
         loom::thread::spawn(move || {
-            let _ = t1.try_complete();
+            if t1.try_complete() {
+                t1.check_invariants();
+            }
         });
         loom::thread::spawn(move || {
-            let _ = t2.try_cancel();
+            if t2.try_cancel() {
+                t2.check_invariants();
+            }
         });
         loom::thread::spawn(move || {
-            let _ = t3.try_complete();
+            if t3.try_complete() {
+                t3.check_invariants();
+            }
         });
 
         ticket.check_invariants();

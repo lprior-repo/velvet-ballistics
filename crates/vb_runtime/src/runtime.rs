@@ -384,7 +384,10 @@ impl Runtime {
                             steps_completed = steps_completed.saturating_add(1);
                         }
                         Ok(_) => {}
-                        Err(_) => {}
+                        Err(_) => {
+                            step_index = step_index.saturating_add(1);
+                            continue;
+                        }
                     }
                     step_index = step_index.saturating_add(1);
                 }

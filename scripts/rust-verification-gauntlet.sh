@@ -50,9 +50,21 @@ run_cargo() {
 
 FAILED=0
 
+run_ignored_fallible_gate() {
+    info "Running: bash scripts/check-ignored-fallible-results.sh"
+    if cd "$WS_DIR" && bash scripts/check-ignored-fallible-results.sh; then
+        pass "GATE-IGNORED-FALLIBLE-RESULTS"
+        return 0
+    else
+        fail "GATE-IGNORED-FALLIBLE-RESULTS"
+        return 1
+    fi
+}
+
 case "$MODE" in
   fast)
     info "Mode: fast (clippy + unit tests)"
+    run_ignored_fallible_gate || exit 1
     run_cargo "cargo clippy -p vb_compile --lib -- -D warnings -A unsafe_code" "STATIC-LINT-001" || FAILED=1
     run_cargo "cargo test -p vb_compile --lib expression_bytecode -- --nocapture" "UNIT-EXPR-BYTESTACK-001 + UNIT-ACCESSOR-REF-001 + ERR-TAXONOMY-001" || FAILED=1
     run_cargo "cargo test -p vb_compile --lib slot_compiler -- --nocapture" "UNIT-SLOT-COMPILER-001 + UNIT-BUILD-PARTS-001" || FAILED=1
@@ -62,6 +74,7 @@ case "$MODE" in
 
   standard)
     info "Mode: standard (fast + Kani expression/slot/constant/accessor)"
+    run_ignored_fallible_gate || exit 1
     run_cargo "cargo clippy -p vb_compile --lib -- -D warnings -A unsafe_code" "STATIC-LINT-001" || FAILED=1
     run_cargo "cargo test -p vb_compile --lib expression_bytecode -- --nocapture" "UNIT-EXPR-BYTESTACK-001" || FAILED=1
     run_cargo "cargo test -p vb_compile --lib slot_compiler -- --nocapture" "UNIT-SLOT-COMPILER-001" || FAILED=1

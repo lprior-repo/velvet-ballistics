@@ -1541,7 +1541,9 @@ fn execute_step_isolated(
         Ok(f) => f,
         Err(code) => return code,
     };
-    write_step_inputs(&mut frame, inputs);
+    if let Err(code) = write_step_inputs(&mut frame, inputs) {
+        return code;
+    }
     let mut store = vb_core::ValueStore::new();
     let signal = match vb_core::step_once(compiled, &mut frame, &mut store) {
         Ok(s) => s,
@@ -1570,13 +1572,20 @@ fn build_step_frame(
     }
 }
 
-fn write_step_inputs(frame: &mut vb_core::RunFrame, inputs: &[vb_core::SlotValue]) {
+fn write_step_inputs(
+    frame: &mut vb_core::RunFrame,
+    inputs: &[vb_core::SlotValue],
+) -> Result<(), ExitCode> {
     for (i, value) in inputs.iter().enumerate() {
         if let Ok(slot) = u16::try_from(i) {
             let slot_idx = vb_core::SlotIdx::new(slot);
-            drop(frame.write_slot(slot_idx, *value));
+            if let Err(error) = frame.write_slot(slot_idx, *value) {
+                errln!("step input write error: {error}");
+                return Err(setup_exit_code());
+            }
         }
     }
+    Ok(())
 }
 
 fn print_step_result(
@@ -4588,8 +4597,8 @@ fn write_diagnostic_message_stderr(message: &str, code: CliExitCode, output: Out
             .and_then(|()| handle.write_all(b"\n")),
         OutputFormat::Text => writeln!(handle, "{message}"),
     };
-    match write_result {
-        Ok(()) | Err(_) => {}
+    if let Err(error) = write_result {
+        eprintln!("diagnostic write failed: {error}");
     }
 }
 
@@ -4700,22 +4709,24 @@ fn output_format_from_args(args: &[OsString]) -> OutputFormat {
 pub(crate) fn write_stdout_line(args: std::fmt::Arguments<'_>) {
     let stdout = io::stdout();
     let mut handle = stdout.lock();
-    match handle.write_fmt(args) {
-        Ok(()) | Err(_) => {}
+    if let Err(error) = handle.write_fmt(args) {
+        eprintln!("stdout write failed: {error}");
+        return;
     }
-    match handle.write_all(b"\n") {
-        Ok(()) | Err(_) => {}
+    if let Err(error) = handle.write_all(b"\n") {
+        eprintln!("stdout newline write failed: {error}");
     }
 }
 
 fn write_stderr_line(args: std::fmt::Arguments<'_>) {
     let stderr = io::stderr();
     let mut handle = stderr.lock();
-    match handle.write_fmt(args) {
-        Ok(()) | Err(_) => {}
+    if let Err(error) = handle.write_fmt(args) {
+        eprintln!("stderr write failed: {error}");
+        return;
     }
-    match handle.write_all(b"\n") {
-        Ok(()) | Err(_) => {}
+    if let Err(error) = handle.write_all(b"\n") {
+        eprintln!("stderr newline write failed: {error}");
     }
 }
 

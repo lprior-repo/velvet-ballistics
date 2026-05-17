@@ -734,7 +734,7 @@ fn write_step_inputs_populates_frame_slots() {
             return;
         };
         let inputs: Box<[vb_core::SlotValue]> = Box::from([vb_core::SlotValue::I64(42)]);
-        write_step_inputs(&mut frame, &inputs);
+        assert_eq!(write_step_inputs(&mut frame, &inputs), Ok(()));
         assert_eq!(
             frame.read_slot(SlotIdx::ZERO),
             Ok(&vb_core::SlotValue::I64(42))
