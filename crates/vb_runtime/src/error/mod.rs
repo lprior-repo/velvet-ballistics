@@ -132,6 +132,13 @@ pub enum RuntimeError {
         /// Preserved error source from the engine.
         source: Box<vb_core::errors::CoreError>,
     },
+    /// Target shard does not exist.
+    ShardNotFound {
+        /// Shard index that was not found.
+        shard: u32,
+    },
+    /// Migrate directive targeted the source shard (self-migrate).
+    MigrateSelf,
 }
 
 /// Result alias for runtime operations.

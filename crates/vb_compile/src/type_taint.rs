@@ -52,6 +52,7 @@ impl ValueFact {
     const fn merge(self, other: Self) -> Self {
         let taint = match (self.taint, other.taint) {
             (Taint::Secret, _) | (_, Taint::Secret) => Taint::Secret,
+            (Taint::DerivedFromSecret, _) | (_, Taint::DerivedFromSecret) => Taint::DerivedFromSecret,
             (Taint::Clean, Taint::Clean) => Taint::Clean,
         };
         Self {
@@ -274,14 +275,10 @@ fn validate_public_result(
     expression: &AstExpression,
     facts: &Facts<'_>,
 ) -> Result<(), CompileError> {
-    let fact = expression_fact(expression, facts, "finish.result")?;
-    if fact.taint == Taint::Secret {
-        Err(CompileError::SecretTaintLeak {
-            field: "finish.result",
-        })
-    } else {
-        Ok(())
-    }
+    // Section 47: No rejection of Secret or DerivedFromSecret results in Finish.
+    // Taint is tracked but does not cause rejection.
+    let _fact = expression_fact(expression, facts, "finish.result")?;
+    Ok(())
 }
 
 fn expression_fact(
@@ -390,9 +387,7 @@ fn helper_taint(
 ) -> Result<Taint, CompileError> {
     let mut taint = Taint::Clean;
     for arg in args {
-        if parsed_expression_fact(arg, facts, field)?.taint == Taint::Secret {
-            taint = Taint::Secret;
-        }
+        taint = taint.merge(parsed_expression_fact(arg, facts, field)?.taint);
     }
     Ok(taint)
 }

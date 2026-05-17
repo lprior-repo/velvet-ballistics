@@ -29,6 +29,8 @@ fn runtime_error_unit_tag(error: &RuntimeError) -> Option<u8> {
         RuntimeError::ActiveRunCapacityZero => Some(11),
         RuntimeError::EncodeFailed => Some(12),
         RuntimeError::SecretResultNotAllowed => Some(13),
+        RuntimeError::ShardNotFound { .. } => Some(14),
+        RuntimeError::MigrateSelf => Some(15),
         _ => None,
     }
 }
@@ -84,6 +86,7 @@ fn runtime_error_core_field_eq(left: &RuntimeError, right: &RuntimeError) -> boo
             RuntimeError::IpcPayloadSizeExceeded { size: a, max: b },
             RuntimeError::IpcPayloadSizeExceeded { size: c, max: d },
         ) => a == c && b == d,
+        (RuntimeError::ShardNotFound { shard: a }, RuntimeError::ShardNotFound { shard: b }) => a == b,
         _ => false,
     }
 }

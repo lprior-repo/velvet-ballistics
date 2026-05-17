@@ -36,6 +36,8 @@ impl RuntimeError {
     pub const ADMISSION_ARTIFACT_STALE_CODE: DiagnosticCode = DiagnosticCode::new(0x2019);
     pub const ADMISSION_DIGEST_MISMATCH_CODE: DiagnosticCode = DiagnosticCode::new(0x201A);
     pub const ENGINE_DRIVE_FAILED_CODE: DiagnosticCode = DiagnosticCode::new(0x201B);
+    pub const SHARD_NOT_FOUND_CODE: DiagnosticCode = DiagnosticCode::new(0x201C);
+    pub const MIGRATE_SELF_CODE: DiagnosticCode = DiagnosticCode::new(0x201D);
 
     #[must_use]
     pub fn diagnostic_code(&self) -> DiagnosticCode {
@@ -79,6 +81,8 @@ impl RuntimeError {
             Self::SecretResultNotAllowed => Self::SECRET_RESULT_NOT_ALLOWED_CODE,
             Self::IpcPayloadSizeExceeded { .. } => Self::IPC_PAYLOAD_SIZE_EXCEEDED_CODE,
             Self::EngineDriveFailed { .. } => Self::ENGINE_DRIVE_FAILED_CODE,
+            Self::ShardNotFound { .. } => Self::SHARD_NOT_FOUND_CODE,
+            Self::MigrateSelf => Self::MIGRATE_SELF_CODE,
         }
     }
 
@@ -127,7 +131,9 @@ impl RuntimeError {
             | Self::AdmissionCapabilityDenied { .. }
             | Self::EncodeFailed
             | Self::SecretResultNotAllowed
-            | Self::IpcPayloadSizeExceeded { .. } => None,
+            | Self::IpcPayloadSizeExceeded { .. }
+            | Self::ShardNotFound { .. }
+            | Self::MigrateSelf => None,
         }
     }
 }

@@ -200,18 +200,35 @@ pub fn fuzz_ipc_frame(data: &[u8]) {
     header.copy_from_slice(header_bytes);
 
     // Call the real decoder - this is what the fuzz target should exercise
-    let Ok(header) = decode_frame_header(&header) else {
-        return;
-    };
+    let header_result = decode_frame_header(&header);
+
+    // If header decode succeeded, verify round-trip consistency
+    if let Ok(decoded_header) = header_result {
+        // Verify decoded header can be re-encoded and matches original bytes
+        let encoded = decoded_header.encode().expect("encode must succeed");
+        assert_eq!(
+            &encoded[..],
+            header_bytes,
+            "re-encoded header must match original bytes"
+        );
+    }
 
     let Some(payload) = data.get(vb_ipc::IPC_HEADER_LEN..) else {
         return;
     };
 
     // Only attempt payload decode if there's actually payload data
-    if !payload.is_empty() && usize::try_from(header.payload_len).is_ok() {
-        match decode_frame_payload(&header, payload) {
-            Ok(_) | Err(_) => {}
+    if !payload.is_empty() {
+        if let Ok(header) = header_result {
+            // Payload decode must return a Result (never panic)
+            // Verify: Ok when lengths match, Err on length mismatch
+            let payload_len_usize = header.payload_len as usize;
+            let result = decode_frame_payload(&header, payload);
+            if payload.len() == payload_len_usize {
+                assert!(result.is_ok(), "decode must succeed when payload len matches header");
+            } else {
+                assert!(result.is_err(), "decode must fail when payload len mismatches header");
+            }
         }
     }
 }
@@ -327,13 +344,40 @@ pub fn fuzz_expression(data: &[u8]) {
     let Ok(program) = vb_expr::bytecode::compile_expr_with_pool(&ast, &mut constants) else {
         return;
     };
-    let _result = vb_expr::eval::eval_expr_program(&program, &[], &constants);
+    // Evaluation must not panic - it returns Result
+    let eval_result = vb_expr::eval::eval_expr_program(&program, &[], &constants);
+    // If compilation succeeded, evaluation must also produce a valid result
+    // (it may be an error, but it must be a typed error, not a panic)
+    if let Ok(value) = eval_result {
+        // The returned value must be a valid SlotValue type
+        let type_name = value.type_name();
+        assert!(
+            !type_name.is_empty(),
+            "evaluated expression must have a valid type name"
+        );
+    }
 }
 
 /// Exercises compiled IR postcard decode and validation.
 pub fn fuzz_compiled_ir(data: &[u8]) {
     if let Ok(parts) = postcard::from_bytes::<WorkflowParts>(data) {
-        let _workflow = vb_core::CompiledWorkflow::try_from_parts(parts);
+        let result = vb_core::CompiledWorkflow::try_from_parts(parts);
+        // If parts decode succeeded, workflow construction may succeed or fail
+        // but must not panic. If it succeeds, the workflow must be usable.
+        if let Ok(workflow) = result {
+            // Workflow must have at least one node (the entry step)
+            assert!(
+                workflow.node_count() >= 1,
+                "compiled workflow must have at least 1 node, got {}",
+                workflow.node_count()
+            );
+            // Workflow slot count must be non-zero for valid workflows
+            assert!(
+                workflow.slot_count() >= 1,
+                "compiled workflow must have at least 1 slot, got {}",
+                workflow.slot_count()
+            );
+        }
     }
 }
 
@@ -359,8 +403,18 @@ pub fn fuzz_accepted_artifact_envelope_qi37_4_2(data: &[u8]) {
 /// Exercises IR/codegen equivalence hooks over small compiled workflows.
 pub fn fuzz_generated_compare(data: &[u8]) {
     if let Ok(parts) = postcard::from_bytes::<WorkflowParts>(data) {
-        let _validated = vb_core::validate_compiled_workflow(&parts);
-        let _workflow = vb_core::CompiledWorkflow::try_from_parts(parts);
+        // Validation must not panic - it returns Result
+        let validated = vb_core::validate_compiled_workflow(&parts);
+        // If validation passes, workflow construction should also succeed
+        // parts is moved here, validate already happened above with reference
+        let workflow = vb_core::CompiledWorkflow::try_from_parts(parts);
+        // Both must agree on success/failure
+        assert!(
+            validated.is_ok() == workflow.is_ok(),
+            "validation and workflow construction must agree: validated={:?}, workflow={:?}",
+            validated,
+            workflow.is_ok()
+        );
     }
 
     let _source = selected_workflow(data);

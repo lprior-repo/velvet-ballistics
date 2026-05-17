@@ -17,6 +17,8 @@ mod tests {
     use vb_core::value::Taint;
     use vb_core::value_store::ValueStore;
     use vb_core::{ConstIdx, ConstValue, ExprOp, ExprProgram, SlotIdx, SlotValue};
+    use proptest::prelude::*;
+    use proptest;
 
     fn make_f64(value: f64) -> FiniteF64 {
         FiniteF64::new(value).expect("expected finite f64")
@@ -2049,5 +2051,706 @@ mod tests {
         assert!(!(nan > f64::NEG_INFINITY), "NaN > -Inf must be false");
         assert!(!(nan == f64::MAX), "NaN == MAX must be false");
         assert!(!(nan == f64::MIN), "NaN == MIN must be false");
+    }
+
+    // ============================================================================
+    // AND/OR Short-Circuit Tests (LETHAL-2)
+    // ============================================================================
+
+    // --- B1: AND returns SlotValue::Bool(true) when both operands are true ---
+
+    #[test]
+    fn and_returns_true_when_both_operands_are_true() -> ExprResult<()> {
+        let result =
+            eval_binary_op(BinaryOp::And, SlotValue::Bool(true), SlotValue::Bool(true))?;
+        assert_eq!(result, SlotValue::Bool(true));
+        Ok(())
+    }
+
+    // --- B2: AND returns false when first is false but evaluates BOTH operands ---
+    // Section 46: both operands must be evaluated before boolean operator applies.
+
+    #[test]
+    fn and_returns_false_when_first_is_false_and_evaluates_right() -> ExprResult<()> {
+        // Section 46: left=false, right=non-bool → both evaluated → TypeMismatch
+        let result =
+            eval_binary_op(BinaryOp::And, SlotValue::Bool(false), SlotValue::I64(0));
+        let Err(ExprError::TypeMismatch { expected, found }) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected TypeMismatch since both operands evaluated".into(),
+            });
+        };
+        assert_eq!(expected, "boolean");
+        assert_eq!(found, "number");
+        Ok(())
+    }
+
+    // --- B3: AND returns false when first is true and second is false ---
+
+    #[test]
+    fn and_returns_false_when_first_is_true_and_second_is_false() -> ExprResult<()> {
+        let result =
+            eval_binary_op(BinaryOp::And, SlotValue::Bool(true), SlotValue::Bool(false))?;
+        assert_eq!(result, SlotValue::Bool(false));
+        Ok(())
+    }
+
+    // --- B4: OR returns SlotValue::Bool(false) when both operands are false ---
+
+    #[test]
+    fn or_returns_false_when_both_operands_are_false() -> ExprResult<()> {
+        let result =
+            eval_binary_op(BinaryOp::Or, SlotValue::Bool(false), SlotValue::Bool(false))?;
+        assert_eq!(result, SlotValue::Bool(false));
+        Ok(())
+    }
+
+    // --- B5: OR returns true when first is true but evaluates BOTH operands ---
+    // Section 46: both operands must be evaluated before boolean operator applies.
+
+    #[test]
+    fn or_returns_true_when_first_is_true_and_evaluates_right() -> ExprResult<()> {
+        // Section 46: left=true, right=non-bool → both evaluated → TypeMismatch
+        let result =
+            eval_binary_op(BinaryOp::Or, SlotValue::Bool(true), SlotValue::I64(0));
+        let Err(ExprError::TypeMismatch { expected, found }) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected TypeMismatch since both operands evaluated".into(),
+            });
+        };
+        assert_eq!(expected, "boolean");
+        assert_eq!(found, "number");
+        Ok(())
+    }
+
+    // --- B6: OR returns true when first is false and second is true ---
+
+    #[test]
+    fn or_returns_true_when_first_is_false_and_second_is_true() -> ExprResult<()> {
+        let result =
+            eval_binary_op(BinaryOp::Or, SlotValue::Bool(false), SlotValue::Bool(true))?;
+        assert_eq!(result, SlotValue::Bool(true));
+        Ok(())
+    }
+
+    // --- B7: AND evaluates BOTH operands when first produces TypeMismatch ---
+
+    #[test]
+    fn and_evaluates_both_operands_when_left_is_type_mismatch() -> ExprResult<()> {
+        // left = I64 (TypeMismatch), right = Bool (valid)
+        let result = eval_binary_op(BinaryOp::And, SlotValue::I64(1), SlotValue::Bool(true));
+        let Err(ExprError::TypeMismatch { expected, found }) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected TypeMismatch for I64".into(),
+            });
+        };
+        assert_eq!(expected, "boolean");
+        assert_eq!(found, "number");
+        Ok(())
+    }
+
+    /// B7 error accumulation test: left=I64, right=F64 (both non-bool)
+    #[test]
+    fn and_evaluates_both_operands_error_accumulation_i64_left_f64_right() -> ExprResult<()> {
+        let left = SlotValue::I64(1);
+        let right = SlotValue::F64(FiniteF64::new(1.0).unwrap());
+        let result = eval_binary_op(BinaryOp::And, left, right);
+        let Err(ExprError::TypeMismatch { expected, found }) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected TypeMismatch".into(),
+            });
+        };
+        assert_eq!(expected, "boolean");
+        assert_eq!(found, "number");
+        Ok(())
+    }
+
+    // --- B8: OR evaluates BOTH operands when first produces TypeMismatch ---
+
+    #[test]
+    fn or_evaluates_both_operands_when_left_is_type_mismatch() -> ExprResult<()> {
+        // left = Null (TypeMismatch), right = Bool (valid)
+        let result = eval_binary_op(BinaryOp::Or, SlotValue::Null, SlotValue::Bool(false));
+        let Err(ExprError::TypeMismatch { expected, found }) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected TypeMismatch for Null".into(),
+            });
+        };
+        assert_eq!(expected, "boolean");
+        assert_eq!(found, "null");
+        Ok(())
+    }
+
+    /// B8 error accumulation test: left=Null, right=F64 (both non-bool)
+    #[test]
+    fn or_evaluates_both_operands_error_accumulation_null_left_f64_right() -> ExprResult<()> {
+        let left = SlotValue::Null;
+        let right = SlotValue::F64(FiniteF64::new(1.0).unwrap());
+        let result = eval_binary_op(BinaryOp::Or, left, right);
+        let Err(ExprError::TypeMismatch { expected, found }) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected TypeMismatch".into(),
+            });
+        };
+        assert_eq!(expected, "boolean");
+        assert_eq!(found, "null");
+        Ok(())
+    }
+
+    // ============================================================================
+    // Exhaustive Bool × Bool Matrix for AND
+    // ============================================================================
+
+    #[test]
+    fn and_false_false_returns_false() -> ExprResult<()> {
+        let result =
+            eval_binary_op(BinaryOp::And, SlotValue::Bool(false), SlotValue::Bool(false))?;
+        assert_eq!(result, SlotValue::Bool(false));
+        Ok(())
+    }
+
+    #[test]
+    fn and_false_true_returns_false() -> ExprResult<()> {
+        let result =
+            eval_binary_op(BinaryOp::And, SlotValue::Bool(false), SlotValue::Bool(true))?;
+        assert_eq!(result, SlotValue::Bool(false));
+        Ok(())
+    }
+
+    #[test]
+    fn and_true_false_returns_false() -> ExprResult<()> {
+        let result =
+            eval_binary_op(BinaryOp::And, SlotValue::Bool(true), SlotValue::Bool(false))?;
+        assert_eq!(result, SlotValue::Bool(false));
+        Ok(())
+    }
+
+    #[test]
+    fn and_true_true_returns_true() -> ExprResult<()> {
+        let result =
+            eval_binary_op(BinaryOp::And, SlotValue::Bool(true), SlotValue::Bool(true))?;
+        assert_eq!(result, SlotValue::Bool(true));
+        Ok(())
+    }
+
+    // ============================================================================
+    // Exhaustive Bool × Bool Matrix for OR
+    // ============================================================================
+
+    #[test]
+    fn or_false_false_returns_false() -> ExprResult<()> {
+        let result =
+            eval_binary_op(BinaryOp::Or, SlotValue::Bool(false), SlotValue::Bool(false))?;
+        assert_eq!(result, SlotValue::Bool(false));
+        Ok(())
+    }
+
+    #[test]
+    fn or_false_true_returns_true() -> ExprResult<()> {
+        let result =
+            eval_binary_op(BinaryOp::Or, SlotValue::Bool(false), SlotValue::Bool(true))?;
+        assert_eq!(result, SlotValue::Bool(true));
+        Ok(())
+    }
+
+    #[test]
+    fn or_true_false_returns_true() -> ExprResult<()> {
+        let result =
+            eval_binary_op(BinaryOp::Or, SlotValue::Bool(true), SlotValue::Bool(false))?;
+        assert_eq!(result, SlotValue::Bool(true));
+        Ok(())
+    }
+
+    #[test]
+    fn or_true_true_returns_true() -> ExprResult<()> {
+        let result =
+            eval_binary_op(BinaryOp::Or, SlotValue::Bool(true), SlotValue::Bool(true))?;
+        assert_eq!(result, SlotValue::Bool(true));
+        Ok(())
+    }
+
+    // ============================================================================
+    // Error variant tests for AND/OR TypeMismatch scenarios
+    // ============================================================================
+
+    #[test]
+    fn and_rejects_i64_i64() -> ExprResult<()> {
+        let result = eval_binary_op(BinaryOp::And, SlotValue::I64(1), SlotValue::I64(2));
+        let Err(ExprError::TypeMismatch { expected, found }) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected TypeMismatch for i64 and i64".into(),
+            });
+        };
+        assert_eq!(expected, "boolean");
+        assert_eq!(found, "number");
+        Ok(())
+    }
+
+    #[test]
+    fn and_rejects_i64_bool() -> ExprResult<()> {
+        let result = eval_binary_op(BinaryOp::And, SlotValue::I64(1), SlotValue::Bool(true));
+        let Err(ExprError::TypeMismatch { expected, found }) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected TypeMismatch for i64 and bool".into(),
+            });
+        };
+        assert_eq!(expected, "boolean");
+        assert_eq!(found, "number");
+        Ok(())
+    }
+
+    #[test]
+    fn and_rejects_bool_i64() -> ExprResult<()> {
+        let result = eval_binary_op(BinaryOp::And, SlotValue::Bool(true), SlotValue::I64(1));
+        let Err(ExprError::TypeMismatch { expected, found }) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected TypeMismatch for bool and i64".into(),
+            });
+        };
+        assert_eq!(expected, "boolean");
+        assert_eq!(found, "number");
+        Ok(())
+    }
+
+    #[test]
+    fn or_rejects_null_bool() -> ExprResult<()> {
+        let result = eval_binary_op(BinaryOp::Or, SlotValue::Null, SlotValue::Bool(true));
+        let Err(ExprError::TypeMismatch { expected, found }) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected TypeMismatch for null or bool".into(),
+            });
+        };
+        assert_eq!(expected, "boolean");
+        assert_eq!(found, "null");
+        Ok(())
+    }
+
+    #[test]
+    fn or_rejects_bool_null() -> ExprResult<()> {
+        // left=false requires evaluating right, which is Null -> TypeMismatch
+        let result = eval_binary_op(BinaryOp::Or, SlotValue::Bool(false), SlotValue::Null);
+        let Err(ExprError::TypeMismatch { expected, found }) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected TypeMismatch for false or null".into(),
+            });
+        };
+        assert_eq!(expected, "boolean");
+        assert_eq!(found, "null");
+        Ok(())
+    }
+
+    #[test]
+    fn or_rejects_i64_i64() -> ExprResult<()> {
+        let result = eval_binary_op(BinaryOp::Or, SlotValue::I64(1), SlotValue::I64(2));
+        let Err(ExprError::TypeMismatch { expected, found }) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected TypeMismatch for i64 or i64".into(),
+            });
+        };
+        assert_eq!(expected, "boolean");
+        assert_eq!(found, "number");
+        Ok(())
+    }
+
+    #[test]
+    fn or_rejects_f64_bool() -> ExprResult<()> {
+        let result = eval_binary_op(
+            BinaryOp::Or,
+            SlotValue::F64(FiniteF64::new(1.0).unwrap()),
+            SlotValue::Bool(true),
+        );
+        let Err(ExprError::TypeMismatch { expected, found }) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected TypeMismatch for f64 or bool".into(),
+            });
+        };
+        assert_eq!(expected, "boolean");
+        assert_eq!(found, "number");
+        Ok(())
+    }
+
+    #[test]
+    fn and_rejects_null_null() -> ExprResult<()> {
+        let result = eval_binary_op(BinaryOp::And, SlotValue::Null, SlotValue::Null);
+        let Err(ExprError::TypeMismatch { expected, found }) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected TypeMismatch for null and null".into(),
+            });
+        };
+        assert_eq!(expected, "boolean");
+        assert_eq!(found, "null");
+        Ok(())
+    }
+
+    #[test]
+    fn or_rejects_f64_f64() -> ExprResult<()> {
+        let result = eval_binary_op(
+            BinaryOp::Or,
+            SlotValue::F64(FiniteF64::new(1.0).unwrap()),
+            SlotValue::F64(FiniteF64::new(2.0).unwrap()),
+        );
+        let Err(ExprError::TypeMismatch { expected, found }) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected TypeMismatch for f64 or f64".into(),
+            });
+        };
+        assert_eq!(expected, "boolean");
+        assert_eq!(found, "number");
+        Ok(())
+    }
+
+    #[test]
+    fn and_rejects_symbol_symbol() -> ExprResult<()> {
+        let result = eval_binary_op(
+            BinaryOp::And,
+            SlotValue::Symbol(vb_core::ids::SymbolId::new(1)),
+            SlotValue::Symbol(vb_core::ids::SymbolId::new(2)),
+        );
+        let Err(ExprError::TypeMismatch { expected, found }) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected TypeMismatch for symbol and symbol".into(),
+            });
+        };
+        assert_eq!(expected, "boolean");
+        assert_eq!(found, "symbol");
+        Ok(())
+    }
+
+    #[test]
+    fn or_rejects_list_list() -> ExprResult<()> {
+        let result = eval_binary_op(
+            BinaryOp::Or,
+            SlotValue::List(vb_core::ids::ListId::new(1)),
+            SlotValue::List(vb_core::ids::ListId::new(2)),
+        );
+        let Err(ExprError::TypeMismatch { expected, found }) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected TypeMismatch for list or list".into(),
+            });
+        };
+        assert_eq!(expected, "boolean");
+        assert_eq!(found, "list");
+        Ok(())
+    }
+
+    #[test]
+    fn and_rejects_object_object() -> ExprResult<()> {
+        let result = eval_binary_op(
+            BinaryOp::And,
+            SlotValue::Object(vb_core::ids::ObjectId::new(1)),
+            SlotValue::Object(vb_core::ids::ObjectId::new(2)),
+        );
+        let Err(ExprError::TypeMismatch { expected, found }) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected TypeMismatch for object and object".into(),
+            });
+        };
+        assert_eq!(expected, "boolean");
+        assert_eq!(found, "object");
+        Ok(())
+    }
+
+    // ============================================================================
+    // Integration tests: full pipeline (lex → parse → compile → eval)
+    // ============================================================================
+
+    #[test]
+    fn integration_and_true_true() -> ExprResult<()> {
+        let tokens = crate::lexer::lex_expr("true and true")?;
+        let ast = crate::parser::parse_expr(&tokens)?;
+        let mut constants = Vec::new();
+        let program = crate::bytecode::compile_expr_with_pool(&ast, &mut constants)?;
+        let result = eval_expr_program(&program, &[], &constants)?;
+        assert_eq!(result, SlotValue::Bool(true));
+        Ok(())
+    }
+
+    #[test]
+    fn integration_and_false_any() -> ExprResult<()> {
+        // "false and 1" — Section 46 mandates BOTH operands are evaluated.
+        // 1 is non-bool, so evaluating it produces TypeMismatch.
+        let tokens = crate::lexer::lex_expr("false and 1")?;
+        let ast = crate::parser::parse_expr(&tokens)?;
+        let mut constants = Vec::new();
+        let program = crate::bytecode::compile_expr_with_pool(&ast, &mut constants)?;
+        let result = eval_expr_program(&program, &[], &constants);
+        let Err(ExprError::TypeMismatch { expected, found }) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected TypeMismatch for non-bool right operand".into(),
+            });
+        };
+        assert_eq!(expected, "boolean");
+        assert_eq!(found, "number");
+        Ok(())
+    }
+
+    #[test]
+    fn integration_or_true_any() -> ExprResult<()> {
+        // "true or 1" — Section 46 mandates BOTH operands are evaluated.
+        // 1 is non-bool, so evaluating it produces TypeMismatch.
+        let tokens = crate::lexer::lex_expr("true or 1")?;
+        let ast = crate::parser::parse_expr(&tokens)?;
+        let mut constants = Vec::new();
+        let program = crate::bytecode::compile_expr_with_pool(&ast, &mut constants)?;
+        let result = eval_expr_program(&program, &[], &constants);
+        let Err(ExprError::TypeMismatch { expected, found }) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected TypeMismatch for non-bool right operand".into(),
+            });
+        };
+        assert_eq!(expected, "boolean");
+        assert_eq!(found, "number");
+        Ok(())
+    }
+
+    #[test]
+    fn integration_or_false_false() -> ExprResult<()> {
+        let tokens = crate::lexer::lex_expr("false or false")?;
+        let ast = crate::parser::parse_expr(&tokens)?;
+        let mut constants = Vec::new();
+        let program = crate::bytecode::compile_expr_with_pool(&ast, &mut constants)?;
+        let result = eval_expr_program(&program, &[], &constants)?;
+        assert_eq!(result, SlotValue::Bool(false));
+        Ok(())
+    }
+
+    #[test]
+    fn integration_and_type_mismatch_left_i64() -> ExprResult<()> {
+        // "1 and true" should error with TypeMismatch for number
+        let tokens = crate::lexer::lex_expr("1 and true")?;
+        let ast = crate::parser::parse_expr(&tokens)?;
+        let mut constants = Vec::new();
+        let program = crate::bytecode::compile_expr_with_pool(&ast, &mut constants)?;
+        let result = eval_expr_program(&program, &[], &constants);
+        let Err(ExprError::TypeMismatch { expected, found }) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected TypeMismatch for 1 and true".into(),
+            });
+        };
+        assert_eq!(expected, "boolean");
+        assert_eq!(found, "number");
+        Ok(())
+    }
+
+    #[test]
+    fn integration_or_type_mismatch_left_null() -> ExprResult<()> {
+        // "null or true" should error with TypeMismatch for null
+        let tokens = crate::lexer::lex_expr("null or true")?;
+        let ast = crate::parser::parse_expr(&tokens)?;
+        let mut constants = Vec::new();
+        let program = crate::bytecode::compile_expr_with_pool(&ast, &mut constants)?;
+        let result = eval_expr_program(&program, &[], &constants);
+        let Err(ExprError::TypeMismatch { expected, found }) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected TypeMismatch for null or true".into(),
+            });
+        };
+        assert_eq!(expected, "boolean");
+        assert_eq!(found, "null");
+        Ok(())
+    }
+
+    #[test]
+    fn integration_and_both_type_mismatch() -> ExprResult<()> {
+        // "1 and 2" should error with TypeMismatch (both are non-bool)
+        let tokens = crate::lexer::lex_expr("1 and 2")?;
+        let ast = crate::parser::parse_expr(&tokens)?;
+        let mut constants = Vec::new();
+        let program = crate::bytecode::compile_expr_with_pool(&ast, &mut constants)?;
+        let result = eval_expr_program(&program, &[], &constants);
+        let Err(ExprError::TypeMismatch { expected, found }) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected TypeMismatch for 1 and 2".into(),
+            });
+        };
+        assert_eq!(expected, "boolean");
+        assert_eq!(found, "number");
+        Ok(())
+    }
+
+    #[test]
+    fn integration_or_both_type_mismatch() -> ExprResult<()> {
+        // "1 or 2" should error with TypeMismatch (both are non-bool)
+        let tokens = crate::lexer::lex_expr("1 or 2")?;
+        let ast = crate::parser::parse_expr(&tokens)?;
+        let mut constants = Vec::new();
+        let program = crate::bytecode::compile_expr_with_pool(&ast, &mut constants)?;
+        let result = eval_expr_program(&program, &[], &constants);
+        let Err(ExprError::TypeMismatch { expected, found }) = result else {
+            return Err(ExprError::UnexpectedToken {
+                token: "expected TypeMismatch for 1 or 2".into(),
+            });
+        };
+        assert_eq!(expected, "boolean");
+        assert_eq!(found, "number");
+        Ok(())
+    }
+
+    // ============================================================================
+    // Chained AND/OR tests
+    // ============================================================================
+
+    #[test]
+    fn integration_chained_and() -> ExprResult<()> {
+        // "true and true and true" should return true
+        let tokens = crate::lexer::lex_expr("true and true and true")?;
+        let ast = crate::parser::parse_expr(&tokens)?;
+        let mut constants = Vec::new();
+        let program = crate::bytecode::compile_expr_with_pool(&ast, &mut constants)?;
+        let result = eval_expr_program(&program, &[], &constants)?;
+        assert_eq!(result, SlotValue::Bool(true));
+        Ok(())
+    }
+
+    #[test]
+    fn integration_chained_or() -> ExprResult<()> {
+        // "false or false or true" should return true
+        let tokens = crate::lexer::lex_expr("false or false or true")?;
+        let ast = crate::parser::parse_expr(&tokens)?;
+        let mut constants = Vec::new();
+        let program = crate::bytecode::compile_expr_with_pool(&ast, &mut constants)?;
+        let result = eval_expr_program(&program, &[], &constants)?;
+        assert_eq!(result, SlotValue::Bool(true));
+        Ok(())
+    }
+
+    #[test]
+    fn integration_mixed_and_or() -> ExprResult<()> {
+        // "(true and false) or true" should return true
+        let tokens = crate::lexer::lex_expr("(true and false) or true")?;
+        let ast = crate::parser::parse_expr(&tokens)?;
+        let mut constants = Vec::new();
+        let program = crate::bytecode::compile_expr_with_pool(&ast, &mut constants)?;
+        let result = eval_expr_program(&program, &[], &constants)?;
+        assert_eq!(result, SlotValue::Bool(true));
+        Ok(())
+    }
+
+    // ============================================================================
+    // Proptest invariants for AND/OR
+    // ============================================================================
+
+    proptest! {
+        #[test]
+        fn proptest_and_is_commutative_for_bools(a: bool, b: bool) {
+            // For any two SlotValue::Bool values a, b:
+            // eval_binary_op(And, Bool(a), Bool(b)) == eval_binary_op(And, Bool(b), Bool(a))
+            let left = SlotValue::Bool(a);
+            let right = SlotValue::Bool(b);
+            let result_ab = eval_binary_op(BinaryOp::And, left, right).unwrap();
+            let result_ba = eval_binary_op(BinaryOp::And, right, left).unwrap();
+            prop_assert_eq!(result_ab, result_ba);
+        }
+    }
+
+    proptest! {
+        #[test]
+        fn proptest_or_is_commutative_for_bools(a: bool, b: bool) {
+            // For any two SlotValue::Bool values a, b:
+            // eval_binary_op(Or, Bool(a), Bool(b)) == eval_binary_op(Or, Bool(b), Bool(a))
+            let left = SlotValue::Bool(a);
+            let right = SlotValue::Bool(b);
+            let result_ab = eval_binary_op(BinaryOp::Or, left, right).unwrap();
+            let result_ba = eval_binary_op(BinaryOp::Or, right, left).unwrap();
+            prop_assert_eq!(result_ab, result_ba);
+        }
+    }
+
+    #[test]
+    fn proptest_and_false_left_always_false() {
+        // Section 46: AND with false left and valid bool right is always false.
+        // With non-bool right, Section 46 mandates evaluation → TypeMismatch.
+        let left = SlotValue::Bool(false);
+        // Test with valid bool right - should return false
+        let result =
+            eval_binary_op(BinaryOp::And, left, SlotValue::Bool(true)).unwrap();
+        assert_eq!(result, SlotValue::Bool(false));
+
+        // Section 46: non-bool right must be evaluated → TypeMismatch
+        let result2 =
+            eval_binary_op(BinaryOp::And, left, SlotValue::I64(0));
+        assert!(matches!(result2, Err(ExprError::TypeMismatch { .. })));
+
+        let result3 =
+            eval_binary_op(BinaryOp::And, left, SlotValue::Null);
+        assert!(matches!(result3, Err(ExprError::TypeMismatch { .. })));
+    }
+
+    #[test]
+    fn proptest_or_true_left_always_true() {
+        // Section 46: OR with true left and valid bool right is always true.
+        // With non-bool right, Section 46 mandates evaluation → TypeMismatch.
+        let left = SlotValue::Bool(true);
+        // Test with valid bool right - should return true
+        let result =
+            eval_binary_op(BinaryOp::Or, left, SlotValue::Bool(false)).unwrap();
+        assert_eq!(result, SlotValue::Bool(true));
+
+        // Section 46: non-bool right must be evaluated → TypeMismatch
+        let result2 =
+            eval_binary_op(BinaryOp::Or, left, SlotValue::I64(0));
+        assert!(matches!(result2, Err(ExprError::TypeMismatch { .. })));
+
+        let result3 =
+            eval_binary_op(BinaryOp::Or, left, SlotValue::Null);
+        assert!(matches!(result3, Err(ExprError::TypeMismatch { .. })));
+    }
+
+    #[test]
+    fn proptest_and_requires_both_bools() {
+        // Any non-bool left OR right produces TypeMismatch
+        let non_bools = [
+            SlotValue::I64(1),
+            SlotValue::F64(FiniteF64::new(1.0).unwrap()),
+            SlotValue::Null,
+            SlotValue::Symbol(vb_core::ids::SymbolId::new(1)),
+        ];
+
+        // left is non-bool, right is bool -> TypeMismatch
+        for left in &non_bools {
+            let result = eval_binary_op(BinaryOp::And, *left, SlotValue::Bool(true));
+            assert!(
+                matches!(result, Err(ExprError::TypeMismatch { .. })),
+                "AND with non-bool left should be TypeMismatch"
+            );
+        }
+
+        // left is bool, right is non-bool -> TypeMismatch
+        for right in &non_bools {
+            let result = eval_binary_op(BinaryOp::And, SlotValue::Bool(true), *right);
+            assert!(
+                matches!(result, Err(ExprError::TypeMismatch { .. })),
+                "AND with non-bool right should be TypeMismatch"
+            );
+        }
+    }
+
+    #[test]
+    fn proptest_or_requires_both_bools() {
+        // Any non-bool left OR right produces TypeMismatch
+        let non_bools = [
+            SlotValue::I64(1),
+            SlotValue::F64(FiniteF64::new(1.0).unwrap()),
+            SlotValue::Null,
+            SlotValue::Symbol(vb_core::ids::SymbolId::new(1)),
+        ];
+
+        // left is non-bool, right is bool -> TypeMismatch
+        for left in &non_bools {
+            let result = eval_binary_op(BinaryOp::Or, *left, SlotValue::Bool(true));
+            assert!(
+                matches!(result, Err(ExprError::TypeMismatch { .. })),
+                "OR with non-bool left should be TypeMismatch"
+            );
+        }
+
+        // left is bool, right is non-bool -> TypeMismatch
+        for right in &non_bools {
+            let result = eval_binary_op(BinaryOp::Or, SlotValue::Bool(false), *right);
+            assert!(
+                matches!(result, Err(ExprError::TypeMismatch { .. })),
+                "OR with non-bool right should be TypeMismatch"
+            );
+        }
     }
 }

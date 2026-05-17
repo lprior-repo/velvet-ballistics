@@ -19,5 +19,8 @@ crc32c = "0.6"
 postcard = { version = "1", features = ["alloc"] }
 saphyr = { version = "=0.0.6", default-features = false, features = ["encoding"] }
 
+[dev-dependencies]
+proptest = { workspace = true }
+
 [lints]
 workspace = true

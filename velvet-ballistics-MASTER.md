@@ -1102,7 +1102,7 @@ Generated Rust must:
 3. Pass `clippy` with repository deny settings.
 4. Preserve IR semantics exactly. **Current gap:** `compare_generated_to_ir` performs source-pattern counting, not true execution equivalence over terminal results, taint, journal, and errors. Full semantic parity tests are a future phase requirement.
 5. Emit no hidden dynamic allocation in deterministic hot steps unless the resource contract explicitly allows it.
-6. Produce equivalent journal events, slot values, taint states, errors, and terminal results to IR mode. **Current gap:** `Together*`, `Reduce*`, `Repeat*` IR nodes are rejected by the emission path; `Collect*` is validated as a subset but not yet emitted.
+6. Produce equivalent journal events, slot values, taint states, errors, and terminal results to IR mode. **Current gap:** `Together*`, `Reduce*`, `Repeat*`, and `Collect*` IR node families fail closed in `validate_generated_subset`/emission until generated-vs-runtime parity is proven.
 7. Be covered by equivalence tests and compile-fail tests. **Current gap:** trybuild harness can pass with no compile-fail fixtures present.
 
 ---
@@ -1504,11 +1504,11 @@ Round 2 current implementation state, observed in this tree and not a final rele
 | Naming/workspace | Canonical crate layout and package spelling are represented in the workspace. | Mechanical spelling gates and bead evidence still decide acceptance for future changes. |
 | Core/value/IR | `vb_core` exposes numeric IDs, handle-based `SlotValue`, `ValueStore`, taint/state APIs, bounded expression/accessor evaluation, resource contracts, and deterministic transition surfaces. | Full final primitive semantics still require end-to-end compiler/runtime/generated parity evidence. |
 | YAML/validation/compile | Strict YAML parsing, AST validation, reference/control/type-taint checks, slot/accessor/constant APIs, digesting, artifact emission, and mandatory lowering function surfaces exist. | Source-to-IR lowering must be proven for the full v1 primitive set, not only constructor/API coverage. |
-| Expression engine | Lexer/parser/typecheck/bytecode surfaces exist with bounded execution contracts. | Helper coverage, mutation resistance, and generated-mode equivalence require gate evidence. |
-| Storage/recovery | `vb_storage` exposes required keyspace names, key encoders, record envelope encode/decode, journal writer queue, snapshots, replay helpers, and recovery summary APIs. | Runtime admission/header persistence and full live-frame hydration must be proven end-to-end; recovery summaries alone are not final recovery acceptance. |
-| Runtime/direct API | `vb_runtime` exposes direct API, shard/frame-pool/action/wait/ask/trace/counter surfaces and typed runtime errors. | Collect pagination state, strict persistence-before-ack behavior, shutdown/cancellation edge cases, and recovery hydration need executable evidence. |
+| Expression engine | Lexer/parser/typecheck/bytecode surfaces exist with bounded execution contracts. Store-aware helper implementations exist for the current interpreter surfaces. | Helper type/evaluator parity, F64 mixed/coercion behavior, mutation resistance, and generated-mode equivalence still require gate evidence (`vb-qi37.9`). |
+| Storage/recovery | `vb_storage` exposes required keyspace names, key encoders, record envelope encode/decode, journal writer queue, snapshots, replay helpers, recovery summaries, and frame-seed hydration for slot values/taint/step states. | Pending-action hydration, strict persistence-before-ack behavior, digest mismatch coverage, and end-to-end crash recovery evidence remain release gates. |
+| Runtime/direct API | `vb_runtime` exposes direct API, shard/frame-pool/action/wait/ask/trace/counter surfaces, admission/capability surfaces, and typed runtime errors. | Strict persistence-before-ack behavior, shutdown/cancellation edge cases, pending-action recovery, and full lifecycle evidence remain gates. |
 | IPC | `vb_ipc` exposes bounded frame/header/payload validation, typed payloads, memory ingress, client/server surfaces, and required command handlers. | Socket-loop fuzz/backpressure evidence and runtime integration gates remain required. |
-| Generated Rust | `vb_codegen` emits and checks a supported subset covering scalar constants, copies, expression math/comparisons, action dispatch, waits, asks, jumps, choices, handlers, and finish nodes. | Generated mode is not yet accepted for the full final IR; unsupported primitives/accessor traversal are intentionally rejected until equivalence tests prove parity. |
+| Generated Rust | `vb_codegen` emits and checks a supported subset covering scalar constants, copies, expression math/comparisons, object/list builders, `for_each`, `RetryCheck`, accessor traversal, action dispatch, waits, asks, jumps, choices, handlers, and finish nodes. | Generated mode is not yet accepted for the full final IR; `Together*`, `Reduce*`, `Repeat*`, `Collect*`, text helper symbol-store behavior, suspension-error parity, and full journal/taint parity remain open. |
 | Tests/audits | Error-variant completeness and diagnostic-code range tests exist; companion docs record benchmark and dependency policy constraints. | Full matrix gates, fuzz, Miri, coverage, mutants, sanitizer, supply-chain, benchmark metadata, and bead closure evidence are still required. |
 
 Round 2 status rule: a public function existing in a crate is only API surface evidence. It is not proof that the phase is complete unless the required tests, fuzz/property coverage, benchmark evidence where applicable, and bead closure evidence have actually passed.
@@ -2505,25 +2505,25 @@ Parenthesized groups reset to minimum binding power. Max nesting depth: 64. Max 
 
 ### F64 Status
 
-`ExprType::F64`, `SlotValue::F64(FiniteF64)`, and `ConstValue::F64` exist in the type system and constant pool. The typechecker accepts F64 in arithmetic and coercion. However, the expression pipeline has no float literal syntax, no `F64` variant in `ExprLiteral`, no `F64` arm in `literal_to_const`, and no F64 arithmetic in the evaluator. F64 values can only enter through runtime slot initialization or action outputs. The typechecker is more permissive than the evaluator — expressions that typecheck as F64 may fail at eval time.
+`ExprType::F64`, `SlotValue::F64(FiniteF64)`, `ConstValue::F64`, `ExprLiteral::F64`, expression float lexing/parsing, bytecode constant lowering, and F64/F64 evaluator arithmetic/comparison arms exist. Strict YAML scalar floats remain forbidden by the YAML profile; float values enter authored workflows through expression strings, runtime slot initialization, or action outputs. Remaining gap: the typechecker still accepts broader numeric coercion than the evaluator and generated Rust parity currently proves only a subset. Mixed I64/F64 arithmetic, generated F64 arithmetic semantics, and codegen lint parity remain open under expression/generated parity beads.
 
 ### Helper Signatures
 
 | Helper | Arity | Input types | Return | Implementation status |
 |--------|-------|-------------|--------|-----------------------|
 | `exists` | 1 | Any | Bool | Implemented: `!matches!(value, Null)` |
-| `length` | 1 | List or Null | I64 | Implemented: list item count, 0 for Null |
-| `count` | 1 | List or Null | I64 | Implemented: alias for `length` |
-| `empty` | 1 | List or Null | Bool | **Bug**: returns `true` for all lists regardless of length |
-| `unique` | 1 | List | List | **Bug**: no-op, returns input unchanged |
-| `contains` | 2 | List, T | Bool | Unimplemented: returns `UnknownHelper` at eval |
-| `starts_with` | 2 | Symbol, Symbol | Bool | Unimplemented |
-| `ends_with` | 2 | Symbol, Symbol | Bool | Unimplemented |
-| `has` | 2 | Object, Symbol | Bool | Unimplemented |
-| `append` | 2 | List, T | List | Unimplemented |
-| `append_if` | 3 | List, T, Bool | List | Unimplemented |
-| `merge` | 2 | Object, Object | Object | Unimplemented. Typechecker returns `List` (bug). |
-| `sum` | 1 | List | I64 | Unimplemented. Spec says 2 args (list, field). Code defines arity 1. |
+| `length` | 1 | List or Null | I64 | Implemented store-aware for symbols/lists/objects/null; no-store helper reports context-required for handles. |
+| `count` | 1 | List or Null | I64 | Implemented as count/length over store-aware list values. |
+| `empty` | 1 | List or Null | Bool | Implemented store-aware for symbol/list/object/null emptiness. |
+| `unique` | 1 | List | List | Implemented store-aware list deduplication preserving first occurrence order. |
+| `contains` | 2 | List, T | Bool | Implemented in current evaluators as store-aware Symbol substring search; list-membership/spec parity evidence remains open. |
+| `starts_with` | 2 | Symbol, Symbol | Bool | Implemented store-aware text helper; generated mode still rejects text helpers requiring runtime symbol store. |
+| `ends_with` | 2 | Symbol, Symbol | Bool | Implemented store-aware text helper; generated mode still rejects text helpers requiring runtime symbol store. |
+| `has` | 2 | Object, Symbol | Bool | Partially converged: `vb_expr` implements object-field lookup, while the core hot evaluator currently uses list membership semantics; helper parity evidence remains open. |
+| `append` | 2 | List, T | List | Implemented store-aware list append. |
+| `append_if` | 3 | List, T, Bool | List | Implemented store-aware conditional append. |
+| `merge` | 2 | Object, Object | Object | Implemented store-aware object merge; typechecker returns `Object`. Generated/runtime parity evidence remains open. |
+| `sum` | 1 | List | I64 | Implemented store-aware I64 list sum with overflow rejection; arity remains 1. |
 
 ### Short-Circuit Policy
 
@@ -3076,13 +3076,13 @@ This is the workflow equivalent of compile-with-warnings-as-errors. AI agents sh
 | 4. Reference | Implemented | Forward refs rejected, runtime refs rejected |
 | 5. Expression | Implemented | 30 opcodes, bytecode compiler, bounded stacks |
 | 6. Control flow | Implemented | Forward-only CFG, cycle rejection, reachability |
-| 7. Boundedness | Partial | Individual loop bounds exist; whole-workflow budget needed (section 64) |
-| 8. Resource budget | Partial | ResourceContract with 16 fields; whole-workflow computation needed |
-| 9. Action contract | Partial | Classification exists; compile-time schema validation needed |
+| 7. Boundedness | Implemented, evidence-gated | `WholeWorkflowBudget`/`BoundednessPolicy` exist and `vb_compile` calls shared validation; full release evidence still required. |
+| 8. Resource budget | Implemented, evidence-gated | `ResourceContract`, whole-workflow computation, arena caps, `BudgetExceeded`, and hard step-budget ceilings exist; full gate evidence still required. |
+| 9. Action contract | Partial | `ActionContract`, `SideEffect`, `RetrySafety`, idempotency checks, and action contract validation surfaces exist; external attestation/schema parity evidence remains required. |
 | 10. Secret/taint | Implemented | Compile-time + runtime taint, leak rejection, 3-level lattice |
-| 11. Idempotency | Stub | `Idempotency` enum exists in `ActionContract` (Section 19) for taint/replay classification. Phase 38 adds `SideEffect` + `RetrySafety` enums and the verification gate (section 65). These extend, not replace, the existing `Idempotency` classification. |
-| 12. Durability | Partial | Journal events exist; slot/payload persistence gaps |
-| 13. Capability | Partial | `Capability`/`CapabilitySet` types exist; admission gate implemented in `vb_runtime/admission.rs`; compile-time schema validation needed |
+| 11. Idempotency | Implemented, evidence-gated | `Idempotency`, `SideEffect`, `RetrySafety`, `IdempotencyViolation`, and verifier/runtime admission plumbing exist; generated/replay parity evidence remains a release gate. |
+| 12. Durability | Partial | Journal events, per-primitive durability matrix, and `SlotWritten` value/taint evidence exist; pending-action recovery and strict ack ordering remain gates. |
+| 13. Capability | Implemented, evidence-gated | `Capability`/`CapabilitySet` types and runtime admission enforcement exist; schema/CLI/e2e parity evidence remains required. |
 | 14. Output/result | Implemented | Result validation, finish semantics |
 | 15. Observability | Partial | Trace ring + counters; evidence chain gaps |
 
@@ -3381,9 +3381,13 @@ This section tracks known architectural defects discovered through adversarial r
 
 **DRIFT-1 is closed.**
 
-### DRIFT-2: Crash Recovery Cannot Reconstruct Live State — ACTIVE
+### DRIFT-2: Crash Recovery Cannot Reconstruct Live State — PARTIALLY RESOLVED
 
-**Defect:** The journal records no slot values, no slot taint, no step lifecycle events (`StepStarted`/`StepSucceeded`) for deterministic steps. After a crash, `UnsupportedRecoveryState` reports `slot_values: true`, `slot_taint: true`, but `hydrate_run_frame` proceeds with empty frames anyway. The system is not crash-recoverable for any workflow that performs deterministic computation between suspension points. `UnsupportedFullRecoveryHydration` and `UnsupportedAsyncStrictAck` exist in the runtime as explicit markers of this gap.
+**Original defect:** Earlier builds recorded no slot values, no slot taint, and no step lifecycle events (`StepStarted`/`StepSucceeded`) for deterministic steps. After a crash, `UnsupportedRecoveryState` could report `slot_values: true`, `slot_taint: true`, while hydration still proceeded with empty frames. The system was not crash-recoverable for workflows that performed deterministic computation between suspension points.
+
+**Current evidence:** `SlotWrittenEvent` can carry encoded `SlotValue` and taint evidence; `RecoveryFrameSeed` reconstruction applies recovered slots and step states; `DurableFrameRecoveryBoundary::hydrate_run_frame` rejects unsupported live-frame state instead of silently producing a broken frame. Closed beads `vb-x0mt`, `vb-9fy4`, and `vb-vs7k` record Phase 44/recovery hydration work.
+
+**Remaining gap:** Pending action hydration remains gated as unsupported when unresolved actions are present, summary-only hydration still returns `UnsupportedFullRecoveryHydration`, and `UnsupportedAsyncStrictAck` still marks strict async acknowledgement limitations. Release acceptance still requires end-to-end crash recovery evidence for all live recovery paths.
 
 **Root cause:** Journal events are only emitted at suspension points (action dispatch, wait, ask). Deterministic steps between suspensions are treated as atomic but the journal cannot reconstruct them.
 
@@ -3398,11 +3402,11 @@ This section tracks known architectural defects discovered through adversarial r
 
 **Coding style:** No async. No channels. Synchronous journal append within the shard's single-threaded drive loop. Bounded writer queue absorbs burst. If queue is full, the step blocks (backpressure), not silently drops.
 
-**Resolves in:** Phase 44 (Recovery Evidence Chain)
+**Resolves in:** Phase 44 (Recovery Evidence Chain); remaining live pending-action recovery evidence is still a release gate.
 
-### DRIFT-3: No Aggregate Resource Budget Across Primitive Composition
+### DRIFT-3: No Aggregate Resource Budget Across Primitive Composition — RESOLVED
 
-**Defect:** Individual primitive bounds exist (`ForEach limit`, `Together branches`, `Repeat max_attempts`) but their composition is unbounded. `ForEach(limit=1000)` wrapping `Together(branches=256)` can create 256,000 sequential step executions and 256,000 ValueStore arena entries in a single run. The `ValueStore` has no cap on total arena entries (symbols, lists, objects, blobs are all append-only with no GC).
+**Original defect:** Individual primitive bounds existed (`ForEach limit`, `Together branches`, `Repeat max_attempts`) but their composition was unbounded. `ForEach(limit=1000)` wrapping `Together(branches=256)` could create 256,000 sequential step executions and 256,000 ValueStore arena entries in a single run. The `ValueStore` had no cap on total arena entries (symbols, lists, objects, blobs are all append-only with no GC).
 
 **Root cause:** Bounds are per-primitive, not per-run. No dataflow analysis propagates bounds through nested compositions. `ResourceContract` defaults (`max_fanout: u16::MAX`, `max_collect_items: u32::MAX`, `max_step_budget_per_tick: u64::MAX`) are effectively unbounded.
 
@@ -3413,11 +3417,13 @@ This section tracks known architectural defects discovered through adversarial r
 4. `StepBudget` per tick must have a hard ceiling (e.g., 100,000) regardless of configuration.
 5. Collect global `Mutex<Vec>` must be replaced with per-run pagination state to eliminate cross-run interference.
 
-**Resolves in:** Phase 37 (boundedness) + Phase 45 (Resource Budget Enforcement)
+**Resolution evidence:** Phase 37 whole-workflow budget computation is represented in `vb_core::budget` and called from `vb_compile`; Phase 45 resource enforcement added `ValueStore` arena caps, `BudgetExceeded`, tightened defaults, and hard `StepBudget` ceilings. Closed beads `vb-u7vj`, `vb-i9sn`, and `vb-qwdn` record this work.
 
-### DRIFT-4: IR Validation Is Bounds-Only, Not Structural
+**DRIFT-3 is closed, subject to normal full-gate evidence refresh.**
 
-**Defect:** `try_from_parts` validates that all numeric indices are within array bounds. It does NOT validate structural correctness: reachable nodes, forward-only edges, well-formed loop structures (ForEachStart pairs with ForEachNext), valid SymbolId references, or accessor path segment validity. A postcard-deserialized artifact from untrusted input bypasses all compiler-level structural validation.
+### DRIFT-4: IR Validation Is Bounds-Only, Not Structural — RESOLVED
+
+**Original defect:** `try_from_parts` validated that numeric indices were within array bounds but did not validate structural correctness: reachable nodes, forward-only edges, well-formed loop structures, valid `SymbolId` references, or accessor path segment validity. A postcard-deserialized artifact from untrusted input could bypass compiler-level structural validation.
 
 **Root cause:** The compiler's structural validations (control flow, reference, type/taint) operate on the AST, not on the compiled IR. They are never re-checked at the IR level.
 
@@ -3431,9 +3437,11 @@ This section tracks known architectural defects discovered through adversarial r
 
 **Coding style:** Straightforward `for` loops over nodes. Checked indexing. No recursion (bounded by node count). Each check returns a typed `IRValidationError` identifying the specific node and check that failed.
 
-**Resolves in:** Phase 46 (IR Structural Validation)
+**Resolution evidence:** `CompiledWorkflow::try_from_parts` now calls structural validators for accessor path symbols, reachability, and forward edges; workflow tests exercise unreachable-node, invalid edge, and accessor validation. Closed beads `vb-honk` and `vb-w1ww` record Phase 46 completion.
 
-### DRIFT-5: Validation Logic Duplicated Between vb_validate and vb_compile
+**DRIFT-4 is closed, subject to normal full-gate evidence refresh.**
+
+### DRIFT-5: Validation Logic Duplicated Between vb_validate and vb_compile — PARTIALLY RESOLVED
 
 **Defect:** Both `vb_validate` and `vb_compile` contain parallel modules (schema, references, control_flow, type_taint) that must be kept in sync manually. The two crates operate on different input types (document model vs AST) but enforce the same rules.
 
@@ -3447,13 +3455,17 @@ This section tracks known architectural defects discovered through adversarial r
 
 **Coding style:** No traits, no generics, no higher-order functions. A plain `pub fn validate(parts: &WorkflowParts) -> Result<ValidationOutput, ValidationError>` that each crate calls.
 
-**Resolves in:** Phase 42 (Validation Deduplication)
+**Current evidence:** `vb_compile` delegates compiled `WorkflowParts` validation through `vb_validate::shared::validate` / `validate_with_contracts`, re-exports validation errors, and shares reference validation via `vb_validate::references::RefTables` and `validate_single_reference`. Closed bead `vb-2pp9` records the Phase 42 reference/shared-parts deduplication work.
+
+**Remaining gap:** Source-level schema/control-flow/type-taint modules still exist in both crates because they operate on different input representations. DRIFT-5 is not fully closed until the remaining duplicated source validation paths are either removed, proven equivalent by contract-as-data tests, or explicitly documented as representation-specific wrappers over one shared implementation.
+
+**Resolves in:** Phase 42 (Validation Deduplication) plus remaining validation parity evidence.
 
 ---
 
 ## 68. Durable Execution Architecture Contract
 
-> **Target contract.** The invariants in this section describe the intended architecture. The current implementation has active gaps documented in DRIFT-2. Recovery hydration is summary-only; full `RunFrame` reconstruction from journal events is not yet implemented. `UnsupportedFullRecoveryHydration` and `UnsupportedAsyncStrictAck` remain in the code until Phase 44 evidence is complete.
+> **Target contract.** The invariants in this section describe the intended architecture. Current implementation has frame-seed hydration for recovered slot values, taint, and step states, but live pending-action hydration and strict async acknowledgement paths remain gated. Summary-only recovery still returns `UnsupportedFullRecoveryHydration`, and `UnsupportedAsyncStrictAck` remains in the code until strict durability acknowledgement evidence is complete.
 
 `velvet-ballastics` is a log-first durable execution engine. The architecture follows the same core model as production-grade orchestrators (Restate, AWS Step Functions): journal events are the ground truth, state is deterministically derived from the journal, and side effects are never re-executed without explicit idempotency proof.
 

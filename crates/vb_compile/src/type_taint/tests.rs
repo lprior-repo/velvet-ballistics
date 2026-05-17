@@ -42,6 +42,11 @@ fn parse_workflow(source: &[u8]) -> Result<WorkflowAst, String> {
         .map_err(|errors| format!("parse_ast unexpectedly failed: {errors}"))
 }
 
+fn parse_ast_valid(source: &[u8]) -> Result<(), String> {
+    let ast = parse_workflow(source)?;
+    validate_workflow_ast(&ast).map_err(|e| format!("{e:?}"))
+}
+
 fn ensure_value(
     actual: ConstValue,
     expected: ConstValue,
@@ -624,20 +629,15 @@ fn parse_ast_rejects_finish_slot_index_out_of_range_exactly() -> Result<(), Stri
 }
 
 #[test]
-fn validator_rejects_secret_tainted_finish_result() -> Result<(), String> {
+fn validator_accepts_secret_tainted_finish_result() -> Result<(), String> {
+    // Section 47: No rejection of Secret or DerivedFromSecret results in Finish
     let ast = secret_tainted_finish_ast();
-
-    match validate_workflow_ast(&ast) {
-        Ok(()) => Err("validator unexpectedly accepted secret result".to_owned()),
-        Err(errors) => match errors.0.into_iter().next() {
-            Some(error) => ensure_secret_result(error),
-            None => Err("validate_workflow_ast returned empty CompileErrors".to_owned()),
-        },
-    }
+    validate_workflow_ast(&ast).map_err(|e| format!("{e:?}"))
 }
 
 #[test]
-fn compile_and_parse_ast_reject_secret_reference_finish_result_exactly() -> Result<(), String> {
+fn compile_and_parse_ast_accept_secret_reference_finish_result_exactly() -> Result<(), String> {
+    // Section 47: No rejection of Secret or DerivedFromSecret results in Finish
     let source = br#"version: velvet-ballastics/v1
 name: taint_case
 when:
@@ -650,11 +650,12 @@ steps:
       result: $secrets.token
 "#;
 
-    ensure_secret_result_pair(source)
+    parse_ast_valid(source)
 }
 
 #[test]
-fn compile_and_parse_ast_reject_secret_slot_finish_result_exactly() -> Result<(), String> {
+fn compile_and_parse_ast_accept_secret_slot_finish_result_exactly() -> Result<(), String> {
+    // Section 47: No rejection of Secret or DerivedFromSecret results in Finish
     let source = br#"version: velvet-ballastics/v1
 name: taint_case
 when:
@@ -670,13 +671,14 @@ steps:
       result: 0
 "#;
 
-    ensure_secret_result_pair(source)
+    parse_ast_valid(source)
 }
 
 #[test]
-fn compile_and_parse_ast_reject_nested_secret_slot_finish_results() -> Result<(), String> {
-    ensure_secret_result_pair(nested_secret_list_finish_source())?;
-    ensure_secret_result_pair(nested_secret_object_finish_source())
+fn compile_and_parse_ast_accept_nested_secret_slot_finish_results() -> Result<(), String> {
+    // Section 47: No rejection of Secret or DerivedFromSecret results in Finish
+    parse_ast_valid(nested_secret_list_finish_source())?;
+    parse_ast_valid(nested_secret_object_finish_source())
 }
 
 #[test]
@@ -718,7 +720,8 @@ fn compile_and_parse_ast_reject_initialized_non_boolean_slot_conditions() -> Res
 }
 
 #[test]
-fn compile_and_parse_ast_reject_secret_object_finish_result_exactly() -> Result<(), String> {
+fn compile_and_parse_ast_accept_secret_object_finish_result_exactly() -> Result<(), String> {
+    // Section 47: No rejection of Secret or DerivedFromSecret results in Finish
     let source = br#"version: velvet-ballastics/v1
 name: taint_case
 when:
@@ -732,7 +735,7 @@ steps:
         token: $secrets.token
 "#;
 
-    ensure_secret_result_pair(source)
+    parse_ast_valid(source)
 }
 
 #[test]

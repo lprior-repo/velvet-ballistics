@@ -158,8 +158,16 @@ fn eval_unary_stack(
 /// Evaluates one binary operation over two already-popped values.
 pub fn eval_binary_op(op: BinaryOp, left: SlotValue, right: SlotValue) -> ExprResult<SlotValue> {
     match op {
-        BinaryOp::And => Ok(SlotValue::Bool(expect_bool(left)? && expect_bool(right)?)),
-        BinaryOp::Or => Ok(SlotValue::Bool(expect_bool(left)? || expect_bool(right)?)),
+        BinaryOp::And => {
+            let left_bool = expect_bool(left)?;
+            let right_bool = expect_bool(right)?;
+            Ok(SlotValue::Bool(left_bool && right_bool))
+        },
+        BinaryOp::Or => {
+            let left_bool = expect_bool(left)?;
+            let right_bool = expect_bool(right)?;
+            Ok(SlotValue::Bool(left_bool || right_bool))
+        },
         BinaryOp::Eq => Ok(SlotValue::Bool(left == right)),
         BinaryOp::NotEq => Ok(SlotValue::Bool(left != right)),
         BinaryOp::Add => eval_add_op(left, right),
@@ -471,20 +479,130 @@ pub fn eval_helper_with_store(
 }
 
 /// Evaluates helper behavior that is local to scalar/handle values.
+///
+/// Note: Most helpers require a ValueStore to resolve opaque handles (List, Object, Symbol).
+/// This function only supports helpers that work without store access.
+/// For full helper evaluation, use [`eval_helper_with_store`].
 pub fn eval_helper(helper: ExprHelper, args: &[SlotValue]) -> ExprResult<SlotValue> {
     match helper {
-        ExprHelper::Exists => eval_helper_exists(args),
-        ExprHelper::Length | ExprHelper::Count => eval_helper_length(args),
-        ExprHelper::Empty => eval_helper_empty(args),
-        ExprHelper::Unique => eval_helper_unique(args),
-        ExprHelper::Contains => eval_helper_contains(args),
-        ExprHelper::StartsWith => eval_helper_starts_with(args),
-        ExprHelper::EndsWith => eval_helper_ends_with(args),
-        ExprHelper::Has => eval_helper_has(args),
-        ExprHelper::Append => eval_helper_append(args),
-        ExprHelper::AppendIf => eval_helper_append_if(args),
-        ExprHelper::Merge => eval_helper_merge(args),
-        ExprHelper::Sum => eval_helper_sum(args),
+        // Exists works without store - it just checks for Null
+        ExprHelper::Exists => {
+            let value = one_arg(args, helper)?;
+            Ok(SlotValue::Bool(!matches!(*value, SlotValue::Null)))
+        }
+        // Empty works for Null without store (returns true), but errors for other types
+        ExprHelper::Empty => {
+            let value = one_arg(args, helper)?;
+            match *value {
+                SlotValue::Null => Ok(SlotValue::Bool(true)),
+                SlotValue::F64(_) => Err(ExprError::TypeMismatch {
+                    expected: "list, text, object, or null".into(),
+                    found: "number".into(),
+                }),
+                SlotValue::List(_) => Err(ExprError::TypeMismatch {
+                    expected: "value-store context required for list emptiness check".into(),
+                    found: "list handle without store".into(),
+                }),
+                other => Err(ExprError::TypeMismatch {
+                    expected: "list or null".into(),
+                    found: other.type_name().into(),
+                }),
+            }
+        }
+        // Length and Count: need store for List/Null, but return type error for non-list
+        ExprHelper::Length | ExprHelper::Count => {
+            let value = one_arg(args, helper)?;
+            match value {
+                SlotValue::F64(_) => Err(ExprError::TypeMismatch {
+                    expected: "list, text, or object".into(),
+                    found: "number".into(),
+                }),
+                SlotValue::List(_) | SlotValue::Null => Err(ExprError::TypeMismatch {
+                    expected: "value-store context required for list length".into(),
+                    found: "list handle without store".into(),
+                }),
+                other => Err(ExprError::TypeMismatch {
+                    expected: "list".into(),
+                    found: other.type_name().into(),
+                }),
+            }
+        }
+        // Unique: need store for List, but return type error for non-list
+        ExprHelper::Unique => {
+            let value = one_arg(args, helper)?;
+            match *value {
+                SlotValue::List(_) => Err(ExprError::TypeMismatch {
+                    expected: "value-store context required for list deduplication".into(),
+                    found: "list handle without store".into(),
+                }),
+                other => Err(ExprError::TypeMismatch {
+                    expected: "list".into(),
+                    found: other.type_name().into(),
+                }),
+            }
+        }
+        // Contains: need store for list/text operations
+        ExprHelper::Contains => {
+            let (left, right) = two_args(args, helper)?;
+            if matches!(*left, SlotValue::F64(_)) || matches!(*right, SlotValue::F64(_)) {
+                return Err(ExprError::TypeMismatch {
+                    expected: "list, text, or object".into(),
+                    found: "number".into(),
+                });
+            }
+            Err(ExprError::TypeMismatch {
+                expected: "value-store context required for list contains check".into(),
+                found: "list handle without store".into(),
+            })
+        }
+        // StartsWith/EndsWith: need store for text operations
+        ExprHelper::StartsWith | ExprHelper::EndsWith => {
+            let (left, right) = two_args(args, helper)?;
+            Err(ExprError::TypeMismatch {
+                expected: "value-store context required for text operations".into(),
+                found: "symbol handle without store".into(),
+            })
+        }
+        // Has: need store for object field lookup
+        ExprHelper::Has => {
+            let (left, right) = two_args(args, helper)?;
+            Err(ExprError::TypeMismatch {
+                expected: "value-store context required for object field lookup".into(),
+                found: "object handle without store".into(),
+            })
+        }
+        // Append: need store for list append
+        ExprHelper::Append => {
+            let (left, right) = two_args(args, helper)?;
+            Err(ExprError::TypeMismatch {
+                expected: "value-store context required for list append".into(),
+                found: "list handle without store".into(),
+            })
+        }
+        // AppendIf: need store for conditional list append
+        ExprHelper::AppendIf => {
+            let (first, second, third) = three_args(args, helper)?;
+            Err(ExprError::TypeMismatch {
+                expected: "value-store context required for list append".into(),
+                found: "list handle without store".into(),
+            })
+        }
+        // Merge: need store for object merge
+        ExprHelper::Merge => {
+            let (left, right) = two_args(args, helper)?;
+            Err(ExprError::TypeMismatch {
+                expected: "value-store context required for object merge".into(),
+                found: "object handle without store".into(),
+            })
+        }
+        // Sum: need store for list sum
+        ExprHelper::Sum => {
+            let value = one_arg(args, helper)?;
+            Err(ExprError::TypeMismatch {
+                expected: "value-store context required for list sum".into(),
+                found: "list handle without store".into(),
+            })
+        }
     }
 }
 
@@ -527,145 +645,6 @@ fn three_args(
     let second = args.get(1).ok_or(ExprError::StackUnderflow)?;
     let third = args.get(2).ok_or(ExprError::StackUnderflow)?;
     Ok((first, second, third))
-}
-
-fn eval_helper_exists(args: &[SlotValue]) -> ExprResult<SlotValue> {
-    let value = one_arg(args, ExprHelper::Exists)?;
-    Ok(SlotValue::Bool(!matches!(*value, SlotValue::Null)))
-}
-
-fn eval_helper_length(args: &[SlotValue]) -> ExprResult<SlotValue> {
-    let value = one_arg(args, ExprHelper::Length)?;
-    match value {
-        SlotValue::F64(_) => Err(ExprError::TypeMismatch {
-            expected: "list, text, or object".into(),
-            found: "number".into(),
-        }),
-        SlotValue::List(_) | SlotValue::Null => Err(ExprError::TypeMismatch {
-            expected: "value-store context required for list length".into(),
-            found: "list handle without store".into(),
-        }),
-        other => Err(ExprError::TypeMismatch {
-            expected: "list".into(),
-            found: other.type_name().into(),
-        }),
-    }
-}
-
-fn eval_helper_empty(args: &[SlotValue]) -> ExprResult<SlotValue> {
-    let value = one_arg(args, ExprHelper::Empty)?;
-    match *value {
-        SlotValue::F64(_) => Err(ExprError::TypeMismatch {
-            expected: "list, text, object, or null".into(),
-            found: "number".into(),
-        }),
-        SlotValue::Null => Ok(SlotValue::Bool(true)),
-        SlotValue::List(_) => Err(ExprError::TypeMismatch {
-            expected: "value-store context required for list emptiness check".into(),
-            found: "list handle without store".into(),
-        }),
-        other => Err(ExprError::TypeMismatch {
-            expected: "list or null".into(),
-            found: other.type_name().into(),
-        }),
-    }
-}
-
-fn eval_helper_unique(args: &[SlotValue]) -> ExprResult<SlotValue> {
-    let value = one_arg(args, ExprHelper::Unique)?;
-    match *value {
-        SlotValue::List(_) => Err(ExprError::TypeMismatch {
-            expected: "value-store context required for list deduplication".into(),
-            found: "list handle without store".into(),
-        }),
-        other => Err(ExprError::TypeMismatch {
-            expected: "list".into(),
-            found: other.type_name().into(),
-        }),
-    }
-}
-
-fn eval_helper_contains(args: &[SlotValue]) -> ExprResult<SlotValue> {
-    let (list_val, item_val) = two_args(args, ExprHelper::Contains)?;
-    if matches!(*list_val, SlotValue::F64(_)) || matches!(*item_val, SlotValue::F64(_)) {
-        return Err(ExprError::TypeMismatch {
-            expected: "list, text, or object".into(),
-            found: "number".into(),
-        });
-    }
-    let _list_id = expect_list(*list_val)?;
-    Err(ExprError::TypeMismatch {
-        expected: "value-store context required for list contains check".into(),
-        found: "list handle without store".into(),
-    })
-}
-
-fn eval_helper_starts_with(args: &[SlotValue]) -> ExprResult<SlotValue> {
-    let (text_val, prefix_val) = two_args(args, ExprHelper::StartsWith)?;
-    let _text_id = expect_symbol(*text_val)?;
-    let _prefix_id = expect_symbol(*prefix_val)?;
-    Err(ExprError::TypeMismatch {
-        expected: "value-store context required for text operations".into(),
-        found: "symbol handle without store".into(),
-    })
-}
-
-fn eval_helper_ends_with(args: &[SlotValue]) -> ExprResult<SlotValue> {
-    let (text_val, suffix_val) = two_args(args, ExprHelper::EndsWith)?;
-    let _text_id = expect_symbol(*text_val)?;
-    let _suffix_id = expect_symbol(*suffix_val)?;
-    Err(ExprError::TypeMismatch {
-        expected: "value-store context required for text operations".into(),
-        found: "symbol handle without store".into(),
-    })
-}
-
-fn eval_helper_has(args: &[SlotValue]) -> ExprResult<SlotValue> {
-    let (obj_val, key_val) = two_args(args, ExprHelper::Has)?;
-    let _obj_id = expect_object(*obj_val)?;
-    let _key_id = expect_symbol(*key_val)?;
-    Err(ExprError::TypeMismatch {
-        expected: "value-store context required for object field lookup".into(),
-        found: "object handle without store".into(),
-    })
-}
-
-fn eval_helper_append(args: &[SlotValue]) -> ExprResult<SlotValue> {
-    let (list_val, _item_val) = two_args(args, ExprHelper::Append)?;
-    let _list_id = expect_list(*list_val)?;
-    Err(ExprError::TypeMismatch {
-        expected: "value-store context required for list append".into(),
-        found: "list handle without store".into(),
-    })
-}
-
-fn eval_helper_append_if(args: &[SlotValue]) -> ExprResult<SlotValue> {
-    let (list_val, _item_val, cond_val) = three_args(args, ExprHelper::AppendIf)?;
-    let _list_id = expect_list(*list_val)?;
-    let _ = expect_bool(*cond_val)?;
-    Err(ExprError::TypeMismatch {
-        expected: "value-store context required for list append".into(),
-        found: "list handle without store".into(),
-    })
-}
-
-fn eval_helper_merge(args: &[SlotValue]) -> ExprResult<SlotValue> {
-    let (left_val, right_val) = two_args(args, ExprHelper::Merge)?;
-    let _left_id = expect_object(*left_val)?;
-    let _right_id = expect_object(*right_val)?;
-    Err(ExprError::TypeMismatch {
-        expected: "value-store context required for object merge".into(),
-        found: "object handle without store".into(),
-    })
-}
-
-fn eval_helper_sum(args: &[SlotValue]) -> ExprResult<SlotValue> {
-    let value = one_arg(args, ExprHelper::Sum)?;
-    let _list_id = expect_list(*value)?;
-    Err(ExprError::TypeMismatch {
-        expected: "value-store context required for list sum".into(),
-        found: "list handle without store".into(),
-    })
 }
 
 // ===== Store-aware helper implementations =====

@@ -1,6 +1,7 @@
 #![forbid(unsafe_code)]
 //! Single-threaded shard owning mutable run state directly.
 
+pub mod directive;
 pub mod helpers;
 pub mod impl_;
 pub mod lifecycle;
@@ -9,6 +10,7 @@ pub mod timer_wheel;
 pub mod transitions;
 pub mod types;
 
+pub use directive::ShardDirective;
 pub use types::{
     AskAnswer, AskTicket, InspectResponse, InspectSnapshot, MAX_COMMAND_QUEUE_CAPACITY,
     ResumeError, ResumeResult, ResumeStatus, RunState, RuntimeEvent, RuntimeState, Shard,

@@ -47,19 +47,29 @@ impl ValueType {
 }
 
 /// Taint marker for secret propagation tracking.
+///
+/// Lattice: Clean < DerivedFromSecret < Secret
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Taint {
     /// No secret-derived data.
     Clean,
     /// Contains or derives from secret data.
+    DerivedFromSecret,
+    /// Contains or derives from secret data.
     Secret,
 }
 
 impl Taint {
-    /// Merges two taint markers; secret taint propagates.
+    /// Merges two taint markers; secret taint propagates upward through the lattice.
+    ///
+    /// Lattice rules (highest taint wins):
+    /// - Clean + anything = anything
+    /// - DerivedFromSecret + Secret = Secret
+    /// - Secret + anything = Secret
     pub fn merge(self, other: Self) -> Self {
         match (self, other) {
             (Self::Secret, _) | (_, Self::Secret) => Self::Secret,
+            (Self::DerivedFromSecret, _) | (_, Self::DerivedFromSecret) => Self::DerivedFromSecret,
             (Self::Clean, Self::Clean) => Self::Clean,
         }
     }
@@ -514,10 +524,9 @@ fn validate_step_taint(
                 // validate_step_types.
             }
             StepKind::Finish { result } => {
-                let fact = resolve_value(result, facts, slots);
-                if fact.taint == Taint::Secret {
-                    return Err(ValidationError::SecretResultLeak);
-                }
+                // Section 47: No rejection of Secret or DerivedFromSecret results
+                // Taint is tracked but does not cause rejection in Finish
+                let _fact = resolve_value(result, facts, slots);
             }
         }
     }

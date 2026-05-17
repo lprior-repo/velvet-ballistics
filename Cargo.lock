@@ -2770,6 +2770,7 @@ version = "0.1.0"
 dependencies = [
  "arrayvec",
  "logos",
+ "proptest",
  "thiserror",
  "vb_core",
 ]
@@ -2849,6 +2850,7 @@ dependencies = [
  "blake3",
  "crc32c",
  "postcard",
+ "proptest",
  "saphyr",
  "serde",
  "serde_json",

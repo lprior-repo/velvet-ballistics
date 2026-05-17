@@ -23,6 +23,9 @@ pub mod lexer;
 pub mod parser;
 pub mod typecheck;
 
+#[cfg(test)]
+mod property_tests;
+
 #[cfg(kani)]
 pub mod proofs;
 

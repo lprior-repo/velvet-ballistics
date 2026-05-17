@@ -54,6 +54,8 @@ fn runtime_error_static_message(error: &RuntimeError) -> Option<&'static str> {
             Some("IPC payload size exceeds maximum allowed by resource contract")
         }
         RuntimeError::EngineDriveFailed { .. } => Some("deterministic engine drive failed"),
+        RuntimeError::ShardNotFound { .. } => Some("shard not found"),
+        RuntimeError::MigrateSelf => Some("migration target is the source shard"),
         _ => None,
     }
 }
@@ -93,6 +95,9 @@ fn write_runtime_error_dynamic(
         }
         RuntimeError::EngineDriveFailed { run, source } => {
             write!(f, "engine drive failed for run {run:?}: {source}")
+        }
+        RuntimeError::ShardNotFound { shard } => {
+            write!(f, "shard {shard} not found")
         }
         _ => Ok(()),
     }
