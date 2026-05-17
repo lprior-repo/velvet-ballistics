@@ -17,4 +17,4 @@ attempt: 1-of-7
 
 ## Terminal state
 
-State 15 reached. `moon ci --force --summary normal` passed all 22 actions. Remote branch/bookmark `go-skill-vb-ib8i-sub9` pushed. `vb-ib8i` closed. `bd dolt push` completed. Workspace preserved for PR/main integration.
+State 15 reached. `moon ci --force --summary normal` passed all 22 actions on branch commit `f8ba6049` and again on merge commit `d6a05f141f93` (8968 tests passed). Remote branch/bookmark `go-skill-vb-ib8i-sub9` pushed. `main` moved forward to merge commit `d6a05f141f93` and pushed to origin. `vb-ib8i` closed. `bd dolt push` completed. Workspace preserved.
