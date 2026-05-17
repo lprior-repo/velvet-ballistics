@@ -26,6 +26,7 @@ use crate::IPC_VERSION;
 use crate::IpcCommand;
 use crate::IpcFrameHeader;
 use crate::IpcPayload;
+use crate::MaxPayloadBytes;
 use vb_core::{RunId, WorkflowDigest};
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
@@ -280,6 +281,92 @@ fn server_handles_client_disconnect_gracefully() {
     assert!(
         result.is_ok(),
         "poll after client disconnect should succeed"
+    );
+}
+
+#[test]
+fn slow_client_partial_frame_keeps_read_buffer_bounded() {
+    let path = temp_socket_path("slow_client_partial_frame");
+    let _cleanup = CleanupPath(&path);
+    let mut server = IpcServer::bind(&path).expect("bind should succeed");
+    let mut runtime = make_runtime();
+    let mut client = make_client(&path);
+
+    server
+        .poll_once(&mut runtime, Some(Duration::from_millis(100)))
+        .expect("accept poll should succeed");
+
+    let header = IpcFrameHeader::new(
+        IpcCommand::Health,
+        0,
+        77,
+        match u32::try_from(MaxPayloadBytes::DEFAULT.get()) {
+            Ok(value) => value,
+            Err(_) => return,
+        },
+    );
+    let header_bytes = header.encode().expect("header should encode");
+    client
+        .write_all(&header_bytes)
+        .expect("client should write partial header-only frame");
+    client.flush().expect("client should flush");
+
+    server
+        .poll_once(&mut runtime, Some(Duration::from_millis(100)))
+        .expect("server should retain bounded partial frame");
+
+    assert_eq!(
+        server.clients.len(),
+        1,
+        "slow client with partial bounded frame should remain connected"
+    );
+    let Some(connection) = server.clients.values().next() else {
+        return;
+    };
+    assert_eq!(
+        connection.read_buffer.len(),
+        IPC_HEADER_LEN,
+        "server must keep only received bytes, not allocate declared payload"
+    );
+    assert!(
+        connection.write_buffer.is_empty(),
+        "partial frame must not produce a response before payload arrives"
+    );
+}
+
+#[test]
+fn slow_client_oversized_frame_disconnects_without_unbounded_growth() {
+    let path = temp_socket_path("slow_client_oversized_frame");
+    let _cleanup = CleanupPath(&path);
+    let mut server = IpcServer::bind(&path).expect("bind should succeed");
+    let mut runtime = make_runtime();
+    let mut client = make_client(&path);
+
+    server
+        .poll_once(&mut runtime, Some(Duration::from_millis(100)))
+        .expect("accept poll should succeed");
+
+    let oversized = match u32::try_from(MaxPayloadBytes::DEFAULT.get()) {
+        Ok(value) => match value.checked_add(1) {
+            Some(next) => next,
+            None => return,
+        },
+        Err(_) => return,
+    };
+    let header = IpcFrameHeader::new(IpcCommand::Health, 0, 78, oversized);
+    let header_bytes = header.encode().expect("header should encode");
+    client
+        .write_all(&header_bytes)
+        .expect("client should write oversized header");
+    client.flush().expect("client should flush");
+
+    server
+        .poll_once(&mut runtime, Some(Duration::from_millis(100)))
+        .expect("server should reject oversized frame");
+
+    assert!(
+        server.clients.is_empty(),
+        "oversized slow-client frame must be rejected by disconnecting the client"
     );
 }
 
