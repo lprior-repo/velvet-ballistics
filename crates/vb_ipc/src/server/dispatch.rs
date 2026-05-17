@@ -102,8 +102,7 @@ mod tests {
         let mut runtime = make_runtime();
         server.set_test_poll_once_result(Ok(true));
         let result = serve_ipc(&mut server, &mut runtime, Some(Duration::ZERO));
-        assert!(result.is_ok());
-        assert_eq!(result.unwrap(), true);
+        assert_eq!(result, Ok(true));
     }
 
     #[test]
@@ -114,8 +113,7 @@ mod tests {
         let mut runtime = make_runtime();
         server.set_test_poll_once_result(Ok(false));
         let result = serve_ipc(&mut server, &mut runtime, Some(Duration::ZERO));
-        assert!(result.is_ok());
-        assert_eq!(result.unwrap(), false);
+        assert_eq!(result, Ok(false));
     }
 
     #[test]
@@ -126,8 +124,7 @@ mod tests {
         let mut runtime = make_runtime();
         server.set_test_poll_once_result(Err(IpcServerError::TooManyClients));
         let result = serve_ipc(&mut server, &mut runtime, Some(Duration::ZERO));
-        assert!(result.is_err());
-        assert!(matches!(result.unwrap_err(), IpcServerError::TooManyClients));
+        assert!(matches!(result, Err(IpcServerError::TooManyClients)));
     }
 
     #[test]
@@ -138,7 +135,116 @@ mod tests {
         let mut runtime = make_runtime();
         server.set_test_poll_once_result(Ok(true));
         let result = serve_ipc_with_resolver(&mut server, &mut runtime, Some(Duration::ZERO), None);
-        assert!(result.is_ok());
-        assert_eq!(result.unwrap(), true);
+        assert_eq!(result, Ok(true));
+    }
+
+    #[test]
+    fn dispatch_command_wrapper_delegates_to_dispatch_command_with_resolver() {
+        let mut runtime = make_runtime();
+        let header = crate::IpcFrameHeader::new(IpcCommand::Health, 0, 0, 0);
+        let response = dispatch_command(&header, &[], &mut runtime);
+        assert_eq!(response, IpcResponse::Healthy);
+    }
+
+    #[test]
+    fn dispatch_command_with_resolver_submit_run_inline() {
+        let mut runtime = make_runtime();
+        let header = crate::IpcFrameHeader::new(IpcCommand::SubmitRunInline, 0, 0, 0);
+        let response = dispatch_command_with_resolver(&header, &[], &mut runtime, None);
+        match response {
+            IpcResponse::PayloadError { .. } | IpcResponse::BadRequest => {}
+            other => panic!("expected PayloadError or BadRequest, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn dispatch_command_with_resolver_cancel_run() {
+        let mut runtime = make_runtime();
+        let header = crate::IpcFrameHeader::new(IpcCommand::CancelRun, 0, 0, 0);
+        let response = dispatch_command_with_resolver(&header, &[], &mut runtime, None);
+        assert_eq!(response, IpcResponse::BadRequest);
+    }
+
+    #[test]
+    fn dispatch_command_with_resolver_inspect_run() {
+        let mut runtime = make_runtime();
+        let header = crate::IpcFrameHeader::new(IpcCommand::InspectRun, 0, 0, 0);
+        let response = dispatch_command_with_resolver(&header, &[], &mut runtime, None);
+        assert_eq!(response, IpcResponse::BadRequest);
+    }
+
+    #[test]
+    fn dispatch_command_with_resolver_list_events() {
+        let mut runtime = make_runtime();
+        let header = crate::IpcFrameHeader::new(IpcCommand::ListEvents, 0, 0, 0);
+        let response = dispatch_command_with_resolver(&header, &[], &mut runtime, None);
+        assert_eq!(response, IpcResponse::BadRequest);
+    }
+
+    #[test]
+    fn dispatch_command_with_resolver_answer_ask() {
+        let mut runtime = make_runtime();
+        let header = crate::IpcFrameHeader::new(IpcCommand::AnswerAsk, 0, 0, 0);
+        let response = dispatch_command_with_resolver(&header, &[], &mut runtime, None);
+        assert_eq!(response, IpcResponse::BadRequest);
+    }
+
+    #[test]
+    fn dispatch_command_with_resolver_complete_action() {
+        let mut runtime = make_runtime();
+        let header = crate::IpcFrameHeader::new(IpcCommand::CompleteAction, 0, 0, 0);
+        let response = dispatch_command_with_resolver(&header, &[], &mut runtime, None);
+        assert_eq!(response, IpcResponse::BadRequest);
+    }
+
+    #[test]
+    fn dispatch_command_with_resolver_fail_action() {
+        let mut runtime = make_runtime();
+        let header = crate::IpcFrameHeader::new(IpcCommand::FailAction, 0, 0, 0);
+        let response = dispatch_command_with_resolver(&header, &[], &mut runtime, None);
+        assert_eq!(response, IpcResponse::BadRequest);
+    }
+
+    #[test]
+    fn dispatch_command_with_resolver_drain_trace() {
+        let mut runtime = make_runtime();
+        let header = crate::IpcFrameHeader::new(IpcCommand::DrainTrace, 0, 0, 0);
+        let response = dispatch_command_with_resolver(&header, &[], &mut runtime, None);
+        assert_eq!(response, IpcResponse::BadRequest);
+    }
+
+    #[test]
+    fn dispatch_command_with_resolver_get_metrics() {
+        let mut runtime = make_runtime();
+        let header = crate::IpcFrameHeader::new(IpcCommand::GetMetrics, 0, 0, 0);
+        let response = dispatch_command_with_resolver(&header, &[], &mut runtime, None);
+        match response {
+            IpcResponse::Metrics(_) => {}
+            other => panic!("expected Metrics, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn dispatch_command_with_resolver_verify_workflow() {
+        let mut runtime = make_runtime();
+        let header = crate::IpcFrameHeader::new(IpcCommand::VerifyWorkflow, 0, 0, 0);
+        let response = dispatch_command_with_resolver(&header, &[], &mut runtime, None);
+        assert_eq!(response, IpcResponse::BadRequest);
+    }
+
+    #[test]
+    fn dispatch_command_with_resolver_get_workflow_graph() {
+        let mut runtime = make_runtime();
+        let header = crate::IpcFrameHeader::new(IpcCommand::GetWorkflowGraph, 0, 0, 0);
+        let response = dispatch_command_with_resolver(&header, &[], &mut runtime, None);
+        assert_eq!(response, IpcResponse::BadRequest);
+    }
+
+    #[test]
+    fn dispatch_command_with_resolver_get_taint_report() {
+        let mut runtime = make_runtime();
+        let header = crate::IpcFrameHeader::new(IpcCommand::GetTaintReport, 0, 0, 0);
+        let response = dispatch_command_with_resolver(&header, &[], &mut runtime, None);
+        assert_eq!(response, IpcResponse::BadRequest);
     }
 }

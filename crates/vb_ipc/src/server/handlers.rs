@@ -2475,9 +2475,9 @@ mod tests {
     }
 
     #[test]
-    fn handle_verify_workflow_with_invalid_payload_returns_bad_request() {
+    fn handle_get_taint_report_with_garbage_payload_returns_bad_request() {
         let garbage: &[u8] = &[0xFF, 0xFE];
-        let response = handle_verify_workflow(garbage, None);
+        let response = handle_get_taint_report(garbage, None);
         assert_eq!(response, IpcResponse::BadRequest);
     }
 
@@ -2751,5 +2751,518 @@ mod tests {
             IpcResponse::PayloadError { .. } => {}
             other => panic!("expected PayloadError for oversized input, got {other:?}"),
         }
+    }
+
+    struct RequiredResolver;
+    impl WorkflowResolver for RequiredResolver {
+        fn resolve_workflow(
+            &mut self,
+            _digest: vb_core::WorkflowDigest,
+        ) -> Result<vb_core::workflow::CompiledWorkflow, WorkflowResolutionError> {
+            Err(WorkflowResolutionError::Required)
+        }
+    }
+
+    struct NotFoundResolver;
+    impl WorkflowResolver for NotFoundResolver {
+        fn resolve_workflow(
+            &mut self,
+            _digest: vb_core::WorkflowDigest,
+        ) -> Result<vb_core::workflow::CompiledWorkflow, WorkflowResolutionError> {
+            Err(WorkflowResolutionError::NotFound)
+        }
+    }
+
+    #[test]
+    fn sanitize_runtime_error_preserves_short_messages() {
+        let result = sanitize_runtime_error(&"short");
+        assert_eq!(result, "short");
+    }
+
+    #[test]
+    fn node_kind_label_covers_all_variants() {
+        use vb_core::ids::{ActionId, ConstIdx, ExprIdx, SlotIdx, StepIdx};
+        use vb_core::workflow::CompiledNodeKind;
+
+        assert_eq!(node_kind_label(&CompiledNodeKind::Nop), "Nop");
+        assert_eq!(node_kind_label(&CompiledNodeKind::SetConst { value: ConstIdx::new(0) }), "SetConst");
+        assert_eq!(node_kind_label(&CompiledNodeKind::Copy { source: SlotIdx::ZERO }), "Copy");
+        assert_eq!(node_kind_label(&CompiledNodeKind::EvalExpr { expr: ExprIdx::new(0) }), "EvalExpr");
+        assert_eq!(node_kind_label(&CompiledNodeKind::BuildObject { fields: Box::new([]) }), "BuildObject");
+        assert_eq!(node_kind_label(&CompiledNodeKind::BuildList { items: Box::new([]) }), "BuildList");
+        assert_eq!(node_kind_label(&CompiledNodeKind::Do { action: ActionId::new(0), input: SlotIdx::ZERO }), "Do");
+        assert_eq!(node_kind_label(&CompiledNodeKind::Choose { branches: Box::new([]), otherwise: None }), "Choose");
+        assert_eq!(node_kind_label(&CompiledNodeKind::ChooseSlot { branches: Box::new([]), otherwise: None }), "ChooseSlot");
+        assert_eq!(node_kind_label(&CompiledNodeKind::ForEachStart { input: SlotIdx::ZERO, item_slot: SlotIdx::ZERO, limit: 0, body: StepIdx::new(0), done: StepIdx::new(0) }), "ForEachStart");
+        assert_eq!(node_kind_label(&CompiledNodeKind::ForEachNext { iterator_slot: SlotIdx::ZERO, body: StepIdx::new(0), done: StepIdx::new(0) }), "ForEachNext");
+        assert_eq!(node_kind_label(&CompiledNodeKind::ForEachJoin { output: SlotIdx::ZERO }), "ForEachJoin");
+        assert_eq!(node_kind_label(&CompiledNodeKind::TogetherStart { branches: Box::new([]), join: StepIdx::new(0) }), "TogetherStart");
+        assert_eq!(node_kind_label(&CompiledNodeKind::TogetherBranch { branch: 0, entry: StepIdx::new(0), join: StepIdx::new(0), accumulator: SlotIdx::ZERO }), "TogetherBranch");
+        assert_eq!(node_kind_label(&CompiledNodeKind::TogetherJoin { branch_count: 0, accumulator: SlotIdx::ZERO }), "TogetherJoin");
+        assert_eq!(node_kind_label(&CompiledNodeKind::CollectStart { source: SlotIdx::ZERO, limit: 0, page_size: 0, body: StepIdx::new(0), done: StepIdx::new(0) }), "CollectStart");
+        assert_eq!(node_kind_label(&CompiledNodeKind::CollectPage { collector_slot: SlotIdx::ZERO, body: StepIdx::new(0), done: StepIdx::new(0) }), "CollectPage");
+        assert_eq!(node_kind_label(&CompiledNodeKind::CollectNext { collector_slot: SlotIdx::ZERO, body: StepIdx::new(0), done: StepIdx::new(0) }), "CollectNext");
+        assert_eq!(node_kind_label(&CompiledNodeKind::CollectFinish { collector_slot: SlotIdx::ZERO }), "CollectFinish");
+        assert_eq!(node_kind_label(&CompiledNodeKind::ReduceStart { input: SlotIdx::ZERO, accumulator: SlotIdx::ZERO, initial: ConstIdx::new(0), body: StepIdx::new(0), done: StepIdx::new(0) }), "ReduceStart");
+        assert_eq!(node_kind_label(&CompiledNodeKind::ReduceNext { iterator_slot: SlotIdx::ZERO, accumulator: SlotIdx::ZERO, body: StepIdx::new(0), done: StepIdx::new(0) }), "ReduceNext");
+        assert_eq!(node_kind_label(&CompiledNodeKind::ReduceFinish { accumulator: SlotIdx::ZERO }), "ReduceFinish");
+        assert_eq!(node_kind_label(&CompiledNodeKind::RepeatStart { max_attempts: 0, body: StepIdx::new(0), done: StepIdx::new(0) }), "RepeatStart");
+        assert_eq!(node_kind_label(&CompiledNodeKind::RepeatAttempt { attempt_slot: SlotIdx::ZERO, body: StepIdx::new(0), done: StepIdx::new(0) }), "RepeatAttempt");
+        assert_eq!(node_kind_label(&CompiledNodeKind::RepeatCheck { attempt_slot: SlotIdx::ZERO, done: StepIdx::new(0) }), "RepeatCheck");
+        assert_eq!(node_kind_label(&CompiledNodeKind::RepeatFinish { result: SlotIdx::ZERO }), "RepeatFinish");
+        assert_eq!(node_kind_label(&CompiledNodeKind::WaitUntil { deadline_slot: SlotIdx::ZERO }), "WaitUntil");
+        assert_eq!(node_kind_label(&CompiledNodeKind::WaitEvent { event: SlotIdx::ZERO, timeout_slot: None }), "WaitEvent");
+        assert_eq!(node_kind_label(&CompiledNodeKind::Ask { prompt: SlotIdx::ZERO, timeout_slot: None }), "Ask");
+        assert_eq!(node_kind_label(&CompiledNodeKind::AskResume { answer: SlotIdx::ZERO }), "AskResume");
+        assert_eq!(node_kind_label(&CompiledNodeKind::RetryCheck { policy_slot: SlotIdx::ZERO, body: StepIdx::new(0), exhausted: StepIdx::new(0) }), "RetryCheck");
+        assert_eq!(node_kind_label(&CompiledNodeKind::ErrorHandler { body: StepIdx::new(0), handler: StepIdx::new(0), error_slot: None }), "ErrorHandler");
+        assert_eq!(node_kind_label(&CompiledNodeKind::Jump { target: StepIdx::new(0) }), "Jump");
+        assert_eq!(node_kind_label(&CompiledNodeKind::Finish { result: SlotIdx::ZERO }), "Finish");
+    }
+
+    #[test]
+    fn collect_edges_from_node_covers_all_structural_variants() {
+        use vb_core::ids::{SlotIdx, StepIdx, ExprIdx, ConstIdx};
+        use vb_core::workflow::{CompiledNodeKind, ExprBranch, SlotBranch};
+
+        let mut edges = Vec::new();
+
+        edges.clear();
+        collect_edges_from_node(0, &CompiledNodeKind::Choose {
+            branches: Box::new([
+                ExprBranch { condition: ExprIdx::new(0), target: StepIdx::new(1) },
+                ExprBranch { condition: ExprIdx::new(1), target: StepIdx::new(2) },
+            ]),
+            otherwise: Some(StepIdx::new(3)),
+        }, &mut edges);
+        assert_eq!(edges.len(), 3);
+
+        edges.clear();
+        collect_edges_from_node(0, &CompiledNodeKind::ChooseSlot {
+            branches: Box::new([
+                SlotBranch { condition: SlotIdx::new(0), target: StepIdx::new(1) },
+                SlotBranch { condition: SlotIdx::new(1), target: StepIdx::new(2) },
+            ]),
+            otherwise: Some(StepIdx::new(3)),
+        }, &mut edges);
+        assert_eq!(edges.len(), 3);
+
+        edges.clear();
+        collect_edges_from_node(0, &CompiledNodeKind::ForEachStart {
+            input: SlotIdx::ZERO, item_slot: SlotIdx::ZERO, limit: 0, body: StepIdx::new(1), done: StepIdx::new(2),
+        }, &mut edges);
+        assert_eq!(edges.len(), 2);
+
+        edges.clear();
+        collect_edges_from_node(0, &CompiledNodeKind::ForEachNext {
+            iterator_slot: SlotIdx::ZERO, body: StepIdx::new(1), done: StepIdx::new(2),
+        }, &mut edges);
+        assert_eq!(edges.len(), 2);
+
+        edges.clear();
+        collect_edges_from_node(0, &CompiledNodeKind::TogetherStart {
+            branches: Box::new([StepIdx::new(1), StepIdx::new(2)]),
+            join: StepIdx::new(3),
+        }, &mut edges);
+        assert_eq!(edges.len(), 3);
+
+        edges.clear();
+        collect_edges_from_node(0, &CompiledNodeKind::CollectStart {
+            source: SlotIdx::ZERO, limit: 0, page_size: 0, body: StepIdx::new(1), done: StepIdx::new(2),
+        }, &mut edges);
+        assert_eq!(edges.len(), 2);
+
+        edges.clear();
+        collect_edges_from_node(0, &CompiledNodeKind::CollectPage {
+            collector_slot: SlotIdx::ZERO, body: StepIdx::new(1), done: StepIdx::new(2),
+        }, &mut edges);
+        assert_eq!(edges.len(), 2);
+
+        edges.clear();
+        collect_edges_from_node(0, &CompiledNodeKind::CollectNext {
+            collector_slot: SlotIdx::ZERO, body: StepIdx::new(1), done: StepIdx::new(2),
+        }, &mut edges);
+        assert_eq!(edges.len(), 2);
+
+        edges.clear();
+        collect_edges_from_node(0, &CompiledNodeKind::ReduceStart {
+            input: SlotIdx::ZERO, accumulator: SlotIdx::ZERO, initial: ConstIdx::new(0), body: StepIdx::new(1), done: StepIdx::new(2),
+        }, &mut edges);
+        assert_eq!(edges.len(), 2);
+
+        edges.clear();
+        collect_edges_from_node(0, &CompiledNodeKind::ReduceNext {
+            iterator_slot: SlotIdx::ZERO, accumulator: SlotIdx::ZERO, body: StepIdx::new(1), done: StepIdx::new(2),
+        }, &mut edges);
+        assert_eq!(edges.len(), 2);
+
+        edges.clear();
+        collect_edges_from_node(0, &CompiledNodeKind::RepeatStart {
+            max_attempts: 0, body: StepIdx::new(1), done: StepIdx::new(2),
+        }, &mut edges);
+        assert_eq!(edges.len(), 2);
+
+        edges.clear();
+        collect_edges_from_node(0, &CompiledNodeKind::RepeatAttempt {
+            attempt_slot: SlotIdx::ZERO, body: StepIdx::new(1), done: StepIdx::new(2),
+        }, &mut edges);
+        assert_eq!(edges.len(), 2);
+
+        edges.clear();
+        collect_edges_from_node(0, &CompiledNodeKind::RepeatCheck {
+            attempt_slot: SlotIdx::ZERO, done: StepIdx::new(1),
+        }, &mut edges);
+        assert_eq!(edges.len(), 1);
+
+        edges.clear();
+        collect_edges_from_node(0, &CompiledNodeKind::ErrorHandler {
+            body: StepIdx::new(1), handler: StepIdx::new(2), error_slot: None,
+        }, &mut edges);
+        assert_eq!(edges.len(), 2);
+
+        edges.clear();
+        collect_edges_from_node(0, &CompiledNodeKind::Jump { target: StepIdx::new(1) }, &mut edges);
+        assert_eq!(edges.len(), 1);
+
+        edges.clear();
+        collect_edges_from_node(0, &CompiledNodeKind::Nop, &mut edges);
+        assert!(edges.is_empty());
+    }
+
+    #[test]
+    fn all_successors_covers_remaining_structural_variants() {
+        use vb_core::ids::{SlotIdx, StepIdx, ExprIdx, ConstIdx};
+        use vb_core::workflow::{CompiledNodeKind, ExprBranch, SlotBranch};
+
+        let kind = CompiledNodeKind::ChooseSlot {
+            branches: Box::new([
+                SlotBranch { condition: SlotIdx::new(0), target: StepIdx::new(1) },
+            ]),
+            otherwise: Some(StepIdx::new(2)),
+        };
+        let succs = all_successors(&kind);
+        assert!(succs.contains(&1));
+        assert!(succs.contains(&2));
+
+        let kind = CompiledNodeKind::ForEachNext {
+            iterator_slot: SlotIdx::ZERO, body: StepIdx::new(1), done: StepIdx::new(2),
+        };
+        let succs = all_successors(&kind);
+        assert!(succs.contains(&1));
+        assert!(succs.contains(&2));
+
+        let kind = CompiledNodeKind::CollectStart {
+            source: SlotIdx::ZERO, limit: 0, page_size: 0, body: StepIdx::new(1), done: StepIdx::new(2),
+        };
+        let succs = all_successors(&kind);
+        assert!(succs.contains(&1));
+        assert!(succs.contains(&2));
+
+        let kind = CompiledNodeKind::CollectPage {
+            collector_slot: SlotIdx::ZERO, body: StepIdx::new(1), done: StepIdx::new(2),
+        };
+        let succs = all_successors(&kind);
+        assert!(succs.contains(&1));
+        assert!(succs.contains(&2));
+
+        let kind = CompiledNodeKind::CollectNext {
+            collector_slot: SlotIdx::ZERO, body: StepIdx::new(1), done: StepIdx::new(2),
+        };
+        let succs = all_successors(&kind);
+        assert!(succs.contains(&1));
+        assert!(succs.contains(&2));
+
+        let kind = CompiledNodeKind::ReduceStart {
+            input: SlotIdx::ZERO, accumulator: SlotIdx::ZERO, initial: ConstIdx::new(0), body: StepIdx::new(1), done: StepIdx::new(2),
+        };
+        let succs = all_successors(&kind);
+        assert!(succs.contains(&1));
+        assert!(succs.contains(&2));
+
+        let kind = CompiledNodeKind::ReduceNext {
+            iterator_slot: SlotIdx::ZERO, accumulator: SlotIdx::ZERO, body: StepIdx::new(1), done: StepIdx::new(2),
+        };
+        let succs = all_successors(&kind);
+        assert!(succs.contains(&1));
+        assert!(succs.contains(&2));
+
+        let kind = CompiledNodeKind::RepeatStart {
+            max_attempts: 0, body: StepIdx::new(1), done: StepIdx::new(2),
+        };
+        let succs = all_successors(&kind);
+        assert!(succs.contains(&1));
+        assert!(succs.contains(&2));
+
+        let kind = CompiledNodeKind::RepeatAttempt {
+            attempt_slot: SlotIdx::ZERO, body: StepIdx::new(1), done: StepIdx::new(2),
+        };
+        let succs = all_successors(&kind);
+        assert!(succs.contains(&1));
+        assert!(succs.contains(&2));
+
+        let kind = CompiledNodeKind::RepeatCheck {
+            attempt_slot: SlotIdx::ZERO, done: StepIdx::new(1),
+        };
+        let succs = all_successors(&kind);
+        assert!(succs.contains(&1));
+    }
+
+    #[test]
+    fn handle_answer_ask_with_valid_payload_returns_accepted_run() {
+        let mut runtime = make_runtime();
+        let answer_bytes = postcard::to_allocvec(&SlotValue::Null).expect("encode SlotValue");
+        let payload = crate::IpcPayload::AnswerAsk {
+            run_id: vb_core::RunId::new(1),
+            ticket: 1,
+            answer: answer_bytes,
+            taint: None,
+        };
+        let encoded = postcard::to_allocvec(&payload).expect("encode payload");
+        let response = handle_answer_ask(&encoded, &mut runtime);
+        match response {
+            IpcResponse::AcceptedRun { run_id } => assert_eq!(run_id, 1),
+            other => panic!("expected AcceptedRun, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn handle_complete_action_with_valid_payload_returns_accepted_run() {
+        let mut runtime = make_runtime();
+        let output_payload = crate::IpcActionOutputPayload {
+            output_slot: SlotIdx::ZERO,
+            value: SlotValue::Null,
+            taint: Taint::Clean,
+        };
+        let output_bytes = postcard::to_allocvec(&output_payload).expect("encode output");
+        let payload = crate::IpcPayload::CompleteAction {
+            run_id: vb_core::RunId::new(1),
+            ticket: 1,
+            output: output_bytes,
+        };
+        let encoded = postcard::to_allocvec(&payload).expect("encode payload");
+        let response = handle_complete_action(&encoded, &mut runtime);
+        match response {
+            IpcResponse::AcceptedRun { run_id } => assert_eq!(run_id, 1),
+            other => panic!("expected AcceptedRun, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn handle_fail_action_with_valid_payload_returns_accepted_run() {
+        let mut runtime = make_runtime();
+        let payload = crate::IpcPayload::FailAction {
+            run_id: vb_core::RunId::new(1),
+            ticket: 1,
+            error: vec![0xCC; 10],
+        };
+        let encoded = postcard::to_allocvec(&payload).expect("encode payload");
+        let response = handle_fail_action(&encoded, &mut runtime);
+        match response {
+            IpcResponse::AcceptedRun { run_id } => assert_eq!(run_id, 1),
+            other => panic!("expected AcceptedRun, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn submit_resolved_workflow_with_required_resolver_returns_resolution_required() {
+        let mut runtime = make_runtime();
+        let digest = vb_core::WorkflowDigest::from_bytes([0x00; 32]);
+        let submit = SubmitRunPayload {
+            run_id: vb_core::RunId::new(1),
+            workflow: digest,
+            input: vec![],
+        };
+        let mut resolver = RequiredResolver;
+        let response = submit_resolved_workflow(IpcCommand::SubmitRun, submit, &mut runtime, Some(&mut resolver));
+        assert_eq!(response, IpcResponse::WorkflowResolutionRequired);
+    }
+
+    #[test]
+    fn submit_resolved_workflow_with_mismatched_digest_returns_mismatch() {
+        let mut runtime = make_runtime();
+        let digest = vb_core::WorkflowDigest::from_bytes([0x00; 32]);
+        let submit = SubmitRunPayload {
+            run_id: vb_core::RunId::new(1),
+            workflow: digest,
+            input: vec![],
+        };
+        let mut resolver = MismatchResolver;
+        let response = submit_resolved_workflow(IpcCommand::SubmitRun, submit, &mut runtime, Some(&mut resolver));
+        assert_eq!(response, IpcResponse::WorkflowDigestMismatch);
+    }
+
+    #[test]
+    fn submit_resolved_workflow_with_invalid_command_returns_mismatch() {
+        let mut runtime = make_runtime();
+        let digest = vb_core::WorkflowDigest::from_bytes([0x42; 32]);
+        let workflow = make_minimal_workflow(digest);
+        let mut resolver = OkResolver { workflow };
+        let submit = SubmitRunPayload {
+            run_id: vb_core::RunId::new(1),
+            workflow: digest,
+            input: vec![],
+        };
+        let response = submit_resolved_workflow(IpcCommand::Health, submit, &mut runtime, Some(&mut resolver));
+        assert_eq!(response, IpcResponse::CommandPayloadMismatch);
+    }
+
+    #[test]
+    fn handle_verify_workflow_with_valid_workflow_returns_gate_results() {
+        let digest = vb_core::WorkflowDigest::from_bytes([0x42; 32]);
+        let workflow = make_minimal_workflow(digest);
+        let mut resolver = OkResolver { workflow };
+        let payload = crate::IpcPayload::VerifyWorkflow { digest };
+        let encoded = postcard::to_allocvec(&payload).expect("encode payload");
+        let response = handle_verify_workflow(&encoded, Some(&mut resolver));
+        match response {
+            IpcResponse::VerifyWorkflow { result } => {
+                assert_eq!(result.total_checks, 9);
+                assert_eq!(result.pass_count + result.fail_count, result.total_checks);
+            }
+            other => panic!("expected VerifyWorkflow, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn handle_get_workflow_graph_with_invalid_payload_returns_bad_request() {
+        let garbage: &[u8] = &[0xFF, 0xFE];
+        let response = handle_get_workflow_graph(garbage, None);
+        assert_eq!(response, IpcResponse::BadRequest);
+    }
+
+    #[test]
+    fn handle_get_workflow_graph_with_required_resolver_returns_resolution_required() {
+        let digest = vb_core::WorkflowDigest::from_bytes([0x00; 32]);
+        let payload = crate::IpcPayload::GetWorkflowGraph { digest };
+        let encoded = postcard::to_allocvec(&payload).expect("encode payload");
+        let mut resolver = RequiredResolver;
+        let response = handle_get_workflow_graph(&encoded, Some(&mut resolver));
+        assert_eq!(response, IpcResponse::WorkflowResolutionRequired);
+    }
+
+    #[test]
+    fn handle_get_workflow_graph_with_not_found_resolver_returns_unsupported() {
+        let digest = vb_core::WorkflowDigest::from_bytes([0x00; 32]);
+        let payload = crate::IpcPayload::GetWorkflowGraph { digest };
+        let encoded = postcard::to_allocvec(&payload).expect("encode payload");
+        let mut resolver = NotFoundResolver;
+        let response = handle_get_workflow_graph(&encoded, Some(&mut resolver));
+        assert_eq!(response, IpcResponse::WorkflowResolutionUnsupported);
+    }
+
+    #[test]
+    fn handle_get_taint_report_with_required_resolver_returns_resolution_required() {
+        let digest = vb_core::WorkflowDigest::from_bytes([0x00; 32]);
+        let payload = crate::IpcPayload::GetTaintReport { digest };
+        let encoded = postcard::to_allocvec(&payload).expect("encode payload");
+        let mut resolver = RequiredResolver;
+        let response = handle_get_taint_report(&encoded, Some(&mut resolver));
+        assert_eq!(response, IpcResponse::WorkflowResolutionRequired);
+    }
+
+    #[test]
+    fn handle_get_taint_report_with_not_found_resolver_returns_unsupported() {
+        let digest = vb_core::WorkflowDigest::from_bytes([0x00; 32]);
+        let payload = crate::IpcPayload::GetTaintReport { digest };
+        let encoded = postcard::to_allocvec(&payload).expect("encode payload");
+        let mut resolver = NotFoundResolver;
+        let response = handle_get_taint_report(&encoded, Some(&mut resolver));
+        assert_eq!(response, IpcResponse::WorkflowResolutionUnsupported);
+    }
+
+    #[test]
+    fn handle_get_taint_report_with_safe_source_returns_warning() {
+        use vb_core::workflow::{CompiledNode, CompiledNodeKind, WorkflowParts, ResourceContract};
+        use vb_core::ids::StepIdx;
+
+        let digest = vb_core::WorkflowDigest::from_bytes([0xCD; 32]);
+        let parts = WorkflowParts {
+            name: Box::from("test"),
+            digest,
+            nodes: vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: None,
+                    next: Some(StepIdx::new(1)),
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::WaitEvent {
+                        event: vb_core::ids::SlotIdx::ZERO,
+                        timeout_slot: None,
+                    },
+                },
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: None,
+                    next: None,
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::Nop,
+                },
+            ].into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: Box::new([]),
+            slot_count: 1,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+            step_names: Box::new([]),
+        };
+        let workflow = vb_core::workflow::CompiledWorkflow::try_from_parts(parts)
+            .expect("workflow should be valid");
+        let mut resolver = OkResolver { workflow };
+        let payload = crate::IpcPayload::GetTaintReport { digest };
+        let encoded = postcard::to_allocvec(&payload).expect("encode payload");
+        let response = handle_get_taint_report(&encoded, Some(&mut resolver));
+        match response {
+            IpcResponse::TaintReport { sources, sinks, finish_safe, paths } => {
+                assert_eq!(sources, vec![0]);
+                assert!(sinks.is_empty(), "no sinks in this workflow");
+                assert!(finish_safe, "no source reaches sink");
+                assert!(!paths.is_empty(), "should have warning paths");
+                assert!(paths.iter().all(|p| p.status == "warning"), "all paths should be warning");
+            }
+            other => panic!("expected TaintReport, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn bfs_forward_respects_out_of_bounds_successors() {
+        use vb_core::workflow::{CompiledNode, CompiledNodeKind, WorkflowParts, ResourceContract};
+        use vb_core::ids::StepIdx;
+
+        let parts = WorkflowParts {
+            name: Box::from("test"),
+            digest: vb_core::WorkflowDigest::from_bytes([0x00; 32]),
+            nodes: vec![
+                CompiledNode {
+                    id: StepIdx::new(0),
+                    output: None,
+                    next: None,
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::Jump { target: StepIdx::new(99) },
+                },
+                CompiledNode {
+                    id: StepIdx::new(1),
+                    output: None,
+                    next: None,
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::Finish { result: vb_core::ids::SlotIdx::ZERO },
+                },
+            ].into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: Box::new([]),
+            slot_count: 1,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+            step_names: Box::new([]),
+        };
+        let reachable = bfs_forward(&parts, 0, 2);
+        assert!(reachable.is_empty(), "out-of-bounds successor should not be followed");
     }
 }

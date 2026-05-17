@@ -67,6 +67,16 @@ bd dolt push         # Push beads data to remote
 - Every speed claim requires real baseline/result benchmark evidence; compileable Criterion scaffold placeholders are not performance evidence.
 - Do not add unstable Rust features outside normal `try_blocks`/`portable_simd` use and perf-only `allocator_api`/`generic_const_exprs`. Perf-only features may appear only in `crates/*/src/perf/**`, `crates/*/src/generated/**`, `benches/**`, or marker-approved files if `scripts/check-nightly-features.sh` implements `velvet-allow-perf-nightly-feature`. Use `moon run :nightly-feature-gate` or `just nightly-feature-gate` for first-party feature-scope checking. Use `just nightly-feature-cargo-probe` where transitive dependencies do not require extra nightly internals.
 
+## Formal Verification Mandates (GOD RULES)
+
+**CRITICAL DIRECTIVE:** ALL AI AGENTS AND VERIFICATION HARNESSES MUST OBEY THESE RULES UNDER PENALTY OF REJECTION. YOU MAY NOT "CHEAT" THE MATH.
+
+1. **No Hardcoded Kani Shapes:** Kani verification harnesses MUST NOT hardcode structural inputs (like `WorkflowParts` or `RunFrame`) with fixed dummy data. You MUST implement and use `kani::Arbitrary` for core structures, or write safe, exhaustive generator harnesses using `kani::any()`. Proving that a function doesn't panic on one hardcoded data structure proves nothing.
+2. **No Vacuum Verus Proofs:** Verus `proof fn` and `spec fn` models MUST mathematically bind to the actual Rust implementations (`exec fn`) inside the production codebase. You cannot define an enum in `verification/verus/`, prove its properties `by(compute)`, and call it a day. The implementation functions must use `requires` and `ensures` to guarantee they satisfy the model.
+3. **No Unbounded TLA+ Math:** TLA+ specifications MUST model the exact bounded hardware limits of the target architecture (e.g., integer overflows at `MAX_U64`). You cannot use unbounded `Nat` to assume away arithmetic failures. The specs must model the `Err` state transitions and prove that the workflow engine gracefully suspends or fails rather than deadlocking or panicking on overflow.
+4. **No Loop Oscillations:** Follow strict Proof-Driven Development. If a Kani/Verus harness exposes a flaw in the implementation, **FIX THE IMPLEMENTATION**. You are strictly forbidden from altering the mathematical contract or proof harness just to make the test turn green.
+5. **No Blind Verification Mutations:** Differential verification only. Do not blindly trigger `cargo-mutants` or `kani` across the entire fleet for simple changes. Trim your verification scope to the call-graph blast radius of your specific bead to avoid melting the CI cluster.
+
 ## Non-Interactive Shell Commands
 
 **ALWAYS use non-interactive flags** with file operations to avoid hanging on confirmation prompts.

@@ -89,7 +89,7 @@ fn bind_creates_server_at_new_socket_path() {
     let _cleanup = CleanupPath(&path);
     let result = IpcServer::bind(&path);
 
-    assert!(result.is_ok(), "bind to fresh path should succeed");
+    let Ok(_) = result else { panic!("bind to fresh path should succeed") };
     assert!(path.exists(), "socket file should exist after bind");
 }
 
@@ -117,7 +117,7 @@ fn bind_to_nested_directory_fails() {
         .join("sock");
     let result = IpcServer::bind(&path);
 
-    assert!(result.is_err(), "bind to nonexistent directory should fail");
+    let Err(_) = result else { panic!("bind to nonexistent directory should fail") };
 }
 
 // ── poll_once tests ─────────────────────────────────────────────────────────
@@ -132,8 +132,7 @@ fn poll_once_returns_ok_when_no_events() {
     // Poll with zero timeout: no clients connected, should return immediately.
     let result = server.poll_once(&mut runtime, Some(Duration::ZERO));
 
-    assert!(result.is_ok(), "poll_once with zero timeout should succeed");
-    let Ok(continuing) = result else { return };
+    let Ok(continuing) = result else { panic!("poll_once with zero timeout should succeed") };
     assert!(continuing, "server should indicate continue (not shutdown)");
 }
 
@@ -181,7 +180,7 @@ fn serve_ipc_delegates_to_poll_once() {
 
     let result = serve_ipc(&mut server, &mut runtime, Some(Duration::ZERO));
 
-    assert!(result.is_ok(), "serve_ipc should succeed");
+    let Ok(_) = result else { panic!("serve_ipc should succeed") };
 }
 
 // ── client accept + health command round-trip ───────────────────────────────
@@ -243,8 +242,9 @@ fn server_processes_health_command_from_client() {
     };
     if payload_len_usize > 0 {
         let response_payload = read_exact_timeout(&mut client, payload_len_usize);
-        assert!(response_payload.is_ok(), "should read response payload");
-        let payload = response_payload.expect("read payload");
+        let Ok(payload) = response_payload else {
+            panic!("should read response payload")
+        };
         let decoded: Result<IpcResponse, _> = postcard::from_bytes(&payload);
         match decoded {
             Ok(IpcResponse::Healthy) => {}
@@ -458,7 +458,7 @@ fn server_accepts_multiple_clients() {
 
     // Verify server still works (all clients connected).
     let result = server.poll_once(&mut runtime, Some(Duration::ZERO));
-    assert!(result.is_ok(), "poll after multiple accepts should succeed");
+    let Ok(_) = result else { panic!("poll after multiple accepts should succeed") };
 
     // Explicitly keep clients alive until here.
     drop(client1);
@@ -599,7 +599,7 @@ fn server_processes_multiple_commands_from_same_client() {
         };
         if payload_len_usize > 0 {
             let response_payload = read_exact_timeout(&mut client, payload_len_usize);
-            assert!(response_payload.is_ok(), "should read response payload {i}");
+            let Ok(_) = response_payload else { panic!("should read response payload {i}"); };
         }
     }
 }
@@ -658,8 +658,9 @@ fn server_responds_with_error_for_nonzero_reserved_field() {
     };
     if payload_len_usize > 0 {
         let response_payload = read_exact_timeout(&mut client, payload_len_usize);
-        assert!(response_payload.is_ok(), "should read response payload");
-        let payload = response_payload.expect("read payload");
+        let Ok(payload) = response_payload else {
+            panic!("should read response payload")
+        };
         let decoded: Result<IpcResponse, _> = postcard::from_bytes(&payload);
         match decoded {
             Ok(IpcResponse::FrameError { message }) => {
@@ -875,8 +876,9 @@ fn workflow_resolver_not_found_is_rejected_by_dispatch() {
 
     // Read response header.
     let response_header_bytes = read_exact_timeout(&mut client, IPC_HEADER_LEN);
-    assert!(response_header_bytes.is_ok(), "should read response header");
-    let response_header = response_header_bytes.expect("header");
+    let Ok(response_header) = response_header_bytes else {
+        panic!("should read response header")
+    };
 
     // Read response payload.
     let payload_len = u32::from_le_bytes(
@@ -891,8 +893,9 @@ fn workflow_resolver_not_found_is_rejected_by_dispatch() {
     };
     if payload_len_usize > 0 {
         let response_payload = read_exact_timeout(&mut client, payload_len_usize);
-        assert!(response_payload.is_ok(), "should read response payload");
-        let payload = response_payload.expect("read payload");
+        let Ok(payload) = response_payload else {
+            panic!("should read response payload")
+        };
         let decoded: Result<IpcResponse, _> = postcard::from_bytes(&payload);
         match decoded {
             Ok(IpcResponse::PayloadError { message, .. }) => {
@@ -1712,8 +1715,8 @@ fn handle_readable_returns_false_on_would_block() {
         .expect("poll should succeed");
 
     let result = server.handle_readable(1, &mut runtime, None);
-    assert!(result.is_ok(), "handle_readable should not error");
-    assert_eq!(result.unwrap(), false, "should return false on WouldBlock");
+    let Ok(val) = result else { panic!("handle_readable should not error") };
+    assert_eq!(val, false, "should return false on WouldBlock");
 }
 
 // ── 3. handle_readable when partial header ───────────────────────────────────
@@ -1737,8 +1740,8 @@ fn handle_readable_returns_false_for_partial_header() {
         .expect("poll should succeed");
 
     let result = server.handle_readable(1, &mut runtime, None);
-    assert!(result.is_ok());
-    assert_eq!(result.unwrap(), false, "should return false for partial header");
+    let Ok(val) = result else { panic!("handle_readable should not error") };
+    assert_eq!(val, false, "should return false for partial header");
 }
 
 // ── 4. handle_readable when complete header but partial payload ──────────────
@@ -1763,10 +1766,9 @@ fn handle_readable_returns_false_for_complete_header_partial_payload() {
         .expect("poll should succeed");
 
     let result = server.handle_readable(1, &mut runtime, None);
-    assert!(result.is_ok());
     assert_eq!(
-        result.unwrap(),
-        false,
+        result,
+        Ok(false),
         "should return false when payload incomplete"
     );
 }
@@ -1786,9 +1788,9 @@ fn handle_readable_returns_true_when_client_disconnected() {
     }
 
     let result = server.handle_readable(1, &mut runtime, None);
-    assert!(result.is_ok());
+    let Ok(val) = result else { panic!("handle_readable should not error") };
     assert_eq!(
-        result.unwrap(),
+        val,
         true,
         "should return true when client disconnected"
     );
@@ -1827,8 +1829,8 @@ fn handle_writable_returns_false_on_would_block() {
     write_buf.extend_from_slice(&[0xFF; 100]);
 
     let result = server.handle_writable(1);
-    assert!(result.is_ok(), "handle_writable should not error");
-    assert_eq!(result.unwrap(), false, "should return false on WouldBlock");
+    let Ok(val) = result else { panic!("handle_writable should not error") };
+    assert_eq!(val, false, "should return false on WouldBlock");
 }
 
 // ── 7. handle_writable when write succeeds and buffer is empty ───────────────
@@ -1847,8 +1849,8 @@ fn handle_writable_drains_buffer_and_reregisters_readable() {
     write_buf.extend_from_slice(&[0xAB; 10]);
 
     let result = server.handle_writable(1);
-    assert!(result.is_ok(), "handle_writable should not error");
-    assert_eq!(result.unwrap(), false, "should return false after draining");
+    let Ok(val) = result else { panic!("handle_writable should not error") };
+    assert_eq!(val, false, "should return false after draining");
 
     assert_eq!(
         server.client_write_buffer_mut(1).map(|b| b.len()),
@@ -1892,14 +1894,15 @@ fn handle_writable_partial_write_leaves_remaining_bytes() {
     }
 
     let mut small_buf = [0u8; 1];
-    let _ = client.read(&mut small_buf);
+    let read_result = client.read(&mut small_buf);
+    assert_eq!(read_result.map_err(|e| e.to_string()), Ok(1));
 
     let write_buf = server.client_write_buffer_mut(1).expect("client should exist");
     write_buf.extend_from_slice(&[0xCD; 10 * 1024 * 1024]);
 
     let result = server.handle_writable(1);
-    assert!(result.is_ok(), "handle_writable should not error");
-    assert_eq!(result.unwrap(), false, "should return false after partial write");
+    let Ok(val) = result else { panic!("handle_writable should not error") };
+    assert_eq!(val, false, "should return false after partial write");
 
     let remaining = server.client_write_buffer_mut(1).expect("client should exist").len();
     assert!(
@@ -1928,8 +1931,8 @@ fn handle_writable_returns_true_on_broken_pipe() {
     write_buf.extend_from_slice(&[0xFF; 10]);
 
     let result = server.handle_writable(1);
-    assert!(result.is_ok(), "handle_writable should not error");
-    assert_eq!(result.unwrap(), true, "should return true on broken pipe");
+    let Ok(val) = result else { panic!("handle_writable should not error") };
+    assert_eq!(val, true, "should return true on broken pipe");
 }
 
 // ── 10. remove_client actually removes from internal maps ────────────────────
@@ -2023,4 +2026,15 @@ impl Drop for CleanupDir<'_> {
     fn drop(&mut self) {
         drop(std::fs::remove_dir_all(self.0));
     }
+}
+
+// -- Additional coverage tests for mod.rs --
+
+#[test]
+fn reregister_client_with_invalid_token_returns_error() {
+    let path = temp_socket_path("reregister_invalid");
+    let _cleanup = CleanupPath(&path);
+    let mut server = IpcServer::bind(&path).expect("bind should succeed");
+    let result = server.reregister_client(999, mio::Interest::READABLE);
+    assert!(matches!(result, Err(IpcServerError::PollFailed { .. })));
 }

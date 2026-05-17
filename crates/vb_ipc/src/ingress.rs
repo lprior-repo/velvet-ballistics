@@ -118,7 +118,12 @@ mod tests {
             Bytes::new(),
             min_max,
         );
-        assert!(result.is_ok());
+        let expected = IngressFrame {
+            run_id: RunId::new(1),
+            workflow: WorkflowDigest::from_bytes([0u8; 32]),
+            payload: crate::BoundedPayload::new(Bytes::new(), min_max).unwrap(),
+        };
+        assert_eq!(result, Ok(expected));
     }
 
     #[test]
@@ -128,10 +133,15 @@ mod tests {
         let result = IngressFrame::new(
             RunId::new(1),
             WorkflowDigest::from_bytes([0u8; 32]),
-            payload,
+            payload.clone(),
             max,
         );
-        assert!(result.is_ok());
+        let expected = IngressFrame {
+            run_id: RunId::new(1),
+            workflow: WorkflowDigest::from_bytes([0u8; 32]),
+            payload: crate::BoundedPayload::new(payload, max).unwrap(),
+        };
+        assert_eq!(result, Ok(expected));
     }
 
     #[test]
