@@ -2873,10 +2873,15 @@ dependencies = [
  "libfuzzer-sys",
  "postcard",
  "tempfile",
+<<<<<<< HEAD
  "vb_boundary_inventory",
+=======
+ "vb_compile",
+>>>>>>> a8a247d5
  "vb_core",
  "vb_expr",
  "vb_ipc",
+ "vb_runtime",
  "vb_storage",
  "vb_ui_model",
  "vb_validate",

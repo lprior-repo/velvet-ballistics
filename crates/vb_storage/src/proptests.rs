@@ -721,7 +721,11 @@ fn submit_artifact_returns_accepted_artifact_with_correct_digest() {
     );
     assert_eq!(
         artifact.verification.gate_count, 15,
+<<<<<<< HEAD
         "strict policy must pass 15 gates"
+=======
+        "strict policy must pass accepted-artifact v1 gates"
+>>>>>>> a8a247d5
     );
     assert_eq!(artifact.verification.digest, digest);
 }
@@ -743,7 +747,11 @@ fn submit_artifact_journaled_proof_is_not_durable() {
     );
     assert_eq!(
         artifact.verification.gate_count, 15,
+<<<<<<< HEAD
         "journaled policy must still pass 15 gates"
+=======
+        "journaled policy must still pass accepted-artifact v1 gates"
+>>>>>>> a8a247d5
     );
 }
 

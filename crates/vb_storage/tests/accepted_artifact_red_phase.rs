@@ -74,19 +74,19 @@ fn warning_at(gate: u8) -> VerificationWarning {
 
 #[test]
 fn accepted_artifact_validator_accepts_warning_gate_fifteen() {
-    let warning = warning_at(2);
+    let warning = warning_at(15);
     assert_eq!(warning.is_valid(), true);
 }
 
 #[test]
 fn accepted_artifact_validator_rejects_warning_gate_sixteen() {
-    let warning = warning_at(3);
+    let warning = warning_at(16);
     assert_eq!(warning.is_valid(), false);
 }
 
 #[test]
 fn accepted_artifact_validator_uses_fifteen_gate_v1_upper_bound() {
-    assert_eq!(VerificationWarning::MAX_GATE, 2);
+    assert_eq!(VerificationWarning::MAX_GATE, 15);
 }
 
 #[test]

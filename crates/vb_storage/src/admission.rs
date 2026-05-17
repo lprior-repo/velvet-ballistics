@@ -25,25 +25,25 @@ use crate::journal::FjallJournal;
 
 /// A soft verification failure that does not block admission but should be reported.
 ///
-/// Each warning is associated with a specific verification gate (1-2 range per
-/// contract §4.2) and carries a numeric code and human-readable message.
+/// Each warning is associated with a specific verification gate in the v1
+/// accepted-artifact proof set and carries a numeric code and human-readable message.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct VerificationWarning {
     /// Numeric code identifying the specific warning condition.
     pub code: u32,
     /// Human-readable description of the warning.
     pub message: Box<str>,
-    /// Which verification gate produced this warning (1-2 range per contract).
+    /// Which verification gate produced this warning.
     pub gate: u8,
 }
 
 impl VerificationWarning {
     /// Minimum valid gate value (inclusive).
     pub const MIN_GATE: u8 = 1;
-    /// Maximum valid gate value (inclusive). Contract §4.2 specifies gate_count = 2.
-    pub const MAX_GATE: u8 = 2;
+    /// Maximum valid gate value (inclusive).
+    pub const MAX_GATE: u8 = ADMISSION_GATE_COUNT;
 
-    /// Returns `true` if the `gate` field falls within the valid 1-2 range.
+    /// Returns `true` if the `gate` field falls within the valid v1 gate range.
     #[must_use]
     pub fn is_valid(&self) -> bool {
         self.gate >= Self::MIN_GATE && self.gate <= Self::MAX_GATE
@@ -129,6 +129,7 @@ pub struct AcceptedArtifact {
 }
 
 /// Number of verification gates in the accepted artifact v1 admission flow.
+<<<<<<< HEAD
 const ADMISSION_GATE_COUNT: u8 = 15;
 const STRICT_ATOMIC_RUN: vb_core::RunId = vb_core::RunId::new(8_001);
 const STRICT_ATOMIC_WORKFLOW_ID: vb_core::WorkflowId = vb_core::WorkflowId::new(44);
@@ -136,6 +137,9 @@ const STRICT_ATOMIC_STATUS: u8 = 1;
 const STRICT_ATOMIC_ACCEPTED_AT_MS: u64 = 1_715_555_000_000;
 const STRICT_ATOMIC_SEQ: EventSeq = EventSeq::new(1);
 const STRICT_ATOMIC_SOURCE: &[u8] = b"workflow: atomic_admission\nrun: 8001\n";
+=======
+pub(crate) const ADMISSION_GATE_COUNT: u8 = 15;
+>>>>>>> a8a247d5
 
 /// Validates, verifies, and persists a compiled workflow artifact with policy-controlled durability.
 ///
@@ -143,7 +147,7 @@ const STRICT_ATOMIC_SOURCE: &[u8] = b"workflow: atomic_admission\nrun: 8001\n";
 /// 1. Policy check: Relaxed is rejected when accepted artifacts are required.
 /// 2. Structure validation: re-parse the workflow from serialized parts.
 /// 3. Checksum validation: serialized bytes must hash to the claimed digest.
-/// 4. Proof validation: gate count must be 2 and all proof flags must be true.
+/// 4. Proof validation: all v1 gates and proof flags must be true.
 /// 5. Persistence: store the artifact in the `compiled_ir` keyspace.
 /// 6. Durability: under `Strict` policy, calls SyncAll before returning.
 ///
@@ -536,7 +540,7 @@ mod tests {
     }
 
     #[test]
-    fn is_valid_accepts_gate_two() {
+    fn is_valid_accepts_max_gate() {
         let w = VerificationWarning {
             code: 1,
             message: Box::from("max gate"),
@@ -546,11 +550,11 @@ mod tests {
     }
 
     #[test]
-    fn is_valid_rejects_gate_fourteen() {
+    fn is_valid_rejects_gate_above_max() {
         let w = VerificationWarning {
             code: 1,
             message: Box::from("above max gate"),
-            gate: 14,
+            gate: VerificationWarning::MAX_GATE.saturating_add(1),
         };
         assert!(!w.is_valid());
     }
@@ -668,10 +672,17 @@ mod tests {
         let result = submit_artifact(&journal, &workflow, vb_core::RuntimePolicy::Journaled)
             .map_err(|e| format!("submit_artifact(journaled) failed: {e}"))?;
 
+<<<<<<< HEAD
         // Journaled passes 15 gates but is not durable (no SyncAll).
         assert_eq!(
             result.verification.gate_count, 15,
             "journaled must pass 15 verification gates"
+=======
+        // Journaled passes the full accepted-artifact v1 gate set but is not durable (no SyncAll).
+        assert_eq!(
+            result.verification.gate_count, ADMISSION_GATE_COUNT,
+            "journaled must pass accepted-artifact v1 verification gates"
+>>>>>>> a8a247d5
         );
         assert!(
             !result.verification.durable,
@@ -689,8 +700,13 @@ mod tests {
         let result = submit_artifact(&journal, &workflow, vb_core::RuntimePolicy::Strict)
             .map_err(|e| format!("submit_artifact(strict) failed: {e}"))?;
 
+<<<<<<< HEAD
         // Strict passes 15 gates AND is durable.
         assert_eq!(result.verification.gate_count, 15);
+=======
+        // Strict passes the full accepted-artifact v1 gate set AND is durable.
+        assert_eq!(result.verification.gate_count, ADMISSION_GATE_COUNT);
+>>>>>>> a8a247d5
         assert!(result.verification.durable, "strict must be durable");
         assert_eq!(result.digest, workflow.digest());
         Ok(())
@@ -934,7 +950,7 @@ mod tests {
 
     #[test]
     fn gate_values_outside_range_fail_is_valid() -> Result<(), String> {
-        for gate in [0u8, 14, 15, 20, 255] {
+        for gate in [0u8, 16, 20, 255] {
             let w = VerificationWarning {
                 code: 1,
                 message: Box::from("out of range test"),

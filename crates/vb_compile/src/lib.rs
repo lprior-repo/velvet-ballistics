@@ -295,9 +295,9 @@ pub fn compile_source(
             }
         }
     }
-    let parts = WorkflowParts {
+    let mut parts = WorkflowParts {
         name: Box::from(source.name()),
-        digest: canonical_digest(source),
+        digest: WorkflowDigest::from_bytes([0u8; 32]),
         slot_count: builder.slot_count().map_err(|e| CompileErrors(vec![e]))?,
         symbols_count: 0,
         nodes: builder.nodes.into_boxed_slice(),
@@ -308,6 +308,7 @@ pub fn compile_source(
         resource_contract: ResourceContract::DEFAULT,
         step_names: step_names.into_boxed_slice(),
     };
+    parts.digest = compiled_artifact_digest(&parts).map_err(|e| CompileErrors(vec![e]))?;
     vb_validate::shared::validate(&parts).map_err(|e| CompileErrors(vec![e.into()]))?;
     CompiledWorkflow::try_from_parts(parts).map_err(|e| CompileErrors(vec![e.into()]))
 }
@@ -420,47 +421,11 @@ fn canonical_primitive_name(primitive: &vb_yaml::ast::StepPrimitive) -> &'static
     }
 }
 
-fn canonical_digest(source: &vb_yaml::ast::WorkflowSource) -> WorkflowDigest {
-    let mut hasher = blake3::Hasher::new();
-    hasher.update(source.version().as_bytes());
-    hasher.update(source.name().as_bytes());
-    match source.trigger() {
-        vb_yaml::ast::TriggerAst::Manual => hasher.update(b"manual"),
-        vb_yaml::ast::TriggerAst::Schedule { cron } => {
-            hasher.update(b"schedule");
-            hasher.update(cron.as_bytes())
-        }
-        vb_yaml::ast::TriggerAst::Event { event_type } => {
-            hasher.update(b"event");
-            hasher.update(event_type.as_bytes())
-        }
-        vb_yaml::ast::TriggerAst::Webhook => hasher.update(b"webhook"),
-    };
-    for step in source.steps() {
-        hasher.update(step.id.as_bytes());
-        digest_step_primitive(&mut hasher, &step.primitive);
-    }
-    WorkflowDigest::from_bytes(hasher.finalize().into())
-}
-
-fn digest_step_primitive(hasher: &mut blake3::Hasher, primitive: &vb_yaml::ast::StepPrimitive) {
-    match primitive {
-        vb_yaml::ast::StepPrimitive::Set { output, value } => {
-            hasher.update(b"set");
-            hasher.update(output.as_bytes());
-            hasher.update(value.as_bytes());
-        }
-        vb_yaml::ast::StepPrimitive::Finish { result } => {
-            hasher.update(b"finish");
-            match result {
-                vb_yaml::ast::ScalarValue::String(value) => hasher.update(value.as_bytes()),
-                vb_yaml::ast::ScalarValue::Integer(value) => hasher.update(&value.to_le_bytes()),
-            };
-        }
-        other => {
-            hasher.update(canonical_primitive_name(other).as_bytes());
-        }
-    }
+fn compiled_artifact_digest(parts: &WorkflowParts) -> Result<WorkflowDigest, CompileError> {
+    let mut digest_input = parts.clone();
+    digest_input.digest = WorkflowDigest::from_bytes([0u8; 32]);
+    let bytes = postcard::to_allocvec(&digest_input).map_err(|_| CompileError::ArtifactEncode)?;
+    Ok(WorkflowDigest::from_bytes(blake3::hash(&bytes).into()))
 }
 
 /// Compiles YAML source and then verifies action contracts against the
@@ -1308,6 +1273,9 @@ pub enum CompileError {
     /// Shared validation pipeline gate failure.
     #[error("validation gate failure: {0}")]
     Validation(#[from] vb_validate::ValidationError),
+    /// Compiled artifact could not be serialized for digesting.
+    #[error("compiled workflow artifact could not be encoded")]
+    ArtifactEncode,
     /// Required workflow field is missing.
     #[error("required workflow field is missing: {field}")]
     MissingField {
@@ -1791,6 +1759,7 @@ impl CompileError {
             Self::IdempotencyViolation { .. } => "IDEMPOTENCY_VIOLATION",
             Self::Validation(error) => validation_error_code(error),
             Self::CanonicalYaml { category, .. } => canonical_yaml_code(category),
+            Self::ArtifactEncode => "INVALID_COMPILED_WORKFLOW",
         }
     }
 

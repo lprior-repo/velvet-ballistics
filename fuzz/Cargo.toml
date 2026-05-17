@@ -22,6 +22,8 @@ tempfile.workspace = true
 vb_boundary_inventory = { path = "../crates/vb_boundary_inventory" }
 xtask = { path = "../xtask" }
 vb_core = { path = "../crates/vb_core" }
+vb_compile = { path = "../crates/vb_compile" }
+vb_runtime = { path = "../crates/vb_runtime" }
 vb_expr = { path = "../crates/vb_expr" }
 vb_storage = { path = "../crates/vb_storage" }
 vb_validate = { path = "../crates/vb_validate" }
@@ -32,6 +34,27 @@ vb_ui_model = { path = "../crates/vb_ui_model" }
 [lib]
 name = "fuzz_lib"
 path = "src/lib.rs"
+
+[[bin]]
+name = "strict_yaml_profile"
+path = "src/bin/strict_yaml_profile.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "accepted_artifact_decode"
+path = "src/bin/accepted_artifact_decode.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "recovery_decode"
+path = "src/bin/recovery_decode.rs"
+test = false
+doc = false
+bench = false
 
 [[bin]]
 name = "yaml_events"
