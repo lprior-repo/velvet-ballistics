@@ -1,64 +1,42 @@
 # Final Evidence Decision: vb-qi37.8
 
 **bead_id**: vb-qi37.8
-**state**: 13 (Evidence Packaging)
-**decision_date**: 2026-05-13
-
----
+**decision_date**: 2026-05-17
+**scope**: current-tree proof repair.
 
 ## Decision Summary
 
-| Criterion | Evidence | Verdict |
-|-----------|----------|---------|
-| Contract compliance | R1-R24, R7-1-R15-1 satisfied | PASS |
-| Proof obligations | 29 PASS_LOCAL/PASS, 4 DEFERRED_GLOBAL, 1 DEFERRED | PASS |
-| Test coverage | 896 unit tests, 62 BDD scenarios, 12 proptest invariants | PASS |
-| UB verification | Miri: 896 tests, 0 UB | PASS |
-| Engineering rules | No unsafe, unwrap, panic, unchecked indexing | PASS |
-| Deferred chain integrity | Kani→TLA+→Lean ordering preserved | PASS |
-| Black-hat review | APPROVED (black-hat-review.md:11) | PASS |
-| Truth serum audit | No laundering detected | PASS |
+| Criterion | Verdict |
+|-----------|---------|
+| Gate 8 Kani harness coverage | PASS |
+| StepState Kani parity | PASS |
+| StepState Verus mirror | PASS |
+| BudgetArithmetic TLC bounded model | PASS |
+| Durable raw evidence paths | PASS |
+| Traceability scoped to current evidence | PASS |
+| `PO-030` overclaim prevention | PASS |
+| Formal verifier review | APPROVED |
+| Black-hat review | APPROVED |
+| Truth-serum audit | APPROVED |
 
----
+## Status
 
-## Status: APPROVED
+**APPROVED FOR SCOPED LANDING**
 
-vb-qi37.8 is **APPROVED for landing**.
-
-The shared validation pipeline satisfies all contract requirements. Miri provides sufficient UB evidence for all gates. Kani integration is deferred as follow-on bead vb-qi37.8-kani per black-hat-reviewer decision (black-hat-review.md:131).
-
----
-
-## Conditions for Landing
-
-1. **Test discrepancy resolution**: The 19-test difference (252 vs 233) between formal-verification-report.md and implementation.md must be documented or corrected.
-
-2. **Follow-on bead created**: vb-qi37.8-kani must be created to track Kani harness integration.
-
----
+The current proof repair may land as scoped evidence. It does not close `PO-030` full pipeline composition.
 
 ## Deferred Items
 
-| Item | PO | Status | Follow-on |
-|------|----|--------|-----------|
-| Kani harness integration | PO-030 | DEFERRED | vb-qi37.8-kani |
-| TLA+ G13_NoCycle | PO-020 | DEFERRED_GLOBAL | Future bead |
-| TLA+ G15_Separated | PO-025 | DEFERRED_GLOBAL | Future bead |
-| Lean NDNodesSeparated | PO-026 | DEFERRED_GLOBAL | Future bead |
+| Item | Status | Reason |
+|------|--------|--------|
+| `PO-004` Gate 8 Miri | `DEFERRED_GLOBAL` | Not rerun in current repair. |
+| `PO-030` full pipeline Kani composition | `DEFERRED_GLOBAL` | Not refreshed by Gate 8-only evidence. |
+| Gate 8 Verus | `DEFERRED_GLOBAL` | Not run or claimed. |
 
----
+## Sign-Off
 
-## Sign-off
-
-| Role | Reviewer | Status | Date |
-|------|----------|--------|------|
-| Femdation Controller | femdation | APPROVED | 2026-05-13 |
-| Black-Hat Reviewer | black-hat-reviewer | APPROVED | 2026-05-13 |
-| Proof Reviewer | proof-reviewer | APPROVED | 2026-05-12 |
-| Test Suite Reviewer | test-reviewer | APPROVED | 2026-05-12 |
-
----
-
-**LANDING AUTHORIZATION**: GRANTED
-
-The bead vb-qi37.8 has completed all required evidence packaging. Proceed to landing workflow.
+| Role | Status | Date |
+|------|--------|------|
+| formal-verifier | APPROVED | 2026-05-17 |
+| black-hat-reviewer | APPROVED | 2026-05-17 |
+| truth-serum | APPROVED | 2026-05-17 |

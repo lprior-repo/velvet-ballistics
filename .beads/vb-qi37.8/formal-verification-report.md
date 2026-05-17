@@ -1,172 +1,54 @@
 # Formal Verification Report: vb-qi37.8
 
 **bead_id**: vb-qi37.8
-**title**: validate/compile: Prove and complete shared validation pipeline
-**state**: 11 (Formal Verification) - REPAIR
-**executed**: 2026-05-12
+**executed**: 2026-05-17
+**scope**: current-tree repair evidence for Gate 8 Kani, StepState Kani/Verus, and BudgetArithmetic TLC.
 
 ## Executive Summary
 
 | Lane | Status | Evidence |
 |------|--------|----------|
-| Unit Tests (vb_validate) | PASS | 896 passed |
-| Unit Tests (vb_compile) | PASS | 252 passed |
-| Miri UB Check | PASS | 896 tests, 0 UB detected |
-| Clippy | PASS | 0 errors |
-| Build | PASS | compiles successfully |
-| Kani | DEFERRED | Harnesses exist but not integrated into build |
+| Cargo metadata | PASS | `cargo metadata --no-deps` resolved workspace metadata |
+| Gate 8 Kani | PASS | 7 named harnesses verified, each with `0 failed` |
+| StepState Kani | PASS | `0 of 98 failed`, `3 of 3 cover properties satisfied` |
+| StepState Verus | PASS | `6 verified, 0 errors` |
+| BudgetArithmetic TLC | PASS | `166 states generated`, `84 distinct states found`, depth `2` |
+| PO-030 pipeline composition | DEFERRED_GLOBAL | Not refreshed by this Gate 8 repair |
 
-## Verification Lane Results
+## Gate 8 Kani Results
 
-### Lane: Unit Tests
+| Harness | Result | Raw Evidence |
+|---------|--------|--------------|
+| `kani_gate_08_valid_bounded_parts_pass` | PASS, `0 of 502 failed` | `/home/lewis/.local/share/opencode/tool-output/tool_e34ef1482001qcOlXtLV6oho6J` |
+| `kani_gate_08_valid_zero_accessors_pass` | PASS, `0 of 691 failed` | `/home/lewis/.local/share/opencode/tool-output/tool_e34f581fb001fuSDAdY6gUn2ug` |
+| `kani_gate_08_valid_index_without_symbols_pass` | PASS, `0 of 703 failed` | `/home/lewis/.local/share/opencode/tool-output/tool_e34f5b38d0013LAew53aQImHU4` |
+| `kani_gate_08_no_panic_bounded_inputs` | PASS, `0 of 473 failed` | `/home/lewis/.local/share/opencode/tool-output/tool_e34f700520011ShVGRxe0Y3Jzl` |
+| `kani_gate_08_field_symbol_oob_rejected` | PASS, `0 of 700 failed` | `/home/lewis/.local/share/opencode/tool-output/tool_e34fa8963001IInVFbayevs0LH` |
+| `kani_gate_08_index_u32_max_rejected` | PASS, `0 of 699 failed` | `/home/lewis/.local/share/opencode/tool-output/tool_e34fab23a001J3G2O3ssQdacfZ` |
+| `kani_gate_08_root_oob_rejected` | PASS, `0 of 693 failed` | `/home/lewis/.local/share/opencode/tool-output/tool_e34faec38001KSsoRuQHUd5m1B` |
 
-| PO ID | Gate | Title | Result | Evidence |
-|-------|------|-------|--------|----------|
-| All | G7-G15 | All gate unit tests | PASS | 896 tests passed |
+The restored harnesses are `kani_gate_08_valid_zero_accessors_pass` and `kani_gate_08_valid_index_without_symbols_pass` in `crates/vb_validate/src/kani_gate_08_accessor.rs`.
 
-**Evidence**: `cargo test -p vb_validate` → 896 passed
+## StepState Evidence
 
-### Lane: Miri UB Verification (EXECUTION ATTEMPTED)
+| Verifier | Command | Result | Raw Evidence |
+|----------|---------|--------|--------------|
+| Kani | `cargo kani -p vb_core --harness kani_step_state_transition_matches_contract --output-format=regular` | PASS, `0 of 98 failed`, `3 of 3 cover properties satisfied` | `/home/lewis/.local/share/opencode/tool-output/tool_e34fbcc37001x2PAzA97hgWznY` |
+| Verus | `verus verification/verus/step_state_machine.rs` | PASS, `verification results:: 6 verified, 0 errors` | `.beads/vb-qi37.8/evidence/verus-step-state-machine.out` |
 
-Miri execution SUCCEEDED on vb_validate after previous timeout. The key is running gate-specific test subsets rather than the full suite including proptest (which has filesystem dependencies).
+## TLA+ Evidence
 
-| PO ID | Gate | Title | Result | Evidence |
-|-------|------|-------|--------|----------|
-| PO-002 | G7 | Expression stack depth no overflow | PASS | Miri: 22 G7 tests, 0 UB |
-| PO-004 | G8 | Accessor path no undefined symbols | PASS | Miri gate_08 tests pass |
-| PO-007 | G9 | Slot reference no UB | PASS | Miri gate_09 tests pass |
-| PO-012 | G10 | Node kind structural constraints no UB | PASS | Miri gate_10 tests pass |
-| PO-015 | G11 | Loop body graph no UB | PASS | Miri gate_11 tests pass |
-| PO-021 | G13 | Slot cycle detection no UB | PASS | Miri: 20 G13 tests, 0 UB |
-| PO-023 | G14 | Slot type consistency no UB | PASS | Miri gate_14 tests pass |
-| PO-027 | G15 | Determinism proof no UB | PASS | Miri: 8 G15 tests, 0 UB |
-| PO-029 | Pipeline | Validation pipeline no side effects | PASS | Miri full suite: 896 tests, 0 UB |
+| Model | Command | Result |
+|-------|---------|--------|
+| `specs/tla/BudgetArithmetic.tla` | `tlc -config specs/tla/BudgetArithmetic.cfg specs/tla/BudgetArithmetic.tla` | PASS, no errors, `166 states generated`, `84 distinct states found`, depth `2`; raw `.beads/vb-qi37.8/evidence/tlc-budget-arithmetic.out` |
 
-**Evidence**: `cargo miri test -p vb_validate` → 896 passed, 0 failed in 119.97s
+## Deferred And Non-Claims
 
-**Miri Execution Details**:
-- G7 subset: 22 tests passed in 6.94s
-- G13 subset: 20 tests passed in 7.36s
-- G12/G14/G15 subset: 20 tests passed in 6.90s
-- Full suite: 896 tests passed in 119.97s
+| Item | Status | Rationale |
+|------|--------|-----------|
+| `PO-030` pipeline composition | `DEFERRED_GLOBAL` | Full validation pipeline Kani composition was not rerun. |
+| Gate 8 Verus | `DEFERRED_GLOBAL` | No Gate 8 Verus proof is claimed by this report. |
 
-### Lane: Kani Bounded Model Checking (CANNOT EXECUTE)
+## Conclusion
 
-**Status**: Harnesses exist but not integrated into build
-
-The `kani/` directory contains 7 harness files with `#[kani::proof]` functions:
-- `gate_07_stack.rs` - 2 harnesses (K1, K2)
-- `gate_08_accessor.rs` - harnesses for G8
-- `gate_09_slots.rs` - harnesses for G9
-- `gate_10_node.rs` - harnesses for G10
-- `gate_11_loop.rs` - harnesses for G11
-- `gate_12_14_15.rs` - 4 harnesses (K16, K17, K22, K24)
-- `pipeline.rs` - 1 harness (K30)
-
-However, these files are not part of any crate in the workspace and cannot be executed by `cargo kani`.
-
-**Evidence**:
-```
-$ cargo kani -p vb_validate
-Manual Harness Summary:
-No proof harnesses (functions with #[kani::proof]) were found to verify.
-```
-
-**Required Action**: Integrate kani/ files into vb_validate as a test module or create a separate verification crate.
-
-## Proof Obligation Status (Updated)
-
-| PO ID | Gate | Status | Notes |
-|-------|------|--------|-------|
-| PO-001 | G7 | PASS_LOCAL | Unit tests + Miri pass |
-| PO-002 | G7 | PASS_LOCAL | Miri: 22 tests, 0 UB |
-| PO-003 | G8 | PASS_LOCAL | Unit tests + Miri pass |
-| PO-004 | G8 | PASS_LOCAL | Miri: gate_08 tests pass |
-| PO-005 | G9 | PASS_LOCAL | Unit tests + Miri pass |
-| PO-006 | G9 | PASS_LOCAL | Unit tests + Miri pass |
-| PO-007 | G9 | PASS_LOCAL | Miri: gate_09 tests pass |
-| PO-008 | G10 | PASS_LOCAL | Unit tests + Miri pass |
-| PO-009 | G10 | PASS_LOCAL | Unit tests + Miri pass |
-| PO-010 | G10 | PASS_LOCAL | Unit tests + Miri pass |
-| PO-011 | G10 | PASS_LOCAL | Unit tests + Miri pass |
-| PO-012 | G10 | PASS_LOCAL | Miri: gate_10 tests pass |
-| PO-013 | G11 | PASS_LOCAL | Unit tests + Miri pass |
-| PO-014 | G11 | PASS_LOCAL | Unit tests + Miri pass |
-| PO-015 | G11 | PASS_LOCAL | Miri: gate_11 tests pass |
-| PO-016 | G12 | PASS_LOCAL | Unit tests + Miri pass |
-| PO-017 | G12 | PASS_LOCAL | Unit tests + Miri pass |
-| PO-018 | G12 | PASS_LOCAL | Proptest: 1000 iterations pass |
-| PO-019 | G13 | PASS_LOCAL | Unit tests + Miri pass |
-| PO-020 | G13 | DEFERRED_GLOBAL | TLA+ deferred - requires Kani first |
-| PO-021 | G13 | PASS_LOCAL | Miri: 20 tests, 0 UB |
-| PO-022 | G14 | PASS_LOCAL | Unit tests + Miri pass |
-| PO-023 | G14 | PASS_LOCAL | Miri: gate_14 tests pass |
-| PO-024 | G15 | PASS_LOCAL | Unit tests + Miri pass |
-| PO-025 | G15 | DEFERRED_GLOBAL | TLA+ deferred - requires Kani first |
-| PO-026 | G15 | DEFERRED_GLOBAL | Lean deferred - requires TLA+ first |
-| PO-027 | G15 | PASS_LOCAL | Miri: 8 tests, 0 UB |
-| PO-028 | Pipeline | PASS_LOCAL | Proptest: 1000 iterations pass |
-| PO-029 | Pipeline | PASS_LOCAL | Miri: 896 tests, 0 UB |
-| PO-030 | Pipeline | DEFERRED | Kani harness not integrated |
-| PO-031 | Integration | PASS_LOCAL | Integration tests pass |
-| PO-032 | Integration | PASS_LOCAL | Integration tests pass |
-| PO-033 | Integration | PASS_LOCAL | Integration tests pass |
-| PO-034 | Integration | PASS_LOCAL | Integration tests pass |
-| PO-035 | Integration | PASS_LOCAL | Integration tests pass |
-| PO-036 | Integration | PASS_LOCAL | Fuzz corpus available |
-
-## Contract Compliance
-
-| Req ID | Requirement | Status |
-|--------|-------------|--------|
-| R1 | validate(parts: &WorkflowParts) -> ValidationResult<()> | PASS |
-| R2 | validate_with_contracts(parts: &WorkflowParts, action_contracts: &[ActionContract]) | PASS |
-| R3 | ValidationPipeline gate enable/disable | PASS |
-| R4 | All 9 gates exported via pub use gates::* | PASS |
-| R16-R21 | Integration call sites | PASS |
-| R22 | ValidationError 37 variants | PASS |
-| R23 | Fallible validation | PASS |
-| R24 | No panic on malformed input | PASS |
-
-## Gap Analysis for Black-Hat Rejection
-
-### G7: Stack depth bounded proof
-- **Previous**: Unit tests only (Kani deferred)
-- **Current**: Unit tests + Miri (896 tests, 0 UB)
-- **Status**: PASS_LOCAL - Miri confirms no overflow UB
-
-### G12: Bijection injection failure
-- **Previous**: Unit tests + Proptest (Kani deferred)
-- **Current**: Unit tests + Proptest + Miri (0 UB)
-- **Status**: PASS_LOCAL - Miri confirms safe Rust patterns
-
-### G13: Slot cycle detection
-- **Previous**: Unit tests only (Kani deferred, TLA+ deferred)
-- **Current**: Unit tests + Miri (20 tests, 0 UB)
-- **Status**: PASS_LOCAL - Miri confirms no UB in cycle detection
-
-### G15: Non-determinism separation
-- **Previous**: Unit tests only (Kani+TLA+Lean all deferred)
-- **Current**: Unit tests + Miri (8 tests, 0 UB)
-- **Status**: PASS_LOCAL - Miri confirms safe Rust patterns
-
-## Blockers
-
-| Blocker | Severity | Status | Resolution |
-|---------|----------|--------|------------|
-| Kani not integrated | MEDIUM | UNCHANGED | Harnesses exist but require crate integration |
-| Miri timeout | RESOLVED | PASS | Run subsets instead of full suite with proptest |
-| Unit test coverage | RESOLVED | PASS | 896 tests pass |
-
-## Recommendation
-
-**PARTIAL APPROVE** - Miri UB verification now passes (was timeout).
-
-**Remaining Gap**: Kani bounded model checking cannot execute because harnesses exist in `kani/` directory but are not integrated into any crate. This is a build integration issue, not a verification failure.
-
-The Miri execution confirms:
-- No undefined behavior in 896 tests covering all gates
-- All arithmetic uses checked operations
-- No unsafe code patterns that could cause UB
-
-**Required for Full Approval**: Integrate `kani/` files into vb_validate test module or separate verification crate to enable Kani execution.
+The current checkout has executable Gate 8 Kani proof coverage for valid zero accessors, valid index-only accessors without symbols, bounded valid accessors, no-panic bounded inputs, field-symbol rejection, `u32::MAX` index rejection, and root-slot out-of-bounds rejection. This evidence is scoped to Gate 8 and must not be used as proof of full pipeline composition.

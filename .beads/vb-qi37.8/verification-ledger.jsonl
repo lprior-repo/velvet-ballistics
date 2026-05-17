@@ -1,44 +1,12 @@
-{"obligation_id":"PO-001","lane":"Unit Tests","status":"PASS_LOCAL","evidence":"cargo test -p vb_validate: 896 passed","executed":"2026-05-12"}
-{"obligation_id":"PO-002","lane":"Miri","status":"PASS_LOCAL","evidence":"cargo miri test -p vb_validate gate_07: 22 tests passed, 0 UB","executed":"2026-05-12"}
-{"obligation_id":"PO-003","lane":"Unit Tests","status":"PASS_LOCAL","evidence":"cargo test -p vb_validate: 896 passed","executed":"2026-05-12"}
-{"obligation_id":"PO-004","lane":"Miri","status":"PASS_LOCAL","evidence":"cargo miri test -p vb_validate gate_08: tests passed, 0 UB","executed":"2026-05-12"}
-{"obligation_id":"PO-005","lane":"Unit Tests","status":"PASS_LOCAL","evidence":"cargo test -p vb_validate: 896 passed","executed":"2026-05-12"}
-{"obligation_id":"PO-006","lane":"Unit Tests","status":"PASS_LOCAL","evidence":"cargo test -p vb_validate: 896 passed","executed":"2026-05-12"}
-{"obligation_id":"PO-007","lane":"Miri","status":"PASS_LOCAL","evidence":"cargo miri test -p vb_validate gate_09: tests passed, 0 UB","executed":"2026-05-12"}
-{"obligation_id":"PO-008","lane":"Unit Tests","status":"PASS_LOCAL","evidence":"cargo test -p vb_validate: 896 passed","executed":"2026-05-12"}
-{"obligation_id":"PO-009","lane":"Unit Tests","status":"PASS_LOCAL","evidence":"cargo test -p vb_validate: 896 passed","executed":"2026-05-12"}
-{"obligation_id":"PO-010","lane":"Unit Tests","status":"PASS_LOCAL","evidence":"cargo test -p vb_validate: 896 passed","executed":"2026-05-12"}
-{"obligation_id":"PO-011","lane":"Unit Tests","status":"PASS_LOCAL","evidence":"cargo test -p vb_validate: 896 passed","executed":"2026-05-12"}
-{"obligation_id":"PO-012","lane":"Miri","status":"PASS_LOCAL","evidence":"cargo miri test -p vb_validate gate_10: tests passed, 0 UB","executed":"2026-05-12"}
-{"obligation_id":"PO-013","lane":"Unit Tests","status":"PASS_LOCAL","evidence":"cargo test -p vb_validate: 896 passed","executed":"2026-05-12"}
-{"obligation_id":"PO-014","lane":"Unit Tests","status":"PASS_LOCAL","evidence":"cargo test -p vb_validate: 896 passed","executed":"2026-05-12"}
-{"obligation_id":"PO-015","lane":"Miri","status":"PASS_LOCAL","evidence":"cargo miri test -p vb_validate gate_11: tests passed, 0 UB","executed":"2026-05-12"}
-{"obligation_id":"PO-016","lane":"Unit Tests","status":"PASS_LOCAL","evidence":"cargo test -p vb_validate: 896 passed","executed":"2026-05-12"}
-{"obligation_id":"PO-017","lane":"Unit Tests","status":"PASS_LOCAL","evidence":"cargo test -p vb_validate: 896 passed","executed":"2026-05-12"}
-{"obligation_id":"PO-018","lane":"Proptest","status":"PASS_LOCAL","evidence":"cargo test -p vb_validate: 896 passed","executed":"2026-05-12"}
-{"obligation_id":"PO-019","lane":"Unit Tests","status":"PASS_LOCAL","evidence":"cargo test -p vb_validate gate_13: 20 tests passed","executed":"2026-05-12"}
-{"obligation_id":"PO-020","lane":"TLA+","status":"DEFERRED_GLOBAL","evidence":"Deferred - requires Kani PO-019 execution first","executed":"2026-05-12"}
-{"obligation_id":"PO-021","lane":"Miri","status":"PASS_LOCAL","evidence":"cargo miri test -p vb_validate gate_13: 20 tests passed, 0 UB","executed":"2026-05-12"}
-{"obligation_id":"PO-022","lane":"Unit Tests","status":"PASS_LOCAL","evidence":"cargo test -p vb_validate gate_14: tests passed","executed":"2026-05-12"}
-{"obligation_id":"PO-023","lane":"Miri","status":"PASS_LOCAL","evidence":"cargo miri test -p vb_validate gate_14: tests passed, 0 UB","executed":"2026-05-12"}
-{"obligation_id":"PO-024","lane":"Unit Tests","status":"PASS_LOCAL","evidence":"cargo test -p vb_validate gate_15: 8 tests passed","executed":"2026-05-12"}
-{"obligation_id":"PO-025","lane":"TLA+","status":"DEFERRED_GLOBAL","evidence":"Deferred - requires Kani PO-024 execution first","executed":"2026-05-12"}
-{"obligation_id":"PO-026","lane":"Lean","status":"DEFERRED_GLOBAL","evidence":"Deferred - requires TLA+ PO-025 execution first","executed":"2026-05-12"}
-{"obligation_id":"PO-027","lane":"Miri","status":"PASS_LOCAL","evidence":"cargo miri test -p vb_validate gate_15: 8 tests passed, 0 UB","executed":"2026-05-12"}
-{"obligation_id":"PO-028","lane":"Proptest","status":"PASS_LOCAL","evidence":"cargo test -p vb_validate: 896 passed","executed":"2026-05-12"}
-{"obligation_id":"PO-029","lane":"Miri","status":"PASS_LOCAL","evidence":"cargo miri test -p vb_validate: 896 tests passed, 0 UB in 119.97s","executed":"2026-05-12"}
-{"obligation_id":"PO-030","lane":"Kani","status":"DEFERRED_LOCAL","evidence":"Kani harnesses exist in kani/ but not integrated into build - cannot execute","executed":"2026-05-12"}
-{"obligation_id":"PO-031","lane":"Integration","status":"PASS_LOCAL","evidence":"cargo test -p vb_compile: 252 passed","executed":"2026-05-12"}
-{"obligation_id":"PO-032","lane":"Integration","status":"PASS_LOCAL","evidence":"cargo test -p vb_compile: 252 passed","executed":"2026-05-12"}
-{"obligation_id":"PO-033","lane":"Integration","status":"PASS_LOCAL","evidence":"cargo test -p vb_compile: 252 passed","executed":"2026-05-12"}
-{"obligation_id":"PO-034","lane":"Integration","status":"PASS_LOCAL","evidence":"cargo test -p vb_compile: 252 passed","executed":"2026-05-12"}
-{"obligation_id":"PO-035","lane":"Integration","status":"PASS_LOCAL","evidence":"cargo test -p vb_compile: 252 passed","executed":"2026-05-12"}
-{"obligation_id":"PO-036","lane":"Fuzz","status":"PASS_LOCAL","evidence":"Fuzz corpus available at fuzz/lib.rs","executed":"2026-05-12"}
-{"obligation_id":"PO-002","lane":"Miri-RETRY","status":"PASS_LOCAL","evidence":"Miri timeout resolved - run gate subsets instead of full suite with proptest","executed":"2026-05-12"}
-{"obligation_id":"PO-007","lane":"Miri-RETRY","status":"PASS_LOCAL","evidence":"Miri timeout resolved - run gate subsets instead of full suite with proptest","executed":"2026-05-12"}
-{"obligation_id":"PO-012","lane":"Miri-RETRY","status":"PASS_LOCAL","evidence":"Miri timeout resolved - run gate subsets instead of full suite with proptest","executed":"2026-05-12"}
-{"obligation_id":"PO-015","lane":"Miri-RETRY","status":"PASS_LOCAL","evidence":"Miri timeout resolved - run gate subsets instead of full suite with proptest","executed":"2026-05-12"}
-{"obligation_id":"PO-021","lane":"Miri-RETRY","status":"PASS_LOCAL","evidence":"Miri timeout resolved - run gate subsets instead of full suite with proptest","executed":"2026-05-12"}
-{"obligation_id":"PO-023","lane":"Miri-RETRY","status":"PASS_LOCAL","evidence":"Miri timeout resolved - run gate subsets instead of full suite with proptest","executed":"2026-05-12"}
-{"obligation_id":"PO-027","lane":"Miri-RETRY","status":"PASS_LOCAL","evidence":"Miri timeout resolved - run gate subsets instead of full suite with proptest","executed":"2026-05-12"}
-{"obligation_id":"PO-029","lane":"Miri-RETRY","status":"PASS_LOCAL","evidence":"Miri full suite: 896 tests, 0 UB in 119.97s","executed":"2026-05-12"}
+{"obligation_id":"META-001","lane":"cargo metadata","status":"PASS","evidence":"cargo metadata --no-deps resolved workspace metadata; raw=/home/lewis/.local/share/opencode/tool-output/tool_e34fbb7280013kY0QiT8e8IwMQ","executed":"2026-05-17"}
+{"obligation_id":"STEP-STATE-KANI","lane":"Kani","status":"PASS","evidence":"cargo kani -p vb_core --harness kani_step_state_transition_matches_contract --output-format=regular: 0 of 98 failed, 3 of 3 cover properties satisfied; raw=/home/lewis/.local/share/opencode/tool-output/tool_e34fbcc37001x2PAzA97hgWznY","executed":"2026-05-17"}
+{"obligation_id":"STEP-STATE-VERUS","lane":"Verus","status":"PASS","evidence":"verus verification/verus/step_state_machine.rs: verification results:: 6 verified, 0 errors; raw=.beads/vb-qi37.8/evidence/verus-step-state-machine.out","executed":"2026-05-17"}
+{"obligation_id":"BUDGET-TLA","lane":"TLA+","status":"PASS","evidence":"tlc -config specs/tla/BudgetArithmetic.cfg specs/tla/BudgetArithmetic.tla: no error found; 166 states generated, 84 distinct states found, depth 2; raw=.beads/vb-qi37.8/evidence/tlc-budget-arithmetic.out","executed":"2026-05-17"}
+{"obligation_id":"PO-003","lane":"Kani Gate 8","status":"PASS","evidence":"kani_gate_08_valid_bounded_parts_pass: 0 of 502 failed; raw=/home/lewis/.local/share/opencode/tool-output/tool_e34ef1482001qcOlXtLV6oho6J","executed":"2026-05-17"}
+{"obligation_id":"PO-003","lane":"Kani Gate 8","status":"PASS","evidence":"kani_gate_08_valid_zero_accessors_pass: 0 of 691 failed; raw=/home/lewis/.local/share/opencode/tool-output/tool_e34f581fb001fuSDAdY6gUn2ug","executed":"2026-05-17"}
+{"obligation_id":"PO-003","lane":"Kani Gate 8","status":"PASS","evidence":"kani_gate_08_valid_index_without_symbols_pass: 0 of 703 failed; raw=/home/lewis/.local/share/opencode/tool-output/tool_e34f5b38d0013LAew53aQImHU4","executed":"2026-05-17"}
+{"obligation_id":"PO-003","lane":"Kani Gate 8","status":"PASS","evidence":"kani_gate_08_no_panic_bounded_inputs: 0 of 473 failed; raw=/home/lewis/.local/share/opencode/tool-output/tool_e34f700520011ShVGRxe0Y3Jzl","executed":"2026-05-17"}
+{"obligation_id":"PO-003","lane":"Kani Gate 8","status":"PASS","evidence":"kani_gate_08_field_symbol_oob_rejected: 0 of 700 failed; raw=/home/lewis/.local/share/opencode/tool-output/tool_e34fa8963001IInVFbayevs0LH","executed":"2026-05-17"}
+{"obligation_id":"PO-003","lane":"Kani Gate 8","status":"PASS","evidence":"kani_gate_08_index_u32_max_rejected: 0 of 699 failed; raw=/home/lewis/.local/share/opencode/tool-output/tool_e34fab23a001J3G2O3ssQdacfZ","executed":"2026-05-17"}
+{"obligation_id":"PO-003","lane":"Kani Gate 8","status":"PASS","evidence":"kani_gate_08_root_oob_rejected: 0 of 693 failed; raw=/home/lewis/.local/share/opencode/tool-output/tool_e34faec38001KSsoRuQHUd5m1B","executed":"2026-05-17"}
+{"obligation_id":"PO-030","lane":"Pipeline Kani composition","status":"DEFERRED_GLOBAL","evidence":"Full validation pipeline composition was not rerun by this Gate 8/StepState repair. Do not treat Gate 8 Kani evidence as PO-030 coverage.","executed":"2026-05-17"}
