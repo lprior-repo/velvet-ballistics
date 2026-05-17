@@ -49,6 +49,9 @@ pub mod kani_record_payload_len;
 #[cfg(kani)]
 pub mod kani_record_crc;
 
+#[cfg(kani)]
+pub mod kani_proof_flags_gap;
+
 pub mod keys;
 pub mod process_lock;
 pub mod queue;

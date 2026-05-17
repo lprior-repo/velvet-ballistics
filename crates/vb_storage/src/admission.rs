@@ -861,4 +861,114 @@ mod tests {
         assert_eq!(warning, back);
         Ok(())
     }
+
+    // =========================================================================
+    // Proof Flag Gap Tests (demonstrate VB-STORAGE-GAP)
+    //
+    // These tests document the gap: VerificationProof::new() sets all proof
+    // flags to true UNCONDITIONALLY, without any actual per-gate validation.
+    // The flags should be set based on actual verification results.
+    // =========================================================================
+
+    #[test]
+    fn gap_proof_flags_always_true_regardless_of_gate_count() -> Result<(), String> {
+        let digest = vb_core::WorkflowDigest::from_bytes([0xAB_u8; 32]);
+
+        let proof_zero = VerificationProof::new(digest, 0, false);
+        assert!(
+            proof_zero.bounded,
+            "GAP: bounded=true even with gate_count=0 (no verification performed)"
+        );
+        assert!(
+            proof_zero.taint_safe,
+            "GAP: taint_safe=true even with gate_count=0 (no verification performed)"
+        );
+        assert!(
+            proof_zero.retry_safe,
+            "GAP: retry_safe=true even with gate_count=0 (no verification performed)"
+        );
+        assert!(
+            proof_zero.replayable,
+            "GAP: replayable=true even with gate_count=0 (no verification performed)"
+        );
+
+        let proof_fifteen = VerificationProof::new(digest, 15, true);
+        assert!(
+            proof_fifteen.bounded,
+            "GAP: bounded=true with gate_count=15 (verification claimed but not performed)"
+        );
+        assert!(
+            proof_fifteen.taint_safe,
+            "GAP: taint_safe=true with gate_count=15 (verification claimed but not performed)"
+        );
+        assert!(
+            proof_fifteen.retry_safe,
+            "GAP: retry_safe=true with gate_count=15 (verification claimed but not performed)"
+        );
+        assert!(
+            proof_fifteen.replayable,
+            "GAP: replayable=true with gate_count=15 (verification claimed but not performed)"
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn gap_proof_flags_true_for_any_digest_value() -> Result<(), String> {
+        let zero_digest = vb_core::WorkflowDigest::from_bytes([0u8; 32]);
+        let proof_zero = VerificationProof::new(zero_digest, 15, true);
+        assert!(
+            proof_zero.bounded && proof_zero.taint_safe && proof_zero.retry_safe
+                && proof_zero.replayable,
+            "GAP: proof flags are true for zero digest"
+        );
+
+        let max_digest = vb_core::WorkflowDigest::from_bytes([0xFFu8; 32]);
+        let proof_max = VerificationProof::new(max_digest, 15, true);
+        assert!(
+            proof_max.bounded && proof_max.taint_safe && proof_max.retry_safe
+                && proof_max.replayable,
+            "GAP: proof flags are true for max digest"
+        );
+
+        let arbitrary_digest = vb_core::WorkflowDigest::from_bytes([0x12_u8, 0x34, 0x56, 0x78, 0x9A, 0xBC, 0xDE, 0xF0, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF, 0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88]);
+        let proof_arb = VerificationProof::new(arbitrary_digest, 15, false);
+        assert!(
+            proof_arb.bounded && proof_arb.taint_safe && proof_arb.retry_safe
+                && proof_arb.replayable,
+            "GAP: proof flags are true for arbitrary digest"
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn gap_submit_artifact_journaled_produces_unconditional_true_flags() -> Result<(), String> {
+        let journal = temp_journal().map_err(|e| format!("journal open failed: {e}"))?;
+        let workflow = minimal_workflow()?;
+
+        let result =
+            submit_artifact(&journal, &workflow, vb_core::RuntimePolicy::Journaled)
+                .map_err(|e| format!("submit_artifact(journaled) failed: {e}"))?;
+
+        assert_eq!(result.verification.gate_count, 15);
+        assert!(
+            result.verification.bounded,
+            "GAP: submit_artifact produces bounded=true without checking workflow size"
+        );
+        assert!(
+            result.verification.taint_safe,
+            "GAP: submit_artifact produces taint_safe=true without checking taint propagation"
+        );
+        assert!(
+            result.verification.retry_safe,
+            "GAP: submit_artifact produces retry_safe=true without checking idempotency"
+        );
+        assert!(
+            result.verification.replayable,
+            "GAP: submit_artifact produces replayable=true without checking replay invariants"
+        );
+
+        Ok(())
+    }
 }
