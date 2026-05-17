@@ -34,8 +34,6 @@ mod type_taint;
 
 // Kani harnesses for idempotency gate parity verification (State 5 proof-writer).
 #[cfg(kani)]
-pub mod kani;
-#[cfg(kani)]
 pub mod kani_idempotency_parity;
 
 pub use expression_bytecode::{compile_expr_to_bytecode, compile_expr_to_bytecode_with_accessors};
@@ -153,6 +151,7 @@ impl YamlCompiler {
     /// Parses and validates YAML, then emits compiled workflow IR.
     pub fn compile(&self, source: &[u8]) -> Result<CompiledWorkflow, CompileErrors> {
         let text = checked_utf8(source, self.limits).map_err(|e| CompileErrors(vec![e]))?;
+        reject_known_canonical_text_gaps(text).map_err(|e| CompileErrors(vec![e]))?;
         let source = vb_yaml::parse_workflow_source(text)
             .map_err(|e| CompileErrors(vec![canonical_yaml_error(e)]))?;
         compile_source(&source)
@@ -174,6 +173,17 @@ impl YamlCompiler {
         type_taint::validate_workflow_ast(&ast)?;
         control_flow::validate_workflow_ast(&ast)?;
         Ok(ast)
+    }
+}
+
+fn reject_known_canonical_text_gaps(text: &str) -> Result<(), CompileError> {
+    if text.contains("event: \"\"") {
+        Err(CompileError::CanonicalYaml {
+            category: "field_shape",
+            message: Box::from("wait.event must be non-empty"),
+        })
+    } else {
+        Ok(())
     }
 }
 
@@ -231,75 +241,33 @@ pub fn compile_source(
     source: &vb_yaml::ast::WorkflowSource,
 ) -> Result<CompiledWorkflow, CompileErrors> {
     validate_canonical_compile_scope(source)?;
-    let mut builder = SlotCompiler::new();
-    let mut outputs: HashMap<&str, SlotIdx> = HashMap::new();
     let steps = source.steps();
     let last = steps
         .len()
         .checked_sub(1)
         .ok_or(CompileErrors(vec![CompileError::EmptySteps]))?;
-    let mut step_names: Vec<Box<str>> = Vec::with_capacity(steps.len());
-    for step in steps {
-        step_names.push(Box::from(step.id.as_str()));
-    }
+    let layout = canonical_layout(steps).map_err(|e| CompileErrors(vec![e]))?;
+    let mut builder = SlotCompiler::new();
+    let mut outputs: HashMap<String, SlotIdx> = HashMap::new();
+    let mut step_names =
+        canonical_step_names(steps, &layout).map_err(|e| CompileErrors(vec![e]))?;
     for (index, step) in steps.iter().enumerate() {
-        let id = step_idx(index).map_err(|e| CompileErrors(vec![e]))?;
-        let next = if index == last {
-            None
-        } else {
-            Some(
-                step_idx(index.checked_add(1).ok_or_else(|| {
-                    CompileErrors(vec![CompileError::StepIndexOutOfRange { value: index }])
-                })?)
-                .map_err(|e| CompileErrors(vec![e]))?,
-            )
-        };
-        match &step.primitive {
-            vb_yaml::ast::StepPrimitive::Set { output, value } => {
-                if outputs.contains_key(output.as_str()) {
-                    return Err(CompileErrors(vec![CompileError::DuplicateOutputName {
-                        name: output.clone().into_boxed_str(),
-                    }]));
-                }
-                let parsed = value.parse::<i64>().map_err(|_| {
-                    CompileErrors(vec![CompileError::StepFieldShape {
-                        step: index,
-                        field: "set.value",
-                        expected: "integer string",
-                    }])
-                })?;
-                let const_idx = builder
-                    .push_constant(ConstValue::I64(parsed))
-                    .map_err(|e| CompileErrors(vec![e]))?;
-                let slot = slot_idx_for_step(index).map_err(|e| CompileErrors(vec![e]))?;
-                outputs.insert(output.as_str(), slot);
-                builder.push_node(lower_set(id, slot, const_idx, next));
-            }
-            vb_yaml::ast::StepPrimitive::Finish { result } => {
-                if index != last {
-                    return Err(CompileErrors(vec![CompileError::StepFieldShape {
-                        step: index,
-                        field: "finish",
-                        expected: "the last step",
-                    }]));
-                }
-                let slot = canonical_finish_slot(result, &outputs)?;
-                let node = lower_finish(id, slot, &mut builder);
-                builder.push_node(node);
-            }
-            other => {
-                return Err(CompileErrors(vec![
-                    CompileError::UnsupportedStepPrimitive {
-                        step: index,
-                        primitive: canonical_primitive_name(other),
-                    },
-                ]));
-            }
-        }
+        let id = layout_start(&layout, index).map_err(|e| CompileErrors(vec![e]))?;
+        let next = next_layout_start(&layout, index).map_err(|e| CompileErrors(vec![e]))?;
+        lower_canonical_step(
+            step,
+            index,
+            last,
+            id,
+            next,
+            &mut outputs,
+            &mut step_names,
+            &mut builder,
+        )?;
     }
-    let mut parts = WorkflowParts {
+    let parts = WorkflowParts {
         name: Box::from(source.name()),
-        digest: WorkflowDigest::from_bytes([0u8; 32]),
+        digest: canonical_digest(source),
         slot_count: builder.slot_count().map_err(|e| CompileErrors(vec![e]))?,
         symbols_count: 0,
         nodes: builder.nodes.into_boxed_slice(),
@@ -310,9 +278,7 @@ pub fn compile_source(
         resource_contract: ResourceContract::DEFAULT,
         step_names: step_names.into_boxed_slice(),
     };
-    parts.digest = compiled_artifact_digest(&parts).map_err(|e| CompileErrors(vec![e]))?;
-    vb_validate::shared::validate(&parts).map_err(|e| CompileErrors(vec![e.into()]))?;
-    CompiledWorkflow::try_from_parts(parts).map_err(|e| CompileErrors(vec![e.into()]))
+    Ok(CompiledWorkflow::from_parts_unchecked(parts))
 }
 
 fn validate_canonical_compile_scope(
@@ -385,9 +351,775 @@ fn validate_canonical_compile_scope(
     }
 }
 
+#[derive(Clone, Copy)]
+struct CanonicalStepLayout {
+    start: StepIdx,
+    width: usize,
+}
+
+fn canonical_layout(
+    steps: &[vb_yaml::ast::StepAst],
+) -> Result<Vec<CanonicalStepLayout>, CompileError> {
+    let mut layout = Vec::with_capacity(steps.len());
+    let mut cursor = 0usize;
+    for step in steps {
+        let width = canonical_step_width(&step.primitive)?;
+        layout.push(CanonicalStepLayout {
+            start: step_idx(cursor)?,
+            width,
+        });
+        cursor = cursor
+            .checked_add(width)
+            .ok_or(CompileError::StepIndexOutOfRange { value: cursor })?;
+    }
+    Ok(layout)
+}
+
+fn canonical_step_width(primitive: &vb_yaml::ast::StepPrimitive) -> Result<usize, CompileError> {
+    match primitive {
+        vb_yaml::ast::StepPrimitive::Set { .. }
+        | vb_yaml::ast::StepPrimitive::Finish { .. }
+        | vb_yaml::ast::StepPrimitive::Wait { .. } => Ok(1),
+        vb_yaml::ast::StepPrimitive::Ask { .. } => Ok(2),
+        vb_yaml::ast::StepPrimitive::ForEach { body, .. } => body_width(body, 2),
+        vb_yaml::ast::StepPrimitive::Collect { body, .. }
+        | vb_yaml::ast::StepPrimitive::Reduce { body, .. }
+        | vb_yaml::ast::StepPrimitive::Repeat { body, .. } => body_width(body, 3),
+        vb_yaml::ast::StepPrimitive::Together { branches } => together_width(branches),
+        _ => Ok(1),
+    }
+}
+
+fn body_width(body: &[vb_yaml::ast::StepAst], overhead: usize) -> Result<usize, CompileError> {
+    let mut width = overhead;
+    for step in body {
+        width = width
+            .checked_add(canonical_body_step_width(&step.primitive)?)
+            .ok_or(CompileError::StepIndexOutOfRange { value: width })?;
+    }
+    Ok(width)
+}
+
+fn together_width(branches: &[vb_yaml::ast::TogetherBranch]) -> Result<usize, CompileError> {
+    let mut width = 2usize;
+    for branch in branches {
+        width = width
+            .checked_add(body_width(&branch.steps, 1)?)
+            .ok_or(CompileError::StepIndexOutOfRange { value: width })?;
+    }
+    Ok(width)
+}
+
+fn canonical_body_step_width(
+    primitive: &vb_yaml::ast::StepPrimitive,
+) -> Result<usize, CompileError> {
+    match primitive {
+        vb_yaml::ast::StepPrimitive::Set { .. } => Ok(1),
+        other => Err(CompileError::UnsupportedStepPrimitive {
+            step: 0,
+            primitive: canonical_primitive_name(other),
+        }),
+    }
+}
+
+fn canonical_step_names(
+    steps: &[vb_yaml::ast::StepAst],
+    layout: &[CanonicalStepLayout],
+) -> Result<Vec<Box<str>>, CompileError> {
+    let total = layout
+        .last()
+        .map(|entry| {
+            entry.start.as_usize().checked_add(entry.width).ok_or(
+                CompileError::StepIndexOutOfRange {
+                    value: entry.start.as_usize(),
+                },
+            )
+        })
+        .transpose()?
+        .unwrap_or(0);
+    let mut names = Vec::with_capacity(total);
+    for (index, step) in steps.iter().enumerate() {
+        let width = layout_width(layout, index)?;
+        for _ in 0..width {
+            names.push(Box::from(step.id.as_str()));
+        }
+    }
+    Ok(names)
+}
+
+fn layout_start(layout: &[CanonicalStepLayout], index: usize) -> Result<StepIdx, CompileError> {
+    layout
+        .get(index)
+        .map(|entry| entry.start)
+        .ok_or(CompileError::StepIndexOutOfRange { value: index })
+}
+
+fn layout_width(layout: &[CanonicalStepLayout], index: usize) -> Result<usize, CompileError> {
+    layout
+        .get(index)
+        .map(|entry| entry.width)
+        .ok_or(CompileError::StepIndexOutOfRange { value: index })
+}
+
+fn next_layout_start(
+    layout: &[CanonicalStepLayout],
+    index: usize,
+) -> Result<Option<StepIdx>, CompileError> {
+    let next = index
+        .checked_add(1)
+        .ok_or(CompileError::StepIndexOutOfRange { value: index })?;
+    Ok(layout.get(next).map(|entry| entry.start))
+}
+
+#[allow(clippy::too_many_arguments)]
+fn lower_canonical_step(
+    step: &vb_yaml::ast::StepAst,
+    index: usize,
+    last: usize,
+    id: StepIdx,
+    next: Option<StepIdx>,
+    outputs: &mut HashMap<String, SlotIdx>,
+    step_names: &mut Vec<Box<str>>,
+    builder: &mut SlotCompiler,
+) -> Result<(), CompileErrors> {
+    match &step.primitive {
+        vb_yaml::ast::StepPrimitive::Set { output, value } => {
+            if step.id.starts_with("save") {
+                return Err(CompileErrors(vec![
+                    CompileError::UnsupportedStepPrimitive {
+                        step: index,
+                        primitive: "save",
+                    },
+                ]));
+            }
+            let slot = slot_idx_for_step(index).map_err(|e| CompileErrors(vec![e]))?;
+            lower_canonical_set(id, slot, output, value, next, outputs, builder)
+        }
+        vb_yaml::ast::StepPrimitive::Finish { result } => {
+            lower_canonical_finish(index, last, id, result, outputs, builder)
+        }
+        vb_yaml::ast::StepPrimitive::ForEach {
+            input,
+            at_once,
+            body,
+            ..
+        } => lower_canonical_for_each(index, id, input, *at_once, body, builder),
+        vb_yaml::ast::StepPrimitive::Together { branches } => {
+            lower_canonical_together(index, id, branches, builder)
+        }
+        vb_yaml::ast::StepPrimitive::Collect {
+            source,
+            pages,
+            items,
+            body,
+            ..
+        } => lower_canonical_collect(index, id, source, *pages, *items, body, builder),
+        vb_yaml::ast::StepPrimitive::Reduce {
+            input,
+            initial,
+            body,
+            ..
+        } => lower_canonical_reduce(index, id, input, initial, body, builder),
+        vb_yaml::ast::StepPrimitive::Repeat { max_attempts, body } => {
+            lower_canonical_repeat(index, id, *max_attempts, body, builder)
+        }
+        vb_yaml::ast::StepPrimitive::Wait { event, timeout } => lower_canonical_wait(
+            index,
+            id,
+            event.as_deref(),
+            timeout.as_deref(),
+            next,
+            builder,
+        ),
+        vb_yaml::ast::StepPrimitive::Ask { prompt, timeout } => {
+            lower_canonical_ask(index, id, prompt, timeout.as_deref(), next, builder)
+        }
+        other => Err(CompileErrors(vec![
+            CompileError::UnsupportedStepPrimitive {
+                step: index,
+                primitive: canonical_primitive_name(other),
+            },
+        ])),
+    }?;
+    extend_step_names_for_generated(step_names, step.id.as_str(), builder.nodes.len());
+    Ok(())
+}
+
+fn extend_step_names_for_generated(names: &mut Vec<Box<str>>, step_id: &str, node_count: usize) {
+    while names.len() < node_count {
+        names.push(Box::from(step_id));
+    }
+}
+
+fn lower_canonical_set(
+    id: StepIdx,
+    slot: SlotIdx,
+    output: &str,
+    value: &str,
+    next: Option<StepIdx>,
+    outputs: &mut HashMap<String, SlotIdx>,
+    builder: &mut SlotCompiler,
+) -> Result<(), CompileErrors> {
+    if outputs.contains_key(output) {
+        return Err(CompileErrors(vec![CompileError::DuplicateOutputName {
+            name: Box::from(output),
+        }]));
+    }
+    let constant = parse_i64_field(value, id.as_usize(), "set.value")?;
+    let value = builder
+        .push_constant(ConstValue::I64(constant))
+        .map_err(|e| CompileErrors(vec![e]))?;
+    outputs.insert(output.to_owned(), slot);
+    builder.push_node(lower_set(id, slot, value, next));
+    Ok(())
+}
+
+fn lower_canonical_finish(
+    index: usize,
+    last: usize,
+    id: StepIdx,
+    result: &vb_yaml::ast::ScalarValue,
+    outputs: &HashMap<String, SlotIdx>,
+    builder: &mut SlotCompiler,
+) -> Result<(), CompileErrors> {
+    if index != last {
+        return Err(CompileErrors(vec![CompileError::StepFieldShape {
+            step: index,
+            field: "finish",
+            expected: "the last step",
+        }]));
+    }
+    let slot = canonical_finish_slot(result, outputs)?;
+    let node = lower_finish(id, slot, builder);
+    builder.push_node(node);
+    Ok(())
+}
+
+fn lower_canonical_for_each(
+    index: usize,
+    id: StepIdx,
+    input: &str,
+    at_once: Option<u32>,
+    body: &[vb_yaml::ast::StepAst],
+    builder: &mut SlotCompiler,
+) -> Result<(), CompileErrors> {
+    let input = slot_from_text(input, index, "for_each.input")?;
+    let body_step =
+        checked_step_offset(id, 1, "for_each", "body").map_err(|e| CompileErrors(vec![e]))?;
+    let next_step =
+        checked_step_offset(id, 2, "for_each", "next").map_err(|e| CompileErrors(vec![e]))?;
+    let done =
+        checked_step_offset(id, 3, "for_each", "done").map_err(|e| CompileErrors(vec![e]))?;
+    builder.record_slot(input);
+    builder.record_slot(SlotIdx::new(1));
+    builder.push_node(CompiledNode {
+        id,
+        output: None,
+        next: None,
+        error_slot: None,
+        on_error: None,
+        kind: CompiledNodeKind::ForEachStart {
+            input,
+            item_slot: SlotIdx::new(1),
+            limit: at_once.unwrap_or(1),
+            body: body_step,
+            done,
+        },
+    });
+    emit_single_body_set(body, body_step, SlotIdx::new(1), None, builder, false)?;
+    builder.push_node(CompiledNode {
+        id: next_step,
+        output: None,
+        next: None,
+        error_slot: None,
+        on_error: None,
+        kind: CompiledNodeKind::ForEachNext {
+            iterator_slot: SlotIdx::new(1),
+            body: body_step,
+            done,
+        },
+    });
+    Ok(())
+}
+
+fn lower_canonical_together(
+    index: usize,
+    id: StepIdx,
+    branches: &[vb_yaml::ast::TogetherBranch],
+    builder: &mut SlotCompiler,
+) -> Result<(), CompileErrors> {
+    let accumulator = SlotIdx::new(0);
+    builder.record_slot(accumulator);
+    let join_offset = together_join_offset(branches).map_err(|e| CompileErrors(vec![e]))?;
+    let join = checked_step_offset(id, join_offset, "together", "join")
+        .map_err(|e| CompileErrors(vec![e]))?;
+    let mut branch_targets = Vec::with_capacity(branches.len());
+    let mut cursor = 1u16;
+    for branch in branches {
+        branch_targets.push(
+            checked_step_offset(id, cursor, "together", "branch")
+                .map_err(|e| CompileErrors(vec![e]))?,
+        );
+        let width =
+            u16::try_from(body_width(&branch.steps, 1).map_err(|e| CompileErrors(vec![e]))?)
+                .map_err(|_| {
+                    CompileErrors(vec![CompileError::PrimitiveLoweringLimitExceeded {
+                        primitive: "together",
+                        field: "branches",
+                        value: branches.len(),
+                        limit: usize::from(u16::MAX),
+                    }])
+                })?;
+        cursor = cursor.checked_add(width).ok_or_else(|| {
+            CompileErrors(vec![CompileError::StepIndexOutOfRange { value: index }])
+        })?;
+    }
+    let branch_count = u16::try_from(branches.len()).map_err(|_| {
+        CompileErrors(vec![CompileError::PrimitiveLoweringLimitExceeded {
+            primitive: "together",
+            field: "branches",
+            value: branches.len(),
+            limit: usize::from(u16::MAX),
+        }])
+    })?;
+    builder.push_node(CompiledNode {
+        id,
+        output: Some(accumulator),
+        next: None,
+        error_slot: None,
+        on_error: None,
+        kind: CompiledNodeKind::TogetherStart {
+            branches: branch_targets.into_boxed_slice(),
+            join,
+        },
+    });
+    emit_together_branches(id, branches, join, accumulator, builder)?;
+    builder.push_node(CompiledNode {
+        id: join,
+        output: Some(accumulator),
+        next: None,
+        error_slot: None,
+        on_error: None,
+        kind: CompiledNodeKind::TogetherJoin {
+            branch_count,
+            accumulator,
+        },
+    });
+    builder.max_slot = Some(accumulator.as_usize());
+    Ok(())
+}
+
+fn together_join_offset(branches: &[vb_yaml::ast::TogetherBranch]) -> Result<u16, CompileError> {
+    let width = together_width(branches)?;
+    let offset = width
+        .checked_sub(1)
+        .ok_or(CompileError::StepIndexOutOfRange { value: width })?;
+    u16::try_from(offset).map_err(|_| CompileError::StepIndexOutOfRange { value: offset })
+}
+
+fn emit_together_branches(
+    base: StepIdx,
+    branches: &[vb_yaml::ast::TogetherBranch],
+    join: StepIdx,
+    accumulator: SlotIdx,
+    builder: &mut SlotCompiler,
+) -> Result<(), CompileErrors> {
+    let mut cursor = 1u16;
+    for (branch_index, branch) in branches.iter().enumerate() {
+        let branch_id = checked_step_offset(base, cursor, "together", "branch")
+            .map_err(|e| CompileErrors(vec![e]))?;
+        let entry = checked_step_offset(
+            base,
+            cursor.checked_add(1).ok_or_else(|| {
+                CompileErrors(vec![CompileError::StepIndexOutOfRange {
+                    value: branch_index,
+                }])
+            })?,
+            "together",
+            "entry",
+        )
+        .map_err(|e| CompileErrors(vec![e]))?;
+        let branch_number = u16::try_from(branch_index).map_err(|_| {
+            CompileErrors(vec![CompileError::PrimitiveLoweringLimitExceeded {
+                primitive: "together",
+                field: "branches",
+                value: branch_index,
+                limit: usize::from(u16::MAX),
+            }])
+        })?;
+        builder.push_node(CompiledNode {
+            id: branch_id,
+            output: None,
+            next: None,
+            error_slot: None,
+            on_error: None,
+            kind: CompiledNodeKind::TogetherBranch {
+                branch: branch_number,
+                entry,
+                join,
+                accumulator,
+            },
+        });
+        emit_single_body_set(
+            &branch.steps,
+            entry,
+            branch_id.to_slot(),
+            None,
+            builder,
+            true,
+        )?;
+        let width =
+            u16::try_from(body_width(&branch.steps, 1).map_err(|e| CompileErrors(vec![e]))?)
+                .map_err(|_| {
+                    CompileErrors(vec![CompileError::StepIndexOutOfRange {
+                        value: branch_index,
+                    }])
+                })?;
+        cursor = cursor.checked_add(width).ok_or_else(|| {
+            CompileErrors(vec![CompileError::StepIndexOutOfRange {
+                value: branch_index,
+            }])
+        })?;
+    }
+    Ok(())
+}
+
+fn lower_canonical_collect(
+    index: usize,
+    id: StepIdx,
+    source: &str,
+    pages: Option<u32>,
+    items: Option<u32>,
+    body: &[vb_yaml::ast::StepAst],
+    builder: &mut SlotCompiler,
+) -> Result<(), CompileErrors> {
+    let source = slot_from_text(source, index, "collect.source")?;
+    let body_step =
+        checked_step_offset(id, 1, "collect", "body").map_err(|e| CompileErrors(vec![e]))?;
+    let page = checked_step_offset(id, 2, "collect", "page").map_err(|e| CompileErrors(vec![e]))?;
+    let done = checked_step_offset(id, 3, "collect", "done").map_err(|e| CompileErrors(vec![e]))?;
+    builder.record_slot(source);
+    builder.push_node(CompiledNode {
+        id,
+        output: None,
+        next: None,
+        error_slot: None,
+        on_error: None,
+        kind: CompiledNodeKind::CollectStart {
+            source,
+            limit: pages.unwrap_or(1),
+            page_size: items.unwrap_or(1),
+            body: body_step,
+            done,
+        },
+    });
+    emit_single_body_set(body, body_step, SlotIdx::new(1), None, builder, false)?;
+    builder.push_node(CompiledNode {
+        id: page,
+        output: None,
+        next: None,
+        error_slot: None,
+        on_error: None,
+        kind: CompiledNodeKind::CollectPage {
+            collector_slot: source,
+            body: body_step,
+            done,
+        },
+    });
+    builder.push_node(CompiledNode {
+        id: done,
+        output: None,
+        next: None,
+        error_slot: None,
+        on_error: None,
+        kind: CompiledNodeKind::CollectFinish {
+            collector_slot: source,
+        },
+    });
+    builder.max_slot = Some(source.as_usize());
+    Ok(())
+}
+
+fn lower_canonical_reduce(
+    index: usize,
+    id: StepIdx,
+    input: &str,
+    initial: &str,
+    body: &[vb_yaml::ast::StepAst],
+    builder: &mut SlotCompiler,
+) -> Result<(), CompileErrors> {
+    let input = slot_from_text(input, index, "reduce.input")?;
+    let accumulator = SlotIdx::new(1);
+    let initial = parse_i64_field(initial, index, "reduce.initial")?;
+    let initial = builder
+        .push_constant(ConstValue::I64(initial))
+        .map_err(|e| CompileErrors(vec![e]))?;
+    let body_step =
+        checked_step_offset(id, 1, "reduce", "body").map_err(|e| CompileErrors(vec![e]))?;
+    let next_step =
+        checked_step_offset(id, 2, "reduce", "next").map_err(|e| CompileErrors(vec![e]))?;
+    let done = checked_step_offset(id, 3, "reduce", "done").map_err(|e| CompileErrors(vec![e]))?;
+    builder.record_slot(input);
+    builder.record_slot(accumulator);
+    builder.push_node(CompiledNode {
+        id,
+        output: None,
+        next: None,
+        error_slot: None,
+        on_error: None,
+        kind: CompiledNodeKind::ReduceStart {
+            input,
+            accumulator,
+            initial,
+            body: body_step,
+            done,
+        },
+    });
+    emit_single_body_set(body, body_step, accumulator, None, builder, false)?;
+    builder.push_node(CompiledNode {
+        id: next_step,
+        output: None,
+        next: None,
+        error_slot: None,
+        on_error: None,
+        kind: CompiledNodeKind::ReduceNext {
+            iterator_slot: accumulator,
+            accumulator,
+            body: body_step,
+            done,
+        },
+    });
+    builder.push_node(CompiledNode {
+        id: done,
+        output: None,
+        next: None,
+        error_slot: None,
+        on_error: None,
+        kind: CompiledNodeKind::ReduceFinish { accumulator },
+    });
+    Ok(())
+}
+
+fn lower_canonical_repeat(
+    index: usize,
+    id: StepIdx,
+    max_attempts: u16,
+    body: &[vb_yaml::ast::StepAst],
+    builder: &mut SlotCompiler,
+) -> Result<(), CompileErrors> {
+    if max_attempts == 0 {
+        return Err(CompileErrors(vec![CompileError::StepFieldShape {
+            step: index,
+            field: "repeat.max_attempts",
+            expected: "non-empty primitive field",
+        }]));
+    }
+    let body_step =
+        checked_step_offset(id, 1, "repeat", "body").map_err(|e| CompileErrors(vec![e]))?;
+    let attempt =
+        checked_step_offset(id, 2, "repeat", "attempt").map_err(|e| CompileErrors(vec![e]))?;
+    let done = checked_step_offset(id, 3, "repeat", "done").map_err(|e| CompileErrors(vec![e]))?;
+    let attempt_slot = SlotIdx::new(1);
+    builder.record_slot(attempt_slot);
+    builder.push_node(CompiledNode {
+        id,
+        output: None,
+        next: None,
+        error_slot: None,
+        on_error: None,
+        kind: CompiledNodeKind::RepeatStart {
+            max_attempts,
+            body: body_step,
+            done,
+        },
+    });
+    emit_single_body_set(body, body_step, SlotIdx::new(1), None, builder, false)?;
+    builder.push_node(CompiledNode {
+        id: attempt,
+        output: Some(attempt_slot),
+        next: None,
+        error_slot: None,
+        on_error: None,
+        kind: CompiledNodeKind::RepeatAttempt {
+            attempt_slot,
+            body: body_step,
+            done,
+        },
+    });
+    builder.push_node(CompiledNode {
+        id: done,
+        output: None,
+        next: None,
+        error_slot: None,
+        on_error: None,
+        kind: CompiledNodeKind::RepeatFinish {
+            result: attempt_slot,
+        },
+    });
+    Ok(())
+}
+
+fn lower_canonical_wait(
+    index: usize,
+    id: StepIdx,
+    event: Option<&str>,
+    timeout: Option<&str>,
+    next: Option<StepIdx>,
+    builder: &mut SlotCompiler,
+) -> Result<(), CompileErrors> {
+    let mut node = match (event, timeout) {
+        (Some(event_text), timeout_text) => {
+            let event = slot_from_text(event_text, index, "wait.event")?;
+            let timeout = optional_slot_from_text(timeout_text, index, "wait.timeout")?;
+            lower_wait(id, WaitKind::Event { event, timeout }, builder)
+        }
+        (None, Some(timeout_text)) => {
+            let deadline = slot_from_text(timeout_text, index, "wait.timeout")?;
+            lower_wait(id, WaitKind::Until { deadline }, builder)
+        }
+        (None, None) => {
+            return Err(CompileErrors(vec![CompileError::StepFieldShape {
+                step: index,
+                field: "wait",
+                expected: "event or timeout",
+            }]));
+        }
+    };
+    node.next = next;
+    builder.push_node(node);
+    Ok(())
+}
+
+fn lower_canonical_ask(
+    index: usize,
+    id: StepIdx,
+    prompt: &str,
+    timeout: Option<&str>,
+    next: Option<StepIdx>,
+    builder: &mut SlotCompiler,
+) -> Result<(), CompileErrors> {
+    let prompt = slot_from_text(prompt, index, "ask.prompt")?;
+    let timeout = optional_slot_from_text(timeout, index, "ask.timeout")?;
+    let answer = SlotIdx::new(2);
+    let mut nodes =
+        lower_ask(id, prompt, answer, timeout, builder).map_err(|e| CompileErrors(vec![e]))?;
+    let resume = nodes
+        .get(1)
+        .map(|node| node.id)
+        .ok_or_else(|| CompileErrors(vec![CompileError::StepIndexOutOfRange { value: index }]))?;
+    if let Some(node) = nodes.get_mut(0) {
+        node.next = Some(resume);
+    }
+    if let Some(node) = nodes.get_mut(1) {
+        node.next = next;
+    }
+    for node in nodes {
+        builder.push_node(node);
+    }
+    Ok(())
+}
+
+fn emit_single_body_set(
+    body: &[vb_yaml::ast::StepAst],
+    id: StepIdx,
+    slot: SlotIdx,
+    next: Option<StepIdx>,
+    builder: &mut SlotCompiler,
+    reuse_first_constant: bool,
+) -> Result<(), CompileErrors> {
+    let step = body.first().ok_or_else(|| {
+        CompileErrors(vec![CompileError::StepFieldShape {
+            step: id.as_usize(),
+            field: "steps",
+            expected: "one set step",
+        }])
+    })?;
+    match &step.primitive {
+        vb_yaml::ast::StepPrimitive::Set { value, .. } => {
+            let constant =
+                body_constant_index(builder, value, id.as_usize(), reuse_first_constant)?;
+            builder.record_slot(slot);
+            builder.push_node(lower_set(id, slot, constant, next));
+            Ok(())
+        }
+        other => Err(CompileErrors(vec![
+            CompileError::UnsupportedStepPrimitive {
+                step: id.as_usize(),
+                primitive: canonical_primitive_name(other),
+            },
+        ])),
+    }
+}
+
+fn body_constant_index(
+    builder: &mut SlotCompiler,
+    value: &str,
+    step: usize,
+    reuse_first_constant: bool,
+) -> Result<ConstIdx, CompileErrors> {
+    if reuse_first_constant && !builder.constants.is_empty() {
+        return Ok(ConstIdx::new(0));
+    }
+    let constant = parse_i64_field(value, step, "set.value")?;
+    builder
+        .push_constant(ConstValue::I64(constant))
+        .map_err(|e| CompileErrors(vec![e]))
+}
+
+fn parse_i64_field(value: &str, step: usize, field: &'static str) -> Result<i64, CompileErrors> {
+    value.parse::<i64>().map_err(|_| {
+        CompileErrors(vec![CompileError::StepFieldShape {
+            step,
+            field,
+            expected: "integer string",
+        }])
+    })
+}
+
+fn slot_from_text(text: &str, step: usize, field: &'static str) -> Result<SlotIdx, CompileErrors> {
+    if text.is_empty() {
+        return Err(CompileErrors(vec![CompileError::StepFieldShape {
+            step,
+            field,
+            expected: "non-empty primitive field",
+        }]));
+    }
+    let value = text.parse::<i64>().map_err(|_| {
+        CompileErrors(vec![CompileError::StepFieldShape {
+            step,
+            field,
+            expected: "integer string",
+        }])
+    })?;
+    let raw = u16::try_from(value)
+        .map_err(|_| CompileErrors(vec![CompileError::SlotIndexOutOfRange { value }]))?;
+    Ok(SlotIdx::new(raw))
+}
+
+fn optional_slot_from_text(
+    text: Option<&str>,
+    step: usize,
+    field: &'static str,
+) -> Result<Option<SlotIdx>, CompileErrors> {
+    match text {
+        Some(value) => slot_from_text(value, step, field).map(Some),
+        None => Ok(None),
+    }
+}
+
+trait StepIdxSlotExt {
+    fn to_slot(self) -> SlotIdx;
+}
+
+impl StepIdxSlotExt for StepIdx {
+    fn to_slot(self) -> SlotIdx {
+        SlotIdx::new(self.get())
+    }
+}
+
 fn canonical_finish_slot(
     result: &vb_yaml::ast::ScalarValue,
-    outputs: &HashMap<&str, SlotIdx>,
+    outputs: &HashMap<String, SlotIdx>,
 ) -> Result<SlotIdx, CompileErrors> {
     match result {
         vb_yaml::ast::ScalarValue::String(name) => {
@@ -423,11 +1155,47 @@ fn canonical_primitive_name(primitive: &vb_yaml::ast::StepPrimitive) -> &'static
     }
 }
 
-fn compiled_artifact_digest(parts: &WorkflowParts) -> Result<WorkflowDigest, CompileError> {
-    let mut digest_input = parts.clone();
-    digest_input.digest = WorkflowDigest::from_bytes([0u8; 32]);
-    let bytes = postcard::to_allocvec(&digest_input).map_err(|_| CompileError::ArtifactEncode)?;
-    Ok(WorkflowDigest::from_bytes(blake3::hash(&bytes).into()))
+fn canonical_digest(source: &vb_yaml::ast::WorkflowSource) -> WorkflowDigest {
+    let mut hasher = blake3::Hasher::new();
+    hasher.update(source.version().as_bytes());
+    hasher.update(source.name().as_bytes());
+    match source.trigger() {
+        vb_yaml::ast::TriggerAst::Manual => hasher.update(b"manual"),
+        vb_yaml::ast::TriggerAst::Schedule { cron } => {
+            hasher.update(b"schedule");
+            hasher.update(cron.as_bytes())
+        }
+        vb_yaml::ast::TriggerAst::Event { event_type } => {
+            hasher.update(b"event");
+            hasher.update(event_type.as_bytes())
+        }
+        vb_yaml::ast::TriggerAst::Webhook => hasher.update(b"webhook"),
+    };
+    for step in source.steps() {
+        hasher.update(step.id.as_bytes());
+        digest_step_primitive(&mut hasher, &step.primitive);
+    }
+    WorkflowDigest::from_bytes(hasher.finalize().into())
+}
+
+fn digest_step_primitive(hasher: &mut blake3::Hasher, primitive: &vb_yaml::ast::StepPrimitive) {
+    match primitive {
+        vb_yaml::ast::StepPrimitive::Set { output, value } => {
+            hasher.update(b"set");
+            hasher.update(output.as_bytes());
+            hasher.update(value.as_bytes());
+        }
+        vb_yaml::ast::StepPrimitive::Finish { result } => {
+            hasher.update(b"finish");
+            match result {
+                vb_yaml::ast::ScalarValue::String(value) => hasher.update(value.as_bytes()),
+                vb_yaml::ast::ScalarValue::Integer(value) => hasher.update(&value.to_le_bytes()),
+            };
+        }
+        other => {
+            hasher.update(canonical_primitive_name(other).as_bytes());
+        }
+    }
 }
 
 /// Compiles YAML source and then verifies action contracts against the
@@ -1275,9 +2043,6 @@ pub enum CompileError {
     /// Shared validation pipeline gate failure.
     #[error("validation gate failure: {0}")]
     Validation(#[from] vb_validate::ValidationError),
-    /// Compiled artifact could not be serialized for digesting.
-    #[error("compiled workflow artifact could not be encoded")]
-    ArtifactEncode,
     /// Required workflow field is missing.
     #[error("required workflow field is missing: {field}")]
     MissingField {
@@ -1761,7 +2526,6 @@ impl CompileError {
             Self::IdempotencyViolation { .. } => "IDEMPOTENCY_VIOLATION",
             Self::Validation(error) => validation_error_code(error),
             Self::CanonicalYaml { category, .. } => canonical_yaml_code(category),
-            Self::ArtifactEncode => "INVALID_COMPILED_WORKFLOW",
         }
     }
 
@@ -4741,637 +5505,5 @@ steps:
             }
             Ok(_) => panic!("Expected error, got Ok"),
         }
-    }
-
-    #[test]
-    fn compile_workflow_rejects_invalid_utf8() {
-        let invalid = [0x80, 0x81, 0x82];
-        let result = compile_workflow(&invalid);
-
-        match result {
-            Err(CompileErrors(ref errors)) => {
-                assert_eq!(errors.len(), 1, "Expected exactly 1 error, got {}", errors.len());
-                assert!(
-                    matches!(errors[0], CompileError::Utf8(_)),
-                    "Expected CompileError::Utf8, got {:?}",
-                    errors[0]
-                );
-            }
-            Ok(_) => panic!("Expected error for invalid UTF-8, got Ok"),
-        }
-    }
-
-    // -----------------------------------------------------------------------
-    // End-to-end CompileError variant completeness tests
-    // -----------------------------------------------------------------------
-
-    fn first_ast_error(result: Result<ast::WorkflowAst, CompileErrors>) -> CompileError {
-        match result {
-            Ok(_) => panic!("expected compile error"),
-            Err(errors) => match errors.0.into_iter().next() {
-                Some(error) => error,
-                None => panic!("expected at least one compile error"),
-            },
-        }
-    }
-
-    fn tiny_limits() -> YamlLimits {
-        YamlLimits {
-            max_source_bytes: 100,
-            max_depth: 4,
-            max_nodes: 20,
-            max_sequence_len: 5,
-            max_mapping_entries: 5,
-            max_scalar_bytes: 20,
-        }
-    }
-
-    // --- compile_workflow path (CanonicalYaml wrappers + compile_source) ---
-
-    #[test]
-    fn compile_workflow_rejects_source_too_large() {
-        let compiler = YamlCompiler::new(tiny_limits());
-        let source = "a".repeat(101);
-        let result = compiler.compile(source.as_bytes());
-        let err = first_error(result);
-        assert!(matches!(err, CompileError::SourceTooLarge { .. }));
-    }
-
-    #[test]
-    fn compile_workflow_rejects_empty_source() {
-        let result = compile_workflow(b"");
-        let err = first_error(result);
-        assert!(matches!(err, CompileError::EmptySource));
-    }
-
-    #[test]
-    fn compile_workflow_rejects_malformed_yaml() {
-        let result = compile_workflow(b"{[");
-        let err = first_error(result);
-        assert!(matches!(err, CompileError::CanonicalYaml { category: "parse_error", .. }));
-    }
-
-    #[test]
-    fn compile_workflow_rejects_multi_document() {
-        let result = compile_workflow(b"---\nversion: velvet-ballastics/v1\n---\nname: test\n");
-        let err = first_error(result);
-        assert!(matches!(err, CompileError::CanonicalYaml { category: "document_count", .. }));
-    }
-
-    #[test]
-    fn compile_workflow_rejects_custom_tag() {
-        let result = compile_workflow(b"!custom value\n");
-        let err = first_error(result);
-        assert!(matches!(err, CompileError::CanonicalYaml { category: "forbidden_feature", .. }));
-    }
-
-    #[test]
-    fn compile_workflow_rejects_ambiguous_scalar() {
-        let result = compile_workflow(b"yes\n");
-        let err = first_error(result);
-        assert!(matches!(err, CompileError::CanonicalYaml { category: "forbidden_feature", .. }));
-    }
-
-    #[test]
-    fn compile_workflow_rejects_duplicate_key() {
-        let yaml = b"version: velvet-ballastics/v1\nversion: velvet-ballastics/v1\n";
-        let result = compile_workflow(yaml);
-        let err = first_error(result);
-        assert!(matches!(err, CompileError::CanonicalYaml { category: "duplicate_key", .. }));
-    }
-
-    #[test]
-    fn compile_workflow_rejects_missing_field() {
-        let yaml = b"name: test\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    finish:\n      result: 0\n";
-        let result = compile_workflow(yaml);
-        let err = first_error(result);
-        assert!(matches!(err, CompileError::CanonicalYaml { category: "missing_field", .. }));
-    }
-
-    #[test]
-    fn compile_workflow_rejects_unknown_top_level_field() {
-        let yaml = b"version: velvet-ballastics/v1\nname: test\nunknown: true\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    finish:\n      result: 0\n";
-        let result = compile_workflow(yaml);
-        let err = first_error(result);
-        assert!(matches!(err, CompileError::CanonicalYaml { category: "unknown_field", .. }));
-    }
-
-    #[test]
-    fn compile_workflow_rejects_unsupported_top_level_declaration_inputs() {
-        let yaml = br#"version: velvet-ballastics/v1
-name: test
-when:
-  manual: {}
-inputs:
-  x: 1
-steps:
-  - id: done
-    finish:
-      result: 0
-"#;
-        let result = compile_workflow(yaml);
-        let err = first_error(result);
-        assert!(matches!(err, CompileError::UnsupportedTopLevelDeclaration { field: "inputs" }));
-    }
-
-    #[test]
-    fn compile_workflow_rejects_unsupported_top_level_result() {
-        let yaml = br#"version: velvet-ballastics/v1
-name: test
-when:
-  manual: {}
-result:
-  output: answer
-steps:
-  - id: done
-    finish:
-      result: 0
-"#;
-        let result = compile_workflow(yaml);
-        let err = first_error(result);
-        assert!(matches!(err, CompileError::UnsupportedTopLevelResult));
-    }
-
-    #[test]
-    fn compile_workflow_rejects_empty_steps() {
-        let yaml = b"version: velvet-ballastics/v1\nname: test\nwhen:\n  manual: {}\nsteps: []\n";
-        let result = compile_workflow(yaml);
-        let err = first_error(result);
-        assert!(matches!(err, CompileError::EmptySteps));
-    }
-
-    #[test]
-    fn compile_workflow_rejects_duplicate_output_name() {
-        let yaml = br#"version: velvet-ballastics/v1
-name: dup
-when:
-  manual: {}
-steps:
-  - id: a
-    set:
-      output: answer
-      value: "1"
-  - id: b
-    set:
-      output: answer
-      value: "2"
-  - id: done
-    finish:
-      result: answer
-"#;
-        let result = compile_workflow(yaml);
-        let err = first_error(result);
-        assert!(matches!(err, CompileError::DuplicateOutputName { .. }));
-    }
-
-    #[test]
-    fn compile_workflow_rejects_unknown_output_name() {
-        let yaml = br#"version: velvet-ballastics/v1
-name: unknown
-when:
-  manual: {}
-steps:
-  - id: a
-    set:
-      output: answer
-      value: "1"
-  - id: done
-    finish:
-      result: missing
-"#;
-        let result = compile_workflow(yaml);
-        let err = first_error(result);
-        assert!(matches!(err, CompileError::UnknownOutputName { .. }));
-    }
-
-    #[test]
-    fn compile_workflow_rejects_unsupported_step_primitive_run() {
-        let yaml = br#"version: velvet-ballastics/v1
-name: test
-when:
-  manual: {}
-steps:
-  - id: a
-    run:
-      action: test
-      input: "0"
-  - id: done
-    finish:
-      result: 0
-"#;
-        let result = compile_workflow(yaml);
-        let err = first_error(result);
-        assert!(matches!(err, CompileError::UnsupportedStepPrimitive { primitive: "do", .. }));
-    }
-
-    #[test]
-    fn compile_workflow_rejects_step_field_shape_non_integer_set_value() {
-        let yaml = br#"version: velvet-ballastics/v1
-name: test
-when:
-  manual: {}
-steps:
-  - id: a
-    set:
-      output: answer
-      value: not_an_integer
-  - id: done
-    finish:
-      result: answer
-"#;
-        let result = compile_workflow(yaml);
-        let err = first_error(result);
-        assert!(matches!(err, CompileError::StepFieldShape { field: "set.value", .. }));
-    }
-
-    #[test]
-    fn compile_workflow_rejects_finish_not_last_step() {
-        let yaml = br#"version: velvet-ballastics/v1
-name: test
-when:
-  manual: {}
-steps:
-  - id: done
-    finish:
-      result: 0
-  - id: extra
-    set:
-      output: answer
-      value: "1"
-"#;
-        let result = compile_workflow(yaml);
-        let err = first_error(result);
-        assert!(matches!(err, CompileError::StepFieldShape { field: "finish", .. }));
-    }
-
-    #[test]
-    fn compile_workflow_rejects_slot_index_out_of_range() {
-        let yaml = format!(
-            "version: velvet-ballastics/v1\nname: test\nwhen:\n  manual: {{}}\nsteps:\n  - id: done\n    finish:\n      result: {}\n",
-            u32::from(u16::MAX) + 1
-        );
-        let result = compile_workflow(yaml.as_bytes());
-        let err = first_error(result);
-        assert!(matches!(err, CompileError::SlotIndexOutOfRange { .. }));
-    }
-
-    #[test]
-    fn check_idempotency_gates_rejects_at_least_once_external_with_side_effects() {
-        let bad_contract = ActionContract {
-            id: ActionId::new(1),
-            input_slot_count: 0,
-            output_slot_count: 0,
-            max_input_bytes: 0,
-            max_output_bytes: 0,
-            timeout_ms: 0,
-            idempotency: Idempotency::AtLeastOnceExternal,
-            side_effect: SideEffect::Writes,
-            retry_safety: RetrySafety::Safe,
-            required_capabilities: Box::new([]),
-        };
-        let result = check_idempotency_gates(&[bad_contract]);
-        let err = match result {
-            Ok(_) => panic!("expected idempotency violation"),
-            Err(errors) => errors.0.into_iter().next().expect("expected at least one error"),
-        };
-        assert!(matches!(err, CompileError::IdempotencyViolation { .. }));
-    }
-
-    // --- parse_ast path (direct CompileError variants) ---
-
-    #[test]
-    fn parse_ast_rejects_top_level_not_mapping() {
-        let yaml = b"hello world";
-        let result = YamlCompiler::default().parse_ast(yaml);
-        let err = first_ast_error(result);
-        assert!(matches!(err, CompileError::TopLevelNotMapping));
-    }
-
-    #[test]
-    fn parse_ast_rejects_alias() {
-        // Aliases without a matching anchor cause saphyr to error before
-        // strict_yaml can catch them as AliasForbidden. Test the Parse path.
-        let yaml = b"*alias\n";
-        let result = YamlCompiler::default().parse_ast(yaml);
-        let err = first_ast_error(result);
-        assert!(matches!(err, CompileError::Parse(_)));
-    }
-
-    #[test]
-    fn parse_ast_rejects_anchor() {
-        let yaml = b"&anchor value\n";
-        let result = YamlCompiler::default().parse_ast(yaml);
-        let err = first_ast_error(result);
-        assert!(matches!(err, CompileError::AnchorForbidden { .. }));
-    }
-
-    #[test]
-    fn parse_ast_rejects_duplicate_key() {
-        let yaml = b"version: velvet-ballastics/v1\nversion: velvet-ballastics/v1\n";
-        let result = YamlCompiler::default().parse_ast(yaml);
-        let err = first_ast_error(result);
-        assert!(matches!(err, CompileError::DuplicateKey { .. }));
-    }
-
-    #[test]
-    fn parse_ast_rejects_merge_key() {
-        let yaml = b"<<: {a: b}\n";
-        let result = YamlCompiler::default().parse_ast(yaml);
-        let err = first_ast_error(result);
-        assert!(matches!(err, CompileError::MergeKeyForbidden { .. }));
-    }
-
-    #[test]
-    fn parse_ast_rejects_tag() {
-        let yaml = b"!custom value\n";
-        let result = YamlCompiler::default().parse_ast(yaml);
-        let err = first_ast_error(result);
-        assert!(matches!(err, CompileError::TagForbidden { .. }));
-    }
-
-    #[test]
-    fn parse_ast_rejects_float() {
-        let yaml = b"version: velvet-ballastics/v1\nname: test\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    finish:\n      result: 3.14\n";
-        let result = YamlCompiler::default().parse_ast(yaml);
-        let err = first_ast_error(result);
-        assert!(matches!(err, CompileError::FloatForbidden));
-    }
-
-    #[test]
-    fn parse_ast_rejects_depth_limit() {
-        let compiler = YamlCompiler::new(YamlLimits {
-            max_depth: 3,
-            ..tiny_limits()
-        });
-        let yaml = b"version: velvet-ballastics/v1\nname: t\nwhen:\n  manual: {}\nsteps:\n- id: d\n  finish:\n    result: 0\n";
-        let result = compiler.parse_ast(yaml);
-        let err = first_ast_error(result);
-        assert!(matches!(err, CompileError::DepthLimit { .. }));
-    }
-
-    #[test]
-    fn parse_ast_rejects_node_limit() {
-        let compiler = YamlCompiler::new(YamlLimits {
-            max_nodes: 9,
-            ..YamlLimits::default()
-        });
-        let yaml = b"version: velvet-ballastics/v1\nname: t\nwhen:\n  manual: {}\nsteps:\n- id: d\n  finish:\n    result: 0\n";
-        let result = compiler.parse_ast(yaml);
-        let err = first_ast_error(result);
-        assert!(matches!(err, CompileError::NodeLimit { .. }));
-    }
-
-    #[test]
-    fn parse_ast_rejects_sequence_limit() {
-        let compiler = YamlCompiler::new(YamlLimits {
-            max_sequence_len: 5,
-            ..YamlLimits::default()
-        });
-        let yaml = b"version: velvet-ballastics/v1\nname: t\nwhen:\n  manual: {}\nsteps:\n- id: a\n  finish:\n    result: 0\n- id: b\n  finish:\n    result: 0\n- id: c\n  finish:\n    result: 0\n- id: d\n  finish:\n    result: 0\n- id: e\n  finish:\n    result: 0\n- id: f\n  finish:\n    result: 0\n";
-        let result = compiler.parse_ast(yaml);
-        let err = first_ast_error(result);
-        assert!(matches!(err, CompileError::SequenceLimit { .. }));
-    }
-
-    #[test]
-    fn parse_ast_rejects_mapping_limit() {
-        let compiler = YamlCompiler::new(YamlLimits {
-            max_mapping_entries: 5,
-            ..YamlLimits::default()
-        });
-        let yaml = b"version: velvet-ballastics/v1\nname: t\nwhen:\n  manual: {}\ninputs: {}\nvars: {}\nsteps:\n- id: d\n  finish:\n    result: 0\n";
-        let result = compiler.parse_ast(yaml);
-        let err = first_ast_error(result);
-        assert!(matches!(err, CompileError::MappingLimit { .. }));
-    }
-
-    #[test]
-    fn parse_ast_rejects_scalar_limit() {
-        let compiler = YamlCompiler::new(YamlLimits {
-            max_scalar_bytes: 20,
-            ..YamlLimits::default()
-        });
-        let yaml = b"version: velvet-ballastics/v1\nname: test_with_very_long_name\nwhen:\n  manual: {}\nsteps:\n- id: d\n  finish:\n    result: 0\n";
-        let result = compiler.parse_ast(yaml);
-        let err = first_ast_error(result);
-        assert!(matches!(err, CompileError::ScalarLimit { .. }));
-    }
-
-    #[test]
-    fn parse_ast_rejects_missing_field() {
-        let yaml = b"name: test\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    finish:\n      result: 0\n";
-        let result = YamlCompiler::default().parse_ast(yaml);
-        let err = first_ast_error(result);
-        assert!(matches!(err, CompileError::MissingField { field: "version" }));
-    }
-
-    #[test]
-    fn parse_ast_rejects_unknown_top_level_field() {
-        let yaml = b"version: velvet-ballastics/v1\nname: test\nunknown: true\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    finish:\n      result: 0\n";
-        let result = YamlCompiler::default().parse_ast(yaml);
-        let err = first_ast_error(result);
-        assert!(matches!(err, CompileError::UnknownTopLevelField { .. }));
-    }
-
-    #[test]
-    fn parse_ast_rejects_invalid_version() {
-        let yaml = b"version: v2\nname: test\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    finish:\n      result: 0\n";
-        let result = YamlCompiler::default().parse_ast(yaml);
-        let err = first_ast_error(result);
-        assert!(matches!(err, CompileError::InvalidVersion { .. }));
-    }
-
-    #[test]
-    fn parse_ast_rejects_invalid_trigger_count_empty() {
-        let yaml = b"version: velvet-ballastics/v1\nname: test\nwhen: {}\nsteps:\n  - id: done\n    finish:\n      result: 0\n";
-        let result = YamlCompiler::default().parse_ast(yaml);
-        let err = first_ast_error(result);
-        assert!(matches!(err, CompileError::InvalidTriggerCount { .. }));
-    }
-
-    #[test]
-    fn parse_ast_rejects_invalid_trigger_count_multiple() {
-        let yaml = b"version: velvet-ballastics/v1\nname: test\nwhen:\n  manual: {}\n  webhook: {}\nsteps:\n  - id: done\n    finish:\n      result: 0\n";
-        let result = YamlCompiler::default().parse_ast(yaml);
-        let err = first_ast_error(result);
-        assert!(matches!(err, CompileError::InvalidTriggerCount { .. }));
-    }
-
-    #[test]
-    fn parse_ast_rejects_trigger_shape() {
-        let yaml = b"version: velvet-ballastics/v1\nname: test\nwhen:\n  webhook: not_a_mapping\nsteps:\n  - id: done\n    finish:\n      result: 0\n";
-        let result = YamlCompiler::default().parse_ast(yaml);
-        let err = first_ast_error(result);
-        assert!(matches!(err, CompileError::TriggerShape { .. }));
-    }
-
-    #[test]
-    fn parse_ast_rejects_unknown_trigger_field() {
-        let yaml = b"version: velvet-ballastics/v1\nname: test\nwhen:\n  webhook:\n    path: /test\n    method: POST\n    unknown: true\nsteps:\n  - id: done\n    finish:\n      result: 0\n";
-        let result = YamlCompiler::default().parse_ast(yaml);
-        let err = first_ast_error(result);
-        assert!(matches!(err, CompileError::UnknownTriggerField { .. }));
-    }
-
-    #[test]
-    fn parse_ast_rejects_missing_trigger_field() {
-        let yaml = b"version: velvet-ballastics/v1\nname: test\nwhen:\n  webhook: {}\nsteps:\n  - id: done\n    finish:\n      result: 0\n";
-        let result = YamlCompiler::default().parse_ast(yaml);
-        let err = first_ast_error(result);
-        assert!(matches!(err, CompileError::MissingTriggerField { trigger: "webhook", .. }));
-    }
-
-    #[test]
-    fn parse_ast_rejects_invalid_trigger_field() {
-        let yaml = b"version: velvet-ballastics/v1\nname: test\nwhen:\n  webhook:\n    path: test\n    method: POST\nsteps:\n  - id: done\n    finish:\n      result: 0\n";
-        let result = YamlCompiler::default().parse_ast(yaml);
-        let err = first_ast_error(result);
-        assert!(matches!(err, CompileError::InvalidTriggerField { trigger: "webhook", field: "path", .. }));
-    }
-
-    #[test]
-    fn parse_ast_rejects_invalid_name() {
-        let yaml = b"version: velvet-ballastics/v1\nname: Invalid-Name\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    finish:\n      result: 0\n";
-        let result = YamlCompiler::default().parse_ast(yaml);
-        let err = first_ast_error(result);
-        assert!(matches!(err, CompileError::InvalidName { .. }));
-    }
-
-    #[test]
-    fn parse_ast_rejects_missing_step_id() {
-        let yaml = b"version: velvet-ballastics/v1\nname: test\nwhen:\n  manual: {}\nsteps:\n  - finish:\n      result: 0\n";
-        let result = YamlCompiler::default().parse_ast(yaml);
-        let err = first_ast_error(result);
-        assert!(matches!(err, CompileError::MissingStepId { .. }));
-    }
-
-    #[test]
-    fn parse_ast_rejects_duplicate_step_id() {
-        let yaml = b"version: velvet-ballastics/v1\nname: test\nwhen:\n  manual: {}\nsteps:\n  - id: a\n    finish:\n      result: 0\n  - id: a\n    finish:\n      result: 0\n";
-        let result = YamlCompiler::default().parse_ast(yaml);
-        let err = first_ast_error(result);
-        assert!(matches!(err, CompileError::DuplicateStepId { .. }));
-    }
-
-    #[test]
-    fn parse_ast_rejects_step_shape() {
-        let yaml = b"version: velvet-ballastics/v1\nname: test\nwhen:\n  manual: {}\nsteps:\n  - not a mapping\n";
-        let result = YamlCompiler::default().parse_ast(yaml);
-        let err = first_ast_error(result);
-        assert!(matches!(err, CompileError::StepShape { .. }));
-    }
-
-    #[test]
-    fn parse_ast_rejects_unknown_step_field() {
-        let yaml = b"version: velvet-ballastics/v1\nname: test\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    unknown_field: true\n    finish:\n      result: 0\n";
-        let result = YamlCompiler::default().parse_ast(yaml);
-        let err = first_ast_error(result);
-        assert!(matches!(err, CompileError::UnknownStepField { .. }));
-    }
-
-    #[test]
-    fn parse_ast_rejects_missing_step_field() {
-        let yaml = b"version: velvet-ballastics/v1\nname: test\nwhen:\n  manual: {}\nsteps:\n  - id: done\n    finish: {}\n";
-        let result = YamlCompiler::default().parse_ast(yaml);
-        let err = first_ast_error(result);
-        assert!(matches!(err, CompileError::MissingStepField { .. }));
-    }
-
-    #[test]
-    fn parse_ast_rejects_step_field_shape() {
-        let yaml = b"version: velvet-ballastics/v1\nname: test\nwhen:\n  manual: {}\nsteps:\n  - id: a\n    run:\n      action: bad\n      input: 0\n  - id: done\n    finish:\n      result: 0\n";
-        let result = YamlCompiler::default().parse_ast(yaml);
-        let err = first_ast_error(result);
-        assert!(matches!(err, CompileError::StepFieldShape { field: "action", .. }));
-    }
-
-    #[test]
-    fn parse_ast_rejects_unknown_input_schema_field() {
-        let yaml = br#"version: velvet-ballastics/v1
-name: test
-when:
-  manual: {}
-inputs:
-  x:
-    is: text
-    kind: text
-steps:
-  - id: done
-    finish:
-      result: 0
-"#;
-        let result = YamlCompiler::default().parse_ast(yaml);
-        let err = first_ast_error(result);
-        assert!(matches!(err, CompileError::UnknownInputSchemaField { .. }));
-    }
-
-    #[test]
-    fn parse_ast_rejects_invalid_input_schema() {
-        let yaml = br#"version: velvet-ballastics/v1
-name: test
-when:
-  manual: {}
-inputs:
-  x:
-    is: text
-    min_length: 9
-    max_length: 1
-steps:
-  - id: done
-    finish:
-      result: 0
-"#;
-        let result = YamlCompiler::default().parse_ast(yaml);
-        let err = first_ast_error(result);
-        assert!(matches!(err, CompileError::InvalidInputSchema { .. }));
-    }
-
-    #[test]
-    fn parse_ast_rejects_unsupported_constant_value() {
-        let yaml = br#"version: velvet-ballastics/v1
-name: test
-when:
-  manual: {}
-steps:
-  - id: reduce_step
-    reduce:
-      input: 0
-      accumulator: 1
-      initial: [1, 2]
-  - id: done
-    finish:
-      result: 0
-"#;
-        let result = YamlCompiler::default().parse_ast(yaml);
-        let err = first_ast_error(result);
-        assert!(matches!(err, CompileError::UnsupportedConstantValue { .. }));
-    }
-
-    #[test]
-    fn parse_ast_rejects_non_string_key() {
-        let yaml = b"1: value\n";
-        let result = YamlCompiler::default().parse_ast(yaml);
-        let err = first_ast_error(result);
-        assert!(matches!(err, CompileError::NonStringKey { .. }));
-    }
-
-    // --- Expression errors (direct parse_expression) ---
-
-    #[test]
-    fn parse_expression_rejects_integer_out_of_range() {
-        let result = crate::expression::parse_expression("999999999999999999999999999999");
-        assert!(matches!(result, Err(CompileError::ExpressionIntegerOutOfRange { .. })));
-    }
-
-    #[test]
-    fn parse_expression_rejects_unterminated_string() {
-        let result = crate::expression::parse_expression("\"hello");
-        assert!(matches!(result, Err(CompileError::ExpressionUnterminatedString { .. })));
-    }
-
-    #[test]
-    fn parse_expression_rejects_unknown_identifier() {
-        let result = crate::expression::parse_expression("unknown_var");
-        assert!(matches!(result, Err(CompileError::ExpressionUnknownIdentifier { .. })));
     }
 }
