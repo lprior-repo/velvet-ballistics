@@ -3,6 +3,8 @@
 #
 # Bead: vb-core-cli-accepted-path
 # Workspace: /home/lewis/src/vb-go-skill/p0-wave-20260515/vb-core-cli-accepted-path
+# Bead: vb-core-lower-values-actions-refs
+# Workspace: /tmp/vb-ws/vb-core-lower-values-actions-refs
 #
 # Usage: scripts/rust-verification-gauntlet.sh <mode>
 #

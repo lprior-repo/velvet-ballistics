@@ -1,10 +1,12 @@
-// Verus model for vb-qi37.6 capability proof obligations.
+// Verus model for vb-qi37.4 accepted-artifact capability proof obligations.
 //
 // Obligations:
 // - VERUS-CAP-001: exact capability name/action matching only.
 // - VERUS-CARD-003: runtime admission is cardinality-exact.
 // - VERUS-CERT-007: accepted-artifact certificate preserves profile count.
 // - Derived schema lemma: accepted certificate assumes validated schema inputs.
+// - VERUS-CAP-003: exact capability name/action matching, cardinality-exact
+//   runtime admission, and accepted-artifact certificate profile preservation.
 //
 // This is a pure model.  Fjall I/O, postcard bytes, and production Rust structs
 // remain trusted shell boundaries and require integration evidence later.
