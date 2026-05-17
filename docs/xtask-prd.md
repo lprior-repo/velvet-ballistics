@@ -12,7 +12,7 @@ Xtask is not a generic task runner, CI wrapper, or agent chat shell. It is the s
 
 The product standard is:
 
-> Latest stable Rust for production code, safe first-party code, blessed.rs-first dependency selection, audited high-performance dependencies, typed railway errors, Holzmann-bounded resources, the full go-skill delivery lifecycle, formal proof lanes where warranted, static analysis, mutation testing, fuzzing, Miri, Loom, Kani, Verus, TLA+, benchmark gates, and fail-closed evidence.
+> Latest stable Rust for production code, safe first-party code, blessed.rs-first dependency selection, audited high-performance dependencies, typed railway errors, Holzmann-bounded resources, the full go-skill delivery lifecycle, formal proof lanes where warranted, static analysis, mutation testing, fuzzing, Miri, Loom, Kani, Flux, Prusti/Creusot, Verus, TLA+, benchmark gates, and fail-closed evidence.
 
 ## Problem
 
@@ -81,6 +81,8 @@ The core product object is not a command. It is a `ChangeAdmission` record.
 12. The CLI should dictate the lifecycle rather than expose a bag of unrelated commands.
 13. The go-skill state machine is the normative delivery lifecycle for non-trivial changes.
 14. blessed.rs is the default crate discovery baseline, not a substitute for local audit and measurement.
+15. Assurance is risk-tiered so routine changes move quickly and high-consequence changes get NASA-grade evidence.
+16. Every admitted change reduces uncertainty or explicitly records the remaining uncertainty.
 
 ## Stable Rust Policy
 
@@ -107,6 +109,311 @@ Rules:
 - Miri, Verus, Kani, and other verifier lanes may install tool-specific or nightly toolchains as isolated analysis tools, but they must not leak unstable source features into production crates.
 - Release evidence records the exact `rustc --version --verbose` output used for builds and gates.
 
+## NASA-Grade Quality / Throughput Model
+
+Xtask should pursue NASA-level assurance without turning every typo fix into a launch review. Rigor must be proportional, mechanical, and cheap to reuse.
+
+The product separates three concerns:
+
+- change criticality
+- evidence strength
+- throughput lane
+
+The harness selects the lightest lane that can honestly discharge the risk. AI proposes the change; deterministic evidence gates dispose of it.
+
+### Criticality Tiers
+
+Every work item receives a criticality tier during `xtask scope`.
+
+| Tier | Name | Examples | Required posture |
+| --- | --- | --- | --- |
+| C0 | Cosmetic | copy, docs, comments, non-contract screenshots | fast lane, source checks, no proof unless touched contract demands it |
+| C1 | Local behavior | pure function, parser branch, CLI flag | fast lane plus targeted tests/properties |
+| C2 | State or persistence | durable event log, recovery path, config migration | deep lane plus model/property/fuzz evidence |
+| C3 | Concurrency or scheduling | queues, cancellation, worker lifecycle, locks | deep lane plus Loom/TLA+ obligation |
+| C4 | Security or secrets | auth, capability, redaction, taint, secret storage | release lane plus threat model and negative fixtures |
+| C5 | Safety kernel | admission decision, proof selection, artifact trust, replay truth | full go-skill, formal review, black-hat, truth-serum, release gate |
+
+Rules:
+
+- The scope engine proposes the tier; the user or policy may raise it, never silently lower it.
+- A lower tier inherits a higher gate when it touches a high-criticality file or public contract.
+- Criticality is stored in `delivery-scope.jsonl` and copied into `ChangeAdmission`.
+- Tier changes after implementation invalidate affected proof, test, and review states.
+
+### Throughput Lanes
+
+Xtask needs lanes, not one giant quality wall.
+
+| Lane | Goal | Max wait target | Typical tiers | Gate posture |
+| --- | --- | --- | --- | --- |
+| edit-loop | keep agent moving | seconds to minutes | C0-C1 | fmt, check, scoped clippy, focused tests |
+| pre-review | stop bad PRs early | minutes | C1-C3 | fast profile, scope proof plan, property tests |
+| merge-candidate | protect main | tens of minutes | C2-C4 | deep profile, static analysis, scoped formal lanes |
+| release-candidate | prove shipment | hours allowed | C3-C5 | release profile, mutation, fuzz, full evidence pack |
+| incident-hotfix | restore safely | bounded emergency SLA | any | minimum safe lane plus mandatory post-incident completion debt |
+
+Incident-hotfix is not a loophole. It creates an `assurance-debt` artifact with owner, deadline, and a blocked future release if unpaid.
+
+### Assurance Budget
+
+Each run gets an assurance budget that defines what must be proven now and what can be deferred.
+
+Fields:
+
+- criticality tier
+- changed files and owners
+- public API impact
+- state/durability impact
+- security/secret impact
+- concurrency impact
+- performance claim impact
+- dependency impact
+- maximum acceptable gate time
+- required evidence strength
+
+The budget is a contract between throughput and risk, not just a timeout.
+
+### Evidence Strength Ladder
+
+Evidence has strength levels. Xtask reports the highest level reached for each claim.
+
+| Level | Evidence | Meaning |
+| --- | --- | --- |
+| E0 | assertion only | not acceptable for admission |
+| E1 | static source check | shape looks right |
+| E2 | unit/integration test | behavior observed for named cases |
+| E3 | property/fuzz/mutation | adversarial input or test adequacy exercised |
+| E4 | model check/bounded proof | state space or bounded domain searched |
+| E5 | deductive proof or temporal model plus implementation binding | contract has mathematical backing |
+| E6 | operational replay/benchmark/provenance | production-relevant behavior measured and reproducible |
+
+Release evidence exposes claim-to-evidence mapping:
+
+```text
+claim -> criticality -> required strength -> actual evidence -> decision
+```
+
+### Hazard Ledger
+
+NASA-style assurance needs hazards, not only tests.
+
+Xtask maintains a hazard ledger per repository and per change.
+
+Hazard fields:
+
+- hazard ID
+- unsafe state or loss scenario
+- trigger conditions
+- affected assets
+- severity
+- likelihood
+- detection method
+- prevention/mitigation control
+- linked proof obligations
+- linked tests/fuzz/property suites
+- residual risk
+- owner and review date
+
+Example hazards:
+
+- admitted change lacks required raw evidence
+- replay reconstructs a different admission decision
+- secret value appears in logs or artifacts
+- cancellation loses a child process or leaves a lock held
+- overflow changes a scheduling or retry decision
+- dependency update introduces unsafe transitive code in the trust boundary
+
+### FMEA And FRACAS
+
+Xtask should encode lightweight Failure Mode and Effects Analysis for C2-C5 changes.
+
+Required FMEA fields:
+
+- component
+- failure mode
+- effect
+- cause
+- detection
+- severity
+- occurrence
+- detection score
+- mitigation
+- residual risk
+
+FRACAS behavior:
+
+- every escaped defect creates a failure record
+- every failure record links to the missed gate or missing gate
+- recurring failures raise criticality heuristics
+- repaired failures add regression evidence to the affected lane
+
+This keeps the system improving instead of repeating the same blind spots.
+
+### Quality Ratchets
+
+The harness should ratchet quality upward without blocking unrelated work forever.
+
+Ratcheted metrics:
+
+- count of forbidden constructs in first-party production code
+- unclassified mutation survivors
+- uncovered high-criticality hazards
+- waiver count and age
+- flaky gate count
+- unsupported verifier findings
+- dependency exceptions
+- average evidence strength by criticality
+
+Rules:
+
+- new local debt blocks admission unless explicitly waived
+- pre-existing global debt is recorded as `deferred-global`
+- C4-C5 work cannot add new waivers without owner and expiration
+- expired waivers block release-candidate admission
+
+### Full Skill Quality Bar Canon
+
+Xtask should preserve the high-value skill lifecycle, but encode it as typed product behavior instead of prompt folklore.
+
+Required specialist roles:
+
+- `go-skill` owns the canonical state machine and phase transitions.
+- `rust-contract` writes the contract, assumptions, invariants, verification layers, and traceability targets.
+- `contract-verification-reviewer` rejects weak or unbound contracts before tests or implementation consume them.
+- `proof-planner` selects risk-appropriate verifier lanes and proof obligations.
+- `proof-writer` writes only verification artifacts and repairs them when the implementation is wrong or the proof is weak.
+- `proof-reviewer` reviews proofs and rejects vacuous, mirror-only, or unbound verification.
+- `test-planner` derives tests from the contract, hazards, proof obligations, and scope.
+- `test-writer` writes failing-first tests, properties, fuzz targets, and harnesses.
+- `test-reviewer` rejects weak assertions, overfitted tests, nondeterminism, and missing negative paths.
+- `formal-verifier` executes accepted proof obligations and classifies evidence without authoring the proof.
+- `black-hat-reviewer` performs adversarial contract parity, DDD, safety, and simplicity review.
+- `truth-serum` audits the evidence pack for hallucinated claims, missing raw logs, and unverifiable assertions.
+- `landing-skill` owns commit, issue sync, remote push, cleanup, and final handoff.
+
+Default lifecycle posture:
+
+- explore before contract work
+- contract before proof planning
+- proof planning before test planning
+- proof review before implementation
+- tests before implementation where feasible
+- implementation before formal execution
+- formal execution before black-hat review
+- black-hat review before truth-serum
+- truth-serum before landing
+
+Short-circuit rules:
+
+- C0 doc-only changes may skip proof and test authoring when scope proves no executable behavior changed.
+- C1 local behavior may use proof planning as a lightweight lane-selection artifact rather than full formal writing.
+- C2-C5 changes require explicit proof/test/review artifacts or an accepted waiver.
+- Any public contract, safety kernel, security, persistence, or concurrency change raises the minimum lane.
+
+### Proof Lifecycle Rationale
+
+The proof lifecycle is worth the work because it moves expensive discovery earlier.
+
+Risk without early proof planning:
+
+- tests encode the wrong model
+- implementation bakes in an unprovable design
+- formal tools get bolted on after the shape is already wrong
+- reviewers argue about style instead of invariants
+
+Benefit with early proof planning:
+
+- impossible states are found before code exists
+- proof obligations shape API boundaries
+- test plans target the real hazards
+- reviewer effort moves from taste to contract parity
+- AI output is constrained by typed artifacts instead of vibes
+
+The stack is strong but not omniscient. Xtask must never claim that tools prove the product is correct. It can claim only that selected obligations passed under stated assumptions with raw evidence.
+
+### Formal Stack Completeness Boundary
+
+No single Rust verification tool covers the whole problem.
+
+Tool boundaries:
+
+- TLA+ models temporal behavior, distributed state, scheduling, cancellation, and resource transitions.
+- Verus handles deductive proof over implementation-shaped Rust where specs bind to exec logic.
+- Kani explores bounded Rust executions and panic/index/overflow/state bugs.
+- Flux refines local value relationships and constructor/API invariants.
+- Prusti/Creusot can cover alternate deductive contracts when Verus is not the best fit.
+- Loom explores concurrent interleavings.
+- Miri catches undefined behavior and invalid Rust execution under interpreter-supported paths.
+- Proptest and fuzzing pressure broad input spaces.
+- Mutation testing tests the tests.
+- Static analysis catches source and dependency hazards before runtime.
+
+Selection rules:
+
+- Use TLA+ when behavior depends on time, order, retries, cancellation, leases, queues, or crash/recovery.
+- Use Verus or another deductive lane when a pure invariant must hold for all values, not sampled values.
+- Use Kani when a bounded implementation domain can expose panics, overflows, or illegal transitions.
+- Use Flux when value-level refinement is cheap and directly binds to public constructors/APIs.
+- Use Loom when interleaving order can invalidate correctness.
+- Use Miri when undefined behavior, raw layout assumptions, or interpreter-supported unsafe dependencies are in scope.
+- Use fuzz/property tests when input shape or parser behavior is the risk.
+- Use mutation when test adequacy is the risk.
+
+Failure rules:
+
+- A failing proof or model reveals a product/design issue until proven otherwise.
+- Do not weaken the contract or harness just to satisfy the tool.
+- If a proof obligation is impossible, record the rejected design and route back to contract or implementation.
+- If a tool cannot express the obligation, record the limitation and choose the next strongest evidence.
+
+### Black-Hat Review Scope
+
+Black-hat review remains mandatory for C2-C5 and any change with a waiver.
+
+Required questions:
+
+- Does the implementation satisfy the accepted contract, not a weaker local interpretation?
+- Did any evidence come from a fake, fixture, dry-run, or stale command?
+- Can an agent bypass scope, command capability, or admission policy?
+- Are there hidden panics, unchecked arithmetic, unbounded loops, or ambient secrets?
+- Are tests asserting observable behavior or implementation trivia?
+- Are formal artifacts bound to production logic, or are they mirror-world proofs?
+- Is the simplest domain model being used, or did ceremony hide missing invariants?
+
+Findings route back to the owning state and invalidate downstream approvals.
+
+### Truth-Serum Evidence Audit
+
+Truth-serum is not final QA. It is an evidence-integrity gate.
+
+It checks:
+
+- every claim has raw evidence
+- every required artifact exists
+- every tool output is current for the final diff
+- every skipped gate has a policy reason
+- every waiver has owner, scope, expiration, and residual risk
+- every proof/test/review artifact maps to a contract item or hazard
+- every benchmark claim has baseline and result evidence
+- every issue state and git state agrees with the admission decision
+
+Truth-serum can approve evidence integrity, reject it, or require human review. It must not silently convert missing evidence into a pass.
+
+### Conditional QA
+
+Manual QA is conditional, not a default phase.
+
+Run hands-on QA when:
+
+- the change affects user-visible CLI/API/UI behavior
+- an incident-hotfix path was used
+- gate behavior itself changed
+- an external service or OS integration changed
+- a release-candidate includes migration or install behavior
+
+Do not run manual QA as a ritual for pure internal refactors with stronger machine evidence.
+
 ## Architecture
 
 Xtask should be split into a reusable harness core and repository-specific adapters.
@@ -117,7 +424,7 @@ crates/
   xtask_policy        Rust/Holzmann/go-skill policy definitions
   xtask_runner        typed command execution, timeouts, logs, exit codes
   xtask_rust          cargo, clippy, nextest, miri, kani, loom, fuzz adapters
-  xtask_proof         TLA+, Verus, Kani, Miri, Loom proof planning and ledgers
+  xtask_proof         TLA+, Verus, Prusti/Creusot, Kani, Flux, Miri, Loom proof planning and ledgers
   xtask_static        Clippy, Dylint, dependency and source-policy scans
   xtask_mutation      cargo-mutants orchestration and survivor reporting
   xtask_perf          benchmark plans, Criterion output parsing, PGO eligibility
@@ -314,6 +621,7 @@ Required gates:
 - scoped Miri lane for pure/domain/perf crates where supported
 - scoped Kani harnesses from proof plan
 - scoped Loom models for concurrency changes
+- scoped Flux/Prusti/Creusot obligations when selected by proof plan
 - proptest/property suites
 - fuzz smoke for touched parsers/decoders/admission logic
 - static analysis lane
@@ -329,6 +637,7 @@ Required gates:
 - all deep gates
 - TLA+ model checks for temporal/concurrency/resource obligations
 - Verus proof checks for deductive obligations
+- Flux/Prusti/Creusot proof checks when selected by proof obligations
 - full cargo-mutants or scoped mutation gate
 - cargo-audit
 - cargo-deny
@@ -388,6 +697,34 @@ Requirement:
 
 - no hardcoded single-shape proofs for core structures
 - use `kani::Arbitrary` or exhaustive bounded generation where practical
+
+### Flux
+
+Use for:
+
+- refinement-friendly local invariants
+- length and bound relationships
+- typestate-like value constraints
+- illegal-state exclusion at construction boundaries
+
+Requirement:
+
+- refinements must bind to constructors or public APIs
+- tautological refinements are rejected
+
+### Prusti / Creusot
+
+Use for:
+
+- deductive Rust verification when Verus is not the right fit
+- preconditions and postconditions
+- loop invariants
+- panic/overflow and functional properties where supported
+
+Requirement:
+
+- partial-correctness limitations must be recorded
+- shell behavior and termination assumptions must be explicit
 
 ### Miri
 
@@ -744,6 +1081,8 @@ MVP must not emit synthetic pass evidence.
 
 - proof obligation planner
 - Kani adapter
+- Flux adapter
+- Prusti/Creusot adapter
 - Loom adapter
 - Miri adapter
 - Dylint/static-analysis lane
@@ -787,7 +1126,7 @@ Xtask is ready to use on real Rust repositories when:
 - agent adapters cannot silently exceed declared scope
 - command execution never uses shell strings by default
 - proof plans are generated from changed-file scope
-- Miri/Kani/Loom/TLA+/Verus results are captured as typed evidence where configured
+- Miri/Kani/Flux/Prusti/Loom/TLA+/Verus results are captured as typed evidence where configured
 - mutation survivors are reported and classified
 - static-analysis findings are classified by blast radius
 - performance claims require benchmark evidence
