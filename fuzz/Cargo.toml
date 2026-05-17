@@ -19,15 +19,16 @@ libfuzzer-sys.workspace = true
 postcard.workspace = true
 blake3.workspace = true
 tempfile.workspace = true
-velvet_ballastics_workspace = { path = "..", package = "velvet-ballastics-workspace" }
 xtask = { path = "../xtask" }
+vb_boundary_inventory = { path = "../crates/vb_boundary_inventory" }
+vb_compile = { path = "../crates/vb_compile" }
 vb_core = { path = "../crates/vb_core" }
 vb_expr = { path = "../crates/vb_expr" }
 vb_storage = { path = "../crates/vb_storage" }
 vb_validate = { path = "../crates/vb_validate" }
 vb_yaml = { path = "../crates/vb_yaml" }
-vb_compile = { path = "../crates/vb_compile" }
 vb_ipc = { path = "../crates/vb_ipc" }
+vb_runtime = { path = "../crates/vb_runtime" }
 vb_ui_model = { path = "../crates/vb_ui_model" }
 
 [lib]

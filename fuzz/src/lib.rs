@@ -1495,7 +1495,6 @@ pub fn fuzz_admission_fuzz(data: &[u8]) {
     }
 }
 
-<<<<<<< HEAD
 // ---------------------------------------------------------------------------
 // F01: Strict AcceptedArtifact CompiledIR Decoder
 // ---------------------------------------------------------------------------
@@ -1788,7 +1787,8 @@ pub fn fuzz_admission_input_surface(data: &[u8]) {
 
     // F04c: Empty input — must not panic.
     let _ = std::str::from_utf8(data);
-=======
+}
+
 /// Bead target: strict YAML profile input must never panic. Unsupported profile
 /// features are accepted only as typed compile errors and must not produce an
 /// artifact through the strict YAML compile boundary.
@@ -1843,7 +1843,6 @@ pub fn fuzz_recovery_decode(data: &[u8]) {
     };
     drop(vb_storage::recovery::summarize_recovery_events(&events));
     drop(vb_storage::recovery::recover_runtime_frame_seed_from_events(&events));
->>>>>>> a8a247d5
 }
 
 fn selected_workflow(data: &[u8]) -> &'static [u8] {

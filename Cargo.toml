@@ -17,6 +17,7 @@ members = [
     "crates/vb_cli",
     "crates/workspace_tests",
     "crates/vb_benchmark",
+    "fuzz",
     "xtask",
 ]
 default-members = ["."]

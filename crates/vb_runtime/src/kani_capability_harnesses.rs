@@ -107,6 +107,7 @@ mod kani_capability_harnesses {
                 bounded: true,
                 taint_safe: true,
                 retry_safe: true,
+                idempotency_verified: true,
                 replayable: true,
                 idempotency_keyed: Box::new([]),
                 idempotency_attested: Box::new([]),
