@@ -6,7 +6,7 @@ Draft product requirements document for extracting the Velvet Ballastics `xtask`
 
 ## Summary
 
-Xtask is an opinionated Rust-only harness for AI-assisted software delivery. It turns human intent and agent activity into scoped work, verified changes, machine-readable evidence, and an explicit admission decision.
+Xtask is an opinionated Rust-only assurance orchestrator for AI-assisted software delivery. It turns human intent and agent activity into scoped work, determines the verification and review evidence required for that work, runs or routes the required gates, and produces an explicit admission decision.
 
 Xtask is not a generic task runner, CI wrapper, or agent chat shell. It is the software factory gate for Rust teams that want AI to write code without trusting vibes.
 
@@ -33,6 +33,10 @@ Existing CI can answer whether commands passed. It does not own the AI delivery 
 ## Product Thesis
 
 Xtask owns AI change admission for Rust.
+
+The goal is not to make every change run every verifier. The goal is to decide what the change needs, make that need explicit, orchestrate the right specialists and tools, and refuse admission until the required evidence exists.
+
+Verus, TLA+, Kani, Flux, Prusti/Creusot, Loom, Miri, fuzzing, property testing, mutation testing, static analysis, black-hat review, truth-serum, and manual QA are capabilities behind the orchestrator. Xtask is the policy engine that chooses the necessary subset from scope, criticality, hazards, contracts, and claims.
 
 The harness sits above AI agents and below the repository:
 
