@@ -1745,8 +1745,25 @@ pub fn compile_to_generated_rust(workflow: &CompiledWorkflow) -> Result<String, 
 /// - `SideEffect::None` always passes (pure computation).
 /// - `side_effect != None` AND `RetrySafety::Unsafe` is rejected.
 /// - `side_effect != None` AND `Idempotency::AtLeastOnceExternal` is rejected.
+/// - `side_effect != None` AND `Idempotency::DeterministicPure` is rejected.
 /// - `side_effect != None` AND `RetrySafety::Safe` with `Idempotency::IdempotentExternal` passes.
 /// - `side_effect != None` AND `RetrySafety::KeyRequired` with `Idempotency::IdempotentExternal` passes.
+pub fn is_compile_idempotency_gate_accepted(contract: &ActionContract) -> bool {
+    matches!(
+        (
+            contract.side_effect,
+            contract.retry_safety,
+            contract.idempotency,
+        ),
+        (SideEffect::None, _, _)
+            | (
+                _,
+                RetrySafety::Safe | RetrySafety::KeyRequired,
+                Idempotency::IdempotentExternal,
+            )
+    )
+}
+
 pub fn check_idempotency_gates(contracts: &[ActionContract]) -> Result<(), CompileErrors> {
     let mut errors = Vec::new();
     let mut i = 0;
@@ -1754,7 +1771,7 @@ pub fn check_idempotency_gates(contracts: &[ActionContract]) -> Result<(), Compi
         let Some(contract) = contracts.get(i) else {
             break;
         };
-        if contract.side_effect == SideEffect::None {
+        if is_compile_idempotency_gate_accepted(contract) {
             i = match i.checked_add(1) {
                 Some(next) => next,
                 None => break,
@@ -1781,6 +1798,13 @@ pub fn check_idempotency_gates(contracts: &[ActionContract]) -> Result<(), Compi
                     "side-effecting action declares Idempotency::AtLeastOnceExternal \
                      without guaranteed idempotent retry",
                 ),
+            });
+        }
+        if contract.idempotency == Idempotency::DeterministicPure {
+            errors.push(CompileError::IdempotencyViolation {
+                action: contract.id,
+                side_effect: contract.side_effect,
+                reason: Box::from("side-effecting action declares Idempotency::DeterministicPure"),
             });
         }
         i = match i.checked_add(1) {

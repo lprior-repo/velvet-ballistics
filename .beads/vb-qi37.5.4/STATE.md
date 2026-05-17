@@ -273,3 +273,15 @@
 - **current_state**: 14
 - **bead_status**: LANDED
 - **next_gate**: none
+
+## State 13 Current-Source Revalidation - 2026-05-17
+
+- **current_state**: 13
+- **status**: APPROVED
+- **stale_evidence_correction**: prior 37-combination scope-reduced approval is superseded.
+- **fresh_evidence**:
+  - `cargo kani -p vb_compile --harness idempotency_gate_parity`: PASS over all 45 combinations, raw `/home/lewis/.local/share/opencode/tool-output/tool_e35595389001V8cydoKJUYkkZC`.
+  - scoped clippy: PASS.
+  - scoped tests: PASS, 3070 tests.
+- **bookmark**: go-skill-p0-vb-qi37-5-4
+- **next_gate**: bookmark-ready only; stop before main merge.
