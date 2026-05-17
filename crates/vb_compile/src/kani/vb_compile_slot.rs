@@ -17,7 +17,8 @@
 
 #![forbid(unsafe_code)]
 
-use vb_compile::expression::parse_expression;
+use crate::compile_expr_to_bytecode_with_accessors;
+use crate::expression::parse_expression;
 use vb_core::{AccessorIdx, AccessorProgram, ExprOp, PathSegment, SlotIdx};
 
 /// KANI-SLOT-REF-001: slot reference lowering is correct for all valid u16 indices.
@@ -41,7 +42,7 @@ fn lower_slot_reference_valid() {
     if let Ok(expr) = parsed {
         let mut constants = Vec::new();
         let mut accessors: Vec<AccessorProgram> = Vec::new();
-        let result = vb_compile::compile_expr_to_bytecode_with_accessors(
+        let result = compile_expr_to_bytecode_with_accessors(
             &expr,
             &mut constants,
             &mut accessors,
@@ -75,7 +76,7 @@ fn lower_slot_reference_valid() {
     kani::assert(expr0.is_ok(), "$slot.0 should parse");
     if let Ok(e) = expr0 {
         let mut acc: Vec<AccessorProgram> = Vec::new();
-        let res = vb_compile::compile_expr_to_bytecode_with_accessors(
+        let res = compile_expr_to_bytecode_with_accessors(
             &e, &mut Vec::new(), &mut acc,
         );
         kani::assert(res.is_ok(), "$slot.0 should succeed");
@@ -96,7 +97,7 @@ fn lower_slot_reference_valid() {
     kani::assert(expr1.is_ok(), "$slot.1 should parse");
     if let Ok(e) = expr1 {
         let mut acc: Vec<AccessorProgram> = Vec::new();
-        let res = vb_compile::compile_expr_to_bytecode_with_accessors(
+        let res = compile_expr_to_bytecode_with_accessors(
             &e, &mut Vec::new(), &mut acc,
         );
         kani::assert(res.is_ok(), "$slot.1 should succeed");
@@ -116,7 +117,7 @@ fn lower_slot_reference_valid() {
     kani::assert(expr255.is_ok(), "$slot.255 should parse");
     if let Ok(e) = expr255 {
         let mut acc: Vec<AccessorProgram> = Vec::new();
-        let res = vb_compile::compile_expr_to_bytecode_with_accessors(
+        let res = compile_expr_to_bytecode_with_accessors(
             &e, &mut Vec::new(), &mut acc,
         );
         kani::assert(res.is_ok(), "$slot.255 should succeed");
@@ -136,7 +137,7 @@ fn lower_slot_reference_valid() {
     kani::assert(expr_max.is_ok(), "$slot.65535 should parse");
     if let Ok(e) = expr_max {
         let mut acc: Vec<AccessorProgram> = Vec::new();
-        let res = vb_compile::compile_expr_to_bytecode_with_accessors(
+        let res = compile_expr_to_bytecode_with_accessors(
             &e, &mut Vec::new(), &mut acc,
         );
         kani::assert(res.is_ok(), "$slot.65535 should succeed");
@@ -158,7 +159,7 @@ fn lower_slot_reference_valid() {
     kani::assert(parsed_plural.is_ok(), "valid $slots.N should parse");
     if let Ok(expr) = parsed_plural {
         let mut acc: Vec<AccessorProgram> = Vec::new();
-        let res = vb_compile::compile_expr_to_bytecode_with_accessors(
+        let res = compile_expr_to_bytecode_with_accessors(
             &expr, &mut Vec::new(), &mut acc,
         );
         kani::assert(res.is_ok(), "$slots.N should compile successfully");
@@ -184,7 +185,7 @@ fn lower_slot_reference_with_path_creates_accessor() {
     if let Ok(expr) = parsed {
         let mut constants = Vec::new();
         let mut accessors: Vec<AccessorProgram> = Vec::new();
-        let result = vb_compile::compile_expr_to_bytecode_with_accessors(
+        let result = compile_expr_to_bytecode_with_accessors(
             &expr, &mut constants, &mut accessors,
         );
 
@@ -225,7 +226,7 @@ fn lower_slot_reference_with_path_creates_accessor() {
     if let Ok(expr2) = parsed2 {
         let mut consts2 = Vec::new();
         let mut acc2 = Vec::new();
-        let res2 = vb_compile::compile_expr_to_bytecode_with_accessors(
+        let res2 = compile_expr_to_bytecode_with_accessors(
             &expr2, &mut consts2, &mut acc2,
         );
 
@@ -261,7 +262,7 @@ fn lower_slot_reference_with_path_creates_accessor() {
     if let Ok(expr3) = parsed3 {
         let mut consts3 = Vec::new();
         let mut acc3 = Vec::new();
-        let res3 = vb_compile::compile_expr_to_bytecode_with_accessors(
+        let res3 = compile_expr_to_bytecode_with_accessors(
             &expr3, &mut consts3, &mut acc3,
         );
 

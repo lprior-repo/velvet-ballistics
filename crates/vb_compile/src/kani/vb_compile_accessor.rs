@@ -12,7 +12,8 @@
 
 #![forbid(unsafe_code)]
 
-use vb_compile::expression::parse_expression;
+use crate::compile_expr_to_bytecode_with_accessors;
+use crate::expression::parse_expression;
 use vb_core::{AccessorIdx, AccessorProgram, PathSegment, SlotIdx};
 
 /// KANI-ACCESSOR-REF-001: accessor reference lowering is correct for numeric paths.
@@ -24,7 +25,7 @@ use vb_core::{AccessorIdx, AccessorProgram, PathSegment, SlotIdx};
 ///   4. Verify sequential accessor indices
 ///   5. Verify non-numeric paths are rejected
 #[kani::proof]
-#[kani::unwind(8)]
+#[kani::unwind(64)]
 fn lower_accessor_reference_numeric() {
     // ----------------------------------------------------------------
     // Test 1: single-level accessor $slots.N.M
@@ -36,7 +37,7 @@ fn lower_accessor_reference_numeric() {
     if let Ok(expr) = parsed {
         let mut constants = Vec::new();
         let mut accessors: Vec<AccessorProgram> = Vec::new();
-        let result = vb_compile::compile_expr_to_bytecode_with_accessors(
+        let result = compile_expr_to_bytecode_with_accessors(
             &expr,
             &mut constants,
             &mut accessors,
@@ -88,7 +89,7 @@ fn lower_accessor_reference_numeric() {
     if let Ok(expr2) = parsed2 {
         let mut consts2 = Vec::new();
         let mut acc2 = Vec::new();
-        let res2 = vb_compile::compile_expr_to_bytecode_with_accessors(
+        let res2 = compile_expr_to_bytecode_with_accessors(
             &expr2,
             &mut consts2,
             &mut acc2,
@@ -135,7 +136,7 @@ fn lower_accessor_reference_numeric() {
     if let Ok(expr3) = parsed3 {
         let mut consts3 = Vec::new();
         let mut acc3 = Vec::new();
-        let res3 = vb_compile::compile_expr_to_bytecode_with_accessors(
+        let res3 = compile_expr_to_bytecode_with_accessors(
             &expr3,
             &mut consts3,
             &mut acc3,
@@ -166,7 +167,7 @@ fn accessor_index_assignment() {
     let mut acc = Vec::new();
 
     // First — index 0
-    let res1 = vb_compile::compile_expr_to_bytecode_with_accessors(&expr1, &mut consts, &mut acc);
+    let res1 = compile_expr_to_bytecode_with_accessors(&expr1, &mut consts, &mut acc);
     kani::assert(res1.is_ok(), "first accessor should compile");
     if let Ok(prog1) = res1 {
         if let vb_core::ExprOp::LoadAccessor(idx1) = prog1.ops[0] {
@@ -175,7 +176,7 @@ fn accessor_index_assignment() {
     }
 
     // Second — index 1
-    let res2 = vb_compile::compile_expr_to_bytecode_with_accessors(&expr2, &mut consts, &mut acc);
+    let res2 = compile_expr_to_bytecode_with_accessors(&expr2, &mut consts, &mut acc);
     kani::assert(res2.is_ok(), "second accessor should compile");
     if let Ok(prog2) = res2 {
         if let vb_core::ExprOp::LoadAccessor(idx2) = prog2.ops[0] {
@@ -184,7 +185,7 @@ fn accessor_index_assignment() {
     }
 
     // Third — index 2
-    let res3 = vb_compile::compile_expr_to_bytecode_with_accessors(&expr3, &mut consts, &mut acc);
+    let res3 = compile_expr_to_bytecode_with_accessors(&expr3, &mut consts, &mut acc);
     kani::assert(res3.is_ok(), "third accessor should compile");
     if let Ok(prog3) = res3 {
         if let vb_core::ExprOp::LoadAccessor(idx3) = prog3.ops[0] {
@@ -202,7 +203,7 @@ fn rejects_non_numeric_accessor_path() {
     // $slots.1.abc — non-numeric second segment
     let expr = parse_expression("$slots.1.abc").unwrap();
     let mut acc: Vec<AccessorProgram> = Vec::new();
-    let res = vb_compile::compile_expr_to_bytecode_with_accessors(
+    let res = compile_expr_to_bytecode_with_accessors(
         &expr,
         &mut Vec::new(),
         &mut acc,

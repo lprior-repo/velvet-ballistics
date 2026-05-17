@@ -12,9 +12,9 @@
 
 #![forbid(unsafe_code)]
 
-use vb_compile::lower_steps_to_ir;
+use crate::lower_steps_to_ir;
 use vb_core::{
-    CompiledNode, CompiledNodeKind, ConstValue, ExprProgram, SlotIdx, StepIdx, WorkflowDigest,
+    CompiledNode, CompiledNodeKind, SlotIdx, StepIdx, WorkflowDigest,
 };
 
 /// INV-007-NODEDUP-001: StepIdx uniqueness invariant.

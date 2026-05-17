@@ -481,3 +481,27 @@ fn custom_tag_rejected_exact() {
         other => fail_assert!("expected CustomTag, got {other:?}"),
     }
 }
+
+#[test]
+fn unsupported_yaml_features_return_typed_diagnostics() {
+    let yaml_custom_tag = "key: !custom value\n";
+    let result_custom_tag = validate_yaml_profile(yaml_custom_tag);
+    assert!(
+        matches!(result_custom_tag, Err(YamlError::CustomTag { .. })),
+        "custom tag should produce CustomTag error, got {result_custom_tag:?}"
+    );
+
+    let yaml_anchor = "a: &anchor\nb: *anchor\n";
+    let result_anchor = validate_yaml_profile(yaml_anchor);
+    assert!(
+        matches!(result_anchor, Err(YamlError::AnchorAliasMerge)),
+        "anchor/alias should produce AnchorAliasMerge error, got {result_anchor:?}"
+    );
+
+    let yaml_multi_doc = "---\na: 1\n---\nb: 2\n";
+    let result_multi_doc = validate_yaml_profile(yaml_multi_doc);
+    assert!(
+        matches!(result_multi_doc, Err(YamlError::MultipleDocuments { .. })),
+        "multi-doc YAML should produce MultipleDocuments error, got {result_multi_doc:?}"
+    );
+}

@@ -59,6 +59,8 @@ pub mod idempotency;
 pub mod journal;
 #[cfg(kani)]
 pub mod kani_capability_harnesses;
+#[cfg(kani)]
+pub mod kani_engine_yaml_admission;
 #[cfg(loom)]
 pub mod models;
 pub mod primitives;

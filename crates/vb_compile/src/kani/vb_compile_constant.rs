@@ -16,8 +16,8 @@
 
 #![forbid(unsafe_code)]
 
-use vb_compile::{CompileError, SlotCompiler};
-use vb_core::{ConstIdx, ConstValue, WorkflowError};
+use crate::SlotCompiler;
+use vb_core::{ConstIdx, ConstValue};
 
 /// KANI-CONSTANT-POOL-001: SlotCompiler::push_constant is safe and correct.
 ///
