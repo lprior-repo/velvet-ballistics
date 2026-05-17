@@ -1,0 +1,4 @@
+{"id":"PO-vb-hxm0-1","result":"PASS","command":"rtk cargo check -p velvet-ballastics-workspace-tests","evidence":"Finished dev profile","owner_state":11,"rerun_from":10}
+{"id":"PO-vb-hxm0-2","result":"PASS","command":"rtk cargo test -p velvet-ballastics-workspace-tests --test vb_hxm0_acceptance_catalog","evidence":"4 passed","owner_state":11,"rerun_from":8}
+{"id":"PO-vb-hxm0-3","result":"PASS","command":"rtk cargo test -p velvet-ballastics-workspace-tests --test vb_hxm0_acceptance_catalog","evidence":"negative catalog gate tests passed","owner_state":11,"rerun_from":8}
+{"id":"GLOBAL-moon-ci","result":"DEFERRED_GLOBAL","command":"moon ci","evidence":"fmt/vb_expr failures outside touched files","owner_state":11,"rerun_from":11}
