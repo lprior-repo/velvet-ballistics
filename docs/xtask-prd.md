@@ -1,0 +1,709 @@
+# Xtask PRD
+
+## Status
+
+Draft product requirements document for extracting the Velvet Ballastics `xtask` lessons into a reusable Rust-only AI software delivery harness.
+
+## Summary
+
+Xtask is an opinionated Rust-only harness for AI-assisted software delivery. It turns human intent and agent activity into scoped work, verified changes, machine-readable evidence, and an explicit admission decision.
+
+Xtask is not a generic task runner, CI wrapper, or agent chat shell. It is the software factory gate for Rust teams that want AI to write code without trusting vibes.
+
+The product standard is:
+
+> Latest stable Rust for production code, safe first-party code, audited high-performance dependencies, typed railway errors, Holzmann-bounded resources, formal proof lanes where warranted, static analysis, mutation testing, fuzzing, Miri, Loom, Kani, Verus, TLA+, benchmark gates, and fail-closed evidence.
+
+## Problem
+
+AI coding agents can generate code quickly, but the acceptance process is usually informal. Teams get diffs, chat transcripts, and partial CI output. They rarely get a durable answer to the questions that matter:
+
+- What was the intended change?
+- What files and APIs were in scope?
+- What commands was the agent allowed to run?
+- What did the agent actually change?
+- Which proof, test, static-analysis, and performance gates were required?
+- Which gates actually ran?
+- What raw evidence proves the result?
+- Which residual risks remain?
+- Is this change accepted, rejected, deferred, or waiting for human review?
+
+Existing CI can answer whether commands passed. It does not own the AI delivery lifecycle from intent through admission.
+
+## Product Thesis
+
+Xtask owns AI change admission for Rust.
+
+The harness sits above AI agents and below the repository:
+
+```text
+human intent
+  -> xtask lifecycle
+  -> scoped agent execution
+  -> repository diff
+  -> gates / proofs / reviews / evidence
+  -> admission decision
+```
+
+The core product object is not a command. It is a `ChangeAdmission` record.
+
+## Target Users
+
+- Rust developers using AI agents for production code.
+- Staff/principal engineers who need repeatable acceptance rules for generated code.
+- Safety-conscious teams that want proof, fuzzing, static analysis, and mutation gates as normal delivery tools.
+- Solo builders who want one strict local harness instead of a pile of scripts, prompts, and CI fragments.
+- Agent fleet operators who need machine-readable status, evidence, and failure reasons.
+
+## Non-Goals
+
+- Supporting non-Rust implementation languages in core.
+- Being a general CI system.
+- Being a generic workflow orchestrator.
+- Allowing arbitrary user-defined standards to replace the core policy.
+- Trusting synthetic evidence as gate evidence.
+- Rewriting GitHub Actions, Buildkite, or local developer tools.
+- Hiding failures behind best-effort automation.
+
+## Product Principles
+
+1. Rust only in first-party implementation.
+2. Latest stable Rust for production code.
+3. No first-party `unsafe` by default.
+4. No `unwrap`, `expect`, `panic`, `todo`, `unimplemented`, or `dbg` in production code.
+5. Typed errors and railway flow instead of panic control flow.
+6. Bounded resources: loops, retries, queues, fanout, memory growth, subprocesses, and timeouts are explicit.
+7. Real evidence only: a pass requires raw command output plus validator acceptance.
+8. Proofs are scoped to the blast radius of the change.
+9. Performance claims require benchmarks.
+10. Static analysis, mutation testing, fuzzing, and formal methods are first-class gates, not optional polish.
+11. Configuration can select scope and adapters, but cannot disable the safety model without an explicit waiver artifact.
+12. The CLI should dictate the lifecycle rather than expose a bag of unrelated commands.
+
+## Stable Rust Policy
+
+Production code uses the latest stable Rust toolchain.
+
+Recommended default:
+
+```toml
+# rust-toolchain.toml
+[toolchain]
+channel = "stable"
+profile = "minimal"
+components = ["rustfmt", "clippy", "rust-src"]
+targets = ["x86_64-unknown-linux-gnu"]
+```
+
+Rules:
+
+- No `#![feature(...)]` in production crates.
+- No `RUSTC_BOOTSTRAP`.
+- No nightly-only production APIs.
+- No first-party `std::arch` intrinsics.
+- SIMD is allowed through stable compiler auto-vectorization or audited dependency APIs only.
+- Miri, Verus, Kani, and other verifier lanes may install tool-specific or nightly toolchains as isolated analysis tools, but they must not leak unstable source features into production crates.
+- Release evidence records the exact `rustc --version --verbose` output used for builds and gates.
+
+## Architecture
+
+Xtask should be split into a reusable harness core and repository-specific adapters.
+
+```text
+crates/
+  xtask_core          lifecycle state machine, policies, admission model
+  xtask_policy        Rust/Holzmann/go-skill policy definitions
+  xtask_runner        typed command execution, timeouts, logs, exit codes
+  xtask_rust          cargo, clippy, nextest, miri, kani, loom, fuzz adapters
+  xtask_proof         TLA+, Verus, Kani, Miri, Loom proof planning and ledgers
+  xtask_static        Clippy, Dylint, dependency and source-policy scans
+  xtask_mutation      cargo-mutants orchestration and survivor reporting
+  xtask_perf          benchmark plans, Criterion output parsing, PGO eligibility
+  xtask_agents        opencode, Claude Code, Codex, Cursor, and local agent adapters
+  xtask_git           diff, status, scope, branch, commit metadata
+  xtask_store         run event log, evidence store, replay index
+  xtask_cli           user-facing command surface
+  xtaskd              optional local daemon for long-running agent/gate sessions
+```
+
+The core must not depend on a specific repository, issue tracker, UI fixture, or bead ID. Velvet Ballastics becomes one profile/adaptor, not the product kernel.
+
+## Core Domain Model
+
+```text
+Intent
+Scope
+PolicySet
+WorkItem
+AgentRun
+CommandSpec
+CommandResult
+ProofObligation
+GateProfile
+GateResult
+ReviewFinding
+Waiver
+EvidencePack
+AdmissionDecision
+ChangeAdmission
+```
+
+### Admission Decisions
+
+- `accepted`: all required gates passed and no blocking findings remain.
+- `rejected`: local or regression failure blocks the change.
+- `needs-human-review`: the harness cannot decide safely.
+- `deferred-global`: unrelated pre-existing global debt was observed and recorded.
+- `waived`: an explicit waiver artifact accepted a known risk.
+
+## CLI Requirements
+
+The CLI must be opinionated and lifecycle-oriented.
+
+```bash
+xtask init
+xtask policy doctor
+xtask work start <id-or-intent>
+xtask scope
+xtask contract
+xtask proof-plan
+xtask implement --agent opencode
+xtask gates --profile fast
+xtask gates --profile deep
+xtask gates --profile release
+xtask review
+xtask evidence pack
+xtask admit
+xtask status --jsonl
+xtask explain-failure <run-id>
+xtask replay <run-id>
+```
+
+### CLI Behavior
+
+- Every command emits human-readable output by default and supports `--jsonl` for agents.
+- Every mutating command creates an event in the local run store.
+- Every subprocess is represented by a typed `CommandSpec`.
+- No gate command may use `sh -c` or stringly shell execution.
+- Exit codes are stable and documented.
+- `--dry-run` may render planned commands but must never emit passing evidence.
+- Fixture-backed evidence must be labeled `fixture`, never `pass`.
+
+## CommandSpec
+
+All external command execution goes through a typed command model.
+
+Required fields:
+
+- program
+- args
+- working directory
+- environment allowlist
+- timeout
+- expected outputs
+- log path
+- redaction policy
+- retry policy
+- required capabilities
+
+Forbidden:
+
+- shell string execution by default
+- inherited ambient secrets by default
+- unbounded stdout/stderr capture
+- unbounded retries
+- ignored exit codes
+- pass status without raw log capture
+
+## Gate Profiles
+
+### Fast
+
+Purpose: cheap local feedback for normal agent loops.
+
+Required gates:
+
+- `cargo fmt --all -- --check`
+- `cargo check --workspace --all-targets --all-features`
+- strict `cargo clippy` over production targets
+- `cargo nextest run --workspace --all-features`
+- forbidden-construct scan
+- source-length and module-boundary scan
+- dependency-boundary scan
+
+### Deep
+
+Purpose: high-confidence validation before review or merge.
+
+Required gates:
+
+- all fast gates
+- scoped Miri lane for pure/domain/perf crates where supported
+- scoped Kani harnesses from proof plan
+- scoped Loom models for concurrency changes
+- proptest/property suites
+- fuzz smoke for touched parsers/decoders/admission logic
+- static analysis lane
+- dependency policy lane
+- coverage report
+
+### Release
+
+Purpose: fail-closed admission for shipped changes.
+
+Required gates:
+
+- all deep gates
+- TLA+ model checks for temporal/concurrency/resource obligations
+- Verus proof checks for deductive obligations
+- full cargo-mutants or scoped mutation gate
+- cargo-audit
+- cargo-deny
+- cargo-vet where configured
+- cargo-geiger dependency unsafe report
+- cargo-machete unused dependency scan
+- cargo-hack feature-power-set check
+- cargo-semver-checks for public API changes
+- benchmark gate for performance-sensitive changes
+- release provenance bundle
+
+## Formal Verification Lanes
+
+Xtask does not run every formal tool for every change. It selects proof obligations from scope.
+
+### TLA+
+
+Use for:
+
+- lifecycle state machines
+- admission protocols
+- queue scheduling
+- retry/cancel/finalize behavior
+- crash/recovery flows
+- bounded resource state transitions
+
+Requirement:
+
+- specs must model bounded machine limits where relevant
+- overflow/error states must be explicit
+- TLC output must be captured as evidence
+
+### Verus
+
+Use for:
+
+- pure Rust invariants
+- state transition kernels
+- bounded arithmetic contracts
+- proof-carrying constructors
+
+Requirement:
+
+- proof artifacts must bind to production logic, not standalone mirrors
+- trusted boundaries are listed in evidence
+
+### Kani
+
+Use for:
+
+- bounded panic freedom
+- bounded state-machine transitions
+- index/access safety
+- parser/admission invariants
+
+Requirement:
+
+- no hardcoded single-shape proofs for core structures
+- use `kani::Arbitrary` or exhaustive bounded generation where practical
+
+### Miri
+
+Use for:
+
+- pure logic crates
+- parser/decoder logic
+- data layout sensitive code
+- dependency-sensitive undefined-behavior checks where supported
+
+Requirement:
+
+- Miri failures are classified as local, regression, unsupported dependency, or deferred global
+
+### Loom
+
+Use for:
+
+- cancellation races
+- worker shutdown
+- bounded queues
+- command-runner coordination
+- durable event append ordering
+
+Requirement:
+
+- each concurrency primitive has a named model or a documented waiver
+
+## Static Analysis
+
+Static analysis is a first-class lane.
+
+Required tools:
+
+- rustc warnings as errors
+- Clippy hard-deny profile
+- Dylint custom lints for Xtask-specific policy
+- cargo-deny for dependency policy
+- cargo-audit for known vulnerability reports
+- cargo-vet for supply-chain trust where configured
+- cargo-geiger for unsafe dependency inventory
+- cargo-machete for unused dependencies
+- cargo-semver-checks for public API compatibility
+- cargo-hack for feature combinations
+
+Optional text/policy scans:
+
+- Semgrep for repository policy and generated-artifact patterns
+- custom `rg` scans for forbidden strings, secrets, or architecture drift
+
+Static analysis findings must be classified:
+
+- `block-local`
+- `block-regression`
+- `block-release`
+- `deferred-global`
+- `waived`
+
+## Mutation Testing
+
+Mutation testing uses `cargo-mutants`.
+
+Requirements:
+
+- Fast profile does not run mutation testing.
+- Deep profile may run scoped mutation tests for touched crates.
+- Release profile requires mutation evidence unless a waiver explains scope, runtime, or tool limitation.
+- Survivors are not automatically acceptable.
+- Every surviving mutant is classified as killed-later, equivalent, out-of-scope, or test-gap.
+- Test-gap survivors create follow-up work.
+
+## Fuzzing And Property Testing
+
+Required targets:
+
+- config parsing
+- command spec parsing
+- evidence parsing
+- admission decision state machine
+- redaction
+- artifact digesting
+- binary event log decoding
+- proof obligation selection
+
+Rules:
+
+- fuzz smoke runs in deep profile for touched fuzzable surfaces
+- release profile records corpus path, duration, and command output
+- proptest covers boundary values, invalid states, and resource-limit edges
+- fuzzers and properties must assert typed errors, not just non-crash behavior
+
+## Performance Policy
+
+Xtask is performance-conscious but does not optimize by vibes.
+
+Rules:
+
+- no performance claim without benchmark evidence
+- no new hot-path dependency without benchmark or design justification
+- no custom allocator without heap profile evidence
+- no Rayon without CPU-bound workload and scaling evidence
+- no Tokio CPU-heavy loops
+- no unbounded spawn/fanout/channel
+- no `async_trait`, `Box<dyn Trait>`, `Arc<Mutex<_>>`, `clone`, formatting, or heap allocation in hot paths unless justified
+
+Stable Rust performance levers:
+
+- data-oriented design
+- bounded collections
+- `try_reserve` for fallible growth
+- dense IDs and prevalidated artifacts
+- `criterion` benchmarks
+- `iai-callgrind` where available for CI-friendly instruction regression
+- PGO for representative production workloads
+- audited high-performance dependencies
+
+SIMD policy under stable Rust:
+
+- prefer compiler auto-vectorization first
+- use audited safe dependency APIs where SIMD is required
+- do not write first-party unsafe SIMD
+- do not require nightly `portable_simd` in production code until stable
+
+## Dependency Policy
+
+Xtask is library-heavy but dependency-strict.
+
+Preferred crates by role:
+
+- CLI: `clap`, `miette`, `thiserror`
+- serialization: `serde`, `serde_json` for JSONL, `postcard` for compact binary evidence/events
+- config: `toml` or `toml_edit`
+- storage: `fjall` for local durable run/evidence stores
+- hashing/digests: `blake3`
+- time: `jiff` or a documented project-standard time crate
+- IDs: `uuid` or a documented project-standard sortable ID crate
+- observability: `tracing`, `tracing-subscriber`, OpenTelemetry exporter crates
+- secrets: `secrecy`, `zeroize`
+- concurrency: `crossbeam`, `rayon`, `tokio` only by layer and workload
+- testing: `proptest`, `insta`, `trybuild`, `cargo-nextest`, `cargo-fuzz`, `cargo-mutants`
+
+Rules:
+
+- use latest compatible crate versions by default
+- commit `Cargo.lock`
+- forbid duplicate dependency families unless justified
+- audit high-unsafe or high-criticality dependencies before acceptance
+- keep fast hashers away from adversarial/user-controlled keys unless threat-modeled
+- record dependency policy evidence in release profile
+
+## Evidence Model
+
+Evidence is append-only and replayable.
+
+Each `EvidencePack` contains:
+
+- intent
+- scope
+- agent identity
+- repository state before and after
+- command specs
+- command outputs and exit codes
+- gate results
+- proof obligations and proof results
+- review findings
+- waivers
+- performance evidence if claimed
+- admission decision
+- residual risks
+
+Evidence status rules:
+
+- `pass`: command ran, validator accepted output, raw log exists
+- `fail`: command ran and failed or validator rejected output
+- `skipped`: allowed only with explicit reason and profile rules
+- `unsupported`: tool cannot run in environment; may block depending on profile
+- `fixture`: synthetic or fixture-backed output, never release evidence by itself
+
+## Agent Integration
+
+Xtask should control agents rather than be controlled by them.
+
+Agent adapters provide:
+
+- launch command
+- allowed filesystem scope
+- allowed shell capabilities
+- prompt/context injection
+- progress events
+- produced diff capture
+- transcript capture where available
+- failure normalization
+
+Supported initial adapters:
+
+- opencode
+- Claude Code
+- Codex
+- Cursor
+- local command adapter for tests
+
+Agent-generated code is never accepted directly. It enters the admission lifecycle.
+
+## Security And Capability Model
+
+Capabilities are explicit.
+
+Examples:
+
+- read repository
+- write scoped files
+- run cargo commands
+- run verifier tools
+- access network
+- access secrets
+- mutate git state
+- publish release artifacts
+
+Rules:
+
+- default deny for secrets and network
+- secrets are redacted in logs and evidence
+- commands receive environment variables from an allowlist
+- capability use is recorded in events
+- release publishing requires explicit capability and identity evidence
+
+## Local Daemon
+
+`xtaskd` is optional but expected for serious use.
+
+Responsibilities:
+
+- durable run queue
+- cancellation
+- retries
+- bounded concurrency
+- event streaming
+- long-running verifier/fuzzer sessions
+- agent process supervision
+- local IPC
+
+Non-goals:
+
+- distributed cluster scheduler in v1
+- SaaS control plane in v1
+- arbitrary workflow engine in v1
+
+## Storage
+
+The store records events, artifacts, and evidence packs.
+
+Requirements:
+
+- append-only run events
+- crash-safe writes
+- digest-addressed artifacts
+- bounded log sizes or externalized large blobs
+- redaction before persistence for sensitive outputs
+- replay from event log to `ChangeAdmission`
+
+## Observability
+
+Every run emits tracing spans.
+
+Required span hierarchy:
+
+```text
+xtask.run
+  xtask.scope
+  xtask.agent
+  xtask.command
+  xtask.gate
+  xtask.proof
+  xtask.review
+  xtask.admission
+```
+
+Release evidence records trace/export status. OTLP export is optional in local mode and required in managed/service mode.
+
+## MVP Requirements
+
+MVP must support one Rust repository end-to-end:
+
+1. Initialize policy files.
+2. Start a work item from a human intent string.
+3. Compute changed-file scope from git.
+4. Generate required gate profile from scope.
+5. Launch one configured agent adapter.
+6. Capture diff and command transcript.
+7. Run real fast-profile gates.
+8. Emit JSONL status.
+9. Pack evidence.
+10. Produce an admission decision.
+
+MVP must not emit synthetic pass evidence.
+
+## Roadmap
+
+### Phase 1: Local Harness Kernel
+
+- typed domain model
+- stable CLI lifecycle
+- command runner
+- fast profile
+- evidence pack
+- JSONL status
+- git scope adapter
+
+### Phase 2: Proof And Static Analysis
+
+- proof obligation planner
+- Kani adapter
+- Loom adapter
+- Miri adapter
+- Dylint/static-analysis lane
+- cargo-deny/audit/vet/geiger/machete integration
+
+### Phase 3: Agent Control
+
+- opencode adapter
+- transcript capture
+- scoped filesystem write policy
+- agent run event stream
+- explain-failure output
+
+### Phase 4: Deep And Release Profiles
+
+- TLA+ adapter
+- Verus adapter
+- fuzz smoke
+- mutation testing
+- cargo-hack
+- cargo-semver-checks
+- benchmark evidence
+- release provenance
+
+### Phase 5: Daemon Mode
+
+- `xtaskd`
+- local IPC
+- durable run queue
+- cancellation
+- bounded concurrency
+- event replay
+
+## Acceptance Criteria For Xtask Product
+
+Xtask is ready to use on real Rust repositories when:
+
+- production code builds on latest stable Rust without source feature gates
+- `xtask gates --profile fast` runs real commands and captures raw logs
+- `xtask admit` fails closed when any required evidence is missing
+- agent adapters cannot silently exceed declared scope
+- command execution never uses shell strings by default
+- proof plans are generated from changed-file scope
+- Miri/Kani/Loom/TLA+/Verus results are captured as typed evidence where configured
+- mutation survivors are reported and classified
+- static-analysis findings are classified by blast radius
+- performance claims require benchmark evidence
+- every run can be replayed into the same admission decision
+
+## Open Questions
+
+- Should the public binary name be `xtask`, `harness`, or a distinct product name?
+- Should `xtaskd` be bundled in v1 or delayed until after local CLI admission is proven?
+- Should the first issue-tracker adapter be beads only, or should GitHub Issues/Linear/Jira land in v1?
+- Should Verus/TLA+ proof requirements be configured per repository, or should Xtask ship strict default proof heuristics?
+- Should evidence storage use Fjall in v1 or start with append-only files and migrate later?
+
+## Product Positioning
+
+Xtask is the Rust-only operating system for AI software delivery.
+
+It is for teams that want AI speed with mission-critical acceptance discipline:
+
+```text
+stable Rust
+safe first-party code
+typed errors
+bounded resources
+formal proof lanes
+static analysis
+mutation testing
+fuzzing
+benchmarks
+real evidence
+fail-closed admission
+```
+
+The product promise:
+
+> AI can propose the code. Xtask decides whether the code is allowed to become software.
