@@ -2803,6 +2803,7 @@ dependencies = [
  "tempfile",
  "thiserror",
  "vb_core",
+ "vb_runtime",
 ]
 
 [[package]]
