@@ -244,6 +244,7 @@ impl Runtime {
                     .shards
                     .get_mut(shard_index_usize)
                     .ok_or(RuntimeError::ShardNotFound { shard: shard_index })?;
+                shard.enqueue(ShardCommand::Shutdown)?;
                 shard.drain_for_shutdown()?;
                 Ok(false)
             }
@@ -2396,6 +2397,76 @@ mod tests {
                 assert_eq!(other, Ok(None));
             }
         }
+    }
+
+    #[test]
+    fn tick_shard_continue_drives_only_selected_shard() {
+        let Some(shard_count) = NonZeroUsize::new(2) else {
+            return;
+        };
+        let mut runtime = Runtime::new(shard_count, runtime_config());
+        let Some(wf) = suspended_workflow() else {
+            return;
+        };
+        let run = RunId::new(2);
+
+        assert_eq!(submit_suspended(&runtime, run, wf), Ok(()));
+        assert_eq!(runtime.tick_shard(0, ShardDirective::Continue), Ok(true));
+
+        let snap = runtime.counters_snapshot();
+        assert_eq!(snap.runs_submitted, 1);
+        assert_eq!(snap.runs_completed, 0);
+    }
+
+    #[test]
+    fn tick_shard_suspend_preserves_pending_work() {
+        let Some(shard_count) = NonZeroUsize::new(1) else {
+            return;
+        };
+        let mut runtime = Runtime::new(shard_count, runtime_config());
+        let Some(wf) = suspended_workflow() else {
+            return;
+        };
+        let run = RunId::new(3);
+
+        assert_eq!(submit_suspended(&runtime, run, wf), Ok(()));
+        assert_eq!(runtime.tick_shard(0, ShardDirective::Suspend), Ok(true));
+        assert_eq!(runtime.counters_snapshot().runs_submitted, 0);
+        assert_eq!(runtime.tick_shard(0, ShardDirective::Continue), Ok(true));
+        assert_eq!(runtime.counters_snapshot().runs_submitted, 1);
+    }
+
+    #[test]
+    fn tick_shard_migrate_rejects_self_and_invalid_target() {
+        let Some(shard_count) = NonZeroUsize::new(2) else {
+            return;
+        };
+        let mut runtime = Runtime::new(shard_count, runtime_config());
+
+        assert_eq!(
+            runtime.tick_shard(0, ShardDirective::Migrate { target: 0 }),
+            Err(RuntimeError::MigrateSelf)
+        );
+        assert_eq!(
+            runtime.tick_shard(0, ShardDirective::Migrate { target: 9 }),
+            Err(RuntimeError::ShardNotFound { shard: 9 })
+        );
+    }
+
+    #[test]
+    fn tick_shard_shutdown_drains_and_reports_dead() {
+        let Some(shard_count) = NonZeroUsize::new(1) else {
+            return;
+        };
+        let mut runtime = Runtime::new(shard_count, runtime_config());
+        let Some(wf) = finished_workflow() else {
+            return;
+        };
+        let run = RunId::new(4);
+
+        assert_eq!(runtime.submit_direct(run, wf), Ok(()));
+        assert_eq!(runtime.tick_shard(0, ShardDirective::Shutdown), Ok(false));
+        assert_eq!(runtime.counters_snapshot().runs_completed, 1);
     }
 
     // --- Helper: wait-then-finish workflow (SetConst -> WaitUntil -> Finish) ---
