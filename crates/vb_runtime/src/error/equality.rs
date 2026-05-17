@@ -84,6 +84,10 @@ fn runtime_error_core_field_eq(left: &RuntimeError, right: &RuntimeError) -> boo
             RuntimeError::IpcPayloadSizeExceeded { size: a, max: b },
             RuntimeError::IpcPayloadSizeExceeded { size: c, max: d },
         ) => a == c && b == d,
+        (
+            RuntimeError::EngineDriveFailed { run: a, source: b },
+            RuntimeError::EngineDriveFailed { run: c, source: d },
+        ) => a == c && b.diagnostic_code() == d.diagnostic_code(),
         _ => false,
     }
 }

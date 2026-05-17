@@ -50,6 +50,9 @@ fn runtime_error_static_message(error: &RuntimeError) -> Option<&'static str> {
         RuntimeError::IpcPayloadSizeExceeded { .. } => {
             Some("IPC payload size exceeds maximum allowed by resource contract")
         }
+        RuntimeError::EngineDriveFailed { .. } => {
+            Some("deterministic engine drive failed")
+        }
         _ => None,
     }
 }
@@ -87,6 +90,9 @@ fn write_runtime_error_dynamic(
         RuntimeError::IpcPayloadSizeExceeded { size, max } => {
             write!(f, "IPC payload size {size} exceeds maximum {max}")
         }
+        RuntimeError::EngineDriveFailed { run, source } => {
+            write!(f, "engine drive failed for run {run:?}: {source}")
+        }
         _ => Ok(()),
     }
 }
@@ -97,6 +103,7 @@ impl std::error::Error for RuntimeError {
             Self::Core { source } => Some(source.as_ref()),
             Self::StorageJournalAppend { source } => Some(source.as_ref()),
             Self::AdmissionHeaderPersistenceFailed { source } => Some(source.as_ref()),
+            Self::EngineDriveFailed { source, .. } => Some(source.as_ref()),
             _ => None,
         }
     }
