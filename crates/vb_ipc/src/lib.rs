@@ -19,6 +19,12 @@ pub mod ingress;
 
 pub use crate::ingress::{IngressFrame, MemoryIngress};
 
+#[cfg(kani)]
+pub mod kani_ipc_header;
+
+#[cfg(kani)]
+pub mod kani_ipc_header_rejects_oversize;
+
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use bytes::Bytes;
 // crossbeam_channel imports removed; bounded types now live in ingress.rs

@@ -33,6 +33,22 @@ pub mod indexes;
 pub mod journal;
 #[cfg(kani)]
 pub mod kani_codec;
+
+#[cfg(kani)]
+pub mod kani_record_magic;
+
+#[cfg(kani)]
+pub mod kani_record_schema;
+
+#[cfg(kani)]
+pub mod kani_record_kind;
+
+#[cfg(kani)]
+pub mod kani_record_payload_len;
+
+#[cfg(kani)]
+pub mod kani_record_crc;
+
 pub mod keys;
 pub mod process_lock;
 pub mod queue;

@@ -40,6 +40,24 @@ pub mod kani_capability_harnesses;
 #[cfg(kani)]
 pub mod kani_idempotency_gates;
 
+#[cfg(kani)]
+pub mod kani_taint_propagation;
+
+#[cfg(kani)]
+pub mod kani_step_budget_zero;
+
+#[cfg(kani)]
+pub mod kani_step_budget_one;
+
+#[cfg(kani)]
+pub mod kani_step_budget;
+
+#[cfg(kani)]
+pub mod kani_index_access;
+
+#[cfg(kani)]
+pub mod kani_resource_budget_bounded;
+
 pub use action::{
     ActionContract, ActionError, ActionFailure, ActionFailureCode, ActionInput, ActionJournalEvent,
     ActionOutcome, ActionOutput, ActionOutputReady, ActionResult, ActionTicket, Idempotency,

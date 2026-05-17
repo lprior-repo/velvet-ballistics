@@ -26,6 +26,9 @@ pub mod typecheck;
 #[cfg(kani)]
 pub mod proofs;
 
+#[cfg(kani)]
+pub mod kani_expr_stack;
+
 pub use bytecode::{
     ReferenceResolver, check_expr_stack_bound, compile_expr, compile_expr_to_bytecode,
     compile_expr_with_pool, compile_expr_with_resolver,
