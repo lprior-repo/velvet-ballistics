@@ -1,0 +1,21 @@
+# Martin Fowler Test Plan - vb-0253.2
+
+## Happy Path Tests
+- test_ingress_submit_and_recv_single_frame
+- test_ingress_frame_new_with_payload_exactly_at_max_succeeds
+- test_ingress_frame_accessors_return_correct_values
+
+## Error Path Tests
+- test_ingress_frame_rejects_payload_exceeding_max
+- test_memory_ingress_bounded_capacity_one_accepts_one_rejects_second
+- test_memory_ingress_recv_returns_disconnected_after_sender_drop
+
+## Edge Case Tests
+- test_memory_ingress_try_recv_on_empty_queue_returns_none
+- test_memory_ingress_len_reflects_queue_depth
+- test_memory_ingress_is_empty_after_draining_all_frames
+
+## Contract Verification Tests
+- test_precondition_capacity_positive
+- test_postcondition_fifo_ordering
+- test_invariant_capacity_never_exceeded

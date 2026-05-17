@@ -6,7 +6,7 @@ use crossbeam_channel::{Receiver, Sender, TryRecvError, TrySendError};
 
 use vb_core::{RunId, WorkflowDigest};
 
-use crate::{BoundedPayload, MaxPayloadBytes, IpcError, QueueCapacity};
+use crate::{BoundedPayload, IpcError, MaxPayloadBytes, QueueCapacity};
 
 /// Binary frame submitted by an in-process or IPC producer.
 #[derive(Debug, Clone, PartialEq, Eq)]

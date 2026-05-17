@@ -75,3 +75,37 @@ Artifacts verified:
 - `.beads/vb-xkli/truth-serum-report.md`.
 - `.beads/vb-xkli/assurance-bundle.md`.
 - `.beads/vb-xkli/machine-gate-report.md`.
+
+---
+
+# Landing Ready - vb-0253.2
+
+STATUS: APPROVED
+
+## Bookmark
+
+- Bookmark: `go-skill-p0-vb-0253-2`.
+- Base main commit: `5ba93c4ddc9375cd85c1d21d5419202d228a9816`.
+- Evidence-freeze commit hash before this manifest update: `a61505987b000f81143723005cdaf6cf9513f7a9`.
+- Initial pushed bookmark target: `af1b48d30e63f57e544463b916740a648fbfd915`.
+- Final bookmark target: verify with `jj log -r go-skill-p0-vb-0253-2`.
+
+## Gate Evidence
+
+- `rtk cargo check -p vb_ipc` -> PASS.
+- `rtk cargo test -p vb_ipc` -> PASS, `628 passed`.
+- `rtk cargo clippy -p vb_ipc --lib -- -D warnings` -> PASS.
+- `cargo kani -p vb_ipc --harness kani_ipc_header_decode_valid --quiet` -> PASS.
+- `moon ci` -> FAIL_GLOBAL after main ref repair; out-of-scope `xtask` lint/format, `vb_storage` test warning debt, and `vb_cli` mode-module/import drift only.
+
+## Artifacts
+
+- `.beads/vb-0253.2/final-evidence-decision.md` -> `STATUS: APPROVED`.
+- `.beads/vb-0253.2/machine-gate-report.md` -> `STATUS: APPROVED_WITH_GLOBAL_DEBT`.
+- `.beads/vb-0253.2/truth-serum-report.md` -> `STATUS: APPROVED`.
+- `.beads/vb-0253.2/assurance-bundle.md`.
+
+## Stop Point
+
+- Bookmark-ready and pushed.
+- Main merge intentionally not performed.

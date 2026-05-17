@@ -6,7 +6,7 @@
 //!
 //! This harness verifies panic-free header decoding for valid inputs.
 
-use crate::{IpcFrameHeader, IpcCommand, IPC_HEADER_LEN, IPC_MAGIC, IPC_VERSION, MaxPayloadBytes, IpcError};
+use crate::{IpcCommand, IpcFrameHeader, MaxPayloadBytes, IPC_HEADER_LEN, IPC_MAGIC, IPC_VERSION};
 
 /// VB-IPC-DECODE-001/003 H1: decode valid header succeeds
 #[kani::proof]
@@ -19,16 +19,22 @@ fn kani_ipc_header_decode_valid() {
     let header = IpcFrameHeader::new(command, flags, correlation, payload_len);
     let encoded = header.encode();
     kani::assume(encoded.is_ok());
-    let encoded = encoded.unwrap();
+    let Ok(encoded) = encoded else { return };
 
     let decoded = IpcFrameHeader::decode(&encoded, MaxPayloadBytes::DEFAULT);
     kani::assert(decoded.is_ok(), "valid header decodes successfully");
 
     if let Ok(h) = decoded {
-        kani::assert(h.command == command);
-        kani::assert(h.flags == flags);
-        kani::assert(h.correlation == correlation);
-        kani::assert(h.payload_len == payload_len);
+        kani::assert(h.command == command, "decoded command is preserved");
+        kani::assert(h.flags == flags, "decoded flags are preserved");
+        kani::assert(
+            h.correlation == correlation,
+            "decoded correlation is preserved",
+        );
+        kani::assert(
+            h.payload_len == payload_len,
+            "decoded payload length is preserved",
+        );
     }
 }
 
@@ -88,7 +94,7 @@ fn kani_ipc_header_decode_various_commands() {
         let header = IpcFrameHeader::new(command, 0, 0, 0);
         let encoded = header.encode();
         kani::assume(encoded.is_ok());
-        let encoded = encoded.unwrap();
+        let Ok(encoded) = encoded else { return };
 
         let decoded = IpcFrameHeader::decode(&encoded, MaxPayloadBytes::DEFAULT);
         kani::assert(decoded.is_ok(), "command decodes successfully");
@@ -100,20 +106,26 @@ fn kani_ipc_header_decode_various_commands() {
 fn kani_ipc_header_preserves_all_fields() {
     let command = IpcCommand::SubmitRun;
     let flags: u16 = 0x00FF;
-    let correlation: u64 = 0xDEADBEEFCAFEL;
+    let correlation: u64 = 0xDEAD_BEEF_CAFE;
     let payload_len: u32 = 256;
 
     let header = IpcFrameHeader::new(command, flags, correlation, payload_len);
     let encoded = header.encode();
     kani::assume(encoded.is_ok());
-    let encoded = encoded.unwrap();
+    let Ok(encoded) = encoded else { return };
 
     let decoded = IpcFrameHeader::decode(&encoded, MaxPayloadBytes::DEFAULT);
     kani::assume(decoded.is_ok());
-    let decoded = decoded.unwrap();
+    let Ok(decoded) = decoded else { return };
 
-    kani::assert(decoded.command == command);
-    kani::assert(decoded.flags == flags);
-    kani::assert(decoded.correlation == correlation);
-    kani::assert(decoded.payload_len == payload_len);
+    kani::assert(decoded.command == command, "decoded command is preserved");
+    kani::assert(decoded.flags == flags, "decoded flags are preserved");
+    kani::assert(
+        decoded.correlation == correlation,
+        "decoded correlation is preserved",
+    );
+    kani::assert(
+        decoded.payload_len == payload_len,
+        "decoded payload length is preserved",
+    );
 }

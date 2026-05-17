@@ -32,8 +32,8 @@ use super::handlers::{
     handle_submit_run_inline, handle_verify_workflow,
 };
 use super::trace::handle_drain_trace;
-use crate::IpcCommand;
 use crate::server::IpcResponse;
+use crate::IpcCommand;
 
 #[cfg(test)]
 pub fn dispatch_command(

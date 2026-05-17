@@ -2133,17 +2133,19 @@ mod tests {
 
     // -- Runtime integration tests --
 
+    use std::num::NonZeroUsize;
     use vb_runtime::runtime::Runtime;
     use vb_runtime::shard::ShardConfig;
-    use std::num::NonZeroUsize;
 
     fn make_runtime() -> Runtime {
         Runtime::new(NonZeroUsize::MIN, ShardConfig::default())
     }
 
-    fn make_minimal_workflow(digest: vb_core::WorkflowDigest) -> vb_core::workflow::CompiledWorkflow {
-        use vb_core::workflow::{CompiledNode, CompiledNodeKind, WorkflowParts, ResourceContract};
+    fn make_minimal_workflow(
+        digest: vb_core::WorkflowDigest,
+    ) -> vb_core::workflow::CompiledWorkflow {
         use vb_core::ids::StepIdx;
+        use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
 
         let parts = WorkflowParts {
             name: Box::from("test"),
@@ -2155,7 +2157,8 @@ mod tests {
                 on_error: None,
                 error_slot: None,
                 kind: CompiledNodeKind::Nop,
-            }].into_boxed_slice(),
+            }]
+            .into_boxed_slice(),
             expressions: Box::new([]),
             accessors: Box::new([]),
             constants: Box::new([]),
@@ -2189,7 +2192,9 @@ mod tests {
             &mut self,
             _digest: vb_core::WorkflowDigest,
         ) -> Result<vb_core::workflow::CompiledWorkflow, WorkflowResolutionError> {
-            Ok(make_minimal_workflow(vb_core::WorkflowDigest::from_bytes([0xFF; 32])))
+            Ok(make_minimal_workflow(vb_core::WorkflowDigest::from_bytes(
+                [0xFF; 32],
+            )))
         }
     }
 
@@ -2271,7 +2276,8 @@ mod tests {
         let ipc_payload = crate::IpcPayload::SubmitRun(submit);
         let encoded = postcard::to_allocvec(&ipc_payload).expect("encode payload");
         let header = crate::IpcFrameHeader::new(IpcCommand::SubmitRun, 0, 0, 0);
-        let submit_response = handle_submit_run(&header, &encoded, &mut runtime, Some(&mut resolver));
+        let submit_response =
+            handle_submit_run(&header, &encoded, &mut runtime, Some(&mut resolver));
         match submit_response {
             IpcResponse::AcceptedRun { run_id } => assert_eq!(run_id, 42),
             other => panic!("expected AcceptedRun, got {other:?}"),
@@ -2333,7 +2339,10 @@ mod tests {
         let response = handle_list_events(&encoded, &mut runtime);
         match response {
             IpcResponse::Events { events } => {
-                assert!(events.is_empty(), "non-existent run should return empty events");
+                assert!(
+                    events.is_empty(),
+                    "non-existent run should return empty events"
+                );
             }
             other => panic!("expected Events, got {other:?}"),
         }
@@ -2484,8 +2493,8 @@ mod tests {
     // 15. handle_get_workflow_graph with valid workflow returns graph
     #[test]
     fn handle_get_workflow_graph_with_valid_workflow_returns_graph() {
-        use vb_core::workflow::{CompiledNode, CompiledNodeKind, WorkflowParts, ResourceContract};
         use vb_core::ids::StepIdx;
+        use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
 
         // Workflow with two nodes: Nop -> Finish
         let digest = vb_core::WorkflowDigest::from_bytes([0xAB; 32]);
@@ -2511,7 +2520,8 @@ mod tests {
                         result: vb_core::ids::SlotIdx::ZERO,
                     },
                 },
-            ].into_boxed_slice(),
+            ]
+            .into_boxed_slice(),
             expressions: Box::new([]),
             accessors: Box::new([]),
             constants: Box::new([]),
@@ -2532,7 +2542,9 @@ mod tests {
                 assert_eq!(nodes.len(), 2);
                 // Should have fallthrough edge from Nop to Finish
                 assert!(
-                    edges.iter().any(|e| e.from == 0 && e.to == 1 && e.edge_type == "fallthrough"),
+                    edges
+                        .iter()
+                        .any(|e| e.from == 0 && e.to == 1 && e.edge_type == "fallthrough"),
                     "should have fallthrough edge from Nop to Finish"
                 );
             }
@@ -2562,8 +2574,8 @@ mod tests {
     // 16. handle_get_taint_report with valid workflow containing sources and sinks
     #[test]
     fn handle_get_taint_report_with_sources_and_sinks() {
-        use vb_core::workflow::{CompiledNode, CompiledNodeKind, WorkflowParts, ResourceContract};
         use vb_core::ids::StepIdx;
+        use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
 
         // Workflow: WaitEvent (source) -> Finish (sink)
         let digest = vb_core::WorkflowDigest::from_bytes([0xCD; 32]);
@@ -2592,7 +2604,8 @@ mod tests {
                         result: vb_core::ids::SlotIdx::ZERO,
                     },
                 },
-            ].into_boxed_slice(),
+            ]
+            .into_boxed_slice(),
             expressions: Box::new([]),
             accessors: Box::new([]),
             constants: Box::new([]),
@@ -2609,13 +2622,23 @@ mod tests {
         let encoded = postcard::to_allocvec(&payload).expect("encode payload");
         let response = handle_get_taint_report(&encoded, Some(&mut resolver));
         match response {
-            IpcResponse::TaintReport { sources, sinks, finish_safe, paths } => {
+            IpcResponse::TaintReport {
+                sources,
+                sinks,
+                finish_safe,
+                paths,
+            } => {
                 assert_eq!(sources, vec![0]);
                 assert_eq!(sinks, vec![1]);
-                assert!(!finish_safe, "source reaching sink should not be finish-safe");
+                assert!(
+                    !finish_safe,
+                    "source reaching sink should not be finish-safe"
+                );
                 // Paths should contain the reachable sink
                 assert!(
-                    paths.iter().any(|p| p.from == 0 && p.to == 1 && p.status == "dangerous"),
+                    paths
+                        .iter()
+                        .any(|p| p.from == 0 && p.to == 1 && p.status == "dangerous"),
                     "should have dangerous path from source to sink"
                 );
             }
@@ -2785,143 +2808,450 @@ mod tests {
         use vb_core::workflow::CompiledNodeKind;
 
         assert_eq!(node_kind_label(&CompiledNodeKind::Nop), "Nop");
-        assert_eq!(node_kind_label(&CompiledNodeKind::SetConst { value: ConstIdx::new(0) }), "SetConst");
-        assert_eq!(node_kind_label(&CompiledNodeKind::Copy { source: SlotIdx::ZERO }), "Copy");
-        assert_eq!(node_kind_label(&CompiledNodeKind::EvalExpr { expr: ExprIdx::new(0) }), "EvalExpr");
-        assert_eq!(node_kind_label(&CompiledNodeKind::BuildObject { fields: Box::new([]) }), "BuildObject");
-        assert_eq!(node_kind_label(&CompiledNodeKind::BuildList { items: Box::new([]) }), "BuildList");
-        assert_eq!(node_kind_label(&CompiledNodeKind::Do { action: ActionId::new(0), input: SlotIdx::ZERO }), "Do");
-        assert_eq!(node_kind_label(&CompiledNodeKind::Choose { branches: Box::new([]), otherwise: None }), "Choose");
-        assert_eq!(node_kind_label(&CompiledNodeKind::ChooseSlot { branches: Box::new([]), otherwise: None }), "ChooseSlot");
-        assert_eq!(node_kind_label(&CompiledNodeKind::ForEachStart { input: SlotIdx::ZERO, item_slot: SlotIdx::ZERO, limit: 0, body: StepIdx::new(0), done: StepIdx::new(0) }), "ForEachStart");
-        assert_eq!(node_kind_label(&CompiledNodeKind::ForEachNext { iterator_slot: SlotIdx::ZERO, body: StepIdx::new(0), done: StepIdx::new(0) }), "ForEachNext");
-        assert_eq!(node_kind_label(&CompiledNodeKind::ForEachJoin { output: SlotIdx::ZERO }), "ForEachJoin");
-        assert_eq!(node_kind_label(&CompiledNodeKind::TogetherStart { branches: Box::new([]), join: StepIdx::new(0) }), "TogetherStart");
-        assert_eq!(node_kind_label(&CompiledNodeKind::TogetherBranch { branch: 0, entry: StepIdx::new(0), join: StepIdx::new(0), accumulator: SlotIdx::ZERO }), "TogetherBranch");
-        assert_eq!(node_kind_label(&CompiledNodeKind::TogetherJoin { branch_count: 0, accumulator: SlotIdx::ZERO }), "TogetherJoin");
-        assert_eq!(node_kind_label(&CompiledNodeKind::CollectStart { source: SlotIdx::ZERO, limit: 0, page_size: 0, body: StepIdx::new(0), done: StepIdx::new(0) }), "CollectStart");
-        assert_eq!(node_kind_label(&CompiledNodeKind::CollectPage { collector_slot: SlotIdx::ZERO, body: StepIdx::new(0), done: StepIdx::new(0) }), "CollectPage");
-        assert_eq!(node_kind_label(&CompiledNodeKind::CollectNext { collector_slot: SlotIdx::ZERO, body: StepIdx::new(0), done: StepIdx::new(0) }), "CollectNext");
-        assert_eq!(node_kind_label(&CompiledNodeKind::CollectFinish { collector_slot: SlotIdx::ZERO }), "CollectFinish");
-        assert_eq!(node_kind_label(&CompiledNodeKind::ReduceStart { input: SlotIdx::ZERO, accumulator: SlotIdx::ZERO, initial: ConstIdx::new(0), body: StepIdx::new(0), done: StepIdx::new(0) }), "ReduceStart");
-        assert_eq!(node_kind_label(&CompiledNodeKind::ReduceNext { iterator_slot: SlotIdx::ZERO, accumulator: SlotIdx::ZERO, body: StepIdx::new(0), done: StepIdx::new(0) }), "ReduceNext");
-        assert_eq!(node_kind_label(&CompiledNodeKind::ReduceFinish { accumulator: SlotIdx::ZERO }), "ReduceFinish");
-        assert_eq!(node_kind_label(&CompiledNodeKind::RepeatStart { max_attempts: 0, body: StepIdx::new(0), done: StepIdx::new(0) }), "RepeatStart");
-        assert_eq!(node_kind_label(&CompiledNodeKind::RepeatAttempt { attempt_slot: SlotIdx::ZERO, body: StepIdx::new(0), done: StepIdx::new(0) }), "RepeatAttempt");
-        assert_eq!(node_kind_label(&CompiledNodeKind::RepeatCheck { attempt_slot: SlotIdx::ZERO, done: StepIdx::new(0) }), "RepeatCheck");
-        assert_eq!(node_kind_label(&CompiledNodeKind::RepeatFinish { result: SlotIdx::ZERO }), "RepeatFinish");
-        assert_eq!(node_kind_label(&CompiledNodeKind::WaitUntil { deadline_slot: SlotIdx::ZERO }), "WaitUntil");
-        assert_eq!(node_kind_label(&CompiledNodeKind::WaitEvent { event: SlotIdx::ZERO, timeout_slot: None }), "WaitEvent");
-        assert_eq!(node_kind_label(&CompiledNodeKind::Ask { prompt: SlotIdx::ZERO, timeout_slot: None }), "Ask");
-        assert_eq!(node_kind_label(&CompiledNodeKind::AskResume { answer: SlotIdx::ZERO }), "AskResume");
-        assert_eq!(node_kind_label(&CompiledNodeKind::RetryCheck { policy_slot: SlotIdx::ZERO, body: StepIdx::new(0), exhausted: StepIdx::new(0) }), "RetryCheck");
-        assert_eq!(node_kind_label(&CompiledNodeKind::ErrorHandler { body: StepIdx::new(0), handler: StepIdx::new(0), error_slot: None }), "ErrorHandler");
-        assert_eq!(node_kind_label(&CompiledNodeKind::Jump { target: StepIdx::new(0) }), "Jump");
-        assert_eq!(node_kind_label(&CompiledNodeKind::Finish { result: SlotIdx::ZERO }), "Finish");
+        assert_eq!(
+            node_kind_label(&CompiledNodeKind::SetConst {
+                value: ConstIdx::new(0)
+            }),
+            "SetConst"
+        );
+        assert_eq!(
+            node_kind_label(&CompiledNodeKind::Copy {
+                source: SlotIdx::ZERO
+            }),
+            "Copy"
+        );
+        assert_eq!(
+            node_kind_label(&CompiledNodeKind::EvalExpr {
+                expr: ExprIdx::new(0)
+            }),
+            "EvalExpr"
+        );
+        assert_eq!(
+            node_kind_label(&CompiledNodeKind::BuildObject {
+                fields: Box::new([])
+            }),
+            "BuildObject"
+        );
+        assert_eq!(
+            node_kind_label(&CompiledNodeKind::BuildList {
+                items: Box::new([])
+            }),
+            "BuildList"
+        );
+        assert_eq!(
+            node_kind_label(&CompiledNodeKind::Do {
+                action: ActionId::new(0),
+                input: SlotIdx::ZERO
+            }),
+            "Do"
+        );
+        assert_eq!(
+            node_kind_label(&CompiledNodeKind::Choose {
+                branches: Box::new([]),
+                otherwise: None
+            }),
+            "Choose"
+        );
+        assert_eq!(
+            node_kind_label(&CompiledNodeKind::ChooseSlot {
+                branches: Box::new([]),
+                otherwise: None
+            }),
+            "ChooseSlot"
+        );
+        assert_eq!(
+            node_kind_label(&CompiledNodeKind::ForEachStart {
+                input: SlotIdx::ZERO,
+                item_slot: SlotIdx::ZERO,
+                limit: 0,
+                body: StepIdx::new(0),
+                done: StepIdx::new(0)
+            }),
+            "ForEachStart"
+        );
+        assert_eq!(
+            node_kind_label(&CompiledNodeKind::ForEachNext {
+                iterator_slot: SlotIdx::ZERO,
+                body: StepIdx::new(0),
+                done: StepIdx::new(0)
+            }),
+            "ForEachNext"
+        );
+        assert_eq!(
+            node_kind_label(&CompiledNodeKind::ForEachJoin {
+                output: SlotIdx::ZERO
+            }),
+            "ForEachJoin"
+        );
+        assert_eq!(
+            node_kind_label(&CompiledNodeKind::TogetherStart {
+                branches: Box::new([]),
+                join: StepIdx::new(0)
+            }),
+            "TogetherStart"
+        );
+        assert_eq!(
+            node_kind_label(&CompiledNodeKind::TogetherBranch {
+                branch: 0,
+                entry: StepIdx::new(0),
+                join: StepIdx::new(0),
+                accumulator: SlotIdx::ZERO
+            }),
+            "TogetherBranch"
+        );
+        assert_eq!(
+            node_kind_label(&CompiledNodeKind::TogetherJoin {
+                branch_count: 0,
+                accumulator: SlotIdx::ZERO
+            }),
+            "TogetherJoin"
+        );
+        assert_eq!(
+            node_kind_label(&CompiledNodeKind::CollectStart {
+                source: SlotIdx::ZERO,
+                limit: 0,
+                page_size: 0,
+                body: StepIdx::new(0),
+                done: StepIdx::new(0)
+            }),
+            "CollectStart"
+        );
+        assert_eq!(
+            node_kind_label(&CompiledNodeKind::CollectPage {
+                collector_slot: SlotIdx::ZERO,
+                body: StepIdx::new(0),
+                done: StepIdx::new(0)
+            }),
+            "CollectPage"
+        );
+        assert_eq!(
+            node_kind_label(&CompiledNodeKind::CollectNext {
+                collector_slot: SlotIdx::ZERO,
+                body: StepIdx::new(0),
+                done: StepIdx::new(0)
+            }),
+            "CollectNext"
+        );
+        assert_eq!(
+            node_kind_label(&CompiledNodeKind::CollectFinish {
+                collector_slot: SlotIdx::ZERO
+            }),
+            "CollectFinish"
+        );
+        assert_eq!(
+            node_kind_label(&CompiledNodeKind::ReduceStart {
+                input: SlotIdx::ZERO,
+                accumulator: SlotIdx::ZERO,
+                initial: ConstIdx::new(0),
+                body: StepIdx::new(0),
+                done: StepIdx::new(0)
+            }),
+            "ReduceStart"
+        );
+        assert_eq!(
+            node_kind_label(&CompiledNodeKind::ReduceNext {
+                iterator_slot: SlotIdx::ZERO,
+                accumulator: SlotIdx::ZERO,
+                body: StepIdx::new(0),
+                done: StepIdx::new(0)
+            }),
+            "ReduceNext"
+        );
+        assert_eq!(
+            node_kind_label(&CompiledNodeKind::ReduceFinish {
+                accumulator: SlotIdx::ZERO
+            }),
+            "ReduceFinish"
+        );
+        assert_eq!(
+            node_kind_label(&CompiledNodeKind::RepeatStart {
+                max_attempts: 0,
+                body: StepIdx::new(0),
+                done: StepIdx::new(0)
+            }),
+            "RepeatStart"
+        );
+        assert_eq!(
+            node_kind_label(&CompiledNodeKind::RepeatAttempt {
+                attempt_slot: SlotIdx::ZERO,
+                body: StepIdx::new(0),
+                done: StepIdx::new(0)
+            }),
+            "RepeatAttempt"
+        );
+        assert_eq!(
+            node_kind_label(&CompiledNodeKind::RepeatCheck {
+                attempt_slot: SlotIdx::ZERO,
+                done: StepIdx::new(0)
+            }),
+            "RepeatCheck"
+        );
+        assert_eq!(
+            node_kind_label(&CompiledNodeKind::RepeatFinish {
+                result: SlotIdx::ZERO
+            }),
+            "RepeatFinish"
+        );
+        assert_eq!(
+            node_kind_label(&CompiledNodeKind::WaitUntil {
+                deadline_slot: SlotIdx::ZERO
+            }),
+            "WaitUntil"
+        );
+        assert_eq!(
+            node_kind_label(&CompiledNodeKind::WaitEvent {
+                event: SlotIdx::ZERO,
+                timeout_slot: None
+            }),
+            "WaitEvent"
+        );
+        assert_eq!(
+            node_kind_label(&CompiledNodeKind::Ask {
+                prompt: SlotIdx::ZERO,
+                timeout_slot: None
+            }),
+            "Ask"
+        );
+        assert_eq!(
+            node_kind_label(&CompiledNodeKind::AskResume {
+                answer: SlotIdx::ZERO
+            }),
+            "AskResume"
+        );
+        assert_eq!(
+            node_kind_label(&CompiledNodeKind::RetryCheck {
+                policy_slot: SlotIdx::ZERO,
+                body: StepIdx::new(0),
+                exhausted: StepIdx::new(0)
+            }),
+            "RetryCheck"
+        );
+        assert_eq!(
+            node_kind_label(&CompiledNodeKind::ErrorHandler {
+                body: StepIdx::new(0),
+                handler: StepIdx::new(0),
+                error_slot: None
+            }),
+            "ErrorHandler"
+        );
+        assert_eq!(
+            node_kind_label(&CompiledNodeKind::Jump {
+                target: StepIdx::new(0)
+            }),
+            "Jump"
+        );
+        assert_eq!(
+            node_kind_label(&CompiledNodeKind::Finish {
+                result: SlotIdx::ZERO
+            }),
+            "Finish"
+        );
     }
 
     #[test]
     fn collect_edges_from_node_covers_all_structural_variants() {
-        use vb_core::ids::{SlotIdx, StepIdx, ExprIdx, ConstIdx};
+        use vb_core::ids::{ConstIdx, ExprIdx, SlotIdx, StepIdx};
         use vb_core::workflow::{CompiledNodeKind, ExprBranch, SlotBranch};
 
         let mut edges = Vec::new();
 
         edges.clear();
-        collect_edges_from_node(0, &CompiledNodeKind::Choose {
-            branches: Box::new([
-                ExprBranch { condition: ExprIdx::new(0), target: StepIdx::new(1) },
-                ExprBranch { condition: ExprIdx::new(1), target: StepIdx::new(2) },
-            ]),
-            otherwise: Some(StepIdx::new(3)),
-        }, &mut edges);
+        collect_edges_from_node(
+            0,
+            &CompiledNodeKind::Choose {
+                branches: Box::new([
+                    ExprBranch {
+                        condition: ExprIdx::new(0),
+                        target: StepIdx::new(1),
+                    },
+                    ExprBranch {
+                        condition: ExprIdx::new(1),
+                        target: StepIdx::new(2),
+                    },
+                ]),
+                otherwise: Some(StepIdx::new(3)),
+            },
+            &mut edges,
+        );
         assert_eq!(edges.len(), 3);
 
         edges.clear();
-        collect_edges_from_node(0, &CompiledNodeKind::ChooseSlot {
-            branches: Box::new([
-                SlotBranch { condition: SlotIdx::new(0), target: StepIdx::new(1) },
-                SlotBranch { condition: SlotIdx::new(1), target: StepIdx::new(2) },
-            ]),
-            otherwise: Some(StepIdx::new(3)),
-        }, &mut edges);
+        collect_edges_from_node(
+            0,
+            &CompiledNodeKind::ChooseSlot {
+                branches: Box::new([
+                    SlotBranch {
+                        condition: SlotIdx::new(0),
+                        target: StepIdx::new(1),
+                    },
+                    SlotBranch {
+                        condition: SlotIdx::new(1),
+                        target: StepIdx::new(2),
+                    },
+                ]),
+                otherwise: Some(StepIdx::new(3)),
+            },
+            &mut edges,
+        );
         assert_eq!(edges.len(), 3);
 
         edges.clear();
-        collect_edges_from_node(0, &CompiledNodeKind::ForEachStart {
-            input: SlotIdx::ZERO, item_slot: SlotIdx::ZERO, limit: 0, body: StepIdx::new(1), done: StepIdx::new(2),
-        }, &mut edges);
+        collect_edges_from_node(
+            0,
+            &CompiledNodeKind::ForEachStart {
+                input: SlotIdx::ZERO,
+                item_slot: SlotIdx::ZERO,
+                limit: 0,
+                body: StepIdx::new(1),
+                done: StepIdx::new(2),
+            },
+            &mut edges,
+        );
         assert_eq!(edges.len(), 2);
 
         edges.clear();
-        collect_edges_from_node(0, &CompiledNodeKind::ForEachNext {
-            iterator_slot: SlotIdx::ZERO, body: StepIdx::new(1), done: StepIdx::new(2),
-        }, &mut edges);
+        collect_edges_from_node(
+            0,
+            &CompiledNodeKind::ForEachNext {
+                iterator_slot: SlotIdx::ZERO,
+                body: StepIdx::new(1),
+                done: StepIdx::new(2),
+            },
+            &mut edges,
+        );
         assert_eq!(edges.len(), 2);
 
         edges.clear();
-        collect_edges_from_node(0, &CompiledNodeKind::TogetherStart {
-            branches: Box::new([StepIdx::new(1), StepIdx::new(2)]),
-            join: StepIdx::new(3),
-        }, &mut edges);
+        collect_edges_from_node(
+            0,
+            &CompiledNodeKind::TogetherStart {
+                branches: Box::new([StepIdx::new(1), StepIdx::new(2)]),
+                join: StepIdx::new(3),
+            },
+            &mut edges,
+        );
         assert_eq!(edges.len(), 3);
 
         edges.clear();
-        collect_edges_from_node(0, &CompiledNodeKind::CollectStart {
-            source: SlotIdx::ZERO, limit: 0, page_size: 0, body: StepIdx::new(1), done: StepIdx::new(2),
-        }, &mut edges);
+        collect_edges_from_node(
+            0,
+            &CompiledNodeKind::CollectStart {
+                source: SlotIdx::ZERO,
+                limit: 0,
+                page_size: 0,
+                body: StepIdx::new(1),
+                done: StepIdx::new(2),
+            },
+            &mut edges,
+        );
         assert_eq!(edges.len(), 2);
 
         edges.clear();
-        collect_edges_from_node(0, &CompiledNodeKind::CollectPage {
-            collector_slot: SlotIdx::ZERO, body: StepIdx::new(1), done: StepIdx::new(2),
-        }, &mut edges);
+        collect_edges_from_node(
+            0,
+            &CompiledNodeKind::CollectPage {
+                collector_slot: SlotIdx::ZERO,
+                body: StepIdx::new(1),
+                done: StepIdx::new(2),
+            },
+            &mut edges,
+        );
         assert_eq!(edges.len(), 2);
 
         edges.clear();
-        collect_edges_from_node(0, &CompiledNodeKind::CollectNext {
-            collector_slot: SlotIdx::ZERO, body: StepIdx::new(1), done: StepIdx::new(2),
-        }, &mut edges);
+        collect_edges_from_node(
+            0,
+            &CompiledNodeKind::CollectNext {
+                collector_slot: SlotIdx::ZERO,
+                body: StepIdx::new(1),
+                done: StepIdx::new(2),
+            },
+            &mut edges,
+        );
         assert_eq!(edges.len(), 2);
 
         edges.clear();
-        collect_edges_from_node(0, &CompiledNodeKind::ReduceStart {
-            input: SlotIdx::ZERO, accumulator: SlotIdx::ZERO, initial: ConstIdx::new(0), body: StepIdx::new(1), done: StepIdx::new(2),
-        }, &mut edges);
+        collect_edges_from_node(
+            0,
+            &CompiledNodeKind::ReduceStart {
+                input: SlotIdx::ZERO,
+                accumulator: SlotIdx::ZERO,
+                initial: ConstIdx::new(0),
+                body: StepIdx::new(1),
+                done: StepIdx::new(2),
+            },
+            &mut edges,
+        );
         assert_eq!(edges.len(), 2);
 
         edges.clear();
-        collect_edges_from_node(0, &CompiledNodeKind::ReduceNext {
-            iterator_slot: SlotIdx::ZERO, accumulator: SlotIdx::ZERO, body: StepIdx::new(1), done: StepIdx::new(2),
-        }, &mut edges);
+        collect_edges_from_node(
+            0,
+            &CompiledNodeKind::ReduceNext {
+                iterator_slot: SlotIdx::ZERO,
+                accumulator: SlotIdx::ZERO,
+                body: StepIdx::new(1),
+                done: StepIdx::new(2),
+            },
+            &mut edges,
+        );
         assert_eq!(edges.len(), 2);
 
         edges.clear();
-        collect_edges_from_node(0, &CompiledNodeKind::RepeatStart {
-            max_attempts: 0, body: StepIdx::new(1), done: StepIdx::new(2),
-        }, &mut edges);
+        collect_edges_from_node(
+            0,
+            &CompiledNodeKind::RepeatStart {
+                max_attempts: 0,
+                body: StepIdx::new(1),
+                done: StepIdx::new(2),
+            },
+            &mut edges,
+        );
         assert_eq!(edges.len(), 2);
 
         edges.clear();
-        collect_edges_from_node(0, &CompiledNodeKind::RepeatAttempt {
-            attempt_slot: SlotIdx::ZERO, body: StepIdx::new(1), done: StepIdx::new(2),
-        }, &mut edges);
+        collect_edges_from_node(
+            0,
+            &CompiledNodeKind::RepeatAttempt {
+                attempt_slot: SlotIdx::ZERO,
+                body: StepIdx::new(1),
+                done: StepIdx::new(2),
+            },
+            &mut edges,
+        );
         assert_eq!(edges.len(), 2);
 
         edges.clear();
-        collect_edges_from_node(0, &CompiledNodeKind::RepeatCheck {
-            attempt_slot: SlotIdx::ZERO, done: StepIdx::new(1),
-        }, &mut edges);
+        collect_edges_from_node(
+            0,
+            &CompiledNodeKind::RepeatCheck {
+                attempt_slot: SlotIdx::ZERO,
+                done: StepIdx::new(1),
+            },
+            &mut edges,
+        );
         assert_eq!(edges.len(), 1);
 
         edges.clear();
-        collect_edges_from_node(0, &CompiledNodeKind::ErrorHandler {
-            body: StepIdx::new(1), handler: StepIdx::new(2), error_slot: None,
-        }, &mut edges);
+        collect_edges_from_node(
+            0,
+            &CompiledNodeKind::ErrorHandler {
+                body: StepIdx::new(1),
+                handler: StepIdx::new(2),
+                error_slot: None,
+            },
+            &mut edges,
+        );
         assert_eq!(edges.len(), 2);
 
         edges.clear();
-        collect_edges_from_node(0, &CompiledNodeKind::Jump { target: StepIdx::new(1) }, &mut edges);
+        collect_edges_from_node(
+            0,
+            &CompiledNodeKind::Jump {
+                target: StepIdx::new(1),
+            },
+            &mut edges,
+        );
         assert_eq!(edges.len(), 1);
 
         edges.clear();
@@ -2931,13 +3261,14 @@ mod tests {
 
     #[test]
     fn all_successors_covers_remaining_structural_variants() {
-        use vb_core::ids::{SlotIdx, StepIdx, ExprIdx, ConstIdx};
+        use vb_core::ids::{ConstIdx, ExprIdx, SlotIdx, StepIdx};
         use vb_core::workflow::{CompiledNodeKind, ExprBranch, SlotBranch};
 
         let kind = CompiledNodeKind::ChooseSlot {
-            branches: Box::new([
-                SlotBranch { condition: SlotIdx::new(0), target: StepIdx::new(1) },
-            ]),
+            branches: Box::new([SlotBranch {
+                condition: SlotIdx::new(0),
+                target: StepIdx::new(1),
+            }]),
             otherwise: Some(StepIdx::new(2)),
         };
         let succs = all_successors(&kind);
@@ -2945,63 +3276,85 @@ mod tests {
         assert!(succs.contains(&2));
 
         let kind = CompiledNodeKind::ForEachNext {
-            iterator_slot: SlotIdx::ZERO, body: StepIdx::new(1), done: StepIdx::new(2),
+            iterator_slot: SlotIdx::ZERO,
+            body: StepIdx::new(1),
+            done: StepIdx::new(2),
         };
         let succs = all_successors(&kind);
         assert!(succs.contains(&1));
         assert!(succs.contains(&2));
 
         let kind = CompiledNodeKind::CollectStart {
-            source: SlotIdx::ZERO, limit: 0, page_size: 0, body: StepIdx::new(1), done: StepIdx::new(2),
+            source: SlotIdx::ZERO,
+            limit: 0,
+            page_size: 0,
+            body: StepIdx::new(1),
+            done: StepIdx::new(2),
         };
         let succs = all_successors(&kind);
         assert!(succs.contains(&1));
         assert!(succs.contains(&2));
 
         let kind = CompiledNodeKind::CollectPage {
-            collector_slot: SlotIdx::ZERO, body: StepIdx::new(1), done: StepIdx::new(2),
+            collector_slot: SlotIdx::ZERO,
+            body: StepIdx::new(1),
+            done: StepIdx::new(2),
         };
         let succs = all_successors(&kind);
         assert!(succs.contains(&1));
         assert!(succs.contains(&2));
 
         let kind = CompiledNodeKind::CollectNext {
-            collector_slot: SlotIdx::ZERO, body: StepIdx::new(1), done: StepIdx::new(2),
+            collector_slot: SlotIdx::ZERO,
+            body: StepIdx::new(1),
+            done: StepIdx::new(2),
         };
         let succs = all_successors(&kind);
         assert!(succs.contains(&1));
         assert!(succs.contains(&2));
 
         let kind = CompiledNodeKind::ReduceStart {
-            input: SlotIdx::ZERO, accumulator: SlotIdx::ZERO, initial: ConstIdx::new(0), body: StepIdx::new(1), done: StepIdx::new(2),
+            input: SlotIdx::ZERO,
+            accumulator: SlotIdx::ZERO,
+            initial: ConstIdx::new(0),
+            body: StepIdx::new(1),
+            done: StepIdx::new(2),
         };
         let succs = all_successors(&kind);
         assert!(succs.contains(&1));
         assert!(succs.contains(&2));
 
         let kind = CompiledNodeKind::ReduceNext {
-            iterator_slot: SlotIdx::ZERO, accumulator: SlotIdx::ZERO, body: StepIdx::new(1), done: StepIdx::new(2),
+            iterator_slot: SlotIdx::ZERO,
+            accumulator: SlotIdx::ZERO,
+            body: StepIdx::new(1),
+            done: StepIdx::new(2),
         };
         let succs = all_successors(&kind);
         assert!(succs.contains(&1));
         assert!(succs.contains(&2));
 
         let kind = CompiledNodeKind::RepeatStart {
-            max_attempts: 0, body: StepIdx::new(1), done: StepIdx::new(2),
+            max_attempts: 0,
+            body: StepIdx::new(1),
+            done: StepIdx::new(2),
         };
         let succs = all_successors(&kind);
         assert!(succs.contains(&1));
         assert!(succs.contains(&2));
 
         let kind = CompiledNodeKind::RepeatAttempt {
-            attempt_slot: SlotIdx::ZERO, body: StepIdx::new(1), done: StepIdx::new(2),
+            attempt_slot: SlotIdx::ZERO,
+            body: StepIdx::new(1),
+            done: StepIdx::new(2),
         };
         let succs = all_successors(&kind);
         assert!(succs.contains(&1));
         assert!(succs.contains(&2));
 
         let kind = CompiledNodeKind::RepeatCheck {
-            attempt_slot: SlotIdx::ZERO, done: StepIdx::new(1),
+            attempt_slot: SlotIdx::ZERO,
+            done: StepIdx::new(1),
         };
         let succs = all_successors(&kind);
         assert!(succs.contains(&1));
@@ -3122,7 +3475,12 @@ mod tests {
             workflow: digest,
             input: vec![0xDD_u8; MAX_SUBMIT_INPUT_LEN],
         };
-        let response = submit_resolved_workflow(IpcCommand::SubmitRun, submit, &mut runtime, Some(&mut resolver));
+        let response = submit_resolved_workflow(
+            IpcCommand::SubmitRun,
+            submit,
+            &mut runtime,
+            Some(&mut resolver),
+        );
         // With >, passes length check; runtime accepts and returns AcceptedRun.
         // With >=, length check fails and returns PayloadError.
         assert_eq!(response, IpcResponse::AcceptedRun { run_id: 1 });
@@ -3138,7 +3496,12 @@ mod tests {
             input: vec![],
         };
         let mut resolver = RequiredResolver;
-        let response = submit_resolved_workflow(IpcCommand::SubmitRun, submit, &mut runtime, Some(&mut resolver));
+        let response = submit_resolved_workflow(
+            IpcCommand::SubmitRun,
+            submit,
+            &mut runtime,
+            Some(&mut resolver),
+        );
         assert_eq!(response, IpcResponse::WorkflowResolutionRequired);
     }
 
@@ -3152,7 +3515,12 @@ mod tests {
             input: vec![],
         };
         let mut resolver = MismatchResolver;
-        let response = submit_resolved_workflow(IpcCommand::SubmitRun, submit, &mut runtime, Some(&mut resolver));
+        let response = submit_resolved_workflow(
+            IpcCommand::SubmitRun,
+            submit,
+            &mut runtime,
+            Some(&mut resolver),
+        );
         assert_eq!(response, IpcResponse::WorkflowDigestMismatch);
     }
 
@@ -3167,7 +3535,12 @@ mod tests {
             workflow: digest,
             input: vec![],
         };
-        let response = submit_resolved_workflow(IpcCommand::Health, submit, &mut runtime, Some(&mut resolver));
+        let response = submit_resolved_workflow(
+            IpcCommand::Health,
+            submit,
+            &mut runtime,
+            Some(&mut resolver),
+        );
         assert_eq!(response, IpcResponse::CommandPayloadMismatch);
     }
 
@@ -3237,8 +3610,8 @@ mod tests {
 
     #[test]
     fn handle_get_taint_report_with_safe_source_returns_warning() {
-        use vb_core::workflow::{CompiledNode, CompiledNodeKind, WorkflowParts, ResourceContract};
         use vb_core::ids::StepIdx;
+        use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
 
         let digest = vb_core::WorkflowDigest::from_bytes([0xCD; 32]);
         let parts = WorkflowParts {
@@ -3264,7 +3637,8 @@ mod tests {
                     error_slot: None,
                     kind: CompiledNodeKind::Nop,
                 },
-            ].into_boxed_slice(),
+            ]
+            .into_boxed_slice(),
             expressions: Box::new([]),
             accessors: Box::new([]),
             constants: Box::new([]),
@@ -3281,12 +3655,20 @@ mod tests {
         let encoded = postcard::to_allocvec(&payload).expect("encode payload");
         let response = handle_get_taint_report(&encoded, Some(&mut resolver));
         match response {
-            IpcResponse::TaintReport { sources, sinks, finish_safe, paths } => {
+            IpcResponse::TaintReport {
+                sources,
+                sinks,
+                finish_safe,
+                paths,
+            } => {
                 assert_eq!(sources, vec![0]);
                 assert!(sinks.is_empty(), "no sinks in this workflow");
                 assert!(finish_safe, "no source reaches sink");
                 assert!(!paths.is_empty(), "should have warning paths");
-                assert!(paths.iter().all(|p| p.status == "warning"), "all paths should be warning");
+                assert!(
+                    paths.iter().all(|p| p.status == "warning"),
+                    "all paths should be warning"
+                );
             }
             other => panic!("expected TaintReport, got {other:?}"),
         }
@@ -3294,8 +3676,8 @@ mod tests {
 
     #[test]
     fn bfs_forward_respects_out_of_bounds_successors() {
-        use vb_core::workflow::{CompiledNode, CompiledNodeKind, WorkflowParts, ResourceContract};
         use vb_core::ids::StepIdx;
+        use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
 
         let parts = WorkflowParts {
             name: Box::from("test"),
@@ -3307,7 +3689,9 @@ mod tests {
                     next: None,
                     on_error: None,
                     error_slot: None,
-                    kind: CompiledNodeKind::Jump { target: StepIdx::new(99) },
+                    kind: CompiledNodeKind::Jump {
+                        target: StepIdx::new(99),
+                    },
                 },
                 CompiledNode {
                     id: StepIdx::new(1),
@@ -3315,9 +3699,12 @@ mod tests {
                     next: None,
                     on_error: None,
                     error_slot: None,
-                    kind: CompiledNodeKind::Finish { result: vb_core::ids::SlotIdx::ZERO },
+                    kind: CompiledNodeKind::Finish {
+                        result: vb_core::ids::SlotIdx::ZERO,
+                    },
                 },
-            ].into_boxed_slice(),
+            ]
+            .into_boxed_slice(),
             expressions: Box::new([]),
             accessors: Box::new([]),
             constants: Box::new([]),
@@ -3328,6 +3715,9 @@ mod tests {
             step_names: Box::new([]),
         };
         let reachable = bfs_forward(&parts, 0, 2);
-        assert!(reachable.is_empty(), "out-of-bounds successor should not be followed");
+        assert!(
+            reachable.is_empty(),
+            "out-of-bounds successor should not be followed"
+        );
     }
 }

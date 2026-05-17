@@ -5,8 +5,8 @@ use vb_runtime::runtime::Runtime;
 use vb_runtime::trace::TraceEvent;
 
 use super::handlers::{decode_payload, sanitize_runtime_error};
-use crate::IpcPayload;
 use crate::server::IpcResponse;
+use crate::IpcPayload;
 use crate::{IpcTraceEvent, IpcTraceEventKind};
 
 enum IpcResponseKind {
@@ -147,8 +147,8 @@ pub fn handle_drain_trace(payload: &[u8], runtime: &mut Runtime) -> IpcResponse 
 mod tests {
     use super::*;
     use std::num::NonZeroUsize;
-    use vb_core::RunId;
     use vb_core::ids::{SlotIdx, StepIdx};
+    use vb_core::RunId;
     use vb_runtime::runtime::Runtime;
     use vb_runtime::shard::ShardConfig;
 
@@ -188,7 +188,9 @@ mod tests {
             next: None,
             on_error: None,
             error_slot: None,
-            kind: CompiledNodeKind::Finish { result: SlotIdx::ZERO },
+            kind: CompiledNodeKind::Finish {
+                result: SlotIdx::ZERO,
+            },
         });
         let parts = WorkflowParts {
             name: Box::from("chain"),
@@ -207,12 +209,17 @@ mod tests {
     }
 
     fn submit_and_tick(runtime: &mut Runtime, run_id: RunId) {
-        runtime.submit_direct(run_id, chain_workflow()).expect("submit");
+        runtime
+            .submit_direct(run_id, chain_workflow())
+            .expect("submit");
         runtime.tick_all().expect("tick");
     }
 
     fn encode_drain_trace(run_id: RunId, max_records: u32) -> Vec<u8> {
-        let payload = IpcPayload::DrainTrace { run_id, max_records };
+        let payload = IpcPayload::DrainTrace {
+            run_id,
+            max_records,
+        };
         postcard::to_allocvec(&payload).expect("encode")
     }
 
@@ -568,7 +575,10 @@ mod tests {
         let response = handle_drain_trace(&payload, &mut runtime);
         match response {
             IpcResponse::RuntimeError { message } => {
-                assert!(message.contains("not found"), "expected 'not found' in '{message}'");
+                assert!(
+                    message.contains("not found"),
+                    "expected 'not found' in '{message}'"
+                );
             }
             other => panic!("expected RuntimeError, got {other:?}"),
         }

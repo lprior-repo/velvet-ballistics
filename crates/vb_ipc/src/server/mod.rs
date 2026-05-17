@@ -27,8 +27,8 @@ pub mod trace;
 mod impl_tests;
 
 use crate::{
-    IPC_HEADER_LEN, IpcActionOutputPayload, IpcCommand, IpcError, IpcFrameHeader, IpcPayload,
-    IpcTraceEvent, IpcTraceEventKind, MaxPayloadBytes, RunSummary, SubmitRunPayload,
+    IpcActionOutputPayload, IpcCommand, IpcError, IpcFrameHeader, IpcPayload, IpcTraceEvent,
+    IpcTraceEventKind, MaxPayloadBytes, RunSummary, SubmitRunPayload, IPC_HEADER_LEN,
 };
 pub use error::IpcServerError;
 use handlers::{
@@ -162,17 +162,13 @@ impl IpcServer {
         self.clients.get_mut(&token_index).map(|c| &mut c.stream)
     }
 
-    pub(crate) fn client_write_buffer_mut(
-        &mut self,
-        token_index: usize,
-    ) -> Option<&mut Vec<u8>> {
-        self.clients.get_mut(&token_index).map(|c| &mut c.write_buffer)
+    pub(crate) fn client_write_buffer_mut(&mut self, token_index: usize) -> Option<&mut Vec<u8>> {
+        self.clients
+            .get_mut(&token_index)
+            .map(|c| &mut c.write_buffer)
     }
 
-    pub(crate) fn set_test_poll_once_result(
-        &mut self,
-        result: Result<bool, IpcServerError>,
-    ) {
+    pub(crate) fn set_test_poll_once_result(&mut self, result: Result<bool, IpcServerError>) {
         self.test_poll_result = Some(result);
     }
 
@@ -182,14 +178,12 @@ impl IpcServer {
         interest: mio::Interest,
     ) -> Result<(), IpcServerError> {
         let token = mio::Token(token_index);
-        let client = self.clients.get_mut(&token_index).ok_or_else(|| {
-            IpcServerError::PollFailed {
-                source: std::io::Error::new(
-                    std::io::ErrorKind::NotFound,
-                    "client not found",
-                ),
-            }
-        })?;
+        let client =
+            self.clients
+                .get_mut(&token_index)
+                .ok_or_else(|| IpcServerError::PollFailed {
+                    source: std::io::Error::new(std::io::ErrorKind::NotFound, "client not found"),
+                })?;
         self.poll
             .registry()
             .reregister(&mut client.stream, token, interest)
