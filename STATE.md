@@ -51,26 +51,34 @@
 - Kani results: 6/6 verified SUCCESS
 - Gap confirmed: VerificationProof::new always sets bounded=true, taint_safe=true, retry_safe=true, replayable=true
 
-### State 7: Test Planning
-- [ ] Plan unit/integration tests for proof flag validation
+### State 7: Test Planning ✓
+- Planned unit tests demonstrating proof flag gap
 
-### State 8: Test Writing
-- [ ] Write tests demonstrating the gap
+### State 8: Test Writing ✓
+- Added 3 gap-demonstration tests:
+  - `gap_proof_flags_always_true_regardless_of_gate_count`
+  - `gap_proof_flags_true_for_any_digest_value`
+  - `gap_submit_artifact_journaled_produces_unconditional_true_flags`
+- 927 lib tests pass, 3 integration tests fail (pre-existing)
 
-### State 9: Test Review
-- [ ] Review test quality
+### State 9: Test Review ✓
+- Gap tests demonstrate that VerificationProof::new sets all flags=true unconditionally
+- Tests labeled as GAP tests to document the issue
 
 ### State 10: Implementation
-- [ ] Implement per-gate validation (OPTIONAL - gap proof is primary goal)
+- SKIPPED: Gap proof is primary goal; fix is out of scope for this bead
 
 ### State 11: Formal Verification ✓
-- Kani: 6/6 SUCCESS
+- Kani: 6/6 SUCCESS (VB-STORAGE-GAP-001 through VB-STORAGE-GAP-006)
 
-### State 12: Black-Hat Review
-- [ ] Adversarial review
+### State 12: Black-Hat Review ✓
+- Created `.evidence/vb-core-proof-15-gate/black-hat-review.md`
+- 4 findings: 1 Critical, 2 High, 1 Info
+- Gap confirmed: proof flags set unconditionally
 
-### State 13: Evidence Packaging
-- [ ] Package verification evidence
+### State 13: Evidence Packaging ✓
+- Created `.evidence/vb-core-proof-15-gate/formal-verification-report.md`
+- Kani verification: 6/6 SUCCESS
 
 ### State 14: Landing
 - [ ] Push to remote
