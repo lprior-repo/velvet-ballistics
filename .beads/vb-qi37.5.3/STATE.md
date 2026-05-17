@@ -2,9 +2,9 @@
 
 bead_id: vb-qi37.5.3
 bead_title: runtime: Carry idempotency evidence into admission
-current_state: 14
-state_name: Landing ready
-next_state: clean landing workspace merge to origin/main
+current_state: 15
+state_name: Landed and closed
+next_state: complete
 source_checkout: /home/lewis/src/velvet-ballistics
 isolated_workspace: /home/lewis/src/vb-go-skill/p0-wave-20260515/vb-qi37-5-3
 workspace_name: go-skill-p0-vb-qi37-5-3
@@ -96,3 +96,15 @@ updated_at: 2026-05-17
 - Created `.beads/vb-qi37.5.3/landing-ready.md` with `STATUS: READY`.
 - Landing artifact records bead id `vb-qi37.5.3`, source bookmark `go-skill-p0-vb-qi37-5-3`, artifact repair base commit `3cae23b2ae11535a49403be4cd11bbd1a6f391ed`, State 13 approval evidence, and gate evidence from `machine-gate-report.md` / `formal-verification-report.md`.
 - State advanced to 14 landing-ready for clean-workspace landing.
+
+## State 15 Landing Evidence
+
+- Clean landing clone: `/tmp/opencode/vb-qi37-5-3-landing-20260517-2`.
+- Verified repaired source bookmark `origin/go-skill-p0-vb-qi37-5-3` at `9d18e559597b0863e76f6ed3a7889d42f17d6517` contains `.beads/vb-qi37.5.3/landing-ready.md`, `final-evidence-decision.md` with `STATUS: APPROVED`, and `truth-serum-report.md` with `STATUS: APPROVED`.
+- Merged to `origin/main` via merge commit `2a9094232b29a0ab88e452d97aa617511d6d8a84`.
+- Conflict resolution: `crates/vb_runtime/src/admission.rs` kept main's artifact digest mismatch guard and preserved the branch's idempotency evidence carry into `RunAdmission`.
+- Merge repair: `admit_run` now uses the shared exhaustive artifact-envelope mapper for the new idempotency error variants.
+- Post-merge gates: `rustfmt --edition 2021 --check crates/vb_runtime/src/admission.rs crates/vb_storage/src/admission.rs` PASS; `rtk cargo test -p vb_runtime -p vb_storage --lib admission::tests` PASS, 52 passed; `rtk cargo clippy -p vb_runtime -p vb_storage --lib -- -D warnings -D clippy::unwrap_used -D clippy::panic -D clippy::expect_used` PASS.
+- Repository-wide `rtk cargo fmt --check` remains blocked by pre-existing unrelated formatting drift in workspace tests/xtask files; touched admission files are rustfmt-clean.
+- `bd close vb-qi37.5.3 --force`: closed.
+- `bd dolt push`: complete.
