@@ -6,9 +6,7 @@
 //!
 //! This harness verifies panic-free header decoding for valid inputs.
 
-use crate::frame_types::{IpcFrameHeader, IpcCommand, IPC_HEADER_LEN, IPC_MAGIC, IPC_VERSION};
-use crate::error::MaxPayloadBytes;
-use crate::IpcError;
+use crate::{IpcFrameHeader, IpcCommand, IPC_HEADER_LEN, IPC_MAGIC, IPC_VERSION, MaxPayloadBytes, IpcError};
 
 /// VB-IPC-DECODE-001/003 H1: decode valid header succeeds
 #[kani::proof]
@@ -27,10 +25,10 @@ fn kani_ipc_header_decode_valid() {
     kani::assert(decoded.is_ok(), "valid header decodes successfully");
 
     if let Ok(h) = decoded {
-        kani::assert_eq!(h.command, command);
-        kani::assert_eq!(h.flags, flags);
-        kani::assert_eq!(h.correlation, correlation);
-        kani::assert_eq!(h.payload_len, payload_len);
+        kani::assert(h.command == command, "command matches");
+        kani::assert(h.flags == flags, "flags match");
+        kani::assert(h.correlation == correlation, "correlation matches");
+        kani::assert(h.payload_len == payload_len, "payload_len matches");
     }
 }
 
@@ -93,7 +91,7 @@ fn kani_ipc_header_decode_various_commands() {
         let encoded = encoded.unwrap();
 
         let decoded = IpcFrameHeader::decode(&encoded, MaxPayloadBytes::DEFAULT);
-        kani::assert(decoded.is_ok(), "command {:?} decodes successfully", command);
+        kani::assert(decoded.is_ok(), "command decodes successfully");
     }
 }
 
@@ -102,7 +100,7 @@ fn kani_ipc_header_decode_various_commands() {
 fn kani_ipc_header_preserves_all_fields() {
     let command = IpcCommand::SubmitRun;
     let flags: u16 = 0x00FF;
-    let correlation: u64 = 0xDEADBEEFCAFEL;
+    let correlation: u64 = 0xDEADBEEF_CAFE_u64;
     let payload_len: u32 = 256;
 
     let header = IpcFrameHeader::new(command, flags, correlation, payload_len);
@@ -114,8 +112,8 @@ fn kani_ipc_header_preserves_all_fields() {
     kani::assume(decoded.is_ok());
     let decoded = decoded.unwrap();
 
-    kani::assert_eq!(decoded.command, command);
-    kani::assert_eq!(decoded.flags, flags);
-    kani::assert_eq!(decoded.correlation, correlation);
-    kani::assert_eq!(decoded.payload_len, payload_len);
+    kani::assert(decoded.command == command, "command matches");
+    kani::assert(decoded.flags == flags, "flags match");
+    kani::assert(decoded.correlation == correlation, "correlation matches");
+    kani::assert(decoded.payload_len == payload_len, "payload_len matches");
 }

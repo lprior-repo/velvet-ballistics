@@ -58,7 +58,7 @@ fn kani_record_schema_rejects_future_version() {
     kani::assert(result.is_err(), "future schema version should return error");
 
     if let Err(JournalError::UnsupportedSchemaVersion { version }) = result {
-        kani::assert_eq!(version, future_version);
+        kani::assert(version == future_version, "future version in error");
     }
 }
 

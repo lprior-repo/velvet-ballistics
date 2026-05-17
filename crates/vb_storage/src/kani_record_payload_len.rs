@@ -59,8 +59,8 @@ fn kani_record_payload_len_exceeds_max() {
     kani::assert(result.is_err(), "payload exceeding max should return error");
 
     if let Err(JournalError::PayloadTooLarge { len, max }) = result {
-        kani::assert_eq!(len, payload_len);
-        kani::assert_eq!(max, max_payload);
+        kani::assert(len == payload_len, "len matches");
+        kani::assert(max == max_payload, "max matches");
     }
 }
 

@@ -38,9 +38,9 @@ fn kani_record_kind_accepts_known_kinds() {
 
         let result = decode_record_header(&header_bytes, expected_magic, u32::MAX);
         match result {
-            Ok(_) => kani::assert(true, "known kind {} passes kind check", kind_id),
-            Err(JournalError::UnknownRecordKind { .. }) => kani::assert(false, "known kind {} should not be rejected", kind_id),
-            Err(_) => kani::assert(true, "known kind {} passes kind check", kind_id),
+            Ok(_) => kani::assert(true, "known kind passes kind check"),
+            Err(JournalError::UnknownRecordKind { .. }) => kani::assert(false, "known kind should not be rejected"),
+            Err(_) => kani::assert(true, "known kind passes kind check"),
         }
     }
 }

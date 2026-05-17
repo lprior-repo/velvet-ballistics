@@ -6,9 +6,7 @@
 //!
 //! This harness verifies proper rejection of oversize payloads.
 
-use crate::frame_types::{IpcFrameHeader, IpcCommand, IPC_HEADER_LEN, IPC_MAGIC, IPC_VERSION};
-use crate::error::MaxPayloadBytes;
-use crate::IpcError;
+use crate::{IpcFrameHeader, IpcCommand, IPC_HEADER_LEN, IPC_MAGIC, IPC_VERSION, MaxPayloadBytes, IpcError};
 
 /// VB-IPC-DECODE-002 H1: decode rejects payload exceeding bound
 #[kani::proof]
@@ -28,8 +26,8 @@ fn kani_ipc_header_rejects_oversize_payload() {
     kani::assert(decoded.is_err(), "payload exceeding bound should return error");
 
     if let Err(IpcError::PayloadTooLarge { actual, limit }) = decoded {
-        kani::assert_eq!(actual, payload_len as usize);
-        kani::assert_eq!(limit, 16);
+        kani::assert(actual == payload_len as usize, "actual matches");
+        kani::assert(limit == 16, "limit is 16");
     }
 }
 

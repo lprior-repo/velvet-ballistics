@@ -41,7 +41,7 @@ fn kani_record_magic_rejects_wrong_magic() {
     kani::assert(result.is_err(), "wrong magic should return error");
 
     if let Err(JournalError::BadMagic { found }) = result {
-        kani::assert_eq!(found, wrong_magic, "bad magic error contains found value");
+        kani::assert(found == wrong_magic, "bad magic error contains found value");
     }
 }
 
