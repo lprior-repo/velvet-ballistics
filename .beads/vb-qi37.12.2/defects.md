@@ -1,6 +1,19 @@
 # Defects — vb-qi37.12.2
 
-STATUS: REJECTED
+STATUS: APPROVED
+
+Superseded by State 12 re-review in current workspace.
+
+- Prior defect: ambient `ResumeSourceRegistry`/TLS-style source binding could let unrelated unit `JournalAppendFailed` values steal pending sources.
+- Current code: no `ResumeSourceRegistry` or `thread_local` source side channel remains in `crates/vb_runtime/src`; source data is carried by `ResumeError::JournalAppendFailedWithSource { source: Box<RuntimeError> }`.
+- Current focused tests: `vb_qi37_12_2_resume_error_propagation` passed 12/12; `vb_runtime --lib is_resumable` passed 2/2.
+- Residual contract stance: unit `JournalAppendFailed` is a deterministic no-source fallback; exact source preservation requires the explicit source-carrying variant.
+
+No open State 12 defects remain for the narrowed contract.
+
+---
+
+# Historical Defects Superseded Below
 
 1. CRITICAL — `ResumeError::JournalAppendFailed` still has no error-bound source. The new `ResumeSourceRegistry` stores sources in a same-thread pending queue and binds them only when `source_runtime_error()` is called (`crates/vb_runtime/src/shard/types.rs:28-36`, `47-64`, `439-460`). A fresh unit `JournalAppendFailed` can steal an unobserved pending source; moves/clones change the pointer key.
 2. HIGH — Regression tests drain the pending source before checking stale-source negatives (`crates/vb_runtime/tests/vb_qi37_12_2_resume_error_propagation.rs:313-384`). They do not test the killer case: sourced error returned but unobserved, then unrelated fresh/converted `JournalAppendFailed` observed first.
