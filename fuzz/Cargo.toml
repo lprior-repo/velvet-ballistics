@@ -256,3 +256,10 @@ path = "src/bin/vb_ui_model_postcard_decode.rs"
 test = false
 doc = false
 bench = false
+
+[[bin]]
+name = "ipc_decode"
+path = "src/bin/ipc_decode.rs"
+test = false
+doc = false
+bench = false

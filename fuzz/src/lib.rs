@@ -157,6 +157,44 @@ pub fn fuzz_ipc_frame(data: &[u8]) {
     }
 }
 
+/// IPC header decode fuzz target - exercises IpcFrameHeader::decode with
+/// various max_payload bounds and edge cases.
+pub fn fuzz_ipc_decode(data: &[u8]) {
+    use vb_ipc::frame::decode_frame_header;
+
+    if data.len() >= vb_ipc::IPC_HEADER_LEN {
+        let mut header_bytes = [0u8; vb_ipc::IPC_HEADER_LEN];
+        header_bytes.copy_from_slice(&data[..vb_ipc::IPC_HEADER_LEN]);
+
+        // Try with various max_payload bounds
+        let bounds: &[usize] = &[0, 1, 16, 256, 1024, 65536, 1_048_576];
+        for &b in bounds {
+            if let Some(max) = std::num::NonZeroUsize::new(b) {
+                let _ = vb_ipc::IpcFrameHeader::decode(
+                    &header_bytes,
+                    vb_ipc::MaxPayloadBytes::new(max),
+                );
+            }
+        }
+
+        // Also try the simple decoder
+        let _ = decode_frame_header(&header_bytes);
+    }
+
+    // Test truncated headers
+    for len in 0..vb_ipc::IPC_HEADER_LEN {
+        if data.len() >= len {
+            let mut bytes = [0u8; vb_ipc::IPC_HEADER_LEN];
+            let end = len.min(data.len());
+            bytes[..end].copy_from_slice(&data[..end]);
+            let _ = vb_ipc::IpcFrameHeader::decode(
+                &bytes,
+                vb_ipc::MaxPayloadBytes::DEFAULT,
+            );
+        }
+    }
+}
+
 /// Exercises storage record envelope decode and valid-event encode paths.
 pub fn fuzz_journal_event(data: &[u8]) {
     let _decoded: Result<(vb_storage::RecordEnvelope, vb_storage::JournalEvent), _> =
