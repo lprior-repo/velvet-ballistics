@@ -53,6 +53,9 @@ pub mod kani_step_budget_one;
 pub mod kani_step_budget;
 
 #[cfg(kani)]
+pub mod kani_budget_arithmetic_refinement;
+
+#[cfg(kani)]
 pub mod kani_index_access;
 
 #[cfg(kani)]

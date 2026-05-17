@@ -1,0 +1,1597 @@
+Kani Rust Verifier 0.67.0 (cargo plugin)
+   Compiling vb_core v0.1.0 (/home/lewis/src/velvet-ballistics/crates/vb_core)
+warning: unused import: `crate::errors::CoreError`
+    --> crates/vb_core/src/frame.rs:1968:25
+     |
+1968 |                     use crate::errors::CoreError;
+     |                         ^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+     = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `BudgetError`
+ --> crates/vb_core/src/kani_step_budget_zero.rs:9:70
+  |
+9 | use crate::budget::{AggregateResourceBudget, AggregateResourceUsage, BudgetError};
+  |                                                                      ^^^^^^^^^^^
+
+warning: unused import: `BudgetError`
+ --> crates/vb_core/src/kani_step_budget_one.rs:9:70
+  |
+9 | use crate::budget::{AggregateResourceBudget, AggregateResourceUsage, BudgetError};
+  |                                                                      ^^^^^^^^^^^
+
+warning: unused import: `BudgetError`
+ --> crates/vb_core/src/kani_resource_budget_bounded.rs:9:70
+  |
+9 | use crate::budget::{AggregateResourceBudget, AggregateResourceUsage, BudgetError};
+  |                                                                      ^^^^^^^^^^^
+
+warning: variable does not need to be mutable
+    --> crates/vb_core/src/frame.rs:1924:25
+     |
+1924 |                     let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1);
+     |                         ----^^^^^
+     |                         |
+     |                         help: remove this `mut`
+     |
+     = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+    --> crates/vb_core/src/frame.rs:1939:25
+     |
+1939 |                     let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1);
+     |                         ----^^^^^
+     |                         |
+     |                         help: remove this `mut`
+
+warning: variable does not need to be mutable
+    --> crates/vb_core/src/frame.rs:1957:25
+     |
+1957 |                     let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1);
+     |                         ----^^^^^
+     |                         |
+     |                         help: remove this `mut`
+
+warning: variable does not need to be mutable
+    --> crates/vb_core/src/frame.rs:1976:29
+     |
+1976 |                         let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1);
+     |                             ----^^^^^
+     |                             |
+     |                             help: remove this `mut`
+
+warning: variable does not need to be mutable
+    --> crates/vb_core/src/frame.rs:1986:29
+     |
+1986 |                         let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1);
+     |                             ----^^^^^
+     |                             |
+     |                             help: remove this `mut`
+
+warning: variable does not need to be mutable
+    --> crates/vb_core/src/frame.rs:1999:29
+     |
+1999 |                         let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, step_count, 1);
+     |                             ----^^^^^
+     |                             |
+     |                             help: remove this `mut`
+
+warning: variable does not need to be mutable
+    --> crates/vb_core/src/frame.rs:2020:25
+     |
+2020 |                     let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+     |                         ----^^^^^
+     |                         |
+     |                         help: remove this `mut`
+
+warning: variable does not need to be mutable
+    --> crates/vb_core/src/frame.rs:2041:25
+     |
+2041 |                     let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+     |                         ----^^^^^
+     |                         |
+     |                         help: remove this `mut`
+
+warning: variable does not need to be mutable
+  --> crates/vb_core/src/kani_taint.rs:76:9
+   |
+76 |     let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+   |         ----^^^^^
+   |         |
+   |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+  --> crates/vb_core/src/kani_taint.rs:99:9
+   |
+99 |     let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+   |         ----^^^^^
+   |         |
+   |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+  --> crates/vb_core/src/kani_taint_propagation.rs:93:9
+   |
+93 |     let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+   |         ----^^^^^
+   |         |
+   |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_core/src/kani_taint_propagation.rs:115:9
+    |
+115 |     let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+  --> crates/vb_core/src/kani_index_access.rs:23:9
+   |
+23 |     let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+   |         ----^^^^^
+   |         |
+   |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+  --> crates/vb_core/src/kani_index_access.rs:41:9
+   |
+41 |     let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+   |         ----^^^^^
+   |         |
+   |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+  --> crates/vb_core/src/kani_index_access.rs:69:9
+   |
+69 |     let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+   |         ----^^^^^
+   |         |
+   |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+  --> crates/vb_core/src/kani_index_access.rs:88:9
+   |
+88 |     let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+   |         ----^^^^^
+   |         |
+   |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+  --> crates/vb_core/src/kani_index_access.rs:90:9
+   |
+90 |     let mut frame = frame.unwrap();
+   |         ----^^^^^
+   |         |
+   |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates/vb_core/src/kani_index_access.rs:104:9
+    |
+104 |     let mut frame = RunFrame::new(RunId::new(1), StepIdx::ZERO, 1, slot_count);
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: field `resource` is never read
+    --> crates/vb_core/src/budget.rs:1644:21
+     |
+1644 |         Underflow { resource: &'static str },
+     |         ---------   ^^^^^^^^
+     |         |
+     |         field in this variant
+     |
+     = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 3.38s
+Checking harness kani_budget_arithmetic_refinement::tla_budget_field_widths_match_rust_domains...
+CBMC 6.8.0 (cbmc-6.8.0)
+CBMC version 6.8.0 (cbmc-6.8.0) 64-bit x86_64 linux
+Reading GOTO program from file /home/lewis/src/velvet-ballistics/target/kani/x86_64-unknown-linux-gnu/debug/deps/vb_core-36768e6d1a55f581__RNvNtCs1d59wp3rZKW_7vb_core33kani_budget_arithmetic_refinement42tla_budget_field_widths_match_rust_domains.out
+Generating GOTO Program
+Adding CPROVER library (x86_64)
+Removal of function pointers and virtual functions
+Generic Property Instrumentation
+Running with 16 object bits, 48 offset bits (user-specified)
+Starting Bounded Model Checking
+Runtime Symex: 0.0324598s
+size of program expression: 1975 steps
+slicing removed 1220 assignments
+Generated 264 VCC(s), 26 remaining after simplification
+Runtime Postprocess Equation: 0.000216068s
+Passing problem to propositional reduction
+converting SSA
+Runtime Convert SSA: 0.00517217s
+Running propositional reduction
+Post-processing
+Runtime Post-process: 1.391e-05s
+Solving with CaDiCaL 2.0.0
+5390 variables, 6009 clauses
+SAT checker: instance is SATISFIABLE
+Runtime Solver: 0.00011087s
+Runtime decision procedure: 0.00544594s
+Running propositional reduction
+Solving with CaDiCaL 2.0.0
+5391 variables, 6010 clauses
+SAT checker: instance is UNSATISFIABLE
+Runtime Solver: 8.5169e-05s
+Runtime decision procedure: 0.000140879s
+
+RESULTS:
+Check 1: kani_budget_arithmetic_refinement::word_from_u64.assertion.1
+	 - Status: SUCCESS
+	 - Description: "attempt to shift right with overflow"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:43:13 in function kani_budget_arithmetic_refinement::word_from_u64
+
+Check 2: kani_budget_arithmetic_refinement::word_from_u64.assertion.2
+	 - Status: SUCCESS
+	 - Description: "attempt to shift right with overflow"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:44:13 in function kani_budget_arithmetic_refinement::word_from_u64
+
+Check 3: kani_budget_arithmetic_refinement::word_from_u64.assertion.3
+	 - Status: SUCCESS
+	 - Description: "attempt to shift right with overflow"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:45:13 in function kani_budget_arithmetic_refinement::word_from_u64
+
+Check 4: kani_budget_arithmetic_refinement::tla_budget_field_widths_match_rust_domains.assertion.1
+	 - Status: SUCCESS
+	 - Description: "Rust u16::MAX encodes to the transcribed TLA MaxU16Word"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:248:5 in function kani_budget_arithmetic_refinement::tla_budget_field_widths_match_rust_domains
+
+Check 5: kani_budget_arithmetic_refinement::tla_budget_field_widths_match_rust_domains.assertion.2
+	 - Status: SUCCESS
+	 - Description: "Rust u32::MAX encodes to the transcribed TLA MaxU32Word"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:252:5 in function kani_budget_arithmetic_refinement::tla_budget_field_widths_match_rust_domains
+
+Check 6: kani_budget_arithmetic_refinement::tla_budget_field_widths_match_rust_domains.assertion.3
+	 - Status: SUCCESS
+	 - Description: "every Rust u16 value fits the TLA U16 field max"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:257:5 in function kani_budget_arithmetic_refinement::tla_budget_field_widths_match_rust_domains
+
+Check 7: kani_budget_arithmetic_refinement::tla_budget_field_widths_match_rust_domains.assertion.4
+	 - Status: SUCCESS
+	 - Description: "one past Rust u16 max exceeds the TLA U16 field max"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:261:5 in function kani_budget_arithmetic_refinement::tla_budget_field_widths_match_rust_domains
+
+Check 8: kani_budget_arithmetic_refinement::tla_budget_field_widths_match_rust_domains.assertion.5
+	 - Status: SUCCESS
+	 - Description: "every Rust u32 value fits the TLA U32 field max"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:265:5 in function kani_budget_arithmetic_refinement::tla_budget_field_widths_match_rust_domains
+
+Check 9: kani_budget_arithmetic_refinement::tla_budget_field_widths_match_rust_domains.assertion.6
+	 - Status: SUCCESS
+	 - Description: "one past Rust u32 max exceeds the TLA U32 field max"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:269:5 in function kani_budget_arithmetic_refinement::tla_budget_field_widths_match_rust_domains
+
+Check 10: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.1
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:13:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 11: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.2
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:13:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 12: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.3
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:13:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 13: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.4
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:13:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 14: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.5
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:13:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 15: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.6
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:13:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 16: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.7
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:13:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 17: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.8
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:13:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 18: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.9
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:13:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 19: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.10
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:13:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 20: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.11
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:13:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 21: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.12
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:13:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 22: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.13
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:14:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 23: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.14
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:14:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 24: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.15
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:14:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 25: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.16
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:14:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 26: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.17
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:14:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 27: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.18
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:14:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 28: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.19
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:14:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 29: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.20
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:14:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 30: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.21
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:14:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 31: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.22
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:14:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 32: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.23
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:14:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 33: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.24
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:14:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 34: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.25
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:15:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 35: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.26
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:15:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 36: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.27
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:15:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 37: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.28
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:15:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 38: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.29
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:15:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 39: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.30
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:15:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 40: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.31
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:15:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 41: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.32
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:15:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 42: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.33
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:15:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 43: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.34
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:15:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 44: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.35
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:15:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 45: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.36
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:15:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 46: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.37
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:16:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 47: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.38
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:16:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 48: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.39
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:16:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 49: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.40
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:16:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 50: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.41
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:16:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 51: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.42
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:16:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 52: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.43
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:16:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 53: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.44
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:16:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 54: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.45
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:16:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 55: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.46
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:16:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 56: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.47
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:16:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 57: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.48
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:16:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+
+SUMMARY:
+ ** 0 of 57 failed
+
+VERIFICATION:- SUCCESSFUL
+Verification Time: 0.10894478s
+
+Checking harness kani_budget_arithmetic_refinement::tla_sub_word_matches_rust_checked_sub_for_all_u64...
+CBMC 6.8.0 (cbmc-6.8.0)
+CBMC version 6.8.0 (cbmc-6.8.0) 64-bit x86_64 linux
+Reading GOTO program from file /home/lewis/src/velvet-ballistics/target/kani/x86_64-unknown-linux-gnu/debug/deps/vb_core-36768e6d1a55f581__RNvNtCs1d59wp3rZKW_7vb_core33kani_budget_arithmetic_refinement49tla_sub_word_matches_rust_checked_sub_for_all_u64.out
+Generating GOTO Program
+Adding CPROVER library (x86_64)
+Removal of function pointers and virtual functions
+Generic Property Instrumentation
+Running with 16 object bits, 48 offset bits (user-specified)
+Starting Bounded Model Checking
+aborting path on assume(false) at file /home/runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/option.rs line 1338 column 15 function std::option::Option::<u64>::ok_or::<kani_budget_arithmetic_refinement::WordError> thread 0
+aborting path on assume(false) at file /home/runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs line 2173 column 15 function <std::result::Result<u64, kani_budget_arithmetic_refinement::WordError> as std::ops::Try>::branch thread 0
+aborting path on assume(false) at file /home/runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/option.rs line 1338 column 15 function std::option::Option::<u64>::ok_or::<kani_budget_arithmetic_refinement::WordError> thread 0
+aborting path on assume(false) at file /home/runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs line 2173 column 15 function <std::result::Result<u64, kani_budget_arithmetic_refinement::WordError> as std::ops::Try>::branch thread 0
+aborting path on assume(false) at file /home/runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/option.rs line 1338 column 15 function std::option::Option::<u64>::ok_or::<kani_budget_arithmetic_refinement::WordError> thread 0
+aborting path on assume(false) at file /home/runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs line 2173 column 15 function <std::result::Result<u64, kani_budget_arithmetic_refinement::WordError> as std::ops::Try>::branch thread 0
+aborting path on assume(false) at file crates/vb_core/src/lib.rs line 0 column 0 function kani_budget_arithmetic_refinement::sub_limb_with_borrow thread 0
+aborting path on assume(false) at file /home/runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs line 2173 column 15 function <std::result::Result<(u64, u64), kani_budget_arithmetic_refinement::WordError> as std::ops::Try>::branch thread 0
+aborting path on assume(false) at file /home/runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/option.rs line 1338 column 15 function std::option::Option::<u64>::ok_or::<kani_budget_arithmetic_refinement::WordError> thread 0
+aborting path on assume(false) at file /home/runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs line 2173 column 15 function <std::result::Result<u64, kani_budget_arithmetic_refinement::WordError> as std::ops::Try>::branch thread 0
+aborting path on assume(false) at file /home/runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/option.rs line 1338 column 15 function std::option::Option::<u64>::ok_or::<kani_budget_arithmetic_refinement::WordError> thread 0
+aborting path on assume(false) at file /home/runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs line 2173 column 15 function <std::result::Result<u64, kani_budget_arithmetic_refinement::WordError> as std::ops::Try>::branch thread 0
+aborting path on assume(false) at file /home/runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/option.rs line 1338 column 15 function std::option::Option::<u64>::ok_or::<kani_budget_arithmetic_refinement::WordError> thread 0
+aborting path on assume(false) at file /home/runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs line 2173 column 15 function <std::result::Result<u64, kani_budget_arithmetic_refinement::WordError> as std::ops::Try>::branch thread 0
+aborting path on assume(false) at file /home/runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/option.rs line 1338 column 15 function std::option::Option::<u64>::ok_or::<kani_budget_arithmetic_refinement::WordError> thread 0
+aborting path on assume(false) at file /home/runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs line 2173 column 15 function <std::result::Result<u64, kani_budget_arithmetic_refinement::WordError> as std::ops::Try>::branch thread 0
+aborting path on assume(false) at file crates/vb_core/src/lib.rs line 0 column 0 function kani_budget_arithmetic_refinement::sub_limb_with_borrow thread 0
+aborting path on assume(false) at file /home/runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs line 2173 column 15 function <std::result::Result<(u64, u64), kani_budget_arithmetic_refinement::WordError> as std::ops::Try>::branch thread 0
+aborting path on assume(false) at file /home/runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/option.rs line 1338 column 15 function std::option::Option::<u64>::ok_or::<kani_budget_arithmetic_refinement::WordError> thread 0
+aborting path on assume(false) at file /home/runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs line 2173 column 15 function <std::result::Result<u64, kani_budget_arithmetic_refinement::WordError> as std::ops::Try>::branch thread 0
+aborting path on assume(false) at file /home/runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/option.rs line 1338 column 15 function std::option::Option::<u64>::ok_or::<kani_budget_arithmetic_refinement::WordError> thread 0
+aborting path on assume(false) at file /home/runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs line 2173 column 15 function <std::result::Result<u64, kani_budget_arithmetic_refinement::WordError> as std::ops::Try>::branch thread 0
+aborting path on assume(false) at file /home/runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/option.rs line 1338 column 15 function std::option::Option::<u64>::ok_or::<kani_budget_arithmetic_refinement::WordError> thread 0
+aborting path on assume(false) at file /home/runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs line 2173 column 15 function <std::result::Result<u64, kani_budget_arithmetic_refinement::WordError> as std::ops::Try>::branch thread 0
+aborting path on assume(false) at file /home/runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/option.rs line 1338 column 15 function std::option::Option::<u64>::ok_or::<kani_budget_arithmetic_refinement::WordError> thread 0
+aborting path on assume(false) at file /home/runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs line 2173 column 15 function <std::result::Result<u64, kani_budget_arithmetic_refinement::WordError> as std::ops::Try>::branch thread 0
+aborting path on assume(false) at file crates/vb_core/src/lib.rs line 0 column 0 function kani_budget_arithmetic_refinement::sub_limb_with_borrow thread 0
+aborting path on assume(false) at file /home/runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs line 2173 column 15 function <std::result::Result<(u64, u64), kani_budget_arithmetic_refinement::WordError> as std::ops::Try>::branch thread 0
+aborting path on assume(false) at file /home/runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/option.rs line 1338 column 15 function std::option::Option::<u64>::ok_or::<kani_budget_arithmetic_refinement::WordError> thread 0
+aborting path on assume(false) at file /home/runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs line 2173 column 15 function <std::result::Result<u64, kani_budget_arithmetic_refinement::WordError> as std::ops::Try>::branch thread 0
+aborting path on assume(false) at file /home/runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/option.rs line 1338 column 15 function std::option::Option::<u64>::ok_or::<kani_budget_arithmetic_refinement::WordError> thread 0
+aborting path on assume(false) at file /home/runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs line 2173 column 15 function <std::result::Result<u64, kani_budget_arithmetic_refinement::WordError> as std::ops::Try>::branch thread 0
+aborting path on assume(false) at file /home/runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/option.rs line 1338 column 15 function std::option::Option::<u64>::ok_or::<kani_budget_arithmetic_refinement::WordError> thread 0
+aborting path on assume(false) at file /home/runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs line 2173 column 15 function <std::result::Result<u64, kani_budget_arithmetic_refinement::WordError> as std::ops::Try>::branch thread 0
+aborting path on assume(false) at file /home/runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/option.rs line 1338 column 15 function std::option::Option::<u64>::ok_or::<kani_budget_arithmetic_refinement::WordError> thread 0
+aborting path on assume(false) at file /home/runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs line 2173 column 15 function <std::result::Result<u64, kani_budget_arithmetic_refinement::WordError> as std::ops::Try>::branch thread 0
+aborting path on assume(false) at file crates/vb_core/src/lib.rs line 0 column 0 function kani_budget_arithmetic_refinement::sub_limb_with_borrow thread 0
+aborting path on assume(false) at file /home/runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs line 2173 column 15 function <std::result::Result<(u64, u64), kani_budget_arithmetic_refinement::WordError> as std::ops::Try>::branch thread 0
+aborting path on assume(false) at file crates/vb_core/src/lib.rs line 0 column 0 function kani_budget_arithmetic_refinement::sub_word thread 0
+aborting path on assume(false) at file crates/vb_core/src/kani_budget_arithmetic_refinement.rs line 225 column 23 function kani_budget_arithmetic_refinement::tla_sub_word_matches_rust_checked_sub_for_all_u64 thread 0
+aborting path on assume(false) at file crates/vb_core/src/lib.rs line 0 column 0 function kani_budget_arithmetic_refinement::tla_sub_word_matches_rust_checked_sub_for_all_u64 thread 0
+aborting path on assume(false) at file crates/vb_core/src/kani_budget_arithmetic_refinement.rs line 231 column 22 function kani_budget_arithmetic_refinement::tla_sub_word_matches_rust_checked_sub_for_all_u64 thread 0
+Runtime Symex: 1.33511s
+size of program expression: 24066 steps
+slicing removed 20311 assignments
+Generated 145 VCC(s), 75 remaining after simplification
+Runtime Postprocess Equation: 0.0320609s
+Passing problem to propositional reduction
+converting SSA
+Runtime Convert SSA: 0.211197s
+Running propositional reduction
+Post-processing
+Runtime Post-process: 6.52e-06s
+Solving with CaDiCaL 2.0.0
+42706 variables, 83172 clauses
+SAT checker: instance is SATISFIABLE
+Runtime Solver: 0.0287068s
+Runtime decision procedure: 0.247506s
+Running propositional reduction
+Solving with CaDiCaL 2.0.0
+42707 variables, 83173 clauses
+SAT checker: instance is SATISFIABLE
+Runtime Solver: 1.2861s
+Runtime decision procedure: 1.28699s
+Running propositional reduction
+Solving with CaDiCaL 2.0.0
+42708 variables, 83174 clauses
+SAT checker: instance is UNSATISFIABLE
+Runtime Solver: 0.508277s
+Runtime decision procedure: 0.508461s
+
+RESULTS:
+Check 1: <std::result::Result<(u64, u64), kani_budget_arithmetic_refinement::WordError> as std::ops::Try>::branch.unreachable.1
+	 - Status: SUCCESS
+	 - Description: "unreachable code"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs:2173:15 in function <std::result::Result<(u64, u64), kani_budget_arithmetic_refinement::WordError> as std::ops::Try>::branch
+
+Check 2: std::option::Option::<u64>::ok_or::<kani_budget_arithmetic_refinement::WordError>.unreachable.1
+	 - Status: SUCCESS
+	 - Description: "unreachable code"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/option.rs:1338:15 in function std::option::Option::<u64>::ok_or::<kani_budget_arithmetic_refinement::WordError>
+
+Check 3: kani_budget_arithmetic_refinement::tla_sub_word_matches_rust_checked_sub_for_all_u64.assertion.1
+	 - Status: UNREACHABLE
+	 - Description: "TLA SubWord must not underflow when checked_sub succeeds"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:225:23 in function kani_budget_arithmetic_refinement::tla_sub_word_matches_rust_checked_sub_for_all_u64
+
+Check 4: kani_budget_arithmetic_refinement::tla_sub_word_matches_rust_checked_sub_for_all_u64.assertion.2
+	 - Status: SUCCESS
+	 - Description: "TLA SubWord Ok preserves WordTypeOK"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:219:17 in function kani_budget_arithmetic_refinement::tla_sub_word_matches_rust_checked_sub_for_all_u64
+
+Check 5: kani_budget_arithmetic_refinement::tla_sub_word_matches_rust_checked_sub_for_all_u64.assertion.3
+	 - Status: SUCCESS
+	 - Description: "TLA SubWord Ok value matches checked_sub"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:220:17 in function kani_budget_arithmetic_refinement::tla_sub_word_matches_rust_checked_sub_for_all_u64
+
+Check 6: kani_budget_arithmetic_refinement::tla_sub_word_matches_rust_checked_sub_for_all_u64.unreachable.1
+	 - Status: SUCCESS
+	 - Description: "unreachable code"
+	 - Location: crates/vb_core/src/lib.rs:0:0 in function kani_budget_arithmetic_refinement::tla_sub_word_matches_rust_checked_sub_for_all_u64
+
+Check 7: kani_budget_arithmetic_refinement::tla_sub_word_matches_rust_checked_sub_for_all_u64.assertion.4
+	 - Status: SUCCESS
+	 - Description: "TLA SubWord reports Underflow"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:235:27 in function kani_budget_arithmetic_refinement::tla_sub_word_matches_rust_checked_sub_for_all_u64
+
+Check 8: kani_budget_arithmetic_refinement::tla_sub_word_matches_rust_checked_sub_for_all_u64.assertion.5
+	 - Status: UNREACHABLE
+	 - Description: "TLA SubWord must underflow when checked_sub underflows"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:231:22 in function kani_budget_arithmetic_refinement::tla_sub_word_matches_rust_checked_sub_for_all_u64
+
+Check 9: kani_budget_arithmetic_refinement::word_from_u64.assertion.1
+	 - Status: SUCCESS
+	 - Description: "attempt to shift right with overflow"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:43:13 in function kani_budget_arithmetic_refinement::word_from_u64
+
+Check 10: kani_budget_arithmetic_refinement::word_from_u64.assertion.2
+	 - Status: SUCCESS
+	 - Description: "attempt to shift right with overflow"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:44:13 in function kani_budget_arithmetic_refinement::word_from_u64
+
+Check 11: kani_budget_arithmetic_refinement::word_from_u64.assertion.3
+	 - Status: SUCCESS
+	 - Description: "attempt to shift right with overflow"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:45:13 in function kani_budget_arithmetic_refinement::word_from_u64
+
+Check 12: core::num::<impl u64>::checked_sub.arithmetic_overflow.1
+	 - Status: SUCCESS
+	 - Description: "attempt to compute `unchecked_sub` which would overflow"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/num/uint_macros.rs:812:31 in function core::num::<impl u64>::checked_sub
+
+Check 13: core::num::<impl u64>::checked_add.arithmetic_overflow.1
+	 - Status: SUCCESS
+	 - Description: "attempt to compute `unchecked_add` which would overflow"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/num/uint_macros.rs:658:31 in function core::num::<impl u64>::checked_add
+
+Check 14: kani_budget_arithmetic_refinement::word_to_u64.assertion.1
+	 - Status: SUCCESS
+	 - Description: "attempt to shift left with overflow"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:50:15 in function kani_budget_arithmetic_refinement::word_to_u64
+
+Check 15: kani_budget_arithmetic_refinement::word_to_u64.assertion.2
+	 - Status: SUCCESS
+	 - Description: "attempt to shift left with overflow"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:50:33 in function kani_budget_arithmetic_refinement::word_to_u64
+
+Check 16: kani_budget_arithmetic_refinement::word_to_u64.assertion.3
+	 - Status: SUCCESS
+	 - Description: "attempt to shift left with overflow"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:50:51 in function kani_budget_arithmetic_refinement::word_to_u64
+
+Check 17: <std::result::Result<u64, kani_budget_arithmetic_refinement::WordError> as std::ops::Try>::branch.unreachable.1
+	 - Status: SUCCESS
+	 - Description: "unreachable code"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs:2173:15 in function <std::result::Result<u64, kani_budget_arithmetic_refinement::WordError> as std::ops::Try>::branch
+
+Check 18: kani_budget_arithmetic_refinement::sub_limb_with_borrow.unreachable.1
+	 - Status: SUCCESS
+	 - Description: "unreachable code"
+	 - Location: crates/vb_core/src/lib.rs:0:0 in function kani_budget_arithmetic_refinement::sub_limb_with_borrow
+
+Check 19: kani_budget_arithmetic_refinement::sub_word.unreachable.1
+	 - Status: SUCCESS
+	 - Description: "unreachable code"
+	 - Location: crates/vb_core/src/lib.rs:0:0 in function kani_budget_arithmetic_refinement::sub_word
+
+Check 20: <kani_budget_arithmetic_refinement::WordError as std::cmp::PartialEq>::eq.pointer_dereference.1
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:34:23 in function <kani_budget_arithmetic_refinement::WordError as std::cmp::PartialEq>::eq
+
+Check 21: <kani_budget_arithmetic_refinement::WordError as std::cmp::PartialEq>::eq.pointer_dereference.2
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:34:23 in function <kani_budget_arithmetic_refinement::WordError as std::cmp::PartialEq>::eq
+
+Check 22: <kani_budget_arithmetic_refinement::WordError as std::cmp::PartialEq>::eq.pointer_dereference.3
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:34:23 in function <kani_budget_arithmetic_refinement::WordError as std::cmp::PartialEq>::eq
+
+Check 23: <kani_budget_arithmetic_refinement::WordError as std::cmp::PartialEq>::eq.pointer_dereference.4
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:34:23 in function <kani_budget_arithmetic_refinement::WordError as std::cmp::PartialEq>::eq
+
+Check 24: <kani_budget_arithmetic_refinement::WordError as std::cmp::PartialEq>::eq.pointer_dereference.5
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:34:23 in function <kani_budget_arithmetic_refinement::WordError as std::cmp::PartialEq>::eq
+
+Check 25: <kani_budget_arithmetic_refinement::WordError as std::cmp::PartialEq>::eq.pointer_dereference.6
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:34:23 in function <kani_budget_arithmetic_refinement::WordError as std::cmp::PartialEq>::eq
+
+Check 26: <kani_budget_arithmetic_refinement::WordError as std::cmp::PartialEq>::eq.pointer_dereference.7
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:34:23 in function <kani_budget_arithmetic_refinement::WordError as std::cmp::PartialEq>::eq
+
+Check 27: <kani_budget_arithmetic_refinement::WordError as std::cmp::PartialEq>::eq.pointer_dereference.8
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:34:23 in function <kani_budget_arithmetic_refinement::WordError as std::cmp::PartialEq>::eq
+
+Check 28: <kani_budget_arithmetic_refinement::WordError as std::cmp::PartialEq>::eq.pointer_dereference.9
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:34:23 in function <kani_budget_arithmetic_refinement::WordError as std::cmp::PartialEq>::eq
+
+Check 29: <kani_budget_arithmetic_refinement::WordError as std::cmp::PartialEq>::eq.pointer_dereference.10
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:34:23 in function <kani_budget_arithmetic_refinement::WordError as std::cmp::PartialEq>::eq
+
+Check 30: <kani_budget_arithmetic_refinement::WordError as std::cmp::PartialEq>::eq.pointer_dereference.11
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:34:23 in function <kani_budget_arithmetic_refinement::WordError as std::cmp::PartialEq>::eq
+
+Check 31: <kani_budget_arithmetic_refinement::WordError as std::cmp::PartialEq>::eq.pointer_dereference.12
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:34:23 in function <kani_budget_arithmetic_refinement::WordError as std::cmp::PartialEq>::eq
+
+Check 32: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.1
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:13:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 33: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.2
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:13:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 34: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.3
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:13:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 35: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.4
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:13:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 36: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.5
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:13:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 37: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.6
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:13:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 38: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.7
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:13:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 39: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.8
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:13:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 40: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.9
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:13:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 41: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.10
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:13:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 42: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.11
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:13:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 43: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.12
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:13:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 44: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.13
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:14:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 45: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.14
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:14:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 46: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.15
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:14:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 47: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.16
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:14:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 48: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.17
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:14:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 49: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.18
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:14:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 50: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.19
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:14:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 51: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.20
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:14:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 52: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.21
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:14:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 53: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.22
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:14:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 54: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.23
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:14:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 55: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.24
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:14:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 56: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.25
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:15:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 57: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.26
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:15:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 58: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.27
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:15:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 59: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.28
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:15:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 60: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.29
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:15:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 61: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.30
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:15:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 62: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.31
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:15:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 63: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.32
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:15:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 64: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.33
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:15:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 65: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.34
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:15:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 66: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.35
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:15:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 67: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.36
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:15:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 68: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.37
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:16:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 69: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.38
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:16:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 70: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.39
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:16:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 71: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.40
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:16:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 72: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.41
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:16:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 73: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.42
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:16:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 74: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.43
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:16:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 75: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.44
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:16:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 76: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.45
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:16:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 77: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.46
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:16:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 78: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.47
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:16:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 79: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.48
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:16:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+
+SUMMARY:
+ ** 0 of 79 failed (2 unreachable)
+
+VERIFICATION:- SUCCESSFUL
+Verification Time: 4.9092197s
+
+Checking harness kani_budget_arithmetic_refinement::tla_add_word_matches_rust_checked_add_for_all_u64...
+CBMC 6.8.0 (cbmc-6.8.0)
+CBMC version 6.8.0 (cbmc-6.8.0) 64-bit x86_64 linux
+Reading GOTO program from file /home/lewis/src/velvet-ballistics/target/kani/x86_64-unknown-linux-gnu/debug/deps/vb_core-36768e6d1a55f581__RNvNtCs1d59wp3rZKW_7vb_core33kani_budget_arithmetic_refinement49tla_add_word_matches_rust_checked_add_for_all_u64.out
+Generating GOTO Program
+Adding CPROVER library (x86_64)
+Removal of function pointers and virtual functions
+Generic Property Instrumentation
+Running with 16 object bits, 48 offset bits (user-specified)
+Starting Bounded Model Checking
+aborting path on assume(false) at file /home/runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/option.rs line 1338 column 15 function std::option::Option::<u64>::ok_or::<kani_budget_arithmetic_refinement::WordError> thread 0
+aborting path on assume(false) at file /home/runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs line 2173 column 15 function <std::result::Result<u64, kani_budget_arithmetic_refinement::WordError> as std::ops::Try>::branch thread 0
+aborting path on assume(false) at file /home/runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/option.rs line 1338 column 15 function std::option::Option::<u64>::ok_or::<kani_budget_arithmetic_refinement::WordError> thread 0
+aborting path on assume(false) at file /home/runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs line 2173 column 15 function <std::result::Result<u64, kani_budget_arithmetic_refinement::WordError> as std::ops::Try>::branch thread 0
+aborting path on assume(false) at file /home/runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/option.rs line 1338 column 15 function std::option::Option::<u64>::ok_or::<kani_budget_arithmetic_refinement::WordError> thread 0
+aborting path on assume(false) at file /home/runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs line 2173 column 15 function <std::result::Result<u64, kani_budget_arithmetic_refinement::WordError> as std::ops::Try>::branch thread 0
+aborting path on assume(false) at file /home/runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/option.rs line 1338 column 15 function std::option::Option::<u64>::ok_or::<kani_budget_arithmetic_refinement::WordError> thread 0
+aborting path on assume(false) at file /home/runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs line 2173 column 15 function <std::result::Result<u64, kani_budget_arithmetic_refinement::WordError> as std::ops::Try>::branch thread 0
+aborting path on assume(false) at file /home/runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/option.rs line 1338 column 15 function std::option::Option::<u64>::ok_or::<kani_budget_arithmetic_refinement::WordError> thread 0
+aborting path on assume(false) at file /home/runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs line 2173 column 15 function <std::result::Result<u64, kani_budget_arithmetic_refinement::WordError> as std::ops::Try>::branch thread 0
+aborting path on assume(false) at file /home/runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/option.rs line 1338 column 15 function std::option::Option::<u64>::ok_or::<kani_budget_arithmetic_refinement::WordError> thread 0
+aborting path on assume(false) at file /home/runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs line 2173 column 15 function <std::result::Result<u64, kani_budget_arithmetic_refinement::WordError> as std::ops::Try>::branch thread 0
+aborting path on assume(false) at file /home/runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/option.rs line 1338 column 15 function std::option::Option::<u64>::ok_or::<kani_budget_arithmetic_refinement::WordError> thread 0
+aborting path on assume(false) at file /home/runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs line 2173 column 15 function <std::result::Result<u64, kani_budget_arithmetic_refinement::WordError> as std::ops::Try>::branch thread 0
+aborting path on assume(false) at file /home/runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/option.rs line 1338 column 15 function std::option::Option::<u64>::ok_or::<kani_budget_arithmetic_refinement::WordError> thread 0
+aborting path on assume(false) at file /home/runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs line 2173 column 15 function <std::result::Result<u64, kani_budget_arithmetic_refinement::WordError> as std::ops::Try>::branch thread 0
+aborting path on assume(false) at file /home/runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/option.rs line 1338 column 15 function std::option::Option::<u64>::ok_or::<kani_budget_arithmetic_refinement::WordError> thread 0
+aborting path on assume(false) at file /home/runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs line 2173 column 15 function <std::result::Result<u64, kani_budget_arithmetic_refinement::WordError> as std::ops::Try>::branch thread 0
+aborting path on assume(false) at file /home/runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/option.rs line 1338 column 15 function std::option::Option::<u64>::ok_or::<kani_budget_arithmetic_refinement::WordError> thread 0
+aborting path on assume(false) at file /home/runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs line 2173 column 15 function <std::result::Result<u64, kani_budget_arithmetic_refinement::WordError> as std::ops::Try>::branch thread 0
+aborting path on assume(false) at file /home/runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/option.rs line 1338 column 15 function std::option::Option::<u64>::ok_or::<kani_budget_arithmetic_refinement::WordError> thread 0
+aborting path on assume(false) at file /home/runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs line 2173 column 15 function <std::result::Result<u64, kani_budget_arithmetic_refinement::WordError> as std::ops::Try>::branch thread 0
+aborting path on assume(false) at file crates/vb_core/src/lib.rs line 0 column 0 function kani_budget_arithmetic_refinement::add_word thread 0
+aborting path on assume(false) at file crates/vb_core/src/kani_budget_arithmetic_refinement.rs line 193 column 23 function kani_budget_arithmetic_refinement::tla_add_word_matches_rust_checked_add_for_all_u64 thread 0
+aborting path on assume(false) at file crates/vb_core/src/lib.rs line 0 column 0 function kani_budget_arithmetic_refinement::tla_add_word_matches_rust_checked_add_for_all_u64 thread 0
+aborting path on assume(false) at file crates/vb_core/src/kani_budget_arithmetic_refinement.rs line 199 column 22 function kani_budget_arithmetic_refinement::tla_add_word_matches_rust_checked_add_for_all_u64 thread 0
+Runtime Symex: 0.768882s
+size of program expression: 16935 steps
+slicing removed 14273 assignments
+Generated 76 VCC(s), 55 remaining after simplification
+Runtime Postprocess Equation: 0.019294s
+Passing problem to propositional reduction
+converting SSA
+Runtime Convert SSA: 0.0627837s
+Running propositional reduction
+Post-processing
+Runtime Post-process: 1.323e-05s
+Solving with CaDiCaL 2.0.0
+27957 variables, 53934 clauses
+SAT checker: instance is SATISFIABLE
+Runtime Solver: 0.00990175s
+Runtime decision procedure: 0.0749713s
+Running propositional reduction
+Solving with CaDiCaL 2.0.0
+27958 variables, 53935 clauses
+SAT checker: instance is SATISFIABLE
+Runtime Solver: 0.18154s
+Runtime decision procedure: 0.182036s
+Running propositional reduction
+Solving with CaDiCaL 2.0.0
+27959 variables, 53936 clauses
+SAT checker: instance is UNSATISFIABLE
+Runtime Solver: 0.00861448s
+Runtime decision procedure: 0.00874018s
+
+RESULTS:
+Check 1: std::option::Option::<u64>::ok_or::<kani_budget_arithmetic_refinement::WordError>.unreachable.1
+	 - Status: SUCCESS
+	 - Description: "unreachable code"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/option.rs:1338:15 in function std::option::Option::<u64>::ok_or::<kani_budget_arithmetic_refinement::WordError>
+
+Check 2: <std::result::Result<u64, kani_budget_arithmetic_refinement::WordError> as std::ops::Try>::branch.unreachable.1
+	 - Status: SUCCESS
+	 - Description: "unreachable code"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs:2173:15 in function <std::result::Result<u64, kani_budget_arithmetic_refinement::WordError> as std::ops::Try>::branch
+
+Check 3: kani_budget_arithmetic_refinement::word_from_u64.assertion.1
+	 - Status: SUCCESS
+	 - Description: "attempt to shift right with overflow"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:43:13 in function kani_budget_arithmetic_refinement::word_from_u64
+
+Check 4: kani_budget_arithmetic_refinement::word_from_u64.assertion.2
+	 - Status: SUCCESS
+	 - Description: "attempt to shift right with overflow"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:44:13 in function kani_budget_arithmetic_refinement::word_from_u64
+
+Check 5: kani_budget_arithmetic_refinement::word_from_u64.assertion.3
+	 - Status: SUCCESS
+	 - Description: "attempt to shift right with overflow"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:45:13 in function kani_budget_arithmetic_refinement::word_from_u64
+
+Check 6: core::num::<impl u64>::checked_sub.arithmetic_overflow.1
+	 - Status: SUCCESS
+	 - Description: "attempt to compute `unchecked_sub` which would overflow"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/num/uint_macros.rs:812:31 in function core::num::<impl u64>::checked_sub
+
+Check 7: kani_budget_arithmetic_refinement::add_word.unreachable.1
+	 - Status: SUCCESS
+	 - Description: "unreachable code"
+	 - Location: crates/vb_core/src/lib.rs:0:0 in function kani_budget_arithmetic_refinement::add_word
+
+Check 8: core::num::<impl u64>::checked_add.arithmetic_overflow.1
+	 - Status: SUCCESS
+	 - Description: "attempt to compute `unchecked_add` which would overflow"
+	 - Location: ../../../runner/.rustup/toolchains/nightly-2025-11-21-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/num/uint_macros.rs:658:31 in function core::num::<impl u64>::checked_add
+
+Check 9: kani_budget_arithmetic_refinement::tla_add_word_matches_rust_checked_add_for_all_u64.assertion.1
+	 - Status: UNREACHABLE
+	 - Description: "TLA AddWord must not overflow when checked_add succeeds"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:193:23 in function kani_budget_arithmetic_refinement::tla_add_word_matches_rust_checked_add_for_all_u64
+
+Check 10: kani_budget_arithmetic_refinement::tla_add_word_matches_rust_checked_add_for_all_u64.assertion.2
+	 - Status: SUCCESS
+	 - Description: "TLA AddWord Ok preserves WordTypeOK"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:187:17 in function kani_budget_arithmetic_refinement::tla_add_word_matches_rust_checked_add_for_all_u64
+
+Check 11: kani_budget_arithmetic_refinement::tla_add_word_matches_rust_checked_add_for_all_u64.assertion.3
+	 - Status: SUCCESS
+	 - Description: "TLA AddWord Ok value matches checked_add"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:188:17 in function kani_budget_arithmetic_refinement::tla_add_word_matches_rust_checked_add_for_all_u64
+
+Check 12: kani_budget_arithmetic_refinement::tla_add_word_matches_rust_checked_add_for_all_u64.unreachable.1
+	 - Status: SUCCESS
+	 - Description: "unreachable code"
+	 - Location: crates/vb_core/src/lib.rs:0:0 in function kani_budget_arithmetic_refinement::tla_add_word_matches_rust_checked_add_for_all_u64
+
+Check 13: kani_budget_arithmetic_refinement::tla_add_word_matches_rust_checked_add_for_all_u64.assertion.4
+	 - Status: SUCCESS
+	 - Description: "TLA AddWord reports Overflow"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:204:17 in function kani_budget_arithmetic_refinement::tla_add_word_matches_rust_checked_add_for_all_u64
+
+Check 14: kani_budget_arithmetic_refinement::tla_add_word_matches_rust_checked_add_for_all_u64.assertion.5
+	 - Status: UNREACHABLE
+	 - Description: "TLA AddWord must overflow when checked_add overflows"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:199:22 in function kani_budget_arithmetic_refinement::tla_add_word_matches_rust_checked_add_for_all_u64
+
+Check 15: kani_budget_arithmetic_refinement::word_to_u64.assertion.1
+	 - Status: SUCCESS
+	 - Description: "attempt to shift left with overflow"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:50:15 in function kani_budget_arithmetic_refinement::word_to_u64
+
+Check 16: kani_budget_arithmetic_refinement::word_to_u64.assertion.2
+	 - Status: SUCCESS
+	 - Description: "attempt to shift left with overflow"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:50:33 in function kani_budget_arithmetic_refinement::word_to_u64
+
+Check 17: kani_budget_arithmetic_refinement::word_to_u64.assertion.3
+	 - Status: SUCCESS
+	 - Description: "attempt to shift left with overflow"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:50:51 in function kani_budget_arithmetic_refinement::word_to_u64
+
+Check 18: <kani_budget_arithmetic_refinement::WordError as std::cmp::PartialEq>::eq.pointer_dereference.1
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:34:23 in function <kani_budget_arithmetic_refinement::WordError as std::cmp::PartialEq>::eq
+
+Check 19: <kani_budget_arithmetic_refinement::WordError as std::cmp::PartialEq>::eq.pointer_dereference.2
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:34:23 in function <kani_budget_arithmetic_refinement::WordError as std::cmp::PartialEq>::eq
+
+Check 20: <kani_budget_arithmetic_refinement::WordError as std::cmp::PartialEq>::eq.pointer_dereference.3
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:34:23 in function <kani_budget_arithmetic_refinement::WordError as std::cmp::PartialEq>::eq
+
+Check 21: <kani_budget_arithmetic_refinement::WordError as std::cmp::PartialEq>::eq.pointer_dereference.4
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:34:23 in function <kani_budget_arithmetic_refinement::WordError as std::cmp::PartialEq>::eq
+
+Check 22: <kani_budget_arithmetic_refinement::WordError as std::cmp::PartialEq>::eq.pointer_dereference.5
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:34:23 in function <kani_budget_arithmetic_refinement::WordError as std::cmp::PartialEq>::eq
+
+Check 23: <kani_budget_arithmetic_refinement::WordError as std::cmp::PartialEq>::eq.pointer_dereference.6
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:34:23 in function <kani_budget_arithmetic_refinement::WordError as std::cmp::PartialEq>::eq
+
+Check 24: <kani_budget_arithmetic_refinement::WordError as std::cmp::PartialEq>::eq.pointer_dereference.7
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:34:23 in function <kani_budget_arithmetic_refinement::WordError as std::cmp::PartialEq>::eq
+
+Check 25: <kani_budget_arithmetic_refinement::WordError as std::cmp::PartialEq>::eq.pointer_dereference.8
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:34:23 in function <kani_budget_arithmetic_refinement::WordError as std::cmp::PartialEq>::eq
+
+Check 26: <kani_budget_arithmetic_refinement::WordError as std::cmp::PartialEq>::eq.pointer_dereference.9
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:34:23 in function <kani_budget_arithmetic_refinement::WordError as std::cmp::PartialEq>::eq
+
+Check 27: <kani_budget_arithmetic_refinement::WordError as std::cmp::PartialEq>::eq.pointer_dereference.10
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:34:23 in function <kani_budget_arithmetic_refinement::WordError as std::cmp::PartialEq>::eq
+
+Check 28: <kani_budget_arithmetic_refinement::WordError as std::cmp::PartialEq>::eq.pointer_dereference.11
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:34:23 in function <kani_budget_arithmetic_refinement::WordError as std::cmp::PartialEq>::eq
+
+Check 29: <kani_budget_arithmetic_refinement::WordError as std::cmp::PartialEq>::eq.pointer_dereference.12
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:34:23 in function <kani_budget_arithmetic_refinement::WordError as std::cmp::PartialEq>::eq
+
+
+SUMMARY:
+ ** 0 of 29 failed (2 unreachable)
+
+VERIFICATION:- SUCCESSFUL
+Verification Time: 1.4739842s
+
+Checking harness kani_budget_arithmetic_refinement::tla_word_order_matches_rust_u64_order...
+CBMC 6.8.0 (cbmc-6.8.0)
+CBMC version 6.8.0 (cbmc-6.8.0) 64-bit x86_64 linux
+Reading GOTO program from file /home/lewis/src/velvet-ballistics/target/kani/x86_64-unknown-linux-gnu/debug/deps/vb_core-36768e6d1a55f581__RNvNtCs1d59wp3rZKW_7vb_core33kani_budget_arithmetic_refinement37tla_word_order_matches_rust_u64_order.out
+Generating GOTO Program
+Adding CPROVER library (x86_64)
+Removal of function pointers and virtual functions
+Generic Property Instrumentation
+Running with 16 object bits, 48 offset bits (user-specified)
+Starting Bounded Model Checking
+Runtime Symex: 0.0198854s
+size of program expression: 499 steps
+slicing removed 260 assignments
+Generated 62 VCC(s), 8 remaining after simplification
+Runtime Postprocess Equation: 7.949e-05s
+Passing problem to propositional reduction
+converting SSA
+Runtime Convert SSA: 0.0014371s
+Running propositional reduction
+Post-processing
+Runtime Post-process: 5.72e-06s
+Solving with CaDiCaL 2.0.0
+2053 variables, 4014 clauses
+SAT checker: instance is SATISFIABLE
+Runtime Solver: 0.00752029s
+Runtime decision procedure: 0.00902175s
+Running propositional reduction
+Solving with CaDiCaL 2.0.0
+2054 variables, 4015 clauses
+SAT checker: instance is UNSATISFIABLE
+Runtime Solver: 0.0430436s
+Runtime decision procedure: 0.0430638s
+
+RESULTS:
+Check 1: kani_budget_arithmetic_refinement::tla_word_order_matches_rust_u64_order.assertion.1
+	 - Status: SUCCESS
+	 - Description: "TLA WordLE matches Rust <="
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:175:5 in function kani_budget_arithmetic_refinement::tla_word_order_matches_rust_u64_order
+
+Check 2: kani_budget_arithmetic_refinement::word_from_u64.assertion.1
+	 - Status: SUCCESS
+	 - Description: "attempt to shift right with overflow"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:43:13 in function kani_budget_arithmetic_refinement::word_from_u64
+
+Check 3: kani_budget_arithmetic_refinement::word_from_u64.assertion.2
+	 - Status: SUCCESS
+	 - Description: "attempt to shift right with overflow"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:44:13 in function kani_budget_arithmetic_refinement::word_from_u64
+
+Check 4: kani_budget_arithmetic_refinement::word_from_u64.assertion.3
+	 - Status: SUCCESS
+	 - Description: "attempt to shift right with overflow"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:45:13 in function kani_budget_arithmetic_refinement::word_from_u64
+
+Check 5: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.1
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:13:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 6: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.2
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:13:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 7: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.3
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:13:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 8: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.4
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:13:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 9: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.5
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:13:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 10: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.6
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:13:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 11: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.7
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:13:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 12: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.8
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:13:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 13: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.9
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:13:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 14: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.10
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:13:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 15: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.11
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:13:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 16: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.12
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:13:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 17: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.13
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:14:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 18: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.14
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:14:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 19: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.15
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:14:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 20: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.16
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:14:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 21: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.17
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:14:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 22: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.18
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:14:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 23: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.19
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:14:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 24: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.20
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:14:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 25: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.21
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:14:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 26: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.22
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:14:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 27: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.23
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:14:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 28: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.24
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:14:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 29: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.25
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:15:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 30: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.26
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:15:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 31: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.27
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:15:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 32: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.28
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:15:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 33: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.29
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:15:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 34: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.30
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:15:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 35: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.31
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:15:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 36: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.32
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:15:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 37: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.33
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:15:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 38: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.34
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:15:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 39: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.35
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:15:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 40: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.36
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:15:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 41: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.37
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:16:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 42: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.38
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:16:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 43: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.39
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:16:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 44: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.40
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:16:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 45: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.41
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:16:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 46: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.42
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:16:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 47: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.43
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer NULL"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:16:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 48: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.44
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer invalid"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:16:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 49: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.45
+	 - Status: SUCCESS
+	 - Description: "dereference failure: deallocated dynamic object"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:16:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 50: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.46
+	 - Status: SUCCESS
+	 - Description: "dereference failure: dead object"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:16:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 51: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.47
+	 - Status: SUCCESS
+	 - Description: "dereference failure: pointer outside object bounds"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:16:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+Check 52: <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq.pointer_dereference.48
+	 - Status: SUCCESS
+	 - Description: "dereference failure: invalid integer address"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:16:5 in function <kani_budget_arithmetic_refinement::Word as std::cmp::PartialEq>::eq
+
+
+SUMMARY:
+ ** 0 of 52 failed
+
+VERIFICATION:- SUCCESSFUL
+Verification Time: 0.15070137s
+
+Checking harness kani_budget_arithmetic_refinement::tla_word_round_trips_all_rust_u64_values...
+CBMC 6.8.0 (cbmc-6.8.0)
+CBMC version 6.8.0 (cbmc-6.8.0) 64-bit x86_64 linux
+Reading GOTO program from file /home/lewis/src/velvet-ballistics/target/kani/x86_64-unknown-linux-gnu/debug/deps/vb_core-36768e6d1a55f581__RNvNtCs1d59wp3rZKW_7vb_core33kani_budget_arithmetic_refinement40tla_word_round_trips_all_rust_u64_values.out
+Generating GOTO Program
+Adding CPROVER library (x86_64)
+Removal of function pointers and virtual functions
+Generic Property Instrumentation
+Running with 16 object bits, 48 offset bits (user-specified)
+Starting Bounded Model Checking
+Runtime Symex: 0.00817242s
+size of program expression: 322 steps
+slicing removed 153 assignments
+Generated 16 VCC(s), 10 remaining after simplification
+Runtime Postprocess Equation: 6.705e-05s
+Passing problem to propositional reduction
+converting SSA
+Runtime Convert SSA: 0.000556046s
+Running propositional reduction
+Post-processing
+Runtime Post-process: 1.226e-05s
+Solving with CaDiCaL 2.0.0
+782 variables, 1183 clauses
+SAT checker: instance is SATISFIABLE
+Runtime Solver: 8.529e-05s
+Runtime decision procedure: 0.000726014s
+Running propositional reduction
+Solving with CaDiCaL 2.0.0
+783 variables, 1184 clauses
+SAT checker: instance is UNSATISFIABLE
+Runtime Solver: 3.433e-05s
+Runtime decision procedure: 0.00206896s
+
+RESULTS:
+Check 1: kani_budget_arithmetic_refinement::tla_word_round_trips_all_rust_u64_values.assertion.1
+	 - Status: SUCCESS
+	 - Description: "encoded word has four 16-bit limbs"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:162:5 in function kani_budget_arithmetic_refinement::tla_word_round_trips_all_rust_u64_values
+
+Check 2: kani_budget_arithmetic_refinement::tla_word_round_trips_all_rust_u64_values.assertion.2
+	 - Status: SUCCESS
+	 - Description: "TLA word decodes to original u64"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:163:5 in function kani_budget_arithmetic_refinement::tla_word_round_trips_all_rust_u64_values
+
+Check 3: kani_budget_arithmetic_refinement::word_to_u64.assertion.1
+	 - Status: SUCCESS
+	 - Description: "attempt to shift left with overflow"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:50:15 in function kani_budget_arithmetic_refinement::word_to_u64
+
+Check 4: kani_budget_arithmetic_refinement::word_to_u64.assertion.2
+	 - Status: SUCCESS
+	 - Description: "attempt to shift left with overflow"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:50:33 in function kani_budget_arithmetic_refinement::word_to_u64
+
+Check 5: kani_budget_arithmetic_refinement::word_to_u64.assertion.3
+	 - Status: SUCCESS
+	 - Description: "attempt to shift left with overflow"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:50:51 in function kani_budget_arithmetic_refinement::word_to_u64
+
+Check 6: kani_budget_arithmetic_refinement::word_from_u64.assertion.1
+	 - Status: SUCCESS
+	 - Description: "attempt to shift right with overflow"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:43:13 in function kani_budget_arithmetic_refinement::word_from_u64
+
+Check 7: kani_budget_arithmetic_refinement::word_from_u64.assertion.2
+	 - Status: SUCCESS
+	 - Description: "attempt to shift right with overflow"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:44:13 in function kani_budget_arithmetic_refinement::word_from_u64
+
+Check 8: kani_budget_arithmetic_refinement::word_from_u64.assertion.3
+	 - Status: SUCCESS
+	 - Description: "attempt to shift right with overflow"
+	 - Location: crates/vb_core/src/kani_budget_arithmetic_refinement.rs:45:13 in function kani_budget_arithmetic_refinement::word_from_u64
+
+
+SUMMARY:
+ ** 0 of 8 failed
+
+VERIFICATION:- SUCCESSFUL
+Verification Time: 0.08032166s
+
+Manual Harness Summary:
+Complete - 5 successfully verified harnesses, 0 failures, 5 total.
