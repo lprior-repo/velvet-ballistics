@@ -65,7 +65,12 @@ fn evidence_collector_slot_written_with_taint_preserves_values() {
     assert_eq!(events.len(), 1);
 
     match &events[0] {
-        EvidenceEvent::SlotWritten { slot: s, value: v, taint: t, .. } => {
+        EvidenceEvent::SlotWritten {
+            slot: s,
+            value: v,
+            taint: t,
+            ..
+        } => {
             assert_eq!(*s, slot);
             assert_eq!(*v, val);
             assert_eq!(*t, taint);
@@ -230,7 +235,12 @@ fn evidence_event_slot_written_all_fields_preserved() {
     };
 
     match &event {
-        EvidenceEvent::SlotWritten { slot: s, value: v, taint: t, .. } => {
+        EvidenceEvent::SlotWritten {
+            slot: s,
+            value: v,
+            taint: t,
+            ..
+        } => {
             assert_eq!(*s, SlotIdx::new(2));
             assert_eq!(*v, SlotValue::I64(999));
             assert_eq!(*t, Taint::DerivedFromSecret);

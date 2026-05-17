@@ -10,17 +10,14 @@
 
 #![allow(missing_docs)]
 
-use criterion::{criterion_group, criterion_main, Criterion, Throughput};
+use criterion::{Criterion, Throughput, criterion_group, criterion_main};
 use std::hint::black_box;
 use vb_core::{
-    ConstValue, SlotValue,
-    ResourceContract, RunId, StepIdx, SlotIdx, WorkflowDigest, WorkflowParts,
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx,
-    new_run_frame,
+    CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, ConstValue, ResourceContract,
+    RunId, SlotIdx, SlotValue, StepIdx, WorkflowDigest, WorkflowParts, new_run_frame,
 };
 
-const BENCH_METADATA: &str =
-    "profile=bench;tool=criterion-0.8;durability=mixed;mode=ir-and-generated;latency=p50-p95-p99-by-criterion;allocations=allocator-external;instructions=not-collected";
+const BENCH_METADATA: &str = "profile=bench;tool=criterion-0.8;durability=mixed;mode=ir-and-generated;latency=p50-p95-p99-by-criterion;allocations=allocator-external;instructions=not-collected";
 
 fn metadata(name: &str, fixture_bytes: usize, extra: &str) -> String {
     format!(
@@ -94,7 +91,7 @@ fn bench_memory_footprint(c: &mut Criterion) {
     let mut group = c.benchmark_group("memory_footprint");
 
     // Small workflow memory footprint
-    if let Ok(ref plan) = small_workflow {
+    if let Ok(ref _plan) = small_workflow {
         let wf_bytes = SMALL_WORKFLOW_YAML.len();
         group.throughput(Throughput::Bytes(wf_bytes as u64));
         group.bench_function(
@@ -121,8 +118,11 @@ fn bench_memory_footprint(c: &mut Criterion) {
                         while i < 10 {
                             let val = SlotValue::I64(i as i64);
                             // These allocations contribute to memory footprint
-                            let list_id = store.insert_list(vec![val].into_boxed_slice()).expect("list");
+                            let list_id = store
+                                .insert_list(vec![val].into_boxed_slice())
+                                .expect("list");
                             black_box(list_id);
+                            i = i.saturating_add(1);
                         }
                         // Get approximate allocation count as memory proxy
                         let alloc_size = store.total_arena_count();
@@ -141,7 +141,7 @@ fn bench_memory_footprint(c: &mut Criterion) {
     }
 
     // Save chain 1000 memory
-    if let Some(ref plan) = chain_1000 {
+    if let Some(ref _plan) = chain_1000 {
         let wf_bytes = 10240usize;
         group.throughput(Throughput::Bytes(wf_bytes as u64));
         group.bench_function(
@@ -232,11 +232,11 @@ fn bench_memory_footprint(c: &mut Criterion) {
                     let mut iter = 0u64;
                     while iter < iterations {
                         // Simulate 100 sequential runs sharing allocation pressure
-                        let mut store = vb_core::ValueStore::new();
+                        let store = vb_core::ValueStore::new();
                         let mut run = 0u64;
                         while run < 100 {
                             if let Ok(frame) = new_run_frame(RunId::new(run), black_box(plan)) {
-                                black_box(frame);
+                                let _ = black_box(frame);
                             }
                             run = run.saturating_add(1);
                         }

@@ -4,23 +4,40 @@
 
 #![allow(missing_docs)]
 
-use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
+use criterion::{Criterion, Throughput, criterion_group, criterion_main};
+use serde::Serialize;
 use std::hint::black_box;
-use vb_core::ids::{RunId, StepIdx};
-use vb_runtime::shard::helpers::snapshot_from_state;
-use vb_runtime::shard::types::{InspectSnapshot, RunState};
-use vb_core::frame::RunFrame;
 use vb_core::CompiledNode;
 use vb_core::CompiledNodeKind;
-use vb_core::ConstIdx;
-use vb_core::ConstValue;
+use vb_core::CompiledWorkflow;
 use vb_core::ResourceContract;
+use vb_core::SlotIdx;
 use vb_core::WorkflowDigest;
 use vb_core::WorkflowParts;
-use vb_core::CompiledWorkflow;
+use vb_core::frame::RunFrame;
+use vb_core::ids::{RunId, StepIdx};
+use vb_runtime::primitives::collect::CollectStates;
+use vb_runtime::shard::helpers::snapshot_from_state;
+use vb_runtime::shard::types::RunState;
 
-const BENCH_METADATA: &str =
-    "profile=bench;tool=criterion-0.8;durability=mixed;mode=ir-and-generated;latency=p50-p95-p99-by-criterion;allocations=allocator-external;instructions=not-collected";
+const BENCH_METADATA: &str = "profile=bench;tool=criterion-0.8;durability=mixed;mode=ir-and-generated;latency=p50-p95-p99-by-criterion;allocations=allocator-external;instructions=not-collected";
+
+#[derive(Serialize)]
+struct SerializableSnapshot {
+    run: u64,
+    correlation: u64,
+    pc: u16,
+    executed: u64,
+}
+
+fn serializable_snapshot(snap: &vb_runtime::shard::types::InspectSnapshot) -> SerializableSnapshot {
+    SerializableSnapshot {
+        run: snap.run.get(),
+        correlation: snap.correlation,
+        pc: snap.pc.get(),
+        executed: snap.executed,
+    }
+}
 
 fn metadata(name: &str, fixture_bytes: usize, extra: &str) -> String {
     format!(
@@ -60,14 +77,24 @@ fn simple_workflow() -> CompiledWorkflow {
 
 /// Creates a RunState for a run that has executed `executed` steps.
 fn run_state_after_n_steps(workflow: &CompiledWorkflow, run_id: RunId, executed: u64) -> RunState {
-    let frame = RunFrame::new(run_id, workflow.entry(), workflow.node_count(), workflow.slot_count())
-        .expect("frame");
+    let step_count = u16::try_from(executed.saturating_add(1)).unwrap_or(u16::MAX);
+    let mut frame =
+        RunFrame::new(run_id, workflow.entry(), step_count, workflow.slot_count()).expect("frame");
+    let pc = u16::try_from(executed).unwrap_or(u16::MAX.saturating_sub(1));
+    frame.set_pc(StepIdx::new(pc)).expect("pc");
+    let mut i = 0u64;
+    while i < executed {
+        frame.increment_executed().expect("executed");
+        i = i.saturating_add(1);
+    }
     RunState {
         frame,
         workflow: workflow.clone(),
-        action_attempts: vec![1u32; workflow.node_count() as usize].into_boxed_slice(),
-        executed,
-        canceled: false,
+        store: vb_core::ValueStore::new(),
+        action_attempts: vec![1u16; usize::from(step_count)].into_boxed_slice(),
+        admission: None,
+        collect_states: CollectStates::new(),
+        action_contracts: Box::from([]),
     }
 }
 
@@ -92,22 +119,14 @@ fn bench_snapshot_save(c: &mut Criterion) {
                     let state = run_state_after_n_steps(&workflow, run_id, 1);
                     let snap = snapshot_from_state(run_id, 42, &state);
                     // Exact assertions on snapshot fields
+                    assert_eq!(snap.run, run_id, "snapshot run_id must match");
+                    assert_eq!(snap.correlation, 42, "snapshot correlation must be 42");
                     assert_eq!(
-                        snap.run, run_id,
-                        "snapshot run_id must match"
-                    );
-                    assert_eq!(
-                        snap.correlation, 42,
-                        "snapshot correlation must be 42"
-                    );
-                    assert_eq!(
-                        snap.pc, StepIdx::new(1),
+                        snap.pc,
+                        StepIdx::new(1),
                         "snapshot PC must be StepIdx(1) after 1 step"
                     );
-                    assert_eq!(
-                        snap.executed, 1,
-                        "snapshot executed must be 1"
-                    );
+                    assert_eq!(snap.executed, 1, "snapshot executed must be 1");
                     black_box(snap)
                 });
             },
@@ -130,18 +149,9 @@ fn bench_snapshot_save(c: &mut Criterion) {
                     let state = run_state_after_n_steps(&workflow, run_id, 50);
                     let snap = snapshot_from_state(run_id, 99, &state);
                     // Exact assertions
-                    assert_eq!(
-                        snap.run, run_id,
-                        "snapshot run_id must match"
-                    );
-                    assert_eq!(
-                        snap.correlation, 99,
-                        "snapshot correlation must be 99"
-                    );
-                    assert_eq!(
-                        snap.executed, 50,
-                        "snapshot executed must be 50"
-                    );
+                    assert_eq!(snap.run, run_id, "snapshot run_id must match");
+                    assert_eq!(snap.correlation, 99, "snapshot correlation must be 99");
+                    assert_eq!(snap.executed, 50, "snapshot executed must be 50");
                     black_box(snap)
                 });
             },
@@ -165,10 +175,7 @@ fn bench_snapshot_save(c: &mut Criterion) {
                     let snap = snapshot_from_state(run_id, 123, &state);
                     // Snapshot captures PC and executed, not slot values
                     // (slot values are in the frame which is part of state)
-                    assert_eq!(
-                        snap.executed, 5,
-                        "snapshot executed must be 5"
-                    );
+                    assert_eq!(snap.executed, 5, "snapshot executed must be 5");
                     black_box(snap)
                 });
             },
@@ -190,18 +197,12 @@ fn bench_snapshot_save(c: &mut Criterion) {
                     let run_id = RunId::new(1);
                     let state = run_state_after_n_steps(&workflow, run_id, 1);
                     let snap = snapshot_from_state(run_id, 42, &state);
-                    let encoded = postcard::to_allocvec(&snap);
+                    let encoded = postcard::to_allocvec(&serializable_snapshot(&snap));
                     // Exact assertion: encode must succeed
-                    assert!(
-                        encoded.is_ok(),
-                        "postcard encode must succeed"
-                    );
+                    assert!(encoded.is_ok(), "postcard encode must succeed");
                     let bytes = encoded.expect("ok");
                     // Snapshot is small, should be < 100 bytes
-                    assert!(
-                        bytes.len() < 100,
-                        "encoded snapshot must be small"
-                    );
+                    assert!(bytes.len() < 100, "encoded snapshot must be small");
                     assert!(
                         bytes.len() > 0,
                         "encoded snapshot must have non-zero length"
@@ -226,7 +227,7 @@ fn bench_snapshot_save(c: &mut Criterion) {
                     let run_id = RunId::new(u64::MAX);
                     let state = run_state_after_n_steps(&workflow, run_id, 100);
                     let snap = snapshot_from_state(run_id, u64::MAX, &state);
-                    let encoded = postcard::to_allocvec(&snap);
+                    let encoded = postcard::to_allocvec(&serializable_snapshot(&snap));
                     assert!(
                         encoded.is_ok(),
                         "postcard encode with max values must succeed"

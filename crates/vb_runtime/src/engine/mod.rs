@@ -15,8 +15,10 @@ pub mod action;
 pub mod drive;
 pub mod execute;
 pub mod helpers;
+#[cfg(test)]
 pub mod property_tests;
 pub mod signal;
+#[cfg(test)]
 pub mod tests;
 pub mod types;
 

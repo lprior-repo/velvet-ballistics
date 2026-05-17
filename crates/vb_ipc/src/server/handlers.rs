@@ -3732,9 +3732,8 @@ mod tests {
         let workflow = make_workflow_with_nodes(digest, 1);
         let mut resolver = OkResolver { workflow };
 
-        let payload_bytes =
-            postcard::to_allocvec(&IpcPayload::GetWorkflowGraph { digest })
-                .expect("encode payload");
+        let payload_bytes = postcard::to_allocvec(&IpcPayload::GetWorkflowGraph { digest })
+            .expect("encode payload");
         let response = handle_get_workflow_graph(&payload_bytes, Some(&mut resolver));
 
         match response {
@@ -3756,9 +3755,8 @@ mod tests {
         let workflow = make_workflow_with_nodes(digest, 2);
         let mut resolver = OkResolver { workflow };
 
-        let payload_bytes =
-            postcard::to_allocvec(&IpcPayload::GetWorkflowGraph { digest })
-                .expect("encode payload");
+        let payload_bytes = postcard::to_allocvec(&IpcPayload::GetWorkflowGraph { digest })
+            .expect("encode payload");
         let response = handle_get_workflow_graph(&payload_bytes, Some(&mut resolver));
 
         match response {
@@ -3828,8 +3826,7 @@ mod tests {
         let mut resolver = OkResolver { workflow };
 
         let payload_bytes =
-            postcard::to_allocvec(&IpcPayload::GetTaintReport { digest })
-                .expect("encode payload");
+            postcard::to_allocvec(&IpcPayload::GetTaintReport { digest }).expect("encode payload");
         let response = handle_get_taint_report(&payload_bytes, Some(&mut resolver));
 
         match response {
@@ -3841,8 +3838,15 @@ mod tests {
             } => {
                 assert_eq!(sources, vec![0]);
                 assert_eq!(sinks, vec![2]);
-                assert_eq!(paths.len(), 2, "expected 2 taint paths for 3-node linear chain");
-                assert!(!finish_safe, "finish should not be safe when source reaches sink");
+                assert_eq!(
+                    paths.len(),
+                    2,
+                    "expected 2 taint paths for 3-node linear chain"
+                );
+                assert!(
+                    !finish_safe,
+                    "finish should not be safe when source reaches sink"
+                );
             }
             other => panic!("expected TaintReport, got {other:?}"),
         }
@@ -3865,8 +3869,14 @@ mod tests {
 
         enqueue_successors(&node, 1, &mut visited, &mut queue);
 
-        assert!(visited.is_empty(), "out-of-bounds next should not be inserted");
-        assert!(queue.is_empty(), "out-of-bounds next should not be enqueued");
+        assert!(
+            visited.is_empty(),
+            "out-of-bounds next should not be inserted"
+        );
+        assert!(
+            queue.is_empty(),
+            "out-of-bounds next should not be enqueued"
+        );
     }
 
     #[test]
@@ -3888,8 +3898,14 @@ mod tests {
 
         enqueue_successors(&node, 1, &mut visited, &mut queue);
 
-        assert!(visited.is_empty(), "out-of-bounds structural successors should not be inserted");
-        assert!(queue.is_empty(), "out-of-bounds structural successors should not be enqueued");
+        assert!(
+            visited.is_empty(),
+            "out-of-bounds structural successors should not be inserted"
+        );
+        assert!(
+            queue.is_empty(),
+            "out-of-bounds structural successors should not be enqueued"
+        );
     }
 
     #[test]

@@ -4,22 +4,38 @@
 
 #![allow(missing_docs)]
 
-use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
+use criterion::{Criterion, Throughput, criterion_group, criterion_main};
+use serde::{Deserialize, Serialize};
 use std::hint::black_box;
-use vb_core::ids::{RunId, StepIdx};
-use vb_runtime::shard::types::{InspectSnapshot, RunState};
-use vb_core::frame::RunFrame;
 use vb_core::CompiledNode;
 use vb_core::CompiledNodeKind;
-use vb_core::ConstIdx;
-use vb_core::ConstValue;
+use vb_core::CompiledWorkflow;
 use vb_core::ResourceContract;
+use vb_core::SlotIdx;
 use vb_core::WorkflowDigest;
 use vb_core::WorkflowParts;
-use vb_core::CompiledWorkflow;
+use vb_core::frame::RunFrame;
+use vb_core::ids::{RunId, StepIdx};
 
-const BENCH_METADATA: &str =
-    "profile=bench;tool=criterion-0.8;durability=mixed;mode=ir-and-generated;latency=p50-p95-p99-by-criterion;allocations=allocator-external;instructions=not-collected";
+const BENCH_METADATA: &str = "profile=bench;tool=criterion-0.8;durability=mixed;mode=ir-and-generated;latency=p50-p95-p99-by-criterion;allocations=allocator-external;instructions=not-collected";
+
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq, Serialize)]
+struct BenchSnapshot {
+    run: u64,
+    correlation: u64,
+    pc: u16,
+    executed: u64,
+}
+
+impl BenchSnapshot {
+    fn run_id(self) -> RunId {
+        RunId::new(self.run)
+    }
+
+    fn step_idx(self) -> StepIdx {
+        StepIdx::new(self.pc)
+    }
+}
 
 fn metadata(name: &str, fixture_bytes: usize, extra: &str) -> String {
     format!(
@@ -59,10 +75,10 @@ fn simple_workflow() -> CompiledWorkflow {
 
 /// Serializes a snapshot for restore benchmarks.
 fn serialized_snapshot(pc: StepIdx, executed: u64, correlation: u64) -> Vec<u8> {
-    let snap = InspectSnapshot {
-        run: RunId::new(1),
+    let snap = BenchSnapshot {
+        run: 1,
         correlation,
-        pc,
+        pc: pc.get(),
         executed,
     };
     postcard::to_allocvec(&snap).expect("serialized")
@@ -85,32 +101,27 @@ fn bench_snapshot_restore(c: &mut Criterion) {
             |b| {
                 b.iter(|| {
                     let encoded = serialized_snapshot(StepIdx::new(1), 1, 42);
-                    let decoded: InspectSnapshot = postcard::from_bytes(&encoded)
-                        .expect("decode");
+                    let decoded: BenchSnapshot = postcard::from_bytes(&encoded).expect("decode");
                     // Exact assertions on decoded snapshot
                     assert_eq!(
-                        decoded.pc, StepIdx::new(1),
+                        decoded.step_idx(),
+                        StepIdx::new(1),
                         "decoded PC must be StepIdx(1)"
                     );
-                    assert_eq!(
-                        decoded.executed, 1,
-                        "decoded executed must be 1"
-                    );
-                    assert_eq!(
-                        decoded.correlation, 42,
-                        "decoded correlation must be 42"
-                    );
+                    assert_eq!(decoded.executed, 1, "decoded executed must be 1");
+                    assert_eq!(decoded.correlation, 42, "decoded correlation must be 42");
                     // Create frame from decoded snapshot
                     let frame = RunFrame::new(
-                        decoded.run,
-                        decoded.pc,
+                        decoded.run_id(),
+                        decoded.step_idx(),
                         workflow.node_count(),
                         workflow.slot_count(),
                     )
                     .expect("frame");
                     // Exact assertion: frame PC matches snapshot
                     assert_eq!(
-                        frame.pc(), decoded.pc,
+                        frame.pc(),
+                        decoded.step_idx(),
                         "restored frame PC must match snapshot PC"
                     );
                     black_box(frame)
@@ -132,26 +143,24 @@ fn bench_snapshot_restore(c: &mut Criterion) {
             |b| {
                 b.iter(|| {
                     let encoded = serialized_snapshot(StepIdx::new(50), 50, 99);
-                    let decoded: InspectSnapshot = postcard::from_bytes(&encoded)
-                        .expect("decode");
+                    let decoded: BenchSnapshot = postcard::from_bytes(&encoded).expect("decode");
                     // Exact assertions
                     assert_eq!(
-                        decoded.pc, StepIdx::new(50),
+                        decoded.step_idx(),
+                        StepIdx::new(50),
                         "decoded PC must be StepIdx(50)"
                     );
-                    assert_eq!(
-                        decoded.executed, 50,
-                        "decoded executed must be 50"
-                    );
+                    assert_eq!(decoded.executed, 50, "decoded executed must be 50");
                     let frame = RunFrame::new(
-                        decoded.run,
-                        decoded.pc,
+                        decoded.run_id(),
+                        decoded.step_idx(),
                         workflow.node_count(),
                         workflow.slot_count(),
                     )
                     .expect("frame");
                     assert_eq!(
-                        frame.pc(), StepIdx::new(50),
+                        frame.pc(),
+                        StepIdx::new(50),
                         "restored frame PC must be StepIdx(50)"
                     );
                     black_box(frame)
@@ -173,17 +182,13 @@ fn bench_snapshot_restore(c: &mut Criterion) {
             |b| {
                 b.iter(|| {
                     let encoded = serialized_snapshot(StepIdx::new(5), 5, 123);
-                    let decoded: InspectSnapshot = postcard::from_bytes(&encoded)
-                        .expect("decode");
+                    let decoded: BenchSnapshot = postcard::from_bytes(&encoded).expect("decode");
                     // Note: Large slot values are stored in ValueStore, not snapshot
                     // Snapshot only captures PC and executed count
-                    assert_eq!(
-                        decoded.executed, 5,
-                        "decoded executed must be 5"
-                    );
+                    assert_eq!(decoded.executed, 5, "decoded executed must be 5");
                     let frame = RunFrame::new(
-                        decoded.run,
-                        decoded.pc,
+                        decoded.run_id(),
+                        decoded.step_idx(),
                         workflow.node_count(),
                         workflow.slot_count(),
                     )
@@ -206,21 +211,15 @@ fn bench_snapshot_restore(c: &mut Criterion) {
             |b| {
                 b.iter(|| {
                     let encoded = serialized_snapshot(StepIdx::new(50), 50, 99);
-                    let decoded: InspectSnapshot = postcard::from_bytes(&encoded)
-                        .expect("decode");
+                    let decoded: BenchSnapshot = postcard::from_bytes(&encoded).expect("decode");
                     // Exact assertion: decoded must match original
                     assert_eq!(
-                        decoded.pc, StepIdx::new(50),
+                        decoded.step_idx(),
+                        StepIdx::new(50),
                         "decoded PC must be StepIdx(50)"
                     );
-                    assert_eq!(
-                        decoded.executed, 50,
-                        "decoded executed must be 50"
-                    );
-                    assert_eq!(
-                        decoded.correlation, 99,
-                        "decoded correlation must be 99"
-                    );
+                    assert_eq!(decoded.executed, 50, "decoded executed must be 50");
+                    assert_eq!(decoded.correlation, 99, "decoded correlation must be 99");
                     black_box(decoded)
                 });
             },
@@ -240,24 +239,20 @@ fn bench_snapshot_restore(c: &mut Criterion) {
                 b.iter(|| {
                     let run_id = RunId::new(42);
                     let correlation = 12345u64;
-                    let snap = InspectSnapshot {
-                        run: run_id,
+                    let snap = BenchSnapshot {
+                        run: run_id.get(),
                         correlation,
-                        pc: StepIdx::new(10),
+                        pc: StepIdx::new(10).get(),
                         executed: 10,
                     };
                     let encoded = postcard::to_allocvec(&snap).expect("encode");
-                    let decoded: InspectSnapshot = postcard::from_bytes(&encoded)
-                        .expect("decode");
+                    let decoded: BenchSnapshot = postcard::from_bytes(&encoded).expect("decode");
                     // Exact assertions: correlation preserved through round-trip
                     assert_eq!(
                         decoded.correlation, 12345,
                         "correlation must be preserved as 12345"
                     );
-                    assert_eq!(
-                        decoded.run, run_id,
-                        "run_id must be preserved"
-                    );
+                    assert_eq!(decoded.run_id(), run_id, "run_id must be preserved");
                     black_box(decoded)
                 });
             },

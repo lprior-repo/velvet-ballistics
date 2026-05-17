@@ -112,7 +112,8 @@ mod tests {
             },
         };
         let encoded = postcard::to_allocvec(&metrics).expect("encoding should succeed");
-        let decoded: RuntimeMetrics = postcard::from_bytes(&encoded).expect("decoding should succeed");
+        let decoded: RuntimeMetrics =
+            postcard::from_bytes(&encoded).expect("decoding should succeed");
         assert_eq!(decoded, metrics);
     }
 
@@ -131,7 +132,8 @@ mod tests {
             actions_total: 0,
         };
         let encoded = postcard::to_allocvec(&metrics).expect("encoding should succeed");
-        let decoded: ShardMetrics = postcard::from_bytes(&encoded).expect("decoding should succeed");
+        let decoded: ShardMetrics =
+            postcard::from_bytes(&encoded).expect("decoding should succeed");
         assert_eq!(decoded, metrics);
     }
 
@@ -150,7 +152,8 @@ mod tests {
             actions_total: u64::MAX,
         };
         let encoded = postcard::to_allocvec(&metrics).expect("encoding should succeed");
-        let decoded: ShardMetrics = postcard::from_bytes(&encoded).expect("decoding should succeed");
+        let decoded: ShardMetrics =
+            postcard::from_bytes(&encoded).expect("decoding should succeed");
         assert_eq!(decoded, metrics);
     }
 
@@ -162,7 +165,8 @@ mod tests {
             total_runs: 0,
         };
         let encoded = postcard::to_allocvec(&metrics).expect("encoding should succeed");
-        let decoded: JournalMetrics = postcard::from_bytes(&encoded).expect("decoding should succeed");
+        let decoded: JournalMetrics =
+            postcard::from_bytes(&encoded).expect("decoding should succeed");
         assert_eq!(decoded, metrics);
     }
 
@@ -186,7 +190,8 @@ mod tests {
             runs_finished_total: u64::MAX,
         };
         let encoded = postcard::to_allocvec(&metrics).expect("encoding should succeed");
-        let decoded: AggregateMetrics = postcard::from_bytes(&encoded).expect("decoding should succeed");
+        let decoded: AggregateMetrics =
+            postcard::from_bytes(&encoded).expect("decoding should succeed");
         assert_eq!(decoded, metrics);
     }
 
@@ -211,7 +216,8 @@ mod tests {
             },
         };
         let encoded = postcard::to_allocvec(&metrics).expect("encoding should succeed");
-        let decoded: RuntimeMetrics = postcard::from_bytes(&encoded).expect("decoding should succeed");
+        let decoded: RuntimeMetrics =
+            postcard::from_bytes(&encoded).expect("decoding should succeed");
         assert!(decoded.shards.is_empty());
         assert_eq!(decoded, metrics);
     }
@@ -262,7 +268,8 @@ mod tests {
             },
         };
         let encoded = postcard::to_allocvec(&metrics).expect("encoding should succeed");
-        let decoded: RuntimeMetrics = postcard::from_bytes(&encoded).expect("decoding should succeed");
+        let decoded: RuntimeMetrics =
+            postcard::from_bytes(&encoded).expect("decoding should succeed");
         assert_eq!(decoded.shards.len(), 2);
         assert_eq!(decoded, metrics);
     }
@@ -301,7 +308,8 @@ mod tests {
             },
         };
         let encoded = postcard::to_allocvec(&metrics).expect("encoding should succeed");
-        let decoded: RuntimeMetrics = postcard::from_bytes(&encoded).expect("decoding should succeed");
+        let decoded: RuntimeMetrics =
+            postcard::from_bytes(&encoded).expect("decoding should succeed");
         assert_eq!(decoded.shards.len(), 1);
         assert_eq!(decoded, metrics);
     }
@@ -364,7 +372,8 @@ mod tests {
             },
         };
         let encoded = postcard::to_allocvec(&metrics).expect("encoding should succeed");
-        let decoded: RuntimeMetrics = postcard::from_bytes(&encoded).expect("decoding should succeed");
+        let decoded: RuntimeMetrics =
+            postcard::from_bytes(&encoded).expect("decoding should succeed");
         assert_eq!(decoded.shards.len(), 3);
         assert_eq!(decoded, metrics);
     }
@@ -386,7 +395,8 @@ mod tests {
             actions_total: 0,
         };
         let encoded = postcard::to_allocvec(&metrics).expect("encoding should succeed");
-        let decoded: ShardMetrics = postcard::from_bytes(&encoded).expect("decoding should succeed");
+        let decoded: ShardMetrics =
+            postcard::from_bytes(&encoded).expect("decoding should succeed");
         assert!(decoded.trace_ring_fill_pct.is_nan());
     }
 
@@ -405,7 +415,8 @@ mod tests {
             actions_total: 0,
         };
         let encoded = postcard::to_allocvec(&metrics).expect("encoding should succeed");
-        let decoded: ShardMetrics = postcard::from_bytes(&encoded).expect("decoding should succeed");
+        let decoded: ShardMetrics =
+            postcard::from_bytes(&encoded).expect("decoding should succeed");
         assert_eq!(decoded.trace_ring_fill_pct, -1.0);
         assert_eq!(decoded, metrics);
     }
@@ -441,7 +452,8 @@ mod tests {
             runs_finished_total: u64::MAX,
         };
         let encoded = postcard::to_allocvec(&metrics).expect("encoding should succeed");
-        let decoded: AggregateMetrics = postcard::from_bytes(&encoded).expect("decoding should succeed");
+        let decoded: AggregateMetrics =
+            postcard::from_bytes(&encoded).expect("decoding should succeed");
         assert_eq!(decoded, metrics);
     }
 
@@ -976,7 +988,8 @@ mod tests {
             runs_finished_total: 0,
         };
         let encoded = postcard::to_allocvec(&metrics).expect("encoding should succeed");
-        let decoded: AggregateMetrics = postcard::from_bytes(&encoded).expect("decoding should succeed");
+        let decoded: AggregateMetrics =
+            postcard::from_bytes(&encoded).expect("decoding should succeed");
         assert_eq!(decoded, metrics);
     }
 }

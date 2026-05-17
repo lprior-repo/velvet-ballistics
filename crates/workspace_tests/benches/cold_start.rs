@@ -4,16 +4,14 @@
 
 #![allow(missing_docs)]
 
-use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
+use criterion::{Criterion, Throughput, criterion_group, criterion_main};
 use std::hint::black_box;
 use vb_core::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, ConstValue,
-    ResourceContract, RunId, StepIdx, SlotIdx, WorkflowDigest, WorkflowParts,
-    new_run_frame,
+    CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, ConstValue, ResourceContract,
+    RunId, SlotIdx, StepIdx, WorkflowDigest, WorkflowParts, new_run_frame,
 };
 
-const BENCH_METADATA: &str =
-    "profile=bench;tool=criterion-0.8;durability=mixed;mode=ir-and-generated;latency=p50-p95-p99-by-criterion;allocations=allocator-external;instructions=not-collected";
+const BENCH_METADATA: &str = "profile=bench;tool=criterion-0.8;durability=mixed;mode=ir-and-generated;latency=p50-p95-p99-by-criterion;allocations=allocator-external;instructions=not-collected";
 
 fn metadata(name: &str, fixture_bytes: usize, extra: &str) -> String {
     format!(
@@ -128,13 +126,11 @@ fn bench_cold_start(c: &mut Criterion) {
                     );
                     let f = frame.expect("ok");
                     assert_eq!(
-                        f.slot_count(), 2,
+                        f.slot_count(),
+                        2,
                         "small workflow frame must have slot_count=2"
                     );
-                    assert_eq!(
-                        f.pc(), StepIdx::new(0),
-                        "initial PC must be StepIdx(0)"
-                    );
+                    assert_eq!(f.pc(), StepIdx::new(0), "initial PC must be StepIdx(0)");
                     black_box(f)
                 });
             },
@@ -162,7 +158,8 @@ fn bench_cold_start(c: &mut Criterion) {
                     );
                     let f = frame.expect("ok");
                     assert_eq!(
-                        f.step_count(), 101,
+                        f.step_count(),
+                        101,
                         "100-step chain frame must have step_count=101"
                     );
                     black_box(f)
@@ -192,7 +189,8 @@ fn bench_cold_start(c: &mut Criterion) {
                     );
                     let f = frame.expect("ok");
                     assert_eq!(
-                        f.step_count(), 1001,
+                        f.step_count(),
+                        1001,
                         "1000-step chain frame must have step_count=1001"
                     );
                     black_box(f)
@@ -217,11 +215,8 @@ fn bench_cold_start(c: &mut Criterion) {
                     if let Ok(ref plan) = compiled.as_ref() {
                         let run_id = RunId::new(1);
                         let frame = new_run_frame(run_id, black_box(plan));
-                        assert!(
-                            frame.is_ok(),
-                            "full pipeline must produce valid frame"
-                        );
-                        black_box(frame);
+                        assert!(frame.is_ok(), "full pipeline must produce valid frame");
+                        let _ = black_box(frame);
                     } else {
                         black_box(None::<vb_core::frame::RunFrame>);
                     }
@@ -248,19 +243,12 @@ fn bench_cold_start(c: &mut Criterion) {
                     while i < 10 {
                         let run_id = RunId::new(i);
                         let frame = new_run_frame(run_id, black_box(plan));
-                        assert!(
-                            frame.is_ok(),
-                            "sequential run {} must succeed",
-                            i
-                        );
+                        assert!(frame.is_ok(), "sequential run {} must succeed", i);
                         frames.push(frame.expect("ok"));
                         i = i.saturating_add(1);
                     }
                     // Exact assertion: 10 frames created
-                    assert_eq!(
-                        frames.len(), 10,
-                        "must create exactly 10 frames"
-                    );
+                    assert_eq!(frames.len(), 10, "must create exactly 10 frames");
                     black_box(frames)
                 });
             },

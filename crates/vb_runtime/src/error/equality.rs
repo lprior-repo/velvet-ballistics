@@ -86,7 +86,9 @@ fn runtime_error_core_field_eq(left: &RuntimeError, right: &RuntimeError) -> boo
             RuntimeError::IpcPayloadSizeExceeded { size: a, max: b },
             RuntimeError::IpcPayloadSizeExceeded { size: c, max: d },
         ) => a == c && b == d,
-        (RuntimeError::ShardNotFound { shard: a }, RuntimeError::ShardNotFound { shard: b }) => a == b,
+        (RuntimeError::ShardNotFound { shard: a }, RuntimeError::ShardNotFound { shard: b }) => {
+            a == b
+        }
         _ => false,
     }
 }

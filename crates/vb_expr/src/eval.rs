@@ -162,12 +162,12 @@ pub fn eval_binary_op(op: BinaryOp, left: SlotValue, right: SlotValue) -> ExprRe
             let left_bool = expect_bool(left)?;
             let right_bool = expect_bool(right)?;
             Ok(SlotValue::Bool(left_bool && right_bool))
-        },
+        }
         BinaryOp::Or => {
             let left_bool = expect_bool(left)?;
             let right_bool = expect_bool(right)?;
             Ok(SlotValue::Bool(left_bool || right_bool))
-        },
+        }
         BinaryOp::Eq => Ok(SlotValue::Bool(left == right)),
         BinaryOp::NotEq => Ok(SlotValue::Bool(left != right)),
         BinaryOp::Add => eval_add_op(left, right),
@@ -557,7 +557,7 @@ pub fn eval_helper(helper: ExprHelper, args: &[SlotValue]) -> ExprResult<SlotVal
         }
         // StartsWith/EndsWith: need store for text operations
         ExprHelper::StartsWith | ExprHelper::EndsWith => {
-            let (left, right) = two_args(args, helper)?;
+            two_args(args, helper)?;
             Err(ExprError::TypeMismatch {
                 expected: "value-store context required for text operations".into(),
                 found: "symbol handle without store".into(),
@@ -565,7 +565,7 @@ pub fn eval_helper(helper: ExprHelper, args: &[SlotValue]) -> ExprResult<SlotVal
         }
         // Has: need store for object field lookup
         ExprHelper::Has => {
-            let (left, right) = two_args(args, helper)?;
+            two_args(args, helper)?;
             Err(ExprError::TypeMismatch {
                 expected: "value-store context required for object field lookup".into(),
                 found: "object handle without store".into(),
@@ -573,7 +573,7 @@ pub fn eval_helper(helper: ExprHelper, args: &[SlotValue]) -> ExprResult<SlotVal
         }
         // Append: need store for list append
         ExprHelper::Append => {
-            let (left, right) = two_args(args, helper)?;
+            two_args(args, helper)?;
             Err(ExprError::TypeMismatch {
                 expected: "value-store context required for list append".into(),
                 found: "list handle without store".into(),
@@ -581,7 +581,7 @@ pub fn eval_helper(helper: ExprHelper, args: &[SlotValue]) -> ExprResult<SlotVal
         }
         // AppendIf: need store for conditional list append
         ExprHelper::AppendIf => {
-            let (first, second, third) = three_args(args, helper)?;
+            three_args(args, helper)?;
             Err(ExprError::TypeMismatch {
                 expected: "value-store context required for list append".into(),
                 found: "list handle without store".into(),
@@ -589,7 +589,7 @@ pub fn eval_helper(helper: ExprHelper, args: &[SlotValue]) -> ExprResult<SlotVal
         }
         // Merge: need store for object merge
         ExprHelper::Merge => {
-            let (left, right) = two_args(args, helper)?;
+            two_args(args, helper)?;
             Err(ExprError::TypeMismatch {
                 expected: "value-store context required for object merge".into(),
                 found: "object handle without store".into(),
@@ -597,7 +597,7 @@ pub fn eval_helper(helper: ExprHelper, args: &[SlotValue]) -> ExprResult<SlotVal
         }
         // Sum: need store for list sum
         ExprHelper::Sum => {
-            let value = one_arg(args, helper)?;
+            one_arg(args, helper)?;
             Err(ExprError::TypeMismatch {
                 expected: "value-store context required for list sum".into(),
                 found: "list handle without store".into(),

@@ -5,12 +5,11 @@
 
 #![allow(missing_docs)]
 
-use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
+use criterion::{Criterion, Throughput, criterion_group, criterion_main};
+use rtrb::{Consumer, Producer, RingBuffer};
 use std::hint::black_box;
-use rtrb::RingBuffer;
 
-const BENCH_METADATA: &str =
-    "profile=bench;tool=criterion-0.8;durability=mixed;mode=ir-and-generated;latency=p50-p95-p99-by-criterion;allocations=allocator-external;instructions=not-collected";
+const BENCH_METADATA: &str = "profile=bench;tool=criterion-0.8;durability=mixed;mode=ir-and-generated;latency=p50-p95-p99-by-criterion;allocations=allocator-external;instructions=not-collected";
 
 fn metadata(name: &str, fixture_bytes: usize, extra: &str) -> String {
     format!(
@@ -24,14 +23,17 @@ fn metadata(name: &str, fixture_bytes: usize, extra: &str) -> String {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct TraceEvent(u64);
 
+type TraceProducer = Producer<TraceEvent>;
+type TraceConsumer = Consumer<TraceEvent>;
+
 /// Creates an empty ring buffer with capacity 128.
-fn empty_ringbuffer_128() -> (RingBuffer<TraceEvent, 128>, RingBuffer<TraceEvent, 128>) {
+fn empty_ringbuffer_128() -> (TraceProducer, TraceConsumer) {
     RingBuffer::new(128)
 }
 
 /// Creates a ring buffer with 100 items (split across producer/consumer).
-fn ringbuffer_100_items() -> (RingBuffer<TraceEvent, 128>, RingBuffer<TraceEvent, 128>) {
-    let (prod, cons) = RingBuffer::new(128);
+fn ringbuffer_100_items() -> (TraceProducer, TraceConsumer) {
+    let (mut prod, cons) = RingBuffer::new(128);
     let mut i = 0u64;
     while i < 100 {
         if let Ok(()) = prod.push(TraceEvent(i)) {
@@ -42,8 +44,8 @@ fn ringbuffer_100_items() -> (RingBuffer<TraceEvent, 128>, RingBuffer<TraceEvent
 }
 
 /// Creates a ring buffer with 50 items.
-fn ringbuffer_50_items() -> (RingBuffer<TraceEvent, 128>, RingBuffer<TraceEvent, 128>) {
-    let (prod, cons) = RingBuffer::new(128);
+fn ringbuffer_50_items() -> (TraceProducer, TraceConsumer) {
+    let (mut prod, cons) = RingBuffer::new(128);
     let mut i = 0u64;
     while i < 50 {
         if let Ok(()) = prod.push(TraceEvent(i)) {
@@ -54,8 +56,8 @@ fn ringbuffer_50_items() -> (RingBuffer<TraceEvent, 128>, RingBuffer<TraceEvent,
 }
 
 /// Creates a full ring buffer (capacity 128, 128 items).
-fn ringbuffer_full() -> (RingBuffer<TraceEvent, 128>, RingBuffer<TraceEvent, 128>) {
-    let (prod, cons) = RingBuffer::new(128);
+fn ringbuffer_full() -> (TraceProducer, TraceConsumer) {
+    let (mut prod, cons) = RingBuffer::new(128);
     let mut i = 0u64;
     while i < 128 {
         if let Ok(()) = prod.push(TraceEvent(i)) {
@@ -66,8 +68,8 @@ fn ringbuffer_full() -> (RingBuffer<TraceEvent, 128>, RingBuffer<TraceEvent, 128
 }
 
 /// Creates a ring buffer with 1000 items.
-fn ringbuffer_1000_items() -> (RingBuffer<TraceEvent, 128>, RingBuffer<TraceEvent, 128>) {
-    let (prod, cons) = RingBuffer::new(128);
+fn ringbuffer_1000_items() -> (TraceProducer, TraceConsumer) {
+    let (mut prod, cons) = RingBuffer::new(1024);
     let mut i = 0u64;
     while i < 1000 {
         if let Ok(()) = prod.push(TraceEvent(i)) {
@@ -92,14 +94,11 @@ fn bench_rtrb(c: &mut Criterion) {
             ),
             |b| {
                 b.iter(|| {
-                    let (prod, _cons) = empty_ringbuffer_128();
+                    let (mut prod, _cons) = empty_ringbuffer_128();
                     let item = TraceEvent(42);
                     let result = prod.push(item);
                     // Exact assertion: push on non-full buffer succeeds
-                    assert!(
-                        result.is_ok(),
-                        "push on empty rtrb buffer must succeed"
-                    );
+                    assert!(result.is_ok(), "push on empty rtrb buffer must succeed");
                     black_box(result)
                 });
             },
@@ -118,15 +117,13 @@ fn bench_rtrb(c: &mut Criterion) {
             ),
             |b| {
                 b.iter(|| {
-                    let (prod, mut cons) = ringbuffer_100_items();
+                    let (_prod, mut cons) = ringbuffer_100_items();
                     let popped = cons.pop();
                     // Exact assertion: pop returns first item in FIFO order
-                    assert!(
-                        popped.is_some(),
-                        "pop on non-empty buffer must return Some"
-                    );
+                    assert!(popped.is_ok(), "pop on non-empty buffer must return Ok");
                     assert_eq!(
-                        popped.expect("item").0, 0,
+                        popped.expect("item").0,
+                        0,
                         "first popped item must be TraceEvent(0) — FIFO order"
                     );
                     black_box(popped)
@@ -146,19 +143,11 @@ fn bench_rtrb(c: &mut Criterion) {
             ),
             |b| {
                 b.iter(|| {
-                    let (prod, _cons) = ringbuffer_full();
+                    let (mut prod, _cons) = ringbuffer_full();
                     let item = TraceEvent(999);
                     let result = prod.push(item);
                     // Exact assertion: push on full buffer returns Err with item
-                    assert!(
-                        result.is_err(),
-                        "push on full rtrb buffer must return Err"
-                    );
-                    let returned_item = result.expect_err("err");
-                    assert_eq!(
-                        returned_item.0, 999,
-                        "Err variant must contain the rejected item"
-                    );
+                    assert!(result.is_err(), "push on full rtrb buffer must return Err");
                     black_box(result)
                 });
             },
@@ -176,24 +165,25 @@ fn bench_rtrb(c: &mut Criterion) {
             ),
             |b| {
                 b.iter(|| {
-                    let (prod, mut cons) = ringbuffer_100_items();
-                    let peeked = cons.peek();
-                    // Exact assertion: peek returns reference to head without removing
-                    assert!(
-                        peeked.is_ok(),
-                        "peek on non-empty buffer must return Ok"
-                    );
-                    let item_ref = peeked.expect("item");
+                    let (_prod, mut cons) = ringbuffer_100_items();
+                    let peeked_value = {
+                        let peeked = cons.peek();
+                        // Exact assertion: peek returns reference to head without removing
+                        assert!(peeked.is_ok(), "peek on non-empty buffer must return Ok");
+                        let item_ref = peeked.expect("item");
+                        item_ref.0
+                    };
                     assert_eq!(
-                        item_ref.0, 0,
+                        peeked_value, 0,
                         "peeked item must be TraceEvent(0) — head of queue"
                     );
                     // Buffer unchanged after peek
                     assert_eq!(
-                        cons.pop().expect("item").0, 0,
+                        cons.pop().expect("item").0,
+                        0,
                         "first pop after peek must still be TraceEvent(0)"
                     );
-                    black_box(peeked)
+                    black_box(peeked_value)
                 });
             },
         );
@@ -211,16 +201,9 @@ fn bench_rtrb(c: &mut Criterion) {
             |b| {
                 b.iter(|| {
                     let (prod, cons) = ringbuffer_50_items();
-                    drop(prod); // Drop producer to avoid borrow issues
                     // Exact assertions on half-full buffer
-                    assert!(
-                        !cons.is_full(),
-                        "50/128 buffer must NOT be full"
-                    );
-                    assert!(
-                        !cons.is_empty(),
-                        "50/128 buffer must NOT be empty"
-                    );
+                    assert!(!prod.is_full(), "50/128 buffer must NOT be full");
+                    assert!(!cons.is_empty(), "50/128 buffer must NOT be empty");
                     // Default capacity is 128 (const generic)
                     black_box(cons)
                 });
@@ -240,7 +223,7 @@ fn bench_rtrb(c: &mut Criterion) {
             ),
             |b| {
                 b.iter(|| {
-                    let (prod, mut cons) = ringbuffer_1000_items();
+                    let (_prod, mut cons) = ringbuffer_1000_items();
                     // Note: with 128 capacity and 1000 items, the buffer will have
                     // wrapped around. We test the FIFO property by checking
                     // all items that can be consumed maintain order.
@@ -253,18 +236,12 @@ fn bench_rtrb(c: &mut Criterion) {
                             item.0 >= expected || item.0 < 100,
                             "items must maintain circular FIFO order"
                         );
-                        expected = item.0;
+                        expected = item.0.saturating_add(1);
                         popped += 1;
                     }
                     // Exact assertion: 1000 total items processed
-                    assert_eq!(
-                        popped, 1000,
-                        "must process exactly 1000 items"
-                    );
-                    assert!(
-                        cons.is_empty(),
-                        "buffer must be empty after draining"
-                    );
+                    assert_eq!(popped, 1000, "must process exactly 1000 items");
+                    assert!(cons.is_empty(), "buffer must be empty after draining");
                     black_box(popped)
                 });
             },

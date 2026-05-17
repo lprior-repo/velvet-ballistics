@@ -1143,8 +1143,6 @@ fn bind_fails_when_path_is_existing_directory() {
     );
 }
 
-
-
 // ── 3. client lifecycle: connect, health, disconnect, reconnect ──────────────
 
 #[test]
@@ -2191,11 +2189,7 @@ fn poll_once_with_resolver_uses_test_poll_error_when_set() {
 
     server.set_test_poll_once_result(Err(IpcServerError::TooManyClients));
 
-    let result = server.poll_once_with_resolver(
-        &mut runtime,
-        Some(Duration::ZERO),
-        None,
-    );
+    let result = server.poll_once_with_resolver(&mut runtime, Some(Duration::ZERO), None);
     assert_eq!(
         result,
         Err(IpcServerError::TooManyClients),
@@ -2465,5 +2459,3 @@ fn serve_ipc_returns_ok_false_when_poll_once_indicates_shutdown() {
         "serve_ipc should return Ok(false) when poll_once indicates shutdown"
     );
 }
-
-

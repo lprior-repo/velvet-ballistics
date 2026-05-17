@@ -5564,9 +5564,18 @@ steps:
             timeout: None,
         };
 
-        match canonical_step_width(&set) { Ok(1) => {}, v => panic!("expected Ok(1), got {v:?}") }
-        match canonical_step_width(&finish) { Ok(1) => {}, v => panic!("expected Ok(1), got {v:?}") }
-        match canonical_step_width(&wait) { Ok(1) => {}, v => panic!("expected Ok(1), got {v:?}") }
+        match canonical_step_width(&set) {
+            Ok(1) => {}
+            v => panic!("expected Ok(1), got {v:?}"),
+        }
+        match canonical_step_width(&finish) {
+            Ok(1) => {}
+            v => panic!("expected Ok(1), got {v:?}"),
+        }
+        match canonical_step_width(&wait) {
+            Ok(1) => {}
+            v => panic!("expected Ok(1), got {v:?}"),
+        }
     }
 
     #[test]
@@ -5576,7 +5585,10 @@ steps:
             timeout: None,
         };
 
-        match canonical_step_width(&ask) { Ok(2) => {}, v => panic!("expected Ok(2), got {v:?}") }
+        match canonical_step_width(&ask) {
+            Ok(2) => {}
+            v => panic!("expected Ok(2), got {v:?}"),
+        }
     }
 
     #[test]
@@ -5601,7 +5613,10 @@ steps:
             body,
         };
 
-        match canonical_step_width(&for_each) { Ok(3) => {}, v => panic!("expected Ok(3), got {v:?}") }
+        match canonical_step_width(&for_each) {
+            Ok(3) => {}
+            v => panic!("expected Ok(3), got {v:?}"),
+        }
     }
 
     #[test]
@@ -5637,9 +5652,18 @@ steps:
             body: body.clone(),
         };
 
-        match canonical_step_width(&collect) { Ok(4) => {}, v => panic!("expected Ok(4), got {v:?}") }
-        match canonical_step_width(&reduce) { Ok(4) => {}, v => panic!("expected Ok(4), got {v:?}") }
-        match canonical_step_width(&repeat) { Ok(4) => {}, v => panic!("expected Ok(4), got {v:?}") }
+        match canonical_step_width(&collect) {
+            Ok(4) => {}
+            v => panic!("expected Ok(4), got {v:?}"),
+        }
+        match canonical_step_width(&reduce) {
+            Ok(4) => {}
+            v => panic!("expected Ok(4), got {v:?}"),
+        }
+        match canonical_step_width(&repeat) {
+            Ok(4) => {}
+            v => panic!("expected Ok(4), got {v:?}"),
+        }
     }
 
     #[test]
@@ -5666,7 +5690,10 @@ steps:
 
         // Together width = 2 + body_width(branch.steps, 1)
         // body_width(Set) = 1 + 1 = 2, so together = 2 + 2 = 4
-        match canonical_step_width(&together) { Ok(4) => {}, v => panic!("expected Ok(4), got {v:?}") }
+        match canonical_step_width(&together) {
+            Ok(4) => {}
+            v => panic!("expected Ok(4), got {v:?}"),
+        }
     }
 
     #[test]
@@ -5686,11 +5713,20 @@ steps:
             },
         ];
 
-        match layout_width(&layout, 0) { Ok(1) => {}, v => panic!("expected Ok(1), got {v:?}") }
-        match layout_width(&layout, 1) { Ok(2) => {}, v => panic!("expected Ok(2), got {v:?}") }
-        match layout_width(&layout, 2) { Ok(3) => {}, v => panic!("expected Ok(3), got {v:?}") }
+        match layout_width(&layout, 0) {
+            Ok(1) => {}
+            v => panic!("expected Ok(1), got {v:?}"),
+        }
+        match layout_width(&layout, 1) {
+            Ok(2) => {}
+            v => panic!("expected Ok(2), got {v:?}"),
+        }
+        match layout_width(&layout, 2) {
+            Ok(3) => {}
+            v => panic!("expected Ok(3), got {v:?}"),
+        }
         match layout_width(&layout, 3) {
-            Err(CompileError::StepIndexOutOfRange { value: 3 }) => {},
+            Err(CompileError::StepIndexOutOfRange { value: 3 }) => {}
             v => panic!("expected StepIndexOutOfRange(3), got {v:?}"),
         }
     }
@@ -5724,13 +5760,13 @@ steps:
             v => panic!("expected Some(StepIdx(3)), got {v:?}"),
         }
         match optional_source_ir_start(&starts, 2) {
-            Ok(None) => {},
+            Ok(None) => {}
             v => panic!("expected None, got {v:?}"),
         }
         // index=3: next=4, starts.get(4)=None, returns Ok(None)
         // (mutation "delete None" would change this to always Err)
         match optional_source_ir_start(&starts, 3) {
-            Ok(None) => {},
+            Ok(None) => {}
             v => panic!("expected Ok(None), got {v:?}"),
         }
     }
@@ -5761,15 +5797,24 @@ steps:
         }
     }
 
-   #[test]
+    #[test]
     fn compiled_step_width_returns_two_for_ask_for_each_together() {
         let ask_node = load_yaml_node("ask:\n  prompt: 1\n  answer: 2");
         let for_each_node = load_yaml_node("for_each:\n  input: 1\n  item: 2\n  limit: 10");
         let together_node = load_yaml_node("together:\n  branches: [1, 2]");
 
-        match compiled_step_width(&ask_node, 0) { Ok(2) => {}, v => panic!("expected Ok(2), got {v:?}") }
-        match compiled_step_width(&for_each_node, 0) { Ok(2) => {}, v => panic!("expected Ok(2), got {v:?}") }
-        match compiled_step_width(&together_node, 0) { Ok(2) => {}, v => panic!("expected Ok(2), got {v:?}") }
+        match compiled_step_width(&ask_node, 0) {
+            Ok(2) => {}
+            v => panic!("expected Ok(2), got {v:?}"),
+        }
+        match compiled_step_width(&for_each_node, 0) {
+            Ok(2) => {}
+            v => panic!("expected Ok(2), got {v:?}"),
+        }
+        match compiled_step_width(&together_node, 0) {
+            Ok(2) => {}
+            v => panic!("expected Ok(2), got {v:?}"),
+        }
     }
 
     #[test]
@@ -5778,9 +5823,18 @@ steps:
         let reduce_node = load_yaml_node("reduce:\n  input: 1\n  accumulator: 2\n  initial: 0");
         let repeat_node = load_yaml_node("repeat:\n  max_attempts: 3");
 
-        match compiled_step_width(&collect_node, 0) { Ok(3) => {}, v => panic!("expected Ok(3), got {v:?}") }
-        match compiled_step_width(&reduce_node, 0) { Ok(3) => {}, v => panic!("expected Ok(3), got {v:?}") }
-        match compiled_step_width(&repeat_node, 0) { Ok(3) => {}, v => panic!("expected Ok(3), got {v:?}") }
+        match compiled_step_width(&collect_node, 0) {
+            Ok(3) => {}
+            v => panic!("expected Ok(3), got {v:?}"),
+        }
+        match compiled_step_width(&reduce_node, 0) {
+            Ok(3) => {}
+            v => panic!("expected Ok(3), got {v:?}"),
+        }
+        match compiled_step_width(&repeat_node, 0) {
+            Ok(3) => {}
+            v => panic!("expected Ok(3), got {v:?}"),
+        }
     }
 
     #[test]
@@ -5789,9 +5843,18 @@ steps:
         let finish_node = load_yaml_node("finish:\n  result: 0");
         let wait_node = load_yaml_node("wait:\n  event: e");
 
-        match compiled_step_width(&set_node, 0) { Ok(1) => {}, v => panic!("expected Ok(1), got {v:?}") }
-        match compiled_step_width(&finish_node, 0) { Ok(1) => {}, v => panic!("expected Ok(1), got {v:?}") }
-        match compiled_step_width(&wait_node, 0) { Ok(1) => {}, v => panic!("expected Ok(1), got {v:?}") }
+        match compiled_step_width(&set_node, 0) {
+            Ok(1) => {}
+            v => panic!("expected Ok(1), got {v:?}"),
+        }
+        match compiled_step_width(&finish_node, 0) {
+            Ok(1) => {}
+            v => panic!("expected Ok(1), got {v:?}"),
+        }
+        match compiled_step_width(&wait_node, 0) {
+            Ok(1) => {}
+            v => panic!("expected Ok(1), got {v:?}"),
+        }
     }
 
     #[test]
@@ -5804,7 +5867,10 @@ steps:
         let mapping = doc.as_mapping().expect("top-level mapping");
         let mut stack: Vec<(&Yaml<'_>, u16)> = Vec::new();
         match push_mapping(mapping, 0, limits, &mut stack) {
-            Err(CompileError::MappingLimit { actual: 4, limit: 3 }) => {},
+            Err(CompileError::MappingLimit {
+                actual: 4,
+                limit: 3,
+            }) => {}
             v => panic!("expected MappingLimit(4,3), got {v:?}"),
         }
     }
@@ -5818,7 +5884,10 @@ steps:
         let doc = load_yaml_node("- a\n- b\n- c");
         let sequence = doc.as_sequence().expect("top-level sequence");
         match push_sequence(sequence, 0, limits, &mut Vec::new()) {
-            Err(CompileError::SequenceLimit { actual: 3, limit: 2 }) => {},
+            Err(CompileError::SequenceLimit {
+                actual: 3,
+                limit: 2,
+            }) => {}
             v => panic!("expected SequenceLimit(3,2), got {v:?}"),
         }
     }
@@ -5834,7 +5903,10 @@ steps:
 
         assert!(validate_scalar_len(at_limit, limits).is_ok());
         match validate_scalar_len(over_limit, limits) {
-            Err(CompileError::ScalarLimit { actual: 11, limit: 10 }) => {},
+            Err(CompileError::ScalarLimit {
+                actual: 11,
+                limit: 10,
+            }) => {}
             v => panic!("expected ScalarLimit(11,10), got {v:?}"),
         }
     }
@@ -5854,7 +5926,7 @@ steps:
             _ => panic!("expected scalar value"),
         };
         match validate_scalar(scalar, limits) {
-            Err(CompileError::FloatForbidden) => {},
+            Err(CompileError::FloatForbidden) => {}
             v => panic!("expected FloatForbidden, got {v:?}"),
         }
     }
@@ -5866,9 +5938,18 @@ steps:
         let bool_doc = load_yaml_node("true");
         let null_doc = load_yaml_node("null");
 
-        let int_scalar = match &int_doc { Yaml::Value(s) => s, _ => panic!() };
-        let bool_scalar = match &bool_doc { Yaml::Value(s) => s, _ => panic!() };
-        let null_scalar = match &null_doc { Yaml::Value(s) => s, _ => panic!() };
+        let int_scalar = match &int_doc {
+            Yaml::Value(s) => s,
+            _ => panic!(),
+        };
+        let bool_scalar = match &bool_doc {
+            Yaml::Value(s) => s,
+            _ => panic!(),
+        };
+        let null_scalar = match &null_doc {
+            Yaml::Value(s) => s,
+            _ => panic!(),
+        };
 
         assert!(validate_scalar(int_scalar, limits).is_ok());
         assert!(validate_scalar(bool_scalar, limits).is_ok());
@@ -5887,7 +5968,10 @@ steps:
         let doc2 = load_yaml_node("a: 1\nb: 2\nc: 3");
         let mapping2 = doc2.as_mapping().expect("mapping");
         match validate_mapping_len(mapping2, limits) {
-            Err(CompileError::MappingLimit { actual: 3, limit: 2 }) => {},
+            Err(CompileError::MappingLimit {
+                actual: 3,
+                limit: 2,
+            }) => {}
             v => panic!("expected MappingLimit(3,2), got {v:?}"),
         }
     }
@@ -5895,17 +5979,17 @@ steps:
     #[test]
     fn validate_run_shape_accepts_valid_run_step() {
         let doc = load_yaml_node("action: 1\ninput: 0");
-        assert!(matches!(
-            validate_run_shape(&doc, 0, 5, "run"),
-            Ok(())
-        ));
+        assert!(matches!(validate_run_shape(&doc, 0, 5, "run"), Ok(())));
     }
 
     #[test]
     fn validate_run_shape_rejects_non_mapping_body() {
         let doc = load_yaml_node("not a mapping");
         match validate_run_shape(&doc, 0, 5, "run") {
-            Err(CompileError::UnsupportedStepPrimitive { step: 0, primitive: "run" }) => {},
+            Err(CompileError::UnsupportedStepPrimitive {
+                step: 0,
+                primitive: "run",
+            }) => {}
             v => panic!("expected UnsupportedStepPrimitive(run), got {v:?}"),
         }
     }
@@ -5914,7 +5998,10 @@ steps:
     fn validate_run_shape_rejects_missing_action() {
         let doc = load_yaml_node("input: 0");
         match validate_run_shape(&doc, 0, 5, "run") {
-            Err(CompileError::MissingStepField { step: 0, field: "action" }) => {},
+            Err(CompileError::MissingStepField {
+                step: 0,
+                field: "action",
+            }) => {}
             v => panic!("expected MissingStepField(action), got {v:?}"),
         }
     }
@@ -5922,31 +6009,33 @@ steps:
     #[test]
     fn validate_wait_shape_accepts_until_without_timeout() {
         let doc = load_yaml_node("until: 1");
-        assert!(matches!(
-            validate_wait_shape(&doc, 0, 5),
-            Ok(())
-        ));
+        assert!(matches!(validate_wait_shape(&doc, 0, 5), Ok(())));
     }
 
     #[test]
     fn validate_wait_shape_accepts_event_with_timeout() {
         let doc = load_yaml_node("event: 1\ntimeout: 2");
-        assert!(matches!(
-            validate_wait_shape(&doc, 0, 5),
-            Ok(())
-        ));
+        assert!(matches!(validate_wait_shape(&doc, 0, 5), Ok(())));
     }
 
     #[test]
     fn validate_wait_shape_rejects_invalid_combination() {
         let doc = load_yaml_node("until: 1\nevent: 2");
         match validate_wait_shape(&doc, 0, 5) {
-            Err(CompileError::StepFieldShape { step: 0, field: "wait", .. }) => {},
+            Err(CompileError::StepFieldShape {
+                step: 0,
+                field: "wait",
+                ..
+            }) => {}
             v => panic!("expected StepFieldShape(wait), got {v:?}"),
         }
         // Empty scalar cannot be used as wait body
         match validate_wait_shape(&load_yaml_node("null"), 0, 5) {
-            Err(CompileError::StepFieldShape { step: 0, field: "wait", .. }) => {},
+            Err(CompileError::StepFieldShape {
+                step: 0,
+                field: "wait",
+                ..
+            }) => {}
             v => panic!("expected StepFieldShape(wait), got {v:?}"),
         }
     }
@@ -5954,17 +6043,17 @@ steps:
     #[test]
     fn validate_ask_shape_accepts_valid_ask_step() {
         let doc = load_yaml_node("prompt: 1\nanswer: 2");
-        assert!(matches!(
-            validate_ask_shape(&doc, 0, 5),
-            Ok(())
-        ));
+        assert!(matches!(validate_ask_shape(&doc, 0, 5), Ok(())));
     }
 
     #[test]
     fn validate_ask_shape_rejects_missing_prompt() {
         let doc = load_yaml_node("answer: 2");
         match validate_ask_shape(&doc, 0, 5) {
-            Err(CompileError::MissingStepField { step: 0, field: "prompt" }) => {},
+            Err(CompileError::MissingStepField {
+                step: 0,
+                field: "prompt",
+            }) => {}
             v => panic!("expected MissingStepField(prompt), got {v:?}"),
         }
     }
@@ -5973,7 +6062,10 @@ steps:
     fn validate_ask_shape_rejects_missing_answer() {
         let doc = load_yaml_node("prompt: 1");
         match validate_ask_shape(&doc, 0, 5) {
-            Err(CompileError::MissingStepField { step: 0, field: "answer" }) => {},
+            Err(CompileError::MissingStepField {
+                step: 0,
+                field: "answer",
+            }) => {}
             v => panic!("expected MissingStepField(answer), got {v:?}"),
         }
     }
@@ -5981,17 +6073,17 @@ steps:
     #[test]
     fn validate_choose_shape_accepts_valid_choose_step() {
         let doc = load_yaml_node("condition: 1\non_true: 2\non_false: 3");
-        assert!(matches!(
-            validate_choose_shape(&doc, 0, 5),
-            Ok(())
-        ));
+        assert!(matches!(validate_choose_shape(&doc, 0, 5), Ok(())));
     }
 
     #[test]
     fn validate_choose_shape_rejects_missing_condition() {
         let doc = load_yaml_node("on_true: 2\non_false: 3");
         match validate_choose_shape(&doc, 0, 5) {
-            Err(CompileError::MissingStepField { step: 0, field: "condition" }) => {},
+            Err(CompileError::MissingStepField {
+                step: 0,
+                field: "condition",
+            }) => {}
             v => panic!("expected MissingStepField(condition), got {v:?}"),
         }
     }
@@ -5999,17 +6091,18 @@ steps:
     #[test]
     fn validate_together_shape_accepts_valid_together_step() {
         let doc = load_yaml_node("branches: [0, 1]");
-        assert!(matches!(
-            validate_together_shape(&doc, 0, 5),
-            Ok(())
-        ));
+        assert!(matches!(validate_together_shape(&doc, 0, 5), Ok(())));
     }
 
     #[test]
     fn validate_together_shape_rejects_empty_branches() {
         let doc = load_yaml_node("branches: []");
         match validate_together_shape(&doc, 0, 5) {
-            Err(CompileError::StepFieldShape { step: 0, field: "branches", expected: "at least one integer step index" }) => {},
+            Err(CompileError::StepFieldShape {
+                step: 0,
+                field: "branches",
+                expected: "at least one integer step index",
+            }) => {}
             v => panic!("expected StepFieldShape(branches,at least one...), got {v:?}"),
         }
     }
@@ -6017,17 +6110,17 @@ steps:
     #[test]
     fn validate_collect_shape_accepts_valid_collect_step() {
         let doc = load_yaml_node("source: 1\nlimit: 10\npage_size: 5");
-        assert!(matches!(
-            validate_collect_shape(&doc, 0, 5),
-            Ok(())
-        ));
+        assert!(matches!(validate_collect_shape(&doc, 0, 5), Ok(())));
     }
 
     #[test]
     fn validate_collect_shape_rejects_missing_source() {
         let doc = load_yaml_node("limit: 10\npage_size: 5");
         match validate_collect_shape(&doc, 0, 5) {
-            Err(CompileError::MissingStepField { step: 0, field: "source" }) => {},
+            Err(CompileError::MissingStepField {
+                step: 0,
+                field: "source",
+            }) => {}
             v => panic!("expected MissingStepField(source), got {v:?}"),
         }
     }

@@ -4,16 +4,15 @@
 
 #![allow(missing_docs)]
 
-use criterion::{criterion_group, criterion_main, Criterion, Throughput};
+use criterion::{Criterion, Throughput, criterion_group, criterion_main};
 use std::hint::black_box;
 use vb_core::{
-    action::{ActionContract, ActionInput, ActionOutcome, Idempotency, SideEffect, RetrySafety},
-    ids::{ActionId, RunId, SeqNo, StepIdx, SlotIdx},
+    action::{ActionContract, ActionInput, ActionOutcome, Idempotency, RetrySafety, SideEffect},
+    ids::{ActionId, RunId, SeqNo, SlotIdx, StepIdx},
 };
 use vb_runtime::action::ActionRegistry;
 
-const BENCH_METADATA: &str =
-    "profile=bench;tool=criterion-0.8;durability=mixed;mode=ir-and-generated;latency=p50-p95-p99-by-criterion;allocations=allocator-external;instructions=not-collected";
+const BENCH_METADATA: &str = "profile=bench;tool=criterion-0.8;durability=mixed;mode=ir-and-generated;latency=p50-p95-p99-by-criterion;allocations=allocator-external;instructions=not-collected";
 
 fn metadata(name: &str, fixture_bytes: usize, extra: &str) -> String {
     format!(
@@ -197,17 +196,11 @@ fn bench_action_dispatch(c: &mut Criterion) {
                     let contract = action_contract(ActionId::new(999));
                     let result = registry_10.dispatch(black_box(&input), black_box(&contract));
                     // Exact assertion: must return UnknownAction error
-                    assert!(
-                        result.is_err(),
-                        "dispatch of unknown action must fail"
-                    );
+                    assert!(result.is_err(), "dispatch of unknown action must fail");
                     let err = result.expect_err("error");
                     match err {
                         vb_core::action::ActionError::UnknownAction { action } => {
-                            assert_eq!(
-                                action.get(), 999,
-                                "error must specify action ID 999"
-                            );
+                            assert_eq!(action.get(), 999, "error must specify action ID 999");
                         }
                         _ => panic!("expected ActionError::UnknownAction"),
                     }
@@ -235,10 +228,7 @@ fn bench_action_dispatch(c: &mut Criterion) {
                         "resolve_compile_time of action 5 must succeed"
                     );
                     let contract = result.expect("ok");
-                    assert_eq!(
-                        contract.id.get(), 5,
-                        "resolved contract must have id 5"
-                    );
+                    assert_eq!(contract.id.get(), 5, "resolved contract must have id 5");
                     black_box(contract);
                 });
             },
