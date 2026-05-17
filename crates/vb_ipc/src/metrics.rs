@@ -111,7 +111,9 @@ mod tests {
                 runs_finished_total: 200,
             },
         };
-        let Ok(encoded) = postcard::to_allocvec(&metrics) else { return };
+        let Ok(encoded) = postcard::to_allocvec(&metrics) else {
+            return;
+        };
         let decoded: RuntimeMetrics = match postcard::from_bytes(&encoded) {
             Ok(d) => d,
             Err(_) => {
@@ -136,7 +138,9 @@ mod tests {
             steps_total: 0,
             actions_total: 0,
         };
-        let Ok(encoded) = postcard::to_allocvec(&metrics) else { return };
+        let Ok(encoded) = postcard::to_allocvec(&metrics) else {
+            return;
+        };
         let decoded: ShardMetrics = match postcard::from_bytes(&encoded) {
             Ok(d) => d,
             Err(_) => {
@@ -161,7 +165,9 @@ mod tests {
             steps_total: u64::MAX,
             actions_total: u64::MAX,
         };
-        let Ok(encoded) = postcard::to_allocvec(&metrics) else { return };
+        let Ok(encoded) = postcard::to_allocvec(&metrics) else {
+            return;
+        };
         let decoded: ShardMetrics = match postcard::from_bytes(&encoded) {
             Ok(d) => d,
             Err(_) => {
@@ -179,7 +185,9 @@ mod tests {
             total_events: u64::MAX,
             total_runs: 0,
         };
-        let Ok(encoded) = postcard::to_allocvec(&metrics) else { return };
+        let Ok(encoded) = postcard::to_allocvec(&metrics) else {
+            return;
+        };
         let decoded: JournalMetrics = match postcard::from_bytes(&encoded) {
             Ok(d) => d,
             Err(_) => {
@@ -196,7 +204,9 @@ mod tests {
             connected_clients: 100,
             commands_processed: 999_999_999,
         };
-        let Ok(encoded) = postcard::to_allocvec(&metrics) else { return };
+        let Ok(encoded) = postcard::to_allocvec(&metrics) else {
+            return;
+        };
         let decoded: IpcMetrics = match postcard::from_bytes(&encoded) {
             Ok(d) => d,
             Err(_) => {
@@ -215,7 +225,9 @@ mod tests {
             runs_failed_total: u64::MAX,
             runs_finished_total: u64::MAX,
         };
-        let Ok(encoded) = postcard::to_allocvec(&metrics) else { return };
+        let Ok(encoded) = postcard::to_allocvec(&metrics) else {
+            return;
+        };
         let decoded: AggregateMetrics = match postcard::from_bytes(&encoded) {
             Ok(d) => d,
             Err(_) => {
@@ -246,7 +258,9 @@ mod tests {
                 runs_finished_total: 0,
             },
         };
-        let Ok(encoded) = postcard::to_allocvec(&metrics) else { return };
+        let Ok(encoded) = postcard::to_allocvec(&metrics) else {
+            return;
+        };
         let decoded: RuntimeMetrics = match postcard::from_bytes(&encoded) {
             Ok(d) => d,
             Err(_) => {
@@ -303,7 +317,9 @@ mod tests {
                 runs_finished_total: 100,
             },
         };
-        let Ok(encoded) = postcard::to_allocvec(&metrics) else { return };
+        let Ok(encoded) = postcard::to_allocvec(&metrics) else {
+            return;
+        };
         let decoded: RuntimeMetrics = match postcard::from_bytes(&encoded) {
             Ok(d) => d,
             Err(_) => {
@@ -381,7 +397,9 @@ mod tests {
             runs_failed_total: 0,
             runs_finished_total: 0,
         };
-        let Ok(encoded) = postcard::to_allocvec(&metrics) else { return };
+        let Ok(encoded) = postcard::to_allocvec(&metrics) else {
+            return;
+        };
         let decoded: AggregateMetrics = match postcard::from_bytes(&encoded) {
             Ok(d) => d,
             Err(_) => {

@@ -1,14 +1,14 @@
 #![forbid(unsafe_code)]
 //! Buffer and frame helper functions.
 
-use super::IpcResponse;
 use super::error::IpcServerError;
+use super::IpcResponse;
 use crate::IpcError;
 use crate::IpcFrameHeader;
-use crate::{IPC_HEADER_LEN, MaxPayloadBytes};
+use crate::{MaxPayloadBytes, IPC_HEADER_LEN};
+use mio::net::UnixStream;
 use mio::Registry;
 use mio::Token;
-use mio::net::UnixStream;
 use std::io::Write;
 
 /// Appends read bytes into the read buffer with bounds checking.
@@ -110,13 +110,13 @@ pub fn send_response(
     response: &IpcResponse,
 ) -> Result<(), IpcServerError> {
     #[cfg(test)]
-    let payload_bytes = if test_hooks::FORCE_POSTCARD_FAIL.load(std::sync::atomic::Ordering::Relaxed)
-    {
-        Err(postcard::Error::SerializeBufferFull)
-    } else {
-        postcard::to_allocvec(response)
-    }
-    .map_err(|_| IpcServerError::ResponseEncodeFailed)?;
+    let payload_bytes =
+        if test_hooks::FORCE_POSTCARD_FAIL.load(std::sync::atomic::Ordering::Relaxed) {
+            Err(postcard::Error::SerializeBufferFull)
+        } else {
+            postcard::to_allocvec(response)
+        }
+        .map_err(|_| IpcServerError::ResponseEncodeFailed)?;
 
     #[cfg(not(test))]
     let payload_bytes =
@@ -133,13 +133,13 @@ pub fn send_response(
     );
 
     #[cfg(test)]
-    let header_bytes = if test_hooks::FORCE_HEADER_ENCODE_FAIL.load(std::sync::atomic::Ordering::Relaxed)
-    {
-        Err(crate::IpcError::HeaderEncodeFailed)
-    } else {
-        header.encode()
-    }
-    .map_err(|_| IpcServerError::ResponseEncodeFailed)?;
+    let header_bytes =
+        if test_hooks::FORCE_HEADER_ENCODE_FAIL.load(std::sync::atomic::Ordering::Relaxed) {
+            Err(crate::IpcError::HeaderEncodeFailed)
+        } else {
+            header.encode()
+        }
+        .map_err(|_| IpcServerError::ResponseEncodeFailed)?;
 
     #[cfg(not(test))]
     let header_bytes = header
@@ -160,12 +160,15 @@ pub fn send_response(
     }
     if write_buffer.is_empty() {
         #[cfg(test)]
-        let flush_result = if test_hooks::FORCE_FLUSH_FAIL.load(std::sync::atomic::Ordering::Relaxed)
-        {
-            Err(std::io::Error::new(std::io::ErrorKind::BrokenPipe, "flush fail"))
-        } else {
-            stream.flush()
-        };
+        let flush_result =
+            if test_hooks::FORCE_FLUSH_FAIL.load(std::sync::atomic::Ordering::Relaxed) {
+                Err(std::io::Error::new(
+                    std::io::ErrorKind::BrokenPipe,
+                    "flush fail",
+                ))
+            } else {
+                stream.flush()
+            };
 
         #[cfg(not(test))]
         let flush_result = stream.flush();
@@ -198,7 +201,9 @@ pub(crate) fn frame_total_len_checked_add(
     header_len: usize,
     payload_len: usize,
 ) -> Result<usize, IpcServerError> {
-    header_len.checked_add(payload_len).ok_or(IpcServerError::ReadBufferTooLarge)
+    header_len
+        .checked_add(payload_len)
+        .ok_or(IpcServerError::ReadBufferTooLarge)
 }
 
 #[cfg(test)]
@@ -223,7 +228,9 @@ mod tests {
         let mut read_buffer = vec![1, 2, 3];
         let temp_buf = [4u8; 4096];
         let result = append_read_bytes(&mut read_buffer, &temp_buf, 3);
-        let Ok(()) = result else { panic!("appending 3 bytes should succeed"); };
+        let Ok(()) = result else {
+            panic!("appending 3 bytes should succeed");
+        };
         assert_eq!(read_buffer.len(), 6);
         assert_eq!(read_buffer.as_slice(), &[1, 2, 3, 4, 4, 4]);
     }
@@ -233,7 +240,9 @@ mod tests {
         let mut read_buffer = Vec::new();
         let temp_buf = [0u8; 4096];
         let result = append_read_bytes(&mut read_buffer, &temp_buf, 0);
-        let Ok(()) = result else { panic!("zero bytes should succeed"); };
+        let Ok(()) = result else {
+            panic!("zero bytes should succeed");
+        };
         assert!(read_buffer.is_empty());
     }
 
@@ -243,8 +252,13 @@ mod tests {
         let temp_buf = [0u8; 4096];
         // bytes_read > 4096 is impossible in practice but tests the guard
         let result = append_read_bytes(&mut read_buffer, &temp_buf, 5000);
-        let Err(e) = result else { panic!("bytes_read > temp_buf size should fail"); };
-        assert!(matches!(e, IpcServerError::FrameInvalid { .. }), "expected FrameInvalid, got {e:?}");
+        let Err(e) = result else {
+            panic!("bytes_read > temp_buf size should fail");
+        };
+        assert!(
+            matches!(e, IpcServerError::FrameInvalid { .. }),
+            "expected FrameInvalid, got {e:?}"
+        );
     }
 
     // ── read_buffer_header tests ──
@@ -253,7 +267,9 @@ mod tests {
     fn read_buffer_header_returns_incomplete_frame_for_short_buffer() {
         let short_buf = vec![0u8; 10];
         let result = read_buffer_header(&short_buf);
-        let Err(err) = result else { panic!("short buffer should fail"); };
+        let Err(err) = result else {
+            panic!("short buffer should fail");
+        };
         let msg = err.to_string();
         assert!(
             msg.contains("incomplete"),
@@ -265,29 +281,42 @@ mod tests {
     fn read_buffer_header_returns_incomplete_frame_for_empty_buffer() {
         let empty_buf: Vec<u8> = Vec::new();
         let result = read_buffer_header(&empty_buf);
-        let Err(e) = result else { panic!("expected IncompleteFrame for empty buffer"); };
-        assert!(matches!(e, IpcServerError::IncompleteFrame), "expected IncompleteFrame, got {e:?}");
+        let Err(e) = result else {
+            panic!("expected IncompleteFrame for empty buffer");
+        };
+        assert!(
+            matches!(e, IpcServerError::IncompleteFrame),
+            "expected IncompleteFrame, got {e:?}"
+        );
     }
 
     #[test]
     fn read_buffer_header_succeeds_with_exact_header_length() {
         let header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, 0);
         let encoded = header.encode();
-        let Ok(encoded) = encoded else { panic!("header should encode"); };
+        let Ok(encoded) = encoded else {
+            panic!("header should encode");
+        };
         let buf = encoded.to_vec();
         let result = read_buffer_header(&buf);
-        let Ok(_) = result else { panic!("exact header length should succeed"); };
+        let Ok(_) = result else {
+            panic!("exact header length should succeed");
+        };
     }
 
     #[test]
     fn read_buffer_header_succeeds_with_extra_bytes() {
         let header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, 0);
         let encoded = header.encode();
-        let Ok(encoded) = encoded else { panic!("header should encode"); };
+        let Ok(encoded) = encoded else {
+            panic!("header should encode");
+        };
         let mut buf = encoded.to_vec();
         buf.extend_from_slice(&[0xFF; 100]); // extra payload bytes
         let result = read_buffer_header(&buf);
-        let Ok(_) = result else { panic!("extra bytes after header should still succeed"); };
+        let Ok(_) = result else {
+            panic!("extra bytes after header should still succeed");
+        };
     }
 
     // ── frame_total_len tests ──
@@ -296,7 +325,9 @@ mod tests {
     fn frame_total_len_header_only_zero_payload() {
         let header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, 0);
         let result = frame_total_len(&header);
-        let Ok(val) = result else { panic!("frame_total_len should succeed"); };
+        let Ok(val) = result else {
+            panic!("frame_total_len should succeed");
+        };
         assert_eq!(val, IPC_HEADER_LEN);
     }
 
@@ -304,7 +335,9 @@ mod tests {
     fn frame_total_len_with_payload() {
         let header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, 100);
         let result = frame_total_len(&header);
-        let Ok(val) = result else { panic!("frame_total_len should succeed"); };
+        let Ok(val) = result else {
+            panic!("frame_total_len should succeed");
+        };
         assert_eq!(val, IPC_HEADER_LEN + 100);
     }
 
@@ -312,7 +345,9 @@ mod tests {
     fn frame_total_len_with_max_reasonable_payload() {
         let header = IpcFrameHeader::new(IpcCommand::SubmitRun, 0, 1, 1000);
         let result = frame_total_len(&header);
-        let Ok(val) = result else { panic!("frame_total_len should succeed"); };
+        let Ok(val) = result else {
+            panic!("frame_total_len should succeed");
+        };
         assert_eq!(val, IPC_HEADER_LEN + 1000);
     }
 
@@ -322,21 +357,30 @@ mod tests {
     fn extract_payload_returns_incomplete_when_buffer_too_short() {
         let mut read_buffer = vec![0u8; 10];
         let result = extract_payload(&mut read_buffer, 50);
-        let Err(e) = result else { panic!("expected IncompleteFrame for short buffer"); };
-        assert!(matches!(e, IpcServerError::IncompleteFrame), "expected IncompleteFrame, got {e:?}");
+        let Err(e) = result else {
+            panic!("expected IncompleteFrame for short buffer");
+        };
+        assert!(
+            matches!(e, IpcServerError::IncompleteFrame),
+            "expected IncompleteFrame, got {e:?}"
+        );
     }
 
     #[test]
     fn extract_payload_extracts_header_plus_payload() {
         let header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, 4);
         let encoded = header.encode();
-        let Ok(encoded) = encoded else { panic!("header should encode"); };
+        let Ok(encoded) = encoded else {
+            panic!("header should encode");
+        };
         let mut read_buffer = encoded.to_vec();
         read_buffer.extend_from_slice(b"test");
         let total_len = IPC_HEADER_LEN + 4;
 
         let result = extract_payload(&mut read_buffer, total_len);
-        let Ok(payload) = result else { panic!("extract should succeed"); };
+        let Ok(payload) = result else {
+            panic!("extract should succeed");
+        };
         assert_eq!(payload.as_slice(), b"test");
     }
 
@@ -344,14 +388,18 @@ mod tests {
     fn extract_payload_preserves_remaining_bytes_in_buffer() {
         let header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, 4);
         let encoded = header.encode();
-        let Ok(encoded) = encoded else { panic!("header should encode"); };
+        let Ok(encoded) = encoded else {
+            panic!("header should encode");
+        };
         let mut read_buffer = encoded.to_vec();
         read_buffer.extend_from_slice(b"test");
         read_buffer.extend_from_slice(b"extra");
         let total_len = IPC_HEADER_LEN + 4;
 
         let result = extract_payload(&mut read_buffer, total_len);
-        let Ok(_) = result else { panic!("extract should succeed"); };
+        let Ok(_) = result else {
+            panic!("extract should succeed");
+        };
         assert_eq!(
             read_buffer.as_slice(),
             b"extra",
@@ -363,10 +411,14 @@ mod tests {
     fn extract_payload_returns_empty_for_zero_payload_len() {
         let header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, 0);
         let encoded = header.encode();
-        let Ok(encoded) = encoded else { panic!("header should encode"); };
+        let Ok(encoded) = encoded else {
+            panic!("header should encode");
+        };
         let mut read_buffer = encoded.to_vec();
         let result = extract_payload(&mut read_buffer, IPC_HEADER_LEN);
-        let Ok(payload) = result else { panic!("extract should succeed"); };
+        let Ok(payload) = result else {
+            panic!("extract should succeed");
+        };
         assert!(payload.is_empty());
     }
 
@@ -496,7 +548,9 @@ mod tests {
         let total_len = IPC_HEADER_LEN + 4;
 
         let result = extract_payload(&mut read_buffer, total_len);
-        let Ok(payload) = result else { panic!("extract should succeed"); };
+        let Ok(payload) = result else {
+            panic!("extract should succeed");
+        };
         assert_eq!(payload.as_slice(), b"test");
         assert!(
             read_buffer.is_empty(),
@@ -564,7 +618,10 @@ mod tests {
         );
 
         let Ok(()) = result else {
-            panic!("send_response should succeed after reregister: {:?}", result.err());
+            panic!(
+                "send_response should succeed after reregister: {:?}",
+                result.err()
+            );
         };
         assert!(
             !write_buffer.is_empty(),
@@ -593,8 +650,13 @@ mod tests {
             &response,
         );
 
-        let Err(e) = result else { panic!("expected ResponseEncodeFailed"); };
-        assert!(matches!(e, IpcServerError::ResponseEncodeFailed), "expected ResponseEncodeFailed, got {e:?}");
+        let Err(e) = result else {
+            panic!("expected ResponseEncodeFailed");
+        };
+        assert!(
+            matches!(e, IpcServerError::ResponseEncodeFailed),
+            "expected ResponseEncodeFailed, got {e:?}"
+        );
     }
 
     #[test]
@@ -618,8 +680,13 @@ mod tests {
             &response,
         );
 
-        let Err(e) = result else { panic!("expected ResponseEncodeFailed"); };
-        assert!(matches!(e, IpcServerError::ResponseEncodeFailed), "expected ResponseEncodeFailed, got {e:?}");
+        let Err(e) = result else {
+            panic!("expected ResponseEncodeFailed");
+        };
+        assert!(
+            matches!(e, IpcServerError::ResponseEncodeFailed),
+            "expected ResponseEncodeFailed, got {e:?}"
+        );
     }
 
     #[test]
@@ -643,8 +710,13 @@ mod tests {
             &response,
         );
 
-        let Err(e) = result else { panic!("expected ResponseWriteFailed"); };
-        assert!(matches!(e, IpcServerError::ResponseWriteFailed { .. }), "expected ResponseWriteFailed, got {e:?}");
+        let Err(e) = result else {
+            panic!("expected ResponseWriteFailed");
+        };
+        assert!(
+            matches!(e, IpcServerError::ResponseWriteFailed { .. }),
+            "expected ResponseWriteFailed, got {e:?}"
+        );
     }
 
     #[test]
@@ -666,7 +738,12 @@ mod tests {
             &response,
         );
 
-        let Err(e) = result else { panic!("expected ResponseWriteFailed after dropping peer"); };
-        assert!(matches!(e, IpcServerError::ResponseWriteFailed { .. }), "expected ResponseWriteFailed, got {e:?}");
+        let Err(e) = result else {
+            panic!("expected ResponseWriteFailed after dropping peer");
+        };
+        assert!(
+            matches!(e, IpcServerError::ResponseWriteFailed { .. }),
+            "expected ResponseWriteFailed, got {e:?}"
+        );
     }
 }

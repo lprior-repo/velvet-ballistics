@@ -35,6 +35,12 @@ pub enum IpcCommand {
     ListRuns = 12,
     /// Query runtime metrics (queue depths, shard load, throughput).
     GetMetrics = 13,
+    /// Retrieve the graph structure of a compiled workflow.
+    GetWorkflowGraph = 14,
+    /// Get taint report for a compiled workflow (secret-to-sink paths).
+    GetTaintReport = 15,
+    /// Verify a compiled workflow and return validation certificates.
+    VerifyWorkflow = 16,
 }
 
 impl IpcCommand {
@@ -54,6 +60,9 @@ impl IpcCommand {
             11 => Ok(Self::Shutdown),
             12 => Ok(Self::ListRuns),
             13 => Ok(Self::GetMetrics),
+            14 => Ok(Self::GetWorkflowGraph),
+            15 => Ok(Self::GetTaintReport),
+            16 => Ok(Self::VerifyWorkflow),
             other => Err(IpcError::UnknownCommand(other)),
         }
     }
@@ -75,6 +84,9 @@ impl IpcCommand {
             Self::Shutdown => 11,
             Self::ListRuns => 12,
             Self::GetMetrics => 13,
+            Self::GetWorkflowGraph => 14,
+            Self::GetTaintReport => 15,
+            Self::VerifyWorkflow => 16,
         }
     }
 }

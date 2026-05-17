@@ -4,7 +4,7 @@
 use std::io::Write;
 use std::path::Path;
 
-use crate::frame::{read_frame_header_bounded, read_frame_payload_bounded, write_frame};
+use crate::frame::{read_frame_header_bounded, read_frame_payload_bounded};
 use crate::server::IpcResponse;
 use crate::{IpcCommand, IpcError, IpcPayload, MaxPayloadBytes};
 use vb_core::WorkflowDigest;
@@ -158,13 +158,13 @@ pub enum IpcClientError {
 #[cfg(test)]
 mod tests {
     use super::{recv_response, send_command, IpcClient, IpcClientError};
+    use crate::server::{IpcResponse, IpcServer};
     use std::io::{Read, Write};
     use std::num::NonZeroUsize;
     use std::path::PathBuf;
     use std::time::Duration;
     use vb_runtime::runtime::Runtime;
     use vb_runtime::shard::ShardConfig;
-    use crate::server::{IpcResponse, IpcServer};
 
     #[test]
     fn connect_ipc_rejects_nonexistent_socket() {
@@ -384,12 +384,20 @@ mod tests {
         let mut runtime = make_runtime();
         let mut client = IpcClient::connect(&path).unwrap();
 
-        server.poll_once(&mut runtime, Some(Duration::from_millis(100))).unwrap();
+        server
+            .poll_once(&mut runtime, Some(Duration::from_millis(100)))
+            .unwrap();
         let payload = crate::IpcPayload::Health;
-        client.send_command(crate::IpcCommand::Health, 1, &payload).unwrap();
-        server.poll_once(&mut runtime, Some(Duration::from_millis(100))).unwrap();
+        client
+            .send_command(crate::IpcCommand::Health, 1, &payload)
+            .unwrap();
+        server
+            .poll_once(&mut runtime, Some(Duration::from_millis(100)))
+            .unwrap();
 
-        let (header, response) = client.recv_response(crate::MaxPayloadBytes::DEFAULT).unwrap();
+        let (header, response) = client
+            .recv_response(crate::MaxPayloadBytes::DEFAULT)
+            .unwrap();
         assert_eq!(header.command, crate::IpcCommand::Health);
         assert_eq!(header.correlation, 1);
         assert_eq!(response, IpcResponse::Healthy);
@@ -398,18 +406,27 @@ mod tests {
     #[test]
     fn send_raw_sends_bytes_correctly() {
         let (client_stream, mut server_stream) = std::os::unix::net::UnixStream::pair().unwrap();
-        server_stream.set_read_timeout(Some(std::time::Duration::from_millis(100))).unwrap();
-        let mut client = IpcClient { stream: client_stream };
+        server_stream
+            .set_read_timeout(Some(std::time::Duration::from_millis(100)))
+            .unwrap();
+        let mut client = IpcClient {
+            stream: client_stream,
+        };
         let payload = b"hello raw";
-        client.send_raw(crate::IpcCommand::Health, 42, payload).unwrap();
+        client
+            .send_raw(crate::IpcCommand::Health, 42, payload)
+            .unwrap();
 
         let mut buf = vec![0u8; crate::IPC_HEADER_LEN + payload.len()];
-        server_stream.read_exact(&mut buf).expect("send_raw should write bytes to the stream");
+        server_stream
+            .read_exact(&mut buf)
+            .expect("send_raw should write bytes to the stream");
 
         let header = crate::IpcFrameHeader::decode(
             &buf[..crate::IPC_HEADER_LEN].try_into().unwrap(),
             crate::MaxPayloadBytes::DEFAULT,
-        ).unwrap();
+        )
+        .unwrap();
         assert_eq!(header.command, crate::IpcCommand::Health);
         assert_eq!(header.correlation, 42);
         assert_eq!(header.payload_len, payload.len() as u32);
@@ -419,7 +436,9 @@ mod tests {
     #[test]
     fn recv_response_header_reads_valid_header() {
         let (client_stream, mut server_stream) = std::os::unix::net::UnixStream::pair().unwrap();
-        let mut client = IpcClient { stream: client_stream };
+        let mut client = IpcClient {
+            stream: client_stream,
+        };
 
         let header = crate::IpcFrameHeader::new(crate::IpcCommand::Health, 0, 7, 0);
         let encoded = header.encode().unwrap();
@@ -435,10 +454,13 @@ mod tests {
     #[test]
     fn recv_response_payload_reads_matching_payload() {
         let (client_stream, mut server_stream) = std::os::unix::net::UnixStream::pair().unwrap();
-        let mut client = IpcClient { stream: client_stream };
+        let mut client = IpcClient {
+            stream: client_stream,
+        };
 
         let payload = b"payload data";
-        let header = crate::IpcFrameHeader::new(crate::IpcCommand::Health, 0, 1, payload.len() as u32);
+        let header =
+            crate::IpcFrameHeader::new(crate::IpcCommand::Health, 0, 1, payload.len() as u32);
         let encoded = header.encode().unwrap();
         server_stream.write_all(&encoded).unwrap();
         server_stream.write_all(payload).unwrap();
@@ -457,11 +479,17 @@ mod tests {
         let mut runtime = make_runtime();
         let mut client = IpcClient::connect(&path).unwrap();
 
-        server.poll_once(&mut runtime, Some(Duration::from_millis(100))).unwrap();
+        server
+            .poll_once(&mut runtime, Some(Duration::from_millis(100)))
+            .unwrap();
         client.health(99).unwrap();
-        server.poll_once(&mut runtime, Some(Duration::from_millis(100))).unwrap();
+        server
+            .poll_once(&mut runtime, Some(Duration::from_millis(100)))
+            .unwrap();
 
-        let (header, response) = client.recv_response(crate::MaxPayloadBytes::DEFAULT).unwrap();
+        let (header, response) = client
+            .recv_response(crate::MaxPayloadBytes::DEFAULT)
+            .unwrap();
         assert_eq!(header.command, crate::IpcCommand::Health);
         assert_eq!(header.correlation, 99);
         assert_eq!(response, IpcResponse::Healthy);
@@ -475,11 +503,17 @@ mod tests {
         let mut runtime = make_runtime();
         let mut client = IpcClient::connect(&path).unwrap();
 
-        server.poll_once(&mut runtime, Some(Duration::from_millis(100))).unwrap();
+        server
+            .poll_once(&mut runtime, Some(Duration::from_millis(100)))
+            .unwrap();
         client.health(101).unwrap();
-        server.poll_once(&mut runtime, Some(Duration::from_millis(100))).unwrap();
+        server
+            .poll_once(&mut runtime, Some(Duration::from_millis(100)))
+            .unwrap();
 
-        let (header, response) = client.recv_response(crate::MaxPayloadBytes::DEFAULT).unwrap();
+        let (header, response) = client
+            .recv_response(crate::MaxPayloadBytes::DEFAULT)
+            .unwrap();
         assert_eq!(header.command, crate::IpcCommand::Health);
         assert_eq!(header.correlation, 101);
         assert_eq!(response, IpcResponse::Healthy);
@@ -493,11 +527,17 @@ mod tests {
         let mut runtime = make_runtime();
         let mut client = IpcClient::connect(&path).unwrap();
 
-        server.poll_once(&mut runtime, Some(Duration::from_millis(100))).unwrap();
+        server
+            .poll_once(&mut runtime, Some(Duration::from_millis(100)))
+            .unwrap();
         client.shutdown(202).unwrap();
-        server.poll_once(&mut runtime, Some(Duration::from_millis(100))).unwrap();
+        server
+            .poll_once(&mut runtime, Some(Duration::from_millis(100)))
+            .unwrap();
 
-        let (header, response) = client.recv_response(crate::MaxPayloadBytes::DEFAULT).unwrap();
+        let (header, response) = client
+            .recv_response(crate::MaxPayloadBytes::DEFAULT)
+            .unwrap();
         assert_eq!(header.command, crate::IpcCommand::Shutdown);
         assert_eq!(header.correlation, 202);
         assert_eq!(response, IpcResponse::ShuttingDown);
@@ -511,11 +551,17 @@ mod tests {
         let mut runtime = make_runtime();
         let mut client = IpcClient::connect(&path).unwrap();
 
-        server.poll_once(&mut runtime, Some(Duration::from_millis(100))).unwrap();
+        server
+            .poll_once(&mut runtime, Some(Duration::from_millis(100)))
+            .unwrap();
         client.list_runs(303, 10, None).unwrap();
-        server.poll_once(&mut runtime, Some(Duration::from_millis(100))).unwrap();
+        server
+            .poll_once(&mut runtime, Some(Duration::from_millis(100)))
+            .unwrap();
 
-        let (header, response) = client.recv_response(crate::MaxPayloadBytes::DEFAULT).unwrap();
+        let (header, response) = client
+            .recv_response(crate::MaxPayloadBytes::DEFAULT)
+            .unwrap();
         assert_eq!(header.command, crate::IpcCommand::ListRuns);
         assert_eq!(header.correlation, 303);
         match response {
@@ -527,17 +573,26 @@ mod tests {
     #[test]
     fn send_command_writes_bytes_to_stream() {
         let (client_stream, mut server_stream) = std::os::unix::net::UnixStream::pair().unwrap();
-        server_stream.set_read_timeout(Some(std::time::Duration::from_millis(100))).unwrap();
-        let mut client = IpcClient { stream: client_stream };
+        server_stream
+            .set_read_timeout(Some(std::time::Duration::from_millis(100)))
+            .unwrap();
+        let mut client = IpcClient {
+            stream: client_stream,
+        };
         let payload = crate::IpcPayload::Health;
-        client.send_command(crate::IpcCommand::Health, 77, &payload).unwrap();
+        client
+            .send_command(crate::IpcCommand::Health, 77, &payload)
+            .unwrap();
 
         let mut buf = vec![0u8; crate::IPC_HEADER_LEN];
-        server_stream.read_exact(&mut buf).expect("send_command should write header bytes");
+        server_stream
+            .read_exact(&mut buf)
+            .expect("send_command should write header bytes");
         let header = crate::IpcFrameHeader::decode(
             &buf.try_into().unwrap(),
             crate::MaxPayloadBytes::DEFAULT,
-        ).unwrap();
+        )
+        .unwrap();
         assert_eq!(header.command, crate::IpcCommand::Health);
         assert_eq!(header.correlation, 77);
     }
@@ -545,16 +600,23 @@ mod tests {
     #[test]
     fn health_writes_bytes_to_stream() {
         let (client_stream, mut server_stream) = std::os::unix::net::UnixStream::pair().unwrap();
-        server_stream.set_read_timeout(Some(std::time::Duration::from_millis(100))).unwrap();
-        let mut client = IpcClient { stream: client_stream };
+        server_stream
+            .set_read_timeout(Some(std::time::Duration::from_millis(100)))
+            .unwrap();
+        let mut client = IpcClient {
+            stream: client_stream,
+        };
         client.health(88).unwrap();
 
         let mut buf = vec![0u8; crate::IPC_HEADER_LEN];
-        server_stream.read_exact(&mut buf).expect("health should write header bytes");
+        server_stream
+            .read_exact(&mut buf)
+            .expect("health should write header bytes");
         let header = crate::IpcFrameHeader::decode(
             &buf.try_into().unwrap(),
             crate::MaxPayloadBytes::DEFAULT,
-        ).unwrap();
+        )
+        .unwrap();
         assert_eq!(header.command, crate::IpcCommand::Health);
         assert_eq!(header.correlation, 88);
     }
@@ -562,16 +624,23 @@ mod tests {
     #[test]
     fn shutdown_writes_bytes_to_stream() {
         let (client_stream, mut server_stream) = std::os::unix::net::UnixStream::pair().unwrap();
-        server_stream.set_read_timeout(Some(std::time::Duration::from_millis(100))).unwrap();
-        let mut client = IpcClient { stream: client_stream };
+        server_stream
+            .set_read_timeout(Some(std::time::Duration::from_millis(100)))
+            .unwrap();
+        let mut client = IpcClient {
+            stream: client_stream,
+        };
         client.shutdown(99).unwrap();
 
         let mut buf = vec![0u8; crate::IPC_HEADER_LEN];
-        server_stream.read_exact(&mut buf).expect("shutdown should write header bytes");
+        server_stream
+            .read_exact(&mut buf)
+            .expect("shutdown should write header bytes");
         let header = crate::IpcFrameHeader::decode(
             &buf.try_into().unwrap(),
             crate::MaxPayloadBytes::DEFAULT,
-        ).unwrap();
+        )
+        .unwrap();
         assert_eq!(header.command, crate::IpcCommand::Shutdown);
         assert_eq!(header.correlation, 99);
     }
@@ -579,16 +648,23 @@ mod tests {
     #[test]
     fn list_runs_writes_bytes_to_stream() {
         let (client_stream, mut server_stream) = std::os::unix::net::UnixStream::pair().unwrap();
-        server_stream.set_read_timeout(Some(std::time::Duration::from_millis(100))).unwrap();
-        let mut client = IpcClient { stream: client_stream };
+        server_stream
+            .set_read_timeout(Some(std::time::Duration::from_millis(100)))
+            .unwrap();
+        let mut client = IpcClient {
+            stream: client_stream,
+        };
         client.list_runs(111, 5, None).unwrap();
 
         let mut buf = vec![0u8; crate::IPC_HEADER_LEN];
-        server_stream.read_exact(&mut buf).expect("list_runs should write header bytes");
+        server_stream
+            .read_exact(&mut buf)
+            .expect("list_runs should write header bytes");
         let header = crate::IpcFrameHeader::decode(
             &buf.try_into().unwrap(),
             crate::MaxPayloadBytes::DEFAULT,
-        ).unwrap();
+        )
+        .unwrap();
         assert_eq!(header.command, crate::IpcCommand::ListRuns);
         assert_eq!(header.correlation, 111);
     }
@@ -598,7 +674,9 @@ mod tests {
     #[test]
     fn recv_response_header_fails_with_frame_error_on_bad_magic() {
         let (client_stream, mut server_stream) = std::os::unix::net::UnixStream::pair().unwrap();
-        let mut client = IpcClient { stream: client_stream };
+        let mut client = IpcClient {
+            stream: client_stream,
+        };
 
         let mut bad_header = [0u8; crate::IPC_HEADER_LEN];
         bad_header[..4].copy_from_slice(&0xDEAD_BEEF_u32.to_le_bytes());
@@ -608,13 +686,18 @@ mod tests {
         let result = client.recv_response_header();
         let err = result.unwrap_err();
         let msg = err.to_string();
-        assert!(msg.contains("frame error"), "expected frame error, got {msg}");
+        assert!(
+            msg.contains("frame error"),
+            "expected frame error, got {msg}"
+        );
     }
 
     #[test]
     fn recv_response_payload_fails_on_short_read() {
         let (client_stream, mut server_stream) = std::os::unix::net::UnixStream::pair().unwrap();
-        let mut client = IpcClient { stream: client_stream };
+        let mut client = IpcClient {
+            stream: client_stream,
+        };
 
         let header = crate::IpcFrameHeader::new(crate::IpcCommand::Health, 0, 1, 10);
         let encoded = header.encode().unwrap();
@@ -634,7 +717,9 @@ mod tests {
     #[test]
     fn send_command_fails_with_io_error_on_broken_pipe() {
         let (client_stream, server_stream) = std::os::unix::net::UnixStream::pair().unwrap();
-        let mut client = IpcClient { stream: client_stream };
+        let mut client = IpcClient {
+            stream: client_stream,
+        };
         drop(server_stream);
 
         let payload = crate::IpcPayload::Health;
@@ -648,7 +733,9 @@ mod tests {
     #[test]
     fn recv_response_fails_when_header_decode_fails() {
         let (client_stream, mut server_stream) = std::os::unix::net::UnixStream::pair().unwrap();
-        let mut client = IpcClient { stream: client_stream };
+        let mut client = IpcClient {
+            stream: client_stream,
+        };
 
         let mut bad_header = [0u8; crate::IPC_HEADER_LEN];
         bad_header[..4].copy_from_slice(&0xDEAD_BEEF_u32.to_le_bytes());
@@ -658,23 +745,33 @@ mod tests {
         let result = client.recv_response(crate::MaxPayloadBytes::DEFAULT);
         let err = result.unwrap_err();
         let msg = err.to_string();
-        assert!(msg.contains("frame error"), "expected frame error, got {msg}");
+        assert!(
+            msg.contains("frame error"),
+            "expected frame error, got {msg}"
+        );
     }
 
     #[test]
     fn top_level_send_command_delegates_and_writes_bytes() {
         let (client_stream, mut server_stream) = std::os::unix::net::UnixStream::pair().unwrap();
-        server_stream.set_read_timeout(Some(std::time::Duration::from_millis(100))).unwrap();
-        let mut client = IpcClient { stream: client_stream };
+        server_stream
+            .set_read_timeout(Some(std::time::Duration::from_millis(100)))
+            .unwrap();
+        let mut client = IpcClient {
+            stream: client_stream,
+        };
         let payload = crate::IpcPayload::Health;
         send_command(&mut client, crate::IpcCommand::Health, 55, &payload).unwrap();
 
         let mut buf = vec![0u8; crate::IPC_HEADER_LEN];
-        server_stream.read_exact(&mut buf).expect("top-level send_command should write bytes");
+        server_stream
+            .read_exact(&mut buf)
+            .expect("top-level send_command should write bytes");
         let header = crate::IpcFrameHeader::decode(
             &buf.try_into().unwrap(),
             crate::MaxPayloadBytes::DEFAULT,
-        ).unwrap();
+        )
+        .unwrap();
         assert_eq!(header.command, crate::IpcCommand::Health);
         assert_eq!(header.correlation, 55);
     }
@@ -682,11 +779,14 @@ mod tests {
     #[test]
     fn top_level_recv_response_delegates_and_decodes() {
         let (client_stream, mut server_stream) = std::os::unix::net::UnixStream::pair().unwrap();
-        let mut client = IpcClient { stream: client_stream };
+        let mut client = IpcClient {
+            stream: client_stream,
+        };
 
         let response = crate::server::IpcResponse::Healthy;
         let payload = postcard::to_allocvec(&response).unwrap();
-        let header = crate::IpcFrameHeader::new(crate::IpcCommand::Health, 0, 1, payload.len() as u32);
+        let header =
+            crate::IpcFrameHeader::new(crate::IpcCommand::Health, 0, 1, payload.len() as u32);
         server_stream.write_all(&header.encode().unwrap()).unwrap();
         server_stream.write_all(&payload).unwrap();
         server_stream.flush().unwrap();

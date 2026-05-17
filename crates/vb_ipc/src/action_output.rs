@@ -141,7 +141,9 @@ mod tests {
             value: SlotValue::Bool(false),
             taint: Taint::Clean,
         };
-        let Ok(encoded) = postcard::to_allocvec(&payload) else { return };
+        let Ok(encoded) = postcard::to_allocvec(&payload) else {
+            return;
+        };
         let decoded: IpcActionOutputPayload = match postcard::from_bytes(&encoded) {
             Ok(d) => d,
             Err(_) => {
@@ -159,7 +161,9 @@ mod tests {
             value: SlotValue::I64(-100),
             taint: Taint::DerivedFromSecret,
         };
-        let Ok(encoded) = postcard::to_allocvec(&payload) else { return };
+        let Ok(encoded) = postcard::to_allocvec(&payload) else {
+            return;
+        };
         let decoded: IpcActionOutputPayload = match postcard::from_bytes(&encoded) {
             Ok(d) => d,
             Err(_) => {

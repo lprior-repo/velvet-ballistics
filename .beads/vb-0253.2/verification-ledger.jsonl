@@ -1,0 +1,7 @@
+{"gate":"rtk cargo check -p vb_ipc","status":"PASS","evidence":"cargo build (1 crates compiled)"}
+{"gate":"rtk cargo test -p vb_ipc","status":"PASS","evidence":"626 passed (2 suites, 0.37s)"}
+{"gate":"rtk cargo clippy -p vb_ipc --lib -- -D warnings","status":"PASS","evidence":"No issues found"}
+{"gate":"cargo kani -p vb_ipc --harness kani_ipc_header_decode_valid --quiet","status":"PASS","evidence":"exit_code=0"}
+{"gate":"verus crates/vb_ipc/src/ingress.rs","status":"WAIVED","evidence":"exit_code=1 unresolved imports for Cargo dependencies","classification":"invalid raw Verus lane for Cargo crate file"}
+{"gate":"moon ci","status":"FAIL_ENV","evidence":"fatal: ambiguous argument 'main': unknown revision"}
+{"gate":"moon run velvet-ballastics:check","status":"DEFERRED_GLOBAL","evidence":"vb_storage recovery_bdd_tests unused warnings under -D warnings","classification":"unrelated baseline/global debt"}
