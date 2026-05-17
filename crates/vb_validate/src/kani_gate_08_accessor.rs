@@ -34,6 +34,35 @@ fn kani_gate_08_valid_bounded_parts_pass() {
 }
 
 #[kani::proof]
+fn kani_gate_08_valid_zero_accessors_pass() {
+    let parts = workflow_parts_with_accessors(Box::new([]), 0, 0);
+
+    let result = validate_gate_08_accessor_path_segments(&parts);
+    kani::assert(result.is_ok(), "zero accessors pass Gate 8");
+}
+
+#[kani::proof]
+fn kani_gate_08_valid_index_without_symbols_pass() {
+    let index: u32 = kani::any();
+    kani::assume(index != u32::MAX);
+
+    let parts = workflow_parts_with_accessors(
+        Box::new([AccessorProgram {
+            root: SlotIdx::ZERO,
+            path: Box::new([PathSegment::Index(index)]),
+        }]),
+        1,
+        0,
+    );
+
+    let result = validate_gate_08_accessor_path_segments(&parts);
+    kani::assert(
+        result.is_ok(),
+        "index-only accessor does not require symbols",
+    );
+}
+
+#[kani::proof]
 #[kani::unwind(5)]
 fn kani_gate_08_no_panic_bounded_inputs() {
     let parts: WorkflowParts = kani::any();

@@ -53,9 +53,7 @@ fn runtime_error_static_message(error: &RuntimeError) -> Option<&'static str> {
         RuntimeError::IpcPayloadSizeExceeded { .. } => {
             Some("IPC payload size exceeds maximum allowed by resource contract")
         }
-        RuntimeError::EngineDriveFailed { .. } => {
-            Some("deterministic engine drive failed")
-        }
+        RuntimeError::EngineDriveFailed { .. } => Some("deterministic engine drive failed"),
         _ => None,
     }
 }

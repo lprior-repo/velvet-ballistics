@@ -9,7 +9,7 @@
 //! - R17: API compilation workflows call validate_with_contracts
 //! - R18: vb_compile::schema.rs:651 calls validate
 //! - R19: vb_compile::types.rs:155 calls validate
-//! - R20: velvet_ballastics::commands_verify.rs:76 calls validate
+//! - R20: vb_cli::commands_verify.rs:76 calls validate
 //! - R21: fuzz::lib.rs:40,60 calls validate_with_contracts
 
 use vb_core::action::{ActionContract, Idempotency, RetrySafety, SideEffect};
@@ -198,7 +198,7 @@ fn integration_types_calls_validate() {
 }
 
 // ===========================================================================
-// R20: velvet_ballastics::commands_verify.rs:76 calls validate
+// R20: vb_cli::commands_verify.rs:76 calls validate
 // ===========================================================================
 
 #[test]

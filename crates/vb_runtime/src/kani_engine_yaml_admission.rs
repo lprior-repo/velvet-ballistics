@@ -112,7 +112,10 @@ fn engine_yaml_admission_rejects_dummy_proof() {
         CapabilitySet::empty(),
     );
     kani::assert(
-        matches!(result, Err(AdmissionError::ArtifactInvalidProofFlag { flag: "bounded" })),
+        matches!(
+            result,
+            Err(AdmissionError::ArtifactInvalidProofFlag { flag: "bounded" })
+        ),
         "dummy proof with missing bounded flag must reject",
     );
 }

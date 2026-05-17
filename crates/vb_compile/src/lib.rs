@@ -196,7 +196,8 @@ fn canonical_yaml_error(error: vb_yaml::YamlError) -> CompileError {
 
 fn yaml_error_category(error: &vb_yaml::YamlError) -> &'static str {
     match error {
-        vb_yaml::YamlError::UnsupportedFeature { .. }
+        vb_yaml::YamlError::UnsupportedTrigger { .. }
+        | vb_yaml::YamlError::UnsupportedFeature { .. }
         | vb_yaml::YamlError::AnchorAliasMerge
         | vb_yaml::YamlError::CustomTag { .. }
         | vb_yaml::YamlError::BinaryScalar

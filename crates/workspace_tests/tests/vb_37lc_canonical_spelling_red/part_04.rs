@@ -5,7 +5,7 @@ fn scan_file_does_not_report_canonical_crate_module_even_when_pattern_selects_it
     let mut config = maximum_bounded_scan_config();
     config.scan_patterns = vec![CANONICAL_UNDERSCORE.to_string()];
     let input = text_scan_input(
-        "crates/velvet_ballastics/src/lib.rs",
+        "crates/vb_cli/src/lib.rs",
         "pub mod velvet_ballastics;\n",
     );
 

@@ -41,13 +41,13 @@
 /// the production code only has 3 variants (SerializationFailed, SchemaVersionMissing, UnknownKind).
 /// This test will fail until the production code is updated to match the contract.
 #[test]
-#[ignore = "velvet_ballastics::cli_envelope::EnvelopeError does not exist - binary-only module"]
+#[ignore = "vb_cli::cli_envelope::EnvelopeError does not exist - binary-only module"]
 fn test_cli_envelope_error_all_variants_displayable() {
     // These are the 23 variants specified in the proof strategy
     // Currently they do not exist in the production code
     // This test documents the expected API surface
 
-    // TODO: velvet_ballastics::cli_envelope::EnvelopeError does not exist (binary-only module)
+    // TODO: vb_cli::cli_envelope::EnvelopeError does not exist (binary-only module)
     // Production code update required: implement 23-variant CliEnvelopeError taxonomy
     std::hint::black_box(());
 }
@@ -56,18 +56,18 @@ fn test_cli_envelope_error_all_variants_displayable() {
 ///
 /// PO-006: kind_from_id(kind_id(kind)) == kind for all 16 Kind variants.
 #[test]
-#[ignore = "velvet_ballastics::cli_envelope::Kind does not exist - binary-only module"]
+#[ignore = "vb_cli::cli_envelope::Kind does not exist - binary-only module"]
 fn test_kind_id_roundtrip_all_variants() {
-    // TODO: velvet_ballastics::cli_envelope::Kind does not exist (binary-only module)
+    // TODO: vb_cli::cli_envelope::Kind does not exist (binary-only module)
     // Production code update required: implement Kind enum with 16 variants
     std::hint::black_box(());
 }
 
 /// Test that Kind variants have distinct string representations.
 #[test]
-#[ignore = "velvet_ballastics::cli_envelope::Kind does not exist - binary-only module"]
+#[ignore = "vb_cli::cli_envelope::Kind does not exist - binary-only module"]
 fn test_kind_strings_are_distinct() {
-    // TODO: velvet_ballastics::cli_envelope::Kind does not exist (binary-only module)
+    // TODO: vb_cli::cli_envelope::Kind does not exist (binary-only module)
     // Production code update required: implement Kind enum with 16 variants
     std::hint::black_box(());
 }
@@ -117,18 +117,18 @@ fn test_diagnostic_entry_bounds() {
 ///
 /// PO-007: CliExitCode discriminant matches process exit status directly.
 #[test]
-#[ignore = "velvet_ballastics::exit_code::CliExitCode is pub(crate) and module is binary-only"]
+#[ignore = "vb_cli::exit_code::CliExitCode is pub(crate) and module is binary-only"]
 fn test_exit_code_discriminants_match_spec() {
-    // TODO: velvet_ballastics::exit_code::CliExitCode is pub(crate) and binary-only
-    // CliExitCode exists in crates/velvet_ballastics/src/exit_code.rs but is not re-exported
+    // TODO: vb_cli::exit_code::CliExitCode is pub(crate) and binary-only
+    // CliExitCode exists in crates/vb_cli/src/exit_code.rs but is not re-exported
     std::hint::black_box(());
 }
 
 /// Test that all CliExitCode variants are distinct.
 #[test]
-#[ignore = "velvet_ballastics::exit_code::CliExitCode is pub(crate) and module is binary-only"]
+#[ignore = "vb_cli::exit_code::CliExitCode is pub(crate) and module is binary-only"]
 fn test_exit_code_variants_distinct() {
-    // TODO: velvet_ballastics::exit_code::CliExitCode is pub(crate) and binary-only
-    // CliExitCode exists in crates/velvet_ballastics/src/exit_code.rs but is not re-exported
+    // TODO: vb_cli::exit_code::CliExitCode is pub(crate) and binary-only
+    // CliExitCode exists in crates/vb_cli/src/exit_code.rs but is not re-exported
     std::hint::black_box(());
 }

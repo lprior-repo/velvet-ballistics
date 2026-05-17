@@ -14,7 +14,7 @@ members = [
     "crates/vb_ui_makepad",
     "crates/vb_ui_snapshot",
     "crates/vb_proof_kernels",
-    "crates/velvet_ballastics",
+    "crates/vb_cli",
     "crates/workspace_tests",
     "crates/vb_benchmark",
     "xtask",

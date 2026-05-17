@@ -12,11 +12,11 @@ hot_files() {
     -g 'crates/vb_*/src/runtime/**' \
     -g 'crates/vb_*/src/generated/**' \
     -g 'crates/vb_*/src/perf/**' \
-    -g 'crates/velvet_ballastics/src/engine.rs' \
-    -g 'crates/velvet_ballastics/src/engine/**' \
-    -g 'crates/velvet_ballastics/src/runtime/**' \
-    -g 'crates/velvet_ballastics/src/generated/**' \
-    -g 'crates/velvet_ballastics/src/perf/**' \
+    -g 'crates/vb_cli/src/engine.rs' \
+    -g 'crates/vb_cli/src/engine/**' \
+    -g 'crates/vb_cli/src/runtime/**' \
+    -g 'crates/vb_cli/src/generated/**' \
+    -g 'crates/vb_cli/src/perf/**' \
     -g '!target/**' \
     -g '!vb-*/**'
 }

@@ -35,7 +35,7 @@ vb_benchmark = { path = "../vb_benchmark" }
 vb_boundary_inventory = { path = "../vb_boundary_inventory" }
 vb_doc = { path = "../vb_doc" }
 vb_yaml = { path = "../vb_yaml" }
-velvet_ballastics = { path = "../velvet_ballastics" }
+vb_cli = { path = "../vb_cli" }
 
 [[bench]]
 name = "velvet_ballastics"

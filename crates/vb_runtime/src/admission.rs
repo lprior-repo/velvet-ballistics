@@ -184,7 +184,9 @@ pub enum AdmissionError {
         flag: &'static str,
     },
     /// The loaded artifact digest does not match the requested digest.
-    #[error("admission rejected: artifact digest mismatch: requested {requested:?}, found {found:?}")]
+    #[error(
+        "admission rejected: artifact digest mismatch: requested {requested:?}, found {found:?}"
+    )]
     ArtifactDigestMismatch {
         /// Digest that was requested at admission.
         requested: WorkflowDigest,
@@ -904,7 +906,8 @@ mod tests {
             fn load_accepted_artifact(
                 &self,
                 _digest: WorkflowDigest,
-            ) -> Result<vb_storage::admission::AcceptedArtifact, ArtifactEnvelopeError> {
+            ) -> Result<vb_storage::admission::AcceptedArtifact, ArtifactEnvelopeError>
+            {
                 Err(ArtifactEnvelopeError::ArtifactNotFound {
                     digest: WorkflowDigest::from_bytes([0u8; 32]),
                 })
@@ -934,7 +937,8 @@ mod tests {
             fn load_accepted_artifact(
                 &self,
                 digest: WorkflowDigest,
-            ) -> Result<vb_storage::admission::AcceptedArtifact, ArtifactEnvelopeError> {
+            ) -> Result<vb_storage::admission::AcceptedArtifact, ArtifactEnvelopeError>
+            {
                 Err(ArtifactEnvelopeError::ArtifactNotFound { digest })
             }
         }
@@ -954,7 +958,8 @@ mod tests {
             fn load_accepted_artifact(
                 &self,
                 digest: WorkflowDigest,
-            ) -> Result<vb_storage::admission::AcceptedArtifact, ArtifactEnvelopeError> {
+            ) -> Result<vb_storage::admission::AcceptedArtifact, ArtifactEnvelopeError>
+            {
                 Err(ArtifactEnvelopeError::ArtifactNotFound { digest })
             }
         }

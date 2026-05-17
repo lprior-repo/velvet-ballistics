@@ -1,3 +1,0 @@
-// vb-5xs4-fixture:weak_iterator_for_each_missing_behavior
-#[test]
-fn iterator_cases() { [1, 2].iter().for_each(|case| assert!(*case > 0)); }

@@ -121,7 +121,7 @@ fn assert_canonical_product_alias(path: &str, line_number: u64, token: &str, con
 #[test]
 fn classify_occurrence_returns_canonical_crate_module_when_underscore_ballastics_token_is_seen() {
     let config = minimum_valid_scan_config();
-    let path = repo_path("crates/velvet_ballastics/src/lib.rs");
+    let path = repo_path("crates/vb_cli/src/lib.rs");
 
     let result = classify_occurrence(path, line(1), column(13), CANONICAL_UNDERSCORE, &config);
 

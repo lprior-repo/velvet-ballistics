@@ -1,2 +1,0 @@
-[verus] verus verification/verus/resource_budget.rs
-verification results:: 10 verified, 0 errors

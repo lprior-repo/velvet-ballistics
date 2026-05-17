@@ -1,4 +1,0 @@
-{"id":"vb-057x-taint","command":"verus verification/verus/taint_lattice.rs","result":"PASS","evidence":"verification results:: 13 verified, 0 errors"}
-{"id":"vb-057x-state","command":"verus verification/verus/step_state_machine.rs","result":"PASS","evidence":"verification results:: 9 verified, 0 errors"}
-{"id":"vb-057x-step-budget","command":"verus verification/verus/step_budget.rs","result":"PASS","evidence":"verification results:: 6 verified, 0 errors"}
-{"id":"vb-057x-resource-budget","command":"verus verification/verus/resource_budget.rs","result":"PASS","evidence":"verification results:: 10 verified, 0 errors"}

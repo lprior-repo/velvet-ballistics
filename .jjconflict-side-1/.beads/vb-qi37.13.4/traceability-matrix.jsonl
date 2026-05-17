@@ -1,3 +1,0 @@
-{"contract_clause":"POST-001","tests":["cli_help_is_bounded_and_non_interactive","cli_status_json_writes_payload_to_stdout_only"],"proofs":["CLI-TEST-001"],"review":"contract-verification-review.md"}
-{"contract_clause":"POST-002","tests":["cli_unknown_command_returns_stderr_diagnostic_without_stack_trace"],"proofs":["CLI-TEST-002"],"review":"contract-verification-review.md"}
-{"contract_clause":"INV-002","tests":["cli_help_is_bounded_and_non_interactive"],"proofs":["CLI-TEST-003"],"review":"contract-verification-review.md"}

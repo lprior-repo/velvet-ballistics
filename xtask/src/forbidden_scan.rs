@@ -27,7 +27,7 @@ const DEFAULT_FIRST_PARTY_CRATES: &[&str] = &[
     "vb_ui_snapshot",
     "vb_validate",
     "vb_yaml",
-    "velvet_ballastics",
+    "vb_cli",
     "workspace_tests",
 ];
 

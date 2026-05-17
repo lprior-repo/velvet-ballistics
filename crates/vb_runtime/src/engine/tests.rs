@@ -2032,7 +2032,10 @@ mod blackhat_engine {
             &mut cs,
             &CapabilitySet::empty(),
         );
-        assert!(matches!(result, Ok(RuntimeSignal::Continue)), "BH-ENG-08: RetryCheck should return Continue");
+        assert!(
+            matches!(result, Ok(RuntimeSignal::Continue)),
+            "BH-ENG-08: RetryCheck should return Continue"
+        );
         assert_eq!(
             run.executed(),
             executed_before + 1,

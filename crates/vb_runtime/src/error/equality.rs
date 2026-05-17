@@ -99,8 +99,14 @@ fn runtime_error_admission_field_eq(left: &RuntimeError, right: &RuntimeError) -
             RuntimeError::AdmissionArtifactInvalid { digest: b },
         ) => a == b,
         (
-            RuntimeError::AdmissionArtifactDigestMismatch { requested: a, found: c },
-            RuntimeError::AdmissionArtifactDigestMismatch { requested: b, found: d },
+            RuntimeError::AdmissionArtifactDigestMismatch {
+                requested: a,
+                found: c,
+            },
+            RuntimeError::AdmissionArtifactDigestMismatch {
+                requested: b,
+                found: d,
+            },
         ) => a == b && c == d,
         (
             RuntimeError::AdmissionCapabilityDenied {

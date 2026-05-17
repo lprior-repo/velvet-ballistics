@@ -1,2 +1,0 @@
-[verus] verus verification/verus/step_budget.rs
-verification results:: 6 verified, 0 errors

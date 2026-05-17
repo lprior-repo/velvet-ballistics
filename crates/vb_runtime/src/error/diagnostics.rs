@@ -32,7 +32,10 @@ impl RuntimeError {
     pub const ENCODE_FAILED_CODE: DiagnosticCode = DiagnosticCode::new(0x2013);
     pub const SECRET_RESULT_NOT_ALLOWED_CODE: DiagnosticCode = DiagnosticCode::new(0x2016);
     pub const IPC_PAYLOAD_SIZE_EXCEEDED_CODE: DiagnosticCode = DiagnosticCode::new(0x2017);
-    pub const ADMISSION_DIGEST_MISMATCH_CODE: DiagnosticCode = DiagnosticCode::new(0x2018);
+    pub const ADMISSION_ARTIFACT_DIGEST_MISMATCH_CODE: DiagnosticCode = DiagnosticCode::new(0x2018);
+    pub const ADMISSION_ARTIFACT_STALE_CODE: DiagnosticCode = DiagnosticCode::new(0x2019);
+    pub const ADMISSION_DIGEST_MISMATCH_CODE: DiagnosticCode = DiagnosticCode::new(0x201A);
+    pub const ENGINE_DRIVE_FAILED_CODE: DiagnosticCode = DiagnosticCode::new(0x201B);
 
     #[must_use]
     pub fn diagnostic_code(&self) -> DiagnosticCode {
@@ -66,11 +69,16 @@ impl RuntimeError {
             Self::ActiveRunCapacityZero => Self::ACTIVE_RUN_CAPACITY_ZERO_CODE,
             Self::AdmissionArtifactNotFound { .. } => Self::ADMISSION_ARTIFACT_NOT_FOUND_CODE,
             Self::AdmissionArtifactInvalid { .. } => Self::ADMISSION_ARTIFACT_INVALID_CODE,
-            Self::AdmissionArtifactDigestMismatch { .. } => Self::ADMISSION_DIGEST_MISMATCH_CODE,
+            Self::AdmissionArtifactDigestMismatch { .. } => {
+                Self::ADMISSION_ARTIFACT_DIGEST_MISMATCH_CODE
+            }
             Self::AdmissionCapabilityDenied { .. } => Self::ADMISSION_CAPABILITY_DENIED_CODE,
+            Self::AdmissionArtifactStale { .. } => Self::ADMISSION_ARTIFACT_STALE_CODE,
+            Self::AdmissionDigestMismatch { .. } => Self::ADMISSION_DIGEST_MISMATCH_CODE,
             Self::EncodeFailed => Self::ENCODE_FAILED_CODE,
             Self::SecretResultNotAllowed => Self::SECRET_RESULT_NOT_ALLOWED_CODE,
             Self::IpcPayloadSizeExceeded { .. } => Self::IPC_PAYLOAD_SIZE_EXCEEDED_CODE,
+            Self::EngineDriveFailed { .. } => Self::ENGINE_DRIVE_FAILED_CODE,
         }
     }
 
@@ -90,6 +98,12 @@ impl RuntimeError {
             Self::AdmissionArtifactDigestMismatch { .. } => {
                 Some(Self::ADMISSION_DURABILITY_ERROR_RUNTIME_CODE)
             }
+            Self::AdmissionArtifactStale { .. } => {
+                Some(Self::ADMISSION_DURABILITY_ERROR_RUNTIME_CODE)
+            }
+            Self::AdmissionDigestMismatch { .. } => {
+                Some(Self::ADMISSION_DURABILITY_ERROR_RUNTIME_CODE)
+            }
             Self::Core { source } => match source.as_ref() {
                 vb_core::errors::CoreError::QueueFull => Some(Self::QUEUE_FULL_RUNTIME_CODE),
                 _ => Some(Self::STORAGE_ERROR_RUNTIME_CODE),
@@ -97,7 +111,23 @@ impl RuntimeError {
             Self::InvalidActionCompletion
             | Self::StaleAttempt { .. }
             | Self::AttemptBeyondMax { .. } => Some(Self::ACTION_FAILED_RUNTIME_CODE),
-            _ => None,
+            Self::EngineDriveFailed { .. } => Some(Self::ACTION_FAILED_RUNTIME_CODE),
+            Self::RunNotFound
+            | Self::RunAlreadyExists
+            | Self::UnsupportedOperation { .. }
+            | Self::ShutdownInProgress
+            | Self::FramePoolUnavailable
+            | Self::InvalidTimerFire
+            | Self::UnsupportedFullRecoveryHydration
+            | Self::InvalidRecoveryHydration
+            | Self::CommandQueueCapacityExceeded { .. }
+            | Self::ActiveRunCapacityZero
+            | Self::AdmissionArtifactNotFound { .. }
+            | Self::AdmissionArtifactInvalid { .. }
+            | Self::AdmissionCapabilityDenied { .. }
+            | Self::EncodeFailed
+            | Self::SecretResultNotAllowed
+            | Self::IpcPayloadSizeExceeded { .. } => None,
         }
     }
 }
