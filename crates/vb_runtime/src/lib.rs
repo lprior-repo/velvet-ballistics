@@ -62,6 +62,8 @@ pub mod journal;
 pub mod kani_capability_harnesses;
 #[cfg(kani)]
 pub mod kani_engine_yaml_admission;
+#[cfg(kani)]
+pub mod kani_shard_command_queue;
 #[cfg(loom)]
 pub mod models;
 pub mod primitives;
