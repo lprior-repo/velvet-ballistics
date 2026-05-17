@@ -1,4 +1,3 @@
-
 #[test]
 fn shard_remaining_capacity_decrements_on_enqueue() {
     // Given a shard with capacity 4
@@ -111,7 +110,8 @@ fn shard_queue_len_decrements_after_tick() {
     assert_eq!(
         shard.enqueue(ShardCommand::Cancel {
             run: super::RunId::new(999),
-        reason: None}),
+            reason: None
+        }),
         Ok(())
     );
     assert_eq!(shard.command_queue_len(), 1);
@@ -148,6 +148,26 @@ fn shard_config_new_rejects_excessive_command_queue_capacity() {
             capacity: MAX_COMMAND_QUEUE_CAPACITY + 1,
             max: MAX_COMMAND_QUEUE_CAPACITY
         })
+    );
+}
+
+#[test]
+fn command_queue_capacity_predicate_matches_config_boundary() {
+    assert_eq!(
+        crate::shard::types::is_valid_command_queue_capacity(0),
+        false
+    );
+    assert_eq!(
+        crate::shard::types::is_valid_command_queue_capacity(1),
+        true
+    );
+    assert_eq!(
+        crate::shard::types::is_valid_command_queue_capacity(MAX_COMMAND_QUEUE_CAPACITY),
+        true
+    );
+    assert_eq!(
+        crate::shard::types::is_valid_command_queue_capacity(MAX_COMMAND_QUEUE_CAPACITY + 1),
+        false
     );
 }
 

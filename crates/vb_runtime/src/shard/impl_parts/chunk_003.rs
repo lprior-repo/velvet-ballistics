@@ -7,7 +7,7 @@ impl ShardConfig {
         max_active_runs: usize,
         policy: vb_core::policy::RuntimePolicy,
     ) -> RuntimeResult<Self> {
-        if command_queue_capacity == 0 || command_queue_capacity > MAX_COMMAND_QUEUE_CAPACITY {
+        if !is_valid_command_queue_capacity(command_queue_capacity) {
             return Err(RuntimeError::CommandQueueCapacityExceeded {
                 capacity: command_queue_capacity,
                 max: MAX_COMMAND_QUEUE_CAPACITY,

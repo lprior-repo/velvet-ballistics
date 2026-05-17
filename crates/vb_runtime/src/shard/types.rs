@@ -254,6 +254,12 @@ pub enum InspectResponse {
 /// Maximum bounded command queue capacity per shard.
 pub const MAX_COMMAND_QUEUE_CAPACITY: usize = 65_536;
 
+/// Returns true when a command queue capacity is inside the supported domain.
+#[must_use]
+pub const fn is_valid_command_queue_capacity(capacity: usize) -> bool {
+    capacity > 0 && capacity <= MAX_COMMAND_QUEUE_CAPACITY
+}
+
 // ============================================================================
 // ShardCommandQueue — domain wrapper around ArrayQueue<ShardCommand>
 // ============================================================================
@@ -277,7 +283,7 @@ impl ShardCommandQueue {
     /// Returns `RuntimeError::CommandQueueCapacityExceeded` if `capacity` is 0
     /// or exceeds `MAX_COMMAND_QUEUE_CAPACITY`.
     pub fn new(capacity: usize) -> RuntimeResult<Self> {
-        if capacity == 0 || capacity > MAX_COMMAND_QUEUE_CAPACITY {
+        if !is_valid_command_queue_capacity(capacity) {
             return Err(crate::RuntimeError::CommandQueueCapacityExceeded {
                 capacity,
                 max: MAX_COMMAND_QUEUE_CAPACITY,
