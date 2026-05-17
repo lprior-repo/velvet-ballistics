@@ -36,15 +36,15 @@ pub use crate::bounded::{BoundedPayload, MaxPayloadBytes, QueueCapacity};
 pub use crate::codec::{decode_payload, encode_payload};
 pub use crate::commands::IpcCommand;
 pub use crate::constants::{IPC_HEADER_LEN, IPC_MAGIC, IPC_VERSION};
+pub use crate::error::IpcError;
 #[cfg(test)]
 pub(crate) use crate::error::u32_to_usize;
-pub use crate::error::IpcError;
 pub use crate::frame::{
     decode_frame_header, decode_frame_payload, encode_frame, read_frame_header,
     read_frame_header_bounded, read_frame_payload, read_frame_payload_bounded,
     validate_frame_bounds, validate_frame_magic, write_frame,
 };
-pub use crate::frame_types::{decode_frame, IpcFrame, IpcFrameHeader};
+pub use crate::frame_types::{IpcFrame, IpcFrameHeader, decode_frame};
 pub use crate::ingress::{IngressFrame, MemoryIngress};
 pub use crate::metrics::{
     AggregateMetrics, IpcMetrics, JournalMetrics, RuntimeMetrics, ShardMetrics,

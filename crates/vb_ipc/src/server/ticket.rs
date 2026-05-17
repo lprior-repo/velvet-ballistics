@@ -1,9 +1,9 @@
 #![forbid(unsafe_code)]
 //! Ticket conversion helpers.
 
+use vb_core::RunId;
 use vb_core::action::ActionTicket;
 use vb_core::ids::{ActionId, SeqNo, SlotIdx, StepIdx};
-use vb_core::RunId;
 
 pub(crate) fn step_from_ticket(ticket: u64) -> Option<StepIdx> {
     match u16::try_from(ticket) {

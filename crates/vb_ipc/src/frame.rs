@@ -4,7 +4,7 @@
 use byteorder::{LittleEndian, ReadBytesExt};
 use std::io::{Cursor, Read, Write};
 
-use crate::{IpcCommand, IpcError, IpcFrameHeader, MaxPayloadBytes, IPC_HEADER_LEN, IPC_MAGIC};
+use crate::{IPC_HEADER_LEN, IPC_MAGIC, IpcCommand, IpcError, IpcFrameHeader, MaxPayloadBytes};
 
 /// Encodes a complete IPC frame (header + payload) into a byte vector.
 pub fn encode_frame(

@@ -5,8 +5,8 @@ use vb_runtime::runtime::Runtime;
 use vb_runtime::trace::TraceEvent;
 
 use super::handlers::{decode_payload, sanitize_runtime_error};
-use crate::server::IpcResponse;
 use crate::IpcPayload;
+use crate::server::IpcResponse;
 use crate::{IpcTraceEvent, IpcTraceEventKind};
 
 enum IpcResponseKind {
@@ -147,8 +147,8 @@ pub fn handle_drain_trace(payload: &[u8], runtime: &mut Runtime) -> IpcResponse 
 mod tests {
     use super::*;
     use std::num::NonZeroUsize;
-    use vb_core::ids::{SlotIdx, StepIdx};
     use vb_core::RunId;
+    use vb_core::ids::{SlotIdx, StepIdx};
     use vb_runtime::runtime::Runtime;
     use vb_runtime::shard::ShardConfig;
 
@@ -167,9 +167,9 @@ mod tests {
     }
 
     fn chain_workflow() -> vb_core::workflow::CompiledWorkflow {
+        use vb_core::WorkflowDigest;
         use vb_core::ids::{SlotIdx, StepIdx};
         use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
-        use vb_core::WorkflowDigest;
 
         let mut nodes = Vec::new();
         for i in 0..10 {

@@ -6,7 +6,7 @@
 //!
 //! This harness verifies panic-free header decoding for valid inputs.
 
-use crate::{IpcCommand, IpcFrameHeader, MaxPayloadBytes, IPC_HEADER_LEN, IPC_MAGIC, IPC_VERSION};
+use crate::{IPC_HEADER_LEN, IPC_MAGIC, IPC_VERSION, IpcCommand, IpcFrameHeader, MaxPayloadBytes};
 
 /// VB-IPC-DECODE-001/003 H1: decode valid header succeeds
 #[kani::proof]

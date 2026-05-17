@@ -157,7 +157,7 @@ pub enum IpcClientError {
 
 #[cfg(test)]
 mod tests {
-    use super::{recv_response, send_command, IpcClient, IpcClientError};
+    use super::{IpcClient, IpcClientError, recv_response, send_command};
     use crate::server::{IpcResponse, IpcServer};
     use std::io::{Read, Write};
     use std::num::NonZeroUsize;
