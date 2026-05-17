@@ -1,0 +1,1 @@
+VERUS_TRUST_SCAN_OK no assume/external/axiom matches in verification/verus contracts/verus

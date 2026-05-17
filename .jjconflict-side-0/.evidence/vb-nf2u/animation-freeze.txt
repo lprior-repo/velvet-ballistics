@@ -1,0 +1,3 @@
+hidden_animation_state: Paused
+visible_animation_time_source: FixedFixtureTime
+execution_marker: vb-nf2u-animation-freeze

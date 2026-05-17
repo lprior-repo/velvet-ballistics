@@ -1,0 +1,2 @@
+{"id":"vb-txhe-verus-lane","command":"bash scripts/verify-verus.sh","result":"PASS","evidence":"VERUS_REGISTRY_OK evidence=.evidence/verus","scope":"scripts/verify-verus.sh; scripts/rust-verification-gauntlet.sh"}
+{"id":"vb-txhe-gauntlet-proof","command":"bash scripts/rust-verification-gauntlet.sh proof","result":"PASS","evidence":"Ran with unrelated local vb_storage/CLI refactor edits temporarily stashed; Verus registry PASS, Kani completed with no manual harnesses, Lean skipped because proofs/lean is absent.","scope":"proof gauntlet"}

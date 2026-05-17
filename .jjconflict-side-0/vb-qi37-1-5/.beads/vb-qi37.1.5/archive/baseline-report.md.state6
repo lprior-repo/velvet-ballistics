@@ -1,0 +1,23 @@
+# Baseline Report - vb-qi37.1.5
+
+## Parent Commit
+336dbd58bfb5d17ccacb75dfb2713e17ac002e46
+
+## File Count
+13 files changed (untracked/unstaged baseline)
+
+## Pre-Edit Baseline Description
+
+Bead vb-qi37.1.5 addresses runtime/recovery verification for replay digest mismatch detection. The current codebase contains:
+
+- **Replay recovery infrastructure** in `crates/velvet_ballastics/src/runtime/recovery/` potentially with partial digest verification
+- **Digest computation and comparison logic** for detecting replay attacks
+- **Recovery state machine** requiring formal proof that mismatched digests are detected and handled
+
+The baseline pre-edit state assumes no formal verification exists for the digest mismatch detection path in the replay recovery module. This bead will establish proof obligations for:
+1. Digest mismatch detection coverage
+2. Recovery action triggering on mismatch
+3. Safety invariants during mismatch handling
+
+## Verification Target
+`vb-qi37.1.5` must produce evidence that replay digest mismatch detection is correctly implemented and formally verified.
