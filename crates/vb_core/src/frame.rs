@@ -1965,6 +1965,7 @@ mod frame_kani_harnesses {
                 /// pc_kani: combined harness for set_pc and increment_executed proofs.
                 #[kani::proof]
                 fn pc_kani() {
+                    use crate::errors::CoreError;
                     // K-PC1
                     {
                         let step_count: u16 = kani::any();
