@@ -310,10 +310,7 @@ fn kani_schema_version_no_panic() {
                 parts.len()
             );
             for part in &parts {
-                assert!(
-                    !part.is_empty(),
-                    "Each semver component must be non-empty"
-                );
+                assert!(!part.is_empty(), "Each semver component must be non-empty");
                 assert!(
                     part.parse::<u32>().is_ok(),
                     "Each semver component must be a valid u32"
@@ -339,7 +336,10 @@ fn kani_schema_version_no_panic() {
         }
         Err(_) => {
             // Other error variants shouldn't be returned for schema_version
-            kani::assert(false, "parse_schema_version should not return other error types");
+            kani::assert(
+                false,
+                "parse_schema_version should not return other error types",
+            );
         }
     }
 }
@@ -378,7 +378,10 @@ fn kani_schema_version_correctness() {
             );
         }
         Err(_) => {
-            kani::assert(false, "parse_schema_version should not return other error types");
+            kani::assert(
+                false,
+                "parse_schema_version should not return other error types",
+            );
         }
     }
 }
@@ -440,7 +443,13 @@ fn kani_schema_version_accepts_valid() {
     match result {
         Ok(v) => assert_eq!(v, version, "Validated version must equal input"),
         Err(e) => {
-            kani::assert(false, &format!("parse_schema_version should accept '{}', got Err: {:?}", version, e));
+            kani::assert(
+                false,
+                &format!(
+                    "parse_schema_version should accept '{}', got Err: {:?}",
+                    version, e
+                ),
+            );
         }
     }
 }
@@ -536,10 +545,7 @@ fn kani_vet_exit_code() {
 
     // Postcondition: exit_code == 0 => Ok, non-zero => Err
     if exit_code == 0 {
-        assert!(
-            result.is_ok(),
-            "Exit code 0 should always return Ok"
-        );
+        assert!(result.is_ok(), "Exit code 0 should always return Ok");
     } else {
         assert!(
             result.is_err(),
@@ -594,7 +600,10 @@ fn kani_gate_evidence_parity() {
     let evidence = match result {
         Ok(e) => e,
         Err(e) => {
-            kani::assert(false, &format!("gate_evidence_from_report should succeed, got Err: {}", e));
+            kani::assert(
+                false,
+                &format!("gate_evidence_from_report should succeed, got Err: {}", e),
+            );
             return;
         }
     };
@@ -663,7 +672,10 @@ fn kani_gate_evidence_empty() {
                 assert!(evidence.why_failed.is_none());
             }
             Err(e) => {
-                kani::assert(false, &format!("Empty report should succeed, got Err: {}", e));
+                kani::assert(
+                    false,
+                    &format!("Empty report should succeed, got Err: {}", e),
+                );
             }
         }
     }

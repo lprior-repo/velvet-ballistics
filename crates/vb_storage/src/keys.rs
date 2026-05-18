@@ -59,14 +59,15 @@ pub fn blob_key(
 
 /// Encodes `[0x30][state_u8][timestamp_u64_be][run_id_u64_be]`.
 pub fn index_status_key(
-    state: u8,
+    state: crate::types::IndexStatusState,
     timestamp: u64,
     run: RunId,
 ) -> Result<[u8; INDEX_STATUS_KEY_BYTES], JournalError> {
     let mut key = ArrayVec::<u8, INDEX_STATUS_KEY_BYTES>::new();
     key.try_push(PREFIX_INDEX_STATUS)
         .map_err(|_| JournalError::KeyCapacity)?;
-    key.try_push(state).map_err(|_| JournalError::KeyCapacity)?;
+    key.try_push(state.to_u8())
+        .map_err(|_| JournalError::KeyCapacity)?;
     key.try_extend_from_slice(&timestamp.to_be_bytes())
         .map_err(|_| JournalError::KeyCapacity)?;
     key.try_extend_from_slice(&run.get().to_be_bytes())

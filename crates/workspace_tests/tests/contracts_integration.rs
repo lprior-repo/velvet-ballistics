@@ -5,15 +5,11 @@
 //!
 //! They create temporary .cue files with known content and validate the end-to-end behavior.
 
-use std::collections::BTreeMap;
 use std::fs;
-use std::io::Write;
 use std::path::PathBuf;
 
 use tempfile::TempDir;
-use xtask::contracts::{
-    discover_contracts, gate_evidence_from_report, ContractKind, GateStatus,
-};
+use xtask::contracts::{ContractKind, GateStatus, discover_contracts, gate_evidence_from_report};
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -121,7 +117,10 @@ fn test_discovery_errors_sorted() {
     let report = discover_contracts(dir.path()).expect("discover_contracts should succeed");
 
     // Errors should be sorted.
-    assert!(report.errors.is_sorted(), "errors must be sorted for determinism");
+    assert!(
+        report.errors.is_sorted(),
+        "errors must be sorted for determinism"
+    );
     assert_eq!(report.errors.len(), 3);
 }
 
@@ -252,7 +251,12 @@ fn test_pipeline_missing_kind() {
     assert_eq!(report.summary.total, 1);
     assert_eq!(report.summary.valid, 0);
     assert_eq!(report.summary.invalid, 1);
-    assert!(report.errors.iter().any(|e| e.contains("MISSING_SCHEMA_VERSION") || e.contains("MISSING")));
+    assert!(
+        report
+            .errors
+            .iter()
+            .any(|e| e.contains("MISSING_SCHEMA_VERSION") || e.contains("MISSING"))
+    );
 }
 
 #[test]
@@ -266,10 +270,12 @@ fn test_pipeline_missing_schema_version() {
     assert_eq!(report.summary.total, 1);
     assert_eq!(report.summary.valid, 0);
     assert_eq!(report.summary.invalid, 1);
-    assert!(report
-        .errors
-        .iter()
-        .any(|e| e.contains("MISSING_SCHEMA_VERSION") || e.contains("MISSING")));
+    assert!(
+        report
+            .errors
+            .iter()
+            .any(|e| e.contains("MISSING_SCHEMA_VERSION") || e.contains("MISSING"))
+    );
 }
 
 #[test]
@@ -303,10 +309,12 @@ fn test_monotonicity_pass() {
     let report = discover_contracts(dir.path()).expect("discover_contracts should succeed");
 
     assert_eq!(report.summary.invalid, 0);
-    assert!(!report
-        .errors
-        .iter()
-        .any(|e| e.contains("VERSION_MONOTONICITY_BREACH")));
+    assert!(
+        !report
+            .errors
+            .iter()
+            .any(|e| e.contains("VERSION_MONOTONICITY_BREACH"))
+    );
     assert!(report.summary.version_violations.is_empty());
 }
 
@@ -321,10 +329,12 @@ fn test_monotonicity_fail() {
 
     let report = discover_contracts(dir.path()).expect("discover_contracts should succeed");
 
-    assert!(report
-        .errors
-        .iter()
-        .any(|e| e.contains("VERSION_MONOTONICITY_BREACH")));
+    assert!(
+        report
+            .errors
+            .iter()
+            .any(|e| e.contains("VERSION_MONOTONICITY_BREACH"))
+    );
     assert!(!report.summary.version_violations.is_empty());
 }
 
@@ -338,8 +348,10 @@ fn test_monotonicity_gate_json_output() {
     let report = discover_contracts(dir.path()).expect("discover_contracts should succeed");
     let json = serde_json::to_string(&report).expect("serialization must succeed");
 
-    assert!(json.contains("VERSION_MONOTONICITY_BREACH"),
-        "JSON must contain monotonicity breach error");
+    assert!(
+        json.contains("VERSION_MONOTONICITY_BREACH"),
+        "JSON must contain monotonicity breach error"
+    );
     assert!(json.contains("2.0.0"));
     assert!(json.contains("1.0.0"));
 }
@@ -369,7 +381,10 @@ fn test_cue_vet_nonexistent_file() {
     // discover_contracts should return an error for non-existent directory.
     let result = discover_contracts(PathBuf::from("/nonexistent/path/to/contracts").as_path());
 
-    assert!(result.is_err(), "discover_contracts should error on nonexistent dir");
+    assert!(
+        result.is_err(),
+        "discover_contracts should error on nonexistent dir"
+    );
     let err = result.unwrap_err();
     assert!(err.contains("does not exist"));
 }
@@ -382,7 +397,10 @@ fn test_cue_vet_not_a_directory() {
 
     let result = discover_contracts(&file_path);
 
-    assert!(result.is_err(), "discover_contracts should error on non-directory");
+    assert!(
+        result.is_err(),
+        "discover_contracts should error on non-directory"
+    );
     let err = result.unwrap_err();
     assert!(err.contains("not a directory"));
 }
@@ -491,8 +509,14 @@ fn test_json_output_has_required_keys() {
     let parsed: serde_json::Value = serde_json::from_str(&json).expect("JSON must be parseable");
 
     assert!(parsed.get("files").is_some(), "JSON must have 'files' key");
-    assert!(parsed.get("errors").is_some(), "JSON must have 'errors' key");
-    assert!(parsed.get("summary").is_some(), "JSON must have 'summary' key");
+    assert!(
+        parsed.get("errors").is_some(),
+        "JSON must have 'errors' key"
+    );
+    assert!(
+        parsed.get("summary").is_some(),
+        "JSON must have 'summary' key"
+    );
 }
 
 #[test]
@@ -507,11 +531,17 @@ fn test_json_deterministic_key_order() {
     let json = serde_json::to_string(&report).expect("JSON serialization must succeed");
 
     // BTreeMap ensures deterministic key order.
-    let aaa_pos = json.find("INVALID_KIND: aaa_bad").expect("aaa_bad must be in JSON");
-    let zzz_pos = json.find("INVALID_KIND: zzz_bad").expect("zzz_bad must be in JSON");
+    let aaa_pos = json
+        .find("INVALID_KIND: aaa_bad")
+        .expect("aaa_bad must be in JSON");
+    let zzz_pos = json
+        .find("INVALID_KIND: zzz_bad")
+        .expect("zzz_bad must be in JSON");
 
-    assert!(aaa_pos < zzz_pos,
-        "BTreeMap keys must be sorted: aaa_bad before zzz_bad");
+    assert!(
+        aaa_pos < zzz_pos,
+        "BTreeMap keys must be sorted: aaa_bad before zzz_bad"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -582,7 +612,12 @@ fn test_deeply_nested_discovery() {
     for i in 1..=5 {
         let subdir = dir.path().join(format!("level{}", i));
         fs::create_dir(&subdir).unwrap();
-        create_cue_file(&dir, &format!("level{}/file{}.cue", i, i), "cli_envelope", "1.0.0");
+        create_cue_file(
+            &dir,
+            &format!("level{}/file{}.cue", i, i),
+            "cli_envelope",
+            "1.0.0",
+        );
     }
 
     let report = discover_contracts(dir.path()).expect("discover_contracts should succeed");
@@ -603,9 +638,17 @@ fn test_single_file() {
 
     // Debug: check if file exists
     let file_path = dir.path().join("only.cue");
-    assert!(file_path.exists(), "Cue file should exist at {:?}", file_path);
+    assert!(
+        file_path.exists(),
+        "Cue file should exist at {:?}",
+        file_path
+    );
     let contents = fs::read_to_string(&file_path).expect("Should be able to read file");
-    assert!(contents.contains("cli_envelope"), "File should contain 'cli_envelope', got: {}", contents);
+    assert!(
+        contents.contains("cli_envelope"),
+        "File should contain 'cli_envelope', got: {}",
+        contents
+    );
 
     let report = discover_contracts(dir.path()).expect("discover_contracts should succeed");
 
@@ -632,10 +675,12 @@ fn test_all_files_monotonicity_breach() {
 
     let report = discover_contracts(dir.path()).expect("discover_contracts should succeed");
 
-    assert!(report
-        .errors
-        .iter()
-        .any(|e| e.contains("VERSION_MONOTONICITY_BREACH")));
+    assert!(
+        report
+            .errors
+            .iter()
+            .any(|e| e.contains("VERSION_MONOTONICITY_BREACH"))
+    );
     assert!(!report.summary.version_violations.is_empty());
 }
 

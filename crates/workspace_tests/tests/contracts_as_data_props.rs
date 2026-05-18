@@ -16,7 +16,9 @@ use proptest::proptest;
 // ============================================================
 
 /// ContractKind mirrors the 6 valid enum values.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize, serde::Deserialize,
+)]
 pub enum ContractKind {
     CliEnvelope,
     UiTokens,
@@ -593,7 +595,10 @@ fn extract_cue_string_field(content: &str, field: &str) -> String {
             }
         }
         // Unquoted value (take until newline or end)
-        let unquoted = after.split(|c: char| c.is_whitespace() || c == '\n').next().unwrap_or("");
+        let unquoted = after
+            .split(|c: char| c.is_whitespace() || c == '\n')
+            .next()
+            .unwrap_or("");
         return unquoted.to_string();
     }
     String::new()
@@ -607,7 +612,10 @@ fn extract_cue_string_field(content: &str, field: &str) -> String {
 #[test]
 fn test_schema_version_rejects_empty() {
     let result = parse_schema_version("");
-    assert!(result.is_err(), "parse_schema_version should reject empty string");
+    assert!(
+        result.is_err(),
+        "parse_schema_version should reject empty string"
+    );
 }
 
 /// Property: cue vet would reject files missing schema_version.

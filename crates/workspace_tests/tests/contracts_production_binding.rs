@@ -11,9 +11,8 @@ use std::collections::BTreeMap;
 use std::path::PathBuf;
 
 use xtask::contracts::{
-    compare_semver, gate_evidence_from_report, parse_schema_version,
-    parse_vet_exit_code, ContractError, ContractFile, ContractKind, DiscoveryReport, ReportSummary,
-    SemverCmp,
+    ContractError, ContractFile, ContractKind, DiscoveryReport, ReportSummary, SemverCmp,
+    compare_semver, gate_evidence_from_report, parse_schema_version, parse_vet_exit_code,
 };
 use xtask::evidence::{GateEvidence, GateStatus, WhyFailed};
 
@@ -23,18 +22,9 @@ use xtask::evidence::{GateEvidence, GateStatus, WhyFailed};
 
 #[test]
 fn test_prod_parse_schema_version_valid() {
-    assert_eq!(
-        parse_schema_version("1.0.0"),
-        Ok("1.0.0".to_string())
-    );
-    assert_eq!(
-        parse_schema_version("2.1.0"),
-        Ok("2.1.0".to_string())
-    );
-    assert_eq!(
-        parse_schema_version("0.9.9"),
-        Ok("0.9.9".to_string())
-    );
+    assert_eq!(parse_schema_version("1.0.0"), Ok("1.0.0".to_string()));
+    assert_eq!(parse_schema_version("2.1.0"), Ok("2.1.0".to_string()));
+    assert_eq!(parse_schema_version("0.9.9"), Ok("0.9.9".to_string()));
 }
 
 #[test]
@@ -66,10 +56,7 @@ fn test_prod_parse_contract_kind_all_valid() {
         ContractKind::parse("cli_envelope"),
         Ok(ContractKind::CliEnvelope)
     );
-    assert_eq!(
-        ContractKind::parse("ui_tokens"),
-        Ok(ContractKind::UiTokens)
-    );
+    assert_eq!(ContractKind::parse("ui_tokens"), Ok(ContractKind::UiTokens));
     assert_eq!(
         ContractKind::parse("accepted_artifacts"),
         Ok(ContractKind::AcceptedArtifacts)
@@ -226,10 +213,9 @@ fn test_prod_gate_evidence_fail() {
             total: 1,
             valid: 0,
             invalid: 1,
-            errors_by_kind: [(
-                "INVALID_KIND: bogus".to_string(),
-                1u32,
-            )].into_iter().collect(),
+            errors_by_kind: [("INVALID_KIND: bogus".to_string(), 1u32)]
+                .into_iter()
+                .collect(),
             version_violations: Vec::new(),
         },
     };
@@ -276,16 +262,13 @@ fn test_prod_gate_evidence_multiple_errors() {
             total: 3,
             valid: 0,
             invalid: 3,
-            errors_by_kind: [(
-                "INVALID_KIND: bogus".to_string(),
-                1u32,
-            ), (
-                "INVALID_KIND: unknown".to_string(),
-                1u32,
-            ), (
-                "MISSING_SCHEMA_VERSION".to_string(),
-                1u32,
-            )].into_iter().collect(),
+            errors_by_kind: [
+                ("INVALID_KIND: bogus".to_string(), 1u32),
+                ("INVALID_KIND: unknown".to_string(), 1u32),
+                ("MISSING_SCHEMA_VERSION".to_string(), 1u32),
+            ]
+            .into_iter()
+            .collect(),
             version_violations: Vec::new(),
         },
     };
@@ -313,10 +296,9 @@ fn test_prod_contract_file_serialization() {
         vet_errors: vec!["CUE_VET_FAILED: syntax error".to_string()],
     };
 
-    let json = serde_json::to_string(&file)
-        .expect("ContractFile serialization should not fail");
-    let parsed: ContractFile = serde_json::from_str(&json)
-        .expect("ContractFile deserialization should succeed");
+    let json = serde_json::to_string(&file).expect("ContractFile serialization should not fail");
+    let parsed: ContractFile =
+        serde_json::from_str(&json).expect("ContractFile deserialization should succeed");
 
     assert_eq!(parsed.path, file.path);
     assert_eq!(parsed.schema_version, file.schema_version);
@@ -338,9 +320,7 @@ fn test_prod_discovery_report_serialization() {
             total: 2,
             valid: 1,
             invalid: 1,
-            errors_by_kind: BTreeMap::from_iter(vec![
-                ("INVALID_KIND: bogus".to_string(), 1),
-            ]),
+            errors_by_kind: BTreeMap::from_iter(vec![("INVALID_KIND: bogus".to_string(), 1)]),
             version_violations: Vec::new(),
         },
     };
@@ -348,15 +328,20 @@ fn test_prod_discovery_report_serialization() {
     let json = serde_json::to_string_pretty(&report)
         .expect("DiscoveryReport serialization should not fail");
 
-    let parsed: serde_json::Value = serde_json::from_str(&json)
-        .expect("JSON must be parseable");
+    let parsed: serde_json::Value = serde_json::from_str(&json).expect("JSON must be parseable");
 
-    assert!(parsed.get("summary").is_some(),
-        "JSON must have 'summary' key for moon task consumers");
-    assert!(parsed.get("errors").is_some(),
-        "JSON must have 'errors' key for moon task consumers");
-    assert!(parsed.get("files").is_some(),
-        "JSON must have 'files' key for moon task consumers");
+    assert!(
+        parsed.get("summary").is_some(),
+        "JSON must have 'summary' key for moon task consumers"
+    );
+    assert!(
+        parsed.get("errors").is_some(),
+        "JSON must have 'errors' key for moon task consumers"
+    );
+    assert!(
+        parsed.get("files").is_some(),
+        "JSON must have 'files' key for moon task consumers"
+    );
 }
 
 #[test]
@@ -386,8 +371,14 @@ fn test_prod_report_summary_deterministic_key_order() {
     let mmm_pos = json.find("\"mmm_middle\"").unwrap();
     let zzz_pos = json.find("\"zzz_last\"").unwrap();
 
-    assert!(aaa_pos < mmm_pos, "aaa_first must come before mmm_middle in JSON");
-    assert!(mmm_pos < zzz_pos, "mmm_middle must come before zzz_last in JSON");
+    assert!(
+        aaa_pos < mmm_pos,
+        "aaa_first must come before mmm_middle in JSON"
+    );
+    assert!(
+        mmm_pos < zzz_pos,
+        "mmm_middle must come before zzz_last in JSON"
+    );
 }
 
 #[test]
@@ -402,11 +393,11 @@ fn test_prod_gate_evidence_serialization() {
         why_failed: None,
     };
 
-    let json = serde_json::to_string(&evidence)
-        .expect("GateEvidence serialization should not fail");
+    let json =
+        serde_json::to_string(&evidence).expect("GateEvidence serialization should not fail");
 
-    let parsed: serde_json::Value = serde_json::from_str(&json)
-        .expect("GateEvidence deserialization should succeed");
+    let parsed: serde_json::Value =
+        serde_json::from_str(&json).expect("GateEvidence deserialization should succeed");
 
     assert_eq!(parsed["kind"].as_str().unwrap(), "contract-discovery");
     assert!(json.contains("contract-discovery"));
@@ -434,11 +425,11 @@ fn test_prod_gate_evidence_fail_serialization() {
         why_failed: Some(why_failed),
     };
 
-    let json = serde_json::to_string(&evidence)
-        .expect("GateEvidence serialization should not fail");
+    let json =
+        serde_json::to_string(&evidence).expect("GateEvidence serialization should not fail");
 
-    let parsed: serde_json::Value = serde_json::from_str(&json)
-        .expect("GateEvidence deserialization should succeed");
+    let parsed: serde_json::Value =
+        serde_json::from_str(&json).expect("GateEvidence deserialization should succeed");
 
     assert!(json.contains("Fail"));
     assert!(json.contains("why_failed"));
@@ -579,13 +570,19 @@ fn test_prod_contract_error_all_variants_display() {
     let err = ContractError::MissingSchemaVersion;
     assert_eq!(err.to_string(), "MISSING_SCHEMA_VERSION");
 
-    let err = ContractError::InvalidVersion { version: "1.0".to_string() };
+    let err = ContractError::InvalidVersion {
+        version: "1.0".to_string(),
+    };
     assert_eq!(err.to_string(), "INVALID_VERSION: 1.0");
 
-    let err = ContractError::InvalidKind { kind: "bogus".to_string() };
+    let err = ContractError::InvalidKind {
+        kind: "bogus".to_string(),
+    };
     assert_eq!(err.to_string(), "INVALID_KIND: bogus");
 
-    let err = ContractError::CueVetFailed { file: "foo.cue".to_string() };
+    let err = ContractError::CueVetFailed {
+        file: "foo.cue".to_string(),
+    };
     assert_eq!(err.to_string(), "CUE_VET_FAILED: foo.cue");
 
     let err = ContractError::VersionMonotonicityBreach {

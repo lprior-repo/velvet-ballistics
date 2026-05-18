@@ -1088,4 +1088,425 @@ mod tests {
         let result = admit_run(&store, RuntimePolicy::Journaled, digest, run_id, caps);
         assert_eq!(result, Err(AdmissionError::ArtifactNotFound { digest }));
     }
+
+    // -------------------------------------------------------------------------
+    // ArtifactEnvelopeError propagation tests (B-14, B-16, B-17, B-18, B-19, B-20)
+    // -------------------------------------------------------------------------
+
+    #[test]
+    fn load_accepted_artifact_returns_postcard_decode_failed() {
+        /// Store that always returns PostcardDecodeFailed.
+        struct PostcardFailingStore;
+        impl AcceptedArtifactStore for PostcardFailingStore {
+            fn load_accepted_artifact(
+                &self,
+                _digest: WorkflowDigest,
+            ) -> Result<vb_storage::admission::AcceptedArtifact, ArtifactEnvelopeError>
+            {
+                Err(ArtifactEnvelopeError::PostcardDecodeFailed)
+            }
+        }
+        let store = PostcardFailingStore;
+        let result = store.load_accepted_artifact(test_digest());
+        assert_eq!(result, Err(ArtifactEnvelopeError::PostcardDecodeFailed));
+    }
+
+    #[test]
+    fn load_accepted_artifact_returns_invalid_gate_count() {
+        /// Store that returns ArtifactEnvelopeError::InvalidGateCount — simulating
+        /// what StorageArtifactStore returns when loading a corrupt artifact with wrong gate count.
+        struct WrongGateCountStore;
+        impl AcceptedArtifactStore for WrongGateCountStore {
+            fn load_accepted_artifact(
+                &self,
+                _digest: WorkflowDigest,
+            ) -> Result<vb_storage::admission::AcceptedArtifact, ArtifactEnvelopeError>
+            {
+                Err(ArtifactEnvelopeError::InvalidGateCount {
+                    found: 7,
+                    required: 15,
+                })
+            }
+        }
+        let store = WrongGateCountStore;
+        let result = store.load_accepted_artifact(test_digest());
+        assert_eq!(
+            result,
+            Err(ArtifactEnvelopeError::InvalidGateCount {
+                found: 7,
+                required: 15
+            })
+        );
+    }
+
+    #[test]
+    fn admit_artifact_run_rejects_missing_bounded_flag() {
+        /// Store that returns artifact with bounded=false.
+        struct BoundedFalseStore;
+        impl AcceptedArtifactStore for BoundedFalseStore {
+            fn load_accepted_artifact(
+                &self,
+                _digest: WorkflowDigest,
+            ) -> Result<vb_storage::admission::AcceptedArtifact, ArtifactEnvelopeError>
+            {
+                let mut artifact = accepted_artifact_with_caps(Box::new([]));
+                artifact.verification.bounded = false;
+                Ok(artifact)
+            }
+        }
+        let store = BoundedFalseStore;
+        let result = admit_artifact_run(
+            &store,
+            RuntimePolicy::Strict,
+            RunId::new(1),
+            test_digest(),
+            CapabilitySet::empty(),
+        );
+        assert_eq!(
+            result,
+            Err(AdmissionError::ArtifactInvalidProofFlag { flag: "bounded" })
+        );
+    }
+
+    #[test]
+    fn admit_artifact_run_rejects_missing_taint_safe_flag() {
+        struct TaintSafeFalseStore;
+        impl AcceptedArtifactStore for TaintSafeFalseStore {
+            fn load_accepted_artifact(
+                &self,
+                _digest: WorkflowDigest,
+            ) -> Result<vb_storage::admission::AcceptedArtifact, ArtifactEnvelopeError>
+            {
+                let mut artifact = accepted_artifact_with_caps(Box::new([]));
+                artifact.verification.taint_safe = false;
+                Ok(artifact)
+            }
+        }
+        let store = TaintSafeFalseStore;
+        let result = admit_artifact_run(
+            &store,
+            RuntimePolicy::Strict,
+            RunId::new(1),
+            test_digest(),
+            CapabilitySet::empty(),
+        );
+        assert_eq!(
+            result,
+            Err(AdmissionError::ArtifactInvalidProofFlag { flag: "taint_safe" })
+        );
+    }
+
+    #[test]
+    fn admit_artifact_run_rejects_missing_retry_safe_flag() {
+        struct RetrySafeFalseStore;
+        impl AcceptedArtifactStore for RetrySafeFalseStore {
+            fn load_accepted_artifact(
+                &self,
+                _digest: WorkflowDigest,
+            ) -> Result<vb_storage::admission::AcceptedArtifact, ArtifactEnvelopeError>
+            {
+                let mut artifact = accepted_artifact_with_caps(Box::new([]));
+                artifact.verification.retry_safe = false;
+                Ok(artifact)
+            }
+        }
+        let store = RetrySafeFalseStore;
+        let result = admit_artifact_run(
+            &store,
+            RuntimePolicy::Strict,
+            RunId::new(1),
+            test_digest(),
+            CapabilitySet::empty(),
+        );
+        assert_eq!(
+            result,
+            Err(AdmissionError::ArtifactInvalidProofFlag { flag: "retry_safe" })
+        );
+    }
+
+    #[test]
+    fn admit_artifact_run_rejects_missing_durable_flag() {
+        struct DurableFalseStore;
+        impl AcceptedArtifactStore for DurableFalseStore {
+            fn load_accepted_artifact(
+                &self,
+                _digest: WorkflowDigest,
+            ) -> Result<vb_storage::admission::AcceptedArtifact, ArtifactEnvelopeError>
+            {
+                let mut artifact = accepted_artifact_with_caps(Box::new([]));
+                artifact.verification.durable = false;
+                Ok(artifact)
+            }
+        }
+        let store = DurableFalseStore;
+        let result = admit_artifact_run(
+            &store,
+            RuntimePolicy::Strict,
+            RunId::new(1),
+            test_digest(),
+            CapabilitySet::empty(),
+        );
+        assert_eq!(
+            result,
+            Err(AdmissionError::ArtifactInvalidProofFlag { flag: "durable" })
+        );
+    }
+
+    #[test]
+    fn admit_artifact_run_rejects_missing_replayable_flag() {
+        struct ReplayableFalseStore;
+        impl AcceptedArtifactStore for ReplayableFalseStore {
+            fn load_accepted_artifact(
+                &self,
+                _digest: WorkflowDigest,
+            ) -> Result<vb_storage::admission::AcceptedArtifact, ArtifactEnvelopeError>
+            {
+                let mut artifact = accepted_artifact_with_caps(Box::new([]));
+                artifact.verification.replayable = false;
+                Ok(artifact)
+            }
+        }
+        let store = ReplayableFalseStore;
+        let result = admit_artifact_run(
+            &store,
+            RuntimePolicy::Strict,
+            RunId::new(1),
+            test_digest(),
+            CapabilitySet::empty(),
+        );
+        assert_eq!(
+            result,
+            Err(AdmissionError::ArtifactInvalidProofFlag { flag: "replayable" })
+        );
+    }
+
+    #[test]
+    fn admit_artifact_run_rejects_missing_idempotency_verified_flag() {
+        struct IdempotencyVerifiedFalseStore;
+        impl AcceptedArtifactStore for IdempotencyVerifiedFalseStore {
+            fn load_accepted_artifact(
+                &self,
+                _digest: WorkflowDigest,
+            ) -> Result<vb_storage::admission::AcceptedArtifact, ArtifactEnvelopeError>
+            {
+                let mut artifact = accepted_artifact_with_caps(Box::new([]));
+                artifact.verification.idempotency_verified = false;
+                Ok(artifact)
+            }
+        }
+        let store = IdempotencyVerifiedFalseStore;
+        let result = admit_artifact_run(
+            &store,
+            RuntimePolicy::Strict,
+            RunId::new(1),
+            test_digest(),
+            CapabilitySet::empty(),
+        );
+        assert_eq!(
+            result,
+            Err(AdmissionError::ArtifactInvalidProofFlag {
+                flag: "idempotency_verified"
+            })
+        );
+    }
+
+    #[test]
+    fn admit_artifact_run_rejects_missing_idempotency_attestation() {
+        /// Store that returns artifact with idempotency_keyed but no attestation.
+        struct MissingAttestationStore {
+            action: ActionId,
+        }
+        impl AcceptedArtifactStore for MissingAttestationStore {
+            fn load_accepted_artifact(
+                &self,
+                _digest: WorkflowDigest,
+            ) -> Result<vb_storage::admission::AcceptedArtifact, ArtifactEnvelopeError>
+            {
+                let mut artifact = accepted_artifact_with_caps(Box::new([]));
+                artifact.verification.idempotency_keyed = Box::new([self.action]);
+                artifact.verification.idempotency_attested = Box::new([]);
+                Ok(artifact)
+            }
+        }
+        let store = MissingAttestationStore {
+            action: ActionId::new(42),
+        };
+        let result = admit_artifact_run(
+            &store,
+            RuntimePolicy::Strict,
+            RunId::new(1),
+            test_digest(),
+            CapabilitySet::empty(),
+        );
+        assert_eq!(
+            result,
+            Err(AdmissionError::ArtifactInvalidProofFlag {
+                flag: "idempotency_attested"
+            })
+        );
+    }
+
+    // -------------------------------------------------------------------------
+    // admit_artifact_run digest mismatch (B-11)
+    // -------------------------------------------------------------------------
+
+    #[test]
+    fn admit_artifact_run_returns_digest_mismatch() {
+        /// Store that returns an artifact with a different digest than requested.
+        struct MismatchedDigestStore;
+        impl AcceptedArtifactStore for MismatchedDigestStore {
+            fn load_accepted_artifact(
+                &self,
+                _digest: WorkflowDigest,
+            ) -> Result<vb_storage::admission::AcceptedArtifact, ArtifactEnvelopeError>
+            {
+                let wrong_digest = WorkflowDigest::from_bytes([0x42; 32]);
+                let mut artifact = accepted_artifact_with_caps(Box::new([]));
+                artifact.digest = wrong_digest;
+                Ok(artifact)
+            }
+        }
+        let store = MismatchedDigestStore;
+        let requested = test_digest();
+        let result = admit_artifact_run(
+            &store,
+            RuntimePolicy::Strict,
+            RunId::new(1),
+            requested,
+            CapabilitySet::empty(),
+        );
+        assert_eq!(
+            result,
+            Err(AdmissionError::ArtifactDigestMismatch {
+                requested,
+                found: WorkflowDigest::from_bytes([0x42; 32])
+            })
+        );
+    }
+
+    // -------------------------------------------------------------------------
+    // admit_run_with_budget tests
+    // -------------------------------------------------------------------------
+
+    #[test]
+    fn admit_run_with_budget_returns_resource_capacity_exceeded() {
+        /// A store that always says artifact exists.
+        struct AlwaysPresentStore;
+        impl ArtifactStore for AlwaysPresentStore {
+            fn compiled_ir_exists(&self, _digest: WorkflowDigest) -> bool {
+                true
+            }
+        }
+        let store = AlwaysPresentStore;
+        let digest = test_digest();
+        let run_id = RunId::new(1);
+        let caps = CapabilitySet::empty();
+        // Request more steps than the capacity allows.
+        let requested = AggregateResourceBudget {
+            max_steps_executable: u32::MAX,
+            max_action_tickets: u32::MAX,
+            max_parallel_in_flight: u16::MAX,
+            max_retries_per_action: u16::MAX,
+            max_gather_pages: u32::MAX,
+            max_gather_items: u32::MAX,
+            max_for_each_iterations: u32::MAX,
+            max_together_branches: u16::MAX,
+            max_repeat_attempts: u16::MAX,
+            max_run_time_seconds: u64::MAX,
+            max_result_bytes: u32::MAX,
+            max_total_slots_written: u32::MAX,
+            max_queue_depth: u32::MAX,
+            max_journal_batch_bytes: u32::MAX,
+            max_step_budget_per_tick: u64::MAX,
+            max_transitions_per_tick: u64::MAX,
+        };
+        let capacity = AggregateResourceCapacity {
+            max_steps_executable: 0,
+            max_action_tickets: u64::MAX,
+            max_parallel_in_flight: u32::MAX,
+            max_gather_pages: u64::MAX,
+            max_gather_items: u64::MAX,
+            max_result_bytes: u64::MAX,
+            max_total_slots_written: u64::MAX,
+            max_active_runs: u64::MAX,
+            max_queue_depth: u64::MAX,
+            max_journal_batch_bytes: u64::MAX,
+            max_step_budget_per_tick: u64::MAX,
+            max_transitions_per_tick: u64::MAX,
+        };
+
+        let result = admit_run_with_budget(
+            &store,
+            RuntimePolicy::Strict,
+            digest,
+            run_id,
+            caps,
+            requested,
+            capacity,
+        );
+
+        assert!(matches!(
+            result,
+            Err(AdmissionError::ResourceCapacityExceeded { .. })
+        ));
+    }
+
+    #[test]
+    fn admit_run_with_budget_rejects_strict_without_artifact() {
+        /// A store that always says artifact does NOT exist.
+        struct NeverPresentStore;
+        impl ArtifactStore for NeverPresentStore {
+            fn compiled_ir_exists(&self, _digest: WorkflowDigest) -> bool {
+                false
+            }
+        }
+        let store = NeverPresentStore;
+        let digest = test_digest();
+        let run_id = RunId::new(1);
+        let caps = CapabilitySet::empty();
+        let requested = AggregateResourceBudget {
+            max_steps_executable: 0,
+            max_action_tickets: 0,
+            max_parallel_in_flight: 0,
+            max_retries_per_action: 0,
+            max_gather_pages: 0,
+            max_gather_items: 0,
+            max_for_each_iterations: 0,
+            max_together_branches: 0,
+            max_repeat_attempts: 0,
+            max_run_time_seconds: 0,
+            max_result_bytes: 0,
+            max_total_slots_written: 0,
+            max_queue_depth: 0,
+            max_journal_batch_bytes: 0,
+            max_step_budget_per_tick: 0,
+            max_transitions_per_tick: 0,
+        };
+        let capacity = AggregateResourceCapacity {
+            max_steps_executable: u64::MAX,
+            max_action_tickets: u64::MAX,
+            max_parallel_in_flight: u32::MAX,
+            max_gather_pages: u64::MAX,
+            max_gather_items: u64::MAX,
+            max_result_bytes: u64::MAX,
+            max_total_slots_written: u64::MAX,
+            max_active_runs: u64::MAX,
+            max_queue_depth: u64::MAX,
+            max_journal_batch_bytes: u64::MAX,
+            max_step_budget_per_tick: u64::MAX,
+            max_transitions_per_tick: u64::MAX,
+        };
+
+        let result = admit_run_with_budget(
+            &store,
+            RuntimePolicy::Strict,
+            digest,
+            run_id,
+            caps,
+            requested,
+            capacity,
+        );
+
+        assert_eq!(result, Err(AdmissionError::ArtifactNotFound { digest }));
+    }
 }

@@ -126,9 +126,15 @@ pub struct DiscoveryReport {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ContractError {
     MissingSchemaVersion,
-    InvalidVersion { version: String },
-    InvalidKind { kind: String },
-    CueVetFailed { file: String },
+    InvalidVersion {
+        version: String,
+    },
+    InvalidKind {
+        kind: String,
+    },
+    CueVetFailed {
+        file: String,
+    },
     VersionMonotonicityBreach {
         file: String,
         expected: String,
@@ -299,7 +305,7 @@ pub fn discover_contracts(contracts_dir: &Path) -> Result<DiscoveryReport, Strin
                 files.push(contract_file);
                 summary.valid += 1;
             }
-            Err((file_path, validation_errors)) => {
+            Err((_file_path, validation_errors)) => {
                 summary.invalid += 1;
                 for err in &validation_errors {
                     let key = err.to_string();
@@ -376,18 +382,11 @@ pub fn discover_contracts(contracts_dir: &Path) -> Result<DiscoveryReport, Strin
 }
 
 /// Recursively collect all .cue file paths under root, relative to base.
-fn collect_cue_files(
-    base: &Path,
-    current: &Path,
-    out: &mut Vec<PathBuf>,
-) -> std::io::Result<()> {
+fn collect_cue_files(base: &Path, current: &Path, out: &mut Vec<PathBuf>) -> std::io::Result<()> {
     if !current.is_dir() {
         return Ok(());
     }
-    let mut entries: Vec<_> = current
-        .read_dir()?
-        .filter_map(|e| e.ok())
-        .collect();
+    let mut entries: Vec<_> = current.read_dir()?.filter_map(|e| e.ok()).collect();
     entries.sort_by_key(|e| e.path());
     for entry in entries {
         let path = entry.path();
@@ -411,16 +410,14 @@ fn validate_single_file(
     contracts_dir: &Path,
 ) -> Result<ContractFile, (PathBuf, Vec<ContractError>)> {
     let mut vet_errors: Vec<ContractError> = Vec::new();
-    let mut schema_version = String::new();
-    let mut kind_str: Option<String> = None;
+    let schema_version;
+    let kind_str;
 
     // Run cue vet.
     // Use the relative path (relative to contracts_dir) for cue, with
     // contracts_dir as CWD, so cue resolves the path correctly.
-    let relative_path = file_path
-        .strip_prefix(contracts_dir)
-        .unwrap_or(file_path);
-    let (exit_code, stderr) = match run_cue_vet(relative_path, Some(contracts_dir)) {
+    let relative_path = file_path.strip_prefix(contracts_dir).unwrap_or(file_path);
+    let (exit_code, _stderr) = match run_cue_vet(relative_path, Some(contracts_dir)) {
         Ok(result) => result,
         Err(_e) => {
             vet_errors.push(ContractError::CueVetFailed {
@@ -537,10 +534,7 @@ pub fn gate_evidence_from_report(report: &DiscoveryReport) -> GateEvidence {
         unique.sort();
         unique.dedup();
         let detail = if unique.is_empty() {
-            format!(
-                "{} contract(s) failed validation",
-                report.summary.invalid
-            )
+            format!("{} contract(s) failed validation", report.summary.invalid)
         } else {
             format!(
                 "{} contract(s) failed: {}",
@@ -580,7 +574,7 @@ pub fn cmd_contracts(dir: &str, json: bool, check: bool) -> anyhow::Result<()> {
     let contracts_dir = Path::new(dir);
     let report = discover_contracts(contracts_dir).map_err(|e| anyhow::anyhow!("{}", e))?;
 
-    let evidence = gate_evidence_from_report(&report);
+    let _evidence = gate_evidence_from_report(&report);
 
     if json {
         let output = serde_json::to_string_pretty(&report)?;
@@ -599,10 +593,7 @@ pub fn cmd_contracts(dir: &str, json: bool, check: bool) -> anyhow::Result<()> {
     }
 
     if check && report.summary.invalid > 0 {
-        anyhow::bail!(
-            "{} contract(s) failed validation",
-            report.summary.invalid
-        );
+        anyhow::bail!("{} contract(s) failed validation", report.summary.invalid);
     }
 
     Ok(())
@@ -745,10 +736,7 @@ mod tests {
             ContractKind::AcceptedArtifacts.to_string(),
             "accepted_artifacts"
         );
-        assert_eq!(
-            ContractKind::EvidenceBundle.to_string(),
-            "evidence_bundle"
-        );
+        assert_eq!(ContractKind::EvidenceBundle.to_string(), "evidence_bundle");
         assert_eq!(ContractKind::Diagnostics.to_string(), "diagnostics");
         assert_eq!(ContractKind::GateOutput.to_string(), "gate_output");
     }
@@ -791,10 +779,12 @@ schema_version: "1.0.0""#;
             ContractError::MissingSchemaVersion.to_string(),
             "MISSING_SCHEMA_VERSION"
         );
-        assert!(ContractError::InvalidKind {
-            kind: "bogus".to_string(),
-        }
-        .to_string()
-        .contains("INVALID_KIND"));
+        assert!(
+            ContractError::InvalidKind {
+                kind: "bogus".to_string(),
+            }
+            .to_string()
+            .contains("INVALID_KIND")
+        );
     }
 }

@@ -478,11 +478,7 @@ pub fn replay(journal: &FjallJournal) -> LifecycleResult<Vec<RunState>> {
     let states: Vec<RunState> = tracker
         .states
         .iter()
-        .map(|(&run_id, &lifecycle)| RunState {
-            run_id,
-            lifecycle,
-            is_terminal: lifecycle.is_terminal(),
-        })
+        .map(|(&run_id, &lifecycle)| RunState { run_id, lifecycle })
         .collect();
 
     Ok(states)

@@ -1846,8 +1846,14 @@ pub struct RunState {
     pub lifecycle: LifecycleState,
     /// Run identifier.
     pub run_id: RunId,
-    /// Whether the run is terminal.
-    pub is_terminal: bool,
+}
+
+impl RunState {
+    /// Returns true if this run is in a terminal state.
+    #[must_use]
+    pub const fn is_terminal(&self) -> bool {
+        self.lifecycle.is_terminal()
+    }
 }
 
 mod tests;

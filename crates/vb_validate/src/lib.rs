@@ -353,7 +353,11 @@ pub enum ValidationError {
     CueVetFailed { file: String },
 
     #[error("VERSION_MONOTONICITY_BREACH: {file} expected {expected} got {actual}")]
-    VersionMonotonicityBreach { file: String, expected: String, actual: String },
+    VersionMonotonicityBreach {
+        file: String,
+        expected: String,
+        actual: String,
+    },
 }
 
 pub type ValidationResult<T> = Result<T, ValidationError>;

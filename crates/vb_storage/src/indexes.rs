@@ -14,7 +14,7 @@ impl FjallJournal {
     /// Inserts minimal status index marker bytes.
     pub fn put_status_index(
         &self,
-        state: u8,
+        state: crate::types::IndexStatusState,
         timestamp: u64,
         run: vb_core::RunId,
     ) -> Result<(), JournalError> {

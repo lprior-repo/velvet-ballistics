@@ -20,8 +20,8 @@ use std::path::{Path, PathBuf};
 use clap::Parser;
 
 use ai_profile::{cmd_ai_deep, cmd_ai_fast, cmd_ai_release};
-use contracts::cmd_contracts;
 use cli::{Cli, Commands, ProofCommands};
+use contracts::cmd_contracts;
 use shell::write_stdout;
 use ui_overlap::cmd_ui_overlap_check;
 use ui_snapshot::cmd_ui_snapshot;

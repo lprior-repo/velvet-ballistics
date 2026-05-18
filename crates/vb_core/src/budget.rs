@@ -4,7 +4,7 @@
 
 use crate::ids::{RunId, StepIdx};
 use crate::workflow::{CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowError};
-use std::fmt;
+use thiserror::Error;
 
 /// Computed budget for an entire workflow, derived by walking the IR.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -219,9 +219,10 @@ impl BoundednessPolicy {
 }
 
 /// Budget validation failures.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Error, Clone, PartialEq, Eq)]
 pub enum BudgetError {
     /// Total step count exceeded the policy limit.
+    #[error("total steps {actual} exceeded policy limit {limit}")]
     TotalStepsExceeded {
         /// Actual total steps computed.
         actual: u64,
@@ -229,6 +230,7 @@ pub enum BudgetError {
         limit: u64,
     },
     /// Total slot count exceeded the policy limit.
+    #[error("total slots {actual} exceeded policy limit {limit}")]
     TotalSlotsExceeded {
         /// Actual total slots computed.
         actual: u64,
@@ -236,6 +238,7 @@ pub enum BudgetError {
         limit: u64,
     },
     /// Fanout exceeded the policy limit.
+    #[error("fanout {actual} exceeded policy limit {limit}")]
     FanoutExceeded {
         /// Actual fanout computed.
         actual: u16,
@@ -243,6 +246,7 @@ pub enum BudgetError {
         limit: u16,
     },
     /// Nesting depth exceeded the policy limit.
+    #[error("nesting depth {actual} exceeded policy limit {limit}")]
     NestingDepthExceeded {
         /// Actual nesting depth computed.
         actual: u16,
@@ -250,6 +254,7 @@ pub enum BudgetError {
         limit: u16,
     },
     /// Parallel in-flight exceeded the policy limit.
+    #[error("parallel in-flight {actual} exceeded policy limit {limit}")]
     ParallelExceeded {
         /// Actual parallel in-flight computed.
         actual: u16,
@@ -257,6 +262,7 @@ pub enum BudgetError {
         limit: u16,
     },
     /// Action tickets exceeded the policy limit.
+    #[error("action tickets {actual} exceeded policy limit {limit}")]
     ActionTicketsExceeded {
         /// Actual action tickets computed.
         actual: u32,
@@ -264,6 +270,7 @@ pub enum BudgetError {
         limit: u32,
     },
     /// Run time exceeded the policy limit.
+    #[error("run time {actual} exceeded policy limit {limit}")]
     RunTimeExceeded {
         /// Actual run time computed.
         actual: u64,
@@ -271,6 +278,7 @@ pub enum BudgetError {
         limit: u64,
     },
     /// Result bytes exceeded the policy limit.
+    #[error("result bytes {actual} exceeded policy limit {limit}")]
     ResultBytesExceeded {
         /// Actual result bytes computed.
         actual: u32,
@@ -278,6 +286,7 @@ pub enum BudgetError {
         limit: u32,
     },
     /// Steps executable exceeded the policy limit.
+    #[error("steps executable {actual} exceeded policy limit {limit}")]
     StepsExecutableExceeded {
         /// Actual steps executable computed.
         actual: u32,
@@ -355,42 +364,74 @@ pub struct AggregateReservation {
 }
 
 /// Aggregate resource-accounting failure.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Error, Clone, PartialEq, Eq)]
 pub enum AggregateBudgetError {
+    /// Workflow budget validation failed.
     #[cfg(not(kani))]
-    WorkflowBudget(WorkflowError),
+    #[error("workflow budget error: {0}")]
+    WorkflowBudget(#[source] WorkflowError),
+    /// Workflow budget validation failed (Kani stub).
     #[cfg(kani)]
+    #[error("workflow budget error")]
     WorkflowBudget,
+    /// A policy-defined resource limit was exceeded.
+    #[error("policy exceeded: {resource} {actual} > {limit}")]
     PolicyExceeded {
+        /// Resource name.
         resource: &'static str,
+        /// Actual value.
         actual: u64,
+        /// Policy limit.
         limit: u64,
     },
+    /// Requested capacity exceeds available.
+    #[error("capacity exceeded: {resource} requested {requested}, available {available}")]
     CapacityExceeded {
+        /// Resource name.
         resource: &'static str,
+        /// Requested amount.
         requested: u64,
+        /// Available amount.
         available: u64,
     },
+    /// Arithmetic overflow.
+    #[error("overflow: {resource}")]
     Overflow {
+        /// Resource name.
         resource: &'static str,
     },
+    /// Arithmetic underflow.
+    #[error("underflow: {resource}")]
     Underflow {
+        /// Resource name.
         resource: &'static str,
     },
+    /// Invalid capacity configuration.
+    #[error("invalid capacity: {resource}")]
     InvalidCapacity {
+        /// Resource name.
         resource: &'static str,
     },
+    /// Reservation not found.
+    #[error("reservation not found: run {run:?}")]
     ReservationNotFound {
+        /// Run identifier.
         run: RunId,
     },
     /// Step ceiling exceeded per tick.
+    #[error("step ceiling exceeded: {requested} > {limit}")]
     StepCeilingExceeded {
+        /// Requested steps.
         requested: u64,
+        /// Tick limit.
         limit: u64,
     },
     /// Per-tick transition ceiling exceeded.
+    #[error("per-tick ceiling exceeded: {requested} > {limit}")]
     PerTickCeilingExceeded {
+        /// Requested transitions.
         requested: u64,
+        /// Tick limit.
         limit: u64,
     },
 }
@@ -837,42 +878,6 @@ fn check_policy(
         Ok(())
     }
 }
-
-impl fmt::Display for BudgetError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::TotalStepsExceeded { actual, limit } => {
-                write!(f, "total steps exceeded: {actual} > {limit}")
-            }
-            Self::TotalSlotsExceeded { actual, limit } => {
-                write!(f, "total slots exceeded: {actual} > {limit}")
-            }
-            Self::FanoutExceeded { actual, limit } => {
-                write!(f, "fanout exceeded: {actual} > {limit}")
-            }
-            Self::NestingDepthExceeded { actual, limit } => {
-                write!(f, "nesting depth exceeded: {actual} > {limit}")
-            }
-            Self::ParallelExceeded { actual, limit } => {
-                write!(f, "parallel exceeded: {actual} > {limit}")
-            }
-            Self::ActionTicketsExceeded { actual, limit } => {
-                write!(f, "action tickets exceeded: {actual} > {limit}")
-            }
-            Self::RunTimeExceeded { actual, limit } => {
-                write!(f, "run time exceeded: {actual} > {limit}")
-            }
-            Self::ResultBytesExceeded { actual, limit } => {
-                write!(f, "result bytes exceeded: {actual} > {limit}")
-            }
-            Self::StepsExecutableExceeded { actual, limit } => {
-                write!(f, "steps executable exceeded: {actual} > {limit}")
-            }
-        }
-    }
-}
-
-impl std::error::Error for BudgetError {}
 
 impl From<WorkflowError> for BudgetError {
     fn from(_err: WorkflowError) -> Self {

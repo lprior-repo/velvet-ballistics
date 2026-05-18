@@ -164,7 +164,7 @@ impl<'j> JournalWriteBatch<'j> {
     /// Inserts a status index marker into the batch.
     pub fn put_status_index(
         &mut self,
-        state: u8,
+        state: crate::types::IndexStatusState,
         timestamp: u64,
         run: vb_core::RunId,
     ) -> Result<(), JournalError> {

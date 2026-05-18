@@ -331,6 +331,6 @@ mod tests {
     #[test]
     fn code_count_matches_total() {
         let codes = all_codes();
-           assert_eq!(codes.len(), 58, "expected exactly 58 diagnostic codes");
+        assert_eq!(codes.len(), 58, "expected exactly 58 diagnostic codes");
     }
 }
