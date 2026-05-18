@@ -1180,23 +1180,15 @@ fn corrupt_snapshot_returns_corrupt_snapshot_error() {
 
     let _journal = open_journal(&dir);
 
-    // GA-012a: Snapshot run_id mismatch returns CorruptSnapshot (contract B-012, POST-008)
+    // GA-012a: Snapshot run_id mismatch returns ReplayDivergence (contract B-012, POST-008)
     let result = hydrate_run_frame(&snapshot, &tail, run);
-    let Err(RecoveryError::CorruptSnapshot {
-        run: found_run,
-        seq: found_seq,
-    }) = result
-    else {
-        panic!("expected CorruptSnapshot for snapshot run_id mismatch, got: {result:?}");
+    let Err(RecoveryError::ReplayDivergence { step, detail }) = result else {
+        panic!("expected ReplayDivergence for snapshot run_id mismatch, got: {result:?}");
     };
-    assert_eq!(
-        found_run, wrong_run,
-        "found_run must be the mismatched snapshot run"
-    );
-    assert_eq!(
-        found_seq,
-        EventSeq::new(1),
-        "found_seq must be the snapshot seq"
+    assert_eq!(step, StepIdx::ZERO, "step must be zero");
+    assert!(
+        detail.contains("snapshot run_id mismatch"),
+        "detail must describe run_id mismatch: {detail}"
     );
 }
 
