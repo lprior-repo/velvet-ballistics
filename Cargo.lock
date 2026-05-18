@@ -2720,6 +2720,7 @@ name = "vb_boundary_inventory"
 version = "0.1.0"
 dependencies = [
  "chrono",
+ "proptest",
  "serde",
  "serde_json",
 ]
