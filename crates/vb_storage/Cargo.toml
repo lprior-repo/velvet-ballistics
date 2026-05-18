@@ -19,7 +19,6 @@ vb_core = { path = "../vb_core" }
 [dev-dependencies]
 proptest = { workspace = true }
 tempfile.workspace = true
-vb_runtime = { path = "../vb_runtime" }
 
 [lints]
 workspace = true

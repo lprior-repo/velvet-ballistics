@@ -101,13 +101,8 @@ fn resume_tail_replays_exactly_when_journal_is_reopened() -> Result<(), String> 
     );
 
     let mut tracker = ActionReplayTracker::new();
-<<<<<<< HEAD:crates/vb_runtime/tests/replay_resume.rs
     let full_replay = recover_full_journal(&journal, run, &mut tracker, &[], &[])
         .map_err(|error| error.to_string())?;
-=======
-    let full_replay =
-        recover_full_journal(&journal, run, &mut tracker, &[], &[]).map_err(|error| error.to_string())?;
->>>>>>> 76ce3d38 (feat(cli): add incident command with structured failure evidence):crates/vb_storage/tests/replay_resume.rs
     assert_eq!(
         full_replay, expected,
         "full recovery replay must match the exact durable resume journal"
@@ -156,13 +151,8 @@ fn resume_tail_replay_is_deterministic_when_read_twice() -> Result<(), String> {
             .events_for_run(run)
             .map_err(|error| error.to_string())?;
         let mut tracker = ActionReplayTracker::new();
-<<<<<<< HEAD:crates/vb_runtime/tests/replay_resume.rs
         let full = recover_full_journal(&journal, run, &mut tracker, &[], &[])
             .map_err(|error| error.to_string())?;
-=======
-        let full =
-            recover_full_journal(&journal, run, &mut tracker, &[], &[]).map_err(|error| error.to_string())?;
->>>>>>> 76ce3d38 (feat(cli): add incident command with structured failure evidence):crates/vb_storage/tests/replay_resume.rs
         let action_resolved = tracker.is_resolved(vb_core::ActionId::new(99), StepIdx::new(1));
         (replay, full, action_resolved)
     };
@@ -173,13 +163,8 @@ fn resume_tail_replay_is_deterministic_when_read_twice() -> Result<(), String> {
             .events_for_run(run)
             .map_err(|error| error.to_string())?;
         let mut tracker = ActionReplayTracker::new();
-<<<<<<< HEAD:crates/vb_runtime/tests/replay_resume.rs
         let full = recover_full_journal(&journal, run, &mut tracker, &[], &[])
             .map_err(|error| error.to_string())?;
-=======
-        let full =
-            recover_full_journal(&journal, run, &mut tracker, &[], &[]).map_err(|error| error.to_string())?;
->>>>>>> 76ce3d38 (feat(cli): add incident command with structured failure evidence):crates/vb_storage/tests/replay_resume.rs
         let action_resolved = tracker.is_resolved(vb_core::ActionId::new(99), StepIdx::new(1));
         (replay, full, action_resolved)
     };

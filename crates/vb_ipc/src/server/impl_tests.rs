@@ -266,9 +266,10 @@ fn server_processes_health_command_from_client() {
             }
         }
     }
-    assert!(
-        server.clients.is_empty(),
-        "invalid magic frame must disconnect the client after the error response"
+    assert_eq!(
+        server.client_count(),
+        1,
+        "valid health frame must keep the client connected"
     );
 }
 

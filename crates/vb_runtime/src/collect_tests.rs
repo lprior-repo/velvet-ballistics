@@ -2201,13 +2201,8 @@ fn collect_pagination_extra_recovered_journal_rejects_corrupt_bytes() -> Result<
         .map_err(|e| format!("append: {e:?}"))?;
 
     let mut tracker = ActionReplayTracker::new();
-<<<<<<< HEAD
     let recovered = recover_full_journal(&journal, run, &mut tracker, &[], &[])
         .map_err(|e| format!("recover: {e:?}"))?;
-=======
-    let recovered =
-        recover_full_journal(&journal, run, &mut tracker, &[], &[]).map_err(|e| format!("recover: {e:?}"))?;
->>>>>>> 76ce3d38 (feat(cli): add incident command with structured failure evidence)
     let result = hydrate_collect_states_from_recovered_journal(&recovered);
     assert_invalid_workflow_reason(result.map(|_| ()), "collect pagination state decode failed");
     Ok(())

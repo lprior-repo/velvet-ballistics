@@ -10,8 +10,8 @@ use std::process::Command;
 
 use vb_core::RunId;
 use vb_storage::EventSeq;
-use vb_storage::events::JournalEvent;
 use vb_storage::FjallJournal;
+use vb_storage::events::JournalEvent;
 
 /// A guard that holds a temp directory and the path to a journal inside it.
 struct JournalGuard {
@@ -47,7 +47,10 @@ fn setup_test_journal(events: &[JournalEvent]) -> JournalGuard {
         .append_strict_batch(events)
         .expect("append strict batch");
 
-    JournalGuard { _temp_dir: temp_dir, db_path }
+    JournalGuard {
+        _temp_dir: temp_dir,
+        db_path,
+    }
 }
 
 /// Build a minimal set of events for a failed run.
@@ -155,10 +158,14 @@ fn t_015_nonexistent_run_structured_error() {
     );
     // POST-003 / INV-002: no stack traces in error output
     let stderr_str = String::from_utf8_lossy(&output.stderr);
-    assert!(!stderr_str.to_lowercase().contains("backtrace"),
-        "error output must not contain stack traces");
-    assert!(!stderr_str.contains("at crates/"),
-        "error output must not contain source location traces");
+    assert!(
+        !stderr_str.to_lowercase().contains("backtrace"),
+        "error output must not contain stack traces"
+    );
+    assert!(
+        !stderr_str.contains("at crates/"),
+        "error output must not contain source location traces"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -186,7 +193,11 @@ fn t_016_successful_run_not_incident() {
     assert_eq!(json["failure_code"].as_str(), Some(""));
     assert_eq!(json["failed_at_step"], serde_json::Value::Null);
     // POST-004: non-failed run should return StorageError (exit code 5)
-    assert_eq!(output.status.code(), Some(5), "non-failed run should return StorageError");
+    assert_eq!(
+        output.status.code(),
+        Some(5),
+        "non-failed run should return StorageError"
+    );
 }
 
 // ---------------------------------------------------------------------------
