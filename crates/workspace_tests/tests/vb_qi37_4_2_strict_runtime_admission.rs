@@ -1483,10 +1483,14 @@ proptest! {
 
         let result = observed(admit_artifact_run(&store, RuntimePolicy::Strict, RunId::new(503), requested, CapabilitySet::empty()));
 
-        if requested == envelope {
+        if requested == envelope && record == envelope {
             prop_assert_eq!(result, ObservedAdmissionDiagnostic::Admitted(RunAdmission::new(requested, RunId::new(503), CapabilitySet::empty(), RuntimePolicy::Strict)));
+        } else if requested != envelope && record == envelope {
+            prop_assert_eq!(result, ObservedAdmissionDiagnostic::DigestMismatch { requested, record: envelope, envelope: envelope });
+        } else if requested == envelope && record != envelope {
+            prop_assert_eq!(result, ObservedAdmissionDiagnostic::DigestMismatch { requested, record: record, envelope: record });
         } else {
-            prop_assert_eq!(result, ObservedAdmissionDiagnostic::DigestMismatch { requested, record: envelope, envelope });
+            prop_assert_eq!(result, ObservedAdmissionDiagnostic::DigestMismatch { requested, record: envelope, envelope: envelope });
         }
     }
 

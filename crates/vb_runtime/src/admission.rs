@@ -536,6 +536,15 @@ pub fn admit_artifact_run(
                 });
             }
 
+            // INV-003: proof digest must match artifact digest. The verification
+            // proof's digest field must bind to the artifact content exactly.
+            if artifact.verification.digest != artifact.digest {
+                return Err(AdmissionError::ArtifactDigestMismatch {
+                    requested: artifact_digest,
+                    found: artifact.verification.digest,
+                });
+            }
+
             Ok(RunAdmission::with_idempotency_evidence(
                 artifact_digest,
                 run_id,
