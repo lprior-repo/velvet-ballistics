@@ -122,6 +122,45 @@ pub fn recover_runtime_summary(
     crate::recovery::replay::summary::summarize_recovery_events(&events)
 }
 
+/// Recovers a summary-only runtime hydration product and verifies terminal state.
+///
+/// Returns `TerminalStateMismatch` when the recovered terminal state does not match
+/// the expected value.
+pub fn recover_runtime_summary_with_expected(
+    journal: &FjallJournal,
+    run: RunId,
+    expected: crate::recovery::types::RecoveryTerminalState,
+) -> RecoveryResult<RecoveryHydration> {
+    let events = journal.events_for_run(run)?;
+    if events.is_empty() {
+        return Err(RecoveryError::NoRecoveryData { run });
+    }
+    let hydration =
+        crate::recovery::replay::summary::summarize_recovery_events(&events)?;
+
+    let found_str = terminal_state_to_string(hydration.summary().terminal);
+    let expected_str = terminal_state_to_string(Some(expected));
+
+    if found_str != expected_str {
+        return Err(RecoveryError::TerminalStateMismatch {
+            expected: expected_str,
+            found: found_str,
+        });
+    }
+
+    Ok(hydration)
+}
+
+/// Converts a `RecoveryTerminalState` to its string representation.
+fn terminal_state_to_string(terminal: Option<crate::recovery::types::RecoveryTerminalState>) -> String {
+    match terminal {
+        None => "NoTerminal".to_owned(),
+        Some(crate::recovery::types::RecoveryTerminalState::Cancelled) => "Cancelled".to_owned(),
+        Some(crate::recovery::types::RecoveryTerminalState::Failed) => "Failed".to_owned(),
+        Some(crate::recovery::types::RecoveryTerminalState::Finished { .. }) => "Finished".to_owned(),
+    }
+}
+
 /// Recovers a minimal live-frame seed from durable journal events for a run.
 pub fn recover_runtime_frame_seed(
     journal: &FjallJournal,

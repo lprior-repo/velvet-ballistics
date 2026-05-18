@@ -52,6 +52,9 @@ pub mod kani_record_crc;
 #[cfg(kani)]
 pub mod kani_proof_flags_gap;
 
+#[cfg(kani)]
+pub mod kani_recovery_hydrate;
+
 pub mod keys;
 pub mod process_lock;
 pub mod queue;
