@@ -7,3 +7,4 @@ pub mod envelope_header;
 pub mod resource_budget;
 pub mod step_state;
 pub mod taint;
+pub mod vb_kyyf_normalization;

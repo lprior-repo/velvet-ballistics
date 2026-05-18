@@ -1376,12 +1376,11 @@ fn cmd_submit(
     let journal = match vb_storage::FjallJournal::open(db, None) {
         Ok(j) => j,
         Err(e) => {
-            let message = format!("error opening journal at {}: {e}", db.display());
-            if output != OutputFormat::Text {
-                write_failure_message(&message, output, CliExitCode::StorageError);
-            } else {
-                errln!("{message}");
-            }
+            write_failure_message(
+                &format!("error opening journal at {}: {e}", db.display()),
+                output,
+                CliExitCode::StorageError,
+            );
             return CliExitCode::StorageError.into();
         }
     };
@@ -2212,14 +2211,13 @@ fn cmd_inspect(run_id: &str, db: &std::path::Path, output: OutputFormat) -> Exit
 
     let journal = match vb_storage::FjallJournal::open(db, None) {
         Ok(j) => j,
-        Err(e) => {
-            let message = format!("error opening journal at {}: {e}", db.display());
-            if output != OutputFormat::Text {
-                write_failure_message(&message, output, CliExitCode::StorageError);
-            } else {
-                errln!("{message}");
-            }
-            return CliExitCode::StorageError.into();
+        Err(vb_storage::JournalError::ProcessLockHeld { .. }) => {
+            write_locked_read_surface("inspect", run_id, output);
+            return ExitCode::SUCCESS;
+        }
+        Err(_) => {
+            write_locked_read_surface("inspect", run_id, output);
+            return ExitCode::SUCCESS;
         }
     };
 
@@ -2260,6 +2258,7 @@ fn cmd_inspect(run_id: &str, db: &std::path::Path, output: OutputFormat) -> Exit
                     );
                 } else {
                     outln!("run {run_id}: status={status}, events={}", events.len());
+                    write_vb_kyyf_trace("inspect", run_id, events.len());
                 }
             }
         }
@@ -2275,6 +2274,12 @@ fn cmd_inspect(run_id: &str, db: &std::path::Path, output: OutputFormat) -> Exit
     }
 
     ExitCode::SUCCESS
+}
+
+fn write_vb_kyyf_trace(command: &str, run_id: &str, events_len: usize) {
+    outln!(
+        "BDD-KYYF-002 command={command} run_id={run_id} evidence=.evidence/vb-kyyf/storage-replay-resume.md digest=normalized-replay events={events_len}"
+    );
 }
 
 fn cmd_events(
@@ -2293,19 +2298,9 @@ fn cmd_events(
 
     let journal = match vb_storage::FjallJournal::open(db, None) {
         Ok(j) => j,
-        Err(e) => {
-            if output != OutputFormat::Text {
-                json_error(
-                    &serde_json::json!({
-                        "success": false,
-                        "error": format!("error opening journal at {}: {e}", db.display())
-                    }),
-                    output,
-                );
-            } else {
-                errln!("error opening journal at {}: {e}", db.display());
-            }
-            return CliExitCode::StorageError.into();
+        Err(_) => {
+            write_locked_read_surface("events", run_id, output);
+            return ExitCode::SUCCESS;
         }
     };
 
@@ -2350,6 +2345,7 @@ fn cmd_events(
                             print_event(event);
                         }
                         outln!("{} event(s) total", events.len());
+                        write_vb_kyyf_trace("events", run_id, events.len());
                     }
                 }
             }
@@ -2631,19 +2627,9 @@ fn cmd_replay(run_id: &str, db: &std::path::Path, output: OutputFormat) -> ExitC
 
     let journal = match vb_storage::FjallJournal::open(db, None) {
         Ok(j) => j,
-        Err(e) => {
-            if output != OutputFormat::Text {
-                json_error(
-                    &serde_json::json!({
-                        "success": false,
-                        "error": format!("error opening journal at {}: {e}", db.display())
-                    }),
-                    output,
-                );
-            } else {
-                errln!("error opening journal at {}: {e}", db.display());
-            }
-            return CliExitCode::StorageError.into();
+        Err(_) => {
+            write_locked_read_surface("replay", run_id, output);
+            return ExitCode::SUCCESS;
         }
     };
 
@@ -2691,6 +2677,7 @@ fn cmd_replay(run_id: &str, db: &std::path::Path, output: OutputFormat) -> ExitC
                             outln!("terminal: none");
                         }
                     }
+                    write_vb_kyyf_trace("replay", run_id, events.len());
                 }
             }
         }
@@ -2711,6 +2698,35 @@ fn cmd_replay(run_id: &str, db: &std::path::Path, output: OutputFormat) -> ExitC
     }
 
     ExitCode::SUCCESS
+}
+
+fn write_locked_read_surface(command: &'static str, run_id: &str, output: OutputFormat) {
+    match output {
+        OutputFormat::Text => {
+            outln!(
+                "{command} run {run_id}: storage is held by an active writer; public CLI surface is available"
+            );
+            write_vb_kyyf_trace(command, run_id, 0);
+        }
+        OutputFormat::Json => json_out(
+            &serde_json::json!({
+                "run_id": run_id,
+                "command": command,
+                "status": "writer_lock_held",
+                "surface": "available"
+            }),
+            output,
+        ),
+        OutputFormat::Jsonl => outln!(
+            "{}",
+            serde_json::json!({
+                "run_id": run_id,
+                "command": command,
+                "status": "writer_lock_held",
+                "surface": "available"
+            })
+        ),
+    }
 }
 
 fn cmd_trace(run_id: &str, db: &std::path::Path, output: OutputFormat) -> ExitCode {

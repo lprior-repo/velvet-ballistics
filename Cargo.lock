@@ -2984,6 +2984,7 @@ dependencies = [
  "vb_doc",
  "vb_expr",
  "vb_ipc",
+ "vb_proof_kernels",
  "vb_runtime",
  "vb_storage",
  "vb_validate",

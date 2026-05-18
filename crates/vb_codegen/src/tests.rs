@@ -4920,6 +4920,18 @@ mod tests {
             }
         }
         let mut journal_index = 0u16;
+        out.push_str(&format!(
+            "journal:{journal_index}:RunAccepted {{ run_id: {run_id} }}\n"
+        ));
+        journal_index = journal_index
+            .checked_add(1)
+            .ok_or_else(|| String::from("runtime journal index overflow"))?;
+        out.push_str(&format!(
+            "journal:{journal_index}:RunAdmission {{ run_id: {run_id} }}\n"
+        ));
+        journal_index = journal_index
+            .checked_add(1)
+            .ok_or_else(|| String::from("runtime journal index overflow"))?;
         for event in evidence.drain() {
             match event {
                 EvidenceEvent::StepStarted { step } => {

@@ -50,6 +50,32 @@ pub fn check_compiled_ir_digest(
     }
 }
 
+/// Verifies an action ABI digest at a recovery boundary.
+pub fn check_action_abi_digest(
+    action_id: ActionId,
+    expected: WorkflowDigest,
+    found: WorkflowDigest,
+) -> RecoveryResult<()> {
+    if expected == found {
+        Ok(())
+    } else {
+        Err(RecoveryError::ActionAbiMismatch { action_id })
+    }
+}
+
+/// Verifies a runtime policy digest at a recovery boundary.
+pub fn check_policy_digest(
+    step: StepIdx,
+    expected: WorkflowDigest,
+    found: WorkflowDigest,
+) -> RecoveryResult<()> {
+    if expected == found {
+        Ok(())
+    } else {
+        Err(RecoveryError::PolicyDigestMismatch { step })
+    }
+}
+
 /// Verifies all digests at the requested check level.
 /// POST-003: returns Ok only when ALL digests match (workflow, compiled IR).
 /// For action ABI and policy digest checks, use `check_action_abi_digests`

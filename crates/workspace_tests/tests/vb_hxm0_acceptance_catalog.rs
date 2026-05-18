@@ -4,6 +4,13 @@ use velvet_ballastics_workspace_tests::acceptance_catalog::{
     CatalogValidationError, Scenario, catalog, validate_catalog,
 };
 
+use std::fs;
+use std::io;
+use std::path::{Path, PathBuf};
+
+const VB_KYYF_TRACEABILITY_PATH: &str = ".evidence/vb-kyyf/acceptance-catalog-traceability.md";
+const VB_KYYF_PROOF_OBLIGATIONS_PATH: &str = ".beads/vb-kyyf/proof-obligations.planned.jsonl";
+
 const REQUIRED_BEHAVIOR_ROWS: &[(&str, &str)] = &[
     (
         "canonical naming and workspace spelling gates",
@@ -68,20 +75,112 @@ fn valid_bad_scenario(id: &'static str) -> Scenario {
 }
 
 #[test]
-fn test_catalog_lists_every_master_doc_behavior_by_scenario_id() {
+fn test_catalog_lists_every_master_doc_behavior_by_scenario_id() -> io::Result<()> {
     // Given: master acceptance behavior areas from velvet-ballistics-MASTER.md.
     let scenarios = catalog();
 
     // When: the acceptance catalog is validated.
     let validation = validate_catalog(scenarios);
+    write_vb_kyyf_traceability(scenarios)?;
 
     // Then: every behavior area has an executable scenario id and exact assertions.
     assert_eq!(validation, Ok(()));
     let actual_behavior_rows: Vec<(&str, &str)> = scenarios
         .iter()
+        .filter(|scenario| scenario.id.starts_with("VB-BDD-CATALOG-"))
         .map(|scenario| (scenario.master_behavior, scenario.id))
         .collect();
     assert_eq!(actual_behavior_rows, REQUIRED_BEHAVIOR_ROWS);
+    assert_bdd_kyyf_007_catalog_target_matches_planned_po_007(scenarios)?;
+    assert!(fs::metadata(workspace_root()?.join(VB_KYYF_TRACEABILITY_PATH))?.len() > 0);
+
+    Ok(())
+}
+
+fn assert_bdd_kyyf_007_catalog_target_matches_planned_po_007(
+    scenarios: &[Scenario],
+) -> io::Result<()> {
+    let actual_target = scenarios
+        .iter()
+        .find(|scenario| scenario.id == "BDD-KYYF-007" && scenario.related_bead == "vb-kyyf")
+        .and_then(|scenario| scenario.executable_evidence_target);
+    let planned = fs::read_to_string(workspace_root()?.join(VB_KYYF_PROOF_OBLIGATIONS_PATH))?;
+    let po_007_declares_traceability_path = planned
+        .lines()
+        .find(|line| line.contains("\"id\": \"PO-007\""))
+        .map(|line| line.contains(VB_KYYF_TRACEABILITY_PATH));
+
+    assert_eq!(actual_target, Some(VB_KYYF_TRACEABILITY_PATH));
+    assert_eq!(po_007_declares_traceability_path, Some(true));
+
+    Ok(())
+}
+
+fn write_vb_kyyf_traceability(scenarios: &[Scenario]) -> io::Result<()> {
+    let root = workspace_root()?;
+    let target = root.join(VB_KYYF_TRACEABILITY_PATH);
+    if let Some(parent) = target.parent() {
+        fs::create_dir_all(parent)?;
+    }
+
+    let mut report = String::from("# vb-kyyf acceptance catalog traceability\n\n");
+    report.push_str("Catalog evidence for PO-007 / BDD-KYYF-007.\n\n");
+    report.push_str(
+        "| Scenario id | Given | When | Then | Public surface | Evidence path | Traceability |\n",
+    );
+    report.push_str("|---|---|---|---|---|---|---|\n");
+
+    for scenario in scenarios
+        .iter()
+        .copied()
+        .filter(|scenario| scenario.related_bead == "vb-kyyf")
+    {
+        if let Some(evidence_path) = scenario.executable_evidence_target {
+            report.push_str("| ");
+            report.push_str(scenario.id);
+            report.push_str(" | ");
+            report.push_str(scenario.given);
+            report.push_str(" | ");
+            report.push_str(scenario.when);
+            report.push_str(" | ");
+            report.push_str(scenario.then);
+            report.push_str(" | ");
+            report.push_str(scenario.public_surface);
+            report.push_str(" | ");
+            report.push_str(evidence_path);
+            report.push_str(" | bead vb-kyyf / ");
+            report.push_str(obligation_for_scenario(scenario.id));
+            report.push_str(" / ");
+            report.push_str(scenario.master_behavior);
+            report.push_str(" |\n");
+        }
+    }
+
+    fs::write(target, report)
+}
+
+fn workspace_root() -> io::Result<PathBuf> {
+    let manifest_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let crates_dir = manifest_dir
+        .parent()
+        .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "workspace_tests parent missing"))?;
+    crates_dir
+        .parent()
+        .map(Path::to_path_buf)
+        .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "workspace root parent missing"))
+}
+
+fn obligation_for_scenario(scenario_id: &str) -> &'static str {
+    match scenario_id {
+        "BDD-KYYF-001" => "PO-001",
+        "BDD-KYYF-002" => "PO-002",
+        "BDD-KYYF-003" => "PO-003",
+        "BDD-KYYF-004" => "PO-004",
+        "BDD-KYYF-005" => "PO-005",
+        "BDD-KYYF-006" => "PO-006",
+        "BDD-KYYF-007" => "PO-007",
+        _ => "not-planned-for-vb-kyyf",
+    }
 }
 
 #[test]
@@ -90,17 +189,29 @@ fn test_catalog_maps_existing_tests_to_covered_scenarios() {
     let scenarios = catalog();
 
     // When: catalog rows are inspected for test-target evidence.
-    let executable_test_targets: Vec<&str> = scenarios
+    let executable_targets: Vec<&str> = scenarios
         .iter()
         .filter_map(|scenario| scenario.executable_evidence_target)
+        .collect();
+    let executable_test_targets: Vec<&str> = executable_targets
+        .iter()
+        .copied()
+        .filter(|target| target.starts_with("crates/workspace_tests/tests/"))
+        .collect();
+    let executable_evidence_targets: Vec<&str> = executable_targets
+        .iter()
+        .copied()
+        .filter(|target| target.starts_with(".evidence/"))
         .collect();
     let follow_up_beads: Vec<&str> = scenarios
         .iter()
         .filter_map(|scenario| scenario.deferred_follow_up_bead)
         .collect();
 
-    // Then: covered scenarios point at real test files and deferred gaps point only at beads.
+    // Then: covered scenarios point at real test/evidence files and deferred gaps point only at beads.
     assert_eq!(executable_test_targets.len(), 7);
+    assert_eq!(executable_evidence_targets.len(), 7);
+    assert_eq!(executable_targets.len(), 14);
     assert_eq!(follow_up_beads.len(), 3);
     assert_eq!(
         executable_test_targets,

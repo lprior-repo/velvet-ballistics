@@ -36,6 +36,7 @@ pub fn replay_events(
     tracker: &mut ActionReplayTracker,
     _expected_action_abi_digests: &[(ActionId, WorkflowDigest)],
 ) -> RecoveryResult<Vec<JournalEvent>> {
+    validate_contiguous_sequences(events)?;
     let max_attempt = compute_max_attempt(events);
     let mut replayed = Vec::new();
     let mut last_step: Option<StepIdx> = None;
@@ -115,6 +116,25 @@ pub fn replay_events(
     }
 
     Ok(replayed)
+}
+
+fn validate_contiguous_sequences(events: &[JournalEvent]) -> RecoveryResult<()> {
+    let mut expected = EventSeq::new(0);
+    for event in events {
+        let seq = event.seq();
+        if seq != expected {
+            return Err(RecoveryError::ReplayDivergence {
+                step: StepIdx::ZERO,
+                detail: format!(
+                    "journal sequence violation: expected {}, found {}",
+                    expected.get(),
+                    seq.get()
+                ),
+            });
+        }
+        expected = EventSeq::new(expected.get().saturating_add(1));
+    }
+    Ok(())
 }
 
 /// Replays a full journal for a run when no snapshot is available.

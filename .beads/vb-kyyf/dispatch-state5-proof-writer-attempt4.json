@@ -1,0 +1,36 @@
+{
+  "bead_id": "vb-kyyf",
+  "state": 5,
+  "sublane": "proof-writing-repair",
+  "delegate": "proof-writer",
+  "attempt": 4,
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/bd-vb-kyyf-bdd",
+  "reason": "State 6 proof and contract reviews rejected Verus cold-metadata semantics/implementation binding and TLA+ nondeterminism/replay/overflow vacuity; repair State 5 proof artifacts",
+  "input_artifacts": [
+    ".beads/vb-kyyf/STATE.md",
+    ".beads/vb-kyyf/baseline-report.md",
+    ".beads/vb-kyyf/codebase-map.md",
+    ".beads/vb-kyyf/delivery-scope.jsonl",
+    ".beads/vb-kyyf/contract.md",
+    ".beads/vb-kyyf/verification-layers.md",
+    ".beads/vb-kyyf/proof-obligations.jsonl",
+    ".beads/vb-kyyf/proof-strategy.md",
+    ".beads/vb-kyyf/proof-obligations.planned.jsonl",
+    ".beads/vb-kyyf/proof-review.md",
+    ".beads/vb-kyyf/proof-findings.jsonl",
+    ".beads/vb-kyyf/proof-repair-guide.md",
+    ".beads/vb-kyyf/contract-verification-review.md",
+    "verification/tla/VbKyyfReplayDeterminism.tla",
+    "verification/tla/VbKyyfReplayDeterminism.cfg",
+    "verification/verus/vb_kyyf_normalization.rs"
+  ],
+  "output_artifacts": [
+    ".beads/vb-kyyf/proof-writer-report.md",
+    ".beads/vb-kyyf/proof-evidence.md",
+    "verification/tla/VbKyyfReplayDeterminism.tla",
+    "verification/tla/VbKyyfReplayDeterminism.cfg",
+    "verification/verus/vb_kyyf_normalization.rs"
+  ],
+  "status": "QUEUED"
+}

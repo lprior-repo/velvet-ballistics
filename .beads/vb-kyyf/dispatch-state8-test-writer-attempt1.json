@@ -1,0 +1,18 @@
+{
+  "bead_id": "vb-kyyf",
+  "state": 8,
+  "sublane": "test-writing-after-approved-test-plan",
+  "delegate": "test-writer",
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/bd-vb-kyyf-bdd",
+  "input_artifacts": [
+    ".beads/vb-kyyf/test-plan.md",
+    ".beads/vb-kyyf/contract.md",
+    ".beads/vb-kyyf/proof-review.md",
+    ".beads/vb-kyyf/contract-verification-review.md"
+  ],
+  "output_artifacts": [
+    ".beads/vb-kyyf/test-writer-report.md"
+  ],
+  "attempt": 1
+}

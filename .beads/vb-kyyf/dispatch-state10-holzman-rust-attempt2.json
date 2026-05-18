@@ -1,0 +1,23 @@
+{
+  "bead_id": "vb-kyyf",
+  "state": 10,
+  "sublane": "implementation-after-approved-test-suite-retry-after-empty-child-output",
+  "delegate": "holzman-rust",
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/bd-vb-kyyf-bdd",
+  "input_artifacts": [
+    ".beads/vb-kyyf/contract.md",
+    ".beads/vb-kyyf/proof-review.md",
+    ".beads/vb-kyyf/contract-verification-review.md",
+    ".beads/vb-kyyf/test-plan.md",
+    ".beads/vb-kyyf/test-plan-review.md",
+    ".beads/vb-kyyf/test-suite-review.md",
+    ".beads/vb-kyyf/test-writer-report.md",
+    "crates/workspace_tests/tests/vb_kyyf_cross_run_determinism.rs"
+  ],
+  "output_artifacts": [
+    ".beads/vb-kyyf/implementation.md"
+  ],
+  "attempt": 2,
+  "repair_route": "State 10 retry because attempt1 returned no current implementation artifact or evidence"
+}

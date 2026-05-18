@@ -387,9 +387,10 @@ fn emit_generated_runtime_api(out: &mut String, workflow: &CompiledWorkflow) -> 
     writeln!(out, "// --- Rich generated runtime API ---").map_err(fmt_err)?;
     writeln!(out, "pub fn drive_with_journal(slots: [Option<SlotValue>; WORKFLOW_SLOT_COUNT]) -> Result<GeneratedRunStatus, DriveError> {{ let mut state = GeneratedRunState::new(slots); state.run_until_blocked() }}").map_err(fmt_err)?;
     writeln!(out, "impl GeneratedRunState {{").map_err(fmt_err)?;
-    writeln!(out, "    pub fn new(slots: [Option<SlotValue>; WORKFLOW_SLOT_COUNT]) -> Self {{ Self::new_with_run_id(0, slots, [Taint::Clean; WORKFLOW_SLOT_COUNT]) }}").map_err(fmt_err)?;
-    writeln!(out, "    pub fn new_with_taints(slots: [Option<SlotValue>; WORKFLOW_SLOT_COUNT], slot_taints: [Taint; WORKFLOW_SLOT_COUNT]) -> Self {{ Self::new_with_run_id(0, slots, slot_taints) }}").map_err(fmt_err)?;
-    writeln!(out, "    pub fn new_with_run_id(run_id: u64, slots: [Option<SlotValue>; WORKFLOW_SLOT_COUNT], slot_taints: [Taint; WORKFLOW_SLOT_COUNT]) -> Self {{ let mut collect_states = CollectStateStore::new(); collect_states.set_run_id(run_id); Self {{ run_id, slots, slot_taints, step_states: [StepState::Pending; WORKFLOW_NODE_COUNT_USIZE], pc: {}, step_budget_remaining: CONTRACT_MAX_STEP_BUDGET_PER_TICK, list_store: ListStore::new(), object_store: ObjectStore::new(), collect_states, journal: Journal::new(), pending: None }} }}", workflow.entry().get()).map_err(fmt_err)?;
+    writeln!(out, "    pub fn new(slots: [Option<SlotValue>; WORKFLOW_SLOT_COUNT]) -> Self {{ Self::new_with_journal(0, slots, [Taint::Clean; WORKFLOW_SLOT_COUNT], Journal::new()) }}").map_err(fmt_err)?;
+    writeln!(out, "    pub fn new_with_taints(slots: [Option<SlotValue>; WORKFLOW_SLOT_COUNT], slot_taints: [Taint; WORKFLOW_SLOT_COUNT]) -> Self {{ Self::new_with_journal(0, slots, slot_taints, Journal::new()) }}").map_err(fmt_err)?;
+    writeln!(out, "    pub fn new_with_run_id(run_id: u64, slots: [Option<SlotValue>; WORKFLOW_SLOT_COUNT], slot_taints: [Taint; WORKFLOW_SLOT_COUNT]) -> Self {{ Self::new_with_journal(run_id, slots, slot_taints, Journal::new_with_run(run_id)) }}").map_err(fmt_err)?;
+    writeln!(out, "    fn new_with_journal(run_id: u64, slots: [Option<SlotValue>; WORKFLOW_SLOT_COUNT], slot_taints: [Taint; WORKFLOW_SLOT_COUNT], journal: Journal) -> Self {{ let mut collect_states = CollectStateStore::new(); collect_states.set_run_id(run_id); Self {{ run_id, slots, slot_taints, step_states: [StepState::Pending; WORKFLOW_NODE_COUNT_USIZE], pc: {}, step_budget_remaining: CONTRACT_MAX_STEP_BUDGET_PER_TICK, list_store: ListStore::new(), object_store: ObjectStore::new(), collect_states, journal, pending: None }} }}", workflow.entry().get()).map_err(fmt_err)?;
     emit_run_until_blocked(out, workflow)?;
     emit_action_resume_api(out)?;
     emit_ask_resume_api(out)?;
@@ -3111,6 +3112,8 @@ fn write_header(out: &mut String) -> CodegenResult<()> {
     out.write_str(r#"
 #[derive(Clone, Copy, PartialEq)]
 pub enum JournalEvent {
+    RunAccepted { run_id: u64 },
+    RunAdmission { run_id: u64 },
     StepStarted { step: u16 },
     SlotWritten { slot: u16, value: Option<SlotValue>, taint: Taint, extra: Option<CollectState> },
     StepSucceeded { step: u16, output: Option<u16> },
@@ -3123,6 +3126,8 @@ pub enum JournalEvent {
 impl core::fmt::Debug for JournalEvent {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
+            Self::RunAccepted { run_id } => f.debug_struct("RunAccepted").field("run_id", run_id).finish(),
+            Self::RunAdmission { run_id } => f.debug_struct("RunAdmission").field("run_id", run_id).finish(),
             Self::StepStarted { step } => f.debug_struct("StepStarted").field("step", step).finish(),
             Self::SlotWritten { slot, value, taint, extra } => {
                 let mut event = f.debug_struct("SlotWritten");
@@ -3145,6 +3150,12 @@ impl core::fmt::Debug for JournalEvent {
 pub struct Journal { events: [Option<JournalEvent>; GENERATED_JOURNAL_CAPACITY], len: u16 }
 impl Journal {
     pub const fn new() -> Self { Self { events: [None; GENERATED_JOURNAL_CAPACITY], len: 0 } }
+    pub fn new_with_run(run_id: u64) -> Self {
+        let mut journal = Self::new();
+        if journal.push(JournalEvent::RunAccepted { run_id }).is_err() { return Self::new(); }
+        if journal.push(JournalEvent::RunAdmission { run_id }).is_err() { return Self::new(); }
+        journal
+    }
     pub const fn len(&self) -> u16 { self.len }
     fn ensure_capacity(&self, needed: usize) -> Result<(), DriveError> {
         let used = usize::from(self.len);

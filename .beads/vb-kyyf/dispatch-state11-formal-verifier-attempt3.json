@@ -1,0 +1,35 @@
+{
+  "bead_id": "vb-kyyf",
+  "state": 11,
+  "sublane": "formal-verifier-after-po007-evidence-artifact-repair",
+  "delegate": "formal-verifier",
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/bd-vb-kyyf-bdd",
+  "input_artifacts": [
+    ".beads/vb-kyyf/proof-obligations.planned.jsonl",
+    ".beads/vb-kyyf/proof-strategy.md",
+    ".beads/vb-kyyf/proof-plan-review-input.md",
+    ".beads/vb-kyyf/proof-evidence.md",
+    ".beads/vb-kyyf/proof-review.md",
+    ".beads/vb-kyyf/contract-verification-review.md",
+    ".beads/vb-kyyf/test-plan-review.md",
+    ".beads/vb-kyyf/test-suite-review.md",
+    ".beads/vb-kyyf/implementation.md",
+    ".evidence/vb-kyyf/acceptance-catalog-traceability.md",
+    ".beads/vb-kyyf/formal-verification-report.md",
+    ".beads/vb-kyyf/verification-ledger.jsonl",
+    ".beads/vb-kyyf/machine-gate-report.md",
+    ".beads/vb-kyyf/regression-diff.md"
+  ],
+  "output_artifacts": [
+    ".beads/vb-kyyf/formal-verification-report.md",
+    ".beads/vb-kyyf/verification-ledger.jsonl",
+    ".beads/vb-kyyf/machine-gate-report.md",
+    ".beads/vb-kyyf/regression-diff.md"
+  ],
+  "attempt": 3,
+  "repair_evidence": {
+    "po007_test": "TMPDIR=/home/lewis/src/bd-vb-kyyf-bdd/.tmp RUSTC_WRAPPER= SCCACHE_DISABLE=1 CARGO_INCREMENTAL=0 rtk cargo test -p velvet-ballastics-workspace-tests --test vb_hxm0_acceptance_catalog => 6 passed",
+    "po007_artifact_check": "test -s .evidence/vb-kyyf/acceptance-catalog-traceability.md => exit 0"
+  }
+}
