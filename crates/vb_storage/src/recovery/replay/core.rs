@@ -140,7 +140,7 @@ pub fn recover_full_journal(
         .iter()
         .any(|e| matches!(e, JournalEvent::RunAdmission { .. }));
 
-    if !has_run_admission && expected_policy_digests.is_empty() {
+    if !has_run_admission && !expected_policy_digests.is_empty() {
         return Err(RecoveryError::PolicyDigestMismatch {
             step: StepIdx::ZERO,
         });

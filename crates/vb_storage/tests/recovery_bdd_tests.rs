@@ -7,7 +7,9 @@
 
 use chrono::Utc;
 use tempfile::TempDir;
-use vb_core::{ActionId, RunId, SlotIdx, SlotValue, StepIdx, WorkflowDigest};
+use vb_core::{
+    ActionId, CapabilitySet, RunId, RuntimePolicy, SlotIdx, SlotValue, StepIdx, WorkflowDigest,
+};
 use vb_storage::recovery::{
     ActionReplayTracker, DigestCheck, RecoveredStepEntry, RecoveredStepState, RecoveryError,
     RecoveryFrameSeed, RecoveryHydration, RecoveryRuntimeSummary, RecoveryTerminalState,
@@ -32,6 +34,16 @@ fn write_events_strict(journal: &FjallJournal, events: &[JournalEvent]) {
             Ok(()) | Err(vb_storage::JournalError::DuplicateEvent { .. }) => {}
             Err(error) => panic!("strict append should succeed: {error:?}"),
         }
+    }
+}
+
+fn test_admission_event(run: RunId, seq: EventSeq, digest: WorkflowDigest) -> JournalEvent {
+    JournalEvent::RunAdmission {
+        run,
+        seq,
+        artifact_digest: digest,
+        granted_capabilities: CapabilitySet::empty(),
+        policy: RuntimePolicy::Relaxed,
     }
 }
 
@@ -164,15 +176,16 @@ fn full_journal_reconstructs_exact_pc_steps_slots_taint_terminal() {
             seq: EventSeq::new(0),
             workflow: digest,
         },
+        test_admission_event(run, EventSeq::new(1), digest),
         JournalEvent::StepStarted {
             run,
-            seq: EventSeq::new(1),
+            seq: EventSeq::new(2),
             step: StepIdx::ZERO,
             attempt: 1,
         },
         JournalEvent::SlotWrittenEvent {
             run,
-            seq: EventSeq::new(2),
+            seq: EventSeq::new(3),
             slot: SlotIdx::new(0),
             value: None,
             extra: None,
@@ -180,13 +193,13 @@ fn full_journal_reconstructs_exact_pc_steps_slots_taint_terminal() {
         },
         JournalEvent::StepSucceeded {
             run,
-            seq: EventSeq::new(3),
+            seq: EventSeq::new(4),
             step: StepIdx::ZERO,
             output: SlotIdx::new(0),
         },
         JournalEvent::RunFinished {
             run,
-            seq: EventSeq::new(4),
+            seq: EventSeq::new(5),
             result: SlotIdx::new(0),
             attempt: 1,
         },
@@ -446,15 +459,16 @@ fn wait_identity_and_state_survive_across_restart() {
             seq: EventSeq::new(0),
             workflow: digest,
         },
+        test_admission_event(run, EventSeq::new(1), digest),
         JournalEvent::StepStarted {
             run,
-            seq: EventSeq::new(1),
+            seq: EventSeq::new(2),
             step: StepIdx::ZERO,
             attempt: 1,
         },
         JournalEvent::WaitScheduledEvent {
             run,
-            seq: EventSeq::new(2),
+            seq: EventSeq::new(3),
             step: StepIdx::ZERO,
             attempt: 1,
         },
@@ -516,27 +530,28 @@ fn ask_answer_slot_value_and_taint_survive_across_restart() {
             seq: EventSeq::new(0),
             workflow: digest,
         },
+        test_admission_event(run, EventSeq::new(1), digest),
         JournalEvent::StepStarted {
-            run,
-            seq: EventSeq::new(1),
-            step: StepIdx::ZERO,
-            attempt: 1,
-        },
-        JournalEvent::AskScheduledEvent {
             run,
             seq: EventSeq::new(2),
             step: StepIdx::ZERO,
             attempt: 1,
         },
-        JournalEvent::AskAnsweredEvent {
+        JournalEvent::AskScheduledEvent {
             run,
             seq: EventSeq::new(3),
             step: StepIdx::ZERO,
             attempt: 1,
         },
-        JournalEvent::SlotWrittenEvent {
+        JournalEvent::AskAnsweredEvent {
             run,
             seq: EventSeq::new(4),
+            step: StepIdx::ZERO,
+            attempt: 1,
+        },
+        JournalEvent::SlotWrittenEvent {
+            run,
+            seq: EventSeq::new(5),
             slot: SlotIdx::new(1),
             value: None,
             extra: None,
