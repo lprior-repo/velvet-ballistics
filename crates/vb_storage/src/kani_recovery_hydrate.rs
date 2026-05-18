@@ -11,11 +11,11 @@
 //! - PO-6: `check_policy_digests` returns Err on first mismatch
 //! - PO-7: `recover_runtime_summary` does not panic on non-empty events
 
+use crate::RecoveryError;
 use crate::recovery::recover::{
     check_action_abi_digests, check_compiled_ir_digest, check_policy_digests,
     recover_runtime_summary,
 };
-use crate::RecoveryError;
 use vb_core::{ActionId, StepIdx, WorkflowDigest};
 
 /// PO-1: `check_compiled_ir_digest` returns Ok when expected == found
@@ -38,7 +38,10 @@ fn kani_check_compiled_ir_digest_mismatch() {
 
     let result = check_compiled_ir_digest(expected, found);
     match result {
-        Err(RecoveryError::CompiledIrDigestMismatch { expected: e, found: f }) => {
+        Err(RecoveryError::CompiledIrDigestMismatch {
+            expected: e,
+            found: f,
+        }) => {
             kani::assert(e == expected, "expected digest must match");
             kani::assert(f == found, "found digest must match");
         }

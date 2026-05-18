@@ -8892,16 +8892,19 @@ fn collect_extra_text(extra: Option<CollectState>, run_id: u64, collector_slot: 
             vb_core::ExprOp::LoadSlot(SlotIdx::new(0)),
             vb_core::ExprOp::LoadConst(ConstIdx::new(0)),
             vb_core::ExprOp::Append,
-        ].into_boxed_slice();
+        ]
+        .into_boxed_slice();
         let expr = ExprProgram::try_from_ops(ops).map_err(|e| e.to_string())?;
         let slot_count = initial_items.len() as u16 + 1;
-        let items: Vec<SlotIdx> = (0..initial_items.len() as u16)
-            .map(SlotIdx::new)
-            .collect();
+        let items: Vec<SlotIdx> = (0..initial_items.len() as u16).map(SlotIdx::new).collect();
         let build_list = if items.is_empty() {
-            CompiledNodeKind::BuildList { items: Box::new([]) }
+            CompiledNodeKind::BuildList {
+                items: Box::new([]),
+            }
         } else {
-            CompiledNodeKind::BuildList { items: items.into_boxed_slice() }
+            CompiledNodeKind::BuildList {
+                items: items.into_boxed_slice(),
+            }
         };
         let eval_output = SlotIdx::new(initial_items.len() as u16);
         let parts = WorkflowParts {
@@ -8922,7 +8925,9 @@ fn collect_extra_text(extra: Option<CollectState>, run_id: u64, collector_slot: 
                     next: Some(StepIdx::new(2)),
                     on_error: None,
                     error_slot: None,
-                    kind: CompiledNodeKind::EvalExpr { expr: vb_core::ExprIdx::new(0) },
+                    kind: CompiledNodeKind::EvalExpr {
+                        expr: vb_core::ExprIdx::new(0),
+                    },
                 },
                 CompiledNode {
                     id: StepIdx::new(2),
@@ -8930,7 +8935,9 @@ fn collect_extra_text(extra: Option<CollectState>, run_id: u64, collector_slot: 
                     next: None,
                     on_error: None,
                     error_slot: None,
-                    kind: CompiledNodeKind::Finish { result: eval_output },
+                    kind: CompiledNodeKind::Finish {
+                        result: eval_output,
+                    },
                 },
             ]
             .into_boxed_slice(),
@@ -8946,7 +8953,7 @@ fn collect_extra_text(extra: Option<CollectState>, run_id: u64, collector_slot: 
         CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())
     }
 
-     #[test]
+    #[test]
     fn append_generated_execution_parity_appends_value_to_list() -> Result<(), String> {
         let workflow = append_generated_execution_workflow(vec![1, 2, 3], 4)?;
         let stdout = generated_drive_stdout(
@@ -8965,11 +8972,7 @@ fn collect_extra_text(extra: Option<CollectState>, run_id: u64, collector_slot: 
     #[test]
     fn append_generated_execution_parity_empty_list() -> Result<(), String> {
         let workflow = append_generated_execution_workflow(vec![], 99)?;
-        let stdout = generated_drive_stdout(
-            &workflow,
-            "append_parity_empty_list",
-            "",
-        )?;
+        let stdout = generated_drive_stdout(&workflow, "append_parity_empty_list", "")?;
         // Generated executor produces a List with one element
         assert!(
             stdout.starts_with("ok:List(") && stdout.ends_with(")\n"),
@@ -8990,22 +8993,23 @@ fn collect_extra_text(extra: Option<CollectState>, run_id: u64, collector_slot: 
             vb_core::ExprOp::LoadConst(ConstIdx::new(0)),
             vb_core::ExprOp::LoadConst(ConstIdx::new(1)),
             vb_core::ExprOp::AppendIf,
-        ].into_boxed_slice();
+        ]
+        .into_boxed_slice();
         let expr = ExprProgram::try_from_ops(ops).map_err(|e| e.to_string())?;
         let slot_count = initial_items.len() as u16 + 1;
-        let items: Vec<SlotIdx> = (0..initial_items.len() as u16)
-            .map(SlotIdx::new)
-            .collect();
+        let items: Vec<SlotIdx> = (0..initial_items.len() as u16).map(SlotIdx::new).collect();
         let build_list = if items.is_empty() {
-            CompiledNodeKind::BuildList { items: Box::new([]) }
+            CompiledNodeKind::BuildList {
+                items: Box::new([]),
+            }
         } else {
-            CompiledNodeKind::BuildList { items: items.into_boxed_slice() }
+            CompiledNodeKind::BuildList {
+                items: items.into_boxed_slice(),
+            }
         };
         let result_slot = initial_items.len() as u16;
-        let constants: Vec<ConstValue> = vec![
-            ConstValue::I64(append_value),
-            ConstValue::Bool(condition),
-        ];
+        let constants: Vec<ConstValue> =
+            vec![ConstValue::I64(append_value), ConstValue::Bool(condition)];
         let parts = WorkflowParts {
             name: Box::<str>::from("test_append_if_generated_execution"),
             digest: WorkflowDigest::from_bytes([0xE5; 32]),
@@ -9024,7 +9028,9 @@ fn collect_extra_text(extra: Option<CollectState>, run_id: u64, collector_slot: 
                     next: Some(StepIdx::new(2)),
                     on_error: None,
                     error_slot: None,
-                    kind: CompiledNodeKind::EvalExpr { expr: vb_core::ExprIdx::new(0) },
+                    kind: CompiledNodeKind::EvalExpr {
+                        expr: vb_core::ExprIdx::new(0),
+                    },
                 },
                 CompiledNode {
                     id: StepIdx::new(2),
@@ -9032,7 +9038,9 @@ fn collect_extra_text(extra: Option<CollectState>, run_id: u64, collector_slot: 
                     next: None,
                     on_error: None,
                     error_slot: None,
-                    kind: CompiledNodeKind::Finish { result: SlotIdx::new(result_slot) },
+                    kind: CompiledNodeKind::Finish {
+                        result: SlotIdx::new(result_slot),
+                    },
                 },
             ]
             .into_boxed_slice(),

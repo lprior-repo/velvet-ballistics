@@ -135,8 +135,7 @@ pub fn recover_runtime_summary_with_expected(
     if events.is_empty() {
         return Err(RecoveryError::NoRecoveryData { run });
     }
-    let hydration =
-        crate::recovery::replay::summary::summarize_recovery_events(&events)?;
+    let hydration = crate::recovery::replay::summary::summarize_recovery_events(&events)?;
 
     let found_str = terminal_state_to_string(hydration.summary().terminal);
     let expected_str = terminal_state_to_string(Some(expected));
@@ -152,12 +151,16 @@ pub fn recover_runtime_summary_with_expected(
 }
 
 /// Converts a `RecoveryTerminalState` to its string representation.
-fn terminal_state_to_string(terminal: Option<crate::recovery::types::RecoveryTerminalState>) -> String {
+fn terminal_state_to_string(
+    terminal: Option<crate::recovery::types::RecoveryTerminalState>,
+) -> String {
     match terminal {
         None => "NoTerminal".to_owned(),
         Some(crate::recovery::types::RecoveryTerminalState::Cancelled) => "Cancelled".to_owned(),
         Some(crate::recovery::types::RecoveryTerminalState::Failed) => "Failed".to_owned(),
-        Some(crate::recovery::types::RecoveryTerminalState::Finished { .. }) => "Finished".to_owned(),
+        Some(crate::recovery::types::RecoveryTerminalState::Finished { .. }) => {
+            "Finished".to_owned()
+        }
     }
 }
 

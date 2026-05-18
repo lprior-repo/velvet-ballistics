@@ -2,35 +2,23 @@
 #![cfg(test)]
 
 mod tests {
-    use super::*;
-    use crate::recovery::types::{
-        ActionReplayTracker, RecoveryError, RecoveryRuntimeSummary, RecoveryTerminalState,
-        UnsupportedRecoveryState,
-    };
-    use crate::recovery::replay::core::{
-        extract_terminal, is_terminal_event, replay_events,
-    };
+    use crate::recovery::replay::core::{extract_terminal, is_terminal_event, replay_events};
     use crate::recovery::replay::summary::{
         apply_summary_event, recover_run_admission_from_events,
         recover_runtime_frame_seed_from_events, summarize_recovery_events,
     };
+    use crate::recovery::types::{
+        ActionReplayTracker, RecoveryError, RecoveryRuntimeSummary, RecoveryTerminalState,
+        UnsupportedRecoveryState,
+    };
     use crate::{EventSeq, JournalEvent};
     use vb_core::value::ConstValue;
     use vb_core::{
-        ActionId, CapabilitySet, FiniteF64, RunId, RuntimePolicy, SlotIdx, StepIdx,
-        WorkflowDigest,
+        ActionId, CapabilitySet, RunId, RuntimePolicy, SlotIdx, StepIdx, WorkflowDigest,
     };
 
     fn sample_digest(byte: u8) -> WorkflowDigest {
         WorkflowDigest::from_bytes([byte; 32])
-    }
-
-    fn finite_f64(value: f64) -> FiniteF64 {
-        FiniteF64::new(value).expect("finite test value rejected")
-    }
-
-    fn encoded_slot_value(value: vb_core::value::SlotValue) -> Vec<u8> {
-        postcard::to_allocvec(&value).expect("slot value encoding failed")
     }
 
     // =========================================================================
@@ -108,7 +96,10 @@ mod tests {
     fn recovery_error_replay_divergence() {
         let step = StepIdx::new(11);
         let detail = "step ordering violation".to_owned();
-        let err = RecoveryError::ReplayDivergence { step, detail: detail.clone() };
+        let err = RecoveryError::ReplayDivergence {
+            step,
+            detail: detail.clone(),
+        };
         assert!(matches!(
             err,
             RecoveryError::ReplayDivergence { step: s, detail: d }
@@ -367,10 +358,7 @@ mod tests {
         assert!(result.is_ok());
         let hydration = result.unwrap();
         let summary = hydration.summary();
-        assert_eq!(
-            summary.terminal,
-            Some(RecoveryTerminalState::Cancelled)
-        );
+        assert_eq!(summary.terminal, Some(RecoveryTerminalState::Cancelled));
     }
 
     #[test]
@@ -584,7 +572,8 @@ mod tests {
         assert!(seed.is_ok());
         let seed = seed.unwrap();
         assert!(seed.steps.iter().any(|e| {
-            e.step == StepIdx::new(0) && e.state == crate::recovery::types::RecoveredStepState::Asking
+            e.step == StepIdx::new(0)
+                && e.state == crate::recovery::types::RecoveredStepState::Asking
         }));
     }
 
@@ -608,7 +597,8 @@ mod tests {
         assert!(seed.is_ok());
         let seed = seed.unwrap();
         assert!(seed.steps.iter().any(|e| {
-            e.step == StepIdx::new(1) && e.state == crate::recovery::types::RecoveredStepState::Waiting
+            e.step == StepIdx::new(1)
+                && e.state == crate::recovery::types::RecoveredStepState::Waiting
         }));
     }
 
@@ -1011,7 +1001,10 @@ mod tests {
         ];
         let terminal = extract_terminal(&events);
         assert!(terminal.is_some());
-        assert!(matches!(terminal, Some(JournalEvent::RunFailedEvent { .. })));
+        assert!(matches!(
+            terminal,
+            Some(JournalEvent::RunFailedEvent { .. })
+        ));
     }
 
     #[test]
@@ -1037,7 +1030,10 @@ mod tests {
         ];
         let terminal = extract_terminal(&events);
         assert!(terminal.is_some());
-        assert!(matches!(terminal, Some(JournalEvent::RunFinished { attempt: 2, .. })));
+        assert!(matches!(
+            terminal,
+            Some(JournalEvent::RunFinished { attempt: 2, .. })
+        ));
     }
 
     #[test]

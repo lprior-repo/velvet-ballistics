@@ -1,5 +1,5 @@
 use std::process::Command;
-use std::{fs, path::Path};
+use std::{fs, path::Path, path::PathBuf};
 use xtask::evidence::parse_ai_release_document;
 
 #[test]
@@ -24,14 +24,35 @@ fn ai_release_includes_ui_release_gates() {
 }
 
 fn run_ai_release() -> Result<std::process::Output, String> {
-    Command::new(env!("CARGO_BIN_EXE_xtask"))
+    let mut command = xtask_command();
+    command
+        .current_dir(workspace_root())
         .args(["ai-release", "--bead", "vb-nf2u"])
         .output()
         .map_err(|error| error.to_string())
 }
 
+fn xtask_command() -> Command {
+    let cargo_bin = Path::new(env!("CARGO_BIN_EXE_xtask"));
+    if cargo_bin.exists() {
+        Command::new(cargo_bin)
+    } else {
+        let mut command = Command::new("cargo");
+        command.args(["xtask", "--"]);
+        command
+    }
+}
+
+fn workspace_root() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .map(Path::to_path_buf)
+        .unwrap_or_else(|| PathBuf::from("."))
+}
+
 fn read_ai_release_evidence() -> Result<String, String> {
-    std::fs::read_to_string(".evidence/vb-nf2u/ai-release.yaml").map_err(|error| error.to_string())
+    std::fs::read_to_string(workspace_root().join(".evidence/vb-nf2u/ai-release.yaml"))
+        .map_err(|error| error.to_string())
 }
 
 fn expected_subgates() -> Vec<String> {
@@ -49,8 +70,9 @@ fn expected_subgates() -> Vec<String> {
 }
 
 fn write_required_negative_fixtures() -> std::io::Result<()> {
-    let root = Path::new("target/vb-nf2u-negative-fixtures");
-    fs::create_dir_all(root)?;
+    let workspace = workspace_root();
+    let root = workspace.join("target/vb-nf2u-negative-fixtures");
+    fs::create_dir_all(&root)?;
     fs::write(
         root.join("intentional_overlap_fixture.txt"),
         "fixture_id=intentional_overlap_fixture\nscreen_id=execution_overview\nfirst_control_id=run_button\nsecond_control_id=stop_button\nexpected_gate=layout\nexpected_code=layout_violation\noverlap_area_px=600\nbounds={ x: 10, y: 10, width: 100, height: 60 }\nactual_status=failed\n",
