@@ -1,10 +1,14 @@
 # Generated Workflows
 
-Generated Rust mode is the maximum-speed execution mode. The current
-implementation emits Rust for a bounded subset of `CompiledWorkflow` IR and
-rejects everything outside that subset before writing generated source.
+> **Deferred:** Generated Rust workflow execution is not part of the current
+> Backend / IR Interpreter Complete milestone. See
+> `docs/deferred-codegen-maxperf.md` for the reactivation contract.
 
-## Current Path
+Generated Rust mode is the preserved future maximum-speed execution track. The
+historical prototype emitted Rust for a bounded subset of `CompiledWorkflow` IR
+and rejected everything outside that subset before writing generated source.
+
+## Historical / Target Path
 
 ```text
 YAML source
@@ -20,7 +24,7 @@ interpreter/runtime path.
 
 ## Supported Subset
 
-Generated mode currently accepts:
+The deferred generated-mode prototype accepted:
 
 ```text
 scalar constants
@@ -105,7 +109,7 @@ count
 unique
 ```
 
-## Target Command
+## Deferred Target Command
 
 ```bash
 velvet-ballastics compile workflow.yaml --emit rust --out generated/issue_triage.rs
@@ -113,7 +117,7 @@ velvet-ballastics compile workflow.yaml --emit rust --out generated/issue_triage
 
 ## Generated Code Rules
 
-Generated Rust must obey the same first-party rules:
+If reactivated, generated Rust must obey the same first-party rules:
 
 ```text
 no unsafe
@@ -125,7 +129,7 @@ no JSON
 no runtime string reference resolution
 ```
 
-Generated artifacts must include:
+Future generated artifacts must include:
 
 ```text
 StepIdx constants
@@ -136,4 +140,4 @@ drive function
 
 ## Acceptance
 
-Generated workflows must compile, produce the same results as IR mode, and beat or justify their performance versus IR mode in benchmark output.
+If reactivated, generated workflows must compile, produce the same results as IR mode, and beat or justify their performance versus IR mode in benchmark output.

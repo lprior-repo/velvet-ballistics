@@ -8,7 +8,7 @@ Velvet Ballastics optimizes latency and throughput by refusing to put authoring 
 2. A run binds to an immutable compiled workflow digest.
 3. Runtime references are numeric slot accesses.
 4. Runtime steps are numeric state transitions.
-  5. Expression support must compile to programs, not runtime strings; Phase 0 uses direct IR node behavior.
+5. Expression support must compile to programs, not runtime strings.
 6. The engine does not spawn one task per step.
 7. Deterministic runs execute in a tight synchronous loop.
 8. Side-effect boundaries are explicit and durable according to policy.
@@ -32,4 +32,7 @@ The in-memory transition loop can be extremely fast. These operations are not na
 
 ## Release Profiles
 
-The `maxperf` profile uses fat LTO and one codegen unit. Benchmark native CPU builds separately with `RUSTFLAGS="-C target-cpu=native"`; do not ship native builds unless deployment CPUs are controlled.
+Current-scope performance evidence targets the release/bench IR-interpreter path.
+`maxperf`, PGO, generated Rust execution, and native CPU builds are deferred to
+`docs/deferred-codegen-maxperf.md`; do not use them as acceptance gates for the
+Backend / IR Interpreter Complete milestone.

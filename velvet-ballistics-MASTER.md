@@ -1,6 +1,6 @@
 # velvet-ballastics — Master Mechanical Build Contract
 
-**Status:** implementation handoff; single source of truth for this repository
+**Status:** current backend/IR-interpreter scope; single source of truth for this repository
 **Audience:** AI coding agents, runtime implementers, performance engineers, QA agents
 **Product name:** `velvet-ballastics`
 **Binary name:** `velvet-ballastics`
@@ -20,13 +20,15 @@ Project spelling rule: any use of `velvet-ballistics` is invalid except for exac
 
 `velvet-ballastics` is a Rust-nightly, no-unsafe, no-panic, single-server, ultra-low-latency durable execution engine for workflow orchestration. YAML is an authoring format only. The runtime never interprets YAML, parses JSON, serves HTTP, or routes text commands. Workflows compile into numeric state machines over numeric slots, numeric actions, numeric steps, and bounded resource contracts.
 
-The runtime uses numeric state machines, numeric slots, numeric actions, shard-owned state, and deterministic synchronous execution until suspension. Fjall is required for persistence. Postcard is required for compact binary records. Ingress is direct Rust API plus binary IPC. `CompiledWorkflow` IR lowers to mandatory generated Rust workflow mode for `maxperf` builds, and generated Rust must preserve the exact semantics of IR execution.
+The current implementation goal is **Backend / IR Interpreter Complete**: strict YAML authoring, validation, verification, compiled numeric IR, IR-interpreter execution, Fjall durability, direct Rust API, binary IPC, CLI observability, replay/recovery, and evidence gates. Rust workflow code generation, `maxperf` acceptance, and all native UI/Makepad work are deferred and are not part of the current core feature set. Deferred Rust codegen/maxperf notes live under `docs/generated-workflows.md` and `docs/deferred-codegen-maxperf.md`; deferred UI notes live under `docs/deferred-ui.md`.
+
+The runtime uses numeric state machines, numeric slots, numeric actions, shard-owned state, and deterministic synchronous execution until suspension. Fjall is required for persistence. Postcard is required for compact binary records. Ingress is direct Rust API plus binary IPC. `CompiledWorkflow` IR is the active execution artifact for the current milestone. Any section explicitly marked **Deferred** is non-normative for the current milestone and cannot block Backend / IR Interpreter Complete acceptance.
 
 ### Product Positioning Contract
 
 Publicly, `velvet-ballastics` must not be described as a generic DAG runner, low-code graph editor, YAML-as-programming framework, Airflow replacement, or Temporal clone. Those frames hide the actual wedge and invite false comparisons.
 
-The product identity is: an AI-safe, local-first, single-server durable execution engine that verifies AI-authored workflows before admission, persists an inspectable journal, protects side effects with idempotency evidence, enforces resource and taint bounds, and can lower accepted artifacts to generated Rust for maximum throughput.
+The product identity is: an AI-safe, local-first, single-server durable execution engine that verifies AI-authored workflows before admission, persists an inspectable journal, protects side effects with idempotency evidence, and enforces resource and taint bounds. Future generated Rust execution is an optimization path, not a current acceptance requirement.
 
 The unit of trust is the accepted artifact, not the YAML source. YAML is a cold authoring surface. Verification certificates, compiled IR digests, resource budgets, action contracts, capability grants, journals, snapshots, and replay reports are the operational truth.
 
@@ -43,7 +45,7 @@ The final product must provide all of the following. None are optional:
 1. Rust nightly toolchain with mechanical lint gates.
 2. First-party code forbids `unsafe`, `unwrap`, `expect`, `panic`, unchecked indexing, unchecked slicing, unchecked casts, unchecked arithmetic, ignored `Result`, and unbounded resources.
 3. YAML authoring only through a strict parser and validator.
-4. No runtime YAML, JSON, or HTTP in `vb_core`, `vb_runtime`, `vb_storage`, `vb_ipc`, or generated workflow code.
+4. No runtime YAML, JSON, or HTTP in `vb_core`, `vb_runtime`, `vb_storage`, or `vb_ipc`.
 5. Compiled numeric workflow IR with `WorkflowId`, `StepIdx`, `SlotIdx`, `ExprIdx`, `ActionId`, `AccessorIdx`, `ConstIdx`, and bounded tables.
 6. Handle-based runtime values using interned symbol/list/object/blob handles and finite numeric values.
 7. Deterministic state-machine execution until suspension on action, wait, ask, retry, fanout join, queue admission, or storage policy boundary.
@@ -52,12 +54,12 @@ The final product must provide all of the following. None are optional:
 10. Postcard encoding for internal journal, snapshot, IPC payload, and compiled artifact records.
 11. Direct Rust API ingress for fastest local embedding.
 12. Binary IPC ingress for external local processes.
-13. Generated Rust execution mode required for `maxperf` builds.
+13. IR-interpreter execution is the required runtime mode for the current milestone.
 14. Typed validation, compile, runtime, IPC, and storage failures.
 15. Benchmarked optimizations only; no speed claim without measured before/after data.
 16. AI changes are accepted only with actual evidence that the relevant formatting, linting, tests, fuzzing, recovery, benchmark, dependency audit, supply-chain review, unsafe scan, and CI reproducibility gates ran and passed; merely adding or naming a task is not acceptance evidence.
 
-HTTP/JSON exclusion rule: HTTP and JSON are excluded from the v1 runtime core. Any future adapter must be a separate cold-path adapter crate and must not enter `vb_core`, `vb_runtime`, `vb_storage`, `vb_ipc`, or generated workflow code.
+HTTP/JSON exclusion rule: HTTP and JSON are excluded from the v1 runtime core. Any future adapter must be a separate cold-path adapter crate and must not enter `vb_core`, `vb_runtime`, `vb_storage`, or `vb_ipc`.
 
 ---
 
@@ -111,12 +113,12 @@ Dependency rule: third-party crates may contain internal unsafe only if pinned, 
 |---------------|-------------------------------------|
 | Simple control flow | Runtime transitions are explicit `StepIdx -> StepIdx`; no hidden graph mutation after compile. |
 | Bounded loops | `for_each`, `collect`, `reduce`, `repeat`, retries, scheduler ticks, trace rings, storage batches, IPC frames, and expression stacks require explicit limits. |
-| No dynamic allocation after init where avoidable | Turbo and maxperf modes preallocate frames, slots, step states, stacks, queues, trace rings, journal buffers, and IPC buffers. |
+| No dynamic allocation after init where avoidable | Current turbo-style backend paths preallocate or reserve frames, slots, step states, stacks, queues, trace rings, journal buffers, and IPC buffers before run admission. |
 | Short functions | Hot functions must be <= 25 logical lines. Complex cold validation phase functions must be decomposed or carry a bead-linked justification and must stay out of hot paths. CI, justfile, and Moon tasks must include a source-length gate that fails hot functions over 25 logical lines. |
 | Assertions/contracts | User errors return typed errors. Debug assertions may check compiler invariants that are unreachable for validated IR. |
 | Small scopes | Each run belongs to exactly one shard. Shards own mutable runtime state. No global mutable run map. |
-| Checked parameters/returns | Parse, validate, compile, eval, storage, IPC, action dispatch, scheduler, and generated execution return typed `Result`. |
-| Restricted macros | No macro-hidden business logic. Codegen output is explicit Rust and checked by compile-fail and equivalence tests. |
+| Checked parameters/returns | Parse, validate, compile, eval, storage, IPC, action dispatch, and scheduler return typed `Result`. |
+| Restricted macros | No macro-hidden business logic in current backend crates. Future codegen work must remain explicit Rust and carry its own compile-fail/equivalence evidence before it returns to scope. |
 | Restricted pointer complexity | No first-party pointer manipulation. Tables are addressed by checked numeric IDs. |
 | Zero warnings | CI denies warnings, clippy violations, audit violations, unsafe scan findings, and missing benchmark metadata. |
 
@@ -135,7 +137,7 @@ Dependency rule: third-party crates may contain internal unsafe only if pinned, 
 | `iai-callgrind` | Instruction/cache benchmark gates. |
 | `proptest` | Property and invariant tests. |
 | `cargo-fuzz` | Parser, decoder, and IR fuzzing. |
-| `trybuild` | Compile-fail tests for generated Rust and public macro/codegen contracts. |
+| `trybuild` | Compile-fail tests for public macro/schema contracts when such contracts are active. Generated Rust compile-fail testing is deferred with codegen. |
 | `cargo-audit` | Vulnerability gate. |
 | `cargo-deny` | License, duplicate, source, and advisory gate. |
 | `cargo-vet` | Supply-chain review gate. |
@@ -158,9 +160,9 @@ Mandatory tooling categories:
 
 - Formatting/linting: `cargo fmt`, hard-deny `clippy`, warnings as errors, banned-token scan.
 - Test runners: `cargo test`, `cargo nextest`, `miri`, `cargo mutants`, `cargo llvm-cov`.
-- Property/fuzz/compile diagnostics: `proptest`, `cargo-fuzz`, `arbitrary`, `trybuild`, and `insta` only when approved for golden diagnostics.
+- Property/fuzz/compile diagnostics: `proptest`, `cargo-fuzz`, `arbitrary`, `trybuild` where active compile-fail contracts exist, and `insta` only when approved for golden diagnostics.
 - Supply chain: `cargo audit`, `cargo deny`, `cargo vet`, `cargo geiger`, `cargo machete`, `cargo hack`, `cargo semver-checks`, `cargo public-api`, `cargo bloat`.
-- Performance: `criterion`, `iai-callgrind`, `flamegraph`, `samply`/`perf`, `hyperfine`, `callgrind`, `cachegrind`, `DHAT`, PGO, and `target-cpu=native` builds.
+- Performance: `criterion`, `iai-callgrind`, `flamegraph`, `samply`/`perf`, `hyperfine`, `callgrind`, `cachegrind`, and `DHAT` for current-scope evidence. PGO and `target-cpu=native` are deferred with maxperf.
 - Nightly/dynamic verification: Miri, sanitizers, and coverage.
 
 Bootstrap install block:
@@ -213,7 +215,7 @@ Strict nightly governance:
 | `iai-callgrind` | Instruction/cache benchmarks | Required for CI performance gates. |
 | `proptest` | Property tests | Required for invariants. |
 | `cargo-fuzz` | Fuzzing | Required for parsers/decoders. |
-| `trybuild` | Compile-fail tests | Required for generated Rust contracts. |
+| `trybuild` | Compile-fail tests | Required only for active public macro/schema contracts in the current milestone; generated Rust contracts are deferred. |
 | `cargo-nextest` | Test execution | Required CI test runner. |
 | `cargo-audit` | Vulnerability scan | Required release gate. |
 | `cargo-deny` | Policy scan | Required release gate. |
@@ -230,24 +232,26 @@ Strict nightly governance:
 
 ---
 
-## 6. Maximum Performance Rules
+## 6. Current Performance Rules — IR Interpreter Scope
 
-1. `CompiledWorkflow` IR lowers to mandatory generated Rust workflow mode for `maxperf` builds.
-2. IR interpreter mode remains mandatory for validation, portability, debugging, and semantic equivalence tests.
-3. Generated Rust may skip dispatch tables, but it must preserve identical observable semantics to IR execution.
-4. Runtime state is numeric and handle-based.
-5. Hot loops must use checked table access, bounded stacks, bounded queues, and preallocated frame state.
-6. Deterministic steps run synchronously inside the shard loop until suspension.
-7. No async task is spawned per step.
-8. No text formatting, YAML parsing, JSON parsing, HTTP handling, or string reference resolution on hot execution paths.
-9. Any optimization must include before/after benchmark output, benchmark metadata, and no correctness regression.
-10. PGO and `target-cpu=native` are release engineering tools, not semantic requirements.
-11. Runtime architecture is shard-owned, single-server, synchronous deterministic execution until suspension.
-12. Data layout is hot/cold split: hot state has numeric IDs and handles; cold side tables carry spans, names, YAML paths, messages, and diagnostics.
-13. Queues and scheduling use bounded `ArrayQueue`/`rtrb`, explicit backpressure, and no task-per-step spawning.
-14. Persistence uses Postcard binary records and Fjall keyspaces with bounded writer queues and explicit durability modes.
-15. Compilation resolves strings, references, actions, accessors, constants, branches, and resource contracts before run admission.
-16. Turbo mode admits a run only after required slots, step states, expression stacks, frame space, trace space, journal buffers, IPC buffers, and queue commands are preallocated or reserved; deterministic transitions must not allocate after acceptance.
+The current performance goal is a fast, bounded IR-interpreter backend. Rust workflow code generation, generated-vs-IR ratio targets, `maxperf` acceptance, PGO release workflows, and public maximum-throughput claims are deferred to `docs/generated-workflows.md` and `docs/deferred-codegen-maxperf.md`.
+
+Current rules:
+
+1. `CompiledWorkflow` IR is the required runtime execution artifact.
+2. Runtime state is numeric and handle-based.
+3. Hot loops must use checked table access, bounded stacks, bounded queues, and preallocated or reservation-checked frame state.
+4. Deterministic steps run synchronously inside the shard loop until suspension.
+5. No async task is spawned per step.
+6. No text formatting, YAML parsing, JSON parsing, HTTP handling, or string reference resolution on hot execution paths.
+7. Any optimization must include before/after benchmark output, benchmark metadata, and no correctness regression.
+8. `target-cpu=native`, PGO, and generated workflow execution are future release-engineering tracks, not current semantic requirements.
+9. Runtime architecture is shard-owned, single-server, synchronous deterministic execution until suspension.
+10. Data layout is hot/cold split: hot state has numeric IDs and handles; cold side tables carry spans, names, YAML paths, messages, and diagnostics.
+11. Queues and scheduling use bounded `ArrayQueue`/`rtrb`, explicit backpressure, and no task-per-step spawning.
+12. Persistence uses Postcard binary records and Fjall keyspaces with bounded writer queues and explicit durability modes.
+13. Compilation resolves strings, references, actions, accessors, constants, branches, and resource contracts before run admission.
+14. Turbo-style admission admits a run only after required slots, step states, expression stacks, frame space, trace space, journal buffers, IPC buffers, and queue commands are preallocated or reserved; deterministic transitions must not allocate after acceptance unless a documented resource contract permits it.
 
 ---
 
@@ -259,7 +263,7 @@ Nightly update contract:
 
 1. Nightly version changes require a dedicated bead.
 2. The bead must record current nightly, target nightly, motivation, changed compiler behavior, and rollback plan.
-3. Full CI, Miri, fuzz smoke, benchmarks, generated Rust compile tests, and recovery tests must pass.
+3. Full CI, Miri, fuzz smoke, benchmarks, and recovery tests must pass. Generated Rust compile tests are required only when the deferred codegen track is active again.
 4. Benchmark deltas must be recorded before and after the update.
 5. Any new lint allowance requires explicit documented justification.
 
@@ -341,7 +345,7 @@ when:
   webhook: {}
 ```
 
-`manual` means direct Rust API submission (via `Runtime::submit`). `schedule`, `event`, and `webhook` are cold-path triggers handled by external adapters before submitting compiled artifacts to the runtime. HTTP/webhook adapters live outside `vb_core`, `vb_runtime`, `vb_storage`, `vb_ipc`, and generated workflow code.
+`manual` means direct Rust API submission (via `Runtime::submit`). `schedule`, `event`, and `webhook` are cold-path triggers handled by external adapters before submitting compiled artifacts to the runtime. HTTP/webhook adapters live outside `vb_core`, `vb_runtime`, `vb_storage`, and `vb_ipc`.
 
 The binary IPC protocol (`vb_ipc`) is a separate runtime ingress mechanism, not a YAML trigger. `ipc` in the IR refers to the `ShardCommand::Submit` protocol, not a YAML-authored trigger.
 
@@ -371,7 +375,7 @@ Control and metadata fields are not primitives:
 id · name · if · with · try_again · on_error · then
 ```
 
-High-level YAML primitives may lower into multiple IR nodes. Runtime executes IR only. Generated Rust may skip dispatch, but it must preserve identical semantics.
+High-level YAML primitives may lower into multiple IR nodes. Runtime executes IR only in the current milestone.
 
 ---
 
@@ -393,13 +397,13 @@ Cold path components may use maps when they improve clarity and diagnostics:
 
 `HashMap` and `BTreeMap` are allowed in parser, validator, compiler, diagnostics, and tests.
 
-Hot runtime state and generated workflow state must not use `HashMap<String, Value>`, runtime/generated state maps, dynamic object maps, or string-keyed lookup. Hot state uses numeric indices, handle tables, boxed slices, fixed-capacity stacks, bounded queues, and typed handles.
+Hot runtime state must not use `HashMap<String, Value>`, runtime state maps, dynamic object maps, or string-keyed lookup. Hot state uses numeric indices, handle tables, boxed slices, fixed-capacity stacks, bounded queues, and typed handles.
 
 ---
 
 ## 12. Forbidden Hot-Path APIs
 
-The following are forbidden in hot runtime paths and generated workflow execution:
+The following are forbidden in hot runtime paths:
 
 ```text
 serde_json::Value
@@ -433,7 +437,7 @@ unchecked indexing or slicing
 unchecked arithmetic or casts
 ```
 
-Nuance: these APIs are allowed in cold parser, validator, compiler, diagnostics, CLI, benchmark harness setup, and tests when covered by tests and kept out of hot runtime/generated execution.
+Nuance: these APIs are allowed in cold parser, validator, compiler, diagnostics, CLI, benchmark harness setup, and tests when covered by tests and kept out of hot runtime execution.
 
 ---
 
@@ -572,7 +576,7 @@ Required types (authoritative layout in code):
 | `ConstValue` | See `value.rs` above. |
 | `ResourceContract` | 16 fields controlling hard limits (Section 13). |
 
-Compiler rule: high-level YAML primitives may lower to multiple IR nodes. Runtime executes IR only. Generated Rust may skip IR dispatch but must preserve identical semantics. Final choose IR has exactly two checked forms: `Choose` evaluates expression-branch conditions from `ExprIdx`, and `ChooseSlot` reads pre-materialized boolean conditions from `SlotIdx` values produced by earlier IR. Raw YAML condition strings and untyped choose nodes are forbidden in final IR.
+Compiler rule: high-level YAML primitives may lower to multiple IR nodes. Runtime executes IR only in the current milestone. Final choose IR has exactly two checked forms: `Choose` evaluates expression-branch conditions from `ExprIdx`, and `ChooseSlot` reads pre-materialized boolean conditions from `SlotIdx` values produced by earlier IR. Raw YAML condition strings and untyped choose nodes are forbidden in final IR.
 
 ### `frame.rs` — Run Frame
 
@@ -653,7 +657,7 @@ Jump
 Finish
 ```
 
-Generated Rust execution may lower these into direct `match` arms or straight-line functions. It must keep the same step states, slot writes, taint behavior, suspension semantics, journal events, typed errors, and result values as IR mode.
+Current execution is through the IR interpreter. Any future generated Rust execution must first prove identical step states, slot writes, taint behavior, suspension semantics, journal events, typed errors, and result values as IR mode before returning to the active master scope.
 
 **`Finish` taint contract:** The `Finish` IR node reads the taint from the result slot and emits `EngineSignal::Finished(SlotValue, Taint)`. Taint is joined from all slots contributing to the result. Runtime preserves `Clean`, `DerivedFromSecret`, and `Secret` result taints; validation does not reject tainted finish results.
 
@@ -858,7 +862,7 @@ Typed storage/decode errors must include `BadMagic { found: u32 }`, `Unsupported
 
 Actions are native Rust operations registered by numeric `ActionId` at compile time. Runtime dispatch never string-lookups action names.
 
-Action names are resolved to `ActionId` during compile. The runtime and generated code dispatch by `ActionId` only. There is no `async_trait`, no dynamic string lookup, and no JSON input/output model.
+Action names are resolved to `ActionId` during compile. The runtime dispatches by `ActionId` only. There is no `async_trait`, no dynamic string lookup, and no JSON input/output model.
 
 Action contract:
 
@@ -957,7 +961,7 @@ Taint propagation: action input taint is read from the input slot. `Deterministi
 
 Retry and replay semantics: `DeterministicPure` may be re-executed during replay. `IdempotentExternal` may be retried or replay-completed only with the same `ActionTicket.idempotency_key`. `AtLeastOnceExternal` may be attempted more than once only according to a bounded retry policy and must not be re-executed during recovery after a scheduled journal record; recovery waits for explicit completion/failure or marks the run blocked by policy. Duplicate completion with the same ticket and same digest is idempotently ignored; duplicate completion with different digest returns `ActionError::CompletionAlreadyRecorded` and a replay divergence error.
 
-Generated dispatch shape:
+Static dispatch shape:
 
 ```rust
 pub fn dispatch_action(action: ActionId, input: ActionInput) -> ActionResult<ActionOutcome> {
@@ -1068,42 +1072,20 @@ IPC decoder requirements:
 
 ---
 
-## 22. Generated Rust Workflow Mode
+## 22. Deferred Rust Codegen and Maxperf
 
-Generated Rust mode is the target for `maxperf` builds. **Current status: subset-only.** The codegen surface supports only a subset of final IR nodes and expressions. Full final-IR parity is a future phase goal.
+Rust workflow code generation is **out of the current core feature set**. The active product goal is backend execution through compiled IR and the IR interpreter.
 
-Command shape:
+Current command surface excludes `compile --emit rust`. Current acceptance excludes generated Rust semantic parity, generated compile-fail fixtures, generated-vs-IR ratio benchmarks, PGO release workflows, and `maxperf` release claims.
 
-```bash
-velvet-ballastics compile workflow.yaml --emit rust --out generated/issue_triage.rs
-```
-
-Generated code rules are identical to first-party code:
+Deferred requirements and historical notes live in:
 
 ```text
-no unsafe
-no unwrap
-no expect
-no panic
-no unchecked indexing
-no unchecked slicing
-no unchecked casts
-no unchecked arithmetic
-no JSON
-no runtime YAML
-no HTTP
-no runtime string reference resolution
+docs/generated-workflows.md
+docs/deferred-codegen-maxperf.md
 ```
 
-Generated Rust must:
-
-1. Compile under the pinned nightly.
-2. Pass `rustfmt`.
-3. Pass `clippy` with repository deny settings.
-4. Preserve IR semantics exactly. **Current gap:** `compare_generated_to_ir` performs source-pattern counting, not true execution equivalence over terminal results, taint, journal, and errors. Full semantic parity tests are a future phase requirement.
-5. Emit no hidden dynamic allocation in deterministic hot steps unless the resource contract explicitly allows it.
-6. Produce equivalent journal events, slot values, taint states, errors, and terminal results to IR mode. **Current gap:** `Together*`, `Reduce*`, `Repeat*`, and `Collect*` IR node families fail closed in `validate_generated_subset`/emission until generated-vs-runtime parity is proven.
-7. Be covered by equivalence tests and compile-fail tests. **Current gap:** trybuild harness can pass with no compile-fail fixtures present.
+If codegen returns to scope, it must be reintroduced by a dedicated architecture/spec bead and must prove exact observable equivalence with IR execution before becoming a release gate.
 
 ---
 
@@ -1121,25 +1103,6 @@ velvet-ballastics/
   moon.yml
   supply-chain/
     config.toml
-  contracts/
-    ui_artifacts.yaml
-    ui_tokens.yaml
-    ui_motion.yaml
-    ui_screens.yaml
-  design/
-    figma/
-      figma_makepad_notes.md
-      velvet_ballastics_figma_ready_tightened_board.png
-      velvet_ballastics_figma_ready_tightened_screens.zip
-      screens/
-        png/
-        svg/
-    tokens/
-      velvet_ui_tokens.toml
-    reference/
-      figma_makepad_notes.md
-      white_makepad_8_screen_board.png
-      screenshots/
   crates/
     vb_core/
     vb_yaml/
@@ -1149,18 +1112,15 @@ velvet-ballastics/
     vb_storage/
     vb_runtime/
     vb_ipc/
-    vb_codegen/
-    vb_ui_model/
-    vb_ui_makepad/
     velvet_ballastics/
   benches/
   fuzz/
-  tests/
+  crates/workspace_tests/
 ```
 
-Round 2 state: the workspace has been rebaselined to the underscore crate contract above (`vb_core`, `vb_yaml`, `vb_validate`, `vb_expr`, `vb_compile`, `vb_storage`, `vb_runtime`, `vb_ipc`, `vb_codegen`, and `velvet_ballastics`). Any future hyphenated internal crate name is a regression unless it is explicitly labeled as a migration artifact.
+Current state: the active backend workspace target is the underscore crate contract above (`vb_core`, `vb_yaml`, `vb_validate`, `vb_expr`, `vb_compile`, `vb_storage`, `vb_runtime`, `vb_ipc`, and `velvet_ballastics`). Any future hyphenated internal crate name is a regression unless it is explicitly labeled as a migration artifact.
 
-UI target state: `vb_ui_model` is a cold-path typed artifact crate shared by CLI and UI. `vb_ui_makepad` is the native desktop UI crate. Neither crate may introduce Makepad, graphics, windowing, or UI dependencies into `vb_core`, `vb_runtime`, `vb_storage`, `vb_ipc`, or generated workflow code. Any existing transitional UI crate must be migrated into this split or explicitly superseded by a bead.
+Deferred crates: `vb_codegen`, `vb_ui_model`, and `vb_ui_makepad` are not active current-scope workspace requirements. Their future contracts live in docs and require dedicated reactivation beads before returning to the master scope.
 
 ---
 
@@ -1301,17 +1261,9 @@ Required coverage areas:
 
 ---
 
-## 32. Mandatory Function Surface: `vb_codegen`
+## 32. Deferred Function Surface: `vb_codegen`
 
-**Source of truth:** `crates/vb_codegen/src/`.
-
-Required coverage areas:
-
-| Area | Required public surface |
-|------|------------------------|
-| Code generation | `emit_rust_workflow` (CompiledWorkflow to Rust source). |
-| Components | emit for IDs, drive function, step function, expression function, action boundary, finish, action match dispatch, resource contract. |
-| Validation | `compare_generated_to_ir`, `validate_generated_subset`, compile-check generated Rust, trybuild fixture emission. |
+`vb_codegen` is deferred. No current-scope implementation bead may treat generated Rust workflow mode as required for acceptance. Historical/future codegen requirements live in `docs/generated-workflows.md` and `docs/deferred-codegen-maxperf.md`.
 
 ---
 
@@ -1320,13 +1272,9 @@ Required coverage areas:
 ```bash
 velvet-ballastics validate <workflow.yaml>
 velvet-ballastics compile <workflow.yaml> --emit ir --out <file.vbir>
-velvet-ballastics compile <workflow.yaml> --emit rust --out <file.rs>
 velvet-ballastics run <workflow.yaml> --input-bin <input.vbin> --durability <mode>
 velvet-ballastics run-compiled <workflow.vbir> --input-bin <input.vbin> --durability <mode>
 velvet-ballastics ipc-serve --socket <path> --db <path>
-velvet-ballastics ui --db <path>
-velvet-ballastics ui --socket <path>
-velvet-ballastics ui --demo-fixture <fixture>
 velvet-ballastics agent-context
 velvet-ballastics inspect <run_id> --db <path>
 velvet-ballastics events <run_id> --db <path>
@@ -1341,9 +1289,9 @@ velvet-ballastics bench-run <workflow.yaml>
 velvet-ballastics doctor --db <path>
 ```
 
-CLI structured output is a cold-path operator/agent contract and never enters `vb_core`, `vb_runtime`, `vb_storage`, `vb_ipc`, or generated workflow code. `--emit yaml` is the canonical structured text flag for v1; `--emit postcard` is the canonical binary machine-output flag where supported. JSON may be added later as a separate cold adapter. Runtime machine artifacts remain binary/Postcard.
+CLI structured output is a cold-path operator/agent contract and never enters `vb_core`, `vb_runtime`, `vb_storage`, or `vb_ipc`. `--emit yaml` is the canonical structured text flag for v1; `--emit postcard` is the canonical binary machine-output flag where supported. JSON may be added later as a separate cold adapter. Runtime machine artifacts remain binary/Postcard.
 
-The `ui` command launches the Makepad desktop application. It has exactly three v1 modes: embedded local observer mode via `--db <path>`, attached observer mode via binary IPC with `--socket <path>`, and deterministic fixture mode via `--demo-fixture <fixture>` for design review, demos, screenshot tests, and UI regression gates. No UI mode may require HTTP or JSON. Any future web adapter remains a separate cold-path adapter crate and cannot enter runtime core.
+The `ui` command and Makepad desktop application are deferred. Deferred UI requirements live in `docs/deferred-ui.md`; they cannot block the current Backend / IR Interpreter Complete milestone.
 
 ---
 
@@ -1360,10 +1308,8 @@ members = [
   "crates/vb_storage",
   "crates/vb_runtime",
   "crates/vb_ipc",
-  "crates/vb_codegen",
-  "crates/vb_ui_model",
-  "crates/vb_ui_makepad",
   "crates/velvet_ballastics",
+  "crates/workspace_tests",
   "fuzz",
 ]
 resolver = "2"
@@ -1390,8 +1336,6 @@ mio = "1"
 criterion = "0.8"
 iai-callgrind = "0.16"
 proptest = "1"
-# UI crate only. Forbidden in runtime core crates.
-makepad-widgets = { version = "1", default-features = false }
 
 [workspace.lints.rust]
 unsafe_code = "forbid"
@@ -1425,12 +1369,6 @@ lto = "thin"
 codegen-units = 1
 strip = "symbols"
 
-[profile.maxperf]
-inherits = "release"
-lto = "fat"
-codegen-units = 1
-debug = false
-
 [profile.bench]
 inherits = "release"
 debug = true
@@ -1438,7 +1376,7 @@ lto = "thin"
 codegen-units = 1
 ```
 
-Makepad is approved only for `vb_ui_makepad` after a dependency-scope bead pins the exact version or git revision and records cargo-audit, cargo-deny, cargo-vet, cargo-geiger, cargo-machete, and license evidence. If a git revision is required for Makepad functionality, the dependency must be pinned by exact commit SHA, not a branch name, before release.
+Deferred workspace members and dependencies (`vb_codegen`, `vb_ui_model`, `vb_ui_makepad`, Makepad, generated workflow dependencies, and maxperf-only profile policy) are documented under `docs/` only. They must not be treated as current workspace acceptance requirements.
 
 ---
 
@@ -1467,7 +1405,7 @@ Phase build order is mandatory. The old giant primitive phase is rejected; every
 | 15 | Fjall base storage | Keyspaces, keys, workflow source, compiled IR, run headers, blobs. |
 | 16 | Binary journal | Postcard record envelope, event records, schema versions, writer queue. |
 | 17 | Snapshots/recovery base | Snapshot format, snapshot-plus-tail recovery, corruption handling. |
-| 18 | Action ABI | Compile-time `ActionId`, ticket/outcome model, generated dispatch. |
+| 18 | Action ABI | Compile-time `ActionId`, ticket/outcome model, static numeric dispatch. |
 | 19 | `do` | Action suspension, completion/failure resume, journal integration. |
 | 20 | `retry`/`try_again` | Bounded retry policies, delay state, exhaustion semantics. |
 | 21 | `on_error`/`then` | Handler routing, typed error slots, forward transitions. |
@@ -1480,12 +1418,10 @@ Phase build order is mandatory. The old giant primitive phase is rejected; every
 | 28 | Shard scheduler | Run ownership, bounded queues, frame pools, cancellation, shutdown. |
 | 29 | Binary trace/counters | Trace ring, counters, binary drain, overhead benchmarks. |
 | 30 | Binary IPC | `mio` Unix socket loop, required commands, frame fuzzing. |
-| 31 | CLI | Validate, compile, run, replay, inspect, IPC serve, doctor, bench-run. |
-| 32 | Generated Rust mode | Codegen, compile checks, equivalence tests, compile-fail tests. |
-| 33 | Full recovery/replay | Digest mismatch detection, full primitive replay, non-idempotent policy. |
-| 34 | Full benchmark suite | Criterion/iai suites, metadata, generated-vs-IR ratios. |
-| 35 | Maxperf | PGO, target-cpu-native, mandatory generated Rust, regression thresholds. |
-| 36 | Hardening | Full gates, sanitizer jobs, fuzz expansion, docs, bead evidence, release readiness. |
+| 31 | CLI | Validate, verify, compile IR, explain, diff, simulate, run, run-compiled, submit, replay, inspect, events, incident, IPC serve, action/system/doctor/AI context, bench-run. |
+| 32 | Full recovery/replay | Digest mismatch detection, full primitive replay, non-idempotent policy. |
+| 33 | Full benchmark suite | Criterion/iai suites, metadata, IR interpreter latency/throughput, storage, IPC, direct API, scheduler. |
+| 34 | Hardening | Full gates, sanitizer jobs, fuzz expansion, docs, bead evidence, Backend / IR Interpreter Complete readiness. |
 | 37 | Whole-workflow boundedness | Static dataflow analyzer: compute `WholeWorkflowBudget` from IR, propagate bounds through nested loops/branches, reject if any budget exceeds policy. New `BoundednessPolicy` config. Tests: nested fanout, sequential sum, conditional max, unbounded rejection. Resolves DRIFT-3 (aggregate budget gap) with Phase 45. |
 | 38 | Idempotency verification gate | `SideEffect` + `RetrySafety` classification per action. Verification gate rejects retry on side-effecting actions without idempotency key. Key ingredient validation (reject secrets, random, time in keys). New `IdempotencyViolation` error type. Tests: every side-effect class, key restriction, retry reachability. |
 | 39 | Accepted artifacts + admission | `AcceptedArtifact` record with `VerificationProof`. `RunAdmission` flow: artifact digest, input validation, capability check, secret availability, `RunAccepted` event. Runs bind to artifact by digest, not loose YAML. CLI `--strict` mode for AI-authored workflows. Tests: admission rejection paths, artifact binding, strict-mode warnings. |
@@ -1499,16 +1435,16 @@ Phase build order is mandatory. The old giant primitive phase is rejected; every
 
 Round 2 current implementation state, observed in this tree and not a final release claim:
 
-| Area | Round 2 state | Remaining gap before final DoD |
+| Area | Round 2 state | Remaining gap before backend DoD |
 |------|---------------|--------------------------------|
 | Naming/workspace | Canonical crate layout and package spelling are represented in the workspace. | Mechanical spelling gates and bead evidence still decide acceptance for future changes. |
-| Core/value/IR | `vb_core` exposes numeric IDs, handle-based `SlotValue`, `ValueStore`, taint/state APIs, bounded expression/accessor evaluation, resource contracts, and deterministic transition surfaces. | Full final primitive semantics still require end-to-end compiler/runtime/generated parity evidence. |
+| Core/value/IR | `vb_core` exposes numeric IDs, handle-based `SlotValue`, `ValueStore`, taint/state APIs, bounded expression/accessor evaluation, resource contracts, and deterministic transition surfaces. | Full final primitive semantics still require end-to-end compiler/runtime/replay evidence. |
 | YAML/validation/compile | Strict YAML parsing, AST validation, reference/control/type-taint checks, slot/accessor/constant APIs, digesting, artifact emission, and mandatory lowering function surfaces exist. | Source-to-IR lowering must be proven for the full v1 primitive set, not only constructor/API coverage. |
-| Expression engine | Lexer/parser/typecheck/bytecode surfaces exist with bounded execution contracts. Store-aware helper implementations exist for the current interpreter surfaces. | Helper type/evaluator parity, F64 mixed/coercion behavior, mutation resistance, and generated-mode equivalence still require gate evidence (`vb-qi37.9`). |
+| Expression engine | Lexer/parser/typecheck/bytecode surfaces exist with bounded execution contracts. Store-aware helper implementations exist for the current interpreter surfaces. | Helper type/evaluator parity, F64 mixed/coercion behavior, and mutation resistance still require gate evidence. |
 | Storage/recovery | `vb_storage` exposes required keyspace names, key encoders, record envelope encode/decode, journal writer queue, snapshots, replay helpers, recovery summaries, and frame-seed hydration for slot values/taint/step states. | Pending-action hydration, strict persistence-before-ack behavior, digest mismatch coverage, and end-to-end crash recovery evidence remain release gates. |
 | Runtime/direct API | `vb_runtime` exposes direct API, shard/frame-pool/action/wait/ask/trace/counter surfaces, admission/capability surfaces, and typed runtime errors. | Strict persistence-before-ack behavior, shutdown/cancellation edge cases, pending-action recovery, and full lifecycle evidence remain gates. |
 | IPC | `vb_ipc` exposes bounded frame/header/payload validation, typed payloads, memory ingress, client/server surfaces, and required command handlers. | Socket-loop fuzz/backpressure evidence and runtime integration gates remain required. |
-| Generated Rust | `vb_codegen` emits and checks a supported subset covering scalar constants, copies, expression math/comparisons, object/list builders, `for_each`, `RetryCheck`, accessor traversal, action dispatch, waits, asks, jumps, choices, handlers, and finish nodes. | Generated mode is not yet accepted for the full final IR; `Together*`, `Reduce*`, `Repeat*`, `Collect*`, text helper symbol-store behavior, suspension-error parity, and full journal/taint parity remain open. |
+| Deferred codegen/UI | `vb_codegen`, `vb_ui_model`, and `vb_ui_makepad` are documented as deferred tracks. | They are not current acceptance gates and must not block Backend / IR Interpreter Complete. |
 | Tests/audits | Error-variant completeness and diagnostic-code range tests exist; companion docs record benchmark and dependency policy constraints. | Full matrix gates, fuzz, Miri, coverage, mutants, sanitizer, supply-chain, benchmark metadata, and bead closure evidence are still required. |
 
 Round 2 status rule: a public function existing in a crate is only API surface evidence. It is not proof that the phase is complete unless the required tests, fuzz/property coverage, benchmark evidence where applicable, and bead closure evidence have actually passed.
@@ -1588,8 +1524,8 @@ Required coverage:
 ### Compile-fail tests
 
 Required coverage:
-- Generated code cannot use unsafe, unwrap, unchecked indexing, or YAML runtime references.
-- Public codegen contract rejects missing step.
+- Active public macro/schema contracts reject invalid usage at compile time when such contracts exist.
+- Generated Rust compile-fail tests are deferred with `vb_codegen`.
 
 ---
 
@@ -1604,7 +1540,6 @@ Required fuzz harnesses (actual paths: `fuzz/src/bin/*.rs`):
 | `ipc_frame` | Arbitrary bytes → decoder never panics, length checks hold |
 | `journal_event` | Arbitrary bytes → Postcard decode failure is typed |
 | `compiled_ir` | Arbitrary bytes → decode/validate never panics |
-| `generated_compare` | Generated/IR equivalence over small workflows |
 
 ---
 
@@ -1624,7 +1559,6 @@ Required proptest coverage areas:
 | Bound enforcement | Retry attempts never exceed limit; collect never exceeds page/item/time limits |
 | State machine | No terminal state transitions back to running |
 | Taint safety | Secret taint never enters finish result (at compile time) |
-| IR/generated parity | IR interpreter and generated Rust produce identical outputs and errors |
 
 ---
 
@@ -1652,8 +1586,6 @@ Required coverage areas:
 | Scheduler | Shard submit-to-start, submit-to-finish |
 | Direct API | Submit-to-finish |
 | Async primitives | Ask answer resume, action complete resume, wait timer resume |
-| Generated mode | Expression, save chain, choose |
-| IR vs generated | 1-step, 1000-step comparison, ratio benchmarks |
 
 Every benchmark result must include metadata:
 
@@ -1670,7 +1602,7 @@ benchmark tool and version
 sample count or instruction count
 input fixture digest
 durability profile
-generated vs IR mode
+execution mode (`ir-interpreter` for the current milestone)
 p50/p95/p99 latency
 instruction counts
 allocation count
@@ -1678,7 +1610,6 @@ bytes allocated
 Fjall write latency
 direct API latency
 IPC latency
-generated-vs-IR ratio
 ```
 
 Acceptance rule: no speed claim without benchmark numbers. No optimization PR without before/after benchmark output and correctness evidence. Compileable Criterion scaffold benchmarks are placeholders only; no-op scaffolds such as `black_box(())` prove the harness builds, not that the implementation is faster, lower allocation, lower latency, or production ready.
@@ -1699,12 +1630,10 @@ coverage
 mutants-smoke
 bench-build
 source-length
-maxperf
-maxperf-native
 fuzz-smoke
 ```
 
-CI must gate on `just check`, `just test`, `just supply-chain`, `just fuzz-smoke`, `just miri`, `just coverage`, `just mutants-smoke`, `just bench-build`, `just source-length`, and `just feature-powerset`. Nightly sanitizer jobs are required for runtime, IPC, storage, and binary decoding crates. The `source-length` target must fail any hot runtime/generated function over 25 logical lines and must be represented by an equivalent Moon task.
+CI must gate on `just check`, `just test`, `just supply-chain`, `just fuzz-smoke`, `just miri`, `just coverage`, `just mutants-smoke`, `just bench-build`, `just source-length`, and `just feature-powerset`. Nightly sanitizer jobs are required for runtime, IPC, storage, and binary decoding crates. The `source-length` target must fail any hot runtime function over 25 logical lines and must be represented by an equivalent Moon task.
 
 Mandatory CI commands:
 
@@ -1741,25 +1670,9 @@ Moon expectation: each command above must have a Moon task before release, and t
 
 ---
 
-## 41. PGO and Maxperf Build
+## 41. Deferred PGO and Maxperf Build
 
-```bash
-cargo +nightly build --profile maxperf
-RUSTFLAGS="-C target-cpu=native" cargo +nightly build --profile maxperf
-
-rm -rf /tmp/velvet-ballastics-pgo
-RUSTFLAGS="-Cprofile-generate=/tmp/velvet-ballastics-pgo" \
-  cargo +nightly build --profile maxperf
-./target/maxperf/velvet-ballastics bench-run tests/fixtures/e2e/minimal_set.yaml
-./target/maxperf/velvet-ballastics bench-run tests/fixtures/e2e/full_workflow.yaml
-./target/maxperf/velvet-ballastics bench-run tests/fixtures/e2e/reduce.yaml
-LLVM_PROFDATA="$(rustc +nightly --print sysroot)/lib/rustlib/x86_64-unknown-linux-gnu/bin/llvm-profdata"
-"$LLVM_PROFDATA" merge -o /tmp/velvet-ballastics-pgo/merged.profdata /tmp/velvet-ballastics-pgo
-RUSTFLAGS="-Cprofile-use=/tmp/velvet-ballastics-pgo/merged.profdata -Cllvm-args=-pgo-warn-missing-function" \
-  cargo +nightly build --profile maxperf
-```
-
-`maxperf` acceptance requires generated Rust mode for workflows being benchmarked.
+PGO, `target-cpu=native`, `maxperf`, and generated Rust benchmark workflows are deferred. They are documented in `docs/deferred-codegen-maxperf.md` and do not block the current Backend / IR Interpreter Complete milestone.
 
 ---
 
@@ -1797,29 +1710,11 @@ recovery-replay
 action-abi
 shard-scheduler
 ipc-protocol
-codegen
 cli
 observability
 tests-fuzz
 benchmarks
-maxperf
 release-gates
-ui-model-artifacts
-ui-design-tokens
-ui-makepad-shell
-ui-graph-canvas
-ui-execution-observatory
-ui-verification-certificate-view
-ui-replay-theater
-ui-incident-console
-ui-action-registry
-ui-storage-doctor
-ui-ai-context-panel
-ui-motion-system
-ui-figma-import-export
-ui-snapshot-regression
-ui-performance-gates
-makepad-dependency-scope
 ```
 
 Every phase requires a parent bead. Every function cluster requires a child bead. The benchmark suite requires dedicated beads. Each fuzz target requires its own bead. Every P0 blocker requires a dedicated bead.
@@ -1850,8 +1745,6 @@ mvp-wording-removed-from-final-ir-contract
 Current black-hat/test-review gaps that are not optional phase polish require dedicated beads before final acceptance:
 
 ```text
-generated-interpreter-suspension-error-parity
-generated-full-final-ir-equivalence
 compiler-full-v1-primitive-source-lowering
 runtime-collect-next-pagination-state
 runtime-admission-run-header-persistence
@@ -1864,6 +1757,8 @@ silent-discard-elimination
 test-plan-current-api-mutation-refresh
 full-gate-evidence-refresh
 ```
+
+Deferred codegen and UI gaps are tracked in docs only until dedicated reactivation beads pull them back into the master scope.
 
 The previous `error-variant-completeness-audit` gap has Round 2 implementation evidence in `tests/error_variant_completeness_test.rs` and `docs/error-variant-completeness.md`; it remains subject to the full gate matrix like every other test surface.
 
@@ -1882,20 +1777,7 @@ holzmann-matrix
 forbidden-hot-path-apis
 ```
 
-Required first UI beads:
-
-```text
-ui-white-apple-pro-design-system
-ui-eight-screen-taxonomy
-ui-figma-ready-token-export
-ui-makepad-splash-shell
-ui-step-functions-observability-layout
-ui-runtime-graph-canvas
-ui-replay-timeline-scrubber
-ui-certificate-cards
-ui-incident-evidence-chain
-ui-ipc-observer-mode
-```
+UI beads are deferred. See `docs/deferred-ui.md` for the preserved future track.
 
 Example bead commands:
 
@@ -1926,11 +1808,10 @@ Every implementation PR or handoff must report:
 8. Hot-path behavior.
 9. Fjall persistence behavior if touched.
 10. IPC behavior if touched.
-11. Generated Rust behavior if touched.
-12. Tests added.
-13. Benchmarks added.
-14. Commands run.
-15. Remaining follow-up work filed as beads.
+11. Tests added.
+12. Benchmarks added.
+13. Commands run.
+14. Remaining follow-up work filed as beads.
 ```
 
 Automatic rejection triggers:
@@ -1946,7 +1827,6 @@ YAML interpreted at runtime
 JSON inserted into runtime core
 HTTP inserted into runtime core
 HashMap<String, Value> runtime state
-generated Rust omitted from maxperf
 one task per step
 no tests for new code
 speed claim without real benchmark baseline/result evidence
@@ -1955,43 +1835,40 @@ new velvet-ballistics spelling outside the exact allowlist
 
 ---
 
-## 44. Final Definition of Done
+## 44. Backend / IR Interpreter Definition of Done
 
-`velvet-ballastics` is done when all 27 points are satisfied:
+The current `velvet-ballastics` backend milestone is done when all 24 points are satisfied:
 
 1. Canonical spelling is enforced for product, binary, package, crate/module, bead rig, bead database, and language version.
 2. Any `velvet-ballistics` spelling outside the exact allowlist for `/home/lewis/src/Velvet-ballistics`, `/velvet-ballistics-MASTER.md`, or explicitly labeled pre-existing external migration artifacts is rejected.
 3. Every primitive validates, compiles, runs, persists, recovers, and replays.
 4. v1 supports both `manual` direct API submission and `ipc` binary IPC submission.
 5. Runtime never interprets YAML and recovery never reparses YAML for existing runs.
-6. JSON and HTTP are absent from `vb_core`, `vb_runtime`, `vb_storage`, `vb_ipc`, and generated workflow code.
+6. JSON and HTTP are absent from `vb_core`, `vb_runtime`, `vb_storage`, and `vb_ipc`.
 7. Runtime state uses numeric workflow, run, action, step, slot, expression, accessor, constant, and sequence IDs.
 8. Action dispatch uses numeric `ActionId`; no runtime string action lookup exists.
 9. Hot values use handle-based `SlotValue` with `SymbolId`, `ListId`, `ObjectId`, `BlobId`, and finite numbers.
 10. Each run is owned by exactly one shard; no global mutable run map exists.
 11. Queues, stacks, buffers, retries, fanout, timers, traces, batches, IPC frames, and resource contracts are bounded.
-12. Turbo/maxperf admission preallocates or reserves hot resources; deterministic transitions allocate nothing after acceptance.
+12. Turbo-style admission preallocates or reserves hot resources; deterministic transitions allocate nothing after acceptance unless a documented resource contract permits it.
 13. Fjall stores workflow source, compiled IR, run headers, journals, snapshots, blobs, and indexes with magic/schema/version/kind/length envelopes.
 14. Recovery and replay detect workflow, action, and policy digest mismatch and fail typed without default substitution.
 15. Direct API implements submit, inspect, cancel, list events, answer ask, complete action, fail action, drain trace, health, and shutdown equivalents.
 16. Binary IPC implements `SubmitRun`, `SubmitRunInline`, `CancelRun`, `InspectRun`, `ListEvents`, `AnswerAsk`, `CompleteAction`, `FailAction`, `DrainTrace`, `Health`, and `Shutdown`.
-17. Generated Rust mode is implemented, mandatory for `maxperf`, and semantically equivalent to IR mode for success, failure, taint, journal, and replay behavior.
+17. IR-interpreter execution covers every active final IR node and is the accepted execution mode.
 18. Diagnostics include stable code, path, source span, message, and cold side-table context.
 19. Validation, compile, runtime, storage, IPC, action, and replay failures are typed and graceful.
 20. Forbidden constructs are absent: `unsafe`, `unwrap`, `expect`, `panic`, `todo`, `unimplemented`, `dbg`, ignored `Result`, runtime maps, hot formatting, runtime YAML/JSON/HTTP, and string reference/action lookup.
-21. Unchecked indexing, slicing, casts, and arithmetic are absent from first-party and generated code.
+21. Unchecked indexing, slicing, casts, and arithmetic are absent from first-party code.
 22. Every speed claim is backed by real benchmark evidence with p50/p95/p99, instruction counts, allocation counts, bytes allocated, latency, durability mode, and fixture metadata; compileable scaffold placeholders do not count.
-23. Full gates pass: fmt, clippy hard denies, tests, nextest, trybuild, Miri, coverage, fuzz smoke, mutants smoke, supply chain, geiger, feature powerset, docs, and benchmark build.
-24. Maxperf, PGO, and `target-cpu=native` workflows are documented, executable, and measured.
-25. Sanitizer nightly jobs pass for binary decoders, IPC, storage, runtime, and generated workflows.
-26. Every phase parent bead, function-cluster child bead, fuzz target bead, benchmark bead, and P0 blocker bead is closed with evidence.
-27. Mechanical gates can accept AI changes without human guesswork only when the relevant executable checks, tests, benchmarks, and bead evidence have actually run and passed; represented tasks/probes alone are not acceptance evidence.
+23. Full current-scope gates pass: fmt, clippy hard denies, tests, nextest, Miri, coverage, fuzz smoke, mutants smoke, supply chain, geiger, feature powerset, docs, benchmark build, storage/recovery evidence, IPC evidence, and direct API evidence.
+24. Every phase parent bead, function-cluster child bead, fuzz target bead, benchmark bead, and P0 blocker bead in the current backend scope is closed with evidence, and mechanical gates can accept AI changes without human guesswork only when the relevant executable checks, tests, benchmarks, and bead evidence have actually run and passed.
 
 ---
 
 ## 45. Normative Runtime Semantics
 
-Every `CompiledNodeKind` variant has exact behavior defined here. Two implementations (IR interpreter, generated Rust) must match on: terminal result, typed error variant and fields, final pc, slot values, slot taints, step states, journal event sequence, action tickets, retry counts, wait/ask scheduling, and replay behavior.
+Every `CompiledNodeKind` variant has exact behavior defined here. The current IR interpreter must produce the specified terminal result, typed error variant and fields, final pc, slot values, slot taints, step states, journal event sequence, action tickets, retry counts, wait/ask scheduling, and replay behavior.
 
 ### StepState Transition Contract
 
@@ -2505,7 +2382,7 @@ Parenthesized groups reset to minimum binding power. Max nesting depth: 64. Max 
 
 ### F64 Status
 
-`ExprType::F64`, `SlotValue::F64(FiniteF64)`, `ConstValue::F64`, `ExprLiteral::F64`, expression float lexing/parsing, bytecode constant lowering, and F64/F64 evaluator arithmetic/comparison arms exist. Strict YAML scalar floats remain forbidden by the YAML profile; float values enter authored workflows through expression strings, runtime slot initialization, or action outputs. Remaining gap: the typechecker still accepts broader numeric coercion than the evaluator and generated Rust parity currently proves only a subset. Mixed I64/F64 arithmetic, generated F64 arithmetic semantics, and codegen lint parity remain open under expression/generated parity beads.
+`ExprType::F64`, `SlotValue::F64(FiniteF64)`, `ConstValue::F64`, `ExprLiteral::F64`, expression float lexing/parsing, bytecode constant lowering, and F64/F64 evaluator arithmetic/comparison arms exist. Strict YAML scalar floats remain forbidden by the YAML profile; float values enter authored workflows through expression strings, runtime slot initialization, or action outputs. Remaining gap: the typechecker still accepts broader numeric coercion than the evaluator. Mixed I64/F64 arithmetic and evaluator/typechecker parity remain current-scope expression evidence gaps. Generated F64 arithmetic semantics and codegen lint parity are deferred with `vb_codegen`.
 
 ### Helper Signatures
 
@@ -2517,12 +2394,12 @@ Parenthesized groups reset to minimum binding power. Max nesting depth: 64. Max 
 | `empty` | 1 | List or Null | Bool | Implemented store-aware for symbol/list/object/null emptiness. |
 | `unique` | 1 | List | List | Implemented store-aware list deduplication preserving first occurrence order. |
 | `contains` | 2 | List, T | Bool | Implemented in current evaluators as store-aware Symbol substring search; list-membership/spec parity evidence remains open. |
-| `starts_with` | 2 | Symbol, Symbol | Bool | Implemented store-aware text helper; generated mode still rejects text helpers requiring runtime symbol store. |
-| `ends_with` | 2 | Symbol, Symbol | Bool | Implemented store-aware text helper; generated mode still rejects text helpers requiring runtime symbol store. |
+| `starts_with` | 2 | Symbol, Symbol | Bool | Implemented store-aware text helper; generated-mode behavior is deferred with `vb_codegen`. |
+| `ends_with` | 2 | Symbol, Symbol | Bool | Implemented store-aware text helper; generated-mode behavior is deferred with `vb_codegen`. |
 | `has` | 2 | Object, Symbol | Bool | Partially converged: `vb_expr` implements object-field lookup, while the core hot evaluator currently uses list membership semantics; helper parity evidence remains open. |
 | `append` | 2 | List, T | List | Implemented store-aware list append. |
 | `append_if` | 3 | List, T, Bool | List | Implemented store-aware conditional append. |
-| `merge` | 2 | Object, Object | Object | Implemented store-aware object merge; typechecker returns `Object`. Generated/runtime parity evidence remains open. |
+| `merge` | 2 | Object, Object | Object | Implemented store-aware object merge; typechecker returns `Object`; interpreter/runtime parity evidence remains open. |
 | `sum` | 1 | List | I64 | Implemented store-aware I64 list sum with overflow rejection; arity remains 1. |
 
 ### Short-Circuit Policy
@@ -2767,7 +2644,8 @@ No allocation after admission, no formatting, no maps, no string operations:
 - `vb_runtime::frame_pool`
 - `vb_runtime::primitives::*`
 - `vb_ipc` decoder after header validation
-- Generated workflow code
+
+Generated workflow code is deferred; if reactivated, it must be classified hot and obey equivalent constraints.
 
 ### Cold Path Modules
 
@@ -2850,18 +2728,18 @@ max_journal_batch_bytes: 1 MiB
 | `dev` | Volatile | On-demand | IR interpreter |
 | `test` | Volatile + deterministic tracing | On-demand | IR interpreter |
 | `turbo` | Journaled | Preallocated frames, bounded queues | IR interpreter |
-| `maxperf` | Strict | All preallocated | Generated Rust |
+
+`maxperf` is deferred to `docs/deferred-codegen-maxperf.md` and is not a current runtime profile requirement.
 
 ---
 
 ## 57. Feature Flag Policy
 
 - Default features: none (all code always compiled).
-- `generated` feature: enables generated workflow compilation support (codegen crate).
 - `bench` feature: enables benchmark-only harness code.
 - `volatile` feature: enables volatile storage mode (test-only).
 - Forbidden features: `json`, `http` in v1 runtime crates.
-- `maxperf` is a profile (Section 34), not a feature.
+- `generated` and `maxperf` are deferred and must not be current default or release features.
 
 ---
 
@@ -2875,7 +2753,7 @@ v1 supported target: `x86_64-unknown-linux-gnu`. Unix domain sockets required. O
 
 ### Trusted Components
 
-Compiled IR, Fjall database, runtime engine, generated Rust code.
+Compiled IR, Fjall database, runtime engine.
 
 ### Untrusted Inputs
 
@@ -2967,7 +2845,7 @@ Fjall v3 acquires an exclusive file lock per database. Only one process may open
 
 ## 62. No-Async Rule
 
-v1 runtime core must not depend on `tokio`, `async-std`, `smol`, `futures` executors, `async_trait`, or async task scheduling. `mio` is the only approved low-level eventing mechanism for IPC. Actions may block only in bounded action worker contexts or return `Suspended`. No async function may appear in `vb_core`, `vb_runtime`, `vb_storage`, `vb_ipc`, or generated workflow code.
+v1 runtime core must not depend on `tokio`, `async-std`, `smol`, `futures` executors, `async_trait`, or async task scheduling. `mio` is the only approved low-level eventing mechanism for IPC. Actions may block only in bounded action worker contexts or return `Suspended`. No async function may appear in `vb_core`, `vb_runtime`, `vb_storage`, or `vb_ipc`.
 
 ---
 
@@ -3515,14 +3393,13 @@ The single-server constraint means:
 
 ### Compilation vs Interpretation
 
-Unlike orchestrators that interpret journal entries against SDK code (opaque foreign processes), `velvet-ballastics` compiles workflows to numeric IR and optionally to generated Rust:
+Unlike orchestrators that interpret journal entries against SDK code (opaque foreign processes), the current `velvet-ballastics` milestone compiles workflows to numeric IR and executes that IR through the interpreter:
 
 | Mode | Execution | When to Use |
 |------|-----------|-------------|
-| IR interpreter | Dispatch through `CompiledNodeKind` enum | Debugging, portability, semantic equivalence tests |
-| Generated Rust | Direct `match` arms on step indices, no dispatch | `maxperf` builds, production throughput |
+| IR interpreter | Dispatch through `CompiledNodeKind` enum | Current backend execution, debugging, portability, replay validation |
 
-Generated Rust must preserve identical observable semantics to IR execution. Equivalence tests are mandatory before any generated mode is accepted for a primitive.
+Generated Rust remains a deferred optimization track. If reactivated, it must preserve identical observable semantics to IR execution before becoming an accepted execution mode.
 
 ### Bounded Execution Contract
 
@@ -3561,7 +3438,7 @@ The CLI is the primary interface for operators and AI agents. It must provide th
 
 ```text
 velvet-ballastics validate <workflow.yaml>
-velvet-ballastics compile  <workflow.yaml> --emit <ir|rust> --out <file>
+velvet-ballastics compile  <workflow.yaml> --emit ir --out <file>
 velvet-ballastics explain  <workflow.yaml> [--emit yaml|postcard]
 velvet-ballastics diff     <workflow.yaml> [--against <old.yaml>] [--emit yaml|postcard]
 velvet-ballastics run      <workflow.yaml> --input-bin <file> --durability <mode> [--db <path>]
@@ -3576,9 +3453,6 @@ velvet-ballastics resume  <run-id> --db <path>
 velvet-ballastics retry   <run-id> --step <step-id> --db <path>
 velvet-ballastics answer  <run-id> --slot <slot-id> --value <file> --db <path>
 velvet-ballastics ipc-serve --socket <path> --db <path>
-velvet-ballastics ui --db <path>
-velvet-ballastics ui --socket <path>
-velvet-ballastics ui --demo-fixture <fixture>
 velvet-ballastics graph <workflow.yaml> --emit yaml
 velvet-ballastics system status --emit yaml
 velvet-ballastics action list --emit yaml
@@ -3593,7 +3467,7 @@ The only supported CLI binary name is `velvet-ballastics`. Short aliases such as
 `vb` are not part of the canonical interface and must not be added as Cargo bin
 targets.
 
-The `ui` command launches the native Makepad command center. `--db <path>` opens embedded local observer mode using storage readers and direct APIs. `--socket <path>` opens attached mode using binary IPC only. `--demo-fixture <fixture>` opens deterministic mock mode for design review, demos, screenshot capture, and UI tests. No UI mode may require HTTP or JSON.
+The `ui` command and native Makepad command center are deferred. They are preserved in `docs/deferred-ui.md` and are not part of the current Backend / IR Interpreter Complete milestone.
 
 ### Single-Step Testing
 
@@ -3710,23 +3584,10 @@ The following phases extend Section 35 for operator-facing features:
 | 55 | Timer wheel | Replace `IndexMap<RunId, PendingTimer>` with `TimerWheel` backed by `BTreeMap<Instant, Vec<TimerEntry>>`. Automatic timer-driven resume in shard tick. Tests: timer firing, cancellation, next-deadline accuracy. |
 | 56 | Collect hardening | Per-run pagination state (replace global Mutex), time-based pagination limit, `RunId`-keyed state. Tests: concurrent collect runs, time limit enforcement, crash-recovery of pagination state. |
 | 57 | Recovery evidence chain | `SlotWritten` + `StepSucceeded` per deterministic step, `UnsupportedRecoveryState` hydration gate, fix stubbed `verify_digests` at `Full` level. Tests: crash recovery with full evidence chain, hydration failure on missing state. |
-| 58 | Codegen expansion | `BuildObject`, `BuildList`, helper expression ops (`Contains`, `Length`, `Empty`, `Sum`, `Count`, `Unique`), `RetryCheck`. IR/generated equivalence tests per newly supported primitive. |
-| 59 | Behavioral property tests | 11 required properties from Section 38: constant folding parity, bytecode/AST parity, digest stability, layout stability, replay determinism, snapshot equivalence, ordering invariants, bound enforcement, state machine, taint safety, IR/generated parity. |
+| 58 | Deferred codegen expansion | Out of current scope. Preserved in `docs/deferred-codegen-maxperf.md`. |
+| 59 | Behavioral property tests | Current-scope properties from Section 38: constant folding parity, bytecode/AST parity, digest stability, layout stability, replay determinism, snapshot equivalence, ordering invariants, bound enforcement, state machine, and taint safety. |
 | 60 | Canonical CLI binary | Cargo.toml exposes only the canonical `velvet-ballastics` binary. Short aliases such as `vb` are rejected to preserve the naming contract. |
-| 61 | UI model artifacts | `vb_ui_model` crate with typed `WorkflowGraph`, `VerificationReport`, `RunInspection`, `RunEvents`, `ReplayReport`, `IncidentReport`, `SystemStatus`, `ActionDescription`, `DoctorReport`, and `AiContextPacket` views. CLI/UI schema parity tests. |
-| 62 | Makepad shell | `vb_ui_makepad` crate, shared app chrome, sidebar, topbar, command buttons, status chips, profile selector, demo fixture loading. |
-| 63 | Design tokens and Figma bridge | Token source in `design/tokens`; generated Makepad token files; Figma-ready SVG/PNG references; token drift checker. |
-| 64 | Graph canvas | Pan/zoom canvas, nodes, curved edges, packet dots, selection, status color rules, taint overlay, layout fixtures. |
-| 65 | Execution observatory | Overview KPIs, shard flow map, active runs table, event ticker, queue pressure indicators, storage/IPC health summary. |
-| 66 | Execution details view | Single-run graph view, event table, step details panel, input/output/details tabs, runtime state coloring. |
-| 67 | Verification certificate view | Verification banner, certificate cards, gate pipeline, accepted artifact panel, warnings, proof summary. |
-| 68 | Replay theater | Journal timeline, playback controls, scrubber, selected event details, slot diffs, recovery decision panel, deterministic replay fixture. |
-| 69 | Incident failure console | Failure banner, failure path graph, evidence chain, action ticket, recovery controls, slot/taint diffs, repair hints. |
-| 70 | Action registry / contract inspector | Action list, selected `ActionContract`, idempotency/side-effect/retry safety, capability requirements, failure codes. |
-| 71 | Storage doctor / AI context | Fjall keyspace health, journal doctor, snapshot/tail status, AI-safe context packet, suggested commands. |
-| 72 | UI motion/performance | Shader-based packet dots, active-node glow, timeline pulse, bounded animation loops, no per-frame allocations after warm-up, UI perf benchmark. |
-| 73 | UI snapshot and overlap gates | Deterministic screenshots for all eight screens, image diff gate, overlap/clipping scanner, canonical spelling scan. |
-| 74 | UI release hardening | Keyboard navigation, accessibility labels, redaction tests, CLI/UI parity tests, demo fixtures, documentation, Makepad dependency audit. |
+| 61-74 | Deferred UI phases | Out of current scope. Preserved in `docs/deferred-ui.md`. |
 
 ---
 
@@ -3749,7 +3610,7 @@ The following are internal engineering targets derived from published benchmarks
 
 | Metric | Restate | Velvet Ballastics | Notes |
 |--------|---------|-------------------|-------|
-| Actions (steps) per second | 94,286 | >= 100,000 | Generated Rust mode must hit this |
+| Actions (steps) per second | 94,286 | Deferred maxperf target | Requires deferred generated Rust/maxperf work. |
 | Full workflows per second (9 steps) | 8,571 | >= 10,000 | Single-server removes replication overhead |
 | Concurrent active runs | 1,200 (test clients) | >= 4,096 | Frame pool capacity |
 
@@ -3769,15 +3630,15 @@ Restate pays for every step:
 4. No async — synchronous deterministic loop
 5. No competing flush — Fjall writes happen through bounded writer queue, not in the hot path
 
-The generated Rust mode adds another advantage: no IR dispatch table lookup. Steps compile to direct `match` arms on constant step indices. This should bring single-step latency under 100 microseconds for pure computation steps (no I/O).
+Generated Rust performance advantages are deferred to `docs/deferred-codegen-maxperf.md`. Current speed claims must be scoped to the IR interpreter.
 
 ### Measurement Contract
 
 Every performance claim must include:
 - `criterion` or `iai-callgrind` output with p50/p95/p99
 - Hardware: CPU model, cores, RAM, disk type (NVMe vs SSD)
-- Build profile: debug, release, maxperf, PGO
-- Execution mode: IR interpreter vs generated Rust
+- Build profile: debug, release, bench for current scope; maxperf/PGO only when the deferred track is active
+- Execution mode: IR interpreter for current scope; generated Rust only when the deferred track is active
 - Durability profile: volatile, journaled, strict
 - Number of concurrent runs
 - Benchmark fixture digest (reproducible)
@@ -3828,7 +3689,7 @@ This prevents unbounded disk growth in long-running production deployments.
 | `run` | Executor | Compiler + Engine + Storage |
 | `run-compiled` | Executor | Engine + Storage |
 | `validate` | Validator | YAML Parser + Validator |
-| `compile` | Compiler | YAML Parser + Validator + Compiler + Codegen |
+| `compile` | Compiler | YAML Parser + Validator + Compiler + IR artifact writer |
 | `explain` | Analyzer | YAML Parser + Validator + Compiler |
 | `diff` | Analyzer | Compiler + Digest comparison |
 | `inspect` | Observer | Storage reader |
@@ -3850,11 +3711,11 @@ If `velvet-ballastics` ever supports distributed operation (v2+), the binary gai
 
 ## 75. AI-Native CLI Control Plane
 
-The CLI is the AI-native control plane. The UI is for humans to see the system. The CLI is for humans and AI agents to operate, verify, repair, replay, and explain the system.
+The CLI is the AI-native control plane. The future UI is for humans to see the system, but it is deferred. The CLI is for humans and AI agents to operate, verify, repair, replay, and explain the system now.
 
 North star:
 
-1. Anything the UI can show, the CLI can emit as structured data.
+1. Anything a future UI can show, the CLI must be able to emit as structured data first.
 2. Anything an operator can inspect, an AI agent can inspect safely.
 3. Anything that fails produces a machine-readable explanation.
 
@@ -4401,9 +4262,9 @@ Stable exit codes:
 
 AI agents can branch on exit codes. No parsing error text.
 
-### CLI-UI Parity Rule
+### Future CLI-UI Parity Rule
 
-No UI-only truth. If the UI shows taint graphs, replay timelines, action tickets, queue pressure, certificate status, or incident repair, the CLI must expose it too.
+No future UI-only truth. If a future UI shows taint graphs, replay timelines, action tickets, queue pressure, certificate status, or incident repair, the CLI must expose it first.
 
 Backend emits typed artifacts:
 
@@ -4416,7 +4277,7 @@ Backend emits typed artifacts:
 - `SystemStatus`
 - `ActionDescription`
 
-CLI and UI are views over those same artifacts. Makepad UI consumes the same data.
+CLI is the current view over those artifacts. Any future UI must consume the same data.
 
 ### CLI Build Order
 
@@ -4430,9 +4291,9 @@ CLI and UI are views over those same artifacts. Makepad UI consumes the same dat
 8. `replay --explain --emit yaml`
 9. `incident --emit yaml`
 10. `system status --emit yaml`
-11. Makepad UI consumes the same data
+11. Future UI consumes the same data after reactivation
 
-Build CLI before fancy UI. The UI should not invent concepts — it visualizes proven backend artifacts.
+Build CLI before any future UI. The UI must not invent concepts — it visualizes proven backend artifacts.
 
 ### The Killer Demo
 
@@ -4448,6 +4309,8 @@ Then hand the output to an AI and ask: *What failed, is it safe to retry, and wh
 ---
 
 ## 76. Workflow Command-Center Front-End
+
+> **Deferred.** The command-center front-end is not part of the current Backend / IR Interpreter Complete milestone. This section is retained as a pointer to future product direction only. The active deferred UI contract lives in `docs/deferred-ui.md` and requires dedicated reactivation beads before implementation.
 
 ### Vision
 
@@ -4806,8 +4669,9 @@ just mutants-smoke
 just bench-build
 just feature-powerset
 just source-length
-just maxperf
 ```
+
+`just maxperf` is deferred with generated Rust and is not part of current release closure.
 
 ### 77.3 Evidence Bundles
 
@@ -5153,15 +5017,7 @@ Verified by `cargo +nightly test --doc --workspace --all-features`. Doc examples
 
 ### 77.18 Trybuild Compile-Fail Suites
 
-For generated code and macros, compile-fail tests pin policy:
-
-- `generated_code_cannot_use_unsafe`
-- `generated_code_cannot_unwrap`
-- `generated_code_cannot_index_unchecked`
-- `generated_code_cannot_reference_yaml_runtime`
-- `public_codegen_contract_rejects_missing_step`
-
-AI generates code that compiles but may violate policy. Compile-fail tests catch this.
+For active public macro/schema contracts, compile-fail tests pin policy. Generated-code trybuild suites are deferred with `vb_codegen`; they become mandatory only if the generated workflow track is reactivated.
 
 ### 77.19 Minimal Repro Generator
 
@@ -5194,7 +5050,7 @@ Every stable contract emitted as data in `contracts/`:
 | `contracts/tests.yaml` | Required test metadata |
 | `contracts/perf-budget.yaml` | Performance regression thresholds |
 
-Codegen produces Rust enums, docs, CLI schemas, UI schemas, AI context, and tests from these sources. Reduces drift. AI reasons from the same source that generates code.
+Current-scope generators may produce Rust enums, docs, CLI schemas, AI context, and tests from these sources. UI schemas and generated workflow code are deferred tracks. Contracts-as-data reduce drift because AI reasons from the same source that generates active code and documentation.
 
 ### 77.21 Failure Explanation
 
@@ -5297,6 +5153,8 @@ This turns AI from "creative coder" into "mechanical implementer."
 ---
 
 ## 78. Makepad UI Implementation Contract
+
+> **Deferred.** Makepad UI implementation is not part of the current core feature set. The preserved future contract lives in `docs/deferred-ui.md`; no current backend bead may be blocked by Makepad, UI model artifacts, screenshot gates, or UI perf gates.
 
 ### Makepad Scope
 
