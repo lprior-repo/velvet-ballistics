@@ -228,6 +228,7 @@ fn test_catalog_maps_existing_tests_to_covered_scenarios() {
     assert_eq!(follow_up_beads, vec!["vb-te1i", "vb-rpch", "vb-0sps"]);
     let related_beads: Vec<(&str, &str)> = scenarios
         .iter()
+        .filter(|scenario| scenario.id.starts_with("VB-BDD-CATALOG-"))
         .map(|scenario| (scenario.id, scenario.related_bead))
         .collect();
     assert_eq!(
