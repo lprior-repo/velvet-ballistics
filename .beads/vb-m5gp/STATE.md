@@ -1,16 +1,16 @@
 bead_id: vb-m5gp
 bead_title: Split vb_compile/src/lib.rs (6127 lines)
 phase: 1
-updated_at: 2026-05-18T22:15:00Z
+updated_at: 2026-05-18T22:06:08Z
 attempt: 5-of-7
 
 # Go-Skill State
 
 source_checkout: /home/lewis/src/velvet-ballistics
 isolated_workspace: /home/lewis/src/go-skill-vb-m5gp
-current_state: 13
-next_state: 14
-status: READY_FOR_LANDING
+current_state: 14
+next_state: 15
+status: READY_FOR_CLEANUP
 
 ## Retry Counters
 
@@ -480,3 +480,23 @@ Proceed to State 2 (`explore`) in isolated workspace only. Use `bd --db /home/le
 - current_state=13
 - next_state=14
 - status=READY_FOR_LANDING
+
+## State 14 Evidence — Landing
+
+- State 14 direct child only; no nested agents used.
+- Precondition verified: `.beads/vb-m5gp/final-evidence-decision.md` contains `STATUS: APPROVED`.
+- Serialized after landed predecessors: local `main` parent before landing was `2e3aab0e` (`chore(vb-f7k6): record landing evidence`), so `vb-5m8w` and `vb-f7k6` were already in main history.
+- Rebased isolated workspace `/home/lewis/src/go-skill-vb-m5gp` onto current `main` with `jj rebase -r @ -d main`; no conflicts.
+- Canonical landing gate `moon ci` passed after rebase: `Tasks: 23 completed`, `Time: 1m 11s 347ms`, nextest summary `11007 tests run: 11007 passed, 0 skipped`.
+- Moved `main` to accepted commit `2e76d618dbbea065f71df3913898ada5746d5d19` (`fix(vb-m5gp): split vb_compile facade`).
+- Pushed `main` to remote with `jj git push --bookmark main`; remote verification `git ls-remote origin refs/heads/main` returned `2e76d618dbbea065f71df3913898ada5746d5d19`.
+- Closed bead with `bd --db /home/lewis/src/velvet-ballistics/.beads/dolt close vb-m5gp --reason "Completed: split vb_compile facade landed on main at 2e76d618 and remote origin/main."`.
+- Synced bead database with `bd --db /home/lewis/src/velvet-ballistics/.beads/dolt dolt push`; command reported `Push complete.`
+- Bead close verification: `bd --db /home/lewis/src/velvet-ballistics/.beads/dolt show vb-m5gp` reports `CLOSED` with the landing close reason.
+- Wrote `.beads/vb-m5gp/landing-report.md` with main, remote, and bead evidence.
+
+## State 14 Routing — Landed
+
+- current_state=14
+- next_state=15
+- status=READY_FOR_CLEANUP
