@@ -38,4 +38,25 @@ Push complete.
 
 ## Main/remote
 
-No production source changes were introduced. Git artifact push is handled by the final jj/git push step if artifact commit is accepted.
+No production source changes were introduced.
+
+Command: `jj bookmark set main -r @ && jj git push --bookmark main`
+
+Observed output:
+
+```text
+Moved 1 bookmarks to qzvonovx 8a8ede9e main* | chore(vb-qi37.22): record dependency closure evidence
+Changes to push to origin:
+  bookmark: main [move forward from 8ddea9e9d4ff to 8a8ede9eb709]
+```
+
+Verification command: `jj git push --bookmark main`
+
+Observed output:
+
+```text
+Bookmark main@origin already matches main
+Nothing changed.
+```
+
+Remote status: main bookmark is pushed; `main@origin` matches local `main`.
