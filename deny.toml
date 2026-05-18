@@ -18,6 +18,15 @@ allow = [
     "Zlib",
 ]
 
+# Bead vb-cd6t: scoped exceptions for release dependencies with reviewed
+# OSI/FSF-free license terms. These are crate-specific so weak-copyleft
+# or uncommon fuzzing licenses are not globally admitted.
+exceptions = [
+    { allow = ["NCSA"], crate = "libfuzzer-sys" },
+    { allow = ["MPL-2.0"], crate = "resvg" },
+    { allow = ["MPL-2.0"], crate = "usvg" },
+]
+
 # Banned licenses are denied by default above.
 # GPL-*, LGPL-*, AGPL-*, SSPL-*, Commons Clause are not in the allow list.
 
@@ -31,6 +40,11 @@ ignore = [
     # retain cargo-audit visibility and revisit when postcard moves to a
     # maintained atomic backend.
     "RUSTSEC-2023-0089",
+    # RUSTSEC-2025-0057: fxhash is pulled transitively by makepad-draw
+    # through vb_ui_makepad. No safe upgrade is available in the current
+    # Makepad line; cargo-vet still requires safe-to-deploy coverage and
+    # this ignore must be removed when Makepad migrates to rustc-hash.
+    "RUSTSEC-2025-0057",
 ]
 
 [sources]
