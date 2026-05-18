@@ -584,7 +584,7 @@ mod bdd_scenarios {
     #[test]
     fn cli_ipc_serve_requires_socket_and_db() {
         let missing_socket = run_cli_failing(&["ipc-serve"]).unwrap();
-        assert_eq!(missing_socket.status.code(), Some(1));
+        assert_eq!(missing_socket.status.code(), Some(2)); // ValidationFailed (exit code 2) per CliExitCode remapping (DEFECT-001 fix)
         let socket_output = format!(
             "{}{}",
             String::from_utf8_lossy(&missing_socket.stdout),
@@ -601,7 +601,7 @@ mod bdd_scenarios {
             "target/velvet-ballastics-ipc-test.sock",
         ])
         .unwrap();
-        assert_eq!(missing_db.status.code(), Some(1));
+        assert_eq!(missing_db.status.code(), Some(2)); // ValidationFailed (exit code 2) per CliExitCode remapping (DEFECT-001 fix)
         let db_output = format!(
             "{}{}",
             String::from_utf8_lossy(&missing_db.stdout),
