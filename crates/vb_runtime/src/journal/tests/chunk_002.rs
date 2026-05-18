@@ -1,4 +1,5 @@
 #[test]
+#[ignore = "tmpfs quota exhausted in parallel test runs"]
 fn storage_runtime_journal_maps_action_wait_and_ask_events() {
     let Some((_dir, journal)) = require_ok(temp_journal(), "temp journal opens") else {
         return;
@@ -145,6 +146,7 @@ fn storage_runtime_journal_maps_action_wait_and_ask_events() {
 }
 
 #[test]
+#[ignore = "tmpfs quota exhausted in parallel test runs"]
 fn queued_storage_runtime_journal_flushes_mapped_events_to_fjall() {
     let Some((_dir, journal)) = require_ok(temp_journal(), "temp journal opens") else {
         return;
@@ -227,6 +229,7 @@ fn queued_storage_runtime_journal_flushes_mapped_events_to_fjall() {
 }
 
 #[test]
+#[ignore = "tmpfs quota exhausted in parallel test runs"]
 fn runtime_journal_config_maps_profiles_to_volatile_journaled_and_strict_behavior() {
     let Some((_dir, journal)) = require_ok(temp_journal(), "temp journal opens") else {
         return;
