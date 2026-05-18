@@ -8,6 +8,10 @@
 //! and resource_contract. Gate 8 only reads accessor paths against slot_count
 //! and symbols_count, but the harnesses prove that arbitrary WorkflowParts shapes
 //! never cause panics and always yield deterministic Ok/Err outcomes.
+//!
+//! PO-014 support repair: this cfg(kani)-only artifact must compile when the
+//! vb_compile idempotency parity harness is selected, because Cargo compiles the
+//! dependent vb_validate crate under cfg(kani) first.
 
 use crate::{ValidationError, gates::validate_gate_08_accessor_path_segments};
 use vb_core::ids::{SlotIdx, StepIdx, SymbolId, WorkflowDigest};

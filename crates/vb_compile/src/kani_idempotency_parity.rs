@@ -2,7 +2,7 @@
 //! and is_statically_idempotent_contract (vb_validate).
 //!
 //! Scope: vb_compile + vb_validate (cross-crate)
-//! Obligation: KANI-PARITY-006 (CRITICAL)
+//! Obligation: PO-014 / KANI-PARITY-006 (CRITICAL)
 //!
 //! Note: This module is compiled only under `#[cfg(kani)]`.
 
