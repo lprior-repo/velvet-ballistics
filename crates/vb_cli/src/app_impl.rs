@@ -2215,9 +2215,9 @@ fn cmd_inspect(run_id: &str, db: &std::path::Path, output: OutputFormat) -> Exit
             write_locked_read_surface("inspect", run_id, output);
             return ExitCode::SUCCESS;
         }
-        Err(_) => {
-            write_locked_read_surface("inspect", run_id, output);
-            return ExitCode::SUCCESS;
+        Err(error) => {
+            report_storage_open_error(&error, db, output);
+            return CliExitCode::StorageError.into();
         }
     };
 
@@ -2298,9 +2298,13 @@ fn cmd_events(
 
     let journal = match vb_storage::FjallJournal::open(db, None) {
         Ok(j) => j,
-        Err(_) => {
+        Err(vb_storage::JournalError::ProcessLockHeld { .. }) => {
             write_locked_read_surface("events", run_id, output);
             return ExitCode::SUCCESS;
+        }
+        Err(error) => {
+            report_storage_open_error(&error, db, output);
+            return CliExitCode::StorageError.into();
         }
     };
 
@@ -2627,9 +2631,13 @@ fn cmd_replay(run_id: &str, db: &std::path::Path, output: OutputFormat) -> ExitC
 
     let journal = match vb_storage::FjallJournal::open(db, None) {
         Ok(j) => j,
-        Err(_) => {
+        Err(vb_storage::JournalError::ProcessLockHeld { .. }) => {
             write_locked_read_surface("replay", run_id, output);
             return ExitCode::SUCCESS;
+        }
+        Err(error) => {
+            report_storage_open_error(&error, db, output);
+            return CliExitCode::StorageError.into();
         }
     };
 
