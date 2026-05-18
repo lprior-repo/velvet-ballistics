@@ -86,7 +86,7 @@ mod tests {
     struct CleanupPath<'a>(&'a std::path::Path);
     impl Drop for CleanupPath<'_> {
         fn drop(&mut self) {
-            drop(std::fs::remove_file(self.0));
+            if let Err(_cleanup_error) = std::fs::remove_file(self.0) {}
         }
     }
 

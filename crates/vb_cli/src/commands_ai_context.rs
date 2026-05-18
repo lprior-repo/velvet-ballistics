@@ -628,12 +628,10 @@ fn json_out(value: &Value, format: OutputFormat) {
 fn write_stderr_best_effort(args: std::fmt::Arguments<'_>) {
     let stderr = io::stderr();
     let mut handle = stderr.lock();
-    match handle
+    if let Err(_write_error) = handle
         .write_fmt(args)
         .and_then(|()| handle.write_all(b"\n"))
-    {
-        Ok(()) | Err(_) => {}
-    }
+    {}
 }
 
 fn json_error(value: &Value, format: OutputFormat) {

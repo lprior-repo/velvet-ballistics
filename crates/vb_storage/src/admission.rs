@@ -509,7 +509,7 @@ mod tests {
 
     impl Drop for TestJournal {
         fn drop(&mut self) {
-            let _ = std::fs::remove_dir_all(&self.path);
+            if let Err(_cleanup_error) = std::fs::remove_dir_all(&self.path) {}
         }
     }
 

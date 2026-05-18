@@ -4909,12 +4909,10 @@ fn write_stderr_line(args: std::fmt::Arguments<'_>) {
 fn write_stderr_best_effort(args: std::fmt::Arguments<'_>) {
     let stderr = io::stderr();
     let mut handle = stderr.lock();
-    match handle
+    if let Err(_write_error) = handle
         .write_fmt(args)
         .and_then(|()| handle.write_all(b"\n"))
-    {
-        Ok(()) | Err(_) => {}
-    }
+    {}
 }
 
 /// Output a JSON value to stdout in the specified format.
