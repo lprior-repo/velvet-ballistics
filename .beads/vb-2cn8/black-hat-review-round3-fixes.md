@@ -33,11 +33,11 @@ if snapshot.run != run_id {
 
 | Test | Line | Status | Rationale |
 |------|------|--------|-----------|
-| `action_abi_mismatch_returns_typed_error` | 1736 | IGNORED (kept) | `#[ignore = "vb-2bzz: ActionAbiMismatch not yet reachable..."]` |
-| `policy_digest_mismatch_returns_typed_error` | 1806 | IGNORED (kept) | `#[ignore = "vb-2bzz: PolicyDigestMismatch not yet reachable..."]` |
+| `action_abi_mismatch_returns_typed_error` | 1736 | IGNORED (kept) | `#[ignore = "vb-ty9: ActionAbiMismatch not yet reachable..."]` |
+| `policy_digest_mismatch_returns_typed_error` | 1806 | IGNORED (kept) | `#[ignore = "vb-ty9: PolicyDigestMismatch not yet reachable..."]` |
 | `terminal_state_mismatch_returns_typed_error` | ~1860 | **REMOVED** | LETHAL-3: TerminalStateMismatch not reachable via `recover_runtime_summary` (no expected-terminal parameter) |
 
-**Assessment:** CORRECT. The removed test is documented at lines 1858-1870 with clear rationale and a DEFERRED_GLOBAL action. The two kept tests maintain `#[ignore]` with proper vb-2bzz tracking.
+**Assessment:** CORRECT. The removed test is documented at lines 1858-1870 with clear rationale and a DEFERRED_GLOBAL action. The two kept tests maintain `#[ignore]` with proper vb-ty9 tracking.
 
 ### check_policy Method Addition
 **File:** `crates/vb_core/src/budget.rs:647-671`

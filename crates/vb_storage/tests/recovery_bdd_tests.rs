@@ -1729,11 +1729,11 @@ fn snapshot_tail_monotonic_slot_overwrite_preserves_tail_value() {
 // GA-015a / B-015: Non-idempotent action blocked returns typed error
 // NOTE: ActionAbiMismatch is defined but not yet reachable through the current
 // public recovery API because no action ABI digest lookup/input exists.
-// Tracked by vb-2bzz.
+// Tracked by vb-ty9.
 // ---------------------------------------------------------------------------
 
 #[test]
-#[ignore = "vb-2bzz: ActionAbiMismatch not yet reachable because recovery lacks an action ABI digest lookup/input."]
+#[ignore = "vb-ty9: ActionAbiMismatch not yet reachable because recovery lacks an action ABI digest lookup/input."]
 fn action_abi_mismatch_returns_typed_error() {
     let dir = TempDir::new().expect("temp dir should be created");
     let run = RunId::new(15001);
@@ -1783,7 +1783,7 @@ fn action_abi_mismatch_returns_typed_error() {
             // deferred GAP cannot become a hollow pass.
             panic!(
                 "ActionAbiMismatch not yet implemented: recover_full_journal returned Ok \
-                 instead of Err(RecoveryError::ActionAbiMismatch). See vb-2bzz."
+                 instead of Err(RecoveryError::ActionAbiMismatch). See vb-ty9."
             );
         }
         Err(other) => {
@@ -1799,11 +1799,11 @@ fn action_abi_mismatch_returns_typed_error() {
 // MAJOR-1: PolicyDigestMismatch — exact assertion
 // NOTE: PolicyDigestMismatch is defined but not yet reachable through the
 // current public recovery API because no expected policy digest lookup/input
-// exists. Tracked by vb-2bzz.
+// exists. Tracked by vb-ty9.
 // ---------------------------------------------------------------------------
 
 #[test]
-#[ignore = "vb-2bzz: PolicyDigestMismatch not yet reachable because recovery lacks an expected policy digest lookup/input."]
+#[ignore = "vb-ty9: PolicyDigestMismatch not yet reachable because recovery lacks an expected policy digest lookup/input."]
 fn policy_digest_mismatch_returns_typed_error() {
     let dir = TempDir::new().expect("temp dir should be created");
     let run = RunId::new(15002);
@@ -1843,7 +1843,7 @@ fn policy_digest_mismatch_returns_typed_error() {
             // deferred GAP cannot become a hollow pass.
             panic!(
                 "PolicyDigestMismatch not yet implemented: recover_full_journal returned Ok \
-                 instead of Err(RecoveryError::PolicyDigestMismatch). See vb-2bzz."
+                 instead of Err(RecoveryError::PolicyDigestMismatch). See vb-ty9."
             );
         }
         Err(other) => {
