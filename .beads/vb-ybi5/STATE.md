@@ -2,7 +2,7 @@ bead_id: vb-ybi5
 bead_title: quality: fix verify-standard Kani ignored fallible matches
 source_checkout: /home/lewis/src/velvet-ballistics
 isolated_workspace: /home/lewis/isolated/go-skill-vb-ybi5
-current_state: 13
+current_state: 15
 attempt: 1-of-7
 
 State evidence:
@@ -15,4 +15,5 @@ State evidence:
 - State 12: black-hat local review approved: the scanner violation is removed without an allow/waiver and proof assertions are stronger than before.
 - State 13: evidence approved for bead-local acceptance. Moon CI was attempted and failed on unrelated pre-existing global fmt/check debt outside touched file; acceptance gate remains verify-standard per bead criteria.
 
-Next: State 14 landing if user/repo policy accepts DEFERRED_GLOBAL moon-ci debt for unrelated files.
+State 14: landed to remote main at `b14d0de7`; bead closed; `bd dolt push` succeeded.
+State 15: cleanup report written; workspace preserved for audit.
