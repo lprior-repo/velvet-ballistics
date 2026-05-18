@@ -532,42 +532,41 @@ fn yaml_with_mapping_entries(count: usize) -> String {
 }
 
 #[test]
-fn sequence_with_9995_items_accepted() {
-    // The block scalar structure adds ~5 nodes of overhead per test YAML.
-    // With 9,995 items, the total ~10,000 is at the limit.
-    let yaml = yaml_with_sequence_items(9_995);
+fn sequence_with_10_000_items_accepted() {
+    // At the limit (10,000), sequence should be accepted
+    let yaml = yaml_with_sequence_items(10_000);
     let result = validate_yaml_profile(&yaml);
     assert!(
         matches!(result, Ok(())),
-        "sequence with 9,995 items should be accepted, got {result:?}"
+        "sequence with exactly 10,000 items should be accepted, got {result:?}"
     );
 }
 
 #[test]
-fn sequence_with_9997_items_rejected() {
-    // With 9,997 items, total ~10,002 exceeds limit → SequenceTooLong
-    let yaml = yaml_with_sequence_items(9_997);
+fn sequence_with_10_001_items_rejected() {
+    // One over the limit (10,001) should be rejected with SequenceTooLong
+    let yaml = yaml_with_sequence_items(10_001);
     let result = validate_yaml_profile(&yaml);
     assert!(
         matches!(result, Err(YamlError::SequenceTooLong { .. })),
-        "sequence with 9,997 items should be rejected with SequenceTooLong, got {result:?}"
+        "sequence with 10,001 items should be rejected with SequenceTooLong, got {result:?}"
     );
 }
 
 #[test]
-fn mapping_with_1020_entries_accepted() {
-    // Just under the limit with accounting for test structure overhead
-    let yaml = yaml_with_mapping_entries(1_020);
+fn mapping_with_1024_entries_accepted() {
+    // At the limit (1,024), mapping should be accepted
+    let yaml = yaml_with_mapping_entries(1_024);
     let result = validate_yaml_profile(&yaml);
     assert!(
         matches!(result, Ok(())),
-        "mapping with 1,020 entries should be accepted, got {result:?}"
+        "mapping with exactly 1,024 entries should be accepted, got {result:?}"
     );
 }
 
 #[test]
 fn mapping_with_1025_entries_rejected() {
-    // Over the limit should be rejected with MappingTooLarge
+    // One over the limit (1,025) should be rejected with MappingTooLarge
     let yaml = yaml_with_mapping_entries(1_025);
     let result = validate_yaml_profile(&yaml);
     assert!(

@@ -175,13 +175,11 @@ pub(crate) fn collect_and_validate_events(
             }
             saphyr_parser::Event::MappingEnd => {
                 // Pop the mapping counter and merge into parent if nested.
-                if let Some(count) = map_counters.pop() {
-                    if let Some(parent_count) = map_counters.last_mut() {
-                        *parent_count = parent_count.checked_add(count).ok_or(YamlError::NodeLimitExceeded {
-                            count: u32::MAX,
-                            max: limits.max_nodes,
-                        })?;
-                    }
+                if let Some((count, parent_count)) = map_counters.pop().zip(map_counters.last_mut()) {
+                    *parent_count = parent_count.checked_add(count).ok_or(YamlError::NodeLimitExceeded {
+                        count: u32::MAX,
+                        max: limits.max_nodes,
+                    })?;
                 }
                 in_mapping.pop();
                 expecting_key.pop();
@@ -189,13 +187,11 @@ pub(crate) fn collect_and_validate_events(
             }
             saphyr_parser::Event::SequenceEnd => {
                 // Pop the sequence counter and merge into parent if nested.
-                if let Some(count) = seq_counters.pop() {
-                    if let Some(parent_count) = seq_counters.last_mut() {
-                        *parent_count = parent_count.checked_add(count).ok_or(YamlError::NodeLimitExceeded {
-                            count: u32::MAX,
-                            max: limits.max_nodes,
-                        })?;
-                    }
+                if let Some((count, parent_count)) = seq_counters.pop().zip(seq_counters.last_mut()) {
+                    *parent_count = parent_count.checked_add(count).ok_or(YamlError::NodeLimitExceeded {
+                        count: u32::MAX,
+                        max: limits.max_nodes,
+                    })?;
                 }
                 in_mapping.pop();
                 depth = depth.saturating_sub(1);
