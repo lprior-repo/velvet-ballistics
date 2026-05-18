@@ -371,7 +371,7 @@ mod tests {
     }
 
     #[test]
-    fn test_validation_error_eq() {
+    fn test_validation_error_eq_positive_negative() {
         assert_eq!(ValidationError::InvalidMagic, ValidationError::InvalidMagic);
         assert_eq!(ValidationError::PayloadTooLarge, ValidationError::PayloadTooLarge);
         assert_ne!(ValidationError::InvalidMagic, ValidationError::PayloadTooLarge);
@@ -439,5 +439,112 @@ mod tests {
         assert_eq!(header.flags, 0xFF);
         assert_eq!(header.schema, 0x12345678);
         assert_eq!(header.payload_len(), 0xEEFF0011_AABBCCDD_u64);
+    }
+
+    // ── Derived traits ──────────────────────────────────────────────────────
+
+    #[test]
+    fn test_envelope_header_debug() {
+        let header = EnvelopeHeader::new();
+        let debug = format!("{:?}", header);
+        assert!(debug.contains("EnvelopeHeader"));
+        assert!(debug.contains("magic"));
+        assert!(debug.contains("version"));
+    }
+
+    #[test]
+    fn test_envelope_header_clone() {
+        let header = EnvelopeHeader::new();
+        let cloned = header.clone();
+        assert_eq!(header, cloned);
+    }
+
+    #[test]
+    fn test_envelope_header_copy() {
+        let header = EnvelopeHeader::new();
+        let _copied: EnvelopeHeader = header;
+        assert_eq!(header.magic, EnvelopeHeader::MAGIC_VALUE);
+    }
+
+    #[test]
+    fn test_envelope_header_partial_eq_positive() {
+        let a = EnvelopeHeader::new();
+        let b = EnvelopeHeader::new();
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn test_envelope_header_partial_eq_negative() {
+        let mut a = EnvelopeHeader::new();
+        let b = EnvelopeHeader::new();
+        a.magic = 0xDEADBEEF;
+        assert_ne!(a, b);
+    }
+
+    #[test]
+    fn test_envelope_header_eq() {
+        let mut a = EnvelopeHeader::new();
+        let mut b = EnvelopeHeader::new();
+        assert!(a == b);
+        a.version = 2;
+        assert!(a != b);
+        b.version = 2;
+        assert!(a == b);
+    }
+
+    #[test]
+    fn test_validation_error_clone_positive() {
+        let err = ValidationError::HeaderCrcMismatch;
+        let cloned = err.clone();
+        assert_eq!(err, cloned);
+    }
+
+    #[test]
+    fn test_validation_error_copy() {
+        let err = ValidationError::DigestMismatch;
+        let _copied: ValidationError = err;
+        assert_eq!(err, ValidationError::DigestMismatch);
+    }
+
+    #[test]
+    fn test_validation_error_partial_eq() {
+        assert_eq!(ValidationError::InvalidMagic, ValidationError::InvalidMagic);
+        assert_ne!(ValidationError::InvalidMagic, ValidationError::PayloadTooLarge);
+    }
+
+    #[test]
+    fn test_validation_error_eq() {
+        assert!(ValidationError::InvalidMagic == ValidationError::InvalidMagic);
+        assert!(ValidationError::PayloadTooLarge != ValidationError::HeaderCrcMismatch);
+    }
+
+    #[test]
+    fn test_validation_result_copy() {
+        let ok: ValidationResult = ValidationResult::Ok;
+        let _copied_ok: ValidationResult = ok;
+        let err: ValidationResult = ValidationResult::Err(ValidationError::InvalidMagic);
+        let _copied_err: ValidationResult = err;
+        assert!(matches!(_copied_err, ValidationResult::Err(ValidationError::InvalidMagic)));
+    }
+
+    #[test]
+    fn test_validation_result_partial_eq() {
+        assert_eq!(ValidationResult::Ok, ValidationResult::Ok);
+        assert_ne!(ValidationResult::Ok, ValidationResult::Err(ValidationError::InvalidMagic));
+        assert_eq!(
+            ValidationResult::Err(ValidationError::PayloadTooLarge),
+            ValidationResult::Err(ValidationError::PayloadTooLarge)
+        );
+        assert_ne!(
+            ValidationResult::Err(ValidationError::PayloadTooLarge),
+            ValidationResult::Err(ValidationError::HeaderCrcMismatch)
+        );
+    }
+
+    #[test]
+    fn test_validation_result_eq_via_assert() {
+        assert!(ValidationResult::Ok == ValidationResult::Ok);
+        assert!(ValidationResult::Ok != ValidationResult::Err(ValidationError::InvalidMagic));
+        assert!(ValidationResult::Err(ValidationError::PayloadTooLarge) == ValidationResult::Err(ValidationError::PayloadTooLarge));
     }
 }

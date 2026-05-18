@@ -297,4 +297,90 @@ mod tests {
         let b = [Taint::Clean, Taint::DerivedFromSecret, Taint::Secret];
         assert_eq!(join_many(&a), join_many(&b));
     }
+
+    // ── Taint derived traits ──────────────────────────────────────────────
+
+    #[test]
+    fn test_taint_debug() {
+        assert_eq!(format!("{:?}", Taint::Clean), "Clean");
+        assert_eq!(format!("{:?}", Taint::DerivedFromSecret), "DerivedFromSecret");
+        assert_eq!(format!("{:?}", Taint::Secret), "Secret");
+    }
+
+    #[test]
+    fn test_taint_clone() {
+        assert_eq!(Taint::Clean.clone(), Taint::Clean);
+        assert_eq!(Taint::DerivedFromSecret.clone(), Taint::DerivedFromSecret);
+        assert_eq!(Taint::Secret.clone(), Taint::Secret);
+    }
+
+    #[test]
+    fn test_taint_copy() {
+        let t: Taint = Taint::DerivedFromSecret;
+        let _copied: Taint = t;
+        assert_eq!(t, Taint::DerivedFromSecret);
+    }
+
+    #[test]
+    fn test_taint_partial_eq_positive() {
+        assert_eq!(Taint::Clean, Taint::Clean);
+        assert_eq!(Taint::DerivedFromSecret, Taint::DerivedFromSecret);
+        assert_eq!(Taint::Secret, Taint::Secret);
+    }
+
+    #[test]
+    fn test_taint_partial_eq_negative() {
+        assert_ne!(Taint::Clean, Taint::DerivedFromSecret);
+        assert_ne!(Taint::Clean, Taint::Secret);
+        assert_ne!(Taint::DerivedFromSecret, Taint::Secret);
+    }
+
+    #[test]
+    fn test_taint_eq() {
+        assert!(Taint::Clean == Taint::Clean);
+        assert!(Taint::Secret != Taint::Clean);
+        assert!(Taint::DerivedFromSecret == Taint::DerivedFromSecret);
+    }
+
+    // ── all_lattice_laws additional combos ─────────────────────────────────
+
+    #[test]
+    fn test_all_lattice_laws_clean_secret_derived() {
+        assert!(all_lattice_laws(Taint::Clean, Taint::Secret, Taint::DerivedFromSecret));
+    }
+
+    #[test]
+    fn test_all_lattice_laws_secret_derived_clean() {
+        assert!(all_lattice_laws(Taint::Secret, Taint::DerivedFromSecret, Taint::Clean));
+    }
+
+    #[test]
+    fn test_all_lattice_laws_derived_clean_secret() {
+        assert!(all_lattice_laws(Taint::DerivedFromSecret, Taint::Clean, Taint::Secret));
+    }
+
+    #[test]
+    fn test_all_lattice_laws_secret_clean_derived() {
+        assert!(all_lattice_laws(Taint::Secret, Taint::Clean, Taint::DerivedFromSecret));
+    }
+
+    // ── join_taint explicit rank comparison cases ───────────────────────────
+
+    #[test]
+    fn test_join_taint_derived_wins_over_clean() {
+        assert_eq!(join_taint(Taint::DerivedFromSecret, Taint::Clean), Taint::DerivedFromSecret);
+    }
+
+    #[test]
+    fn test_join_taint_secret_wins_over_both() {
+        assert_eq!(join_taint(Taint::Secret, Taint::DerivedFromSecret), Taint::Secret);
+        assert_eq!(join_taint(Taint::Secret, Taint::Clean), Taint::Secret);
+        assert_eq!(join_taint(Taint::DerivedFromSecret, Taint::Secret), Taint::Secret);
+    }
+
+    #[test]
+    fn test_join_taint_equal_ranks_keeps_first() {
+        assert_eq!(join_taint(Taint::DerivedFromSecret, Taint::DerivedFromSecret), Taint::DerivedFromSecret);
+        assert_eq!(join_taint(Taint::Secret, Taint::Secret), Taint::Secret);
+    }
 }

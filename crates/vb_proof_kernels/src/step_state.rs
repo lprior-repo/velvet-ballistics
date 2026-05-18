@@ -363,4 +363,119 @@ mod tests {
     fn test_all_transitions_exhaustive_returns_true() {
         assert!(all_transitions_exhaustive());
     }
+
+    // ── StepState derived traits ───────────────────────────────────────────
+
+    #[test]
+    fn test_step_state_debug() {
+        let state = StepState::Pending;
+        let debug = format!("{:?}", state);
+        assert_eq!(debug, "Pending");
+
+        let state = StepState::Succeeded;
+        assert_eq!(format!("{:?}", state), "Succeeded");
+
+        let state = StepState::Failed;
+        assert_eq!(format!("{:?}", state), "Failed");
+
+        let state = StepState::Cancelled;
+        assert_eq!(format!("{:?}", state), "Cancelled");
+
+        let state = StepState::Skipped;
+        assert_eq!(format!("{:?}", state), "Skipped");
+
+        let state = StepState::Waiting;
+        assert_eq!(format!("{:?}", state), "Waiting");
+
+        let state = StepState::Asking;
+        assert_eq!(format!("{:?}", state), "Asking");
+
+        let state = StepState::Running;
+        assert_eq!(format!("{:?}", state), "Running");
+    }
+
+    #[test]
+    fn test_step_state_clone() {
+        let state = StepState::Running;
+        let cloned = state.clone();
+        assert_eq!(cloned, state);
+    }
+
+    #[test]
+    fn test_step_state_copy() {
+        let state = StepState::Waiting;
+        let _copied: StepState = state;
+        assert_eq!(state, StepState::Waiting);
+    }
+
+    #[test]
+    fn test_step_state_partial_eq_positive() {
+        assert_eq!(StepState::Pending, StepState::Pending);
+        assert_eq!(StepState::Running, StepState::Running);
+        assert_eq!(StepState::Waiting, StepState::Waiting);
+        assert_eq!(StepState::Asking, StepState::Asking);
+        assert_eq!(StepState::Succeeded, StepState::Succeeded);
+        assert_eq!(StepState::Failed, StepState::Failed);
+        assert_eq!(StepState::Cancelled, StepState::Cancelled);
+        assert_eq!(StepState::Skipped, StepState::Skipped);
+    }
+
+    #[test]
+    fn test_step_state_partial_eq_negative() {
+        assert_ne!(StepState::Pending, StepState::Running);
+        assert_ne!(StepState::Running, StepState::Succeeded);
+        assert_ne!(StepState::Waiting, StepState::Asking);
+        assert_ne!(StepState::Succeeded, StepState::Failed);
+        assert_ne!(StepState::Cancelled, StepState::Skipped);
+    }
+
+    #[test]
+    fn test_step_state_eq() {
+        assert!(StepState::Pending == StepState::Pending);
+        assert!(StepState::Running != StepState::Pending);
+        assert!(StepState::Failed == StepState::Failed);
+    }
+
+    // ── is_valid_transition exhaustive idempotent ───────────────────────────
+
+    #[test]
+    fn test_is_valid_transition_all_idempotent() {
+        assert!(is_valid_transition(StepState::Pending, StepState::Pending));
+        assert!(is_valid_transition(StepState::Waiting, StepState::Waiting));
+        assert!(is_valid_transition(StepState::Asking, StepState::Asking));
+        assert!(is_valid_transition(StepState::Running, StepState::Running));
+    }
+
+    #[test]
+    fn test_is_valid_transition_waiting_asking_self() {
+        assert!(is_valid_transition(StepState::Waiting, StepState::Waiting));
+        assert!(is_valid_transition(StepState::Asking, StepState::Asking));
+    }
+
+    // ── next_states coverage ────────────────────────────────────────────────
+
+    #[test]
+    fn test_next_states_waiting() {
+        let next = next_states(StepState::Waiting);
+        assert!(next.contains(&StepState::Waiting));
+        assert!(next.contains(&StepState::Running));
+        assert_eq!(next.len(), 2);
+    }
+
+    #[test]
+    fn test_next_states_asking() {
+        let next = next_states(StepState::Asking);
+        assert!(next.contains(&StepState::Asking));
+        assert!(next.contains(&StepState::Running));
+        assert_eq!(next.len(), 2);
+    }
+
+    #[test]
+    fn test_next_states_terminal_unique() {
+        for terminal in terminal_states() {
+            let next = next_states(terminal);
+            assert_eq!(next.len(), 1);
+            assert_eq!(next[0], terminal);
+        }
+    }
 }
