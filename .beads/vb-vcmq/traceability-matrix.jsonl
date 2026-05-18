@@ -1,0 +1,4 @@
+{"requirement_id":"REQ-001","contract":"cargo-public-api installed","proofs":["PO-001"],"tests":["cargo public-api --version"],"evidence":["install command output in session","machine-gate-report.md"],"status":"PASS"}
+{"requirement_id":"REQ-002","contract":"do not fake unsupported exact workspace command","proofs":["PO-002"],"tests":["public-api-workspace-unsupported.log"],"evidence":[".beads/vb-vcmq/public-api-workspace-unsupported.log"],"status":"WAIVED"}
+{"requirement_id":"REQ-003","contract":"compensating evidence covers package API surfaces","proofs":["PO-003"],"tests":["per-package cargo public-api"],"evidence":[".beads/vb-vcmq/public-api-per-package.log"],"status":"PASS"}
+{"requirement_id":"REQ-004","contract":"unrelated verify debt classified","proofs":["PO-004"],"tests":["moon run :verify-standard"],"evidence":[".beads/vb-vcmq/verify-standard.log"],"status":"DEFERRED_GLOBAL"}
