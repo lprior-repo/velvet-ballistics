@@ -18,7 +18,7 @@ fn shard_timer_rejects_run_without_pending_timer() {
     );
     assert_eq!(shard.tick(), Ok(true));
     // When timer fires for the run
-    assert_eq!(shard.enqueue(ShardCommand::TimerFired { run }), Ok(()));
+    assert_eq!(shard.enqueue(invalid_timer_command(run)), Ok(()));
     // Then tick rejects it because no timer was registered
     assert_eq!(shard.tick(), Err(RuntimeError::InvalidTimerFire));
 }
@@ -67,7 +67,7 @@ fn shard_timer_fired_advances_timed_wait_to_finish() {
         Ok(())
     );
     assert_eq!(shard.tick(), Ok(true));
-    assert_eq!(shard.enqueue(ShardCommand::TimerFired { run }), Ok(()));
+    assert_eq!(timer_command(&shard, run).map(|command| shard.enqueue(command)), Some(Ok(())));
     assert_eq!(shard.tick(), Ok(true));
 
     assert_eq!(shard.pending_timers.len(), 0);
@@ -81,13 +81,11 @@ fn shard_timer_returns_error_for_unknown_run() {
     let mut shard = Shard::new(config);
     // When timer fires for a non-existent run
     assert_eq!(
-        shard.enqueue(ShardCommand::TimerFired {
-            run: super::RunId::new(777),
-        }),
+        shard.enqueue(invalid_timer_command(super::RunId::new(777))),
         Ok(())
     );
-    // Then tick returns RunNotFound
-    assert_eq!(shard.tick(), Err(RuntimeError::RunNotFound));
+    // Then tick rejects missing timer authority.
+    assert_eq!(shard.tick(), Err(RuntimeError::InvalidTimerFire));
 }
 
 #[test]

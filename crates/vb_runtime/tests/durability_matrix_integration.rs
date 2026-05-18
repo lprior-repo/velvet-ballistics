@@ -473,7 +473,15 @@ fn timer_fired_persists_before_ack() {
 
     let _ = journal.snapshot().unwrap();
 
-    shard.enqueue(ShardCommand::TimerFired { run }).unwrap();
+    let entry = shard.timer_entry(run).unwrap();
+    shard
+        .enqueue(ShardCommand::TimerFired {
+            run: entry.run,
+            generation: entry.generation,
+            deadline: entry.deadline,
+            kind: entry.kind,
+        })
+        .unwrap();
     shard.tick().unwrap();
 
     let events = journal.snapshot().unwrap();

@@ -10,6 +10,7 @@ use vb_core::workflow::CompiledWorkflow;
 
 use crate::counters::{CounterSnapshot, RuntimeMetricsSnapshot, ShardMetricsSnapshot};
 use crate::journal::SharedRuntimeJournal;
+use crate::shard::timer_wheel::TimerEntry;
 use crate::shard::{AskAnswer, InspectResponse, Shard, ShardCommand, ShardConfig, ShardDirective};
 use crate::trace::TraceEvent;
 use crate::{RuntimeError, RuntimeResult};
@@ -356,10 +357,27 @@ impl Runtime {
         shard.enqueue(ShardCommand::AskAnswered { answer })
     }
 
-    /// Advances a run whose registered wait or ask timer fired externally.
+    /// Legacy run-only timer delivery is fail-closed because it carries no authority.
     pub fn timer_fired(&self, run: RunId) -> RuntimeResult<()> {
+        let _shard = self.shard_for(run)?;
+        Err(RuntimeError::InvalidTimerFire)
+    }
+
+    /// Captures the current timer authority for tests and typed scheduler handoff.
+    pub fn capture_timer_entry(&self, run: RunId) -> RuntimeResult<TimerEntry> {
         let shard = self.shard_for(run)?;
-        shard.enqueue(ShardCommand::TimerFired { run })
+        shard.timer_entry(run).ok_or(RuntimeError::InvalidTimerFire)
+    }
+
+    /// Advances a run from a timer-wheel-captured authority entry.
+    pub fn timer_entry_fired(&self, entry: TimerEntry) -> RuntimeResult<()> {
+        let shard = self.shard_for(entry.run)?;
+        shard.enqueue(ShardCommand::TimerFired {
+            run: entry.run,
+            generation: entry.generation,
+            deadline: entry.deadline,
+            kind: entry.kind,
+        })
     }
 
     /// Takes the latest inspect response from the run's shard.
@@ -2216,8 +2234,11 @@ mod tests {
         assert_eq!(submit_action_then_finish(&runtime, run2, wf2), Ok(()));
         assert_eq!(runtime.tick_all(), Ok(true));
 
-        // Both runs are now in wait state. Fire timer for run1 only.
-        assert_eq!(runtime.timer_fired(run1), Ok(()));
+        // Both runs are now in wait state. Fire captured timer authority for run1 only.
+        let Ok(entry1) = runtime.capture_timer_entry(run1) else {
+            return;
+        };
+        assert_eq!(runtime.timer_entry_fired(entry1), Ok(()));
         assert_eq!(runtime.tick_all(), Ok(true));
 
         // Then run1 completed but run2 is still waiting
@@ -2241,8 +2262,11 @@ mod tests {
             }
         }
 
-        // Now fire timer for run2
-        assert_eq!(runtime.timer_fired(run2), Ok(()));
+        // Now fire captured timer authority for run2.
+        let Ok(entry2) = runtime.capture_timer_entry(run2) else {
+            return;
+        };
+        assert_eq!(runtime.timer_entry_fired(entry2), Ok(()));
         assert_eq!(runtime.tick_all(), Ok(true));
         let snap2 = runtime.counters_snapshot();
         assert_eq!(snap2.runs_completed, 2);

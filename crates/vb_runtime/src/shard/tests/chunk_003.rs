@@ -177,7 +177,7 @@ fn finish_cleans_pending_timer_after_timer_fire() {
     );
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(shard.pending_timers.len(), 1);
-    assert_eq!(shard.enqueue(ShardCommand::TimerFired { run }), Ok(()));
+    assert_eq!(timer_command(&shard, run).map(|command| shard.enqueue(command)), Some(Ok(())));
     assert_eq!(shard.tick(), Ok(true));
 
     assert_eq!(shard.pending_timers.len(), 0);
@@ -203,7 +203,7 @@ fn fail_cleans_pending_timer_after_ask_timeout_without_answer() {
     );
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(shard.pending_timers.len(), 1);
-    assert_eq!(shard.enqueue(ShardCommand::TimerFired { run }), Ok(()));
+    assert_eq!(timer_command(&shard, run).map(|command| shard.enqueue(command)), Some(Ok(())));
     assert_eq!(shard.tick(), Ok(true));
 
     assert_eq!(shard.pending_timers.len(), 0);

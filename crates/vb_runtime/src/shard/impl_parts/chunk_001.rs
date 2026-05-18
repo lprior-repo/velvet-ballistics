@@ -221,7 +221,12 @@ impl Shard {
                     .map_err(Self::runtime_action_failure_error)?;
             }
             ShardCommand::AskAnswered { answer } => self.handle_ask_answer(answer)?,
-            ShardCommand::TimerFired { run } => self.handle_timer(run)?,
+            ShardCommand::TimerFired {
+                run,
+                generation,
+                deadline,
+                kind,
+            } => self.handle_timer(run, generation, deadline, kind)?,
             ShardCommand::Cancel { run, reason } => self.handle_cancel(run, reason)?,
             ShardCommand::Inspect { run, correlation } => {
                 self.handle_inspect(run, correlation);
@@ -246,6 +251,31 @@ impl Shard {
     #[must_use]
     pub const fn counters(&self) -> &ShardCounters {
         &self.counters
+    }
+
+    /// Builds a fail-closed legacy timer-fired command without fabricating authority.
+    #[must_use]
+    pub fn timer_fired_command(&self, run: RunId) -> ShardCommand {
+        ShardCommand::TimerFired {
+            run,
+            generation: 0,
+            deadline: std::time::Instant::now(),
+            kind: PendingTimerKind::Wait,
+        }
+    }
+
+    /// Returns the current typed timer authority for explicit capture.
+    #[must_use]
+    pub fn timer_entry(&self, run: RunId) -> Option<crate::shard::timer_wheel::TimerEntry> {
+        self.pending_timers
+            .get(&run)
+            .copied()
+            .map(|timer| crate::shard::timer_wheel::TimerEntry {
+                run,
+                generation: timer.generation,
+                deadline: timer.deadline,
+                kind: timer.kind,
+            })
     }
 
     /// Returns a mutable reference to the trace ring.

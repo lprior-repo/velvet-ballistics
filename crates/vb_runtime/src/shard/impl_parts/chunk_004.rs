@@ -12,6 +12,6 @@ use crate::trace::{TraceEvent, TraceRing};
 use crate::{RuntimeError, RuntimeResult};
 
 use crate::shard::types::{
-    InspectResponse, MAX_COMMAND_QUEUE_CAPACITY, Shard, ShardCommand, ShardCommandQueue,
-    ShardConfig, ShardHealth, ShardStatus, is_valid_command_queue_capacity,
+    InspectResponse, MAX_COMMAND_QUEUE_CAPACITY, PendingTimerKind, Shard, ShardCommand,
+    ShardCommandQueue, ShardConfig, ShardHealth, ShardStatus, is_valid_command_queue_capacity,
 };

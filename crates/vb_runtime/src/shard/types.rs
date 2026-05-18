@@ -3,6 +3,7 @@
 
 use crossbeam_queue::ArrayQueue;
 use indexmap::{IndexMap, IndexSet};
+use std::time::Instant;
 use vb_core::action::ActionContract;
 use vb_core::capability::CapabilitySet;
 use vb_core::frame::RunFrame;
@@ -36,6 +37,20 @@ pub enum PendingTimerKind {
 pub struct PendingTimer {
     pub step: StepIdx,
     pub kind: PendingTimerKind,
+    pub generation: u64,
+    pub deadline: Instant,
+}
+
+impl PendingTimer {
+    #[must_use]
+    pub fn matches_authority(
+        self,
+        generation: u64,
+        deadline: Instant,
+        kind: PendingTimerKind,
+    ) -> bool {
+        self.generation == generation && self.deadline == deadline && self.kind == kind
+    }
 }
 
 /// Bounded command processed by a shard.
@@ -137,6 +152,12 @@ pub enum ShardCommand {
     TimerFired {
         /// Run identifier.
         run: RunId,
+        /// Freshness generation captured when the timer was emitted.
+        generation: u64,
+        /// Deadline captured when the timer was emitted.
+        deadline: Instant,
+        /// Timer kind captured when the timer was emitted.
+        kind: PendingTimerKind,
     },
     /// Cancel an active run.
     Cancel {

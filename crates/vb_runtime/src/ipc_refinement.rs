@@ -248,7 +248,7 @@ mod tests {
         let mut wheel = TimerWheel::new();
         let run = RunId::new(1);
         let now = Instant::now();
-        wheel.insert(run, now, PendingTimerKind::Wait);
+        assert_eq!(wheel.insert(run, now, PendingTimerKind::Wait), Ok(()));
 
         let fired = timer_fire_refinement(&mut wheel, now + Duration::from_millis(1), run);
 
@@ -260,7 +260,10 @@ mod tests {
         assert_eq!(fired.after_len, 0);
         assert_eq!(fired.fired_count, 1);
 
-        wheel.insert(run, now + Duration::from_secs(1), PendingTimerKind::Ask);
+        assert_eq!(
+            wheel.insert(run, now + Duration::from_secs(1), PendingTimerKind::Ask),
+            Ok(())
+        );
         let cancelled = timer_cancel_refinement(&mut wheel, run);
 
         assert!(

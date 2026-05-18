@@ -53,11 +53,26 @@ impl Shard {
         self.drive_run(run)
     }
 
-    pub(crate) fn handle_timer(&mut self, run: RunId) -> RuntimeResult<()> {
-        let mut state = self.take_run_state(run)?;
-        let Some(timer) = self.pending_timers.swap_remove(&run) else {
-            self.runs.insert(run, state);
+    pub(crate) fn handle_timer(
+        &mut self,
+        run: RunId,
+        generation: u64,
+        deadline: std::time::Instant,
+        kind: PendingTimerKind,
+    ) -> RuntimeResult<()> {
+        let Some(current_timer) = self.pending_timers.get(&run).copied() else {
             return Err(RuntimeError::InvalidTimerFire);
+        };
+        if !current_timer.matches_authority(generation, deadline, kind) {
+            return Err(RuntimeError::InvalidTimerFire);
+        }
+        let mut state = self.take_run_state(run)?;
+        let timer = match self.pending_timers.swap_remove(&run) {
+            Some(timer) => timer,
+            None => {
+                self.runs.insert(run, state);
+                return Err(RuntimeError::InvalidTimerFire);
+            }
         };
         crate::shard::helpers::advance_after_timer_fire(&mut state, timer)?;
         match timer.kind {

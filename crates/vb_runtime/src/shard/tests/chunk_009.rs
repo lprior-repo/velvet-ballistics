@@ -162,9 +162,9 @@ fn shard_timer_for_cancelled_run_returns_run_not_found() {
     assert_eq!(shard.enqueue(ShardCommand::Cancel { run, reason: None }), Ok(()));
     assert_eq!(shard.tick(), Ok(true));
     // When a timer fires for the cancelled run
-    assert_eq!(shard.enqueue(ShardCommand::TimerFired { run }), Ok(()));
-    // Then tick returns RunNotFound
-    assert_eq!(shard.tick(), Err(RuntimeError::RunNotFound));
+    assert_eq!(shard.enqueue(invalid_timer_command(run)), Ok(()));
+    // Then tick rejects stale timer authority.
+    assert_eq!(shard.tick(), Err(RuntimeError::InvalidTimerFire));
 }
 
 #[test]

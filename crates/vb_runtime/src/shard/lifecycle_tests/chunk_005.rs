@@ -190,7 +190,7 @@
         );
         assert_eq!(shard.tick(), Ok(true));
         assert_eq!(shard.pending_timer_count(), 1);
-        assert_eq!(shard.enqueue(ShardCommand::TimerFired { run }), Ok(()));
+        assert_eq!(shard.enqueue(timer_command(&shard, run)), Ok(()));
         assert_eq!(shard.tick(), Ok(true));
         assert_eq!(shard.counters().snapshot().runs_completed, 1);
         assert_eq!(shard.pending_timer_count(), 0);
@@ -212,7 +212,7 @@
             Ok(())
         );
         assert_eq!(shard.tick(), Ok(true));
-        assert_eq!(shard.enqueue(ShardCommand::TimerFired { run }), Ok(()));
+        assert_eq!(shard.enqueue(invalid_timer_command(run)), Ok(()));
         assert_eq!(shard.tick(), Err(RuntimeError::InvalidTimerFire));
     }
 
@@ -220,12 +220,10 @@
     fn timer_fire_unknown_run_returns_run_not_found() {
         let mut shard = Shard::new(small_config());
         assert_eq!(
-            shard.enqueue(ShardCommand::TimerFired {
-                run: RunId::new(9999),
-            }),
+            shard.enqueue(invalid_timer_command(RunId::new(9999))),
             Ok(())
         );
-        assert_eq!(shard.tick(), Err(RuntimeError::RunNotFound));
+        assert_eq!(shard.tick(), Err(RuntimeError::InvalidTimerFire));
     }
 
     #[test]

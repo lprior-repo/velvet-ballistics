@@ -7,13 +7,32 @@ use crate::counters::ShardCounters;
 use crate::frame_pool::FramePool;
 use crate::journal::{NoopRuntimeJournal, RuntimeJournalEvent, SharedRuntimeJournal};
 use crate::trace::{TraceEvent, TraceRing};
-use crate::{RuntimeError, RuntimeResult};
+use crate::RuntimeError;
 
 use super::{
     AskAnswer, AskTicket, InspectResponse, InspectSnapshot, MAX_COMMAND_QUEUE_CAPACITY, RunState,
     Shard, ShardCommand, ShardConfig,
 };
 use crate::shard::types::{PendingTimer, PendingTimerKind};
+
+fn timer_command(shard: &Shard, run: super::RunId) -> Option<ShardCommand> {
+    let entry = shard.timer_entry(run)?;
+    Some(ShardCommand::TimerFired {
+        run: entry.run,
+        generation: entry.generation,
+        deadline: entry.deadline,
+        kind: entry.kind,
+    })
+}
+
+fn invalid_timer_command(run: super::RunId) -> ShardCommand {
+    ShardCommand::TimerFired {
+        run,
+        generation: 0,
+        deadline: std::time::Instant::now(),
+        kind: PendingTimerKind::Wait,
+    }
+}
 
 fn suspended_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
     let node = CompiledNode {

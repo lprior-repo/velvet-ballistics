@@ -254,6 +254,6 @@
         assert_eq!(shard.pending_timer_count(), 1);
         assert_eq!(shard.enqueue(ShardCommand::Cancel { run, reason: None }), Ok(()));
         assert_eq!(shard.tick(), Ok(true));
-        assert_eq!(shard.enqueue(ShardCommand::TimerFired { run }), Ok(()));
-        assert_eq!(shard.tick(), Err(RuntimeError::RunNotFound));
+        assert_eq!(shard.enqueue(invalid_timer_command(run)), Ok(()));
+        assert_eq!(shard.tick(), Err(RuntimeError::InvalidTimerFire));
     }

@@ -1318,6 +1318,8 @@ mod tests {
         let timer = PendingTimer {
             step: StepIdx::ZERO,
             kind: PendingTimerKind::Wait,
+            generation: 1,
+            deadline: std::time::Instant::now(),
         };
         let result = advance_after_timer_fire(&mut state, timer);
         assert_eq!(result, Err(RuntimeError::InvalidTimerFire));
@@ -1334,6 +1336,8 @@ mod tests {
         let timer = PendingTimer {
             step: StepIdx::new(99),
             kind: PendingTimerKind::Wait,
+            generation: 1,
+            deadline: std::time::Instant::now(),
         };
         let result = advance_after_timer_fire(&mut state, timer);
         assert_eq!(result, Err(RuntimeError::InvalidTimerFire));
@@ -1363,6 +1367,8 @@ mod tests {
         let timer = PendingTimer {
             step: StepIdx::new(1),
             kind: PendingTimerKind::Wait,
+            generation: 1,
+            deadline: std::time::Instant::now(),
         };
         let result = advance_after_timer_fire(&mut state, timer);
         assert_eq!(result, Ok(()));
@@ -1388,6 +1394,8 @@ mod tests {
         let timer = PendingTimer {
             step: StepIdx::new(1),
             kind: PendingTimerKind::Ask,
+            generation: 1,
+            deadline: std::time::Instant::now(),
         };
         let result = advance_after_timer_fire(&mut state, timer);
         assert_eq!(result, Err(RuntimeError::InvalidTimerFire));
@@ -1435,6 +1443,8 @@ mod tests {
         let timer = PendingTimer {
             step: StepIdx::ZERO,
             kind: PendingTimerKind::Wait,
+            generation: 1,
+            deadline: std::time::Instant::now(),
         };
         let result = advance_after_timer_fire(&mut state, timer);
         assert_eq!(result, Err(RuntimeError::InvalidTimerFire));

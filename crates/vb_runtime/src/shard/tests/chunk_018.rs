@@ -107,8 +107,8 @@ fn bh_shd_13_timer_fire_after_cancel_returns_run_not_found() {
     assert_eq!(shard.enqueue(ShardCommand::Cancel { run, reason: None }), Ok(()));
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(shard.pending_timer_count(), 0);
-    assert_eq!(shard.enqueue(ShardCommand::TimerFired { run }), Ok(()));
-    assert_eq!(shard.tick(), Err(RuntimeError::RunNotFound));
+    assert_eq!(shard.enqueue(invalid_timer_command(run)), Ok(()));
+    assert_eq!(shard.tick(), Err(RuntimeError::InvalidTimerFire));
 }
 
 // BH-SHD-14: Inspect after immediate completion returns NotFound.

@@ -170,13 +170,18 @@ fn pending_timer_kind_debug_format() {
 
 #[test]
 fn pending_timer_equality_same_fields() {
+    let deadline = std::time::Instant::now();
     let a = super::types::PendingTimer {
         step: vb_core::ids::StepIdx::new(3),
         kind: super::types::PendingTimerKind::Wait,
+        generation: 1,
+        deadline,
     };
     let b = super::types::PendingTimer {
         step: vb_core::ids::StepIdx::new(3),
         kind: super::types::PendingTimerKind::Wait,
+        generation: 1,
+        deadline,
     };
     assert_eq!(a, b);
 }
@@ -186,10 +191,14 @@ fn pending_timer_inequality_different_step() {
     let a = super::types::PendingTimer {
         step: vb_core::ids::StepIdx::new(1),
         kind: super::types::PendingTimerKind::Ask,
+        generation: 1,
+        deadline: std::time::Instant::now(),
     };
     let b = super::types::PendingTimer {
         step: vb_core::ids::StepIdx::new(2),
         kind: super::types::PendingTimerKind::Ask,
+        generation: 1,
+        deadline: a.deadline,
     };
     assert_ne!(a, b);
 }
@@ -199,10 +208,14 @@ fn pending_timer_inequality_different_kind() {
     let a = super::types::PendingTimer {
         step: vb_core::ids::StepIdx::new(5),
         kind: super::types::PendingTimerKind::Wait,
+        generation: 1,
+        deadline: std::time::Instant::now(),
     };
     let b = super::types::PendingTimer {
         step: vb_core::ids::StepIdx::new(5),
         kind: super::types::PendingTimerKind::Ask,
+        generation: 1,
+        deadline: a.deadline,
     };
     assert_ne!(a, b);
 }

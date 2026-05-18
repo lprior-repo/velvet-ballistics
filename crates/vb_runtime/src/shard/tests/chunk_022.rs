@@ -134,6 +134,8 @@ fn pending_timer_copy_trait_produces_independent_value() {
     let original = super::types::PendingTimer {
         step: vb_core::ids::StepIdx::new(7),
         kind: super::types::PendingTimerKind::Ask,
+        generation: 1,
+        deadline: std::time::Instant::now(),
     };
     let copy = original;
     assert_eq!(copy, original);
@@ -146,6 +148,8 @@ fn pending_timer_debug_format() {
     let timer = super::types::PendingTimer {
         step: vb_core::ids::StepIdx::new(4),
         kind: super::types::PendingTimerKind::Wait,
+        generation: 1,
+        deadline: std::time::Instant::now(),
     };
     let debug_str = format!("{timer:?}");
     assert!(
@@ -159,6 +163,8 @@ fn pending_timer_with_zero_step_index() {
     let timer = super::types::PendingTimer {
         step: vb_core::ids::StepIdx::ZERO,
         kind: super::types::PendingTimerKind::Wait,
+        generation: 1,
+        deadline: std::time::Instant::now(),
     };
     assert_eq!(timer.step, vb_core::ids::StepIdx::ZERO);
     assert_eq!(timer.kind, super::types::PendingTimerKind::Wait);

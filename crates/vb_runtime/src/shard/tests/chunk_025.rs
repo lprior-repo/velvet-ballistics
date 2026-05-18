@@ -88,12 +88,10 @@ fn vb1u88_timer_fire_unknown_run_not_found() {
     let config = small_config();
     let mut shard = Shard::new(config);
     assert_eq!(
-        shard.enqueue(ShardCommand::TimerFired {
-            run: super::RunId::new(9999)
-        }),
+        shard.enqueue(invalid_timer_command(super::RunId::new(9999))),
         Ok(())
     );
-    assert_eq!(shard.tick(), Err(RuntimeError::RunNotFound));
+    assert_eq!(shard.tick(), Err(RuntimeError::InvalidTimerFire));
 }
 
 #[test]

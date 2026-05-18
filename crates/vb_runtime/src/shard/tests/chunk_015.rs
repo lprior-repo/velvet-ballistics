@@ -215,7 +215,7 @@ fn shard_timer_fire_for_wait_produces_wait_resolved_journal() {
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(shard.pending_timers.len(), 1);
 
-    assert_eq!(shard.enqueue(ShardCommand::TimerFired { run }), Ok(()));
+    assert_eq!(timer_command(&shard, run).map(|command| shard.enqueue(command)), Some(Ok(())));
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(shard.counters().snapshot().runs_completed, 1);
 
@@ -244,7 +244,7 @@ fn shard_timer_fire_for_ask_timeout_fails_run() {
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(shard.pending_timers.len(), 1);
 
-    assert_eq!(shard.enqueue(ShardCommand::TimerFired { run }), Ok(()));
+    assert_eq!(timer_command(&shard, run).map(|command| shard.enqueue(command)), Some(Ok(())));
     assert_eq!(shard.tick(), Ok(true));
     assert_eq!(shard.counters().snapshot().runs_failed, 1);
     assert_eq!(shard.counters().snapshot().runs_completed, 0);

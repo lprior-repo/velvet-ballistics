@@ -30,7 +30,10 @@ fn empty_wheel() -> TimerWheel {
 fn wheel_1_expired(now: Instant) -> TimerWheel {
     let mut wheel = TimerWheel::new();
     let deadline = now - Duration::from_millis(10);
-    wheel.insert(RunId::new(1), deadline, PendingTimerKind::Wait);
+    assert_eq!(
+        wheel.insert(RunId::new(1), deadline, PendingTimerKind::Wait),
+        Ok(())
+    );
     wheel
 }
 
@@ -40,7 +43,10 @@ fn wheel_10_expired(now: Instant) -> TimerWheel {
     let deadline = now - Duration::from_millis(10);
     let mut i = 0u64;
     while i < 10 {
-        wheel.insert(RunId::new(i), deadline, PendingTimerKind::Wait);
+        assert_eq!(
+            wheel.insert(RunId::new(i), deadline, PendingTimerKind::Wait),
+            Ok(())
+        );
         i = i.saturating_add(1);
     }
     wheel
@@ -53,11 +59,17 @@ fn wheel_100_mixed(now: Instant) -> TimerWheel {
     let future_deadline = now + Duration::from_millis(100);
     let mut i = 0u64;
     while i < 90 {
-        wheel.insert(RunId::new(i), expired_deadline, PendingTimerKind::Wait);
+        assert_eq!(
+            wheel.insert(RunId::new(i), expired_deadline, PendingTimerKind::Wait),
+            Ok(())
+        );
         i = i.saturating_add(1);
     }
     while i < 100 {
-        wheel.insert(RunId::new(i), future_deadline, PendingTimerKind::Wait);
+        assert_eq!(
+            wheel.insert(RunId::new(i), future_deadline, PendingTimerKind::Wait),
+            Ok(())
+        );
         i = i.saturating_add(1);
     }
     wheel
@@ -69,7 +81,10 @@ fn wheel_100(now: Instant) -> TimerWheel {
     let future_deadline = now + Duration::from_millis(100);
     let mut i = 0u64;
     while i < 100 {
-        wheel.insert(RunId::new(i), future_deadline, PendingTimerKind::Wait);
+        assert_eq!(
+            wheel.insert(RunId::new(i), future_deadline, PendingTimerKind::Wait),
+            Ok(())
+        );
         i = i.saturating_add(1);
     }
     wheel
@@ -81,7 +96,10 @@ fn wheel_10(now: Instant) -> TimerWheel {
     let future_deadline = now + Duration::from_millis(100);
     let mut i = 0u64;
     while i < 10 {
-        wheel.insert(RunId::new(i), future_deadline, PendingTimerKind::Wait);
+        assert_eq!(
+            wheel.insert(RunId::new(i), future_deadline, PendingTimerKind::Wait),
+            Ok(())
+        );
         i = i.saturating_add(1);
     }
     wheel
@@ -289,7 +307,10 @@ fn bench_timer_wheel_tick(c: &mut Criterion) {
                     let future_deadline = now + Duration::from_millis(100);
                     let mut i = 0u64;
                     while i < 100 {
-                        wheel.insert(RunId::new(i), future_deadline, PendingTimerKind::Wait);
+                        assert_eq!(
+                            wheel.insert(RunId::new(i), future_deadline, PendingTimerKind::Wait),
+                            Ok(())
+                        );
                         i = i.saturating_add(1);
                     }
                     // Exact assertion: 100 timers inserted

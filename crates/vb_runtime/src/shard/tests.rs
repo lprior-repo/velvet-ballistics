@@ -29,3 +29,4 @@ include!("tests/chunk_025.rs");
 include!("tests/chunk_026.rs");
 include!("tests/chunk_027.rs");
 include!("tests/chunk_028.rs");
+include!("tests/chunk_029.rs");

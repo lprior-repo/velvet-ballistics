@@ -238,6 +238,8 @@ fn bh_shd_08_pending_timers_last_wins_per_run() {
         super::types::PendingTimer {
             step: vb_core::ids::StepIdx::new(99),
             kind: super::types::PendingTimerKind::Ask,
+            generation: 2,
+            deadline: std::time::Instant::now(),
         },
     );
     let timer2 = shard.pending_timers.get(&run).copied();

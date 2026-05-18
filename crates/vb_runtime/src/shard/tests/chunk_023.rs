@@ -31,22 +31,36 @@ fn shard_config_default_has_expected_values() {
 
 #[test]
 fn shard_command_timer_fired_equality() {
+    let deadline = std::time::Instant::now();
     let a = ShardCommand::TimerFired {
         run: super::RunId::new(1),
+        generation: 1,
+        deadline,
+        kind: PendingTimerKind::Wait,
     };
     let b = ShardCommand::TimerFired {
         run: super::RunId::new(1),
+        generation: 1,
+        deadline,
+        kind: PendingTimerKind::Wait,
     };
     assert_eq!(a, b);
 }
 
 #[test]
 fn shard_command_timer_fired_inequality() {
+    let deadline = std::time::Instant::now();
     let a = ShardCommand::TimerFired {
         run: super::RunId::new(1),
+        generation: 1,
+        deadline,
+        kind: PendingTimerKind::Wait,
     };
     let b = ShardCommand::TimerFired {
         run: super::RunId::new(2),
+        generation: 1,
+        deadline,
+        kind: PendingTimerKind::Wait,
     };
     assert_ne!(a, b);
 }
@@ -243,6 +257,9 @@ fn shard_command_variants_cross_inequality() {
     };
     let timer = ShardCommand::TimerFired {
         run: super::RunId::new(1),
+        generation: 1,
+        deadline: std::time::Instant::now(),
+        kind: PendingTimerKind::Wait,
     };
     let shutdown = ShardCommand::Shutdown;
     assert_ne!(cancel, resume);

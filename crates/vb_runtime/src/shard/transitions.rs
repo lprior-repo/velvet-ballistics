@@ -1,6 +1,7 @@
 #![forbid(unsafe_code)]
 //! Run state transition helpers: keep, finish, await action, await timer, fail.
 
+use std::time::Instant;
 use vb_core::action::ActionTicket;
 use vb_core::ids::{RunId, SlotIdx};
 
@@ -126,7 +127,22 @@ impl Shard {
         self.counters.add_steps(state.frame.executed());
         let step = state.frame.pc();
         if crate::shard::helpers::timer_registration_required(&state, step) {
-            self.pending_timers.insert(run, PendingTimer { step, kind });
+            let generation = match self.next_pending_timer_generation(run) {
+                Ok(generation) => generation,
+                Err(error) => {
+                    self.runs.insert(run, state);
+                    return Err(error);
+                }
+            };
+            self.pending_timers.insert(
+                run,
+                PendingTimer {
+                    step,
+                    kind,
+                    generation,
+                    deadline: Instant::now(),
+                },
+            );
             match kind {
                 PendingTimerKind::Wait => {
                     self.append_journal_event(RuntimeJournalEvent::WaitScheduled { run, step })?;
@@ -138,6 +154,16 @@ impl Shard {
         }
         self.runs.insert(run, state);
         Ok(())
+    }
+
+    fn next_pending_timer_generation(&self, run: RunId) -> RuntimeResult<u64> {
+        match self.pending_timers.get(&run).copied() {
+            Some(timer) => timer
+                .generation
+                .checked_add(1)
+                .ok_or(RuntimeError::InvalidTimerFire),
+            None => Ok(1),
+        }
     }
 
     /// Marks a run as failed, releases its frame, and updates counters.

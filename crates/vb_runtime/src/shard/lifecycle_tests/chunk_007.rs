@@ -16,7 +16,7 @@
         );
         assert_eq!(shard.tick(), Ok(true));
         assert_eq!(shard.pending_timer_count(), 1);
-        assert_eq!(shard.enqueue(ShardCommand::TimerFired { run }), Ok(()));
+        assert_eq!(shard.enqueue(timer_command(&shard, run)), Ok(()));
         assert_eq!(shard.tick(), Ok(true));
         assert_eq!(shard.counters().snapshot().runs_failed, 1);
         assert_eq!(shard.pending_timer_count(), 0);

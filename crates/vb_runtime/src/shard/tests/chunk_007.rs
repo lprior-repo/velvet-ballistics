@@ -1,11 +1,18 @@
 #[test]
 fn shard_command_equality_timer_fired() {
     // Given two identical TimerFired commands
+    let deadline = std::time::Instant::now();
     let a = ShardCommand::TimerFired {
         run: super::RunId::new(1),
+        generation: 1,
+        deadline,
+        kind: PendingTimerKind::Wait,
     };
     let b = ShardCommand::TimerFired {
         run: super::RunId::new(1),
+        generation: 1,
+        deadline,
+        kind: PendingTimerKind::Wait,
     };
     assert_eq!(a, b);
 }

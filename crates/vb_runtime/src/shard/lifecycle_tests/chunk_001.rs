@@ -14,8 +14,30 @@
     use crate::trace::TraceEvent;
 
     use super::super::types::{
-        AskAnswer, AskTicket, InspectResponse, Shard, ShardCommand, ShardConfig,
+        AskAnswer, AskTicket, InspectResponse, PendingTimerKind, Shard, ShardCommand,
+        ShardConfig,
     };
+
+    fn timer_command(shard: &Shard, run: RunId) -> ShardCommand {
+        let Some(entry) = shard.timer_entry(run) else {
+            panic!("timer_command requires a live captured timer entry");
+        };
+        ShardCommand::TimerFired {
+            run: entry.run,
+            generation: entry.generation,
+            deadline: entry.deadline,
+            kind: entry.kind,
+        }
+    }
+
+    fn invalid_timer_command(run: RunId) -> ShardCommand {
+        ShardCommand::TimerFired {
+            run,
+            generation: 0,
+            deadline: std::time::Instant::now(),
+            kind: PendingTimerKind::Wait,
+        }
+    }
 
     fn suspended_workflow() -> Option<vb_core::workflow::CompiledWorkflow> {
         let node = CompiledNode {

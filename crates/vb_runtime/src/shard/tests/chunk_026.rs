@@ -264,6 +264,8 @@ fn test_drain_for_shutdown_handles_timers_without_valid_backing_runs_gracefully(
         PendingTimer {
             step: vb_core::ids::StepIdx::new(1),
             kind: PendingTimerKind::Wait,
+            generation: 1,
+            deadline: std::time::Instant::now(),
         },
     );
     assert_eq!(shard.pending_timers.len(), 1);
