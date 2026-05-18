@@ -135,21 +135,16 @@ pub(super) fn all_variants() -> Vec<ValidationError> {
             name: "network".into(),
         },
         ValidationError::SlotTypeInconsistency { slot: 0 },
-        ValidationError::NonDeterministicPath {
+         ValidationError::NonDeterministicPath {
             from_node: 0,
             to_node: 1,
         },
         ValidationError::MissingSchemaVersion,
-        ValidationError::InvalidKind {
-            kind: "cli_envelope".into(),
-        },
+        ValidationError::CueVetFailed { file: "test.cue".into() },
         ValidationError::VersionMonotonicityBreach {
-            file: "bad.cue".into(),
-            expected: "2".into(),
-            actual: "0".into(),
-        },
-        ValidationError::CueVetFailed {
-            file: "broken.cue".into(),
+            file: "test.cue".into(),
+            expected: "v2.0".into(),
+            actual: "v1.9".into(),
         },
     ]
 }

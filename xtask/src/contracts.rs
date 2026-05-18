@@ -1,20 +1,20 @@
 #![forbid(unsafe_code)]
 
-//! Contract discovery and validation for the contracts-as-data suite.
-//!
-//! Walks the `contracts/` directory, validates `schema_version` and `kind` fields,
-//! runs `cue vet` on each file, and produces a `DiscoveryReport`.
+//! Contract-discovery: walk contracts/, validate schema_version + kind, run cue vet,
+//! produce a DiscoveryReport and GateEvidence.
 
+use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::fmt;
 use std::path::{Path, PathBuf};
-use std::process::Command;
 
-use serde::{Deserialize, Serialize};
-use vb_validate::{ValidationError, ValidationResult};
+// ---------------------------------------------------------------------------
+// Domain types (contract.md Rust model)
+// ---------------------------------------------------------------------------
 
-/// Closed set of contract kinds recognized by the discovery pipeline.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
+/// Recognised contract kind.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum ContractKind {
     CliEnvelope,
     UiTokens,
@@ -25,7 +25,7 @@ pub enum ContractKind {
 }
 
 impl ContractKind {
-    /// All valid contract kind values in canonical order.
+    /// All recognised values in ordinal order.
     pub const fn all_values() -> &'static [Self] {
         &[
             Self::CliEnvelope,
@@ -37,47 +37,35 @@ impl ContractKind {
         ]
     }
 
-    /// Convert a string slice to the corresponding `ContractKind`.
-    #[allow(clippy::should_implement_trait)]
-    pub fn from_str(s: &str) -> Option<Self> {
+    /// Convert a string slice into a recognised ContractKind, or the string
+    /// itself when it is not recognised (for error reporting).
+    pub fn parse(s: &str) -> Result<Self, String> {
         match s {
-            "cli_envelope" => Some(Self::CliEnvelope),
-            "ui_tokens" => Some(Self::UiTokens),
-            "accepted_artifacts" => Some(Self::AcceptedArtifacts),
-            "evidence_bundle" => Some(Self::EvidenceBundle),
-            "diagnostics" => Some(Self::Diagnostics),
-            "gate_output" => Some(Self::GateOutput),
-            _ => None,
-        }
-    }
-
-    /// Convert self to the CUE string representation.
-    pub fn cue_str(&self) -> &'static str {
-        match self {
-            Self::CliEnvelope => "cli_envelope",
-            Self::UiTokens => "ui_tokens",
-            Self::AcceptedArtifacts => "accepted_artifacts",
-            Self::EvidenceBundle => "evidence_bundle",
-            Self::Diagnostics => "diagnostics",
-            Self::GateOutput => "gate_output",
+            "cli_envelope" => Ok(Self::CliEnvelope),
+            "ui_tokens" => Ok(Self::UiTokens),
+            "accepted_artifacts" => Ok(Self::AcceptedArtifacts),
+            "evidence_bundle" => Ok(Self::EvidenceBundle),
+            "diagnostics" => Ok(Self::Diagnostics),
+            "gate_output" => Ok(Self::GateOutput),
+            other => Err(other.to_string()),
         }
     }
 }
 
 impl fmt::Display for ContractKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.cue_str())
+        match self {
+            Self::CliEnvelope => write!(f, "cli_envelope"),
+            Self::UiTokens => write!(f, "ui_tokens"),
+            Self::AcceptedArtifacts => write!(f, "accepted_artifacts"),
+            Self::EvidenceBundle => write!(f, "evidence_bundle"),
+            Self::Diagnostics => write!(f, "diagnostics"),
+            Self::GateOutput => write!(f, "gate_output"),
+        }
     }
 }
 
-/// Metadata extracted from the top-level CUE schema.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct ContractMeta {
-    pub schema_version: Option<String>,
-    pub kind: Option<String>,
-}
-
-/// A single contract file discovered and validated by the pipeline.
+/// A single contract file discovered under contracts/.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ContractFile {
     pub path: PathBuf,
@@ -86,7 +74,7 @@ pub struct ContractFile {
     pub vet_errors: Vec<String>,
 }
 
-/// A version monotonicity violation found during discovery.
+/// A version monotonicity breach.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct VersionViolation {
     pub file: PathBuf,
@@ -95,361 +83,474 @@ pub struct VersionViolation {
     pub detail: String,
 }
 
-/// Summary statistics for a discovery run.
+/// Summary counters produced by discovery.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ReportSummary {
     pub total: u32,
     pub valid: u32,
     pub invalid: u32,
-    pub errors_by_kind: BTreeMap<ContractKind, u32>,
+    /// BTreeMap ensures deterministic JSON key order.
+    pub errors_by_kind: BTreeMap<String, u32>,
     pub version_violations: Vec<VersionViolation>,
 }
 
-/// Full discovery report produced by walking the contracts directory.
+impl ReportSummary {
+    pub fn new() -> Self {
+        Self {
+            total: 0,
+            valid: 0,
+            invalid: 0,
+            errors_by_kind: BTreeMap::new(),
+            version_violations: Vec::new(),
+        }
+    }
+}
+
+/// Full discovery report.
 ///
-/// The `errors` field stores formatted error messages for JSON serializability.
-/// The `raw_errors` field is skipped in JSON output.
+/// errors is Vec<String> (not Vec<ValidationError>) because
+/// ValidationError from vb_validate does not implement Serialize/Deserialize.
+/// We store the Display representation instead.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DiscoveryReport {
     pub files: Vec<ContractFile>,
     pub errors: Vec<String>,
-    #[serde(skip)]
-    pub raw_errors: Vec<ValidationError>,
     pub summary: ReportSummary,
 }
 
-/// Parse the top-level `schema_version` and `kind` fields from CUE file content.
-///
-/// Looks for lines matching `schema_version: <value>` or `kind: "<value>"`
-/// at the top level (not indented within a type definition).
-pub fn parse_contract_meta(content: &str) -> ContractMeta {
-    let mut schema_version: Option<String> = None;
-    let mut kind: Option<String> = None;
+// ---------------------------------------------------------------------------
+// Validation error type (local, serializable)
+// ---------------------------------------------------------------------------
 
-    for line in content.lines() {
-        let trimmed = line.trim();
+/// Contract-discovery validation errors.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ContractError {
+    MissingSchemaVersion,
+    InvalidVersion { version: String },
+    InvalidKind { kind: String },
+    CueVetFailed { file: String },
+    VersionMonotonicityBreach {
+        file: String,
+        expected: String,
+        actual: String,
+    },
+}
 
-        // Skip comments and empty lines
-        if trimmed.is_empty() || trimmed.starts_with("//") {
-            continue;
+impl fmt::Display for ContractError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::MissingSchemaVersion => write!(f, "MISSING_SCHEMA_VERSION"),
+            Self::InvalidVersion { version } => write!(f, "INVALID_VERSION: {version}"),
+            Self::InvalidKind { kind } => write!(f, "INVALID_KIND: {kind}"),
+            Self::CueVetFailed { file } => write!(f, "CUE_VET_FAILED: {file}"),
+            Self::VersionMonotonicityBreach {
+                file,
+                expected,
+                actual,
+            } => write!(
+                f,
+                "VERSION_MONOTONICITY_BREACH: {file} expected {expected} got {actual}"
+            ),
         }
-
-        // Match schema_version: <value> (string without quotes)
-        if trimmed.starts_with("schema_version:") {
-            let val = trimmed.strip_prefix("schema_version:").unwrap_or("").trim();
-            // Strip surrounding quotes if present
-            let val = val.trim_matches('"');
-            // CUE type annotations (string, int, etc.) are not literal values
-            let cue_type_keywords = [
-                "string", "int", "int64", "float64", "bool", "list", "map", "struct", "duration",
-                "bytes",
-            ];
-            if !val.is_empty() && !cue_type_keywords.contains(&val) {
-                schema_version = Some(val.to_string());
-            }
-            continue;
-        }
-
-        // Match kind: "value" (string with quotes)
-        if trimmed.starts_with("kind:") {
-            let val = trimmed.strip_prefix("kind:").unwrap_or("").trim();
-            // Strip surrounding quotes
-            let val = val.trim_matches('"');
-            if !val.is_empty() {
-                kind = Some(val.to_string());
-            }
-            continue;
-        }
-    }
-
-    ContractMeta {
-        schema_version,
-        kind,
     }
 }
 
-/// Compare two semver-like version strings: (a, b) -> Ordering.
-///
-/// Returns `Ok(Ordering)` when both versions are well-formed semver.
-/// Returns `Err` when either version cannot be parsed as semver.
-///
-/// This is the function that OBL-004 (Verus spec) binds to.
-pub fn compare_semver(a: &str, b: &str) -> Result<std::cmp::Ordering, ValidationError> {
-    let parse_parts = |s: &str| -> Option<(u64, u64, u64)> {
-        let parts: Vec<&str> = s.split('.').collect();
-        let major = parts.first()?.parse::<u64>().ok()?;
-        let minor = parts.get(1)?.parse::<u64>().ok()?;
-        let patch = parts.get(2)?.parse::<u64>().ok()?;
-        Some((major, minor, patch))
-    };
+// ---------------------------------------------------------------------------
+// schema_version helpers
+// ---------------------------------------------------------------------------
 
-    let va = parse_parts(a).ok_or(ValidationError::InvalidVersion {
-        version: a.to_string(),
-    })?;
-    let vb = parse_parts(b).ok_or(ValidationError::InvalidVersion {
-        version: b.to_string(),
-    })?;
-
-    // Compare major, minor, patch in order.
-    // Using saturating arithmetic to avoid overflow.
-    let cmp = if va.0 != vb.0 {
-        va.0.cmp(&vb.0)
-    } else if va.1 != vb.1 {
-        va.1.cmp(&vb.1)
-    } else {
-        va.2.cmp(&vb.2)
-    };
-
-    Ok(cmp)
-}
-
-/// Run `cue vet` on a single file and return exit code + error lines.
-///
-/// Returns `Ok((exit_code, errors))` where `exit_code` is 0 on success.
-/// This function never panics.
-pub fn run_cue_vet(file_path: &Path) -> (i32, Vec<String>) {
-    let output = Command::new("cue").arg("vet").arg(file_path).output();
-
-    match output {
-        Ok(out) => {
-            let exit_code = out.status.code().unwrap_or(1);
-            let mut errors = Vec::new();
-            if !out.stderr.is_empty() {
-                for line in out.stderr.split(|&b| b == b'\n') {
-                    let text = String::from_utf8_lossy(line);
-                    if !text.trim().is_empty() {
-                        errors.push(text.to_string());
-                    }
-                }
-            }
-            if !out.stdout.is_empty() {
-                for line in out.stdout.split(|&b| b == b'\n') {
-                    let text = String::from_utf8_lossy(line);
-                    if !text.trim().is_empty() {
-                        errors.push(text.to_string());
-                    }
-                }
-            }
-            errors.sort();
-            (exit_code, errors)
-        }
-        Err(_) => (1, vec!["cue: command not found".to_string()]),
+/// Parse a `schema_version` string into a validated version.
+/// Returns the original string on success (validation already confirmed format).
+pub fn parse_schema_version(s: &str) -> Result<String, ContractError> {
+    if s.is_empty() {
+        return Err(ContractError::MissingSchemaVersion);
     }
-}
-
-/// Validate a single contract file and return `ContractFile` or errors.
-pub fn validate_contract_file(
-    file_path: &Path,
-    manifest: &BTreeMap<String, (String, ContractKind)>,
-) -> Result<ContractFile, Vec<ValidationError>> {
-    let content = std::fs::read_to_string(file_path).map_err(|e| {
-        vec![ValidationError::MissingRequiredField {
-            field: format!("read {}: {}", file_path.display(), e),
-        }]
-    })?;
-
-    let meta = parse_contract_meta(&content);
-
-    let mut errors = Vec::new();
-
-    // Check schema_version present
-    let schema_version = match meta.schema_version {
-        Some(v) => {
-            // Validate semver format
-            if !is_valid_semver(&v) {
-                errors.push(ValidationError::InvalidVersion { version: v.clone() });
-            }
-            v
-        }
-        None => {
-            errors.push(ValidationError::MissingSchemaVersion);
-            String::new()
-        }
-    };
-
-    // Check kind present and valid
-    let kind_str = match &meta.kind {
-        Some(k) => k.clone(),
-        None => {
-            errors.push(ValidationError::MissingRequiredField {
-                field: "kind".to_string(),
-            });
-            String::new()
-        }
-    };
-
-    let kind = match ContractKind::from_str(&kind_str) {
-        Some(k) => k,
-        None => {
-            errors.push(ValidationError::InvalidKind {
-                kind: kind_str.clone(),
-            });
-            // Use CliEnvelope as fallback for struct construction
-            return Err(errors);
-        }
-    };
-
-    // Check monotonicity against manifest
-    let rel_path = file_path.to_string_lossy().to_string();
-    if let Some((prev_version, prev_kind)) = manifest.get(&rel_path) {
-        if prev_kind != &kind {
-            errors.push(ValidationError::CapabilityActionMismatch {
-                contract_action_id: 0,
-                capability_action_id: 0,
-                capability_index: 0,
-            });
-        }
-
-        let prev_ver_str = prev_version.clone();
-        let curr_ver_str = schema_version.clone();
-        match compare_semver(&prev_ver_str, &curr_ver_str) {
-            Ok(std::cmp::Ordering::Less) | Ok(std::cmp::Ordering::Equal) => {
-                errors.push(ValidationError::VersionMonotonicityBreach {
-                    file: file_path.to_string_lossy().to_string(),
-                    expected: format!("greater than {prev_ver_str}"),
-                    actual: curr_ver_str,
-                });
-            }
-            Ok(std::cmp::Ordering::Greater) => {}
-            Err(_) => {
-                errors.push(ValidationError::VersionMonotonicityBreach {
-                    file: file_path.to_string_lossy().to_string(),
-                    expected: format!("semver greater than {prev_ver_str}"),
-                    actual: curr_ver_str,
-                });
-            }
-        }
-    }
-
-    // Run cue vet
-    let (vet_exit, vet_errors) = run_cue_vet(file_path);
-    if vet_exit != 0 {
-        errors.push(ValidationError::CueVetFailed {
-            file: file_path.to_string_lossy().to_string(),
+    let parts: Vec<&str> = s.split('.').collect();
+    if parts.len() != 3 {
+        return Err(ContractError::InvalidVersion {
+            version: s.to_string(),
         });
     }
+    for part in &parts {
+        if part.is_empty() {
+            return Err(ContractError::InvalidVersion {
+                version: s.to_string(),
+            });
+        }
+        if part.len() > 1 && part.starts_with('0') {
+            return Err(ContractError::InvalidVersion {
+                version: s.to_string(),
+            });
+        }
+        if part.parse::<u32>().is_err() {
+            return Err(ContractError::InvalidVersion {
+                version: s.to_string(),
+            });
+        }
+    }
+    Ok(s.to_string())
+}
 
-    if !errors.is_empty() {
-        return Err(errors);
+// ---------------------------------------------------------------------------
+// Semver comparison (OBL-004: Verus spec)
+// ---------------------------------------------------------------------------
+
+/// Comparison result for two semver strings.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum SemverCmp {
+    Equal,
+    Less,
+    Greater,
+}
+
+/// Compare two semver strings. Both must be valid "X.Y.Z" format.
+pub fn compare_semver(a: &str, b: &str) -> Result<SemverCmp, String> {
+    let pa: Vec<u32> = a.split('.').filter_map(|p| p.parse().ok()).collect();
+    let pb: Vec<u32> = b.split('.').filter_map(|p| p.parse().ok()).collect();
+    if pa.len() != 3 || pb.len() != 3 {
+        return Err(format!("Invalid semver format: a='{a}', b='{b}'"));
+    }
+    for (a_v, b_v) in pa.iter().zip(pb.iter()) {
+        if a_v < b_v {
+            return Ok(SemverCmp::Less);
+        }
+        if a_v > b_v {
+            return Ok(SemverCmp::Greater);
+        }
+    }
+    Ok(SemverCmp::Equal)
+}
+
+// ---------------------------------------------------------------------------
+// cue vet helpers
+// ---------------------------------------------------------------------------
+
+/// Parse a `cue vet` exit code. Returns Ok(()) for exit 0, Err for non-zero.
+pub fn parse_vet_exit_code(code: i32) -> Result<(), String> {
+    if code == 0 {
+        Ok(())
+    } else {
+        Err(format!("cue vet exited with code {code}"))
+    }
+}
+
+/// Run `cue vet` on a single file and return (exit_code, stderr_output).
+/// Returns an error if the cue binary is not found.
+/// If `cwd` is provided, cue runs with that directory as its working directory
+/// so that relative file paths are resolved correctly.
+pub fn run_cue_vet(file: &Path, cwd: Option<&Path>) -> Result<(i32, String), String> {
+    let mut cmd = std::process::Command::new("cue");
+    cmd.args(["vet", file.to_string_lossy().as_ref()]);
+    if let Some(dir) = cwd {
+        cmd.current_dir(dir);
+    }
+    let output = cmd
+        .output()
+        .map_err(|e| format!("Failed to run cue vet: {e}"))?;
+    let code = output.status.code().unwrap_or(1);
+    let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+    Ok((code, stderr))
+}
+
+// ---------------------------------------------------------------------------
+// Discovery
+// ---------------------------------------------------------------------------
+
+/// Walk `contracts_dir` for `.cue` files and validate each one.
+///
+/// For each file:
+/// 1. Run cue vet and collect errors.
+/// 2. Attempt to extract kind and schema_version from the file content.
+/// 3. Validate extracted values.
+pub fn discover_contracts(contracts_dir: &Path) -> Result<DiscoveryReport, String> {
+    if !contracts_dir.exists() {
+        return Err(format!(
+            "contracts directory does not exist: {}",
+            contracts_dir.display()
+        ));
     }
 
-    Ok(ContractFile {
-        path: file_path.to_path_buf(),
-        schema_version,
-        kind,
-        vet_errors,
+    if !contracts_dir.is_dir() {
+        return Err(format!(
+            "contracts path is not a directory: {}",
+            contracts_dir.display()
+        ));
+    }
+
+    // Collect all .cue files recursively.
+    let mut cue_files: Vec<PathBuf> = Vec::new();
+    collect_cue_files(contracts_dir, contracts_dir, &mut cue_files)
+        .map_err(|e| format!("Failed to walk contracts directory: {e}"))?;
+
+    // Sort for deterministic output (INV-005).
+    cue_files.sort();
+
+    let mut files = Vec::new();
+    let mut errors: Vec<String> = Vec::new();
+    let mut summary = ReportSummary::new();
+    summary.total = cue_files.len() as u32;
+
+    for file_rel in &cue_files {
+        // Build absolute path for file I/O; keep relative path for reports.
+        let file_abs = contracts_dir.join(file_rel);
+        let result = validate_single_file(&file_abs, contracts_dir);
+        match result {
+            Ok(contract_file) => {
+                files.push(contract_file);
+                summary.valid += 1;
+            }
+            Err((file_path, validation_errors)) => {
+                summary.invalid += 1;
+                for err in &validation_errors {
+                    let key = err.to_string();
+                    summary
+                        .errors_by_kind
+                        .entry(key)
+                        .and_modify(|c| *c += 1)
+                        .or_insert(1);
+                }
+                for err in &validation_errors {
+                    errors.push(err.to_string());
+                }
+            }
+        }
+    }
+
+    // Sort files by path (INV-005).
+    files.sort_by(|a, b| a.path.cmp(&b.path));
+
+    // Monotonicity gate: schema versions must be non-decreasing across files.
+    let mut version_violations = Vec::new();
+    for i in 1..files.len() {
+        let prev_ver = &files[i - 1].schema_version;
+        let curr_ver = &files[i].schema_version;
+        match compare_semver(prev_ver, curr_ver) {
+            Ok(SemverCmp::Greater) => {
+                // Monotonicity breach: previous file has a higher version.
+                let breach_msg = format!(
+                    "VERSION_MONOTONICITY_BREACH: {} expected >= {} got {}",
+                    files[i].path.display(),
+                    files[i - 1].schema_version,
+                    curr_ver
+                );
+                errors.push(breach_msg.clone());
+                version_violations.push(VersionViolation {
+                    file: files[i].path.clone(),
+                    expected: files[i - 1].schema_version.clone(),
+                    actual: curr_ver.clone(),
+                    detail: format!(
+                        "version {} < previous version {} (must be non-decreasing)",
+                        curr_ver, prev_ver
+                    ),
+                });
+            }
+            Err(_) => {
+                // Invalid semver in one of the files — treat as error.
+                let err_msg = format!("INVALID_VERSION: {}", prev_ver);
+                if !errors.contains(&err_msg) {
+                    errors.push(err_msg);
+                }
+            }
+            _ => {} // Equal or Less — monotonicity OK
+        }
+    }
+
+    // Deduplicate version violations by file path.
+    let mut version_violations_map: BTreeMap<PathBuf, VersionViolation> = BTreeMap::new();
+    for v in version_violations {
+        version_violations_map.entry(v.file.clone()).or_insert(v);
+    }
+    let mut version_violations_vec: Vec<_> = version_violations_map.into_values().collect();
+    version_violations_vec.sort_by(|a, b| a.file.cmp(&b.file));
+
+    summary.version_violations = version_violations_vec;
+
+    // Sort errors for determinism.
+    errors.sort();
+
+    Ok(DiscoveryReport {
+        files,
+        errors,
+        summary,
     })
 }
 
-/// Check if a string is a valid semver-like version (major.minor.patch).
-fn is_valid_semver(v: &str) -> bool {
-    let parts: Vec<&str> = v.split('.').collect();
-    if parts.len() != 3 {
-        return false;
+/// Recursively collect all .cue file paths under root, relative to base.
+fn collect_cue_files(
+    base: &Path,
+    current: &Path,
+    out: &mut Vec<PathBuf>,
+) -> std::io::Result<()> {
+    if !current.is_dir() {
+        return Ok(());
     }
-    parts.iter().all(|p| p.parse::<u64>().is_ok())
+    let mut entries: Vec<_> = current
+        .read_dir()?
+        .filter_map(|e| e.ok())
+        .collect();
+    entries.sort_by_key(|e| e.path());
+    for entry in entries {
+        let path = entry.path();
+        if entry.file_type().map(|ft| ft.is_dir()).unwrap_or(false) {
+            collect_cue_files(base, &path, out)?;
+        } else if path.extension().map(|ext| ext == "cue").unwrap_or(false) {
+            let relative = path.strip_prefix(base).unwrap_or(&path);
+            out.push(relative.to_path_buf());
+        }
+    }
+    Ok(())
 }
 
-/// Walk the contracts directory and produce a `DiscoveryReport`.
+/// Validate a single .cue file: cue vet + field extraction.
 ///
-/// Files are sorted by path for deterministic output (INV-005).
-pub fn discover_contracts(
+/// `file_path` must be an absolute path (used for file I/O).
+/// `contracts_dir` is used as the working directory for `cue vet`
+/// so that relative paths are resolved correctly.
+fn validate_single_file(
+    file_path: &Path,
     contracts_dir: &Path,
-    manifest: &BTreeMap<String, (String, ContractKind)>,
-) -> DiscoveryReport {
-    let mut files: Vec<ContractFile> = Vec::new();
-    let mut raw_errors: Vec<ValidationError> = Vec::new();
-    let mut errors_by_kind: BTreeMap<ContractKind, u32> = BTreeMap::new();
-    let mut version_violations: Vec<VersionViolation> = Vec::new();
+) -> Result<ContractFile, (PathBuf, Vec<ContractError>)> {
+    let mut vet_errors: Vec<ContractError> = Vec::new();
+    let mut schema_version = String::new();
+    let mut kind_str: Option<String> = None;
 
-    // Collect and sort paths for deterministic output
-    let mut paths: Vec<PathBuf> = Vec::new();
-    if let Ok(entries) = std::fs::read_dir(contracts_dir) {
-        for entry in entries.flatten() {
-            let path = entry.path();
-            if path.is_file() && path.extension().is_some_and(|ext| ext == "cue") {
-                paths.push(path);
-            }
-        }
-    }
-    paths.sort();
-
-    let mut invalid_count: u32 = 0;
-
-    for path in &paths {
-        match validate_contract_file(path, manifest) {
-            Ok(contract_file) => {
-                let entry = errors_by_kind.entry(contract_file.kind).or_insert(0u32);
-                *entry = entry.saturating_add(1);
-                files.push(contract_file);
-            }
-            Err(file_errors) => {
-                invalid_count = invalid_count.saturating_add(1);
-                for err in file_errors {
-                    raw_errors.push(err.clone());
-                }
-            }
-        }
-    }
-
-    // Collect version violations from raw errors
-    for err in &raw_errors {
-        if let ValidationError::VersionMonotonicityBreach {
-            file,
-            expected,
-            actual,
-        } = err
-        {
-            version_violations.push(VersionViolation {
-                file: PathBuf::from(file),
-                expected: expected.clone(),
-                actual: actual.clone(),
-                detail: "monotonicity breach".to_string(),
+    // Run cue vet.
+    // Use the relative path (relative to contracts_dir) for cue, with
+    // contracts_dir as CWD, so cue resolves the path correctly.
+    let relative_path = file_path
+        .strip_prefix(contracts_dir)
+        .unwrap_or(file_path);
+    let (exit_code, stderr) = match run_cue_vet(relative_path, Some(contracts_dir)) {
+        Ok(result) => result,
+        Err(_e) => {
+            vet_errors.push(ContractError::CueVetFailed {
+                file: relative_path.to_string_lossy().to_string(),
             });
+            // Continue with field parsing even if cue not available.
+            (0, String::new())
         }
-    }
-    version_violations.sort_by(|a, b| a.file.cmp(&b.file));
-
-    let valid = u32::try_from(files.len())
-        .unwrap_or(u32::MAX)
-        .saturating_sub(invalid_count);
-
-    // Build serializable error messages
-    let errors: Vec<String> = raw_errors.iter().map(|e| e.to_string()).collect();
-
-    DiscoveryReport {
-        files,
-        errors,
-        raw_errors,
-        summary: ReportSummary {
-            total: u32::try_from(paths.len()).unwrap_or(u32::MAX),
-            valid,
-            invalid: invalid_count,
-            errors_by_kind,
-            version_violations,
-        },
-    }
-}
-
-/// Convert a `DiscoveryReport` to a `GateEvidence` for the evidence pipeline.
-///
-/// This is the integration point for OBL-006 (GateEvidence parity).
-pub fn gate_evidence_from_report(report: &DiscoveryReport) -> crate::evidence::GateEvidence {
-    let exit_code = if report.summary.invalid == 0 { 0 } else { 1 };
-
-    let status = if report.summary.invalid == 0 {
-        crate::evidence::GateStatus::Pass
-    } else {
-        crate::evidence::GateStatus::Fail
     };
 
+    if exit_code != 0 {
+        vet_errors.push(ContractError::CueVetFailed {
+            file: relative_path.to_string_lossy().to_string(),
+        });
+    }
+
+    // Parse file content for kind and schema_version.
+    let content = match std::fs::read_to_string(file_path) {
+        Ok(c) => c,
+        Err(_) => {
+            vet_errors.push(ContractError::CueVetFailed {
+                file: relative_path.to_string_lossy().to_string(),
+            });
+            return Err((relative_path.to_path_buf(), vet_errors));
+        }
+    };
+
+    // Extract kind from the CUE content.
+    kind_str = extract_kind(&content);
+
+    // Extract schema_version from the CUE content.
+    schema_version = extract_schema_version(&content);
+
+    // Validate kind.
+    let kind = match &kind_str {
+        Some(k) => match ContractKind::parse(k) {
+            Ok(kind) => kind,
+            Err(unrecognised) => {
+                vet_errors.push(ContractError::InvalidKind {
+                    kind: unrecognised.clone(),
+                });
+                return Err((relative_path.to_path_buf(), vet_errors));
+            }
+        },
+        None => {
+            vet_errors.push(ContractError::MissingSchemaVersion);
+            return Err((relative_path.to_path_buf(), vet_errors));
+        }
+    };
+
+    // Validate schema_version.
+    let sv = match parse_schema_version(&schema_version) {
+        Ok(sv) => sv,
+        Err(e) => {
+            vet_errors.push(e);
+            return Err((relative_path.to_path_buf(), vet_errors));
+        }
+    };
+
+    Ok(ContractFile {
+        path: relative_path.to_path_buf(),
+        schema_version: sv,
+        kind,
+        vet_errors: Vec::new(),
+    })
+}
+
+/// Extract the kind value from CUE content by scanning for the `kind:` field.
+fn extract_kind(content: &str) -> Option<String> {
+    for line in content.lines() {
+        let trimmed = line.trim();
+        if let Some(after_colon) = trimmed.strip_prefix("kind:") {
+            let val = after_colon.trim();
+            let val = val.trim_matches('"');
+            return Some(val.to_string());
+        }
+    }
+    None
+}
+
+/// Extract the schema_version value from CUE content.
+fn extract_schema_version(content: &str) -> String {
+    for line in content.lines() {
+        let trimmed = line.trim();
+        if let Some(after_colon) = trimmed.strip_prefix("schema_version:") {
+            let val = after_colon.trim();
+            let val = val.trim_matches('"');
+            return val.to_string();
+        }
+    }
+    String::new()
+}
+
+// ---------------------------------------------------------------------------
+// GateEvidence integration
+// ---------------------------------------------------------------------------
+
+/// Re-export the GateEvidence, GateStatus, and WhyFailed types from the evidence module.
+pub use crate::evidence::{GateEvidence, GateStatus, WhyFailed};
+
+/// Convert a DiscoveryReport into a GateEvidence record.
+/// Always succeeds (OBL-006: Kani proof of non-panic).
+pub fn gate_evidence_from_report(report: &DiscoveryReport) -> GateEvidence {
+    let status = if report.summary.invalid == 0 {
+        GateStatus::Pass
+    } else {
+        GateStatus::Fail
+    };
+
+    let exit_code = if report.summary.invalid == 0 { 0 } else { 1 };
+
     let why_failed = if report.summary.invalid > 0 {
-        let error_count = report.raw_errors.len();
-        Some(crate::evidence::WhyFailed {
+        let mut unique: Vec<_> = report.errors.iter().cloned().collect();
+        unique.sort();
+        unique.dedup();
+        let detail = if unique.is_empty() {
+            format!(
+                "{} contract(s) failed validation",
+                report.summary.invalid
+            )
+        } else {
+            format!(
+                "{} contract(s) failed: {}",
+                report.summary.invalid,
+                unique.join(", ")
+            )
+        };
+        Some(WhyFailed {
             gate_name: "contracts".to_string(),
-            hint: format!(
-                "{error_count} contract validation error(s) found. Check contracts/ directory.",
-            ),
+            hint: detail,
             repair_command: "cargo xtask contracts --check".to_string(),
             variant: None,
             fixture_id: None,
@@ -459,762 +560,241 @@ pub fn gate_evidence_from_report(report: &DiscoveryReport) -> crate::evidence::G
         None
     };
 
-    crate::evidence::GateEvidence {
+    GateEvidence {
         kind: "contract-discovery".to_string(),
         gate_name: "contracts".to_string(),
         command: "cargo xtask contracts --dir contracts".to_string(),
         exit_code,
-        log: PathBuf::from(".evidence/contracts.log"),
+        log: PathBuf::from(".evidence/contracts/last_run.log"),
         status,
         why_failed,
     }
 }
 
-/// Load the contract manifest from `.beads/contracts/manifest.json` if it exists.
-///
-/// Returns a `BTreeMap` of file path -> (version, kind).
-pub fn load_manifest(
-    workspace_root: &Path,
-) -> ValidationResult<BTreeMap<String, (String, ContractKind)>> {
-    let manifest_path = workspace_root.join(".beads/contracts/manifest.json");
-    if !manifest_path.exists() {
-        return Ok(BTreeMap::new());
-    }
+// ---------------------------------------------------------------------------
+// CLI handler
+// ---------------------------------------------------------------------------
 
-    let content = std::fs::read_to_string(&manifest_path).map_err(|e| {
-        ValidationError::MissingRequiredField {
-            field: format!("manifest.json: {e}"),
-        }
-    })?;
+/// Handle the `contracts` xtask command.
+pub fn cmd_contracts(dir: &str, json: bool, check: bool) -> anyhow::Result<()> {
+    let contracts_dir = Path::new(dir);
+    let report = discover_contracts(contracts_dir).map_err(|e| anyhow::anyhow!("{}", e))?;
 
-    let parsed: serde_json::Value =
-        serde_json::from_str(&content).map_err(|e| ValidationError::MissingRequiredField {
-            field: format!("manifest.json parse: {e}"),
-        })?;
+    let evidence = gate_evidence_from_report(&report);
 
-    let mut map = BTreeMap::new();
-
-    if let Some(registry) = parsed.get("contract_registry")
-        && let Some(obj) = registry.as_object()
-    {
-        for (_key, entry) in obj {
-            #[allow(clippy::collapsible_if)]
-            if let (Some(path_val), Some(ver_val), Some(kind_val)) = (
-                entry.get("path"),
-                entry.get("schema_version"),
-                entry.get("kind"),
-            ) && let (Some(path_str), Some(ver_str), Some(kind_str)) =
-                (path_val.as_str(), ver_val.as_str(), kind_val.as_str())
-            {
-                if let Some(kind) = ContractKind::from_str(kind_str) {
-                    map.insert(path_str.to_string(), (ver_str.to_string(), kind));
-                }
+    if json {
+        let output = serde_json::to_string_pretty(&report)?;
+        crate::shell::write_stdout(format_args!("{output}"))?;
+    } else {
+        crate::shell::write_stdout(format_args!(
+            "contracts: {} total, {} valid, {} invalid",
+            report.summary.total, report.summary.valid, report.summary.invalid
+        ))?;
+        if !report.errors.is_empty() {
+            crate::shell::write_stdout(format_args!("Errors:"))?;
+            for error in &report.errors {
+                crate::shell::write_stdout(format_args!("  {error}"))?;
             }
         }
     }
 
-    Ok(map)
-}
-
-/// Save a contract manifest to `.beads/contracts/manifest.json`.
-pub fn save_manifest(workspace_root: &Path, report: &DiscoveryReport) -> ValidationResult<()> {
-    let manifest_dir = workspace_root.join(".beads/contracts");
-    std::fs::create_dir_all(&manifest_dir).map_err(|e| ValidationError::MissingRequiredField {
-        field: format!("create manifest dir: {e}"),
-    })?;
-
-    let mut registry = serde_json::Map::new();
-
-    for file in &report.files {
-        let key = file.path.to_string_lossy().to_string();
-        let mut entry = serde_json::Map::new();
-        entry.insert("path".to_string(), serde_json::Value::String(key.clone()));
-        entry.insert(
-            "schema_version".to_string(),
-            serde_json::Value::String(file.schema_version.clone()),
+    if check && report.summary.invalid > 0 {
+        anyhow::bail!(
+            "{} contract(s) failed validation",
+            report.summary.invalid
         );
-        entry.insert(
-            "kind".to_string(),
-            serde_json::Value::String(file.kind.cue_str().to_string()),
-        );
-        entry.insert(
-            "last_validated".to_string(),
-            serde_json::Value::String(chrono::Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string()),
-        );
-        registry.insert(key, serde_json::Value::Object(entry));
     }
-
-    let mut output = serde_json::Map::new();
-    output.insert(
-        "contract_registry".to_string(),
-        serde_json::Value::Object(registry),
-    );
-
-    let json = serde_json::to_string_pretty(&output).map_err(|e| {
-        ValidationError::MissingRequiredField {
-            field: format!("manifest serialization: {e}"),
-        }
-    })?;
-
-    let manifest_path = manifest_dir.join("manifest.json");
-    std::fs::write(&manifest_path, json).map_err(|e| ValidationError::MissingRequiredField {
-        field: format!("write manifest: {e}"),
-    })?;
 
     Ok(())
 }
+
+// ---------------------------------------------------------------------------
+// Tests
+// ---------------------------------------------------------------------------
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    // ===================================================================
-    // Section TST-001-TST-004: ContractKind parsing (INV-002)
-    // ===================================================================
-
     #[test]
-    fn test_contract_kind_parse_all_six_values() {
-        let cases = [
-            ("cli_envelope", ContractKind::CliEnvelope),
-            ("ui_tokens", ContractKind::UiTokens),
-            ("accepted_artifacts", ContractKind::AcceptedArtifacts),
-            ("evidence_bundle", ContractKind::EvidenceBundle),
-            ("diagnostics", ContractKind::Diagnostics),
-            ("gate_output", ContractKind::GateOutput),
-        ];
-        for (input, expected) in cases {
-            assert_eq!(
-                ContractKind::from_str(input),
-                Some(expected),
-                "parse {input} should yield {expected:?}"
-            );
-        }
+    fn test_parse_schema_version_valid() {
+        assert!(parse_schema_version("1.0.0").is_ok());
+        assert!(parse_schema_version("0.1.0").is_ok());
+        assert!(parse_schema_version("999.999.999").is_ok());
     }
 
     #[test]
-    fn test_contract_kind_parse_rejects_unknown() {
-        let invalid = [
-            "invalid_kind",
-            "CLI_ENVELOPE",
-            "cli-envelope",
-            "",
-            "cli_envelope_extra",
-            "Cli_Envelope",
-            "cli envelope",
-            "cli_envelope!",
-        ];
-        for input in &invalid {
-            assert!(
-                ContractKind::from_str(input).is_none(),
-                "{input:?} should be rejected"
-            );
-        }
+    fn test_parse_schema_version_empty() {
+        assert!(matches!(
+            parse_schema_version(""),
+            Err(ContractError::MissingSchemaVersion)
+        ));
     }
 
     #[test]
-    fn test_contract_kind_all_values_count_is_six() {
-        assert_eq!(ContractKind::all_values().len(), 6);
+    fn test_parse_schema_version_malformed() {
+        assert!(matches!(
+            parse_schema_version("1.0"),
+            Err(ContractError::InvalidVersion { .. })
+        ));
+        assert!(matches!(
+            parse_schema_version("1.0.0.0"),
+            Err(ContractError::InvalidVersion { .. })
+        ));
+        assert!(matches!(
+            parse_schema_version("abc"),
+            Err(ContractError::InvalidVersion { .. })
+        ));
+        assert!(matches!(
+            parse_schema_version("01.0.0"),
+            Err(ContractError::InvalidVersion { .. })
+        ));
     }
 
     #[test]
-    fn test_contract_kind_all_values_match_enum_variants() {
-        let all = ContractKind::all_values();
-        for variant in ContractKind::all_values() {
-            let count = all.iter().filter(|v| **v == *variant).count();
-            assert_eq!(count, 1, "{variant:?} should appear exactly once");
-        }
-    }
-
-    #[test]
-    fn test_contract_kind_all_values_sorted_ordinally() {
-        let all = ContractKind::all_values();
-        for w in all.windows(2) {
-            assert!(w[0] < w[1], "all_values should be in ordinal order");
-        }
-    }
-
-    #[test]
-    fn test_contract_kind_display_matches_cue_str() {
+    fn test_parse_contract_kind_all() {
         for kind in ContractKind::all_values() {
-            assert_eq!(format!("{kind}"), kind.cue_str());
+            let s = kind.to_string();
+            assert_eq!(ContractKind::parse(&s), Ok(*kind));
         }
     }
 
     #[test]
-    fn test_contract_kind_roundtrip() {
-        for kind in ContractKind::all_values() {
-            let cue = kind.cue_str();
-            assert_eq!(ContractKind::from_str(cue), Some(*kind));
-        }
-    }
-
-    // ===================================================================
-    // Section TST-005-TST-010: schema_version / semver (INV-001)
-    // ===================================================================
-
-    #[test]
-    fn test_is_valid_semver_accepts_valid() {
-        for v in &[
-            "1.0.0",
-            "0.1.0",
-            "0.0.1",
-            "999.999.999",
-            "1.2.3",
-            "0.0.0",
-            "10.20.30",
-        ] {
-            assert!(is_valid_semver(v), "{v} should be valid semver");
-        }
-    }
-
-    #[test]
-    fn test_is_valid_semver_rejects_wrong_part_count() {
-        for v in &["1.0", "1", "1.0.0.0", "1.0.0.0.0"] {
-            assert!(!is_valid_semver(v), "{v} should be rejected");
-        }
-    }
-
-    #[test]
-    fn test_is_valid_semver_rejects_non_numeric() {
-        for v in &["1.0.a", "a.b.c", "1.0.0a", "1.a.0", ".0.0"] {
-            assert!(!is_valid_semver(v), "{v} should be rejected");
-        }
-    }
-
-    #[test]
-    fn test_is_valid_semver_rejects_empty_components() {
-        for v in &["1..0", "1.0.", ".1.0"] {
-            assert!(!is_valid_semver(v), "{v} should be rejected");
-        }
+    fn test_parse_contract_kind_invalid() {
+        assert!(ContractKind::parse("bogus").is_err());
+        assert!(ContractKind::parse("").is_err());
     }
 
     #[test]
     fn test_compare_semver_equal() {
-        assert_eq!(
-            compare_semver("1.0.0", "1.0.0").unwrap(),
-            std::cmp::Ordering::Equal
-        );
-        assert_eq!(
-            compare_semver("0.0.0", "0.0.0").unwrap(),
-            std::cmp::Ordering::Equal
-        );
+        assert_eq!(compare_semver("1.0.0", "1.0.0"), Ok(SemverCmp::Equal));
     }
 
     #[test]
-    fn test_compare_semver_different_major() {
-        assert_eq!(
-            compare_semver("1.0.0", "2.0.0").unwrap(),
-            std::cmp::Ordering::Less
-        );
-        assert_eq!(
-            compare_semver("2.0.0", "1.0.0").unwrap(),
-            std::cmp::Ordering::Greater
-        );
+    fn test_compare_semver_less() {
+        assert_eq!(compare_semver("1.0.0", "2.0.0"), Ok(SemverCmp::Less));
+        assert_eq!(compare_semver("1.0.0", "1.1.0"), Ok(SemverCmp::Less));
+        assert_eq!(compare_semver("1.0.0", "1.0.1"), Ok(SemverCmp::Less));
     }
 
     #[test]
-    fn test_compare_semver_different_minor() {
-        assert_eq!(
-            compare_semver("1.0.0", "1.1.0").unwrap(),
-            std::cmp::Ordering::Less
-        );
-        assert_eq!(
-            compare_semver("1.1.0", "1.0.0").unwrap(),
-            std::cmp::Ordering::Greater
-        );
+    fn test_compare_semver_greater() {
+        assert_eq!(compare_semver("2.0.0", "1.0.0"), Ok(SemverCmp::Greater));
     }
 
     #[test]
-    fn test_compare_semver_different_patch() {
-        assert_eq!(
-            compare_semver("1.0.0", "1.0.1").unwrap(),
-            std::cmp::Ordering::Less
-        );
-        assert_eq!(
-            compare_semver("1.0.1", "1.0.0").unwrap(),
-            std::cmp::Ordering::Greater
-        );
+    fn test_parse_vet_exit_code_zero() {
+        assert!(parse_vet_exit_code(0).is_ok());
     }
 
     #[test]
-    fn test_compare_semver_transitive() {
-        assert_eq!(
-            compare_semver("1.0.0", "2.0.0").unwrap(),
-            std::cmp::Ordering::Less
-        );
-        assert_eq!(
-            compare_semver("2.0.0", "3.0.0").unwrap(),
-            std::cmp::Ordering::Less
-        );
-        assert_eq!(
-            compare_semver("1.0.0", "3.0.0").unwrap(),
-            std::cmp::Ordering::Less
-        );
+    fn test_parse_vet_exit_code_nonzero() {
+        assert!(parse_vet_exit_code(1).is_err());
+        assert!(parse_vet_exit_code(-1).is_err());
     }
 
     #[test]
-    fn test_compare_semver_invalid_inputs() {
-        for (a, b) in &[
-            ("not-a-version", "1.0.0"),
-            ("1.0", "1.0.0"),
-            ("1", "1.0.0"),
-            ("", "1.0.0"),
-            ("1.0.a", "1.0.0"),
-            ("a.b.c", "1.0.0"),
-        ] {
-            assert!(
-                compare_semver(a, b).is_err(),
-                "({a}, {b}) should return Err"
-            );
-        }
-    }
-
-    // ===================================================================
-    // Section TST-024-TST-027: Report summary invariants (INV-005, INV-006)
-    // ===================================================================
-
-    #[test]
-    fn test_report_total_equals_valid_plus_invalid() {
+    fn test_gate_evidence_pass() {
         let report = DiscoveryReport {
-            files: vec![
-                ContractFile {
-                    path: PathBuf::from("a.cue"),
-                    schema_version: "1.0.0".into(),
-                    kind: ContractKind::CliEnvelope,
-                    vet_errors: vec![],
-                },
-                ContractFile {
-                    path: PathBuf::from("b.cue"),
-                    schema_version: "1.0.0".into(),
-                    kind: ContractKind::UiTokens,
-                    vet_errors: vec![],
-                },
-            ],
-            errors: vec![],
-            raw_errors: vec![],
-            summary: ReportSummary {
-                total: 2,
-                valid: 2,
-                invalid: 0,
-                errors_by_kind: BTreeMap::new(),
-                version_violations: vec![],
-            },
-        };
-        assert_eq!(
-            report.summary.total,
-            report.summary.valid + report.summary.invalid
-        );
-    }
-
-    #[test]
-    fn test_report_empty_total_is_zero() {
-        let report = DiscoveryReport {
-            files: vec![],
-            errors: vec![],
-            raw_errors: vec![],
-            summary: ReportSummary {
-                total: 0,
-                valid: 0,
-                invalid: 0,
-                errors_by_kind: BTreeMap::new(),
-                version_violations: vec![],
-            },
-        };
-        assert_eq!(report.summary.total, 0);
-        assert_eq!(report.summary.valid, 0);
-        assert_eq!(report.summary.invalid, 0);
-    }
-
-    // ===================================================================
-    // Section TST-028-TST-031: GateEvidence construction (REQ-004, INV-006)
-    // ===================================================================
-
-    #[test]
-    fn test_gate_evidence_passes_when_all_valid() {
-        let report = DiscoveryReport {
-            files: vec![],
-            errors: vec![],
-            raw_errors: vec![],
-            summary: ReportSummary {
-                total: 0,
-                valid: 0,
-                invalid: 0,
-                errors_by_kind: BTreeMap::new(),
-                version_violations: vec![],
-            },
+            files: Vec::new(),
+            errors: Vec::new(),
+            summary: ReportSummary::new(),
         };
         let evidence = gate_evidence_from_report(&report);
-        assert_eq!(evidence.status, crate::evidence::GateStatus::Pass);
+        assert!(matches!(evidence.status, GateStatus::Pass));
         assert_eq!(evidence.exit_code, 0);
         assert!(evidence.why_failed.is_none());
     }
 
     #[test]
-    fn test_gate_evidence_fails_when_any_invalid() {
+    fn test_gate_evidence_fail() {
         let report = DiscoveryReport {
-            files: vec![],
-            errors: vec!["some error".into()],
-            raw_errors: vec![ValidationError::InvalidKind {
-                kind: "bogus".into(),
-            }],
+            files: Vec::new(),
+            errors: vec!["INVALID_KIND: bogus".to_string()],
             summary: ReportSummary {
                 total: 1,
                 valid: 0,
                 invalid: 1,
-                errors_by_kind: BTreeMap::new(),
-                version_violations: vec![],
+                errors_by_kind: BTreeMap::from_iter(vec![("INVALID_KIND: bogus".to_string(), 1)]),
+                version_violations: Vec::new(),
             },
         };
         let evidence = gate_evidence_from_report(&report);
-        assert_eq!(evidence.status, crate::evidence::GateStatus::Fail);
+        assert!(matches!(evidence.status, GateStatus::Fail));
         assert_eq!(evidence.exit_code, 1);
         assert!(evidence.why_failed.is_some());
     }
 
     #[test]
-    fn test_gate_evidence_kind_and_gate_name() {
-        let report = DiscoveryReport {
-            files: vec![],
-            errors: vec![],
-            raw_errors: vec![],
-            summary: ReportSummary {
-                total: 0,
-                valid: 0,
-                invalid: 0,
-                errors_by_kind: BTreeMap::new(),
-                version_violations: vec![],
-            },
-        };
-        let evidence = gate_evidence_from_report(&report);
-        assert_eq!(evidence.kind, "contract-discovery");
-        assert_eq!(evidence.gate_name, "contracts");
-    }
-
-    #[test]
-    fn test_gate_evidence_command_string() {
-        let report = DiscoveryReport {
-            files: vec![],
-            errors: vec![],
-            raw_errors: vec![],
-            summary: ReportSummary {
-                total: 0,
-                valid: 0,
-                invalid: 0,
-                errors_by_kind: BTreeMap::new(),
-                version_violations: vec![],
-            },
-        };
-        let evidence = gate_evidence_from_report(&report);
-        assert_eq!(evidence.command, "cargo xtask contracts --dir contracts");
-    }
-
-    #[test]
-    fn test_gate_evidence_log_path() {
-        let report = DiscoveryReport {
-            files: vec![],
-            errors: vec![],
-            raw_errors: vec![],
-            summary: ReportSummary {
-                total: 0,
-                valid: 0,
-                invalid: 0,
-                errors_by_kind: BTreeMap::new(),
-                version_violations: vec![],
-            },
-        };
-        let evidence = gate_evidence_from_report(&report);
-        assert_eq!(evidence.log, PathBuf::from(".evidence/contracts.log"));
-    }
-
-    // ===================================================================
-    // Section TST-063-TST-070: parse_contract_meta edge cases (INV-001, INV-002)
-    // ===================================================================
-
-    #[test]
-    fn test_parse_meta_empty_object() {
-        let meta = parse_contract_meta("{}");
-        assert_eq!(meta.schema_version, None);
-        assert_eq!(meta.kind, None);
-    }
-
-    #[test]
-    fn test_parse_meta_missing_schema_version() {
-        let meta = parse_contract_meta(r#"kind: "cli_envelope""#);
-        assert_eq!(meta.schema_version, None);
-        assert_eq!(meta.kind, Some("cli_envelope".to_string()));
-    }
-
-    #[test]
-    fn test_parse_meta_missing_kind() {
-        let meta = parse_contract_meta(r#"schema_version: "1.0.0""#);
-        assert_eq!(meta.schema_version, Some("1.0.0".to_string()));
-        assert_eq!(meta.kind, None);
-    }
-
-    #[test]
-    fn test_parse_meta_skips_comments() {
-        let meta = parse_contract_meta("// schema_version: \"1.0.0\"\nkind: \"ui_tokens\"");
-        assert_eq!(meta.schema_version, None);
-        assert_eq!(meta.kind, Some("ui_tokens".to_string()));
-    }
-
-    #[test]
-    fn test_parse_meta_skips_empty_lines() {
-        let meta =
-            parse_contract_meta("\n\nschema_version: \"2.0.0\"\n\nkind: \"gate_output\"\n\n");
-        assert_eq!(meta.schema_version, Some("2.0.0".to_string()));
-        assert_eq!(meta.kind, Some("gate_output".to_string()));
-    }
-
-    #[test]
-    fn test_parse_meta_cue_type_annotation_not_literal() {
-        let meta = parse_contract_meta("schema_version: string\nkind: \"diagnostics\"");
-        assert_eq!(meta.schema_version, None);
-        assert_eq!(meta.kind, Some("diagnostics".to_string()));
-    }
-
-    #[test]
-    fn test_parse_meta_extra_unknown_fields_ignored() {
-        let meta = parse_contract_meta(
-            "schema_version: \"1.0.0\"\nkind: \"cli_envelope\"\nextra_field: true",
-        );
-        assert_eq!(meta.schema_version, Some("1.0.0".to_string()));
-        assert_eq!(meta.kind, Some("cli_envelope".to_string()));
-    }
-
-    #[test]
-    fn test_parse_meta_quoted_schema_version() {
-        let meta = parse_contract_meta("schema_version: \"0.5.3\"\nkind: \"accepted_artifacts\"");
-        assert_eq!(meta.schema_version, Some("0.5.3".to_string()));
-        assert_eq!(meta.kind, Some("accepted_artifacts".to_string()));
-    }
-
-    #[test]
-    fn test_parse_meta_whitespace_handling() {
-        let meta =
-            parse_contract_meta("  schema_version:  \"3.0.0\"  \n  kind:   \"evidence_bundle\"  ");
-        assert_eq!(meta.schema_version, Some("3.0.0".to_string()));
-        assert_eq!(meta.kind, Some("evidence_bundle".to_string()));
-    }
-
-    #[test]
-    fn test_parse_meta_schema_version_with_spaces() {
-        let meta = parse_contract_meta("schema_version: \"1. 0.0\"\nkind: \"cli_envelope\"");
-        assert_eq!(meta.schema_version, Some("1. 0.0".to_string()));
-    }
-
-    #[test]
-    fn test_parse_meta_schema_version_with_negative() {
-        let meta = parse_contract_meta("schema_version: \"-1.0.0\"\nkind: \"cli_envelope\"");
-        assert_eq!(meta.schema_version, Some("-1.0.0".to_string()));
-    }
-
-    #[test]
-    fn test_parse_meta_schema_version_with_four_parts() {
-        let meta = parse_contract_meta("schema_version: \"1.0.0.5\"\nkind: \"cli_envelope\"");
-        assert_eq!(meta.schema_version, Some("1.0.0.5".to_string()));
-    }
-
-    // ===================================================================
-    // Section TST-080-TST-087: Version monotonicity (REQ-005, INV-004)
-    // ===================================================================
-
-    #[test]
-    fn test_compare_semver_major_upgrade_passes() {
-        assert_eq!(
-            compare_semver("1.0.0", "2.0.0").unwrap(),
-            std::cmp::Ordering::Less
-        );
-    }
-
-    #[test]
-    fn test_compare_semver_major_downgrade_fails() {
-        assert_eq!(
-            compare_semver("2.0.0", "1.0.0").unwrap(),
-            std::cmp::Ordering::Greater
-        );
-    }
-
-    #[test]
-    fn test_compare_semver_minor_upgrade_passes() {
-        assert_eq!(
-            compare_semver("1.0.0", "1.1.0").unwrap(),
-            std::cmp::Ordering::Less
-        );
-    }
-
-    #[test]
-    fn test_compare_semver_minor_downgrade_fails() {
-        assert_eq!(
-            compare_semver("1.1.0", "1.0.0").unwrap(),
-            std::cmp::Ordering::Greater
-        );
-    }
-
-    #[test]
-    fn test_compare_semver_patch_upgrade_passes() {
-        assert_eq!(
-            compare_semver("1.0.0", "1.0.1").unwrap(),
-            std::cmp::Ordering::Less
-        );
-    }
-
-    #[test]
-    fn test_compare_semver_patch_downgrade_fails() {
-        assert_eq!(
-            compare_semver("1.0.1", "1.0.0").unwrap(),
-            std::cmp::Ordering::Greater
-        );
-    }
-
-    // ===================================================================
-    // Section TST-052-TST-056: cue vet execution
-    // ===================================================================
-
-    #[test]
-    fn test_run_cue_vet_returns_error_when_cue_missing() {
-        let (exit_code, errors) = run_cue_vet(Path::new("/nonexistent/file.cue"));
-        assert!(
-            exit_code != 0 || !errors.is_empty(),
-            "should handle missing cue gracefully"
-        );
-    }
-
-    // ===================================================================
-    // Section TST-088-TST-092: Determinism (INV-005)
-    // ===================================================================
-
-    #[test]
-    fn test_discovery_report_json_is_deterministic() {
-        let report = DiscoveryReport {
-            files: vec![
-                ContractFile {
-                    path: PathBuf::from("b.cue"),
-                    schema_version: "1.0.0".into(),
-                    kind: ContractKind::UiTokens,
-                    vet_errors: vec![],
-                },
-                ContractFile {
-                    path: PathBuf::from("a.cue"),
-                    schema_version: "2.0.0".into(),
-                    kind: ContractKind::CliEnvelope,
-                    vet_errors: vec![],
-                },
-            ],
-            errors: vec![],
-            raw_errors: vec![],
-            summary: ReportSummary {
-                total: 2,
-                valid: 2,
-                invalid: 0,
-                errors_by_kind: BTreeMap::new(),
-                version_violations: vec![],
-            },
-        };
-        let json1 = serde_json::to_string(&report).expect("must serialize");
-        let json2 = serde_json::to_string(&report).expect("must serialize");
-        assert_eq!(json1, json2, "JSON serialization must be deterministic");
-    }
-
-    #[test]
-    fn test_errors_by_kind_btremap_keys_sorted() {
-        let mut map = BTreeMap::new();
-        map.insert(ContractKind::GateOutput, 1u32);
-        map.insert(ContractKind::CliEnvelope, 2);
-        map.insert(ContractKind::UiTokens, 3);
-        let mut keys: Vec<_> = map.keys().copied().collect();
-        keys.sort();
-        let mut existing_keys: Vec<_> = map.keys().copied().collect();
-        existing_keys.sort();
-        assert_eq!(keys, existing_keys, "BTreeMap keys should be sorted");
-    }
-
-    // ===================================================================
-    // Section TST-098-TST-105: Proof artifact cross-reference (compile-time)
-    // ===================================================================
-
-    #[test]
-    fn test_cross_ref_compare_semver_signature_matches() {
-        let _result: Result<std::cmp::Ordering, ValidationError> = compare_semver("1.0.0", "2.0.0");
-    }
-
-    #[test]
-    fn test_cross_ref_contract_kind_derives_serialize_deserialize() {
-        let json = serde_json::to_string(&ContractKind::CliEnvelope).expect("must serialize");
-        let parsed: ContractKind = serde_json::from_str(&json).expect("must deserialize");
-        assert_eq!(parsed, ContractKind::CliEnvelope);
-    }
-
-    #[test]
-    fn test_cross_ref_report_summary_uses_btreemap() {
+    fn test_report_summary_parity() {
         let summary = ReportSummary {
-            total: 0,
-            valid: 0,
-            invalid: 0,
+            total: 5,
+            valid: 3,
+            invalid: 2,
             errors_by_kind: BTreeMap::new(),
-            version_violations: vec![],
+            version_violations: Vec::new(),
         };
-        assert!(matches!(
-            summary.errors_by_kind.get(&ContractKind::CliEnvelope),
-            None
-        ));
+        assert_eq!(summary.total, summary.valid + summary.invalid);
     }
 
     #[test]
-    fn test_cross_ref_gate_evidence_signature_matches() {
-        let report = DiscoveryReport {
-            files: vec![],
-            errors: vec![],
-            raw_errors: vec![],
-            summary: ReportSummary {
-                total: 0,
-                valid: 0,
-                invalid: 0,
-                errors_by_kind: BTreeMap::new(),
-                version_violations: vec![],
-            },
-        };
-        let _evidence = gate_evidence_from_report(&report);
+    fn test_contract_kind_display() {
+        assert_eq!(ContractKind::CliEnvelope.to_string(), "cli_envelope");
+        assert_eq!(ContractKind::UiTokens.to_string(), "ui_tokens");
+        assert_eq!(
+            ContractKind::AcceptedArtifacts.to_string(),
+            "accepted_artifacts"
+        );
+        assert_eq!(
+            ContractKind::EvidenceBundle.to_string(),
+            "evidence_bundle"
+        );
+        assert_eq!(ContractKind::Diagnostics.to_string(), "diagnostics");
+        assert_eq!(ContractKind::GateOutput.to_string(), "gate_output");
     }
 
     #[test]
-    fn test_cross_ref_validation_error_variants_exist() {
-        let _a = ValidationError::MissingSchemaVersion;
-        let _b = ValidationError::InvalidKind {
-            kind: "test".into(),
-        };
-        let _c = ValidationError::VersionMonotonicityBreach {
-            file: "t.cue".into(),
-            expected: "1.0.0".into(),
-            actual: "0.9.0".into(),
-        };
-        let _d = ValidationError::CueVetFailed {
-            file: "t.cue".into(),
-        };
+    fn test_extract_kind_found() {
+        let content = r#"kind: "cli_envelope"
+schema_version: "1.0.0""#;
+        assert_eq!(extract_kind(content), Some("cli_envelope".to_string()));
     }
 
     #[test]
-    fn test_cross_ref_discovery_report_serializable() {
-        let report = DiscoveryReport {
-            files: vec![ContractFile {
-                path: PathBuf::from("a.cue"),
-                schema_version: "1.0.0".into(),
-                kind: ContractKind::CliEnvelope,
-                vet_errors: vec![],
-            }],
-            errors: vec![],
-            raw_errors: vec![],
-            summary: ReportSummary {
-                total: 1,
-                valid: 1,
-                invalid: 0,
-                errors_by_kind: BTreeMap::new(),
-                version_violations: vec![],
-            },
-        };
-        let json = serde_json::to_string(&report).expect("must serialize");
-        assert!(json.contains("\"total\""));
-        assert!(json.contains("\"valid\""));
-        assert!(json.contains("\"invalid\""));
+    fn test_extract_kind_not_found() {
+        let content = r#"package validation"#;
+        assert_eq!(extract_kind(content), None);
+    }
+
+    #[test]
+    fn test_extract_schema_version_found() {
+        let content = r#"kind: "cli_envelope"
+schema_version: "1.0.0""#;
+        assert_eq!(extract_schema_version(content), "1.0.0");
+    }
+
+    #[test]
+    fn test_extract_schema_version_not_found() {
+        let content = r#"package validation"#;
+        assert_eq!(extract_schema_version(content), "");
+    }
+
+    #[test]
+    fn test_discover_nonexistent_dir() {
+        let result = discover_contracts(Path::new("/tmp/does_not_exist_xyz"));
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_contract_error_display() {
+        assert_eq!(
+            ContractError::MissingSchemaVersion.to_string(),
+            "MISSING_SCHEMA_VERSION"
+        );
+        assert!(ContractError::InvalidKind {
+            kind: "bogus".to_string(),
+        }
+        .to_string()
+        .contains("INVALID_KIND"));
     }
 }

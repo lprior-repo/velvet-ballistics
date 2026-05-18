@@ -1,5 +1,6 @@
 #![forbid(unsafe_code)]
 
+pub mod contracts;
 pub mod evidence;
 pub mod evidence_gate;
 
@@ -28,4 +29,5 @@ pub mod logger;
 pub mod profiles;
 pub mod proof_orchestrator;
 pub mod scheduler;
+pub mod shell;
 pub mod summary;

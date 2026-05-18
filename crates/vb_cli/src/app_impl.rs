@@ -4008,11 +4008,11 @@ fn explain_validation_error(err: &vb_validate::ValidationError) {
         }
         ValidationError::MissingSchemaVersion => {
             outln!("Missing Schema Version");
-            outln!("  A contract file is missing its schema_version field.");
+            outln!("  The workflow does not declare a schema version.");
         }
-        ValidationError::InvalidKind { kind } => {
-            outln!("Invalid Kind");
-            outln!("  Contract kind '{kind}' is not recognized.");
+        ValidationError::CueVetFailed { file } => {
+            outln!("CUE Vet Failed");
+            outln!("  The CUE schema validation failed for '{file}'.");
         }
         ValidationError::VersionMonotonicityBreach {
             file,
@@ -4020,11 +4020,9 @@ fn explain_validation_error(err: &vb_validate::ValidationError) {
             actual,
         } => {
             outln!("Version Monotonicity Breach");
-            outln!("  File '{file}': version {actual} is not {expected}.");
-        }
-        ValidationError::CueVetFailed { file } => {
-            outln!("CUE Vet Failed");
-            outln!("  File '{file}' failed CUE vet validation.");
+            outln!(
+                "  File '{file}': version {actual} is not >= expected {expected}."
+            );
         }
     }
 }
