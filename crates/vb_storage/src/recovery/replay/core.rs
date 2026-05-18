@@ -119,7 +119,10 @@ pub fn replay_events(
 }
 
 fn validate_contiguous_sequences(events: &[JournalEvent]) -> RecoveryResult<()> {
-    let mut expected = EventSeq::new(0);
+    let Some(first) = events.first() else {
+        return Ok(());
+    };
+    let mut expected = first.seq();
     for event in events {
         let seq = event.seq();
         if seq != expected {
