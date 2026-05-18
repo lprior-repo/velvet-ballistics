@@ -580,12 +580,18 @@ mod tests {
         // But wait: baseline_within_budget returns baseline.as_micros() <= budget_us
         // So 100000 <= 100000 is TRUE. The function name is "within_budget"
         // Let's check: if baseline == budget exactly, it IS within budget → true
-        assert!(baseline_within_budget(Duration::from_micros(100_000), 100_000));
+        assert!(baseline_within_budget(
+            Duration::from_micros(100_000),
+            100_000
+        ));
     }
 
     #[test]
     fn baseline_within_budget_false_when_over_budget() {
-        assert!(!baseline_within_budget(Duration::from_micros(100_001), 100_000));
+        assert!(!baseline_within_budget(
+            Duration::from_micros(100_001),
+            100_000
+        ));
     }
 
     // === latency_within_budget boundary tests ===
@@ -599,30 +605,45 @@ mod tests {
     #[test]
     fn latency_within_budget_true_at_exact_budget() {
         // elapsed=100000, budget=100000 → elapsed <= budget → true
-        assert!(latency_within_budget(Duration::from_micros(100_000), 100_000));
+        assert!(latency_within_budget(
+            Duration::from_micros(100_000),
+            100_000
+        ));
     }
 
     #[test]
     fn latency_within_budget_false_one_over_budget() {
-        assert!(!latency_within_budget(Duration::from_micros(100_001), 100_000));
+        assert!(!latency_within_budget(
+            Duration::from_micros(100_001),
+            100_000
+        ));
     }
 
     // === budget_utilization_percent boundary tests ===
 
     #[test]
     fn budget_utilization_percent_returns_max_at_zero_budget() {
-        assert_eq!(budget_utilization_percent(Duration::from_micros(1), 0), u128::MAX);
+        assert_eq!(
+            budget_utilization_percent(Duration::from_micros(1), 0),
+            u128::MAX
+        );
     }
 
     #[test]
     fn budget_utilization_percent_exact_100_percent() {
         // elapsed=100000, budget=100000 → 100000*10000/100000 = 10000 (100.00%)
-        assert_eq!(budget_utilization_percent(Duration::from_micros(100_000), 100_000), 10_000);
+        assert_eq!(
+            budget_utilization_percent(Duration::from_micros(100_000), 100_000),
+            10_000
+        );
     }
 
     #[test]
     fn budget_utilization_percent_50_percent() {
-        assert_eq!(budget_utilization_percent(Duration::from_micros(50_000), 100_000), 5_000);
+        assert_eq!(
+            budget_utilization_percent(Duration::from_micros(50_000), 100_000),
+            5_000
+        );
     }
 
     // === check_evidence_gate remaining error variants ===

@@ -2,10 +2,9 @@
 //! chip readability, selected-state visibility, and helpers.
 
 use vb_ui_snapshot::layout_kernel::{
-    overlap_area_px, rect_bottom, rect_right, rect_has_positive_area, rect_contains,
-    is_clipped, is_out_of_bounds, chip_is_readable,
-    selected_state_is_visible, Rect, SelectedIndicator,
-    LayoutKernelError, CHIP_MIN_CONTRAST_MILLI, CHIP_MIN_WIDTH, CHIP_MIN_HEIGHT,
+    CHIP_MIN_CONTRAST_MILLI, CHIP_MIN_HEIGHT, CHIP_MIN_WIDTH, LayoutKernelError, Rect,
+    SelectedIndicator, chip_is_readable, is_clipped, is_out_of_bounds, overlap_area_px,
+    rect_bottom, rect_contains, rect_has_positive_area, rect_right, selected_state_is_visible,
 };
 
 //
@@ -354,14 +353,20 @@ fn chip_is_readable_returns_true_at_exact_minima() {
 fn selected_state_is_visible_returns_true_when_visible_and_contained() {
     let viewport = Rect::new(0, 0, 1920, 1080).expect("valid");
     let indicator = SelectedIndicator::Visible(Rect::new(100, 100, 50, 50).expect("valid"));
-    assert_eq!(selected_state_is_visible(viewport, indicator).expect("ok"), true);
+    assert_eq!(
+        selected_state_is_visible(viewport, indicator).expect("ok"),
+        true
+    );
 }
 
 #[test]
 fn selected_state_is_visible_returns_false_when_hidden() {
     let viewport = Rect::new(0, 0, 1920, 1080).expect("valid");
     let indicator = SelectedIndicator::Hidden(Rect::new(100, 100, 50, 50).expect("valid"));
-    assert_eq!(selected_state_is_visible(viewport, indicator).expect("ok"), false);
+    assert_eq!(
+        selected_state_is_visible(viewport, indicator).expect("ok"),
+        false
+    );
 }
 
 #[test]
@@ -378,12 +383,18 @@ fn selected_state_is_visible_returns_error_when_missing() {
 fn selected_state_is_visible_returns_false_when_visible_but_outside_viewport() {
     let viewport = Rect::new(0, 0, 1920, 1080).expect("valid");
     let indicator = SelectedIndicator::Visible(Rect::new(2000, 100, 50, 50).expect("valid"));
-    assert_eq!(selected_state_is_visible(viewport, indicator).expect("ok"), false);
+    assert_eq!(
+        selected_state_is_visible(viewport, indicator).expect("ok"),
+        false
+    );
 }
 
 #[test]
 fn selected_state_is_visible_returns_false_when_visible_and_zero_area() {
     let viewport = Rect::new(0, 0, 1920, 1080).expect("valid");
     let indicator = SelectedIndicator::Visible(Rect::new(100, 100, 0, 0).expect("valid"));
-    assert_eq!(selected_state_is_visible(viewport, indicator).expect("ok"), false);
+    assert_eq!(
+        selected_state_is_visible(viewport, indicator).expect("ok"),
+        false
+    );
 }

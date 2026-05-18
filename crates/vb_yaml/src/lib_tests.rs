@@ -972,8 +972,15 @@ fn build_source_map_returns_non_empty_for_valid_yaml() {
     let result = build_source_map(yaml);
     assert!(result.is_ok(), "build_source_map failed: {result:?}");
     let map = result.unwrap();
-    assert!(!map.is_empty(), "source map should not be empty for valid YAML");
-    assert!(map.len() >= 2, "expected >=2 nodes for key: value, got {}", map.len());
+    assert!(
+        !map.is_empty(),
+        "source map should not be empty for valid YAML"
+    );
+    assert!(
+        map.len() >= 2,
+        "expected >=2 nodes for key: value, got {}",
+        map.len()
+    );
 }
 
 #[test]
@@ -981,7 +988,10 @@ fn span_for_node_returns_none_for_out_of_range_index() {
     let yaml = "a: 1\n";
     let map = build_source_map(yaml).expect("source map should build");
     let result = map.span_for_node(999);
-    assert_eq!(result, None, "span_for_node(999) should return None for small doc");
+    assert_eq!(
+        result, None,
+        "span_for_node(999) should return None for small doc"
+    );
 }
 
 #[test]
@@ -989,7 +999,10 @@ fn span_for_node_returns_some_for_valid_index() {
     let yaml = "a: 1\n";
     let map = build_source_map(yaml).expect("source map should build");
     let result = map.span_for_node(0);
-    assert!(result.is_some(), "span_for_node(0) should return Some for valid doc");
+    assert!(
+        result.is_some(),
+        "span_for_node(0) should return Some for valid doc"
+    );
 }
 
 // ---------------------------------------------------------------------------

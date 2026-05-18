@@ -2,8 +2,8 @@
 //! screen/check result builders, validate_required_screens, validate_report_fields.
 
 use vb_ui_snapshot::report::{
-    validate_required_screens, validate_report_fields, make_screen_result,
-    make_pass_result, make_fail_result, CheckKind, UiSnapshotReport,
+    CheckKind, UiSnapshotReport, make_fail_result, make_pass_result, make_screen_result,
+    validate_report_fields, validate_required_screens,
 };
 
 //
@@ -104,7 +104,10 @@ fn check_kind_display_clipping() {
 
 #[test]
 fn check_kind_display_chip_readability() {
-    assert_eq!(format!("{}", CheckKind::ChipReadability), "chip_readability_check");
+    assert_eq!(
+        format!("{}", CheckKind::ChipReadability),
+        "chip_readability_check"
+    );
 }
 
 #[test]
@@ -114,7 +117,10 @@ fn check_kind_display_bounds() {
 
 #[test]
 fn check_kind_display_selected_state() {
-    assert_eq!(format!("{}", CheckKind::SelectedState), "selected_state_check");
+    assert_eq!(
+        format!("{}", CheckKind::SelectedState),
+        "selected_state_check"
+    );
 }
 
 #[test]
@@ -254,7 +260,13 @@ fn validate_required_screens_returns_err_when_execution_overview_missing() {
     let result = validate_required_screens(&screens);
     assert!(result.is_err());
     let err = result.unwrap_err();
-    assert!(matches!(err, vb_ui_snapshot::UiSnapshotError::ScreenMissing { ref expected_screen, .. }));
+    assert!(matches!(
+        err,
+        vb_ui_snapshot::UiSnapshotError::ScreenMissing {
+            expected_screen: _,
+            ..
+        }
+    ));
     // Reverse iteration finds execution_overview missing first
     assert!(format!("{err}").contains("execution_overview"));
 }
@@ -314,7 +326,10 @@ fn validate_report_fields_returns_err_when_digest_missing() {
     let result = validate_report_fields("execution_overview", None, Some(&checks));
     assert!(result.is_err());
     let err = result.unwrap_err();
-    assert!(matches!(err, vb_ui_snapshot::UiSnapshotError::ReportIncomplete { .. }));
+    assert!(matches!(
+        err,
+        vb_ui_snapshot::UiSnapshotError::ReportIncomplete { .. }
+    ));
     assert!(format!("{err}").contains("digest"));
 }
 

@@ -7,13 +7,12 @@ use std::fs;
 use std::path::PathBuf;
 
 use crate::boundary_inventory::{
-    BoundaryCandidate, BoundaryClass, BoundaryExposure, BoundaryInventory,
-    BoundaryInventoryError, BoundaryRecord, BoundaryRecordDraft, BoundaryRecordParts,
-    BoundaryRisk, ClassifiedBoundary, ClassifiedBoundaryInput, EvidenceRequirement,
-    EvidenceReference, EvidenceKind, FieldState, FreshnessMarker, Owner, ReviewStatus,
-    ThreatStatement, UnsafeIsolationStatus, ValidatedBoundaryInventory, WorkspaceRoot,
-    classify_boundary, discover_boundaries, inventory_completion_status, required_evidence,
-    validate_inventory,
+    BoundaryCandidate, BoundaryClass, BoundaryExposure, BoundaryInventory, BoundaryInventoryError,
+    BoundaryRecord, BoundaryRecordDraft, BoundaryRecordParts, BoundaryRisk, ClassifiedBoundary,
+    ClassifiedBoundaryInput, EvidenceKind, EvidenceReference, EvidenceRequirement, FieldState,
+    FreshnessMarker, Owner, ReviewStatus, ThreatStatement, UnsafeIsolationStatus,
+    ValidatedBoundaryInventory, WorkspaceRoot, classify_boundary, discover_boundaries,
+    inventory_completion_status, required_evidence, validate_inventory,
 };
 
 // =============================================================================
@@ -24,7 +23,10 @@ use crate::boundary_inventory::{
 fn discover_boundaries_rejects_nonexistent_workspace() {
     let workspace = WorkspaceRoot::new(PathBuf::from("/nonexistent/path"));
     let result = discover_boundaries(workspace);
-    assert_eq!(result.unwrap_err(), BoundaryInventoryError::WorkspaceNotDiscoverable);
+    assert_eq!(
+        result.unwrap_err(),
+        BoundaryInventoryError::WorkspaceNotDiscoverable
+    );
 }
 
 #[test]
@@ -32,7 +34,10 @@ fn discover_boundaries_rejects_workspace_without_required_surfaces() {
     let temp_dir = tempfile::tempdir().unwrap();
     let workspace = WorkspaceRoot::new(temp_dir.path().to_path_buf());
     let result = discover_boundaries(workspace);
-    assert_eq!(result.unwrap_err(), BoundaryInventoryError::WorkspaceNotDiscoverable);
+    assert_eq!(
+        result.unwrap_err(),
+        BoundaryInventoryError::WorkspaceNotDiscoverable
+    );
 }
 
 #[test]
@@ -44,7 +49,10 @@ fn discover_boundaries_rejects_incomplete_workspace() {
     let workspace = WorkspaceRoot::new(temp_dir.path().to_path_buf());
     let result = discover_boundaries(workspace);
     // Missing fuzz, scripts directories
-    assert_eq!(result.unwrap_err(), BoundaryInventoryError::WorkspaceNotDiscoverable);
+    assert_eq!(
+        result.unwrap_err(),
+        BoundaryInventoryError::WorkspaceNotDiscoverable
+    );
 }
 
 #[test]
@@ -75,7 +83,11 @@ fn discover_boundaries_finds_markers_in_fuzz() {
     let result = discover_boundaries(workspace);
     let candidates = result.unwrap();
     assert!(!candidates.is_empty());
-    assert!(candidates.iter().any(|c| c.marker == "foreign-function-boundary"));
+    assert!(
+        candidates
+            .iter()
+            .any(|c| c.marker == "foreign-function-boundary")
+    );
 }
 
 #[test]
@@ -104,7 +116,10 @@ fn discover_boundaries_returns_empty_on_no_markers() {
 
     let workspace = WorkspaceRoot::new(temp_dir.path().to_path_buf());
     let result = discover_boundaries(workspace);
-    assert_eq!(result.unwrap_err(), BoundaryInventoryError::IncompleteDiscoveryInput);
+    assert_eq!(
+        result.unwrap_err(),
+        BoundaryInventoryError::IncompleteDiscoveryInput
+    );
 }
 
 #[test]
@@ -120,7 +135,10 @@ fn discover_boundaries_detects_decoder_surface_omission() {
 
     let workspace = WorkspaceRoot::new(temp_dir.path().to_path_buf());
     let result = discover_boundaries(workspace);
-    assert_eq!(result.unwrap_err(), BoundaryInventoryError::IncompleteDiscoveryInput);
+    assert_eq!(
+        result.unwrap_err(),
+        BoundaryInventoryError::IncompleteDiscoveryInput
+    );
 }
 
 #[test]
@@ -191,7 +209,8 @@ fn classify_boundary_external_binary() {
 
 #[test]
 fn classify_boundary_decoder() {
-    let candidate = BoundaryCandidate::new("crates/decoder/src/lib.rs", "decoder-byte-ingest-boundary");
+    let candidate =
+        BoundaryCandidate::new("crates/decoder/src/lib.rs", "decoder-byte-ingest-boundary");
     let result = classify_boundary(candidate);
     let classified = result.unwrap();
     assert_eq!(classified.class, BoundaryClass::Decoder);
@@ -258,7 +277,10 @@ fn required_evidence_unknown_class_error() {
         exposure: BoundaryExposure::none(),
     });
     let result = required_evidence(classified);
-    assert_eq!(result.unwrap_err(), BoundaryInventoryError::UnknownBoundaryClass);
+    assert_eq!(
+        result.unwrap_err(),
+        BoundaryInventoryError::UnknownBoundaryClass
+    );
 }
 
 #[test]
@@ -271,7 +293,10 @@ fn required_evidence_safe_boundary_error() {
     });
     let result = required_evidence(classified);
     // Safe boundary with no risk should not require evidence
-    assert_eq!(result.unwrap_err(), BoundaryInventoryError::MissingEvidencePath);
+    assert_eq!(
+        result.unwrap_err(),
+        BoundaryInventoryError::MissingEvidencePath
+    );
 }
 
 #[test]
@@ -284,7 +309,10 @@ fn required_evidence_risky_boundary_ok() {
     });
     let result = required_evidence(classified);
     assert!(result.is_ok());
-    assert_eq!(result.unwrap(), EvidenceRequirement::FuzzOrIsolationOrManualQa);
+    assert_eq!(
+        result.unwrap(),
+        EvidenceRequirement::FuzzOrIsolationOrManualQa
+    );
 }
 
 #[test]
@@ -323,7 +351,10 @@ fn validate_inventory_wrong_schema_version() {
     let inventory = BoundaryInventory::new(Some(99), Vec::new(), None);
     let workspace = WorkspaceRoot::new(temp_dir.path().to_path_buf());
     let result = validate_inventory(inventory, workspace);
-    assert_eq!(result.unwrap_err(), BoundaryInventoryError::SchemaVersionUnsupported);
+    assert_eq!(
+        result.unwrap_err(),
+        BoundaryInventoryError::SchemaVersionUnsupported
+    );
 }
 
 #[test]
@@ -334,7 +365,10 @@ fn validate_inventory_no_schema_version() {
     let inventory = BoundaryInventory::new(None, Vec::new(), None);
     let workspace = WorkspaceRoot::new(temp_dir.path().to_path_buf());
     let result = validate_inventory(inventory, workspace);
-    assert_eq!(result.unwrap_err(), BoundaryInventoryError::SchemaVersionUnsupported);
+    assert_eq!(
+        result.unwrap_err(),
+        BoundaryInventoryError::SchemaVersionUnsupported
+    );
 }
 
 #[test]
@@ -343,14 +377,13 @@ fn validate_inventory_duplicate_ids() {
     create_valid_workspace(temp_dir.path());
 
     let record = make_valid_record("same-id");
-    let inventory = BoundaryInventory::new(
-        Some(1),
-        vec![record.clone(), record],
-        None,
-    );
+    let inventory = BoundaryInventory::new(Some(1), vec![record.clone(), record], None);
     let workspace = WorkspaceRoot::new(temp_dir.path().to_path_buf());
     let result = validate_inventory(inventory, workspace);
-    assert_eq!(result.unwrap_err(), BoundaryInventoryError::DuplicateBoundaryId);
+    assert_eq!(
+        result.unwrap_err(),
+        BoundaryInventoryError::DuplicateBoundaryId
+    );
 }
 
 #[test]
@@ -362,7 +395,10 @@ fn validate_inventory_unknown_class_error() {
     let inventory = BoundaryInventory::new(Some(1), vec![record], None);
     let workspace = WorkspaceRoot::new(temp_dir.path().to_path_buf());
     let result = validate_inventory(inventory, workspace);
-    assert_eq!(result.unwrap_err(), BoundaryInventoryError::UnknownBoundaryClass);
+    assert_eq!(
+        result.unwrap_err(),
+        BoundaryInventoryError::UnknownBoundaryClass
+    );
 }
 
 #[test]
@@ -401,7 +437,10 @@ fn validate_inventory_missing_evidence_error() {
     let inventory = BoundaryInventory::new(Some(1), vec![record], None);
     let workspace = WorkspaceRoot::new(temp_dir.path().to_path_buf());
     let result = validate_inventory(inventory, workspace);
-    assert_eq!(result.unwrap_err(), BoundaryInventoryError::MissingEvidencePath);
+    assert_eq!(
+        result.unwrap_err(),
+        BoundaryInventoryError::MissingEvidencePath
+    );
 }
 
 #[test]
@@ -552,13 +591,19 @@ fn classify_boundary_all_marker_types_have_risky_exposure() {
         ("external-binary-boundary", BoundaryClass::ExternalBinary),
         ("decoder-byte-ingest-boundary", BoundaryClass::Decoder),
         ("generated-interface-boundary", BoundaryClass::GeneratedCode),
-        ("unsafe-adjacent-dependency-boundary", BoundaryClass::UnsafeAdjacentDependency),
+        (
+            "unsafe-adjacent-dependency-boundary",
+            BoundaryClass::UnsafeAdjacentDependency,
+        ),
     ];
 
     for (marker, _class) in markers {
         let candidate = BoundaryCandidate::new("crates/test/src/lib.rs", marker);
         let result = classify_boundary(candidate).unwrap();
-        assert!(matches!(result.exposure.risk, BoundaryRisk::Multiple | BoundaryRisk::None));
+        assert!(matches!(
+            result.exposure.risk,
+            BoundaryRisk::Multiple | BoundaryRisk::None
+        ));
     }
 }
 
@@ -572,7 +617,10 @@ fn required_evidence_safe_boundary_missing_path() {
         exposure: BoundaryExposure::none(),
     });
     let result = required_evidence(classified);
-    assert_eq!(result.unwrap_err(), BoundaryInventoryError::MissingEvidencePath);
+    assert_eq!(
+        result.unwrap_err(),
+        BoundaryInventoryError::MissingEvidencePath
+    );
 }
 
 #[test]
@@ -586,7 +634,10 @@ fn validate_inventory_waived_requires_waiver() {
     let inventory = BoundaryInventory::new(Some(1), vec![record], None);
     let workspace = WorkspaceRoot::new(temp_dir.path().to_path_buf());
     let result = validate_inventory(inventory, workspace);
-    assert_eq!(result.unwrap_err(), BoundaryInventoryError::ReviewStatusInvalid);
+    assert_eq!(
+        result.unwrap_err(),
+        BoundaryInventoryError::ReviewStatusInvalid
+    );
 }
 
 #[test]
@@ -596,7 +647,9 @@ fn validate_inventory_waived_with_waiver() {
 
     let mut record = make_valid_record("test-id");
     record.review_status = FieldState::Present(ReviewStatus::Waived);
-    record.waiver = FieldState::Present(EvidenceReference::ExternalProvenance("external:vb-abc123#sha256=abc".to_string()));
+    record.waiver = FieldState::Present(EvidenceReference::ExternalProvenance(
+        "external:vb-abc123#sha256=abc".to_string(),
+    ));
     let inventory = BoundaryInventory::new(Some(1), vec![record], None);
     let workspace = WorkspaceRoot::new(temp_dir.path().to_path_buf());
     let result = validate_inventory(inventory, workspace);
@@ -610,10 +663,15 @@ fn validate_inventory_waived_with_waiver() {
 #[test]
 fn inventory_completion_status_unknown_class_error() {
     let mut validated = ValidatedBoundaryInventory::empty_with_discovered_boundary_count(1);
-    validated.records.push(make_record_with_class(BoundaryClass::Unknown));
+    validated
+        .records
+        .push(make_record_with_class(BoundaryClass::Unknown));
 
     let result = inventory_completion_status(validated);
-    assert_eq!(result.unwrap_err(), BoundaryInventoryError::UnknownBoundaryClass);
+    assert_eq!(
+        result.unwrap_err(),
+        BoundaryInventoryError::UnknownBoundaryClass
+    );
 }
 
 #[test]
@@ -624,7 +682,10 @@ fn inventory_completion_status_first_party_unsafe_error() {
     validated.records.push(record);
 
     let result = inventory_completion_status(validated);
-    assert_eq!(result.unwrap_err(), BoundaryInventoryError::UnsafeForbiddenViolation);
+    assert_eq!(
+        result.unwrap_err(),
+        BoundaryInventoryError::UnsafeForbiddenViolation
+    );
 }
 
 #[test]
@@ -632,7 +693,10 @@ fn inventory_completion_status_empty_with_nonzero_discovered_error() {
     let validated = ValidatedBoundaryInventory::empty_with_discovered_boundary_count(5);
 
     let result = inventory_completion_status(validated);
-    assert_eq!(result.unwrap_err(), BoundaryInventoryError::IncompleteDiscoveryInput);
+    assert_eq!(
+        result.unwrap_err(),
+        BoundaryInventoryError::IncompleteDiscoveryInput
+    );
 }
 
 #[test]

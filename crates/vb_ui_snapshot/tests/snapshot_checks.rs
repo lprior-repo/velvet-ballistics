@@ -1,9 +1,11 @@
 //! Tests for snapshot module: run_snapshot_command_for_fixture success path
 //! and constants from lib.rs.
 
-use vb_ui_snapshot::snapshot::{run_snapshot_command_for_fixture, SnapshotArtifact};
-use vb_ui_snapshot::{BASELINE_HEIGHT, BASELINE_WIDTH, COLOR_DRIFT_THRESHOLD, CHIP_RADIUS,
-    OUTER_MARGIN, SIDEBAR_WIDTH, TOP_BAR_HEIGHT, demo_fixture_names, REQUIRED_FIXTURES};
+use vb_ui_snapshot::snapshot::{SnapshotArtifact, run_snapshot_command_for_fixture};
+use vb_ui_snapshot::{
+    BASELINE_HEIGHT, BASELINE_WIDTH, CHIP_RADIUS, COLOR_DRIFT_THRESHOLD, OUTER_MARGIN,
+    REQUIRED_FIXTURES, SIDEBAR_WIDTH, TOP_BAR_HEIGHT, demo_fixture_names,
+};
 
 //
 // run_snapshot_command_for_fixture — success path
@@ -17,7 +19,10 @@ fn run_snapshot_command_for_fixture_returns_artifact_on_success() {
     );
     assert!(result.is_ok());
     let artifact = result.unwrap();
-    assert_eq!(artifact.png_path, "target/ui_snapshots/execution_overview.png");
+    assert_eq!(
+        artifact.png_path,
+        "target/ui_snapshots/execution_overview.png"
+    );
 }
 
 #[test]
@@ -31,10 +36,8 @@ fn run_snapshot_command_for_fixture_returns_error_on_exit_code_17() {
 
 #[test]
 fn run_snapshot_command_for_fixture_path_includes_fixture_id() {
-    let result = run_snapshot_command_for_fixture(
-        "workflow_graph_authoring",
-        "makepad-render",
-    ).expect("ok");
+    let result =
+        run_snapshot_command_for_fixture("workflow_graph_authoring", "makepad-render").expect("ok");
     assert!(result.png_path.contains("workflow_graph_authoring"));
 }
 

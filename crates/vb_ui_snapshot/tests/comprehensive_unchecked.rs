@@ -12,24 +12,21 @@
 //!                  check_bounds, check_chip_readability, check_selected_state
 //! - fixtures.rs: load_demo_fixture, serialize_fixture
 
-use std::path::Path;
-
 use vb_ui_snapshot::error::UiSnapshotError;
 use vb_ui_snapshot::layout_kernel::{
-    LayoutKernelError, Rect, SelectedIndicator, CHIP_MIN_CONTRAST_MILLI, CHIP_MIN_HEIGHT,
-    CHIP_MIN_WIDTH, chip_is_readable, is_clipped, is_out_of_bounds, overlap_area_px,
-    rect_contains, rect_has_positive_area, rect_right, rect_bottom,
-    selected_state_is_visible,
+    CHIP_MIN_CONTRAST_MILLI, CHIP_MIN_HEIGHT, CHIP_MIN_WIDTH, LayoutKernelError, Rect,
+    SelectedIndicator, chip_is_readable, is_clipped, is_out_of_bounds, overlap_area_px,
+    rect_bottom, rect_contains, rect_has_positive_area, rect_right, selected_state_is_visible,
 };
 use vb_ui_snapshot::report::{
-    validate_report_fields, validate_required_screens, CheckKind, CheckResult, ScreenResult,
-    UiSnapshotReport, make_fail_result, make_pass_result, make_screen_result,
+    CheckKind, CheckResult, ScreenResult, UiSnapshotReport, make_fail_result, make_pass_result,
+    make_screen_result, validate_report_fields, validate_required_screens,
 };
-use vb_ui_snapshot::tokens::{parse_tokens_from_toml, tokens_to_rust_constants, UiTokens};
+use vb_ui_snapshot::tokens::{UiTokens, parse_tokens_from_toml, tokens_to_rust_constants};
 use vb_ui_snapshot::{
-    demo_fixture_names, redaction::scan_release_artifact,
-    BASELINE_HEIGHT, BASELINE_WIDTH, COLOR_DRIFT_THRESHOLD, CHIP_RADIUS, checks,
-    OUTER_MARGIN, REQUIRED_FIXTURES, SIDEBAR_WIDTH, TOP_BAR_HEIGHT,
+    BASELINE_HEIGHT, BASELINE_WIDTH, CHIP_RADIUS, COLOR_DRIFT_THRESHOLD, OUTER_MARGIN,
+    REQUIRED_FIXTURES, SIDEBAR_WIDTH, TOP_BAR_HEIGHT, demo_fixture_names,
+    redaction::scan_release_artifact,
 };
 
 // ============================================================================
@@ -159,6 +156,7 @@ mod error_display {
 
     #[test]
     fn ui_snapshot_error_display_screen_missing() {
+        #[allow(unused_variables)]
         let err = UiSnapshotError::ScreenMissing {
             expected_screen: "execution_overview".to_string(),
         };
@@ -786,14 +784,20 @@ mod layout_kernel_selected_state {
     fn selected_state_is_visible_returns_true_when_visible_and_contained() {
         let viewport = Rect::new(0, 0, 1920, 1080).expect("valid");
         let indicator = SelectedIndicator::Visible(Rect::new(100, 100, 50, 50).expect("valid"));
-        assert_eq!(selected_state_is_visible(viewport, indicator).expect("ok"), true);
+        assert_eq!(
+            selected_state_is_visible(viewport, indicator).expect("ok"),
+            true
+        );
     }
 
     #[test]
     fn selected_state_is_visible_returns_false_when_hidden() {
         let viewport = Rect::new(0, 0, 1920, 1080).expect("valid");
         let indicator = SelectedIndicator::Hidden(Rect::new(100, 100, 50, 50).expect("valid"));
-        assert_eq!(selected_state_is_visible(viewport, indicator).expect("ok"), false);
+        assert_eq!(
+            selected_state_is_visible(viewport, indicator).expect("ok"),
+            false
+        );
     }
 
     #[test]
@@ -810,14 +814,20 @@ mod layout_kernel_selected_state {
     fn selected_state_is_visible_returns_false_when_visible_but_outside_viewport() {
         let viewport = Rect::new(0, 0, 1920, 1080).expect("valid");
         let indicator = SelectedIndicator::Visible(Rect::new(2000, 100, 50, 50).expect("valid"));
-        assert_eq!(selected_state_is_visible(viewport, indicator).expect("ok"), false);
+        assert_eq!(
+            selected_state_is_visible(viewport, indicator).expect("ok"),
+            false
+        );
     }
 
     #[test]
     fn selected_state_is_visible_returns_false_when_visible_and_zero_area() {
         let viewport = Rect::new(0, 0, 1920, 1080).expect("valid");
         let indicator = SelectedIndicator::Visible(Rect::new(100, 100, 0, 0).expect("valid"));
-        assert_eq!(selected_state_is_visible(viewport, indicator).expect("ok"), false);
+        assert_eq!(
+            selected_state_is_visible(viewport, indicator).expect("ok"),
+            false
+        );
     }
 }
 
@@ -1279,9 +1289,15 @@ mod check_kind_properties {
     fn check_kind_display_all_variants() {
         assert_eq!(format!("{}", CheckKind::Overlap), "overlap_check");
         assert_eq!(format!("{}", CheckKind::Clipping), "clipping_check");
-        assert_eq!(format!("{}", CheckKind::ChipReadability), "chip_readability_check");
+        assert_eq!(
+            format!("{}", CheckKind::ChipReadability),
+            "chip_readability_check"
+        );
         assert_eq!(format!("{}", CheckKind::Bounds), "bounds_check");
-        assert_eq!(format!("{}", CheckKind::SelectedState), "selected_state_check");
+        assert_eq!(
+            format!("{}", CheckKind::SelectedState),
+            "selected_state_check"
+        );
         assert_eq!(format!("{}", CheckKind::Redaction), "redaction_check");
         assert_eq!(format!("{}", CheckKind::ColorDrift), "color_drift_check");
         assert_eq!(format!("{}", CheckKind::Spelling), "spelling_check");
@@ -1415,7 +1431,10 @@ mod report_yaml_emission {
         ];
         for kind in kinds {
             let mut report = UiSnapshotReport::new();
-            report.add_screen(make_screen_result("test_screen", vec![make_pass_result(kind)]));
+            report.add_screen(make_screen_result(
+                "test_screen",
+                vec![make_pass_result(kind)],
+            ));
             report.finalize();
             let yaml = report.to_yaml().expect("yaml ok");
             assert!(!yaml.is_empty(), "YAML for {:?} should not be empty", kind);
@@ -1476,8 +1495,7 @@ mod report_yaml_emission {
         ));
         report.finalize();
         let json = serde_json::to_string(&report).expect("serialize ok");
-        let deserialized: UiSnapshotReport =
-            serde_json::from_str(&json).expect("deserialize ok");
+        let deserialized: UiSnapshotReport = serde_json::from_str(&json).expect("deserialize ok");
         assert_eq!(deserialized.status, "pass");
         assert_eq!(deserialized.total_screens, 1);
     }
@@ -1495,8 +1513,7 @@ mod png_checks {
 
     #[test]
     fn validate_png_dimensions_rejects_corrupt_path() {
-        let result =
-            validate_png_dimensions(Path::new("target/vb-nf2u-corrupt.png"));
+        let result = validate_png_dimensions(Path::new("target/vb-nf2u-corrupt.png"));
         assert!(result.is_err());
         if let Err(UiSnapshotError::ImageError(_)) = result {
             // correct
@@ -1507,19 +1524,15 @@ mod png_checks {
 
     #[test]
     fn validate_png_dimensions_path_with_corrupt_in_middle() {
-        let result =
-            validate_png_dimensions(Path::new("target/vb-nf2u-corrupt-somewhere.png"));
+        let result = validate_png_dimensions(Path::new("target/vb-nf2u-corrupt-somewhere.png"));
         assert!(result.is_err());
     }
 
     #[test]
     fn generate_blank_screenshot_rejects_denied_path() {
-        let result = generate_blank_screenshot(
-            Path::new("/proc/vb-nf2u-denied/out.png"),
-            1920,
-            1080,
-        )
-        .map_err(|e| format!("{:?}", e));
+        let result =
+            generate_blank_screenshot(Path::new("/proc/vb-nf2u-denied/out.png"), 1920, 1080)
+                .map_err(|e| format!("{:?}", e));
 
         assert_eq!(
             result,
@@ -1556,10 +1569,8 @@ mod color_drift_fixture_path {
     #[test]
     fn check_color_drift_rejects_color_drift_fixture_path() {
         let tokens = UiTokens::default();
-        let result = check_color_drift(
-            Path::new("target/vb-nf2u-color-drift-fixture.png"),
-            &tokens,
-        );
+        let result =
+            check_color_drift(Path::new("target/vb-nf2u-color-drift-fixture.png"), &tokens);
         assert!(result.is_err());
         if let Err(UiSnapshotError::ColorDrift { token_name, .. }) = result {
             assert_eq!(token_name.as_str(), "surface");
@@ -1576,8 +1587,8 @@ mod color_drift_fixture_path {
 mod serialize_fixture_tests {
     #[test]
     fn serialize_fixture_is_accessible() {
-        let fixture = vb_ui_snapshot::fixtures::load_demo_fixture("execution_overview")
-            .expect("fixture ok");
+        let fixture =
+            vb_ui_snapshot::fixtures::load_demo_fixture("execution_overview").expect("fixture ok");
         let serialized = vb_ui_snapshot::fixtures::serialize_fixture(&fixture);
         assert!(serialized.is_ok());
         let yaml = serialized.expect("serialized ok");
@@ -1587,10 +1598,9 @@ mod serialize_fixture_tests {
 
     #[test]
     fn serialize_fixture_execution_overview_contains_key_data() {
-        let fixture = vb_ui_snapshot::fixtures::load_demo_fixture("execution_overview")
-            .expect("fixture ok");
-        let yaml =
-            vb_ui_snapshot::fixtures::serialize_fixture(&fixture).expect("serialize ok");
+        let fixture =
+            vb_ui_snapshot::fixtures::load_demo_fixture("execution_overview").expect("fixture ok");
+        let yaml = vb_ui_snapshot::fixtures::serialize_fixture(&fixture).expect("serialize ok");
         assert!(yaml.contains("ExecutionOverview"));
         assert!(yaml.contains("screen_kind"));
     }
@@ -1608,8 +1618,7 @@ mod serialize_fixture_tests {
             "storage_doctor_ai_context",
         ];
         for name in names {
-            let fixture =
-                vb_ui_snapshot::fixtures::load_demo_fixture(name).expect("load ok");
+            let fixture = vb_ui_snapshot::fixtures::load_demo_fixture(name).expect("load ok");
             let result = vb_ui_snapshot::fixtures::serialize_fixture(&fixture);
             assert!(result.is_ok(), "serialize failed for {name}");
         }
@@ -1773,8 +1782,6 @@ mod layout_check_helpers {
 // ============================================================================
 
 mod error_from_impls {
-    use super::*;
-
     #[test]
     fn io_error_to_ui_snapshot_error_roundtrip() {
         use vb_ui_snapshot::UiSnapshotError;
@@ -2223,15 +2230,51 @@ mod error_variant_completeness {
             UiSnapshotError::FixtureNotFound("x".to_string()),
             UiSnapshotError::SnapshotCommandFailed("x".to_string()),
             UiSnapshotError::PngGenerationFailed("x".to_string()),
-            UiSnapshotError::OverlapDetected { screen: "x".to_string(), panel_a: "a".to_string(), panel_b: "b".to_string(), overlap_area_px: 1 },
-            UiSnapshotError::LabelClipped { screen: "x".to_string(), label_text: "l".to_string(), container_bounds: (0,0,0,0) },
-            UiSnapshotError::ChipUnreadable { screen: "x".to_string(), chip_text: "c".to_string(), contrast_ratio: 1.0 },
-            UiSnapshotError::ControlOutOfBounds { screen: "x".to_string(), control_id: "c".to_string(), distance_from_edge_px: 1, edge: "r".to_string() },
-            UiSnapshotError::SelectedStateHidden { screen: "x".to_string(), node_id: "n".to_string() },
-            UiSnapshotError::ColorDrift { screen: "x".to_string(), token_name: "t".to_string(), expected_rgb: (0,0,0), actual_rgb: (0,0,0), delta_percent: 0.0 },
-            UiSnapshotError::SpellingViolation { screen: "x".to_string(), word: "w".to_string(), line: 1 },
-            UiSnapshotError::ScreenMissing { expected_screen: "x".to_string() },
-            UiSnapshotError::ReportIncomplete { screen_id: "x".to_string(), missing_fields: vec![] },
+            UiSnapshotError::OverlapDetected {
+                screen: "x".to_string(),
+                panel_a: "a".to_string(),
+                panel_b: "b".to_string(),
+                overlap_area_px: 1,
+            },
+            UiSnapshotError::LabelClipped {
+                screen: "x".to_string(),
+                label_text: "l".to_string(),
+                container_bounds: (0, 0, 0, 0),
+            },
+            UiSnapshotError::ChipUnreadable {
+                screen: "x".to_string(),
+                chip_text: "c".to_string(),
+                contrast_ratio: 1.0,
+            },
+            UiSnapshotError::ControlOutOfBounds {
+                screen: "x".to_string(),
+                control_id: "c".to_string(),
+                distance_from_edge_px: 1,
+                edge: "r".to_string(),
+            },
+            UiSnapshotError::SelectedStateHidden {
+                screen: "x".to_string(),
+                node_id: "n".to_string(),
+            },
+            UiSnapshotError::ColorDrift {
+                screen: "x".to_string(),
+                token_name: "t".to_string(),
+                expected_rgb: (0, 0, 0),
+                actual_rgb: (0, 0, 0),
+                delta_percent: 0.0,
+            },
+            UiSnapshotError::SpellingViolation {
+                screen: "x".to_string(),
+                word: "w".to_string(),
+                line: 1,
+            },
+            UiSnapshotError::ScreenMissing {
+                expected_screen: "x".to_string(),
+            },
+            UiSnapshotError::ReportIncomplete {
+                screen_id: "x".to_string(),
+                missing_fields: vec![],
+            },
             UiSnapshotError::TokenParseError("x".to_string()),
             UiSnapshotError::ImageError("x".to_string()),
             UiSnapshotError::IoError("x".to_string()),

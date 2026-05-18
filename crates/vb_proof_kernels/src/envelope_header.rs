@@ -311,7 +311,10 @@ mod tests {
         let mut header = EnvelopeHeader::new();
         header.magic = 0xBAD;
         let result = validate_header_before_alloc(&header, 1024);
-        assert!(matches!(result, ValidationResult::Err(ValidationError::InvalidMagic)));
+        assert!(matches!(
+            result,
+            ValidationResult::Err(ValidationError::InvalidMagic)
+        ));
     }
 
     #[test]
@@ -320,7 +323,10 @@ mod tests {
         header.payload_len_u32 = u32::MAX;
         header.payload_len_hi = u32::MAX;
         let result = validate_header_before_alloc(&header, 1024);
-        assert!(matches!(result, ValidationResult::Err(ValidationError::PayloadTooLarge)));
+        assert!(matches!(
+            result,
+            ValidationResult::Err(ValidationError::PayloadTooLarge)
+        ));
     }
 
     // ── compute_header_crc ─────────────────────────────────────────────────
@@ -373,8 +379,14 @@ mod tests {
     #[test]
     fn test_validation_error_eq_positive_negative() {
         assert_eq!(ValidationError::InvalidMagic, ValidationError::InvalidMagic);
-        assert_eq!(ValidationError::PayloadTooLarge, ValidationError::PayloadTooLarge);
-        assert_ne!(ValidationError::InvalidMagic, ValidationError::PayloadTooLarge);
+        assert_eq!(
+            ValidationError::PayloadTooLarge,
+            ValidationError::PayloadTooLarge
+        );
+        assert_ne!(
+            ValidationError::InvalidMagic,
+            ValidationError::PayloadTooLarge
+        );
     }
 
     #[test]
@@ -405,7 +417,10 @@ mod tests {
             ValidationResult::Err(ValidationError::InvalidMagic),
             ValidationResult::Err(ValidationError::InvalidMagic)
         );
-        assert_ne!(ValidationResult::Ok, ValidationResult::Err(ValidationError::InvalidMagic));
+        assert_ne!(
+            ValidationResult::Ok,
+            ValidationResult::Err(ValidationError::InvalidMagic)
+        );
     }
 
     #[test]
@@ -509,7 +524,10 @@ mod tests {
     #[test]
     fn test_validation_error_partial_eq() {
         assert_eq!(ValidationError::InvalidMagic, ValidationError::InvalidMagic);
-        assert_ne!(ValidationError::InvalidMagic, ValidationError::PayloadTooLarge);
+        assert_ne!(
+            ValidationError::InvalidMagic,
+            ValidationError::PayloadTooLarge
+        );
     }
 
     #[test]
@@ -524,13 +542,19 @@ mod tests {
         let _copied_ok: ValidationResult = ok;
         let err: ValidationResult = ValidationResult::Err(ValidationError::InvalidMagic);
         let _copied_err: ValidationResult = err;
-        assert!(matches!(_copied_err, ValidationResult::Err(ValidationError::InvalidMagic)));
+        assert!(matches!(
+            _copied_err,
+            ValidationResult::Err(ValidationError::InvalidMagic)
+        ));
     }
 
     #[test]
     fn test_validation_result_partial_eq() {
         assert_eq!(ValidationResult::Ok, ValidationResult::Ok);
-        assert_ne!(ValidationResult::Ok, ValidationResult::Err(ValidationError::InvalidMagic));
+        assert_ne!(
+            ValidationResult::Ok,
+            ValidationResult::Err(ValidationError::InvalidMagic)
+        );
         assert_eq!(
             ValidationResult::Err(ValidationError::PayloadTooLarge),
             ValidationResult::Err(ValidationError::PayloadTooLarge)
@@ -545,6 +569,9 @@ mod tests {
     fn test_validation_result_eq_via_assert() {
         assert!(ValidationResult::Ok == ValidationResult::Ok);
         assert!(ValidationResult::Ok != ValidationResult::Err(ValidationError::InvalidMagic));
-        assert!(ValidationResult::Err(ValidationError::PayloadTooLarge) == ValidationResult::Err(ValidationError::PayloadTooLarge));
+        assert!(
+            ValidationResult::Err(ValidationError::PayloadTooLarge)
+                == ValidationResult::Err(ValidationError::PayloadTooLarge)
+        );
     }
 }

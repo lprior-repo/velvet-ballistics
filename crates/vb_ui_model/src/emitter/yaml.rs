@@ -174,11 +174,11 @@ mod tests {
     fn yaml_envelope_from_envelope_diagnostic_report_kind() {
         let run_id = RunId::new(789);
         let metadata = MetadataEnvelope::new(run_id, "diag".to_string(), 3000);
-        let diagnostics = vec![
-            DiagnosticEntry::new("VB001".to_string(), "msg".to_string(), None).unwrap(),
-        ];
-        let envelope = OutputEnvelope::diagnostic_report(SchemaVersion::CURRENT, metadata, diagnostics)
-            .expect("envelope build should succeed");
+        let diagnostics =
+            vec![DiagnosticEntry::new("VB001".to_string(), "msg".to_string(), None).unwrap()];
+        let envelope =
+            OutputEnvelope::diagnostic_report(SchemaVersion::CURRENT, metadata, diagnostics)
+                .expect("envelope build should succeed");
 
         let yaml_env = YamlEnvelope::from_envelope(&envelope, 0);
 
@@ -193,7 +193,7 @@ mod tests {
     #[cfg(feature = "std")]
     #[test]
     fn json_value_to_yaml_null() {
-        use saphyr::{Mapping, Scalar, Yaml};
+        use saphyr::{Scalar, Yaml};
         let result = json_value_to_yaml(&serde_json::json!(null)).unwrap();
         assert!(matches!(result, Yaml::Value(Scalar::Null)));
     }
@@ -201,7 +201,7 @@ mod tests {
     #[cfg(feature = "std")]
     #[test]
     fn json_value_to_yaml_bool() {
-        use saphyr::{Mapping, Scalar, Yaml};
+        use saphyr::{Scalar, Yaml};
         let result_true = json_value_to_yaml(&serde_json::json!(true)).unwrap();
         assert!(matches!(result_true, Yaml::Value(Scalar::Boolean(true))));
 
@@ -212,7 +212,7 @@ mod tests {
     #[cfg(feature = "std")]
     #[test]
     fn json_value_to_yaml_integer() {
-        use saphyr::{Mapping, Scalar, Yaml};
+        use saphyr::{Scalar, Yaml};
         let result = json_value_to_yaml(&serde_json::json!(42)).unwrap();
         assert!(matches!(result, Yaml::Value(Scalar::Integer(42))));
     }
@@ -220,7 +220,7 @@ mod tests {
     #[cfg(feature = "std")]
     #[test]
     fn json_value_to_yaml_negative_integer() {
-        use saphyr::{Mapping, Scalar, Yaml};
+        use saphyr::{Scalar, Yaml};
         let result = json_value_to_yaml(&serde_json::json!(-17)).unwrap();
         assert!(matches!(result, Yaml::Value(Scalar::Integer(-17))));
     }
@@ -228,7 +228,7 @@ mod tests {
     #[cfg(feature = "std")]
     #[test]
     fn json_value_to_yaml_u64_converts_to_i64() {
-        use saphyr::{Mapping, Scalar, Yaml};
+        use saphyr::{Scalar, Yaml};
         // u64 that fits in i64
         let result = json_value_to_yaml(&serde_json::json!(100u64)).unwrap();
         assert!(matches!(result, Yaml::Value(Scalar::Integer(100))));
@@ -237,7 +237,7 @@ mod tests {
     #[cfg(feature = "std")]
     #[test]
     fn json_value_to_yaml_f64_converts_to_string() {
-        use saphyr::{Mapping, Scalar, Yaml};
+        use saphyr::{Scalar, Yaml};
         let result = json_value_to_yaml(&serde_json::json!(3.14)).unwrap();
         assert!(matches!(result, Yaml::Value(Scalar::String(_))));
     }
@@ -245,7 +245,7 @@ mod tests {
     #[cfg(feature = "std")]
     #[test]
     fn json_value_to_yaml_string() {
-        use saphyr::{Mapping, Scalar, Yaml};
+        use saphyr::{Scalar, Yaml};
         let result = json_value_to_yaml(&serde_json::json!("hello world")).unwrap();
         assert!(matches!(result, Yaml::Value(Scalar::String(ref s)) if s.contains("hello")));
     }
@@ -253,7 +253,7 @@ mod tests {
     #[cfg(feature = "std")]
     #[test]
     fn json_value_to_yaml_array() {
-        use saphyr::{Mapping, Scalar, Yaml};
+        use saphyr::Yaml;
         let result = json_value_to_yaml(&serde_json::json!([1, "two", null])).unwrap();
         assert!(matches!(result, Yaml::Sequence(_)));
     }
@@ -261,7 +261,7 @@ mod tests {
     #[cfg(feature = "std")]
     #[test]
     fn json_value_to_yaml_object() {
-        use saphyr::{Mapping, Scalar, Yaml};
+        use saphyr::Yaml;
         let result = json_value_to_yaml(&serde_json::json!({"key": "value"})).unwrap();
         assert!(matches!(result, Yaml::Mapping(_)));
     }
@@ -269,7 +269,7 @@ mod tests {
     #[cfg(feature = "std")]
     #[test]
     fn json_value_to_yaml_nested() {
-        use saphyr::{Mapping, Scalar, Yaml};
+        use saphyr::Yaml;
         let json = serde_json::json!({
             "outer": {
                 "inner": [1, 2, 3]

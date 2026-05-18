@@ -12,8 +12,8 @@ use vb_compile::compile_workflow;
 use vb_core::ids::{ConstIdx, SlotIdx, StepIdx, SymbolId, WorkflowDigest};
 use vb_core::value::ConstValue;
 use vb_core::workflow::{
-    AccessorProgram, CompiledNode, CompiledNodeKind, CompiledWorkflow, ExprOp,
-    ExprProgram, PathSegment, ResourceContract, WorkflowParts,
+    AccessorProgram, CompiledNode, CompiledNodeKind, CompiledWorkflow, ExprOp, ExprProgram,
+    PathSegment, ResourceContract, WorkflowParts,
 };
 
 // ---------------------------------------------------------------------------
@@ -37,7 +37,11 @@ steps:
 
     // Validate for generated subset
     let validation = validate_generated_subset(&workflow);
-    assert!(validation.is_ok(), "workflow should be valid for generated subset: {:?}", validation);
+    assert!(
+        validation.is_ok(),
+        "workflow should be valid for generated subset: {:?}",
+        validation
+    );
 
     // Emit
     let generated = emit_rust_workflow(&workflow).expect("codegen should succeed");
@@ -133,7 +137,10 @@ fn codegen_rejects_unsupported_workflow_in_pipeline() {
 
     // Validate should reject it
     let result = validate_generated_subset(&workflow);
-    assert!(result.is_err(), "workflow with unsupported expr should be rejected");
+    assert!(
+        result.is_err(),
+        "workflow with unsupported expr should be rejected"
+    );
     if let Err(e) = result {
         match e {
             CodegenError::UnsupportedIr { feature } => {
@@ -211,7 +218,10 @@ steps:
 
     // Compile should fail due to size limit
     let result = compiler.compile(source.as_bytes());
-    assert!(result.is_err(), "source exceeding size limit should be rejected");
+    assert!(
+        result.is_err(),
+        "source exceeding size limit should be rejected"
+    );
 }
 
 #[test]
@@ -236,7 +246,10 @@ steps:
       result: 0
 "#;
     let result = compiler.compile(source);
-    assert!(result.is_ok(), "valid source should compile with custom limits");
+    assert!(
+        result.is_ok(),
+        "valid source should compile with custom limits"
+    );
 }
 
 #[test]
@@ -375,8 +388,8 @@ steps:
 
     // Convert to parts and back
     let parts = workflow.to_parts();
-    let workflow2 = CompiledWorkflow::try_from_parts(parts.clone())
-        .expect("round-trip should succeed");
+    let workflow2 =
+        CompiledWorkflow::try_from_parts(parts.clone()).expect("round-trip should succeed");
 
     let parts2 = workflow2.to_parts();
 
@@ -471,7 +484,11 @@ steps:
 "#;
     let result = compile_workflow(source);
     // A workflow with finish as last step should compile
-    assert!(result.is_ok(), "finish workflow should compile: {:?}", result);
+    assert!(
+        result.is_ok(),
+        "finish workflow should compile: {:?}",
+        result
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -578,6 +595,7 @@ steps:
 // Helpers
 // ---------------------------------------------------------------------------
 
+#[allow(dead_code)]
 fn make_workflow_with_nodes(nodes: Vec<CompiledNode>) -> CompiledWorkflow {
     let parts = WorkflowParts {
         name: "test".into(),

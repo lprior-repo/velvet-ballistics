@@ -1,13 +1,13 @@
 // Comprehensive untested-fn coverage for vb_ui_makepad
 // Covers ALL pub fns not tested in targeted_gaps_coverage.rs
 
+use vb_ui_makepad::Error;
 use vb_ui_makepad::color;
 use vb_ui_makepad::graph_canvas::{EdgePath, GraphCanvas, ViewportRect};
 use vb_ui_makepad::graph_edge::{EdgeRenderInstr, EdgeType, PacketMarkerInstr};
 use vb_ui_makepad::graph_node::{GraphNode, NodeBadge, NodeCardRenderInstr, OverlayState};
 use vb_ui_makepad::packet_dot::{AnimationTick, PacketDot, PacketDotManager};
 use vb_ui_makepad::shell::{AppShell, Rect, ShellNav, ShellStatusChip};
-use vb_ui_makepad::Error;
 
 // ---------------------------------------------------------------------------
 // Rect — all fields
@@ -15,7 +15,12 @@ use vb_ui_makepad::Error;
 
 #[test]
 fn rect_fields_access() {
-    let r = Rect { x: 1.0, y: 2.0, width: 3.0, height: 4.0 };
+    let r = Rect {
+        x: 1.0,
+        y: 2.0,
+        width: 3.0,
+        height: 4.0,
+    };
     assert_eq!(r.x, 1.0);
     assert_eq!(r.y, 2.0);
     assert_eq!(r.width, 3.0);
@@ -24,14 +29,24 @@ fn rect_fields_access() {
 
 #[test]
 fn rect_fields_zero() {
-    let r = Rect { x: 0.0, y: 0.0, width: 0.0, height: 0.0 };
+    let r = Rect {
+        x: 0.0,
+        y: 0.0,
+        width: 0.0,
+        height: 0.0,
+    };
     assert_eq!(r.x, 0.0);
     assert_eq!(r.width, 0.0);
 }
 
 #[test]
 fn rect_fields_negative() {
-    let r = Rect { x: -10.0, y: -20.0, width: 100.0, height: 200.0 };
+    let r = Rect {
+        x: -10.0,
+        y: -20.0,
+        width: 100.0,
+        height: 200.0,
+    };
     assert_eq!(r.x, -10.0);
     assert_eq!(r.y, -20.0);
     assert_eq!(r.height, 200.0);
@@ -174,8 +189,22 @@ fn graph_canvas_edge_count_zero() {
 #[test]
 fn graph_canvas_edge_count_from_paths() {
     let paths = vec![
-        EdgePath { source_step: 0, target_step: 1, start: [0.0, 0.0], cp1: [50.0, 0.0], cp2: [50.0, 100.0], end: [100.0, 100.0] },
-        EdgePath { source_step: 1, target_step: 2, start: [100.0, 100.0], cp1: [150.0, 100.0], cp2: [150.0, 200.0], end: [200.0, 200.0] },
+        EdgePath {
+            source_step: 0,
+            target_step: 1,
+            start: [0.0, 0.0],
+            cp1: [50.0, 0.0],
+            cp2: [50.0, 100.0],
+            end: [100.0, 100.0],
+        },
+        EdgePath {
+            source_step: 1,
+            target_step: 2,
+            start: [100.0, 100.0],
+            cp1: [150.0, 100.0],
+            cp2: [150.0, 200.0],
+            end: [200.0, 200.0],
+        },
     ];
     let canvas = GraphCanvas::new(3, vec![], paths);
     assert_eq!(canvas.edge_count(), 2);
@@ -240,7 +269,10 @@ fn graph_canvas_set_node_overlay_skipped() {
     let positions = vec![(100.0, 200.0)];
     let mut canvas = GraphCanvas::new(1, positions, vec![]);
     canvas.set_node_overlay(0, Some(OverlayState::Skipped));
-    assert_eq!(canvas.node_status_dot_color(0), Some(color::text_tertiary()));
+    assert_eq!(
+        canvas.node_status_dot_color(0),
+        Some(color::text_tertiary())
+    );
 }
 
 #[test]
@@ -264,7 +296,10 @@ fn graph_canvas_set_node_overlay_cancelled() {
     let positions = vec![(100.0, 200.0)];
     let mut canvas = GraphCanvas::new(1, positions, vec![]);
     canvas.set_node_overlay(0, Some(OverlayState::Cancelled));
-    assert_eq!(canvas.node_status_dot_color(0), Some(color::text_tertiary()));
+    assert_eq!(
+        canvas.node_status_dot_color(0),
+        Some(color::text_tertiary())
+    );
 }
 
 #[test]
@@ -331,9 +366,30 @@ fn graph_canvas_compute_edge_paths_empty() {
 
 #[test]
 fn graph_canvas_compute_edge_paths_multiple() {
-    let p1 = EdgePath { source_step: 0, target_step: 1, start: [0.0, 0.0], cp1: [10.0, 0.0], cp2: [10.0, 50.0], end: [20.0, 50.0] };
-    let p2 = EdgePath { source_step: 1, target_step: 2, start: [20.0, 50.0], cp1: [30.0, 50.0], cp2: [30.0, 100.0], end: [40.0, 100.0] };
-    let p3 = EdgePath { source_step: 2, target_step: 3, start: [40.0, 100.0], cp1: [50.0, 100.0], cp2: [50.0, 150.0], end: [60.0, 150.0] };
+    let p1 = EdgePath {
+        source_step: 0,
+        target_step: 1,
+        start: [0.0, 0.0],
+        cp1: [10.0, 0.0],
+        cp2: [10.0, 50.0],
+        end: [20.0, 50.0],
+    };
+    let p2 = EdgePath {
+        source_step: 1,
+        target_step: 2,
+        start: [20.0, 50.0],
+        cp1: [30.0, 50.0],
+        cp2: [30.0, 100.0],
+        end: [40.0, 100.0],
+    };
+    let p3 = EdgePath {
+        source_step: 2,
+        target_step: 3,
+        start: [40.0, 100.0],
+        cp1: [50.0, 100.0],
+        cp2: [50.0, 150.0],
+        end: [60.0, 150.0],
+    };
     let paths = vec![p1, p2, p3];
     let canvas = GraphCanvas::new(4, vec![], paths);
     let computed = canvas.compute_edge_paths();
@@ -345,7 +401,14 @@ fn graph_canvas_compute_edge_paths_multiple() {
 
 #[test]
 fn graph_canvas_compute_edge_paths_returns_cloned_data() {
-    let paths = vec![EdgePath { source_step: 0, target_step: 1, start: [0.0, 0.0], cp1: [1.0, 2.0], cp2: [3.0, 4.0], end: [5.0, 6.0] }];
+    let paths = vec![EdgePath {
+        source_step: 0,
+        target_step: 1,
+        start: [0.0, 0.0],
+        cp1: [1.0, 2.0],
+        cp2: [3.0, 4.0],
+        end: [5.0, 6.0],
+    }];
     let canvas = GraphCanvas::new(2, vec![], paths);
     let computed = canvas.compute_edge_paths();
     let first = computed[0].cp2;
@@ -365,7 +428,14 @@ fn graph_canvas_edge_packet_markers_always_empty() {
 
 #[test]
 fn graph_canvas_edge_packet_markers_with_paths() {
-    let paths = vec![EdgePath { source_step: 0, target_step: 1, start: [0.0, 0.0], cp1: [50.0, 0.0], cp2: [50.0, 100.0], end: [100.0, 100.0] }];
+    let paths = vec![EdgePath {
+        source_step: 0,
+        target_step: 1,
+        start: [0.0, 0.0],
+        cp1: [50.0, 0.0],
+        cp2: [50.0, 100.0],
+        end: [100.0, 100.0],
+    }];
     let canvas = GraphCanvas::new(2, vec![], paths);
     let markers = canvas.edge_packet_markers("0");
     assert!(markers.is_empty());
@@ -399,7 +469,12 @@ fn graph_canvas_animate_packet_dots_no_panic_negative_delta() {
 fn graph_canvas_visible_nodes_exact_boundary_left() {
     let positions = vec![(80.0, 24.0)]; // node center, width=160, half_w=80
     let canvas = GraphCanvas::new(1, positions, vec![]);
-    let viewport = ViewportRect { x: 0.0, y: 0.0, width: 160.0, height: 48.0 };
+    let viewport = ViewportRect {
+        x: 0.0,
+        y: 0.0,
+        width: 160.0,
+        height: 48.0,
+    };
     let visible = canvas.visible_nodes(&viewport, (160.0, 48.0));
     assert_eq!(visible.len(), 1);
 }
@@ -408,7 +483,12 @@ fn graph_canvas_visible_nodes_exact_boundary_left() {
 fn graph_canvas_visible_nodes_exact_boundary_right() {
     let positions = vec![(80.0, 24.0)];
     let canvas = GraphCanvas::new(1, positions, vec![]);
-    let viewport = ViewportRect { x: 160.0, y: 0.0, width: 160.0, height: 48.0 };
+    let viewport = ViewportRect {
+        x: 160.0,
+        y: 0.0,
+        width: 160.0,
+        height: 48.0,
+    };
     let visible = canvas.visible_nodes(&viewport, (160.0, 48.0));
     assert!(visible.is_empty());
 }
@@ -417,7 +497,12 @@ fn graph_canvas_visible_nodes_exact_boundary_right() {
 fn graph_canvas_visible_nodes_exact_boundary_top() {
     let positions = vec![(80.0, 24.0)];
     let canvas = GraphCanvas::new(1, positions, vec![]);
-    let viewport = ViewportRect { x: 0.0, y: 0.0, width: 160.0, height: 48.0 };
+    let viewport = ViewportRect {
+        x: 0.0,
+        y: 0.0,
+        width: 160.0,
+        height: 48.0,
+    };
     let visible = canvas.visible_nodes(&viewport, (160.0, 48.0));
     assert_eq!(visible.len(), 1);
 }
@@ -426,7 +511,12 @@ fn graph_canvas_visible_nodes_exact_boundary_top() {
 fn graph_canvas_visible_nodes_exact_boundary_bottom() {
     let positions = vec![(80.0, 24.0)];
     let canvas = GraphCanvas::new(1, positions, vec![]);
-    let viewport = ViewportRect { x: 0.0, y: 48.0, width: 160.0, height: 48.0 };
+    let viewport = ViewportRect {
+        x: 0.0,
+        y: 48.0,
+        width: 160.0,
+        height: 48.0,
+    };
     let visible = canvas.visible_nodes(&viewport, (160.0, 48.0));
     assert!(visible.is_empty());
 }
@@ -435,7 +525,12 @@ fn graph_canvas_visible_nodes_exact_boundary_bottom() {
 fn graph_canvas_visible_nodes_single_node_out_of_view() {
     let positions = vec![(1000.0, 1000.0)];
     let canvas = GraphCanvas::new(1, positions, vec![]);
-    let viewport = ViewportRect { x: 0.0, y: 0.0, width: 200.0, height: 200.0 };
+    let viewport = ViewportRect {
+        x: 0.0,
+        y: 0.0,
+        width: 200.0,
+        height: 200.0,
+    };
     let visible = canvas.visible_nodes(&viewport, (160.0, 48.0));
     assert!(visible.is_empty());
 }
@@ -459,7 +554,10 @@ fn graph_canvas_render_node_card_border_color_failed_overlay() {
     let mut canvas = GraphCanvas::new(1, positions, vec![]);
     canvas.set_node_overlay(0, Some(OverlayState::Failed));
     let card = canvas.render_node_card(0).unwrap();
-    assert_eq!(card.border_color, NodeCardRenderInstr::failure_shadow_color());
+    assert_eq!(
+        card.border_color,
+        NodeCardRenderInstr::failure_shadow_color()
+    );
 }
 
 #[test]
@@ -1036,25 +1134,45 @@ fn edge_path_zero_coords() {
 
 #[test]
 fn viewport_rect_intersects_one_pixel_overlap() {
-    let a = ViewportRect { x: 0.0, y: 0.0, width: 1.0, height: 1.0 };
+    let a = ViewportRect {
+        x: 0.0,
+        y: 0.0,
+        width: 1.0,
+        height: 1.0,
+    };
     assert!(a.intersects(0.5, 0.5, 1.0, 1.0));
 }
 
 #[test]
 fn viewport_rect_intersects_negative_coords() {
-    let a = ViewportRect { x: -100.0, y: -100.0, width: 50.0, height: 50.0 };
+    let a = ViewportRect {
+        x: -100.0,
+        y: -100.0,
+        width: 50.0,
+        height: 50.0,
+    };
     assert!(!a.intersects(0.0, 0.0, 10.0, 10.0));
 }
 
 #[test]
 fn viewport_rect_intersects_partial_horizontal() {
-    let a = ViewportRect { x: 0.0, y: 0.0, width: 50.0, height: 50.0 };
+    let a = ViewportRect {
+        x: 0.0,
+        y: 0.0,
+        width: 50.0,
+        height: 50.0,
+    };
     assert!(a.intersects(40.0, 10.0, 30.0, 30.0));
 }
 
 #[test]
 fn viewport_rect_intersects_partial_vertical() {
-    let a = ViewportRect { x: 0.0, y: 0.0, width: 50.0, height: 50.0 };
+    let a = ViewportRect {
+        x: 0.0,
+        y: 0.0,
+        width: 50.0,
+        height: 50.0,
+    };
     assert!(a.intersects(10.0, 40.0, 30.0, 30.0));
 }
 
@@ -1215,8 +1333,12 @@ fn packet_dot_new_edge_id() {
 #[test]
 fn graph_canvas_render_edge_branch() {
     let paths = vec![EdgePath {
-        source_step: 0, target_step: 1,
-        start: [0.0, 0.0], cp1: [50.0, 0.0], cp2: [50.0, 100.0], end: [100.0, 100.0],
+        source_step: 0,
+        target_step: 1,
+        start: [0.0, 0.0],
+        cp1: [50.0, 0.0],
+        cp2: [50.0, 100.0],
+        end: [100.0, 100.0],
     }];
     let canvas = GraphCanvas::new(2, vec![], paths);
     let instr = canvas.render_edge("0").unwrap();
@@ -1227,8 +1349,12 @@ fn graph_canvas_render_edge_branch() {
 #[test]
 fn graph_canvas_render_edge_with_label() {
     let paths = vec![EdgePath {
-        source_step: 0, target_step: 1,
-        start: [0.0, 0.0], cp1: [50.0, 0.0], cp2: [50.0, 100.0], end: [100.0, 100.0],
+        source_step: 0,
+        target_step: 1,
+        start: [0.0, 0.0],
+        cp1: [50.0, 0.0],
+        cp2: [50.0, 100.0],
+        end: [100.0, 100.0],
     }];
     let canvas = GraphCanvas::new(2, vec![], paths);
     let instr = canvas.render_edge("0").unwrap();
@@ -1238,8 +1364,12 @@ fn graph_canvas_render_edge_with_label() {
 #[test]
 fn graph_canvas_render_edge_color() {
     let paths = vec![EdgePath {
-        source_step: 0, target_step: 1,
-        start: [0.0, 0.0], cp1: [50.0, 0.0], cp2: [50.0, 100.0], end: [100.0, 100.0],
+        source_step: 0,
+        target_step: 1,
+        start: [0.0, 0.0],
+        cp1: [50.0, 0.0],
+        cp2: [50.0, 100.0],
+        end: [100.0, 100.0],
     }];
     let canvas = GraphCanvas::new(2, vec![], paths);
     let instr = canvas.render_edge("0").unwrap();
@@ -1280,7 +1410,8 @@ fn packet_dot_manager_adding_after_eviction() {
 #[test]
 fn edge_render_instr_from_edge_path_all_fields() {
     let instr = EdgeRenderInstr::from_edge_path(
-        5, 10,
+        5,
+        10,
         [1.0, 2.0],
         [3.0, 4.0],
         [5.0, 6.0],
@@ -1303,7 +1434,13 @@ fn edge_render_instr_from_edge_path_all_fields() {
 #[test]
 fn edge_render_instr_with_label_replaces() {
     let instr = EdgeRenderInstr::from_edge_path(
-        0, 1, [0.0, 0.0], [50.0, 0.0], [50.0, 100.0], [100.0, 100.0], EdgeType::Normal,
+        0,
+        1,
+        [0.0, 0.0],
+        [50.0, 0.0],
+        [50.0, 100.0],
+        [100.0, 100.0],
+        EdgeType::Normal,
     )
     .with_label("error".to_string());
     assert_eq!(instr.label, Some("error".to_string()));
@@ -1312,7 +1449,13 @@ fn edge_render_instr_with_label_replaces() {
 #[test]
 fn edge_render_instr_with_label_empty() {
     let instr = EdgeRenderInstr::from_edge_path(
-        0, 1, [0.0, 0.0], [50.0, 0.0], [50.0, 100.0], [100.0, 100.0], EdgeType::Normal,
+        0,
+        1,
+        [0.0, 0.0],
+        [50.0, 0.0],
+        [50.0, 100.0],
+        [100.0, 100.0],
+        EdgeType::Normal,
     )
     .with_label(String::new());
     assert_eq!(instr.label, Some(String::new()));
@@ -1480,7 +1623,10 @@ fn node_badge_timeout_color() {
 
 #[test]
 fn node_badge_recent_failures_color() {
-    assert_eq!(NodeBadge::RecentFailures(1).color(), [1.0, 0.027, 0.227, 1.0]);
+    assert_eq!(
+        NodeBadge::RecentFailures(1).color(),
+        [1.0, 0.027, 0.227, 1.0]
+    );
 }
 
 #[test]
@@ -1510,9 +1656,15 @@ fn shell_nav_all_variants_label() {
 #[test]
 fn shell_nav_all_variants_nav_color() {
     assert_eq!(ShellNav::Overview.nav_color(), [0.145, 0.388, 0.922, 1.0]);
-    assert_eq!(ShellNav::WorkflowGraph.nav_color(), [0.431, 0.321, 0.898, 1.0]);
+    assert_eq!(
+        ShellNav::WorkflowGraph.nav_color(),
+        [0.431, 0.321, 0.898, 1.0]
+    );
     assert_eq!(ShellNav::Executions.nav_color(), [0.145, 0.388, 0.922, 1.0]);
-    assert_eq!(ShellNav::Verification.nav_color(), [0.086, 0.651, 0.416, 1.0]);
+    assert_eq!(
+        ShellNav::Verification.nav_color(),
+        [0.086, 0.651, 0.416, 1.0]
+    );
     assert_eq!(ShellNav::Replay.nav_color(), [0.169, 0.424, 1.0, 1.0]);
     assert_eq!(ShellNav::Incidents.nav_color(), [0.898, 0.282, 0.302, 1.0]);
     assert_eq!(ShellNav::Actions.nav_color(), [0.773, 0.357, 0.083, 1.0]);
@@ -1523,9 +1675,15 @@ fn shell_nav_all_variants_nav_color() {
 fn shell_nav_all_variants_screen() {
     use vb_ui_makepad::shell::Screen;
     assert_eq!(ShellNav::Overview.screen(), Screen::ExecutionOverview);
-    assert_eq!(ShellNav::WorkflowGraph.screen(), Screen::WorkflowGraphAuthoring);
+    assert_eq!(
+        ShellNav::WorkflowGraph.screen(),
+        Screen::WorkflowGraphAuthoring
+    );
     assert_eq!(ShellNav::Executions.screen(), Screen::ExecutionDetailsGraph);
-    assert_eq!(ShellNav::Verification.screen(), Screen::VerificationCertificate);
+    assert_eq!(
+        ShellNav::Verification.screen(),
+        Screen::VerificationCertificate
+    );
     assert_eq!(ShellNav::Replay.screen(), Screen::ReplayTheater);
     assert_eq!(ShellNav::Incidents.screen(), Screen::IncidentFailureConsole);
     assert_eq!(ShellNav::Actions.screen(), Screen::ActionRegistry);
@@ -1540,13 +1698,28 @@ fn shell_nav_all_variants_screen() {
 fn screen_all_variants_splash_name() {
     use vb_ui_makepad::shell::Screen;
     assert_eq!(Screen::ExecutionOverview.splash_name(), "ExecutionOverview");
-    assert_eq!(Screen::WorkflowGraphAuthoring.splash_name(), "WorkflowGraphAuthoring");
-    assert_eq!(Screen::ExecutionDetailsGraph.splash_name(), "ExecutionDetailsGraph");
-    assert_eq!(Screen::VerificationCertificate.splash_name(), "VerificationCertificate");
+    assert_eq!(
+        Screen::WorkflowGraphAuthoring.splash_name(),
+        "WorkflowGraphAuthoring"
+    );
+    assert_eq!(
+        Screen::ExecutionDetailsGraph.splash_name(),
+        "ExecutionDetailsGraph"
+    );
+    assert_eq!(
+        Screen::VerificationCertificate.splash_name(),
+        "VerificationCertificate"
+    );
     assert_eq!(Screen::ReplayTheater.splash_name(), "ReplayTheater");
-    assert_eq!(Screen::IncidentFailureConsole.splash_name(), "IncidentFailureConsole");
+    assert_eq!(
+        Screen::IncidentFailureConsole.splash_name(),
+        "IncidentFailureConsole"
+    );
     assert_eq!(Screen::ActionRegistry.splash_name(), "ActionRegistry");
-    assert_eq!(Screen::StorageDoctorAiContext.splash_name(), "StorageDoctorAiContext");
+    assert_eq!(
+        Screen::StorageDoctorAiContext.splash_name(),
+        "StorageDoctorAiContext"
+    );
 }
 
 #[test]
@@ -1712,7 +1885,12 @@ fn graph_canvas_visible_nodes_node_bottom_edge_touching_viewport_top() {
     // So they DO intersect. Let's just verify behavior is deterministic.
     let positions = vec![(80.0, 48.0)];
     let canvas = GraphCanvas::new(1, positions, vec![]);
-    let viewport = ViewportRect { x: 0.0, y: 48.0, width: 160.0, height: 48.0 };
+    let viewport = ViewportRect {
+        x: 0.0,
+        y: 48.0,
+        width: 160.0,
+        height: 48.0,
+    };
     let visible = canvas.visible_nodes(&viewport, (160.0, 48.0));
     // AABB: self_right=80, nx=0, other_right=160, self.x=0, self_bottom=72, ny=48, other_bottom=96
     // !(80 <= 0 || 160 <= 0 || 72 <= 48 || 96 <= 48) = !(false || false || false || false) = true
@@ -1726,7 +1904,12 @@ fn graph_canvas_visible_nodes_node_left_edge_touching_viewport_right() {
     // They share the edge at x=160
     let positions = vec![(80.0, 24.0)];
     let canvas = GraphCanvas::new(1, positions, vec![]);
-    let viewport = ViewportRect { x: 160.0, y: 0.0, width: 160.0, height: 48.0 };
+    let viewport = ViewportRect {
+        x: 160.0,
+        y: 0.0,
+        width: 160.0,
+        height: 48.0,
+    };
     let visible = canvas.visible_nodes(&viewport, (160.0, 48.0));
     // AABB: self_right=80, nx=80, other_right=320, self.x=0, self_bottom=48, ny=0, other_bottom=48
     // !(80 <= 80 || 320 <= 0 || 48 <= 0 || 48 <= 48) = !(false || false || false || true) = false
@@ -1799,10 +1982,19 @@ fn graph_canvas_zoom_out_in_round_trip() {
 #[test]
 fn graph_canvas_visible_nodes_five_positions_all_visible() {
     let positions = vec![
-        (10.0, 10.0), (200.0, 10.0), (10.0, 200.0), (200.0, 200.0), (100.0, 100.0)
+        (10.0, 10.0),
+        (200.0, 10.0),
+        (10.0, 200.0),
+        (200.0, 200.0),
+        (100.0, 100.0),
     ];
     let canvas = GraphCanvas::new(5, positions, vec![]);
-    let viewport = ViewportRect { x: 0.0, y: 0.0, width: 500.0, height: 500.0 };
+    let viewport = ViewportRect {
+        x: 0.0,
+        y: 0.0,
+        width: 500.0,
+        height: 500.0,
+    };
     let visible = canvas.visible_nodes(&viewport, (160.0, 48.0));
     assert_eq!(visible.len(), 5);
 }
@@ -1810,10 +2002,19 @@ fn graph_canvas_visible_nodes_five_positions_all_visible() {
 #[test]
 fn graph_canvas_visible_nodes_five_positions_partial() {
     let positions = vec![
-        (10.0, 10.0), (200.0, 10.0), (10.0, 200.0), (200.0, 200.0), (100.0, 100.0)
+        (10.0, 10.0),
+        (200.0, 10.0),
+        (10.0, 200.0),
+        (200.0, 200.0),
+        (100.0, 100.0),
     ];
     let canvas = GraphCanvas::new(5, positions, vec![]);
-    let viewport = ViewportRect { x: 0.0, y: 0.0, width: 150.0, height: 150.0 };
+    let viewport = ViewportRect {
+        x: 0.0,
+        y: 0.0,
+        width: 150.0,
+        height: 150.0,
+    };
     let visible = canvas.visible_nodes(&viewport, (160.0, 48.0));
     // Only (10,10), (100,100) might be visible with these params
     assert!(visible.len() >= 2);
@@ -1823,7 +2024,12 @@ fn graph_canvas_visible_nodes_five_positions_partial() {
 fn graph_canvas_visible_nodes_large_viewport_all_visible() {
     let positions = vec![(500.0, 500.0), (1000.0, 1000.0)];
     let canvas = GraphCanvas::new(2, positions, vec![]);
-    let viewport = ViewportRect { x: 0.0, y: 0.0, width: 10000.0, height: 10000.0 };
+    let viewport = ViewportRect {
+        x: 0.0,
+        y: 0.0,
+        width: 10000.0,
+        height: 10000.0,
+    };
     let visible = canvas.visible_nodes(&viewport, (160.0, 48.0));
     assert_eq!(visible.len(), 2);
 }
@@ -1832,7 +2038,12 @@ fn graph_canvas_visible_nodes_large_viewport_all_visible() {
 fn graph_canvas_visible_nodes_node_above_viewport() {
     let positions = vec![(80.0, -1000.0)];
     let canvas = GraphCanvas::new(1, positions, vec![]);
-    let viewport = ViewportRect { x: 0.0, y: 0.0, width: 200.0, height: 200.0 };
+    let viewport = ViewportRect {
+        x: 0.0,
+        y: 0.0,
+        width: 200.0,
+        height: 200.0,
+    };
     let visible = canvas.visible_nodes(&viewport, (160.0, 48.0));
     assert!(visible.is_empty());
 }
@@ -1841,7 +2052,12 @@ fn graph_canvas_visible_nodes_node_above_viewport() {
 fn graph_canvas_visible_nodes_node_below_viewport() {
     let positions = vec![(80.0, 10000.0)];
     let canvas = GraphCanvas::new(1, positions, vec![]);
-    let viewport = ViewportRect { x: 0.0, y: 0.0, width: 200.0, height: 200.0 };
+    let viewport = ViewportRect {
+        x: 0.0,
+        y: 0.0,
+        width: 200.0,
+        height: 200.0,
+    };
     let visible = canvas.visible_nodes(&viewport, (160.0, 48.0));
     assert!(visible.is_empty());
 }
@@ -1850,7 +2066,12 @@ fn graph_canvas_visible_nodes_node_below_viewport() {
 fn graph_canvas_visible_nodes_node_left_of_viewport() {
     let positions = vec![(-1000.0, 24.0)];
     let canvas = GraphCanvas::new(1, positions, vec![]);
-    let viewport = ViewportRect { x: 0.0, y: 0.0, width: 200.0, height: 200.0 };
+    let viewport = ViewportRect {
+        x: 0.0,
+        y: 0.0,
+        width: 200.0,
+        height: 200.0,
+    };
     let visible = canvas.visible_nodes(&viewport, (160.0, 48.0));
     assert!(visible.is_empty());
 }
@@ -1859,7 +2080,12 @@ fn graph_canvas_visible_nodes_node_left_of_viewport() {
 fn graph_canvas_visible_nodes_node_right_of_viewport() {
     let positions = vec![(10000.0, 24.0)];
     let canvas = GraphCanvas::new(1, positions, vec![]);
-    let viewport = ViewportRect { x: 0.0, y: 0.0, width: 200.0, height: 200.0 };
+    let viewport = ViewportRect {
+        x: 0.0,
+        y: 0.0,
+        width: 200.0,
+        height: 200.0,
+    };
     let visible = canvas.visible_nodes(&viewport, (160.0, 48.0));
     assert!(visible.is_empty());
 }
@@ -1867,7 +2093,12 @@ fn graph_canvas_visible_nodes_node_right_of_viewport() {
 #[test]
 fn graph_canvas_visible_nodes_zero_node_count() {
     let canvas = GraphCanvas::new(0, vec![], vec![]);
-    let viewport = ViewportRect { x: 0.0, y: 0.0, width: 500.0, height: 500.0 };
+    let viewport = ViewportRect {
+        x: 0.0,
+        y: 0.0,
+        width: 500.0,
+        height: 500.0,
+    };
     let visible = canvas.visible_nodes(&viewport, (160.0, 48.0));
     assert!(visible.is_empty());
 }
@@ -1876,7 +2107,12 @@ fn graph_canvas_visible_nodes_zero_node_count() {
 fn graph_canvas_visible_nodes_returns_correct_indices() {
     let positions = vec![(10.0, 10.0), (200.0, 10.0), (10.0, 200.0)];
     let canvas = GraphCanvas::new(3, positions, vec![]);
-    let viewport = ViewportRect { x: 0.0, y: 0.0, width: 500.0, height: 500.0 };
+    let viewport = ViewportRect {
+        x: 0.0,
+        y: 0.0,
+        width: 500.0,
+        height: 500.0,
+    };
     let visible = canvas.visible_nodes(&viewport, (160.0, 48.0));
     assert_eq!(visible.len(), 3);
     assert_eq!(visible[0].0, 0);
@@ -1888,7 +2124,12 @@ fn graph_canvas_visible_nodes_returns_correct_indices() {
 fn graph_canvas_visible_nodes_returns_correct_coordinates() {
     let positions = vec![(100.0, 200.0)];
     let canvas = GraphCanvas::new(1, positions, vec![]);
-    let viewport = ViewportRect { x: 0.0, y: 0.0, width: 500.0, height: 500.0 };
+    let viewport = ViewportRect {
+        x: 0.0,
+        y: 0.0,
+        width: 500.0,
+        height: 500.0,
+    };
     let visible = canvas.visible_nodes(&viewport, (160.0, 48.0));
     assert_eq!(visible.len(), 1);
     assert_eq!(visible[0].1, 100.0); // node x
@@ -2034,7 +2275,12 @@ fn graph_canvas_set_node_overlay_all_states_colors() {
     ];
     for (state, expected_color) in states {
         canvas.set_node_overlay(0, Some(state));
-        assert_eq!(canvas.node_status_dot_color(0), Some(expected_color), "state {:?}", state);
+        assert_eq!(
+            canvas.node_status_dot_color(0),
+            Some(expected_color),
+            "state {:?}",
+            state
+        );
     }
 }
 
@@ -2057,7 +2303,9 @@ fn packet_dot_manager_animate_many_dots_mixed_progress() {
 #[test]
 fn packet_dot_manager_total_count_after_eviction_and_add() {
     let mut mgr = PacketDotManager::new();
-    for i in 0..600 { mgr.add_dot(format!("e{}", i)); }
+    for i in 0..600 {
+        mgr.add_dot(format!("e{}", i));
+    }
     assert_eq!(mgr.total_count(), 512);
     mgr.add_dot("new".to_string());
     assert_eq!(mgr.total_count(), 512); // oldest evicted
@@ -2219,8 +2467,12 @@ fn app_shell_nav_item_rect_index_1_then_0() {
 #[test]
 fn graph_canvas_render_edge_error_route() {
     let paths = vec![EdgePath {
-        source_step: 0, target_step: 1,
-        start: [0.0, 0.0], cp1: [50.0, 0.0], cp2: [50.0, 100.0], end: [100.0, 100.0],
+        source_step: 0,
+        target_step: 1,
+        start: [0.0, 0.0],
+        cp1: [50.0, 0.0],
+        cp2: [50.0, 100.0],
+        end: [100.0, 100.0],
     }];
     let canvas = GraphCanvas::new(2, vec![], paths);
     // The canvas doesn't know about edge types from EdgePath alone
@@ -2233,8 +2485,12 @@ fn graph_canvas_render_edge_error_route() {
 #[test]
 fn graph_canvas_render_edge_join_type() {
     let paths = vec![EdgePath {
-        source_step: 0, target_step: 1,
-        start: [0.0, 0.0], cp1: [50.0, 0.0], cp2: [50.0, 100.0], end: [100.0, 100.0],
+        source_step: 0,
+        target_step: 1,
+        start: [0.0, 0.0],
+        cp1: [50.0, 0.0],
+        cp2: [50.0, 100.0],
+        end: [100.0, 100.0],
     }];
     let canvas = GraphCanvas::new(2, vec![], paths);
     let instr = canvas.render_edge("0").unwrap();
@@ -2248,7 +2504,13 @@ fn graph_canvas_render_edge_join_type() {
 #[test]
 fn edge_render_instr_width_default() {
     let instr = EdgeRenderInstr::from_edge_path(
-        0, 1, [0.0, 0.0], [50.0, 0.0], [50.0, 100.0], [100.0, 100.0], EdgeType::Normal,
+        0,
+        1,
+        [0.0, 0.0],
+        [50.0, 0.0],
+        [50.0, 100.0],
+        [100.0, 100.0],
+        EdgeType::Normal,
     );
     assert_eq!(instr.width, 2.0);
 }
@@ -2256,7 +2518,13 @@ fn edge_render_instr_width_default() {
 #[test]
 fn edge_render_instr_dashed_normal_false() {
     let instr = EdgeRenderInstr::from_edge_path(
-        0, 1, [0.0, 0.0], [50.0, 0.0], [50.0, 100.0], [100.0, 100.0], EdgeType::Normal,
+        0,
+        1,
+        [0.0, 0.0],
+        [50.0, 0.0],
+        [50.0, 100.0],
+        [100.0, 100.0],
+        EdgeType::Normal,
     );
     assert!(!instr.dashed);
 }
@@ -2264,7 +2532,13 @@ fn edge_render_instr_dashed_normal_false() {
 #[test]
 fn edge_render_instr_label_none_by_default() {
     let instr = EdgeRenderInstr::from_edge_path(
-        0, 1, [0.0, 0.0], [50.0, 0.0], [50.0, 100.0], [100.0, 100.0], EdgeType::Normal,
+        0,
+        1,
+        [0.0, 0.0],
+        [50.0, 0.0],
+        [50.0, 100.0],
+        [100.0, 100.0],
+        EdgeType::Normal,
     );
     assert!(instr.label.is_none());
 }
@@ -2272,7 +2546,13 @@ fn edge_render_instr_label_none_by_default() {
 #[test]
 fn edge_render_instr_color_from_edge_type_join() {
     let instr = EdgeRenderInstr::from_edge_path(
-        0, 1, [0.0, 0.0], [50.0, 0.0], [50.0, 100.0], [100.0, 100.0], EdgeType::Join,
+        0,
+        1,
+        [0.0, 0.0],
+        [50.0, 0.0],
+        [50.0, 100.0],
+        [100.0, 100.0],
+        EdgeType::Join,
     );
     assert_eq!(instr.color, [0.176, 0.42, 1.0, 1.0]);
 }
@@ -2280,7 +2560,13 @@ fn edge_render_instr_color_from_edge_type_join() {
 #[test]
 fn edge_render_instr_color_from_edge_type_loop_back() {
     let instr = EdgeRenderInstr::from_edge_path(
-        0, 1, [0.0, 0.0], [50.0, 0.0], [50.0, 100.0], [100.0, 100.0], EdgeType::LoopBack,
+        0,
+        1,
+        [0.0, 0.0],
+        [50.0, 0.0],
+        [50.0, 100.0],
+        [100.0, 100.0],
+        EdgeType::LoopBack,
     );
     assert_eq!(instr.color, [0.0, 0.898, 0.78, 1.0]);
 }
@@ -2288,7 +2574,13 @@ fn edge_render_instr_color_from_edge_type_loop_back() {
 #[test]
 fn edge_render_instr_dashed_for_error_route() {
     let instr = EdgeRenderInstr::from_edge_path(
-        0, 1, [0.0, 0.0], [50.0, 0.0], [50.0, 100.0], [100.0, 100.0], EdgeType::ErrorRoute,
+        0,
+        1,
+        [0.0, 0.0],
+        [50.0, 0.0],
+        [50.0, 100.0],
+        [100.0, 100.0],
+        EdgeType::ErrorRoute,
     );
     assert!(instr.dashed);
 }
@@ -2296,7 +2588,13 @@ fn edge_render_instr_dashed_for_error_route() {
 #[test]
 fn edge_render_instr_dashed_for_retry_route() {
     let instr = EdgeRenderInstr::from_edge_path(
-        0, 1, [0.0, 0.0], [50.0, 0.0], [50.0, 100.0], [100.0, 100.0], EdgeType::RetryRoute,
+        0,
+        1,
+        [0.0, 0.0],
+        [50.0, 0.0],
+        [50.0, 100.0],
+        [100.0, 100.0],
+        EdgeType::RetryRoute,
     );
     assert!(instr.dashed);
 }
@@ -2353,7 +2651,10 @@ fn tokens_color_taint_vs_durable_differ() {
 #[test]
 fn tokens_layout_sidebar_plus_content_width_equals_window_width() {
     use vb_ui_makepad::tokens::layout;
-    assert_eq!(layout::SIDEBAR_WIDTH + layout::CONTENT_WIDTH, layout::WINDOW_WIDTH);
+    assert_eq!(
+        layout::SIDEBAR_WIDTH + layout::CONTENT_WIDTH,
+        layout::WINDOW_WIDTH
+    );
 }
 
 #[test]
@@ -2455,7 +2756,10 @@ fn node_badge_color_all_variants_exact() {
     assert_eq!(NodeBadge::Timeout(0).color(), [1.0, 0.027, 0.227, 1.0]);
     assert_eq!(NodeBadge::SecretSensitive.color(), [1.0, 0.0, 1.0, 1.0]);
     assert_eq!(NodeBadge::StrictDurable.color(), [0.0, 0.898, 0.78, 1.0]);
-    assert_eq!(NodeBadge::RecentFailures(0).color(), [1.0, 0.027, 0.227, 1.0]);
+    assert_eq!(
+        NodeBadge::RecentFailures(0).color(),
+        [1.0, 0.027, 0.227, 1.0]
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -2780,7 +3084,10 @@ fn graph_canvas_render_node_card_border_color_failed_overlay_v2() {
     let mut canvas = GraphCanvas::new(1, positions, vec![]);
     canvas.set_node_overlay(0, Some(OverlayState::Failed));
     let card = canvas.render_node_card(0).unwrap();
-    assert_eq!(card.border_color, NodeCardRenderInstr::failure_shadow_color());
+    assert_eq!(
+        card.border_color,
+        NodeCardRenderInstr::failure_shadow_color()
+    );
 }
 
 #[test]
@@ -2816,4 +3123,3 @@ fn tokens_color_each_function_returns_stable_value() {
         assert_eq!(f(), f());
     }
 }
-

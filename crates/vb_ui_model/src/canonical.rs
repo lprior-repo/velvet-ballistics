@@ -817,7 +817,12 @@ mod tests {
         };
         let result = compare_cli_ui_artifacts(&cli, &ui);
         assert!(!result.is_parity);
-        assert!(result.diagnostic.unwrap().contains("workflow graph presence mismatch"));
+        assert!(
+            result
+                .diagnostic
+                .unwrap()
+                .contains("workflow graph presence mismatch")
+        );
     }
 
     #[test]
@@ -845,7 +850,12 @@ mod tests {
         };
         let result = compare_cli_ui_artifacts(&cli, &ui);
         assert!(!result.is_parity);
-        assert!(result.diagnostic.unwrap().contains("workflow graph presence mismatch"));
+        assert!(
+            result
+                .diagnostic
+                .unwrap()
+                .contains("workflow graph presence mismatch")
+        );
     }
 
     #[test]
@@ -903,7 +913,12 @@ mod tests {
         };
         let result = compare_cli_ui_artifacts(&cli, &ui);
         assert!(!result.is_parity);
-        assert!(result.diagnostic.unwrap().contains("event bounds presence mismatch"));
+        assert!(
+            result
+                .diagnostic
+                .unwrap()
+                .contains("event bounds presence mismatch")
+        );
     }
 
     // =====================================================================

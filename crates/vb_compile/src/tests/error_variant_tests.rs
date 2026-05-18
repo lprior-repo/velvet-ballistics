@@ -21,20 +21,14 @@ fn parse_error(source: &[u8]) -> Result<CompileError, String> {
     }
 }
 
-/// Helper: parse source, return Ok(()) or error string.
-fn parse_ok(source: &[u8]) -> Result<(), String> {
-    YamlCompiler::default()
-        .parse_ast(source)
-        .map(|_| ())
-        .map_err(|errors| format!("parse_ast failed: {errors:?}"))
-}
-
 // ── EmptySource variant ────────────────────────────────────────────────────────
 
 #[test]
 fn empty_source_rejected_with_empty_source() {
     let result = YamlCompiler::default().parse_ast(b"");
-    assert!(matches!(result, Err(CompileErrors(errors)) if errors.iter().any(|e| matches!(e, CompileError::EmptySource))));
+    assert!(
+        matches!(result, Err(CompileErrors(errors)) if errors.iter().any(|e| matches!(e, CompileError::EmptySource)))
+    );
 }
 
 // ── DuplicateKey variant ────────────────────────────────────────────────────
@@ -71,7 +65,9 @@ steps:
 100: invalid_key
 "#;
     let result = YamlCompiler::default().parse_ast(source);
-    assert!(matches!(result, Err(CompileErrors(errors)) if errors.iter().any(|e| matches!(e, CompileError::NonStringKey { .. }))));
+    assert!(
+        matches!(result, Err(CompileErrors(errors)) if errors.iter().any(|e| matches!(e, CompileError::NonStringKey { .. })))
+    );
 }
 
 // ── StepShape variant ───────────────────────────────────────────────────────
@@ -86,7 +82,9 @@ steps:
   - "not a mapping"
 "#;
     let result = YamlCompiler::default().parse_ast(source);
-    assert!(matches!(result, Err(CompileErrors(errors)) if errors.iter().any(|e| matches!(e, CompileError::StepShape { step: 0, .. }))));
+    assert!(
+        matches!(result, Err(CompileErrors(errors)) if errors.iter().any(|e| matches!(e, CompileError::StepShape { step: 0, .. })))
+    );
 }
 
 // ── UnknownStepField variant ─────────────────────────────────────────────────
@@ -104,7 +102,9 @@ steps:
       result: 0
 "#;
     let result = YamlCompiler::default().parse_ast(source);
-    assert!(matches!(result, Err(CompileErrors(errors)) if errors.iter().any(|e| matches!(e, CompileError::UnknownStepField { step: 0, .. }))));
+    assert!(
+        matches!(result, Err(CompileErrors(errors)) if errors.iter().any(|e| matches!(e, CompileError::UnknownStepField { step: 0, .. })))
+    );
 }
 
 // ── MissingStepId variant ───────────────────────────────────────────────────
@@ -123,7 +123,9 @@ steps:
       result: 0
 "#;
     let result = YamlCompiler::default().parse_ast(source);
-    assert!(matches!(result, Err(CompileErrors(errors)) if errors.iter().any(|e| matches!(e, CompileError::MissingStepId { step: 0, .. }))));
+    assert!(
+        matches!(result, Err(CompileErrors(errors)) if errors.iter().any(|e| matches!(e, CompileError::MissingStepId { step: 0, .. })))
+    );
 }
 
 // ── DuplicateStepId variant ────────────────────────────────────────────────
@@ -143,7 +145,9 @@ steps:
       result: 0
 "#;
     let result = YamlCompiler::default().parse_ast(source);
-    assert!(matches!(result, Err(CompileErrors(errors)) if errors.iter().any(|e| matches!(e, CompileError::DuplicateStepId { .. }))));
+    assert!(
+        matches!(result, Err(CompileErrors(errors)) if errors.iter().any(|e| matches!(e, CompileError::DuplicateStepId { .. })))
+    );
 }
 
 // ── UnknownTopLevelField variant ─────────────────────────────────────────────
@@ -161,7 +165,9 @@ steps:
       result: 0
 "#;
     let result = YamlCompiler::default().parse_ast(source);
-    assert!(matches!(result, Err(CompileErrors(errors)) if errors.iter().any(|e| matches!(e, CompileError::UnknownTopLevelField { .. }))));
+    assert!(
+        matches!(result, Err(CompileErrors(errors)) if errors.iter().any(|e| matches!(e, CompileError::UnknownTopLevelField { .. })))
+    );
 }
 
 // ── InvalidVersion variant ───────────────────────────────────────────────────
@@ -178,7 +184,9 @@ steps:
       result: 0
 "#;
     let result = YamlCompiler::default().parse_ast(source);
-    assert!(matches!(result, Err(CompileErrors(errors)) if errors.iter().any(|e| matches!(e, CompileError::InvalidVersion { .. }))));
+    assert!(
+        matches!(result, Err(CompileErrors(errors)) if errors.iter().any(|e| matches!(e, CompileError::InvalidVersion { .. })))
+    );
 }
 
 // ── UnknownTriggerKind variant ───────────────────────────────────────────────
@@ -195,7 +203,9 @@ steps:
       result: 0
 "#;
     let result = YamlCompiler::default().parse_ast(source);
-    assert!(matches!(result, Err(CompileErrors(errors)) if errors.iter().any(|e| matches!(e, CompileError::UnknownTriggerKind { .. }))));
+    assert!(
+        matches!(result, Err(CompileErrors(errors)) if errors.iter().any(|e| matches!(e, CompileError::UnknownTriggerKind { .. })))
+    );
 }
 
 // ── InvalidTriggerCount variant ─────────────────────────────────────────────
@@ -213,7 +223,9 @@ steps:
       result: 0
 "#;
     let result = YamlCompiler::default().parse_ast(source);
-    assert!(matches!(result, Err(CompileErrors(errors)) if errors.iter().any(|e| matches!(e, CompileError::InvalidTriggerCount { count: 2 }))));
+    assert!(
+        matches!(result, Err(CompileErrors(errors)) if errors.iter().any(|e| matches!(e, CompileError::InvalidTriggerCount { count: 2 })))
+    );
 }
 
 // ── FieldShape variant ──────────────────────────────────────────────────────
@@ -231,7 +243,9 @@ steps:
       result: 0
 "#;
     let result = YamlCompiler::default().parse_ast(source);
-    assert!(matches!(result, Err(CompileErrors(errors)) if errors.iter().any(|e| matches!(e, CompileError::FieldShape { .. }))));
+    assert!(
+        matches!(result, Err(CompileErrors(errors)) if errors.iter().any(|e| matches!(e, CompileError::FieldShape { .. })))
+    );
 }
 
 // ── EmptySteps variant ───────────────────────────────────────────────────────
@@ -245,7 +259,9 @@ when:
 steps: []
 "#;
     let result = YamlCompiler::default().parse_ast(source);
-    assert!(matches!(result, Err(CompileErrors(errors)) if errors.iter().any(|e| matches!(e, CompileError::EmptySteps))));
+    assert!(
+        matches!(result, Err(CompileErrors(errors)) if errors.iter().any(|e| matches!(e, CompileError::EmptySteps)))
+    );
 }
 
 // ── LastStepMustFinish variant ───────────────────────────────────────────────
@@ -262,7 +278,9 @@ steps:
       value: 1
 "#;
     let result = YamlCompiler::default().parse_ast(source);
-    assert!(matches!(result, Err(CompileErrors(errors)) if errors.iter().any(|e| matches!(e, CompileError::LastStepMustFinish))));
+    assert!(
+        matches!(result, Err(CompileErrors(errors)) if errors.iter().any(|e| matches!(e, CompileError::LastStepMustFinish)))
+    );
 }
 
 // ── UnknownReferenceName variant ─────────────────────────────────────────────
@@ -344,7 +362,10 @@ steps:
       result: $slot.0.name
 "#;
     let error = parse_error(source).expect("expected error");
-    assert!(matches!(error, CompileError::UnsupportedAccessorReference { .. }));
+    assert!(matches!(
+        error,
+        CompileError::UnsupportedAccessorReference { .. }
+    ));
 }
 
 // ── CompileErrors first() method ─────────────────────────────────────────────
@@ -460,7 +481,7 @@ fn yaml_compiler_rejects_invalid_source_via_compile() {
 
 #[test]
 fn parse_expression_accepts_integer_literals() {
-    use crate::expression::{parse_expression, ParsedExpression, ExpressionLiteral};
+    use crate::expression::{ExpressionLiteral, ParsedExpression, parse_expression};
     let result = parse_expression("42");
     assert!(result.is_ok());
     if let Ok(ParsedExpression::Literal(ExpressionLiteral::I64(n))) = result {
@@ -472,7 +493,7 @@ fn parse_expression_accepts_integer_literals() {
 
 #[test]
 fn parse_expression_accepts_boolean_literals() {
-    use crate::expression::{parse_expression, ParsedExpression, ExpressionLiteral};
+    use crate::expression::{ExpressionLiteral, ParsedExpression, parse_expression};
     let result = parse_expression("true");
     assert!(result.is_ok());
     if let Ok(ParsedExpression::Literal(ExpressionLiteral::Bool(b))) = result {
@@ -516,92 +537,95 @@ fn strict_yaml_rejects_multiple_documents() {
 
 #[test]
 fn parse_helper_contains() {
-    use crate::expression::parse_helper;
     use crate::expression::ExpressionHelper;
+    use crate::expression::parse_helper;
     assert_eq!(parse_helper("contains"), Some(ExpressionHelper::Contains));
 }
 
 #[test]
 fn parse_helper_starts_with() {
-    use crate::expression::parse_helper;
     use crate::expression::ExpressionHelper;
-    assert_eq!(parse_helper("starts_with"), Some(ExpressionHelper::StartsWith));
+    use crate::expression::parse_helper;
+    assert_eq!(
+        parse_helper("starts_with"),
+        Some(ExpressionHelper::StartsWith)
+    );
 }
 
 #[test]
 fn parse_helper_ends_with() {
-    use crate::expression::parse_helper;
     use crate::expression::ExpressionHelper;
+    use crate::expression::parse_helper;
     assert_eq!(parse_helper("ends_with"), Some(ExpressionHelper::EndsWith));
 }
 
 #[test]
 fn parse_helper_has() {
-    use crate::expression::parse_helper;
     use crate::expression::ExpressionHelper;
+    use crate::expression::parse_helper;
     assert_eq!(parse_helper("has"), Some(ExpressionHelper::Has));
 }
 
 #[test]
 fn parse_helper_exists() {
-    use crate::expression::parse_helper;
     use crate::expression::ExpressionHelper;
+    use crate::expression::parse_helper;
     assert_eq!(parse_helper("exists"), Some(ExpressionHelper::Exists));
 }
 
 #[test]
 fn parse_helper_length() {
-    use crate::expression::parse_helper;
     use crate::expression::ExpressionHelper;
+    use crate::expression::parse_helper;
     assert_eq!(parse_helper("length"), Some(ExpressionHelper::Length));
 }
 
 #[test]
 fn parse_helper_empty() {
-    use crate::expression::parse_helper;
     use crate::expression::ExpressionHelper;
+    use crate::expression::parse_helper;
     assert_eq!(parse_helper("empty"), Some(ExpressionHelper::Empty));
 }
 
 #[test]
 fn parse_helper_append() {
-    use crate::expression::parse_helper;
     use crate::expression::ExpressionHelper;
+    use crate::expression::parse_helper;
     assert_eq!(parse_helper("append"), Some(ExpressionHelper::Append));
 }
 
 #[test]
 fn parse_helper_append_if() {
-    use crate::expression::parse_helper;
     use crate::expression::ExpressionHelper;
+    use crate::expression::parse_helper;
     assert_eq!(parse_helper("append_if"), Some(ExpressionHelper::AppendIf));
 }
 
 #[test]
 fn parse_helper_merge() {
-    use crate::expression::parse_helper;
     use crate::expression::ExpressionHelper;
+    use crate::expression::parse_helper;
     assert_eq!(parse_helper("merge"), Some(ExpressionHelper::Merge));
 }
 
 #[test]
 fn parse_helper_sum() {
-    use crate::expression::parse_helper;
     use crate::expression::ExpressionHelper;
+    use crate::expression::parse_helper;
     assert_eq!(parse_helper("sum"), Some(ExpressionHelper::Sum));
 }
 
 #[test]
 fn parse_helper_count() {
-    use crate::expression::parse_helper;
     use crate::expression::ExpressionHelper;
+    use crate::expression::parse_helper;
     assert_eq!(parse_helper("count"), Some(ExpressionHelper::Count));
 }
 
 #[test]
 fn parse_helper_unique() {
-    use crate::expression::parse_helper;
     use crate::expression::ExpressionHelper;
+    use crate::expression::parse_helper;
     assert_eq!(parse_helper("unique"), Some(ExpressionHelper::Unique));
 }
 
@@ -665,7 +689,10 @@ fn workflow_digest_from_bytes_creates_digest() {
 
 #[test]
 fn compile_error_source_too_large_code() {
-    let error = CompileError::SourceTooLarge { actual: 100, limit: 50 };
+    let error = CompileError::SourceTooLarge {
+        actual: 100,
+        limit: 50,
+    };
     assert_eq!(error.code(), "PAYLOAD_TOO_LARGE");
 }
 

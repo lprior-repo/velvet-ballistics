@@ -2,7 +2,9 @@
 //!
 //! Tests: validate_evidence_reference_bytes
 
-use crate::boundary_inventory::{BoundaryInventoryError, EvidenceKind, EvidenceReference, validate_evidence_reference_bytes};
+use crate::boundary_inventory::{
+    BoundaryInventoryError, EvidenceReference, validate_evidence_reference_bytes,
+};
 
 // =============================================================================
 // validate_evidence_reference_bytes - external provenance
@@ -66,21 +68,30 @@ fn validate_bead_id_numbers_only() {
 fn validate_external_without_sha256_rejected() {
     let text = "external:some-reference";
     let result = validate_evidence_reference_bytes(text.as_bytes());
-    assert_eq!(result.unwrap_err(), BoundaryInventoryError::InvalidEvidencePath);
+    assert_eq!(
+        result.unwrap_err(),
+        BoundaryInventoryError::InvalidEvidencePath
+    );
 }
 
 #[test]
 fn validate_absolute_path_rejected() {
     let text = "/absolute/path/to/file.rs";
     let result = validate_evidence_reference_bytes(text.as_bytes());
-    assert_eq!(result.unwrap_err(), BoundaryInventoryError::InvalidEvidencePath);
+    assert_eq!(
+        result.unwrap_err(),
+        BoundaryInventoryError::InvalidEvidencePath
+    );
 }
 
 #[test]
 fn validate_parent_dir_reference_rejected() {
     let text = "../parent/path.rs";
     let result = validate_evidence_reference_bytes(text.as_bytes());
-    assert_eq!(result.unwrap_err(), BoundaryInventoryError::InvalidEvidencePath);
+    assert_eq!(
+        result.unwrap_err(),
+        BoundaryInventoryError::InvalidEvidencePath
+    );
 }
 
 #[test]
@@ -88,7 +99,10 @@ fn validate_invalid_utf8_rejected() {
     // Invalid UTF-8 sequence
     let bytes: &[u8] = &[0xFF, 0xFE, 0xFD];
     let result = validate_evidence_reference_bytes(bytes);
-    assert_eq!(result.unwrap_err(), BoundaryInventoryError::InvalidEvidencePath);
+    assert_eq!(
+        result.unwrap_err(),
+        BoundaryInventoryError::InvalidEvidencePath
+    );
 }
 
 #[test]
@@ -96,14 +110,20 @@ fn validate_free_text_rejected() {
     // Free text is not valid evidence reference
     let text = "some arbitrary text description";
     let result = validate_evidence_reference_bytes(text.as_bytes());
-    assert_eq!(result.unwrap_err(), BoundaryInventoryError::InvalidEvidencePath);
+    assert_eq!(
+        result.unwrap_err(),
+        BoundaryInventoryError::InvalidEvidencePath
+    );
 }
 
 #[test]
 fn validate_path_with_dots_at_start() {
     let text = "./test.rs";
     let result = validate_evidence_reference_bytes(text.as_bytes());
-    assert_eq!(result.unwrap_err(), BoundaryInventoryError::InvalidEvidencePath);
+    assert_eq!(
+        result.unwrap_err(),
+        BoundaryInventoryError::InvalidEvidencePath
+    );
 }
 
 #[test]
@@ -112,4 +132,3 @@ fn validate_external_multiple_colons() {
     let result = validate_evidence_reference_bytes(text.as_bytes());
     assert!(result.is_ok());
 }
-

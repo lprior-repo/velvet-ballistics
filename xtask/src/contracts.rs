@@ -140,7 +140,10 @@ pub fn parse_contract_meta(content: &str) -> ContractMeta {
             // Strip surrounding quotes if present
             let val = val.trim_matches('"');
             // CUE type annotations (string, int, etc.) are not literal values
-            let cue_type_keywords = ["string", "int", "int64", "float64", "bool", "list", "map", "struct", "duration", "bytes"];
+            let cue_type_keywords = [
+                "string", "int", "int64", "float64", "bool", "list", "map", "struct", "duration",
+                "bytes",
+            ];
             if !val.is_empty() && !cue_type_keywords.contains(&val) {
                 schema_version = Some(val.to_string());
             }
@@ -172,7 +175,7 @@ pub fn parse_contract_meta(content: &str) -> ContractMeta {
 ///
 /// This is the function that OBL-004 (Verus spec) binds to.
 pub fn compare_semver(a: &str, b: &str) -> Result<std::cmp::Ordering, ValidationError> {
-   let parse_parts = |s: &str| -> Option<(u64, u64, u64)> {
+    let parse_parts = |s: &str| -> Option<(u64, u64, u64)> {
         let parts: Vec<&str> = s.split('.').collect();
         let major = parts.first()?.parse::<u64>().ok()?;
         let minor = parts.get(1)?.parse::<u64>().ok()?;
@@ -407,7 +410,9 @@ pub fn discover_contracts(
     }
     version_violations.sort_by(|a, b| a.file.cmp(&b.file));
 
-    let valid = u32::try_from(files.len()).unwrap_or(u32::MAX).saturating_sub(invalid_count);
+    let valid = u32::try_from(files.len())
+        .unwrap_or(u32::MAX)
+        .saturating_sub(invalid_count);
 
     // Build serializable error messages
     let errors: Vec<String> = raw_errors.iter().map(|e| e.to_string()).collect();
@@ -495,11 +500,11 @@ pub fn load_manifest(
         for (_key, entry) in obj {
             #[allow(clippy::collapsible_if)]
             if let (Some(path_val), Some(ver_val), Some(kind_val)) = (
-                    entry.get("path"),
-                    entry.get("schema_version"),
-                    entry.get("kind"),
-                ) && let (Some(path_str), Some(ver_str), Some(kind_str)) =
-                    (path_val.as_str(), ver_val.as_str(), kind_val.as_str())
+                entry.get("path"),
+                entry.get("schema_version"),
+                entry.get("kind"),
+            ) && let (Some(path_str), Some(ver_str), Some(kind_str)) =
+                (path_val.as_str(), ver_val.as_str(), kind_val.as_str())
             {
                 if let Some(kind) = ContractKind::from_str(kind_str) {
                     map.insert(path_str.to_string(), (ver_str.to_string(), kind));
@@ -649,7 +654,15 @@ mod tests {
 
     #[test]
     fn test_is_valid_semver_accepts_valid() {
-        for v in &["1.0.0", "0.1.0", "0.0.1", "999.999.999", "1.2.3", "0.0.0", "10.20.30"] {
+        for v in &[
+            "1.0.0",
+            "0.1.0",
+            "0.0.1",
+            "999.999.999",
+            "1.2.3",
+            "0.0.0",
+            "10.20.30",
+        ] {
             assert!(is_valid_semver(v), "{v} should be valid semver");
         }
     }
@@ -677,33 +690,66 @@ mod tests {
 
     #[test]
     fn test_compare_semver_equal() {
-        assert_eq!(compare_semver("1.0.0", "1.0.0").unwrap(), std::cmp::Ordering::Equal);
-        assert_eq!(compare_semver("0.0.0", "0.0.0").unwrap(), std::cmp::Ordering::Equal);
+        assert_eq!(
+            compare_semver("1.0.0", "1.0.0").unwrap(),
+            std::cmp::Ordering::Equal
+        );
+        assert_eq!(
+            compare_semver("0.0.0", "0.0.0").unwrap(),
+            std::cmp::Ordering::Equal
+        );
     }
 
     #[test]
     fn test_compare_semver_different_major() {
-        assert_eq!(compare_semver("1.0.0", "2.0.0").unwrap(), std::cmp::Ordering::Less);
-        assert_eq!(compare_semver("2.0.0", "1.0.0").unwrap(), std::cmp::Ordering::Greater);
+        assert_eq!(
+            compare_semver("1.0.0", "2.0.0").unwrap(),
+            std::cmp::Ordering::Less
+        );
+        assert_eq!(
+            compare_semver("2.0.0", "1.0.0").unwrap(),
+            std::cmp::Ordering::Greater
+        );
     }
 
     #[test]
     fn test_compare_semver_different_minor() {
-        assert_eq!(compare_semver("1.0.0", "1.1.0").unwrap(), std::cmp::Ordering::Less);
-        assert_eq!(compare_semver("1.1.0", "1.0.0").unwrap(), std::cmp::Ordering::Greater);
+        assert_eq!(
+            compare_semver("1.0.0", "1.1.0").unwrap(),
+            std::cmp::Ordering::Less
+        );
+        assert_eq!(
+            compare_semver("1.1.0", "1.0.0").unwrap(),
+            std::cmp::Ordering::Greater
+        );
     }
 
     #[test]
     fn test_compare_semver_different_patch() {
-        assert_eq!(compare_semver("1.0.0", "1.0.1").unwrap(), std::cmp::Ordering::Less);
-        assert_eq!(compare_semver("1.0.1", "1.0.0").unwrap(), std::cmp::Ordering::Greater);
+        assert_eq!(
+            compare_semver("1.0.0", "1.0.1").unwrap(),
+            std::cmp::Ordering::Less
+        );
+        assert_eq!(
+            compare_semver("1.0.1", "1.0.0").unwrap(),
+            std::cmp::Ordering::Greater
+        );
     }
 
     #[test]
     fn test_compare_semver_transitive() {
-        assert_eq!(compare_semver("1.0.0", "2.0.0").unwrap(), std::cmp::Ordering::Less);
-        assert_eq!(compare_semver("2.0.0", "3.0.0").unwrap(), std::cmp::Ordering::Less);
-        assert_eq!(compare_semver("1.0.0", "3.0.0").unwrap(), std::cmp::Ordering::Less);
+        assert_eq!(
+            compare_semver("1.0.0", "2.0.0").unwrap(),
+            std::cmp::Ordering::Less
+        );
+        assert_eq!(
+            compare_semver("2.0.0", "3.0.0").unwrap(),
+            std::cmp::Ordering::Less
+        );
+        assert_eq!(
+            compare_semver("1.0.0", "3.0.0").unwrap(),
+            std::cmp::Ordering::Less
+        );
     }
 
     #[test]
@@ -716,7 +762,10 @@ mod tests {
             ("1.0.a", "1.0.0"),
             ("a.b.c", "1.0.0"),
         ] {
-            assert!(compare_semver(a, b).is_err(), "({a}, {b}) should return Err");
+            assert!(
+                compare_semver(a, b).is_err(),
+                "({a}, {b}) should return Err"
+            );
         }
     }
 
@@ -728,20 +777,48 @@ mod tests {
     fn test_report_total_equals_valid_plus_invalid() {
         let report = DiscoveryReport {
             files: vec![
-                ContractFile { path: PathBuf::from("a.cue"), schema_version: "1.0.0".into(), kind: ContractKind::CliEnvelope, vet_errors: vec![] },
-                ContractFile { path: PathBuf::from("b.cue"), schema_version: "1.0.0".into(), kind: ContractKind::UiTokens, vet_errors: vec![] },
+                ContractFile {
+                    path: PathBuf::from("a.cue"),
+                    schema_version: "1.0.0".into(),
+                    kind: ContractKind::CliEnvelope,
+                    vet_errors: vec![],
+                },
+                ContractFile {
+                    path: PathBuf::from("b.cue"),
+                    schema_version: "1.0.0".into(),
+                    kind: ContractKind::UiTokens,
+                    vet_errors: vec![],
+                },
             ],
-            errors: vec![], raw_errors: vec![],
-            summary: ReportSummary { total: 2, valid: 2, invalid: 0, errors_by_kind: BTreeMap::new(), version_violations: vec![] },
+            errors: vec![],
+            raw_errors: vec![],
+            summary: ReportSummary {
+                total: 2,
+                valid: 2,
+                invalid: 0,
+                errors_by_kind: BTreeMap::new(),
+                version_violations: vec![],
+            },
         };
-        assert_eq!(report.summary.total, report.summary.valid + report.summary.invalid);
+        assert_eq!(
+            report.summary.total,
+            report.summary.valid + report.summary.invalid
+        );
     }
 
     #[test]
     fn test_report_empty_total_is_zero() {
         let report = DiscoveryReport {
-            files: vec![], errors: vec![], raw_errors: vec![],
-            summary: ReportSummary { total: 0, valid: 0, invalid: 0, errors_by_kind: BTreeMap::new(), version_violations: vec![] },
+            files: vec![],
+            errors: vec![],
+            raw_errors: vec![],
+            summary: ReportSummary {
+                total: 0,
+                valid: 0,
+                invalid: 0,
+                errors_by_kind: BTreeMap::new(),
+                version_violations: vec![],
+            },
         };
         assert_eq!(report.summary.total, 0);
         assert_eq!(report.summary.valid, 0);
@@ -755,8 +832,16 @@ mod tests {
     #[test]
     fn test_gate_evidence_passes_when_all_valid() {
         let report = DiscoveryReport {
-            files: vec![], errors: vec![], raw_errors: vec![],
-            summary: ReportSummary { total: 0, valid: 0, invalid: 0, errors_by_kind: BTreeMap::new(), version_violations: vec![] },
+            files: vec![],
+            errors: vec![],
+            raw_errors: vec![],
+            summary: ReportSummary {
+                total: 0,
+                valid: 0,
+                invalid: 0,
+                errors_by_kind: BTreeMap::new(),
+                version_violations: vec![],
+            },
         };
         let evidence = gate_evidence_from_report(&report);
         assert_eq!(evidence.status, crate::evidence::GateStatus::Pass);
@@ -767,9 +852,18 @@ mod tests {
     #[test]
     fn test_gate_evidence_fails_when_any_invalid() {
         let report = DiscoveryReport {
-            files: vec![], errors: vec!["some error".into()],
-            raw_errors: vec![ValidationError::InvalidKind { kind: "bogus".into() }],
-            summary: ReportSummary { total: 1, valid: 0, invalid: 1, errors_by_kind: BTreeMap::new(), version_violations: vec![] },
+            files: vec![],
+            errors: vec!["some error".into()],
+            raw_errors: vec![ValidationError::InvalidKind {
+                kind: "bogus".into(),
+            }],
+            summary: ReportSummary {
+                total: 1,
+                valid: 0,
+                invalid: 1,
+                errors_by_kind: BTreeMap::new(),
+                version_violations: vec![],
+            },
         };
         let evidence = gate_evidence_from_report(&report);
         assert_eq!(evidence.status, crate::evidence::GateStatus::Fail);
@@ -780,8 +874,16 @@ mod tests {
     #[test]
     fn test_gate_evidence_kind_and_gate_name() {
         let report = DiscoveryReport {
-            files: vec![], errors: vec![], raw_errors: vec![],
-            summary: ReportSummary { total: 0, valid: 0, invalid: 0, errors_by_kind: BTreeMap::new(), version_violations: vec![] },
+            files: vec![],
+            errors: vec![],
+            raw_errors: vec![],
+            summary: ReportSummary {
+                total: 0,
+                valid: 0,
+                invalid: 0,
+                errors_by_kind: BTreeMap::new(),
+                version_violations: vec![],
+            },
         };
         let evidence = gate_evidence_from_report(&report);
         assert_eq!(evidence.kind, "contract-discovery");
@@ -791,8 +893,16 @@ mod tests {
     #[test]
     fn test_gate_evidence_command_string() {
         let report = DiscoveryReport {
-            files: vec![], errors: vec![], raw_errors: vec![],
-            summary: ReportSummary { total: 0, valid: 0, invalid: 0, errors_by_kind: BTreeMap::new(), version_violations: vec![] },
+            files: vec![],
+            errors: vec![],
+            raw_errors: vec![],
+            summary: ReportSummary {
+                total: 0,
+                valid: 0,
+                invalid: 0,
+                errors_by_kind: BTreeMap::new(),
+                version_violations: vec![],
+            },
         };
         let evidence = gate_evidence_from_report(&report);
         assert_eq!(evidence.command, "cargo xtask contracts --dir contracts");
@@ -801,8 +911,16 @@ mod tests {
     #[test]
     fn test_gate_evidence_log_path() {
         let report = DiscoveryReport {
-            files: vec![], errors: vec![], raw_errors: vec![],
-            summary: ReportSummary { total: 0, valid: 0, invalid: 0, errors_by_kind: BTreeMap::new(), version_violations: vec![] },
+            files: vec![],
+            errors: vec![],
+            raw_errors: vec![],
+            summary: ReportSummary {
+                total: 0,
+                valid: 0,
+                invalid: 0,
+                errors_by_kind: BTreeMap::new(),
+                version_violations: vec![],
+            },
         };
         let evidence = gate_evidence_from_report(&report);
         assert_eq!(evidence.log, PathBuf::from(".evidence/contracts.log"));
@@ -842,7 +960,8 @@ mod tests {
 
     #[test]
     fn test_parse_meta_skips_empty_lines() {
-        let meta = parse_contract_meta("\n\nschema_version: \"2.0.0\"\n\nkind: \"gate_output\"\n\n");
+        let meta =
+            parse_contract_meta("\n\nschema_version: \"2.0.0\"\n\nkind: \"gate_output\"\n\n");
         assert_eq!(meta.schema_version, Some("2.0.0".to_string()));
         assert_eq!(meta.kind, Some("gate_output".to_string()));
     }
@@ -856,7 +975,9 @@ mod tests {
 
     #[test]
     fn test_parse_meta_extra_unknown_fields_ignored() {
-        let meta = parse_contract_meta("schema_version: \"1.0.0\"\nkind: \"cli_envelope\"\nextra_field: true");
+        let meta = parse_contract_meta(
+            "schema_version: \"1.0.0\"\nkind: \"cli_envelope\"\nextra_field: true",
+        );
         assert_eq!(meta.schema_version, Some("1.0.0".to_string()));
         assert_eq!(meta.kind, Some("cli_envelope".to_string()));
     }
@@ -870,7 +991,8 @@ mod tests {
 
     #[test]
     fn test_parse_meta_whitespace_handling() {
-        let meta = parse_contract_meta("  schema_version:  \"3.0.0\"  \n  kind:   \"evidence_bundle\"  ");
+        let meta =
+            parse_contract_meta("  schema_version:  \"3.0.0\"  \n  kind:   \"evidence_bundle\"  ");
         assert_eq!(meta.schema_version, Some("3.0.0".to_string()));
         assert_eq!(meta.kind, Some("evidence_bundle".to_string()));
     }
@@ -899,32 +1021,50 @@ mod tests {
 
     #[test]
     fn test_compare_semver_major_upgrade_passes() {
-        assert_eq!(compare_semver("1.0.0", "2.0.0").unwrap(), std::cmp::Ordering::Less);
+        assert_eq!(
+            compare_semver("1.0.0", "2.0.0").unwrap(),
+            std::cmp::Ordering::Less
+        );
     }
 
     #[test]
     fn test_compare_semver_major_downgrade_fails() {
-        assert_eq!(compare_semver("2.0.0", "1.0.0").unwrap(), std::cmp::Ordering::Greater);
+        assert_eq!(
+            compare_semver("2.0.0", "1.0.0").unwrap(),
+            std::cmp::Ordering::Greater
+        );
     }
 
     #[test]
     fn test_compare_semver_minor_upgrade_passes() {
-        assert_eq!(compare_semver("1.0.0", "1.1.0").unwrap(), std::cmp::Ordering::Less);
+        assert_eq!(
+            compare_semver("1.0.0", "1.1.0").unwrap(),
+            std::cmp::Ordering::Less
+        );
     }
 
     #[test]
     fn test_compare_semver_minor_downgrade_fails() {
-        assert_eq!(compare_semver("1.1.0", "1.0.0").unwrap(), std::cmp::Ordering::Greater);
+        assert_eq!(
+            compare_semver("1.1.0", "1.0.0").unwrap(),
+            std::cmp::Ordering::Greater
+        );
     }
 
     #[test]
     fn test_compare_semver_patch_upgrade_passes() {
-        assert_eq!(compare_semver("1.0.0", "1.0.1").unwrap(), std::cmp::Ordering::Less);
+        assert_eq!(
+            compare_semver("1.0.0", "1.0.1").unwrap(),
+            std::cmp::Ordering::Less
+        );
     }
 
     #[test]
     fn test_compare_semver_patch_downgrade_fails() {
-        assert_eq!(compare_semver("1.0.1", "1.0.0").unwrap(), std::cmp::Ordering::Greater);
+        assert_eq!(
+            compare_semver("1.0.1", "1.0.0").unwrap(),
+            std::cmp::Ordering::Greater
+        );
     }
 
     // ===================================================================
@@ -934,7 +1074,10 @@ mod tests {
     #[test]
     fn test_run_cue_vet_returns_error_when_cue_missing() {
         let (exit_code, errors) = run_cue_vet(Path::new("/nonexistent/file.cue"));
-        assert!(exit_code != 0 || !errors.is_empty(), "should handle missing cue gracefully");
+        assert!(
+            exit_code != 0 || !errors.is_empty(),
+            "should handle missing cue gracefully"
+        );
     }
 
     // ===================================================================
@@ -945,11 +1088,28 @@ mod tests {
     fn test_discovery_report_json_is_deterministic() {
         let report = DiscoveryReport {
             files: vec![
-                ContractFile { path: PathBuf::from("b.cue"), schema_version: "1.0.0".into(), kind: ContractKind::UiTokens, vet_errors: vec![] },
-                ContractFile { path: PathBuf::from("a.cue"), schema_version: "2.0.0".into(), kind: ContractKind::CliEnvelope, vet_errors: vec![] },
+                ContractFile {
+                    path: PathBuf::from("b.cue"),
+                    schema_version: "1.0.0".into(),
+                    kind: ContractKind::UiTokens,
+                    vet_errors: vec![],
+                },
+                ContractFile {
+                    path: PathBuf::from("a.cue"),
+                    schema_version: "2.0.0".into(),
+                    kind: ContractKind::CliEnvelope,
+                    vet_errors: vec![],
+                },
             ],
-            errors: vec![], raw_errors: vec![],
-            summary: ReportSummary { total: 2, valid: 2, invalid: 0, errors_by_kind: BTreeMap::new(), version_violations: vec![] },
+            errors: vec![],
+            raw_errors: vec![],
+            summary: ReportSummary {
+                total: 2,
+                valid: 2,
+                invalid: 0,
+                errors_by_kind: BTreeMap::new(),
+                version_violations: vec![],
+            },
         };
         let json1 = serde_json::to_string(&report).expect("must serialize");
         let json2 = serde_json::to_string(&report).expect("must serialize");
@@ -988,16 +1148,31 @@ mod tests {
     #[test]
     fn test_cross_ref_report_summary_uses_btreemap() {
         let summary = ReportSummary {
-            total: 0, valid: 0, invalid: 0, errors_by_kind: BTreeMap::new(), version_violations: vec![],
+            total: 0,
+            valid: 0,
+            invalid: 0,
+            errors_by_kind: BTreeMap::new(),
+            version_violations: vec![],
         };
-        assert!(matches!(summary.errors_by_kind.get(&ContractKind::CliEnvelope), None));
+        assert!(matches!(
+            summary.errors_by_kind.get(&ContractKind::CliEnvelope),
+            None
+        ));
     }
 
     #[test]
     fn test_cross_ref_gate_evidence_signature_matches() {
         let report = DiscoveryReport {
-            files: vec![], errors: vec![], raw_errors: vec![],
-            summary: ReportSummary { total: 0, valid: 0, invalid: 0, errors_by_kind: BTreeMap::new(), version_violations: vec![] },
+            files: vec![],
+            errors: vec![],
+            raw_errors: vec![],
+            summary: ReportSummary {
+                total: 0,
+                valid: 0,
+                invalid: 0,
+                errors_by_kind: BTreeMap::new(),
+                version_violations: vec![],
+            },
         };
         let _evidence = gate_evidence_from_report(&report);
     }
@@ -1005,17 +1180,37 @@ mod tests {
     #[test]
     fn test_cross_ref_validation_error_variants_exist() {
         let _a = ValidationError::MissingSchemaVersion;
-        let _b = ValidationError::InvalidKind { kind: "test".into() };
-        let _c = ValidationError::VersionMonotonicityBreach { file: "t.cue".into(), expected: "1.0.0".into(), actual: "0.9.0".into() };
-        let _d = ValidationError::CueVetFailed { file: "t.cue".into() };
+        let _b = ValidationError::InvalidKind {
+            kind: "test".into(),
+        };
+        let _c = ValidationError::VersionMonotonicityBreach {
+            file: "t.cue".into(),
+            expected: "1.0.0".into(),
+            actual: "0.9.0".into(),
+        };
+        let _d = ValidationError::CueVetFailed {
+            file: "t.cue".into(),
+        };
     }
 
     #[test]
     fn test_cross_ref_discovery_report_serializable() {
         let report = DiscoveryReport {
-            files: vec![ContractFile { path: PathBuf::from("a.cue"), schema_version: "1.0.0".into(), kind: ContractKind::CliEnvelope, vet_errors: vec![] }],
-            errors: vec![], raw_errors: vec![],
-            summary: ReportSummary { total: 1, valid: 1, invalid: 0, errors_by_kind: BTreeMap::new(), version_violations: vec![] },
+            files: vec![ContractFile {
+                path: PathBuf::from("a.cue"),
+                schema_version: "1.0.0".into(),
+                kind: ContractKind::CliEnvelope,
+                vet_errors: vec![],
+            }],
+            errors: vec![],
+            raw_errors: vec![],
+            summary: ReportSummary {
+                total: 1,
+                valid: 1,
+                invalid: 0,
+                errors_by_kind: BTreeMap::new(),
+                version_violations: vec![],
+            },
         };
         let json = serde_json::to_string(&report).expect("must serialize");
         assert!(json.contains("\"total\""));

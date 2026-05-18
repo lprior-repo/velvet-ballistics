@@ -514,10 +514,7 @@ fn unsupported_yaml_features_return_typed_diagnostics() {
 /// YAML block sequence.
 fn yaml_with_sequence_items(count: usize) -> String {
     let items: Vec<String> = (0..count).map(|i| format!("  - item{}\n", i)).collect();
-    format!(
-        "items:\n{}",
-        items.join("")
-    )
+    format!("items:\n{}", items.join(""))
 }
 
 /// Helper: build a YAML with a top-level mapping containing `count` entries.
@@ -525,10 +522,7 @@ fn yaml_with_mapping_entries(count: usize) -> String {
     let entries: Vec<String> = (0..count)
         .map(|i| format!("  key{}: value{}\n", i, i))
         .collect();
-    format!(
-        "root:\n{}\n",
-        entries.join("")
-    )
+    format!("root:\n{}\n", entries.join(""))
 }
 
 #[test]

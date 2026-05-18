@@ -11,12 +11,12 @@
 //! - Generated Rust subset validation
 
 use vb_codegen::{CodegenError, emit_rust_workflow, validate_generated_subset};
-use vb_compile::{compile_workflow, YamlCompiler};
-use vb_core::ids::{AccessorIdx, ConstIdx, SlotIdx, StepIdx, SymbolId, WorkflowDigest};
+use vb_compile::compile_workflow;
+use vb_core::ids::{ConstIdx, SlotIdx, StepIdx, WorkflowDigest};
 use vb_core::value::ConstValue;
 use vb_core::workflow::{
-    AccessorProgram, CompiledNode, CompiledNodeKind, CompiledWorkflow, ExprBranch, ExprOp,
-    ExprProgram, PathSegment, ResourceContract, SlotBranch, WorkflowParts,
+    AccessorProgram, CompiledNode, CompiledNodeKind, CompiledWorkflow, ExprOp, ExprProgram,
+    PathSegment, ResourceContract, WorkflowParts,
 };
 
 // ---------------------------------------------------------------------------
@@ -77,7 +77,11 @@ fn codegen_rejects_workflow_with_too_many_nodes() {
         nodes.push(CompiledNode {
             id: StepIdx::new(i as u16),
             output: None,
-            next: if i < 999 { Some(StepIdx::new((i + 1) as u16)) } else { None },
+            next: if i < 999 {
+                Some(StepIdx::new((i + 1) as u16))
+            } else {
+                None
+            },
             on_error: None,
             error_slot: None,
             kind: CompiledNodeKind::Finish {
@@ -120,10 +124,7 @@ fn codegen_rejects_unsupported_expression_op() {
     // Contains is not supported in generated subset
     let workflow = make_workflow_with_unsupported_expr_op();
     let result = validate_generated_subset(&workflow);
-    assert!(matches!(
-        result,
-        Err(CodegenError::UnsupportedIr { .. })
-    ));
+    assert!(matches!(result, Err(CodegenError::UnsupportedIr { .. })));
 }
 
 // ---------------------------------------------------------------------------

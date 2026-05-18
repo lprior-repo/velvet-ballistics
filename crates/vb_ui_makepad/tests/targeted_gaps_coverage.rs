@@ -1001,7 +1001,10 @@ fn shell_nav_nav_color_overview() {
 }
 #[test]
 fn shell_nav_nav_color_workflow_graph() {
-    assert_eq!(ShellNav::WorkflowGraph.nav_color(), [0.431, 0.321, 0.898, 1.0]);
+    assert_eq!(
+        ShellNav::WorkflowGraph.nav_color(),
+        [0.431, 0.321, 0.898, 1.0]
+    );
 }
 #[test]
 fn shell_nav_nav_color_executions() {
@@ -1009,7 +1012,10 @@ fn shell_nav_nav_color_executions() {
 }
 #[test]
 fn shell_nav_nav_color_verification() {
-    assert_eq!(ShellNav::Verification.nav_color(), [0.086, 0.651, 0.416, 1.0]);
+    assert_eq!(
+        ShellNav::Verification.nav_color(),
+        [0.086, 0.651, 0.416, 1.0]
+    );
 }
 #[test]
 fn shell_nav_nav_color_replay() {
@@ -1038,15 +1044,24 @@ fn screen_splash_name_execution_overview() {
 }
 #[test]
 fn screen_splash_name_workflow_graph_authoring() {
-    assert_eq!(Screen::WorkflowGraphAuthoring.splash_name(), "WorkflowGraphAuthoring");
+    assert_eq!(
+        Screen::WorkflowGraphAuthoring.splash_name(),
+        "WorkflowGraphAuthoring"
+    );
 }
 #[test]
 fn screen_splash_name_execution_details_graph() {
-    assert_eq!(Screen::ExecutionDetailsGraph.splash_name(), "ExecutionDetailsGraph");
+    assert_eq!(
+        Screen::ExecutionDetailsGraph.splash_name(),
+        "ExecutionDetailsGraph"
+    );
 }
 #[test]
 fn screen_splash_name_verification_certificate() {
-    assert_eq!(Screen::VerificationCertificate.splash_name(), "VerificationCertificate");
+    assert_eq!(
+        Screen::VerificationCertificate.splash_name(),
+        "VerificationCertificate"
+    );
 }
 #[test]
 fn screen_splash_name_replay_theater() {
@@ -1054,7 +1069,10 @@ fn screen_splash_name_replay_theater() {
 }
 #[test]
 fn screen_splash_name_incident_failure_console() {
-    assert_eq!(Screen::IncidentFailureConsole.splash_name(), "IncidentFailureConsole");
+    assert_eq!(
+        Screen::IncidentFailureConsole.splash_name(),
+        "IncidentFailureConsole"
+    );
 }
 #[test]
 fn screen_splash_name_action_registry() {
@@ -1062,7 +1080,10 @@ fn screen_splash_name_action_registry() {
 }
 #[test]
 fn screen_splash_name_storage_doctor_ai_context() {
-    assert_eq!(Screen::StorageDoctorAiContext.splash_name(), "StorageDoctorAiContext");
+    assert_eq!(
+        Screen::StorageDoctorAiContext.splash_name(),
+        "StorageDoctorAiContext"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -1334,7 +1355,12 @@ fn graph_canvas_set_selected() {
 fn graph_canvas_visible_nodes_all_visible() {
     let positions = vec![(100.0, 100.0), (200.0, 200.0), (300.0, 300.0)];
     let canvas = GraphCanvas::new(3, positions.clone(), vec![]);
-    let viewport = ViewportRect { x: 0.0, y: 0.0, width: 500.0, height: 500.0 };
+    let viewport = ViewportRect {
+        x: 0.0,
+        y: 0.0,
+        width: 500.0,
+        height: 500.0,
+    };
     let visible = canvas.visible_nodes(&viewport, (160.0, 48.0));
     assert_eq!(visible.len(), 3);
 }
@@ -1343,7 +1369,12 @@ fn graph_canvas_visible_nodes_all_visible() {
 fn graph_canvas_visible_nodes_none_visible() {
     let positions = vec![(1000.0, 1000.0), (2000.0, 2000.0)];
     let canvas = GraphCanvas::new(2, positions, vec![]);
-    let viewport = ViewportRect { x: 0.0, y: 0.0, width: 100.0, height: 100.0 };
+    let viewport = ViewportRect {
+        x: 0.0,
+        y: 0.0,
+        width: 100.0,
+        height: 100.0,
+    };
     let visible = canvas.visible_nodes(&viewport, (160.0, 48.0));
     assert!(visible.is_empty());
 }
@@ -1352,7 +1383,12 @@ fn graph_canvas_visible_nodes_none_visible() {
 fn graph_canvas_visible_nodes_partial() {
     let positions = vec![(50.0, 50.0), (500.0, 500.0), (25.0, 25.0)];
     let canvas = GraphCanvas::new(3, positions, vec![]);
-    let viewport = ViewportRect { x: 0.0, y: 0.0, width: 100.0, height: 100.0 };
+    let viewport = ViewportRect {
+        x: 0.0,
+        y: 0.0,
+        width: 100.0,
+        height: 100.0,
+    };
     let visible = canvas.visible_nodes(&viewport, (160.0, 48.0));
     assert_eq!(visible.len(), 2);
 }
@@ -1360,8 +1396,12 @@ fn graph_canvas_visible_nodes_partial() {
 #[test]
 fn graph_canvas_compute_edge_paths_returns_cloned_paths() {
     let paths = vec![EdgePath {
-        source_step: 0, target_step: 1,
-        start: [0.0, 0.0], cp1: [50.0, 0.0], cp2: [50.0, 100.0], end: [100.0, 100.0],
+        source_step: 0,
+        target_step: 1,
+        start: [0.0, 0.0],
+        cp1: [50.0, 0.0],
+        cp2: [50.0, 100.0],
+        end: [100.0, 100.0],
     }];
     let canvas = GraphCanvas::new(2, vec![], paths.clone());
     let computed = canvas.compute_edge_paths();
@@ -1498,8 +1538,12 @@ fn graph_canvas_node_badges_returns_empty() {
 #[test]
 fn graph_canvas_render_edge_valid() {
     let paths = vec![EdgePath {
-        source_step: 0, target_step: 1,
-        start: [0.0, 0.0], cp1: [50.0, 0.0], cp2: [50.0, 100.0], end: [100.0, 100.0],
+        source_step: 0,
+        target_step: 1,
+        start: [0.0, 0.0],
+        cp1: [50.0, 0.0],
+        cp2: [50.0, 100.0],
+        end: [100.0, 100.0],
     }];
     let canvas = GraphCanvas::new(2, vec![], paths);
     let instr = canvas.render_edge("0");
@@ -1513,8 +1557,12 @@ fn graph_canvas_render_edge_valid() {
 #[test]
 fn graph_canvas_render_edge_invalid_id() {
     let paths = vec![EdgePath {
-        source_step: 0, target_step: 1,
-        start: [0.0, 0.0], cp1: [50.0, 0.0], cp2: [50.0, 100.0], end: [100.0, 100.0],
+        source_step: 0,
+        target_step: 1,
+        start: [0.0, 0.0],
+        cp1: [50.0, 0.0],
+        cp2: [50.0, 100.0],
+        end: [100.0, 100.0],
     }];
     let canvas = GraphCanvas::new(2, vec![], paths);
     assert!(canvas.render_edge("not_a_number").is_none());
@@ -1523,8 +1571,12 @@ fn graph_canvas_render_edge_invalid_id() {
 #[test]
 fn graph_canvas_render_edge_out_of_bounds() {
     let paths = vec![EdgePath {
-        source_step: 0, target_step: 1,
-        start: [0.0, 0.0], cp1: [50.0, 0.0], cp2: [50.0, 100.0], end: [100.0, 100.0],
+        source_step: 0,
+        target_step: 1,
+        start: [0.0, 0.0],
+        cp1: [50.0, 0.0],
+        cp2: [50.0, 100.0],
+        end: [100.0, 100.0],
     }];
     let canvas = GraphCanvas::new(2, vec![], paths);
     assert!(canvas.render_edge("99").is_none());
@@ -1590,8 +1642,22 @@ fn graph_canvas_node_count() {
 #[test]
 fn graph_canvas_edge_count() {
     let paths = vec![
-        EdgePath { source_step: 0, target_step: 1, start: [0.0, 0.0], cp1: [50.0, 0.0], cp2: [50.0, 100.0], end: [100.0, 100.0] },
-        EdgePath { source_step: 1, target_step: 2, start: [100.0, 100.0], cp1: [150.0, 100.0], cp2: [150.0, 200.0], end: [200.0, 200.0] },
+        EdgePath {
+            source_step: 0,
+            target_step: 1,
+            start: [0.0, 0.0],
+            cp1: [50.0, 0.0],
+            cp2: [50.0, 100.0],
+            end: [100.0, 100.0],
+        },
+        EdgePath {
+            source_step: 1,
+            target_step: 2,
+            start: [100.0, 100.0],
+            cp1: [150.0, 100.0],
+            cp2: [150.0, 200.0],
+            end: [200.0, 200.0],
+        },
     ];
     let canvas = GraphCanvas::new(3, vec![], paths);
     assert_eq!(canvas.edge_count(), 2);
@@ -1619,20 +1685,38 @@ fn graph_canvas_zoom_accessor() {
 
 #[test]
 fn packet_dot_position_along_bezier_end() {
-    let pos = PacketDot::position_along_bezier(1.0, [0.0, 0.0], [50.0, 0.0], [50.0, 100.0], [100.0, 100.0]);
+    let pos = PacketDot::position_along_bezier(
+        1.0,
+        [0.0, 0.0],
+        [50.0, 0.0],
+        [50.0, 100.0],
+        [100.0, 100.0],
+    );
     assert_eq!(pos, [100.0, 100.0]);
 }
 
 #[test]
 fn packet_dot_position_along_bezier_quarter() {
-    let pos = PacketDot::position_along_bezier(0.25, [0.0, 0.0], [50.0, 0.0], [50.0, 100.0], [100.0, 100.0]);
+    let pos = PacketDot::position_along_bezier(
+        0.25,
+        [0.0, 0.0],
+        [50.0, 0.0],
+        [50.0, 100.0],
+        [100.0, 100.0],
+    );
     assert!(pos[0] > 0.0 && pos[0] < 100.0);
     assert!(pos[1] > 0.0 && pos[1] < 100.0);
 }
 
 #[test]
 fn packet_dot_position_along_bezier_three_quarter() {
-    let pos = PacketDot::position_along_bezier(0.75, [0.0, 0.0], [50.0, 0.0], [50.0, 100.0], [100.0, 100.0]);
+    let pos = PacketDot::position_along_bezier(
+        0.75,
+        [0.0, 0.0],
+        [50.0, 0.0],
+        [50.0, 100.0],
+        [100.0, 100.0],
+    );
     assert!(pos[0] > 0.0 && pos[0] < 100.0);
     assert!(pos[1] > 0.0 && pos[1] < 100.0);
 }
@@ -1741,5 +1825,3 @@ fn packet_dot_manager_default() {
     let mgr = PacketDotManager::default();
     assert_eq!(mgr.total_count(), 0);
 }
-
-

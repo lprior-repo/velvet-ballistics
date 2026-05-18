@@ -68,7 +68,10 @@ fn parse_inventory_unknown_class_rejected() {
         ]
     }"#;
     let result = parse_inventory(json.as_bytes());
-    assert_eq!(result.unwrap_err(), BoundaryInventoryError::UnknownBoundaryClass);
+    assert_eq!(
+        result.unwrap_err(),
+        BoundaryInventoryError::UnknownBoundaryClass
+    );
 }
 
 #[test]
@@ -94,56 +97,80 @@ fn parse_inventory_multiple_boundaries() {
 fn parse_inventory_invalid_json() {
     let json = "not valid json {{{";
     let result = parse_inventory(json.as_bytes());
-    assert_eq!(result.unwrap_err(), BoundaryInventoryError::InventoryParseFailure);
+    assert_eq!(
+        result.unwrap_err(),
+        BoundaryInventoryError::InventoryParseFailure
+    );
 }
 
 #[test]
 fn parse_inventory_not_an_object() {
     let json = "123";
     let result = parse_inventory(json.as_bytes());
-    assert_eq!(result.unwrap_err(), BoundaryInventoryError::InventoryParseFailure);
+    assert_eq!(
+        result.unwrap_err(),
+        BoundaryInventoryError::InventoryParseFailure
+    );
 }
 
 #[test]
 fn parse_inventory_missing_schema_version() {
     let json = r#"{"boundaries": []}"#;
     let result = parse_inventory(json.as_bytes());
-    assert_eq!(result.unwrap_err(), BoundaryInventoryError::SchemaVersionUnsupported);
+    assert_eq!(
+        result.unwrap_err(),
+        BoundaryInventoryError::SchemaVersionUnsupported
+    );
 }
 
 #[test]
 fn parse_inventory_wrong_schema_version() {
     let json = r#"{"schema_version": 99, "boundaries": []}"#;
     let result = parse_inventory(json.as_bytes());
-    assert_eq!(result.unwrap_err(), BoundaryInventoryError::SchemaVersionUnsupported);
+    assert_eq!(
+        result.unwrap_err(),
+        BoundaryInventoryError::SchemaVersionUnsupported
+    );
 }
 
 #[test]
 fn parse_inventory_zero_schema_version() {
     let json = r#"{"schema_version": 0, "boundaries": []}"#;
     let result = parse_inventory(json.as_bytes());
-    assert_eq!(result.unwrap_err(), BoundaryInventoryError::SchemaVersionUnsupported);
+    assert_eq!(
+        result.unwrap_err(),
+        BoundaryInventoryError::SchemaVersionUnsupported
+    );
 }
 
 #[test]
 fn parse_inventory_missing_boundaries() {
     let json = r#"{"schema_version": 1}"#;
     let result = parse_inventory(json.as_bytes());
-    assert_eq!(result.unwrap_err(), BoundaryInventoryError::InventoryParseFailure);
+    assert_eq!(
+        result.unwrap_err(),
+        BoundaryInventoryError::InventoryParseFailure
+    );
 }
 
 #[test]
 fn parse_inventory_boundaries_not_array() {
     let json = r#"{"schema_version": 1, "boundaries": "not an array"}"#;
     let result = parse_inventory(json.as_bytes());
-    assert_eq!(result.unwrap_err(), BoundaryInventoryError::InventoryParseFailure);
+    assert_eq!(
+        result.unwrap_err(),
+        BoundaryInventoryError::InventoryParseFailure
+    );
 }
 
 #[test]
 fn parse_inventory_boundary_not_object() {
     let json = r#"{"schema_version": 1, "boundaries": ["not an object"]}"#;
     let result = parse_inventory(json.as_bytes());
-    assert_eq!(result.unwrap_err(), BoundaryInventoryError::InventoryParseFailure);
+    assert_eq!(
+        result.unwrap_err(),
+        BoundaryInventoryError::InventoryParseFailure
+    );
 }
 
 #[test]
@@ -155,7 +182,10 @@ fn parse_inventory_missing_id() {
         ]
     }"#;
     let result = parse_inventory(json.as_bytes());
-    assert_eq!(result.unwrap_err(), BoundaryInventoryError::InventoryParseFailure);
+    assert_eq!(
+        result.unwrap_err(),
+        BoundaryInventoryError::InventoryParseFailure
+    );
 }
 
 #[test]
@@ -167,7 +197,10 @@ fn parse_inventory_missing_source_path() {
         ]
     }"#;
     let result = parse_inventory(json.as_bytes());
-    assert_eq!(result.unwrap_err(), BoundaryInventoryError::InventoryParseFailure);
+    assert_eq!(
+        result.unwrap_err(),
+        BoundaryInventoryError::InventoryParseFailure
+    );
 }
 
 #[test]
@@ -179,7 +212,10 @@ fn parse_inventory_empty_source_path() {
         ]
     }"#;
     let result = parse_inventory(json.as_bytes());
-    assert_eq!(result.unwrap_err(), BoundaryInventoryError::InventoryParseFailure);
+    assert_eq!(
+        result.unwrap_err(),
+        BoundaryInventoryError::InventoryParseFailure
+    );
 }
 
 #[test]
@@ -191,7 +227,10 @@ fn parse_inventory_missing_class() {
         ]
     }"#;
     let result = parse_inventory(json.as_bytes());
-    assert_eq!(result.unwrap_err(), BoundaryInventoryError::InventoryParseFailure);
+    assert_eq!(
+        result.unwrap_err(),
+        BoundaryInventoryError::InventoryParseFailure
+    );
 }
 
 #[test]
@@ -203,7 +242,10 @@ fn parse_inventory_invalid_class() {
         ]
     }"#;
     let result = parse_inventory(json.as_bytes());
-    assert_eq!(result.unwrap_err(), BoundaryInventoryError::InventoryParseFailure);
+    assert_eq!(
+        result.unwrap_err(),
+        BoundaryInventoryError::InventoryParseFailure
+    );
 }
 
 #[test]

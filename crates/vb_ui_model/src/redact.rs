@@ -404,8 +404,8 @@ mod tests {
             classification: SecretSensitivity::Sensitive,
             reason: None,
         };
-        let result = redact_secret_value("derived_secret", Taint::DerivedFromSecret, sensitivity)
-            .unwrap();
+        let result =
+            redact_secret_value("derived_secret", Taint::DerivedFromSecret, sensitivity).unwrap();
         assert!(result.is_tainted);
         assert_eq!(result.taint_marker, "DERIVED");
     }
@@ -522,8 +522,16 @@ mod tests {
 
     #[test]
     fn classify_secret_sensitivity_non_sensitive_patterns() {
-        for field in &["user_name", "file_name", "record_id", "status_code",
-                       "node_type", "event_count", "item_index", "action_id"] {
+        for field in &[
+            "user_name",
+            "file_name",
+            "record_id",
+            "status_code",
+            "node_type",
+            "event_count",
+            "item_index",
+            "action_id",
+        ] {
             let r = classify_secret_sensitivity(field);
             assert!(
                 matches!(r.classification, SecretSensitivity::NonSensitive),
@@ -568,10 +576,18 @@ mod tests {
 
         // Sensitive fields should be redacted maps
         let pass = result.get("password").and_then(|v| v.get("__redacted"));
-        assert_eq!(pass, Some(&serde_json::json!(true)), "password should be redacted");
+        assert_eq!(
+            pass,
+            Some(&serde_json::json!(true)),
+            "password should be redacted"
+        );
 
         let token_redacted = result.get("api_token").and_then(|v| v.get("__redacted"));
-        assert_eq!(token_redacted, Some(&serde_json::json!(true)), "api_token should be redacted");
+        assert_eq!(
+            token_redacted,
+            Some(&serde_json::json!(true)),
+            "api_token should be redacted"
+        );
     }
 
     #[test]
@@ -582,7 +598,11 @@ mod tests {
         let result = redact_json_object(&obj);
 
         let redacted = result.get("custom_data").and_then(|v| v.get("__redacted"));
-        assert_eq!(redacted, Some(&serde_json::json!(true)), "unknown field should be redacted");
+        assert_eq!(
+            redacted,
+            Some(&serde_json::json!(true)),
+            "unknown field should be redacted"
+        );
     }
 
     #[test]

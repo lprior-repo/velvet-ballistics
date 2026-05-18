@@ -244,7 +244,10 @@ mod tests {
         let data = PayloadEnvelope::from_json(serde_json::json!({"x": 42}));
         let env = OutputEnvelope::success(SchemaVersion::CURRENT, metadata, data).unwrap();
         let payload = env.payload().expect("should have payload");
-        assert_eq!(payload.as_json().get("x").and_then(|v| v.as_i64()), Some(42));
+        assert_eq!(
+            payload.as_json().get("x").and_then(|v| v.as_i64()),
+            Some(42)
+        );
     }
 
     #[test]
@@ -253,8 +256,8 @@ mod tests {
         let metadata = MetadataEnvelope::new(run_id, "diag".to_string(), 100);
         let diagnostics =
             vec![DiagnosticEntry::new("VB001".to_string(), "msg".to_string(), None).unwrap()];
-        let env =
-            OutputEnvelope::diagnostic_report(SchemaVersion::CURRENT, metadata, diagnostics).unwrap();
+        let env = OutputEnvelope::diagnostic_report(SchemaVersion::CURRENT, metadata, diagnostics)
+            .unwrap();
         assert!(env.payload().is_none());
         assert!(env.diagnostic().is_some());
     }
@@ -265,8 +268,8 @@ mod tests {
         let metadata = MetadataEnvelope::new(run_id, "diag".to_string(), 100);
         let diagnostics =
             vec![DiagnosticEntry::new("VB001".to_string(), "msg".to_string(), None).unwrap()];
-        let env =
-            OutputEnvelope::diagnostic_report(SchemaVersion::CURRENT, metadata, diagnostics).unwrap();
+        let env = OutputEnvelope::diagnostic_report(SchemaVersion::CURRENT, metadata, diagnostics)
+            .unwrap();
         let diag = env.diagnostic().expect("should have diagnostic");
         assert_eq!(diag.code, "VB001");
     }
@@ -288,9 +291,8 @@ mod tests {
     fn output_envelope_error_kind_rejects_diagnostics() {
         let run_id = RunId::new(1);
         let metadata = MetadataEnvelope::new(run_id, "err".to_string(), 100);
-        let diagnostics = vec![
-            DiagnosticEntry::new("VB001".to_string(), "err".to_string(), None).unwrap(),
-        ];
+        let diagnostics =
+            vec![DiagnosticEntry::new("VB001".to_string(), "err".to_string(), None).unwrap()];
         // Error kind with diagnostics should be rejected with DiagnosticLimitExceeded { len: 1, max: 0 }
         let result = OutputEnvelope::new(
             SchemaVersion::CURRENT,
@@ -383,7 +385,7 @@ mod tests {
         let run_id = RunId::new(5);
         let metadata = MetadataEnvelope::new(run_id, "run".to_string(), 200);
         let data = PayloadEnvelope::from_json(serde_json::json!({"result": "ok"}));
-        let diagnostics =
+        let _diagnostics =
             vec![DiagnosticEntry::new("VB001".to_string(), "ignored".to_string(), None).unwrap()];
         // success() passes Vec::new() for diagnostics internally, so this should succeed
         let env = OutputEnvelope::success(SchemaVersion::CURRENT, metadata, data);
@@ -400,16 +402,10 @@ mod tests {
         let metadata = MetadataEnvelope::new(run_id, "diag".to_string(), 100);
         let diagnostics: Vec<_> = (0..MAX_DIAGNOSTIC_ENTRIES)
             .map(|i| {
-                DiagnosticEntry::new(
-                    format!("VB{:04}", i),
-                    "message".to_string(),
-                    None,
-                )
-                .unwrap()
+                DiagnosticEntry::new(format!("VB{:04}", i), "message".to_string(), None).unwrap()
             })
             .collect();
-        let env =
-            OutputEnvelope::diagnostic_report(SchemaVersion::CURRENT, metadata, diagnostics);
+        let env = OutputEnvelope::diagnostic_report(SchemaVersion::CURRENT, metadata, diagnostics);
         assert!(env.is_ok(), "exact limit should succeed");
     }
 
@@ -419,16 +415,10 @@ mod tests {
         let metadata = MetadataEnvelope::new(run_id, "diag".to_string(), 100);
         let diagnostics: Vec<_> = (0..=MAX_DIAGNOSTIC_ENTRIES)
             .map(|i| {
-                DiagnosticEntry::new(
-                    format!("VB{:04}", i),
-                    "message".to_string(),
-                    None,
-                )
-                .unwrap()
+                DiagnosticEntry::new(format!("VB{:04}", i), "message".to_string(), None).unwrap()
             })
             .collect();
-        let env =
-            OutputEnvelope::diagnostic_report(SchemaVersion::CURRENT, metadata, diagnostics);
+        let env = OutputEnvelope::diagnostic_report(SchemaVersion::CURRENT, metadata, diagnostics);
         assert!(env.is_err());
         assert_eq!(
             env.unwrap_err(),

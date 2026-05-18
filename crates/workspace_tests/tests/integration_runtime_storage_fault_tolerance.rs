@@ -4,14 +4,12 @@
 //! Tests disk-full and resource-exhaustion scenarios that cannot be unit-tested
 //! without mocking the storage layer at a deep level.
 
-use vb_core::{
-    RunId, SlotIdx, SlotValue, StepIdx, Taint, WorkflowDigest,
-};
+use vb_core::{ActionId, RunId, SlotIdx, SlotValue, StepIdx, Taint, WorkflowDigest};
 use vb_runtime::recovery::{DurableFrameRecoveryBoundary, RuntimeRecoveryBoundary};
 use vb_storage::recovery::{
-    recover_runtime_frame_seed_from_events, ActionReplayTracker,
-    RecoveredStepEntry, RecoveredStepState, RecoveryFrameSeed,
+    ActionReplayTracker, RecoveredStepEntry, RecoveredStepState, RecoveryFrameSeed,
     RecoveryRuntimeSummary, RecoveryTerminalState, UnsupportedRecoveryState,
+    recover_runtime_frame_seed_from_events,
 };
 use vb_storage::{EventSeq, JournalEvent};
 
@@ -19,6 +17,7 @@ use vb_storage::{EventSeq, JournalEvent};
 // Helpers
 // ---------------------------------------------------------------------------
 
+#[allow(dead_code)]
 fn encoded(value: SlotValue) -> Result<Vec<u8>, postcard::Error> {
     postcard::to_allocvec(&value)
 }
@@ -32,12 +31,13 @@ fn encoded(value: SlotValue) -> Result<Vec<u8>, postcard::Error> {
 fn recovery_from_empty_journal_returns_no_recovery_data() {
     // An empty events list simulates what happens when storage returns nothing
     // because the journal was lost or the run was never persisted (disk full on first write).
-    let run = RunId::new(9001);
+    let _run = RunId::new(9001);
     let events = Vec::<JournalEvent>::new();
 
     // recover_runtime_frame_seed_from_events on empty events should still
     // succeed but produce a seed with zero steps. This is the "no data" case.
-    let seed = recover_runtime_frame_seed_from_events(&events).expect("recovery should not panic on empty events");
+    let seed = recover_runtime_frame_seed_from_events(&events)
+        .expect("recovery should not panic on empty events");
     assert_eq!(seed.summary.steps_started, 0);
     assert_eq!(seed.summary.steps_succeeded, 0);
     assert!(seed.summary.terminal.is_none());
@@ -147,7 +147,6 @@ fn digest_check_full_mode_exists() {
 /// RecoveryTerminalState::Cancelled round-trip.
 #[test]
 fn recovery_terminal_state_cancelled_serialization() {
-    use serde::{Deserialize, Serialize};
     let state = RecoveryTerminalState::Cancelled;
     let bytes = serde_json::to_string(&state).expect("serialize");
     let recovered: RecoveryTerminalState = serde_json::from_str(&bytes).expect("deserialize");
@@ -157,7 +156,6 @@ fn recovery_terminal_state_cancelled_serialization() {
 /// RecoveryTerminalState::Finished with result slot round-trip.
 #[test]
 fn recovery_terminal_state_finished_serialization() {
-    use serde::{Deserialize, Serialize};
     let state = RecoveryTerminalState::Finished {
         result: SlotIdx::new(5),
     };
@@ -219,7 +217,7 @@ fn durable_frame_boundary_summary_matches_seed() {
         slots: vec![vb_storage::recovery::RecoveredSlotEntry {
             slot: SlotIdx::ZERO,
             value: SlotValue::I64(42),
-            taint: Taint::Public,
+            taint: Taint::Clean,
         }],
         pending_actions: Vec::new(),
         unsupported: UnsupportedRecoveryState::SUPPORTED,
@@ -239,7 +237,10 @@ fn recovery_error_frame_dimension_overflow_exists() {
     let run = RunId::new(9004);
     let err = RecoveryError::FrameDimensionOverflow { run };
     let result: RecoveryResult<()> = Err(err);
-    assert!(matches!(result, Err(RecoveryError::FrameDimensionOverflow { run: _ })));
+    assert!(matches!(
+        result,
+        Err(RecoveryError::FrameDimensionOverflow { run: _ })
+    ));
 }
 
 /// ReplayDivergence error captures step and detail.
@@ -264,9 +265,10 @@ fn recovery_error_non_idempotent_action_blocked_includes_ids() {
     let action = ActionId::new(55);
     let step = StepIdx::new(2);
     let err = RecoveryError::NonIdempotentActionBlocked { action, step };
+    let result: Result<(), RecoveryError> = Err(err);
     assert!(matches!(
-        Err(err),
-        RecoveryError::NonIdempotentActionBlocked { action: _, step: _ }
+        result,
+        Err(RecoveryError::NonIdempotentActionBlocked { action: _, step: _ })
     ));
 }
 
@@ -280,7 +282,10 @@ fn recovery_error_workflow_source_digest_mismatch_carries_digests() {
     let result: Result<(), _> = Err(err);
     assert!(matches!(
         result,
-        Err(RecoveryError::WorkflowSourceDigestMismatch { expected: _, found: _ })
+        Err(RecoveryError::WorkflowSourceDigestMismatch {
+            expected: _,
+            found: _
+        })
     ));
 }
 
@@ -335,6 +340,9 @@ fn recovery_error_terminal_state_mismatch_captures_strings() {
     let result: Result<(), _> = Err(err);
     assert!(matches!(
         result,
-        Err(RecoveryError::TerminalStateMismatch { expected: _, found: _ })
+        Err(RecoveryError::TerminalStateMismatch {
+            expected: _,
+            found: _
+        })
     ));
 }

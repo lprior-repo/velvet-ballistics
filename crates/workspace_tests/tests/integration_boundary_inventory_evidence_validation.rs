@@ -1,16 +1,14 @@
 #![forbid(unsafe_code)]
 //! Integration tests for vb_boundary_inventory evidence validation edge cases.
 //!
-//! Tests the evidence validation logic in boundary_inventory/validation.rs
-//! that require integration with record construction and workspace paths.
+//! Tests the evidence validation logic through the public API (validate_inventory).
 
 use std::path::PathBuf;
 
-use vb_boundary_inventory::boundary_inventory::validation::validate_record;
-use vb_boundary_inventory::boundary_inventory::record::{BoundaryRecordDraft, FieldState, Owner, ThreatStatement};
-use vb_boundary_inventory::boundary_inventory::types::{
-    BoundaryClass, BoundaryInventoryError, EvidenceKind, EvidenceReference,
-    FreshnessMarker, ReviewStatus, WorkspaceRoot,
+use vb_boundary_inventory::boundary_inventory::{
+    BoundaryClass, BoundaryInventory, BoundaryInventoryError, BoundaryRecordDraft, EvidenceKind,
+    EvidenceReference, FieldState, FreshnessMarker, Owner, ReviewStatus, ThreatStatement,
+    WorkspaceRoot, validate_inventory,
 };
 
 // ---------------------------------------------------------------------------
@@ -49,8 +47,9 @@ fn validate_record_returns_stale_evidence_when_evidence_version_behind_source() 
     // source_version = 2, evidence_version = 1 → stale
     record.freshness = FreshnessMarker::new(2, 1, 1);
     let workspace = make_workspace_root(".");
+    let inventory = BoundaryInventory::new(Some(1), vec![record], None);
 
-    let result = validate_record(&record, &workspace);
+    let result = validate_inventory(inventory, workspace);
     assert_eq!(result, Err(BoundaryInventoryError::StaleEvidence));
 }
 
@@ -61,8 +60,9 @@ fn validate_record_returns_stale_evidence_when_evidence_version_behind_schema() 
     // schema_version = 3, evidence_version = 1 → stale
     record.freshness = FreshnessMarker::new(1, 3, 1);
     let workspace = make_workspace_root(".");
+    let inventory = BoundaryInventory::new(Some(1), vec![record], None);
 
-    let result = validate_record(&record, &workspace);
+    let result = validate_inventory(inventory, workspace);
     assert_eq!(result, Err(BoundaryInventoryError::StaleEvidence));
 }
 
@@ -73,8 +73,9 @@ fn validate_record_accepts_fresh_evidence_when_versions_match() {
     // All versions equal → fresh
     record.freshness = FreshnessMarker::new(5, 5, 5);
     let workspace = make_workspace_root(".");
+    let inventory = BoundaryInventory::new(Some(1), vec![record], None);
 
-    let result = validate_record(&record, &workspace);
+    let result = validate_inventory(inventory, workspace);
     assert!(result.is_ok(), "freshness should be valid: {:?}", result);
 }
 
@@ -84,9 +85,14 @@ fn validate_record_accepts_zero_versions() {
     let mut record = valid_record_base();
     record.freshness = FreshnessMarker::new(0, 0, 0);
     let workspace = make_workspace_root(".");
+    let inventory = BoundaryInventory::new(Some(1), vec![record], None);
 
-    let result = validate_record(&record, &workspace);
-    assert!(result.is_ok(), "zero versions should be valid: {:?}", result);
+    let result = validate_inventory(inventory, workspace);
+    assert!(
+        result.is_ok(),
+        "zero versions should be valid: {:?}",
+        result
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -101,8 +107,9 @@ fn validate_record_rejects_free_text_evidence() {
         "just some free text evidence",
     )));
     let workspace = make_workspace_root(".");
+    let inventory = BoundaryInventory::new(Some(1), vec![record], None);
 
-    let result = validate_record(&record, &workspace);
+    let result = validate_inventory(inventory, workspace);
     assert_eq!(result, Err(BoundaryInventoryError::InvalidEvidencePath));
 }
 
@@ -110,25 +117,31 @@ fn validate_record_rejects_free_text_evidence() {
 #[test]
 fn validate_record_accepts_external_provenance_with_sha256() {
     let mut record = valid_record_base();
-    record.evidence = FieldState::Present(EvidenceReference::ExternalProvenance(
-        String::from("external:https://example.com/fuzz-report#sha256=abcdef123456"),
-    ));
+    record.evidence = FieldState::Present(EvidenceReference::ExternalProvenance(String::from(
+        "external:https://example.com/fuzz-report#sha256=abcdef123456",
+    )));
     let workspace = make_workspace_root(".");
+    let inventory = BoundaryInventory::new(Some(1), vec![record], None);
 
-    let result = validate_record(&record, &workspace);
-    assert!(result.is_ok(), "external provenance with sha256 should be valid: {:?}", result);
+    let result = validate_inventory(inventory, workspace);
+    assert!(
+        result.is_ok(),
+        "external provenance with sha256 should be valid: {:?}",
+        result
+    );
 }
 
 /// EvidenceReference::ExternalProvenance without sha256 rejected.
 #[test]
 fn validate_record_rejects_external_provenance_without_sha256() {
     let mut record = valid_record_base();
-    record.evidence = FieldState::Present(EvidenceReference::ExternalProvenance(
-        String::from("external:https://example.com/fuzz-report"),
-    ));
+    record.evidence = FieldState::Present(EvidenceReference::ExternalProvenance(String::from(
+        "external:https://example.com/fuzz-report",
+    )));
     let workspace = make_workspace_root(".");
+    let inventory = BoundaryInventory::new(Some(1), vec![record], None);
 
-    let result = validate_record(&record, &workspace);
+    let result = validate_inventory(inventory, workspace);
     assert_eq!(result, Err(BoundaryInventoryError::InvalidEvidencePath));
 }
 
@@ -136,13 +149,18 @@ fn validate_record_rejects_external_provenance_without_sha256() {
 #[test]
 fn validate_record_accepts_bead_id_as_external_provenance() {
     let mut record = valid_record_base();
-    record.evidence = FieldState::Present(EvidenceReference::ExternalProvenance(
-        String::from("vb-y1zq"),
-    ));
+    record.evidence = FieldState::Present(EvidenceReference::ExternalProvenance(String::from(
+        "vb-y1zq",
+    )));
     let workspace = make_workspace_root(".");
+    let inventory = BoundaryInventory::new(Some(1), vec![record], None);
 
-    let result = validate_record(&record, &workspace);
-    assert!(result.is_ok(), "bead ID should be valid external provenance: {:?}", result);
+    let result = validate_inventory(inventory, workspace);
+    assert!(
+        result.is_ok(),
+        "bead ID should be valid external provenance: {:?}",
+        result
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -156,8 +174,9 @@ fn validate_record_rejects_waived_without_waiver() {
     record.review_status = FieldState::Present(ReviewStatus::Waived);
     record.waiver = FieldState::Missing;
     let workspace = make_workspace_root(".");
+    let inventory = BoundaryInventory::new(Some(1), vec![record], None);
 
-    let result = validate_record(&record, &workspace);
+    let result = validate_inventory(inventory, workspace);
     assert_eq!(result, Err(BoundaryInventoryError::ReviewStatusInvalid));
 }
 
@@ -166,13 +185,18 @@ fn validate_record_rejects_waived_without_waiver() {
 fn validate_record_accepts_waived_with_valid_waiver() {
     let mut record = valid_record_base();
     record.review_status = FieldState::Present(ReviewStatus::Waived);
-    record.waiver = FieldState::Present(EvidenceReference::ExternalProvenance(
-        String::from("vb-y1zq"),
-    ));
+    record.waiver = FieldState::Present(EvidenceReference::ExternalProvenance(String::from(
+        "vb-y1zq",
+    )));
     let workspace = make_workspace_root(".");
+    let inventory = BoundaryInventory::new(Some(1), vec![record], None);
 
-    let result = validate_record(&record, &workspace);
-    assert!(result.is_ok(), "waived with waiver should be valid: {:?}", result);
+    let result = validate_inventory(inventory, workspace);
+    assert!(
+        result.is_ok(),
+        "waived with waiver should be valid: {:?}",
+        result
+    );
 }
 
 /// ReviewStatus::Other rejected (only Approved or Waived allowed).
@@ -181,8 +205,9 @@ fn validate_record_rejects_review_status_other() {
     let mut record = valid_record_base();
     record.review_status = FieldState::Present(ReviewStatus::Other(String::from("pending")));
     let workspace = make_workspace_root(".");
+    let inventory = BoundaryInventory::new(Some(1), vec![record], None);
 
-    let result = validate_record(&record, &workspace);
+    let result = validate_inventory(inventory, workspace);
     assert_eq!(result, Err(BoundaryInventoryError::ReviewStatusInvalid));
 }
 
@@ -196,8 +221,9 @@ fn validate_record_rejects_empty_owner() {
     let mut record = valid_record_base();
     record.owner = FieldState::Present(Owner(String::from("")));
     let workspace = make_workspace_root(".");
+    let inventory = BoundaryInventory::new(Some(1), vec![record], None);
 
-    let result = validate_record(&record, &workspace);
+    let result = validate_inventory(inventory, workspace);
     assert_eq!(result, Err(BoundaryInventoryError::MissingOwner));
 }
 
@@ -207,8 +233,9 @@ fn validate_record_rejects_empty_threat() {
     let mut record = valid_record_base();
     record.threat = FieldState::Present(ThreatStatement(String::from("")));
     let workspace = make_workspace_root(".");
+    let inventory = BoundaryInventory::new(Some(1), vec![record], None);
 
-    let result = validate_record(&record, &workspace);
+    let result = validate_inventory(inventory, workspace);
     assert_eq!(result, Err(BoundaryInventoryError::MissingThreat));
 }
 
@@ -218,8 +245,9 @@ fn validate_record_rejects_missing_owner() {
     let mut record = valid_record_base();
     record.owner = FieldState::Missing;
     let workspace = make_workspace_root(".");
+    let inventory = BoundaryInventory::new(Some(1), vec![record], None);
 
-    let result = validate_record(&record, &workspace);
+    let result = validate_inventory(inventory, workspace);
     assert_eq!(result, Err(BoundaryInventoryError::MissingOwner));
 }
 
@@ -229,8 +257,9 @@ fn validate_record_rejects_missing_threat() {
     let mut record = valid_record_base();
     record.threat = FieldState::Missing;
     let workspace = make_workspace_root(".");
+    let inventory = BoundaryInventory::new(Some(1), vec![record], None);
 
-    let result = validate_record(&record, &workspace);
+    let result = validate_inventory(inventory, workspace);
     assert_eq!(result, Err(BoundaryInventoryError::MissingThreat));
 }
 
@@ -244,9 +273,13 @@ fn validate_record_rejects_non_workspace_source_path() {
     let mut record = valid_record_base();
     record.source_path = PathBuf::from("src/main.rs");
     let workspace = make_workspace_root(".");
+    let inventory = BoundaryInventory::new(Some(1), vec![record], None);
 
-    let result = validate_record(&record, &workspace);
-    assert_eq!(result, Err(BoundaryInventoryError::WorkspaceNotDiscoverable));
+    let result = validate_inventory(inventory, workspace);
+    assert_eq!(
+        result,
+        Err(BoundaryInventoryError::WorkspaceNotDiscoverable)
+    );
 }
 
 /// Empty source path → InventoryParseFailure.
@@ -255,8 +288,9 @@ fn validate_record_rejects_empty_source_path() {
     let mut record = valid_record_base();
     record.source_path = PathBuf::from("");
     let workspace = make_workspace_root(".");
+    let inventory = BoundaryInventory::new(Some(1), vec![record], None);
 
-    let result = validate_record(&record, &workspace);
+    let result = validate_inventory(inventory, workspace);
     assert_eq!(result, Err(BoundaryInventoryError::InventoryParseFailure));
 }
 
@@ -270,8 +304,9 @@ fn validate_record_rejects_unknown_boundary_class() {
     let mut record = valid_record_base();
     record.class = BoundaryClass::Unknown;
     let workspace = make_workspace_root(".");
+    let inventory = BoundaryInventory::new(Some(1), vec![record], None);
 
-    let result = validate_record(&record, &workspace);
+    let result = validate_inventory(inventory, workspace);
     assert_eq!(result, Err(BoundaryInventoryError::UnknownBoundaryClass));
 }
 
@@ -281,8 +316,9 @@ fn validate_record_accepts_cabi_boundary_class() {
     let mut record = valid_record_base();
     record.class = BoundaryClass::CAbi;
     let workspace = make_workspace_root(".");
+    let inventory = BoundaryInventory::new(Some(1), vec![record], None);
 
-    let result = validate_record(&record, &workspace);
+    let result = validate_inventory(inventory, workspace);
     assert!(result.is_ok(), "CAbi should be valid: {:?}", result);
 }
 
@@ -292,9 +328,14 @@ fn validate_record_accepts_generated_code_boundary_class() {
     let mut record = valid_record_base();
     record.class = BoundaryClass::GeneratedCode;
     let workspace = make_workspace_root(".");
+    let inventory = BoundaryInventory::new(Some(1), vec![record], None);
 
-    let result = validate_record(&record, &workspace);
-    assert!(result.is_ok(), "GeneratedCode should be valid: {:?}", result);
+    let result = validate_inventory(inventory, workspace);
+    assert!(
+        result.is_ok(),
+        "GeneratedCode should be valid: {:?}",
+        result
+    );
 }
 
 /// BoundaryClass::UnsafeAdjacentDependency is valid.
@@ -303,9 +344,14 @@ fn validate_record_accepts_unsafe_adjacent_dependency_boundary_class() {
     let mut record = valid_record_base();
     record.class = BoundaryClass::UnsafeAdjacentDependency;
     let workspace = make_workspace_root(".");
+    let inventory = BoundaryInventory::new(Some(1), vec![record], None);
 
-    let result = validate_record(&record, &workspace);
-    assert!(result.is_ok(), "UnsafeAdjacentDependency should be valid: {:?}", result);
+    let result = validate_inventory(inventory, workspace);
+    assert!(
+        result.is_ok(),
+        "UnsafeAdjacentDependency should be valid: {:?}",
+        result
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -319,7 +365,13 @@ fn evidence_kind_fuzz_is_valid() {
         PathBuf::from("crates/vb_ipc/src/frame.rs"),
         EvidenceKind::Fuzz,
     );
-    assert!(matches!(ref_, EvidenceReference::RepoLocal { kind: EvidenceKind::Fuzz, .. }));
+    assert!(matches!(
+        ref_,
+        EvidenceReference::RepoLocal {
+            kind: EvidenceKind::Fuzz,
+            ..
+        }
+    ));
 }
 
 /// EvidenceKind::ManualQa is valid.
@@ -329,7 +381,13 @@ fn evidence_kind_manual_qa_is_valid() {
         PathBuf::from("crates/vb_ipc/src/frame.rs"),
         EvidenceKind::ManualQa,
     );
-    assert!(matches!(ref_, EvidenceReference::RepoLocal { kind: EvidenceKind::ManualQa, .. }));
+    assert!(matches!(
+        ref_,
+        EvidenceReference::RepoLocal {
+            kind: EvidenceKind::ManualQa,
+            ..
+        }
+    ));
 }
 
 /// EvidenceKind::Isolation is valid.
@@ -339,7 +397,13 @@ fn evidence_kind_isolation_is_valid() {
         PathBuf::from("crates/vb_ipc/src/frame.rs"),
         EvidenceKind::Isolation,
     );
-    assert!(matches!(ref_, EvidenceReference::RepoLocal { kind: EvidenceKind::Isolation, .. }));
+    assert!(matches!(
+        ref_,
+        EvidenceReference::RepoLocal {
+            kind: EvidenceKind::Isolation,
+            ..
+        }
+    ));
 }
 
 /// EvidenceKind::Provenance is valid.
@@ -349,7 +413,13 @@ fn evidence_kind_provenance_is_valid() {
         PathBuf::from("crates/vb_ipc/src/frame.rs"),
         EvidenceKind::Provenance,
     );
-    assert!(matches!(ref_, EvidenceReference::RepoLocal { kind: EvidenceKind::Provenance, .. }));
+    assert!(matches!(
+        ref_,
+        EvidenceReference::RepoLocal {
+            kind: EvidenceKind::Provenance,
+            ..
+        }
+    ));
 }
 
 // ---------------------------------------------------------------------------
@@ -407,7 +477,12 @@ fn review_status_serialized_for_other_includes_value() {
 fn validate_record_accepts_fully_valid_record() {
     let record = valid_record_base();
     let workspace = make_workspace_root(".");
+    let inventory = BoundaryInventory::new(Some(1), vec![record], None);
 
-    let result = validate_record(&record, &workspace);
-    assert!(result.is_ok(), "fully valid record should pass: {:?}", result);
+    let result = validate_inventory(inventory, workspace);
+    assert!(
+        result.is_ok(),
+        "fully valid record should pass: {:?}",
+        result
+    );
 }

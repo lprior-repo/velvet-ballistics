@@ -9,10 +9,9 @@ use vb_doc::reconcile::{
     validate_evidence_bounded_wording, validate_taint_vocabulary_consistency,
 };
 use vb_doc::{
-    ClaimKind, ConflictKind, ContradictionReport, DocPatchPlan, DocReconcileError,
-    EvidenceBoundedReport, EvidencePolicy, MasterDocSnapshot, PatchEdit, PatchPlanStatus,
-    PatchTarget, PreservedNonGoal, RequiredEvidence, ResolvedNode, StalePhrase,
-    TaintVocabularyReport, TaintVocabularyRule,
+    ClaimKind, ConflictKind, ContradictionReport, DocReconcileError, EvidenceBoundedReport,
+    EvidencePolicy, MasterDocSnapshot, PatchEdit, PatchPlanStatus, PatchTarget, PreservedNonGoal,
+    RequiredEvidence, ResolvedNode, StalePhrase, TaintVocabularyReport, TaintVocabularyRule,
 };
 
 // ============================================================================
@@ -61,7 +60,10 @@ fn evidence_policy_strict_bounded_sets_workspace_root() {
 
     // Then
     assert_eq!(policy.workspace_root, root);
-    assert_eq!(policy.required, RequiredEvidence::ConcreteArtifactOrPendingMarker);
+    assert_eq!(
+        policy.required,
+        RequiredEvidence::ConcreteArtifactOrPendingMarker
+    );
 }
 
 #[test]
@@ -168,7 +170,10 @@ fn validate_taint_vocabulary_consistency_returns_report_for_valid_lattice() {
     // Then
     let report = result.expect("should not error");
     assert_eq!(report.lattice, vec!["Clean", "DerivedFromSecret", "Secret"]);
-    assert_eq!(report.propagation_rule, TaintVocabularyRule::JoinedDataFlowTaint);
+    assert_eq!(
+        report.propagation_rule,
+        TaintVocabularyRule::JoinedDataFlowTaint
+    );
     assert!(report.conflicts.is_empty());
 }
 
@@ -309,7 +314,10 @@ fn validate_taint_vocabulary_consistency_preserved_non_goal_present() {
 
     // Then
     let report = result.expect("should not error");
-    assert_eq!(report.control_flow_scope, PreservedNonGoal::ControlFlowTaintV1NonGoal);
+    assert_eq!(
+        report.control_flow_scope,
+        PreservedNonGoal::ControlFlowTaintV1NonGoal
+    );
 }
 
 // ============================================================================
@@ -458,9 +466,10 @@ fn validate_evidence_bounded_wording_accepts_supported_test_evidence() {
         std::path::PathBuf::from("/tmp/velvet-ballistics-MASTER.md"),
         "tests prove joined taint test-report.html",
     );
-    let evidence = EvidenceIndex::from_supports(vec![
-        EvidenceSupport::cited("tests prove joined taint", "test-report.html"),
-    ]);
+    let evidence = EvidenceIndex::from_supports(vec![EvidenceSupport::cited(
+        "tests prove joined taint",
+        "test-report.html",
+    )]);
 
     // When
     let result = validate_evidence_bounded_wording(doc, evidence);
@@ -478,9 +487,7 @@ fn validate_evidence_bounded_wording_counts_pending_correctly() {
         std::path::PathBuf::from("/tmp/velvet-ballistics-MASTER.md"),
         "runtime claim remains unverified",
     );
-    let evidence = EvidenceIndex::from_supports(vec![
-        EvidenceSupport::pending("runtime claim"),
-    ]);
+    let evidence = EvidenceIndex::from_supports(vec![EvidenceSupport::pending("runtime claim")]);
 
     // When
     let result = validate_evidence_bounded_wording(doc, evidence);
@@ -933,7 +940,10 @@ fn plan_taint_doc_reconciliation_preserved_non_goals_extracted() {
 
     // Then
     let plan = result.expect("should not error");
-    assert!(plan.preserved_non_goals.contains(&PreservedNonGoal::ControlFlowTaintV1NonGoal));
+    assert!(
+        plan.preserved_non_goals
+            .contains(&PreservedNonGoal::ControlFlowTaintV1NonGoal)
+    );
 }
 
 #[test]
@@ -991,7 +1001,10 @@ fn plan_taint_doc_reconciliation_stale_text_removed_lists_stale_phrases() {
     // Then
     let plan = result.expect("should not error");
     assert!(!plan.stale_text_removed.is_empty());
-    assert!(plan.stale_text_removed.contains(&StalePhrase::EvalExprAlwaysClean));
+    assert!(
+        plan.stale_text_removed
+            .contains(&StalePhrase::EvalExprAlwaysClean)
+    );
 }
 
 // ============================================================================
@@ -1258,9 +1271,10 @@ fn validate_evidence_bounded_wording_multiple_claims_counted() {
         std::path::PathBuf::from("/tmp/velvet-ballistics-MASTER.md"),
         "tests prove joined taint\nLean proves implementation parity",
     );
-    let evidence = EvidenceIndex::from_supports(vec![
-        EvidenceSupport::cited("tests prove joined taint", "test.html"),
-    ]);
+    let evidence = EvidenceIndex::from_supports(vec![EvidenceSupport::cited(
+        "tests prove joined taint",
+        "test.html",
+    )]);
 
     // When
     let result = validate_evidence_bounded_wording(doc, evidence);

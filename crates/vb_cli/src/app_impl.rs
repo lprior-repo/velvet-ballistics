@@ -4020,9 +4020,7 @@ fn explain_validation_error(err: &vb_validate::ValidationError) {
             actual,
         } => {
             outln!("Version Monotonicity Breach");
-            outln!(
-                "  File '{file}': version {actual} is not {expected}."
-            );
+            outln!("  File '{file}': version {actual} is not {expected}.");
         }
         ValidationError::CueVetFailed { file } => {
             outln!("CUE Vet Failed");

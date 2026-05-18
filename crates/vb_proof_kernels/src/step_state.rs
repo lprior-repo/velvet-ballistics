@@ -311,10 +311,22 @@ mod tests {
 
     #[test]
     fn test_validate_transition_terminal_idempotent() {
-        assert_eq!(validate_transition(StepState::Succeeded, StepState::Succeeded).unwrap(), StepState::Succeeded);
-        assert_eq!(validate_transition(StepState::Failed, StepState::Failed).unwrap(), StepState::Failed);
-        assert_eq!(validate_transition(StepState::Cancelled, StepState::Cancelled).unwrap(), StepState::Cancelled);
-        assert_eq!(validate_transition(StepState::Skipped, StepState::Skipped).unwrap(), StepState::Skipped);
+        assert_eq!(
+            validate_transition(StepState::Succeeded, StepState::Succeeded).unwrap(),
+            StepState::Succeeded
+        );
+        assert_eq!(
+            validate_transition(StepState::Failed, StepState::Failed).unwrap(),
+            StepState::Failed
+        );
+        assert_eq!(
+            validate_transition(StepState::Cancelled, StepState::Cancelled).unwrap(),
+            StepState::Cancelled
+        );
+        assert_eq!(
+            validate_transition(StepState::Skipped, StepState::Skipped).unwrap(),
+            StepState::Skipped
+        );
     }
 
     #[test]

@@ -36,7 +36,10 @@ fn all_errors(source: &[u8]) -> Vec<CompileError> {
 fn compile_error_empty_source_message_is_descriptive() {
     let error = parse_error(b"").expect("expected error");
     let msg = error.to_string();
-    assert!(!msg.is_empty(), "EmptySource error message must not be empty");
+    assert!(
+        !msg.is_empty(),
+        "EmptySource error message must not be empty"
+    );
     assert!(
         msg.contains("empty") || msg.contains("document"),
         "EmptySource message should mention empty/document: {msg}"
@@ -233,7 +236,7 @@ steps:
 #[test]
 fn compile_error_sequence_limit_exists_and_configurable() {
     let compiler = YamlCompiler::new(vb_compile::YamlLimits {
-        max_sequence_length: 2,
+        max_sequence_len: 2,
         ..Default::default()
     });
     let source = br#"
@@ -302,7 +305,9 @@ steps:
         Ok(_) => Vec::new(),
     };
     assert!(
-        errors.iter().any(|e| matches!(e, CompileError::UnknownTopLevelField { .. })),
+        errors
+            .iter()
+            .any(|e| matches!(e, CompileError::UnknownTopLevelField { .. })),
         "Unknown top-level field should error: {:?}",
         errors
     );
@@ -324,12 +329,13 @@ steps:
     let result = YamlCompiler::default().parse_ast(source);
     // Note: the compiler may accept any version string in parse_ast;
     // InvalidVersion is enforced in a later phase
+    let is_ok = result.is_ok();
     let errors = match result {
         Err(CompileErrors(es)) => es,
         Ok(_) => Vec::new(),
     };
     // The error may be a different variant if version validation is post-parse
-    assert!(!errors.is_empty() || result.is_ok());
+    assert!(!errors.is_empty() || is_ok);
 }
 
 /// CompileError::EmptySteps: workflow with no steps rejected.
@@ -376,7 +382,9 @@ steps:
 "#;
     let errors = all_errors(source);
     assert!(
-        errors.iter().any(|e| matches!(e, CompileError::MissingStepId { .. })),
+        errors
+            .iter()
+            .any(|e| matches!(e, CompileError::MissingStepId { .. })),
         "Missing step id should error: {:?}",
         errors
     );
@@ -398,7 +406,9 @@ steps:
 "#;
     let errors = all_errors(source);
     assert!(
-        errors.iter().any(|e| matches!(e, CompileError::DuplicateStepId { .. })),
+        errors
+            .iter()
+            .any(|e| matches!(e, CompileError::DuplicateStepId { .. })),
         "Duplicate step id should error: {:?}",
         errors
     );
@@ -417,7 +427,9 @@ steps:
 "#;
     let errors = all_errors(source);
     assert!(
-        errors.iter().any(|e| matches!(e, CompileError::StepShape { .. })),
+        errors
+            .iter()
+            .any(|e| matches!(e, CompileError::StepShape { .. })),
         "Non-mapping step should error: {:?}",
         errors
     );
@@ -439,7 +451,9 @@ steps:
 "#;
     let errors = all_errors(source);
     assert!(
-        errors.iter().any(|e| matches!(e, CompileError::UnknownStepField { .. })),
+        errors
+            .iter()
+            .any(|e| matches!(e, CompileError::UnknownStepField { .. })),
         "Unknown step field should error: {:?}",
         errors
     );
@@ -459,7 +473,9 @@ steps:
 "#;
     let errors = all_errors(source);
     assert!(
-        errors.iter().any(|e| matches!(e, CompileError::MissingStepPrimitive { .. })),
+        errors
+            .iter()
+            .any(|e| matches!(e, CompileError::MissingStepPrimitive { .. })),
         "Step without primitive should error: {:?}",
         errors
     );
@@ -508,7 +524,9 @@ steps:
 "#;
     let errors = all_errors(source);
     assert!(
-        errors.iter().any(|e| matches!(e, CompileError::InvalidName { .. })),
+        errors
+            .iter()
+            .any(|e| matches!(e, CompileError::InvalidName { .. })),
         "Invalid name should error: {:?}",
         errors
     );

@@ -250,7 +250,10 @@ mod tests {
         assert_eq!(default_budget.gather_pages, new_budget.gather_pages);
         assert_eq!(default_budget.gather_items, new_budget.gather_items);
         assert_eq!(default_budget.for_each_iters, new_budget.for_each_iters);
-        assert_eq!(default_budget.together_branches, new_budget.together_branches);
+        assert_eq!(
+            default_budget.together_branches,
+            new_budget.together_branches
+        );
         assert_eq!(default_budget.repeat_attempts, new_budget.repeat_attempts);
         assert_eq!(default_budget.run_time_secs, new_budget.run_time_secs);
         assert_eq!(default_budget.result_bytes, new_budget.result_bytes);
@@ -464,10 +467,10 @@ mod tests {
         b.retries = 1;
 
         let result = branch_compose(&a, &b);
-        assert_eq!(result.steps, 10);   // max(10, 7)
-        assert_eq!(result.actions, 8);  // max(5, 8)
+        assert_eq!(result.steps, 10); // max(10, 7)
+        assert_eq!(result.actions, 8); // max(5, 8)
         assert_eq!(result.parallel, 4); // max(3, 4)
-        assert_eq!(result.retries, 2);  // max(2, 1)
+        assert_eq!(result.retries, 2); // max(2, 1)
     }
 
     #[test]
@@ -946,15 +949,15 @@ mod tests {
 
         let result = sequential_compose(&a, &b);
         // saturating_add fields
-        assert_eq!(result.gather_pages, 7);       // 5 + 2
-        assert_eq!(result.gather_items, 13);      // 10 + 3
-        assert_eq!(result.run_time_secs, 150);    // 100 + 50
-        assert_eq!(result.slots_written, 450);    // 300 + 150
+        assert_eq!(result.gather_pages, 7); // 5 + 2
+        assert_eq!(result.gather_items, 13); // 10 + 3
+        assert_eq!(result.run_time_secs, 150); // 100 + 50
+        assert_eq!(result.slots_written, 450); // 300 + 150
         // max fields
-        assert_eq!(result.for_each_iters, 2);     // max(2, 1)
-        assert_eq!(result.together_branches, 3);  // max(3, 1)
-        assert_eq!(result.repeat_attempts, 4);    // max(4, 1)
-        assert_eq!(result.result_bytes, 200);     // max(200, 100)
+        assert_eq!(result.for_each_iters, 2); // max(2, 1)
+        assert_eq!(result.together_branches, 3); // max(3, 1)
+        assert_eq!(result.repeat_attempts, 4); // max(4, 1)
+        assert_eq!(result.result_bytes, 200); // max(200, 100)
     }
 
     #[test]

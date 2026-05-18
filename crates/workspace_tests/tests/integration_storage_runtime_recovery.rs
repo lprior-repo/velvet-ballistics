@@ -9,11 +9,11 @@
 //! - Pending action recovery with various action states
 //! - Digest mismatch propagation through recovery boundaries
 
-use vb_core::{ActionId, RunId, SlotIdx, SlotValue, StepIdx, Taint, WorkflowDigest};
+use vb_core::{ActionId, RunId, SlotIdx, SlotValue, StepIdx, WorkflowDigest};
 use vb_runtime::recovery::{DurableFrameRecoveryBoundary, RuntimeRecoveryBoundary};
 use vb_storage::recovery::{
-    ActionReplayTracker, RecoveredStepEntry, RecoveredStepState, RecoveryFrameSeed,
-    RecoveryRuntimeSummary, UnsupportedRecoveryState, recover_runtime_frame_seed_from_events,
+    ActionReplayTracker, RecoveryFrameSeed, RecoveryRuntimeSummary, UnsupportedRecoveryState,
+    recover_runtime_frame_seed_from_events,
 };
 use vb_storage::{EventSeq, JournalEvent};
 
@@ -78,12 +78,7 @@ fn action_scheduled_event(run: RunId, seq: u64, step: StepIdx, action_id: u16) -
     }
 }
 
-fn action_completed_event(
-    run: RunId,
-    seq: u64,
-    step: StepIdx,
-    action_id: u16,
-) -> JournalEvent {
+fn action_completed_event(run: RunId, seq: u64, step: StepIdx, action_id: u16) -> JournalEvent {
     JournalEvent::ActionCompletedEvent {
         run,
         seq: EventSeq::new(seq),

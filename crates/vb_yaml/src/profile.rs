@@ -14,11 +14,11 @@ pub use profile_dupkeys::*;
 pub use profile_validation::*;
 
 #[cfg(test)]
+#[path = "profile_error_variants_tests.rs"]
+mod profile_error_variants_tests;
+#[cfg(test)]
 #[path = "profile_tests.rs"]
 mod profile_tests;
 #[cfg(test)]
 #[path = "profile_tests_adversarial.rs"]
 mod profile_tests_adversarial;
-#[cfg(test)]
-#[path = "profile_error_variants_tests.rs"]
-mod profile_error_variants_tests;

@@ -8,18 +8,17 @@
 //! - Validation gates run on workflow parts derived from storage/recovery
 
 use vb_core::{
-    action::{ActionContract, Idempotency, RetrySafety, SideEffect},
-    ActionId, CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract,
-    RunId, SlotIdx, SlotValue, StepIdx, Taint, WorkflowDigest, WorkflowParts,
+    ActionId, CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, RunId, SlotIdx,
+    SlotValue, StepIdx, Taint, WorkflowDigest, WorkflowParts, action::ActionContract,
 };
 use vb_runtime::recovery::{DurableFrameRecoveryBoundary, RuntimeRecoveryBoundary};
 use vb_storage::recovery::{
-    recover_runtime_frame_seed_from_events, ActionReplayTracker,
-    RecoveredStepEntry, RecoveredStepState, RecoveryFrameSeed, RecoveryRuntimeSummary,
-    RecoveryTerminalState, UnsupportedRecoveryState,
+    ActionReplayTracker, RecoveredStepEntry, RecoveredStepState, RecoveryFrameSeed,
+    RecoveryRuntimeSummary, RecoveryTerminalState, UnsupportedRecoveryState,
+    recover_runtime_frame_seed_from_events,
 };
 use vb_storage::{EventSeq, JournalEvent};
-use vb_validate::shared::{validate, ValidationPipeline};
+use vb_validate::shared::{ValidationPipeline, validate};
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -102,8 +101,7 @@ fn storage_recovery_to_runtime_boundary_to_validation() {
     ];
 
     // When - recover from storage events
-    let seed = recover_runtime_frame_seed_from_events(&events)
-        .expect("recovery should succeed");
+    let seed = recover_runtime_frame_seed_from_events(&events).expect("recovery should succeed");
 
     // Then - use runtime boundary to hydrate frame
     let boundary = DurableFrameRecoveryBoundary::from_seed(seed);
@@ -161,8 +159,7 @@ fn storage_recovery_feeds_runtime_boundary_with_partial_progress() {
     ];
 
     // When
-    let seed = recover_runtime_frame_seed_from_events(&events)
-        .expect("recovery should succeed");
+    let seed = recover_runtime_frame_seed_from_events(&events).expect("recovery should succeed");
     let boundary = DurableFrameRecoveryBoundary::from_seed(seed);
 
     // Then - partial progress is captured
@@ -268,7 +265,11 @@ fn storage_runtime_validation_with_action_contracts() {
     let result = pipeline.validate_with_contracts(&parts, &contracts);
 
     // Then - validation passes (empty contracts = no orphaned contracts)
-    assert!(result.is_ok(), "validation with contracts should pass: {:?}", result);
+    assert!(
+        result.is_ok(),
+        "validation with contracts should pass: {:?}",
+        result
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -297,8 +298,7 @@ fn storage_recovery_error_propagates_to_runtime() {
     ];
 
     // When
-    let seed = recover_runtime_frame_seed_from_events(&events)
-        .expect("recovery should succeed");
+    let seed = recover_runtime_frame_seed_from_events(&events).expect("recovery should succeed");
 
     // Then - seed captures the incomplete state
     let boundary = DurableFrameRecoveryBoundary::from_seed(seed);
@@ -322,7 +322,10 @@ fn action_replay_tracker_blocks_non_idempotent_during_recovery() {
     let is_resolved = tracker.is_resolved(action_id, step);
 
     // Then - action is marked as resolved (would block replay)
-    assert!(is_resolved, "completed action should be blocked from replay");
+    assert!(
+        is_resolved,
+        "completed action should be blocked from replay"
+    );
 }
 
 #[test]
@@ -339,7 +342,10 @@ fn action_replay_tracker_allows_failed_action_replay() {
     let is_resolved = tracker.is_resolved(action_id, step);
 
     // Then - failed action is also resolved (blocked from replay)
-    assert!(is_resolved, "failed action should also be blocked from replay");
+    assert!(
+        is_resolved,
+        "failed action should also be blocked from replay"
+    );
 }
 
 #[test]
@@ -363,7 +369,11 @@ fn validation_pipeline_respects_gate_configuration() {
 
     // Then - partial validation runs without error
     let result = partial_pipeline.validate(&parts);
-    assert!(result.is_ok(), "partial gate validation should pass: {:?}", result);
+    assert!(
+        result.is_ok(),
+        "partial gate validation should pass: {:?}",
+        result
+    );
 }
 
 #[test]
@@ -437,8 +447,7 @@ fn storage_recovery_captures_finished_terminal_state() {
     ];
 
     // When
-    let seed = recover_runtime_frame_seed_from_events(&events)
-        .expect("recovery should succeed");
+    let seed = recover_runtime_frame_seed_from_events(&events).expect("recovery should succeed");
 
     // Then - terminal state is captured
     assert!(seed.summary.terminal.is_some());
@@ -483,8 +492,7 @@ fn storage_recovery_captures_failed_terminal_state() {
     ];
 
     // When
-    let seed = recover_runtime_frame_seed_from_events(&events)
-        .expect("recovery should succeed");
+    let seed = recover_runtime_frame_seed_from_events(&events).expect("recovery should succeed");
 
     // Then - terminal state is Failed
     assert!(seed.summary.terminal.is_some());
@@ -553,10 +561,10 @@ fn separate_runs_produce_separate_recovery_seeds() {
     ];
 
     // When
-    let seed_a = recover_runtime_frame_seed_from_events(&events_a)
-        .expect("recovery should succeed");
-    let seed_b = recover_runtime_frame_seed_from_events(&events_b)
-        .expect("recovery should succeed");
+    let seed_a =
+        recover_runtime_frame_seed_from_events(&events_a).expect("recovery should succeed");
+    let seed_b =
+        recover_runtime_frame_seed_from_events(&events_b).expect("recovery should succeed");
 
     // Then - seeds are separate
     assert_eq!(seed_a.summary.run, run_a);

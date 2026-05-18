@@ -9,7 +9,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use vb_ui_snapshot::checks::{check_spelling, generate_blank_screenshot};
 
-fn write_png(path: &Path, w: u32, h: u32) {
+fn _write_png(path: &Path, w: u32, h: u32) {
     let img = image::RgbaImage::new(w, h);
     img.save(path).expect("save ok");
 }
@@ -100,7 +100,10 @@ fn check_spelling_returns_ok_for_blank_image() {
 
     let result = check_spelling(&path).expect("check_spelling should not error");
     // blank white image → no words found → no violations
-    assert!(result.violations.is_empty(), "blank image should have no violations");
+    assert!(
+        result.violations.is_empty(),
+        "blank image should have no violations"
+    );
 }
 
 #[test]

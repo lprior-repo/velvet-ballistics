@@ -5,9 +5,9 @@
 //! work correctly together.
 
 use vb_boundary_inventory::boundary_inventory::{
-    BoundaryClass, BoundaryRecord, BoundaryRecordDraft, BoundaryRecordParts, ClassifiedBoundaryInput,
-    EvidenceKind, EvidenceReference, FieldState, FreshnessMarker, Owner, ReviewStatus,
-    ThreatStatement, WorkspaceRoot,
+    BoundaryClass, BoundaryRecord, BoundaryRecordDraft, BoundaryRecordParts,
+    ClassifiedBoundaryInput, EvidenceKind, EvidenceReference, FieldState, FreshnessMarker, Owner,
+    ReviewStatus, ThreatStatement, WorkspaceRoot,
 };
 use vb_doc::evidence::{EvidenceIndex, EvidenceSupport};
 use vb_doc::reconcile::{
@@ -15,8 +15,8 @@ use vb_doc::reconcile::{
     validate_evidence_bounded_wording, validate_taint_vocabulary_consistency,
 };
 use vb_doc::{
-    ClaimKind, ConflictKind, DocReconcileError, EvidencePolicy, MasterDocSnapshot,
-    PatchPlanStatus, RequiredEvidence,
+    ClaimKind, ConflictKind, DocReconcileError, EvidencePolicy, MasterDocSnapshot, PatchPlanStatus,
+    RequiredEvidence,
 };
 
 /// Helper to create a workspace root path.
@@ -110,9 +110,10 @@ fn doc_reconciliation_preserves_non_goals() {
 
     // Then
     let plan = result.expect("should succeed");
-    assert!(plan
-        .preserved_non_goals
-        .contains(&vb_doc::PreservedNonGoal::ControlFlowTaintV1NonGoal));
+    assert!(
+        plan.preserved_non_goals
+            .contains(&vb_doc::PreservedNonGoal::ControlFlowTaintV1NonGoal)
+    );
 }
 
 // ============================================================================
@@ -126,9 +127,10 @@ fn evidence_bounded_wording_with_boundary_evidence_support() {
         "Clean < DerivedFromSecret < Secret.\n\
          tests prove joined taint test-report.html",
     );
-    let evidence = EvidenceIndex::from_supports(vec![
-        EvidenceSupport::cited("tests prove joined taint", "test-report.html"),
-    ]);
+    let evidence = EvidenceIndex::from_supports(vec![EvidenceSupport::cited(
+        "tests prove joined taint",
+        "test-report.html",
+    )]);
 
     // When
     let result = validate_evidence_bounded_wording(doc, evidence);
@@ -162,9 +164,7 @@ fn evidence_bounded_wording_rejects_unsupported_claim() {
 fn evidence_bounded_wording_counts_pending_correctly() {
     // Given
     let doc = master_doc("Clean < DerivedFromSecret < Secret.\nruntime claim remains unverified");
-    let evidence = EvidenceIndex::from_supports(vec![
-        EvidenceSupport::pending("runtime claim"),
-    ]);
+    let evidence = EvidenceIndex::from_supports(vec![EvidenceSupport::pending("runtime claim")]);
 
     // When
     let result = validate_evidence_bounded_wording(doc, evidence);
@@ -293,7 +293,10 @@ fn check_taint_consistency_detects_stale_phrases() {
     let result = check_doc_taint_consistency(text);
 
     // Then
-    assert!(matches!(result, Err(DocReconcileError::StaleCleanOnlyTaintText { .. })));
+    assert!(matches!(
+        result,
+        Err(DocReconcileError::StaleCleanOnlyTaintText { .. })
+    ));
 }
 
 // ============================================================================
@@ -488,7 +491,10 @@ fn boundary_record_draft_construction() {
 
     // Then - should be constructable
     assert_eq!(record.id, "test-boundary-1");
-    assert!(matches!(record.review_status, FieldState::Present(ReviewStatus::Approved)));
+    assert!(matches!(
+        record.review_status,
+        FieldState::Present(ReviewStatus::Approved)
+    ));
 }
 
 #[test]
@@ -560,7 +566,10 @@ fn boundary_class_variants() {
     assert!(matches!(external_binary, BoundaryClass::ExternalBinary));
     assert!(matches!(decoder, BoundaryClass::Decoder));
     assert!(matches!(generated_code, BoundaryClass::GeneratedCode));
-    assert!(matches!(unsafe_adjacent, BoundaryClass::UnsafeAdjacentDependency));
+    assert!(matches!(
+        unsafe_adjacent,
+        BoundaryClass::UnsafeAdjacentDependency
+    ));
     assert!(matches!(unknown, BoundaryClass::Unknown));
 }
 
@@ -633,9 +642,21 @@ fn scan_nodes_returns_all_expected_nodes() {
 
     // Then
     let report = result.expect("should not error");
-    assert!(report.scanned_nodes.contains(&vb_doc::ResolvedNode::EvalExpr));
-    assert!(report.scanned_nodes.contains(&vb_doc::ResolvedNode::BuildObject));
-    assert!(report.scanned_nodes.contains(&vb_doc::ResolvedNode::BuildList));
+    assert!(
+        report
+            .scanned_nodes
+            .contains(&vb_doc::ResolvedNode::EvalExpr)
+    );
+    assert!(
+        report
+            .scanned_nodes
+            .contains(&vb_doc::ResolvedNode::BuildObject)
+    );
+    assert!(
+        report
+            .scanned_nodes
+            .contains(&vb_doc::ResolvedNode::BuildList)
+    );
     assert!(report.scanned_nodes.contains(&vb_doc::ResolvedNode::Finish));
 }
 

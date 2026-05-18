@@ -6,10 +6,10 @@
 //!
 //! Target: 5x density (215 tests / 43 pub fns).
 
-use crate::{profile::reject_anchors_aliases_merges, YamlError};
 use crate::events::{EventSpan, ScalarStyle, YamlEvent};
 use crate::parse_workflow_source;
 use crate::profile::{reject_forbidden_features, validate_yaml_profile};
+use crate::{YamlError, profile::reject_anchors_aliases_merges};
 
 fn assertion_failed(_message: std::fmt::Arguments<'_>) -> bool {
     false

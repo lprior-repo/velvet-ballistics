@@ -4,14 +4,14 @@
 //! Tests validation gate enforcement on edge cases that require full
 //! WorkflowParts construction and pipeline execution.
 
-use vb_core::ids::{AccessorIdx, ConstIdx, ExprIdx, SlotIdx, StepIdx, SymbolId};
+use vb_core::ids::{ConstIdx, SlotIdx, StepIdx, SymbolId};
 use vb_core::value::ConstValue;
 use vb_core::workflow::{
     AccessorProgram, CompiledNode, CompiledNodeKind, ExprOp, ExprProgram, PathSegment,
     ResourceContract, WorkflowParts,
 };
-use vb_validate::shared::{validate, ValidationPipeline};
-use vb_validate::{ValidationError, ValidationResult};
+use vb_validate::ValidationError;
+use vb_validate::shared::{ValidationPipeline, validate};
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -102,9 +102,20 @@ fn gate_7_rejects_expression_stack_mismatch_at_boundary() {
 /// Gate 7: empty expressions pass.
 #[test]
 fn gate_7_accepts_empty_expressions() {
-    let parts = make_parts(vec![finish_node(0, 0)], 1, 0, Vec::new(), Vec::new(), Vec::new());
+    let parts = make_parts(
+        vec![finish_node(0, 0)],
+        1,
+        0,
+        Vec::new(),
+        Vec::new(),
+        Vec::new(),
+    );
     let result = validate(&parts);
-    assert!(result.is_ok(), "empty expressions should pass gate 7: {:?}", result);
+    assert!(
+        result.is_ok(),
+        "empty expressions should pass gate 7: {:?}",
+        result
+    );
 }
 
 /// Gate 7: single-slot load passes.
@@ -151,7 +162,11 @@ fn gate_8_accepts_accessor_path_at_max_depth() {
     );
 
     let result = validate(&parts);
-    assert!(result.is_ok(), "accessor at max depth should pass: {:?}", result);
+    assert!(
+        result.is_ok(),
+        "accessor at max depth should pass: {:?}",
+        result
+    );
 }
 
 /// Gate 8: accessor root slot out of bounds fails.
@@ -164,7 +179,7 @@ fn gate_8_rejects_accessor_root_out_of_bounds() {
 
     let parts = make_parts(
         vec![finish_node(0, 0)],
-        1,  // slot_count
+        1, // slot_count
         1,
         Vec::new(),
         vec![accessor],
@@ -221,7 +236,11 @@ fn gate_9_accepts_slot_reference_at_upper_bound() {
 
     let parts = make_parts(vec![node], 3, 0, Vec::new(), Vec::new(), Vec::new());
     let result = validate(&parts);
-    assert!(result.is_ok(), "slot at upper bound should pass: {:?}", result);
+    assert!(
+        result.is_ok(),
+        "slot at upper bound should pass: {:?}",
+        result
+    );
 }
 
 /// Gate 9: slot reference out of bounds fails.
@@ -275,9 +294,20 @@ fn gate_9_rejects_error_slot_reference_out_of_bounds() {
 /// Gate 10: finish node with valid result slot passes.
 #[test]
 fn gate_10_accepts_finish_node_with_valid_result() {
-    let parts = make_parts(vec![finish_node(0, 0)], 1, 0, Vec::new(), Vec::new(), Vec::new());
+    let parts = make_parts(
+        vec![finish_node(0, 0)],
+        1,
+        0,
+        Vec::new(),
+        Vec::new(),
+        Vec::new(),
+    );
     let result = validate(&parts);
-    assert!(result.is_ok(), "finish with valid slot should pass: {:?}", result);
+    assert!(
+        result.is_ok(),
+        "finish with valid slot should pass: {:?}",
+        result
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -287,11 +317,7 @@ fn gate_10_accepts_finish_node_with_valid_result() {
 /// Gate 13: no cycles in linear workflow passes.
 #[test]
 fn gate_13_accepts_linear_workflow_with_no_cycles() {
-    let nodes = vec![
-        nop_node(0),
-        nop_node(1),
-        finish_node(2, 0),
-    ];
+    let nodes = vec![nop_node(0), nop_node(1), finish_node(2, 0)];
     let parts = make_parts(nodes, 1, 0, Vec::new(), Vec::new(), Vec::new());
     let result = validate(&parts);
     assert!(result.is_ok(), "linear workflow should pass: {:?}", result);
@@ -311,7 +337,7 @@ fn gate_14_accepts_single_slot_consistent_type() {
         on_error: None,
         error_slot: None,
         kind: CompiledNodeKind::SetConst {
-            value: ConstIdx::ZERO,
+            value: ConstIdx::new(0),
         },
     };
 
@@ -324,14 +350,16 @@ fn gate_14_accepts_single_slot_consistent_type() {
         vec![ConstValue::I64(42)],
     );
     let result = validate(&parts);
-    assert!(result.is_ok(), "consistent slot type should pass: {:?}", result);
+    assert!(
+        result.is_ok(),
+        "consistent slot type should pass: {:?}",
+        result
+    );
 }
 
 /// Gate 14: slot written with mixed types fails.
 #[test]
 fn gate_14_rejects_slot_written_with_mixed_types() {
-    use std::sync::atomic::{AtomicU8, Ordering};
-
     // Two nodes writing the same slot with different types
     let node_a = CompiledNode {
         id: StepIdx::ZERO,
@@ -340,7 +368,7 @@ fn gate_14_rejects_slot_written_with_mixed_types() {
         on_error: None,
         error_slot: None,
         kind: CompiledNodeKind::SetConst {
-            value: ConstIdx::ZERO, // I64
+            value: ConstIdx::new(0), // I64
         },
     };
     let node_b = CompiledNode {
@@ -394,7 +422,11 @@ fn validation_pipeline_selective_gate_disable() {
         ..ValidationPipeline::all_gates()
     };
     let result = pipeline.validate(&parts);
-    assert!(result.is_ok(), "with gate 9 disabled, OOB slot should pass: {:?}", result);
+    assert!(
+        result.is_ok(),
+        "with gate 9 disabled, OOB slot should pass: {:?}",
+        result
+    );
 }
 
 /// ValidationPipeline::all_gates enables all gates.
@@ -443,9 +475,15 @@ fn validation_pipeline_copy_is_independent() {
 fn validation_pipeline_default_is_all_gates() {
     let default = ValidationPipeline::default();
     let all = ValidationPipeline::all_gates();
-    assert_eq!(default.gate_07_expression_stack, all.gate_07_expression_stack);
+    assert_eq!(
+        default.gate_07_expression_stack,
+        all.gate_07_expression_stack
+    );
     assert_eq!(default.gate_09_slot_references, all.gate_09_slot_references);
-    assert_eq!(default.gate_15_determinism_proof, all.gate_15_determinism_proof);
+    assert_eq!(
+        default.gate_15_determinism_proof,
+        all.gate_15_determinism_proof
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -457,7 +495,10 @@ fn validation_pipeline_default_is_all_gates() {
 fn validation_error_duplicate_key_display() {
     let err = ValidationError::DuplicateKey;
     let msg = err.to_string();
-    assert!(msg.contains("DUPLICATE_KEY"), "should contain DUPLICATE_KEY: {msg}");
+    assert!(
+        msg.contains("DUPLICATE_KEY"),
+        "should contain DUPLICATE_KEY: {msg}"
+    );
 }
 
 /// ValidationError::ForbiddenYamlFeature Display.
@@ -465,7 +506,10 @@ fn validation_error_duplicate_key_display() {
 fn validation_error_forbidden_yaml_feature_display() {
     let err = ValidationError::ForbiddenYamlFeature;
     let msg = err.to_string();
-    assert!(msg.contains("FORBIDDEN_YAML_FEATURE"), "should contain FORBIDDEN_YAML_FEATURE: {msg}");
+    assert!(
+        msg.contains("FORBIDDEN_YAML_FEATURE"),
+        "should contain FORBIDDEN_YAML_FEATURE: {msg}"
+    );
 }
 
 /// ValidationError::MissingRequiredField Display with field name.
@@ -486,7 +530,10 @@ fn validation_error_type_mismatch_display() {
         found: String::from("bool"),
     };
     let msg = err.to_string();
-    assert!(msg.contains("i64") && msg.contains("bool"), "should contain types: {msg}");
+    assert!(
+        msg.contains("i64") && msg.contains("bool"),
+        "should contain types: {msg}"
+    );
 }
 
 /// ValidationError::SlotDependencyCycle Display with slot and chain.
@@ -497,7 +544,10 @@ fn validation_error_slot_dependency_cycle_display() {
         chain: String::from("0→1→2→3"),
     };
     let msg = err.to_string();
-    assert!(msg.contains("3") && msg.contains("0→1→2→3"), "should contain cycle info: {msg}");
+    assert!(
+        msg.contains("3") && msg.contains("0→1→2→3"),
+        "should contain cycle info: {msg}"
+    );
 }
 
 /// ValidationError::ExpressionStackExceeded Display.
@@ -508,7 +558,10 @@ fn validation_error_expression_stack_exceeded_display() {
         limit: 4,
     };
     let msg = err.to_string();
-    assert!(msg.contains("5") && msg.contains("4"), "should contain stack info: {msg}");
+    assert!(
+        msg.contains("5") && msg.contains("4"),
+        "should contain stack info: {msg}"
+    );
 }
 
 /// ValidationError::ActionContractMissing Display.
@@ -519,7 +572,10 @@ fn validation_error_action_contract_missing_display() {
         node_index: 3,
     };
     let msg = err.to_string();
-    assert!(msg.contains("7") && msg.contains("3"), "should contain action/node info: {msg}");
+    assert!(
+        msg.contains("7") && msg.contains("3"),
+        "should contain action/node info: {msg}"
+    );
 }
 
 /// ValidationError::NonDeterministicPath Display.
@@ -530,5 +586,8 @@ fn validation_error_non_deterministic_path_display() {
         to_node: 5,
     };
     let msg = err.to_string();
-    assert!(msg.contains("2") && msg.contains("5"), "should contain node info: {msg}");
+    assert!(
+        msg.contains("2") && msg.contains("5"),
+        "should contain node info: {msg}"
+    );
 }

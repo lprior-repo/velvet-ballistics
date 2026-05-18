@@ -2,13 +2,12 @@
 //!
 //! Uses proptest to generate arbitrary inputs for comprehensive coverage
 
-use proptest::prelude::*;
 use crate::boundary_inventory::{
-    BoundaryCandidate, BoundaryClass, BoundaryExposure,
-    BoundaryRisk, ClassifiedBoundary, ClassifiedBoundaryInput, EvidenceKind, EvidenceReference,
-    FieldState, FreshnessMarker, ReviewStatus, ValidatedBoundaryInventory,
-    classify_boundary,
+    BoundaryCandidate, BoundaryClass, BoundaryExposure, BoundaryRisk, ClassifiedBoundary,
+    ClassifiedBoundaryInput, EvidenceKind, EvidenceReference, FieldState, FreshnessMarker,
+    ReviewStatus, ValidatedBoundaryInventory, classify_boundary,
 };
+use proptest::prelude::*;
 
 // =============================================================================
 // Custom proptest strategies
@@ -294,18 +293,20 @@ fn boundary_risk_all_variants() {
 }
 
 #[test]
-    fn boundary_class_all_variants() {
-        let classes = [
-            BoundaryClass::CAbi,
-            BoundaryClass::Ffi,
-            BoundaryClass::Ipc,
-            BoundaryClass::ExternalBinary,
-            BoundaryClass::Decoder,
-            BoundaryClass::GeneratedCode,
-            BoundaryClass::UnsafeAdjacentDependency,
-        ];
-        for class in classes {
-            let candidate = BoundaryCandidate::new("crates/test/src/lib.rs", match class {
+fn boundary_class_all_variants() {
+    let classes = [
+        BoundaryClass::CAbi,
+        BoundaryClass::Ffi,
+        BoundaryClass::Ipc,
+        BoundaryClass::ExternalBinary,
+        BoundaryClass::Decoder,
+        BoundaryClass::GeneratedCode,
+        BoundaryClass::UnsafeAdjacentDependency,
+    ];
+    for class in classes {
+        let candidate = BoundaryCandidate::new(
+            "crates/test/src/lib.rs",
+            match class {
                 BoundaryClass::CAbi => "extern-c-boundary",
                 BoundaryClass::Ffi => "foreign-function-boundary",
                 BoundaryClass::Ipc => "ipc-frame-boundary",
@@ -314,12 +315,13 @@ fn boundary_risk_all_variants() {
                 BoundaryClass::GeneratedCode => "generated-interface-boundary",
                 BoundaryClass::UnsafeAdjacentDependency => "unsafe-adjacent-dependency-boundary",
                 BoundaryClass::Unknown => "unknown-marker", // Won't be reached
-            });
-            let result = classify_boundary(candidate);
-            assert!(result.is_ok());
-            assert_eq!(result.unwrap().class, class);
-        }
+            },
+        );
+        let result = classify_boundary(candidate);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap().class, class);
     }
+}
 
 #[test]
 fn review_status_from_serialized_approved() {

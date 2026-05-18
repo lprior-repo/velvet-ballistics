@@ -12,8 +12,8 @@
 
 use vb_compile::compile_workflow;
 use vb_yaml::{
-    parse_yaml_events, parse_workflow_source, reject_anchors_aliases_merges,
-    reject_duplicate_keys, validate_yaml_profile, YamlError,
+    YamlError, parse_workflow_source, parse_yaml_events, reject_duplicate_keys,
+    validate_yaml_profile,
 };
 
 // ---------------------------------------------------------------------------
@@ -73,7 +73,10 @@ fn yaml_accepts_explicit_false_string() {
     // "false" with quotes is not ambiguous
     let yaml = r#"key: "false""#;
     let result = validate_yaml_profile(yaml);
-    assert!(result.is_ok(), "quoted false should be accepted: {result:?}");
+    assert!(
+        result.is_ok(),
+        "quoted false should be accepted: {result:?}"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -121,7 +124,10 @@ steps:
       result: 0
 "#;
     let result = validate_yaml_profile(yaml);
-    assert!(result.is_ok(), "single document should be accepted: {result:?}");
+    assert!(
+        result.is_ok(),
+        "single document should be accepted: {result:?}"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -141,10 +147,7 @@ fn yaml_rejects_binary_scalar() {
 fn yaml_rejects_custom_tag() {
     let yaml = r#"key: !custom_tag some_value"#;
     let result = validate_yaml_profile(yaml);
-    assert!(matches!(
-        result,
-        Err(YamlError::CustomTag { .. })
-    ));
+    assert!(matches!(result, Err(YamlError::CustomTag { .. })));
 }
 
 #[test]

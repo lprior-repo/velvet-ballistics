@@ -187,7 +187,10 @@ mod types_tests {
         let err = EnvelopeError::InvalidSchemaVersion { value: 0 };
         let s = format!("{}", err);
         assert!(s.contains("0"), "should contain value 0: {s}");
-        assert!(s.contains("out of valid range"), "should mention valid range: {s}");
+        assert!(
+            s.contains("out of valid range"),
+            "should mention valid range: {s}"
+        );
     }
 
     #[test]
@@ -210,14 +213,20 @@ mod types_tests {
     fn envelope_error_display_diagnostic_and_payload_mutually_exclusive() {
         let err = EnvelopeError::DiagnosticAndPayloadMutuallyExclusive;
         let s = format!("{}", err);
-        assert!(s.contains("both") || s.contains("cannot"), "should mention mutual exclusivity: {s}");
+        assert!(
+            s.contains("both") || s.contains("cannot"),
+            "should mention mutual exclusivity: {s}"
+        );
     }
 
     #[test]
     fn envelope_error_display_diagnostic_report_must_have_diagnostics() {
         let err = EnvelopeError::DiagnosticReportMustHaveDiagnostics;
         let s = format!("{}", err);
-        assert!(s.contains("DiagnosticReport"), "should mention DiagnosticReport: {s}");
+        assert!(
+            s.contains("DiagnosticReport"),
+            "should mention DiagnosticReport: {s}"
+        );
         assert!(s.contains("diagnostics"), "should mention diagnostics: {s}");
     }
 
@@ -225,7 +234,10 @@ mod types_tests {
     fn envelope_error_display_data_field_not_allowed_for_diagnostic_report() {
         let err = EnvelopeError::DataFieldNotAllowedForDiagnosticReport;
         let s = format!("{}", err);
-        assert!(s.contains("data") || s.contains("DiagnosticReport"), "should mention data or DiagnosticReport: {s}");
+        assert!(
+            s.contains("data") || s.contains("DiagnosticReport"),
+            "should mention data or DiagnosticReport: {s}"
+        );
     }
 
     #[test]
@@ -238,7 +250,10 @@ mod types_tests {
 
     #[test]
     fn envelope_error_display_message_too_long() {
-        let err = EnvelopeError::MessageTooLong { len: 5000, max: 4096 };
+        let err = EnvelopeError::MessageTooLong {
+            len: 5000,
+            max: 4096,
+        };
         let s = format!("{}", err);
         assert!(s.contains("5000"), "should contain actual len: {s}");
         assert!(s.contains("4096"), "should contain max: {s}");
@@ -258,7 +273,10 @@ mod types_tests {
         );
         assert_eq!(EnvelopeKind::parse("Status"), Some(EnvelopeKind::Status));
         assert_eq!(EnvelopeKind::parse("Event"), Some(EnvelopeKind::Event));
-        assert_eq!(EnvelopeKind::parse("Workflow"), Some(EnvelopeKind::Workflow));
+        assert_eq!(
+            EnvelopeKind::parse("Workflow"),
+            Some(EnvelopeKind::Workflow)
+        );
     }
 
     #[test]
@@ -298,7 +316,11 @@ mod types_tests {
         ] {
             let name = kind.name();
             let parsed = EnvelopeKind::parse(name);
-            assert_eq!(parsed, Some(kind), "parse(name()) should roundtrip {name:?}");
+            assert_eq!(
+                parsed,
+                Some(kind),
+                "parse(name()) should roundtrip {name:?}"
+            );
         }
     }
 
@@ -362,8 +384,7 @@ mod types_tests {
     #[test]
     fn diagnostic_entry_rejects_long_detail() {
         let long_detail = "x".repeat(MAX_DIAGNOSTIC_STRING_LEN + 1);
-        let entry =
-            DiagnosticEntry::new("VB001".to_string(), "msg".to_string(), Some(long_detail));
+        let entry = DiagnosticEntry::new("VB001".to_string(), "msg".to_string(), Some(long_detail));
         assert!(entry.is_err());
         assert_eq!(
             entry.unwrap_err(),
@@ -377,8 +398,11 @@ mod types_tests {
     #[test]
     fn diagnostic_entry_accepts_exact_max_detail() {
         let max_detail = "x".repeat(MAX_DIAGNOSTIC_STRING_LEN);
-        let entry =
-            DiagnosticEntry::new("VB001".to_string(), "msg".to_string(), Some(max_detail.clone()));
+        let entry = DiagnosticEntry::new(
+            "VB001".to_string(),
+            "msg".to_string(),
+            Some(max_detail.clone()),
+        );
         assert!(entry.is_ok());
         assert_eq!(entry.unwrap().detail, Some(max_detail));
     }

@@ -324,7 +324,10 @@ mod tests {
         ];
         for code in contracts_codes {
             let high = (code >> 8) & 0xFF;
-            assert_eq!(high, 0x06, "contracts code {code:#06x} should be in E06xx range");
+            assert_eq!(
+                high, 0x06,
+                "contracts code {code:#06x} should be in E06xx range"
+            );
         }
     }
 

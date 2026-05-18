@@ -1,6 +1,6 @@
 //! Tests for tokens_to_rust_constants codegen output shape and hex parsing.
 
-use vb_ui_snapshot::tokens::{tokens_to_rust_constants, UiTokens};
+use vb_ui_snapshot::tokens::{UiTokens, tokens_to_rust_constants};
 
 fn default_tokens() -> UiTokens {
     UiTokens::default()
@@ -32,7 +32,7 @@ fn tokens_to_rust_constants_emits_token_colors_struct() {
 }
 
 #[test]
-fn tokens_to_rust_constants_emits_tokENS_const() {
+fn tokens_to_rust_constants_emits_tokens_const() {
     let output = tokens_to_rust_constants(&default_tokens());
     assert!(output.contains("pub const TOKENS: TokenColors = TokenColors {"));
     // Default surface is "#FFFFFF" → [1.0, 1.0, 1.0, 1.0]
@@ -179,7 +179,10 @@ fn ui_tokens_default_radius_fields() {
 fn ui_tokens_default_type_fields() {
     let t = UiTokens::default();
     assert_eq!(t.family_sans.as_str(), "Inter, SF Pro, system-ui");
-    assert_eq!(t.family_mono.as_str(), "JetBrains Mono, SF Mono, ui-monospace");
+    assert_eq!(
+        t.family_mono.as_str(),
+        "JetBrains Mono, SF Mono, ui-monospace"
+    );
     assert_eq!(t.size_11, 11);
     assert_eq!(t.size_12, 12);
     assert_eq!(t.size_13, 13);

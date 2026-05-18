@@ -2180,7 +2180,10 @@ fn integration_budget_compute_empty_workflow_error() {
     let result = WholeWorkflowBudget::compute(&nodes, StepIdx::new(0), &contract);
 
     // Should fail with entry out of bounds
-    assert!(matches!(result, Err(WorkflowError::EntryOutOfBounds { .. })));
+    assert!(matches!(
+        result,
+        Err(WorkflowError::EntryOutOfBounds { .. })
+    ));
 }
 
 /// Tests workflow with single Nop node
