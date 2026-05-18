@@ -223,7 +223,7 @@ fn full_journal_reconstructs_exact_pc_steps_slots_taint_terminal() {
 
     // GA-002a: Full-journal replay reconstructs equivalent event set
     let mut tracker = ActionReplayTracker::new();
-    let replayed = recover_full_journal(&journal, run, &mut tracker)
+    let replayed = recover_full_journal(&journal, run, &mut tracker, &[], &[])
         .expect("full journal replay should succeed");
     assert_eq!(replayed.len(), events.len());
     for (i, (orig, rec)) in events.iter().zip(replayed.iter()).enumerate() {
@@ -486,7 +486,7 @@ fn wait_identity_and_state_survive_across_restart() {
 
     // GA-004a: No in-memory wait state used — all from durable events
     let mut tracker = ActionReplayTracker::new();
-    let replayed = recover_full_journal(&journal, run, &mut tracker)
+    let replayed = recover_full_journal(&journal, run, &mut tracker, &[], &[])
         .expect("full journal replay should succeed");
     assert_eq!(replayed.len(), events.len());
 
@@ -566,7 +566,7 @@ fn ask_answer_slot_value_and_taint_survive_across_restart() {
     }
 
     let mut tracker = ActionReplayTracker::new();
-    let replayed = recover_full_journal(&journal, run, &mut tracker)
+    let replayed = recover_full_journal(&journal, run, &mut tracker, &[], &[])
         .expect("full journal replay should succeed");
 
     // AskScheduledEvent and AskAnsweredEvent must be in durable log
@@ -633,7 +633,7 @@ fn resolved_action_not_reexecuted_on_restart() {
 
     // GA-006a: After restart, action is marked resolved — no re-execution
     let mut tracker = ActionReplayTracker::new();
-    let _replayed = recover_full_journal(&journal, run, &mut tracker)
+    let _replayed = recover_full_journal(&journal, run, &mut tracker, &[], &[])
         .expect("full journal replay should succeed");
 
     assert!(
@@ -649,7 +649,7 @@ fn resolved_action_not_reexecuted_on_restart() {
     let mut tracker2 = ActionReplayTracker::new();
     // Pre-mark as completed to simulate the state after first replay
     tracker2.mark_completed(action_id, StepIdx::ZERO);
-    let result2 = recover_full_journal(&journal, run, &mut tracker2);
+    let result2 = recover_full_journal(&journal, run, &mut tracker2, &[], &[]);
     assert!(
         result2.is_ok()
             || matches!(
@@ -719,7 +719,7 @@ fn non_idempotent_pending_action_fails_closed() {
 
     // GA-006b: Non-idempotent pending action fails closed
     let mut tracker = ActionReplayTracker::new();
-    let result = recover_full_journal(&journal, run, &mut tracker);
+    let result = recover_full_journal(&journal, run, &mut tracker, &[], &[]);
 
     let Err(RecoveryError::NonIdempotentActionBlocked { action, step }) = result else {
         panic!("expected NonIdempotentActionBlocked, got: {result:?}");
