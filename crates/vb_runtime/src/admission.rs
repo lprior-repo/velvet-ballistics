@@ -1656,3 +1656,10 @@ mod tests {
         assert_eq!(result, Err(AdmissionError::ArtifactNotFound { digest }));
     }
 }
+
+#[cfg(test)]
+mod artifact_envelope_tests {
+    // Tests are in artifact_envelope_tests.rs
+    // but we include them here via the module system.
+    include!("admission/artifact_envelope_tests.rs");
+}
