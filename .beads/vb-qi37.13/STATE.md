@@ -1,8 +1,8 @@
 bead_id: vb-qi37.13
 bead_title: cli: Reconcile structured output contract
-phase: 10
-updated_at: 2026-05-15T00:55:00Z
-attempt: 4-of-7
+phase: 15
+updated_at: 2026-05-18T21:48:33Z
+attempt: 5-of-7
 
 # Go-skill State
 
@@ -10,9 +10,9 @@ source_checkout: /home/lewis/src/Velvet-ballistics
 isolated_workspace: /home/lewis/src/vb-qi37-13-r2
 forbidden_partial_workspace: /home/lewis/src/vb-qi37-13
 bd_database: /home/lewis/src/.beads/dolt
-current_state: 10
-highest_approved_state: 11
-next_state: 12
+current_state: 15
+highest_approved_state: 15
+next_state: complete
 
 ## Path isolation evidence
 
@@ -116,4 +116,17 @@ State 11 formal-verifier rerun approved. Ledger counts: PASS 9, FAIL_LOCAL 0, FA
 
 State 12 black-hat rerun rejected. Blocking defect: supported `--json` routes still emit raw text diagnostics for `verify <invalid-utf8-file> --json` and `inspect not-a-run --db <tmp>/db --json`. CLI postcard parity now appears fixed.
 
-Current gate: State 10 implementation repair for remaining `verify` and `inspect` structured diagnostic routes, then rerun State 11 and State 12.
+Current gate: COMPLETE. Current main/worktree code contains black-box coverage for the prior `verify` invalid UTF-8 and `inspect` invalid run-id structured diagnostics. State 12 black-hat rerun, State 13 truth-serum/final evidence decision, State 14 landing/close/sync, and State 15 cleanup report are approved in this artifact set.
+
+## State 12-15 closure evidence (2026-05-18)
+
+- Focused gates passed in `/home/lewis/isolated/go-skill-vb-qi37-13-git`:
+  - `cargo test -p vb_cli --test vb_qi37_13_structured_reconciliation --all-features`: 14 passed.
+  - `cargo test -p vb_cli --test envelope_schema_tests --all-features`: 12 passed.
+  - `cargo test -p vb_ui_model --all-features postcard`: 14 passed, 152 filtered out.
+  - `cargo clippy -p vb_cli --all-features -- -D warnings`: no issues found.
+  - `cargo fmt --check -p vb_cli`: exit 0/no output.
+- `black-hat-review.md`: `STATUS: APPROVED`.
+- `truth-serum-report.md`: `STATUS: APPROVED`.
+- `final-evidence-decision.md`: `STATUS: APPROVED`.
+- Landing: commit `9b5f7bb0` pushed to `origin/main`; `bd close vb-qi37.13` succeeded; `bd dolt push` completed.
