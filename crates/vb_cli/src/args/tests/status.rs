@@ -1,5 +1,63 @@
 use super::args;
-use crate::args::{Command, OutputFormat, ParseError, parse_args};
+use crate::args::{Command, DurabilityMode, OutputFormat, ParseError, VerifyProfile, parse_args};
+
+#[test]
+fn parse_system_status_defaults_to_standard_none_text() {
+    let parsed = parse_args(&args(&["velvet-ballastics", "system", "status"]));
+    assert!(matches!(parsed, Ok(Command::SystemStatus { .. })));
+    if let Ok(Command::SystemStatus { options, output }) = parsed {
+        assert_eq!(options.profile, VerifyProfile::Standard);
+        assert_eq!(options.server, DurabilityMode::None);
+        assert!(!options.emit_yaml);
+        assert_eq!(output, OutputFormat::Text);
+    }
+}
+
+#[test]
+fn parse_system_status_accepts_yaml_emit() {
+    let parsed = parse_args(&args(&[
+        "velvet-ballastics",
+        "system",
+        "status",
+        "--profile",
+        "full",
+        "--server",
+        "none",
+        "--emit",
+        "yaml",
+    ]));
+    assert!(matches!(parsed, Ok(Command::SystemStatus { .. })));
+    if let Ok(Command::SystemStatus { options, output }) = parsed {
+        assert_eq!(options.profile, VerifyProfile::Full);
+        assert_eq!(options.server, DurabilityMode::None);
+        assert!(options.emit_yaml);
+        assert_eq!(output, OutputFormat::Text);
+    }
+}
+
+#[test]
+fn parse_system_status_rejects_strict_without_probe() {
+    let parsed = parse_args(&args(&[
+        "velvet-ballastics",
+        "system",
+        "status",
+        "--server",
+        "strict",
+    ]));
+    assert!(matches!(parsed, Err(ParseError::UnknownServerMode(ref mode)) if mode == "strict"));
+}
+
+#[test]
+fn parse_system_status_rejects_journaled_without_probe() {
+    let parsed = parse_args(&args(&[
+        "velvet-ballastics",
+        "system",
+        "status",
+        "--server",
+        "journaled",
+    ]));
+    assert!(matches!(parsed, Err(ParseError::UnknownServerMode(ref mode)) if mode == "journaled"));
+}
 
 #[test]
 fn parse_status_accepts_no_runtime_defaults() {

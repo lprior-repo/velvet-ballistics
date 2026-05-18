@@ -77,7 +77,7 @@ commands:
   version                                             Print version
   agent-context                                      Emit versioned AI-agent CLI schema
   status     [--active-runs <N>] [--queue-depth <N>] [--trace-dropped <N>] [--json|--jsonl]  Report runtime shard status
-  system-status [--profile <quick|standard|full>] [--server <strict|journaled|none>] [--json|--jsonl]  Report bounded system health
+  system status [--profile <quick|standard|full>] [--server none] [--emit yaml] [--json|--jsonl]  Report bounded system health
   action list [--json|--jsonl]                       List registered action contracts
   action inspect <action_id> [--json|--jsonl]         Show one registered action contract
 
@@ -278,7 +278,11 @@ fn cmd_status(options: args::StatusOptions, output: OutputFormat) -> ExitCode {
 }
 
 fn cmd_system_status(options: args::SystemStatusOptions, output: OutputFormat) -> ExitCode {
-    commands_system_status::print_system_status(options, output, VERSION);
+    if options.emit_yaml {
+        commands_system_status::print_system_status_yaml(options, VERSION);
+    } else {
+        commands_system_status::print_system_status(options, output, VERSION);
+    }
     ExitCode::SUCCESS
 }
 
@@ -4719,7 +4723,7 @@ fn write_error_stderr(error: &ParseError) -> io::Result<()> {
         ParseError::UnknownServerMode(mode) => {
             writeln!(
                 handle,
-                "unknown server mode: {mode} (expected: strict, journaled, none)\n\n{HELP}"
+                "unknown server mode: {mode} (expected: none; strict and journaled require a backend probe that is not implemented)\n\n{HELP}"
             )
         }
         ParseError::InvalidSystemStatusArgument(reason) => {

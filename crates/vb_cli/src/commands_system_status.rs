@@ -17,6 +17,39 @@ pub(crate) fn print_system_status(
     }
 }
 
+pub(crate) fn print_system_status_yaml(options: SystemStatusOptions, version: &str) {
+    let config = vb_runtime::shard::ShardConfig::default();
+    crate::write_stdout_line(format_args!(
+        "schema_version: {}",
+        cli_envelope::SCHEMA_VERSION
+    ));
+    crate::write_stdout_line(format_args!("kind: SystemStatus"));
+    crate::write_stdout_line(format_args!("profile: {}", options.profile.as_str()));
+    crate::write_stdout_line(format_args!("server: {}", options.server.as_str()));
+    crate::write_stdout_line(format_args!("connected: false"));
+    crate::write_stdout_line(format_args!("reason: no-backend"));
+    crate::write_stdout_line(format_args!("status:"));
+    crate::write_stdout_line(format_args!("  health: degraded"));
+    crate::write_stdout_line(format_args!("  backend: no-backend"));
+    crate::write_stdout_line(format_args!("  storage_health: Degraded"));
+    crate::write_stdout_line(format_args!("  writer_queue_depth: 0"));
+    crate::write_stdout_line(format_args!("  journal_batch_healthy: false"));
+    crate::write_stdout_line(format_args!("  snapshot_seq: null"));
+    crate::write_stdout_line(format_args!("  blob_store_ok: false"));
+    crate::write_stdout_line(format_args!("  index_healthy: false"));
+    crate::write_stdout_line(format_args!("  uptime_seconds: 0"));
+    crate::write_stdout_line(format_args!("  active_run_count: 0"));
+    crate::write_stdout_line(format_args!("runtime:"));
+    crate::write_stdout_line(format_args!("  shard_state: not_connected"));
+    crate::write_stdout_line(format_args!("  command_queue_depth: 0"));
+    crate::write_stdout_line(format_args!(
+        "  command_queue_capacity: {}",
+        config.command_queue_capacity
+    ));
+    crate::write_stdout_line(format_args!("gate:"));
+    crate::write_stdout_line(format_args!("  cli_version: {version}"));
+}
+
 #[must_use]
 pub(crate) fn system_status_payload(
     options: SystemStatusOptions,
@@ -106,6 +139,7 @@ mod tests {
             SystemStatusOptions {
                 profile: VerifyProfile::Full,
                 server: DurabilityMode::Journaled,
+                emit_yaml: false,
             },
             "0.1.0",
         );
