@@ -18,10 +18,14 @@ image = { version = "0.25", default-features = false, features = ["png"] }
 tempfile = "3"
 blake3.workspace = true
 regex = "1"
+cargo_metadata = "0.19"
+crossbeam-channel = { workspace = true }
+chrono = { workspace = true }
 
 [dev-dependencies]
 serde-saphyr = { workspace = true, features = ["serialize"] }
 saphyr = { workspace = true }
+proptest = "1"
 
 [lints]
 workspace = true

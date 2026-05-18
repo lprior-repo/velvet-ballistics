@@ -41,24 +41,18 @@ pub(crate) enum Commands {
         #[arg(long, default_value = "tests/ui_snapshots")]
         input_dir: String,
     },
-    // ========================================================================
-    // Section 77 Command-Center Gates (POST-001/002/003/007)
-    // ========================================================================
     #[command(name = "ai-fast")]
     AiFast {
-        /// Bead ID to scope evidence output to .evidence/<bead-id>/
         #[arg(long)]
         bead: Option<String>,
     },
     #[command(name = "ai-deep")]
     AiDeep {
-        /// Bead ID to scope evidence output to .evidence/<bead-id>/
         #[arg(long)]
         bead: Option<String>,
     },
     #[command(name = "ai-release")]
     AiRelease {
-        /// Bead ID to scope evidence output to .evidence/<bead-id>/
         #[arg(long)]
         bead: Option<String>,
     },
@@ -86,17 +80,92 @@ pub(crate) enum Commands {
     },
     #[command(name = "loom")]
     Loom {
-        /// Loom model name to run (e.g., bounded_queue, journal_writer_queue)
         #[arg(long)]
         model: String,
     },
     #[command(name = "forbidden-scan")]
     ForbiddenScan {
-        /// Crate/package globs to scan. If not provided, scans all first-party crates.
         #[arg(long)]
         crates: Option<Vec<String>>,
-        /// Path to an allowlist file with false-positive exemptions (one pattern per line).
         #[arg(long)]
         allowlist: Option<String>,
+    },
+    // === New proof/test orchestrator commands ===
+    #[command(name = "list-crates")]
+    ListCrates {
+        #[arg(long)]
+        include: Option<Vec<String>>,
+        #[arg(long)]
+        exclude: Option<Vec<String>>,
+        #[arg(long)]
+        json: bool,
+    },
+    #[command(name = "proof")]
+    Proof {
+        #[command(subcommand)]
+        command: ProofCommands,
+    },
+}
+
+#[derive(Subcommand)]
+pub(crate) enum ProofCommands {
+    #[command(name = "list")]
+    List {
+        #[arg(long)]
+        crate_name: Option<String>,
+        #[arg(long)]
+        json: bool,
+    },
+    #[command(name = "run")]
+    Run {
+        #[arg(long, default_value = "standard")]
+        profile: String,
+        #[arg(long, default_value = "auto")]
+        jobs: String,
+        #[arg(long)]
+        exclude: Option<Vec<String>>,
+        #[arg(long)]
+        include: Option<Vec<String>>,
+        #[arg(long)]
+        fail_fast: bool,
+        #[arg(long)]
+        keep_going: bool,
+        #[arg(long, default_value = "300")]
+        timeout: u64,
+        #[arg(long)]
+        dry_run: bool,
+        #[arg(long)]
+        json: bool,
+    },
+    #[command(name = "crate")]
+    Crate {
+        crate_name: String,
+        #[arg(long, value_delimiter = ',')]
+        lanes: Option<Vec<String>>,
+        #[arg(long, default_value = "auto")]
+        jobs: String,
+        #[arg(long)]
+        fail_fast: bool,
+        #[arg(long, default_value = "300")]
+        timeout: u64,
+        #[arg(long)]
+        dry_run: bool,
+        #[arg(long)]
+        json: bool,
+    },
+    #[command(name = "affected")]
+    Affected {
+        #[arg(long)]
+        base: String,
+        #[arg(long, default_value = "auto")]
+        jobs: String,
+        #[arg(long)]
+        fail_fast: bool,
+        #[arg(long, default_value = "300")]
+        timeout: u64,
+        #[arg(long)]
+        dry_run: bool,
+        #[arg(long)]
+        json: bool,
     },
 }
