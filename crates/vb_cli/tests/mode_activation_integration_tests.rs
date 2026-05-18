@@ -626,7 +626,11 @@ fn unknown_command_exits_with_code_2_and_lists_valid_commands() {
     // ERR-Taxonomy: ParseError::UnknownCommand → exit 2 (ValidationFailed) + valid command list
     let output = run_bin(["velvet-ballastics", "foobar"]);
 
-    assert_eq!(output.status.code(), Some(2), "unknown command must exit 2 (ValidationFailed)");
+    assert_eq!(
+        output.status.code(),
+        Some(2),
+        "unknown command must exit 2 (ValidationFailed)"
+    );
     let stderr = String::from_utf8_lossy(&output.stderr);
     assert!(
         stderr.contains("foobar") || stderr.contains("unknown command"),
