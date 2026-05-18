@@ -10,7 +10,8 @@ STATUS: APPROVED
 
 ## Main / remote evidence
 
-- Commit created: `9b5f7bb0 chore(vb-qi37.13): approve closure evidence`.
+- Evidence commit created before final rebase: `9b5f7bb0 chore(vb-qi37.13): approve closure evidence`.
+- Final remote-main commit observed after landing artifact push: `9836433e chore(vb-qi37.13): record landing closure` at `origin/main` / `origin/HEAD`.
 - Push command: `git pull --rebase origin main && git push origin HEAD:main` via `rtk`.
 - Observed output: `ok`, `ok main`.
 

@@ -129,4 +129,4 @@ Current gate: COMPLETE. Current main/worktree code contains black-box coverage f
 - `black-hat-review.md`: `STATUS: APPROVED`.
 - `truth-serum-report.md`: `STATUS: APPROVED`.
 - `final-evidence-decision.md`: `STATUS: APPROVED`.
-- Landing: commit `9b5f7bb0` pushed to `origin/main`; `bd close vb-qi37.13` succeeded; `bd dolt push` completed.
+- Landing: evidence commit `9b5f7bb0` and final landing artifact commit `9836433e` reached `origin/main`; `bd close vb-qi37.13` succeeded; `bd dolt push` completed.
