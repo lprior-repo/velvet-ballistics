@@ -1,0 +1,28 @@
+{
+  "bead_id": "GLOBAL-main-gate-for-vb-kyyf-landing",
+  "state": 14,
+  "sublane": "serial-build-cache-cleanup-and-moon-ci-rerun",
+  "delegate": "general",
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/bd-vb-kyyf-bdd",
+  "input_artifacts": [
+    ".beads/vb-kyyf/quota-cleanup-rerun-report.md",
+    ".beads/vb-kyyf/mutants-tmpdir-repair-report.md",
+    ".beads/vb-kyyf/landing-report.md"
+  ],
+  "output_artifacts": [
+    ".beads/vb-kyyf/build-cache-cleanup-rerun-report.md"
+  ],
+  "attempt": 1,
+  "allowed_cleanup_scope": [
+    "/home/lewis/src/bd-vb-kyyf-bdd/target-test",
+    "/home/lewis/src/bd-vb-kyyf-bdd/target",
+    "/home/lewis/src/bd-vb-kyyf-bdd/.tmp",
+    "/home/lewis/src/bd-vb-kyyf-bdd/.tlc-metadir",
+    "/home/lewis/src/bd-vb-kyyf-bdd/vb_kyyf_normalization",
+    "/tmp/opencode/vb-kyyf-moon-ci-tmp",
+    "/tmp/opencode/cargo-mutants-*"
+  ],
+  "blocker": "Disk quota exceeded while cargo-mutants copied workspace target-test artifact accepted_artifact_red_phase-*",
+  "required_gate": "moon ci with clean build outputs and external TMPDIR outside workspace"
+}

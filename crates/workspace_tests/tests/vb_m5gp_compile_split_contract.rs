@@ -44,8 +44,8 @@ const EXPECTED_MINIMAL_ARTIFACT_DIGEST: WorkflowDigest = WorkflowDigest::from_by
     177, 22, 161, 97, 69, 138, 131, 28, 50, 42, 237, 174,
 ]);
 const EXPECTED_MINIMAL_GENERATED_DIGEST: WorkflowDigest = WorkflowDigest::from_bytes([
-    63, 64, 128, 60, 49, 67, 227, 251, 100, 242, 87, 255, 194, 142, 170, 33, 138, 122, 104, 168,
-    72, 30, 170, 234, 117, 111, 72, 178, 103, 206, 33, 147,
+    152, 194, 152, 219, 82, 80, 114, 24, 247, 103, 7, 27, 252, 205, 180, 223, 186, 178, 227, 64,
+    210, 126, 204, 76, 201, 252, 105, 224, 220, 57, 118, 8,
 ]);
 
 #[test]
