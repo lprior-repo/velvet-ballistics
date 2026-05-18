@@ -293,7 +293,7 @@ fn check_taint_consistency_detects_stale_phrases() {
     let result = check_doc_taint_consistency(text);
 
     // Then
-    assert!(result.is_err());
+    assert!(matches!(result, Err(DocReconcileError::StaleCleanOnlyTaintText { .. })));
 }
 
 // ============================================================================

@@ -45,7 +45,7 @@
 use vb_core::{
     budget::{BoundednessPolicy, BudgetError, WholeWorkflowBudget},
     ids::{ActionId, SlotIdx, StepIdx},
-    workflow::{CompiledNode, CompiledNodeKind, ResourceContract},
+    workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowError},
 };
 
 // ============================================================================
@@ -2180,7 +2180,7 @@ fn integration_budget_compute_empty_workflow_error() {
     let result = WholeWorkflowBudget::compute(&nodes, StepIdx::new(0), &contract);
 
     // Should fail with entry out of bounds
-    assert!(result.is_err());
+    assert!(matches!(result, Err(WorkflowError::EntryOutOfBounds { .. })));
 }
 
 /// Tests workflow with single Nop node
