@@ -1,6 +1,7 @@
 #![forbid(unsafe_code)]
 
 pub mod evidence;
+pub mod evidence_gate;
 
 mod command_family;
 mod dependency_boundary;

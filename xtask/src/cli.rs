@@ -99,4 +99,16 @@ pub(crate) enum Commands {
         #[arg(long)]
         allowlist: Option<String>,
     },
+    #[command(name = "evidence-gate")]
+    EvidenceGate {
+        /// Run all evidence capture gates and report status.
+        #[arg(long)]
+        run_all: bool,
+        /// Bead ID to scope evidence output to .evidence/<bead-id>/
+        #[arg(long)]
+        bead: Option<String>,
+        /// Output format: jsonl or text
+        #[arg(long, default_value = "text")]
+        format: String,
+    },
 }
