@@ -32,10 +32,7 @@ impl BenchmarkEvidence {
     }
 
     pub fn is_complete(&self) -> bool {
-        self.has_baseline()
-            && self.has_result()
-            && self.has_environment()
-            && self.has_command()
+        self.has_baseline() && self.has_result() && self.has_environment() && self.has_command()
     }
 }
 
@@ -95,16 +92,12 @@ impl EvidenceBundle {
 
     /// Check if any benchmark evidence is missing baseline metadata.
     pub fn has_missing_benchmark_baseline(&self) -> bool {
-        self.benchmark_evidence
-            .iter()
-            .any(|b| !b.has_baseline())
+        self.benchmark_evidence.iter().any(|b| !b.has_baseline())
     }
 
     /// Check if any benchmark evidence is missing required metadata.
     pub fn has_incomplete_benchmark_metadata(&self) -> bool {
-        self.benchmark_evidence
-            .iter()
-            .any(|b| !b.is_complete())
+        self.benchmark_evidence.iter().any(|b| !b.is_complete())
     }
 
     /// Validate all evidence gates. Returns a list of gate failures.
@@ -277,11 +270,7 @@ impl std::fmt::Display for EvidenceGateFailure {
                 )
             }
             Self::MissingKernelPathEvidence { paths } => {
-                write!(
-                    f,
-                    "kernel path evidence missing for: {}",
-                    paths.join(", ")
-                )
+                write!(f, "kernel path evidence missing for: {}", paths.join(", "))
             }
         }
     }
@@ -339,9 +328,7 @@ pub fn enrich_benchmark_evidence(
     host_cpu: &str,
 ) {
     evidence.command = Some(command.to_string());
-    evidence.environment = Some(format!(
-        "toolchain={toolchain};host_cpu={host_cpu}"
-    ));
+    evidence.environment = Some(format!("toolchain={toolchain};host_cpu={host_cpu}"));
 }
 
 #[cfg(test)]
@@ -394,9 +381,11 @@ mod tests {
             "2026-05-17".to_string(),
         );
         let failures = bundle.validate_gates();
-        assert!(failures
-            .iter()
-            .any(|f| matches!(f, EvidenceGateFailure::MissingSupplyChainEvidence)));
+        assert!(
+            failures
+                .iter()
+                .any(|f| matches!(f, EvidenceGateFailure::MissingSupplyChainEvidence))
+        );
     }
 
     #[test]
@@ -414,9 +403,11 @@ mod tests {
             notes: "license failure".to_string(),
         });
         let failures = bundle.validate_gates();
-        assert!(failures
-            .iter()
-            .any(|f| matches!(f, EvidenceGateFailure::AuditFailure { .. })));
+        assert!(
+            failures
+                .iter()
+                .any(|f| matches!(f, EvidenceGateFailure::AuditFailure { .. }))
+        );
     }
 
     #[test]
@@ -434,9 +425,11 @@ mod tests {
             command: Some("cargo bench".to_string()),
         });
         let failures = bundle.validate_gates();
-        assert!(failures
-            .iter()
-            .any(|f| matches!(f, EvidenceGateFailure::MissingBenchmarkBaseline { .. })));
+        assert!(
+            failures
+                .iter()
+                .any(|f| matches!(f, EvidenceGateFailure::MissingBenchmarkBaseline { .. }))
+        );
     }
 
     #[test]
@@ -508,14 +501,18 @@ mod tests {
         );
         assert!(evidence.command.is_some());
         assert!(evidence.environment.is_some());
-        assert!(evidence
-            .command
-            .as_ref()
-            .is_some_and(|c| c.contains("cargo bench")));
-        assert!(evidence
-            .environment
-            .as_ref()
-            .is_some_and(|e| e.contains("toolchain=nightly-2026-04-28")));
+        assert!(
+            evidence
+                .command
+                .as_ref()
+                .is_some_and(|c| c.contains("cargo bench"))
+        );
+        assert!(
+            evidence
+                .environment
+                .as_ref()
+                .is_some_and(|e| e.contains("toolchain=nightly-2026-04-28"))
+        );
     }
 
     #[test]

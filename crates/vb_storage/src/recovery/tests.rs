@@ -644,7 +644,7 @@ mod tests {
         append_events(&journal, events)?;
 
         let mut full_tracker = ActionReplayTracker::new();
-        let full_replay = recover_full_journal(&journal, run, &mut full_tracker)?;
+        let full_replay = recover_full_journal(&journal, run, &mut full_tracker, &[], &[])?;
 
         let snapshot = RunSnapshot {
             run,
@@ -683,7 +683,7 @@ mod tests {
             attempt: 1,
         }];
 
-        let result = replay_events(&events, &mut tracker);
+        let result = replay_events(&events, &mut tracker, &[]);
         let Err(err) = result else {
             panic!("replay should fail for already-completed action");
         };
@@ -717,7 +717,7 @@ mod tests {
         ];
 
         let replayed =
-            replay_events(&events, &mut tracker).expect("first execution should succeed");
+            replay_events(&events, &mut tracker, &[]).expect("first execution should succeed");
         assert_eq!(replayed.len(), 2);
         assert!(tracker.is_resolved(action, step));
     }
@@ -867,7 +867,7 @@ mod tests {
             attempt: 1,
         }];
 
-        let result = replay_events(&events, &mut tracker);
+        let result = replay_events(&events, &mut tracker, &[]);
         let Err(err) = result else {
             panic!("replay should fail for already-failed action");
         };
@@ -986,7 +986,7 @@ mod tests {
         let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
         let mut tracker = ActionReplayTracker::new();
 
-        let result = recover_full_journal(&journal, RunId::new(999), &mut tracker);
+        let result = recover_full_journal(&journal, RunId::new(999), &mut tracker, &[], &[]);
         let Err(err) = result else {
             panic!("empty journal should produce NoRecoveryData");
         };
@@ -1028,7 +1028,7 @@ mod tests {
             .expect("setup: append finished");
 
         let mut tracker = ActionReplayTracker::new();
-        let replayed = recover_full_journal(&journal, run, &mut tracker)
+        let replayed = recover_full_journal(&journal, run, &mut tracker, &[], &[])
             .expect("full journal recovery should succeed");
         assert_eq!(replayed.len(), 3);
     }
@@ -1109,8 +1109,8 @@ mod tests {
         ];
 
         let mut tracker = ActionReplayTracker::new();
-        let replayed =
-            replay_events(&events, &mut tracker).expect("replay of all event kinds should succeed");
+        let replayed = replay_events(&events, &mut tracker, &[])
+            .expect("replay of all event kinds should succeed");
         assert_eq!(replayed.len(), 11);
         assert!(tracker.is_resolved(ActionId::new(1), StepIdx::new(0)));
     }
@@ -1164,7 +1164,7 @@ mod tests {
         ];
 
         let mut tracker = ActionReplayTracker::new();
-        let result = replay_events(&events, &mut tracker);
+        let result = replay_events(&events, &mut tracker, &[]);
         let Err(err) = result else {
             panic!("out-of-order steps should cause divergence");
         };
@@ -1303,7 +1303,7 @@ mod tests {
 
         let run = RunId::new(999);
         let mut tracker = ActionReplayTracker::new();
-        let result = recover_full_journal(&journal, run, &mut tracker);
+        let result = recover_full_journal(&journal, run, &mut tracker, &[], &[]);
         let Err(RecoveryError::NoRecoveryData { run: found_run }) = result else {
             panic!("expected NoRecoveryData, got {:?}", result);
         };
@@ -1313,7 +1313,7 @@ mod tests {
     #[test]
     fn replay_events_produces_correct_final_state_from_empty() {
         let mut tracker = ActionReplayTracker::new();
-        let replayed = replay_events(&[], &mut tracker).expect("empty replay should succeed");
+        let replayed = replay_events(&[], &mut tracker, &[]).expect("empty replay should succeed");
         assert!(replayed.is_empty());
     }
 
@@ -1346,7 +1346,7 @@ mod tests {
         ];
 
         let mut tracker = ActionReplayTracker::new();
-        let replayed = replay_events(&events, &mut tracker).expect("replay should succeed");
+        let replayed = replay_events(&events, &mut tracker, &[]).expect("replay should succeed");
         assert_eq!(replayed.len(), 3);
         assert!(tracker.is_resolved(action, step));
     }

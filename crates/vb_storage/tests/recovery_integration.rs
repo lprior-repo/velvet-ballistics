@@ -632,7 +632,7 @@ fn action_replay_tracker_reconstructs_from_events() {
 
     let journal = open_journal(&dir);
     let mut tracker = ActionReplayTracker::new();
-    let replayed = recover_full_journal(&journal, run, &mut tracker)
+    let replayed = recover_full_journal(&journal, run, &mut tracker, &[], &[])
         .expect("recover_full_journal should succeed");
 
     assert_eq!(replayed.len(), events.len());
@@ -691,7 +691,7 @@ fn action_replay_tracker_tracks_failed_actions() {
 
     let journal = open_journal(&dir);
     let mut tracker = ActionReplayTracker::new();
-    let replayed = recover_full_journal(&journal, run, &mut tracker)
+    let replayed = recover_full_journal(&journal, run, &mut tracker, &[], &[])
         .expect("recover_full_journal should succeed");
 
     assert_eq!(replayed.len(), events.len());
@@ -752,7 +752,7 @@ fn action_replay_blocks_duplicate_scheduled_action() {
 
     let journal = open_journal(&dir);
     let mut tracker = ActionReplayTracker::new();
-    let result = recover_full_journal(&journal, run, &mut tracker);
+    let result = recover_full_journal(&journal, run, &mut tracker, &[], &[]);
 
     assert!(
         result.is_err(),
@@ -784,7 +784,7 @@ fn empty_run_returns_no_recovery_data() {
 
     let journal = open_journal(&dir);
     let mut tracker = ActionReplayTracker::new();
-    let result = recover_full_journal(&journal, run, &mut tracker);
+    let result = recover_full_journal(&journal, run, &mut tracker, &[], &[]);
 
     assert!(
         result.is_err(),

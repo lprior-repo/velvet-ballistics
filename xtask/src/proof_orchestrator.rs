@@ -28,11 +28,16 @@ pub fn run_proof(
     let logger = RunLogger::new(&run_id);
 
     let crates = discovery::discover_crates(workspace_root)?;
-    let crates = discovery::filter_crates(&crates, config.include.as_deref(), config.exclude.as_deref());
+    let crates = discovery::filter_crates(
+        &crates,
+        config.include.as_deref(),
+        config.exclude.as_deref(),
+    );
 
     let schedule = scheduler::build_schedule(&crates, config.max_jobs);
     let available_lanes = lanes::detect_available_lanes(workspace_root);
-    let profile_lanes: std::collections::HashSet<_> = config.profile.lanes().iter().copied().collect();
+    let profile_lanes: std::collections::HashSet<_> =
+        config.profile.lanes().iter().copied().collect();
 
     let mut results = Vec::new();
     let mut any_failure = false;
@@ -44,22 +49,13 @@ pub fn run_proof(
                     continue;
                 }
 
-                let result = execute_lane(
-                    crate_name,
-                    lane,
-                    workspace_root,
-                    &logger,
-                    config,
-                )?;
+                let result = execute_lane(crate_name, lane, workspace_root, &logger, config)?;
 
                 if result.status == "fail" {
                     any_failure = true;
                     if config.fail_fast {
                         results.push(result);
-                        let summary = RunSummary {
-                            run_id,
-                            results,
-                        };
+                        let summary = RunSummary { run_id, results };
                         return Ok((1, summary));
                     }
                 }
@@ -104,7 +100,14 @@ fn execute_lane(
     let duration_ms = u64::try_from(start.elapsed().as_millis()).unwrap_or(u64::MAX);
     let exit_code = if status == "pass" { Some(0) } else { Some(1) };
 
-    logger.log_entry(crate_name, &lane.name, &cmd_str, exit_code, duration_ms, status)?;
+    logger.log_entry(
+        crate_name,
+        &lane.name,
+        &cmd_str,
+        exit_code,
+        duration_ms,
+        status,
+    )?;
 
     Ok(LaneResult {
         crate_name: crate_name.to_string(),

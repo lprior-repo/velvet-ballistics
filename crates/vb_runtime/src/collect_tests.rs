@@ -2200,8 +2200,8 @@ fn collect_pagination_extra_recovered_journal_rejects_corrupt_bytes() -> Result<
         .map_err(|e| format!("append: {e:?}"))?;
 
     let mut tracker = ActionReplayTracker::new();
-    let recovered =
-        recover_full_journal(&journal, run, &mut tracker).map_err(|e| format!("recover: {e:?}"))?;
+    let recovered = recover_full_journal(&journal, run, &mut tracker, &[], &[])
+        .map_err(|e| format!("recover: {e:?}"))?;
     let result = hydrate_collect_states_from_recovered_journal(&recovered);
     assert_invalid_workflow_reason(result.map(|_| ()), "collect pagination state decode failed");
     Ok(())
@@ -2250,7 +2250,7 @@ fn collect_pagination_extra_recovered_journal_round_trips_and_resumes_next_page(
         .map_err(|e| format!("append: {e:?}"))?;
 
     let mut tracker = ActionReplayTracker::new();
-    let recovered = recover_full_journal(&journal, run.run_id(), &mut tracker)
+    let recovered = recover_full_journal(&journal, run.run_id(), &mut tracker, &[], &[])
         .map_err(|e| format!("recover: {e:?}"))?;
     let mut hydrated = hydrate_collect_states_from_recovered_journal(&recovered)
         .map_err(|e| format!("hydrate: {e:?}"))?;
@@ -2313,7 +2313,7 @@ fn collect_pagination_extra_recovered_journal_rejects_identity_mismatch() -> Res
         .map_err(|e| format!("append: {e:?}"))?;
 
     let mut tracker = ActionReplayTracker::new();
-    let recovered = recover_full_journal(&journal, durable_run, &mut tracker)
+    let recovered = recover_full_journal(&journal, durable_run, &mut tracker, &[], &[])
         .map_err(|e| format!("recover: {e:?}"))?;
     let result = hydrate_collect_states_from_recovered_journal(&recovered);
     assert_invalid_workflow_reason(

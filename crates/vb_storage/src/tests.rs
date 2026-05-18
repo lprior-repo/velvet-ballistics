@@ -1686,7 +1686,7 @@ mod tests {
         append_journal_event(&journal, &event).expect("append_journal_event must succeed");
 
         let mut tracker = ActionReplayTracker::new();
-        let replayed = replay_journal(&journal, run, &mut tracker);
+        let replayed = replay_journal(&journal, run, &mut tracker, &[], &[]);
 
         let replayed = replayed.expect("replay_journal should succeed");
         assert_eq!(replayed, vec![event]);

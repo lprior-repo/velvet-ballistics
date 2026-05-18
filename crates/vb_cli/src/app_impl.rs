@@ -2574,7 +2574,7 @@ fn cmd_replay(run_id: &str, db: &std::path::Path, output: OutputFormat) -> ExitC
     };
 
     let mut tracker = vb_storage::recovery::ActionReplayTracker::new();
-    match vb_storage::recovery::recover_full_journal(&journal, rid, &mut tracker) {
+    match vb_storage::recovery::recover_full_journal(&journal, rid, &mut tracker, &[], &[]) {
         Ok(events) => {
             let terminal_name = vb_storage::recovery::extract_terminal(&events)
                 .map(|e| commands_diff::event_name(e).to_string());

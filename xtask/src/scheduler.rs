@@ -64,11 +64,8 @@ fn build_dependency_graph(crates: &[CrateInfo]) -> DepGraph {
 }
 
 fn topological_levels(graph: &DepGraph, max_jobs: usize) -> Vec<ScheduleLevel> {
-    let mut in_degree: HashMap<&str, usize> = graph
-        .nodes
-        .iter()
-        .map(|n| (n.as_str(), 0usize))
-        .collect();
+    let mut in_degree: HashMap<&str, usize> =
+        graph.nodes.iter().map(|n| (n.as_str(), 0usize)).collect();
 
     for (node, deps) in &graph.edges {
         for _dep in deps {
@@ -149,7 +146,11 @@ mod tests {
 
     #[test]
     fn test_independent_crates() {
-        let crates = vec![make_crate("a", &[]), make_crate("b", &[]), make_crate("c", &[])];
+        let crates = vec![
+            make_crate("a", &[]),
+            make_crate("b", &[]),
+            make_crate("c", &[]),
+        ];
         let schedule = build_schedule(&crates, 4);
         assert_eq!(schedule.levels.len(), 1);
         assert_eq!(schedule.levels[0].crates.len(), 3);

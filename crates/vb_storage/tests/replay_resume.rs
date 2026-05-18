@@ -101,8 +101,8 @@ fn resume_tail_replays_exactly_when_journal_is_reopened() -> Result<(), String> 
     );
 
     let mut tracker = ActionReplayTracker::new();
-    let full_replay =
-        recover_full_journal(&journal, run, &mut tracker).map_err(|error| error.to_string())?;
+    let full_replay = recover_full_journal(&journal, run, &mut tracker, &[], &[])
+        .map_err(|error| error.to_string())?;
     assert_eq!(
         full_replay, expected,
         "full recovery replay must match the exact durable resume journal"
@@ -151,8 +151,8 @@ fn resume_tail_replay_is_deterministic_when_read_twice() -> Result<(), String> {
             .events_for_run(run)
             .map_err(|error| error.to_string())?;
         let mut tracker = ActionReplayTracker::new();
-        let full =
-            recover_full_journal(&journal, run, &mut tracker).map_err(|error| error.to_string())?;
+        let full = recover_full_journal(&journal, run, &mut tracker, &[], &[])
+            .map_err(|error| error.to_string())?;
         let action_resolved = tracker.is_resolved(vb_core::ActionId::new(99), StepIdx::new(1));
         (replay, full, action_resolved)
     };
@@ -163,8 +163,8 @@ fn resume_tail_replay_is_deterministic_when_read_twice() -> Result<(), String> {
             .events_for_run(run)
             .map_err(|error| error.to_string())?;
         let mut tracker = ActionReplayTracker::new();
-        let full =
-            recover_full_journal(&journal, run, &mut tracker).map_err(|error| error.to_string())?;
+        let full = recover_full_journal(&journal, run, &mut tracker, &[], &[])
+            .map_err(|error| error.to_string())?;
         let action_resolved = tracker.is_resolved(vb_core::ActionId::new(99), StepIdx::new(1));
         (replay, full, action_resolved)
     };
@@ -216,7 +216,7 @@ fn resume_tail_replay_rejects_sequence_gap_before_resume_continuation() -> Resul
     assert_eq!(actual, EventSeq::new(3));
 
     let mut tracker = ActionReplayTracker::new();
-    let full_result = recover_full_journal(&journal, run, &mut tracker);
+    let full_result = recover_full_journal(&journal, run, &mut tracker, &[], &[]);
     let Err(vb_storage::recovery::RecoveryError::Journal(JournalError::SequenceGap {
         expected,
         actual,

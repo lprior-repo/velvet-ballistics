@@ -208,7 +208,11 @@ fn cmd_proof_list(
         for c in &filtered {
             write_stdout(format_args!("{}:", c.name))?;
             for lane in &available_lanes {
-                let req = if lane.required { "required" } else { "optional" };
+                let req = if lane.required {
+                    "required"
+                } else {
+                    "optional"
+                };
                 write_stdout(format_args!("  {} ({})", lane.name, req))?;
             }
         }
@@ -489,7 +493,9 @@ fn cmd_proof_drift(sections: Option<&[usize]>) -> anyhow::Result<()> {
     use std::collections::HashMap;
 
     write_stdout(format_args!("Proof drift checker"))?;
-    write_stdout(format_args!("Checking spec alignment with proof obligations..."))?;
+    write_stdout(format_args!(
+        "Checking spec alignment with proof obligations..."
+    ))?;
 
     let obligations = proof::load_proof_obligations()
         .map_err(|e| anyhow::anyhow!("Failed to load proof obligations: {e}"))?;

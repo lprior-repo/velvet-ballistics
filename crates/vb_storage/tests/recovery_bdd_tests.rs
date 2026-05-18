@@ -1809,27 +1809,6 @@ fn policy_digest_match_returns_ok() {
     );
 }
 
-<<<<<<< HEAD
-    match result {
-        Err(RecoveryError::PolicyDigestMismatch { step: found }) => {
-            assert_eq!(found, StepIdx::ZERO, "step must match");
-        }
-        Ok(_) => {
-            // This ignored test must still fail when run explicitly so the
-            // deferred GAP cannot become a hollow pass.
-            panic!(
-                "PolicyDigestMismatch not yet implemented: recover_full_journal returned Ok \
-                 instead of Err(RecoveryError::PolicyDigestMismatch). See vb-ty9."
-            );
-        }
-        Err(other) => {
-            panic!(
-                "expected PolicyDigestMismatch for policy digest mismatch, got {:?}",
-                other
-            );
-        }
-    }
-=======
 #[test]
 fn check_policy_digests_empty_input_returns_ok() {
     // Empty input returns Ok — no guessing from missing data
@@ -1839,7 +1818,6 @@ fn check_policy_digests_empty_input_returns_ok() {
         result.is_ok(),
         "empty policy input should return Ok: {result:?}"
     );
->>>>>>> polecat/vb-2bzz
 }
 
 // ---------------------------------------------------------------------------

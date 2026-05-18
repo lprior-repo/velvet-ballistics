@@ -73,7 +73,7 @@ mod vb_h6ix_tests {
         ];
 
         let mut tracker = ActionReplayTracker::new();
-        let result = replay_events(&events, &mut tracker);
+        let result = replay_events(&events, &mut tracker, &[]);
 
         let Ok(_replayed) = result else {
             panic!("replay_events should succeed, got {:?}", result);
@@ -127,7 +127,7 @@ mod vb_h6ix_tests {
         ];
 
         let mut tracker = ActionReplayTracker::new();
-        let result = replay_events(&events, &mut tracker);
+        let result = replay_events(&events, &mut tracker, &[]);
 
         let Ok(replayed) = result else {
             panic!("replay_events should succeed, got {:?}", result);
@@ -183,7 +183,7 @@ mod vb_h6ix_tests {
         ];
 
         let mut tracker = ActionReplayTracker::new();
-        let result = replay_events(&events, &mut tracker);
+        let result = replay_events(&events, &mut tracker, &[]);
 
         let Ok(_) = result else {
             panic!("replay_events should succeed");
@@ -239,7 +239,7 @@ mod vb_h6ix_tests {
         ];
 
         let mut tracker = ActionReplayTracker::new();
-        let result = replay_events(&events, &mut tracker);
+        let result = replay_events(&events, &mut tracker, &[]);
 
         let Ok(_) = result else {
             panic!("replay_events should succeed");
@@ -325,7 +325,7 @@ mod vb_h6ix_tests {
         ];
 
         let mut tracker = ActionReplayTracker::new();
-        let result = replay_events(&events, &mut tracker);
+        let result = replay_events(&events, &mut tracker, &[]);
 
         let Ok(replayed) = result else {
             panic!("replay_events should succeed");
@@ -375,7 +375,7 @@ mod vb_h6ix_tests {
         ];
 
         let mut tracker = ActionReplayTracker::new();
-        let result = replay_events(&events, &mut tracker);
+        let result = replay_events(&events, &mut tracker, &[]);
 
         let Ok(replayed) = result else {
             panic!("replay_events should succeed");
@@ -609,14 +609,14 @@ mod vb_h6ix_tests {
 
         // First replay
         let mut tracker_a = ActionReplayTracker::new();
-        let result_a = replay_events(&events, &mut tracker_a);
+        let result_a = replay_events(&events, &mut tracker_a, &[]);
         let Ok(replayed_a) = result_a else {
             panic!("first replay should succeed");
         };
 
         // Second replay with same events
         let mut tracker_b = ActionReplayTracker::new();
-        let result_b = replay_events(&events, &mut tracker_b);
+        let result_b = replay_events(&events, &mut tracker_b, &[]);
         let Ok(replayed_b) = result_b else {
             panic!("second replay should succeed");
         };
@@ -662,7 +662,7 @@ mod vb_h6ix_tests {
         ];
 
         let mut tracker = ActionReplayTracker::new();
-        let result = replay_events(&events, &mut tracker);
+        let result = replay_events(&events, &mut tracker, &[]);
 
         let Err(err) = result else {
             panic!("out-of-order steps should cause ReplayDivergence");
@@ -721,7 +721,7 @@ mod vb_h6ix_tests {
         // Mark attempt 1 action as completed (simulating prior replay)
         tracker.mark_completed(action, step);
 
-        let result = replay_events(&events, &mut tracker);
+        let result = replay_events(&events, &mut tracker, &[]);
 
         let Err(err) = result else {
             panic!("duplicate action should be blocked");
@@ -781,7 +781,7 @@ mod vb_h6ix_tests {
         ];
 
         let mut tracker = ActionReplayTracker::new();
-        let result = replay_events(&events, &mut tracker);
+        let result = replay_events(&events, &mut tracker, &[]);
 
         let Ok(replayed) = result else {
             panic!("replay should succeed");
@@ -804,7 +804,7 @@ mod vb_h6ix_tests {
         let events: Vec<JournalEvent> = vec![];
         let mut tracker = ActionReplayTracker::new();
 
-        let result = replay_events(&events, &mut tracker);
+        let result = replay_events(&events, &mut tracker, &[]);
 
         let Ok(replayed) = result else {
             panic!("empty replay should succeed");

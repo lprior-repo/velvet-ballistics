@@ -241,7 +241,7 @@ pub fn cmd_replay(run_id: &str, db: &Path) -> ExitCode {
     };
 
     let mut tracker = vb_storage::recovery::ActionReplayTracker::new();
-    match vb_storage::recovery::recover_full_journal(&journal, rid, &mut tracker) {
+    match vb_storage::recovery::recover_full_journal(&journal, rid, &mut tracker, &[], &[]) {
         Ok(events) => {
             outln!("recovered {} event(s) for run {run_id}", events.len());
             for event in &events {

@@ -582,7 +582,7 @@ fn replay_restores_slot_values_in_correct_sequence_order() {
     let mut tracker = ActionReplayTracker::new();
 
     // When: Recover full journal
-    let result = recover_full_journal(&journal, run, &mut tracker);
+    let result = recover_full_journal(&journal, run, &mut tracker, &[], &[]);
 
     // Then: Recovery succeeds
     assert!(
@@ -745,7 +745,7 @@ fn replay_detects_decreasing_step_indices() {
     let mut tracker = ActionReplayTracker::new();
 
     // When: Replay events
-    let result = replay_events(&events, &mut tracker);
+    let result = replay_events(&events, &mut tracker, &[]);
 
     // Then: Should return ReplayDivergence
     match result {
@@ -820,7 +820,7 @@ fn replay_blocks_duplicate_action_completion() {
     let mut tracker = ActionReplayTracker::new();
 
     // When: Replay events
-    let result = replay_events(&events, &mut tracker);
+    let result = replay_events(&events, &mut tracker, &[]);
 
     // Then: Should return NonIdempotentActionBlocked for duplicate
     match result {
@@ -1039,7 +1039,7 @@ fn recover_full_journal_returns_no_recovery_data_when_journal_is_empty() {
     let mut tracker = ActionReplayTracker::new();
 
     // When: Recover full journal for nonexistent run
-    let result = recover_full_journal(&journal, nonexistent_run, &mut tracker);
+    let result = recover_full_journal(&journal, nonexistent_run, &mut tracker, &[], &[]);
 
     // Then: Should return NoRecoveryData
     match result {
@@ -1080,7 +1080,7 @@ fn recover_full_journal_returns_no_recovery_data_for_wrong_run() {
     let mut tracker = ActionReplayTracker::new();
 
     // When: Recover full journal for run B (not in journal)
-    let result = recover_full_journal(&journal, run_b, &mut tracker);
+    let result = recover_full_journal(&journal, run_b, &mut tracker, &[], &[]);
 
     // Then: Should return NoRecoveryData for run B
     match result {
@@ -1108,7 +1108,7 @@ fn replay_events_handles_empty_slice() {
     let mut tracker = ActionReplayTracker::new();
 
     // When: Replay empty slice
-    let result = replay_events(&events, &mut tracker);
+    let result = replay_events(&events, &mut tracker, &[]);
 
     // Then: Should succeed with empty Vec
     assert!(
@@ -1180,7 +1180,7 @@ fn replay_events_filters_older_attempts() {
     let mut tracker = ActionReplayTracker::new();
 
     // When: Replay events
-    let result = replay_events(&events, &mut tracker);
+    let result = replay_events(&events, &mut tracker, &[]);
 
     // Then: Should succeed
     assert!(result.is_ok(), "replay_events should succeed: {:?}", result);
@@ -1221,7 +1221,7 @@ fn recover_full_journal_with_single_event() {
     let mut tracker = ActionReplayTracker::new();
 
     // When: Recover full journal
-    let result = recover_full_journal(&journal, run, &mut tracker);
+    let result = recover_full_journal(&journal, run, &mut tracker, &[], &[]);
 
     // Then: Should succeed with single event
     assert!(result.is_ok(), "recover should succeed: {:?}", result);

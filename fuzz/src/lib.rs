@@ -300,7 +300,7 @@ pub fn fuzz_replay_events(data: &[u8]) {
         return;
     };
     let mut tracker = vb_storage::recovery::ActionReplayTracker::new();
-    let _result = vb_storage::recovery::replay_events(&events, &mut tracker);
+    let _result = vb_storage::recovery::replay_events(&events, &mut tracker, &[]);
 }
 
 /// Exercises terminal extraction over arbitrary postcard-encoded event vectors.
@@ -2221,7 +2221,7 @@ fn assert_malformed_decode_is_typed(error: vb_storage::JournalError) {
 /// - Valid frame -> successful decode
 pub fn fuzz_ipc_frame_boundary(data: &[u8]) {
     use vb_ipc::frame::{decode_frame_header, validate_frame_magic};
-    use vb_ipc::{IpcError, MaxPayloadBytes, IPC_HEADER_LEN};
+    use vb_ipc::{IPC_HEADER_LEN, IpcError, MaxPayloadBytes};
 
     // R1.1: Empty input - must not panic
     if data.is_empty() {
@@ -2327,7 +2327,9 @@ fn assert_typed_ipc_error(error: vb_ipc::IpcError) {
 /// - Invalid record kind -> UnknownRecordKind or RecordKindFamilyMismatch
 /// - Valid envelope -> successful decode
 pub fn fuzz_storage_envelope_boundary(data: &[u8]) {
-    use vb_storage::{decode_record, JournalError, MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES};
+    use vb_storage::{
+        JournalError, MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES, decode_record,
+    };
 
     // R2.1: Empty input - must return typed error
     if data.is_empty() {
@@ -2445,7 +2447,9 @@ fn assert_typed_journal_error(error: vb_storage::JournalError) {
 /// - Length prefix attack -> typed error
 /// - Empty/single-byte/max-size payloads
 pub fn fuzz_binary_payload_boundary(data: &[u8]) {
-    use vb_storage::{decode_record, JournalError, MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES};
+    use vb_storage::{
+        JournalError, MAGIC_JOURNAL_EVENT, MAX_JOURNAL_EVENT_PAYLOAD_BYTES, decode_record,
+    };
 
     // R3.1: Empty input
     if data.is_empty() {
@@ -2520,15 +2524,14 @@ pub fn fuzz_binary_payload_boundary(data: &[u8]) {
 /// - Missing required fields -> IncompleteDiscoveryInput
 /// - Valid inventory -> successful parse
 pub fn fuzz_external_input_adapter_boundary(data: &[u8]) {
-    use vb_boundary_inventory::boundary_inventory::{parse_inventory, validate_evidence_reference_bytes};
+    use vb_boundary_inventory::boundary_inventory::{
+        parse_inventory, validate_evidence_reference_bytes,
+    };
 
     // R4.1: Empty input - must not panic
     if data.is_empty() {
         let result = parse_inventory(data);
-        assert!(
-            result.is_err(),
-            "empty inventory input must return error"
-        );
+        assert!(result.is_err(), "empty inventory input must return error");
         return;
     }
 
@@ -2551,7 +2554,9 @@ pub fn fuzz_external_input_adapter_boundary(data: &[u8]) {
 }
 
 /// Asserts that a boundary inventory error is a known typed variant.
-fn assert_typed_boundary_error(error: vb_boundary_inventory::boundary_inventory::BoundaryInventoryError) {
+fn assert_typed_boundary_error(
+    error: vb_boundary_inventory::boundary_inventory::BoundaryInventoryError,
+) {
     use vb_boundary_inventory::boundary_inventory::BoundaryInventoryError;
     match error {
         BoundaryInventoryError::WorkspaceNotDiscoverable

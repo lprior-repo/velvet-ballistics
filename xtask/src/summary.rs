@@ -59,10 +59,7 @@ fn format_text_summary(summary: &RunSummary) -> String {
         lines.push(format!("[{crate_name}]"));
         for r in results {
             let icon = status_icon(&r.status);
-            lines.push(format!(
-                "  {} {} ({}ms)",
-                icon, r.lane, r.duration_ms
-            ));
+            lines.push(format!("  {} {} ({}ms)", icon, r.lane, r.duration_ms));
         }
         lines.push(String::new());
     }
@@ -81,9 +78,18 @@ fn format_text_summary(summary: &RunSummary) -> String {
 fn format_json_summary(summary: &RunSummary) -> String {
     let output: HashMap<&str, serde_json::Value> = [
         ("run_id", serde_json::Value::String(summary.run_id.clone())),
-        ("pass", serde_json::Value::Number(summary.pass_count().into())),
-        ("fail", serde_json::Value::Number(summary.fail_count().into())),
-        ("skip", serde_json::Value::Number(summary.skip_count().into())),
+        (
+            "pass",
+            serde_json::Value::Number(summary.pass_count().into()),
+        ),
+        (
+            "fail",
+            serde_json::Value::Number(summary.fail_count().into()),
+        ),
+        (
+            "skip",
+            serde_json::Value::Number(summary.skip_count().into()),
+        ),
         (
             "total_ms",
             serde_json::Value::Number(summary.total_duration_ms().into()),
@@ -98,9 +104,7 @@ fn format_json_summary(summary: &RunSummary) -> String {
 fn group_by_crate(results: &[LaneResult]) -> HashMap<String, Vec<&LaneResult>> {
     let mut map: HashMap<String, Vec<&LaneResult>> = HashMap::new();
     for r in results {
-        map.entry(r.crate_name.clone())
-            .or_default()
-            .push(r);
+        map.entry(r.crate_name.clone()).or_default().push(r);
     }
     map
 }

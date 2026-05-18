@@ -12,7 +12,12 @@ pub struct Lane {
 
 pub fn lane_command(lane: &Lane, crate_name: &str, workspace_root: &Path) -> Vec<String> {
     match lane.name.as_str() {
-        "test" => vec!["cargo".into(), "test".into(), "-p".into(), crate_name.into()],
+        "test" => vec![
+            "cargo".into(),
+            "test".into(),
+            "-p".into(),
+            crate_name.into(),
+        ],
         "clippy" => vec![
             "cargo".into(),
             "clippy".into(),
@@ -29,7 +34,12 @@ pub fn lane_command(lane: &Lane, crate_name: &str, workspace_root: &Path) -> Vec
             "-p".into(),
             crate_name.into(),
         ],
-        "kani" => vec!["cargo".into(), "kani".into(), "-p".into(), crate_name.into()],
+        "kani" => vec![
+            "cargo".into(),
+            "kani".into(),
+            "-p".into(),
+            crate_name.into(),
+        ],
         "miri" => vec![
             "cargo".into(),
             "+nightly".into(),
@@ -91,10 +101,7 @@ fn tla_command(crate_name: &str, workspace_root: &Path) -> Vec<String> {
         .join("verification")
         .join("tla")
         .join(format!("{crate_name}.tla"));
-    vec![
-        "tla2tools".into(),
-        format!("{}", tla_file.display()),
-    ]
+    vec!["tla2tools".into(), format!("{}", tla_file.display())]
 }
 
 pub fn detect_available_lanes(workspace_root: &Path) -> Vec<Lane> {

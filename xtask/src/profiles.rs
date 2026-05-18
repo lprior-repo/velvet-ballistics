@@ -24,8 +24,8 @@ impl Profile {
                 "test", "clippy", "nextest", "kani", "miri", "loom", "verus", "tla", "flux",
             ],
             Profile::All => &[
-                "test", "clippy", "nextest", "kani", "miri", "loom", "fuzz", "mutants",
-                "coverage", "verus", "tla", "flux",
+                "test", "clippy", "nextest", "kani", "miri", "loom", "fuzz", "mutants", "coverage",
+                "verus", "tla", "flux",
             ],
         }
     }
@@ -73,7 +73,10 @@ mod tests {
 
     #[test]
     fn test_profile_monotonicity() {
-        assert!(is_monotonic(), "Profile lane sets must be monotonically increasing");
+        assert!(
+            is_monotonic(),
+            "Profile lane sets must be monotonically increasing"
+        );
     }
 
     #[test]

@@ -101,7 +101,7 @@ fn recover_full_journal_filters_to_latest_attempt() {
     // Recover and verify
     let journal = open_journal(&dir);
     let mut tracker = ActionReplayTracker::new();
-    let result = recover_full_journal(&journal, run, &mut tracker);
+    let result = recover_full_journal(&journal, run, &mut tracker, &[], &[]);
 
     let Ok(replayed) = result else {
         panic!("recover_full_journal should succeed, got {:?}", result);
@@ -164,7 +164,7 @@ fn stale_terminal_does_not_win_over_failed() {
 
     let journal = open_journal(&dir);
     let mut tracker = ActionReplayTracker::new();
-    let result = recover_full_journal(&journal, run, &mut tracker);
+    let result = recover_full_journal(&journal, run, &mut tracker, &[], &[]);
 
     let Ok(replayed) = result else {
         panic!("recover_full_journal should succeed");
@@ -206,7 +206,7 @@ fn full_journal_recovery_with_no_data_fails() {
 
     let journal = open_journal(&dir);
     let mut tracker = ActionReplayTracker::new();
-    let result = recover_full_journal(&journal, RunId::new(9999), &mut tracker);
+    let result = recover_full_journal(&journal, RunId::new(9999), &mut tracker, &[], &[]);
 
     let Err(err) = result else {
         panic!("empty journal should produce NoRecoveryData");
@@ -300,7 +300,7 @@ fn all_events_returned_including_stale_integration() {
 
     let journal = open_journal(&dir);
     let mut tracker = ActionReplayTracker::new();
-    let result = recover_full_journal(&journal, run, &mut tracker);
+    let result = recover_full_journal(&journal, run, &mut tracker, &[], &[]);
 
     let Ok(replayed) = result else {
         panic!("recover_full_journal should succeed");
@@ -402,7 +402,7 @@ fn tracker_only_records_from_max_attempt() {
 
     let journal = open_journal(&dir);
     let mut tracker = ActionReplayTracker::new();
-    let result = recover_full_journal(&journal, run, &mut tracker);
+    let result = recover_full_journal(&journal, run, &mut tracker, &[], &[]);
 
     let Ok(_) = result else {
         panic!("recover_full_journal should succeed");
@@ -473,7 +473,7 @@ fn stale_pending_actions_excluded_integration() {
 
     let journal = open_journal(&dir);
     let mut tracker = ActionReplayTracker::new();
-    let result = recover_full_journal(&journal, run, &mut tracker);
+    let result = recover_full_journal(&journal, run, &mut tracker, &[], &[]);
 
     let Ok(replayed) = result else {
         panic!("recover_full_journal should succeed");
@@ -542,7 +542,7 @@ fn replay_determinism_integration() {
     // First recovery
     let journal = open_journal(&dir);
     let mut tracker_a = ActionReplayTracker::new();
-    let result_a = recover_full_journal(&journal, run, &mut tracker_a);
+    let result_a = recover_full_journal(&journal, run, &mut tracker_a, &[], &[]);
     let Ok(replayed_a) = result_a else {
         panic!("first recovery should succeed");
     };
@@ -551,7 +551,7 @@ fn replay_determinism_integration() {
     drop(journal);
     let journal = open_journal(&dir);
     let mut tracker_b = ActionReplayTracker::new();
-    let result_b = recover_full_journal(&journal, run, &mut tracker_b);
+    let result_b = recover_full_journal(&journal, run, &mut tracker_b, &[], &[]);
     let Ok(replayed_b) = result_b else {
         panic!("second recovery should succeed");
     };

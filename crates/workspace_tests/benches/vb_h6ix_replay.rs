@@ -65,7 +65,7 @@ fn bench_replay_single_attempt(c: &mut Criterion) {
         |b| {
             b.iter(|| {
                 let mut tracker = ActionReplayTracker::new();
-                black_box(replay_events(black_box(&events), &mut tracker))
+                black_box(replay_events(black_box(&events), &mut tracker, &[]))
             })
         },
     );
@@ -116,7 +116,7 @@ fn bench_replay_mixed_attempts(c: &mut Criterion) {
         |b| {
             b.iter(|| {
                 let mut tracker = ActionReplayTracker::new();
-                black_box(replay_events(black_box(&events), &mut tracker))
+                black_box(replay_events(black_box(&events), &mut tracker, &[]))
             })
         },
     );
@@ -165,7 +165,7 @@ fn bench_replay_many_stale_events(c: &mut Criterion) {
         |b| {
             b.iter(|| {
                 let mut tracker = ActionReplayTracker::new();
-                black_box(replay_events(black_box(&events), &mut tracker))
+                black_box(replay_events(black_box(&events), &mut tracker, &[]))
             })
         },
     );
