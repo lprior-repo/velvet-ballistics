@@ -563,7 +563,8 @@ tasks:
       - rust
     inputs:
       - 'contracts/**/*'
-      - 'xtask/src/contracts.rs'
+      - 'xtask/Cargo.toml'
+      - 'xtask/src/**/*.rs'
     options:
       runInCI: true
 

@@ -1,8 +1,9 @@
 package validation
 
 #ContractMeta: {
-	schema_version: string
+	schema_version: "1.0.0"
 	kind: "accepted_artifacts"
+	...
 }
 
 #AcceptedArtifacts: #ContractMeta & {

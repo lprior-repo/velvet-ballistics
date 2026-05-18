@@ -84,6 +84,7 @@ fn parse_legacy(command: &str) -> Option<&'static str> {
         "loom" => Some("loom"),
         "list-crates" => Some("list-crates"),
         "proof" => Some("proof"),
+        "contracts" => Some("contracts"),
         _ => None,
     }
 }
@@ -113,6 +114,30 @@ fn validate_bead_option(command: &str, tokens: &[String]) -> Result<(), XtaskCom
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn contracts_remains_routed_to_legacy_cli() {
+        let parsed = parse_xtask_command(["xtask".into(), "contracts".into(), "--check".into()]);
+
+        assert_eq!(parsed, Ok(XtaskCommand::Legacy("contracts")));
+    }
+
+    #[test]
+    fn unknown_top_level_command_still_fails_closed() {
+        let parsed = parse_xtask_command(["xtask".into(), "not-a-command".into()]);
+
+        assert_eq!(
+            parsed,
+            Err(XtaskCommandError::UnknownCommand {
+                command: "not-a-command".to_string()
+            })
+        );
+    }
 }
 
 fn validate_format_option(command: &str, tokens: &[String]) -> Result<(), XtaskCommandError> {

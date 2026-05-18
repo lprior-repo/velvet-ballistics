@@ -27,7 +27,6 @@ pub enum ContractKind {
 
 impl ContractKind {
     /// All recognised values in ordinal order.
-    #[allow(dead_code)]
     pub const fn all_values() -> &'static [Self] {
         &[
             Self::CliEnvelope,
@@ -39,31 +38,32 @@ impl ContractKind {
         ]
     }
 
+    /// Stable wire spelling for this contract kind.
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::CliEnvelope => "cli_envelope",
+            Self::UiTokens => "ui_tokens",
+            Self::AcceptedArtifacts => "accepted_artifacts",
+            Self::EvidenceBundle => "evidence_bundle",
+            Self::Diagnostics => "diagnostics",
+            Self::GateOutput => "gate_output",
+        }
+    }
+
     /// Convert a string slice into a recognised ContractKind, or the string
     /// itself when it is not recognised (for error reporting).
     pub fn parse(s: &str) -> Result<Self, String> {
-        match s {
-            "cli_envelope" => Ok(Self::CliEnvelope),
-            "ui_tokens" => Ok(Self::UiTokens),
-            "accepted_artifacts" => Ok(Self::AcceptedArtifacts),
-            "evidence_bundle" => Ok(Self::EvidenceBundle),
-            "diagnostics" => Ok(Self::Diagnostics),
-            "gate_output" => Ok(Self::GateOutput),
-            other => Err(other.to_string()),
-        }
+        Self::all_values()
+            .iter()
+            .copied()
+            .find(|kind| kind.as_str() == s)
+            .ok_or_else(|| s.to_string())
     }
 }
 
 impl fmt::Display for ContractKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::CliEnvelope => write!(f, "cli_envelope"),
-            Self::UiTokens => write!(f, "ui_tokens"),
-            Self::AcceptedArtifacts => write!(f, "accepted_artifacts"),
-            Self::EvidenceBundle => write!(f, "evidence_bundle"),
-            Self::Diagnostics => write!(f, "diagnostics"),
-            Self::GateOutput => write!(f, "gate_output"),
-        }
+        f.write_str(self.as_str())
     }
 }
 
@@ -143,7 +143,6 @@ pub enum ContractError {
     CueVetFailed {
         file: String,
     },
-    #[allow(dead_code)]
     VersionMonotonicityBreach {
         file: String,
         expected: String,
@@ -241,7 +240,6 @@ pub fn compare_semver(a: &str, b: &str) -> Result<SemverCmp, String> {
 // ---------------------------------------------------------------------------
 
 /// Parse a `cue vet` exit code. Returns Ok(()) for exit 0, Err for non-zero.
-#[allow(dead_code)]
 pub fn parse_vet_exit_code(code: i32) -> Result<(), String> {
     if code == 0 {
         Ok(())
@@ -294,21 +292,25 @@ pub fn discover_contracts(contracts_dir: &Path) -> Result<DiscoveryReport, Strin
         ));
     }
 
-    // Collect all .cue files recursively.
+    // Collect all discoverable contract .cue files recursively.
     let mut cue_files: Vec<PathBuf> = Vec::new();
     collect_cue_files(contracts_dir, contracts_dir, &mut cue_files)
         .map_err(|e| format!("Failed to walk contracts directory: {e}"))?;
 
     // Sort for deterministic output (INV-005).
     cue_files.sort();
+    let contract_files: Vec<PathBuf> = cue_files
+        .into_iter()
+        .filter(|path| is_contract_discovery_candidate(path))
+        .collect();
 
     let mut files = Vec::new();
     let mut errors: Vec<String> = Vec::new();
     let mut summary = ReportSummary::new();
-    summary.total = u32::try_from(cue_files.len())
+    summary.total = u32::try_from(contract_files.len())
         .map_err(|_| String::from("too many contract files to summarize"))?;
 
-    for file_rel in &cue_files {
+    for file_rel in &contract_files {
         // Build absolute path for file I/O; keep relative path for reports.
         let file_abs = contracts_dir.join(file_rel);
         let result = validate_single_file(&file_abs, contracts_dir);
@@ -353,13 +355,12 @@ pub fn discover_contracts(contracts_dir: &Path) -> Result<DiscoveryReport, Strin
         match compare_semver(prev_ver, curr_ver) {
             Ok(SemverCmp::Greater) => {
                 // Monotonicity breach: previous file has a higher version.
-                let breach_msg = format!(
-                    "VERSION_MONOTONICITY_BREACH: {} expected >= {} got {}",
-                    files[i].path.display(),
-                    files[i - 1].schema_version,
-                    curr_ver
-                );
-                errors.push(breach_msg.clone());
+                let breach = ContractError::VersionMonotonicityBreach {
+                    file: files[i].path.display().to_string(),
+                    expected: files[i - 1].schema_version.clone(),
+                    actual: curr_ver.clone(),
+                };
+                errors.push(breach.to_string());
                 version_violations.push(VersionViolation {
                     file: files[i].path.clone(),
                     expected: files[i - 1].schema_version.clone(),
@@ -420,6 +421,13 @@ fn collect_cue_files(base: &Path, current: &Path, out: &mut Vec<PathBuf>) -> std
     Ok(())
 }
 
+fn is_contract_discovery_candidate(path: &Path) -> bool {
+    match path.file_name().and_then(|name| name.to_str()) {
+        Some("manifest.cue") => false,
+        Some(_) | None => true,
+    }
+}
+
 /// Validate a single .cue file: cue vet + field extraction.
 ///
 /// `file_path` must be an absolute path (used for file I/O).
@@ -446,7 +454,7 @@ fn validate_single_file(
         }
     };
 
-    if exit_code != 0 {
+    if parse_vet_exit_code(exit_code).is_err() {
         vet_errors.push(ContractError::CueVetFailed {
             file: relative_path.to_string_lossy().to_string(),
         });
@@ -801,6 +809,14 @@ schema_version: "1.0.0""#;
     fn test_discover_nonexistent_dir() {
         let result = discover_contracts(Path::new("/tmp/does_not_exist_xyz"));
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_manifest_is_not_a_contract_discovery_candidate() {
+        assert!(!is_contract_discovery_candidate(Path::new("manifest.cue")));
+        assert!(is_contract_discovery_candidate(Path::new(
+            "cli_envelope.cue"
+        )));
     }
 
     #[test]
