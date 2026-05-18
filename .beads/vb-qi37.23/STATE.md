@@ -1,17 +1,19 @@
 bead_id: vb-qi37.23
 bead_title: quality: Full gate evidence refresh
-phase: 11
-updated_at: 2026-05-18T21:41:55Z
-attempt: 3-of-7
+phase: 14
+updated_at: 2026-05-18T21:43:04Z
+attempt: 1-of-7
 # STATE
 
 source_checkout: /home/lewis/src/velvet-ballistics
 isolated_workspace: /home/lewis/src/go-skill-vb-qi37-23-current
-current_state: 13
-highest_state_reached: 13
-status: EVIDENCE_APPROVED_PENDING_LANDING
-workspace_update: fast-forwarded to origin/main e3a3f923 with blockers vb-ybi5/vb-cd6t/vb-v7x6/vb-vcmq closed
+current_state: 14
+highest_state_reached: 14
+status: BLOCKED_AT_BEAD_CLOSE
 state11_status: APPROVED
 state12_status: APPROVED
 state13_status: APPROVED
-waiver: WVR-API-001 for unsupported cargo public-api --workspace; compensating per-package public API evidence PASS
+git_landing: PASS
+bd_close: BLOCKED by open dependencies vb-oewy, vb-qi37.13, vb-qi37.22, vb-qi37.26, vb-ssei, vb-tw3b
+classification: BLOCK_RELEASE
+rerun_from: State 14
