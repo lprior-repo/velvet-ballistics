@@ -7,6 +7,7 @@ publish = false
 
 [dependencies]
 vb_ui_snapshot = { path = "../crates/vb_ui_snapshot" }
+vb_validate = { path = "../crates/vb_validate" }
 anyhow = "1"
 clap = { version = "4", features = ["derive"] }
 serde = { version = "1", features = ["derive"] }

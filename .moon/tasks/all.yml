@@ -5,6 +5,8 @@ fileGroups:
     - 'rust-toolchain.toml'
     - 'src/**/*'
     - 'crates/**/*'
+    - 'xtask/**/*'
+    - 'contracts/**/*'
     - 'benches/**/*'
     - 'examples/**/*'
     - 'build.rs'
@@ -542,6 +544,16 @@ tasks:
     options:
       cache: false
       runInCI: false
+
+  contracts:
+    command: 'cargo xtask contracts --check'
+    toolchains:
+      - rust
+    inputs:
+      - 'contracts/**/*'
+      - 'xtask/src/contracts.rs'
+    options:
+      runInCI: true
 
   quick:
     script: |

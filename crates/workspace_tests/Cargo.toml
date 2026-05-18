@@ -40,6 +40,22 @@ vb_doc = { path = "../vb_doc" }
 vb_yaml = { path = "../vb_yaml" }
 vb_cli = { path = "../vb_cli" }
 
+[[test]]
+name = "contracts_production_binding"
+path = "tests/contracts_production_binding.rs"
+
+[[test]]
+name = "contracts_as_data_props"
+path = "tests/contracts_as_data_props.rs"
+
+[[test]]
+name = "contracts_as_data_kani"
+path = "tests/contracts_as_data_kani.rs"
+
+[[test]]
+name = "contracts_integration"
+path = "tests/contracts_integration.rs"
+
 [[bench]]
 name = "velvet_ballastics"
 harness = false

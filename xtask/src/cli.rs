@@ -105,6 +105,15 @@ pub(crate) enum Commands {
         #[command(subcommand)]
         command: ProofCommands,
     },
+    #[command(name = "contracts")]
+    Contracts {
+        #[arg(long, default_value = "contracts")]
+        dir: String,
+        #[arg(long)]
+        json: bool,
+        #[arg(long)]
+        check: bool,
+    },
 }
 
 #[derive(Subcommand)]

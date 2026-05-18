@@ -67,6 +67,11 @@ pub const CODE_CAPABILITY_DUPLICATE: u16 = 0x0511;
 pub const CODE_ACCESSOR_PATH_TOO_DEEP: u16 = 0x0512;
 pub const CODE_ACCESSOR_SYMBOL_OUT_OF_BOUNDS: u16 = 0x0513;
 
+/// Contract-discovery errors (vb-6f02).
+pub const CODE_MISSING_SCHEMA_VERSION: u16 = 0x0601;
+pub const CODE_CUE_VET_FAILED: u16 = 0x0602;
+pub const CODE_VERSION_MONOTONICITY_BREACH: u16 = 0x0603;
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -164,6 +169,12 @@ mod tests {
             (
                 "CODE_ACCESSOR_SYMBOL_OUT_OF_BOUNDS",
                 CODE_ACCESSOR_SYMBOL_OUT_OF_BOUNDS,
+            ),
+            ("CODE_MISSING_SCHEMA_VERSION", CODE_MISSING_SCHEMA_VERSION),
+            ("CODE_CUE_VET_FAILED", CODE_CUE_VET_FAILED),
+            (
+                "CODE_VERSION_MONOTONICITY_BREACH",
+                CODE_VERSION_MONOTONICITY_BREACH,
             ),
         ]
     }
@@ -302,8 +313,24 @@ mod tests {
     }
 
     #[test]
+    fn contract_discovery_codes_are_in_e06xx_range() {
+        let contract_codes = [
+            CODE_MISSING_SCHEMA_VERSION,
+            CODE_CUE_VET_FAILED,
+            CODE_VERSION_MONOTONICITY_BREACH,
+        ];
+        for code in contract_codes {
+            let high = (code >> 8) & 0xFF;
+            assert_eq!(
+                high, 0x06,
+                "contract-discovery code {code:#06x} should be in E06xx range"
+            );
+        }
+    }
+
+    #[test]
     fn code_count_matches_total() {
         let codes = all_codes();
-        assert_eq!(codes.len(), 55, "expected exactly 55 diagnostic codes");
+           assert_eq!(codes.len(), 58, "expected exactly 58 diagnostic codes");
     }
 }

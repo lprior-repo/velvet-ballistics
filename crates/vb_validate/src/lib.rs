@@ -344,6 +344,16 @@ pub enum ValidationError {
         "NON_DETERMINISTIC_PATH: from node {from_node} to node {to_node} contains no suspension point"
     )]
     NonDeterministicPath { from_node: usize, to_node: usize },
+
+    // Contract-discovery errors (vb-6f02)
+    #[error("MISSING_SCHEMA_VERSION")]
+    MissingSchemaVersion,
+
+    #[error("CUE_VET_FAILED: {file}")]
+    CueVetFailed { file: String },
+
+    #[error("VERSION_MONOTONICITY_BREACH: {file} expected {expected} got {actual}")]
+    VersionMonotonicityBreach { file: String, expected: String, actual: String },
 }
 
 pub type ValidationResult<T> = Result<T, ValidationError>;

@@ -3,6 +3,7 @@
 
 mod ai_profile;
 mod cli;
+mod contracts;
 mod evidence;
 mod forbidden_scan;
 mod gates;
@@ -19,6 +20,7 @@ use std::path::{Path, PathBuf};
 use clap::Parser;
 
 use ai_profile::{cmd_ai_deep, cmd_ai_fast, cmd_ai_release};
+use contracts::cmd_contracts;
 use cli::{Cli, Commands, ProofCommands};
 use shell::write_stdout;
 use ui_overlap::cmd_ui_overlap_check;
@@ -80,6 +82,7 @@ fn run_legacy_cli(cli: Cli) -> anyhow::Result<()> {
             json,
         } => cmd_list_crates(&workspace_root, include, exclude, json),
         Commands::Proof { command } => cmd_proof(&workspace_root, command),
+        Commands::Contracts { dir, json, check } => cmd_contracts(&dir, json, check),
     }
 }
 
