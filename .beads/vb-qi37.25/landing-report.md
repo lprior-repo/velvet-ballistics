@@ -1,28 +1,40 @@
 bead_id: vb-qi37.25
 bead_title: quality: Workspace assertion sharpness and spelling gates
 phase: 14
-updated_at: 2026-05-18T14:42:00Z
-attempt: 1-of-7
-STATUS: BLOCKED
+updated_at: 2026-05-18T19:52:00Z
+attempt: 2-of-7
+STATUS: APPROVED
 
-Landing-skill attempt started after final-evidence-decision.md STATUS: APPROVED.
+# Landing report
 
-Commands/evidence:
-- jj describe -m "quality(vb-qi37.25): sharpen workspace and spelling gates": PASS; working copy described.
-- jj rebase -r @ -d main@origin: landing sync attempted; BLOCKED by conflicts.
+Source checkout (control-plane only): /home/lewis/src/velvet-ballistics
+Isolated workspace: /home/lewis/src/go-skill-vb-qi37-25
 
-Blocking conflict evidence from jj:
-- crates/vb_cli/src/args.rs: 2-sided conflict
-- crates/vb_codegen/src/lib.rs: 2-sided conflict
-- crates/vb_ipc/src/server/handlers.rs: 2-sided conflict
-- crates/vb_storage/src/admission.rs: 2-sided conflict
+## Preconditions verified
+- conflict-repair-report.md exists and is non-empty.
+- final-evidence-decision.md contains STATUS: APPROVED.
+- jj status before landing reported no file conflicts; only conflicted main bookmark remained.
 
-Classification: BLOCK_RELEASE
-owner_state: State 10 / landing conflict repair specialist for affected code owners
-rerun_from: State 10 conflict resolution, then State 11 full gate rerun, then States 12-14
+## Merge/main evidence
+- Command: `jj bookmark set main -r @`
+  - Result: moved main bookmark to working change yxzwqmzo commit 09e4aacc.
+- Command: `jj git push --bookmark main`
+  - Result: pushed main forward from aa9b48799c45 to 09e4aaccf527.
+- Command: `jj log -r 'main' --no-graph --template ...`
+  - Result: `yxzwqmzoszolynwzpszvmzqxkxzuzwpk 09e4aaccf527 quality(vb-qi37.25): sharpen workspace and spelling gates`.
 
-Main/remote status:
-- Not landed to main.
-- Not pushed to remote.
-- Bead not closed/synced.
-- Isolated workspace preserved as evidence at /home/lewis/src/go-skill-vb-qi37-25.
+## Bead close/sync evidence
+- Command: `bd close vb-qi37.25 --reason "Completed: exact workspace/package/binary/feature/dependency assertions and canonical spelling evidence landed after conflict repair; moon ci passed."`
+  - Result: closed vb-qi37.25.
+- Command: `bd dolt push`
+  - Result: Push complete.
+- Command: `bd show vb-qi37.25 --json`
+  - Result: status `closed`, close_reason recorded, closed_at 2026-05-18T19:50:25Z.
+
+## Verification context
+- conflict-repair-report.md reports `moon ci` PASS, 23 tasks completed, 10932 tests passed, 44 skipped.
+- State 13 final-evidence-decision.md approved landing.
+
+## Remote status
+- First code/artifact landing commit reached remote main via `jj git push --bookmark main`.
+- This landing-report/cleanup-report update requires final follow-up push as State 15 artifact completion.

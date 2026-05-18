@@ -38,3 +38,8 @@ landing_status: BLOCKED
 blocker: BLOCK_RELEASE landing rebase conflicts against main@origin
 owner_state: State 10 conflict repair specialist
 rerun_from: State 10 then State 11
+state: 15
+landing_status: APPROVED
+cleanup_status: APPROVED
+bead_status: closed
+remote_status: first landing push complete; final artifact push pending at report-write time
