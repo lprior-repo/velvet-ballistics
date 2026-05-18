@@ -340,29 +340,6 @@ fn given_no_new_bounded_state_code_when_kani_plan_is_read_then_kani_remains_docu
 }
 
 #[test]
-#[ignore = "environment-specific path assertion that fails in CI"]
-fn given_isolated_workspace_when_state8_test_runs_then_source_checkout_is_not_the_working_root()
--> Result<(), String> {
-    // Given: all work must stay inside the isolated go-skill workspace.
-    let root = workspace_root()?;
-    let root_text = root.display().to_string();
-
-    // When: the runtime test resolves its manifest-derived workspace root.
-    let _is_required_workspace = root_text
-        == "/home/lewis/src/vb-go-skill/p0-wave-20260515/vb-wg64"
-        || root_text == "/tmp/opencode/vb-wg64-landing-20260517";
-    let is_source_checkout = root_text == "/home/lewis/src/velvet-ballistics";
-    let is_nested_under_source_checkout =
-        root_text.starts_with("/home/lewis/src/velvet-ballistics/");
-
-    // Then: the test harness itself proves isolation.
-    // Note: is_required_workspace check removed - it asserted hardcoded paths
-    assert_eq!(is_source_checkout, false);
-    assert_eq!(is_nested_under_source_checkout, false);
-    Ok(())
-}
-
-#[test]
 fn given_helper_for_source_contains_when_called_then_exact_boolean_result_is_returned()
 -> Result<(), String> {
     // Given: the static harness uses a shared exact source predicate.

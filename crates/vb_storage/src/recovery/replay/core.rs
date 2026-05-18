@@ -87,10 +87,22 @@ pub fn replay_events(
                 }
             }
             JournalEvent::ActionCompletedEvent { action, step, .. } => {
+                if tracker.is_resolved(*action, *step) {
+                    return Err(RecoveryError::NonIdempotentActionBlocked {
+                        action: *action,
+                        step: *step,
+                    });
+                }
                 // Mark action as completed to prevent re-execution
                 tracker.mark_completed(*action, *step);
             }
             JournalEvent::ActionFailedEvent { action, step, .. } => {
+                if tracker.is_resolved(*action, *step) {
+                    return Err(RecoveryError::NonIdempotentActionBlocked {
+                        action: *action,
+                        step: *step,
+                    });
+                }
                 // Mark action as failed to prevent re-execution
                 tracker.mark_failed(*action, *step);
             }

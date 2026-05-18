@@ -1128,7 +1128,6 @@ fn frame_dimension_overflow_returns_typed_error() {
 // ---------------------------------------------------------------------------
 
 #[test]
-#[ignore = "LETHAL-1: hydrate_run_frame returns ReplayDivergence for snapshot run_id mismatch; contract B-012/POST-008 requires CorruptSnapshot. Production contract-implementation gap — implementer must update hydrate_run_frame to return RecoveryError::CorruptSnapshot."]
 fn corrupt_snapshot_returns_corrupt_snapshot_error() {
     let dir = TempDir::new().expect("temp dir should be created");
     let run = RunId::new(12001);
@@ -1728,13 +1727,13 @@ fn snapshot_tail_monotonic_slot_overwrite_preserves_tail_value() {
 // ---------------------------------------------------------------------------
 // MAJOR-1: ActionAbiMismatch — exact assertion
 // GA-015a / B-015: Non-idempotent action blocked returns typed error
-// NOTE: ActionAbiMismatch is defined but not yet returned by public recovery API.
-// This test documents the contract requirement. It will fail until the
-// implementation adds the ActionAbiMismatch code path.
+// NOTE: ActionAbiMismatch is defined but not yet reachable through the current
+// public recovery API because no action ABI digest lookup/input exists.
+// Tracked by vb-2bzz.
 // ---------------------------------------------------------------------------
 
 #[test]
-#[ignore = "LETHAL-3: ActionAbiMismatch error path not yet implemented in recover_full_journal; Ok(_) arm is hollow. Contract B-015 requires this error variant."]
+#[ignore = "vb-2bzz: ActionAbiMismatch not yet reachable because recovery lacks an action ABI digest lookup/input."]
 fn action_abi_mismatch_returns_typed_error() {
     let dir = TempDir::new().expect("temp dir should be created");
     let run = RunId::new(15001);
@@ -1780,8 +1779,12 @@ fn action_abi_mismatch_returns_typed_error() {
             assert_eq!(found, action_id, "action_id must match");
         }
         Ok(_) => {
-            // Implementation does not yet have ActionAbiMismatch code path
-            // Test is correct per contract; implementation needs updating
+            // This ignored test must still fail when run explicitly so the
+            // deferred GAP cannot become a hollow pass.
+            panic!(
+                "ActionAbiMismatch not yet implemented: recover_full_journal returned Ok \
+                 instead of Err(RecoveryError::ActionAbiMismatch). See vb-2bzz."
+            );
         }
         Err(other) => {
             panic!(
@@ -1794,13 +1797,13 @@ fn action_abi_mismatch_returns_typed_error() {
 
 // ---------------------------------------------------------------------------
 // MAJOR-1: PolicyDigestMismatch — exact assertion
-// NOTE: PolicyDigestMismatch is defined but not yet returned by public recovery API.
-// This test documents the contract requirement. It will fail until the
-// implementation adds the PolicyDigestMismatch code path.
+// NOTE: PolicyDigestMismatch is defined but not yet reachable through the
+// current public recovery API because no expected policy digest lookup/input
+// exists. Tracked by vb-2bzz.
 // ---------------------------------------------------------------------------
 
 #[test]
-#[ignore = "LETHAL-3: PolicyDigestMismatch error path not yet implemented in recover_full_journal; Ok(_) arm is hollow. Contract B-015 requires this error variant."]
+#[ignore = "vb-2bzz: PolicyDigestMismatch not yet reachable because recovery lacks an expected policy digest lookup/input."]
 fn policy_digest_mismatch_returns_typed_error() {
     let dir = TempDir::new().expect("temp dir should be created");
     let run = RunId::new(15002);
@@ -1836,7 +1839,12 @@ fn policy_digest_mismatch_returns_typed_error() {
             assert_eq!(found, StepIdx::ZERO, "step must match");
         }
         Ok(_) => {
-            // Implementation does not yet have PolicyDigestMismatch code path
+            // This ignored test must still fail when run explicitly so the
+            // deferred GAP cannot become a hollow pass.
+            panic!(
+                "PolicyDigestMismatch not yet implemented: recover_full_journal returned Ok \
+                 instead of Err(RecoveryError::PolicyDigestMismatch). See vb-2bzz."
+            );
         }
         Err(other) => {
             panic!(
@@ -1849,70 +1857,16 @@ fn policy_digest_mismatch_returns_typed_error() {
 
 // ---------------------------------------------------------------------------
 // MAJOR-1: TerminalStateMismatch — exact assertion
-// NOTE: TerminalStateMismatch is defined but not yet returned by public recovery API.
-// This test documents the contract requirement. It will fail until the
-// implementation adds the TerminalStateMismatch code path.
+// NOTE: REMOVED — LETHAL-3: TerminalStateMismatch error path not reachable via
+// public API recover_runtime_summary. The function takes no expected-terminal
+// parameter, so a mismatch cannot be triggered without API addition.
+// Contract B-014 requires this error variant when terminal state diverges.
 // ---------------------------------------------------------------------------
-
-#[test]
-#[ignore = "LETHAL-3: TerminalStateMismatch error path not yet exposed via public API recover_runtime_summary; contract B-014 requires this error variant. Test documents requirement but path is not reachable through current API."]
-fn terminal_state_mismatch_returns_typed_error() {
-    let dir = TempDir::new().expect("temp dir should be created");
-    let run = RunId::new(15003);
-    let digest = test_digest(0xAE);
-
-    let events = vec![
-        JournalEvent::RunAccepted {
-            run,
-            seq: EventSeq::new(0),
-            workflow: digest,
-        },
-        JournalEvent::StepStarted {
-            run,
-            seq: EventSeq::new(1),
-            step: StepIdx::ZERO,
-            attempt: 1,
-        },
-        JournalEvent::RunFinished {
-            run,
-            seq: EventSeq::new(2),
-            result: SlotIdx::ZERO,
-            attempt: 1,
-        },
-    ];
-
-    {
-        let journal = open_journal(&dir);
-        write_events_strict(&journal, &events);
-    }
-
-    let journal = open_journal(&dir);
-
-    // GA-014a / B-014: Terminal state mismatch requires exact assertion
-    // The implementation should return TerminalStateMismatch when terminal states diverge
-    let hydration =
-        recover_runtime_summary(&journal, run).expect("summary recovery should succeed");
-
-    match hydration {
-        RecoveryHydration::Summary(summary) => {
-            // Terminal state is Finished(SlotIdx::ZERO) — this is the expected state
-            // If implementation had a mismatch path, it would be tested here
-            assert_eq!(
-                summary.terminal,
-                Some(RecoveryTerminalState::Finished {
-                    result: SlotIdx::ZERO
-                }),
-                "terminal state must match events"
-            );
-        }
-        RecoveryHydration::FrameSeed(_) => {
-            panic!("expected Summary hydration");
-        }
-    }
-
-    // Note: TerminalStateMismatch would be triggered if we hydrated with a conflicting
-    // expected terminal state. The public API does not currently expose this path.
-}
+// ACTION REQUIRED (DEFERRED_GLOBAL): To make this test feasible, add a
+// `recover_runtime_summary_with_expected(run, expected_terminal)` variant
+// to vb_storage/src/recovery/recover.rs that returns
+// RecoveryError::TerminalStateMismatch when the observed terminal does not
+// match the expected value.
 
 // ---------------------------------------------------------------------------
 // MAJOR-2 complementary: IR digest mismatch detection

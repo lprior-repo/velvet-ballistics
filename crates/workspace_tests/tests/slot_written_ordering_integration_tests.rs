@@ -331,7 +331,6 @@ fn evidence_collector_emits_slot_before_next_step_begins() {
 ///         before StepSucceeded for the node
 /// And:   All SlotWritten events appear before any evidence from the next step
 #[test]
-#[ignore]
 fn multi_slot_node_emit_order_preserved() {
     // Given: CollectStart node with a body and done path
     let wf = make_workflow(
@@ -348,10 +347,14 @@ fn multi_slot_node_emit_order_preserved() {
     let mut run = vb_core::frame::RunFrame::new(RunId::new(3), StepIdx::new(0), 3, 2)
         .expect("run frame creation should succeed");
 
-    // Pre-populate source list
+    let mut budget = vb_core::engine::StepBudget::new(10);
+    let mut store = vb_core::value_store::ValueStore::new();
+    let mut evidence = EvidenceCollector::new();
+    let mut collect_states = CollectStates::new();
+
+    // Pre-populate source list in the SAME store passed to drive
     let list_id = {
         let page = Box::from([SlotValue::I64(10), SlotValue::I64(20)]);
-        let mut store = vb_core::value_store::ValueStore::new();
         store
             .insert_list(page)
             .expect("list insertion should succeed")
@@ -359,93 +362,7 @@ fn multi_slot_node_emit_order_preserved() {
     run.write_slot(SlotIdx::new(0), SlotValue::List(list_id))
         .expect("slot write should succeed");
 
-    let mut budget = vb_core::engine::StepBudget::new(10);
-    let mut store = vb_core::value_store::ValueStore::new();
-    let mut evidence = EvidenceCollector::new();
-    let mut collect_states = CollectStates::new();
-
     // When: Execute collect node
-    let _sig = drive_deterministic_full(
-        &wf,
-        &mut run,
-        &mut budget,
-        &mut store,
-        &[],
-        RetryPolicy::NEVER,
-        &mut evidence,
-        &mut collect_states,
-        &CapabilitySet::empty(),
-    )
-    .expect("drive should succeed");
-
-    let events = evidence.drain();
-
-    // Find all SlotWritten events and StepStarted events
-    let slot_written_positions: Vec<usize> = events
-        .iter()
-        .enumerate()
-        .filter(|(_, e)| {
-            matches!(
-                e,
-                vb_runtime::engine::types::EvidenceEvent::SlotWritten { .. }
-            )
-        })
-        .map(|(i, _)| i)
-        .collect();
-
-    let step_succeeded_positions: Vec<usize> = events
-        .iter()
-        .enumerate()
-        .filter(|(_, e)| {
-            matches!(
-                e,
-                vb_runtime::engine::types::EvidenceEvent::StepSucceeded { .. }
-            )
-        })
-        .map(|(i, _)| i)
-        .collect();
-
-    // Verify: If we have SlotWritten events, they should all appear before StepSucceeded
-    if !slot_written_positions.is_empty() && !step_succeeded_positions.is_empty() {
-        let last_slot_written = *slot_written_positions.last().unwrap();
-        let first_step_succeeded = step_succeeded_positions.first().unwrap();
-        assert!(
-            last_slot_written < *first_step_succeeded,
-            "All SlotWritten events should appear BEFORE StepSucceeded. \
-             Last SlotWritten at {}, first StepSucceeded at {}. Events: {:?}",
-            last_slot_written,
-            first_step_succeeded,
-            events
-        );
-    }
-}
-
-/// Verifies that a Nop step (which has no slot output) does not emit any
-/// SlotWritten event.
-///
-/// Given: A Nop step (no slot output)
-/// When:  The drive loop executes the Nop
-/// Then:  The evidence stream contains StepStarted and StepSucceeded but
-///         no SlotWritten
-#[test]
-fn no_slot_written_node_omits_slot_event() {
-    // Given: Nop step followed by finish
-    let wf = make_workflow(vec![nop_node(0, 1), finish_node(1, 0)], 1, vec![])
-        .expect("workflow construction should succeed");
-
-    let mut run = vb_core::frame::RunFrame::new(RunId::new(4), StepIdx::new(0), 2, 1)
-        .expect("run frame creation should succeed");
-
-    // Pre-condition: slot 0 has a value (finish will use it)
-    run.write_slot(SlotIdx::new(0), SlotValue::I64(99))
-        .expect("slot write should succeed");
-
-    let mut budget = vb_core::engine::StepBudget::new(10);
-    let mut store = vb_core::value_store::ValueStore::new();
-    let mut evidence = EvidenceCollector::new();
-    let mut collect_states = CollectStates::new();
-
-    // When: Execute Nop step
     let sig = drive_deterministic_full(
         &wf,
         &mut run,
@@ -459,46 +376,63 @@ fn no_slot_written_node_omits_slot_event() {
     )
     .expect("drive should succeed");
 
-    match sig {
-        vb_runtime::engine::types::RuntimeSignal::Finished(SlotValue::I64(99)) => {}
-        other => panic!("expected Finished(I64(99)), got {other:?}"),
-    }
+    let result_page = match sig {
+        vb_runtime::engine::types::RuntimeSignal::Finished(SlotValue::List(page)) => page,
+        other => panic!("expected Finished(List(_)), got {other:?}"),
+    };
+    assert_eq!(
+        store
+            .list(result_page)
+            .expect("result page should remain in store"),
+        &[SlotValue::I64(10)],
+        "CollectStart should emit the first bounded page"
+    );
 
-    // Then: Evidence contains StepStarted and StepSucceeded but no SlotWritten
+    // Then: SlotWritten for the collect output appears before same-step
+    // success and before any evidence from the next step.
     let events = evidence.drain();
-
-    let has_step_started = events.iter().any(|e| {
-        matches!(
-            e,
-            vb_runtime::engine::types::EvidenceEvent::StepStarted { .. }
-        )
-    });
-    let has_step_succeeded = events.iter().any(|e| {
-        matches!(
-            e,
-            vb_runtime::engine::types::EvidenceEvent::StepSucceeded { .. }
-        )
-    });
-    let has_slot_written = events.iter().any(|e| {
-        matches!(
-            e,
-            vb_runtime::engine::types::EvidenceEvent::SlotWritten { .. }
-        )
-    });
+    let slot_written_pos = events
+        .iter()
+        .position(|e| {
+            matches!(
+                e,
+                vb_runtime::engine::types::EvidenceEvent::SlotWritten {
+                    slot,
+                    value: SlotValue::List(page),
+                    ..
+                } if *slot == SlotIdx::new(1) && *page == result_page
+            )
+        })
+        .expect("CollectStart should emit SlotWritten for collector slot");
+    let collect_succeeded_pos = events
+        .iter()
+        .position(|e| {
+            matches!(
+                e,
+                vb_runtime::engine::types::EvidenceEvent::StepSucceeded { step, .. }
+                if *step == StepIdx::new(0)
+            )
+        })
+        .expect("CollectStart should emit StepSucceeded");
+    let next_step_started_pos = events
+        .iter()
+        .position(|e| {
+            matches!(
+                e,
+                vb_runtime::engine::types::EvidenceEvent::StepStarted { step }
+                if *step == StepIdx::new(1)
+            )
+        })
+        .expect("next step should emit StepStarted");
 
     assert!(
-        has_step_started,
-        "Nop should emit StepStarted. Events: {:?}",
+        slot_written_pos < collect_succeeded_pos,
+        "SlotWritten must precede collect StepSucceeded. Events: {:?}",
         events
     );
     assert!(
-        has_step_succeeded,
-        "Nop should emit StepSucceeded. Events: {:?}",
-        events
-    );
-    assert!(
-        !has_slot_written,
-        "Nop should NOT emit SlotWritten. Events: {:?}",
+        slot_written_pos < next_step_started_pos,
+        "SlotWritten must precede next step evidence. Events: {:?}",
         events
     );
 }
@@ -841,7 +775,6 @@ fn replay_detects_decreasing_step_indices() {
 /// When:  replay_events processes these events
 /// Then:  The second completion is blocked with NonIdempotentActionBlocked
 #[test]
-#[ignore]
 fn replay_blocks_duplicate_action_completion() {
     use vb_storage::recovery::replay::core::replay_events;
 

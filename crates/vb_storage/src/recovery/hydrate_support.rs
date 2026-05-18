@@ -165,6 +165,12 @@ pub(super) fn apply_tail_events(
                 executed = executed.saturating_add(1);
             }
             JournalEvent::ActionCompletedEvent { action, step, .. } => {
+                if tracker.is_resolved(*action, *step) {
+                    return Err(RecoveryError::NonIdempotentActionBlocked {
+                        action: *action,
+                        step: *step,
+                    });
+                }
                 tracker.mark_completed(*action, *step);
                 frame
                     .sub_parallel_in_flight(1)
@@ -175,6 +181,12 @@ pub(super) fn apply_tail_events(
                 executed = executed.saturating_add(1);
             }
             JournalEvent::ActionFailedEvent { action, step, .. } => {
+                if tracker.is_resolved(*action, *step) {
+                    return Err(RecoveryError::NonIdempotentActionBlocked {
+                        action: *action,
+                        step: *step,
+                    });
+                }
                 tracker.mark_failed(*action, *step);
                 frame
                     .sub_parallel_in_flight(1)
@@ -264,6 +276,12 @@ pub(super) fn compute_parallel_in_flight(
                 }
             }
             JournalEvent::ActionCompletedEvent { action, step, .. } => {
+                if tracker.is_resolved(*action, *step) {
+                    return Err(RecoveryError::NonIdempotentActionBlocked {
+                        action: *action,
+                        step: *step,
+                    });
+                }
                 tracker.mark_completed(*action, *step);
                 frame
                     .sub_parallel_in_flight(1)
@@ -273,6 +291,12 @@ pub(super) fn compute_parallel_in_flight(
                     })?;
             }
             JournalEvent::ActionFailedEvent { action, step, .. } => {
+                if tracker.is_resolved(*action, *step) {
+                    return Err(RecoveryError::NonIdempotentActionBlocked {
+                        action: *action,
+                        step: *step,
+                    });
+                }
                 tracker.mark_failed(*action, *step);
                 frame
                     .sub_parallel_in_flight(1)

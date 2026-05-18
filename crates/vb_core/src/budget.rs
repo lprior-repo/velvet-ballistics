@@ -643,6 +643,32 @@ impl AggregateResourceUsage {
             capacity.max_transitions_per_tick,
         )
     }
+
+    /// Checks if this usage satisfies a boundedness policy.
+    /// Returns `Ok(())` if all usage dimensions are within policy limits,
+    /// or `Err(AggregateBudgetError::PolicyExceeded)` if any dimension exceeds.
+    pub fn check_policy(&self, policy: &BoundednessPolicy) -> Result<(), AggregateBudgetError> {
+        check_policy(
+            "max_steps_executable",
+            self.max_steps_executable,
+            u64::from(policy.absolute_max_steps_executable),
+        )?;
+        check_policy(
+            "max_action_tickets",
+            self.max_action_tickets,
+            u64::from(policy.absolute_max_action_tickets),
+        )?;
+        check_policy(
+            "max_parallel_in_flight",
+            self.max_parallel_in_flight,
+            u64::from(policy.absolute_max_parallel),
+        )?;
+        check_policy(
+            "max_result_bytes",
+            self.max_result_bytes,
+            u64::from(policy.absolute_max_result_bytes),
+        )
+    }
 }
 
 pub fn validate_aggregate_budget(

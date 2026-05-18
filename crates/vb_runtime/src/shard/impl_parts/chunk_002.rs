@@ -67,4 +67,28 @@ impl Shard {
         }
         Err(RuntimeError::ShutdownInProgress)
     }
+
+    /// Drains currently queued commands, then marks the shard shut down.
+    pub fn drain_pending_and_shutdown(&mut self) -> RuntimeResult<()> {
+        if self.shutting_down {
+            self.pending_timers.clear();
+            return Ok(());
+        }
+        self.drain_pending_commands(self.command_queue.len())?;
+        self.shutting_down = true;
+        self.pending_timers.clear();
+        Ok(())
+    }
+
+    fn drain_pending_commands(&mut self, command_count: usize) -> RuntimeResult<()> {
+        (0..command_count).try_for_each(|_| {
+            if self.command_queue.is_empty() || self.shutting_down {
+                return Ok(());
+            }
+            if !self.tick()? {
+                self.pending_timers.clear();
+            }
+            Ok(())
+        })
+    }
 }

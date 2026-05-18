@@ -1819,8 +1819,8 @@ mod hydrate_run_frame_tests {
         let result = hydrate_run_frame(&snapshot, &[], run);
 
         assert!(
-            matches!(result, Err(RecoveryError::ReplayDivergence { .. })),
-            "expected ReplayDivergence, got {:?}",
+            matches!(result, Err(RecoveryError::CorruptSnapshot { .. })),
+            "expected CorruptSnapshot, got {:?}",
             result
         );
     }

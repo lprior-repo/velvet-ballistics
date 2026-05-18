@@ -244,19 +244,15 @@ impl Runtime {
                     .shards
                     .get_mut(shard_index_usize)
                     .ok_or(RuntimeError::ShardNotFound { shard: shard_index })?;
-                shard.enqueue(ShardCommand::Shutdown)?;
-                shard.drain_for_shutdown()?;
+                shard.drain_pending_and_shutdown()?;
                 Ok(false)
             }
-            ShardDirective::Cancel | ShardDirective::Barrier => {
-                // Cancel and Barrier are not yet implemented as directives
-                // Fall back to normal tick behavior
-                let shard = self
-                    .shards
-                    .get_mut(shard_index_usize)
-                    .ok_or(RuntimeError::ShardNotFound { shard: shard_index })?;
-                shard.tick()
-            }
+            ShardDirective::Cancel => Err(RuntimeError::UnsupportedOperation {
+                operation: "tick_shard_cancel",
+            }),
+            ShardDirective::Barrier => Err(RuntimeError::UnsupportedOperation {
+                operation: "tick_shard_barrier",
+            }),
         }
     }
 
@@ -523,11 +519,8 @@ impl Runtime {
 
     /// Shuts down all shards gracefully.
     pub fn shutdown_graceful(&mut self) -> RuntimeResult<()> {
-        for shard in &self.shards {
-            shard.enqueue(ShardCommand::Shutdown)?;
-        }
         for shard in &mut self.shards {
-            shard.drain_for_shutdown()?;
+            shard.drain_pending_and_shutdown()?;
         }
         self.journal.drain_for_shutdown()?;
         Ok(())
@@ -2466,6 +2459,58 @@ mod tests {
 
         assert_eq!(runtime.submit_direct(run, wf), Ok(()));
         assert_eq!(runtime.tick_shard(0, ShardDirective::Shutdown), Ok(false));
+        assert_eq!(runtime.counters_snapshot().runs_completed, 1);
+    }
+
+    #[test]
+    fn tick_shard_shutdown_drains_when_command_queue_is_full() {
+        let config = ShardConfig {
+            command_queue_capacity: 1,
+            trace_capacity: 4,
+            step_budget_per_tick: 4,
+            max_active_runs: 4,
+            policy: RuntimePolicy::Relaxed,
+        };
+        let Some(shard_count) = NonZeroUsize::new(1) else {
+            return;
+        };
+        let mut runtime = Runtime::new(shard_count, config);
+        let Some(wf) = finished_workflow() else {
+            return;
+        };
+
+        assert_eq!(runtime.submit_direct(RunId::new(40), wf), Ok(()));
+        assert_eq!(runtime.tick_shard(0, ShardDirective::Shutdown), Ok(false));
+        assert_eq!(runtime.counters_snapshot().runs_completed, 1);
+        assert_eq!(runtime.tick_all(), Ok(false));
+    }
+
+    #[test]
+    fn tick_shard_cancel_and_barrier_do_not_advance_work_silently() {
+        let Some(shard_count) = NonZeroUsize::new(1) else {
+            return;
+        };
+        let mut runtime = Runtime::new(shard_count, runtime_config());
+        let Some(wf) = finished_workflow() else {
+            return;
+        };
+
+        assert_eq!(runtime.submit_direct(RunId::new(41), wf), Ok(()));
+        assert_eq!(
+            runtime.tick_shard(0, ShardDirective::Cancel),
+            Err(RuntimeError::UnsupportedOperation {
+                operation: "tick_shard_cancel"
+            })
+        );
+        assert_eq!(runtime.counters_snapshot().runs_submitted, 0);
+        assert_eq!(
+            runtime.tick_shard(0, ShardDirective::Barrier),
+            Err(RuntimeError::UnsupportedOperation {
+                operation: "tick_shard_barrier"
+            })
+        );
+        assert_eq!(runtime.counters_snapshot().runs_submitted, 0);
+        assert_eq!(runtime.tick_shard(0, ShardDirective::Continue), Ok(true));
         assert_eq!(runtime.counters_snapshot().runs_completed, 1);
     }
 

@@ -43,24 +43,32 @@ fn test_catalog_maps_existing_tests_to_covered_scenarios() {
     let scenarios = catalog();
 
     // When: catalog rows are inspected for test-target evidence.
-    let existing_test_targets = scenarios
+    let executable_test_targets: Vec<&str> = scenarios
         .iter()
-        .filter(|scenario| scenario.covered_by_existing_test)
-        .filter(|scenario| {
-            scenario
-                .test_target
-                .starts_with("crates/workspace_tests/tests/")
-        })
-        .count();
-    let follow_up_targets = scenarios
+        .filter_map(|scenario| scenario.executable_evidence_target)
+        .collect();
+    let follow_up_beads: Vec<&str> = scenarios
         .iter()
-        .filter(|scenario| !scenario.covered_by_existing_test)
-        .filter(|scenario| scenario.test_target.starts_with("follow-up bead vb-"))
-        .count();
+        .filter_map(|scenario| scenario.deferred_follow_up_bead)
+        .collect();
 
-    // Then: covered scenarios point at real test files and gaps point at beads.
-    assert!(existing_test_targets >= 5);
-    assert!(follow_up_targets >= 4);
+    // Then: covered scenarios point at real test files and deferred gaps point only at beads.
+    assert_eq!(executable_test_targets.len(), 5);
+    assert_eq!(follow_up_beads.len(), 5);
+    assert_eq!(
+        executable_test_targets,
+        vec![
+            "crates/workspace_tests/tests/vb_37lc_canonical_spelling_red.rs",
+            "crates/workspace_tests/tests/bdd_validation_tests.rs",
+            "crates/workspace_tests/tests/vb_core_yaml_e2e_chain_contract.rs",
+            "crates/workspace_tests/tests/vb_qi37_2_4_integration_budget_errors.rs",
+            "crates/workspace_tests/tests/vb_5xs4_test_loop_inventory_red.rs",
+        ]
+    );
+    assert_eq!(
+        follow_up_beads,
+        vec!["vb-vt2f", "vb-te1i", "vb-rpch", "vb-0sps", "vb-ssei"]
+    );
     assert!(
         scenarios
             .iter()
@@ -95,8 +103,8 @@ fn test_catalog_gate_fails_when_scenario_has_no_test_target() {
         expected_error: None,
         durability_profile: "none",
         related_bead: "vb-hxm0",
-        test_target: "",
-        covered_by_existing_test: false,
+        executable_evidence_target: None,
+        deferred_follow_up_bead: None,
     }];
 
     // When: the catalog gate runs.
@@ -105,8 +113,70 @@ fn test_catalog_gate_fails_when_scenario_has_no_test_target() {
     // Then: prose-only scenarios cannot count as release evidence.
     assert_eq!(
         validation,
-        Err(CatalogValidationError::MissingTestTarget {
+        Err(CatalogValidationError::MissingEvidenceDisposition {
             scenario_id: "VB-BDD-CATALOG-BAD-TARGET".to_owned(),
+        })
+    );
+}
+
+#[test]
+fn test_catalog_gate_fails_when_follow_up_is_disguised_as_executable_evidence() {
+    // Given: a deferred follow-up bead placed in the executable evidence slot.
+    let scenarios = [Scenario {
+        id: "VB-BDD-CATALOG-BAD-EVIDENCE",
+        master_behavior: "bad evidence fixture",
+        given: "a catalog row with a follow-up bead",
+        when: "the follow-up is labeled executable evidence",
+        then: "the row is rejected",
+        public_surface: "workspace test boundary",
+        fixture: "isolated bad catalog fixture",
+        expected_outcome: Some("rejected"),
+        expected_error: None,
+        durability_profile: "none",
+        related_bead: "vb-hxm0",
+        executable_evidence_target: Some("follow-up bead vb-hxm0"),
+        deferred_follow_up_bead: None,
+    }];
+
+    // When: the catalog gate runs.
+    let validation = validate_catalog(&scenarios);
+
+    // Then: a follow-up bead cannot be counted as executable test evidence.
+    assert_eq!(
+        validation,
+        Err(CatalogValidationError::InvalidExecutableEvidenceTarget {
+            scenario_id: "VB-BDD-CATALOG-BAD-EVIDENCE".to_owned(),
+        })
+    );
+}
+
+#[test]
+fn test_catalog_gate_fails_when_deferred_gap_does_not_match_related_bead() {
+    // Given: a deferred gap whose follow-up bead does not match the owning row.
+    let scenarios = [Scenario {
+        id: "VB-BDD-CATALOG-BAD-FOLLOW-UP",
+        master_behavior: "bad follow-up fixture",
+        given: "a catalog row with a mismatched bead",
+        when: "the row is deferred",
+        then: "the mismatch is rejected",
+        public_surface: "workspace test boundary",
+        fixture: "isolated bad catalog fixture",
+        expected_outcome: Some("rejected"),
+        expected_error: None,
+        durability_profile: "none",
+        related_bead: "vb-hxm0",
+        executable_evidence_target: None,
+        deferred_follow_up_bead: Some("vb-other"),
+    }];
+
+    // When: the catalog gate runs.
+    let validation = validate_catalog(&scenarios);
+
+    // Then: deferred evidence remains traceable to the exact owning bead.
+    assert_eq!(
+        validation,
+        Err(CatalogValidationError::InvalidDeferredFollowUpBead {
+            scenario_id: "VB-BDD-CATALOG-BAD-FOLLOW-UP".to_owned(),
         })
     );
 }

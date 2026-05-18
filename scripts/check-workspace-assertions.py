@@ -86,7 +86,18 @@ def dependency_names(manifest: dict[str, object]) -> set[str]:
     for table_name in DEPENDENCY_TABLES:
         table = manifest.get(table_name)
         if isinstance(table, dict):
-            names.update(name for name in table if isinstance(name, str))
+            for name, dependency in table.items():
+                if isinstance(name, str):
+                    names.add(name)
+                if isinstance(dependency, dict):
+                    package = dependency.get("package")
+                    if isinstance(package, str):
+                        names.add(package)
+                    path = dependency.get("path")
+                    if isinstance(path, str):
+                        path_alias = path.rstrip("/\\").rsplit("/", maxsplit=1)[-1]
+                        if path_alias:
+                            names.add(path_alias)
     return names
 
 

@@ -6064,31 +6064,80 @@ fn whole_workflow_budget_add_at_exact_limit() -> Result<(), String> {
 
 /// Kills: check_policy > with >= at line 804 (via WholeWorkflowBudget path)
 /// When usage == limit, policy check should pass.
-///
-/// NOTE: This test is ignored because `AggregateResourceUsage::check_policy`
-/// is not yet implemented. The functionality requires a new method that validates
-/// usage against budget limits (distinct from capacity checking).
 #[test]
-#[ignore]
 fn whole_workflow_budget_policy_at_exact_limit() -> Result<(), String> {
-    // TODO: Implement check_policy method on AggregateResourceUsage
-    // When implemented, this test should verify that usage == limit passes.
-    Err("check_policy not implemented: usage at exact limit should pass".to_string())
+    let policy = BoundednessPolicy {
+        max_total_steps: 1_000_000,
+        max_total_slots: 65_535,
+        max_fanout: 64,
+        max_nesting_depth: 8,
+        absolute_max_action_tickets: 100,
+        absolute_max_parallel: 10,
+        absolute_max_run_time_seconds: 3600,
+        absolute_max_result_bytes: 65536,
+        absolute_max_steps_executable: 1000,
+    };
+    let usage = AggregateResourceUsage {
+        max_steps_executable: 1000,
+        max_action_tickets: 100,
+        max_parallel_in_flight: 10,
+        max_gather_pages: 5,
+        max_gather_items: 100,
+        max_result_bytes: 65536,
+        max_total_slots_written: 1000,
+        max_active_runs: 1,
+        max_queue_depth: 50,
+        max_journal_batch_bytes: 4096,
+        max_step_budget_per_tick: 1000,
+        max_transitions_per_tick: 1000,
+    };
+    // Usage at exact limit should pass (>= comparison, not >)
+    ensure_equal(usage.check_policy(&policy), Ok(()))
 }
 
 /// Kills: check_policy > with >= — tests the over-limit case to confirm
 /// the error type and values are correct, preventing `>` → `==` mutation
 /// (which would only fail when exactly equal, missing the over-limit case).
-///
-/// NOTE: This test is ignored because `AggregateResourceUsage::check_policy`
-/// is not yet implemented. The functionality requires a new method that validates
-/// usage against budget limits (distinct from capacity checking).
 #[test]
-#[ignore]
 fn whole_workflow_budget_policy_exceeds_limit() -> Result<(), String> {
-    // TODO: Implement check_policy method on AggregateResourceUsage
-    // When implemented, this test should verify that usage > limit returns PolicyExceeded.
-    Err("check_policy not implemented: usage > limit should return PolicyExceeded".to_string())
+    let policy = BoundednessPolicy {
+        max_total_steps: 1_000_000,
+        max_total_slots: 65_535,
+        max_fanout: 64,
+        max_nesting_depth: 8,
+        absolute_max_action_tickets: 100,
+        absolute_max_parallel: 10,
+        absolute_max_run_time_seconds: 3600,
+        absolute_max_result_bytes: 65536,
+        absolute_max_steps_executable: 1000,
+    };
+    let usage = AggregateResourceUsage {
+        // Exceeds by 1
+        max_steps_executable: 1001,
+        max_action_tickets: 100,
+        max_parallel_in_flight: 10,
+        max_gather_pages: 5,
+        max_gather_items: 100,
+        max_result_bytes: 65536,
+        max_total_slots_written: 1000,
+        max_active_runs: 1,
+        max_queue_depth: 50,
+        max_journal_batch_bytes: 4096,
+        max_step_budget_per_tick: 1000,
+        max_transitions_per_tick: 1000,
+    };
+    match usage.check_policy(&policy) {
+        Err(AggregateBudgetError::PolicyExceeded {
+            resource: "max_steps_executable",
+            actual: 1001,
+            limit: 1000,
+        }) => Ok(()),
+        Err(e) => Err(format!(
+            "expected PolicyExceeded {{resource: max_steps_executable, actual: 1001, limit: 1000}}, got {:?}",
+            e
+        )),
+        Ok(()) => Err("expected PolicyExceeded, got Ok(())".to_string()),
+    }
 }
 
 /// Kills: check_capacity > with >= — tests the exact equality boundary

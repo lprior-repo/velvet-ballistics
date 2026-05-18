@@ -1689,9 +1689,9 @@ pub fn fuzz_digest_coherence(data: &[u8]) {
 ///
 /// Maps: POST-004, POST-005, INV-005, INV-007, ERR-PARTIAL-019.
 pub fn fuzz_readback_family_set(data: &[u8]) {
-    if data.len() < 1 {
+    let Some(&delete_mask) = data.first() else {
         return;
-    }
+    };
 
     // Open a temporary journal.
     let temp_dir = match tempfile::tempdir() {
@@ -1738,56 +1738,112 @@ pub fn fuzz_readback_family_set(data: &[u8]) {
     };
 
     // Submit strictly to establish full family set.
-    let _ = vb_storage::submit_artifact(&journal, &workflow, vb_core::RuntimePolicy::Strict);
+    if vb_storage::submit_artifact(&journal, &workflow, vb_core::RuntimePolicy::Strict).is_err() {
+        return;
+    }
 
     // Now: the fuzz input encodes which families to DELETE (bits 0-6).
     // Each bit = 1 means delete that family to create partial visibility.
     // NOTE: Fjall does not support delete, so we test by reading what IS present.
     // The mask values document the intended partial-visibility scenarios.
-    let delete_mask = data[0];
-    let _ = delete_mask; // used to document intent; actual family check below.
+    let intended_deletion = ReadbackDeletionIntent::from_mask(delete_mask);
 
-    // For partial visibility testing, we read what families are present.
-    // Read back each family.
-    let has_source = journal.workflow_source(digest).unwrap().is_some();
-    let has_artifact = journal.compiled_ir(digest).unwrap().is_some();
-    let has_header = journal
-        .run_header(vb_core::RunId::new(8001))
-        .unwrap()
-        .is_some();
-    let event_count = journal
-        .events_for_run(vb_core::RunId::new(8001))
-        .unwrap()
-        .len();
-
-    // Full set: all present. Partial: any missing.
-    let families_present = has_source as usize
-        + has_artifact as usize
-        + has_header as usize
-        + (event_count > 0) as usize;
-
-    // If all 4 core families are present, it's a full accepted run.
-    let is_full = has_source && has_artifact && has_header && event_count > 0;
-    let is_partial = !is_full && families_present > 0;
+    let classification = classify_readback_family_set(
+        &journal,
+        digest,
+        vb_core::RunId::new(8001),
+        intended_deletion,
+    );
 
     // Property: full family set must be accepted as valid run.
     // Partial set must NOT be accepted (PartialVisibilityDetected).
     // Absent set means no run (valid).
-    if is_full {
-        // Full accepted run — all indexes should point to it.
-        let _ = is_full; // No assertion here; we're documenting behavior.
-    } else if is_partial {
-        // Partial visibility — readback must detect this and not treat as accepted.
-        // In the current implementation, readback is passive (no explicit classifier),
-        // but the fuzz target documents that partial family sets exist.
-        let _ = is_partial;
+    match classification {
+        ReadbackFamilySet::Full {
+            accepted_event_count,
+        } => {
+            assert!(
+                accepted_event_count > 0,
+                "full readback family set requires at least one accepted event"
+            );
+        }
+        ReadbackFamilySet::Partial => {}
+        ReadbackFamilySet::Absent => {}
+        ReadbackFamilySet::Unreadable => {}
     }
+}
 
-    // Fuzz input may also include bytes that try to create orphan indexes.
-    // An orphan index is an index entry pointing to a run with missing core families.
-    // This is tested by the `given_index_derivation_failure` test scenario.
-    // (The delete_mask bits document intent; Fjall does not support deletion here.)
-    let _ = delete_mask; // suppress unused warning
+#[derive(Clone, Copy)]
+enum ReadbackDeletionIntent {
+    None,
+    Partial,
+    Full,
+}
+
+impl ReadbackDeletionIntent {
+    fn from_mask(mask: u8) -> Self {
+        let core_family_mask = mask & 0b0000_1111;
+        match core_family_mask.count_ones() {
+            0 => Self::None,
+            4 => Self::Full,
+            _ => Self::Partial,
+        }
+    }
+}
+
+enum ReadbackFamilySet {
+    Full { accepted_event_count: usize },
+    Partial,
+    Absent,
+    Unreadable,
+}
+
+fn classify_readback_family_set(
+    journal: &vb_storage::FjallJournal,
+    digest: vb_core::WorkflowDigest,
+    run: vb_core::RunId,
+    intended_deletion: ReadbackDeletionIntent,
+) -> ReadbackFamilySet {
+    let has_source = match journal.workflow_source(digest) {
+        Ok(record) => record.is_some(),
+        Err(_) => return ReadbackFamilySet::Unreadable,
+    };
+    let has_artifact = match journal.compiled_ir(digest) {
+        Ok(record) => record.is_some(),
+        Err(_) => return ReadbackFamilySet::Unreadable,
+    };
+    let has_header = match journal.run_header(run) {
+        Ok(record) => record.is_some(),
+        Err(_) => return ReadbackFamilySet::Unreadable,
+    };
+    let events = match journal.events_for_run(run) {
+        Ok(events) => events,
+        Err(_) => return ReadbackFamilySet::Unreadable,
+    };
+    let accepted_event_count = events
+        .iter()
+        .filter(|event| {
+            matches!(
+                event,
+                vb_storage::JournalEvent::RunAccepted { workflow, .. } if *workflow == digest
+            )
+        })
+        .count();
+    let has_accepted_event = accepted_event_count > 0;
+    let families_present = usize::from(has_source)
+        .saturating_add(usize::from(has_artifact))
+        .saturating_add(usize::from(has_header))
+        .saturating_add(usize::from(has_accepted_event));
+
+    if has_source && has_artifact && has_header && has_accepted_event {
+        ReadbackFamilySet::Full {
+            accepted_event_count,
+        }
+    } else if families_present > 0 || matches!(intended_deletion, ReadbackDeletionIntent::Partial) {
+        ReadbackFamilySet::Partial
+    } else {
+        ReadbackFamilySet::Absent
+    }
 }
 
 // ---------------------------------------------------------------------------

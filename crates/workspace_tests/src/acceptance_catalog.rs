@@ -15,8 +15,8 @@ pub struct Scenario {
     pub expected_error: Option<&'static str>,
     pub durability_profile: &'static str,
     pub related_bead: &'static str,
-    pub test_target: &'static str,
-    pub covered_by_existing_test: bool,
+    pub executable_evidence_target: Option<&'static str>,
+    pub deferred_follow_up_bead: Option<&'static str>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -24,7 +24,10 @@ pub enum CatalogValidationError {
     EmptyCatalog,
     MissingGivenWhenThen { scenario_id: String },
     MissingExactAssertion { scenario_id: String },
-    MissingTestTarget { scenario_id: String },
+    MissingEvidenceDisposition { scenario_id: String },
+    ConflictingEvidenceDisposition { scenario_id: String },
+    InvalidExecutableEvidenceTarget { scenario_id: String },
+    InvalidDeferredFollowUpBead { scenario_id: String },
     PrivateSurface { scenario_id: String },
     SharedFixture { scenario_id: String },
     DuplicateScenarioId { scenario_id: String },
@@ -43,8 +46,10 @@ const SCENARIOS: &[Scenario] = &[
         expected_error: Some("canonical_spelling_violation"),
         durability_profile: "no persistent runtime state",
         related_bead: "vb-37lc",
-        test_target: "crates/workspace_tests/tests/vb_37lc_canonical_spelling_red.rs",
-        covered_by_existing_test: true,
+        executable_evidence_target: Some(
+            "crates/workspace_tests/tests/vb_37lc_canonical_spelling_red.rs",
+        ),
+        deferred_follow_up_bead: None,
     },
     Scenario {
         id: "VB-BDD-CATALOG-002",
@@ -58,8 +63,8 @@ const SCENARIOS: &[Scenario] = &[
         expected_error: Some("ValidationError gate variant"),
         durability_profile: "no persistent runtime state",
         related_bead: "vb-qi37.8",
-        test_target: "crates/workspace_tests/tests/bdd_validation_tests.rs",
-        covered_by_existing_test: true,
+        executable_evidence_target: Some("crates/workspace_tests/tests/bdd_validation_tests.rs"),
+        deferred_follow_up_bead: None,
     },
     Scenario {
         id: "VB-BDD-CATALOG-003",
@@ -73,8 +78,10 @@ const SCENARIOS: &[Scenario] = &[
         expected_error: Some("AdmissionRequired"),
         durability_profile: "artifact file persisted before runtime admission",
         related_bead: "vb-core-yaml-e2e-chain",
-        test_target: "crates/workspace_tests/tests/vb_core_yaml_e2e_chain_contract.rs",
-        covered_by_existing_test: true,
+        executable_evidence_target: Some(
+            "crates/workspace_tests/tests/vb_core_yaml_e2e_chain_contract.rs",
+        ),
+        deferred_follow_up_bead: None,
     },
     Scenario {
         id: "VB-BDD-CATALOG-004",
@@ -88,8 +95,8 @@ const SCENARIOS: &[Scenario] = &[
         expected_error: Some("RuntimeError variant"),
         durability_profile: "journal events captured when storage is enabled",
         related_bead: "vb-vt2f",
-        test_target: "follow-up bead vb-vt2f",
-        covered_by_existing_test: false,
+        executable_evidence_target: None,
+        deferred_follow_up_bead: Some("vb-vt2f"),
     },
     Scenario {
         id: "VB-BDD-CATALOG-005",
@@ -103,8 +110,8 @@ const SCENARIOS: &[Scenario] = &[
         expected_error: Some("bad_magic"),
         durability_profile: "no storage unless command triggers a run",
         related_bead: "vb-te1i",
-        test_target: "follow-up bead vb-te1i",
-        covered_by_existing_test: false,
+        executable_evidence_target: None,
+        deferred_follow_up_bead: Some("vb-te1i"),
     },
     Scenario {
         id: "VB-BDD-CATALOG-006",
@@ -118,8 +125,8 @@ const SCENARIOS: &[Scenario] = &[
         expected_error: Some("record codec/recovery error variant"),
         durability_profile: "persistent journal and snapshot evidence",
         related_bead: "vb-rpch",
-        test_target: "follow-up bead vb-rpch",
-        covered_by_existing_test: false,
+        executable_evidence_target: None,
+        deferred_follow_up_bead: Some("vb-rpch"),
     },
     Scenario {
         id: "VB-BDD-CATALOG-007",
@@ -133,8 +140,8 @@ const SCENARIOS: &[Scenario] = &[
         expected_error: Some("parity_mismatch"),
         durability_profile: "journal evidence when workflow has durable effects",
         related_bead: "vb-0sps",
-        test_target: "follow-up bead vb-0sps",
-        covered_by_existing_test: false,
+        executable_evidence_target: None,
+        deferred_follow_up_bead: Some("vb-0sps"),
     },
     Scenario {
         id: "VB-BDD-CATALOG-008",
@@ -148,8 +155,8 @@ const SCENARIOS: &[Scenario] = &[
         expected_error: Some("CapabilityDenied"),
         durability_profile: "admission certificate records required grants",
         related_bead: "vb-ssei",
-        test_target: "follow-up bead vb-ssei",
-        covered_by_existing_test: false,
+        executable_evidence_target: None,
+        deferred_follow_up_bead: Some("vb-ssei"),
     },
     Scenario {
         id: "VB-BDD-CATALOG-009",
@@ -163,8 +170,10 @@ const SCENARIOS: &[Scenario] = &[
         expected_error: Some("budget_exceeded"),
         durability_profile: "pre-admission only unless accepted",
         related_bead: "vb-e4mt",
-        test_target: "crates/workspace_tests/tests/vb_qi37_2_4_integration_budget_errors.rs",
-        covered_by_existing_test: true,
+        executable_evidence_target: Some(
+            "crates/workspace_tests/tests/vb_qi37_2_4_integration_budget_errors.rs",
+        ),
+        deferred_follow_up_bead: None,
     },
     Scenario {
         id: "VB-BDD-CATALOG-010",
@@ -178,8 +187,10 @@ const SCENARIOS: &[Scenario] = &[
         expected_error: Some("AmbiguousCaseLabel"),
         durability_profile: "no persistent runtime state",
         related_bead: "vb-5xs4",
-        test_target: "crates/workspace_tests/tests/vb_5xs4_test_loop_inventory_red.rs",
-        covered_by_existing_test: true,
+        executable_evidence_target: Some(
+            "crates/workspace_tests/tests/vb_5xs4_test_loop_inventory_red.rs",
+        ),
+        deferred_follow_up_bead: None,
     },
 ];
 
@@ -216,10 +227,22 @@ fn validate_scenario(
         });
     }
 
-    if scenario.test_target.is_empty() {
-        return Err(CatalogValidationError::MissingTestTarget {
-            scenario_id: scenario.id.to_owned(),
-        });
+    match (
+        scenario.executable_evidence_target,
+        scenario.deferred_follow_up_bead,
+    ) {
+        (None, None) => {
+            return Err(CatalogValidationError::MissingEvidenceDisposition {
+                scenario_id: scenario.id.to_owned(),
+            });
+        }
+        (Some(_), Some(_)) => {
+            return Err(CatalogValidationError::ConflictingEvidenceDisposition {
+                scenario_id: scenario.id.to_owned(),
+            });
+        }
+        (Some(target), None) => validate_executable_target(scenario.id, target)?,
+        (None, Some(bead)) => validate_deferred_follow_up(scenario, bead)?,
     }
 
     if scenario.public_surface.contains("private") || scenario.public_surface.contains("helper") {
@@ -241,4 +264,30 @@ fn validate_scenario(
     }
 
     Ok(())
+}
+
+fn validate_executable_target(
+    scenario_id: &'static str,
+    target: &'static str,
+) -> Result<(), CatalogValidationError> {
+    if target.starts_with("crates/workspace_tests/tests/") && target.ends_with(".rs") {
+        Ok(())
+    } else {
+        Err(CatalogValidationError::InvalidExecutableEvidenceTarget {
+            scenario_id: scenario_id.to_owned(),
+        })
+    }
+}
+
+fn validate_deferred_follow_up(
+    scenario: Scenario,
+    bead: &'static str,
+) -> Result<(), CatalogValidationError> {
+    if bead.starts_with("vb-") && bead == scenario.related_bead {
+        Ok(())
+    } else {
+        Err(CatalogValidationError::InvalidDeferredFollowUpBead {
+            scenario_id: scenario.id.to_owned(),
+        })
+    }
 }
