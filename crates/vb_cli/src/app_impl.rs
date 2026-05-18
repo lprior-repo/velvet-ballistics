@@ -20,7 +20,7 @@ pub(crate) use crate::commands_ai_context::{
 use crate::exit_code::CliExitCode;
 use crate::{
     agent_context, cli_envelope, commands_ai_context, commands_diff, commands_incident,
-    commands_journal, commands_status, commands_verify, commands_workflow,
+    commands_journal, commands_status, commands_system_status, commands_verify, commands_workflow,
 };
 use vb_ipc::client::IpcClient;
 use vb_ipc::{IpcCommand, IpcPayload};
@@ -77,6 +77,7 @@ commands:
   version                                             Print version
   agent-context                                      Emit versioned AI-agent CLI schema
   status     [--active-runs <N>] [--queue-depth <N>] [--trace-dropped <N>] [--json|--jsonl]  Report runtime shard status
+  system-status [--profile <quick|standard|full>] [--server <strict|journaled|none>] [--json|--jsonl]  Report bounded system health
   action list [--json|--jsonl]                       List registered action contracts
   action inspect <action_id> [--json|--jsonl]         Show one registered action contract
 
@@ -99,6 +100,7 @@ pub(crate) fn run_from_env() -> ExitCode {
             commands_ai_context::handle(&run_id, &db, output)
         }
         Ok(Command::Status { options, output }) => cmd_status(options, output),
+        Ok(Command::SystemStatus { options, output }) => cmd_system_status(options, output),
         Ok(Command::ActionList { output, registry }) => cmd_action_list(output, registry),
         Ok(Command::ActionInspect {
             action_id,
@@ -272,6 +274,11 @@ fn cmd_status(options: args::StatusOptions, output: OutputFormat) -> ExitCode {
     } else {
         commands_status::print_status(&status, output);
     }
+    ExitCode::SUCCESS
+}
+
+fn cmd_system_status(options: args::SystemStatusOptions, output: OutputFormat) -> ExitCode {
+    commands_system_status::print_system_status(options, output, VERSION);
     ExitCode::SUCCESS
 }
 
@@ -4680,6 +4687,15 @@ fn write_error_stderr(error: &ParseError) -> io::Result<()> {
                 handle,
                 "reason exceeds maximum length of 256 characters\n\n{HELP}"
             )
+        }
+        ParseError::UnknownServerMode(mode) => {
+            writeln!(
+                handle,
+                "unknown server mode: {mode} (expected: strict, journaled, none)\n\n{HELP}"
+            )
+        }
+        ParseError::InvalidSystemStatusArgument(reason) => {
+            writeln!(handle, "invalid system status argument: {reason}\n\n{HELP}")
         }
     }
 }

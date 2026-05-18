@@ -183,6 +183,87 @@ fn cli_status_jsonl_succeeds() {
 }
 
 #[test]
+fn cli_system_status_json_reports_degraded_when_no_backend_is_attached() {
+    let output = run_cli(&[
+        std::ffi::OsStr::new("system-status"),
+        std::ffi::OsStr::new("--profile"),
+        std::ffi::OsStr::new("quick"),
+        std::ffi::OsStr::new("--server"),
+        std::ffi::OsStr::new("none"),
+        std::ffi::OsStr::new("--json"),
+    ]);
+    let output = match output {
+        Some(output) => output,
+        None => return,
+    };
+
+    assert_cli_success(&output, "system-status --json");
+    assert_eq!(
+        output_stderr(&output),
+        "",
+        "system-status success must not write stderr"
+    );
+    let stdout = output_stdout(&output);
+    let packet: serde_json::Value = match serde_json::from_str(&stdout) {
+        Ok(packet) => packet,
+        Err(error) => {
+            assert!(
+                forced_assertion_failure(),
+                "system-status JSON did not parse: {error}; stdout={stdout}"
+            );
+            return;
+        }
+    };
+    let status_value = match packet.get("status") {
+        Some(value) => value.clone(),
+        None => {
+            assert!(forced_assertion_failure(), "missing status field: {stdout}");
+            return;
+        }
+    };
+    let status: vb_ui_model::system::SystemStatusView = match serde_json::from_value(status_value) {
+        Ok(status) => status,
+        Err(error) => {
+            assert!(
+                forced_assertion_failure(),
+                "status field is not UI-model compatible: {error}; stdout={stdout}"
+            );
+            return;
+        }
+    };
+
+    assert_eq!(packet.get("kind"), Some(&serde_json::json!("SystemStatus")));
+    assert_eq!(packet.get("profile"), Some(&serde_json::json!("quick")));
+    assert_eq!(packet.get("server"), Some(&serde_json::json!("none")));
+    assert_eq!(packet.get("connected"), Some(&serde_json::json!(false)));
+    assert_eq!(
+        status.storage_health,
+        vb_ui_model::system::StorageHealth::Degraded
+    );
+    assert!(!status.journal_batch_healthy);
+    assert!(!status.blob_store_ok);
+    assert!(!status.index_healthy);
+    assert_eq!(status.writer_queue_depth, 0);
+    assert_eq!(status.active_run_count, 0);
+}
+
+#[test]
+fn cli_system_status_rejects_unknown_server_mode() {
+    let output = run_cli(&[
+        std::ffi::OsStr::new("system-status"),
+        std::ffi::OsStr::new("--server"),
+        std::ffi::OsStr::new("remote"),
+    ]);
+    if let Some(output) = output {
+        assert_cli_failure_contains(
+            &output,
+            "system-status --server remote",
+            "unknown server mode: remote",
+        );
+    }
+}
+
+#[test]
 fn cli_status_rejects_missing_queue_depth_value() {
     let output = run_cli(&[
         std::ffi::OsStr::new("status"),
@@ -2567,6 +2648,10 @@ fn cli_help_is_bounded_and_non_interactive() {
     assert!(
         stdout.contains("commands:"),
         "help should list commands: {stdout}"
+    );
+    assert!(
+        stdout.contains("system-status"),
+        "help should list system-status command: {stdout}"
     );
     assert!(
         stdout.len() <= 8192,

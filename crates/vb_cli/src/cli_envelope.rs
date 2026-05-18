@@ -35,6 +35,7 @@ pub(crate) mod kind {
     pub(crate) const DOCTOR_REPORT: &str = "DoctorReport";
     pub(crate) const AI_CONTEXT_PACKET: &str = "AiContextPacket";
     pub(crate) const CLI_STATUS: &str = "CliStatus";
+    pub(crate) const SYSTEM_STATUS: &str = "SystemStatus";
     pub(crate) const AGENT_CONTEXT: &str = "AgentContext";
 }
 
@@ -57,6 +58,7 @@ pub(crate) enum Kind {
     DoctorReport,
     AiContextPacket,
     CliStatus,
+    SystemStatus,
     AgentContext,
 }
 
@@ -80,6 +82,7 @@ impl Kind {
             Kind::DoctorReport => kind::DOCTOR_REPORT,
             Kind::AiContextPacket => kind::AI_CONTEXT_PACKET,
             Kind::CliStatus => kind::CLI_STATUS,
+            Kind::SystemStatus => kind::SYSTEM_STATUS,
             Kind::AgentContext => kind::AGENT_CONTEXT,
         }
     }
@@ -103,6 +106,7 @@ impl Kind {
             kind::DOCTOR_REPORT => Some(Kind::DoctorReport),
             kind::AI_CONTEXT_PACKET => Some(Kind::AiContextPacket),
             kind::CLI_STATUS => Some(Kind::CliStatus),
+            kind::SYSTEM_STATUS => Some(Kind::SystemStatus),
             kind::AGENT_CONTEXT => Some(Kind::AgentContext),
             _ => None,
         }
@@ -194,6 +198,7 @@ mod tests {
     #[test]
     fn test_kind_as_str() {
         assert_eq!(Kind::CliStatus.as_str(), "CliStatus");
+        assert_eq!(Kind::SystemStatus.as_str(), "SystemStatus");
         assert_eq!(Kind::AiContextPacket.as_str(), "AiContextPacket");
         assert_eq!(Kind::VerificationReport.as_str(), "VerificationReport");
     }
@@ -201,6 +206,7 @@ mod tests {
     #[test]
     fn test_kind_from_str() {
         assert_eq!(Kind::from_str("CliStatus"), Some(Kind::CliStatus));
+        assert_eq!(Kind::from_str("SystemStatus"), Some(Kind::SystemStatus));
         assert_eq!(
             Kind::from_str("AiContextPacket"),
             Some(Kind::AiContextPacket)

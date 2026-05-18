@@ -53,6 +53,10 @@ pub(crate) enum Command {
         options: StatusOptions,
         output: OutputFormat,
     },
+    SystemStatus {
+        options: SystemStatusOptions,
+        output: OutputFormat,
+    },
     ActionList {
         output: OutputFormat,
         registry: ActionRegistryMode,
@@ -181,7 +185,7 @@ pub(crate) enum Command {
     },
 }
 
-pub(crate) const VALID_COMMANDS: &str = "help, version, agent-context, ai-context, status, action, validate, verify, explain, compile, run, run-compiled, ipc-serve, inspect, events, replay, trace, retry, resume, bench-run, doctor, answer, graph, diff, incident, submit, simulate, cancel";
+pub(crate) const VALID_COMMANDS: &str = "help, version, agent-context, ai-context, status, system-status, action, validate, verify, explain, compile, run, run-compiled, ipc-serve, inspect, events, replay, trace, retry, resume, bench-run, doctor, answer, graph, diff, incident, submit, simulate, cancel";
 
 /// Optional diagnostic status values used when no live runtime handle exists.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -190,6 +194,22 @@ pub(crate) struct StatusOptions {
     pub(crate) queue_depth: Option<usize>,
     pub(crate) trace_dropped: Option<u64>,
     pub(crate) emit_yaml: bool,
+}
+
+/// System-status probe depth and runtime selection.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct SystemStatusOptions {
+    pub(crate) profile: VerifyProfile,
+    pub(crate) server: DurabilityMode,
+}
+
+impl Default for SystemStatusOptions {
+    fn default() -> Self {
+        Self {
+            profile: VerifyProfile::Standard,
+            server: DurabilityMode::Strict,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -215,6 +235,17 @@ pub(crate) enum DurabilityMode {
     None,
 }
 
+impl DurabilityMode {
+    #[must_use]
+    pub(crate) const fn as_str(&self) -> &'static str {
+        match self {
+            Self::Strict => "strict",
+            Self::Journaled => "journaled",
+            Self::None => "none",
+        }
+    }
+}
+
 /// Single-step isolation target for `run --step`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct StepTarget {
@@ -230,7 +261,9 @@ pub(crate) enum ParseError {
     UnknownDurability(String),
     UnknownProfile(String),
     UnknownCommand(String),
+    UnknownServerMode(String),
     InvalidStatusArgument(String),
+    InvalidSystemStatusArgument(String),
     UnknownActionCommand(String),
     UnknownActionRegistry(String),
     MissingActionRegistryValue,
@@ -268,6 +301,7 @@ pub(crate) fn parse_args(args: &[OsString]) -> Result<Command, ParseError> {
         "agent-context" => Ok(Command::AgentContext),
         "ai-context" => parse_ai_context(args),
         "status" => parse_status(args),
+        "system-status" => parse_system_status(args),
         "action" => parse_action(args),
         "verify" => parse_verify(args),
         "validate" => parse_validate(args),
@@ -381,6 +415,85 @@ fn parse_status_options(
                 "argument is not valid UTF-8".into(),
             )),
         },
+    }
+}
+
+fn parse_system_status(args: &[OsString]) -> Result<Command, ParseError> {
+    let tokens = args.get(2..).ok_or(ParseError::NoCommand)?;
+    let options = parse_system_status_options(tokens, SystemStatusOptions::default())?;
+    let output = parse_output_format(args);
+    Ok(Command::SystemStatus { options, output })
+}
+
+fn parse_system_status_options(
+    args: &[OsString],
+    options: SystemStatusOptions,
+) -> Result<SystemStatusOptions, ParseError> {
+    match args.split_first() {
+        None => Ok(options),
+        Some((flag, rest)) => match flag.to_str() {
+            Some("--json" | "--jsonl") => parse_system_status_options(rest, options),
+            Some("--profile") => parse_system_status_profile(rest, options),
+            Some("--server") => parse_system_status_server(rest, options),
+            Some(other) if other.starts_with('-') => Err(ParseError::InvalidSystemStatusArgument(
+                format!("unknown flag {other}"),
+            )),
+            Some(other) => Err(ParseError::InvalidSystemStatusArgument(format!(
+                "unexpected positional argument {other}"
+            ))),
+            None => Err(ParseError::InvalidSystemStatusArgument(
+                "argument is not valid UTF-8".into(),
+            )),
+        },
+    }
+}
+
+fn parse_system_status_profile(
+    args: &[OsString],
+    options: SystemStatusOptions,
+) -> Result<SystemStatusOptions, ParseError> {
+    match args.split_first() {
+        Some((raw, remaining)) => match raw.to_str() {
+            Some("quick") => parse_system_status_options(
+                remaining,
+                SystemStatusOptions {
+                    profile: VerifyProfile::Quick,
+                    ..options
+                },
+            ),
+            Some("standard") => parse_system_status_options(remaining, options),
+            Some("full") => parse_system_status_options(
+                remaining,
+                SystemStatusOptions {
+                    profile: VerifyProfile::Full,
+                    ..options
+                },
+            ),
+            Some(value) if value.starts_with("--") => Err(ParseError::MissingArgument("--profile")),
+            Some(other) => Err(ParseError::UnknownProfile(other.into())),
+            None => Err(ParseError::InvalidSystemStatusArgument(
+                "profile is not valid UTF-8".into(),
+            )),
+        },
+        None => Err(ParseError::MissingArgument("--profile")),
+    }
+}
+
+fn parse_system_status_server(
+    args: &[OsString],
+    options: SystemStatusOptions,
+) -> Result<SystemStatusOptions, ParseError> {
+    match args.split_first() {
+        Some((raw, remaining)) => match raw.to_str() {
+            Some(value) if value.starts_with("--") => Err(ParseError::MissingArgument("--server")),
+            Some(value) => parse_server_mode(value).and_then(|server| {
+                parse_system_status_options(remaining, SystemStatusOptions { server, ..options })
+            }),
+            None => Err(ParseError::InvalidSystemStatusArgument(
+                "server mode is not valid UTF-8".into(),
+            )),
+        },
+        None => Err(ParseError::MissingArgument("--server")),
     }
 }
 
@@ -932,6 +1045,15 @@ fn parse_durability(raw: &str) -> Result<DurabilityMode, ParseError> {
     }
 }
 
+fn parse_server_mode(raw: &str) -> Result<DurabilityMode, ParseError> {
+    match raw {
+        "strict" => Ok(DurabilityMode::Strict),
+        "journaled" => Ok(DurabilityMode::Journaled),
+        "none" => Ok(DurabilityMode::None),
+        other => Err(ParseError::UnknownServerMode(other.into())),
+    }
+}
+
 /// Parse --json or --jsonl output format flags.
 /// Returns OutputFormat::Text by default.
 fn parse_output_format(args: &[OsString]) -> OutputFormat {
@@ -1024,8 +1146,17 @@ impl std::fmt::Display for ParseError {
                     "unknown command: {cmd} (expected one of: {VALID_COMMANDS})"
                 )
             }
+            Self::UnknownServerMode(mode) => {
+                write!(
+                    formatter,
+                    "unknown server mode: {mode} (expected: strict, journaled, none)"
+                )
+            }
             Self::InvalidStatusArgument(reason) => {
                 write!(formatter, "invalid status argument: {reason}")
+            }
+            Self::InvalidSystemStatusArgument(reason) => {
+                write!(formatter, "invalid system status argument: {reason}")
             }
             Self::UnknownActionCommand(cmd) => {
                 write!(
@@ -1521,6 +1652,58 @@ mod tests {
             matches!(parsed, Err(ParseError::InvalidStatusArgument(ref s)) if s == "--active-runs must be <= 1024"),
             "expected InvalidStatusArgument(--active-runs must be <= 1024), got {parsed:?}"
         );
+    }
+
+    #[test]
+    fn parse_system_status_defaults_to_standard_strict_text() {
+        let parsed = parse_args(&args(&["velvet-ballastics", "system-status"]));
+        assert!(matches!(parsed, Ok(Command::SystemStatus { .. })));
+        if let Ok(Command::SystemStatus { options, output }) = parsed {
+            assert_eq!(options.profile, VerifyProfile::Standard);
+            assert_eq!(options.server, DurabilityMode::Strict);
+            assert_eq!(output, OutputFormat::Text);
+        }
+    }
+
+    #[test]
+    fn parse_system_status_accepts_profile_server_and_jsonl() {
+        let parsed = parse_args(&args(&[
+            "velvet-ballastics",
+            "system-status",
+            "--profile",
+            "full",
+            "--server",
+            "journaled",
+            "--jsonl",
+        ]));
+        assert!(matches!(parsed, Ok(Command::SystemStatus { .. })));
+        if let Ok(Command::SystemStatus { options, output }) = parsed {
+            assert_eq!(options.profile, VerifyProfile::Full);
+            assert_eq!(options.server, DurabilityMode::Journaled);
+            assert_eq!(output, OutputFormat::Jsonl);
+        }
+    }
+
+    #[test]
+    fn parse_system_status_rejects_unknown_profile() {
+        let parsed = parse_args(&args(&[
+            "velvet-ballastics",
+            "system-status",
+            "--profile",
+            "deep",
+        ]));
+        assert!(matches!(parsed, Err(ParseError::UnknownProfile(ref p)) if p == "deep"));
+    }
+
+    #[test]
+    fn parse_system_status_rejects_unknown_server_mode() {
+        let parsed = parse_args(&args(&[
+            "velvet-ballastics",
+            "system-status",
+            "--server",
+            "remote",
+        ]));
+        assert!(matches!(parsed, Err(ParseError::UnknownServerMode(ref m)) if m == "remote"));
     }
 
     #[test]

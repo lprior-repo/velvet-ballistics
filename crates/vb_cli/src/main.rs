@@ -13,6 +13,7 @@ mod commands_diff;
 mod commands_incident;
 mod commands_journal;
 mod commands_status;
+mod commands_system_status;
 mod commands_verify;
 mod commands_workflow;
 mod exit_code;

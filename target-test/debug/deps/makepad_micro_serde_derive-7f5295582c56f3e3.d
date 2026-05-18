@@ -1,0 +1,8 @@
+/home/lewis/src/velvet-ballistics/target-test/debug/deps/makepad_micro_serde_derive-7f5295582c56f3e3.d: /cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/makepad-micro-serde-derive-1.0.0/src/lib.rs /cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/makepad-micro-serde-derive-1.0.0/src/derive_bin.rs /cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/makepad-micro-serde-derive-1.0.0/src/derive_ron.rs /cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/makepad-micro-serde-derive-1.0.0/src/derive_json.rs
+
+/home/lewis/src/velvet-ballistics/target-test/debug/deps/libmakepad_micro_serde_derive-7f5295582c56f3e3.so: /cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/makepad-micro-serde-derive-1.0.0/src/lib.rs /cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/makepad-micro-serde-derive-1.0.0/src/derive_bin.rs /cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/makepad-micro-serde-derive-1.0.0/src/derive_ron.rs /cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/makepad-micro-serde-derive-1.0.0/src/derive_json.rs
+
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/makepad-micro-serde-derive-1.0.0/src/lib.rs:
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/makepad-micro-serde-derive-1.0.0/src/derive_bin.rs:
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/makepad-micro-serde-derive-1.0.0/src/derive_ron.rs:
+/cache/cargo-shared/registry/src/index.crates.io-1949cf8c6b5b557f/makepad-micro-serde-derive-1.0.0/src/derive_json.rs:
