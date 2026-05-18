@@ -8,8 +8,8 @@ use super::{
     InputMappingError, OutputFormat, ParseError, RunStatus, StepTarget, StorageWorkflowResolver,
     action_contract_detail, action_idempotency_name, action_table_rows, build_step_frame,
     decode_step_inputs, execute_step_isolated, map_runtime_inputs, node_kind_name, parse_args,
-    redacted_slot_value, registered_cli_actions, run_compiled_workflow, setup_exit_code,
-    signal_name, suggested_ai_commands, write_step_inputs,
+    parse_run_id, redacted_slot_value, registered_cli_actions, run_compiled_workflow,
+    setup_exit_code, signal_name, suggested_ai_commands, write_step_inputs,
 };
 use std::ffi::OsString;
 use std::path::PathBuf;
@@ -880,4 +880,121 @@ fn input_mapping_error_exact_variant_coverage() {
         InputMappingError::SlotCountExceeded.to_string(),
         INPUT_MAPPING_SLOT_COUNT_EXCEEDED_MESSAGE
     );
+}
+
+// ---------------------------------------------------------------------------
+// parse_run_id tests
+// ---------------------------------------------------------------------------
+
+#[test]
+fn parse_run_id_accepts_valid_decimal_u64_string() {
+    let result = parse_run_id("42", OutputFormat::Text);
+    assert!(
+        result.is_ok(),
+        "parse_run_id should accept valid decimal string: {result:?}"
+    );
+    let Ok(run_id) = result else { return };
+    assert_eq!(run_id.get(), 42);
+}
+
+#[test]
+fn parse_run_id_accepts_large_u64() {
+    let result = parse_run_id("18446744073709551615", OutputFormat::Text);
+    assert!(
+        result.is_ok(),
+        "parse_run_id should accept max u64: {result:?}"
+    );
+    let Ok(run_id) = result else { return };
+    assert_eq!(run_id.get(), u64::MAX);
+}
+
+#[test]
+fn parse_run_id_rejects_non_numeric_string() {
+    let result = parse_run_id("abc", OutputFormat::Text);
+    assert!(
+        result.is_err(),
+        "parse_run_id should reject non-numeric string: {result:?}"
+    );
+    let Err(code) = result else { return };
+    assert_eq!(
+        code,
+        std::process::ExitCode::from(CliExitCode::ValidationFailed as u8)
+    );
+}
+
+#[test]
+fn parse_run_id_rejects_empty_string() {
+    let result = parse_run_id("", OutputFormat::Text);
+    assert!(
+        result.is_err(),
+        "parse_run_id should reject empty string: {result:?}"
+    );
+    let Err(code) = result else { return };
+    assert_eq!(
+        code,
+        std::process::ExitCode::from(CliExitCode::ValidationFailed as u8)
+    );
+}
+
+#[test]
+fn parse_run_id_rejects_zero() {
+    // RunId(0) is not a valid run identifier in the domain model.
+    let result = parse_run_id("0", OutputFormat::Text);
+    assert!(
+        result.is_err(),
+        "parse_run_id should reject zero: {result:?}"
+    );
+    let Err(code) = result else { return };
+    assert_eq!(
+        code,
+        std::process::ExitCode::from(CliExitCode::ValidationFailed as u8)
+    );
+}
+
+#[test]
+fn parse_run_id_rejects_negative_number() {
+    let result = parse_run_id("-1", OutputFormat::Text);
+    assert!(
+        result.is_err(),
+        "parse_run_id should reject negative numbers: {result:?}"
+    );
+}
+
+#[test]
+fn parse_run_id_rejects_hex_string() {
+    let result = parse_run_id("0x10", OutputFormat::Text);
+    assert!(
+        result.is_err(),
+        "parse_run_id should reject hex strings: {result:?}"
+    );
+}
+
+#[test]
+fn parse_run_id_rejects_float_string() {
+    let result = parse_run_id("1.5", OutputFormat::Text);
+    assert!(
+        result.is_err(),
+        "parse_run_id should reject float strings: {result:?}"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// OutputFormat tests
+// ---------------------------------------------------------------------------
+
+#[test]
+fn output_format_default_is_text() {
+    assert_eq!(OutputFormat::default(), OutputFormat::Text);
+}
+
+#[test]
+fn output_format_json_is_json() {
+    assert_ne!(OutputFormat::default(), OutputFormat::Json);
+    assert_eq!(OutputFormat::Json, OutputFormat::Json);
+}
+
+#[test]
+fn output_format_jsonl_is_jsonl() {
+    assert_ne!(OutputFormat::default(), OutputFormat::Jsonl);
+    assert_eq!(OutputFormat::Jsonl, OutputFormat::Jsonl);
 }
