@@ -1,16 +1,16 @@
 bead_id: vb-f7k6
 bead_title: Add TLA+ Timer Wheel Model
 phase: 1
-updated_at: 2026-05-18T16:40:00Z
+updated_at: 2026-05-18T22:00:21Z
 attempt: 3-of-7
 
 # Go-Skill State
 
 source_checkout: /home/lewis/src/velvet-ballistics
 isolated_workspace: /home/lewis/src/go-skill-vb-f7k6
-current_state: 13
-next_state: 14
-status: READY_FOR_LANDING
+current_state: 14
+next_state: 15
+status: READY_FOR_CLEANUP
 
 ## Retry Counters
 
@@ -285,3 +285,16 @@ Proceed to State 3 (`rust-contract`) in isolated workspace only. Use `bd --db /h
 - Canonical CI direct evidence rerun: `/usr/bin/env moon ci`; exit `0`; `Tasks: 23 completed`; `10894` tests passed in the moon test task; mutants smoke caught `1` mutant.
 - Produced required artifacts: `.beads/vb-f7k6/assurance-bundle.md`, `.beads/vb-f7k6/truth-serum-report.md`, and `.beads/vb-f7k6/final-evidence-decision.md`.
 - Final evidence decision: `STATUS: APPROVED`; state advanced to `current_state=13`, `next_state=14`, `status=READY_FOR_LANDING`.
+
+## State 14 Landing Evidence
+
+- Direct child request: `[vb-f7k6] p14-land`; exactly one bead; State 14 landing only; no nested agents.
+- Precondition verified: `.beads/vb-f7k6/final-evidence-decision.md` reports `STATUS: APPROVED`.
+- Serialized after `vb-5m8w`: source history contains `vb-5m8w` landing commits before landing `vb-f7k6`.
+- Rebased isolated workspace onto current `main`; resolved timer authority conflicts in `timer_wheel.rs` and `types.rs`.
+- Quality gates passed after rebase: `/usr/bin/env cargo fmt --check`, `/usr/bin/env cargo test -p vb_runtime timer`, `/usr/bin/env cargo check --workspace --all-targets --all-features`, and `/usr/bin/env moon ci`.
+- Pushed remote main to `b438be57118c7e739b8b4d7c14ec40be0f7fd9c4` with `jj git push --bookmark main`; remote verification via source checkout returned the same hash for `refs/heads/main`.
+- Closed bead with `bd --db /home/lewis/src/velvet-ballistics/.beads/dolt close vb-f7k6 --reason "Completed: landed timer wheel TLA model and runtime authority validation to remote main b438be57118c"`.
+- Synced bead remote with `bd --db /home/lewis/src/velvet-ballistics/.beads/dolt dolt push`; command reported `Push complete`.
+- Produced required landing report: `.beads/vb-f7k6/landing-report.md`.
+- State advanced to `current_state=14`, `next_state=15`, `status=READY_FOR_CLEANUP`.
