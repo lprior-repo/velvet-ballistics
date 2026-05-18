@@ -1120,7 +1120,7 @@ fn given_cli_ipc_runtime_error_mapping_when_serialized_then_error_category_diges
             FixedAcceptedStore {
                 result: Ok(accepted_artifact(
                     digest(0xD2),
-                    digest(0xD3),
+                    digest(0xD2),
                     REQUIRED_GATE_COUNT,
                     true,
                     Box::new([]),
@@ -1250,7 +1250,7 @@ fn given_any_admission_error_when_runtime_returns_then_no_frame_run_or_drive_sta
             FixedAcceptedStore {
                 result: Ok(accepted_artifact(
                     digest(0xD4),
-                    digest(0xD5),
+                    digest(0xD4),
                     REQUIRED_GATE_COUNT,
                     true,
                     Box::new([]),
@@ -1485,12 +1485,12 @@ proptest! {
 
         if requested == envelope && record == envelope {
             prop_assert_eq!(result, ObservedAdmissionDiagnostic::Admitted(RunAdmission::new(requested, RunId::new(503), CapabilitySet::empty(), RuntimePolicy::Strict)));
-        } else if requested != envelope && record == envelope {
+        } else if record != envelope {
+            prop_assert_eq!(result, ObservedAdmissionDiagnostic::DigestMismatch { requested: envelope, record, envelope: record });
+        } else if requested != envelope {
             prop_assert_eq!(result, ObservedAdmissionDiagnostic::DigestMismatch { requested, record: envelope, envelope: envelope });
-        } else if requested == envelope && record != envelope {
-            prop_assert_eq!(result, ObservedAdmissionDiagnostic::DigestMismatch { requested, record: record, envelope: record });
         } else {
-            prop_assert_eq!(result, ObservedAdmissionDiagnostic::DigestMismatch { requested, record: envelope, envelope: envelope });
+            prop_assert_eq!(result, ObservedAdmissionDiagnostic::Admitted(RunAdmission::new(requested, RunId::new(503), CapabilitySet::empty(), RuntimePolicy::Strict)));
         }
     }
 
