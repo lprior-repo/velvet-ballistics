@@ -39,11 +39,11 @@ use crate::mode_error::{CommandMode, ModeError, command_mode};
 
 #[test]
 fn mode_error_invalid_mode_maps_to_validation_failed() {
-    // ModeError::InvalidMode (defensive) → CliExitCode::ValidationFailed (exit 1)
+    // ModeError::InvalidMode (defensive) → CliExitCode::ValidationFailed (exit 2 per contract)
     let err = ModeError::InvalidMode;
     let code = CliExitCode::from(err);
     assert_eq!(code, CliExitCode::ValidationFailed);
-    assert_eq!(u8::from(CliExitCode::from(ModeError::InvalidMode)), 1u8);
+    assert_eq!(u8::from(CliExitCode::from(ModeError::InvalidMode)), 2u8);
 }
 
 #[test]
@@ -77,13 +77,13 @@ fn mode_error_storage_init_failed_display_includes_path_and_cause() {
 
 #[test]
 fn mode_error_runtime_init_failed_maps_to_runtime_failed() {
-    // ModeError::RuntimeInitFailed → CliExitCode::RuntimeFailed (exit 4)
+    // ModeError::RuntimeInitFailed → CliExitCode::RuntimeFailed (exit 1 per contract)
     let err = ModeError::RuntimeInitFailed {
         cause: "shard count must be non-zero".to_string(),
     };
     let code = CliExitCode::from(err);
     assert_eq!(code, CliExitCode::RuntimeFailed);
-    assert_eq!(u8::from(code), 4u8);
+    assert_eq!(u8::from(code), 1u8);
 }
 
 #[test]
@@ -166,9 +166,10 @@ fn mode_error_all_variants_have_distinct_exit_codes() {
             },
         )),
     ];
-    // Per contract: StorageInitFailed and PureCommandStorageAccessAttempted both map to 5
-    // RuntimeInitFailed maps to 4, UiInitFailed maps to 7, InvalidMode maps to 1
-    let expected = [1u8, 5, 4, 7, 5];
+    // Per contract: InvalidMode maps to ValidationFailed (2), StorageInitFailed and
+    // PureCommandStorageAccessAttempted both map to StorageError (5),
+    // RuntimeInitFailed maps to RuntimeFailed (1), UiInitFailed maps to ActionPolicyError (7)
+    let expected = [2u8, 5, 1, 7, 5];
     assert_eq!(codes, expected, "ModeError exit codes must match contract");
 }
 

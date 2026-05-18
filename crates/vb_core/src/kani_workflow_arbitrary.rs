@@ -8,9 +8,10 @@
 //! step_names, and resource_contract — not just accessor variations.
 
 use crate::ids::{
-    AccessorIdx, ActionId, ConstIdx, ExprIdx, SlotIdx, StepIdx, SymbolId, WorkflowDigest,
+    AccessorIdx, ActionId, BlobId, ConstIdx, ExprIdx, ListId, ObjectId, SlotIdx, StepIdx, SymbolId,
+    WorkflowDigest,
 };
-use crate::value::{ConstValue, FiniteF64};
+use crate::value::{ConstValue, FiniteF64, SlotValue, Taint};
 use crate::workflow::{
     AccessorProgram, CompiledNode, CompiledNodeKind, ExprBranch, ExprOp, ExprProgram, PathSegment,
     ResourceContract, SlotBranch, WorkflowParts,
@@ -467,4 +468,33 @@ fn bounded_len_2() -> u8 {
     let len: u8 = kani::any();
     kani::assume(len <= 2);
     len
+}
+
+// -------------------------------------------------------------------------
+// kani::Arbitrary for Taint and SlotValue (needed by EngineSignal harness)
+// -------------------------------------------------------------------------
+
+impl kani::Arbitrary for Taint {
+    fn any() -> Self {
+        match kani::any::<u8>() % 3 {
+            0 => Taint::Clean,
+            1 => Taint::DerivedFromSecret,
+            _ => Taint::Secret,
+        }
+    }
+}
+
+impl kani::Arbitrary for SlotValue {
+    fn any() -> Self {
+        match kani::any::<u8>() % 8 {
+            0 => SlotValue::Null,
+            1 => SlotValue::Bool(kani::any()),
+            2 => SlotValue::I64(kani::any()),
+            3 => SlotValue::F64(kani::any()),
+            4 => SlotValue::Symbol(SymbolId::new(kani::any())),
+            5 => SlotValue::List(ListId::new(kani::any())),
+            6 => SlotValue::Object(ObjectId::new(kani::any())),
+            _ => SlotValue::Blob(BlobId::new(kani::any())),
+        }
+    }
 }

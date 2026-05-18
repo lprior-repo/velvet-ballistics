@@ -68,6 +68,9 @@ pub mod kani_resource_budget_bounded;
 pub mod kani_workflow_arbitrary;
 
 #[cfg(kani)]
+pub mod kani_step_harnesses;
+
+#[cfg(kani)]
 pub mod kani_step_state_transition;
 
 pub use action::{

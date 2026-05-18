@@ -12,14 +12,14 @@ use std::process::ExitCode;
 pub(crate) enum CliExitCode {
     /// Operation completed successfully.
     Success = 0,
+    /// Runtime execution or step evaluation failed.
+    RuntimeFailed = 1,
     /// Input validation or argument parsing failed.
-    ValidationFailed = 1,
-    /// Workflow verification (e.g. step isolation precondition) failed.
-    VerificationFailed = 2,
+    ValidationFailed = 2,
     /// Workflow compilation or code generation failed.
     CompileFailed = 3,
-    /// Runtime execution or step evaluation failed.
-    RuntimeFailed = 4,
+    /// Workflow verification (e.g. step isolation precondition) failed.
+    VerificationFailed = 4,
     /// Storage, journal, or persistence operation failed.
     StorageError = 5,
     /// IPC server operation failed.
@@ -43,10 +43,10 @@ impl From<CliExitCode> for u8 {
     fn from(code: CliExitCode) -> Self {
         match code {
             CliExitCode::Success => 0,
-            CliExitCode::ValidationFailed => 1,
-            CliExitCode::VerificationFailed => 2,
+            CliExitCode::RuntimeFailed => 1,
+            CliExitCode::ValidationFailed => 2,
             CliExitCode::CompileFailed => 3,
-            CliExitCode::RuntimeFailed => 4,
+            CliExitCode::VerificationFailed => 4,
             CliExitCode::StorageError => 5,
             CliExitCode::IpcError => 6,
             CliExitCode::ActionPolicyError => 7,
@@ -77,10 +77,10 @@ mod tests {
     #[test]
     fn discriminant_values_match_spec() {
         assert_eq!(u8::from(CliExitCode::Success), 0);
-        assert_eq!(u8::from(CliExitCode::ValidationFailed), 1);
-        assert_eq!(u8::from(CliExitCode::VerificationFailed), 2);
+        assert_eq!(u8::from(CliExitCode::RuntimeFailed), 1);
+        assert_eq!(u8::from(CliExitCode::ValidationFailed), 2);
         assert_eq!(u8::from(CliExitCode::CompileFailed), 3);
-        assert_eq!(u8::from(CliExitCode::RuntimeFailed), 4);
+        assert_eq!(u8::from(CliExitCode::VerificationFailed), 4);
         assert_eq!(u8::from(CliExitCode::StorageError), 5);
         assert_eq!(u8::from(CliExitCode::IpcError), 6);
         assert_eq!(u8::from(CliExitCode::ActionPolicyError), 7);
@@ -91,11 +91,11 @@ mod tests {
     fn from_cli_exit_code_to_exit_code() {
         assert_eq!(ExitCode::from(CliExitCode::Success), ExitCode::SUCCESS);
         assert_eq!(
-            ExitCode::from(CliExitCode::ValidationFailed),
+            ExitCode::from(CliExitCode::RuntimeFailed),
             ExitCode::from(1u8)
         );
         assert_eq!(
-            ExitCode::from(CliExitCode::VerificationFailed),
+            ExitCode::from(CliExitCode::ValidationFailed),
             ExitCode::from(2u8)
         );
         assert_eq!(
@@ -103,7 +103,7 @@ mod tests {
             ExitCode::from(3u8)
         );
         assert_eq!(
-            ExitCode::from(CliExitCode::RuntimeFailed),
+            ExitCode::from(CliExitCode::VerificationFailed),
             ExitCode::from(4u8)
         );
         assert_eq!(

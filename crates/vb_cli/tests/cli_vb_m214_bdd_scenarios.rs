@@ -54,9 +54,9 @@ mod parse_error_tests {
     fn parse_unknown_command_returns_error() {
         // Given: an invalid subcommand string
         // When: velvet-ballastics is invoked with unknown subcommand
-        // Then: exit code 1 with "unknown command" in output
+        // Then: exit code 2 (ValidationFailed) with "unknown command" in output
         let output = run_cli_failing(&["nonexistent-command"]).unwrap();
-        assert_eq!(output.status.code(), Some(1));
+        assert_eq!(output.status.code(), Some(2));
         let combined = format!(
             "{}{}",
             String::from_utf8_lossy(&output.stdout),
@@ -73,7 +73,7 @@ mod parse_error_tests {
     fn parse_unknown_emit_target_returns_error() {
         let output =
             run_cli_failing(&["compile", "--emit", "invalid-format", "/tmp/w.yaml"]).unwrap();
-        assert_eq!(output.status.code(), Some(1));
+        assert_eq!(output.status.code(), Some(2));
         let combined = format!(
             "{}{}",
             String::from_utf8_lossy(&output.stdout),
@@ -89,7 +89,7 @@ mod parse_error_tests {
     fn parse_unknown_durability_returns_error() {
         let output =
             run_cli_failing(&["run", "--durability", "invalid-mode", "/tmp/w.yaml"]).unwrap();
-        assert_eq!(output.status.code(), Some(1));
+        assert_eq!(output.status.code(), Some(2));
         let combined = format!(
             "{}{}",
             String::from_utf8_lossy(&output.stdout),
@@ -105,7 +105,7 @@ mod parse_error_tests {
     fn parse_unknown_profile_returns_error() {
         let output =
             run_cli_failing(&["verify", "--profile", "invalid-profile", "/tmp/w.yaml"]).unwrap();
-        assert_eq!(output.status.code(), Some(1));
+        assert_eq!(output.status.code(), Some(2));
         let combined = format!(
             "{}{}",
             String::from_utf8_lossy(&output.stdout),
@@ -121,7 +121,7 @@ mod parse_error_tests {
     fn parse_unknown_action_registry_returns_error() {
         let output =
             run_cli_failing(&["action", "list", "--registry", "invalid-registry"]).unwrap();
-        assert_eq!(output.status.code(), Some(1));
+        assert_eq!(output.status.code(), Some(2));
         let combined = format!(
             "{}{}",
             String::from_utf8_lossy(&output.stdout),
@@ -137,7 +137,7 @@ mod parse_error_tests {
     fn parse_reason_too_long_returns_error() {
         let long_reason = "x".repeat(300);
         let output = run_cli_failing(&["cancel", "test-run-id", "--reason", &long_reason]).unwrap();
-        assert_eq!(output.status.code(), Some(1));
+        assert_eq!(output.status.code(), Some(2));
     }
 
     #[test]
@@ -157,10 +157,10 @@ mod parse_error_tests {
     #[test]
     fn parse_validate_requires_workflow_path() {
         // Given: validate command without a workflow path
-        // When: velvet-ballastics validate is called without args
-        // Then: exit code 1 with usage error
+        // When: velvet-ballistics validate is called without args
+        // Then: exit code 2 (ValidationFailed) with usage error
         let output = run_cli_failing(&["validate"]).unwrap();
-        assert_eq!(output.status.code(), Some(1));
+        assert_eq!(output.status.code(), Some(2));
     }
 }
 
@@ -186,17 +186,17 @@ mod exit_code_tests {
     }
 
     #[test]
-    fn exit_code_one_on_validation_failure() {
+    fn exit_code_two_on_validation_failure() {
         // Given: an invalid YAML workflow
         // When: velvet-ballastics validate is called
-        // Then: exit code 1 (ValidationFailed)
+        // Then: exit code 2 (ValidationFailed) per contract POST-008
         let tmp = std::env::temp_dir().join("vb-test-invalid.yaml");
         std::fs::write(&tmp, "invalid: yaml: content: [").unwrap();
         let output = run_cli_failing(&["validate", tmp.to_str().unwrap()]).unwrap();
         assert_eq!(
             output.status.code(),
-            Some(1),
-            "expected exit 1 on validation failure"
+            Some(2),
+            "expected exit 2 on validation failure per contract POST-008"
         );
         std::fs::remove_file(tmp).ok();
     }
@@ -411,7 +411,7 @@ mod bdd_scenarios {
         let tmp = std::env::temp_dir().join("vb-test-explain-bad.yaml");
         std::fs::write(&tmp, "version: velvet-ballastics/v1\nsteps: not-valid").unwrap();
         let output = run_cli_failing(&["explain", tmp.to_str().unwrap()]).unwrap();
-        assert!(output.status.code() == Some(1));
+        assert!(output.status.code() == Some(2));
         // Error details may be in stdout or stderr
         let combined = format!(
             "{}{}",
@@ -462,7 +462,7 @@ mod bdd_scenarios {
     fn cli_cancel_requires_run_id() {
         // cancel without a run id should show help or error
         let output = run_cli_failing(&["cancel"]).unwrap();
-        assert!(output.status.code() == Some(1));
+        assert!(output.status.code() == Some(2));
     }
 
     #[test]
@@ -477,7 +477,7 @@ mod bdd_scenarios {
     fn cli_cancel_rejects_reason_exceeding_256_chars() {
         let long_reason = "x".repeat(300);
         let output = run_cli_failing(&["cancel", "test-run-id", "--reason", &long_reason]).unwrap();
-        assert!(output.status.code() == Some(1));
+        assert!(output.status.code() == Some(2));
     }
 
     // trace
@@ -521,8 +521,8 @@ mod bdd_scenarios {
         // answer requires --db, --step, --value-file
         let output = run_cli_failing(&["answer", "test-run-id"]).unwrap();
         assert!(
-            output.status.code() == Some(1),
-            "expected exit 1 for missing required args"
+            output.status.code() == Some(2),
+            "expected exit 2 for missing required args"
         );
     }
 
@@ -620,8 +620,8 @@ mod bdd_scenarios {
         // diff requires --run-a and --run-b
         let output = run_cli_failing(&["diff", "--db", "/tmp"]).unwrap();
         assert!(
-            output.status.code() == Some(1),
-            "expected exit 1 for missing run args"
+            output.status.code() == Some(2),
+            "expected exit 2 for missing run args"
         );
     }
 
@@ -651,8 +651,8 @@ mod bdd_scenarios {
     fn cli_action_inspect_requires_action_id() {
         let output = run_cli_failing(&["action", "inspect"]).unwrap();
         assert!(
-            output.status.code() == Some(1),
-            "expected exit 1 for missing action id"
+            output.status.code() == Some(2),
+            "expected exit 2 for missing action id"
         );
     }
 
@@ -669,7 +669,7 @@ mod bdd_scenarios {
     #[test]
     fn cli_unknown_command_returns_error() {
         let output = run_cli_failing(&["completely-unknown-cmd"]).unwrap();
-        assert!(output.status.code() == Some(1));
+        assert!(output.status.code() == Some(2));
     }
 
     // PRE-003: --durability strict/journaled requires --db
@@ -685,8 +685,8 @@ mod bdd_scenarios {
         let output =
             run_cli_failing(&["run", tmp.to_str().unwrap(), "--durability", "strict"]).unwrap();
         assert!(
-            output.status.code() == Some(1),
-            "expected exit 1 for missing --db with --durability strict, got: {:?}",
+            output.status.code() == Some(2),
+            "expected exit 2 for missing --db with --durability strict, got: {:?}",
             output.status.code()
         );
         std::fs::remove_file(tmp).ok();
@@ -703,8 +703,8 @@ mod bdd_scenarios {
         let output =
             run_cli_failing(&["run", tmp.to_str().unwrap(), "--durability", "journaled"]).unwrap();
         assert!(
-            output.status.code() == Some(1),
-            "expected exit 1 for missing --db with --durability journaled, got: {:?}",
+            output.status.code() == Some(2),
+            "expected exit 2 for missing --db with --durability journaled, got: {:?}",
             output.status.code()
         );
         std::fs::remove_file(tmp).ok();

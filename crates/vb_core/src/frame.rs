@@ -7,7 +7,7 @@ use crate::ids::{RunId, SlotIdx, StepIdx};
 use crate::value::{SlotValue, Taint};
 
 /// Per-step execution state stored in the hot run frame.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
 #[non_exhaustive]
 pub enum StepState {
     /// Step has not been entered.
@@ -275,6 +275,24 @@ impl RunFrame {
             .enumerate()
             .filter_map(initialized_slot_entry)
             .collect()
+    }
+
+    /// Returns a snapshot of all slot values (including uninitialized slots as None).
+    #[must_use]
+    pub fn slots_snapshot(&self) -> Vec<Option<SlotValue>> {
+        self.slots.to_vec()
+    }
+
+    /// Returns a snapshot of all taint markers.
+    #[must_use]
+    pub fn taint_snapshot(&self) -> Vec<Taint> {
+        self.taint.to_vec()
+    }
+
+    /// Returns a snapshot of all step states.
+    #[must_use]
+    pub fn states_snapshot(&self) -> Vec<StepState> {
+        self.states.to_vec()
     }
 
     /// Reads a slot taint marker.

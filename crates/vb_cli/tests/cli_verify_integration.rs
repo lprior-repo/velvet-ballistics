@@ -209,11 +209,11 @@ fn bdd_yaml_parse_error_returns_classified_error() {
     ]);
 
     let status = output.status;
-    // YAML parse error must result in exit code 1 (ValidationFailed)
+    // YAML parse error must result in exit code 2 (ValidationFailed) per contract POST-008
     assert_eq!(
         status.code(),
-        Some(1),
-        "YAML parse error must exit with code 1 (ValidationFailed)"
+        Some(2),
+        "YAML parse error must exit with code 2 (ValidationFailed)"
     );
 
     // stderr must mention YAML or parse error
@@ -229,9 +229,10 @@ fn bdd_yaml_parse_error_returns_classified_error() {
 /// ### Behavior: exit_code_for_error returns ValidationFailed for YamlParse
 #[test]
 fn bdd_yaml_parse_exit_code_is_validation_failed() {
-    // This is tested via CLI - YAML parse error → exit code 1
+    // This is tested via CLI - YAML parse error → exit code 2 (ValidationFailed) per contract
     let temp_dir = std::env::temp_dir();
     let temp_file = temp_dir.join("vb_test_malformed2.yaml");
+
     write_test_file(&temp_file, b"invalid: yaml: content: here:");
 
     let output = must_run_cli(&[
@@ -243,8 +244,8 @@ fn bdd_yaml_parse_exit_code_is_validation_failed() {
 
     assert_eq!(
         output.status.code(),
-        Some(1),
-        "YamlParse must return exit code 1 (ValidationFailed)"
+        Some(2),
+        "YamlParse must return exit code 2 (ValidationFailed)"
     );
 }
 
@@ -416,12 +417,12 @@ fn bdd_standard_profile_warns_not_fails_on_budget() {
         &fixture_os("tests/fixtures/invalid/invalid_cyclic_dep.yaml"),
     ]);
 
-    // Standard profile must NOT fail with exit code 2 for budget issues
-    // It should either succeed (with warnings) or fail with exit code 1 (ValidationFailed)
+    // Standard profile must NOT fail with exit code 4 (VerificationFailed) for budget issues
+    // It should either succeed (with warnings) or fail with exit code 1 (RuntimeFailed)
     let code = output.status.code();
     assert!(
-        code != Some(2),
-        "Standard profile must not fail with VerificationFailed (2) for budget issues"
+        code != Some(4),
+        "Standard profile must not fail with VerificationFailed (4) for budget issues"
     );
 }
 

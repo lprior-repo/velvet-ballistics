@@ -169,8 +169,8 @@ fn validate_fails_on_invalid_workflow_without_storage() {
 
     assert_eq!(
         output.status.code(),
-        Some(1),
-        "validate on invalid workflow must exit 1, stderr: {}",
+        Some(2),
+        "validate on invalid workflow must exit 2 (ValidationFailed), stderr: {}",
         String::from_utf8_lossy(&output.stderr)
     );
 }
@@ -251,7 +251,7 @@ fn verify_succeeds_with_json_output() {
 
 #[test]
 fn verify_fails_with_exit_2_on_failing_workflow() {
-    // BDD: verify fails with exit 2 (VerificationFailed) on failing workflow
+    // BDD: verify fails with exit 2 (ValidationFailed) on failing workflow
     let dir = temp_workflow(INVALID_WORKFLOW);
     let workflow = dir.path().join("workflow.yaml");
 
@@ -259,8 +259,8 @@ fn verify_fails_with_exit_2_on_failing_workflow() {
 
     assert_eq!(
         output.status.code(),
-        Some(1),
-        "verify on structurally invalid workflow must exit 1 (ValidationFailed)"
+        Some(2),
+        "verify on structurally invalid workflow must exit 2 (ValidationFailed)"
     );
 }
 
@@ -622,11 +622,11 @@ fn submit_opens_fjall_journal() {
 // =============================================================================
 
 #[test]
-fn unknown_command_exits_with_code_1_and_lists_valid_commands() {
-    // ERR-Taxonomy: ParseError::UnknownCommand → exit 1 + valid command list
+fn unknown_command_exits_with_code_2_and_lists_valid_commands() {
+    // ERR-Taxonomy: ParseError::UnknownCommand → exit 2 (ValidationFailed) + valid command list
     let output = run_bin(["velvet-ballastics", "foobar"]);
 
-    assert_eq!(output.status.code(), Some(1), "unknown command must exit 1");
+    assert_eq!(output.status.code(), Some(2), "unknown command must exit 2 (ValidationFailed)");
     let stderr = String::from_utf8_lossy(&output.stderr);
     assert!(
         stderr.contains("foobar") || stderr.contains("unknown command"),

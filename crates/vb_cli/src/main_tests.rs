@@ -3,7 +3,7 @@
 #![allow(clippy::doc_markdown)]
 
 use super::{
-    ActionRegistryMode, Command, DurabilityMode, INPUT_MAPPING_DECODE_FAILED_MESSAGE,
+    ActionRegistryMode, CliExitCode, Command, DurabilityMode, INPUT_MAPPING_DECODE_FAILED_MESSAGE,
     INPUT_MAPPING_SLOT_COUNT_EXCEEDED_MESSAGE, INPUT_MAPPING_SLOT_INDEX_OUT_OF_RANGE_MESSAGE,
     InputMappingError, OutputFormat, ParseError, RunStatus, StepTarget, StorageWorkflowResolver,
     action_contract_detail, action_idempotency_name, action_table_rows, build_step_frame,
@@ -731,14 +731,15 @@ fn signal_name_returns_correct_labels() {
 
 #[test]
 fn decode_step_inputs_empty_data_returns_empty() {
-    let result = decode_step_inputs(b"");
+    let result = decode_step_inputs(b"", OutputFormat::Text);
     assert_eq!(result, Ok(Box::from([])));
 }
 
 #[test]
 fn decode_step_inputs_invalid_data_returns_error() {
-    let result = decode_step_inputs(b"garbage");
-    assert_eq!(result, Err(setup_exit_code()));
+    let result = decode_step_inputs(b"garbage", OutputFormat::Text);
+    // Decode error is a validation failure per PRE-004 contract requirement
+    assert_eq!(result, Err(CliExitCode::ValidationFailed.into()));
 }
 
 #[test]
@@ -771,7 +772,8 @@ fn execute_step_isolated_set_const_step_succeeds() {
             return;
         };
         let inputs: Box<[vb_core::SlotValue]> = Box::from([]);
-        let code = execute_step_isolated(&compiled, StepIdx::ZERO, node, &inputs);
+        let code =
+            execute_step_isolated(&compiled, StepIdx::ZERO, node, &inputs, OutputFormat::Text);
         assert_eq!(code, std::process::ExitCode::SUCCESS);
     }
 }

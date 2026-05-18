@@ -979,4 +979,173 @@ mod tests {
         ensure_equal(result, EngineSignal::Continue)?;
         ensure_equal(run.pc(), StepIdx::new(1))
     }
+
+    // ===== AwaitingAction preserves PC and keeps step in Running state =====
+
+    /// VB-POST003/INV-004: AwaitingAction signal means PC does NOT advance.
+    /// The step remains in Running state waiting for external action completion.
+    #[test]
+    fn step_once_awaiting_action_preserves_pc() -> Result<(), String> {
+        let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
+            name: Box::<str>::from("await_action_preserves_pc"),
+            digest: WorkflowDigest::from_bytes([0x55; 32]),
+            nodes: vec![CompiledNode {
+                id: StepIdx::new(0),
+                output: Some(SlotIdx::new(0)),
+                next: None,
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::Do {
+                    action: ActionId::new(1),
+                    input: SlotIdx::new(0),
+                },
+            }]
+            .into_boxed_slice(),
+            expressions: Box::new([]),
+            accessors: Box::new([]),
+            constants: Box::new([]),
+            slot_count: 1,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+            step_names: Box::new([]),
+        })
+        .map_err(|e| e.to_string())?;
+        let mut run = test_frame(&workflow)?;
+        // Precondition: PC is at step 0
+        assert_eq!(run.pc(), StepIdx::new(0), "initial PC should be 0");
+        let mut store = ValueStore::new();
+
+        let result = step_once(&workflow, &mut run, &mut store).map_err(|e| e.to_string())?;
+
+        // Verify AwaitingAction is returned
+        ensure_equal(result, EngineSignal::AwaitingAction)?;
+        // PC must NOT advance for AwaitingAction
+        ensure_equal(run.pc(), StepIdx::new(0))?;
+        // Step should be in Running state (not Succeeded)
+        ensure_equal(run.step_state(StepIdx::new(0)), Ok(StepState::Running))
+    }
+
+    // ===== Signal→State mapping verification =====
+
+    /// VB-INV-002: Verify EngineSignal→StepState mapping after step_once.
+    /// - Continue | Finished → Succeeded
+    /// - AwaitingAction | StepBudgetExhausted → Running (PC unchanged)
+    /// - AwaitingWait → Waiting
+    /// - AwaitingAsk → Asking
+    #[test]
+    fn step_once_signal_maps_to_correct_state() -> Result<(), String> {
+        // Test Continue → Succeeded via Nop node
+        {
+            let workflow = nop_then_finish_workflow()?;
+            let mut run = test_frame(&workflow)?;
+            let mut store = ValueStore::new();
+            let result = step_once(&workflow, &mut run, &mut store).map_err(|e| e.to_string())?;
+            ensure_equal(result, EngineSignal::Continue)?;
+            ensure_equal(run.step_state(StepIdx::new(0)), Ok(StepState::Succeeded))?;
+        }
+
+        // Test AwaitingAction → Running (PC unchanged)
+        {
+            let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
+                name: Box::<str>::from("signal_map_awaiting_action"),
+                digest: WorkflowDigest::from_bytes([0x66; 32]),
+                nodes: vec![CompiledNode {
+                    id: StepIdx::new(0),
+                    output: Some(SlotIdx::new(0)),
+                    next: None,
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::Do {
+                        action: ActionId::new(1),
+                        input: SlotIdx::new(0),
+                    },
+                }]
+                .into_boxed_slice(),
+                expressions: Box::new([]),
+                accessors: Box::new([]),
+                constants: Box::new([]),
+                slot_count: 1,
+                symbols_count: 0,
+                entry: StepIdx::new(0),
+                resource_contract: ResourceContract::DEFAULT,
+                step_names: Box::new([]),
+            })
+            .map_err(|e| e.to_string())?;
+            let mut run = test_frame(&workflow)?;
+            let mut store = ValueStore::new();
+            let result = step_once(&workflow, &mut run, &mut store).map_err(|e| e.to_string())?;
+            ensure_equal(result, EngineSignal::AwaitingAction)?;
+            ensure_equal(run.step_state(StepIdx::new(0)), Ok(StepState::Running))?;
+        }
+
+        // Test AwaitingWait → Waiting
+        {
+            let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
+                name: Box::<str>::from("signal_map_awaiting_wait"),
+                digest: WorkflowDigest::from_bytes([0x77; 32]),
+                nodes: vec![CompiledNode {
+                    id: StepIdx::new(0),
+                    output: None,
+                    next: None,
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::WaitUntil {
+                        deadline_slot: SlotIdx::new(0),
+                    },
+                }]
+                .into_boxed_slice(),
+                expressions: Box::new([]),
+                accessors: Box::new([]),
+                constants: Box::new([]),
+                slot_count: 1,
+                symbols_count: 0,
+                entry: StepIdx::new(0),
+                resource_contract: ResourceContract::DEFAULT,
+                step_names: Box::new([]),
+            })
+            .map_err(|e| e.to_string())?;
+            let mut run = test_frame(&workflow)?;
+            let mut store = ValueStore::new();
+            let result = step_once(&workflow, &mut run, &mut store).map_err(|e| e.to_string())?;
+            ensure_equal(result, EngineSignal::AwaitingWait)?;
+            ensure_equal(run.step_state(StepIdx::new(0)), Ok(StepState::Waiting))?;
+        }
+
+        // Test AwaitingAsk → Asking
+        {
+            let workflow = CompiledWorkflow::try_from_parts(WorkflowParts {
+                name: Box::<str>::from("signal_map_awaiting_ask"),
+                digest: WorkflowDigest::from_bytes([0x88; 32]),
+                nodes: vec![CompiledNode {
+                    id: StepIdx::new(0),
+                    output: None,
+                    next: None,
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::Ask {
+                        prompt: SlotIdx::new(0),
+                        timeout_slot: None,
+                    },
+                }]
+                .into_boxed_slice(),
+                expressions: Box::new([]),
+                accessors: Box::new([]),
+                constants: Box::new([]),
+                slot_count: 1,
+                symbols_count: 0,
+                entry: StepIdx::new(0),
+                resource_contract: ResourceContract::DEFAULT,
+                step_names: Box::new([]),
+            })
+            .map_err(|e| e.to_string())?;
+            let mut run = test_frame(&workflow)?;
+            let mut store = ValueStore::new();
+            let result = step_once(&workflow, &mut run, &mut store).map_err(|e| e.to_string())?;
+            ensure_equal(result, EngineSignal::AwaitingAsk)?;
+            ensure_equal(run.step_state(StepIdx::new(0)), Ok(StepState::Asking))?;
+        }
+
+        Ok(())
+    }
 }

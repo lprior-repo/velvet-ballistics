@@ -580,7 +580,7 @@ fn cli_action_list_missing_registry_value_fails_with_action_args_diagnostic() {
         !output.status.success(),
         "missing registry value should fail"
     );
-    assert_eq!(output.status.code(), Some(1));
+    assert_eq!(output.status.code(), Some(2));
     assert_eq!(output_stdout(&output), "");
     assert_eq!(
         first_stderr_line(&output),
@@ -607,7 +607,7 @@ fn cli_action_list_unknown_flag_fails_with_exact_diagnostic() {
     };
 
     assert!(!output.status.success(), "unknown flag should fail");
-    assert_eq!(output.status.code(), Some(1));
+    assert_eq!(output.status.code(), Some(2));
     assert_eq!(output_stdout(&output), "");
     assert_eq!(
         first_stderr_line(&output),
@@ -635,7 +635,7 @@ fn cli_action_list_unknown_registry_fails_with_exact_diagnostic() {
     };
 
     assert!(!output.status.success(), "unknown registry should fail");
-    assert_eq!(output.status.code(), Some(1));
+    assert_eq!(output.status.code(), Some(2));
     assert_eq!(output_stdout(&output), "");
     assert_eq!(
         first_stderr_line(&output),
@@ -662,7 +662,7 @@ fn cli_action_list_trailing_argument_fails() {
     };
 
     assert!(!output.status.success(), "trailing arg should fail");
-    assert_eq!(output.status.code(), Some(1));
+    assert_eq!(output.status.code(), Some(2));
     assert_eq!(output_stdout(&output), "");
     assert_eq!(
         first_stderr_line(&output),
@@ -1627,7 +1627,7 @@ fn cli_ai_context_reports_missing_and_invalid_run_ids() {
         Some(output) => output,
         None => return,
     };
-    assert_eq!(invalid_output.status.code(), Some(1));
+    assert_eq!(invalid_output.status.code(), Some(2));
     let invalid_stderr = output_stderr(&invalid_output);
     assert!(
         invalid_stderr.contains("invalid run_id 'not-a-run'"),
@@ -1644,7 +1644,7 @@ fn cli_ai_context_reports_missing_and_invalid_run_ids() {
         Some(output) => output,
         None => return,
     };
-    assert_eq!(missing_output.status.code(), Some(1));
+    assert_eq!(missing_output.status.code(), Some(2));
     let stderr = output_stderr(&missing_output);
     assert!(stderr.contains("RUN_NOT_FOUND"), "missing code: {stderr}");
     assert!(stderr.contains("77"), "missing run id: {stderr}");

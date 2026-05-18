@@ -1,12 +1,44 @@
 {
   "kani-version": "0.67.0",
   "file-version": "0.1",
-  "standard-harnesses": {},
+  "standard-harnesses": {
+    "step_once_bounds_harness": {
+      "file": "crates/vb_core/src/kani_step_harnesses.rs",
+      "line": 53,
+      "proofObligation": "VB-PRE002-KANI"
+    },
+    "step_once_state_mapping_harness": {
+      "file": "crates/vb_core/src/kani_step_harnesses.rs",
+      "line": 147,
+      "proofObligation": "VB-INV002-KANI"
+    },
+    "step_once_slot_init_harness": {
+      "file": "crates/vb_core/src/kani_step_harnesses.rs",
+      "line": 216,
+      "proofObligation": "VB-INV003-KANI"
+    },
+    "step_once_pc_bounds_harness": {
+      "file": "crates/vb_core/src/kani_step_harnesses.rs",
+      "line": 270,
+      "proofObligation": "VB-INV004-KANI"
+    },
+    "taint_validity_harness": {
+      "file": "crates/vb_core/src/kani_step_harnesses.rs",
+      "line": 316,
+      "proofObligation": "VB-INV006-KANI"
+    },
+    "step_once_error_harness": {
+      "file": "crates/vb_core/src/kani_step_harnesses.rs",
+      "line": 386,
+      "proofObligation": "VB-ERR001-KANI"
+    }
+  },
   "contract-harnesses": {},
   "contracts": [],
   "totals": {
-    "standard-harnesses": 0,
+    "standard-harnesses": 6,
     "contract-harnesses": 0,
     "functions-under-contract": 0
-  }
+  },
+  "note": "Harnesses use kani::any() for SlotValue/Taint/EngineSignal/WorkflowParts. Execution times out due to SlotValue symbolic complexity (8 variants with recursive handles). Compilation succeeds. Verus proofs pass (INV-001, INV-002, INV-004, INV-006)."
 }
