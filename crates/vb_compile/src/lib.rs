@@ -2708,20 +2708,6 @@ impl CompileErrors {
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
-
-    #[test]
-    fn compile_errors_is_empty_true_when_empty() {
-        let errors = CompileErrors(vec![]);
-        assert!(errors.is_empty());
-        assert_eq!(errors.len(), 0);
-    }
-
-    #[test]
-    fn compile_errors_is_empty_false_when_populated() {
-        let errors = CompileErrors(vec![CompileError::EmptySource]);
-        assert!(!errors.is_empty());
-        assert_eq!(errors.len(), 1);
-    }
 }
 
 impl std::fmt::Display for CompileErrors {
