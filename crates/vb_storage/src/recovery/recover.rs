@@ -9,7 +9,7 @@
 
 use crate::recovery::types::{DigestCheck, RecoveryError, RecoveryHydration, RecoveryResult};
 use crate::{FjallJournal, JournalEvent};
-use vb_core::{RunId, WorkflowDigest};
+use vb_core::{ActionId, RunId, StepIdx, WorkflowDigest};
 
 /// Verifies that the workflow source digest matches the stored record.
 ///
@@ -51,8 +51,9 @@ pub fn check_compiled_ir_digest(
 }
 
 /// Verifies all digests at the requested check level.
-/// POST-003: returns Ok only when ALL digests match (workflow, compiled IR, action ABI, policy).
-/// GAP-3: Action ABI and policy digest verification is deferred pending lookup function implementation.
+/// POST-003: returns Ok only when ALL digests match (workflow, compiled IR).
+/// For action ABI and policy digest checks, use `check_action_abi_digests`
+/// and `check_policy_digests` separately with explicit verifier inputs.
 pub fn verify_digests(
     journal: &FjallJournal,
     run: RunId,
@@ -69,6 +70,42 @@ pub fn verify_digests(
     }
     if matches!(level, DigestCheck::WorkflowAndIr | DigestCheck::Full) {
         check_compiled_ir_digest(ir_digest, found_ir_digest)?;
+    }
+    Ok(())
+}
+
+/// Checks action ABI digests against expected values from an external source.
+///
+/// Each entry provides `(action_id, expected_digest, found_digest)`.
+/// Returns `ActionAbiMismatch { action_id }` on the first mismatch found.
+/// Returns `Ok(())` when all entries match or when no entries are provided.
+/// Does not guess mismatches from missing data — only checks explicitly provided inputs.
+pub fn check_action_abi_digests(
+    entries: &[(ActionId, WorkflowDigest, WorkflowDigest)],
+) -> RecoveryResult<()> {
+    for (action_id, expected, found) in entries {
+        if *expected != *found {
+            return Err(RecoveryError::ActionAbiMismatch {
+                action_id: *action_id,
+            });
+        }
+    }
+    Ok(())
+}
+
+/// Checks policy digests against expected values from an external source.
+///
+/// Each entry provides `(step, expected_digest, found_digest)`.
+/// Returns `PolicyDigestMismatch { step }` on the first mismatch found.
+/// Returns `Ok(())` when all entries match or when no entries are provided.
+/// Does not guess mismatches from missing data — only checks explicitly provided inputs.
+pub fn check_policy_digests(
+    entries: &[(StepIdx, WorkflowDigest, WorkflowDigest)],
+) -> RecoveryResult<()> {
+    for (step, expected, found) in entries {
+        if *expected != *found {
+            return Err(RecoveryError::PolicyDigestMismatch { step: *step });
+        }
     }
     Ok(())
 }
