@@ -12,5 +12,9 @@ vb_core = { path = "../vb_core" }
 criterion = { workspace = true }
 proptest = { workspace = true }
 
+[features]
+default = []
+verus = []
+
 [lints]
 workspace = true
