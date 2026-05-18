@@ -19,3 +19,12 @@ pub use registry::validate_command_registry;
 pub use registry::{CommandFamilySpec, ValidatedCommandRegistry, required_command_families};
 pub use routing::{XtaskEnvironment, placeholder_status, route_command};
 pub use status::{DeferredReason, OutputFormat, StructuredStatus, render_structured_status};
+
+// New modules for proof/test orchestrator (vb-i7xn)
+pub mod discovery;
+pub mod lanes;
+pub mod logger;
+pub mod profiles;
+pub mod proof_orchestrator;
+pub mod scheduler;
+pub mod summary;
