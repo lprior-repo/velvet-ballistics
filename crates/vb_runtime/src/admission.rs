@@ -477,6 +477,11 @@ pub fn admit_run(
                 .map_err(map_artifact_envelope_error)?;
         }
         RuntimePolicy::Relaxed => {}
+        _ => {
+            return Err(AdmissionError::ArtifactInvalidProofFlag {
+                flag: "runtime_policy",
+            });
+        }
     }
     Ok(RunAdmission::new(digest, run_id, caps, policy))
 }
@@ -543,6 +548,9 @@ pub fn admit_artifact_run(
             // Relaxed: skip artifact loading and capability checking.
             Ok(RunAdmission::new(artifact_digest, run_id, caps, policy))
         }
+        _ => Err(AdmissionError::ArtifactInvalidProofFlag {
+            flag: "runtime_policy",
+        }),
     }
 }
 
@@ -569,6 +577,11 @@ pub fn admit_run_with_budget(
             }
         }
         RuntimePolicy::Relaxed => {}
+        _ => {
+            return Err(AdmissionError::ArtifactInvalidProofFlag {
+                flag: "runtime_policy",
+            });
+        }
     }
     Ok(RunAdmission::with_budget(
         digest, run_id, caps, policy, requested,
