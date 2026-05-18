@@ -11,9 +11,9 @@ use vb_core::{ActionId, RunId, SlotIdx, SlotValue, StepIdx, WorkflowDigest};
 use vb_storage::recovery::{
     ActionReplayTracker, DigestCheck, RecoveredStepEntry, RecoveredStepState, RecoveryError,
     RecoveryFrameSeed, RecoveryHydration, RecoveryRuntimeSummary, RecoveryTerminalState,
-    RunSnapshot, check_compiled_ir_digest, check_workflow_source_digest, hydrate_run_frame,
-    hydrate_run_frame_from_events, recover_full_journal, recover_runtime_frame_seed,
-    recover_runtime_summary, verify_digests,
+    RunSnapshot, check_action_abi_digests, check_compiled_ir_digest, check_policy_digests,
+    check_workflow_source_digest, hydrate_run_frame, hydrate_run_frame_from_events,
+    recover_full_journal, recover_runtime_frame_seed, recover_runtime_summary, verify_digests,
 };
 use vb_storage::{EventSeq, FjallConfig, FjallJournal, JournalEvent};
 
@@ -1725,6 +1725,7 @@ fn snapshot_tail_monotonic_slot_overwrite_preserves_tail_value() {
 }
 
 // ---------------------------------------------------------------------------
+<<<<<<< HEAD
 // MAJOR-1: ActionAbiMismatch — exact assertion
 // GA-015a / B-015: Non-idempotent action blocked returns typed error
 // NOTE: ActionAbiMismatch is defined but not yet reachable through the current
@@ -1734,44 +1735,45 @@ fn snapshot_tail_monotonic_slot_overwrite_preserves_tail_value() {
 
 #[test]
 #[ignore = "vb-ty9: ActionAbiMismatch not yet reachable because recovery lacks an action ABI digest lookup/input."]
+=======
+// GAP-3: ActionAbiMismatch — exact assertion
+// EARS-1: When recovery validates action replay against an expected action ABI
+// source, the storage recovery API shall return RecoveryError::ActionAbiMismatch
+// { action_id } for exact mismatches.
+// ---------------------------------------------------------------------------
+
+#[test]
+>>>>>>> polecat/vb-2bzz
 fn action_abi_mismatch_returns_typed_error() {
-    let dir = TempDir::new().expect("temp dir should be created");
-    let run = RunId::new(15001);
-    let digest = test_digest(0xAC);
     let action_id = ActionId::new(77);
+    let expected_digest = test_digest(0xE1);
+    let found_digest = test_digest(0xE2);
 
-    let events = vec![
-        JournalEvent::RunAccepted {
-            run,
-            seq: EventSeq::new(0),
-            workflow: digest,
-        },
-        JournalEvent::StepStarted {
-            run,
-            seq: EventSeq::new(1),
-            step: StepIdx::ZERO,
-            attempt: 1,
-        },
-        JournalEvent::ActionScheduled {
-            run,
-            seq: EventSeq::new(2),
-            step: StepIdx::ZERO,
-            action: action_id,
-            attempt: 1,
-        },
-    ];
+    // GAP-3: Mismatched ABI returns typed error with exact action_id
+    let entries = [(action_id, expected_digest, found_digest)];
+    let result = check_action_abi_digests(&entries);
 
-    {
-        let journal = open_journal(&dir);
-        write_events_strict(&journal, &events);
-    }
+    let Err(RecoveryError::ActionAbiMismatch { action_id: found }) = result else {
+        panic!("expected ActionAbiMismatch, got: {result:?}");
+    };
+    assert_eq!(found, action_id, "action_id must match exactly");
+}
 
-    let journal = open_journal(&dir);
+#[test]
+fn action_abi_match_returns_ok() {
+    let action_id = ActionId::new(78);
+    let digest = test_digest(0xE3);
 
-    // Attempt to recover — if implementation has ActionAbiMismatch path, it should be exact
-    let mut tracker = ActionReplayTracker::new();
-    let result = recover_full_journal(&journal, run, &mut tracker);
+    // Matching ABI digests return Ok
+    let entries = [(action_id, digest, digest)];
+    let result = check_action_abi_digests(&entries);
+    assert!(
+        result.is_ok(),
+        "matching ABI digests should return Ok: {result:?}"
+    );
+}
 
+<<<<<<< HEAD
     // The contract requires ActionAbiMismatch; implementation may not yet return it.
     // Assert exact variant if returned; if Ok, the code path is not yet implemented.
     match result {
@@ -1804,36 +1806,57 @@ fn action_abi_mismatch_returns_typed_error() {
 
 #[test]
 #[ignore = "vb-ty9: PolicyDigestMismatch not yet reachable because recovery lacks an expected policy digest lookup/input."]
+=======
+#[test]
+fn check_action_abi_digests_empty_input_returns_ok() {
+    // Empty input returns Ok — no guessing from missing data
+    let entries: [(ActionId, WorkflowDigest, WorkflowDigest); 0] = [];
+    let result = check_action_abi_digests(&entries);
+    assert!(
+        result.is_ok(),
+        "empty ABI input should return Ok: {result:?}"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// GAP-3: PolicyDigestMismatch — exact assertion
+// EARS-2: When recovery validates policy identity for a recovered step/run,
+// the storage recovery API shall return RecoveryError::PolicyDigestMismatch
+// { step } for exact mismatches.
+// ---------------------------------------------------------------------------
+
+#[test]
+>>>>>>> polecat/vb-2bzz
 fn policy_digest_mismatch_returns_typed_error() {
-    let dir = TempDir::new().expect("temp dir should be created");
-    let run = RunId::new(15002);
-    let digest = test_digest(0xAD);
+    let step = StepIdx::ZERO;
+    let expected_digest = test_digest(0xF1);
+    let found_digest = test_digest(0xF2);
 
-    let events = vec![
-        JournalEvent::RunAccepted {
-            run,
-            seq: EventSeq::new(0),
-            workflow: digest,
-        },
-        JournalEvent::StepStarted {
-            run,
-            seq: EventSeq::new(1),
-            step: StepIdx::ZERO,
-            attempt: 1,
-        },
-    ];
+    // GAP-3: Mismatched policy digest returns typed error with exact step
+    let entries = [(step, expected_digest, found_digest)];
+    let result = check_policy_digests(&entries);
 
-    {
-        let journal = open_journal(&dir);
-        write_events_strict(&journal, &events);
-    }
+    let Err(RecoveryError::PolicyDigestMismatch { step: found }) = result else {
+        panic!("expected PolicyDigestMismatch, got: {result:?}");
+    };
+    assert_eq!(found, step, "step must match exactly");
+}
 
-    let journal = open_journal(&dir);
+#[test]
+fn policy_digest_match_returns_ok() {
+    let step = StepIdx::new(1);
+    let digest = test_digest(0xF3);
 
-    // Attempt to recover — contract requires PolicyDigestMismatch
-    let mut tracker = ActionReplayTracker::new();
-    let result = recover_full_journal(&journal, run, &mut tracker);
+    // Matching policy digests return Ok
+    let entries = [(step, digest, digest)];
+    let result = check_policy_digests(&entries);
+    assert!(
+        result.is_ok(),
+        "matching policy digests should return Ok: {result:?}"
+    );
+}
 
+<<<<<<< HEAD
     match result {
         Err(RecoveryError::PolicyDigestMismatch { step: found }) => {
             assert_eq!(found, StepIdx::ZERO, "step must match");
@@ -1853,6 +1876,17 @@ fn policy_digest_mismatch_returns_typed_error() {
             );
         }
     }
+=======
+#[test]
+fn check_policy_digests_empty_input_returns_ok() {
+    // Empty input returns Ok — no guessing from missing data
+    let entries: [(StepIdx, WorkflowDigest, WorkflowDigest); 0] = [];
+    let result = check_policy_digests(&entries);
+    assert!(
+        result.is_ok(),
+        "empty policy input should return Ok: {result:?}"
+    );
+>>>>>>> polecat/vb-2bzz
 }
 
 // ---------------------------------------------------------------------------
