@@ -27,6 +27,7 @@ pub enum ContractKind {
 
 impl ContractKind {
     /// All recognised values in ordinal order.
+    #[allow(dead_code)]
     pub const fn all_values() -> &'static [Self] {
         &[
             Self::CliEnvelope,
@@ -142,6 +143,7 @@ pub enum ContractError {
     CueVetFailed {
         file: String,
     },
+    #[allow(dead_code)]
     VersionMonotonicityBreach {
         file: String,
         expected: String,
@@ -239,6 +241,7 @@ pub fn compare_semver(a: &str, b: &str) -> Result<SemverCmp, String> {
 // ---------------------------------------------------------------------------
 
 /// Parse a `cue vet` exit code. Returns Ok(()) for exit 0, Err for non-zero.
+#[allow(dead_code)]
 pub fn parse_vet_exit_code(code: i32) -> Result<(), String> {
     if code == 0 {
         Ok(())

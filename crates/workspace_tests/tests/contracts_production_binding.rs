@@ -431,6 +431,7 @@ fn test_prod_gate_evidence_fail_serialization() {
     let parsed: serde_json::Value =
         serde_json::from_str(&json).expect("GateEvidence deserialization should succeed");
 
+    assert_eq!(parsed["gate_name"], "contracts");
     assert!(json.contains("Fail"));
     assert!(json.contains("why_failed"));
     assert!(json.contains("contracts"));
