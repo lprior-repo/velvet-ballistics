@@ -272,3 +272,31 @@ path = "src/bin/vb_qi37_12_persisted_payload_decode.rs"
 test = false
 doc = false
 bench = false
+
+[[bin]]
+name = "ipc_frame_fuzz_boundary"
+path = "src/bin/ipc_frame_fuzz_boundary.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "storage_envelope_fuzz_boundary"
+path = "src/bin/storage_envelope_fuzz_boundary.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "binary_payload_fuzz_boundary"
+path = "src/bin/binary_payload_fuzz_boundary.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "external_input_adapter_fuzz"
+path = "src/bin/external_input_adapter_fuzz.rs"
+test = false
+doc = false
+bench = false
