@@ -15,6 +15,10 @@ use crate::boundary_inventory::{
     inventory_completion_status, required_evidence, validate_inventory,
 };
 
+fn assert_io_ok(result: std::io::Result<()>, context: &str) {
+    assert!(result.is_ok(), "{context}: {result:?}");
+}
+
 // =============================================================================
 // discover_boundaries tests
 // =============================================================================
@@ -44,8 +48,14 @@ fn discover_boundaries_rejects_workspace_without_required_surfaces() {
 fn discover_boundaries_rejects_incomplete_workspace() {
     let temp_dir = tempfile::tempdir().unwrap();
     // Create only some required surfaces
-    assert!(fs::create_dir(temp_dir.path().join("crates")).is_ok());
-    assert!(fs::write(temp_dir.path().join("Cargo.toml"), "").is_ok());
+    assert_io_ok(
+        fs::create_dir(temp_dir.path().join("crates")),
+        "create crates",
+    );
+    assert_io_ok(
+        fs::write(temp_dir.path().join("Cargo.toml"), ""),
+        "write Cargo.toml",
+    );
     let workspace = WorkspaceRoot::new(temp_dir.path().to_path_buf());
     let result = discover_boundaries(workspace);
     // Missing fuzz, scripts directories
@@ -61,8 +71,14 @@ fn discover_boundaries_finds_markers_in_crates() {
     create_valid_workspace(temp_dir.path());
     // Create a file with a boundary marker
     let marker_file = temp_dir.path().join("crates/vb_core/src/lib.rs");
-    assert!(fs::create_dir_all(marker_file.parent().unwrap()).is_ok());
-    assert!(fs::write(&marker_file, "// extern-c-boundary").is_ok());
+    assert_io_ok(
+        fs::create_dir_all(marker_file.parent().unwrap()),
+        "create marker parent",
+    );
+    assert_io_ok(
+        fs::write(&marker_file, "// extern-c-boundary"),
+        "write marker file",
+    );
 
     let workspace = WorkspaceRoot::new(temp_dir.path().to_path_buf());
     let result = discover_boundaries(workspace);
@@ -76,8 +92,14 @@ fn discover_boundaries_finds_markers_in_fuzz() {
     let temp_dir = tempfile::tempdir().unwrap();
     create_valid_workspace(temp_dir.path());
     let marker_file = temp_dir.path().join("fuzz/fuzz_target_1.rs");
-    assert!(fs::create_dir_all(marker_file.parent().unwrap()).is_ok());
-    assert!(fs::write(&marker_file, "// foreign-function-boundary").is_ok());
+    assert_io_ok(
+        fs::create_dir_all(marker_file.parent().unwrap()),
+        "create fuzz marker parent",
+    );
+    assert_io_ok(
+        fs::write(&marker_file, "// foreign-function-boundary"),
+        "write fuzz marker file",
+    );
 
     let workspace = WorkspaceRoot::new(temp_dir.path().to_path_buf());
     let result = discover_boundaries(workspace);
@@ -95,8 +117,14 @@ fn discover_boundaries_finds_markers_in_scripts() {
     let temp_dir = tempfile::tempdir().unwrap();
     create_valid_workspace(temp_dir.path());
     let marker_file = temp_dir.path().join("scripts/build.sh");
-    assert!(fs::create_dir_all(marker_file.parent().unwrap()).is_ok());
-    assert!(fs::write(&marker_file, "# ipc-frame-boundary").is_ok());
+    assert_io_ok(
+        fs::create_dir_all(marker_file.parent().unwrap()),
+        "create script marker parent",
+    );
+    assert_io_ok(
+        fs::write(&marker_file, "# ipc-frame-boundary"),
+        "write script marker file",
+    );
 
     let workspace = WorkspaceRoot::new(temp_dir.path().to_path_buf());
     let result = discover_boundaries(workspace);
@@ -111,8 +139,14 @@ fn discover_boundaries_returns_empty_on_no_markers() {
     create_valid_workspace(temp_dir.path());
     // Create files without markers
     let regular_file = temp_dir.path().join("crates/vb_core/src/lib.rs");
-    assert!(fs::create_dir_all(regular_file.parent().unwrap()).is_ok());
-    assert!(fs::write(&regular_file, "// regular code").is_ok());
+    assert_io_ok(
+        fs::create_dir_all(regular_file.parent().unwrap()),
+        "create regular file parent",
+    );
+    assert_io_ok(
+        fs::write(&regular_file, "// regular code"),
+        "write regular file",
+    );
 
     let workspace = WorkspaceRoot::new(temp_dir.path().to_path_buf());
     let result = discover_boundaries(workspace);
@@ -127,12 +161,12 @@ fn discover_boundaries_detects_decoder_surface_omission() {
     let temp_dir = tempfile::tempdir().unwrap();
     create_valid_workspace(temp_dir.path());
     // Create boundary-surfaces.txt without decoder-byte-ingest-boundary
-    assert!(
+    assert_io_ok(
         fs::write(
             temp_dir.path().join("boundary-surfaces.txt"),
             "extern-c-boundary\nforeign-function-boundary\n",
-        )
-        .is_ok()
+        ),
+        "write boundary surfaces",
     );
 
     let workspace = WorkspaceRoot::new(temp_dir.path().to_path_buf());
@@ -163,8 +197,14 @@ fn discover_boundaries_all_marker_types() {
 
     for (marker, file_path) in &markers {
         let full_path = temp_dir.path().join(file_path);
-        assert!(fs::create_dir_all(full_path.parent().unwrap()).is_ok());
-        assert!(fs::write(&full_path, format!("// {marker}")).is_ok());
+        assert_io_ok(
+            fs::create_dir_all(full_path.parent().unwrap()),
+            "create marker file parent",
+        );
+        assert_io_ok(
+            fs::write(&full_path, format!("// {marker}")),
+            "write marker file",
+        );
     }
 
     let workspace = WorkspaceRoot::new(temp_dir.path().to_path_buf());
@@ -731,13 +771,16 @@ fn inventory_completion_status_third_party_unsafe_allowed() {
 // =============================================================================
 
 fn create_valid_workspace(path: &std::path::Path) {
-    assert!(fs::create_dir(path.join("crates")).is_ok());
-    assert!(fs::create_dir(path.join("fuzz")).is_ok());
-    assert!(fs::create_dir(path.join("scripts")).is_ok());
-    assert!(fs::write(path.join("Cargo.toml"), "").is_ok());
+    assert_io_ok(fs::create_dir(path.join("crates")), "create crates dir");
+    assert_io_ok(fs::create_dir(path.join("fuzz")), "create fuzz dir");
+    assert_io_ok(fs::create_dir(path.join("scripts")), "create scripts dir");
+    assert_io_ok(fs::write(path.join("Cargo.toml"), ""), "write Cargo.toml");
     // Create evidence file that validation expects
-    assert!(fs::create_dir_all(path.join("fuzz")).is_ok());
-    assert!(fs::write(path.join("fuzz/test.rs"), "").is_ok());
+    assert_io_ok(fs::create_dir_all(path.join("fuzz")), "ensure fuzz dir");
+    assert_io_ok(
+        fs::write(path.join("fuzz/test.rs"), ""),
+        "write fuzz evidence",
+    );
 }
 
 fn make_valid_record(id: &str) -> BoundaryRecord {

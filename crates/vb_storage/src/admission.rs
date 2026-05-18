@@ -304,6 +304,8 @@ fn is_contract_idempotency_accepted(contract: &ActionContract) -> bool {
         (_, RetrySafety::Unsafe, _) => false,
         (_, _, Idempotency::AtLeastOnceExternal | Idempotency::DeterministicPure) => false,
         (_, RetrySafety::Safe | RetrySafety::KeyRequired, Idempotency::IdempotentExternal) => true,
+        // `SideEffect`, `RetrySafety`, and `Idempotency` are all `#[non_exhaustive]`.
+        // Unknown combinations are conservatively rejected.
         _ => false,
     }
 }
@@ -509,7 +511,9 @@ mod tests {
 
     impl Drop for TestJournal {
         fn drop(&mut self) {
-            if let Err(_cleanup_error) = std::fs::remove_dir_all(&self.path) {}
+            if let Err(error) = std::fs::remove_dir_all(&self.path) {
+                std::hint::black_box(error.kind());
+            }
         }
     }
 
