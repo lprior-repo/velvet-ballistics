@@ -16,19 +16,19 @@ pub struct BenchmarkEvidence {
 
 impl BenchmarkEvidence {
     pub fn has_baseline(&self) -> bool {
-        self.baseline.as_ref().map_or(false, |b| !b.is_empty())
+        self.baseline.as_ref().is_some_and(|b| !b.is_empty())
     }
 
     pub fn has_result(&self) -> bool {
-        self.result.as_ref().map_or(false, |r| !r.is_empty())
+        self.result.as_ref().is_some_and(|r| !r.is_empty())
     }
 
     pub fn has_environment(&self) -> bool {
-        self.environment.as_ref().map_or(false, |e| !e.is_empty())
+        self.environment.as_ref().is_some_and(|e| !e.is_empty())
     }
 
     pub fn has_command(&self) -> bool {
-        self.command.as_ref().map_or(false, |c| !c.is_empty())
+        self.command.as_ref().is_some_and(|c| !c.is_empty())
     }
 
     pub fn is_complete(&self) -> bool {
@@ -307,17 +307,15 @@ pub fn parse_criterion_output(output: &str) -> Vec<BenchmarkEvidence> {
 }
 
 fn extract_benchmark_name(line: &str) -> Option<String> {
-    let start = line.find("BenchmarkId(")?;
-    let rest = &line[start + "BenchmarkId(".len()..];
-    let end = rest.find(')')?;
-    Some(rest[..end].to_string())
+    let (_, rest) = line.split_once("BenchmarkId(")?;
+    let (name, _) = rest.split_once(')')?;
+    Some(name.to_string())
 }
 
 fn extract_time_value(line: &str) -> Option<String> {
-    let start = line.find("time: [")?;
-    let rest = &line[start + "time: [".len()..];
-    let end = rest.find(']')?;
-    Some(rest[..end].to_string())
+    let (_, rest) = line.split_once("time: [")?;
+    let (time, _) = rest.split_once(']')?;
+    Some(time.to_string())
 }
 
 /// Enrich benchmark evidence with environment and command metadata.
