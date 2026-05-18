@@ -9,8 +9,8 @@
 )]
 use super::*;
 use crate::{
-    BlobRecord, CompiledIrRecord, EventSeq, JournalError, JournalEvent, RunHeaderRecord,
-    WorkflowSourceRecord, constants::*, recovery::RunSnapshot,
+    BlobRecord, CompiledIrRecord, EventSeq, IndexStatusState, JournalError, JournalEvent,
+    RunHeaderRecord, WorkflowSourceRecord, constants::*, recovery::RunSnapshot,
 };
 use vb_core::{RunId, SlotIdx, StepIdx, WorkflowDigest, WorkflowId};
 

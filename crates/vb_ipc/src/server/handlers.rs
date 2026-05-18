@@ -2551,9 +2551,9 @@ mod tests {
                 assert_eq!(nodes.len(), 2);
                 // Should have fallthrough edge from Nop to Finish
                 assert!(
-                    edges
-                        .iter()
-                        .any(|e| e.from == 0 && e.to == 1 && e.edge_type == "fallthrough"),
+                    edges.iter().any(|e| e.from == 0
+                        && e.to == 1
+                        && e.edge_type == crate::EdgeType::Fallthrough),
                     "should have fallthrough edge from Nop to Finish"
                 );
             }
@@ -2645,9 +2645,9 @@ mod tests {
                 );
                 // Paths should contain the reachable sink
                 assert!(
-                    paths
-                        .iter()
-                        .any(|p| p.from == 0 && p.to == 1 && p.status == "dangerous"),
+                    paths.iter().any(|p| p.from == 0
+                        && p.to == 1
+                        && p.status == crate::TaintPathStatus::Dangerous),
                     "should have dangerous path from source to sink"
                 );
             }
@@ -3675,7 +3675,9 @@ mod tests {
                 assert!(finish_safe, "no source reaches sink");
                 assert!(!paths.is_empty(), "should have warning paths");
                 assert!(
-                    paths.iter().all(|p| p.status == "warning"),
+                    paths
+                        .iter()
+                        .all(|p| p.status == crate::TaintPathStatus::Warning),
                     "all paths should be warning"
                 );
             }

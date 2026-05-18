@@ -266,7 +266,7 @@ impl<'j> JournalWriteBatch<'j> {
 mod tests {
     use super::*;
     use crate::{
-        BlobRecord, CompiledIrRecord, EventSeq, JournalEvent, RunHeaderRecord,
+        BlobRecord, CompiledIrRecord, EventSeq, IndexStatusState, JournalEvent, RunHeaderRecord,
         WorkflowSourceRecord, constants::DIGEST_BYTES, recovery::RunSnapshot,
     };
     use vb_core::{RunId, SlotIdx, StepIdx, WorkflowDigest, WorkflowId};
@@ -358,7 +358,7 @@ mod tests {
         let run = RunId::new(20);
         let mut batch = JournalWriteBatch::new(&journal);
         batch
-            .put_status_index(1, 12345, run)
+            .put_status_index(IndexStatusState::Active, 12345, run)
             .expect("put status index");
         assert_eq!(batch.len(), 1);
     }
@@ -665,7 +665,9 @@ mod tests {
         batch.put_compiled_ir(&ir_record).expect("compiled ir");
         batch.put_run_header(&header).expect("run header");
         batch.append_event(&event).expect("event");
-        batch.put_status_index(1, 100, run).expect("status index");
+        batch
+            .put_status_index(IndexStatusState::Active, 100, run)
+            .expect("status index");
         batch
             .put_workflow_index(WorkflowId::new(42), run)
             .expect("workflow index");
@@ -774,7 +776,9 @@ mod tests {
         let step = StepIdx::new(1);
 
         let mut batch = JournalWriteBatch::new(&journal);
-        batch.put_status_index(2, 5000, run).expect("status idx");
+        batch
+            .put_status_index(IndexStatusState::Completed, 5000, run)
+            .expect("status idx");
         batch.put_workflow_index(wf, run).expect("workflow idx");
         batch
             .put_action_index(action, run, step)

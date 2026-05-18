@@ -1,4 +1,0 @@
-{"requirement_id":"REQ-1","contract":"contract.md#REQ-1","proof":"PO-vb-hxm0-1","test":"test_catalog_lists_every_master_doc_behavior_by_scenario_id","implementation":"acceptance_catalog::catalog","evidence":"cargo check PASS"}
-{"requirement_id":"REQ-2","contract":"contract.md#REQ-2","proof":"PO-vb-hxm0-2","test":"test_catalog_maps_existing_tests_to_covered_scenarios","implementation":"Scenario fields","evidence":"cargo test PASS"}
-{"requirement_id":"REQ-3","contract":"contract.md#REQ-3","proof":"PO-vb-hxm0-3","test":"test_catalog_gate_fails_when_behavior_has_no_scenario; test_catalog_gate_fails_when_scenario_has_no_test_target","implementation":"validate_catalog","evidence":"cargo test PASS"}
-{"requirement_id":"REQ-4","contract":"contract.md#REQ-4","proof":"PO-vb-hxm0-2","test":"test_catalog_maps_existing_tests_to_covered_scenarios","implementation":"Scenario related_bead/test_target fields","evidence":"cargo test PASS"}

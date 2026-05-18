@@ -143,12 +143,18 @@ pub fn parse_bundle_schema_version(s: &str) -> std::result::Result<String, Error
     }
 
     let parts: Vec<&str> = s.splitn(2, '.').collect();
-    if parts.len() != 2 || parts[0].is_empty() || parts[1].is_empty() {
+    // safety: splitn(2) returns at most 2 parts; length check below guards indexing
+    #[allow(clippy::indexing_slicing)]
+    if parts.len() != 2
+        || parts[0].is_empty()
+        || parts[1].is_empty()
+    {
         return Err(Error::SchemaVersionParseFailed {
             version: s.to_string(),
         });
     }
 
+    #[allow(clippy::indexing_slicing)]
     let (major_s, minor_s) = (parts[0], parts[1]);
 
     // Reject leading zeros: "0" is OK, but "00", "01", etc. are not.

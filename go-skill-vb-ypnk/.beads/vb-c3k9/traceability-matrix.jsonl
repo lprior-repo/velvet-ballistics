@@ -1,4 +1,0 @@
-{"requirement_id":"REQ-1","artifact":"docs/current-api-mutation-plan.md","test":"current_helper_semantics_have_mutation_targets","gate":"rtk cargo test focused","status":"PASS"}
-{"requirement_id":"REQ-2","artifact":"docs/current-api-mutation-plan.md","test":"runtime_recovery_has_mutation_targets","gate":"rtk cargo test focused","status":"PASS"}
-{"requirement_id":"REQ-4","artifact":"crates/workspace_tests/src/quality/current_api_mutation_plan.rs","test":"stale_api_target_fails_plan_validation","gate":"rtk cargo test focused","status":"PASS"}
-{"requirement_id":"REQ-5","artifact":"docs/current-api-mutation-plan.md","test":"critical_survivor_creates_blocker","gate":"rtk cargo test focused","status":"PASS"}

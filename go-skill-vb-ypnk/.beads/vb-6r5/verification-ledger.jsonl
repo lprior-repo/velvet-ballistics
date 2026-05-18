@@ -1,5 +1,0 @@
-{"id":"P1","result":"PASS","evidence":"proptest 1000 cases","verifier":"proptest","waiver":null}
-{"id":"P2","result":"PASS","evidence":"proptest 1000 cases","verifier":"proptest","waiver":null}
-{"id":"P3","result":"PASS","evidence":"unit test","verifier":"unit_test","waiver":null}
-{"id":"P4","result":"PASS","evidence":"unit test","verifier":"unit_test","waiver":null}
-{"id":"P5","result":"PASS","evidence":"unit test","verifier":"unit_test","waiver":null}

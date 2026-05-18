@@ -1,2 +1,0 @@
-{"severity":"info","status":"approved","finding":"Kani all-45 idempotency parity remains successful."}
-{"severity":"info","status":"approved","finding":"Runtime/storage admission predicates are covered by targeted unit tests."}

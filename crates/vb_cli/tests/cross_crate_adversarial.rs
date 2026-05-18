@@ -1475,6 +1475,7 @@ fn runtime_submit_and_tick_simple_workflow() {
                 vb_runtime::shard::InspectResponse::NotFound { correlation, .. } => {
                     assert_eq!(correlation, 1);
                 }
+                other => fail_assert!("unexpected inspect response: {other:?}"),
             }
         }
         Err(err) => {

@@ -6,8 +6,8 @@
 
 use std::path::PathBuf;
 
-use xtask::evidence::bundle::*;
-use xtask::evidence::tooling_and_gate_types::{GateEvidence, GateStatus, WhyFailed};
+use proptest::prelude::*;
+use xtask::evidence::*;
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Kani Proof Harnesses (OBL-001 to OBL-004)
@@ -18,7 +18,8 @@ use xtask::evidence::tooling_and_gate_types::{GateEvidence, GateStatus, WhyFaile
 /// For any input string s, if parse succeeds, s matches ^(0|[1-9][0-9])\.(0|[1-9][0-9])$.
 /// Leading-zero strings ("01.0", "0.01"), malformed strings ("1.0.0", ""),
 /// and major > 1 all return Err(SchemaVersionParseFailed).
-#[cfg_attr(any(test, feature = "kani"), kani::proof)]
+#[cfg(kani)]
+#[kani::proof]
 fn schema_version_parse_non_panic() {
     let input: String = kani::any();
 
@@ -30,7 +31,8 @@ fn schema_version_parse_non_panic() {
 ///
 /// Returns empty vec iff all required fields are non-empty.
 /// Each missing field produces exactly one MissingRequiredField error.
-#[cfg_attr(any(test, feature = "kani"), kani::proof)]
+#[cfg(kani)]
+#[kani::proof]
 fn validator_correctness() {
     // Generate an arbitrary bundle via kani::any.
     let bundle: EvidenceBundle = kani::any();
@@ -42,18 +44,15 @@ fn validator_correctness() {
     let schema_err = errors.iter().any(|e| {
         matches!(
             e,
-            xtask::evidence::tooling_and_gate_types::Error::MissingRequiredField { field }
+            xtask::evidence::Error::MissingRequiredField { field }
                 if field == "schema_version"
-        ) || matches!(
-            e,
-            xtask::evidence::tooling_and_gate_types::Error::SchemaVersionParseFailed { .. }
-        )
+        ) || matches!(e, xtask::evidence::Error::SchemaVersionParseFailed { .. })
     });
 
     let bead_err = errors.iter().any(|e| {
         matches!(
             e,
-            xtask::evidence::tooling_and_gate_types::Error::MissingRequiredField { field }
+            xtask::evidence::Error::MissingRequiredField { field }
                 if field == "linked_bead_id"
         )
     });
@@ -61,7 +60,7 @@ fn validator_correctness() {
     let agent_err = errors.iter().any(|e| {
         matches!(
             e,
-            xtask::evidence::tooling_and_gate_types::Error::MissingRequiredField { field }
+            xtask::evidence::Error::MissingRequiredField { field }
                 if field == "executor_context.agent"
         )
     });
@@ -69,7 +68,7 @@ fn validator_correctness() {
     let timestamp_err = errors.iter().any(|e| {
         matches!(
             e,
-            xtask::evidence::tooling_and_gate_types::Error::MissingRequiredField { field }
+            xtask::evidence::Error::MissingRequiredField { field }
                 if field == "executor_context.timestamp"
         )
     });
@@ -77,7 +76,7 @@ fn validator_correctness() {
     let machine_err = errors.iter().any(|e| {
         matches!(
             e,
-            xtask::evidence::tooling_and_gate_types::Error::MissingRequiredField { field }
+            xtask::evidence::Error::MissingRequiredField { field }
                 if field == "executor_context.machine"
         )
     });
@@ -107,7 +106,8 @@ fn validator_correctness() {
 /// OBL-003: write_bundle does not panic for any serialisable bundle.
 ///
 /// Returns Ok(()) or a descriptive Error.
-#[cfg_attr(any(test, feature = "kani"), kani::proof)]
+#[cfg(kani)]
+#[kani::proof]
 fn write_bundle_non_panic() {
     let bundle: EvidenceBundle = kani::any();
     let format: EvidenceBundleFormat = kani::any();
@@ -120,16 +120,21 @@ fn write_bundle_non_panic() {
 /// OBL-004: read_bundle does not panic when reading arbitrary bundle data.
 ///
 /// Unknown fields are silently ignored (no deny_unknown_fields).
-#[cfg_attr(any(test, feature = "kani"), kani::proof)]
+#[cfg(kani)]
+#[kani::proof]
 fn read_bundle_non_panic() {
     let bundle: EvidenceBundle = kani::any();
     let format: EvidenceBundleFormat = kani::any();
 
     // Round-trip through the format: serialise then read from memory buffer.
-    let bytes_result: std::result::Result<Vec<u8>, _> = match format {
-        EvidenceBundleFormat::Yaml => serde_saphyr::to_string(&bundle).map(|s| s.into_bytes()),
-        EvidenceBundleFormat::Json => serde_json::to_string(&bundle).map(|s| s.into_bytes()),
-        EvidenceBundleFormat::Postcard => postcard::to_allocvec(&bundle),
+    let bytes_result: std::result::Result<Vec<u8>, String> = match format {
+        EvidenceBundleFormat::Yaml => serde_saphyr::to_string(&bundle)
+            .map(|s| s.into_bytes())
+            .map_err(|e| e.to_string()),
+        EvidenceBundleFormat::Json => serde_json::to_string(&bundle)
+            .map(|s| s.into_bytes())
+            .map_err(|e| e.to_string()),
+        EvidenceBundleFormat::Postcard => postcard::to_allocvec(&bundle).map_err(|e| e.to_string()),
     };
 
     if let Ok(ref raw) = bytes_result {
@@ -152,7 +157,7 @@ fn read_bundle_non_panic() {
 fn prop_write_read_roundtrip_yaml() {
     use proptest::prelude::*;
 
-    proptest!(|bundle in evidence_bundle_strategy()| {
+    proptest!(|(bundle in evidence_bundle_strategy())| {
         let dir = tempfile::tempdir().expect("create temp dir");
         let path = dir.path().join("bundle.yaml");
 
@@ -173,7 +178,7 @@ fn prop_write_read_roundtrip_yaml() {
 fn prop_write_read_roundtrip_json() {
     use proptest::prelude::*;
 
-    proptest!(|bundle in evidence_bundle_strategy()| {
+    proptest!(|(bundle in evidence_bundle_strategy())| {
         let dir = tempfile::tempdir().expect("create temp dir");
         let path = dir.path().join("bundle.json");
 
@@ -194,7 +199,7 @@ fn prop_write_read_roundtrip_json() {
 fn prop_write_read_roundtrip_postcard() {
     use proptest::prelude::*;
 
-    proptest!(|bundle in evidence_bundle_strategy()| {
+    proptest!(|(bundle in evidence_bundle_strategy())| {
         let dir = tempfile::tempdir().expect("create temp dir");
         let path = dir.path().join("bundle.postcard");
 
@@ -217,11 +222,11 @@ fn prop_fail_closed_missing_bead_id() {
     use proptest::prelude::*;
 
     proptest!(
-        |agent in any::<String>(),
-         timestamp in any::<String>(),
-         machine in any::<String>(),
-         major in 2u64..,
-         minor in any::<String>()| {
+        |(agent in any::<String>(),
+          timestamp in any::<String>(),
+          machine in any::<String>(),
+          major in 2u64..,
+          minor in any::<String>())| {
             let bundle = EvidenceBundle {
                 schema_version: format!("{}.{}", major, minor),
                 executor_context: ExecutorContext {
@@ -244,7 +249,7 @@ fn prop_fail_closed_missing_bead_id() {
                 errors.iter().any(|e| {
                     matches!(
                         e,
-                        xtask::evidence::tooling_and_gate_types::Error::MissingRequiredField {
+                        xtask::evidence::Error::MissingRequiredField {
                             field
                         } if field == "linked_bead_id"
                     )
@@ -259,7 +264,7 @@ fn prop_fail_closed_missing_bead_id() {
 fn prop_fail_closed_missing_agent() {
     use proptest::prelude::*;
 
-    proptest!(|bundle in evidence_bundle_strategy()| {
+    proptest!(|(bundle in evidence_bundle_strategy())| {
         let mut mutated = bundle.clone();
         mutated.executor_context.agent = String::new();
 
@@ -275,7 +280,7 @@ fn prop_fail_closed_missing_agent() {
 fn prop_fail_closed_missing_timestamp() {
     use proptest::prelude::*;
 
-    proptest!(|bundle in evidence_bundle_strategy()| {
+    proptest!(|(bundle in evidence_bundle_strategy())| {
         let mut mutated = bundle.clone();
         mutated.executor_context.timestamp = String::new();
 
@@ -291,7 +296,7 @@ fn prop_fail_closed_missing_timestamp() {
 fn prop_fail_closed_missing_machine() {
     use proptest::prelude::*;
 
-    proptest!(|bundle in evidence_bundle_strategy()| {
+    proptest!(|(bundle in evidence_bundle_strategy())| {
         let mut mutated = bundle.clone();
         mutated.executor_context.machine = String::new();
 
@@ -308,7 +313,13 @@ fn prop_fail_closed_missing_machine() {
 fn prop_path_deterministic() {
     use proptest::prelude::*;
 
-    proptest!(|bead_id in any::<String>(), format in any::<EvidenceBundleFormat>()| {
+    let format_strategy = proptest::sample::select(vec![
+        EvidenceBundleFormat::Yaml,
+        EvidenceBundleFormat::Json,
+        EvidenceBundleFormat::Postcard,
+    ]);
+
+    proptest!(|(bead_id in any::<String>(), format in format_strategy)| {
         let path1 = bundle_path(&bead_id, format);
         let path2 = bundle_path(&bead_id, format);
 
@@ -414,19 +425,17 @@ fn evidence_bundle_strategy() -> BoxedStrategy<EvidenceBundle> {
             any::<PathBuf>(),
         )
             .prop_flat_map(|(kind, gate_name, command, exit_code, log)| {
-                let status_strategy = proptest::sample::select(vec![
-                    GateStatus::Pass,
-                    GateStatus::Fail,
-                    GateStatus::Skipped {
-                        reason: any::<String>(),
-                    },
-                ]);
+                let status_strategy = prop_oneof![
+                    Just(GateStatus::Pass),
+                    Just(GateStatus::Fail),
+                    any::<String>().prop_map(|reason| GateStatus::Skipped { reason }),
+                ];
                 status_strategy.prop_map(move |status| GateEvidence {
-                    kind,
-                    gate_name,
-                    command,
+                    kind: kind.clone(),
+                    gate_name: gate_name.clone(),
+                    command: command.clone(),
                     exit_code,
-                    log,
+                    log: log.clone(),
                     status,
                     why_failed: None,
                 })

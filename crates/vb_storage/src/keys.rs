@@ -182,6 +182,7 @@ pub(crate) fn run_prefix_key(run: RunId) -> Result<[u8; 9], JournalError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::IndexStatusState;
     use crate::constants::{
         DIGEST_KEY_BYTES, INDEX_ACTION_KEY_BYTES, INDEX_STATUS_KEY_BYTES, INDEX_WORKFLOW_KEY_BYTES,
         JOURNAL_KEY_BYTES, PREFIX_BLOB, PREFIX_COMPILED_IR, PREFIX_INDEX_ACTION,
@@ -377,7 +378,7 @@ mod tests {
         let run = RunId::new(0xAABB_CCDD_EEFF_0011);
         let key = index_status_key(state, timestamp, run)?;
         assert_eq!(key[0], PREFIX_INDEX_STATUS, "prefix");
-        assert_eq!(key[1], state, "state byte");
+        assert_eq!(key[1], state.to_u8(), "state byte");
         assert_eq!(
             &key[2..10],
             &timestamp.to_be_bytes(),
@@ -389,7 +390,7 @@ mod tests {
 
     #[test]
     fn index_status_key_length() -> Result<(), JournalError> {
-        let key = index_status_key(0, 0, RunId::new(0))?;
+        let key = index_status_key(IndexStatusState::Submitted, 0, RunId::new(0))?;
         assert_eq!(key.len(), INDEX_STATUS_KEY_BYTES);
         Ok(())
     }

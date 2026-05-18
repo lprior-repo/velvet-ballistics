@@ -1,4 +1,0 @@
-{"contract_clause":"INV-001","tests":["memory_ingress_bounded_capacity_one_accepts_one_rejects_second"],"proofs":["KANI-INGRESS-001","VERUS-INV-001"],"review":"contract-verification-review.md"}
-{"contract_clause":"INV-002","tests":["memory_ingress_try_recv_returns_frames_in_fifo_order"],"proofs":["VERUS-INV-002"],"review":"contract-verification-review.md"}
-{"contract_clause":"POST-003","tests":["memory_ingress_bounded_capacity_one_accepts_one_rejects_second"],"proofs":[],"review":"contract-verification-review.md"}
-{"contract_clause":"POST-004","tests":["memory_ingress_recv_returns_disconnected_after_sender_drop"],"proofs":[],"review":"contract-verification-review.md"}

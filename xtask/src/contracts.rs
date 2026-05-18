@@ -95,6 +95,12 @@ pub struct ReportSummary {
     pub version_violations: Vec<VersionViolation>,
 }
 
+impl Default for ReportSummary {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ReportSummary {
     pub fn new() -> Self {
         Self {
@@ -269,6 +275,7 @@ pub fn run_cue_vet(file: &Path, cwd: Option<&Path>) -> Result<(i32, String), Str
 /// 1. Run cue vet and collect errors.
 /// 2. Attempt to extract kind and schema_version from the file content.
 /// 3. Validate extracted values.
+#[allow(clippy::as_conversions)]
 pub fn discover_contracts(contracts_dir: &Path) -> Result<DiscoveryReport, String> {
     if !contracts_dir.exists() {
         return Err(format!(
@@ -295,7 +302,8 @@ pub fn discover_contracts(contracts_dir: &Path) -> Result<DiscoveryReport, Strin
     let mut files = Vec::new();
     let mut errors: Vec<String> = Vec::new();
     let mut summary = ReportSummary::new();
-    summary.total = cue_files.len() as u32;
+    summary.total = u32::try_from(cue_files.len())
+        .map_err(|_| String::from("too many contract files to summarize"))?;
 
     for file_rel in &cue_files {
         // Build absolute path for file I/O; keep relative path for reports.
@@ -304,12 +312,19 @@ pub fn discover_contracts(contracts_dir: &Path) -> Result<DiscoveryReport, Strin
         match result {
             Ok(contract_file) => {
                 files.push(contract_file);
-                summary.valid += 1;
+                #[allow(clippy::arithmetic_side_effects)]
+                {
+                    summary.valid += 1;
+                }
             }
             Err((_file_path, validation_errors)) => {
-                summary.invalid += 1;
+                #[allow(clippy::arithmetic_side_effects)]
+                {
+                    summary.invalid += 1;
+                }
                 for err in &validation_errors {
                     let key = err.to_string();
+                    #[allow(clippy::arithmetic_side_effects)]
                     summary
                         .errors_by_kind
                         .entry(key)
@@ -328,6 +343,7 @@ pub fn discover_contracts(contracts_dir: &Path) -> Result<DiscoveryReport, Strin
 
     // Monotonicity gate: schema versions must be non-decreasing across files.
     let mut version_violations = Vec::new();
+    #[allow(clippy::indexing_slicing, clippy::arithmetic_side_effects)]
     for i in 1..files.len() {
         let prev_ver = &files[i - 1].schema_version;
         let curr_ver = &files[i].schema_version;
@@ -411,8 +427,6 @@ fn validate_single_file(
     contracts_dir: &Path,
 ) -> Result<ContractFile, (PathBuf, Vec<ContractError>)> {
     let mut vet_errors: Vec<ContractError> = Vec::new();
-    let schema_version;
-    let kind_str;
 
     // Run cue vet.
     // Use the relative path (relative to contracts_dir) for cue, with
@@ -447,10 +461,10 @@ fn validate_single_file(
     };
 
     // Extract kind from the CUE content.
-    kind_str = extract_kind(&content);
+    let kind_str = extract_kind(&content);
 
     // Extract schema_version from the CUE content.
-    schema_version = extract_schema_version(&content);
+    let schema_version = extract_schema_version(&content);
 
     // Validate kind.
     let kind = match &kind_str {
@@ -531,7 +545,7 @@ pub fn gate_evidence_from_report(report: &DiscoveryReport) -> GateEvidence {
     let exit_code = if report.summary.invalid == 0 { 0 } else { 1 };
 
     let why_failed = if report.summary.invalid > 0 {
-        let mut unique: Vec<_> = report.errors.iter().cloned().collect();
+        let mut unique = report.errors.to_vec();
         unique.sort();
         unique.dedup();
         let detail = if unique.is_empty() {

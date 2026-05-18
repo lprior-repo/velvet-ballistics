@@ -462,6 +462,9 @@ fn storage_recovery_captures_finished_terminal_state() {
             RecoveryTerminalState::Failed => {
                 panic!("expected Finished, got Failed");
             }
+            other => {
+                panic!("expected Finished, got {other:?}");
+            }
         }
     }
 }

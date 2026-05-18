@@ -441,6 +441,7 @@ fn observed(result: Result<RunAdmission, AdmissionError>) -> ObservedAdmissionDi
                 envelope: found,
             }
         }
+        Err(other) => panic!("unexpected admission error: {other:?}"),
     }
 }
 

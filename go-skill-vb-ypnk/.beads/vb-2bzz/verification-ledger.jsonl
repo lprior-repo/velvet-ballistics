@@ -1,3 +1,0 @@
-{"obligation_id":"vb-2bzz-obl-1","result":"PASS","evidence":"cargo test -p vb_storage --test recovery_bdd_tests -- action_abi_mismatch_returns_typed_error: passed","waiver":null,"rerun_target":null}
-{"obligation_id":"vb-2bzz-obl-2","result":"PASS","evidence":"cargo test -p vb_storage --test recovery_bdd_tests -- policy_digest_mismatch_returns_typed_error: passed","waiver":null,"rerun_target":null}
-{"obligation_id":"vb-2bzz-obl-3","result":"PASS","evidence":"cargo test -p vb_storage --test recovery_bdd_tests -- empty_input: 2 passed","waiver":null,"rerun_target":null}

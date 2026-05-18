@@ -1163,7 +1163,8 @@ fn replay_full_journal_reconstructs_bit_identical_state() {
         "post-crash lifecycle state must match pre-crash state"
     );
     assert_eq!(
-        post_crash_run_state.is_terminal, pre_crash_run_state.is_terminal,
+        post_crash_run_state.is_terminal(),
+        pre_crash_run_state.is_terminal(),
         "post-crash is_terminal must match pre-crash"
     );
 }

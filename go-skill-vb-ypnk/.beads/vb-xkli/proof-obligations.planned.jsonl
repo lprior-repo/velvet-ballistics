@@ -1,8 +1,0 @@
-{"id":"KANI-EXPR-BYTECODE-001","mode":"scripted-gauntlet","status":"planned"}
-{"id":"KANI-SLOT-REF-001","mode":"scripted-gauntlet","status":"planned"}
-{"id":"KANI-CONSTANT-POOL-001","mode":"scripted-gauntlet","status":"planned"}
-{"id":"KANI-ACCESSOR-REF-001","mode":"scripted-gauntlet","status":"planned"}
-{"id":"INV-007-NODEDUP-001","mode":"scripted-gauntlet","status":"planned"}
-{"id":"KANI-ADMISSION-001-MALFORMED-GATE-PROOF-REJECT","mode":"scripted-gauntlet","status":"planned"}
-{"id":"KANI-ADMISSION-001-CAPABILITY-REJECT","mode":"scripted-gauntlet","status":"planned"}
-{"id":"KANI-ADMISSION-001-VALID-ACCEPT","mode":"scripted-gauntlet","status":"planned"}

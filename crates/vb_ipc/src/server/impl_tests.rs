@@ -1628,13 +1628,13 @@ fn ipc_response_roundtrip_verify_workflow() {
         result: crate::VerificationResult {
             certificates: vec![
                 crate::CertificateWire {
-                    kind: String::from("gate_01"),
-                    status: String::from("Pass"),
+                    kind: crate::GateKind::Gate07ExpressionStackDepth,
+                    status: crate::PassFail::Pass,
                     details: String::new(),
                 },
                 crate::CertificateWire {
-                    kind: String::from("gate_02"),
-                    status: String::from("Fail"),
+                    kind: crate::GateKind::Gate08AccessorPathSegments,
+                    status: crate::PassFail::Fail,
                     details: String::from("stack depth exceeded"),
                 },
             ],
@@ -1676,12 +1676,12 @@ fn ipc_response_roundtrip_taint_report_with_paths() {
             crate::TaintPathWire {
                 from: 0,
                 to: 3,
-                status: String::from("warning"),
+                status: crate::TaintPathStatus::Warning,
             },
             crate::TaintPathWire {
                 from: 3,
                 to: 9,
-                status: String::from("dangerous"),
+                status: crate::TaintPathStatus::Dangerous,
             },
         ],
     };
@@ -1698,13 +1698,13 @@ fn ipc_response_roundtrip_workflow_graph() {
         nodes: vec![
             crate::NodeDescriptor {
                 step_idx: 0,
-                kind: String::from("Nop"),
+                kind: crate::NodeKind::Nop,
                 next: Some(1),
                 title: String::from("start"),
             },
             crate::NodeDescriptor {
                 step_idx: 1,
-                kind: String::from("Finish"),
+                kind: crate::NodeKind::Finish,
                 next: None,
                 title: String::from("end"),
             },
@@ -1713,7 +1713,7 @@ fn ipc_response_roundtrip_workflow_graph() {
             from: 0,
             to: 1,
             label: None,
-            edge_type: String::from("fallthrough"),
+            edge_type: crate::EdgeType::Fallthrough,
         }],
     };
     let encoded = postcard::to_allocvec(&original).expect("encode WorkflowGraph");
