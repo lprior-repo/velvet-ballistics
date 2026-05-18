@@ -99,6 +99,7 @@ pub fn trace_event_kind(event: &TraceEvent) -> IpcTraceEventKind {
         TraceEvent::RunFinished { run } => IpcTraceEventKind::RunFinished { run: *run },
         TraceEvent::RunFailed { run } => IpcTraceEventKind::RunFailed { run: *run },
         TraceEvent::RunCancelled { run } => IpcTraceEventKind::RunCancelled { run: *run },
+        _ => todo!(),
     }
 }
 
@@ -121,6 +122,11 @@ pub fn handle_drain_trace(payload: &[u8], runtime: &mut Runtime) -> IpcResponse 
         Ok(vb_runtime::shard::InspectResponse::NotFound { .. }) => {
             return IpcResponse::RuntimeError {
                 message: String::from("run not found"),
+            };
+        }
+        Ok(_) => {
+            return IpcResponse::RuntimeError {
+                message: String::from("unexpected inspect response"),
             };
         }
         Err(e) => {

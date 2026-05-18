@@ -617,6 +617,10 @@ fn replay_error_to_recovery(error: ReplayError) -> RecoveryError {
             step: StepIdx::ZERO,
             detail: reason.to_owned(),
         },
+        _ => RecoveryError::ReplayDivergence {
+            step: StepIdx::ZERO,
+            detail: "unknown replay error".to_owned(),
+        },
     }
 }
 

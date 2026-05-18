@@ -120,11 +120,13 @@ fn apply_recovered_pc(frame: &mut RunFrame, seed: &RecoveryFrameSeed) -> Runtime
 pub fn recovery_boundary_from_hydration(
     hydration: RecoveryHydration,
 ) -> Box<dyn RuntimeRecoveryBoundary> {
+    let summary = hydration.summary();
     match hydration {
         RecoveryHydration::Summary(summary) => Box::new(SummaryRecoveryBoundary { summary }),
         RecoveryHydration::FrameSeed(seed) => {
             Box::new(DurableFrameRecoveryBoundary::from_seed(seed))
         }
+        _ => Box::new(SummaryRecoveryBoundary { summary }),
     }
 }
 
@@ -163,6 +165,7 @@ fn apply_recovered_step(
         RecoveredStepState::Failed => frame.mark_failed(step),
         RecoveredStepState::Waiting => mark_suspended(frame, step, StepState::Waiting),
         RecoveredStepState::Asking => mark_suspended(frame, step, StepState::Asking),
+        _ => return Err(RuntimeError::InvalidRecoveryHydration),
     }
     .map_err(|_| RuntimeError::InvalidRecoveryHydration)
 }

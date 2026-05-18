@@ -16,6 +16,12 @@ pub fn validate_gate_08_accessor_path_segments(parts: &WorkflowParts) -> Validat
                     validate_field_symbol(acc_index, seg_index, *sym_id, parts.symbols_count)?;
                 }
                 PathSegment::Index(idx) => validate_index_segment(acc_index, seg_index, *idx)?,
+                _ => {
+                    return Err(ValidationError::AccessorPathInvalid {
+                        accessor_index: acc_index,
+                        segment_index: seg_index,
+                    });
+                }
             }
         }
     }

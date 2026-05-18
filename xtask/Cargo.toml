@@ -22,11 +22,13 @@ regex = "1"
 cargo_metadata = "0.19"
 crossbeam-channel = { workspace = true }
 chrono = { workspace = true }
+postcard = { workspace = true }
 
 [dev-dependencies]
 serde-saphyr = { workspace = true, features = ["serialize"] }
 saphyr = { workspace = true }
 proptest = "1"
+kani = "0.0.1"
 
 [lints]
 workspace = true

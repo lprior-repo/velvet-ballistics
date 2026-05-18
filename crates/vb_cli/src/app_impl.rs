@@ -644,6 +644,7 @@ fn action_idempotency_name(value: vb_core::action::Idempotency) -> &'static str 
         vb_core::action::Idempotency::DeterministicPure => "deterministic_pure",
         vb_core::action::Idempotency::IdempotentExternal => "idempotent_external",
         vb_core::action::Idempotency::AtLeastOnceExternal => "at_least_once_external",
+        _ => "unknown",
     }
 }
 
@@ -652,6 +653,7 @@ fn action_retry_safety_name(value: vb_core::action::RetrySafety) -> &'static str
         vb_core::action::RetrySafety::Safe => "safe",
         vb_core::action::RetrySafety::KeyRequired => "key_required",
         vb_core::action::RetrySafety::Unsafe => "unsafe",
+        _ => "unknown",
     }
 }
 
@@ -662,6 +664,7 @@ fn action_side_effect_name(value: vb_core::action::SideEffect) -> &'static str {
         vb_core::action::SideEffect::Sends => "sends",
         vb_core::action::SideEffect::Creates => "creates",
         vb_core::action::SideEffect::Destroys => "destroys",
+        _ => "unknown",
     }
 }
 

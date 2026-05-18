@@ -189,6 +189,11 @@ pub fn resume_action_outcome(
                 ))
             }
         }
+        _ => Err(RuntimeEngineError::Core(
+            EngineError::UnsupportedPrimitive {
+                primitive: "unknown_action_outcome",
+            },
+        )),
     }
 }
 

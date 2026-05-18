@@ -139,6 +139,7 @@ impl IdempotencyTracker {
                 self.at_least_once_completed.insert(key);
                 Ok(())
             }
+            _ => Err(ActionError::NonIdempotentReplayBlocked),
         }
     }
 
@@ -181,6 +182,7 @@ impl IdempotencyTracker {
                     true
                 }
             }
+            _ => false,
         }
     }
 
@@ -194,6 +196,7 @@ impl IdempotencyTracker {
         match policy {
             Idempotency::DeterministicPure | Idempotency::IdempotentExternal => false,
             Idempotency::AtLeastOnceExternal => self.at_least_once_completed.contains(&key),
+            _ => false,
         }
     }
 

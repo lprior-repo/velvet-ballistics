@@ -154,6 +154,12 @@ pub fn validate_gate_08_accessor_path_segments(parts: &WorkflowParts) -> Validat
                     validate_field_symbol(acc_index, seg_index, *sym_id, parts.symbols_count)?;
                 }
                 PathSegment::Index(idx) => validate_index_segment(acc_index, seg_index, *idx)?,
+                _ => {
+                    return Err(ValidationError::AccessorPathInvalid {
+                        accessor_index: acc_index,
+                        segment_index: seg_index,
+                    });
+                }
             }
         }
     }
@@ -341,6 +347,12 @@ fn validate_node_slots(
         }
         CompiledNodeKind::ErrorHandler { .. } => {}
         CompiledNodeKind::Jump { .. } => {}
+        _ => {
+            return Err(ValidationError::NodeKindConstraintViolation {
+                node_index,
+                detail: "unsupported node kind".to_string(),
+            });
+        }
     }
     Ok(())
 }
@@ -1067,6 +1079,7 @@ fn node_reads(node: &CompiledNode, expressions: &[ExprProgram]) -> Vec<SlotIdx> 
         CompiledNodeKind::Finish { result } => {
             reads.push(*result);
         }
+        _ => {}
     }
     reads
 }
@@ -1606,6 +1619,7 @@ fn const_value_discriminant(value: &vb_core::value::ConstValue) -> u8 {
         vb_core::value::ConstValue::I64(_) => 3,
         vb_core::value::ConstValue::F64(_) => 4,
         vb_core::value::ConstValue::Symbol(_) => 5,
+        _ => 0,
     }
 }
 

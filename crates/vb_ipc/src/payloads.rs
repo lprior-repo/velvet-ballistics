@@ -156,13 +156,257 @@ pub struct VerificationResult {
     pub fail_count: u32,
 }
 
+/// Gate kind identifiers for verification certificates.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum GateKind {
+    #[serde(rename = "gate_07_expression_stack_depth")]
+    Gate07ExpressionStackDepth,
+    #[serde(rename = "gate_08_accessor_path_segments")]
+    Gate08AccessorPathSegments,
+    #[serde(rename = "gate_09_slot_references")]
+    Gate09SlotReferences,
+    #[serde(rename = "gate_10_node_kind_specific")]
+    Gate10NodeKindSpecific,
+    #[serde(rename = "gate_11_loop_body_graph")]
+    Gate11LoopBodyGraph,
+    #[serde(rename = "gate_12_action_contract_completeness")]
+    Gate12ActionContractCompleteness,
+    #[serde(rename = "gate_13_no_slot_cycles")]
+    Gate13NoSlotCycles,
+    #[serde(rename = "gate_14_slot_type_consistency")]
+    Gate14SlotTypeConsistency,
+    #[serde(rename = "gate_15_determinism_proof")]
+    Gate15DeterminismProof,
+}
+
+impl GateKind {
+    /// Returns the string representation used on the wire.
+    pub const fn as_str(&self) -> &'static str {
+        match self {
+            GateKind::Gate07ExpressionStackDepth => "gate_07_expression_stack_depth",
+            GateKind::Gate08AccessorPathSegments => "gate_08_accessor_path_segments",
+            GateKind::Gate09SlotReferences => "gate_09_slot_references",
+            GateKind::Gate10NodeKindSpecific => "gate_10_node_kind_specific",
+            GateKind::Gate11LoopBodyGraph => "gate_11_loop_body_graph",
+            GateKind::Gate12ActionContractCompleteness => "gate_12_action_contract_completeness",
+            GateKind::Gate13NoSlotCycles => "gate_13_no_slot_cycles",
+            GateKind::Gate14SlotTypeConsistency => "gate_14_slot_type_consistency",
+            GateKind::Gate15DeterminismProof => "gate_15_determinism_proof",
+        }
+    }
+}
+
+impl From<&str> for GateKind {
+    fn from(s: &str) -> Self {
+        match s {
+            "gate_07_expression_stack_depth" => GateKind::Gate07ExpressionStackDepth,
+            "gate_08_accessor_path_segments" => GateKind::Gate08AccessorPathSegments,
+            "gate_09_slot_references" => GateKind::Gate09SlotReferences,
+            "gate_10_node_kind_specific" => GateKind::Gate10NodeKindSpecific,
+            "gate_11_loop_body_graph" => GateKind::Gate11LoopBodyGraph,
+            "gate_12_action_contract_completeness" => GateKind::Gate12ActionContractCompleteness,
+            "gate_13_no_slot_cycles" => GateKind::Gate13NoSlotCycles,
+            "gate_14_slot_type_consistency" => GateKind::Gate14SlotTypeConsistency,
+            "gate_15_determinism_proof" => GateKind::Gate15DeterminismProof,
+            _ => GateKind::Gate07ExpressionStackDepth, // Default fallback for unknown gates
+        }
+    }
+}
+
+/// Pass/fail status for verification results.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub enum PassFail {
+    Pass,
+    Fail,
+}
+
+/// Status of a taint propagation path.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum TaintPathStatus {
+    Dangerous,
+    Warning,
+}
+
+/// Kind of a workflow node.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub enum NodeKind {
+    Nop,
+    SetConst,
+    Copy,
+    EvalExpr,
+    BuildObject,
+    BuildList,
+    Do,
+    Choose,
+    ChooseSlot,
+    ForEachStart,
+    ForEachNext,
+    ForEachJoin,
+    TogetherStart,
+    TogetherBranch,
+    TogetherJoin,
+    CollectStart,
+    CollectPage,
+    CollectNext,
+    CollectFinish,
+    ReduceStart,
+    ReduceNext,
+    ReduceFinish,
+    RepeatStart,
+    RepeatAttempt,
+    RepeatCheck,
+    RepeatFinish,
+    WaitUntil,
+    WaitEvent,
+    Ask,
+    AskResume,
+    RetryCheck,
+    ErrorHandler,
+    Jump,
+    Finish,
+}
+
+impl NodeKind {
+    /// Returns the string representation used on the wire.
+    pub const fn as_str(&self) -> &'static str {
+        match self {
+            NodeKind::Nop => "Nop",
+            NodeKind::SetConst => "SetConst",
+            NodeKind::Copy => "Copy",
+            NodeKind::EvalExpr => "EvalExpr",
+            NodeKind::BuildObject => "BuildObject",
+            NodeKind::BuildList => "BuildList",
+            NodeKind::Do => "Do",
+            NodeKind::Choose => "Choose",
+            NodeKind::ChooseSlot => "ChooseSlot",
+            NodeKind::ForEachStart => "ForEachStart",
+            NodeKind::ForEachNext => "ForEachNext",
+            NodeKind::ForEachJoin => "ForEachJoin",
+            NodeKind::TogetherStart => "TogetherStart",
+            NodeKind::TogetherBranch => "TogetherBranch",
+            NodeKind::TogetherJoin => "TogetherJoin",
+            NodeKind::CollectStart => "CollectStart",
+            NodeKind::CollectPage => "CollectPage",
+            NodeKind::CollectNext => "CollectNext",
+            NodeKind::CollectFinish => "CollectFinish",
+            NodeKind::ReduceStart => "ReduceStart",
+            NodeKind::ReduceNext => "ReduceNext",
+            NodeKind::ReduceFinish => "ReduceFinish",
+            NodeKind::RepeatStart => "RepeatStart",
+            NodeKind::RepeatAttempt => "RepeatAttempt",
+            NodeKind::RepeatCheck => "RepeatCheck",
+            NodeKind::RepeatFinish => "RepeatFinish",
+            NodeKind::WaitUntil => "WaitUntil",
+            NodeKind::WaitEvent => "WaitEvent",
+            NodeKind::Ask => "Ask",
+            NodeKind::AskResume => "AskResume",
+            NodeKind::RetryCheck => "RetryCheck",
+            NodeKind::ErrorHandler => "ErrorHandler",
+            NodeKind::Jump => "Jump",
+            NodeKind::Finish => "Finish",
+        }
+    }
+}
+
+impl From<&str> for NodeKind {
+    fn from(s: &str) -> Self {
+        match s {
+            "Nop" => NodeKind::Nop,
+            "SetConst" => NodeKind::SetConst,
+            "Copy" => NodeKind::Copy,
+            "EvalExpr" => NodeKind::EvalExpr,
+            "BuildObject" => NodeKind::BuildObject,
+            "BuildList" => NodeKind::BuildList,
+            "Do" => NodeKind::Do,
+            "Choose" => NodeKind::Choose,
+            "ChooseSlot" => NodeKind::ChooseSlot,
+            "ForEachStart" => NodeKind::ForEachStart,
+            "ForEachNext" => NodeKind::ForEachNext,
+            "ForEachJoin" => NodeKind::ForEachJoin,
+            "TogetherStart" => NodeKind::TogetherStart,
+            "TogetherBranch" => NodeKind::TogetherBranch,
+            "TogetherJoin" => NodeKind::TogetherJoin,
+            "CollectStart" => NodeKind::CollectStart,
+            "CollectPage" => NodeKind::CollectPage,
+            "CollectNext" => NodeKind::CollectNext,
+            "CollectFinish" => NodeKind::CollectFinish,
+            "ReduceStart" => NodeKind::ReduceStart,
+            "ReduceNext" => NodeKind::ReduceNext,
+            "ReduceFinish" => NodeKind::ReduceFinish,
+            "RepeatStart" => NodeKind::RepeatStart,
+            "RepeatAttempt" => NodeKind::RepeatAttempt,
+            "RepeatCheck" => NodeKind::RepeatCheck,
+            "RepeatFinish" => NodeKind::RepeatFinish,
+            "WaitUntil" => NodeKind::WaitUntil,
+            "WaitEvent" => NodeKind::WaitEvent,
+            "Ask" => NodeKind::Ask,
+            "AskResume" => NodeKind::AskResume,
+            "RetryCheck" => NodeKind::RetryCheck,
+            "ErrorHandler" => NodeKind::ErrorHandler,
+            "Jump" => NodeKind::Jump,
+            "Finish" => NodeKind::Finish,
+            _ => NodeKind::Nop,
+        }
+    }
+}
+
+/// Type of a workflow edge.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum EdgeType {
+    Branch,
+    LoopBody,
+    LoopExit,
+    ParallelBranch,
+    ParallelJoin,
+    Fallthrough,
+    ErrorHandler,
+    Jump,
+}
+
+impl EdgeType {
+    /// Returns the string representation used on the wire.
+    pub const fn as_str(&self) -> &'static str {
+        match self {
+            EdgeType::Branch => "branch",
+            EdgeType::LoopBody => "loop_body",
+            EdgeType::LoopExit => "loop_exit",
+            EdgeType::ParallelBranch => "parallel_branch",
+            EdgeType::ParallelJoin => "parallel_join",
+            EdgeType::Fallthrough => "fallthrough",
+            EdgeType::ErrorHandler => "error_handler",
+            EdgeType::Jump => "jump",
+        }
+    }
+}
+
+impl From<&str> for EdgeType {
+    fn from(s: &str) -> Self {
+        match s {
+            "branch" => EdgeType::Branch,
+            "loop_body" => EdgeType::LoopBody,
+            "loop_exit" => EdgeType::LoopExit,
+            "parallel_branch" => EdgeType::ParallelBranch,
+            "parallel_join" => EdgeType::ParallelJoin,
+            "fallthrough" => EdgeType::Fallthrough,
+            "error_handler" => EdgeType::ErrorHandler,
+            "jump" => EdgeType::Jump,
+            _ => EdgeType::Fallthrough,
+        }
+    }
+}
+
 /// One gate-check certificate in a verification result.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CertificateWire {
-    /// Gate identifier, e.g. "gate_07_expression_stack_depth".
-    pub kind: String,
+    /// Gate identifier.
+    pub kind: GateKind,
     /// "Pass" or "Fail".
-    pub status: String,
+    pub status: PassFail,
     /// Human-readable details, empty on pass.
     pub details: String,
 }
@@ -175,7 +419,7 @@ pub struct TaintPathWire {
     /// Destination step index.
     pub to: u16,
     /// Whether this edge is dangerous or just a warning.
-    pub status: String,
+    pub status: TaintPathStatus,
 }
 
 /// Lightweight descriptor for a single workflow node returned by GetWorkflowGraph.
@@ -184,7 +428,7 @@ pub struct NodeDescriptor {
     /// Step index of this node.
     pub step_idx: u16,
     /// Kind of this node.
-    pub kind: String,
+    pub kind: NodeKind,
     /// Fallthrough target step index, if any.
     pub next: Option<u16>,
     /// Human-readable step name.
@@ -201,7 +445,7 @@ pub struct EdgeDescriptor {
     /// Optional edge label.
     pub label: Option<String>,
     /// Edge type.
-    pub edge_type: String,
+    pub edge_type: EdgeType,
 }
 
 /// Typed trace event returned by `ListEvents`.
@@ -252,4 +496,7 @@ pub enum IpcTraceEventKind {
     RunFailed { run: RunId },
     /// A run was cancelled.
     RunCancelled { run: RunId },
+    /// An unknown event (for future compatibility).
+    #[doc(hidden)]
+    Unknown,
 }

@@ -223,50 +223,23 @@ impl BoundednessPolicy {
 #[non_exhaustive]
 pub enum BudgetError {
     #[error("total steps exceeded: {actual} > {limit}")]
-    TotalStepsExceeded {
-        actual: u64,
-        limit: u64,
-    },
+    TotalStepsExceeded { actual: u64, limit: u64 },
     #[error("total slots exceeded: {actual} > {limit}")]
-    TotalSlotsExceeded {
-        actual: u64,
-        limit: u64,
-    },
+    TotalSlotsExceeded { actual: u64, limit: u64 },
     #[error("fanout exceeded: {actual} > {limit}")]
-    FanoutExceeded {
-        actual: u16,
-        limit: u16,
-    },
+    FanoutExceeded { actual: u16, limit: u16 },
     #[error("nesting depth exceeded: {actual} > {limit}")]
-    NestingDepthExceeded {
-        actual: u16,
-        limit: u16,
-    },
+    NestingDepthExceeded { actual: u16, limit: u16 },
     #[error("parallel exceeded: {actual} > {limit}")]
-    ParallelExceeded {
-        actual: u16,
-        limit: u16,
-    },
+    ParallelExceeded { actual: u16, limit: u16 },
     #[error("action tickets exceeded: {actual} > {limit}")]
-    ActionTicketsExceeded {
-        actual: u32,
-        limit: u32,
-    },
+    ActionTicketsExceeded { actual: u32, limit: u32 },
     #[error("run time exceeded: {actual} > {limit}")]
-    RunTimeExceeded {
-        actual: u64,
-        limit: u64,
-    },
+    RunTimeExceeded { actual: u64, limit: u64 },
     #[error("result bytes exceeded: {actual} > {limit}")]
-    ResultBytesExceeded {
-        actual: u32,
-        limit: u32,
-    },
+    ResultBytesExceeded { actual: u32, limit: u32 },
     #[error("steps executable exceeded: {actual} > {limit}")]
-    StepsExecutableExceeded {
-        actual: u32,
-        limit: u32,
-    },
+    StepsExecutableExceeded { actual: u32, limit: u32 },
 }
 
 /// Aggregate whole-run budget required for runtime admission.

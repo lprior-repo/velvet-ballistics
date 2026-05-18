@@ -53,41 +53,41 @@ pub fn handle_verify_workflow(
         return IpcResponse::WorkflowDigestMismatch;
     }
     let parts = workflow.to_parts();
-    let gate_results: Vec<(&str, Result<(), vb_validate::ValidationError>)> = vec![
+    let gate_results: Vec<(crate::GateKind, Result<(), vb_validate::ValidationError>)> = vec![
         (
-            "gate_07_expression_stack_depth",
+            crate::GateKind::Gate07ExpressionStackDepth,
             vb_validate::gates::validate_gate_07_expression_stack_depth(&parts),
         ),
         (
-            "gate_08_accessor_path_segments",
+            crate::GateKind::Gate08AccessorPathSegments,
             vb_validate::gates::validate_gate_08_accessor_path_segments(&parts),
         ),
         (
-            "gate_09_slot_references",
+            crate::GateKind::Gate09SlotReferences,
             vb_validate::gates::validate_gate_09_slot_references(&parts),
         ),
         (
-            "gate_10_node_kind_specific",
+            crate::GateKind::Gate10NodeKindSpecific,
             vb_validate::gates::validate_gate_10_node_kind_specific(&parts),
         ),
         (
-            "gate_11_loop_body_graph",
+            crate::GateKind::Gate11LoopBodyGraph,
             vb_validate::gates::validate_gate_11_loop_body_graph(&parts),
         ),
         (
-            "gate_12_action_contract_completeness",
+            crate::GateKind::Gate12ActionContractCompleteness,
             vb_validate::gates::validate_gate_12_action_contract_completeness(&parts, &[]),
         ),
         (
-            "gate_13_no_slot_cycles",
+            crate::GateKind::Gate13NoSlotCycles,
             vb_validate::gates::validate_gate_13_no_slot_cycles(&parts),
         ),
         (
-            "gate_14_slot_type_consistency",
+            crate::GateKind::Gate14SlotTypeConsistency,
             vb_validate::gates::validate_gate_14_slot_type_consistency(&parts),
         ),
         (
-            "gate_15_determinism_proof",
+            crate::GateKind::Gate15DeterminismProof,
             vb_validate::gates::validate_gate_15_determinism_proof(&parts),
         ),
     ];
@@ -107,16 +107,16 @@ pub fn handle_verify_workflow(
             Ok(()) => {
                 pass_count = pass_count.saturating_add(1);
                 certificates.push(crate::CertificateWire {
-                    kind: kind.to_owned(),
-                    status: String::from("Pass"),
+                    kind,
+                    status: crate::PassFail::Pass,
                     details: String::new(),
                 });
             }
             Err(err) => {
                 fail_count = fail_count.saturating_add(1);
                 certificates.push(crate::CertificateWire {
-                    kind: kind.to_owned(),
-                    status: String::from("Fail"),
+                    kind,
+                    status: crate::PassFail::Fail,
                     details: sanitize_validation_detail(err.to_string()),
                 });
             }
@@ -186,7 +186,7 @@ fn collect_edges_from_node(
                     from: step,
                     to: branch.target.get(),
                     label: Some(format!("branch_{i}")),
-                    edge_type: String::from("branch"),
+                    edge_type: EdgeType::Branch,
                 });
             }
             if let Some(fallback) = otherwise {
@@ -194,7 +194,7 @@ fn collect_edges_from_node(
                     from: step,
                     to: fallback.get(),
                     label: Some(String::from("otherwise")),
-                    edge_type: String::from("branch"),
+                    edge_type: EdgeType::Branch,
                 });
             }
         }
@@ -207,7 +207,7 @@ fn collect_edges_from_node(
                     from: step,
                     to: branch.target.get(),
                     label: Some(format!("branch_{i}")),
-                    edge_type: String::from("branch"),
+                    edge_type: EdgeType::Branch,
                 });
             }
             if let Some(fallback) = otherwise {
@@ -215,7 +215,7 @@ fn collect_edges_from_node(
                     from: step,
                     to: fallback.get(),
                     label: Some(String::from("otherwise")),
-                    edge_type: String::from("branch"),
+                    edge_type: EdgeType::Branch,
                 });
             }
         }
@@ -225,13 +225,13 @@ fn collect_edges_from_node(
                 from: step,
                 to: body.get(),
                 label: Some(String::from("body")),
-                edge_type: String::from("loop_body"),
+                edge_type: EdgeType::LoopBody,
             });
             edges.push(EdgeDescriptor {
                 from: step,
                 to: done.get(),
                 label: Some(String::from("done")),
-                edge_type: String::from("loop_exit"),
+                edge_type: EdgeType::LoopExit,
             });
         }
         vb_core::workflow::CompiledNodeKind::TogetherStart { branches, join, .. } => {
@@ -240,14 +240,14 @@ fn collect_edges_from_node(
                     from: step,
                     to: branch_step.get(),
                     label: Some(format!("branch_{i}")),
-                    edge_type: String::from("parallel_branch"),
+                    edge_type: EdgeType::ParallelBranch,
                 });
             }
             edges.push(EdgeDescriptor {
                 from: step,
                 to: join.get(),
                 label: Some(String::from("join")),
-                edge_type: String::from("parallel_join"),
+                edge_type: EdgeType::ParallelJoin,
             });
         }
         vb_core::workflow::CompiledNodeKind::CollectStart { body, done, .. }
@@ -257,13 +257,13 @@ fn collect_edges_from_node(
                 from: step,
                 to: body.get(),
                 label: Some(String::from("body")),
-                edge_type: String::from("loop_body"),
+                edge_type: EdgeType::LoopBody,
             });
             edges.push(EdgeDescriptor {
                 from: step,
                 to: done.get(),
                 label: Some(String::from("done")),
-                edge_type: String::from("loop_exit"),
+                edge_type: EdgeType::LoopExit,
             });
         }
         vb_core::workflow::CompiledNodeKind::ReduceStart { body, done, .. }
@@ -272,13 +272,13 @@ fn collect_edges_from_node(
                 from: step,
                 to: body.get(),
                 label: Some(String::from("body")),
-                edge_type: String::from("loop_body"),
+                edge_type: EdgeType::LoopBody,
             });
             edges.push(EdgeDescriptor {
                 from: step,
                 to: done.get(),
                 label: Some(String::from("done")),
-                edge_type: String::from("loop_exit"),
+                edge_type: EdgeType::LoopExit,
             });
         }
         vb_core::workflow::CompiledNodeKind::RepeatStart { body, done, .. }
@@ -287,13 +287,13 @@ fn collect_edges_from_node(
                 from: step,
                 to: body.get(),
                 label: Some(String::from("body")),
-                edge_type: String::from("loop_body"),
+                edge_type: EdgeType::LoopBody,
             });
             edges.push(EdgeDescriptor {
                 from: step,
                 to: done.get(),
                 label: Some(String::from("done")),
-                edge_type: String::from("loop_exit"),
+                edge_type: EdgeType::LoopExit,
             });
         }
         vb_core::workflow::CompiledNodeKind::RepeatCheck { done, .. } => {
@@ -301,7 +301,7 @@ fn collect_edges_from_node(
                 from: step,
                 to: done.get(),
                 label: Some(String::from("done")),
-                edge_type: String::from("loop_exit"),
+                edge_type: EdgeType::LoopExit,
             });
         }
         vb_core::workflow::CompiledNodeKind::ErrorHandler { body, handler, .. } => {
@@ -309,13 +309,13 @@ fn collect_edges_from_node(
                 from: step,
                 to: body.get(),
                 label: Some(String::from("body")),
-                edge_type: String::from("fallthrough"),
+                edge_type: EdgeType::Fallthrough,
             });
             edges.push(EdgeDescriptor {
                 from: step,
                 to: handler.get(),
                 label: Some(String::from("handler")),
-                edge_type: String::from("error_handler"),
+                edge_type: EdgeType::ErrorHandler,
             });
         }
         vb_core::workflow::CompiledNodeKind::Jump { target } => {
@@ -323,7 +323,7 @@ fn collect_edges_from_node(
                 from: step,
                 to: target.get(),
                 label: None,
-                edge_type: String::from("jump"),
+                edge_type: EdgeType::Jump,
             });
         }
         vb_core::workflow::CompiledNodeKind::Nop
@@ -400,7 +400,7 @@ pub fn handle_get_workflow_graph(
                 from: idx,
                 to: target,
                 label: None,
-                edge_type: String::from("fallthrough"),
+                edge_type: EdgeType::Fallthrough,
             });
         }
 
@@ -408,7 +408,7 @@ pub fn handle_get_workflow_graph(
 
         nodes.push(NodeDescriptor {
             step_idx: idx,
-            kind: String::from(node_kind_label(&compiled_node.kind)),
+            kind: NodeKind::from(node_kind_label(&compiled_node.kind)),
             next,
             title,
         });
@@ -483,10 +483,10 @@ pub fn handle_get_taint_report(
             any_source_reaches_sink = true;
         }
 
-        let status_str = if reaches_sink {
-            String::from("dangerous")
+        let status = if reaches_sink {
+            TaintPathStatus::Dangerous
         } else {
-            String::from("warning")
+            TaintPathStatus::Warning
         };
 
         for step in &reachable {
@@ -496,7 +496,7 @@ pub fn handle_get_taint_report(
             paths.push(TaintPathWire {
                 from: *source_idx,
                 to: *step,
-                status: status_str.clone(),
+                status,
             });
         }
 

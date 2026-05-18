@@ -633,6 +633,7 @@ fn taint_discriminant(taint: vb_core::Taint) -> u8 {
         vb_core::Taint::Clean => 0,
         vb_core::Taint::Secret => 1,
         vb_core::Taint::DerivedFromSecret => 2,
+        _ => todo!(),
     }
 }
 
@@ -2304,6 +2305,7 @@ fn assert_typed_ipc_error(error: vb_ipc::IpcError) {
         | IpcError::PayloadEncodeFailed
         | IpcError::PayloadDecodeFailed
         | IpcError::ResponseDecodeFailed => {}
+        _ => todo!(),
     }
 }
 
@@ -2428,6 +2430,7 @@ fn assert_typed_journal_error(error: vb_storage::JournalError) {
         | JournalError::ProcessLockHeld { .. }
         | JournalError::ProcessLockIo { .. }
         | JournalError::Trim(_) => {}
+        _ => todo!(),
     }
 }
 
@@ -2572,5 +2575,6 @@ fn assert_typed_boundary_error(
         | BoundaryInventoryError::InventoryParseFailure
         | BoundaryInventoryError::SchemaVersionUnsupported
         | BoundaryInventoryError::ReviewStatusInvalid => {}
+        _ => todo!(),
     }
 }

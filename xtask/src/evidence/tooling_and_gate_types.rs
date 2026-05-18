@@ -189,6 +189,15 @@ pub enum Error {
     UpstreamMoonFailed { task: String, cause: String },
     /// just recipe returned non-zero.
     UpstreamJustFailed { recipe: String, cause: String },
+
+    /// Schema version string could not be parsed as major.minor.
+    SchemaVersionParseFailed { version: String },
+
+    /// A required bundle field was missing on deserialisation.
+    MissingRequiredField { field: String },
+
+    /// Bundle-level serialisation failed for the chosen format.
+    BundleSerializationFailed { format: String, cause: String },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -262,6 +271,15 @@ impl std::fmt::Display for Error {
             Error::YamlSerializationFailed { gate, cause } => write_yaml_failed(f, gate, cause),
             Error::UpstreamMoonFailed { task, cause } => write_moon_failed(f, task, cause),
             Error::UpstreamJustFailed { recipe, cause } => write_just_failed(f, recipe, cause),
+            Error::SchemaVersionParseFailed { version } => {
+                write!(f, "Schema version parse failed: '{version}'")
+            }
+            Error::MissingRequiredField { field } => {
+                write!(f, "Missing required field: '{field}'")
+            }
+            Error::BundleSerializationFailed { format, cause } => {
+                write!(f, "Bundle serialization ({format}) failed: {cause}")
+            }
         }
     }
 }

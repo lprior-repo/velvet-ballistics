@@ -220,6 +220,7 @@ fn yaml_error_category(error: &vb_yaml::YamlError) -> &'static str {
         vb_yaml::YamlError::MissingField { .. } => "missing_field",
         vb_yaml::YamlError::FieldShape { .. } => "field_shape",
         vb_yaml::YamlError::ParseError { .. } => "parse_error",
+        _ => "parse_error",
     }
 }
 
@@ -1140,6 +1141,7 @@ fn canonical_finish_slot(
             })?;
             Ok(SlotIdx::new(raw))
         }
+        _ => Err(CompileErrors(vec![CompileError::UnsupportedConstantValue { step: 0 }])),
     }
 }
 
@@ -1157,6 +1159,7 @@ fn canonical_primitive_name(primitive: &vb_yaml::ast::StepPrimitive) -> &'static
         vb_yaml::ast::StepPrimitive::Wait { .. } => "wait",
         vb_yaml::ast::StepPrimitive::Ask { .. } => "ask",
         vb_yaml::ast::StepPrimitive::Finish { .. } => "finish",
+        _ => "unknown",
     }
 }
 
@@ -1175,6 +1178,7 @@ fn canonical_digest(source: &vb_yaml::ast::WorkflowSource) -> WorkflowDigest {
             hasher.update(event_type.as_bytes())
         }
         vb_yaml::ast::TriggerAst::Webhook => hasher.update(b"webhook"),
+        _ => hasher.update(b"unknown"),
     };
     for step in source.steps() {
         hasher.update(step.id.as_bytes());
@@ -1195,6 +1199,7 @@ fn digest_step_primitive(hasher: &mut blake3::Hasher, primitive: &vb_yaml::ast::
             match result {
                 vb_yaml::ast::ScalarValue::String(value) => hasher.update(value.as_bytes()),
                 vb_yaml::ast::ScalarValue::Integer(value) => hasher.update(&value.to_le_bytes()),
+                _ => hasher.update(b"unsupported"),
             };
         }
         other => {
@@ -2600,6 +2605,7 @@ fn workflow_error_code(error: &WorkflowError) -> &'static str {
         | WorkflowError::AccessorPathTooDeep { .. }
         | WorkflowError::StepCountOverflow { .. }
         | WorkflowError::JumpCycle { .. } => "INVALID_COMPILED_WORKFLOW",
+        _ => "INVALID_COMPILED_WORKFLOW",
     }
 }
 

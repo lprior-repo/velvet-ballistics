@@ -56,6 +56,7 @@ impl ValueFact {
                 Taint::DerivedFromSecret
             }
             (Taint::Clean, Taint::Clean) => Taint::Clean,
+            (_, _) => Taint::Secret,
         };
         Self {
             value_type: self.value_type,

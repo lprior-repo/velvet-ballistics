@@ -50,8 +50,9 @@ pub use crate::metrics::{
     AggregateMetrics, IpcMetrics, JournalMetrics, RuntimeMetrics, ShardMetrics,
 };
 pub use crate::payloads::{
-    CertificateWire, EdgeDescriptor, IpcPayload, IpcTraceEvent, IpcTraceEventKind, NodeDescriptor,
-    RunListState, RunSummary, SubmitRunPayload, TaintPathWire, VerificationResult,
+    CertificateWire, EdgeDescriptor, EdgeType, GateKind, IpcPayload, IpcTraceEvent,
+    IpcTraceEventKind, NodeDescriptor, NodeKind, PassFail, RunListState, RunSummary,
+    SubmitRunPayload, TaintPathStatus, TaintPathWire, VerificationResult,
 };
 
 #[cfg(test)]

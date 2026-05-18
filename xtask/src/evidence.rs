@@ -2,6 +2,7 @@
 include!("evidence/release_contract.rs");
 include!("evidence/release_validation.rs");
 include!("evidence/tooling_and_gate_types.rs");
+include!("evidence/bundle.rs");
 include!("evidence/error_profile_domain.rs");
 include!("evidence/parsed_documents.rs");
 include!("evidence/raw_documents.rs");

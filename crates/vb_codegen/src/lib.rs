@@ -228,6 +228,7 @@ fn unsupported_node_feature(kind: &CompiledNodeKind) -> Option<&'static str> {
         | CompiledNodeKind::CollectFinish { .. }
         | CompiledNodeKind::Jump { .. }
         | CompiledNodeKind::Finish { .. } => None,
+        _ => todo!(),
     }
 }
 
@@ -262,6 +263,7 @@ fn unsupported_expr_feature(op: ExprOp) -> Option<&'static str> {
         ExprOp::EndsWith => Some("text helper ends_with requires runtime symbol store"),
         ExprOp::Length => None,
         ExprOp::Empty => None,
+        _ => todo!(),
     }
 }
 
@@ -781,6 +783,7 @@ fn emit_step_body(out: &mut String, node: &CompiledNode) -> CodegenResult<()> {
         | CompiledNodeKind::AskResume { .. }
         | CompiledNodeKind::ErrorHandler { .. } => emit_boundary_step_body(out, node),
         CompiledNodeKind::RetryCheck { .. } => emit_retry_check_step_body(out, &node.kind),
+        _ => todo!(),
     }
 }
 
@@ -2193,6 +2196,7 @@ pub fn emit_expr_function(
                 writeln!(out, "    {{ let (_v, _taint) = stack.pop_tainted().ok_or(DriveError::ExpressionStackUnderflow)?; let _handle = expect_list_value(_v)?; let _unique = unique_list_items(list_store, _handle)?; stack.push_tainted(SlotValue::List(_unique), _taint)?; }}")
                     .map_err(fmt_err)?;
             }
+            _ => todo!(),
         }
     }
 
@@ -3595,6 +3599,11 @@ fn emit_constants(out: &mut String, workflow: &CompiledWorkflow) -> CodegenResul
             Some(ConstValue::Symbol(v)) => {
                 writeln!(out, "    SlotValue::Symbol({}),", v.get()).map_err(fmt_err)?;
             }
+            Some(&_) => {
+                return Err(CodegenError::UnsupportedIr {
+                    feature: "ConstValue",
+                });
+            }
             None => break,
         }
     }
@@ -3685,6 +3694,9 @@ fn emit_accessor_segment(out: &mut String, segment: vb_core::PathSegment) -> Cod
     match segment {
         vb_core::PathSegment::Field(field) => writeln!(out, "        {{ let (_value, _segment_taint) = match _current {{ SlotValue::Object(_object) => object_store.field(_object, {})?, other => return Err(DriveError::TypeMismatch {{ expected: \"object\", found: other.type_name() }}), }}; _taint = join_taint(_taint, _segment_taint); _current = _value; }}", field.get()).map_err(fmt_err),
         vb_core::PathSegment::Index(index) => writeln!(out, "        {{ let (_value, _segment_taint) = match _current {{ SlotValue::List(_list) => list_store.value_at(_list, {index})?, other => return Err(DriveError::TypeMismatch {{ expected: \"list\", found: other.type_name() }}), }}; _taint = join_taint(_taint, _segment_taint); _current = _value; }}").map_err(fmt_err),
+        _ => Err(CodegenError::UnsupportedIr {
+            feature: "PathSegment",
+        }),
     }
 }
 

@@ -204,6 +204,7 @@ fn node_reads(node: &CompiledNode, expressions: &[ExprProgram]) -> Vec<SlotIdx> 
         CompiledNodeKind::Finish { result } => {
             reads.push(*result);
         }
+        _ => {}
     }
     reads
 }

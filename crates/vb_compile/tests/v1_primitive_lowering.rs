@@ -1005,6 +1005,7 @@ fn node_kind_name(kind: &CompiledNodeKind) -> &'static str {
         CompiledNodeKind::ErrorHandler { .. } => "ErrorHandler",
         CompiledNodeKind::Jump { .. } => "Jump",
         CompiledNodeKind::Finish { .. } => "Finish",
+        _ => todo!(),
     }
 }
 

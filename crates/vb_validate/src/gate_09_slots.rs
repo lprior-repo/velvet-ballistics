@@ -142,6 +142,12 @@ fn validate_node_slots(
             check_slot(*policy_slot, node_index, slot_count)?;
         }
         CompiledNodeKind::ErrorHandler { .. } | CompiledNodeKind::Jump { .. } => {}
+        _ => {
+            return Err(ValidationError::NodeKindConstraintViolation {
+                node_index,
+                detail: "unsupported node kind".to_string(),
+            });
+        }
     }
     Ok(())
 }

@@ -159,6 +159,14 @@ pub fn is_statically_idempotent_contract(
         (_, RetrySafety::Safe | RetrySafety::KeyRequired, Idempotency::IdempotentExternal) => {
             Ok(())
         }
+        (side_effect, retry_safety, idempotency) => {
+            Err(IdempotencyContractViolation::SideEffectingRetryUnsafe {
+                action: contract.id,
+                side_effect,
+                idempotency,
+                retry_safety,
+            })
+        }
     }
 }
 

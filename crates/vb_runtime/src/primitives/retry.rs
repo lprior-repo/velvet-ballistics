@@ -291,6 +291,7 @@ pub fn is_failure_retriable(failure: &ActionFailure, retry_safety: RetrySafety) 
         RetrySafety::Safe | RetrySafety::KeyRequired => {
             failure.retry_policy == vb_core::action::RetryPolicy::Retryable
         }
+        _ => false,
     }
 }
 

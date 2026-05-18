@@ -58,5 +58,6 @@ fn const_value_discriminant(value: &vb_core::value::ConstValue) -> u8 {
         vb_core::value::ConstValue::I64(_) => 3,
         vb_core::value::ConstValue::F64(_) => 4,
         vb_core::value::ConstValue::Symbol(_) => 5,
+        _ => 0,
     }
 }

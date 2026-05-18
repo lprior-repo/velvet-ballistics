@@ -517,6 +517,7 @@ fn derive_lifecycle_state_from_events(events: &[vb_storage::JournalEvent]) -> Li
             vb_storage::JournalEvent::AskScheduledEvent { .. } => LifecycleState::WaitingAnswer,
             vb_storage::JournalEvent::AskAnsweredEvent { .. } => LifecycleState::WaitingAnswer,
             vb_storage::JournalEvent::RetryScheduledEvent { .. } => LifecycleState::Active,
+            &_ => todo!(),
         })
         .unwrap_or(LifecycleState::Pending)
 }

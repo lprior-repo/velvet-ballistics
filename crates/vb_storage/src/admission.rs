@@ -231,6 +231,7 @@ pub fn submit_artifact_with_contracts(
 
             Ok(artifact)
         }
+        _ => Err(JournalError::ArtifactMalformed),
     }
 }
 
@@ -301,6 +302,7 @@ fn is_contract_idempotency_accepted(contract: &ActionContract) -> bool {
         (_, RetrySafety::Unsafe, _) => false,
         (_, _, Idempotency::AtLeastOnceExternal | Idempotency::DeterministicPure) => false,
         (_, RetrySafety::Safe | RetrySafety::KeyRequired, Idempotency::IdempotentExternal) => true,
+        _ => false,
     }
 }
 
