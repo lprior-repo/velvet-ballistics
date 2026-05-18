@@ -7,7 +7,7 @@
 use vb_core::{ActionId, RunId, SlotIdx, SlotValue, StepIdx, Taint, WorkflowDigest};
 use vb_runtime::recovery::{DurableFrameRecoveryBoundary, RuntimeRecoveryBoundary};
 use vb_storage::recovery::{
-    ActionReplayTracker, RecoveredStepEntry, RecoveredStepState, RecoveryFrameSeed,
+    ActionReplayTracker, RecoveredStepEntry, RecoveredStepState, RecoveryError, RecoveryFrameSeed,
     RecoveryRuntimeSummary, RecoveryTerminalState, UnsupportedRecoveryState,
     recover_runtime_frame_seed_from_events,
 };
@@ -28,20 +28,17 @@ fn encoded(value: SlotValue) -> Result<Vec<u8>, postcard::Error> {
 
 /// RecoveryError::NoRecoveryData when run has no journal events at all.
 #[test]
-#[ignore = "recover_runtime_frame_seed_from_events returns NoRecoveryData on empty events - pre-existing issue"]
 fn recovery_from_empty_journal_returns_no_recovery_data() {
     // An empty events list simulates what happens when storage returns nothing
     // because the journal was lost or the run was never persisted (disk full on first write).
     let _run = RunId::new(9001);
     let events = Vec::<JournalEvent>::new();
 
-    // recover_runtime_frame_seed_from_events on empty events should still
-    // succeed but produce a seed with zero steps. This is the "no data" case.
-    let seed = recover_runtime_frame_seed_from_events(&events)
-        .expect("recovery should not panic on empty events");
-    assert_eq!(seed.summary.steps_started, 0);
-    assert_eq!(seed.summary.steps_succeeded, 0);
-    assert!(seed.summary.terminal.is_none());
+    let result = recover_runtime_frame_seed_from_events(&events);
+    assert!(
+        matches!(result, Err(RecoveryError::NoRecoveryData { .. })),
+        "empty recovery should return NoRecoveryData: {result:?}"
+    );
 }
 
 /// RecoveryError::CorruptSnapshot when snapshot bytes are corrupt.

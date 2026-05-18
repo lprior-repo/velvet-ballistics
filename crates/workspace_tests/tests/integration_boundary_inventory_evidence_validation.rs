@@ -16,7 +16,11 @@ use vb_boundary_inventory::boundary_inventory::{
 // ---------------------------------------------------------------------------
 
 fn make_workspace_root(subdir: &str) -> WorkspaceRoot {
-    WorkspaceRoot::new(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(subdir))
+    WorkspaceRoot::new(
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../..")
+            .join(subdir),
+    )
 }
 
 fn valid_record_base() -> BoundaryRecordDraft {
@@ -68,7 +72,6 @@ fn validate_record_returns_stale_evidence_when_evidence_version_behind_schema() 
 
 /// FreshnessMarker: evidence_version >= source_version and schema_version → valid.
 #[test]
-#[ignore = "workspace root path incorrect in test"]
 fn validate_record_accepts_fresh_evidence_when_versions_match() {
     let mut record = valid_record_base();
     // All versions equal → fresh
@@ -82,7 +85,6 @@ fn validate_record_accepts_fresh_evidence_when_versions_match() {
 
 /// FreshnessMarker: all zeros is valid (zero versions).
 #[test]
-#[ignore = "workspace root path incorrect in test"]
 fn validate_record_accepts_zero_versions() {
     let mut record = valid_record_base();
     record.freshness = FreshnessMarker::new(0, 0, 0);
@@ -171,7 +173,6 @@ fn validate_record_accepts_bead_id_as_external_provenance() {
 
 /// ReviewStatus::Waived requires waiver FieldState::Present.
 #[test]
-#[ignore = "workspace root path incorrect in test"]
 fn validate_record_rejects_waived_without_waiver() {
     let mut record = valid_record_base();
     record.review_status = FieldState::Present(ReviewStatus::Waived);
@@ -185,7 +186,6 @@ fn validate_record_rejects_waived_without_waiver() {
 
 /// ReviewStatus::Waived with waiver FieldState::Present accepted.
 #[test]
-#[ignore = "workspace root path incorrect in test"]
 fn validate_record_accepts_waived_with_valid_waiver() {
     let mut record = valid_record_base();
     record.review_status = FieldState::Present(ReviewStatus::Waived);
@@ -205,7 +205,6 @@ fn validate_record_accepts_waived_with_valid_waiver() {
 
 /// ReviewStatus::Other rejected (only Approved or Waived allowed).
 #[test]
-#[ignore = "workspace root path incorrect in test"]
 fn validate_record_rejects_review_status_other() {
     let mut record = valid_record_base();
     record.review_status = FieldState::Present(ReviewStatus::Other(String::from("pending")));
@@ -317,7 +316,6 @@ fn validate_record_rejects_unknown_boundary_class() {
 
 /// BoundaryClass::CAbi is valid (allowed class).
 #[test]
-#[ignore = "workspace root path incorrect in test"]
 fn validate_record_accepts_cabi_boundary_class() {
     let mut record = valid_record_base();
     record.class = BoundaryClass::CAbi;
@@ -330,7 +328,6 @@ fn validate_record_accepts_cabi_boundary_class() {
 
 /// BoundaryClass::GeneratedCode is valid.
 #[test]
-#[ignore = "workspace root path incorrect in test"]
 fn validate_record_accepts_generated_code_boundary_class() {
     let mut record = valid_record_base();
     record.class = BoundaryClass::GeneratedCode;
@@ -347,7 +344,6 @@ fn validate_record_accepts_generated_code_boundary_class() {
 
 /// BoundaryClass::UnsafeAdjacentDependency is valid.
 #[test]
-#[ignore = "workspace root path incorrect in test"]
 fn validate_record_accepts_unsafe_adjacent_dependency_boundary_class() {
     let mut record = valid_record_base();
     record.class = BoundaryClass::UnsafeAdjacentDependency;
@@ -482,7 +478,6 @@ fn review_status_serialized_for_other_includes_value() {
 
 /// Full valid record passes all validation checks.
 #[test]
-#[ignore = "workspace root path incorrect in test"]
 fn validate_record_accepts_fully_valid_record() {
     let record = valid_record_base();
     let workspace = make_workspace_root(".");

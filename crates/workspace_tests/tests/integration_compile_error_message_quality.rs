@@ -127,10 +127,9 @@ steps:
 // CompileError variant coverage — YAML feature restrictions
 // ---------------------------------------------------------------------------
 
-/// CompileError::AliasForbidden: YAML alias rejected.
+/// CompileError::AnchorForbidden: YAML anchors are rejected before aliases.
 #[test]
-#[ignore = "test YAML has anchor, not alias - test expectation incorrect"]
-fn compile_error_alias_forbidden_message_contains_mark() {
+fn compile_error_anchor_forbidden_message_contains_mark() {
     let source = br#"
 version: velvet-ballastics/v1
 name: test
@@ -146,19 +145,18 @@ ref: *anchor
 "#;
     let error = parse_error(source).expect("expected error");
     assert!(
-        matches!(error, CompileError::AliasForbidden { .. }),
-        "YAML alias should produce AliasForbidden, got: {:?}",
+        matches!(error, CompileError::AnchorForbidden { .. }),
+        "YAML anchor should produce AnchorForbidden before alias validation, got: {:?}",
         error
     );
 }
 
 /// CompileError::TagForbidden: YAML tag rejected.
 #[test]
-#[ignore = "YAML parsing fails unexpectedly - pre-existing bug"]
 fn compile_error_tag_forbidden_rejected() {
     let source = br#"
 version: velvet-ballastics/v1
-name: test
+name: !tagged test
 when:
   manual: {}
 steps:
@@ -166,19 +164,21 @@ steps:
     finish:
       result: 0
 "#;
-    // Note: YAML tags like !foo are rarely generated; this tests the path exists
-    let result = YamlCompiler::default().parse_ast(source);
-    // Source is valid without tags
-    assert!(result.is_ok());
+    let error = parse_error(source).expect("expected error");
+    assert!(
+        matches!(error, CompileError::TagForbidden { .. }),
+        "YAML tag should produce TagForbidden, got: {:?}",
+        error
+    );
 }
 
 /// CompileError::MergeKeyForbidden: merge key rejected.
 #[test]
-#[ignore = "YAML parsing fails unexpectedly - pre-existing bug"]
 fn compile_error_merge_key_forbidden_rejected() {
     let source = br#"
 version: velvet-ballastics/v1
 name: test
+<<: { injected: value }
 when:
   manual: {}
 steps:
@@ -186,9 +186,12 @@ steps:
     finish:
       result: 0
 "#;
-    // The << merge key is <<: ... which requires an anchor
-    let result = YamlCompiler::default().parse_ast(source);
-    assert!(result.is_ok(), "source without merge key should parse ok");
+    let error = parse_error(source).expect("expected error");
+    assert!(
+        matches!(error, CompileError::MergeKeyForbidden { .. }),
+        "YAML merge key should produce MergeKeyForbidden, got: {:?}",
+        error
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -464,7 +467,6 @@ steps:
 
 /// CompileError::MissingStepPrimitive: step without any primitive.
 #[test]
-#[ignore = "YAML validation order changed - now gets UnknownStepField first"]
 fn compile_error_missing_step_primitive_rejected() {
     let source = br#"
 version: velvet-ballastics/v1
@@ -473,7 +475,6 @@ when:
   manual: {}
 steps:
   - id: orphan
-    output: result
 "#;
     let errors = all_errors(source);
     assert!(

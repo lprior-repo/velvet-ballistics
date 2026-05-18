@@ -70,12 +70,12 @@ fn nop_node(index: u16) -> CompiledNode {
 
 /// Gate 7: expression stack depth mismatch at declared boundary.
 #[test]
-#[ignore = "validation error order changed - now returns non-single result first"]
 fn gate_7_rejects_expression_stack_mismatch_at_boundary() {
     // Build an expression with actual max_stack = 2 but declared = 1
     let ops = vec![
         ExprOp::LoadSlot(SlotIdx::new(0)),
         ExprOp::LoadSlot(SlotIdx::new(1)),
+        ExprOp::Eq,
     ];
     let expr = ExprProgram::try_from_ops(ops.into_boxed_slice()).expect("valid");
     let parts = make_parts(
@@ -267,7 +267,6 @@ fn gate_9_rejects_slot_reference_out_of_bounds() {
 
 /// Gate 9: error_slot reference out of bounds fails.
 #[test]
-#[ignore = "validation logic changed - error_slot OOB not detected or different error"]
 fn gate_9_rejects_error_slot_reference_out_of_bounds() {
     // slot_count = 1, error_slot = 5 is OOB
     let node = CompiledNode {

@@ -5,6 +5,7 @@ use super::{
 use crate::runtime::Runtime;
 use crate::shard::ShardConfig;
 use std::num::NonZeroUsize;
+use std::path::PathBuf;
 use std::sync::Arc;
 use vb_core::ids::{ActionId, RunId, SlotIdx, StepIdx, WorkflowDigest};
 use vb_core::value::Taint;
@@ -43,7 +44,12 @@ fn single_finish_workflow(workflow: WorkflowDigest) -> Result<CompiledWorkflow, 
 }
 
 fn temp_journal() -> Result<(tempfile::TempDir, Arc<FjallJournal>), String> {
-    let dir = tempfile::tempdir().map_err(|error| error.to_string())?;
+    let base = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../target");
+    std::fs::create_dir_all(&base).map_err(|error| error.to_string())?;
+    let dir = tempfile::Builder::new()
+        .prefix("vb-runtime-journal-")
+        .tempdir_in(base)
+        .map_err(|error| error.to_string())?;
     let journal = FjallJournal::open(dir.path(), None).map_err(|error| error.to_string())?;
     Ok((dir, Arc::new(journal)))
 }
@@ -65,7 +71,6 @@ fn require_ok<T>(result: Result<T, String>, context: &'static str) -> Option<T> 
 }
 
 #[test]
-#[ignore = "tmpfs quota exhausted in parallel test runs"]
 fn storage_runtime_journal_maps_lifecycle_events_in_sequence() {
     let Some((_dir, journal)) = require_ok(temp_journal(), "temp journal opens") else {
         return;
@@ -119,7 +124,6 @@ fn storage_runtime_journal_maps_lifecycle_events_in_sequence() {
 }
 
 #[test]
-#[ignore = "tmpfs quota exhausted in parallel test runs"]
 fn storage_runtime_journal_rejects_unsequenced_append() {
     let Some((_dir, journal)) = require_ok(temp_journal(), "temp journal opens") else {
         return;
@@ -138,7 +142,6 @@ fn storage_runtime_journal_rejects_unsequenced_append() {
 }
 
 #[test]
-#[ignore = "tmpfs quota exhausted in parallel test runs"]
 fn storage_runtime_journal_maps_run_admission_event() {
     let Some((_dir, journal)) = require_ok(temp_journal(), "temp journal opens") else {
         return;
@@ -182,7 +185,6 @@ fn storage_runtime_journal_maps_run_admission_event() {
 }
 
 #[test]
-#[ignore = "tmpfs quota exhausted in parallel test runs"]
 fn storage_runtime_journal_maps_cancelled_and_failed_events() {
     let Some((_dir, journal)) = require_ok(temp_journal(), "temp journal opens") else {
         return;

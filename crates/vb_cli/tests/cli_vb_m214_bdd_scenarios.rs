@@ -582,10 +582,35 @@ mod bdd_scenarios {
     // ipc-serve — documented as cannot test in CI (socket-based)
 
     #[test]
-    #[ignore = "ipc-serve requires socket binding — cannot test in CI"]
     fn cli_ipc_serve_requires_socket_and_db() {
-        // This test is intentionally ignored as socket binding cannot be tested in CI
-        // The test exists to document the requirement
+        let missing_socket = run_cli_failing(&["ipc-serve"]).unwrap();
+        assert_eq!(missing_socket.status.code(), Some(1));
+        let socket_output = format!(
+            "{}{}",
+            String::from_utf8_lossy(&missing_socket.stdout),
+            String::from_utf8_lossy(&missing_socket.stderr)
+        );
+        assert!(
+            socket_output.contains("--socket"),
+            "expected missing socket error, got: {socket_output}"
+        );
+
+        let missing_db = run_cli_failing(&[
+            "ipc-serve",
+            "--socket",
+            "target/velvet-ballastics-ipc-test.sock",
+        ])
+        .unwrap();
+        assert_eq!(missing_db.status.code(), Some(1));
+        let db_output = format!(
+            "{}{}",
+            String::from_utf8_lossy(&missing_db.stdout),
+            String::from_utf8_lossy(&missing_db.stderr)
+        );
+        assert!(
+            db_output.contains("--db"),
+            "expected missing db error, got: {db_output}"
+        );
     }
 
     // diff
