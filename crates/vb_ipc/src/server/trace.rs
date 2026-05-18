@@ -99,7 +99,7 @@ pub fn trace_event_kind(event: &TraceEvent) -> IpcTraceEventKind {
         TraceEvent::RunFinished { run } => IpcTraceEventKind::RunFinished { run: *run },
         TraceEvent::RunFailed { run } => IpcTraceEventKind::RunFailed { run: *run },
         TraceEvent::RunCancelled { run } => IpcTraceEventKind::RunCancelled { run: *run },
-        _ => todo!(),
+        _ => IpcTraceEventKind::Unknown,
     }
 }
 

@@ -194,6 +194,13 @@ fn trace_one(idx: usize, event: &JournalEvent) -> TraceEntry {
                 ("answer", serde_json::Value::from(format!("{:?}", answer))),
             ],
         },
+        _ => TraceEntry {
+            index: idx,
+            event_type: "Unknown",
+            step: None,
+            seq: 0,
+            extra_json: vec![],
+        },
     }
 }
 

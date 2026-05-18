@@ -501,6 +501,7 @@ fn node_kind_name(kind: &vb_core::workflow::CompiledNodeKind) -> &'static str {
         vb_core::workflow::CompiledNodeKind::Jump { .. } => "Jump",
         vb_core::workflow::CompiledNodeKind::Finish { .. } => "Finish",
         vb_core::workflow::CompiledNodeKind::ErrorHandler { .. } => "ErrorHandler",
+        _ => "Unknown",
     }
 }
 
@@ -583,6 +584,7 @@ fn event_to_json(event: &vb_storage::JournalEvent) -> Value {
         } => {
             serde_json::json!({"type": "RunAnswered", "run": run.get(), "slot_idx": slot_idx.get(), "answer": format!("{:?}", answer), "timestamp": timestamp.to_rfc3339()})
         }
+        _ => serde_json::json!({"type": "Unknown"}),
     }
 }
 

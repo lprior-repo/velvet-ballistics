@@ -164,6 +164,7 @@ fn node_kind_label(kind: &CompiledNodeKind) -> &'static str {
         CompiledNodeKind::ErrorHandler { .. } => "error_handler",
         CompiledNodeKind::Jump { .. } => "jump",
         CompiledNodeKind::Finish { .. } => "finish",
+        _ => "unknown",
     }
 }
 
@@ -232,6 +233,7 @@ fn describe_node_for_simulate(
         CompiledNodeKind::ErrorHandler { .. } => "ErrorHandler".to_string(),
         CompiledNodeKind::Jump { .. } => "Jump".to_string(),
         CompiledNodeKind::Finish { .. } => "Finish -- would complete run".to_string(),
+        _ => "Unknown".to_string(),
     }
 }
 
@@ -319,6 +321,7 @@ fn collect_kind_edges(node_idx: u16, kind: &CompiledNodeKind) -> Vec<(u16, u16, 
         | CompiledNodeKind::AskResume { .. }
         | CompiledNodeKind::RetryCheck { .. }
         | CompiledNodeKind::Finish { .. } => {}
+        _ => {}
     }
     edges
 }

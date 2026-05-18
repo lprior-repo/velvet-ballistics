@@ -4946,6 +4946,9 @@ mod tests {
                         slot.get()
                     ));
                 }
+                _ => {
+                    out.push_str(&format!("journal:{journal_index}:Unknown\n"));
+                }
             }
             journal_index = journal_index
                 .checked_add(1)

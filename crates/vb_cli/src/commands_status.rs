@@ -62,6 +62,7 @@ fn health_name(health: ShardHealth) -> &'static str {
     match health {
         ShardHealth::Running => "running",
         ShardHealth::ShuttingDown => "shutting_down",
+        _ => "unknown",
     }
 }
 
@@ -71,6 +72,7 @@ fn policy_name(policy: vb_core::policy::RuntimePolicy) -> &'static str {
         vb_core::policy::RuntimePolicy::Strict => "Strict",
         vb_core::policy::RuntimePolicy::Journaled => "Journaled",
         vb_core::policy::RuntimePolicy::Relaxed => "Relaxed",
+        _ => "unknown",
     }
 }
 

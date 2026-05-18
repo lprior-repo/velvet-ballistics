@@ -1676,6 +1676,7 @@ fn node_kind_name(kind: &vb_core::workflow::CompiledNodeKind) -> &'static str {
         vb_core::workflow::CompiledNodeKind::Jump { .. } => "Jump",
         vb_core::workflow::CompiledNodeKind::Finish { .. } => "Finish",
         vb_core::workflow::CompiledNodeKind::ErrorHandler { .. } => "ErrorHandler",
+        _ => "Unknown",
     }
 }
 
@@ -1687,6 +1688,7 @@ fn signal_name(signal: &vb_core::EngineSignal) -> &'static str {
         vb_core::EngineSignal::AwaitingAction => "AwaitingAction",
         vb_core::EngineSignal::AwaitingWait => "AwaitingWait",
         vb_core::EngineSignal::AwaitingAsk => "AwaitingAsk",
+        _ => "Unknown",
     }
 }
 
@@ -2037,6 +2039,9 @@ fn print_trace_event(event: &vb_runtime::trace::TraceEvent) {
         }
         vb_runtime::trace::TraceEvent::RunCancelled { .. } => {
             outln!("  trace: RunCancelled");
+        }
+        _ => {
+            outln!("  trace: Unknown");
         }
     }
 }
@@ -2390,6 +2395,9 @@ fn print_event(event: &vb_storage::JournalEvent) {
         vb_storage::JournalEvent::RunAnswered { run, slot_idx, .. } => {
             outln!("  RunAnswered run={} slot={}", run.get(), slot_idx.get());
         }
+        _ => {
+            outln!("  Unknown");
+        }
     }
 }
 
@@ -2549,6 +2557,7 @@ fn event_to_json(event: &vb_storage::JournalEvent) -> serde_json::Value {
                 "timestamp": timestamp.to_rfc3339()
             })
         }
+        _ => serde_json::json!({"type": "Unknown"}),
     }
 }
 
@@ -4025,6 +4034,10 @@ fn explain_validation_error(err: &vb_validate::ValidationError) {
             outln!("Version Monotonicity Breach");
             outln!("  File '{file}': version {actual} is not >= expected {expected}.");
         }
+        _ => {
+            outln!("Unknown Validation Error");
+            outln!("  {err}");
+        }
     }
 }
 
@@ -4418,11 +4431,17 @@ fn cmd_doctor(db: Option<&std::path::Path>, output: OutputFormat) -> ExitCode {
                         let blocker_name = match blocker {
                             vb_storage::TrimBlocker::NoDurableSnapshot => "no_durable_snapshot",
                             vb_storage::TrimBlocker::RetentionPolicy { .. } => "retention_policy",
+                            _ => "unknown",
                         };
                         runs.push(serde_json::json!({
                             "run": r.get(),
                             "status": "blocked",
                             "blocker": blocker_name
+                        }));
+                    }
+                    _ => {
+                        runs.push(serde_json::json!({
+                            "status": "unknown"
                         }));
                     }
                 }
@@ -4504,12 +4523,16 @@ fn cmd_doctor(db: Option<&std::path::Path>, output: OutputFormat) -> ExitCode {
                         let blocker_name = match blocker {
                             vb_storage::TrimBlocker::NoDurableSnapshot => "no_durable_snapshot",
                             vb_storage::TrimBlocker::RetentionPolicy { .. } => "retention_policy",
+                            _ => "unknown",
                         };
                         outln!(
                             "doctor:   run {} blocked — blocker={}",
                             r.get(),
                             blocker_name
                         );
+                    }
+                    _ => {
+                        outln!("doctor:   unknown trim eligibility");
                     }
                 }
             }

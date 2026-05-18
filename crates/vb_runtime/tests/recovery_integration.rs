@@ -197,6 +197,7 @@ fn full_round_trip_recovery_reconstructs_summary() {
         RecoveryHydration::FrameSeed(_) => {
             panic!("expected Summary hydration, got FrameSeed");
         }
+        other => panic!("expected Summary hydration, got {other:?}"),
     }
 }
 
@@ -338,6 +339,7 @@ fn partial_write_recovery_detects_incomplete_state() {
         RecoveryHydration::FrameSeed(_) => {
             panic!("expected Summary hydration for partial run");
         }
+        other => panic!("expected Summary hydration for partial run, got {other:?}"),
     }
 }
 
@@ -381,6 +383,7 @@ fn partial_write_with_only_run_accepted_is_recoverable() {
         RecoveryHydration::FrameSeed(_) => {
             panic!("expected Summary hydration");
         }
+        other => panic!("expected Summary hydration, got {other:?}"),
     }
 }
 
@@ -944,6 +947,7 @@ fn recovery_across_multiple_runs_is_isolated() {
         RecoveryHydration::FrameSeed(_) => {
             panic!("expected Summary");
         }
+        other => panic!("expected Summary, got {other:?}"),
     }
 
     match summary_b {
@@ -953,6 +957,7 @@ fn recovery_across_multiple_runs_is_isolated() {
         RecoveryHydration::FrameSeed(_) => {
             panic!("expected Summary");
         }
+        other => panic!("expected Summary, got {other:?}"),
     }
 }
 

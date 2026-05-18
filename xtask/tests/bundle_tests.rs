@@ -127,29 +127,17 @@ fn read_bundle_non_panic() {
 
     // Round-trip through the format: serialise then read from memory buffer.
     let bytes_result: std::result::Result<Vec<u8>, _> = match format {
-        EvidenceBundleFormat::Yaml => {
-            serde_saphyr::to_string(&bundle).map(|s| s.into_bytes())
-        }
-        EvidenceBundleFormat::Json => {
-            serde_json::to_string(&bundle).map(|s| s.into_bytes())
-        }
-        EvidenceBundleFormat::Postcard => {
-            postcard::to_allocvec(&bundle)
-        }
+        EvidenceBundleFormat::Yaml => serde_saphyr::to_string(&bundle).map(|s| s.into_bytes()),
+        EvidenceBundleFormat::Json => serde_json::to_string(&bundle).map(|s| s.into_bytes()),
+        EvidenceBundleFormat::Postcard => postcard::to_allocvec(&bundle),
     };
 
     if let Ok(ref raw) = bytes_result {
         // Read back — must not panic.
         let _result: std::result::Result<EvidenceBundle, _> = match format {
-            EvidenceBundleFormat::Yaml => {
-                serde_saphyr::from_slice::<EvidenceBundle>(raw)
-            }
-            EvidenceBundleFormat::Json => {
-                serde_json::from_slice::<EvidenceBundle>(raw)
-            }
-            EvidenceBundleFormat::Postcard => {
-                postcard::from_bytes::<EvidenceBundle>(raw)
-            }
+            EvidenceBundleFormat::Yaml => serde_saphyr::from_slice::<EvidenceBundle>(raw),
+            EvidenceBundleFormat::Json => serde_json::from_slice::<EvidenceBundle>(raw),
+            EvidenceBundleFormat::Postcard => postcard::from_bytes::<EvidenceBundle>(raw),
         };
     }
     // If serialisation failed, that's an error return, not a panic.
@@ -433,26 +421,22 @@ fn evidence_bundle_strategy() -> BoxedStrategy<EvidenceBundle> {
                         reason: any::<String>(),
                     },
                 ]);
-                status_strategy
-                    .prop_map(move |status| GateEvidence {
-                        kind,
-                        gate_name,
-                        command,
-                        exit_code,
-                        log,
-                        status,
-                        why_failed: None,
-                    })
+                status_strategy.prop_map(move |status| GateEvidence {
+                    kind,
+                    gate_name,
+                    command,
+                    exit_code,
+                    log,
+                    status,
+                    why_failed: None,
+                })
             })
             .boxed()
     }
 
     fn arb_source_test_mapping() -> BoxedStrategy<SourceTestMapping> {
         (any::<String>(), vec(any::<String>(), 0..=5))
-            .prop_map(|(source_path, tests)| SourceTestMapping {
-                source_path,
-                tests,
-            })
+            .prop_map(|(source_path, tests)| SourceTestMapping { source_path, tests })
             .boxed()
     }
 
@@ -469,7 +453,12 @@ fn evidence_bundle_strategy() -> BoxedStrategy<EvidenceBundle> {
             ArtifactType::Fmt,
         ]);
 
-        (any::<String>(), any::<String>(), any::<String>(), artifact_type_strategy,)
+        (
+            any::<String>(),
+            any::<String>(),
+            any::<String>(),
+            artifact_type_strategy,
+        )
             .prop_map(|(name, path, digest, artifact_type)| ReleaseGateArtifact {
                 name,
                 path,
@@ -486,13 +475,15 @@ fn evidence_bundle_strategy() -> BoxedStrategy<EvidenceBundle> {
         vec(arb_source_test_mapping(), 0..=5),
         vec(arb_release_artifact(), 0..=5),
     )
-        .prop_map(|(executor_context, linked_bead_id, gates, stms, rga)| EvidenceBundle {
-            schema_version: "1.0".to_string(),
-            executor_context,
-            linked_bead_id,
-            gates,
-            source_test_mappings: stms,
-            release_artifacts: rga,
-        })
+        .prop_map(
+            |(executor_context, linked_bead_id, gates, stms, rga)| EvidenceBundle {
+                schema_version: "1.0".to_string(),
+                executor_context,
+                linked_bead_id,
+                gates,
+                source_test_mappings: stms,
+                release_artifacts: rga,
+            },
+        )
         .boxed()
 }

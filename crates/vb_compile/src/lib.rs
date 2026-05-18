@@ -1141,7 +1141,9 @@ fn canonical_finish_slot(
             })?;
             Ok(SlotIdx::new(raw))
         }
-        _ => Err(CompileErrors(vec![CompileError::UnsupportedConstantValue { step: 0 }])),
+        _ => Err(CompileErrors(vec![
+            CompileError::UnsupportedConstantValue { step: 0 },
+        ])),
     }
 }
 

@@ -211,6 +211,7 @@ pub fn diff_event_summary(event: &JournalEvent) -> serde_json::Value {
         JournalEvent::RunAnswered { run, slot_idx, .. } => {
             serde_json::json!({"type": "RunAnswered", "run": run.get(), "slot_idx": slot_idx.get()})
         }
+        _ => serde_json::json!({"type": "Unknown"}),
     }
 }
 
@@ -235,6 +236,7 @@ pub fn event_name(event: &JournalEvent) -> &'static str {
         JournalEvent::RunResumed { .. } => "RunResumed",
         JournalEvent::RunRetried { .. } => "RunRetried",
         JournalEvent::RunAnswered { .. } => "RunAnswered",
+        _ => "Unknown",
     }
 }
 

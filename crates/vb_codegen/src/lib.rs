@@ -228,7 +228,7 @@ fn unsupported_node_feature(kind: &CompiledNodeKind) -> Option<&'static str> {
         | CompiledNodeKind::CollectFinish { .. }
         | CompiledNodeKind::Jump { .. }
         | CompiledNodeKind::Finish { .. } => None,
-        _ => todo!(),
+        _ => Some("future compiled node kind"),
     }
 }
 
@@ -263,7 +263,7 @@ fn unsupported_expr_feature(op: ExprOp) -> Option<&'static str> {
         ExprOp::EndsWith => Some("text helper ends_with requires runtime symbol store"),
         ExprOp::Length => None,
         ExprOp::Empty => None,
-        _ => todo!(),
+        _ => Some("future expression op"),
     }
 }
 
@@ -783,7 +783,7 @@ fn emit_step_body(out: &mut String, node: &CompiledNode) -> CodegenResult<()> {
         | CompiledNodeKind::AskResume { .. }
         | CompiledNodeKind::ErrorHandler { .. } => emit_boundary_step_body(out, node),
         CompiledNodeKind::RetryCheck { .. } => emit_retry_check_step_body(out, &node.kind),
-        _ => todo!(),
+        _ => emit_unsupported_step(out, "UnsupportedStep"),
     }
 }
 
@@ -2196,7 +2196,10 @@ pub fn emit_expr_function(
                 writeln!(out, "    {{ let (_v, _taint) = stack.pop_tainted().ok_or(DriveError::ExpressionStackUnderflow)?; let _handle = expect_list_value(_v)?; let _unique = unique_list_items(list_store, _handle)?; stack.push_tainted(SlotValue::List(_unique), _taint)?; }}")
                     .map_err(fmt_err)?;
             }
-            _ => todo!(),
+            _ => {
+                writeln!(out, "    return Err(DriveError::InvalidCompiledWorkflow {{ reason: \"future expression op\" }});")
+                    .map_err(fmt_err)?;
+            }
         }
     }
 

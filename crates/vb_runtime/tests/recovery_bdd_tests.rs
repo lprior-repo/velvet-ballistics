@@ -103,6 +103,7 @@ fn header_binds_target_run_when_digests_match() {
         RecoveryHydration::FrameSeed(_) => {
             panic!("expected Summary hydration for finished run");
         }
+        other => panic!("expected Summary hydration for finished run, got {other:?}"),
     }
 }
 
@@ -232,6 +233,7 @@ fn full_journal_reconstructs_exact_pc_steps_slots_taint_terminal() {
         RecoveryHydration::FrameSeed(_) => {
             panic!("expected Summary hydration");
         }
+        other => panic!("expected Summary hydration, got {other:?}"),
     }
 
     // GA-002a: Full-journal replay reconstructs equivalent event set
@@ -496,6 +498,7 @@ fn wait_identity_and_state_survive_across_restart() {
         RecoveryHydration::FrameSeed(_) => {
             panic!("expected Summary hydration for waiting run");
         }
+        other => panic!("expected Summary hydration for waiting run, got {other:?}"),
     }
 
     // GA-004a: No in-memory wait state used — all from durable events
@@ -578,6 +581,7 @@ fn ask_answer_slot_value_and_taint_survive_across_restart() {
         RecoveryHydration::FrameSeed(_) => {
             panic!("expected Summary hydration");
         }
+        other => panic!("expected Summary hydration, got {other:?}"),
     }
 
     let mut tracker = ActionReplayTracker::new();
@@ -875,6 +879,7 @@ fn corrupt_collect_extra_does_not_panic_storage_layer() {
             assert_eq!(s.slots_written, 1);
         }
         RecoveryHydration::FrameSeed(_) => {}
+        _ => {}
     }
 }
 
@@ -924,6 +929,7 @@ fn non_empty_run_with_header_only_returns_no_recovery_data() {
         RecoveryHydration::FrameSeed(_) => {
             panic!("expected Summary hydration for header-only run");
         }
+        other => panic!("expected Summary hydration for header-only run, got {other:?}"),
     }
 
     // GA-008a: hydrate_run_frame_from_events with only RunAccepted must return NoRecoveryData
@@ -1073,6 +1079,7 @@ fn stale_attempt_state_not_mixed_into_active_attempt() {
         RecoveryHydration::FrameSeed(_) => {
             panic!("expected Summary hydration");
         }
+        other => panic!("expected Summary hydration, got {other:?}"),
     }
 }
 
@@ -1569,6 +1576,7 @@ fn unsequenced_lifecycle_events_do_not_change_recovered_state() {
         RecoveryHydration::FrameSeed(_) => {
             panic!("expected Summary hydration");
         }
+        other => panic!("expected Summary hydration, got {other:?}"),
     }
 }
 
