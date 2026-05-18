@@ -511,13 +511,14 @@ fn durable_runtime_public_surface(
         }
     })?;
     let mut tracker = ActionReplayTracker::new();
-    let replayed = vb_storage::replay_journal(&reopened, run, &mut tracker).map_err(|error| {
-        VbKyyfScenarioDiagnostic::ScenarioSurfaceUnavailable {
-            bead_id: BEAD_ID,
-            scenario_id,
-            public_surface: stable_recovery_error_label(error),
-        }
-    })?;
+    let replayed =
+        vb_storage::replay_journal(&reopened, run, &mut tracker, &[], &[]).map_err(|error| {
+            VbKyyfScenarioDiagnostic::ScenarioSurfaceUnavailable {
+                bead_id: BEAD_ID,
+                scenario_id,
+                public_surface: stable_recovery_error_label(error),
+            }
+        })?;
     let hydration =
         vb_storage::recovery::summarize_recovery_events(&replayed).map_err(|error| {
             VbKyyfScenarioDiagnostic::ScenarioSurfaceUnavailable {
@@ -882,6 +883,7 @@ fn stable_recovery_error_label(error: RecoveryError) -> &'static str {
         | RecoveryError::NoRecoveryData { .. }
         | RecoveryError::TerminalStateMismatch { .. }
         | RecoveryError::FrameDimensionOverflow { .. } => "ReplaySequenceViolation",
+        _ => "RecoveryError",
     }
 }
 
@@ -898,6 +900,7 @@ fn exact_recovery_error_label(error: RecoveryError) -> &'static str {
         RecoveryError::NoRecoveryData { .. } => "NoRecoveryData",
         RecoveryError::TerminalStateMismatch { .. } => "TerminalStateMismatch",
         RecoveryError::FrameDimensionOverflow { .. } => "FrameDimensionOverflow",
+        _ => "RecoveryError",
     }
 }
 
@@ -1100,6 +1103,8 @@ fn repeated_persisted_replay_error(
             &reopened,
             run,
             &mut ActionReplayTracker::new(),
+            &[],
+            &[],
         ))
     };
     let second = {
@@ -1121,6 +1126,8 @@ fn repeated_persisted_replay_error(
             &reopened,
             run,
             &mut ActionReplayTracker::new(),
+            &[],
+            &[],
         ))
     };
     if first == second {
@@ -1310,10 +1317,12 @@ fn repeated_public_replay_event_error(
         first_attempt: exact_recovery_result_label(vb_storage::recovery::replay_events(
             events,
             &mut ActionReplayTracker::new(),
+            &[],
         )),
         second_attempt: exact_recovery_result_label(vb_storage::recovery::replay_events(
             events,
             &mut ActionReplayTracker::new(),
+            &[],
         )),
         expected_typed_error,
     }
@@ -1431,22 +1440,22 @@ fn collect_bdd_kyyf_002() -> Result<VbKyyfScenarioEvidence, VbKyyfScenarioDiagno
     }
     let mut first_tracker = ActionReplayTracker::new();
     let mut second_tracker = ActionReplayTracker::new();
-    let replayed_first =
-        vb_storage::replay_journal(&reopened, run, &mut first_tracker).map_err(|error| {
-            VbKyyfScenarioDiagnostic::ScenarioSurfaceUnavailable {
+    let replayed_first = vb_storage::replay_journal(&reopened, run, &mut first_tracker, &[], &[])
+        .map_err(
+        |error| VbKyyfScenarioDiagnostic::ScenarioSurfaceUnavailable {
+            bead_id: BEAD_ID,
+            scenario_id: BDD_KYYF_002,
+            public_surface: stable_recovery_error_label(error),
+        },
+    )?;
+    let replayed_second = vb_storage::replay_journal(&reopened, run, &mut second_tracker, &[], &[])
+        .map_err(
+            |error| VbKyyfScenarioDiagnostic::ScenarioSurfaceUnavailable {
                 bead_id: BEAD_ID,
                 scenario_id: BDD_KYYF_002,
                 public_surface: stable_recovery_error_label(error),
-            }
-        })?;
-    let replayed_second =
-        vb_storage::replay_journal(&reopened, run, &mut second_tracker).map_err(|error| {
-            VbKyyfScenarioDiagnostic::ScenarioSurfaceUnavailable {
-                bead_id: BEAD_ID,
-                scenario_id: BDD_KYYF_002,
-                public_surface: stable_recovery_error_label(error),
-            }
-        })?;
+            },
+        )?;
     if replayed_first != replayed_second {
         return Err(
             VbKyyfScenarioDiagnostic::NormalizedDigestOrMismatchMissing {
@@ -1579,7 +1588,7 @@ fn collect_bdd_kyyf_003() -> Result<VbKyyfScenarioEvidence, VbKyyfScenarioDiagno
         }
     })?;
     let before_dispatch_count = count_scheduled_action_facts(&before_events);
-    let first_blocked = vb_storage::replay_journal(&journal, run, &mut tracker)
+    let first_blocked = vb_storage::replay_journal(&journal, run, &mut tracker, &[], &[])
         .map(|_| "Ok")
         .map_err(stable_recovery_error_label);
     let after_first_events = journal.events_for_run(run).map_err(|_| {
@@ -1591,7 +1600,7 @@ fn collect_bdd_kyyf_003() -> Result<VbKyyfScenarioEvidence, VbKyyfScenarioDiagno
     })?;
     let mut repeat_tracker = ActionReplayTracker::new();
     repeat_tracker.mark_completed(action, step);
-    let second_blocked = vb_storage::replay_journal(&journal, run, &mut repeat_tracker)
+    let second_blocked = vb_storage::replay_journal(&journal, run, &mut repeat_tracker, &[], &[])
         .map(|_| "Ok")
         .map_err(stable_recovery_error_label);
     let after_second_events = journal.events_for_run(run).map_err(|_| {
