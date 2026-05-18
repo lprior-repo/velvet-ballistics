@@ -266,6 +266,10 @@ fn server_processes_health_command_from_client() {
             }
         }
     }
+    assert!(
+        server.clients.is_empty(),
+        "invalid magic frame must disconnect the client after the error response"
+    );
 }
 
 // ── client disconnect handling ───────────────────────────────────────────────
@@ -459,6 +463,10 @@ fn server_responds_with_error_for_invalid_magic() {
             }
         }
     }
+    assert!(
+        server.clients.is_empty(),
+        "unsupported version frame must disconnect the client after the error response"
+    );
 }
 
 // ── unsupported version handling ────────────────────────────────────────────

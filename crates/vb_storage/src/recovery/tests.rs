@@ -1109,8 +1109,13 @@ mod tests {
         ];
 
         let mut tracker = ActionReplayTracker::new();
+<<<<<<< HEAD
         let replayed = replay_events(&events, &mut tracker, &[])
             .expect("replay of all event kinds should succeed");
+=======
+        let replayed =
+            replay_events(&events, &mut tracker, &[]).expect("replay of all event kinds should succeed");
+>>>>>>> 76ce3d38 (feat(cli): add incident command with structured failure evidence)
         assert_eq!(replayed.len(), 11);
         assert!(tracker.is_resolved(ActionId::new(1), StepIdx::new(0)));
     }

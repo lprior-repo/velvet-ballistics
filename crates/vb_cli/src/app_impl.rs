@@ -3197,11 +3197,35 @@ fn cmd_incident(run_id: &str, db: &std::path::Path, output: OutputFormat) -> Exi
 
     match output {
         OutputFormat::Json => {
-            let json_str = serde_json::to_string_pretty(&json_report).unwrap_or_default();
+            let json_str = match serde_json::to_string_pretty(&json_report) {
+                Ok(s) => s,
+                Err(err) => {
+                    json_error(
+                        &serde_json::json!({
+                            "success": false,
+                            "error": format!("failed to serialize incident report: {err}")
+                        }),
+                        output,
+                    );
+                    return CliExitCode::StorageError.into();
+                }
+            };
             outln!("{json_str}");
         }
         OutputFormat::Jsonl => {
-            let json_str = serde_json::to_string(&json_report).unwrap_or_default();
+            let json_str = match serde_json::to_string(&json_report) {
+                Ok(s) => s,
+                Err(err) => {
+                    json_error(
+                        &serde_json::json!({
+                            "success": false,
+                            "error": format!("failed to serialize incident report: {err}")
+                        }),
+                        output,
+                    );
+                    return CliExitCode::StorageError.into();
+                }
+            };
             outln!("{json_str}");
         }
         OutputFormat::Text => {
@@ -3218,12 +3242,16 @@ fn cmd_incident(run_id: &str, db: &std::path::Path, output: OutputFormat) -> Exi
                 for se in &report.side_effects {
                     let step = &se["step"];
                     let action = &se["action"];
+                    // WAIVER: Option::unwrap_or is not Result::unwrap — no panic path.
+                    // This is safe fallback for missing JSON fields in CLI report display.
                     let certainty = se["certainty"].as_str().unwrap_or("unknown");
                     outln!("    step={step} action={action} certainty={certainty}");
                 }
             }
             outln!("  repair_hints:");
             for hint in &report.repair_hints {
+                // WAIVER: Option::unwrap_or is not Result::unwrap — no panic path.
+                // This is safe fallback for missing hint strings in CLI report display.
                 let hint_str = hint.as_str().unwrap_or("unknown");
                 outln!("    - {hint_str}");
             }

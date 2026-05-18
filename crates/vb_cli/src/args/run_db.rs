@@ -140,12 +140,3 @@ pub(super) fn parse_diff(args: &[OsString]) -> Result<Command, ParseError> {
         output,
     })
 }
-
-pub(super) fn parse_incident(args: &[OsString]) -> Result<Command, ParseError> {
-    let a = parse_run_db_args(args)?;
-    Ok(Command::Incident {
-        run_id: a.run_id,
-        db: a.db,
-        output: a.output,
-    })
-}
