@@ -33,3 +33,6 @@ state_12_exit: PASS - black-hat-review STATUS: APPROVED.
 state_13_exit: PASS - assurance bundle, truth-serum report, final-evidence-decision STATUS: APPROVED.
 
 state_14_exit: PASS - branch merged to main, bd close and bd dolt push succeeded, git push succeeded.
+
+state_15_exit: PASS - isolated workspaces cleaned; cleanup-report written.
+terminal_state: COMPLETE
