@@ -36,9 +36,12 @@ pub fn hydrate_run_frame(
 ) -> RecoveryResult<vb_core::RunFrame> {
     // PRE-1: snapshot.run must match requested run_id
     if snapshot.run != run_id {
-        return Err(RecoveryError::CorruptSnapshot {
-            run: snapshot.run,
-            seq: snapshot.seq,
+        return Err(RecoveryError::ReplayDivergence {
+            step: vb_core::StepIdx::ZERO,
+            detail: format!(
+                "snapshot run_id mismatch: expected {:?}, found {:?}",
+                run_id, snapshot.run
+            ),
         });
     }
 
