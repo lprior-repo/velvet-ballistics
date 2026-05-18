@@ -1,0 +1,4 @@
+{"contract_clause":"REQ-001","proofs":["PO-001"],"tests":[],"evidence":["STATE.md"],"review":"contract-verification-review.md"}
+{"contract_clause":"REQ-002","proofs":["PO-002","PO-003","PO-004","PO-005","PO-006","PO-007"],"tests":[],"evidence":["machine-gate-report.md","formal-verification-report.md","verification-ledger.jsonl"],"review":"contract-verification-review.md"}
+{"contract_clause":"REQ-003","proofs":["PO-002","PO-003","PO-004","PO-005","PO-006"],"tests":[],"evidence":["moon-ci-report.md","miri-report.md","fuzz-report.md","coverage-report.md","mutants-report.md","supply-chain-report.md","performance-report.md","api-compat-report.md","bloat-report.md"],"review":"contract-verification-review.md"}
+{"contract_clause":"REQ-004","proofs":["PO-007"],"tests":[],"evidence":["regression-diff.md","verification-ledger.jsonl"],"review":"contract-verification-review.md"}
