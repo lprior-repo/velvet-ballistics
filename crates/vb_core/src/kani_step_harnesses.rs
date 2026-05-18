@@ -366,7 +366,11 @@ fn taint_validity_harness() {
     // Guard: only simple variants (Null, Bool, I64, F64, Symbol) - exclude List/Object/Blob
     kani::assume(matches!(
         value,
-        SlotValue::Null | SlotValue::Bool(_) | SlotValue::I64(_) | SlotValue::F64(_) | SlotValue::Symbol(_)
+        SlotValue::Null
+            | SlotValue::Bool(_)
+            | SlotValue::I64(_)
+            | SlotValue::F64(_)
+            | SlotValue::Symbol(_)
     ));
     let taint: Taint = kani::any();
 
@@ -394,7 +398,11 @@ fn taint_validity_harness() {
     // D-3 FIX: Guard against recursive types that cause state-space explosion
     kani::assume(matches!(
         value2,
-        SlotValue::Null | SlotValue::Bool(_) | SlotValue::I64(_) | SlotValue::F64(_) | SlotValue::Symbol(_)
+        SlotValue::Null
+            | SlotValue::Bool(_)
+            | SlotValue::I64(_)
+            | SlotValue::F64(_)
+            | SlotValue::Symbol(_)
     ));
     let _ = run.write_slot(slot_idx2, value2);
     let taint_after_write_slot = run.read_taint(slot_idx2);
