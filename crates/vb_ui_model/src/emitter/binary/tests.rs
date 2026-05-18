@@ -38,6 +38,126 @@ mod tests {
         assert!(format!("{}", err).contains("migration"));
     }
 
+    // =====================================================================
+    // EmitterError Display — all untested variants
+    // =====================================================================
+
+    #[test]
+    fn emitter_error_display_yaml_encode_failed() {
+        let err = EmitterError::YamlEncodeFailed;
+        let s = format!("{}", err);
+        assert!(s.contains("YAML") || s.contains("encoding"), "should mention YAML encoding: {s}");
+    }
+
+    #[test]
+    fn emitter_error_display_postcard_encode_failed() {
+        let err = EmitterError::PostcardEncodeFailed;
+        let s = format!("{}", err);
+        assert!(s.contains("Postcard") || s.contains("encoding"), "should mention Postcard encoding: {s}");
+    }
+
+    #[test]
+    fn emitter_error_display_postcard_decode_failed() {
+        let err = EmitterError::PostcardDecodeFailed;
+        let s = format!("{}", err);
+        assert!(s.contains("Postcard") || s.contains("decoding"), "should mention Postcard decoding: {s}");
+    }
+
+    #[test]
+    fn emitter_error_display_length_overflow() {
+        let err = EmitterError::LengthOverflow;
+        let s = format!("{}", err);
+        assert!(s.contains("length") || s.contains("overflow"), "should mention length overflow: {s}");
+    }
+
+    #[test]
+    fn emitter_error_display_payload_digest_mismatch() {
+        let err = EmitterError::PayloadDigestMismatch;
+        let s = format!("{}", err);
+        assert!(s.contains("digest") || s.contains("mismatch"), "should mention digest mismatch: {s}");
+    }
+
+    #[test]
+    fn emitter_error_display_unexpected_eof() {
+        let err = EmitterError::UnexpectedEof;
+        let s = format!("{}", err);
+        assert!(s.contains("EOF") || s.contains("shorter"), "should mention unexpected EOF: {s}");
+    }
+
+    #[test]
+    fn emitter_error_display_header_length_mismatch() {
+        let err = EmitterError::HeaderLengthMismatch { found: 51 };
+        let s = format!("{}", err);
+        assert!(s.contains("51") || s.contains("header"), "should mention header length: {s}");
+    }
+
+    #[test]
+    fn emitter_error_display_unsupported_schema_version() {
+        let err = EmitterError::UnsupportedSchemaVersion { version: 99 };
+        let s = format!("{}", err);
+        assert!(s.contains("99") || s.contains("unsupported"), "should mention version: {s}");
+    }
+
+    #[test]
+    fn emitter_error_display_migration_required() {
+        let err = EmitterError::MigrationRequired { from: 0, to: 1 };
+        let s = format!("{}", err);
+        assert!(s.contains("0") && s.contains("1") && s.contains("migration"), "should show from/to: {s}");
+    }
+
+    #[test]
+    fn emitter_error_display_payload_length_overflow() {
+        let err = EmitterError::PayloadLengthOverflow { len: 4_000_000_000 };
+        let s = format!("{}", err);
+        assert!(s.contains("overflow") || s.contains("length"), "should mention overflow: {s}");
+    }
+
+    #[test]
+    fn emitter_error_display_unknown_kind() {
+        let err = EmitterError::UnknownKind { kind: 99 };
+        let s = format!("{}", err);
+        assert!(s.contains("99") || s.contains("unknown"), "should mention unknown kind: {s}");
+    }
+
+    #[test]
+    fn emitter_error_display_ansi_forbidden() {
+        let err = EmitterError::AnsiForbidden;
+        let s = format!("{}", err);
+        assert!(s.contains("ANSI") || s.contains("escape"), "should mention ANSI: {s}");
+    }
+
+    #[test]
+    fn emitter_error_display_header_checksum_mismatch() {
+        let err = EmitterError::HeaderChecksumMismatch;
+        let s = format!("{}", err);
+        assert!(s.contains("CRC") || s.contains("checksum") || s.contains("mismatch"), "should mention CRC/checksum: {s}");
+    }
+
+    // =====================================================================
+    // EmitterError Eq + Clone
+    // =====================================================================
+
+    #[test]
+    fn emitter_error_eq_and_clone() {
+        use alloc::string::ToString;
+        let err1 = EmitterError::PayloadTooLarge { len: 10, max: 5 };
+        let err2 = EmitterError::PayloadTooLarge { len: 10, max: 5 };
+        let err3 = EmitterError::PayloadTooLarge { len: 20, max: 5 };
+        assert_eq!(err1, err2);
+        assert_ne!(err1, err3);
+        let cloned = err1.clone();
+        assert_eq!(err1, cloned);
+    }
+
+    #[test]
+    fn emitter_error_bad_magic_debug_format() {
+        let err = EmitterError::BadMagic { found: 0x5642_4C49 };
+        let debug = format!("{:?}", err);
+        assert!(debug.contains("BadMagic"), "debug should contain BadMagic: {debug}");
+        // The found value should appear somewhere in the debug output
+        assert!(debug.contains("found"), "debug should mention 'found': {debug}");
+    }
+
     #[test]
     fn build_cli_header_produces_correct_length() {
         let payload = b"test payload";

@@ -222,4 +222,145 @@ mod tests {
             assert!(!t.is_terminal());
         }
     }
+
+    // ── StepState::is_terminal exhaustive ─────────────────────────────────
+
+    #[test]
+    fn test_is_terminal_pending() {
+        assert!(!StepState::Pending.is_terminal());
+    }
+
+    #[test]
+    fn test_is_terminal_running() {
+        assert!(!StepState::Running.is_terminal());
+    }
+
+    #[test]
+    fn test_is_terminal_waiting() {
+        assert!(!StepState::Waiting.is_terminal());
+    }
+
+    #[test]
+    fn test_is_terminal_asking() {
+        assert!(!StepState::Asking.is_terminal());
+    }
+
+    #[test]
+    fn test_is_terminal_succeeded() {
+        assert!(StepState::Succeeded.is_terminal());
+    }
+
+    #[test]
+    fn test_is_terminal_failed() {
+        assert!(StepState::Failed.is_terminal());
+    }
+
+    #[test]
+    fn test_is_terminal_cancelled() {
+        assert!(StepState::Cancelled.is_terminal());
+    }
+
+    #[test]
+    fn test_is_terminal_skipped() {
+        assert!(StepState::Skipped.is_terminal());
+    }
+
+    // ── validate_transition ───────────────────────────────────────────────
+
+    #[test]
+    fn test_validate_transition_pending_to_running_ok() {
+        let result = validate_transition(StepState::Pending, StepState::Running);
+        assert_eq!(result.unwrap(), StepState::Running);
+    }
+
+    #[test]
+    fn test_validate_transition_pending_to_succeeded_ok() {
+        let result = validate_transition(StepState::Pending, StepState::Succeeded);
+        assert_eq!(result.unwrap(), StepState::Succeeded);
+    }
+
+    #[test]
+    fn test_validate_transition_pending_to_failed_ok() {
+        let result = validate_transition(StepState::Pending, StepState::Failed);
+        assert_eq!(result.unwrap(), StepState::Failed);
+    }
+
+    #[test]
+    fn test_validate_transition_running_to_waiting_ok() {
+        let result = validate_transition(StepState::Running, StepState::Waiting);
+        assert_eq!(result.unwrap(), StepState::Waiting);
+    }
+
+    #[test]
+    fn test_validate_transition_running_to_asking_ok() {
+        let result = validate_transition(StepState::Running, StepState::Asking);
+        assert_eq!(result.unwrap(), StepState::Asking);
+    }
+
+    #[test]
+    fn test_validate_transition_waiting_to_running_ok() {
+        let result = validate_transition(StepState::Waiting, StepState::Running);
+        assert_eq!(result.unwrap(), StepState::Running);
+    }
+
+    #[test]
+    fn test_validate_transition_asking_to_running_ok() {
+        let result = validate_transition(StepState::Asking, StepState::Running);
+        assert_eq!(result.unwrap(), StepState::Running);
+    }
+
+    #[test]
+    fn test_validate_transition_terminal_idempotent() {
+        assert_eq!(validate_transition(StepState::Succeeded, StepState::Succeeded).unwrap(), StepState::Succeeded);
+        assert_eq!(validate_transition(StepState::Failed, StepState::Failed).unwrap(), StepState::Failed);
+        assert_eq!(validate_transition(StepState::Cancelled, StepState::Cancelled).unwrap(), StepState::Cancelled);
+        assert_eq!(validate_transition(StepState::Skipped, StepState::Skipped).unwrap(), StepState::Skipped);
+    }
+
+    #[test]
+    fn test_validate_transition_invalid_pending_to_waiting() {
+        let result = validate_transition(StepState::Pending, StepState::Waiting);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert_eq!(err, "invalid_state_transition");
+    }
+
+    #[test]
+    fn test_validate_transition_invalid_running_to_pending() {
+        let result = validate_transition(StepState::Running, StepState::Pending);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert_eq!(err, "invalid_state_transition");
+    }
+
+    #[test]
+    fn test_validate_transition_invalid_terminal_to_non_terminal() {
+        let result = validate_transition(StepState::Succeeded, StepState::Running);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert_eq!(err, "invalid_state_transition");
+    }
+
+    #[test]
+    fn test_validate_transition_invalid_waiting_to_succeeded() {
+        let result = validate_transition(StepState::Waiting, StepState::Succeeded);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert_eq!(err, "invalid_state_transition");
+    }
+
+    #[test]
+    fn test_validate_transition_invalid_asking_to_failed() {
+        let result = validate_transition(StepState::Asking, StepState::Failed);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert_eq!(err, "invalid_state_transition");
+    }
+
+    // ── all_transitions_exhaustive ───────────────────────────────────────
+
+    #[test]
+    fn test_all_transitions_exhaustive_returns_true() {
+        assert!(all_transitions_exhaustive());
+    }
 }

@@ -150,4 +150,151 @@ mod tests {
     fn test_derived_never_downgrades() {
         assert!(derived_never_downgrades());
     }
+
+    // ── Taint::rank ───────────────────────────────────────────────────────
+
+    #[test]
+    fn test_rank_clean() {
+        assert_eq!(Taint::Clean.rank(), 0);
+    }
+
+    #[test]
+    fn test_rank_derived_from_secret() {
+        assert_eq!(Taint::DerivedFromSecret.rank(), 1);
+    }
+
+    #[test]
+    fn test_rank_secret() {
+        assert_eq!(Taint::Secret.rank(), 2);
+    }
+
+    #[test]
+    fn test_rank_strict_ordering() {
+        assert!(Taint::Clean.rank() < Taint::DerivedFromSecret.rank());
+        assert!(Taint::DerivedFromSecret.rank() < Taint::Secret.rank());
+        assert!(Taint::Clean.rank() < Taint::Secret.rank());
+    }
+
+    // ── join_many ─────────────────────────────────────────────────────────
+
+    #[test]
+    fn test_join_many_empty_slice() {
+        let taints: [Taint; 0] = [];
+        assert_eq!(join_many(&taints), Taint::Clean);
+    }
+
+    #[test]
+    fn test_join_many_single_clean() {
+        let taints = [Taint::Clean];
+        assert_eq!(join_many(&taints), Taint::Clean);
+    }
+
+    #[test]
+    fn test_join_many_single_secret() {
+        let taints = [Taint::Secret];
+        assert_eq!(join_many(&taints), Taint::Secret);
+    }
+
+    #[test]
+    fn test_join_many_single_derived() {
+        let taints = [Taint::DerivedFromSecret];
+        assert_eq!(join_many(&taints), Taint::DerivedFromSecret);
+    }
+
+    #[test]
+    fn test_join_many_all_clean() {
+        let taints = [Taint::Clean, Taint::Clean, Taint::Clean];
+        assert_eq!(join_many(&taints), Taint::Clean);
+    }
+
+    #[test]
+    fn test_join_many_with_secret() {
+        let taints = [Taint::Clean, Taint::Secret, Taint::DerivedFromSecret];
+        assert_eq!(join_many(&taints), Taint::Secret);
+    }
+
+    #[test]
+    fn test_join_many_derived_and_clean() {
+        let taints = [Taint::Clean, Taint::DerivedFromSecret, Taint::Clean];
+        assert_eq!(join_many(&taints), Taint::DerivedFromSecret);
+    }
+
+    #[test]
+    fn test_join_many_multiple_secrets() {
+        let taints = [Taint::Secret, Taint::Secret, Taint::Secret];
+        assert_eq!(join_many(&taints), Taint::Secret);
+    }
+
+    #[test]
+    fn test_join_many_many_elements() {
+        let taints = [
+            Taint::Clean,
+            Taint::Clean,
+            Taint::DerivedFromSecret,
+            Taint::Clean,
+            Taint::Secret,
+            Taint::Clean,
+        ];
+        assert_eq!(join_many(&taints), Taint::Secret);
+    }
+
+    #[test]
+    fn test_join_many_is_commutative_across_slice() {
+        let taints_a = [Taint::Clean, Taint::Secret, Taint::DerivedFromSecret];
+        let taints_b = [Taint::DerivedFromSecret, Taint::Clean, Taint::Secret];
+        assert_eq!(join_many(&taints_a), join_many(&taints_b));
+    }
+
+    // ── all_lattice_laws ──────────────────────────────────────────────────
+
+    #[test]
+    fn test_all_lattice_laws_clean_clean_clean() {
+        assert!(all_lattice_laws(Taint::Clean, Taint::Clean, Taint::Clean));
+    }
+
+    #[test]
+    fn test_all_lattice_laws_secret_secret_secret() {
+        assert!(all_lattice_laws(Taint::Secret, Taint::Secret, Taint::Secret));
+    }
+
+    #[test]
+    fn test_all_lattice_laws_derived_derived_derived() {
+        assert!(all_lattice_laws(
+            Taint::DerivedFromSecret,
+            Taint::DerivedFromSecret,
+            Taint::DerivedFromSecret
+        ));
+    }
+
+    #[test]
+    fn test_all_lattice_laws_mixed_all_pairs() {
+        for &a in &[Taint::Clean, Taint::DerivedFromSecret, Taint::Secret] {
+            for &b in &[Taint::Clean, Taint::DerivedFromSecret, Taint::Secret] {
+                for &c in &[Taint::Clean, Taint::DerivedFromSecret, Taint::Secret] {
+                    assert!(
+                        all_lattice_laws(a, b, c),
+                        "lattice laws failed for {:?}, {:?}, {:?}",
+                        a,
+                        b,
+                        c
+                    );
+                }
+            }
+        }
+    }
+
+    // ── Lattice law invariants via join_many ─────────────────────────────
+
+    #[test]
+    fn test_join_many_idempotent_via_many() {
+        let taints = [Taint::Secret, Taint::Secret, Taint::Secret];
+        assert_eq!(join_many(&taints), Taint::Secret);
+    }
+
+    #[test]
+    fn test_join_many_order_insensitive() {
+        let a = [Taint::DerivedFromSecret, Taint::Secret, Taint::Clean];
+        let b = [Taint::Clean, Taint::DerivedFromSecret, Taint::Secret];
+        assert_eq!(join_many(&a), join_many(&b));
+    }
 }

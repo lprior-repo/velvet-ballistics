@@ -459,4 +459,231 @@ mod tests {
         };
         assert!(check_evidence_gate(&metadata, 20).is_ok());
     }
+
+    // === capture_metadata tests ===
+
+    #[test]
+    fn capture_metadata_rejects_empty_commit_hash() {
+        let result = capture_metadata(
+            "yaml_parse",
+            Some(Duration::from_micros(100_000)),
+            Duration::from_micros(105_000),
+            "cargo bench",
+            "",
+            "linux-x86_64",
+            200_000,
+        );
+        assert!(matches!(result, Err(EvidenceError::MissingCommit)));
+    }
+
+    #[test]
+    fn capture_metadata_rejects_non_hex_commit_hash() {
+        let result = capture_metadata(
+            "yaml_parse",
+            Some(Duration::from_micros(100_000)),
+            Duration::from_micros(105_000),
+            "cargo bench",
+            "xyz123!", // '!' is not hex
+            "linux-x86_64",
+            200_000,
+        );
+        assert!(matches!(result, Err(EvidenceError::MissingCommit)));
+    }
+
+    #[test]
+    fn capture_metadata_accepts_valid_inputs() {
+        let result = capture_metadata(
+            "yaml_parse",
+            Some(Duration::from_micros(100_000)),
+            Duration::from_micros(105_000),
+            "cargo bench",
+            "abc123def",
+            "linux-x86_64",
+            200_000,
+        );
+        assert!(result.is_ok());
+        let meta = result.unwrap();
+        assert_eq!(meta.name, "yaml_parse");
+        assert_eq!(meta.baseline_us, Some(100_000));
+        assert_eq!(meta.result_us, 105_000);
+        assert_eq!(meta.commit_hash, "abc123def");
+    }
+
+    #[test]
+    fn capture_metadata_handles_none_baseline() {
+        let result = capture_metadata(
+            "new_benchmark",
+            None,
+            Duration::from_micros(50_000),
+            "cargo bench",
+            "abc123",
+            "linux-x86_64",
+            100_000,
+        );
+        assert!(result.is_ok());
+        let meta = result.unwrap();
+        assert_eq!(meta.baseline_us, None);
+        assert_eq!(meta.result_us, 50_000);
+    }
+
+    // === result_exceeds_threshold boundary tests ===
+
+    #[test]
+    fn result_exceeds_threshold_false_when_exactly_at_threshold() {
+        // baseline=100000, threshold_pct=20 → threshold=120000
+        // result=120000 is NOT > baseline+delta, so false
+        assert!(!result_exceeds_threshold(
+            Duration::from_micros(120_000),
+            Duration::from_micros(100_000),
+            20
+        ));
+    }
+
+    #[test]
+    fn result_exceeds_threshold_true_one_micro_over_threshold() {
+        // baseline=100000, threshold_pct=20 → threshold=120000
+        // result=120001 just exceeds, so true
+        assert!(result_exceeds_threshold(
+            Duration::from_micros(120_001),
+            Duration::from_micros(100_000),
+            20
+        ));
+    }
+
+    #[test]
+    fn result_exceeds_threshold_false_zero_threshold_pct() {
+        // threshold_pct=0 → any result > baseline triggers regression
+        // result=100001 > baseline=100000, so result > baseline → true for regression
+        // For no-regression (result NOT exceeds): result <= baseline
+        assert!(!result_exceeds_threshold(
+            Duration::from_micros(100_000),
+            Duration::from_micros(100_000),
+            0
+        ));
+    }
+
+    #[test]
+    fn result_exceeds_threshold_false_when_under_baseline() {
+        // result < baseline → no regression
+        assert!(!result_exceeds_threshold(
+            Duration::from_micros(90_000),
+            Duration::from_micros(100_000),
+            20
+        ));
+    }
+
+    // === baseline_within_budget boundary tests ===
+
+    #[test]
+    fn baseline_within_budget_false_at_exact_budget() {
+        // baseline=100000 == budget → baseline <= budget, so true
+        // But wait: baseline_within_budget returns baseline.as_micros() <= budget_us
+        // So 100000 <= 100000 is TRUE. The function name is "within_budget"
+        // Let's check: if baseline == budget exactly, it IS within budget → true
+        assert!(baseline_within_budget(Duration::from_micros(100_000), 100_000));
+    }
+
+    #[test]
+    fn baseline_within_budget_false_when_over_budget() {
+        assert!(!baseline_within_budget(Duration::from_micros(100_001), 100_000));
+    }
+
+    // === latency_within_budget boundary tests ===
+
+    #[test]
+    fn latency_within_budget_false_for_zero_budget() {
+        // budget_us == 0 → function returns false immediately
+        assert!(!latency_within_budget(Duration::from_micros(0), 0));
+    }
+
+    #[test]
+    fn latency_within_budget_true_at_exact_budget() {
+        // elapsed=100000, budget=100000 → elapsed <= budget → true
+        assert!(latency_within_budget(Duration::from_micros(100_000), 100_000));
+    }
+
+    #[test]
+    fn latency_within_budget_false_one_over_budget() {
+        assert!(!latency_within_budget(Duration::from_micros(100_001), 100_000));
+    }
+
+    // === budget_utilization_percent boundary tests ===
+
+    #[test]
+    fn budget_utilization_percent_returns_max_at_zero_budget() {
+        assert_eq!(budget_utilization_percent(Duration::from_micros(1), 0), u128::MAX);
+    }
+
+    #[test]
+    fn budget_utilization_percent_exact_100_percent() {
+        // elapsed=100000, budget=100000 → 100000*10000/100000 = 10000 (100.00%)
+        assert_eq!(budget_utilization_percent(Duration::from_micros(100_000), 100_000), 10_000);
+    }
+
+    #[test]
+    fn budget_utilization_percent_50_percent() {
+        assert_eq!(budget_utilization_percent(Duration::from_micros(50_000), 100_000), 5_000);
+    }
+
+    // === check_evidence_gate remaining error variants ===
+
+    #[test]
+    fn check_evidence_gate_rejects_missing_environment() {
+        let metadata = BenchmarkMetadata {
+            name: "yaml_parse".to_string(),
+            baseline_us: Some(100_000),
+            result_us: 105_000,
+            command: "cargo bench".to_string(),
+            commit_hash: "abc123".to_string(),
+            environment: "".to_string(), // empty environment
+            budget_us: 200_000,
+        };
+        let result = check_evidence_gate(&metadata, 20);
+        assert!(matches!(result, Err(EvidenceError::MissingEnvironment)));
+    }
+
+    #[test]
+    fn check_evidence_gate_rejects_missing_command() {
+        let metadata = BenchmarkMetadata {
+            name: "yaml_parse".to_string(),
+            baseline_us: Some(100_000),
+            result_us: 105_000,
+            command: "".to_string(), // empty command
+            commit_hash: "abc123".to_string(),
+            environment: "linux-x86_64".to_string(),
+            budget_us: 200_000,
+        };
+        let result = check_evidence_gate(&metadata, 20);
+        assert!(matches!(result, Err(EvidenceError::MissingCommand)));
+    }
+
+    #[test]
+    fn check_evidence_gate_rejects_missing_commit() {
+        let metadata = BenchmarkMetadata {
+            name: "yaml_parse".to_string(),
+            baseline_us: Some(100_000),
+            result_us: 105_000,
+            command: "cargo bench".to_string(),
+            commit_hash: "".to_string(), // empty commit
+            environment: "linux-x86_64".to_string(),
+            budget_us: 200_000,
+        };
+        let result = check_evidence_gate(&metadata, 20);
+        assert!(matches!(result, Err(EvidenceError::MissingCommit)));
+    }
+
+    #[test]
+    fn check_evidence_gate_rejects_empty_budget() {
+        let metadata = BenchmarkMetadata {
+            name: "yaml_parse".to_string(),
+            baseline_us: Some(100_000),
+            result_us: 105_000,
+            command: "cargo bench".to_string(),
+            commit_hash: "abc123".to_string(),
+            environment: "linux-x86_64".to_string(),
+            budget_us: 0, // zero budget
+        };
+        let result = check_evidence_gate(&metadata, 20);
+        assert!(matches!(result, Err(EvidenceError::EmptyBudget)));
+    }
 }

@@ -410,4 +410,557 @@ mod tests {
                 .contains("schema version mismatch")
         );
     }
+
+    // =====================================================================
+    // canonicalize_cli_artifact — JSON shape variants
+    // =====================================================================
+
+    #[test]
+    fn canonicalize_cli_artifact_missing_fields_defaults_to_current_version() {
+        // Empty object — should fall back to CURRENT schema version
+        let json = serde_json::json!({});
+        let result = canonicalize_cli_artifact(&json, EnvelopeKind::Success);
+        assert!(result.is_some());
+        let artifact = result.unwrap();
+        assert_eq!(artifact.schema_version.get(), SchemaVersion::CURRENT.get());
+        assert_eq!(artifact.run_id, 0);
+        assert_eq!(artifact.timestamp, 0);
+        assert!(artifact.workflow_graph.is_none());
+        assert!(artifact.event_bounds.is_none());
+    }
+
+    #[test]
+    fn canonicalize_cli_artifact_with_workflow_graph() {
+        let json = serde_json::json!({
+            "schema_version": 1,
+            "run_id": 10,
+            "timestamp": 999,
+            "workflow": {
+                "workflow_id": 5,
+                "nodes": [
+                    {"step_idx": 1},
+                    {"step_idx": 3},
+                    {"step_idx": 7}
+                ],
+                "edges": [
+                    {"from": 1, "to": 3},
+                    {"from": 3, "to": 7}
+                ]
+            }
+        });
+        let result = canonicalize_cli_artifact(&json, EnvelopeKind::Workflow);
+        assert!(result.is_some());
+        let artifact = result.unwrap();
+        assert_eq!(artifact.run_id, 10);
+        assert_eq!(artifact.timestamp, 999);
+        let wf = artifact.workflow_graph.expect("should have workflow");
+        assert_eq!(wf.workflow_id, 5);
+        assert_eq!(wf.node_count, 3);
+        assert_eq!(wf.edge_count, 2);
+        assert_eq!(wf.step_indices, vec![1, 3, 7]);
+    }
+
+    #[test]
+    fn canonicalize_cli_artifact_with_events() {
+        let json = serde_json::json!({
+            "schema_version": 1,
+            "run_id": 11,
+            "timestamp": 888,
+            "events": [
+                {"seq": 5, "data": "a"},
+                {"seq": 10, "data": "b"},
+                {"seq": 15, "data": "c"}
+            ]
+        });
+        let result = canonicalize_cli_artifact(&json, EnvelopeKind::Event);
+        assert!(result.is_some());
+        let artifact = result.unwrap();
+        let eb = artifact.event_bounds.expect("should have event_bounds");
+        assert_eq!(eb.from_seq, 5);
+        assert_eq!(eb.to_seq, 15);
+        assert_eq!(eb.event_count, 3);
+    }
+
+    #[test]
+    fn canonicalize_cli_artifact_with_empty_events() {
+        let json = serde_json::json!({
+            "events": []
+        });
+        let result = canonicalize_cli_artifact(&json, EnvelopeKind::Event);
+        assert!(result.is_some());
+        let artifact = result.unwrap();
+        let eb = artifact.event_bounds.expect("should have event_bounds");
+        assert_eq!(eb.from_seq, 0);
+        assert_eq!(eb.to_seq, 0);
+        assert_eq!(eb.event_count, 0);
+    }
+
+    #[test]
+    fn canonicalize_cli_artifact_non_object_returns_none() {
+        let json = serde_json::json!("just a string");
+        let result = canonicalize_cli_artifact(&json, EnvelopeKind::Success);
+        assert!(result.is_none());
+
+        let json = serde_json::json!([1, 2, 3]);
+        let result = canonicalize_cli_artifact(&json, EnvelopeKind::Success);
+        assert!(result.is_none());
+
+        let json = serde_json::json!(null);
+        let result = canonicalize_cli_artifact(&json, EnvelopeKind::Success);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn canonicalize_cli_artifact_workflow_missing_nodes_returns_none() {
+        let json = serde_json::json!({
+            "workflow": { "workflow_id": 1 }
+        });
+        let result = canonicalize_cli_artifact(&json, EnvelopeKind::Workflow);
+        assert!(result.is_some());
+        // workflow_graph should be None because nodes is missing
+        assert!(result.unwrap().workflow_graph.is_none());
+    }
+
+    #[test]
+    fn canonicalize_cli_artifact_workflow_missing_edges_returns_none() {
+        // When edges is missing, the JSON cannot be parsed as a workflow graph
+        // because canonicalize_workflow_graph_from_json requires both nodes AND edges
+        let json = serde_json::json!({
+            "workflow": {
+                "workflow_id": 7,
+                "nodes": [{"step_idx": 1}]
+            }
+        });
+        let result = canonicalize_cli_artifact(&json, EnvelopeKind::Workflow);
+        assert!(result.is_some());
+        // workflow_graph is None because edges is missing (required by the parser)
+        assert!(result.unwrap().workflow_graph.is_none());
+    }
+
+    #[test]
+    fn canonicalize_cli_artifact_step_indices_sorted_and_deduped() {
+        let json = serde_json::json!({
+            "workflow": {
+                "workflow_id": 1,
+                "nodes": [
+                    {"step_idx": 5},
+                    {"step_idx": 1},
+                    {"step_idx": 5},
+                    {"step_idx": 3}
+                ],
+                "edges": []
+            }
+        });
+        let result = canonicalize_cli_artifact(&json, EnvelopeKind::Workflow);
+        let wf = result.unwrap().workflow_graph.unwrap();
+        assert_eq!(wf.step_indices, vec![1, 3, 5]);
+    }
+
+    // =====================================================================
+    // canonicalize_ui_artifact
+    // =====================================================================
+
+    #[test]
+    fn canonicalize_ui_artifact_with_workflow_and_events() {
+        use vb_core::ids::RunId;
+        let run_id = RunId::new(42);
+        let metadata = MetadataEnvelope::new(run_id, "test".to_string(), 555);
+        let result = canonicalize_ui_artifact(
+            SchemaVersion::CURRENT,
+            EnvelopeKind::Workflow,
+            &metadata,
+            None,
+            Some(10),
+            Some(20),
+            Some(5),
+        );
+        assert_eq!(result.schema_version.get(), SchemaVersion::CURRENT.get());
+        assert_eq!(result.run_id, 42);
+        assert_eq!(result.timestamp, 555);
+        let eb = result.event_bounds.expect("should have event_bounds");
+        assert_eq!(eb.from_seq, 10);
+        assert_eq!(eb.to_seq, 20);
+        assert_eq!(eb.event_count, 5);
+    }
+
+    #[test]
+    fn canonicalize_ui_artifact_partial_event_bounds_returns_none() {
+        use vb_core::ids::RunId;
+        let run_id = RunId::new(1);
+        let metadata = MetadataEnvelope::new(run_id, "test".to_string(), 0);
+        // Only from_seq, no to_seq or event_count
+        let result = canonicalize_ui_artifact(
+            SchemaVersion::CURRENT,
+            EnvelopeKind::Event,
+            &metadata,
+            None,
+            Some(10),
+            None,
+            None,
+        );
+        assert!(result.event_bounds.is_none());
+    }
+
+    #[test]
+    fn canonicalize_ui_artifact_all_none() {
+        use vb_core::ids::RunId;
+        let run_id = RunId::new(99);
+        let metadata = MetadataEnvelope::new(run_id, "test".to_string(), 777);
+        let result = canonicalize_ui_artifact(
+            SchemaVersion::CURRENT,
+            EnvelopeKind::Success,
+            &metadata,
+            None,
+            None,
+            None,
+            None,
+        );
+        assert_eq!(result.run_id, 99);
+        assert!(result.workflow_graph.is_none());
+        assert!(result.event_bounds.is_none());
+    }
+
+    // =====================================================================
+    // compare_cli_ui_artifacts — all mismatch paths
+    // =====================================================================
+
+    #[test]
+    fn parity_match_kind_mismatch() {
+        let cli = CanonicalUiArtifact {
+            schema_version: SchemaVersion::CURRENT,
+            kind: EnvelopeKind::Success,
+            run_id: 1,
+            timestamp: 100,
+            workflow_graph: None,
+            event_bounds: None,
+        };
+        let ui = CanonicalUiArtifact {
+            schema_version: SchemaVersion::CURRENT,
+            kind: EnvelopeKind::Error,
+            run_id: 1,
+            timestamp: 100,
+            workflow_graph: None,
+            event_bounds: None,
+        };
+        let result = compare_cli_ui_artifacts(&cli, &ui);
+        assert!(!result.is_parity);
+        assert!(result.diagnostic.unwrap().contains("kind mismatch"));
+    }
+
+    #[test]
+    fn parity_match_run_id_mismatch() {
+        let cli = CanonicalUiArtifact {
+            schema_version: SchemaVersion::CURRENT,
+            kind: EnvelopeKind::Success,
+            run_id: 1,
+            timestamp: 100,
+            workflow_graph: None,
+            event_bounds: None,
+        };
+        let ui = CanonicalUiArtifact {
+            schema_version: SchemaVersion::CURRENT,
+            kind: EnvelopeKind::Success,
+            run_id: 2,
+            timestamp: 100,
+            workflow_graph: None,
+            event_bounds: None,
+        };
+        let result = compare_cli_ui_artifacts(&cli, &ui);
+        assert!(!result.is_parity);
+        assert!(result.diagnostic.unwrap().contains("run_id mismatch"));
+    }
+
+    #[test]
+    fn parity_match_timestamp_mismatch() {
+        let cli = CanonicalUiArtifact {
+            schema_version: SchemaVersion::CURRENT,
+            kind: EnvelopeKind::Success,
+            run_id: 1,
+            timestamp: 100,
+            workflow_graph: None,
+            event_bounds: None,
+        };
+        let ui = CanonicalUiArtifact {
+            schema_version: SchemaVersion::CURRENT,
+            kind: EnvelopeKind::Success,
+            run_id: 1,
+            timestamp: 200,
+            workflow_graph: None,
+            event_bounds: None,
+        };
+        let result = compare_cli_ui_artifacts(&cli, &ui);
+        assert!(!result.is_parity);
+        assert!(result.diagnostic.unwrap().contains("timestamp mismatch"));
+    }
+
+    #[test]
+    fn parity_match_workflow_id_mismatch() {
+        let cli = CanonicalUiArtifact {
+            schema_version: SchemaVersion::CURRENT,
+            kind: EnvelopeKind::Workflow,
+            run_id: 1,
+            timestamp: 100,
+            workflow_graph: Some(CanonicalWorkflowGraph {
+                workflow_id: 1,
+                node_count: 5,
+                edge_count: 4,
+                step_indices: vec![],
+            }),
+            event_bounds: None,
+        };
+        let ui = CanonicalUiArtifact {
+            schema_version: SchemaVersion::CURRENT,
+            kind: EnvelopeKind::Workflow,
+            run_id: 1,
+            timestamp: 100,
+            workflow_graph: Some(CanonicalWorkflowGraph {
+                workflow_id: 2,
+                node_count: 5,
+                edge_count: 4,
+                step_indices: vec![],
+            }),
+            event_bounds: None,
+        };
+        let result = compare_cli_ui_artifacts(&cli, &ui);
+        assert!(!result.is_parity);
+        assert!(result.diagnostic.unwrap().contains("workflow_id mismatch"));
+    }
+
+    #[test]
+    fn parity_match_node_count_mismatch() {
+        let cli = CanonicalUiArtifact {
+            schema_version: SchemaVersion::CURRENT,
+            kind: EnvelopeKind::Workflow,
+            run_id: 1,
+            timestamp: 100,
+            workflow_graph: Some(CanonicalWorkflowGraph {
+                workflow_id: 1,
+                node_count: 5,
+                edge_count: 4,
+                step_indices: vec![],
+            }),
+            event_bounds: None,
+        };
+        let ui = CanonicalUiArtifact {
+            schema_version: SchemaVersion::CURRENT,
+            kind: EnvelopeKind::Workflow,
+            run_id: 1,
+            timestamp: 100,
+            workflow_graph: Some(CanonicalWorkflowGraph {
+                workflow_id: 1,
+                node_count: 6,
+                edge_count: 4,
+                step_indices: vec![],
+            }),
+            event_bounds: None,
+        };
+        let result = compare_cli_ui_artifacts(&cli, &ui);
+        assert!(!result.is_parity);
+        assert!(result.diagnostic.unwrap().contains("node count mismatch"));
+    }
+
+    #[test]
+    fn parity_match_edge_count_mismatch() {
+        let cli = CanonicalUiArtifact {
+            schema_version: SchemaVersion::CURRENT,
+            kind: EnvelopeKind::Workflow,
+            run_id: 1,
+            timestamp: 100,
+            workflow_graph: Some(CanonicalWorkflowGraph {
+                workflow_id: 1,
+                node_count: 5,
+                edge_count: 4,
+                step_indices: vec![],
+            }),
+            event_bounds: None,
+        };
+        let ui = CanonicalUiArtifact {
+            schema_version: SchemaVersion::CURRENT,
+            kind: EnvelopeKind::Workflow,
+            run_id: 1,
+            timestamp: 100,
+            workflow_graph: Some(CanonicalWorkflowGraph {
+                workflow_id: 1,
+                node_count: 5,
+                edge_count: 5,
+                step_indices: vec![],
+            }),
+            event_bounds: None,
+        };
+        let result = compare_cli_ui_artifacts(&cli, &ui);
+        assert!(!result.is_parity);
+        assert!(result.diagnostic.unwrap().contains("edge count mismatch"));
+    }
+
+    #[test]
+    fn parity_match_workflow_presence_mismatch_cli_has_ui_none() {
+        let cli = CanonicalUiArtifact {
+            schema_version: SchemaVersion::CURRENT,
+            kind: EnvelopeKind::Workflow,
+            run_id: 1,
+            timestamp: 100,
+            workflow_graph: Some(CanonicalWorkflowGraph {
+                workflow_id: 1,
+                node_count: 1,
+                edge_count: 0,
+                step_indices: vec![],
+            }),
+            event_bounds: None,
+        };
+        let ui = CanonicalUiArtifact {
+            schema_version: SchemaVersion::CURRENT,
+            kind: EnvelopeKind::Workflow,
+            run_id: 1,
+            timestamp: 100,
+            workflow_graph: None,
+            event_bounds: None,
+        };
+        let result = compare_cli_ui_artifacts(&cli, &ui);
+        assert!(!result.is_parity);
+        assert!(result.diagnostic.unwrap().contains("workflow graph presence mismatch"));
+    }
+
+    #[test]
+    fn parity_match_workflow_presence_mismatch_cli_none_ui_has() {
+        let cli = CanonicalUiArtifact {
+            schema_version: SchemaVersion::CURRENT,
+            kind: EnvelopeKind::Workflow,
+            run_id: 1,
+            timestamp: 100,
+            workflow_graph: None,
+            event_bounds: None,
+        };
+        let ui = CanonicalUiArtifact {
+            schema_version: SchemaVersion::CURRENT,
+            kind: EnvelopeKind::Workflow,
+            run_id: 1,
+            timestamp: 100,
+            workflow_graph: Some(CanonicalWorkflowGraph {
+                workflow_id: 1,
+                node_count: 1,
+                edge_count: 0,
+                step_indices: vec![],
+            }),
+            event_bounds: None,
+        };
+        let result = compare_cli_ui_artifacts(&cli, &ui);
+        assert!(!result.is_parity);
+        assert!(result.diagnostic.unwrap().contains("workflow graph presence mismatch"));
+    }
+
+    #[test]
+    fn parity_match_event_bounds_from_seq_mismatch() {
+        let cli = CanonicalUiArtifact {
+            schema_version: SchemaVersion::CURRENT,
+            kind: EnvelopeKind::Event,
+            run_id: 1,
+            timestamp: 100,
+            workflow_graph: None,
+            event_bounds: Some(CanonicalEventBounds {
+                from_seq: 1,
+                to_seq: 10,
+                event_count: 5,
+            }),
+        };
+        let ui = CanonicalUiArtifact {
+            schema_version: SchemaVersion::CURRENT,
+            kind: EnvelopeKind::Event,
+            run_id: 1,
+            timestamp: 100,
+            workflow_graph: None,
+            event_bounds: Some(CanonicalEventBounds {
+                from_seq: 2,
+                to_seq: 10,
+                event_count: 5,
+            }),
+        };
+        let result = compare_cli_ui_artifacts(&cli, &ui);
+        assert!(!result.is_parity);
+        assert!(result.diagnostic.unwrap().contains("event bounds mismatch"));
+    }
+
+    #[test]
+    fn parity_match_event_bounds_presence_mismatch() {
+        let cli = CanonicalUiArtifact {
+            schema_version: SchemaVersion::CURRENT,
+            kind: EnvelopeKind::Event,
+            run_id: 1,
+            timestamp: 100,
+            workflow_graph: None,
+            event_bounds: Some(CanonicalEventBounds {
+                from_seq: 1,
+                to_seq: 10,
+                event_count: 5,
+            }),
+        };
+        let ui = CanonicalUiArtifact {
+            schema_version: SchemaVersion::CURRENT,
+            kind: EnvelopeKind::Event,
+            run_id: 1,
+            timestamp: 100,
+            workflow_graph: None,
+            event_bounds: None,
+        };
+        let result = compare_cli_ui_artifacts(&cli, &ui);
+        assert!(!result.is_parity);
+        assert!(result.diagnostic.unwrap().contains("event bounds presence mismatch"));
+    }
+
+    // =====================================================================
+    // ParityMatch struct
+    // =====================================================================
+
+    #[test]
+    fn parity_match_serialization() {
+        let pm = ParityMatch {
+            is_parity: true,
+            diagnostic: None,
+        };
+        let json = serde_json::to_string(&pm).unwrap();
+        assert!(json.contains("\"is_parity\":true"));
+        assert!(json.contains("\"diagnostic\":null"));
+
+        let pm2 = ParityMatch {
+            is_parity: false,
+            diagnostic: Some("mismatch".to_string()),
+        };
+        let json2 = serde_json::to_string(&pm2).unwrap();
+        assert!(json2.contains("\"is_parity\":false"));
+        assert!(json2.contains("mismatch"));
+    }
+
+    // =====================================================================
+    // CanonicalWorkflowGraph & CanonicalEventBounds
+    // =====================================================================
+
+    #[test]
+    fn canonical_workflow_graph_serialization() {
+        let cwg = CanonicalWorkflowGraph {
+            workflow_id: 7,
+            node_count: 3,
+            edge_count: 2,
+            step_indices: vec![1, 2, 5],
+        };
+        let json = serde_json::to_string(&cwg).unwrap();
+        assert!(json.contains("\"workflow_id\":7"));
+        assert!(json.contains("\"node_count\":3"));
+        assert!(json.contains("\"edge_count\":2"));
+        let deserialized: CanonicalWorkflowGraph = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.workflow_id, 7);
+        assert_eq!(deserialized.step_indices, vec![1, 2, 5]);
+    }
+
+    #[test]
+    fn canonical_event_bounds_serialization() {
+        let ceb = CanonicalEventBounds {
+            from_seq: 10,
+            to_seq: 20,
+            event_count: 11,
+        };
+        let json = serde_json::to_string(&ceb).unwrap();
+        let deserialized: CanonicalEventBounds = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.from_seq, 10);
+        assert_eq!(deserialized.to_seq, 20);
+        assert_eq!(deserialized.event_count, 11);
+    }
 }

@@ -4831,6 +4831,8 @@ fn object_slot_value(
 mod tests {
     use super::*;
 
+    mod error_variant_tests;
+
     fn make_parts_for_lower(
         nodes: Vec<CompiledNode>,
         expressions: Vec<ExprProgram>,

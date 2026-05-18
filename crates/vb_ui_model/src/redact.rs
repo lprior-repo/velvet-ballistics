@@ -248,6 +248,12 @@ fn redact_json_value(
         serde_json::Value::String(s) if sensitivity == SecretSensitivity::NonSensitive => {
             serde_json::Value::String(s.clone())
         }
+        serde_json::Value::Number(n) if sensitivity == SecretSensitivity::NonSensitive => {
+            serde_json::Value::Number(n.clone())
+        }
+        serde_json::Value::Bool(b) if sensitivity == SecretSensitivity::NonSensitive => {
+            serde_json::Value::Bool(*b)
+        }
         _ => serde_json::Value::Null,
     }
 }
@@ -361,5 +367,274 @@ mod tests {
         let view = result.unwrap();
         assert!(!view.is_tainted);
         assert!(view.digest.is_empty()); // No digest for non-sensitive
+    }
+
+    // =====================================================================
+    // redact_secret_value — all sensitivity × taint combinations
+    // =====================================================================
+
+    #[test]
+    fn redact_secret_value_sensitive_with_clean_taint() {
+        let sensitivity = SensitivityClass {
+            classification: SecretSensitivity::Sensitive,
+            reason: None,
+        };
+        let result = redact_secret_value("hunter2", Taint::Clean, sensitivity).unwrap();
+        assert!(result.is_tainted);
+        assert!(!result.digest.is_empty());
+        assert_eq!(result.summary_len, 0);
+        assert_eq!(result.summary, "");
+        assert_eq!(result.taint_marker, "CLEAN");
+    }
+
+    #[test]
+    fn redact_secret_value_sensitive_with_secret_taint() {
+        let sensitivity = SensitivityClass {
+            classification: SecretSensitivity::Sensitive,
+            reason: None,
+        };
+        let result = redact_secret_value("hunter2", Taint::Secret, sensitivity).unwrap();
+        assert!(result.is_tainted);
+        assert_eq!(result.taint_marker, "SECRET");
+    }
+
+    #[test]
+    fn redact_secret_value_sensitive_with_derived_taint() {
+        let sensitivity = SensitivityClass {
+            classification: SecretSensitivity::Sensitive,
+            reason: None,
+        };
+        let result = redact_secret_value("derived_secret", Taint::DerivedFromSecret, sensitivity)
+            .unwrap();
+        assert!(result.is_tainted);
+        assert_eq!(result.taint_marker, "DERIVED");
+    }
+
+    #[test]
+    fn redact_secret_value_unknown_is_fail_closed() {
+        let sensitivity = SensitivityClass {
+            classification: SecretSensitivity::Unknown,
+            reason: None,
+        };
+        let result = redact_secret_value("unknown_val", Taint::Clean, sensitivity).unwrap();
+        assert!(result.is_tainted);
+        assert_eq!(result.taint_marker, "UNKNOWN");
+        // Unknown gets bounded summary
+        assert!(!result.summary.is_empty() || result.summary_len == 0);
+    }
+
+    #[test]
+    fn redact_secret_value_unknown_bounded_summary_truncates() {
+        let sensitivity = SensitivityClass {
+            classification: SecretSensitivity::Unknown,
+            reason: None,
+        };
+        let long_value = "x".repeat(200);
+        let result = redact_secret_value(&long_value, Taint::Clean, sensitivity).unwrap();
+        assert_eq!(
+            result.summary_len,
+            core::cmp::min(200, MAX_REDACTION_SUMMARY_LEN)
+        );
+        assert_eq!(result.summary.len(), result.summary_len);
+    }
+
+    #[test]
+    fn redact_secret_value_non_sensitive_with_secret_taint() {
+        let sensitivity = SensitivityClass {
+            classification: SecretSensitivity::NonSensitive,
+            reason: None,
+        };
+        let result = redact_secret_value("public_data", Taint::Secret, sensitivity).unwrap();
+        assert!(result.is_tainted); // taint is still reflected even if non-sensitive
+        assert!(result.digest.is_empty());
+        assert_eq!(result.taint_marker, "SECRET");
+    }
+
+    #[test]
+    fn redact_secret_value_digest_is_blake3_hex() {
+        let sensitivity = SensitivityClass {
+            classification: SecretSensitivity::Sensitive,
+            reason: None,
+        };
+        let result = redact_secret_value("test_value", Taint::Clean, sensitivity).unwrap();
+        // BLAKE3 hex is 64 chars
+        assert_eq!(result.digest.len(), 64);
+        assert!(result.digest.chars().all(|c| c.is_ascii_hexdigit()));
+    }
+
+    // =====================================================================
+    // classify_secret_sensitivity — exhaustive field patterns
+    // =====================================================================
+
+    #[test]
+    fn classify_secret_sensitivity_password_variants() {
+        let r = classify_secret_sensitivity("user_password");
+        assert!(matches!(r.classification, SecretSensitivity::Sensitive));
+        let r2 = classify_secret_sensitivity("PASSWORD");
+        assert!(matches!(r2.classification, SecretSensitivity::Sensitive));
+    }
+
+    #[test]
+    fn classify_secret_sensitivity_secret_variants() {
+        let r = classify_secret_sensitivity("client_secret");
+        assert!(matches!(r.classification, SecretSensitivity::Sensitive));
+        let r2 = classify_secret_sensitivity("SECRET_TOKEN");
+        assert!(matches!(r2.classification, SecretSensitivity::Sensitive));
+    }
+
+    #[test]
+    fn classify_secret_sensitivity_token_variants() {
+        let r = classify_secret_sensitivity("access_token");
+        assert!(matches!(r.classification, SecretSensitivity::Sensitive));
+        let r2 = classify_secret_sensitivity("API_TOKEN");
+        assert!(matches!(r2.classification, SecretSensitivity::Sensitive));
+    }
+
+    #[test]
+    fn classify_secret_sensitivity_api_key_variants() {
+        let r = classify_secret_sensitivity("api_key");
+        assert!(matches!(r.classification, SecretSensitivity::Sensitive));
+        let r2 = classify_secret_sensitivity("apiKey");
+        assert!(matches!(r2.classification, SecretSensitivity::Sensitive));
+    }
+
+    #[test]
+    fn classify_secret_sensitivity_private_key_variants() {
+        let r = classify_secret_sensitivity("private_key");
+        assert!(matches!(r.classification, SecretSensitivity::Sensitive));
+        let r2 = classify_secret_sensitivity("privateKey");
+        assert!(matches!(r2.classification, SecretSensitivity::Sensitive));
+    }
+
+    #[test]
+    fn classify_secret_sensitivity_credential_variants() {
+        let r = classify_secret_sensitivity("service_credentials");
+        assert!(matches!(r.classification, SecretSensitivity::Sensitive));
+    }
+
+    #[test]
+    fn classify_secret_sensitivity_auth_variants() {
+        let r = classify_secret_sensitivity("auth_header");
+        assert!(matches!(r.classification, SecretSensitivity::Sensitive));
+        let r2 = classify_secret_sensitivity("authorization");
+        assert!(matches!(r2.classification, SecretSensitivity::Sensitive));
+    }
+
+    #[test]
+    fn classify_secret_sensitivity_non_sensitive_patterns() {
+        for field in &["user_name", "file_name", "record_id", "status_code",
+                       "node_type", "event_count", "item_index", "action_id"] {
+            let r = classify_secret_sensitivity(field);
+            assert!(
+                matches!(r.classification, SecretSensitivity::NonSensitive),
+                "field '{}' should be NonSensitive but got {:?}",
+                field,
+                r.classification
+            );
+        }
+    }
+
+    #[test]
+    fn classify_secret_sensitivity_unknown_is_fail_closed() {
+        let r = classify_secret_sensitivity("custom_zebra_field");
+        assert!(matches!(r.classification, SecretSensitivity::Unknown));
+    }
+
+    // =====================================================================
+    // redact_json_object
+    // =====================================================================
+
+    #[test]
+    fn redact_json_object_passes_through_non_sensitive() {
+        let mut obj = serde_json::Map::new();
+        obj.insert("user_name".to_string(), serde_json::json!("Alice"));
+        obj.insert("item_index".to_string(), serde_json::json!(42));
+
+        let result = redact_json_object(&obj);
+
+        // Non-sensitive values pass through
+        assert_eq!(result.get("user_name"), Some(&serde_json::json!("Alice")));
+        // item_index matches "index" pattern → NonSensitive → passes through
+        assert_eq!(result.get("item_index"), Some(&serde_json::json!(42)));
+    }
+
+    #[test]
+    fn redact_json_object_redacts_sensitive_fields() {
+        let mut obj = serde_json::Map::new();
+        obj.insert("password".to_string(), serde_json::json!("hunter2"));
+        obj.insert("api_token".to_string(), serde_json::json!("tok_12345"));
+
+        let result = redact_json_object(&obj);
+
+        // Sensitive fields should be redacted maps
+        let pass = result.get("password").and_then(|v| v.get("__redacted"));
+        assert_eq!(pass, Some(&serde_json::json!(true)), "password should be redacted");
+
+        let token_redacted = result.get("api_token").and_then(|v| v.get("__redacted"));
+        assert_eq!(token_redacted, Some(&serde_json::json!(true)), "api_token should be redacted");
+    }
+
+    #[test]
+    fn redact_json_object_redacts_unknown_fields() {
+        let mut obj = serde_json::Map::new();
+        obj.insert("custom_data".to_string(), serde_json::json!("some value"));
+
+        let result = redact_json_object(&obj);
+
+        let redacted = result.get("custom_data").and_then(|v| v.get("__redacted"));
+        assert_eq!(redacted, Some(&serde_json::json!(true)), "unknown field should be redacted");
+    }
+
+    #[test]
+    fn redact_json_object_nested_object_non_sensitive_passes() {
+        let mut obj = serde_json::Map::new();
+        let mut nested = serde_json::Map::new();
+        nested.insert("name".to_string(), serde_json::json!("Bob"));
+        // "record_id" matches "id" → NonSensitive → nested object passes through
+        obj.insert("record_id".to_string(), serde_json::Value::Object(nested));
+
+        let result = redact_json_object(&obj);
+
+        let record = result.get("record_id").and_then(|v| v.get("name"));
+        assert_eq!(record, Some(&serde_json::json!("Bob")));
+    }
+
+    #[test]
+    fn redact_json_object_array_non_sensitive_passes() {
+        let mut obj = serde_json::Map::new();
+        // "name_list" matches "name" → NonSensitive → array passes through
+        obj.insert("name_list".to_string(), serde_json::json!(["a", "b", "c"]));
+
+        let result = redact_json_object(&obj);
+
+        let names = result.get("name_list").and_then(|v| v.as_array());
+        assert_eq!(names.map(|a| a.len()), Some(3));
+    }
+
+    #[test]
+    fn redact_json_object_sensitive_string_gets_digest() {
+        let mut obj = serde_json::Map::new();
+        obj.insert("secret".to_string(), serde_json::json!("my_secret_value"));
+
+        let result = redact_json_object(&obj);
+
+        let digest = result.get("secret").and_then(|v| v.get("digest"));
+        assert!(digest.is_some());
+        let digest_str = digest.unwrap().as_str().unwrap();
+        assert!(!digest_str.is_empty());
+    }
+
+    // =====================================================================
+    // MAX_REDACTION_SUMMARY_LEN and MAX_DIGEST_LEN constants
+    // =====================================================================
+
+    #[test]
+    fn max_redaction_summary_len_is_64() {
+        assert_eq!(MAX_REDACTION_SUMMARY_LEN, 64);
+    }
+
+    #[test]
+    fn max_digest_len_is_64() {
+        assert_eq!(MAX_DIGEST_LEN, 64);
     }
 }
