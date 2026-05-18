@@ -3,12 +3,17 @@
 
 //! Bounded arbitrary generators for compiled workflow structures used by Kani.
 //!
-//! These generators vary every structure that Gate 8 reads directly while
-//! keeping unrelated workflow tables at a minimal valid scaffold.
+//! These generators vary every field of WorkflowParts structurally so Kani
+//! harnesses exercise arbitrary shapes — nodes, expressions, constants,
+//! step_names, and resource_contract — not just accessor variations.
 
-use crate::ids::{SlotIdx, StepIdx, SymbolId, WorkflowDigest};
+use crate::ids::{
+    AccessorIdx, ActionId, ConstIdx, ExprIdx, SlotIdx, StepIdx, SymbolId, WorkflowDigest,
+};
+use crate::value::FiniteF64;
 use crate::workflow::{
-    AccessorProgram, CompiledNode, CompiledNodeKind, PathSegment, ResourceContract, WorkflowParts,
+    AccessorProgram, CompiledNode, CompiledNodeKind, ExprBranch, ExprOp, ExprProgram, PathSegment,
+    ResourceContract, SlotBranch, WorkflowParts,
 };
 
 impl kani::Arbitrary for PathSegment {

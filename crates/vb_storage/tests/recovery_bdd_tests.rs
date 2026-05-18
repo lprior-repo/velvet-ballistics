@@ -1725,17 +1725,6 @@ fn snapshot_tail_monotonic_slot_overwrite_preserves_tail_value() {
 }
 
 // ---------------------------------------------------------------------------
-<<<<<<< HEAD
-// MAJOR-1: ActionAbiMismatch — exact assertion
-// GA-015a / B-015: Non-idempotent action blocked returns typed error
-// NOTE: ActionAbiMismatch is defined but not yet reachable through the current
-// public recovery API because no action ABI digest lookup/input exists.
-// Tracked by vb-ty9.
-// ---------------------------------------------------------------------------
-
-#[test]
-#[ignore = "vb-ty9: ActionAbiMismatch not yet reachable because recovery lacks an action ABI digest lookup/input."]
-=======
 // GAP-3: ActionAbiMismatch — exact assertion
 // EARS-1: When recovery validates action replay against an expected action ABI
 // source, the storage recovery API shall return RecoveryError::ActionAbiMismatch
@@ -1743,7 +1732,6 @@ fn snapshot_tail_monotonic_slot_overwrite_preserves_tail_value() {
 // ---------------------------------------------------------------------------
 
 #[test]
->>>>>>> polecat/vb-2bzz
 fn action_abi_mismatch_returns_typed_error() {
     let action_id = ActionId::new(77);
     let expected_digest = test_digest(0xE1);
@@ -1773,40 +1761,6 @@ fn action_abi_match_returns_ok() {
     );
 }
 
-<<<<<<< HEAD
-    // The contract requires ActionAbiMismatch; implementation may not yet return it.
-    // Assert exact variant if returned; if Ok, the code path is not yet implemented.
-    match result {
-        Err(RecoveryError::ActionAbiMismatch { action_id: found }) => {
-            assert_eq!(found, action_id, "action_id must match");
-        }
-        Ok(_) => {
-            // This ignored test must still fail when run explicitly so the
-            // deferred GAP cannot become a hollow pass.
-            panic!(
-                "ActionAbiMismatch not yet implemented: recover_full_journal returned Ok \
-                 instead of Err(RecoveryError::ActionAbiMismatch). See vb-ty9."
-            );
-        }
-        Err(other) => {
-            panic!(
-                "expected ActionAbiMismatch for action ABI mismatch, got {:?}",
-                other
-            );
-        }
-    }
-}
-
-// ---------------------------------------------------------------------------
-// MAJOR-1: PolicyDigestMismatch — exact assertion
-// NOTE: PolicyDigestMismatch is defined but not yet reachable through the
-// current public recovery API because no expected policy digest lookup/input
-// exists. Tracked by vb-ty9.
-// ---------------------------------------------------------------------------
-
-#[test]
-#[ignore = "vb-ty9: PolicyDigestMismatch not yet reachable because recovery lacks an expected policy digest lookup/input."]
-=======
 #[test]
 fn check_action_abi_digests_empty_input_returns_ok() {
     // Empty input returns Ok — no guessing from missing data
@@ -1826,7 +1780,6 @@ fn check_action_abi_digests_empty_input_returns_ok() {
 // ---------------------------------------------------------------------------
 
 #[test]
->>>>>>> polecat/vb-2bzz
 fn policy_digest_mismatch_returns_typed_error() {
     let step = StepIdx::ZERO;
     let expected_digest = test_digest(0xF1);

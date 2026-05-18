@@ -8,7 +8,7 @@
 
 use crate::recovery::types::{ActionReplayTracker, RecoveryError, RecoveryResult};
 use crate::{EventSeq, FjallJournal, JournalEvent};
-use vb_core::{RunId, StepIdx};
+use vb_core::{ActionId, RunId, StepIdx, WorkflowDigest};
 
 /// Computes the maximum attempt number observed in action-scheduling and
 /// action-completion events. Events without an attempt field contribute 1
@@ -34,6 +34,7 @@ fn compute_max_attempt(events: &[JournalEvent]) -> u16 {
 pub fn replay_events(
     events: &[JournalEvent],
     tracker: &mut ActionReplayTracker,
+    _expected_action_abi_digests: &[(ActionId, WorkflowDigest)],
 ) -> RecoveryResult<Vec<JournalEvent>> {
     let max_attempt = compute_max_attempt(events);
     let mut replayed = Vec::new();
@@ -118,16 +119,34 @@ pub fn replay_events(
 
 /// Replays a full journal for a run when no snapshot is available.
 /// Returns the ordered sequence of journal events and populates the action tracker.
+///
+/// ## GAP-3: Policy Digest Verification
+///
+/// When `expected_policy_digests` is empty and `RunAdmission` is absent,
+/// return `PolicyDigestMismatch` because the policy digest cannot be verified.
 pub fn recover_full_journal(
     journal: &FjallJournal,
     run: RunId,
     tracker: &mut ActionReplayTracker,
+    _expected_action_abi_digests: &[(ActionId, WorkflowDigest)],
+    expected_policy_digests: &[(StepIdx, WorkflowDigest)],
 ) -> RecoveryResult<Vec<JournalEvent>> {
     let events = journal.events_for_run(run)?;
     if events.is_empty() {
         return Err(RecoveryError::NoRecoveryData { run });
     }
-    replay_events(&events, tracker)
+
+    let has_run_admission = events
+        .iter()
+        .any(|e| matches!(e, JournalEvent::RunAdmission { .. }));
+
+    if !has_run_admission && expected_policy_digests.is_empty() {
+        return Err(RecoveryError::PolicyDigestMismatch {
+            step: StepIdx::ZERO,
+        });
+    }
+
+    replay_events(&events, tracker, _expected_action_abi_digests)
 }
 
 /// Loads a snapshot from the journal, translating decode failures to
@@ -168,7 +187,7 @@ pub fn recover_snapshot_plus_tail(
         }
     }
 
-    replay_events(tail_events, tracker)
+    replay_events(tail_events, tracker, &[])
 }
 
 /// Checks whether a run has reached a terminal state.

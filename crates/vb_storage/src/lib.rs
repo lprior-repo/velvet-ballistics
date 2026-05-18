@@ -126,8 +126,16 @@ pub fn replay_journal(
     journal: &FjallJournal,
     run: vb_core::RunId,
     tracker: &mut ActionReplayTracker,
+    expected_action_abi_digests: &[(vb_core::ActionId, vb_core::WorkflowDigest)],
+    expected_policy_digests: &[(vb_core::StepIdx, vb_core::WorkflowDigest)],
 ) -> recovery::RecoveryResult<Vec<JournalEvent>> {
-    recovery::recover_full_journal(journal, run, tracker)
+    recovery::recover_full_journal(
+        journal,
+        run,
+        tracker,
+        expected_action_abi_digests,
+        expected_policy_digests,
+    )
 }
 
 /// Flushes one queued writer batch using each event's durability profile.
