@@ -110,6 +110,8 @@ case "$MODE" in
 
   proof|all)
     info "Mode: proof/all (deep + full verification)"
+    # StepState matrix drift check (vb-o4zx)
+    run_cargo "bash scripts/check-stepstate-matrix.sh" "DRIFT-STEPSTATE-001" || FAILED=1
     # Currently: same as deep. Full Verus proofs deferred until toolchain installed.
     run_cargo "cargo kani --package vb_compile --harness compile_expr_to_bytecode_overflow --quiet" "KANI-EXPR-BYTECODE-001" || FAILED=1
     run_cargo "cargo kani --package vb_compile --harness lower_slot_reference_valid --quiet" "KANI-SLOT-REF-001" || FAILED=1

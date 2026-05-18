@@ -517,6 +517,18 @@ tasks:
       cache: false
       runInCI: false
 
+  check-stepstate-matrix:
+    command: 'bash scripts/check-stepstate-matrix.sh'
+    toolchains:
+      - rust
+    inputs:
+      - 'crates/vb_proof_kernels/src/step_state.rs'
+    outputs:
+      - 'scripts/check-stepstate-matrix.sh'
+    options:
+      cache: false
+      runInCI: true
+
   verify-proof:
     command: 'bash scripts/rust-verification-gauntlet.sh proof'
     toolchains:
