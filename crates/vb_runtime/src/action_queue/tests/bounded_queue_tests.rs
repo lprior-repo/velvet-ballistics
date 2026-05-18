@@ -452,8 +452,8 @@ fn bounded_action_queue_emits_backpressure_warning_just_above_80_percent() {
     for i in 0..8 {
         queue.enqueue(make_ticket(i)).unwrap();
     }
-    // Drain the channel
-    let _ = rx.try_recv();
+    // Drain the channel and prove the threshold warning was present.
+    assert_eq!(rx.try_recv().map(|w| (w.depth, w.capacity)), Ok((8, 10)));
     // When: A 9th action completion is enqueued (90%)
     queue.enqueue(make_ticket(8)).unwrap();
     // Then: Returns Ok(())

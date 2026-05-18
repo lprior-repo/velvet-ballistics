@@ -36,6 +36,7 @@ fn kani_gate_08_arbitrary_parts_valid_accessors_pass() {
                     kani::assume(symbol.get() < parts.symbols_count);
                 }
                 PathSegment::Index(index) => kani::assume(*index != u32::MAX),
+                _ => kani::assume(false),
             }
         }
     }
