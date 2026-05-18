@@ -492,7 +492,6 @@ fn parse_expression_rejects_invalid_syntax() {
 // ── Strict YAML profile tests ────────────────────────────────────────────────
 
 #[test]
-#[test]
 fn strict_yaml_rejects_alias() {
     use crate::strict_yaml::reject_unsupported_profile_events;
     let result = reject_unsupported_profile_events("&anchor value");
