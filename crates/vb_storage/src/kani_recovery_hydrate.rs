@@ -11,18 +11,28 @@
 //! - PO-6: `check_policy_digests` returns Err on first mismatch
 //! - PO-7: `recover_runtime_summary` does not panic on non-empty events
 
-use crate::RecoveryError;
 use crate::recovery::recover::{
     check_action_abi_digests, check_compiled_ir_digest, check_policy_digests,
     recover_runtime_summary,
 };
+use crate::RecoveryError;
 use vb_core::{ActionId, StepIdx, WorkflowDigest};
+
+fn zero_digest() -> WorkflowDigest {
+    WorkflowDigest::from_bytes([0; 32])
+}
+
+fn arbitrary_nonzero_digest() -> WorkflowDigest {
+    let bytes: [u8; 32] = kani::any();
+    kani::assume(bytes != [0; 32]);
+    WorkflowDigest::from_bytes(bytes)
+}
 
 /// PO-1: `check_compiled_ir_digest` returns Ok when expected == found
 #[kani::proof]
 fn kani_check_compiled_ir_digest_match() {
-    let expected = WorkflowDigest::ZERO;
-    let found = WorkflowDigest::ZERO;
+    let expected = zero_digest();
+    let found = zero_digest();
     let result = check_compiled_ir_digest(expected, found);
     kani::assert(result.is_ok(), "identical digests must return Ok");
 }
@@ -30,11 +40,9 @@ fn kani_check_compiled_ir_digest_match() {
 /// PO-2: `check_compiled_ir_digest` returns Err when expected != found
 #[kani::proof]
 fn kani_check_compiled_ir_digest_mismatch() {
-    let expected = WorkflowDigest::ZERO;
+    let expected = zero_digest();
     // Use any() to construct a different digest
-    let mut found = WorkflowDigest::ZERO;
-    found.0 = kani::any();
-    kani::assume(found != expected);
+    let found = arbitrary_nonzero_digest();
 
     let result = check_compiled_ir_digest(expected, found);
     match result {
@@ -60,25 +68,32 @@ fn kani_check_action_abi_digests_empty() {
 /// PO-4: `check_action_abi_digests` returns Err on first mismatch
 #[kani::proof]
 fn kani_check_action_abi_digests_mismatch() {
-    let action: ActionId = kani::any();
-    let mismatched_digest = {
-        let mut d = WorkflowDigest::ZERO;
-        d.0 = kani::any();
-        d
-    };
+    let action = ActionId::new(1);
+    let mismatched_action = ActionId::new(2);
+    let matching_digest = zero_digest();
+    let mismatched_digest = arbitrary_nonzero_digest();
     let entries = vec![
-        (action, WorkflowDigest::ZERO, WorkflowDigest::ZERO), // matches
-        (kani::any(), WorkflowDigest::ZERO, mismatched_digest), // mismatches
+        (action, matching_digest, matching_digest), // matches
+        (mismatched_action, matching_digest, mismatched_digest), // mismatches
     ];
 
     let result = check_action_abi_digests(&entries);
     match result {
         Err(RecoveryError::ActionAbiMismatch { action_id }) => {
             // ActionId should be from the second entry
-            kani::assert(action_id != action, "mismatch should be from second entry");
+            kani::assert(
+                action_id == mismatched_action,
+                "mismatch should be from second entry",
+            );
         }
         Ok(_) => kani::assert(false, "mismatch must return Err"),
-        Err(_) => {} // Other errors acceptable
+        Err(other) => {
+            let _unexpected_recovery_error = other;
+            kani::assert(
+                false,
+                "unexpected recovery error for action ABI digest mismatch",
+            );
+        }
     }
 }
 
@@ -93,25 +108,29 @@ fn kani_check_policy_digests_empty() {
 /// PO-6: `check_policy_digests` returns Err on first mismatch
 #[kani::proof]
 fn kani_check_policy_digests_mismatch() {
-    let step: StepIdx = kani::any();
-    let mismatched_digest = {
-        let mut d = WorkflowDigest::ZERO;
-        d.0 = kani::any();
-        d
-    };
+    let step = StepIdx::new(1);
+    let mismatched_step = StepIdx::new(2);
+    let matching_digest = zero_digest();
+    let mismatched_digest = arbitrary_nonzero_digest();
     let entries = vec![
-        (step, WorkflowDigest::ZERO, WorkflowDigest::ZERO), // matches
-        (kani::any(), WorkflowDigest::ZERO, mismatched_digest), // mismatches
+        (step, matching_digest, matching_digest), // matches
+        (mismatched_step, matching_digest, mismatched_digest), // mismatches
     ];
 
     let result = check_policy_digests(&entries);
     match result {
         Err(RecoveryError::PolicyDigestMismatch { step: s }) => {
             // StepIdx should be from the second entry
-            kani::assert(s != step, "mismatch should be from second entry");
+            kani::assert(s == mismatched_step, "mismatch should be from second entry");
         }
         Ok(_) => kani::assert(false, "mismatch must return Err"),
-        Err(_) => {} // Other errors acceptable
+        Err(other) => {
+            let _unexpected_recovery_error = other;
+            kani::assert(
+                false,
+                "unexpected recovery error for policy digest mismatch",
+            );
+        }
     }
 }
 
