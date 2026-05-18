@@ -52,7 +52,8 @@ pub(crate) fn check_source_size(text: &str, max_bytes: usize) -> YamlResult<()> 
     Ok(())
 }
 
-/// Collect events from the parser while tracking depth and node counts.
+/// Collect events from the parser while tracking depth, node counts, and
+/// sequence/mapping entry counts for enforcing YamlLimits.
 pub(crate) fn collect_and_validate_events(
     text: &str,
     limits: &YamlLimits,
@@ -63,6 +64,13 @@ pub(crate) fn collect_and_validate_events(
     let mut node_count: u32 = 0;
     let mut document_count: usize = 0;
     let mut found_content = false;
+
+    // Stacks for sequence and mapping entry count tracking.
+    // Each entry represents one level of nesting.
+    let mut seq_counters: Vec<usize> = Vec::new(); // sequence item count per depth
+    let mut map_counters: Vec<usize> = Vec::new(); // mapping entry count per depth
+    let mut in_mapping: Vec<bool> = Vec::new(); // true = mapping, false = sequence at each depth
+    let mut expecting_key: Vec<bool> = Vec::new(); // for mappings: next scalar is a key if true
 
     while let Some(result) = parser.next_event() {
         let (event, span) = result.map_err(|e| YamlError::ParseError {
@@ -81,8 +89,7 @@ pub(crate) fn collect_and_validate_events(
                     .checked_add(1)
                     .ok_or(YamlError::MultipleDocuments { count: usize::MAX })?;
             }
-            saphyr_parser::Event::MappingStart(_, _)
-            | saphyr_parser::Event::SequenceStart(_, _) => {
+            saphyr_parser::Event::MappingStart(_, _) => {
                 depth = depth.checked_add(1).ok_or(YamlError::NestingTooDeep {
                     depth,
                     max: limits.max_depth,
@@ -93,15 +100,105 @@ pub(crate) fn collect_and_validate_events(
                         max: limits.max_depth,
                     });
                 }
+                in_mapping.push(true);
+                expecting_key.push(true);
+                map_counters.push(0);
                 found_content = true;
             }
-            saphyr_parser::Event::MappingEnd | saphyr_parser::Event::SequenceEnd => {
-                depth = depth.saturating_sub(1);
+            saphyr_parser::Event::SequenceStart(_, _) => {
+                depth = depth.checked_add(1).ok_or(YamlError::NestingTooDeep {
+                    depth,
+                    max: limits.max_depth,
+                })?;
+                if depth > limits.max_depth {
+                    return Err(YamlError::NestingTooDeep {
+                        depth,
+                        max: limits.max_depth,
+                    });
+                }
+                in_mapping.push(false);
+                seq_counters.push(0);
+                found_content = true;
             }
             saphyr_parser::Event::Scalar(value, _, _, _) => {
                 check_scalar_length(value, limits.max_scalar_bytes)?;
                 check_null_bytes(value)?;
+
+                // Track sequence items and mapping entries.
+                // Only count at the deepest (innermost) collection level.
+                if let Some(&is_mapping) = in_mapping.last() {
+                    if is_mapping {
+                        // Inside a mapping: count each scalar as either a key or value.
+                        // Keys consume a mapping entry slot; values do not.
+                        if expecting_key.last() == Some(&true) {
+                            // This scalar is a key — consume one mapping entry slot.
+                            if let Some(counter) = map_counters.last_mut() {
+                                *counter = counter.checked_add(1).ok_or(YamlError::NodeLimitExceeded {
+                                    count: u32::MAX,
+                                    max: limits.max_nodes,
+                                })?;
+                                if *counter > limits.max_mapping_entries {
+                                    return Err(YamlError::MappingTooLarge {
+                                        count: *counter,
+                                        max: limits.max_mapping_entries,
+                                    });
+                                }
+                            }
+                            // Next scalar will be the value.
+                            if let Some(expecting) = expecting_key.last_mut() {
+                                *expecting = false;
+                            }
+                        } else {
+                            // This scalar is a value — no entry count increment.
+                            // Next scalar will be a key.
+                            if let Some(expecting) = expecting_key.last_mut() {
+                                *expecting = true;
+                            }
+                        }
+                    } else {
+                        // Inside a sequence: each scalar is a sequence item.
+                        if let Some(counter) = seq_counters.last_mut() {
+                            *counter = counter.checked_add(1).ok_or(YamlError::NodeLimitExceeded {
+                                    count: u32::MAX,
+                                    max: limits.max_nodes,
+                                })?;
+                            if *counter > limits.max_sequence_len {
+                                return Err(YamlError::SequenceTooLong {
+                                    len: *counter,
+                                    max: limits.max_sequence_len,
+                                });
+                            }
+                        }
+                    }
+                }
                 found_content = true;
+            }
+            saphyr_parser::Event::MappingEnd => {
+                // Pop the mapping counter and merge into parent if nested.
+                if let Some(count) = map_counters.pop() {
+                    if let Some(parent_count) = map_counters.last_mut() {
+                        *parent_count = parent_count.checked_add(count).ok_or(YamlError::NodeLimitExceeded {
+                            count: u32::MAX,
+                            max: limits.max_nodes,
+                        })?;
+                    }
+                }
+                in_mapping.pop();
+                expecting_key.pop();
+                depth = depth.saturating_sub(1);
+            }
+            saphyr_parser::Event::SequenceEnd => {
+                // Pop the sequence counter and merge into parent if nested.
+                if let Some(count) = seq_counters.pop() {
+                    if let Some(parent_count) = seq_counters.last_mut() {
+                        *parent_count = parent_count.checked_add(count).ok_or(YamlError::NodeLimitExceeded {
+                            count: u32::MAX,
+                            max: limits.max_nodes,
+                        })?;
+                    }
+                }
+                in_mapping.pop();
+                depth = depth.saturating_sub(1);
             }
         }
 
