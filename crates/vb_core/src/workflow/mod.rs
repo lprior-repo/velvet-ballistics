@@ -71,6 +71,25 @@ impl CompiledWorkflow {
         }
     }
 
+    /// Creates a compiled workflow for Kani harnesses that need concrete runtime
+    /// APIs without re-proving workflow validation internals in each harness.
+    #[cfg(kani)]
+    pub fn kani_from_parts_unchecked(parts: WorkflowParts) -> Self {
+        Self {
+            name: parts.name,
+            digest: parts.digest,
+            nodes: parts.nodes,
+            expressions: parts.expressions,
+            accessors: parts.accessors,
+            constants: parts.constants,
+            slot_count: parts.slot_count,
+            symbols_count: parts.symbols_count,
+            entry: parts.entry,
+            resource_contract: parts.resource_contract,
+            step_names: parts.step_names,
+        }
+    }
+
     /// Workflow name retained for cold diagnostics.
     #[must_use]
     pub const fn name(&self) -> &str {

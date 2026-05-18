@@ -5,7 +5,11 @@
 //! and `HashMap<RunId, (Instant, PendingTimerKind)>` as the run-index.
 //! This gives O(log n) insert/cancel and O(k) fire where k is expired timers.
 
-use std::collections::{BTreeMap, HashMap};
+#[cfg(kani)]
+use std::collections::BTreeMap as Map;
+use std::collections::BTreeMap;
+#[cfg(not(kani))]
+use std::collections::HashMap as Map;
 use std::time::Instant;
 
 use vb_core::ids::RunId;
@@ -27,7 +31,7 @@ pub struct TimerWheel {
     /// Time-indexed entries for efficient fire_expired.
     by_deadline: BTreeMap<Instant, Vec<TimerEntry>>,
     /// Run-indexed entries for O(1) cancel/lookup.
-    by_run: HashMap<RunId, (Instant, PendingTimerKind)>,
+    by_run: Map<RunId, (Instant, PendingTimerKind)>,
 }
 
 impl TimerWheel {
@@ -36,7 +40,7 @@ impl TimerWheel {
     pub fn new() -> Self {
         Self {
             by_deadline: BTreeMap::new(),
-            by_run: HashMap::new(),
+            by_run: Map::new(),
         }
     }
 

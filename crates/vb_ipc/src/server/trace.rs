@@ -163,13 +163,12 @@ mod tests {
     }
 
     fn make_runtime() -> Runtime {
-        Runtime::new(
-            NonZeroUsize::MIN,
-            ShardConfig {
-                step_budget_per_tick: 4,
-                ..ShardConfig::default()
-            },
-        )
+        let mut config = ShardConfig {
+            step_budget_per_tick: 4,
+            ..ShardConfig::default()
+        };
+        config.policy = vb_core::policy::RuntimePolicy::Relaxed;
+        Runtime::new(NonZeroUsize::MIN, config)
     }
 
     fn chain_workflow() -> vb_core::workflow::CompiledWorkflow {

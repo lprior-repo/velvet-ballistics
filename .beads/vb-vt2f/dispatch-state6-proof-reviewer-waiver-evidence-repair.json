@@ -1,0 +1,24 @@
+{
+  "bead_id": "vb-vt2f",
+  "state": 6,
+  "sublane": "proof-review-waiver-evidence-repair-after-state11-rejection",
+  "delegate": "proof-reviewer",
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/bd-vb-vt2f-bdd",
+  "input_artifacts": [
+    ".beads/vb-vt2f/formal-verification-report.md",
+    ".beads/vb-vt2f/proof-review.md",
+    ".beads/vb-vt2f/proof-evidence.md",
+    ".beads/vb-vt2f/proof-obligations.jsonl",
+    ".beads/vb-vt2f/proof-obligations.planned.jsonl",
+    ".beads/vb-vt2f/contract-verification-review.md",
+    ".beads/vb-vt2f/machine-gate-report.md"
+  ],
+  "output_artifacts": [
+    ".beads/vb-vt2f/proof-review.md",
+    ".beads/vb-vt2f/proof-findings.jsonl",
+    ".beads/vb-vt2f/proof-repair-guide.md"
+  ],
+  "attempt": 2,
+  "repair_route": "State 6 proof-review evidence repair for WAIVER-VERUS-VT2F-002 after State 11 rejection"
+}

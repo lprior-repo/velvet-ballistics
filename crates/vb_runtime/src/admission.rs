@@ -262,6 +262,11 @@ pub type SharedAcceptedArtifactStore = Arc<dyn AcceptedArtifactStore>;
 #[derive(Debug, Default)]
 pub struct AlwaysPresentArtifactStore;
 
+/// Artifact store for non-durable strict admission where no accepted artifact
+/// source exists.
+#[derive(Debug, Default)]
+pub struct MissingAcceptedArtifactStore;
+
 impl AlwaysPresentArtifactStore {
     /// Creates a new shared always-present store (legacy artifact-only view).
     #[must_use]
@@ -324,6 +329,25 @@ impl AcceptedArtifactStore for AlwaysPresentArtifactStore {
             verification: proof,
             accepted_at_seq: vb_storage::types::EventSeq::new(0),
             required_capabilities: Box::new([]),
+        })
+    }
+}
+
+impl MissingAcceptedArtifactStore {
+    /// Creates a new shared missing-artifact store.
+    #[must_use]
+    pub fn shared() -> SharedAcceptedArtifactStore {
+        Arc::new(Self)
+    }
+}
+
+impl AcceptedArtifactStore for MissingAcceptedArtifactStore {
+    fn load_accepted_artifact(
+        &self,
+        artifact_digest: WorkflowDigest,
+    ) -> Result<vb_storage::admission::AcceptedArtifact, ArtifactEnvelopeError> {
+        Err(ArtifactEnvelopeError::ArtifactNotFound {
+            digest: artifact_digest,
         })
     }
 }

@@ -1864,6 +1864,14 @@ fn runtime_journal_for_mode(
     }
 }
 
+fn runtime_config_for_durability(durability: DurabilityMode) -> vb_runtime::shard::ShardConfig {
+    let mut config = vb_runtime::shard::ShardConfig::default();
+    if durability == DurabilityMode::None {
+        config.policy = vb_core::policy::RuntimePolicy::Relaxed;
+    }
+    config
+}
+
 fn open_storage_runtime_journal(
     db: Option<&std::path::Path>,
     strict: bool,
@@ -1909,7 +1917,7 @@ fn run_compiled_workflow(
         );
         return CliExitCode::RuntimeFailed.into();
     };
-    let config = vb_runtime::shard::ShardConfig::default();
+    let config = runtime_config_for_durability(durability);
     if durability != DurabilityMode::None
         && let Some(db_path) = db
         && let Err(code) = store_compiled_artifact(compiled, db_path, output)
@@ -4251,7 +4259,7 @@ fn cmd_bench_run(workflow: &std::path::Path, output: OutputFormat) -> ExitCode {
         }
         return CliExitCode::RuntimeFailed.into();
     };
-    let config = vb_runtime::shard::ShardConfig::default();
+    let config = runtime_config_for_durability(DurabilityMode::None);
     let mut runtime = vb_runtime::runtime::Runtime::new(shard_count, config);
     if let Err(e) = runtime.submit_compiled(run_id, compiled) {
         if output != OutputFormat::Text {

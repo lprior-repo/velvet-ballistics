@@ -68,6 +68,7 @@ impl Shard {
     /// Marks a run as finished, releases its frame, and updates counters.
     pub(crate) fn finish_run(&mut self, run: RunId, state: RunState) -> RuntimeResult<()> {
         self.pending_timers.swap_remove(&run);
+        self.terminal_runs.insert(run);
         self.counters.inc_completed();
         self.counters.add_steps(state.frame.executed());
         self.trace_ring.push(TraceEvent::RunFinished { run });
@@ -144,6 +145,7 @@ impl Shard {
     /// This function only handles cleanup: pending_timers, counters, trace, journal, frame, sequence.
     pub(crate) fn fail_run_state(&mut self, run: RunId, state: RunState) -> RuntimeResult<()> {
         self.pending_timers.swap_remove(&run);
+        self.terminal_runs.insert(run);
         self.counters.inc_failed();
         self.trace_ring.push(TraceEvent::RunFailed { run });
         self.append_journal_event(RuntimeJournalEvent::RunFailed { run })?;

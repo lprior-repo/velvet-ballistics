@@ -91,7 +91,9 @@ mod tests {
     }
 
     fn make_runtime() -> Runtime {
-        Runtime::new(NonZeroUsize::MIN, ShardConfig::default())
+        let mut config = ShardConfig::default();
+        config.policy = vb_core::policy::RuntimePolicy::Relaxed;
+        Runtime::new(NonZeroUsize::MIN, config)
     }
 
     #[test]

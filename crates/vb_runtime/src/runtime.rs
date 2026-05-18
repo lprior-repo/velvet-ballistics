@@ -80,6 +80,7 @@ impl Runtime {
         caps: CapabilitySet,
     ) -> RuntimeResult<()> {
         let shard = self.shard_for(run)?;
+        shard.validate_submit_admission(run, workflow.digest(), caps.clone())?;
         shard.enqueue(ShardCommand::Submit {
             run,
             workflow,
@@ -96,6 +97,7 @@ impl Runtime {
         action_contracts: Box<[ActionContract]>,
     ) -> RuntimeResult<()> {
         let shard = self.shard_for(run)?;
+        shard.validate_submit_admission(run, workflow.digest(), caps.clone())?;
         shard.enqueue(ShardCommand::SubmitWithContracts {
             run,
             workflow,
@@ -114,6 +116,7 @@ impl Runtime {
         action_contracts: Box<[ActionContract]>,
     ) -> RuntimeResult<()> {
         let shard = self.shard_for(run)?;
+        shard.validate_submit_admission(run, workflow.digest(), caps.clone())?;
         shard.enqueue(ShardCommand::SubmitWithInputsAndContracts {
             run,
             workflow,
@@ -157,6 +160,7 @@ impl Runtime {
         caps: CapabilitySet,
     ) -> RuntimeResult<()> {
         let shard = self.shard_for(run)?;
+        shard.validate_submit_admission(run, workflow.digest(), caps.clone())?;
         shard.enqueue(ShardCommand::SubmitWithInputs {
             run,
             workflow,
@@ -328,7 +332,7 @@ impl Runtime {
     /// Fails an action with a typed failure payload.
     pub fn fail_action(&self, ticket: ActionTicket, failure: ActionFailure) -> RuntimeResult<()> {
         let shard = self.shard_for(ticket.run)?;
-        shard.enqueue(ShardCommand::ActionFailed { ticket, failure })
+        shard.enqueue(ShardCommand::RuntimeActionFailed { ticket, failure })
     }
 
     /// Lists trace events for a run without draining the shard trace ring.
@@ -344,6 +348,11 @@ impl Runtime {
     /// Answers an ask with an explicit typed payload and resume ticket.
     pub fn answer_ask(&self, answer: AskAnswer) -> RuntimeResult<()> {
         let shard = self.shard_for(answer.ticket.run)?;
+        if !shard.runs.contains_key(&answer.ticket.run)
+            && shard.terminal_runs.contains(&answer.ticket.run)
+        {
+            return Err(RuntimeError::RunNotFound);
+        }
         shard.enqueue(ShardCommand::AskAnswered { answer })
     }
 

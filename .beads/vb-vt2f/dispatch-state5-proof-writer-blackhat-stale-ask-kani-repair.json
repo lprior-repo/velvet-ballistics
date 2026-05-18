@@ -1,0 +1,22 @@
+{
+  "bead_id": "vb-vt2f",
+  "state": 5,
+  "sublane": "black-hat-stale-ask-kani-projection-repair",
+  "delegate": "proof-writer",
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/bd-vb-vt2f-bdd",
+  "input_artifacts": [
+    ".beads/vb-vt2f/black-hat-review.md",
+    ".beads/vb-vt2f/defects.md",
+    ".beads/vb-vt2f/proof-evidence.md",
+    ".beads/vb-vt2f/proof-writer-report.md",
+    "crates/vb_runtime/src/kani_vt2f_runtime_facade.rs"
+  ],
+  "output_artifacts": [
+    ".beads/vb-vt2f/proof-writer-report.md",
+    ".beads/vb-vt2f/proof-evidence.md",
+    "crates/vb_runtime/src/kani_vt2f_runtime_facade.rs"
+  ],
+  "attempt": 1,
+  "cap_context": "black-hat routed defect to proof harness/projection repair after State 11 approval"
+}

@@ -95,8 +95,10 @@ const SCENARIOS: &[Scenario] = &[
         expected_error: Some("RuntimeError variant"),
         durability_profile: "journal events captured when storage is enabled",
         related_bead: "vb-vt2f",
-        executable_evidence_target: None,
-        deferred_follow_up_bead: Some("vb-vt2f"),
+        executable_evidence_target: Some(
+            "crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs",
+        ),
+        deferred_follow_up_bead: None,
     },
     Scenario {
         id: "VB-BDD-CATALOG-005",

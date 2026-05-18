@@ -1,7 +1,10 @@
 #![forbid(unsafe_code)]
 //! Collect pagination primitive handlers.
 
-use std::collections::HashMap;
+#[cfg(kani)]
+use std::collections::BTreeMap as Map;
+#[cfg(not(kani))]
+use std::collections::HashMap as Map;
 use std::time::SystemTime;
 
 use serde::{Deserialize, Serialize};
@@ -44,8 +47,8 @@ pub struct CollectPaginationState {
 /// Side table replacing the global Mutex. Owns pagination state per (RunId, SlotIdx).
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct CollectStates {
-    entries: HashMap<(RunId, SlotIdx), CollectPaginationState>,
-    lineages: HashMap<(RunId, SlotIdx), CollectPageLineage>,
+    entries: Map<(RunId, SlotIdx), CollectPaginationState>,
+    lineages: Map<(RunId, SlotIdx), CollectPageLineage>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]

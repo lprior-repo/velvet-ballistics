@@ -23,14 +23,6 @@ impl Shard {
             .map_err(|_| RuntimeError::RunNotFound)?;
         state
             .frame
-            .mark_running(answer.ticket.ask_step)
-            .map_err(|_| RuntimeError::RunNotFound)?;
-        state
-            .frame
-            .mark_succeeded(answer.ticket.ask_step)
-            .map_err(|_| RuntimeError::RunNotFound)?;
-        state
-            .frame
             .set_pc(answer.ticket.resume_step)
             .map_err(|_| RuntimeError::RunNotFound)?;
         let encoded_answer_value =
@@ -94,6 +86,7 @@ impl Shard {
         }
         if let Some(state) = self.runs.swap_remove(&run) {
             self.release_frame(state.frame);
+            self.terminal_runs.insert(run);
             self.counters.inc_failed();
             self.trace_ring.push(TraceEvent::RunCancelled { run });
         }

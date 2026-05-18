@@ -192,6 +192,7 @@ impl Shard {
             collect_states: CollectStates::new(),
             action_contracts: action_contracts.to_vec().into_boxed_slice(),
         };
+        self.terminal_runs.swap_remove(&run);
         self.runs.insert(run, state);
         self.apply(run, RuntimeEvent::Submit);
         match self.drive_run(run) {
@@ -247,6 +248,15 @@ impl Shard {
                 Err(RuntimeError::AdmissionArtifactDigestMismatch { requested, found })
             }
         }
+    }
+
+    pub(crate) fn validate_submit_admission(
+        &self,
+        run: RunId,
+        digest: vb_core::ids::WorkflowDigest,
+        caps: CapabilitySet,
+    ) -> RuntimeResult<()> {
+        self.build_admission(run, digest, caps).map(|_| ())
     }
 
     pub fn handle_resume(&mut self, run: RunId) -> Result<ResumeResult, ResumeError> {
@@ -462,7 +472,7 @@ impl Shard {
         let state = self
             .runs
             .get_mut(&ticket.run)
-            .ok_or(RuntimeError::RunNotFound)?;
+            .ok_or(RuntimeError::InvalidActionCompletion)?;
         crate::shard::helpers::validate_action_completion(state, ticket)?;
         if retry_is_available(state, ticket, failure.retry_policy)? {
             state

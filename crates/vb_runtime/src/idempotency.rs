@@ -7,7 +7,10 @@
 //! when the tracker is full, which is safe because the durable journal is the
 //! authoritative source of truth for crash recovery.
 
-use std::collections::HashMap;
+#[cfg(kani)]
+use std::collections::{BTreeMap as Map, BTreeSet as Set};
+#[cfg(not(kani))]
+use std::collections::{HashMap as Map, HashSet as Set};
 
 use vb_core::action::{ActionError, ActionTicket, Idempotency};
 
@@ -17,7 +20,7 @@ const DEFAULT_CAPACITY: usize = 1024;
 /// Bounded tracker that records completed action tickets for exactly-once
 /// completion detection.
 ///
-/// Uses a HashMap keyed by the ticket's `idempotency_key` for O(1) lookups.
+/// Uses a map keyed by the ticket's `idempotency_key` for lookups.
 /// When capacity is reached, the oldest entry is evicted (FIFO ring buffer).
 ///
 /// ## Policy-aware tracking
@@ -30,7 +33,7 @@ const DEFAULT_CAPACITY: usize = 1024;
 #[derive(Debug, Clone)]
 pub struct IdempotencyTracker {
     /// Map from idempotency key to the completed ticket (for all classes).
-    completed: HashMap<u128, ActionTicket>,
+    completed: Map<u128, ActionTicket>,
     /// Insertion order for FIFO eviction.
     order: Vec<u128>,
     /// Maximum number of entries before eviction.
@@ -40,7 +43,7 @@ pub struct IdempotencyTracker {
     /// Set of idempotency keys for `AtLeastOnceExternal` actions that have
     /// completed. Kept separate so policy decision can be made without
     /// consulting the full `completed` map.
-    at_least_once_completed: std::collections::HashSet<u128>,
+    at_least_once_completed: Set<u128>,
 }
 
 impl IdempotencyTracker {
@@ -66,11 +69,11 @@ impl IdempotencyTracker {
     pub fn with_capacity(capacity: usize) -> Self {
         let effective_capacity = capacity.max(1);
         Self {
-            completed: HashMap::new(),
+            completed: Map::new(),
             order: Vec::new(),
             capacity: effective_capacity,
             cursor: 0,
-            at_least_once_completed: std::collections::HashSet::new(),
+            at_least_once_completed: Set::new(),
         }
     }
 

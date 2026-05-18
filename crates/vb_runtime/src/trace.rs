@@ -124,6 +124,25 @@ impl TraceRing {
         events
     }
 
+    /// Returns true when remembered trace evidence shows the run reached a terminal state.
+    #[must_use]
+    pub fn has_terminal_event_for_run(&self, target: RunId) -> bool {
+        let mut inspected = 0usize;
+        for event in &self.history {
+            if inspected >= self.capacity {
+                return false;
+            }
+            if event.is_terminal_for_run(target) {
+                return true;
+            }
+            inspected = match inspected.checked_add(1) {
+                Some(next) => next,
+                None => return false,
+            };
+        }
+        false
+    }
+
     fn remember(&mut self, event: TraceEvent) {
         while self.history.len() >= self.capacity {
             if self.history.pop_front().is_none() {
@@ -237,6 +256,24 @@ impl TraceEvent {
             | Self::RunFinished { run }
             | Self::RunFailed { run }
             | Self::RunCancelled { run } => *run,
+        }
+    }
+
+    /// Returns true when this event is terminal evidence for the given run.
+    #[must_use]
+    pub fn is_terminal_for_run(&self, target: RunId) -> bool {
+        match self {
+            Self::RunFinished { run } | Self::RunFailed { run } | Self::RunCancelled { run } => {
+                *run == target
+            }
+            Self::StepStarted { .. }
+            | Self::StepEnded { .. }
+            | Self::SlotWritten { .. }
+            | Self::ActionScheduled { .. }
+            | Self::ActionCompleted { .. }
+            | Self::ActionFailed { .. }
+            | Self::AskAnswered { .. }
+            | Self::RunSubmitted { .. } => false,
         }
     }
 }

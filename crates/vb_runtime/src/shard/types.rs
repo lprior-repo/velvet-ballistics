@@ -2,7 +2,7 @@
 //! Single-threaded shard owning mutable run state directly.
 
 use crossbeam_queue::ArrayQueue;
-use indexmap::IndexMap;
+use indexmap::{IndexMap, IndexSet};
 use vb_core::action::ActionContract;
 use vb_core::capability::CapabilitySet;
 use vb_core::frame::RunFrame;
@@ -116,6 +116,13 @@ pub enum ShardCommand {
     },
     /// An external action failed.
     ActionFailed {
+        /// Ticket for the action being failed.
+        ticket: vb_core::action::ActionTicket,
+        /// Typed failure payload.
+        failure: vb_core::action::ActionFailure,
+    },
+    /// Public runtime facade action failure.
+    RuntimeActionFailed {
         /// Ticket for the action being failed.
         ticket: vb_core::action::ActionTicket,
         /// Typed failure payload.
@@ -373,6 +380,8 @@ pub struct Shard {
     pub runs: IndexMap<RunId, RunState>,
     /// Per-run lifecycle state tracking for resume eligibility.
     pub(crate) runtime_states: IndexMap<RunId, RuntimeState>,
+    /// Terminal run ids retained as direct runtime state, independent of trace retention.
+    pub(crate) terminal_runs: IndexSet<RunId>,
     /// Next durable journal sequence by run, owned by this shard.
     pub(crate) journal_sequences: IndexMap<RunId, EventSeq>,
     pub(crate) pending_timers: IndexMap<RunId, PendingTimer>,

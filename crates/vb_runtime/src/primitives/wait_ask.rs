@@ -41,7 +41,7 @@ pub fn wait_event(
     Ok(vb_core::EngineSignal::AwaitingWait)
 }
 
-/// Executes Ask: reads the prompt slot, validates it is a Symbol,
+/// Executes Ask: reads the prompt slot, validates it is prompt-compatible,
 /// and optional timeout validated as numeric, creates an ask ticket,
 /// and suspends.
 ///
@@ -53,7 +53,7 @@ pub fn ask(
     timeout_slot: Option<SlotIdx>,
 ) -> Result<vb_core::EngineSignal, EngineError> {
     let prompt_value = *run.read_slot(prompt)?;
-    validate_symbol(prompt_value, "prompt")?;
+    validate_prompt(prompt_value)?;
     if let Some(timeout) = timeout_slot {
         let timeout_value = *run.read_slot(timeout)?;
         validate_numeric(timeout_value, "timeout")?;
@@ -95,13 +95,13 @@ fn validate_numeric(value: SlotValue, expected: &'static str) -> Result<(), Engi
     }
 }
 
-fn validate_symbol(value: SlotValue, expected: &'static str) -> Result<(), EngineError> {
+fn validate_prompt(value: SlotValue) -> Result<(), EngineError> {
     match value {
-        SlotValue::Symbol(_) => Ok(()),
-        other => Err(EngineError::TypeMismatch {
-            expected,
-            found: other.type_name(),
+        SlotValue::Bool(_) => Err(EngineError::TypeMismatch {
+            expected: "prompt",
+            found: value.type_name(),
         }),
+        _ => Ok(()),
     }
 }
 

@@ -1,7 +1,11 @@
 impl Shard {
     /// Creates a new shard with the given configuration.
     pub fn new(config: ShardConfig) -> Self {
-        Self::new_with_journal(config, NoopRuntimeJournal::shared())
+        Self::new_with_journal_and_artifact_store(
+            config,
+            NoopRuntimeJournal::shared(),
+            crate::admission::AlwaysPresentArtifactStore::shared(),
+        )
     }
 
     /// Creates a new shard with the given configuration, journal sink, and artifact store.
@@ -14,6 +18,7 @@ impl Shard {
             command_queue: ShardCommandQueue::from_config(config),
             runs: IndexMap::new(),
             runtime_states: IndexMap::new(),
+            terminal_runs: IndexSet::new(),
             journal_sequences: IndexMap::new(),
             pending_timers: IndexMap::new(),
             frame_pools: IndexMap::new(),
@@ -33,8 +38,10 @@ impl Shard {
     ///
     /// For storage-backed journals (e.g., `StorageRuntimeJournal`), the shard uses
     /// `StorageArtifactStore` so that strict/journaled admission can validate artifacts
-    /// against real durable storage. For noop/volatile journals, `AlwaysPresentArtifactStore`
-    /// is used since no durable artifact validation is possible.
+    /// against real durable storage. For noop/volatile strict and journaled journals,
+    /// `MissingAcceptedArtifactStore` is used so direct runtime construction without a
+    /// storage-backed accepted-artifact source rejects admission instead of silently
+    /// accepting unbacked artifacts.
     pub fn new_with_journal(config: ShardConfig, journal: SharedRuntimeJournal) -> Self {
         let artifact_store: crate::admission::SharedAcceptedArtifactStore =
             if let Some(fjall_journal) = journal.storage_journal() {
@@ -45,8 +52,15 @@ impl Shard {
                     fjall_journal,
                 ))
             } else {
-                // Noop/volatile journal: AlwaysPresentArtifactStore (relaxed mode only).
-                crate::admission::AlwaysPresentArtifactStore::shared()
+                match config.policy {
+                    vb_core::policy::RuntimePolicy::Relaxed => {
+                        crate::admission::AlwaysPresentArtifactStore::shared()
+                    }
+                    vb_core::policy::RuntimePolicy::Strict
+                    | vb_core::policy::RuntimePolicy::Journaled => {
+                        crate::admission::MissingAcceptedArtifactStore::shared()
+                    }
+                }
             };
         Self::new_with_journal_and_artifact_store(config, journal, artifact_store)
     }
@@ -200,6 +214,10 @@ impl Shard {
             ShardCommand::ActionFailed { ticket, failure } => {
                 self.handle_action_failure(ticket, failure)?;
             }
+            ShardCommand::RuntimeActionFailed { ticket, failure } => {
+                self.handle_action_failure(ticket, failure)
+                    .map_err(Self::runtime_action_failure_error)?;
+            }
             ShardCommand::AskAnswered { answer } => self.handle_ask_answer(answer)?,
             ShardCommand::TimerFired { run } => self.handle_timer(run)?,
             ShardCommand::Cancel { run, reason } => self.handle_cancel(run, reason)?,
@@ -213,6 +231,13 @@ impl Shard {
         }
 
         Ok(true)
+    }
+
+    fn runtime_action_failure_error(error: RuntimeError) -> RuntimeError {
+        match error {
+            RuntimeError::RunNotFound => RuntimeError::InvalidActionCompletion,
+            other => other,
+        }
     }
 
     /// Returns a reference to the shard counters.
