@@ -686,4 +686,226 @@ mod tests {
         let result = check_evidence_gate(&metadata, 20);
         assert!(matches!(result, Err(EvidenceError::EmptyBudget)));
     }
+
+    // === Display impl tests for EvidenceError ===
+
+    #[test]
+    fn evidence_error_display_missing_baseline() {
+        let err = EvidenceError::MissingBaseline;
+        let display = format!("{}", err);
+        assert_eq!(display, "missing baseline measurement");
+    }
+
+    #[test]
+    fn evidence_error_display_missing_result() {
+        let err = EvidenceError::MissingResult;
+        let display = format!("{}", err);
+        assert_eq!(display, "missing result measurement");
+    }
+
+    #[test]
+    fn evidence_error_display_regression_detected() {
+        let err = EvidenceError::RegressionDetected {
+            benchmark: "test_bench".to_string(),
+            delta: 5000,
+        };
+        let display = format!("{}", err);
+        assert_eq!(display, "regression detected: test_bench delta=5000");
+    }
+
+    #[test]
+    fn evidence_error_display_empty_budget() {
+        let err = EvidenceError::EmptyBudget;
+        let display = format!("{}", err);
+        assert_eq!(display, "budget not configured");
+    }
+
+    // === Display impl tests for YamlBenchmarkError ===
+
+    #[test]
+    fn yaml_benchmark_error_display_parse_failure() {
+        let err = YamlBenchmarkError::ParseFailure("invalid yaml".to_string());
+        let display = format!("{}", err);
+        assert_eq!(display, "YAML parse failed: invalid yaml");
+    }
+
+    #[test]
+    fn yaml_benchmark_error_display_validation_failure() {
+        let err = YamlBenchmarkError::ValidationFailure("missing field".to_string());
+        let display = format!("{}", err);
+        assert_eq!(display, "workflow validation failed: missing field");
+    }
+
+    // === Display impl tests for StorageBenchmarkError ===
+
+    #[test]
+    fn storage_benchmark_error_display_journal_open_failure() {
+        let err = StorageBenchmarkError::JournalOpenFailure("file not found".to_string());
+        let display = format!("{}", err);
+        assert_eq!(display, "journal open failed: file not found");
+    }
+
+    #[test]
+    fn storage_benchmark_error_display_append_failure() {
+        let err = StorageBenchmarkError::AppendFailure("disk full".to_string());
+        let display = format!("{}", err);
+        assert_eq!(display, "journal append failed: disk full");
+    }
+
+    // === Display impl tests for IpcBenchmarkError ===
+
+    #[test]
+    fn ipc_benchmark_error_display_encode_failure() {
+        let err = IpcBenchmarkError::EncodeFailure("buffer overflow".to_string());
+        let display = format!("{}", err);
+        assert_eq!(display, "frame encode failed: buffer overflow");
+    }
+
+    #[test]
+    fn ipc_benchmark_error_display_decode_failure() {
+        let err = IpcBenchmarkError::DecodeFailure("truncated frame".to_string());
+        let display = format!("{}", err);
+        assert_eq!(display, "frame decode failed: truncated frame");
+    }
+
+    // === Display impl tests for RecoveryBenchmarkError ===
+
+    #[test]
+    fn recovery_benchmark_error_display_hydration_failure() {
+        let err = RecoveryBenchmarkError::HydrationFailure("missing checkpoint".to_string());
+        let display = format!("{}", err);
+        assert_eq!(display, "recovery hydration failed: missing checkpoint");
+    }
+
+    // === Display impl tests for RuntimeBenchmarkError ===
+
+    #[test]
+    fn runtime_benchmark_error_display_step_failure() {
+        let err = RuntimeBenchmarkError::StepFailure("stuck in loop".to_string());
+        let display = format!("{}", err);
+        assert_eq!(display, "runtime step failed: stuck in loop");
+    }
+
+    #[test]
+    fn runtime_benchmark_error_display_primitive_failure() {
+        let err = RuntimeBenchmarkError::PrimitiveFailure("invalid opcode".to_string());
+        let display = format!("{}", err);
+        assert_eq!(display, "runtime primitive failed: invalid opcode");
+    }
+
+    // === budget_utilization_percent overflow edge cases ===
+
+    #[test]
+    fn budget_utilization_percent_exact_100_bps() {
+        // 100% utilization = 10000 basis points
+        assert_eq!(
+            budget_utilization_percent(Duration::from_micros(100_000), 100_000),
+            10_000
+        );
+    }
+
+    #[test]
+    fn budget_utilization_percent_150_percent() {
+        // elapsed > budget: 150000/100000 = 1.5 = 15000 bps
+        assert_eq!(
+            budget_utilization_percent(Duration::from_micros(150_000), 100_000),
+            15_000
+        );
+    }
+
+    #[test]
+    fn budget_utilization_percent_200_percent() {
+        // elapsed = 2x budget = 20000 bps
+        assert_eq!(
+            budget_utilization_percent(Duration::from_micros(200_000), 100_000),
+            20_000
+        );
+    }
+
+    // === capture_metadata edge cases ===
+
+    #[test]
+    fn capture_metadata_rejects_single_non_hex_char() {
+        // Only 'g' is invalid hex
+        let result = capture_metadata(
+            "bench",
+            Some(Duration::from_micros(100_000)),
+            Duration::from_micros(105_000),
+            "cargo bench",
+            "123g",
+            "linux-x86_64",
+            200_000,
+        );
+        assert!(matches!(result, Err(EvidenceError::MissingCommit)));
+    }
+
+    #[test]
+    fn capture_metadata_accepts_max_uint64_commit() {
+        // u64::MAX as hex string
+        let result = capture_metadata(
+            "bench",
+            Some(Duration::from_micros(100_000)),
+            Duration::from_micros(105_000),
+            "cargo bench",
+            "ffffffffffffffff",
+            "linux-x86_64",
+            200_000,
+        );
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap().commit_hash, "ffffffffffffffff");
+    }
+
+    // === check_evidence_gate threshold boundary tests ===
+
+    #[test]
+    fn check_evidence_gate_accepts_exactly_at_threshold() {
+        // baseline=100000, result=120000, threshold=20%
+        // 120000 is NOT > 100000 + 20000 = 120000, so should pass
+        let metadata = BenchmarkMetadata {
+            name: "yaml_parse".to_string(),
+            baseline_us: Some(100_000),
+            result_us: 120_000,
+            command: "cargo bench".to_string(),
+            commit_hash: "abc123".to_string(),
+            environment: "linux-x86_64".to_string(),
+            budget_us: 200_000,
+        };
+        assert!(check_evidence_gate(&metadata, 20).is_ok());
+    }
+
+    #[test]
+    fn check_evidence_gate_accepts_zero_threshold_within_baseline() {
+        // threshold=0%, result=baseline
+        let metadata = BenchmarkMetadata {
+            name: "yaml_parse".to_string(),
+            baseline_us: Some(100_000),
+            result_us: 100_000,
+            command: "cargo bench".to_string(),
+            commit_hash: "abc123".to_string(),
+            environment: "linux-x86_64".to_string(),
+            budget_us: 200_000,
+        };
+        assert!(check_evidence_gate(&metadata, 0).is_ok());
+    }
+
+    #[test]
+    fn check_evidence_gate_rejects_one_micro_over_threshold() {
+        // baseline=100000, result=120001, threshold=20%
+        // 120001 > 100000 + 20000 = 120000, so regression
+        let metadata = BenchmarkMetadata {
+            name: "yaml_parse".to_string(),
+            baseline_us: Some(100_000),
+            result_us: 120_001,
+            command: "cargo bench".to_string(),
+            commit_hash: "abc123".to_string(),
+            environment: "linux-x86_64".to_string(),
+            budget_us: 200_000,
+        };
+        let result = check_evidence_gate(&metadata, 20);
+        // delta = result - baseline = 120001 - 100000 = 20001
+        assert!(matches!(
+            result,
+            Err(EvidenceError::RegressionDetected { delta: 20_001, .. })
+        ));
+    }
 }

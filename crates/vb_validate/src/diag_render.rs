@@ -322,6 +322,28 @@ fn error_diagnostic_parts(error: &ValidationError) -> (DiagnosticCode, String) {
                 "non-deterministic path: from node {from_node} to node {to_node} contains no suspension point"
             ),
         ),
+        ValidationError::MissingSchemaVersion => (
+            DiagnosticCode::new(CODE_MISSING_SCHEMA_VERSION),
+            "missing schema_version".into(),
+        ),
+        ValidationError::InvalidKind { kind } => (
+            DiagnosticCode::new(CODE_INVALID_KIND),
+            format!("invalid kind: {kind}"),
+        ),
+        ValidationError::VersionMonotonicityBreach {
+            file,
+            expected,
+            actual,
+        } => (
+            DiagnosticCode::new(CODE_VERSION_MONOTONICITY_BREACH),
+            format!(
+                "version monotonicity breach: {file}, expected {expected}, got {actual}"
+            ),
+        ),
+        ValidationError::CueVetFailed { file } => (
+            DiagnosticCode::new(CODE_CUE_VET_FAILED),
+            format!("cue vet failed: {file}"),
+        ),
     }
 }
 

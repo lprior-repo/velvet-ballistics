@@ -4006,6 +4006,28 @@ fn explain_validation_error(err: &vb_validate::ValidationError) {
                 "  Action {action_id}: capability '{name}' first at {first_index}, duplicate at {duplicate_index}."
             );
         }
+        ValidationError::MissingSchemaVersion => {
+            outln!("Missing Schema Version");
+            outln!("  A contract file is missing its schema_version field.");
+        }
+        ValidationError::InvalidKind { kind } => {
+            outln!("Invalid Kind");
+            outln!("  Contract kind '{kind}' is not recognized.");
+        }
+        ValidationError::VersionMonotonicityBreach {
+            file,
+            expected,
+            actual,
+        } => {
+            outln!("Version Monotonicity Breach");
+            outln!(
+                "  File '{file}': version {actual} is not {expected}."
+            );
+        }
+        ValidationError::CueVetFailed { file } => {
+            outln!("CUE Vet Failed");
+            outln!("  File '{file}' failed CUE vet validation.");
+        }
     }
 }
 

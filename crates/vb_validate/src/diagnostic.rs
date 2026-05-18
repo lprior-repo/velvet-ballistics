@@ -77,6 +77,12 @@ const CODE_CAPABILITY_DUPLICATE: u16 = 0x0511;
 const CODE_ACCESSOR_PATH_TOO_DEEP: u16 = 0x0512;
 const CODE_ACCESSOR_SYMBOL_OUT_OF_BOUNDS: u16 = 0x0513;
 
+/// Contracts-as-data validation errors: E06xx.
+const CODE_MISSING_SCHEMA_VERSION: u16 = 0x0601;
+const CODE_INVALID_KIND: u16 = 0x0602;
+const CODE_VERSION_MONOTONICITY_BREACH: u16 = 0x0603;
+const CODE_CUE_VET_FAILED: u16 = 0x0604;
+
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
@@ -395,6 +401,28 @@ fn error_diagnostic_parts(error: &ValidationError) -> (DiagnosticCode, String) {
                 "non-deterministic path: from node {from_node} to node {to_node} contains no suspension point"
             ),
         ),
+        ValidationError::MissingSchemaVersion => (
+            DiagnosticCode::new(CODE_MISSING_SCHEMA_VERSION),
+            "missing schema_version".into(),
+        ),
+        ValidationError::InvalidKind { kind } => (
+            DiagnosticCode::new(CODE_INVALID_KIND),
+            format!("invalid kind: {kind}"),
+        ),
+        ValidationError::VersionMonotonicityBreach {
+            file,
+            expected,
+            actual,
+        } => (
+            DiagnosticCode::new(CODE_VERSION_MONOTONICITY_BREACH),
+            format!(
+                "version monotonicity breach: {file}, expected {expected}, got {actual}"
+            ),
+        ),
+        ValidationError::CueVetFailed { file } => (
+            DiagnosticCode::new(CODE_CUE_VET_FAILED),
+            format!("cue vet failed: {file}"),
+        ),
     }
 }
 
@@ -630,6 +658,18 @@ mod tests {
             ValidationError::NonDeterministicPath {
                 from_node: 0,
                 to_node: 1,
+            },
+            ValidationError::MissingSchemaVersion,
+            ValidationError::InvalidKind {
+                kind: "bogus".into(),
+            },
+            ValidationError::VersionMonotonicityBreach {
+                file: "contracts/bad.cue".into(),
+                expected: "greater than 1.0.0".into(),
+                actual: "0.9.0".into(),
+            },
+            ValidationError::CueVetFailed {
+                file: "contracts/bad.cue".into(),
             },
         ]
     }

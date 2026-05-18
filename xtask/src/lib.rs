@@ -21,6 +21,7 @@ pub use routing::{XtaskEnvironment, placeholder_status, route_command};
 pub use status::{DeferredReason, OutputFormat, StructuredStatus, render_structured_status};
 
 // New modules for proof/test orchestrator (vb-i7xn)
+pub mod contracts;
 pub mod discovery;
 pub mod lanes;
 pub mod logger;

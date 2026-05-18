@@ -961,3 +961,72 @@ fn adversarial_api_only_whitespace_rejected() {
     let result = validate_yaml_profile(yaml);
     assert!(result.is_err(), "expected error for whitespace-only YAML");
 }
+
+// ---------------------------------------------------------------------------
+// build_source_map — public API coverage
+// ---------------------------------------------------------------------------
+
+#[test]
+fn build_source_map_returns_non_empty_for_valid_yaml() {
+    let yaml = "key: value\n";
+    let result = build_source_map(yaml);
+    assert!(result.is_ok(), "build_source_map failed: {result:?}");
+    let map = result.unwrap();
+    assert!(!map.is_empty(), "source map should not be empty for valid YAML");
+    assert!(map.len() >= 2, "expected >=2 nodes for key: value, got {}", map.len());
+}
+
+#[test]
+fn span_for_node_returns_none_for_out_of_range_index() {
+    let yaml = "a: 1\n";
+    let map = build_source_map(yaml).expect("source map should build");
+    let result = map.span_for_node(999);
+    assert_eq!(result, None, "span_for_node(999) should return None for small doc");
+}
+
+#[test]
+fn span_for_node_returns_some_for_valid_index() {
+    let yaml = "a: 1\n";
+    let map = build_source_map(yaml).expect("source map should build");
+    let result = map.span_for_node(0);
+    assert!(result.is_some(), "span_for_node(0) should return Some for valid doc");
+}
+
+// ---------------------------------------------------------------------------
+// reject_forbidden_yaml_features — public API coverage
+// ---------------------------------------------------------------------------
+
+#[test]
+fn reject_forbidden_yaml_features_rejects_custom_tag() {
+    // Custom tags like !custom are rejected by the feature checker.
+    let yaml = "key: !custom value\n";
+    let Ok(events) = parse_yaml_events(yaml) else {
+        // If YAML parsing itself fails that's also acceptable for this test.
+        return;
+    };
+    let result = reject_forbidden_yaml_features(&events);
+    assert!(
+        matches!(result, Err(YamlError::CustomTag { .. })),
+        "expected CustomTag error, got: {result:?}"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// load_fixture_source — public API coverage
+// ---------------------------------------------------------------------------
+
+#[test]
+fn load_fixture_source_parses_valid_workflow() {
+    let yaml = indoc::indoc! {r#"
+        version: velvet-ballastics/v1
+        name: test-workflow
+        when:
+          manual: {}
+        steps:
+          - id: start
+            finish:
+              result: "done"
+    "#};
+    let result = load_fixture_source(yaml);
+    assert!(result.is_ok(), "load_fixture_source failed: {result:?}");
+}

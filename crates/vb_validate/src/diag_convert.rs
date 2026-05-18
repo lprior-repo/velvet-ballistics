@@ -139,6 +139,18 @@ pub(super) fn all_variants() -> Vec<ValidationError> {
             from_node: 0,
             to_node: 1,
         },
+        ValidationError::MissingSchemaVersion,
+        ValidationError::InvalidKind {
+            kind: "cli_envelope".into(),
+        },
+        ValidationError::VersionMonotonicityBreach {
+            file: "bad.cue".into(),
+            expected: "2".into(),
+            actual: "0".into(),
+        },
+        ValidationError::CueVetFailed {
+            file: "broken.cue".into(),
+        },
     ]
 }
 
