@@ -1,6 +1,6 @@
 //! JSONL structured logging per crate/lane.
 //!
-//! Writes per-run logs to target/xtask-proof/<run-id>/<crate>/<lane>.jsonl
+//! Writes per-run logs to target/xtask-proof/&lt;run-id&gt;/&lt;crate&gt;/&lt;lane&gt;.jsonl
 
 use chrono::Utc;
 use serde::Serialize;
