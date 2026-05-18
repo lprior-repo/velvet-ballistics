@@ -42,7 +42,6 @@ fn valid_record_base() -> BoundaryRecordDraft {
 
 /// FreshnessMarker: evidence_version < source_version → StaleEvidence.
 #[test]
-#[ignore = "workspace root path incorrect in test"]
 fn validate_record_returns_stale_evidence_when_evidence_version_behind_source() {
     let mut record = valid_record_base();
     // source_version = 2, evidence_version = 1 → stale
@@ -56,7 +55,6 @@ fn validate_record_returns_stale_evidence_when_evidence_version_behind_source() 
 
 /// FreshnessMarker: evidence_version < schema_version → StaleEvidence.
 #[test]
-#[ignore = "workspace root path incorrect in test"]
 fn validate_record_returns_stale_evidence_when_evidence_version_behind_schema() {
     let mut record = valid_record_base();
     // schema_version = 3, evidence_version = 1 → stale

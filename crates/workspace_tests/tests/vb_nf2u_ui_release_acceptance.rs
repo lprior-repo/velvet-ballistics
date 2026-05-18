@@ -28,7 +28,6 @@ const RAW_IDEMPOTENCY_KEY: &str = "Idempotency-Key: idem_vb_nf2u_secret";
 const RAW_TAINT: &str = "tainted_fixture_value_vb_nf2u";
 
 #[test]
-#[ignore]
 fn all_eight_screens_pass_reachability_and_overlap_gates() {
     // Given
     let workspace = isolated_workspace("all_eight_screens");
@@ -79,7 +78,6 @@ fn secret_values_are_redacted_in_every_screen() {
 }
 
 #[test]
-#[ignore = "pre-existing: ui release acceptance test requires specific environment"]
 fn intentional_overlap_fixture_fails_gate() {
     // Given
     let workspace = isolated_workspace("overlap_fails_gate");
@@ -106,7 +104,6 @@ fn intentional_overlap_fixture_fails_gate() {
 }
 
 #[test]
-#[ignore = "pre-existing: ui release acceptance test requires specific environment"]
 fn intentional_secret_fixture_fails_redaction_gate() {
     // Given
     let workspace = isolated_workspace("secret_fails_gate");
