@@ -1,6 +1,6 @@
 bead_id: vb-ssei
 bead_title: bdd: Verification and admission acceptance scenarios
-phase: 13
+phase: 15
 updated_at: 2026-05-18T21:50:13Z
 attempt: 1-of-7
 
@@ -10,7 +10,7 @@ attempt: 1-of-7
 - isolated_workspace: `/home/lewis/isolated/go-skill-vb-ssei-close-git`
 - path_guard: PASS; isolated workspace is not equal to and is not nested under source checkout.
 - bead_scope: add executable Given/When/Then acceptance scenarios for verification/admission behavior and connect catalog evidence target to `vb-ssei`.
-- current_state: State 13 complete; ready for State 14 landing-skill.
+- current_state: State 15 complete; landed and bead closed.
 - retry_attempts: 1
 - red_queen: not invoked.
 
@@ -23,3 +23,5 @@ attempt: 1-of-7
 - `rtk cargo check -p velvet-ballastics-workspace-tests` -> PASS, `cargo build (21 crates compiled)`.
 - `rtk cargo test -p velvet-ballastics-workspace-tests --test vb_ssei_verification_admission_acceptance --test vb_hxm0_acceptance_catalog -- --nocapture` -> PASS, `cargo test: 10 passed (2 suites, 0.02s)`.
 - `moon ci` -> FAIL_GLOBAL: fmt/check failures in unrelated `vb_codegen`/`vb_storage`; classified `DEFERRED_GLOBAL` in `regression-diff.md`.
+- `rtk git push origin HEAD:main` -> PASS after fetch/rebase retry; remote main contains commit `8ddea9e9d4ff1fd372f6a7c2ec544207dd27d300`.
+- `bd close vb-ssei --reason "Completed: added executable verification/admission BDD scenarios and catalog evidence; targeted workspace-tests gates pass" && bd dolt push` -> PASS; bead status closed and Dolt push complete.
