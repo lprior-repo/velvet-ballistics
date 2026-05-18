@@ -696,22 +696,23 @@ fn non_idempotent_pending_action_fails_closed() {
             seq: EventSeq::new(0),
             workflow: digest,
         },
+        test_admission_event(run, EventSeq::new(1), digest),
         JournalEvent::StepStarted {
             run,
-            seq: EventSeq::new(1),
+            seq: EventSeq::new(2),
             step: StepIdx::ZERO,
             attempt: 1,
         },
         JournalEvent::ActionScheduled {
             run,
-            seq: EventSeq::new(2),
+            seq: EventSeq::new(3),
             step: StepIdx::ZERO,
             action: action_id,
             attempt: 1,
         },
         JournalEvent::ActionCompletedEvent {
             run,
-            seq: EventSeq::new(3),
+            seq: EventSeq::new(4),
             step: StepIdx::ZERO,
             action: action_id,
             attempt: 1,
@@ -719,7 +720,7 @@ fn non_idempotent_pending_action_fails_closed() {
         // Attempt to re-schedule same action (blocked)
         JournalEvent::ActionScheduled {
             run,
-            seq: EventSeq::new(4),
+            seq: EventSeq::new(5),
             step: StepIdx::ZERO,
             action: action_id, // Same action, same step — non-idempotent
             attempt: 1,
