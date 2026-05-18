@@ -8,7 +8,7 @@ attempt: 1-of-7
 
 source_checkout: /home/lewis/src/velvet-ballistics
 isolated_workspace: /tmp/opencode/go-skill-vb-v7x6
-current_state: State 1 - Isolation and baseline
+current_state: State 15 - Landed and cleanup report written
 
 # Path Guard Evidence
 
@@ -22,4 +22,4 @@ current_state: State 1 - Isolation and baseline
 
 # Routing
 
-Next: capture baseline-report.md, then State 2 scope exact doc gate failure.
+Terminal status: landed to main/remote; bead closed and bead data pushed.
