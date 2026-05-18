@@ -63,6 +63,14 @@ pub enum ArtifactEnvelopeError {
         /// Action requiring idempotency attestation.
         action: ActionId,
     },
+    /// The verification proof digest does not match the accepted artifact digest.
+    #[error("artifact verification digest mismatch: requested {requested:?}, found {found:?}")]
+    ArtifactDigestMismatch {
+        /// Digest found in the accepted artifact envelope.
+        requested: WorkflowDigest,
+        /// Digest found in the verification proof.
+        found: WorkflowDigest,
+    },
 }
 
 /// Accepted run admission record, attached to a run frame after passing the admission gate.
@@ -371,6 +379,12 @@ impl AcceptedArtifactStore for StorageArtifactStore {
         let artifact: vb_storage::admission::AcceptedArtifact = postcard::from_bytes(&record.ir)
             .map_err(|_decode_err| ArtifactEnvelopeError::PostcardDecodeFailed)?;
 
+        if artifact.digest != artifact_digest {
+            return Err(ArtifactEnvelopeError::ArtifactDigestMismatch {
+                requested: artifact_digest,
+                found: artifact.digest,
+            });
+        }
         validate_accepted_artifact_envelope(&artifact)?;
 
         Ok(artifact)
@@ -380,6 +394,12 @@ impl AcceptedArtifactStore for StorageArtifactStore {
 fn validate_accepted_artifact_envelope(
     artifact: &vb_storage::admission::AcceptedArtifact,
 ) -> Result<(), ArtifactEnvelopeError> {
+    if artifact.verification.digest != artifact.digest {
+        return Err(ArtifactEnvelopeError::ArtifactDigestMismatch {
+            requested: artifact.digest,
+            found: artifact.verification.digest,
+        });
+    }
     if artifact.verification.gate_count != REQUIRED_GATE_COUNT {
         return Err(ArtifactEnvelopeError::InvalidGateCount {
             found: artifact.verification.gate_count,
@@ -454,6 +474,9 @@ fn map_artifact_envelope_error(source: ArtifactEnvelopeError) -> AdmissionError 
                 flag: "idempotency_attested",
             }
         }
+        ArtifactEnvelopeError::ArtifactDigestMismatch { requested, found } => {
+            AdmissionError::ArtifactDigestMismatch { requested, found }
+        }
     }
 }
 
@@ -472,9 +495,16 @@ pub fn admit_run(
 ) -> Result<RunAdmission, AdmissionError> {
     match policy {
         RuntimePolicy::Strict | RuntimePolicy::Journaled => {
-            store
+            let artifact = store
                 .load_accepted_artifact(digest)
                 .map_err(map_artifact_envelope_error)?;
+            validate_accepted_artifact_envelope(&artifact).map_err(map_artifact_envelope_error)?;
+            if artifact.digest != digest {
+                return Err(AdmissionError::ArtifactDigestMismatch {
+                    requested: digest,
+                    found: artifact.digest,
+                });
+            }
         }
         RuntimePolicy::Relaxed => {}
         _ => {
@@ -1040,6 +1070,74 @@ mod tests {
     }
 
     #[test]
+    fn admission_admit_run_strict_rejects_loaded_digest_mismatch() {
+        struct MismatchedAcceptedStore;
+        impl AcceptedArtifactStore for MismatchedAcceptedStore {
+            fn load_accepted_artifact(
+                &self,
+                _digest: WorkflowDigest,
+            ) -> Result<vb_storage::admission::AcceptedArtifact, ArtifactEnvelopeError>
+            {
+                let found = WorkflowDigest::from_bytes([0x42; 32]);
+                let mut artifact = accepted_artifact_with_caps(Box::new([]));
+                artifact.digest = found;
+                artifact.verification.digest = found;
+                Ok(artifact)
+            }
+        }
+        let requested = test_digest();
+
+        let result = admit_run(
+            &MismatchedAcceptedStore,
+            RuntimePolicy::Strict,
+            requested,
+            RunId::new(1),
+            CapabilitySet::empty(),
+        );
+
+        assert_eq!(
+            result,
+            Err(AdmissionError::ArtifactDigestMismatch {
+                requested,
+                found: WorkflowDigest::from_bytes([0x42; 32]),
+            })
+        );
+    }
+
+    #[test]
+    fn admission_admit_run_strict_rejects_loaded_proof_digest_mismatch() {
+        struct MismatchedProofStore;
+        impl AcceptedArtifactStore for MismatchedProofStore {
+            fn load_accepted_artifact(
+                &self,
+                _digest: WorkflowDigest,
+            ) -> Result<vb_storage::admission::AcceptedArtifact, ArtifactEnvelopeError>
+            {
+                let mut artifact = accepted_artifact_with_caps(Box::new([]));
+                artifact.verification.digest = WorkflowDigest::from_bytes([0x42; 32]);
+                Ok(artifact)
+            }
+        }
+        let requested = test_digest();
+
+        let result = admit_run(
+            &MismatchedProofStore,
+            RuntimePolicy::Strict,
+            requested,
+            RunId::new(1),
+            CapabilitySet::empty(),
+        );
+
+        assert_eq!(
+            result,
+            Err(AdmissionError::ArtifactDigestMismatch {
+                requested,
+                found: WorkflowDigest::from_bytes([0x42; 32]),
+            })
+        );
+    }
+
+    #[test]
     fn admission_admit_run_relaxed_without_artifact() {
         /// An artifact store that always reports artifacts as absent.
         struct NeverPresentStore;
@@ -1386,6 +1484,7 @@ mod tests {
                 let wrong_digest = WorkflowDigest::from_bytes([0x42; 32]);
                 let mut artifact = accepted_artifact_with_caps(Box::new([]));
                 artifact.digest = wrong_digest;
+                artifact.verification.digest = wrong_digest;
                 Ok(artifact)
             }
         }

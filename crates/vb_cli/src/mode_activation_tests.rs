@@ -280,7 +280,7 @@ fn command_mode_bench_run_is_pure() {
 #[test]
 fn command_mode_agent_context_is_pure() {
     // agent-context: static JSON build, no storage
-    let cmd = Command::AgentContext;
+    let cmd = Command::AgentContext { deliver: None };
     assert_eq!(command_mode(&cmd), CommandMode::Pure);
 }
 
@@ -493,7 +493,10 @@ fn command_mode_all_25_command_variants_are_classified() {
     // This is a completeness check: no command falls through without classification.
 
     // Pure commands (11)
-    assert_eq!(command_mode(&Command::AgentContext), CommandMode::Pure);
+    assert_eq!(
+        command_mode(&Command::AgentContext { deliver: None }),
+        CommandMode::Pure
+    );
     assert_eq!(
         command_mode(&Command::Validate {
             workflow: PathBuf::from("w.yaml"),
@@ -714,7 +717,7 @@ fn pure_commands_are_not_storage_nor_runtime_nor_ui() {
     // INV-002: UI dependencies remain scoped to UI mode
     // INV-003: Exit codes remain stable regardless of inactive subsystems
     let pure_commands: &[Command] = &[
-        Command::AgentContext,
+        Command::AgentContext { deliver: None },
         Command::Validate {
             workflow: PathBuf::from("w.yaml"),
             output: OutputFormat::Text,

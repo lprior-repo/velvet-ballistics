@@ -16,7 +16,7 @@ fn parse_version_command() {
 #[test]
 fn parse_agent_context_command() {
     let parsed = parse_args(&args(&["velvet-ballastics", "agent-context"]));
-    assert!(matches!(parsed, Ok(Command::AgentContext)));
+    assert!(matches!(parsed, Ok(Command::AgentContext { deliver: None })));
 }
 
 #[test]

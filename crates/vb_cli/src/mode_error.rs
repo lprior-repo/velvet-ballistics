@@ -60,7 +60,7 @@ pub(crate) fn command_mode(command: &Command) -> CommandMode {
         | Command::Graph { .. }
         | Command::Simulate { .. }
         | Command::BenchRun { .. }
-        | Command::AgentContext
+        | Command::AgentContext { .. }
         | Command::Status { .. }
         | Command::SystemStatus { .. }
         | Command::ActionList { .. }

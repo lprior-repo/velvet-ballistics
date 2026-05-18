@@ -16,6 +16,7 @@ mod commands_status;
 mod commands_system_status;
 mod commands_verify;
 mod commands_workflow;
+mod deliver_sink;
 mod exit_code;
 #[cfg(test)]
 mod mode_error;

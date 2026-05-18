@@ -65,7 +65,8 @@ fn commands() -> Value {
             "agent-context",
             serde_json::json!({
                 "summary": "Emit this versioned machine-readable CLI schema.",
-                "outputs": ["json"]
+                "outputs": ["json"],
+                "flags": deliver_flags()
             }),
         ),
         command(
@@ -242,6 +243,17 @@ fn json_flags() -> Value {
 
 fn db_json_flags() -> Value {
     serde_json::json!({"--db": {"type": "path", "required": true}, "--json": "bool", "--jsonl": "bool"})
+}
+
+fn deliver_flags() -> Value {
+    serde_json::json!({
+        "--deliver": {
+            "type": "target",
+            "required": false,
+            "supported": ["stdout", "file:<absolute-path>"],
+            "structured_refusal": ["webhook:<url>", "unknown schemes"]
+        }
+    })
 }
 
 fn run_id_db_command(summary: &str) -> Value {

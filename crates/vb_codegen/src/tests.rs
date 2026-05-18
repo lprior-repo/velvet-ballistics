@@ -9094,6 +9094,179 @@ fn collect_extra_text(extra: Option<CollectState>, run_id: u64, collector_slot: 
         Ok(())
     }
 
+    fn built_list_helper_execution_workflow(
+        name: &'static str,
+        digest_byte: u8,
+        values: &[i64],
+        op: vb_core::ExprOp,
+    ) -> Result<CompiledWorkflow, String> {
+        let list_slot = SlotIdx::new(
+            u16::try_from(values.len()).map_err(|e| format!("list slot overflow: {e}"))?,
+        );
+        let output_slot = list_slot
+            .checked_add(1)
+            .ok_or_else(|| String::from("output slot overflow"))?;
+        let slot_count = output_slot
+            .checked_add(1)
+            .ok_or_else(|| String::from("slot count overflow"))?
+            .get();
+        let expr = ExprProgram::try_from_ops(Box::new([vb_core::ExprOp::LoadSlot(list_slot), op]))
+            .map_err(|e| e.to_string())?;
+
+        let mut nodes: Vec<CompiledNode> = values
+            .iter()
+            .enumerate()
+            .map(|(index, _value)| {
+                let idx = u16::try_from(index).map_err(|e| format!("node index overflow: {e}"))?;
+                let next = idx
+                    .checked_add(1)
+                    .ok_or_else(|| String::from("next node overflow"))?;
+                Ok::<CompiledNode, String>(CompiledNode {
+                    id: StepIdx::new(idx),
+                    output: Some(SlotIdx::new(idx)),
+                    next: Some(StepIdx::new(next)),
+                    on_error: None,
+                    error_slot: None,
+                    kind: CompiledNodeKind::SetConst {
+                        value: ConstIdx::new(idx),
+                    },
+                })
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+
+        let build_idx =
+            u16::try_from(values.len()).map_err(|e| format!("build index overflow: {e}"))?;
+        let eval_idx = build_idx
+            .checked_add(1)
+            .ok_or_else(|| String::from("eval index overflow"))?;
+        let finish_idx = eval_idx
+            .checked_add(1)
+            .ok_or_else(|| String::from("finish index overflow"))?;
+        let item_slots: Vec<SlotIdx> = (0..build_idx).map(SlotIdx::new).collect();
+        nodes.push(CompiledNode {
+            id: StepIdx::new(build_idx),
+            output: Some(list_slot),
+            next: Some(StepIdx::new(eval_idx)),
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::BuildList {
+                items: item_slots.into_boxed_slice(),
+            },
+        });
+        nodes.push(CompiledNode {
+            id: StepIdx::new(eval_idx),
+            output: Some(output_slot),
+            next: Some(StepIdx::new(finish_idx)),
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::EvalExpr {
+                expr: vb_core::ExprIdx::new(0),
+            },
+        });
+        nodes.push(CompiledNode {
+            id: StepIdx::new(finish_idx),
+            output: None,
+            next: None,
+            on_error: None,
+            error_slot: None,
+            kind: CompiledNodeKind::Finish {
+                result: output_slot,
+            },
+        });
+
+        let constants: Vec<ConstValue> = values.iter().copied().map(ConstValue::I64).collect();
+        let parts = WorkflowParts {
+            name: Box::<str>::from(name),
+            digest: WorkflowDigest::from_bytes([digest_byte; 32]),
+            nodes: nodes.into_boxed_slice(),
+            expressions: vec![expr].into_boxed_slice(),
+            accessors: Box::new([]),
+            constants: constants.into_boxed_slice(),
+            slot_count,
+            symbols_count: 0,
+            entry: StepIdx::new(0),
+            resource_contract: ResourceContract::DEFAULT,
+            step_names: Box::new([]),
+        };
+        CompiledWorkflow::try_from_parts(parts).map_err(|e| e.to_string())
+    }
+
+    fn null_empty_execution_workflow() -> Result<CompiledWorkflow, String> {
+        direct_expression_workflow(
+            "test_null_empty_generated_execution",
+            Box::new([
+                vb_core::ExprOp::LoadConst(ConstIdx::new(0)),
+                vb_core::ExprOp::Empty,
+            ]),
+            vec![ConstValue::Null].into_boxed_slice(),
+            1,
+        )
+    }
+
+    fn assert_generated_and_ir_output(
+        workflow: &CompiledWorkflow,
+        name: &str,
+        expected_stdout: &str,
+        expected_ir: SlotValue,
+    ) -> Result<(), String> {
+        let stdout = generated_drive_stdout(workflow, name, "")?;
+        assert_eq!(stdout, expected_stdout);
+        assert_eq!(ir_drive_finished_value(workflow)?, expected_ir);
+        Ok(())
+    }
+
+    #[test]
+    fn length_empty_generated_execution_matches_core_for_list_and_null() -> Result<(), String> {
+        let length_workflow = built_list_helper_execution_workflow(
+            "test_length_generated_execution_list",
+            0xA1,
+            &[11, 22],
+            vb_core::ExprOp::Length,
+        )?;
+        assert_generated_and_ir_output(
+            &length_workflow,
+            "length_list_two",
+            "ok:I64(2)\n",
+            SlotValue::I64(2),
+        )?;
+
+        let non_empty_workflow = built_list_helper_execution_workflow(
+            "test_empty_generated_execution_non_empty_list",
+            0xA2,
+            &[11, 22],
+            vb_core::ExprOp::Empty,
+        )?;
+        assert_generated_and_ir_output(
+            &non_empty_workflow,
+            "empty_non_empty_list",
+            "ok:Bool(false)\n",
+            SlotValue::Bool(false),
+        )?;
+
+        let empty_workflow = built_list_helper_execution_workflow(
+            "test_empty_generated_execution_empty_list",
+            0xA3,
+            &[],
+            vb_core::ExprOp::Empty,
+        )?;
+        assert_generated_and_ir_output(
+            &empty_workflow,
+            "empty_empty_list",
+            "ok:Bool(true)\n",
+            SlotValue::Bool(true),
+        )?;
+
+        let null_workflow = null_empty_execution_workflow()?;
+        assert_generated_and_ir_output(
+            &null_workflow,
+            "empty_null",
+            "ok:Bool(true)\n",
+            SlotValue::Bool(true),
+        )?;
+
+        Ok(())
+    }
+
     #[test]
     fn direct_expr_emit_preserves_fail_closed_helper_branches() -> Result<(), String> {
         let cases = [
@@ -9395,6 +9568,82 @@ fn collect_extra_text(extra: Option<CollectState>, run_id: u64, collector_slot: 
             source.contains("SlotValue::I64"),
             "Count must produce SlotValue::I64 result"
         );
+        Ok(())
+    }
+
+    #[test]
+    fn sum_count_generated_execution_matches_core_for_built_list() -> Result<(), String> {
+        let sum_three_workflow = built_list_helper_execution_workflow(
+            "test_sum_generated_execution_three_item_list",
+            0xA4,
+            &[1, 2, 3],
+            vb_core::ExprOp::Sum,
+        )?;
+        assert_generated_and_ir_output(
+            &sum_three_workflow,
+            "sum_three_item_list",
+            "ok:I64(6)\n",
+            SlotValue::I64(6),
+        )?;
+
+        let count_three_workflow = built_list_helper_execution_workflow(
+            "test_count_generated_execution_three_item_list",
+            0xA5,
+            &[1, 2, 3],
+            vb_core::ExprOp::Count,
+        )?;
+        assert_generated_and_ir_output(
+            &count_three_workflow,
+            "count_three_item_list",
+            "ok:I64(3)\n",
+            SlotValue::I64(3),
+        )?;
+
+        let sum_empty_workflow = built_list_helper_execution_workflow(
+            "test_sum_generated_execution_empty_list",
+            0xA6,
+            &[],
+            vb_core::ExprOp::Sum,
+        )?;
+        assert_generated_and_ir_output(
+            &sum_empty_workflow,
+            "sum_empty_list",
+            "ok:I64(0)\n",
+            SlotValue::I64(0),
+        )?;
+
+        let count_empty_workflow = built_list_helper_execution_workflow(
+            "test_count_generated_execution_empty_list",
+            0xA7,
+            &[],
+            vb_core::ExprOp::Count,
+        )?;
+        assert_generated_and_ir_output(
+            &count_empty_workflow,
+            "count_empty_list",
+            "ok:I64(0)\n",
+            SlotValue::I64(0),
+        )?;
+
+        Ok(())
+    }
+
+    #[test]
+    fn count_generated_execution_rejects_non_list_like_core() -> Result<(), String> {
+        let workflow = direct_expression_workflow(
+            "test_count_generated_execution_non_list",
+            Box::new([
+                vb_core::ExprOp::LoadConst(ConstIdx::new(0)),
+                vb_core::ExprOp::Count,
+            ]),
+            vec![ConstValue::I64(7)].into_boxed_slice(),
+            1,
+        )?;
+        let expected = expected_drive_error_stdout(&workflow)?;
+        let generated = generated_drive_stdout(&workflow, "count_non_list", "")?;
+
+        assert_eq!(generated, expected);
+        assert!(generated.contains("TypeMismatch"));
         Ok(())
     }
 

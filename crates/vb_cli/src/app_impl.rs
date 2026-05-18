@@ -21,6 +21,7 @@ use crate::exit_code::CliExitCode;
 use crate::{
     agent_context, cli_envelope, commands_ai_context, commands_diff, commands_incident,
     commands_journal, commands_status, commands_system_status, commands_verify, commands_workflow,
+    deliver_sink,
 };
 use vb_ipc::client::IpcClient;
 use vb_ipc::{IpcCommand, IpcPayload};
@@ -75,7 +76,7 @@ commands:
   ai-context <run_id> --db <path> [--json|--jsonl]  Emit compact AI context packet for a run
   help                                                Print this message
   version                                             Print version
-  agent-context                                      Emit versioned AI-agent CLI schema
+  agent-context [--deliver stdout|file:<path>]       Emit or deliver versioned AI-agent CLI schema
   status     [--active-runs <N>] [--queue-depth <N>] [--trace-dropped <N>] [--json|--jsonl]  Report runtime shard status
   system status [--profile <quick|standard|full>] [--server none] [--emit yaml] [--json|--jsonl]  Report bounded system health
   action list [--json|--jsonl]                       List registered action contracts
@@ -84,6 +85,7 @@ commands:
 options:
   --json      Output structured JSON
   --jsonl     Output structured JSON Lines (one object per line)
+  --deliver   Deliver supported artifacts to stdout or file:<absolute-path>
 
 architecture: nightly Rust, compiled IR, in-memory engine, bounded IPC, Fjall journal, no HTTP hot path";
 
@@ -95,7 +97,7 @@ pub(crate) fn run_from_env() -> ExitCode {
     match parsed {
         Ok(Command::Help) => exit_from_io(&write_help_stdout(), ExitCode::SUCCESS),
         Ok(Command::Version) => exit_from_io(&write_version_stdout(), ExitCode::SUCCESS),
-        Ok(Command::AgentContext) => cmd_agent_context(),
+        Ok(Command::AgentContext { deliver }) => cmd_agent_context(deliver.as_deref()),
         Ok(Command::AiContext { run_id, db, output }) => {
             commands_ai_context::handle(&run_id, &db, output)
         }
@@ -267,10 +269,37 @@ fn read_journal_events(
 
 // --- Command implementations ---
 
-fn cmd_agent_context() -> ExitCode {
+fn cmd_agent_context(deliver: Option<&str>) -> ExitCode {
     let context = agent_context::build(VERSION);
+    if let Some(raw_target) = deliver {
+        return deliver_json_value(raw_target, &context);
+    }
     json_out(&context, OutputFormat::Json);
     ExitCode::SUCCESS
+}
+
+fn deliver_json_value(raw_target: &str, value: &serde_json::Value) -> ExitCode {
+    let target = match deliver_sink::parse_deliver_target(raw_target) {
+        Ok(target) => target,
+        Err(error) => {
+            errln!("deliver failed: {error}");
+            return CliExitCode::ValidationFailed.into();
+        }
+    };
+    match deliver_sink::write_json_line(&target, value) {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(error) => {
+            errln!("deliver failed: {error}");
+            deliver_error_exit_code(error).into()
+        }
+    }
+}
+
+fn deliver_error_exit_code(error: deliver_sink::DeliverSinkError) -> CliExitCode {
+    match error {
+        deliver_sink::DeliverSinkError::Io(_) => CliExitCode::StorageError,
+        _ => CliExitCode::ValidationFailed,
+    }
 }
 
 fn cmd_status(options: args::StatusOptions, output: OutputFormat) -> ExitCode {
@@ -4691,6 +4720,9 @@ fn write_error_stderr(error: &ParseError) -> io::Result<()> {
                 handle,
                 "unknown event status: {status} (expected: pending, active, waiting_answer, cancelled, completed, failed)\n\n{HELP}"
             )
+        }
+        ParseError::InvalidAgentContextArgument(reason) => {
+            writeln!(handle, "invalid agent-context argument: {reason}\n\n{HELP}")
         }
         ParseError::UnknownActionCommand(cmd) => {
             writeln!(

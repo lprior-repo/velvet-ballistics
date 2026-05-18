@@ -66,7 +66,9 @@ impl EventStatus {
 pub(crate) enum Command {
     Help,
     Version,
-    AgentContext,
+    AgentContext {
+        deliver: Option<String>,
+    },
     AiContext {
         run_id: String,
         db: PathBuf,
@@ -290,6 +292,7 @@ pub(crate) enum ParseError {
     UnknownCommand(String),
     UnknownServerMode(String),
     UnknownEventStatus(String),
+    InvalidAgentContextArgument(String),
     InvalidStatusArgument(String),
     InvalidSystemStatusArgument(String),
     UnknownActionCommand(String),
@@ -326,7 +329,7 @@ pub(crate) fn parse_args(args: &[OsString]) -> Result<Command, ParseError> {
     match subcommand {
         "help" | "--help" | "-h" => Ok(Command::Help),
         "version" | "--version" | "-V" => Ok(Command::Version),
-        "agent-context" => Ok(Command::AgentContext),
+        "agent-context" => parse_agent_context(args),
         "ai-context" => parse_ai_context(args),
         "status" => parse_status(args),
         "system" => parse_system(args),
@@ -374,6 +377,50 @@ fn parse_ai_context(args: &[OsString]) -> Result<Command, ParseError> {
         db: a.db,
         output: a.output,
     })
+}
+
+fn parse_agent_context(args: &[OsString]) -> Result<Command, ParseError> {
+    let mut deliver = None;
+    let mut index = 2usize;
+    while index < args.len() {
+        let token = args
+            .get(index)
+            .and_then(|value| value.to_str())
+            .ok_or_else(|| {
+                ParseError::InvalidAgentContextArgument(String::from("invalid UTF-8 argument"))
+            })?;
+        match token {
+            "--deliver" => {
+                if deliver.is_some() {
+                    return Err(ParseError::InvalidAgentContextArgument(String::from(
+                        "duplicate --deliver",
+                    )));
+                }
+                let value = args
+                    .get(index.saturating_add(1))
+                    .and_then(|raw| raw.to_str())
+                    .filter(|raw| !raw.starts_with('-'))
+                    .ok_or_else(|| {
+                        ParseError::InvalidAgentContextArgument(String::from(
+                            "--deliver requires stdout or file:<absolute-path>",
+                        ))
+                    })?;
+                deliver = Some(String::from(value));
+                index = index.saturating_add(2);
+            }
+            other if other.starts_with('-') => {
+                return Err(ParseError::InvalidAgentContextArgument(format!(
+                    "unknown flag {other}"
+                )));
+            }
+            other => {
+                return Err(ParseError::InvalidAgentContextArgument(format!(
+                    "unexpected positional argument {other}"
+                )));
+            }
+        }
+    }
+    Ok(Command::AgentContext { deliver })
 }
 
 fn parse_status(args: &[OsString]) -> Result<Command, ParseError> {
@@ -1244,6 +1291,9 @@ impl std::fmt::Display for ParseError {
             Self::UnknownEventStatus(status) => {
                 write!(formatter, "unknown event status: {status}")
             }
+            Self::InvalidAgentContextArgument(reason) => {
+                write!(formatter, "invalid agent-context argument: {reason}")
+            }
             Self::InvalidStatusArgument(reason) => {
                 write!(formatter, "invalid status argument: {reason}")
             }
@@ -1612,7 +1662,39 @@ mod tests {
     #[test]
     fn parse_agent_context_command() {
         let parsed = parse_args(&args(&["velvet-ballastics", "agent-context"]));
-        assert!(matches!(parsed, Ok(Command::AgentContext)));
+        assert!(matches!(
+            parsed,
+            Ok(Command::AgentContext { deliver: None })
+        ));
+    }
+
+    #[test]
+    fn parse_agent_context_deliver_target() {
+        let parsed = parse_args(&args(&[
+            "velvet-ballastics",
+            "agent-context",
+            "--deliver",
+            "file:/tmp/out.jsonl",
+        ]));
+        assert!(
+            matches!(parsed, Ok(Command::AgentContext { deliver: Some(ref target) }) if target == "file:/tmp/out.jsonl")
+        );
+    }
+
+    #[test]
+    fn parse_agent_context_rejects_missing_deliver_target() {
+        let parsed = parse_args(&args(&["velvet-ballastics", "agent-context", "--deliver"]));
+        assert!(
+            matches!(parsed, Err(ParseError::InvalidAgentContextArgument(ref reason)) if reason == "--deliver requires stdout or file:<absolute-path>")
+        );
+    }
+
+    #[test]
+    fn parse_agent_context_rejects_unknown_flag() {
+        let parsed = parse_args(&args(&["velvet-ballastics", "agent-context", "--bogus"]));
+        assert!(
+            matches!(parsed, Err(ParseError::InvalidAgentContextArgument(ref reason)) if reason == "unknown flag --bogus")
+        );
     }
 
     #[test]
