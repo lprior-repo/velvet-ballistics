@@ -142,6 +142,7 @@ impl TraceRing {
 
 /// Binary trace event recorded by the shard execution loop.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum TraceEvent {
     /// A step began execution.
     StepStarted {

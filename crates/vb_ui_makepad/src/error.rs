@@ -1,6 +1,7 @@
 #![forbid(unsafe_code)]
 
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub enum Error {
     InvalidToken(String),
     NavItemNotFound(String),

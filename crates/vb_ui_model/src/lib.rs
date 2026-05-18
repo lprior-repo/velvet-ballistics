@@ -48,6 +48,7 @@ pub mod workflow;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[repr(u8)]
+#[non_exhaustive]
 pub enum UiScreenKind {
     ExecutionOverview = 0,
     WorkflowGraphAuthoring = 1,

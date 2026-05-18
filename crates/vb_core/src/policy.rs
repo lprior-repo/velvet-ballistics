@@ -3,6 +3,7 @@
 
 /// Controls how strictly artifact admission verification is enforced.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[non_exhaustive]
 pub enum RuntimePolicy {
     /// Require accepted artifact for all runs, SyncAll before return.
     Strict,

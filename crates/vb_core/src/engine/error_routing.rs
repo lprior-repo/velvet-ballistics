@@ -21,6 +21,7 @@ use crate::workflow::CompiledNode;
 
 /// Outcome of an error handler routing decision.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum ErrorHandlerOutcome {
     /// The error was routed to a handler step. PC has been updated.
     Routed,

@@ -10,6 +10,7 @@ use crate::system::screen::SystemScreen;
 
 /// The eight canonical screens of the white Makepad UI.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum Screen {
     ExecutionOverview,
     WorkflowGraphAuthoring,
@@ -153,6 +154,7 @@ pub struct SystemData {
 
 /// Overall system health indicator.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum HealthLevel {
     Healthy,
     Degraded,

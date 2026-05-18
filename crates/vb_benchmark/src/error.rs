@@ -2,6 +2,7 @@ extern crate alloc;
 use alloc::string::String;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum EvidenceError {
     MissingBaseline,
     MissingResult,
@@ -34,6 +35,7 @@ impl core::fmt::Display for EvidenceError {
 impl core::error::Error for EvidenceError {}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum YamlBenchmarkError {
     ParseFailure(String),
     ValidationFailure(String),
@@ -53,6 +55,7 @@ impl core::fmt::Display for YamlBenchmarkError {
 impl core::error::Error for YamlBenchmarkError {}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum StorageBenchmarkError {
     JournalOpenFailure(String),
     AppendFailure(String),
@@ -74,6 +77,7 @@ impl core::fmt::Display for StorageBenchmarkError {
 impl core::error::Error for StorageBenchmarkError {}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum IpcBenchmarkError {
     EncodeFailure(String),
     DecodeFailure(String),
@@ -91,6 +95,7 @@ impl core::fmt::Display for IpcBenchmarkError {
 impl core::error::Error for IpcBenchmarkError {}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum RecoveryBenchmarkError {
     HydrationFailure(String),
 }
@@ -108,6 +113,7 @@ impl core::fmt::Display for RecoveryBenchmarkError {
 impl core::error::Error for RecoveryBenchmarkError {}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum RuntimeBenchmarkError {
     StepFailure(String),
     PrimitiveFailure(String),

@@ -26,6 +26,7 @@ use crate::trace::TraceRing;
 type FramePoolKey = (u16, u16);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum PendingTimerKind {
     Wait,
     Ask,
@@ -39,6 +40,7 @@ pub struct PendingTimer {
 
 /// Bounded command processed by a shard.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum ShardCommand {
     /// Submit a new run for execution.
     Submit {
@@ -239,6 +241,7 @@ pub struct InspectSnapshot {
 
 /// Bounded response produced by an inspect command.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum InspectResponse {
     /// The run was active and a snapshot was captured.
     Found(InspectSnapshot),
@@ -414,6 +417,7 @@ pub struct ShardStatus {
 
 /// Coarse health label for a shard.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum ShardHealth {
     /// Shard is accepting ticks.
     Running,
@@ -450,6 +454,7 @@ impl Default for ShardConfig {
 
 /// Lifecycle state of a run tracked by the runtime for resume eligibility.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum RuntimeState {
     /// Run was created but has not yet been started.
     Initial,
@@ -474,6 +479,7 @@ impl RuntimeState {
 /// Runtime events that drive state transitions in the RuntimeStateMachine.
 /// Each variant corresponds to a distinct operational event in the shard lifecycle.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum RuntimeEvent {
     /// A new run has been submitted and inserted into the shard.
     Submit,
@@ -514,6 +520,7 @@ impl RuntimeEvent {
 
 /// Status of a resume operation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum ResumeStatus {
     /// Resume was accepted and the run was driven once.
     ///
@@ -537,6 +544,7 @@ pub struct ResumeResult {
 
 /// Errors that can occur during a resume operation.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum ResumeError {
     /// The run identifier was not found in the journal.
     RunIdNotFound {

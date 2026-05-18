@@ -19,6 +19,7 @@ pub struct SubmitRunPayload {
 
 /// Payloads accepted by the binary IPC command surface.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub enum IpcPayload {
     /// Submit a compiled workflow run.
     SubmitRun(SubmitRunPayload),
@@ -111,6 +112,7 @@ pub enum IpcPayload {
 
 /// Run state reported in list-run responses.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub enum RunListState {
     /// Run is actively executing or suspended on this shard.
     Active,
@@ -213,6 +215,7 @@ pub struct IpcTraceEvent {
 
 /// Stable IPC event payload independent of runtime internals.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub enum IpcTraceEventKind {
     /// A step began execution.
     StepStarted { run: RunId, step: StepIdx },

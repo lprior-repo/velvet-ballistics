@@ -26,6 +26,7 @@ pub use super::screen::{
 
 /// Overall replay risk classification.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum ReplayRisk {
     /// All checks passed; workflow is safe to replay.
     Safe,
@@ -462,6 +463,7 @@ impl Default for DurabilityPanel {
 /// Each level represents an increasingly strong guarantee about how
 /// workflow state is persisted and recovered after a crash.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[non_exhaustive]
 pub enum DurabilityLevel {
     /// No explicit journaling; best-effort execution only.
     /// State may be lost or duplicated on crash/restart.

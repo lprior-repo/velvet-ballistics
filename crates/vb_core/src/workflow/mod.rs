@@ -288,6 +288,7 @@ pub struct AccessorProgram {
 
 /// One path segment in an accessor program.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub enum PathSegment {
     /// Object field by interned symbol.
     Field(SymbolId),
@@ -297,6 +298,7 @@ pub enum PathSegment {
 
 /// Workflow IR validation failures.
 #[derive(Debug, Clone, Error, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum WorkflowError {
     /// The compiler emitted no nodes.
     #[error("compiled workflow must contain at least one node")]
@@ -442,6 +444,7 @@ impl ExprProgram {
 
 /// Postfix expression bytecode operation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub enum ExprOp {
     /// Push a runtime slot value.
     LoadSlot(SlotIdx),
@@ -540,6 +543,7 @@ pub struct CompiledNode {
 /// Hot-path node variants. All references are numeric.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[allow(missing_docs)]
+#[non_exhaustive]
 pub enum CompiledNodeKind {
     /// No-op transition to `next`.
     Nop,
@@ -1784,6 +1788,7 @@ const fn effect(pop: u8, push: u8) -> StackEffect {
 
 /// Lifecycle state of a run derived from journal event replay.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum LifecycleState {
     /// Run accepted but not yet active.
     Pending,
@@ -1810,6 +1815,7 @@ impl LifecycleState {
 
 /// Lifecycle command issued by the caller.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum LifecycleCommand {
     /// Cancel the run.
     Cancel,

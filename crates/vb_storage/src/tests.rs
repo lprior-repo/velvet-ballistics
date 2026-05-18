@@ -84,7 +84,8 @@ mod tests {
         let bl = blob_key(digest).expect("blob_key should succeed");
         assert_eq!(bl.len(), 33);
 
-        let is = index_status_key(3, 4, RunId::new(5)).expect("index_status_key should succeed");
+        let is = index_status_key(IndexStatusState::Other(3), 4, RunId::new(5))
+            .expect("index_status_key should succeed");
         assert_eq!(is.len(), 18);
 
         let iw = index_workflow_key(WorkflowId::new(6), RunId::new(7))
@@ -751,7 +752,7 @@ mod tests {
             .put_blob(&blob)
             .expect("journal.put_blob must succeed");
         journal
-            .put_status_index(1, 2, RunId::new(3))
+            .put_status_index(IndexStatusState::Submitted, 2, RunId::new(3))
             .expect("journal.put_status_index must succeed");
         journal
             .put_workflow_index(WorkflowId::new(4), RunId::new(3))
@@ -1575,7 +1576,7 @@ mod tests {
         // Given state=5, timestamp=1000, run=50
         // When index_status_key is called
         // Then the key is [0x30][state_u8][timestamp_u64_be][run_u64_be]
-        let key = index_status_key(5, 1000, RunId::new(50));
+        let key = index_status_key(IndexStatusState::Other(5), 1000, RunId::new(50));
         let key = key.expect("index_status_key should succeed");
         assert_eq!(key[0], 0x30);
         assert_eq!(key[1], 5);
@@ -1932,7 +1933,8 @@ mod tests {
         let temp_dir = tempfile::tempdir().expect("setup: tempdir");
         let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
 
-        let result = journal.put_status_index(1, 1700000000, RunId::new(99));
+        let result =
+            journal.put_status_index(IndexStatusState::Submitted, 1700000000, RunId::new(99));
         result.expect("action must succeed");
     }
 
@@ -6014,7 +6016,7 @@ mod tests {
     fn status_index_stores_and_queries_by_state() {
         let temp_dir = tempfile::tempdir().expect("setup: tempdir");
         let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
-        let state: u8 = 3;
+        let state = IndexStatusState::Other(3);
         let timestamp: u64 = 1700000000;
         let run = RunId::new(7001);
         journal
@@ -6067,7 +6069,7 @@ mod tests {
     fn status_index_multiple_runs_same_state() {
         let temp_dir = tempfile::tempdir().expect("setup: tempdir");
         let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
-        let state: u8 = 5;
+        let state = IndexStatusState::Other(5);
         let run_1 = RunId::new(7010);
         let run_2 = RunId::new(7011);
         let run_3 = RunId::new(7012);
@@ -6753,7 +6755,7 @@ mod tests {
     fn journal_status_index_after_batch_commit_returns_correct_run() {
         let temp_dir = tempfile::tempdir().expect("setup: tempdir");
         let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
-        let state: u8 = 7;
+        let state = IndexStatusState::Other(7);
         let timestamp: u64 = 55555;
         let run = RunId::new(9009);
         let mut batch = journal.batch();
@@ -7215,7 +7217,9 @@ mod tests {
                 bytes: blob_bytes,
             })
             .expect("put4");
-        batch.put_status_index(1, 0, run).expect("put5");
+        batch
+            .put_status_index(IndexStatusState::Submitted, 0, run)
+            .expect("put5");
         batch.commit().expect("commit");
         assert!(journal.workflow_source(d1).expect("g1").is_some());
         assert!(journal.compiled_ir(d2).expect("g2").is_some());
@@ -7308,7 +7312,7 @@ mod tests {
     fn adversarial_status_index_multiple_runs_same_state() {
         let temp_dir = tempfile::tempdir().expect("setup: tempdir");
         let journal = FjallJournal::open(temp_dir.path(), None).expect("setup: journal open");
-        let state = 1u8;
+        let state = IndexStatusState::Active;
         let ts = 1000u64;
         for run_id in [RunId::new(10), RunId::new(20), RunId::new(30)] {
             journal.put_status_index(state, ts, run_id).expect("put");

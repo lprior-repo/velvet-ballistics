@@ -5,6 +5,7 @@ use vb_core::FiniteF64;
 
 /// Parsed expression AST node.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum ExprAst {
     /// Null, boolean, number, or string literal.
     Literal(ExprLiteral),
@@ -37,6 +38,7 @@ pub enum ExprAst {
 
 /// Literal value in the expression AST.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum ExprLiteral {
     /// Null literal.
     Null,
@@ -52,6 +54,7 @@ pub enum ExprLiteral {
 
 /// Built-in helper function.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum ExprHelper {
     /// `contains(value, needle)`.
     Contains,

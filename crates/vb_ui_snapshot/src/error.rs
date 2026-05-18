@@ -6,6 +6,7 @@ use core::fmt;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Serialize, Deserialize)]
+#[non_exhaustive]
 pub enum UiSnapshotError {
     FixtureNotFound(String),
     SnapshotCommandFailed(String),

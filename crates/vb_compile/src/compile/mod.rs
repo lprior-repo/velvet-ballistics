@@ -614,6 +614,7 @@ pub fn lower_repeat(
     ])
 }
 
+#[non_exhaustive]
 pub enum WaitKind {
     Until { deadline: SlotIdx },
     Event {

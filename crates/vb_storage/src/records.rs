@@ -6,6 +6,7 @@ use vb_core::{RunId, WorkflowDigest, WorkflowId};
 /// Record kind identifiers from the storage contract.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[repr(u16)]
+#[non_exhaustive]
 pub enum RecordKind {
     /// Workflow source record.
     WorkflowSource = 1,

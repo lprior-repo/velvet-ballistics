@@ -8,7 +8,7 @@ pub(crate) fn render_top_level_help() -> anyhow::Result<()> {
     write_stdout(format_args!("Usage: xtask <COMMAND> [OPTIONS]"))?;
     write_stdout(format_args!(""))?;
     write_stdout(format_args!("Required command families:"))?;
-    for spec in crate::required_command_families() {
+    for spec in xtask::required_command_families() {
         write_stdout(format_args!("  {}", spec.public_name()))?;
     }
     write_stdout(format_args!(""))?;
@@ -29,17 +29,17 @@ pub(crate) fn render_top_level_version() -> anyhow::Result<()> {
     write_stdout(format_args!("xtask {}", env!("CARGO_PKG_VERSION")))
 }
 
-pub(crate) fn run_required_command(command: crate::CommandFamily) -> anyhow::Result<()> {
-    let env = crate::XtaskEnvironment {
+pub(crate) fn run_required_command(command: xtask::CommandFamily) -> anyhow::Result<()> {
+    let env = xtask::XtaskEnvironment {
         workspace_root: std::env::current_dir().context("Failed to read workspace root")?,
         bead_id: None,
-        output_format: crate::OutputFormat::JsonLines,
+        output_format: xtask::OutputFormat::JsonLines,
         unavailable_families: Vec::new(),
     };
-    let status = crate::route_command(crate::XtaskCommand::Required(command), &env)
+    let status = xtask::route_command(xtask::XtaskCommand::Required(command), &env)
         .map_err(anyhow::Error::msg)?;
     let output =
-        crate::render_structured_status(&status, env.output_format).map_err(anyhow::Error::msg)?;
+        xtask::render_structured_status(&status, env.output_format).map_err(anyhow::Error::msg)?;
     let stdout = std::io::stdout();
     let mut handle = stdout.lock();
     handle
@@ -48,7 +48,7 @@ pub(crate) fn run_required_command(command: crate::CommandFamily) -> anyhow::Res
     Ok(())
 }
 
-pub(crate) fn exit_with_xtask_error(error: crate::XtaskCommandError) -> anyhow::Result<()> {
+pub(crate) fn exit_with_xtask_error(error: xtask::XtaskCommandError) -> anyhow::Result<()> {
     let stderr = std::io::stderr();
     let mut handle = stderr.lock();
     handle

@@ -25,6 +25,7 @@ pub struct IncidentReportView {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[repr(u8)]
+#[non_exhaustive]
 pub enum IncidentSeverity {
     Warning = 0,
     Critical = 1,

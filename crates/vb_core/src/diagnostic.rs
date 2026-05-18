@@ -61,6 +61,7 @@ impl FromStr for DiagnosticCode {
 
 /// Diagnostic code parse failure.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Error)]
+#[non_exhaustive]
 pub enum DiagnosticCodeParseError {
     /// Input was not exactly `E` followed by four hexadecimal digits.
     #[error("diagnostic code must use format E0101")]
@@ -72,6 +73,7 @@ pub enum DiagnosticCodeParseError {
 
 /// Diagnostic severity level.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub enum Severity {
     /// Blocking error.
     Error,

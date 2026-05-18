@@ -3,6 +3,7 @@ use crate::theme::colors;
 
 /// Font weight variants with their numeric CSS values.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum FontWeight {
     Light,
     Regular,
@@ -24,6 +25,7 @@ impl FontWeight {
 
 /// Semantic role for a piece of text in the UI.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum FontRole {
     Display,
     Heading,

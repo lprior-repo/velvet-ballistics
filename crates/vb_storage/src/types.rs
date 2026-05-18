@@ -21,6 +21,7 @@ impl StorageLimits {
 
 /// Runtime/storage durability profile selected for journal writes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum DurabilityProfile {
     /// Keep runtime events in volatile memory only; do not write Fjall during the run.
     Volatile,
@@ -32,6 +33,7 @@ pub enum DurabilityProfile {
 
 /// Keyspace tuning profile for per-keyspace configuration.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum KeyspaceProfile {
     /// Small values, bloom filters enabled, no KV separation.
     /// Used for: run_event, index_status, index_workflow, index_action.
@@ -216,6 +218,7 @@ pub struct RecordHeader {
 /// range queries filtered by state without decoding the full key.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
+#[non_exhaustive]
 pub enum IndexStatusState {
     /// Submitted — run has been accepted but not yet started.
     Submitted = 0,
@@ -253,6 +256,7 @@ impl IndexStatusState {
 
 /// Key variants supported by the durable storage contract.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum StorageKey {
     /// Workflow source bytes by digest.
     WorkflowSource {

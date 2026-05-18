@@ -14,6 +14,7 @@ use super::{ReplayError, eval_expr_for_replay, slot_to_replay_err};
 
 /// Typed non-deterministic suspension kind observed during replay.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum SuspensionKind {
     /// Action boundary waiting for an external action completion.
     ActionPending,
@@ -45,6 +46,7 @@ impl core::fmt::Display for SuspensionKind {
 }
 
 /// Internal action returned by `replay_step`.
+#[non_exhaustive]
 pub enum ReplayAction {
     /// Continue to the next step.
     Continue(StepIdx),

@@ -41,6 +41,7 @@ pub struct CheckResult {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[repr(u8)]
+#[non_exhaustive]
 pub enum CheckKind {
     Overlap,
     Clipping,

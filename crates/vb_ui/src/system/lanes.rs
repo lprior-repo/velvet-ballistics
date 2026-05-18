@@ -136,6 +136,7 @@ impl Default for ActivityLanes {
 
 /// Classification of a run's current state for colour mapping.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum RunState {
     /// Actively executing a step.
     Running,
@@ -407,6 +408,7 @@ impl ActivityHeatmap {
 /// Health classification for a shard lane, derived from throughput, latency,
 /// and failure counts.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum LaneHealth {
     /// Lane is healthy: good throughput, low latency, no failures.
     Green,

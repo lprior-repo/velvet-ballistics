@@ -27,6 +27,7 @@ use super::state::ReplayState;
 /// verification-aware categories so the UI can colour nodes according to
 /// the master doc Section 55 Screen C semantics.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum NodeOverlayState {
     /// Step completed successfully.  Colour: green (#39ff14).
     Succeeded,

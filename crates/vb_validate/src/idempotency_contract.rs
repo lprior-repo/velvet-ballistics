@@ -17,6 +17,7 @@ pub struct IdempotencyContractErrors(pub Box<[IdempotencyContractViolation]>);
 
 /// Workflow-level idempotency contract failure.
 #[derive(Debug, Clone, PartialEq, Eq, Error)]
+#[non_exhaustive]
 pub enum IdempotencyContractError {
     /// A Do node references an action absent from the workflow registry.
     #[error("ACTION_CONTRACT_MISSING")]
@@ -39,6 +40,7 @@ pub enum IdempotencyContractError {
 
 /// Single statically detectable idempotency contract violation.
 #[derive(Debug, Clone, PartialEq, Eq, Error)]
+#[non_exhaustive]
 pub enum IdempotencyContractViolation {
     /// Side-effecting actions may not declare retry-unsafe behavior.
     #[error("IDEMPOTENCY_RETRY_UNSAFE")]

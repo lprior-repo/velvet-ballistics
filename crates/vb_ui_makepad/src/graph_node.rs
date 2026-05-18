@@ -3,6 +3,7 @@
 use crate::tokens::color;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum OverlayState {
     Pending,
     Running,
@@ -43,6 +44,7 @@ impl OverlayState {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum NodeBadge {
     ActionId(u16),
     RetryMax(u16),

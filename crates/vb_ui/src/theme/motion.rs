@@ -42,12 +42,14 @@ fn is_unit_interval(value: f32) -> bool {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum FrameBudget {
     Unlocked,
     AtLeast(u32),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum GlowMode {
     Selected,
     Running,
@@ -56,6 +58,7 @@ pub enum GlowMode {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum GateStatus {
     Pending,
     Passed,
@@ -857,6 +860,7 @@ pub mod edge_path {
 
 pub mod error {
     #[derive(Debug, Clone, PartialEq)]
+    #[non_exhaustive]
     pub enum MotionError {
         NodeBudgetExceeded { requested: usize, limit: usize },
         PacketBudgetExceeded { requested: usize, limit: usize },

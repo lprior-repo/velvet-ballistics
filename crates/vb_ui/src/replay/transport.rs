@@ -13,6 +13,7 @@ use super::types::PlaybackSpeed;
 
 /// Internal state of the playback transport.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum TransportState {
     /// Not playing, not seeking.  The resting state.
     Idle,
@@ -52,6 +53,7 @@ impl TransportState {
 
 /// Action returned by transport methods for the UI layer to execute.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum TransportAction {
     /// Seek the playback cursor to the given event position.
     SeekTo { position: u64 },

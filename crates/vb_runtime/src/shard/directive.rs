@@ -11,6 +11,7 @@
 /// work the shard performs. The shard processes directives in priority order:
 /// Shutdown > Migrate > Suspend > Barrier > Continue.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum ShardDirective {
     /// Continue normal processing.
     ///

@@ -20,6 +20,7 @@ pub const REQUIRED_GATE_COUNT: u8 = 15;
 /// These errors are raised when a stored compiled artifact fails semantic
 /// validation before a run can be admitted under Strict or Journaled policy.
 #[derive(Debug, Clone, PartialEq, Eq, Error)]
+#[non_exhaustive]
 pub enum ArtifactEnvelopeError {
     /// Artifact was not found in the store.
     #[error("artifact not found: {digest:?}")]
@@ -174,6 +175,7 @@ impl RunAdmission {
 
 /// Errors that can occur during run admission.
 #[derive(Debug, Clone, PartialEq, Eq, Error)]
+#[non_exhaustive]
 pub enum AdmissionError {
     /// The required compiled artifact was not found in the journal.
     #[error("admission rejected: compiled artifact not found for digest {digest:?}")]

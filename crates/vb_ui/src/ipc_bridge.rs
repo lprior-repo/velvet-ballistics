@@ -18,6 +18,7 @@ use vb_ipc::{IpcCommand, IpcPayload, MaxPayloadBytes, SubmitRunPayload};
 
 /// Request from the UI thread to the background IPC thread.
 #[derive(Debug)]
+#[non_exhaustive]
 pub enum IpcRequest {
     /// Connect to a Unix domain socket endpoint.
     Connect {
@@ -93,6 +94,7 @@ pub enum IpcRequest {
 
 /// Response from the background IPC thread to the UI thread.
 #[derive(Debug)]
+#[non_exhaustive]
 pub enum IpcReply {
     /// Successfully connected to the server.
     Connected,

@@ -49,6 +49,7 @@ pub struct ReplayDiff {
 
 /// Playback speed for the replay.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[non_exhaustive]
 pub enum PlaybackSpeed {
     /// 0.5x -- 2 seconds between events.
     Half,
@@ -109,6 +110,7 @@ const TEXT_DIM: [f32; 4] = [0.333, 0.333, 0.467, 1.0];
 /// Each variant maps to a specific color from the cyberpunk palette for
 /// rendering in the timeline and event inspector panels.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum ReplayEventType {
     /// A step has started executing.
     StepStarted,
@@ -170,6 +172,7 @@ impl ReplayEventType {
 
 /// Execution status of a single replay step.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum ReplayStepStatus {
     /// Step is currently executing.
     Running,

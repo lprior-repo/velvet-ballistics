@@ -20,6 +20,7 @@ pub mod easing {
 
 /// Supported easing curve types for UI state transitions.
 #[derive(Debug, Clone, Copy, PartialEq)]
+#[non_exhaustive]
 pub enum EasingFunction {
     /// Linear interpolation: constant speed.
     Linear,

@@ -42,6 +42,7 @@ pub struct StepStateView {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[repr(u8)]
+#[non_exhaustive]
 pub enum StepStatus {
     Pending = 0,
     Running = 1,
@@ -82,6 +83,7 @@ pub struct RunEventView {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[repr(u8)]
+#[non_exhaustive]
 pub enum RunEventKind {
     StepEntered = 0,
     StepExited = 1,
@@ -95,6 +97,7 @@ pub enum RunEventKind {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[repr(u8)]
+#[non_exhaustive]
 pub enum RunStatus {
     Pending = 0,
     Running = 1,

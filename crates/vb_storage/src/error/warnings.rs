@@ -5,6 +5,7 @@ use vb_core::DiagnosticCode;
 /// These do not prevent admission but should be reported to the caller
 /// for logging, monitoring, or informational purposes.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error, serde::Serialize, serde::Deserialize)]
+#[non_exhaustive]
 pub enum VerificationWarning {
     /// Record schema version is older than current but still compatible.
     #[error(

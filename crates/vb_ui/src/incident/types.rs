@@ -5,6 +5,7 @@ use super::repair::RepairSuggestion;
 
 /// Classification of the incident category.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum IncidentType {
     ActionFailure,
     ReplayDivergence,
@@ -31,6 +32,7 @@ pub struct Incident {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum IncidentSeverity {
     Critical,
     Major,
@@ -62,6 +64,7 @@ impl IncidentSeverity {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum FailureCode {
     ActionTimeout,
     ActionFailed(String),
@@ -102,6 +105,7 @@ impl FailureCode {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum SideEffectCertainty {
     Certain,
     Unknown,
@@ -149,6 +153,7 @@ pub struct TimelineEntry {
 
 /// Classification of a timeline event.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum TimelineEventKind {
     FailureObserved,
     RetryAttempted,
@@ -160,6 +165,7 @@ pub enum TimelineEventKind {
 
 /// Replay safety classification for an incident record.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum ReplaySafety {
     Safe,
     UnsafeSideEffect,

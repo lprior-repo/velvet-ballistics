@@ -29,6 +29,7 @@ pub struct WorkflowNodeView {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[repr(u8)]
+#[non_exhaustive]
 pub enum WorkflowNodeKind {
     Sequence = 0,
     Parallel = 1,

@@ -3,9 +3,9 @@
 #[allow(clippy::as_conversions, clippy::cast_possible_truncation)]
 mod proptests {
     use crate::{
-        BlobRecord, EventSeq, MAGIC_BLOB, MAGIC_JOURNAL_EVENT, MAGIC_WORKFLOW_SOURCE,
-        MAX_JOURNAL_EVENT_PAYLOAD_BYTES, RecordKind, WorkflowSourceRecord, blob_key,
-        compiled_ir_key, decode_record, encode_record, index_action_key, index_status_key,
+        BlobRecord, EventSeq, IndexStatusState, MAGIC_BLOB, MAGIC_JOURNAL_EVENT,
+        MAGIC_WORKFLOW_SOURCE, MAX_JOURNAL_EVENT_PAYLOAD_BYTES, RecordKind, WorkflowSourceRecord,
+        blob_key, compiled_ir_key, decode_record, encode_record, index_action_key, index_status_key,
         index_workflow_key, run_event_key, run_header_key, run_snapshot_key, workflow_source_key,
     };
     use proptest::prelude::*;
@@ -183,8 +183,8 @@ mod proptests {
             let Ok(k2) = k2 else { return Ok(()) };
             prop_assert_eq!(k1, k2);
 
-            let k1 = index_status_key(state_val, ts_val, run);
-            let k2 = index_status_key(state_val, ts_val, run);
+            let k1 = index_status_key(IndexStatusState::from_u8(state_val), ts_val, run);
+            let k2 = index_status_key(IndexStatusState::from_u8(state_val), ts_val, run);
             let Ok(k1) = k1 else { return Ok(()) };
             let Ok(k2) = k2 else { return Ok(()) };
             prop_assert_eq!(k1, k2);

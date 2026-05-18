@@ -46,6 +46,7 @@ pub const COLOR_CLEAN: [f32; 4] = colors::text::DIM;
 
 /// Severity of a taint path segment.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum TaintPathStatus {
     /// Path from source to sink does not reach a Finish node.
     Warning,

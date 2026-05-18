@@ -6,6 +6,7 @@ use vb_core::DiagnosticCode;
 
 /// IPC/memory ingress failures.
 #[derive(Debug, Error, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum IpcError {
     /// Queue is full and the producer must apply backpressure.
     #[error("memory ingress queue is full")]

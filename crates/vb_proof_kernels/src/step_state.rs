@@ -4,6 +4,7 @@
 //! Suitable for Verus/Aeneas extraction to Lean.
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum StepState {
     Pending,
     Running,

@@ -26,6 +26,7 @@ use thiserror::Error;
 
 /// Workflow IR validation failures.
 #[derive(Debug, Clone, Error, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum WorkflowError {
     /// The compiler emitted no nodes.
     #[error("compiled workflow must contain at least one node")]

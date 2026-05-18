@@ -3,6 +3,7 @@
 use core::fmt;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum EmitterError {
     YamlEncodeFailed,
     PostcardEncodeFailed,

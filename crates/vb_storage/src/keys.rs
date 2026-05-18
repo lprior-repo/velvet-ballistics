@@ -365,14 +365,14 @@ mod tests {
 
     #[test]
     fn index_status_key_has_correct_prefix() -> Result<(), JournalError> {
-        let key = index_status_key(1, 0, RunId::new(0))?;
+        let key = index_status_key(IndexStatusState::Submitted, 0, RunId::new(0))?;
         assert_eq!(key[0], PREFIX_INDEX_STATUS, "prefix byte must be 0x30");
         Ok(())
     }
 
     #[test]
     fn index_status_key_encodes_state_timestamp_run() -> Result<(), JournalError> {
-        let state: u8 = 0x05;
+        let state = IndexStatusState::Other(0x05);
         let timestamp: u64 = 0x0102_0304_0506_0708;
         let run = RunId::new(0xAABB_CCDD_EEFF_0011);
         let key = index_status_key(state, timestamp, run)?;
@@ -526,7 +526,7 @@ mod tests {
 
     #[test]
     fn encode_key_index_status_matches_typed_encoder() -> Result<(), JournalError> {
-        let state = 2u8;
+        let state = IndexStatusState::Completed;
         let timestamp = 12345u64;
         let run = RunId::new(67);
         let typed = index_status_key(state, timestamp, run)?;
@@ -623,8 +623,8 @@ mod tests {
         assert_eq!(run_snapshot_key(run, seq)?, run_snapshot_key(run, seq)?);
         assert_eq!(blob_key(digest)?, blob_key(digest)?);
         assert_eq!(
-            index_status_key(1, 999, run)?,
-            index_status_key(1, 999, run)?
+            index_status_key(IndexStatusState::Submitted, 999, run)?,
+            index_status_key(IndexStatusState::Submitted, 999, run)?
         );
         assert_eq!(
             index_workflow_key(WorkflowId::new(42), run)?,
@@ -674,7 +674,7 @@ mod tests {
 
     #[test]
     fn index_status_key_with_zero_values() -> Result<(), JournalError> {
-        let key = index_status_key(0, 0, RunId::new(0))?;
+        let key = index_status_key(IndexStatusState::Submitted, 0, RunId::new(0))?;
         assert_eq!(key[1], 0);
         assert_eq!(&key[2..10], &0u64.to_be_bytes());
         assert_eq!(&key[10..18], &0u64.to_be_bytes());

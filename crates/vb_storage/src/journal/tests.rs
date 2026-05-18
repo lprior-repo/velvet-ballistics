@@ -888,9 +888,15 @@ fn status_index_stores_and_scans_markers() {
     let run_a = RunId::new(2000);
     let run_b = RunId::new(2001);
     // Insert status markers for different states
-    journal.put_status_index(1, 1000, run_a).expect("status A");
-    journal.put_status_index(2, 2000, run_a).expect("status B");
-    journal.put_status_index(1, 3000, run_b).expect("status C");
+    journal
+        .put_status_index(IndexStatusState::Active, 1000, run_a)
+        .expect("status A");
+    journal
+        .put_status_index(IndexStatusState::Completed, 2000, run_a)
+        .expect("status B");
+    journal
+        .put_status_index(IndexStatusState::Active, 3000, run_b)
+        .expect("status C");
     // Scan the entire keyspace
     let mut count = 0usize;
     for item in journal.index_status.iter() {
@@ -1004,7 +1010,7 @@ fn batch_commits_across_multiple_keyspaces() {
         batch.append_event(&event).expect("batch event");
         batch.put_blob(&blob_record).expect("batch blob");
         batch
-            .put_status_index(1, 100, run)
+            .put_status_index(IndexStatusState::Submitted, 100, run)
             .expect("batch status idx");
         batch
             .put_workflow_index(WorkflowId::new(42), run)

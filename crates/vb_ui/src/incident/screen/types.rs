@@ -30,6 +30,7 @@ pub fn severity_color_hex(severity: IncidentSeverity) -> &'static str {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum FailureKind {
     ActionTimeout,
     ActionFailed,

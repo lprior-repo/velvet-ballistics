@@ -26,6 +26,7 @@ const TEXT_DIM: [f32; 4] = [0.333, 0.333, 0.467, 1.0];
 
 /// Classification of a slot change between two snapshots.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum ChangeType {
     /// Slot appeared in the after-snapshot (absent before).
     Added,

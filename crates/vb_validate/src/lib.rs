@@ -98,6 +98,7 @@ pub mod kani_gate_08_structural;
 
 /// Validation error codes matching the master contract (Section 16).
 #[derive(Debug, Error, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum ValidationError {
     #[error("DUPLICATE_KEY")]
     DuplicateKey,

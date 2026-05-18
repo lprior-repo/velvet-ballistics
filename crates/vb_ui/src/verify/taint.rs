@@ -19,6 +19,7 @@ use crate::theme::colors;
 /// Severity ordering (highest to lowest): Secret > Pii > Financial >
 /// Authentication > Custom.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum TaintKind {
     /// Cryptographic secrets, API keys, passwords.
     Secret,

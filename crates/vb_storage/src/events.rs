@@ -10,6 +10,7 @@ use vb_core::{
 
 /// Compact binary journal event. JSONL is a projection, not this durable format.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[non_exhaustive]
 pub enum JournalEvent {
     /// Run was accepted after input mapping.
     RunAccepted {

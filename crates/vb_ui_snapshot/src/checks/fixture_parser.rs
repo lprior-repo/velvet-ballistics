@@ -32,6 +32,7 @@ pub struct LayoutFixture {
 
 #[cfg(feature = "std")]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum FixtureFieldNeed {
     Required,
     Absent,
@@ -39,6 +40,7 @@ pub enum FixtureFieldNeed {
 
 #[cfg(feature = "std")]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum SelectionVisibility {
     Visible,
     Hidden,
@@ -46,6 +48,7 @@ pub enum SelectionVisibility {
 
 #[cfg(feature = "std")]
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum FixtureValue<T> {
     Present(T),
     NotApplicable,

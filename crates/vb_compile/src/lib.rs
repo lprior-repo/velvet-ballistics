@@ -1597,6 +1597,7 @@ pub fn lower_repeat(
 /// Replaces the previous `is_event: bool` parameter, which allowed invalid
 /// combinations such as passing `is_event = false` with a `timeout_slot`,
 /// which would be silently discarded.
+#[non_exhaustive]
 pub enum WaitKind {
     /// `wait.until` — waits until a deadline slot is reached; no timeout.
     Until { deadline: SlotIdx },
@@ -1949,6 +1950,7 @@ fn non_string_key_error() -> CompileError {
 
 /// YAML compiler errors.
 #[derive(Debug, Clone, Error)]
+#[non_exhaustive]
 pub enum CompileError {
     /// Source exceeded configured byte limit.
     #[error("YAML source exceeds byte limit: actual={actual}, limit={limit}")]

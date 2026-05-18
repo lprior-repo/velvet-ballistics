@@ -4,6 +4,7 @@ use core::fmt;
 
 /// Errors that can occur during envelope construction and validation.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum EnvelopeError {
     /// The schema version value is outside the valid range.
     InvalidSchemaVersion {

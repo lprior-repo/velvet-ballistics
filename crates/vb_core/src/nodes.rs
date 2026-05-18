@@ -20,6 +20,7 @@ pub struct CompiledNode {
 /// Hot-path node variants. All references are numeric.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[allow(missing_docs)]
+#[non_exhaustive]
 pub enum CompiledNodeKind {
     /// No-op transition to `next`.
     Nop,

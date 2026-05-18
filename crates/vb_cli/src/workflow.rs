@@ -12,6 +12,7 @@ use vb_runtime::runtime::Runtime;
 use vb_runtime::shard::ShardConfig;
 use vb_runtime::trace::TraceEvent;
 
+#[non_exhaustive]
 pub enum InputMappingError {
     DecodeFailed,
     SlotCountExceeded,

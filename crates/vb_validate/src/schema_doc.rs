@@ -7,6 +7,7 @@ pub struct WorkflowDoc {
 }
 
 #[derive(Clone)]
+#[non_exhaustive]
 pub enum FieldValue {
     String(String),
     Sequence(Vec<StepDoc>),

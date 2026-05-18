@@ -5,6 +5,7 @@ use vb_core::workflow::{CompiledNodeKind, ResourceContract, WorkflowParts};
 
 /// Whether a resource metric is within its contracted bounds.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum ResourceStatus {
     /// Computed value is strictly below the contract limit.
     WithinBounds,

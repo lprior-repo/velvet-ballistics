@@ -6,6 +6,7 @@ use thiserror::Error;
 
 /// YAML parsing error type.
 #[derive(Debug, Error, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum YamlError {
     #[error("unsupported trigger: {trigger}")]
     UnsupportedTrigger { trigger: &'static str },

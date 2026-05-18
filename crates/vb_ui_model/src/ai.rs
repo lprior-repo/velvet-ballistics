@@ -24,6 +24,7 @@ pub struct SuggestedCommand {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub enum ReplaySafety {
     Safe,
     Unsafe { reason: String },

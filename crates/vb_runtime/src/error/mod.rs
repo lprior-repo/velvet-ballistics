@@ -3,6 +3,7 @@ use vb_core::ids::RunId;
 
 /// Runtime error type.
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub enum RuntimeError {
     /// Bounded queue is full.
     QueueFull,

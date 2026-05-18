@@ -17,6 +17,7 @@ use vb_storage::events::JournalEvent;
 /// [`SlotValue`] references, so the diff is fully owned and can outlive
 /// the source data.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum SlotDiff {
     /// Slot appeared with a new value (was absent in the previous state).
     Created(String),

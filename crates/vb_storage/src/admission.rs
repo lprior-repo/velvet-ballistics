@@ -45,6 +45,7 @@ impl fmt::Display for VerificationWarning {
 
 /// Proof flag that must be true for an accepted artifact.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[non_exhaustive]
 pub enum ProofFlag {
     /// Artifact IR is size-bounded.
     Bounded,

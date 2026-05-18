@@ -49,6 +49,7 @@ impl fmt::Display for SchemaVersion {
 /// Stable kind identifiers for structured output envelopes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[repr(u8)]
+#[non_exhaustive]
 pub enum EnvelopeKind {
     /// Successful operation result.
     Success = 0,

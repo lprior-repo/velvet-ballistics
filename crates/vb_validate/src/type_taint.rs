@@ -14,6 +14,7 @@ use std::collections::HashMap;
 
 /// Supported value types for type checking.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum ValueType {
     /// Null type.
     Null,
@@ -50,6 +51,7 @@ impl ValueType {
 ///
 /// Lattice: Clean < DerivedFromSecret < Secret
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum Taint {
     /// No secret-derived data.
     Clean,
@@ -203,6 +205,7 @@ pub struct StepTypes {
 
 /// Step behavior for type/taint checking.
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub enum StepKind {
     /// Save step: writes a value into the step's slot.
     Save {
@@ -223,6 +226,7 @@ pub enum StepKind {
 
 /// Typed value for validation.
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub enum TypedValue {
     /// A literal with known type.
     Literal(ValueType),

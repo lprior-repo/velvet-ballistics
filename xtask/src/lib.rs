@@ -28,5 +28,4 @@ pub mod logger;
 pub mod profiles;
 pub mod proof_orchestrator;
 pub mod scheduler;
-pub mod shell;
 pub mod summary;

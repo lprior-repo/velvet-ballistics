@@ -10,6 +10,7 @@ use crate::{RuntimeError, RuntimeResult};
 
 /// Minimal lifecycle event emitted by the runtime before a durable store is wired.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[non_exhaustive]
 pub enum RuntimeJournalEvent {
     /// Run was accepted by the runtime.
     RunSubmitted {

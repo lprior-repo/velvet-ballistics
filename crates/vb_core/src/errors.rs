@@ -19,6 +19,7 @@ pub type EngineError = CoreError;
 
 /// Kind of page-order violation during evidence collection.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum CollectPageOrderViolationKind {
     /// A page was collected out of sequential order.
     OutOfOrder,
@@ -30,6 +31,7 @@ pub enum CollectPageOrderViolationKind {
 
 /// Kind of extra-hydration failure.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum CollectExtraHydrationFailureKind {
     /// Extra data was empty.
     EmptyExtra,
@@ -159,6 +161,7 @@ pub struct ReplayCorruption {
 
 /// Failures emitted by core validation and execution code.
 #[derive(Debug, Error, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum CoreError {
     /// Program counter pointed outside the compiled node array.
     #[error("invalid program counter: {step:?}")]

@@ -220,77 +220,51 @@ impl BoundednessPolicy {
 
 /// Budget validation failures.
 #[derive(Debug, Error, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum BudgetError {
-    /// Total step count exceeded the policy limit.
-    #[error("total steps {actual} exceeded policy limit {limit}")]
+    #[error("total steps exceeded: {actual} > {limit}")]
     TotalStepsExceeded {
-        /// Actual total steps computed.
         actual: u64,
-        /// Policy limit.
         limit: u64,
     },
-    /// Total slot count exceeded the policy limit.
-    #[error("total slots {actual} exceeded policy limit {limit}")]
+    #[error("total slots exceeded: {actual} > {limit}")]
     TotalSlotsExceeded {
-        /// Actual total slots computed.
         actual: u64,
-        /// Policy limit.
         limit: u64,
     },
-    /// Fanout exceeded the policy limit.
-    #[error("fanout {actual} exceeded policy limit {limit}")]
+    #[error("fanout exceeded: {actual} > {limit}")]
     FanoutExceeded {
-        /// Actual fanout computed.
         actual: u16,
-        /// Policy limit.
         limit: u16,
     },
-    /// Nesting depth exceeded the policy limit.
-    #[error("nesting depth {actual} exceeded policy limit {limit}")]
+    #[error("nesting depth exceeded: {actual} > {limit}")]
     NestingDepthExceeded {
-        /// Actual nesting depth computed.
         actual: u16,
-        /// Policy limit.
         limit: u16,
     },
-    /// Parallel in-flight exceeded the policy limit.
-    #[error("parallel in-flight {actual} exceeded policy limit {limit}")]
+    #[error("parallel exceeded: {actual} > {limit}")]
     ParallelExceeded {
-        /// Actual parallel in-flight computed.
         actual: u16,
-        /// Policy limit.
         limit: u16,
     },
-    /// Action tickets exceeded the policy limit.
-    #[error("action tickets {actual} exceeded policy limit {limit}")]
+    #[error("action tickets exceeded: {actual} > {limit}")]
     ActionTicketsExceeded {
-        /// Actual action tickets computed.
         actual: u32,
-        /// Policy limit.
         limit: u32,
     },
-    /// Run time exceeded the policy limit.
-    #[error("run time {actual} exceeded policy limit {limit}")]
+    #[error("run time exceeded: {actual} > {limit}")]
     RunTimeExceeded {
-        /// Actual run time computed.
         actual: u64,
-        /// Policy limit.
         limit: u64,
     },
-    /// Result bytes exceeded the policy limit.
-    #[error("result bytes {actual} exceeded policy limit {limit}")]
+    #[error("result bytes exceeded: {actual} > {limit}")]
     ResultBytesExceeded {
-        /// Actual result bytes computed.
         actual: u32,
-        /// Policy limit.
         limit: u32,
     },
-    /// Steps executable exceeded the policy limit.
-    #[error("steps executable {actual} exceeded policy limit {limit}")]
+    #[error("steps executable exceeded: {actual} > {limit}")]
     StepsExecutableExceeded {
-        /// Actual steps executable computed.
         actual: u32,
-        /// Policy limit.
         limit: u32,
     },
 }
@@ -365,6 +339,7 @@ pub struct AggregateReservation {
 
 /// Aggregate resource-accounting failure.
 #[derive(Debug, Error, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum AggregateBudgetError {
     /// Workflow budget validation failed.
     #[cfg(not(kani))]

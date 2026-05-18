@@ -12,6 +12,7 @@ use vb_core::workflow::{CompiledNodeKind, WorkflowParts};
 
 /// Classification of an action's idempotency guarantee.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum IdempotencyClass {
     /// Pure deterministic computation with no side effects.
     DeterministicPure,
@@ -23,6 +24,7 @@ pub enum IdempotencyClass {
 
 /// A policy compliance issue found during action analysis.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum PolicyIssue {
     /// The action has no timeout configured (timeout_ms == 0).
     MissingTimeout,

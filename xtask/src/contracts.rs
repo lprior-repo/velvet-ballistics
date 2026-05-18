@@ -6,6 +6,7 @@
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::fmt;
+use std::io::Write;
 use std::path::{Path, PathBuf};
 
 // ---------------------------------------------------------------------------
@@ -578,16 +579,16 @@ pub fn cmd_contracts(dir: &str, json: bool, check: bool) -> anyhow::Result<()> {
 
     if json {
         let output = serde_json::to_string_pretty(&report)?;
-        crate::shell::write_stdout(format_args!("{output}"))?;
+        write_stdout(format_args!("{output}"))?;
     } else {
-        crate::shell::write_stdout(format_args!(
+        write_stdout(format_args!(
             "contracts: {} total, {} valid, {} invalid",
             report.summary.total, report.summary.valid, report.summary.invalid
         ))?;
         if !report.errors.is_empty() {
-            crate::shell::write_stdout(format_args!("Errors:"))?;
+            write_stdout(format_args!("Errors:"))?;
             for error in &report.errors {
-                crate::shell::write_stdout(format_args!("  {error}"))?;
+                write_stdout(format_args!("  {error}"))?;
             }
         }
     }
@@ -596,6 +597,18 @@ pub fn cmd_contracts(dir: &str, json: bool, check: bool) -> anyhow::Result<()> {
         anyhow::bail!("{} contract(s) failed validation", report.summary.invalid);
     }
 
+    Ok(())
+}
+
+fn write_stdout(args: std::fmt::Arguments<'_>) -> anyhow::Result<()> {
+    let stdout = std::io::stdout();
+    let mut handle = stdout.lock();
+    handle
+        .write_fmt(args)
+        .map_err(|error| anyhow::anyhow!("Failed to write to stdout: {error}"))?;
+    handle
+        .write_all(b"\n")
+        .map_err(|error| anyhow::anyhow!("Failed to write newline to stdout: {error}"))?;
     Ok(())
 }
 

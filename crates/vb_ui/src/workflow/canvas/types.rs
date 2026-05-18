@@ -54,6 +54,7 @@ pub struct EdgePath {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum EdgeType {
     Sequential,
     Branch { condition_index: usize },
@@ -63,6 +64,7 @@ pub enum EdgeType {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum NodeBadge {
     ActionId(u16),
     RetryMax(u16),

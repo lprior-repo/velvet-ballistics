@@ -6,6 +6,7 @@ use vb_core::FiniteF64;
 
 /// Parsed v1 expression tree retained by the cold compiler AST.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum ParsedExpression {
     /// Null, boolean, integer, or string literal.
     Literal(ExpressionLiteral),
@@ -38,6 +39,7 @@ pub enum ParsedExpression {
 
 /// Built-in helper accepted by the v1 expression grammar.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum ExpressionHelper {
     /// `contains(value, needle)`.
     Contains,
@@ -69,6 +71,7 @@ pub enum ExpressionHelper {
 
 /// Literal value accepted by the expression grammar.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum ExpressionLiteral {
     /// Null literal.
     Null,
@@ -84,6 +87,7 @@ pub enum ExpressionLiteral {
 
 /// Prefix unary operator.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum UnaryOp {
     /// Logical negation.
     Not,
@@ -93,6 +97,7 @@ pub enum UnaryOp {
 
 /// Left-associative infix operator.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum BinaryOp {
     /// Logical OR.
     Or,

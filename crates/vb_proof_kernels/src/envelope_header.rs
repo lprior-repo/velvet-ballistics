@@ -73,6 +73,7 @@ impl EnvelopeHeader {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum ValidationError {
     InvalidMagic,
     HeaderTooShort,
@@ -84,6 +85,7 @@ pub enum ValidationError {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum ValidationResult {
     Ok,
     Err(ValidationError),

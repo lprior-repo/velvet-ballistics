@@ -10,6 +10,7 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 /// Secret propagation marker attached to each runtime slot.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[repr(u8)]
+#[non_exhaustive]
 pub enum Taint {
     /// Slot contains no secret-derived data.
     Clean = 0,
@@ -112,6 +113,7 @@ impl<'de> Deserialize<'de> for FiniteF64 {
 
 /// Compact handle-based runtime value stored in numeric slots.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub enum SlotValue {
     /// Explicit null value.
     Null,
@@ -151,6 +153,7 @@ impl fmt::Display for SlotValue {
 /// Compile-time constant value, smaller than SlotValue.
 /// Constants cannot hold runtime-allocated handles (List, Object, Blob).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub enum ConstValue {
     /// Explicit null value.
     Null,

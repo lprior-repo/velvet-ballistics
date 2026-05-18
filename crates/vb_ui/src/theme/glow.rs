@@ -102,6 +102,7 @@ impl GlowLayer {
 
 /// Named neon glow presets, each mapping to a well-known colour.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum GlowPreset {
     NeonCyan,
     NeonRed,

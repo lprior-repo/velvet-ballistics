@@ -26,6 +26,7 @@ impl Default for TrimPolicy {
 
 /// Errors that can occur during journal trimming.
 #[derive(Debug, thiserror::Error)]
+#[non_exhaustive]
 pub enum TrimError {
     /// Fjall operation failed.
     #[error("fjall operation failed: {0}")]
@@ -90,6 +91,7 @@ pub struct TrimmedRunResult {
 
 /// Status of a trim operation for a run.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum TrimStatus {
     /// Events were deleted.
     Trimmed,
@@ -99,6 +101,7 @@ pub enum TrimStatus {
 
 /// Run eligibility for journal trimming.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum TrimEligibility {
     /// Run can be trimmed up to the safe point.
     Eligible {
@@ -120,6 +123,7 @@ pub enum TrimEligibility {
 
 /// Reason a run cannot be trimmed.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum TrimBlocker {
     /// No durable snapshot exists for this run.
     NoDurableSnapshot,

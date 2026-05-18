@@ -1,0 +1,233 @@
+use velvet_ballastics_workspace_tests::quality::current_api_mutation_plan::{
+    MissingRequirement, REQUIRED_SECTIONS, validate_plan,
+};
+
+const PLAN: &str = include_str!("../../../docs/current-api-mutation-plan.md");
+
+#[test]
+fn current_helper_semantics_have_mutation_targets() {
+    let report = validate_plan(PLAN);
+    assert_eq!(
+        report.missing_requirements,
+        Vec::<MissingRequirement>::new(),
+        "mutation plan must name every current helper semantic and target category"
+    );
+    assert_eq!(
+        report.required_section_count,
+        REQUIRED_SECTIONS.len(),
+        "validation must cover every required mutation-plan section"
+    );
+    assert_eq!(
+        report.covered_required_sections,
+        REQUIRED_SECTIONS.len(),
+        "current plan must contain each required section exactly where validation can inspect it"
+    );
+    assert_eq!(
+        report.missing_sections,
+        Vec::<&'static str>::new(),
+        "current plan must not omit a required section"
+    );
+    assert_eq!(
+        report.duplicate_sections,
+        Vec::<&'static str>::new(),
+        "current plan must not duplicate required sections"
+    );
+}
+
+#[test]
+fn runtime_recovery_has_mutation_targets() {
+    let recovery_section = REQUIRED_SECTIONS
+        .iter()
+        .find(|section| section.id == "runtime-recovery");
+    assert!(
+        recovery_section.is_some(),
+        "runtime recovery section must be part of the required plan contract"
+    );
+    assert!(
+        PLAN.contains("ActionCompleted before frame mutation")
+            && PLAN.contains("journal sequence hydration")
+            && PLAN.contains("snapshot hydration"),
+        "runtime recovery mutation targets must cover ordering and hydration semantics"
+    );
+}
+
+#[test]
+fn stale_api_target_fails_plan_validation() {
+    let stale_plan =
+        "# Current API Mutation Plan\n## Helper Semantics Mutation Targets\ngeneric DAG runner";
+    let report = validate_plan(stale_plan);
+    assert!(
+        !report.is_valid(),
+        "plan validation must fail stale product/API descriptions"
+    );
+    assert_eq!(
+        report.stale_api_mentions, 1,
+        "stale API marker count must identify the invalid target"
+    );
+}
+
+#[test]
+fn misplaced_required_term_fails_section_scoped_validation() {
+    let misplaced_plan = "# Current API Mutation Plan
+## Helper Semantics Mutation Targets
+contains
+starts_with
+ends_with
+length
+empty
+has
+exists
+sum
+count
+append_if
+merge
+unique
+ActionCompleted before frame mutation
+journal sequence hydration
+snapshot hydration
+retry state
+## Runtime Recovery Mutation Targets
+## Generated Rust Parity Mutation Targets
+generated-interpreter suspension parity
+full final IR equivalence
+unsupported generated-mode rejection
+## CLI, IPC, and Storage Envelope Mutation Targets
+binary IPC frame length
+postcard envelope
+Fjall journal
+CLI accepted artifact path
+## UI Model Contract Mutation Targets
+vb_ui_model
+certificate
+incident
+replay
+## Owner Beads and Release Blockers
+owner bead
+critical survivor
+release-risk acceptance
+cargo mutants --package velvet-ballastics-workspace-tests --test vb_c3k9_current_api_mutation_plan
+90% mutation kill rate
+exclusion policy";
+
+    let report = validate_plan(misplaced_plan);
+
+    assert_eq!(
+        report.missing_requirements,
+        vec![
+            MissingRequirement {
+                section_id: "runtime-recovery",
+                term: "ActionCompleted before frame mutation",
+            },
+            MissingRequirement {
+                section_id: "runtime-recovery",
+                term: "journal sequence hydration",
+            },
+            MissingRequirement {
+                section_id: "runtime-recovery",
+                term: "snapshot hydration",
+            },
+            MissingRequirement {
+                section_id: "runtime-recovery",
+                term: "retry state",
+            },
+        ],
+        "terms in the wrong section must not satisfy runtime recovery requirements"
+    );
+}
+
+#[test]
+fn missing_required_section_reports_actual_coverage() {
+    let missing_section_plan = "# Current API Mutation Plan
+## Helper Semantics Mutation Targets
+contains
+starts_with
+ends_with
+length
+empty
+has
+exists
+sum
+count
+append_if
+merge
+unique
+## Generated Rust Parity Mutation Targets
+generated-interpreter suspension parity
+full final IR equivalence
+unsupported generated-mode rejection
+## CLI, IPC, and Storage Envelope Mutation Targets
+binary IPC frame length
+postcard envelope
+Fjall journal
+CLI accepted artifact path
+## UI Model Contract Mutation Targets
+vb_ui_model
+certificate
+incident
+replay
+## Owner Beads and Release Blockers
+owner bead
+critical survivor
+release-risk acceptance
+cargo mutants --package velvet-ballastics-workspace-tests --test vb_c3k9_current_api_mutation_plan
+90% mutation kill rate
+exclusion policy";
+
+    let report = validate_plan(missing_section_plan);
+
+    assert_eq!(report.required_section_count, REQUIRED_SECTIONS.len());
+    assert_eq!(
+        report.covered_required_sections,
+        REQUIRED_SECTIONS.len() - 1
+    );
+    assert_eq!(report.missing_sections, vec!["runtime-recovery"]);
+    assert_eq!(
+        report.missing_requirements,
+        vec![
+            MissingRequirement {
+                section_id: "runtime-recovery",
+                term: "ActionCompleted before frame mutation",
+            },
+            MissingRequirement {
+                section_id: "runtime-recovery",
+                term: "journal sequence hydration",
+            },
+            MissingRequirement {
+                section_id: "runtime-recovery",
+                term: "snapshot hydration",
+            },
+            MissingRequirement {
+                section_id: "runtime-recovery",
+                term: "retry state",
+            },
+        ]
+    );
+}
+
+#[test]
+fn duplicated_required_section_reports_exact_duplicate_id() {
+    let duplicated_section_plan = format!(
+        "{}\n{}\nduplicate body",
+        PLAN, "## Runtime Recovery Mutation Targets"
+    );
+
+    let report = validate_plan(&duplicated_section_plan);
+
+    assert_eq!(report.duplicate_sections, vec!["runtime-recovery"]);
+    assert_eq!(report.covered_required_sections, REQUIRED_SECTIONS.len());
+    assert_eq!(
+        report.is_valid(),
+        false,
+        "duplicated section headings must fail validation instead of hiding misplaced terms"
+    );
+}
+
+#[test]
+fn critical_survivor_creates_blocker() {
+    assert!(
+        PLAN.contains("Critical semantic survivor policy")
+            && PLAN.contains("BLOCK_LOCAL")
+            && PLAN.contains("bd create"),
+        "critical mutation survivors must become explicit blocker evidence or follow-up beads"
+    );
+}

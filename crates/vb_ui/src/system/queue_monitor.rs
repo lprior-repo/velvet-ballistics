@@ -12,6 +12,7 @@ use vb_ipc::ShardMetrics;
 
 /// Pressure status for a single queue pool.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum QueueStatus {
     /// Depth below 50% capacity. Display color: `#00f5ff` (cyan).
     Normal,

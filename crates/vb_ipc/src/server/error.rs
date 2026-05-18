@@ -5,6 +5,7 @@ use crate::IpcError;
 
 /// IPC server errors.
 #[derive(Debug, thiserror::Error)]
+#[non_exhaustive]
 pub enum IpcServerError {
     /// Failed to bind to the socket path.
     #[error("bind failed: {source}")]

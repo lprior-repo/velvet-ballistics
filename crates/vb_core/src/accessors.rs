@@ -15,6 +15,7 @@ pub struct AccessorProgram {
 
 /// One path segment in an accessor program.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub enum PathSegment {
     /// Object field by interned symbol.
     Field(SymbolId),

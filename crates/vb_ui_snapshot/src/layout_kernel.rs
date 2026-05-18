@@ -9,6 +9,7 @@ pub struct Rect {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum LayoutKernelError {
     CoordinateOverflow,
     MissingSelectedIndicator,
@@ -17,6 +18,7 @@ pub enum LayoutKernelError {
 pub type LayoutKernelResult<T> = Result<T, LayoutKernelError>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum SelectedIndicator {
     Visible(Rect),
     Hidden(Rect),

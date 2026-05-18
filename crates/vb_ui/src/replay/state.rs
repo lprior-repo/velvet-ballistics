@@ -16,6 +16,7 @@ use vb_storage::{EventSeq, JournalEvent};
 
 /// How a run terminated.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum TerminalKind {
     /// Run completed normally (`RunFinished`).
     Finished,

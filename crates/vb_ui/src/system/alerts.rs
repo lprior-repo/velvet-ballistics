@@ -17,6 +17,7 @@ pub struct Alert {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum AlertSeverity {
     Info,
     Warning,
@@ -64,6 +65,7 @@ impl AlertSeverity {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum AlertKind {
     QueuePressure,
     RunFailed,
@@ -127,6 +129,7 @@ impl AlertManager {
 /// Notification, and Info to Dashboard only.  The route is stored on
 /// `SystemAlert` so the rendering layer can filter by destination.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum AlertRoute {
     /// Dashboard panel only.
     Dashboard,

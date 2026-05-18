@@ -47,6 +47,7 @@ pub const NEON_PINK: [f32; 4] = [1.0, 0.420, 0.616, 1.0];
 
 /// Status badge for the topology panel header.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum StatusBadge {
     Healthy,
     Degraded,

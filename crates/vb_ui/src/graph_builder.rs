@@ -22,6 +22,7 @@ use vb_core::workflow::{CompiledNode, CompiledNodeKind, WorkflowParts};
 
 /// Semantic port side: input or output.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum PortSide {
     /// Port receives data into the node.
     Input,
@@ -31,6 +32,7 @@ pub enum PortSide {
 
 /// Role a port plays in the node's contract.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum PortRole {
     /// Primary data flow.
     Data,
@@ -50,6 +52,7 @@ pub enum PortRole {
 
 /// How many connections a port accepts.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum Cardinality {
     /// Exactly one connection.
     One,
@@ -88,6 +91,7 @@ impl EdgeStyle {
 
 /// Group visual kind.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum GroupKind {
     /// Container for branch/loop children.
     BranchContainer,

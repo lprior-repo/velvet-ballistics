@@ -131,6 +131,7 @@ pub fn recv_response(
 
 /// IPC client errors.
 #[derive(Debug, thiserror::Error)]
+#[non_exhaustive]
 pub enum IpcClientError {
     /// Connection to the socket failed.
     #[error("connect failed: {source}")]

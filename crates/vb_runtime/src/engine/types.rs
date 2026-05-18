@@ -20,6 +20,7 @@ const REQUIRED_COLLECT_SLOT_EXTRA: &str = "collect SlotWritten extra";
 /// the Phase 40/44 evidence chain requirement that every deterministic step
 /// emits `StepStarted` before `SlotWritten`, followed by `StepSucceeded`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum EvidenceEvent {
     /// Step began execution.
     StepStarted {
@@ -203,6 +204,7 @@ pub type RuntimeEngineResult<T> = Result<T, RuntimeEngineError>;
 
 /// Errors from the runtime engine's action-aware execution.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+#[non_exhaustive]
 pub enum RuntimeEngineError {
     /// Core engine error.
     #[error("{0}")]
@@ -293,6 +295,7 @@ impl RetryPolicy {
 
 /// Extended engine signal returned by the action-aware execution loop.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum RuntimeSignal {
     /// Deterministic execution can continue.
     Continue,

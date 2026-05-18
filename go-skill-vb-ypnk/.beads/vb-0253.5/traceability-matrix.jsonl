@@ -1,0 +1,5 @@
+{"contract_clause":"INV-001","tests":["test_step_state_has_eight_variants"],"proofs":["VERUS-STEP-001"],"review":"contract-verification-review.md"}
+{"contract_clause":"INV-002","tests":["test_valid_transitions_accepted","test_invalid_transitions_rejected"],"proofs":["KANI-STEP-001","VERUS-STEP-002","TLA-STEP-001"],"review":"contract-verification-review.md"}
+{"contract_clause":"INV-003","tests":["test_terminal_states_are_final"],"proofs":[],"review":"contract-verification-review.md"}
+{"contract_clause":"POST-004","tests":["test_terminal_states_returns_correct_set"],"proofs":[],"review":"contract-verification-review.md"}
+{"contract_clause":"POST-005","tests":["test_non_terminal_states_returns_correct_set"],"proofs":[],"review":"contract-verification-review.md"}

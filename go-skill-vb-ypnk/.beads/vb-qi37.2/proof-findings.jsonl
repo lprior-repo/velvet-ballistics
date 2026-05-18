@@ -1,0 +1,8 @@
+{"state":6,"attempt":4,"severity":"none","obligation":"PO-010","status":"approved","evidence":".beads/vb-qi37.2/kani-aggregate-add.raw.log"}
+{"state":6,"attempt":4,"severity":"none","obligation":"PO-011","status":"approved","evidence":".beads/vb-qi37.2/kani-aggregate-capacity.raw.log"}
+{"state":6,"attempt":4,"severity":"none","obligation":"PO-012","status":"approved","evidence":".beads/vb-qi37.2/kani-value-store.raw.log"}
+{"state":6,"attempt":4,"severity":"none","obligation":"PO-017","status":"approved","evidence":".beads/vb-qi37.2/miri-value-store-final.raw.log"}
+{"state":11,"attempt":1,"severity":"high","obligation":"PO-014","status":"deferred_global_blocker","evidence":".beads/vb-qi37.2/fuzz-budget-compute-nonstatic.raw.log","blocker":"missing x86_64-linux-musl-g++ for libfuzzer-sys after non-static retry"}
+{"state":11,"attempt":1,"severity":"high","obligation":"PO-015","status":"deferred_global_blocker","evidence":".beads/vb-qi37.2/fuzz-aggregate-workflow-budget-nonstatic.raw.log","blocker":"missing x86_64-linux-musl-g++ for libfuzzer-sys after non-static retry"}
+{"state":11,"attempt":1,"severity":"high","obligation":"PO-016","status":"deferred_global_blocker","evidence":".beads/vb-qi37.2/fuzz-step-budget-new-nonstatic.raw.log","blocker":"missing x86_64-linux-musl-g++ for libfuzzer-sys after non-static retry"}
+{"state":11,"attempt":1,"severity":"high","obligation":"PO-018","status":"deferred_global_blocker","evidence":".beads/vb-qi37.2/moon-ci.raw.log","blocker":"moon ci git base discovery cannot resolve main in jj workspace"}

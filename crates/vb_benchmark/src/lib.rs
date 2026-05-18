@@ -33,6 +33,7 @@ pub struct BenchmarkMetadata {
 
 /// Error types for evidence gate validation.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum EvidenceError {
     /// Missing baseline measurement.
     MissingBaseline,
@@ -75,6 +76,7 @@ impl std::error::Error for EvidenceError {}
 
 /// Error types for YAML benchmark operations.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum YamlBenchmarkError {
     /// YAML parse failed.
     ParseFailure(String),
@@ -97,6 +99,7 @@ impl std::error::Error for YamlBenchmarkError {}
 
 /// Error types for storage benchmark operations.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum StorageBenchmarkError {
     /// Journal open failed.
     JournalOpenFailure(String),
@@ -121,6 +124,7 @@ impl std::error::Error for StorageBenchmarkError {}
 
 /// Error types for IPC benchmark operations.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum IpcBenchmarkError {
     /// Frame encode failed.
     EncodeFailure(String),
@@ -141,6 +145,7 @@ impl std::error::Error for IpcBenchmarkError {}
 
 /// Error types for recovery benchmark operations.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum RecoveryBenchmarkError {
     /// Hydration failed.
     HydrationFailure(String),
@@ -160,6 +165,7 @@ impl std::error::Error for RecoveryBenchmarkError {}
 
 /// Error types for runtime benchmark operations.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum RuntimeBenchmarkError {
     /// Runtime step failed.
     StepFailure(String),

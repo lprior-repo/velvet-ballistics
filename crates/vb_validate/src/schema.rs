@@ -342,6 +342,7 @@ pub struct WorkflowDoc {
 
 /// Value associated with a workflow field.
 #[derive(Clone)]
+#[non_exhaustive]
 pub enum FieldValue {
     /// String scalar value.
     String(String),

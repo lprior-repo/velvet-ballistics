@@ -108,6 +108,7 @@ pub const COLOR_PENDING: &str = "#98A2B3";
 
 /// Errors that can occur in the Action Registry UI layer.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum RegistryError {
     /// Action registry is empty or not initialized.
     RegistryEmpty,

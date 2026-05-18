@@ -13,6 +13,7 @@ use vb_core::value::SlotValue;
 
 /// Delay strategy applied between retry attempts.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum DelayStrategy {
     /// No delay between attempts.
     None,
@@ -119,6 +120,7 @@ impl Default for RetryPolicy {
 
 /// Errors from retry policy construction and evaluation.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum RetryPolicyError {
     /// `max_attempts` was set to zero, which is invalid.
     ZeroMaxAttempts,
@@ -259,6 +261,7 @@ impl RetryState {
 
 /// Outcome of evaluating whether a retry should proceed.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum RetryDecision {
     /// The failure can be retried; this is the updated state and delay.
     Retry {

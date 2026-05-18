@@ -1,5 +1,6 @@
 /// Accepted artifact validation failure source used at admission boundaries.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
+#[non_exhaustive]
 pub enum ArtifactInvalidSource {
     /// Payload digest validation failed.
     #[error("payload digest mismatch")]
@@ -8,6 +9,7 @@ pub enum ArtifactInvalidSource {
 
 /// Artifact envelope validation errors for accepted artifact v1.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+#[non_exhaustive]
 pub enum ArtifactEnvelopeError {
     /// Record magic did not match the expected family.
     #[error("bad record magic: {found:#010x}")]

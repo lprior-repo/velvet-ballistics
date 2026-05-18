@@ -53,11 +53,13 @@ pub struct DocPatchPlan {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum PatchTarget {
     MasterDoc(PathBuf),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum PatchEdit {
     EvalExprJoin,
     BuildObjectJoin,
@@ -66,22 +68,26 @@ pub enum PatchEdit {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum PatchPlanStatus {
     NeedsReconciliation,
     AlreadyConsistent,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum PreservedNonGoal {
     ControlFlowTaintV1NonGoal,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum RequiredEvidence {
     ConcreteArtifactOrPendingMarker,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum DocReconcileError {
     WrongWorkspace {
         path: PathBuf,
@@ -113,6 +119,7 @@ pub enum DocReconcileError {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum ResolvedNode {
     EvalExpr,
     BuildObject,
@@ -121,6 +128,7 @@ pub enum ResolvedNode {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum StalePhrase {
     EvalExprAlwaysClean,
     EvalExprNoOperandJoin,
@@ -132,6 +140,7 @@ pub enum StalePhrase {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum ClaimKind {
     TestEvidence,
     FormalEvidence,
@@ -141,6 +150,7 @@ pub enum ClaimKind {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum ConflictKind {
     WrongOrder,
     UnknownTerm,
@@ -172,6 +182,7 @@ pub struct TaintVocabularyReport {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum TaintVocabularyRule {
     JoinedDataFlowTaint,
 }

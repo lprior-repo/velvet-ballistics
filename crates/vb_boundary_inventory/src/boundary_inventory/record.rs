@@ -3,6 +3,7 @@ use std::path::PathBuf;
 use super::types::{BoundaryClass, EvidenceReference, FreshnessMarker, ReviewStatus};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum FieldState<T> {
     Present(T),
     Missing,
@@ -40,6 +41,7 @@ pub struct Owner(pub String);
 pub struct ThreatStatement(pub String);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum ReviewDecision {
     Approved,
     Waived { waiver: EvidenceReference },

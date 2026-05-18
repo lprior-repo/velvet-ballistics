@@ -55,6 +55,7 @@ struct ClientConnection {
 
 /// Response payload sent back to IPC clients after command processing.
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[non_exhaustive]
 pub enum IpcResponse {
     /// Command accepted and dispatched with a run identifier acknowledgement.
     AcceptedRun { run_id: u64 },
@@ -123,6 +124,7 @@ pub trait WorkflowResolver {
 
 /// Workflow resolution failed before runtime submission.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+#[non_exhaustive]
 pub enum WorkflowResolutionError {
     /// No resolver is wired into this IPC surface.
     #[error("workflow resolution required")]

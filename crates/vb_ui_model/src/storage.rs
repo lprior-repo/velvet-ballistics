@@ -81,6 +81,7 @@ pub struct JournalDoctorPanel {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub enum CorruptRecordStatus {
     Clean,
     Corrupt {
@@ -91,6 +92,7 @@ pub enum CorruptRecordStatus {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub enum TrimRecommendation {
     NotNeeded,
     Recommended { tail_seq: u64, snapshot_seq: u64 },

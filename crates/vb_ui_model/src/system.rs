@@ -22,6 +22,7 @@ pub struct SystemStatusView {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[repr(u8)]
+#[non_exhaustive]
 pub enum StorageHealth {
     Healthy = 0,
     Degraded = 1,

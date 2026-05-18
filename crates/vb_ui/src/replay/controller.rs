@@ -26,6 +26,7 @@ use crate::ipc_bridge::{IpcBridge, IpcReply, IpcRequest};
 
 /// Playback state of the replay controller.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[non_exhaustive]
 pub enum PlaybackState {
     /// Not playing; no run loaded.
     #[default]
@@ -427,6 +428,7 @@ impl ReplayController {
 
 /// Events emitted by the replay controller for the UI to react to.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum ControllerEvent {
     /// IPC bridge connected to the server.
     Connected,

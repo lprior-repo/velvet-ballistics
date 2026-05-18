@@ -42,6 +42,7 @@ pub const AMBER: [f32; 4] = [1.000, 0.690, 0.000, 1.0]; // #ffb000
 
 /// Semantic category for a workflow node kind.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum NodeCategory {
     /// Data manipulation: Nop, SetConst, Copy, EvalExpr.
     Data,
@@ -77,6 +78,7 @@ pub enum NodeCategory {
 
 /// Geometric shape for rendering a workflow node.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum NodeShape {
     /// Standard rounded rectangle (most node types).
     RoundedRect,

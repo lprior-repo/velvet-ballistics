@@ -16,6 +16,7 @@ use vb_core::workflow::{CompiledNodeKind, WorkflowParts};
 
 /// Outcome of a single certificate check.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum CertificateStatus {
     /// Check passed.
     Pass,
@@ -38,6 +39,7 @@ pub struct Certificate {
 
 /// Kinds of verification certificates.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum CertificateKind {
     /// Nodes non-empty, entry in bounds, node IDs match positions.
     StructuralValidity,
@@ -116,6 +118,7 @@ impl VerificationResult {
 
 /// Status of a single pre-flight verification check.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum CheckStatus {
     /// Check passed.
     Pass,

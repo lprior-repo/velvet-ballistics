@@ -1,0 +1,7 @@
+{"obligation":"PO-001","gate":"Kani runtime parity","command":"cargo kani -p vb_core --harness kani_step_state_transition_matches_contract","status":"PASS","evidence":"VERIFICATION:- SUCCESSFUL; 1 harness verified; 0 failures; 3/3 cover properties satisfied"}
+{"obligation":"PO-001","gate":"Verus transition model","command":"verus verification/verus/step_state_machine.rs","status":"PASS","evidence":"verification results:: 6 verified, 0 errors"}
+{"obligation":"PO-002","gate":"Verus eight-state model","command":"verus verification/verus/step_state_machine.rs","status":"PASS","evidence":"verification results:: 6 verified, 0 errors"}
+{"obligation":"PO-003","gate":"TLA finite model","command":"tlc -config specs/tla/StepState.cfg specs/tla/StepState.tla","status":"PASS","evidence":"No error has been found; 5377 states generated; 512 distinct states; depth 7"}
+{"obligation":"TEST-001","gate":"Proof kernel unit tests","command":"cargo test -p vb_proof_kernels step_state -- --nocapture","status":"PASS","evidence":"10 passed, 24 filtered out"}
+{"obligation":"TEST-002","gate":"Runtime frame step-state tests","command":"cargo test -p vb_core step_state -- --nocapture","status":"PASS","evidence":"12 passed, 1888 filtered out"}
+{"obligation":"FMT-ROOT","gate":"Workspace formatting","command":"cargo fmt --check","status":"DEFERRED_GLOBAL","evidence":"Failed on unrelated pre-existing files outside StepState blast radius, including crates/workspace_tests/tests/vb_qi37_12_state8_silent_discard_contract.rs and xtask/src/forbidden_scan.rs"}

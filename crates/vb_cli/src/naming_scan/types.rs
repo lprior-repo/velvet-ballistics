@@ -19,6 +19,7 @@ pub struct CanonicalSpellingTable {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd)]
+#[non_exhaustive]
 pub enum CanonicalNameKind {
     Product,
     Binary,
@@ -55,6 +56,7 @@ impl CanonicalEntry {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+#[non_exhaustive]
 pub enum LegacyAllowRule {
     RepositoryPath {
         path: String,
@@ -79,6 +81,7 @@ pub enum LegacyAllowRule {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+#[non_exhaustive]
 pub enum AllowlistPolicy {
     Exact(Vec<LegacyAllowRule>),
 }
@@ -164,6 +167,7 @@ impl ColumnNumber {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
+#[non_exhaustive]
 pub enum SpellingClass {
     LegacyProjectSpelling,
     LegacyCrateModuleSpelling,
@@ -180,6 +184,7 @@ pub struct NamingFinding {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+#[non_exhaustive]
 pub enum LegacyException {
     RepositoryPath {
         path: String,
@@ -195,6 +200,7 @@ pub enum LegacyException {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+#[non_exhaustive]
 pub enum OccurrenceClass {
     NoOccurrence,
     CanonicalProduct {
@@ -219,6 +225,7 @@ pub enum OccurrenceClass {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+#[non_exhaustive]
 pub enum ScanInput {
     Text {
         path: RepoPath,
@@ -250,6 +257,7 @@ pub struct RenderedReport {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+#[non_exhaustive]
 pub enum NamingScanError {
     InvalidRoot { root: RepoRoot },
     InvalidConfiguration { reason: String },

@@ -41,6 +41,7 @@ pub struct AstMapEntry<T> {
 
 /// Supported trigger forms in the cold compiler-side AST.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum TriggerAst {
     /// Direct/manual Rust API submission.
     Manual {
@@ -93,6 +94,7 @@ pub struct StepAst {
 
 /// Exact high-level primitive spelling retained from the source document.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum StepPrimitiveAst {
     /// `set` constant-producing primitive.
     Set,
@@ -124,6 +126,7 @@ pub enum StepPrimitiveAst {
 
 /// High-level primitive intent recognized by the compiler AST.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum StepKindAst {
     /// Numeric action boundary primitive.
     Run {
@@ -195,6 +198,7 @@ pub enum StepKindAst {
 
 /// Literal tree retained in the cold AST.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum AstValue {
     /// YAML null.
     Null,
@@ -214,6 +218,7 @@ pub enum AstValue {
 
 /// Expression/reference placeholder before bytecode lowering.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum AstExpression {
     /// Numeric slot reference retained from the Phase 0 grammar.
     Slot(SlotIdx),

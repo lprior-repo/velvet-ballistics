@@ -28,6 +28,7 @@ pub struct ShardDisplay {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum HealthStatus {
     Healthy,
     Degraded,

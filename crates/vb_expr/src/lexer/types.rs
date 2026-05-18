@@ -5,6 +5,7 @@ use vb_core::FiniteF64;
 
 /// Expression token produced by the lexer.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum Token {
     /// Null, boolean, or integer literal.
     Literal(LiteralToken),
@@ -49,6 +50,7 @@ pub struct SpannedToken {
 
 /// Literal value token.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum LiteralToken {
     /// Null literal.
     Null,
@@ -64,6 +66,7 @@ pub enum LiteralToken {
 
 /// Left-associative infix binary operator.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum BinaryOp {
     /// Logical OR.
     Or,
@@ -93,6 +96,7 @@ pub enum BinaryOp {
 
 /// Prefix unary operator.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum UnaryOp {
     /// Logical negation.
     Not,

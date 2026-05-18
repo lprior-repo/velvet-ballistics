@@ -96,6 +96,7 @@ impl StepBudget {
 
 /// Outcome of one or more engine transitions.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum EngineSignal {
     /// The run made progress and can continue immediately.
     Continue,

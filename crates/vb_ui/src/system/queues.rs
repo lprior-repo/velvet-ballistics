@@ -17,6 +17,7 @@
 
 /// Three-band pressure classification shared across all queue pools.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum PressureLevel {
     /// Utilisation below 50%. Display colour: cyan `#00f5ff`.
     Normal,

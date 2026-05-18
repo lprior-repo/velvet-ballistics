@@ -72,6 +72,7 @@ pub const NEON_PURPLE: &str = "#b14dff";
 
 /// Status badge shown on a certificate card.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum CardStatus {
     /// Verification check passed.
     Pass,
@@ -267,6 +268,7 @@ pub struct ResourceRow {
 
 /// Status of a resource row.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum ResourceRowStatus {
     /// Within bounds.
     Ok,
@@ -858,6 +860,7 @@ pub fn action_reports_to_display(reports: &[ActionPolicyReport]) -> ActionPolicy
 // ---------------------------------------------------------------------------
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum Error {
     VerificationIncomplete,
     ArtifactDigestMissing,
@@ -884,6 +887,7 @@ const BANNER_GREEN: &str = "#10B981";
 const BANNER_RED: &str = "#EF4444";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum BannerStatus {
     Pass,
     Fail,
@@ -939,6 +943,7 @@ impl VerificationBanner {
 const GATE_PENDING_COLOR: &str = "#98A2B3";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum GateStatus {
     Pass,
     Fail,

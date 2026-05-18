@@ -1,0 +1,622 @@
+#[derive(Debug, Clone, Copy)]
+struct ListRecord { start: u32, len: u32 }
+struct ListStore {
+    records: [Option<ListRecord>; LIST_STORE_RECORD_CAPACITY],
+    values: [SlotValue; LIST_STORE_VALUE_CAPACITY],
+    taints: [Taint; LIST_STORE_VALUE_CAPACITY],
+    record_len: u32,
+    value_len: u32,
+}
+impl ListStore {
+    fn new() -> Self {
+        Self {
+            records: [None; LIST_STORE_RECORD_CAPACITY],
+            values: [SlotValue::Null; LIST_STORE_VALUE_CAPACITY],
+            taints: [Taint::Clean; LIST_STORE_VALUE_CAPACITY],
+            record_len: 0,
+            value_len: 0,
+        }
+    }
+
+    fn insert_items_with_taints(
+        &mut self,
+        items: &[SlotValue],
+        taints: &[Taint],
+    ) -> Result<u32, DriveError> {
+        if items.len() != taints.len() {
+            return Err(DriveError::InvalidCompiledWorkflow {
+                reason: "list value/taint length mismatch",
+            });
+        }
+        let start = self.value_len;
+        let item_count = u32::try_from(items.len()).map_err(|_| DriveError::ListStoreOverflow)?;
+        self.ensure_value_capacity(start, item_count)?;
+        self.copy_items(start, items, taints)?;
+        self.value_len = checked_add_u32(start, item_count, DriveError::ListStoreOverflow)?;
+        self.insert_record(start, item_count)
+    }
+
+    fn insert_items_prefix(
+        &mut self,
+        items: &[SlotValue; LIST_STORE_VALUE_CAPACITY],
+        taints: &[Taint; LIST_STORE_VALUE_CAPACITY],
+        count: usize,
+    ) -> Result<u32, DriveError> {
+        let start = self.value_len;
+        let item_count = u32::try_from(count).map_err(|_| DriveError::ListStoreOverflow)?;
+        self.ensure_value_capacity(start, item_count)?;
+        let mut cursor = 0usize;
+        while cursor < count {
+            self.copy_item(start, cursor, items, taints)?;
+            cursor = cursor.checked_add(1).ok_or(DriveError::ListStoreOverflow)?;
+        }
+        self.value_len = checked_add_u32(start, item_count, DriveError::ListStoreOverflow)?;
+        self.insert_record(start, item_count)
+    }
+
+    fn ensure_value_capacity(&self, start: u32, count: u32) -> Result<(), DriveError> {
+        let end = checked_add_u32(start, count, DriveError::ListStoreOverflow)?;
+        let end_index = usize::try_from(end).map_err(|_| DriveError::ListStoreOverflow)?;
+        if end_index > LIST_STORE_VALUE_CAPACITY {
+            return Err(DriveError::ListStoreOverflow);
+        }
+        Ok(())
+    }
+
+    fn copy_items(
+        &mut self,
+        start: u32,
+        items: &[SlotValue],
+        taints: &[Taint],
+    ) -> Result<(), DriveError> {
+        let mut cursor = 0usize;
+        while cursor < items.len() {
+            self.copy_item(start, cursor, items, taints)?;
+            cursor = cursor.checked_add(1).ok_or(DriveError::ListStoreOverflow)?;
+        }
+        Ok(())
+    }
+
+    fn copy_item(
+        &mut self,
+        start: u32,
+        cursor: usize,
+        items: &[SlotValue],
+        taints: &[Taint],
+    ) -> Result<(), DriveError> {
+        let target_index = checked_offset_index(start, cursor, DriveError::ListStoreOverflow)?;
+        let value = items.get(cursor).copied().ok_or(DriveError::ListStoreOverflow)?;
+        let taint = taints.get(cursor).copied().ok_or(DriveError::ListStoreOverflow)?;
+        match (self.values.get_mut(target_index), self.taints.get_mut(target_index)) {
+            (Some(target), Some(target_taint)) => {
+                *target = value;
+                *target_taint = taint;
+                Ok(())
+            }
+            _ => Err(DriveError::ListStoreOverflow),
+        }
+    }
+
+    fn insert_record(&mut self, start: u32, len: u32) -> Result<u32, DriveError> {
+        let handle = self.record_len;
+        let index = usize::try_from(handle).map_err(|_| DriveError::ListStoreOverflow)?;
+        match self.records.get_mut(index) {
+            Some(slot) => *slot = Some(ListRecord { start, len }),
+            None => return Err(DriveError::ListStoreOverflow),
+        }
+        self.record_len = checked_add_u32(self.record_len, 1, DriveError::ListStoreOverflow)?;
+        Ok(handle)
+    }
+
+    fn record(&self, handle: u32) -> Result<Option<ListRecord>, DriveError> {
+        if handle >= self.record_len {
+            return Ok(None);
+        }
+        let index = usize::try_from(handle).map_err(|_| DriveError::InvalidListHandle)?;
+        match self.records.get(index).copied() {
+            Some(Some(record)) => Ok(Some(record)),
+            Some(None) | None => Err(DriveError::InvalidListHandle),
+        }
+    }
+
+    fn len(&self, handle: u32) -> Result<Option<u32>, DriveError> {
+        self.record(handle).map(|record| record.map(|value| value.len))
+    }
+
+    fn first(&self, handle: u32) -> Result<Option<SlotValue>, DriveError> {
+        let Some(record) = self.record(handle)? else {
+            return Ok(None);
+        };
+        if record.len == 0 {
+            return Ok(None);
+        }
+        let index = usize::try_from(record.start).map_err(|_| DriveError::InvalidListHandle)?;
+        self.values
+            .get(index)
+            .copied()
+            .map(Some)
+            .ok_or(DriveError::InvalidListHandle)
+    }
+
+    fn tail(&mut self, handle: u32) -> Result<Option<u32>, DriveError> {
+        let Some(record) = self.record(handle)? else {
+            return Ok(None);
+        };
+        let (start, len) = if record.len == 0 {
+            (record.start, 0)
+        } else {
+            (
+                checked_add_u32(record.start, 1, DriveError::ListStoreOverflow)?,
+                record.len.checked_sub(1).ok_or(DriveError::ListStoreOverflow)?,
+            )
+        };
+        self.insert_record(start, len).map(Some)
+    }
+
+    fn value_at(&self, handle: u32, index: u32) -> Result<(SlotValue, Taint), DriveError> {
+        let Some(record) = self.record(handle)? else {
+            return Err(DriveError::InvalidListHandle);
+        };
+        if index >= record.len {
+            return Err(DriveError::ListIndexOutOfBounds { index });
+        }
+        let offset = checked_add_u32(record.start, index, DriveError::ListStoreOverflow)?;
+        let value_index = usize::try_from(offset).map_err(|_| DriveError::InvalidListHandle)?;
+        match (
+            self.values.get(value_index).copied(),
+            self.taints.get(value_index).copied(),
+        ) {
+            (Some(value), Some(taint)) => Ok((value, taint)),
+            (_, _) => Err(DriveError::InvalidListHandle),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+struct ObjectField { key: u32, value: SlotValue, taint: Taint }
+#[derive(Debug, Clone, Copy)]
+struct ObjectRecord { start: u32, len: u32 }
+struct ObjectStore {
+    records: [Option<ObjectRecord>; OBJECT_STORE_RECORD_CAPACITY],
+    fields: [Option<ObjectField>; OBJECT_STORE_FIELD_CAPACITY],
+    record_len: u32,
+    field_len: u32,
+}
+impl ObjectStore {
+    fn new() -> Self {
+        Self {
+            records: [None; OBJECT_STORE_RECORD_CAPACITY],
+            fields: [None; OBJECT_STORE_FIELD_CAPACITY],
+            record_len: 0,
+            field_len: 0,
+        }
+    }
+
+    fn insert_fields(&mut self, fields: &[ObjectField]) -> Result<u32, DriveError> {
+        let start = self.field_len;
+        let field_count = u32::try_from(fields.len()).map_err(|_| DriveError::ObjectStoreOverflow)?;
+        self.ensure_field_capacity(start, field_count)?;
+        self.copy_fields(start, fields)?;
+        self.field_len = checked_add_u32(start, field_count, DriveError::ObjectStoreOverflow)?;
+        self.insert_record(start, field_count)
+    }
+
+    fn insert_fields_prefix(
+        &mut self,
+        fields: &[ObjectField; OBJECT_STORE_FIELD_CAPACITY],
+        count: usize,
+    ) -> Result<u32, DriveError> {
+        let start = self.field_len;
+        let field_count = u32::try_from(count).map_err(|_| DriveError::ObjectStoreOverflow)?;
+        self.ensure_field_capacity(start, field_count)?;
+        let mut cursor = 0usize;
+        while cursor < count {
+            self.copy_field(start, cursor, fields)?;
+            cursor = cursor.checked_add(1).ok_or(DriveError::ObjectStoreOverflow)?;
+        }
+        self.field_len = checked_add_u32(start, field_count, DriveError::ObjectStoreOverflow)?;
+        self.insert_record(start, field_count)
+    }
+
+    fn ensure_field_capacity(&self, start: u32, count: u32) -> Result<(), DriveError> {
+        let end = checked_add_u32(start, count, DriveError::ObjectStoreOverflow)?;
+        let end_index = usize::try_from(end).map_err(|_| DriveError::ObjectStoreOverflow)?;
+        if end_index > OBJECT_STORE_FIELD_CAPACITY {
+            return Err(DriveError::ObjectStoreOverflow);
+        }
+        Ok(())
+    }
+
+    fn copy_fields(&mut self, start: u32, fields: &[ObjectField]) -> Result<(), DriveError> {
+        let mut cursor = 0usize;
+        while cursor < fields.len() {
+            self.copy_field(start, cursor, fields)?;
+            cursor = cursor.checked_add(1).ok_or(DriveError::ObjectStoreOverflow)?;
+        }
+        Ok(())
+    }
+
+    fn copy_field(
+        &mut self,
+        start: u32,
+        cursor: usize,
+        fields: &[ObjectField],
+    ) -> Result<(), DriveError> {
+        let target_index = checked_offset_index(start, cursor, DriveError::ObjectStoreOverflow)?;
+        let value = fields
+            .get(cursor)
+            .copied()
+            .ok_or(DriveError::ObjectStoreOverflow)?;
+        match self.fields.get_mut(target_index) {
+            Some(target) => {
+                *target = Some(value);
+                Ok(())
+            }
+            None => Err(DriveError::ObjectStoreOverflow),
+        }
+    }
+
+    fn insert_record(&mut self, start: u32, len: u32) -> Result<u32, DriveError> {
+        let handle = self.record_len;
+        let index = usize::try_from(handle).map_err(|_| DriveError::ObjectStoreOverflow)?;
+        match self.records.get_mut(index) {
+            Some(slot) => *slot = Some(ObjectRecord { start, len }),
+            None => return Err(DriveError::ObjectStoreOverflow),
+        }
+        self.record_len = checked_add_u32(self.record_len, 1, DriveError::ObjectStoreOverflow)?;
+        Ok(handle)
+    }
+
+    fn record(&self, handle: u32) -> Result<ObjectRecord, DriveError> {
+        if handle >= self.record_len {
+            return Err(DriveError::InvalidObjectHandle);
+        }
+        let index = usize::try_from(handle).map_err(|_| DriveError::InvalidObjectHandle)?;
+        self.records
+            .get(index)
+            .copied()
+            .flatten()
+            .ok_or(DriveError::InvalidObjectHandle)
+    }
+
+    fn field(&self, handle: u32, key: u32) -> Result<(SlotValue, Taint), DriveError> {
+        let record = self.record(handle)?;
+        object_field_scan(self, record, key)
+    }
+}
+
+fn list_contains_item(list_store: &ListStore, handle: u32, item: SlotValue) -> Result<bool, DriveError> {
+    let Some(record) = list_store.record(handle)? else {
+        return Err(DriveError::InvalidListHandle);
+    };
+    let mut cursor = 0u32;
+    while cursor < record.len {
+        let (value, _) = list_store.value_at(handle, cursor)?;
+        if value == item {
+            return Ok(true);
+        }
+        cursor = checked_add_u32(cursor, 1, DriveError::ListStoreOverflow)?;
+    }
+    Ok(false)
+}
+
+fn clone_list_items(list_store: &mut ListStore, handle: u32) -> Result<u32, DriveError> {
+    let Some(record) = list_store.record(handle)? else {
+        return Err(DriveError::InvalidListHandle);
+    };
+    let mut values = [SlotValue::Null; LIST_STORE_VALUE_CAPACITY];
+    let mut taints = [Taint::Clean; LIST_STORE_VALUE_CAPACITY];
+    let count = usize::try_from(record.len).map_err(|_| DriveError::ListStoreOverflow)?;
+    let mut cursor = 0u32;
+    while cursor < record.len {
+        let (value, taint) = list_store.value_at(handle, cursor)?;
+        let index = usize::try_from(cursor).map_err(|_| DriveError::ListStoreOverflow)?;
+        match (values.get_mut(index), taints.get_mut(index)) {
+            (Some(target_value), Some(target_taint)) => {
+                *target_value = value;
+                *target_taint = taint;
+            }
+            (_, _) => return Err(DriveError::ListStoreOverflow),
+        }
+        cursor = checked_add_u32(cursor, 1, DriveError::ListStoreOverflow)?;
+    }
+    list_store.insert_items_prefix(&values, &taints, count)
+}
+
+fn append_list_item(
+    list_store: &mut ListStore,
+    handle: u32,
+    item: SlotValue,
+    item_taint: Taint,
+) -> Result<u32, DriveError> {
+    let Some(record) = list_store.record(handle)? else {
+        return Err(DriveError::InvalidListHandle);
+    };
+    let base_count = usize::try_from(record.len).map_err(|_| DriveError::ListStoreOverflow)?;
+    let count = base_count.checked_add(1).ok_or(DriveError::ListStoreOverflow)?;
+    if count > LIST_STORE_VALUE_CAPACITY {
+        return Err(DriveError::ListStoreOverflow);
+    }
+    let mut values = [SlotValue::Null; LIST_STORE_VALUE_CAPACITY];
+    let mut taints = [Taint::Clean; LIST_STORE_VALUE_CAPACITY];
+    let mut cursor = 0u32;
+    while cursor < record.len {
+        let (value, taint) = list_store.value_at(handle, cursor)?;
+        let index = usize::try_from(cursor).map_err(|_| DriveError::ListStoreOverflow)?;
+        match (values.get_mut(index), taints.get_mut(index)) {
+            (Some(target_value), Some(target_taint)) => {
+                *target_value = value;
+                *target_taint = taint;
+            }
+            (_, _) => return Err(DriveError::ListStoreOverflow),
+        }
+        cursor = checked_add_u32(cursor, 1, DriveError::ListStoreOverflow)?;
+    }
+    match (values.get_mut(base_count), taints.get_mut(base_count)) {
+        (Some(target_value), Some(target_taint)) => {
+            *target_value = item;
+            *target_taint = item_taint;
+        }
+        (_, _) => return Err(DriveError::ListStoreOverflow),
+    }
+    list_store.insert_items_prefix(&values, &taints, count)
+}
+
+fn unique_list_items(list_store: &mut ListStore, handle: u32) -> Result<u32, DriveError> {
+    let Some(record) = list_store.record(handle)? else {
+        return Err(DriveError::InvalidListHandle);
+    };
+    let mut values = [SlotValue::Null; LIST_STORE_VALUE_CAPACITY];
+    let mut taints = [Taint::Clean; LIST_STORE_VALUE_CAPACITY];
+    let mut unique_len = 0usize;
+    let mut cursor = 0u32;
+    while cursor < record.len {
+        let (value, taint) = list_store.value_at(handle, cursor)?;
+        let seen = values
+            .get(..unique_len)
+            .ok_or(DriveError::ListStoreOverflow)?
+            .iter()
+            .copied()
+            .any(|item| item == value);
+        if !seen {
+            match (values.get_mut(unique_len), taints.get_mut(unique_len)) {
+                (Some(target_value), Some(target_taint)) => {
+                    *target_value = value;
+                    *target_taint = taint;
+                }
+                (_, _) => return Err(DriveError::ListStoreOverflow),
+            }
+            unique_len = unique_len.checked_add(1).ok_or(DriveError::ListStoreOverflow)?;
+        }
+        cursor = checked_add_u32(cursor, 1, DriveError::ListStoreOverflow)?;
+    }
+    list_store.insert_items_prefix(&values, &taints, unique_len)
+}
+
+fn sum_list_items(list_store: &ListStore, handle: u32) -> Result<i64, DriveError> {
+    let Some(record) = list_store.record(handle)? else {
+        return Err(DriveError::InvalidListHandle);
+    };
+    let mut total = 0i64;
+    let mut cursor = 0u32;
+    while cursor < record.len {
+        let (value, _) = list_store.value_at(handle, cursor)?;
+        total = total
+            .checked_add(expect_i64_value(value)?)
+            .ok_or(DriveError::IntegerOverflow)?;
+        cursor = checked_add_u32(cursor, 1, DriveError::ListStoreOverflow)?;
+    }
+    Ok(total)
+}
+
+fn collect_page_handle(
+    list_store: &mut ListStore,
+    handle: u32,
+    start: u32,
+    page_size: u32,
+) -> Result<u32, DriveError> {
+    let Some(record) = list_store.record(handle)? else {
+        return Err(DriveError::InvalidListHandle);
+    };
+    if start > record.len {
+        return Err(DriveError::ListStoreOverflow);
+    }
+    let remaining = record.len.checked_sub(start).ok_or(DriveError::ListStoreOverflow)?;
+    let page_len = remaining.min(page_size);
+    let count = usize::try_from(page_len).map_err(|_| DriveError::ListStoreOverflow)?;
+    let mut values = [SlotValue::Null; LIST_STORE_VALUE_CAPACITY];
+    let mut taints = [Taint::Clean; LIST_STORE_VALUE_CAPACITY];
+    let mut cursor = 0u32;
+    while cursor < page_len {
+        let source_index = checked_add_u32(start, cursor, DriveError::ListStoreOverflow)?;
+        let (value, taint) = list_store.value_at(handle, source_index)?;
+        let target_index = usize::try_from(cursor).map_err(|_| DriveError::ListStoreOverflow)?;
+        match (values.get_mut(target_index), taints.get_mut(target_index)) {
+            (Some(target_value), Some(target_taint)) => {
+                *target_value = value;
+                *target_taint = taint;
+            }
+            (_, _) => return Err(DriveError::ListStoreOverflow),
+        }
+        cursor = checked_add_u32(cursor, 1, DriveError::ListStoreOverflow)?;
+    }
+    list_store.insert_items_prefix(&values, &taints, count)
+}
+
+fn object_field_count(object_store: &ObjectStore, handle: u32) -> Result<u32, DriveError> {
+    object_store.record(handle).map(|record| record.len)
+}
+
+fn merge_object_records(
+    object_store: &mut ObjectStore,
+    left: u32,
+    right: u32,
+) -> Result<u32, DriveError> {
+    let left_record = object_store.record(left)?;
+    let right_record = object_store.record(right)?;
+    let mut fields = [None; OBJECT_STORE_FIELD_CAPACITY];
+    let mut field_len = copy_object_fields_to_buffer(object_store, left_record, &mut fields, 0)?;
+    let mut cursor = 0u32;
+    while cursor < right_record.len {
+        let field = read_object_field(object_store, right_record.start, cursor)?;
+        field_len = upsert_object_field(&mut fields, field_len, field)?;
+        cursor = checked_add_u32(cursor, 1, DriveError::ObjectStoreOverflow)?;
+    }
+    let count = usize::try_from(field_len).map_err(|_| DriveError::ObjectStoreOverflow)?;
+    let mut compact = [ObjectField { key: 0, value: SlotValue::Null, taint: Taint::Clean }; OBJECT_STORE_FIELD_CAPACITY];
+    let mut index = 0usize;
+    while index < count {
+        let field = fields.get(index).copied().flatten().ok_or(DriveError::ObjectStoreOverflow)?;
+        match compact.get_mut(index) {
+            Some(target) => *target = field,
+            None => return Err(DriveError::ObjectStoreOverflow),
+        }
+        index = index.checked_add(1).ok_or(DriveError::ObjectStoreOverflow)?;
+    }
+    object_store.insert_fields_prefix(&compact, count)
+}
+
+fn copy_object_fields_to_buffer(
+    object_store: &ObjectStore,
+    record: ObjectRecord,
+    fields: &mut [Option<ObjectField>; OBJECT_STORE_FIELD_CAPACITY],
+    start_len: u32,
+) -> Result<u32, DriveError> {
+    let mut len = start_len;
+    let mut cursor = 0u32;
+    while cursor < record.len {
+        let field = read_object_field(object_store, record.start, cursor)?;
+        let index = usize::try_from(len).map_err(|_| DriveError::ObjectStoreOverflow)?;
+        match fields.get_mut(index) {
+            Some(target) => *target = Some(field),
+            None => return Err(DriveError::ObjectStoreOverflow),
+        }
+        len = checked_add_u32(len, 1, DriveError::ObjectStoreOverflow)?;
+        cursor = checked_add_u32(cursor, 1, DriveError::ObjectStoreOverflow)?;
+    }
+    Ok(len)
+}
+
+fn upsert_object_field(
+    fields: &mut [Option<ObjectField>; OBJECT_STORE_FIELD_CAPACITY],
+    len: u32,
+    field: ObjectField,
+) -> Result<u32, DriveError> {
+    let mut cursor = 0u32;
+    while cursor < len {
+        let index = usize::try_from(cursor).map_err(|_| DriveError::ObjectStoreOverflow)?;
+        match fields.get_mut(index) {
+            Some(Some(existing)) if existing.key == field.key => {
+                *existing = field;
+                return Ok(len);
+            }
+            Some(_) => {}
+            None => return Err(DriveError::ObjectStoreOverflow),
+        }
+        cursor = checked_add_u32(cursor, 1, DriveError::ObjectStoreOverflow)?;
+    }
+    let index = usize::try_from(len).map_err(|_| DriveError::ObjectStoreOverflow)?;
+    match fields.get_mut(index) {
+        Some(target) => {
+            *target = Some(field);
+            checked_add_u32(len, 1, DriveError::ObjectStoreOverflow)
+        }
+        None => Err(DriveError::ObjectStoreOverflow),
+    }
+}
+
+fn read_object_field(
+    object_store: &ObjectStore,
+    start: u32,
+    cursor: u32,
+) -> Result<ObjectField, DriveError> {
+    let offset = checked_add_u32(start, cursor, DriveError::ObjectFieldOffsetOverflow)?;
+    let index = usize::try_from(offset).map_err(|_| DriveError::ObjectFieldOffsetOverflow)?;
+    object_store
+        .fields
+        .get(index)
+        .copied()
+        .flatten()
+        .ok_or(DriveError::ObjectFieldOutOfBounds)
+}
+
+fn object_field_scan(
+    object_store: &ObjectStore,
+    record: ObjectRecord,
+    key: u32,
+) -> Result<(SlotValue, Taint), DriveError> {
+    let mut cursor = 0u32;
+    while cursor < record.len {
+        let field = read_object_field(object_store, record.start, cursor)?;
+        if field.key == key {
+            return Ok((field.value, field.taint));
+        }
+        cursor = checked_add_u32(cursor, 1, DriveError::ObjectStoreOverflow)?;
+    }
+    Err(DriveError::MissingField { field: key })
+}
+
+fn checked_add_u32(left: u32, right: u32, error: DriveError) -> Result<u32, DriveError> {
+    left.checked_add(right).ok_or(error)
+}
+
+fn checked_offset_index(start: u32, cursor: usize, error: DriveError) -> Result<usize, DriveError> {
+    let cursor_u32 = u32::try_from(cursor).map_err(|_| error)?;
+    let target_offset = checked_add_u32(start, cursor_u32, error)?;
+    usize::try_from(target_offset).map_err(|_| error)
+}
+
+fn read_slot(slots: &[Option<SlotValue>; WORKFLOW_SLOT_COUNT], slot: u16) -> Result<SlotValue, DriveError> {
+    match read_slot_optional(slots, slot)? {
+        Some(value) => Ok(value),
+        None => Err(DriveError::SlotNull),
+    }
+}
+
+fn read_slot_optional(slots: &[Option<SlotValue>; WORKFLOW_SLOT_COUNT], slot: u16) -> Result<Option<SlotValue>, DriveError> {
+    slots
+        .get(usize::from(slot))
+        .copied()
+        .ok_or(DriveError::SlotOutOfBounds { slot })
+}
+
+fn read_taint(slot_taints: &[Taint; WORKFLOW_SLOT_COUNT], slot: u16) -> Result<Taint, DriveError> {
+    slot_taints
+        .get(usize::from(slot))
+        .copied()
+        .ok_or(DriveError::SlotOutOfBounds { slot })
+}
+
+fn write_slot(
+    slots: &mut [Option<SlotValue>; WORKFLOW_SLOT_COUNT],
+    slot: u16,
+    value: Option<SlotValue>,
+) -> Result<(), DriveError> {
+    match slots.get_mut(usize::from(slot)) {
+        Some(target) => {
+            *target = value;
+            Ok(())
+        }
+        None => Err(DriveError::SlotOutOfBounds { slot }),
+    }
+}
+
+fn write_slot_with_taint(
+    slots: &mut [Option<SlotValue>; WORKFLOW_SLOT_COUNT],
+    slot_taints: &mut [Taint; WORKFLOW_SLOT_COUNT],
+    slot: u16,
+    value: Option<SlotValue>,
+    taint: Taint,
+) -> Result<(), DriveError> {
+    match (
+        slots.get_mut(usize::from(slot)),
+        slot_taints.get_mut(usize::from(slot)),
+    ) {
+        (Some(target), Some(target_taint)) => {
+            *target = value;
+            *target_taint = taint;
+            Ok(())
+        }
+        (_, _) => Err(DriveError::SlotOutOfBounds { slot }),
+    }
+}

@@ -52,6 +52,7 @@ pub struct NodeBadge {
 
 /// Semantic category of a node -- determines colour palette.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum NodeCategory {
     Data,
     External,
@@ -74,6 +75,7 @@ pub struct StateOverlay {
 
 /// Runtime step state used for the glow overlay.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum OverlayState {
     Pending,
     Running,
@@ -100,6 +102,7 @@ pub struct EdgeLine {
 
 /// Visual classification of an edge.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum EdgeType {
     Normal,
     Branch,

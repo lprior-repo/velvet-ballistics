@@ -51,6 +51,7 @@ impl From<vb_core::CoreError> for ExprError {
 
 /// Expression error type.
 #[derive(Debug, Error, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum ExprError {
     #[error("unexpected token: {token}")]
     UnexpectedToken { token: String },

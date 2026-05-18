@@ -10,6 +10,7 @@ use vb_core::value::Taint;
 
 /// How certain the system is about whether an action has side effects.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum SideEffectCertainty {
     /// The action definitely has side effects.
     Certain,

@@ -11,6 +11,7 @@ pub struct TickerEvent {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum TickerEventKind {
     RunAccepted,
     StepStarted,

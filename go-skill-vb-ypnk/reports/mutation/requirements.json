@@ -1,0 +1,30 @@
+{
+  "crate_vb_core": {
+    "total_mutants": 2084,
+    "caught": 711,
+    "missed": 955,
+    "unviable": 415,
+    "timeouts": 3,
+    "prod_code_survivors": 13,
+    "key_functions": ["validate_idempotency_key_ingredients", "check_output_slot_in_bounds", "find_node_position", "push_done_continuation", "visit_body_region_node", "node_kind_has_no_successors", "push_repeat_check_successors", "push_together_branch_successors"]
+  },
+  "crate_vb_compile": {
+    "total_mutants": 1058,
+    "caught": 396,
+    "missed": 372,
+    "unviable": 277,
+    "timeouts": 13,
+    "kill_rate": "51.6%",
+    "key_functions": ["canonical_step_width", "canonical_body_step_width", "extend_step_names_for_generated", "layout_width", "validate_mapping_len", "push_sequence", "validate_scalar_len", "compiled_step_width"]
+  },
+  "crate_vb_ipc": {
+    "total_mutants": 274,
+    "caught": 161,
+    "missed": 32,
+    "unviable": 56,
+    "timeouts": 25,
+    "kill_rate": "58.7%",
+    "prod_code_survivors": 5,
+    "key_functions": ["serve_ipc", "handle_get_workflow_graph", "handle_get_taint_report", "enqueue_successors"]
+  }
+}

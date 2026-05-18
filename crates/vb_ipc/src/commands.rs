@@ -8,6 +8,7 @@ use crate::error::IpcError;
 /// Binary IPC command identifiers.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[repr(u16)]
+#[non_exhaustive]
 pub enum IpcCommand {
     /// Submit a run using a previously compiled workflow artifact.
     SubmitRun = 1,

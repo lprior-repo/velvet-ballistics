@@ -36,6 +36,7 @@ pub struct ExecutionRunSummary {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum RunDisplayStatus {
     Running,
     Succeeded,
@@ -45,6 +46,7 @@ pub enum RunDisplayStatus {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum DurabilityDisplayProfile {
     Nominal,
     Strict,
@@ -96,6 +98,7 @@ impl ExecutionRunSummary {
 
 /// Runtime execution state of a single node, used for color mapping.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum RuntimeNodeState {
     Pending,
     Running,
@@ -110,6 +113,7 @@ pub enum RuntimeNodeState {
 // ---------------------------------------------------------------------------
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum DetailTab {
     Input,
     Output,
@@ -599,6 +603,7 @@ pub fn step_tab_content(
 // ---------------------------------------------------------------------------
 
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub enum ExecutionDetailsError {
     RunNotFound,
     WorkflowGraphUnavailable,

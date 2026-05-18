@@ -15,6 +15,7 @@ use vb_core::{
 
 /// Recovery failures with typed diagnostics.
 #[derive(Debug, thiserror::Error)]
+#[non_exhaustive]
 pub enum RecoveryError {
     /// Journal operation failed during recovery.
     #[error("journal error during recovery: {0}")]
@@ -100,6 +101,7 @@ pub type RecoveryResult<T> = Result<T, RecoveryError>;
 
 /// Terminal status recovered from durable journal events.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub enum RecoveryTerminalState {
     /// Run was cancelled before completion.
     Cancelled,
@@ -155,6 +157,7 @@ pub struct RecoveredRunAdmission {
 /// Explicit recovery product. Supports summary-only or full live-frame seed
 /// recovery from durable journal events.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub enum RecoveryHydration {
     /// Summary-only recovery product.
     Summary(RecoveryRuntimeSummary),
@@ -175,6 +178,7 @@ impl RecoveryHydration {
 
 /// Step state recovered from durable lifecycle events.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub enum RecoveredStepState {
     /// Step has started or is waiting on action completion.
     Running,
@@ -361,6 +365,7 @@ impl Default for ActionReplayTracker {
 
 /// Digest check level for recovery validation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum DigestCheck {
     /// Only verify workflow source digest.
     WorkflowSourceOnly,

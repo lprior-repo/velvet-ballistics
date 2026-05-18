@@ -18,6 +18,7 @@ pub const NEON_ORANGE: [f32; 4] = [1.0_f32, 0.420_f32, 0.0_f32, 1.0_f32];
 
 /// Primary repair kind as specified by the Phase 5A contract.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum RepairKind {
     IncreaseTimeout,
     AddRetryBackoff,
@@ -43,6 +44,7 @@ impl RepairKind {
 
 /// Confidence level for a repair suggestion.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum RepairConfidence {
     High,
     Medium,
@@ -77,6 +79,7 @@ pub struct RepairSuggestion {
 
 /// Extended repair actions for additional failure modes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum RepairAction {
     IncreaseTimeout,
     ReducePayload,
@@ -345,6 +348,7 @@ pub fn suggest_repairs_for_record(record: &IncidentRecord) -> Vec<RepairSuggesti
 
 /// Tracks the resolution state of a single [`RepairSuggestion`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum RepairActionState {
     /// The suggestion has not been acted upon yet.
     Pending,

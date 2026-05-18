@@ -101,6 +101,7 @@ pub(crate) struct WorkflowSourceParts {
 
 /// Trigger declaration.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum TriggerAst {
     /// Manual trigger (default).
     Manual,
@@ -114,6 +115,7 @@ pub enum TriggerAst {
 
 /// Recursive cold authoring value.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum AuthorValue {
     Null,
     Bool(bool),
@@ -157,6 +159,7 @@ pub struct StepAst {
 
 /// The concrete primitive operation for a step.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum StepPrimitive {
     /// Set a variable to a value.
     Set {
@@ -258,6 +261,7 @@ pub enum StepPrimitive {
 
 /// A scalar YAML value used in step fields.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum ScalarValue {
     /// A string value.
     String(String),

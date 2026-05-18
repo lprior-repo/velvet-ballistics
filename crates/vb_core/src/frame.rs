@@ -8,6 +8,7 @@ use crate::value::{SlotValue, Taint};
 
 /// Per-step execution state stored in the hot run frame.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum StepState {
     /// Step has not been entered.
     Pending,

@@ -48,6 +48,7 @@ mod colors {
 
 /// Status of a single shard within the system topology.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum ShardStatus {
     /// Shard is actively processing runs.
     Active,

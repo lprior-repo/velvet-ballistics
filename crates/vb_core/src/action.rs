@@ -12,6 +12,7 @@ use thiserror::Error;
 /// Declares how an action behaves with respect to repeated execution.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[repr(u8)]
+#[non_exhaustive]
 pub enum Idempotency {
     /// Pure deterministic computation with no side effects.
     DeterministicPure = 0,
@@ -24,6 +25,7 @@ pub enum Idempotency {
 /// Classifies the observable side effects of an action.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[repr(u8)]
+#[non_exhaustive]
 pub enum SideEffect {
     /// No observable side effects (pure computation).
     None = 0,
@@ -40,6 +42,7 @@ pub enum SideEffect {
 /// Classifies whether an action can be safely retried.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[repr(u8)]
+#[non_exhaustive]
 pub enum RetrySafety {
     /// Always safe to retry (pure/idempotent).
     Safe = 0,
@@ -52,6 +55,7 @@ pub enum RetrySafety {
 /// Policy for whether an action failure can be retried.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[repr(u8)]
+#[non_exhaustive]
 pub enum RetryPolicy {
     /// Failure can be retried.
     Retryable = 0,
@@ -61,6 +65,7 @@ pub enum RetryPolicy {
 
 /// Verification error when an action's idempotency contract is violated.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, thiserror::Error)]
+#[non_exhaustive]
 pub enum IdempotencyViolation {
     /// Action has side-effects but no idempotency key was provided.
     #[error("action has side-effect {0:?} but no idempotency key")]
@@ -178,6 +183,7 @@ pub struct ActionFailure {
 /// Machine-readable action failure codes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[repr(u8)]
+#[non_exhaustive]
 pub enum ActionFailureCode {
     /// Action was rejected by the handler before execution.
     Rejected = 0,
@@ -201,6 +207,7 @@ pub enum ActionFailureCode {
 
 /// Typed errors from the action subsystem.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Error)]
+#[non_exhaustive]
 pub enum ActionError {
     /// The requested action is not registered.
     #[error("unknown action: {action:?}")]
@@ -269,6 +276,7 @@ impl ActionError {
 
 /// Terminal outcome of an action invocation.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum ActionOutcome {
     /// Action completed successfully with output.
     Ready(ActionOutputReady),
@@ -478,6 +486,7 @@ fn validate_failed_outcome() -> Result<(), ActionError> {
 /// These events are recorded for crash recovery. The journal records the
 /// suspension (ticket issuance) and the terminal outcome (success or failure).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub enum ActionJournalEvent {
     /// Engine suspended on a Do node, issuing an action ticket.
     Suspended {

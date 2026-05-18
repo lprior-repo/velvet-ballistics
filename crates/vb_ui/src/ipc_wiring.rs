@@ -428,6 +428,7 @@ impl WiringEvents {
 
 /// Errors that can occur during IPC wiring.
 #[derive(Debug)]
+#[non_exhaustive]
 pub enum WiringError {
     /// Connection attempt failed.
     ConnectionFailed(String),

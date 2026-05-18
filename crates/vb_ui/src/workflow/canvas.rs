@@ -104,6 +104,7 @@ pub struct EdgePath {
 
 /// Semantic classification of an edge in the workflow graph.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum EdgeType {
     /// Normal sequential transition via `node.next`.
     Sequential,
@@ -126,6 +127,7 @@ pub enum EdgeType {
 
 /// A small overlay badge on a workflow graph node.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum NodeBadge {
     /// Action ID badge (Do nodes only): "A17".
     ActionId(u16),

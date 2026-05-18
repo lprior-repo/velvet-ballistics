@@ -37,6 +37,7 @@ pub struct RedactedValueView {
 
 /// Classification of secret sensitivity.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum SecretSensitivity {
     /// Known sensitive value that must be redacted.
     Sensitive,

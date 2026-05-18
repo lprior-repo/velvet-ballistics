@@ -6,6 +6,7 @@
 
 /// Scalar style preserved from the parser.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum ScalarStyle {
     /// Plain (unquoted) scalar.
     Plain,
@@ -59,6 +60,7 @@ impl EventSpan {
 
 /// A typed YAML event carrying owned data and source location.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum YamlEvent {
     /// Start of the YAML stream.
     StreamStart {

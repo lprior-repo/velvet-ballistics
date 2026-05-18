@@ -13,6 +13,7 @@
 /// - **Resource**: any gate not in the known mapping (future resource-bound gates)
 /// - **Policy**: any gate whose name contains "action" or "policy"
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Ord, PartialOrd)]
+#[non_exhaustive]
 pub enum CertificateSeverity {
     /// IR structure, stack, accessor, slot, node, loop, or cycle checks.
     Structural,

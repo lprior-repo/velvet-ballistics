@@ -5,6 +5,7 @@ use crate::system::metrics::HealthStatus;
 use crate::system::queue_monitor::QueueStatus;
 
 #[derive(Debug)]
+#[non_exhaustive]
 pub enum Error {
     IpcUnavailable,
     MetricsParseError,
@@ -45,6 +46,7 @@ pub struct KpiValue {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum KpiTrend {
     Up,
     Down,
@@ -63,6 +65,7 @@ pub struct ExecutionRunRow {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum ExecutionStatus {
     Queued,
     Running,
@@ -71,6 +74,7 @@ pub enum ExecutionStatus {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum ExecutionResult {
     Success,
     Failure,
@@ -139,6 +143,7 @@ pub struct ExecutionEvent {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum ExecutionEventKind {
     RunAccepted,
     StepStarted,
@@ -171,6 +176,7 @@ pub struct SystemHealthCard {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum SystemHealthName {
     LocalServer,
     FjallStore,

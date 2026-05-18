@@ -24,6 +24,7 @@ pub use step::{ReplayAction, SuspensionKind};
 
 /// Failures that can occur during deterministic replay.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum ReplayError {
     /// The target step does not exist in the compiled workflow.
     StepNotFound {

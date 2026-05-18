@@ -14,6 +14,7 @@ use std::collections::VecDeque;
 
 /// Errors returned by bounded action completion queue operations.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum ActionQueueError {
     /// Queue has reached its bounded capacity; no more items can be enqueued.
     QueueFull {

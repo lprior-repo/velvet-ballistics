@@ -8,6 +8,7 @@ use vb_storage::RecordKind;
 
 /// Storage partition for a primitive's events.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum StoragePartition {
     /// Runtime journal keyspace.
     RuntimeJournal,
@@ -19,6 +20,7 @@ pub enum StoragePartition {
 
 /// When the shard acknowledges the command relative to persistence.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum AckPoint {
     /// Journal append happens before Ok(()) is returned.
     AfterJournalAppend,
@@ -194,6 +196,7 @@ pub const DURABILITY_MATRIX: &[DurabilityRow] = &[
 
 /// Errors produced by the durability matrix verifier.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum DurabilityError {
     /// A required primitive has no matrix row.
     MissingPrimitiveRow { primitive: String },
