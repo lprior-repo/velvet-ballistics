@@ -92,6 +92,10 @@ pub mod kani_idempotency_contract;
 #[cfg(kani)]
 pub mod kani_gate_08_accessor;
 
+// Kani structural harnesses for Gate 8 full WorkflowParts coverage (vb-919g).
+#[cfg(kani)]
+pub mod kani_gate_08_structural;
+
 /// Validation error codes matching the master contract (Section 16).
 #[derive(Debug, Error, Clone, PartialEq, Eq)]
 pub enum ValidationError {

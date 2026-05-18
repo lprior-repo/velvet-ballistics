@@ -81,6 +81,13 @@ impl FiniteF64 {
     pub const fn get(self) -> f64 {
         self.0
     }
+
+    #[cfg(kani)]
+    pub(crate) fn _kani_any() -> Self {
+        let value: f64 = kani::any();
+        kani::assume(value.is_finite());
+        Self(value)
+    }
 }
 
 impl Serialize for FiniteF64 {
