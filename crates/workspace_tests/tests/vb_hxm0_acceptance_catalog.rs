@@ -100,8 +100,8 @@ fn test_catalog_maps_existing_tests_to_covered_scenarios() {
         .collect();
 
     // Then: covered scenarios point at real test files and deferred gaps point only at beads.
-    assert_eq!(executable_test_targets.len(), 6);
-    assert_eq!(follow_up_beads.len(), 4);
+    assert_eq!(executable_test_targets.len(), 7);
+    assert_eq!(follow_up_beads.len(), 3);
     assert_eq!(
         executable_test_targets,
         vec![
@@ -109,14 +109,12 @@ fn test_catalog_maps_existing_tests_to_covered_scenarios() {
             "crates/workspace_tests/tests/bdd_validation_tests.rs",
             "crates/workspace_tests/tests/vb_core_yaml_e2e_chain_contract.rs",
             "crates/workspace_tests/tests/vb_vt2f_direct_runtime_api_acceptance.rs",
+            "crates/workspace_tests/tests/vb_ssei_verification_admission_acceptance.rs",
             "crates/workspace_tests/tests/vb_qi37_2_4_integration_budget_errors.rs",
             "crates/workspace_tests/tests/vb_5xs4_test_loop_inventory_red.rs",
         ]
     );
-    assert_eq!(
-        follow_up_beads,
-        vec!["vb-te1i", "vb-rpch", "vb-0sps", "vb-ssei"]
-    );
+    assert_eq!(follow_up_beads, vec!["vb-te1i", "vb-rpch", "vb-0sps"]);
     let related_beads: Vec<(&str, &str)> = scenarios
         .iter()
         .map(|scenario| (scenario.id, scenario.related_bead))

@@ -157,8 +157,10 @@ const SCENARIOS: &[Scenario] = &[
         expected_error: Some("CapabilityDenied"),
         durability_profile: "admission certificate records required grants",
         related_bead: "vb-ssei",
-        executable_evidence_target: None,
-        deferred_follow_up_bead: Some("vb-ssei"),
+        executable_evidence_target: Some(
+            "crates/workspace_tests/tests/vb_ssei_verification_admission_acceptance.rs",
+        ),
+        deferred_follow_up_bead: None,
     },
     Scenario {
         id: "VB-BDD-CATALOG-009",
