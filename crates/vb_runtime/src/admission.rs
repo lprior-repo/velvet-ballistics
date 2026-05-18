@@ -571,11 +571,10 @@ pub fn admit_run_with_budget(
         .fits_within(&available)
         .map_err(|error| map_budget_error(error, requested, available))?;
     match policy {
-        RuntimePolicy::Strict | RuntimePolicy::Journaled => {
-            if !store.compiled_ir_exists(digest) {
-                return Err(AdmissionError::ArtifactNotFound { digest });
-            }
+        RuntimePolicy::Strict | RuntimePolicy::Journaled if !store.compiled_ir_exists(digest) => {
+            return Err(AdmissionError::ArtifactNotFound { digest });
         }
+        RuntimePolicy::Strict | RuntimePolicy::Journaled => {}
         RuntimePolicy::Relaxed => {}
         _ => {
             return Err(AdmissionError::ArtifactInvalidProofFlag {

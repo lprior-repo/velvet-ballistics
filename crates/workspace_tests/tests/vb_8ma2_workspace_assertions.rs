@@ -6,6 +6,27 @@ use std::process::{Command, Output};
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
+const EXTRA_MEMBER_MANIFESTS: [(&str, &str); 15] = [
+    ("crates/vb_boundary_inventory", "vb_boundary_inventory"),
+    ("crates/vb_yaml", "vb_yaml"),
+    ("crates/vb_validate", "vb_validate"),
+    ("crates/vb_expr", "vb_expr"),
+    ("crates/vb_compile", "vb_compile"),
+    ("crates/vb_doc", "vb_doc"),
+    ("crates/vb_codegen", "vb_codegen"),
+    ("crates/vb_ui_makepad", "vb_ui_makepad"),
+    ("crates/vb_ui_snapshot", "vb_ui_snapshot"),
+    ("crates/vb_proof_kernels", "vb_proof_kernels"),
+    ("crates/vb_cli", "vb_cli"),
+    (
+        "crates/workspace_tests",
+        "velvet-ballastics-workspace-tests",
+    ),
+    ("crates/vb_benchmark", "vb_benchmark"),
+    ("fuzz", "velvet-ballastics-fuzz"),
+    ("xtask", "xtask"),
+];
+
 fn repo_root() -> Result<PathBuf, std::env::VarError> {
     std::env::var("CARGO_MANIFEST_DIR").map(|dir| Path::new(&dir).join("../.."))
 }
@@ -67,7 +88,8 @@ exclude = ["target/miri-tmp", "crates/vb_ui", "fuzz"]
 
 fn write_boundary_crates(root: &Path, forbidden_dep: Option<&str>) -> Result<(), std::io::Error> {
     let dependency = forbidden_dep.map(|name| format!("{name} = {{ path = \"../{name}\" }}\n"));
-    write_boundary_crates_with_dependency(root, dependency.as_deref())
+    write_boundary_crates_with_dependency(root, dependency.as_deref())?;
+    write_extra_member_manifests(root)
 }
 
 fn write_boundary_crates_with_dependency(
@@ -88,9 +110,34 @@ name = "{crate_name}"
 edition = "2024"
 
 [dependencies]
-{dependency}"#
+{dependency}
+[features]
+default = []
+generated = []
+bench = []
+volatile = []
+test-util = []
+"#
             ),
         )?;
+    }
+    Ok(())
+}
+
+fn write_extra_member_manifests(root: &Path) -> Result<(), std::io::Error> {
+    for (member, package_name) in EXTRA_MEMBER_MANIFESTS {
+        let mut manifest =
+            format!("[package]\nname = \"{package_name}\"\nedition = \"2024\"\n\n[dependencies]\n");
+        if member == "crates/vb_cli" {
+            manifest.push_str("\n[lib]\nname = \"vb_cli\"\npath = \"src/lib.rs\"\n\n[[bin]]\nname = \"velvet-ballastics\"\npath = \"src/main.rs\"\n");
+        }
+        if member == "crates/vb_validate" {
+            manifest.push_str("\n[features]\ndefault = []\nverus = []\n");
+        }
+        if member == "crates/vb_ui_snapshot" {
+            manifest.push_str("\n[features]\ndefault = [\"std\"]\nstd = []\ntokio = []\n");
+        }
+        write_file(&root.join(member).join("Cargo.toml"), &manifest)?;
     }
     Ok(())
 }

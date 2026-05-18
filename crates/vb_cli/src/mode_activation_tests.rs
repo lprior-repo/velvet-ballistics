@@ -370,6 +370,8 @@ fn command_mode_events_is_storage() {
         run_id: "1".to_string(),
         db: PathBuf::from("/tmp/journal"),
         output: OutputFormat::Text,
+        status: None,
+        limit: None,
     };
     assert_eq!(command_mode(&cmd), CommandMode::Storage);
 }
@@ -612,6 +614,8 @@ fn command_mode_all_25_command_variants_are_classified() {
             run_id: "1".to_string(),
             db: PathBuf::from("/tmp/j"),
             output: OutputFormat::Text,
+            status: None,
+            limit: None,
         }),
         CommandMode::Storage
     );
@@ -785,6 +789,8 @@ fn storage_commands_are_not_pure_nor_runtime_nor_ui() {
             run_id: "1".to_string(),
             db: PathBuf::from("/tmp/j"),
             output: OutputFormat::Text,
+            status: None,
+            limit: None,
         },
         Command::Doctor {
             db: Some(PathBuf::from("/tmp/j")),

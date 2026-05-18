@@ -231,6 +231,8 @@ pub fn submit_artifact_with_contracts(
 
             Ok(artifact)
         }
+        // `RuntimePolicy` is `#[non_exhaustive]`; unknown variants
+        // fail closed rather than silently accept malformed artifacts.
         _ => Err(JournalError::ArtifactMalformed),
     }
 }

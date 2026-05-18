@@ -41,6 +41,34 @@ FORBIDDEN_RUNTIME_FORMAT_DEPENDENCIES = frozenset(
     {"serde_json", "saphyr", "saphyr-parser", "serde-saphyr"}
 )
 DEPENDENCY_TABLES = ("dependencies", "dev-dependencies", "build-dependencies")
+EXPECTED_PACKAGE_NAMES = {
+    "crates/vb_boundary_inventory": "vb_boundary_inventory",
+    "crates/vb_core": "vb_core",
+    "crates/vb_yaml": "vb_yaml",
+    "crates/vb_validate": "vb_validate",
+    "crates/vb_expr": "vb_expr",
+    "crates/vb_compile": "vb_compile",
+    "crates/vb_storage": "vb_storage",
+    "crates/vb_runtime": "vb_runtime",
+    "crates/vb_doc": "vb_doc",
+    "crates/vb_ipc": "vb_ipc",
+    "crates/vb_codegen": "vb_codegen",
+    "crates/vb_ui_makepad": "vb_ui_makepad",
+    "crates/vb_ui_snapshot": "vb_ui_snapshot",
+    "crates/vb_proof_kernels": "vb_proof_kernels",
+    "crates/vb_cli": "vb_cli",
+    "crates/workspace_tests": "velvet-ballastics-workspace-tests",
+    "crates/vb_benchmark": "vb_benchmark",
+    "fuzz": "velvet-ballastics-fuzz",
+    "xtask": "xtask",
+}
+EXPECTED_BINARIES = {"crates/vb_cli": {"velvet-ballastics"}}
+EXPECTED_FEATURES = {
+    "crates/vb_core": {"default", "generated", "bench", "volatile", "test-util"},
+    "crates/vb_validate": {"default", "verus"},
+    "crates/vb_ui_snapshot": {"default", "std", "tokio"},
+}
+FORBIDDEN_FEATURE_NAMES = {"json", "serde-json", "velvet-ballistics", "velvet_ballistics"}
 
 
 def load_toml(path: Path) -> dict[str, object]:
@@ -79,6 +107,71 @@ def check_workspace_members(root: Path, failures: list[str]) -> None:
     missing_excludes = sorted(EXPECTED_EXCLUDES - actual_excludes)
     if missing_excludes:
         failures.append(f"Cargo.toml: workspace.exclude missing {missing_excludes}")
+
+
+def package_name(manifest: dict[str, object]) -> str | None:
+    package = manifest.get("package")
+    if not isinstance(package, dict):
+        return None
+    name = package.get("name")
+    if isinstance(name, str):
+        return name
+    return None
+
+
+def binary_names(manifest: dict[str, object]) -> set[str]:
+    binaries = manifest.get("bin")
+    if not isinstance(binaries, list):
+        return set()
+    names = set()
+    for binary in binaries:
+        if isinstance(binary, dict):
+            name = binary.get("name")
+            if isinstance(name, str):
+                names.add(name)
+    return names
+
+
+def feature_names(manifest: dict[str, object]) -> set[str]:
+    features = manifest.get("features")
+    if not isinstance(features, dict):
+        return set()
+    return {name for name in features if isinstance(name, str)}
+
+
+def check_crate_names_binaries_and_features(root: Path, failures: list[str]) -> None:
+    for member_path in sorted(EXPECTED_PACKAGE_NAMES):
+        manifest_path = root / member_path / "Cargo.toml"
+        if not manifest_path.exists():
+            failures.append(f"{member_path}/Cargo.toml: missing member manifest")
+            continue
+        manifest = load_toml(manifest_path)
+        expected_name = EXPECTED_PACKAGE_NAMES[member_path]
+        actual_name = package_name(manifest)
+        if actual_name != expected_name:
+            failures.append(
+                f"{member_path}/Cargo.toml: package.name expected {expected_name!r}, got {actual_name!r}"
+            )
+
+        if member_path in EXPECTED_BINARIES:
+            expected_binaries = EXPECTED_BINARIES[member_path]
+            actual_binaries = binary_names(manifest)
+            if actual_binaries != expected_binaries:
+                failures.append(
+                    f"{member_path}/Cargo.toml: bin names expected {sorted(expected_binaries)!r}, got {sorted(actual_binaries)!r}"
+                )
+
+        expected_features = EXPECTED_FEATURES.get(member_path)
+        actual_features = feature_names(manifest)
+        if expected_features is not None and actual_features != expected_features:
+            failures.append(
+                f"{member_path}/Cargo.toml: features expected {sorted(expected_features)!r}, got {sorted(actual_features)!r}"
+            )
+        forbidden_features = sorted(actual_features & FORBIDDEN_FEATURE_NAMES)
+        if forbidden_features:
+            failures.append(
+                f"{member_path}/Cargo.toml: forbidden feature names {forbidden_features!r}"
+            )
 
 
 def dependency_names(manifest: dict[str, object]) -> set[str]:
@@ -141,6 +234,7 @@ def main() -> int:
     failures: list[str] = []
 
     check_workspace_members(root, failures)
+    check_crate_names_binaries_and_features(root, failures)
     check_forbidden_dependencies(root, failures)
     check_generated_boundaries(root, failures)
 

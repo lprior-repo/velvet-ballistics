@@ -2,7 +2,7 @@ use std::ffi::OsString;
 use std::path::PathBuf;
 
 use super::shared::{named_flag, parse_output_format, positional_str};
-use super::{Command, ParseError};
+use super::{Command, EventStatus, ParseError};
 
 pub(super) fn parse_ai_context(args: &[OsString]) -> Result<Command, ParseError> {
     let a = parse_run_db_args(args)?;
@@ -42,11 +42,38 @@ pub(super) fn parse_inspect(args: &[OsString]) -> Result<Command, ParseError> {
 
 pub(super) fn parse_events(args: &[OsString]) -> Result<Command, ParseError> {
     let a = parse_run_db_args(args)?;
+    let status = match named_flag(args, "--status") {
+        Some(raw) => Some(parse_event_status(&raw)?),
+        None => None,
+    };
+    let limit = match named_flag(args, "--limit") {
+        Some(raw) => Some(parse_event_limit(&raw)?),
+        None => None,
+    };
     Ok(Command::Events {
         run_id: a.run_id,
         db: a.db,
         output: a.output,
+        status,
+        limit,
     })
+}
+
+fn parse_event_status(raw: &str) -> Result<EventStatus, ParseError> {
+    match raw {
+        "pending" => Ok(EventStatus::Pending),
+        "active" => Ok(EventStatus::Active),
+        "waiting_answer" => Ok(EventStatus::WaitingAnswer),
+        "cancelled" => Ok(EventStatus::Cancelled),
+        "completed" => Ok(EventStatus::Completed),
+        "failed" => Ok(EventStatus::Failed),
+        other => Err(ParseError::UnknownEventStatus(other.into())),
+    }
+}
+
+fn parse_event_limit(raw: &str) -> Result<i64, ParseError> {
+    raw.parse::<i64>()
+        .map_err(|_| ParseError::InvalidStatusArgument("--limit must be an integer".into()))
 }
 
 pub(super) fn parse_replay(args: &[OsString]) -> Result<Command, ParseError> {

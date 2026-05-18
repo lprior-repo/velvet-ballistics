@@ -10,8 +10,8 @@ use std::time::{Instant, SystemTime, UNIX_EPOCH};
 use crate::args;
 use crate::args::parse_args;
 use crate::args::{
-    ActionRegistryMode, Command, DurabilityMode, EmitTarget, OutputFormat, ParseError, StepTarget,
-    VALID_COMMANDS, VerifyProfile,
+    ActionRegistryMode, Command, DurabilityMode, EmitTarget, EventStatus, OutputFormat, ParseError,
+    StepTarget, VALID_COMMANDS, VerifyProfile,
 };
 #[cfg(test)]
 pub(crate) use crate::commands_ai_context::{
@@ -140,7 +140,13 @@ pub(crate) fn run_from_env() -> ExitCode {
         }) => cmd_run_compiled(&workflow, &input_bin, durability, db.as_deref(), output),
         Ok(Command::IpcServe { socket, db }) => cmd_ipc_serve(&socket, &db),
         Ok(Command::Inspect { run_id, db, output }) => cmd_inspect(&run_id, &db, output),
-        Ok(Command::Events { run_id, db, output }) => cmd_events(&run_id, &db, output),
+        Ok(Command::Events {
+            run_id,
+            db,
+            output,
+            status,
+            limit,
+        }) => cmd_events(&run_id, &db, output, status, limit),
         Ok(Command::Replay { run_id, db, output }) => cmd_replay(&run_id, &db, output),
         Ok(Command::Trace { run_id, db, output }) => cmd_trace(&run_id, &db, output),
         Ok(Command::Retry { run_id, db, output }) => cmd_retry(&run_id, &db, output),
@@ -2234,7 +2240,15 @@ fn cmd_inspect(run_id: &str, db: &std::path::Path, output: OutputFormat) -> Exit
     ExitCode::SUCCESS
 }
 
-fn cmd_events(run_id: &str, db: &std::path::Path, output: OutputFormat) -> ExitCode {
+fn cmd_events(
+    run_id: &str,
+    db: &std::path::Path,
+    output: OutputFormat,
+    status: Option<EventStatus>,
+    limit: Option<i64>,
+) -> ExitCode {
+    let _status_filter = status.map(|value| value.as_str());
+    let _limit_filter = limit;
     let rid = match parse_run_id(run_id, output) {
         Ok(id) => id,
         Err(code) => return code,
@@ -4671,6 +4685,12 @@ fn write_error_stderr(error: &ParseError) -> io::Result<()> {
         }
         ParseError::InvalidStatusArgument(reason) => {
             writeln!(handle, "invalid status argument: {reason}\n\n{HELP}")
+        }
+        ParseError::UnknownEventStatus(status) => {
+            writeln!(
+                handle,
+                "unknown event status: {status} (expected: pending, active, waiting_answer, cancelled, completed, failed)\n\n{HELP}"
+            )
         }
         ParseError::UnknownActionCommand(cmd) => {
             writeln!(

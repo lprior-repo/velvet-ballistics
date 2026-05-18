@@ -15,8 +15,8 @@ use super::trace::typed_events_response;
 use crate::server::ticket::{action_ticket_from_wire, payload_len, step_from_ticket};
 use crate::server::{IpcResponse, WorkflowResolutionError, WorkflowResolver};
 use crate::{
-    IpcActionOutputPayload, IpcCommand, IpcPayload, RunListState, RunSummary, RuntimeMetrics,
-    SubmitRunPayload,
+    EdgeType, IpcActionOutputPayload, IpcCommand, IpcPayload, RunListState, RunSummary,
+    RuntimeMetrics, SubmitRunPayload, TaintPathStatus,
 };
 
 /// Decodes a postcard-encoded payload and preserves the typed IPC decode error.

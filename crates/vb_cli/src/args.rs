@@ -39,6 +39,29 @@ impl VerifyProfile {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub(crate) enum EventStatus {
+    #[default]
+    Pending,
+    Active,
+    WaitingAnswer,
+    Cancelled,
+    Completed,
+    Failed,
+}
+
+impl EventStatus {
+    pub(crate) const fn as_str(&self) -> &'static str {
+        match self {
+            Self::Pending => "pending",
+            Self::Active => "active",
+            Self::WaitingAnswer => "waiting_answer",
+            Self::Cancelled => "cancelled",
+            Self::Completed => "completed",
+            Self::Failed => "failed",
+        }
+    }
+}
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) enum Command {
     Help,
@@ -110,6 +133,8 @@ pub(crate) enum Command {
         run_id: String,
         db: PathBuf,
         output: OutputFormat,
+        status: Option<EventStatus>,
+        limit: Option<i64>,
     },
     Replay {
         run_id: String,
@@ -264,6 +289,7 @@ pub(crate) enum ParseError {
     UnknownProfile(String),
     UnknownCommand(String),
     UnknownServerMode(String),
+    UnknownEventStatus(String),
     InvalidStatusArgument(String),
     InvalidSystemStatusArgument(String),
     UnknownActionCommand(String),
@@ -930,11 +956,38 @@ fn parse_run_db_args(args: &[OsString]) -> Result<RunDbArgs, ParseError> {
 
 fn parse_events(args: &[OsString]) -> Result<Command, ParseError> {
     let a = parse_run_db_args(args)?;
+    let status = match named_flag(args, "--status") {
+        Some(raw) => Some(parse_event_status(&raw)?),
+        None => None,
+    };
+    let limit = match named_flag(args, "--limit") {
+        Some(raw) => Some(parse_event_limit(&raw)?),
+        None => None,
+    };
     Ok(Command::Events {
         run_id: a.run_id,
         db: a.db,
         output: a.output,
+        status,
+        limit,
     })
+}
+
+fn parse_event_status(raw: &str) -> Result<EventStatus, ParseError> {
+    match raw {
+        "pending" => Ok(EventStatus::Pending),
+        "active" => Ok(EventStatus::Active),
+        "waiting_answer" => Ok(EventStatus::WaitingAnswer),
+        "cancelled" => Ok(EventStatus::Cancelled),
+        "completed" => Ok(EventStatus::Completed),
+        "failed" => Ok(EventStatus::Failed),
+        other => Err(ParseError::UnknownEventStatus(other.into())),
+    }
+}
+
+fn parse_event_limit(raw: &str) -> Result<i64, ParseError> {
+    raw.parse::<i64>()
+        .map_err(|_| ParseError::InvalidStatusArgument("--limit must be an integer".into()))
 }
 
 fn parse_replay(args: &[OsString]) -> Result<Command, ParseError> {
@@ -1187,6 +1240,9 @@ impl std::fmt::Display for ParseError {
                     formatter,
                     "unknown server mode: {mode} (expected: none; strict and journaled require a backend probe that is not implemented)"
                 )
+            }
+            Self::UnknownEventStatus(status) => {
+                write!(formatter, "unknown event status: {status}")
             }
             Self::InvalidStatusArgument(reason) => {
                 write!(formatter, "invalid status argument: {reason}")

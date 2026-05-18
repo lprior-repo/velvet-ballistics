@@ -3697,8 +3697,10 @@ fn emit_accessor_segment(out: &mut String, segment: vb_core::PathSegment) -> Cod
     match segment {
         vb_core::PathSegment::Field(field) => writeln!(out, "        {{ let (_value, _segment_taint) = match _current {{ SlotValue::Object(_object) => object_store.field(_object, {})?, other => return Err(DriveError::TypeMismatch {{ expected: \"object\", found: other.type_name() }}), }}; _taint = join_taint(_taint, _segment_taint); _current = _value; }}", field.get()).map_err(fmt_err),
         vb_core::PathSegment::Index(index) => writeln!(out, "        {{ let (_value, _segment_taint) = match _current {{ SlotValue::List(_list) => list_store.value_at(_list, {index})?, other => return Err(DriveError::TypeMismatch {{ expected: \"list\", found: other.type_name() }}), }}; _taint = join_taint(_taint, _segment_taint); _current = _value; }}").map_err(fmt_err),
+        // `PathSegment` is `#[non_exhaustive]`; unknown variants indicate a
+        // version mismatch — fail codegen rather than emit malformed accessors.
         _ => Err(CodegenError::UnsupportedIr {
-            feature: "PathSegment",
+            feature: "unknown path segment variant",
         }),
     }
 }
