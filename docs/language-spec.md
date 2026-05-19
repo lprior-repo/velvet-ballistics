@@ -231,9 +231,9 @@ run
 save
 choose
 for_each
-together
+parallel
+aggregate
 gather
-summarize
 repeat
 wait
 ask
@@ -254,7 +254,9 @@ v1 is strict. These legacy/internal aliases are not accepted as public YAML prim
 | `do` | `run` |
 | `set` | `save` |
 | `collect` | `gather` |
-| `reduce` | `summarize` |
+| `summarize` | `aggregate` |
+| `reduce` | `aggregate` |
+| `together` | `parallel` |
 
 A future CLI migration command may rewrite old files into canonical v1 syntax:
 
@@ -545,12 +547,12 @@ Expressions are deterministic, bounded, side-effect-free, and statically analyza
 
 Expressions are used in:
 
-```text
+```
 if
 choose.if
 repeat.until
 wait.where
-summarize.update
+aggregate.update
 save
 result
 on_error.save
@@ -637,9 +639,9 @@ with:
 save:
 choose:
 for_each:
-together:
+parallel:
+aggregate:
 gather:
-summarize:
 repeat:
 wait:
 ask:
@@ -651,14 +653,30 @@ then:
 
 Every step must have exactly one primitive:
 
+```
+run
+save
+choose
+for_each
+parallel
+aggregate
+gather
+repeat
+wait
+ask
+finish
+```
+
+Every step must have exactly one primitive:
+
 ```text
 run
 save
 choose
 for_each
-together
+parallel
 gather
-summarize
+aggregate
 repeat
 wait
 ask
@@ -849,14 +867,14 @@ Rules:
 - Partial iteration output is available only inside `on_error` as `$error.partial`.
 - Nested step IDs are globally unique, but outputs are exported only through `for_each.result`.
 
-## `together`
+## `parallel`
 
-`together` runs named branches concurrently.
+`parallel` runs named branches concurrently.
 
 ```yaml
 steps:
   - id: enrich
-    together:
+    parallel:
       fail: after_all
       branches:
         profile:
@@ -946,14 +964,14 @@ Rules:
 - Page, item, time, and wait limits are enforced by runtime.
 - Step-level `try_again` retries the current page attempt, not completed pages.
 
-## `summarize`
+## `aggregate`
 
-`summarize` accumulates over a finite list.
+`aggregate` accumulates over a finite list.
 
 ```yaml
 steps:
   - id: totals
-    summarize:
+    aggregate:
       in: $customers.items
       as: customer
       start:
@@ -972,18 +990,18 @@ steps:
 
 Local roots:
 
-```text
+```
 $summary
 $customer
 ```
 
 Rules:
 
-- `$summary` exists only inside `summarize`.
+- `$summary` exists only inside `aggregate`.
 - `$summary` is immutable per iteration.
 - Each iteration creates a new accumulator version.
 - Accumulator state is durably checkpointed.
-- Output appears only when `summarize` succeeds.
+- Output appears only when `aggregate` succeeds.
 - Partial accumulator is available only to `on_error` as `$error.partial`.
 
 ## `repeat`
@@ -1315,7 +1333,7 @@ Rules:
 - Jumping into or out of nested scopes is invalid.
 - Unreachable steps are validation errors.
 - A reachable `finish` terminates the run.
-- Structured repetition is provided by `for_each`, `gather`, `summarize`, and `repeat`.
+- Structured repetition is provided by `for_each`, `gather`, `aggregate`, and `repeat`.
 
 ## Runtime Guarantees
 
@@ -1412,9 +1430,9 @@ invalid run
 invalid save
 invalid choose
 invalid for_each
-invalid together
+invalid parallel
 invalid gather
-invalid summarize
+invalid aggregate
 invalid repeat
 invalid wait
 invalid ask
@@ -1667,9 +1685,9 @@ step.failed
 step.cancelled
 repeat.attempt.started
 repeat.attempt.succeeded
-together.branch.started
-together.branch.succeeded
-together.branch.failed
+parallel.branch.started
+parallel.branch.succeeded
+parallel.branch.failed
 timer.scheduled
 timer.fired
 journal.commit
@@ -1814,7 +1832,7 @@ steps:
         wait_between: 100ms
 
   - id: totals
-    summarize:
+    aggregate:
       in: $customers.items
       as: customer
       start:
@@ -1963,10 +1981,10 @@ Recommended build order:
 20. Leptos read-only graph UI
 21. Leptos run inspector
 22. for_each
-23. together
+23. parallel
 24. repeat
 25. gather
-26. summarize
+26. aggregate
 27. ask
 28. visual editor
 ```
