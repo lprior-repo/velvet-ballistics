@@ -6,11 +6,17 @@
 //! polls for `IpcReply`s without blocking the render loop.
 
 use std::path::PathBuf;
-use std::sync::mpsc::{self, Receiver, Sender};
 use std::thread::{self, JoinHandle};
 use std::time::Duration;
 
+use crossbeam_channel::{self as mpsc, Receiver, Sender};
 use vb_core::WorkflowDigest;
+
+/// Bounded channel capacity for crossbeam_channel request and reply channels.
+///
+/// A power-of-two value (16) prevents UI thread starvation while providing
+/// backpressure signaling before unbounded queue growth occurs.
+const CHANNEL_CAPACITY: usize = 16;
 use vb_core::ids::RunId;
 use vb_ipc::client::IpcClient;
 use vb_ipc::server::IpcResponse;
@@ -141,8 +147,8 @@ pub struct IpcBridge {
 
 impl Default for IpcBridge {
     fn default() -> Self {
-        let (req_tx, req_rx) = mpsc::channel::<IpcRequest>();
-        let (rep_tx, rep_rx) = mpsc::channel::<IpcReply>();
+        let (req_tx, req_rx) = mpsc::bounded::<IpcRequest>(CHANNEL_CAPACITY);
+        let (rep_tx, rep_rx) = mpsc::bounded::<IpcReply>(CHANNEL_CAPACITY);
 
         let handle = match thread::Builder::new()
             .name("vb-ipc".to_string())
@@ -178,11 +184,16 @@ impl IpcBridge {
 
     /// Sends a request to the background thread (non-blocking).
     ///
-    /// Returns an error string if the channel is closed (thread died).
+    /// Returns `Ok(())` if the request was queued within capacity.
+    /// Returns an error containing `"channel full"` if the bounded channel is at capacity.
+    /// Returns an error containing `"disconnected"` if the background thread has died.
     pub fn send(&self, request: IpcRequest) -> Result<(), String> {
         self.tx
-            .send(request)
-            .map_err(|e| format!("IPC send failed: {e}"))
+            .try_send(request)
+            .map_err(|e| match e {
+                crossbeam_channel::TrySendError::Full(_) => format!("IPC send failed: channel full"),
+                crossbeam_channel::TrySendError::Disconnected(_) => format!("IPC send failed: disconnected"),
+            })
     }
 
     /// Polls for all pending replies without blocking the UI.
@@ -889,5 +900,206 @@ mod tests {
     fn reply_from_drain_trace_unexpected_maps_to_error() {
         let reply = reply_from_drain_trace(IpcResponse::Healthy);
         assert!(matches!(reply, IpcReply::Error(_)));
+    }
+
+    /// Verifies POST-003 / ERR-TX-001: send() returns Err containing "channel full"
+    /// when the bounded request channel is at capacity.
+    ///
+    /// This test is **failing-first**: it will PASS only after `mpsc::sync_channel`
+    /// replaces `mpsc::channel` and `try_send` replaces `send`. With an unbounded
+    /// channel this test always fails because send() never returns an error.
+    #[test]
+    fn bridge_send_on_full_returns_error() {
+        let bridge = IpcBridge::new();
+        // CHANNEL_CAPACITY = 16; flood with one more than capacity.
+        // Background thread is slow (100ms recv_timeout) so channel fills up.
+        let mut full_err: Option<String> = None;
+        for i in 0..(CHANNEL_CAPACITY + 1) {
+            let request = IpcRequest::Health;
+            if let Err(e) = bridge.send(request) {
+                full_err = Some(e);
+                break;
+            }
+            // Avoid integer overflow in the loop counter (not actually reachable here)
+            let _ = i;
+        }
+        assert!(
+            full_err.is_some(),
+            "Expected Err containing 'channel full' after {} sends",
+            CHANNEL_CAPACITY + 1
+        );
+        let err_msg = full_err.unwrap();
+        assert!(
+            err_msg.contains("channel full"),
+            "Expected error containing 'channel full', got: {err_msg}"
+        );
+    }
+
+    // ---------------------------------------------------------------------------
+    // Bounded channel backpressure tests (vb-0253.3 p8)
+    // ---------------------------------------------------------------------------
+
+    /// Verifies that send_on_full_returns_error: IpcBridge::send returns Err
+    /// containing "channel full" when the bounded request channel is at capacity.
+    ///
+    /// BEHAVIOR: Given a bridge with bounded(CHANNEL_CAPACITY) request channel,
+    ///           when the caller sends CHANNEL_CAPACITY messages AND the background
+    ///           thread has NOT consumed any (channel full condition),
+    ///           then the next send returns Err("channel full").
+    ///
+    /// This is the primary backpressure signal test. With a truly bounded channel
+    /// and try_send, the 17th send must fail if the background thread hasn't
+    /// drained the channel.
+    #[test]
+    fn send_on_full_returns_error() {
+        let bridge = IpcBridge::new();
+
+        // Drain any pending replies so background thread is waiting on recv.
+        let _ = bridge.poll();
+
+        // Send exactly CHANNEL_CAPACITY messages; all should succeed.
+        // The background thread has 100ms recv timeout, so during rapid sends
+        // the channel will fill before the thread processes any.
+        let mut err: Option<String> = None;
+        for i in 0..CHANNEL_CAPACITY {
+            match bridge.send(IpcRequest::Health) {
+                Ok(()) => {}
+                Err(e) => {
+                    err = Some(e);
+                    break;
+                }
+            }
+            let _ = i;
+        }
+
+        // If we got an error before filling the channel, that's a bug.
+        assert!(
+            err.is_none(),
+            "send should not have failed before channel was full"
+        );
+
+        // The (CHANNEL_CAPACITY + 1)th send MUST fail with "channel full"
+        // because the background thread is blocked in recv_timeout and hasn't
+        // drained the prior messages.
+        let result = bridge.send(IpcRequest::Health);
+        assert!(
+            result.is_err(),
+            "send_on_full_returns_error: channel should be full at capacity {}",
+            CHANNEL_CAPACITY
+        );
+        let err_msg = result.unwrap_err();
+        assert!(
+            err_msg.contains("channel full"),
+            "send_on_full_returns_error: expected 'channel full', got: {err_msg}"
+        );
+    }
+
+    /// Verifies that channel_capacity_constant: CHANNEL_CAPACITY is exactly 16.
+    ///
+    /// BEHAVIOR: The bounded channel must have capacity 16 (power-of-two for
+    ///           cache-line efficiency and predictable backpressure threshold).
+    ///           This is proven by observing that exactly 16 sends succeed and
+    ///           the 17th fails with "channel full".
+    #[test]
+    fn channel_capacity_constant() {
+        let bridge = IpcBridge::new();
+        let _ = bridge.poll(); // ensure clean state
+
+        // Count how many sends succeed before "channel full" error occurs.
+        let mut success_count: usize = 0;
+        let mut got_full_error = false;
+
+        // Try sending up to 32 messages (more than expected capacity).
+        for i in 0..32 {
+            match bridge.send(IpcRequest::Health) {
+                Ok(()) => {
+                    success_count += 1;
+                }
+                Err(e) => {
+                    // Must be "channel full" error
+                    assert!(
+                        e.contains("channel full"),
+                        "channel_capacity_constant: expected 'channel full' error, got: {e}"
+                    );
+                    got_full_error = true;
+                    break;
+                }
+            }
+            let _ = i;
+        }
+
+        assert!(
+            got_full_error,
+            "channel_capacity_constant: expected 'channel full' error but never got one after 32 sends"
+        );
+
+        // CHANNEL_CAPACITY must be exactly 16.
+        assert_eq!(
+            success_count, 16,
+            "channel_capacity_constant: expected exactly 16 successful sends, got {success_count}"
+        );
+    }
+
+    /// Verifies that try_send_consumers_backpressure: when the consumer (background
+    /// IPC thread) is slow relative to producers, the bounded channel backpressures
+    /// callers with "channel full".
+    ///
+    /// BEHAVIOR: Given a channel at capacity, when an additional send is attempted
+    ///           AND the consumer has not drained any messages,
+    ///           then send returns Err("channel full") immediately (non-blocking).
+    ///
+    /// This proves the backpressure mechanism is synchronous and producers cannot
+    /// exceed channel capacity regardless of consumer latency.
+    #[test]
+    fn try_send_consumers_backpressure() {
+        let bridge = IpcBridge::new();
+        let _ = bridge.poll(); // start with clean slate
+
+        // Flood the channel rapidly so background thread cannot keep up.
+        // Background thread uses 100ms recv_timeout; we send 20 messages in rapid succession.
+        // This ensures the channel hits capacity before any background processing occurs.
+        let mut error_messages: Vec<String> = Vec::new();
+        let mut success_count: usize = 0;
+
+        for _ in 0..20 {
+            match bridge.send(IpcRequest::Health) {
+                Ok(()) => {
+                    success_count += 1;
+                }
+                Err(e) => {
+                    error_messages.push(e);
+                    break; // once full, stays full for rapid sends
+                }
+            }
+        }
+
+        // The first CHANNEL_CAPACITY (16) sends should succeed.
+        assert_eq!(
+            success_count, 16,
+            "try_send_consumers_backpressure: expected 16 successful sends, got {success_count}"
+        );
+
+        // The next send must fail with "channel full" - proving consumer backpressure.
+        assert!(
+            !error_messages.is_empty(),
+            "try_send_consumers_backpressure: channel should be full but got no error"
+        );
+        let err_msg = &error_messages[0];
+        assert!(
+            err_msg.contains("channel full"),
+            "try_send_consumers_backpressure: expected 'channel full', got: {err_msg}"
+        );
+
+        // Verify subsequent sends also fail (channel remains full).
+        let result2 = bridge.send(IpcRequest::Health);
+        assert!(
+            result2.is_err(),
+            "try_send_consumers_backpressure: subsequent send should also fail while channel is full"
+        );
+        let err_msg2 = result2.unwrap_err();
+        assert!(
+            err_msg2.contains("channel full"),
+            "try_send_consumers_backpressure: subsequent error should also be 'channel full', got: {err_msg2}"
+        );
     }
 }
