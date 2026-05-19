@@ -61,7 +61,10 @@ pub(crate) fn jump_to_body(
     run: &mut RunFrame,
     body: StepIdx,
 ) -> Result<vb_core::EngineSignal, EngineError> {
-    run.mark_pending(body)?;
+    let current = run.step_state(body)?;
+    if current == vb_core::frame::StepState::Succeeded {
+        run.mark_pending(body)?;
+    }
     jump_to(run, body)
 }
 
@@ -466,38 +469,32 @@ mod tests {
     }
 
     #[test]
-    fn tc004_jump_to_body_waiting_is_invalid() -> Result<(), String> {
+    fn tc004_jump_to_body_waiting_reentry_valid() -> Result<(), String> {
         let mut run = fresh_frame();
         let body = StepIdx::new(1);
         run.mark_running(body).map_err(|e| format!("{e:?}"))?;
         run.mark_waiting(body).map_err(|e| format!("{e:?}"))?;
-        let result = jump_to_body(&mut run, body);
-        match result {
-            Err(EngineError::InternalInvariantViolation { reason }) => {
-                ensure(
-                    reason.contains("invalid_state_transition"),
-                    format!("expected invalid_state_transition, got: {reason}"),
-                )
-            }
-            other => Err(format!("expected InternalInvariantViolation, got: {other:?}")),
-        }
+        let result = jump_to_body(&mut run, body).map_err(|e| format!("jump_to_body failed: {e:?}"))?;
+        ensure(result == vb_core::EngineSignal::Continue, "expected Continue")?;
+        let state = run.step_state(body).map_err(|e| format!("{e:?}"))?;
+        ensure(
+            matches!(state, vb_core::frame::StepState::Waiting),
+            format!("expected Waiting (unchanged), got {state:?}"),
+        )
     }
 
     #[test]
-    fn tc005_jump_to_body_asking_is_invalid() -> Result<(), String> {
+    fn tc005_jump_to_body_asking_reentry_valid() -> Result<(), String> {
         let mut run = fresh_frame();
         let body = StepIdx::new(1);
         run.mark_running(body).map_err(|e| format!("{e:?}"))?;
         run.mark_asking(body).map_err(|e| format!("{e:?}"))?;
-        let result = jump_to_body(&mut run, body);
-        match result {
-            Err(EngineError::InternalInvariantViolation { reason }) => {
-                ensure(
-                    reason.contains("invalid_state_transition"),
-                    format!("expected invalid_state_transition, got: {reason}"),
-                )
-            }
-            other => Err(format!("expected InternalInvariantViolation, got: {other:?}")),
-        }
+        let result = jump_to_body(&mut run, body).map_err(|e| format!("jump_to_body failed: {e:?}"))?;
+        ensure(result == vb_core::EngineSignal::Continue, "expected Continue")?;
+        let state = run.step_state(body).map_err(|e| format!("{e:?}"))?;
+        ensure(
+            matches!(state, vb_core::frame::StepState::Asking),
+            format!("expected Asking (unchanged), got {state:?}"),
+        )
     }
 }
