@@ -5210,6 +5210,25 @@ mod tests {
         );
     }
 
+    #[test]
+    fn journal_error_public_diagnostic_code_uses_storage_contract_prefix() {
+        assert_eq!(
+            JournalError::WrongRun {
+                expected: RunId::new(1),
+                actual: RunId::new(2),
+            }
+            .public_diagnostic_code()
+            .to_string(),
+            "0x4008"
+        );
+        assert_eq!(
+            JournalError::PayloadDigestMismatch
+                .public_diagnostic_code()
+                .to_string(),
+            "0x4013"
+        );
+    }
+
     // =========================================================================
     // Section: Batch Write-Through Integration Tests (60 new tests)
     // =========================================================================

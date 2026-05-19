@@ -12,6 +12,14 @@ workspace = true
 serde_json.workspace = true
 saphyr.workspace = true
 toml.workspace = true
+vb_compile = { path = "../vb_compile" }
+vb_core = { path = "../vb_core" }
+vb_codegen = { path = "../vb_codegen" }
+vb_ipc = { path = "../vb_ipc" }
+vb_storage = { path = "../vb_storage" }
+vb_runtime = { path = "../vb_runtime" }
+vb_validate = { path = "../vb_validate" }
+vb_yaml = { path = "../vb_yaml" }
 
 [dev-dependencies]
 blake3.workspace = true

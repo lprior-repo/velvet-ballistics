@@ -61,6 +61,24 @@ pub(super) fn reject_unknown_fields(node: &saphyr::Yaml<'_>, allowed: &[&str]) -
     Ok(())
 }
 
+pub(super) fn reject_unknown_top_level_fields(
+    node: &saphyr::Yaml<'_>,
+    allowed: &[&str],
+) -> YamlResult<()> {
+    for (key, _) in mapping(node, "workflow")? {
+        let Some(key) = key.as_str() else {
+            return Err(YamlError::FieldShape {
+                field: "mapping key",
+                expected: "string",
+            });
+        };
+        if !allowed.contains(&key) {
+            return Err(YamlError::UnknownTopLevelField { field: key.into() });
+        }
+    }
+    Ok(())
+}
+
 /// Require a non-empty string field.
 pub(super) fn require_str(node: &saphyr::Yaml<'_>, field: &'static str) -> YamlResult<String> {
     match lookup(node, field) {
@@ -168,17 +186,17 @@ fn parse_workflow_from_yaml(root: &saphyr::Yaml<'_>) -> YamlResult<WorkflowSourc
 
     let version = require_str(root, "version")?;
     let name = require_str(root, "name")?;
-    reject_unknown_fields(
+    reject_unknown_top_level_fields(
         root,
         &[
             "version", "name", "when", "inputs", "vars", "secrets", "steps", "result", "examples",
         ],
     )?;
+    let steps = parse_steps(root)?;
     let trigger = parse_trigger(root)?;
     let inputs = parse_inputs(root)?;
     let vars = parse_vars(root)?;
     let secrets = parse_secrets(root)?;
-    let steps = parse_steps(root)?;
     let result = parse_result(root)?;
     let examples = parse_examples(root)?;
 

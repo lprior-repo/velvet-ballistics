@@ -10,6 +10,7 @@ pub(crate) mod codes;
 pub mod warnings;
 
 pub use self::artifact::{ArtifactEnvelopeError, ArtifactInvalidSource};
+pub use self::codes::JournalDiagnosticCode;
 pub use self::warnings::{
     AdmissionWarnings, VERIFICATION_WARNING_SCHEMA_MISMATCH_CODE, VerificationWarning,
 };

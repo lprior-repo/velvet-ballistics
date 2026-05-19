@@ -215,6 +215,8 @@ fn yaml_error_category(error: &vb_yaml::YamlError) -> &'static str {
         | vb_yaml::YamlError::ScalarTooLong { .. }
         | vb_yaml::YamlError::SequenceTooLong { .. }
         | vb_yaml::YamlError::MappingTooLarge { .. } => "limit_exceeded",
+        vb_yaml::YamlError::UnknownTopLevelField { .. } => "unknown_top_level_field",
+        vb_yaml::YamlError::UnknownStepField { .. } => "unknown_step_field",
         vb_yaml::YamlError::UnknownField { .. } => "unknown_field",
         vb_yaml::YamlError::EmptySource => "empty_source",
         vb_yaml::YamlError::MissingField { .. } => "missing_field",
@@ -2570,7 +2572,8 @@ fn canonical_yaml_code(category: &str) -> &'static str {
         "duplicate_key" => "DUPLICATE_KEY",
         "document_count" => "FORBIDDEN_YAML_FEATURE",
         "limit_exceeded" => "LIMIT_EXCEEDED",
-        "unknown_field" => "UNKNOWN_TOP_LEVEL_FIELD",
+        "unknown_top_level_field" | "unknown_field" => "UNKNOWN_TOP_LEVEL_FIELD",
+        "unknown_step_field" => "UNKNOWN_STEP_FIELD",
         "empty_source" | "missing_field" => "MISSING_REQUIRED_FIELD",
         "field_shape" => "TYPE_MISMATCH",
         "parse_error" | "forbidden_feature" => "FORBIDDEN_YAML_FEATURE",

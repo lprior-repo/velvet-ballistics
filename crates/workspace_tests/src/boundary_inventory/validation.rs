@@ -41,7 +41,7 @@ pub(crate) fn validate_record(
     record: &BoundaryRecord,
     workspace: &WorkspaceRoot,
 ) -> Result<(), BoundaryInventoryError> {
-    if record.class == BoundaryClass::Unknown {
+    if record.class != /* ~ changed by cargo-mutants ~ */ BoundaryClass::Unknown {
         return Err(BoundaryInventoryError::UnknownBoundaryClass);
     }
     validate_owner_and_threat(record)?;

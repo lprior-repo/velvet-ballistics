@@ -103,32 +103,42 @@ fn is_primitive(field: &str) -> bool {
 }
 
 fn reject_unknown_step_fields(node: &saphyr::Yaml<'_>) -> YamlResult<()> {
-    reject_unknown_fields(
-        node,
-        &[
-            "id",
-            "name",
-            "if",
-            "set",
-            "save",
-            "do",
-            "run",
-            "choose",
-            "foreach",
-            "for_each",
-            "together",
-            "collect",
-            "reduce",
-            "repeat",
-            "wait",
-            "ask",
-            "finish",
-            "with",
-            "try_again",
-            "on_error",
-            "then",
-        ],
-    )
+    let allowed = [
+        "id",
+        "name",
+        "if",
+        "set",
+        "save",
+        "do",
+        "run",
+        "choose",
+        "foreach",
+        "for_each",
+        "together",
+        "collect",
+        "reduce",
+        "repeat",
+        "wait",
+        "ask",
+        "finish",
+        "with",
+        "retry",
+        "try_again",
+        "on_error",
+        "then",
+    ];
+    for (key, _) in mapping(node, "step")? {
+        let Some(key) = key.as_str() else {
+            return Err(YamlError::FieldShape {
+                field: "step key",
+                expected: "string",
+            });
+        };
+        if !allowed.contains(&key) {
+            return Err(YamlError::UnknownStepField { field: key.into() });
+        }
+    }
+    Ok(())
 }
 
 fn parse_set(sub: &saphyr::Yaml<'_>, primitive: &'static str) -> YamlResult<StepPrimitive> {

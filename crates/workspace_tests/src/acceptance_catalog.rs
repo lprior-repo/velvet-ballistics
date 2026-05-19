@@ -2,6 +2,10 @@
 
 use std::collections::BTreeSet;
 
+mod failure_taxonomy;
+
+pub use failure_taxonomy::*;
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct Scenario {
     pub id: &'static str,

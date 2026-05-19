@@ -202,3 +202,50 @@ fn missing_term(
         _ => Some(MissingRequirement { section_id, term }),
     }
 }
+
+#[cfg(test)]
+mod mutation_guard_tests {
+    use super::*;
+
+    fn valid_report() -> PlanValidationReport {
+        PlanValidationReport {
+            required_section_count: REQUIRED_SECTIONS.len(),
+            covered_required_sections: REQUIRED_SECTIONS.len(),
+            stale_api_mentions: 0,
+            missing_sections: Vec::new(),
+            duplicate_sections: Vec::new(),
+            missing_requirements: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn plan_validation_report_is_valid_only_when_all_failure_vectors_are_empty() {
+        let valid = valid_report();
+        assert_eq!(valid.is_valid(), true);
+
+        let missing_section = PlanValidationReport {
+            missing_sections: vec!["helper-semantics"],
+            ..valid_report()
+        };
+        let duplicate_section = PlanValidationReport {
+            duplicate_sections: vec!["runtime-recovery"],
+            ..valid_report()
+        };
+        let missing_requirement = PlanValidationReport {
+            missing_requirements: vec![MissingRequirement {
+                section_id: "generated-parity",
+                term: "unsupported generated-mode rejection",
+            }],
+            ..valid_report()
+        };
+        let stale_api = PlanValidationReport {
+            stale_api_mentions: 1,
+            ..valid_report()
+        };
+
+        assert_eq!(missing_section.is_valid(), false);
+        assert_eq!(duplicate_section.is_valid(), false);
+        assert_eq!(missing_requirement.is_valid(), false);
+        assert_eq!(stale_api.is_valid(), false);
+    }
+}

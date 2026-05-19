@@ -67,6 +67,9 @@ pub mod kani_workflow_arbitrary;
 #[cfg(kani)]
 pub mod kani_step_state_transition;
 
+#[cfg(kani)]
+pub mod kani_core_bounds;
+
 pub use action::{
     ActionContract, ActionError, ActionFailure, ActionFailureCode, ActionInput, ActionJournalEvent,
     ActionOutcome, ActionOutput, ActionOutputReady, ActionResult, ActionTicket, Idempotency,

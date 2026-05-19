@@ -18,6 +18,12 @@ use crate::{YamlError, YamlLimits, YamlResult};
 
 use super::profile_dupkeys::reject_duplicate_mapping_keys;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ContainerCounter {
+    Sequence { len: usize },
+    Mapping { child_nodes: usize },
+}
+
 /// Validate that the given YAML text conforms to the strict profile.
 ///
 /// This runs the full set of checks: size limits, event profile, depth
@@ -59,6 +65,7 @@ pub(crate) fn collect_and_validate_events(
 ) -> YamlResult<Vec<YamlEvent>> {
     let mut parser = saphyr_parser::Parser::new_from_str(text);
     let mut events = Vec::new();
+    let mut containers = Vec::new();
     let mut depth: u16 = 0;
     let mut node_count: u32 = 0;
     let mut document_count: usize = 0;
@@ -83,6 +90,7 @@ pub(crate) fn collect_and_validate_events(
             }
             saphyr_parser::Event::MappingStart(_, _)
             | saphyr_parser::Event::SequenceStart(_, _) => {
+                record_child_node(&mut containers, limits)?;
                 depth = depth.checked_add(1).ok_or(YamlError::NestingTooDeep {
                     depth,
                     max: limits.max_depth,
@@ -94,11 +102,19 @@ pub(crate) fn collect_and_validate_events(
                     });
                 }
                 found_content = true;
+                containers.push(container_for_event(&event));
             }
             saphyr_parser::Event::MappingEnd | saphyr_parser::Event::SequenceEnd => {
                 depth = depth.saturating_sub(1);
+                if containers.pop().is_none() {
+                    return Err(YamlError::ParseError {
+                        line: 0,
+                        reason: "container end without start".into(),
+                    });
+                }
             }
             saphyr_parser::Event::Scalar(value, _, _, _) => {
+                record_child_node(&mut containers, limits)?;
                 check_scalar_length(value, limits.max_scalar_bytes)?;
                 check_null_bytes(value)?;
                 found_content = true;
@@ -130,6 +146,56 @@ pub(crate) fn collect_and_validate_events(
     }
 
     Ok(events)
+}
+
+fn container_for_event(event: &saphyr_parser::Event<'_>) -> ContainerCounter {
+    match event {
+        saphyr_parser::Event::SequenceStart(_, _) => ContainerCounter::Sequence { len: 0 },
+        _ => ContainerCounter::Mapping { child_nodes: 0 },
+    }
+}
+
+fn record_child_node(containers: &mut [ContainerCounter], limits: &YamlLimits) -> YamlResult<()> {
+    let Some(container) = containers.last_mut() else {
+        return Ok(());
+    };
+    match container {
+        ContainerCounter::Sequence { len } => {
+            *len = len.checked_add(1).ok_or(YamlError::SequenceTooLong {
+                len: usize::MAX,
+                max: limits.max_sequence_len,
+            })?;
+            if *len > limits.max_sequence_len {
+                return Err(YamlError::SequenceTooLong {
+                    len: *len,
+                    max: limits.max_sequence_len,
+                });
+            }
+        }
+        ContainerCounter::Mapping { child_nodes } => {
+            *child_nodes = child_nodes
+                .checked_add(1)
+                .ok_or(YamlError::MappingTooLarge {
+                    count: usize::MAX,
+                    max: limits.max_mapping_entries,
+                })?;
+            let max_children =
+                limits
+                    .max_mapping_entries
+                    .checked_mul(2)
+                    .ok_or(YamlError::MappingTooLarge {
+                        count: usize::MAX,
+                        max: limits.max_mapping_entries,
+                    })?;
+            if *child_nodes > max_children {
+                return Err(YamlError::MappingTooLarge {
+                    count: child_nodes.saturating_add(1) / 2,
+                    max: limits.max_mapping_entries,
+                });
+            }
+        }
+    }
+    Ok(())
 }
 
 /// Check that a scalar value does not exceed the length limit.
@@ -170,6 +236,9 @@ pub fn reject_forbidden_features(events: &[YamlEvent]) -> YamlResult<()> {
         if let Some(tag) = event.tag()
             && !is_allowed_tag(tag)
         {
+            if is_binary_tag(tag) {
+                return Err(YamlError::BinaryScalar);
+            }
             return Err(YamlError::CustomTag { tag: tag.into() });
         }
         if let YamlEvent::Scalar { style, value, .. } = event {
@@ -177,6 +246,10 @@ pub fn reject_forbidden_features(events: &[YamlEvent]) -> YamlResult<()> {
         }
     }
     Ok(())
+}
+
+fn is_binary_tag(tag: &str) -> bool {
+    tag == "!!binary" || tag == "tag:yaml.org,2002:binary"
 }
 
 /// The set of allowed YAML core schema tag suffixes.

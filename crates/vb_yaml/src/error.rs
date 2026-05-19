@@ -52,6 +52,12 @@ pub enum YamlError {
     #[error("unknown field: {field}")]
     UnknownField { field: Box<str> },
 
+    #[error("unknown top-level field: {field}")]
+    UnknownTopLevelField { field: Box<str> },
+
+    #[error("unknown step field: {field}")]
+    UnknownStepField { field: Box<str> },
+
     #[error("empty source")]
     EmptySource,
 

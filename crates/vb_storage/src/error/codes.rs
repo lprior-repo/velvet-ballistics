@@ -1,5 +1,37 @@
 use crate::error::JournalError;
+use core::fmt;
 use vb_core::DiagnosticCode;
+
+/// Public journal diagnostic code rendered with the storage contract prefix.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[repr(transparent)]
+pub struct JournalDiagnosticCode(DiagnosticCode);
+
+impl JournalDiagnosticCode {
+    /// Creates a public journal diagnostic code from the packed core code.
+    #[must_use]
+    pub const fn new(code: DiagnosticCode) -> Self {
+        Self(code)
+    }
+
+    /// Returns the packed numeric code.
+    #[must_use]
+    pub const fn code(self) -> u16 {
+        self.0.code()
+    }
+
+    /// Returns the underlying core diagnostic code.
+    #[must_use]
+    pub const fn core_code(self) -> DiagnosticCode {
+        self.0
+    }
+}
+
+impl fmt::Display for JournalDiagnosticCode {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(formatter, "0x{:04X}", self.code())
+    }
+}
 
 impl JournalError {
     /// Diagnostic code for fjall operation failure.
@@ -108,5 +140,11 @@ impl JournalError {
             Self::ProcessLockIo { .. } => Self::PROCESS_LOCK_IO_CODE,
             Self::Trim(_) => Self::FJALL_CODE, // Map trim errors to a generic code
         }
+    }
+
+    /// Returns the public storage-contract diagnostic code for this error.
+    #[must_use]
+    pub const fn public_diagnostic_code(&self) -> JournalDiagnosticCode {
+        JournalDiagnosticCode::new(self.diagnostic_code())
     }
 }
