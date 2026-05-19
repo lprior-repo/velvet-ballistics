@@ -1,0 +1,25 @@
+{
+  "bead_id": "vb-njju",
+  "state": 4,
+  "sublane": "proof-planning",
+  "delegate": "proof-planner",
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/femdation-vb-njju",
+  "input_artifacts": [
+    ".beads/vb-njju/contract.md",
+    ".beads/vb-njju/domain-model-review.md",
+    ".beads/vb-njju/tla-spec.md",
+    ".beads/vb-njju/lean-contract.md",
+    ".beads/vb-njju/verification-layers.md",
+    ".beads/vb-njju/proof-obligations.jsonl",
+    ".beads/vb-njju/traceability-matrix.jsonl",
+    ".beads/vb-njju/delivery-scope.jsonl"
+  ],
+  "output_artifacts": [
+    ".beads/vb-njju/proof-strategy.md",
+    ".beads/vb-njju/proof-plan-review-input.md",
+    ".beads/vb-njju/proof-obligations.planned.jsonl"
+  ],
+  "attempt": "1-of-7",
+  "reason": "Contract artifacts are present and JSONL-valid; plan executable proof obligations for vb-njju."
+}

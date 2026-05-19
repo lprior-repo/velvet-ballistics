@@ -83,8 +83,9 @@ mod proptests {
     #[cfg(not(miri))]
     fn equivalence_harness_source(workflow: &CompiledWorkflow, generated: &str) -> String {
         format!(
-            "{generated}\n{}\n{}\n",
+            "{generated}\n{}\n{}\n{}\n",
             slot_text_function_source(),
+            taint_text_function_source(),
             equivalence_main_source(workflow)
         )
     }
@@ -95,9 +96,14 @@ mod proptests {
     }
 
     #[cfg(not(miri))]
+    fn taint_text_function_source() -> &'static str {
+        "fn taint_text(slot_taints: &[Taint; WORKFLOW_SLOT_COUNT], index: u16) -> String {\n    match slot_taints.get(usize::from(index)) {\n        Some(value) => format!(\"{value:?}\"),\n        None => String::from(\"taint-out-of-bounds\"),\n    }\n}"
+    }
+
+    #[cfg(not(miri))]
     fn equivalence_main_source(workflow: &CompiledWorkflow) -> String {
         format!(
-            "fn main() {{\n    let mut slots = [None; WORKFLOW_SLOT_COUNT];\n    let mut slot_taints = [Taint::Clean; WORKFLOW_SLOT_COUNT];\n    let mut list_store = ListStore::new();\n    let mut object_store = ObjectStore::new();\n    let mut collect_states = CollectStateStore::new();\n    let value = drive_equivalence_trace(&mut slots, &mut slot_taints, &mut list_store, &mut object_store, &mut collect_states);\n    println!(\"{{value}}|slots:{{}}|{{}}|{{}}\", slot_text(&slots, 0), slot_text(&slots, 1), slot_text(&slots, 2));\n}}\n{}",
+            "fn main() {{\n    let mut slots = [None; WORKFLOW_SLOT_COUNT];\n    let mut slot_taints = [Taint::Clean; WORKFLOW_SLOT_COUNT];\n    let mut list_store = ListStore::new();\n    let mut object_store = ObjectStore::new();\n    let mut collect_states = CollectStateStore::new();\n    let value = drive_equivalence_trace(&mut slots, &mut slot_taints, &mut list_store, &mut object_store, &mut collect_states);\n    println!(\"{{value}}|slots:{{}}|{{}}|{{}}|taints:{{}}|{{}}|{{}}\", slot_text(&slots, 0), slot_text(&slots, 1), slot_text(&slots, 2), taint_text(&slot_taints, 0), taint_text(&slot_taints, 1), taint_text(&slot_taints, 2));\n}}\n{}",
             drive_trace_function_source(workflow)
         )
     }
@@ -139,7 +145,12 @@ mod proptests {
         let slot0 = slot_trace(&run, SlotIdx::new(0));
         let slot1 = slot_trace(&run, SlotIdx::new(1));
         let slot2 = slot_trace(&run, SlotIdx::new(2));
-        Ok(format!("{head}|slots:{slot0}|{slot1}|{slot2}\n"))
+        let taint0 = taint_trace(&run, SlotIdx::new(0));
+        let taint1 = taint_trace(&run, SlotIdx::new(1));
+        let taint2 = taint_trace(&run, SlotIdx::new(2));
+        Ok(format!(
+            "{head}|slots:{slot0}|{slot1}|{slot2}|taints:{taint0}|{taint1}|{taint2}\n"
+        ))
     }
 
     #[cfg(not(miri))]
@@ -147,6 +158,14 @@ mod proptests {
         match run.read_slot(slot) {
             Ok(value) => format!("Some({value:?})"),
             Err(_) => String::from("None"),
+        }
+    }
+
+    #[cfg(not(miri))]
+    fn taint_trace(run: &vb_core::RunFrame, slot: SlotIdx) -> String {
+        match run.read_taint(slot) {
+            Ok(value) => format!("{value:?}"),
+            Err(_) => String::from("taint-out-of-bounds"),
         }
     }
 
@@ -372,6 +391,8 @@ mod proptests {
             ).map_err(TestCaseError::fail)?;
             let interpreted = ir_equivalence_trace(&workflow).map_err(TestCaseError::fail)?;
 
+            prop_assert!(generated.contains("|taints:"));
+            prop_assert!(interpreted.contains("|taints:"));
             prop_assert_eq!(generated, interpreted);
         }
 

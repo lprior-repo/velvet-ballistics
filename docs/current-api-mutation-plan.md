@@ -23,6 +23,7 @@ Runtime recovery must kill mutants that hide ordering or hydration regressions:
 | Journal replay | skip journal sequence hydration checks, accept missing sequence, conflate duplicate sequence | replay hydration tests and storage journal tests fail with exact typed errors | `vb-gmtg` evidence |
 | Snapshot recovery | accept stale snapshot hydration, ignore run header mismatch, drop frame pc restoration | snapshot/recovery tests assert exact restored pc, run id, and correlation | `vb-gmtg` evidence |
 | Retry state | mutate retry state max-attempt branch or off-by-one attempt comparison | retry parity tests reject wrong branch and typed policy result | `vb-gmtg` evidence |
+| Runtime admission branch | remove admission branch gating, accept unadmitted artifacts, or downgrade the release-blocking disposition | `test_mutation_gate_fails_when_admission_branch_removed` fails closed and scoped cargo-mutants targets the admission branch instead of unrelated smoke | `vb-njju` |
 
 ## Generated Rust Parity Mutation Targets
 
@@ -75,5 +76,7 @@ Validation command and threshold:
 
 - Focused validator command: `cargo test --package velvet-ballastics-workspace-tests --test vb_c3k9_current_api_mutation_plan`.
 - Scoped mutation command: `cargo mutants --package velvet-ballastics-workspace-tests --test vb_c3k9_current_api_mutation_plan`.
+- Admission-branch closure command: `cargo mutants --package velvet-ballastics-workspace-tests --test vb_njju_mutation_fuzz_property_closure`.
+- Unrelated smoke substitution policy: `moon run :mutants-smoke` over `crates/vb_core/src/diagnostic.rs` is regression smoke only and never satisfies admission-branch closure for `vb-njju`.
 - Release evidence threshold: at least `90% mutation kill rate` for scoped semantic targets.
 - Mutation exclusion policy: exclusions are only valid for generated boilerplate, unreachable compile-time rejected states, or documented tool limitations with exact compensating test/proof evidence.

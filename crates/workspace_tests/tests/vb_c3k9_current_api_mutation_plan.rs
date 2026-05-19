@@ -231,3 +231,21 @@ fn critical_survivor_creates_blocker() {
         "critical mutation survivors must become explicit blocker evidence or follow-up beads"
     );
 }
+
+#[test]
+fn admission_branch_mutation_plan_rejects_unrelated_smoke_substitution() {
+    assert!(
+        PLAN.contains("Runtime admission branch")
+            && PLAN.contains("test_mutation_gate_fails_when_admission_branch_removed")
+            && PLAN.contains(
+                "cargo mutants --package velvet-ballastics-workspace-tests --test vb_njju_mutation_fuzz_property_closure"
+            ),
+        "vb-njju admission-branch mutation plan must name exact scope, test, and scoped cargo-mutants command"
+    );
+    assert!(
+        PLAN.contains("diagnostic.rs")
+            && PLAN.contains("regression smoke only")
+            && PLAN.contains("never satisfies admission-branch closure"),
+        "unrelated diagnostic.rs smoke must be documented as insufficient for vb-njju admission closure"
+    );
+}

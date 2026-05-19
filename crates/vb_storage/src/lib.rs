@@ -57,6 +57,14 @@ pub mod kani_recovery_hydrate;
 
 pub mod keys;
 pub mod process_lock;
+
+// PO-010: register the deterministic replay proptest module for `cargo test --lib`
+// evidence collection. This is test-only verification wiring and does not alter
+// production runtime behavior.
+#[cfg(test)]
+#[path = "po010_proptests.rs"]
+mod proptests;
+
 pub mod queue;
 pub mod records;
 pub mod recovery;

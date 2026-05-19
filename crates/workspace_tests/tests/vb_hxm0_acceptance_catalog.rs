@@ -10,6 +10,12 @@ use std::path::{Path, PathBuf};
 
 const VB_KYYF_TRACEABILITY_PATH: &str = ".evidence/vb-kyyf/acceptance-catalog-traceability.md";
 const VB_KYYF_PROOF_OBLIGATIONS_PATH: &str = ".beads/vb-kyyf/proof-obligations.planned.jsonl";
+const VB_NJJU_SCENARIO_ROWS: &[&str] = &[
+    "BDD-NJJU-001",
+    "BDD-NJJU-002",
+    "BDD-NJJU-003",
+    "BDD-NJJU-004",
+];
 
 const REQUIRED_BEHAVIOR_ROWS: &[(&str, &str)] = &[
     (
@@ -92,9 +98,35 @@ fn test_catalog_lists_every_master_doc_behavior_by_scenario_id() -> io::Result<(
         .collect();
     assert_eq!(actual_behavior_rows, REQUIRED_BEHAVIOR_ROWS);
     assert_bdd_kyyf_007_catalog_target_matches_planned_po_007(scenarios)?;
+    assert_vb_njju_catalog_rows_are_public_and_executable(scenarios);
     assert!(fs::metadata(workspace_root()?.join(VB_KYYF_TRACEABILITY_PATH))?.len() > 0);
 
     Ok(())
+}
+
+fn assert_vb_njju_catalog_rows_are_public_and_executable(scenarios: &[Scenario]) {
+    let actual_rows: Vec<&Scenario> = scenarios
+        .iter()
+        .filter(|scenario| scenario.related_bead == "vb-njju")
+        .collect();
+    let actual_ids: Vec<&str> = actual_rows.iter().map(|scenario| scenario.id).collect();
+
+    assert_eq!(actual_ids, VB_NJJU_SCENARIO_ROWS);
+    for scenario in actual_rows {
+        assert!(!scenario.given.is_empty());
+        assert!(!scenario.when.is_empty());
+        assert!(!scenario.then.is_empty());
+        assert!(
+            scenario.public_surface.contains("public") || scenario.public_surface.contains("Moon")
+        );
+        assert!(scenario.fixture.contains("isolated vb-njju"));
+        assert_eq!(scenario.deferred_follow_up_bead, None);
+        assert!(
+            scenario
+                .executable_evidence_target
+                .is_some_and(|target| target.starts_with("crates/"))
+        );
+    }
 }
 
 fn assert_bdd_kyyf_007_catalog_target_matches_planned_po_007(
@@ -209,13 +241,17 @@ fn test_catalog_maps_existing_tests_to_covered_scenarios() {
         .collect();
 
     // Then: covered scenarios point at real test/evidence files and deferred gaps point only at beads.
-    assert_eq!(executable_test_targets.len(), 7);
+    assert_eq!(executable_test_targets.len(), 11);
     assert_eq!(executable_evidence_targets.len(), 7);
-    assert_eq!(executable_targets.len(), 14);
+    assert_eq!(executable_targets.len(), 18);
     assert_eq!(follow_up_beads.len(), 3);
     assert_eq!(
         executable_test_targets,
         vec![
+            "crates/workspace_tests/tests/vb_njju_mutation_fuzz_property_closure.rs",
+            "crates/workspace_tests/tests/vb_njju_mutation_fuzz_property_closure.rs",
+            "crates/workspace_tests/tests/vb_njju_mutation_fuzz_property_closure.rs",
+            "crates/workspace_tests/tests/vb_njju_mutation_fuzz_property_closure.rs",
             "crates/workspace_tests/tests/vb_37lc_canonical_spelling_red.rs",
             "crates/workspace_tests/tests/bdd_validation_tests.rs",
             "crates/workspace_tests/tests/vb_core_yaml_e2e_chain_contract.rs",
