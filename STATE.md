@@ -1,113 +1,77 @@
-# STATE.md — vb-core-proof-15-gate
+# STATE.md — vb-rpch
 
 ## Beacon
-- **Bead**: vb-core-proof-15-gate — "Emit real 15-gate VerificationProof"
-- **Workspace**: vb-core-proof-15-gate-fresh
+- **Bead**: vb-rpch — "bdd: Durability and recovery acceptance scenarios"
+- **Workspace**: femdation-vb-rpch (isolated)
 - **Started**: 2026-05-17
-- **Pipeline**: go-skill 15-state
+- **Pipeline**: proof-review state 6 completed — REJECTED, routed to state 5 (attempt 2)
+- **Parent**: vb-hjvq
+- **Blocks**: vb-oewy
+- **Depends on**: vb-hxm0, vb-ypnk
 
-## Gap Summary
-`crates/vb_storage/src/admission.rs` line 86-99: `VerificationProof::new()` sets all proof flags (`bounded`, `taint_safe`, `retry_safe`, `replayable`) to `true` unconditionally. No per-gate validation occurs. Gate count is set to 15 but no actual verification gates run.
+## State 6 Review Result: REJECTED
 
-## Verification Boundary
-- **Storage layer** (`vb_storage::admission::submit_artifact`): Claims 15 gates, produces `VerificationProof` with all flags=true
-- **Runtime layer** (`vb_runtime::admission::load_accepted_artifact`): Validates gate_count=15 and all proof flags=true
-- **Gap**: Storage produces artifacts that pass runtime validation without actual per-gate verification
+### proof-review.md findings (11 total):
+- 4 CRITICAL: False claims of Verus annotations (PF-VB-001/002/003), missing Kani harness (PF-VB-004)
+- 3 HIGH: TLC not run (PF-VB-005), TLA+ spec defects (PF-VB-006/007)
+- 3 MEDIUM: Missing cfg INVARIANT declarations (PF-VB-008), strategy failure (PF-VB-009), BDD execution not verified (PF-VB-010)
+- 1 LOW: GAP-3 waivers adequate (PF-VB-011)
 
-## Proof Flag Semantics
-- `bounded`: Workflow size/resource usage within limits — NOT verified
-- `taint_safe`: No secret taint propagation — NOT verified  
-- `retry_safe`: Action idempotency verified — NOT verified
-- `replayable`: Replay invariants satisfied — NOT verified
+### contract-verification-review.md findings:
+- 11/27 contract clauses have UNEXECUTED formal proofs
+- Verus: 7/7 UNEXECUTED
+- TLA+: 6/6 UNEXECUTED (theorems defined but TLC not run)
+- Kani: 3/3 UNEXECUTED (harness absent)
+- GAP-3 waivers: SOUND
 
-## States
-
-### State 1: Explore ✓
-- Mapped `crates/vb_storage/src/admission.rs` — submit_artifact, VerificationProof::new
-- Mapped `crates/vb_core/src/action.rs` — verify_idempotency, validate_idempotency_key_ingredients
-- Mapped `crates/vb_core/src/kani_idempotency_gates.rs` — KANI-RUNTIME-001 to 006
-- Confirmed gap: VerificationProof::new sets all flags=true without validation
-
-### State 2: Map ✓
-- `crates/vb_storage/src/admission.rs` — line 86-99 VerificationProof::new, line 119 ADMISSION_GATE_COUNT=15
-- `crates/vb_runtime/src/admission.rs` — line 16 REQUIRED_GATE_COUNT=15, line 311-333 proof flag validation
-- `crates/vb_core/src/action.rs` — line 355 verify_idempotency, line 317 validate_idempotency_key_ingredients
-- `kani_idempotency_gates.rs` — existing Kani proofs for idempotency verification
-
-### State 3: Contract ✓
-**G-CONTTRACT-15-GATE-001**: `VerificationProof::new` must not unconditionally set proof flags to true.
-**G-CONTTRACT-15-GATE-002**: Each proof flag must be validated by a corresponding verification gate before being set.
-**G-CONTRACT-15-GATE-003**: `submit_artifact(Journaled|Strict)` must run actual verification, not just claim gate_count=15.
-
-### State 4: Proof Planning ✓
-**Gap proof strategy**: Write Kani harness showing that `VerificationProof::new` always returns flags=true regardless of input workflow validity.
-**Proof obligation**: Demonstrate that any CompiledWorkflow (valid or invalid) produces proof with all flags=true.
-
-### State 5: Proof Writing ✓
-- Wrote Kani harness `crates/vb_storage/src/kani_proof_flags_gap.rs`
-- 6 proofs: VB-STORAGE-GAP-001 through VB-STORAGE-GAP-006
-
-### State 6: Proof Review ✓
-- Kani results: 6/6 verified SUCCESS
-- Gap confirmed: VerificationProof::new always sets bounded=true, taint_safe=true, retry_safe=true, replayable=true
-
-### State 7: Test Planning ✓
-- Planned unit tests demonstrating proof flag gap
-
-### State 8: Test Writing ✓
-- Added 3 gap-demonstration tests:
-  - `gap_proof_flags_always_true_regardless_of_gate_count`
-  - `gap_proof_flags_true_for_any_digest_value`
-  - `gap_submit_artifact_journaled_produces_unconditional_true_flags`
-- 927 lib tests pass, 3 integration tests fail (pre-existing)
-
-### State 9: Test Review ✓
-- Gap tests demonstrate that VerificationProof::new sets all flags=true unconditionally
-- Tests labeled as GAP tests to document the issue
-
-### State 10: Implementation
-- SKIPPED: Gap proof is primary goal; fix is out of scope for this bead
-
-### State 11: Formal Verification ✓
-- Kani: 6/6 SUCCESS (VB-STORAGE-GAP-001 through VB-STORAGE-GAP-006)
-
-### State 12: Black-Hat Review ✓
-- Created `.evidence/vb-core-proof-15-gate/black-hat-review.md`
-- 4 findings: 1 Critical, 2 High, 1 Info
-- Gap confirmed: proof flags set unconditionally
-
-### State 13: Evidence Packaging ✓
-- Created `.evidence/vb-core-proof-15-gate/formal-verification-report.md`
-- Kani verification: 6/6 SUCCESS
-
-### State 14: Landing ✓
-- Created bookmark `go-skill-p0-vb-core-proof-15-gate`
-- Pushed to origin
-- PR available: https://github.com/lprior-repo/velvet-ballistics/pull/new/go-skill-p0-vb-core-proof-15-gate
-
-### State 15: Cleanup ✓
-- Workspace complete
+### Output Artifacts Produced
+- `proof-review.md` (8.4K) — full reviewer analysis
+- `proof-findings.jsonl` (6.5K) — 11 findings in JSONL
+- `proof-repair-guide.md` (8.1K) — repair steps for all defects
+- `contract-verification-review.md` (8.9K) — clause-by-clause adequacy
 
 ---
 
-## vb-wg64 State 3 Transition — Clean-Clone CI Repair
+## State 5: Proof/Harness Writing (RETRY — Attempt 2)
 
-- bead_id: vb-wg64
-- source_checkout: /home/lewis/src/velvet-ballistics
-- isolated_workspace: /home/lewis/src/vb-go-skill/p0-wave-20260515/vb-wg64
-- state: 3
-- status: COMPLETE
-- artifacts:
-  - `.beads/vb-wg64/contract.md`
-  - `.beads/vb-wg64/domain-model-review.md`
-  - `.beads/vb-wg64/tla-spec.md`
-  - `.beads/vb-wg64/lean-contract.md`
-  - `.beads/vb-wg64/verification-layers.md`
-  - `.beads/vb-wg64/proof-obligations.jsonl`
-  - `.beads/vb-wg64/traceability-matrix.jsonl`
-- invariants:
-  - no production behavior change except lint-safe output helpers/import/module exposure
-  - test-only unused cleanup must preserve assertions and setup effects
-  - no broad allowlist unless locally justified by evidence
-  - canonical forced CI `moon ci --base HEAD --head HEAD --force` must pass in a clean workspace
-- note: State 3 is artifact-only; no production or test code was modified.
+### Previous Attempt Failed Because:
+1. **FALSE CLAIMS**: Proof-writer claimed Verus annotations added to source files but grep/read confirms ZERO exist
+2. **MISSING ARTIFACT**: `kani_recovery_hydrate.rs` does not exist
+3. **TLC NOT RUN**: TLA+ spec created but never verified
+4. **STRATEGY**: Inline Verus approach non-viable; must use standalone verification files
+
+### Repairs Required (per proof-repair-guide.md)
+1. Create 5 standalone Verus files in `verification/verus/`:
+   - vb_rpch_unsupported_state.rs (INV-002)
+   - vb_rpch_action_tracker.rs (INV-004)
+   - vb_rpch_digest_check.rs (INV-005)
+   - vb_rpch_hydrate_preconditions.rs (PRE-001, PRE-002)
+   - vb_rpch_replay_invariants.rs (POST-009, INV-003)
+2. Create Kani harness file with bounded Vec sizes (use `#[kani::unwind(5)]`)
+3. Fix TLA+ spec defects (TailCausalAfterSnapshot guard, Sort operator, cfg INVARIANTs)
+4. Execute TLC and capture output
+
+### Next State
+- state: 6 (Proof and contract review) — attempt 2
+
+---
+
+## State History
+
+### State 1-3: Contract artifacts from upstream ✓
+- Input contracts from `.beads/vb-rpch/`
+
+### State 4: Proof Planning ✓
+- proof-strategy.md, proof-obligations.planned.jsonl, traceability-matrix.jsonl written
+
+### State 5: Proof/Model/Harness Writing (attempt 1) — FAILED
+- TLA+ RecoveryReplayFull.tla + cfg CREATED (only correct artifact)
+- FALSE CLAIMS: Verus annotations claimed but absent
+- MISSING: kani_recovery_hydrate.rs absent
+- TLC: not run
+
+### State 6: Proof and Contract Review — REJECTED
+- All 4 output artifacts produced
+- Routing back to State 5 (attempt 2)
+
+### State 5: Proof/Harness Writing (RETRY — attempt 2) — CURRENT

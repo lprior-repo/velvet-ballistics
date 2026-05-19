@@ -1,0 +1,17 @@
+{"id":"VERUS-INV-002","layer":"verus","status":"blocked_tooling","blocker":"nightly-2026-04-28 not installed","evidence":"proof-evidence.md lines 11-31","attempt":6}
+{"id":"VERUS-INV-004","layer":"verus","status":"blocked_tooling","blocker":"nightly-2026-04-28 not installed","evidence":"proof-evidence.md lines 11-31","attempt":6}
+{"id":"VERUS-INV-005","layer":"verus","status":"blocked_tooling","blocker":"nightly-2026-04-28 not installed","evidence":"proof-evidence.md lines 11-31","attempt":6}
+{"id":"VERUS-PRE-001","layer":"verus","status":"blocked_tooling","blocker":"nightly-2026-04-28 not installed","evidence":"proof-evidence.md lines 11-31","attempt":6}
+{"id":"VERUS-PRE-002","layer":"verus","status":"blocked_tooling","blocker":"nightly-2026-04-28 not installed","evidence":"proof-evidence.md lines 11-31","attempt":6}
+{"id":"VERUS-POST-009","layer":"verus","status":"blocked_tooling","blocker":"nightly-2026-04-28 not installed","evidence":"proof-evidence.md lines 11-31","attempt":6}
+{"id":"VERUS-INV-003","layer":"verus","status":"blocked_tooling","blocker":"nightly-2026-04-28 not installed","evidence":"proof-evidence.md lines 11-31","attempt":6}
+{"id":"KANI-PRE-001","layer":"kani","status":"blocked_tooling","blocker":"getrandom stdlib symbolic execution failure","evidence":"proof-evidence.md lines 125-127","attempt":6}
+{"id":"KANI-PRE-002","layer":"kani","status":"blocked_tooling","blocker":"getrandom stdlib symbolic execution failure","evidence":"proof-evidence.md lines 125-127","attempt":6}
+{"id":"KANI-POST-009","layer":"kani","status":"blocked_tooling","blocker":"getrandom stdlib symbolic execution failure","evidence":"proof-evidence.md lines 125-127","attempt":6}
+{"id":"TLA-REPLAY-001","layer":"tla-plus","status":"waived","reason":"state space explosion","evidence":"proof-evidence.md lines 33-43 TLC simulation 21404 states","attempt":6}
+{"id":"TLA-INCOMPLETE-001","layer":"tla-plus","status":"waived","reason":"state space explosion","evidence":"proof-evidence.md lines 33-43","attempt":6}
+{"id":"TLA-NONIDEM-001","layer":"tla-plus","status":"waived","reason":"state space explosion","evidence":"proof-evidence.md lines 33-43","attempt":6}
+{"id":"BDD-ALL","layer":"bdd","status":"pass","evidence":"70 tests passing after LETHAL-1 fix and LETHAL-2 density increase","attempt":13}
+{"id":"WAIVER-TERM-MISMATCH","layer":"waiver","status":"approved","evidence":"formal-waivers.jsonl VB-RPCH-TERM-MISMATCH-001","attempt":13}
+{"id":"WAIVER-GAP3-ABI","layer":"waiver","status":"approved","evidence":"proof-obligations.jsonl WAIVER-GAP3-ABI","attempt":6}
+{"id":"WAIVER-GAP3-POL","layer":"waiver","status":"approved","evidence":"proof-obligations.jsonl WAIVER-GAP3-POL","attempt":6}
