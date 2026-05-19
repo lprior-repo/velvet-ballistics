@@ -1,0 +1,33 @@
+{
+  "bead_id": "vb-0sps",
+  "state": 5,
+  "sublane": "tla-syntax-and-nonvacuity-repair-after-proof-writer-timeout",
+  "delegate": "tla-plus",
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/bd-vb-0sps-bdd",
+  "attempt": "3-of-7-recovery-sublane",
+  "status_at_dispatch": "READY",
+  "task_title": "[vb-0sps] p5-tla-repair: fix TLA syntax and finish State 5 evidence",
+  "input_artifacts": [
+    ".beads/vb-0sps/STATE.md",
+    ".beads/vb-0sps/proof-strategy.md",
+    ".beads/vb-0sps/proof-plan-review-input.md",
+    ".beads/vb-0sps/proof-obligations.planned.jsonl",
+    "verification/tla/generated_ir_parity/GeneratedIrParity.tla",
+    "verification/tla/generated_ir_parity/GeneratedIrParity_success.cfg",
+    "verification/tla/generated_ir_parity/GeneratedIrParity_suspension_resume.cfg",
+    "verification/tla/generated_ir_parity/GeneratedIrParity_typed_error.cfg",
+    "verification/tla/generated_ir_parity/GeneratedIrParity_unsupported_reject.cfg",
+    "verification/tla/generated_ir_parity/GeneratedIrParity_divergence_sanity.cfg"
+  ],
+  "output_artifacts": [
+    ".beads/vb-0sps/proof-writer-report.md",
+    ".beads/vb-0sps/proof-evidence.md",
+    "verification/tla/generated_ir_parity/GeneratedIrParity.tla",
+    "verification/tla/generated_ir_parity/GeneratedIrParity_success.cfg",
+    "verification/tla/generated_ir_parity/GeneratedIrParity_suspension_resume.cfg",
+    "verification/tla/generated_ir_parity/GeneratedIrParity_typed_error.cfg",
+    "verification/tla/generated_ir_parity/GeneratedIrParity_unsupported_reject.cfg",
+    "verification/tla/generated_ir_parity/GeneratedIrParity_divergence_sanity.cfg"
+  ]
+}

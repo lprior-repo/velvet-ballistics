@@ -1,0 +1,29 @@
+{
+  "bead_id": "vb-0sps",
+  "state": 4,
+  "sublane": "proof-planning",
+  "delegate": "proof-planner",
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/bd-vb-0sps-bdd",
+  "attempt": "1-of-7",
+  "status_at_dispatch": "READY",
+  "task_title": "[vb-0sps] p4-plan: generated-vs-IR parity proof strategy",
+  "input_artifacts": [
+    ".beads/vb-0sps/STATE.md",
+    ".beads/vb-0sps/baseline-report.md",
+    ".beads/vb-0sps/codebase-map.md",
+    ".beads/vb-0sps/delivery-scope.jsonl",
+    ".beads/vb-0sps/contract.md",
+    ".beads/vb-0sps/domain-model-review.md",
+    ".beads/vb-0sps/tla-spec.md",
+    ".beads/vb-0sps/lean-contract.md",
+    ".beads/vb-0sps/verification-layers.md",
+    ".beads/vb-0sps/proof-obligations.jsonl",
+    ".beads/vb-0sps/traceability-matrix.jsonl"
+  ],
+  "output_artifacts": [
+    ".beads/vb-0sps/proof-strategy.md",
+    ".beads/vb-0sps/proof-plan-review-input.md",
+    ".beads/vb-0sps/proof-obligations.planned.jsonl"
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "bead_id": "vb-0sps",
+  "state": 3,
+  "sublane": "contract-and-type-model",
+  "delegate": "rust-contract",
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/bd-vb-0sps-bdd",
+  "attempt": "1-of-7",
+  "status_at_dispatch": "READY",
+  "task_title": "[vb-0sps] p3-contract: generated-vs-IR parity BDD contract",
+  "input_artifacts": [
+    ".beads/vb-0sps/STATE.md",
+    ".beads/vb-0sps/baseline-report.md",
+    ".beads/vb-0sps/codebase-map.md",
+    ".beads/vb-0sps/delivery-scope.jsonl",
+    "velvet-ballistics-MASTER.md",
+    "docs/deferred-codegen-maxperf.md",
+    "docs/generated-workflows.md",
+    "docs/final-ir-coverage-matrix.md"
+  ],
+  "output_artifacts": [
+    ".beads/vb-0sps/contract.md",
+    ".beads/vb-0sps/domain-model-review.md",
+    ".beads/vb-0sps/tla-spec.md",
+    ".beads/vb-0sps/lean-contract.md",
+    ".beads/vb-0sps/verification-layers.md",
+    ".beads/vb-0sps/proof-obligations.jsonl",
+    ".beads/vb-0sps/traceability-matrix.jsonl"
+  ]
+}

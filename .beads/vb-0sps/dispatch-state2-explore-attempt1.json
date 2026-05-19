@@ -1,0 +1,17 @@
+{
+  "bead_id": "vb-0sps",
+  "state": 2,
+  "sublane": "explore-and-scope",
+  "delegate": "explore",
+  "source_checkout": "/home/lewis/src/velvet-ballistics",
+  "isolated_workdir": "/home/lewis/src/bd-vb-0sps-bdd",
+  "input_artifacts": [
+    ".beads/vb-0sps/STATE.md",
+    ".beads/vb-0sps/baseline-report.md"
+  ],
+  "output_artifacts": [
+    ".beads/vb-0sps/codebase-map.md",
+    ".beads/vb-0sps/delivery-scope.jsonl"
+  ],
+  "attempt": 1
+}
