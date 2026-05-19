@@ -2552,17 +2552,21 @@ fn cmd_events(
         Ok(events) => {
             if events.is_empty() {
                 if output != OutputFormat::Text {
-                    json_out(
+                    json_error(
                         &serde_json::json!({
+                            "success": false,
                             "run_id": run_id,
+                            "status": "not_found",
                             "events": [],
-                            "total": 0
+                            "total": 0,
+                            "error": format!("run {run_id}: no events found")
                         }),
                         output,
                     );
                 } else {
-                    outln!("no events found for run {run_id}");
+                    errln!("run {run_id}: no events found");
                 }
+                return CliExitCode::ValidationFailed.into();
             } else {
                 match output {
                     OutputFormat::Json => {
@@ -3764,19 +3768,22 @@ fn cmd_explain(workflow: &std::path::Path, output: OutputFormat) -> ExitCode {
         }
     };
 
+    // Phase 1: YAML parse
     if let Err(e) = vb_yaml::parse_workflow_source(text) {
         outln!("YAML Parse Error:");
         outln!("  {e}");
         outln!("");
-        outln!("The workflow file contains invalid YAML syntax.");
+        explain_repair_hint("yaml_parse", &[
+            "Check YAML syntax: use spaces for indentation, not tabs",
+            "Ensure all quotes are matched",
+            "Verify the file uses valid UTF-8 encoding",
+        ]);
         return CliExitCode::ValidationFailed.into();
     }
 
+    // Phase 2: Compilation
     match vb_compile::compile_workflow(&bytes) {
-        Ok(_) => {
-            outln!("Workflow is valid. No errors to explain.");
-            ExitCode::SUCCESS
-        }
+        Ok(_) => {}
         Err(errors) => {
             outln!("Workflow has {} validation error(s):", errors.0.len());
             outln!("");
@@ -3786,7 +3793,39 @@ fn cmd_explain(workflow: &std::path::Path, output: OutputFormat) -> ExitCode {
                 }
                 explain_error(err);
             }
-            CliExitCode::ValidationFailed.into()
+            return CliExitCode::ValidationFailed.into();
+        }
+    }
+
+    // Phase 3: Verification (runs all gates)
+    match commands_verify::run_verification(text, &bytes, VerifyProfile::Standard) {
+        Ok(result) => {
+            outln!("Workflow verification certificate:");
+            outln!("  digest:  {}", result.digest_hex);
+            outln!("  nodes:   {}", result.node_count);
+            outln!("");
+            outln!("Passed gates ({}):", result.checks.len());
+            for check in &result.checks {
+                explain_gate_pass(check);
+            }
+            if !result.warnings.is_empty() {
+                outln!("");
+                outln!("Warnings ({}):", result.warnings.len());
+                for warning in &result.warnings {
+                    outln!("  - {warning}");
+                }
+                outln!("");
+                explain_repair_hint("verification_warnings", &[
+                    "Review warnings and address them before production use",
+                    "Use 'vb verify --profile full' for exhaustive validation",
+                ]);
+            }
+            outln!("All gates passed. Workflow is correct and verifiable.");
+            ExitCode::SUCCESS
+        }
+        Err(err) => {
+            explain_verification_failure(&err);
+            commands_verify::exit_code_for_error(&err).into()
         }
     }
 }
@@ -4074,6 +4113,337 @@ fn explain_error(err: &vb_compile::CompileError) {
             outln!("  {err}");
         }
     }
+    explain_compile_repair_hint(err);
+}
+
+/// Emit a structured repair hint for compilation errors.
+fn explain_compile_repair_hint(err: &vb_compile::CompileError) {
+    use vb_compile::CompileError;
+    let hints: &[&str] = match err {
+        CompileError::SourceTooLarge { .. } => &[
+            "Split the workflow into smaller sub-workflows",
+            "Remove unnecessary comments or whitespace",
+        ],
+        CompileError::EmptySource => &[
+            "Add a Velvet v1 workflow YAML document",
+            "Ensure the file is not empty",
+        ],
+        CompileError::Parse(_) => &[
+            "Fix YAML syntax: use spaces for indentation, check quote matching",
+            "Validate the YAML with an external parser before compiling",
+        ],
+        CompileError::DocumentCount { .. } => &[
+            "Remove extra YAML document separators (---)",
+            "Keep exactly one YAML document per workflow file",
+        ],
+        CompileError::TopLevelNotMapping => &[
+            "Start the workflow with a YAML mapping (key-value pairs)",
+            "Example: `name: my-workflow` as the first line",
+        ],
+        CompileError::NonStringKey { .. } => &[
+            "Ensure all mapping keys are quoted strings",
+            "YAML keys must be either bare identifiers or quoted strings",
+        ],
+        CompileError::DuplicateKey { .. } => &[
+            "Remove duplicate keys from the YAML mapping",
+            "Each key must appear exactly once at its level",
+        ],
+        CompileError::AliasForbidden { .. } => &[
+            "Replace YAML aliases (&alias) with inline values",
+            "Velvet workflows do not support YAML anchors or aliases",
+        ],
+        CompileError::AnchorForbidden { .. } => &[
+            "Replace YAML anchors (*alias) with inline values",
+            "Velvet workflows do not support YAML anchors or aliases",
+        ],
+        CompileError::MergeKeyForbidden { .. } => &[
+            "Remove merge keys (<<:) from the YAML",
+            "Velvet workflows do not support YAML merge keys",
+        ],
+        CompileError::TagForbidden { .. } => &[
+            "Remove YAML tags (!tag) from the document",
+            "Velvet workflows do not support YAML tags",
+        ],
+        CompileError::BadValue => &[
+            "Fix the malformed YAML scalar value",
+            "Ensure strings are properly quoted if they contain special characters",
+        ],
+        CompileError::FloatForbidden => &[
+            "Replace floating-point numbers with integers or strings",
+            "Velvet workflows do not allow float YAML scalars",
+        ],
+        CompileError::DepthLimit { .. } => &[
+            "Reduce nesting depth by flattening the workflow structure",
+            "Split nested steps into separate workflow files",
+        ],
+        CompileError::NodeLimit { .. } => &[
+            "Reduce the number of workflow nodes",
+            "Split the workflow into multiple smaller workflows",
+        ],
+        CompileError::SequenceLimit { .. } => &[
+            "Shorten the sequence by removing items",
+            "Split the sequence into multiple smaller sequences",
+        ],
+        CompileError::MappingLimit { .. } => &[
+            "Reduce the number of entries in the mapping",
+            "Split into multiple YAML documents or separate files",
+        ],
+        CompileError::ScalarLimit { .. } => &[
+            "Shorten the scalar value",
+            "Move long strings to a separate data file and reference them",
+        ],
+        CompileError::MissingField { .. } => &[
+            "Add the missing required field to the workflow",
+            "Check the Velvet v1 schema for required fields",
+        ],
+        CompileError::UnknownTopLevelField { .. } => &[
+            "Remove the unknown field or check for typos",
+            "Consult the Velvet v1 schema for valid top-level fields",
+        ],
+        CompileError::InvalidVersion { .. } => &[
+            "Set version to 'velvet-ballastics/v1'",
+            "The version field is required at the top level",
+        ],
+        CompileError::InvalidTriggerCount { .. } => &[
+            "Define exactly one trigger in the workflow",
+            "Remove extra triggers or merge them into one",
+        ],
+        CompileError::UnknownTriggerKind { .. } => &[
+            "Use a known trigger kind: manual, schedule, or webhook",
+            "Check the Velvet v1 schema for valid trigger types",
+        ],
+        CompileError::TriggerShape { .. } => &[
+            "Fix the trigger structure according to the Velvet v1 schema",
+            "Triggers must be a mapping with kind and other fields",
+        ],
+        CompileError::UnknownTriggerField { .. } => &[
+            "Remove the unknown trigger field or check for typos",
+            "Consult the Velvet v1 schema for valid trigger fields",
+        ],
+        CompileError::MissingTriggerField { .. } => &[
+            "Add the missing required field to the trigger",
+            "Check the Velvet v1 schema for required trigger fields",
+        ],
+        CompileError::InvalidTriggerField { .. } => &[
+            "Fix the trigger field value to match the expected type",
+            "Consult the Velvet v1 schema for field types",
+        ],
+        CompileError::FieldShape { .. } => &[
+            "Fix the field structure to match the expected shape",
+            "Check the Velvet v1 schema for field structures",
+        ],
+        CompileError::UnknownInputSchemaField { .. } => &[
+            "Remove the unknown input schema field or check for typos",
+            "Consult the Velvet v1 schema for valid input schema fields",
+        ],
+        CompileError::InvalidInputSchema { .. } => &[
+            "Fix the input schema field to match the expected type",
+            "Check the Velvet v1 schema for input schema field types",
+        ],
+        CompileError::UnsupportedTopLevelResult => &[
+            "Remove the top-level result mapping",
+            "Results are computed by steps, not declared at the top level",
+        ],
+        CompileError::EmptySteps => &[
+            "Add at least one executable step to the workflow",
+            "Steps define what the workflow actually does",
+        ],
+        CompileError::InvalidName { .. } => &[
+            "Use valid Velvet identifiers: lowercase letters, digits, hyphens",
+            "Names must start with a letter",
+        ],
+        CompileError::MissingStepId { .. } => &[
+            "Add an 'id' field to the step",
+            "Each step must have a unique identifier",
+        ],
+        CompileError::DuplicateStepId { .. } => &[
+            "Give each step a unique ID",
+            "Remove duplicate step IDs",
+        ],
+        CompileError::StepShape { .. } => &[
+            "Make each step a YAML mapping",
+            "Steps must be key-value pairs with at least an 'id' and a primitive",
+        ],
+        CompileError::UnknownStepField { .. } => &[
+            "Remove the unknown step field or check for typos",
+            "Consult the Velvet v1 schema for valid step fields",
+        ],
+        CompileError::UnknownStepPrimitiveField { .. } => &[
+            "Remove the unknown primitive field or check for typos",
+            "Consult the Velvet v1 schema for valid primitive fields",
+        ],
+        CompileError::MissingStepPrimitive { .. } => &[
+            "Add a primitive action to the step (e.g., 'do', 'ask', 'wait')",
+            "Each step must have at least one primitive action",
+        ],
+        CompileError::MultipleStepPrimitives { .. } => &[
+            "Keep only one primitive action per step",
+            "Split multiple actions into separate steps",
+        ],
+        CompileError::UnsupportedStepPrimitive { .. } => &[
+            "Use a supported primitive: do, ask, wait, finish, retry, parallel, etc.",
+            "Check the Velvet v1 schema for supported primitives",
+        ],
+        CompileError::UnsupportedStepControlField { .. } => &[
+            "Remove the unsupported control field",
+            "Check the Velvet v1 schema for valid control fields",
+        ],
+        CompileError::MissingStepField { .. } => &[
+            "Add the missing required field to the step",
+            "Check the Velvet v1 schema for required step fields",
+        ],
+        CompileError::StepFieldShape { .. } => &[
+            "Fix the step field structure",
+            "Check the Velvet v1 schema for field structures",
+        ],
+        CompileError::StepIndexOutOfRange { .. } => &[
+            "Reduce the step index to fit within u16 range",
+            "Step indices must be between 0 and 65535",
+        ],
+        CompileError::SlotIndexOutOfRange { .. } => &[
+            "Reduce slot indices to fit within u16 range",
+            "Slot indices must be between 0 and 65535",
+        ],
+        CompileError::BranchTargetOutOfRange { .. } => &[
+            "Fix branch targets to reference valid step indices",
+            "Branch targets must be valid step indices in the workflow",
+        ],
+        CompileError::BackwardBranchTarget { .. } => &[
+            "Change the branch target to a later step",
+            "Forward branches are required in Velvet workflows",
+        ],
+        CompileError::PrimitiveLoweringLimitExceeded { .. } => &[
+            "Reduce the field value to within the limit",
+            "Check the Velvet v1 schema for field limits",
+        ],
+        CompileError::LastStepMustFinish => &[
+            "Make the last step a 'finish' primitive",
+            "Linear workflows must end with a finish step",
+        ],
+        CompileError::UnsupportedConstantValue { .. } => &[
+            "Use a scalar YAML value (string, number, boolean)",
+            "Remove complex nested structures from constant values",
+        ],
+        CompileError::UnknownReferenceRoot { .. } => &[
+            "Use a known reference root: slot, input, env, secrets",
+            "Check the Velvet v1 schema for valid reference roots",
+        ],
+        CompileError::IllegalReference { .. } => &[
+            "Remove illegal references",
+            "References to runtime state are not allowed in deterministic contexts",
+        ],
+        CompileError::UnknownReferenceName { .. } => &[
+            "Declare the referenced name in the workflow",
+            "Check for typos in the reference name",
+        ],
+        CompileError::UnsupportedAccessorReference { .. } => &[
+            "Use a supported accessor format",
+            "Check the Velvet v1 schema for accessor syntax",
+        ],
+        CompileError::UnknownStepTarget { .. } => &[
+            "Fix branch targets to reference declared step indices",
+            "All branch targets must exist in the workflow",
+        ],
+        CompileError::UnreachableStep { .. } => &[
+            "Connect the unreachable step to the control flow",
+            "Remove the unreachable step or add a branch to it",
+        ],
+        CompileError::TypeMismatch { .. } => &[
+            "Fix the type to match the expected type",
+            "Check the Velvet v1 schema for type requirements",
+        ],
+        CompileError::Workflow(_) | CompileError::Validation(_) => &[
+            "Fix the workflow or validation error shown above",
+            "Review the specific error message for details",
+        ],
+        _ => &[
+            "Review the error message above for details",
+            "Check the Velvet v1 schema for correct usage",
+        ],
+    };
+    explain_repair_hint("compilation", hints);
+}
+
+/// Emit a structured repair hint header.
+fn explain_repair_hint(context: &str, hints: &[&str]) {
+    outln!("");
+    outln!("Repair hints ({context}):");
+    for hint in hints {
+        outln!("  - {hint}");
+    }
+}
+
+/// Explain why a verification gate passed.
+fn explain_gate_pass(gate: &str) {
+    outln!("  ✓ {gate}");
+}
+
+/// Explain a verification failure with repair hints.
+fn explain_verification_failure(err: &commands_verify::VerifyError) {
+    use commands_verify::VerifyError;
+    match err {
+        VerifyError::YamlParse(msg) => {
+            outln!("YAML Parse Error:");
+            outln!("  {msg}");
+            outln!("");
+            explain_repair_hint("yaml_parse", &[
+                "Fix YAML syntax: use spaces for indentation, not tabs",
+                "Ensure all quotes are matched",
+                "Validate the YAML with an external parser",
+            ]);
+        }
+        VerifyError::Compile(errors) => {
+            outln!("Compilation Error:");
+            for e in errors {
+                outln!("  - {e}");
+            }
+            outln!("");
+            explain_repair_hint("compilation", &[
+                "Fix the compilation errors shown above",
+                "Review the Velvet v1 schema for correct field types",
+            ]);
+        }
+        VerifyError::IrValidation(msg) => {
+            outln!("IR Validation Error:");
+            outln!("  {msg}");
+            outln!("");
+            explain_repair_hint("ir_validation", &[
+                "The compiled workflow has an invalid internal structure",
+                "This usually indicates a bug in the compiler",
+                "Try re-compiling the workflow from source",
+            ]);
+        }
+        VerifyError::BudgetPolicy(msg) => {
+            outln!("Budget Policy Violation:");
+            outln!("  {msg}");
+            outln!("");
+            explain_repair_hint("budget_policy", &[
+                "Reduce the workflow's resource consumption",
+                "Simplify step logic or reduce step count",
+                "Use 'vb verify --profile quick' for faster iteration",
+                "Review the budget policy in the Velvet documentation",
+            ]);
+        }
+        VerifyError::StorageError(msg) => {
+            outln!("Storage Error:");
+            outln!("  {msg}");
+            outln!("");
+            explain_repair_hint("storage", &[
+                "Check that the storage path exists and is writable",
+                "Ensure sufficient disk space is available",
+            ]);
+        }
+        VerifyError::ReplayDivergence(msg) => {
+            outln!("Replay Divergence:");
+            outln!("  {msg}");
+            outln!("");
+            explain_repair_hint("replay", &[
+                "The workflow produces different results on replay",
+                "Ensure all actions are deterministic or properly handled",
+                "Check for non-deterministic data sources",
+            ]);
+        }
+    }
 }
 
 fn explain_validation_error(err: &vb_validate::ValidationError) {
@@ -4082,151 +4452,300 @@ fn explain_validation_error(err: &vb_validate::ValidationError) {
         ValidationError::DuplicateKey => {
             outln!("Duplicate Key");
             outln!("  A YAML mapping contains duplicate keys, which is not allowed.");
+            explain_repair_hint("validation", &[
+                "Find and remove duplicate YAML keys",
+                "Each key must be unique at its nesting level",
+            ]);
         }
         ValidationError::ForbiddenYamlFeature => {
             outln!("Forbidden YAML Feature");
             outln!("  The workflow uses a YAML feature that is not allowed in Velvet.");
+            explain_repair_hint("validation", &[
+                "Remove YAML anchors, aliases, merge keys, or tags",
+                "Velvet does not support these YAML features",
+            ]);
         }
         ValidationError::UnknownTopLevelField => {
             outln!("Unknown Top-Level Field");
             outln!("  The workflow contains an unrecognized top-level field.");
+            explain_repair_hint("validation", &[
+                "Remove or rename the unknown field",
+                "Valid top-level fields: name, version, trigger, steps, input_schema, output_schema",
+            ]);
         }
         ValidationError::UnknownStepField => {
             outln!("Unknown Step Field");
             outln!("  A step contains an unrecognized field.");
+            explain_repair_hint("validation", &[
+                "Remove or fix the unknown step field",
+                "Check the Velvet v1 schema for valid step fields",
+            ]);
         }
         ValidationError::MissingRequiredField { field } => {
             outln!("Missing Required Field");
             outln!("  Required field '{field}' is missing from the workflow.");
+            explain_repair_hint("validation", &[
+                "Add the missing required field to the workflow",
+                "Check the Velvet v1 schema for required fields",
+            ]);
         }
         ValidationError::InvalidVersion { version } => {
             outln!("Invalid Version");
             outln!("  Found version '{version}', but Velvet v1 requires 'velvet-ballastics/v1'.");
+            explain_repair_hint("validation", &[
+                "Set version to 'velvet-ballastics/v1'",
+                "The version field is required and must be the Velvet v1 identifier",
+            ]);
         }
         ValidationError::InvalidId { id } => {
             outln!("Invalid Identifier");
             outln!("  '{id}' is not a valid Velvet identifier.");
+            explain_repair_hint("validation", &[
+                "Use valid Velvet identifiers: lowercase letters, digits, hyphens",
+                "Identifiers must start with a letter",
+            ]);
         }
         ValidationError::ReservedId { id } => {
             outln!("Reserved Identifier");
             outln!("  '{id}' is a reserved identifier and cannot be used.");
+            explain_repair_hint("validation", &[
+                "Choose a different identifier",
+                "Avoid using reserved words as identifiers",
+            ]);
         }
         ValidationError::DuplicateId { id } => {
             outln!("Duplicate Identifier");
             outln!("  The identifier '{id}' appears more than once.");
+            explain_repair_hint("validation", &[
+                "Give each identifier a unique name",
+                "Remove duplicate identifier declarations",
+            ]);
         }
         ValidationError::MultipleStepPrimitives => {
             outln!("Multiple Step Primitives");
             outln!("  A step contains multiple primitive actions.");
+            explain_repair_hint("validation", &[
+                "Split the step into multiple separate steps",
+                "Each step should have exactly one primitive action",
+            ]);
         }
         ValidationError::MissingStepPrimitive => {
             outln!("Missing Step Primitive");
             outln!("  A step is missing its primitive action.");
+            explain_repair_hint("validation", &[
+                "Add a primitive action to the step (e.g., 'do', 'ask', 'wait')",
+                "Each step must have at least one primitive",
+            ]);
         }
         ValidationError::UnknownReference { reference } => {
             outln!("Unknown Reference");
             outln!("  Reference '{reference}' is not declared in the workflow.");
+            explain_repair_hint("validation", &[
+                "Declare the reference or check the spelling",
+                "References must be defined before use",
+            ]);
         }
         ValidationError::FutureReference { reference } => {
             outln!("Future Reference");
             outln!("  Reference '{reference}' refers to a step that hasn't been defined yet.");
+            explain_repair_hint("validation", &[
+                "Move the reference to after the step it refers to",
+                "References can only point to previously defined steps",
+            ]);
         }
         ValidationError::SecretNotDeclared { secret } => {
             outln!("Undeclared Secret");
             outln!("  Secret '{secret}' is referenced but not declared in the workflow secrets.");
+            explain_repair_hint("validation", &[
+                "Add the secret to the workflow's secrets section",
+                "Secrets must be declared before they can be referenced",
+            ]);
         }
         ValidationError::DirectRuntimeReference => {
             outln!("Direct Runtime Reference");
             outln!("  References to runtime state are not allowed in this context.");
+            explain_repair_hint("validation", &[
+                "Remove the runtime reference",
+                "Use declared references instead of direct runtime access",
+            ]);
         }
         ValidationError::InvalidThenTarget => {
             outln!("Invalid Branch Target");
             outln!("  A 'then' branch targets an invalid step.");
+            explain_repair_hint("validation", &[
+                "Fix the branch target to reference a valid step ID",
+                "Branch targets must point to existing steps",
+            ]);
         }
         ValidationError::ControlFlowCycle => {
             outln!("Control Flow Cycle");
             outln!("  The workflow contains a cycle in its control flow graph.");
+            explain_repair_hint("validation", &[
+                "Remove cyclic dependencies between steps",
+                "Break cycles by introducing suspension points",
+                "Consider using 'choose' for conditional branching instead",
+            ]);
         }
         ValidationError::UnreachableStep { step } => {
             outln!("Unreachable Step");
             outln!("  Step '{step}' cannot be reached from the workflow entry.");
+            explain_repair_hint("validation", &[
+                "Connect the step to the control flow",
+                "Remove the unreachable step if it's not needed",
+            ]);
         }
         ValidationError::InvalidChoose => {
             outln!("Invalid Choose");
             outln!("  The 'choose' (conditional) construct is invalid.");
+            explain_repair_hint("validation", &[
+                "Fix the 'choose' construct structure",
+                "Choose requires 'when' conditions and 'then' branches",
+            ]);
         }
         ValidationError::InvalidForEach => {
             outln!("Invalid ForEach");
             outln!("  The 'for_each' loop construct is invalid.");
+            explain_repair_hint("validation", &[
+                "Fix the 'for_each' construct structure",
+                "ForEach requires an 'over' iterable and a 'do' body",
+            ]);
         }
         ValidationError::InvalidTogether => {
             outln!("Invalid Together");
             outln!("  The 'together' (parallel) construct is invalid.");
+            explain_repair_hint("validation", &[
+                "Fix the 'together' construct structure",
+                "Together requires a 'do' block with parallel steps",
+            ]);
         }
         ValidationError::InvalidCollect => {
             outln!("Invalid Collect");
             outln!("  The 'collect' pagination construct is invalid.");
+            explain_repair_hint("validation", &[
+                "Fix the 'collect' construct structure",
+                "Collect requires an 'over' iterable and pagination settings",
+            ]);
         }
         ValidationError::InvalidReduce => {
             outln!("Invalid Reduce");
             outln!("  The 'reduce' fold construct is invalid.");
+            explain_repair_hint("validation", &[
+                "Fix the 'reduce' construct structure",
+                "Reduce requires 'over' iterable, 'initial', and 'do' body",
+            ]);
         }
         ValidationError::InvalidRepeat => {
             outln!("Invalid Repeat");
             outln!("  The 'repeat' loop construct is invalid.");
+            explain_repair_hint("validation", &[
+                "Fix the 'repeat' construct structure",
+                "Repeat requires 'times' or 'until'/'while' conditions",
+            ]);
         }
         ValidationError::InvalidWait => {
             outln!("Invalid Wait");
             outln!("  The 'wait' step is invalid.");
+            explain_repair_hint("validation", &[
+                "Fix the 'wait' step structure",
+                "Wait may require a 'for' duration or 'until' condition",
+            ]);
         }
         ValidationError::InvalidAsk => {
             outln!("Invalid Ask");
             outln!("  The 'ask' (interaction) step is invalid.");
+            explain_repair_hint("validation", &[
+                "Fix the 'ask' step structure",
+                "Ask requires a 'prompt' and may have 'choices'",
+            ]);
         }
         ValidationError::InvalidFinish => {
             outln!("Invalid Finish");
             outln!("  The 'finish' step is invalid.");
+            explain_repair_hint("validation", &[
+                "Fix the 'finish' step structure",
+                "Finish may require 'result' or 'error' fields",
+            ]);
         }
         ValidationError::InvalidRetry => {
             outln!("Invalid Retry");
             outln!("  The 'retry' construct is invalid.");
+            explain_repair_hint("validation", &[
+                "Fix the 'retry' construct structure",
+                "Retry requires 'do' body and may have 'times' or 'until'",
+            ]);
         }
         ValidationError::InvalidOnError => {
             outln!("Invalid OnError");
             outln!("  The 'on_error' error handler is invalid.");
+            explain_repair_hint("validation", &[
+                "Fix the 'on_error' handler structure",
+                "OnError requires 'do' body and may have 'max_attempts'",
+            ]);
         }
         ValidationError::SecretResultLeak => {
             outln!("Secret Result Leak");
             outln!("  A secret value may be exposed in the workflow result.");
+            explain_repair_hint("validation", &[
+                "Exclude secret values from the workflow result",
+                "Use slot references that don't expose secret data",
+            ]);
         }
         ValidationError::TypeMismatch { expected, found } => {
             outln!("Type Mismatch");
             outln!("  Expected type: {expected}");
             outln!("  Found type: {found}");
+            explain_repair_hint("validation", &[
+                "Fix the value type to match the expected type",
+                "Check the Velvet v1 schema for type requirements",
+            ]);
         }
         ValidationError::PayloadTooLarge => {
             outln!("Payload Too Large");
             outln!("  The workflow payload exceeds size limits.");
+            explain_repair_hint("validation", &[
+                "Reduce the workflow size by removing unnecessary content",
+                "Split the workflow into smaller sub-workflows",
+            ]);
         }
         ValidationError::LimitRequired { resource } => {
             outln!("Limit Required");
             outln!("  Resource '{resource}' requires an explicit limit.");
+            explain_repair_hint("validation", &[
+                "Add an explicit limit for the resource",
+                "Check the Velvet v1 schema for limit requirements",
+            ]);
         }
         ValidationError::LimitExceeded { resource } => {
             outln!("Limit Exceeded");
             outln!("  Resource '{resource}' has exceeded its configured limit.");
+            explain_repair_hint("validation", &[
+                "Increase the resource limit or reduce consumption",
+                "Check the Velvet v1 schema for limit values",
+            ]);
         }
         ValidationError::UnsupportedTrigger { trigger } => {
             outln!("Unsupported Trigger");
             outln!("  Trigger type '{trigger}' is not supported.");
+            explain_repair_hint("validation", &[
+                "Use a supported trigger type: manual, schedule, webhook",
+                "Check the Velvet v1 schema for supported triggers",
+            ]);
         }
         ValidationError::HttpTriggerOutOfCore => {
             outln!("HTTP Trigger Out of Core");
             outln!("  HTTP triggers are not available in the core runtime.");
+            explain_repair_hint("validation", &[
+                "Use a different trigger type for core runtime",
+                "HTTP triggers require the extended runtime",
+            ]);
         }
         ValidationError::ExpressionStackExceeded { declared, limit } => {
             outln!("Expression Stack Exceeded");
             outln!("  Expression stack depth {declared} exceeds limit {limit}.");
+            explain_repair_hint("validation", &[
+                "Simplify nested expressions",
+                "Break complex expressions into separate steps",
+            ]);
         }
         ValidationError::ExpressionStackMismatch {
             expr_index,
@@ -4237,6 +4756,10 @@ fn explain_validation_error(err: &vb_validate::ValidationError) {
             outln!(
                 "  Expression {expr_index}: declared {declared} stack slots, computed {computed}."
             );
+            explain_repair_hint("validation", &[
+                "Fix the expression to declare the correct number of stack slots",
+                "Check expression syntax for stack manipulation operations",
+            ]);
         }
         ValidationError::AccessorSlotOutOfRange {
             accessor_index,
@@ -4247,6 +4770,10 @@ fn explain_validation_error(err: &vb_validate::ValidationError) {
             outln!(
                 "  Accessor {accessor_index} references slot {slot}, but slot_count is {slot_count}."
             );
+            explain_repair_hint("validation", &[
+                "Fix the slot reference to be within slot_count",
+                "Slot indices are zero-based",
+            ]);
         }
         ValidationError::AccessorPathInvalid {
             accessor_index,
@@ -4254,6 +4781,10 @@ fn explain_validation_error(err: &vb_validate::ValidationError) {
         } => {
             outln!("Accessor Path Invalid");
             outln!("  Accessor {accessor_index} has invalid segment at index {segment_index}.");
+            explain_repair_hint("validation", &[
+                "Fix the accessor path syntax",
+                "Check the Velvet v1 schema for accessor path format",
+            ]);
         }
         ValidationError::SlotReferenceOutOfRange {
             slot,
@@ -4264,6 +4795,10 @@ fn explain_validation_error(err: &vb_validate::ValidationError) {
             outln!(
                 "  Slot {slot} is out of range (slot_count={slot_count}) in context: {context}."
             );
+            explain_repair_hint("validation", &[
+                "Fix the slot reference to be within the valid range",
+                "Ensure the slot exists in the workflow's slot schema",
+            ]);
         }
         ValidationError::LoopBodyStepOutOfRange {
             step,
@@ -4275,14 +4810,26 @@ fn explain_validation_error(err: &vb_validate::ValidationError) {
             outln!(
                 "  Step {step}: loop body step out of range (node_count={node_count}, source_node={source_node})."
             );
+            explain_repair_hint("validation", &[
+                "Fix loop body step references to be within node_count",
+                "Ensure loop body steps exist in the workflow",
+            ]);
         }
         ValidationError::SlotDependencyCycle { slot, chain } => {
             outln!("Slot Dependency Cycle");
             outln!("  Slot {slot} has a dependency cycle: {chain}.");
+            explain_repair_hint("validation", &[
+                "Break the slot dependency cycle",
+                "Remove circular dependencies between slots",
+            ]);
         }
         ValidationError::NodeKindConstraintViolation { node_index, detail } => {
             outln!("Node Kind Constraint Violation");
             outln!("  Node {node_index}: {detail}.");
+            explain_repair_hint("validation", &[
+                "Fix the node to comply with its kind constraints",
+                "Check the Velvet v1 schema for node kind rules",
+            ]);
         }
         ValidationError::ActionContractMissing {
             action_id,
@@ -4292,18 +4839,34 @@ fn explain_validation_error(err: &vb_validate::ValidationError) {
             outln!(
                 "  Do node {node_index} references action_id {action_id}, which has no contract."
             );
+            explain_repair_hint("validation", &[
+                "Register an action contract for action_id {action_id}",
+                "All Do nodes must reference registered action contracts",
+            ]);
         }
         ValidationError::ActionContractOrphan { action_id } => {
             outln!("Action Contract Orphan");
             outln!("  Action contract {action_id} has no corresponding Do node.");
+            explain_repair_hint("validation", &[
+                "Remove the orphan action contract",
+                "Or add a Do node that uses this action_id",
+            ]);
         }
         ValidationError::SlotTypeInconsistency { slot } => {
             outln!("Slot Type Inconsistency");
             outln!("  Slot {slot} has writers with incompatible type kinds.");
+            explain_repair_hint("validation", &[
+                "Ensure all writers to this slot produce the same type",
+                "Fix type mismatches between step outputs",
+            ]);
         }
         ValidationError::NonDeterministicPath { from_node, to_node } => {
             outln!("Non-Deterministic Path");
             outln!("  Path from node {from_node} to {to_node} contains no suspension point.");
+            explain_repair_hint("validation", &[
+                "Add a suspension point (ask, wait, or retry) to the path",
+                "Non-deterministic paths without suspension points cause replay issues",
+            ]);
         }
         ValidationError::AccessorPathTooDeep {
             accessor_index,
@@ -4314,6 +4877,10 @@ fn explain_validation_error(err: &vb_validate::ValidationError) {
             outln!(
                 "  Accessor {accessor_index} has depth {depth}, which exceeds the maximum {max}."
             );
+            explain_repair_hint("validation", &[
+                "Simplify the accessor path",
+                "Reduce nesting depth in the path",
+            ]);
         }
         ValidationError::AccessorSymbolOutOfBounds {
             accessor_index,
@@ -4325,6 +4892,10 @@ fn explain_validation_error(err: &vb_validate::ValidationError) {
             outln!(
                 "  Accessor {accessor_index} segment {segment_index}: symbol {symbol} is out of bounds (symbols_count={symbols_count})."
             );
+            explain_repair_hint("validation", &[
+                "Fix the symbol index to be within symbols_count",
+                "Symbol indices are zero-based",
+            ]);
         }
         ValidationError::CapabilityNameEmpty {
             action_id,
@@ -4332,6 +4903,10 @@ fn explain_validation_error(err: &vb_validate::ValidationError) {
         } => {
             outln!("Capability Name Empty");
             outln!("  Action {action_id}: capability {capability_index} has an empty name.");
+            explain_repair_hint("validation", &[
+                "Provide a non-empty name for the capability",
+                "Capability names must be non-empty strings",
+            ]);
         }
         ValidationError::CapabilityNameTooLong {
             action_id,
@@ -4343,6 +4918,10 @@ fn explain_validation_error(err: &vb_validate::ValidationError) {
             outln!(
                 "  Action {action_id}: capability {capability_index} name length {len} exceeds max {max}."
             );
+            explain_repair_hint("validation", &[
+                "Shorten the capability name",
+                "Capability names have a maximum length",
+            ]);
         }
         ValidationError::CapabilityNameInvalid {
             action_id,
@@ -4351,6 +4930,10 @@ fn explain_validation_error(err: &vb_validate::ValidationError) {
         } => {
             outln!("Capability Name Invalid");
             outln!("  Action {action_id}: capability {capability_index} name '{name}' is invalid.");
+            explain_repair_hint("validation", &[
+                "Use valid capability name characters",
+                "Check the Velvet v1 schema for naming rules",
+            ]);
         }
         ValidationError::CapabilityActionMismatch {
             contract_action_id,
@@ -4361,6 +4944,10 @@ fn explain_validation_error(err: &vb_validate::ValidationError) {
             outln!(
                 "  Contract action {contract_action_id} != capability action {capability_action_id} at index {capability_index}."
             );
+            explain_repair_hint("validation", &[
+                "Ensure capability action_ids match the contract",
+                "Fix the capability action_id at index {capability_index}",
+            ]);
         }
         ValidationError::CapabilityDuplicate {
             action_id,
@@ -4372,14 +4959,26 @@ fn explain_validation_error(err: &vb_validate::ValidationError) {
             outln!(
                 "  Action {action_id}: capability '{name}' first at {first_index}, duplicate at {duplicate_index}."
             );
+            explain_repair_hint("validation", &[
+                "Remove duplicate capability names",
+                "Each capability name must be unique within an action",
+            ]);
         }
         ValidationError::MissingSchemaVersion => {
             outln!("Missing Schema Version");
             outln!("  The workflow does not declare a schema version.");
+            explain_repair_hint("validation", &[
+                "Add a schema version to the workflow",
+                "Check the Velvet v1 schema for version requirements",
+            ]);
         }
         ValidationError::CueVetFailed { file } => {
             outln!("CUE Vet Failed");
             outln!("  The CUE schema validation failed for '{file}'.");
+            explain_repair_hint("validation", &[
+                "Fix CUE schema violations in the file",
+                "Check the CUE schema for the expected structure",
+            ]);
         }
         ValidationError::VersionMonotonicityBreach {
             file,
@@ -4388,6 +4987,10 @@ fn explain_validation_error(err: &vb_validate::ValidationError) {
         } => {
             outln!("Version Monotonicity Breach");
             outln!("  File '{file}': version {actual} is not >= expected {expected}.");
+            explain_repair_hint("validation", &[
+                "Ensure version numbers are monotonically increasing",
+                "Update '{file}' to have version >= {expected}",
+            ]);
         }
         _ => {
             outln!("Unknown Validation Error");
