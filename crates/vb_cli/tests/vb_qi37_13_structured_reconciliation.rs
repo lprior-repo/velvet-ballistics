@@ -94,7 +94,7 @@ fn assert_success_channel_contract(output: &Output, command_name: &str) -> Value
 }
 
 fn assert_structured_validation_diagnostic(output: &Output, command_name: &str, expected: &str) {
-    assert_structured_diagnostic(output, command_name, "ValidationFailed", 1, expected);
+    assert_structured_diagnostic(output, command_name, "ValidationFailed", 2, expected);
 }
 
 fn assert_structured_diagnostic(
@@ -179,11 +179,11 @@ fn cli_public_exit_code_matrix_is_exactly_zero_through_eight_in_agent_context() 
     );
     assert_eq!(
         exit_codes.get("1"),
-        Some(&Value::String("validation failed".to_string()))
+        Some(&Value::String("runtime failed".to_string()))
     );
     assert_eq!(
         exit_codes.get("2"),
-        Some(&Value::String("verification failed".to_string()))
+        Some(&Value::String("validation failed".to_string()))
     );
     assert_eq!(
         exit_codes.get("3"),
@@ -191,7 +191,7 @@ fn cli_public_exit_code_matrix_is_exactly_zero_through_eight_in_agent_context() 
     );
     assert_eq!(
         exit_codes.get("4"),
-        Some(&Value::String("runtime failed".to_string()))
+        Some(&Value::String("verification failed".to_string()))
     );
     assert_eq!(
         exit_codes.get("5"),
@@ -271,7 +271,7 @@ fn unknown_command_json_emits_structured_validation_diagnostic_to_stderr_only() 
 #[test]
 fn unknown_command_jsonl_emits_one_structured_validation_diagnostic_line_to_stderr_only() {
     let output = run_cli(&[OsStr::new("madeup"), OsStr::new("--jsonl")]);
-    assert_eq!(output.status.code(), Some(1));
+    assert_eq!(output.status.code(), Some(2));
     assert_eq!(stdout_text(&output), "");
     let stderr = stderr_text(&output);
     let lines: Vec<_> = stderr.lines().collect();
@@ -295,7 +295,7 @@ fn unknown_command_jsonl_emits_one_structured_validation_diagnostic_line_to_stde
         diagnostic.get("code"),
         Some(&Value::String("ValidationFailed".to_string()))
     );
-    assert_eq!(diagnostic.get("exit_code"), Some(&Value::Number(1.into())));
+    assert_eq!(diagnostic.get("exit_code"), Some(&Value::Number(2.into())));
     assert_eq!(
         diagnostic.get("message"),
         Some(&Value::String(EXPECTED_UNKNOWN_COMMAND_MADEUP.to_string())),
@@ -351,7 +351,7 @@ fn missing_file_validate_json_emits_diagnostic_to_stderr_only() {
         workflow.as_os_str(),
         OsStr::new("--json"),
     ]);
-    assert_eq!(output.status.code(), Some(1));
+    assert_eq!(output.status.code(), Some(2));
     assert_eq!(stdout_text(&output), "");
     let diagnostic = parse_json(&output.stderr, "stderr");
     assert_eq!(
@@ -362,7 +362,7 @@ fn missing_file_validate_json_emits_diagnostic_to_stderr_only() {
         diagnostic.get("code"),
         Some(&Value::String("ValidationFailed".to_string()))
     );
-    assert_eq!(diagnostic.get("exit_code"), Some(&Value::Number(1.into())));
+    assert_eq!(diagnostic.get("exit_code"), Some(&Value::Number(2.into())));
     let message = match diagnostic.get("message").and_then(Value::as_str) {
         Some(message) => message,
         None => {
@@ -386,7 +386,7 @@ fn malformed_yaml_validate_jsonl_emits_one_diagnostic_line() {
         workflow.as_os_str(),
         OsStr::new("--jsonl"),
     ]);
-    assert_eq!(output.status.code(), Some(1));
+    assert_eq!(output.status.code(), Some(2));
     assert_eq!(stdout_text(&output), "");
     let stderr = stderr_text(&output);
     let lines: Vec<_> = stderr.lines().collect();
@@ -400,7 +400,7 @@ fn malformed_yaml_validate_jsonl_emits_one_diagnostic_line() {
         diagnostic.get("code"),
         Some(&Value::String("ValidationFailed".to_string()))
     );
-    assert_eq!(diagnostic.get("exit_code"), Some(&Value::Number(1.into())));
+    assert_eq!(diagnostic.get("exit_code"), Some(&Value::Number(2.into())));
 }
 
 #[test]
@@ -413,7 +413,7 @@ fn invalid_utf8_verify_json_emits_diagnostic_to_stderr_only() {
         workflow.as_os_str(),
         OsStr::new("--json"),
     ]);
-    assert_eq!(output.status.code(), Some(1));
+    assert_eq!(output.status.code(), Some(2));
     assert_eq!(stdout_text(&output), "");
     let diagnostic = parse_json(&output.stderr, "stderr");
     assert_eq!(
@@ -424,7 +424,7 @@ fn invalid_utf8_verify_json_emits_diagnostic_to_stderr_only() {
         diagnostic.get("code"),
         Some(&Value::String("ValidationFailed".to_string()))
     );
-    assert_eq!(diagnostic.get("exit_code"), Some(&Value::Number(1.into())));
+    assert_eq!(diagnostic.get("exit_code"), Some(&Value::Number(2.into())));
     let message = match diagnostic.get("message").and_then(Value::as_str) {
         Some(message) => message,
         None => {
@@ -451,7 +451,7 @@ fn invalid_utf8_verify_jsonl_emits_one_diagnostic_line_to_stderr_only() {
         workflow.as_os_str(),
         OsStr::new("--jsonl"),
     ]);
-    assert_eq!(output.status.code(), Some(1));
+    assert_eq!(output.status.code(), Some(2));
     assert_eq!(stdout_text(&output), "");
     let stderr = stderr_text(&output);
     let lines: Vec<_> = stderr.lines().collect();
@@ -465,7 +465,7 @@ fn invalid_utf8_verify_jsonl_emits_one_diagnostic_line_to_stderr_only() {
         diagnostic.get("code"),
         Some(&Value::String("ValidationFailed".to_string()))
     );
-    assert_eq!(diagnostic.get("exit_code"), Some(&Value::Number(1.into())));
+    assert_eq!(diagnostic.get("exit_code"), Some(&Value::Number(2.into())));
 }
 
 #[test]
@@ -479,7 +479,7 @@ fn invalid_run_inspect_json_emits_validation_diagnostic_to_stderr_only() {
         db.as_os_str(),
         OsStr::new("--json"),
     ]);
-    assert_eq!(output.status.code(), Some(1));
+    assert_eq!(output.status.code(), Some(2));
     assert_eq!(stdout_text(&output), "");
     let diagnostic = parse_json(&output.stderr, "stderr");
     assert_eq!(
@@ -490,7 +490,7 @@ fn invalid_run_inspect_json_emits_validation_diagnostic_to_stderr_only() {
         diagnostic.get("code"),
         Some(&Value::String("ValidationFailed".to_string()))
     );
-    assert_eq!(diagnostic.get("exit_code"), Some(&Value::Number(1.into())));
+    assert_eq!(diagnostic.get("exit_code"), Some(&Value::Number(2.into())));
     let message = match diagnostic.get("message").and_then(Value::as_str) {
         Some(message) => message,
         None => {
@@ -566,7 +566,7 @@ fn runtime_input_decode_json_emits_runtime_diagnostic_to_stderr_only() {
         &output,
         "run invalid input --json",
         "RuntimeFailed",
-        4,
+        1,
         "INPUT_MAPPING_FAILED: input-bin decode failed",
     );
 }

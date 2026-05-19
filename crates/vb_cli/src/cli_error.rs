@@ -40,9 +40,9 @@ pub(crate) enum InvalidWorkspaceReason {
     MissingMarkers,
 }
 
-/// Exit code value for validation failed (1).
+/// Exit code value for validation failed (2).
 /// Defined here to avoid circular dependency with exit_code module.
-const VALIDATION_FAILED_EXIT_CODE: u8 = 1;
+const VALIDATION_FAILED_EXIT_CODE: u8 = 2;
 
 impl CliError {
     /// Returns the appropriate exit code for this error.
@@ -127,11 +127,11 @@ mod tests {
         };
         let exit_code = err.exit_code();
 
-        // ValidationFailed = 1; ExitCode::from(1u8) creates exit code 1
-        let expected = ExitCode::from(1u8);
+        // ValidationFailed = 2; ExitCode::from(2u8) creates exit code 2
+        let expected = ExitCode::from(2u8);
         assert_eq!(
             exit_code, expected,
-            "InvalidWorkspace should produce exit code 1"
+            "InvalidWorkspace should produce exit code 2"
         );
     }
 
@@ -140,10 +140,10 @@ mod tests {
         let err = CliError::MissingWorkspaceFlag;
         let exit_code = err.exit_code();
 
-        let expected = ExitCode::from(1u8);
+        let expected = ExitCode::from(2u8);
         assert_eq!(
             exit_code, expected,
-            "MissingWorkspaceFlag should produce exit code 1"
+            "MissingWorkspaceFlag should produce exit code 2"
         );
     }
 

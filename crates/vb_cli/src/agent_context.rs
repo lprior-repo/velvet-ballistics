@@ -40,10 +40,10 @@ pub(crate) fn build(version: &str) -> Value {
 fn exit_codes() -> Value {
     serde_json::json!({
         "0": "success",
-        "1": "validation failed",
-        "2": "verification failed",
+        "1": "runtime failed",
+        "2": "validation failed",
         "3": "compile failed",
-        "4": "runtime failed",
+        "4": "verification failed",
         "5": "storage error",
         "6": "ipc error",
         "7": "action policy error",
