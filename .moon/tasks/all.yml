@@ -312,10 +312,14 @@ tasks:
     script: |
       set -euo pipefail
       mkdir -p target/moon-locks
+      mkdir -p target/tmp
       # Smoke policy: prove cargo-mutants integration on a bounded, deterministic
       # vb_core slice without mutating the source tree in place. Full mutation-score
       # debt is tracked separately.
-      flock --shared target/moon-locks/source-mutation.lock timeout 10m rustup run nightly-2026-04-28 cargo mutants \
+      # Use TMPDIR on real storage to avoid tmpfs quota issues; CARGO_INCREMENTAL=0
+      # and CARGO_TARGET_DIR ensure build artifacts stay on real storage too.
+      TMPDIR="$PWD/target/tmp" CARGO_INCREMENTAL=0 CARGO_TARGET_DIR="$PWD/target" \
+        flock --shared target/moon-locks/source-mutation.lock timeout 10m rustup run nightly-2026-04-28 cargo mutants \
         --package vb_core \
         --file crates/vb_core/src/diagnostic.rs \
         --re 'is_supported_code -> bool with false' \
@@ -336,6 +340,37 @@ tasks:
       - 'rust-toolchain.toml'
       - 'crates/vb_core/Cargo.toml'
       - 'crates/vb_core/src/diagnostic.rs'
+      - '.moon/tasks/all.yml'
+    options:
+      cache: false
+      runInCI: true
+
+  mutants:
+    script: |
+      set -euo pipefail
+      mkdir -p target/moon-locks
+      mkdir -p target/tmp
+      # Route all temp I/O to real storage to avoid tmpfs quota exhaustion.
+      # CARGO_TARGET_DIR ensures build artifacts also land on real storage.
+      TMPDIR="$PWD/target/tmp" CARGO_INCREMENTAL=0 CARGO_TARGET_DIR="$PWD/target" \
+        flock --shared target/moon-locks/source-mutation.lock timeout 60m rustup run nightly-2026-04-28 cargo mutants \
+        --package vb_cli \
+        --baseline skip \
+        --jobs 2 \
+        --gitignore true \
+        --no-shuffle \
+        --no-times \
+        --timeout 60 \
+        --minimum-test-timeout 5 \
+        --output target/mutants \
+        --
+    deps:
+      - 'check'
+    inputs:
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - 'rust-toolchain.toml'
+      - 'crates/vb_cli/Cargo.toml'
       - '.moon/tasks/all.yml'
     options:
       cache: false

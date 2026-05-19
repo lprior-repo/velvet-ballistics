@@ -6,7 +6,7 @@ use vb_core::frame::RunFrame;
 use vb_core::ids::{SlotIdx, StepIdx};
 use vb_core::value::SlotValue;
 
-use super::helpers::{jump_to, jump_to_next, require_output};
+use super::helpers::{jump_to, jump_to_body, jump_to_next, require_output};
 
 /// Shift used to encode `max_attempts` in the high 32 bits of the
 /// attempt-slot I64 value.  Low 32 bits hold the current attempt index.
@@ -85,7 +85,7 @@ pub fn repeat_attempt(
     // Validate that the slot contains a valid repeat state.
     let (_max, _current) = decode_repeat_state(packed)?;
     // Slot already holds the correct packed state; just jump to body.
-    jump_to(run, body)
+    jump_to_body(run, body)
 }
 
 /// Executes RepeatCheck: increments attempt counter, writes it back.
@@ -112,7 +112,7 @@ pub fn repeat_check(
     } else {
         // Attempts remain -- loop back to the body entry point.
         let body_entry = next.ok_or(EngineError::MissingNextStep { step })?;
-        jump_to(run, body_entry)
+        jump_to_body(run, body_entry)
     }
 }
 

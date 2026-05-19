@@ -17,7 +17,7 @@ use vb_core::value::{SlotValue, Taint};
 use vb_core::value_store::ValueStore;
 use vb_storage::JournalEvent;
 
-use super::helpers::{expect_list, jump_to, jump_to_next, require_output};
+use super::helpers::{expect_list, jump_to, jump_to_body, jump_to_next, require_output};
 
 /// Per-run pagination state stored in a side table keyed by (RunId, SlotIdx).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -394,7 +394,7 @@ pub fn collect_page(
     _done: StepIdx,
 ) -> Result<vb_core::EngineSignal, EngineError> {
     expect_list(*run.read_slot(collector_slot)?)?;
-    jump_to(run, body)
+    jump_to_body(run, body)
 }
 
 struct CollectStartPlan {
@@ -518,7 +518,7 @@ pub fn collect_next(
         cursor,
         ..state
     })?;
-    jump_to(run, body)
+    jump_to_body(run, body)
 }
 
 type CollectNextPlan = Option<(CollectPaginationState, Box<[SlotValue]>, usize)>;

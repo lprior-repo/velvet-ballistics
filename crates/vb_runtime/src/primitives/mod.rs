@@ -9,3 +9,9 @@ pub mod repeat;
 pub mod retry;
 pub mod together;
 pub mod wait_ask;
+
+#[cfg(kani)]
+pub mod reentry_proofs;
+
+#[cfg(test)]
+mod reentry_tests;

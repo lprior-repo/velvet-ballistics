@@ -1,53 +1,22 @@
-# Invalid Fixture: Cyclic Dependency
-# This workflow contains a cyclic dependency between steps:
-#   step_a depends on step_b
-#   step_b depends on step_c
-#   step_c depends on step_a
-# Semantic validation should fail with CyclicDependency
+# Invalid Fixture: Malformed Together Branches
+# This workflow contains a together step with an invalid branch step index
+# that references a non-existent step, analogous to out-of-range dependencies
 ---
-version: 1
-name: "cyclic_workflow"
-description: "This workflow has cyclic dependencies between steps"
+version: velvet-ballastics/v1
+name: malformed_together_workflow
 
-when: "always"
-
-inputs: {}
-
-vars: {}
-
-secrets: []
-
+when:
+  manual: {}
 steps:
-  - id: step_a
-    name: "Step A"
-    type: "task"
-    input:
-      action: "action_a"
-    depends_on:
-      - "step_b"
-    output:
-      result: "result_a"
-
-  - id: step_b
-    name: "Step B"
-    type: "task"
-    input:
-      action: "action_b"
-    depends_on:
-      - "step_c"
-    output:
-      result: "result_b"
-
-  - id: step_c
-    name: "Step C"
-    type: "task"
-    input:
-      action: "action_c"
-    depends_on:
-      - "step_a"
-    output:
-      result: "result_c"
-
-result:
-  output:
-    status: "done"
+  - id: fanout
+    together:
+      branches:
+        - label: branch0
+          steps:
+            - id: missing
+              set:
+                output: out
+                value: "1"
+  - id: done
+    finish:
+      result: 0

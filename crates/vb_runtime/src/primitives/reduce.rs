@@ -8,7 +8,7 @@ use vb_core::value::SlotValue;
 use vb_core::value_store::ValueStore;
 use vb_core::workflow::CompiledWorkflow;
 
-use super::helpers::{expect_list, jump_to, jump_to_next, require_output, tail_items};
+use super::helpers::{expect_list, jump_to, jump_to_body, jump_to_next, require_output, tail_items};
 
 /// Executes ReduceStart: initializes accumulator from constant pool,
 /// reads input list, binds first item, writes remaining tail to
@@ -79,7 +79,7 @@ pub fn reduce_next(
     let tail = tail_items(remaining)?;
     let tail_id = store.insert_list(tail)?;
     run.write_slot_with_taint(iterator_slot, SlotValue::List(tail_id), iter_taint)?;
-    jump_to(run, body)
+    jump_to_body(run, body)
 }
 
 /// Executes ReduceFinish: writes the final accumulator to output.

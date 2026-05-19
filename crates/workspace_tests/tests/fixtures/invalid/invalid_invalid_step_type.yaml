@@ -1,36 +1,16 @@
 # Invalid Fixture: Unknown Step Type
 # This workflow uses an unknown/unsupported step type
-# Semantic validation should fail with UnknownStepType
+# Semantic validation should fail with UnsupportedStepPrimitive
 ---
-version: 1
-name: "unknown_step_type_workflow"
-description: "This workflow uses an unknown step type"
+version: velvet-ballastics/v1
+name: unknown_step_type_workflow
 
-when: "always"
-
-inputs: {}
-
-vars: {}
-
-secrets: []
-
+when:
+  manual: {}
 steps:
-  - id: step_magic
-    name: "Magic Step"
-    type: "wizardry"  # NOTE: This is not a valid step type
-    input:
+  - id: magic
+    wizardry:
       spell: "fireball"
-    output:
-      result: "magic_result"
-
-  - id: step_normal
-    name: "Normal Step"
-    type: "task"
-    input:
-      action: "normal_action"
-    output:
-      result: "normal_result"
-
-result:
-  output:
-    status: "done"
+  - id: done
+    finish:
+      result: 0

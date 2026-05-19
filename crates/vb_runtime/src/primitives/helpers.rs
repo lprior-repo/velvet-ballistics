@@ -57,6 +57,14 @@ pub(crate) fn jump_to(
     Ok(vb_core::EngineSignal::Continue)
 }
 
+pub(crate) fn jump_to_body(
+    run: &mut RunFrame,
+    body: StepIdx,
+) -> Result<vb_core::EngineSignal, EngineError> {
+    run.mark_pending(body)?;
+    jump_to(run, body)
+}
+
 pub(crate) fn jump_to_next(
     run: &mut RunFrame,
     next: Option<StepIdx>,
@@ -407,5 +415,89 @@ mod tests {
         let slot = SlotIdx::new(0);
         let result = require_output(Some(slot), StepIdx::ZERO).map_err(|e| format!("{e:?}"))?;
         ensure(result == slot, "slot should be returned for zero step")
+    }
+
+    // ── jump_to_body tests ──────────────────────────────────────────────
+
+    #[test]
+    fn tc001_jump_to_body_succeeded_to_pending() -> Result<(), String> {
+        let mut run = fresh_frame();
+        let body = StepIdx::new(1);
+        run.mark_succeeded(body).map_err(|e| format!("{e:?}"))?;
+        let before_exec = run.executed();
+        let result = jump_to_body(&mut run, body).map_err(|e| format!("jump_to_body failed: {e:?}"))?;
+        ensure(result == vb_core::EngineSignal::Continue, "expected Continue signal")?;
+        ensure(run.pc() == body, format!("expected pc={body:?}, got {:?}", run.pc()))?;
+        ensure(run.executed() == before_exec.saturating_add(1), "executed should increment")?;
+        let state = run.step_state(body).map_err(|e| format!("{e:?}"))?;
+        ensure(
+            matches!(state, vb_core::frame::StepState::Pending),
+            format!("expected Pending, got {state:?}"),
+        )?;
+        Ok(())
+    }
+
+    #[test]
+    fn tc002_jump_to_body_pending_idempotent() -> Result<(), String> {
+        let mut run = fresh_frame();
+        let body = StepIdx::new(1);
+        run.mark_pending(body).map_err(|e| format!("{e:?}"))?;
+        let result = jump_to_body(&mut run, body).map_err(|e| format!("jump_to_body failed: {e:?}"))?;
+        ensure(result == vb_core::EngineSignal::Continue, "expected Continue")?;
+        let state = run.step_state(body).map_err(|e| format!("{e:?}"))?;
+        ensure(
+            matches!(state, vb_core::frame::StepState::Pending),
+            format!("expected Pending, got {state:?}"),
+        )
+    }
+
+    #[test]
+    fn tc003_jump_to_body_succeeded_also_idempotent() -> Result<(), String> {
+        let mut run = fresh_frame();
+        let body = StepIdx::new(1);
+        run.mark_succeeded(body).map_err(|e| format!("{e:?}"))?;
+        let result = jump_to_body(&mut run, body).map_err(|e| format!("jump_to_body failed: {e:?}"))?;
+        ensure(result == vb_core::EngineSignal::Continue, "expected Continue")?;
+        let state = run.step_state(body).map_err(|e| format!("{e:?}"))?;
+        ensure(
+            matches!(state, vb_core::frame::StepState::Pending),
+            format!("expected Pending (Succeeded→Pending), got {state:?}"),
+        )
+    }
+
+    #[test]
+    fn tc004_jump_to_body_waiting_is_invalid() -> Result<(), String> {
+        let mut run = fresh_frame();
+        let body = StepIdx::new(1);
+        run.mark_running(body).map_err(|e| format!("{e:?}"))?;
+        run.mark_waiting(body).map_err(|e| format!("{e:?}"))?;
+        let result = jump_to_body(&mut run, body);
+        match result {
+            Err(EngineError::InternalInvariantViolation { reason }) => {
+                ensure(
+                    reason.contains("invalid_state_transition"),
+                    format!("expected invalid_state_transition, got: {reason}"),
+                )
+            }
+            other => Err(format!("expected InternalInvariantViolation, got: {other:?}")),
+        }
+    }
+
+    #[test]
+    fn tc005_jump_to_body_asking_is_invalid() -> Result<(), String> {
+        let mut run = fresh_frame();
+        let body = StepIdx::new(1);
+        run.mark_running(body).map_err(|e| format!("{e:?}"))?;
+        run.mark_asking(body).map_err(|e| format!("{e:?}"))?;
+        let result = jump_to_body(&mut run, body);
+        match result {
+            Err(EngineError::InternalInvariantViolation { reason }) => {
+                ensure(
+                    reason.contains("invalid_state_transition"),
+                    format!("expected invalid_state_transition, got: {reason}"),
+                )
+            }
+            other => Err(format!("expected InternalInvariantViolation, got: {other:?}")),
+        }
     }
 }

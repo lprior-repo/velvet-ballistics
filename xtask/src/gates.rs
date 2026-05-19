@@ -71,7 +71,7 @@ fn command_words(gate: Gate) -> &'static [&'static str] {
         Gate::ForbiddenScan => &["bash", "scripts/forbidden-scan.sh"],
         Gate::HotpathScan => &["bash", "scripts/hotpath-scan.sh"],
         Gate::Miri => &["cargo", "+nightly", "miri", "test", "--workspace"],
-        Gate::Mutants => &["cargo", "mutants", "--package", "vb_cli"],
+        Gate::Mutants => &["moon", "run", ":mutants"],
         Gate::LlvmCov => &["cargo", "llvm-cov"],
         Gate::FuzzBuild => &["cargo", "fuzz", "build"],
         Gate::SupplyChain => &["moon", "run", ":supply-chain"],

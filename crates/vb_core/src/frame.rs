@@ -378,6 +378,11 @@ impl RunFrame {
         self.write_step_state(step, StepState::Running)
     }
 
+    /// Marks a step pending (for loop body re-entry after Succeeded).
+    pub fn mark_pending(&mut self, step: StepIdx) -> CoreResult<()> {
+        self.write_step_state(step, StepState::Pending)
+    }
+
     /// Marks a step succeeded.
     pub fn mark_succeeded(&mut self, step: StepIdx) -> CoreResult<()> {
         self.write_step_state(step, StepState::Succeeded)

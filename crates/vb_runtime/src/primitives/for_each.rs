@@ -7,7 +7,7 @@ use vb_core::ids::{FanoutLimit, SlotIdx, StepIdx};
 use vb_core::value::SlotValue;
 use vb_core::value_store::ValueStore;
 
-use super::helpers::{empty_list, expect_list, jump_to, jump_to_next, require_output, tail_items};
+use super::helpers::{empty_list, expect_list, jump_to, jump_to_body, jump_to_next, require_output, tail_items};
 
 /// Executes ForEachStart: validates input list, binds first item, sets up
 /// iterator state in the output slot as the remaining tail list.
@@ -81,7 +81,7 @@ pub fn for_each_next(
     let tail = tail_items(items)?;
     let tail_id = store.insert_list(tail)?;
     run.write_slot_with_taint(iterator_slot, SlotValue::List(tail_id), iter_taint)?;
-    jump_to(run, body)
+    jump_to_body(run, body)
 }
 
 /// Executes ForEachJoin: materializes ordered loop results to the output slot.

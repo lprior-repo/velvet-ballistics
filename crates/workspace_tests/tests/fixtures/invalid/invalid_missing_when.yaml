@@ -2,27 +2,10 @@
 # This workflow is missing the required 'when' trigger field
 # Semantic validation should fail with MissingField("when")
 ---
-version: 1
-name: "missing_when_workflow"
-description: "This workflow is missing the required 'when' field"
-
-# NOTE: 'when' field is intentionally missing here
-
-inputs: {}
-
-vars: {}
-
-secrets: []
+version: velvet-ballastics/v1
+name: missing_when_workflow
 
 steps:
-  - id: step_test
-    name: "Test Step"
-    type: "task"
-    input:
-      action: "test"
-    output:
-      result: "test_result"
-
-result:
-  output:
-    status: "done"
+  - id: done
+    finish:
+      result: 0
