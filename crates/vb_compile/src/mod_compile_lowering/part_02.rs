@@ -171,7 +171,14 @@ pub(super) fn lower_canonical_for_each(
             done,
         },
     });
-    emit_single_body_set(body, body_step, SlotIdx::new(1), None, builder, false)?;
+    emit_single_body_set(
+        body,
+        body_step,
+        SlotIdx::new(1),
+        Some(next_step),
+        builder,
+        false,
+    )?;
     builder.push_node(CompiledNode {
         id: next_step,
         output: None,

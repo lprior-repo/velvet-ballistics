@@ -100,6 +100,28 @@ fn run_compiled(ir_path: &Path, input_path: &Path) -> Output {
     ])
 }
 
+fn run_yaml(workflow_path: &Path, input_path: &Path) -> Output {
+    run_vb(&[
+        OsStr::new("run"),
+        workflow_path.as_os_str(),
+        OsStr::new("--input-bin"),
+        input_path.as_os_str(),
+        OsStr::new("--durability"),
+        OsStr::new("none"),
+    ])
+}
+
+fn compile_postcard(workflow_path: &Path, ir_path: &Path) -> Output {
+    run_vb(&[
+        OsStr::new("compile"),
+        workflow_path.as_os_str(),
+        OsStr::new("--emit"),
+        OsStr::new("postcard"),
+        OsStr::new("--out"),
+        ir_path.as_os_str(),
+    ])
+}
+
 fn assert_run_compiled_rejects(parts: WorkflowParts, expected: &str) {
     let dir = must_tempdir();
     let ir_path = dir.path().join("malformed.vbir");
@@ -144,6 +166,43 @@ fn run_compiled_accepts_valid_handcrafted_ir_artifact() {
         stdout(&output).contains("run completed"),
         "stdout should report completion: {}",
         stdout(&output)
+    );
+}
+
+#[test]
+fn run_compiled_for_each_corpus_artifact_reaches_runtime_semantics() {
+    let dir = must_tempdir();
+    let ir_path = dir.path().join("for_each.vbir");
+    let input_path = dir.path().join("empty-input.bin");
+    let workflow_path = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../..")
+        .join("fuzz/corpus/vb_f04l_yaml_compiler_compile/for_each.yaml");
+    write_bytes(&input_path, &[]);
+
+    let compile = compile_postcard(&workflow_path, &ir_path);
+    assert!(
+        compile.status.success(),
+        "for_each corpus workflow should compile: stdout={} stderr={}",
+        stdout(&compile),
+        stderr(&compile)
+    );
+
+    let yaml_run = run_yaml(&workflow_path, &input_path);
+    let compiled_run = run_compiled(&ir_path, &input_path);
+
+    assert_eq!(
+        yaml_run.status.code(),
+        compiled_run.status.code(),
+        "run and run-compiled should agree after compilation: run stdout={} run stderr={} compiled stdout={} compiled stderr={}",
+        stdout(&yaml_run),
+        stderr(&yaml_run),
+        stdout(&compiled_run),
+        stderr(&compiled_run)
+    );
+    assert!(
+        !stderr(&compiled_run).contains("compiled IR validation error"),
+        "compiled artifact should reach runtime semantics, not IR validation: {}",
+        stderr(&compiled_run)
     );
 }
 
