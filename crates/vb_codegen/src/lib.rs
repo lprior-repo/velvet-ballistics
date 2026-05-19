@@ -31,6 +31,9 @@ use vb_core::{
 #[cfg(kani)]
 mod kani_generated_runtime;
 
+/// Internal code generation modules.
+pub mod codegen;
+
 /// Codegen failures with stable typed diagnostics.
 #[derive(Debug, Error)]
 pub enum CodegenError {
@@ -3708,6 +3711,13 @@ fn emit_accessor_segment(out: &mut String, segment: vb_core::PathSegment) -> Cod
 fn fmt_err(_: std::fmt::Error) -> CodegenError {
     CodegenError::FormatBufferOverflow
 }
+
+// --- Public re-exports for BDD parity testing ---
+
+pub use codegen::parity::{
+    compare_observed_runs, BlockKind, BlockedRun, ErrorClass, ErrorRun, FinishedRun,
+    ObservedRun, ParityError, TerminalStatus,
+};
 
 mod proptests;
 #[cfg(not(miri))]

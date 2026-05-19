@@ -1,6 +1,7 @@
 mod impls;
 mod structs;
 mod types;
+pub mod parity;
 
 use std::fmt::Write;
 use vb_core::{
@@ -154,6 +155,7 @@ fn unsupported_node_feature(kind: &CompiledNodeKind) -> Option<&'static str> {
         CompiledNodeKind::CollectPage { .. } => Some("CollectPage"),
         CompiledNodeKind::CollectNext { .. } => Some("CollectNext"),
         CompiledNodeKind::CollectFinish { .. } => Some("CollectFinish"),
+        _ => Some("future compiled node kind"),
     }
 }
 
@@ -188,6 +190,7 @@ fn unsupported_expr_feature(op: ExprOp) -> Option<&'static str> {
         ExprOp::EndsWith => Some("text helper ends_with requires runtime symbol store"),
         ExprOp::Length => None,
         ExprOp::Empty => None,
+        _ => Some("future expression op"),
     }
 }
 
@@ -1436,6 +1439,9 @@ pub fn emit_expr_function(
             ExprOp::Contains | ExprOp::StartsWith | ExprOp::EndsWith => {
                 return Err(CodegenError::UnsupportedIr { feature: "text helper requires runtime symbol store" });
             }
+            _ => {
+                return Err(CodegenError::UnsupportedIr { feature: "unsupported expression op" });
+            }
         }
     }
 
@@ -1905,6 +1911,11 @@ pub fn emit_constants(out: &mut String, workflow: &CompiledWorkflow) -> CodegenR
                 writeln!(out, "    SlotValue::Symbol({}),", v.get()).map_err(fmt_err)?;
             }
             None => break,
+            _ => {
+                return Err(CodegenError::UnsupportedIr {
+                    feature: "unsupported constant variant",
+                });
+            }
         }
     }
 
@@ -1993,6 +2004,9 @@ fn emit_accessor_segment(out: &mut String, segment: vb_core::PathSegment) -> Cod
     match segment {
         vb_core::PathSegment::Field(field) => writeln!(out, "        {{ let (_value, _segment_taint) = match _current {{ SlotValue::Object(_object) => object_store.field(_object, {})?, other => return Err(DriveError::TypeMismatch {{ expected: \"object\", found: other.type_name() }}), }}; _taint = join_taint(_taint, _segment_taint); _current = _value; }}", field.get()).map_err(fmt_err),
         vb_core::PathSegment::Index(index) => writeln!(out, "        {{ let (_value, _segment_taint) = match _current {{ SlotValue::List(_list) => list_store.value_at(_list, {index})?, other => return Err(DriveError::TypeMismatch {{ expected: \"list\", found: other.type_name() }}), }}; _taint = join_taint(_taint, _segment_taint); _current = _value; }}").map_err(fmt_err),
+        _ => Err(CodegenError::UnsupportedIr {
+            feature: "unknown path segment variant",
+        }),
     }
 }
 
