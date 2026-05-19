@@ -428,10 +428,20 @@ mod tests {
         let body = StepIdx::new(1);
         run.mark_succeeded(body).map_err(|e| format!("{e:?}"))?;
         let before_exec = run.executed();
-        let result = jump_to_body(&mut run, body).map_err(|e| format!("jump_to_body failed: {e:?}"))?;
-        ensure(result == vb_core::EngineSignal::Continue, "expected Continue signal")?;
-        ensure(run.pc() == body, format!("expected pc={body:?}, got {:?}", run.pc()))?;
-        ensure(run.executed() == before_exec.saturating_add(1), "executed should increment")?;
+        let result =
+            jump_to_body(&mut run, body).map_err(|e| format!("jump_to_body failed: {e:?}"))?;
+        ensure(
+            result == vb_core::EngineSignal::Continue,
+            "expected Continue signal",
+        )?;
+        ensure(
+            run.pc() == body,
+            format!("expected pc={body:?}, got {:?}", run.pc()),
+        )?;
+        ensure(
+            run.executed() == before_exec.saturating_add(1),
+            "executed should increment",
+        )?;
         let state = run.step_state(body).map_err(|e| format!("{e:?}"))?;
         ensure(
             matches!(state, vb_core::frame::StepState::Pending),
@@ -445,8 +455,12 @@ mod tests {
         let mut run = fresh_frame();
         let body = StepIdx::new(1);
         run.mark_pending(body).map_err(|e| format!("{e:?}"))?;
-        let result = jump_to_body(&mut run, body).map_err(|e| format!("jump_to_body failed: {e:?}"))?;
-        ensure(result == vb_core::EngineSignal::Continue, "expected Continue")?;
+        let result =
+            jump_to_body(&mut run, body).map_err(|e| format!("jump_to_body failed: {e:?}"))?;
+        ensure(
+            result == vb_core::EngineSignal::Continue,
+            "expected Continue",
+        )?;
         let state = run.step_state(body).map_err(|e| format!("{e:?}"))?;
         ensure(
             matches!(state, vb_core::frame::StepState::Pending),
@@ -459,8 +473,12 @@ mod tests {
         let mut run = fresh_frame();
         let body = StepIdx::new(1);
         run.mark_succeeded(body).map_err(|e| format!("{e:?}"))?;
-        let result = jump_to_body(&mut run, body).map_err(|e| format!("jump_to_body failed: {e:?}"))?;
-        ensure(result == vb_core::EngineSignal::Continue, "expected Continue")?;
+        let result =
+            jump_to_body(&mut run, body).map_err(|e| format!("jump_to_body failed: {e:?}"))?;
+        ensure(
+            result == vb_core::EngineSignal::Continue,
+            "expected Continue",
+        )?;
         let state = run.step_state(body).map_err(|e| format!("{e:?}"))?;
         ensure(
             matches!(state, vb_core::frame::StepState::Pending),
@@ -474,8 +492,12 @@ mod tests {
         let body = StepIdx::new(1);
         run.mark_running(body).map_err(|e| format!("{e:?}"))?;
         run.mark_waiting(body).map_err(|e| format!("{e:?}"))?;
-        let result = jump_to_body(&mut run, body).map_err(|e| format!("jump_to_body failed: {e:?}"))?;
-        ensure(result == vb_core::EngineSignal::Continue, "expected Continue")?;
+        let result =
+            jump_to_body(&mut run, body).map_err(|e| format!("jump_to_body failed: {e:?}"))?;
+        ensure(
+            result == vb_core::EngineSignal::Continue,
+            "expected Continue",
+        )?;
         let state = run.step_state(body).map_err(|e| format!("{e:?}"))?;
         ensure(
             matches!(state, vb_core::frame::StepState::Waiting),
@@ -489,8 +511,12 @@ mod tests {
         let body = StepIdx::new(1);
         run.mark_running(body).map_err(|e| format!("{e:?}"))?;
         run.mark_asking(body).map_err(|e| format!("{e:?}"))?;
-        let result = jump_to_body(&mut run, body).map_err(|e| format!("jump_to_body failed: {e:?}"))?;
-        ensure(result == vb_core::EngineSignal::Continue, "expected Continue")?;
+        let result =
+            jump_to_body(&mut run, body).map_err(|e| format!("jump_to_body failed: {e:?}"))?;
+        ensure(
+            result == vb_core::EngineSignal::Continue,
+            "expected Continue",
+        )?;
         let state = run.step_state(body).map_err(|e| format!("{e:?}"))?;
         ensure(
             matches!(state, vb_core::frame::StepState::Asking),

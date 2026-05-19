@@ -1,0 +1,14 @@
+{"contract_clause":"PO-001","tests":["valid_transition_succeeded_to_pending","valid_transition_succeeded_to_running_rejected","mark_pending_preserves_step_idx"],"proofs":["K-REENTRY-FE-1","K-REENTRY-RD-1","K-REENTRY-CL-1","K-REENTRY-CP-1","K-REENTRY-RPA-1","K-REENTRY-RPC-1"],"review":"proof-review.md"}
+{"contract_clause":"PO-002","tests":["mark_pending_unit_test","step_state_after_mark_pending"],"proofs":["K-REENTRY-FE-1","K-REENTRY-RD-1"],"review":"proof-review.md"}
+{"contract_clause":"PO-003","tests":["jump_to_body_helper_unit_test"],"proofs":["K-REENTRY-FE-1","K-REENTRY-RD-1","K-REENTRY-CL-1","K-REENTRY-CP-1","K-REENTRY-RPA-1","K-REENTRY-RPC-1"],"review":"proof-review.md"}
+{"contract_clause":"PO-004","tests":["for_each_two_item_reentry","for_each_next_reentry"],"proofs":["K-REENTRY-FE-1"],"review":"proof-review.md"}
+{"contract_clause":"PO-005","tests":["reduce_reentry","reduce_next_reentry"],"proofs":["K-REENTRY-RD-1"],"review":"proof-review.md"}
+{"contract_clause":"PO-006","tests":["collect_next_reentry","collect_page_reentry"],"proofs":["K-REENTRY-CL-1"],"review":"proof-review.md"}
+{"contract_clause":"PO-007","tests":["collect_page_reentry"],"proofs":["K-REENTRY-CP-1"],"review":"proof-review.md"}
+{"contract_clause":"PO-008","tests":["repeat_attempt_reentry"],"proofs":["K-REENTRY-RPA-1"],"review":"proof-review.md"}
+{"contract_clause":"PO-009","tests":["repeat_check_reentry"],"proofs":["K-REENTRY-RPC-1"],"review":"proof-review.md"}
+{"contract_clause":"GWT-1","tests":["for_each_two_item_reentry"],"proofs":["K-REENTRY-FE-1"],"review":"proof-review.md"}
+{"contract_clause":"GWT-2","tests":["for_each_body_already_pending"],"proofs":["K-REENTRY-FE-1"],"review":"proof-review.md"}
+{"contract_clause":"GWT-3","tests":["for_each_succeeded_to_running_rejected"],"proofs":["K-REENTRY-FE-1"],"review":"proof-review.md"}
+{"contract_clause":"GWT-4","tests":["repeat_body_reentry_after_attempt"],"proofs":["K-REENTRY-RPA-1"],"review":"proof-review.md"}
+{"contract_clause":"INVARIANT-BODY-REENTRY","tests":["for_each_two_item_reentry","reduce_reentry","collect_next_reentry","repeat_attempt_reentry"],"proofs":["K-REENTRY-FE-1","K-REENTRY-RD-1","K-REENTRY-CL-1","K-REENTRY-RPA-1"],"review":"proof-review.md"}

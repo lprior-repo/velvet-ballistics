@@ -8,7 +8,9 @@ use vb_core::value::SlotValue;
 use vb_core::value_store::ValueStore;
 use vb_core::workflow::CompiledWorkflow;
 
-use super::helpers::{expect_list, jump_to, jump_to_body, jump_to_next, require_output, tail_items};
+use super::helpers::{
+    expect_list, jump_to, jump_to_body, jump_to_next, require_output, tail_items,
+};
 
 /// Executes ReduceStart: initializes accumulator from constant pool,
 /// reads input list, binds first item, writes remaining tail to

@@ -7,36 +7,16 @@
 //! - Error classification and exit codes
 //! - JSON output completeness
 
-/// Minimal valid workflow YAML for testing.
-#[allow(dead_code)]
-const MINIMAL_WORKFLOW: &str = r#"version: 1
-name: "minimal_workflow"
-description: "A minimal valid workflow with a single step"
-when: "always"
-inputs: {}
-vars: {}
-secrets: []
-steps:
-  - id: step_hello
-    name: "Say Hello"
-    run:
-      action: "echo"
-      message: "Hello, World!"
-    output:
-      message: "echo_result"
-result:
-  output:
-    greeting: "${steps.step_hello.output.message}"
-"#;
-
 /// Malformed YAML for error path testing.
-const MALFORMED_YAML: &str = r#"version: 1
-name: "bad workflow"
-when: "always"
+const MALFORMED_YAML: &str = r#"version: velvet-ballastics/v1
+name: bad_workflow
+when:
+  manual: {}
 steps:
   - id: broken
-    run:
-      action: "echo"
+    set:
+      output: result
+      value: "1"
     # This YAML is missing required fields and has invalid syntax
     invalid indentation here
 "#;

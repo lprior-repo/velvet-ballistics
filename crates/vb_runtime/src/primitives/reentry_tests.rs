@@ -12,7 +12,7 @@ use vb_core::ids::{SlotIdx, StepIdx};
 use vb_core::value::SlotValue;
 use vb_core::value_store::ValueStore;
 
-use crate::primitives::collect::{collect_next, collect_page, collect_start, CollectStates};
+use crate::primitives::collect::{CollectStates, collect_next, collect_page, collect_start};
 use crate::primitives::for_each::{for_each_next, for_each_start};
 use crate::primitives::reduce::{reduce_next, reduce_start};
 use crate::primitives::repeat::{repeat_attempt, repeat_check, repeat_start};
@@ -37,7 +37,12 @@ fn vb_y4pa_001_for_each_two_item_reentry() {
     let done = StepIdx::new(2);
 
     // Two-item list: [10, 20]
-    list_in_slot(&mut run, &mut store, input, vec![SlotValue::I64(10), SlotValue::I64(20)]);
+    list_in_slot(
+        &mut run,
+        &mut store,
+        input,
+        vec![SlotValue::I64(10), SlotValue::I64(20)],
+    );
 
     // Start: binds first item (10), tail [20] in iterator_slot
     let start_result = for_each_start(
@@ -75,10 +80,7 @@ fn vb_y4pa_001_for_each_two_item_reentry() {
     assert_eq!(run.pc(), body);
 
     // item_slot should have 20 (the second item)
-    assert_eq!(
-        *run.read_slot(item_slot).ok().unwrap(),
-        SlotValue::I64(20)
-    );
+    assert_eq!(*run.read_slot(item_slot).ok().unwrap(), SlotValue::I64(20));
 }
 
 /// Verifies that reduce_next correctly handles re-entry after body completion.
@@ -94,7 +96,12 @@ fn vb_y4pa_002_reduce_reentry() {
     let done = StepIdx::new(2);
 
     // Two-item list: [5, 6]
-    list_in_slot(&mut run, &mut store, input, vec![SlotValue::I64(5), SlotValue::I64(6)]);
+    list_in_slot(
+        &mut run,
+        &mut store,
+        input,
+        vec![SlotValue::I64(5), SlotValue::I64(6)],
+    );
 
     // Start reduce - writes tail to output (slot 3 = iterator_slot)
     let plan = minimal_workflow();
@@ -144,12 +151,17 @@ fn vb_y4pa_003_collect_next_reentry() {
     let done = StepIdx::new(2);
 
     // 4 items with page_size=2: first page [10, 20], second page [30, 40]
-    list_in_slot(&mut run, &mut store, source, vec![
-        SlotValue::I64(10),
-        SlotValue::I64(20),
-        SlotValue::I64(30),
-        SlotValue::I64(40),
-    ]);
+    list_in_slot(
+        &mut run,
+        &mut store,
+        source,
+        vec![
+            SlotValue::I64(10),
+            SlotValue::I64(20),
+            SlotValue::I64(30),
+            SlotValue::I64(40),
+        ],
+    );
 
     // Start collect
     let start_result = collect_start(
@@ -197,7 +209,12 @@ fn vb_y4pa_004_collect_page_reentry() {
     let body = StepIdx::new(1);
     let done = StepIdx::new(2);
 
-    list_in_slot(&mut run, &mut store, source, vec![SlotValue::I64(10), SlotValue::I64(20)]);
+    list_in_slot(
+        &mut run,
+        &mut store,
+        source,
+        vec![SlotValue::I64(10), SlotValue::I64(20)],
+    );
 
     let _ = collect_start(
         &mut run,
@@ -266,7 +283,8 @@ fn vb_y4pa_006_repeat_check_reentry() {
 
     // Set up: max_attempts=3, current_attempt=1 (two more attempts remain)
     let packed: i64 = (3_i64 << 32) | 1_i64;
-    run.write_slot(attempt_slot, SlotValue::I64(packed)).unwrap();
+    run.write_slot(attempt_slot, SlotValue::I64(packed))
+        .unwrap();
 
     // Body completes
     let body_step = StepIdx::new(1);
@@ -274,13 +292,7 @@ fn vb_y4pa_006_repeat_check_reentry() {
     run.mark_succeeded(body_step).unwrap();
 
     // repeat_check re-entry - should increment to 2 and route to body
-    let check_result = repeat_check(
-        &mut run,
-        attempt_slot,
-        done,
-        Some(next_body),
-        StepIdx::ZERO,
-    );
+    let check_result = repeat_check(&mut run, attempt_slot, done, Some(next_body), StepIdx::ZERO);
 
     assert_eq!(check_result, Ok(vb_core::EngineSignal::Continue));
     assert_eq!(run.pc(), next_body);
@@ -289,7 +301,9 @@ fn vb_y4pa_006_repeat_check_reentry() {
 /// Minimal workflow for reduce tests.
 fn minimal_workflow() -> vb_core::workflow::CompiledWorkflow {
     use vb_core::value::ConstValue;
-    use vb_core::workflow::{CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts};
+    use vb_core::workflow::{
+        CompiledNode, CompiledNodeKind, CompiledWorkflow, ResourceContract, WorkflowParts,
+    };
 
     let parts = WorkflowParts {
         name: Box::from("reentry_test"),
@@ -352,10 +366,7 @@ fn tc005_for_each_three_item_reentry() {
     );
     assert_eq!(start_result, Ok(vb_core::EngineSignal::Continue));
     assert_eq!(run.pc(), body);
-    assert_eq!(
-        *run.read_slot(item_slot).ok().unwrap(),
-        SlotValue::I64(10)
-    );
+    assert_eq!(*run.read_slot(item_slot).ok().unwrap(), SlotValue::I64(10));
 
     // Body runs for item 10 → Succeeded
     let body_step = StepIdx::new(1);
@@ -373,10 +384,7 @@ fn tc005_for_each_three_item_reentry() {
     );
     assert_eq!(next1, Ok(vb_core::EngineSignal::Continue));
     assert_eq!(run.pc(), body);
-    assert_eq!(
-        *run.read_slot(item_slot).ok().unwrap(),
-        SlotValue::I64(20)
-    );
+    assert_eq!(*run.read_slot(item_slot).ok().unwrap(), SlotValue::I64(20));
 
     // Body runs for item 20 → Succeeded
     run.mark_running(body_step).unwrap();
@@ -393,10 +401,7 @@ fn tc005_for_each_three_item_reentry() {
     );
     assert_eq!(next2, Ok(vb_core::EngineSignal::Continue));
     assert_eq!(run.pc(), body);
-    assert_eq!(
-        *run.read_slot(item_slot).ok().unwrap(),
-        SlotValue::I64(30)
-    );
+    assert_eq!(*run.read_slot(item_slot).ok().unwrap(), SlotValue::I64(30));
 
     // Body runs for item 30 → Succeeded
     run.mark_running(body_step).unwrap();
@@ -445,7 +450,10 @@ fn tc006_for_each_empty_list_does_not_reenter() {
     assert_eq!(run.pc(), done);
 
     // Body step should still be Pending (never executed)
-    assert_eq!(run.step_state(body).unwrap(), vb_core::frame::StepState::Pending);
+    assert_eq!(
+        run.step_state(body).unwrap(),
+        vb_core::frame::StepState::Pending
+    );
 }
 
 /// TC-007: reduce_three_item_accumulator
@@ -547,7 +555,12 @@ fn tc008_reduce_body_succeeded_resets_on_reentry() {
     let done = StepIdx::new(2);
 
     // Two-item list: reduce_start binds first, tail in iterator
-    list_in_slot(&mut run, &mut store, input, vec![SlotValue::I64(5), SlotValue::I64(6)]);
+    list_in_slot(
+        &mut run,
+        &mut store,
+        input,
+        vec![SlotValue::I64(5), SlotValue::I64(6)],
+    );
 
     let plan = minimal_workflow_with_const(0i64);
     reduce_start(
@@ -570,7 +583,10 @@ fn tc008_reduce_body_succeeded_resets_on_reentry() {
     run.mark_succeeded(body_step).unwrap();
 
     // Verify body is Succeeded
-    assert_eq!(run.step_state(body_step).unwrap(), vb_core::frame::StepState::Succeeded);
+    assert_eq!(
+        run.step_state(body_step).unwrap(),
+        vb_core::frame::StepState::Succeeded
+    );
 
     // reduce_next re-entry: iterator has [6], should return Continue and PC at body
     let next_result = reduce_next(
@@ -606,8 +622,14 @@ fn tc009_collect_four_page_reentry() {
         &mut store,
         source,
         vec![
-            SlotValue::I64(1), SlotValue::I64(2), SlotValue::I64(3), SlotValue::I64(4),
-            SlotValue::I64(5), SlotValue::I64(6), SlotValue::I64(7), SlotValue::I64(8),
+            SlotValue::I64(1),
+            SlotValue::I64(2),
+            SlotValue::I64(3),
+            SlotValue::I64(4),
+            SlotValue::I64(5),
+            SlotValue::I64(6),
+            SlotValue::I64(7),
+            SlotValue::I64(8),
         ],
     );
 
@@ -679,7 +701,12 @@ fn tc010_collect_page_body_succeeded_resets() {
         &mut run,
         &mut store,
         source,
-        vec![SlotValue::I64(10), SlotValue::I64(20), SlotValue::I64(30), SlotValue::I64(40)],
+        vec![
+            SlotValue::I64(10),
+            SlotValue::I64(20),
+            SlotValue::I64(30),
+            SlotValue::I64(40),
+        ],
     );
 
     collect_start(
@@ -701,7 +728,10 @@ fn tc010_collect_page_body_succeeded_resets() {
     let body_step = StepIdx::new(1);
     run.mark_running(body_step).unwrap();
     run.mark_succeeded(body_step).unwrap();
-    assert_eq!(run.step_state(body_step).unwrap(), vb_core::frame::StepState::Succeeded);
+    assert_eq!(
+        run.step_state(body_step).unwrap(),
+        vb_core::frame::StepState::Succeeded
+    );
 
     // collect_page re-entry via jump_to_body
     let page_result = collect_page(
@@ -714,7 +744,10 @@ fn tc010_collect_page_body_succeeded_resets() {
     );
     assert_eq!(page_result, Ok(vb_core::EngineSignal::Continue));
     // Body step should now be Pending
-    assert_eq!(run.step_state(body_step).unwrap(), vb_core::frame::StepState::Pending);
+    assert_eq!(
+        run.step_state(body_step).unwrap(),
+        vb_core::frame::StepState::Pending
+    );
 }
 
 /// TC-011: repeat_max_attempts_exhausted
@@ -729,20 +762,15 @@ fn tc011_repeat_max_attempts_exhausted() {
 
     // max=3, current=2 (after increment will be 3 which equals max)
     let packed: i64 = (3_i64 << 32) | 2_i64;
-    run.write_slot(attempt_slot, SlotValue::I64(packed)).unwrap();
+    run.write_slot(attempt_slot, SlotValue::I64(packed))
+        .unwrap();
 
     let body_step = StepIdx::new(1);
     run.mark_running(body_step).unwrap();
     run.mark_succeeded(body_step).unwrap();
 
     // repeat_check: current=2, next_attempt=3, 3 >= 3 → done
-    let check_result = repeat_check(
-        &mut run,
-        attempt_slot,
-        done,
-        Some(next_body),
-        StepIdx::ZERO,
-    );
+    let check_result = repeat_check(&mut run, attempt_slot, done, Some(next_body), StepIdx::ZERO);
     assert_eq!(check_result, Ok(vb_core::EngineSignal::Continue));
     assert_eq!(run.pc(), done);
 
@@ -864,7 +892,12 @@ fn gwt_re1_for_each_body_reentry_after_succeeded() {
     let body = StepIdx::new(1);
     let done = StepIdx::new(2);
 
-    list_in_slot(&mut run, &mut store, input, vec![SlotValue::I64(1), SlotValue::I64(2)]);
+    list_in_slot(
+        &mut run,
+        &mut store,
+        input,
+        vec![SlotValue::I64(1), SlotValue::I64(2)],
+    );
 
     // for_each_start binds Item1 (1)
     for_each_start(
@@ -884,7 +917,10 @@ fn gwt_re1_for_each_body_reentry_after_succeeded() {
     let body_step = StepIdx::new(1);
     run.mark_running(body_step).unwrap();
     run.mark_succeeded(body_step).unwrap();
-    assert_eq!(run.step_state(body_step).unwrap(), vb_core::frame::StepState::Succeeded);
+    assert_eq!(
+        run.step_state(body_step).unwrap(),
+        vb_core::frame::StepState::Succeeded
+    );
 
     // for_each_next for Item2 (re-entry)
     let next = for_each_next(
@@ -899,11 +935,11 @@ fn gwt_re1_for_each_body_reentry_after_succeeded() {
     // THEN: Continue returned, PC at body, Item2 bound, body step Pending
     assert_eq!(next, Ok(vb_core::EngineSignal::Continue));
     assert_eq!(run.pc(), body);
+    assert_eq!(*run.read_slot(item_slot).ok().unwrap(), SlotValue::I64(2));
     assert_eq!(
-        *run.read_slot(item_slot).ok().unwrap(),
-        SlotValue::I64(2)
+        run.step_state(body_step).unwrap(),
+        vb_core::frame::StepState::Pending
     );
-    assert_eq!(run.step_state(body_step).unwrap(), vb_core::frame::StepState::Pending);
 }
 
 /// GWT-RE-2: reduce body re-entry after Succeeded
@@ -930,8 +966,15 @@ fn gwt_re2_reduce_body_reentry_after_succeeded() {
 
     let plan = minimal_workflow_with_const(0i64);
     reduce_start(
-        &plan, &mut run, &mut store, input, accumulator,
-        vb_core::ids::ConstIdx::new(0), body, done, Some(iterator_slot),
+        &plan,
+        &mut run,
+        &mut store,
+        input,
+        accumulator,
+        vb_core::ids::ConstIdx::new(0),
+        body,
+        done,
+        Some(iterator_slot),
     )
     .ok()
     .unwrap();
@@ -944,8 +987,13 @@ fn gwt_re2_reduce_body_reentry_after_succeeded() {
 
     // reduce_next binds B=20
     reduce_next(
-        &mut run, &mut store, iterator_slot, accumulator,
-        body, done, Some(SlotIdx::new(4)),
+        &mut run,
+        &mut store,
+        iterator_slot,
+        accumulator,
+        body,
+        done,
+        Some(SlotIdx::new(4)),
     )
     .ok()
     .unwrap();
@@ -953,18 +1001,29 @@ fn gwt_re2_reduce_body_reentry_after_succeeded() {
     // Body ran for B=20 → Succeeded
     run.mark_running(body_step).unwrap();
     run.mark_succeeded(body_step).unwrap();
-    assert_eq!(run.step_state(body_step).unwrap(), vb_core::frame::StepState::Succeeded);
+    assert_eq!(
+        run.step_state(body_step).unwrap(),
+        vb_core::frame::StepState::Succeeded
+    );
 
     // reduce_next for C=30 (re-entry)
     let next = reduce_next(
-        &mut run, &mut store, iterator_slot, accumulator,
-        body, done, Some(SlotIdx::new(4)),
+        &mut run,
+        &mut store,
+        iterator_slot,
+        accumulator,
+        body,
+        done,
+        Some(SlotIdx::new(4)),
     );
 
     // THEN: Continue, PC at body, C bound, body step Pending
     assert_eq!(next, Ok(vb_core::EngineSignal::Continue));
     assert_eq!(run.pc(), body);
-    assert_eq!(run.step_state(body_step).unwrap(), vb_core::frame::StepState::Pending);
+    assert_eq!(
+        run.step_state(body_step).unwrap(),
+        vb_core::frame::StepState::Pending
+    );
 }
 
 /// GWT-RE-3: collect_page re-entry after page body Succeeded
@@ -986,12 +1045,25 @@ fn gwt_re3_collect_page_reentry_after_succeeded() {
         &mut run,
         &mut store,
         source,
-        vec![SlotValue::I64(1), SlotValue::I64(2), SlotValue::I64(3), SlotValue::I64(4)],
+        vec![
+            SlotValue::I64(1),
+            SlotValue::I64(2),
+            SlotValue::I64(3),
+            SlotValue::I64(4),
+        ],
     );
 
     collect_start(
-        &mut run, &mut store, &mut states, source,
-        100, 2, body, done, Some(collector_slot), None,
+        &mut run,
+        &mut store,
+        &mut states,
+        source,
+        100,
+        2,
+        body,
+        done,
+        Some(collector_slot),
+        None,
     )
     .ok()
     .unwrap();
@@ -1001,17 +1073,27 @@ fn gwt_re3_collect_page_reentry_after_succeeded() {
     // Page1 body completes → Succeeded
     run.mark_running(body_step).unwrap();
     run.mark_succeeded(body_step).unwrap();
-    assert_eq!(run.step_state(body_step).unwrap(), vb_core::frame::StepState::Succeeded);
+    assert_eq!(
+        run.step_state(body_step).unwrap(),
+        vb_core::frame::StepState::Succeeded
+    );
 
     // collect_page re-entry
     let page = collect_page(
-        &mut run, &mut store, &mut states,
-        collector_slot, body, done,
+        &mut run,
+        &mut store,
+        &mut states,
+        collector_slot,
+        body,
+        done,
     );
 
     // THEN: Continue, body step Pending
     assert_eq!(page, Ok(vb_core::EngineSignal::Continue));
-    assert_eq!(run.step_state(body_step).unwrap(), vb_core::frame::StepState::Pending);
+    assert_eq!(
+        run.step_state(body_step).unwrap(),
+        vb_core::frame::StepState::Pending
+    );
 }
 
 /// GWT-RE-4: repeat_attempt re-entry after attempt Succeeded
@@ -1035,7 +1117,10 @@ fn gwt_re4_repeat_attempt_reentry_after_succeeded() {
     // Attempt 1 runs → Succeeded
     run.mark_running(body_step).unwrap();
     run.mark_succeeded(body_step).unwrap();
-    assert_eq!(run.step_state(body_step).unwrap(), vb_core::frame::StepState::Succeeded);
+    assert_eq!(
+        run.step_state(body_step).unwrap(),
+        vb_core::frame::StepState::Succeeded
+    );
 
     // repeat_attempt for attempt 2 (re-entry)
     let attempt = repeat_attempt(&mut run, attempt_slot, body, done);
@@ -1043,7 +1128,10 @@ fn gwt_re4_repeat_attempt_reentry_after_succeeded() {
     // THEN: Continue, PC at body, body step Pending
     assert_eq!(attempt, Ok(vb_core::EngineSignal::Continue));
     assert_eq!(run.pc(), body);
-    assert_eq!(run.step_state(body_step).unwrap(), vb_core::frame::StepState::Pending);
+    assert_eq!(
+        run.step_state(body_step).unwrap(),
+        vb_core::frame::StepState::Pending
+    );
 }
 
 /// GWT-RE-5: repeat_check loops back to body after attempt Succeeded
@@ -1060,19 +1148,21 @@ fn gwt_re5_repeat_check_loops_back_after_succeeded() {
 
     // max=3, current=1 (after increment will be 2, which is < max=3, so loops back)
     let packed: i64 = (3_i64 << 32) | 1_i64;
-    run.write_slot(attempt_slot, SlotValue::I64(packed)).unwrap();
+    run.write_slot(attempt_slot, SlotValue::I64(packed))
+        .unwrap();
 
     let body_step = StepIdx::new(1);
 
     // Attempt 1 runs → Succeeded
     run.mark_running(body_step).unwrap();
     run.mark_succeeded(body_step).unwrap();
-    assert_eq!(run.step_state(body_step).unwrap(), vb_core::frame::StepState::Succeeded);
+    assert_eq!(
+        run.step_state(body_step).unwrap(),
+        vb_core::frame::StepState::Succeeded
+    );
 
     // repeat_check: next_attempt=2, 2 < 3 is true, so loops back to body_entry
-    let check = repeat_check(
-        &mut run, attempt_slot, done, Some(next_body), StepIdx::ZERO,
-    );
+    let check = repeat_check(&mut run, attempt_slot, done, Some(next_body), StepIdx::ZERO);
 
     // THEN: Continue, PC at body_entry
     assert_eq!(check, Ok(vb_core::EngineSignal::Continue));
@@ -1088,10 +1178,8 @@ fn gwt_re6_succeeded_to_running_rejected() {
     use vb_core::frame::StepState;
 
     // Succeeded → Running is NOT a valid transition
-    let is_valid = vb_core::frame::is_valid_step_state_transition(
-        StepState::Succeeded,
-        StepState::Running,
-    );
+    let is_valid =
+        vb_core::frame::is_valid_step_state_transition(StepState::Succeeded, StepState::Running);
     assert!(
         !is_valid,
         "Succeeded→Running must be invalid per VALID_TRANSITIONS"
@@ -1100,10 +1188,8 @@ fn gwt_re6_succeeded_to_running_rejected() {
     // The only valid transitions from Succeeded are:
     // - Succeeded → Succeeded (idempotent)
     // - Succeeded → Pending (for loop re-entry via jump_to_body)
-    let can_go_to_pending = vb_core::frame::is_valid_step_state_transition(
-        StepState::Succeeded,
-        StepState::Pending,
-    );
+    let can_go_to_pending =
+        vb_core::frame::is_valid_step_state_transition(StepState::Succeeded, StepState::Pending);
     assert!(
         can_go_to_pending,
         "Succeeded→Pending must be valid (this is why jump_to_body exists)"

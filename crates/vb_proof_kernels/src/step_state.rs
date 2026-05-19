@@ -106,7 +106,9 @@ pub fn terminal_cannot_transition_to_non_terminal() -> bool {
         if terminal == StepState::Succeeded {
             let valid = matches!(
                 next.as_slice(),
-                [StepState::Succeeded] | [StepState::Succeeded, StepState::Pending] | [StepState::Pending, StepState::Succeeded]
+                [StepState::Succeeded]
+                    | [StepState::Succeeded, StepState::Pending]
+                    | [StepState::Pending, StepState::Succeeded]
             );
             if !valid {
                 return false;

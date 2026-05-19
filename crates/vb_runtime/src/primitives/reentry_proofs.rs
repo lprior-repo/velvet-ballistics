@@ -18,9 +18,9 @@ pub mod reentry_harnesses {
     use vb_core::value::SlotValue;
     use vb_core::value_store::ValueStore;
 
+    use crate::primitives::collect::{CollectStates, collect_next, collect_page};
     use crate::primitives::for_each::for_each_next;
     use crate::primitives::reduce::reduce_next;
-    use crate::primitives::collect::{collect_next, collect_page, CollectStates};
     use crate::primitives::repeat::{repeat_attempt, repeat_check};
 
     fn fresh_frame(step_count: u16, slot_count: u16) -> RunFrame {
@@ -33,7 +33,12 @@ pub mod reentry_harnesses {
         .unwrap()
     }
 
-    fn list_in_slot(run: &mut RunFrame, store: &mut ValueStore, slot: SlotIdx, items: Vec<SlotValue>) {
+    fn list_in_slot(
+        run: &mut RunFrame,
+        store: &mut ValueStore,
+        slot: SlotIdx,
+        items: Vec<SlotValue>,
+    ) {
         let id = store.insert_list(items.into_boxed_slice()).unwrap();
         run.write_slot(slot, SlotValue::List(id)).unwrap();
     }
@@ -68,7 +73,12 @@ pub mod reentry_harnesses {
         let body = StepIdx::new(1);
         let done = StepIdx::new(2);
 
-        list_in_slot(&mut run, &mut store, iterator_slot, vec![SlotValue::I64(7), SlotValue::I64(8)]);
+        list_in_slot(
+            &mut run,
+            &mut store,
+            iterator_slot,
+            vec![SlotValue::I64(7), SlotValue::I64(8)],
+        );
 
         let body_step = StepIdx::new(1);
 
@@ -92,14 +102,30 @@ pub mod reentry_harnesses {
 
         run.mark_running(body_step).unwrap();
         match body_state {
-            StepState::Pending => { run.mark_pending(body_step).unwrap(); }
-            StepState::Running => { run.mark_running(body_step).unwrap(); }
-            StepState::Succeeded => { run.mark_succeeded(body_step).unwrap(); }
-            StepState::Failed => { run.mark_failed(body_step).unwrap(); }
-            StepState::Skipped => { run.mark_skipped(body_step).unwrap(); }
-            StepState::Waiting => { run.mark_waiting(body_step).unwrap(); }
-            StepState::Asking => { run.mark_asking(body_step).unwrap(); }
-            StepState::Cancelled => { run.mark_cancelled(body_step).unwrap(); }
+            StepState::Pending => {
+                run.mark_pending(body_step).unwrap();
+            }
+            StepState::Running => {
+                run.mark_running(body_step).unwrap();
+            }
+            StepState::Succeeded => {
+                run.mark_succeeded(body_step).unwrap();
+            }
+            StepState::Failed => {
+                run.mark_failed(body_step).unwrap();
+            }
+            StepState::Skipped => {
+                run.mark_skipped(body_step).unwrap();
+            }
+            StepState::Waiting => {
+                run.mark_waiting(body_step).unwrap();
+            }
+            StepState::Asking => {
+                run.mark_asking(body_step).unwrap();
+            }
+            StepState::Cancelled => {
+                run.mark_cancelled(body_step).unwrap();
+            }
             _ => {}
         }
 
@@ -115,12 +141,15 @@ pub mod reentry_harnesses {
         match result {
             Ok(vb_core::EngineSignal::Continue) => {
                 let state = run.step_state(body_step);
-                kani::assert(state.is_ok(), "step_state should be readable after for_each_next");
+                kani::assert(
+                    state.is_ok(),
+                    "step_state should be readable after for_each_next",
+                );
             }
             Err(EngineError::InternalInvariantViolation { reason }) => {
                 kani::assert(
                     reason != "invalid_state_transition",
-                    "for_each_next re-entry should not fail with invalid_state_transition"
+                    "for_each_next re-entry should not fail with invalid_state_transition",
                 );
             }
             _ => {}
@@ -140,7 +169,12 @@ pub mod reentry_harnesses {
         let body = StepIdx::new(1);
         let done = StepIdx::new(2);
 
-        list_in_slot(&mut run, &mut store, iterator_slot, vec![SlotValue::I64(5), SlotValue::I64(6)]);
+        list_in_slot(
+            &mut run,
+            &mut store,
+            iterator_slot,
+            vec![SlotValue::I64(5), SlotValue::I64(6)],
+        );
 
         let body_step = StepIdx::new(1);
 
@@ -156,14 +190,30 @@ pub mod reentry_harnesses {
 
         run.mark_running(body_step).unwrap();
         match body_state {
-            StepState::Pending => { run.mark_pending(body_step).unwrap(); }
-            StepState::Running => { run.mark_running(body_step).unwrap(); }
-            StepState::Succeeded => { run.mark_succeeded(body_step).unwrap(); }
-            StepState::Failed => { run.mark_failed(body_step).unwrap(); }
-            StepState::Skipped => { run.mark_skipped(body_step).unwrap(); }
-            StepState::Waiting => { run.mark_waiting(body_step).unwrap(); }
-            StepState::Asking => { run.mark_asking(body_step).unwrap(); }
-            StepState::Cancelled => { run.mark_cancelled(body_step).unwrap(); }
+            StepState::Pending => {
+                run.mark_pending(body_step).unwrap();
+            }
+            StepState::Running => {
+                run.mark_running(body_step).unwrap();
+            }
+            StepState::Succeeded => {
+                run.mark_succeeded(body_step).unwrap();
+            }
+            StepState::Failed => {
+                run.mark_failed(body_step).unwrap();
+            }
+            StepState::Skipped => {
+                run.mark_skipped(body_step).unwrap();
+            }
+            StepState::Waiting => {
+                run.mark_waiting(body_step).unwrap();
+            }
+            StepState::Asking => {
+                run.mark_asking(body_step).unwrap();
+            }
+            StepState::Cancelled => {
+                run.mark_cancelled(body_step).unwrap();
+            }
             _ => {}
         }
 
@@ -180,12 +230,15 @@ pub mod reentry_harnesses {
         match result {
             Ok(vb_core::EngineSignal::Continue) => {
                 let state = run.step_state(body_step);
-                kani::assert(state.is_ok(), "step_state should be readable after reduce_next");
+                kani::assert(
+                    state.is_ok(),
+                    "step_state should be readable after reduce_next",
+                );
             }
             Err(EngineError::InternalInvariantViolation { reason }) => {
                 kani::assert(
                     reason != "invalid_state_transition",
-                    "reduce_next re-entry should not fail with invalid_state_transition"
+                    "reduce_next re-entry should not fail with invalid_state_transition",
                 );
             }
             _ => {}
@@ -205,12 +258,17 @@ pub mod reentry_harnesses {
         let done = StepIdx::new(2);
 
         let source = SlotIdx::new(3);
-        list_in_slot(&mut run, &mut store, source, vec![
-            SlotValue::I64(10),
-            SlotValue::I64(20),
-            SlotValue::I64(30),
-            SlotValue::I64(40),
-        ]);
+        list_in_slot(
+            &mut run,
+            &mut store,
+            source,
+            vec![
+                SlotValue::I64(10),
+                SlotValue::I64(20),
+                SlotValue::I64(30),
+                SlotValue::I64(40),
+            ],
+        );
 
         let start_result = crate::primitives::collect::collect_start(
             &mut run,
@@ -239,14 +297,30 @@ pub mod reentry_harnesses {
 
         run.mark_running(body_step).unwrap();
         match body_state {
-            StepState::Pending => { run.mark_pending(body_step).unwrap(); }
-            StepState::Running => { run.mark_running(body_step).unwrap(); }
-            StepState::Succeeded => { run.mark_succeeded(body_step).unwrap(); }
-            StepState::Failed => { run.mark_failed(body_step).unwrap(); }
-            StepState::Skipped => { run.mark_skipped(body_step).unwrap(); }
-            StepState::Waiting => { run.mark_waiting(body_step).unwrap(); }
-            StepState::Asking => { run.mark_asking(body_step).unwrap(); }
-            StepState::Cancelled => { run.mark_cancelled(body_step).unwrap(); }
+            StepState::Pending => {
+                run.mark_pending(body_step).unwrap();
+            }
+            StepState::Running => {
+                run.mark_running(body_step).unwrap();
+            }
+            StepState::Succeeded => {
+                run.mark_succeeded(body_step).unwrap();
+            }
+            StepState::Failed => {
+                run.mark_failed(body_step).unwrap();
+            }
+            StepState::Skipped => {
+                run.mark_skipped(body_step).unwrap();
+            }
+            StepState::Waiting => {
+                run.mark_waiting(body_step).unwrap();
+            }
+            StepState::Asking => {
+                run.mark_asking(body_step).unwrap();
+            }
+            StepState::Cancelled => {
+                run.mark_cancelled(body_step).unwrap();
+            }
             _ => {}
         }
 
@@ -262,12 +336,15 @@ pub mod reentry_harnesses {
         match result {
             Ok(vb_core::EngineSignal::Continue) => {
                 let state = run.step_state(body_step);
-                kani::assert(state.is_ok(), "step_state should be readable after collect_next");
+                kani::assert(
+                    state.is_ok(),
+                    "step_state should be readable after collect_next",
+                );
             }
             Err(EngineError::InternalInvariantViolation { reason }) => {
                 kani::assert(
                     reason != "invalid_state_transition",
-                    "collect_next re-entry should not fail with invalid_state_transition"
+                    "collect_next re-entry should not fail with invalid_state_transition",
                 );
             }
             _ => {}
@@ -287,7 +364,12 @@ pub mod reentry_harnesses {
         let done = StepIdx::new(2);
 
         let source = SlotIdx::new(3);
-        list_in_slot(&mut run, &mut store, source, vec![SlotValue::I64(10), SlotValue::I64(20)]);
+        list_in_slot(
+            &mut run,
+            &mut store,
+            source,
+            vec![SlotValue::I64(10), SlotValue::I64(20)],
+        );
 
         let _ = crate::primitives::collect::collect_start(
             &mut run,
@@ -312,14 +394,30 @@ pub mod reentry_harnesses {
 
         run.mark_running(body_step).unwrap();
         match body_state {
-            StepState::Pending => { run.mark_pending(body_step).unwrap(); }
-            StepState::Running => { run.mark_running(body_step).unwrap(); }
-            StepState::Succeeded => { run.mark_succeeded(body_step).unwrap(); }
-            StepState::Failed => { run.mark_failed(body_step).unwrap(); }
-            StepState::Skipped => { run.mark_skipped(body_step).unwrap(); }
-            StepState::Waiting => { run.mark_waiting(body_step).unwrap(); }
-            StepState::Asking => { run.mark_asking(body_step).unwrap(); }
-            StepState::Cancelled => { run.mark_cancelled(body_step).unwrap(); }
+            StepState::Pending => {
+                run.mark_pending(body_step).unwrap();
+            }
+            StepState::Running => {
+                run.mark_running(body_step).unwrap();
+            }
+            StepState::Succeeded => {
+                run.mark_succeeded(body_step).unwrap();
+            }
+            StepState::Failed => {
+                run.mark_failed(body_step).unwrap();
+            }
+            StepState::Skipped => {
+                run.mark_skipped(body_step).unwrap();
+            }
+            StepState::Waiting => {
+                run.mark_waiting(body_step).unwrap();
+            }
+            StepState::Asking => {
+                run.mark_asking(body_step).unwrap();
+            }
+            StepState::Cancelled => {
+                run.mark_cancelled(body_step).unwrap();
+            }
             _ => {}
         }
 
@@ -335,12 +433,15 @@ pub mod reentry_harnesses {
         match result {
             Ok(vb_core::EngineSignal::Continue) => {
                 let state = run.step_state(body_step);
-                kani::assert(state.is_ok(), "step_state should be readable after collect_page");
+                kani::assert(
+                    state.is_ok(),
+                    "step_state should be readable after collect_page",
+                );
             }
             Err(EngineError::InternalInvariantViolation { reason }) => {
                 kani::assert(
                     reason != "invalid_state_transition",
-                    "collect_page re-entry should not fail with invalid_state_transition"
+                    "collect_page re-entry should not fail with invalid_state_transition",
                 );
             }
             _ => {}
@@ -358,7 +459,8 @@ pub mod reentry_harnesses {
         let done = StepIdx::new(2);
 
         let packed: i64 = (3_i64 << 32) | 1_i64;
-        run.write_slot(attempt_slot, SlotValue::I64(packed)).unwrap();
+        run.write_slot(attempt_slot, SlotValue::I64(packed))
+            .unwrap();
 
         let body_step = StepIdx::new(1);
 
@@ -370,14 +472,30 @@ pub mod reentry_harnesses {
 
         run.mark_running(body_step).unwrap();
         match body_state {
-            StepState::Pending => { run.mark_pending(body_step).unwrap(); }
-            StepState::Running => { run.mark_running(body_step).unwrap(); }
-            StepState::Succeeded => { run.mark_succeeded(body_step).unwrap(); }
-            StepState::Failed => { run.mark_failed(body_step).unwrap(); }
-            StepState::Skipped => { run.mark_skipped(body_step).unwrap(); }
-            StepState::Waiting => { run.mark_waiting(body_step).unwrap(); }
-            StepState::Asking => { run.mark_asking(body_step).unwrap(); }
-            StepState::Cancelled => { run.mark_cancelled(body_step).unwrap(); }
+            StepState::Pending => {
+                run.mark_pending(body_step).unwrap();
+            }
+            StepState::Running => {
+                run.mark_running(body_step).unwrap();
+            }
+            StepState::Succeeded => {
+                run.mark_succeeded(body_step).unwrap();
+            }
+            StepState::Failed => {
+                run.mark_failed(body_step).unwrap();
+            }
+            StepState::Skipped => {
+                run.mark_skipped(body_step).unwrap();
+            }
+            StepState::Waiting => {
+                run.mark_waiting(body_step).unwrap();
+            }
+            StepState::Asking => {
+                run.mark_asking(body_step).unwrap();
+            }
+            StepState::Cancelled => {
+                run.mark_cancelled(body_step).unwrap();
+            }
             _ => {}
         }
 
@@ -386,12 +504,15 @@ pub mod reentry_harnesses {
         match result {
             Ok(vb_core::EngineSignal::Continue) => {
                 let state = run.step_state(body_step);
-                kani::assert(state.is_ok(), "step_state should be readable after repeat_attempt");
+                kani::assert(
+                    state.is_ok(),
+                    "step_state should be readable after repeat_attempt",
+                );
             }
             Err(EngineError::InternalInvariantViolation { reason }) => {
                 kani::assert(
                     reason != "invalid_state_transition",
-                    "repeat_attempt re-entry should not fail with invalid_state_transition"
+                    "repeat_attempt re-entry should not fail with invalid_state_transition",
                 );
             }
             _ => {}
@@ -409,7 +530,8 @@ pub mod reentry_harnesses {
         let next_body = StepIdx::new(1);
 
         let packed: i64 = (3_i64 << 32) | 1_i64;
-        run.write_slot(attempt_slot, SlotValue::I64(packed)).unwrap();
+        run.write_slot(attempt_slot, SlotValue::I64(packed))
+            .unwrap();
 
         let body_step = StepIdx::new(1);
 
@@ -421,34 +543,47 @@ pub mod reentry_harnesses {
 
         run.mark_running(body_step).unwrap();
         match body_state {
-            StepState::Pending => { run.mark_pending(body_step).unwrap(); }
-            StepState::Running => { run.mark_running(body_step).unwrap(); }
-            StepState::Succeeded => { run.mark_succeeded(body_step).unwrap(); }
-            StepState::Failed => { run.mark_failed(body_step).unwrap(); }
-            StepState::Skipped => { run.mark_skipped(body_step).unwrap(); }
-            StepState::Waiting => { run.mark_waiting(body_step).unwrap(); }
-            StepState::Asking => { run.mark_asking(body_step).unwrap(); }
-            StepState::Cancelled => { run.mark_cancelled(body_step).unwrap(); }
+            StepState::Pending => {
+                run.mark_pending(body_step).unwrap();
+            }
+            StepState::Running => {
+                run.mark_running(body_step).unwrap();
+            }
+            StepState::Succeeded => {
+                run.mark_succeeded(body_step).unwrap();
+            }
+            StepState::Failed => {
+                run.mark_failed(body_step).unwrap();
+            }
+            StepState::Skipped => {
+                run.mark_skipped(body_step).unwrap();
+            }
+            StepState::Waiting => {
+                run.mark_waiting(body_step).unwrap();
+            }
+            StepState::Asking => {
+                run.mark_asking(body_step).unwrap();
+            }
+            StepState::Cancelled => {
+                run.mark_cancelled(body_step).unwrap();
+            }
             _ => {}
         }
 
-        let result = repeat_check(
-            &mut run,
-            attempt_slot,
-            done,
-            Some(next_body),
-            StepIdx::ZERO,
-        );
+        let result = repeat_check(&mut run, attempt_slot, done, Some(next_body), StepIdx::ZERO);
 
         match result {
             Ok(vb_core::EngineSignal::Continue) => {
                 let state = run.step_state(body_step);
-                kani::assert(state.is_ok(), "step_state should be readable after repeat_check");
+                kani::assert(
+                    state.is_ok(),
+                    "step_state should be readable after repeat_check",
+                );
             }
             Err(EngineError::InternalInvariantViolation { reason }) => {
                 kani::assert(
                     reason != "invalid_state_transition",
-                    "repeat_check re-entry should not fail with invalid_state_transition"
+                    "repeat_check re-entry should not fail with invalid_state_transition",
                 );
             }
             _ => {}

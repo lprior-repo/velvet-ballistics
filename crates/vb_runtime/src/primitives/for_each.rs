@@ -7,7 +7,9 @@ use vb_core::ids::{FanoutLimit, SlotIdx, StepIdx};
 use vb_core::value::SlotValue;
 use vb_core::value_store::ValueStore;
 
-use super::helpers::{empty_list, expect_list, jump_to, jump_to_body, jump_to_next, require_output, tail_items};
+use super::helpers::{
+    empty_list, expect_list, jump_to, jump_to_body, jump_to_next, require_output, tail_items,
+};
 
 /// Executes ForEachStart: validates input list, binds first item, sets up
 /// iterator state in the output slot as the remaining tail list.

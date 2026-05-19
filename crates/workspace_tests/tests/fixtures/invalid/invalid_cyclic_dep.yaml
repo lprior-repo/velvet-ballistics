@@ -1,22 +1,16 @@
 # Invalid Fixture: Malformed Together Branches
-# This workflow contains a together step with an invalid branch step index
-# that references a non-existent step, analogous to out-of-range dependencies
+# This workflow uses an integer list instead of proper TogetherBranch objects
+# for the together.branches field, causing a YAML-level parse failure
 ---
 version: velvet-ballastics/v1
-name: malformed_together_workflow
+name: malformed_together_branches
 
 when:
   manual: {}
 steps:
   - id: fanout
     together:
-      branches:
-        - label: branch0
-          steps:
-            - id: missing
-              set:
-                output: out
-                value: "1"
+      branches: [5]
   - id: done
     finish:
       result: 0
