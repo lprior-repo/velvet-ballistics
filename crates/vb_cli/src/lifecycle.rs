@@ -307,7 +307,7 @@ pub fn resume(run: RunId, journal: &FjallJournal) -> LifecycleResult<()> {
 /// - `LifecycleDuplicateRequest` if the run was already retried
 /// - `LifecycleStaleRequest` if the run state has advanced past the point where retry is valid
 pub fn retry(run: RunId, journal: &FjallJournal) -> LifecycleResult<()> {
-    let current_state = with_tracker(run, |t| Ok(t.get_state(run)))?;
+    let current_state = current_state_from_journal(run, journal)?;
 
     // Check for duplicate: if already retried, state is now Active (retry transitions Failed -> Active)
     if current_state == LifecycleState::Active {
@@ -396,7 +396,7 @@ pub fn retry(run: RunId, journal: &FjallJournal) -> LifecycleResult<()> {
 /// - `LifecycleDuplicateRequest` if the run already received an answer
 /// - `LifecycleStaleRequest` if the run state has advanced past the point where answer is valid
 pub fn answer(run: RunId, answer: String, journal: &FjallJournal) -> LifecycleResult<()> {
-    let current_state = with_tracker(run, |t| Ok(t.get_state(run)))?;
+    let current_state = current_state_from_journal(run, journal)?;
 
     // Check for duplicate: if already answered, state is Completed
     if current_state == LifecycleState::Completed {
