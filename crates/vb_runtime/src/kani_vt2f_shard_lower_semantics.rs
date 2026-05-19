@@ -84,6 +84,7 @@ impl ShardKernelState {
         let store_mode = match policy {
             RuntimePolicy::Relaxed => StoreMode::AlwaysPresent,
             RuntimePolicy::Strict | RuntimePolicy::Journaled => StoreMode::Missing,
+            _ => StoreMode::Missing,
         };
         Self::explicit(policy, store_mode)
     }

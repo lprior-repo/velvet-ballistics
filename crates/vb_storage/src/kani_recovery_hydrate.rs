@@ -11,7 +11,7 @@
 //! - PO-6: `check_policy_digests` returns Err on first mismatch
 //! - PO-7: `recover_runtime_summary` does not panic on non-empty events
 
-use crate::RecoveryError;
+use crate::recovery::RecoveryError;
 use crate::recovery::recover::{
     check_action_abi_digests, check_compiled_ir_digest, check_policy_digests,
     recover_runtime_summary,

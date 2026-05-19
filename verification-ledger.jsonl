@@ -1,0 +1,7 @@
+{"bead":"vb-y4pa","phase":"formal-verifier","gate":"workspace-build","result":"PASS","evidence":"148 crates compiled","timestamp":"2026-05-19T00:00:00Z"}
+{"bead":"vb-y4pa","phase":"formal-verifier","gate":"nextest-vb-runtime","result":"PASS","evidence":"1651 tests passed, 0 skipped","timestamp":"2026-05-19T00:00:00Z"}
+{"bead":"vb-y4pa","phase":"formal-verifier","gate":"kani-vb-runtime-reentry","result":"IN_PROGRESS","evidence":"6 harnesses compiled, symbolic execution ongoing","timestamp":"2026-05-19T00:00:00Z"}
+{"bead":"vb-y4pa","phase":"formal-verifier","gate":"kani-vb-proof-kernels","result":"PASS","evidence":"no harnesses found","timestamp":"2026-05-19T00:00:00Z"}
+{"bead":"vb-y4pa","phase":"formal-verifier","fix":"vb_storage-kani_recovery_hydrate","file":"crates/vb_storage/src/kani_recovery_hydrate.rs","line":14,"issue":"Wrong import path for RecoveryError","fix_applied":"use crate::recovery::RecoveryError","result":"PASS"}
+{"bead":"vb-y4pa","phase":"formal-verifier","fix":"reentry_proofs-StepState","file":"crates/vb_runtime/src/primitives/reentry_proofs.rs","issue":"6 non-exhaustive StepState matches","fix_applied":"Added _ => {} wildcard arms","result":"PASS"}
+{"bead":"vb-y4pa","phase":"formal-verifier","fix":"kani_vt2f_shard_semantics-RuntimePolicy","file":"crates/vb_runtime/src/kani_vt2f_shard_lower_semantics.rs","line":84,"issue":"Non-exhaustive RuntimePolicy match","fix_applied":"Added _ => StoreMode::Missing","result":"PASS"}

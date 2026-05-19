@@ -100,6 +100,7 @@ pub mod reentry_harnesses {
             StepState::Waiting => { run.mark_waiting(body_step).unwrap(); }
             StepState::Asking => { run.mark_asking(body_step).unwrap(); }
             StepState::Cancelled => { run.mark_cancelled(body_step).unwrap(); }
+            _ => {}
         }
 
         let result = for_each_next(
@@ -163,6 +164,7 @@ pub mod reentry_harnesses {
             StepState::Waiting => { run.mark_waiting(body_step).unwrap(); }
             StepState::Asking => { run.mark_asking(body_step).unwrap(); }
             StepState::Cancelled => { run.mark_cancelled(body_step).unwrap(); }
+            _ => {}
         }
 
         let result = reduce_next(
@@ -245,6 +247,7 @@ pub mod reentry_harnesses {
             StepState::Waiting => { run.mark_waiting(body_step).unwrap(); }
             StepState::Asking => { run.mark_asking(body_step).unwrap(); }
             StepState::Cancelled => { run.mark_cancelled(body_step).unwrap(); }
+            _ => {}
         }
 
         let result = collect_next(
@@ -317,6 +320,7 @@ pub mod reentry_harnesses {
             StepState::Waiting => { run.mark_waiting(body_step).unwrap(); }
             StepState::Asking => { run.mark_asking(body_step).unwrap(); }
             StepState::Cancelled => { run.mark_cancelled(body_step).unwrap(); }
+            _ => {}
         }
 
         let result = collect_page(
@@ -374,6 +378,7 @@ pub mod reentry_harnesses {
             StepState::Waiting => { run.mark_waiting(body_step).unwrap(); }
             StepState::Asking => { run.mark_asking(body_step).unwrap(); }
             StepState::Cancelled => { run.mark_cancelled(body_step).unwrap(); }
+            _ => {}
         }
 
         let result = repeat_attempt(&mut run, attempt_slot, body, done);
@@ -424,6 +429,7 @@ pub mod reentry_harnesses {
             StepState::Waiting => { run.mark_waiting(body_step).unwrap(); }
             StepState::Asking => { run.mark_asking(body_step).unwrap(); }
             StepState::Cancelled => { run.mark_cancelled(body_step).unwrap(); }
+            _ => {}
         }
 
         let result = repeat_check(
