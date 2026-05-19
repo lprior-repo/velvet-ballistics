@@ -1,0 +1,12 @@
+{"contract_clause":"POST-001","tests":["bridge_new_creates_channels_and_thread"],"proofs":["VB0253-COMPILE-001","VB0253-COMPILE-002"],"review":"contract-verification-review.md"}
+{"contract_clause":"POST-002","tests":["bridge_new_creates_channels_and_thread","bridge_send_without_connect_returns_not_connected_error"],"proofs":["VB0253-TEST-001","VB0253-PROPTEST-001"],"review":"contract-verification-review.md"}
+{"contract_clause":"POST-003","tests":["bridge_send_on_full_returns_error (new test)"],"proofs":["VB0253-TEST-002","VB0253-TEST-007","VB0253-PROPTEST-001"],"review":"contract-verification-review.md"}
+{"contract_clause":"POST-004","tests":["bridge_send_without_connect_returns_not_connected_error","bridge_connect_to_nonexistent_socket_fails"],"proofs":["VB0253-TEST-003"],"review":"contract-verification-review.md"}
+{"contract_clause":"POST-005","tests":["bridge_new_creates_channels_and_thread"],"proofs":["VB0253-TEST-004"],"review":"contract-verification-review.md"}
+{"contract_clause":"POST-006","tests":["bridge_connect_to_nonexistent_socket_fails"],"proofs":["VB0253-TEST-005"],"review":"contract-verification-review.md"}
+{"contract_clause":"PRE-001","tests":["bridge_new_creates_channels_and_thread"],"proofs":["VB0253-TEST-006","VB0253-COMPILE-001"],"review":"contract-verification-review.md"}
+{"contract_clause":"PRE-002","tests":["bridge_send_without_connect_returns_not_connected_error"],"proofs":["VB0253-TEST-003"],"review":"contract-verification-review.md"}
+{"contract_clause":"INV-001","tests":["bridge_new_creates_channels_and_thread"],"proofs":["VB0253-COMPILE-001","VB0253-COMPILE-002","VB0253-CLIPPY-001","VB0253-LINT-001"],"review":"contract-verification-review.md"}
+{"contract_clause":"INV-002","tests":["bridge_connect_to_nonexistent_socket_fails"],"proofs":["VB0253-TEST-005"],"review":"contract-verification-review.md"}
+{"contract_clause":"ERR-TX-001","tests":["bridge_send_on_full_returns_error (new test)"],"proofs":["VB0253-TEST-002","VB0253-TEST-007"],"review":"contract-verification-review.md"}
+{"contract_clause":"ERR-TX-002","tests":["bridge_send_without_connect_returns_not_connected_error"],"proofs":["VB0253-TEST-003"],"review":"contract-verification-review.md"}
