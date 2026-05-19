@@ -48,13 +48,13 @@ pub(crate) fn reject_unsupported_for_each_fields(
     Ok(())
 }
 
-pub(super) fn validate_together_shape(
+pub(super) fn validate_parallel_shape(
     body: &Yaml<'_>,
     index: usize,
     last_step: usize,
 ) -> Result<(), CompileError> {
     reject_last_non_finish(index, last_step)?;
-    reject_unknown_primitive_fields(body, index, "together", &["branches"])?;
+    reject_unknown_primitive_fields(body, index, "parallel", &["branches"])?;
     required_branch_targets(body, index, "branches")?;
     Ok(())
 }
@@ -72,13 +72,13 @@ pub(super) fn validate_collect_shape(
     Ok(())
 }
 
-pub(super) fn validate_reduce_shape(
+pub(super) fn validate_aggregate_shape(
     body: &Yaml<'_>,
     index: usize,
     last_step: usize,
 ) -> Result<(), CompileError> {
     reject_last_non_finish(index, last_step)?;
-    reject_unknown_primitive_fields(body, index, "reduce", &["input", "accumulator", "initial"])?;
+    reject_unknown_primitive_fields(body, index, "aggregate", &["input", "accumulator", "initial"])?;
     required_slot(body, index, "input")?;
     required_slot(body, index, "accumulator")?;
     let initial = required_step_field(body, index, "initial")?;

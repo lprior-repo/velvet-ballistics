@@ -598,7 +598,7 @@ steps:
 "#;
 
     /// Workflow with loop body step out of range (Gate 11)
-    /// The together branches point to step 2 (join) but join is at node 1, not step 2.
+    /// The parallel branches point to step 2 (join) but join is at node 1, not step 2.
     const VB_YD5X_MALFORMED_LOOP_BODY: &[u8] = br#"
 version: velvet-ballastics/v1
 name: bad_loop_body
@@ -606,7 +606,7 @@ when:
   manual: {}
 steps:
   - id: fanout
-    together:
+    parallel:
       branches: [2]
   - id: join
     finish:

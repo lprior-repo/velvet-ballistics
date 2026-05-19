@@ -23,9 +23,9 @@ const ALLOWED_STEP_FIELDS: &[&str] = &[
     "set",
     "choose",
     "for_each",
-    "together",
+    "parallel",
     "collect",
-    "reduce",
+    "aggregate",
     "repeat",
     "wait",
     "ask",
@@ -36,7 +36,7 @@ const ALLOWED_STEP_FIELDS: &[&str] = &[
 ];
 
 const STEP_PRIMITIVES: &[&str] = &[
-    "set", "do", "choose", "for_each", "together", "collect", "reduce", "repeat", "wait", "ask",
+    "set", "do", "choose", "for_each", "parallel", "collect", "aggregate", "repeat", "wait", "ask",
     "finish",
 ];
 
@@ -62,9 +62,9 @@ const RESERVED_IDS: &[&str] = &[
     "set",
     "choose",
     "for_each",
-    "together",
+    "parallel",
     "collect",
-    "reduce",
+    "aggregate",
     "repeat",
     "wait",
     "ask",
@@ -1885,9 +1885,9 @@ mod tests {
             ("set", FieldValue::Empty),
             ("choose", FieldValue::Empty),
             ("for_each", FieldValue::Empty),
-            ("together", FieldValue::Empty),
+            ("parallel", FieldValue::Empty),
             ("collect", FieldValue::Empty),
-            ("reduce", FieldValue::Empty),
+            ("aggregate", FieldValue::Empty),
             ("repeat", FieldValue::Empty),
             ("wait", FieldValue::Empty),
             ("ask", FieldValue::Empty),

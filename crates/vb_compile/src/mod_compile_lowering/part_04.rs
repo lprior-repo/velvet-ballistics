@@ -12,7 +12,7 @@ use vb_core::{
     WorkflowError, WorkflowParts,
 };
 
-pub(super) fn lower_canonical_reduce(
+pub(super) fn lower_canonical_aggregate(
     index: usize,
     id: StepIdx,
     input: &str,
@@ -20,17 +20,17 @@ pub(super) fn lower_canonical_reduce(
     body: &[vb_yaml::ast::StepAst],
     builder: &mut SlotCompiler,
 ) -> Result<(), CompileErrors> {
-    let input = slot_from_text(input, index, "reduce.input")?;
+    let input = slot_from_text(input, index, "aggregate.input")?;
     let accumulator = SlotIdx::new(1);
-    let initial = parse_i64_field(initial, index, "reduce.initial")?;
+    let initial = parse_i64_field(initial, index, "aggregate.initial")?;
     let initial = builder
         .push_constant(ConstValue::I64(initial))
         .map_err(|e| CompileErrors(vec![e]))?;
     let body_step =
-        checked_step_offset(id, 1, "reduce", "body").map_err(|e| CompileErrors(vec![e]))?;
+        checked_step_offset(id, 1, "aggregate", "body").map_err(|e| CompileErrors(vec![e]))?;
     let next_step =
-        checked_step_offset(id, 2, "reduce", "next").map_err(|e| CompileErrors(vec![e]))?;
-    let done = checked_step_offset(id, 3, "reduce", "done").map_err(|e| CompileErrors(vec![e]))?;
+        checked_step_offset(id, 2, "aggregate", "next").map_err(|e| CompileErrors(vec![e]))?;
+    let done = checked_step_offset(id, 3, "aggregate", "done").map_err(|e| CompileErrors(vec![e]))?;
     builder.record_slot(input);
     builder.record_slot(accumulator);
     builder.push_node(CompiledNode {

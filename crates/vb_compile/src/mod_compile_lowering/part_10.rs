@@ -115,7 +115,7 @@ pub(super) fn compile_for_each(
 }
 
 #[allow(dead_code)]
-pub(super) fn compile_together(
+pub(super) fn compile_parallel(
     body: &Yaml<'_>,
     index: usize,
     last_step: usize,
@@ -124,7 +124,7 @@ pub(super) fn compile_together(
     builder: &mut WorkflowBuilder,
 ) -> Result<Vec<CompiledNode>, CompileError> {
     reject_last_non_finish(index, last_step)?;
-    reject_unknown_primitive_fields(body, index, "together", &["branches"])?;
+    reject_unknown_primitive_fields(body, index, "parallel", &["branches"])?;
     let branch_sources = required_branch_targets(body, index, "branches")?;
     let mut branches = Vec::with_capacity(branch_sources.len());
     for source in branch_sources {
@@ -132,14 +132,14 @@ pub(super) fn compile_together(
     }
     let branch_count = u16::try_from(branches.len()).map_err(|_| {
         CompileError::PrimitiveLoweringLimitExceeded {
-            primitive: "together",
+            primitive: "parallel",
             field: "branches",
             value: branches.len(),
             limit: usize::from(u16::MAX),
         }
     })?;
     let accumulator = alloc_workflow_slot(builder)?;
-    let join = checked_step_offset(id, 1, "together", "join")?;
+    let join = checked_step_offset(id, 1, "parallel", "join")?;
     Ok(vec![
         CompiledNode {
             id,
@@ -200,7 +200,7 @@ pub(super) fn compile_collect(
 }
 
 #[allow(dead_code)]
-pub(super) fn compile_reduce(
+pub(super) fn compile_aggregate(
     body: &Yaml<'_>,
     index: usize,
     last_step: usize,
@@ -209,13 +209,13 @@ pub(super) fn compile_reduce(
     builder: &mut WorkflowBuilder,
 ) -> Result<Vec<CompiledNode>, CompileError> {
     reject_last_non_finish(index, last_step)?;
-    reject_unknown_primitive_fields(body, index, "reduce", &["input", "accumulator", "initial"])?;
+    reject_unknown_primitive_fields(body, index, "aggregate", &["input", "accumulator", "initial"])?;
     let input = required_slot(body, index, "input")?;
     let accumulator = required_slot(body, index, "accumulator")?;
     let initial = slot_value(required_step_field(body, index, "initial")?, index)?;
     let initial = builder.push_constant(initial)?;
-    let body_step = checked_step_offset(id, 1, "reduce", "body")?;
-    let done = checked_step_offset(id, 2, "reduce", "done")?;
+    let body_step = checked_step_offset(id, 1, "aggregate", "body")?;
+    let done = checked_step_offset(id, 2, "aggregate", "done")?;
     builder.record_slot(input);
     builder.record_slot(accumulator);
     let mut nodes = lower_reduce(

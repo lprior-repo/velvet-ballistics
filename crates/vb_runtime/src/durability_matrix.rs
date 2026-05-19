@@ -49,7 +49,7 @@ pub struct DurabilityRow {
 
 /// All primitives that must have a matrix row.
 pub const REQUIRED_PRIMITIVES: &[&str] = &[
-    "set", "do", "choose", "for_each", "together", "collect", "reduce", "repeat", "wait", "ask",
+    "set", "do", "choose", "for_each", "parallel", "collect", "aggregate", "repeat", "wait", "ask",
     "finish",
 ];
 
@@ -104,9 +104,9 @@ pub const DURABILITY_MATRIX: &[DurabilityRow] = &[
         replay_assertion: "Replay iterates the same items in the same order",
         test_evidence: &["crates/vb_runtime/src/shard/tests.rs"],
     },
-    // together — fully specified
+    // parallel — fully specified
     DurabilityRow {
-        primitive: "together",
+        primitive: "parallel",
         compiled_node_kind: "Together",
         journal_events: &[RecordKind::StepStarted, RecordKind::SlotWritten],
         storage_partition: StoragePartition::RuntimeJournal,
@@ -128,9 +128,9 @@ pub const DURABILITY_MATRIX: &[DurabilityRow] = &[
         replay_assertion: "Replay collects the same pages and produces identical output",
         test_evidence: &["crates/vb_runtime/src/shard/tests.rs"],
     },
-    // reduce — fully specified
+    // aggregate — fully specified
     DurabilityRow {
-        primitive: "reduce",
+        primitive: "aggregate",
         compiled_node_kind: "Reduce",
         journal_events: &[
             RecordKind::StepStarted,

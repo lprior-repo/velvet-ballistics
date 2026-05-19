@@ -711,6 +711,7 @@ mod tests {
         };
         let event = JournalEvent::RunResumed {
             run: RunId::new(403),
+            seq: EventSeq::ZERO,
             timestamp: Utc::now(),
         };
         apply_summary_event(&mut summary, &event);
@@ -735,6 +736,7 @@ mod tests {
         };
         let event = JournalEvent::RunRetried {
             run: RunId::new(404),
+            seq: EventSeq::ZERO,
             timestamp: Utc::now(),
         };
         apply_summary_event(&mut summary, &event);
@@ -759,6 +761,7 @@ mod tests {
         };
         let event = JournalEvent::RunAnswered {
             run: RunId::new(405),
+            seq: EventSeq::ZERO,
             slot_idx: SlotIdx::new(0),
             answer: ConstValue::Null,
             timestamp: Utc::now(),

@@ -20,9 +20,9 @@ const ALLOWED_STEP_FIELDS: &[&str] = &[
     "set",
     "choose",
     "for_each",
-    "together",
+    "parallel",
     "collect",
-    "reduce",
+    "aggregate",
     "repeat",
     "wait",
     "ask",
@@ -32,7 +32,7 @@ const ALLOWED_STEP_FIELDS: &[&str] = &[
     "try_again",
 ];
 const STEP_PRIMITIVES: &[&str] = &[
-    "set", "do", "choose", "for_each", "together", "collect", "reduce", "repeat", "wait", "ask",
+    "set", "do", "choose", "for_each", "parallel", "collect", "aggregate", "repeat", "wait", "ask",
     "finish",
 ];
 
@@ -719,7 +719,7 @@ mod fields_tests {
     #[test]
     fn all_step_primitives_are_accepted() {
         for prim in &[
-            "set", "do", "choose", "for_each", "together", "collect", "reduce", "repeat", "wait",
+            "set", "do", "choose", "for_each", "parallel", "collect", "aggregate", "repeat", "wait",
             "ask", "finish",
         ] {
             let step = make_step(vec![

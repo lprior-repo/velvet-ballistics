@@ -172,9 +172,9 @@ fn is_reserved_name(value: &str) -> bool {
 pub(super) fn primitive_code(primitive: &str) -> &'static str {
     match primitive {
         "for_each" => "INVALID_FOR_EACH",
-        "together" => "INVALID_TOGETHER",
+        "parallel" => "INVALID_TOGETHER",
         "collect" | "gather" => "INVALID_COLLECT",
-        "reduce" | "summarize" => "INVALID_REDUCE",
+        "aggregate" | "summarize" => "INVALID_REDUCE",
         "repeat" => "INVALID_REPEAT",
         "wait" => "INVALID_WAIT",
         "ask" => "INVALID_ASK",
@@ -199,9 +199,9 @@ pub(super) fn step_field_shape_code(field: &str) -> &'static str {
     match field {
         "choose" | "condition" | "on_true" | "on_false" => "INVALID_CHOOSE",
         "for_each" => "INVALID_FOR_EACH",
-        "together" | "branches" => "INVALID_TOGETHER",
+        "parallel" | "branches" => "INVALID_TOGETHER",
         "collect" => "INVALID_COLLECT",
-        "reduce" => "INVALID_REDUCE",
+        "aggregate" => "INVALID_REDUCE",
         "repeat" => "INVALID_REPEAT",
         "finish" | "result" => "INVALID_FINISH",
         _ => "TYPE_MISMATCH",

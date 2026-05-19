@@ -92,7 +92,7 @@ pub fn lower_together(
 ) -> Result<Vec<CompiledNode>, CompileError> {
     let branch_count = u16::try_from(branches.len()).map_err(|_| {
         CompileError::PrimitiveLoweringLimitExceeded {
-            primitive: "together",
+            primitive: "parallel",
             field: "branches",
             value: branches.len(),
             limit: usize::from(u16::MAX),

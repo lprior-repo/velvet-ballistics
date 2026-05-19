@@ -73,8 +73,8 @@ const PRIMITIVE_CASES: &[PrimitiveCase] = &[
         expected_slot_count: 2,
     },
     PrimitiveCase {
-        name: "together",
-        yaml_steps: "  - id: fanout\n    together:\n      branches:\n        - label: left\n          steps:\n            - id: left_set\n              set:\n                output: left\n                value: \"1\"\n        - label: right\n          steps:\n            - id: right_set\n              set:\n                output: right\n                value: \"2\"\n  - id: done\n    finish:\n      result: 0\n",
+        name: "parallel",
+        yaml_steps: "  - id: fanout\n    parallel:\n      branches:\n        - label: left\n          steps:\n            - id: left_set\n              set:\n                output: left\n                value: \"1\"\n        - label: right\n          steps:\n            - id: right_set\n              set:\n                output: right\n                value: \"2\"\n  - id: done\n    finish:\n      result: 0\n",
         expected_kinds: TOGETHER_KINDS,
         expected_slot_count: 1,
     },
@@ -85,8 +85,8 @@ const PRIMITIVE_CASES: &[PrimitiveCase] = &[
         expected_slot_count: 1,
     },
     PrimitiveCase {
-        name: "reduce",
-        yaml_steps: "  - id: fold\n    reduce:\n      variable: acc\n      input: \"0\"\n      initial: \"10\"\n      steps:\n        - id: add_one\n          set:\n            output: acc_out\n            value: \"1\"\n  - id: done\n    finish:\n      result: 0\n",
+        name: "aggregate",
+        yaml_steps: "  - id: fold\n    aggregate:\n      variable: acc\n      input: \"0\"\n      initial: \"10\"\n      steps:\n        - id: add_one\n          set:\n            output: acc_out\n            value: \"1\"\n  - id: done\n    finish:\n      result: 0\n",
         expected_kinds: REDUCE_KINDS,
         expected_slot_count: 2,
     },
@@ -253,9 +253,9 @@ fn compile_workflow_returns_step_field_shape_when_each_scoped_primitive_required
             ExpectedShapeError::CanonicalYamlField("foreach.variable"),
         ),
         (
-            "together",
-            "  - id: fanout\n    together:\n      branches:\n        - label: \"\"\n          steps: []\n  - id: done\n    finish:\n      result: 0\n",
-            ExpectedShapeError::CanonicalYamlField("together.branches[].label"),
+            "parallel",
+            "  - id: fanout\n    parallel:\n      branches:\n        - label: \"\"\n          steps: []\n  - id: done\n    finish:\n      result: 0\n",
+            ExpectedShapeError::CanonicalYamlField("parallel.branches[].label"),
         ),
         (
             "collect",
@@ -263,9 +263,9 @@ fn compile_workflow_returns_step_field_shape_when_each_scoped_primitive_required
             ExpectedShapeError::CanonicalYamlField("collect.source"),
         ),
         (
-            "reduce",
-            "  - id: fold\n    reduce:\n      variable: acc\n      input: \"0\"\n      initial: \"\"\n      steps: []\n  - id: done\n    finish:\n      result: 0\n",
-            ExpectedShapeError::CanonicalYamlField("reduce.initial"),
+            "aggregate",
+            "  - id: fold\n    aggregate:\n      variable: acc\n      input: \"0\"\n      initial: \"\"\n      steps: []\n  - id: done\n    finish:\n      result: 0\n",
+            ExpectedShapeError::CanonicalYamlField("aggregate.initial"),
         ),
         (
             "repeat",
@@ -667,7 +667,7 @@ fn public_lowering_helpers_return_exact_range_and_workflow_errors() -> Result<()
         }) => {
             assert_eq!(
                 (primitive, field, value, limit),
-                ("together", "branches", 65_536, 65_535)
+                ("parallel", "branches", 65_536, 65_535)
             );
         }
         other => {
@@ -1016,9 +1016,9 @@ fn assert_exact_primitive_shape(
     let parts = workflow.to_parts();
     match case_name {
         "for_each" => assert_exact_for_each(parts.nodes.as_ref()),
-        "together" => assert_exact_together(parts.nodes.as_ref()),
+        "parallel" => assert_exact_together(parts.nodes.as_ref()),
         "collect" => assert_exact_collect(parts.nodes.as_ref()),
-        "reduce" => assert_exact_reduce(parts.nodes.as_ref()),
+        "aggregate" => assert_exact_reduce(parts.nodes.as_ref()),
         "repeat" => assert_exact_repeat(parts.nodes.as_ref()),
         "wait" => assert_exact_wait_event(parts.nodes.as_ref()),
         "ask" => assert_exact_ask(parts.nodes.as_ref()),

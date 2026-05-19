@@ -216,8 +216,8 @@ pub enum StepPrimitive {
         /// Body steps.
         body: Vec<StepAst>,
     },
-    /// Left-fold reduction.
-    Reduce {
+    /// Left-fold aggregation.
+    Aggregate {
         /// Accumulator variable name.
         variable: String,
         /// Input collection expression.

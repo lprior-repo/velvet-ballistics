@@ -528,7 +528,7 @@ vars:
   data: [1, 2, 3]
 steps:
   - id: sum_values
-    reduce:
+    aggregate:
       variable: acc
       input: $vars.data
       initial: 0
@@ -622,16 +622,16 @@ steps:
     )
 }
 
-/// $attempt.number in `together` body must be rejected.
+/// $attempt.number in `parallel` body must be rejected.
 #[test]
-fn attempt_number_in_together_body_rejected_with_invalid_variable_scope() -> TestResult {
+fn attempt_number_in_parallel_body_rejected_with_invalid_variable_scope() -> TestResult {
     let source = br#"version: velvet-ballastics/v1
-name: together_attempt_error
+name: parallel_attempt_error
 when:
   manual: {}
 steps:
   - id: parallel_work
-    together:
+    parallel:
       branches:
         - label: branch1
           steps:

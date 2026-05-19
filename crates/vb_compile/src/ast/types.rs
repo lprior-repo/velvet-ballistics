@@ -108,12 +108,12 @@ pub enum StepPrimitiveAst {
     Choose,
     /// `for_each` bounded iteration primitive.
     ForEach,
-    /// `together` bounded fanout primitive.
-    Together,
+    /// `parallel` bounded fanout primitive.
+    Parallel,
     /// `collect` bounded collection primitive.
     Collect,
-    /// `reduce` bounded reduction primitive.
-    Reduce,
+    /// `aggregate` bounded reduction primitive.
+    Aggregate,
     /// `repeat` bounded repeat primitive.
     Repeat,
     /// `wait` boundary primitive.

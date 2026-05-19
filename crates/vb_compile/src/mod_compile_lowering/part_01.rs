@@ -91,7 +91,7 @@ pub(super) fn canonical_step_width(
         vb_yaml::ast::StepPrimitive::Ask { .. } => Ok(2),
         vb_yaml::ast::StepPrimitive::ForEach { body, .. } => body_width(body, 2),
         vb_yaml::ast::StepPrimitive::Collect { body, .. }
-        | vb_yaml::ast::StepPrimitive::Reduce { body, .. }
+        | vb_yaml::ast::StepPrimitive::Aggregate { body, .. }
         | vb_yaml::ast::StepPrimitive::Repeat { body, .. } => body_width(body, 3),
         vb_yaml::ast::StepPrimitive::Together { branches } => together_width(branches),
         _ => Ok(1),

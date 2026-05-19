@@ -4695,8 +4695,8 @@ mod tests {
         Ok(vec![
             ("minimal", minimal_workflow()?),
             ("repeat", repeat_workflow()?),
-            ("reduce", reduce_workflow()?),
-            ("together", together_workflow()?),
+            ("aggregate", reduce_workflow()?),
+            ("parallel", together_workflow()?),
             ("collect", collect_paged_workflow(2)?),
         ])
     }

@@ -94,6 +94,26 @@ where
     f(&mut tracker)
 }
 
+/// Derives the current lifecycle state for a run directly from the journal.
+///
+/// This is the primary state lookup used by lifecycle commands. Unlike
+/// `replay()` which builds global state, this derives state for a single run
+/// by reading its event sequence from the journal.
+fn current_state_from_journal(
+    run: RunId,
+    journal: &FjallJournal,
+) -> LifecycleResult<LifecycleState> {
+    let events = journal
+        .events_for_run(run)
+        .map_err(|e| CoreError::ReplayCorruption {
+            code: CoreError::REPLAY_CORRUPTION_CODE,
+            context: format!("failed to read events for run {:?}: {}", run, e),
+            timestamp: Utc::now(),
+            bead_id: Some(run),
+        })?;
+    Ok(derive_lifecycle_state_from_events(&events))
+}
+
 /// Cancels a running bead.
 ///
 /// # Arguments
@@ -109,7 +129,7 @@ where
 /// - `LifecycleStaleRequest` if the run state has advanced past the point where cancel is valid
 /// - `JournalWriteFailure` if the journal write fails
 pub fn cancel(run: RunId, journal: &FjallJournal) -> LifecycleResult<()> {
-    let current_state = with_tracker(run, |t| Ok(t.get_state(run)))?;
+    let current_state = current_state_from_journal(run, journal)?;
 
     // Check for duplicate: if already cancelled, return error BEFORE transition check
     if current_state == LifecycleState::Cancelled {
@@ -196,7 +216,7 @@ pub fn cancel(run: RunId, journal: &FjallJournal) -> LifecycleResult<()> {
 /// - `LifecycleDuplicateRequest` if the run was already resumed
 /// - `LifecycleStaleRequest` if the run state has advanced past the point where resume is valid
 pub fn resume(run: RunId, journal: &FjallJournal) -> LifecycleResult<()> {
-    let current_state = with_tracker(run, |t| Ok(t.get_state(run)))?;
+    let current_state = current_state_from_journal(run, journal)?;
 
     // Check for duplicate: if already active (resumed), return before other checks
     if current_state == LifecycleState::Active {
@@ -235,9 +255,23 @@ pub fn resume(run: RunId, journal: &FjallJournal) -> LifecycleResult<()> {
         });
     }
 
-    // Write the resume event (lifecycle events don't carry sequence)
+    // Calculate next_seq for the new event
+    let next_seq = journal
+        .events_for_run(run)
+        .map_err(|e| CoreError::JournalWriteFailure {
+            code: CoreError::JOURNAL_WRITE_FAILURE_CODE,
+            context: format!("failed to read events: {}", e),
+            timestamp: Utc::now(),
+            bead_id: Some(run),
+        })?
+        .last()
+        .map(|e| e.seq().increment())
+        .unwrap_or(EventSeq::ZERO);
+
+    // Write the resume event with the correct sequence
     let event = JournalEvent::RunResumed {
         run,
+        seq: next_seq,
         timestamp: Utc::now(),
     };
 
@@ -309,9 +343,23 @@ pub fn retry(run: RunId, journal: &FjallJournal) -> LifecycleResult<()> {
         });
     }
 
-    // Write the retry event
+    // Calculate next_seq for the new event
+    let next_seq = journal
+        .events_for_run(run)
+        .map_err(|e| CoreError::JournalWriteFailure {
+            code: CoreError::JOURNAL_WRITE_FAILURE_CODE,
+            context: format!("failed to read events: {}", e),
+            timestamp: Utc::now(),
+            bead_id: Some(run),
+        })?
+        .last()
+        .map(|e| e.seq().increment())
+        .unwrap_or(EventSeq::ZERO);
+
+    // Write the retry event with the correct sequence
     let event = JournalEvent::RunRetried {
         run,
+        seq: next_seq,
         timestamp: Utc::now(),
     };
 
@@ -395,6 +443,19 @@ pub fn answer(run: RunId, answer: String, journal: &FjallJournal) -> LifecycleRe
         });
     }
 
+    // Calculate next_seq for the new event
+    let next_seq = journal
+        .events_for_run(run)
+        .map_err(|e| CoreError::JournalWriteFailure {
+            code: CoreError::JOURNAL_WRITE_FAILURE_CODE,
+            context: format!("failed to read events: {}", e),
+            timestamp: Utc::now(),
+            bead_id: Some(run),
+        })?
+        .last()
+        .map(|e| e.seq().increment())
+        .unwrap_or(EventSeq::ZERO);
+
     // Write the answer event
     // Note: ConstValue doesn't support String, so we encode the answer as a symbol
     // In production, this would be properly encoded
@@ -405,6 +466,7 @@ pub fn answer(run: RunId, answer: String, journal: &FjallJournal) -> LifecycleRe
     );
     let event = JournalEvent::RunAnswered {
         run,
+        seq: next_seq,
         slot_idx: vb_core::ids::SlotIdx::new(0), // Default slot for answer
         answer: vb_core::value::ConstValue::Symbol(answer_symbol),
         timestamp: Utc::now(),

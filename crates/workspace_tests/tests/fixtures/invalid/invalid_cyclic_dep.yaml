@@ -1,15 +1,15 @@
-# Invalid Fixture: Malformed Together Branches
+# Invalid Fixture: Malformed Parallel Branches
 # This workflow uses an integer list instead of proper TogetherBranch objects
-# for the together.branches field, causing a YAML-level parse failure
+# for the parallel.branches field, causing a YAML-level parse failure
 ---
 version: velvet-ballastics/v1
-name: malformed_together_branches
+name: malformed_parallel_branches
 
 when:
   manual: {}
 steps:
   - id: fanout
-    together:
+    parallel:
       branches: [5]
   - id: done
     finish:
