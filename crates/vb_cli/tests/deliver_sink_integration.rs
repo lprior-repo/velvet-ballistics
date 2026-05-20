@@ -4,7 +4,7 @@ use std::process::Command;
 
 #[test]
 fn agent_context_deliver_file_writes_json_without_stdout() -> Result<(), String> {
-    let dir = tempfile::tempdir().map_err(|error| error.to_string())?;
+    let dir = deliver_tempdir()?;
     let deliver_path = dir.path().join("agent-context.jsonl");
     let target = format!("file:{}", path_text(&deliver_path)?);
 
@@ -34,7 +34,7 @@ fn agent_context_deliver_file_writes_json_without_stdout() -> Result<(), String>
 
 #[test]
 fn agent_context_deliver_rejects_unknown_flag_before_writing_file() -> Result<(), String> {
-    let dir = tempfile::tempdir().map_err(|error| error.to_string())?;
+    let dir = deliver_tempdir()?;
     let deliver_path = dir.path().join("agent-context.jsonl");
     let target = format!("file:{}", path_text(&deliver_path)?);
 
@@ -71,4 +71,14 @@ fn path_text(path: &std::path::Path) -> Result<String, String> {
     path.to_str()
         .map(str::to_owned)
         .ok_or_else(|| String::from("test path must be UTF-8"))
+}
+
+fn deliver_tempdir() -> Result<tempfile::TempDir, String> {
+    let root =
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../target/deliver-sink-tmp");
+    std::fs::create_dir_all(&root).map_err(|error| error.to_string())?;
+    tempfile::Builder::new()
+        .prefix("vb-deliver-")
+        .tempdir_in(root)
+        .map_err(|error| error.to_string())
 }

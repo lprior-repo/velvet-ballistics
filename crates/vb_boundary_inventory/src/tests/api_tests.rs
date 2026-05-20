@@ -35,7 +35,7 @@ fn discover_boundaries_rejects_nonexistent_workspace() {
 
 #[test]
 fn discover_boundaries_rejects_workspace_without_required_surfaces() {
-    let temp_dir = tempfile::tempdir().unwrap();
+    let temp_dir = test_tempdir();
     let workspace = WorkspaceRoot::new(temp_dir.path().to_path_buf());
     let result = discover_boundaries(workspace);
     assert_eq!(
@@ -46,7 +46,7 @@ fn discover_boundaries_rejects_workspace_without_required_surfaces() {
 
 #[test]
 fn discover_boundaries_rejects_incomplete_workspace() {
-    let temp_dir = tempfile::tempdir().unwrap();
+    let temp_dir = test_tempdir();
     // Create only some required surfaces
     assert_io_ok(
         fs::create_dir(temp_dir.path().join("crates")),
@@ -67,7 +67,7 @@ fn discover_boundaries_rejects_incomplete_workspace() {
 
 #[test]
 fn discover_boundaries_finds_markers_in_crates() {
-    let temp_dir = tempfile::tempdir().unwrap();
+    let temp_dir = test_tempdir();
     create_valid_workspace(temp_dir.path());
     // Create a file with a boundary marker
     let marker_file = temp_dir.path().join("crates/vb_core/src/lib.rs");
@@ -89,7 +89,7 @@ fn discover_boundaries_finds_markers_in_crates() {
 
 #[test]
 fn discover_boundaries_finds_markers_in_fuzz() {
-    let temp_dir = tempfile::tempdir().unwrap();
+    let temp_dir = test_tempdir();
     create_valid_workspace(temp_dir.path());
     let marker_file = temp_dir.path().join("fuzz/fuzz_target_1.rs");
     assert_io_ok(
@@ -114,7 +114,7 @@ fn discover_boundaries_finds_markers_in_fuzz() {
 
 #[test]
 fn discover_boundaries_finds_markers_in_scripts() {
-    let temp_dir = tempfile::tempdir().unwrap();
+    let temp_dir = test_tempdir();
     create_valid_workspace(temp_dir.path());
     let marker_file = temp_dir.path().join("scripts/build.sh");
     assert_io_ok(
@@ -135,7 +135,7 @@ fn discover_boundaries_finds_markers_in_scripts() {
 
 #[test]
 fn discover_boundaries_returns_empty_on_no_markers() {
-    let temp_dir = tempfile::tempdir().unwrap();
+    let temp_dir = test_tempdir();
     create_valid_workspace(temp_dir.path());
     // Create files without markers
     let regular_file = temp_dir.path().join("crates/vb_core/src/lib.rs");
@@ -158,7 +158,7 @@ fn discover_boundaries_returns_empty_on_no_markers() {
 
 #[test]
 fn discover_boundaries_detects_decoder_surface_omission() {
-    let temp_dir = tempfile::tempdir().unwrap();
+    let temp_dir = test_tempdir();
     create_valid_workspace(temp_dir.path());
     // Create boundary-surfaces.txt without decoder-byte-ingest-boundary
     assert_io_ok(
@@ -179,7 +179,7 @@ fn discover_boundaries_detects_decoder_surface_omission() {
 
 #[test]
 fn discover_boundaries_all_marker_types() {
-    let temp_dir = tempfile::tempdir().unwrap();
+    let temp_dir = test_tempdir();
     create_valid_workspace(temp_dir.path());
 
     let markers = [
@@ -387,7 +387,7 @@ fn required_evidence_unsafe_adjacent_risky() {
 
 #[test]
 fn validate_inventory_wrong_schema_version() {
-    let temp_dir = tempfile::tempdir().unwrap();
+    let temp_dir = test_tempdir();
     create_valid_workspace(temp_dir.path());
 
     let inventory = BoundaryInventory::new(Some(99), Vec::new(), None);
@@ -401,7 +401,7 @@ fn validate_inventory_wrong_schema_version() {
 
 #[test]
 fn validate_inventory_no_schema_version() {
-    let temp_dir = tempfile::tempdir().unwrap();
+    let temp_dir = test_tempdir();
     create_valid_workspace(temp_dir.path());
 
     let inventory = BoundaryInventory::new(None, Vec::new(), None);
@@ -415,7 +415,7 @@ fn validate_inventory_no_schema_version() {
 
 #[test]
 fn validate_inventory_duplicate_ids() {
-    let temp_dir = tempfile::tempdir().unwrap();
+    let temp_dir = test_tempdir();
     create_valid_workspace(temp_dir.path());
 
     let record = make_valid_record("same-id");
@@ -430,7 +430,7 @@ fn validate_inventory_duplicate_ids() {
 
 #[test]
 fn validate_inventory_unknown_class_error() {
-    let temp_dir = tempfile::tempdir().unwrap();
+    let temp_dir = test_tempdir();
     create_valid_workspace(temp_dir.path());
 
     let record = make_record_with_class(BoundaryClass::Unknown);
@@ -445,7 +445,7 @@ fn validate_inventory_unknown_class_error() {
 
 #[test]
 fn validate_inventory_missing_owner_error() {
-    let temp_dir = tempfile::tempdir().unwrap();
+    let temp_dir = test_tempdir();
     create_valid_workspace(temp_dir.path());
 
     let mut record = make_valid_record("test-id");
@@ -458,7 +458,7 @@ fn validate_inventory_missing_owner_error() {
 
 #[test]
 fn validate_inventory_missing_threat_error() {
-    let temp_dir = tempfile::tempdir().unwrap();
+    let temp_dir = test_tempdir();
     create_valid_workspace(temp_dir.path());
 
     let mut record = make_valid_record("test-id");
@@ -471,7 +471,7 @@ fn validate_inventory_missing_threat_error() {
 
 #[test]
 fn validate_inventory_missing_evidence_error() {
-    let temp_dir = tempfile::tempdir().unwrap();
+    let temp_dir = test_tempdir();
     create_valid_workspace(temp_dir.path());
 
     let mut record = make_valid_record("test-id");
@@ -487,7 +487,7 @@ fn validate_inventory_missing_evidence_error() {
 
 #[test]
 fn validate_inventory_stale_evidence_error() {
-    let temp_dir = tempfile::tempdir().unwrap();
+    let temp_dir = test_tempdir();
     create_valid_workspace(temp_dir.path());
 
     let mut record = make_valid_record("test-id");
@@ -500,7 +500,7 @@ fn validate_inventory_stale_evidence_error() {
 
 #[test]
 fn validate_inventory_valid_single_record() {
-    let temp_dir = tempfile::tempdir().unwrap();
+    let temp_dir = test_tempdir();
     create_valid_workspace(temp_dir.path());
 
     let record = make_valid_record("test-id");
@@ -512,7 +512,7 @@ fn validate_inventory_valid_single_record() {
 
 #[test]
 fn validate_inventory_valid_multiple_records() {
-    let temp_dir = tempfile::tempdir().unwrap();
+    let temp_dir = test_tempdir();
     create_valid_workspace(temp_dir.path());
 
     let record1 = make_valid_record("test-id-1");
@@ -592,7 +592,7 @@ fn required_evidence_external_bytes_boundary() {
 
 #[test]
 fn validate_inventory_empty_records_valid() {
-    let temp_dir = tempfile::tempdir().unwrap();
+    let temp_dir = test_tempdir();
     create_valid_workspace(temp_dir.path());
 
     let inventory = BoundaryInventory::new(Some(1), Vec::new(), None);
@@ -667,7 +667,7 @@ fn required_evidence_safe_boundary_missing_path() {
 
 #[test]
 fn validate_inventory_waived_requires_waiver() {
-    let temp_dir = tempfile::tempdir().unwrap();
+    let temp_dir = test_tempdir();
     create_valid_workspace(temp_dir.path());
 
     let mut record = make_valid_record("test-id");
@@ -684,7 +684,7 @@ fn validate_inventory_waived_requires_waiver() {
 
 #[test]
 fn validate_inventory_waived_with_waiver() {
-    let temp_dir = tempfile::tempdir().unwrap();
+    let temp_dir = test_tempdir();
     create_valid_workspace(temp_dir.path());
 
     let mut record = make_valid_record("test-id");
@@ -769,6 +769,20 @@ fn inventory_completion_status_third_party_unsafe_allowed() {
 // =============================================================================
 // Helper functions
 // =============================================================================
+
+fn test_tempdir() -> tempfile::TempDir {
+    let temp_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../target/boundary-inventory-tmp");
+    assert_io_ok(fs::create_dir_all(&temp_root), "create test temp root");
+    let dir = tempfile::Builder::new()
+        .prefix("boundary-inventory-")
+        .tempdir_in(&temp_root);
+    assert!(dir.is_ok(), "tempdir succeeds: {dir:?}");
+    match dir {
+        Ok(dir) => dir,
+        Err(_) => std::process::abort(),
+    }
+}
 
 fn create_valid_workspace(path: &std::path::Path) {
     assert_io_ok(fs::create_dir(path.join("crates")), "create crates dir");

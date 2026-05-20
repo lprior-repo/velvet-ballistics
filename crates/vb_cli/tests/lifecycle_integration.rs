@@ -71,7 +71,13 @@ fn finished_workflow() -> CompiledWorkflow {
 }
 
 fn temp_journal() -> (tempfile::TempDir, FjallJournal) {
-    let dir = tempfile::tempdir().expect("tempdir must succeed");
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../target/lifecycle-integration-tmp");
+    std::fs::create_dir_all(&root).expect("target temp root must exist");
+    let dir = tempfile::Builder::new()
+        .prefix("vb-lifecycle-")
+        .tempdir_in(root)
+        .expect("tempdir must succeed");
     let journal = FjallJournal::open(dir.path(), None).expect("journal must open");
     (dir, journal)
 }
@@ -1302,7 +1308,8 @@ fn replay_full_journal_reconstructs_bit_identical_state() {
         "post-crash lifecycle state must match pre-crash state"
     );
     assert_eq!(
-        post_crash_run_state.is_terminal(), pre_crash_run_state.is_terminal(),
+        post_crash_run_state.is_terminal(),
+        pre_crash_run_state.is_terminal(),
         "post-crash is_terminal must match pre-crash"
     );
 }

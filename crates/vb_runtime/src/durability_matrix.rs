@@ -49,7 +49,16 @@ pub struct DurabilityRow {
 
 /// All primitives that must have a matrix row.
 pub const REQUIRED_PRIMITIVES: &[&str] = &[
-    "set", "do", "choose", "for_each", "parallel", "collect", "aggregate", "repeat", "wait", "ask",
+    "set",
+    "do",
+    "choose",
+    "for_each",
+    "parallel",
+    "collect",
+    "aggregate",
+    "repeat",
+    "wait",
+    "ask",
     "finish",
 ];
 

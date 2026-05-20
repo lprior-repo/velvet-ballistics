@@ -63,7 +63,16 @@ fn write_file(path: &std::path::Path, bytes: &[u8]) {
 }
 
 fn tempdir() -> tempfile::TempDir {
-    let dir = tempfile::tempdir();
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../target/structured-reconciliation-tmp");
+    let root_ready = std::fs::create_dir_all(&root);
+    assert!(
+        root_ready.is_ok(),
+        "temp root must be available: {root_ready:?}"
+    );
+    let dir = tempfile::Builder::new()
+        .prefix("vb-structured-")
+        .tempdir_in(root);
     assert!(dir.is_ok(), "tempdir must be available: {dir:?}");
     dir.unwrap_or_else(|_| std::process::abort())
 }

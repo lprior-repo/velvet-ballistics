@@ -50,7 +50,7 @@ fn trybuild_compile_fail_tests_fails_when_compile_fail_fixture_dir_is_empty() ->
 {
     let temp_dir = tempfile::Builder::new()
         .prefix("vb_codegen_empty_compile_fail_")
-        .tempdir()
+        .tempdir_in(trybuild_test_temp_root()?)
         .map_err(|e| e.to_string())?;
     let error = require_non_empty_compile_fail_fixtures(temp_dir.path())
         .err()
@@ -63,6 +63,13 @@ fn trybuild_compile_fail_tests_fails_when_compile_fail_fixture_dir_is_empty() ->
         )
     );
     Ok(())
+}
+
+fn trybuild_test_temp_root() -> Result<std::path::PathBuf, String> {
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../target/vb-codegen-trybuild-tmp");
+    std::fs::create_dir_all(&root).map_err(|e| e.to_string())?;
+    Ok(root)
 }
 
 #[test]

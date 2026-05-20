@@ -21,6 +21,15 @@ use vb_core::workflow::{
 };
 use vb_storage::{CompiledIrRecord, EventSeq, JournalEvent};
 
+fn main_test_tempdir() -> std::io::Result<tempfile::TempDir> {
+    let root =
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../target/vb-cli-main-tests-tmp");
+    std::fs::create_dir_all(&root)?;
+    tempfile::Builder::new()
+        .prefix("vb-cli-main-")
+        .tempdir_in(root)
+}
+
 #[test]
 fn parse_ai_context_accepts_run_id_db_and_json() {
     let parsed = parse_args(&args(&[
@@ -541,7 +550,7 @@ fn map_runtime_inputs_rejects_excess_slots_with_exact_variant() {
 fn journaled_run_writes_storage_events() {
     let compiled = finish_workflow();
     assert!(compiled.is_some(), "test workflow should compile");
-    let dir = tempfile::tempdir();
+    let dir = main_test_tempdir();
     assert!(dir.is_ok(), "test directory should be available: {dir:?}");
 
     if let (Some(compiled), Ok(dir)) = (compiled, dir) {
@@ -584,7 +593,7 @@ fn journaled_run_writes_storage_events() {
 fn ipc_storage_resolver_loads_compiled_ir_from_journal() {
     let compiled = finish_workflow();
     assert!(compiled.is_some(), "test workflow should compile");
-    let dir = tempfile::tempdir();
+    let dir = main_test_tempdir();
     assert!(dir.is_ok(), "test directory should be available: {dir:?}");
 
     if let (Some(compiled), Ok(dir)) = (compiled, dir) {
@@ -624,7 +633,7 @@ fn ipc_storage_resolver_loads_compiled_ir_from_journal() {
 
 #[test]
 fn ipc_storage_resolver_returns_not_found_for_missing_digest() {
-    let dir = tempfile::tempdir();
+    let dir = main_test_tempdir();
     assert!(dir.is_ok(), "test directory should be available: {dir:?}");
     if let Ok(dir) = dir {
         let journal = vb_storage::FjallJournal::open(dir.path(), None);

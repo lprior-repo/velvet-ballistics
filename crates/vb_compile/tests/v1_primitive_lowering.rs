@@ -1033,7 +1033,7 @@ fn node_at(nodes: &[CompiledNode], index: usize) -> Result<&CompiledNode, String
 }
 
 fn assert_exact_for_each(nodes: &[CompiledNode]) -> Result<(), String> {
-    assert_set_const_node(nodes, &[], 1, Some(1), None, 0, 1)?;
+    assert_set_const_node(nodes, &[], 1, Some(1), Some(2), 0, 1)?;
     assert_finish_node(nodes, 3, 0)?;
     match &node_at(nodes, 0)?.kind {
         CompiledNodeKind::ForEachStart {

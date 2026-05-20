@@ -160,7 +160,13 @@ fn test_config() -> vb_runtime::shard::ShardConfig {
 }
 
 fn temp_journal() -> Option<(tempfile::TempDir, Arc<vb_storage::FjallJournal>)> {
-    let dir = tempfile::tempdir().ok()?;
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../target/admission-evidence-tmp");
+    std::fs::create_dir_all(&root).ok()?;
+    let dir = tempfile::Builder::new()
+        .prefix("vb-admission-")
+        .tempdir_in(root)
+        .ok()?;
     let journal = vb_storage::FjallJournal::open(dir.path(), None).ok()?;
     Some((dir, Arc::new(journal)))
 }

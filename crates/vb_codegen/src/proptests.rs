@@ -41,7 +41,7 @@ mod proptests {
     fn generated_harness_paths(name: &str) -> Result<GeneratedHarness, String> {
         let temp_dir = tempfile::Builder::new()
             .prefix(&format!("vb_codegen_prop_equiv_{name}_"))
-            .tempdir()
+            .tempdir_in(codegen_prop_temp_root()?)
             .map_err(|e| e.to_string())?;
         let source_path = temp_dir.path().join("generated_equivalence.rs");
         let binary_path = temp_dir.path().join("generated_equivalence_bin");
@@ -50,6 +50,14 @@ mod proptests {
             source_path,
             binary_path,
         })
+    }
+
+    #[cfg(not(miri))]
+    fn codegen_prop_temp_root() -> Result<std::path::PathBuf, String> {
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../target/vb-codegen-proptest-tmp");
+        std::fs::create_dir_all(&root).map_err(|e| e.to_string())?;
+        Ok(root)
     }
 
     #[cfg(not(miri))]

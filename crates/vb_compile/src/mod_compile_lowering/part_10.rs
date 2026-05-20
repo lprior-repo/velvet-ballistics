@@ -209,7 +209,12 @@ pub(super) fn compile_aggregate(
     builder: &mut WorkflowBuilder,
 ) -> Result<Vec<CompiledNode>, CompileError> {
     reject_last_non_finish(index, last_step)?;
-    reject_unknown_primitive_fields(body, index, "aggregate", &["input", "accumulator", "initial"])?;
+    reject_unknown_primitive_fields(
+        body,
+        index,
+        "aggregate",
+        &["input", "accumulator", "initial"],
+    )?;
     let input = required_slot(body, index, "input")?;
     let accumulator = required_slot(body, index, "accumulator")?;
     let initial = slot_value(required_step_field(body, index, "initial")?, index)?;

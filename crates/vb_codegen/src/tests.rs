@@ -72,6 +72,13 @@ mod tests {
         })
     }
 
+    fn codegen_test_temp_root() -> Result<std::path::PathBuf, String> {
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../target/vb-codegen-test-tmp");
+        std::fs::create_dir_all(&root).map_err(|e| e.to_string())?;
+        Ok(root)
+    }
+
     fn assert_workflow_step_names_valid(
         name: &str,
         workflow_result: Result<CompiledWorkflow, String>,
@@ -440,7 +447,7 @@ mod tests {
                 action.get(),
                 input.get()
             ))
-            .tempdir()
+            .tempdir_in(codegen_test_temp_root()?)
             .map_err(|e| e.to_string())?;
         let source_path = temp_dir.path().join("generated_action_suspend.rs");
         let binary_path = temp_dir.path().join("generated_action_suspend_bin");
@@ -483,7 +490,7 @@ mod tests {
         let generated = emit_rust_workflow(workflow).map_err(|e| e.to_string())?;
         let temp_dir = tempfile::Builder::new()
             .prefix(&format!("vb_codegen_drive_{}_{}", std::process::id(), name))
-            .tempdir()
+            .tempdir_in(codegen_test_temp_root()?)
             .map_err(|e| e.to_string())?;
         let source_path = temp_dir.path().join("generated_drive.rs");
         let binary_path = temp_dir.path().join("generated_drive_bin");
@@ -565,7 +572,7 @@ mod tests {
         let generated = emit_rust_workflow(workflow).map_err(|e| e.to_string())?;
         let temp_dir = tempfile::Builder::new()
             .prefix(&format!("vb_codegen_step_{}_{}", std::process::id(), name))
-            .tempdir()
+            .tempdir_in(codegen_test_temp_root()?)
             .map_err(|e| e.to_string())?;
         let source_path = temp_dir.path().join("generated_step.rs");
         let binary_path = temp_dir.path().join("generated_step_bin");
@@ -604,7 +611,7 @@ mod tests {
         let generated = emit_rust_workflow(workflow).map_err(|e| e.to_string())?;
         let temp_dir = tempfile::Builder::new()
             .prefix(&format!("vb_codegen_trace_{}_{}", std::process::id(), name))
-            .tempdir()
+            .tempdir_in(codegen_test_temp_root()?)
             .map_err(|e| e.to_string())?;
         let source_path = temp_dir.path().join("generated_trace.rs");
         let binary_path = temp_dir.path().join("generated_trace_bin");
@@ -3022,7 +3029,7 @@ mod tests {
         let workflow = minimal_workflow()?;
         let temp_dir = tempfile::Builder::new()
             .prefix(&format!("vb_codegen_fixture_test_{}", std::process::id()))
-            .tempdir()
+            .tempdir_in(codegen_test_temp_root()?)
             .map_err(|e| e.to_string())?;
         let fixture_path = temp_dir.path().join("fixture.rs");
         // When emit_trybuild_fixture writes the file
@@ -4996,7 +5003,7 @@ mod tests {
                 std::process::id(),
                 name
             ))
-            .tempdir()
+            .tempdir_in(codegen_test_temp_root()?)
             .map_err(|e| e.to_string())?;
         let source_path = temp_dir.path().join("generated_full_obs.rs");
         let binary_path = temp_dir.path().join("generated_full_obs_bin");
@@ -6029,7 +6036,7 @@ fn collect_extra_text(extra: Option<CollectState>, run_id: u64, collector_slot: 
                 "vb_codegen_root_accessor_test_{}",
                 std::process::id()
             ))
-            .tempdir()
+            .tempdir_in(codegen_test_temp_root()?)
             .map_err(|e| e.to_string())?;
         compile_check_generated_rust(&source, temp_dir.path()).map_err(|e| e.to_string())
     }
@@ -6048,7 +6055,7 @@ fn collect_extra_text(extra: Option<CollectState>, run_id: u64, collector_slot: 
         let source = emit_rust_workflow(&workflow).map_err(|e| e.to_string())?;
         let temp_dir = tempfile::Builder::new()
             .prefix(&format!("vb_codegen_test_{}", std::process::id()))
-            .tempdir()
+            .tempdir_in(codegen_test_temp_root()?)
             .map_err(|e| e.to_string())?;
         compile_check_generated_rust(&source, temp_dir.path()).map_err(|e| e.to_string())
     }

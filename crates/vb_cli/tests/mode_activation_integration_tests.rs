@@ -115,7 +115,13 @@ fn temp_input_bin() -> tempfile::TempDir {
 }
 
 fn must_tempdir(message: &str) -> tempfile::TempDir {
-    let dir = tempfile::tempdir();
+    let root =
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../target/mode-activation-tmp");
+    let root_ready = fs::create_dir_all(&root);
+    assert!(root_ready.is_ok(), "{message}: {root_ready:?}");
+    let dir = tempfile::Builder::new()
+        .prefix("vb-mode-activation-")
+        .tempdir_in(root);
     assert!(dir.is_ok(), "{message}: {dir:?}");
     match dir {
         Ok(dir) => dir,
@@ -349,13 +355,14 @@ fn bench_run_does_not_fail_with_storage_error() {
     // INV-001: bench-run must NOT produce StorageError (5) even with --db
     let dir = temp_workflow(VALID_WORKFLOW);
     let workflow = dir.path().join("workflow.yaml");
+    let missing_db = dir.path().join("nonexistent_journal_path");
 
     let output = run_bin([
         "velvet-ballastics",
         "bench-run",
         &workflow.to_string_lossy(),
         "--db",
-        "/tmp/nonexistent_journal_path",
+        &missing_db.to_string_lossy(),
     ]);
 
     let stderr = String::from_utf8_lossy(&output.stderr);
@@ -694,8 +701,10 @@ fn all_pure_commands_do_not_produce_storage_error() {
     // This is a meta-test that verifies the mode classification is correct.
     let dir = temp_workflow(VALID_WORKFLOW);
     let workflow = dir.path().join("workflow.yaml");
+    let out_path = dir.path().join("out.vbir");
 
     let workflow_path = workflow.to_string_lossy().into_owned();
+    let out_path = out_path.to_string_lossy().into_owned();
     let pure_commands: Vec<(&str, Vec<&str>)> = vec![
         ("validate", vec!["validate", &workflow_path]),
         (
@@ -711,7 +720,7 @@ fn all_pure_commands_do_not_produce_storage_error() {
                 "--emit",
                 "ir",
                 "--out",
-                "/tmp/out.vbir",
+                &out_path,
             ],
         ),
         ("graph", vec!["graph", &workflow_path]),

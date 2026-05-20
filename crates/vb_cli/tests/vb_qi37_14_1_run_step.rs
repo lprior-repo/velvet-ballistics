@@ -57,6 +57,15 @@ fn forced_assertion_failure() -> bool {
     false
 }
 
+fn run_step_tempdir() -> std::io::Result<tempfile::TempDir> {
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../target/run-step-integration-tmp");
+    std::fs::create_dir_all(&root)?;
+    tempfile::Builder::new()
+        .prefix("vb-run-step-")
+        .tempdir_in(root)
+}
+
 fn write_test_file(path: &std::path::Path, contents: &[u8]) -> bool {
     match std::fs::write(path, contents) {
         Ok(()) => true,
@@ -122,7 +131,7 @@ fn parse_json(output: &std::process::Output) -> serde_json::Value {
 /// VB-PRE001-CLI: `run --step` rejects durability=strict
 #[test]
 fn run_step_rejects_durability_strict() {
-    let dir = match tempfile::tempdir() {
+    let dir = match run_step_tempdir() {
         Ok(dir) => dir,
         Err(err) => {
             assert!(forced_assertion_failure(), "tempdir failed: {err}");
@@ -175,7 +184,7 @@ fn run_step_rejects_durability_strict() {
 /// VB-PRE001-CLI: `run --step` rejects durability=journaled
 #[test]
 fn run_step_rejects_durability_journaled() {
-    let dir = match tempfile::tempdir() {
+    let dir = match run_step_tempdir() {
         Ok(dir) => dir,
         Err(err) => {
             assert!(forced_assertion_failure(), "tempdir failed: {err}");
@@ -226,7 +235,7 @@ fn run_step_rejects_durability_journaled() {
 /// VB-PRE002-CLI: `run --step` with out-of-bounds step ID fails with step_not_found
 #[test]
 fn run_step_invalid_step_id_reports_not_found() {
-    let dir = match tempfile::tempdir() {
+    let dir = match run_step_tempdir() {
         Ok(dir) => dir,
         Err(err) => {
             assert!(forced_assertion_failure(), "tempdir failed: {err}");
@@ -279,7 +288,7 @@ fn run_step_invalid_step_id_reports_not_found() {
 /// the contract POST-008 requirement for consistent error stream handling.
 #[test]
 fn run_step_invalid_step_id_json_includes_error_details() {
-    let dir = match tempfile::tempdir() {
+    let dir = match run_step_tempdir() {
         Ok(dir) => dir,
         Err(err) => {
             assert!(forced_assertion_failure(), "tempdir failed: {err}");
@@ -342,7 +351,7 @@ fn run_step_invalid_step_id_json_includes_error_details() {
 /// VB-PRE003-CLI: `run --step` with invalid YAML fails with compile error
 #[test]
 fn run_step_compile_error_reports_failure() {
-    let dir = match tempfile::tempdir() {
+    let dir = match run_step_tempdir() {
         Ok(dir) => dir,
         Err(err) => {
             assert!(forced_assertion_failure(), "tempdir failed: {err}");
@@ -387,7 +396,7 @@ fn run_step_compile_error_reports_failure() {
 /// VB-PRE003-CLI: Compile error in JSON format includes error details
 #[test]
 fn run_step_compile_error_json_includes_errors() {
-    let dir = match tempfile::tempdir() {
+    let dir = match run_step_tempdir() {
         Ok(dir) => dir,
         Err(err) => {
             assert!(forced_assertion_failure(), "tempdir failed: {err}");
@@ -441,7 +450,7 @@ fn run_step_compile_error_json_includes_errors() {
 /// VB-PRE005-CLI: `run --step` accepts --json flag and produces valid JSON
 #[test]
 fn run_step_json_flag_produces_valid_json() {
-    let dir = match tempfile::tempdir() {
+    let dir = match run_step_tempdir() {
         Ok(dir) => dir,
         Err(err) => {
             assert!(forced_assertion_failure(), "tempdir failed: {err}");
@@ -494,7 +503,7 @@ fn run_step_json_flag_produces_valid_json() {
 /// VB-PRE005-CLI: `run --step` accepts --jsonl flag and produces valid JSONL
 #[test]
 fn run_step_jsonl_flag_produces_valid_jsonl() {
-    let dir = match tempfile::tempdir() {
+    let dir = match run_step_tempdir() {
         Ok(dir) => dir,
         Err(err) => {
             assert!(forced_assertion_failure(), "tempdir failed: {err}");
@@ -551,7 +560,7 @@ fn run_step_jsonl_flag_produces_valid_jsonl() {
 /// VB-PRE005-CLI: `run --step` text output is human-readable
 #[test]
 fn run_step_text_output_is_human_readable() {
-    let dir = match tempfile::tempdir() {
+    let dir = match run_step_tempdir() {
         Ok(dir) => dir,
         Err(err) => {
             assert!(forced_assertion_failure(), "tempdir failed: {err}");
@@ -606,7 +615,7 @@ fn run_step_text_output_is_human_readable() {
 /// VB-POST001-CLI: `run --step` executes exactly one step and reports correct step index
 #[test]
 fn run_step_executes_single_step_and_reports_correct_index() {
-    let dir = match tempfile::tempdir() {
+    let dir = match run_step_tempdir() {
         Ok(dir) => dir,
         Err(err) => {
             assert!(forced_assertion_failure(), "tempdir failed: {err}");
@@ -658,7 +667,7 @@ fn run_step_executes_single_step_and_reports_correct_index() {
 /// VB-POST002-CLI: JSON output has all required schema fields (step, kind, signal, deltas)
 #[test]
 fn run_step_json_output_has_required_schema_fields() {
-    let dir = match tempfile::tempdir() {
+    let dir = match run_step_tempdir() {
         Ok(dir) => dir,
         Err(err) => {
             assert!(forced_assertion_failure(), "tempdir failed: {err}");
@@ -736,7 +745,7 @@ fn run_step_json_output_has_required_schema_fields() {
 /// VB-POST002-CLI: JSONL output has valid line-per-object format
 #[test]
 fn run_step_jsonl_output_is_valid_jsonl() {
-    let dir = match tempfile::tempdir() {
+    let dir = match run_step_tempdir() {
         Ok(dir) => dir,
         Err(err) => {
             assert!(forced_assertion_failure(), "tempdir failed: {err}");
@@ -806,7 +815,7 @@ fn run_step_jsonl_output_is_valid_jsonl() {
 /// VB-POST003-CLI: JSON output includes step index, kind, signal
 #[test]
 fn run_step_json_output_includes_step_kind_signal() {
-    let dir = match tempfile::tempdir() {
+    let dir = match run_step_tempdir() {
         Ok(dir) => dir,
         Err(err) => {
             assert!(forced_assertion_failure(), "tempdir failed: {err}");
@@ -866,7 +875,7 @@ fn run_step_json_output_includes_step_kind_signal() {
 /// VB-POST004-CLI: delta JSON has correct pc_delta structure with before/after
 #[test]
 fn run_step_delta_json_pc_delta_has_before_and_after() {
-    let dir = match tempfile::tempdir() {
+    let dir = match run_step_tempdir() {
         Ok(dir) => dir,
         Err(err) => {
             assert!(forced_assertion_failure(), "tempdir failed: {err}");
@@ -927,7 +936,7 @@ fn run_step_delta_json_pc_delta_has_before_and_after() {
 /// VB-POST004-CLI: slot_deltas is an array with correct slot change structure
 #[test]
 fn run_step_delta_json_slot_deltas_is_array_with_changes() {
-    let dir = match tempfile::tempdir() {
+    let dir = match run_step_tempdir() {
         Ok(dir) => dir,
         Err(err) => {
             assert!(forced_assertion_failure(), "tempdir failed: {err}");
@@ -1002,7 +1011,7 @@ fn run_step_delta_json_slot_deltas_is_array_with_changes() {
 /// VB-POST004-CLI: state_deltas is an array with before/after state
 #[test]
 fn run_step_delta_json_state_deltas_has_before_after() {
-    let dir = match tempfile::tempdir() {
+    let dir = match run_step_tempdir() {
         Ok(dir) => dir,
         Err(err) => {
             assert!(forced_assertion_failure(), "tempdir failed: {err}");
@@ -1077,7 +1086,7 @@ fn run_step_delta_json_state_deltas_has_before_after() {
 /// VB-POST004-CLI: taint_deltas is present and is an array
 #[test]
 fn run_step_delta_json_taint_deltas_is_array() {
-    let dir = match tempfile::tempdir() {
+    let dir = match run_step_tempdir() {
         Ok(dir) => dir,
         Err(err) => {
             assert!(forced_assertion_failure(), "tempdir failed: {err}");
@@ -1137,7 +1146,7 @@ fn run_step_delta_json_taint_deltas_is_array() {
 /// the full SlotValue is serialized or a summary.
 #[test]
 fn run_step_finished_includes_output_slot_value_and_taint() {
-    let dir = match tempfile::tempdir() {
+    let dir = match run_step_tempdir() {
         Ok(dir) => dir,
         Err(err) => {
             assert!(forced_assertion_failure(), "tempdir failed: {err}");
@@ -1209,7 +1218,7 @@ fn run_step_finished_includes_output_slot_value_and_taint() {
 /// triggered through YAML workflow definition. The JSON error format is the same for both.
 #[test]
 fn run_step_error_in_json_format_reports_error_and_message() {
-    let dir = match tempfile::tempdir() {
+    let dir = match run_step_tempdir() {
         Ok(dir) => dir,
         Err(err) => {
             assert!(forced_assertion_failure(), "tempdir failed: {err}");
@@ -1261,7 +1270,7 @@ fn run_step_error_in_json_format_reports_error_and_message() {
 /// VB-POST006-CLI: Runtime error in JSONL format reports error as JSON object
 #[test]
 fn run_step_error_in_jsonl_format_reports_error_object() {
-    let dir = match tempfile::tempdir() {
+    let dir = match run_step_tempdir() {
         Ok(dir) => dir,
         Err(err) => {
             assert!(forced_assertion_failure(), "tempdir failed: {err}");
@@ -1309,7 +1318,7 @@ fn run_step_error_in_jsonl_format_reports_error_object() {
 /// for contract completeness.
 #[test]
 fn run_step_durability_not_none_exits_with_validation_failed() {
-    let dir = match tempfile::tempdir() {
+    let dir = match run_step_tempdir() {
         Ok(dir) => dir,
         Err(err) => {
             assert!(forced_assertion_failure(), "tempdir failed: {err}");
@@ -1360,7 +1369,7 @@ fn run_step_durability_not_none_exits_with_validation_failed() {
 /// VB-POST008-CLI: Success produces exit code 0
 #[test]
 fn run_step_success_exits_with_code_0() {
-    let dir = match tempfile::tempdir() {
+    let dir = match run_step_tempdir() {
         Ok(dir) => dir,
         Err(err) => {
             assert!(forced_assertion_failure(), "tempdir failed: {err}");
@@ -1411,7 +1420,7 @@ fn run_step_success_exits_with_code_0() {
 /// correct and should pass once the implementation is fixed to match the contract.
 #[test]
 fn run_step_validation_failure_exits_with_code_2() {
-    let dir = match tempfile::tempdir() {
+    let dir = match run_step_tempdir() {
         Ok(dir) => dir,
         Err(err) => {
             assert!(forced_assertion_failure(), "tempdir failed: {err}");
@@ -1462,7 +1471,7 @@ fn run_step_validation_failure_exits_with_code_2() {
 /// The test is correct and should pass once the implementation is fixed.
 #[test]
 fn run_step_malformed_step_input_exits_with_code_2() {
-    let dir = match tempfile::tempdir() {
+    let dir = match run_step_tempdir() {
         Ok(dir) => dir,
         Err(err) => {
             assert!(forced_assertion_failure(), "tempdir failed: {err}");
@@ -1512,7 +1521,7 @@ fn run_step_malformed_step_input_exits_with_code_2() {
 /// VB-PRE004-CLI: Empty step input file is valid and decodes to empty slot list
 #[test]
 fn run_step_empty_step_input_succeeds() {
-    let dir = match tempfile::tempdir() {
+    let dir = match run_step_tempdir() {
         Ok(dir) => dir,
         Err(err) => {
             assert!(forced_assertion_failure(), "tempdir failed: {err}");

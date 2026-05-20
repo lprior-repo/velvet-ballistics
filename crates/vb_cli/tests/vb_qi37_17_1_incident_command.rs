@@ -39,7 +39,13 @@ fn make_args(parts: &[&str]) -> Vec<OsString> {
 
 /// Create a temporary FjallJournal and append events to it.
 fn setup_test_journal(events: &[JournalEvent]) -> JournalGuard {
-    let temp_dir = tempfile::tempdir().expect("create temp dir");
+    let root =
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../target/incident-command-tmp");
+    std::fs::create_dir_all(&root).expect("create temp root");
+    let temp_dir = tempfile::Builder::new()
+        .prefix("vb-incident-")
+        .tempdir_in(root)
+        .expect("create temp dir");
     let db_path = temp_dir.path().join("test_db");
 
     let journal = FjallJournal::open(&db_path, None).expect("open journal");

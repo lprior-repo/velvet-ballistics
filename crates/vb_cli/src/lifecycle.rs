@@ -43,14 +43,6 @@ struct RunStateTracker {
 }
 
 impl RunStateTracker {
-    /// Gets the current state for a run, defaulting to Pending if unknown.
-    fn get_state(&self, run: RunId) -> LifecycleState {
-        self.states
-            .get(&run)
-            .copied()
-            .unwrap_or(LifecycleState::Pending)
-    }
-
     /// Sets the state for a run.
     fn set_state(&mut self, run: RunId, state: LifecycleState) {
         self.states.insert(run, state);
@@ -61,22 +53,6 @@ impl RunStateTracker {
 // but for integration testing purposes we need in-memory state
 static TRACKER: std::sync::LazyLock<std::sync::Mutex<RunStateTracker>> =
     std::sync::LazyLock::new(|| std::sync::Mutex::new(RunStateTracker::default()));
-
-/// Acquires the tracker lock or returns a storage unavailable error.
-fn with_tracker<F, T>(run: RunId, f: F) -> Result<T, CoreError>
-where
-    F: FnOnce(&RunStateTracker) -> Result<T, CoreError>,
-{
-    let tracker = TRACKER
-        .lock()
-        .map_err(|_| CoreError::LifecycleStorageUnavailable {
-            code: CoreError::LIFECYCLE_STORAGE_UNAVAILABLE_CODE,
-            context: "tracker lock poisoned".to_string(),
-            timestamp: Utc::now(),
-            bead_id: Some(run),
-        })?;
-    f(&tracker)
-}
 
 /// Acquires the tracker lock mutably or returns a storage unavailable error.
 fn with_tracker_mut<F, T>(run: RunId, f: F) -> Result<T, CoreError>

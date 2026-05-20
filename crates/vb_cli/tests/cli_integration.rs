@@ -80,6 +80,13 @@ fn forced_assertion_failure() -> bool {
     false
 }
 
+fn cli_tempdir() -> std::io::Result<tempfile::TempDir> {
+    let root =
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../target/cli-integration-tmp");
+    std::fs::create_dir_all(&root)?;
+    tempfile::Builder::new().prefix("vb-cli-").tempdir_in(root)
+}
+
 fn write_test_file(path: &std::path::Path, contents: &[u8]) -> bool {
     match std::fs::write(path, contents) {
         Ok(()) => true,
@@ -1395,7 +1402,7 @@ fn codegen_emit_rust_produces_output() {
 
 #[test]
 fn cli_run_journaled_then_events_and_inspect_read_temp_db() {
-    let dir = match tempfile::tempdir() {
+    let dir = match cli_tempdir() {
         Ok(dir) => dir,
         Err(err) => {
             assert!(forced_assertion_failure(), "tempdir failed: {err}");
@@ -1476,7 +1483,7 @@ fn cli_run_journaled_then_events_and_inspect_read_temp_db() {
 
 #[test]
 fn cli_ai_context_for_journaled_run_emits_compiled_ir_summary() {
-    let dir = match tempfile::tempdir() {
+    let dir = match cli_tempdir() {
         Ok(dir) => dir,
         Err(err) => {
             assert!(forced_assertion_failure(), "tempdir failed: {err}");
@@ -1610,7 +1617,7 @@ fn cli_ai_context_for_journaled_run_emits_compiled_ir_summary() {
 
 #[test]
 fn cli_ai_context_reports_missing_and_invalid_run_ids() {
-    let dir = match tempfile::tempdir() {
+    let dir = match cli_tempdir() {
         Ok(dir) => dir,
         Err(err) => {
             assert!(forced_assertion_failure(), "tempdir failed: {err}");
@@ -1652,7 +1659,7 @@ fn cli_ai_context_reports_missing_and_invalid_run_ids() {
 
 #[test]
 fn cli_run_maps_postcard_slot_values_from_input_bin() {
-    let dir = match tempfile::tempdir() {
+    let dir = match cli_tempdir() {
         Ok(dir) => dir,
         Err(err) => {
             assert!(forced_assertion_failure(), "tempdir failed: {err}");
@@ -1711,7 +1718,7 @@ fn cli_run_maps_postcard_slot_values_from_input_bin() {
 
 #[test]
 fn cli_run_reports_exact_input_mapping_decode_failure() {
-    let dir = match tempfile::tempdir() {
+    let dir = match cli_tempdir() {
         Ok(dir) => dir,
         Err(err) => {
             assert!(forced_assertion_failure(), "tempdir failed: {err}");
@@ -1835,7 +1842,7 @@ fn limits_max_steps_per_workflow_is_bounded() {
 
 #[test]
 fn cli_validate_valid_minimal_workflow_succeeds() {
-    let dir = match tempfile::tempdir() {
+    let dir = match cli_tempdir() {
         Ok(dir) => dir,
         Err(err) => {
             assert!(forced_assertion_failure(), "tempdir failed: {err}");
@@ -1874,7 +1881,7 @@ steps:
 
 #[test]
 fn cli_validate_invalid_yaml_returns_parse_error() {
-    let dir = match tempfile::tempdir() {
+    let dir = match cli_tempdir() {
         Ok(dir) => dir,
         Err(err) => {
             assert!(forced_assertion_failure(), "tempdir failed: {err}");
@@ -1903,7 +1910,7 @@ fn cli_validate_invalid_yaml_returns_parse_error() {
 
 #[test]
 fn cli_validate_undefined_step_reference_returns_validation_error() {
-    let dir = match tempfile::tempdir() {
+    let dir = match cli_tempdir() {
         Ok(dir) => dir,
         Err(err) => {
             assert!(forced_assertion_failure(), "tempdir failed: {err}");
@@ -1945,7 +1952,7 @@ steps:
 
 #[test]
 fn cli_validate_type_mismatch_returns_typed_error() {
-    let dir = match tempfile::tempdir() {
+    let dir = match cli_tempdir() {
         Ok(dir) => dir,
         Err(err) => {
             assert!(forced_assertion_failure(), "tempdir failed: {err}");
@@ -1992,7 +1999,7 @@ steps:
 
 #[test]
 fn cli_compile_valid_workflow_produces_ir() {
-    let dir = match tempfile::tempdir() {
+    let dir = match cli_tempdir() {
         Ok(dir) => dir,
         Err(err) => {
             assert!(forced_assertion_failure(), "tempdir failed: {err}");
@@ -2045,7 +2052,7 @@ fn cli_compile_valid_workflow_produces_ir() {
 
 #[test]
 fn cli_compile_invalid_syntax_fails_with_clear_error() {
-    let dir = match tempfile::tempdir() {
+    let dir = match cli_tempdir() {
         Ok(dir) => dir,
         Err(err) => {
             assert!(forced_assertion_failure(), "tempdir failed: {err}");
@@ -2083,7 +2090,7 @@ fn cli_compile_invalid_syntax_fails_with_clear_error() {
 
 #[test]
 fn cli_compile_preserves_workflow_digest() {
-    let dir = match tempfile::tempdir() {
+    let dir = match cli_tempdir() {
         Ok(dir) => dir,
         Err(err) => {
             assert!(forced_assertion_failure(), "tempdir failed: {err}");
@@ -2153,7 +2160,7 @@ fn cli_compile_preserves_workflow_digest() {
 
 #[test]
 fn cli_run_minimal_workflow_completes() {
-    let dir = match tempfile::tempdir() {
+    let dir = match cli_tempdir() {
         Ok(dir) => dir,
         Err(err) => {
             assert!(forced_assertion_failure(), "tempdir failed: {err}");
@@ -2191,7 +2198,7 @@ fn cli_run_minimal_workflow_completes() {
 
 #[test]
 fn cli_run_strict_durability_writes_journal_events() {
-    let dir = match tempfile::tempdir() {
+    let dir = match cli_tempdir() {
         Ok(dir) => dir,
         Err(err) => {
             assert!(forced_assertion_failure(), "tempdir failed: {err}");
@@ -2252,7 +2259,7 @@ fn cli_run_strict_durability_writes_journal_events() {
 
 #[test]
 fn cli_run_invalid_workflow_returns_error_exit_code() {
-    let dir = match tempfile::tempdir() {
+    let dir = match cli_tempdir() {
         Ok(dir) => dir,
         Err(err) => {
             assert!(forced_assertion_failure(), "tempdir failed: {err}");
@@ -2297,7 +2304,7 @@ fn cli_run_invalid_workflow_returns_error_exit_code() {
 
 #[test]
 fn cli_inspect_compiled_run_shows_status_and_event_count() {
-    let dir = match tempfile::tempdir() {
+    let dir = match cli_tempdir() {
         Ok(dir) => dir,
         Err(err) => {
             assert!(forced_assertion_failure(), "tempdir failed: {err}");
@@ -2353,7 +2360,7 @@ fn cli_inspect_compiled_run_shows_status_and_event_count() {
 
 #[test]
 fn cli_inspect_nonexistent_run_shows_no_events() {
-    let dir = match tempfile::tempdir() {
+    let dir = match cli_tempdir() {
         Ok(dir) => dir,
         Err(err) => {
             assert!(forced_assertion_failure(), "tempdir failed: {err}");
@@ -2384,7 +2391,7 @@ fn cli_inspect_nonexistent_run_shows_no_events() {
 
 #[test]
 fn cli_doctor_json_includes_trim_eligibility_check() {
-    let dir = match tempfile::tempdir() {
+    let dir = match cli_tempdir() {
         Ok(dir) => dir,
         Err(err) => {
             assert!(forced_assertion_failure(), "tempdir failed: {err}");
@@ -2511,7 +2518,7 @@ fn cli_doctor_json_includes_trim_eligibility_check() {
 
 #[test]
 fn cli_doctor_text_reports_trim_eligibility() {
-    let dir = match tempfile::tempdir() {
+    let dir = match cli_tempdir() {
         Ok(dir) => dir,
         Err(err) => {
             assert!(forced_assertion_failure(), "tempdir failed: {err}");
@@ -2594,7 +2601,7 @@ fn cli_doctor_text_reports_trim_eligibility() {
 
 #[test]
 fn cli_doctor_returns_success_for_healthy_journal_with_trim_recommended() {
-    let dir = match tempfile::tempdir() {
+    let dir = match cli_tempdir() {
         Ok(dir) => dir,
         Err(err) => {
             assert!(forced_assertion_failure(), "tempdir failed: {err}");
@@ -2849,7 +2856,7 @@ fn cli_emit_yaml_contract_is_not_silent_when_master_emit_mode_is_requested() {
 
 #[test]
 fn cli_simulate_valid_workflow_reports_dry_run_summary() {
-    let dir = match tempfile::tempdir() {
+    let dir = match cli_tempdir() {
         Ok(dir) => dir,
         Err(err) => {
             assert!(forced_assertion_failure(), "tempdir failed: {err}");
@@ -2886,7 +2893,7 @@ fn cli_simulate_valid_workflow_reports_dry_run_summary() {
 
 #[test]
 fn cli_simulate_json_emits_deterministic_trace() {
-    let dir = match tempfile::tempdir() {
+    let dir = match cli_tempdir() {
         Ok(dir) => dir,
         Err(err) => {
             assert!(forced_assertion_failure(), "tempdir failed: {err}");
@@ -2944,7 +2951,7 @@ fn cli_simulate_json_emits_deterministic_trace() {
 
 #[test]
 fn cli_simulate_invalid_workflow_reports_diagnostic() {
-    let dir = match tempfile::tempdir() {
+    let dir = match cli_tempdir() {
         Ok(dir) => dir,
         Err(err) => {
             assert!(forced_assertion_failure(), "tempdir failed: {err}");
@@ -2974,7 +2981,7 @@ fn cli_simulate_invalid_workflow_reports_diagnostic() {
 
 #[test]
 fn cli_simulate_does_not_create_db_side_effects() {
-    let dir = match tempfile::tempdir() {
+    let dir = match cli_tempdir() {
         Ok(dir) => dir,
         Err(err) => {
             assert!(forced_assertion_failure(), "tempdir failed: {err}");
@@ -3011,7 +3018,7 @@ fn parse_submit_run_id(stdout: &str) -> Option<String> {
 
 #[test]
 fn cli_submit_persists_ledger_before_success() {
-    let dir = match tempfile::tempdir() {
+    let dir = match cli_tempdir() {
         Ok(dir) => dir,
         Err(err) => {
             assert!(forced_assertion_failure(), "tempdir failed: {err}");
@@ -3069,7 +3076,7 @@ fn cli_submit_persists_ledger_before_success() {
 
 #[test]
 fn cli_submit_json_returns_structured_identifiers() {
-    let dir = match tempfile::tempdir() {
+    let dir = match cli_tempdir() {
         Ok(dir) => dir,
         Err(err) => {
             assert!(forced_assertion_failure(), "tempdir failed: {err}");
@@ -3134,7 +3141,7 @@ fn cli_submit_json_returns_structured_identifiers() {
 
 #[test]
 fn cli_submit_rejects_missing_input_bin() {
-    let dir = match tempfile::tempdir() {
+    let dir = match cli_tempdir() {
         Ok(dir) => dir,
         Err(err) => {
             assert!(forced_assertion_failure(), "tempdir failed: {err}");
@@ -3176,7 +3183,7 @@ fn cli_submit_rejects_missing_input_bin() {
 
 #[test]
 fn cli_submit_rejects_unknown_durability() {
-    let dir = match tempfile::tempdir() {
+    let dir = match cli_tempdir() {
         Ok(dir) => dir,
         Err(err) => {
             assert!(forced_assertion_failure(), "tempdir failed: {err}");

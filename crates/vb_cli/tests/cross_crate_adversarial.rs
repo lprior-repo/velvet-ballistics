@@ -35,6 +35,15 @@ fn fail_assert(_message: std::fmt::Arguments<'_>) -> bool {
     false
 }
 
+fn cross_crate_tempdir() -> std::io::Result<tempfile::TempDir> {
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../target/cross-crate-adversarial-tmp");
+    std::fs::create_dir_all(&root)?;
+    tempfile::Builder::new()
+        .prefix("vb-cross-crate-")
+        .tempdir_in(root)
+}
+
 macro_rules! fail_assert {
     ($($arg:tt)*) => {
         assert!(fail_assert(format_args!($($arg)*)), $($arg)*)
@@ -578,10 +587,8 @@ fn runtime_to_storage_run_finished_event_carries_correct_kind() {
 
 #[test]
 fn runtime_to_storage_fjall_journal_open_and_close_temp_dir() {
-    use tempfile::tempdir;
-
     // Given: a temporary directory
-    let dir = match tempdir() {
+    let dir = match cross_crate_tempdir() {
         Ok(d) => d,
         Err(err) => {
             fail_assert!("tempdir failed: {err:?}");

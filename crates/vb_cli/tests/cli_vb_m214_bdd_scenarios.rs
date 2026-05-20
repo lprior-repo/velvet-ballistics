@@ -41,6 +41,23 @@ fn run_cli_failing(args: &[&str]) -> std::io::Result<Output> {
         .output()
 }
 
+fn bdd_tempdir() -> std::io::Result<tempfile::TempDir> {
+    let root =
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../target/cli-vb-m214-bdd-tmp");
+    std::fs::create_dir_all(&root)?;
+    tempfile::Builder::new().prefix("vb-m214-").tempdir_in(root)
+}
+
+fn write_bdd_file(
+    file_name: &str,
+    contents: &str,
+) -> std::io::Result<(tempfile::TempDir, std::path::PathBuf)> {
+    let dir = bdd_tempdir()?;
+    let path = dir.path().join(file_name);
+    std::fs::write(&path, contents)?;
+    Ok((dir, path))
+}
+
 // ---------------------------------------------------------------------------
 // Parse Error Tests — CLI error handling for invalid inputs
 // The CLI emits user-facing error messages (not ParseError variant names).
@@ -174,15 +191,13 @@ mod exit_code_tests {
     #[test]
     fn exit_code_zero_on_success() {
         // validate with a valid workflow should succeed
-        let tmp = std::env::temp_dir().join("vb-test-validate.yaml");
-        std::fs::write(&tmp, MINIMAL_WORKFLOW).unwrap();
+        let (_tmp_dir, tmp) = write_bdd_file("vb-test-validate.yaml", MINIMAL_WORKFLOW).unwrap();
         let output = run_cli(&["validate", tmp.to_str().unwrap()]).unwrap();
         assert_eq!(
             output.status.code(),
             Some(0),
             "expected exit 0 on valid workflow"
         );
-        std::fs::remove_file(tmp).ok();
     }
 
     #[test]
@@ -190,15 +205,14 @@ mod exit_code_tests {
         // Given: an invalid YAML workflow
         // When: velvet-ballastics validate is called
         // Then: exit code 2 (ValidationFailed) per contract POST-008
-        let tmp = std::env::temp_dir().join("vb-test-invalid.yaml");
-        std::fs::write(&tmp, "invalid: yaml: content: [").unwrap();
+        let (_tmp_dir, tmp) =
+            write_bdd_file("vb-test-invalid.yaml", "invalid: yaml: content: [").unwrap();
         let output = run_cli_failing(&["validate", tmp.to_str().unwrap()]).unwrap();
         assert_eq!(
             output.status.code(),
             Some(2),
             "expected exit 2 on validation failure per contract POST-008"
         );
-        std::fs::remove_file(tmp).ok();
     }
 
     #[test]
@@ -212,8 +226,7 @@ mod exit_code_tests {
         //       (0 = verify passed, 2 = verify could not complete), but for
         //       strict CLI behavior testing, exit 2 is the expected outcome when
         //       verify cannot access required resources.
-        let tmp = std::env::temp_dir().join("vb-test-verify.yaml");
-        std::fs::write(&tmp, MINIMAL_WORKFLOW).unwrap();
+        let (_tmp_dir, tmp) = write_bdd_file("vb-test-verify.yaml", MINIMAL_WORKFLOW).unwrap();
         let output = run_cli(&["verify", tmp.to_str().unwrap()]).unwrap();
         // DOCUMENTED ACCEPTABLE OUTCOMES:
         // - Exit 2: VerificationFailed (verify cannot complete without db)
@@ -224,7 +237,6 @@ mod exit_code_tests {
             "expected exit 0 (verify passed) or 2 (verification failure), got: {:?}",
             output.status.code()
         );
-        std::fs::remove_file(tmp).ok();
     }
 
     #[test]
@@ -238,9 +250,8 @@ mod exit_code_tests {
         // - Exit 1: Validation failure (YAML structure invalid)
         // Both are valid failure modes for the compile command; exit 3 specifically
         // indicates the YAML was structurally valid but the IR generation failed.
-        let tmp = std::env::temp_dir().join("vb-test-compilefail.yaml");
-        std::fs::write(
-            &tmp,
+        let (_tmp_dir, tmp) = write_bdd_file(
+            "vb-test-compilefail.yaml",
             r#"version: velvet-ballastics/v1
 name: test
 steps:
@@ -254,13 +265,14 @@ steps:
 "#,
         )
         .unwrap();
+        let out = _tmp_dir.path().join("out.ir");
         let output = run_cli(&[
             "compile",
             tmp.to_str().unwrap(),
             "--emit",
             "ir",
             "--out",
-            "/tmp/out.ir",
+            out.to_str().unwrap(),
         ])
         .unwrap();
         // Exit 3 means compile failed (semantic error). Exit 1 would mean validation
@@ -270,7 +282,6 @@ steps:
             "expected exit 1 (validation failure) or 3 (compile failed), got: {:?}",
             output.status.code()
         );
-        std::fs::remove_file(tmp).ok();
     }
 
     #[test]
@@ -278,15 +289,13 @@ steps:
         // Given: a workflow that can't be run (no db, no input-bin)
         // When: velvet-ballastics run is called without required args
         // Then: non-zero exit code (error handling, not panic)
-        let tmp = std::env::temp_dir().join("vb-test-runtime.yaml");
-        std::fs::write(&tmp, MINIMAL_WORKFLOW).unwrap();
+        let (_tmp_dir, tmp) = write_bdd_file("vb-test-runtime.yaml", MINIMAL_WORKFLOW).unwrap();
         let output = run_cli(&["run", tmp.to_str().unwrap()]).unwrap();
         assert!(
             !output.status.success(),
             "run without required args should fail, got: {:?}",
             output.status.code()
         );
-        std::fs::remove_file(tmp).ok();
     }
 
     #[test]
@@ -294,8 +303,7 @@ steps:
         // Given: run with --db pointing to nonexistent directory
         // When: velvet-ballastics run is called with invalid db path
         // Then: non-zero exit (storage or error handling)
-        let tmp = std::env::temp_dir().join("vb-test-runtime2.yaml");
-        std::fs::write(&tmp, MINIMAL_WORKFLOW).unwrap();
+        let (_tmp_dir, tmp) = write_bdd_file("vb-test-runtime2.yaml", MINIMAL_WORKFLOW).unwrap();
         let output = run_cli_failing(&[
             "run",
             tmp.to_str().unwrap(),
@@ -310,7 +318,6 @@ steps:
             "run with invalid db should fail, got: {:?}",
             output.status.code()
         );
-        std::fs::remove_file(tmp).ok();
     }
 
     #[test]
@@ -318,12 +325,14 @@ steps:
         // Given: ipc-serve with invalid socket path
         // When: velvet-ballastics ipc-serve is called
         // Then: non-zero exit (IPC error or usage error)
+        let tmp_dir = bdd_tempdir().unwrap();
+        let db = tmp_dir.path().join("db");
         let output = run_cli_failing(&[
             "ipc-serve",
             "--socket",
             "/nonexistent.socket",
             "--db",
-            "/tmp",
+            db.to_str().unwrap(),
         ])
         .unwrap();
         assert!(
@@ -347,15 +356,15 @@ steps:
         // requires a real artifact with actions that violate an action policy.
         // This test documents the acceptable exit code range for action policy
         // evaluation and ensures the CLI does not panic.
-        let tmp = std::env::temp_dir().join("vb-test-policy.yaml");
-        std::fs::write(&tmp, MINIMAL_WORKFLOW).unwrap();
+        let (_tmp_dir, tmp) = write_bdd_file("vb-test-policy.yaml", MINIMAL_WORKFLOW).unwrap();
+        let db = _tmp_dir.path().join("policy-db");
         let output = run_cli(&[
             "run",
             tmp.to_str().unwrap(),
             "--input-bin",
             "/dev/null",
             "--db",
-            "/tmp",
+            db.to_str().unwrap(),
             "--durability",
             "none",
         ])
@@ -367,7 +376,6 @@ steps:
             "expected exit 0, 1, 2, or 7, got: {:?}",
             code
         );
-        std::fs::remove_file(tmp).ok();
     }
 
     #[test]
@@ -375,8 +383,11 @@ steps:
         // Given: replay with mismatched run state
         // When: velvet-ballastics replay is called on a nonexistent run
         // Then: non-zero exit (replay divergence or storage error)
+        let tmp_dir = bdd_tempdir().unwrap();
+        let db = tmp_dir.path().join("nonexistent");
         let output =
-            run_cli_failing(&["replay", "nonexistent-run-id", "--db", "/tmp/nonexistent"]).unwrap();
+            run_cli_failing(&["replay", "nonexistent-run-id", "--db", db.to_str().unwrap()])
+                .unwrap();
         assert!(
             !output.status.success(),
             "replay of nonexistent run should fail gracefully"
@@ -395,21 +406,23 @@ mod bdd_scenarios {
 
     #[test]
     fn cli_explain_valid_workflow_emits_diagnostic_details() {
-        let tmp = std::env::temp_dir().join("vb-test-explain-valid.yaml");
-        std::fs::write(&tmp, MINIMAL_WORKFLOW).unwrap();
+        let (_tmp_dir, tmp) =
+            write_bdd_file("vb-test-explain-valid.yaml", MINIMAL_WORKFLOW).unwrap();
         let output = run_cli(&["explain", tmp.to_str().unwrap()]).unwrap();
         // explain should succeed or show validation details
         assert!(
             output.status.success() || output.status.code() == Some(1),
             "explain should not panic"
         );
-        std::fs::remove_file(tmp).ok();
     }
 
     #[test]
     fn cli_explain_invalid_workflow_reports_validation_errors() {
-        let tmp = std::env::temp_dir().join("vb-test-explain-bad.yaml");
-        std::fs::write(&tmp, "version: velvet-ballastics/v1\nsteps: not-valid").unwrap();
+        let (_tmp_dir, tmp) = write_bdd_file(
+            "vb-test-explain-bad.yaml",
+            "version: velvet-ballastics/v1\nsteps: not-valid",
+        )
+        .unwrap();
         let output = run_cli_failing(&["explain", tmp.to_str().unwrap()]).unwrap();
         assert!(output.status.code() == Some(2));
         // Error details may be in stdout or stderr
@@ -419,15 +432,13 @@ mod bdd_scenarios {
             String::from_utf8_lossy(&output.stderr)
         );
         assert!(!combined.is_empty(), "explain should produce error output");
-        std::fs::remove_file(tmp).ok();
     }
 
     // graph
 
     #[test]
     fn cli_graph_valid_workflow_emits_dot_format() {
-        let tmp = std::env::temp_dir().join("vb-test-graph.yaml");
-        std::fs::write(&tmp, MINIMAL_WORKFLOW).unwrap();
+        let (_tmp_dir, tmp) = write_bdd_file("vb-test-graph.yaml", MINIMAL_WORKFLOW).unwrap();
         let output = run_cli(&["graph", tmp.to_str().unwrap()]).unwrap();
         assert!(
             output.status.success(),
@@ -440,20 +451,18 @@ mod bdd_scenarios {
             "expected DOT format output, got: {}",
             stdout.chars().take(100).collect::<String>()
         );
-        std::fs::remove_file(tmp).ok();
     }
 
     #[test]
     fn cli_graph_invalid_workflow_reports_error() {
-        let tmp = std::env::temp_dir().join("vb-test-graph-bad.yaml");
-        std::fs::write(&tmp, "invalid: yaml: content: [").unwrap();
+        let (_tmp_dir, tmp) =
+            write_bdd_file("vb-test-graph-bad.yaml", "invalid: yaml: content: [").unwrap();
         let output = run_cli(&["graph", tmp.to_str().unwrap()]).unwrap();
         // graph should either fail (non-zero) or succeed with error output
         assert!(
             !output.status.success() || !String::from_utf8_lossy(&output.stderr).is_empty(),
             "graph with invalid yaml should produce error"
         );
-        std::fs::remove_file(tmp).ok();
     }
 
     // cancel
@@ -530,33 +539,36 @@ mod bdd_scenarios {
 
     #[test]
     fn cli_bench_run_valid_workflow_produces_output() {
-        let tmp = std::env::temp_dir().join("vb-test-bench.yaml");
-        std::fs::write(&tmp, MINIMAL_WORKFLOW).unwrap();
+        let (_tmp_dir, tmp) = write_bdd_file("vb-test-bench.yaml", MINIMAL_WORKFLOW).unwrap();
         let output = run_cli(&["bench-run", tmp.to_str().unwrap()]).unwrap();
         // bench-run should produce output (exit 0 or error)
         assert!(output.status.code().is_some());
-        std::fs::remove_file(tmp).ok();
     }
 
     #[test]
     fn cli_bench_run_invalid_workflow_reports_compile_error() {
-        let tmp = std::env::temp_dir().join("vb-test-bench-bad.yaml");
-        std::fs::write(&tmp, "invalid: yaml: content: [").unwrap();
+        let (_tmp_dir, tmp) =
+            write_bdd_file("vb-test-bench-bad.yaml", "invalid: yaml: content: [").unwrap();
         let output = run_cli_failing(&["bench-run", tmp.to_str().unwrap()]).unwrap();
         assert!(
             output.status.code() == Some(3),
             "expected exit 3 (CompileFailed)"
         );
-        std::fs::remove_file(tmp).ok();
     }
 
     // incident
 
     #[test]
     fn cli_incident_nonexistent_run_reports_not_found() {
-        let output =
-            run_cli_failing(&["incident", "nonexistent-run-id", "--db", "/tmp/nonexistent"])
-                .unwrap();
+        let tmp_dir = bdd_tempdir().unwrap();
+        let db = tmp_dir.path().join("nonexistent");
+        let output = run_cli_failing(&[
+            "incident",
+            "nonexistent-run-id",
+            "--db",
+            db.to_str().unwrap(),
+        ])
+        .unwrap();
         assert!(
             !output.status.success(),
             "incident for nonexistent run should fail gracefully"
@@ -618,7 +630,9 @@ mod bdd_scenarios {
     #[test]
     fn cli_diff_requires_two_runs() {
         // diff requires --run-a and --run-b
-        let output = run_cli_failing(&["diff", "--db", "/tmp"]).unwrap();
+        let tmp_dir = bdd_tempdir().unwrap();
+        let db = tmp_dir.path().join("db");
+        let output = run_cli_failing(&["diff", "--db", db.to_str().unwrap()]).unwrap();
         assert!(
             output.status.code() == Some(2),
             "expected exit 2 for missing run args"
@@ -679,8 +693,7 @@ mod bdd_scenarios {
         // Given: a valid workflow with --durability strict
         // When: velvet-ballastics run is called without --db
         // Then: exit code indicating missing required --db flag
-        let tmp = std::env::temp_dir().join("vb-test-strict.yaml");
-        std::fs::write(&tmp, MINIMAL_WORKFLOW).unwrap();
+        let (_tmp_dir, tmp) = write_bdd_file("vb-test-strict.yaml", MINIMAL_WORKFLOW).unwrap();
         // --durability strict requires --db to persist state
         let output =
             run_cli_failing(&["run", tmp.to_str().unwrap(), "--durability", "strict"]).unwrap();
@@ -689,7 +702,6 @@ mod bdd_scenarios {
             "expected exit 2 for missing --db with --durability strict, got: {:?}",
             output.status.code()
         );
-        std::fs::remove_file(tmp).ok();
     }
 
     #[test]
@@ -697,8 +709,7 @@ mod bdd_scenarios {
         // Given: a valid workflow with --durability journaled
         // When: velvet-ballastics run is called without --db
         // Then: exit code indicating missing required --db flag
-        let tmp = std::env::temp_dir().join("vb-test-journaled.yaml");
-        std::fs::write(&tmp, MINIMAL_WORKFLOW).unwrap();
+        let (_tmp_dir, tmp) = write_bdd_file("vb-test-journaled.yaml", MINIMAL_WORKFLOW).unwrap();
         // --durability journaled requires --db to persist journal
         let output =
             run_cli_failing(&["run", tmp.to_str().unwrap(), "--durability", "journaled"]).unwrap();
@@ -707,7 +718,6 @@ mod bdd_scenarios {
             "expected exit 2 for missing --db with --durability journaled, got: {:?}",
             output.status.code()
         );
-        std::fs::remove_file(tmp).ok();
     }
 }
 
@@ -742,8 +752,7 @@ mod invariant_tests {
 
     #[test]
     fn cli_verify_profile_has_quick_standard_full() {
-        let tmp = std::env::temp_dir().join("vb-test-profile.yaml");
-        std::fs::write(&tmp, MINIMAL_WORKFLOW).unwrap();
+        let (_tmp_dir, tmp) = write_bdd_file("vb-test-profile.yaml", MINIMAL_WORKFLOW).unwrap();
         for profile in &["quick", "standard", "full"] {
             let output = run_cli(&["verify", tmp.to_str().unwrap(), "--profile", profile]).unwrap();
             // All profiles should be recognized (may pass or fail based on env)
@@ -753,6 +762,5 @@ mod invariant_tests {
                 profile
             );
         }
-        std::fs::remove_file(tmp).ok();
     }
 }

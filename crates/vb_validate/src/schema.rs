@@ -36,7 +36,16 @@ const ALLOWED_STEP_FIELDS: &[&str] = &[
 ];
 
 const STEP_PRIMITIVES: &[&str] = &[
-    "set", "do", "choose", "for_each", "parallel", "collect", "aggregate", "repeat", "wait", "ask",
+    "set",
+    "do",
+    "choose",
+    "for_each",
+    "parallel",
+    "collect",
+    "aggregate",
+    "repeat",
+    "wait",
+    "ask",
     "finish",
 ];
 

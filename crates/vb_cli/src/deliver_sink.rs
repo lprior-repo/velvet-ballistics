@@ -240,7 +240,7 @@ mod tests {
 
     #[test]
     fn deliver_sink_rejects_missing_parent() -> Result<(), String> {
-        let dir = tempfile::tempdir().map_err(|error| error.to_string())?;
+        let dir = deliver_test_tempdir()?;
         let path = dir.path().join("missing-parent").join("out.jsonl");
 
         assert_eq!(
@@ -252,7 +252,7 @@ mod tests {
 
     #[test]
     fn deliver_sink_rejects_directory_target() -> Result<(), String> {
-        let dir = tempfile::tempdir().map_err(|error| error.to_string())?;
+        let dir = deliver_test_tempdir()?;
 
         assert_eq!(
             parse_deliver_target(format!("file:{}", path_text(dir.path())?).as_str()),
@@ -279,7 +279,7 @@ mod tests {
 
     #[test]
     fn deliver_sink_rejects_existing_file() -> Result<(), String> {
-        let dir = tempfile::tempdir().map_err(|error| error.to_string())?;
+        let dir = deliver_test_tempdir()?;
         let path = dir.path().join("out.jsonl");
         fs::write(&path, b"already here").map_err(|error| error.to_string())?;
 
@@ -303,7 +303,7 @@ mod tests {
 
     #[test]
     fn deliver_sink_parses_absolute_new_file_path() -> Result<(), String> {
-        let dir = tempfile::tempdir().map_err(|error| error.to_string())?;
+        let dir = deliver_test_tempdir()?;
         let path = dir.path().join("out.jsonl");
 
         assert_eq!(
@@ -331,7 +331,7 @@ mod tests {
 
     #[test]
     fn deliver_sink_writes_value_unchanged_as_one_json_line_to_new_file() -> Result<(), String> {
-        let dir = tempfile::tempdir().map_err(|error| error.to_string())?;
+        let dir = deliver_test_tempdir()?;
         let path = dir.path().join("out.jsonl");
         let value = json!([{"z":1},"raw"]);
         let target = DeliverTarget::NewFile(path.clone());
@@ -352,7 +352,7 @@ mod tests {
     #[test]
     fn deliver_sink_cleans_temp_file_when_final_path_appears_before_persist() -> Result<(), String>
     {
-        let dir = tempfile::tempdir().map_err(|error| error.to_string())?;
+        let dir = deliver_test_tempdir()?;
         let path = dir.path().join("out.jsonl");
         let temp_path = temporary_path(&path).map_err(|error| error.to_string())?;
         fs::write(&temp_path, b"payload").map_err(|error| error.to_string())?;
@@ -373,5 +373,15 @@ mod tests {
         path.to_str()
             .map(str::to_owned)
             .ok_or_else(|| String::from("test path must be UTF-8"))
+    }
+
+    fn deliver_test_tempdir() -> Result<tempfile::TempDir, String> {
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../target/deliver-sink-unit-tmp");
+        std::fs::create_dir_all(&root).map_err(|error| error.to_string())?;
+        tempfile::Builder::new()
+            .prefix("vb-deliver-unit-")
+            .tempdir_in(root)
+            .map_err(|error| error.to_string())
     }
 }

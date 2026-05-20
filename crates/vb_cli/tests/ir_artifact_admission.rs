@@ -306,7 +306,15 @@ fn run_compiled_rejects_handcrafted_bad_accessor_path_ir() {
 }
 
 fn must_tempdir() -> tempfile::TempDir {
-    let dir = tempfile::tempdir();
+    let temp_root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../target/ir-artifact-tmp");
+    let created = std::fs::create_dir_all(&temp_root);
+    assert!(
+        created.is_ok(),
+        "test temp root creation succeeds: {created:?}"
+    );
+    let dir = tempfile::Builder::new()
+        .prefix("ir-artifact-")
+        .tempdir_in(&temp_root);
     assert!(dir.is_ok(), "tempdir succeeds: {dir:?}");
     match dir {
         Ok(dir) => dir,
