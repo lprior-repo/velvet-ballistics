@@ -2480,13 +2480,8 @@ fn cmd_inspect(run_id: &str, db: &std::path::Path, output: OutputFormat) -> Exit
                 }
                 return CliExitCode::ValidationFailed.into();
             } else {
-                let terminal = events.last();
-                let status = match terminal {
-                    Some(vb_storage::JournalEvent::RunFinished { .. }) => "finished",
-                    Some(vb_storage::JournalEvent::RunFailedEvent { .. }) => "failed",
-                    Some(vb_storage::JournalEvent::RunCancelled { .. }) => "cancelled",
-                    _ => "running",
-                };
+                let state = vb_storage::derive_lifecycle_state_from_events(&events);
+                let status = vb_storage::lifecycle_state_to_inspect_status(state);
                 if output != OutputFormat::Text {
                     json_out(
                         &serde_json::json!({

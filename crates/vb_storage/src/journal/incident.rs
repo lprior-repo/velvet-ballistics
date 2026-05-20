@@ -1,11 +1,11 @@
 #![forbid(unsafe_code)]
-//! Incident analysis for workflow run failures.
+//! Incident analysis and lifecycle state derivation for workflow runs.
 //!
-//! Domain logic for analyzing journal events and producing incident reports.
+//! Domain logic for analyzing journal events.
 
 use crate::events::JournalEvent;
 #[allow(unused_imports)]
-use vb_core::{ActionId, RunId, StepIdx};
+use vb_core::{ActionId, RunId, StepIdx, workflow::LifecycleState};
 
 /// Side effect recorded from an action event.
 #[derive(Debug, Clone)]
@@ -113,6 +113,61 @@ pub fn build_repair_hints(
     }
 
     hints
+}
+
+/// Maps a lifecycle state to a human-readable status string for the inspect command.
+///
+/// Terminal states map to their name; Active/WaitingAnswer map to "running".
+#[must_use]
+pub fn lifecycle_state_to_inspect_status(state: LifecycleState) -> &'static str {
+    match state {
+        LifecycleState::Cancelled => "cancelled",
+        LifecycleState::Completed => "finished",
+        LifecycleState::Failed => "failed",
+        LifecycleState::Pending | LifecycleState::Active | LifecycleState::WaitingAnswer => {
+            "running"
+        }
+        _ => "running",
+    }
+}
+
+/// Derives the final lifecycle state from a sequence of journal events.
+///
+/// The last event in the sequence determines the final state:
+/// - `RunCancelled` → Cancelled
+/// - `RunResumed` → Active
+/// - `RunRetried` → Active
+/// - `RunAnswered` → Completed
+/// - `RunFinished` → Completed
+/// - `RunFailedEvent` → Failed
+///
+/// If no events exist, defaults to Pending.
+#[allow(unreachable_patterns)]
+pub fn derive_lifecycle_state_from_events(events: &[JournalEvent]) -> LifecycleState {
+    events
+        .last()
+        .map(|e| match e {
+            JournalEvent::RunCancelled { .. } => LifecycleState::Cancelled,
+            JournalEvent::RunResumed { .. } => LifecycleState::Active,
+            JournalEvent::RunRetried { .. } => LifecycleState::Active,
+            JournalEvent::RunAnswered { .. } => LifecycleState::Completed,
+            JournalEvent::RunFinished { .. } => LifecycleState::Completed,
+            JournalEvent::RunFailedEvent { .. } => LifecycleState::Failed,
+            JournalEvent::RunAccepted { .. } => LifecycleState::Active,
+            JournalEvent::RunAdmission { .. } => LifecycleState::Active,
+            JournalEvent::StepStarted { .. } => LifecycleState::Active,
+            JournalEvent::StepSucceeded { .. } => LifecycleState::Active,
+            JournalEvent::ActionScheduled { .. } => LifecycleState::Active,
+            JournalEvent::SlotWrittenEvent { .. } => LifecycleState::Active,
+            JournalEvent::ActionCompletedEvent { .. } => LifecycleState::Active,
+            JournalEvent::ActionFailedEvent { .. } => LifecycleState::Failed,
+            JournalEvent::WaitScheduledEvent { .. } => LifecycleState::WaitingAnswer,
+            JournalEvent::AskScheduledEvent { .. } => LifecycleState::WaitingAnswer,
+            JournalEvent::AskAnsweredEvent { .. } => LifecycleState::WaitingAnswer,
+            JournalEvent::RetryScheduledEvent { .. } => LifecycleState::Active,
+            _ => LifecycleState::Active,
+        })
+        .unwrap_or(LifecycleState::Pending)
 }
 
 #[cfg(test)]
