@@ -55,6 +55,9 @@ pub mod kani_proof_flags_gap;
 #[cfg(kani)]
 pub mod kani_recovery_hydrate;
 
+#[cfg(kani)]
+pub mod kani_admission;
+
 pub mod keys;
 pub mod process_lock;
 
