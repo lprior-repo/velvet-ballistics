@@ -16,6 +16,7 @@ toml.workspace = true
 [dev-dependencies]
 blake3.workspace = true
 bytes.workspace = true
+mio = { workspace = true, features = ["net", "os-poll"] }
 criterion.workspace = true
 crossbeam-queue.workspace = true
 postcard.workspace = true
@@ -60,6 +61,10 @@ path = "tests/contracts_integration.rs"
 [[test]]
 name = "vb_c1s0_orchestration_runtime_tests"
 path = "tests/vb_c1s0_orchestration_runtime_tests.rs"
+
+[[test]]
+name = "vb_te1i_binary_ipc_acceptance"
+path = "tests/vb_te1i_binary_ipc_acceptance.rs"
 
 [[bench]]
 name = "velvet_ballastics"
