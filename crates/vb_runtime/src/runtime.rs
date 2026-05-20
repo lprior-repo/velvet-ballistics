@@ -321,12 +321,21 @@ impl Runtime {
     }
 
     /// Completes an action for a run with its typed output payload.
+    ///
+    /// Validates the ticket against the current run state before enqueuing.
+    /// Returns `InvalidActionCompletion` if the ticket is invalid (wrong action,
+    /// non-running step, or stale attempt).
     pub fn complete_action_with_output(
-        &self,
+        &mut self,
         ticket: ActionTicket,
         output: ActionOutputReady,
     ) -> RuntimeResult<()> {
-        let shard = self.shard_for(ticket.run)?;
+        let shard = self.shard_for_mut(ticket.run)?;
+        // Validate ticket before enqueuing — fail fast with InvalidActionCompletion
+        // if the ticket doesn't match the current run state.
+        if let Some(state) = shard.runs.get(&ticket.run) {
+            crate::shard::helpers::validate_action_completion(state, ticket)?;
+        }
         shard.enqueue(ShardCommand::ActionCompleted { ticket, output })
     }
 
@@ -570,6 +579,11 @@ impl Runtime {
     fn shard_for(&self, run: RunId) -> Result<&Shard, RuntimeError> {
         let index = self.shard_index(run);
         self.shards.get(index).ok_or(RuntimeError::RunNotFound)
+    }
+
+    fn shard_for_mut(&mut self, run: RunId) -> Result<&mut Shard, RuntimeError> {
+        let index = self.shard_index(run);
+        self.shards.get_mut(index).ok_or(RuntimeError::RunNotFound)
     }
 }
 
