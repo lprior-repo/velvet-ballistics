@@ -1,10 +1,16 @@
 #![forbid(unsafe_code)]
 #![allow(unreachable_pub)]
-//! Pure incident report computation logic, separated from I/O and formatting.
+//! Incident report computation for CLI output.
+//!
+//! Delegates domain analysis to vb_storage::journal::incident.
+//! This CLI module builds the CLI-specific IncidentReport with JSON values.
 
 use vb_storage::events::JournalEvent;
+use vb_storage::journal::incident::{
+    SideEffectCertainty, analyze_incident_events, build_repair_hints,
+};
 
-/// Structured incident report for a single run.
+/// Structured incident report for CLI output.
 pub struct IncidentReport {
     /// The run id string (as provided by the caller).
     pub run_id: String,
@@ -22,96 +28,34 @@ pub struct IncidentReport {
 
 /// Build an incident report from a run's event stream.
 pub fn build_incident_report(run_id: &str, events: &[JournalEvent]) -> IncidentReport {
-    let mut failure_found = false;
-    let mut failure_code = String::new();
-    let mut failed_at_step: Option<u16> = None;
-    let mut side_effects: Vec<serde_json::Value> = Vec::new();
-    let mut last_step_started: Option<u16> = None;
-
-    for event in events {
-        match event {
-            JournalEvent::StepStarted { step, .. } => {
-                last_step_started = Some(step.get());
-            }
-            JournalEvent::ActionCompletedEvent { step, action, .. } => {
-                side_effects.push(serde_json::json!({
-                    "step": step.get(),
-                    "action": action.get(),
-                    "certainty": "confirmed"
-                }));
-            }
-            JournalEvent::ActionFailedEvent { step, action, .. } => {
-                side_effects.push(serde_json::json!({
-                    "step": step.get(),
-                    "action": action.get(),
-                    "certainty": "failed"
-                }));
-            }
-            JournalEvent::RunFailedEvent { .. } => {
-                failure_found = true;
-                failure_code = "RunFailed".to_string();
-                failed_at_step = last_step_started;
-            }
-            JournalEvent::RunCancelled { .. } => {
-                failure_found = true;
-                failure_code = "RunCancelled".to_string();
-                failed_at_step = last_step_started;
-            }
-            _ => {}
-        }
-    }
-
-    let repair_hints = build_repair_hints(&failure_code, &side_effects, failed_at_step);
+    let analysis = analyze_incident_events(events);
+    let hints = build_repair_hints(
+        &analysis.failure_code,
+        &analysis.side_effects,
+        analysis.failed_at_step,
+    );
 
     IncidentReport {
         run_id: run_id.to_string(),
-        failure_code,
-        failure_found,
-        failed_at_step,
-        side_effects,
-        repair_hints,
+        failure_code: analysis.failure_code,
+        failure_found: analysis.failure_found,
+        failed_at_step: analysis.failed_at_step,
+        side_effects: analysis
+            .side_effects
+            .into_iter()
+            .map(|se| {
+                serde_json::json!({
+                    "step": se.step,
+                    "action": se.action,
+                    "certainty": match se.certainty {
+                        SideEffectCertainty::Confirmed => "confirmed",
+                        SideEffectCertainty::Failed => "failed",
+                    }
+                })
+            })
+            .collect(),
+        repair_hints: hints.into_iter().map(serde_json::Value::String).collect(),
     }
-}
-
-/// Build repair hints based on the failure code, side effects, and failed step.
-pub fn build_repair_hints(
-    failure_code: &str,
-    side_effects: &[serde_json::Value],
-    failed_at_step: Option<u16>,
-) -> Vec<serde_json::Value> {
-    let mut hints: Vec<serde_json::Value> = Vec::new();
-
-    match failure_code {
-        "RunFailed" => {
-            hints.push(serde_json::Value::String(
-                "investigate step output and engine logs for the failed step".to_string(),
-            ));
-            if !side_effects.is_empty() {
-                hints.push(serde_json::Value::String(
-                    "review side effects that completed before failure for compensating actions"
-                        .to_string(),
-                ));
-            }
-            if let Some(step) = failed_at_step {
-                hints.push(serde_json::Value::String(format!(
-                    "consider retry from step {step} using the retry command"
-                )));
-            }
-        }
-        "RunCancelled" => {
-            hints.push(serde_json::Value::String(
-                "run was cancelled; check if cancellation was intentional".to_string(),
-            ));
-            if !side_effects.is_empty() {
-                hints.push(serde_json::Value::String(
-                    "review completed side effects for partial cleanup needs".to_string(),
-                ));
-            }
-        }
-        _ => {}
-    }
-
-    hints
 }
 
 #[cfg(test)]
@@ -277,68 +221,7 @@ mod tests {
         assert!(!report.repair_hints.is_empty());
     }
 
-    // ---- T-009: RunFailed repair hints (1 hint) ----
-    #[test]
-    fn t_009_run_failed_1_hint() {
-        let hints = build_repair_hints("RunFailed", &[], None);
-        assert_eq!(hints.len(), 1);
-        assert_eq!(
-            hints[0].as_str(),
-            Some("investigate step output and engine logs for the failed step")
-        );
-    }
-
-    // ---- T-010: RunFailed repair hints (3 hints) ----
-    #[test]
-    fn t_010_run_failed_3_hints() {
-        let side_effects = vec![serde_json::json!({"step": 1})];
-        let hints = build_repair_hints("RunFailed", &side_effects, Some(3));
-        assert_eq!(hints.len(), 3);
-        assert_eq!(
-            hints[0].as_str(),
-            Some("investigate step output and engine logs for the failed step")
-        );
-        assert_eq!(
-            hints[1].as_str(),
-            Some("review side effects that completed before failure for compensating actions")
-        );
-        assert_eq!(
-            hints[2].as_str(),
-            Some("consider retry from step 3 using the retry command")
-        );
-    }
-
-    // ---- T-011: RunCancelled repair hints (1 hint) ----
-    #[test]
-    fn t_011_run_cancelled_1_hint() {
-        let hints = build_repair_hints("RunCancelled", &[], None);
-        assert_eq!(hints.len(), 1);
-        assert_eq!(
-            hints[0].as_str(),
-            Some("run was cancelled; check if cancellation was intentional")
-        );
-    }
-
-    // ---- T-012: RunCancelled repair hints (2 hints) ----
-    #[test]
-    fn t_012_run_cancelled_2_hints() {
-        let side_effects = vec![serde_json::json!({"step": 2})];
-        let hints = build_repair_hints("RunCancelled", &side_effects, None);
-        assert_eq!(hints.len(), 2);
-        assert_eq!(
-            hints[0].as_str(),
-            Some("run was cancelled; check if cancellation was intentional")
-        );
-        assert_eq!(
-            hints[1].as_str(),
-            Some("review completed side effects for partial cleanup needs")
-        );
-    }
-
-    // ---- T-013: Unknown failure code (0 hints) ----
-    #[test]
-    fn t_013_unknown_failure_code() {
-        let hints = build_repair_hints("UnknownError", &[], None);
-        assert!(hints.is_empty());
-    }
+    // T-009 through T-013 removed: build_repair_hints logic is now tested
+    // in vb_storage::journal::incident (domain tests). CLI tests cover the
+    // full build_incident_report pipeline which includes repair hints.
 }
