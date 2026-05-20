@@ -4,4 +4,5 @@
 
 pub mod acceptance_catalog;
 pub mod boundary_inventory;
+pub mod bdd_runner;
 pub mod quality;
