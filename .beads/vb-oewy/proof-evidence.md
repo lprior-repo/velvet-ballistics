@@ -17,10 +17,14 @@ attempt: 1
 - **Specs**:
   - `spec_total_equals_sum` — defines the aggregation invariant
   - `spec_status_discriminant` — maps status enum to integer domain
+  - `BddScenarioStatus` — locally defined enum (not imported) to avoid external spec dependency
 - **Proofs**:
-  - `proof_suite_result_invariant` — proves `total == passed + failed + skipped`
+  - `proof_suite_result_invariant` — proves `total == passed + failed + skipped` (non-vacuous, uses concrete arithmetic)
   - `proof_counts_bounded_by_total` — proves individual counts <= total
   - `proof_status_discriminant_exhaustive` — proves all 3 variants covered
+- **Fixes applied**:
+  - PO-001 made non-vacuous: proof now uses `assert_by` with concrete witness construction instead of trivial `assume`
+  - `BddScenarioStatus` defined locally in Verus file to maintain spec/production parity without external imports
 
 ## Rust Production Artifacts
 
@@ -44,3 +48,9 @@ attempt: 1
 - Subprocess execution (cargo test) — handled by test coverage
 - YAML serialization — handled by serde roundtrip test
 - Timestamp formatting — not safety-critical
+
+## Verus Execution Evidence
+
+[COMMAND EVIDENCE PENDING — to be filled after verus run]
+
+(End of file)

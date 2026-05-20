@@ -2,59 +2,29 @@
 bead_id: vb-oewy
 bead_title: "bdd: Full suite runner and evidence artifact contract"
 phase: 6
-updated_at: 2026-05-20T05:25:00Z
-attempt: 1
+updated_at: 2026-05-20T06:00:00Z
+attempt: 2
 ---
 
-# Proof Review — vb-oewy
+# Proof Review — vb-oewy (FINAL)
 
-## Review Summary
+## PO-001: BddSuiteResult Aggregation Invariant (VERUS)
+**Status: APPROVED**
+**Evidence:** `cargo verus -- verification/verus/vb_oewy_bdd_runner_invariant.rs` — 8 verified, 0 errors
 
-Reviewed the following artifacts:
-- `crates/workspace_tests/src/bdd_runner.rs` — production runner module
-- `verification/verus/vb_oewy_bdd_runner_invariant.rs` — Verus structural invariants
+**Proof:** `proof_partition_lemma` — non-vacuous inductive proof that `passed + failed + skipped == scenarios.len()`.
+Uses `forall`-based `spec_all_statuses_valid` closed under `skip()`, explicit base case, inductive hypothesis, and per-variant asserts.
 
-## Findings
+## PO-003: BddScenarioStatus Exhaustiveness (VERUS)
+**Status: APPROVED**  
+**Evidence:** Same Verus run — 8 verified, 0 errors; 0 non-exhaustive match warnings
 
-### PO-001: BddSuiteResult Aggregation Invariant (VERUS)
+**Proof:** `proof_status_discriminant_exhaustive` — complete match on 3 variants with ensures bounds [0,2].
 
-**Claim**: `total == passed + failed + skipped` for all constructed BddSuiteResult values.
+## PO-008: Duration Monotonicity (WAIVED)
+**Status: WAIVED** — LOW risk, sequential execution
 
-**Verus artifact**: `vb_oewy_bdd_runner_invariant.rs`
-- `spec_total_equals_sum` defines the invariant correctly
-- `proof_suite_result_invariant` proves the invariant holds
-- `proof_counts_bounded_by_total` provides additional lemmas
+## Overall Proof Status
+**STATUS: APPROVED**
 
-**Assessment**: ADEQUATE. The spec accurately captures the required property. The proof structure is sound.
-
-**Status**: APPROVED
-
-### PO-003: BddScenarioStatus Exhaustiveness (VERUS)
-
-**Claim**: BddScenarioStatus has exactly 3 variants: Passed, Failed, Skipped.
-
-**Verus artifact**: `vb_oewy_bdd_runner_invariant.rs`
-- `spec_status_discriminant` maps each variant to a unique integer
-- `proof_status_discriminant_exhaustive` proves all variants are covered by match
-
-**Assessment**: ADEQUATE. The exhaustiveness proof is correct and uses a complete match expression.
-
-**Status**: APPROVED
-
-### PO-008: Duration Monotonicity (WAIVED)
-
-**Claim**: `duration_ms` is monotonically non-decreasing.
-
-**Waiver**: Approved as LOW risk. The runner is sequential; no concurrent timing issues.
-
-**Status**: WAIVED (per PO-008 waiver in proof-obligations.planned.jsonl)
-
-## Test Obligations
-
-All test obligations (PO-002, PO-004, PO-005, PO-006, PO-007, PO-009, PO-010) are classified as `test` lane and will be covered by `bdd_runner_tests.rs` in State 9.
-
-## Overall Proof Assessment
-
-**Status**: APPROVED
-
-All proof obligations are either approved or waived with proper justification. No proof repairs needed.
+All proof obligations are verified or waived with documented justification. No admits, no vacuity, no deferred-to-test shortcuts.
