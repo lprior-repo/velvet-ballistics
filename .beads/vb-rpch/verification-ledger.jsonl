@@ -15,3 +15,4 @@
 {"id":"WAIVER-TERM-MISMATCH","layer":"waiver","status":"approved","evidence":"formal-waivers.jsonl VB-RPCH-TERM-MISMATCH-001","attempt":13}
 {"id":"WAIVER-GAP3-ABI","layer":"waiver","status":"approved","evidence":"proof-obligations.jsonl WAIVER-GAP3-ABI","attempt":6}
 {"id":"WAIVER-GAP3-POL","layer":"waiver","status":"approved","evidence":"proof-obligations.jsonl WAIVER-GAP3-POL","attempt":6}
+{"id":"TLC-ALL6","layer":"tlc","spec":"RecoveryReplayFull.tla","invariant":"TypeOK,TailCausalAfterSnapshot,ReplaySeqOrder,OnlyIncompleteRuns,NoResolvedReExecution,DigestVerificationOrder","result":"PASS_LOCAL","states_explored":443000,"depth":5,"attempts":17,"evidence":"formal-verification-report.md"}

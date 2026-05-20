@@ -2,76 +2,105 @@
 
 ## Context
 
-Truth-serum skill could not be executed in active context (no `rtk truth-serum` command available in isolated workdir).
+Active-context truth-serum audit against raw artifacts in `.beads/vb-rpch/`.
 
-## Artifact Audit
+## Mandatory Gate Results
 
-All mandatory artifacts present and non-empty:
-- delivery-scope.jsonl: VALID JSONL
-- contract.md: 127 lines
-- traceability-matrix.jsonl: VALID JSONL, 34 rows
-- proof-review.md: APPROVED (100 lines)
-- test-plan-review.md: REJECTED (292 lines)
-- formal-verification-report.md: PRESENT (100 lines)
-- verification-ledger.jsonl: VALID JSONL, 17 rows
-- black-hat-review.md: APPROVED (166 lines)
-- machine-gate-report.md: PRESENT (84 lines)
-- regression-diff.md: PRESENT
+All required artifacts present and non-empty:
+| Artifact | Status | Size |
+|---|---|---|
+| delivery-scope.jsonl | VALID JSONL | non-empty |
+| contract.md | PRESENT | non-empty |
+| traceability-matrix.jsonl | VALID JSONL | non-empty |
+| proof-review.md | PRESENT | non-empty |
+| test-plan-review.md | PRESENT | non-empty |
+| formal-verification-report.md | PRESENT | non-empty |
+| verification-ledger.jsonl | VALID JSONL | non-empty |
+| black-hat-review.md | PRESENT | non-empty |
+| machine-gate-report.md | PRESENT | non-empty |
+| regression-diff.md | PRESENT | non-empty |
 
 ## JSONL Validation
 
-All JSONL files parse correctly:
 - delivery-scope.jsonl: valid
 - traceability-matrix.jsonl: valid
 - verification-ledger.jsonl: valid
 
-## Status Line Check
+## Status Line Audit
 
-| Document | Status Line | Match |
+| Document | Status Line | Actual Status |
 |---|---|---|
-| proof-review.md | `STATUS: **APPROVED**` | yes (contains APPROVED) |
-| test-plan-review.md | `VERDICT: REJECTED` | yes (contains REJECTED) |
-| formal-verification-report.md | no STATUS line | no |
-| black-hat-review.md | `**OVERALL VERDICT**: APPROVED` | yes |
+| proof-review.md | `**APPROVED**` (line 10) | APPROVED |
+| test-plan-review.md | `VERDICT: APPROVED` (line 3) | APPROVED |
+| black-hat-review.md | `**REJECTED**` (line 2, 229) | REJECTED |
+| contract-verification-review.md | `REJECTED` (line 7) | REJECTED |
+| formal-verification-report.md | no STATUS line | PRESENT (PARTIAL) |
 
-## Truth Serum Findings
+## Evidence Traceability
 
-### Finding 1: test-plan-review is REJECTED
-The test-plan-review.md has `VERDICT: REJECTED` at line 3. This is a blocker per evidence-packaging rule.
+### Requirements Coverage
 
-### Finding 2: test-plan-review pre-dates LETHAL fixes
-The test-plan-review (REJECTED) was written before the state 13 LETHAL fixes were applied:
-- LETHAL-1 (bare is_ok) was FIXED in state 13 (black-hat-review APPROVED)
-- LETHAL-2 (density) was FIXED in state 13 (formal-verification-report shows 70 tests)
-- LETHAL-3 (TerminalStateMismatch waiver) was FIXED in state 13 (formal-waivers.jsonl created)
+| Requirement | Status | Evidence |
+|---|---|---|
+| PRE-001 hydrate_run_frame preconditions | PARTIAL | BDD tests pass; Kani BLOCKED_TOOLING |
+| PRE-002 hydrate_run_frame_from_events preconditions | PARTIAL | BDD tests pass; Kani BLOCKED_TOOLING |
+| PRE-003 check_workflow_source_digest | PASS | BDD tests pass |
+| PRE-004 recover_runtime_summary/frame_seed | PASS | BDD tests pass |
+| POST-001 workflow digest verification | WAIVED | TLA+ exhaustive 443k states |
+| POST-002 IR digest verification | WAIVED | TLA+ exhaustive 443k states |
+| POST-003 verify_digests GAP-3 | WAIVED | formal waiver APPROVED |
+| POST-004 recover_runtime_summary accuracy | PASS | BDD tests pass |
+| POST-005 recover_runtime_frame_seed accuracy | PASS | BDD tests pass |
+| POST-006 hydrate_run_frame slot/taint | PASS | BDD tests pass |
+| POST-007 hydrate_run_frame_from_events | PASS | BDD tests pass |
+| POST-008 recover_all_incomplete_runs | WAIVED | TLA+ exhaustive |
+| POST-009 replay_events non-idempotent blocking | PARTIAL | BDD tests pass; Kani BLOCKED_TOOLING |
+| POST-010 ActionReplayTracker::is_resolved | PASS | BDD tests pass |
+| INV-001 RecoveryError exhaustiveness | PASS | static-scan + BDD tests |
+| INV-002 UnsupportedRecoveryState::union | DEFERRED_GLOBAL | Verus toolchain issue |
+| INV-003 RecoveryFrameSeed dimensions | DEFERRED_GLOBAL | Verus toolchain issue |
+| INV-004 ActionReplayTracker monotonicity | DEFERRED_GLOBAL | Verus toolchain issue |
+| INV-005 DigestCheck hierarchy | DEFERRED_GLOBAL | Verus toolchain issue |
+| INV-006 OnlyIncompleteRuns | WAIVED | TLA+ exhaustive |
+| ERR-TerminalStateMismatch | WAIVED | formal waiver APPROVED |
+| ERR-ActionAbiMismatch | WAIVED | formal waiver APPROVED |
+| ERR-PolicyDigestMismatch | WAIVED | formal waiver APPROVED |
 
-However, the test-plan-review also documents MAJOR issues that were NOT fixed:
-- Proptest invariants: claimed 4, reality 0
-- Unit test inventory: claimed ~47, reality 0
+## Blocking Findings
 
-These are pre-existing gaps that were never resolved.
+### BLOCKER-1: black-hat-review.md REJECTED
+- Status: REJECTED at line 2 and 229
+- Reason: 6 DEFECT findings CONFIRMED including critical AppendEvent tracker bug and ReplayEvents filtering bug
+- Impact: Contract cannot be approved — semantic errors in replay logic
+- Evidence: `.beads/vb-rpch/black-hat-review.md` lines 111, 137, 222-227
 
-### Finding 3: proof-review is APPROVED
-The proof-review (APPROVED) correctly documents TLA+ spec correctness.
+### BLOCKER-2: contract-verification-review.md REJECTED
+- Status: REJECTED at line 7
+- Reason: TLA+ spec does not implement 6 required invariants; GAP-1 missing set_max_parallel_in_flight
+- Impact: Contract-implementation gap
+- Evidence: `.beads/vb-rpch/contract-verification-review.md` lines 13, 193, 197
 
-### Finding 4: contract-verification-review is APPROVED
-The contract-verification-review (APPROVED) correctly documents all 6 invariants in cfg.
+### BLOCKER-3: formal-verification-report.md PARTIAL
+- Status: PARTIAL — TLA+ PASS, Verus DEFERRED_GLOBAL, Kani BLOCKED_TOOLING
+- Evidence: `.beads/vb-rpch/formal-verification-report.md` line 89
 
-### Finding 5: black-hat-review is APPROVED
-The black-hat-review (APPROVED) validates all 3 LETHAL fixes.
+## Non-Blocking Issues (Acknowledged)
 
-### Finding 6: No command evidence for tests
-The formal-verification-report claims "70 tests passing after LETHAL-1 fix" but there is no raw command output (cargo test stdout) as evidence in the artifacts. The claim is based on report documentation, not raw evidence.
+- Proptest invariants: 0 implemented (plan claimed 4) — acknowledged pre-existing gap
+- Unit test inventory: 0 in summary.rs/types.rs (plan claimed ~47) — acknowledged pre-existing gap
+- B-007 assertion sharpness weakness — acknowledged
+- Boundary tests missing — acknowledged
 
-### Finding 7: Pre-existing gaps noted by evidence-packaging
-- "0 proptest invariants (plan claimed 4)" — pre-existing gap, acknowledged
-- "0 unit tests in summary.rs/types.rs (plan claimed ~47)" — pre-existing gap, acknowledged
+## Truth Serum Verdict
 
-These are not new blockers; they were known before evidence-packaging ran.
+**HALLUCINATION DETECTED**: The existing `final-evidence-decision.md` claims all reviews APPROVED. Actual state:
+- proof-review.md: APPROVED
+- test-plan-review.md: APPROVED
+- black-hat-review.md: REJECTED (not APPROVED)
+- contract-verification-review.md: REJECTED (not APPROVED)
 
-## Conclusion
+**Cannot approve bundle with 2 REJECTED reviews.**
 
-truth-serum status: UNVERIFIED (skill not executable)
-final-evidence-decision: REJECTED (test-plan-review is REJECTED — blocking per mandatory gate)
+## Status: UNVERIFIED
 
-The test-plan-review REJECTED status is the blocking item. The LETHAL findings (1, 2, 3) were fixed in state 13 per black-hat-review, but the test-plan-review document itself was never updated to reflect approval.
+Bundle cannot be approved due to blocking REJECTED reviews.

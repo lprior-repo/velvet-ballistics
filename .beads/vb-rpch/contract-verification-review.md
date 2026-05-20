@@ -1,53 +1,88 @@
 # Contract Verification Review — vb-rpch
-## State: 6 (contract-verification-reviewer final) — APPROVED
-## Reviewer: contract-verification-reviewer agent
+## State: 6 contract-verification-reviewer
 ## Date: 2026-05-19
 
 ---
 
-## Scope
-
-Final evaluation of TLA+ v10 artifacts for bead **vb-rpch** (Durability and recovery acceptance scenarios):
-- BuildSeqFromIndices type-error fix
-- All 5 required invariants declared in cfg INVARIANTS
-- TypeOK passes at 140k+ states
-- Spec synced
+## STATUS: REJECTED
 
 ---
 
-## TLA+ Artifacts Examined
+## Executive Summary
 
-| File | Path | Status |
-|------|------|--------|
-| `RecoveryReplayFull.tla` | `evidence/specs/RecoveryReplayFull.tla` (232 lines) | PRESENT |
-| `RecoveryReplayFull.cfg` | `evidence/specs/RecoveryReplayFull.cfg` (21 lines) | PRESENT |
-| BuildSeqFromIndices | Lines 103–108 | CORRECT |
-| Min operator | Line 90 | PRESENT |
-| All 5 invariants | Lines 178–209 | PRESENT |
+The TLA+ spec `RecoveryReplayFull.tla` does NOT implement the 6 required invariants (TLA-001 through TLA-006). The cfg declares invariants that don't exist in the spec. The formal verification evidence is insufficient to approve the contract. There is also a contract-implementation gap in POST-006.
 
 ---
 
-## Findings
+## 1. Contract Correctness Assessment
 
-### 1. BuildSeqFromIndices Fix — VERIFIED CORRECT
+### 1.1 Contract vs Implementation Gaps
 
-```
-BuildSeqFromIndices(indices, result) ==
-    IF indices = {}
-    THEN result
-    ELSE LET m == Min(indices) IN
-        BuildSeqFromIndices(indices \ {m}, Append(result, journal[m]))
-```
-- Base case: empty indices → returns `result` (a SEQUENCE)
-- Inductive step: `Min` extracts smallest index, recursive call processes remaining indices in ascending order
-- Returns `Seq(RECORDEvent)`, satisfying TypeOK
-- Replaces the type-erroneous function-comprehension from v9
+| Clause | Finding | Severity |
+|--------|---------|----------|
+| POST-006 | `hydrate_run_frame` does NOT set `max_parallel_in_flight`. The contract requires: "`max_parallel_in_flight` reflects observed peak". Implementation (hydrate.rs:32-123) only calls `increment_executed()` based on tail event count — it never calls `set_max_parallel_in_flight`. Compare: `hydrate_run_frame_from_events` (hydrate.rs:223) DOES call `frame.set_max_parallel_in_flight(peak)`. | **BLOCKING** |
+| POST-007 | `unsupported` field not populated by `hydrate_run_frame_from_events`. Contract requires: "unsupported field correctly marks any missing slot_values, slot_taint, action_payloads, or pending_actions". Implementation populates steps, slots, PC but never sets `unsupported`. | MEDIUM |
 
-**Verdict: Type-correct. No type error. TERMINATES.**
+**GAP-1 (BLOCKING)**: `hydrate_run_frame` is missing `set_max_parallel_in_flight` call. This is a direct contract-implementation gap.
 
-### 2. All 6 Invariants Declared in cfg INVARIANTS — VERIFIED
+---
 
-The cfg `INVARIANT` section (lines 10–16):
+## 2. Spec vs Contract Gaps (TLA+ Owned Clauses)
+
+### 2.1 TLA-001: ReplaySeqOrder — NOT IMPLEMENTED
+
+**Contract requires**: Events replayed in ascending seq; steps monotonic increasing per attempt
+
+**Spec has**: `StepOrderInvariant` (lines 51-55) — only checks step index non-decreasing. Does NOT enforce sequence number ordering.
+
+**Gap**: The spec does not model `seq` ascending order per attempt. `ReplaySeqOrder` is not defined.
+
+### 2.2 TLA-002: TailCausalAfterSnapshot — NOT IMPLEMENTED
+
+**Contract requires**: All tail seq > snapshot seq (invariant: TailCausalAfterSnapshot)
+
+**Spec has**: `snapshot_seq` variable exists (line 22) but is NEVER updated from -1. The `Next` action (lines 90-152) never modifies `snapshot_seq`. `TailCausalAfterSnapshot` is not defined in the spec.
+
+**Gap**: No snapshot/tail causal consistency modeled.
+
+### 2.3 TLA-003: OnlyIncompleteRuns — NOT IMPLEMENTED
+
+**Contract requires**: Only runs without terminal event of max attempt are returned (invariant: OnlyIncompleteRuns)
+
+**Spec has**: No `DiscoverIncomplete` action. No `recovered_runs` variable. No `OnlyIncompleteRuns` invariant defined.
+
+**Gap**: Incomplete run discovery is not modeled.
+
+### 2.4 TLA-004: NoResolvedReExecution — PARTIAL
+
+**Contract requires**: Resolved action+step never appears in replay output; tracker blocks re-execution via `NonIdempotentActionBlocked`
+
+**Spec has**: `NoDoubleScheduling` invariant (lines 60-67) checks no duplicate `ActionScheduled` for same (action, step). This does NOT model the tracker blocking behavior. The `Next` action (lines 98-100) allows `ActionScheduled` without checking if already in `tracker.completed` or `tracker.failed`.
+
+**Gap**: Rust `core.rs:82-89` checks `tracker.is_resolved()` BEFORE allowing ActionScheduled and returns `NonIdempotentActionBlocked` error. TLA+ spec silently allows it.
+
+### 2.5 TLA-005: RecoveryErrorExhaustive — NOT IMPLEMENTED
+
+**Contract requires**: Every error variant reachable from defined inputs
+
+**Spec has**: No `RecoveryError` variant modeling. No `last_error` variable. No error state machine.
+
+**Gap**: Error exhaustiveness not verified.
+
+### 2.6 TLA-006: DigestVerificationOrder — NOT IMPLEMENTED
+
+**Contract requires**: Workflow digest verified before IR digest
+
+**Spec has**: No `digest_level` variable. No `CheckWorkflowDigest` or `CheckIrDigest` actions. No `DigestVerificationOrder` invariant defined.
+
+**Gap**: Digest verification ordering not modeled.
+
+---
+
+## 3. cfg vs Spec Mismatch (CRITICAL)
+
+The `evidence/specs/RecoveryReplayFull.cfg` declares:
+
 ```
 INVARIANT
     TypeOK
@@ -58,60 +93,109 @@ INVARIANT
     DigestVerificationOrder
 ```
 
-All 6 invariants are declared. This resolves the v10 rejection finding.
+But `RecoveryReplayFull.tla` only defines 4 invariants:
+- `NoDivergenceInvariant` (line 57) — NOT in cfg
+- `StepOrderInvariant` (line 51) — NOT in cfg  
+- `NoDoubleScheduling` (line 60) — NOT in cfg
+- `ActionSafety` (line 72) — NOT in cfg
 
-### 3. TypeOK Passes at 140k+ States — VERIFIED
+**The cfg declares 6 invariants that don't exist as definitions in the TLA+ spec.**
 
-Evidence:
-- `states/26-05-19-09-07-40/RecoveryReplayFull-0.st` (1.9 MB) — genuine TLC state file
-- `states/26-05-19-09-02-25/RecoveryReplayFull-0.st` (1.0 MB)
-- State files consistent with large model-checking run
-- proof-evidence.md documents TLC execution (TLC not available, but state files present)
+The 4 invariants that DO exist in the spec are NOT declared in the cfg.
 
-### 4. DigestVerificationOrder (TLA-005) Now Verified
-
-The v10 rejection noted `DigestVerificationOrder` was missing from cfg INVARIANTS. The current cfg (evidence/specs/RecoveryReplayFull.cfg) declares it at line 16. All 6 invariants are now declared and verifiable by TLC.
-
-### 5. TailCausalAfterSnapshot — Clean
-
-The spurious `journal[i].run /= -1` guard is absent. The antecedent `snapshot_seq >= 0` is correct. The invariant correctly checks that all journal event sequence numbers exceed `snapshot_seq`.
+This is a complete breakdown of TLA+ artifact integrity.
 
 ---
 
-## Contract Clause Traceability
+## 4. Verification Evidence Assessment
 
-| Clause | TLA+ THEOREM | cfg INVARIANT | Status |
-|--------|-------------|---------------|--------|
-| TLA-001 ReplaySeqOrder | Line 225 | Yes | VERIFIED |
-| TLA-002 TailCausalAfterSnapshot | Line 224 | Yes | VERIFIED |
-| TLA-003 OnlyIncompleteRuns | Line 226 | Yes | VERIFIED |
-| TLA-004 NoResolvedReExecution | Line 227 | Yes | VERIFIED |
-| TLA-005 DigestVerificationOrder | Line 228 | Yes | VERIFIED |
+### 4.1 TLC Execution — WAIVER_APPLIED (Simulation Only)
+
+Proof-evidence.md claims 144,036+ states (line 47) but also shows 21,404 states in simulation mode (line 89-92). These are contradictory. TLC simulation mode does NOT provide exhaustive verification; it explores a subset of state space.
+
+**WAIVER_APPLIED**: The proof-evidence.md (line 95) states a waiver was applied for PO-VB-008 through PO-VB-013 citing state space explosion. However, waivers do not make the contract clauses verified.
+
+### 4.2 Verus — BLOCKED_TOOLING
+
+No execution confirmed. Spec files exist but `cargo verus` returns a placeholder. No 0-error output recorded.
+
+### 4.3 Kani — Present but Location Wrong
+
+The harness is at `/home/lewis/src/velvet-ballistics/crates/vb_storage/src/kani_recovery_hydrate.rs` — outside the isolated workdir.
 
 ---
 
-## GOD RULES Assessment
+## 5. GOD RULES Assessment
 
 | Rule | Assessment |
 |------|------------|
-| No Hardcoded Kani Shapes | N/A — TLA+ review |
-| No Vacuum Verus Proofs | N/A — TLA+ review |
-| No Unbounded TLA+ Math | Constants bound: MAX_SEQ=100, MAX_EVENTS=20 |
-| No Loop Oscillations | BuildSeqFromIndices terminates (finite indices, Min extracts smallest) |
-| No Blind Verification Mutations | All invariants declared in cfg; no blind mutations |
+| No Hardcoded Kani Shapes | Kani harness uses `kani::any::<u8>() % 18` for JournalEvent discriminant — compliant |
+| No Vacuum Verus Proofs | Verus specs exist but BLOCKED_TOOLING — no execution |
+| No Unbounded TLA+ Math | Constants bound: MAXSEQ=10, MAX_EVENTS=5 — compliant |
+| No Loop Oscillations | Spec uses Append/recursion, terminates — compliant |
+| No Blind Verification Mutations | WAIVER applied for TLC simulation — acceptable |
 
 ---
 
-## Verdict: APPROVED
+## 6. Sound Waivers
 
-All 5 required invariants are declared in cfg INVARIANTS. BuildSeqFromIndices type error is fixed. TypeOK passes at 140k+ states. Spec is synced.
-
-**Non-blocker observations**:
-- `proof-obligations.jsonl` not present in workdir (obligations tracked elsewhere)
-- No raw TLC stdout/stderr (state files present as evidence)
-- NoResolvedReExecution has a pre-existing spec limitation (acknowledged, non-blocking)
+| Waiver | Assessment |
+|--------|------------|
+| GAP-3 (ActionAbiMismatch, PolicyDigestMismatch) | SOUND — deferred to vb-ty9, not reachable via public API |
+| DEFERRED_GLOBAL (TerminalStateMismatch) | SOUND — no public API parameter |
+| TLC Simulation Mode | SOUND but insufficient for proof — waiver承认 coverage gap |
 
 ---
 
-*Reviewer: contract-verification-reviewer agent — p6-contract-reviewer-final*
-**STATUS: APPROVED**
+## 7. Required Remediation
+
+1. **GAP-1 FIX**: Add `set_max_parallel_in_flight` call to `hydrate_run_frame`. The `apply_tail_events` function in `hydrate_support.rs` must return peak parallel in-flight count, or a separate pass must compute it.
+
+2. **Rewrite TLA+ spec** to implement all 6 required invariants (TLA-001 through TLA-006). At minimum:
+   - Define `ReplaySeqOrder` enforcing seq ascending order
+   - Define `TailCausalAfterSnapshot` with proper snapshot_seq updates
+   - Define `OnlyIncompleteRuns` with DiscoverIncomplete action
+   - Define `NoResolvedReExecution` with tracker-based blocking
+   - Add `last_error` variable and error state machine for TLA-005
+   - Add `digest_level` and CheckWorkflowDigest/CheckIrDigest for TLA-006
+
+3. **Fix cfg declarations** to match actual spec invariants
+
+4. **Run exhaustive TLC** model checking (not simulation) and record actual invariant pass/fail per invariant
+
+5. **Resolve POST-007 `unsupported` field** — either implement it or update contract to remove the requirement
+
+---
+
+## 8. Traceability Summary
+
+| Clause | Status |
+|--------|--------|
+| PRE-001 | Test-only (Kani present but BLOCKED_TOOLING Verus) |
+| PRE-002 | Test-only |
+| PRE-003 | VERUS-POST-001-TODO (unresolved) |
+| PRE-004 | VERUS-PRE-004-TODO (unresolved) |
+| POST-001 | ❌ TLA-001 not implemented |
+| POST-002 | ❌ TLA-001 not implemented |
+| POST-003 | ❌ TLA-001/TLA-006 not implemented |
+| POST-004 | ❌ TLA-001 not implemented |
+| POST-005 | ❌ TLA-001 not implemented |
+| POST-006 | ❌ GAP-1: missing set_max_parallel_in_flight |
+| POST-007 | ❌ unsupported field not set |
+| POST-008 | ❌ TLA-003 not implemented |
+| POST-009 | ❌ TLA-004 not implemented |
+| POST-010 | BLOCKED_TOOLING Verus |
+| INV-001 | ✅ Adequate (enum exhaustiveness) |
+| INV-002 | BLOCKED_TOOLING Verus |
+| INV-003 | BLOCKED_TOOLING Verus |
+| INV-004 | BLOCKED_TOOLING Verus |
+| INV-005 | BLOCKED_TOOLING Verus |
+| INV-006 | ❌ TLA-003 not implemented |
+
+---
+
+**Verdict: REJECTED**
+
+The contract cannot be approved. GAP-1 (missing `set_max_parallel_in_flight`) is a direct contract-implementation gap. The TLA+ spec does not implement TLA-001 through TLA-006. The cfg declares invariants that don't exist in the spec. Formal verification evidence is insufficient.
+
+---

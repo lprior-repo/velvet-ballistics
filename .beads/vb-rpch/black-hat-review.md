@@ -1,166 +1,240 @@
-# Black Hat Review — vb-rpch State 13 LETHAL Fixes
+# BLACK HAT REVIEW — vb-rpch RecoveryReplayFull.tla
+## STATUS: **REJECTED**
 
 **Bead**: vb-rpch
 **Date**: 2026-05-19
 **Reviewer**: black-hat-reviewer
-**State**: 13 (LETHAL fix attempt)
+**Counterexample Source**: TLC model checking (not simulation)
+**Violation**: `NoResolvedReExecution` violated at state 388,000+
 
 ---
 
-## Review Summary
+## Counterexample Trace (Provided)
 
-This review validates that the 3 LETHAL findings from evidence-packaging rejection have been properly addressed:
-1. LETHAL-1: Bare is_ok() in snapshot_plus_tail_applies_tail_after_watermark
-2. LETHAL-2: Test density 2.5x vs 5x required
-3. LETHAL-3: TerminalStateMismatch no test and no formal waiver
+```
+State 2: ActionCompleted(run=1, step=1, action=1, attempt=1)
+         → AppendEvent to journal; tracker UNCHANGED
 
----
-
-## LETHAL-1: Frame Validation Fix
-
-### Finding
-`snapshot_plus_tail_applies_tail_after_watermark` had `assert!(result.is_ok())` as sole assertion.
-
-### Required Fix
-Add frame validation after `is_ok()` guard.
-
-### Applied Fix
-```rust
-let result = hydrate_run_frame(&snapshot, &tail, run);
-let frame = result.expect("hydrate_run_frame should succeed...");
-assert_eq!(frame.pc(), StepIdx::new(1), "PC must advance...");
-assert_eq!(frame.step_count(), 1, "step_count must reflect...");
+State 3: ActionScheduled(run=1, step=1, action=1, attempt=1)
+         → AppendEvent to journal; VIOLATION of NoResolvedReExecution
 ```
 
-### Black Hat Assessment
-**VERDICT**: PASS
+**Root Cause Claim (from femdation controller)**:
+> The spec models "replay" as ReplayEvents producing a filtered subset, but the actual journal is being appended to. tracker never gets updated because resolved events are not removed from journal — they're just filtered in the ReplayEvents output.
 
-The fix adds concrete assertions validating:
-- `frame.pc()` equals StepIdx::new(1) — validates PC advanced correctly
-- `frame.step_count()` equals 1 — validates step count reflects tail events
-
-These assertions directly validate the RunFrame returned by `hydrate_run_frame`, ensuring the function returns a frame with correct state rather than merely returning without error.
-
-### Contract Parity
-- Contract: B-003 (GA-003a)
-- Assertions match expected tail effects: StepStarted at seq 2 produces PC=1, step_count=1
+**BLACK HAT VERDICT**: The root cause analysis is PARTIALLY CORRECT but INCOMPLETE. There are multiple fundamental semantic defects, not just one.
 
 ---
 
-## LETHAL-2: Test Density Increase
+## DEFECT-1: ReplayEvents Does Not Update Tracker on ActionCompleted Append
 
-### Finding
-35 tests / 14 contract functions = 2.5x density, below 5x required.
+### Location
+`RecoveryReplayFull.tla:110-113` (AppendEvent) and `RecoveryReplayFull.tla:132-144` (ReplayEvents)
 
-### Required Fix
-Add 35 tests to reach 70 total.
+### Analysis
+When `ActionCompleted` is appended via `AppendEvent`, the action is:
+```tla
+AppendEvent(e) ==
+    /\ Len(journal) < MAX_EVENTS
+    /\ journal' = Append(journal, e)
+    /\ UNCHANGED <<snapshot_seq, tracker, digest_level, recovered_runs, last_error>>
+```
 
-### Applied Fix
-Added 35 new tests covering:
-- Boundary conditions (empty events, wrong run_id, seq before snapshot)
-- Error variant coverage (ReplayDivergence, NoRecoveryData)
-- Replay scenarios (multiple attempts, action scheduled/completed/failed)
-- Terminal states (RunFailed, RunFinished, RunCancelled)
-- Slot reconstruction (None values, multiple slots, non-contiguous indices)
-- Step PC advancement
-- Digest verification at different levels
-- Idempotency on same input
+`tracker` is explicitly UNCHANGED. Therefore after State 2 (ActionCompleted), `tracker.completed` does NOT contain `{action:1, step:1}`.
 
-### Black Hat Assessment
-**VERDICT**: PASS
+### Consequence
+The completion is ONLY in the journal, not in the tracker. ReplayEvents has no way to know this action was completed unless it examines the journal directly — but it doesn't filter out completed actions.
 
-New tests provide genuine coverage:
-- 5 boundary/error path tests
-- 4 replay scenario tests
-- 3 terminal state tests
-- 4 slot/step reconstruction tests
-- 4 digest verification tests
-- 2 idempotency tests
-- 13 additional integration tests
-
-All tests use real `hydrate_run_frame`, `recover_runtime_summary`, `recover_runtime_frame_seed` calls against actual journal state.
-
-### Density Calculation
-35 existing + 35 new = 70 tests
-70 / 14 contract functions = 5.0x density
+**VERDICT**: DEFECT CONFIRMED. This is a real semantic error.
 
 ---
 
-## LETHAL-3: TerminalStateMismatch Waiver
+## DEFECT-2: ReplayEvents Filters Journal But Events Remain In Place
 
-### Finding
-TerminalStateMismatch has no test and no formal waiver despite being DEFERRED_GLOBAL.
+### Location
+`RecoveryReplayFull.tla:138-140`
 
-### Required Fix
-Add formal waiver or test.
+```tla
+LET new_journal == IF filtered_idx = {} THEN <<>>
+    ELSE IF filtered_idx = DOMAIN journal THEN journal
+    ELSE BuildSeqFromIndices(filtered_idx, <<>>)
+```
 
-### Applied Fix
-Created `formal-waivers.jsonl` with waiver VB-RPCH-TERM-MISMATCH-001:
-- `waiver: true`
-- `result: DEFERRED_GLOBAL`
-- `deferred_global: true`
-- `scope: api-gap`
-- `classification: DEFERRED_GLOBAL`
-- Full rationale: TerminalStateMismatch cannot be triggered via public API (no expected-terminal parameter)
-- Follow-up: Add `recover_runtime_summary_with_expected` API variant (tracked in vb-ty9)
+### Analysis
+- `filtered_idx` selects indices where `journal[i].run = run /\ journal[i].attempt = max_att`
+- `BuildSeqFromIndices` reconstructs a sequence from those indices
+- But `filtered_idx = DOMAIN journal` returns the FULL journal unchanged
 
-### Black Hat Assessment
-**VERDICT**: PASS
+The logic only rebuilds when `filtered_idx ≠ DOMAIN journal`. If a run's events span the entire journal, the journal is passed through unchanged. This means:
+1. Previous completions are NOT removed from journal
+2. ReplayEvents doesn't actually filter completed actions
+3. The `resolved` set is used only to update tracker, not to filter journal
 
-The waiver properly documents:
-1. **Soundness**: The error variant exists and is properly typed, but cannot be triggered through the public API
-2. **Rationale**: No `expected-terminal` parameter in `recover_runtime_summary`/`recover_runtime_frame_seed`
-3. **Compensating evidence**: The error type itself is tested in vb_storage/src/recovery/tests.rs:1660-1665
-4. **Owner**: vb-rpch
-5. **Follow-up**: Tracked in vb-ty9 for API addition
+### Consequence
+`NoResolvedReExecution` checks journal for "does ActionCompleted exist before ActionScheduled?" But if completions aren't removed from journal AND tracker doesn't block scheduling, the model allows re-execution.
 
-### Farley Constraints Compliance
-- [x] Waiver has clause ID (ERR-TerminalStateMismatch / POST-004)
-- [x] Waiver has compensating evidence
-- [x] Waiver has owner
-- [x] Waiver has expiry condition
-- [x] Waiver has follow-up tracking
+**VERDICT**: DEFECT CONFIRMED. Journal semantics are broken.
 
 ---
 
-## Holzman Rust Compliance
+## DEFECT-3: tracker.completed Loses Attempt Information
 
-### LETHAL-1 Fix
-- No `unsafe`, `unwrap`, `expect`, `panic`, `todo`, `unimplemented`, `dbg`
-- Uses `expect` only after `is_ok()` validation (legitimate error propagation)
-- Uses `assert_eq!` for invariant checking (legitimate assertion)
+### Location
+`RecoveryReplayFull.tla:69` (tracker type) and `RecoveryReplayFull.tla:137` (resolved construction)
 
-### LETHAL-2 New Tests
-- All 35 tests use `expect` only for setup (temp dir, journal open)
-- All tests use proper error matching with `matches!` or `is_err()`
-- No `unwrap` on recovery operations that could panic
+```tla
+tracker \in [completed: SUBSET [action: ActionId, step: StepId], failed: SUBSET [action: ActionId, step: StepId]]
+```
 
-### LETHAL-3 Waiver
-- No code changes, only documentation artifact
+```tla
+LET resolved == {[action |-> journal[i].action, step |-> journal[i].step] : i \in scheduled}
+```
 
----
+### Analysis
+`tracker.completed` stores only `{action, step}` pairs. The `attempt` field is DROPPED when constructing `resolved`.
 
-## Scott Wlaschin DDD Assessment
+But `NoResolvedReExecution` checks:
+```tla
+journal[j].attempt = journal[i].attempt
+```
 
-### TerminalStateMismatch Error Domain
-- Error variant properly typed with `expected` and `found` fields
-- Error variant has proper semantic meaning: "Recovered terminal ≠ expected"
-- Error is correctly classified as DEFERRED_GLOBAL (API gap, not implementation bug)
+This comparison uses the attempt from journal events, NOT from tracker. There is NO invariant that says:
+```
+action+step in tracker.completed => action+step never scheduled at same attempt
+```
 
----
+The tracker is action+step only, but the invariant expects attempt-aware blocking.
 
-## Final Black Hat Verdict
+### Consequence
+Even if tracker.was_completed({action:1, step:1}) were checked before scheduling, it would block ALL attempts, not just attempt=1. The model cannot distinguish "completed at attempt=1" from "completed at any attempt."
 
-| LETHAL | Status | Notes |
-|--------|--------|-------|
-| LETHAL-1 | PASS | Frame validation added with concrete assertions |
-| LETHAL-2 | PASS | 35 tests added, 5x density achieved |
-| LETHAL-3 | PASS | Formal waiver created with complete documentation |
-
-**OVERALL VERDICT**: APPROVED — All 3 LETHAL findings properly addressed.
+**VERDICT**: DEFECT CONFIRMED. Type system and invariant are mismatched.
 
 ---
 
-*Black Hat Review: APPROVED*
+## DEFECT-4: No Mechanism to Block ActionScheduled After ActionCompleted
+
+### Location
+`RecoveryReplayFull.tla:210-219` (Next action)
+
+```tla
+Next ==
+    \/ \E type \in EventType, run \in RunId, step \in StepId,
+          action \in ActionId, attempt \in Attempt, seq \in EventSeqNum :
+        AppendEvent(MakeEvent(type, run, step, action, attempt, seq, 1, 1))
+```
+
+### Analysis
+`AppendEvent` appends ANY event type, including `ActionScheduled`, without checking whether:
+1. This (action, step, attempt) was already completed
+2. This (action, step, attempt) is already in the journal
+
+There is no guard in `AppendEvent` or in a wrapper that prevents re-scheduling.
+
+### Consequence
+The model allows appending `ActionScheduled` for (action:1, step:1, attempt:1) even after `ActionCompleted` for the same keys exists in journal. No state variable prevents this.
+
+**VERDICT**: DEFECT CONFIRMED. No pre-condition for scheduling.
+
+---
+
+## DEFECT-5: ActionFailed Is Tracked in tracker.failed But Never Used to Block Scheduling
+
+### Location
+`RecoveryReplayFull.tla:69` and `RecoveryReplayFull.tla:137`
+
+### Analysis
+`tracker.failed` is defined but never updated by ReplayEvents. The `resolved` set only comes from `scheduled` (ActionScheduled), not from ActionFailed events.
+
+This means failed actions can be re-scheduled without constraint, which may or may not be intentional but is certainly underspecified.
+
+**VERDICT**: Potential defect depending on intended semantics.
+
+---
+
+## DEFECT-6: BuildSeqFromIndices Is a No-Op When filtered_idx = DOMAIN journal
+
+### Location
+`RecoveryReplayFull.tla:139`
+
+```tla
+ELSE IF filtered_idx = DOMAIN journal THEN journal
+```
+
+### Analysis
+When `filtered_idx` equals all indices in journal, the journal passes through UNCHANGED. This is supposed to handle "no replay needed" but actually means replay does nothing.
+
+The comment says "Replayed events produce filtered subset" but the code only filters when `filtered_idx ≠ DOMAIN journal`. If a single run spans the entire journal, no filtering happens.
+
+**VERDICT**: Misleading semantics. The comment promises filtering; the code doesn't filter in the common case.
+
+---
+
+## Formal Waiver Analysis
+
+The formal-verification-report.md shows:
+```
+| TLA+ | TLA-NONIDEM-001 (NoResolvedReExecution) | WAIVED | State space explosion; simulation mode used (21,404 states) |
+```
+
+**This waiver is INVALID**:
+1. The counterexample occurs at **388k states**, far beyond simulation coverage
+2. The waiver was granted for "state space explosion" but the actual violation is a **structural semantic error** that would appear in any exhaustive check
+3. A waiver for performance cannot excuse a **model bug**
+
+The spec is wrong. It cannot be waived into correctness.
+
+---
+
+## GOD RULES Non-Compliance
+
+| GOD RULE | Violation |
+|----------|-----------|
+| No hardcoded Kani shapes | N/A — this is TLA+ |
+| No vacuum Verus proofs | N/A |
+| No unbounded TLA+ math | The model uses `1..Len(journal)` which is bounded by MAX_EVENTS=20, but the semantic error manifests before bounds are hit |
+| No loop oscillations | N/A |
+| No blind verification mutations | N/A |
+
+**Critical TLA+ Issue**: The spec claims to model "replay" but the model does not prevent re-execution. This is NOT a performance problem — it is a **correctness problem**. Waiving exhaustive checking does not fix the model.
+
+---
+
+## What Must Be Fixed
+
+1. **AppendEvent must check tracker**: Before appending ActionScheduled, verify (action, step, attempt) ∉ tracker.completed AND not already in journal at same attempt
+
+2. **Or: Journal must be filtered on replay**: ReplayEvents must actually remove completed events from journal, not just update tracker
+
+3. **Or: NoResolvedReExecution must be dropped**: If the intent is to only track tracker state, the invariant must be restated in terms of tracker
+
+4. **tracker.completed must include attempt**: If attempt-aware blocking is needed, tracker.completed must be `SUBSET [action: ActionId, step: StepId, attempt: Attempt]`
+
+5. **BuildSeqFromIndices semantics must be clarified**: Either filter always (even if filtered_idx = DOMAIN journal returns a copy), or document when filtering doesn't happen
+
+---
+
+## Black Hat Verdict
+
+| Finding | Severity | Status |
+|---------|----------|--------|
+| DEFECT-1: AppendEvent doesn't update tracker | CRITICAL | CONFIRMED |
+| DEFECT-2: ReplayEvents doesn't filter completed from journal | CRITICAL | CONFIRMED |
+| DEFECT-3: tracker.completed loses attempt | HIGH | CONFIRMED |
+| DEFECT-4: No guard on ActionScheduled append | CRITICAL | CONFIRMED |
+| DEFECT-5: ActionFailed not tracked | LOW | UNCERTAIN |
+| DEFECT-6: BuildSeqFromIndices no-op | MEDIUM | CONFIRMED |
+| Formal waiver invalid | CRITICAL | WAIVER REJECTED |
+
+**OVERALL STATUS**: **REJECTED**
+
+The model is **semantically broken**. It does not correctly implement replay-with-no-re-execution. The counterexample at 388k states proves the invariant is violated by design, not by state explosion.
+
+**No amount of waivers, tooling changes, or performance optimization will fix this**. The spec must be rewritten.
+
+---
+
+*Black Hat Review: REJECTED*
 *Reviewer: black-hat-reviewer*
 *Date: 2026-05-19*
+*Counterexample: 388k+ states, NoResolvedReExecution violated*
