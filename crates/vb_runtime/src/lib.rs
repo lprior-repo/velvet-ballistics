@@ -69,6 +69,9 @@ pub mod kani_vt2f_runtime_facade;
 #[cfg(kani)]
 pub mod kani_vt2f_shard_lower_semantics;
 
+#[cfg(kani)]
+pub mod kani_admission_store;
+
 #[cfg(loom)]
 pub mod models;
 pub mod primitives;
