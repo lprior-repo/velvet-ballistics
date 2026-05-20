@@ -57,6 +57,10 @@ path = "tests/contracts_as_data_kani.rs"
 name = "contracts_integration"
 path = "tests/contracts_integration.rs"
 
+[[test]]
+name = "vb_c1s0_orchestration_runtime_tests"
+path = "tests/vb_c1s0_orchestration_runtime_tests.rs"
+
 [[bench]]
 name = "velvet_ballastics"
 harness = false

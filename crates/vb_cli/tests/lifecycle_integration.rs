@@ -26,7 +26,7 @@ use vb_storage::records::RecordKind;
 use vb_storage::types::EventSeq;
 
 // Test helpers for lifecycle state setup
-use vb_cli::lifecycle::test_helpers::{create_run_header, reset_tracker};
+use vb_cli::lifecycle::test_helpers::create_run_header;
 
 // ============================================================================
 // Test Fixtures
@@ -195,7 +195,6 @@ fn write_completed(journal: &FjallJournal, run: RunId) {
 /// POST-002: bead transitions to Cancelled
 #[test]
 fn cancel_succeeds_when_bead_is_active() {
-    reset_tracker();
     let (_dir, journal) = temp_journal();
     let run = RunId::new(1);
     create_run_header(&journal, run);
@@ -244,7 +243,6 @@ fn cancel_succeeds_when_bead_is_active() {
 /// POST-002: bead transitions to Cancelled
 #[test]
 fn cancel_succeeds_when_bead_is_waiting_answer() {
-    reset_tracker();
     let (_dir, journal) = temp_journal();
     let run = RunId::new(2);
     create_run_header(&journal, run);
@@ -292,7 +290,6 @@ fn cancel_succeeds_when_bead_is_waiting_answer() {
 /// POST-001: exactly one RuntimeJournalEvent::Resumed appended, bead transitions to Active
 #[test]
 fn resume_succeeds_when_bead_is_cancelled() {
-    reset_tracker();
     let (_dir, journal) = temp_journal();
     let run = RunId::new(3);
     create_run_header(&journal, run);
@@ -340,7 +337,6 @@ fn resume_succeeds_when_bead_is_cancelled() {
 /// POST-001: exactly one RuntimeJournalEvent::Retried appended, bead transitions to Active
 #[test]
 fn retry_succeeds_when_bead_is_failed() {
-    reset_tracker();
     let (_dir, journal) = temp_journal();
     let run = RunId::new(4);
     create_run_header(&journal, run);
@@ -388,7 +384,6 @@ fn retry_succeeds_when_bead_is_failed() {
 /// POST-001: exactly one RuntimeJournalEvent::Answered appended, bead transitions to Completed
 #[test]
 fn answer_succeeds_when_bead_is_waiting_answer() {
-    reset_tracker();
     let (_dir, journal) = temp_journal();
     let run = RunId::new(5);
     let answer_content = "the answer is 42".to_string();
@@ -954,7 +949,6 @@ fn answer_returns_invalid_transition_when_bead_is_failed() {
 /// duplicate cancel request returns E_DUPLICATE_REQUEST and does not double-write journal
 #[test]
 fn cancel_returns_duplicate_request_when_called_twice() {
-    reset_tracker();
     let (_dir, journal) = temp_journal();
     let run = RunId::new(30);
     create_run_header(&journal, run);
@@ -994,7 +988,6 @@ fn cancel_returns_duplicate_request_when_called_twice() {
 /// POST-004: duplicate request returns error and never double-writes journal
 #[test]
 fn resume_returns_duplicate_request_when_called_twice() {
-    reset_tracker();
     let (_dir, journal) = temp_journal();
     let run = RunId::new(31);
     create_run_header(&journal, run);
@@ -1039,7 +1032,6 @@ fn resume_returns_duplicate_request_when_called_twice() {
 /// POST-004: duplicate request returns error and never double-writes journal
 #[test]
 fn retry_returns_duplicate_request_when_called_twice() {
-    reset_tracker();
     let (_dir, journal) = temp_journal();
     let run = RunId::new(32);
     create_run_header(&journal, run);
@@ -1084,7 +1076,6 @@ fn retry_returns_duplicate_request_when_called_twice() {
 /// POST-004: duplicate request returns error and never double-writes journal
 #[test]
 fn answer_returns_duplicate_request_when_called_twice() {
-    reset_tracker();
     let (_dir, journal) = temp_journal();
     let run = RunId::new(33);
     create_run_header(&journal, run);
@@ -1135,7 +1126,6 @@ fn answer_returns_duplicate_request_when_called_twice() {
 /// stale cancel returns E_STALE_REQUEST when state has already advanced to terminal
 #[test]
 fn cancel_returns_stale_request_when_state_already_advanced() {
-    reset_tracker();
     let (_dir, journal) = temp_journal();
     let run = RunId::new(40);
     create_run_header(&journal, run);
@@ -1156,7 +1146,6 @@ fn cancel_returns_stale_request_when_state_already_advanced() {
 /// stale resume returns E_STALE_REQUEST when bead is not in Cancelled state
 #[test]
 fn resume_returns_stale_request_when_not_in_cancelled_state() {
-    reset_tracker();
     let (_dir, journal) = temp_journal();
     let run = RunId::new(41);
     create_run_header(&journal, run);
@@ -1177,7 +1166,6 @@ fn resume_returns_stale_request_when_not_in_cancelled_state() {
 /// stale retry returns E_STALE_REQUEST when bead is not in Failed state
 #[test]
 fn retry_returns_stale_request_when_not_in_failed_state() {
-    reset_tracker();
     let (_dir, journal) = temp_journal();
     let run = RunId::new(42);
     create_run_header(&journal, run);
@@ -1206,7 +1194,6 @@ fn retry_returns_stale_request_when_not_in_failed_state() {
 ///           Pending → InvalidTransition (never reached WaitingAnswer)
 #[test]
 fn answer_returns_stale_request_when_not_in_waiting_answer_state() {
-    reset_tracker();
     let (_dir, journal) = temp_journal();
     let run = RunId::new(43);
     create_run_header(&journal, run);
@@ -1241,7 +1228,6 @@ fn replay_from_empty_journal_produces_valid_initial_state() {
 
     // Reset tracker to ensure clean state - the replay() function returns
     // in-memory tracker state, not journal-derived state in minimal impl.
-    reset_tracker();
 
     let result = vb_cli::lifecycle::replay(&journal);
     assert!(
@@ -1268,7 +1254,6 @@ fn replay_from_empty_journal_produces_valid_initial_state() {
 /// 4. Replays and compares state
 #[test]
 fn replay_full_journal_reconstructs_bit_identical_state() {
-    reset_tracker();
     let (_dir, journal) = temp_journal();
     let run = RunId::new(50);
     create_run_header(&journal, run);
@@ -1292,7 +1277,6 @@ fn replay_full_journal_reconstructs_bit_identical_state() {
     );
 
     // Simulate crash: clear tracker (drops in-memory state)
-    reset_tracker();
 
     // Replay after crash
     let post_crash_states =
@@ -1319,7 +1303,6 @@ fn replay_full_journal_reconstructs_bit_identical_state() {
 /// CONTRACT: E_REPLAY_CORRUPTION when journal contains malformed event bytes.
 #[test]
 fn replay_with_malformed_event_returns_replay_corruption() {
-    reset_tracker();
     let (_dir, journal) = temp_journal();
     let run = RunId::new(90);
 
@@ -1409,7 +1392,6 @@ fn replay_with_missing_event_returns_replay_corruption() {
 ///   the lifecycle command cannot proceed
 #[test]
 fn lifecycle_command_returns_storage_unavailable_when_not_connected() {
-    reset_tracker();
     // Try with a path that cannot be created (FjallJournal will create it)
     // This test documents the infeasibility of triggering E_STORAGE_UNAVAILABLE
     // in the current architecture without production changes.
@@ -1443,7 +1425,6 @@ fn lifecycle_command_returns_storage_unavailable_when_not_connected() {
 /// journal write failure returns E_JOURNAL_WRITE_FAILURE
 #[test]
 fn lifecycle_command_returns_journal_write_failure_on_io_error() {
-    reset_tracker();
     let (_dir, journal) = temp_journal();
     let run = RunId::new(60);
     create_run_header(&journal, run);
@@ -1498,7 +1479,6 @@ fn invalid_transition_error_includes_structured_diagnostics() {
 /// E_DUPLICATE_REQUEST includes all structured diagnostic fields
 #[test]
 fn duplicate_request_error_includes_structured_diagnostics() {
-    reset_tracker();
     let (_dir, journal) = temp_journal();
     let run = RunId::new(71);
     create_run_header(&journal, run);
@@ -1528,7 +1508,6 @@ fn duplicate_request_error_includes_structured_diagnostics() {
 /// E_STALE_REQUEST includes all structured diagnostic fields
 #[test]
 fn stale_request_error_includes_structured_diagnostics() {
-    reset_tracker();
     let (_dir, journal) = temp_journal();
     let run = RunId::new(72);
     create_run_header(&journal, run);

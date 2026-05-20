@@ -6,6 +6,7 @@ pub mod core;
 pub(crate) use self::admission::verify_content_digest;
 pub(crate) mod append;
 pub(crate) mod batch;
+pub mod incident;
 pub(crate) mod injection;
 pub(crate) mod internal;
 pub(crate) mod replay;

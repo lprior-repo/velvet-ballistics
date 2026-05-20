@@ -430,76 +430,126 @@ fn parse_status(args: &[OsString]) -> Result<Command, ParseError> {
     Ok(Command::Status { options, output })
 }
 
-fn parse_status_options(
+/// Handle `--active-runs` for `parse_status_options`.
+fn parse_status_active_runs(
     args: &[OsString],
     options: StatusOptions,
-) -> Result<StatusOptions, ParseError> {
-    match args.split_first() {
-        None => validate_status_options(options),
-        Some((flag, rest)) => match flag.to_str() {
-            Some("--json" | "--jsonl") => parse_status_options(rest, options),
-            Some("--emit") => match rest.split_first() {
-                Some((emit, remaining)) => match emit.to_str() {
-                    Some("yaml") => parse_status_options(
-                        remaining,
-                        StatusOptions {
-                            emit_yaml: true,
-                            ..options
-                        },
-                    ),
-                    Some("text") => parse_status_options(remaining, options),
-                    Some("postcard") => Err(ParseError::InvalidStatusArgument(
-                        "postcard emit is not supported for status".into(),
-                    )),
-                    Some(other) => Err(ParseError::InvalidStatusArgument(format!(
-                        "unknown emit mode {other}"
-                    ))),
-                    None => Err(ParseError::InvalidStatusArgument(
-                        "emit mode is not valid UTF-8".into(),
-                    )),
-                },
-                None => Err(ParseError::MissingArgument("--emit")),
-            },
-            Some("--active-runs") => {
-                let parsed = parse_status_usize_value(rest, "--active-runs")?;
-                parse_status_options(
-                    parsed.remaining,
-                    StatusOptions {
-                        active_runs: Some(parsed.value),
-                        ..options
-                    },
-                )
-            }
-            Some("--queue-depth") => {
-                let parsed = parse_status_usize_value(rest, "--queue-depth")?;
-                parse_status_options(
-                    parsed.remaining,
-                    StatusOptions {
-                        queue_depth: Some(parsed.value),
-                        ..options
-                    },
-                )
-            }
-            Some("--trace-dropped") => {
-                let parsed = parse_status_u64_value(rest, "--trace-dropped")?;
-                parse_status_options(
-                    parsed.remaining,
-                    StatusOptions {
-                        trace_dropped: Some(parsed.value),
-                        ..options
-                    },
-                )
-            }
-            Some(other) if other.starts_with('-') => Err(ParseError::InvalidStatusArgument(
-                format!("unknown flag {other}"),
-            )),
-            Some(other) => Err(ParseError::InvalidStatusArgument(format!(
-                "unexpected positional argument {other}"
-            ))),
-            None => Err(ParseError::InvalidStatusArgument(
-                "argument is not valid UTF-8".into(),
-            )),
+) -> Result<(StatusOptions, &[OsString]), ParseError> {
+    let parsed = parse_status_usize_value(args, "--active-runs")?;
+    Ok((
+        StatusOptions {
+            active_runs: Some(parsed.value),
+            ..options
         },
+        parsed.remaining,
+    ))
+}
+
+/// Handle `--queue-depth` for `parse_status_options`.
+fn parse_status_queue_depth(
+    args: &[OsString],
+    options: StatusOptions,
+) -> Result<(StatusOptions, &[OsString]), ParseError> {
+    let parsed = parse_status_usize_value(args, "--queue-depth")?;
+    Ok((
+        StatusOptions {
+            queue_depth: Some(parsed.value),
+            ..options
+        },
+        parsed.remaining,
+    ))
+}
+
+/// Handle `--trace-dropped` for `parse_status_options`.
+fn parse_status_trace_dropped(
+    args: &[OsString],
+    options: StatusOptions,
+) -> Result<(StatusOptions, &[OsString]), ParseError> {
+    let parsed = parse_status_u64_value(args, "--trace-dropped")?;
+    Ok((
+        StatusOptions {
+            trace_dropped: Some(parsed.value),
+            ..options
+        },
+        parsed.remaining,
+    ))
+}
+
+fn parse_status_options(
+    mut args: &[OsString],
+    mut options: StatusOptions,
+) -> Result<StatusOptions, ParseError> {
+    loop {
+        match args.split_first() {
+            None => return validate_status_options(options),
+            Some((flag, rest)) => match flag.to_str() {
+                Some("--json" | "--jsonl") => {
+                    args = rest;
+                }
+                Some("--emit") => match rest.split_first() {
+                    Some((emit, remaining)) => match emit.to_str() {
+                        Some("yaml") => {
+                            options = StatusOptions {
+                                emit_yaml: true,
+                                ..options
+                            };
+                            args = remaining;
+                        }
+                        Some("text") => {
+                            args = remaining;
+                        }
+                        Some("postcard") => {
+                            return Err(ParseError::InvalidStatusArgument(
+                                "postcard emit is not supported for status".into(),
+                            ));
+                        }
+                        Some(other) => {
+                            return Err(ParseError::InvalidStatusArgument(format!(
+                                "unknown emit mode {other}"
+                            )));
+                        }
+                        None => {
+                            return Err(ParseError::InvalidStatusArgument(
+                                "emit mode is not valid UTF-8".into(),
+                            ));
+                        }
+                    },
+                    None => {
+                        return Err(ParseError::MissingArgument("--emit"));
+                    }
+                },
+                Some("--active-runs") => {
+                    let (updated, remaining) = parse_status_active_runs(rest, options)?;
+                    options = updated;
+                    args = remaining;
+                }
+                Some("--queue-depth") => {
+                    let (updated, remaining) = parse_status_queue_depth(rest, options)?;
+                    options = updated;
+                    args = remaining;
+                }
+                Some("--trace-dropped") => {
+                    let (updated, remaining) = parse_status_trace_dropped(rest, options)?;
+                    options = updated;
+                    args = remaining;
+                }
+                Some(other) if other.starts_with('-') => {
+                    return Err(ParseError::InvalidStatusArgument(format!(
+                        "unknown flag {other}"
+                    )));
+                }
+                Some(other) => {
+                    return Err(ParseError::InvalidStatusArgument(format!(
+                        "unexpected positional argument {other}"
+                    )));
+                }
+                None => {
+                    return Err(ParseError::InvalidStatusArgument(
+                        "argument is not valid UTF-8".into(),
+                    ));
+                }
+            },
+        }
     }
 }
 
@@ -659,6 +709,21 @@ fn parse_action_inspect(args: &[OsString]) -> Result<Command, ParseError> {
     })
 }
 
+/// Set output format and continue parsing for action inspect/list args.
+fn set_action_output_format(
+    rest: &[OsString],
+    state: ActionInspectParseState,
+    format: OutputFormat,
+) -> Result<ActionInspectParseState, ParseError> {
+    parse_action_inspect_args(
+        rest,
+        ActionInspectParseState {
+            output: format,
+            ..state
+        },
+    )
+}
+
 fn parse_action_inspect_args(
     args: &[OsString],
     state: ActionInspectParseState,
@@ -666,20 +731,8 @@ fn parse_action_inspect_args(
     match args.split_first() {
         None => Ok(state),
         Some((raw, rest)) => match raw.to_str() {
-            Some("--json") => parse_action_inspect_args(
-                rest,
-                ActionInspectParseState {
-                    output: OutputFormat::Json,
-                    ..state
-                },
-            ),
-            Some("--jsonl") => parse_action_inspect_args(
-                rest,
-                ActionInspectParseState {
-                    output: OutputFormat::Jsonl,
-                    ..state
-                },
-            ),
+            Some("--json") => set_action_output_format(rest, state, OutputFormat::Json),
+            Some("--jsonl") => set_action_output_format(rest, state, OutputFormat::Jsonl),
             Some("--registry") => parse_action_inspect_registry_arg(rest, state),
             Some(flag) if flag.starts_with("--") => {
                 Err(ParseError::UnknownActionInspectFlag(flag.into()))
@@ -692,6 +745,21 @@ fn parse_action_inspect_args(
     }
 }
 
+/// Set output format and continue parsing for action list args.
+fn set_action_list_output_format(
+    rest: &[OsString],
+    state: ActionListParseState,
+    format: OutputFormat,
+) -> Result<ActionListParseState, ParseError> {
+    parse_action_list_args(
+        rest,
+        ActionListParseState {
+            output: format,
+            ..state
+        },
+    )
+}
+
 fn parse_action_list_args(
     args: &[OsString],
     state: ActionListParseState,
@@ -699,20 +767,8 @@ fn parse_action_list_args(
     match args.split_first() {
         None => Ok(state),
         Some((raw, rest)) => match raw.to_str() {
-            Some("--json") => parse_action_list_args(
-                rest,
-                ActionListParseState {
-                    output: OutputFormat::Json,
-                    ..state
-                },
-            ),
-            Some("--jsonl") => parse_action_list_args(
-                rest,
-                ActionListParseState {
-                    output: OutputFormat::Jsonl,
-                    ..state
-                },
-            ),
+            Some("--json") => set_action_list_output_format(rest, state, OutputFormat::Json),
+            Some("--jsonl") => set_action_list_output_format(rest, state, OutputFormat::Jsonl),
             Some("--registry") => parse_action_registry_arg(rest, state),
             Some(flag) if flag.starts_with("--") => {
                 Err(ParseError::UnknownActionListFlag(flag.into()))

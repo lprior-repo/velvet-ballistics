@@ -27,48 +27,10 @@ use chrono::Utc;
 use vb_core::errors::CoreError;
 use vb_core::ids::RunId;
 use vb_core::workflow::{LifecycleCommand, LifecycleState, RunState, check_lifecycle_transition};
-use vb_storage::{EventSeq, FjallJournal, JournalEvent};
+use vb_storage::{EventSeq, FjallJournal, JournalEvent, derive_lifecycle_state_from_events};
 
 /// Result type for lifecycle operations using CoreError.
 pub type LifecycleResult<T> = Result<T, CoreError>;
-
-/// In-memory run state tracker.
-///
-/// Tracks the current state of each run. State is derived from journal
-/// replay on startup and maintained in memory during operation.
-#[derive(Debug, Default)]
-struct RunStateTracker {
-    /// Map from run ID to lifecycle state.
-    states: std::collections::HashMap<RunId, LifecycleState>,
-}
-
-impl RunStateTracker {
-    /// Sets the state for a run.
-    fn set_state(&mut self, run: RunId, state: LifecycleState) {
-        self.states.insert(run, state);
-    }
-}
-
-// Global state tracker - in production this would be properly managed
-// but for integration testing purposes we need in-memory state
-static TRACKER: std::sync::LazyLock<std::sync::Mutex<RunStateTracker>> =
-    std::sync::LazyLock::new(|| std::sync::Mutex::new(RunStateTracker::default()));
-
-/// Acquires the tracker lock mutably or returns a storage unavailable error.
-fn with_tracker_mut<F, T>(run: RunId, f: F) -> Result<T, CoreError>
-where
-    F: FnOnce(&mut RunStateTracker) -> Result<T, CoreError>,
-{
-    let mut tracker = TRACKER
-        .lock()
-        .map_err(|_| CoreError::LifecycleStorageUnavailable {
-            code: CoreError::LIFECYCLE_STORAGE_UNAVAILABLE_CODE,
-            context: "tracker lock poisoned".to_string(),
-            timestamp: Utc::now(),
-            bead_id: Some(run),
-        })?;
-    f(&mut tracker)
-}
 
 /// Derives the current lifecycle state for a run directly from the journal.
 ///
@@ -169,12 +131,6 @@ pub fn cancel(run: RunId, journal: &FjallJournal) -> LifecycleResult<()> {
             bead_id: Some(run),
         })?;
 
-    // Update state
-    with_tracker_mut(run, |t| {
-        t.set_state(run, LifecycleState::Cancelled);
-        Ok(())
-    })?;
-
     Ok(())
 }
 
@@ -260,12 +216,6 @@ pub fn resume(run: RunId, journal: &FjallJournal) -> LifecycleResult<()> {
             bead_id: Some(run),
         })?;
 
-    // Update state to Active
-    with_tracker_mut(run, |t| {
-        t.set_state(run, LifecycleState::Active);
-        Ok(())
-    })?;
-
     Ok(())
 }
 
@@ -347,12 +297,6 @@ pub fn retry(run: RunId, journal: &FjallJournal) -> LifecycleResult<()> {
             timestamp: Utc::now(),
             bead_id: Some(run),
         })?;
-
-    // Update state to Active
-    with_tracker_mut(run, |t| {
-        t.set_state(run, LifecycleState::Active);
-        Ok(())
-    })?;
 
     Ok(())
 }
@@ -457,12 +401,6 @@ pub fn answer(run: RunId, answer: String, journal: &FjallJournal) -> LifecycleRe
             bead_id: Some(run),
         })?;
 
-    // Update state to Completed
-    with_tracker_mut(run, |t| {
-        t.set_state(run, LifecycleState::Completed);
-        Ok(())
-    })?;
-
     Ok(())
 }
 
@@ -477,14 +415,6 @@ pub fn answer(run: RunId, answer: String, journal: &FjallJournal) -> LifecycleRe
 /// Returns `CoreError`:
 /// - `ReplayCorruption` if the journal replay fails due to corruption or sequence gaps
 pub fn replay(journal: &FjallJournal) -> LifecycleResult<Vec<RunState>> {
-    // Acquire tracker lock to sync with in-memory state during replay
-    let mut tracker = TRACKER.lock().map_err(|_| CoreError::ReplayCorruption {
-        code: CoreError::REPLAY_CORRUPTION_CODE,
-        context: "tracker lock poisoned".to_string(),
-        timestamp: Utc::now(),
-        bead_id: None,
-    })?;
-
     // Enumerate all runs from the journal header keyspace
     let headers = journal
         .run_headers()
@@ -495,7 +425,8 @@ pub fn replay(journal: &FjallJournal) -> LifecycleResult<Vec<RunState>> {
             bead_id: None,
         })?;
 
-    // For each run, replay events to determine final lifecycle state
+    // For each run, derive final state from event sequence and collect directly
+    let mut states = Vec::new();
     for header in &headers {
         let events =
             journal
@@ -506,58 +437,14 @@ pub fn replay(journal: &FjallJournal) -> LifecycleResult<Vec<RunState>> {
                     timestamp: Utc::now(),
                     bead_id: Some(header.run),
                 })?;
-
-        // Derive final state from event sequence
-        let final_state = derive_lifecycle_state_from_events(&events);
-        tracker.set_state(header.run, final_state);
+        let lifecycle = derive_lifecycle_state_from_events(&events);
+        states.push(RunState {
+            run_id: header.run,
+            lifecycle,
+        });
     }
 
-    // Collect final states for all tracked runs
-    let states: Vec<RunState> = tracker
-        .states
-        .iter()
-        .map(|(&run_id, &lifecycle)| RunState { run_id, lifecycle })
-        .collect();
-
     Ok(states)
-}
-
-/// Derives the final lifecycle state from a sequence of journal events.
-///
-/// The last event in the sequence determines the final state:
-/// - `RunCancelled` → Cancelled
-/// - `RunResumed` → Active
-/// - `RunRetried` → Active
-/// - `RunAnswered` → Completed
-/// - `RunFinished` → Completed
-/// - `RunFailedEvent` → Failed
-///
-/// If no events exist, defaults to Pending.
-fn derive_lifecycle_state_from_events(events: &[vb_storage::JournalEvent]) -> LifecycleState {
-    events
-        .last()
-        .map(|e| match e {
-            vb_storage::JournalEvent::RunCancelled { .. } => LifecycleState::Cancelled,
-            vb_storage::JournalEvent::RunResumed { .. } => LifecycleState::Active,
-            vb_storage::JournalEvent::RunRetried { .. } => LifecycleState::Active,
-            vb_storage::JournalEvent::RunAnswered { .. } => LifecycleState::Completed,
-            vb_storage::JournalEvent::RunFinished { .. } => LifecycleState::Completed,
-            vb_storage::JournalEvent::RunFailedEvent { .. } => LifecycleState::Failed,
-            vb_storage::JournalEvent::RunAccepted { .. } => LifecycleState::Active,
-            vb_storage::JournalEvent::RunAdmission { .. } => LifecycleState::Active,
-            vb_storage::JournalEvent::StepStarted { .. } => LifecycleState::Active,
-            vb_storage::JournalEvent::StepSucceeded { .. } => LifecycleState::Active,
-            vb_storage::JournalEvent::ActionScheduled { .. } => LifecycleState::Active,
-            vb_storage::JournalEvent::SlotWrittenEvent { .. } => LifecycleState::Active,
-            vb_storage::JournalEvent::ActionCompletedEvent { .. } => LifecycleState::Active,
-            vb_storage::JournalEvent::ActionFailedEvent { .. } => LifecycleState::Failed,
-            vb_storage::JournalEvent::WaitScheduledEvent { .. } => LifecycleState::WaitingAnswer,
-            vb_storage::JournalEvent::AskScheduledEvent { .. } => LifecycleState::WaitingAnswer,
-            vb_storage::JournalEvent::AskAnsweredEvent { .. } => LifecycleState::WaitingAnswer,
-            vb_storage::JournalEvent::RetryScheduledEvent { .. } => LifecycleState::Active,
-            _ => LifecycleState::Active,
-        })
-        .unwrap_or(LifecycleState::Pending)
 }
 
 // Extension trait for EventSeq increment
@@ -575,26 +462,6 @@ impl EventSeqExt for EventSeq {
 // These helpers bypass journal and are for integration test state setup only.
 pub mod test_helpers {
     use super::*;
-
-    /// Sets the lifecycle state for a run directly in the tracker.
-    /// **TEST USE ONLY** — bypasses journal, not representative of real lifecycle.
-    ///
-    /// Required because integration tests must establish valid prior state (PRE-002)
-    /// without driving the full lifecycle, which needs complete runtime infra.
-    #[allow(unreachable_pub)]
-    pub fn set_lifecycle_state(run: RunId, state: LifecycleState) {
-        if let Ok(mut tracker) = TRACKER.lock() {
-            tracker.set_state(run, state);
-        }
-    }
-
-    /// Resets all run states in the tracker. **TEST USE ONLY.**
-    #[allow(unreachable_pub)]
-    pub fn reset_tracker() {
-        if let Ok(mut tracker) = TRACKER.lock() {
-            tracker.states.clear();
-        }
-    }
 
     /// Creates a minimal run header in the journal so that run_headers() returns the run.
     /// **TEST USE ONLY** — for setting up replay test scenarios.

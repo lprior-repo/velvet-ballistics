@@ -1,0 +1,15 @@
+{"contract_clause":"PRE-001","tests":["FOWLER-001","FOWLER-004"],"proofs":["SCAN-001"],"review":"contract-verification-review.md"}
+{"contract_clause":"PRE-002","tests":["FOWLER-001"],"proofs":["KANI-001","PROPTEST-001"],"review":"contract-verification-review.md"}
+{"contract_clause":"PRE-005","tests":["FOWLER-001","FOWLER-004"],"proofs":["KANI-002"],"review":"contract-verification-review.md"}
+{"contract_clause":"PRE-006","tests":["FOWLER-001","FOWLER-004"],"proofs":["KANI-003"],"review":"contract-verification-review.md"}
+{"contract_clause":"PRE-007","tests":["FOWLER-005"],"proofs":[],"review":"contract-verification-review.md"}
+{"contract_clause":"PRE-008","tests":["FOWLER-006"],"proofs":[],"review":"contract-verification-review.md"}
+{"contract_clause":"POST-001","tests":["FOWLER-001"],"proofs":["KANI-001","PROPTEST-001","TLA-PARITY-001"],"review":"contract-verification-review.md"}
+{"contract_clause":"POST-002","tests":["FOWLER-002"],"proofs":["TLA-PARITY-001"],"review":"contract-verification-review.md"}
+{"contract_clause":"POST-003","tests":["FOWLER-003"],"proofs":["KANI-004","MUTANT-002"],"review":"contract-verification-review.md"}
+{"contract_clause":"POST-004","tests":["FOWLER-004"],"proofs":["KANI-002","KANI-003"],"review":"contract-verification-review.md"}
+{"contract_clause":"INV-001","tests":["FOWLER-001","FOWLER-004"],"proofs":["SCAN-001","PROPTEST-001"],"review":"contract-verification-review.md"}
+{"contract_clause":"INV-002","tests":["PROPTEST-001"],"proofs":["KANI-001","PROPTEST-001"],"review":"contract-verification-review.md"}
+{"contract_clause":"INV-003","tests":["FOWLER-003","FOWLER-004"],"proofs":["KANI-003"],"review":"contract-verification-review.md"}
+{"contract_clause":"INV-004","tests":["FOWLER-001","FOWLER-005","FOWLER-006"],"proofs":["TLA-TERM-001"],"review":"contract-verification-review.md"}
+{"contract_clause":"INV-005","tests":["FOWLER-001","FOWLER-002"],"proofs":["TLA-PARITY-001"],"review":"contract-verification-review.md"}

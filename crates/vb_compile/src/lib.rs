@@ -33,6 +33,12 @@ mod type_taint;
 #[cfg(kani)]
 pub mod kani_idempotency_parity;
 
+// Kani harnesses for vb-a001 for_each lowering fix verification.
+// Proves PRE-002 (body SetConst.next = ForEachNext), PRE-005 (no backward edges),
+// PRE-006 (all nodes reachable), POST-003 (malformed IR rejection).
+#[cfg(kani)]
+pub mod kani_foreach_parity;
+
 pub use expression_bytecode::{compile_expr_to_bytecode, compile_expr_to_bytecode_with_accessors};
 
 use mod_compile_core as core;

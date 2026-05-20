@@ -19,9 +19,13 @@ pub struct TraceRing {
 
 impl TraceRing {
     /// Creates a trace ring with the given bounded capacity.
+    ///
+    /// # Invariants
+    ///
+    /// `capacity` must be ≥ 1. A value of 0 is normalized to 1.
     #[must_use]
     pub fn new(capacity: usize) -> Self {
-        let (producer, consumer) = RingBuffer::new(capacity);
+        let (producer, consumer) = RingBuffer::new(capacity.max(1));
         Self {
             producer,
             consumer,
@@ -919,19 +923,6 @@ mod tests {
         // After drain + refill, history evicts oldest when exceeding capacity
         assert_eq!(snap_0.len(), 0);
         assert_eq!(snap_2.len(), 1);
-    }
-
-    // --- Trace ring capacity of 0 rejects all events ---
-
-    #[test]
-    fn trace_ring_capacity_zero_rejects_all_events() {
-        // Given a ring with capacity 0
-        let mut ring = TraceRing::new(0);
-        // When pushing any event
-        let result = ring.push(TraceEvent::RunSubmitted { run: RunId::new(1) });
-        // Then it is rejected and dropped count is 1
-        assert_eq!(result, false);
-        assert_eq!(ring.dropped(), 1);
     }
 
     // --- Drain for run with zero limit returns empty ---

@@ -1081,3 +1081,6 @@ mod tests {
 
 #[cfg(kani)]
 pub mod kani_id_bounds;
+
+#[cfg(kani)]
+pub mod kani_id_arbitrary;

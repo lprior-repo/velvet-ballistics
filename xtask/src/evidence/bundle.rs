@@ -284,7 +284,7 @@ pub fn write_bundle(
 
     let serialised: std::result::Result<Vec<u8>, Error> = match format {
         EvidenceBundleFormat::Yaml => {
-            let yaml = serde_json::to_string_pretty(bundle).map_err(|e| {
+            let yaml = serde_yaml::to_string(bundle).map_err(|e| {
                 Error::BundleSerializationFailed {
                     format: formatted_format.clone(),
                     cause: e.to_string(),
