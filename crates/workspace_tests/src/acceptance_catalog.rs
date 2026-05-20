@@ -479,3 +479,101 @@ fn validate_deferred_follow_up(
         })
     }
 }
+
+// ──────────────────────────────────────────────────────────────────────────────
+// OBL-CAT-001 through OBL-CAT-004: unit tests for catalog validation
+// ──────────────────────────────────────────────────────────────────────────────
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn valid_scenario(id: &'static str) -> Scenario {
+        Scenario {
+            id,
+            master_behavior: "test behavior",
+            given: "a scenario",
+            when: "the catalog gate validates it",
+            then: "the scenario is accepted",
+            public_surface: "workspace test boundary",
+            fixture: "isolated fixture",
+            expected_outcome: Some("accepted"),
+            expected_error: None,
+            durability_profile: "none",
+            related_bead: "vb-hs9m",
+            executable_evidence_target: Some("crates/workspace_tests/tests/test.rs"),
+            deferred_follow_up_bead: None,
+        }
+    }
+
+    // OBL-CAT-001: validate_catalog returns Ok for valid catalog.
+    #[test]
+    fn validate_catalog_valid() {
+        let scenarios = &[
+            valid_scenario("CAT-001"),
+            valid_scenario("CAT-002"),
+        ];
+        assert_eq!(validate_catalog(scenarios), Ok(()));
+    }
+
+    // OBL-CAT-002: validate_catalog returns Err(DuplicateScenarioId) on duplicate ids.
+    #[test]
+    fn validate_catalog_duplicate_id() {
+        let scenarios = &[valid_scenario("CAT-DUP"), valid_scenario("CAT-DUP")];
+        assert_eq!(
+            validate_catalog(scenarios),
+            Err(CatalogValidationError::DuplicateScenarioId {
+                scenario_id: "CAT-DUP".to_owned(),
+            })
+        );
+    }
+
+    // OBL-CAT-003: validate_catalog returns Err(MissingGivenWhenThen) for empty GWT.
+    #[test]
+    fn validate_catalog_missing_gwt() {
+        // Missing given
+        let mut s1 = valid_scenario("CAT-MISS-GIVEN");
+        s1.given = "";
+        assert_eq!(
+            validate_catalog(&[s1]),
+            Err(CatalogValidationError::MissingGivenWhenThen {
+                scenario_id: "CAT-MISS-GIVEN".to_owned(),
+            })
+        );
+
+        // Missing when
+        let mut s2 = valid_scenario("CAT-MISS-WHEN");
+        s2.when = "";
+        assert_eq!(
+            validate_catalog(&[s2]),
+            Err(CatalogValidationError::MissingGivenWhenThen {
+                scenario_id: "CAT-MISS-WHEN".to_owned(),
+            })
+        );
+
+        // Missing then
+        let mut s3 = valid_scenario("CAT-MISS-THEN");
+        s3.then = "";
+        assert_eq!(
+            validate_catalog(&[s3]),
+            Err(CatalogValidationError::MissingGivenWhenThen {
+                scenario_id: "CAT-MISS-THEN".to_owned(),
+            })
+        );
+    }
+
+    // OBL-CAT-004: validate_catalog returns Err(MissingExactAssertion) when
+    //              scenario has neither expected_outcome nor expected_error.
+    #[test]
+    fn validate_catalog_missing_assertion() {
+        let mut scenario = valid_scenario("CAT-MISS-ASSERT");
+        scenario.expected_outcome = None;
+        scenario.expected_error = None;
+        assert_eq!(
+            validate_catalog(&[scenario]),
+            Err(CatalogValidationError::MissingExactAssertion {
+                scenario_id: "CAT-MISS-ASSERT".to_owned(),
+            })
+        );
+    }
+}

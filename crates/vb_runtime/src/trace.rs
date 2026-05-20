@@ -1065,4 +1065,301 @@ mod tests {
             assert_eq!(*code, ActionFailureCode::Timeout);
         }
     }
+
+    // =========================================================================
+    // OBL-TRC-005: adversarial_overflow — push returns false and dropped
+    //               increments atomically when ring is full.
+    // =========================================================================
+
+    #[test]
+    fn adversarial_overflow() {
+        // Given a ring with capacity 1 to stress the overflow path
+        let mut ring = TraceRing::new(1);
+        let event1 = TraceEvent::RunSubmitted { run: RunId::new(1) };
+        let event2 = TraceEvent::RunSubmitted { run: RunId::new(2) };
+
+        // When pushing first event — succeeds
+        let result1 = ring.push(event1);
+        assert_eq!(result1, true, "first push must succeed");
+        assert_eq!(ring.dropped(), 0, "no drops yet");
+
+        // When pushing second event — ring is full, push returns false
+        let result2 = ring.push(event2);
+        assert_eq!(result2, false, "push must return false when full");
+        assert_eq!(
+            ring.dropped(),
+            1,
+            "dropped counter increments atomically on overflow"
+        );
+
+        // The second event was not retained (overflow policy: drop oldest)
+        let events = ring.drain();
+        assert_eq!(events.len(), 1);
+        assert_eq!(
+            events.first(),
+            Some(&TraceEvent::RunSubmitted { run: RunId::new(1) }),
+            "only the first event is retained after overflow"
+        );
+    }
+
+    // =========================================================================
+    // OBL-TRC-006: fifo_ordering — events dequeued in FIFO insertion order.
+    // =========================================================================
+
+    #[test]
+    fn fifo_ordering() {
+        // Given a trace ring with capacity 8
+        let mut ring = TraceRing::new(8);
+        let e1 = TraceEvent::RunSubmitted { run: RunId::new(1) };
+        let e2 = TraceEvent::StepStarted {
+            run: RunId::new(1),
+            step: StepIdx::new(0),
+        };
+        let e3 = TraceEvent::StepEnded {
+            run: RunId::new(1),
+            step: StepIdx::new(0),
+        };
+        let e4 = TraceEvent::RunFinished { run: RunId::new(1) };
+
+        // When pushing 4 events
+        assert_eq!(ring.push(e1.clone()), true);
+        assert_eq!(ring.push(e2.clone()), true);
+        assert_eq!(ring.push(e3.clone()), true);
+        assert_eq!(ring.push(e4.clone()), true);
+
+        // Then draining returns events in exact FIFO insertion order
+        let events = ring.drain();
+        assert_eq!(events.len(), 4, "all 4 events are drained");
+        assert_eq!(events.get(0), Some(&e1), "e1 is first (earliest)");
+        assert_eq!(events.get(1), Some(&e2), "e2 is second");
+        assert_eq!(events.get(2), Some(&e3), "e3 is third");
+        assert_eq!(events.get(3), Some(&e4), "e4 is fourth (latest)");
+    }
+
+    // =========================================================================
+    // OBL-TRC-007: Miri UB check — belt-and-suspenders (trace.rs is
+    //              #![forbid(unsafe_code)] but we verify no UB via Miri).
+    // =========================================================================
+
+    #[cfg(miri)]
+    #[test]
+    fn miri_trace_operations_no_ub() {
+        // Given a trace ring with capacity 8
+        let mut ring = TraceRing::new(8);
+
+        // Push various event types
+        assert!(ring.push(TraceEvent::RunSubmitted { run: RunId::new(1) }));
+        assert!(ring.push(TraceEvent::StepStarted {
+            run: RunId::new(1),
+            step: StepIdx::new(0)
+        }));
+        assert!(ring.push(TraceEvent::ActionCompleted {
+            run: RunId::new(1),
+            step: StepIdx::new(0)
+        }));
+
+        // Drain all events
+        let events = ring.drain();
+        assert_eq!(events.len(), 3, "all pushed events are drained");
+
+        // Snapshot for a run
+        let snap = ring.snapshot_for_run(RunId::new(1), 10);
+        assert_eq!(snap.len(), 0, "empty after drain");
+
+        // Push and check terminal detection
+        assert!(ring.push(TraceEvent::RunFinished { run: RunId::new(2) }));
+        assert!(ring.has_terminal_event_for_run(RunId::new(2)));
+        assert!(!ring.has_terminal_event_for_run(RunId::new(99)));
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // TRC-08 / TRC-14: has_terminal_event_for_run — RunCancelled is terminal
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// TRC-08: RunCancelled is a terminal event, has_terminal_event_for_run returns true.
+    #[test]
+    fn trace_ring_has_terminal_event_for_run_cancelled() {
+        // Given: a trace ring with a RunCancelled event for run 3
+        let mut ring = TraceRing::new(8);
+        assert!(ring.push(TraceEvent::RunCancelled { run: RunId::new(3) }));
+
+        // When: has_terminal_event_for_run is called for run 3
+        let result = ring.has_terminal_event_for_run(RunId::new(3));
+
+        // Then: returns true (RunCancelled is a terminal variant)
+        assert!(
+            result,
+            "has_terminal_event_for_run must return true for RunCancelled"
+        );
+    }
+
+    /// TRC-08: RunFailed is a terminal event, has_terminal_event_for_run returns true.
+    #[test]
+    fn trace_ring_has_terminal_event_for_run_failed() {
+        // Given: a trace ring with a RunFailed event for run 4
+        let mut ring = TraceRing::new(8);
+        assert!(ring.push(TraceEvent::RunFailed { run: RunId::new(4) }));
+
+        // When: has_terminal_event_for_run is called for run 4
+        let result = ring.has_terminal_event_for_run(RunId::new(4));
+
+        // Then: returns true (RunFailed is a terminal variant)
+        assert!(
+            result,
+            "has_terminal_event_for_run must return true for RunFailed"
+        );
+    }
+
+    /// TRC-08: has_terminal_event_for_run returns false when only non-terminal events present.
+    #[test]
+    fn trace_ring_has_terminal_event_returns_false_when_only_non_terminal_events() {
+        // Given: a ring with only StepStarted and StepEnded events (non-terminal)
+        let mut ring = TraceRing::new(8);
+        assert!(ring.push(TraceEvent::StepStarted {
+            run: RunId::new(5),
+            step: StepIdx::new(0)
+        }));
+        assert!(ring.push(TraceEvent::StepEnded {
+            run: RunId::new(5),
+            step: StepIdx::new(0)
+        }));
+        assert!(ring.push(TraceEvent::ActionCompleted {
+            run: RunId::new(5),
+            step: StepIdx::new(0)
+        }));
+
+        // When: has_terminal_event_for_run is called for run 5
+        let result = ring.has_terminal_event_for_run(RunId::new(5));
+
+        // Then: returns false (no terminal event for run 5)
+        assert!(
+            !result,
+            "has_terminal_event_for_run must return false when only non-terminal events"
+        );
+    }
+
+    /// TRC-14: TraceEvent::is_terminal_for_run returns true only for terminal variants.
+    #[test]
+    fn trace_event_is_terminal_for_run_run_cancelled_is_terminal() {
+        let run = RunId::new(7);
+        // RunCancelled must be terminal for its own run
+        assert!(
+            TraceEvent::RunCancelled { run }.is_terminal_for_run(run),
+            "RunCancelled must be terminal for matching run"
+        );
+        // RunCancelled must NOT be terminal for a different run
+        assert!(
+            !TraceEvent::RunCancelled { run }.is_terminal_for_run(RunId::new(99)),
+            "RunCancelled must not be terminal for non-matching run"
+        );
+    }
+
+    /// TRC-14: TraceEvent::is_terminal_for_run RunFailed variant.
+    #[test]
+    fn trace_event_is_terminal_for_run_run_failed_is_terminal() {
+        let run = RunId::new(8);
+        assert!(
+            TraceEvent::RunFailed { run }.is_terminal_for_run(run),
+            "RunFailed must be terminal for matching run"
+        );
+        assert!(
+            !TraceEvent::RunFailed { run }.is_terminal_for_run(RunId::new(99)),
+            "RunFailed must not be terminal for non-matching run"
+        );
+    }
+
+    /// TRC-14: TraceEvent::is_terminal_for_run RunFinished variant.
+    #[test]
+    fn trace_event_is_terminal_for_run_run_finished_is_terminal() {
+        let run = RunId::new(9);
+        assert!(
+            TraceEvent::RunFinished { run }.is_terminal_for_run(run),
+            "RunFinished must be terminal for matching run"
+        );
+        assert!(
+            !TraceEvent::RunFinished { run }.is_terminal_for_run(RunId::new(99)),
+            "RunFinished must not be terminal for non-matching run"
+        );
+    }
+
+    /// TRC-14: TraceEvent::is_terminal_for_run returns false for all non-terminal variants.
+    #[test]
+    fn trace_event_is_terminal_for_run_non_terminal_variants_return_false() {
+        let run = RunId::new(10);
+        let step = StepIdx::new(0);
+        let slot = SlotIdx::new(0);
+        let code = ActionFailureCode::Timeout;
+
+        assert!(
+            !TraceEvent::StepStarted { run, step }.is_terminal_for_run(run),
+            "StepStarted is not terminal"
+        );
+        assert!(
+            !TraceEvent::StepEnded { run, step }.is_terminal_for_run(run),
+            "StepEnded is not terminal"
+        );
+        assert!(
+            !TraceEvent::SlotWritten { run, slot, value: vec![] }
+                .is_terminal_for_run(run),
+            "SlotWritten is not terminal"
+        );
+        assert!(
+            !TraceEvent::ActionScheduled { run, step }.is_terminal_for_run(run),
+            "ActionScheduled is not terminal"
+        );
+        assert!(
+            !TraceEvent::ActionCompleted { run, step }.is_terminal_for_run(run),
+            "ActionCompleted is not terminal"
+        );
+        assert!(
+            !TraceEvent::ActionFailed { run, step, code }.is_terminal_for_run(run),
+            "ActionFailed is not terminal"
+        );
+        assert!(
+            !TraceEvent::AskAnswered { run, step, slot }.is_terminal_for_run(run),
+            "AskAnswered is not terminal"
+        );
+        assert!(
+            !TraceEvent::RunSubmitted { run }.is_terminal_for_run(run),
+            "RunSubmitted is not terminal"
+        );
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // TRC-16: drain + refill preserves data correctly across cycles
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// TRC-16: Fill-drain-refill cycle preserves newest events after eviction.
+    #[test]
+    fn trace_ring_fill_drain_refill_preserves_newest_events() {
+        // Given: a ring with capacity 3
+        let mut ring = TraceRing::new(3);
+        // Fill with 3 events (0, 1, 2)
+        for i in 0..3u64 {
+            assert!(ring.push(TraceEvent::RunFinished { run: RunId::new(i) }));
+        }
+        // Drain all 3
+        let first = ring.drain();
+        assert_eq!(first.len(), 3, "first drain returns 3 events");
+
+        // Refill with 3 new events (3, 4, 5)
+        for i in 3..6u64 {
+            assert!(ring.push(TraceEvent::RunFinished { run: RunId::new(i) }));
+        }
+
+        // Drain again
+        let second = ring.drain();
+        assert_eq!(second.len(), 3, "second drain returns 3 events after refill");
+        // Verify these are the new events (3, 4, 5) — oldest from first batch were evicted
+        assert_eq!(
+            second.get(0),
+            Some(&TraceEvent::RunFinished { run: RunId::new(3) }),
+            "second drain first event is run 3"
+        );
+        assert_eq!(
+            second.get(2),
+            Some(&TraceEvent::RunFinished { run: RunId::new(5) }),
+            "second drain last event is run 5"
+        );
+    }
 }
