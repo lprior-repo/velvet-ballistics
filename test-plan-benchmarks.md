@@ -6,7 +6,7 @@
 - **Problem**: Section 39 mandates 22 benchmark groups. 12 are MISSING.
 - **Output**: `test-plan-benchmarks.md` — benchmark specifications for all 12 missing groups
 - **Benchmark tool**: Criterion (per existing `benches/velvet_ballastics.rs` pattern)
-- **Metadata format**: `profile=bench;tool=criterion-0.8;durability=mixed;mode=ir-and-generated;latency=p50-p95-p99-by-criterion;allocations=allocator-external;instructions=not-collected`
+- **Metadata format**: `profile=bench;tool=criterion-0.8;durability=mixed;mode=ir;latency=p50-p95-p99-by-criterion;allocations=allocator-external;instructions=not-collected`
 
 ---
 
@@ -653,7 +653,7 @@ fn metadata(name: &str, fixture: &[u8], extra: &str) -> String
 
 `BENCH_METADATA` constant (already defined):
 ```rust
-const BENCH_METADATA: &str = "profile=bench;tool=criterion-0.8;durability=mixed;mode=ir-and-generated;latency=p50-p95-p99-by-criterion;allocations=allocator-external;instructions=not-collected";
+const BENCH_METADATA: &str = "profile=bench;tool=criterion-0.8;durability=mixed;mode=ir;latency=p50-p95-p99-by-criterion;allocations=allocator-external;instructions=not-collected";
 ```
 
 ### Latency Budget Gates

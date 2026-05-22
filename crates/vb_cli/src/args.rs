@@ -10,10 +10,14 @@ pub(crate) enum OutputFormat {
     /// Human-readable text output (default).
     #[default]
     Text,
-    /// JSON object output.
+    /// JSON object output (legacy cold-path only).
     Json,
-    /// JSON Lines output (one JSON object per line).
+    /// JSON Lines output (legacy cold-path only).
     Jsonl,
+    /// YAML structured text output (canonical for v1).
+    Yaml,
+    /// Postcard binary output (canonical machine format for v1).
+    Postcard,
 }
 
 /// Verification profile controlling depth of static analysis.
@@ -1246,13 +1250,29 @@ fn parse_server_mode(raw: &str) -> Result<DurabilityMode, ParseError> {
     }
 }
 
-/// Parse --json or --jsonl output format flags.
+/// Parse --json, --jsonl, or --emit <yaml|text|postcard> output format flags.
 /// Returns OutputFormat::Text by default.
 fn parse_output_format(args: &[OsString]) -> OutputFormat {
     if contains_flag(args, "--jsonl") {
         OutputFormat::Jsonl
     } else if contains_flag(args, "--json") {
         OutputFormat::Json
+    } else if contains_flag(args, "--emit") {
+        for i in 0..args.len() {
+            if args[i] == "--emit" {
+                if let Some(val) = args.get(i + 1) {
+                    if let Some(s) = val.to_str() {
+                        return match s {
+                            "yaml" => OutputFormat::Yaml,
+                            "postcard" => OutputFormat::Postcard,
+                            "text" => OutputFormat::Text,
+                            _ => OutputFormat::Text,
+                        };
+                    }
+                }
+            }
+        }
+        OutputFormat::Text
     } else {
         OutputFormat::Text
     }

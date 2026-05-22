@@ -11,7 +11,7 @@ use vb_runtime::shard::types::{ShardCommand, ShardCommandQueue};
 use vb_runtime::RuntimeError;
 
 const BENCH_METADATA: &str =
-    "profile=bench;tool=criterion-0.8;durability=mixed;mode=ir-and-generated;latency=p50-p95-p99-by-criterion;allocations=allocator-external;instructions=not-collected";
+    "profile=bench;tool=criterion-0.8;durability=mixed;mode=ir;latency=p50-p95-p99-by-criterion;allocations=allocator-external;instructions=not-collected";
 
 fn metadata(name: &str, fixture_bytes: usize, extra: &str) -> String {
     format!(

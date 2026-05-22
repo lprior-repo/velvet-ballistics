@@ -20,7 +20,7 @@ use vb_runtime::primitives::collect::CollectStates;
 use vb_runtime::shard::helpers::snapshot_from_state;
 use vb_runtime::shard::types::RunState;
 
-const BENCH_METADATA: &str = "profile=bench;tool=criterion-0.8;durability=mixed;mode=ir-and-generated;latency=p50-p95-p99-by-criterion;allocations=allocator-external;instructions=not-collected";
+const BENCH_METADATA: &str = "profile=bench;tool=criterion-0.8;durability=mixed;mode=ir;latency=p50-p95-p99-by-criterion;allocations=allocator-external;instructions=not-collected";
 
 #[derive(Serialize)]
 struct SerializableSnapshot {

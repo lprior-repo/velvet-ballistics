@@ -1895,18 +1895,6 @@ fn print_step_result(
     snapshots: StepStateSnapshots,
 ) {
     match output {
-        OutputFormat::Json | OutputFormat::Jsonl => {
-            let json = build_step_result_json(
-                step,
-                node,
-                frame,
-                signal,
-                deltas,
-                snapshots.to_before_json(),
-                snapshots.to_after_json(),
-            );
-            json_out(&json, output);
-        }
         OutputFormat::Text => {
             outln!("step: {}", step.get());
             outln!("kind: {}", node_kind_name(&node.kind));
@@ -1918,6 +1906,18 @@ fn print_step_result(
             if let Some(output_slot) = node.output {
                 print_taint(frame, output_slot);
             }
+        }
+        OutputFormat::Json | OutputFormat::Jsonl | OutputFormat::Yaml | OutputFormat::Postcard => {
+            let json = build_step_result_json(
+                step,
+                node,
+                frame,
+                signal,
+                deltas,
+                snapshots.to_before_json(),
+                snapshots.to_after_json(),
+            );
+            json_out(&json, output);
         }
     }
 }
@@ -2583,7 +2583,7 @@ fn cmd_events(
                 return CliExitCode::ValidationFailed.into();
             } else {
                 match output {
-                    OutputFormat::Json => {
+                    OutputFormat::Json | OutputFormat::Yaml | OutputFormat::Postcard => {
                         let event_list: Vec<serde_json::Value> =
                             events.iter().map(event_to_json).collect();
                         json_out(
@@ -2915,7 +2915,7 @@ fn cmd_replay(run_id: &str, db: &std::path::Path, output: OutputFormat) -> ExitC
                 .map(|e| commands_diff::event_name(e).to_string());
 
             match output {
-                OutputFormat::Json => {
+                OutputFormat::Json | OutputFormat::Yaml | OutputFormat::Postcard => {
                     let event_list: Vec<serde_json::Value> =
                         events.iter().map(event_to_json).collect();
                     json_out(
@@ -2983,7 +2983,7 @@ fn write_locked_read_surface(command: &'static str, run_id: &str, output: Output
             );
             write_vb_kyyf_trace(command, run_id, 0);
         }
-        OutputFormat::Json => json_out(
+        OutputFormat::Json | OutputFormat::Yaml | OutputFormat::Postcard => json_out(
             &serde_json::json!({
                 "run_id": run_id,
                 "command": command,
@@ -3022,7 +3022,7 @@ fn cmd_trace(run_id: &str, db: &std::path::Path, output: OutputFormat) -> ExitCo
         return CliExitCode::Success.into();
     }
     match output {
-        OutputFormat::Json => {
+        OutputFormat::Json | OutputFormat::Yaml | OutputFormat::Postcard => {
             let entries: Vec<serde_json::Value> = trace.iter().map(trace_entry_to_json).collect();
             json_out(
                 &serde_json::json!({ "run_id": run_id, "trace": entries, "total": trace.len() }),
@@ -3542,8 +3542,11 @@ fn cmd_incident(run_id: &str, db: &std::path::Path, output: OutputFormat) -> Exi
     });
 
     match output {
-        OutputFormat::Json => {
-            let json_str = match serde_json::to_string_pretty(&json_report) {
+        OutputFormat::Json | OutputFormat::Yaml | OutputFormat::Postcard => {
+            json_out(&json_report, output);
+        }
+        OutputFormat::Jsonl => {
+            let json_str = match serde_json::to_string(&json_report) {
                 Ok(s) => s,
                 Err(err) => {
                     json_error(
@@ -3555,6 +3558,85 @@ fn cmd_incident(run_id: &str, db: &std::path::Path, output: OutputFormat) -> Exi
                     );
                     return CliExitCode::StorageError.into();
                 }
+            };
+            outln!("{json_str}");
+        }
+        OutputFormat::Text => {
+            outln!("incident report for run {run_id}");
+            outln!("  failure_code:  {}", report.failure_code);
+            match report.failed_at_step {
+                Some(step) => outln!("  failed_at_step: {step}"),
+                None => outln!("  failed_at_step: unknown"),
+            }
+            outln!("  side_effects:");
+            if report.side_effects.is_empty() {
+                outln!("    (none)");
+            } else {
+                for se in &report.side_effects {
+                    let step = &se["step"];
+                    let action = &se["action"];
+                    // WAIVER: Option::unwrap_or is not Result::unwrap — no panic path.
+                    // This is safe fallback for missing JSON fields in CLI report display.
+                    let certainty = se["certainty"].as_str().unwrap_or("unknown");
+                    outln!("    step={step} action={action} certainty={certainty}");
+                }
+            }
+            outln!("  repair_hints:");
+            for hint in &report.repair_hints {
+                // WAIVER: Option::unwrap_or is not Result::unwrap — no panic path.
+                // This is safe fallback for missing hint strings in CLI report display.
+                let hint_str = hint.as_str().unwrap_or("unknown");
+                outln!("    - {hint_str}");
+            }
+        }
+    }
+}
+        OutputFormat::Jsonl => {
+            let json_str = match serde_json::to_string(&json_report) {
+                Ok(s) => s,
+                Err(err) => {
+                    json_error(
+                        &serde_json::json!({
+                            "success": false,
+                            "error": format!("failed to serialize incident report: {err}")
+                        }),
+                        output,
+                    );
+                    return CliExitCode::StorageError.into();
+                }
+            };
+            outln!("{json_str}");
+        }
+        OutputFormat::Text => {
+            outln!("incident report for run {run_id}");
+            outln!("  failure_code:  {}", report.failure_code);
+            match report.failed_at_step {
+                Some(step) => outln!("  failed_at_step: {step}"),
+                None => outln!("  failed_at_step: unknown"),
+            }
+            outln!("  side_effects:");
+            if report.side_effects.is_empty() {
+                outln!("    (none)");
+            } else {
+                for se in &report.side_effects {
+                    let step = &se["step"];
+                    let action = &se["action"];
+                    // WAIVER: Option::unwrap_or is not Result::unwrap — no panic path.
+                    // This is safe fallback for missing JSON fields in CLI report display.
+                    let certainty = se["certainty"].as_str().unwrap_or("unknown");
+                    outln!("    step={step} action={action} certainty={certainty}");
+                }
+            }
+            outln!("  repair_hints:");
+            for hint in &report.repair_hints {
+                // WAIVER: Option::unwrap_or is not Result::unwrap — no panic path.
+                // This is safe fallback for missing hint strings in CLI report display.
+                let hint_str = hint.as_str().unwrap_or("unknown");
+                outln!("    - {hint_str}");
+            }
+        }
+    }
+}
             };
             outln!("{json_str}");
         }
@@ -3680,7 +3762,7 @@ fn cmd_diff(run_a: &str, run_b: &str, db: &std::path::Path, output: OutputFormat
     let result = commands_diff::compute_diff(&events_a, &events_b);
 
     match output {
-        OutputFormat::Json => {
+        OutputFormat::Json | OutputFormat::Yaml | OutputFormat::Postcard => {
             json_out(
                 &serde_json::json!({
                     "run_a": run_a,
@@ -5895,9 +5977,11 @@ fn write_diagnostic_message_stderr(message: &str, code: CliExitCode, output: Out
     let stderr = io::stderr();
     let mut handle = stderr.lock();
     let write_result = match output {
-        OutputFormat::Json | OutputFormat::Jsonl => serde_json::to_writer(&mut handle, &diagnostic)
-            .map_err(io::Error::other)
-            .and_then(|()| handle.write_all(b"\n")),
+        OutputFormat::Json | OutputFormat::Jsonl | OutputFormat::Yaml | OutputFormat::Postcard => {
+            serde_json::to_writer(&mut handle, &diagnostic)
+                .map_err(io::Error::other)
+                .and_then(|()| handle.write_all(b"\n"))
+        }
         OutputFormat::Text => writeln!(handle, "{message}"),
     };
     if let Err(error) = write_result {

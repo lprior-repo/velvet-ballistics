@@ -84,7 +84,7 @@ const EXPR_EQ_SYMBOL: &str = "$input.value == 7";
 const EXPR_NUMBER_COMPARE: &str = "7 > 3";
 const EXPR_BOOLEAN_CHAIN: &str = "true && false || true";
 const EXPR_ARITHMETIC: &str = "1 + 2 * 3";
-const BENCH_METADATA: &str = "profile=bench;tool=criterion-0.8;durability=mixed;mode=ir-and-generated;latency=p50-p95-p99-by-criterion;allocations=allocator-external;instructions=not-collected";
+const BENCH_METADATA: &str = "profile=bench;tool=criterion-0.8;durability=mixed;mode=ir;latency=p50-p95-p99-by-criterion;allocations=allocator-external;instructions=not-collected";
 const JOURNAL_REPLAY_EVENTS: u64 = 1000;
 const BENCH_LATENCY_BUDGET_US: u64 = 100_000;
 const BENCH_LATENCY_BUDGET_ENV: &str = "VB_BENCH_LATENCY_BUDGET_US";
