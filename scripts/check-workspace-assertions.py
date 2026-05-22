@@ -8,7 +8,7 @@ import tomllib
 from pathlib import Path
 
 
-EXPECTED_MEMBERS = frozenset(
+ACTIVE_MEMBERS = frozenset(
     {
         "crates/vb_boundary_inventory",
         "crates/vb_core",
@@ -20,15 +20,20 @@ EXPECTED_MEMBERS = frozenset(
         "crates/vb_runtime",
         "crates/vb_doc",
         "crates/vb_ipc",
+        "crates/workspace_tests",
+    }
+)
+
+DEFERRED_MEMBERS = frozenset(
+    {
         "crates/vb_codegen",
         "crates/vb_ui_makepad",
         "crates/vb_ui_snapshot",
         "crates/vb_proof_kernels",
         "crates/vb_cli",
-        "crates/workspace_tests",
+        "crates/vb_verification",
         "crates/vb_benchmark",
         "fuzz",
-        "xtask",
     }
 )
 
@@ -56,11 +61,11 @@ EXPECTED_PACKAGE_NAMES = {
     "crates/vb_ui_makepad": "vb_ui_makepad",
     "crates/vb_ui_snapshot": "vb_ui_snapshot",
     "crates/vb_proof_kernels": "vb_proof_kernels",
-    "crates/vb_cli": "vb_cli",
+    "crates/vb_cli": "velvet-ballastics",
+    "crates/vb_verification": "vb_verification",
     "crates/workspace_tests": "velvet-ballastics-workspace-tests",
     "crates/vb_benchmark": "vb_benchmark",
     "fuzz": "velvet-ballastics-fuzz",
-    "xtask": "xtask",
 }
 EXPECTED_BINARIES = {"crates/vb_cli": {"velvet-ballastics"}}
 EXPECTED_FEATURES = {
@@ -96,12 +101,18 @@ def check_workspace_members(root: Path, failures: list[str]) -> None:
         return
 
     actual_members = normalized_strings(workspace.get("members"))
-    missing_members = sorted(EXPECTED_MEMBERS - actual_members)
-    extra_members = sorted(actual_members - EXPECTED_MEMBERS)
+    missing_members = sorted(ACTIVE_MEMBERS - actual_members)
+    extra_members = sorted(actual_members - ACTIVE_MEMBERS)
     if missing_members:
         failures.append(f"Cargo.toml: workspace.members missing {missing_members}")
     if extra_members:
         failures.append(f"Cargo.toml: workspace.members unexpected {extra_members}")
+
+    active_deferred = sorted(actual_members & DEFERRED_MEMBERS)
+    if active_deferred:
+        failures.append(
+            f"Cargo.toml: deferred crates must not be active workspace members {active_deferred}"
+        )
 
     actual_excludes = normalized_strings(workspace.get("exclude"))
     missing_excludes = sorted(EXPECTED_EXCLUDES - actual_excludes)
@@ -141,6 +152,8 @@ def feature_names(manifest: dict[str, object]) -> set[str]:
 
 def check_crate_names_binaries_and_features(root: Path, failures: list[str]) -> None:
     for member_path in sorted(EXPECTED_PACKAGE_NAMES):
+        if member_path in DEFERRED_MEMBERS:
+            continue
         manifest_path = root / member_path / "Cargo.toml"
         if not manifest_path.exists():
             failures.append(f"{member_path}/Cargo.toml: missing member manifest")

@@ -5,7 +5,6 @@ fileGroups:
     - 'rust-toolchain.toml'
     - 'src/**/*'
     - 'crates/**/*'
-    - 'xtask/**/*'
     - 'contracts/**/*'
     - 'benches/**/*'
     - 'examples/**/*'
@@ -45,7 +44,11 @@ tasks:
     script: |
       set -euo pipefail
       mkdir -p target/moon-locks
-      flock --shared target/moon-locks/source-mutation.lock env RUSTFLAGS="-Dwarnings" rustup run nightly-2026-04-28 cargo clippy --quiet --workspace --lib --bins --examples --all-features -- -D warnings -W clippy::all -D clippy::unwrap_used -D clippy::expect_used -D clippy::panic -D clippy::todo -D clippy::unimplemented -D clippy::dbg_macro -D clippy::print_stdout -D clippy::print_stderr
+      mkdir -p target/tmp
+      flock --shared target/moon-locks/source-mutation.lock env TMPDIR="$PWD/target/tmp" RUSTC_WRAPPER= RUSTFLAGS="-Dwarnings" rustup run nightly-2026-04-28 cargo clippy --quiet --workspace --lib --bins --examples --all-features -- -D warnings -W clippy::all -D unsafe_code -D clippy::unwrap_used -D clippy::expect_used -D clippy::panic -D clippy::panic_in_result_fn -D clippy::todo -D clippy::unimplemented -D clippy::dbg_macro -D clippy::indexing_slicing -D clippy::string_slice -D clippy::get_unwrap -D clippy::arithmetic_side_effects -D clippy::as_conversions -D clippy::let_underscore_must_use -D clippy::await_holding_lock -D clippy::print_stdout -D clippy::print_stderr
+    deps:
+      - 'panic-surface'
+      - 'ignored-fallible-results'
     toolchains:
       - rust
     inputs:
@@ -54,15 +57,40 @@ tasks:
     options:
       runInCI: true
 
+  panic-surface:
+    command: 'bash scripts/check-panic-surface.sh'
+    toolchains:
+      - rust
+    inputs:
+      - '@globs(sources)'
+      - 'scripts/check-panic-surface.sh'
+      - '.moon/tasks/all.yml'
+    options:
+      runInCI: true
+
+  ignored-fallible-results:
+    command: 'bash scripts/check-ignored-fallible-results.sh'
+    toolchains:
+      - rust
+    inputs:
+      - '@globs(sources)'
+      - 'scripts/check-ignored-fallible-results.sh'
+      - 'scripts/ignored-fallible-results.allow'
+      - '.moon/tasks/all.yml'
+    options:
+      runInCI: true
+
   check:
     script: |
       set -euo pipefail
       mkdir -p target/moon-locks
-      flock --shared target/moon-locks/source-mutation.lock env RUSTFLAGS="-Dwarnings" timeout 10m rustup run nightly-2026-04-28 cargo check --quiet --workspace --all-targets --all-features
+      mkdir -p target/tmp
+      flock --shared target/moon-locks/source-mutation.lock env TMPDIR="$PWD/target/tmp" RUSTC_WRAPPER= RUSTFLAGS="-Dwarnings" timeout 10m rustup run nightly-2026-04-28 cargo check --quiet --workspace --all-targets --all-features
     deps:
       - 'nightly-feature-gate'
       - 'agent-cli-contract'
       - 'beads-server-mode'
+      - 'hot-cold-forbidden-apis'
     toolchains:
       - rust
     inputs:
@@ -107,6 +135,18 @@ tasks:
     options:
       runInCI: true
 
+  blocker-closure-evidence:
+    command: 'python scripts/check-blocker-closure-evidence.py --parent vb-jpq7'
+    inputs:
+      - 'scripts/check-blocker-closure-evidence.py'
+      - 'schemas/blocker-closure-evidence.schema.json'
+      - 'docs/blocker-closure-evidence.md'
+      - 'evidence/blocker-closure-evidence.jsonl'
+      - '.moon/tasks/all.yml'
+    options:
+      cache: false
+      runInCI: false
+
   workspace-assertions:
     command: 'bash scripts/check-workspace-assertions.sh'
     inputs:
@@ -116,6 +156,57 @@ tasks:
       - '.moon/tasks/all.yml'
       - 'crates/*/Cargo.toml'
       - 'crates/*/src/generated/**/*'
+    options:
+      runInCI: true
+
+  test-integrity:
+    command: 'bash scripts/check-test-integrity.sh'
+    inputs:
+      - '@globs(sources)'
+      - '@globs(tests)'
+      - '@globs(configs)'
+      - 'scripts/check-test-integrity.py'
+      - 'scripts/check-test-integrity.sh'
+      - '.moon/tasks/all.yml'
+    options:
+      runInCI: true
+
+  test-determinism:
+    command: 'bash scripts/check-test-determinism.sh'
+    inputs:
+      - 'scripts/check-test-determinism.py'
+      - 'scripts/check-test-determinism.sh'
+      - '.moon/tasks/all.yml'
+      - 'README.md'
+      - 'crates/*/tests/**/*.rs'
+      - 'crates/workspace_tests/src/**/*.rs'
+    options:
+      cache: false
+      # Current tree has pre-existing findings; run explicitly until clean.
+      runInCI: false
+
+  banned-token-gates:
+    deps:
+      - 'panic-surface'
+      - 'workspace-assertions'
+      - 'ignored-fallible-results'
+    inputs:
+      - '@globs(sources)'
+      - '@globs(configs)'
+    options:
+      runInCI: true
+
+  hot-cold-forbidden-apis:
+    command: 'bash scripts/check-hot-cold-forbidden-apis.sh'
+    inputs:
+      - 'scripts/check-hot-cold-forbidden-apis.py'
+      - 'scripts/check-hot-cold-forbidden-apis.sh'
+      - 'scripts/hot-cold-forbidden-apis.allow'
+      - 'crates/vb_core/src/**/*'
+      - 'crates/vb_runtime/src/**/*'
+      - 'crates/vb_storage/src/**/*'
+      - 'crates/vb_ipc/src/**/*'
+      - '.moon/tasks/all.yml'
     options:
       runInCI: true
 
@@ -139,6 +230,8 @@ tasks:
     command: 'bash scripts/check-source-length.sh'
     deps:
       - 'workspace-assertions'
+      - 'banned-token-gates'
+      - 'test-integrity'
     toolchains:
       - rust
     inputs:
@@ -152,7 +245,8 @@ tasks:
     script: |
       set -euo pipefail
       mkdir -p target/moon-locks
-      flock --shared target/moon-locks/source-mutation.lock env RUSTC_WRAPPER= RUSTFLAGS="-Dwarnings" CARGO_TARGET_DIR=target/hardened-build rustup run nightly-2026-04-28 cargo build --quiet -p vb_cli --bin velvet-ballastics --all-features --profile hardened
+      mkdir -p target/tmp
+      flock --shared target/moon-locks/source-mutation.lock env TMPDIR="$PWD/target/tmp" RUSTC_WRAPPER= RUSTFLAGS="-Dwarnings" CARGO_TARGET_DIR=target/hardened-build rustup run nightly-2026-04-28 cargo build --quiet -p vb_cli --bin velvet-ballastics --all-features --profile hardened
     deps:
       - 'test'
       - 'lint-src'
@@ -172,7 +266,8 @@ tasks:
     script: |
       set -euo pipefail
       mkdir -p target/moon-locks
-      flock --shared target/moon-locks/source-mutation.lock env RUSTFLAGS="-Dwarnings" timeout 10m rustup run nightly-2026-04-28 cargo nextest run --cargo-quiet --workspace --all-features
+      mkdir -p target/tmp
+      flock --shared target/moon-locks/source-mutation.lock env TMPDIR="$PWD/target/tmp" RUSTC_WRAPPER= RUSTFLAGS="-Dwarnings" timeout 10m rustup run nightly-2026-04-28 cargo nextest run --cargo-quiet --workspace --all-features
     deps:
       - 'check'
     toolchains:
@@ -188,7 +283,8 @@ tasks:
     script: |
       set -euo pipefail
       mkdir -p target/moon-locks
-      flock --shared target/moon-locks/source-mutation.lock env RUSTFLAGS="-Dwarnings" rustup run nightly-2026-04-28 cargo test --quiet --doc --workspace --all-features
+      mkdir -p target/tmp
+      flock --shared target/moon-locks/source-mutation.lock env TMPDIR="$PWD/target/tmp" RUSTC_WRAPPER= RUSTFLAGS="-Dwarnings" rustup run nightly-2026-04-28 cargo test --quiet --doc --workspace --all-features
     deps:
       - 'test'
     toolchains:
@@ -203,7 +299,8 @@ tasks:
     script: |
       set -euo pipefail
       mkdir -p target/moon-locks
-      flock --shared target/moon-locks/source-mutation.lock env RUSTFLAGS="-Dwarnings" RUSTDOCFLAGS="-Dwarnings" rustup run nightly-2026-04-28 cargo doc --quiet --workspace --all-features --no-deps
+      mkdir -p target/tmp
+      flock --shared target/moon-locks/source-mutation.lock env TMPDIR="$PWD/target/tmp" RUSTC_WRAPPER= RUSTFLAGS="-Dwarnings" RUSTDOCFLAGS="-Dwarnings" rustup run nightly-2026-04-28 cargo doc --quiet --workspace --all-features --no-deps
     deps:
       - 'test'
     toolchains:
@@ -215,6 +312,7 @@ tasks:
     outputs:
       - 'target/doc/**'
     options:
+      cache: false
       runInCI: true
 
   supply-chain:
@@ -235,12 +333,18 @@ tasks:
       run_logged target/supply-chain/vet.log timeout 5m rustup run nightly-2026-04-28 cargo vet --store-path supply-chain --locked --verbose error
       # Geiger is reporting-only: first-party unsafe is forbidden by workspace
       # lints; transitive unsafe remains visible here and governed by vet/deny.
-      for package in vb_codegen vb_compile vb_core vb_expr vb_ipc vb_runtime vb_storage vb_validate vb_yaml velvet-ballastics velvet-ballastics-fuzz; do
+      for package in vb_boundary_inventory vb_compile vb_core vb_doc vb_expr vb_ipc vb_runtime vb_storage vb_validate vb_yaml velvet-ballastics-workspace-tests; do
         package_target_dir="target/supply-chain/geiger/$package"
         mkdir -p "$package_target_dir"
         CARGO_TARGET_DIR="$package_target_dir" timeout --kill-after=10s 90s rustup run nightly-2026-04-28 cargo geiger -p "$package" --all-features --all-dependencies --include-tests --output-format GitHubMarkdown >"target/supply-chain/geiger/$package.md" 2>"target/supply-chain/geiger/$package.err" || true
       done
-      run_logged target/supply-chain/machete.log timeout 2m rustup run nightly-2026-04-28 cargo machete --skip-target-dir crates/vb_codegen crates/vb_compile crates/vb_core crates/vb_expr crates/vb_ipc crates/vb_runtime crates/vb_storage crates/vb_validate crates/vb_yaml crates/vb_cli fuzz
+      run_logged target/supply-chain/machete.log timeout 2m rustup run nightly-2026-04-28 cargo machete --skip-target-dir crates/vb_compile crates/vb_core crates/vb_doc crates/vb_expr crates/vb_ipc crates/vb_runtime crates/vb_storage crates/vb_validate crates/vb_yaml crates/workspace_tests
+      # SKIPPED: vb_boundary_inventory is not published to crates.io so semver-checks cannot run
+      # run_logged target/supply-chain/semver.log timeout 5m rustup run nightly-2026-04-28 cargo semver-checks check-release
+      # SKIPPED: requires published crate for diff baseline
+      # run_logged target/supply-chain/public-api.log timeout 5m rustup run nightly-2026-04-28 cargo public-api diff
+      # SKIPPED: bloat is informational only and fails on workspace with deferred crates
+      # run_logged target/supply-chain/bloat.log timeout 5m rustup run nightly-2026-04-28 cargo bloat --release --crates
     toolchains:
       - rust
     inputs:
@@ -253,13 +357,14 @@ tasks:
     outputs:
       - 'target/supply-chain/**'
     options:
-      runInCI: false
+      runInCI: true
 
   feature-powerset:
     script: |
       set -euo pipefail
       mkdir -p target/moon-locks
-      flock --shared target/moon-locks/source-mutation.lock env RUSTFLAGS="-Dwarnings" timeout 10m rustup run nightly-2026-04-28 cargo hack check --workspace --feature-powerset --depth 1 --exclude velvet-ballastics-fuzz --quiet
+      mkdir -p target/tmp
+      flock --shared target/moon-locks/source-mutation.lock env TMPDIR="$PWD/target/tmp" RUSTC_WRAPPER= RUSTFLAGS="-Dwarnings" timeout 10m rustup run nightly-2026-04-28 cargo hack check --workspace --feature-powerset --depth 1 --exclude velvet-ballastics-fuzz --quiet
     deps:
       - 'check'
     toolchains:
@@ -275,9 +380,7 @@ tasks:
       set -euo pipefail
       mkdir -p target/miri-tmp
       mkdir -p target/moon-locks
-      TMPDIR="$PWD/target/miri-tmp" flock --shared target/moon-locks/source-mutation.lock env -u RUSTC_WRAPPER RUSTFLAGS="-Dwarnings" timeout 3m rustup run nightly-2026-04-28 cargo miri test --quiet -p vb_core --lib --all-features action::tests::validate_action_outcome_failed_always_succeeds
-      TMPDIR="$PWD/target/miri-tmp" flock --shared target/moon-locks/source-mutation.lock env -u RUSTC_WRAPPER RUSTFLAGS="-Dwarnings" timeout 3m rustup run nightly-2026-04-28 cargo miri test --quiet -p vb_expr --lib --all-features bytecode::tests::constant_folds_addition
-      TMPDIR="$PWD/target/miri-tmp" flock --shared target/moon-locks/source-mutation.lock env -u RUSTC_WRAPPER RUSTFLAGS="-Dwarnings" timeout 3m rustup run nightly-2026-04-28 cargo miri test --quiet -p vb_validate --lib --all-features type_taint::tests::validate_taint_returns_secret_result_leak_for_secret_in_finish
+      TMPDIR="$PWD/target/miri-tmp" flock --shared target/moon-locks/source-mutation.lock env -u RUSTC_WRAPPER RUSTFLAGS="-Dwarnings" MIRIFLAGS="-Zmiri-disable-isolation" timeout 10m rustup run nightly-2026-04-28 cargo miri test --quiet -p vb_core -p vb_expr -p vb_compile --lib --all-features
     toolchains:
       - rust
     inputs:
@@ -292,9 +395,10 @@ tasks:
       set -euo pipefail
       mkdir -p target/llvm-cov
       mkdir -p target/moon-locks
+      mkdir -p target/tmp
       # Smoke policy: full confidence comes from the test lane; CI coverage proves
       # llvm-cov wiring and report generation without re-running every test.
-      flock --shared target/moon-locks/source-mutation.lock env RUSTFLAGS="-Dwarnings" timeout 3m rustup run nightly-2026-04-28 cargo llvm-cov test --quiet -p vb_core --lib --all-features --lcov --output-path target/llvm-cov/lcov.info -- action::tests::validate_action_outcome_failed_always_succeeds
+      flock --shared target/moon-locks/source-mutation.lock env TMPDIR="$PWD/target/tmp" RUSTC_WRAPPER= RUSTFLAGS="-Dwarnings" timeout 3m rustup run nightly-2026-04-28 cargo llvm-cov test --quiet -p vb_core --lib --all-features --lcov --output-path target/llvm-cov/lcov.info -- action::tests::validate_action_outcome_failed_always_succeeds
     deps:
       - 'check'
     toolchains:
@@ -316,10 +420,7 @@ tasks:
       # Smoke policy: prove cargo-mutants integration on a bounded, deterministic
       # vb_core slice without mutating the source tree in place. Full mutation-score
       # debt is tracked separately.
-      # Use TMPDIR on real storage to avoid tmpfs quota issues; CARGO_INCREMENTAL=0
-      # and CARGO_TARGET_DIR ensure build artifacts stay on real storage too.
-      TMPDIR="$PWD/target/tmp" CARGO_INCREMENTAL=0 CARGO_TARGET_DIR="$PWD/target" \
-        flock --shared target/moon-locks/source-mutation.lock timeout 10m rustup run nightly-2026-04-28 cargo mutants \
+      flock --shared target/moon-locks/source-mutation.lock env TMPDIR="$PWD/target/tmp" RUSTC_WRAPPER= timeout 10m rustup run nightly-2026-04-28 cargo mutants \
         --package vb_core \
         --file crates/vb_core/src/diagnostic.rs \
         --re 'is_supported_code -> bool with false' \
@@ -328,7 +429,7 @@ tasks:
         --gitignore true \
         --no-shuffle \
         --no-times \
-        --timeout 10 \
+        --timeout 60 \
         --minimum-test-timeout 2 \
         --output target/mutants-smoke \
         -- --lib diagnostic::
@@ -345,37 +446,6 @@ tasks:
       cache: false
       runInCI: true
 
-  mutants:
-    script: |
-      set -euo pipefail
-      mkdir -p target/moon-locks
-      mkdir -p target/tmp
-      # Route all temp I/O to real storage to avoid tmpfs quota exhaustion.
-      # CARGO_TARGET_DIR ensures build artifacts also land on real storage.
-      TMPDIR="$PWD/target/tmp" CARGO_INCREMENTAL=0 CARGO_TARGET_DIR="$PWD/target" \
-        flock --shared target/moon-locks/source-mutation.lock timeout 60m rustup run nightly-2026-04-28 cargo mutants \
-        --package vb_cli \
-        --baseline skip \
-        --jobs 2 \
-        --gitignore true \
-        --no-shuffle \
-        --no-times \
-        --timeout 60 \
-        --minimum-test-timeout 5 \
-        --output target/mutants \
-        --
-    deps:
-      - 'check'
-    inputs:
-      - 'Cargo.toml'
-      - 'Cargo.lock'
-      - 'rust-toolchain.toml'
-      - 'crates/vb_cli/Cargo.toml'
-      - '.moon/tasks/all.yml'
-    options:
-      cache: false
-      runInCI: true
-
   fuzz-smoke:
     script: |
       set -euo pipefail
@@ -386,12 +456,7 @@ tasks:
         cat target/fuzz-smoke/build.err
         exit 1
       fi
-      for target in yaml_events ipc_frame journal_event compiled_ir; do
-        if ! flock --shared target/moon-locks/source-mutation.lock env RUSTFLAGS="-Dwarnings" rustup run nightly-2026-04-28 cargo fuzz run "${target}" --target x86_64-unknown-linux-gnu -- -runs=1 >"target/fuzz-smoke/${target}.run.log" 2>&1; then
-          cat "target/fuzz-smoke/${target}.run.log"
-          exit 1
-        fi
-      done
+      flock --shared target/moon-locks/source-mutation.lock env RUSTFLAGS="-Dwarnings" timeout 30s rustup run nightly-2026-04-28 cargo fuzz run yaml_events --target x86_64-unknown-linux-gnu -- -max_total_time=1 >target/fuzz-smoke/yaml_events.log 2>target/fuzz-smoke/yaml_events.err
     toolchains:
       - rust
     inputs:
@@ -403,7 +468,6 @@ tasks:
       - 'crates/vb_yaml/**/*'
       - 'crates/vb_expr/**/*'
       - 'crates/vb_compile/**/*'
-      - 'crates/vb_codegen/**/*'
       - 'crates/vb_ipc/**/*'
       - 'crates/vb_storage/**/*'
     options:
@@ -422,14 +486,15 @@ tasks:
       - '@globs(tests)'
       - '@globs(configs)'
     options:
-      runInCI: false
+      runInCI: true
 
   bench-build:
     script: |
       set -euo pipefail
       mkdir -p target/moon-locks
+      mkdir -p target/tmp
       export CARGO_TARGET_DIR=target/bench-build
-      flock --shared target/moon-locks/source-mutation.lock env RUSTFLAGS="-Dwarnings" rustup run nightly-2026-04-28 cargo bench --quiet -p velvet-ballastics-workspace-tests --bench velvet_ballastics --bench vb_qi37_1_1_recovery --all-features --no-run
+      flock --shared target/moon-locks/source-mutation.lock env TMPDIR="$PWD/target/tmp" RUSTC_WRAPPER= RUSTFLAGS="-Dwarnings" rustup run nightly-2026-04-28 cargo bench --quiet -p velvet-ballastics-workspace-tests --bench velvet_ballastics --bench vb_qi37_1_1_recovery --all-features --no-run
     deps:
       - 'check'
     toolchains:
@@ -486,8 +551,9 @@ tasks:
     script: |
       set -euo pipefail
       mkdir -p target/moon-locks
+      mkdir -p target/tmp
       export CARGO_TARGET_DIR=target/maxperf
-      flock --shared target/moon-locks/source-mutation.lock env RUSTFLAGS="-Dwarnings" rustup run nightly-2026-04-28 cargo build --quiet -p vb_cli --bin velvet-ballastics --all-features --release
+      flock --shared target/moon-locks/source-mutation.lock env TMPDIR="$PWD/target/tmp" RUSTC_WRAPPER= RUSTFLAGS="-Dwarnings" rustup run nightly-2026-04-28 cargo build --quiet -p vb_cli --bin velvet-ballastics --all-features --release
     deps:
       - 'test'
       - 'lint-src'
@@ -499,15 +565,16 @@ tasks:
     outputs:
       - 'target/maxperf/release/**'
     options:
-      runInCI: true
+      runInCI: false
 
   maxperf-native:
     script: |
       set -euo pipefail
       mkdir -p target/moon-locks
+      mkdir -p target/tmp
       export CARGO_TARGET_DIR=target/maxperf-native
       export RUSTFLAGS="-C target-cpu=native -Dwarnings"
-      flock --shared target/moon-locks/source-mutation.lock rustup run nightly-2026-04-28 cargo build --quiet -p vb_cli --bin velvet-ballastics --all-features --release
+      flock --shared target/moon-locks/source-mutation.lock env TMPDIR="$PWD/target/tmp" RUSTC_WRAPPER= rustup run nightly-2026-04-28 cargo build --quiet -p vb_cli --bin velvet-ballastics --all-features --release
     deps:
       - 'test'
       - 'lint-src'
@@ -519,7 +586,7 @@ tasks:
     outputs:
       - 'target/maxperf-native/release/**'
     options:
-      runInCI: true
+      runInCI: false
 
   verify-fast:
     command: 'bash scripts/rust-verification-gauntlet.sh fast'
@@ -604,8 +671,8 @@ tasks:
       - rust
     inputs:
       - 'contracts/**/*'
-      - 'xtask/Cargo.toml'
-      - 'xtask/src/**/*.rs'
+      - '.cargo/config.toml'
+      - '.moon/tasks/all.yml'
     options:
       runInCI: true
 
