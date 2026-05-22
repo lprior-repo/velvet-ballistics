@@ -617,7 +617,7 @@ fn write_stderr_line(args: std::fmt::Arguments<'_>) {
 
 fn json_out(value: &Value, format: OutputFormat) {
     match format {
-        OutputFormat::Json | OutputFormat::Jsonl => {
+        OutputFormat::Json | OutputFormat::Jsonl | OutputFormat::Yaml | OutputFormat::Postcard => {
             if let Ok(text) = serde_json::to_string(value)
                 && let Err(error) = write_stdout_line(format_args!("{text}"))
             {
@@ -645,7 +645,7 @@ fn write_stderr_best_effort(args: std::fmt::Arguments<'_>) {
 
 fn json_error(value: &Value, format: OutputFormat) {
     match format {
-        OutputFormat::Json | OutputFormat::Jsonl => {
+        OutputFormat::Json | OutputFormat::Jsonl | OutputFormat::Yaml | OutputFormat::Postcard => {
             if let Ok(text) = serde_json::to_string(value) {
                 write_stderr_line(format_args!("{text}"));
             }

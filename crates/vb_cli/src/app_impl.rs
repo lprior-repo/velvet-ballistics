@@ -61,7 +61,8 @@ commands:
   inspect    <run_id> --db <path> [--json|--jsonl]     Inspect a run
   events     <run_id> --db <path> [--json|--jsonl]     List run events
   replay     <run_id> --db <path> [--json|--jsonl]     Replay a run from journal
-  trace      <run_id> --db <path> [--json|--jsonl]     Show step-by-step execution trace
+  trace      <run_id> --db <path> [--step <N>] [--action <N>] [--status <status>] [--limit <N>] [--json|--jsonl]
+                                                        Show step-by-step execution trace
   retry      <run_id> --db <path> [--json|--jsonl]     Retry a failed run from last successful step
   resume     <run_id> --db <path> [--json|--jsonl]     Resume a suspended run
   cancel     <run_id> --db <path> [--reason <text>] [--json|--jsonl]  Cancel a run
@@ -150,7 +151,12 @@ pub(crate) fn run_from_env() -> ExitCode {
             limit,
         }) => cmd_events(&run_id, &db, output, status, limit),
         Ok(Command::Replay { run_id, db, output }) => cmd_replay(&run_id, &db, output),
-        Ok(Command::Trace { run_id, db, output }) => cmd_trace(&run_id, &db, output),
+        Ok(Command::Trace {
+            run_id,
+            db,
+            output,
+            filters,
+        }) => cmd_trace(&run_id, &db, output, filters),
         Ok(Command::Retry { run_id, db, output }) => cmd_retry(&run_id, &db, output),
         Ok(Command::Resume { run_id, db, output }) => cmd_resume(&run_id, &db, output),
         Ok(Command::BenchRun { workflow, output }) => cmd_bench_run(&workflow, output),
@@ -3004,12 +3010,17 @@ fn write_locked_read_surface(command: &'static str, run_id: &str, output: Output
     }
 }
 
-fn cmd_trace(run_id: &str, db: &std::path::Path, output: OutputFormat) -> ExitCode {
+fn cmd_trace(
+    run_id: &str,
+    db: &std::path::Path,
+    output: OutputFormat,
+    filters: commands_journal::TraceFilters,
+) -> ExitCode {
     let events = match read_journal_events(run_id, db, output) {
         Ok(ev) => ev,
         Err(code) => return code,
     };
-    let trace = commands_journal::build_trace(&events);
+    let trace = commands_journal::filter_trace(commands_journal::build_trace(&events), filters);
     if trace.is_empty() {
         if output != OutputFormat::Text {
             json_out(
@@ -3057,6 +3068,12 @@ fn trace_entry_to_json(entry: &commands_journal::TraceEntry) -> serde_json::Valu
     map.insert("type".into(), serde_json::Value::from(entry.event_type));
     if let Some(step) = entry.step {
         map.insert("step".into(), serde_json::Value::from(step));
+    }
+    if let Some(status) = entry.status {
+        map.insert("status".into(), serde_json::Value::from(status.as_str()));
+    }
+    if let Some(action) = entry.action {
+        map.insert("action".into(), serde_json::Value::from(action));
     }
     for (k, v) in &entry.extra_json {
         map.insert((*k).into(), v.clone());
@@ -3544,101 +3561,6 @@ fn cmd_incident(run_id: &str, db: &std::path::Path, output: OutputFormat) -> Exi
     match output {
         OutputFormat::Json | OutputFormat::Yaml | OutputFormat::Postcard => {
             json_out(&json_report, output);
-        }
-        OutputFormat::Jsonl => {
-            let json_str = match serde_json::to_string(&json_report) {
-                Ok(s) => s,
-                Err(err) => {
-                    json_error(
-                        &serde_json::json!({
-                            "success": false,
-                            "error": format!("failed to serialize incident report: {err}")
-                        }),
-                        output,
-                    );
-                    return CliExitCode::StorageError.into();
-                }
-            };
-            outln!("{json_str}");
-        }
-        OutputFormat::Text => {
-            outln!("incident report for run {run_id}");
-            outln!("  failure_code:  {}", report.failure_code);
-            match report.failed_at_step {
-                Some(step) => outln!("  failed_at_step: {step}"),
-                None => outln!("  failed_at_step: unknown"),
-            }
-            outln!("  side_effects:");
-            if report.side_effects.is_empty() {
-                outln!("    (none)");
-            } else {
-                for se in &report.side_effects {
-                    let step = &se["step"];
-                    let action = &se["action"];
-                    // WAIVER: Option::unwrap_or is not Result::unwrap — no panic path.
-                    // This is safe fallback for missing JSON fields in CLI report display.
-                    let certainty = se["certainty"].as_str().unwrap_or("unknown");
-                    outln!("    step={step} action={action} certainty={certainty}");
-                }
-            }
-            outln!("  repair_hints:");
-            for hint in &report.repair_hints {
-                // WAIVER: Option::unwrap_or is not Result::unwrap — no panic path.
-                // This is safe fallback for missing hint strings in CLI report display.
-                let hint_str = hint.as_str().unwrap_or("unknown");
-                outln!("    - {hint_str}");
-            }
-        }
-    }
-}
-        OutputFormat::Jsonl => {
-            let json_str = match serde_json::to_string(&json_report) {
-                Ok(s) => s,
-                Err(err) => {
-                    json_error(
-                        &serde_json::json!({
-                            "success": false,
-                            "error": format!("failed to serialize incident report: {err}")
-                        }),
-                        output,
-                    );
-                    return CliExitCode::StorageError.into();
-                }
-            };
-            outln!("{json_str}");
-        }
-        OutputFormat::Text => {
-            outln!("incident report for run {run_id}");
-            outln!("  failure_code:  {}", report.failure_code);
-            match report.failed_at_step {
-                Some(step) => outln!("  failed_at_step: {step}"),
-                None => outln!("  failed_at_step: unknown"),
-            }
-            outln!("  side_effects:");
-            if report.side_effects.is_empty() {
-                outln!("    (none)");
-            } else {
-                for se in &report.side_effects {
-                    let step = &se["step"];
-                    let action = &se["action"];
-                    // WAIVER: Option::unwrap_or is not Result::unwrap — no panic path.
-                    // This is safe fallback for missing JSON fields in CLI report display.
-                    let certainty = se["certainty"].as_str().unwrap_or("unknown");
-                    outln!("    step={step} action={action} certainty={certainty}");
-                }
-            }
-            outln!("  repair_hints:");
-            for hint in &report.repair_hints {
-                // WAIVER: Option::unwrap_or is not Result::unwrap — no panic path.
-                // This is safe fallback for missing hint strings in CLI report display.
-                let hint_str = hint.as_str().unwrap_or("unknown");
-                outln!("    - {hint_str}");
-            }
-        }
-    }
-}
-            };
-            outln!("{json_str}");
         }
         OutputFormat::Jsonl => {
             let json_str = match serde_json::to_string(&json_report) {
@@ -5892,6 +5814,9 @@ fn write_error_stderr(error: &ParseError) -> io::Result<()> {
         ParseError::InvalidStatusArgument(reason) => {
             writeln!(handle, "invalid status argument: {reason}\n\n{HELP}")
         }
+        ParseError::InvalidTraceArgument(reason) => {
+            writeln!(handle, "invalid trace argument: {reason}\n\n{HELP}")
+        }
         ParseError::UnknownEventStatus(status) => {
             writeln!(
                 handle,
@@ -5964,7 +5889,9 @@ fn write_error_stderr(error: &ParseError) -> io::Result<()> {
 fn write_parse_error_stderr(error: &ParseError, output: OutputFormat) -> io::Result<()> {
     match output {
         OutputFormat::Text => write_error_stderr(error),
-        OutputFormat::Json | OutputFormat::Jsonl => write_diagnostic_report_stderr(error),
+        OutputFormat::Json | OutputFormat::Jsonl | OutputFormat::Yaml | OutputFormat::Postcard => {
+            write_diagnostic_report_stderr(error)
+        }
     }
 }
 
@@ -6119,7 +6046,7 @@ fn write_stderr_best_effort(args: std::fmt::Arguments<'_>) {
 /// Output a JSON value to stdout in the specified format.
 pub(crate) fn json_out(value: &serde_json::Value, format: OutputFormat) {
     match format {
-        OutputFormat::Json => {
+        OutputFormat::Json | OutputFormat::Yaml | OutputFormat::Postcard => {
             let json_str = serde_json::to_string_pretty(value).unwrap_or_default();
             outln!("{json_str}");
         }

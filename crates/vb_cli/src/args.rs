@@ -4,6 +4,8 @@
 use std::ffi::OsString;
 use std::path::PathBuf;
 
+use crate::commands_journal::{TraceFilters, TraceStatus};
+
 /// Structured output format for CLI commands.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub(crate) enum OutputFormat {
@@ -151,6 +153,7 @@ pub(crate) enum Command {
         run_id: String,
         db: PathBuf,
         output: OutputFormat,
+        filters: TraceFilters,
     },
     Retry {
         run_id: String,
@@ -297,6 +300,7 @@ pub(crate) enum ParseError {
     UnknownServerMode(String),
     UnknownEventStatus(String),
     InvalidAgentContextArgument(String),
+    InvalidTraceArgument(String),
     InvalidStatusArgument(String),
     InvalidSystemStatusArgument(String),
     UnknownActionCommand(String),
@@ -1107,12 +1111,116 @@ fn parse_replay(args: &[OsString]) -> Result<Command, ParseError> {
 }
 
 fn parse_trace(args: &[OsString]) -> Result<Command, ParseError> {
+    validate_trace_args(args)?;
     let a = parse_run_db_args(args)?;
+    let filters = parse_trace_filters(args)?;
     Ok(Command::Trace {
         run_id: a.run_id,
         db: a.db,
         output: a.output,
+        filters,
     })
+}
+
+fn validate_trace_args(args: &[OsString]) -> Result<(), ParseError> {
+    let mut index = 3_usize;
+    while index < args.len() {
+        let Some(raw) = args.get(index).and_then(|arg| arg.to_str()) else {
+            return Err(ParseError::InvalidTraceArgument(
+                "argument is not valid UTF-8".into(),
+            ));
+        };
+        match raw {
+            "--json" | "--jsonl" => {
+                index = index.saturating_add(1);
+            }
+            "--db" | "--step" | "--action" | "--status" | "--limit" => {
+                let Some(value) = args
+                    .get(index.saturating_add(1))
+                    .and_then(|arg| arg.to_str())
+                else {
+                    return Err(ParseError::MissingArgument(match raw {
+                        "--db" => "--db",
+                        "--step" => "--step",
+                        "--action" => "--action",
+                        "--status" => "--status",
+                        "--limit" => "--limit",
+                        _ => "trace flag value",
+                    }));
+                };
+                if value.starts_with("--") {
+                    return Err(ParseError::MissingArgument(match raw {
+                        "--db" => "--db",
+                        "--step" => "--step",
+                        "--action" => "--action",
+                        "--status" => "--status",
+                        "--limit" => "--limit",
+                        _ => "trace flag value",
+                    }));
+                }
+                index = index.saturating_add(2);
+            }
+            other if other.starts_with("--") => {
+                return Err(ParseError::InvalidTraceArgument(format!(
+                    "unknown trace flag: {other}"
+                )));
+            }
+            other => {
+                return Err(ParseError::InvalidTraceArgument(format!(
+                    "unexpected positional argument: {other}"
+                )));
+            }
+        }
+    }
+    Ok(())
+}
+
+fn parse_trace_filters(args: &[OsString]) -> Result<TraceFilters, ParseError> {
+    let step = match optional_named_flag(args, "--step")? {
+        Some(raw) => Some(parse_trace_u16("--step", &raw)?),
+        None => None,
+    };
+    let action = match optional_named_flag(args, "--action")? {
+        Some(raw) => Some(parse_trace_u16("--action", &raw)?),
+        None => None,
+    };
+    let status = match optional_named_flag(args, "--status")? {
+        Some(raw) => Some(parse_trace_status(&raw)?),
+        None => None,
+    };
+    let limit = match optional_named_flag(args, "--limit")? {
+        Some(raw) => Some(parse_trace_limit(&raw)?),
+        None => None,
+    };
+
+    Ok(TraceFilters {
+        step,
+        action,
+        status,
+        limit,
+    })
+}
+
+fn parse_trace_u16(flag: &'static str, raw: &str) -> Result<u16, ParseError> {
+    raw.parse::<u16>()
+        .map_err(|_| ParseError::InvalidTraceArgument(format!("{flag} must be a valid u16")))
+}
+
+fn parse_trace_limit(raw: &str) -> Result<usize, ParseError> {
+    raw.parse::<usize>()
+        .map_err(|_| ParseError::InvalidTraceArgument("--limit must be a valid usize".into()))
+}
+
+fn parse_trace_status(raw: &str) -> Result<TraceStatus, ParseError> {
+    match raw {
+        "pending" => Ok(TraceStatus::Pending),
+        "active" => Ok(TraceStatus::Active),
+        "waiting_answer" => Ok(TraceStatus::WaitingAnswer),
+        "cancelled" => Ok(TraceStatus::Cancelled),
+        "completed" => Ok(TraceStatus::Completed),
+        "failed" => Ok(TraceStatus::Failed),
+        other => Err(ParseError::UnknownEventStatus(other.into())),
+    }
 }
 
 fn parse_retry(args: &[OsString]) -> Result<Command, ParseError> {
@@ -1258,23 +1366,29 @@ fn parse_output_format(args: &[OsString]) -> OutputFormat {
     } else if contains_flag(args, "--json") {
         OutputFormat::Json
     } else if contains_flag(args, "--emit") {
-        for i in 0..args.len() {
-            if args[i] == "--emit" {
-                if let Some(val) = args.get(i + 1) {
-                    if let Some(s) = val.to_str() {
-                        return match s {
-                            "yaml" => OutputFormat::Yaml,
-                            "postcard" => OutputFormat::Postcard,
-                            "text" => OutputFormat::Text,
-                            _ => OutputFormat::Text,
-                        };
-                    }
-                }
+        let mut emit_value_expected = false;
+        for arg in args {
+            if emit_value_expected {
+                return arg
+                    .to_str()
+                    .map(parse_emit_output_format)
+                    .unwrap_or(OutputFormat::Text);
             }
+
+            emit_value_expected = arg == "--emit";
         }
         OutputFormat::Text
     } else {
         OutputFormat::Text
+    }
+}
+
+fn parse_emit_output_format(raw: &str) -> OutputFormat {
+    match raw {
+        "yaml" => OutputFormat::Yaml,
+        "postcard" => OutputFormat::Postcard,
+        "text" => OutputFormat::Text,
+        _ => OutputFormat::Text,
     }
 }
 
@@ -1311,6 +1425,25 @@ fn named_flag(args: &[OsString], flag: &str) -> Option<String> {
         }
     }
     None
+}
+
+fn optional_named_flag(
+    args: &[OsString],
+    flag: &'static str,
+) -> Result<Option<String>, ParseError> {
+    for (index, arg) in args.iter().enumerate() {
+        if arg == flag {
+            let value = args
+                .get(index.saturating_add(1))
+                .and_then(|raw| raw.to_str())
+                .ok_or(ParseError::MissingArgument(flag))?;
+            if value.starts_with("--") {
+                return Err(ParseError::MissingArgument(flag));
+            }
+            return Ok(Some(value.to_string()));
+        }
+    }
+    Ok(None)
 }
 
 /// Find the first positional argument (not starting with `--`) starting at `start_idx`.
@@ -1370,6 +1503,9 @@ impl std::fmt::Display for ParseError {
             Self::InvalidAgentContextArgument(reason) => {
                 write!(formatter, "invalid agent-context argument: {reason}")
             }
+            Self::InvalidTraceArgument(reason) => {
+                write!(formatter, "invalid trace argument: {reason}")
+            }
             Self::InvalidStatusArgument(reason) => {
                 write!(formatter, "invalid status argument: {reason}")
             }
@@ -1422,6 +1558,7 @@ mod tests {
         ActionRegistryMode, Command, DurabilityMode, EmitTarget, OutputFormat, ParseError,
         StepTarget, VerifyProfile, parse_args,
     };
+    use crate::commands_journal::TraceStatus;
     use std::ffi::OsString;
     use std::path::PathBuf;
 
@@ -1770,6 +1907,120 @@ mod tests {
         let parsed = parse_args(&args(&["velvet-ballastics", "agent-context", "--bogus"]));
         assert!(
             matches!(parsed, Err(ParseError::InvalidAgentContextArgument(ref reason)) if reason == "unknown flag --bogus")
+        );
+    }
+
+    #[test]
+    fn parse_trace_defaults_to_no_filters() {
+        let parsed = parse_args(&args(&[
+            "velvet-ballastics",
+            "trace",
+            "7",
+            "--db",
+            "journal-db",
+        ]));
+
+        assert!(matches!(parsed, Ok(Command::Trace { .. })));
+        if let Ok(Command::Trace {
+            run_id,
+            db,
+            output,
+            filters,
+        }) = parsed
+        {
+            assert_eq!(run_id, "7");
+            assert_eq!(db, PathBuf::from("journal-db"));
+            assert_eq!(output, OutputFormat::Text);
+            assert_eq!(filters.step, None);
+            assert_eq!(filters.action, None);
+            assert_eq!(filters.status, None);
+            assert_eq!(filters.limit, None);
+        }
+    }
+
+    #[test]
+    fn parse_trace_accepts_all_filters() {
+        let parsed = parse_args(&args(&[
+            "velvet-ballastics",
+            "trace",
+            "7",
+            "--db",
+            "journal-db",
+            "--step",
+            "4",
+            "--action",
+            "9",
+            "--status",
+            "active",
+            "--limit",
+            "3",
+            "--json",
+        ]));
+
+        assert!(matches!(parsed, Ok(Command::Trace { .. })));
+        if let Ok(Command::Trace {
+            output, filters, ..
+        }) = parsed
+        {
+            assert_eq!(output, OutputFormat::Json);
+            assert_eq!(filters.step, Some(4));
+            assert_eq!(filters.action, Some(9));
+            assert_eq!(filters.status, Some(TraceStatus::Active));
+            assert_eq!(filters.limit, Some(3));
+        }
+    }
+
+    #[test]
+    fn parse_trace_rejects_invalid_step() {
+        let parsed = parse_args(&args(&[
+            "velvet-ballastics",
+            "trace",
+            "7",
+            "--db",
+            "journal-db",
+            "--step",
+            "not-a-step",
+        ]));
+
+        assert!(
+            matches!(parsed, Err(ParseError::InvalidTraceArgument(ref reason)) if reason == "--step must be a valid u16"),
+            "unexpected parse result: {parsed:?}"
+        );
+    }
+
+    #[test]
+    fn parse_trace_rejects_missing_limit_value() {
+        let parsed = parse_args(&args(&[
+            "velvet-ballastics",
+            "trace",
+            "7",
+            "--db",
+            "journal-db",
+            "--limit",
+            "--json",
+        ]));
+
+        assert!(matches!(
+            parsed,
+            Err(ParseError::MissingArgument("--limit"))
+        ));
+    }
+
+    #[test]
+    fn parse_trace_rejects_unknown_filter_flag() {
+        let parsed = parse_args(&args(&[
+            "velvet-ballastics",
+            "trace",
+            "7",
+            "--db",
+            "journal-db",
+            "--severity",
+            "error",
+        ]));
+
+        assert!(
+            matches!(parsed, Err(ParseError::InvalidTraceArgument(ref reason)) if reason == "unknown trace flag: --severity"),
+            "unexpected parse result: {parsed:?}"
         );
     }
 

@@ -79,7 +79,9 @@ fn policy_name(policy: vb_core::policy::RuntimePolicy) -> &'static str {
 pub(crate) fn print_status(status: &CliStatus, output: OutputFormat) {
     match output {
         OutputFormat::Text => print_text(status),
-        OutputFormat::Json | OutputFormat::Jsonl => print_json(status, output),
+        OutputFormat::Json | OutputFormat::Jsonl | OutputFormat::Yaml | OutputFormat::Postcard => {
+            print_json(status, output);
+        }
     }
 }
 

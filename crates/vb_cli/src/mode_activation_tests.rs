@@ -393,6 +393,7 @@ fn command_mode_trace_is_storage() {
         run_id: "1".to_string(),
         db: PathBuf::from("/tmp/journal"),
         output: OutputFormat::Text,
+        filters: crate::commands_journal::TraceFilters::default(),
     };
     assert_eq!(command_mode(&cmd), CommandMode::Storage);
 }
@@ -636,6 +637,7 @@ fn command_mode_all_25_command_variants_are_classified() {
             run_id: "1".to_string(),
             db: PathBuf::from("/tmp/j"),
             output: OutputFormat::Text,
+            filters: crate::commands_journal::TraceFilters::default(),
         }),
         CommandMode::Storage
     );

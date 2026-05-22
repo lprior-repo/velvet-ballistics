@@ -5,7 +5,7 @@
 //! These tests exercise the full pipeline: CLI argument parsing → journal read → build_trace → output formatting.
 
 use std::ffi::OsStr;
-use vb_core::ids::{SlotIdx, StepIdx, WorkflowDigest};
+use vb_core::ids::{ActionId, SlotIdx, StepIdx, WorkflowDigest};
 use vb_storage::{EventSeq, FjallJournal, JournalEvent};
 
 // ---------------------------------------------------------------------------
@@ -85,6 +85,48 @@ fn setup_trace_journal(dir: &std::path::Path) -> vb_core::RunId {
         .append_strict_batch(&events)
         .expect("append should succeed");
     run_id
+}
+
+fn setup_action_trace_journal(dir: &std::path::Path) -> vb_core::RunId {
+    let journal = FjallJournal::open(dir, None).expect("journal should open");
+    let run_id = vb_core::RunId::new(2);
+    let workflow_digest = WorkflowDigest::from_bytes([8u8; 32]);
+    let events = vec![
+        JournalEvent::RunAccepted {
+            run: run_id,
+            seq: EventSeq::new(0),
+            workflow: workflow_digest,
+        },
+        JournalEvent::ActionScheduled {
+            run: run_id,
+            seq: EventSeq::new(1),
+            step: StepIdx::new(2),
+            action: ActionId::new(17),
+            attempt: 1,
+        },
+        JournalEvent::ActionCompletedEvent {
+            run: run_id,
+            seq: EventSeq::new(2),
+            step: StepIdx::new(2),
+            action: ActionId::new(17),
+            attempt: 1,
+        },
+        JournalEvent::ActionFailedEvent {
+            run: run_id,
+            seq: EventSeq::new(3),
+            step: StepIdx::new(3),
+            action: ActionId::new(23),
+            attempt: 1,
+        },
+    ];
+    journal
+        .append_strict_batch(&events)
+        .expect("append should succeed");
+    run_id
+}
+
+fn json_trace(stdout: &str) -> serde_json::Value {
+    serde_json::from_str(stdout).expect("stdout should be valid JSON")
 }
 
 // ---------------------------------------------------------------------------
@@ -267,6 +309,133 @@ fn cmd_trace_jsonl_format_structure() {
         .and_then(|v| v.as_i64())
         .expect("last line should have total field");
     assert_eq!(total, 4);
+}
+
+#[test]
+fn cmd_trace_step_filter_returns_only_matching_step() {
+    let dir = tempfile::tempdir().expect("temp dir");
+    let run_id = setup_trace_journal(dir.path());
+
+    let output = run_cli(&[
+        OsStr::new("trace"),
+        OsStr::new(&run_id.get().to_string()),
+        OsStr::new("--db"),
+        dir.path().as_os_str(),
+        OsStr::new("--step"),
+        OsStr::new("0"),
+        OsStr::new("--json"),
+    ]);
+
+    assert!(output.is_some());
+    let output = output.unwrap();
+    assert_cli_success(&output, "trace --step 0 --json");
+    let parsed = json_trace(&output_stdout(&output));
+    let trace = parsed
+        .get("trace")
+        .and_then(|value| value.as_array())
+        .expect("trace should be an array");
+    assert_eq!(trace.len(), 2);
+    for entry in trace {
+        assert_eq!(entry.get("step").and_then(|value| value.as_u64()), Some(0));
+    }
+}
+
+#[test]
+fn cmd_trace_action_filter_returns_only_matching_action() {
+    let dir = tempfile::tempdir().expect("temp dir");
+    let run_id = setup_action_trace_journal(dir.path());
+
+    let output = run_cli(&[
+        OsStr::new("trace"),
+        OsStr::new(&run_id.get().to_string()),
+        OsStr::new("--db"),
+        dir.path().as_os_str(),
+        OsStr::new("--action"),
+        OsStr::new("17"),
+        OsStr::new("--json"),
+    ]);
+
+    assert!(output.is_some());
+    let output = output.unwrap();
+    assert_cli_success(&output, "trace --action 17 --json");
+    let parsed = json_trace(&output_stdout(&output));
+    let trace = parsed
+        .get("trace")
+        .and_then(|value| value.as_array())
+        .expect("trace should be an array");
+    assert_eq!(trace.len(), 2);
+    for entry in trace {
+        assert_eq!(
+            entry.get("action").and_then(|value| value.as_u64()),
+            Some(17)
+        );
+    }
+}
+
+#[test]
+fn cmd_trace_status_filter_returns_only_active_events() {
+    let dir = tempfile::tempdir().expect("temp dir");
+    let run_id = setup_trace_journal(dir.path());
+
+    let output = run_cli(&[
+        OsStr::new("trace"),
+        OsStr::new(&run_id.get().to_string()),
+        OsStr::new("--db"),
+        dir.path().as_os_str(),
+        OsStr::new("--status"),
+        OsStr::new("active"),
+        OsStr::new("--json"),
+    ]);
+
+    assert!(output.is_some());
+    let output = output.unwrap();
+    assert_cli_success(&output, "trace --status active --json");
+    let parsed = json_trace(&output_stdout(&output));
+    let trace = parsed
+        .get("trace")
+        .and_then(|value| value.as_array())
+        .expect("trace should be an array");
+    assert_eq!(trace.len(), 1);
+    assert_eq!(
+        trace[0].get("status").and_then(|value| value.as_str()),
+        Some("active")
+    );
+    assert_eq!(
+        trace[0].get("type").and_then(|value| value.as_str()),
+        Some("StepStarted")
+    );
+}
+
+#[test]
+fn cmd_trace_limit_bounds_filtered_output() {
+    let dir = tempfile::tempdir().expect("temp dir");
+    let run_id = setup_action_trace_journal(dir.path());
+
+    let output = run_cli(&[
+        OsStr::new("trace"),
+        OsStr::new(&run_id.get().to_string()),
+        OsStr::new("--db"),
+        dir.path().as_os_str(),
+        OsStr::new("--status"),
+        OsStr::new("active"),
+        OsStr::new("--limit"),
+        OsStr::new("1"),
+        OsStr::new("--json"),
+    ]);
+
+    assert!(output.is_some());
+    let output = output.unwrap();
+    assert_cli_success(&output, "trace --status active --limit 1 --json");
+    let parsed = json_trace(&output_stdout(&output));
+    assert_eq!(
+        parsed.get("total").and_then(|value| value.as_u64()),
+        Some(1)
+    );
+    let trace = parsed
+        .get("trace")
+        .and_then(|value| value.as_array())
+        .expect("trace should be an array");
+    assert_eq!(trace.len(), 1);
 }
 
 #[test]

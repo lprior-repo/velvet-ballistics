@@ -13,7 +13,9 @@ pub(crate) fn print_system_status(
 ) {
     match output {
         OutputFormat::Text => print_text(options, version),
-        OutputFormat::Json | OutputFormat::Jsonl => print_json(options, output, version),
+        OutputFormat::Json | OutputFormat::Jsonl | OutputFormat::Yaml | OutputFormat::Postcard => {
+            print_json(options, output, version);
+        }
     }
 }
 

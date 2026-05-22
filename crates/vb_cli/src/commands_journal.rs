@@ -16,9 +16,44 @@ pub(crate) struct TraceEntry {
     pub index: usize,
     pub event_type: &'static str,
     pub step: Option<u16>,
+    pub status: Option<TraceStatus>,
+    pub action: Option<u16>,
     pub seq: u64,
     /// Extra key-value pairs for JSON output (variant-specific fields).
     pub extra_json: Vec<(&'static str, serde_json::Value)>,
+}
+
+/// Trace status categories used by CLI filters.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum TraceStatus {
+    Pending,
+    Active,
+    WaitingAnswer,
+    Cancelled,
+    Completed,
+    Failed,
+}
+
+impl TraceStatus {
+    pub(crate) const fn as_str(self) -> &'static str {
+        match self {
+            Self::Pending => "pending",
+            Self::Active => "active",
+            Self::WaitingAnswer => "waiting_answer",
+            Self::Cancelled => "cancelled",
+            Self::Completed => "completed",
+            Self::Failed => "failed",
+        }
+    }
+}
+
+/// Optional trace filters. All populated filters must match.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub(crate) struct TraceFilters {
+    pub(crate) step: Option<u16>,
+    pub(crate) action: Option<u16>,
+    pub(crate) status: Option<TraceStatus>,
+    pub(crate) limit: Option<usize>,
 }
 
 /// Scan a slice of journal events and return one structured entry per event.
@@ -30,12 +65,38 @@ pub(crate) fn build_trace(events: &[JournalEvent]) -> Vec<TraceEntry> {
         .collect()
 }
 
+/// Apply trace filters while preserving the surviving entries' original order and index.
+pub(crate) fn filter_trace(entries: Vec<TraceEntry>, filters: TraceFilters) -> Vec<TraceEntry> {
+    let filtered = entries
+        .into_iter()
+        .filter(|entry| trace_entry_matches_filters(entry, filters));
+    match filters.limit {
+        Some(limit) => filtered.take(limit).collect(),
+        None => filtered.collect(),
+    }
+}
+
+fn trace_entry_matches_filters(entry: &TraceEntry, filters: TraceFilters) -> bool {
+    let step_matches = filters
+        .step
+        .is_none_or(|expected_step| entry.step == Some(expected_step));
+    let action_matches = filters
+        .action
+        .is_none_or(|expected_action| entry.action == Some(expected_action));
+    let status_matches = filters
+        .status
+        .is_none_or(|expected_status| entry.status == Some(expected_status));
+    step_matches && action_matches && status_matches
+}
+
 fn trace_one(idx: usize, event: &JournalEvent) -> TraceEntry {
     match event {
         JournalEvent::RunAccepted { seq, run, workflow } => TraceEntry {
             index: idx,
             event_type: "RunAccepted",
             step: None,
+            status: Some(TraceStatus::Pending),
+            action: None,
             seq: seq.get(),
             extra_json: vec![
                 ("run", serde_json::Value::from(run.get())),
@@ -52,6 +113,8 @@ fn trace_one(idx: usize, event: &JournalEvent) -> TraceEntry {
             index: idx,
             event_type: "RunAdmission",
             step: None,
+            status: Some(TraceStatus::Pending),
+            action: None,
             seq: seq.get(),
             extra_json: vec![
                 (
@@ -69,6 +132,8 @@ fn trace_one(idx: usize, event: &JournalEvent) -> TraceEntry {
             index: idx,
             event_type: "StepStarted",
             step: Some(step.get()),
+            status: Some(TraceStatus::Active),
+            action: None,
             seq: seq.get(),
             extra_json: vec![],
         },
@@ -78,6 +143,8 @@ fn trace_one(idx: usize, event: &JournalEvent) -> TraceEntry {
             index: idx,
             event_type: "StepSucceeded",
             step: Some(step.get()),
+            status: Some(TraceStatus::Completed),
+            action: None,
             seq: seq.get(),
             extra_json: vec![("output", serde_json::Value::from(output.get()))],
         },
@@ -87,6 +154,8 @@ fn trace_one(idx: usize, event: &JournalEvent) -> TraceEntry {
             index: idx,
             event_type: "ActionScheduled",
             step: Some(step.get()),
+            status: Some(TraceStatus::Active),
+            action: Some(action.get()),
             seq: seq.get(),
             extra_json: vec![("action", serde_json::Value::from(action.get()))],
         },
@@ -96,6 +165,8 @@ fn trace_one(idx: usize, event: &JournalEvent) -> TraceEntry {
             index: idx,
             event_type: "ActionCompleted",
             step: Some(step.get()),
+            status: Some(TraceStatus::Completed),
+            action: Some(action.get()),
             seq: seq.get(),
             extra_json: vec![("action", serde_json::Value::from(action.get()))],
         },
@@ -105,6 +176,8 @@ fn trace_one(idx: usize, event: &JournalEvent) -> TraceEntry {
             index: idx,
             event_type: "ActionFailed",
             step: Some(step.get()),
+            status: Some(TraceStatus::Failed),
+            action: Some(action.get()),
             seq: seq.get(),
             extra_json: vec![("action", serde_json::Value::from(action.get()))],
         },
@@ -112,6 +185,8 @@ fn trace_one(idx: usize, event: &JournalEvent) -> TraceEntry {
             index: idx,
             event_type: "SlotWritten",
             step: None,
+            status: Some(TraceStatus::Completed),
+            action: None,
             seq: seq.get(),
             extra_json: vec![("slot", serde_json::Value::from(slot.get()))],
         },
@@ -119,6 +194,8 @@ fn trace_one(idx: usize, event: &JournalEvent) -> TraceEntry {
             index: idx,
             event_type: "WaitScheduled",
             step: Some(step.get()),
+            status: Some(TraceStatus::Active),
+            action: None,
             seq: seq.get(),
             extra_json: vec![],
         },
@@ -126,6 +203,8 @@ fn trace_one(idx: usize, event: &JournalEvent) -> TraceEntry {
             index: idx,
             event_type: "AskScheduled",
             step: Some(step.get()),
+            status: Some(TraceStatus::WaitingAnswer),
+            action: None,
             seq: seq.get(),
             extra_json: vec![],
         },
@@ -133,6 +212,8 @@ fn trace_one(idx: usize, event: &JournalEvent) -> TraceEntry {
             index: idx,
             event_type: "AskAnswered",
             step: Some(step.get()),
+            status: Some(TraceStatus::Completed),
+            action: None,
             seq: seq.get(),
             extra_json: vec![],
         },
@@ -140,6 +221,8 @@ fn trace_one(idx: usize, event: &JournalEvent) -> TraceEntry {
             index: idx,
             event_type: "RetryScheduled",
             step: Some(step.get()),
+            status: Some(TraceStatus::Active),
+            action: None,
             seq: seq.get(),
             extra_json: vec![],
         },
@@ -147,6 +230,8 @@ fn trace_one(idx: usize, event: &JournalEvent) -> TraceEntry {
             index: idx,
             event_type: "RunCancelled",
             step: None,
+            status: Some(TraceStatus::Cancelled),
+            action: None,
             seq: seq.get(),
             extra_json: vec![],
         },
@@ -154,6 +239,8 @@ fn trace_one(idx: usize, event: &JournalEvent) -> TraceEntry {
             index: idx,
             event_type: "RunFinished",
             step: None,
+            status: Some(TraceStatus::Completed),
+            action: None,
             seq: seq.get(),
             extra_json: vec![("result", serde_json::Value::from(result.get()))],
         },
@@ -161,6 +248,8 @@ fn trace_one(idx: usize, event: &JournalEvent) -> TraceEntry {
             index: idx,
             event_type: "RunFailed",
             step: None,
+            status: Some(TraceStatus::Failed),
+            action: None,
             seq: seq.get(),
             extra_json: vec![],
         },
@@ -168,6 +257,8 @@ fn trace_one(idx: usize, event: &JournalEvent) -> TraceEntry {
             index: idx,
             event_type: "RunResumed",
             step: None,
+            status: Some(TraceStatus::Active),
+            action: None,
             seq: seq.get(),
             extra_json: vec![("run", serde_json::Value::from(run.get()))],
         },
@@ -175,6 +266,8 @@ fn trace_one(idx: usize, event: &JournalEvent) -> TraceEntry {
             index: idx,
             event_type: "RunRetried",
             step: None,
+            status: Some(TraceStatus::Active),
+            action: None,
             seq: seq.get(),
             extra_json: vec![("run", serde_json::Value::from(run.get()))],
         },
@@ -188,6 +281,8 @@ fn trace_one(idx: usize, event: &JournalEvent) -> TraceEntry {
             index: idx,
             event_type: "RunAnswered",
             step: None,
+            status: Some(TraceStatus::Completed),
+            action: None,
             seq: seq.get(),
             extra_json: vec![
                 ("run", serde_json::Value::from(run.get())),
@@ -199,6 +294,8 @@ fn trace_one(idx: usize, event: &JournalEvent) -> TraceEntry {
             index: idx,
             event_type: "Unknown",
             step: None,
+            status: None,
+            action: None,
             seq: 0,
             extra_json: vec![],
         },
@@ -485,6 +582,135 @@ mod tests {
         }];
         let trace = build_trace(&events);
         assert_eq!(trace[0].seq, 42);
+    }
+
+    #[test]
+    fn filter_trace_by_step_preserves_original_indices() {
+        let events = [
+            JournalEvent::StepStarted {
+                run: make_run_id(1),
+                seq: make_event_seq(1),
+                step: make_step_idx(1),
+                attempt: 1,
+            },
+            JournalEvent::StepStarted {
+                run: make_run_id(1),
+                seq: make_event_seq(2),
+                step: make_step_idx(7),
+                attempt: 1,
+            },
+        ];
+        let filtered = filter_trace(
+            build_trace(&events),
+            TraceFilters {
+                step: Some(7),
+                ..TraceFilters::default()
+            },
+        );
+
+        assert_eq!(filtered.len(), 1);
+        assert_eq!(filtered[0].index, 1);
+        assert_eq!(filtered[0].step, Some(7));
+    }
+
+    #[test]
+    fn filter_trace_by_action_matches_action_id_only() {
+        let events = [
+            JournalEvent::ActionScheduled {
+                run: make_run_id(1),
+                seq: make_event_seq(1),
+                step: make_step_idx(2),
+                action: make_action_id(3),
+                attempt: 1,
+            },
+            JournalEvent::ActionFailedEvent {
+                run: make_run_id(1),
+                seq: make_event_seq(2),
+                step: make_step_idx(2),
+                action: make_action_id(9),
+                attempt: 1,
+            },
+        ];
+        let filtered = filter_trace(
+            build_trace(&events),
+            TraceFilters {
+                action: Some(9),
+                ..TraceFilters::default()
+            },
+        );
+
+        assert_eq!(filtered.len(), 1);
+        assert_eq!(filtered[0].action, Some(9));
+        assert_eq!(filtered[0].event_type, "ActionFailed");
+    }
+
+    #[test]
+    fn filter_trace_by_status_uses_event_status_categories() {
+        let events = [
+            JournalEvent::RunAccepted {
+                run: make_run_id(1),
+                seq: make_event_seq(0),
+                workflow: dummy_digest(),
+            },
+            JournalEvent::StepStarted {
+                run: make_run_id(1),
+                seq: make_event_seq(1),
+                step: make_step_idx(0),
+                attempt: 1,
+            },
+            JournalEvent::RunFinished {
+                run: make_run_id(1),
+                seq: make_event_seq(2),
+                result: make_slot_idx(0),
+                attempt: 1,
+            },
+        ];
+        let filtered = filter_trace(
+            build_trace(&events),
+            TraceFilters {
+                status: Some(TraceStatus::Completed),
+                ..TraceFilters::default()
+            },
+        );
+
+        assert_eq!(filtered.len(), 1);
+        assert_eq!(filtered[0].event_type, "RunFinished");
+        assert_eq!(filtered[0].status, Some(TraceStatus::Completed));
+    }
+
+    #[test]
+    fn filter_trace_limit_applies_after_filters() {
+        let events = [
+            JournalEvent::StepStarted {
+                run: make_run_id(1),
+                seq: make_event_seq(1),
+                step: make_step_idx(0),
+                attempt: 1,
+            },
+            JournalEvent::StepStarted {
+                run: make_run_id(1),
+                seq: make_event_seq(2),
+                step: make_step_idx(0),
+                attempt: 1,
+            },
+            JournalEvent::RunFinished {
+                run: make_run_id(1),
+                seq: make_event_seq(3),
+                result: make_slot_idx(0),
+                attempt: 1,
+            },
+        ];
+        let filtered = filter_trace(
+            build_trace(&events),
+            TraceFilters {
+                status: Some(TraceStatus::Active),
+                limit: Some(1),
+                ..TraceFilters::default()
+            },
+        );
+
+        assert_eq!(filtered.len(), 1);
+        assert_eq!(filtered[0].seq, 1);
     }
 
     #[test]
