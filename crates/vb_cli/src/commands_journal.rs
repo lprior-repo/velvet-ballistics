@@ -53,6 +53,8 @@ pub(crate) struct TraceFilters {
     pub(crate) step: Option<u16>,
     pub(crate) action: Option<u16>,
     pub(crate) status: Option<TraceStatus>,
+    pub(crate) since_seq: Option<u64>,
+    pub(crate) until_seq: Option<u64>,
     pub(crate) limit: Option<usize>,
 }
 
@@ -86,7 +88,13 @@ fn trace_entry_matches_filters(entry: &TraceEntry, filters: TraceFilters) -> boo
     let status_matches = filters
         .status
         .is_none_or(|expected_status| entry.status == Some(expected_status));
-    step_matches && action_matches && status_matches
+    let since_seq_matches = filters
+        .since_seq
+        .is_none_or(|minimum_seq| entry.seq >= minimum_seq);
+    let until_seq_matches = filters
+        .until_seq
+        .is_none_or(|maximum_seq| entry.seq <= maximum_seq);
+    step_matches && action_matches && status_matches && since_seq_matches && until_seq_matches
 }
 
 fn trace_one(idx: usize, event: &JournalEvent) -> TraceEntry {
@@ -711,6 +719,48 @@ mod tests {
 
         assert_eq!(filtered.len(), 1);
         assert_eq!(filtered[0].seq, 1);
+    }
+
+    #[test]
+    fn filter_trace_by_sequence_range_is_inclusive() {
+        let events = [
+            JournalEvent::RunAccepted {
+                run: make_run_id(1),
+                seq: make_event_seq(9),
+                workflow: dummy_digest(),
+            },
+            JournalEvent::StepStarted {
+                run: make_run_id(1),
+                seq: make_event_seq(10),
+                step: make_step_idx(0),
+                attempt: 1,
+            },
+            JournalEvent::StepSucceeded {
+                run: make_run_id(1),
+                seq: make_event_seq(20),
+                step: make_step_idx(0),
+                output: make_slot_idx(0),
+            },
+            JournalEvent::RunFinished {
+                run: make_run_id(1),
+                seq: make_event_seq(21),
+                result: make_slot_idx(0),
+                attempt: 1,
+            },
+        ];
+
+        let filtered = filter_trace(
+            build_trace(&events),
+            TraceFilters {
+                since_seq: Some(10),
+                until_seq: Some(20),
+                ..TraceFilters::default()
+            },
+        );
+
+        assert_eq!(filtered.len(), 2);
+        assert_eq!(filtered[0].seq, 10);
+        assert_eq!(filtered[1].seq, 20);
     }
 
     #[test]

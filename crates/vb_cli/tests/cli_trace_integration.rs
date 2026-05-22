@@ -407,6 +407,42 @@ fn cmd_trace_status_filter_returns_only_active_events() {
 }
 
 #[test]
+fn cmd_trace_sequence_range_filter_is_inclusive() {
+    let dir = tempfile::tempdir().expect("temp dir");
+    let run_id = setup_trace_journal(dir.path());
+
+    let output = run_cli(&[
+        OsStr::new("trace"),
+        OsStr::new(&run_id.get().to_string()),
+        OsStr::new("--db"),
+        dir.path().as_os_str(),
+        OsStr::new("--since-seq"),
+        OsStr::new("1"),
+        OsStr::new("--until-seq"),
+        OsStr::new("2"),
+        OsStr::new("--json"),
+    ]);
+
+    assert!(output.is_some());
+    let output = output.unwrap();
+    assert_cli_success(&output, "trace --since-seq 1 --until-seq 2 --json");
+    let parsed = json_trace(&output_stdout(&output));
+    let trace = parsed
+        .get("trace")
+        .and_then(|value| value.as_array())
+        .expect("trace should be an array");
+    assert_eq!(trace.len(), 2);
+    assert_eq!(
+        trace[0].get("seq").and_then(|value| value.as_u64()),
+        Some(1)
+    );
+    assert_eq!(
+        trace[1].get("seq").and_then(|value| value.as_u64()),
+        Some(2)
+    );
+}
+
+#[test]
 fn cmd_trace_limit_bounds_filtered_output() {
     let dir = tempfile::tempdir().expect("temp dir");
     let run_id = setup_action_trace_journal(dir.path());

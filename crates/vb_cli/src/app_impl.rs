@@ -61,7 +61,8 @@ commands:
   inspect    <run_id> --db <path> [--json|--jsonl]     Inspect a run
   events     <run_id> --db <path> [--json|--jsonl]     List run events
   replay     <run_id> --db <path> [--json|--jsonl]     Replay a run from journal
-  trace      <run_id> --db <path> [--step <N>] [--action <N>] [--status <status>] [--limit <N>] [--json|--jsonl]
+  trace      <run_id> --db <path> [--step <N>] [--action <N>] [--status <status>]
+             [--since-seq <N>] [--until-seq <N>] [--limit <N>] [--json|--jsonl]
                                                         Show step-by-step execution trace
   retry      <run_id> --db <path> [--json|--jsonl]     Retry a failed run from last successful step
   resume     <run_id> --db <path> [--json|--jsonl]     Resume a suspended run

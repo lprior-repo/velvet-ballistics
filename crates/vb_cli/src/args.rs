@@ -1134,7 +1134,8 @@ fn validate_trace_args(args: &[OsString]) -> Result<(), ParseError> {
             "--json" | "--jsonl" => {
                 index = index.saturating_add(1);
             }
-            "--db" | "--step" | "--action" | "--status" | "--limit" => {
+            "--db" | "--step" | "--action" | "--status" | "--since-seq" | "--until-seq"
+            | "--limit" => {
                 let Some(value) = args
                     .get(index.saturating_add(1))
                     .and_then(|arg| arg.to_str())
@@ -1144,6 +1145,8 @@ fn validate_trace_args(args: &[OsString]) -> Result<(), ParseError> {
                         "--step" => "--step",
                         "--action" => "--action",
                         "--status" => "--status",
+                        "--since-seq" => "--since-seq",
+                        "--until-seq" => "--until-seq",
                         "--limit" => "--limit",
                         _ => "trace flag value",
                     }));
@@ -1154,6 +1157,8 @@ fn validate_trace_args(args: &[OsString]) -> Result<(), ParseError> {
                         "--step" => "--step",
                         "--action" => "--action",
                         "--status" => "--status",
+                        "--since-seq" => "--since-seq",
+                        "--until-seq" => "--until-seq",
                         "--limit" => "--limit",
                         _ => "trace flag value",
                     }));
@@ -1188,6 +1193,14 @@ fn parse_trace_filters(args: &[OsString]) -> Result<TraceFilters, ParseError> {
         Some(raw) => Some(parse_trace_status(&raw)?),
         None => None,
     };
+    let since_seq = match optional_named_flag(args, "--since-seq")? {
+        Some(raw) => Some(parse_trace_u64("--since-seq", &raw)?),
+        None => None,
+    };
+    let until_seq = match optional_named_flag(args, "--until-seq")? {
+        Some(raw) => Some(parse_trace_u64("--until-seq", &raw)?),
+        None => None,
+    };
     let limit = match optional_named_flag(args, "--limit")? {
         Some(raw) => Some(parse_trace_limit(&raw)?),
         None => None,
@@ -1197,6 +1210,8 @@ fn parse_trace_filters(args: &[OsString]) -> Result<TraceFilters, ParseError> {
         step,
         action,
         status,
+        since_seq,
+        until_seq,
         limit,
     })
 }
@@ -1209,6 +1224,11 @@ fn parse_trace_u16(flag: &'static str, raw: &str) -> Result<u16, ParseError> {
 fn parse_trace_limit(raw: &str) -> Result<usize, ParseError> {
     raw.parse::<usize>()
         .map_err(|_| ParseError::InvalidTraceArgument("--limit must be a valid usize".into()))
+}
+
+fn parse_trace_u64(flag: &'static str, raw: &str) -> Result<u64, ParseError> {
+    raw.parse::<u64>()
+        .map_err(|_| ParseError::InvalidTraceArgument(format!("{flag} must be a valid u64")))
 }
 
 fn parse_trace_status(raw: &str) -> Result<TraceStatus, ParseError> {
@@ -1934,6 +1954,8 @@ mod tests {
             assert_eq!(filters.step, None);
             assert_eq!(filters.action, None);
             assert_eq!(filters.status, None);
+            assert_eq!(filters.since_seq, None);
+            assert_eq!(filters.until_seq, None);
             assert_eq!(filters.limit, None);
         }
     }
@@ -1952,6 +1974,10 @@ mod tests {
             "9",
             "--status",
             "active",
+            "--since-seq",
+            "10",
+            "--until-seq",
+            "20",
             "--limit",
             "3",
             "--json",
@@ -1966,6 +1992,8 @@ mod tests {
             assert_eq!(filters.step, Some(4));
             assert_eq!(filters.action, Some(9));
             assert_eq!(filters.status, Some(TraceStatus::Active));
+            assert_eq!(filters.since_seq, Some(10));
+            assert_eq!(filters.until_seq, Some(20));
             assert_eq!(filters.limit, Some(3));
         }
     }
@@ -1986,6 +2014,42 @@ mod tests {
             matches!(parsed, Err(ParseError::InvalidTraceArgument(ref reason)) if reason == "--step must be a valid u16"),
             "unexpected parse result: {parsed:?}"
         );
+    }
+
+    #[test]
+    fn parse_trace_rejects_invalid_since_seq() {
+        let parsed = parse_args(&args(&[
+            "velvet-ballastics",
+            "trace",
+            "7",
+            "--db",
+            "journal-db",
+            "--since-seq",
+            "not-a-seq",
+        ]));
+
+        assert!(
+            matches!(parsed, Err(ParseError::InvalidTraceArgument(ref reason)) if reason == "--since-seq must be a valid u64"),
+            "unexpected parse result: {parsed:?}"
+        );
+    }
+
+    #[test]
+    fn parse_trace_rejects_missing_until_seq_value() {
+        let parsed = parse_args(&args(&[
+            "velvet-ballastics",
+            "trace",
+            "7",
+            "--db",
+            "journal-db",
+            "--until-seq",
+            "--json",
+        ]));
+
+        assert!(matches!(
+            parsed,
+            Err(ParseError::MissingArgument("--until-seq"))
+        ));
     }
 
     #[test]
