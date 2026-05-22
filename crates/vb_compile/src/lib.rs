@@ -39,6 +39,10 @@ pub mod kani_idempotency_parity;
 #[cfg(kani)]
 pub mod kani_foreach_parity;
 
+// Kani harnesses for repeat/ask id+1 lowering overflow rejection.
+#[cfg(kani)]
+pub mod kani_lower_control;
+
 pub use expression_bytecode::{compile_expr_to_bytecode, compile_expr_to_bytecode_with_accessors};
 
 use mod_compile_core as core;
