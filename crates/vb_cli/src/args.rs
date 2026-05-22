@@ -313,9 +313,17 @@ pub(crate) enum ParseError {
     UnexpectedActionInspectArgument(String),
     InvalidActionInspectArgument(String),
     InvalidActionId(String),
+    UnknownFlag { command: &'static str, flag: String },
+    InvalidArgument(String),
     NoCommand,
     InvalidStep(String),
     ReasonTooLong,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum FlagSpec {
+    Switch,
+    Value(&'static str),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -339,6 +347,14 @@ pub(crate) fn parse_args(args: &[OsString]) -> Result<Command, ParseError> {
     match subcommand {
         "help" | "--help" | "-h" => Ok(Command::Help),
         "version" | "--version" | "-V" => Ok(Command::Version),
+        "agent-context" | "ai-context" | "status" | "system" | "action" | "verify" | "validate"
+        | "explain" | "compile" | "run" | "run-compiled" | "ipc-serve" | "inspect" | "events"
+        | "replay" | "trace" | "retry" | "resume" | "bench-run" | "doctor" | "answer" | "graph"
+        | "diff" | "incident" | "simulate" | "submit" | "cancel"
+            if has_subcommand_help(args) =>
+        {
+            Ok(Command::Help)
+        }
         "agent-context" => parse_agent_context(args),
         "ai-context" => parse_ai_context(args),
         "status" => parse_status(args),
@@ -381,7 +397,8 @@ fn parse_system(args: &[OsString]) -> Result<Command, ParseError> {
 }
 
 fn parse_ai_context(args: &[OsString]) -> Result<Command, ParseError> {
-    let a = parse_run_db_args(args)?;
+    validate_known_flags(args, "ai-context")?;
+    let a = parse_run_db_args(args, "ai-context")?;
     Ok(Command::AiContext {
         run_id: a.run_id,
         db: a.db,
@@ -922,12 +939,14 @@ fn parse_action_registry_mode(value: &str) -> Result<ActionRegistryMode, ParseEr
 }
 
 fn parse_verify(args: &[OsString]) -> Result<Command, ParseError> {
+    validate_known_flags(args, "verify")?;
     // Find the first positional argument (workflow path) by skipping over
     // named flags and their values. Start at index 2 to skip program name and subcommand.
     // This correctly handles:
     //   vb verify workflow.yaml              (workflow at index 2)
     //   vb verify --profile quick workflow.yaml  (workflow at index 4)
-    let workflow = find_positional(args, 2).ok_or(ParseError::MissingArgument("workflow.yaml"))?;
+    let workflow =
+        find_positional(args, 2, "verify").ok_or(ParseError::MissingArgument("workflow.yaml"))?;
     let profile = match named_flag(args, "--profile") {
         Some(raw) => match raw.as_str() {
             "quick" => VerifyProfile::Quick,
@@ -946,19 +965,25 @@ fn parse_verify(args: &[OsString]) -> Result<Command, ParseError> {
 }
 
 fn parse_validate(args: &[OsString]) -> Result<Command, ParseError> {
-    let workflow = positional(args, 2, "workflow.yaml")?;
+    validate_known_flags(args, "validate")?;
+    let workflow =
+        find_positional(args, 2, "validate").ok_or(ParseError::MissingArgument("workflow.yaml"))?;
     let output = parse_output_format(args);
     Ok(Command::Validate { workflow, output })
 }
 
 fn parse_explain(args: &[OsString]) -> Result<Command, ParseError> {
-    let workflow = positional(args, 2, "workflow.yaml")?;
+    validate_known_flags(args, "explain")?;
+    let workflow =
+        find_positional(args, 2, "explain").ok_or(ParseError::MissingArgument("workflow.yaml"))?;
     let output = parse_output_format(args);
     Ok(Command::Explain { workflow, output })
 }
 
 fn parse_compile(args: &[OsString]) -> Result<Command, ParseError> {
-    let workflow = positional(args, 2, "workflow.yaml")?;
+    validate_known_flags(args, "compile")?;
+    let workflow =
+        find_positional(args, 2, "compile").ok_or(ParseError::MissingArgument("workflow.yaml"))?;
     let emit_raw = named_flag(args, "--emit").ok_or(ParseError::MissingArgument("--emit"))?;
     let emit = match emit_raw.as_str() {
         "ir" => EmitTarget::Ir,
@@ -978,7 +1003,9 @@ fn parse_compile(args: &[OsString]) -> Result<Command, ParseError> {
 }
 
 fn parse_run(args: &[OsString]) -> Result<Command, ParseError> {
-    let workflow = positional(args, 2, "workflow.yaml")?;
+    validate_known_flags(args, "run")?;
+    let workflow =
+        find_positional(args, 2, "run").ok_or(ParseError::MissingArgument("workflow.yaml"))?;
     let input_bin =
         named_flag(args, "--input-bin").ok_or(ParseError::MissingArgument("--input-bin"))?;
     let durability_raw =
@@ -1014,7 +1041,9 @@ fn parse_optional_step(args: &[OsString]) -> Result<Option<StepTarget>, ParseErr
 }
 
 fn parse_run_compiled(args: &[OsString]) -> Result<Command, ParseError> {
-    let workflow = positional(args, 2, "workflow.vbir")?;
+    validate_known_flags(args, "run-compiled")?;
+    let workflow = find_positional(args, 2, "run-compiled")
+        .ok_or(ParseError::MissingArgument("workflow.vbir"))?;
     let input_bin =
         named_flag(args, "--input-bin").ok_or(ParseError::MissingArgument("--input-bin"))?;
     let durability_raw =
@@ -1046,6 +1075,7 @@ fn parse_optional_run_db(
 }
 
 fn parse_ipc_serve(args: &[OsString]) -> Result<Command, ParseError> {
+    validate_known_flags(args, "ipc-serve")?;
     let socket = named_flag(args, "--socket").ok_or(ParseError::MissingArgument("--socket"))?;
     let db = named_flag(args, "--db").ok_or(ParseError::MissingArgument("--db"))?;
     Ok(Command::IpcServe {
@@ -1055,7 +1085,8 @@ fn parse_ipc_serve(args: &[OsString]) -> Result<Command, ParseError> {
 }
 
 fn parse_inspect(args: &[OsString]) -> Result<Command, ParseError> {
-    let a = parse_run_db_args(args)?;
+    validate_known_flags(args, "inspect")?;
+    let a = parse_run_db_args(args, "inspect")?;
     Ok(Command::Inspect {
         run_id: a.run_id,
         db: a.db,
@@ -1070,8 +1101,10 @@ struct RunDbArgs {
     output: OutputFormat,
 }
 
-fn parse_run_db_args(args: &[OsString]) -> Result<RunDbArgs, ParseError> {
-    let run_id = positional_str(args, 2, "run_id")?;
+fn parse_run_db_args(args: &[OsString], command: &'static str) -> Result<RunDbArgs, ParseError> {
+    let run_id = find_positional(args, 2, command)
+        .and_then(|path| path.to_str().map(String::from))
+        .ok_or(ParseError::MissingArgument("run_id"))?;
     let db = named_flag(args, "--db").ok_or(ParseError::MissingArgument("--db"))?;
     let output = parse_output_format(args);
     Ok(RunDbArgs {
@@ -1082,7 +1115,8 @@ fn parse_run_db_args(args: &[OsString]) -> Result<RunDbArgs, ParseError> {
 }
 
 fn parse_events(args: &[OsString]) -> Result<Command, ParseError> {
-    let a = parse_run_db_args(args)?;
+    validate_known_flags(args, "events")?;
+    let a = parse_run_db_args(args, "events")?;
     let status = match named_flag(args, "--status") {
         Some(raw) => Some(parse_event_status(&raw)?),
         None => None,
@@ -1118,7 +1152,8 @@ fn parse_event_limit(raw: &str) -> Result<i64, ParseError> {
 }
 
 fn parse_replay(args: &[OsString]) -> Result<Command, ParseError> {
-    let a = parse_run_db_args(args)?;
+    validate_known_flags(args, "replay")?;
+    let a = parse_run_db_args(args, "replay")?;
     Ok(Command::Replay {
         run_id: a.run_id,
         db: a.db,
@@ -1128,7 +1163,7 @@ fn parse_replay(args: &[OsString]) -> Result<Command, ParseError> {
 
 fn parse_trace(args: &[OsString]) -> Result<Command, ParseError> {
     validate_trace_args(args)?;
-    let a = parse_run_db_args(args)?;
+    let a = parse_run_db_args(args, "trace")?;
     let filters = parse_trace_filters(args)?;
     Ok(Command::Trace {
         run_id: a.run_id,
@@ -1151,7 +1186,7 @@ fn validate_trace_args(args: &[OsString]) -> Result<(), ParseError> {
                 index = index.saturating_add(1);
             }
             "--db" | "--step" | "--action" | "--status" | "--since-seq" | "--until-seq"
-            | "--limit" => {
+            | "--limit" | "--emit" => {
                 let Some(value) = args
                     .get(index.saturating_add(1))
                     .and_then(|arg| arg.to_str())
@@ -1164,6 +1199,7 @@ fn validate_trace_args(args: &[OsString]) -> Result<(), ParseError> {
                         "--since-seq" => "--since-seq",
                         "--until-seq" => "--until-seq",
                         "--limit" => "--limit",
+                        "--emit" => "--emit",
                         _ => "trace flag value",
                     }));
                 };
@@ -1176,6 +1212,7 @@ fn validate_trace_args(args: &[OsString]) -> Result<(), ParseError> {
                         "--since-seq" => "--since-seq",
                         "--until-seq" => "--until-seq",
                         "--limit" => "--limit",
+                        "--emit" => "--emit",
                         _ => "trace flag value",
                     }));
                 }
@@ -1260,7 +1297,8 @@ fn parse_trace_status(raw: &str) -> Result<TraceStatus, ParseError> {
 }
 
 fn parse_retry(args: &[OsString]) -> Result<Command, ParseError> {
-    let a = parse_run_db_args(args)?;
+    validate_known_flags(args, "retry")?;
+    let a = parse_run_db_args(args, "retry")?;
     Ok(Command::Retry {
         run_id: a.run_id,
         db: a.db,
@@ -1269,7 +1307,8 @@ fn parse_retry(args: &[OsString]) -> Result<Command, ParseError> {
 }
 
 fn parse_resume(args: &[OsString]) -> Result<Command, ParseError> {
-    let a = parse_run_db_args(args)?;
+    validate_known_flags(args, "resume")?;
+    let a = parse_run_db_args(args, "resume")?;
     Ok(Command::Resume {
         run_id: a.run_id,
         db: a.db,
@@ -1278,7 +1317,10 @@ fn parse_resume(args: &[OsString]) -> Result<Command, ParseError> {
 }
 
 fn parse_cancel(args: &[OsString]) -> Result<Command, ParseError> {
-    let run_id = positional_str(args, 2, "run_id")?;
+    validate_known_flags(args, "cancel")?;
+    let run_id = find_positional(args, 2, "cancel")
+        .and_then(|path| path.to_str().map(String::from))
+        .ok_or(ParseError::MissingArgument("run_id"))?;
     let db = named_flag(args, "--db").ok_or(ParseError::MissingArgument("--db"))?;
     let reason = named_flag(args, "--reason");
     if let Some(ref r) = reason
@@ -1296,19 +1338,25 @@ fn parse_cancel(args: &[OsString]) -> Result<Command, ParseError> {
 }
 
 fn parse_bench_run(args: &[OsString]) -> Result<Command, ParseError> {
-    let workflow = positional(args, 2, "workflow.yaml")?;
+    validate_known_flags(args, "bench-run")?;
+    let workflow = find_positional(args, 2, "bench-run")
+        .ok_or(ParseError::MissingArgument("workflow.yaml"))?;
     let output = parse_output_format(args);
     Ok(Command::BenchRun { workflow, output })
 }
 
 fn parse_doctor(args: &[OsString]) -> Result<Command, ParseError> {
+    validate_known_flags(args, "doctor")?;
     let db = named_flag(args, "--db").map(PathBuf::from);
     let output = parse_output_format(args);
     Ok(Command::Doctor { db, output })
 }
 
 fn parse_answer(args: &[OsString]) -> Result<Command, ParseError> {
-    let run_id = positional_str(args, 2, "run_id")?;
+    validate_known_flags(args, "answer")?;
+    let run_id = find_positional(args, 2, "answer")
+        .and_then(|path| path.to_str().map(String::from))
+        .ok_or(ParseError::MissingArgument("run_id"))?;
     let step_raw = named_flag(args, "--step").ok_or(ParseError::MissingArgument("--step"))?;
     let step = step_raw
         .parse::<u16>()
@@ -1327,12 +1375,15 @@ fn parse_answer(args: &[OsString]) -> Result<Command, ParseError> {
 }
 
 fn parse_graph(args: &[OsString]) -> Result<Command, ParseError> {
-    let workflow = positional(args, 2, "workflow.yaml")?;
+    validate_known_flags(args, "graph")?;
+    let workflow =
+        find_positional(args, 2, "graph").ok_or(ParseError::MissingArgument("workflow.yaml"))?;
     let output = parse_output_format(args);
     Ok(Command::Graph { workflow, output })
 }
 
 fn parse_diff(args: &[OsString]) -> Result<Command, ParseError> {
+    validate_known_flags(args, "diff")?;
     let run_a = positional_str(args, 2, "run_a")?;
     let run_b = positional_str(args, 3, "run_b")?;
     let db = named_flag(args, "--db").ok_or(ParseError::MissingArgument("--db"))?;
@@ -1346,7 +1397,8 @@ fn parse_diff(args: &[OsString]) -> Result<Command, ParseError> {
 }
 
 fn parse_incident(args: &[OsString]) -> Result<Command, ParseError> {
-    let a = parse_run_db_args(args)?;
+    validate_known_flags(args, "incident")?;
+    let a = parse_run_db_args(args, "incident")?;
     Ok(Command::Incident {
         run_id: a.run_id,
         db: a.db,
@@ -1355,13 +1407,17 @@ fn parse_incident(args: &[OsString]) -> Result<Command, ParseError> {
 }
 
 fn parse_simulate(args: &[OsString]) -> Result<Command, ParseError> {
-    let workflow = positional(args, 2, "workflow.yaml")?;
+    validate_known_flags(args, "simulate")?;
+    let workflow =
+        find_positional(args, 2, "simulate").ok_or(ParseError::MissingArgument("workflow.yaml"))?;
     let output = parse_output_format(args);
     Ok(Command::Simulate { workflow, output })
 }
 
 fn parse_submit(args: &[OsString]) -> Result<Command, ParseError> {
-    let workflow = positional(args, 2, "workflow.yaml")?;
+    validate_known_flags(args, "submit")?;
+    let workflow =
+        find_positional(args, 2, "submit").ok_or(ParseError::MissingArgument("workflow.yaml"))?;
     let input_bin =
         named_flag(args, "--input-bin").ok_or(ParseError::MissingArgument("--input-bin"))?;
     let db = named_flag(args, "--db").ok_or(ParseError::MissingArgument("--db"))?;
@@ -1394,37 +1450,20 @@ fn parse_server_mode(raw: &str) -> Result<DurabilityMode, ParseError> {
     }
 }
 
-/// Parse --json, --jsonl, or --emit text|yaml|postcard output format flags.
+/// Parse --emit text|yaml|postcard output format flags.
 /// Returns OutputFormat::Text by default.
 fn parse_output_format(args: &[OsString]) -> OutputFormat {
-    // Legacy cold-path flags for backward compatibility
     if args.iter().any(|arg| arg == "--jsonl") {
         return OutputFormat::Jsonl;
     }
     if args.iter().any(|arg| arg == "--json") {
         return OutputFormat::Json;
     }
-    // Canonical v1 flags
-    for i in 0..args.len() {
-        if args[i] == "--emit" {
-            if let Some(val) = args.get(i.wrapping_add(1)).and_then(|v| v.to_str()) {
-                return match val {
-                    "yaml" => OutputFormat::Yaml,
-                    "postcard" => OutputFormat::Postcard,
-                    "text" => OutputFormat::Text,
-                    _ => OutputFormat::Text,
-                };
-            }
-        }
+    match named_flag(args, "--emit").as_deref() {
+        Some("yaml") => OutputFormat::Yaml,
+        Some("postcard") => OutputFormat::Postcard,
+        Some("text") | Some(_) | None => OutputFormat::Text,
     }
-    OutputFormat::Text
-}
-
-fn positional(args: &[OsString], index: usize, name: &'static str) -> Result<PathBuf, ParseError> {
-    args.get(index)
-        .and_then(|s| s.to_str())
-        .map(PathBuf::from)
-        .ok_or(ParseError::MissingArgument(name))
 }
 
 fn positional_str(
@@ -1471,19 +1510,166 @@ fn optional_named_flag(
 
 /// Find the first positional argument (not starting with `--`) starting at `start_idx`.
 /// This correctly skips over named flags and their values to locate the workflow path.
-fn find_positional(args: &[OsString], start_idx: usize) -> Option<PathBuf> {
-    let mut i = start_idx;
-    while i < args.len() {
-        let arg = args.get(i)?.to_str()?;
-        // Skip named flags (starting with `--`) and their values
-        if arg.starts_with("--") {
-            i = i.saturating_add(2); // Skip flag name and value
+fn find_positional(args: &[OsString], start_idx: usize, command: &'static str) -> Option<PathBuf> {
+    let mut index = start_idx;
+    while index < args.len() {
+        let arg = args.get(index)?.to_str()?;
+        if arg.starts_with('-') {
+            let step = match known_flag_spec(command, arg) {
+                Some(FlagSpec::Switch) | None => 1_usize,
+                Some(FlagSpec::Value(_)) => 2_usize,
+            };
+            index = index.checked_add(step)?;
         } else {
-            // Found a positional argument
             return Some(PathBuf::from(arg));
         }
     }
     None
+}
+
+fn has_subcommand_help(args: &[OsString]) -> bool {
+    match args.get(2..) {
+        Some(rest) => rest.iter().any(|arg| arg == "--help" || arg == "-h"),
+        None => false,
+    }
+}
+
+fn validate_known_flags(args: &[OsString], command: &'static str) -> Result<(), ParseError> {
+    let mut index = 2_usize;
+    while index < args.len() {
+        let raw = args.get(index).ok_or_else(argument_index_overflow)?;
+        let token = raw
+            .to_str()
+            .ok_or_else(|| ParseError::InvalidArgument("invalid UTF-8 argument".into()))?;
+        if token.starts_with('-') {
+            let spec = known_flag_spec(command, token).ok_or_else(|| ParseError::UnknownFlag {
+                command,
+                flag: token.into(),
+            })?;
+            index = validate_flag_value(args, index, spec)?;
+        } else {
+            index = advance_arg_index(index, 1_usize)?;
+        }
+    }
+    Ok(())
+}
+
+fn validate_flag_value(
+    args: &[OsString],
+    index: usize,
+    spec: FlagSpec,
+) -> Result<usize, ParseError> {
+    match spec {
+        FlagSpec::Switch => advance_arg_index(index, 1_usize),
+        FlagSpec::Value(name) => {
+            let value_index = advance_arg_index(index, 1_usize)?;
+            let value = args
+                .get(value_index)
+                .and_then(|raw| raw.to_str())
+                .ok_or(ParseError::MissingArgument(name))?;
+            if value.starts_with("--") {
+                return Err(ParseError::MissingArgument(name));
+            }
+            advance_arg_index(index, 2_usize)
+        }
+    }
+}
+
+fn advance_arg_index(index: usize, amount: usize) -> Result<usize, ParseError> {
+    index
+        .checked_add(amount)
+        .ok_or_else(argument_index_overflow)
+}
+
+fn argument_index_overflow() -> ParseError {
+    ParseError::InvalidArgument("argument index overflow".into())
+}
+
+fn known_flag_spec(command: &'static str, token: &str) -> Option<FlagSpec> {
+    match command {
+        "validate" | "explain" | "bench-run" | "graph" | "simulate" => output_flag_spec(token),
+        "ai-context" | "inspect" | "replay" | "retry" | "resume" | "incident" => {
+            output_flag_spec(token).or_else(|| value_flag_spec(token, "--db"))
+        }
+        "verify" => output_flag_spec(token).or_else(|| value_flag_spec(token, "--profile")),
+        "compile" => match token {
+            "--json" | "--jsonl" => Some(FlagSpec::Switch),
+            "--emit" => Some(FlagSpec::Value("--emit")),
+            "--out" => Some(FlagSpec::Value("--out")),
+            _ => None,
+        },
+        "run" => output_flag_spec(token).or_else(|| match token {
+            "--input-bin" => Some(FlagSpec::Value("--input-bin")),
+            "--durability" => Some(FlagSpec::Value("--durability")),
+            "--db" => Some(FlagSpec::Value("--db")),
+            "--step" => Some(FlagSpec::Value("--step")),
+            "--step-input" => Some(FlagSpec::Value("--step-input")),
+            _ => None,
+        }),
+        "run-compiled" => output_flag_spec(token).or_else(|| match token {
+            "--input-bin" => Some(FlagSpec::Value("--input-bin")),
+            "--durability" => Some(FlagSpec::Value("--durability")),
+            "--db" => Some(FlagSpec::Value("--db")),
+            _ => None,
+        }),
+        "ipc-serve" => match token {
+            "--socket" => Some(FlagSpec::Value("--socket")),
+            "--db" => Some(FlagSpec::Value("--db")),
+            _ => None,
+        },
+        "events" => output_flag_spec(token).or_else(|| match token {
+            "--db" => Some(FlagSpec::Value("--db")),
+            "--status" => Some(FlagSpec::Value("--status")),
+            "--limit" => Some(FlagSpec::Value("--limit")),
+            _ => None,
+        }),
+        "trace" => output_flag_spec(token).or_else(|| match token {
+            "--db" => Some(FlagSpec::Value("--db")),
+            "--step" => Some(FlagSpec::Value("--step")),
+            "--action" => Some(FlagSpec::Value("--action")),
+            "--status" => Some(FlagSpec::Value("--status")),
+            "--since-seq" => Some(FlagSpec::Value("--since-seq")),
+            "--until-seq" => Some(FlagSpec::Value("--until-seq")),
+            "--limit" => Some(FlagSpec::Value("--limit")),
+            _ => None,
+        }),
+        "cancel" => output_flag_spec(token).or_else(|| match token {
+            "--db" => Some(FlagSpec::Value("--db")),
+            "--reason" => Some(FlagSpec::Value("--reason")),
+            _ => None,
+        }),
+        "doctor" => output_flag_spec(token).or_else(|| value_flag_spec(token, "--db")),
+        "answer" => output_flag_spec(token).or_else(|| match token {
+            "--step" => Some(FlagSpec::Value("--step")),
+            "--value-file" => Some(FlagSpec::Value("--value-file")),
+            "--db" => Some(FlagSpec::Value("--db")),
+            _ => None,
+        }),
+        "diff" => output_flag_spec(token).or_else(|| value_flag_spec(token, "--db")),
+        "submit" => output_flag_spec(token).or_else(|| match token {
+            "--input-bin" => Some(FlagSpec::Value("--input-bin")),
+            "--db" => Some(FlagSpec::Value("--db")),
+            "--durability" => Some(FlagSpec::Value("--durability")),
+            _ => None,
+        }),
+        _ => None,
+    }
+}
+
+fn output_flag_spec(token: &str) -> Option<FlagSpec> {
+    match token {
+        "--json" | "--jsonl" => Some(FlagSpec::Switch),
+        "--emit" => Some(FlagSpec::Value("--emit")),
+        _ => None,
+    }
+}
+
+fn value_flag_spec(token: &str, flag: &'static str) -> Option<FlagSpec> {
+    if token == flag {
+        Some(FlagSpec::Value(flag))
+    } else {
+        None
+    }
 }
 
 impl std::fmt::Display for ParseError {
@@ -1571,6 +1757,12 @@ impl std::fmt::Display for ParseError {
             }
             Self::InvalidActionId(action_id) => {
                 write!(formatter, "invalid action id: {action_id}")
+            }
+            Self::UnknownFlag { command, flag } => {
+                write!(formatter, "unknown flag for {command}: {flag}")
+            }
+            Self::InvalidArgument(reason) => {
+                write!(formatter, "invalid argument: {reason}")
             }
             Self::NoCommand => write!(formatter, "no command provided"),
             Self::InvalidStep(step) => write!(formatter, "invalid step: {step}"),
@@ -1723,31 +1915,33 @@ mod tests {
             "velvet-ballastics",
             "validate",
             "workflow.yaml",
-            "--json",
+            "--emit",
+            "yaml",
         ]));
         assert!(
             matches!(parsed, Ok(Command::Validate { .. })),
             "unexpected parse result: {parsed:?}"
         );
         if let Ok(Command::Validate { output, .. }) = parsed {
-            assert_eq!(output, OutputFormat::Json);
+            assert_eq!(output, OutputFormat::Yaml);
         }
     }
 
     #[test]
-    fn parse_explain_accepts_jsonl_flag() {
+    fn parse_explain_accepts_yaml_flag() {
         let parsed = parse_args(&args(&[
             "velvet-ballastics",
             "explain",
             "workflow.yaml",
-            "--jsonl",
+            "--emit",
+            "yaml",
         ]));
         assert!(
             matches!(parsed, Ok(Command::Explain { .. })),
             "unexpected parse result: {parsed:?}"
         );
         if let Ok(Command::Explain { output, .. }) = parsed {
-            assert_eq!(output, OutputFormat::Jsonl);
+            assert_eq!(output, OutputFormat::Yaml);
         }
     }
 
@@ -1761,7 +1955,8 @@ mod tests {
             "ir",
             "--out",
             "output.vbir",
-            "--json",
+            "--emit",
+            "yaml",
         ]));
         assert!(
             matches!(parsed, Ok(Command::Compile { .. })),
@@ -1777,7 +1972,7 @@ mod tests {
             assert_eq!(workflow, PathBuf::from("workflow.yaml"));
             assert_eq!(emit, EmitTarget::Ir);
             assert_eq!(out, PathBuf::from("output.vbir"));
-            assert_eq!(output, OutputFormat::Json);
+            assert_eq!(output, OutputFormat::Yaml);
         }
     }
 
@@ -1873,7 +2068,8 @@ mod tests {
             "42",
             "--db",
             "test-db",
-            "--json",
+            "--emit",
+            "yaml",
         ]));
         assert!(
             matches!(parsed, Ok(Command::Inspect { .. })),
@@ -1885,7 +2081,7 @@ mod tests {
         {
             assert_eq!(run_id, "42");
             assert_eq!(db, PathBuf::from("test-db"));
-            assert_eq!(output, OutputFormat::Json);
+            assert_eq!(output, OutputFormat::Yaml);
         }
     }
 
@@ -1989,7 +2185,8 @@ mod tests {
             "20",
             "--limit",
             "3",
-            "--json",
+            "--emit",
+            "yaml",
         ]));
 
         assert!(matches!(parsed, Ok(Command::Trace { .. })));
@@ -1997,7 +2194,7 @@ mod tests {
             output, filters, ..
         }) = parsed
         {
-            assert_eq!(output, OutputFormat::Json);
+            assert_eq!(output, OutputFormat::Yaml);
             assert_eq!(filters.step, Some(4));
             assert_eq!(filters.action, Some(9));
             assert_eq!(filters.status, Some(TraceStatus::Active));
@@ -2052,7 +2249,8 @@ mod tests {
             "--db",
             "journal-db",
             "--until-seq",
-            "--json",
+            "--emit",
+            "yaml",
         ]));
 
         assert!(matches!(
@@ -2070,7 +2268,8 @@ mod tests {
             "--db",
             "journal-db",
             "--limit",
-            "--json",
+            "--emit",
+            "yaml",
         ]));
 
         assert!(matches!(
@@ -2099,13 +2298,13 @@ mod tests {
 
     #[test]
     fn parse_status_accepts_no_runtime_defaults() {
-        let parsed = parse_args(&args(&["velvet-ballastics", "status", "--json"]));
+        let parsed = parse_args(&args(&["velvet-ballastics", "status", "--emit", "yaml"]));
         assert!(matches!(parsed, Ok(Command::Status { .. })));
         if let Ok(Command::Status { options, output }) = parsed {
             assert_eq!(options.active_runs, None);
             assert_eq!(options.queue_depth, None);
             assert_eq!(options.trace_dropped, None);
-            assert_eq!(output, OutputFormat::Json);
+            assert_eq!(output, OutputFormat::Yaml);
         }
     }
 
@@ -2159,7 +2358,8 @@ mod tests {
             "velvet-ballastics",
             "status",
             "--active-runs",
-            "--json",
+            "--emit",
+            "yaml",
         ]));
         assert!(matches!(
             parsed,
@@ -2241,7 +2441,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_system_status_accepts_profile_server_emit_yaml_and_jsonl() {
+    fn parse_system_status_accepts_profile_server_and_emit_yaml() {
         let parsed = parse_args(&args(&[
             "velvet-ballastics",
             "system",
@@ -2252,14 +2452,13 @@ mod tests {
             "none",
             "--emit",
             "yaml",
-            "--jsonl",
         ]));
         assert!(matches!(parsed, Ok(Command::SystemStatus { .. })));
         if let Ok(Command::SystemStatus { options, output }) = parsed {
             assert_eq!(options.profile, VerifyProfile::Full);
             assert_eq!(options.server, DurabilityMode::None);
             assert!(options.emit_yaml);
-            assert_eq!(output, OutputFormat::Jsonl);
+            assert_eq!(output, OutputFormat::Yaml);
         }
     }
 
@@ -2358,14 +2557,15 @@ mod tests {
     }
 
     #[test]
-    fn parse_verify_accepts_full_profile_with_json() {
+    fn parse_verify_accepts_full_profile_with_yaml() {
         let parsed = parse_args(&args(&[
             "velvet-ballastics",
             "verify",
             "workflow.yaml",
             "--profile",
             "full",
-            "--json",
+            "--emit",
+            "yaml",
         ]));
         assert!(
             matches!(parsed, Ok(Command::Verify { .. })),
@@ -2376,7 +2576,7 @@ mod tests {
         }) = parsed
         {
             assert_eq!(profile, VerifyProfile::Full);
-            assert_eq!(output, OutputFormat::Json);
+            assert_eq!(output, OutputFormat::Yaml);
         }
     }
 
@@ -2409,19 +2609,20 @@ mod tests {
     }
 
     #[test]
-    fn parse_graph_accepts_json_flag() {
+    fn parse_graph_accepts_yaml_emit() {
         let parsed = parse_args(&args(&[
             "velvet-ballastics",
             "graph",
             "workflow.yaml",
-            "--json",
+            "--emit",
+            "yaml",
         ]));
         assert!(
             matches!(parsed, Ok(Command::Graph { .. })),
             "unexpected parse result: {parsed:?}"
         );
         if let Ok(Command::Graph { output, .. }) = parsed {
-            assert_eq!(output, OutputFormat::Json);
+            assert_eq!(output, OutputFormat::Yaml);
         }
     }
 
@@ -2462,14 +2663,15 @@ mod tests {
             "20",
             "--db",
             "test-db",
-            "--json",
+            "--emit",
+            "yaml",
         ]));
         assert!(
             matches!(parsed, Ok(Command::Diff { .. })),
             "unexpected: {parsed:?}"
         );
         if let Ok(Command::Diff { output, .. }) = parsed {
-            assert_eq!(output, OutputFormat::Json);
+            assert_eq!(output, OutputFormat::Yaml);
         }
     }
 
@@ -2496,36 +2698,38 @@ mod tests {
     }
 
     #[test]
-    fn parse_simulate_accepts_json_flag() {
+    fn parse_simulate_accepts_yaml_emit() {
         let parsed = parse_args(&args(&[
             "velvet-ballastics",
             "simulate",
             "workflow.yaml",
-            "--json",
+            "--emit",
+            "yaml",
         ]));
         assert!(
             matches!(parsed, Ok(Command::Simulate { .. })),
             "unexpected parse result: {parsed:?}"
         );
         if let Ok(Command::Simulate { output, .. }) = parsed {
-            assert_eq!(output, OutputFormat::Json);
+            assert_eq!(output, OutputFormat::Yaml);
         }
     }
 
     #[test]
-    fn parse_simulate_accepts_jsonl_flag() {
+    fn parse_simulate_accepts_postcard_emit() {
         let parsed = parse_args(&args(&[
             "velvet-ballastics",
             "simulate",
             "workflow.yaml",
-            "--jsonl",
+            "--emit",
+            "postcard",
         ]));
         assert!(
             matches!(parsed, Ok(Command::Simulate { .. })),
             "unexpected parse result: {parsed:?}"
         );
         if let Ok(Command::Simulate { output, .. }) = parsed {
-            assert_eq!(output, OutputFormat::Jsonl);
+            assert_eq!(output, OutputFormat::Postcard);
         }
     }
 
@@ -2543,13 +2747,14 @@ mod tests {
     }
 
     #[test]
-    fn parse_doctor_accepts_optional_db_and_json_output() {
+    fn parse_doctor_accepts_optional_db_and_yaml_output() {
         let parsed = parse_args(&args(&[
             "velvet-ballastics",
             "doctor",
             "--db",
             "journal-db",
-            "--json",
+            "--emit",
+            "yaml",
         ]));
         assert!(
             matches!(parsed, Ok(Command::Doctor { .. })),
@@ -2557,13 +2762,19 @@ mod tests {
         );
         if let Ok(Command::Doctor { db, output }) = parsed {
             assert_eq!(db, Some(PathBuf::from("journal-db")));
-            assert_eq!(output, OutputFormat::Json);
+            assert_eq!(output, OutputFormat::Yaml);
         }
     }
 
     #[test]
     fn parse_action_list_accepts_yaml_output() {
-        let parsed = parse_args(&args(&["velvet-ballastics", "action", "list", "--emit", "yaml"]));
+        let parsed = parse_args(&args(&[
+            "velvet-ballastics",
+            "action",
+            "list",
+            "--emit",
+            "yaml",
+        ]));
         assert!(
             matches!(parsed, Ok(Command::ActionList { .. })),
             "unexpected parse result: {parsed:?}"
@@ -2624,17 +2835,18 @@ mod tests {
     }
 
     #[test]
-    fn parse_cancel_accepts_json_output() {
+    fn parse_cancel_accepts_yaml_output() {
         let parsed = parse_args(&args(&[
             "velvet-ballastics",
             "cancel",
             "42",
             "--db",
             "journal-db",
-            "--json",
+            "--emit",
+            "yaml",
         ]));
         if let Ok(Command::Cancel { output, .. }) = parsed {
-            assert_eq!(output, OutputFormat::Json);
+            assert_eq!(output, OutputFormat::Yaml);
         } else {
             assert!(parsed.is_ok(), "expected Ok, got {parsed:?}");
         }

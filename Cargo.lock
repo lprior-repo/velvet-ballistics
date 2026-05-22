@@ -2705,32 +2705,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "vb_cli"
-version = "0.1.0"
-dependencies = [
- "blake3",
- "bytes",
- "chrono",
- "crc32fast",
- "postcard",
- "proptest",
- "serde",
- "serde-saphyr",
- "serde_json",
- "tempfile",
- "vb_codegen",
- "vb_compile",
- "vb_core",
- "vb_expr",
- "vb_ipc",
- "vb_runtime",
- "vb_storage",
- "vb_ui_model",
- "vb_validate",
- "vb_yaml",
-]
-
-[[package]]
 name = "vb_codegen"
 version = "0.1.0"
 dependencies = [
@@ -2911,6 +2885,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "velvet-ballastics"
+version = "0.1.0"
+dependencies = [
+ "blake3",
+ "bytes",
+ "chrono",
+ "crc32fast",
+ "postcard",
+ "proptest",
+ "serde",
+ "serde-saphyr",
+ "serde_json",
+ "tempfile",
+ "vb_codegen",
+ "vb_compile",
+ "vb_core",
+ "vb_expr",
+ "vb_ipc",
+ "vb_runtime",
+ "vb_storage",
+ "vb_ui_model",
+ "vb_validate",
+ "vb_yaml",
+]
+
+[[package]]
 name = "velvet-ballastics-workspace-tests"
 version = "0.1.0"
 dependencies = [
@@ -2930,7 +2930,6 @@ dependencies = [
  "toml 0.9.12+spec-1.1.0",
  "vb_benchmark",
  "vb_boundary_inventory",
- "vb_cli",
  "vb_codegen",
  "vb_compile",
  "vb_core",
@@ -2942,6 +2941,7 @@ dependencies = [
  "vb_storage",
  "vb_validate",
  "vb_yaml",
+ "velvet-ballastics",
  "xtask",
 ]
 

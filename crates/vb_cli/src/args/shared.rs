@@ -8,27 +8,20 @@ const EMIT_FLAG: &str = "--emit";
 /// Parse --json, --jsonl, or --emit text|yaml|postcard output format flags.
 /// Returns OutputFormat::Text by default.
 pub(super) fn parse_output_format(args: &[OsString]) -> super::OutputFormat {
-    // Legacy cold-path flags for backward compatibility
-    if args.iter().any(|arg| arg == "--jsonl") {
-        return super::OutputFormat::Jsonl;
+    if contains_flag(args, "--jsonl") {
+        super::OutputFormat::Jsonl
+    } else if contains_flag(args, "--json") {
+        super::OutputFormat::Json
+    } else {
+        parse_emit_output_format(named_flag(args, EMIT_FLAG).as_deref())
     }
-    if args.iter().any(|arg| arg == "--json") {
-        return super::OutputFormat::Json;
-    }
-    // Canonical v1 flags
-    match args.iter().position(|arg| arg == EMIT_FLAG) {
-        Some(idx) => {
-            if let Some(val) = args.get(idx.saturating_add(1)).and_then(|v| v.to_str()) {
-                return match val {
-                    "yaml" => super::OutputFormat::Yaml,
-                    "postcard" => super::OutputFormat::Postcard,
-                    "text" => super::OutputFormat::Text,
-                    _ => super::OutputFormat::Text,
-                };
-            }
-            super::OutputFormat::Text
-        }
-        None => super::OutputFormat::Text,
+}
+
+fn parse_emit_output_format(raw: Option<&str>) -> super::OutputFormat {
+    match raw {
+        Some("yaml") => super::OutputFormat::Yaml,
+        Some("postcard") => super::OutputFormat::Postcard,
+        Some("text") | Some(_) | None => super::OutputFormat::Text,
     }
 }
 

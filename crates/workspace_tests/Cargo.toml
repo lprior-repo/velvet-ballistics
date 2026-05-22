@@ -45,7 +45,7 @@ vb_benchmark = { path = "../vb_benchmark" }
 vb_boundary_inventory = { path = "../vb_boundary_inventory" }
 vb_doc = { path = "../vb_doc" }
 vb_yaml = { path = "../vb_yaml" }
-vb_cli = { path = "../vb_cli" }
+vb_cli = { package = "velvet-ballastics", path = "../vb_cli" }
 
 [[test]]
 name = "contracts_production_binding"

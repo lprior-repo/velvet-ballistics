@@ -1,5 +1,5 @@
 [package]
-name = "vb_cli"
+name = "velvet-ballastics"
 edition.workspace = true
 license.workspace = true
 version.workspace = true

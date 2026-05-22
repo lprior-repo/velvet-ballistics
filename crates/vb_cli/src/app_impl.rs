@@ -5863,11 +5863,18 @@ fn write_error_stderr(error: &ParseError) -> io::Result<()> {
             handle,
             "unexpected action inspect argument: {argument}\n\n{HELP}"
         ),
-        ParseError::InvalidActionInspectArgument(reason) => {
-            writeln!(handle, "invalid action inspect argument: {reason}\n\n{HELP}")
-        }
+        ParseError::InvalidActionInspectArgument(reason) => writeln!(
+            handle,
+            "invalid action inspect argument: {reason}\n\n{HELP}"
+        ),
         ParseError::InvalidActionId(action_id) => {
             writeln!(handle, "invalid action id: {action_id}\n\n{HELP}")
+        }
+        ParseError::UnknownFlag { command, flag } => {
+            writeln!(handle, "unknown flag for {command}: {flag}\n\n{HELP}")
+        }
+        ParseError::InvalidArgument(reason) => {
+            writeln!(handle, "invalid argument: {reason}\n\n{HELP}")
         }
         ParseError::NoCommand => {
             writeln!(handle, "{HELP}")
@@ -6011,12 +6018,36 @@ fn write_diagnostic_report_stderr_io(message: &str, code: CliExitCode) -> io::Re
 }
 
 fn output_format_from_args(args: &[OsString]) -> OutputFormat {
-    if args.iter().any(|arg| arg == "--jsonl") {
+    if contains_os_flag(args, "--jsonl") {
         OutputFormat::Jsonl
-    } else if args.iter().any(|arg| arg == "--json") {
+    } else if contains_os_flag(args, "--json") {
         OutputFormat::Json
     } else {
-        OutputFormat::Text
+        parse_emit_output_format(named_os_flag(args, "--emit").as_deref())
+    }
+}
+
+fn contains_os_flag(args: &[OsString], flag: &str) -> bool {
+    args.iter().any(|arg| arg == flag)
+}
+
+fn named_os_flag(args: &[OsString], flag: &str) -> Option<String> {
+    for (index, arg) in args.iter().enumerate() {
+        if arg == flag {
+            return args
+                .get(index.checked_add(1_usize)?)
+                .and_then(|value| value.to_str())
+                .map(String::from);
+        }
+    }
+    None
+}
+
+fn parse_emit_output_format(raw: Option<&str>) -> OutputFormat {
+    match raw {
+        Some("yaml") => OutputFormat::Yaml,
+        Some("postcard") => OutputFormat::Postcard,
+        Some("text") | Some(_) | None => OutputFormat::Text,
     }
 }
 
