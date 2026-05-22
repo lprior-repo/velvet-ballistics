@@ -744,6 +744,20 @@ fn parse_action_inspect_args(
         None => Ok(state),
         Some((raw, rest)) => match raw.to_str() {
             Some("--emit") => parse_action_inspect_emit(rest, state),
+            Some("--json") => parse_action_inspect_args(
+                rest,
+                ActionInspectParseState {
+                    output: OutputFormat::Json,
+                    ..state
+                },
+            ),
+            Some("--jsonl") => parse_action_inspect_args(
+                rest,
+                ActionInspectParseState {
+                    output: OutputFormat::Jsonl,
+                    ..state
+                },
+            ),
             Some("--registry") => parse_action_inspect_registry_arg(rest, state),
             Some(flag) if flag.starts_with("--") => {
                 Err(ParseError::UnknownActionInspectFlag(flag.into()))
@@ -787,6 +801,20 @@ fn parse_action_list_args(
         None => Ok(state),
         Some((raw, rest)) => match raw.to_str() {
             Some("--emit") => parse_action_list_emit(rest, state),
+            Some("--json") => parse_action_list_args(
+                rest,
+                ActionListParseState {
+                    output: OutputFormat::Json,
+                    ..state
+                },
+            ),
+            Some("--jsonl") => parse_action_list_args(
+                rest,
+                ActionListParseState {
+                    output: OutputFormat::Jsonl,
+                    ..state
+                },
+            ),
             Some("--registry") => parse_action_registry_arg(rest, state),
             Some(flag) if flag.starts_with("--") => {
                 Err(ParseError::UnknownActionListFlag(flag.into()))
