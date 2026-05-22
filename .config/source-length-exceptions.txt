@@ -4,7 +4,7 @@
 
 crates/vb_compile/src/expression_bytecode.rs|lewis|vb-jpq7.51|defer-split-into-bytecode|Bytecode generation for expressions requires tight coupling; split planned via vb-jpq7.51 work
 crates/vb_compile/src/expression.rs|lewis|vb-jpq7.51|defer-split-into-mod_compile_expression|Semantic analysis and AST construction for expressions; modular split planned
-crates/vb_compile/src/kani_foreach_parity.rs|lewis|defer|Bound on kani parity proofs are implementation artifacts; formal verification scope TBD
+crates/vb_compile/src/kani_foreach_parity.rs|lewis|vb-jpq7.51|defer-kani-parity-split|Kani parity proof bounds are deferred to formal verification phase; split planned under vb-jpq7.51
 crates/vb_compile/src/references.rs|lewis|vb-jpq7.51|defer-split-into-mod_compile_references|Reference tracking and lifetime analysis; modular decomposition planned
 crates/vb_compile/src/schema.rs|lewis|vb-jpq7.51|defer-split-into-mod_compile_schema|Schema definitions for compile intermediate representation; modular split planned
 crates/vb_compile/src/type_taint.rs|lewis|vb-jpq7.51|defer-split-into-mod_compile_type_taint|Type taint propagation analysis; modular decomposition planned

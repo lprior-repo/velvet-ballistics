@@ -1,0 +1,114 @@
+[verus] verus verification/verus/vb_jpq724_events_for_run_production.rs
+note: automatically chose triggers for this expression:
+   --> verification/verus/vb_jpq724_events_for_run_production.rs:175:17
+    |
+175 |               &&& (forall|i: int|
+    |  _________________^
+176 | |                 0 <= i && i < events.len() as int
+177 | |                 ==> events[i as int].run_id == run)
+    | |___________________________________________________^
+
+note:   trigger 1 of 1:
+   --> verification/verus/vb_jpq724_events_for_run_production.rs:177:21
+    |
+177 |                 ==> events[i as int].run_id == run)
+    |                     ^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> verification/verus/vb_jpq724_events_for_run_production.rs:179:17
+    |
+179 |               &&& (forall|i: int|
+    |  _________________^
+180 | |                 0 <= i && i < events.len() as int
+181 | |                 ==> events[i as int].seq.value >= start_seq.value)
+    | |__________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> verification/verus/vb_jpq724_events_for_run_production.rs:181:21
+    |
+181 |                 ==> events[i as int].seq.value >= start_seq.value)
+    |                     ^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> verification/verus/vb_jpq724_events_for_run_production.rs:225:9
+    |
+225 | /         forall|i: int|
+226 | |             0 <= i && i < events.len() as int
+227 | |             ==> events[i as int].run_id == run,
+    | |______________________________________________^
+
+note:   trigger 1 of 1:
+   --> verification/verus/vb_jpq724_events_for_run_production.rs:227:17
+    |
+227 |             ==> events[i as int].run_id == run,
+    |                 ^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> verification/verus/vb_jpq724_events_for_run_production.rs:229:5
+    |
+229 | /     assert_forall_by(|i: int| {
+230 | |         requires(0 <= i && i < events.len() as int);
+231 | |         ensures(events[i as int].run_id == run);
+232 | |         reveal(spec_events_for_run_from_contract);
+233 | |     });
+    | |______^
+
+note:   trigger 1 of 1:
+   --> verification/verus/vb_jpq724_events_for_run_production.rs:231:17
+    |
+231 |         ensures(events[i as int].run_id == run);
+    |                 ^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> verification/verus/vb_jpq724_events_for_run_production.rs:248:9
+    |
+248 | /         forall|i: int|
+249 | |             0 <= i && i < events.len() as int
+250 | |             ==> events[i as int].seq.value >= start_seq.value,
+    | |_____________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> verification/verus/vb_jpq724_events_for_run_production.rs:250:17
+    |
+250 |             ==> events[i as int].seq.value >= start_seq.value,
+    |                 ^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> verification/verus/vb_jpq724_events_for_run_production.rs:252:5
+    |
+252 | /     assert_forall_by(|i: int| {
+253 | |         requires(0 <= i && i < events.len() as int);
+254 | |         ensures(events[i as int].seq.value >= start_seq.value);
+255 | |         reveal(spec_events_for_run_from_contract);
+256 | |     });
+    | |______^
+
+note:   trigger 1 of 1:
+   --> verification/verus/vb_jpq724_events_for_run_production.rs:254:17
+    |
+254 |         ensures(events[i as int].seq.value >= start_seq.value);
+    |                 ^^^^^^^^^^^^^^^^
+
+note: Verus printed one or more automatically chosen quantifier triggers
+      because it had low confidence in the chosen triggers.
+      To suppress these messages, do one of the following:
+        (1) manually annotate a single desired trigger using #[trigger]
+            (example: forall|i: int, j: int| f(i) && #[trigger] g(i) && #[trigger] h(j)),
+        (2) manually annotate multiple desired triggers using #![trigger ...]
+            (example: forall|i: int| #![trigger f(i)] #![trigger g(i)] f(i) && g(i)),
+        (3) accept the automatically chosen trigger using #![auto]
+            (example: forall|i: int, j: int| #![auto] f(i) && g(i) && h(j))
+        (4) use the --triggers-mode silent command-line option to suppress all printing of triggers.
+      (Note: triggers are used by the underlying SMT theorem prover to instantiate quantifiers;
+      the theorem prover instantiates a quantifier whenever some expression matches the
+      pattern specified by one of the quantifier's triggers.)
+   --> verification/verus/vb_jpq724_events_for_run_production.rs:252:5
+    |
+252 | /     assert_forall_by(|i: int| {
+253 | |         requires(0 <= i && i < events.len() as int);
+254 | |         ensures(events[i as int].seq.value >= start_seq.value);
+255 | |         reveal(spec_events_for_run_from_contract);
+256 | |     });
+    | |______^
+
+verification results:: 4 verified, 0 errors

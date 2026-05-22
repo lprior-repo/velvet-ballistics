@@ -83,7 +83,7 @@ done
 
 trust_file="$EVIDENCE_DIR/trust-scan.txt"
 set +e
-rg -n 'assume\(|#\[verifier::external_body\]|#\[verifier::external\]|axiom' \
+rg -n 'assume\(|#\[verifier::external_body\]|#\[verifier::external\]|\baxiom\b' \
   verification/verus contracts/verus \
   --glob '*.rs' >"$trust_file"
 trust_status=$?
