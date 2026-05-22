@@ -22,8 +22,8 @@
 //!   arbitrary WorkflowParts (including those with ForEachStart/ForEachNext nodes).
 
 use vb_core::{
-    CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, ConstValue, StepIdx,
-    SlotIdx, WorkflowParts, WorkflowDigest, ResourceContract,
+    CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, ConstValue, ResourceContract,
+    SlotIdx, StepIdx, WorkflowDigest, WorkflowParts,
 };
 
 // ---------------------------------------------------------------------------
@@ -559,7 +559,9 @@ fn foreach_arbitrary_done_forward() {
                     format!(
                         "foreach_arbitrary_done_forward: ForEachStart at {} \
                          must have done > {} (got done={})",
-                        ci, ci, done.as_usize()
+                        ci,
+                        ci,
+                        done.as_usize()
                     )
                     .leak(),
                 );
@@ -573,7 +575,9 @@ fn foreach_arbitrary_done_forward() {
                     format!(
                         "foreach_arbitrary_done_forward: ForEachNext at {} \
                          must have done > {} (got done={})",
-                        ci, ci, done.as_usize()
+                        ci,
+                        ci,
+                        done.as_usize()
                     )
                     .leak(),
                 );

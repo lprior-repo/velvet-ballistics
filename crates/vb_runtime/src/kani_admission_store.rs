@@ -55,7 +55,10 @@ mod kani_store_proofs {
         let _exists: bool = store.compiled_ir_exists(digest);
 
         // If we reach here, store is Send and compiled_ir_exists did not panic.
-        kani::assert(true, "StorageArtifactStore: Send + compiled_ir_exists never panics");
+        kani::assert(
+            true,
+            "StorageArtifactStore: Send + compiled_ir_exists never panics",
+        );
     }
 
     /// KANI-STORE-001 H2: StorageArtifactStore is Sync.
@@ -73,7 +76,10 @@ mod kani_store_proofs {
         let digest: WorkflowDigest = kani::any();
         let _exists: bool = store.compiled_ir_exists(digest);
 
-        kani::assert(true, "StorageArtifactStore: Sync + compiled_ir_exists never panics on shared ref");
+        kani::assert(
+            true,
+            "StorageArtifactStore: Sync + compiled_ir_exists never panics on shared ref",
+        );
     }
 
     /// KANI-STORE-001 H3: compiled_ir_exists returns correct bool for known digests.
@@ -91,7 +97,10 @@ mod kani_store_proofs {
         let exists = store.compiled_ir_exists(zero_digest);
 
         // No artifact has been stored, so exists must be false.
-        kani::assert(!exists, "compiled_ir_exists returns false for empty journal");
+        kani::assert(
+            !exists,
+            "compiled_ir_exists returns false for empty journal",
+        );
     }
 
     /// KANI-STORE-001 H4: compiled_ir_exists is callable with max digest.

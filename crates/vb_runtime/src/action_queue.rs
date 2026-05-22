@@ -9,8 +9,9 @@
 //! This module implements the LETHAL-5 fix for the missing bounded action
 //! completion queue requirement from Section 4.
 
-use vb_core::action::ActionTicket;
 use std::collections::VecDeque;
+use std::sync::mpsc::{Receiver, SyncSender, TrySendError};
+use vb_core::action::ActionTicket;
 
 /// Errors returned by bounded action completion queue operations.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -33,7 +34,7 @@ pub enum ActionQueueError {
 pub struct BoundedActionCompletionQueue {
     inner: std::sync::Mutex<Inner>,
     capacity: usize,
-    backpressure_tx: Option<std::sync::mpsc::Sender<BackpressureWarning>>,
+    backpressure_tx: Option<SyncSender<BackpressureWarning>>,
 }
 
 #[derive(Debug)]
@@ -72,11 +73,11 @@ impl BoundedActionCompletionQueue {
     #[must_use]
     pub fn with_backpressure(
         capacity: usize,
-    ) -> Result<(Self, std::sync::mpsc::Receiver<BackpressureWarning>), ActionQueueError> {
+    ) -> Result<(Self, Receiver<BackpressureWarning>), ActionQueueError> {
         if capacity == 0 {
             return Err(ActionQueueError::InvalidCapacity);
         }
-        let (tx, rx) = std::sync::mpsc::channel();
+        let (tx, rx) = std::sync::mpsc::sync_channel(capacity);
         Ok((
             Self {
                 inner: std::sync::Mutex::new(Inner { items: VecDeque::new() }),
@@ -112,10 +113,12 @@ impl BoundedActionCompletionQueue {
         let threshold = (self.capacity * 8) / 10;
         if depth >= threshold {
             if let Some(ref tx) = self.backpressure_tx {
-                let _ = tx.send(BackpressureWarning {
+                match tx.try_send(BackpressureWarning {
                     depth,
                     capacity: self.capacity,
-                });
+                }) {
+                    Ok(()) | Err(TrySendError::Full(_)) | Err(TrySendError::Disconnected(_)) => {}
+                }
             }
         }
 

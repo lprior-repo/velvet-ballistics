@@ -7,7 +7,7 @@
 
 #![forbid(unsafe_code)]
 
-use crate::admission::{admit_compiled_artifact, submit_artifact, VerificationProof};
+use crate::admission::{VerificationProof, admit_compiled_artifact, submit_artifact};
 use vb_core::workflow::{ResourceContract, WorkflowParts};
 use vb_core::{
     CompiledNode, CompiledNodeKind, CompiledWorkflow, ConstIdx, SlotIdx, StepIdx, WorkflowDigest,

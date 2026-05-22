@@ -10,18 +10,13 @@
 //! - **R-17**: `admit_run_with_budget` checks aggregate budget capacity BEFORE
 //!   artifact existence check (capacity exhaustion is a pre-admission gate).
 
-use std::sync::Arc;
-
 use vb_core::{
-    ActionId, AggregateResourceBudget, AggregateResourceCapacity, AggregateResourceUsage,
-    Capability, CapabilitySet, RunId, RuntimePolicy, WorkflowDigest,
+    ActionId, AggregateResourceBudget, AggregateResourceCapacity, Capability, CapabilitySet, RunId,
+    RuntimePolicy, WorkflowDigest,
 };
-use vb_runtime::admission::{
-    admit_artifact_run, admit_run, admit_run_with_budget, ArtifactStore,
-    MissingAcceptedArtifactStore,
-};
+use vb_runtime::admission::{ArtifactStore, admit_artifact_run, admit_run, admit_run_with_budget};
+use vb_storage::EventSeq;
 use vb_storage::admission::{AcceptedArtifact, VerificationProof};
-use vb_storage::{EventSeq, FjallJournal};
 
 // ============================================================================
 // R-09: Relaxed policy skips all artifact loading and capability checks
@@ -61,13 +56,7 @@ fn given_never_present_store_when_relaxed_admission_runs_then_succeeds() -> Resu
     let caps = CapabilitySet::empty();
 
     // Relaxed should succeed even though artifact is never present
-    let result = admit_artifact_run(
-        &store,
-        RuntimePolicy::Relaxed,
-        run_id,
-        digest,
-        caps.clone(),
-    );
+    let result = admit_artifact_run(&store, RuntimePolicy::Relaxed, run_id, digest, caps.clone());
 
     let admission = result.map_err(|e| format!("relaxed admission failed: {e}"))?;
     assert_eq!(
@@ -106,13 +95,7 @@ fn given_missing_artifact_with_required_caps_when_relaxed_admission_runs_then_su
 
     // Even with non-empty (but wrong) capabilities, Relaxed must succeed
     // because capability checking is bypassed
-    let result = admit_artifact_run(
-        &store,
-        RuntimePolicy::Relaxed,
-        run_id,
-        digest,
-        caps.clone(),
-    );
+    let result = admit_artifact_run(&store, RuntimePolicy::Relaxed, run_id, digest, caps.clone());
 
     let admission = result.map_err(|e| format!("relaxed admission failed: {e}"))?;
     assert_eq!(admission.artifact_digest(), digest);
@@ -148,20 +131,14 @@ fn given_missing_artifact_when_relaxed_admit_run_then_succeeds() -> Result<(), S
 /// When: admit_artifact_run is called with RuntimePolicy::Strict
 /// Then: Err(AdmissionError::ArtifactNotFound { digest }) is returned
 #[test]
-fn given_missing_artifact_when_strict_admission_runs_then_artifact_not_found()
--> Result<(), String> {
+fn given_missing_artifact_when_strict_admission_runs_then_artifact_not_found() -> Result<(), String>
+{
     let store = NeverPresentArtifactStore;
     let digest = WorkflowDigest::from_bytes([0xB1; 32]);
     let run_id = RunId::new(9010);
     let caps = CapabilitySet::empty();
 
-    let result = admit_artifact_run(
-        &store,
-        RuntimePolicy::Strict,
-        run_id,
-        digest,
-        caps,
-    );
+    let result = admit_artifact_run(&store, RuntimePolicy::Strict, run_id, digest, caps);
 
     assert!(
         matches!(
@@ -487,8 +464,8 @@ impl vb_runtime::admission::AcceptedArtifactStore for WrongGateCountStore {
 }
 
 #[test]
-fn given_wrong_gate_count_when_strict_admission_runs_then_invalid_gate_count()
--> Result<(), String> {
+fn given_wrong_gate_count_when_strict_admission_runs_then_invalid_gate_count() -> Result<(), String>
+{
     let store = WrongGateCountStore;
     let digest = WorkflowDigest::from_bytes([0xE1; 32]);
     let run_id = RunId::new(9040);
@@ -499,10 +476,12 @@ fn given_wrong_gate_count_when_strict_admission_runs_then_invalid_gate_count()
     assert!(
         matches!(
             result,
-            Err(vb_runtime::admission::AdmissionError::ArtifactInvalidGateCount {
-                found: 7,
-                required: 15,
-            })
+            Err(
+                vb_runtime::admission::AdmissionError::ArtifactInvalidGateCount {
+                    found: 7,
+                    required: 15,
+                }
+            )
         ),
         "Strict must reject wrong gate_count=7, got {:?}",
         result

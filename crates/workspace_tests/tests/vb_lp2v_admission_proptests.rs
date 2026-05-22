@@ -11,13 +11,13 @@
 //!   `journal.compiled_ir(workflow.digest())` returns `Ok(Some(record))`
 //!   where `record.digest == workflow.digest()`.
 
+use proptest::prelude::*;
 use vb_core::value::ConstValue;
 use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
 use vb_core::{CompiledWorkflow, ConstIdx, SlotIdx, StepIdx, WorkflowDigest};
-use vb_storage::admission::submit_artifact;
-use vb_storage::admission::VerificationWarning;
 use vb_storage::FjallJournal;
-use proptest::prelude::*;
+use vb_storage::admission::VerificationWarning;
+use vb_storage::admission::submit_artifact;
 
 // ============================================================================
 // Test helpers
@@ -163,10 +163,7 @@ fn pi_01_gate_zero_is_invalid() {
         message: Box::from("gate zero boundary"),
         gate: 0,
     };
-    assert!(
-        !warning.is_valid(),
-        "gate 0 must be invalid"
-    );
+    assert!(!warning.is_valid(), "gate 0 must be invalid");
 }
 
 /// PI-01 explicit boundary: gate=16 must be invalid
@@ -220,7 +217,7 @@ proptest! {
     }
 }
 
-/// PI-02 Invariant (Journaled policy): digest roundtrip
+// PI-02 Invariant (Journaled policy): digest roundtrip
 proptest! {
     #[test]
     fn pi_02_digest_roundtrip_journaled(_seed in 0u64..1000u64) {
@@ -249,7 +246,7 @@ proptest! {
     }
 }
 
-/// PI-02 Invariant (Strict policy): digest roundtrip
+// PI-02 Invariant (Strict policy): digest roundtrip
 proptest! {
     #[test]
     fn pi_02_digest_roundtrip_strict(_seed in 0u64..1000u64) {
@@ -324,8 +321,7 @@ fn pi_02_antiinvariant_tampered_digest_rejected() {
     let tampered = CompiledWorkflow::try_from_parts(parts).expect("structurally valid");
 
     // Journaled/Strict must reject tampered digest
-    let result_journaled =
-        submit_artifact(&journal, &tampered, RuntimePolicy::Journaled);
+    let result_journaled = submit_artifact(&journal, &tampered, RuntimePolicy::Journaled);
     assert!(
         matches!(
             result_journaled,
@@ -335,8 +331,7 @@ fn pi_02_antiinvariant_tampered_digest_rejected() {
         result_journaled
     );
 
-    let result_strict =
-        submit_artifact(&journal, &tampered, RuntimePolicy::Strict);
+    let result_strict = submit_artifact(&journal, &tampered, RuntimePolicy::Strict);
     assert!(
         matches!(
             result_strict,
@@ -347,8 +342,7 @@ fn pi_02_antiinvariant_tampered_digest_rejected() {
     );
 
     // Relaxed accepts any workflow regardless of digest (no checksum gate)
-    let result_relaxed =
-        submit_artifact(&journal, &tampered, RuntimePolicy::Relaxed);
+    let result_relaxed = submit_artifact(&journal, &tampered, RuntimePolicy::Relaxed);
     assert!(
         result_relaxed.is_ok(),
         "Relaxed must accept tampered digest (no checksum gate), got {:?}",

@@ -12,12 +12,12 @@ members = [
     "crates/vb_ipc",
     "crates/vb_codegen",
     "crates/vb_ui_makepad",
+    "crates/vb_ui_model",
     "crates/vb_ui_snapshot",
     "crates/vb_proof_kernels",
     "crates/vb_cli",
     "crates/workspace_tests",
     "crates/vb_benchmark",
-    "fuzz",
     "xtask",
 ]
 default-members = ["."]

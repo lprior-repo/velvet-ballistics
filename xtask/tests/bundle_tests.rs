@@ -175,6 +175,35 @@ fn prop_write_read_roundtrip_yaml() {
 }
 
 #[test]
+fn yaml_roundtrip_preserves_trailing_spaces() {
+    let dir = tempfile::tempdir().expect("create temp dir");
+    let path = dir.path().join("bundle.yaml");
+    let bundle = EvidenceBundle {
+        schema_version: "1.0".to_string(),
+        executor_context: ExecutorContext {
+            agent: String::new(),
+            timestamp: String::new(),
+            machine: String::new(),
+        },
+        linked_bead_id: String::new(),
+        gates: vec![],
+        source_test_mappings: vec![],
+        release_artifacts: vec![ReleaseGateArtifact {
+            name: String::new(),
+            path: "A ".to_string(),
+            digest: String::new(),
+            artifact_type: ArtifactType::Benchmark,
+        }],
+    };
+
+    write_bundle(&bundle, &path, EvidenceBundleFormat::Yaml).expect("write bundle succeeded");
+
+    let roundtrip = read_bundle(&path, EvidenceBundleFormat::Yaml).expect("read bundle succeeded");
+
+    assert_eq!(bundle, roundtrip);
+}
+
+#[test]
 fn prop_write_read_roundtrip_json() {
     use proptest::prelude::*;
 

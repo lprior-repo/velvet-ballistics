@@ -38,6 +38,7 @@ vb_validate = { path = "../crates/vb_validate" }
 vb_yaml = { path = "../crates/vb_yaml" }
 vb_compile = { path = "../crates/vb_compile" }
 vb_ipc = { path = "../crates/vb_ipc" }
+vb_ui_model = { path = "../crates/vb_ui_model" }
 
 [lib]
 name = "fuzz_lib"
@@ -59,49 +60,49 @@ bench = false
 
 [[bin]]
 name = "journal_event"
-path = "fuzz_targets/journal_event.rs"
+path = "src/bin/journal_event.rs"
 test = false
 doc = false
 bench = false
 
 [[bin]]
 name = "capability_name_schema"
-path = "fuzz_targets/capability_name_schema.rs"
+path = "src/bin/capability_name_schema.rs"
 test = false
 doc = false
 bench = false
 
 [[bin]]
 name = "capability_contract_schema"
-path = "fuzz_targets/capability_contract_schema.rs"
+path = "src/bin/capability_contract_schema.rs"
 test = false
 doc = false
 bench = false
 
 [[bin]]
 name = "compiled_ir"
-path = "fuzz_targets/compiled_ir.rs"
+path = "src/bin/compiled_ir.rs"
 test = false
 doc = false
 bench = false
 
 [[bin]]
 name = "expression"
-path = "fuzz_targets/expression.rs"
+path = "src/bin/expression.rs"
 test = false
 doc = false
 bench = false
 
 [[bin]]
 name = "generated_compare"
-path = "fuzz_targets/generated_compare.rs"
+path = "src/bin/generated_compare.rs"
 test = false
 doc = false
 bench = false
 
 [[bin]]
 name = "collect_page"
-path = "fuzz_targets/collect_page.rs"
+path = "src/bin/collect_page_pagination.rs"
 test = false
 doc = false
 bench = false
@@ -115,7 +116,7 @@ bench = false
 
 [[bin]]
 name = "ipc_frame"
-path = "fuzz_targets/ipc_frame.rs"
+path = "src/bin/ipc_frame.rs"
 test = false
 doc = false
 bench = false

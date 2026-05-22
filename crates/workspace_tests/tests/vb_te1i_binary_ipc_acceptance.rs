@@ -97,24 +97,6 @@ fn read_response_header(stream: &mut UnixStream) -> Result<IpcFrameHeader, Strin
         .map_err(|e| format!("header decode failed: {e}"))
 }
 
-/// Reads and decodes a typed `IpcResponse` from the client stream.
-fn read_response(stream: &mut UnixStream) -> Result<IpcResponse, String> {
-    let header_bytes = read_exact_timeout(stream, 24).map_err(|e| e.to_string())?;
-    let payload_len = {
-        let mut len_bytes = [0u8; 4];
-        len_bytes.copy_from_slice(&header_bytes[20..24]);
-        usize::try_from(u32::from_le_bytes(len_bytes)).unwrap_or(0)
-    };
-    if payload_len > 0 {
-        let payload = read_exact_timeout(stream, payload_len).map_err(|e| e.to_string())?;
-        postcard::from_bytes(&payload).map_err(|e| format!("postcard decode failed: {e}"))
-    } else {
-        // Some responses (e.g. ShuttingDown with no payload) may have len=0
-        // but our response types always have a payload. Use a placeholder.
-        Err("unexpected zero-length response payload".to_string())
-    }
-}
-
 /// Cleans up a socket path on drop.
 struct CleanupPath(PathBuf);
 

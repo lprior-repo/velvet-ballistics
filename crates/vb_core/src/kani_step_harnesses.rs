@@ -404,7 +404,11 @@ fn taint_validity_harness() {
             | SlotValue::F64(_)
             | SlotValue::Symbol(_)
     ));
-    let _ = run.write_slot(slot_idx2, value2);
+    let write_slot_result = run.write_slot(slot_idx2, value2);
+    kani::assert(
+        write_slot_result.is_ok(),
+        "write_slot within effective slot count succeeds",
+    );
     let taint_after_write_slot = run.read_taint(slot_idx2);
     kani::assert(
         taint_after_write_slot.is_ok(),

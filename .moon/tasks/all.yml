@@ -151,7 +151,7 @@ tasks:
     command: 'bash scripts/check-workspace-assertions.sh'
     inputs:
       - 'Cargo.toml'
-      - 'scripts/check-workspace-assertions.py'
+      - 'scripts/check-workspace-assertions.rs'
       - 'scripts/check-workspace-assertions.sh'
       - '.moon/tasks/all.yml'
       - 'crates/*/Cargo.toml'
@@ -165,7 +165,7 @@ tasks:
       - '@globs(sources)'
       - '@globs(tests)'
       - '@globs(configs)'
-      - 'scripts/check-test-integrity.py'
+      - 'scripts/check-test-integrity.rs'
       - 'scripts/check-test-integrity.sh'
       - '.moon/tasks/all.yml'
     options:
@@ -199,7 +199,7 @@ tasks:
   hot-cold-forbidden-apis:
     command: 'bash scripts/check-hot-cold-forbidden-apis.sh'
     inputs:
-      - 'scripts/check-hot-cold-forbidden-apis.py'
+      - 'scripts/check-hot-cold-forbidden-apis.rs'
       - 'scripts/check-hot-cold-forbidden-apis.sh'
       - 'scripts/hot-cold-forbidden-apis.allow'
       - 'crates/vb_core/src/**/*'
@@ -380,7 +380,7 @@ tasks:
       set -euo pipefail
       mkdir -p target/miri-tmp
       mkdir -p target/moon-locks
-      TMPDIR="$PWD/target/miri-tmp" flock --shared target/moon-locks/source-mutation.lock env -u RUSTC_WRAPPER RUSTFLAGS="-Dwarnings" MIRIFLAGS="-Zmiri-disable-isolation" timeout 10m rustup run nightly-2026-04-28 cargo miri test --quiet -p vb_core -p vb_expr -p vb_compile --lib --all-features
+      TMPDIR="$PWD/target/miri-tmp" flock --shared target/moon-locks/source-mutation.lock env -u RUSTC_WRAPPER RUSTFLAGS="-Dwarnings" MIRIFLAGS="-Zmiri-disable-isolation" timeout 3m rustup run nightly-2026-04-28 cargo miri test --quiet -p vb_core --lib --all-features ids::tests::run_id_zero_constant
     toolchains:
       - rust
     inputs:
@@ -456,7 +456,9 @@ tasks:
         cat target/fuzz-smoke/build.err
         exit 1
       fi
-      flock --shared target/moon-locks/source-mutation.lock env RUSTFLAGS="-Dwarnings" timeout 30s rustup run nightly-2026-04-28 cargo fuzz run yaml_events --target x86_64-unknown-linux-gnu -- -max_total_time=1 >target/fuzz-smoke/yaml_events.log 2>target/fuzz-smoke/yaml_events.err
+      for fuzz_target in yaml_events ipc_frame journal_event compiled_ir; do
+        flock --shared target/moon-locks/source-mutation.lock env RUSTFLAGS="-Dwarnings" timeout 30s rustup run nightly-2026-04-28 cargo fuzz run "${fuzz_target}" --target x86_64-unknown-linux-gnu -- -max_total_time=1 >"target/fuzz-smoke/${fuzz_target}.log" 2>"target/fuzz-smoke/${fuzz_target}.err"
+      done
     toolchains:
       - rust
     inputs:

@@ -1122,9 +1122,8 @@ mod tests {
             taint: Taint::Clean,
             encoded_len: 8,
         };
-        assert_eq!(runtime.complete_action_with_output(ticket, output), Ok(()));
         assert_eq!(
-            runtime.tick_all(),
+            runtime.complete_action_with_output(ticket, output),
             Err(RuntimeError::InvalidActionCompletion)
         );
     }

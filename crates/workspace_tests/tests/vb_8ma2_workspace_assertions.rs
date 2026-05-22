@@ -15,6 +15,7 @@ const EXTRA_MEMBER_MANIFESTS: [(&str, &str); 15] = [
     ("crates/vb_doc", "vb_doc"),
     ("crates/vb_codegen", "vb_codegen"),
     ("crates/vb_ui_makepad", "vb_ui_makepad"),
+    ("crates/vb_ui_model", "vb_ui_model"),
     ("crates/vb_ui_snapshot", "vb_ui_snapshot"),
     ("crates/vb_proof_kernels", "vb_proof_kernels"),
     ("crates/vb_cli", "vb_cli"),
@@ -23,7 +24,6 @@ const EXTRA_MEMBER_MANIFESTS: [(&str, &str); 15] = [
         "velvet-ballastics-workspace-tests",
     ),
     ("crates/vb_benchmark", "vb_benchmark"),
-    ("fuzz", "velvet-ballastics-fuzz"),
     ("xtask", "xtask"),
 ];
 
@@ -36,8 +36,8 @@ fn copy_assertion_scripts(root: &Path) -> Result<(), std::io::Error> {
     fs::create_dir_all(&scripts)?;
     let source_root = repo_root().map_err(std::io::Error::other)?;
     fs::copy(
-        source_root.join("scripts/check-workspace-assertions.py"),
-        scripts.join("check-workspace-assertions.py"),
+        source_root.join("scripts/check-workspace-assertions.rs"),
+        scripts.join("check-workspace-assertions.rs"),
     )?;
     fs::copy(
         source_root.join("scripts/check-workspace-assertions.sh"),
@@ -72,12 +72,12 @@ members = [
     "crates/vb_ipc",
     "crates/vb_codegen",
     "crates/vb_ui_makepad",
+    "crates/vb_ui_model",
     "crates/vb_ui_snapshot",
     "crates/vb_proof_kernels",
     "crates/vb_cli",
     "crates/workspace_tests",
     "crates/vb_benchmark",
-    "fuzz",
     "xtask",
 {extra}]
 exclude = ["target/miri-tmp", "crates/vb_ui", "fuzz"]

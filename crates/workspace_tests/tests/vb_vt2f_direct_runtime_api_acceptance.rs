@@ -514,13 +514,11 @@ fn test_direct_api_action_completion_resumes_correct_run() -> Result<(), String>
             action_ticket(unrelated, ActionId::new(99)),
             action_output(SlotValue::I64(9), Taint::Clean)
         ),
-        Ok(())
-    );
-    assert_eq!(
-        runtime.tick_all(),
         Err(RuntimeError::InvalidActionCompletion)
     );
+    assert_eq!(runtime.tick_all(), Ok(true));
     assert_eq!(runtime.snapshot_run(unrelated, 44), unrelated_before);
+    assert_eq!(trace_events(&runtime, unrelated)?, unrelated_events_before);
     Ok(())
 }
 

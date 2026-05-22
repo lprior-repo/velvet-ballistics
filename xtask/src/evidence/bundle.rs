@@ -99,7 +99,7 @@ pub enum ArtifactType {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum EvidenceBundleFormat {
-    /// Human-readable YAML (via serde-saphyr).
+    /// Human-readable YAML-compatible evidence document.
     Yaml,
     /// Machine-readable JSON (via serde_json).
     Json,
@@ -283,15 +283,7 @@ pub fn write_bundle(
     let formatted_format = format_to_string(format);
 
     let serialised: std::result::Result<Vec<u8>, Error> = match format {
-        EvidenceBundleFormat::Yaml => {
-            let yaml = serde_yaml::to_string(bundle).map_err(|e| {
-                Error::BundleSerializationFailed {
-                    format: formatted_format.clone(),
-                    cause: e.to_string(),
-                }
-            })?;
-            Ok(yaml.into_bytes())
-        }
+        EvidenceBundleFormat::Yaml => serialize_yaml_bundle(bundle, &formatted_format),
         EvidenceBundleFormat::Json => {
             let json = serde_json::to_string(bundle).map_err(|e| {
                 Error::BundleSerializationFailed {
@@ -333,15 +325,7 @@ pub fn read_bundle(
     })?;
 
     match format {
-        EvidenceBundleFormat::Yaml => {
-            let bundle: EvidenceBundle = serde_saphyr::from_slice(&contents).map_err(|e| {
-                Error::BundleSerializationFailed {
-                    format: "yaml".to_string(),
-                    cause: e.to_string(),
-                }
-            })?;
-            Ok(bundle)
-        }
+        EvidenceBundleFormat::Yaml => deserialize_yaml_bundle(&contents),
         EvidenceBundleFormat::Json => {
             let bundle: EvidenceBundle = serde_json::from_slice(&contents).map_err(|e| {
                 Error::BundleSerializationFailed {
@@ -360,6 +344,38 @@ pub fn read_bundle(
             })?;
             Ok(wire.into_bundle())
         }
+    }
+}
+
+fn serialize_yaml_bundle(
+    bundle: &EvidenceBundle,
+    formatted_format: &str,
+) -> std::result::Result<Vec<u8>, Error> {
+    // serde-saphyr 0.0.25 currently emits some scalars whose trailing spaces
+    // are stripped by its own parser on round-trip. JSON is valid YAML 1.2, so
+    // emit a JSON-compatible YAML document to preserve arbitrary evidence text.
+    let mut yaml = serde_json::to_string_pretty(bundle).map_err(|e| {
+        Error::BundleSerializationFailed {
+            format: formatted_format.to_string(),
+            cause: e.to_string(),
+        }
+    })?;
+    yaml.push('\n');
+    Ok(yaml.into_bytes())
+}
+
+fn deserialize_yaml_bundle(contents: &[u8]) -> std::result::Result<EvidenceBundle, Error> {
+    match serde_saphyr::from_slice(contents) {
+        Ok(bundle) => Ok(bundle),
+        Err(yaml_error) => serde_json::from_slice(contents).map_err(|json_error| {
+            Error::BundleSerializationFailed {
+                format: "yaml".to_string(),
+                cause: format!(
+                    "serde-saphyr parse failed: {}; json-compatible yaml parse failed: {}",
+                    yaml_error, json_error
+                ),
+            }
+        }),
     }
 }
 

@@ -25,6 +25,7 @@ const MEMBERS: [(&str, &str); 19] = [
     ("crates/vb_ipc", "vb_ipc"),
     ("crates/vb_codegen", "vb_codegen"),
     ("crates/vb_ui_makepad", "vb_ui_makepad"),
+    ("crates/vb_ui_model", "vb_ui_model"),
     ("crates/vb_ui_snapshot", "vb_ui_snapshot"),
     ("crates/vb_proof_kernels", "vb_proof_kernels"),
     ("crates/vb_cli", "vb_cli"),
@@ -33,7 +34,6 @@ const MEMBERS: [(&str, &str); 19] = [
         "velvet-ballastics-workspace-tests",
     ),
     ("crates/vb_benchmark", "vb_benchmark"),
-    ("fuzz", "velvet-ballastics-fuzz"),
     ("xtask", "xtask"),
 ];
 
@@ -54,8 +54,8 @@ fn workspace() -> Result<tempfile::TempDir, Box<dyn std::error::Error>> {
     fs::create_dir_all(root.join("scripts"))?;
     let source_root = repo_root()?;
     fs::copy(
-        source_root.join("scripts/check-workspace-assertions.py"),
-        root.join("scripts/check-workspace-assertions.py"),
+        source_root.join("scripts/check-workspace-assertions.rs"),
+        root.join("scripts/check-workspace-assertions.rs"),
     )?;
     fs::copy(
         source_root.join("scripts/check-workspace-assertions.sh"),
@@ -114,7 +114,7 @@ fn package_name_drift_reports_exact_member_and_expected_name() -> TestResult {
     assert!(!output.status.success());
     assert_eq!(
         stderr(&output),
-        "crates/vb_cli/Cargo.toml: package.name expected 'vb_cli', got 'velvet-ballistics'\n"
+        "crates/vb_cli/Cargo.toml: package.name expected \"vb_cli\", got Some(\"velvet-ballistics\")\n"
     );
     Ok(())
 }
@@ -128,7 +128,7 @@ fn binary_alias_reports_exact_allowed_binary_set() -> TestResult {
     assert!(!output.status.success());
     assert_eq!(
         stderr(&output),
-        "crates/vb_cli/Cargo.toml: bin names expected ['velvet-ballastics'], got ['vb']\n"
+        "crates/vb_cli/Cargo.toml: bin names missing [\"velvet-ballastics\"]\ncrates/vb_cli/Cargo.toml: bin names unexpected [\"vb\"]\n"
     );
     Ok(())
 }
@@ -142,7 +142,7 @@ fn feature_drift_reports_exact_expected_feature_set() -> TestResult {
     assert!(!output.status.success());
     assert_eq!(
         stderr(&output),
-        "crates/vb_core/Cargo.toml: features expected ['bench', 'default', 'generated', 'test-util', 'volatile'], got ['bench', 'default', 'generated', 'json']\ncrates/vb_core/Cargo.toml: forbidden feature names ['json']\n"
+        "crates/vb_core/Cargo.toml: features missing [\"test-util\", \"volatile\"]\ncrates/vb_core/Cargo.toml: features unexpected [\"json\"]\ncrates/vb_core/Cargo.toml: forbidden feature names [\"json\"]\n"
     );
     Ok(())
 }
