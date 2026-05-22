@@ -477,6 +477,27 @@ obligations:
       - cargo nextest run -p vb_storage digest
 
   # ============================================================
+  # REPLAY SEAMS (Section 49, 68) - vb-jpq7.24
+  # ============================================================
+  - id: VB-STORAGE-REPLAY-001
+    section: [49, 68]
+    statement: |
+      events_for_run and events_for_run_from maintain run identity and sequence contiguity:
+      - events_for_run(run): all returned events have run_id == run, sequences contiguous from snapshot
+      - events_for_run_from(run, start_seq): all returned events have run_id == run, seq >= start_seq, strictly increasing by 1
+    proof_level: L4
+    crate: vb_storage
+    files:
+      - crates/vb_storage/src/journal/replay.rs
+    required:
+      verus: verification/verus/vb_jpq724_events_for_run_production.rs
+    commands:
+      - verus verification/verus/vb_jpq724_events_for_run_production.rs
+    verified:
+      events_for_run_seams: deductively_verified
+    note: "Production-bound Verus contracts for journal replay seams; proof binds to exec functions"
+
+  # ============================================================
   # REPLAY / JOURNAL SAFETY (Section 49, 68)
   # ============================================================
   - id: VB-REPLAY-001
