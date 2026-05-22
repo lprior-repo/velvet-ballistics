@@ -163,7 +163,9 @@ fn cli_public_exit_code_matrix_is_exactly_zero_through_eight_in_agent_context() 
 
     assert_eq!(
         context.get("schema_version"),
-        Some(&Value::String("1".to_string()))
+        Some(&Value::String(
+            "velvet-ballastics/cli-output/v1".to_string()
+        ))
     );
     assert_eq!(
         context.get("kind"),

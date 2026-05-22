@@ -296,7 +296,10 @@ fn read_journal_events(
 // --- Command implementations ---
 
 fn cmd_agent_context(deliver: Option<&str>) -> ExitCode {
-    let context = agent_context::build(VERSION);
+    let context = cli_envelope::serialize_with_version(
+        &agent_context::build(VERSION),
+        cli_envelope::Kind::AgentContext,
+    );
     if let Some(raw_target) = deliver {
         return deliver_json_value(raw_target, &context);
     }

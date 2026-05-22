@@ -152,17 +152,15 @@ pub(crate) fn build_envelope(data: Value, kind: Kind) -> Value {
 /// A JSON Value with schema_version and kind added
 #[must_use]
 pub(crate) fn serialize_with_version(data: &Value, kind: Kind) -> Value {
-    let mut envelope = Map::new();
+    let mut envelope = match data {
+        Value::Object(data_map) => data_map.clone(),
+        _ => Map::new(),
+    };
     envelope.insert(
         "schema_version".to_string(),
         Value::String(SCHEMA_VERSION.to_string()),
     );
     envelope.insert("kind".to_string(), Value::String(kind.as_str().to_string()));
-    if let Value::Object(data_map) = data.clone() {
-        for (k, v) in data_map {
-            envelope.insert(k, v);
-        }
-    }
     Value::Object(envelope)
 }
 
@@ -248,6 +246,17 @@ mod tests {
         );
         assert_eq!(result.get("kind"), Some(&serde_json::json!("CliStatus")));
         assert_eq!(result.get("status"), Some(&serde_json::json!("ok")));
+    }
+
+    #[test]
+    fn test_serialize_with_version_schema_version_is_authoritative() {
+        let data = serde_json::json!({"schema_version": "payload-version", "kind": "PayloadKind"});
+        let result = serialize_with_version(&data, Kind::AgentContext);
+        assert_eq!(
+            result.get("schema_version"),
+            Some(&serde_json::json!("velvet-ballastics/cli-output/v1"))
+        );
+        assert_eq!(result.get("kind"), Some(&serde_json::json!("AgentContext")));
     }
 
     #[test]

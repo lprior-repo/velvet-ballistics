@@ -30,10 +30,47 @@ pub(crate) fn build(version: &str) -> Value {
             "banned_verbs": ["info", "ls"],
             "banned_flags": ["--format=json", "--output=json", "--skip-confirmations"]
         },
+        "active_gates": active_gates(),
+        "known_blockers": known_blockers(),
         "exit_codes": exit_codes(),
         "enums": enums(),
         "commands": commands(),
         "planned_agent_primitives": planned_agent_primitives()
+    })
+}
+
+fn active_gates() -> Value {
+    serde_json::json!({
+        "validation": {"required": true, "gate": "vb_validate"},
+        "verification": {"required": true, "gate": "vb_verify"},
+        "compilation": {"required": true, "gate": "vb_compile"},
+        "admission": {"required": true, "gate": "vb_storage::admission"},
+        "durability": {"required": false, "gate": "vb_storage::FjallJournal"}
+    })
+}
+
+fn known_blockers() -> Value {
+    serde_json::json!({
+        "policy": [
+            {"category": "validation_failed", "exit_code": 1},
+            {"category": "verification_failed", "exit_code": 2},
+            {"category": "compile_failed", "exit_code": 3},
+            {"category": "runtime_failed", "exit_code": 4},
+            {"category": "storage_error", "exit_code": 5},
+            {"category": "ipc_error", "exit_code": 6},
+            {"category": "action_policy_error", "exit_code": 7},
+            {"category": "replay_divergence", "exit_code": 8}
+        ],
+        "resource": [
+            {"category": "slot_count_exceeded"},
+            {"category": "input_index_out_of_range"},
+            {"category": "journal_capacity"}
+        ],
+        "capability": [
+            {"category": "unregistered_action"},
+            {"category": "missing_capability"},
+            {"category": "capability_mismatch"}
+        ]
     })
 }
 
@@ -305,5 +342,25 @@ mod tests {
             .and_then(|commands| commands.get("agent-context"));
 
         assert!(command.is_some());
+    }
+
+    #[test]
+    fn context_exposes_active_gates_and_known_blockers() {
+        let context = build("0.1.0");
+
+        assert!(
+            context
+                .get("active_gates")
+                .and_then(serde_json::Value::as_object)
+                .is_some(),
+            "agent context must expose active verification gates"
+        );
+        assert!(
+            context
+                .get("known_blockers")
+                .and_then(serde_json::Value::as_object)
+                .is_some(),
+            "agent context must expose known blocker classes"
+        );
     }
 }
