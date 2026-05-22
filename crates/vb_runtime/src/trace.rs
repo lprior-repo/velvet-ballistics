@@ -1299,8 +1299,12 @@ mod tests {
             "StepEnded is not terminal"
         );
         assert!(
-            !TraceEvent::SlotWritten { run, slot, value: vec![] }
-                .is_terminal_for_run(run),
+            !TraceEvent::SlotWritten {
+                run,
+                slot,
+                value: vec![]
+            }
+            .is_terminal_for_run(run),
             "SlotWritten is not terminal"
         );
         assert!(
@@ -1349,7 +1353,11 @@ mod tests {
 
         // Drain again
         let second = ring.drain();
-        assert_eq!(second.len(), 3, "second drain returns 3 events after refill");
+        assert_eq!(
+            second.len(),
+            3,
+            "second drain returns 3 events after refill"
+        );
         // Verify these are the new events (3, 4, 5) — oldest from first batch were evicted
         assert_eq!(
             second.get(0),

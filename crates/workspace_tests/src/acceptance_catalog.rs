@@ -509,10 +509,7 @@ mod tests {
     // OBL-CAT-001: validate_catalog returns Ok for valid catalog.
     #[test]
     fn validate_catalog_valid() {
-        let scenarios = &[
-            valid_scenario("CAT-001"),
-            valid_scenario("CAT-002"),
-        ];
+        let scenarios = &[valid_scenario("CAT-001"), valid_scenario("CAT-002")];
         assert_eq!(validate_catalog(scenarios), Ok(()));
     }
 

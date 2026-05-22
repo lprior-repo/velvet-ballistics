@@ -6,53 +6,7 @@
 
 use std::ffi::OsStr;
 use vb_core::ids::{SlotIdx, StepIdx, WorkflowDigest};
-use vb_core::value::SlotValue;
-use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
 use vb_storage::{EventSeq, FjallJournal, JournalEvent};
-
-// ---------------------------------------------------------------------------
-// Workflow fixtures
-// ---------------------------------------------------------------------------
-
-const CLI_WORKFLOW: &str = r#"version: velvet-ballastics/v1
-name: cli_trace_test
-when:
-  manual: {}
-steps:
-  - id: build_result
-    save:
-      output: saved
-      value: '42'
-  - id: done
-    finish:
-      result: saved
-"#;
-
-fn input_slot_parts() -> WorkflowParts {
-    let finish = CompiledNode {
-        id: StepIdx::ZERO,
-        output: None,
-        next: None,
-        on_error: None,
-        error_slot: None,
-        kind: CompiledNodeKind::Finish {
-            result: SlotIdx::ZERO,
-        },
-    };
-    WorkflowParts {
-        name: Box::from("cli-input"),
-        digest: WorkflowDigest::from_bytes([7u8; 32]),
-        nodes: Box::from([finish]),
-        expressions: Box::from([]),
-        accessors: Box::from([]),
-        constants: Box::from([]),
-        slot_count: 1,
-        symbols_count: 0,
-        entry: StepIdx::ZERO,
-        resource_contract: ResourceContract::DEFAULT,
-        step_names: Box::default(),
-    }
-}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -320,7 +274,6 @@ fn cmd_trace_empty_run_returns_success() {
     let dir = tempfile::tempdir().expect("temp dir");
     // Create an empty journal (no events for run_id=99)
     let journal = FjallJournal::open(dir.path(), None).expect("journal should open");
-    let empty_run_id = vb_core::RunId::new(99);
     // Don't write any events for run 99
     drop(journal);
 
@@ -364,7 +317,7 @@ fn cmd_trace_invalid_run_id_format_returns_validation_failed() {
 
     assert!(output.is_some());
     let output = output.unwrap();
-    assert_cli_exit_code(&output, 1); // CliExitCode::ValidationFailed = 1
+    assert_cli_exit_code(&output, 2); // CliExitCode::ValidationFailed = 2
 }
 
 #[test]

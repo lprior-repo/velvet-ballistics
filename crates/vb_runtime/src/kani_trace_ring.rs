@@ -8,8 +8,8 @@
 //! `rtrb` crate ring buffer implementation is trusted.
 //! `trace.rs` is `#![forbid(unsafe_code)]`.
 
-use vb_core::ids::{RunId, SlotIdx, StepIdx};
 use vb_core::action::ActionFailureCode;
+use vb_core::ids::{RunId, SlotIdx, StepIdx};
 
 /// Generate an arbitrary TraceEvent for a given run.
 fn arbitrary_trace_event(run: RunId, variant_selector: u8) -> crate::TraceEvent {

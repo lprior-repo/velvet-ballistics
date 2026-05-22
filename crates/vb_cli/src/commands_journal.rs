@@ -164,22 +164,23 @@ fn trace_one(idx: usize, event: &JournalEvent) -> TraceEntry {
             seq: seq.get(),
             extra_json: vec![],
         },
-        JournalEvent::RunResumed { run, .. } => TraceEntry {
+        JournalEvent::RunResumed { run, seq, .. } => TraceEntry {
             index: idx,
             event_type: "RunResumed",
             step: None,
-            seq: 0,
+            seq: seq.get(),
             extra_json: vec![("run", serde_json::Value::from(run.get()))],
         },
-        JournalEvent::RunRetried { run, .. } => TraceEntry {
+        JournalEvent::RunRetried { run, seq, .. } => TraceEntry {
             index: idx,
             event_type: "RunRetried",
             step: None,
-            seq: 0,
+            seq: seq.get(),
             extra_json: vec![("run", serde_json::Value::from(run.get()))],
         },
         JournalEvent::RunAnswered {
             run,
+            seq,
             slot_idx,
             answer,
             ..
@@ -187,7 +188,7 @@ fn trace_one(idx: usize, event: &JournalEvent) -> TraceEntry {
             index: idx,
             event_type: "RunAnswered",
             step: None,
-            seq: 0,
+            seq: seq.get(),
             extra_json: vec![
                 ("run", serde_json::Value::from(run.get())),
                 ("slot_idx", serde_json::Value::from(slot_idx.get())),
@@ -487,13 +488,14 @@ mod tests {
     }
 
     #[test]
-    fn build_trace_run_resumed_hardcodes_seq_zero() {
+    fn build_trace_run_resumed_uses_event_seq() {
         let events = [JournalEvent::RunResumed {
             run: make_run_id(1),
+            seq: make_event_seq(20),
             timestamp: Utc::now(),
         }];
         let trace = build_trace(&events);
-        assert_eq!(trace[0].seq, 0);
+        assert_eq!(trace[0].seq, 20);
         assert_eq!(trace[0].event_type, "RunResumed");
     }
 
@@ -744,42 +746,45 @@ mod tests {
     }
 
     #[test]
-    fn trace_one_run_resumed_hardcodes_seq_zero() {
+    fn trace_one_run_resumed_uses_event_seq() {
         let event = JournalEvent::RunResumed {
             run: make_run_id(1),
+            seq: make_event_seq(20),
             timestamp: Utc::now(),
         };
         let entry = trace_one(15, &event);
         assert_eq!(entry.event_type, "RunResumed");
-        assert_eq!(entry.seq, 0); // hardcoded to 0
+        assert_eq!(entry.seq, 20);
         assert_eq!(entry.step, None);
         assert_eq!(entry.index, 15);
     }
 
     #[test]
-    fn trace_one_run_retried_hardcodes_seq_zero() {
+    fn trace_one_run_retried_uses_event_seq() {
         let event = JournalEvent::RunRetried {
             run: make_run_id(1),
+            seq: make_event_seq(21),
             timestamp: Utc::now(),
         };
         let entry = trace_one(16, &event);
         assert_eq!(entry.event_type, "RunRetried");
-        assert_eq!(entry.seq, 0); // hardcoded to 0
+        assert_eq!(entry.seq, 21);
         assert_eq!(entry.step, None);
         assert_eq!(entry.index, 16);
     }
 
     #[test]
-    fn trace_one_run_answered_hardcodes_seq_zero() {
+    fn trace_one_run_answered_uses_event_seq() {
         let event = JournalEvent::RunAnswered {
             run: make_run_id(1),
+            seq: make_event_seq(22),
             slot_idx: make_slot_idx(2),
             answer: ConstValue::Null,
             timestamp: Utc::now(),
         };
         let entry = trace_one(17, &event);
         assert_eq!(entry.event_type, "RunAnswered");
-        assert_eq!(entry.seq, 0); // hardcoded to 0
+        assert_eq!(entry.seq, 22);
         assert_eq!(entry.step, None);
         assert_eq!(entry.index, 17);
     }

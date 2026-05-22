@@ -65,11 +65,11 @@ pub mod kani_engine_yaml_admission;
 #[cfg(kani)]
 pub mod kani_shard_command_queue;
 #[cfg(kani)]
+pub mod kani_trace_ring;
+#[cfg(kani)]
 pub mod kani_vt2f_runtime_facade;
 #[cfg(kani)]
 pub mod kani_vt2f_shard_lower_semantics;
-#[cfg(kani)]
-pub mod kani_trace_ring;
 
 #[cfg(kani)]
 pub mod kani_admission_store;
