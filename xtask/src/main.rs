@@ -2,6 +2,7 @@
 #![allow(unreachable_pub)]
 
 mod ai_profile;
+mod benchmark_policy;
 mod cli;
 mod contracts;
 mod evidence;
@@ -75,6 +76,9 @@ fn run_legacy_cli(cli: Cli) -> anyhow::Result<()> {
         Commands::Loom { model } => loom::cmd_loom(&model),
         Commands::ForbiddenScan { crates, allowlist } => {
             forbidden_scan::cmd_forbidden_scan(crates.as_deref(), allowlist.as_deref())
+        }
+        Commands::BenchmarkRegressionPolicy { budget, evidence } => {
+            benchmark_policy::cmd_benchmark_policy(&budget, &evidence)
         }
         Commands::ListCrates {
             include,

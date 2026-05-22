@@ -90,6 +90,13 @@ pub(crate) enum Commands {
         #[arg(long)]
         allowlist: Option<String>,
     },
+    #[command(name = "benchmark-regression-policy")]
+    BenchmarkRegressionPolicy {
+        #[arg(long, default_value = "contracts/perf-budget.yaml")]
+        budget: String,
+        #[arg(long, default_value = "evidence/benchmark-evidence.jsonl")]
+        evidence: String,
+    },
     // === New proof/test orchestrator commands ===
     #[command(name = "list-crates")]
     ListCrates {

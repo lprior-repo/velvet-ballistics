@@ -510,6 +510,23 @@ tasks:
     options:
       runInCI: true
 
+  benchmark-regression-policy:
+    command: 'rustup run nightly-2026-04-28 cargo run --quiet -p xtask -- benchmark-regression-policy --budget contracts/perf-budget.yaml --evidence evidence/benchmark-evidence.jsonl'
+    deps:
+      - 'bench-build'
+    toolchains:
+      - rust
+    inputs:
+      - 'contracts/perf-budget.yaml'
+      - 'evidence/benchmark-evidence.jsonl'
+      - 'evidence/benchmark-logs/**/*'
+      - 'xtask/src/benchmark_policy.rs'
+      - 'xtask/src/cli.rs'
+      - 'xtask/src/main.rs'
+      - '.moon/tasks/all.yml'
+    options:
+      runInCI: true
+
   benchmark-proof:
     command: 'rustup run nightly-2026-04-28 cargo bench --workspace --all-features -- --save-baseline vb-current'
     toolchains:

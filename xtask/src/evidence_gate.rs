@@ -166,7 +166,6 @@ impl EvidenceBundle {
             "expression",
             "runtime_core",
             "storage_ipc",
-            "generated_mode",
         ];
         let missing_kernel: Vec<&str> = required_kernel_paths
             .iter()
@@ -284,7 +283,6 @@ pub fn required_kernel_groups() -> &'static [&'static str] {
         "expression",
         "runtime_core",
         "storage_ipc",
-        "generated_mode",
     ]
 }
 
@@ -521,8 +519,8 @@ mod tests {
         assert!(groups.contains(&"expression"));
         assert!(groups.contains(&"runtime_core"));
         assert!(groups.contains(&"storage_ipc"));
-        assert!(groups.contains(&"generated_mode"));
-        assert_eq!(groups.len(), 6);
+        assert!(!groups.contains(&"generated_mode"));
+        assert_eq!(groups.len(), 5);
     }
 
     #[test]

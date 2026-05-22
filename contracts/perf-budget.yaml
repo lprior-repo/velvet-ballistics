@@ -1,0 +1,23 @@
+current_milestone: ir-interpreter
+generated_maxperf_deferred: true
+deferred_modes:
+  - generated
+  - maxperf
+required_evidence_fields:
+  - metric
+  - claim
+  - baseline_value
+  - result_value
+  - unit
+  - threshold_percent
+  - raw_log
+  - command
+  - commit
+  - mode
+benchmarks:
+  bench_engine_step_once_save_const_single_transition:
+    max_regression_percent: 3
+  ipc_frame_decode:
+    max_regression_percent: 5
+  engine_run_until_blocked_budget_10_small_workflow:
+    max_regression_percent: 3

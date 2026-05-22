@@ -80,7 +80,8 @@ Governance and deeper verification are represented as Moon and Just tasks. A rep
 - `mutants-smoke`: runs bounded mutation testing.
 - `sanitizer-address-check`: compiles tests with AddressSanitizer instrumentation where the host supports it.
 - `bench-build`: compiles benchmarks.
-- `benchmark-proof`: records a Criterion baseline named `vb-current` when real benchmarks exist.
+- `benchmark-regression-policy`: validates `contracts/perf-budget.yaml` and `evidence/benchmark-evidence.jsonl` so every speed claim has baseline/result/raw-log evidence, explicit thresholds, and current-milestone `ir-interpreter` scope.
+- `benchmark-proof`: records a Criterion baseline named `vb-current` when real benchmarks exist; it is not itself acceptance evidence until paired with `benchmark-regression-policy` metadata.
 - `pgo-instrument-build`: builds with `-Cprofile-generate=target/pgo/profiles`.
 - `pgo-optimized-build`: builds with `-Cprofile-use=target/pgo/merged.profdata` after profile merge.
 
