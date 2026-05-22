@@ -1,0 +1,56 @@
+[
+  {
+    "id": "vb-qi37.26.1",
+    "title": "fix: vb_ipc typed handler compile errors blocking workspace-tests",
+    "description": "workspace-tests compile prerequisite for vb-qi37.26 fails because vb_ipc does not compile. cargo check --package velvet-ballastics-workspace-tests --tests reports 25 E0308 mismatched-type errors in crates/vb_ipc/src/server/handlers.rs. This prerequisite must be repaired before vb-qi37.26 can produce required proptest/nextest/mutation evidence.",
+    "acceptance_criteria": "cargo check --package velvet-ballastics-workspace-tests --tests reaches the target workspace-tests compilation without vb_ipc E0308 handler mismatches; no unwrap/expect/panic/unsafe introduced; repair evidence recorded in an isolated workspace; vb-qi37.26 can rerun State 11 prerequisite.",
+    "status": "in_progress",
+    "priority": 0,
+    "issue_type": "bug",
+    "assignee": "Lewis",
+    "owner": "priorlewis43@gmail.com",
+    "created_at": "2026-05-18T21:51:53Z",
+    "created_by": "Lewis",
+    "updated_at": "2026-05-18T21:52:19Z",
+    "labels": [
+      "compile",
+      "master-gap",
+      "mutation",
+      "mvp-post-feature-evidence",
+      "prerequisite",
+      "quality",
+      "release-blocker",
+      "release-plan",
+      "tests",
+      "vb_ipc"
+    ],
+    "dependencies": [
+      {
+        "id": "vb-qi37.26",
+        "title": "quality: Rust test loop removal and mutation refresh",
+        "description": "Cover rust-test-loop-removal and test-plan-current-api-mutation-refresh. Replace weak test loops/tautologies with explicit scenario/property coverage aligned to current APIs and mutation expectations.",
+        "acceptance_criteria": "Tests do not hide assertion gaps inside generic loops; current public APIs have refreshed Given/When/Then and property coverage; mutation testing plan identifies expected killed mutants and surviving mutants become beads; removed implementation paths cause tests to fail.",
+        "notes": "femdation: State 11 attempt 7/7 rejected by formal-verifier. Blocking required obligation CLIPPY-INVENTORY is FAIL_LOCAL in scoped file crates/vb_storage/src/admission.rs:236 (clippy::needless_return). Landing blocked by go-skill retry cap; isolated workspace preserved at /home/lewis/src/femdation-vb-qi37-26-sparse. Human override required before any further repair route.",
+        "status": "blocked",
+        "priority": 1,
+        "issue_type": "task",
+        "assignee": "Lewis",
+        "owner": "priorlewis43@gmail.com",
+        "created_at": "2026-05-09T06:38:08Z",
+        "created_by": "Lewis",
+        "updated_at": "2026-05-18T20:40:19Z",
+        "labels": [
+          "master-gap",
+          "mutation",
+          "mvp-post-feature-evidence",
+          "quality",
+          "release-blocker",
+          "release-plan",
+          "tests"
+        ],
+        "dependency_type": "parent-child"
+      }
+    ],
+    "parent": "vb-qi37.26"
+  }
+]
