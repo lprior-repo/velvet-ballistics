@@ -308,8 +308,10 @@ pub(crate) enum ParseError {
     MissingActionRegistryValue,
     UnknownActionListFlag(String),
     UnexpectedActionListArgument(String),
+    InvalidActionListArgument(String),
     UnknownActionInspectFlag(String),
     UnexpectedActionInspectArgument(String),
+    InvalidActionInspectArgument(String),
     InvalidActionId(String),
     NoCommand,
     InvalidStep(String),
@@ -717,21 +719,6 @@ fn parse_action_inspect(args: &[OsString]) -> Result<Command, ParseError> {
     })
 }
 
-/// Set output format and continue parsing for action inspect/list args.
-fn set_action_output_format(
-    rest: &[OsString],
-    state: ActionInspectParseState,
-    format: OutputFormat,
-) -> Result<ActionInspectParseState, ParseError> {
-    parse_action_inspect_args(
-        rest,
-        ActionInspectParseState {
-            output: format,
-            ..state
-        },
-    )
-}
-
 fn parse_action_inspect_args(
     args: &[OsString],
     state: ActionInspectParseState,
@@ -739,8 +726,7 @@ fn parse_action_inspect_args(
     match args.split_first() {
         None => Ok(state),
         Some((raw, rest)) => match raw.to_str() {
-            Some("--json") => set_action_output_format(rest, state, OutputFormat::Json),
-            Some("--jsonl") => set_action_output_format(rest, state, OutputFormat::Jsonl),
+            Some("--emit") => parse_action_inspect_emit(rest, state),
             Some("--registry") => parse_action_inspect_registry_arg(rest, state),
             Some(flag) if flag.starts_with("--") => {
                 Err(ParseError::UnknownActionInspectFlag(flag.into()))
@@ -753,19 +739,27 @@ fn parse_action_inspect_args(
     }
 }
 
-/// Set output format and continue parsing for action list args.
-fn set_action_list_output_format(
-    rest: &[OsString],
-    state: ActionListParseState,
-    format: OutputFormat,
-) -> Result<ActionListParseState, ParseError> {
-    parse_action_list_args(
-        rest,
-        ActionListParseState {
-            output: format,
-            ..state
+fn parse_action_inspect_emit(
+    args: &[OsString],
+    state: ActionInspectParseState,
+) -> Result<ActionInspectParseState, ParseError> {
+    match args.split_first() {
+        Some((raw, rest)) => match raw.to_str() {
+            Some("yaml") => parse_action_inspect_args(
+                rest,
+                ActionInspectParseState {
+                    output: OutputFormat::Yaml,
+                    ..state
+                },
+            ),
+            Some("text") | Some("postcard") => parse_action_inspect_args(rest, state),
+            Some(value) => Err(ParseError::InvalidActionInspectArgument(format!(
+                "unknown emit mode {value}"
+            ))),
+            None => Err(ParseError::MissingArgument("--emit")),
         },
-    )
+        None => Err(ParseError::MissingArgument("--emit")),
+    }
 }
 
 fn parse_action_list_args(
@@ -775,8 +769,7 @@ fn parse_action_list_args(
     match args.split_first() {
         None => Ok(state),
         Some((raw, rest)) => match raw.to_str() {
-            Some("--json") => set_action_list_output_format(rest, state, OutputFormat::Json),
-            Some("--jsonl") => set_action_list_output_format(rest, state, OutputFormat::Jsonl),
+            Some("--emit") => parse_action_list_emit(rest, state),
             Some("--registry") => parse_action_registry_arg(rest, state),
             Some(flag) if flag.starts_with("--") => {
                 Err(ParseError::UnknownActionListFlag(flag.into()))
@@ -784,6 +777,29 @@ fn parse_action_list_args(
             Some(arg) => Err(ParseError::UnexpectedActionListArgument(arg.into())),
             None => Err(ParseError::UnexpectedActionListArgument(format!("{raw:?}"))),
         },
+    }
+}
+
+fn parse_action_list_emit(
+    args: &[OsString],
+    state: ActionListParseState,
+) -> Result<ActionListParseState, ParseError> {
+    match args.split_first() {
+        Some((raw, rest)) => match raw.to_str() {
+            Some("yaml") => parse_action_list_args(
+                rest,
+                ActionListParseState {
+                    output: OutputFormat::Yaml,
+                    ..state
+                },
+            ),
+            Some("text") | Some("postcard") => parse_action_list_args(rest, state),
+            Some(value) => Err(ParseError::InvalidActionListArgument(format!(
+                "unknown emit mode {value}"
+            ))),
+            None => Err(ParseError::MissingArgument("--emit")),
+        },
+        None => Err(ParseError::MissingArgument("--emit")),
     }
 }
 
@@ -1378,43 +1394,30 @@ fn parse_server_mode(raw: &str) -> Result<DurabilityMode, ParseError> {
     }
 }
 
-/// Parse --json, --jsonl, or --emit <yaml|text|postcard> output format flags.
+/// Parse --json, --jsonl, or --emit text|yaml|postcard output format flags.
 /// Returns OutputFormat::Text by default.
 fn parse_output_format(args: &[OsString]) -> OutputFormat {
-    if contains_flag(args, "--jsonl") {
-        OutputFormat::Jsonl
-    } else if contains_flag(args, "--json") {
-        OutputFormat::Json
-    } else if contains_flag(args, "--emit") {
-        let mut emit_value_expected = false;
-        for arg in args {
-            if emit_value_expected {
-                return arg
-                    .to_str()
-                    .map(parse_emit_output_format)
-                    .unwrap_or(OutputFormat::Text);
+    // Legacy cold-path flags for backward compatibility
+    if args.iter().any(|arg| arg == "--jsonl") {
+        return OutputFormat::Jsonl;
+    }
+    if args.iter().any(|arg| arg == "--json") {
+        return OutputFormat::Json;
+    }
+    // Canonical v1 flags
+    for i in 0..args.len() {
+        if args[i] == "--emit" {
+            if let Some(val) = args.get(i.wrapping_add(1)).and_then(|v| v.to_str()) {
+                return match val {
+                    "yaml" => OutputFormat::Yaml,
+                    "postcard" => OutputFormat::Postcard,
+                    "text" => OutputFormat::Text,
+                    _ => OutputFormat::Text,
+                };
             }
-
-            emit_value_expected = arg == "--emit";
         }
-        OutputFormat::Text
-    } else {
-        OutputFormat::Text
     }
-}
-
-fn parse_emit_output_format(raw: &str) -> OutputFormat {
-    match raw {
-        "yaml" => OutputFormat::Yaml,
-        "postcard" => OutputFormat::Postcard,
-        "text" => OutputFormat::Text,
-        _ => OutputFormat::Text,
-    }
-}
-
-/// Check if args contain a specific flag.
-fn contains_flag(args: &[OsString], flag: &str) -> bool {
-    args.iter().any(|arg| arg == flag)
+    OutputFormat::Text
 }
 
 fn positional(args: &[OsString], index: usize, name: &'static str) -> Result<PathBuf, ParseError> {
@@ -1554,11 +1557,17 @@ impl std::fmt::Display for ParseError {
             Self::UnexpectedActionListArgument(argument) => {
                 write!(formatter, "unexpected action list argument: {argument}")
             }
+            Self::InvalidActionListArgument(reason) => {
+                write!(formatter, "invalid action list argument: {reason}")
+            }
             Self::UnknownActionInspectFlag(flag) => {
                 write!(formatter, "unknown action inspect flag: {flag}")
             }
             Self::UnexpectedActionInspectArgument(argument) => {
                 write!(formatter, "unexpected action inspect argument: {argument}")
+            }
+            Self::InvalidActionInspectArgument(reason) => {
+                write!(formatter, "invalid action inspect argument: {reason}")
             }
             Self::InvalidActionId(action_id) => {
                 write!(formatter, "invalid action id: {action_id}")
@@ -2553,14 +2562,14 @@ mod tests {
     }
 
     #[test]
-    fn parse_action_list_accepts_jsonl_output() {
-        let parsed = parse_args(&args(&["velvet-ballastics", "action", "list", "--jsonl"]));
+    fn parse_action_list_accepts_yaml_output() {
+        let parsed = parse_args(&args(&["velvet-ballastics", "action", "list", "--emit", "yaml"]));
         assert!(
             matches!(parsed, Ok(Command::ActionList { .. })),
             "unexpected parse result: {parsed:?}"
         );
         if let Ok(Command::ActionList { output, registry }) = parsed {
-            assert_eq!(output, OutputFormat::Jsonl);
+            assert_eq!(output, OutputFormat::Yaml);
             assert_eq!(registry, ActionRegistryMode::Registered);
         }
     }

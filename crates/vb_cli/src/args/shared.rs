@@ -3,21 +3,32 @@ use std::path::PathBuf;
 
 use super::ParseError;
 
-const FORMAT_FLAG: &str = "--format";
+const EMIT_FLAG: &str = "--emit";
 
-/// Parse --json or --jsonl output format flags.
+/// Parse --json, --jsonl, or --emit text|yaml|postcard output format flags.
 /// Returns OutputFormat::Text by default.
 pub(super) fn parse_output_format(args: &[OsString]) -> super::OutputFormat {
-    if contains_flag(args, "--jsonl") {
-        super::OutputFormat::Jsonl
-    } else if contains_flag(args, "--json") {
-        super::OutputFormat::Json
-    } else {
-        match named_flag(args, FORMAT_FLAG).as_deref() {
-            Some("jsonl") => super::OutputFormat::Jsonl,
-            Some("json") => super::OutputFormat::Json,
-            Some("text") | Some(_) | None => super::OutputFormat::Text,
+    // Legacy cold-path flags for backward compatibility
+    if args.iter().any(|arg| arg == "--jsonl") {
+        return super::OutputFormat::Jsonl;
+    }
+    if args.iter().any(|arg| arg == "--json") {
+        return super::OutputFormat::Json;
+    }
+    // Canonical v1 flags
+    match args.iter().position(|arg| arg == EMIT_FLAG) {
+        Some(idx) => {
+            if let Some(val) = args.get(idx.saturating_add(1)).and_then(|v| v.to_str()) {
+                return match val {
+                    "yaml" => super::OutputFormat::Yaml,
+                    "postcard" => super::OutputFormat::Postcard,
+                    "text" => super::OutputFormat::Text,
+                    _ => super::OutputFormat::Text,
+                };
+            }
+            super::OutputFormat::Text
         }
+        None => super::OutputFormat::Text,
     }
 }
 
@@ -66,11 +77,9 @@ pub(super) fn find_positional(args: &[OsString], start_idx: usize) -> Option<Pat
     let mut i = start_idx;
     while i < args.len() {
         let arg = args.get(i)?.to_str()?;
-        // Skip named flags (starting with `--`) and their values
         if arg.starts_with("--") {
-            i = i.saturating_add(2); // Skip flag name and value
+            i = i.saturating_add(2);
         } else {
-            // Found a positional argument
             return Some(PathBuf::from(arg));
         }
     }

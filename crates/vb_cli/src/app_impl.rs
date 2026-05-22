@@ -5853,6 +5853,9 @@ fn write_error_stderr(error: &ParseError) -> io::Result<()> {
             handle,
             "unexpected action list argument: {argument}\n\n{HELP}"
         ),
+        ParseError::InvalidActionListArgument(reason) => {
+            writeln!(handle, "invalid action list argument: {reason}\n\n{HELP}")
+        }
         ParseError::UnknownActionInspectFlag(flag) => {
             writeln!(handle, "unknown action inspect flag: {flag}\n\n{HELP}")
         }
@@ -5860,6 +5863,9 @@ fn write_error_stderr(error: &ParseError) -> io::Result<()> {
             handle,
             "unexpected action inspect argument: {argument}\n\n{HELP}"
         ),
+        ParseError::InvalidActionInspectArgument(reason) => {
+            writeln!(handle, "invalid action inspect argument: {reason}\n\n{HELP}")
+        }
         ParseError::InvalidActionId(action_id) => {
             writeln!(handle, "invalid action id: {action_id}\n\n{HELP}")
         }
