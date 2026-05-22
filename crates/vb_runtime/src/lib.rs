@@ -88,3 +88,8 @@ pub use shard::{AskAnswer, AskTicket, ResumeError, ResumeResult, ResumeStatus};
 
 #[cfg(test)]
 mod test_harness;
+
+#[cfg(test)]
+mod verification {
+    pub(crate) mod proptest;
+}
