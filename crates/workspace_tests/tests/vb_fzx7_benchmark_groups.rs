@@ -1,110 +1,191 @@
-//! Integration Tests for Benchmark Groups
+//! Integration tests for benchmark contracts
 //!
-//! Tests for all 10 benchmark group registration functions:
-//! - yaml_parse_benches
-//! - yaml_validate_benches
-//! - yaml_compile_benches
-//! - runtime_step_benches
-//! - runtime_primitive_benches
-//! - ipc_frame_benches
-//! - ipc_backpressure_benches
-//! - storage_journal_write_benches
-//! - storage_journal_replay_benches
-//! - recovery_hydration_benches
-//!
-//! # RED PHASE
-//! These tests COMPILE but FAIL because the implementation contains intentional bugs
-//! or the benchmark harness infrastructure doesn't exist yet.
+//! Earlier polluted branch work left placeholder tests that only asserted `true`
+//! for benchmark group registration functions that no longer exist. These tests
+//! now exercise the concrete public benchmark metadata, evidence-gate, budget,
+//! and error contracts that the release gate depends on.
+
+use std::time::Duration;
 
 use vb_benchmark::{
-    IpcBenchmarkError, RecoveryBenchmarkError, StorageBenchmarkError, YamlBenchmarkError,
+    BenchmarkMetadata, EvidenceError, IpcBenchmarkError, RecoveryBenchmarkError,
+    RuntimeBenchmarkError, StorageBenchmarkError, YamlBenchmarkError, baseline_within_budget,
+    budget_utilization_percent, check_evidence_gate, latency_within_budget,
+    result_exceeds_threshold,
 };
 
-// Note: These functions require Criterion runner which is a dev-dependency
-// We define the function signatures and tests here, but the actual benchmark
-// group registration requires the criterion crate to be available.
-//
-// For RED phase, we test that the error types are correct and the function
-// signatures match the contract.
-
-/// BG-001: yaml_parse_benches has correct signature
-#[test]
-fn bg_001_yaml_parse_benches_function_exists() {
-    // The function signature is: pub fn yaml_parse_benches(c: &mut Criterion) -> Result<(), YamlBenchmarkError>
-    // We can't actually call it without a Criterion instance in scope,
-    // but we can verify the types exist
-    fn _check_signature<F>(_f: F)
-    where
-        F: Fn(&mut criterion::Criterion) -> Result<(), YamlBenchmarkError>,
-    {
-        // Function signature validation
+fn complete_metadata() -> BenchmarkMetadata {
+    BenchmarkMetadata {
+        name: String::from("ipc_frame_decode"),
+        baseline_us: Some(69),
+        result_us: 70,
+        command: String::from("cargo bench --bench ipc_frame_decode"),
+        commit_hash: String::from("c15d4f375af205fd2954a419a53c6450ea266699"),
+        environment: String::from("linux-x86_64"),
+        budget_us: 72,
     }
-
-    // This test just verifies the module compiles correctly with the expected types
-    assert!(true);
 }
 
-/// BG-002: yaml_validate_benches has correct signature
+/// Benchmark metadata preserves every field required by evidence gates.
 #[test]
-fn bg_002_yaml_validate_benches_function_exists() {
-    // Function signature: pub fn yaml_validate_benches(c: &mut Criterion) -> Result<(), YamlBenchmarkError>
-    assert!(true);
+fn benchmark_metadata_preserves_required_evidence_fields() {
+    let metadata = complete_metadata();
+
+    assert_eq!(metadata.name, "ipc_frame_decode");
+    assert_eq!(metadata.baseline_us, Some(69));
+    assert_eq!(metadata.result_us, 70);
+    assert_eq!(metadata.command, "cargo bench --bench ipc_frame_decode");
+    assert_eq!(
+        metadata.commit_hash,
+        "c15d4f375af205fd2954a419a53c6450ea266699"
+    );
+    assert_eq!(metadata.environment, "linux-x86_64");
+    assert_eq!(metadata.budget_us, 72);
 }
 
-/// BG-003: yaml_compile_benches has correct signature
+/// Budget helpers enforce boundary behavior used by benchmark policy checks.
 #[test]
-fn bg_003_yaml_compile_benches_function_exists() {
-    // Function signature: pub fn yaml_compile_benches(c: &mut Criterion) -> Result<(), YamlBenchmarkError>
-    assert!(true);
+fn benchmark_budget_helpers_enforce_threshold_boundaries() {
+    assert!(baseline_within_budget(Duration::from_micros(70), 70));
+    assert!(!latency_within_budget(Duration::from_micros(73), 72));
+    assert_eq!(
+        budget_utilization_percent(Duration::from_micros(36), 72),
+        5_000
+    );
+    assert!(!result_exceeds_threshold(
+        Duration::from_micros(72),
+        Duration::from_micros(69),
+        5
+    ));
+    assert!(result_exceeds_threshold(
+        Duration::from_micros(73),
+        Duration::from_micros(69),
+        5
+    ));
 }
 
-/// BG-004: runtime_step_benches has correct signature
+/// Evidence gate accepts complete metadata and rejects missing required fields.
 #[test]
-fn bg_004_runtime_step_benches_function_exists() {
-    // Function signature: pub fn runtime_step_benches(c: &mut Criterion) -> Result<(), RuntimeBenchmarkError>
-    assert!(true);
+fn benchmark_evidence_gate_distinguishes_complete_and_missing_baseline() {
+    let complete = complete_metadata();
+    assert!(check_evidence_gate(&complete, 5).is_ok());
+
+    let missing_baseline = BenchmarkMetadata {
+        baseline_us: None,
+        ..complete
+    };
+    assert!(matches!(
+        check_evidence_gate(&missing_baseline, 5),
+        Err(EvidenceError::MissingBaseline)
+    ));
 }
 
-/// BG-005: runtime_primitive_benches has correct signature
+/// Evidence gate rejects missing environment metadata.
 #[test]
-fn bg_005_runtime_primitive_benches_function_exists() {
-    // Function signature: pub fn runtime_primitive_benches(c: &mut Criterion) -> Result<(), RuntimeBenchmarkError>
-    assert!(true);
+fn benchmark_evidence_gate_rejects_missing_environment() {
+    let metadata = BenchmarkMetadata {
+        environment: String::new(),
+        ..complete_metadata()
+    };
+
+    assert!(matches!(
+        check_evidence_gate(&metadata, 5),
+        Err(EvidenceError::MissingEnvironment)
+    ));
 }
 
-/// BG-006: ipc_frame_benches has correct signature
+/// Evidence gate rejects missing benchmark command metadata.
 #[test]
-fn bg_006_ipc_frame_benches_function_exists() {
-    // Function signature: pub fn ipc_frame_benches(c: &mut Criterion) -> Result<(), IpcBenchmarkError>
-    assert!(true);
+fn benchmark_evidence_gate_rejects_missing_command() {
+    let metadata = BenchmarkMetadata {
+        command: String::new(),
+        ..complete_metadata()
+    };
+
+    assert!(matches!(
+        check_evidence_gate(&metadata, 5),
+        Err(EvidenceError::MissingCommand)
+    ));
 }
 
-/// BG-007: ipc_backpressure_benches has correct signature
+/// Evidence gate rejects missing commit metadata.
 #[test]
-fn bg_007_ipc_backpressure_benches_function_exists() {
-    // Function signature: pub fn ipc_backpressure_benches(c: &mut Criterion) -> Result<(), IpcBenchmarkError>
-    assert!(true);
+fn benchmark_evidence_gate_rejects_missing_commit() {
+    let metadata = BenchmarkMetadata {
+        commit_hash: String::new(),
+        ..complete_metadata()
+    };
+
+    assert!(matches!(
+        check_evidence_gate(&metadata, 5),
+        Err(EvidenceError::MissingCommit)
+    ));
 }
 
-/// BG-008: storage_journal_write_benches has correct signature
+/// Evidence gate rejects an empty benchmark budget.
 #[test]
-fn bg_008_storage_journal_write_benches_function_exists() {
-    // Function signature: pub fn storage_journal_write_benches(c: &mut Criterion) -> Result<(), StorageBenchmarkError>
-    assert!(true);
+fn benchmark_evidence_gate_rejects_empty_budget() {
+    let metadata = BenchmarkMetadata {
+        budget_us: 0,
+        ..complete_metadata()
+    };
+
+    assert!(matches!(
+        check_evidence_gate(&metadata, 5),
+        Err(EvidenceError::EmptyBudget)
+    ));
 }
 
-/// BG-009: storage_journal_replay_benches has correct signature
+/// Evidence gate reports the exact regression delta beyond baseline.
 #[test]
-fn bg_009_storage_journal_replay_benches_function_exists() {
-    // Function signature: pub fn storage_journal_replay_benches(c: &mut Criterion) -> Result<(), StorageBenchmarkError>
-    assert!(true);
+fn benchmark_evidence_gate_reports_regression_delta() {
+    let metadata = BenchmarkMetadata {
+        result_us: 74,
+        ..complete_metadata()
+    };
+
+    assert!(matches!(
+        check_evidence_gate(&metadata, 5),
+        Err(EvidenceError::RegressionDetected {
+            benchmark,
+            delta: 5
+        }) if benchmark == "ipc_frame_decode"
+    ));
 }
 
-/// BG-010: recovery_hydration_benches has correct signature
+/// Budget utilization uses an explicit fail-closed value for zero budgets.
 #[test]
-fn bg_010_recovery_hydration_benches_function_exists() {
-    // Function signature: pub fn recovery_hydration_benches(c: &mut Criterion) -> Result<(), RecoveryBenchmarkError>
-    assert!(true);
+fn benchmark_budget_utilization_rejects_zero_budget() {
+    assert_eq!(
+        budget_utilization_percent(Duration::from_micros(1), 0),
+        u128::MAX
+    );
+}
+
+/// Runtime benchmark errors have stable, distinct diagnostics.
+#[test]
+fn runtime_benchmark_errors_report_distinct_contract_failures() {
+    let step = RuntimeBenchmarkError::StepFailure(String::from("budget exhausted"));
+    let primitive = RuntimeBenchmarkError::PrimitiveFailure(String::from("bad opcode"));
+
+    assert_eq!(format!("{step}"), "runtime step failed: budget exhausted");
+    assert_eq!(
+        format!("{primitive}"),
+        "runtime primitive failed: bad opcode"
+    );
+}
+
+/// YAML benchmark errors have stable, distinct diagnostics.
+#[test]
+fn yaml_benchmark_errors_report_distinct_contract_failures() {
+    let parse = YamlBenchmarkError::ParseFailure(String::from("bad colon"));
+    let validation = YamlBenchmarkError::ValidationFailure(String::from("missing step"));
+
+    assert_eq!(format!("{parse}"), "YAML parse failed: bad colon");
+    assert_eq!(
+        format!("{validation}"),
+        "workflow validation failed: missing step"
+    );
 }
 
 // ============================================================================
