@@ -7215,6 +7215,30 @@ mod tests {
         Ok(())
     }
 
+    fn length_expression_workflow() -> Result<CompiledWorkflow, String> {
+        direct_expression_workflow(
+            "test_length_expr",
+            Box::new([
+                vb_core::ExprOp::LoadSlot(SlotIdx::new(0)),
+                vb_core::ExprOp::Length,
+            ]),
+            Box::new([]),
+            1,
+        )
+    }
+
+    fn empty_expression_workflow() -> Result<CompiledWorkflow, String> {
+        direct_expression_workflow(
+            "test_empty_expr",
+            Box::new([
+                vb_core::ExprOp::LoadSlot(SlotIdx::new(0)),
+                vb_core::ExprOp::Empty,
+            ]),
+            Box::new([]),
+            1,
+        )
+    }
+
     #[test]
     fn direct_expr_emit_keeps_length_and_empty_typed_runtime_guards() -> Result<(), String> {
         let cases = [
