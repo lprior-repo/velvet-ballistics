@@ -109,7 +109,7 @@ fn workflow_with_error_handler(
                 },
             },
             CompiledNode {
-                id: StepIdx::new(2),
+                id: handler_body,
                 output: Some(SlotIdx::new(2)),
                 next: None,
                 on_error: None,
@@ -125,7 +125,7 @@ fn workflow_with_error_handler(
         constants: vec![ConstValue::I64(10), ConstValue::I64(20)].into_boxed_slice(),
         slot_count: 4,
         symbols_count: 0,
-        entry: handler_body,
+        entry: StepIdx::new(0),
         resource_contract: ResourceContract::DEFAULT,
         step_names: Box::new([]),
     })
@@ -175,17 +175,29 @@ fn do_node_workflow() -> Result<CompiledWorkflow, String> {
     CompiledWorkflow::try_from_parts(WorkflowParts {
         name: Box::<str>::from("do_node_workflow"),
         digest: digest(0x04),
-        nodes: vec![CompiledNode {
-            id: StepIdx::new(0),
-            output: Some(SlotIdx::new(0)),
-            next: Some(StepIdx::new(1)),
-            on_error: None,
-            error_slot: None,
-            kind: CompiledNodeKind::Do {
-                action: ActionId::new(1),
-                input: SlotIdx::new(0),
+        nodes: vec![
+            CompiledNode {
+                id: StepIdx::new(0),
+                output: Some(SlotIdx::new(0)),
+                next: Some(StepIdx::new(1)),
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::Do {
+                    action: ActionId::new(1),
+                    input: SlotIdx::new(0),
+                },
             },
-        }]
+            CompiledNode {
+                id: StepIdx::new(1),
+                output: None,
+                next: None,
+                on_error: None,
+                error_slot: None,
+                kind: CompiledNodeKind::Finish {
+                    result: SlotIdx::new(0),
+                },
+            },
+        ]
         .into_boxed_slice(),
         expressions: Box::new([]),
         accessors: Box::new([]),

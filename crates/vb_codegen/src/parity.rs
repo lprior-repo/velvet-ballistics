@@ -175,6 +175,13 @@ pub enum ParityError {
         /// Generated slot value.
         gen_value: SlotValue,
     },
+    /// Slot value collections differ in length.
+    SlotCountMismatch {
+        /// Number of IR slot values.
+        ir_len: usize,
+        /// Number of generated-runtime slot values.
+        gen_len: usize,
+    },
     /// Taint marker differs at a written slot.
     TaintMismatch {
         /// Slot index with differing taint.
@@ -221,6 +228,7 @@ impl ParityError {
             Self::TerminalMismatch { .. } => "terminal_mismatch",
             Self::JournalMismatch { .. } => "journal_mismatch",
             Self::SlotValueMismatch { .. } => "slot_value_mismatch",
+            Self::SlotCountMismatch { .. } => "slot_count_mismatch",
             Self::TaintMismatch { .. } => "taint_mismatch",
             Self::SuspensionMismatch { .. } => "suspension_mismatch",
             Self::ResumeMismatch { .. } => "resume_mismatch",
@@ -431,20 +439,9 @@ fn compare_slots(
     gen_run: &[(SlotIdx, SlotValue)],
 ) -> Result<(), ParityError> {
     if ir.len() != gen_run.len() {
-        return Err(ParityError::SlotValueMismatch {
-            slot: SlotIdx::new(0),
-            ir_value: SlotValue::I64(match i64::try_from(ir.len()) {
-                Ok(v) => v,
-                Err(_) => unreachable!(
-                    "usize length of a slice cannot exceed i64::MAX on a 64-bit target"
-                ),
-            }),
-            gen_value: SlotValue::I64(match i64::try_from(gen_run.len()) {
-                Ok(v) => v,
-                Err(_) => unreachable!(
-                    "usize length of a slice cannot exceed i64::MAX on a 64-bit target"
-                ),
-            }),
+        return Err(ParityError::SlotCountMismatch {
+            ir_len: ir.len(),
+            gen_len: gen_run.len(),
         });
     }
     for ((ir_slot, ir_value), (gen_slot, gen_value)) in ir.iter().zip(gen_run.iter()) {

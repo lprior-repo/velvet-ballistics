@@ -55,7 +55,6 @@ impl BoundedActionCompletionQueue {
     /// Creates a new bounded queue with the given capacity.
     ///
     /// Returns `Err(ActionQueueError::InvalidCapacity)` if `capacity` is zero.
-    #[must_use]
     pub fn new(capacity: usize) -> Result<Self, ActionQueueError> {
         if capacity == 0 {
             return Err(ActionQueueError::InvalidCapacity);
@@ -72,7 +71,6 @@ impl BoundedActionCompletionQueue {
     /// Creates a new bounded queue with backpressure notification channel.
     ///
     /// Returns `Err(ActionQueueError::InvalidCapacity)` if `capacity` is zero.
-    #[must_use]
     pub fn with_backpressure(
         capacity: usize,
     ) -> Result<(Self, Receiver<BackpressureWarning>), ActionQueueError> {
@@ -120,14 +118,14 @@ impl BoundedActionCompletionQueue {
         let Some(threshold) = self.capacity.saturating_mul(8).checked_div(10) else {
             return Err(ActionQueueError::InvalidCapacity);
         };
-        if depth >= threshold {
-            if let Some(ref tx) = self.backpressure_tx {
-                match tx.try_send(BackpressureWarning {
-                    depth,
-                    capacity: self.capacity,
-                }) {
-                    Ok(()) | Err(TrySendError::Full(_)) | Err(TrySendError::Disconnected(_)) => {}
-                }
+        if depth >= threshold
+            && let Some(ref tx) = self.backpressure_tx
+        {
+            match tx.try_send(BackpressureWarning {
+                depth,
+                capacity: self.capacity,
+            }) {
+                Ok(()) | Err(TrySendError::Full(_)) | Err(TrySendError::Disconnected(_)) => {}
             }
         }
 

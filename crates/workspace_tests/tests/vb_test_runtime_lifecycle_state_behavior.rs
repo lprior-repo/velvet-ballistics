@@ -50,16 +50,6 @@ fn test_config() -> ShardConfig {
     }
 }
 
-fn small_config() -> ShardConfig {
-    ShardConfig {
-        command_queue_capacity: 8,
-        trace_capacity: 16,
-        step_budget_per_tick: 4,
-        max_active_runs: 4,
-        policy: RuntimePolicy::Relaxed,
-    }
-}
-
 fn node(id: u16, output: Option<u16>, next: Option<u16>, kind: CompiledNodeKind) -> CompiledNode {
     CompiledNode {
         id: StepIdx::new(id),
@@ -120,35 +110,6 @@ fn finished_workflow() -> Result<CompiledWorkflow, String> {
         ]),
         Box::from([ConstValue::Bool(true)]),
         1,
-    )
-}
-
-/// Workflow that suspends on action: Do(action) → Finish
-fn suspended_workflow() -> Result<CompiledWorkflow, String> {
-    workflow_from_parts(
-        "suspended",
-        0xA2,
-        Box::from([
-            node(
-                0,
-                Some(1),
-                Some(1),
-                CompiledNodeKind::Do {
-                    action: ActionId::new(0),
-                    input: SlotIdx::ZERO,
-                },
-            ),
-            node(
-                1,
-                None,
-                None,
-                CompiledNodeKind::Finish {
-                    result: SlotIdx::new(1),
-                },
-            ),
-        ]),
-        Box::from([]),
-        2,
     )
 }
 
@@ -226,21 +187,6 @@ fn action_contracts_through(
 
 fn action_grants(action: ActionId) -> CapabilitySet {
     CapabilitySet::from_grants(Box::from([required_capability(action)]))
-}
-
-fn submit_suspended(
-    runtime: &Runtime,
-    run: RunId,
-    workflow: CompiledWorkflow,
-) -> vb_runtime::RuntimeResult<()> {
-    let action = ActionId::new(0);
-    runtime.submit_direct_with_inputs_grants_and_contracts(
-        run,
-        workflow,
-        Box::from([(SlotIdx::ZERO, SlotValue::I64(0))]),
-        action_grants(action),
-        action_contracts_through(action, 1, 0),
-    )
 }
 
 fn submit_action_then_finish(

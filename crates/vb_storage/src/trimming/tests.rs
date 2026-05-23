@@ -9,7 +9,8 @@
 )]
 use super::*;
 use crate::{
-    EventSeq, FjallJournal, JournalEvent, RunHeaderRecord, RunSnapshot, constants::DIGEST_BYTES,
+    EventSeq, FjallJournal, JournalError, JournalEvent, RunHeaderRecord, RunSnapshot,
+    constants::DIGEST_BYTES,
 };
 use vb_core::{RunId, SlotIdx, StepIdx, WorkflowDigest, WorkflowId};
 
@@ -75,6 +76,27 @@ fn write_header_with_workflow(
     journal
         .put_run_header(&header)
         .expect("header write should succeed");
+}
+
+fn insert_snapshot_payload_under_key(
+    journal: &FjallJournal,
+    key_run: RunId,
+    key_seq: EventSeq,
+    payload: &RunSnapshot,
+) {
+    let key = crate::keys::run_snapshot_key(key_run, key_seq).expect("snapshot key");
+    let value = crate::codec::encode_record(
+        crate::constants::MAGIC_SNAPSHOT,
+        crate::records::RecordKind::Snapshot,
+        payload.seq.get(),
+        payload,
+        crate::constants::MAX_SNAPSHOT_BYTES,
+    )
+    .expect("snapshot payload encode");
+    journal
+        .run_snapshot
+        .insert(key.to_vec(), value)
+        .expect("snapshot payload insert");
 }
 
 #[test]
@@ -334,6 +356,70 @@ fn latest_durable_snapshot_seq_returns_none_for_no_snapshots() {
         .latest_durable_snapshot_seq(run)
         .expect("should succeed");
     assert_eq!(latest, None);
+}
+
+#[test]
+fn latest_durable_snapshot_seq_rejects_payload_run_mismatch() {
+    let (_temp, journal) = temp_journal();
+    let run = RunId::new(801);
+    let actual = RunId::new(802);
+    let key_seq = EventSeq::new(7);
+    let payload = RunSnapshot {
+        run: actual,
+        seq: key_seq,
+        workflow: WorkflowDigest::from_bytes([0x51; DIGEST_BYTES]),
+        slots: vec![],
+        taint: vec![],
+    };
+    insert_snapshot_payload_under_key(&journal, run, key_seq, &payload);
+
+    let err = journal
+        .latest_durable_snapshot_seq(run)
+        .expect_err("payload run mismatch must fail closed");
+
+    match err {
+        TrimError::Journal(JournalError::WrongRun { expected, actual }) => {
+            assert_eq!(expected, run);
+            assert_eq!(actual, RunId::new(802));
+            assert_eq!(
+                JournalError::WrongRun { expected, actual }.diagnostic_code(),
+                JournalError::WRONG_RUN_CODE
+            );
+        }
+        other => panic!("expected WrongRun, got {other:?}"),
+    }
+}
+
+#[test]
+fn latest_durable_snapshot_seq_rejects_payload_seq_mismatch() {
+    let (_temp, journal) = temp_journal();
+    let run = RunId::new(803);
+    let key_seq = EventSeq::new(7);
+    let payload_seq = EventSeq::new(8);
+    let payload = RunSnapshot {
+        run,
+        seq: payload_seq,
+        workflow: WorkflowDigest::from_bytes([0x52; DIGEST_BYTES]),
+        slots: vec![],
+        taint: vec![],
+    };
+    insert_snapshot_payload_under_key(&journal, run, key_seq, &payload);
+
+    let err = journal
+        .latest_durable_snapshot_seq(run)
+        .expect_err("payload seq mismatch must fail closed");
+
+    match err {
+        TrimError::Journal(JournalError::SequenceGap { expected, actual }) => {
+            assert_eq!(expected, key_seq);
+            assert_eq!(actual, payload_seq);
+            assert_eq!(
+                JournalError::SequenceGap { expected, actual }.diagnostic_code(),
+                JournalError::SEQUENCE_GAP_CODE
+            );
+        }
+        other => panic!("expected SequenceGap, got {other:?}"),
+    }
 }
 
 #[test]

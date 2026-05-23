@@ -89,7 +89,9 @@ fn kani_join_taint_commutative() {
 #[kani::proof]
 #[kani::unwind(4)]
 fn kani_read_taint_no_panic() {
-    let slot_count: u16 = 2;
+    let slot_count: u16 = kani::any();
+    // Bound: frame must have at least one slot
+    kani::assume(slot_count > 0);
     let slot_raw: u16 = kani::any();
     kani::assume(slot_raw < slot_count);
     let slot = SlotIdx::new(slot_raw);
@@ -109,7 +111,9 @@ fn kani_read_taint_no_panic() {
 #[kani::proof]
 #[kani::unwind(4)]
 fn kani_write_taint_no_panic() {
-    let slot_count: u16 = 2;
+    let slot_count: u16 = kani::any();
+    // Bound: frame must have at least one slot
+    kani::assume(slot_count > 0);
     let slot_raw: u16 = kani::any();
     kani::assume(slot_raw < slot_count);
     let slot = SlotIdx::new(slot_raw);

@@ -226,3 +226,89 @@ fn verify_idempotency_single_error() {
         );
     }
 }
+
+/// KANI-RUNTIME-007: SideEffect::None always bypasses regardless of retry_safety or key_slots.
+///
+/// Bounded: symbolic contract with side_effect == None.
+#[kani::proof]
+#[kani::unwind(4)]
+fn verify_idempotency_none_side_effect_always_ok() {
+    // Generate contract symbolically
+    let contract = kani::any::<ActionContract>();
+    // Bound: side_effect must be None to test the bypass path
+    kani::assume(contract.side_effect == SideEffect::None);
+
+    let frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2);
+    kani::assume(frame.is_ok());
+    let frame = frame.ok().unwrap();
+
+    // Empty key_slots — irrelevant because None bypasses
+    let key_slots: [SlotIdx; 0] = [];
+
+    let result = verify_idempotency(&contract, &key_slots, &frame);
+    kani::assert(
+        result.is_ok(),
+        "verify_idempotency must pass when side_effect is None",
+    );
+}
+
+/// KANI-RUNTIME-008: RetrySafety::Safe always passes for non-None side effects.
+///
+/// Bounded: symbolic contract with side_effect != None and retry_safety == Safe.
+#[kani::proof]
+#[kani::unwind(4)]
+fn verify_idempotency_safe_retry_always_ok() {
+    // Generate contract symbolically
+    let contract = kani::any::<ActionContract>();
+    // Bound: side_effect must not be None (otherwise bypass path takes over)
+    kani::assume(contract.side_effect != SideEffect::None);
+    // Bound: retry_safety must be Safe
+    kani::assume(contract.retry_safety == RetrySafety::Safe);
+
+    let frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2);
+    kani::assume(frame.is_ok());
+    let frame = frame.ok().unwrap();
+
+    let key_slots: [SlotIdx; 0] = [];
+
+    let result = verify_idempotency(&contract, &key_slots, &frame);
+    kani::assert(
+        result.is_ok(),
+        "verify_idempotency must pass when retry_safety is Safe",
+    );
+}
+
+/// KANI-RUNTIME-009: RetrySafety::Unsafe always fails with MissingKey for non-None side effects.
+///
+/// Bounded: symbolic contract with side_effect != None and retry_safety == Unsafe.
+#[kani::proof]
+#[kani::unwind(4)]
+fn verify_idempotency_unsafe_retry_always_err() {
+    // Generate contract symbolically
+    let contract = kani::any::<ActionContract>();
+    // Bound: side_effect must not be None
+    kani::assume(contract.side_effect != SideEffect::None);
+    // Bound: retry_safety must be Unsafe
+    kani::assume(contract.retry_safety == RetrySafety::Unsafe);
+
+    let frame = RunFrame::new(RunId::new(1), StepIdx::new(0), 2, 2);
+    kani::assume(frame.is_ok());
+    let frame = frame.ok().unwrap();
+
+    let key_slots: [SlotIdx; 0] = [];
+
+    let result = verify_idempotency(&contract, &key_slots, &frame);
+    kani::assert(
+        result.is_err(),
+        "verify_idempotency must Err when retry_safety is Unsafe",
+    );
+
+    if let Err(err) = &result {
+        match err {
+            crate::action::IdempotencyViolation::MissingKey(_) => {}
+            _ => {
+                kani::assert(false, "Expected MissingKey error variant for Unsafe");
+            }
+        }
+    }
+}

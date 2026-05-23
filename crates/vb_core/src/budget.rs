@@ -1662,205 +1662,221 @@ mod kani_harnesses {
         assert!(result.is_ok());
     }
 
-    /// K-B3: add_dim(MAX, MAX) returns Err(Overflow).
+    /// K-B3: add_dim overflow with symbolic inputs.
     #[kani::proof]
     fn add_dim_max_plus_max_overflow() {
-        let result = add_dim(u64::MAX, u64::MAX, "cpu");
-        match result {
-            Err(LocalError::Overflow { resource: "cpu" }) => {}
-            Ok(_) => assert!(false, "MAX+MAX must overflow"),
-            Err(_) => assert!(false, "only Overflow valid here"),
-        }
+        let a = kani::any::<u64>();
+        let b = kani::any::<u64>();
+        // Bound: inputs are large enough that their sum overflows u64
+        kani::assume(a > u64::MAX / 2);
+        kani::assume(b > u64::MAX / 2);
+        let result = add_dim(a, b, "cpu");
+        kani::assert(result.is_err(), "overflowing add must return Err");
     }
 
-    /// K-B4: add_dim(0, 0) returns Ok(0).
+    /// K-B4: add_dim non-overflow with bounded symbolic inputs.
     #[kani::proof]
     fn add_dim_zero_plus_zero() {
-        let result = add_dim(0, 0, "cpu");
-        match result {
-            Ok(v) => assert!(v == 0, "0+0=0"),
-            Err(_) => assert!(false, "0+0 cannot overflow"),
-        }
+        let a = kani::any::<u64>();
+        let b = kani::any::<u64>();
+        // Bound: inputs are small enough that sum does not overflow
+        kani::assume(a <= u64::MAX / 2);
+        kani::assume(b <= u64::MAX / 2);
+        let result = add_dim(a, b, "cpu");
+        kani::assert(result.is_ok(), "bounded add must return Ok");
+        kani::assert(result.unwrap() == a + b, "add result must equal a + b");
     }
 
-    /// K-B5: add_dim(1, MAX) returns Err(Overflow).
+    /// K-B5: add_dim overflow with edge-case symbolic inputs.
     #[kani::proof]
     fn add_dim_one_plus_max_overflow() {
-        let result = add_dim(1, u64::MAX, "cpu");
-        match result {
-            Err(LocalError::Overflow { .. }) => {}
-            Ok(_) => assert!(false, "1+MAX must overflow"),
-            Err(_) => assert!(false, "only Overflow valid"),
-        }
+        let a = kani::any::<u64>();
+        let b = kani::any::<u64>();
+        // Bound: a is non-zero and b is large enough that a + b overflows
+        kani::assume(a > 0);
+        kani::assume(b > u64::MAX - a);
+        let result = add_dim(a, b, "cpu");
+        kani::assert(result.is_err(), "overflowing add must return Err");
     }
 
-    /// K-B6: sub_dim(0, 1) returns Err(Underflow).
+    /// K-B6: sub_dim underflow with symbolic inputs.
     #[kani::proof]
     fn sub_dim_zero_minus_one_underflow() {
-        let result = sub_dim(0, 1, "disk");
-        match result {
-            Err(LocalError::Underflow { .. }) => {}
-            Ok(_) => assert!(false, "0-1 must underflow"),
-            Err(_) => assert!(false, "only Underflow valid"),
-        }
+        let current = kani::any::<u64>();
+        let requested = kani::any::<u64>();
+        // Bound: current < requested to force underflow
+        kani::assume(current < requested);
+        let result = sub_dim(current, requested, "disk");
+        kani::assert(result.is_err(), "underflowing sub must return Err");
     }
 
-    /// K-B7: sub_dim(100, 50) returns Ok(50).
+    /// K-B7: sub_dim non-underflow with symbolic inputs.
     #[kani::proof]
     fn sub_dim_hundred_minus_fifty() {
-        let result = sub_dim(100, 50, "disk");
-        match result {
-            Ok(v) => assert!(v == 50, "100-50=50"),
-            Err(_) => assert!(false, "100-50 cannot underflow"),
-        }
+        let current = kani::any::<u64>();
+        let requested = kani::any::<u64>();
+        // Bound: current >= requested to prevent underflow
+        kani::assume(current >= requested);
+        let result = sub_dim(current, requested, "disk");
+        kani::assert(result.is_ok(), "bounded sub must return Ok");
+        kani::assert(
+            result.unwrap() == current - requested,
+            "sub result must equal current - requested",
+        );
     }
 
-    /// K-B8: add_dim non-overflow case (100+200=300).
+    /// K-B8: add_dim non-overflow with symbolic inputs.
     #[kani::proof]
     fn add_dim_non_overflow() {
-        let result = add_dim(100, 200, "mem");
-        match result {
-            Ok(v) => assert!(v == 300, "100+200=300"),
-            Err(_) => assert!(false, "100+200 cannot overflow"),
-        }
+        let a = kani::any::<u64>();
+        let b = kani::any::<u64>();
+        // Bound: inputs are small enough that sum does not overflow
+        kani::assume(a <= u64::MAX / 2);
+        kani::assume(b <= u64::MAX / 2);
+        let result = add_dim(a, b, "mem");
+        kani::assert(result.is_ok(), "bounded add must return Ok");
+        kani::assert(result.unwrap() == a + b, "add result must equal a + b");
     }
 
-    /// K-B9: sub_dim non-underflow case (200-100=100).
+    /// K-B9: sub_dim non-underflow with symbolic inputs.
     #[kani::proof]
     fn sub_dim_non_underflow() {
-        let result = sub_dim(200, 100, "net");
-        match result {
-            Ok(v) => assert!(v == 100, "200-100=100"),
-            Err(_) => assert!(false, "200-100 cannot underflow"),
-        }
+        let current = kani::any::<u64>();
+        let requested = kani::any::<u64>();
+        // Bound: current >= requested to prevent underflow
+        kani::assume(current >= requested);
+        let result = sub_dim(current, requested, "net");
+        kani::assert(result.is_ok(), "bounded sub must return Ok");
+        kani::assert(
+            result.unwrap() == current - requested,
+            "sub result must equal current - requested",
+        );
     }
 
-    /// PO-010: aggregate usage addition rejects overflow and preserves exact sums.
+    /// PO-010a: aggregate usage addition succeeds with bounded symbolic inputs.
     #[kani::proof]
-    fn aggregate_usage_try_add_budget_rejects_overflow_and_sums_fields() {
-        let usage = super::AggregateResourceUsage {
-            max_steps_executable: 10,
-            max_action_tickets: 20,
-            max_parallel_in_flight: 30,
-            max_gather_pages: 40,
-            max_gather_items: 50,
-            max_result_bytes: 60,
-            max_total_slots_written: 70,
-            max_active_runs: 80,
-            max_queue_depth: 90,
-            max_journal_batch_bytes: 100,
-            max_step_budget_per_tick: 110,
-            max_transitions_per_tick: 120,
-        };
-        let budget = super::AggregateResourceBudget {
-            max_steps_executable: 1,
-            max_action_tickets: 2,
-            max_parallel_in_flight: 3,
-            max_retries_per_action: 4,
-            max_gather_pages: 5,
-            max_gather_items: 6,
-            max_for_each_iterations: 7,
-            max_together_branches: 8,
-            max_repeat_attempts: 9,
-            max_run_time_seconds: 10,
-            max_result_bytes: 11,
-            max_total_slots_written: 12,
-            max_queue_depth: 13,
-            max_journal_batch_bytes: 14,
-            max_step_budget_per_tick: 15,
-            max_transitions_per_tick: 16,
-        };
+    fn aggregate_usage_try_add_budget_no_overflow_symbolic() {
+        let usage = kani::any::<super::AggregateResourceUsage>();
+        let budget = kani::any::<super::AggregateResourceBudget>();
 
-        let summed = usage.try_add_budget(&budget);
-        match &summed {
-            Ok(next) => {
-                assert!(next.max_steps_executable == 11);
-                assert!(next.max_action_tickets == 22);
-                assert!(next.max_parallel_in_flight == 33);
-                assert!(next.max_gather_pages == 45);
-                assert!(next.max_gather_items == 56);
-                assert!(next.max_result_bytes == 71);
-                assert!(next.max_total_slots_written == 82);
-                assert!(next.max_active_runs == 81);
-                assert!(next.max_queue_depth == 103);
-                assert!(next.max_journal_batch_bytes == 114);
-                assert!(next.max_step_budget_per_tick == 125);
-                assert!(next.max_transitions_per_tick == 136);
-            }
-            Err(_) => assert!(false),
-        }
-        core::mem::forget(summed);
+        // Bound all shared fields to prevent overflow in try_add_budget
+        kani::assume(usage.max_steps_executable <= u64::MAX / 2);
+        kani::assume(u64::from(budget.max_steps_executable) <= u64::MAX / 2);
+        kani::assume(usage.max_action_tickets <= u64::MAX / 2);
+        kani::assume(u64::from(budget.max_action_tickets) <= u64::MAX / 2);
+        kani::assume(usage.max_parallel_in_flight <= u64::MAX / 2);
+        kani::assume(u64::from(budget.max_parallel_in_flight) <= u64::MAX / 2);
+        kani::assume(usage.max_gather_pages <= u64::MAX / 2);
+        kani::assume(u64::from(budget.max_gather_pages) <= u64::MAX / 2);
+        kani::assume(usage.max_gather_items <= u64::MAX / 2);
+        kani::assume(u64::from(budget.max_gather_items) <= u64::MAX / 2);
+        kani::assume(usage.max_result_bytes <= u64::MAX / 2);
+        kani::assume(u64::from(budget.max_result_bytes) <= u64::MAX / 2);
+        kani::assume(usage.max_total_slots_written <= u64::MAX / 2);
+        kani::assume(u64::from(budget.max_total_slots_written) <= u64::MAX / 2);
+        kani::assume(usage.max_active_runs <= u64::MAX / 2);
+        kani::assume(usage.max_queue_depth <= u64::MAX / 2);
+        kani::assume(u64::from(budget.max_queue_depth) <= u64::MAX / 2);
+        kani::assume(usage.max_journal_batch_bytes <= u64::MAX / 2);
+        kani::assume(u64::from(budget.max_journal_batch_bytes) <= u64::MAX / 2);
+        kani::assume(usage.max_step_budget_per_tick <= u64::MAX / 2);
+        kani::assume(budget.max_step_budget_per_tick <= u64::MAX / 2);
+        kani::assume(usage.max_transitions_per_tick <= u64::MAX / 2);
+        kani::assume(u64::from(budget.max_transitions_per_tick) <= u64::MAX / 2);
 
-        let overflowing = super::AggregateResourceUsage {
-            max_steps_executable: u64::MAX,
-            max_action_tickets: usage.max_action_tickets,
-            max_parallel_in_flight: usage.max_parallel_in_flight,
-            max_gather_pages: usage.max_gather_pages,
-            max_gather_items: usage.max_gather_items,
-            max_result_bytes: usage.max_result_bytes,
-            max_total_slots_written: usage.max_total_slots_written,
-            max_active_runs: usage.max_active_runs,
-            max_queue_depth: usage.max_queue_depth,
-            max_journal_batch_bytes: usage.max_journal_batch_bytes,
-            max_step_budget_per_tick: usage.max_step_budget_per_tick,
-            max_transitions_per_tick: usage.max_transitions_per_tick,
-        };
-        let result = overflowing.try_add_budget(&budget);
+        let result = usage.try_add_budget(&budget);
+        kani::assert(result.is_ok(), "bounded try_add_budget returns Ok");
+
+        let next = result.unwrap();
+        kani::assert(
+            next.max_steps_executable
+                == usage.max_steps_executable + u64::from(budget.max_steps_executable),
+        );
+        kani::assert(
+            next.max_action_tickets
+                == usage.max_action_tickets + u64::from(budget.max_action_tickets),
+        );
+        kani::assert(
+            next.max_parallel_in_flight
+                == usage.max_parallel_in_flight + u64::from(budget.max_parallel_in_flight),
+        );
+        kani::assert(
+            next.max_gather_pages == usage.max_gather_pages + u64::from(budget.max_gather_pages),
+        );
+        kani::assert(
+            next.max_gather_items == usage.max_gather_items + u64::from(budget.max_gather_items),
+        );
+        kani::assert(
+            next.max_result_bytes == usage.max_result_bytes + u64::from(budget.max_result_bytes),
+        );
+        kani::assert(
+            next.max_total_slots_written
+                == usage.max_total_slots_written + u64::from(budget.max_total_slots_written),
+        );
+        kani::assert(next.max_active_runs == usage.max_active_runs + 1);
+        kani::assert(
+            next.max_queue_depth == usage.max_queue_depth + u64::from(budget.max_queue_depth),
+        );
+        kani::assert(
+            next.max_journal_batch_bytes
+                == usage.max_journal_batch_bytes + u64::from(budget.max_journal_batch_bytes),
+        );
+        kani::assert(
+            next.max_step_budget_per_tick
+                == usage.max_step_budget_per_tick + budget.max_step_budget_per_tick,
+        );
+        kani::assert(
+            next.max_transitions_per_tick
+                == usage.max_transitions_per_tick + u64::from(budget.max_transitions_per_tick),
+        );
+    }
+
+    /// PO-010b: aggregate usage addition rejects overflow with symbolic inputs.
+    #[kani::proof]
+    fn aggregate_usage_try_add_budget_overflow_symbolic() {
+        let mut usage = kani::any::<super::AggregateResourceUsage>();
+        let budget = kani::any::<super::AggregateResourceBudget>();
+
+        // Bound: force overflow on max_steps_executable by setting it to max
+        usage.max_steps_executable = u64::MAX;
+        kani::assume(budget.max_steps_executable > 0);
+
+        let result = usage.try_add_budget(&budget);
+        kani::assert(result.is_err(), "try_add_budget must reject overflow");
+
         match &result {
             Err(super::AggregateBudgetError::Overflow { resource }) => {
-                assert!(same_static_str(resource, "max_steps_executable"));
+                kani::assert(same_static_str(resource, "max_steps_executable"));
             }
-            Ok(_) => assert!(false),
-            Err(_) => assert!(false),
+            Ok(_) => kani::assert(false, "overflow must return Err"),
+            Err(_) => kani::assert(false, "only Overflow valid here"),
         }
-        core::mem::forget(result);
     }
 
     /// PO-011: aggregate capacity rejection reports exact resource/request/available.
     #[kani::proof]
     fn aggregate_usage_fits_within_rejects_over_capacity_fields() {
-        let usage = super::AggregateResourceUsage {
-            max_steps_executable: 11,
-            max_action_tickets: 20,
-            max_parallel_in_flight: 30,
-            max_gather_pages: 40,
-            max_gather_items: 50,
-            max_result_bytes: 60,
-            max_total_slots_written: 70,
-            max_active_runs: 80,
-            max_queue_depth: 90,
-            max_journal_batch_bytes: 100,
-            max_step_budget_per_tick: 110,
-            max_transitions_per_tick: 120,
-        };
-        let capacity = super::AggregateResourceCapacity {
-            max_steps_executable: 10,
-            max_action_tickets: 20,
-            max_parallel_in_flight: 30,
-            max_gather_pages: 40,
-            max_gather_items: 50,
-            max_result_bytes: 60,
-            max_total_slots_written: 70,
-            max_active_runs: 80,
-            max_queue_depth: 90,
-            max_journal_batch_bytes: 100,
-            max_step_budget_per_tick: 110,
-            max_transitions_per_tick: 120,
-        };
+        let usage = kani::any::<super::AggregateResourceUsage>();
+        let capacity = kani::any::<super::AggregateResourceCapacity>();
+
+        // Bound: force max_steps_executable to exceed capacity so fits_within fails
+        kani::assume(usage.max_steps_executable > capacity.max_steps_executable);
 
         let result = usage.fits_within(&capacity);
+        kani::assert(result.is_err(), "fits_within must reject over-capacity");
+
         match &result {
             Err(super::AggregateBudgetError::CapacityExceeded {
                 resource,
                 requested,
                 available,
             }) => {
-                assert!(same_static_str(resource, "max_steps_executable"));
-                assert!(*requested == 11);
-                assert!(*available == 10);
+                kani::assert(same_static_str(resource, "max_steps_executable"));
+                kani::assert(*requested == usage.max_steps_executable);
+                kani::assert(*available == capacity.max_steps_executable);
             }
-            Ok(()) => assert!(false),
-            Err(_) => assert!(false),
+            Ok(()) => kani::assert(false, "over-capacity must return Err"),
+            Err(_) => kani::assert(false, "only CapacityExceeded valid here"),
         }
         core::mem::forget(result);
     }

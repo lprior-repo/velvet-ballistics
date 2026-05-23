@@ -29,9 +29,6 @@ pub mod value_store;
 pub mod workflow;
 
 #[cfg(kani)]
-pub mod kani_taint;
-
-#[cfg(kani)]
 pub mod kani_expr_bound;
 
 #[cfg(kani)]

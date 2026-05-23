@@ -30,16 +30,6 @@ fn all_parse_ast_errors(source: &[u8]) -> CompileErrors {
     }
 }
 
-fn compile_error(source: &[u8]) -> Result<CompileError, String> {
-    match YamlCompiler::default().compile(source) {
-        Ok(wf) => Err(format!("compile unexpectedly succeeded: {wf:?}")),
-        Err(CompileErrors(errors)) => errors
-            .into_iter()
-            .next()
-            .ok_or_else(|| "compile failed with no errors".to_string()),
-    }
-}
-
 // ---------------------------------------------------------------------------
 // CompileErrors collection and Display format
 // ---------------------------------------------------------------------------
