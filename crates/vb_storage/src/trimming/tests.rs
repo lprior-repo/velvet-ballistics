@@ -116,12 +116,13 @@ fn trim_given_run_with_events_seq_0_to_9_and_snapshot_at_seq_5_trims_0_to_4() {
     assert_eq!(result.cutoff_seq, EventSeq::new(5));
     assert_eq!(result.status, TrimStatus::Trimmed);
 
+    // Snapshot at seq 5 covers events 0..5; replay starts at 6
     let remaining = journal.events_for_run(run).expect("replay should succeed");
-    assert_eq!(remaining.len(), 5, "should preserve events 5-9");
+    assert_eq!(remaining.len(), 4, "should preserve events 6-9");
     for event in &remaining {
         assert!(
-            event.seq().get() >= 5,
-            "event seq {} should be >= 5",
+            event.seq().get() >= 6,
+            "event seq {} should be >= 6 (after snapshot at 5)",
             event.seq().get()
         );
     }
@@ -275,7 +276,8 @@ fn trim_all_eligible_runs_skips_runs_without_snapshots() {
     let remaining_a = journal
         .events_for_run(run_a)
         .expect("replay A should succeed");
-    assert_eq!(remaining_a.len(), 1);
+    // Snapshot at seq 1 covers events 0..1; no events remain for replay
+    assert_eq!(remaining_a.len(), 0);
 
     let remaining_b = journal
         .events_for_run(run_b)
@@ -370,11 +372,12 @@ fn trim_preserves_events_at_or_after_snapshot() {
     assert_eq!(result.deleted_count, 2, "should delete events 0-1");
     assert_eq!(result.status, TrimStatus::Trimmed);
 
+    // Snapshot at seq 2 covers events 0..2; only event 3 remains for replay
     let remaining = journal.events_for_run(run).expect("replay should succeed");
-    assert_eq!(remaining.len(), 2, "should preserve events 2-3");
+    assert_eq!(remaining.len(), 1, "should preserve event 3 only");
     for event in &remaining {
         assert!(
-            event.seq().get() >= 2,
+            event.seq().get() >= 3,
             "event seq {} should be >= 2",
             event.seq().get()
         );
@@ -561,13 +564,14 @@ fn replay_equivalence_after_trim() {
         .expect("trim should succeed");
     assert_eq!(trim_result.deleted_count, 3, "should delete events 0-2");
 
-    // After trim, replay from snapshot yields tail events 3..5
+    // After trim, snapshot at seq 3 covers events 0..3;
+    // replay yields tail events 4..5
     let after_trim = journal
         .events_for_run(run)
         .expect("replay after trim should succeed");
-    assert_eq!(after_trim.len(), 3, "should preserve events 3-5");
+    assert_eq!(after_trim.len(), 2, "should preserve events 4-5");
     for (i, event) in after_trim.iter().enumerate() {
-        let expected_seq = 3 + i as u64;
+        let expected_seq = 4 + i as u64;
         assert_eq!(
             event.seq().get(),
             expected_seq,
@@ -921,11 +925,11 @@ fn diagnostic_does_not_delete_events() {
     let before = journal
         .events_for_run(run)
         .expect("events before diagnostic");
-    // events_for_run skips events before snapshot seq 3, so only seq 3,4 remain
+    // Snapshot at seq 3 covers events 0..3; only seq 4 remains for replay
     assert_eq!(
         before.len(),
-        2,
-        "events after snapshot should be 2 (seq 3,4)"
+        1,
+        "events after snapshot should be 1 (seq 4)"
     );
 
     let _diag = journal

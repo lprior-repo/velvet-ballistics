@@ -73,7 +73,8 @@ fn smoke_happy_path_trim() {
 
     let remaining = journal.events_for_run(run).unwrap();
     println!("Remaining events after trim: {}", remaining.len());
-    assert_eq!(remaining.len(), 3);
+    // Snapshot at seq 3 covers events 0..3; events 4,5 remain for replay
+    assert_eq!(remaining.len(), 2);
 }
 
 #[test]

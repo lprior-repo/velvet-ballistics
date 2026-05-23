@@ -1640,7 +1640,7 @@ mod tests {
         let run = RunId::new(70);
         let event = JournalEvent::RunAccepted {
             run,
-            seq: EventSeq::new(0),
+            seq: EventSeq::new(1),
             workflow: WorkflowDigest::from_bytes([7; 32]),
         };
         let blob_bytes = vec![1, 2, 3];
@@ -1663,6 +1663,7 @@ mod tests {
             .expect("journal.put_blob must succeed");
         write_snapshot(&journal, &snapshot).expect("write_snapshot must succeed");
 
+        // Snapshot at seq 0 covers events 0..0; event at seq 1 is after snapshot
         let events = read_run_events(&journal, run);
         let events = events.expect("read_run_events should succeed");
         assert_eq!(events, vec![event.clone()]);

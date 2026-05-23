@@ -1682,8 +1682,10 @@ mod tests {
     clippy::unwrap_used
 )]
 mod hydrate_run_frame_tests {
+    use crate::recovery::hydrate_support::apply_tail_events;
     use crate::recovery::{
-        hydrate_run_frame, hydrate_run_frame_from_events, RecoveryError, RunSnapshot,
+        hydrate_run_frame, hydrate_run_frame_from_events, ActionReplayTracker, RecoveryError,
+        RunSnapshot,
     };
     use crate::{EventSeq, JournalEvent};
     use vb_core::value::{SlotValue, Taint};
@@ -2071,6 +2073,32 @@ mod hydrate_run_frame_tests {
         assert!(result.is_ok(), "expected Ok, got {:?}", result);
         let frame = result.unwrap();
         assert_eq!(frame.read_taint(SlotIdx::new(0)).unwrap(), Taint::Secret);
+    }
+
+    #[test]
+    fn apply_tail_events_fails_closed_when_taint_read_fails() {
+        let run = RunId::new(1);
+        let mut frame = vb_core::RunFrame::new(run, StepIdx::ZERO, 1, 0).unwrap();
+        let tail = vec![JournalEvent::SlotWrittenEvent {
+            run,
+            seq: EventSeq::new(1),
+            slot: SlotIdx::new(0),
+            value: Some(postcard::to_allocvec(&SlotValue::I64(7)).unwrap()),
+            extra: None,
+            attempt: 1,
+        }];
+        let mut tracker = ActionReplayTracker::new();
+
+        let result = apply_tail_events(&mut frame, &tail, &mut tracker);
+
+        assert!(
+            matches!(
+                result,
+                Err(RecoveryError::SlotTaintReadFailed { slot }) if slot == SlotIdx::new(0)
+            ),
+            "taint read failure must not downgrade to Clean: {:?}",
+            result
+        );
     }
 
     // --- State: Executed counter ---

@@ -2001,7 +2001,7 @@ fn batch_with_snapshot_and_event_for_same_run() {
         slots: vec![1, 2, 3],
         taint: vec![],
     };
-    let event = make_event(run, 0);
+    let event = make_event(run, 1);
 
     let mut batch = journal.batch();
     batch.put_snapshot(&snapshot).expect("batch snapshot");
@@ -2013,6 +2013,7 @@ fn batch_with_snapshot_and_event_for_same_run() {
         .expect("get snapshot")
         .expect("present");
     assert_eq!(loaded_snap.slots, vec![1, 2, 3]);
+    // Snapshot at seq 0 covers events 0..0; event at seq 1 is after snapshot
     let replayed = journal.events_for_run(run).expect("replay");
     assert_eq!(replayed.len(), 1);
 }
