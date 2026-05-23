@@ -19,7 +19,7 @@ pub(crate) enum RunStatus {
 }
 
 pub(crate) fn handle(run_id: &str, db: &std::path::Path, output: OutputFormat) -> ExitCode {
-    let rid = match parse_run_id(run_id) {
+    let rid = match parse_run_id(run_id, output) {
         Ok(id) => id,
         Err(code) => return code,
     };
@@ -68,17 +68,41 @@ pub(crate) fn handle(run_id: &str, db: &std::path::Path, output: OutputFormat) -
     });
     let envelope =
         cli_envelope::serialize_with_version(&payload, cli_envelope::Kind::AiContextPacket);
-    json_out(&envelope, output);
-    ExitCode::SUCCESS
+    match crate::json_out(&envelope, output) {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(error) => {
+            write_stderr_line(format_args!("output failed: {error}"));
+            CliExitCode::StorageError.into()
+        }
+    }
 }
 
-fn parse_run_id(raw: &str) -> Result<vb_core::RunId, ExitCode> {
+fn parse_run_id(raw: &str, output: OutputFormat) -> Result<vb_core::RunId, ExitCode> {
     match raw.parse::<u64>() {
-        Ok(id) => Ok(vb_core::RunId::new(id)),
-        Err(e) => {
-            write_stderr_line(format_args!("invalid run_id '{raw}': {e}"));
+        Ok(0) => {
+            write_run_id_error(raw, "run_id must be non-zero", output);
             Err(CliExitCode::ValidationFailed.into())
         }
+        Ok(id) => Ok(vb_core::RunId::new(id)),
+        Err(e) => {
+            write_run_id_error(raw, &e.to_string(), output);
+            Err(CliExitCode::ValidationFailed.into())
+        }
+    }
+}
+
+fn write_run_id_error(raw: &str, reason: &str, output: OutputFormat) {
+    let message = format!("invalid run_id '{raw}': {reason}");
+    if output == OutputFormat::Text {
+        write_stderr_line(format_args!("{message}"));
+    } else {
+        json_error(
+            &serde_json::json!({
+                "success": false,
+                "error": message,
+            }),
+            output,
+        );
     }
 }
 
@@ -597,13 +621,6 @@ fn event_to_json(event: &vb_storage::JournalEvent) -> Value {
     }
 }
 
-fn write_stdout_line(args: std::fmt::Arguments<'_>) -> io::Result<()> {
-    let stdout = io::stdout();
-    let mut handle = stdout.lock();
-    handle.write_fmt(args)?;
-    handle.write_all(b"\n")
-}
-
 fn write_stderr_line(args: std::fmt::Arguments<'_>) {
     let stderr = io::stderr();
     let mut handle = stderr.lock();
@@ -612,25 +629,6 @@ fn write_stderr_line(args: std::fmt::Arguments<'_>) {
         .and_then(|()| handle.write_all(b"\n"))
     {
         write_stderr_best_effort(format_args!("stderr write failed: {error}"));
-    }
-}
-
-fn json_out(value: &Value, format: OutputFormat) {
-    match format {
-        OutputFormat::Json | OutputFormat::Jsonl | OutputFormat::Yaml | OutputFormat::Postcard => {
-            if let Ok(text) = serde_json::to_string(value)
-                && let Err(error) = write_stdout_line(format_args!("{text}"))
-            {
-                write_stderr_line(format_args!("stdout write failed: {error}"));
-            }
-        }
-        OutputFormat::Text => {
-            if let Ok(text) = serde_json::to_string_pretty(value)
-                && let Err(error) = write_stdout_line(format_args!("{text}"))
-            {
-                write_stderr_line(format_args!("stdout write failed: {error}"));
-            }
-        }
     }
 }
 
@@ -646,8 +644,8 @@ fn write_stderr_best_effort(args: std::fmt::Arguments<'_>) {
 fn json_error(value: &Value, format: OutputFormat) {
     match format {
         OutputFormat::Json | OutputFormat::Jsonl | OutputFormat::Yaml | OutputFormat::Postcard => {
-            if let Ok(text) = serde_json::to_string(value) {
-                write_stderr_line(format_args!("{text}"));
+            if let Err(error) = crate::app_impl::write_structured_stderr(value, format) {
+                write_stderr_best_effort(format_args!("stderr write failed: {error}"));
             }
         }
         OutputFormat::Text => write_stderr_line(format_args!("{value}")),

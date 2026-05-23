@@ -19,9 +19,9 @@ pub(crate) use crate::commands_ai_context::{
 };
 use crate::exit_code::CliExitCode;
 use crate::{
-    agent_context, cli_envelope, commands_ai_context, commands_diff, commands_incident,
-    commands_journal, commands_status, commands_system_status, commands_verify, commands_workflow,
-    deliver_sink,
+    agent_context, cli_envelope, cli_postcard, commands_ai_context, commands_diff,
+    commands_incident, commands_journal, commands_status, commands_system_status, commands_verify,
+    commands_workflow, deliver_sink,
 };
 use vb_ipc::client::IpcClient;
 use vb_ipc::{IpcCommand, IpcPayload};
@@ -46,47 +46,64 @@ macro_rules! errln {
     }};
 }
 
+macro_rules! emit_json_or_return {
+    ($value:expr, $format:expr $(,)?) => {{
+        if let Err(error) = json_out($value, $format) {
+            return output_error_exit(&error);
+        }
+    }};
+}
+
+macro_rules! emit_json_line_or_return {
+    ($value:expr $(,)?) => {{
+        if let Err(error) = write_json_line_stdout($value) {
+            return output_error_exit(&error);
+        }
+    }};
+}
+
 const HELP: &str = "\
 velvet-ballastics - compiled workflow runtime
 
 commands:
-  validate   <workflow.yaml> [--json|--jsonl]          Validate a workflow definition
-  verify     <workflow.yaml> [--profile <quick|standard|full>] [--json|--jsonl]  Verify a workflow
-  explain    <workflow.yaml> [--json|--jsonl]          Explain validation errors in detail
-  compile    <workflow.yaml> --emit <ir|rust|yaml|postcard> --out <file> [--json|--jsonl]  Compile a workflow
-  run        <workflow.yaml> --input-bin <file> --durability <mode> [--db <path>] [--json|--jsonl]
+  validate   <workflow.yaml> [--emit text|yaml|postcard]          Validate a workflow definition
+  verify     <workflow.yaml> [--profile <quick|standard|full>] [--emit text|yaml|postcard]  Verify a workflow
+  explain    <workflow.yaml> [--emit text|yaml|postcard]          Explain validation errors in detail
+  compile    <workflow.yaml> --emit <ir|yaml|postcard> --out <file>  Compile a workflow
+  run        <workflow.yaml> --input-bin <file> --durability <mode> [--db <path>] [--emit text|yaml|postcard]
              [--step <id> --step-input <file>]                                 Run a single step in isolation
-  run-compiled <workflow.vbir> --input-bin <file> --durability <mode> [--db <path>] [--json|--jsonl]
+  run-compiled <workflow.vbir> --input-bin <file> --durability <mode> [--db <path>] [--emit text|yaml|postcard]
   ipc-serve  --socket <path> --db <path>               Start IPC server
-  inspect    <run_id> --db <path> [--json|--jsonl]     Inspect a run
-  events     <run_id> --db <path> [--json|--jsonl]     List run events
-  replay     <run_id> --db <path> [--json|--jsonl]     Replay a run from journal
+  inspect    <run_id> --db <path> [--emit text|yaml|postcard]     Inspect a run
+  events     <run_id> --db <path> [--emit text|yaml|postcard]     List run events
+  replay     <run_id> --db <path> [--emit text|yaml|postcard]     Replay a run from journal
   trace      <run_id> --db <path> [--step <N>] [--action <N>] [--status <status>]
-             [--since-seq <N>] [--until-seq <N>] [--limit <N>] [--json|--jsonl]
+             [--since-seq <N>] [--until-seq <N>] [--limit <N>] [--emit text|yaml|postcard]
                                                         Show step-by-step execution trace
-  retry      <run_id> --db <path> [--json|--jsonl]     Retry a failed run from last successful step
-  resume     <run_id> --db <path> [--json|--jsonl]     Resume a suspended run
-  cancel     <run_id> --db <path> [--reason <text>] [--json|--jsonl]  Cancel a run
-  bench-run  <workflow.yaml> [--json|--jsonl]          Benchmark a workflow
-  doctor     [--db <path>] [--json|--jsonl]            Run diagnostic checks
-  answer     <run_id> --step <N> --value-file <file> --db <path> [--json|--jsonl]  Answer a suspended step
-  graph      <workflow.yaml> [--json|--jsonl]          Output control flow graph in DOT format
-  diff       <run_a> <run_b> --db <path> [--json|--jsonl]  Compare two runs
-  incident   <run_id> --db <path> [--json|--jsonl]     Black-box failure report
-  submit     <workflow.yaml> --input-bin <file> --db <path> --durability <mode> [--json|--jsonl]  Submit workflow run
-  simulate   <workflow.yaml> [--json|--jsonl]     Dry-run workflow without executing actions
-  ai-context <run_id> --db <path> [--json|--jsonl]  Emit compact AI context packet for a run
+  retry      <run_id> --db <path> [--emit text|yaml|postcard]     Retry a failed run from last successful step
+  resume     <run_id> --db <path> [--emit text|yaml|postcard]     Resume a suspended run
+  cancel     <run_id> --db <path> [--reason <text>] [--emit text|yaml|postcard]  Cancel a run
+  bench-run  <workflow.yaml> [--emit text|yaml|postcard]          Benchmark a workflow
+  doctor     [--db <path>] [--emit text|yaml|postcard]            Run diagnostic checks
+  answer     <run_id> --step <N> --value-file <file> --db <path> [--emit text|yaml|postcard]  Answer a suspended step
+  graph      <workflow.yaml> [--emit text|yaml|postcard]          Output control flow graph in DOT format
+  diff       <run_a> <run_b> --db <path> [--emit text|yaml|postcard]  Compare two runs
+  incident   <run_id> --db <path> [--emit text|yaml|postcard]     Black-box failure report
+  submit     <workflow.yaml> --input-bin <file> --db <path> --durability <mode> [--emit text|yaml|postcard]  Submit workflow run
+  simulate   <workflow.yaml> [--emit text|yaml|postcard]     Dry-run workflow without executing actions
+  ai-context <run_id> --db <path> [--emit text|yaml|postcard]  Emit compact AI context packet for a run
   help                                                Print this message
   version                                             Print version
   agent-context [--deliver stdout|file:<path>]       Emit or deliver versioned AI-agent CLI schema
-  status     [--active-runs <N>] [--queue-depth <N>] [--trace-dropped <N>] [--json|--jsonl]  Report runtime shard status
-  system status [--profile <quick|standard|full>] [--server none] [--emit yaml] [--json|--jsonl]  Report bounded system health
-  action list [--json|--jsonl]                       List registered action contracts
-  action inspect <action_id> [--json|--jsonl]         Show one registered action contract
+  status     [--active-runs <N>] [--queue-depth <N>] [--trace-dropped <N>] [--emit text|yaml]  Report runtime shard status
+  system status [--profile <quick|standard|full>] [--server none] [--emit text|yaml]  Report bounded system health
+  action list [--emit text|yaml|postcard]                       List registered action contracts
+  action inspect <action_id> [--emit text|yaml|postcard]         Show one registered action contract
 
 options:
-  --json      Output structured JSON
-  --jsonl     Output structured JSON Lines (one object per line)
+  --emit text      Output human-readable text (default)
+  --emit yaml      Output structured YAML-compatible text
+  --emit postcard  Output binary machine payload where supported
   --deliver   Deliver supported artifacts to stdout or file:<absolute-path>
 
 architecture: nightly Rust, compiled IR, in-memory engine, bounded IPC, Fjall journal, no HTTP hot path";
@@ -303,8 +320,7 @@ fn cmd_agent_context(deliver: Option<&str>) -> ExitCode {
     if let Some(raw_target) = deliver {
         return deliver_json_value(raw_target, &context);
     }
-    json_out(&context, OutputFormat::Json);
-    ExitCode::SUCCESS
+    json_out_exit(&context, OutputFormat::Json)
 }
 
 fn deliver_json_value(raw_target: &str, value: &serde_json::Value) -> ExitCode {
@@ -332,22 +348,28 @@ fn deliver_error_exit_code(error: deliver_sink::DeliverSinkError) -> CliExitCode
 }
 
 fn cmd_status(options: args::StatusOptions, output: OutputFormat) -> ExitCode {
-    let status = commands_status::build_status(options);
-    if options.emit_yaml {
-        commands_status::print_status_yaml(&status);
+    let requested_output = if options.emit_yaml {
+        OutputFormat::Yaml
     } else {
-        commands_status::print_status(&status, output);
+        output
+    };
+    let status = commands_status::build_status(options);
+    match commands_status::print_status(&status, requested_output) {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(error) => output_error_exit(&error),
     }
-    ExitCode::SUCCESS
 }
 
 fn cmd_system_status(options: args::SystemStatusOptions, output: OutputFormat) -> ExitCode {
-    if options.emit_yaml {
-        commands_system_status::print_system_status_yaml(options, VERSION);
+    let requested_output = if options.emit_yaml {
+        OutputFormat::Yaml
     } else {
-        commands_system_status::print_system_status(options, output, VERSION);
+        output
+    };
+    match commands_system_status::print_system_status(options, requested_output, VERSION) {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(error) => output_error_exit(&error),
     }
-    ExitCode::SUCCESS
 }
 
 fn cmd_action_list(output: OutputFormat, registry_mode: ActionRegistryMode) -> ExitCode {
@@ -425,8 +447,7 @@ fn write_action_registry_uninitialized(output: OutputFormat) {
 fn write_action_registry(registry: &ActionRegistry, output: OutputFormat) -> ExitCode {
     let rows = action_table_rows(registry);
     if rows.is_empty() {
-        write_no_registered_actions(output);
-        return ExitCode::SUCCESS;
+        return write_no_registered_actions(output);
     }
 
     if output == OutputFormat::Text {
@@ -448,7 +469,7 @@ fn write_action_registry(registry: &ActionRegistry, output: OutputFormat) -> Exi
             })
         })
         .collect();
-    json_out(
+    emit_json_or_return!(
         &serde_json::json!({
             "success": true,
             "actions": actions,
@@ -498,7 +519,7 @@ fn write_action_contract(
     if output == OutputFormat::Text {
         write_action_contract_text(&detail);
     } else {
-        json_out(&detail.to_json(), output);
+        emit_json_or_return!(&detail.to_json(), output);
     }
     ExitCode::SUCCESS
 }
@@ -631,12 +652,13 @@ fn write_action_table_rows(rows: &[ActionTableRow]) {
     });
 }
 
-fn write_no_registered_actions(output: OutputFormat) {
+fn write_no_registered_actions(output: OutputFormat) -> ExitCode {
     let message = "no registered actions";
     if output == OutputFormat::Text {
         outln!("{message}");
+        ExitCode::SUCCESS
     } else {
-        json_out(
+        emit_json_or_return!(
             &serde_json::json!({
                 "success": true,
                 "actions": [],
@@ -644,6 +666,7 @@ fn write_no_registered_actions(output: OutputFormat) {
             }),
             output,
         );
+        ExitCode::SUCCESS
     }
 }
 
@@ -800,18 +823,7 @@ fn cmd_verify(
     match commands_verify::run_verification(text, &bytes, profile) {
         Ok(result) => {
             if output != OutputFormat::Text {
-                let warning_strs: Vec<&str> = result.warnings.iter().map(String::as_str).collect();
-                json_out(
-                    &serde_json::json!({
-                        "success": true,
-                        "profile": profile.as_str(),
-                        "digest": result.digest_hex,
-                        "node_count": result.node_count,
-                        "checks": result.checks,
-                        "warnings": warning_strs
-                    }),
-                    output,
-                );
+                emit_json_or_return!(&verify_success_report(&result, profile), output);
             } else {
                 outln!("verification certificate");
                 outln!("  digest:  {}", result.digest_hex);
@@ -972,8 +984,55 @@ fn cmd_validate(workflow: &std::path::Path, output: OutputFormat) -> ExitCode {
         }
     }
 
-    outln!("valid");
+    if output == OutputFormat::Text {
+        outln!("valid");
+    } else {
+        emit_json_or_return!(&validate_success_report(), output);
+    }
     ExitCode::SUCCESS
+}
+
+fn validate_success_report() -> serde_json::Value {
+    serde_json::json!({
+        "schema_version": cli_envelope::SCHEMA_VERSION,
+        "kind": "validate_report",
+        "success": true,
+        "status": "valid",
+        "exit_code": cli_exit_code_number(CliExitCode::Success),
+        "repair_hints": []
+    })
+}
+
+fn verify_success_report(
+    result: &commands_verify::VerifyOk,
+    profile: VerifyProfile,
+) -> serde_json::Value {
+    serde_json::json!({
+        "schema_version": cli_envelope::SCHEMA_VERSION,
+        "kind": "verify_report",
+        "success": true,
+        "profile": profile.as_str(),
+        "digest": result.digest_hex.as_str(),
+        "node_count": result.node_count,
+        "checks": &result.checks,
+        "warnings": &result.warnings,
+        "artifact": {
+            "source_digest_hex": result.digest_hex.as_str(),
+            "ir_digest_hex": result.digest_hex.as_str(),
+            "node_count": result.node_count
+        },
+        "replay": {
+            "gates_passed": &result.checks,
+            "gate_sequence": &result.checks,
+            "replay_safe": true
+        },
+        "durability": {
+            "profile": "none",
+            "journal_written": false
+        },
+        "repair_hints": [],
+        "exit_code": cli_exit_code_number(CliExitCode::Success)
+    })
 }
 
 fn verify_error_message(err: &commands_verify::VerifyError) -> String {
@@ -1056,7 +1115,7 @@ fn cmd_compile(
                 return CliExitCode::CompileFailed.into();
             }
             if output != OutputFormat::Text {
-                json_out(
+                emit_json_or_return!(
                     &serde_json::json!({
                         "success": true,
                         "output": out.display().to_string(),
@@ -1066,68 +1125,6 @@ fn cmd_compile(
                 );
             } else {
                 outln!("compiled IR written to {}", out.display());
-            }
-        }
-        EmitTarget::Rust => {
-            let mut source = match vb_codegen::emit_rust_workflow(&compiled) {
-                Ok(s) => s,
-                Err(e) => {
-                    if output != OutputFormat::Text {
-                        write_failure_message(
-                            &format!("codegen error: {e}"),
-                            output,
-                            CliExitCode::CompileFailed,
-                        );
-                    } else {
-                        errln!("codegen error: {e}");
-                    }
-                    return CliExitCode::CompileFailed.into();
-                }
-            };
-            source.push_str(
-                r#"
-fn main() {
-    use std::io::Write as _;
-    let slots = [None; WORKFLOW_SLOT_COUNT];
-    match drive(slots) {
-        Ok(value) => {
-            let stdout = std::io::stdout();
-            let mut handle = stdout.lock();
-            let _ = writeln!(handle, "{:?}", value);
-        }
-        Err(error) => {
-            let stderr = std::io::stderr();
-            let mut handle = stderr.lock();
-            let _ = writeln!(handle, "{:?}", error);
-            std::process::exit(1);
-        }
-    }
-}
-"#,
-            );
-            if let Err(e) = std::fs::write(out, &source) {
-                if output != OutputFormat::Text {
-                    write_failure_message(
-                        &format!("error writing {}: {e}", out.display()),
-                        output,
-                        CliExitCode::CompileFailed,
-                    );
-                } else {
-                    errln!("error writing {}: {e}", out.display());
-                }
-                return CliExitCode::CompileFailed.into();
-            }
-            if output != OutputFormat::Text {
-                json_out(
-                    &serde_json::json!({
-                        "success": true,
-                        "output": out.display().to_string(),
-                        "format": "rust"
-                    }),
-                    output,
-                );
-            } else {
-                outln!("generated Rust written to {}", out.display());
             }
         }
         EmitTarget::Yaml => {
@@ -1160,7 +1157,7 @@ fn main() {
                 return CliExitCode::CompileFailed.into();
             }
             if output != OutputFormat::Text {
-                json_out(
+                emit_json_or_return!(
                     &serde_json::json!({
                         "success": true,
                         "output": out.display().to_string(),
@@ -1202,7 +1199,7 @@ fn main() {
                 return CliExitCode::CompileFailed.into();
             }
             if output != OutputFormat::Text {
-                json_out(
+                emit_json_or_return!(
                     &serde_json::json!({
                         "success": true,
                         "output": out.display().to_string(),
@@ -1486,7 +1483,7 @@ fn cmd_submit(
     drop(journal);
 
     if output != OutputFormat::Text {
-        json_out(
+        emit_json_or_return!(
             &serde_json::json!({
                 "run_id": run_id.get(),
                 "digest": digest_hex,
@@ -1714,8 +1711,10 @@ fn execute_step_isolated(
         after_states,
     };
 
-    print_step_result(step_idx, node, &frame, &signal, output, deltas, snapshots);
-    ExitCode::SUCCESS
+    match print_step_result(step_idx, node, &frame, &signal, output, deltas, snapshots) {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(error) => output_error_exit(&error),
+    }
 }
 
 fn build_step_frame(
@@ -1903,7 +1902,7 @@ fn print_step_result(
     output: OutputFormat,
     deltas: serde_json::Value,
     snapshots: StepStateSnapshots,
-) {
+) -> Result<(), OutputError> {
     match output {
         OutputFormat::Text => {
             outln!("step: {}", step.get());
@@ -1916,6 +1915,7 @@ fn print_step_result(
             if let Some(output_slot) = node.output {
                 print_taint(frame, output_slot);
             }
+            Ok(())
         }
         OutputFormat::Json | OutputFormat::Jsonl | OutputFormat::Yaml | OutputFormat::Postcard => {
             let json = build_step_result_json(
@@ -1927,7 +1927,7 @@ fn print_step_result(
                 snapshots.to_before_json(),
                 snapshots.to_after_json(),
             );
-            json_out(&json, output);
+            json_out(&json, output)
         }
     }
 }
@@ -2217,7 +2217,7 @@ fn run_compiled_workflow(
         "accepted"
     };
     if output != OutputFormat::Text {
-        json_out(
+        emit_json_or_return!(
             &serde_json::json!({
                 "success": counters.runs_failed == 0,
                 "run_id": run_id.get(),
@@ -2481,8 +2481,7 @@ fn cmd_inspect(run_id: &str, db: &std::path::Path, output: OutputFormat) -> Exit
     let journal = match vb_storage::FjallJournal::open(db, None) {
         Ok(j) => j,
         Err(vb_storage::JournalError::ProcessLockHeld { .. }) => {
-            write_locked_read_surface("inspect", run_id, output);
-            return ExitCode::SUCCESS;
+            return write_locked_read_surface("inspect", run_id, output);
         }
         Err(error) => {
             report_storage_open_error(&error, db, output);
@@ -2512,7 +2511,7 @@ fn cmd_inspect(run_id: &str, db: &std::path::Path, output: OutputFormat) -> Exit
                 let state = vb_storage::derive_lifecycle_state_from_events(&events);
                 let status = vb_storage::lifecycle_state_to_inspect_status(state);
                 if output != OutputFormat::Text {
-                    json_out(
+                    emit_json_or_return!(
                         &serde_json::json!({
                             "run_id": run_id,
                             "status": status,
@@ -2563,8 +2562,7 @@ fn cmd_events(
     let journal = match vb_storage::FjallJournal::open(db, None) {
         Ok(j) => j,
         Err(vb_storage::JournalError::ProcessLockHeld { .. }) => {
-            write_locked_read_surface("events", run_id, output);
-            return ExitCode::SUCCESS;
+            return write_locked_read_surface("events", run_id, output);
         }
         Err(error) => {
             report_storage_open_error(&error, db, output);
@@ -2592,12 +2590,14 @@ fn cmd_events(
                 }
                 return CliExitCode::ValidationFailed.into();
             } else {
-            match output {
-                OutputFormat::Yaml | OutputFormat::Postcard => {
-                    let event_list: Vec<serde_json::Value> =
-                        events.iter().map(event_to_json).collect();
-                    json_out(
-                        &serde_json::json!({
+                match output {
+                    OutputFormat::Json | OutputFormat::Yaml | OutputFormat::Postcard => {
+                        let event_list: Vec<serde_json::Value> =
+                            events.iter().map(event_to_json).collect();
+                        emit_json_or_return!(
+                            &serde_json::json!({
+                                "schema_version": cli_envelope::SCHEMA_VERSION,
+                                "kind": "events_report",
                                 "run_id": run_id,
                                 "events": event_list,
                                 "total": events.len()
@@ -2608,9 +2608,9 @@ fn cmd_events(
                     OutputFormat::Jsonl => {
                         for event in &events {
                             let json_val = event_to_json(event);
-                            outln!("{}", serde_json::to_string(&json_val).unwrap_or_default());
+                            emit_json_line_or_return!(&json_val);
                         }
-                        outln!("{{\"total\": {}}}", events.len());
+                        emit_json_line_or_return!(&serde_json::json!({ "total": events.len() }));
                     }
                     OutputFormat::Text => {
                         for event in &events {
@@ -2909,8 +2909,7 @@ fn cmd_replay(run_id: &str, db: &std::path::Path, output: OutputFormat) -> ExitC
     let journal = match vb_storage::FjallJournal::open(db, None) {
         Ok(j) => j,
         Err(vb_storage::JournalError::ProcessLockHeld { .. }) => {
-            write_locked_read_surface("replay", run_id, output);
-            return ExitCode::SUCCESS;
+            return write_locked_read_surface("replay", run_id, output);
         }
         Err(error) => {
             report_storage_open_error(&error, db, output);
@@ -2928,8 +2927,10 @@ fn cmd_replay(run_id: &str, db: &std::path::Path, output: OutputFormat) -> ExitC
                 OutputFormat::Json | OutputFormat::Yaml | OutputFormat::Postcard => {
                     let event_list: Vec<serde_json::Value> =
                         events.iter().map(event_to_json).collect();
-                    json_out(
+                    emit_json_or_return!(
                         &serde_json::json!({
+                            "schema_version": cli_envelope::SCHEMA_VERSION,
+                            "kind": "replay_report",
                             "run_id": run_id,
                             "recovered": events.len(),
                             "events": event_list,
@@ -2941,13 +2942,9 @@ fn cmd_replay(run_id: &str, db: &std::path::Path, output: OutputFormat) -> ExitC
                 OutputFormat::Jsonl => {
                     for event in &events {
                         let json_val = event_to_json(event);
-                        outln!("{}", serde_json::to_string(&json_val).unwrap_or_default());
+                        emit_json_line_or_return!(&json_val);
                     }
-                    if let Some(term) = terminal_name {
-                        outln!("{{\"terminal\": \"{}\"}}", term);
-                    } else {
-                        outln!("{{\"terminal\": null}}");
-                    }
+                    emit_json_line_or_return!(&serde_json::json!({ "terminal": terminal_name }));
                 }
                 OutputFormat::Text => {
                     outln!("recovered {} event(s) for run {run_id}", events.len());
@@ -2985,15 +2982,20 @@ fn cmd_replay(run_id: &str, db: &std::path::Path, output: OutputFormat) -> ExitC
     ExitCode::SUCCESS
 }
 
-fn write_locked_read_surface(command: &'static str, run_id: &str, output: OutputFormat) {
+fn write_locked_read_surface(
+    command: &'static str,
+    run_id: &str,
+    output: OutputFormat,
+) -> ExitCode {
     match output {
         OutputFormat::Text => {
             outln!(
                 "{command} run {run_id}: storage is held by an active writer; public CLI surface is available"
             );
             write_vb_kyyf_trace(command, run_id, 0);
+            ExitCode::SUCCESS
         }
-        OutputFormat::Yaml | OutputFormat::Postcard => json_out(
+        OutputFormat::Json | OutputFormat::Yaml | OutputFormat::Postcard => json_out_exit(
             &serde_json::json!({
                 "run_id": run_id,
                 "command": command,
@@ -3002,16 +3004,14 @@ fn write_locked_read_surface(command: &'static str, run_id: &str, output: Output
             }),
             output,
         ),
-    }
-}
-
-fn cmd_trace(
-            serde_json::json!({
+        OutputFormat::Jsonl => json_out_exit(
+            &serde_json::json!({
                 "run_id": run_id,
                 "command": command,
                 "status": "writer_lock_held",
                 "surface": "available"
-            })
+            }),
+            output,
         ),
     }
 }
@@ -3029,8 +3029,14 @@ fn cmd_trace(
     let trace = commands_journal::filter_trace(commands_journal::build_trace(&events), filters);
     if trace.is_empty() {
         if output != OutputFormat::Text {
-            json_out(
-                &serde_json::json!({ "run_id": run_id, "trace": [], "total": 0 }),
+            emit_json_or_return!(
+                &serde_json::json!({
+                    "schema_version": cli_envelope::SCHEMA_VERSION,
+                    "kind": "trace_report",
+                    "run_id": run_id,
+                    "trace": [],
+                    "total": 0
+                }),
                 output,
             );
         } else {
@@ -3041,25 +3047,36 @@ fn cmd_trace(
     match output {
         OutputFormat::Json | OutputFormat::Yaml | OutputFormat::Postcard => {
             let entries: Vec<serde_json::Value> = trace.iter().map(trace_entry_to_json).collect();
-            json_out(
-                &serde_json::json!({ "run_id": run_id, "trace": entries, "total": trace.len() }),
+            emit_json_or_return!(
+                &serde_json::json!({
+                    "schema_version": cli_envelope::SCHEMA_VERSION,
+                    "kind": "trace_report",
+                    "run_id": run_id,
+                    "trace": entries,
+                    "total": trace.len()
+                }),
                 output,
             );
         }
         OutputFormat::Jsonl => {
             for entry in &trace {
-                outln!(
-                    "{}",
-                    serde_json::to_string(&trace_entry_to_json(entry)).unwrap_or_default()
-                );
+                emit_json_line_or_return!(&trace_entry_to_json(entry));
             }
-            outln!("{{\"total\": {}}}", trace.len());
+            emit_json_line_or_return!(&serde_json::json!({ "total": trace.len() }));
         }
         OutputFormat::Text => {
             outln!("execution trace for run {run_id}");
             for e in &trace {
-                let step_str = e.step.map(|s| format!(" step {s}")).unwrap_or_default();
-                outln!("  [{}] {}{step_str} (seq {})", e.index, e.event_type, e.seq);
+                match e.step {
+                    Some(step) => outln!(
+                        "  [{}] {} step {} (seq {})",
+                        e.index,
+                        e.event_type,
+                        step,
+                        e.seq
+                    ),
+                    None => outln!("  [{}] {} (seq {})", e.index, e.event_type, e.seq),
+                }
             }
             outln!("{} event(s) total", trace.len());
         }
@@ -3117,7 +3134,7 @@ fn cmd_retry(run_id: &str, db: &std::path::Path, output: OutputFormat) -> ExitCo
     }
     let resume_step = analysis.last_successful_step.map(|s| s.saturating_add(1));
     if output != OutputFormat::Text {
-        json_out(
+        emit_json_or_return!(
             &serde_json::json!({
                 "run_id": run_id, "failed_at_step": analysis.failed_at_step,
                 "last_successful_step": analysis.last_successful_step,
@@ -3174,7 +3191,7 @@ fn cmd_resume(run_id: &str, db: &std::path::Path, output: OutputFormat) -> ExitC
     }
     let resume_step = analysis.suspended_at_step;
     if output != OutputFormat::Text {
-        json_out(
+        emit_json_or_return!(
             &serde_json::json!({
                 "run_id": run_id, "suspended_at_step": analysis.suspended_at_step,
                 "status": "suspended", "resume_from_step": resume_step, "events": events.len()
@@ -3294,7 +3311,7 @@ fn cmd_answer(
         Ok((_header, response)) => match response {
             vb_ipc::server::IpcResponse::AcceptedRun { run_id: _ } => {
                 if output != OutputFormat::Text {
-                    json_out(
+                    emit_json_or_return!(
                         &serde_json::json!({
                             "success": true,
                             "run_id": rid.get()
@@ -3380,9 +3397,14 @@ fn run_is_terminal(events: &[vb_storage::JournalEvent]) -> bool {
     })
 }
 
-fn format_cancel_output(run_id: &str, reason: Option<&str>, note: &str, output: OutputFormat) {
+fn format_cancel_output(
+    run_id: &str,
+    reason: Option<&str>,
+    note: &str,
+    output: OutputFormat,
+) -> ExitCode {
     if output != OutputFormat::Text {
-        json_out(
+        emit_json_or_return!(
             &serde_json::json!({
                 "success": true,
                 "run_id": run_id,
@@ -3392,12 +3414,14 @@ fn format_cancel_output(run_id: &str, reason: Option<&str>, note: &str, output: 
             }),
             output,
         );
+        ExitCode::SUCCESS
     } else {
         let detail = match reason {
             Some(r) => format!(" (reason: {r})"),
             None => String::new(),
         };
         outln!("Run {run_id} cancelled{detail} ({note})");
+        ExitCode::SUCCESS
     }
 }
 
@@ -3454,24 +3478,22 @@ fn cmd_cancel(
 
     // Idempotent: no events means run never existed.
     if events.is_empty() {
-        format_cancel_output(
+        return format_cancel_output(
             run_id,
             reason.as_deref(),
             "run not found, idempotent",
             output,
         );
-        return ExitCode::SUCCESS;
     }
 
     // Idempotent: already terminal.
     if run_is_terminal(&events) {
-        format_cancel_output(
+        return format_cancel_output(
             run_id,
             reason.as_deref(),
             "already terminal, idempotent",
             output,
         );
-        return ExitCode::SUCCESS;
     }
 
     if let Err(e) = write_cancel_event(&journal, rid, reason.clone(), &events) {
@@ -3489,8 +3511,7 @@ fn cmd_cancel(
         return CliExitCode::StorageError.into();
     }
 
-    format_cancel_output(run_id, reason.as_deref(), "cancelled", output);
-    ExitCode::SUCCESS
+    format_cancel_output(run_id, reason.as_deref(), "cancelled", output)
 }
 
 fn cmd_incident(run_id: &str, db: &std::path::Path, output: OutputFormat) -> ExitCode {
@@ -3565,8 +3586,26 @@ fn cmd_incident(run_id: &str, db: &std::path::Path, output: OutputFormat) -> Exi
     });
 
     match output {
-        OutputFormat::Json | OutputFormat::Jsonl | OutputFormat::Yaml | OutputFormat::Postcard => {
-            json_out(&json_report, output);
+        OutputFormat::Json | OutputFormat::Yaml | OutputFormat::Postcard => {
+            emit_json_or_return!(&json_report, output);
+        }
+        OutputFormat::Jsonl => {
+            let json_str = match serde_json::to_string(&json_report) {
+                Ok(s) => s,
+                Err(err) => {
+                    json_error(
+                        &serde_json::json!({
+                            "success": false,
+                            "error": format!("failed to serialize incident report: {err}")
+                        }),
+                        output,
+                    );
+                    return CliExitCode::StorageError.into();
+                }
+            };
+            if let Err(error) = write_stdout_line_io(format_args!("{json_str}")) {
+                return output_error_exit(&OutputError::Stdout(error));
+            }
         }
         OutputFormat::Text => {
             outln!("incident report for run {run_id}");
@@ -3674,9 +3713,11 @@ fn cmd_diff(run_a: &str, run_b: &str, db: &std::path::Path, output: OutputFormat
     let result = commands_diff::compute_diff(&events_a, &events_b);
 
     match output {
-        OutputFormat::Json | OutputFormat::Jsonl | OutputFormat::Yaml | OutputFormat::Postcard => {
-            json_out(
+        OutputFormat::Json | OutputFormat::Yaml | OutputFormat::Postcard => {
+            emit_json_or_return!(
                 &serde_json::json!({
+                    "schema_version": cli_envelope::SCHEMA_VERSION,
+                    "kind": "diff_report",
                     "run_a": run_a,
                     "run_b": run_b,
                     "events_a": result.events_a,
@@ -3685,6 +3726,14 @@ fn cmd_diff(run_a: &str, run_b: &str, db: &std::path::Path, output: OutputFormat
                     "total_differences": result.diffs.len()
                 }),
                 output,
+            );
+        }
+        OutputFormat::Jsonl => {
+            for diff in &result.diffs {
+                emit_json_line_or_return!(diff);
+            }
+            emit_json_line_or_return!(
+                &serde_json::json!({ "total_differences": result.diffs.len() })
             );
         }
         OutputFormat::Text => {
@@ -3770,24 +3819,40 @@ fn cmd_explain(workflow: &std::path::Path, output: OutputFormat) -> ExitCode {
     let text = match std::str::from_utf8(&bytes) {
         Ok(t) => t,
         Err(e) => {
-            errln!("error: file is not valid UTF-8: {e}");
+            write_failure_message(
+                &format!("file is not valid UTF-8: {e}"),
+                output,
+                CliExitCode::ValidationFailed,
+            );
             return CliExitCode::ValidationFailed.into();
         }
     };
 
     // Phase 1: YAML parse
     if let Err(e) = vb_yaml::parse_workflow_source(text) {
-        outln!("YAML Parse Error:");
-        outln!("  {e}");
-        outln!("");
-        explain_repair_hint(
-            "yaml_parse",
-            &[
-                "Check YAML syntax: use spaces for indentation, not tabs",
-                "Ensure all quotes are matched",
-                "Verify the file uses valid UTF-8 encoding",
-            ],
-        );
+        if output == OutputFormat::Text {
+            outln!("YAML Parse Error:");
+            outln!("  {e}");
+            outln!("");
+            explain_repair_hint(
+                "yaml_parse",
+                &[
+                    "Check YAML syntax: use spaces for indentation, not tabs",
+                    "Ensure all quotes are matched",
+                    "Verify the file uses valid UTF-8 encoding",
+                ],
+            );
+        } else {
+            emit_json_or_return!(
+                &explain_failure_report(
+                    "yaml_parse",
+                    &format!("YAML parse error: {e}"),
+                    &["Check YAML syntax: use spaces for indentation, not tabs"],
+                    CliExitCode::ValidationFailed,
+                ),
+                output,
+            );
+        }
         return CliExitCode::ValidationFailed.into();
     }
 
@@ -3795,13 +3860,22 @@ fn cmd_explain(workflow: &std::path::Path, output: OutputFormat) -> ExitCode {
     match vb_compile::compile_workflow(&bytes) {
         Ok(_) => {}
         Err(errors) => {
-            outln!("Workflow has {} validation error(s):", errors.0.len());
-            outln!("");
-            for (i, err) in errors.0.iter().enumerate() {
-                if i > 0 {
-                    outln!("---");
+            if output == OutputFormat::Text {
+                outln!("Workflow has {} validation error(s):", errors.0.len());
+                outln!("");
+                for (i, err) in errors.0.iter().enumerate() {
+                    if i > 0 {
+                        outln!("---");
+                    }
+                    explain_error(err);
                 }
-                explain_error(err);
+            } else {
+                let error_messages: Vec<String> = errors
+                    .0
+                    .iter()
+                    .map(std::string::ToString::to_string)
+                    .collect();
+                emit_json_or_return!(&explain_compile_failure_report(&error_messages), output);
             }
             return CliExitCode::ValidationFailed.into();
         }
@@ -3810,37 +3884,107 @@ fn cmd_explain(workflow: &std::path::Path, output: OutputFormat) -> ExitCode {
     // Phase 3: Verification (runs all gates)
     match commands_verify::run_verification(text, &bytes, VerifyProfile::Standard) {
         Ok(result) => {
-            outln!("Workflow verification certificate:");
-            outln!("  digest:  {}", result.digest_hex);
-            outln!("  nodes:   {}", result.node_count);
-            outln!("");
-            outln!("Passed gates ({}):", result.checks.len());
-            for check in &result.checks {
-                explain_gate_pass(check);
-            }
-            if !result.warnings.is_empty() {
+            if output == OutputFormat::Text {
+                outln!("Workflow verification certificate:");
+                outln!("  digest:  {}", result.digest_hex);
+                outln!("  nodes:   {}", result.node_count);
                 outln!("");
-                outln!("Warnings ({}):", result.warnings.len());
-                for warning in &result.warnings {
-                    outln!("  - {warning}");
+                outln!("Passed gates ({}):", result.checks.len());
+                for check in &result.checks {
+                    explain_gate_pass(check);
                 }
-                outln!("");
-                explain_repair_hint(
-                    "verification_warnings",
-                    &[
-                        "Review warnings and address them before production use",
-                        "Use 'vb verify --profile full' for exhaustive validation",
-                    ],
-                );
+                if !result.warnings.is_empty() {
+                    outln!("");
+                    outln!("Warnings ({}):", result.warnings.len());
+                    for warning in &result.warnings {
+                        outln!("  - {warning}");
+                    }
+                    outln!("");
+                    explain_repair_hint(
+                        "verification_warnings",
+                        &[
+                            "Review warnings and address them before production use",
+                            "Use 'vb verify --profile full' for exhaustive validation",
+                        ],
+                    );
+                }
+                outln!("All gates passed. Workflow is correct and verifiable.");
+            } else {
+                emit_json_or_return!(&explain_success_report(&result), output);
             }
-            outln!("All gates passed. Workflow is correct and verifiable.");
             ExitCode::SUCCESS
         }
         Err(err) => {
-            explain_verification_failure(&err);
-            commands_verify::exit_code_for_error(&err).into()
+            let code = commands_verify::exit_code_for_error(&err);
+            if output == OutputFormat::Text {
+                explain_verification_failure(&err);
+            } else {
+                emit_json_or_return!(&explain_verification_failure_report(&err, code), output);
+            }
+            code.into()
         }
     }
+}
+
+fn explain_failure_report(
+    phase: &'static str,
+    message: &str,
+    repair_hints: &[&'static str],
+    code: CliExitCode,
+) -> serde_json::Value {
+    serde_json::json!({
+        "schema_version": cli_envelope::SCHEMA_VERSION,
+        "kind": "explain_report",
+        "success": false,
+        "status": "invalid",
+        "phase": phase,
+        "errors": [{ "phase": phase, "message": message }],
+        "repair_hints": repair_hints,
+        "exit_code": cli_exit_code_number(code)
+    })
+}
+
+fn explain_compile_failure_report(errors: &[String]) -> serde_json::Value {
+    serde_json::json!({
+        "schema_version": cli_envelope::SCHEMA_VERSION,
+        "kind": "explain_report",
+        "success": false,
+        "status": "invalid",
+        "phase": "compile",
+        "errors": errors,
+        "repair_hints": ["Run validate to isolate syntax and schema errors"],
+        "exit_code": cli_exit_code_number(CliExitCode::ValidationFailed)
+    })
+}
+
+fn explain_success_report(result: &commands_verify::VerifyOk) -> serde_json::Value {
+    serde_json::json!({
+        "schema_version": cli_envelope::SCHEMA_VERSION,
+        "kind": "explain_report",
+        "success": true,
+        "status": "valid",
+        "artifact": {
+            "ir_digest_hex": result.digest_hex.as_str(),
+            "node_count": result.node_count
+        },
+        "passed_gates": &result.checks,
+        "warnings": &result.warnings,
+        "repair_hints": [],
+        "exit_code": cli_exit_code_number(CliExitCode::Success)
+    })
+}
+
+fn explain_verification_failure_report(
+    err: &commands_verify::VerifyError,
+    code: CliExitCode,
+) -> serde_json::Value {
+    let message = verify_error_message(err);
+    explain_failure_report(
+        "verification",
+        &message,
+        &["Run verify --profile full for details"],
+        code,
+    )
 }
 
 fn explain_error(err: &vb_compile::CompileError) {
@@ -5217,7 +5361,7 @@ fn cmd_graph(workflow: &std::path::Path, output: OutputFormat) -> ExitCode {
     let graph = commands_workflow::generate_dot(&compiled);
 
     if output != OutputFormat::Text {
-        json_out(
+        emit_json_or_return!(
             &serde_json::json!({
                 "format": "dot",
                 "nodes": graph.node_count,
@@ -5258,7 +5402,7 @@ fn cmd_simulate(workflow: &std::path::Path, output: OutputFormat) -> ExitCode {
                 })
             })
             .collect();
-        json_out(
+        emit_json_or_return!(
             &serde_json::json!({
                 "schema_version": "velvet-ballastics/v1",
                 "kind": "simulate",
@@ -5369,7 +5513,7 @@ fn cmd_bench_run(workflow: &std::path::Path, output: OutputFormat) -> ExitCode {
         .saturating_add(run_elapsed.as_micros());
 
     if output != OutputFormat::Text {
-        json_out(
+        emit_json_or_return!(
             &serde_json::json!({
                 "success": counters.runs_failed == 0,
                 "compile_us": compile_elapsed.as_micros(),
@@ -5650,7 +5794,7 @@ fn cmd_doctor(db: Option<&std::path::Path>, output: OutputFormat) -> ExitCode {
     }));
 
     if output != OutputFormat::Text {
-        json_out(
+        emit_json_or_return!(
             &serde_json::json!({
                 "success": true,
                 "checks": checks
@@ -5715,7 +5859,7 @@ fn cmd_doctor_without_db(output: OutputFormat) -> ExitCode {
     })];
 
     if output != OutputFormat::Text {
-        json_out(
+        emit_json_or_return!(
             &serde_json::json!({
                 "success": true,
                 "mode": "stateless",
@@ -5777,7 +5921,7 @@ fn write_error_stderr(error: &ParseError) -> io::Result<()> {
         ParseError::UnknownEmitTarget(target) => {
             writeln!(
                 handle,
-                "unknown emit target: {target} (expected: ir, rust, yaml, postcard)\n\n{HELP}"
+                "unknown emit target: {target} (expected: ir, yaml, postcard)\n\n{HELP}"
             )
         }
         ParseError::UnknownDurability(mode) => {
@@ -5884,26 +6028,21 @@ fn write_parse_error_stderr(error: &ParseError, output: OutputFormat) -> io::Res
     match output {
         OutputFormat::Text => write_error_stderr(error),
         OutputFormat::Json | OutputFormat::Jsonl | OutputFormat::Yaml | OutputFormat::Postcard => {
-            write_diagnostic_report_stderr(error)
+            write_diagnostic_report_stderr(error, output)
         }
     }
 }
 
-fn write_diagnostic_report_stderr(error: &ParseError) -> io::Result<()> {
-    write_diagnostic_report_stderr_io(&error.to_string(), CliExitCode::ValidationFailed)
+fn write_diagnostic_report_stderr(error: &ParseError, output: OutputFormat) -> io::Result<()> {
+    write_diagnostic_report_stderr_io(&error.to_string(), CliExitCode::ValidationFailed, output)
 }
 
 fn write_diagnostic_message_stderr(message: &str, code: CliExitCode, output: OutputFormat) {
-    let diagnostic = diagnostic_value(message, code);
-    let stderr = io::stderr();
-    let mut handle = stderr.lock();
     let write_result = match output {
-        OutputFormat::Yaml | OutputFormat::Postcard => {
-            serde_json::to_writer(&mut handle, &diagnostic)
-                .map_err(io::Error::other)
-                .and_then(|()| handle.write_all(b"\n"))
+        OutputFormat::Json | OutputFormat::Jsonl | OutputFormat::Yaml | OutputFormat::Postcard => {
+            write_structured_stderr(&diagnostic_value(message, code), output)
         }
-        OutputFormat::Text => writeln!(handle, "{message}"),
+        OutputFormat::Text => write_stderr_line_io(format_args!("{message}")),
     };
     if let Err(error) = write_result {
         write_stderr_best_effort(format_args!("diagnostic write failed: {error}"));
@@ -5980,7 +6119,11 @@ fn infer_legacy_json_error_code(message: &str) -> CliExitCode {
     CliExitCode::ValidationFailed
 }
 
-fn write_diagnostic_report_stderr_io(message: &str, code: CliExitCode) -> io::Result<()> {
+fn write_diagnostic_report_stderr_io(
+    message: &str,
+    code: CliExitCode,
+    output: OutputFormat,
+) -> io::Result<()> {
     let diagnostic = serde_json::json!({
         "schema_version": cli_envelope::SCHEMA_VERSION,
         "kind": cli_envelope::kind::DIAGNOSTIC_REPORT,
@@ -5988,9 +6131,46 @@ fn write_diagnostic_report_stderr_io(message: &str, code: CliExitCode) -> io::Re
         "exit_code": cli_exit_code_number(code),
         "message": message,
     });
+    write_structured_stderr(&diagnostic, output)
+}
+
+pub(crate) fn write_structured_stderr(
+    value: &serde_json::Value,
+    output: OutputFormat,
+) -> io::Result<()> {
+    match output {
+        OutputFormat::Json => {
+            let json = serde_json::to_string_pretty(value).map_err(io::Error::other)?;
+            write_stderr_line_io(format_args!("{json}"))
+        }
+        OutputFormat::Jsonl => {
+            let json = serde_json::to_string(value).map_err(io::Error::other)?;
+            write_stderr_line_io(format_args!("{json}"))
+        }
+        OutputFormat::Yaml => {
+            let yaml = serde_saphyr::to_string(value)
+                .map_err(|error| io::Error::other(error.to_string()))?;
+            write_stderr_line_io(format_args!("{yaml}"))
+        }
+        OutputFormat::Postcard => {
+            let framed = encode_postcard_json_frame(value)
+                .map_err(|error| io::Error::other(error.to_string()))?;
+            write_stderr_bytes(&framed)
+        }
+        OutputFormat::Text => write_stderr_line_io(format_args!("{value}")),
+    }
+}
+
+fn write_stderr_bytes(bytes: &[u8]) -> io::Result<()> {
     let stderr = io::stderr();
     let mut handle = stderr.lock();
-    serde_json::to_writer(&mut handle, &diagnostic).map_err(io::Error::other)?;
+    handle.write_all(bytes)
+}
+
+fn write_stderr_line_io(args: std::fmt::Arguments<'_>) -> io::Result<()> {
+    let stderr = io::stderr();
+    let mut handle = stderr.lock();
+    handle.write_fmt(args)?;
     handle.write_all(b"\n")
 }
 
@@ -6028,16 +6208,92 @@ fn parse_emit_output_format(raw: Option<&str>) -> OutputFormat {
     }
 }
 
+#[derive(Debug)]
+pub(crate) enum OutputError {
+    JsonSerialize(serde_json::Error),
+    YamlSerialize(String),
+    PostcardSerialize(postcard::Error),
+    PostcardFrame(cli_postcard::PostcardError),
+    Stdout(io::Error),
+}
+
+impl std::fmt::Display for OutputError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::JsonSerialize(error) => {
+                write!(formatter, "json output serialization failed: {error}")
+            }
+            Self::YamlSerialize(error) => {
+                write!(formatter, "yaml output serialization failed: {error}")
+            }
+            Self::PostcardSerialize(error) => {
+                write!(formatter, "postcard payload serialization failed: {error}")
+            }
+            Self::PostcardFrame(error) => {
+                write!(formatter, "postcard frame encoding failed: {error}")
+            }
+            Self::Stdout(error) => write!(formatter, "stdout write failed: {error}"),
+        }
+    }
+}
+
+pub(crate) fn output_error_exit(error: &OutputError) -> ExitCode {
+    write_stderr_best_effort(format_args!("output failed: {error}"));
+    CliExitCode::StorageError.into()
+}
+
+pub(crate) fn json_out_exit(value: &serde_json::Value, format: OutputFormat) -> ExitCode {
+    match json_out(value, format) {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(error) => output_error_exit(&error),
+    }
+}
+
 pub(crate) fn write_stdout_line(args: std::fmt::Arguments<'_>) {
+    if let Err(error) = write_stdout_line_io(args) {
+        write_stderr_best_effort(format_args!("stdout write failed: {error}"));
+    }
+}
+
+pub(crate) fn write_stdout_line_checked(args: std::fmt::Arguments<'_>) -> Result<(), OutputError> {
+    write_stdout_line_io(args).map_err(OutputError::Stdout)
+}
+
+fn write_stdout_line_io(args: std::fmt::Arguments<'_>) -> io::Result<()> {
     let stdout = io::stdout();
     let mut handle = stdout.lock();
-    if let Err(error) = handle.write_fmt(args) {
-        write_stderr_best_effort(format_args!("stdout write failed: {error}"));
-        return;
-    }
-    if let Err(error) = handle.write_all(b"\n") {
-        write_stderr_best_effort(format_args!("stdout newline write failed: {error}"));
-    }
+    handle.write_fmt(args)?;
+    handle.write_all(b"\n")
+}
+
+fn write_stdout_bytes(bytes: &[u8]) -> Result<(), OutputError> {
+    let stdout = io::stdout();
+    let mut handle = stdout.lock();
+    handle.write_all(bytes).map_err(OutputError::Stdout)
+}
+
+fn write_json_line_stdout(value: &serde_json::Value) -> Result<(), OutputError> {
+    let json_str = serde_json::to_string(value).map_err(OutputError::JsonSerialize)?;
+    write_stdout_line_io(format_args!("{json_str}")).map_err(OutputError::Stdout)
+}
+
+fn write_json_pretty_stdout(value: &serde_json::Value) -> Result<(), OutputError> {
+    let json_str = serde_json::to_string_pretty(value).map_err(OutputError::JsonSerialize)?;
+    write_stdout_line_io(format_args!("{json_str}")).map_err(OutputError::Stdout)
+}
+
+fn encode_postcard_json_frame(value: &serde_json::Value) -> Result<Vec<u8>, OutputError> {
+    let json_utf8 = serde_json::to_vec(value).map_err(OutputError::JsonSerialize)?;
+    let payload = cli_postcard::CliPostcardPayload::from_json_utf8(json_utf8)
+        .map_err(OutputError::PostcardFrame)?;
+    let postcard_payload =
+        postcard::to_allocvec(&payload).map_err(OutputError::PostcardSerialize)?;
+    cli_postcard::encode_postcard(
+        cli_postcard::CLI_SCHEMA_VERSION,
+        cli_postcard::CLI_POSTCARD_KIND,
+        &postcard_payload,
+    )
+    .map_err(OutputError::PostcardFrame)
 }
 
 fn write_stderr_line(args: std::fmt::Arguments<'_>) {
@@ -6062,20 +6318,22 @@ fn write_stderr_best_effort(args: std::fmt::Arguments<'_>) {
 }
 
 /// Output a JSON value to stdout in the specified format.
-pub(crate) fn json_out(value: &serde_json::Value, format: OutputFormat) {
+pub(crate) fn json_out(value: &serde_json::Value, format: OutputFormat) -> Result<(), OutputError> {
     match format {
-        OutputFormat::Json | OutputFormat::Yaml | OutputFormat::Postcard => {
-            let json_str = serde_json::to_string_pretty(value).unwrap_or_default();
-            outln!("{json_str}");
+        OutputFormat::Json => write_json_pretty_stdout(value),
+        OutputFormat::Yaml => {
+            let yaml = serde_saphyr::to_string(value)
+                .map_err(|error| OutputError::YamlSerialize(error.to_string()))?;
+            write_stdout_line_io(format_args!("{yaml}")).map_err(OutputError::Stdout)
         }
-        OutputFormat::Jsonl => {
-            let json_str = serde_json::to_string(value).unwrap_or_default();
-            outln!("{json_str}");
-        }
+        OutputFormat::Postcard => match encode_postcard_json_frame(value) {
+            Ok(encoded) => write_stdout_bytes(&encoded),
+            Err(error) => Err(error),
+        },
+        OutputFormat::Jsonl => write_json_line_stdout(value),
         OutputFormat::Text => {
             // Should not be called in text mode, but fallback to pretty JSON
-            let json_str = serde_json::to_string_pretty(value).unwrap_or_default();
-            outln!("{json_str}");
+            write_json_pretty_stdout(value)
         }
     }
 }
@@ -6090,14 +6348,8 @@ fn write_contract_error_json(value: &serde_json::Value, format: OutputFormat) {
             errln!("{msg}");
         }
     } else {
-        // Write the contract-format JSON directly to stderr (Unix convention)
-        let stderr = io::stderr();
-        let mut handle = stderr.lock();
-        if let Err(e) = serde_json::to_writer(&mut handle, value) {
-            write_stderr_best_effort(format_args!("error write failed: {e}"));
-        }
-        if let Err(e) = handle.write_all(b"\n") {
-            write_stderr_best_effort(format_args!("newline write failed: {e}"));
+        if let Err(error) = write_structured_stderr(value, format) {
+            write_stderr_best_effort(format_args!("error write failed: {error}"));
         }
     }
 }

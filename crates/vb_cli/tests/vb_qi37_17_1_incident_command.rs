@@ -220,7 +220,8 @@ fn t_017_text_output_format() {
         "42",
         "--db",
         db_path.to_str().unwrap(),
-        "--text",
+        "--emit",
+        "text",
     ]);
     let output = run_cli(args);
 

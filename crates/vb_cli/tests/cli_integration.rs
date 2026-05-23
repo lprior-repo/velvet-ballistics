@@ -9,6 +9,9 @@ use vb_core::ids::{SlotIdx, StepIdx, WorkflowDigest};
 use vb_core::value::SlotValue;
 use vb_core::workflow::{CompiledNode, CompiledNodeKind, ResourceContract, WorkflowParts};
 
+#[path = "../src/cli_postcard.rs"]
+mod cli_postcard;
+
 const CLI_WORKFLOW: &str = r"version: velvet-ballastics/v1
 name: cli_subprocess
 when:
@@ -2727,6 +2730,45 @@ fn stderr_contains_no_panic_text(stderr: &str) {
     );
 }
 
+fn parse_yaml_stdout(output: &std::process::Output, command: &str) -> serde_json::Value {
+    let stdout = output_stdout(output);
+    match serde_saphyr::from_str(&stdout) {
+        Ok(packet) => packet,
+        Err(error) => {
+            panic!("{command} did not emit parseable YAML: {error}; stdout={stdout}");
+        }
+    }
+}
+
+fn assert_postcard_stdout(
+    output: &std::process::Output,
+    command: &str,
+    expected_payload_kind: Option<&str>,
+    required_fields: &[&str],
+) {
+    assert_cli_success(output, command);
+    assert_eq!(output_stderr(output), "", "{command} must not write stderr");
+    let (header, packet) = cli_postcard::decode_postcard_json(&output.stdout)
+        .unwrap_or_else(|error| panic!("{command} postcard payload must decode: {error}"));
+    assert_eq!(header.magic, cli_postcard::CLI_MAGIC);
+    assert_eq!(header.schema_version, cli_postcard::CLI_SCHEMA_VERSION);
+    assert_eq!(header.kind, cli_postcard::CLI_POSTCARD_KIND);
+    assert_eq!(header.header_len, 52);
+    if let Some(expected_kind) = expected_payload_kind {
+        assert_eq!(
+            packet.get("kind"),
+            Some(&serde_json::json!(expected_kind)),
+            "{command} payload kind mismatch: {packet}"
+        );
+    }
+    for field in required_fields {
+        assert!(
+            packet.get(field).is_some(),
+            "{command} payload missing field {field}: {packet}"
+        );
+    }
+}
+
 #[test]
 fn cli_help_is_bounded_and_non_interactive() {
     let output = match run_cli(&[std::ffi::OsStr::new("--help")]) {
@@ -2744,7 +2786,7 @@ fn cli_help_is_bounded_and_non_interactive() {
     );
     assert!(
         stdout.contains(
-            "system status [--profile <quick|standard|full>] [--server none] [--emit yaml]"
+            "system status [--profile <quick|standard|full>] [--server none] [--emit text|yaml]"
         ),
         "help should list canonical system status command: {stdout}"
     );
@@ -2754,6 +2796,364 @@ fn cli_help_is_bounded_and_non_interactive() {
         stdout.len()
     );
     stdout_contains_no_panic_text(&stdout);
+}
+
+#[test]
+fn cli_validate_help_short_circuits_missing_workflow_io() {
+    let output = run_cli(&[
+        std::ffi::OsStr::new("validate"),
+        std::ffi::OsStr::new("--help"),
+    ])
+    .expect("validate --help command must execute");
+
+    assert_cli_success(&output, "validate --help");
+    assert_eq!(output_stderr(&output), "");
+    assert!(output_stdout(&output).contains("commands:"));
+}
+
+#[test]
+fn cli_validate_unknown_flag_fails_before_workflow_io() {
+    let output = run_cli(&[
+        std::ffi::OsStr::new("validate"),
+        std::ffi::OsStr::new("missing.yaml"),
+        std::ffi::OsStr::new("--bogus"),
+    ])
+    .expect("validate unknown flag command must execute");
+
+    assert_eq!(output.status.code(), Some(2));
+    assert_eq!(output_stdout(&output), "");
+    assert!(
+        output_stderr(&output).starts_with("unknown flag for validate: --bogus"),
+        "stderr was {}",
+        output_stderr(&output)
+    );
+}
+
+#[test]
+fn cli_events_unknown_flag_fails_without_creating_storage_path() {
+    let temp = cli_tempdir().expect("temporary directory must be available");
+    let db = temp.path().join("missing-db");
+    let output = run_cli(&[
+        std::ffi::OsStr::new("events"),
+        std::ffi::OsStr::new("7"),
+        std::ffi::OsStr::new("--db"),
+        db.as_os_str(),
+        std::ffi::OsStr::new("--garbage"),
+    ])
+    .expect("events unknown flag command must execute");
+
+    assert_eq!(output.status.code(), Some(2));
+    assert_eq!(output_stdout(&output), "");
+    assert!(
+        output_stderr(&output).starts_with("unknown flag for events: --garbage"),
+        "stderr was {}",
+        output_stderr(&output)
+    );
+    assert!(!db.exists(), "parse failure must not create storage path");
+}
+
+#[test]
+fn cli_canonical_emit_yaml_covers_required_output_contract_commands() {
+    let dir = cli_tempdir().expect("tempdir for yaml output contract");
+    let workflow_path = dir.path().join("emit-contract.yaml");
+    let input_path = dir.path().join("emit-input.bin");
+    let db_path = dir.path().join("emit-db");
+    assert!(write_test_file(&workflow_path, CLI_WORKFLOW.as_bytes()));
+    assert!(write_test_file(&input_path, &[]));
+
+    let validate_output = run_cli(&[
+        std::ffi::OsStr::new("validate"),
+        workflow_path.as_os_str(),
+        std::ffi::OsStr::new("--emit"),
+        std::ffi::OsStr::new("yaml"),
+    ])
+    .expect("validate --emit yaml must run");
+    assert_cli_success(&validate_output, "validate --emit yaml");
+    assert_eq!(output_stderr(&validate_output), "");
+    let validate = parse_yaml_stdout(&validate_output, "validate --emit yaml");
+    assert_eq!(
+        validate.get("kind"),
+        Some(&serde_json::json!("validate_report"))
+    );
+    assert_eq!(validate.get("status"), Some(&serde_json::json!("valid")));
+
+    let verify_output = run_cli(&[
+        std::ffi::OsStr::new("verify"),
+        std::ffi::OsStr::new("--profile"),
+        std::ffi::OsStr::new("standard"),
+        workflow_path.as_os_str(),
+        std::ffi::OsStr::new("--emit"),
+        std::ffi::OsStr::new("yaml"),
+    ])
+    .expect("verify --emit yaml must run");
+    assert_cli_success(&verify_output, "verify --emit yaml");
+    assert_eq!(output_stderr(&verify_output), "");
+    let verify = parse_yaml_stdout(&verify_output, "verify --emit yaml");
+    assert_eq!(
+        verify.get("kind"),
+        Some(&serde_json::json!("verify_report"))
+    );
+    assert!(
+        verify.get("artifact").is_some(),
+        "verify artifact missing: {verify}"
+    );
+    assert!(
+        verify.get("replay").is_some(),
+        "verify replay missing: {verify}"
+    );
+
+    let explain_output = run_cli(&[
+        std::ffi::OsStr::new("explain"),
+        workflow_path.as_os_str(),
+        std::ffi::OsStr::new("--emit"),
+        std::ffi::OsStr::new("yaml"),
+    ])
+    .expect("explain --emit yaml must run");
+    assert_cli_success(&explain_output, "explain --emit yaml");
+    assert_eq!(output_stderr(&explain_output), "");
+    let explain = parse_yaml_stdout(&explain_output, "explain --emit yaml");
+    assert_eq!(
+        explain.get("kind"),
+        Some(&serde_json::json!("explain_report"))
+    );
+    assert_eq!(explain.get("status"), Some(&serde_json::json!("valid")));
+
+    let run_output = run_cli(&[
+        std::ffi::OsStr::new("run"),
+        workflow_path.as_os_str(),
+        std::ffi::OsStr::new("--input-bin"),
+        input_path.as_os_str(),
+        std::ffi::OsStr::new("--durability"),
+        std::ffi::OsStr::new("strict"),
+        std::ffi::OsStr::new("--db"),
+        db_path.as_os_str(),
+    ])
+    .expect("run setup for emit yaml must run");
+    assert_cli_success(&run_output, "run setup for emit yaml");
+
+    let events_output = run_cli(&[
+        std::ffi::OsStr::new("events"),
+        std::ffi::OsStr::new("1"),
+        std::ffi::OsStr::new("--db"),
+        db_path.as_os_str(),
+        std::ffi::OsStr::new("--emit"),
+        std::ffi::OsStr::new("yaml"),
+    ])
+    .expect("events --emit yaml must run");
+    assert_cli_success(&events_output, "events --emit yaml");
+    assert_eq!(output_stderr(&events_output), "");
+    let events = parse_yaml_stdout(&events_output, "events --emit yaml");
+    assert_eq!(
+        events.get("kind"),
+        Some(&serde_json::json!("events_report"))
+    );
+    assert!(
+        events.get("events").is_some(),
+        "events list missing: {events}"
+    );
+    assert!(
+        events.get("total").is_some(),
+        "events total missing: {events}"
+    );
+
+    let trace_output = run_cli(&[
+        std::ffi::OsStr::new("trace"),
+        std::ffi::OsStr::new("1"),
+        std::ffi::OsStr::new("--db"),
+        db_path.as_os_str(),
+        std::ffi::OsStr::new("--emit"),
+        std::ffi::OsStr::new("yaml"),
+    ])
+    .expect("trace --emit yaml must run");
+    assert_cli_success(&trace_output, "trace --emit yaml");
+    assert_eq!(output_stderr(&trace_output), "");
+    let trace = parse_yaml_stdout(&trace_output, "trace --emit yaml");
+    assert_eq!(trace.get("kind"), Some(&serde_json::json!("trace_report")));
+    assert!(trace.get("trace").is_some(), "trace list missing: {trace}");
+
+    let replay_output = run_cli(&[
+        std::ffi::OsStr::new("replay"),
+        std::ffi::OsStr::new("1"),
+        std::ffi::OsStr::new("--db"),
+        db_path.as_os_str(),
+        std::ffi::OsStr::new("--emit"),
+        std::ffi::OsStr::new("yaml"),
+    ])
+    .expect("replay --emit yaml must run");
+    assert_cli_success(&replay_output, "replay --emit yaml");
+    assert_eq!(output_stderr(&replay_output), "");
+    let replay = parse_yaml_stdout(&replay_output, "replay --emit yaml");
+    assert_eq!(
+        replay.get("kind"),
+        Some(&serde_json::json!("replay_report"))
+    );
+    assert!(
+        replay.get("recovered").is_some(),
+        "replay recovered missing: {replay}"
+    );
+
+    let diff_output = run_cli(&[
+        std::ffi::OsStr::new("diff"),
+        std::ffi::OsStr::new("1"),
+        std::ffi::OsStr::new("1"),
+        std::ffi::OsStr::new("--db"),
+        db_path.as_os_str(),
+        std::ffi::OsStr::new("--emit"),
+        std::ffi::OsStr::new("yaml"),
+    ])
+    .expect("diff --emit yaml must run");
+    assert_cli_success(&diff_output, "diff --emit yaml");
+    assert_eq!(output_stderr(&diff_output), "");
+    let diff = parse_yaml_stdout(&diff_output, "diff --emit yaml");
+    assert_eq!(diff.get("kind"), Some(&serde_json::json!("diff_report")));
+    assert!(
+        diff.get("total_differences").is_some(),
+        "diff total missing: {diff}"
+    );
+}
+
+#[test]
+fn cli_canonical_emit_postcard_frames_required_output_contract_commands() {
+    let dir = cli_tempdir().expect("tempdir for postcard output contract");
+    let workflow_path = dir.path().join("emit-postcard.yaml");
+    let input_path = dir.path().join("emit-postcard-input.bin");
+    let db_path = dir.path().join("emit-postcard-db");
+    assert!(write_test_file(&workflow_path, CLI_WORKFLOW.as_bytes()));
+    assert!(write_test_file(&input_path, &[]));
+
+    let validate_output = run_cli(&[
+        std::ffi::OsStr::new("validate"),
+        workflow_path.as_os_str(),
+        std::ffi::OsStr::new("--emit"),
+        std::ffi::OsStr::new("postcard"),
+    ])
+    .expect("validate --emit postcard must run");
+    assert_postcard_stdout(
+        &validate_output,
+        "validate --emit postcard",
+        Some("validate_report"),
+        &["schema_version", "success", "status", "exit_code"],
+    );
+
+    let verify_output = run_cli(&[
+        std::ffi::OsStr::new("verify"),
+        std::ffi::OsStr::new("--profile"),
+        std::ffi::OsStr::new("standard"),
+        workflow_path.as_os_str(),
+        std::ffi::OsStr::new("--emit"),
+        std::ffi::OsStr::new("postcard"),
+    ])
+    .expect("verify --emit postcard must run");
+    assert_postcard_stdout(
+        &verify_output,
+        "verify --emit postcard",
+        Some("verify_report"),
+        &["schema_version", "success", "artifact", "replay"],
+    );
+
+    let explain_output = run_cli(&[
+        std::ffi::OsStr::new("explain"),
+        workflow_path.as_os_str(),
+        std::ffi::OsStr::new("--emit"),
+        std::ffi::OsStr::new("postcard"),
+    ])
+    .expect("explain --emit postcard must run");
+    assert_postcard_stdout(
+        &explain_output,
+        "explain --emit postcard",
+        Some("explain_report"),
+        &["schema_version", "success", "status", "artifact"],
+    );
+
+    let run_output = run_cli(&[
+        std::ffi::OsStr::new("run"),
+        workflow_path.as_os_str(),
+        std::ffi::OsStr::new("--input-bin"),
+        input_path.as_os_str(),
+        std::ffi::OsStr::new("--durability"),
+        std::ffi::OsStr::new("strict"),
+        std::ffi::OsStr::new("--db"),
+        db_path.as_os_str(),
+    ])
+    .expect("run setup for emit postcard must run");
+    assert_cli_success(&run_output, "run setup for emit postcard");
+
+    let events_output = run_cli(&[
+        std::ffi::OsStr::new("events"),
+        std::ffi::OsStr::new("1"),
+        std::ffi::OsStr::new("--db"),
+        db_path.as_os_str(),
+        std::ffi::OsStr::new("--emit"),
+        std::ffi::OsStr::new("postcard"),
+    ])
+    .expect("events --emit postcard must run");
+    assert_postcard_stdout(
+        &events_output,
+        "events --emit postcard",
+        Some("events_report"),
+        &["schema_version", "run_id", "events", "total"],
+    );
+
+    let trace_output = run_cli(&[
+        std::ffi::OsStr::new("trace"),
+        std::ffi::OsStr::new("1"),
+        std::ffi::OsStr::new("--db"),
+        db_path.as_os_str(),
+        std::ffi::OsStr::new("--emit"),
+        std::ffi::OsStr::new("postcard"),
+    ])
+    .expect("trace --emit postcard must run");
+    assert_postcard_stdout(
+        &trace_output,
+        "trace --emit postcard",
+        Some("trace_report"),
+        &["schema_version", "run_id", "trace", "total"],
+    );
+
+    let replay_output = run_cli(&[
+        std::ffi::OsStr::new("replay"),
+        std::ffi::OsStr::new("1"),
+        std::ffi::OsStr::new("--db"),
+        db_path.as_os_str(),
+        std::ffi::OsStr::new("--emit"),
+        std::ffi::OsStr::new("postcard"),
+    ])
+    .expect("replay --emit postcard must run");
+    assert_postcard_stdout(
+        &replay_output,
+        "replay --emit postcard",
+        Some("replay_report"),
+        &[
+            "schema_version",
+            "run_id",
+            "recovered",
+            "events",
+            "terminal",
+        ],
+    );
+
+    let diff_output = run_cli(&[
+        std::ffi::OsStr::new("diff"),
+        std::ffi::OsStr::new("1"),
+        std::ffi::OsStr::new("1"),
+        std::ffi::OsStr::new("--db"),
+        db_path.as_os_str(),
+        std::ffi::OsStr::new("--emit"),
+        std::ffi::OsStr::new("postcard"),
+    ])
+    .expect("diff --emit postcard must run");
+    assert_postcard_stdout(
+        &diff_output,
+        "diff --emit postcard",
+        Some("diff_report"),
+        &[
+            "schema_version",
+            "run_a",
+            "run_b",
+            "diffs",
+            "total_differences",
+        ],
+    );
 }
 
 #[test]

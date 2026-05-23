@@ -40,7 +40,6 @@ pub(super) fn parse_compile(args: &[OsString]) -> Result<Command, ParseError> {
     let emit_raw = named_flag(args, "--emit").ok_or(ParseError::MissingArgument("--emit"))?;
     let emit = match emit_raw.as_str() {
         "ir" => EmitTarget::Ir,
-        "rust" => EmitTarget::Rust,
         "yaml" => EmitTarget::Yaml,
         "postcard" => EmitTarget::Postcard,
         other => return Err(ParseError::UnknownEmitTarget(other.into())),

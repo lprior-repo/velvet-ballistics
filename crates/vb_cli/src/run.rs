@@ -82,19 +82,9 @@ pub fn cmd_compile(workflow: &Path, emit: crate::args::EmitTarget, out: &Path) -
             }
             outln!("compiled IR written to {}", out.display());
         }
-        crate::args::EmitTarget::Rust => {
-            let source = match vb_codegen::emit_rust_workflow(&compiled) {
-                Ok(s) => s,
-                Err(e) => {
-                    errln!("codegen error: {e}");
-                    return ExitCode::FAILURE;
-                }
-            };
-            if let Err(e) = std::fs::write(out, &source) {
-                errln!("error writing {}: {e}", out.display());
-                return ExitCode::FAILURE;
-            }
-            outln!("generated Rust written to {}", out.display());
+        crate::args::EmitTarget::Yaml | crate::args::EmitTarget::Postcard => {
+            errln!("legacy compile runner supports only --emit ir");
+            return ExitCode::FAILURE;
         }
     }
 

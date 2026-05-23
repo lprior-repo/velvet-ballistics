@@ -6,8 +6,7 @@ use std::process::Output;
 use serde_json::Value;
 
 const EXPECTED_UNKNOWN_COMMAND_MADEUP: &str = "unknown command: madeup (expected one of: help, version, agent-context, ai-context, status, system, action, validate, verify, explain, compile, run, run-compiled, ipc-serve, inspect, events, replay, trace, retry, resume, bench-run, doctor, answer, graph, diff, incident, submit, simulate, cancel)";
-const EXPECTED_UNKNOWN_EMIT_XML: &str =
-    "unknown emit target: xml (expected: ir, rust, yaml, postcard)";
+const EXPECTED_UNKNOWN_EMIT_XML: &str = "unknown emit target: xml (expected: ir, yaml, postcard)";
 const EXPECTED_STATUS_POSTCARD_EMIT: &str =
     "invalid status argument: postcard emit is not supported for status";
 const VALID_WORKFLOW: &str = r"version: velvet-ballastics/v1

@@ -28,7 +28,7 @@ const MEMBERS: [(&str, &str); 19] = [
     ("crates/vb_ui_model", "vb_ui_model"),
     ("crates/vb_ui_snapshot", "vb_ui_snapshot"),
     ("crates/vb_proof_kernels", "vb_proof_kernels"),
-    ("crates/vb_cli", "vb_cli"),
+    ("crates/vb_cli", "velvet-ballastics"),
     (
         "crates/workspace_tests",
         "velvet-ballastics-workspace-tests",
@@ -114,7 +114,7 @@ fn package_name_drift_reports_exact_member_and_expected_name() -> TestResult {
     assert!(!output.status.success());
     assert_eq!(
         stderr(&output),
-        "crates/vb_cli/Cargo.toml: package.name expected \"vb_cli\", got Some(\"velvet-ballistics\")\n"
+        "crates/vb_cli/Cargo.toml: package.name expected \"velvet-ballastics\", got Some(\"velvet-ballistics\")\n"
     );
     Ok(())
 }
@@ -122,7 +122,7 @@ fn package_name_drift_reports_exact_member_and_expected_name() -> TestResult {
 #[test]
 fn binary_alias_reports_exact_allowed_binary_set() -> TestResult {
     let dir = workspace()?;
-    let manifest = "[package]\nname = \"vb_cli\"\nedition = \"2024\"\n\n[dependencies]\n\n[[bin]]\nname = \"vb\"\npath = \"src/main.rs\"\n";
+    let manifest = "[package]\nname = \"velvet-ballastics\"\nedition = \"2024\"\n\n[dependencies]\n\n[[bin]]\nname = \"vb\"\npath = \"src/main.rs\"\n";
     write_file(&dir.path().join("crates/vb_cli/Cargo.toml"), manifest)?;
     let output = run_assertions(dir.path())?;
     assert!(!output.status.success());

@@ -126,7 +126,7 @@ fn bdd_format_parity_exit_code_identical_across_formats() {
         std::ffi::OsStr::new("verify"),
         std::ffi::OsStr::new("--profile"),
         std::ffi::OsStr::new("quick"),
-        std::ffi::OsStr::new("--format"),
+        std::ffi::OsStr::new("--emit"),
         std::ffi::OsStr::new("text"),
         &fixture_os("tests/fixtures/valid/minimal.yaml"),
     ]);
@@ -136,8 +136,7 @@ fn bdd_format_parity_exit_code_identical_across_formats() {
         std::ffi::OsStr::new("verify"),
         std::ffi::OsStr::new("--profile"),
         std::ffi::OsStr::new("quick"),
-        std::ffi::OsStr::new("--format"),
-        std::ffi::OsStr::new("json"),
+        std::ffi::OsStr::new("--json"),
         &fixture_os("tests/fixtures/valid/minimal.yaml"),
     ]);
 
@@ -146,8 +145,7 @@ fn bdd_format_parity_exit_code_identical_across_formats() {
         std::ffi::OsStr::new("verify"),
         std::ffi::OsStr::new("--profile"),
         std::ffi::OsStr::new("quick"),
-        std::ffi::OsStr::new("--format"),
-        std::ffi::OsStr::new("jsonl"),
+        std::ffi::OsStr::new("--jsonl"),
         &fixture_os("tests/fixtures/valid/minimal.yaml"),
     ]);
 
@@ -244,8 +242,7 @@ fn bdd_json_output_contains_all_certificate_fields() {
         std::ffi::OsStr::new("verify"),
         std::ffi::OsStr::new("--profile"),
         std::ffi::OsStr::new("full"),
-        std::ffi::OsStr::new("--format"),
-        std::ffi::OsStr::new("json"),
+        std::ffi::OsStr::new("--json"),
         &fixture_os("tests/fixtures/valid/minimal.yaml"),
     ]);
 
@@ -254,7 +251,7 @@ fn bdd_json_output_contains_all_certificate_fields() {
     let Ok(json) = serde_json::from_str::<serde_json::Value>(&stdout) else {
         assert!(
             !stdout.is_empty(),
-            "verify --format json must emit a structured or diagnostic response"
+            "verify --json must emit a structured or diagnostic response"
         );
         return;
     };
@@ -340,8 +337,7 @@ fn bdd_json_output_is_valid_utf8_and_parseable() {
         std::ffi::OsStr::new("verify"),
         std::ffi::OsStr::new("--profile"),
         std::ffi::OsStr::new("standard"),
-        std::ffi::OsStr::new("--format"),
-        std::ffi::OsStr::new("json"),
+        std::ffi::OsStr::new("--json"),
         &fixture_os("tests/fixtures/valid/minimal.yaml"),
     ]);
 
@@ -356,7 +352,7 @@ fn bdd_json_output_is_valid_utf8_and_parseable() {
     if serde_json::from_str::<serde_json::Value>(&stdout).is_err() {
         assert!(
             !stdout.is_empty(),
-            "verify --format json must emit a structured or diagnostic response"
+            "verify --json must emit a structured or diagnostic response"
         );
     }
 }
@@ -425,7 +421,7 @@ fn bdd_inv001_exit_code_stable_across_formats_on_error() {
         std::ffi::OsStr::new("verify"),
         std::ffi::OsStr::new("--profile"),
         std::ffi::OsStr::new("quick"),
-        std::ffi::OsStr::new("--format"),
+        std::ffi::OsStr::new("--emit"),
         std::ffi::OsStr::new("text"),
         temp_file.as_os_str(),
     ]);
@@ -434,8 +430,7 @@ fn bdd_inv001_exit_code_stable_across_formats_on_error() {
         std::ffi::OsStr::new("verify"),
         std::ffi::OsStr::new("--profile"),
         std::ffi::OsStr::new("quick"),
-        std::ffi::OsStr::new("--format"),
-        std::ffi::OsStr::new("json"),
+        std::ffi::OsStr::new("--json"),
         temp_file.as_os_str(),
     ]);
 
@@ -443,8 +438,7 @@ fn bdd_inv001_exit_code_stable_across_formats_on_error() {
         std::ffi::OsStr::new("verify"),
         std::ffi::OsStr::new("--profile"),
         std::ffi::OsStr::new("quick"),
-        std::ffi::OsStr::new("--format"),
-        std::ffi::OsStr::new("jsonl"),
+        std::ffi::OsStr::new("--jsonl"),
         temp_file.as_os_str(),
     ]);
 
@@ -475,8 +469,7 @@ fn bdd_inv002_gate_parity_between_text_and_json() {
         std::ffi::OsStr::new("verify"),
         std::ffi::OsStr::new("--profile"),
         std::ffi::OsStr::new("quick"),
-        std::ffi::OsStr::new("--format"),
-        std::ffi::OsStr::new("json"),
+        std::ffi::OsStr::new("--json"),
         std::ffi::OsStr::new("tests/fixtures/invalid/invalid_invalid_step_type.yaml"),
     ]);
 
@@ -488,7 +481,7 @@ fn bdd_inv002_gate_parity_between_text_and_json() {
         std::ffi::OsStr::new("verify"),
         std::ffi::OsStr::new("--profile"),
         std::ffi::OsStr::new("quick"),
-        std::ffi::OsStr::new("--format"),
+        std::ffi::OsStr::new("--emit"),
         std::ffi::OsStr::new("text"),
         std::ffi::OsStr::new("tests/fixtures/invalid/invalid_invalid_step_type.yaml"),
     ]);
@@ -541,8 +534,7 @@ fn integration_standard_profile_runs_ir_validation_gate() {
         std::ffi::OsStr::new("verify"),
         std::ffi::OsStr::new("--profile"),
         std::ffi::OsStr::new("standard"),
-        std::ffi::OsStr::new("--format"),
-        std::ffi::OsStr::new("json"),
+        std::ffi::OsStr::new("--json"),
         &fixture_os("tests/fixtures/valid/minimal.yaml"),
     ]);
 
@@ -590,8 +582,7 @@ fn integration_full_profile_runs_budget_gates() {
         std::ffi::OsStr::new("verify"),
         std::ffi::OsStr::new("--profile"),
         std::ffi::OsStr::new("full"),
-        std::ffi::OsStr::new("--format"),
-        std::ffi::OsStr::new("json"),
+        std::ffi::OsStr::new("--json"),
         &fixture_os("tests/fixtures/valid/minimal.yaml"),
     ]);
 
@@ -640,8 +631,7 @@ fn integration_quick_profile_skips_expensive_gates() {
         std::ffi::OsStr::new("verify"),
         std::ffi::OsStr::new("--profile"),
         std::ffi::OsStr::new("quick"),
-        std::ffi::OsStr::new("--format"),
-        std::ffi::OsStr::new("json"),
+        std::ffi::OsStr::new("--json"),
         &fixture_os("tests/fixtures/valid/minimal.yaml"),
     ]);
 

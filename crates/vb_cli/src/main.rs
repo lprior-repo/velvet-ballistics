@@ -21,7 +21,7 @@ mod exit_code;
 #[cfg(test)]
 mod mode_error;
 
-pub(crate) use app_impl::{json_out, write_stdout_line};
+pub(crate) use app_impl::{OutputError, json_out, write_stdout_line, write_stdout_line_checked};
 #[cfg(test)]
 pub(crate) use exit_code::CliExitCode;
 

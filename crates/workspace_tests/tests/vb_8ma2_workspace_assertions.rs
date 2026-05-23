@@ -18,7 +18,7 @@ const EXTRA_MEMBER_MANIFESTS: [(&str, &str); 15] = [
     ("crates/vb_ui_model", "vb_ui_model"),
     ("crates/vb_ui_snapshot", "vb_ui_snapshot"),
     ("crates/vb_proof_kernels", "vb_proof_kernels"),
-    ("crates/vb_cli", "vb_cli"),
+    ("crates/vb_cli", "velvet-ballastics"),
     (
         "crates/workspace_tests",
         "velvet-ballastics-workspace-tests",

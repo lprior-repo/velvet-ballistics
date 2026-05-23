@@ -90,7 +90,7 @@ fn exit_codes() -> Value {
 
 fn enums() -> Value {
     serde_json::json!({
-        "emit": ["ir", "rust", "yaml", "postcard"],
+        "emit": ["ir", "yaml", "postcard"],
         "durability": ["strict", "journaled", "none"],
         "verify_profile": ["quick", "standard", "full"]
     })
@@ -140,7 +140,7 @@ fn commands() -> Value {
                 "summary": "Compile a workflow to an artifact.",
                 "positionals": ["workflow.yaml"],
                 "flags": {
-                    "--emit": {"type": "enum", "values": ["ir", "rust", "yaml", "postcard"], "required": true},
+                    "--emit": {"type": "enum", "values": ["ir", "yaml", "postcard"], "required": true},
                     "--out": {"type": "path", "required": true},
                     "--json": "bool",
                     "--jsonl": "bool"

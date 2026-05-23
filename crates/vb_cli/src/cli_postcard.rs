@@ -10,6 +10,8 @@
 #![forbid(unsafe_code)]
 #![allow(dead_code)]
 
+use serde::{Deserialize, Serialize};
+
 /// Magic bytes for CLI Postcard format: "VCLA" (Velvet CLI Application)
 pub(crate) const CLI_MAGIC: [u8; 4] = [0x56, 0x43, 0x4C, 0x41];
 
@@ -30,6 +32,35 @@ const HEADER_SIZE_U32: u32 = 52;
 const MAX_PAYLOAD_U32: u32 = 64 * 1024;
 pub(crate) const CLI_SCHEMA_VERSION: u16 = 1;
 pub(crate) const CLI_POSTCARD_KIND: u16 = 2;
+
+/// Machine-readable CLI payload content carried inside the postcard frame.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub(crate) enum CliPostcardContentType {
+    JsonUtf8,
+}
+
+/// Versioned CLI payload carried by the outer postcard frame.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub(crate) struct CliPostcardPayload {
+    pub(crate) schema_version: u16,
+    pub(crate) kind: u16,
+    pub(crate) content_type: CliPostcardContentType,
+    pub(crate) json_utf8: Vec<u8>,
+}
+
+impl CliPostcardPayload {
+    pub(crate) fn from_json_utf8(json_utf8: Vec<u8>) -> Result<Self, PostcardError> {
+        if json_utf8.len() > MAX_PAYLOAD {
+            return Err(PostcardError::PayloadTooLarge);
+        }
+        Ok(Self {
+            schema_version: CLI_SCHEMA_VERSION,
+            kind: CLI_POSTCARD_KIND,
+            content_type: CliPostcardContentType::JsonUtf8,
+            json_utf8,
+        })
+    }
+}
 
 /// Postcard header structure for CLI output.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -129,6 +160,10 @@ pub(crate) enum PostcardError {
     DigestMismatch,
     /// CRC check of header failed.
     CrcMismatch,
+    /// The decoded payload metadata does not match the supported CLI contract.
+    PayloadMetadataMismatch,
+    /// The decoded CLI payload body is not valid UTF-8 JSON.
+    JsonPayloadDecodeFailed,
     /// Data too short to contain valid header.
     DecodeFailed,
 }
@@ -144,9 +179,42 @@ impl std::fmt::Display for PostcardError {
             Self::WrongKind => write!(f, "postcard kind is not supported"),
             Self::DigestMismatch => write!(f, "payload digest mismatch"),
             Self::CrcMismatch => write!(f, "header CRC mismatch"),
+            Self::PayloadMetadataMismatch => write!(f, "postcard payload metadata mismatch"),
+            Self::JsonPayloadDecodeFailed => write!(f, "postcard JSON payload decode failed"),
             Self::DecodeFailed => write!(f, "postcard decode failed: data too short"),
         }
     }
+}
+
+impl std::error::Error for PostcardError {}
+
+fn validate_cli_payload(payload: &CliPostcardPayload) -> Result<(), PostcardError> {
+    if payload.schema_version != CLI_SCHEMA_VERSION {
+        return Err(PostcardError::PayloadMetadataMismatch);
+    }
+    if payload.kind != CLI_POSTCARD_KIND {
+        return Err(PostcardError::PayloadMetadataMismatch);
+    }
+    if payload.content_type != CliPostcardContentType::JsonUtf8 {
+        return Err(PostcardError::PayloadMetadataMismatch);
+    }
+    Ok(())
+}
+
+pub(crate) fn decode_cli_payload(payload: &[u8]) -> Result<CliPostcardPayload, PostcardError> {
+    postcard::from_bytes::<CliPostcardPayload>(payload).map_err(|_| PostcardError::DecodeFailed)
+}
+
+pub(crate) fn decode_postcard_json(
+    data: &[u8],
+) -> Result<(PostcardHeader, serde_json::Value), PostcardError> {
+    let (header_bytes, payload_bytes) = decode_postcard(data)?;
+    let header = PostcardHeader::from_bytes(header_bytes)?;
+    let payload = decode_cli_payload(payload_bytes)?;
+    validate_cli_payload(&payload)?;
+    let value = serde_json::from_slice::<serde_json::Value>(&payload.json_utf8)
+        .map_err(|_| PostcardError::JsonPayloadDecodeFailed)?;
+    Ok((header, value))
 }
 
 fn payload_digest(payload: &[u8]) -> [u8; 32] {
@@ -295,7 +363,7 @@ mod tests {
     fn test_postcard_header_from_bytes() {
         let data = encode_test_postcard(CLI_SCHEMA_VERSION, CLI_POSTCARD_KIND, &[0u8; 100]);
 
-        let header = PostcardHeader::from_bytes(&data).unwrap_or_else(|_| fallback_header());
+        let header = PostcardHeader::from_bytes(&data).expect("test header decodes");
         assert_eq!(header.magic, CLI_MAGIC);
         assert_eq!(header.schema_version, CLI_SCHEMA_VERSION);
         assert_eq!(header.kind, CLI_POSTCARD_KIND);
@@ -307,9 +375,7 @@ mod tests {
     fn test_decode_valid_postcard() {
         let data = encode_test_postcard(CLI_SCHEMA_VERSION, CLI_POSTCARD_KIND, &[0u8; 100]);
 
-        let result = decode_postcard(&data);
-        assert!(result.is_ok());
-        let (header, payload) = result.unwrap_or_else(|_| (&[][..], &[][..]));
+        let (header, payload) = decode_postcard(&data).expect("valid postcard decodes");
         assert_eq!(header.len(), HEADER_SIZE);
         assert_eq!(payload.len(), 100);
     }
@@ -371,9 +437,7 @@ mod tests {
         let payload = b"Hello, Postcard!";
         let encoded = encode_test_postcard(CLI_SCHEMA_VERSION, CLI_POSTCARD_KIND, payload);
 
-        let result = decode_postcard(&encoded);
-        assert!(result.is_ok());
-        let (header, extracted_payload) = result.unwrap_or_else(|_| (&[][..], &[][..]));
+        let (header, extracted_payload) = decode_postcard(&encoded).expect("roundtrip decodes");
         assert_eq!(header.len(), HEADER_SIZE);
         assert_eq!(extracted_payload, payload);
     }
@@ -381,7 +445,7 @@ mod tests {
     #[test]
     fn decode_rejects_corrupted_crc_before_exposure() {
         let mut encoded = encode_postcard(CLI_SCHEMA_VERSION, CLI_POSTCARD_KIND, b"payload")
-            .unwrap_or_else(|_| Vec::new());
+            .expect("test postcard encodes");
         assert!(encoded.get(48).is_some());
         if let Some(byte) = encoded.get_mut(48) {
             *byte ^= 0x01;
@@ -412,7 +476,7 @@ mod tests {
             CLI_POSTCARD_KIND,
             b"payload",
         )
-        .unwrap_or_else(|_| Vec::new());
+        .expect("future-version postcard encodes");
         assert_eq!(decode_postcard(&old), Err(PostcardError::VersionTooOld));
         assert_eq!(decode_postcard(&future), Err(PostcardError::VersionTooNew));
     }
@@ -424,7 +488,7 @@ mod tests {
             CLI_POSTCARD_KIND.saturating_add(1),
             b"payload",
         )
-        .unwrap_or_else(|_| Vec::new());
+        .expect("wrong-kind postcard encodes");
         assert_eq!(decode_postcard(&encoded), Err(PostcardError::WrongKind));
     }
 
@@ -454,21 +518,7 @@ mod tests {
     }
 
     fn encode_test_postcard(schema_version: u16, kind: u16, payload: &[u8]) -> Vec<u8> {
-        let encoded = encode_postcard(schema_version, kind, payload);
-        assert!(encoded.is_ok(), "test postcard encodes: {encoded:?}");
-        encoded.unwrap_or_else(|_| Vec::new())
-    }
-
-    fn fallback_header() -> PostcardHeader {
-        PostcardHeader {
-            magic: CLI_MAGIC,
-            schema_version: CLI_SCHEMA_VERSION,
-            kind: CLI_POSTCARD_KIND,
-            header_len: HEADER_SIZE_U32,
-            payload_len: 0,
-            payload_digest: [0; 32],
-            header_crc: 0,
-        }
+        encode_postcard(schema_version, kind, payload).expect("test postcard encodes")
     }
 
     fn write_test_header_prefix(data: &mut [u8], payload_len: u32) {

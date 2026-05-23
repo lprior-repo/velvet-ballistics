@@ -76,43 +76,50 @@ fn policy_name(policy: vb_core::policy::RuntimePolicy) -> &'static str {
     }
 }
 
-pub(crate) fn print_status(status: &CliStatus, output: OutputFormat) {
+pub(crate) fn print_status(
+    status: &CliStatus,
+    output: OutputFormat,
+) -> Result<(), crate::OutputError> {
     match output {
-        OutputFormat::Text => print_text(status),
-        OutputFormat::Json | OutputFormat::Jsonl | OutputFormat::Yaml | OutputFormat::Postcard => {
-            print_json(status, output);
+        OutputFormat::Text => {
+            print_text(status);
+            Ok(())
+        }
+        OutputFormat::Yaml => print_status_yaml(status),
+        OutputFormat::Json | OutputFormat::Jsonl | OutputFormat::Postcard => {
+            print_json(status, output)
         }
     }
 }
 
-pub(crate) fn print_status_yaml(status: &CliStatus) {
-    crate::write_stdout_line(format_args!(
+fn print_status_yaml(status: &CliStatus) -> Result<(), crate::OutputError> {
+    crate::write_stdout_line_checked(format_args!(
         "schema_version: velvet-ballastics/cli-output/v1"
-    ));
-    crate::write_stdout_line(format_args!("kind: status"));
-    crate::write_stdout_line(format_args!("status: {}", status.health));
-    crate::write_stdout_line(format_args!("running: {}", status.running));
-    crate::write_stdout_line(format_args!("shutting_down: {}", status.shutting_down));
-    crate::write_stdout_line(format_args!("command_queue:"));
-    crate::write_stdout_line(format_args!("  depth: {}", status.command_queue_depth));
-    crate::write_stdout_line(format_args!(
+    ))?;
+    crate::write_stdout_line_checked(format_args!("kind: status"))?;
+    crate::write_stdout_line_checked(format_args!("status: {}", status.health))?;
+    crate::write_stdout_line_checked(format_args!("running: {}", status.running))?;
+    crate::write_stdout_line_checked(format_args!("shutting_down: {}", status.shutting_down))?;
+    crate::write_stdout_line_checked(format_args!("command_queue:"))?;
+    crate::write_stdout_line_checked(format_args!("  depth: {}", status.command_queue_depth))?;
+    crate::write_stdout_line_checked(format_args!(
         "  capacity: {}",
         status.command_queue_capacity
-    ));
-    crate::write_stdout_line(format_args!("active_runs:"));
-    crate::write_stdout_line(format_args!("  active: {}", status.active_runs));
-    crate::write_stdout_line(format_args!(
+    ))?;
+    crate::write_stdout_line_checked(format_args!("active_runs:"))?;
+    crate::write_stdout_line_checked(format_args!("  active: {}", status.active_runs))?;
+    crate::write_stdout_line_checked(format_args!(
         "  max_active_runs: {}",
         status.max_active_runs
-    ));
-    crate::write_stdout_line(format_args!("trace_ring:"));
-    crate::write_stdout_line(format_args!("  capacity: {}", status.trace_capacity));
-    crate::write_stdout_line(format_args!("  dropped: {}", status.trace_dropped));
-    crate::write_stdout_line(format_args!(
+    ))?;
+    crate::write_stdout_line_checked(format_args!("trace_ring:"))?;
+    crate::write_stdout_line_checked(format_args!("  capacity: {}", status.trace_capacity))?;
+    crate::write_stdout_line_checked(format_args!("  dropped: {}", status.trace_dropped))?;
+    crate::write_stdout_line_checked(format_args!(
         "step_budget_per_tick: {}",
         status.step_budget_per_tick
-    ));
-    crate::write_stdout_line(format_args!("runtime_policy: {}", status.runtime_policy));
+    ))?;
+    crate::write_stdout_line_checked(format_args!("runtime_policy: {}", status.runtime_policy))
 }
 
 fn print_text(status: &CliStatus) {
@@ -138,7 +145,7 @@ fn print_text(status: &CliStatus) {
     crate::write_stdout_line(format_args!("RuntimePolicy: {}", status.runtime_policy));
 }
 
-fn print_json(status: &CliStatus, output: OutputFormat) {
+fn print_json(status: &CliStatus, output: OutputFormat) -> Result<(), crate::OutputError> {
     let payload = serde_json::json!({
         "status": status.health,
         "running": status.running,
@@ -159,7 +166,7 @@ fn print_json(status: &CliStatus, output: OutputFormat) {
         "runtime_policy": status.runtime_policy
     });
     let envelope = cli_envelope::serialize_with_version(&payload, cli_envelope::Kind::CliStatus);
-    crate::json_out(&envelope, output);
+    crate::json_out(&envelope, output)
 }
 
 #[cfg(test)]

@@ -259,7 +259,6 @@ pub(crate) enum ActionRegistryMode {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum EmitTarget {
     Ir,
-    Rust,
     Yaml,
     Postcard,
 }
@@ -1015,13 +1014,12 @@ fn parse_compile(args: &[OsString]) -> Result<Command, ParseError> {
     let emit_raw = named_flag(args, "--emit").ok_or(ParseError::MissingArgument("--emit"))?;
     let emit = match emit_raw.as_str() {
         "ir" => EmitTarget::Ir,
-        "rust" => EmitTarget::Rust,
         "yaml" => EmitTarget::Yaml,
         "postcard" => EmitTarget::Postcard,
         other => return Err(ParseError::UnknownEmitTarget(other.into())),
     };
     let out = named_flag(args, "--out").ok_or(ParseError::MissingArgument("--out"))?;
-    let output = parse_output_format(args);
+    let output = parse_compile_output_format(args);
     Ok(Command::Compile {
         workflow,
         emit,
@@ -1243,6 +1241,9 @@ fn validate_trace_args(args: &[OsString]) -> Result<(), ParseError> {
                         "--emit" => "--emit",
                         _ => "trace flag value",
                     }));
+                }
+                if raw == "--emit" {
+                    validate_flag_value_domain("trace", "--emit", value)?;
                 }
                 index = index.saturating_add(2);
             }
@@ -1478,8 +1479,11 @@ fn parse_server_mode(raw: &str) -> Result<DurabilityMode, ParseError> {
     }
 }
 
-/// Parse --emit text|yaml|postcard output format flags.
-/// Returns OutputFormat::Text by default.
+/// Parse canonical `--emit text|yaml|postcard` output flags.
+///
+/// Hidden `--json` and `--jsonl` switches remain accepted only as legacy
+/// cold-path compatibility. The banned `--format=json` alias is intentionally
+/// not recognized by [`output_flag_spec`].
 fn parse_output_format(args: &[OsString]) -> OutputFormat {
     if args.iter().any(|arg| arg == "--jsonl") {
         return OutputFormat::Jsonl;
@@ -1492,6 +1496,16 @@ fn parse_output_format(args: &[OsString]) -> OutputFormat {
         Some("postcard") => OutputFormat::Postcard,
         Some("text") | Some(_) | None => OutputFormat::Text,
     }
+}
+
+fn parse_compile_output_format(args: &[OsString]) -> OutputFormat {
+    if args.iter().any(|arg| arg == "--jsonl") {
+        return OutputFormat::Jsonl;
+    }
+    if args.iter().any(|arg| arg == "--json") {
+        return OutputFormat::Json;
+    }
+    OutputFormat::Text
 }
 
 fn positional_str(
@@ -1574,7 +1588,7 @@ fn validate_known_flags(args: &[OsString], command: &'static str) -> Result<(), 
                 command,
                 flag: token.into(),
             })?;
-            index = validate_flag_value(args, index, spec)?;
+            index = validate_flag_value(args, index, command, spec)?;
         } else {
             index = advance_arg_index(index, 1_usize)?;
         }
@@ -1585,6 +1599,7 @@ fn validate_known_flags(args: &[OsString], command: &'static str) -> Result<(), 
 fn validate_flag_value(
     args: &[OsString],
     index: usize,
+    command: &'static str,
     spec: FlagSpec,
 ) -> Result<usize, ParseError> {
     match spec {
@@ -1598,8 +1613,30 @@ fn validate_flag_value(
             if value.starts_with("--") {
                 return Err(ParseError::MissingArgument(name));
             }
+            validate_flag_value_domain(command, name, value)?;
             advance_arg_index(index, 2_usize)
         }
+    }
+}
+
+fn validate_flag_value_domain(
+    command: &'static str,
+    name: &'static str,
+    value: &str,
+) -> Result<(), ParseError> {
+    if name != "--emit" {
+        return Ok(());
+    }
+    if command == "compile" {
+        return Ok(());
+    }
+    let valid = matches!(value, "text" | "yaml" | "postcard");
+    if valid {
+        Ok(())
+    } else {
+        Err(ParseError::InvalidArgument(format!(
+            "unknown emit mode for {command}: {value}"
+        )))
     }
 }
 
@@ -1626,7 +1663,7 @@ fn known_flag_spec(command: &'static str, token: &str) -> Option<FlagSpec> {
             "--out" => Some(FlagSpec::Value("--out")),
             _ => None,
         },
-        "run" => output_flag_spec(token).or_else(|| match token {
+        "run" => output_flag_spec(token).or(match token {
             "--input-bin" => Some(FlagSpec::Value("--input-bin")),
             "--durability" => Some(FlagSpec::Value("--durability")),
             "--db" => Some(FlagSpec::Value("--db")),
@@ -1634,7 +1671,7 @@ fn known_flag_spec(command: &'static str, token: &str) -> Option<FlagSpec> {
             "--step-input" => Some(FlagSpec::Value("--step-input")),
             _ => None,
         }),
-        "run-compiled" => output_flag_spec(token).or_else(|| match token {
+        "run-compiled" => output_flag_spec(token).or(match token {
             "--input-bin" => Some(FlagSpec::Value("--input-bin")),
             "--durability" => Some(FlagSpec::Value("--durability")),
             "--db" => Some(FlagSpec::Value("--db")),
@@ -1645,13 +1682,13 @@ fn known_flag_spec(command: &'static str, token: &str) -> Option<FlagSpec> {
             "--db" => Some(FlagSpec::Value("--db")),
             _ => None,
         },
-        "events" => output_flag_spec(token).or_else(|| match token {
+        "events" => output_flag_spec(token).or(match token {
             "--db" => Some(FlagSpec::Value("--db")),
             "--status" => Some(FlagSpec::Value("--status")),
             "--limit" => Some(FlagSpec::Value("--limit")),
             _ => None,
         }),
-        "trace" => output_flag_spec(token).or_else(|| match token {
+        "trace" => output_flag_spec(token).or(match token {
             "--db" => Some(FlagSpec::Value("--db")),
             "--step" => Some(FlagSpec::Value("--step")),
             "--action" => Some(FlagSpec::Value("--action")),
@@ -1661,20 +1698,20 @@ fn known_flag_spec(command: &'static str, token: &str) -> Option<FlagSpec> {
             "--limit" => Some(FlagSpec::Value("--limit")),
             _ => None,
         }),
-        "cancel" => output_flag_spec(token).or_else(|| match token {
+        "cancel" => output_flag_spec(token).or(match token {
             "--db" => Some(FlagSpec::Value("--db")),
             "--reason" => Some(FlagSpec::Value("--reason")),
             _ => None,
         }),
         "doctor" => output_flag_spec(token).or_else(|| value_flag_spec(token, "--db")),
-        "answer" => output_flag_spec(token).or_else(|| match token {
+        "answer" => output_flag_spec(token).or(match token {
             "--step" => Some(FlagSpec::Value("--step")),
             "--value-file" => Some(FlagSpec::Value("--value-file")),
             "--db" => Some(FlagSpec::Value("--db")),
             _ => None,
         }),
         "diff" => output_flag_spec(token).or_else(|| value_flag_spec(token, "--db")),
-        "submit" => output_flag_spec(token).or_else(|| match token {
+        "submit" => output_flag_spec(token).or(match token {
             "--input-bin" => Some(FlagSpec::Value("--input-bin")),
             "--db" => Some(FlagSpec::Value("--db")),
             "--durability" => Some(FlagSpec::Value("--durability")),
@@ -1707,7 +1744,7 @@ impl std::fmt::Display for ParseError {
             Self::UnknownEmitTarget(target) => {
                 write!(
                     formatter,
-                    "unknown emit target: {target} (expected: ir, rust, yaml, postcard)"
+                    "unknown emit target: {target} (expected: ir, yaml, postcard)"
                 )
             }
             Self::UnknownDurability(mode) => {
@@ -1974,7 +2011,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_compile_includes_output_format() {
+    fn parse_compile_uses_artifact_emit_without_output_format() {
         let parsed = parse_args(&args(&[
             "velvet-ballastics",
             "compile",
@@ -1983,8 +2020,6 @@ mod tests {
             "ir",
             "--out",
             "output.vbir",
-            "--emit",
-            "yaml",
         ]));
         assert!(
             matches!(parsed, Ok(Command::Compile { .. })),
@@ -2000,7 +2035,50 @@ mod tests {
             assert_eq!(workflow, PathBuf::from("workflow.yaml"));
             assert_eq!(emit, EmitTarget::Ir);
             assert_eq!(out, PathBuf::from("output.vbir"));
-            assert_eq!(output, OutputFormat::Yaml);
+            assert_eq!(output, OutputFormat::Text);
+        }
+    }
+
+    #[test]
+    fn parse_compile_artifact_yaml_does_not_select_yaml_output() {
+        let parsed = parse_args(&args(&[
+            "velvet-ballastics",
+            "compile",
+            "workflow.yaml",
+            "--emit",
+            "yaml",
+            "--out",
+            "workflow.out.yaml",
+        ]));
+        assert!(
+            matches!(parsed, Ok(Command::Compile { .. })),
+            "unexpected parse result: {parsed:?}"
+        );
+        if let Ok(Command::Compile { emit, output, .. }) = parsed {
+            assert_eq!(emit, EmitTarget::Yaml);
+            assert_eq!(output, OutputFormat::Text);
+        }
+    }
+
+    #[test]
+    fn parse_compile_legacy_json_flag_selects_json_output() {
+        let parsed = parse_args(&args(&[
+            "velvet-ballastics",
+            "compile",
+            "workflow.yaml",
+            "--emit",
+            "postcard",
+            "--out",
+            "workflow.vbpc",
+            "--json",
+        ]));
+        assert!(
+            matches!(parsed, Ok(Command::Compile { .. })),
+            "unexpected parse result: {parsed:?}"
+        );
+        if let Ok(Command::Compile { emit, output, .. }) = parsed {
+            assert_eq!(emit, EmitTarget::Postcard);
+            assert_eq!(output, OutputFormat::Json);
         }
     }
 
@@ -2047,6 +2125,24 @@ mod tests {
         assert!(
             matches!(parsed, Err(ParseError::UnknownEmitTarget(ref t)) if t == "wasm"),
             "expected UnknownEmitTarget(wasm), got {parsed:?}"
+        );
+    }
+
+    #[test]
+    fn parse_compile_rejects_deferred_rust_emit_target() {
+        let parsed = parse_args(&args(&[
+            "velvet-ballastics",
+            "compile",
+            "workflow.yaml",
+            "--emit",
+            "rust",
+            "--out",
+            "output.rs",
+        ]));
+
+        assert!(
+            matches!(parsed, Err(ParseError::UnknownEmitTarget(ref t)) if t == "rust"),
+            "expected UnknownEmitTarget(rust), got {parsed:?}"
         );
     }
 

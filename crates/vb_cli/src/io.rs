@@ -9,7 +9,7 @@ velvet-ballastics - compiled workflow runtime
 
 commands:
   validate   <workflow.yaml>                          Validate a workflow definition
-  compile    <workflow.yaml> --emit <ir|rust> --out <file>  Compile a workflow to IR or Rust
+  compile    <workflow.yaml> --emit <ir|yaml|postcard> --out <file>  Compile a workflow artifact
   run        <workflow.yaml> --input-bin <file> --durability <mode> [--db <path>]  Execute a workflow
   run-compiled <workflow.vbir> --input-bin <file> --durability <mode> [--db <path>]  Execute compiled IR
   ipc-serve  --socket <path> --db <path>               Start IPC server
@@ -59,7 +59,7 @@ pub fn write_error_stderr(error: &ParseError) -> io::Result<()> {
             writeln!(handle, "missing argument: {name}\n\n{HELP}")
         }
         ParseError::UnknownEmitTarget(target) => {
-            writeln!(handle, "unknown emit target: {target} (expected: ir, rust)\n\n{HELP}")
+            writeln!(handle, "unknown emit target: {target} (expected: ir, yaml, postcard)\n\n{HELP}")
         }
         ParseError::UnknownDurability(mode) => {
             writeln!(handle, "unknown durability mode: {mode} (expected: strict, journaled, none)\n\n{HELP}")

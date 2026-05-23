@@ -960,7 +960,7 @@ fn run_velvet_ballastics_cli(
             "run",
             "--quiet",
             "-p",
-            "vb_cli",
+            "velvet-ballastics",
             "--bin",
             "velvet-ballastics",
             "--",

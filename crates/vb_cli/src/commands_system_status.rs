@@ -10,46 +10,53 @@ pub(crate) fn print_system_status(
     options: SystemStatusOptions,
     output: OutputFormat,
     version: &str,
-) {
+) -> Result<(), crate::OutputError> {
     match output {
-        OutputFormat::Text => print_text(options, version),
-        OutputFormat::Json | OutputFormat::Jsonl | OutputFormat::Yaml | OutputFormat::Postcard => {
-            print_json(options, output, version);
+        OutputFormat::Text => {
+            print_text(options, version);
+            Ok(())
+        }
+        OutputFormat::Yaml => print_system_status_yaml(options, version),
+        OutputFormat::Json | OutputFormat::Jsonl | OutputFormat::Postcard => {
+            print_json(options, output, version)
         }
     }
 }
 
-pub(crate) fn print_system_status_yaml(options: SystemStatusOptions, version: &str) {
+fn print_system_status_yaml(
+    options: SystemStatusOptions,
+    version: &str,
+) -> Result<(), crate::OutputError> {
     let config = vb_runtime::shard::ShardConfig::default();
-    crate::write_stdout_line(format_args!(
+    crate::write_stdout_line_checked(format_args!(
         "schema_version: {}",
         cli_envelope::SCHEMA_VERSION
-    ));
-    crate::write_stdout_line(format_args!("kind: SystemStatus"));
-    crate::write_stdout_line(format_args!("profile: {}", options.profile.as_str()));
-    crate::write_stdout_line(format_args!("server: {}", options.server.as_str()));
-    crate::write_stdout_line(format_args!("connected: false"));
-    crate::write_stdout_line(format_args!("reason: no-backend"));
-    crate::write_stdout_line(format_args!("status:"));
-    crate::write_stdout_line(format_args!("  health: degraded"));
-    crate::write_stdout_line(format_args!("  backend: no-backend"));
-    crate::write_stdout_line(format_args!("  storage_health: Degraded"));
-    crate::write_stdout_line(format_args!("  writer_queue_depth: 0"));
-    crate::write_stdout_line(format_args!("  journal_batch_healthy: false"));
-    crate::write_stdout_line(format_args!("  snapshot_seq: null"));
-    crate::write_stdout_line(format_args!("  blob_store_ok: false"));
-    crate::write_stdout_line(format_args!("  index_healthy: false"));
-    crate::write_stdout_line(format_args!("  uptime_seconds: 0"));
-    crate::write_stdout_line(format_args!("  active_run_count: 0"));
-    crate::write_stdout_line(format_args!("runtime:"));
-    crate::write_stdout_line(format_args!("  shard_state: not_connected"));
-    crate::write_stdout_line(format_args!("  command_queue_depth: 0"));
-    crate::write_stdout_line(format_args!(
+    ))?;
+    crate::write_stdout_line_checked(format_args!("kind: SystemStatus"))?;
+    crate::write_stdout_line_checked(format_args!("profile: {}", options.profile.as_str()))?;
+    crate::write_stdout_line_checked(format_args!("server: {}", options.server.as_str()))?;
+    crate::write_stdout_line_checked(format_args!("connected: false"))?;
+    crate::write_stdout_line_checked(format_args!("reason: no-backend"))?;
+    crate::write_stdout_line_checked(format_args!("status:"))?;
+    crate::write_stdout_line_checked(format_args!("  health: degraded"))?;
+    crate::write_stdout_line_checked(format_args!("  backend: no-backend"))?;
+    crate::write_stdout_line_checked(format_args!("  storage_health: Degraded"))?;
+    crate::write_stdout_line_checked(format_args!("  writer_queue_depth: 0"))?;
+    crate::write_stdout_line_checked(format_args!("  journal_batch_healthy: false"))?;
+    crate::write_stdout_line_checked(format_args!("  snapshot_seq: null"))?;
+    crate::write_stdout_line_checked(format_args!("  blob_store_ok: false"))?;
+    crate::write_stdout_line_checked(format_args!("  index_healthy: false"))?;
+    crate::write_stdout_line_checked(format_args!("  uptime_seconds: 0"))?;
+    crate::write_stdout_line_checked(format_args!("  active_run_count: 0"))?;
+    crate::write_stdout_line_checked(format_args!("runtime:"))?;
+    crate::write_stdout_line_checked(format_args!("  shard_state: not_connected"))?;
+    crate::write_stdout_line_checked(format_args!("  command_queue_depth: 0"))?;
+    crate::write_stdout_line_checked(format_args!(
         "  command_queue_capacity: {}",
         config.command_queue_capacity
-    ));
-    crate::write_stdout_line(format_args!("gate:"));
-    crate::write_stdout_line(format_args!("  cli_version: {version}"));
+    ))?;
+    crate::write_stdout_line_checked(format_args!("gate:"))?;
+    crate::write_stdout_line_checked(format_args!("  cli_version: {version}"))
 }
 
 #[must_use]
@@ -91,10 +98,14 @@ pub(crate) fn system_status_payload(
     })
 }
 
-fn print_json(options: SystemStatusOptions, output: OutputFormat, version: &str) {
+fn print_json(
+    options: SystemStatusOptions,
+    output: OutputFormat,
+    version: &str,
+) -> Result<(), crate::OutputError> {
     let payload = system_status_payload(options, version);
     let envelope = cli_envelope::serialize_with_version(&payload, cli_envelope::Kind::SystemStatus);
-    crate::json_out(&envelope, output);
+    crate::json_out(&envelope, output)
 }
 
 fn print_text(options: SystemStatusOptions, version: &str) {

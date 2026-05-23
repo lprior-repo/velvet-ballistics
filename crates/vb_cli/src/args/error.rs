@@ -29,7 +29,7 @@ impl std::fmt::Display for ParseError {
             Self::UnknownEmitTarget(target) => {
                 write!(
                     formatter,
-                    "unknown emit target: {target} (expected: ir, rust, yaml, postcard)"
+                    "unknown emit target: {target} (expected: ir, yaml, postcard)"
                 )
             }
             Self::UnknownDurability(mode) => {
