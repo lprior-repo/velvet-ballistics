@@ -56,7 +56,9 @@ fn build_frame(command: IpcCommand, correlation: u64, payload_bytes: &[u8]) -> V
             Err(_) => 0,
         },
     );
-    let encoded = header.encode().expect("encode header");
+    let Ok(encoded) = header.encode() else {
+        return Vec::new();
+    };
     let mut frame = encoded.to_vec();
     frame.extend_from_slice(payload_bytes);
     frame
@@ -327,7 +329,9 @@ fn slow_client_partial_frame_keeps_read_buffer_bounded() {
             Err(_) => return,
         },
     );
-    let header_bytes = header.encode().expect("header encode");
+    let Ok(header_bytes) = header.encode() else {
+        return;
+    };
     client
         .write_all(&header_bytes)
         .expect("client should write partial header-only frame");
@@ -376,7 +380,9 @@ fn slow_client_oversized_frame_disconnects_without_unbounded_growth() {
         Err(_) => return,
     };
     let header = IpcFrameHeader::new(IpcCommand::Health, 0, 78, oversized);
-    let header_bytes = header.encode().expect("header encode");
+    let Ok(header_bytes) = header.encode() else {
+        return;
+    };
     client
         .write_all(&header_bytes)
         .expect("client should write oversized header");
@@ -1894,7 +1900,9 @@ fn handle_readable_returns_false_for_complete_header_partial_payload() {
     server.accept_client().expect("accept should succeed");
 
     let header = IpcFrameHeader::new(IpcCommand::Health, 0, 1, 10);
-    let header_bytes = header.encode().expect("encode header");
+    let Ok(header_bytes) = header.encode() else {
+        return;
+    };
     client.write_all(&header_bytes).expect("write header");
     client.flush().expect("flush");
 

@@ -695,8 +695,8 @@ impl DurabilityReport {
 
     /// Returns the number of checks that failed.
     #[must_use]
-    pub fn fail_count(&self) -> bool {
-        !self.all_passed()
+    pub fn fail_count(&self) -> usize {
+        self.checks.iter().filter(|c| !c.passed).count()
     }
 
     /// Returns true if all resource metrics are within bounds.

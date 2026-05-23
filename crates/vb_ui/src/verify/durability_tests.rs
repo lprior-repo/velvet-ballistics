@@ -2673,7 +2673,7 @@ mod tests {
         assert!(test_durability_report_pass_count().is_ok());
     }
 
-    /// Test 71: DurabilityReport::fail_count() (bool) returns correct value.
+    /// Test 71: DurabilityReport::fail_count() returns correct value.
     fn test_durability_report_fail_count() -> Result<(), String> {
         let passing = vec![DurabilityVerifyCheck::new(
             DurabilityLevel::Strict,
@@ -2681,8 +2681,8 @@ mod tests {
             "ok",
         )];
         let report_ok = DurabilityReport::new(DurabilityLevel::Strict, passing, Vec::new(), 0);
-        if report_ok.fail_count() {
-            return Err("fail_count should be false when all pass".into());
+        if report_ok.fail_count() != 0 {
+            return Err("fail_count should be 0 when all pass".into());
         }
 
         let failing = vec![
@@ -2691,8 +2691,8 @@ mod tests {
         ];
         let report_fail =
             DurabilityReport::new(DurabilityLevel::BestEffort, failing, Vec::new(), 0);
-        if !report_fail.fail_count() {
-            return Err("fail_count should be true when some fail".into());
+        if report_fail.fail_count() != 1 {
+            return Err("fail_count should be 1 when one fails".into());
         }
         Ok(())
     }
