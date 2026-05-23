@@ -23,7 +23,7 @@ Strict Cargo probe, where transitive dependencies do not require their own night
 cargo +nightly-2026-04-28 -Zallow-features=try_blocks,portable_simd,allocator_api,generic_const_exprs check --workspace --all-targets --all-features
 ```
 
-Use `moon run :nightly-feature-gate` or `just nightly-feature-gate` for the first-party source gate instead of making every local Cargo command fragile. This gate is the mechanical source-policy check for unstable features; it is not evidence that every governance policy below has been enforced. Use `just nightly-feature-cargo-probe` as a stricter compatibility probe when dependency feature attributes permit it.
+Use `moon run :nightly-feature-gate` for the first-party source gate instead of making every local Cargo command fragile. This gate is the mechanical source-policy check for unstable features; it is not evidence that every governance policy below has been enforced. Use `moon run :nightly-feature-cargo-probe` as a stricter compatibility probe when dependency feature attributes permit it.
 
 `RUSTC_BOOTSTRAP` is prohibited. Adding any other `#![feature(...)]` requires a bead, master contract update, governance update, and a passing feature gate.
 

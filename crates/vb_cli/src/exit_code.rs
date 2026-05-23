@@ -2,7 +2,7 @@
 
 use std::process::ExitCode;
 
-/// Stable exit codes for the velvet-ballistics CLI.
+/// Stable exit codes for the velvet-ballastics CLI.
 ///
 /// Each variant maps to a distinct byte value so that callers and
 /// integration tests can match on the process exit status.

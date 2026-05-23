@@ -1,7 +1,7 @@
 #![forbid(unsafe_code)]
 //! UI Motion / Animation System
 //!
-//! Shader-based animation system for velvet-ballistics Makepad front-end.
+//! Shader-based animation system for velvet-ballastics Makepad front-end.
 //! Provides GPU-friendly animation primitives for packet dots, node glow,
 //! timeline scrubbing, event pulses, failure path focus, taint overlays,
 //! queue pressure shimmer, and certificate check cascades.

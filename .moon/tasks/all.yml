@@ -18,7 +18,6 @@ fileGroups:
     - '.config/**/*'
     - 'deny.toml'
     - 'cargo-vet.toml'
-    - 'justfile'
     - 'scripts/**/*'
   docs:
     - 'README.md'

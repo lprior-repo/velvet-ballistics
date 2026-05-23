@@ -296,7 +296,7 @@ pub fn build_document(parts: &WorkflowParts) -> FlowDocument {
 
     FlowDocument {
         schema: SmolStr::new_static("makepad.flow/v2"),
-        semantic_kind: SmolStr::new_static("velvet-ballistics"),
+        semantic_kind: SmolStr::new_static("velvet-ballastics"),
         graph: FlowGraph {
             nodes,
             edges,

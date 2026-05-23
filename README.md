@@ -14,7 +14,7 @@ Existing workflow engines (Temporal, Restate, Inngest, Prefect, BullMQ) share a 
 - **Secrets leak through control flow** — a secret-tainted value choosing which public branch runs is an information channel
 - **Interpretation overhead compounds** — agent workflows run tight loops with expression evaluation at every step
 
-velvet-ballistics addresses all four dimensions:
+velvet-ballastics addresses all four dimensions:
 
 | | velvet-ballastics | Temporal | Restate | LangGraph |
 |---|---|---|---|---|

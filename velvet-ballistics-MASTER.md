@@ -1618,7 +1618,7 @@ Acceptance rule: no speed claim without benchmark numbers. No optimization PR wi
 
 ## 40. CI Gate
 
-Required justfile targets:
+Required Moon tasks:
 
 ```text
 check
@@ -1632,7 +1632,7 @@ source-length
 fuzz-smoke
 ```
 
-CI must gate on `just check`, `just test`, `just fuzz-smoke`, `just miri`, `just coverage`, `just mutants-smoke`, `just bench-build`, `just source-length`, and `just feature-powerset`. Nightly sanitizer jobs are required for runtime, IPC, storage, and binary decoding crates. The `source-length` target must fail any hot runtime function over 25 logical lines and must be represented by an equivalent Moon task. `just supply-chain` may exist as an advisory report target, but it is non-blocking under the 2026-05-23 owner waiver.
+CI must gate on `moon ci`, whose pipeline must include `check`, `test`, `fuzz-smoke`, `miri`, `coverage`, `mutants-smoke`, `bench-build`, `source-length`, and `feature-powerset`. Nightly sanitizer jobs are required for runtime, IPC, storage, and binary decoding crates. The `source-length` task must fail any hot runtime function over 25 logical lines. Advisory supply-chain reporting may exist as a Moon task, but supply-chain/advisory report warnings are non-blocking under the 2026-05-23 owner waiver unless a future bead explicitly opts in.
 
 Mandatory CI commands:
 
@@ -4663,20 +4663,12 @@ cargo fuzz build
 #### ai-release (run before release)
 
 ```bash
-just check
-just test
-just miri
-just fuzz-smoke
-just coverage
-just mutants-smoke
-just bench-build
-just feature-powerset
-just source-length
+moon ci
 ```
 
-`just supply-chain` is advisory and non-blocking under the 2026-05-23 owner waiver unless a future bead explicitly opts in.
+Supply-chain/advisory reports are non-blocking under the 2026-05-23 owner waiver unless a future bead explicitly opts in.
 
-`just maxperf` is deferred with generated Rust and is not part of current release closure.
+The maxperf lane is deferred with generated Rust and is not part of current release closure.
 
 ### 77.3 Evidence Bundles
 
