@@ -1,137 +1,86 @@
-# QA Evidence Audit — vb-jpq7.3
+# QA Evidence Packaging Audit — vb-jpq7.3
 
 Date: 2026-05-23
 Workspace: `/home/lewis/src/velvet-ballistics`
-Scope: hands-on evidence audit only. No production code edited. No staging, commit, push, or bead close performed.
+Scope: final QA/evidence-packaging audit after black-hat approval. No production code edited. No staging, commit, push, bead close, or retired `contract-verification-reviewer` use performed by QA.
 
 ## Verdict
 
-**BLOCKED FOR FINAL CLOSURE PACKAGING.** Current behavior/Moon/Kani evidence passes in the audited scope, but `.beads/vb-jpq7.3/black-hat-review.md` still contains `Verdict: **REJECT FOR CLOSURE**` and a final `**REJECT FOR CLOSURE.**` decision. Per closure instructions, the stale black-hat reject must be refreshed or explicitly superseded before the bead can be packaged as closed.
+**APPROVED FOR FINAL CLOSURE PACKAGING WITH RECORDED LIMITATIONS.**
 
-## Evidence audited
+The prior QA blocker is superseded: `.beads/vb-jpq7.3/black-hat-review.md` now says `Verdict: **APPROVE FOR CLOSURE GATE**` and no longer contains a live reject-for-closure verdict. Current proof-plan, proof-review, test-review, Red Queen, Moon, Kani, marker-scan, and public-contract evidence are internally consistent for the requested bead scope.
 
-- Latest Moon CI raw log: `/home/lewis/.local/share/opencode/tool-output/tool_e54ad4ea40019LkG7p2r0N30AH`
-  - Marker check passed: `Tasks: 25 completed (5 cached)`.
-  - Marker check passed: `12167 tests run: 12167 passed (5 slow), 0 skipped`.
-  - Marker check passed: `test integrity: PASS base=HEAD`.
-  - Marker check passed: `velvet-ballastics:panic-surface | NoViolationFound`.
-  - Marker check passed: `velvet-ballastics:ignored-fallible-results | NoViolationFound`.
-  - Supply-chain task marker present: `velvet-ballastics:supply-chain`.
-- Scoped Kani raw log: `/home/lewis/.local/share/opencode/tool-output/tool_e543ab843002yJmWdm7rPpi1ed`
-  - Counted `12` occurrences of `VERIFICATION:- SUCCESSFUL`.
-  - Counted `12` occurrences of `Complete - 1 successfully verified harnesses, 0 failures, 1 total.`
-  - Counted `0` occurrences of `VERIFICATION:- FAILED`, `FAILURE`, and `UNSATISFIED`.
-- JSON/JSONL parse audit passed:
-  - `verification-ledger.jsonl`: 32 records.
-  - `traceability-matrix.jsonl`: 9 records.
-  - `proof-obligations.planned.jsonl`: 16 records.
-  - `delivery-scope.jsonl`: 1 record.
-  - `agent-invocation-ledger.jsonl`: 8 records.
-  - `waiver-candidates.jsonl`: 6 records.
-  - `verifier-lane-decisions.jsonl`: 72 records.
-  - `kani-list.json`: valid JSON object.
-- Review status inspected:
-  - `proof-review.md`: `STATUS: APPROVED`, with explicit limitations.
-  - `test-review.md`: `STATUS: APPROVED`, but still mentions older 9-test / older Moon evidence text.
-  - `test-suite-review.md`: `STATUS: APPROVED`, but still mentions older 9-test evidence.
-  - `black-hat-review.md`: **still rejects closure**. This is the closure-packaging blocker.
+Approval is limited exactly as recorded by proof artifacts: Verus is auxiliary/spec-seam evidence only; TLA+ is bounded abstract evidence with `MaxSeq = 3`; Kani proves scoped allocation-free seams only; live Fjall, `RunFrame`, codec, range iteration, replay, and hydration behavior are closed by behavior tests, source scans, and trusted-base declarations. The 3 `kani_admission::*` harnesses are adjacent admission evidence and are not closure evidence for storage replay/recovery.
 
-## Commands run by this audit
+## Evidence Audited
 
-```bash
-python3 - <<'PY'
-# Parsed bead JSON/JSONL files.
-PY
-```
+- Black-hat review: `.beads/vb-jpq7.3/black-hat-review.md` contains `APPROVE FOR CLOSURE GATE`; stale reject scan found no live closure reject.
+- Proof-plan review: `.beads/vb-jpq7.3/proof-plan-review.md` has `review_state: approved`, `verdict: APPROVE`, and `STATUS: APPROVED`.
+- Verifier lane review JSONL: 72 valid `verifier-lane-review/v1` rows; 72/72 have `reviewer_disposition: accepted` and `status: accepted`.
+- Proof review: `.beads/vb-jpq7.3/proof-review.md` has `STATUS: APPROVED` with explicit limitations.
+- Proof-to-implementation bridge: refreshed and free of stale latest-evidence markers.
+- Test review: `.beads/vb-jpq7.3/test-review.md` has `STATUS: APPROVED` and cites the 11-scenario workspace contract plus latest Moon evidence.
+- Red Queen: `.beads/vb-jpq7.3/red-queen-report.md` has `Verdict: **APPROVE — crown defended for requested current evidence/test scope**` and no blockers.
+- Latest Moon raw log: `/home/lewis/.local/share/opencode/tool-output/tool_e54cfc867001em3UkY7dnDZZ7z` contains `Tasks: 25 completed (3 cached)`, `12169 tests run: 12169 passed (5 slow), 0 skipped`, `test integrity: PASS base=HEAD`, two `NoViolationFound` markers, and supply-chain task markers.
+- Scoped Kani raw log: `/home/lewis/.local/share/opencode/tool-output/tool_e543ab843002yJmWdm7rPpi1ed` contains 12 `VERIFICATION:- SUCCESSFUL`, 12 successful harness completion summaries, and 0 `VERIFICATION:- FAILED` / `UNSATISFIED` / `FAILURE` markers.
+- Public contract suite: current source has 11 `#[test]` scenarios and 0 `#[ignore]`; targeted rerun passed 11/11.
+- Marker scans rerun in this audit: `bash scripts/check-ignored-fallible-results.sh` and `bash scripts/check-panic-surface.sh` both passed with `NoViolationFound`.
 
-Observed output:
+## JSONL / Artifact Validity
+
+Active-context parse audit result:
 
 ```text
-PARSE_OK verification-ledger.jsonl records=32
-PARSE_OK traceability-matrix.jsonl records=9
-PARSE_OK proof-obligations.planned.jsonl records=16
 PARSE_OK delivery-scope.jsonl records=1
+PARSE_OK traceability-matrix.jsonl records=9 schemas=['traceability/v1']
+PARSE_OK proof-obligations.planned.jsonl records=16 schemas=['proof-obligation/v1']
+PARSE_OK verifier-lane-decisions.jsonl records=72 schemas=['verifier-lane-decision/v1']
+PARSE_OK verifier-lane-review.jsonl records=72 schemas=['verifier-lane-review/v1']
+PARSE_OK waiver-candidates.jsonl records=6 schemas=['waiver-candidate/v1']
+PARSE_OK verification-ledger.jsonl records=35 schemas=['verification-ledger/v1']
 PARSE_OK agent-invocation-ledger.jsonl records=8
-PARSE_OK waiver-candidates.jsonl records=6
-PARSE_OK verifier-lane-decisions.jsonl records=72
-PARSE_OK kani-list.json type=dict size=6
+PARSE_OK kani-list.json type=dict keys=6
+LANE_REVIEW_ACCEPTED 72/72
 ```
+
+`delivery-scope.jsonl` and `agent-invocation-ledger.jsonl` parse successfully but do not carry `schema_version`; this is an artifact-shape observation, not a closure blocker for the requested audit because all proof/review/ledger/lane JSONL artifacts carry expected schemas.
+
+## Commands Run By QA
 
 ```bash
 python3 - <<'PY'
-# Checked Moon and Kani raw log markers.
+# Parsed bead JSON/JSONL files; counted lane-review acceptance;
+# searched review artifacts for live stale rejection/latest evidence contradictions;
+# audited latest Moon/Kani raw markers; counted public contract #[test]/#[ignore].
 PY
-```
-
-Observed output:
-
-```text
-MARKER_OK moon_tasks Tasks: 25 completed (5 cached)
-MARKER_OK moon_tests 12167 tests run: 12167 passed (5 slow), 0 skipped
-MARKER_OK test_integrity test integrity: PASS base=HEAD
-MARKER_OK panic_surface velvet-ballastics:panic-surface | NoViolationFound
-MARKER_OK ignored_fallible velvet-ballastics:ignored-fallible-results | NoViolationFound
-MARKER_OK supply_chain velvet-ballastics:supply-chain
-KANI_SUCCESS_COUNT 12
-KANI_COMPLETE_COUNT 12
-KANI_BAD_MARKER_COUNT VERIFICATION:- FAILED 0
-KANI_BAD_MARKER_COUNT FAILURE 0
-KANI_BAD_MARKER_COUNT UNSATISFIED 0
-```
-
-```bash
 bash scripts/check-ignored-fallible-results.sh
-```
-
-Observed output excerpt:
-
-```text
-FixturePass: DISCARD-003 embedded ok lossy exit=2
-FixturePass: DISCARD-003 split ok lossy exit=2
-ScanDomain: crates/*/src xtask/src
-NonProductionExcluded: tests benches examples fuzz target .beads fixtures
-NoViolationFound
-```
-
-```bash
-rustup run nightly-2026-04-28 cargo test -p vb_storage hydrate_run_frame_from_events_rejects_corrupt_slot_taint_metadata
-```
-
-Observed output excerpt:
-
-```text
-test recovery::tests::hydrate_run_frame_tests::hydrate_run_frame_from_events_rejects_corrupt_slot_taint_metadata ... ok
-test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1019 filtered out; finished in 0.00s
-```
-
-```bash
+bash scripts/check-panic-surface.sh
 rustup run nightly-2026-04-28 cargo test -p velvet-ballastics-workspace-tests --test vb_jpq7_3_fail_closed_storage_recovery_contract
 ```
 
-Observed output:
+Observed summary:
 
 ```text
-running 10 tests
-test given_zero_replay_limit_when_constructed_then_limit_is_rejected_before_replay ... ok
-test given_run_event_replay_api_when_public_contract_is_scanned_then_unbounded_vec_api_is_not_the_only_path ... ok
-test given_snapshot_index_read_fails_when_events_for_run_starts_then_error_is_not_erased ... ok
-test given_full_journal_slot_taint_metadata_is_corrupt_when_hydrating_then_recovery_fails_closed ... ok
-test given_journal_shutdown_when_durability_barrier_fails_then_drop_does_not_discard_result ... ok
-test given_public_hydration_tail_slot_cannot_be_dimensioned_when_recovery_runs_then_clean_taint_is_not_defaulted ... ok
-test given_explicit_replay_limit_when_more_events_exist_then_too_many_events_and_code_are_returned ... ok
-test given_snapshot_after_many_old_events_when_replaying_then_pre_snapshot_work_does_not_exhaust_limit ... ok
-test given_first_tail_event_is_missing_when_replaying_run_then_sequence_gap_points_after_snapshot ... ok
-test given_close_after_unpersisted_append_when_reopened_then_event_is_observable ... ok
-
-test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+LANE_REVIEW_ACCEPTED 72/72
+MOON_MARKER 'Tasks: 25 completed (3 cached)' count=1
+MOON_MARKER '12169 tests run: 12169 passed (5 slow), 0 skipped' count=1
+MOON_MARKER 'test integrity: PASS base=HEAD' count=1
+MOON_MARKER 'NoViolationFound' count=2
+KANI_SUCCESS_COUNT 12
+KANI_COMPLETE_COUNT 12
+KANI_BAD_MARKER 'VERIFICATION:- FAILED' count=0
+KANI_BAD_MARKER 'UNSATISFIED' count=0
+KANI_BAD_MARKER 'FAILURE' count=0
+PUBLIC_CONTRACT_TESTS #[test]=11 #[ignore]=0
+NoViolationFound
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
 ```
 
 ## Blockers
 
-1. **Closure-packaging blocker:** stale `.beads/vb-jpq7.3/black-hat-review.md` still says `REJECT FOR CLOSURE`. A refreshed APPROVE was not present at audit time.
-2. **Artifact-staleness caution:** `proof-review.md`, `test-review.md`, and `test-suite-review.md` still contain older Moon/test-count references in places, although their status lines are approved and the latest evidence files point to the newer 12167-test Moon pass and 10-test workspace contract run.
+None for final QA/evidence packaging within the requested scope.
 
-## Files written
+## Files Written
 
 - `.beads/vb-jpq7.3/qa-review.md`
 - `.beads/vb-jpq7.3/qa-enforcer-report.md`

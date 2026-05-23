@@ -2,234 +2,113 @@
 
 Date: 2026-05-23
 Workspace: `/home/lewis/src/velvet-ballistics`
-Scope: targeted storage recovery/fail-closed QA only. No production code modified, staged, committed, or pushed.
+Scope: final QA/evidence packaging audit after black-hat approval. No production code edited. No staging, commit, push, bead close, or retired `contract-verification-reviewer` use performed by QA.
 
 ## Verdict
 
-PASS — targeted QA commands all passed. No user-visible storage recovery regression found in the requested blast radius.
+**PASS / APPROVED FOR FINAL CLOSURE PACKAGING.**
 
-## Evidence
+No current QA blocker remains. The earlier QA closure blocker was stale and circular: it referred to a prior black-hat rejection that has now been replaced by `.beads/vb-jpq7.3/black-hat-review.md` verdict `APPROVE FOR CLOSURE GATE`. Current raw evidence and review artifacts agree on the latest Moon and Kani evidence.
 
-### 1. vb_storage compile gate
+## Commands Executed In This Audit
 
-Command executed:
+1. `python3` artifact/evidence audit from `/home/lewis/src/velvet-ballistics`.
+   - Parsed JSONL/JSON artifacts.
+   - Counted lane review acceptance.
+   - Checked review status markers and stale rejection markers.
+   - Checked latest Moon and Kani raw marker counts.
+   - Counted public contract test/ignore attributes.
+2. `bash scripts/check-ignored-fallible-results.sh`.
+3. `bash scripts/check-panic-surface.sh`.
+4. `rustup run nightly-2026-04-28 cargo test -p velvet-ballastics-workspace-tests --test vb_jpq7_3_fail_closed_storage_recovery_contract`.
+5. `/usr/bin/git status --short`.
 
-```bash
-rtk cargo check -p vb_storage --all-targets --all-features
-```
+## Observed Evidence
 
-Observed output:
-
-```text
-cargo build (1 crates compiled)
-Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.87s
-```
-
-Repeat warm run:
-
-```bash
-CARGO_TERM_COLOR=never rtk cargo check -p vb_storage --all-targets --all-features
-```
-
-Observed output:
+### Artifact Parse / Lane Acceptance
 
 ```text
-cargo build (0 crates compiled)
-Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.06s
+PARSE_OK delivery-scope.jsonl records=1
+PARSE_OK traceability-matrix.jsonl records=9 schemas=['traceability/v1']
+PARSE_OK proof-obligations.planned.jsonl records=16 schemas=['proof-obligation/v1']
+PARSE_OK verifier-lane-decisions.jsonl records=72 schemas=['verifier-lane-decision/v1']
+PARSE_OK verifier-lane-review.jsonl records=72 schemas=['verifier-lane-review/v1']
+PARSE_OK waiver-candidates.jsonl records=6 schemas=['waiver-candidate/v1']
+PARSE_OK verification-ledger.jsonl records=35 schemas=['verification-ledger/v1']
+PARSE_OK agent-invocation-ledger.jsonl records=8
+PARSE_OK kani-list.json type=dict keys=6
+LANE_REVIEW_ACCEPTED 72/72
 ```
 
-Result: PASS.
-
-### 2. Fail-closed storage recovery contract
-
-Command executed:
-
-```bash
-rtk cargo test -p velvet-ballastics-workspace-tests --test vb_jpq7_3_fail_closed_storage_recovery_contract
-```
-
-Observed output:
+### Review Status Markers
 
 ```text
-cargo test: 9 passed (1 suite, 0.01s)
+black-hat-review.md: APPROVE FOR CLOSURE GATE present; stale_reject=False
+proof-plan-review.md: review_state approved / verdict APPROVE / STATUS: APPROVED present
+proof-review.md: STATUS: APPROVED present with explicit limitations
+test-review.md: STATUS: APPROVED present
+red-queen-report.md: Verdict: **APPROVE present
 ```
 
-Result: PASS.
-
-### 3. vb_storage events_for_run targeted tests
-
-Command executed:
-
-```bash
-rtk cargo test -p vb_storage events_for_run
-```
-
-Observed output:
+### Latest Moon And Kani Raw Evidence Markers
 
 ```text
-cargo test: 22 passed, 1026 filtered out (4 suites, 0.04s)
+MOON_MARKER 'Tasks: 25 completed (3 cached)' count=1
+MOON_MARKER '12169 tests run: 12169 passed (5 slow), 0 skipped' count=1
+MOON_MARKER 'test integrity: PASS base=HEAD' count=1
+MOON_MARKER 'NoViolationFound' count=2
+MOON_MARKER 'velvet-ballastics:supply-chain' count=5
+KANI_SUCCESS_COUNT 12
+KANI_COMPLETE_COUNT 12
+KANI_BAD_MARKER 'VERIFICATION:- FAILED' count=0
+KANI_BAD_MARKER 'UNSATISFIED' count=0
+KANI_BAD_MARKER 'FAILURE' count=0
 ```
 
-Result: PASS.
+### Marker Scans Rerun
 
-### 4. vb_storage recovery targeted tests
+`bash scripts/check-ignored-fallible-results.sh` observed embedded/split `.ok()` fixture catches and final `NoViolationFound`.
 
-Command executed:
-
-```bash
-rtk cargo test -p vb_storage recovery
-```
-
-Observed output:
+`bash scripts/check-panic-surface.sh` observed:
 
 ```text
-cargo test: 186 passed, 862 filtered out (4 suites, 0.04s)
-```
-
-Result: PASS.
-
-### 5. vb_storage trimming targeted tests
-
-Command executed:
-
-```bash
-rtk cargo test -p vb_storage trimming
-```
-
-Observed output:
-
-```text
-cargo test: 23 passed, 1025 filtered out (4 suites, 0.04s)
-```
-
-Result: PASS.
-
-### 6. Ignored fallible result scanner
-
-Command executed:
-
-```bash
-bash scripts/check-ignored-fallible-results.sh
-```
-
-Observed output:
-
-```text
-FixturePass: clean production-like fixture exit=0
-FixturePass: DISCARD-001 bare fallible call exit=2
-FixturePass: DISCARD-002 let underscore exit=2
-FixturePass: DISCARD-003 ok err lossy exit=2
-FixturePass: DISCARD-004 swallowed Err exit=2
-FixturePass: DISCARD-005 drop fallible exit=2
-FixturePass: DISCARD-006 undocumented allow marker exit=2
-FixturePass: path-bound justified exception exit=0
-FixturePass: overbroad exception rejected exit=3
-FixturePass: malformed exception rejected exit=3
-ScanDomain: crates/*/src xtask/src
-NonProductionExcluded: tests benches examples fuzz target .beads fixtures
+CWD: /home/lewis/src/velvet-ballistics
+Command: bash scripts/check-panic-surface.sh
+ScanDomain: crates/*/src
 NoViolationFound
+ExitCode: 0
 ```
 
-Result: PASS.
+### Public Contract Rerun
 
-## Product QA Assessment
-
-- Compile safety for `vb_storage` all targets/features passed.
-- Contract-level fail-closed recovery tests passed: 9/9.
-- Storage event replay/recovery/trimming regression slices passed: 231 targeted tests total across filters.
-- Fallible-result hygiene gate passed with no production-domain violations.
-
-No blockers found in this QA pass.
-
----
-
-## Recheck After Snapshot Authority Tests
-
-Date: 2026-05-23
-Scope: targeted recheck after adding snapshot authority tests. No production code modified, staged, committed, or pushed.
-
-### Verdict
-
-PASS — all requested targeted `vb_storage` test filters passed.
-
-### Evidence
-
-#### 1. Snapshot authority tests
-
-Command executed:
-
-```bash
-rtk cargo test -p vb_storage latest_durable_snapshot_seq
-```
-
-Observed output:
+`rustup run nightly-2026-04-28 cargo test -p velvet-ballastics-workspace-tests --test vb_jpq7_3_fail_closed_storage_recovery_contract` observed:
 
 ```text
-cargo test: 4 passed, 1048 filtered out (4 suites, 0.01s)
+running 11 tests
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
 ```
 
-Pass/fail count: 4 passed, 0 failed.
+## Stale Rejection / Latest Evidence Audit
 
-#### 2. Events-for-run tests
+- The old QA rejection wording has been removed from current QA artifacts.
+- The approved black-hat artifact references prior stale QA/older evidence only as resolved historical context and explicitly approves closure.
+- Latest closure Moon evidence is `/home/lewis/.local/share/opencode/tool-output/tool_e54cfc867001em3UkY7dnDZZ7z` with `12169` tests, not the older `12167` historical run.
+- Latest scoped Kani evidence is `/home/lewis/.local/share/opencode/tool-output/tool_e543ab843002yJmWdm7rPpi1ed` with 12 successful harnesses.
+- Historical older Moon references remain in ledger/traceability only as superseded audit history; they are not presented as latest closure evidence.
 
-Command executed:
+## Limitations Preserved
 
-```bash
-rtk cargo test -p vb_storage events_for_run
-```
+- Verus: auxiliary/spec-seam only, not production-bound proof of live Fjall, `RunFrame`, codec internals, or hydration behavior.
+- TLA+: bounded abstract temporal evidence only (`MaxSeq = 3`).
+- Kani: scoped allocation-free seams only.
+- 3 `kani_admission::*` harnesses: adjacent admission evidence only; not storage replay/recovery closure evidence.
+- Live Fjall/range iteration/codec/replay/hydration behavior: covered by behavior tests, source scans, and trusted-base declarations.
 
-Observed output:
+## Blockers
 
-```text
-cargo test: 24 passed, 1028 filtered out (4 suites, 0.03s)
-```
+None.
 
-Pass/fail count: 24 passed, 0 failed.
+## Files Written
 
-#### 3. Trimming tests
-
-Command executed:
-
-```bash
-rtk cargo test -p vb_storage trimming
-```
-
-Observed output:
-
-```text
-cargo test: 25 passed, 1027 filtered out (4 suites, 0.03s)
-```
-
-Pass/fail count: 25 passed, 0 failed.
-
-### Recheck Summary
-
-- Total requested targeted tests: 53 passed, 0 failed.
-- Snapshot authority filter passed: 4/4.
-- Existing `events_for_run` regression slice passed: 24/24.
-- Existing `trimming` regression slice passed: 25/25.
-- Product QA verdict: PASS; no blocker found in this recheck.
-
----
-
-## Evidence Packaging Audit — latest closure context
-
-Date: 2026-05-23
-Scope: evidence audit requested for vb-jpq7.3. No production code modified, staged, committed, pushed, or bead-closed.
-
-### Verdict
-
-**BLOCKED FOR FINAL CLOSURE PACKAGING.** The latest behavior gates, source-scan gate, Moon raw log, Kani raw log, and JSON/JSONL parse checks pass. Closure packaging remains blocked because `.beads/vb-jpq7.3/black-hat-review.md` still contains `Verdict: **REJECT FOR CLOSURE**`; no refreshed black-hat APPROVE artifact was present at audit time.
-
-### Commands executed in this audit
-
-- `python3` JSON/JSONL parse audit: PASS (`verification-ledger.jsonl` 32 records; `traceability-matrix.jsonl` 9; `proof-obligations.planned.jsonl` 16; `delivery-scope.jsonl` 1; `agent-invocation-ledger.jsonl` 8; `waiver-candidates.jsonl` 6; `verifier-lane-decisions.jsonl` 72; `kani-list.json` valid object).
-- `python3` raw marker audit: PASS (`moon ci` log has 25 completed tasks, 12167/12167 tests passed, test-integrity PASS, panic-surface and ignored-fallible-results `NoViolationFound`; Kani log has 12 success summaries and 0 bad markers).
-- `bash scripts/check-ignored-fallible-results.sh`: PASS, including embedded/split `.ok()` fixture detection and final `NoViolationFound`.
-- `rustup run nightly-2026-04-28 cargo test -p vb_storage hydrate_run_frame_from_events_rejects_corrupt_slot_taint_metadata`: PASS, 1 test passed.
-- `rustup run nightly-2026-04-28 cargo test -p velvet-ballastics-workspace-tests --test vb_jpq7_3_fail_closed_storage_recovery_contract`: PASS, 10 tests passed.
-
-### Blockers
-
-1. Stale black-hat reject remains and blocks closure packaging.
-2. Older proof/test review prose still references superseded Moon/test-count evidence in places; status lines are approved, but packaging should refresh these for consistency.
+- `.beads/vb-jpq7.3/qa-review.md`
+- `.beads/vb-jpq7.3/qa-enforcer-report.md`
