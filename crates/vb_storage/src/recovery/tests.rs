@@ -1694,6 +1694,12 @@ mod hydrate_run_frame_tests {
         WorkflowDigest::from_bytes([byte; 32])
     }
 
+    fn corrupt_slot_taint_envelope() -> Vec<u8> {
+        let mut bytes = crate::SLOT_WRITTEN_EXTRA_PREFIX.to_vec();
+        bytes.extend_from_slice(&[255, 255, 255]);
+        bytes
+    }
+
     fn empty_snapshot(run: RunId, seq: EventSeq) -> RunSnapshot {
         RunSnapshot {
             run,
@@ -1808,6 +1814,71 @@ mod hydrate_run_frame_tests {
         assert_eq!(
             frame.read_slot(SlotIdx::new(0)).unwrap(),
             &SlotValue::I64(7)
+        );
+    }
+
+    #[test]
+    fn hydrate_run_frame_from_events_rejects_corrupt_slot_taint_metadata() {
+        let run = RunId::new(1);
+        let slot = SlotIdx::new(0);
+        let events = vec![
+            JournalEvent::RunAccepted {
+                run,
+                seq: EventSeq::new(0),
+                workflow: sample_digest(1),
+            },
+            JournalEvent::StepStarted {
+                run,
+                seq: EventSeq::new(1),
+                step: StepIdx::new(0),
+                attempt: 1,
+            },
+            JournalEvent::SlotWrittenEvent {
+                run,
+                seq: EventSeq::new(2),
+                slot,
+                value: Some(postcard::to_allocvec(&SlotValue::Bool(false)).unwrap()),
+                extra: Some(corrupt_slot_taint_envelope()),
+                attempt: 1,
+            },
+        ];
+
+        let result = hydrate_run_frame_from_events(&events, run);
+
+        assert!(matches!(result, Err(RecoveryError::CorruptSlotTaint { slot: s }) if s == slot));
+    }
+
+    #[test]
+    fn hydrate_run_frame_from_events_accepts_legacy_frame_extra_without_taint_sidecar() {
+        let run = RunId::new(1);
+        let slot = SlotIdx::new(0);
+        let events = vec![
+            JournalEvent::RunAccepted {
+                run,
+                seq: EventSeq::new(0),
+                workflow: sample_digest(1),
+            },
+            JournalEvent::StepStarted {
+                run,
+                seq: EventSeq::new(1),
+                step: StepIdx::new(0),
+                attempt: 1,
+            },
+            JournalEvent::SlotWrittenEvent {
+                run,
+                seq: EventSeq::new(2),
+                slot,
+                value: Some(postcard::to_allocvec(&SlotValue::Bool(false)).unwrap()),
+                extra: Some(vec![1, 2, 3, 4]),
+                attempt: 1,
+            },
+        ];
+
+        let result = hydrate_run_frame_from_events(&events, run);
+
+        assert!(
+            result.is_ok(),
+            "legacy frame extra must not be corrupt taint"
         );
     }
 

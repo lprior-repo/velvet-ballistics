@@ -141,6 +141,8 @@ fn stack_effect(_op: &ExprOp) -> i8 {
 // Gate 8: Accessor path segments are valid symbols
 // ---------------------------------------------------------------------------
 
+const MAX_ACCESSOR_PATH_DEPTH: usize = 16;
+
 /// Validates that every accessor path segment resolves to a well-formed symbol.
 ///
 /// Gate 8 (budgets): Field segments must use valid symbol IDs (within the
@@ -148,6 +150,13 @@ fn stack_effect(_op: &ExprOp) -> i8 {
 pub fn validate_gate_08_accessor_path_segments(parts: &WorkflowParts) -> ValidationResult<()> {
     for (acc_index, accessor) in parts.accessors.iter().enumerate() {
         validate_accessor_root(acc_index, accessor, parts.slot_count)?;
+        if accessor.path.len() > MAX_ACCESSOR_PATH_DEPTH {
+            return Err(ValidationError::AccessorPathTooDeep {
+                accessor_index: acc_index,
+                depth: accessor.path.len(),
+                max: MAX_ACCESSOR_PATH_DEPTH,
+            });
+        }
         for (seg_index, segment) in accessor.path.iter().enumerate() {
             match segment {
                 PathSegment::Field(sym_id) => {

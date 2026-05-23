@@ -344,13 +344,10 @@ pub fn collect_slot_values(events: &[JournalEvent]) -> HashMap<u16, String> {
     for event in events {
         if let JournalEvent::SlotWrittenEvent { slot, value, .. } = event {
             let display = match value {
-                Some(bytes) => {
-                    let decoded: Option<SlotValue> = postcard::from_bytes(bytes).ok();
-                    match decoded {
-                        Some(v) => format!("{v}"),
-                        None => format!("[{} bytes]", bytes.len()),
-                    }
-                }
+                Some(bytes) => match postcard::from_bytes::<SlotValue>(bytes) {
+                    Ok(v) => format!("{v}"),
+                    Err(_) => format!("[{} bytes]", bytes.len()),
+                },
                 None => String::from("none"),
             };
             slots.insert(slot.get(), display);

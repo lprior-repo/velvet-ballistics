@@ -141,39 +141,42 @@ impl StorageRuntimeJournal {
         }
     }
 
-    fn boundary_storage_event(event: RuntimeJournalEvent, seq: EventSeq) -> Option<JournalEvent> {
+    fn boundary_storage_event(
+        event: RuntimeJournalEvent,
+        seq: EventSeq,
+    ) -> RuntimeResult<Option<JournalEvent>> {
         match event {
             RuntimeJournalEvent::WaitScheduled { run, step } => {
-                Some(JournalEvent::WaitScheduledEvent {
+                Ok(Some(JournalEvent::WaitScheduledEvent {
                     run,
                     seq,
                     step,
                     attempt: 1,
-                })
+                }))
             }
             RuntimeJournalEvent::WaitResolved { run, step } => {
-                Some(JournalEvent::RetryScheduledEvent {
+                Ok(Some(JournalEvent::RetryScheduledEvent {
                     run,
                     seq,
                     step,
                     attempt: 1,
-                })
+                }))
             }
             RuntimeJournalEvent::AskScheduled { run, step } => {
-                Some(JournalEvent::AskScheduledEvent {
+                Ok(Some(JournalEvent::AskScheduledEvent {
                     run,
                     seq,
                     step,
                     attempt: 1,
-                })
+                }))
             }
             RuntimeJournalEvent::AskAnswered { run, step, .. } => {
-                Some(JournalEvent::AskAnsweredEvent {
+                Ok(Some(JournalEvent::AskAnsweredEvent {
                     run,
                     seq,
                     step,
                     attempt: 1,
-                })
+                }))
             }
             RuntimeJournalEvent::SlotWritten {
                 run,
@@ -181,14 +184,14 @@ impl StorageRuntimeJournal {
                 value,
                 taint,
                 extra,
-            } => Some(JournalEvent::SlotWrittenEvent {
+            } => Ok(Some(JournalEvent::SlotWrittenEvent {
                 run,
                 seq,
                 slot,
                 value: Some(value),
-                extra: encoded_slot_taint_extra(taint, extra),
+                extra: encoded_slot_taint_extra(taint, extra)?,
                 attempt: 1,
-            }),
+            })),
             RuntimeJournalEvent::RunSubmitted { .. }
             | RuntimeJournalEvent::RunAdmission { .. }
             | RuntimeJournalEvent::RunFinished { .. }
@@ -199,30 +202,35 @@ impl StorageRuntimeJournal {
             | RuntimeJournalEvent::ActionFailed { .. }
             | RuntimeJournalEvent::StepStarted { .. }
             | RuntimeJournalEvent::StepSucceeded { .. }
-            | RuntimeJournalEvent::Resumed { .. } => None,
+            | RuntimeJournalEvent::Resumed { .. } => Ok(None),
         }
     }
 
-    fn storage_event(event: RuntimeJournalEvent, seq: EventSeq) -> JournalEvent {
+    fn storage_event(event: RuntimeJournalEvent, seq: EventSeq) -> RuntimeResult<JournalEvent> {
         if let Some(storage_event) = Self::run_storage_event(event.clone(), seq) {
-            return storage_event;
+            return Ok(storage_event);
         }
         if let Some(storage_event) = Self::action_storage_event(event.clone(), seq) {
-            return storage_event;
+            return Ok(storage_event);
         }
-        match Self::boundary_storage_event(event.clone(), seq) {
-            Some(storage_event) => storage_event,
-            None => JournalEvent::RunFailedEvent {
+        match Self::boundary_storage_event(event.clone(), seq)? {
+            Some(storage_event) => Ok(storage_event),
+            None => Ok(JournalEvent::RunFailedEvent {
                 run: event.run_id(),
                 seq,
                 attempt: 1,
-            },
+            }),
         }
     }
 }
 
-fn encoded_slot_taint_extra(taint: Taint, extra: Option<Vec<u8>>) -> Option<Vec<u8>> {
-    extra.or_else(|| postcard::to_allocvec(&taint).ok())
+fn encoded_slot_taint_extra(
+    taint: Taint,
+    extra: Option<Vec<u8>>,
+) -> RuntimeResult<Option<Vec<u8>>> {
+    vb_storage::encode_slot_written_extra(taint, extra)
+        .map(Some)
+        .map_err(|_| RuntimeError::EncodeFailed)
 }
 
 impl RuntimeJournal for StorageRuntimeJournal {
@@ -233,7 +241,7 @@ impl RuntimeJournal for StorageRuntimeJournal {
     }
 
     fn append_sequenced(&self, event: RuntimeJournalEvent, seq: EventSeq) -> RuntimeResult<()> {
-        let storage_event = Self::storage_event(event, seq);
+        let storage_event = Self::storage_event(event, seq)?;
         self.append_storage_event(&storage_event)?;
         Ok(())
     }

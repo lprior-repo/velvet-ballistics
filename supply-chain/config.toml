@@ -341,6 +341,10 @@ criteria = "safe-to-deploy"
 version = "1.5.0"
 criteria = "safe-to-deploy"
 
+[[exemptions.autocfg]]
+version = "1.5.1"
+criteria = "safe-to-deploy"
+
 [[exemptions.base64]]
 version = "0.22.1"
 criteria = "safe-to-deploy"
@@ -383,6 +387,10 @@ criteria = "safe-to-deploy"
 
 [[exemptions.bumpalo]]
 version = "3.20.2"
+criteria = "safe-to-deploy"
+
+[[exemptions.bumpalo]]
+version = "3.20.3"
 criteria = "safe-to-deploy"
 
 [[exemptions.bytemuck]]
@@ -811,6 +819,10 @@ criteria = "safe-to-deploy"
 
 [[exemptions.js-sys]]
 version = "0.3.98"
+criteria = "safe-to-deploy"
+
+[[exemptions.js-sys]]
+version = "0.3.99"
 criteria = "safe-to-deploy"
 
 [[exemptions.kani]]
@@ -1461,6 +1473,10 @@ criteria = "safe-to-deploy"
 version = "1.0.149"
 criteria = "safe-to-deploy"
 
+[[exemptions.serde_json]]
+version = "1.0.150"
+criteria = "safe-to-deploy"
+
 [[exemptions.serde_spanned]]
 version = "1.1.1"
 criteria = "safe-to-deploy"
@@ -1777,12 +1793,20 @@ criteria = "safe-to-deploy"
 version = "0.2.121"
 criteria = "safe-to-deploy"
 
+[[exemptions.wasm-bindgen]]
+version = "0.2.122"
+criteria = "safe-to-deploy"
+
 [[exemptions.wasm-bindgen-macro]]
 version = "0.2.120"
 criteria = "safe-to-deploy"
 
 [[exemptions.wasm-bindgen-macro]]
 version = "0.2.121"
+criteria = "safe-to-deploy"
+
+[[exemptions.wasm-bindgen-macro]]
+version = "0.2.122"
 criteria = "safe-to-deploy"
 
 [[exemptions.wasm-bindgen-macro-support]]
@@ -1793,12 +1817,20 @@ criteria = "safe-to-deploy"
 version = "0.2.121"
 criteria = "safe-to-deploy"
 
+[[exemptions.wasm-bindgen-macro-support]]
+version = "0.2.122"
+criteria = "safe-to-deploy"
+
 [[exemptions.wasm-bindgen-shared]]
 version = "0.2.120"
 criteria = "safe-to-deploy"
 
 [[exemptions.wasm-bindgen-shared]]
 version = "0.2.121"
+criteria = "safe-to-deploy"
+
+[[exemptions.wasm-bindgen-shared]]
+version = "0.2.122"
 criteria = "safe-to-deploy"
 
 [[exemptions.wasm-encoder]]
@@ -1839,6 +1871,10 @@ criteria = "safe-to-run"
 
 [[exemptions.web-sys]]
 version = "0.3.98"
+criteria = "safe-to-run"
+
+[[exemptions.web-sys]]
+version = "0.3.99"
 criteria = "safe-to-run"
 
 [[exemptions.winapi]]

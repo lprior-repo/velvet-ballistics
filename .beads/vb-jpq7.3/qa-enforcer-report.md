@@ -209,3 +209,27 @@ Pass/fail count: 25 passed, 0 failed.
 - Existing `events_for_run` regression slice passed: 24/24.
 - Existing `trimming` regression slice passed: 25/25.
 - Product QA verdict: PASS; no blocker found in this recheck.
+
+---
+
+## Evidence Packaging Audit — latest closure context
+
+Date: 2026-05-23
+Scope: evidence audit requested for vb-jpq7.3. No production code modified, staged, committed, pushed, or bead-closed.
+
+### Verdict
+
+**BLOCKED FOR FINAL CLOSURE PACKAGING.** The latest behavior gates, source-scan gate, Moon raw log, Kani raw log, and JSON/JSONL parse checks pass. Closure packaging remains blocked because `.beads/vb-jpq7.3/black-hat-review.md` still contains `Verdict: **REJECT FOR CLOSURE**`; no refreshed black-hat APPROVE artifact was present at audit time.
+
+### Commands executed in this audit
+
+- `python3` JSON/JSONL parse audit: PASS (`verification-ledger.jsonl` 32 records; `traceability-matrix.jsonl` 9; `proof-obligations.planned.jsonl` 16; `delivery-scope.jsonl` 1; `agent-invocation-ledger.jsonl` 8; `waiver-candidates.jsonl` 6; `verifier-lane-decisions.jsonl` 72; `kani-list.json` valid object).
+- `python3` raw marker audit: PASS (`moon ci` log has 25 completed tasks, 12167/12167 tests passed, test-integrity PASS, panic-surface and ignored-fallible-results `NoViolationFound`; Kani log has 12 success summaries and 0 bad markers).
+- `bash scripts/check-ignored-fallible-results.sh`: PASS, including embedded/split `.ok()` fixture detection and final `NoViolationFound`.
+- `rustup run nightly-2026-04-28 cargo test -p vb_storage hydrate_run_frame_from_events_rejects_corrupt_slot_taint_metadata`: PASS, 1 test passed.
+- `rustup run nightly-2026-04-28 cargo test -p velvet-ballastics-workspace-tests --test vb_jpq7_3_fail_closed_storage_recovery_contract`: PASS, 10 tests passed.
+
+### Blockers
+
+1. Stale black-hat reject remains and blocks closure packaging.
+2. Older proof/test review prose still references superseded Moon/test-count evidence in places; status lines are approved, but packaging should refresh these for consistency.

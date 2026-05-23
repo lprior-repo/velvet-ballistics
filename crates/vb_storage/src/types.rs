@@ -93,6 +93,13 @@ impl EventSeq {
     pub const MAX: Self = Self(u64::MAX);
 }
 
+#[cfg(kani)]
+impl kani::Arbitrary for EventSeq {
+    fn any() -> Self {
+        Self::new(kani::any())
+    }
+}
+
 /// Non-zero bounded capacity for the journal writer queue.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(transparent)]

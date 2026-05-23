@@ -8,9 +8,18 @@ use vb_core::workflow::{
     WorkflowParts,
 };
 
+const MAX_ACCESSOR_PATH_DEPTH: usize = 16;
+
 pub fn validate_gate_08_accessor_path_segments(parts: &WorkflowParts) -> ValidationResult<()> {
     for (acc_index, accessor) in parts.accessors.iter().enumerate() {
         validate_accessor_root(acc_index, accessor, parts.slot_count)?;
+        if accessor.path.len() > MAX_ACCESSOR_PATH_DEPTH {
+            return Err(ValidationError::AccessorPathTooDeep {
+                accessor_index: acc_index,
+                depth: accessor.path.len(),
+                max: MAX_ACCESSOR_PATH_DEPTH,
+            });
+        }
         for (seg_index, segment) in accessor.path.iter().enumerate() {
             match segment {
                 PathSegment::Field(sym_id) => {

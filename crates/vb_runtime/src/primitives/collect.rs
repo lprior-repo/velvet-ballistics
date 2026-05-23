@@ -238,29 +238,60 @@ impl CollectStates {
                 value,
                 extra: Some(extra),
                 ..
-            } => match collect_page_from_event_value(
-                *run,
-                *slot,
-                Some(core_event_seq(*seq)),
-                value.as_deref(),
-            )? {
-                Some(expected_page) => self.hydrate_extra_with_context(
-                    *run,
-                    *slot,
-                    Some(core_event_seq(*seq)),
-                    Some(expected_page),
-                    extra,
-                ),
-                None if value.is_none() => self.hydrate_extra_with_context(
-                    *run,
-                    *slot,
-                    Some(core_event_seq(*seq)),
-                    None,
-                    extra,
-                ),
-                None => Ok(()),
-            },
+            } => self.hydrate_slot_written_extra(*run, *slot, *seq, value.as_deref(), extra),
             _ => Ok(()),
+        }
+    }
+
+    fn hydrate_slot_written_extra(
+        &mut self,
+        run: RunId,
+        slot: SlotIdx,
+        seq: vb_storage::EventSeq,
+        value: Option<&[u8]>,
+        extra: &[u8],
+    ) -> Result<(), EngineError> {
+        match vb_storage::decode_slot_written_extra(extra) {
+            Ok(vb_storage::DecodedSlotWrittenExtra::Envelope(envelope)) => {
+                match envelope.frame_extra {
+                    Some(frame_extra) => {
+                        self.hydrate_frame_extra(run, slot, seq, value, &frame_extra)
+                    }
+                    None => Ok(()),
+                }
+            }
+            Ok(vb_storage::DecodedSlotWrittenExtra::LegacyFrameExtra(frame_extra)) => {
+                self.hydrate_frame_extra(run, slot, seq, value, frame_extra)
+            }
+            Err(_) => Err(EngineError::CollectExtraHydrationFailed {
+                kind: CollectExtraHydrationFailureKind::DecodeFailed,
+                run_id: run,
+                collector_slot: slot,
+                event_seq: Some(core_event_seq(seq)),
+            }),
+        }
+    }
+
+    fn hydrate_frame_extra(
+        &mut self,
+        run: RunId,
+        slot: SlotIdx,
+        seq: vb_storage::EventSeq,
+        value: Option<&[u8]>,
+        extra: &[u8],
+    ) -> Result<(), EngineError> {
+        match collect_page_from_event_value(run, slot, Some(core_event_seq(seq)), value)? {
+            Some(expected_page) => self.hydrate_extra_with_context(
+                run,
+                slot,
+                Some(core_event_seq(seq)),
+                Some(expected_page),
+                extra,
+            ),
+            None if value.is_none() => {
+                self.hydrate_extra_with_context(run, slot, Some(core_event_seq(seq)), None, extra)
+            }
+            None => Ok(()),
         }
     }
 }

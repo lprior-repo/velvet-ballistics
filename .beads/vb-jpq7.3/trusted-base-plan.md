@@ -27,5 +27,5 @@
 ## Residual Trusted-Base Risk
 
 - No disk-fault simulator was introduced; strict persist failure is represented by a test-only hook at the Rust boundary.
-- Existing Verus replay artifact is auxiliary until repaired to bind the strict `snapshot.seq + 1` production rule.
-- Full repository rustfmt remains `BLOCK_GLOBAL`.
+- Verus replay and recovery artifacts are auxiliary/spec-seam evidence until proof-review explicitly accepts their scope or they are bound to production exec functions.
+- Full repository formatting and canonical `moon ci` are currently passing after the versioned slot-write extra envelope plus full-journal taint/scanner/runtime-encode/supply-chain repair; latest closure evidence is `/home/lewis/.local/share/opencode/tool-output/tool_e54cfc867001em3UkY7dnDZZ7z`.

@@ -307,31 +307,39 @@ impl AcceptedArtifactStore for AlwaysPresentArtifactStore {
         &self,
         artifact_digest: WorkflowDigest,
     ) -> Result<vb_storage::admission::AcceptedArtifact, ArtifactEnvelopeError> {
-        // AlwaysPresentArtifactStore is used in tests that don't care about
-        // artifact content. Return a dummy artifact that passes validation
-        // for Strict/Journaled policies in tests.
-        let proof = vb_storage::admission::VerificationProof {
-            digest: artifact_digest,
-            gate_count: REQUIRED_GATE_COUNT,
-            durable: true,
-            bounded_claimed: true,
-            taint_safe_claimed: true,
-            retry_safe_claimed: true,
-            idempotency_verified_claimed: true,
-            replayable_claimed: true,
-            idempotency_keyed: Box::new([]),
-            idempotency_attested: Box::new([]),
-            warnings: Vec::new(),
-        };
-        Ok(vb_storage::admission::AcceptedArtifact {
-            digest: artifact_digest,
-            source_digest: artifact_digest,
-            policy_digest: artifact_digest,
-            ir: Vec::new(),
-            verification: proof,
-            accepted_at_seq: vb_storage::types::EventSeq::new(0),
-            required_capabilities: Box::new([]),
-        })
+        Ok(always_present_accepted_artifact(artifact_digest))
+    }
+}
+
+fn always_present_accepted_artifact(
+    artifact_digest: WorkflowDigest,
+) -> vb_storage::admission::AcceptedArtifact {
+    vb_storage::admission::AcceptedArtifact {
+        digest: artifact_digest,
+        source_digest: artifact_digest,
+        policy_digest: artifact_digest,
+        ir: Vec::new(),
+        verification: always_present_verification_proof(artifact_digest),
+        accepted_at_seq: vb_storage::types::EventSeq::new(0),
+        required_capabilities: Box::new([]),
+    }
+}
+
+fn always_present_verification_proof(
+    artifact_digest: WorkflowDigest,
+) -> vb_storage::admission::VerificationProof {
+    vb_storage::admission::VerificationProof {
+        digest: artifact_digest,
+        gate_count: REQUIRED_GATE_COUNT,
+        durable: true,
+        bounded_claimed: true,
+        taint_safe_claimed: true,
+        retry_safe_claimed: true,
+        idempotency_verified_claimed: true,
+        replayable_claimed: true,
+        idempotency_keyed: Box::new([]),
+        idempotency_attested: Box::new([]),
+        warnings: Vec::new(),
     }
 }
 

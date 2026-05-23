@@ -10,7 +10,7 @@ Prove and test that storage/recovery durability paths fail closed rather than si
 2. **Verus replay/recovery lane**: local proof obligations for contiguous event replay, strict snapshot-tail boundary, typed error totality, taint exactness, and dimension boundedness. Current candidate artifacts are partial and require reviewer scrutiny because prior `vb_jpq724_events_for_run_production.rs` was rejected as too abstract.
 3. **Behavior tests**: exact typed outcomes for replay bounds, snapshot-tail gaps, corrupt latest snapshot authority, corrupt pre-snapshot range skipping, explicit close/persist result, and taint read fail-closed behavior.
 4. **Static source scans**: no lossy `.ok()`, `let _` discard, or hidden fallible-result suppression in runtime/storage/compiler production paths, except audited discard API.
-5. **Global readiness**: moon/cargo format/lint/test readiness remains a release gate; current rustfmt failure is `BLOCK_GLOBAL`.
+5. **Global readiness**: moon/cargo format/lint/test readiness remains a release gate. Fresh full passes exist at `/home/lewis/.local/share/opencode/tool-output/tool_e54429101001QjpToALrkXHR2g`, after supplemental test-integrity repair at `/home/lewis/.local/share/opencode/tool-output/tool_e5464d5ba001pbGsXBRAO78L6g`, after full-journal taint/scanner/runtime-encode/supply-chain repair at `/home/lewis/.local/share/opencode/tool-output/tool_e54ad4ea40019LkG7p2r0N30AH`, and latest after the versioned slot-write extra envelope repair at `/home/lewis/.local/share/opencode/tool-output/tool_e54cfc867001em3UkY7dnDZZ7z`.
 
 ## Proof Obligations Summary
 
@@ -31,13 +31,17 @@ Prove and test that storage/recovery durability paths fail closed rather than si
 - `cargo test -p vb_storage trimming`: PASS, 25 tests after adding snapshot key/payload run and sequence authority cases.
 - `cargo test -p vb_storage close_propagates_persist_errors`: PASS, 1 test.
 - `cargo test -p vb_runtime action_queue`: PASS, 18 tests.
-- `bash scripts/check-ignored-fallible-results.sh`: PASS, `NoViolationFound`.
+- `bash scripts/check-ignored-fallible-results.sh`: PASS, fixtures catch embedded/split `.ok()` lossy conversions and production scan reports `NoViolationFound`.
 - `cargo fmt --all -- --check`: PASS on live rerun.
-- `moon ci`: FAIL/BLOCK_GLOBAL on production `unreachable!(...)` and unrelated workspace-test dead code.
+- `moon ci`: PASS in full fresh log `tool_e54429101001QjpToALrkXHR2g` with `12165` tests passed; superseded rerun `tool_e5452fd53001Mc2ed6UxB8v3AY` failed `test-integrity` (`removed_exact=2 added_exact=1`); repaired rerun `tool_e5464d5ba001pbGsXBRAO78L6g` passes with `12165` tests passed and `test-integrity` PASS; post-taint/scanner rerun `tool_e54ad4ea40019LkG7p2r0N30AH` passes with `12167` tests passed; latest versioned-envelope rerun `tool_e54cfc867001em3UkY7dnDZZ7z` passes with `12169` tests passed, `test-integrity` PASS, ignored-fallible-results `NoViolationFound`, and supply-chain completed.
+- `cargo kani` scoped vb-jpq7.3 harness set: PASS in `/home/lewis/.local/share/opencode/tool-output/tool_e543ab843002yJmWdm7rPpi1ed`; scope is limited to allocation-free seams.
+- `tlc -workers 1 -config verification/tla/EngineYamlRecovery.cfg verification/tla/EngineYamlRecovery.tla`: PASS, bounded `MaxSeq = 3` model.
+- `verus verification/verus/vb_jpq724_events_for_run_production.rs`: PASS, auxiliary production-shaped replay seam.
+- `verus verification/verus/recovery_hydration_contracts.rs`: PASS_WITH_WARNINGS, auxiliary recovery model.
 
 ## Blockers Before Closure
 
 - Re-run proof reviewers on this artifact set.
 - Either update/strengthen Verus/TLA artifacts for vb-jpq7.3 or record reviewer-accepted limitations.
-- Resolve canonical `moon ci` blocker or obtain explicit release-owner waiver.
+- Rerun proof-plan/proof/black-hat/QA reviewers on the canonical lane/obligation repair and latest Moon pass.
 - Do not close bead until black-hat/test/proof reviews accept the traceability.

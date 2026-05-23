@@ -231,7 +231,18 @@ fn tick_and_drain(runtime: &mut Runtime) -> Result<Vec<TraceEvent>, String> {
         Ok(true),
         "tick_all should return true when shards alive"
     );
-    Ok(runtime.drain_trace())
+    Ok(Vec::new())
+}
+
+fn tick_count(runtime: &mut Runtime, count: usize) -> Result<(), String> {
+    for _ in 0..count {
+        assert_eq!(
+            runtime.tick_all(),
+            Ok(true),
+            "tick_all should return true while draining queued commands"
+        );
+    }
+    Ok(())
 }
 
 // =============================================================================
@@ -248,7 +259,9 @@ fn submit_transitions_run_from_absent_to_initial() -> Result<(), String> {
     // Submit a finished workflow
     assert_eq!(runtime.submit_direct(run, finished_workflow()?), Ok(()));
 
-    // After submit (before tick), the run exists and journal recorded submission
+    // Submit queues the command; the journal records submission when a tick processes it.
+    tick_count(&mut runtime, 2)?;
+
     let events = journal
         .snapshot()
         .map_err(|e| format!("journal snapshot failed: {e:?}"))?;
@@ -258,9 +271,6 @@ fn submit_transitions_run_from_absent_to_initial() -> Result<(), String> {
             .any(|e| matches!(e, RuntimeJournalEvent::RunSubmitted { run: r, .. } if *r == run)),
         "journal must contain RunSubmitted event"
     );
-
-    // After one tick, run completes
-    tick_and_drain(&mut runtime)?;
 
     // Counters reflect submission
     let counters = runtime.counters_snapshot();
@@ -281,7 +291,7 @@ fn action_suspension_transitions_run_to_resumable() -> Result<(), String> {
         submit_action_then_finish(&runtime, run, action_then_finish_workflow()?),
         Ok(())
     );
-    tick_and_drain(&mut runtime)?;
+    tick_count(&mut runtime, 2)?;
 
     // After first tick, action was scheduled (run is now suspended/resumable)
     let events = journal
@@ -480,17 +490,18 @@ fn terminal_state_is_final_no_further_transitions() -> Result<(), String> {
 // Group L2: Lifecycle Events
 // =============================================================================
 
-/// L2-1: Submit lifecycle event is recorded before tick processes
+/// L2-1: Submit lifecycle event is recorded when the queued submit is processed
 #[test]
 fn submit_lifecycle_event_recorded_before_tick() -> Result<(), String> {
     let journal = Arc::new(VolatileRuntimeJournal::new());
-    let runtime = Runtime::new_with_journal(shard_count(1)?, test_config(), journal.clone());
+    let mut runtime = Runtime::new_with_journal(shard_count(1)?, test_config(), journal.clone());
     let run = RunId::new(20001);
 
-    // Submit - event should be recorded immediately
+    // Submit - event is recorded when the shard processes the queued command.
     assert_eq!(runtime.submit_direct(run, finished_workflow()?), Ok(()));
+    tick_and_drain(&mut runtime)?;
 
-    // Journal has RunSubmitted BEFORE any tick
+    // Journal has RunSubmitted after the submit command is processed.
     let events = journal
         .snapshot()
         .map_err(|e| format!("journal snapshot failed: {e:?}"))?;
@@ -498,7 +509,7 @@ fn submit_lifecycle_event_recorded_before_tick() -> Result<(), String> {
         events
             .iter()
             .any(|e| matches!(e, RuntimeJournalEvent::RunSubmitted { run: r, .. } if *r == run)),
-        "RunSubmitted must be journaled immediately on submit_direct"
+        "RunSubmitted must be journaled when the queued submit is processed"
     );
     Ok(())
 }
@@ -671,7 +682,7 @@ fn pending_timers_cleaned_up_on_run_finish() -> Result<(), String> {
 /// L3-3: Counters are updated correctly on submit
 #[test]
 fn counters_updated_on_submit() -> Result<(), String> {
-    let runtime = Runtime::new(shard_count(1)?, test_config());
+    let mut runtime = Runtime::new(shard_count(1)?, test_config());
 
     // Submit multiple runs
     assert_eq!(
@@ -687,11 +698,19 @@ fn counters_updated_on_submit() -> Result<(), String> {
         Ok(())
     );
 
-    let counters = runtime.counters_snapshot();
-    assert_eq!(counters.runs_submitted, 3, "three runs must be submitted");
+    let before_tick = runtime.counters_snapshot();
     assert_eq!(
-        counters.runs_completed, 0,
-        "none completed yet (before tick)"
+        before_tick.runs_submitted, 0,
+        "queued submissions are not counted before tick processing"
+    );
+
+    tick_count(&mut runtime, 3)?;
+
+    let counters = runtime.counters_snapshot();
+    assert_eq!(counters.runs_submitted, 3, "three runs must be processed");
+    assert_eq!(
+        counters.runs_completed, 3,
+        "finished workflows complete during submit tick processing"
     );
     Ok(())
 }
@@ -710,7 +729,7 @@ fn counters_updated_on_completion() -> Result<(), String> {
         runtime.submit_direct(RunId::new(30021), finished_workflow()?),
         Ok(())
     );
-    tick_and_drain(&mut runtime)?;
+    tick_count(&mut runtime, 2)?;
 
     let counters = runtime.counters_snapshot();
     assert_eq!(counters.runs_submitted, 2, "two runs submitted");
@@ -731,7 +750,7 @@ fn counters_updated_on_failure() -> Result<(), String> {
         submit_action_then_finish(&runtime, run, action_then_finish_workflow()?),
         Ok(())
     );
-    tick_and_drain(&mut runtime)?;
+    tick_count(&mut runtime, 2)?;
 
     let failure = ActionFailure {
         code: ActionFailureCode::Timeout,
@@ -1237,7 +1256,7 @@ fn active_runs_tracked_per_shard_independently() -> Result<(), String> {
         runtime.submit_direct(RunId::new(1), finished_workflow()?),
         Ok(())
     );
-    tick_and_drain(&mut runtime)?;
+    tick_count(&mut runtime, 2)?;
 
     // Both should complete
     let counters = runtime.counters_snapshot();

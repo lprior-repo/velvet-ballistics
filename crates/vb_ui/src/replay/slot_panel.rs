@@ -77,7 +77,10 @@ impl SlotDiffPanel {
                 seq, slot, value, ..
             } => {
                 let new_value: Option<SlotValue> = match value {
-                    Some(bytes) => postcard::from_bytes(bytes).ok(),
+                    Some(bytes) => match postcard::from_bytes(bytes) {
+                        Ok(decoded) => Some(decoded),
+                        Err(_) => None,
+                    },
                     None => None,
                 };
                 let seq_val = seq.get();

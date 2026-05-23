@@ -72,6 +72,7 @@ pub mod queue;
 pub mod records;
 pub mod recovery;
 pub mod security_tests;
+pub mod slot_extra;
 pub mod snapshots;
 pub mod tests;
 pub mod trimming;
@@ -90,6 +91,10 @@ pub use records::{
     BlobRecord, CompiledIrRecord, RecordKind, RunHeaderRecord, WorkflowSourceRecord,
 };
 pub use recovery::{ActionReplayTracker, RunSnapshot};
+pub use slot_extra::{
+    DecodedSlotWrittenExtra, SLOT_WRITTEN_EXTRA_PREFIX, SlotWrittenExtraEnvelope,
+    SlotWrittenExtraError, decode_slot_written_extra, encode_slot_written_extra,
+};
 pub use types::*;
 
 // Journal

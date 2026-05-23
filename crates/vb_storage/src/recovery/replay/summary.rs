@@ -13,6 +13,7 @@ use crate::recovery::types::{
     RecoveredStepState, RecoveryError, RecoveryFrameSeed, RecoveryHydration, RecoveryResult,
     RecoveryRuntimeSummary, UnsupportedRecoveryState,
 };
+use crate::slot_extra::DecodedSlotWrittenExtra;
 use vb_core::replay::{ReplayEngine, ReplayError};
 use vb_core::value_store::ValueStore;
 use vb_core::{
@@ -336,35 +337,35 @@ impl FrameSeedAccumulator {
         }
         self.summary.last_seq = event.seq();
         apply_summary_event(&mut self.summary, event);
-        Ok(self.apply_frame_event(event))
+        self.apply_frame_event(event)
     }
 
-    fn apply_frame_event(self, event: &JournalEvent) -> Self {
+    fn apply_frame_event(self, event: &JournalEvent) -> RecoveryResult<Self> {
         match event {
             JournalEvent::StepStarted { step, .. } => {
-                self.record_step(*step, RecoveredStepState::Running)
+                Ok(self.record_step(*step, RecoveredStepState::Running))
             }
-            JournalEvent::StepSucceeded { step, .. } => self
+            JournalEvent::StepSucceeded { step, .. } => Ok(self
                 .record_step(*step, RecoveredStepState::Succeeded)
-                .record_last_succeeded(*step),
+                .record_last_succeeded(*step)),
             JournalEvent::ActionScheduled { action, step, .. } => {
-                self.record_action_scheduled(*action, *step)
+                Ok(self.record_action_scheduled(*action, *step))
             }
             JournalEvent::ActionCompletedEvent { action, step, .. }
             | JournalEvent::ActionFailedEvent { action, step, .. } => {
-                self.record_action_resolved(*action, *step)
+                Ok(self.record_action_resolved(*action, *step))
             }
             JournalEvent::WaitScheduledEvent { step, .. } => {
-                self.record_step(*step, RecoveredStepState::Waiting)
+                Ok(self.record_step(*step, RecoveredStepState::Waiting))
             }
             JournalEvent::AskScheduledEvent { step, .. } => {
-                self.record_step(*step, RecoveredStepState::Asking)
+                Ok(self.record_step(*step, RecoveredStepState::Asking))
             }
             JournalEvent::SlotWrittenEvent {
                 slot, value, extra, ..
             } => self.record_slot_write(*slot, value, extra),
-            JournalEvent::RunFinished { result, .. } => self.record_slot(*result),
-            _ => self,
+            JournalEvent::RunFinished { result, .. } => Ok(self.record_slot(*result)),
+            _ => Ok(self),
         }
     }
 
@@ -391,21 +392,22 @@ impl FrameSeedAccumulator {
         slot: SlotIdx,
         value: &Option<Vec<u8>>,
         extra: &Option<Vec<u8>>,
-    ) -> Self {
+    ) -> RecoveryResult<Self> {
         self.max_slot_idx = max_slot(self.max_slot_idx, slot);
         match value
             .as_ref()
             .map(|bytes| postcard::from_bytes::<SlotValue>(bytes))
         {
             Some(Ok(slot_value)) => {
-                let taint = recovered_slot_taint(slot_value, extra);
+                let recovered_taint = recovered_slot_taint(slot, slot_value, extra)?;
                 self.slot_values.insert(slot, slot_value);
-                self.slot_taint.insert(slot, taint);
-                self
+                self.slot_taint.insert(slot, recovered_taint.taint);
+                self.event_slot_taint_unsupported |= recovered_taint.unsupported;
+                Ok(self)
             }
             Some(Err(_)) | None => {
                 self.missing_slot_values = true;
-                self
+                Ok(self)
             }
         }
     }
@@ -425,11 +427,52 @@ impl FrameSeedAccumulator {
     }
 }
 
-fn recovered_slot_taint(value: SlotValue, extra: &Option<Vec<u8>>) -> Taint {
-    extra
-        .as_ref()
-        .and_then(|bytes| postcard::from_bytes::<Taint>(bytes).ok())
-        .unwrap_or_else(|| legacy_slot_taint(value))
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct RecoveredSlotTaint {
+    taint: Taint,
+    unsupported: bool,
+}
+
+fn recovered_slot_taint(
+    slot: SlotIdx,
+    value: SlotValue,
+    extra: &Option<Vec<u8>>,
+) -> RecoveryResult<RecoveredSlotTaint> {
+    match extra {
+        Some(bytes) => decoded_slot_taint(slot, value, bytes),
+        None => Ok(legacy_recovered_slot_taint(value)),
+    }
+}
+
+fn decoded_slot_taint(
+    slot: SlotIdx,
+    value: SlotValue,
+    bytes: &[u8],
+) -> RecoveryResult<RecoveredSlotTaint> {
+    match crate::slot_extra::decode_slot_written_extra(bytes) {
+        Ok(DecodedSlotWrittenExtra::Envelope(envelope)) => Ok(RecoveredSlotTaint {
+            taint: envelope.taint,
+            unsupported: false,
+        }),
+        Ok(DecodedSlotWrittenExtra::LegacyFrameExtra(_)) => {
+            Ok(legacy_frame_extra_recovered_slot_taint(value))
+        }
+        Err(_) => Err(RecoveryError::CorruptSlotTaint { slot }),
+    }
+}
+
+fn legacy_recovered_slot_taint(value: SlotValue) -> RecoveredSlotTaint {
+    RecoveredSlotTaint {
+        taint: legacy_slot_taint(value),
+        unsupported: false,
+    }
+}
+
+fn legacy_frame_extra_recovered_slot_taint(value: SlotValue) -> RecoveredSlotTaint {
+    RecoveredSlotTaint {
+        taint: legacy_slot_taint(value),
+        unsupported: true,
+    }
 }
 
 fn legacy_slot_taint(value: SlotValue) -> Taint {

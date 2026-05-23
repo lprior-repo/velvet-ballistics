@@ -217,8 +217,8 @@ fn ai_workflow_summary(
         }
     };
     match decode_compiled_workflow_from_ir(&record.ir) {
-        Some(compiled) => compiled_workflow_summary(digest, &compiled),
-        None => serde_json::json!({
+        Ok(compiled) => compiled_workflow_summary(digest, &compiled),
+        Err(_) => serde_json::json!({
             "digest": digest_hex(digest),
             "compiled_ir": {"available": false, "reason": "compiled IR decode failed"},
             "source_included": false,
@@ -226,18 +226,39 @@ fn ai_workflow_summary(
     }
 }
 
-fn decode_compiled_workflow_from_ir(ir: &[u8]) -> Option<vb_core::CompiledWorkflow> {
-    postcard::from_bytes::<vb_core::WorkflowParts>(ir)
-        .ok()
-        .and_then(|parts| vb_core::CompiledWorkflow::try_from_parts(parts).ok())
-        .or_else(|| {
-            postcard::from_bytes::<vb_storage::admission::AcceptedArtifact>(ir)
-                .ok()
-                .and_then(|artifact| {
-                    postcard::from_bytes::<vb_core::WorkflowParts>(&artifact.ir).ok()
-                })
-                .and_then(|parts| vb_core::CompiledWorkflow::try_from_parts(parts).ok())
-        })
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum DecodeCompiledWorkflowError {
+    DirectWorkflowPartsDecode,
+    DirectWorkflowCompile,
+    AcceptedArtifactDecode,
+    AcceptedArtifactWorkflowPartsDecode,
+    AcceptedArtifactWorkflowCompile,
+}
+
+fn decode_compiled_workflow_from_ir(
+    ir: &[u8],
+) -> Result<vb_core::CompiledWorkflow, DecodeCompiledWorkflowError> {
+    decode_direct_compiled_workflow(ir).or_else(|_| decode_accepted_artifact_workflow(ir))
+}
+
+fn decode_direct_compiled_workflow(
+    ir: &[u8],
+) -> Result<vb_core::CompiledWorkflow, DecodeCompiledWorkflowError> {
+    let parts = postcard::from_bytes::<vb_core::WorkflowParts>(ir)
+        .map_err(|_| DecodeCompiledWorkflowError::DirectWorkflowPartsDecode)?;
+    vb_core::CompiledWorkflow::try_from_parts(parts)
+        .map_err(|_| DecodeCompiledWorkflowError::DirectWorkflowCompile)
+}
+
+fn decode_accepted_artifact_workflow(
+    ir: &[u8],
+) -> Result<vb_core::CompiledWorkflow, DecodeCompiledWorkflowError> {
+    let artifact = postcard::from_bytes::<vb_storage::admission::AcceptedArtifact>(ir)
+        .map_err(|_| DecodeCompiledWorkflowError::AcceptedArtifactDecode)?;
+    let parts = postcard::from_bytes::<vb_core::WorkflowParts>(&artifact.ir)
+        .map_err(|_| DecodeCompiledWorkflowError::AcceptedArtifactWorkflowPartsDecode)?;
+    vb_core::CompiledWorkflow::try_from_parts(parts)
+        .map_err(|_| DecodeCompiledWorkflowError::AcceptedArtifactWorkflowCompile)
 }
 
 fn workflow_summary_from_source(

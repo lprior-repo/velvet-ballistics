@@ -1616,6 +1616,7 @@ mod kani_harnesses {
 
     /// Minimal error enum mirroring the Overflow/Underflow variants.
     /// No transitive types — just &'static str for resource naming.
+    #[derive(Debug)]
     enum LocalError {
         Overflow { resource: &'static str },
         Underflow { resource: &'static str },
@@ -1791,43 +1792,57 @@ mod kani_harnesses {
         kani::assert(
             next.max_steps_executable
                 == usage.max_steps_executable + u64::from(budget.max_steps_executable),
+            "max_steps_executable sum matches",
         );
         kani::assert(
             next.max_action_tickets
                 == usage.max_action_tickets + u64::from(budget.max_action_tickets),
+            "max_action_tickets sum matches",
         );
         kani::assert(
             next.max_parallel_in_flight
                 == usage.max_parallel_in_flight + u64::from(budget.max_parallel_in_flight),
+            "max_parallel_in_flight sum matches",
         );
         kani::assert(
             next.max_gather_pages == usage.max_gather_pages + u64::from(budget.max_gather_pages),
+            "max_gather_pages sum matches",
         );
         kani::assert(
             next.max_gather_items == usage.max_gather_items + u64::from(budget.max_gather_items),
+            "max_gather_items sum matches",
         );
         kani::assert(
             next.max_result_bytes == usage.max_result_bytes + u64::from(budget.max_result_bytes),
+            "max_result_bytes sum matches",
         );
         kani::assert(
             next.max_total_slots_written
                 == usage.max_total_slots_written + u64::from(budget.max_total_slots_written),
+            "max_total_slots_written sum matches",
         );
-        kani::assert(next.max_active_runs == usage.max_active_runs + 1);
+        kani::assert(
+            next.max_active_runs == usage.max_active_runs + 1,
+            "max_active_runs increments by one",
+        );
         kani::assert(
             next.max_queue_depth == usage.max_queue_depth + u64::from(budget.max_queue_depth),
+            "max_queue_depth sum matches",
         );
         kani::assert(
             next.max_journal_batch_bytes
                 == usage.max_journal_batch_bytes + u64::from(budget.max_journal_batch_bytes),
+            "max_journal_batch_bytes sum matches",
         );
         kani::assert(
             next.max_step_budget_per_tick
                 == usage.max_step_budget_per_tick + budget.max_step_budget_per_tick,
+            "max_step_budget_per_tick sum matches",
         );
         kani::assert(
             next.max_transitions_per_tick
                 == usage.max_transitions_per_tick + u64::from(budget.max_transitions_per_tick),
+            "max_transitions_per_tick sum matches",
         );
     }
 
@@ -1846,7 +1861,10 @@ mod kani_harnesses {
 
         match &result {
             Err(super::AggregateBudgetError::Overflow { resource }) => {
-                kani::assert(same_static_str(resource, "max_steps_executable"));
+                kani::assert(
+                    same_static_str(resource, "max_steps_executable"),
+                    "overflow resource identifies max_steps_executable",
+                );
             }
             Ok(_) => kani::assert(false, "overflow must return Err"),
             Err(_) => kani::assert(false, "only Overflow valid here"),
@@ -1871,9 +1889,18 @@ mod kani_harnesses {
                 requested,
                 available,
             }) => {
-                kani::assert(same_static_str(resource, "max_steps_executable"));
-                kani::assert(*requested == usage.max_steps_executable);
-                kani::assert(*available == capacity.max_steps_executable);
+                kani::assert(
+                    same_static_str(resource, "max_steps_executable"),
+                    "capacity resource identifies max_steps_executable",
+                );
+                kani::assert(
+                    *requested == usage.max_steps_executable,
+                    "capacity requested value matches usage",
+                );
+                kani::assert(
+                    *available == capacity.max_steps_executable,
+                    "capacity available value matches capacity",
+                );
             }
             Ok(()) => kani::assert(false, "over-capacity must return Err"),
             Err(_) => kani::assert(false, "only CapacityExceeded valid here"),

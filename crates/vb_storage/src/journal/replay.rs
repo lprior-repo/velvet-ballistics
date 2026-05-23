@@ -9,6 +9,45 @@ use crate::{
 };
 use fjall::Readable;
 
+/// Allocation-free replay collection admission decision.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum ReplayPushLimitDecision {
+    /// Another event may be collected.
+    Accept {
+        /// Event count after accepting the next event.
+        observed: usize,
+    },
+    /// Collecting another event would violate the replay limit.
+    TooMany {
+        /// Configured replay limit.
+        limit: usize,
+        /// Event count that crossed the limit, or `usize::MAX` on overflow.
+        observed: usize,
+    },
+}
+
+/// Classifies one replay collection push without allocating or touching storage.
+pub(crate) fn classify_replay_push_len(
+    current_len: usize,
+    limit: EventReplayLimit,
+) -> ReplayPushLimitDecision {
+    let max_events = limit.max_events();
+    let Some(observed) = current_len.checked_add(1) else {
+        return ReplayPushLimitDecision::TooMany {
+            limit: max_events,
+            observed: usize::MAX,
+        };
+    };
+    if observed > max_events {
+        ReplayPushLimitDecision::TooMany {
+            limit: max_events,
+            observed,
+        }
+    } else {
+        ReplayPushLimitDecision::Accept { observed }
+    }
+}
+
 impl FjallJournal {
     /// Replays one run's events in contiguous per-run sequence order.
     pub fn events_for_run(&self, run: vb_core::RunId) -> Result<Vec<JournalEvent>, JournalError> {
@@ -83,21 +122,16 @@ fn push_replay_event(
     limit: EventReplayLimit,
     event: JournalEvent,
 ) -> Result<(), JournalError> {
-    let observed = replay
-        .len()
-        .checked_add(1)
-        .ok_or(JournalError::TooManyEvents {
-            run,
-            limit: limit.max_events(),
-            observed: usize::MAX,
-        })?;
-    if observed > limit.max_events() {
-        return Err(JournalError::TooManyEvents {
-            run,
-            limit: limit.max_events(),
-            observed,
-        });
-    }
+    let observed = match classify_replay_push_len(replay.len(), limit) {
+        ReplayPushLimitDecision::Accept { observed } => observed,
+        ReplayPushLimitDecision::TooMany { limit, observed } => {
+            return Err(JournalError::TooManyEvents {
+                run,
+                limit,
+                observed,
+            });
+        }
+    };
     replay
         .try_reserve(1)
         .map_err(|_| JournalError::ReplayAllocationFailed {

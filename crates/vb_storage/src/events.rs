@@ -105,7 +105,7 @@ pub enum JournalEvent {
         slot: SlotIdx,
         /// Encoded slot value bytes (postcard-encoded `SlotValue`), if captured.
         value: Option<Vec<u8>>,
-        /// Encoded frame extra data captured with this slot write, if any.
+        /// Versioned slot-write extra envelope, or legacy encoded frame extra data.
         #[serde(default)]
         extra: Option<Vec<u8>>,
         /// Attempt number (1-based).

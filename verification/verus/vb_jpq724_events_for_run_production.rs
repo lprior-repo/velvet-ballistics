@@ -3,7 +3,7 @@
 //! Obligation: VB-STORAGE-REPLAY-001 (events_for_run seam contracts)
 //!
 //! This module provides Verus requires/ensures contracts for the production
-//! `events_for_run` and `events_for_run_from` functions in:
+//! `events_for_run` and `events_for_run_from` seams in:
 //!   - crates/vb_storage/src/journal/replay.rs::FjallJournal::events_for_run
 //!   - crates/vb_storage/src/journal/replay.rs::FjallJournal::events_for_run_from
 //!
@@ -11,17 +11,18 @@
 //!   - vb_core::RunId  (u64-based numeric identifier)
 //!   - vb_storage::EventSeq  (u64-based per-run event sequence)
 //!   - vb_storage::JournalEvent  (run admission, step, action, slot events)
-//!   - vb_storage::JournalError  (WrongRun, SequenceGap, etc.)
+//!   - vb_storage::JournalError  (WrongRun, SequenceGap, BadMagic, etc.)
 //!
 //! Contracts:
 //!   events_for_run(run):
 //!     requires: run is any valid RunId (RunId::new is total)
-//!     ensures:  if Ok(events), then all events have run_id() == run
-//!               and sequences are contiguous starting from snapshot seq
+//!     ensures:  latest snapshot authority failures return typed errors;
+//!               if Ok(events), then all events have run_id() == run and the
+//!               first event, when present, starts at snapshot seq + 1 or 0
 //!   events_for_run_from(run, start_seq):
 //!     requires: run is any valid RunId, start_seq is any valid EventSeq
 //!     ensures:  if Ok(events), then all events have run_id() == run
-//!               all events have seq() >= start_seq
+//!               first returned event equals start_seq when present
 //!               sequences are strictly increasing by 1
 
 use vstd::prelude::*;
@@ -126,8 +127,49 @@ pub enum SpecJournalErrorKind {
     MigrationRequired,
     UnknownRecordKind,
     RecordKindFamilyMismatch,
+    PayloadDigestMismatch,
     PostcardDecodeFailed,
     PayloadTooLarge,
+    TooManyEvents,
+    ReplayAllocationFailed,
+    StrictDurabilityFailed,
+}
+
+pub enum SpecSnapshotStatus {
+    NoSnapshot,
+    ValidSnapshot,
+    BadMagic,
+    PayloadDigestMismatch,
+    PostcardDecodeFailed,
+    WrongRun,
+    WrongSeq,
+}
+
+pub open spec fn spec_next_seq(
+    seq: SpecEventSeq,
+    max_seq: int,
+) -> Result<SpecEventSeq, SpecJournalErrorKind> {
+    if seq.value < max_seq {
+        Ok(SpecEventSeq { value: seq.value + 1 })
+    } else {
+        Err(SpecJournalErrorKind::SequenceOverflow)
+    }
+}
+
+pub open spec fn snapshot_authority_result(
+    status: SpecSnapshotStatus,
+    snapshot_seq: SpecEventSeq,
+    max_seq: int,
+) -> Result<SpecEventSeq, SpecJournalErrorKind> {
+    match status {
+        SpecSnapshotStatus::NoSnapshot => Ok(SpecEventSeq { value: 0 }),
+        SpecSnapshotStatus::ValidSnapshot => spec_next_seq(snapshot_seq, max_seq),
+        SpecSnapshotStatus::BadMagic => Err(SpecJournalErrorKind::BadMagic),
+        SpecSnapshotStatus::PayloadDigestMismatch => Err(SpecJournalErrorKind::PayloadDigestMismatch),
+        SpecSnapshotStatus::PostcardDecodeFailed => Err(SpecJournalErrorKind::PostcardDecodeFailed),
+        SpecSnapshotStatus::WrongRun => Err(SpecJournalErrorKind::WrongRun),
+        SpecSnapshotStatus::WrongSeq => Err(SpecJournalErrorKind::SequenceGap),
+    }
 }
 
 // ============================================================
@@ -135,23 +177,32 @@ pub enum SpecJournalErrorKind {
 // crates/vb_storage/src/journal/replay.rs::FjallJournal::events_for_run
 // ============================================================
 
-// events_for_run(run) returns Ok(events) iff all events have run_id == run
-// and sequences are contiguous starting from the snapshot sequence.
-// If Err(e), the error is a valid JournalError variant.
+// events_for_run(run) first validates latest snapshot authority. Snapshot
+// failures are not erased. A valid snapshot at sequence N delegates to replay
+// from N + 1; no snapshot delegates from zero. If Ok(events), the first event
+// when present must equal the delegated start sequence exactly.
 //
 // Production implementation:
-//   start_seq = latest_durable_snapshot_seq(run).unwrap_or(EventSeq::ZERO)
-//   events_for_run_from(run, start_seq)
+//   snapshot_seq = latest_durable_snapshot_seq(run)?
+//   start_seq = snapshot_seq.map_or(Ok(EventSeq::ZERO), codec::next_seq)?
+//   events_for_run_from(run, start_seq, limit)
 //
-// This contract delegates to events_for_run_from with snapshot_seq or ZERO.
+// Refinement map:
+//   snapshot_authority_result -> trimming::latest_durable_snapshot_seq +
+//                                codec::next_seq in journal/replay.rs
+//   spec_events_for_run_from_contract -> validate_replay_sequence.
 
 pub open spec fn spec_events_for_run_contract(
     run: SpecRunId,
+    snapshot_status: SpecSnapshotStatus,
     snapshot_seq: SpecEventSeq,
-    result: Result<Seq<SpecJournalEvent>, ()>,
+    max_seq: int,
+    result: Result<Seq<SpecJournalEvent>, SpecJournalErrorKind>,
 ) -> bool {
-    // events_for_run delegates to events_for_run_from
-    spec_events_for_run_from_contract(run, snapshot_seq, result)
+    match snapshot_authority_result(snapshot_status, snapshot_seq, max_seq) {
+        Ok(start_seq) => spec_events_for_run_from_contract(run, start_seq, result),
+        Err(error) => result == Err::<Seq<SpecJournalEvent>, SpecJournalErrorKind>(error),
+    }
 }
 
 // ============================================================
@@ -161,30 +212,25 @@ pub open spec fn spec_events_for_run_contract(
 
 // events_for_run_from(run, start_seq) returns Ok(events) iff:
 //   1. All events have run_id == run
-//   2. All events have seq >= start_seq
+//   2. The first returned event, when present, has seq == start_seq
 //   3. Sequences are strictly increasing by 1
 
 pub open spec fn spec_events_for_run_from_contract(
     run: SpecRunId,
     start_seq: SpecEventSeq,
-    result: Result<Seq<SpecJournalEvent>, ()>,
+    result: Result<Seq<SpecJournalEvent>, SpecJournalErrorKind>,
 ) -> bool {
     match result {
         Ok(events) => {
-            // Condition 1: All events for the specified run
             &&& (forall|i: int|
                 0 <= i && i < events.len() as int
                 ==> events[i as int].run_id == run)
-            // Condition 2: All events have seq >= start_seq
-            &&& (forall|i: int|
-                0 <= i && i < events.len() as int
-                ==> events[i as int].seq.value >= start_seq.value)
-            // Condition 3: Sequences are strictly increasing by 1
+            &&& (events.len() as int > 0 ==> events[0].seq.value == start_seq.value)
             &&& (forall|i: int|
                 0 <= i && i < events.len() as int - 1
                 ==> #[trigger] events[i as int].seq.value + 1 == events[(i + 1) as int].seq.value)
         }
-        Err(()) => true,  // Any error is acceptable per the production API
+        Err(_) => true,
     }
 }
 
@@ -206,8 +252,6 @@ pub proof fn proof_events_for_run_from_strict_ordering(
             ==> #[trigger] events[i as int].seq.value < events[(i + 1) as int].seq.value),
 {
     reveal(spec_events_for_run_from_contract);
-    // The contract guarantees: events[i].seq + 1 == events[i+1].seq
-    // This directly implies: events[i].seq < events[i+1].seq
 }
 
 // ============================================================
@@ -234,47 +278,67 @@ pub proof fn proof_events_for_run_from_run_preserved(
 }
 
 // ============================================================
-// Proof: events_for_run_from start_seq lower bound
+// Proof: events_for_run_from starts exactly at start_seq when non-empty
 // ============================================================
 
-pub proof fn proof_events_for_run_from_start_bound(
+pub proof fn proof_events_for_run_from_first_event_matches_start(
     run: SpecRunId,
     start_seq: SpecEventSeq,
     events: Seq<SpecJournalEvent>,
 )
     requires
         spec_events_for_run_from_contract(run, start_seq, Ok(events)),
+        events.len() as int > 0,
     ensures
-        forall|i: int|
-            0 <= i && i < events.len() as int
-            ==> events[i as int].seq.value >= start_seq.value,
+        events[0].seq.value == start_seq.value,
 {
-    assert_forall_by(|i: int| {
-        requires(0 <= i && i < events.len() as int);
-        ensures(events[i as int].seq.value >= start_seq.value);
-        reveal(spec_events_for_run_from_contract);
-    });
+    reveal(spec_events_for_run_from_contract);
 }
 
 // ============================================================
 // Proof: events_for_run contract is satisfied by events_for_run_from contract
-// when start_seq is the snapshot sequence
+// when snapshot authority computes the exact start sequence
 // ============================================================
 
 pub proof fn proof_events_for_run_subsumes_events_for_run_from(
     run: SpecRunId,
+    snapshot_status: SpecSnapshotStatus,
     snapshot_seq: SpecEventSeq,
+    max_seq: int,
+    start_seq: SpecEventSeq,
     events: Seq<SpecJournalEvent>,
 )
     requires
-        spec_events_for_run_from_contract(run, snapshot_seq, Ok(events)),
+        snapshot_authority_result(snapshot_status, snapshot_seq, max_seq)
+            == Ok::<SpecEventSeq, SpecJournalErrorKind>(start_seq),
+        spec_events_for_run_from_contract(run, start_seq, Ok(events)),
     ensures
-        spec_events_for_run_contract(run, snapshot_seq, Ok(events)),
+        spec_events_for_run_contract(run, snapshot_status, snapshot_seq, max_seq, Ok(events)),
 {
-    // spec_events_for_run_contract delegates to spec_events_for_run_from_contract
-    // so if the latter holds, the former also holds
     reveal(spec_events_for_run_from_contract);
     reveal(spec_events_for_run_contract);
+    reveal(snapshot_authority_result);
+}
+
+// ============================================================
+// Proof: snapshot authority failures are propagated as typed replay errors
+// ============================================================
+
+pub proof fn proof_events_for_run_propagates_snapshot_error(
+    run: SpecRunId,
+    snapshot_status: SpecSnapshotStatus,
+    snapshot_seq: SpecEventSeq,
+    max_seq: int,
+    error: SpecJournalErrorKind,
+)
+    requires
+        snapshot_authority_result(snapshot_status, snapshot_seq, max_seq)
+            == Err::<SpecEventSeq, SpecJournalErrorKind>(error),
+    ensures
+        spec_events_for_run_contract(run, snapshot_status, snapshot_seq, max_seq, Err(error)),
+{
+    reveal(spec_events_for_run_contract);
+    reveal(snapshot_authority_result);
 }
 
 } // verus!

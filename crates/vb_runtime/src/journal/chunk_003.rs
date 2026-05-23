@@ -9,7 +9,7 @@ impl RuntimeJournal for QueuedStorageRuntimeJournal {
         if self.profile == DurabilityProfile::Strict {
             return Err(RuntimeError::UnsupportedAsyncStrictAck);
         }
-        let storage_event = StorageRuntimeJournal::storage_event(event, seq);
+        let storage_event = StorageRuntimeJournal::storage_event(event, seq)?;
         let result = self.queue.enqueue_journaled(storage_event);
         result.map_err(RuntimeError::from)?;
         Ok(())

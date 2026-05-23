@@ -1,20 +1,32 @@
-# Verifier Lane Review Refresh: vb-jpq7.3
+# Verifier Lane Review: vb-jpq7.3
 
-reviewer_skill: proof-plan-reviewer  
-reviewer_invocation_id: proof-plan-reviewer-gpt55-2026-05-23-vb-jpq7-3-refresh  
-planner_invocation_id: unavailable-canonical-planner-invocation-id  
-review_state: rejected
+reviewer_skill: proof-plan-reviewer
+reviewer_invocation_id: proof-plan-reviewer-gpt55-2026-05-23-vb-jpq7-3-canonical-schema-rereview
+planner_invocation_id: proof-planner-canonical-schema-repair-vb-jpq7-3-2026-05-23
+review_state: approved
 
-The submitted `.beads/vb-jpq7.3/verifier-lane-decisions.jsonl` still is not `verifier-lane-decision/v1`. The rows below are review records for the seven submitted line-numbered planner rows. They cannot be accepted because the planner rows lack canonical IDs, proof seed IDs, requirement IDs, applicability fields, and independent canonical planner invocation provenance.
+## Summary
 
-```jsonl
-{"schema_version":"verifier-lane-review/v1","id":"vlr-vb-jpq7-3-refresh-line-1","lane_decision_id":"verifier-lane-decisions.jsonl:1","requirement_id":"ALL-AGGREGATED-NONSCHEMA","contract_clause":"ALL-AGGREGATED-NONSCHEMA","proof_seed_id":"missing","verifier":"tla-plus","reviewer_disposition":"rejected","finding_refs":["B1","B2","B3"],"planner_invocation_id":"unavailable-canonical-planner-invocation-id","reviewer_invocation_id":"proof-plan-reviewer-gpt55-2026-05-23-vb-jpq7-3-refresh","owner_state":"proof-plan-review","status":"rejected"}
-{"schema_version":"verifier-lane-review/v1","id":"vlr-vb-jpq7-3-refresh-line-2","lane_decision_id":"verifier-lane-decisions.jsonl:2","requirement_id":"ALL-AGGREGATED-NONSCHEMA","contract_clause":"ALL-AGGREGATED-NONSCHEMA","proof_seed_id":"missing","verifier":"verus","reviewer_disposition":"rejected","finding_refs":["B1","B2","B4"],"planner_invocation_id":"unavailable-canonical-planner-invocation-id","reviewer_invocation_id":"proof-plan-reviewer-gpt55-2026-05-23-vb-jpq7-3-refresh","owner_state":"proof-plan-review","status":"rejected"}
-{"schema_version":"verifier-lane-review/v1","id":"vlr-vb-jpq7-3-refresh-line-3","lane_decision_id":"verifier-lane-decisions.jsonl:3","requirement_id":"ALL-AGGREGATED-NONSCHEMA","contract_clause":"ALL-AGGREGATED-NONSCHEMA","proof_seed_id":"missing","verifier":"kani","reviewer_disposition":"rejected","finding_refs":["B1","B2","B5"],"planner_invocation_id":"unavailable-canonical-planner-invocation-id","reviewer_invocation_id":"proof-plan-reviewer-gpt55-2026-05-23-vb-jpq7-3-refresh","owner_state":"proof-plan-review","status":"rejected"}
-{"schema_version":"verifier-lane-review/v1","id":"vlr-vb-jpq7-3-refresh-line-4","lane_decision_id":"verifier-lane-decisions.jsonl:4","requirement_id":"ALL-AGGREGATED-NONSCHEMA","contract_clause":"ALL-AGGREGATED-NONSCHEMA","proof_seed_id":"missing","verifier":"miri","reviewer_disposition":"rejected","finding_refs":["B1","B2","B6"],"planner_invocation_id":"unavailable-canonical-planner-invocation-id","reviewer_invocation_id":"proof-plan-reviewer-gpt55-2026-05-23-vb-jpq7-3-refresh","owner_state":"proof-plan-review","status":"rejected"}
-{"schema_version":"verifier-lane-review/v1","id":"vlr-vb-jpq7-3-refresh-line-5","lane_decision_id":"verifier-lane-decisions.jsonl:5","requirement_id":"ALL-AGGREGATED-NONSCHEMA","contract_clause":"ALL-AGGREGATED-NONSCHEMA","proof_seed_id":"missing","verifier":"loom","reviewer_disposition":"rejected","finding_refs":["B1","B2","B6"],"planner_invocation_id":"unavailable-canonical-planner-invocation-id","reviewer_invocation_id":"proof-plan-reviewer-gpt55-2026-05-23-vb-jpq7-3-refresh","owner_state":"proof-plan-review","status":"rejected"}
-{"schema_version":"verifier-lane-review/v1","id":"vlr-vb-jpq7-3-refresh-line-6","lane_decision_id":"verifier-lane-decisions.jsonl:6","requirement_id":"ALL-AGGREGATED-NONSCHEMA","contract_clause":"ALL-AGGREGATED-NONSCHEMA","proof_seed_id":"missing","verifier":"proptest-fuzz","reviewer_disposition":"rejected","finding_refs":["B1","B2","B6"],"planner_invocation_id":"unavailable-canonical-planner-invocation-id","reviewer_invocation_id":"proof-plan-reviewer-gpt55-2026-05-23-vb-jpq7-3-refresh","owner_state":"proof-plan-review","status":"rejected"}
-{"schema_version":"verifier-lane-review/v1","id":"vlr-vb-jpq7-3-refresh-line-7","lane_decision_id":"verifier-lane-decisions.jsonl:7","requirement_id":"ALL-AGGREGATED-NONSCHEMA","contract_clause":"ALL-AGGREGATED-NONSCHEMA","proof_seed_id":"missing","verifier":"static-source-scan","reviewer_disposition":"rejected","finding_refs":["B1","B2"],"planner_invocation_id":"unavailable-canonical-planner-invocation-id","reviewer_invocation_id":"proof-plan-reviewer-gpt55-2026-05-23-vb-jpq7-3-refresh","owner_state":"proof-plan-review","status":"rejected"}
-```
+All 72 repaired `verifier-lane-decision/v1` rows were independently reviewed and accepted. `.beads/vb-jpq7.3/verifier-lane-review.jsonl` now contains one canonical `verifier-lane-review/v1` row for each planner lane decision, all with `reviewer_disposition: accepted`, empty `finding_refs`, independent planner/reviewer invocation ids, `owner_state: proof-plan-review`, and `status: accepted`.
 
-Missing canonical lane decisions/reviews remain: `flux-rs`, separate `proptest`, separate `cargo-fuzz`, and all per-requirement/per-proof-seed core verifier rows.
+## Counts
+
+- Planner lane decisions reviewed: 72.
+- Required lanes: 17.
+- Not-applicable lanes: 55.
+- Blocked-tooling lanes: 0.
+- Core verifier coverage: 8 of 8 tuples have all required core lanes.
+- Extra behavior/global lanes accepted: 6 `cargo-test`, 1 `static-source-scan`, 1 `moon-ci`.
+
+## Evidence Judgment
+
+Latest Moon CI evidence (`tool_e54cfc867001em3UkY7dnDZZ7z`) and scoped Kani evidence (`tool_e543ab843002yJmWdm7rPpi1ed`) are acceptable proof-plan inputs, subject to preserved limitations:
+
+- TLA+ is bounded abstract evidence only.
+- Verus is auxiliary/spec-seam evidence only.
+- Kani is scoped seam evidence only; only the 9 `kani_recovery_hydrate::*` harnesses close vb-jpq7.3 storage/recovery seams.
+- Live Fjall/RunFrame/codec/range behavior is carried by behavior tests and trusted-base declarations.
+
+## Disposition
+
+Accepted. No proof-plan blockers remain after canonical schema repair.

@@ -57,6 +57,45 @@ is_allowed() {
   [[ -n "${ALLOW_MAP[$rel|$class]:-}" ]]
 }
 
+should_skip_file() {
+  local rel="$1"
+  case "$rel" in
+    crates/*/src/kani_*.rs|crates/*/src/**/kani_*.rs) return 0 ;;
+    crates/workspace_tests/src/*|crates/workspace_tests/src/**) return 0 ;;
+    crates/*/src/*_tests.rs|crates/*/src/**/*_tests.rs) return 0 ;;
+    crates/*/src/test_harness.rs|crates/*/src/**/test_harness.rs) return 0 ;;
+    crates/*/src/**/tests/*.rs|crates/*/src/**/tests/**/*.rs) return 0 ;;
+    crates/*/src/**/impl_tests/*.rs|crates/*/src/**/impl_tests/**/*.rs) return 0 ;;
+    crates/*/src/**/lifecycle_tests/*.rs|crates/*/src/**/lifecycle_tests/**/*.rs) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+brace_delta() {
+  local text="$1"
+  local no_open="${text//\{/}"
+  local no_close="${text//\}/}"
+  local opens=$(( ${#text} - ${#no_open} ))
+  local closes=$(( ${#text} - ${#no_close} ))
+  printf '%s\n' "$(( opens - closes ))"
+}
+
+is_nonproduction_cfg_line() {
+  local line="$1"
+  [[ "$line" =~ ^[[:space:]]*#\[cfg\((test|kani)\)\] || "$line" =~ ^[[:space:]]*#\[cfg\([^]]*(test|kani)[^]]*\)\] ]]
+}
+
+is_module_open_line() {
+  local line="$1"
+  [[ "$line" =~ ^[[:space:]]*(pub[[:space:]]+)?mod[[:space:]]+[A-Za-z0-9_]+[[:space:]]*\{ ]]
+}
+
+is_fallible_lossy_conversion_source() {
+  local compact="$1"
+  local lossy_source='(fallible|write_|append|flush|send\(|recv\(|cancel|persist|commit|remove_|remove_dir|remove_file|create_|open_|save_|read_to_|from_bytes|to_allocvec|try_from_parts)'
+  [[ "$compact" =~ $lossy_source ]]
+}
+
 record_violation() {
   local out="$1"
   local rel="$2"
@@ -92,6 +131,11 @@ classify_line() {
   if [[ "$line" =~ \.(ok|err)\(\)[[:space:]]*\; && "$compact" != *"="* ]]; then
     record_violation "$out" "$rel" "$line_no" "DISCARD-003" "$compact"
   fi
+  if [[ "$compact" == *".ok()"* || "$compact" == *".err()"* ]]; then
+    if is_fallible_lossy_conversion_source "$compact"; then
+      record_violation "$out" "$rel" "$line_no" "DISCARD-003" "$compact"
+    fi
+  fi
   if [[ "$compact" == *"Err(_)=>{}"* || "$compact" == *"Ok(())|Err(_)=>{}"* ]]; then
     record_violation "$out" "$rel" "$line_no" "DISCARD-004" "$compact"
   fi
@@ -126,12 +170,58 @@ scan_tree() {
   local file=""
   local line=""
   local line_no=0
+  local rel=""
+  local compact=""
+  local pending_cfg_nonproduction=0
+  local skip_depth=0
+  local pending_lossy_line_no=0
+  local pending_lossy_text=""
   while IFS= read -r file; do
     [[ -r "$file" ]] || { echo "UnreadableInput: $file" >&2; return 4; }
+    rel="${file#"$scan_root/"}"
+    if should_skip_file "$rel"; then
+      continue
+    fi
     line_no=0
+    pending_cfg_nonproduction=0
+    skip_depth=0
+    pending_lossy_line_no=0
+    pending_lossy_text=""
     while IFS= read -r line || [[ -n "$line" ]]; do
       line_no=$((line_no + 1))
-      classify_line "$report" "${file#"$scan_root/"}" "$line_no" "$line"
+      if [[ "$skip_depth" -gt 0 ]]; then
+        skip_depth=$((skip_depth + $(brace_delta "$line")))
+        [[ "$skip_depth" -lt 0 ]] && skip_depth=0
+        continue
+      fi
+      if is_nonproduction_cfg_line "$line"; then
+        pending_cfg_nonproduction=1
+        continue
+      fi
+      if [[ "$pending_cfg_nonproduction" -eq 1 ]]; then
+        if [[ "$line" =~ ^[[:space:]]*#\[ || -z "${line//[[:space:]]/}" ]]; then
+          continue
+        fi
+        if is_module_open_line "$line"; then
+          skip_depth=$(brace_delta "$line")
+          [[ "$skip_depth" -le 0 ]] && skip_depth=1
+          pending_cfg_nonproduction=0
+          continue
+        fi
+        pending_cfg_nonproduction=0
+      fi
+      compact="${line//[[:space:]]/}"
+      if [[ "$pending_lossy_line_no" -ne 0 && "$compact" == .* && ( "$compact" == *".ok()"* || "$compact" == *".err()"* ) ]]; then
+        record_violation "$report" "$rel" "$line_no" "DISCARD-003" "${pending_lossy_text}${compact}"
+      fi
+      if is_fallible_lossy_conversion_source "$compact" && [[ "$compact" != *".ok()"* && "$compact" != *".err()"* && "$compact" != *";"* && "$compact" != *"?"* ]]; then
+        pending_lossy_line_no="$line_no"
+        pending_lossy_text="$compact"
+      elif [[ "$compact" != .* ]]; then
+        pending_lossy_line_no=0
+        pending_lossy_text=""
+      fi
+      classify_line "$report" "$rel" "$line_no" "$line"
     done < "$file"
   done < <(rg --files "${roots[@]}" -g '*.rs' | LC_ALL=C sort)
 
@@ -193,6 +283,12 @@ run_self_tests() {
 
   write_fixture "$dir/crates/demo/src/lib.rs" 'pub fn ok_lossy() { fallible_result().ok(); }'
   expect_status "DISCARD-003 ok err lossy" 2 "$dir" "$allow" "$report"
+
+  write_fixture "$dir/crates/demo/src/lib.rs" 'pub fn embedded_ok_lossy(bytes: &[u8]) { let parsed = postcard::from_bytes::<u8>(bytes).ok().unwrap_or(0); }'
+  expect_status "DISCARD-003 embedded ok lossy" 2 "$dir" "$allow" "$report"
+
+  write_fixture "$dir/crates/demo/src/lib.rs" $'pub fn split_ok_lossy(bytes: &[u8]) {\n    let parsed = postcard::from_bytes::<u8>(bytes)\n        .ok()\n        .unwrap_or(0);\n}'
+  expect_status "DISCARD-003 split ok lossy" 2 "$dir" "$allow" "$report"
 
   write_fixture "$dir/crates/demo/src/lib.rs" 'pub fn swallow(r: Result<(), ()>) { match r { Ok(()) | Err(_) => {} } }'
   expect_status "DISCARD-004 swallowed Err" 2 "$dir" "$allow" "$report"

@@ -72,6 +72,12 @@ pub enum RecoveryError {
         /// Slot whose taint could not be read.
         slot: SlotIdx,
     },
+    /// Durable slot taint metadata was present but could not be decoded.
+    #[error("slot taint metadata corrupt for slot {slot:?}")]
+    CorruptSlotTaint {
+        /// Slot whose persisted taint metadata was corrupt.
+        slot: SlotIdx,
+    },
     /// No snapshot or journal events found for run.
     #[error("no recovery data found for run {run:?}")]
     NoRecoveryData {

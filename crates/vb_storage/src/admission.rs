@@ -90,6 +90,44 @@ pub struct VerificationProof {
     pub warnings: Vec<VerificationWarning>,
 }
 
+/// Allocation-free core of [`VerificationProof`] construction.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct VerificationProofCore {
+    /// Confirmed digest of the verified artifact.
+    pub(crate) digest: vb_core::WorkflowDigest,
+    /// Number of verification gates that passed.
+    pub(crate) gate_count: u8,
+    /// Whether the proof was durably persisted.
+    pub(crate) durable: bool,
+    /// Artifact IR is size-bounded claim flag.
+    pub(crate) bounded_claimed: bool,
+    /// Artifact taint-safety claim flag.
+    pub(crate) taint_safe_claimed: bool,
+    /// Artifact retry-safety claim flag.
+    pub(crate) retry_safe_claimed: bool,
+    /// Artifact idempotency claim flag.
+    pub(crate) idempotency_verified_claimed: bool,
+    /// Artifact replayability claim flag.
+    pub(crate) replayable_claimed: bool,
+}
+
+pub(crate) const fn verification_proof_core(
+    digest: vb_core::WorkflowDigest,
+    gate_count: u8,
+    durable: bool,
+) -> VerificationProofCore {
+    VerificationProofCore {
+        digest,
+        gate_count,
+        durable,
+        bounded_claimed: true,
+        taint_safe_claimed: true,
+        retry_safe_claimed: true,
+        idempotency_verified_claimed: true,
+        replayable_claimed: true,
+    }
+}
+
 impl VerificationProof {
     /// Creates a new verification proof with all proof flags set to true.
     ///
@@ -99,15 +137,16 @@ impl VerificationProof {
     /// claims, not proven facts. See `VerificationProof` struct docs.
     #[must_use]
     pub fn new(digest: vb_core::WorkflowDigest, gate_count: u8, durable: bool) -> Self {
+        let core = verification_proof_core(digest, gate_count, durable);
         Self {
-            digest,
-            gate_count,
-            durable,
-            bounded_claimed: true,
-            taint_safe_claimed: true,
-            retry_safe_claimed: true,
-            idempotency_verified_claimed: true,
-            replayable_claimed: true,
+            digest: core.digest,
+            gate_count: core.gate_count,
+            durable: core.durable,
+            bounded_claimed: core.bounded_claimed,
+            taint_safe_claimed: core.taint_safe_claimed,
+            retry_safe_claimed: core.retry_safe_claimed,
+            idempotency_verified_claimed: core.idempotency_verified_claimed,
+            replayable_claimed: core.replayable_claimed,
             idempotency_keyed: Box::new([]),
             idempotency_attested: Box::new([]),
             warnings: Vec::new(),

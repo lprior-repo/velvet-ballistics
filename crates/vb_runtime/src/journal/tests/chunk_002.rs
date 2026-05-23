@@ -137,7 +137,7 @@ fn storage_runtime_journal_maps_action_wait_and_ask_events() {
                 seq: EventSeq::new(6),
                 slot: SlotIdx::new(5),
                 value: Some(Vec::new()),
-                extra: postcard::to_allocvec(&Taint::Clean).ok(),
+                extra: vb_storage::encode_slot_written_extra(Taint::Clean, None).ok(),
                 attempt: 1,
             },
         ]

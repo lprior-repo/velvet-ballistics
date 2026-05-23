@@ -1,6 +1,8 @@
 #![forbid(unsafe_code)]
 
-use vb_core::{RunId, StepIdx, WorkflowDigest};
+use vb_core::{ListId, RunId, SlotIdx, SlotValue, StepIdx, Taint, WorkflowDigest};
+use vb_runtime::primitives::collect::CollectPaginationState;
+use vb_storage::recovery::{RecoveryError, hydrate_run_frame, hydrate_run_frame_from_events};
 use vb_storage::{
     EventReplayLimit, EventSeq, FjallJournal, JournalError, JournalEvent, RunSnapshot,
 };
@@ -10,7 +12,6 @@ const JOURNAL_CORE_SOURCE: &str = include_str!("../../vb_storage/src/journal/cor
 const JOURNAL_APPEND_SOURCE: &str = include_str!("../../vb_storage/src/journal/append.rs");
 const HYDRATE_SUPPORT_SOURCE: &str =
     include_str!("../../vb_storage/src/recovery/hydrate_support.rs");
-
 fn step_started(run: RunId, seq: u64, step: u16) -> JournalEvent {
     JournalEvent::StepStarted {
         run,
@@ -18,6 +19,23 @@ fn step_started(run: RunId, seq: u64, step: u16) -> JournalEvent {
         step: StepIdx::new(step),
         attempt: 1,
     }
+}
+
+fn slot_written(
+    run: RunId,
+    seq: u64,
+    slot: SlotIdx,
+    value: SlotValue,
+) -> Result<JournalEvent, String> {
+    let payload = postcard::to_allocvec(&value).map_err(|err| err.to_string())?;
+    Ok(JournalEvent::SlotWrittenEvent {
+        run,
+        seq: EventSeq::new(seq),
+        slot,
+        value: Some(payload),
+        extra: None,
+        attempt: 1,
+    })
 }
 
 fn empty_snapshot(run: RunId, seq: u64) -> RunSnapshot {
@@ -34,6 +52,28 @@ fn journal_at_temp_path() -> Result<(tempfile::TempDir, FjallJournal), String> {
     let temp = tempfile::tempdir().map_err(|err| err.to_string())?;
     let journal = FjallJournal::open(temp.path(), None).map_err(|err| err.to_string())?;
     Ok((temp, journal))
+}
+
+fn corrupt_slot_taint_envelope() -> Vec<u8> {
+    let mut bytes = vb_storage::SLOT_WRITTEN_EXTRA_PREFIX.to_vec();
+    bytes.extend_from_slice(&[255, 255, 255]);
+    bytes
+}
+
+fn collect_frame_extra(run: RunId, slot: SlotIdx) -> Result<Vec<u8>, String> {
+    let state = CollectPaginationState {
+        run_id: run,
+        collector_slot: slot,
+        source: ListId::new(1),
+        current_page: ListId::new(2),
+        cursor: 1,
+        page_size: 1,
+        item_count: 2,
+        limit: 2,
+        time_limit_ms: None,
+        start_millis: 0,
+    };
+    postcard::to_allocvec(&state).map_err(|err| err.to_string())
 }
 
 #[test]
@@ -178,21 +218,118 @@ fn given_snapshot_index_read_fails_when_events_for_run_starts_then_error_is_not_
 }
 
 #[test]
-fn given_tail_slot_write_when_recovery_reads_existing_taint_then_read_failure_is_typed_error()
+fn given_public_hydration_tail_slot_cannot_be_dimensioned_when_recovery_runs_then_clean_taint_is_not_defaulted()
 -> Result<(), String> {
-    // Given: recovery must preserve taint and fail closed if the frame cannot read it.
+    // Given: public snapshot+tail hydration receives a tail slot write at the largest slot index.
+    let run = RunId::new(73_008);
+    let snapshot = empty_snapshot(run, 0);
+    let tail = vec![slot_written(
+        run,
+        1,
+        SlotIdx::new(u16::MAX),
+        SlotValue::I64(7),
+    )?];
+
+    // When: hydration derives dimensions before applying the slot write.
+    let result = hydrate_run_frame(&snapshot, &tail, run);
+
+    // Then: the public recovery path fails closed instead of creating an implicit Clean slot.
+    match result {
+        Err(RecoveryError::FrameDimensionOverflow { run: observed }) => {
+            assert_eq!(observed, run);
+        }
+        other => {
+            return Err(format!(
+                "expected FrameDimensionOverflow before Clean taint default, got {other:?}"
+            ));
+        }
+    }
+
+    // And: the lower-level tail write helper keeps the fail-closed taint lattice wired.
     let defaults_failed_read_to_clean =
         HYDRATE_SUPPORT_SOURCE.contains("frame.read_taint(*slot).unwrap_or(vb_core::Taint::Clean)");
     let uses_typed_read_taint_error = HYDRATE_SUPPORT_SOURCE.contains("frame.read_taint(*slot)")
-        && HYDRATE_SUPPORT_SOURCE.contains("RecoveryError::SlotTaintReadFailed")
-        && HYDRATE_SUPPORT_SOURCE.contains("Err(_) =>")
-        && HYDRATE_SUPPORT_SOURCE.contains("return Err(RecoveryError::SlotTaintReadFailed")
-        && HYDRATE_SUPPORT_SOURCE.contains("read_taint");
+        && HYDRATE_SUPPORT_SOURCE.contains("resolve_slot_taint_read")
+        && HYDRATE_SUPPORT_SOURCE.contains("SlotTaintResolution::FailClosed")
+        && HYDRATE_SUPPORT_SOURCE.contains("RecoveryError::SlotTaintReadFailed");
 
-    // When: the hydration support source is scanned for the slot write recovery path.
-    // Then: corrupt dimensions or out-of-range slots must not downgrade to Clean taint.
     assert_eq!(defaults_failed_read_to_clean, false);
     assert_eq!(uses_typed_read_taint_error, true);
+    Ok(())
+}
+
+#[test]
+fn given_full_journal_slot_taint_metadata_is_corrupt_when_hydrating_then_recovery_fails_closed()
+-> Result<(), String> {
+    // Given: a full-journal slot write has a valid value that legacy fallback would call Clean,
+    // but its persisted taint sidecar bytes are corrupt.
+    let run = RunId::new(73_009);
+    let slot = SlotIdx::new(0);
+    let value = postcard::to_allocvec(&SlotValue::Bool(false)).map_err(|err| err.to_string())?;
+    let events = vec![
+        JournalEvent::RunAccepted {
+            run,
+            seq: EventSeq::new(0),
+            workflow: WorkflowDigest::from_bytes([0xA5; 32]),
+        },
+        step_started(run, 1, 0),
+        JournalEvent::SlotWrittenEvent {
+            run,
+            seq: EventSeq::new(2),
+            slot,
+            value: Some(value),
+            extra: Some(corrupt_slot_taint_envelope()),
+            attempt: 1,
+        },
+    ];
+
+    // When: full-journal hydration decodes the runtime frame seed.
+    let result = hydrate_run_frame_from_events(&events, run);
+
+    // Then: corrupt taint metadata is not erased into legacy Clean/default taint.
+    match result {
+        Err(RecoveryError::CorruptSlotTaint { slot: observed }) => assert_eq!(observed, slot),
+        other => return Err(format!("expected CorruptSlotTaint, got {other:?}")),
+    }
+    Ok(())
+}
+
+#[test]
+fn given_legacy_collect_frame_extra_when_hydrating_full_journal_then_extra_is_not_corrupt_taint()
+-> Result<(), String> {
+    // Given: legacy runtime records used SlotWrittenEvent.extra for collect pagination state.
+    let run = RunId::new(73_010);
+    let slot = SlotIdx::new(0);
+    let value = postcard::to_allocvec(&SlotValue::Bool(false)).map_err(|err| err.to_string())?;
+    let events = vec![
+        JournalEvent::RunAccepted {
+            run,
+            seq: EventSeq::new(0),
+            workflow: WorkflowDigest::from_bytes([0xA5; 32]),
+        },
+        step_started(run, 1, 0),
+        JournalEvent::SlotWrittenEvent {
+            run,
+            seq: EventSeq::new(2),
+            slot,
+            value: Some(value),
+            extra: Some(collect_frame_extra(run, slot)?),
+            attempt: 1,
+        },
+    ];
+
+    // When: full-journal hydration sees legacy frame extra bytes.
+    let frame = hydrate_run_frame_from_events(&events, run).map_err(|err| err.to_string())?;
+
+    // Then: legacy frame extra is not misclassified as corrupt taint metadata.
+    assert_eq!(
+        frame.read_slot(slot).map_err(|err| format!("{err:?}"))?,
+        &SlotValue::Bool(false)
+    );
+    assert_eq!(
+        frame.read_taint(slot).map_err(|err| format!("{err:?}"))?,
+        Taint::Clean
+    );
     Ok(())
 }
 

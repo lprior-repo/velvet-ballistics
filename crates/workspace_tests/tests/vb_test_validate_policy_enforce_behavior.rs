@@ -59,6 +59,14 @@ fn finish_node(index: u16, result_slot: u16) -> CompiledNode {
     }
 }
 
+fn validate_gate_11_only(parts: &WorkflowParts) -> Result<(), ValidationError> {
+    ValidationPipeline {
+        gate_11_loop_body_graph: true,
+        ..ValidationPipeline::no_gates()
+    }
+    .validate(parts)
+}
+
 // ---------------------------------------------------------------------------
 // Policy Rule Evaluation Behavior: Gate 7 - Expression Stack Depth
 // ---------------------------------------------------------------------------
@@ -545,17 +553,24 @@ fn gate_11_policy_rule_rejects_for_each_body_out_of_range() {
             done: StepIdx::new(1),
         },
     };
-    let parts = make_parts(vec![node], 2, 0, Vec::new(), Vec::new(), Vec::new());
+    let parts = make_parts(
+        vec![node, finish_node(1, 0)],
+        2,
+        0,
+        Vec::new(),
+        Vec::new(),
+        Vec::new(),
+    );
 
     // When validation runs
-    let result = validate(&parts);
+    let result = validate_gate_11_only(&parts);
 
     // Then enforcement reports exact loop body range error
     assert!(matches!(
         result,
         Err(ValidationError::LoopBodyStepOutOfRange {
             step: 99,
-            node_count: 1,
+            node_count: 2,
             source_node: 0,
             label: _,
         })
@@ -580,17 +595,24 @@ fn gate_11_policy_rule_rejects_for_each_done_out_of_range() {
             done: StepIdx::new(99), // Beyond node count of 1
         },
     };
-    let parts = make_parts(vec![node], 2, 0, Vec::new(), Vec::new(), Vec::new());
+    let parts = make_parts(
+        vec![node, finish_node(1, 0)],
+        2,
+        0,
+        Vec::new(),
+        Vec::new(),
+        Vec::new(),
+    );
 
     // When validation runs
-    let result = validate(&parts);
+    let result = validate_gate_11_only(&parts);
 
     // Then enforcement reports exact loop body range error
     assert!(matches!(
         result,
         Err(ValidationError::LoopBodyStepOutOfRange {
             step: 99,
-            node_count: 1,
+            node_count: 2,
             source_node: 0,
             label: _,
         })
@@ -615,17 +637,24 @@ fn gate_11_policy_rule_rejects_loop_body_before_start() {
             done: StepIdx::new(1),
         },
     };
-    let parts = make_parts(vec![node], 2, 0, Vec::new(), Vec::new(), Vec::new());
+    let parts = make_parts(
+        vec![node, finish_node(1, 0), finish_node(2, 0)],
+        2,
+        0,
+        Vec::new(),
+        Vec::new(),
+        Vec::new(),
+    );
 
     // When validation runs
-    let result = validate(&parts);
+    let result = validate_gate_11_only(&parts);
 
     // Then enforcement reports exact loop body range error
     assert!(matches!(
         result,
         Err(ValidationError::LoopBodyStepOutOfRange {
             step: 0,
-            node_count: 1,
+            node_count: 3,
             source_node: 0,
             label: ref l,
         }) if l.contains("after")
@@ -650,17 +679,24 @@ fn gate_11_policy_rule_rejects_for_each_done_before_body() {
             done: StepIdx::new(1), // Done before body
         },
     };
-    let parts = make_parts(vec![node], 2, 0, Vec::new(), Vec::new(), Vec::new());
+    let parts = make_parts(
+        vec![node, finish_node(1, 0), finish_node(2, 0)],
+        2,
+        0,
+        Vec::new(),
+        Vec::new(),
+        Vec::new(),
+    );
 
     // When validation runs
-    let result = validate(&parts);
+    let result = validate_gate_11_only(&parts);
 
     // Then enforcement reports exact error about done ordering
     assert!(matches!(
         result,
         Err(ValidationError::LoopBodyStepOutOfRange {
             step: 1,
-            node_count: 1,
+            node_count: 3,
             source_node: 0,
             label: ref l,
         }) if l.contains("after")
@@ -682,17 +718,24 @@ fn gate_11_policy_rule_rejects_together_branch_out_of_range() {
             join: StepIdx::new(1),
         },
     };
-    let parts = make_parts(vec![node], 1, 0, Vec::new(), Vec::new(), Vec::new());
+    let parts = make_parts(
+        vec![node, finish_node(1, 0)],
+        1,
+        0,
+        Vec::new(),
+        Vec::new(),
+        Vec::new(),
+    );
 
     // When validation runs
-    let result = validate(&parts);
+    let result = validate_gate_11_only(&parts);
 
     // Then enforcement reports exact loop body range error
     assert!(matches!(
         result,
         Err(ValidationError::LoopBodyStepOutOfRange {
             step: 99,
-            node_count: 1,
+            node_count: 2,
             source_node: 0,
             label: _,
         })
@@ -714,17 +757,24 @@ fn gate_11_policy_rule_rejects_together_join_out_of_range() {
             join: StepIdx::new(99), // Beyond node count
         },
     };
-    let parts = make_parts(vec![node], 1, 0, Vec::new(), Vec::new(), Vec::new());
+    let parts = make_parts(
+        vec![node, finish_node(1, 0)],
+        1,
+        0,
+        Vec::new(),
+        Vec::new(),
+        Vec::new(),
+    );
 
     // When validation runs
-    let result = validate(&parts);
+    let result = validate_gate_11_only(&parts);
 
     // Then enforcement reports exact loop body range error
     assert!(matches!(
         result,
         Err(ValidationError::LoopBodyStepOutOfRange {
             step: 99,
-            node_count: 1,
+            node_count: 2,
             source_node: 0,
             label: _,
         })

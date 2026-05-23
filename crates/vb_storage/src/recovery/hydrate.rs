@@ -16,6 +16,120 @@ use crate::recovery::types::{
 };
 use vb_core::RunId;
 
+/// Copy-only metadata needed to validate snapshot/tail hydration ordering.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct TailEventMetadata {
+    /// Run carried by the tail event.
+    pub(crate) run: RunId,
+    /// Sequence carried by the tail event.
+    pub(crate) seq: crate::EventSeq,
+}
+
+impl TailEventMetadata {
+    /// Creates metadata from explicit event fields.
+    #[must_use]
+    pub(crate) const fn new(run: RunId, seq: crate::EventSeq) -> Self {
+        Self { run, seq }
+    }
+
+    /// Projects copy metadata from a journal event.
+    #[must_use]
+    pub(crate) const fn from_event(event: &JournalEvent) -> Self {
+        Self::new(event.run_id(), event.seq())
+    }
+}
+
+/// Allocation-free classification for snapshot/tail hydration preconditions.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum SnapshotRecoveryInputViolation {
+    /// Snapshot belongs to a different run.
+    SnapshotRunMismatch {
+        /// Run carried by the snapshot.
+        snapshot_run: RunId,
+        /// Snapshot sequence.
+        snapshot_seq: crate::EventSeq,
+    },
+    /// Tail event belongs to a different run.
+    TailRunMismatch {
+        /// Requested run.
+        expected: RunId,
+        /// Event run.
+        actual: RunId,
+    },
+    /// Tail event is not strictly after the snapshot sequence.
+    TailSeqNotAfterSnapshot {
+        /// Snapshot sequence.
+        snapshot_seq: crate::EventSeq,
+        /// Event sequence.
+        actual_seq: crate::EventSeq,
+    },
+    /// Snapshot and tail are both empty.
+    NoRecoveryData {
+        /// Requested run.
+        run: RunId,
+    },
+}
+
+/// Validates snapshot identity without allocating an error string.
+pub(crate) const fn validate_snapshot_metadata(
+    snapshot_run: RunId,
+    snapshot_seq: crate::EventSeq,
+    run_id: RunId,
+) -> Result<(), SnapshotRecoveryInputViolation> {
+    if snapshot_run.get() == run_id.get() {
+        Ok(())
+    } else {
+        Err(SnapshotRecoveryInputViolation::SnapshotRunMismatch {
+            snapshot_run,
+            snapshot_seq,
+        })
+    }
+}
+
+/// Validates one tail event's run identity without allocating an error string.
+pub(crate) const fn validate_tail_run_metadata(
+    event: TailEventMetadata,
+    run_id: RunId,
+) -> Result<(), SnapshotRecoveryInputViolation> {
+    if event.run.get() == run_id.get() {
+        Ok(())
+    } else {
+        Err(SnapshotRecoveryInputViolation::TailRunMismatch {
+            expected: run_id,
+            actual: event.run,
+        })
+    }
+}
+
+/// Validates one tail event's sequence lower bound without allocating an error string.
+pub(crate) const fn validate_tail_seq_after_snapshot(
+    event: TailEventMetadata,
+    snapshot_seq: crate::EventSeq,
+) -> Result<(), SnapshotRecoveryInputViolation> {
+    if event.seq.get() > snapshot_seq.get() {
+        Ok(())
+    } else {
+        Err(SnapshotRecoveryInputViolation::TailSeqNotAfterSnapshot {
+            snapshot_seq,
+            actual_seq: event.seq,
+        })
+    }
+}
+
+/// Validates that recovery has at least one snapshot byte or tail event.
+pub(crate) const fn validate_recovery_data_present(
+    tail_events_empty: bool,
+    snapshot_slots_empty: bool,
+    snapshot_taint_empty: bool,
+    run_id: RunId,
+) -> Result<(), SnapshotRecoveryInputViolation> {
+    if tail_events_empty && snapshot_slots_empty && snapshot_taint_empty {
+        Err(SnapshotRecoveryInputViolation::NoRecoveryData { run: run_id })
+    } else {
+        Ok(())
+    }
+}
+
 /// Hydrates a live RunFrame from a snapshot plus ordered tail journal events.
 ///
 /// Reconstructs the full runtime frame by decoding the snapshot's compact
@@ -56,18 +170,17 @@ fn validate_snapshot_recovery_inputs(
     tail_events: &[JournalEvent],
     run_id: RunId,
 ) -> RecoveryResult<()> {
-    if snapshot.run != run_id {
-        return Err(RecoveryError::CorruptSnapshot {
-            run: snapshot.run,
-            seq: snapshot.seq,
-        });
-    }
+    validate_snapshot_metadata(snapshot.run, snapshot.seq, run_id)
+        .map_err(snapshot_input_violation_to_error)?;
     validate_tail_events_match_run(tail_events, run_id)?;
     validate_tail_events_after_snapshot(tail_events, snapshot)?;
-    if tail_events.is_empty() && snapshot.slots.is_empty() && snapshot.taint.is_empty() {
-        return Err(RecoveryError::NoRecoveryData { run: run_id });
-    }
-    Ok(())
+    validate_recovery_data_present(
+        tail_events.is_empty(),
+        snapshot.slots.is_empty(),
+        snapshot.taint.is_empty(),
+        run_id,
+    )
+    .map_err(snapshot_input_violation_to_error)
 }
 
 fn validate_tail_events_match_run(
@@ -75,16 +188,8 @@ fn validate_tail_events_match_run(
     run_id: RunId,
 ) -> RecoveryResult<()> {
     for event in tail_events {
-        if event.run_id() != run_id {
-            return Err(RecoveryError::ReplayDivergence {
-                step: vb_core::StepIdx::ZERO,
-                detail: format!(
-                    "tail event run_id mismatch: expected {:?}, found {:?}",
-                    run_id,
-                    event.run_id()
-                ),
-            });
-        }
+        validate_tail_run_metadata(TailEventMetadata::from_event(event), run_id)
+            .map_err(snapshot_input_violation_to_error)?;
     }
     Ok(())
 }
@@ -94,18 +199,44 @@ fn validate_tail_events_after_snapshot(
     snapshot: &RunSnapshot,
 ) -> RecoveryResult<()> {
     for event in tail_events {
-        if event.seq() <= snapshot.seq {
-            return Err(RecoveryError::ReplayDivergence {
-                step: vb_core::StepIdx::ZERO,
-                detail: format!(
-                    "tail event seq {} is not after snapshot seq {}",
-                    event.seq().get(),
-                    snapshot.seq.get()
-                ),
-            });
-        }
+        validate_tail_seq_after_snapshot(TailEventMetadata::from_event(event), snapshot.seq)
+            .map_err(snapshot_input_violation_to_error)?;
     }
     Ok(())
+}
+
+fn snapshot_input_violation_to_error(violation: SnapshotRecoveryInputViolation) -> RecoveryError {
+    match violation {
+        SnapshotRecoveryInputViolation::SnapshotRunMismatch {
+            snapshot_run,
+            snapshot_seq,
+        } => RecoveryError::CorruptSnapshot {
+            run: snapshot_run,
+            seq: snapshot_seq,
+        },
+        SnapshotRecoveryInputViolation::TailRunMismatch { expected, actual } => {
+            RecoveryError::ReplayDivergence {
+                step: vb_core::StepIdx::ZERO,
+                detail: format!(
+                    "tail event run_id mismatch: expected {expected:?}, found {actual:?}"
+                ),
+            }
+        }
+        SnapshotRecoveryInputViolation::TailSeqNotAfterSnapshot {
+            snapshot_seq,
+            actual_seq,
+        } => RecoveryError::ReplayDivergence {
+            step: vb_core::StepIdx::ZERO,
+            detail: format!(
+                "tail event seq {} is not after snapshot seq {}",
+                actual_seq.get(),
+                snapshot_seq.get()
+            ),
+        },
+        SnapshotRecoveryInputViolation::NoRecoveryData { run } => {
+            RecoveryError::NoRecoveryData { run }
+        }
+    }
 }
 
 fn ensure_nonzero_step_count(step_count: u16) -> RecoveryResult<()> {
