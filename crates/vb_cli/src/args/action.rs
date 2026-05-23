@@ -169,3 +169,96 @@ fn parse_action_registry_mode(value: &str) -> Result<ActionRegistryMode, ParseEr
         other => Err(ParseError::UnknownActionRegistry(other.into())),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn os(val: &str) -> OsString {
+        OsString::from(val)
+    }
+
+    #[test]
+    fn parse_action_list_returns_ok() {
+        let args = [os("vb"), os("action"), os("list")];
+        let result = parse_action(&args).unwrap();
+        match result {
+            Command::ActionList { .. } => {}
+            _ => panic!("wrong command"),
+        }
+    }
+
+    #[test]
+    fn parse_action_list_with_json_flag() {
+        let args = [os("vb"), os("action"), os("list"), os("--json")];
+        let result = parse_action(&args).unwrap();
+        match result {
+            Command::ActionList { output, .. } => assert_eq!(output, OutputFormat::Json),
+            _ => panic!("wrong command"),
+        }
+    }
+
+    #[test]
+    fn parse_action_list_with_registry() {
+        let args = [os("vb"), os("action"), os("list"), os("--registry"), os("empty")];
+        let result = parse_action(&args).unwrap();
+        match result {
+            Command::ActionList { registry, .. } => assert_eq!(registry, ActionRegistryMode::Empty),
+            _ => panic!("wrong command"),
+        }
+    }
+
+    #[test]
+    fn parse_action_inspect_returns_ok() {
+        let args = [os("vb"), os("action"), os("inspect"), os("42")];
+        let result = parse_action(&args).unwrap();
+        match result {
+            Command::ActionInspect { action_id, .. } => assert_eq!(action_id, 42),
+            _ => panic!("wrong command"),
+        }
+    }
+
+    #[test]
+    fn parse_action_inspect_rejects_non_numeric_id() {
+        let args = [os("vb"), os("action"), os("inspect"), os("abc")];
+        let result = parse_action(&args);
+        assert!(matches!(result.unwrap_err(), ParseError::InvalidActionId(_)));
+    }
+
+    #[test]
+    fn parse_action_inspect_missing_id() {
+        let args = [os("vb"), os("action"), os("inspect")];
+        let result = parse_action(&args);
+        assert!(matches!(result.unwrap_err(), ParseError::MissingArgument(_)));
+    }
+
+    #[test]
+    fn parse_action_rejects_unknown_subcommand() {
+        let args = [os("vb"), os("action"), os("delete")];
+        let result = parse_action(&args);
+        assert!(matches!(result.unwrap_err(), ParseError::UnknownActionCommand(_)));
+    }
+
+    #[test]
+    fn parse_action_registry_mode_registered() {
+        assert_eq!(parse_action_registry_mode("registered").unwrap(), ActionRegistryMode::Registered);
+    }
+
+    #[test]
+    fn parse_action_registry_mode_empty() {
+        assert_eq!(parse_action_registry_mode("empty").unwrap(), ActionRegistryMode::Empty);
+    }
+
+    #[test]
+    fn parse_action_registry_mode_uninitialized() {
+        assert_eq!(parse_action_registry_mode("uninitialized").unwrap(), ActionRegistryMode::Uninitialized);
+    }
+
+    #[test]
+    fn parse_action_registry_mode_rejects_unknown() {
+        assert!(matches!(
+            parse_action_registry_mode("bad").unwrap_err(),
+            ParseError::UnknownActionRegistry(_)
+        ));
+    }
+}

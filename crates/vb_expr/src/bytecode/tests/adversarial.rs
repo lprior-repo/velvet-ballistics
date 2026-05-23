@@ -5,6 +5,7 @@
 
 use vb_core::{ConstIdx, ConstValue, ExprOp};
 
+use crate::ExprError;
 use crate::bytecode::{
     check_expr_stack_bound, compile_expr, compile_expr_with_pool, const_fold_expr, push_constant,
 };
@@ -553,4 +554,200 @@ fn blackhat_ev_014_neg_zero_no_overflow() -> crate::ExprResult<()> {
     let r = eval_unary_op(UnaryOp::Neg, SlotValue::I64(-42))?;
     assert_eq!(r, SlotValue::I64(42));
     Ok(())
+}
+
+// =========================================================================
+// Bytecode: constant folding adversarial boundary tests
+// =========================================================================
+
+/// BC-ADV-001: Constant folding rejects subtraction underflow via i64::MIN - 1.
+#[test]
+fn bcm_adv_001_fold_rejects_sub_overflow() -> crate::ExprResult<()> {
+    let ast = crate::parser::ExprAst::Binary {
+        op: crate::lexer::BinaryOp::Sub,
+        left: Box::new(crate::parser::ExprAst::Literal(
+            crate::parser::ExprLiteral::I64(i64::MIN),
+        )),
+        right: Box::new(crate::parser::ExprAst::Literal(
+            crate::parser::ExprLiteral::I64(1),
+        )),
+    };
+    let folded = const_fold_expr(&ast);
+    assert_eq!(folded, None, "BC-ADV-001: i64::MIN - 1 should not fold");
+    Ok(())
+}
+
+/// BC-ADV-002: Constant folding rejects i64::MIN * -1 as overflow.
+#[test]
+fn bcm_adv_002_fold_rejects_mul_overflow_negative() -> crate::ExprResult<()> {
+    let ast = crate::parser::ExprAst::Binary {
+        op: crate::lexer::BinaryOp::Mul,
+        left: Box::new(crate::parser::ExprAst::Literal(
+            crate::parser::ExprLiteral::I64(i64::MIN),
+        )),
+        right: Box::new(crate::parser::ExprAst::Literal(
+            crate::parser::ExprLiteral::I64(-1),
+        )),
+    };
+    let folded = const_fold_expr(&ast);
+    assert_eq!(folded, None, "BC-ADV-002: i64::MIN * -1 should not fold (overflow)");
+    Ok(())
+}
+
+/// BC-ADV-003: Constant folding handles Boolean And.
+#[test]
+fn bcm_adv_003_fold_bool_and_true_false() -> crate::ExprResult<()> {
+    let tokens = lex_expr("true and false")?;
+    let ast = parse_expr(&tokens)?;
+    let folded = const_fold_expr(&ast);
+    assert_eq!(folded, Some(ConstValue::Bool(false)));
+    Ok(())
+}
+
+/// BC-ADV-004: Constant folding handles Boolean Or.
+#[test]
+fn bcm_adv_004_fold_bool_or_true_false() -> crate::ExprResult<()> {
+    let tokens = lex_expr("true or false")?;
+    let ast = parse_expr(&tokens)?;
+    let folded = const_fold_expr(&ast);
+    assert_eq!(folded, Some(ConstValue::Bool(true)));
+    Ok(())
+}
+
+/// BC-ADV-005: Constant folding handles nested boolean expression.
+#[test]
+fn bcm_adv_005_fold_nested_bool() -> crate::ExprResult<()> {
+    let tokens = lex_expr("(true and false) or true")?;
+    let ast = parse_expr(&tokens)?;
+    let folded = const_fold_expr(&ast);
+    assert_eq!(folded, Some(ConstValue::Bool(true)));
+    Ok(())
+}
+
+/// BC-ADV-006: Constant folding: Bool And/Or with non-bool returns None.
+#[test]
+fn bcm_adv_006_fold_bool_and_i64_returns_none() -> crate::ExprResult<()> {
+    let tokens = lex_expr("true and 1")?;
+    let ast = parse_expr(&tokens)?;
+    let folded = const_fold_expr(&ast);
+    assert_eq!(folded, None, "BC-ADV-006: bool and I64 should not fold");
+    Ok(())
+}
+
+/// BC-ADV-007: Constant folding: i64::MIN * -1 is overflow.
+#[test]
+fn bcm_adv_007_fold_i64_min_mul_neg_one() -> crate::ExprResult<()> {
+    let ast = crate::parser::ExprAst::Binary {
+        op: crate::lexer::BinaryOp::Mul,
+        left: Box::new(crate::parser::ExprAst::Literal(
+            crate::parser::ExprLiteral::I64(i64::MIN),
+        )),
+        right: Box::new(crate::parser::ExprAst::Literal(
+            crate::parser::ExprLiteral::I64(-1),
+        )),
+    };
+    let folded = const_fold_expr(&ast);
+    assert_eq!(
+        folded, None,
+        "BC-ADV-007: i64::MIN * -1 should not fold"
+    );
+    Ok(())
+}
+
+// =========================================================================
+// Bytecode: compilation adversarial boundary tests
+// =========================================================================
+
+/// BC-ADV-008: Compilation of exactly MAX_OPS ops with bounded stack depth succeeds.
+#[test]
+fn bcm_adv_008_compile_exactly_max_ops_succeeds() -> crate::ExprResult<()> {
+    let mut ops = Vec::new();
+    ops.push(ExprOp::LoadConst(ConstIdx::new(0)));
+    for _i in 0u16..127u16 {
+        ops.push(ExprOp::LoadConst(ConstIdx::new(0)));
+        ops.push(ExprOp::Add);
+    }
+    assert_eq!(ops.len(), 255);
+    ops.push(ExprOp::Not);
+    assert_eq!(ops.len(), 256);
+    let program = vb_core::ExprProgram::try_from_ops(ops.into_boxed_slice())
+        .map_err(|_| crate::ExprError::BytecodeTooLong { len: 256, max: 256 })?;
+    assert_eq!(program.ops.len(), 256);
+    Ok(())
+}
+
+// =========================================================================
+// BLACKHAT: evaluator additional adversarial
+// =========================================================================
+
+/// BH-EV-015: F64 addition with zero returns same value.
+#[test]
+fn blackhat_ev_015_f64_add_zero() -> crate::ExprResult<()> {
+    use crate::eval::eval_binary_op;
+    use crate::lexer::BinaryOp;
+    use vb_core::SlotValue;
+    use vb_core::value::FiniteF64;
+
+    let zero = SlotValue::F64(FiniteF64::new(0.0).map_err(|_| crate::ExprError::UnexpectedEof)?);
+    let val = SlotValue::F64(FiniteF64::new(3.14).map_err(|_| crate::ExprError::UnexpectedEof)?);
+    let r = eval_binary_op(BinaryOp::Add, val, zero)?;
+    assert_eq!(r, SlotValue::F64(FiniteF64::new(3.14).map_err(|_| crate::ExprError::UnexpectedEof)?));
+    Ok(())
+}
+
+/// BH-EV-016: F64 subtraction with zero returns same value.
+#[test]
+fn blackhat_ev_016_f64_sub_zero() -> crate::ExprResult<()> {
+    use crate::eval::eval_binary_op;
+    use crate::lexer::BinaryOp;
+    use vb_core::SlotValue;
+    use vb_core::value::FiniteF64;
+
+    let zero = SlotValue::F64(FiniteF64::new(0.0).map_err(|_| crate::ExprError::UnexpectedEof)?);
+    let val = SlotValue::F64(FiniteF64::new(3.14).map_err(|_| crate::ExprError::UnexpectedEof)?);
+    let r = eval_binary_op(BinaryOp::Sub, val, zero)?;
+    assert_eq!(r, SlotValue::F64(FiniteF64::new(3.14).map_err(|_| crate::ExprError::UnexpectedEof)?));
+    Ok(())
+}
+
+// =========================================================================
+// Kani harnesses: bytecode compilation boundedness proofs
+// =========================================================================
+
+#[cfg(test)]
+#[cfg(kani)]
+mod kani_bytecode {
+    use super::*;
+    use vb_core::{ConstValue, ExprOp};
+
+    /// Kani harness: push_constant never panics for valid pool sizes.
+    #[kani::proof]
+    fn verify_push_constant_never_panics() {
+        let count: u16 = kani::any();
+        kani::assume(count < 65_535);
+        let mut constants: Vec<ConstValue> = Vec::new();
+        for _i in 0..count {
+            constants.push(ConstValue::I64(0));
+        }
+        let _ = push_constant(ConstValue::I64(1), &mut constants);
+    }
+
+    /// Kani harness: const_fold_expr never panics on literal values.
+    #[kani::proof]
+    fn verify_const_fold_literal_never_panics() {
+        let ast = crate::parser::ExprAst::Literal(crate::parser::ExprLiteral::I64(kani::any()));
+        let _ = const_fold_expr(&ast);
+    }
+
+    /// Kani harness: check_expr_stack_bound never panics for bounded ops.
+    #[kani::proof]
+    fn verify_check_expr_stack_bound_never_panics() {
+        let op_count: usize = kani::any();
+        kani::assume(op_count <= 256);
+        let mut ops: Vec<ExprOp> = Vec::new();
+        for _i in 0..op_count {
+            ops.push(ExprOp::LoadConst(ConstIdx::new(0)));
+        }
+        let _ = check_expr_stack_bound(&ops);
+    }
 }

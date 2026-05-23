@@ -175,3 +175,210 @@ fn parse_durability(raw: &str) -> Result<DurabilityMode, ParseError> {
         other => Err(ParseError::UnknownDurability(other.into())),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn os(val: &str) -> OsString {
+        OsString::from(val)
+    }
+
+    #[test]
+    fn parse_validate_returns_ok() {
+        let args = [os("vb"), os("validate"), os("wf.yaml")];
+        let result = parse_validate(&args).unwrap();
+        match result {
+            Command::Validate { workflow, .. } => assert_eq!(workflow, PathBuf::from("wf.yaml")),
+            _ => panic!("wrong command"),
+        }
+    }
+
+    #[test]
+    fn parse_validate_errors_when_missing_workflow() {
+        let args = [os("vb"), os("validate")];
+        let result = parse_validate(&args);
+        assert!(matches!(result.unwrap_err(), ParseError::MissingArgument(_)));
+    }
+
+    #[test]
+    fn parse_verify_returns_ok_with_default_profile() {
+        let args = [os("vb"), os("verify"), os("wf.yaml")];
+        let result = parse_verify(&args).unwrap();
+        match result {
+            Command::Verify { workflow, profile, .. } => {
+                assert_eq!(workflow, PathBuf::from("wf.yaml"));
+                assert_eq!(profile, VerifyProfile::Quick);
+            }
+            _ => panic!("wrong command"),
+        }
+    }
+
+    #[test]
+    fn parse_verify_parses_quick_profile() {
+        let args = [os("vb"), os("verify"), os("wf.yaml"), os("--profile"), os("quick")];
+        let result = parse_verify(&args).unwrap();
+        match result {
+            Command::Verify { profile, .. } => assert_eq!(profile, VerifyProfile::Quick),
+            _ => panic!("wrong command"),
+        }
+    }
+
+    #[test]
+    fn parse_verify_parses_standard_profile() {
+        let args = [os("vb"), os("verify"), os("wf.yaml"), os("--profile"), os("standard")];
+        let result = parse_verify(&args).unwrap();
+        match result {
+            Command::Verify { profile, .. } => assert_eq!(profile, VerifyProfile::Standard),
+            _ => panic!("wrong command"),
+        }
+    }
+
+    #[test]
+    fn parse_verify_parses_full_profile() {
+        let args = [os("vb"), os("verify"), os("wf.yaml"), os("--profile"), os("full")];
+        let result = parse_verify(&args).unwrap();
+        match result {
+            Command::Verify { profile, .. } => assert_eq!(profile, VerifyProfile::Full),
+            _ => panic!("wrong command"),
+        }
+    }
+
+    #[test]
+    fn parse_verify_rejects_unknown_profile() {
+        let args = [os("vb"), os("verify"), os("wf.yaml"), os("--profile"), os("deep")];
+        let result = parse_verify(&args);
+        assert!(matches!(result.unwrap_err(), ParseError::UnknownProfile(_)));
+    }
+
+    #[test]
+    fn parse_compile_parses_emit_ir() {
+        let args = [
+            os("vb"), os("compile"), os("wf.yaml"),
+            os("--emit"), os("ir"), os("--out"), os("out.vbir"),
+        ];
+        let result = parse_compile(&args).unwrap();
+        match result {
+            Command::Compile { emit, out, .. } => {
+                assert_eq!(emit, EmitTarget::Ir);
+                assert_eq!(out, PathBuf::from("out.vbir"));
+            }
+            _ => panic!("wrong command"),
+        }
+    }
+
+    #[test]
+    fn parse_compile_rejects_unknown_emit() {
+        let args = [
+            os("vb"), os("compile"), os("wf.yaml"),
+            os("--emit"), os("json"), os("--out"), os("out"),
+        ];
+        let result = parse_compile(&args);
+        assert!(matches!(result.unwrap_err(), ParseError::UnknownEmitTarget(_)));
+    }
+
+    #[test]
+    fn parse_graph_returns_ok() {
+        let args = [os("vb"), os("graph"), os("wf.yaml")];
+        let result = parse_graph(&args).unwrap();
+        match result {
+            Command::Graph { workflow, .. } => assert_eq!(workflow, PathBuf::from("wf.yaml")),
+            _ => panic!("wrong command"),
+        }
+    }
+
+    #[test]
+    fn parse_simulate_returns_ok() {
+        let args = [os("vb"), os("simulate"), os("wf.yaml")];
+        let result = parse_simulate(&args).unwrap();
+        match result {
+            Command::Simulate { workflow, .. } => assert_eq!(workflow, PathBuf::from("wf.yaml")),
+            _ => panic!("wrong command"),
+        }
+    }
+
+    #[test]
+    fn parse_bench_run_returns_ok() {
+        let args = [os("vb"), os("bench-run"), os("wf.yaml")];
+        let result = parse_bench_run(&args).unwrap();
+        match result {
+            Command::BenchRun { workflow, .. } => assert_eq!(workflow, PathBuf::from("wf.yaml")),
+            _ => panic!("wrong command"),
+        }
+    }
+
+    #[test]
+    fn parse_run_rejects_missing_durability() {
+        let args = [
+            os("vb"), os("run"), os("wf.yaml"),
+            os("--input-bin"), os("in.bin"),
+        ];
+        let result = parse_run(&args);
+        assert!(matches!(result.unwrap_err(), ParseError::MissingArgument(_)));
+    }
+
+    #[test]
+    fn parse_run_rejects_unknown_durability() {
+        let args = [
+            os("vb"), os("run"), os("wf.yaml"),
+            os("--input-bin"), os("in.bin"),
+            os("--durability"), os("superfast"),
+        ];
+        let result = parse_run(&args);
+        assert!(matches!(result.unwrap_err(), ParseError::UnknownDurability(_)));
+    }
+
+    #[test]
+    fn parse_ipc_serve_parses_socket_and_db() {
+        let args = [
+            os("vb"), os("ipc-serve"),
+            os("--socket"), os("/tmp/sock"),
+            os("--db"), os("/tmp/db"),
+        ];
+        let result = parse_ipc_serve(&args).unwrap();
+        match result {
+            Command::IpcServe { socket, db } => {
+                assert_eq!(socket, PathBuf::from("/tmp/sock"));
+                assert_eq!(db, PathBuf::from("/tmp/db"));
+            }
+            _ => panic!("wrong command"),
+        }
+    }
+
+    #[test]
+    fn parse_submit_parses_all_args() {
+        let args = [
+            os("vb"), os("submit"), os("wf.yaml"),
+            os("--input-bin"), os("in.bin"),
+            os("--db"), os("/tmp/db"),
+            os("--durability"), os("journaled"),
+        ];
+        let result = parse_submit(&args).unwrap();
+        match result {
+            Command::Submit { durability, .. } => {
+                assert_eq!(durability, DurabilityMode::Journaled);
+            }
+            _ => panic!("wrong command"),
+        }
+    }
+
+    #[test]
+    fn parse_durability_returns_strict() {
+        assert_eq!(parse_durability("strict").unwrap(), DurabilityMode::Strict);
+    }
+
+    #[test]
+    fn parse_durability_returns_journaled() {
+        assert_eq!(parse_durability("journaled").unwrap(), DurabilityMode::Journaled);
+    }
+
+    #[test]
+    fn parse_durability_returns_none() {
+        assert_eq!(parse_durability("none").unwrap(), DurabilityMode::None);
+    }
+
+    #[test]
+    fn parse_durability_rejects_unknown() {
+        assert!(matches!(parse_durability("bad").unwrap_err(), ParseError::UnknownDurability(_)));
+    }
+}

@@ -12,10 +12,6 @@ fn parse_cancel_accepts_run_id_and_db() {
         "--db",
         "journal-db",
     ]));
-    assert!(
-        matches!(parsed, Ok(Command::Cancel { .. })),
-        "unexpected parse result: {parsed:?}"
-    );
     if let Ok(Command::Cancel {
         run_id,
         db,
@@ -27,6 +23,8 @@ fn parse_cancel_accepts_run_id_and_db() {
         assert_eq!(db, PathBuf::from("journal-db"));
         assert_eq!(reason, None);
         assert_eq!(output, OutputFormat::Text);
+    } else {
+        assert!(parsed.is_ok(), "expected Ok, got {parsed:?}");
     }
 }
 
@@ -41,12 +39,10 @@ fn parse_cancel_accepts_reason() {
         "--reason",
         "user request",
     ]));
-    assert!(
-        matches!(parsed, Ok(Command::Cancel { .. })),
-        "unexpected parse result: {parsed:?}"
-    );
     if let Ok(Command::Cancel { reason, .. }) = parsed {
         assert_eq!(reason, Some("user request".to_string()));
+    } else {
+        assert!(parsed.is_ok(), "expected Ok, got {parsed:?}");
     }
 }
 
@@ -60,12 +56,63 @@ fn parse_cancel_accepts_json_output() {
         "journal-db",
         "--json",
     ]));
-    assert!(
-        matches!(parsed, Ok(Command::Cancel { .. })),
-        "unexpected parse result: {parsed:?}"
-    );
     if let Ok(Command::Cancel { output, .. }) = parsed {
         assert_eq!(output, OutputFormat::Json);
+    } else {
+        assert!(parsed.is_ok(), "expected Ok, got {parsed:?}");
+    }
+}
+
+#[test]
+fn parse_cancel_accepts_jsonl_output() {
+    let parsed = parse_args(&args(&[
+        "velvet-ballastics",
+        "cancel",
+        "42",
+        "--db",
+        "journal-db",
+        "--jsonl",
+    ]));
+    if let Ok(Command::Cancel { output, .. }) = parsed {
+        assert_eq!(output, OutputFormat::Jsonl);
+    } else {
+        assert!(parsed.is_ok(), "expected Ok, got {parsed:?}");
+    }
+}
+
+#[test]
+fn parse_cancel_accepts_emit_yaml() {
+    let parsed = parse_args(&args(&[
+        "velvet-ballastics",
+        "cancel",
+        "42",
+        "--db",
+        "journal-db",
+        "--emit",
+        "yaml",
+    ]));
+    if let Ok(Command::Cancel { output, .. }) = parsed {
+        assert_eq!(output, OutputFormat::Yaml);
+    } else {
+        assert!(parsed.is_ok(), "expected Ok, got {parsed:?}");
+    }
+}
+
+#[test]
+fn parse_cancel_accepts_emit_postcard() {
+    let parsed = parse_args(&args(&[
+        "velvet-ballastics",
+        "cancel",
+        "42",
+        "--db",
+        "journal-db",
+        "--emit",
+        "postcard",
+    ]));
+    if let Ok(Command::Cancel { output, .. }) = parsed {
+        assert_eq!(output, OutputFormat::Postcard);
+    } else {
+        assert!(parsed.is_ok(), "expected Ok, got {parsed:?}");
     }
 }
 
@@ -76,6 +123,31 @@ fn parse_cancel_rejects_missing_db() {
         matches!(parsed, Err(ParseError::MissingArgument("--db"))),
         "unexpected: {parsed:?}"
     );
+}
+
+#[test]
+fn parse_cancel_rejects_missing_run_id() {
+    let parsed = parse_args(&args(&["velvet-ballastics", "cancel"]));
+    assert!(matches!(
+        parsed,
+        Err(ParseError::MissingArgument("run_id"))
+    ));
+}
+
+#[test]
+fn parse_cancel_rejects_unknown_flag() {
+    let parsed = parse_args(&args(&[
+        "velvet-ballastics",
+        "cancel",
+        "42",
+        "--db",
+        "journal-db",
+        "--bogus",
+    ]));
+    assert!(matches!(
+        parsed,
+        Err(ParseError::UnknownFlag { command: "cancel", .. })
+    ));
 }
 
 #[test]
@@ -108,8 +180,8 @@ fn parse_cancel_accepts_reason_exactly_256_bytes() {
         "--reason",
         &reason,
     ]));
-    assert!(
-        matches!(parsed, Ok(Command::Cancel { .. })),
-        "unexpected: {parsed:?}"
-    );
+    if let Ok(Command::Cancel { .. }) = parsed {
+    } else {
+        assert!(parsed.is_ok(), "expected Ok, got {parsed:?}");
+    }
 }

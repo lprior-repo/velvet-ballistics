@@ -7,6 +7,8 @@ mod adversarial;
 use vb_core::{ConstIdx, ConstValue, ExprOp, SlotIdx};
 
 #[allow(unused_imports)]
+use crate::ExprError;
+#[allow(unused_imports)]
 use crate::bytecode::{
     ReferenceResolver, check_expr_stack_bound, compile_expr, compile_expr_to_bytecode,
     compile_expr_with_pool, compile_expr_with_resolver, const_fold_expr, push_constant,
@@ -336,4 +338,219 @@ fn compile_with_pool(
     let mut constants = Vec::new();
     let program = compile_expr_with_pool(&ast, &mut constants)?;
     Ok((program, constants))
+}
+
+// --- Constant folding: comparison operators ---
+
+#[test]
+fn constant_folds_eq_true() -> crate::ExprResult<()> {
+    let tokens = lex_expr("5 == 5")?;
+    let ast = parse_expr(&tokens)?;
+    let folded = const_fold_expr(&ast);
+    assert_eq!(folded, Some(ConstValue::Bool(true)));
+    Ok(())
+}
+
+#[test]
+fn constant_folds_eq_false() -> crate::ExprResult<()> {
+    let tokens = lex_expr("5 == 3")?;
+    let ast = parse_expr(&tokens)?;
+    let folded = const_fold_expr(&ast);
+    assert_eq!(folded, Some(ConstValue::Bool(false)));
+    Ok(())
+}
+
+#[test]
+fn constant_folds_neq_true() -> crate::ExprResult<()> {
+    let tokens = lex_expr("5 != 3")?;
+    let ast = parse_expr(&tokens)?;
+    let folded = const_fold_expr(&ast);
+    assert_eq!(folded, Some(ConstValue::Bool(true)));
+    Ok(())
+}
+
+#[test]
+fn constant_folds_lt_true() -> crate::ExprResult<()> {
+    let tokens = lex_expr("3 < 5")?;
+    let ast = parse_expr(&tokens)?;
+    let folded = const_fold_expr(&ast);
+    assert_eq!(folded, Some(ConstValue::Bool(true)));
+    Ok(())
+}
+
+#[test]
+fn constant_folds_lt_false() -> crate::ExprResult<()> {
+    let tokens = lex_expr("5 < 3")?;
+    let ast = parse_expr(&tokens)?;
+    let folded = const_fold_expr(&ast);
+    assert_eq!(folded, Some(ConstValue::Bool(false)));
+    Ok(())
+}
+
+#[test]
+fn constant_folds_gte_true() -> crate::ExprResult<()> {
+    let tokens = lex_expr("5 >= 3")?;
+    let ast = parse_expr(&tokens)?;
+    let folded = const_fold_expr(&ast);
+    assert_eq!(folded, Some(ConstValue::Bool(true)));
+    Ok(())
+}
+
+#[test]
+fn constant_folds_lte_equal() -> crate::ExprResult<()> {
+    let tokens = lex_expr("3 <= 3")?;
+    let ast = parse_expr(&tokens)?;
+    let folded = const_fold_expr(&ast);
+    assert_eq!(folded, Some(ConstValue::Bool(true)));
+    Ok(())
+}
+
+#[test]
+fn constant_folds_subtraction() -> crate::ExprResult<()> {
+    let tokens = lex_expr("10 - 3")?;
+    let ast = parse_expr(&tokens)?;
+    let folded = const_fold_expr(&ast);
+    assert_eq!(folded, Some(ConstValue::I64(7)));
+    Ok(())
+}
+
+#[test]
+fn constant_folds_multiplication() -> crate::ExprResult<()> {
+    let tokens = lex_expr("6 * 7")?;
+    let ast = parse_expr(&tokens)?;
+    let folded = const_fold_expr(&ast);
+    assert_eq!(folded, Some(ConstValue::I64(42)));
+    Ok(())
+}
+
+#[test]
+fn constant_folds_not_true() -> crate::ExprResult<()> {
+    let tokens = lex_expr("not true")?;
+    let ast = parse_expr(&tokens)?;
+    let folded = const_fold_expr(&ast);
+    assert_eq!(folded, Some(ConstValue::Bool(false)));
+    Ok(())
+}
+
+#[test]
+fn constant_folds_not_false() -> crate::ExprResult<()> {
+    let tokens = lex_expr("not false")?;
+    let ast = parse_expr(&tokens)?;
+    let folded = const_fold_expr(&ast);
+    assert_eq!(folded, Some(ConstValue::Bool(true)));
+    Ok(())
+}
+
+#[test]
+fn constant_folds_negation() -> crate::ExprResult<()> {
+    let tokens = lex_expr("-5")?;
+    let ast = parse_expr(&tokens)?;
+    let folded = const_fold_expr(&ast);
+    assert_eq!(folded, Some(ConstValue::I64(-5)));
+    Ok(())
+}
+
+#[test]
+fn constant_folds_nested_arithmetic() -> crate::ExprResult<()> {
+    let tokens = lex_expr("2 + 3 * 4")?;
+    let ast = parse_expr(&tokens)?;
+    let folded = const_fold_expr(&ast);
+    assert_eq!(folded, Some(ConstValue::I64(14)));
+    Ok(())
+}
+
+// --- Compilation: precedence and nesting ---
+
+#[test]
+fn compiles_deeply_nested_arithmetic() -> crate::ExprResult<()> {
+    let (program, _) = compile_with_pool("1 + 2 + 3 + 4 + 5 + 6 + 7 + 8 + 9 + 10")?;
+    assert!(!program.ops.is_empty());
+    Ok(())
+}
+
+#[test]
+fn compiles_parenthesized_expression() -> crate::ExprResult<()> {
+    let (program, constants) = compile_with_pool("(1 + 2) * 3")?;
+    let expected_ops = vec![
+        ExprOp::LoadConst(ConstIdx::new(0)),
+        ExprOp::LoadConst(ConstIdx::new(1)),
+        ExprOp::Add,
+        ExprOp::LoadConst(ConstIdx::new(2)),
+        ExprOp::Mul,
+    ];
+    assert_eq!(program.ops.as_ref(), expected_ops.as_slice());
+    assert_eq!(
+        constants,
+        vec![ConstValue::I64(1), ConstValue::I64(2), ConstValue::I64(3)]
+    );
+    Ok(())
+}
+
+#[test]
+fn compiles_comparison_expression() -> crate::ExprResult<()> {
+    let (program, constants) = compile_with_pool("1 > 2")?;
+    let expected_ops = vec![
+        ExprOp::LoadConst(ConstIdx::new(0)),
+        ExprOp::LoadConst(ConstIdx::new(1)),
+        ExprOp::Gt,
+    ];
+    assert_eq!(program.ops.as_ref(), expected_ops.as_slice());
+    assert_eq!(constants, vec![ConstValue::I64(1), ConstValue::I64(2)]);
+    Ok(())
+}
+
+#[test]
+fn compiles_mixed_boolean_comparison() -> crate::ExprResult<()> {
+    let (program, _) = compile_with_pool("1 < 2 and 3 > 2")?;
+    assert!(!program.ops.is_empty());
+    Ok(())
+}
+
+// --- push_constant boundary tests ---
+
+#[test]
+fn push_constant_returns_correct_index() -> crate::ExprResult<()> {
+    let mut constants: Vec<ConstValue> = vec![ConstValue::I64(1), ConstValue::I64(2)];
+    let idx = push_constant(ConstValue::I64(3), &mut constants)?;
+    assert_eq!(idx, ConstIdx::new(2));
+    assert_eq!(constants.len(), 3);
+    Ok(())
+}
+
+// --- check_expr_stack_bound tests ---
+
+#[test]
+fn check_expr_stack_bound_with_single_load() -> crate::ExprResult<()> {
+    let ops = vec![ExprOp::LoadConst(ConstIdx::new(0))];
+    let max_stack = check_expr_stack_bound(&ops)?;
+    assert_eq!(max_stack, 1);
+    Ok(())
+}
+
+#[test]
+fn check_expr_stack_bound_with_one_op_consumed() -> crate::ExprResult<()> {
+    let ops = vec![ExprOp::LoadConst(ConstIdx::new(0)), ExprOp::Not];
+    let max_stack = check_expr_stack_bound(&ops)?;
+    assert_eq!(max_stack, 1);
+    Ok(())
+}
+
+#[test]
+fn check_expr_stack_bound_rejects_underflow() -> crate::ExprResult<()> {
+    let ops = vec![ExprOp::Add];
+    let result = check_expr_stack_bound(&ops);
+    assert!(matches!(result, Err(ExprError::StackUnderflow)));
+    Ok(())
+}
+
+// --- Reference resolver edge cases ---
+
+#[test]
+fn compile_with_resolver_uses_slots_for_multiple_refs() -> crate::ExprResult<()> {
+    let (program, _) = compile_expr("$a * $b", &resolve_test_reference)?;
+    let ops = program.ops.as_ref();
+    assert_eq!(ops.len(), 3); // LoadSlot, LoadSlot, Mul
+    assert!(matches!(ops.first(), Some(ExprOp::LoadSlot(_))));
+    assert!(matches!(ops.get(1), Some(ExprOp::LoadSlot(_))));
+    Ok(())
 }

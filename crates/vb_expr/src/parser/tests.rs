@@ -188,6 +188,475 @@ fn parse_expr_parses_variable_reference() -> crate::ExprResult<()> {
     Ok(())
 }
 
+// --- extended BDD: literal types ---
+
+#[test]
+fn parse_expr_parses_null_literal() -> crate::ExprResult<()> {
+    let expr = parse("null")?;
+    assert_eq!(expr, ExprAst::Literal(ExprLiteral::Null));
+    Ok(())
+}
+
+#[test]
+fn parse_expr_parses_boolean_literal_true_and_false() -> crate::ExprResult<()> {
+    assert_eq!(parse("true")?, ExprAst::Literal(ExprLiteral::Bool(true)));
+    assert_eq!(parse("false")?, ExprAst::Literal(ExprLiteral::Bool(false)));
+    Ok(())
+}
+
+#[test]
+fn parse_expr_parses_integer_literals() -> crate::ExprResult<()> {
+    assert_eq!(parse("0")?, ExprAst::Literal(ExprLiteral::I64(0)));
+    assert_eq!(parse("42")?, ExprAst::Literal(ExprLiteral::I64(42)));
+    let neg_expr = parse("-7")?;
+    let (op, inner) = as_unary(&neg_expr)?;
+    assert_eq!(op, UnaryOp::Neg);
+    assert_eq!(*inner, ExprAst::Literal(ExprLiteral::I64(7)));
+    Ok(())
+}
+
+#[test]
+fn parse_expr_parses_text_literal() -> crate::ExprResult<()> {
+    let expr = parse("\"hello world\"")?;
+    assert_eq!(expr, ExprAst::Literal(ExprLiteral::Text(Box::from("hello world"))));
+    Ok(())
+}
+
+#[test]
+fn parse_expr_parses_text_literal_empty_string() -> crate::ExprResult<()> {
+    let expr = parse("\"\"")?;
+    assert_eq!(expr, ExprAst::Literal(ExprLiteral::Text(Box::from(""))));
+    Ok(())
+}
+
+// --- extended BDD: binary operators ---
+
+#[test]
+fn parse_expr_parses_subtraction() -> crate::ExprResult<()> {
+    let expr = parse("10 - 4")?;
+    let (op, left, right) = as_binary(&expr)?;
+    assert_eq!(op, BinaryOp::Sub);
+    assert_eq!(*left, ExprAst::Literal(ExprLiteral::I64(10)));
+    assert_eq!(*right, ExprAst::Literal(ExprLiteral::I64(4)));
+    Ok(())
+}
+
+#[test]
+fn parse_expr_parses_multiplication() -> crate::ExprResult<()> {
+    let expr = parse("6 * 7")?;
+    let (op, left, right) = as_binary(&expr)?;
+    assert_eq!(op, BinaryOp::Mul);
+    assert_eq!(*left, ExprAst::Literal(ExprLiteral::I64(6)));
+    assert_eq!(*right, ExprAst::Literal(ExprLiteral::I64(7)));
+    Ok(())
+}
+
+#[test]
+fn parse_expr_parses_division() -> crate::ExprResult<()> {
+    let expr = parse("8 / 2")?;
+    let (op, left, right) = as_binary(&expr)?;
+    assert_eq!(op, BinaryOp::Div);
+    assert_eq!(*left, ExprAst::Literal(ExprLiteral::I64(8)));
+    assert_eq!(*right, ExprAst::Literal(ExprLiteral::I64(2)));
+    Ok(())
+}
+
+#[test]
+fn parse_expr_parses_and_without_or() -> crate::ExprResult<()> {
+    let expr = parse("true and false")?;
+    let (op, left, right) = as_binary(&expr)?;
+    assert_eq!(op, BinaryOp::And);
+    assert_eq!(*left, ExprAst::Literal(ExprLiteral::Bool(true)));
+    assert_eq!(*right, ExprAst::Literal(ExprLiteral::Bool(false)));
+    Ok(())
+}
+
+// --- extended BDD: precedence chains ---
+
+#[test]
+fn parse_expr_mul_binds_tighter_than_add_on_right() -> crate::ExprResult<()> {
+    let expr = parse("2 * 3 + 4")?;
+    let (op, left, right) = as_binary(&expr)?;
+    assert_eq!(op, BinaryOp::Add);
+    assert_eq!(*right, ExprAst::Literal(ExprLiteral::I64(4)));
+    let (inner_op, _, _) = as_binary(left)?;
+    assert_eq!(inner_op, BinaryOp::Mul);
+    Ok(())
+}
+
+#[test]
+fn parse_expr_div_binds_tighter_than_sub() -> crate::ExprResult<()> {
+    let expr = parse("10 - 6 / 2")?;
+    let (op, left, right) = as_binary(&expr)?;
+    assert_eq!(op, BinaryOp::Sub);
+    assert_eq!(*left, ExprAst::Literal(ExprLiteral::I64(10)));
+    let (inner_op, _, _) = as_binary(right)?;
+    assert_eq!(inner_op, BinaryOp::Div);
+    Ok(())
+}
+
+#[test]
+fn parse_expr_comparison_binds_tighter_than_and() -> crate::ExprResult<()> {
+    let expr = parse("1 < 2 and 3 > 2")?;
+    let (op, left, right) = as_binary(&expr)?;
+    assert_eq!(op, BinaryOp::And);
+    let (lop, _, _) = as_binary(left)?;
+    assert_eq!(lop, BinaryOp::Lt);
+    let (rop, _, _) = as_binary(right)?;
+    assert_eq!(rop, BinaryOp::Gt);
+    Ok(())
+}
+
+#[test]
+fn parse_expr_eq_binds_tighter_than_or() -> crate::ExprResult<()> {
+    let expr = parse("1 == 1 or 2 == 3")?;
+    let (op, left, right) = as_binary(&expr)?;
+    assert_eq!(op, BinaryOp::Or);
+    let (lop, _, _) = as_binary(left)?;
+    assert_eq!(lop, BinaryOp::Eq);
+    let (rop, _, _) = as_binary(right)?;
+    assert_eq!(rop, BinaryOp::Eq);
+    Ok(())
+}
+
+#[test]
+fn parse_expr_add_binds_tighter_than_lt() -> crate::ExprResult<()> {
+    let expr = parse("1 + 2 < 5")?;
+    let (op, left, right) = as_binary(&expr)?;
+    assert_eq!(op, BinaryOp::Lt);
+    assert_eq!(*right, ExprAst::Literal(ExprLiteral::I64(5)));
+    let (inner_op, _, _) = as_binary(left)?;
+    assert_eq!(inner_op, BinaryOp::Add);
+    Ok(())
+}
+
+#[test]
+fn parse_expr_full_precedence_tower_is_respected() -> crate::ExprResult<()> {
+    let expr = parse("1 + 2 * 3 == 7 and 8 / 2 > 3")?;
+    let (op, left, right) = as_binary(&expr)?;
+    assert_eq!(op, BinaryOp::And);
+    let (lop, _, _) = as_binary(left)?;
+    assert_eq!(lop, BinaryOp::Eq);
+    let (rop, _, _) = as_binary(right)?;
+    assert_eq!(rop, BinaryOp::Gt);
+    Ok(())
+}
+
+// --- extended BDD: parentheses ---
+
+#[test]
+fn parse_expr_single_parenthesized_literal() -> crate::ExprResult<()> {
+    let expr = parse("(42)")?;
+    assert_eq!(expr, ExprAst::Literal(ExprLiteral::I64(42)));
+    Ok(())
+}
+
+#[test]
+fn parse_expr_double_parenthesized_literal() -> crate::ExprResult<()> {
+    let expr = parse("((99))")?;
+    assert_eq!(expr, ExprAst::Literal(ExprLiteral::I64(99)));
+    Ok(())
+}
+
+#[test]
+fn parse_expr_parens_override_precedence_in_middle() -> crate::ExprResult<()> {
+    let expr = parse("1 * (2 + 3)")?;
+    let (op, left, right) = as_binary(&expr)?;
+    assert_eq!(op, BinaryOp::Mul);
+    assert_eq!(*left, ExprAst::Literal(ExprLiteral::I64(1)));
+    let (inner_op, _, _) = as_binary(right)?;
+    assert_eq!(inner_op, BinaryOp::Add);
+    Ok(())
+}
+
+#[test]
+fn parse_expr_nested_parens_with_binary_inside() -> crate::ExprResult<()> {
+    let expr = parse("((5 * 2) + (3 / 1))")?;
+    let (op, left, right) = as_binary(&expr)?;
+    assert_eq!(op, BinaryOp::Add);
+    let (lop, _, _) = as_binary(left)?;
+    assert_eq!(lop, BinaryOp::Mul);
+    let (rop, _, _) = as_binary(right)?;
+    assert_eq!(rop, BinaryOp::Div);
+    Ok(())
+}
+
+// --- extended BDD: unary operators ---
+
+#[test]
+fn parse_expr_not_on_reference() -> crate::ExprResult<()> {
+    let expr = parse("not $flag")?;
+    let (op, inner) = as_unary(&expr)?;
+    assert_eq!(op, UnaryOp::Not);
+    assert_eq!(*inner, ExprAst::Reference(Box::from("$flag")));
+    Ok(())
+}
+
+#[test]
+fn parse_expr_neg_on_parenthesized_expr() -> crate::ExprResult<()> {
+    let expr = parse("-(1 + 2)")?;
+    let (op, inner) = as_unary(&expr)?;
+    assert_eq!(op, UnaryOp::Neg);
+    let (inner_op, _, _) = as_binary(inner)?;
+    assert_eq!(inner_op, BinaryOp::Add);
+    Ok(())
+}
+
+#[test]
+fn parse_expr_not_on_not_is_double_negation() -> crate::ExprResult<()> {
+    let expr = parse("not not false")?;
+    let (op1, inner1) = as_unary(&expr)?;
+    assert_eq!(op1, UnaryOp::Not);
+    let (op2, inner2) = as_unary(inner1)?;
+    assert_eq!(op2, UnaryOp::Not);
+    assert_eq!(*inner2, ExprAst::Literal(ExprLiteral::Bool(false)));
+    Ok(())
+}
+
+#[test]
+fn parse_expr_neg_on_int_creates_unary() -> crate::ExprResult<()> {
+    let expr = parse("-42")?;
+    let (op, inner) = as_unary(&expr)?;
+    assert_eq!(op, UnaryOp::Neg);
+    assert_eq!(*inner, ExprAst::Literal(ExprLiteral::I64(42)));
+    Ok(())
+}
+
+// --- extended BDD: mixed unary + binary ---
+
+#[test]
+fn parse_expr_unary_not_with_binary_and() -> crate::ExprResult<()> {
+    let expr = parse("not $a and $b")?;
+    let (op, left, right) = as_binary(&expr)?;
+    assert_eq!(op, BinaryOp::And);
+    assert_eq!(*right, ExprAst::Reference(Box::from("$b")));
+    let (unary_op, _) = as_unary(left)?;
+    assert_eq!(unary_op, UnaryOp::Not);
+    Ok(())
+}
+
+#[test]
+fn parse_expr_unary_neg_with_binary_mul() -> crate::ExprResult<()> {
+    let expr = parse("-3 * 4")?;
+    let (op, inner) = as_unary(&expr)?;
+    assert_eq!(op, UnaryOp::Neg);
+    let (bin_op, left, right) = as_binary(inner)?;
+    assert_eq!(bin_op, BinaryOp::Mul);
+    assert_eq!(*left, ExprAst::Literal(ExprLiteral::I64(3)));
+    assert_eq!(*right, ExprAst::Literal(ExprLiteral::I64(4)));
+    Ok(())
+}
+
+// --- extended BDD: helper calls ---
+
+#[test]
+fn parse_expr_helper_exists_arity_1() -> crate::ExprResult<()> {
+    let expr = parse("exists($x)")?;
+    let (name, args) = as_helper(&expr)?;
+    assert_eq!(name, ExprHelper::Exists);
+    assert_eq!(args.len(), 1);
+    Ok(())
+}
+
+#[test]
+fn parse_expr_helper_length_arity_1() -> crate::ExprResult<()> {
+    let expr = parse("length($x)")?;
+    let (name, args) = as_helper(&expr)?;
+    assert_eq!(name, ExprHelper::Length);
+    assert_eq!(args.len(), 1);
+    Ok(())
+}
+
+#[test]
+fn parse_expr_helper_empty_arity_1() -> crate::ExprResult<()> {
+    let expr = parse("empty($x)")?;
+    let (name, args) = as_helper(&expr)?;
+    assert_eq!(name, ExprHelper::Empty);
+    assert_eq!(args.len(), 1);
+    Ok(())
+}
+
+#[test]
+fn parse_expr_helper_sum_arity_1() -> crate::ExprResult<()> {
+    let expr = parse("sum($items)")?;
+    let (name, args) = as_helper(&expr)?;
+    assert_eq!(name, ExprHelper::Sum);
+    assert_eq!(args.len(), 1);
+    Ok(())
+}
+
+#[test]
+fn parse_expr_helper_count_arity_1() -> crate::ExprResult<()> {
+    let expr = parse("count($items)")?;
+    let (name, args) = as_helper(&expr)?;
+    assert_eq!(name, ExprHelper::Count);
+    assert_eq!(args.len(), 1);
+    Ok(())
+}
+
+#[test]
+fn parse_expr_helper_unique_arity_1() -> crate::ExprResult<()> {
+    let expr = parse("unique($items)")?;
+    let (name, args) = as_helper(&expr)?;
+    assert_eq!(name, ExprHelper::Unique);
+    assert_eq!(args.len(), 1);
+    Ok(())
+}
+
+#[test]
+fn parse_expr_helper_merge_arity_2() -> crate::ExprResult<()> {
+    let expr = parse("merge($a, $b)")?;
+    let (name, args) = as_helper(&expr)?;
+    assert_eq!(name, ExprHelper::Merge);
+    assert_eq!(args.len(), 2);
+    Ok(())
+}
+
+#[test]
+fn parse_expr_helper_append_arity_2() -> crate::ExprResult<()> {
+    let expr = parse("append($list, 1)")?;
+    let (name, args) = as_helper(&expr)?;
+    assert_eq!(name, ExprHelper::Append);
+    assert_eq!(args.len(), 2);
+    Ok(())
+}
+
+#[test]
+fn parse_expr_helper_append_if_arity_3() -> crate::ExprResult<()> {
+    let expr = parse("append_if($list, 1, true)")?;
+    let (name, args) = as_helper(&expr)?;
+    assert_eq!(name, ExprHelper::AppendIf);
+    assert_eq!(args.len(), 3);
+    Ok(())
+}
+
+#[test]
+fn parse_expr_helper_has_arity_2() -> crate::ExprResult<()> {
+    let expr = parse("has($obj, $key)")?;
+    let (name, args) = as_helper(&expr)?;
+    assert_eq!(name, ExprHelper::Has);
+    assert_eq!(args.len(), 2);
+    Ok(())
+}
+
+#[test]
+fn parse_expr_helper_starts_with_arity_2() -> crate::ExprResult<()> {
+    let expr = parse("starts_with($s, \"hi\")")?;
+    let (name, args) = as_helper(&expr)?;
+    assert_eq!(name, ExprHelper::StartsWith);
+    assert_eq!(args.len(), 2);
+    Ok(())
+}
+
+#[test]
+fn parse_expr_helper_ends_with_arity_2() -> crate::ExprResult<()> {
+    let expr = parse("ends_with($s, \"lo\")")?;
+    let (name, args) = as_helper(&expr)?;
+    assert_eq!(name, ExprHelper::EndsWith);
+    assert_eq!(args.len(), 2);
+    Ok(())
+}
+
+#[test]
+fn parse_expr_helper_with_zero_args_is_rejected() -> crate::ExprResult<()> {
+    let result = parse("exists()");
+    let Err(ExprError::HelperArityMismatch {
+        helper,
+        expected,
+        actual,
+    }) = result
+    else {
+        panic!("expected HelperArityMismatch");
+    };
+    assert_eq!(helper, "exists");
+    assert_eq!(expected, 1);
+    assert_eq!(actual, 0);
+    Ok(())
+}
+
+#[test]
+fn parse_expr_helper_with_extra_args_is_rejected() -> crate::ExprResult<()> {
+    let result = parse("exists(1, 2)");
+    let Err(ExprError::HelperArityMismatch {
+        helper,
+        expected,
+        actual,
+    }) = result
+    else {
+        panic!("expected HelperArityMismatch");
+    };
+    assert_eq!(helper, "exists");
+    assert_eq!(expected, 1);
+    assert_eq!(actual, 2);
+    Ok(())
+}
+
+#[test]
+fn parse_expr_helper_call_with_expr_args() -> crate::ExprResult<()> {
+    let expr = parse("contains(1 + 2, 3 * 4)")?;
+    let (name, args) = as_helper(&expr)?;
+    assert_eq!(name, ExprHelper::Contains);
+    assert_eq!(args.len(), 2);
+    let (a0_op, _, _) = as_binary(&args[0])?;
+    assert_eq!(a0_op, BinaryOp::Add);
+    let (a1_op, _, _) = as_binary(&args[1])?;
+    assert_eq!(a1_op, BinaryOp::Mul);
+    Ok(())
+}
+
+// --- extended BDD: error cases ---
+
+#[test]
+fn parse_expr_rejects_bare_identifier_without_parens() {
+    let result = parse("foobar");
+    assert!(matches!(result, Err(ExprError::UnexpectedToken { ref token }) if token.contains("unknown identifier")));
+}
+
+#[test]
+fn parse_expr_rejects_unclosed_helper_paren() {
+    let result = parse("contains(1, 2");
+    assert!(matches!(result, Err(ExprError::UnexpectedToken { .. })));
+}
+
+#[test]
+fn parse_expr_rejects_comma_after_last_helper_arg() {
+    let result = parse("contains(1,)");
+    assert!(matches!(result, Err(ExprError::UnexpectedToken { .. })));
+}
+
+#[test]
+fn parse_expr_rejects_only_operator() {
+    let result = parse("+");
+    assert!(matches!(result, Err(ExprError::UnexpectedToken { .. })));
+}
+
+#[test]
+fn parse_expr_rejects_stray_dollar() {
+    let result = parse("$");
+    assert!(matches!(result, Err(ExprError::UnexpectedToken { .. })));
+}
+
+#[test]
+fn parse_expr_rejects_leading_operator_before_literal() -> crate::ExprResult<()> {
+    let result = parse("* 5");
+    assert!(matches!(result, Err(ExprError::UnexpectedToken { .. })));
+    Ok(())
+}
+
+#[test]
+fn parse_expr_rejects_consecutive_binary_operators() -> crate::ExprResult<()> {
+    let result = parse("1 + * 2");
+    assert!(matches!(result, Err(ExprError::UnexpectedToken { .. })));
+    Ok(())
+}
+
+#[test]
+fn parse_expr_rejects_triple_operator_chain() -> crate::ExprResult<()> {
+    let result = parse("1 + - * 2");
+    assert!(matches!(result, Err(ExprError::UnexpectedToken { .. })));
+    Ok(())
+}
+
 // --- F64 literal parser tests ---
 
 #[test]

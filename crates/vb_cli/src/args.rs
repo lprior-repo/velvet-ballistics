@@ -1851,6 +1851,10 @@ impl std::fmt::Display for ParseError {
 }
 
 #[cfg(test)]
+#[path = "args/tests/mod.rs"]
+mod parsed_tests;
+
+#[cfg(test)]
 mod tests {
     use super::{
         ActionRegistryMode, Command, DurabilityMode, EmitTarget, OutputFormat, ParseError,

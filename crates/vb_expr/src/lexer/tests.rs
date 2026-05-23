@@ -353,3 +353,328 @@ fn lexes_float_literal_in_expression() -> crate::ExprResult<()> {
     assert_eq!(tokens, expected);
     Ok(())
 }
+
+// --- Comma token ---
+
+#[test]
+fn lexes_comma_token_between_integers() -> crate::ExprResult<()> {
+    let tokens = lex_expr("1, 2")?;
+    let expected = vec![
+        Token::Literal(LiteralToken::I64(1)),
+        Token::Comma,
+        Token::Literal(LiteralToken::I64(2)),
+        Token::End,
+    ];
+    assert_eq!(tokens, expected);
+    Ok(())
+}
+
+#[test]
+fn lexes_comma_separated_multiple_values() -> crate::ExprResult<()> {
+    let tokens = lex_expr("1, 2, 3")?;
+    let expected = vec![
+        Token::Literal(LiteralToken::I64(1)),
+        Token::Comma,
+        Token::Literal(LiteralToken::I64(2)),
+        Token::Comma,
+        Token::Literal(LiteralToken::I64(3)),
+        Token::End,
+    ];
+    assert_eq!(tokens, expected);
+    Ok(())
+}
+
+// --- Paren tokens individually ---
+
+#[test]
+fn lexes_lparen_token_alone() -> crate::ExprResult<()> {
+    let tokens = lex_expr("(")?;
+    let expected = vec![Token::LParen, Token::End];
+    assert_eq!(tokens, expected);
+    Ok(())
+}
+
+#[test]
+fn lexes_rparen_token_alone() -> crate::ExprResult<()> {
+    let tokens = lex_expr(")")?;
+    let expected = vec![Token::RParen, Token::End];
+    assert_eq!(tokens, expected);
+    Ok(())
+}
+
+// --- Integer boundaries ---
+
+#[test]
+fn lexes_integer_zero() -> crate::ExprResult<()> {
+    let tokens = lex_expr("0")?;
+    let expected = vec![Token::Literal(LiteralToken::I64(0)), Token::End];
+    assert_eq!(tokens, expected);
+    Ok(())
+}
+
+#[test]
+fn lexes_integer_with_leading_zeros() -> crate::ExprResult<()> {
+    let tokens = lex_expr("00042")?;
+    let expected = vec![Token::Literal(LiteralToken::I64(42)), Token::End];
+    assert_eq!(tokens, expected);
+    Ok(())
+}
+
+#[test]
+fn lexes_negative_integer_as_minus_operator_then_integer() -> crate::ExprResult<()> {
+    let tokens = lex_expr("-5")?;
+    let expected = vec![
+        Token::Operator(BinaryOp::Sub),
+        Token::Literal(LiteralToken::I64(5)),
+        Token::End,
+    ];
+    assert_eq!(tokens, expected);
+    Ok(())
+}
+
+// --- Float boundaries ---
+
+#[test]
+fn lexes_float_zero_point_zero() -> crate::ExprResult<()> {
+    let tokens = lex_expr("0.0")?;
+    let expected = vec![
+        Token::Literal(LiteralToken::F64(vb_core::FiniteF64::new(0.0)?)),
+        Token::End,
+    ];
+    assert_eq!(tokens, expected);
+    Ok(())
+}
+
+// --- String boundaries ---
+
+#[test]
+fn lexes_empty_string_literal() -> crate::ExprResult<()> {
+    let tokens = lex_expr("\"\"")?;
+    let expected = vec![
+        Token::Literal(LiteralToken::Text(Box::from(""))),
+        Token::End,
+    ];
+    assert_eq!(tokens, expected);
+    Ok(())
+}
+
+#[test]
+fn lexes_string_literal_with_special_characters_inside() -> crate::ExprResult<()> {
+    let tokens = lex_expr("\"hello, world! $ref @test\"")?;
+    let expected = vec![
+        Token::Literal(LiteralToken::Text(Box::from("hello, world! $ref @test"))),
+        Token::End,
+    ];
+    assert_eq!(tokens, expected);
+    Ok(())
+}
+
+// --- Identifiers ---
+
+#[test]
+fn lexes_single_char_identifier() -> crate::ExprResult<()> {
+    let tokens = lex_expr("x")?;
+    let expected = vec![Token::Identifier(Box::from("x")), Token::End];
+    assert_eq!(tokens, expected);
+    Ok(())
+}
+
+#[test]
+fn lexes_identifier_with_numbers() -> crate::ExprResult<()> {
+    let tokens = lex_expr("abc123def")?;
+    let expected = vec![Token::Identifier(Box::from("abc123def")), Token::End];
+    assert_eq!(tokens, expected);
+    Ok(())
+}
+
+#[test]
+fn lexes_identifier_starting_with_underscore() -> crate::ExprResult<()> {
+    let tokens = lex_expr("_private")?;
+    let expected = vec![Token::Identifier(Box::from("_private")), Token::End];
+    assert_eq!(tokens, expected);
+    Ok(())
+}
+
+#[test]
+fn lexes_identifier_that_looks_like_keyword() -> crate::ExprResult<()> {
+    let tokens = lex_expr("truex falsely nullify android oracle noted")?;
+    let expected = vec![
+        Token::Identifier(Box::from("truex")),
+        Token::Identifier(Box::from("falsely")),
+        Token::Identifier(Box::from("nullify")),
+        Token::Identifier(Box::from("android")),
+        Token::Identifier(Box::from("oracle")),
+        Token::Identifier(Box::from("noted")),
+        Token::End,
+    ];
+    assert_eq!(tokens, expected);
+    Ok(())
+}
+
+// --- Keywords in expression context ---
+
+#[test]
+fn lexes_not_keyword_before_boolean() -> crate::ExprResult<()> {
+    let tokens = lex_expr("not true")?;
+    let expected = vec![
+        Token::Unary(UnaryOp::Not),
+        Token::Literal(LiteralToken::Bool(true)),
+        Token::End,
+    ];
+    assert_eq!(tokens, expected);
+    Ok(())
+}
+
+#[test]
+fn lexes_and_in_boolean_expression() -> crate::ExprResult<()> {
+    let tokens = lex_expr("true and false")?;
+    let expected = vec![
+        Token::Literal(LiteralToken::Bool(true)),
+        Token::Operator(BinaryOp::And),
+        Token::Literal(LiteralToken::Bool(false)),
+        Token::End,
+    ];
+    assert_eq!(tokens, expected);
+    Ok(())
+}
+
+#[test]
+fn lexes_or_in_boolean_expression() -> crate::ExprResult<()> {
+    let tokens = lex_expr("true or false")?;
+    let expected = vec![
+        Token::Literal(LiteralToken::Bool(true)),
+        Token::Operator(BinaryOp::Or),
+        Token::Literal(LiteralToken::Bool(false)),
+        Token::End,
+    ];
+    assert_eq!(tokens, expected);
+    Ok(())
+}
+
+// --- Dollar token contexts ---
+
+#[test]
+fn lexes_dollar_token_between_integers() -> crate::ExprResult<()> {
+    let tokens = lex_expr("1 $ 2")?;
+    let expected = vec![
+        Token::Literal(LiteralToken::I64(1)),
+        Token::Dollar,
+        Token::Literal(LiteralToken::I64(2)),
+        Token::End,
+    ];
+    assert_eq!(tokens, expected);
+    Ok(())
+}
+
+#[test]
+fn lexes_dollar_followed_by_operator() -> crate::ExprResult<()> {
+    let tokens = lex_expr("$ + 1")?;
+    let expected = vec![
+        Token::Dollar,
+        Token::Operator(BinaryOp::Add),
+        Token::Literal(LiteralToken::I64(1)),
+        Token::End,
+    ];
+    assert_eq!(tokens, expected);
+    Ok(())
+}
+
+// --- Reference variants ---
+
+#[test]
+fn lexes_reference_single_letter() -> crate::ExprResult<()> {
+    let tokens = lex_expr("$x")?;
+    let expected = vec![Token::Reference(Box::from("$x")), Token::End];
+    assert_eq!(tokens, expected);
+    Ok(())
+}
+
+#[test]
+fn lexes_reference_with_underscores_and_numbers() -> crate::ExprResult<()> {
+    let tokens = lex_expr("$my_var_123")?;
+    let expected = vec![Token::Reference(Box::from("$my_var_123")), Token::End];
+    assert_eq!(tokens, expected);
+    Ok(())
+}
+
+#[test]
+fn lexes_reference_with_multiple_dots() -> crate::ExprResult<()> {
+    let tokens = lex_expr("$a.b.c.d")?;
+    let expected = vec![Token::Reference(Box::from("$a.b.c.d")), Token::End];
+    assert_eq!(tokens, expected);
+    Ok(())
+}
+
+// --- Complex expressions ---
+
+#[test]
+fn lexes_complex_expression_with_nesting() -> crate::ExprResult<()> {
+    let tokens = lex_expr("$x > 0 and (y < 10 or not z)")?;
+    let expected = vec![
+        Token::Reference(Box::from("$x")),
+        Token::Operator(BinaryOp::Gt),
+        Token::Literal(LiteralToken::I64(0)),
+        Token::Operator(BinaryOp::And),
+        Token::LParen,
+        Token::Identifier(Box::from("y")),
+        Token::Operator(BinaryOp::Lt),
+        Token::Literal(LiteralToken::I64(10)),
+        Token::Operator(BinaryOp::Or),
+        Token::Unary(UnaryOp::Not),
+        Token::Identifier(Box::from("z")),
+        Token::RParen,
+        Token::End,
+    ];
+    assert_eq!(tokens, expected);
+    Ok(())
+}
+
+#[test]
+fn lexes_operators_without_whitespace() -> crate::ExprResult<()> {
+    let tokens = lex_expr("1+2")?;
+    let expected = vec![
+        Token::Literal(LiteralToken::I64(1)),
+        Token::Operator(BinaryOp::Add),
+        Token::Literal(LiteralToken::I64(2)),
+        Token::End,
+    ];
+    assert_eq!(tokens, expected);
+    Ok(())
+}
+
+// --- Spanned tokens ---
+
+#[test]
+fn lex_expr_spanned_end_token_has_zero_width_span() -> crate::ExprResult<()> {
+    let tokens = lex_expr_spanned("42")?;
+    let end = tokens.last().ok_or(ExprError::UnexpectedEof)?;
+    assert_eq!(end.token, Token::End);
+    assert_eq!(end.span.start, end.span.end);
+    assert_eq!(end.span.start, 2);
+    Ok(())
+}
+
+#[test]
+fn lex_expr_spanned_covers_multiple_token_spans() -> crate::ExprResult<()> {
+    let tokens = lex_expr_spanned("1 + 2")?;
+    let expected = vec![
+        SpannedToken {
+            token: Token::Literal(LiteralToken::I64(1)),
+            span: TokenSpan { start: 0, end: 1 },
+        },
+        SpannedToken {
+            token: Token::Operator(BinaryOp::Add),
+            span: TokenSpan { start: 2, end: 3 },
+        },
+        SpannedToken {
+            token: Token::Literal(LiteralToken::I64(2)),
+            span: TokenSpan { start: 4, end: 5 },
+        },
+        SpannedToken {
+            token: Token::End,
+            span: TokenSpan { start: 5, end: 5 },
+        },
+    ];
+    assert_eq!(tokens, expected);
+    Ok(())
+}

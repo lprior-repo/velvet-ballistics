@@ -5,6 +5,7 @@
 //! error chain propagation through From conversions across crate boundaries.
 
 use std::error::Error;
+use std::sync::Arc;
 
 fn source_as<'a, T>(error: &'a (dyn Error + 'static)) -> &'a T
 where
@@ -327,5 +328,102 @@ fn all_runtime_error_variants_have_display() {
             }
         ),
         "unsupported runtime operation: test_op"
+    );
+}
+
+#[test]
+fn expr_error_propagates_through_workflow_error_to_compile_error() {
+    let core_error = vb_core::errors::CoreError::DivisionByZero;
+    assert_eq!(
+        format!("{core_error}"),
+        "division by zero",
+        "CoreError::DivisionByZero Display should render"
+    );
+
+    let workflow_error = vb_core::workflow::WorkflowError::from(core_error);
+    let compile_error: vb_compile::CompileError = workflow_error.into();
+    assert!(
+        compile_error.to_string().contains("compiled workflow IR failed validation"),
+        "compile error should wrap workflow error: {compile_error}"
+    );
+}
+
+#[test]
+fn journal_queue_full_maps_to_runtime_storage_append_error() {
+    let journal_error = vb_storage::JournalError::QueueFull;
+    let runtime_error: vb_runtime::RuntimeError = journal_error.into();
+    assert_eq!(
+        format!("{runtime_error}"),
+        "storage journal append failed: journal writer queue is full",
+        "QueueFull should map to StorageJournalAppend with exact display"
+    );
+    assert!(
+        matches!(
+            source_as::<vb_storage::JournalError>(&runtime_error),
+            vb_storage::JournalError::QueueFull
+        ),
+        "RuntimeError should expose exact JournalError::QueueFull source"
+    );
+}
+
+#[test]
+fn all_compile_error_variants_have_non_empty_display() {
+    let errors: &[vb_compile::CompileError] = &[
+        vb_compile::CompileError::EmptySource,
+        vb_compile::CompileError::EmptySteps,
+        vb_compile::CompileError::Validation(vb_validate::ValidationError::DuplicateKey),
+    ];
+    for error in errors {
+        let display = format!("{error}");
+        assert!(
+            !display.is_empty(),
+            "compile error variant must have non-empty Display: {error:?}"
+        );
+        let code = error.diagnostic_code();
+        assert!(
+            !code.is_empty(),
+            "compile error variant must have non-empty diagnostic code: {error:?}"
+        );
+    }
+}
+
+#[test]
+fn runtime_error_admission_durability_code_is_stable() {
+    let code = vb_runtime::RuntimeError::ADMISSION_HEADER_PERSISTENCE_FAILED_CODE;
+    assert_eq!(
+        code.to_string(),
+        "E2015",
+        "admission durability code must be stable"
+    );
+    let error = vb_runtime::RuntimeError::AdmissionHeaderPersistenceFailed {
+        source: Arc::new(vb_storage::JournalError::QueueFull),
+    };
+    assert_eq!(
+        error.runtime_code(),
+        Some("ADMISSION_DURABILITY_ERROR"),
+        "runtime_code must be stable for admission durability errors"
+    );
+}
+
+#[test]
+fn core_error_queue_full_implements_display_and_error_traits() {
+    let error = vb_core::errors::CoreError::QueueFull;
+    let runtime_error: vb_runtime::RuntimeError = error.into();
+
+    let display = format!("{runtime_error}");
+    assert_eq!(
+        display, "runtime core error: queue full",
+        "runtime error from QueueFull should display exact chain"
+    );
+    assert!(
+        matches!(&runtime_error, vb_runtime::RuntimeError::Core { .. }),
+        "QueueFull maps to RuntimeError::Core"
+    );
+    assert!(
+        matches!(
+            source_as::<vb_core::errors::CoreError>(&runtime_error),
+            vb_core::errors::CoreError::QueueFull
+        ),
+        "RuntimeError should expose exact CoreError::QueueFull source"
     );
 }

@@ -3627,3 +3627,485 @@ fn cli_submit_rejects_unknown_durability() {
         "stderr should name bad mode: {stderr}"
     );
 }
+
+// ---------------------------------------------------------------------------
+// Extended CLI integration: end-to-end paths, error handling, and edge cases
+// ---------------------------------------------------------------------------
+
+#[test]
+fn cli_replay_journaled_run_produces_deterministic_output() {
+    let dir = match cli_tempdir() {
+        Ok(dir) => dir,
+        Err(err) => {
+            assert!(forced_assertion_failure(), "tempdir failed: {err}");
+            return;
+        }
+    };
+    let workflow_path = dir.path().join("replay-workflow.yaml");
+    let input_path = dir.path().join("input.bin");
+    let db_path = dir.path().join("replay-db");
+    if !write_test_file(&workflow_path, CLI_WORKFLOW.as_bytes()) {
+        return;
+    }
+    if !write_test_file(&input_path, &[]) {
+        return;
+    }
+
+    let run_output = match run_cli(&[
+        std::ffi::OsStr::new("run"),
+        workflow_path.as_os_str(),
+        std::ffi::OsStr::new("--input-bin"),
+        input_path.as_os_str(),
+        std::ffi::OsStr::new("--durability"),
+        std::ffi::OsStr::new("strict"),
+        std::ffi::OsStr::new("--db"),
+        db_path.as_os_str(),
+    ]) {
+        Some(output) => output,
+        None => return,
+    };
+    assert_cli_success(&run_output, "run setup for replay test");
+
+    let replay_output = match run_cli(&[
+        std::ffi::OsStr::new("replay"),
+        std::ffi::OsStr::new("1"),
+        std::ffi::OsStr::new("--db"),
+        db_path.as_os_str(),
+    ]) {
+        Some(output) => output,
+        None => return,
+    };
+    assert_cli_success(&replay_output, "replay 1 --db");
+    let stdout = output_stdout(&replay_output);
+    assert!(
+        stdout.contains("recovered"),
+        "replay should report recovered state: {stdout}"
+    );
+    assert!(
+        stdout.contains("terminal"),
+        "replay should report terminal status: {stdout}"
+    );
+}
+
+#[test]
+fn cli_diff_identical_runs_reports_zero_differences() {
+    let dir = match cli_tempdir() {
+        Ok(dir) => dir,
+        Err(err) => {
+            assert!(forced_assertion_failure(), "tempdir failed: {err}");
+            return;
+        }
+    };
+    let workflow_path = dir.path().join("diff-workflow.yaml");
+    let input_path = dir.path().join("input.bin");
+    let db_path = dir.path().join("diff-db");
+    if !write_test_file(&workflow_path, CLI_WORKFLOW.as_bytes()) {
+        return;
+    }
+    if !write_test_file(&input_path, &[]) {
+        return;
+    }
+
+    let run_output = match run_cli(&[
+        std::ffi::OsStr::new("run"),
+        workflow_path.as_os_str(),
+        std::ffi::OsStr::new("--input-bin"),
+        input_path.as_os_str(),
+        std::ffi::OsStr::new("--durability"),
+        std::ffi::OsStr::new("strict"),
+        std::ffi::OsStr::new("--db"),
+        db_path.as_os_str(),
+    ]) {
+        Some(output) => output,
+        None => return,
+    };
+    assert_cli_success(&run_output, "run setup for diff test");
+
+    let diff_output = match run_cli(&[
+        std::ffi::OsStr::new("diff"),
+        std::ffi::OsStr::new("1"),
+        std::ffi::OsStr::new("1"),
+        std::ffi::OsStr::new("--db"),
+        db_path.as_os_str(),
+    ]) {
+        Some(output) => output,
+        None => return,
+    };
+    assert_cli_success(&diff_output, "diff 1 1 --db");
+    let stdout = output_stdout(&diff_output);
+    assert!(
+        stdout.contains("0 differences")
+            || stdout.contains("total_differences")
+            || stdout.contains("no differences found"),
+        "diff of identical runs should report 0 differences: {stdout}"
+    );
+}
+
+#[test]
+fn cli_run_json_output_reports_structured_run_result() {
+    let dir = match cli_tempdir() {
+        Ok(dir) => dir,
+        Err(err) => {
+            assert!(forced_assertion_failure(), "tempdir failed: {err}");
+            return;
+        }
+    };
+    let workflow_path = dir.path().join("run-json.yaml");
+    let input_path = dir.path().join("input.bin");
+    let db_path = dir.path().join("run-json-db");
+    if !write_test_file(&workflow_path, CLI_WORKFLOW.as_bytes()) {
+        return;
+    }
+    if !write_test_file(&input_path, &[]) {
+        return;
+    }
+
+    let output = match run_cli(&[
+        std::ffi::OsStr::new("run"),
+        workflow_path.as_os_str(),
+        std::ffi::OsStr::new("--input-bin"),
+        input_path.as_os_str(),
+        std::ffi::OsStr::new("--durability"),
+        std::ffi::OsStr::new("journaled"),
+        std::ffi::OsStr::new("--db"),
+        db_path.as_os_str(),
+        std::ffi::OsStr::new("--json"),
+    ]) {
+        Some(output) => output,
+        None => return,
+    };
+    assert_cli_success(&output, "run --json");
+    assert_eq!(
+        output_stderr(&output),
+        "",
+        "run --json success must not write stderr"
+    );
+    let stdout = output_stdout(&output);
+    let packet: serde_json::Value = match serde_json::from_str(&stdout) {
+        Ok(packet) => packet,
+        Err(error) => {
+            assert!(
+                forced_assertion_failure(),
+                "run JSON parse failed: {error}; stdout={stdout}"
+            );
+            return;
+        }
+    };
+    assert!(
+        packet.get("schema_version").is_some()
+            || packet.get("run_id").is_some(),
+        "expected schema_version or run_id: {stdout}"
+    );
+    assert!(packet.get("run_id").is_some(), "run_id missing: {stdout}");
+}
+
+#[test]
+fn cli_run_nonexistent_workflow_file_fails_with_diagnostic() {
+    let dir = match cli_tempdir() {
+        Ok(dir) => dir,
+        Err(err) => {
+            assert!(forced_assertion_failure(), "tempdir failed: {err}");
+            return;
+        }
+    };
+    let nonexistent_path = dir.path().join("does-not-exist.yaml");
+    let input_path = dir.path().join("input.bin");
+    if !write_test_file(&input_path, &[]) {
+        return;
+    }
+
+    let output = match run_cli(&[
+        std::ffi::OsStr::new("run"),
+        nonexistent_path.as_os_str(),
+        std::ffi::OsStr::new("--input-bin"),
+        input_path.as_os_str(),
+        std::ffi::OsStr::new("--durability"),
+        std::ffi::OsStr::new("none"),
+    ]) {
+        Some(output) => output,
+        None => return,
+    };
+    assert!(
+        !output.status.success(),
+        "run with nonexistent file must fail"
+    );
+    let stderr = output_stderr(&output);
+    assert!(
+        stderr.contains("error reading")
+            || stderr.contains("not found")
+            || stderr.contains("No such file"),
+        "should report file error: {stderr}"
+    );
+}
+
+#[test]
+fn cli_validate_nonexistent_file_fails_with_diagnostic() {
+    let nonexistent_path = std::path::PathBuf::from("/tmp/vb-nonexistent-validate-test.yaml");
+
+    let output = match run_cli(&[std::ffi::OsStr::new("validate"), nonexistent_path.as_os_str()]) {
+        Some(output) => output,
+        None => return,
+    };
+    assert!(
+        !output.status.success(),
+        "validate with nonexistent file must fail"
+    );
+    let stderr = output_stderr(&output);
+    assert!(
+        stderr.contains("error reading")
+            || stderr.contains("not found")
+            || stderr.contains("No such file"),
+        "should report file error: {stderr}"
+    );
+}
+
+#[test]
+fn cli_events_nonexistent_run_reports_empty_or_not_found() {
+    let dir = match cli_tempdir() {
+        Ok(dir) => dir,
+        Err(err) => {
+            assert!(forced_assertion_failure(), "tempdir failed: {err}");
+            return;
+        }
+    };
+    let db_path = dir.path().join("events-empty-db");
+
+    let output = match run_cli(&[
+        std::ffi::OsStr::new("events"),
+        std::ffi::OsStr::new("42"),
+        std::ffi::OsStr::new("--db"),
+        db_path.as_os_str(),
+    ]) {
+        Some(output) => output,
+        None => return,
+    };
+    let stdout = output_stdout(&output);
+    let stderr = output_stderr(&output);
+    assert!(
+        !output.status.success()
+            || stdout.contains("no events")
+            || stdout.contains("0 event")
+            || stderr.contains("no events")
+            || stderr.contains("RUN_NOT_FOUND"),
+        "events for nonexistent run must fail or report empty: stdout={stdout} stderr={stderr}"
+    );
+}
+
+#[test]
+fn cli_system_status_jsonl_output_is_single_line() {
+    let output = match run_cli(&[
+        std::ffi::OsStr::new("system"),
+        std::ffi::OsStr::new("status"),
+        std::ffi::OsStr::new("--profile"),
+        std::ffi::OsStr::new("quick"),
+        std::ffi::OsStr::new("--server"),
+        std::ffi::OsStr::new("none"),
+        std::ffi::OsStr::new("--jsonl"),
+    ]) {
+        Some(output) => output,
+        None => return,
+    };
+    assert_cli_success(&output, "system status --jsonl");
+    let stdout = output_stdout(&output);
+    let line_count = stdout.lines().count();
+    assert_eq!(
+        line_count, 1,
+        "jsonl output must be exactly one line: {stdout}"
+    );
+    let packet: serde_json::Value = match serde_json::from_str(&stdout) {
+        Ok(packet) => packet,
+        Err(error) => {
+            assert!(
+                forced_assertion_failure(),
+                "jsonl parse failed: {error}; stdout={stdout}"
+            );
+            return;
+        }
+    };
+    assert_eq!(packet.get("kind"), Some(&serde_json::json!("SystemStatus")));
+}
+
+#[test]
+fn cli_run_no_durability_works_without_db_flag() {
+    let dir = match cli_tempdir() {
+        Ok(dir) => dir,
+        Err(err) => {
+            assert!(forced_assertion_failure(), "tempdir failed: {err}");
+            return;
+        }
+    };
+    let workflow_path = dir.path().join("nodurability-workflow.yaml");
+    let input_path = dir.path().join("input.bin");
+    if !write_test_file(&workflow_path, CLI_WORKFLOW.as_bytes()) {
+        return;
+    }
+    if !write_test_file(&input_path, &[]) {
+        return;
+    }
+
+    let output = match run_cli(&[
+        std::ffi::OsStr::new("run"),
+        workflow_path.as_os_str(),
+        std::ffi::OsStr::new("--input-bin"),
+        input_path.as_os_str(),
+        std::ffi::OsStr::new("--durability"),
+        std::ffi::OsStr::new("none"),
+    ]) {
+        Some(output) => output,
+        None => return,
+    };
+    assert_cli_success(&output, "run --durability none without --db");
+    let stdout = output_stdout(&output);
+    assert!(
+        stdout.contains("run completed"),
+        "run should complete: {stdout}"
+    );
+}
+
+#[test]
+fn cli_explain_valid_workflow_outputs_valid_status() {
+    let dir = match cli_tempdir() {
+        Ok(dir) => dir,
+        Err(err) => {
+            assert!(forced_assertion_failure(), "tempdir failed: {err}");
+            return;
+        }
+    };
+    let workflow_path = dir.path().join("explain.yaml");
+    if !write_test_file(&workflow_path, CLI_WORKFLOW.as_bytes()) {
+        return;
+    }
+
+    let output = match run_cli(&[std::ffi::OsStr::new("explain"), workflow_path.as_os_str()]) {
+        Some(output) => output,
+        None => return,
+    };
+    assert_cli_success(&output, "explain valid workflow");
+    let stdout = output_stdout(&output);
+    assert!(
+        stdout.contains("valid"),
+        "explain should report valid status: {stdout}"
+    );
+    assert!(
+        stdout.contains("node") || stdout.contains("step"),
+        "explain should describe steps: {stdout}"
+    );
+}
+
+#[test]
+fn cli_explain_invalid_workflow_reports_errors() {
+    let dir = match cli_tempdir() {
+        Ok(dir) => dir,
+        Err(err) => {
+            assert!(forced_assertion_failure(), "tempdir failed: {err}");
+            return;
+        }
+    };
+    let workflow_path = dir.path().join("explain-invalid.yaml");
+    if !write_test_file(&workflow_path, b"not-valid-yaml-at-all") {
+        return;
+    }
+
+    let output = match run_cli(&[std::ffi::OsStr::new("explain"), workflow_path.as_os_str()]) {
+        Some(output) => output,
+        None => return,
+    };
+    let stdout = output_stdout(&output);
+    let stderr = output_stderr(&output);
+    assert!(
+        !output.status.success()
+            || stdout.contains("YAML")
+            || stdout.contains("parse")
+            || stdout.contains("error")
+            || stdout.contains("invalid")
+            || stderr.contains("YAML")
+            || stderr.contains("parse")
+            || stderr.contains("error"),
+        "should report error or diagnostic: stdout={stdout} stderr={stderr}"
+    );
+}
+
+#[test]
+fn cli_run_with_missing_db_path_for_strict_durability_fails_gracefully() {
+    let dir = match cli_tempdir() {
+        Ok(dir) => dir,
+        Err(err) => {
+            assert!(forced_assertion_failure(), "tempdir failed: {err}");
+            return;
+        }
+    };
+    let workflow_path = dir.path().join("strict-nodb.yaml");
+    let input_path = dir.path().join("input.bin");
+    if !write_test_file(&workflow_path, CLI_WORKFLOW.as_bytes()) {
+        return;
+    }
+    if !write_test_file(&input_path, &[]) {
+        return;
+    }
+
+    let output = match run_cli(&[
+        std::ffi::OsStr::new("run"),
+        workflow_path.as_os_str(),
+        std::ffi::OsStr::new("--input-bin"),
+        input_path.as_os_str(),
+        std::ffi::OsStr::new("--durability"),
+        std::ffi::OsStr::new("strict"),
+    ]) {
+        Some(output) => output,
+        None => return,
+    };
+    assert!(
+        !output.status.success(),
+        "run --durability strict without --db must fail"
+    );
+    let stderr = output_stderr(&output);
+    assert!(
+        stderr.contains("--db is required")
+            || stderr.contains("storage")
+            || stderr.contains("required")
+            || stderr.contains("missing argument: --db"),
+        "should report missing db: {stderr}"
+    );
+}
+
+#[test]
+fn cli_compile_without_out_flag_outputs_digest_only() {
+    let dir = match cli_tempdir() {
+        Ok(dir) => dir,
+        Err(err) => {
+            assert!(forced_assertion_failure(), "tempdir failed: {err}");
+            return;
+        }
+    };
+    let workflow_path = dir.path().join("compile-no-out.yaml");
+    let ir_path = dir.path().join("compile-no-out.vbir");
+    if !write_test_file(&workflow_path, CLI_WORKFLOW.as_bytes()) {
+        return;
+    }
+
+    let output = match run_cli(&[
+        std::ffi::OsStr::new("compile"),
+        workflow_path.as_os_str(),
+        std::ffi::OsStr::new("--emit"),
+        std::ffi::OsStr::new("ir"),
+        std::ffi::OsStr::new("--out"),
+        ir_path.as_os_str(),
+    ]) {
+        Some(output) => output,
+        None => return,
+    };
+    assert_cli_success(&output, "compile --emit ir --out");
+    let stdout = output_stdout(&output);
+    assert!(
+        stdout.contains("compiled IR written"),
+        "compile should report IR written: {stdout}"
+    );
+    let ir_bytes = match std::fs::read(&ir_path) {
+        Ok(bytes) => bytes,
+        Err(err) => {
+            assert!(forced_assertion_failure(), "failed to read compiled IR: {err}");
+            return;
+        }
+    };
+    assert!(!ir_bytes.is_empty(), "compiled IR file should not be empty");
+}

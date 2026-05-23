@@ -166,3 +166,108 @@ fn validate_status_usize_limit(
         Some(_) | None => Ok(()),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn os(val: &str) -> OsString {
+        OsString::from(val)
+    }
+
+    #[test]
+    fn parse_status_returns_ok_with_defaults() {
+        let args = [os("vb"), os("status")];
+        let result = parse_status(&args);
+        assert!(result.is_ok());
+        match result.unwrap() {
+            Command::Status { options, .. } => {
+                assert_eq!(options.active_runs, None);
+                assert_eq!(options.queue_depth, None);
+            }
+            _ => panic!("wrong command"),
+        }
+    }
+
+    #[test]
+    fn parse_status_parses_active_runs() {
+        let args = [os("vb"), os("status"), os("--active-runs"), os("5")];
+        let result = parse_status(&args).unwrap();
+        match result {
+            Command::Status { options, .. } => {
+                assert_eq!(options.active_runs, Some(5));
+            }
+            _ => panic!("wrong command"),
+        }
+    }
+
+    #[test]
+    fn parse_status_parses_queue_depth() {
+        let args = [os("vb"), os("status"), os("--queue-depth"), os("128")];
+        let result = parse_status(&args).unwrap();
+        match result {
+            Command::Status { options, .. } => {
+                assert_eq!(options.queue_depth, Some(128));
+            }
+            _ => panic!("wrong command"),
+        }
+    }
+
+    #[test]
+    fn parse_status_rejects_unknown_flag() {
+        let args = [os("vb"), os("status"), os("--unknown")];
+        let result = parse_status(&args);
+        assert!(matches!(result.unwrap_err(), ParseError::InvalidStatusArgument(_)));
+    }
+
+    #[test]
+    fn parse_status_rejects_non_numeric_active_runs() {
+        let args = [os("vb"), os("status"), os("--active-runs"), os("abc")];
+        let result = parse_status(&args);
+        assert!(matches!(result.unwrap_err(), ParseError::InvalidStatusArgument(_)));
+    }
+
+    #[test]
+    fn parse_status_rejects_excessive_active_runs() {
+        let max = vb_runtime::shard::ShardConfig::default().max_active_runs;
+        let too_many = (max + 1).to_string();
+        let args = [os("vb"), os("status"), os("--active-runs"), os(&too_many)];
+        let result = parse_status(&args);
+        assert!(matches!(result.unwrap_err(), ParseError::InvalidStatusArgument(_)));
+    }
+
+    #[test]
+    fn parse_status_accepts_maximum_active_runs() {
+        let max = vb_runtime::shard::ShardConfig::default().max_active_runs;
+        let max_str = max.to_string();
+        let args = [os("vb"), os("status"), os("--active-runs"), os(&max_str)];
+        let result = parse_status(&args);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn parse_status_parses_trace_dropped() {
+        let args = [os("vb"), os("status"), os("--trace-dropped"), os("100")];
+        let result = parse_status(&args).unwrap();
+        match result {
+            Command::Status { options, .. } => {
+                assert_eq!(options.trace_dropped, Some(100));
+            }
+            _ => panic!("wrong command"),
+        }
+    }
+
+    #[test]
+    fn parse_status_handles_emit_flag_as_noop_for_status() {
+        let args = [os("vb"), os("status"), os("--emit"), os("text")];
+        let result = parse_status(&args);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn parse_status_rejects_postcard_emit() {
+        let args = [os("vb"), os("status"), os("--emit"), os("postcard")];
+        let result = parse_status(&args);
+        assert!(matches!(result.unwrap_err(), ParseError::InvalidStatusArgument(_)));
+    }
+}

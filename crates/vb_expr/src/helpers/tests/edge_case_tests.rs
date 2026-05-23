@@ -26,9 +26,9 @@ use vb_core::engine::expr_eval::ops_text_list::{
     eval_append, eval_append_if, eval_contains, eval_count, eval_empty, eval_ends_with, eval_has,
     eval_length, eval_starts_with, eval_sum, eval_unique,
 };
-use vb_core::engine::expr_eval::ops::eval_merge;
+use vb_core::engine::expr_eval::ops::{eval_exists, eval_merge};
 use vb_core::engine::expr_eval::stack::{push_value, ExprStack};
-use vb_core::value_store::ValueStore;
+use vb_core::value_store::{ObjectField, ValueStore};
 
 // ---------------------------------------------------------------------------
 // Test infrastructure
@@ -1127,5 +1127,672 @@ mod text_ops_oob_edge_cases {
                 symbol: SymbolId::new(99)
             })
         );
+    }
+}
+
+// ---------------------------------------------------------------------------
+// eval_exists edge cases (entirely absent from original plan)
+// ---------------------------------------------------------------------------
+
+mod exists_edge_cases {
+    use super::*;
+
+    #[test]
+    fn exists_returns_false_when_input_is_null() {
+        let mut store = ValueStore::new();
+        let result = eval_ops_with_slots(
+            vec![ExprOp::LoadConst(ConstIdx::new(0)), ExprOp::Exists],
+            vec![],
+            vec![ConstValue::Null],
+            &mut store,
+        );
+        assert_eq!(result, Ok(SlotValue::Bool(false)));
+    }
+
+    #[test]
+    fn exists_returns_false_when_object_has_no_fields() {
+        let mut store = ValueStore::new();
+        let empty_obj = store
+            .insert_object(Vec::<ObjectField>::new().into_boxed_slice())
+            .expect("insert");
+        let result = eval_ops_with_slots(
+            vec![ExprOp::LoadSlot(SlotIdx::new(0)), ExprOp::Exists],
+            vec![SlotValue::Object(empty_obj)],
+            vec![],
+            &mut store,
+        );
+        assert_eq!(result, Ok(SlotValue::Bool(false)));
+    }
+
+    #[test]
+    fn exists_returns_true_when_object_has_fields() {
+        let mut store = ValueStore::new();
+        let sym = store.insert_symbol("key").expect("insert");
+        let obj = store
+            .insert_object(
+                vec![ObjectField {
+                    key: sym,
+                    value: SlotValue::I64(1),
+                    taint: Taint::Clean,
+                }]
+                .into_boxed_slice(),
+            )
+            .expect("insert");
+        let result = eval_ops_with_slots(
+            vec![ExprOp::LoadSlot(SlotIdx::new(0)), ExprOp::Exists],
+            vec![SlotValue::Object(obj)],
+            vec![],
+            &mut store,
+        );
+        assert_eq!(result, Ok(SlotValue::Bool(true)));
+    }
+
+    #[test]
+    fn exists_rejects_number_input() {
+        let mut stack = ExprStack::new(4).expect("valid");
+        let store = ValueStore::new();
+        push_value(&mut stack, SlotValue::I64(42)).expect("push");
+        let result = eval_exists(&mut stack, &store);
+        assert_eq!(
+            result,
+            Err(EngineError::TypeMismatch {
+                expected: "object or null".to_string(),
+                found: "number".to_string(),
+            })
+        );
+    }
+
+    #[test]
+    fn exists_rejects_text_input() {
+        let mut stack = ExprStack::new(4).expect("valid");
+        let mut store = ValueStore::new();
+        let sym = store.insert_symbol("hello").expect("insert");
+        push_value(&mut stack, SlotValue::Symbol(sym)).expect("push");
+        let result = eval_exists(&mut stack, &store);
+        assert_eq!(
+            result,
+            Err(EngineError::TypeMismatch {
+                expected: "object or null".to_string(),
+                found: "symbol".to_string(),
+            })
+        );
+    }
+}
+
+// ---------------------------------------------------------------------------
+// eval_has: matching / non-matching / empty list edge cases
+// ---------------------------------------------------------------------------
+
+mod has_more_edge_cases {
+    use super::*;
+
+    #[test]
+    fn has_returns_true_when_item_exists_in_list() {
+        let mut store = ValueStore::new();
+        let list = store
+            .insert_list(
+                vec![SlotValue::I64(1), SlotValue::I64(2), SlotValue::I64(3)]
+                    .into_boxed_slice(),
+            )
+            .expect("insert");
+        let result = eval_ops_with_slots(
+            vec![
+                ExprOp::LoadSlot(SlotIdx::new(0)),
+                ExprOp::LoadConst(ConstIdx::new(0)),
+                ExprOp::Has,
+            ],
+            vec![SlotValue::List(list)],
+            vec![ConstValue::I64(2)],
+            &mut store,
+        );
+        assert_eq!(result, Ok(SlotValue::Bool(true)));
+    }
+
+    #[test]
+    fn has_returns_false_when_item_not_in_list() {
+        let mut store = ValueStore::new();
+        let list = store
+            .insert_list(
+                vec![SlotValue::I64(1), SlotValue::I64(2), SlotValue::I64(3)]
+                    .into_boxed_slice(),
+            )
+            .expect("insert");
+        let result = eval_ops_with_slots(
+            vec![
+                ExprOp::LoadSlot(SlotIdx::new(0)),
+                ExprOp::LoadConst(ConstIdx::new(0)),
+                ExprOp::Has,
+            ],
+            vec![SlotValue::List(list)],
+            vec![ConstValue::I64(99)],
+            &mut store,
+        );
+        assert_eq!(result, Ok(SlotValue::Bool(false)));
+    }
+
+    #[test]
+    fn has_returns_false_when_list_is_empty() {
+        let mut store = ValueStore::new();
+        let empty_list = store
+            .insert_list(vec![].into_boxed_slice())
+            .expect("insert");
+        let result = eval_ops_with_slots(
+            vec![
+                ExprOp::LoadSlot(SlotIdx::new(0)),
+                ExprOp::LoadConst(ConstIdx::new(0)),
+                ExprOp::Has,
+            ],
+            vec![SlotValue::List(empty_list)],
+            vec![ConstValue::I64(1)],
+            &mut store,
+        );
+        assert_eq!(result, Ok(SlotValue::Bool(false)));
+    }
+}
+
+// ---------------------------------------------------------------------------
+// eval_empty: null and empty list additional coverage
+// ---------------------------------------------------------------------------
+
+mod empty_more_edge_cases {
+    use super::*;
+
+    #[test]
+    fn empty_returns_true_when_input_is_null() {
+        let mut stack = ExprStack::new(4).expect("valid");
+        let store = ValueStore::new();
+        push_value(&mut stack, SlotValue::Null).expect("push");
+        let result = eval_empty(&mut stack, &store);
+        assert_eq!(result, Ok(()));
+        let top = stack.pop().expect("pop");
+        assert_eq!(top, SlotValue::Bool(true));
+    }
+
+    #[test]
+    fn empty_returns_true_when_list_has_no_items() {
+        let mut stack = ExprStack::new(4).expect("valid");
+        let mut store = ValueStore::new();
+        let empty_list = store
+            .insert_list(vec![].into_boxed_slice())
+            .expect("insert");
+        push_value(&mut stack, SlotValue::List(empty_list)).expect("push");
+        let result = eval_empty(&mut stack, &store);
+        assert_eq!(result, Ok(()));
+        let top = stack.pop().expect("pop");
+        assert_eq!(top, SlotValue::Bool(true));
+    }
+
+    #[test]
+    fn empty_returns_false_when_list_has_items() {
+        let mut stack = ExprStack::new(4).expect("valid");
+        let mut store = ValueStore::new();
+        let list = store
+            .insert_list(vec![SlotValue::I64(1)].into_boxed_slice())
+            .expect("insert");
+        push_value(&mut stack, SlotValue::List(list)).expect("push");
+        let result = eval_empty(&mut stack, &store);
+        assert_eq!(result, Ok(()));
+        let top = stack.pop().expect("pop");
+        assert_eq!(top, SlotValue::Bool(false));
+    }
+}
+
+// ---------------------------------------------------------------------------
+// eval_unique: empty list edge case
+// ---------------------------------------------------------------------------
+
+mod unique_more_edge_cases {
+    use super::*;
+
+    #[test]
+    fn unique_returns_empty_list_when_input_is_empty() {
+        let mut store = ValueStore::new();
+        let empty_list = store
+            .insert_list(vec![].into_boxed_slice())
+            .expect("insert");
+        let result = eval_ops_with_slots(
+            vec![ExprOp::LoadSlot(SlotIdx::new(0)), ExprOp::Unique],
+            vec![SlotValue::List(empty_list)],
+            vec![],
+            &mut store,
+        );
+        let list_id = match result {
+            Ok(SlotValue::List(id)) => id,
+            other => panic!("expected List, got {other:?}"),
+        };
+        let items = store.list(list_id).expect("lookup");
+        assert_eq!(items.len(), 0);
+    }
+}
+
+// ---------------------------------------------------------------------------
+// eval_sum: empty list edge case
+// ---------------------------------------------------------------------------
+
+mod sum_more_edge_cases {
+    use super::*;
+
+    #[test]
+    fn sum_returns_zero_when_list_is_empty() {
+        let mut store = ValueStore::new();
+        let empty_list = store
+            .insert_list(vec![].into_boxed_slice())
+            .expect("insert");
+        let result = eval_ops_with_slots(
+            vec![ExprOp::LoadSlot(SlotIdx::new(0)), ExprOp::Sum],
+            vec![SlotValue::List(empty_list)],
+            vec![],
+            &mut store,
+        );
+        assert_eq!(result, Ok(SlotValue::I64(0)));
+    }
+
+    #[test]
+    fn sum_handles_multiple_non_negative_numbers() {
+        let mut store = ValueStore::new();
+        let list = store
+            .insert_list(
+                vec![
+                    SlotValue::I64(100),
+                    SlotValue::I64(200),
+                    SlotValue::I64(300),
+                ]
+                .into_boxed_slice(),
+            )
+            .expect("insert");
+        let result = eval_ops_with_slots(
+            vec![ExprOp::LoadSlot(SlotIdx::new(0)), ExprOp::Sum],
+            vec![SlotValue::List(list)],
+            vec![],
+            &mut store,
+        );
+        assert_eq!(result, Ok(SlotValue::I64(600)));
+    }
+}
+
+// ---------------------------------------------------------------------------
+// eval_length: non-empty input edge cases
+// ---------------------------------------------------------------------------
+
+mod length_more_edge_cases {
+    use super::*;
+
+    #[test]
+    fn length_returns_correct_count_for_non_empty_symbol() {
+        let mut store = ValueStore::new();
+        let sym = store.insert_symbol("hello world").expect("insert");
+        let result = eval_ops_with_slots(
+            vec![ExprOp::LoadConst(ConstIdx::new(0)), ExprOp::Length],
+            vec![],
+            vec![ConstValue::Symbol(sym)],
+            &mut store,
+        );
+        assert_eq!(result, Ok(SlotValue::I64(11)));
+    }
+
+    #[test]
+    fn length_returns_correct_count_for_non_empty_list() {
+        let mut store = ValueStore::new();
+        let list = store
+            .insert_list(
+                vec![
+                    SlotValue::I64(1),
+                    SlotValue::I64(2),
+                    SlotValue::I64(3),
+                    SlotValue::I64(4),
+                ]
+                .into_boxed_slice(),
+            )
+            .expect("insert");
+        let result = eval_ops_with_slots(
+            vec![ExprOp::LoadSlot(SlotIdx::new(0)), ExprOp::Length],
+            vec![SlotValue::List(list)],
+            vec![],
+            &mut store,
+        );
+        assert_eq!(result, Ok(SlotValue::I64(4)));
+    }
+
+    #[test]
+    fn length_returns_correct_count_for_non_empty_object() {
+        let mut store = ValueStore::new();
+        let key1 = store.insert_symbol("a").expect("insert");
+        let key2 = store.insert_symbol("b").expect("insert");
+        let obj = store
+            .insert_object(
+                vec![
+                    ObjectField {
+                        key: key1,
+                        value: SlotValue::I64(1),
+                        taint: Taint::Clean,
+                    },
+                    ObjectField {
+                        key: key2,
+                        value: SlotValue::I64(2),
+                        taint: Taint::Clean,
+                    },
+                ]
+                .into_boxed_slice(),
+            )
+            .expect("insert");
+        let result = eval_ops_with_slots(
+            vec![ExprOp::LoadSlot(SlotIdx::new(0)), ExprOp::Length],
+            vec![SlotValue::Object(obj)],
+            vec![],
+            &mut store,
+        );
+        assert_eq!(result, Ok(SlotValue::I64(2)));
+    }
+}
+
+// ---------------------------------------------------------------------------
+// eval_count: non-empty list edge cases
+// ---------------------------------------------------------------------------
+
+mod count_more_edge_cases {
+    use super::*;
+
+    #[test]
+    fn count_matches_list_length_for_non_empty_list() {
+        let mut store = ValueStore::new();
+        let list = store
+            .insert_list(
+                vec![SlotValue::I64(10), SlotValue::I64(20), SlotValue::I64(30)]
+                    .into_boxed_slice(),
+            )
+            .expect("insert");
+        let result = eval_ops_with_slots(
+            vec![ExprOp::LoadSlot(SlotIdx::new(0)), ExprOp::Count],
+            vec![SlotValue::List(list)],
+            vec![],
+            &mut store,
+        );
+        assert_eq!(result, Ok(SlotValue::I64(3)));
+    }
+
+    #[test]
+    fn count_includes_duplicates_in_total() {
+        let mut store = ValueStore::new();
+        let list = store
+            .insert_list(
+                vec![
+                    SlotValue::I64(1),
+                    SlotValue::I64(1),
+                    SlotValue::I64(1),
+                    SlotValue::I64(2),
+                ]
+                .into_boxed_slice(),
+            )
+            .expect("insert");
+        let result = eval_ops_with_slots(
+            vec![ExprOp::LoadSlot(SlotIdx::new(0)), ExprOp::Count],
+            vec![SlotValue::List(list)],
+            vec![],
+            &mut store,
+        );
+        assert_eq!(result, Ok(SlotValue::I64(4)));
+    }
+}
+
+// ---------------------------------------------------------------------------
+// eval_append: non-list input rejection
+// ---------------------------------------------------------------------------
+
+mod append_more_edge_cases {
+    use super::*;
+
+    #[test]
+    fn append_rejects_non_list_first_operand() {
+        let mut stack = ExprStack::new(4).expect("valid");
+        let mut store = ValueStore::new();
+        push_value(&mut stack, SlotValue::I64(42)).expect("push");
+        push_value(&mut stack, SlotValue::I64(1)).expect("push");
+        let result = eval_append(&mut stack, &mut store);
+        assert_eq!(
+            result,
+            Err(EngineError::TypeMismatch {
+                expected: "list".to_string(),
+                found: "number".to_string(),
+            })
+        );
+    }
+}
+
+// ---------------------------------------------------------------------------
+// eval_starts_with: actual matching behavior edge cases
+// ---------------------------------------------------------------------------
+
+mod starts_with_more_edge_cases {
+    use super::*;
+
+    #[test]
+    fn starts_with_returns_true_when_prefix_matches_beginning() {
+        let mut store = ValueStore::new();
+        let text = store.insert_symbol("hello world").expect("insert");
+        let prefix = store.insert_symbol("hello").expect("insert");
+        let result = eval_ops_with_slots(
+            vec![
+                ExprOp::LoadConst(ConstIdx::new(0)),
+                ExprOp::LoadConst(ConstIdx::new(1)),
+                ExprOp::StartsWith,
+            ],
+            vec![],
+            vec![ConstValue::Symbol(text), ConstValue::Symbol(prefix)],
+            &mut store,
+        );
+        assert_eq!(result, Ok(SlotValue::Bool(true)));
+    }
+
+    #[test]
+    fn starts_with_returns_false_when_prefix_does_not_match() {
+        let mut store = ValueStore::new();
+        let text = store.insert_symbol("hello").expect("insert");
+        let prefix = store.insert_symbol("world").expect("insert");
+        let result = eval_ops_with_slots(
+            vec![
+                ExprOp::LoadConst(ConstIdx::new(0)),
+                ExprOp::LoadConst(ConstIdx::new(1)),
+                ExprOp::StartsWith,
+            ],
+            vec![],
+            vec![ConstValue::Symbol(text), ConstValue::Symbol(prefix)],
+            &mut store,
+        );
+        assert_eq!(result, Ok(SlotValue::Bool(false)));
+    }
+}
+
+// ---------------------------------------------------------------------------
+// eval_ends_with: actual matching behavior edge cases
+// ---------------------------------------------------------------------------
+
+mod ends_with_more_edge_cases {
+    use super::*;
+
+    #[test]
+    fn ends_with_returns_true_when_suffix_matches_ending() {
+        let mut store = ValueStore::new();
+        let text = store.insert_symbol("hello world").expect("insert");
+        let suffix = store.insert_symbol("world").expect("insert");
+        let result = eval_ops_with_slots(
+            vec![
+                ExprOp::LoadConst(ConstIdx::new(0)),
+                ExprOp::LoadConst(ConstIdx::new(1)),
+                ExprOp::EndsWith,
+            ],
+            vec![],
+            vec![ConstValue::Symbol(text), ConstValue::Symbol(suffix)],
+            &mut store,
+        );
+        assert_eq!(result, Ok(SlotValue::Bool(true)));
+    }
+
+    #[test]
+    fn ends_with_returns_false_when_suffix_does_not_match() {
+        let mut store = ValueStore::new();
+        let text = store.insert_symbol("hello").expect("insert");
+        let suffix = store.insert_symbol("world").expect("insert");
+        let result = eval_ops_with_slots(
+            vec![
+                ExprOp::LoadConst(ConstIdx::new(0)),
+                ExprOp::LoadConst(ConstIdx::new(1)),
+                ExprOp::EndsWith,
+            ],
+            vec![],
+            vec![ConstValue::Symbol(text), ConstValue::Symbol(suffix)],
+            &mut store,
+        );
+        assert_eq!(result, Ok(SlotValue::Bool(false)));
+    }
+}
+
+// ---------------------------------------------------------------------------
+// eval_contains: actual matching behavior edge cases
+// ---------------------------------------------------------------------------
+
+mod contains_more_edge_cases {
+    use super::*;
+
+    #[test]
+    fn contains_returns_true_when_needle_is_found_in_haystack() {
+        let mut store = ValueStore::new();
+        let hay = store.insert_symbol("hello world").expect("insert");
+        let needle = store.insert_symbol("lo wo").expect("insert");
+        let result = eval_ops_with_slots(
+            vec![
+                ExprOp::LoadConst(ConstIdx::new(0)),
+                ExprOp::LoadConst(ConstIdx::new(1)),
+                ExprOp::Contains,
+            ],
+            vec![],
+            vec![ConstValue::Symbol(hay), ConstValue::Symbol(needle)],
+            &mut store,
+        );
+        assert_eq!(result, Ok(SlotValue::Bool(true)));
+    }
+
+    #[test]
+    fn contains_returns_false_when_needle_is_not_in_haystack() {
+        let mut store = ValueStore::new();
+        let hay = store.insert_symbol("hello").expect("insert");
+        let needle = store.insert_symbol("xyz").expect("insert");
+        let result = eval_ops_with_slots(
+            vec![
+                ExprOp::LoadConst(ConstIdx::new(0)),
+                ExprOp::LoadConst(ConstIdx::new(1)),
+                ExprOp::Contains,
+            ],
+            vec![],
+            vec![ConstValue::Symbol(hay), ConstValue::Symbol(needle)],
+            &mut store,
+        );
+        assert_eq!(result, Ok(SlotValue::Bool(false)));
+    }
+}
+
+// ---------------------------------------------------------------------------
+// eval_merge: empty objects edge cases
+// ---------------------------------------------------------------------------
+
+mod merge_more_edge_cases {
+    use super::*;
+
+    #[test]
+    fn merge_two_empty_objects_returns_empty_object() {
+        let mut store = ValueStore::new();
+        let empty1 = store
+            .insert_object(Vec::<ObjectField>::new().into_boxed_slice())
+            .expect("insert");
+        let empty2 = store
+            .insert_object(Vec::<ObjectField>::new().into_boxed_slice())
+            .expect("insert");
+        let result = eval_ops_with_slots(
+            vec![
+                ExprOp::LoadSlot(SlotIdx::new(0)),
+                ExprOp::LoadSlot(SlotIdx::new(1)),
+                ExprOp::Merge,
+            ],
+            vec![SlotValue::Object(empty1), SlotValue::Object(empty2)],
+            vec![],
+            &mut store,
+        );
+        let merged_id = match result {
+            Ok(SlotValue::Object(id)) => id,
+            other => panic!("expected Object, got {other:?}"),
+        };
+        let fields = store.object(merged_id).expect("lookup");
+        assert_eq!(fields.len(), 0);
+    }
+
+    #[test]
+    fn merge_empty_left_with_populated_right_gives_right_fields() {
+        let mut store = ValueStore::new();
+        let key_a = store.insert_symbol("a").expect("insert");
+        let empty = store
+            .insert_object(Vec::<ObjectField>::new().into_boxed_slice())
+            .expect("insert");
+        let right_obj = store
+            .insert_object(
+                vec![ObjectField {
+                    key: key_a,
+                    value: SlotValue::I64(42),
+                    taint: Taint::Clean,
+                }]
+                .into_boxed_slice(),
+            )
+            .expect("insert");
+        let result = eval_ops_with_slots(
+            vec![
+                ExprOp::LoadSlot(SlotIdx::new(0)),
+                ExprOp::LoadSlot(SlotIdx::new(1)),
+                ExprOp::Merge,
+            ],
+            vec![SlotValue::Object(empty), SlotValue::Object(right_obj)],
+            vec![],
+            &mut store,
+        );
+        let merged_id = match result {
+            Ok(SlotValue::Object(id)) => id,
+            other => panic!("expected Object, got {other:?}"),
+        };
+        let fields = store.object(merged_id).expect("lookup");
+        assert_eq!(fields.len(), 1);
+        assert_eq!(fields[0].value, SlotValue::I64(42));
+    }
+
+    #[test]
+    fn merge_populated_left_with_empty_right_gives_left_fields() {
+        let mut store = ValueStore::new();
+        let key_a = store.insert_symbol("a").expect("insert");
+        let left_obj = store
+            .insert_object(
+                vec![ObjectField {
+                    key: key_a,
+                    value: SlotValue::I64(99),
+                    taint: Taint::Clean,
+                }]
+                .into_boxed_slice(),
+            )
+            .expect("insert");
+        let empty = store
+            .insert_object(Vec::<ObjectField>::new().into_boxed_slice())
+            .expect("insert");
+        let result = eval_ops_with_slots(
+            vec![
+                ExprOp::LoadSlot(SlotIdx::new(0)),
+                ExprOp::LoadSlot(SlotIdx::new(1)),
+                ExprOp::Merge,
+            ],
+            vec![SlotValue::Object(left_obj), SlotValue::Object(empty)],
+            vec![],
+            &mut store,
+        );
+        let merged_id = match result {
+            Ok(SlotValue::Object(id)) => id,
+            other => panic!("expected Object, got {other:?}"),
+        };
+        let fields = store.object(merged_id).expect("lookup");
+        assert_eq!(fields.len(), 1);
+        assert_eq!(fields[0].value, SlotValue::I64(99));
     }
 }

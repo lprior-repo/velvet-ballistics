@@ -873,6 +873,207 @@ fn eval_program_with_only_load_const_no_ops_returns_stack_overflow() -> ExprResu
     Ok(())
 }
 
+// --- F64 arithmetic tests ---
+
+#[test]
+fn f64_addition_returns_correct_value() -> ExprResult<()> {
+    let left = SlotValue::F64(vb_core::value::FiniteF64::new(1.5).map_err(|_| ExprError::UnexpectedEof)?);
+    let right = SlotValue::F64(vb_core::value::FiniteF64::new(2.5).map_err(|_| ExprError::UnexpectedEof)?);
+    let result = eval_binary_op(BinaryOp::Add, left, right)?;
+    assert_eq!(result, SlotValue::F64(vb_core::value::FiniteF64::new(4.0).map_err(|_| ExprError::UnexpectedEof)?));
+    Ok(())
+}
+
+#[test]
+fn f64_subtraction_returns_correct_value() -> ExprResult<()> {
+    let left = SlotValue::F64(vb_core::value::FiniteF64::new(3.5).map_err(|_| ExprError::UnexpectedEof)?);
+    let right = SlotValue::F64(vb_core::value::FiniteF64::new(1.0).map_err(|_| ExprError::UnexpectedEof)?);
+    let result = eval_binary_op(BinaryOp::Sub, left, right)?;
+    assert_eq!(result, SlotValue::F64(vb_core::value::FiniteF64::new(2.5).map_err(|_| ExprError::UnexpectedEof)?));
+    Ok(())
+}
+
+#[test]
+fn f64_multiplication_returns_correct_value() -> ExprResult<()> {
+    let left = SlotValue::F64(vb_core::value::FiniteF64::new(2.0).map_err(|_| ExprError::UnexpectedEof)?);
+    let right = SlotValue::F64(vb_core::value::FiniteF64::new(3.5).map_err(|_| ExprError::UnexpectedEof)?);
+    let result = eval_binary_op(BinaryOp::Mul, left, right)?;
+    assert_eq!(result, SlotValue::F64(vb_core::value::FiniteF64::new(7.0).map_err(|_| ExprError::UnexpectedEof)?));
+    Ok(())
+}
+
+#[test]
+fn f64_division_returns_correct_value() -> ExprResult<()> {
+    let left = SlotValue::F64(vb_core::value::FiniteF64::new(7.0).map_err(|_| ExprError::UnexpectedEof)?);
+    let right = SlotValue::F64(vb_core::value::FiniteF64::new(2.0).map_err(|_| ExprError::UnexpectedEof)?);
+    let result = eval_binary_op(BinaryOp::Div, left, right)?;
+    assert_eq!(result, SlotValue::F64(vb_core::value::FiniteF64::new(3.5).map_err(|_| ExprError::UnexpectedEof)?));
+    Ok(())
+}
+
+#[test]
+fn f64_negation_returns_correct_value() -> ExprResult<()> {
+    let value = SlotValue::F64(vb_core::value::FiniteF64::new(3.14).map_err(|_| ExprError::UnexpectedEof)?);
+    let result = eval_unary_op(UnaryOp::Neg, value)?;
+    assert_eq!(result, SlotValue::F64(vb_core::value::FiniteF64::new(-3.14).map_err(|_| ExprError::UnexpectedEof)?));
+    Ok(())
+}
+
+#[test]
+fn f64_comparison_greater_than_returns_correct_bool() -> ExprResult<()> {
+    let left = SlotValue::F64(vb_core::value::FiniteF64::new(3.0).map_err(|_| ExprError::UnexpectedEof)?);
+    let right = SlotValue::F64(vb_core::value::FiniteF64::new(1.0).map_err(|_| ExprError::UnexpectedEof)?);
+    let result = eval_binary_op(BinaryOp::Gt, left, right)?;
+    assert_eq!(result, SlotValue::Bool(true));
+    let result_false = eval_binary_op(BinaryOp::Gt, right, left)?;
+    assert_eq!(result_false, SlotValue::Bool(false));
+    Ok(())
+}
+
+#[test]
+fn f64_comparison_less_than_equal_returns_correct_bool() -> ExprResult<()> {
+    let left = SlotValue::F64(vb_core::value::FiniteF64::new(2.0).map_err(|_| ExprError::UnexpectedEof)?);
+    let right = SlotValue::F64(vb_core::value::FiniteF64::new(2.0).map_err(|_| ExprError::UnexpectedEof)?);
+    let result = eval_binary_op(BinaryOp::Lte, left, right)?;
+    assert_eq!(result, SlotValue::Bool(true));
+    let left2 = SlotValue::F64(vb_core::value::FiniteF64::new(3.0).map_err(|_| ExprError::UnexpectedEof)?);
+    let result_false = eval_binary_op(BinaryOp::Lte, left2, right)?;
+    assert_eq!(result_false, SlotValue::Bool(false));
+    Ok(())
+}
+
+#[test]
+fn f64_comparison_greater_equal_returns_correct_bool() -> ExprResult<()> {
+    let left = SlotValue::F64(vb_core::value::FiniteF64::new(2.0).map_err(|_| ExprError::UnexpectedEof)?);
+    let right = SlotValue::F64(vb_core::value::FiniteF64::new(2.0).map_err(|_| ExprError::UnexpectedEof)?);
+    let result = eval_binary_op(BinaryOp::Gte, left, right)?;
+    assert_eq!(result, SlotValue::Bool(true));
+    Ok(())
+}
+
+#[test]
+fn f64_add_with_i64_coerces_to_number() -> ExprResult<()> {
+    let left = SlotValue::F64(vb_core::value::FiniteF64::new(1.5).map_err(|_| ExprError::UnexpectedEof)?);
+    let right = SlotValue::I64(2);
+    let result = eval_binary_op(BinaryOp::Add, left, right)?;
+    assert_eq!(result, SlotValue::F64(vb_core::value::FiniteF64::new(3.5).map_err(|_| ExprError::UnexpectedEof)?));
+    Ok(())
+}
+
+#[test]
+fn f64_div_by_zero_produces_non_finite_float_error() -> ExprResult<()> {
+    let left = SlotValue::F64(vb_core::value::FiniteF64::new(1.0).map_err(|_| ExprError::UnexpectedEof)?);
+    let right = SlotValue::F64(vb_core::value::FiniteF64::new(0.0).map_err(|_| ExprError::UnexpectedEof)?);
+    let result = eval_binary_op(BinaryOp::Div, left, right);
+    assert!(matches!(result, Err(ExprError::NonFiniteFloat)));
+    Ok(())
+}
+
+#[test]
+fn i64_negation_of_zero_returns_zero() -> ExprResult<()> {
+    let result = eval_unary_op(UnaryOp::Neg, SlotValue::I64(0))?;
+    assert_eq!(result, SlotValue::I64(0));
+    Ok(())
+}
+
+#[test]
+fn i64_negation_of_negative_returns_positive() -> ExprResult<()> {
+    let result = eval_unary_op(UnaryOp::Neg, SlotValue::I64(-42))?;
+    assert_eq!(result, SlotValue::I64(42));
+    Ok(())
+}
+
+#[test]
+fn eval_program_with_no_ops_returns_stack_underflow() -> ExprResult<()> {
+    let program = ExprProgram {
+        ops: vec![].into_boxed_slice(),
+        max_stack: 0,
+    };
+    let result = eval_expr_program(&program, &[], &[]);
+    assert!(matches!(result, Err(ExprError::StackUnderflow)));
+    Ok(())
+}
+
+#[test]
+fn eval_program_with_null_slot_returns_stack_underflow() -> ExprResult<()> {
+    let program = ExprProgram {
+        ops: vec![ExprOp::LoadSlot(SlotIdx::new(0))].into_boxed_slice(),
+        max_stack: 1,
+    };
+    let slots: Vec<Option<SlotValue>> = vec![None];
+    let result = eval_expr_program(&program, &slots, &[]);
+    assert!(matches!(result, Err(ExprError::StackUnderflow)));
+    Ok(())
+}
+
+#[test]
+fn eval_not_on_bool_false_returns_true() -> ExprResult<()> {
+    let result = eval_unary_op(UnaryOp::Not, SlotValue::Bool(false))?;
+    assert_eq!(result, SlotValue::Bool(true));
+    Ok(())
+}
+
+#[test]
+fn eval_eq_null_vs_null_returns_true() -> ExprResult<()> {
+    let result = eval_binary_op(BinaryOp::Eq, SlotValue::Null, SlotValue::Null)?;
+    assert_eq!(result, SlotValue::Bool(true));
+    Ok(())
+}
+
+#[test]
+fn eval_neq_null_vs_i64_returns_true() -> ExprResult<()> {
+    let result = eval_binary_op(BinaryOp::NotEq, SlotValue::Null, SlotValue::I64(1))?;
+    assert_eq!(result, SlotValue::Bool(true));
+    Ok(())
+}
+
+#[test]
+fn eval_helper_exists_on_i64_returns_true() -> ExprResult<()> {
+    let args = [SlotValue::I64(1)];
+    let result = eval_helper(ExprHelper::Exists, &args)?;
+    assert_eq!(result, SlotValue::Bool(true));
+    Ok(())
+}
+
+#[test]
+fn eval_helper_exists_on_bool_returns_true() -> ExprResult<()> {
+    let args = [SlotValue::Bool(false)];
+    let result = eval_helper(ExprHelper::Exists, &args)?;
+    assert_eq!(result, SlotValue::Bool(true));
+    Ok(())
+}
+
+#[test]
+fn eval_helper_exists_on_f64_returns_true() -> ExprResult<()> {
+    let args = [SlotValue::F64(
+        vb_core::value::FiniteF64::new(1.0).map_err(|_| ExprError::UnexpectedEof)?
+    )];
+    let result = eval_helper(ExprHelper::Exists, &args)?;
+    assert_eq!(result, SlotValue::Bool(true));
+    Ok(())
+}
+
+#[test]
+fn eval_helper_arity_mismatch_zero_args() {
+    let args: &[SlotValue] = &[];
+    let result = eval_helper(ExprHelper::Exists, args);
+    assert!(matches!(result, Err(ExprError::HelperArityMismatch { .. })));
+}
+
+#[test]
+fn eval_helper_arity_mismatch_two_args_for_unary() {
+    let args = [SlotValue::I64(1), SlotValue::I64(2)];
+    let result = eval_helper(ExprHelper::Length, &args);
+    assert!(matches!(result, Err(ExprError::HelperArityMismatch { .. })));
+}
+
+#[test]
+fn eval_helper_arity_mismatch_three_args_for_binary() {
+    let args = [SlotValue::I64(1), SlotValue::I64(2), SlotValue::I64(3)];
+    let result = eval_helper(ExprHelper::Contains, &args);
+    assert!(matches!(result, Err(ExprError::HelperArityMismatch { .. })));
+}
+
 // ===== Security regression tests =====
 
 #[test]

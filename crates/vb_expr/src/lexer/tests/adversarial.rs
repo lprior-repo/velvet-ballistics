@@ -274,3 +274,187 @@ fn blackhat_lx_010_negative_literal_is_unary_op() -> crate::ExprResult<()> {
     );
     Ok(())
 }
+
+// =========================================================================
+// Adversarial: extended boundary and character coverage
+// =========================================================================
+
+/// Rejects every ASCII punctuation character not in the grammar.
+#[test]
+fn lex_expr_rejects_punctuation_characters() -> crate::ExprResult<()> {
+    let punct: &[char] = &[
+        '%', '&', '{', '}', '[', ']', ';', ':', '\\', '|', '?', '~', '`', '^',
+    ];
+    for ch in punct {
+        let result = lex_expr(&ch.to_string());
+        assert!(
+            matches!(result, Err(ExprError::UnexpectedChar { .. })),
+            "character '{ch}' should be rejected as UnexpectedChar"
+        );
+    }
+    Ok(())
+}
+
+/// Rejects a CJK character as unexpected.
+#[test]
+fn lex_expr_rejects_cjk_character() -> crate::ExprResult<()> {
+    let result = lex_expr("\u{4E2D}");
+    let Err(ExprError::UnexpectedChar { ch }) = result else {
+        return Err(crate::ExprError::UnexpectedToken {
+            token: "expected UnexpectedChar for CJK".into(),
+        });
+    };
+    assert_eq!(ch, '\u{4E2D}');
+    Ok(())
+}
+
+/// Rejects an emoji (multi-byte UTF-8) as unexpected.
+#[test]
+fn lex_expr_rejects_emoji_character() -> crate::ExprResult<()> {
+    let result = lex_expr("\u{1F600}");
+    let Err(ExprError::UnexpectedChar { ch }) = result else {
+        return Err(crate::ExprError::UnexpectedToken {
+            token: "expected UnexpectedChar for emoji".into(),
+        });
+    };
+    assert_eq!(ch, '\u{1F600}');
+    Ok(())
+}
+
+/// Accepts source exactly at the byte limit with a single long identifier.
+#[test]
+fn lex_expr_accepts_source_exactly_at_byte_limit() -> crate::ExprResult<()> {
+    let ident = "a".repeat(crate::lexer::MAX_SOURCE_BYTES);
+    let tokens = lex_expr(&ident)?;
+    assert_eq!(tokens.len(), 2);
+    assert!(matches!(tokens.first(), Some(Token::Identifier(_))));
+    assert_eq!(tokens.last(), Some(&Token::End));
+    Ok(())
+}
+
+/// Accepts a string literal whose inner content fills the remaining byte budget.
+#[test]
+fn lex_expr_accepts_max_length_string_literal() -> crate::ExprResult<()> {
+    let inner_len = crate::lexer::MAX_SOURCE_BYTES.saturating_sub(2);
+    let inner = "x".repeat(inner_len);
+    let source = format!("\"{}\"", inner);
+    let tokens = lex_expr(&source)?;
+    assert!(matches!(
+        tokens.first(),
+        Some(Token::Literal(crate::lexer::LiteralToken::Text(_)))
+    ));
+    assert_eq!(tokens.get(1), Some(&Token::End));
+    Ok(())
+}
+
+/// String containing numeric characters is a text token, not a number.
+#[test]
+fn lex_expr_handles_string_with_numeric_content() -> crate::ExprResult<()> {
+    let tokens = lex_expr("\"42\"")?;
+    let expected = vec![
+        Token::Literal(crate::lexer::LiteralToken::Text(Box::from("42"))),
+        Token::End,
+    ];
+    assert_eq!(tokens, expected);
+    Ok(())
+}
+
+/// Operators lex correctly without whitespace separation.
+#[test]
+fn lex_expr_handles_mixed_operators_without_whitespace() -> crate::ExprResult<()> {
+    let tokens = lex_expr("1+2*3")?;
+    let expected = vec![
+        Token::Literal(crate::lexer::LiteralToken::I64(1)),
+        Token::Operator(crate::lexer::BinaryOp::Add),
+        Token::Literal(crate::lexer::LiteralToken::I64(2)),
+        Token::Operator(crate::lexer::BinaryOp::Mul),
+        Token::Literal(crate::lexer::LiteralToken::I64(3)),
+        Token::End,
+    ];
+    assert_eq!(tokens, expected);
+    Ok(())
+}
+
+/// References adjacent to operators lex correctly without whitespace.
+#[test]
+fn lex_expr_handles_references_adjacent_to_operators() -> crate::ExprResult<()> {
+    let tokens = lex_expr("$a+$b")?;
+    let expected = vec![
+        Token::Reference(Box::from("$a")),
+        Token::Operator(crate::lexer::BinaryOp::Add),
+        Token::Reference(Box::from("$b")),
+        Token::End,
+    ];
+    assert_eq!(tokens, expected);
+    Ok(())
+}
+
+/// Dollar followed by a number is a valid reference, not Dollar + Integer.
+#[test]
+fn lex_expr_handles_dollar_followed_by_number_is_reference() -> crate::ExprResult<()> {
+    let tokens = lex_expr("$1")?;
+    let expected = vec![Token::Reference(Box::from("$1")), Token::End];
+    assert_eq!(tokens, expected);
+    Ok(())
+}
+
+/// Expression with minus-before-minus is two consecutive Sub operators.
+#[test]
+fn lex_expr_handles_consecutive_minus_tokens() -> crate::ExprResult<()> {
+    let tokens = lex_expr("1 - - 5")?;
+    let expected = vec![
+        Token::Literal(crate::lexer::LiteralToken::I64(1)),
+        Token::Operator(crate::lexer::BinaryOp::Sub),
+        Token::Operator(crate::lexer::BinaryOp::Sub),
+        Token::Literal(crate::lexer::LiteralToken::I64(5)),
+        Token::End,
+    ];
+    assert_eq!(tokens, expected);
+    Ok(())
+}
+
+/// Verifies that trying to lex i64::MIN as a positive literal is rejected.
+#[test]
+fn lex_expr_rejects_i64_min_positive_magnitude() -> crate::ExprResult<()> {
+    let result = lex_expr("9223372036854775808");
+    assert!(
+        matches!(result, Err(ExprError::IntegerOutOfRange)),
+        "positive magnitude of i64::MIN exceeds i64::MAX"
+    );
+    Ok(())
+}
+
+/// An identifier consisting solely of underscores is valid.
+#[test]
+fn lex_expr_handles_underscore_only_identifier() -> crate::ExprResult<()> {
+    let tokens = lex_expr("___")?;
+    let expected = vec![Token::Identifier(Box::from("___")), Token::End];
+    assert_eq!(tokens, expected);
+    Ok(())
+}
+
+/// Single-character string literal containing just a space.
+#[test]
+fn lex_expr_handles_string_with_single_space() -> crate::ExprResult<()> {
+    let tokens = lex_expr("\" \"")?;
+    let expected = vec![
+        Token::Literal(crate::lexer::LiteralToken::Text(Box::from(" "))),
+        Token::End,
+    ];
+    assert_eq!(tokens, expected);
+    Ok(())
+}
+
+/// String literal containing operator-like characters.
+#[test]
+fn lex_expr_handles_string_with_operator_characters() -> crate::ExprResult<()> {
+    let tokens = lex_expr("\"+ - * / == != < <= > >=\"")?;
+    let expected = vec![
+        Token::Literal(crate::lexer::LiteralToken::Text(Box::from(
+            "+ - * / == != < <= > >=",
+        ))),
+        Token::End,
+    ];
+    assert_eq!(tokens, expected);
+    Ok(())
+}

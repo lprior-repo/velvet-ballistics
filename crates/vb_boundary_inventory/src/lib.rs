@@ -5,6 +5,9 @@
 pub mod boundary_inventory;
 pub mod quality;
 
+#[cfg(kani)]
+mod kani_harnesses;
+
 #[cfg(test)]
 mod tests;
 

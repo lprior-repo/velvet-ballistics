@@ -130,6 +130,208 @@ fn budget_validation_rejects_oversized_workflow() {
     );
 }
 
+#[test]
+fn budget_validation_rejects_action_ticket_limit_exceeded() {
+    let tight_policy = vb_core::BoundednessPolicy {
+        max_total_steps: 100,
+        max_total_slots: 100,
+        max_fanout: 100,
+        max_nesting_depth: 100,
+        absolute_max_action_tickets: 2,
+        absolute_max_parallel: 100,
+        absolute_max_run_time_seconds: 3600,
+        absolute_max_result_bytes: 10240,
+        absolute_max_steps_executable: 100,
+    };
+
+    let budget = vb_core::WholeWorkflowBudget {
+        max_total_steps: 10,
+        max_total_slots: 10,
+        max_fanout: 0,
+        max_nesting_depth: 0,
+        max_steps_executable: 10,
+        max_action_tickets: 5,
+        max_parallel_in_flight: 0,
+        max_retries_per_action: 0,
+        max_gather_pages: 0,
+        max_gather_items: 0,
+        max_for_each_iterations: 0,
+        max_together_branches: 0,
+        max_repeat_attempts: 0,
+        max_run_time_seconds: 0,
+        max_result_bytes: 0,
+        max_total_slots_written: 0,
+    };
+
+    match tight_policy.validate(&budget) {
+        Err(vb_core::BudgetError::ActionTicketsExceeded { actual, limit }) => {
+            assert_eq!(actual, 5);
+            assert_eq!(limit, 2);
+        }
+        other => {
+            fail_assert!("expected ActionTicketLimitExceeded, got {other:?}");
+        }
+    }
+}
+
+#[test]
+fn budget_validation_accepts_budget_policy_within_limits() {
+    let policy = vb_core::BoundednessPolicy {
+        max_total_steps: 100,
+        max_total_slots: 200,
+        max_fanout: 10,
+        max_nesting_depth: 10,
+        absolute_max_action_tickets: 10,
+        absolute_max_parallel: 5,
+        absolute_max_run_time_seconds: 7200,
+        absolute_max_result_bytes: 65536,
+        absolute_max_steps_executable: 50,
+    };
+
+    let budget = vb_core::WholeWorkflowBudget {
+        max_total_steps: 5,
+        max_total_slots: 10,
+        max_fanout: 2,
+        max_nesting_depth: 3,
+        max_steps_executable: 5,
+        max_action_tickets: 2,
+        max_parallel_in_flight: 1,
+        max_retries_per_action: 1,
+        max_gather_pages: 0,
+        max_gather_items: 0,
+        max_for_each_iterations: 0,
+        max_together_branches: 0,
+        max_repeat_attempts: 0,
+        max_run_time_seconds: 100,
+        max_result_bytes: 1024,
+        max_total_slots_written: 5,
+    };
+
+    let result = policy.validate(&budget);
+    assert!(
+        result.is_ok(),
+        "valid budget should pass policy validation: {result:?}"
+    );
+}
+
+#[test]
+fn taint_clean_propagates_preserved_through_set_const() {
+    let digest = WorkflowDigest::from_bytes([0x0Au8; 32]);
+    let Some(workflow) = set_const_finish_workflow(digest) else {
+        fail_assert!("workflow construction failed");
+        return;
+    };
+    let mut frame = match vb_core::engine::new_run_frame(RunId::new(8), &workflow) {
+        Ok(f) => f,
+        Err(err) => {
+            fail_assert!("frame creation failed: {err}");
+            return;
+        }
+    };
+    let mut budget = vb_core::engine::StepBudget::new(100);
+    let mut store = vb_core::value_store::ValueStore::new();
+    let signal = vb_core::engine::drive_deterministic(&workflow, &mut frame, &mut budget, &mut store);
+
+    match signal {
+        Ok(vb_core::engine::EngineSignal::Finished(value, taint)) => {
+            assert_eq!(value, SlotValue::I64(42));
+            assert_eq!(taint, Taint::Clean, "SetConst with constant value should produce Clean taint");
+        }
+        Ok(other) => {
+            fail_assert!("expected Finished signal, got {other:?}");
+        }
+        Err(err) => {
+            fail_assert!("drive_deterministic failed: {err}");
+        }
+    }
+}
+
+#[test]
+fn taint_secret_propagates_through_finish_signal() {
+    let digest = WorkflowDigest::from_bytes([0x0Bu8; 32]);
+    let Some(workflow) = eval_expr_taint_workflow(digest) else {
+        fail_assert!("taint workflow construction failed");
+        return;
+    };
+    let mut frame = match vb_core::engine::new_run_frame(RunId::new(9), &workflow) {
+        Ok(f) => f,
+        Err(err) => {
+            fail_assert!("frame creation failed: {err}");
+            return;
+        }
+    };
+    match frame.write_slot_with_taint(SlotIdx::new(0), SlotValue::I64(99), Taint::Secret) {
+        Ok(()) => {}
+        Err(err) => {
+            fail_assert!("write_slot_with_taint failed: {err}");
+            return;
+        }
+    }
+    let mut budget = vb_core::engine::StepBudget::new(100);
+    let mut store = vb_core::value_store::ValueStore::new();
+    let signal = vb_core::engine::drive_deterministic(&workflow, &mut frame, &mut budget, &mut store);
+
+    match signal {
+        Ok(vb_core::engine::EngineSignal::Finished(value, taint)) => {
+            assert_eq!(taint, Taint::Secret, "Finish signal should propagate Secret taint from expression input");
+            assert_eq!(value, SlotValue::I64(100));
+        }
+        Ok(other) => {
+            fail_assert!("expected Finished signal, got {other:?}");
+        }
+        Err(err) => {
+            fail_assert!("drive_deterministic failed: {err}");
+        }
+    }
+}
+
+#[test]
+fn budget_validation_rejects_result_bytes_exceeded() {
+    let tight_policy = vb_core::BoundednessPolicy {
+        max_total_steps: 100,
+        max_total_slots: 100,
+        max_fanout: 100,
+        max_nesting_depth: 100,
+        absolute_max_action_tickets: 10,
+        absolute_max_parallel: 10,
+        absolute_max_run_time_seconds: 3600,
+        absolute_max_result_bytes: 512,
+        absolute_max_steps_executable: 100,
+    };
+
+    let budget = vb_core::WholeWorkflowBudget {
+        max_total_steps: 1,
+        max_total_slots: 2,
+        max_fanout: 0,
+        max_nesting_depth: 0,
+        max_steps_executable: 1,
+        max_action_tickets: 0,
+        max_parallel_in_flight: 0,
+        max_retries_per_action: 0,
+        max_gather_pages: 0,
+        max_gather_items: 0,
+        max_for_each_iterations: 0,
+        max_together_branches: 0,
+        max_repeat_attempts: 0,
+        max_run_time_seconds: 0,
+        max_result_bytes: 1024,
+        max_total_slots_written: 0,
+    };
+
+    match tight_policy.validate(&budget) {
+        Err(vb_core::BudgetError::ResultBytesExceeded { actual, limit }) => {
+            assert_eq!(actual, 1024);
+            assert_eq!(limit, 512);
+        }
+        Err(other) => {
+            fail_assert!("expected ResultBytesExceeded, got {other:?}");
+        }
+        Ok(()) => {
+            fail_assert!("1024 bytes result should exceed 512 byte limit");
+        }
+    }
+}
+
 // ===========================================================================
 // Test 6: taint propagates through expression eval
 // ===========================================================================

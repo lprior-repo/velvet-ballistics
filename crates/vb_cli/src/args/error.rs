@@ -92,3 +92,102 @@ impl std::fmt::Display for ParseError {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_error_display_missing_argument() {
+        assert_eq!(
+            ParseError::MissingArgument("workflow").to_string(),
+            "missing argument: workflow"
+        );
+    }
+
+    #[test]
+    fn parse_error_display_unknown_emit_target() {
+        assert_eq!(
+            ParseError::UnknownEmitTarget("json".into()).to_string(),
+            "unknown emit target: json (expected: ir, yaml, postcard)"
+        );
+    }
+
+    #[test]
+    fn parse_error_display_unknown_durability() {
+        assert_eq!(
+            ParseError::UnknownDurability("fast".into()).to_string(),
+            "unknown durability mode: fast (expected: strict, journaled, none)"
+        );
+    }
+
+    #[test]
+    fn parse_error_display_unknown_profile() {
+        assert_eq!(
+            ParseError::UnknownProfile("deep".into()).to_string(),
+            "unknown verify profile: deep (expected: quick, standard, full)"
+        );
+    }
+
+    #[test]
+    fn parse_error_display_unknown_command() {
+        let display = ParseError::UnknownCommand("foo".into()).to_string();
+        assert!(display.contains("unknown command: foo"));
+    }
+
+    #[test]
+    fn parse_error_display_no_command() {
+        assert_eq!(ParseError::NoCommand.to_string(), "no command provided");
+    }
+
+    #[test]
+    fn parse_error_display_invalid_step() {
+        assert_eq!(
+            ParseError::InvalidStep("abc".into()).to_string(),
+            "invalid step: abc"
+        );
+    }
+
+    #[test]
+    fn parse_error_display_reason_too_long() {
+        assert_eq!(
+            ParseError::ReasonTooLong.to_string(),
+            "reason exceeds maximum length of 256 characters"
+        );
+    }
+
+    #[test]
+    fn parse_error_display_unknown_action_command() {
+        assert_eq!(
+            ParseError::UnknownActionCommand("delete".into()).to_string(),
+            "unknown action command: delete (expected: list, inspect)"
+        );
+    }
+
+    #[test]
+    fn parse_error_all_variants_are_exhaustive() {
+        let errors = [
+            ParseError::MissingArgument("test"),
+            ParseError::UnknownEmitTarget("test".into()),
+            ParseError::UnknownDurability("test".into()),
+            ParseError::UnknownProfile("test".into()),
+            ParseError::UnknownCommand("test".into()),
+            ParseError::InvalidStatusArgument("test".into()),
+            ParseError::UnknownActionCommand("test".into()),
+            ParseError::UnknownActionRegistry("test".into()),
+            ParseError::MissingActionRegistryValue,
+            ParseError::UnknownActionListFlag("test".into()),
+            ParseError::UnexpectedActionListArgument("test".into()),
+            ParseError::UnknownActionInspectFlag("test".into()),
+            ParseError::UnexpectedActionInspectArgument("test".into()),
+            ParseError::InvalidActionId("test".into()),
+            ParseError::NoCommand,
+            ParseError::InvalidStep("test".into()),
+            ParseError::ReasonTooLong,
+        ];
+        for err in &errors {
+            let s = err.to_string();
+            assert!(!s.is_empty(), "empty display for {:?}", err);
+        }
+    }
+}

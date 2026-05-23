@@ -105,3 +105,189 @@ fn kani_output_size_bounded() {
         size
     );
 }
+
+/// OBL-008: build() is deterministic — same version produces identical output.
+#[kani::proof]
+#[kani::unwind(5)]
+fn kani_build_deterministic() {
+    let version: String = kani::any();
+    kani::assume(version.len() <= 32);
+    let first = agent_context::build(&version);
+    let second = agent_context::build(&version);
+    assert_eq!(first, second);
+}
+
+/// OBL-009: Serialized output is always valid JSON (roundtrip property).
+#[kani::proof]
+#[kani::unwind(5)]
+fn kani_build_serializable_roundtrip() {
+    let version: String = kani::any();
+    kani::assume(version.len() <= 64);
+    let result = agent_context::build(&version);
+    let encoded = serde_json::to_string(&result);
+    assert!(encoded.is_ok());
+    let decoded: Result<serde_json::Value, _> = serde_json::from_str(&encoded.unwrap());
+    assert!(decoded.is_ok());
+}
+
+/// OBL-010: agent_contract boolean fields are actual booleans (not strings/nulls).
+#[kani::proof]
+#[kani::unwind(5)]
+fn kani_agent_contract_booleans_are_bools() {
+    let version: String = kani::any();
+    let result = agent_context::build(&version);
+    let contract = result.get("agent_contract");
+    assert!(contract.is_some());
+    if let Some(c) = contract {
+        for key in &[
+            "non_interactive_by_default",
+            "ansi_when_non_tty",
+            "bounded_output_required",
+            "destructive_operations_require_explicit_flag",
+            "mutation_responses_return_identifiers",
+        ] {
+            let val = c.get(*key);
+            assert!(val.is_some());
+            assert!(val.unwrap().is_boolean());
+        }
+    }
+}
+
+/// OBL-011: vocabulary_policy arrays are actual arrays.
+#[kani::proof]
+#[kani::unwind(5)]
+fn kani_vocabulary_policy_arrays_are_arrays() {
+    let version: String = kani::any();
+    let result = agent_context::build(&version);
+    let policy = result.get("vocabulary_policy");
+    assert!(policy.is_some());
+    if let Some(p) = policy {
+        for key in &["canonical_resource_verbs", "banned_verbs", "banned_flags"] {
+            let val = p.get(*key);
+            assert!(val.is_some());
+            assert!(val.unwrap().is_array());
+        }
+    }
+}
+
+/// OBL-012: known_blockers policy has exactly 8 entries.
+#[kani::proof]
+#[kani::unwind(5)]
+fn kani_known_blockers_policy_count_exact() {
+    let result = agent_context::build("0.1.0");
+    let policy = result.pointer("/known_blockers/policy");
+    assert!(policy.is_some());
+    if let Some(p) = policy {
+        assert!(p.is_array());
+        assert_eq!(p.as_array().map(|a| a.len()), Some(8));
+    }
+}
+
+/// OBL-013: known_blockers resource has exactly 3 entries.
+#[kani::proof]
+#[kani::unwind(5)]
+fn kani_known_blockers_resource_count_exact() {
+    let result = agent_context::build("0.1.0");
+    let resource = result.pointer("/known_blockers/resource");
+    assert!(resource.is_some());
+    if let Some(r) = resource {
+        assert!(r.is_array());
+        assert_eq!(r.as_array().map(|a| a.len()), Some(3));
+    }
+}
+
+/// OBL-014: known_blockers capability has exactly 3 entries.
+#[kani::proof]
+#[kani::unwind(5)]
+fn kani_known_blockers_capability_count_exact() {
+    let result = agent_context::build("0.1.0");
+    let capability = result.pointer("/known_blockers/capability");
+    assert!(capability.is_some());
+    if let Some(c) = capability {
+        assert!(c.is_array());
+        assert_eq!(c.as_array().map(|a| a.len()), Some(3));
+    }
+}
+
+/// OBL-015: every command definition contains a "summary" key.
+#[kani::proof]
+#[kani::unwind(5)]
+fn kani_all_commands_have_summary() {
+    let version: String = kani::any();
+    let result = agent_context::build(&version);
+    let commands = result.get("commands");
+    assert!(commands.is_some());
+    if let Some(cmds) = commands {
+        assert!(cmds.is_object());
+        if let Some(obj) = cmds.as_object() {
+            for (name, cmd) in obj.iter() {
+                assert!(
+                    cmd.get("summary").is_some(),
+                    "command '{}' must have a summary",
+                    name
+                );
+            }
+        }
+    }
+}
+
+/// OBL-016: build() never returns null — output is always an Object.
+#[kani::proof]
+#[kani::unwind(5)]
+fn kani_build_output_is_object() {
+    let version: String = kani::any();
+    let result = agent_context::build(&version);
+    assert!(result.is_object());
+}
+
+/// OBL-017: enums key is always an object with exactly 3 variants.
+#[kani::proof]
+#[kani::unwind(5)]
+fn kani_enums_has_all_variants() {
+    let version: String = kani::any();
+    let result = agent_context::build(&version);
+    let enums = result.get("enums");
+    assert!(enums.is_some());
+    if let Some(e) = enums {
+        assert!(e.is_object());
+        for key in &["emit", "durability", "verify_profile"] {
+            assert!(e.get(*key).is_some());
+            assert!(e.get(*key).unwrap().is_array());
+        }
+    }
+}
+
+/// OBL-018: Non-version structural fields are independent of version input.
+#[kani::proof]
+#[kani::unwind(5)]
+fn kani_non_version_fields_independent_of_version() {
+    let v1: String = kani::any();
+    let v2: String = kani::any();
+
+    let a = agent_context::build(&v1);
+    let b = agent_context::build(&v2);
+
+    let structural_keys = [
+        "active_gates",
+        "agent_contract",
+        "binary_aliases",
+        "cli",
+        "commands",
+        "enums",
+        "exit_codes",
+        "kind",
+        "known_blockers",
+        "language_version",
+        "planned_agent_primitives",
+        "schema_version",
+        "vocabulary_policy",
+    ];
+    for key in &structural_keys {
+        assert_eq!(
+            a.get(key),
+            b.get(key),
+            "field '{}' must be identical regardless of version",
+            key
+        );
+    }
+}

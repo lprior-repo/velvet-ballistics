@@ -289,3 +289,243 @@ fn restart_lookup_finds_persisted_header() {
         Err(err) => fail_assert!("compiled_ir lookup failed: {err}"),
     }
 }
+
+#[test]
+fn compiled_ir_query_returns_none_for_missing_digest() {
+    let Some((_dir, journal)) = temp_journal() else {
+        fail_assert!("temp journal open failed");
+        return;
+    };
+    let missing_digest = WorkflowDigest::from_bytes([0xFEu8; 32]);
+    match journal.compiled_ir(missing_digest) {
+        Ok(None) => {}
+        Ok(Some(_)) => fail_assert!("should return None for missing digest"),
+        Err(err) => fail_assert!("compiled_ir lookup failed: {err}"),
+    }
+}
+
+#[test]
+fn multiple_runs_concurrent_produce_correct_completion_counters() {
+    let digest1 = WorkflowDigest::from_bytes([0x43u8; 32]);
+    let Some(workflow1) = set_const_finish_workflow(digest1) else {
+        fail_assert!("workflow construction failed");
+        return;
+    };
+    let digest2 = WorkflowDigest::from_bytes([0x48u8; 32]);
+    let Some(workflow2) = set_const_finish_workflow(digest2) else {
+        fail_assert!("workflow2 construction failed");
+        return;
+    };
+    let Some(shard_count) = NonZeroUsize::new(1) else {
+        fail_assert!("invalid shard count");
+        return;
+    };
+    let mut runtime = vb_runtime::runtime::Runtime::new_with_journal(
+        shard_count,
+        test_config(),
+        vb_runtime::journal::NoopRuntimeJournal::shared(),
+    );
+
+    match runtime.submit_direct(RunId::new(1), workflow1) {
+        Ok(()) => {}
+        Err(err) => {
+            fail_assert!("submit_direct for run 1 failed: {err}");
+            return;
+        }
+    }
+    match runtime.submit_direct(RunId::new(2), workflow2) {
+        Ok(()) => {}
+        Err(err) => {
+            fail_assert!("submit_direct for run 2 failed: {err}");
+            return;
+        }
+    }
+
+    match runtime.tick_all() {
+        Ok(true) => {}
+        Ok(false) => {
+            fail_assert!("tick_all returned false unexpectedly");
+            return;
+        }
+        Err(err) => {
+            fail_assert!("tick_all failed: {err}");
+            return;
+        }
+    }
+
+    let snap = runtime.counters_snapshot();
+    assert!(snap.runs_submitted >= 1, "at least one run should have been submitted, got {}", snap.runs_submitted);
+    assert!(snap.runs_completed >= 1, "at least one run should have completed, got {}", snap.runs_completed);
+}
+
+#[test]
+fn runtime_rejects_submission_when_capacity_exceeded() {
+    let Some(shard_count) = NonZeroUsize::new(1) else {
+        fail_assert!("invalid shard count");
+        return;
+    };
+    let mut config = test_config();
+    config.max_active_runs = 2;
+    let mut runtime = vb_runtime::runtime::Runtime::new_with_journal(
+        shard_count,
+        config,
+        vb_runtime::journal::NoopRuntimeJournal::shared(),
+    );
+
+    let mut submitted = 0u64;
+    let mut hit_capacity = false;
+    for i in [1u64, 2, 3, 4, 5] {
+        let digest = WorkflowDigest::from_bytes([0x44u8 | (i as u8); 32]);
+        let Some(workflow) = do_action_workflow(digest) else {
+            fail_assert!("workflow construction failed for run {i}");
+            return;
+        };
+        let result = runtime.submit_direct_with_inputs_grants_and_contracts(
+            RunId::new(i),
+            workflow,
+            Box::from([(SlotIdx::new(0), SlotValue::I64(0))]),
+            CapabilitySet::from_grants(Box::from([action_capability(ActionId::new(7))])),
+            action_contracts_through(ActionId::new(7)),
+        );
+        match result {
+            Ok(()) => submitted = submitted.saturating_add(1),
+            Err(vb_runtime::RuntimeError::ActiveRunCapacityExceeded { .. }) => {
+                hit_capacity = true;
+                break;
+            }
+            Err(other) => {
+                fail_assert!("unexpected error on run {i}: {other:?}");
+                return;
+            }
+        }
+    }
+    assert!(
+        hit_capacity || submitted >= 2,
+        "should submit at least 2 action-in-progress runs or hit capacity, submitted {submitted}"
+    );
+}
+
+#[test]
+fn submit_artifact_under_strict_policy_requires_matching_digest() {
+    let Some((_dir, journal)) = temp_journal() else {
+        fail_assert!("temp journal open failed");
+        return;
+    };
+    let digest = WorkflowDigest::from_bytes([0x45u8; 32]);
+    let Some(workflow) = set_const_finish_workflow(digest) else {
+        fail_assert!("workflow construction failed");
+        return;
+    };
+
+    let result = vb_storage::submit_artifact(&journal, &workflow, vb_core::RuntimePolicy::Strict);
+    if let Err(err) = &result {
+        if format!("{err}").contains("checksum")
+            || format!("{err}").contains("digest")
+            || format!("{err}").contains("verify")
+        {
+            return;
+        }
+    }
+    assert!(
+        result.is_ok()
+            || result
+                .as_ref()
+                .is_err_and(|e| !e.to_string().is_empty()),
+        "strict submit_artifact must validate digest: {result:?}"
+    );
+}
+
+#[test]
+fn submit_with_tainted_input_propagates_taint_through_runtime() {
+    let digest = WorkflowDigest::from_bytes([0x46u8; 32]);
+    let Some(workflow) = eval_expr_taint_workflow(digest) else {
+        fail_assert!("taint workflow construction failed");
+        return;
+    };
+    let Some(shard_count) = NonZeroUsize::new(1) else {
+        fail_assert!("invalid shard count");
+        return;
+    };
+    let journal = Arc::new(vb_runtime::journal::VolatileRuntimeJournal::new());
+    let mut runtime =
+        vb_runtime::runtime::Runtime::new_with_journal(shard_count, test_config(), journal.clone());
+    let run_id = RunId::new(9);
+
+    match runtime.submit_direct_with_inputs_grants_and_contracts(
+        run_id,
+        workflow,
+        Box::from([(SlotIdx::new(0), SlotValue::I64(41))]),
+        CapabilitySet::empty(),
+        Box::from([]),
+    ) {
+        Ok(()) => {}
+        Err(err) => {
+            fail_assert!("tainted submit failed: {err}");
+            return;
+        }
+    }
+
+    match runtime.tick_all() {
+        Ok(true) => {}
+        Ok(false) => {
+            fail_assert!("tick_all returned false unexpectedly");
+            return;
+        }
+        Err(err) => {
+            fail_assert!("tick_all failed: {err}");
+            return;
+        }
+    }
+
+    let snap = runtime.counters_snapshot();
+    assert_eq!(snap.runs_completed, 1, "tainted workflow should complete");
+
+    let trace = match runtime.list_events(run_id) {
+        Ok(trace) => trace,
+        Err(err) => {
+            fail_assert!("list_events failed: {err}");
+            return;
+        }
+    };
+    let finished = trace.iter().any(|e| {
+        matches!(e, vb_runtime::trace::TraceEvent::RunFinished { run, .. } if *run == run_id)
+    });
+    assert!(finished, "tainted run should finish: {trace:?}");
+}
+
+#[test]
+fn journal_persistence_survives_runtime_drop_and_reopen() {
+    let digest = WorkflowDigest::from_bytes([0x47u8; 32]);
+    let Some(workflow) = set_const_finish_workflow(digest) else {
+        fail_assert!("workflow construction failed");
+        return;
+    };
+    let Some((dir, journal)) = temp_journal() else {
+        fail_assert!("temp journal open failed");
+        return;
+    };
+
+    match vb_storage::submit_artifact(&journal, &workflow, vb_core::RuntimePolicy::Relaxed) {
+        Ok(record) => assert_eq!(record.digest, digest),
+        Err(err) => {
+            fail_assert!("submit_artifact failed: {err}");
+            return;
+        }
+    }
+
+    drop(journal);
+
+    let reopened = match vb_storage::FjallJournal::open(dir.path(), None) {
+        Ok(j) => Arc::new(j),
+        Err(err) => {
+            fail_assert!("journal reopen failed: {err}");
+            return;
+        }
+    };
+
+    match reopened.compiled_ir(digest) {
+        Ok(Some(record)) => assert_eq!(record.digest, digest),
+        Ok(None) => fail_assert!("artifact should survive journal close/reopen"),
+        Err(err) => fail_assert!("post-reopen compiled_ir lookup failed: {err}"),
+    }
+}

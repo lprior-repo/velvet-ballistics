@@ -103,3 +103,87 @@ pub fn exit_from_io(result: &io::Result<()>, success_code: std::process::ExitCod
         Err(_) => std::process::ExitCode::FAILURE,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn exit_from_io_returns_success_code_on_ok() {
+        let result: io::Result<()> = Ok(());
+        let code = exit_from_io(&result, std::process::ExitCode::SUCCESS);
+        assert_eq!(code, std::process::ExitCode::SUCCESS);
+    }
+
+    #[test]
+    fn exit_from_io_returns_failure_code_on_err() {
+        let result: io::Result<()> = Err(io::Error::new(io::ErrorKind::Other, "test"));
+        let code = exit_from_io(&result, std::process::ExitCode::SUCCESS);
+        assert_eq!(code, std::process::ExitCode::FAILURE);
+    }
+
+    #[test]
+    fn exit_from_io_respects_custom_success_code() {
+        let result: io::Result<()> = Ok(());
+        let custom = std::process::ExitCode::from(42);
+        let code = exit_from_io(&result, custom);
+        assert_eq!(code, custom);
+    }
+
+    #[test]
+    fn write_version_stdout_succeeds() {
+        let result = write_version_stdout();
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn write_help_stdout_succeeds() {
+        let result = write_help_stdout();
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn write_error_stderr_formats_missing_argument() {
+        let err = ParseError::MissingArgument("test");
+        let result = write_error_stderr(&err);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn write_error_stderr_formats_unknown_emit_target() {
+        let err = ParseError::UnknownEmitTarget("json".into());
+        let result = write_error_stderr(&err);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn write_error_stderr_formats_unknown_durability() {
+        let err = ParseError::UnknownDurability("fast".into());
+        let result = write_error_stderr(&err);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn write_error_stderr_formats_unknown_command() {
+        let err = ParseError::UnknownCommand("foo".into());
+        let result = write_error_stderr(&err);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn write_error_stderr_formats_no_command() {
+        let err = ParseError::NoCommand;
+        let result = write_error_stderr(&err);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn write_stdout_line_does_not_panic() {
+        write_stdout_line(format_args!("test message: {}", 42));
+    }
+
+    #[test]
+    fn write_stderr_line_does_not_panic() {
+        write_stderr_line(format_args!("error message: {}", 99));
+    }
+}

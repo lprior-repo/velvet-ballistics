@@ -4,17 +4,18 @@ use crate::args::{Command, DurabilityMode, OutputFormat, ParseError, VerifyProfi
 #[test]
 fn parse_system_status_defaults_to_standard_none_text() {
     let parsed = parse_args(&args(&["velvet-ballastics", "system", "status"]));
-    assert!(matches!(parsed, Ok(Command::SystemStatus { .. })));
     if let Ok(Command::SystemStatus { options, output }) = parsed {
         assert_eq!(options.profile, VerifyProfile::Standard);
         assert_eq!(options.server, DurabilityMode::None);
         assert!(!options.emit_yaml);
         assert_eq!(output, OutputFormat::Text);
+    } else {
+        assert!(parsed.is_ok(), "expected Ok, got {parsed:?}");
     }
 }
 
 #[test]
-fn parse_system_status_accepts_yaml_emit() {
+fn parse_system_status_accepts_full_profile_server_none_and_emit_yaml() {
     let parsed = parse_args(&args(&[
         "velvet-ballastics",
         "system",
@@ -26,13 +27,38 @@ fn parse_system_status_accepts_yaml_emit() {
         "--emit",
         "yaml",
     ]));
-    assert!(matches!(parsed, Ok(Command::SystemStatus { .. })));
     if let Ok(Command::SystemStatus { options, output }) = parsed {
         assert_eq!(options.profile, VerifyProfile::Full);
         assert_eq!(options.server, DurabilityMode::None);
         assert!(options.emit_yaml);
-        assert_eq!(output, OutputFormat::Text);
+        assert_eq!(output, OutputFormat::Yaml);
+    } else {
+        assert!(parsed.is_ok(), "expected Ok, got {parsed:?}");
     }
+}
+
+#[test]
+fn parse_system_status_rejects_unknown_profile() {
+    let parsed = parse_args(&args(&[
+        "velvet-ballastics",
+        "system",
+        "status",
+        "--profile",
+        "deep",
+    ]));
+    assert!(matches!(parsed, Err(ParseError::UnknownProfile(ref p)) if p == "deep"));
+}
+
+#[test]
+fn parse_system_status_rejects_unknown_server_mode() {
+    let parsed = parse_args(&args(&[
+        "velvet-ballastics",
+        "system",
+        "status",
+        "--server",
+        "remote",
+    ]));
+    assert!(matches!(parsed, Err(ParseError::UnknownServerMode(ref m)) if m == "remote"));
 }
 
 #[test]
@@ -60,14 +86,61 @@ fn parse_system_status_rejects_journaled_without_probe() {
 }
 
 #[test]
+fn parse_system_status_rejects_missing_profile_value() {
+    let parsed = parse_args(&args(&[
+        "velvet-ballastics",
+        "system",
+        "status",
+        "--profile",
+    ]));
+    assert!(matches!(
+        parsed,
+        Err(ParseError::MissingArgument("--profile"))
+    ));
+}
+
+#[test]
+fn parse_system_status_rejects_missing_server_value() {
+    let parsed = parse_args(&args(&[
+        "velvet-ballastics",
+        "system",
+        "status",
+        "--server",
+    ]));
+    assert!(matches!(
+        parsed,
+        Err(ParseError::MissingArgument("--server"))
+    ));
+}
+
+#[test]
+fn parse_system_rejects_unknown_subcommand() {
+    let parsed = parse_args(&args(&["velvet-ballastics", "system", "bogus"]));
+    assert!(matches!(
+        parsed,
+        Err(ParseError::InvalidSystemStatusArgument(ref s)) if s == "unknown system command bogus"
+    ));
+}
+
+#[test]
+fn parse_system_rejects_missing_subcommand() {
+    let parsed = parse_args(&args(&["velvet-ballastics", "system"]));
+    assert!(matches!(
+        parsed,
+        Err(ParseError::MissingArgument("system subcommand"))
+    ));
+}
+
+#[test]
 fn parse_status_accepts_no_runtime_defaults() {
-    let parsed = parse_args(&args(&["velvet-ballastics", "status", "--json"]));
-    assert!(matches!(parsed, Ok(Command::Status { .. })));
+    let parsed = parse_args(&args(&["velvet-ballastics", "status", "--emit", "yaml"]));
     if let Ok(Command::Status { options, output }) = parsed {
         assert_eq!(options.active_runs, None);
         assert_eq!(options.queue_depth, None);
         assert_eq!(options.trace_dropped, None);
-        assert_eq!(output, OutputFormat::Json);
+        assert_eq!(output, OutputFormat::Yaml);
+    } else {
+        assert!(parsed.is_ok(), "expected Ok, got {parsed:?}");
     }
 }
 
@@ -83,13 +156,42 @@ fn parse_status_accepts_diagnostic_counters() {
         "--trace-dropped",
         "0",
     ]));
-    assert!(matches!(parsed, Ok(Command::Status { .. })));
     if let Ok(Command::Status { options, output }) = parsed {
         assert_eq!(options.active_runs, Some(5));
         assert_eq!(options.queue_depth, Some(3));
         assert_eq!(options.trace_dropped, Some(0));
         assert_eq!(output, OutputFormat::Text);
+    } else {
+        assert!(parsed.is_ok(), "expected Ok, got {parsed:?}");
     }
+}
+
+#[test]
+fn parse_status_rejects_postcard_emit() {
+    let parsed = parse_args(&args(&[
+        "velvet-ballastics",
+        "status",
+        "--emit",
+        "postcard",
+    ]));
+    assert!(
+        matches!(parsed, Err(ParseError::InvalidStatusArgument(ref s)) if s == "postcard emit is not supported for status"),
+        "expected InvalidStatusArgument, got {parsed:?}"
+    );
+}
+
+#[test]
+fn parse_status_rejects_unknown_emit_mode() {
+    let parsed = parse_args(&args(&[
+        "velvet-ballastics",
+        "status",
+        "--emit",
+        "binary",
+    ]));
+    assert!(
+        matches!(parsed, Err(ParseError::InvalidStatusArgument(ref s)) if s == "unknown emit mode binary"),
+        "expected InvalidStatusArgument, got {parsed:?}"
+    );
 }
 
 #[test]
@@ -121,7 +223,8 @@ fn parse_status_rejects_missing_active_runs_value() {
         "velvet-ballastics",
         "status",
         "--active-runs",
-        "--json",
+        "--emit",
+        "yaml",
     ]));
     assert!(matches!(
         parsed,
@@ -188,4 +291,49 @@ fn parse_status_rejects_out_of_range_active_runs() {
         matches!(parsed, Err(ParseError::InvalidStatusArgument(ref s)) if s == "--active-runs must be <= 1024"),
         "expected InvalidStatusArgument(--active-runs must be <= 1024), got {parsed:?}"
     );
+}
+
+#[test]
+fn parse_status_accepts_queue_depth_at_maximum() {
+    let parsed = parse_args(&args(&[
+        "velvet-ballastics",
+        "status",
+        "--queue-depth",
+        "1024",
+    ]));
+    if let Ok(Command::Status { options, .. }) = parsed {
+        assert_eq!(options.queue_depth, Some(1024));
+    } else {
+        assert!(parsed.is_ok(), "expected Ok, got {parsed:?}");
+    }
+}
+
+#[test]
+fn parse_status_accepts_active_runs_at_maximum() {
+    let parsed = parse_args(&args(&[
+        "velvet-ballastics",
+        "status",
+        "--active-runs",
+        "1024",
+    ]));
+    if let Ok(Command::Status { options, .. }) = parsed {
+        assert_eq!(options.active_runs, Some(1024));
+    } else {
+        assert!(parsed.is_ok(), "expected Ok, got {parsed:?}");
+    }
+}
+
+#[test]
+fn parse_status_accepts_trace_dropped_with_large_u64() {
+    let parsed = parse_args(&args(&[
+        "velvet-ballastics",
+        "status",
+        "--trace-dropped",
+        "18446744073709551615",
+    ]));
+    if let Ok(Command::Status { options, .. }) = parsed {
+        assert_eq!(options.trace_dropped, Some(18446744073709551615));
+    } else {
+        assert!(parsed.is_ok(), "expected Ok, got {parsed:?}");
+    }
 }

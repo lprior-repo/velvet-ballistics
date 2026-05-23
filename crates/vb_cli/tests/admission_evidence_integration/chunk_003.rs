@@ -244,3 +244,190 @@ fn capability_check_rejects_unauthorized_action() {
         }
     }
 }
+
+#[test]
+fn evidence_chain_captures_action_timeout_and_failure() {
+    let digest = WorkflowDigest::from_bytes([0x10u8; 32]);
+    let Some(workflow) = do_action_workflow(digest) else {
+        fail_assert!("workflow construction failed");
+        return;
+    };
+    let Some(shard_count) = NonZeroUsize::new(1) else {
+        fail_assert!("invalid shard count");
+        return;
+    };
+    let journal = Arc::new(vb_runtime::journal::VolatileRuntimeJournal::new());
+    let mut runtime =
+        vb_runtime::runtime::Runtime::new_with_journal(shard_count, test_config(), journal.clone());
+    let run_id = RunId::new(10);
+
+    match submit_do_action_run(&runtime, run_id, workflow) {
+        Ok(()) => {}
+        Err(err) => {
+            fail_assert!("submit_direct failed: {err}");
+            return;
+        }
+    }
+    match runtime.tick_all() {
+        Ok(_) => {}
+        Err(err) => {
+            fail_assert!("tick_all failed: {err}");
+            return;
+        }
+    }
+
+    let ticket = vb_core::action::ActionTicket {
+        run: run_id,
+        step: StepIdx::new(0),
+        seq: vb_core::ids::SeqNo::ZERO,
+        action: ActionId::new(7),
+        attempt: 1,
+        idempotency_key: 0,
+        capacity: 1,
+    };
+    let failure = vb_core::action::ActionFailure {
+        code: vb_core::action::ActionFailureCode::Timeout,
+        retry_policy: vb_core::action::RetryPolicy::NonRetryable,
+        taint: Taint::Clean,
+        detail: None,
+        encoded_len: 0,
+    };
+    match runtime.fail_action(ticket, failure) {
+        Ok(()) => {}
+        Err(err) => {
+            fail_assert!("fail_action_with_code failed: {err}");
+            return;
+        }
+    }
+    match runtime.tick_all() {
+        Ok(_) => {}
+        Err(err) => {
+            fail_assert!("tick_all after action failure failed: {err}");
+            return;
+        }
+    }
+
+    let snap = runtime.counters_snapshot();
+    assert_eq!(snap.runs_completed, 0, "run should not complete on action timeout");
+    assert!(snap.runs_failed > 0 || snap.runs_submitted > snap.runs_completed,
+        "run should be in failed/suspended state after action timeout: runs_submitted={} runs_failed={}",
+        snap.runs_submitted, snap.runs_failed);
+
+    let events = match journal.snapshot() {
+        Ok(events) => events,
+        Err(err) => {
+            fail_assert!("journal snapshot failed: {err}");
+            return;
+        }
+    };
+    let has_failed = events.iter().any(|e| {
+        matches!(e, vb_runtime::journal::RuntimeJournalEvent::RunFailed { run, .. } if *run == run_id)
+    });
+    assert!(has_failed, "journal should contain RunFailed after action timeout");
+}
+
+#[test]
+fn evidence_chain_preserves_event_ordering_across_restarts() {
+    let digest = WorkflowDigest::from_bytes([0x11u8; 32]);
+    let Some(workflow) = do_action_workflow(digest) else {
+        fail_assert!("workflow construction failed");
+        return;
+    };
+    let Some(shard_count) = NonZeroUsize::new(1) else {
+        fail_assert!("invalid shard count");
+        return;
+    };
+    let journal = Arc::new(vb_runtime::journal::VolatileRuntimeJournal::new());
+    let run_id = RunId::new(11);
+
+    let mut runtime1 =
+        vb_runtime::runtime::Runtime::new_with_journal(shard_count, test_config(), journal.clone());
+    match submit_do_action_run(&runtime1, run_id, workflow) {
+        Ok(()) => {}
+        Err(err) => {
+            fail_assert!("submit_direct failed: {err}");
+            return;
+        }
+    }
+    match runtime1.tick_all() {
+        Ok(_) => {}
+        Err(err) => {
+            fail_assert!("tick_all failed: {err}");
+            return;
+        }
+    }
+
+    let events_before = match journal.snapshot() {
+        Ok(events) => events,
+        Err(err) => {
+            fail_assert!("journal snapshot failed: {err}");
+            return;
+        }
+    };
+    assert!(!events_before.is_empty(), "journal should have events");
+
+    let ticket = vb_core::action::ActionTicket {
+        run: run_id,
+        step: StepIdx::new(0),
+        seq: vb_core::ids::SeqNo::ZERO,
+        action: ActionId::new(7),
+        attempt: 1,
+        idempotency_key: 0,
+        capacity: 1,
+    };
+    let output = vb_core::action::ActionOutputReady {
+        output_slot: SlotIdx::new(1),
+        value: SlotValue::I64(99),
+        taint: Taint::Clean,
+        encoded_len: 8,
+    };
+    match runtime1.complete_action_with_output(ticket, output) {
+        Ok(()) => {}
+        Err(err) => {
+            fail_assert!("complete_action_with_output failed: {err}");
+            return;
+        }
+    }
+    match runtime1.tick_all() {
+        Ok(_) => {}
+        Err(err) => {
+            fail_assert!("tick_all failed: {err}");
+            return;
+        }
+    }
+
+    let events_after = match journal.snapshot() {
+        Ok(events) => events,
+        Err(err) => {
+            fail_assert!("journal snapshot failed: {err}");
+            return;
+        }
+    };
+    assert!(
+        events_after.len() > events_before.len(),
+        "journal should have more events after completion"
+    );
+    assert_eq!(runtime1.counters_snapshot().runs_completed, 1);
+
+    let has_finished = events_after.iter().any(|e| {
+        matches!(e, vb_runtime::journal::RuntimeJournalEvent::RunFinished { run, .. } if *run == run_id)
+    });
+    assert!(has_finished, "journal should contain RunFinished event");
+}
+
+#[test]
+fn capability_check_rejects_any_action_when_empty_grant_set() {
+    let empty_caps = CapabilitySet::empty();
+    for action_id in [0u16, 1, 7, 99, 255, u16::MAX] {
+        let required = Capability::new("action".into(), ActionId::new(action_id));
+        assert!(
+            !empty_caps.grants(&required),
+            "empty capability set should not grant action({action_id})"
+        );
+    }
+    let resource_req = Capability::new("resource".into(), ActionId::new(1));
+    assert!(
+        !empty_caps.grants(&resource_req),
+        "empty capability set should not grant resource(1)"
+    );
+}

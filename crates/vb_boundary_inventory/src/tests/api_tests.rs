@@ -833,7 +833,6 @@ fn make_record_with_class(class: BoundaryClass) -> BoundaryRecord {
 
 #[test]
 fn classify_boundary_stability_idempotent() {
-    // Calling classify_boundary twice with same input should produce identical output
     let candidate = BoundaryCandidate::new("crates/test/src/lib.rs", "extern-c-boundary");
     let result1 = classify_boundary(candidate.clone()).unwrap();
     let result2 = classify_boundary(candidate).unwrap();
@@ -841,4 +840,484 @@ fn classify_boundary_stability_idempotent() {
     assert_eq!(result1.class, result2.class);
     assert_eq!(result1.source_path, result2.source_path);
     assert_eq!(result1.exposure.risk, result2.exposure.risk);
+}
+
+// =============================================================================
+// discover_boundaries tests — additional edge cases
+// =============================================================================
+
+#[test]
+fn discover_boundaries_decoder_surface_present_continues() {
+    let temp_dir = test_tempdir();
+    create_valid_workspace(temp_dir.path());
+    // boundary-surfaces.txt WITH decoder-byte-ingest-boundary
+    assert_io_ok(
+        fs::write(
+            temp_dir.path().join("boundary-surfaces.txt"),
+            "extern-c-boundary\ndecoder-byte-ingest-boundary\n",
+        ),
+        "write surfaces with decoder entry",
+    );
+    let marker_file = temp_dir.path().join("crates/vb_core/src/lib.rs");
+    assert_io_ok(
+        fs::create_dir_all(marker_file.parent().unwrap()),
+        "create marker parent",
+    );
+    assert_io_ok(
+        fs::write(&marker_file, "// extern-c-boundary"),
+        "write marker file",
+    );
+
+    let workspace = WorkspaceRoot::new(temp_dir.path().to_path_buf());
+    let result = discover_boundaries(workspace);
+    assert!(result.is_ok());
+    assert!(!result.unwrap().is_empty());
+}
+
+#[test]
+fn discover_boundaries_finds_marker_in_cargo_toml() {
+    let temp_dir = test_tempdir();
+    create_valid_workspace(temp_dir.path());
+    assert_io_ok(
+        fs::write(
+            temp_dir.path().join("Cargo.toml"),
+            "# foreign-function-boundary\n",
+        ),
+        "write Cargo.toml with marker",
+    );
+
+    let workspace = WorkspaceRoot::new(temp_dir.path().to_path_buf());
+    let result = discover_boundaries(workspace);
+    assert!(result.is_ok());
+    let candidates = result.unwrap();
+    assert!(
+        candidates
+            .iter()
+            .any(|c| c.marker == "foreign-function-boundary")
+    );
+}
+
+#[test]
+fn discover_boundaries_finds_markers_in_nested_subdirectories() {
+    let temp_dir = test_tempdir();
+    create_valid_workspace(temp_dir.path());
+    let deep_path = temp_dir
+        .path()
+        .join("crates/vb_core/src/boundary_inventory/deep/lib.rs");
+    assert_io_ok(
+        fs::create_dir_all(deep_path.parent().unwrap()),
+        "create deep dirs",
+    );
+    assert_io_ok(
+        fs::write(&deep_path, "// ipc-frame-boundary\n"),
+        "write deep marker file",
+    );
+
+    let workspace = WorkspaceRoot::new(temp_dir.path().to_path_buf());
+    let result = discover_boundaries(workspace);
+    assert!(result.is_ok());
+    let candidates = result.unwrap();
+    assert!(
+        candidates
+            .iter()
+            .any(|c| c.marker == "ipc-frame-boundary")
+    );
+}
+
+#[test]
+fn discover_boundaries_workspace_with_no_files_still_fails_on_no_markers() {
+    let temp_dir = test_tempdir();
+    create_valid_workspace(temp_dir.path());
+
+    let workspace = WorkspaceRoot::new(temp_dir.path().to_path_buf());
+    let result = discover_boundaries(workspace);
+    assert_eq!(
+        result.unwrap_err(),
+        BoundaryInventoryError::IncompleteDiscoveryInput
+    );
+}
+
+// =============================================================================
+// classify_boundary tests — additional edge cases
+// =============================================================================
+
+#[test]
+fn classify_boundary_rejects_empty_marker() {
+    let candidate = BoundaryCandidate::new("crates/test/src/lib.rs", "");
+    let result = classify_boundary(candidate);
+    assert_eq!(
+        result.unwrap_err(),
+        BoundaryInventoryError::UnknownBoundaryClass
+    );
+}
+
+#[test]
+fn classify_boundary_rejects_unrecognized_marker() {
+    let candidate = BoundaryCandidate::new("crates/test/src/lib.rs", "nonexistent-marker-xyz");
+    let result = classify_boundary(candidate);
+    assert_eq!(
+        result.unwrap_err(),
+        BoundaryInventoryError::UnknownBoundaryClass
+    );
+}
+
+#[test]
+fn classify_boundary_external_binary_marker_to_correct_class() {
+    let candidate = BoundaryCandidate::new("crates/bin/src/app.rs", "external-binary-boundary");
+    let result = classify_boundary(candidate);
+    assert!(result.is_ok());
+    assert_eq!(result.unwrap().class, BoundaryClass::ExternalBinary);
+}
+
+#[test]
+fn classify_boundary_id_path_contains_name_of_class() {
+    let candidate = BoundaryCandidate::new("crates/test/src/lib.rs", "extern-c-boundary");
+    let result = classify_boundary(candidate).unwrap();
+    assert!(result.id.contains("CAbi"));
+}
+
+// =============================================================================
+// required_evidence tests — additional edge cases
+// =============================================================================
+
+#[test]
+fn required_evidence_risky_by_process_limit() {
+    let classified = ClassifiedBoundary::new(ClassifiedBoundaryInput {
+        id: "test-id".to_string(),
+        class: BoundaryClass::Ipc,
+        source_path: PathBuf::from("crates/test/src/lib.rs"),
+        exposure: BoundaryExposure::risky(BoundaryRisk::ProcessLimit),
+    });
+    let result = required_evidence(classified);
+    assert!(result.is_ok());
+    assert_eq!(
+        result.unwrap(),
+        EvidenceRequirement::FuzzOrIsolationOrManualQa
+    );
+}
+
+#[test]
+fn required_evidence_risky_by_language_limit() {
+    let classified = ClassifiedBoundary::new(ClassifiedBoundaryInput {
+        id: "test-id".to_string(),
+        class: BoundaryClass::ExternalBinary,
+        source_path: PathBuf::from("crates/test/src/lib.rs"),
+        exposure: BoundaryExposure::risky(BoundaryRisk::LanguageLimit),
+    });
+    let result = required_evidence(classified);
+    assert!(result.is_ok());
+    assert_eq!(
+        result.unwrap(),
+        EvidenceRequirement::FuzzOrIsolationOrManualQa
+    );
+}
+
+#[test]
+fn required_evidence_safe_class_but_risky_exposure() {
+    let classified = ClassifiedBoundary::new(ClassifiedBoundaryInput {
+        id: "test-id".to_string(),
+        class: BoundaryClass::CAbi,
+        source_path: PathBuf::from("crates/test/src/lib.rs"),
+        exposure: BoundaryExposure::risky(BoundaryRisk::ExternalBytes),
+    });
+    let result = required_evidence(classified);
+    assert!(result.is_ok());
+}
+
+#[test]
+fn required_evidence_risky_class_but_none_risk() {
+    let classified = ClassifiedBoundary::new(ClassifiedBoundaryInput {
+        id: "test-id".to_string(),
+        class: BoundaryClass::GeneratedCode,
+        source_path: PathBuf::from("crates/gen/src/lib.rs"),
+        exposure: BoundaryExposure::none(),
+    });
+    let result = required_evidence(classified);
+    assert!(result.is_ok());
+}
+
+// =============================================================================
+// validate_inventory tests — additional edge cases
+// =============================================================================
+
+#[test]
+fn validate_inventory_second_record_has_missing_owner() {
+    let temp_dir = test_tempdir();
+    create_valid_workspace(temp_dir.path());
+
+    let record1 = make_valid_record("test-id-1");
+    let mut record2 = make_valid_record("test-id-2");
+    record2.owner = FieldState::Missing;
+    let inventory = BoundaryInventory::new(Some(1), vec![record1, record2], None);
+    let workspace = WorkspaceRoot::new(temp_dir.path().to_path_buf());
+    let result = validate_inventory(inventory, workspace);
+    assert_eq!(result.unwrap_err(), BoundaryInventoryError::MissingOwner);
+}
+
+#[test]
+fn validate_inventory_empty_owner_string_error() {
+    let temp_dir = test_tempdir();
+    create_valid_workspace(temp_dir.path());
+
+    let mut record = make_valid_record("test-id");
+    record.owner = FieldState::Present(Owner(String::new()));
+    let inventory = BoundaryInventory::new(Some(1), vec![record], None);
+    let workspace = WorkspaceRoot::new(temp_dir.path().to_path_buf());
+    let result = validate_inventory(inventory, workspace);
+    assert_eq!(result.unwrap_err(), BoundaryInventoryError::MissingOwner);
+}
+
+#[test]
+fn validate_inventory_empty_threat_string_error() {
+    let temp_dir = test_tempdir();
+    create_valid_workspace(temp_dir.path());
+
+    let mut record = make_valid_record("test-id");
+    record.threat = FieldState::Present(ThreatStatement(String::new()));
+    let inventory = BoundaryInventory::new(Some(1), vec![record], None);
+    let workspace = WorkspaceRoot::new(temp_dir.path().to_path_buf());
+    let result = validate_inventory(inventory, workspace);
+    assert_eq!(result.unwrap_err(), BoundaryInventoryError::MissingThreat);
+}
+
+#[test]
+fn validate_inventory_source_path_wrong_prefix_error() {
+    let temp_dir = test_tempdir();
+    create_valid_workspace(temp_dir.path());
+
+    let mut record = make_valid_record("test-id");
+    record.source_path = PathBuf::from("external/vendor/src/lib.rs");
+    let inventory = BoundaryInventory::new(Some(1), vec![record], None);
+    let workspace = WorkspaceRoot::new(temp_dir.path().to_path_buf());
+    let result = validate_inventory(inventory, workspace);
+    assert_eq!(
+        result.unwrap_err(),
+        BoundaryInventoryError::WorkspaceNotDiscoverable
+    );
+}
+
+#[test]
+fn validate_inventory_nonexistent_evidence_file_error() {
+    let temp_dir = test_tempdir();
+    create_valid_workspace(temp_dir.path());
+
+    let mut record = make_valid_record("test-id");
+    record.evidence = FieldState::Present(EvidenceReference::repo_local(
+        PathBuf::from("fuzz/nonexistent_file.rs"),
+        EvidenceKind::Fuzz,
+    ));
+    let inventory = BoundaryInventory::new(Some(1), vec![record], None);
+    let workspace = WorkspaceRoot::new(temp_dir.path().to_path_buf());
+    let result = validate_inventory(inventory, workspace);
+    assert_eq!(
+        result.unwrap_err(),
+        BoundaryInventoryError::InvalidEvidencePath
+    );
+}
+
+#[test]
+fn validate_inventory_free_text_evidence_rejected() {
+    let temp_dir = test_tempdir();
+    create_valid_workspace(temp_dir.path());
+
+    let mut record = make_valid_record("test-id");
+    record.evidence = FieldState::Present(EvidenceReference::free_text("some free text"));
+    let inventory = BoundaryInventory::new(Some(1), vec![record], None);
+    let workspace = WorkspaceRoot::new(temp_dir.path().to_path_buf());
+    let result = validate_inventory(inventory, workspace);
+    assert_eq!(
+        result.unwrap_err(),
+        BoundaryInventoryError::InvalidEvidencePath
+    );
+}
+
+#[test]
+fn validate_inventory_review_status_other_rejected() {
+    let temp_dir = test_tempdir();
+    create_valid_workspace(temp_dir.path());
+
+    let mut record = make_valid_record("test-id");
+    record.review_status = FieldState::Present(ReviewStatus::Other("pending".to_string()));
+    let inventory = BoundaryInventory::new(Some(1), vec![record], None);
+    let workspace = WorkspaceRoot::new(temp_dir.path().to_path_buf());
+    let result = validate_inventory(inventory, workspace);
+    assert_eq!(
+        result.unwrap_err(),
+        BoundaryInventoryError::ReviewStatusInvalid
+    );
+}
+
+#[test]
+fn validate_inventory_review_status_missing_rejected() {
+    let temp_dir = test_tempdir();
+    create_valid_workspace(temp_dir.path());
+
+    let mut record = make_valid_record("test-id");
+    record.review_status = FieldState::Missing;
+    let inventory = BoundaryInventory::new(Some(1), vec![record], None);
+    let workspace = WorkspaceRoot::new(temp_dir.path().to_path_buf());
+    let result = validate_inventory(inventory, workspace);
+    assert_eq!(
+        result.unwrap_err(),
+        BoundaryInventoryError::ReviewStatusInvalid
+    );
+}
+
+#[test]
+fn validate_inventory_stale_evidence_schema_ahead_of_evidence() {
+    let temp_dir = test_tempdir();
+    create_valid_workspace(temp_dir.path());
+
+    let mut record = make_valid_record("test-id");
+    record.freshness = FreshnessMarker::new(1, 3, 1); // evidence < schema
+    let inventory = BoundaryInventory::new(Some(1), vec![record], None);
+    let workspace = WorkspaceRoot::new(temp_dir.path().to_path_buf());
+    let result = validate_inventory(inventory, workspace);
+    assert_eq!(result.unwrap_err(), BoundaryInventoryError::StaleEvidence);
+}
+
+#[test]
+fn validate_inventory_third_record_missing_threat() {
+    let temp_dir = test_tempdir();
+    create_valid_workspace(temp_dir.path());
+
+    let record1 = make_valid_record("test-id-1");
+    let record2 = make_valid_record("test-id-2");
+    let mut record3 = make_valid_record("test-id-3");
+    record3.threat = FieldState::Missing;
+    let inventory = BoundaryInventory::new(Some(1), vec![record1, record2, record3], None);
+    let workspace = WorkspaceRoot::new(temp_dir.path().to_path_buf());
+    let result = validate_inventory(inventory, workspace);
+    assert_eq!(result.unwrap_err(), BoundaryInventoryError::MissingThreat);
+}
+
+#[test]
+fn validate_inventory_approved_with_external_evidence_ok() {
+    let temp_dir = test_tempdir();
+    create_valid_workspace(temp_dir.path());
+
+    let mut record = make_valid_record("test-id");
+    record.evidence = FieldState::Present(EvidenceReference::ExternalProvenance(
+        "vb-abc123".to_string(),
+    ));
+    let inventory = BoundaryInventory::new(Some(1), vec![record], None);
+    let workspace = WorkspaceRoot::new(temp_dir.path().to_path_buf());
+    let result = validate_inventory(inventory, workspace);
+    assert!(result.is_ok());
+}
+
+#[test]
+fn validate_inventory_approved_with_sha256_external_evidence_ok() {
+    let temp_dir = test_tempdir();
+    create_valid_workspace(temp_dir.path());
+
+    let mut record = make_valid_record("test-id");
+    record.evidence = FieldState::Present(EvidenceReference::ExternalProvenance(
+        "external:vb-abc123#sha256=abcdef1234567890".to_string(),
+    ));
+    let inventory = BoundaryInventory::new(Some(1), vec![record], None);
+    let workspace = WorkspaceRoot::new(temp_dir.path().to_path_buf());
+    let result = validate_inventory(inventory, workspace);
+    assert!(result.is_ok());
+}
+
+// =============================================================================
+// inventory_completion_status tests — additional edge cases
+// =============================================================================
+
+#[test]
+fn inventory_completion_status_empty_records_zero_discovered() {
+    let validated = ValidatedBoundaryInventory::from_records(Vec::new());
+    let result = inventory_completion_status(validated);
+    assert!(result.is_ok());
+    match result.unwrap() {
+        UnsafeIsolationStatus::Complete { boundary_count } => {
+            assert_eq!(boundary_count, 0);
+        }
+    }
+}
+
+#[test]
+fn inventory_completion_status_single_valid_record() {
+    let record = make_valid_record("test-id");
+    let validated = ValidatedBoundaryInventory::from_records(vec![record]);
+    let result = inventory_completion_status(validated);
+    assert!(result.is_ok());
+    match result.unwrap() {
+        UnsafeIsolationStatus::Complete { boundary_count } => {
+            assert_eq!(boundary_count, 1);
+        }
+    }
+}
+
+#[test]
+fn inventory_completion_status_third_party_unsafe_adjacent_in_fuzz_allowed() {
+    let mut validated = ValidatedBoundaryInventory::empty_with_discovered_boundary_count(1);
+    let mut record = make_record_with_class(BoundaryClass::UnsafeAdjacentDependency);
+    record.source_path = PathBuf::from("fuzz/vendor_sdk/src/lib.rs");
+    validated.records.push(record);
+    let result = inventory_completion_status(validated);
+    assert!(result.is_ok());
+}
+
+#[test]
+fn inventory_completion_status_third_party_unsafe_adjacent_in_scripts_allowed() {
+    let mut validated = ValidatedBoundaryInventory::empty_with_discovered_boundary_count(1);
+    let mut record = make_record_with_class(BoundaryClass::UnsafeAdjacentDependency);
+    record.source_path = PathBuf::from("scripts/vendor_tool.sh");
+    validated.records.push(record);
+    let result = inventory_completion_status(validated);
+    assert!(result.is_ok());
+}
+
+// =============================================================================
+// discover_boundaries tests — surface file edge cases
+// =============================================================================
+
+#[test]
+fn discover_boundaries_with_surfaces_file_containing_decoder_entry() {
+    let temp_dir = test_tempdir();
+    create_valid_workspace(temp_dir.path());
+    assert_io_ok(
+        fs::write(
+            temp_dir.path().join("boundary-surfaces.txt"),
+            "extern-c-boundary\ndecoder-byte-ingest-boundary\n",
+        ),
+        "write surfaces file with decoder marker",
+    );
+    let marker_file = temp_dir
+        .path()
+        .join("crates/vb_core/src/lib.rs");
+    assert_io_ok(
+        fs::create_dir_all(marker_file.parent().unwrap()),
+        "create parent",
+    );
+    assert_io_ok(
+        fs::write(&marker_file, "// decoder-byte-ingest-boundary"),
+        "write marker",
+    );
+
+    let workspace = WorkspaceRoot::new(temp_dir.path().to_path_buf());
+    let result = discover_boundaries(workspace);
+    assert!(result.is_ok());
+}
+
+#[test]
+fn discover_boundaries_with_surfaces_file_missing_decoder_line() {
+    let temp_dir = test_tempdir();
+    create_valid_workspace(temp_dir.path());
+    assert_io_ok(
+        fs::write(
+            temp_dir.path().join("boundary-surfaces.txt"),
+            "extern-c-boundary\nforeign-function-boundary\n",
+        ),
+        "write surfaces file without decoder",
+    );
+
+    let workspace = WorkspaceRoot::new(temp_dir.path().to_path_buf());
+    let result = discover_boundaries(workspace);
+    assert_eq!(
+        result.unwrap_err(),
+        BoundaryInventoryError::IncompleteDiscoveryInput
+    );
 }

@@ -144,3 +144,71 @@ pub(crate) fn exit_code_for_error(err: &VerifyError) -> CliExitCode {
         VerifyError::ReplayDivergence(_) => CliExitCode::ReplayDivergence,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn exit_code_for_yaml_parse_is_validation_failed() {
+        let err = VerifyError::YamlParse("bad yaml".into());
+        assert_eq!(exit_code_for_error(&err), CliExitCode::ValidationFailed);
+    }
+
+    #[test]
+    fn exit_code_for_compile_is_validation_failed() {
+        let err = VerifyError::Compile(vec!["err1".into()]);
+        assert_eq!(exit_code_for_error(&err), CliExitCode::ValidationFailed);
+    }
+
+    #[test]
+    fn exit_code_for_ir_validation_is_verification_failed() {
+        let err = VerifyError::IrValidation("bad ir".into());
+        assert_eq!(exit_code_for_error(&err), CliExitCode::VerificationFailed);
+    }
+
+    #[test]
+    fn exit_code_for_budget_policy_is_verification_failed() {
+        let err = VerifyError::BudgetPolicy("over budget".into());
+        assert_eq!(exit_code_for_error(&err), CliExitCode::VerificationFailed);
+    }
+
+    #[test]
+    fn exit_code_for_storage_error_is_storage_error() {
+        let err = VerifyError::StorageError("disk full".into());
+        assert_eq!(exit_code_for_error(&err), CliExitCode::StorageError);
+    }
+
+    #[test]
+    fn exit_code_for_replay_divergence_is_replay_divergence() {
+        let err = VerifyError::ReplayDivergence("diverged".into());
+        assert_eq!(exit_code_for_error(&err), CliExitCode::ReplayDivergence);
+    }
+
+    #[test]
+    fn verify_ok_holds_all_fields() {
+        let ok = VerifyOk {
+            digest_hex: "abcdef".into(),
+            node_count: 5,
+            checks: vec!["yaml_parse", "compilation"],
+            warnings: vec!["note: old format".into()],
+        };
+        assert_eq!(ok.digest_hex, "abcdef");
+        assert_eq!(ok.node_count, 5);
+        assert_eq!(ok.checks.len(), 2);
+        assert_eq!(ok.warnings.len(), 1);
+    }
+
+    #[test]
+    fn verify_ok_empty_checks_and_warnings() {
+        let ok = VerifyOk {
+            digest_hex: "00".into(),
+            node_count: 0,
+            checks: vec![],
+            warnings: vec![],
+        };
+        assert!(ok.checks.is_empty());
+        assert!(ok.warnings.is_empty());
+        assert_eq!(ok.node_count, 0);
+    }
+}

@@ -2,10 +2,13 @@
 //!
 //! Uses proptest to generate arbitrary inputs for comprehensive coverage
 
+use std::path::PathBuf;
+
 use crate::boundary_inventory::{
-    BoundaryCandidate, BoundaryClass, BoundaryExposure, BoundaryRisk, ClassifiedBoundary,
-    ClassifiedBoundaryInput, EvidenceKind, EvidenceReference, FieldState, FreshnessMarker,
-    ReviewStatus, ValidatedBoundaryInventory, classify_boundary,
+    BoundaryCandidate, BoundaryClass, BoundaryExposure, BoundaryRecord, BoundaryRecordDraft,
+    BoundaryRecordParts, BoundaryRisk, ClassifiedBoundary, ClassifiedBoundaryInput,
+    EvidenceKind, EvidenceReference, FieldState, FreshnessMarker, Owner, ReviewStatus,
+    ThreatStatement, ValidatedBoundaryInventory, WorkspaceRoot, classify_boundary,
 };
 use proptest::prelude::*;
 
@@ -271,6 +274,109 @@ proptest! {
         let validated = ValidatedBoundaryInventory::with_review_status(status.clone());
         prop_assert_eq!(validated.review_status, Some(status));
     }
+
+    fn field_state_from_option_none(_flag: bool) {
+        let state: FieldState<String> = FieldState::from(None);
+        match state {
+            FieldState::Missing => {},
+            FieldState::Present(_) => prop_assert!(false),
+        }
+    }
+
+    fn field_state_missing_as_ref_prop(_flag: bool) {
+        let state: FieldState<String> = FieldState::Missing;
+        let ref_state = state.as_ref();
+        match ref_state {
+            FieldState::Missing => {},
+            FieldState::Present(_) => prop_assert!(false),
+        }
+    }
+
+    fn field_state_missing_map_prop(_flag: bool) {
+        let state: FieldState<String> = FieldState::Missing;
+        let mapped = state.map(|_v: String| 0usize);
+        match mapped {
+            FieldState::Missing => {},
+            FieldState::Present(_) => prop_assert!(false),
+        }
+    }
+
+    fn validated_inventory_from_records_preserves_count(records_count in 0usize..100) {
+        let records: Vec<BoundaryRecord> = (0..records_count)
+            .map(|i| BoundaryRecordDraft::new(BoundaryRecordParts {
+                id: format!("test-id-{}", i),
+                class: BoundaryClass::CAbi,
+                source_path: PathBuf::from(format!("crates/test{}/src/lib.rs", i)),
+                owner: FieldState::Present(Owner("test-owner".to_string())),
+                threat: FieldState::Present(ThreatStatement("test-threat".to_string())),
+                evidence: FieldState::Present(EvidenceReference::repo_local(
+                    PathBuf::from("fuzz/test.rs"),
+                    EvidenceKind::Fuzz,
+                )),
+                freshness: FreshnessMarker::new(1, 1, 1),
+                review_status: FieldState::Present(ReviewStatus::Approved),
+                waiver: FieldState::Missing,
+            }))
+            .collect();
+        let validated = ValidatedBoundaryInventory::from_records(records);
+        prop_assert_eq!(validated.discovered_boundary_count, records_count);
+        prop_assert_eq!(validated.records.len(), records_count);
+    }
+
+    fn evidence_reference_repo_local_with_kind(kind: EvidenceKind) {
+        let path = PathBuf::from("fuzz/test.rs");
+        let reference = EvidenceReference::repo_local(path.clone(), kind);
+        match reference {
+            EvidenceReference::RepoLocal { path: p, kind: k } => {
+                prop_assert_eq!(p, path);
+                prop_assert_eq!(k, kind);
+            }
+            _ => prop_assert!(false),
+        }
+    }
+
+    fn boundary_candidate_new_empty_path(marker: String) {
+        let candidate = BoundaryCandidate::new("", marker.clone());
+        prop_assert_eq!(candidate.marker, marker);
+        prop_assert!(candidate.source_path.as_os_str().is_empty());
+    }
+
+    fn workspace_root_new_roundtrip(path: String) {
+        let workspace = WorkspaceRoot::new(PathBuf::from(path.clone()));
+        prop_assert_eq!(workspace.path, PathBuf::from(path));
+    }
+
+    fn review_status_from_serialized_then_serialized(value: String) {
+        let status = ReviewStatus::from_serialized(value.clone());
+        let serialized = status.serialized();
+        // For approved and waived, serialized returns the canonical form
+        if value == "approved" {
+            prop_assert_eq!(serialized, "approved");
+        } else if value == "waived" {
+            prop_assert_eq!(serialized, "waived");
+        } else {
+            prop_assert_eq!(serialized, value);
+        }
+    }
+
+    fn evidence_reference_external_provenance_format(text in "[a-z0-9]{1,30}") {
+        prop_assume!(!text.is_empty());
+        let ref_text = format!("external:{}#sha256=abcdef", text);
+        let reference = EvidenceReference::ExternalProvenance(ref_text.clone());
+        match reference {
+            EvidenceReference::ExternalProvenance(t) => {
+                prop_assert_eq!(t, ref_text);
+            }
+            _ => prop_assert!(false),
+        }
+    }
+
+    fn freshness_marker_new_any_versions(sv: u64, schema: u64, ev: u64) {
+        let marker = FreshnessMarker::new(sv, schema, ev);
+        prop_assert_eq!(marker.source_version, sv);
+        prop_assert_eq!(marker.schema_version, schema);
+        prop_assert_eq!(marker.evidence_version, ev);
+    }
 }
 
 // =============================================================================
@@ -346,3 +452,107 @@ fn review_status_serialized_waived() {
     let status = ReviewStatus::Waived;
     assert_eq!(status.serialized(), "waived");
 }
+
+#[test]
+fn evidence_kind_all_variants() {
+    let kinds = [
+        EvidenceKind::Fuzz,
+        EvidenceKind::Isolation,
+        EvidenceKind::ManualQa,
+        EvidenceKind::Provenance,
+    ];
+    for kind in kinds {
+        let ref_e = EvidenceReference::repo_local(PathBuf::from("fuzz/test.rs"), kind);
+        match ref_e {
+            EvidenceReference::RepoLocal { kind: k, .. } => {
+                assert_eq!(k, kind);
+            }
+            _ => panic!("Expected RepoLocal"),
+        }
+    }
+}
+
+#[test]
+fn field_state_from_none_returns_missing() {
+    let state: FieldState<String> = FieldState::from(None);
+    assert!(matches!(state, FieldState::Missing));
+}
+
+#[test]
+fn field_state_missing_map_preserves_missing() {
+    let state: FieldState<String> = FieldState::Missing;
+    let mapped = state.map(|s: String| s.len());
+    assert!(matches!(mapped, FieldState::Missing));
+}
+
+#[test]
+fn field_state_missing_as_ref_preserves_missing() {
+    let state: FieldState<String> = FieldState::Missing;
+    let ref_state = state.as_ref();
+    assert!(matches!(ref_state, FieldState::Missing));
+}
+
+#[test]
+fn validated_inventory_empty_records_cast_to_completion() {
+    let validated = ValidatedBoundaryInventory::from_records(Vec::new());
+    assert_eq!(validated.records.len(), 0);
+    assert_eq!(validated.discovered_boundary_count, 0);
+}
+
+#[test]
+fn workspace_root_path_accessor_works() {
+    let path = PathBuf::from("/some/test/path");
+    let root = WorkspaceRoot::new(path.clone());
+    assert_eq!(root.path, path);
+}
+
+#[test]
+fn freshness_marker_new_preserves_all_three_versions() {
+    let marker = FreshnessMarker::new(10, 20, 30);
+    assert_eq!(marker.source_version, 10);
+    assert_eq!(marker.schema_version, 20);
+    assert_eq!(marker.evidence_version, 30);
+}
+
+#[test]
+fn boundary_candidate_new_empty_path_returns_empty() {
+    let candidate = BoundaryCandidate::new("", "extern-c-boundary");
+    assert!(candidate.source_path.as_os_str().is_empty());
+    assert_eq!(candidate.marker, "extern-c-boundary");
+}
+
+#[test]
+fn boundary_record_draft_review_status_missing() {
+    let record = BoundaryRecordDraft::new(BoundaryRecordParts {
+        id: "test-id".to_string(),
+        class: BoundaryClass::CAbi,
+        source_path: PathBuf::from("crates/test/src/lib.rs"),
+        owner: FieldState::Present(Owner("test-owner".to_string())),
+        threat: FieldState::Present(ThreatStatement("test-threat".to_string())),
+        evidence: FieldState::Present(EvidenceReference::repo_local(
+            PathBuf::from("fuzz/test.rs"),
+            EvidenceKind::Fuzz,
+        )),
+        freshness: FreshnessMarker::new(1, 1, 1),
+        review_status: FieldState::Missing,
+        waiver: FieldState::Missing,
+    });
+    assert!(record.review_status().is_none());
+}
+
+#[test]
+fn review_status_from_serialized_unique_values() {
+    let approved = ReviewStatus::from_serialized("approved");
+    let waived = ReviewStatus::from_serialized("waived");
+    let custom = ReviewStatus::from_serialized("custom-status");
+    assert!(matches!(approved, ReviewStatus::Approved));
+    assert!(matches!(waived, ReviewStatus::Waived));
+    assert!(matches!(custom, ReviewStatus::Other(ref s) if s == "custom-status"));
+}
+
+// =============================================================================
+// Kani verification harnesses — prove no-panic and invariants
+// =============================================================================
+// Kani harnesses are in src/kani_harnesses.rs (outside #[cfg(test)]
+// so they compile with `cargo kani --lib`).
+// See that file for the 20 `#[kani::proof]` harnesses.

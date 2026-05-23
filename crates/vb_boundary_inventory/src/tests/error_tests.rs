@@ -226,3 +226,139 @@ fn error_sync() {
     fn assert_sync<T: Sync>() {}
     assert_sync::<BoundaryInventoryError>();
 }
+
+// =============================================================================
+// Error in Result context
+// =============================================================================
+
+#[test]
+fn error_in_result_workspace_not_discoverable() {
+    let result: Result<(), BoundaryInventoryError> =
+        Err(BoundaryInventoryError::WorkspaceNotDiscoverable);
+    assert!(result.is_err());
+    assert_eq!(result.unwrap_err(), BoundaryInventoryError::WorkspaceNotDiscoverable);
+}
+
+#[test]
+fn error_in_result_inventory_parse_failure() {
+    let result: Result<(), BoundaryInventoryError> =
+        Err(BoundaryInventoryError::InventoryParseFailure);
+    assert!(result.is_err());
+    assert_eq!(result.unwrap_err(), BoundaryInventoryError::InventoryParseFailure);
+}
+
+#[test]
+fn error_in_result_schema_version_unsupported() {
+    let result: Result<(), BoundaryInventoryError> =
+        Err(BoundaryInventoryError::SchemaVersionUnsupported);
+    assert!(result.is_err());
+    assert_eq!(
+        result.unwrap_err(),
+        BoundaryInventoryError::SchemaVersionUnsupported
+    );
+}
+
+// =============================================================================
+// Error hash properties
+// =============================================================================
+
+#[test]
+fn error_hash_all_13_variants_in_set() {
+    use std::collections::HashSet;
+    let mut set = HashSet::new();
+    set.insert(BoundaryInventoryError::WorkspaceNotDiscoverable);
+    set.insert(BoundaryInventoryError::IncompleteDiscoveryInput);
+    set.insert(BoundaryInventoryError::UnknownBoundaryClass);
+    set.insert(BoundaryInventoryError::UnsafeForbiddenViolation);
+    set.insert(BoundaryInventoryError::MissingOwner);
+    set.insert(BoundaryInventoryError::MissingThreat);
+    set.insert(BoundaryInventoryError::MissingEvidencePath);
+    set.insert(BoundaryInventoryError::InvalidEvidencePath);
+    set.insert(BoundaryInventoryError::StaleEvidence);
+    set.insert(BoundaryInventoryError::DuplicateBoundaryId);
+    set.insert(BoundaryInventoryError::InventoryParseFailure);
+    set.insert(BoundaryInventoryError::SchemaVersionUnsupported);
+    set.insert(BoundaryInventoryError::ReviewStatusInvalid);
+    assert_eq!(set.len(), 13);
+}
+
+#[test]
+fn error_hash_collision_free_across_13_variants() {
+    use std::collections::hash_map::DefaultHasher;
+    use std::collections::HashSet;
+    use std::hash::{Hash, Hasher};
+    let variants: [BoundaryInventoryError; 13] = [
+        BoundaryInventoryError::WorkspaceNotDiscoverable,
+        BoundaryInventoryError::IncompleteDiscoveryInput,
+        BoundaryInventoryError::UnknownBoundaryClass,
+        BoundaryInventoryError::UnsafeForbiddenViolation,
+        BoundaryInventoryError::MissingOwner,
+        BoundaryInventoryError::MissingThreat,
+        BoundaryInventoryError::MissingEvidencePath,
+        BoundaryInventoryError::InvalidEvidencePath,
+        BoundaryInventoryError::StaleEvidence,
+        BoundaryInventoryError::DuplicateBoundaryId,
+        BoundaryInventoryError::InventoryParseFailure,
+        BoundaryInventoryError::SchemaVersionUnsupported,
+        BoundaryInventoryError::ReviewStatusInvalid,
+    ];
+    let mut hashes = Vec::new();
+    for err in &variants {
+        let mut hasher = DefaultHasher::new();
+        err.hash(&mut hasher);
+        hashes.push(hasher.finish());
+    }
+    let unique: HashSet<_> = hashes.iter().collect();
+    assert_eq!(unique.len(), 13);
+}
+
+// =============================================================================
+// Error formatting with all variants
+// =============================================================================
+
+#[test]
+fn error_debug_formatting_includes_variant_name() {
+    assert_eq!(
+        format!("{:?}", BoundaryInventoryError::MissingOwner),
+        "MissingOwner"
+    );
+    assert_eq!(
+        format!("{:?}", BoundaryInventoryError::MissingThreat),
+        "MissingThreat"
+    );
+    assert_eq!(
+        format!("{:?}", BoundaryInventoryError::StaleEvidence),
+        "StaleEvidence"
+    );
+    assert_eq!(
+        format!("{:?}", BoundaryInventoryError::DuplicateBoundaryId),
+        "DuplicateBoundaryId"
+    );
+    assert_eq!(
+        format!("{:?}", BoundaryInventoryError::UnsafeForbiddenViolation),
+        "UnsafeForbiddenViolation"
+    );
+    assert_eq!(
+        format!("{:?}", BoundaryInventoryError::InvalidEvidencePath),
+        "InvalidEvidencePath"
+    );
+}
+
+// =============================================================================
+// Error size and alignment
+// =============================================================================
+
+#[test]
+fn error_size_is_1_byte() {
+    // Enum with 13 unit variants fits in 1 byte discriminant
+    assert_eq!(size_of::<BoundaryInventoryError>(), 1);
+}
+
+#[test]
+fn error_is_copy_and_clone() {
+    let err = BoundaryInventoryError::WorkspaceNotDiscoverable;
+    let copied: BoundaryInventoryError = err; // copy
+    assert_eq!(err, copied);
+    let cloned = err.clone();
+    assert_eq!(err, cloned);
+}

@@ -883,3 +883,246 @@ mod proptests {
         }
     }
 }
+
+// ============================================================================
+// End-to-end: AND/OR via bytecode with store-aware evaluation
+// ============================================================================
+
+#[test]
+fn integration_and_via_store_evaluates_both_operands() -> ExprResult<()> {
+    let mut store = ValueStore::new();
+    let program = make_program(vec![
+        ExprOp::LoadConst(ConstIdx::new(0)),
+        ExprOp::LoadConst(ConstIdx::new(1)),
+        ExprOp::And,
+    ])?;
+    let constants = vec![ConstValue::Bool(true), ConstValue::Bool(false)];
+    let result = eval_expr_program_with_store(&program, &[], &constants, &mut store)?;
+    assert_eq!(result, SlotValue::Bool(false));
+    Ok(())
+}
+
+#[test]
+fn integration_or_via_store_evaluates_both_operands() -> ExprResult<()> {
+    let mut store = ValueStore::new();
+    let program = make_program(vec![
+        ExprOp::LoadConst(ConstIdx::new(0)),
+        ExprOp::LoadConst(ConstIdx::new(1)),
+        ExprOp::Or,
+    ])?;
+    let constants = vec![ConstValue::Bool(false), ConstValue::Bool(true)];
+    let result = eval_expr_program_with_store(&program, &[], &constants, &mut store)?;
+    assert_eq!(result, SlotValue::Bool(true));
+    Ok(())
+}
+
+// ============================================================================
+// Complete type matrix for AND/OR across ALL SlotValue variants
+// ============================================================================
+
+#[test]
+fn and_rejects_f64_bool() -> ExprResult<()> {
+    let result = eval_binary_op(
+        BinaryOp::And,
+        SlotValue::F64(vb_core::value::FiniteF64::new(1.0).map_err(|_| ExprError::UnexpectedEof)?),
+        SlotValue::Bool(true),
+    );
+    let Err(ExprError::TypeMismatch { expected, found }) = result else {
+        return Err(ExprError::UnexpectedToken { token: "expected TypeMismatch".into() });
+    };
+    assert_eq!(expected, "boolean");
+    assert_eq!(found, "number");
+    Ok(())
+}
+
+#[test]
+fn and_rejects_symbol_bool() -> ExprResult<()> {
+    let result = eval_binary_op(
+        BinaryOp::And,
+        SlotValue::Symbol(vb_core::ids::SymbolId::new(1)),
+        SlotValue::Bool(true),
+    );
+    assert!(matches!(result, Err(ExprError::TypeMismatch { .. })));
+    Ok(())
+}
+
+#[test]
+fn and_rejects_list_bool() -> ExprResult<()> {
+    let result = eval_binary_op(
+        BinaryOp::And,
+        SlotValue::List(vb_core::ids::ListId::new(1)),
+        SlotValue::Bool(true),
+    );
+    assert!(matches!(result, Err(ExprError::TypeMismatch { .. })));
+    Ok(())
+}
+
+#[test]
+fn and_rejects_object_bool() -> ExprResult<()> {
+    let result = eval_binary_op(
+        BinaryOp::And,
+        SlotValue::Object(vb_core::ids::ObjectId::new(1)),
+        SlotValue::Bool(true),
+    );
+    assert!(matches!(result, Err(ExprError::TypeMismatch { .. })));
+    Ok(())
+}
+
+#[test]
+fn or_rejects_symbol_bool() -> ExprResult<()> {
+    let result = eval_binary_op(
+        BinaryOp::Or,
+        SlotValue::Symbol(vb_core::ids::SymbolId::new(1)),
+        SlotValue::Bool(true),
+    );
+    assert!(matches!(result, Err(ExprError::TypeMismatch { .. })));
+    Ok(())
+}
+
+#[test]
+fn or_rejects_object_bool() -> ExprResult<()> {
+    let result = eval_binary_op(
+        BinaryOp::Or,
+        SlotValue::Object(vb_core::ids::ObjectId::new(1)),
+        SlotValue::Bool(true),
+    );
+    assert!(matches!(result, Err(ExprError::TypeMismatch { .. })));
+    Ok(())
+}
+
+// ============================================================================
+// Chained AND/OR with mixed types through bytecode
+// ============================================================================
+
+#[test]
+fn integration_chained_and_with_type_mismatch_in_middle() -> ExprResult<()> {
+    let program = make_program(vec![
+        ExprOp::LoadConst(ConstIdx::new(0)),
+        ExprOp::LoadConst(ConstIdx::new(1)),
+        ExprOp::And,
+        ExprOp::LoadConst(ConstIdx::new(2)),
+        ExprOp::And,
+    ])?;
+    let constants = vec![ConstValue::Bool(true), ConstValue::I64(1), ConstValue::Bool(true)];
+    let result = eval_expr_program(&program, &[], &constants);
+    assert!(matches!(result, Err(ExprError::TypeMismatch { .. })));
+    Ok(())
+}
+
+#[test]
+fn integration_chained_or_with_type_mismatch_in_middle() -> ExprResult<()> {
+    let program = make_program(vec![
+        ExprOp::LoadConst(ConstIdx::new(0)),
+        ExprOp::LoadConst(ConstIdx::new(1)),
+        ExprOp::Or,
+        ExprOp::LoadConst(ConstIdx::new(2)),
+        ExprOp::Or,
+    ])?;
+    let constants = vec![ConstValue::Bool(false), ConstValue::Null, ConstValue::Bool(true)];
+    let result = eval_expr_program(&program, &[], &constants);
+    assert!(matches!(result, Err(ExprError::TypeMismatch { .. })));
+    Ok(())
+}
+
+// ============================================================================
+// AND/OR combined with Negation
+// ============================================================================
+
+#[test]
+fn and_not_true_not_false_returns_false() -> ExprResult<()> {
+    let result = eval_binary_op(
+        BinaryOp::And,
+        SlotValue::Bool(false),
+        SlotValue::Bool(false),
+    )?;
+    assert_eq!(result, SlotValue::Bool(false));
+    Ok(())
+}
+
+#[cfg(test)]
+#[cfg(kani)]
+mod kani_verification {
+    use super::*;
+    use vb_core::SlotValue;
+
+    /// Kani harness: eval_binary_op with And never panics for any two SlotValue inputs.
+    #[kani::proof]
+    fn verify_eval_binary_op_and_never_panics() {
+        let left: SlotValue = kani::any();
+        let right: SlotValue = kani::any();
+        let _ = eval_binary_op(BinaryOp::And, left, right);
+    }
+
+    /// Kani harness: eval_binary_op with Or never panics for any two SlotValue inputs.
+    #[kani::proof]
+    fn verify_eval_binary_op_or_never_panics() {
+        let left: SlotValue = kani::any();
+        let right: SlotValue = kani::any();
+        let _ = eval_binary_op(BinaryOp::Or, left, right);
+    }
+
+    /// Kani harness: eval_binary_op with Add never panics for any two SlotValue inputs.
+    #[kani::proof]
+    fn verify_eval_binary_op_add_never_panics() {
+        let left: SlotValue = kani::any();
+        let right: SlotValue = kani::any();
+        let _ = eval_binary_op(BinaryOp::Add, left, right);
+    }
+
+    /// Kani harness: eval_binary_op with Sub never panics for any two SlotValue inputs.
+    #[kani::proof]
+    fn verify_eval_binary_op_sub_never_panics() {
+        let left: SlotValue = kani::any();
+        let right: SlotValue = kani::any();
+        let _ = eval_binary_op(BinaryOp::Sub, left, right);
+    }
+
+    /// Kani harness: eval_binary_op with Mul never panics for any two SlotValue inputs.
+    #[kani::proof]
+    fn verify_eval_binary_op_mul_never_panics() {
+        let left: SlotValue = kani::any();
+        let right: SlotValue = kani::any();
+        let _ = eval_binary_op(BinaryOp::Mul, left, right);
+    }
+
+    /// Kani harness: eval_binary_op with Div never panics for any two SlotValue inputs.
+    #[kani::proof]
+    fn verify_eval_binary_op_div_never_panics() {
+        let left: SlotValue = kani::any();
+        let right: SlotValue = kani::any();
+        let _ = eval_binary_op(BinaryOp::Div, left, right);
+    }
+
+    /// Kani harness: eval_unary_op with Not never panics for any SlotValue input.
+    #[kani::proof]
+    fn verify_eval_unary_op_not_never_panics() {
+        let value: SlotValue = kani::any();
+        let _ = eval_unary_op(UnaryOp::Not, value);
+    }
+
+    /// Kani harness: eval_unary_op with Neg never panics for any SlotValue input.
+    #[kani::proof]
+    fn verify_eval_unary_op_neg_never_panics() {
+        let value: SlotValue = kani::any();
+        let _ = eval_unary_op(UnaryOp::Neg, value);
+    }
+
+    /// Kani harness: eval_binary_op with Eq never panics for any two SlotValue inputs.
+    #[kani::proof]
+    fn verify_eval_binary_op_eq_never_panics() {
+        let left: SlotValue = kani::any();
+        let right: SlotValue = kani::any();
+        let _ = eval_binary_op(BinaryOp::Eq, left, right);
+    }
+
+    /// Kani harness: eval_binary_op with comparison ops never panic.
+    #[kani::proof]
+    fn verify_eval_binary_op_cmp_never_panics() {
+        let left: SlotValue = kani::any();
+        let right: SlotValue = kani::any();
+        let _ = eval_binary_op(BinaryOp::Lt, left, right);
+        let _ = eval_binary_op(BinaryOp::Lte, left, right);
+        let _ = eval_binary_op(BinaryOp::Gt, left, right);
+        let _ = eval_binary_op(BinaryOp::Gte, left, right);
+    }
+}

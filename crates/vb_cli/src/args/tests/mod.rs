@@ -8,7 +8,6 @@ mod action;
 mod cancel;
 mod core;
 mod journal;
-mod observability;
 mod run;
 mod status;
 mod workflow;

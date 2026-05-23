@@ -161,3 +161,80 @@ pub fn print_trace_event(event: &TraceEvent) {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn input_mapping_error_decode_failed_displays_correct_message() {
+        assert_eq!(
+            InputMappingError::DecodeFailed.to_string(),
+            "INPUT_MAPPING_FAILED: input-bin decode failed"
+        );
+    }
+
+    #[test]
+    fn input_mapping_error_slot_count_exceeded_displays_correct_message() {
+        assert_eq!(
+            InputMappingError::SlotCountExceeded.to_string(),
+            "INPUT_MAPPING_FAILED: input slot count exceeds workflow slot count"
+        );
+    }
+
+    #[test]
+    fn input_mapping_error_slot_index_out_of_range_displays_correct_message() {
+        assert_eq!(
+            InputMappingError::SlotIndexOutOfRange.to_string(),
+            "INPUT_MAPPING_FAILED: input slot index out of range"
+        );
+    }
+
+    #[test]
+    fn print_trace_event_step_started_does_not_panic() {
+        let event = TraceEvent::StepStarted { step: vb_core::StepIdx::new(1) };
+        print_trace_event(&event);
+    }
+
+    #[test]
+    fn print_trace_event_step_ended_does_not_panic() {
+        let event = TraceEvent::StepEnded { step: vb_core::StepIdx::new(1) };
+        print_trace_event(&event);
+    }
+
+    #[test]
+    fn print_trace_event_action_scheduled_does_not_panic() {
+        let event = TraceEvent::ActionScheduled { step: vb_core::StepIdx::new(1) };
+        print_trace_event(&event);
+    }
+
+    #[test]
+    fn print_trace_event_run_submitted_does_not_panic() {
+        let event = TraceEvent::RunSubmitted {};
+        print_trace_event(&event);
+    }
+
+    #[test]
+    fn print_trace_event_run_finished_does_not_panic() {
+        let event = TraceEvent::RunFinished {};
+        print_trace_event(&event);
+    }
+
+    #[test]
+    fn print_trace_event_run_failed_does_not_panic() {
+        let event = TraceEvent::RunFailed {};
+        print_trace_event(&event);
+    }
+
+    #[test]
+    fn print_trace_event_run_cancelled_does_not_panic() {
+        let event = TraceEvent::RunCancelled {};
+        print_trace_event(&event);
+    }
+
+    #[test]
+    fn print_trace_event_slot_written_does_not_panic() {
+        let event = TraceEvent::SlotWritten { slot: vb_core::SlotIdx::new(0) };
+        print_trace_event(&event);
+    }
+}
