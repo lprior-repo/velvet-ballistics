@@ -772,7 +772,10 @@ fn check_node_slots(kind: &vb_core::CompiledNodeKind, slot_count: u16, node_idx:
                 result.get()
             );
         }
-        _ => {}
+        _ => unreachable!(
+            "unhandled CompiledNodeKind variant in check_node_slots: {:?}",
+            kind
+        ),
     }
 }
 
@@ -2592,7 +2595,7 @@ fn assert_malformed_decode_is_typed(error: vb_storage::JournalError) {
         | vb_storage::JournalError::UnsupportedSchemaVersion { .. }
         | vb_storage::JournalError::HeaderLengthMismatch { .. }
         | vb_storage::JournalError::SequenceOverflow => {}
-        _unknown => {}
+        _unknown => unreachable!("unexpected JournalError variant: {:?}", _unknown),
     }
 }
 
