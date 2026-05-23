@@ -2,3 +2,6 @@
 
 #[cfg(loom)]
 pub mod loom;
+
+#[cfg(loom)]
+pub mod sync;
