@@ -2187,9 +2187,7 @@ fn classify_readback_family_set(
         .saturating_add(usize::from(has_accepted_event));
 
     if has_source && has_artifact && has_header && has_accepted_event {
-        ReadbackFamilySet::Full {
-            accepted_event_count,
-        }
+        ReadbackFamilySet::Full
     } else if families_present > 0 || matches!(intended_deletion, ReadbackDeletionIntent::Partial) {
         ReadbackFamilySet::Partial
     } else {

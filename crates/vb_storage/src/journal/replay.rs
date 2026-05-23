@@ -9,12 +9,6 @@ use crate::{
 };
 use fjall::Readable;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum FirstReplayEvent {
-    AnyAtOrAfterStart,
-    Exact(EventSeq),
-}
-
 impl FjallJournal {
     /// Replays one run's events in contiguous per-run sequence order.
     pub fn events_for_run(&self, run: vb_core::RunId) -> Result<Vec<JournalEvent>, JournalError> {
@@ -28,7 +22,16 @@ impl FjallJournal {
         limit: EventReplayLimit,
     ) -> Result<Vec<JournalEvent>, JournalError> {
         let (start_seq, first_event) = match self.latest_durable_snapshot_seq(run)? {
-            Some(seq) => (seq, FirstReplayEvent::Exact(seq)),
+            Some(seq) => {
+                // Replay starts at the first event AFTER the snapshot.
+                // The snapshot covers state up to and including `seq`.
+                let next = seq
+                    .get()
+                    .checked_add(1)
+                    .map(EventSeq::new)
+                    .ok_or(JournalError::KeyCapacity)?;
+                (next, FirstReplayEvent::Exact(next))
+            }
             None => (EventSeq::new(0), FirstReplayEvent::AnyAtOrAfterStart),
         };
         self.events_for_run_from(run, start_seq, first_event, limit)
@@ -39,14 +42,11 @@ impl FjallJournal {
         &self,
         run: vb_core::RunId,
         start_seq: EventSeq,
-        first_event: FirstReplayEvent,
+        first_event: EventSeq,
         limit: EventReplayLimit,
     ) -> Result<Vec<JournalEvent>, JournalError> {
         let mut replay = Vec::new();
-        let mut expected = match first_event {
-            FirstReplayEvent::AnyAtOrAfterStart => None,
-            FirstReplayEvent::Exact(seq) => Some(seq),
-        };
+        let mut expected = Some(first_event);
         let start_key = run_event_key(run, start_seq)?;
         let run_prefix = run_prefix_key(run)?;
         let snap = self.database.snapshot();

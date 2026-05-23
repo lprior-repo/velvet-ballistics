@@ -1,3 +1,5 @@
+use crate::codec::decode_record;
+use crate::constants::{MAGIC_SNAPSHOT, MAX_SNAPSHOT_BYTES};
 use crate::trimming::helpers::snapshot_prefix_key;
 use crate::trimming::{
     TrimBlocker, TrimDiagnostic, TrimEligibility, TrimError, TrimPolicy, TrimResult, TrimStatus,
@@ -27,11 +29,30 @@ impl FjallJournal {
             let seq_bytes: [u8; 8] = slice
                 .try_into()
                 .map_err(|_| TrimError::IncompleteTrim { deleted_count: 0 })?;
-            let seq_u64 = u64::from_be_bytes(seq_bytes);
-            let seq = EventSeq::new(seq_u64);
+            let key_seq_u64 = u64::from_be_bytes(seq_bytes);
+            let key_seq = EventSeq::new(key_seq_u64);
+            let value = item.value().map_err(TrimError::from)?;
+            let (_, snapshot): (_, crate::recovery::RunSnapshot) = decode_record(
+                value.as_ref(),
+                MAGIC_SNAPSHOT,
+                MAX_SNAPSHOT_BYTES,
+            )
+            .map_err(TrimError::from)?;
+            if snapshot.run != run {
+                return Err(TrimError::Journal(JournalError::WrongRun {
+                    expected: run,
+                    actual: snapshot.run,
+                }));
+            }
+            if snapshot.seq != key_seq {
+                return Err(TrimError::Journal(JournalError::SequenceGap {
+                    expected: key_seq,
+                    actual: snapshot.seq,
+                }));
+            }
             latest = Some(match latest {
-                Some(current) if current.get() >= seq_u64 => current,
-                _ => seq,
+                Some(current) if current.get() >= key_seq_u64 => current,
+                _ => key_seq,
             });
         }
 
