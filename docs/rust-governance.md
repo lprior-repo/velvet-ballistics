@@ -70,7 +70,7 @@ cargo test --workspace --all-targets
 cargo clippy --workspace --all-targets --all-features -- -D warnings
 ```
 
-Governance and deeper verification are represented as Moon and Just tasks. A represented task/probe is not the same as a passing gate; implementation reports must say whether each task was actually executed and passed, skipped, run with `--no-actions`, or left as a placeholder.
+Governance and deeper verification are represented as Moon tasks. A represented task/probe is not the same as a passing gate; implementation reports must say whether each task was actually executed and passed, skipped, run with `--no-actions`, or left as a placeholder.
 
 - `nightly-feature-gate`: mechanically checks the first-party unstable feature whitelist and the perf-only feature scope implemented by the script.
 - `nightly-feature-cargo-probe`: attempts the strict Cargo `-Zallow-features` check where transitive dependency feature attributes permit it.
