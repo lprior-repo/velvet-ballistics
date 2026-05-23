@@ -31,6 +31,12 @@ use vb_core::{
 #[cfg(kani)]
 mod kani_generated_runtime;
 
+pub mod parity;
+pub use parity::{
+    compare_observed_runs, BlockKind, BlockedRun, ErrorClass, ErrorRun, FinishedRun,
+    ObservedRun, ParityError, TerminalStatus,
+};
+
 /// Codegen failures with stable typed diagnostics.
 #[derive(Debug, Error)]
 pub enum CodegenError {

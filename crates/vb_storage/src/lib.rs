@@ -53,6 +53,9 @@ pub mod kani_record_crc;
 pub mod kani_proof_flags_gap;
 
 #[cfg(kani)]
+pub mod kani_digest_checks_vb_2bzz;
+
+#[cfg(kani)]
 pub mod kani_recovery_hydrate;
 
 #[cfg(kani)]
