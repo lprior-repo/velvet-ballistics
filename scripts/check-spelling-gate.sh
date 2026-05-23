@@ -66,6 +66,12 @@ for file in "${files[@]}"; do
         */naming_scan/*) continue ;;
         # Test files in src/ (*_tests.rs) — test clippy is not strict
         *'_tests.rs') continue ;;
+        # JJ workspaces — isolated workspaces with their own state
+        *'/vb-'*) continue ;;
+        *'/femdation-vb-'*) continue ;;
+        *'/go-skill-'*) continue ;;
+        *'/holzman-workspace-'*) continue ;;
+        *'/pick5-'*) continue ;;
     esac
 
     # For each remaining file, get matching lines

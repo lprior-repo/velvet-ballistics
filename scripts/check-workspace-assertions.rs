@@ -64,7 +64,7 @@ const EXPECTED_PACKAGE_NAMES: &[(&str, &str)] = &[
 const EXPECTED_FEATURES: &[(&str, &[&str])] = &[
     ("crates/vb_core", &["bench", "default", "generated", "test-util", "volatile"]),
     ("crates/vb_validate", &["default", "verus"]),
-    ("crates/vb_ui_snapshot", &["default", "std", "tokio"]),
+    ("crates/vb_ui_snapshot", &["default", "std"]),
 ];
 
 fn quoted_values_in_line(line: &str) -> Vec<String> {
